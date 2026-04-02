@@ -1,4 +1,4 @@
-﻿Package: nemeton.shiny
+Package: nemetonShiny
 Type: Package
 Title: Nemeton Shiny Application for Systemic Forest Analysis
 Version: 0.1.0

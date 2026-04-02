@@ -635,9 +635,9 @@ mod_home_server <- function(id, app_state) {
         if (!is.null(.pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
           # Dev mode: reload from source directory
           pkgload::load_all(.pkg_path, quiet = TRUE)
-        } else if (requireNamespace("nemeton", quietly = TRUE)) {
-          # Production: load installed package
-          loadNamespace("nemeton")
+        } else {
+          # Production: attach package so all exports are on the search path
+          library(nemeton, quietly = TRUE)
         }
 
         # Restore app options in the future process
