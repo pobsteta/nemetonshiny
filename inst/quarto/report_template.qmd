@@ -1,0 +1,424 @@
+---
+title: "Diagnostic Forestier Nemeton"
+subtitle: "Rapport de synthese"
+lang: en
+date: today
+format:
+  pdf:
+    documentclass: article
+    papersize: a4
+    fontsize: 11pt
+    geometry:
+      - top=25mm
+      - bottom=25mm
+      - left=20mm
+      - right=20mm
+    colorlinks: true
+    linkcolor: "ForestGreen"
+    toc: false
+    number-sections: true
+    fig-pos: "H"
+    include-in-header:
+      text: |
+        \usepackage{eso-pic}
+        \usepackage{tikz}
+        \usepackage{tcolorbox}
+        \usepackage{colortbl}
+        \usepackage{xcolor}
+        \usepackage{booktabs}
+        \usepackage{longtable}
+        \tcbuselibrary{skins}
+params:
+  data_file: ""
+  radar_file: ""
+  family_maps_dir: ""
+  language: "fr"
+  cover_image: ""
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+
+# Load report data
+report_data <- readRDS(params$data_file)
+
+# Helper for translations
+tr <- function(key) {
+  report_data$labels[[key]] %||% key
+}
+
+# Color formatting helper (returns LaTeX color name)
+score_color <- function(score) {
+  if (is.na(score)) return("gray")
+  if (score >= 60) "ForestGreen"
+  else if (score >= 40) "Orange"
+  else "Red"
+}
+
+# Quality label helper
+quality_label <- function(score, lang = params$language) {
+  if (is.na(score)) return("N/A")
+  if (lang == "fr") {
+    if (score >= 80) "Excellent"
+    else if (score >= 60) "Bon"
+    else if (score >= 40) "Moyen"
+    else if (score >= 20) "Faible"
+    else "Tr\u00e8s faible"
+  } else {
+    if (score >= 80) "Excellent"
+    else if (score >= 60) "Good"
+    else if (score >= 40) "Average"
+    else if (score >= 20) "Low"
+    else "Very low"
+  }
+}
+
+# Quality color for LaTeX (hex)
+quality_color_hex <- function(score) {
+  if (is.na(score)) return("808080")
+  if (score >= 80) "228B22"
+  else if (score >= 60) "32CD32"
+  else if (score >= 40) "FF8C00"
+  else if (score >= 20) "DC143C"
+  else "8B0000"
+}
+
+# Convert hex color to LaTeX \definecolor-compatible format
+hex_to_latex_rgb <- function(hex) {
+  hex <- sub("^#", "", hex)
+  r <- strtoi(substr(hex, 1, 2), 16L) / 255
+  g <- strtoi(substr(hex, 3, 4), 16L) / 255
+  b <- strtoi(substr(hex, 5, 6), 16L) / 255
+  sprintf("%.3f,%.3f,%.3f", r, g, b)
+}
+
+# Escape LaTeX special characters
+escape_latex <- function(x) {
+  x <- gsub("\\\\", "\\\\textbackslash{}", x)
+  x <- gsub("([&%$#_{}])", "\\\\\\1", x)
+  x <- gsub("~", "\\\\textasciitilde{}", x)
+  x <- gsub("\\^", "\\\\textasciicircum{}", x)
+  x
+}
+
+# Family order
+family_order <- c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")
+
+# Sanitize markdown text to prevent YAML parse issues
+sanitize_md <- function(text) {
+  if (is.null(text) || nchar(text) == 0) return(text)
+  text <- gsub("\n---\n", "\n***\n", text)
+  text <- gsub("^---$", "***", text)
+  text
+}
+```
+
+```{r cover-page}
+#| results: asis
+
+# ---- Cover page ----
+cat("\\thispagestyle{empty}\n")
+cat("\\newgeometry{top=0mm,bottom=0mm,left=0mm,right=0mm}\n")
+
+has_cover <- nchar(params$cover_image) > 0 && file.exists(params$cover_image)
+
+if (has_cover) {
+  # Cover with background image
+  cat("\\begin{tikzpicture}[remember picture, overlay]\n")
+  cat("  \\node[anchor=center, inner sep=0pt] at (current page.center) {\n")
+  cat("    \\includegraphics[width=\\paperwidth, height=\\paperheight, keepaspectratio=false]{",
+      params$cover_image, "}\n", sep = "")
+  cat("  };\n")
+  # Semi-transparent white overlay at top
+  cat("  \\fill[white, opacity=0.88] (current page.north west) rectangle ",
+      "([yshift=-7cm]current page.north east);\n")
+  # Semi-transparent white overlay at bottom
+  cat("  \\fill[white, opacity=0.88] ([yshift=6cm]current page.south west) rectangle ",
+      "(current page.south east);\n")
+  cat("\\end{tikzpicture}\n\n")
+}
+
+# Title block at top
+cat("\\vspace*{1cm}\n")
+cat("\\begin{center}\n")
+cat("{\\fontsize{28}{34}\\selectfont\\textcolor[HTML]{2E7D32}{\\textbf{",
+    escape_latex(tr("title")), "}}}\n\n", sep = "")
+cat("\\vspace{0.3cm}\n")
+cat("{\\Large\\textcolor{gray}{",
+    escape_latex(tr("subtitle")), "}}\n\n", sep = "")
+cat("\\vspace{1cm}\n")
+cat("{\\LARGE\\textbf{", escape_latex(report_data$project_name), "}}\n\n", sep = "")
+cat("\\end{center}\n\n")
+
+# Score block at bottom
+cat("\\vfill\n")
+cat("\\begin{center}\n")
+score_col <- quality_color_hex(report_data$global_score)
+cat("\\textcolor[HTML]{", score_col, "}{\\fontsize{48}{58}\\selectfont\\textbf{",
+    sprintf("%.1f", report_data$global_score), "}}\n\n", sep = "")
+cat("{\\Large / 100}\n\n")
+cat("\\vspace{0.3cm}\n")
+# NDP badge sur la page de couverture
+ndp_col <- switch(as.character(report_data$ndp_level),
+  "0" = "6c757d", "1" = "17a2b8", "2" = "28a745",
+  "3" = "ffc107", "4" = "fd7e14", "6c757d")
+confidence_pct <- round(report_data$ndp_confidence * 100, 1)
+cat("\\colorbox[HTML]{", ndp_col, "}{\\textcolor{white}{\\small\\textbf{ NDP ",
+    report_data$ndp_level, " -- ", escape_latex(report_data$ndp_name), " }}}\n\n", sep = "")
+cat("{\\small ", escape_latex(tr("ndp_confidence_label")),
+    " : ", confidence_pct, "\\%}\n\n", sep = "")
+cat("\\vspace{0.3cm}\n")
+cat("{\\large ", report_data$n_parcels, " ",
+    escape_latex(tr("parcels")), "}\n\n", sep = "")
+cat("\\vspace{0.8cm}\n")
+cat("{\\small\\textcolor{gray}{", escape_latex(tr("generated_by")),
+    " v", as.character(packageVersion("nemeton")),
+    " --- ", as.character(Sys.Date()), "}}\n", sep = "")
+cat("\\end{center}\n\n")
+cat("\\restoregeometry\n")
+cat("\\newpage\n")
+```
+
+# `r tr("project_info")`
+
+**`r tr("project_name")`:** `r report_data$project_name`
+
+`r if (!is.null(report_data$project_description) && nchar(report_data$project_description) > 0) paste0("**Description:** ", report_data$project_description)`
+
+`r if (!is.null(report_data$project_owner) && nchar(report_data$project_owner) > 0) paste0("**", tr("owner"), ":** ", report_data$project_owner)`
+
+- **`r tr("parcels")`:** `r report_data$n_parcels`
+- **`r tr("created_at")`:** `r report_data$created_at`
+
+\begin{center}
+\textcolor{`r score_color(report_data$global_score)`}{\LARGE\textbf{`r tr("global_score_label")` : `r sprintf("%.1f", report_data$global_score)` / 100}}
+
+\vspace{0.2cm}
+{\small `r tr("ndp_label")` : \textbf{NDP `r report_data$ndp_level` -- `r report_data$ndp_name`} \quad | \quad `r tr("ndp_confidence_label")` : `r sprintf("%.1f", report_data$ndp_confidence * 100)`\%}
+\end{center}
+
+\vspace{0.3cm}
+
+```{r radar}
+#| out-width: "95%"
+#| fig-align: center
+
+if (file.exists(params$radar_file)) {
+  knitr::include_graphics(params$radar_file)
+} else {
+  cat("Radar plot not available")
+}
+```
+
+\newpage
+
+# `r tr("family_scores")`
+
+```{r family-table}
+#| results: asis
+
+# Build colorized LaTeX table
+cat("\\begin{center}\n")
+cat("\\begin{tabular}{clccc}\n")
+cat("\\toprule\n")
+
+# Header
+if (params$language == "fr") {
+  cat("\\textbf{Code} & \\textbf{Famille} & \\textbf{Score} & \\textbf{Min} & \\textbf{Max} \\\\\n")
+} else {
+  cat("\\textbf{Code} & \\textbf{Family} & \\textbf{Score} & \\textbf{Min} & \\textbf{Max} \\\\\n")
+}
+cat("\\midrule\n")
+
+for (code in family_order) {
+  if (!code %in% names(report_data$family_stats)) next
+  fam <- report_data$family_stats[[code]]
+  fam_hex <- sub("^#", "", fam$color)
+
+  cat("\\textcolor[HTML]{", fam_hex, "}{\\textbf{", escape_latex(fam$code), "}} & ",
+      escape_latex(fam$name), " & ",
+      "\\textcolor[HTML]{", fam_hex, "}{\\textbf{", sprintf("%.1f", fam$mean), "}} & ",
+      sprintf("%.1f", fam$min), " & ",
+      sprintf("%.1f", fam$max), " \\\\\n", sep = "")
+}
+
+cat("\\bottomrule\n")
+cat("\\end{tabular}\n")
+cat("\\end{center}\n")
+```
+
+\vspace{1cm}
+
+## `r if (params$language == "fr") "Interpr\u00e9tation des scores" else "Score interpretation"`
+
+| Score | `r if (params$language == "fr") "Interpr\u00e9tation" else "Interpretation"` |
+|-------|----------------|
+| 80-100 | `r if (params$language == "fr") "Excellent - Service \u00e9cosyst\u00e9mique tr\u00e8s performant" else "Excellent - Very high ecosystem service performance"` |
+| 60-79 | `r if (params$language == "fr") "Bon - Service \u00e9cosyst\u00e9mique performant" else "Good - High ecosystem service performance"` |
+| 40-59 | `r if (params$language == "fr") "Moyen - Service \u00e9cosyst\u00e9mique moyen" else "Average - Moderate ecosystem service performance"` |
+| 20-39 | `r if (params$language == "fr") "Faible - Service \u00e9cosyst\u00e9mique limit\u00e9" else "Low - Limited ecosystem service performance"` |
+| 0-19 | `r if (params$language == "fr") "Tr\u00e8s faible - Service \u00e9cosyst\u00e9mique d\u00e9ficient" else "Very low - Deficient ecosystem service performance"` |
+
+```{r}
+#| label: synthesis-comments
+#| results: asis
+
+# Render synthesis comments if available
+if (!is.null(report_data$synthesis_comments) && nchar(report_data$synthesis_comments) > 0) {
+  cat("\n\\newpage\n\n")
+  cat("# ", tr("comments_title"), "\n\n", sep = "")
+  cat(sanitize_md(report_data$synthesis_comments))
+  cat("\n\n")
+}
+```
+
+\newpage
+
+```{r toc}
+#| results: asis
+cat("\\tableofcontents\n")
+```
+
+\newpage
+
+# `r if (params$language == "fr") "D\u00e9tail par famille d'indicateurs" else "Detail by indicator family"`
+
+```{r family-sections}
+#| results: asis
+
+for (code in family_order) {
+  if (!code %in% names(report_data$family_stats)) next
+
+  fam <- report_data$family_stats[[code]]
+  fam_hex <- sub("^#", "", fam$color)
+
+  # Colored section header using tcolorbox
+  cat("\n\n")
+  cat("\\begin{tcolorbox}[colback=white, colframe={rgb,255:red,",
+      strtoi(substr(fam_hex, 1, 2), 16L), ";green,",
+      strtoi(substr(fam_hex, 3, 4), 16L), ";blue,",
+      strtoi(substr(fam_hex, 5, 6), 16L), "},",
+      " colbacktitle={rgb,255:red,",
+      strtoi(substr(fam_hex, 1, 2), 16L), ";green,",
+      strtoi(substr(fam_hex, 3, 4), 16L), ";blue,",
+      strtoi(substr(fam_hex, 5, 6), 16L), "},",
+      " coltitle=white, title={\\Large\\textbf{",
+      escape_latex(fam$name), " (", code, ")}},",
+      " fonttitle=\\sffamily, boxrule=0.5mm, arc=2mm]\n", sep = "")
+
+  # Score summary inside the box
+  score_label <- if (params$language == "fr") "Score moyen" else "Mean score"
+  cat("\\textbf{", escape_latex(score_label), " :} ",
+      "\\textcolor[HTML]{", fam_hex, "}{\\textbf{\\Large ",
+      sprintf("%.1f", fam$mean), " / 100}}", sep = "")
+  cat(" \\hfill (Min: ", sprintf("%.1f", fam$min),
+      ", Max: ", sprintf("%.1f", fam$max), ")\n\n", sep = "")
+
+  # Family description inside the box
+  if (!is.null(report_data$family_descriptions[[code]])) {
+    cat("\\smallskip\n")
+    cat(escape_latex(report_data$family_descriptions[[code]]), "\n")
+  }
+
+  cat("\\end{tcolorbox}\n\n")
+
+  # Map image if available
+  map_file <- file.path(params$family_maps_dir, paste0("family_", code, "_map.png"))
+  if (file.exists(map_file)) {
+    cat("### ", if (params$language == "fr") "Carte" else "Map", "\n\n", sep = "")
+    rel_path <- file.path("family_maps", paste0("family_", code, "_map.png"))
+    cat("![](", rel_path, "){width=90%}\n\n", sep = "")
+  }
+
+  # Indicator details table with colored scores
+  if (!is.null(report_data$indicator_stats[[code]])) {
+    ind_data <- report_data$indicator_stats[[code]]
+    if (nrow(ind_data) > 0) {
+      cat("### ", if (params$language == "fr") "Indicateurs" else "Indicators", "\n\n", sep = "")
+
+      cat("\\begin{center}\n")
+      cat("\\begin{tabular}{lccc}\n")
+      cat("\\toprule\n")
+      if (params$language == "fr") {
+        cat("\\textbf{Indicateur} & \\textbf{Moyenne} & \\textbf{Min} & \\textbf{Max} \\\\\n")
+      } else {
+        cat("\\textbf{Indicator} & \\textbf{Mean} & \\textbf{Min} & \\textbf{Max} \\\\\n")
+      }
+      cat("\\midrule\n")
+
+      for (i in seq_len(nrow(ind_data))) {
+        score_hex <- quality_color_hex(ind_data[i, 2])
+        cat(escape_latex(as.character(ind_data[i, 1])), " & ",
+            "\\textcolor[HTML]{", score_hex, "}{\\textbf{", sprintf("%.1f", ind_data[i, 2]), "}} & ",
+            sprintf("%.1f", ind_data[i, 3]), " & ",
+            sprintf("%.1f", ind_data[i, 4]), " \\\\\n", sep = "")
+      }
+
+      cat("\\bottomrule\n")
+      cat("\\end{tabular}\n")
+      cat("\\end{center}\n\n")
+    }
+  }
+
+  # Per-parcel scores table
+  if (!is.null(report_data$parcel_scores[[code]])) {
+    ps <- report_data$parcel_scores[[code]]
+    if (nrow(ps) > 0) {
+      cat("### ", if (params$language == "fr") "Scores par parcelle" else "Scores per parcel", "\n\n", sep = "")
+
+      cat("\\begin{center}\n")
+      cat("\\begin{tabular}{lcc}\n")
+      cat("\\toprule\n")
+      if (params$language == "fr") {
+        cat("\\textbf{Parcelle} & \\textbf{Score} & \\textbf{Qualit\\'{e}} \\\\\n")
+      } else {
+        cat("\\textbf{Parcel} & \\textbf{Score} & \\textbf{Quality} \\\\\n")
+      }
+      cat("\\midrule\n")
+
+      n_show <- min(nrow(ps), 20L)
+      for (i in seq_len(n_show)) {
+        val <- ps$score[i]
+        q_hex <- quality_color_hex(val)
+        q_label <- quality_label(val)
+        score_str <- if (is.na(val)) "N/A" else sprintf("%.1f", val)
+
+        cat(escape_latex(ps$id[i]), " & ", score_str, " & ",
+            "\\textcolor[HTML]{", q_hex, "}{\\textbf{", escape_latex(q_label), "}} \\\\\n", sep = "")
+      }
+
+      cat("\\bottomrule\n")
+      cat("\\end{tabular}\n")
+      cat("\\end{center}\n\n")
+
+      # Note if truncated
+      if (nrow(ps) > 20) {
+        remaining <- nrow(ps) - 20
+        msg <- if (params$language == "fr") {
+          sprintf("\\textit{... %d parcelles suppl\\'{e}mentaires}", remaining)
+        } else {
+          sprintf("\\textit{... %d additional parcels}", remaining)
+        }
+        cat("\\begin{center}\n", msg, "\n\\end{center}\n\n", sep = "")
+      }
+    }
+  }
+
+  # Family comments (markdown, sanitized)
+  if (!is.null(report_data$family_comments[[code]]) &&
+      nchar(report_data$family_comments[[code]]) > 0) {
+    cat("### ", if (params$language == "fr") "Analyse" else "Analysis", "\n\n", sep = "")
+    cat(sanitize_md(report_data$family_comments[[code]]), "\n\n")
+  }
+
+  cat("\n\\newpage\n")
+}
+```
+
+\vfill
+
+*`r tr("generated_by")` v`r packageVersion("nemeton")` - `r Sys.Date()`*

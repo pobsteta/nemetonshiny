@@ -1,0 +1,93 @@
+{
+  "realm": "nemeton",
+  "enabled": true,
+  "displayName": "Néméton",
+  "displayNameHtml": "<strong>Néméton</strong> — Diagnostic Forestier",
+  "loginTheme": "keycloak",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr", "en"],
+  "defaultLocale": "fr",
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrateur Néméton"
+      },
+      {
+        "name": "gestionnaire",
+        "description": "Gestionnaire forestier"
+      },
+      {
+        "name": "lecteur",
+        "description": "Accès en lecture seule"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "nemeton-app",
+      "name": "Néméton Application",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "nemeton-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:3838/*",
+        "http://127.0.0.1:3838/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3838",
+        "http://127.0.0.1:3838"
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "roles"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "email": "demo@nemeton.fr",
+      "firstName": "Utilisateur",
+      "lastName": "Démo",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["gestionnaire"]
+    },
+    {
+      "username": "admin",
+      "email": "admin@nemeton.fr",
+      "firstName": "Admin",
+      "lastName": "Néméton",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin", "gestionnaire"]
+    }
+  ]
+}

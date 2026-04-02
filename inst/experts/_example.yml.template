@@ -1,0 +1,26 @@
+# Exemple de profil expert personnalis\u00e9 pour N\u00e9m\u00e9ton
+# --------------------------------------------------------
+# Pour cr\u00e9er un nouveau profil expert :
+# 1. Copier ce fichier sous un nouveau nom avec l'extension .yml
+#    ex: mon_profil.yml
+# 2. Remplir les champs label et prompt en fran\u00e7ais et/ou anglais
+# 3. Red\u00e9marrer l'application N\u00e9m\u00e9ton
+#
+# Le nom du fichier (sans extension) devient la cl\u00e9 du profil.
+# Les profils utilisateur remplacent les profils du package si le
+# nom de fichier est identique.
+#
+# Ce fichier (.template) n'est pas lu par l'application.
+
+label:
+  fr: "Mon profil"
+  en: "My profile"
+prompt:
+  fr: >-
+    Tu es un expert en diagnostic forestier.
+    D\u00e9cris ton expertise et ton approche ici.
+    R\u00e9ponds en 5 \u00e0 10 phrases maximum.
+  en: >-
+    You are an expert in forest diagnostics.
+    Describe your expertise and approach here.
+    Answer in 5 to 10 sentences.

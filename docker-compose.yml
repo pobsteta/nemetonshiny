@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  # ============================================================
+  # Keycloak - Serveur d'identite OAuth2/OIDC
+  # ============================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./keycloak/realm-nemeton.json:/opt/keycloak/data/import/realm-nemeton.json:ro
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q 'UP'"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  # ============================================================
+  # Nemeton - Application Shiny
+  # ============================================================
+  nemeton:
+    build: .
+    ports:
+      - "3838:3838"
+    environment:
+      # OAuth / Keycloak
+      NEMETON_OAUTH_PROVIDER: keycloak
+      NEMETON_OAUTH_CLIENT_ID: nemeton-app
+      NEMETON_OAUTH_CLIENT_SECRET: nemeton-secret
+      NEMETON_KEYCLOAK_URL: http://keycloak:8080/realms/nemeton
+      NEMETON_OAUTH_REDIRECT_URI: http://localhost:3838
+      NEMETON_OAUTH_SCOPES: openid,profile,email
+      # Application
+      NEMETON_LANG: fr
+      NEMETON_PAYS: FR
+      # LLM (optionnel)
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    volumes:
+      - nemeton_data:/root/.nemeton
+
+volumes:
+  nemeton_data:

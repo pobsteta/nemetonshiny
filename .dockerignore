@@ -1,0 +1,15 @@
+.git
+.github
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+node_modules
+docs
+pkgdown
+specs
+man
+vignettes
+*.Rproj
+.DS_Store
+Thumbs.db
