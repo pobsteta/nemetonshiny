@@ -391,16 +391,6 @@ generate_radar_image <- function(family_scores, output_file, language,
 
   i18n <- get_i18n(language)
 
-  # Reorder family columns to canonical INDICATOR_FAMILIES order
-  family_cols <- grep("^famille_[a-z]", names(family_scores), value = TRUE)
-  if (length(family_cols) > 0) {
-    canonical_order <- vapply(names(INDICATOR_FAMILIES),
-                              get_famille_col, character(1))
-    ordered_family_cols <- intersect(canonical_order, family_cols)
-    other_cols <- setdiff(names(family_scores), family_cols)
-    family_scores <- family_scores[, c(other_cols, ordered_family_cols)]
-  }
-
   # Construire le sous-titre NDP
   ndp_level <- as.integer(ndp_level %||% 0L)
   ndp_info <- get_ndp_level(ndp_level)
@@ -409,15 +399,51 @@ generate_radar_image <- function(family_scores, output_file, language,
                            ndp_level, ndp_info$name, confidence_pct)
 
   tryCatch({
-    p <- nemeton_radar(family_scores, mode = "family", normalize = FALSE,
-                       title = i18n$t("radar_title"))
-    # Ajouter le sous-titre NDP
-    p <- p + ggplot2::labs(subtitle = ndp_subtitle) +
+    # Build radar data in canonical INDICATOR_FAMILIES order
+    df <- if (inherits(family_scores, "sf")) sf::st_drop_geometry(family_scores) else family_scores
+    canonical_codes <- names(INDICATOR_FAMILIES)
+    radar_data <- data.frame(
+      family = character(0), label = character(0),
+      value = numeric(0), stringsAsFactors = FALSE
+    )
+    for (code in canonical_codes) {
+      col <- get_famille_col(code)
+      if (col %in% names(df)) {
+        fam <- INDICATOR_FAMILIES[[code]]
+        label <- if (language == "fr") fam$name_fr else fam$name_en
+        radar_data <- rbind(radar_data, data.frame(
+          family = code, label = label,
+          value = mean(df[[col]], na.rm = TRUE),
+          stringsAsFactors = FALSE
+        ))
+      }
+    }
+    radar_data$label <- factor(radar_data$label, levels = radar_data$label)
+
+    p <- ggplot2::ggplot(radar_data, ggplot2::aes(x = label, y = value)) +
+      ggplot2::geom_polygon(
+        ggplot2::aes(group = 1),
+        fill = "steelblue", alpha = 0.3, color = "steelblue", linewidth = 1
+      ) +
+      ggplot2::geom_point(color = "steelblue", size = 3) +
+      ggplot2::coord_polar(clip = "off") +
+      ggplot2::scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 25)) +
+      ggplot2::labs(
+        title = i18n$t("radar_title"),
+        subtitle = ndp_subtitle,
+        x = NULL, y = NULL
+      ) +
+      ggplot2::theme_minimal() +
       ggplot2::theme(
+        plot.title = ggplot2::element_text(hjust = 0.5, face = "bold", size = 14),
         plot.subtitle = ggplot2::element_text(
           hjust = 0.5, size = 11, color = "gray40",
           margin = ggplot2::margin(b = 10)
-        )
+        ),
+        axis.text.x = ggplot2::element_text(size = 11, face = "bold"),
+        axis.text.y = ggplot2::element_blank(),
+        panel.grid.major.y = ggplot2::element_line(color = "gray80"),
+        panel.grid.minor = ggplot2::element_blank()
       )
     print(p)
   }, error = function(e) {
