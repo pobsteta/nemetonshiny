@@ -408,8 +408,13 @@ generate_radar_image <- function(family_scores, output_file, language,
     } else {
       family_means <- df
     }
+    # nemeton_radar requires an sf object — add a dummy geometry
+    family_means_sf <- sf::st_as_sf(
+      family_means,
+      geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
+    )
 
-    p <- nemeton_radar(family_means, mode = "family", normalize = FALSE,
+    p <- nemeton_radar(family_means_sf, mode = "family", normalize = FALSE,
                        title = i18n$t("radar_title"))
     p <- p + ggplot2::labs(subtitle = ndp_subtitle) +
       ggplot2::theme(

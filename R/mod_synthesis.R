@@ -348,8 +348,13 @@ mod_synthesis_server <- function(id, app_state) {
       df <- sf::st_drop_geometry(sf_data)
       family_means <- as.data.frame(lapply(df[, family_cols, drop = FALSE],
                                            function(x) mean(x, na.rm = TRUE)))
+      # nemeton_radar requires an sf object — add a dummy geometry
+      family_means_sf <- sf::st_as_sf(
+        family_means,
+        geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
+      )
 
-      p <- nemeton_radar(family_means, mode = "family", normalize = FALSE,
+      p <- nemeton_radar(family_means_sf, mode = "family", normalize = FALSE,
                          title = i18n$t("radar_title"))
       p + ggplot2::labs(subtitle = ndp_subtitle) +
         ggplot2::theme(
