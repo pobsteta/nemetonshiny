@@ -467,6 +467,85 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
+    # MAP: Update atom styles when selection changes
+    # ================================================================
+    shiny::observe({
+      selected <- rv$selected_atome_ids
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) return()
+
+      atomes <- projet$atomes
+      ugs <- projet$ugs
+      proxy <- leaflet::leafletProxy(ns("ug_map"))
+
+      # Ensure WGS84
+      if (!is.na(sf::st_crs(atomes)) && sf::st_crs(atomes)$epsg != 4326L) {
+        atomes <- sf::st_transform(atomes, 4326)
+      }
+
+      # Redraw atoms with updated selection styling
+      ug_index_map <- stats::setNames(seq_len(nrow(ugs)), ugs$ug_id)
+      fill_colors <- vapply(seq_len(nrow(atomes)), function(i) {
+        uid <- atomes$ug_id[i]
+        ug_row <- ugs[ugs$ug_id == uid, ]
+        if (nrow(ug_row) == 0) return("#CCCCCC")
+        idx <- ug_index_map[[uid]]
+        ug_color(ug_row$groupe[1], idx)
+      }, character(1))
+
+      border_colors <- ifelse(
+        atomes$atome_id %in% selected,
+        "#FF4500",
+        "#333333"
+      )
+      border_weights <- ifelse(
+        atomes$atome_id %in% selected,
+        4, 1
+      )
+      fill_opacities <- ifelse(
+        atomes$atome_id %in% selected,
+        0.7, 0.5
+      )
+
+      # Labels
+      atom_labels <- vapply(seq_len(nrow(atomes)), function(i) {
+        uid <- atomes$ug_id[i]
+        ug_row <- ugs[ugs$ug_id == uid, ]
+        ug_label <- if (nrow(ug_row) > 0) ug_row$label[1] else "?"
+        is_sel <- atomes$atome_id[i] %in% selected
+        sel_marker <- if (is_sel) " \u2705" else ""
+        sprintf(
+          "<b>%s</b>%s<br>Atome: %s<br>Surface: %s m\u00b2",
+          ug_label, sel_marker,
+          atomes$atome_id[i],
+          format(round(atomes$surface_m2[i]), big.mark = " ")
+        )
+      }, character(1))
+
+      proxy |>
+        leaflet::clearGroup("Atomes") |>
+        leaflet::addPolygons(
+          data = atomes,
+          group = "Atomes",
+          layerId = atomes$atome_id,
+          fillColor = fill_colors,
+          fillOpacity = fill_opacities,
+          color = border_colors,
+          weight = border_weights,
+          label = lapply(atom_labels, htmltools::HTML),
+          labelOptions = leaflet::labelOptions(
+            style = list("font-size" = "12px", "background" = "white"),
+            textsize = "12px"
+          ),
+          highlightOptions = leaflet::highlightOptions(
+            weight = 4,
+            fillOpacity = 0.8,
+            bringToFront = TRUE
+          )
+        )
+    })
+
+    # ================================================================
     # MAP: Handle drawn polygons (interactive split)
     # ================================================================
     # When the user finishes drawing polygons on the map, propose to
