@@ -57,20 +57,20 @@ app_ui <- function(request) {
         mod_home_ui("home")
       ),
 
-      # === Tab 2: Synthesis (conditional) ===
-      bslib::nav_panel(
-        title = i18n$t("tab_synthesis"),
-        value = "synthesis",
-        icon = bsicons::bs_icon("pie-chart"),
-        mod_synthesis_ui("synthesis")
-      ),
-
-      # === Tab 3: Unités de Gestion ===
+      # === Tab 2: Unités de Gestion ===
       bslib::nav_panel(
         title = i18n$t("tab_ug"),
         value = "ug",
         icon = bsicons::bs_icon("diagram-3"),
         mod_ug_ui("ug")
+      ),
+
+      # === Tab 3: Synthesis ===
+      bslib::nav_panel(
+        title = i18n$t("tab_synthesis"),
+        value = "synthesis",
+        icon = bsicons::bs_icon("pie-chart"),
+        mod_synthesis_ui("synthesis")
       ),
 
       # === Tabs 4-15: Indicator Families ===
