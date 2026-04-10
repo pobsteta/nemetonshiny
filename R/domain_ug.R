@@ -25,11 +25,8 @@ NULL
 #' Known management group codes
 #' @noRd
 GROUPES_AMENAGEMENT <- c(
-
   "AMETS",  # Amélioration de taillis sous futaie
-
   "AMER",   # Amélioration en régénération
-
   "IRR",    # Irrégulier
   "TSF",    # Taillis sous futaie
   "REGT",   # Régénération par taillis
@@ -39,6 +36,47 @@ GROUPES_AMENAGEMENT <- c(
   "PROT",   # Protection
   "ACC"     # Accueil
 )
+
+
+#' Color palette for management groups
+#' @noRd
+GROUPE_COLORS <- c(
+  "AMETS" = "#228B22",  # ForestGreen
+  "AMER"  = "#2E8B57",  # SeaGreen
+  "IRR"   = "#4682B4",  # SteelBlue
+  "TSF"   = "#DAA520",  # Goldenrod
+  "REGT"  = "#D2691E",  # Chocolate
+  "REGF"  = "#CD853F",  # Peru
+  "HSN"   = "#9932CC",  # DarkOrchid
+  "HSY"   = "#8B008B",  # DarkMagenta
+  "PROT"  = "#20B2AA",  # LightSeaGreen
+  "ACC"   = "#FFD700"   # Gold
+)
+
+
+#' Distinct color palette for UGs (when no groupe assigned)
+#' @noRd
+UG_PALETTE <- c(
+  "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+  "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+  "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5",
+  "#c49c94", "#f7b6d2", "#c7c7c7", "#dbdb8d", "#9edae5"
+)
+
+
+#' Get fill color for a UG based on its groupe or index
+#'
+#' @param groupe Character. Management group code (can be NA).
+#' @param index Integer. UG index (used for fallback color).
+#'
+#' @return Character. Hex color string.
+#' @noRd
+ug_color <- function(groupe, index = 1L) {
+  if (!is.na(groupe) && nchar(groupe) > 0 && groupe %in% names(GROUPE_COLORS)) {
+    return(GROUPE_COLORS[[groupe]])
+  }
+  UG_PALETTE[((index - 1L) %% length(UG_PALETTE)) + 1L]
+}
 
 
 # ==============================================================================

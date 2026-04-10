@@ -317,5 +317,14 @@
   "ug_select_at_least_2": "Sélectionnez au moins 2 UG à regrouper.",
   "ug_cannot_split_single": "Impossible de dissocier une UG avec un seul atome.",
   "ug_section_title": "Unités de Gestion",
-  "ug_composition_title": "Composition cadastrale"
+  "ug_composition_title": "Composition cadastrale",
+
+  "ug_map_tab": "Carte",
+  "ug_table_tab": "Tableau",
+  "ug_map_click_hint": "Cliquez sur les atomes de la carte pour les sélectionner, puis créez une UG.",
+  "ug_create_from_map": "Créer UG depuis la sélection",
+  "ug_create_btn": "Créer l'UG",
+  "ug_create_confirm": "Créer une UG avec %d atome(s) sélectionné(s) ?",
+  "ug_map_select_atoms_first": "Sélectionnez des atomes sur la carte d'abord.",
+  "ug_clear_selection": "Effacer la sélection"
 }

@@ -317,5 +317,14 @@
   "ug_select_at_least_2": "Select at least 2 UGs to merge.",
   "ug_cannot_split_single": "Cannot split a UG with only one atom.",
   "ug_section_title": "Management Units",
-  "ug_composition_title": "Cadastral Composition"
+  "ug_composition_title": "Cadastral Composition",
+
+  "ug_map_tab": "Map",
+  "ug_table_tab": "Table",
+  "ug_map_click_hint": "Click on atoms on the map to select them, then create a UG.",
+  "ug_create_from_map": "Create UG from selection",
+  "ug_create_btn": "Create UG",
+  "ug_create_confirm": "Create a UG with %d selected atom(s)?",
+  "ug_map_select_atoms_first": "Select atoms on the map first.",
+  "ug_clear_selection": "Clear selection"
 }

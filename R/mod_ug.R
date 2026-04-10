@@ -2,8 +2,8 @@
 #'
 #' @description
 #' Shiny module for managing Unités de Gestion (UG).
-#' Allows users to view, merge, split, rename, and classify UGs.
-#' Walking skeleton: table-based interface with merge/split/rename actions.
+#' Boucle 1: table + leaflet map with atom selection, merge/split/rename,
+#' groupe d'aménagement assignment, and color-coded map display.
 #'
 #' @name mod_ug
 #' @keywords internal
@@ -40,6 +40,14 @@ mod_ug_ui <- function(id) {
           label = i18n$t("ug_merge"),
           icon = shiny::icon("object-group"),
           class = "btn-success",
+          width = "100%"
+        ),
+
+        shiny::actionButton(
+          ns("btn_create_from_map"),
+          label = i18n$t("ug_create_from_map"),
+          icon = shiny::icon("plus-circle"),
+          class = "btn-success btn-sm",
           width = "100%"
         ),
 
@@ -95,6 +103,11 @@ mod_ug_ui <- function(id) {
 
       shiny::hr(),
 
+      # Map selection info
+      shiny::uiOutput(ns("map_selection_info")),
+
+      shiny::hr(),
+
       # UG detail panel
       htmltools::div(
         id = ns("detail_panel"),
@@ -103,17 +116,29 @@ mod_ug_ui <- function(id) {
       )
     ),
 
-    # === Main content: UG table ===
-    bslib::card(
-      bslib::card_header(
-        htmltools::div(
-          class = "d-flex justify-content-between align-items-center",
-          shiny::h5(i18n$t("ug_title"), class = "mb-0"),
-          shiny::textOutput(ns("ug_summary"), inline = TRUE)
+    # === Main content: map + table ===
+    bslib::navset_card_tab(
+      # Tab 1: Map
+      bslib::nav_panel(
+        title = i18n$t("ug_map_tab"),
+        icon = bsicons::bs_icon("map"),
+        bslib::card_body(
+          class = "p-0",
+          leaflet::leafletOutput(ns("ug_map"), height = "500px")
         )
       ),
-      bslib::card_body(
-        DT::dataTableOutput(ns("ug_table"))
+      # Tab 2: Table
+      bslib::nav_panel(
+        title = i18n$t("ug_table_tab"),
+        icon = bsicons::bs_icon("table"),
+        bslib::card_body(
+          htmltools::div(
+            class = "d-flex justify-content-between align-items-center mb-2",
+            shiny::h5(i18n$t("ug_title"), class = "mb-0"),
+            shiny::textOutput(ns("ug_summary"), inline = TRUE)
+          ),
+          DT::dataTableOutput(ns("ug_table"))
+        )
       )
     )
   )
@@ -137,8 +162,10 @@ mod_ug_server <- function(id, app_state) {
     # REACTIVE: UG state (projet with atomes/ugs)
     # ================================================================
     rv <- shiny::reactiveValues(
-      projet_ug = NULL,       # projet list with $atomes, $ugs, $parcels
-      needs_recompute = FALSE  # flag: UGs changed, indicators need refresh
+      projet_ug = NULL,          # projet list with $atomes, $ugs, $parcels
+      needs_recompute = FALSE,   # flag: UGs changed, indicators need refresh
+      selected_atome_ids = character(0),  # atoms selected on the map
+      map_initialized = FALSE
     )
 
     # Initialize UG data when project loads
@@ -146,6 +173,8 @@ mod_ug_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(project) || is.null(project$parcels)) {
         rv$projet_ug <- NULL
+        rv$selected_atome_ids <- character(0)
+        rv$map_initialized <- FALSE
         return()
       }
 
@@ -153,10 +182,8 @@ mod_ug_server <- function(id, app_state) {
       if (has_ug_data(project)) {
         rv$projet_ug <- project
       } else if (!is.null(project$metadata$id)) {
-        # Try loading from files or migrate
         projet <- ensure_project_migrated(project$metadata$id, project)
         rv$projet_ug <- projet
-        # Update app_state with UG data
         app_state$current_project$atomes <- projet$atomes
         app_state$current_project$ugs <- projet$ugs
       }
@@ -167,10 +194,326 @@ mod_ug_server <- function(id, app_state) {
     # ================================================================
     ug_listing <- shiny::reactive({
       projet <- rv$projet_ug
-      if (is.null(projet) || !has_ug_data(projet)) {
-        return(NULL)
-      }
+      if (is.null(projet) || !has_ug_data(projet)) return(NULL)
       ug_list(projet)
+    })
+
+    # ================================================================
+    # MAP: Render leaflet
+    # ================================================================
+    output$ug_map <- leaflet::renderLeaflet({
+      leaflet::leaflet() |>
+        leaflet::addProviderTiles(
+          leaflet::providers$OpenStreetMap,
+          group = "OSM"
+        ) |>
+        leaflet::addProviderTiles(
+          leaflet::providers$Esri.WorldImagery,
+          group = "Satellite"
+        ) |>
+        leaflet::addLayersControl(
+          baseGroups = c("OSM", "Satellite"),
+          overlayGroups = c("UG", "Atomes"),
+          options = leaflet::layersControlOptions(collapsed = TRUE)
+        ) |>
+        leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
+    })
+
+    # ================================================================
+    # MAP: Update polygons when UG data changes
+    # ================================================================
+    shiny::observe({
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) return()
+
+      atomes <- projet$atomes
+      ugs <- projet$ugs
+
+      # Ensure WGS84 for leaflet
+      if (!is.na(sf::st_crs(atomes)) && sf::st_crs(atomes)$epsg != 4326L) {
+        atomes <- sf::st_transform(atomes, 4326)
+      }
+
+      # Compute fill colors per atom (based on UG groupe or index)
+      ug_index_map <- stats::setNames(seq_len(nrow(ugs)), ugs$ug_id)
+      fill_colors <- vapply(seq_len(nrow(atomes)), function(i) {
+        uid <- atomes$ug_id[i]
+        ug_row <- ugs[ugs$ug_id == uid, ]
+        if (nrow(ug_row) == 0) return("#CCCCCC")
+        idx <- ug_index_map[[uid]]
+        ug_color(ug_row$groupe[1], idx)
+      }, character(1))
+
+      # Labels for hover
+      atom_labels <- vapply(seq_len(nrow(atomes)), function(i) {
+        uid <- atomes$ug_id[i]
+        ug_row <- ugs[ugs$ug_id == uid, ]
+        ug_label <- if (nrow(ug_row) > 0) ug_row$label[1] else "?"
+        groupe_str <- if (nrow(ug_row) > 0 && !is.na(ug_row$groupe[1])) {
+          paste0(" [", ug_row$groupe[1], "]")
+        } else {
+          ""
+        }
+        sprintf(
+          "<b>%s</b>%s<br>Atome: %s<br>Surface: %s m\u00b2",
+          ug_label, groupe_str,
+          atomes$atome_id[i],
+          format(round(atomes$surface_m2[i]), big.mark = " ")
+        )
+      }, character(1))
+
+      # Highlight selected atoms
+      border_colors <- ifelse(
+        atomes$atome_id %in% rv$selected_atome_ids,
+        "#FF4500",  # OrangeRed for selected
+        "#333333"
+      )
+      border_weights <- ifelse(
+        atomes$atome_id %in% rv$selected_atome_ids,
+        3, 1
+      )
+
+      # Clear and redraw atoms
+      proxy <- leaflet::leafletProxy(ns("ug_map"))
+      proxy |>
+        leaflet::clearGroup("Atomes") |>
+        leaflet::clearGroup("UG") |>
+        leaflet::addPolygons(
+          data = atomes,
+          group = "Atomes",
+          layerId = atomes$atome_id,
+          fillColor = fill_colors,
+          fillOpacity = 0.5,
+          color = border_colors,
+          weight = border_weights,
+          label = lapply(atom_labels, htmltools::HTML),
+          labelOptions = leaflet::labelOptions(
+            style = list("font-size" = "12px", "background" = "white"),
+            textsize = "12px"
+          ),
+          highlightOptions = leaflet::highlightOptions(
+            weight = 3,
+            fillOpacity = 0.7,
+            bringToFront = TRUE
+          )
+        )
+
+      # Add UG dissolved boundaries as an overlay
+      tryCatch({
+        ug_sf <- ug_build_sf(projet)
+        if (!is.null(ug_sf) && nrow(ug_sf) > 0) {
+          if (!is.na(sf::st_crs(ug_sf)) && sf::st_crs(ug_sf)$epsg != 4326L) {
+            ug_sf <- sf::st_transform(ug_sf, 4326)
+          }
+
+          ug_colors <- vapply(seq_len(nrow(ug_sf)), function(i) {
+            ug_color(ug_sf$groupe[i], i)
+          }, character(1))
+
+          ug_labels <- vapply(seq_len(nrow(ug_sf)), function(i) {
+            groupe_str <- if (!is.na(ug_sf$groupe[i])) {
+              paste0(" [", ug_sf$groupe[i], "]")
+            } else {
+              ""
+            }
+            sprintf(
+              "<b>%s</b>%s<br>%d atome(s) | %s ha",
+              ug_sf$label[i], groupe_str,
+              ug_sf$n_atomes[i],
+              format(round(ug_sf$surface_m2[i] / 10000, 2), nsmall = 2)
+            )
+          }, character(1))
+
+          proxy |>
+            leaflet::addPolygons(
+              data = ug_sf,
+              group = "UG",
+              fillColor = ug_colors,
+              fillOpacity = 0.15,
+              color = ug_colors,
+              weight = 3,
+              dashArray = "5,5",
+              label = lapply(ug_labels, htmltools::HTML),
+              labelOptions = leaflet::labelOptions(
+                style = list("font-size" = "13px", "font-weight" = "bold"),
+                textsize = "13px"
+              )
+            )
+        }
+      }, error = function(e) {
+        cli::cli_warn("Failed to render UG boundaries: {e$message}")
+      })
+
+      # Fit bounds on first load
+      if (!rv$map_initialized) {
+        bbox <- sf::st_bbox(atomes)
+        proxy |> leaflet::fitBounds(
+          lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
+          lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
+        )
+        rv$map_initialized <- TRUE
+      }
+
+      # Add legend
+      proxy |>
+        leaflet::clearControls() |>
+        leaflet::addLegend(
+          position = "bottomright",
+          colors = GROUPE_COLORS[names(GROUPE_COLORS) %in% ugs$groupe],
+          labels = names(GROUPE_COLORS)[names(GROUPE_COLORS) %in% ugs$groupe],
+          title = i18n()$t("ug_group"),
+          opacity = 0.8
+        )
+    })
+
+    # ================================================================
+    # MAP: Click handler for atom selection
+    # ================================================================
+    shiny::observeEvent(input$ug_map_shape_click, {
+      click <- input$ug_map_shape_click
+      if (is.null(click) || is.null(click$id)) return()
+
+      atome_id <- click$id
+      projet <- rv$projet_ug
+      if (is.null(projet)) return()
+
+      # Only handle clicks on atoms
+      if (!atome_id %in% projet$atomes$atome_id) return()
+
+      # Toggle selection
+      current <- rv$selected_atome_ids
+      if (atome_id %in% current) {
+        rv$selected_atome_ids <- setdiff(current, atome_id)
+      } else {
+        rv$selected_atome_ids <- c(current, atome_id)
+      }
+    })
+
+    # ================================================================
+    # OUTPUT: Map selection info
+    # ================================================================
+    output$map_selection_info <- shiny::renderUI({
+      n_sel <- length(rv$selected_atome_ids)
+      if (n_sel == 0) {
+        return(shiny::p(
+          class = "text-muted small",
+          i18n()$t("ug_map_click_hint")
+        ))
+      }
+
+      projet <- rv$projet_ug
+      if (is.null(projet)) return(NULL)
+
+      # Find which UGs are involved
+      sel_atomes <- projet$atomes[projet$atomes$atome_id %in% rv$selected_atome_ids, ]
+      ug_ids_involved <- unique(sel_atomes$ug_id)
+      ug_labels <- projet$ugs$label[projet$ugs$ug_id %in% ug_ids_involved]
+
+      total_surface <- sum(sel_atomes$surface_m2, na.rm = TRUE)
+
+      htmltools::tagList(
+        shiny::tags$span(
+          class = "badge bg-warning",
+          sprintf("%d atome(s)", n_sel)
+        ),
+        shiny::br(),
+        shiny::tags$small(
+          class = "text-muted",
+          sprintf("%s ha | UG: %s",
+                  format(round(total_surface / 10000, 2), nsmall = 2),
+                  paste(ug_labels, collapse = ", "))
+        ),
+        shiny::br(),
+        shiny::actionButton(
+          ns("btn_clear_map_sel"),
+          label = i18n()$t("ug_clear_selection"),
+          icon = shiny::icon("xmark"),
+          class = "btn-outline-secondary btn-sm mt-1",
+          width = "100%"
+        )
+      )
+    })
+
+    # Clear map selection
+    shiny::observeEvent(input$btn_clear_map_sel, {
+      rv$selected_atome_ids <- character(0)
+    })
+
+    # ================================================================
+    # ACTION: Create UG from map-selected atoms
+    # ================================================================
+    shiny::observeEvent(input$btn_create_from_map, {
+      sel_ids <- rv$selected_atome_ids
+      if (length(sel_ids) == 0) {
+        shiny::showNotification(
+          i18n()$t("ug_map_select_atoms_first"),
+          type = "warning"
+        )
+        return()
+      }
+
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("ug_create_from_map"),
+        shiny::textInput(
+          ns("create_map_label"),
+          label = i18n()$t("ug_label_prompt"),
+          value = sprintf("UG-%03d", nrow(rv$projet_ug$ugs) + 1)
+        ),
+        shiny::selectInput(
+          ns("create_map_groupe"),
+          label = i18n()$t("ug_group"),
+          choices = c("---" = "", stats::setNames(GROUPES_AMENAGEMENT, GROUPES_AMENAGEMENT)),
+          selected = ""
+        ),
+        shiny::p(
+          class = "text-muted",
+          sprintf(i18n()$t("ug_create_confirm"), length(sel_ids))
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(
+            ns("confirm_create_from_map"),
+            i18n()$t("ug_create_btn"),
+            class = "btn-success"
+          )
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$confirm_create_from_map, {
+      shiny::removeModal()
+
+      sel_ids <- rv$selected_atome_ids
+      if (length(sel_ids) == 0) return()
+
+      label <- trimws(input$create_map_label)
+      groupe <- input$create_map_groupe
+      if (nchar(label) == 0) {
+        shiny::showNotification(i18n()$t("ug_label_required"), type = "warning")
+        return()
+      }
+      groupe_val <- if (nchar(groupe) == 0) NA_character_ else groupe
+
+      tryCatch({
+        projet <- rv$projet_ug
+        projet <- ug_create(projet, sel_ids, label, groupe_val)
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
+        }
+        rv$projet_ug <- projet
+        rv$needs_recompute <- TRUE
+        rv$selected_atome_ids <- character(0)
+        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$ugs <- projet$ugs
+
+        shiny::showNotification(
+          sprintf("UG \u00ab %s \u00bb cr\u00e9\u00e9e avec %d atome(s)", label, length(sel_ids)),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(e$message, type = "error")
+      })
     })
 
     # ================================================================
@@ -261,31 +604,40 @@ mod_ug_server <- function(id, app_state) {
         uid <- listing$ug_id[sel]
         refs <- ug_cadastral_refs(projet, uid)
         surface_ha <- round(ug_surface(projet, uid) / 10000, 2)
+        color <- ug_color(listing$groupe[sel], sel)
 
         htmltools::tagList(
-          shiny::tags$strong(listing$label[sel]),
-          shiny::br(),
-          shiny::tags$span(
-            class = "text-muted",
-            sprintf("%s ha | %d atome(s)", surface_ha, listing$n_atomes[sel])
-          ),
-          if (!is.na(listing$groupe[sel])) {
+          htmltools::div(
+            style = sprintf("border-left: 4px solid %s; padding-left: 8px;", color),
+            shiny::tags$strong(listing$label[sel]),
+            shiny::br(),
             shiny::tags$span(
-              class = "badge bg-primary ms-1",
-              listing$groupe[sel]
-            )
-          },
+              class = "text-muted",
+              sprintf("%s ha | %d atome(s)", surface_ha, listing$n_atomes[sel])
+            ),
+            if (!is.na(listing$groupe[sel])) {
+              shiny::tags$span(
+                class = "badge ms-1",
+                style = sprintf("background-color: %s;", color),
+                listing$groupe[sel]
+              )
+            }
+          ),
           shiny::hr(),
           if (nrow(refs) > 0) {
             shiny::tags$ul(
+              class = "list-unstyled small",
               lapply(seq_len(nrow(refs)), function(i) {
-                shiny::tags$li(sprintf(
-                  "%s (section %s, n\u00b0%s) - %s m\u00b2",
-                  refs$geo_parcelle[i],
-                  refs$section[i],
-                  refs$numero[i],
-                  format(refs$surface_m2[i], big.mark = " ")
-                ))
+                shiny::tags$li(
+                  shiny::icon("map-pin", class = "text-muted me-1"),
+                  sprintf(
+                    "%s (sect. %s, n\u00b0%s) \u2014 %s m\u00b2",
+                    refs$geo_parcelle[i],
+                    refs$section[i],
+                    refs$numero[i],
+                    format(refs$surface_m2[i], big.mark = " ")
+                  )
+                )
               })
             )
           } else {
@@ -307,7 +659,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # ACTION: Merge UGs
+    # ACTION: Merge UGs (from table selection)
     # ================================================================
     shiny::observeEvent(input$btn_merge, {
       sel <- input$ug_table_rows_selected
@@ -323,7 +675,6 @@ mod_ug_server <- function(id, app_state) {
 
       ug_ids_to_merge <- listing$ug_id[sel]
 
-      # Show modal to get new label
       shiny::showModal(shiny::modalDialog(
         title = i18n()$t("ug_merge"),
         shiny::textInput(
@@ -360,7 +711,6 @@ mod_ug_server <- function(id, app_state) {
         projet <- rv$projet_ug
         projet <- ug_merge(projet, ug_ids, label)
 
-        # Save and update state
         if (!is.null(projet$metadata$id)) {
           save_ug_data(projet$metadata$id, projet)
         }
@@ -370,7 +720,7 @@ mod_ug_server <- function(id, app_state) {
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(
-          sprintf("%s : %d UG → 1", i18n()$t("ug_merge"), length(ug_ids)),
+          sprintf("%s : %d UG \u2192 1", i18n()$t("ug_merge"), length(ug_ids)),
           type = "message"
         )
       }, error = function(e) {
@@ -386,10 +736,7 @@ mod_ug_server <- function(id, app_state) {
       listing <- ug_listing()
 
       if (is.null(sel) || length(sel) != 1 || is.null(listing)) {
-        shiny::showNotification(
-          i18n()$t("ug_select_one_to_split"),
-          type = "warning"
-        )
+        shiny::showNotification(i18n()$t("ug_select_one_to_split"), type = "warning")
         return()
       }
 
@@ -397,10 +744,7 @@ mod_ug_server <- function(id, app_state) {
       n_atomes <- listing$n_atomes[sel]
 
       if (n_atomes < 2) {
-        shiny::showNotification(
-          i18n()$t("ug_cannot_split_single"),
-          type = "warning"
-        )
+        shiny::showNotification(i18n()$t("ug_cannot_split_single"), type = "warning")
         return()
       }
 
@@ -433,10 +777,7 @@ mod_ug_server <- function(id, app_state) {
       listing <- ug_listing()
 
       if (is.null(sel) || length(sel) != 1 || is.null(listing)) {
-        shiny::showNotification(
-          i18n()$t("ug_select_one"),
-          type = "warning"
-        )
+        shiny::showNotification(i18n()$t("ug_select_one"), type = "warning")
         return()
       }
 
@@ -497,10 +838,7 @@ mod_ug_server <- function(id, app_state) {
       groupe <- input$sel_groupe
 
       if (is.null(sel) || length(sel) == 0 || is.null(listing)) {
-        shiny::showNotification(
-          i18n()$t("ug_select_one"),
-          type = "warning"
-        )
+        shiny::showNotification(i18n()$t("ug_select_one"), type = "warning")
         return()
       }
 
@@ -531,10 +869,7 @@ mod_ug_server <- function(id, app_state) {
       project <- app_state$current_project
 
       if (is.null(projet) || is.null(project$indicators)) {
-        shiny::showNotification(
-          i18n()$t("ug_no_indicators"),
-          type = "warning"
-        )
+        shiny::showNotification(i18n()$t("ug_no_indicators"), type = "warning")
         return()
       }
 
@@ -545,16 +880,13 @@ mod_ug_server <- function(id, app_state) {
           id = "ug_recompute_notif"
         )
 
-        # Aggregate indicators to UG level
         indicators_ug <- aggregate_indicators_to_ug(project$indicators, projet)
 
         if (!is.null(indicators_ug)) {
-          # Save UG indicators
           if (!is.null(project$metadata$id)) {
             save_indicators_ug(project$metadata$id, indicators_ug)
           }
 
-          # Update app state
           app_state$current_project$indicators_ug <- indicators_ug
           rv$needs_recompute <- FALSE
 
@@ -570,10 +902,7 @@ mod_ug_server <- function(id, app_state) {
           )
         }
       }, error = function(e) {
-        shiny::showNotification(
-          paste("Erreur :", e$message),
-          type = "error"
-        )
+        shiny::showNotification(paste("Erreur :", e$message), type = "error")
       })
     })
 

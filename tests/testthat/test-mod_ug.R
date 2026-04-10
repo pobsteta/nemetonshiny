@@ -24,6 +24,10 @@ test_that("mod_ug_ui contains expected elements", {
   expect_true(grepl("ug-btn_recompute", ui_html))
   expect_true(grepl("ug-sel_groupe", ui_html))
   expect_true(grepl("ug-ug_table", ui_html))
+
+  # Boucle 1: leaflet map and create-from-map button
+  expect_true(grepl("ug-ug_map", ui_html))
+  expect_true(grepl("ug-btn_create_from_map", ui_html))
 })
 
 test_that("mod_ug_ui works in English", {
@@ -46,6 +50,37 @@ test_that("GROUPES_AMENAGEMENT is defined", {
   expect_true("TSF" %in% groupes)
   expect_true("HSN" %in% groupes)
   expect_true("REGT" %in% groupes)
+})
+
+test_that("GROUPE_COLORS has a color for each known groupe", {
+  colors <- nemetonShiny:::GROUPE_COLORS
+  groupes <- nemetonShiny:::GROUPES_AMENAGEMENT
+  expect_true(all(groupes %in% names(colors)))
+  # All values should be valid hex colors
+  expect_true(all(grepl("^#[0-9A-Fa-f]{6}$", colors)))
+})
+
+test_that("ug_color returns groupe color when available", {
+  color_tsf <- nemetonShiny:::ug_color("TSF", 1L)
+  expect_equal(color_tsf, nemetonShiny:::GROUPE_COLORS[["TSF"]])
+
+  color_hsn <- nemetonShiny:::ug_color("HSN", 1L)
+  expect_equal(color_hsn, nemetonShiny:::GROUPE_COLORS[["HSN"]])
+})
+
+test_that("ug_color returns palette color when no groupe", {
+  color_na <- nemetonShiny:::ug_color(NA_character_, 1L)
+  expect_equal(color_na, nemetonShiny:::UG_PALETTE[1])
+
+  color_empty <- nemetonShiny:::ug_color("", 3L)
+  expect_equal(color_empty, nemetonShiny:::UG_PALETTE[3])
+})
+
+test_that("ug_color wraps palette index correctly", {
+  n <- length(nemetonShiny:::UG_PALETTE)
+  # Index beyond palette length should wrap
+  color <- nemetonShiny:::ug_color(NA_character_, n + 1L)
+  expect_equal(color, nemetonShiny:::UG_PALETTE[1])
 })
 
 test_that("has_ug_data works correctly", {
@@ -77,7 +112,9 @@ test_that("UG translation keys exist in French", {
   ug_keys <- c(
     "tab_ug", "ug_title", "ug_merge", "ug_split", "ug_rename",
     "ug_group", "ug_composition", "ug_recompute", "ug_no_data",
-    "ug_select_hint", "ug_select_one"
+    "ug_select_hint", "ug_select_one",
+    "ug_map_tab", "ug_table_tab", "ug_map_click_hint",
+    "ug_create_from_map", "ug_create_btn", "ug_clear_selection"
   )
 
   for (key in ug_keys) {
