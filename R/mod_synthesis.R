@@ -343,26 +343,33 @@ mod_synthesis_server <- function(id, app_state) {
                                ndp_level, ndp_info$name,
                                i18n$t("ndp_confidence"), confidence_pct)
 
-      # Aggregate to single row (mean per family) for radar - multiple parcels
-      # cause nemeton_radar to draw one polygon per row, creating visual chaos
+      # Build radar data in INDICATOR_FAMILIES canonical order
       df <- sf::st_drop_geometry(sf_data)
-      family_means <- as.data.frame(lapply(df[, family_cols, drop = FALSE],
-                                           function(x) mean(x, na.rm = TRUE)))
-      # nemeton_radar requires an sf object — add a dummy geometry
-      family_means_sf <- sf::st_as_sf(
-        family_means,
-        geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
-      )
+      radar_df <- build_radar_data(df, family_cols, i18n$language)
 
-      p <- nemeton_radar(family_means_sf, mode = "family", normalize = FALSE,
-                         title = i18n$t("radar_title"))
-      p + ggplot2::labs(subtitle = ndp_subtitle) +
+      # Draw radar with ggplot2 + coord_polar (full control over axis order)
+      p <- ggplot2::ggplot(radar_df, ggplot2::aes(x = label, y = value)) +
+        ggplot2::geom_polygon(ggplot2::aes(group = 1),
+                              fill = "#4a7c3f", alpha = 0.25,
+                              color = "#4a7c3f", linewidth = 1.2) +
+        ggplot2::geom_point(color = "#4a7c3f", size = 3) +
+        ggplot2::coord_polar(clip = "off") +
+        ggplot2::scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 25)) +
+        ggplot2::labs(title = i18n$t("radar_title"),
+                      subtitle = ndp_subtitle, x = NULL, y = NULL) +
+        ggplot2::theme_minimal(base_size = 13) +
         ggplot2::theme(
+          plot.title = ggplot2::element_text(hjust = 0.5, face = "bold"),
           plot.subtitle = ggplot2::element_text(
             hjust = 0.5, size = 11, color = "gray40",
             margin = ggplot2::margin(b = 10)
-          )
+          ),
+          axis.text.x = ggplot2::element_text(size = 11, face = "bold"),
+          axis.text.y = ggplot2::element_blank(),
+          panel.grid.major.y = ggplot2::element_line(color = "gray80", linewidth = 0.3),
+          panel.grid.minor = ggplot2::element_blank()
         )
+      p
     })
 
     # ================================================================

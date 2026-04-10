@@ -332,3 +332,35 @@ theme_nemeton_accessible <- function() {
       strip.text = ggplot2::element_text(face = "bold")
     )
 }
+
+
+#' Build radar chart data in canonical family order
+#'
+#' Aggregates family columns to mean values and returns a data.frame
+#' with factor-ordered labels matching the INDICATOR_FAMILIES sequence.
+#'
+#' @param df data.frame (no geometry). Must contain family columns.
+#' @param family_cols Character vector of famille_* column names present in df.
+#' @param language Character. "fr" or "en".
+#' @return data.frame with columns: code, label (ordered factor), value.
+#' @noRd
+build_radar_data <- function(df, family_cols, language = "fr") {
+  canonical_codes <- names(INDICATOR_FAMILIES)
+  rows <- list()
+  for (code in canonical_codes) {
+    col <- get_famille_col(code)
+    if (col %in% family_cols && col %in% names(df)) {
+      fam <- INDICATOR_FAMILIES[[code]]
+      label <- if (language == "fr") fam$name_fr else fam$name_en
+      val <- mean(df[[col]], na.rm = TRUE)
+      if (is.nan(val)) val <- 0
+      rows[[length(rows) + 1]] <- data.frame(
+        code = code, label = label, value = val,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  out <- do.call(rbind, rows)
+  out$label <- factor(out$label, levels = out$label)
+  out
+}
