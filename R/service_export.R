@@ -399,13 +399,15 @@ generate_radar_image <- function(family_scores, output_file, language,
                            ndp_level, ndp_info$name, confidence_pct)
 
   tryCatch({
-    df <- if (inherits(family_scores, "sf")) sf::st_drop_geometry(family_scores) else family_scores
-    fam_cols <- grep("^famille_[a-z]", names(df), value = TRUE)
-    radar_df <- build_radar_data(df, fam_cols, language)
-
-    p <- plot_nemeton_radar(radar_df,
-                            title = i18n$t("radar_title"),
-                            subtitle = ndp_subtitle)
+    p <- nemeton_radar(family_scores, mode = "family", normalize = FALSE,
+                       title = i18n$t("radar_title"))
+    p <- p + ggplot2::labs(subtitle = ndp_subtitle) +
+      ggplot2::theme(
+        plot.subtitle = ggplot2::element_text(
+          hjust = 0.5, size = 11, color = "gray40",
+          margin = ggplot2::margin(b = 10)
+        )
+      )
     print(p)
   }, error = function(e) {
     # Fallback: empty plot with message

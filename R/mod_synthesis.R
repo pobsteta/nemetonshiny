@@ -343,13 +343,15 @@ mod_synthesis_server <- function(id, app_state) {
                                ndp_level, ndp_info$name,
                                i18n$t("ndp_confidence"), confidence_pct)
 
-      # Build radar data in INDICATOR_FAMILIES canonical order
-      df <- sf::st_drop_geometry(sf_data)
-      radar_df <- build_radar_data(df, family_cols, i18n$language)
-
-      plot_nemeton_radar(radar_df,
-                         title = i18n$t("radar_title"),
-                         subtitle = ndp_subtitle)
+      p <- nemeton_radar(sf_data, mode = "family", normalize = FALSE,
+                         title = i18n$t("radar_title"))
+      p + ggplot2::labs(subtitle = ndp_subtitle) +
+        ggplot2::theme(
+          plot.subtitle = ggplot2::element_text(
+            hjust = 0.5, size = 11, color = "gray40",
+            margin = ggplot2::margin(b = 10)
+          )
+        )
     })
 
     # ================================================================
