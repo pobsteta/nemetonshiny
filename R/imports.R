@@ -201,7 +201,53 @@ ndp_badge <- function(ndp_level, lang = "fr") {
 }
 
 
-#' Restore NDP attributes after parquet deserialization
+#' Generate an HTML progress bar for the NDP confidence level
+#'
+#' @param ndp_level Integer NDP level (0-4).
+#' @param lang Character. Language code ("fr" or "en").
+#' @return An htmltools tag (div with Bootstrap progress bar).
+#' @noRd
+ndp_progress_bar <- function(ndp_level, lang = "fr") {
+  ndp_level <- as.integer(ndp_level %||% 0L)
+  ndp_info <- get_ndp_level(ndp_level)
+  pct <- round(ndp_info$confidence * 100)
+
+  colors <- c(
+    `0` = "#dc3545",
+    `1` = "#fd7e14",
+    `2` = "#ffc107",
+    `3` = "#20c997",
+    `4` = "#198754"
+  )
+  bar_color <- colors[[as.character(ndp_level)]] %||% colors[["0"]]
+
+  label <- if (lang == "fr") {
+    sprintf("Confiance : %d%%", pct)
+  } else {
+    sprintf("Confidence: %d%%", pct)
+  }
+
+  htmltools::div(
+    class = "mt-2",
+    style = "max-width: 300px; margin: 0 auto;",
+    htmltools::tags$small(class = "text-muted", label),
+    htmltools::div(
+      class = "progress",
+      style = "height: 8px; border-radius: 4px;",
+      htmltools::div(
+        class = "progress-bar",
+        role = "progressbar",
+        style = sprintf(
+          "width: %d%%; background-color: %s; border-radius: 4px;",
+          pct, bar_color
+        ),
+        `aria-valuenow` = pct,
+        `aria-valuemin` = "0",
+        `aria-valuemax` = "100"
+      )
+    )
+  )
+}
 #'
 #' Parquet round-trip strips R attributes. This function restores the
 #' ndp_level attribute on indicator results loaded from disk.
