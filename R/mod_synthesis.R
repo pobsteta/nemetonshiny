@@ -10,6 +10,47 @@
 #' @return NULL (called for side effects)
 #'
 #' @noRd
+
+
+#' Generate an NDP badge HTML element
+#'
+#' @param ndp_level Integer. NDP level (0-4).
+#' @param lang Character. Language code ("fr" or "en").
+#'
+#' @return shiny.tag. A styled badge with NDP level and name.
+#' @noRd
+ndp_badge <- function(ndp_level, lang = "fr") {
+  ndp_level <- as.integer(ndp_level %||% 0L)
+  ndp_info <- get_ndp_level(ndp_level)
+
+  # Color gradient from red (NDP 0) to green (NDP 4)
+  colors <- c(
+    "#e74c3c",  # NDP 0 - red
+    "#e67e22",  # NDP 1 - orange
+    "#f1c40f",  # NDP 2 - yellow
+    "#2ecc71",  # NDP 3 - green
+    "#27ae60"   # NDP 4 - dark green
+  )
+  bg_color <- colors[min(ndp_level + 1L, length(colors))]
+
+  i18n <- get_i18n(lang)
+  ndp_name <- i18n$t(paste0("ndp_", tolower(gsub(" ", "_", ndp_info$name))))
+  # Fallback to ndp_info$name if translation not found
+ if (ndp_name == paste0("ndp_", tolower(gsub(" ", "_", ndp_info$name)))) {
+    ndp_name <- ndp_info$name
+  }
+
+  htmltools::tags$span(
+    class = "badge",
+    style = sprintf(
+      "background-color: %s; font-size: 0.85rem; padding: 4px 10px;",
+      bg_color
+    ),
+    sprintf("NDP %d \u2014 %s", ndp_level, ndp_name)
+  )
+}
+
+
 mod_synthesis_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
 
