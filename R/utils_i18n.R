@@ -966,7 +966,15 @@ TRANSLATIONS <- list(
   ug_select_at_least_2 = list(fr = "S\u00e9lectionnez au moins 2 UG \u00e0 regrouper.", en = "Select at least 2 UGs to merge."),
   ug_cannot_split_single = list(fr = "Impossible de dissocier une UG avec un seul atome.", en = "Cannot split a UG with only one atom."),
   ug_section_title = list(fr = "Unit\u00e9s de Gestion", en = "Management Units"),
-  ug_composition_title = list(fr = "Composition cadastrale", en = "Cadastral Composition")
+  ug_composition_title = list(fr = "Composition cadastrale", en = "Cadastral Composition"),
+  ug_map_tab = list(fr = "Carte", en = "Map"),
+  ug_table_tab = list(fr = "Tableau", en = "Table"),
+  ug_map_click_hint = list(fr = "Cliquez sur les atomes de la carte pour les s\u00e9lectionner, puis cr\u00e9ez une UG.", en = "Click on atoms on the map to select them, then create a UG."),
+  ug_create_from_map = list(fr = "Cr\u00e9er UG depuis la s\u00e9lection", en = "Create UG from selection"),
+  ug_create_btn = list(fr = "Cr\u00e9er l'UG", en = "Create UG"),
+  ug_create_confirm = list(fr = "Cr\u00e9er une UG avec %d atome(s) s\u00e9lectionn\u00e9(s) ?", en = "Create a UG with %d selected atom(s)?"),
+  ug_map_select_atoms_first = list(fr = "S\u00e9lectionnez des atomes sur la carte d'abord.", en = "Select atoms on the map first."),
+  ug_clear_selection = list(fr = "Effacer la s\u00e9lection", en = "Clear selection")
 )
 
 
