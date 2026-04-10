@@ -398,18 +398,26 @@ generate_radar_image <- function(family_scores, output_file, language,
   ndp_subtitle <- sprintf("NDP %d \u2013 %s | Confiance \u03c6 : %s%%",
                            ndp_level, ndp_info$name, confidence_pct)
 
-  # Reorder family columns to match nemeton_radar axis display order
-  fam_cols <- grep("^famille_[a-z]", names(family_scores), value = TRUE)
-  if (length(fam_cols) > 0) {
-    radar_axis_order <- c("F", "A", "W", "B", "N", "C", "E", "P", "S", "R", "T", "L")
-    ordered_fam_cols <- vapply(radar_axis_order, get_famille_col, character(1))
-    ordered_fam_cols <- intersect(ordered_fam_cols, fam_cols)
-    other_cols <- setdiff(names(family_scores), fam_cols)
-    family_scores <- family_scores[, c(other_cols, ordered_fam_cols)]
-  }
-
   tryCatch({
-    p <- nemeton_radar(family_scores, mode = "family", normalize = FALSE,
+    # 1. Aggregate to single row
+    df <- if (inherits(family_scores, "sf")) sf::st_drop_geometry(family_scores) else family_scores
+    fam_cols <- grep("^famille_[a-z]", names(df), value = TRUE)
+    family_means <- as.data.frame(lapply(df[, fam_cols, drop = FALSE],
+                                         function(x) mean(x, na.rm = TRUE)))
+
+    # 2. Reorder to match nemeton_radar axis order
+    radar_axis_order <- c("F", "A", "W", "B", "N", "C", "E", "P", "S", "R", "T", "L")
+    ordered_cols <- vapply(radar_axis_order, get_famille_col, character(1))
+    ordered_cols <- intersect(ordered_cols, names(family_means))
+    family_means <- family_means[, ordered_cols, drop = FALSE]
+
+    # 3. Wrap as sf
+    family_means_sf <- sf::st_as_sf(
+      family_means,
+      geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
+    )
+
+    p <- nemeton_radar(family_means_sf, mode = "family", normalize = FALSE,
                        title = i18n$t("radar_title"))
     p <- p + ggplot2::labs(subtitle = ndp_subtitle) +
       ggplot2::theme(
