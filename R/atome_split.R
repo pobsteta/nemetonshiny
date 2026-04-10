@@ -185,6 +185,57 @@ atome_split_by_import <- function(projet,
 }
 
 
+#' Split a parcel into atoms using drawn geometries
+#'
+#' @description
+#' Same as \code{atome_split_by_import} but accepts raw GeoJSON from
+#' leaflet.extras draw events. Parses the drawn features into an sf object
+#' and delegates to the import-based split.
+#'
+#' @param projet List. Project with $parcels, $atomes, $ugs.
+#' @param parcelle_id Character. ID of the parcel to split.
+#' @param geojson Character. GeoJSON string from leaflet draw event.
+#' @param tolerance_m2 Numeric. Area tolerance (default 0.01 m2).
+#'
+#' @return Updated projet with new atoms.
+#' @noRd
+atome_split_by_geometry <- function(projet,
+                                    parcelle_id,
+                                    geojson,
+                                    tolerance_m2 = 0.01) {
+  if (is.null(geojson) || nchar(geojson) == 0) {
+    cli::cli_abort("No geometry provided")
+  }
+
+  # Parse GeoJSON to sf
+  sf_polygones <- tryCatch({
+    sf::st_read(geojson, quiet = TRUE)
+  }, error = function(e) {
+    cli::cli_abort("Invalid GeoJSON: {e$message}")
+  })
+
+  if (nrow(sf_polygones) == 0) {
+    cli::cli_abort("No features found in GeoJSON")
+  }
+
+  # Filter to polygons only
+  geom_types <- sf::st_geometry_type(sf_polygones)
+  polygon_mask <- geom_types %in% c("POLYGON", "MULTIPOLYGON")
+  if (!any(polygon_mask)) {
+    cli::cli_abort("No polygon features found. Draw polygons, not lines or points.")
+  }
+  sf_polygones <- sf_polygones[polygon_mask, ]
+
+  # Delegate to import-based split
+  atome_split_by_import(
+    projet,
+    parcelle_id,
+    sf_polygones,
+    tolerance_m2 = tolerance_m2
+  )
+}
+
+
 #' Undo a parcel split (restore single atom)
 #'
 #' @description

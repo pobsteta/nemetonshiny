@@ -341,5 +341,8 @@
   "ug_split_error": "Erreur lors du découpage :",
   "ug_no_split_to_undo": "Aucune parcelle n'a été découpée.",
   "ug_undo_split_hint": "Cette action restaure un atome unique pour la parcelle sélectionnée.",
-  "ug_undo_split_success": "Découpage annulé pour la parcelle %s"
+  "ug_undo_split_success": "Découpage annulé pour la parcelle %s",
+
+  "ug_draw_split_title": "Découper avec les formes dessinées",
+  "ug_draw_split_desc": "Vous avez dessiné %d forme(s) sur la carte. Sélectionnez la parcelle à découper."
 }

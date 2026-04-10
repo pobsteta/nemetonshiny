@@ -341,5 +341,8 @@
   "ug_split_error": "Subdivision error:",
   "ug_no_split_to_undo": "No parcel has been subdivided.",
   "ug_undo_split_hint": "This action restores a single atom for the selected parcel.",
-  "ug_undo_split_success": "Subdivision undone for parcel %s"
+  "ug_undo_split_success": "Subdivision undone for parcel %s",
+
+  "ug_draw_split_title": "Split using drawn shapes",
+  "ug_draw_split_desc": "You drew %d shape(s) on the map. Select the parcel to subdivide."
 }

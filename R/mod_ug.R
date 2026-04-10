@@ -223,7 +223,7 @@ mod_ug_server <- function(id, app_state) {
     # MAP: Render leaflet
     # ================================================================
     output$ug_map <- leaflet::renderLeaflet({
-      leaflet::leaflet() |>
+      m <- leaflet::leaflet() |>
         leaflet::addProviderTiles(
           leaflet::providers$OpenStreetMap,
           group = "OSM"
@@ -238,6 +238,33 @@ mod_ug_server <- function(id, app_state) {
           options = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
+
+      # Add draw toolbar if leaflet.extras is available
+      if (requireNamespace("leaflet.extras", quietly = TRUE)) {
+        m <- m |>
+          leaflet.extras::addDrawToolbar(
+            targetGroup = "draw",
+            polylineOptions = FALSE,
+            circleOptions = FALSE,
+            circleMarkerOptions = FALSE,
+            markerOptions = FALSE,
+            rectangleOptions = leaflet.extras::drawRectangleOptions(),
+            polygonOptions = leaflet.extras::drawPolygonOptions(
+              shapeOptions = leaflet.extras::drawShapeOptions(
+                color = "#FF4500",
+                fillColor = "#FF6347",
+                fillOpacity = 0.3,
+                weight = 2
+              )
+            ),
+            editOptions = leaflet.extras::editToolbarOptions(
+              edit = TRUE,
+              remove = TRUE
+            )
+          )
+      }
+
+      m
     })
 
     # ================================================================
@@ -437,6 +464,92 @@ mod_ug_server <- function(id, app_state) {
       } else {
         rv$selected_atome_ids <- c(current, atome_id)
       }
+    })
+
+    # ================================================================
+    # MAP: Handle drawn polygons (interactive split)
+    # ================================================================
+    # When the user finishes drawing polygons on the map, propose to
+    # split the underlying parcel using those drawn shapes.
+    shiny::observeEvent(input$ug_map_draw_all_features, {
+      drawn <- input$ug_map_draw_all_features
+      if (is.null(drawn) || length(drawn$features) == 0) return()
+
+      # Store the drawn GeoJSON for the split modal
+      rv$drawn_geojson <- jsonlite::toJSON(drawn, auto_unbox = TRUE)
+
+      # Find which parcel(s) the drawn shapes overlap with
+      projet <- rv$projet_ug
+      if (is.null(projet)) return()
+
+      parcels <- projet$parcels
+      id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
+      if (length(id_col) == 0) return()
+
+      parcel_ids <- as.character(parcels[[id_col[1]]])
+      parcel_labels <- if ("geo_parcelle" %in% names(parcels)) {
+        as.character(parcels$geo_parcelle)
+      } else {
+        parcel_ids
+      }
+      choices <- stats::setNames(parcel_ids, parcel_labels)
+
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("ug_draw_split_title"),
+        shiny::p(sprintf(i18n()$t("ug_draw_split_desc"), length(drawn$features))),
+        shiny::selectInput(
+          ns("draw_split_parcelle"),
+          label = i18n()$t("ug_split_select_parcel"),
+          choices = choices
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(
+            ns("confirm_draw_split"),
+            i18n()$t("ug_split_apply"),
+            class = "btn-info",
+            icon = shiny::icon("scissors")
+          )
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$confirm_draw_split, {
+      shiny::removeModal()
+
+      parcelle_id <- input$draw_split_parcelle
+      geojson <- rv$drawn_geojson
+      if (is.null(parcelle_id) || is.null(geojson)) return()
+
+      tryCatch({
+        projet <- rv$projet_ug
+        projet <- atome_split_by_geometry(projet, parcelle_id, geojson)
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
+        }
+        rv$projet_ug <- projet
+        rv$needs_recompute <- TRUE
+        rv$drawn_geojson <- NULL
+        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$ugs <- projet$ugs
+
+        # Clear drawn shapes from the map
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::clearGroup("draw")
+
+        n_atoms <- sum(projet$atomes$parent_parcelle_id == parcelle_id)
+        shiny::showNotification(
+          sprintf(i18n()$t("ug_split_success"), parcelle_id, n_atoms),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(
+          paste(i18n()$t("ug_split_error"), e$message),
+          type = "error",
+          duration = 10
+        )
+      })
     })
 
     # ================================================================

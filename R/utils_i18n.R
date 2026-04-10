@@ -988,7 +988,9 @@ TRANSLATIONS <- list(
   ug_split_error = list(fr = "Erreur lors du d\u00e9coupage :", en = "Subdivision error:"),
   ug_no_split_to_undo = list(fr = "Aucune parcelle n'a \u00e9t\u00e9 d\u00e9coup\u00e9e.", en = "No parcel has been subdivided."),
   ug_undo_split_hint = list(fr = "Cette action restaure un atome unique pour la parcelle s\u00e9lectionn\u00e9e.", en = "This action restores a single atom for the selected parcel."),
-  ug_undo_split_success = list(fr = "D\u00e9coupage annul\u00e9 pour la parcelle %s", en = "Subdivision undone for parcel %s")
+  ug_undo_split_success = list(fr = "D\u00e9coupage annul\u00e9 pour la parcelle %s", en = "Subdivision undone for parcel %s"),
+  ug_draw_split_title = list(fr = "D\u00e9couper avec les formes dessin\u00e9es", en = "Split using drawn shapes"),
+  ug_draw_split_desc = list(fr = "Vous avez dessin\u00e9 %d forme(s) sur la carte. S\u00e9lectionnez la parcelle \u00e0 d\u00e9couper.", en = "You drew %d shape(s) on the map. Select the parcel to subdivide.")
 )
 
 

@@ -16,7 +16,7 @@ Imports: nemeton (>= 0.14.1), shiny (>= 1.8.0), bslib (>= 0.6.0),
     yaml, DT, promises, later, htmlwidgets, shinyWidgets, bsicons, ellmer
 Suggests: shinyOAuth, RPostgres, DBI, uuid, testthat (>= 3.0.0), withr,
     golem, arrow, geoarrow, shiny.i18n, cicerone, quarto, rappdirs,
-    future, happign
+    future, happign, leaflet.extras
 Remotes: pobsteta/nemeton
 RoxygenNote: 7.3.3
 Config/testthat/edition: 3
