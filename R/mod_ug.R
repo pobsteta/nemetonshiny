@@ -234,7 +234,7 @@ mod_ug_server <- function(id, app_state) {
         ) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
-          overlayGroups = c("UG", "Atomes"),
+          overlayGroups = c("UG", "Atomes", "selection"),
           options = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
@@ -310,30 +310,20 @@ mod_ug_server <- function(id, app_state) {
         )
       }, character(1))
 
-      # Highlight selected atoms
-      border_colors <- ifelse(
-        atomes$atome_id %in% rv$selected_atome_ids,
-        "#FF4500",  # OrangeRed for selected
-        "#333333"
-      )
-      border_weights <- ifelse(
-        atomes$atome_id %in% rv$selected_atome_ids,
-        3, 1
-      )
-
-      # Clear and redraw atoms
+      # Clear and redraw atoms (selection is handled by separate overlay)
       proxy <- leaflet::leafletProxy(ns("ug_map"))
       proxy |>
         leaflet::clearGroup("Atomes") |>
         leaflet::clearGroup("UG") |>
+        leaflet::clearGroup("selection") |>
         leaflet::addPolygons(
           data = atomes,
           group = "Atomes",
           layerId = atomes$atome_id,
           fillColor = fill_colors,
           fillOpacity = 0.5,
-          color = border_colors,
-          weight = border_weights,
+          color = "#333333",
+          weight = 1,
           label = lapply(atom_labels, htmltools::HTML),
           labelOptions = leaflet::labelOptions(
             style = list("font-size" = "12px", "background" = "white"),
@@ -345,6 +335,9 @@ mod_ug_server <- function(id, app_state) {
             bringToFront = TRUE
           )
         )
+
+      # Clear selection state when atoms are redrawn (new project)
+      rv$selected_atome_ids <- character(0)
 
       # Add UG dissolved boundaries as an overlay
       tryCatch({
@@ -444,7 +437,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # MAP: Click handler for atom selection
+    # MAP: Click handler for atom selection (same pattern as mod_map.R)
     # ================================================================
     shiny::observeEvent(input$ug_map_shape_click, {
       click <- input$ug_map_shape_click
@@ -454,96 +447,59 @@ mod_ug_server <- function(id, app_state) {
       projet <- rv$projet_ug
       if (is.null(projet)) return()
 
-      # Only handle clicks on atoms
+      # Only handle clicks on atoms (not UG overlay)
       if (!atome_id %in% projet$atomes$atome_id) return()
 
-      # Toggle selection
-      current <- rv$selected_atome_ids
-      if (atome_id %in% current) {
-        rv$selected_atome_ids <- setdiff(current, atome_id)
+      if (atome_id %in% rv$selected_atome_ids) {
+        # Deselect: remove from selection overlay
+        rv$selected_atome_ids <- setdiff(rv$selected_atome_ids, atome_id)
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::removeShape(paste0("sel_", atome_id))
       } else {
-        rv$selected_atome_ids <- c(current, atome_id)
+        # Select: add to selection overlay
+        rv$selected_atome_ids <- c(rv$selected_atome_ids, atome_id)
+        update_atome_selection_style(atome_id, selected = TRUE)
       }
     })
 
-    # ================================================================
-    # MAP: Update atom styles when selection changes
-    # ================================================================
-    shiny::observe({
-      selected <- rv$selected_atome_ids
+    # Helper: add/remove selection overlay for a single atom
+    update_atome_selection_style <- function(atome_id, selected) {
       projet <- rv$projet_ug
-      if (is.null(projet) || !has_ug_data(projet)) return()
+      if (is.null(projet)) return()
 
-      atomes <- projet$atomes
-      ugs <- projet$ugs
-      proxy <- leaflet::leafletProxy(ns("ug_map"))
+      if (selected) {
+        atomes <- projet$atomes
+        atome <- atomes[atomes$atome_id == atome_id, ]
+        if (nrow(atome) == 0) return()
 
-      # Ensure WGS84
-      if (!is.na(sf::st_crs(atomes)) && sf::st_crs(atomes)$epsg != 4326L) {
-        atomes <- sf::st_transform(atomes, 4326)
-      }
+        # Ensure WGS84
+        if (!is.na(sf::st_crs(atome)) && sf::st_crs(atome)$epsg != 4326L) {
+          atome <- sf::st_transform(atome, 4326)
+        }
 
-      # Redraw atoms with updated selection styling
-      ug_index_map <- stats::setNames(seq_len(nrow(ugs)), ugs$ug_id)
-      fill_colors <- vapply(seq_len(nrow(atomes)), function(i) {
-        uid <- atomes$ug_id[i]
-        ug_row <- ugs[ugs$ug_id == uid, ]
-        if (nrow(ug_row) == 0) return("#CCCCCC")
-        idx <- ug_index_map[[uid]]
-        ug_color(ug_row$groupe[1], idx)
-      }, character(1))
-
-      border_colors <- ifelse(
-        atomes$atome_id %in% selected,
-        "#FF4500",
-        "#333333"
-      )
-      border_weights <- ifelse(
-        atomes$atome_id %in% selected,
-        4, 1
-      )
-      fill_opacities <- ifelse(
-        atomes$atome_id %in% selected,
-        0.7, 0.5
-      )
-
-      # Labels
-      atom_labels <- vapply(seq_len(nrow(atomes)), function(i) {
-        uid <- atomes$ug_id[i]
-        ug_row <- ugs[ugs$ug_id == uid, ]
-        ug_label <- if (nrow(ug_row) > 0) ug_row$label[1] else "?"
-        is_sel <- atomes$atome_id[i] %in% selected
-        sel_marker <- if (is_sel) " \u2705" else ""
-        sprintf(
-          "<b>%s</b>%s<br>Atome: %s<br>Surface: %s m\u00b2",
-          ug_label, sel_marker,
-          atomes$atome_id[i],
-          format(round(atomes$surface_m2[i]), big.mark = " ")
-        )
-      }, character(1))
-
-      proxy |>
-        leaflet::clearGroup("Atomes") |>
-        leaflet::addPolygons(
-          data = atomes,
-          group = "Atomes",
-          layerId = atomes$atome_id,
-          fillColor = fill_colors,
-          fillOpacity = fill_opacities,
-          color = border_colors,
-          weight = border_weights,
-          label = lapply(atom_labels, htmltools::HTML),
-          labelOptions = leaflet::labelOptions(
-            style = list("font-size" = "12px", "background" = "white"),
-            textsize = "12px"
-          ),
-          highlightOptions = leaflet::highlightOptions(
-            weight = 4,
-            fillOpacity = 0.8,
-            bringToFront = TRUE
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::addPolygons(
+            data = atome,
+            layerId = paste0("sel_", atome_id),
+            group = "selection",
+            color = "#FF4500",
+            weight = 3,
+            fillColor = "#FF6347",
+            fillOpacity = 0.4,
+            options = leaflet::pathOptions(interactive = FALSE)
           )
-        )
-    })
+      } else {
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::removeShape(paste0("sel_", atome_id))
+      }
+    }
+
+    # Clear all selection overlays (used by clear button and project load)
+    clear_atome_selection <- function() {
+      leaflet::leafletProxy(ns("ug_map")) |>
+        leaflet::clearGroup("selection")
+      rv$selected_atome_ids <- character(0)
+    }
 
     # ================================================================
     # MAP: Handle drawn polygons (interactive split)
@@ -677,8 +633,9 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # Clear map selection
+    # Clear map selection
     shiny::observeEvent(input$btn_clear_map_sel, {
-      rv$selected_atome_ids <- character(0)
+      clear_atome_selection()
     })
 
     # ================================================================
