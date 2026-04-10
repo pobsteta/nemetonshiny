@@ -364,3 +364,104 @@ build_radar_data <- function(df, family_cols, language = "fr") {
   out$label <- factor(out$label, levels = out$label)
   out
 }
+
+
+#' Draw a true radar (spider) chart with straight lines
+#'
+#' Uses manual polar-to-Cartesian conversion so that lines between
+#' data points are truly straight (no coord_polar curving).
+#'
+#' @param radar_df data.frame from build_radar_data().
+#' @param title Character. Plot title.
+#' @param subtitle Character. Plot subtitle.
+#' @param fill_color Character. Fill color for the polygon.
+#' @param line_color Character. Line color for the polygon.
+#' @return A ggplot2 object.
+#' @noRd
+plot_nemeton_radar <- function(radar_df, title = "", subtitle = "",
+                               fill_color = "#4a7c3f",
+                               line_color = "#4a7c3f") {
+  n <- nrow(radar_df)
+  if (n == 0) {
+    p <- ggplot2::ggplot() + ggplot2::theme_void()
+    return(p)
+  }
+
+  # Angles: evenly spaced, starting from top (pi/2), going clockwise
+  angles <- seq(pi / 2, pi / 2 - 2 * pi, length.out = n + 1)[seq_len(n)]
+
+  # Data point coordinates (normalized to 0-100 scale)
+  radar_df$x <- radar_df$value * cos(angles)
+  radar_df$y <- radar_df$value * sin(angles)
+
+  # Close the polygon
+  poly_df <- rbind(radar_df, radar_df[1, ])
+
+  # Grid circles
+  grid_levels <- c(25, 50, 75, 100)
+  grid_dfs <- lapply(grid_levels, function(r) {
+    theta <- seq(0, 2 * pi, length.out = 100)
+    data.frame(x = r * cos(theta), y = r * sin(theta), r = r)
+  })
+  grid_df <- do.call(rbind, grid_dfs)
+
+  # Axis lines (spokes)
+  spokes_df <- data.frame(
+    x = 0, y = 0,
+    xend = 100 * cos(angles),
+    yend = 100 * sin(angles)
+  )
+
+  # Label positions (slightly outside the 100 circle)
+  label_offset <- 112
+  label_df <- data.frame(
+    x = label_offset * cos(angles),
+    y = label_offset * sin(angles),
+    label = as.character(radar_df$label)
+  )
+
+  # Build plot
+  ggplot2::ggplot() +
+    # Grid circles
+    ggplot2::geom_path(
+      data = grid_df,
+      ggplot2::aes(x = x, y = y, group = r),
+      color = "gray80", linewidth = 0.3
+    ) +
+    # Spokes
+    ggplot2::geom_segment(
+      data = spokes_df,
+      ggplot2::aes(x = x, y = y, xend = xend, yend = yend),
+      color = "gray80", linewidth = 0.3
+    ) +
+    # Data polygon (straight lines)
+    ggplot2::geom_polygon(
+      data = poly_df,
+      ggplot2::aes(x = x, y = y),
+      fill = fill_color, alpha = 0.25,
+      color = line_color, linewidth = 1.2
+    ) +
+    # Data points
+    ggplot2::geom_point(
+      data = radar_df,
+      ggplot2::aes(x = x, y = y),
+      color = line_color, size = 3
+    ) +
+    # Axis labels
+    ggplot2::geom_text(
+      data = label_df,
+      ggplot2::aes(x = x, y = y, label = label),
+      size = 3.5, fontface = "bold"
+    ) +
+    ggplot2::coord_fixed() +
+    ggplot2::labs(title = title, subtitle = subtitle) +
+    ggplot2::theme_void(base_size = 13) +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(hjust = 0.5, face = "bold"),
+      plot.subtitle = ggplot2::element_text(
+        hjust = 0.5, size = 11, color = "gray40",
+        margin = ggplot2::margin(b = 10)
+      ),
+      plot.margin = ggplot2::margin(10, 10, 10, 10)
+    )
+}

@@ -403,27 +403,9 @@ generate_radar_image <- function(family_scores, output_file, language,
     fam_cols <- grep("^famille_[a-z]", names(df), value = TRUE)
     radar_df <- build_radar_data(df, fam_cols, language)
 
-    p <- ggplot2::ggplot(radar_df, ggplot2::aes(x = label, y = value)) +
-      ggplot2::geom_polygon(ggplot2::aes(group = 1),
-                            fill = "#4a7c3f", alpha = 0.25,
-                            color = "#4a7c3f", linewidth = 1.2) +
-      ggplot2::geom_point(color = "#4a7c3f", size = 3) +
-      ggplot2::coord_polar(clip = "off") +
-      ggplot2::scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 25)) +
-      ggplot2::labs(title = i18n$t("radar_title"),
-                    subtitle = ndp_subtitle, x = NULL, y = NULL) +
-      ggplot2::theme_minimal(base_size = 13) +
-      ggplot2::theme(
-        plot.title = ggplot2::element_text(hjust = 0.5, face = "bold"),
-        plot.subtitle = ggplot2::element_text(
-          hjust = 0.5, size = 11, color = "gray40",
-          margin = ggplot2::margin(b = 10)
-        ),
-        axis.text.x = ggplot2::element_text(size = 11, face = "bold"),
-        axis.text.y = ggplot2::element_blank(),
-        panel.grid.major.y = ggplot2::element_line(color = "gray80", linewidth = 0.3),
-        panel.grid.minor = ggplot2::element_blank()
-      )
+    p <- plot_nemeton_radar(radar_df,
+                            title = i18n$t("radar_title"),
+                            subtitle = ndp_subtitle)
     print(p)
   }, error = function(e) {
     # Fallback: empty plot with message
