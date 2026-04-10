@@ -975,7 +975,20 @@ TRANSLATIONS <- list(
   ug_create_btn = list(fr = "Cr\u00e9er l'UG", en = "Create UG"),
   ug_create_confirm = list(fr = "Cr\u00e9er une UG avec %d atome(s) s\u00e9lectionn\u00e9(s) ?", en = "Create a UG with %d selected atom(s)?"),
   ug_map_select_atoms_first = list(fr = "S\u00e9lectionnez des atomes sur la carte d'abord.", en = "Select atoms on the map first."),
-  ug_clear_selection = list(fr = "Effacer la s\u00e9lection", en = "Clear selection")
+  ug_clear_selection = list(fr = "Effacer la s\u00e9lection", en = "Clear selection"),
+  ug_import_split = list(fr = "Importer un d\u00e9coupage", en = "Import subdivision"),
+  ug_undo_split = list(fr = "Annuler le d\u00e9coupage", en = "Undo subdivision"),
+  ug_split_select_parcel = list(fr = "Parcelle \u00e0 d\u00e9couper", en = "Parcel to subdivide"),
+  ug_split_file = list(fr = "Fichier de d\u00e9coupage", en = "Subdivision file"),
+  ug_split_hint = list(fr = "Importez un fichier GeoJSON, Shapefile ou GeoPackage contenant les polygones de subdivision.", en = "Import a GeoJSON, Shapefile or GeoPackage containing subdivision polygons."),
+  ug_split_apply = list(fr = "Appliquer le d\u00e9coupage", en = "Apply subdivision"),
+  ug_split_no_file = list(fr = "Veuillez s\u00e9lectionner un fichier.", en = "Please select a file."),
+  ug_split_empty_file = list(fr = "Le fichier import\u00e9 ne contient aucun polygone.", en = "The imported file contains no polygons."),
+  ug_split_success = list(fr = "Parcelle %s d\u00e9coup\u00e9e en %d atomes", en = "Parcel %s subdivided into %d atoms"),
+  ug_split_error = list(fr = "Erreur lors du d\u00e9coupage :", en = "Subdivision error:"),
+  ug_no_split_to_undo = list(fr = "Aucune parcelle n'a \u00e9t\u00e9 d\u00e9coup\u00e9e.", en = "No parcel has been subdivided."),
+  ug_undo_split_hint = list(fr = "Cette action restaure un atome unique pour la parcelle s\u00e9lectionn\u00e9e.", en = "This action restores a single atom for the selected parcel."),
+  ug_undo_split_success = list(fr = "D\u00e9coupage annul\u00e9 pour la parcelle %s", en = "Subdivision undone for parcel %s")
 )
 
 

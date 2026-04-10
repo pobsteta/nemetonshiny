@@ -73,6 +73,22 @@ mod_ug_ui <- function(id) {
           icon = shiny::icon("calculator"),
           class = "btn-primary",
           width = "100%"
+        ),
+
+        shiny::actionButton(
+          ns("btn_import_split"),
+          label = i18n$t("ug_import_split"),
+          icon = shiny::icon("file-import"),
+          class = "btn-outline-info",
+          width = "100%"
+        ),
+
+        shiny::actionButton(
+          ns("btn_undo_split"),
+          label = i18n$t("ug_undo_split"),
+          icon = shiny::icon("rotate-left"),
+          class = "btn-outline-secondary btn-sm",
+          width = "100%"
         )
       ),
 
@@ -937,6 +953,181 @@ mod_ug_server <- function(id, app_state) {
         }
       }, error = function(e) {
         shiny::showNotification(paste("Erreur :", e$message), type = "error")
+      })
+    })
+
+    # ================================================================
+    # ACTION: Import split (GeoJSON/Shapefile)
+    # ================================================================
+    shiny::observeEvent(input$btn_import_split, {
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) {
+        shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
+        return()
+      }
+
+      # Build parcel choices
+      parcels <- projet$parcels
+      id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
+      if (length(id_col) == 0) return()
+      parcel_ids <- as.character(parcels[[id_col[1]]])
+      parcel_labels <- if ("geo_parcelle" %in% names(parcels)) {
+        as.character(parcels$geo_parcelle)
+      } else {
+        parcel_ids
+      }
+      choices <- stats::setNames(parcel_ids, parcel_labels)
+
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("ug_import_split"),
+        size = "l",
+        shiny::selectInput(
+          ns("split_parcelle"),
+          label = i18n()$t("ug_split_select_parcel"),
+          choices = choices
+        ),
+        shiny::fileInput(
+          ns("split_file"),
+          label = i18n()$t("ug_split_file"),
+          accept = c(".geojson", ".json", ".shp", ".gpkg"),
+          placeholder = "GeoJSON / Shapefile / GeoPackage"
+        ),
+        shiny::p(
+          class = "text-muted small",
+          i18n()$t("ug_split_hint")
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(
+            ns("confirm_import_split"),
+            i18n()$t("ug_split_apply"),
+            class = "btn-info",
+            icon = shiny::icon("scissors")
+          )
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$confirm_import_split, {
+      file_info <- input$split_file
+      parcelle_id <- input$split_parcelle
+
+      if (is.null(file_info) || is.null(parcelle_id)) {
+        shiny::showNotification(i18n()$t("ug_split_no_file"), type = "warning")
+        return()
+      }
+
+      shiny::removeModal()
+
+      tryCatch({
+        # Read the imported file
+        sf_polygones <- sf::st_read(file_info$datapath, quiet = TRUE)
+
+        if (nrow(sf_polygones) == 0) {
+          shiny::showNotification(i18n()$t("ug_split_empty_file"), type = "error")
+          return()
+        }
+
+        projet <- rv$projet_ug
+        projet <- atome_split_by_import(projet, parcelle_id, sf_polygones)
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
+        }
+        rv$projet_ug <- projet
+        rv$needs_recompute <- TRUE
+        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$ugs <- projet$ugs
+
+        n_atoms <- sum(projet$atomes$parent_parcelle_id == parcelle_id)
+        shiny::showNotification(
+          sprintf(i18n()$t("ug_split_success"), parcelle_id, n_atoms),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(
+          paste(i18n()$t("ug_split_error"), e$message),
+          type = "error",
+          duration = 10
+        )
+      })
+    })
+
+    # ================================================================
+    # ACTION: Undo split (restore single atom per parcel)
+    # ================================================================
+    shiny::observeEvent(input$btn_undo_split, {
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) {
+        shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
+        return()
+      }
+
+      # Find parcels that have multiple atoms (i.e., have been split)
+      atom_counts <- table(projet$atomes$parent_parcelle_id)
+      split_parcels <- names(atom_counts[atom_counts > 1])
+
+      if (length(split_parcels) == 0) {
+        shiny::showNotification(i18n()$t("ug_no_split_to_undo"), type = "info")
+        return()
+      }
+
+      # Build choices
+      parcels <- projet$parcels
+      id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
+      parcel_labels <- if ("geo_parcelle" %in% names(parcels)) {
+        geo_refs <- as.character(parcels$geo_parcelle)
+        ids <- as.character(parcels[[id_col[1]]])
+        stats::setNames(ids, geo_refs)[split_parcels]
+      } else {
+        stats::setNames(split_parcels, split_parcels)
+      }
+
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("ug_undo_split"),
+        shiny::selectInput(
+          ns("undo_split_parcelle"),
+          label = i18n()$t("ug_split_select_parcel"),
+          choices = parcel_labels
+        ),
+        shiny::p(
+          class = "text-muted",
+          i18n()$t("ug_undo_split_hint")
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(
+            ns("confirm_undo_split"),
+            i18n()$t("ug_undo_split"),
+            class = "btn-warning"
+          )
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$confirm_undo_split, {
+      shiny::removeModal()
+      parcelle_id <- input$undo_split_parcelle
+      if (is.null(parcelle_id)) return()
+
+      tryCatch({
+        projet <- rv$projet_ug
+        projet <- atome_undo_split(projet, parcelle_id)
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
+        }
+        rv$projet_ug <- projet
+        rv$needs_recompute <- TRUE
+        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$ugs <- projet$ugs
+
+        shiny::showNotification(
+          sprintf(i18n()$t("ug_undo_split_success"), parcelle_id),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(e$message, type = "error")
       })
     })
 

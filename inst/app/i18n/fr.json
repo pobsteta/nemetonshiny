@@ -327,5 +327,19 @@
   "ug_create_btn": "Créer l'UG",
   "ug_create_confirm": "Créer une UG avec %d atome(s) sélectionné(s) ?",
   "ug_map_select_atoms_first": "Sélectionnez des atomes sur la carte d'abord.",
-  "ug_clear_selection": "Effacer la sélection"
+  "ug_clear_selection": "Effacer la sélection",
+
+  "ug_import_split": "Importer un découpage",
+  "ug_undo_split": "Annuler le découpage",
+  "ug_split_select_parcel": "Parcelle à découper",
+  "ug_split_file": "Fichier de découpage",
+  "ug_split_hint": "Importez un fichier GeoJSON, Shapefile ou GeoPackage contenant les polygones de subdivision. Les zones non couvertes seront regroupées dans un atome 'reste'.",
+  "ug_split_apply": "Appliquer le découpage",
+  "ug_split_no_file": "Veuillez sélectionner un fichier.",
+  "ug_split_empty_file": "Le fichier importé ne contient aucun polygone.",
+  "ug_split_success": "Parcelle %s découpée en %d atomes",
+  "ug_split_error": "Erreur lors du découpage :",
+  "ug_no_split_to_undo": "Aucune parcelle n'a été découpée.",
+  "ug_undo_split_hint": "Cette action restaure un atome unique pour la parcelle sélectionnée.",
+  "ug_undo_split_success": "Découpage annulé pour la parcelle %s"
 }

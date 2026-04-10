@@ -327,5 +327,19 @@
   "ug_create_btn": "Create UG",
   "ug_create_confirm": "Create a UG with %d selected atom(s)?",
   "ug_map_select_atoms_first": "Select atoms on the map first.",
-  "ug_clear_selection": "Clear selection"
+  "ug_clear_selection": "Clear selection",
+
+  "ug_import_split": "Import subdivision",
+  "ug_undo_split": "Undo subdivision",
+  "ug_split_select_parcel": "Parcel to subdivide",
+  "ug_split_file": "Subdivision file",
+  "ug_split_hint": "Import a GeoJSON, Shapefile or GeoPackage containing subdivision polygons. Uncovered areas will be grouped into a 'remainder' atom.",
+  "ug_split_apply": "Apply subdivision",
+  "ug_split_no_file": "Please select a file.",
+  "ug_split_empty_file": "The imported file contains no polygons.",
+  "ug_split_success": "Parcel %s subdivided into %d atoms",
+  "ug_split_error": "Subdivision error:",
+  "ug_no_split_to_undo": "No parcel has been subdivided.",
+  "ug_undo_split_hint": "This action restores a single atom for the selected parcel.",
+  "ug_undo_split_success": "Subdivision undone for parcel %s"
 }
