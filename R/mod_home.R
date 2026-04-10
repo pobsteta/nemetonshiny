@@ -522,6 +522,9 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(project)) return(NULL)
 
+      # Hide button while computation is running
+      if (!is.null(computing_project_id())) return(NULL)
+
       # Check project status
       status <- project$metadata$status %||% "draft"
 
