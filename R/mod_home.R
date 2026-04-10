@@ -1032,11 +1032,15 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       shiny::req(project)
 
-      # Show notification so user knows something is happening
-      shiny::showNotification(
-        i18n$t("recomputing") %||% "Relance du calcul en cours\u2026",
+      # Show notification with spinner while preparing
+      recompute_notif_id <- shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("spinner", class = "fa-spin me-2"),
+          i18n$t("recomputing") %||% "Relance du calcul en cours\u2026"
+        ),
         type = "message",
-        duration = 3
+        duration = NULL,
+        closeButton = FALSE
       )
 
       # Clear indicator cache to force full recomputation
@@ -1071,6 +1075,9 @@ mod_home_server <- function(id, app_state) {
 
       # Start the async computation
       compute_task$invoke(project$id, get_app_options())
+
+      # Remove notification now that progress card is visible
+      shiny::removeNotification(recompute_notif_id)
     })
 
     # View results handler
