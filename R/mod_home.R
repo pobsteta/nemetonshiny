@@ -270,6 +270,18 @@ mod_home_server <- function(id, app_state) {
         return()
       }
 
+      # Immediate feedback: show loading notification
+      shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("spinner", class = "fa-spin me-2"),
+          sprintf("%s...", i18n$t("project_loading"))
+        ),
+        type = "message",
+        duration = NULL,
+        id = "project_loading_notif",
+        session = session
+      )
+
       # Load the project from disk (sync PostGIS si configure)
       project <- load_project(project_id)
       shiny::req(project)
@@ -342,11 +354,17 @@ mod_home_server <- function(id, app_state) {
         }
       }
 
-      # Notify
+      # Replace loading notification with success
       shiny::showNotification(
-        sprintf("%s: %s", i18n$t("project_loaded"),
-                project$metadata$name %||% project$id),
-        type = "message"
+        htmltools::tagList(
+          shiny::icon("check-circle", class = "me-2"),
+          sprintf("%s: %s", i18n$t("project_loaded"),
+                  project$metadata$name %||% project$id)
+        ),
+        type = "message",
+        duration = 5,
+        id = "project_loading_notif",
+        session = session
       )
 
       # If project has indicators, stay on Selection tab so the user

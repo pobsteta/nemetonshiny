@@ -103,6 +103,7 @@ TRANSLATIONS <- list(
   owner_too_long = list(fr = "Le propri\u00e9taire ne doit pas d\u00e9passer 100 caract\u00e8res", en = "Owner must not exceed 100 characters"),
   no_parcels_selected = list(fr = "Veuillez s\u00e9lectionner au moins une parcelle", en = "Please select at least one parcel"),
   project_created = list(fr = "Projet cr\u00e9\u00e9", en = "Project created"),
+  project_loading = list(fr = "Chargement du projet", en = "Loading project"),
   project_loaded = list(fr = "Projet charg\u00e9", en = "Project loaded"),
   project_not_found = list(fr = "Projet non trouv\u00e9", en = "Project not found"),
   project_deleted = list(fr = "Projet supprim\u00e9", en = "Project deleted"),

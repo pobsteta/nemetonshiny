@@ -46,6 +46,7 @@
   "owner_too_long": "Owner must not exceed 100 characters",
   "no_parcels_selected": "Please select at least one parcel",
   "project_created": "Project created",
+  "project_loading": "Loading project",
   "project_loaded": "Project loaded",
   "project_not_found": "Project not found",
   "project_deleted": "Project deleted",
