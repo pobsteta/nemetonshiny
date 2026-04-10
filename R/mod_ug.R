@@ -165,7 +165,7 @@ mod_ug_server <- function(id, app_state) {
       projet_ug = NULL,          # projet list with $atomes, $ugs, $parcels
       needs_recompute = FALSE,   # flag: UGs changed, indicators need refresh
       selected_atome_ids = character(0),  # atoms selected on the map
-      map_initialized = FALSE
+      map_needs_zoom = FALSE     # flag: zoom to bounds on next map update
     )
 
     # Initialize UG data when project loads
@@ -174,9 +174,13 @@ mod_ug_server <- function(id, app_state) {
       if (is.null(project) || is.null(project$parcels)) {
         rv$projet_ug <- NULL
         rv$selected_atome_ids <- character(0)
-        rv$map_initialized <- FALSE
+        rv$map_needs_zoom <- FALSE
         return()
       }
+
+      # Reset map zoom flag for new project
+      rv$map_needs_zoom <- TRUE
+      rv$selected_atome_ids <- character(0)
 
       # Try to load existing UG data
       if (has_ug_data(project)) {
@@ -344,14 +348,14 @@ mod_ug_server <- function(id, app_state) {
         cli::cli_warn("Failed to render UG boundaries: {e$message}")
       })
 
-      # Fit bounds on first load
-      if (!rv$map_initialized) {
+      # Fit bounds when a new project is loaded
+      if (isTRUE(rv$map_needs_zoom)) {
         bbox <- sf::st_bbox(atomes)
         proxy |> leaflet::fitBounds(
           lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
           lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
         )
-        rv$map_initialized <- TRUE
+        rv$map_needs_zoom <- FALSE
       }
 
       # Add legend
