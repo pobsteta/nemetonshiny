@@ -270,6 +270,15 @@ mod_home_server <- function(id, app_state) {
         return()
       }
 
+      # Show loading notification immediately
+      loading_id <- shiny::showNotification(
+        i18n$t("loading_project") %||% "Chargement du projet\u2026",
+        type = "message",
+        duration = NULL,
+        closeButton = FALSE
+      )
+      on.exit(shiny::removeNotification(loading_id), add = TRUE)
+
       # Load the project from disk (sync PostGIS si configure)
       project <- load_project(project_id)
       shiny::req(project)
