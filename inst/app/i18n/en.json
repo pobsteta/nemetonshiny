@@ -72,6 +72,7 @@
   "computing_indicator": "Computing indicator {indicator}...",
   "computation_complete": "Calculations complete",
   "computation_cancelled": "Calculations cancelled",
+  "recomputing": "Restarting computation\u2026",
   "computation_error": "Computation error",
   "progress_overall": "Overall progress",
   "completed": "completed",

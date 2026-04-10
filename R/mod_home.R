@@ -1020,12 +1020,45 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       shiny::req(project)
 
+      # Show notification so user knows something is happening
+      shiny::showNotification(
+        i18n$t("recomputing") %||% "Relance du calcul en cours\u2026",
+        type = "message",
+        duration = 3
+      )
+
       # Clear indicator cache to force full recomputation
       clear_computation_cache(project$id)
 
       # Reset status to allow recomputation
       update_project_status(project$id, "draft")
       app_state$current_project <- load_project(project$id)
+
+      # Initialize computation state
+      state <- init_compute_state(project$id)
+      compute_state(state)
+
+      # Store project ID and start non-reactive polling
+      computing_project_id(project$id)
+      progress_result$reset_tracking()
+      start_progress_polling(project$id)
+
+      # Suppress busy bar flicker during computation
+      session$sendCustomMessage("setComputingMode", list(active = TRUE))
+
+      # Show progress card
+      session$sendCustomMessage("showElement", list(
+        id = ns("progress-progress_card_wrapper")
+      ))
+      session$sendCustomMessage("hideElement", list(
+        id = ns("progress-complete_card_wrapper")
+      ))
+      session$sendCustomMessage("hideElement", list(
+        id = ns("progress-error_card_wrapper")
+      ))
+
+      # Start the async computation
+      compute_task$invoke(project$id, get_app_options())
     })
 
     # View results handler
