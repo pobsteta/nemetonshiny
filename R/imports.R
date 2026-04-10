@@ -26,3 +26,33 @@ enrich_parcels_bdforet <- nemeton:::enrich_parcels_bdforet
 map_essence_to_species <- nemeton:::map_essence_to_species
 get_allometric_coefficients <- nemeton:::get_allometric_coefficients
 clean_indicator_name <- nemeton:::clean_indicator_name
+
+
+#' Extract DEM raster from nemeton_layers
+#'
+#' Prefers LiDAR MNT over BD ALTI DEM. Returns NULL if no DEM available.
+#'
+#' @param layers A nemeton_layers object.
+#' @return A SpatRaster or NULL.
+#' @noRd
+get_dem_raster <- function(layers) {
+  rasters <- layers$rasters
+  if (!is.null(rasters$lidar_mnt)) return(rasters$lidar_mnt)
+  if (!is.null(rasters$dem)) return(rasters$dem)
+  NULL
+}
+
+
+#' Restore NDP attributes after parquet deserialization
+#'
+#' Parquet round-trip strips R attributes. This function restores the
+#' ndp_level attribute on indicator results loaded from disk.
+#'
+#' @param results data.frame or sf object with indicator columns.
+#' @param ndp_level Integer NDP level (0-4).
+#' @return The results object with ndp_level attribute restored.
+#' @noRd
+restore_ndp_attributes <- function(results, ndp_level) {
+  attr(results, "ndp_level") <- as.integer(ndp_level)
+  results
+}
