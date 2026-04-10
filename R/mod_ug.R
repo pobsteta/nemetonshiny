@@ -165,7 +165,8 @@ mod_ug_server <- function(id, app_state) {
       projet_ug = NULL,          # projet list with $atomes, $ugs, $parcels
       needs_recompute = FALSE,   # flag: UGs changed, indicators need refresh
       selected_atome_ids = character(0),  # atoms selected on the map
-      map_needs_zoom = FALSE     # flag: zoom to bounds on next map update
+      map_needs_zoom = FALSE,    # flag: zoom to bounds on next map update
+      pending_bbox = NULL        # stored bbox for deferred zoom
     )
 
     # Initialize UG data when project loads
@@ -348,9 +349,10 @@ mod_ug_server <- function(id, app_state) {
         cli::cli_warn("Failed to render UG boundaries: {e$message}")
       })
 
-      # Fit bounds when a new project is loaded
+      # Store bbox and attempt zoom (may fail if tab not visible)
       if (isTRUE(rv$map_needs_zoom)) {
         bbox <- sf::st_bbox(atomes)
+        rv$pending_bbox <- bbox
         proxy |> leaflet::fitBounds(
           lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
           lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
@@ -368,6 +370,34 @@ mod_ug_server <- function(id, app_state) {
           title = i18n()$t("ug_group"),
           opacity = 0.8
         )
+    })
+
+    # ================================================================
+    # MAP: Re-zoom when UG tab becomes visible
+    # ================================================================
+    # Leaflet fitBounds fails silently when the map container has 0 size
+    # (hidden tab). This observer fires when the user navigates to the
+    # UG tab and re-applies the pending zoom after a short delay.
+    shiny::observe({
+      root_session <- session$userData$root_session
+      if (is.null(root_session)) return()
+
+      nav <- root_session$input$main_nav
+      if (is.null(nav) || nav != "ug") return()
+
+      bbox <- shiny::isolate(rv$pending_bbox)
+      if (is.null(bbox)) return()
+
+      # Delay to let the tab fully render before zooming
+      later::later(function() {
+        leaflet::leafletProxy(ns("ug_map"), session = session) |>
+          leaflet::fitBounds(
+            lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
+            lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
+          )
+      }, delay = 0.5)
+
+      rv$pending_bbox <- NULL
     })
 
     # ================================================================
