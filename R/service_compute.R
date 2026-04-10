@@ -2627,3 +2627,135 @@ get_computation_progress <- function(project_id) {
 # R/service_project.R (version canonique avec NDP).
 # Ne pas les redefinir ici pour eviter les conflits de masquage.
 
+
+# ==============================================================================
+# UG Indicator Aggregation
+# ==============================================================================
+
+#' Aggregate parcel-level indicators to UG level
+#'
+#' @description
+#' Computes UG-level indicators by weighted average (by surface) of the
+#' atom-level values. Family scores are recomputed from the aggregated
+#' indicator values.
+#'
+#' The parcel-level computation pipeline is unchanged. This function adds
+#' a post-processing step that aggregates results per UG.
+#'
+#' @param indicators_sf sf object. Parcel-level indicators (1 row per parcel).
+#' @param projet List. Project with $atomes, $ugs, $parcels.
+#'
+#' @return sf object with 1 row per UG, indicator columns aggregated,
+#'   plus ug_id, label, groupe, cadastral_refs columns.
+#'   Returns NULL if no UG data is available.
+#'
+#' @noRd
+aggregate_indicators_to_ug <- function(indicators_sf, projet) {
+  if (!has_ug_data(projet)) {
+    return(NULL)
+  }
+
+  atomes <- projet$atomes
+  ugs <- projet$ugs
+  parcels <- projet$parcels
+
+  # Determine parcel ID column in indicators
+  id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(indicators_sf))
+  if (length(id_col) == 0) {
+    cli::cli_warn("Cannot aggregate: no parcel ID column found in indicators")
+    return(NULL)
+  }
+  id_col <- id_col[1]
+
+  # Identify indicator columns (both raw and family scores)
+  ind_cols <- grep("^indicateur_", names(indicators_sf), value = TRUE)
+  fam_cols <- grep("^famille_", names(indicators_sf), value = TRUE)
+  all_score_cols <- c(ind_cols, fam_cols)
+
+  if (length(all_score_cols) == 0) {
+    cli::cli_warn("No indicator columns found in data")
+    return(NULL)
+  }
+
+  # Drop geometry from indicators for aggregation
+  ind_df <- if (inherits(indicators_sf, "sf")) {
+    sf::st_drop_geometry(indicators_sf)
+  } else {
+    indicators_sf
+  }
+
+  # For each UG, compute weighted average of its atoms' indicators
+  ug_rows <- lapply(seq_len(nrow(ugs)), function(i) {
+    uid <- ugs$ug_id[i]
+
+    # Get atoms belonging to this UG
+    ug_atomes <- atomes[atomes$ug_id == uid, ]
+    if (nrow(ug_atomes) == 0) return(NULL)
+
+    # Get parent parcel IDs and their surfaces
+    parent_ids <- ug_atomes$parent_parcelle_id
+    surfaces <- ug_atomes$surface_m2
+
+    # Match atoms to indicator rows via parent parcel ID
+    matching_rows <- which(as.character(ind_df[[id_col]]) %in% parent_ids)
+    if (length(matching_rows) == 0) return(NULL)
+
+    matched_ind <- ind_df[matching_rows, , drop = FALSE]
+    matched_ids <- as.character(matched_ind[[id_col]])
+
+    # Build weights aligned with matched rows
+    weights <- vapply(matched_ids, function(pid) {
+      sum(surfaces[parent_ids == pid], na.rm = TRUE)
+    }, numeric(1))
+    total_weight <- sum(weights, na.rm = TRUE)
+    if (total_weight <= 0) total_weight <- 1
+
+    # Weighted average for each score column
+    agg_values <- vapply(all_score_cols, function(col) {
+      vals <- matched_ind[[col]]
+      if (all(is.na(vals))) return(NA_real_)
+      # For weighted mean, replace NA with 0 weight
+      w <- ifelse(is.na(vals), 0, weights)
+      v <- ifelse(is.na(vals), 0, vals)
+      if (sum(w) == 0) return(NA_real_)
+      sum(v * w) / sum(w)
+    }, numeric(1))
+
+    row <- as.data.frame(as.list(agg_values), stringsAsFactors = FALSE)
+    row$ug_id <- uid
+    row$label <- ugs$label[i]
+    row$groupe <- ugs$groupe[i]
+    row$surface_m2 <- sum(surfaces, na.rm = TRUE)
+    row$n_atomes <- nrow(ug_atomes)
+    row$cadastral_refs <- paste(
+      unique(ug_atomes$parent_parcelle_id),
+      collapse = ", "
+    )
+
+    row
+  })
+
+  # Combine into data.frame
+  ug_rows <- ug_rows[!vapply(ug_rows, is.null, logical(1))]
+  if (length(ug_rows) == 0) return(NULL)
+
+  ug_df <- do.call(rbind, ug_rows)
+
+  # Build UG geometries
+  ug_geoms <- lapply(ugs$ug_id, function(uid) {
+    ug_geometry(projet, uid)
+  })
+  geom_sfc <- do.call(c, ug_geoms)
+  sf::st_crs(geom_sfc) <- sf::st_crs(atomes)
+
+  # Create sf object
+  ug_sf <- sf::st_sf(ug_df, geometry = geom_sfc)
+
+  # Propagate NDP attributes if present
+  if (!is.null(attr(indicators_sf, "ndp_sources"))) {
+    attr(ug_sf, "ndp_sources") <- attr(indicators_sf, "ndp_sources")
+  }
+
+  ug_sf
+}
+

@@ -937,7 +937,36 @@ TRANSLATIONS <- list(
   auth_anonymous = list(fr = "Anonyme", en = "Anonymous"),
   auth_login = list(fr = "Se connecter", en = "Sign in"),
   auth_logout = list(fr = "Se d\u00e9connecter", en = "Sign out"),
-  auth_logged_as = list(fr = "Connect\u00e9 en tant que", en = "Signed in as")
+  auth_logged_as = list(fr = "Connect\u00e9 en tant que", en = "Signed in as"),
+
+  # UG (Management Units) translations
+  tab_ug = list(fr = "Unit\u00e9s de Gestion", en = "Management Units"),
+  ug_title = list(fr = "Unit\u00e9s de Gestion", en = "Management Units"),
+  ug_merge = list(fr = "Regrouper", en = "Merge"),
+  ug_split = list(fr = "Dissocier", en = "Split"),
+  ug_rename = list(fr = "Renommer", en = "Rename"),
+  ug_group = list(fr = "Groupe d'am\u00e9nagement", en = "Management group"),
+  ug_apply_group = list(fr = "Appliquer le groupe", en = "Apply group"),
+  ug_surface = list(fr = "Surface", en = "Area"),
+  ug_atoms = list(fr = "Atomes", en = "Atoms"),
+  ug_cadastral_refs = list(fr = "R\u00e9f\u00e9rences cadastrales", en = "Cadastral references"),
+  ug_composition = list(fr = "Composition cadastrale", en = "Cadastral composition"),
+  ug_recompute = list(fr = "Recalculer les indicateurs", en = "Recompute indicators"),
+  ug_recomputing = list(fr = "Recalcul des indicateurs par UG en cours...", en = "Recomputing indicators per UG..."),
+  ug_recompute_done = list(fr = "Indicateurs recalcul\u00e9s pour %d UG", en = "Indicators recomputed for %d UGs"),
+  ug_recompute_failed = list(fr = "\u00c9chec du recalcul des indicateurs", en = "Failed to recompute indicators"),
+  ug_confirm_merge = list(fr = "Fusionner les %d UG s\u00e9lectionn\u00e9es ?", en = "Merge %d selected UGs?"),
+  ug_label_prompt = list(fr = "Nom de la nouvelle UG", en = "New UG name"),
+  ug_label_required = list(fr = "Le nom de l'UG est requis", en = "UG name is required"),
+  ug_no_data = list(fr = "Aucune UG d\u00e9finie. Chargez un projet pour commencer.", en = "No UG defined. Load a project to start."),
+  ug_no_indicators = list(fr = "Aucun indicateur disponible. Lancez un calcul d'abord.", en = "No indicators available. Run a computation first."),
+  ug_select_hint = list(fr = "S\u00e9lectionnez une UG dans le tableau pour voir ses d\u00e9tails.", en = "Select a UG in the table to see its details."),
+  ug_select_one = list(fr = "S\u00e9lectionnez une seule UG.", en = "Select exactly one UG."),
+  ug_select_one_to_split = list(fr = "S\u00e9lectionnez une seule UG \u00e0 dissocier.", en = "Select exactly one UG to split."),
+  ug_select_at_least_2 = list(fr = "S\u00e9lectionnez au moins 2 UG \u00e0 regrouper.", en = "Select at least 2 UGs to merge."),
+  ug_cannot_split_single = list(fr = "Impossible de dissocier une UG avec un seul atome.", en = "Cannot split a UG with only one atom."),
+  ug_section_title = list(fr = "Unit\u00e9s de Gestion", en = "Management Units"),
+  ug_composition_title = list(fr = "Composition cadastrale", en = "Cadastral Composition")
 )
 
 

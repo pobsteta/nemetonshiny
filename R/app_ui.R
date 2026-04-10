@@ -65,7 +65,15 @@ app_ui <- function(request) {
         mod_synthesis_ui("synthesis")
       ),
 
-      # === Tabs 3-14: Indicator Families ===
+      # === Tab 3: Unités de Gestion ===
+      bslib::nav_panel(
+        title = i18n$t("tab_ug"),
+        value = "ug",
+        icon = bsicons::bs_icon("diagram-3"),
+        mod_ug_ui("ug")
+      ),
+
+      # === Tabs 4-15: Indicator Families ===
       bslib::nav_menu(
         title = i18n$t("tab_families"),
         icon = bsicons::bs_icon("layers"),
