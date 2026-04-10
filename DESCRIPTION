@@ -17,5 +17,6 @@ Imports: nemeton (>= 0.14.1), shiny (>= 1.8.0), bslib (>= 0.6.0),
 Suggests: shinyOAuth, RPostgres, DBI, uuid, testthat (>= 3.0.0), withr,
     golem, arrow, geoarrow, shiny.i18n, cicerone, quarto, rappdirs,
     future, happign
+Remotes: pobsteta/nemeton
 RoxygenNote: 7.3.3
 Config/testthat/edition: 3
