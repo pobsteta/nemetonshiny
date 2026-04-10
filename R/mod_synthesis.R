@@ -336,6 +336,14 @@ mod_synthesis_server <- function(id, app_state) {
         return()
       }
 
+      # Reorder family columns to match INDICATOR_FAMILIES canonical order
+      # (C, B, W, A, F, L, T, R, S, P, E, N) so the radar polygon doesn't cross
+      canonical_order <- vapply(names(INDICATOR_FAMILIES),
+                                get_famille_col, character(1))
+      ordered_family_cols <- intersect(canonical_order, family_cols)
+      other_cols <- setdiff(names(sf_data), family_cols)
+      sf_data <- sf_data[, c(other_cols, ordered_family_cols)]
+
       ndp_level <- as.integer(app_state$current_project$metadata$ndp_level %||% 0L)
       ndp_info <- get_ndp_level(ndp_level)
       confidence_pct <- round(ndp_info$confidence * 100, 1)

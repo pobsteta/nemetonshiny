@@ -391,6 +391,16 @@ generate_radar_image <- function(family_scores, output_file, language,
 
   i18n <- get_i18n(language)
 
+  # Reorder family columns to canonical INDICATOR_FAMILIES order
+  family_cols <- grep("^famille_[a-z]", names(family_scores), value = TRUE)
+  if (length(family_cols) > 0) {
+    canonical_order <- vapply(names(INDICATOR_FAMILIES),
+                              get_famille_col, character(1))
+    ordered_family_cols <- intersect(canonical_order, family_cols)
+    other_cols <- setdiff(names(family_scores), family_cols)
+    family_scores <- family_scores[, c(other_cols, ordered_family_cols)]
+  }
+
   # Construire le sous-titre NDP
   ndp_level <- as.integer(ndp_level %||% 0L)
   ndp_info <- get_ndp_level(ndp_level)
