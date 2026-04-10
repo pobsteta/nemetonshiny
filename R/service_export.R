@@ -135,16 +135,19 @@ generate_pdf_report <- function(project,
   }
 
   # Render with Quarto
+  # Normalize all paths to forward slashes for LaTeX compatibility on Windows
   tryCatch({
     quarto::quarto_render(
       input = report_qmd,
       output_format = "pdf",
       execute_params = list(
-        data_file = data_file,
-        radar_file = radar_file,
-        family_maps_dir = family_maps_dir,
+        data_file = normalizePath(data_file, winslash = "/", mustWork = FALSE),
+        radar_file = normalizePath(radar_file, winslash = "/", mustWork = FALSE),
+        family_maps_dir = normalizePath(family_maps_dir, winslash = "/", mustWork = FALSE),
         language = language,
-        cover_image = cover_image_param
+        cover_image = if (nzchar(cover_image_param)) {
+          normalizePath(cover_image_param, winslash = "/", mustWork = FALSE)
+        } else ""
       ),
       quiet = FALSE
     )
