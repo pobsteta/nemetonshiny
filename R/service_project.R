@@ -415,6 +415,25 @@ save_indicators <- function(project_id, indicators) {
 #' @return data.frame with indicators, or NULL if not found.
 #'
 #' @noRd
+#' Restore NDP attributes on loaded indicators
+#'
+#' @description
+#' When indicators are saved to parquet, R attributes (like ndp_sources)
+#' are lost. This function restores them from the project metadata.
+#'
+#' @param results data.frame. Loaded indicator data.
+#' @param ndp_level Integer. NDP level from project metadata.
+#'
+#' @return data.frame with NDP attributes restored.
+#' @noRd
+restore_ndp_attributes <- function(results, ndp_level) {
+  if (is.null(results)) return(results)
+  ndp_level <- as.integer(ndp_level %||% 0L)
+  attr(results, "ndp_level") <- ndp_level
+  results
+}
+
+
 load_indicators <- function(project_id) {
   project_path <- get_project_path(project_id)
   if (is.null(project_path)) {
