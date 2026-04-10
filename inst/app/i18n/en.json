@@ -344,5 +344,11 @@
   "ug_undo_split_success": "Subdivision undone for parcel %s",
 
   "ug_draw_split_title": "Split using drawn shapes",
-  "ug_draw_split_desc": "You drew %d shape(s) on the map. Select the parcel to subdivide."
+  "ug_draw_split_desc": "You drew %d shape(s) on the map. Select the parcel to subdivide.",
+
+  "ug_move_to": "Move to UG",
+  "ug_move_desc": "Move %d selected atom(s) to an existing UG.",
+  "ug_move_target": "Target UG",
+  "ug_move_confirm": "Move",
+  "ug_move_success": "%d atom(s) moved to UG '%s'"
 }

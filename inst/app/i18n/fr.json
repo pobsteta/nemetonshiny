@@ -344,5 +344,11 @@
   "ug_undo_split_success": "Découpage annulé pour la parcelle %s",
 
   "ug_draw_split_title": "Découper avec les formes dessinées",
-  "ug_draw_split_desc": "Vous avez dessiné %d forme(s) sur la carte. Sélectionnez la parcelle à découper."
+  "ug_draw_split_desc": "Vous avez dessiné %d forme(s) sur la carte. Sélectionnez la parcelle à découper.",
+
+  "ug_move_to": "Déplacer vers une UG",
+  "ug_move_desc": "Déplacer %d atome(s) sélectionné(s) vers une UG existante.",
+  "ug_move_target": "UG de destination",
+  "ug_move_confirm": "Déplacer",
+  "ug_move_success": "%d atome(s) déplacé(s) vers l'UG « %s »"
 }

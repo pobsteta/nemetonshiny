@@ -990,7 +990,12 @@ TRANSLATIONS <- list(
   ug_undo_split_hint = list(fr = "Cette action restaure un atome unique pour la parcelle s\u00e9lectionn\u00e9e.", en = "This action restores a single atom for the selected parcel."),
   ug_undo_split_success = list(fr = "D\u00e9coupage annul\u00e9 pour la parcelle %s", en = "Subdivision undone for parcel %s"),
   ug_draw_split_title = list(fr = "D\u00e9couper avec les formes dessin\u00e9es", en = "Split using drawn shapes"),
-  ug_draw_split_desc = list(fr = "Vous avez dessin\u00e9 %d forme(s) sur la carte. S\u00e9lectionnez la parcelle \u00e0 d\u00e9couper.", en = "You drew %d shape(s) on the map. Select the parcel to subdivide.")
+  ug_draw_split_desc = list(fr = "Vous avez dessin\u00e9 %d forme(s) sur la carte. S\u00e9lectionnez la parcelle \u00e0 d\u00e9couper.", en = "You drew %d shape(s) on the map. Select the parcel to subdivide."),
+  ug_move_to = list(fr = "D\u00e9placer vers une UG", en = "Move to UG"),
+  ug_move_desc = list(fr = "D\u00e9placer %d atome(s) s\u00e9lectionn\u00e9(s) vers une UG existante.", en = "Move %d selected atom(s) to an existing UG."),
+  ug_move_target = list(fr = "UG de destination", en = "Target UG"),
+  ug_move_confirm = list(fr = "D\u00e9placer", en = "Move"),
+  ug_move_success = list(fr = "%d atome(s) d\u00e9plac\u00e9(s) vers l'UG \u00ab %s \u00bb", en = "%d atom(s) moved to UG '%s'")
 )
 
 

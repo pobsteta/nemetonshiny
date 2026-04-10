@@ -52,6 +52,14 @@ mod_ug_ui <- function(id) {
         ),
 
         shiny::actionButton(
+          ns("btn_move_to_ug"),
+          label = i18n$t("ug_move_to"),
+          icon = shiny::icon("arrow-right-arrow-left"),
+          class = "btn-outline-success btn-sm",
+          width = "100%"
+        ),
+
+        shiny::actionButton(
           ns("btn_split"),
           label = i18n$t("ug_split"),
           icon = shiny::icon("scissors"),
@@ -708,6 +716,80 @@ mod_ug_server <- function(id, app_state) {
 
         shiny::showNotification(
           sprintf("UG \u00ab %s \u00bb cr\u00e9\u00e9e avec %d atome(s)", label, length(sel_ids)),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(e$message, type = "error")
+      })
+    })
+
+    # ================================================================
+    # ACTION: Move selected atoms to an existing UG
+    # ================================================================
+    shiny::observeEvent(input$btn_move_to_ug, {
+      sel_ids <- rv$selected_atome_ids
+      if (length(sel_ids) == 0) {
+        shiny::showNotification(
+          i18n()$t("ug_map_select_atoms_first"),
+          type = "warning"
+        )
+        return()
+      }
+
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) return()
+
+      # Build UG choices (exclude UGs that contain ALL the selected atoms)
+      ugs <- projet$ugs
+      ug_choices <- stats::setNames(ugs$ug_id, ugs$label)
+
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("ug_move_to"),
+        shiny::p(sprintf(i18n()$t("ug_move_desc"), length(sel_ids))),
+        shiny::selectInput(
+          ns("move_target_ug"),
+          label = i18n()$t("ug_move_target"),
+          choices = ug_choices
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(
+            ns("confirm_move_to_ug"),
+            i18n()$t("ug_move_confirm"),
+            class = "btn-success",
+            icon = shiny::icon("arrow-right-arrow-left")
+          )
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$confirm_move_to_ug, {
+      shiny::removeModal()
+
+      sel_ids <- rv$selected_atome_ids
+      target_ug_id <- input$move_target_ug
+      if (length(sel_ids) == 0 || is.null(target_ug_id)) return()
+
+      tryCatch({
+        projet <- rv$projet_ug
+
+        # Move each atom to the target UG
+        for (atome_id in sel_ids) {
+          projet <- ug_assign_atom(projet, atome_id, target_ug_id)
+        }
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
+        }
+        rv$projet_ug <- projet
+        rv$needs_recompute <- TRUE
+        clear_atome_selection()
+        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$ugs <- projet$ugs
+
+        target_label <- projet$ugs$label[projet$ugs$ug_id == target_ug_id]
+        shiny::showNotification(
+          sprintf(i18n()$t("ug_move_success"), length(sel_ids), target_label),
           type = "message"
         )
       }, error = function(e) {
