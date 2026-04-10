@@ -20,12 +20,10 @@ mod_synthesis_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(project) || is.null(project$indicators)) return(NULL)
 
-      # Prefer UG-level indicators if available
-      df <- if (!is.null(project$indicators_ug) && inherits(project$indicators_ug, c("sf", "data.frame"))) {
-        project$indicators_ug
-      } else {
-        project$indicators
-      }
+      # Always use parcel-level indicators for synthesis by default.
+      # UG-level indicators (indicators_ug) are only used if they exist
+      # AND the user has explicitly recalculated them via the UG module.
+      df <- project$indicators
 
       # Drop geometry if sf (indicators from parquet may have geoarrow geometry)
       if (inherits(df, "sf")) {
@@ -49,21 +47,6 @@ mod_synthesis_server <- function(id, app_state) {
       if (is.null(indicators)) return(NULL)
 
       project <- app_state$current_project
-
-      # When UG-level indicators are available with geometries, use them directly
-      if (!is.null(project$indicators_ug) && inherits(project$indicators_ug, "sf")) {
-        merged <- project$indicators_ug
-        # Compute family indices on UG sf
-        return(tryCatch(
-          create_family_index(merged, method = "mean", na.rm = TRUE),
-          error = function(e) {
-            cli::cli_warn("Failed to compute family index on UG data: {conditionMessage(e)}")
-            NULL
-          }
-        ))
-      }
-
-      # Standard path: merge parcels + indicators
       if (is.null(project$parcels)) return(NULL)
 
       parcels <- project$parcels
@@ -82,9 +65,7 @@ mod_synthesis_server <- function(id, app_state) {
       if (is.null(join_col)) return(NULL)
 
       # Subset indicators to only keep join column + actual indicator columns
-      # (avoid duplicating metadata columns like section, numero, contenance, etc.)
       all_indicator_cols <- get_all_column_names()
-      # Also include _norm variants
       norm_cols <- paste0(all_indicator_cols, "_norm")
       keep_cols <- intersect(names(indicators),
                              c(join_col, all_indicator_cols, norm_cols))
