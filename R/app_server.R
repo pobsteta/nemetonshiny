@@ -150,12 +150,21 @@ app_server <- function(input, output, session) {
   # TAB NAVIGATION CONTROL
   # ============================================================
 
-  # Disable tabs until project is completed
-  shiny::observe({
+  # Redirect to selection tab only if user tries to navigate to
+  # restricted tabs (synthesis, families) before project is completed.
+  # The UG tab is accessible once a project exists (any status).
+  shiny::observeEvent(input$main_nav, {
+    tab <- input$main_nav
     status <- app_state$project_status
 
-    # Only allow synthesis and family tabs when completed
-    if (status != "completed") {
+    # Synthesis and family tabs require completed project
+    restricted <- c("synthesis", grep("^famille_", tab, value = TRUE))
+    if (tab %in% restricted && status != "completed") {
+      shiny::updateNavbarPage(session, "main_nav", selected = "selection")
+    }
+
+    # UG tab requires at least a project to be loaded
+    if (tab == "ug" && is.null(app_state$current_project)) {
       shiny::updateNavbarPage(session, "main_nav", selected = "selection")
     }
   })
