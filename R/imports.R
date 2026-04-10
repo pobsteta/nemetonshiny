@@ -159,7 +159,44 @@ compute_general_index <- function(family_means, ndp = 0L) {
   list(
     score = round(raw_score, 1),
     confidence = ndp_info$confidence,
+    ndp = as.integer(ndp),
     ndp_level = as.integer(ndp)
+  )
+}
+
+
+#' Generate an HTML badge for the NDP level
+#'
+#' @param ndp_level Integer NDP level (0-4).
+#' @param lang Character. Language code ("fr" or "en").
+#' @return An htmltools tag (span with Bootstrap badge styling).
+#' @noRd
+ndp_badge <- function(ndp_level, lang = "fr") {
+  ndp_level <- as.integer(ndp_level %||% 0L)
+  ndp_info <- get_ndp_level(ndp_level)
+
+  # Color scale from red (0) to green (4)
+  colors <- c(
+    `0` = "#dc3545",
+    `1` = "#fd7e14",
+    `2` = "#ffc107",
+    `3` = "#20c997",
+    `4` = "#198754"
+  )
+  bg_color <- colors[[as.character(ndp_level)]] %||% colors[["0"]]
+
+  # Use white text for dark backgrounds, dark for light
+  text_color <- if (ndp_level %in% c(0L, 4L)) "#ffffff" else "#212529"
+
+  label <- sprintf("NDP %d \u2013 %s", ndp_level, ndp_info$name)
+
+  htmltools::tags$span(
+    class = "badge",
+    style = sprintf(
+      "background-color: %s; color: %s; font-size: 0.8rem; padding: 4px 10px; border-radius: 12px;",
+      bg_color, text_color
+    ),
+    label
   )
 }
 
