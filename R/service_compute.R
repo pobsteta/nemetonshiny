@@ -2751,6 +2751,21 @@ aggregate_indicators_to_ug <- function(indicators_sf, projet) {
   # Create sf object
   ug_sf <- sf::st_sf(ug_df, geometry = geom_sfc)
 
+  # Exclude HSN/HSY UGs from production and energy scores
+  # These UGs are "hors sylviculture" and should not contribute to
+  # production-related indicators
+  hsn_mask <- !is.na(ug_sf$groupe) & ug_sf$groupe %in% c("HSN", "HSY")
+  if (any(hsn_mask)) {
+    prod_cols <- grep("^(indicateur_p|indicateur_e|famille_production|famille_energie)",
+                      names(ug_sf), value = TRUE)
+    for (col in prod_cols) {
+      ug_sf[[col]][hsn_mask] <- NA_real_
+    }
+    cli::cli_alert_info(
+      "Excluded {sum(hsn_mask)} HSN/HSY UG(s) from production/energy scores"
+    )
+  }
+
   # Propagate NDP attributes if present
   if (!is.null(attr(indicators_sf, "ndp_sources"))) {
     attr(ug_sf, "ndp_sources") <- attr(indicators_sf, "ndp_sources")

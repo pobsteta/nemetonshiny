@@ -475,6 +475,18 @@ load_project <- function(project_id) {
     comments = load_comments(project_id)
   )
 
+  # Auto-migrate to v2 (UG support) if needed
+  tryCatch({
+    project <- ensure_project_migrated(project_id, project)
+    # Also load UG-level indicators if available
+    indicators_ug <- load_indicators_ug(project_id)
+    if (!is.null(indicators_ug)) {
+      project$indicators_ug <- indicators_ug
+    }
+  }, error = function(e) {
+    cli::cli_warn("UG migration on load failed (non-blocking): {e$message}")
+  })
+
   # Sync vers PostGIS si configure et si le projet a des indicateurs
   if (is_db_configured() && isTRUE(metadata$indicators_computed)) {
     tryCatch({

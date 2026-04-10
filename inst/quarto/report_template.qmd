@@ -435,7 +435,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
                 report_data$n_ugs, report_data$n_parcels))
   }
 
-  # UG table
+  # Summary table
   cat("\\begin{center}\n")
   cat("\\begin{tabular}{llrl}\n")
   cat("\\toprule\n")
@@ -460,6 +460,44 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
   cat("\\bottomrule\n")
   cat("\\end{tabular}\n")
   cat("\\end{center}\n\n")
+
+  # Detailed annex: ONF Annexe 2 style (per-UG cadastral breakdown)
+  if (params$language == "fr") {
+    cat("## Annexe : Composition cadastrale d\\'{e}taill\\'{e}e\n\n")
+  } else {
+    cat("## Annex: Detailed Cadastral Composition\n\n")
+  }
+
+  for (ug in report_data$ug_composition) {
+    groupe_str <- if (is.null(ug$groupe) || is.na(ug$groupe)) "" else paste0(" [", ug$groupe, "]")
+    cat(sprintf("**%s**%s --- %.2f ha\n\n",
+                escape_latex(ug$label), escape_latex(groupe_str), ug$surface_ha))
+
+    refs <- ug$refs_detail
+    if (!is.null(refs) && is.data.frame(refs) && nrow(refs) > 0) {
+      cat("\\begin{center}\n")
+      cat("\\begin{tabular}{llrr}\n")
+      if (params$language == "fr") {
+        cat("\\textbf{R\\'{e}f. cadastrale} & \\textbf{Section} & \\textbf{N\\textsuperscript{o}} & \\textbf{Surface (m\\textsuperscript{2})} \\\\\n")
+      } else {
+        cat("\\textbf{Cadastral ref.} & \\textbf{Section} & \\textbf{No.} & \\textbf{Area (m\\textsuperscript{2})} \\\\\n")
+      }
+      cat("\\hline\n")
+
+      for (j in seq_len(nrow(refs))) {
+        cat(
+          escape_latex(as.character(refs$geo_parcelle[j])), " & ",
+          escape_latex(as.character(refs$section[j])), " & ",
+          escape_latex(as.character(refs$numero[j])), " & ",
+          format(round(refs$surface_m2[j]), big.mark = " "), " \\\\\n",
+          sep = ""
+        )
+      }
+
+      cat("\\end{tabular}\n")
+      cat("\\end{center}\n\n")
+    }
+  }
 
   cat("\\newpage\n")
 }
