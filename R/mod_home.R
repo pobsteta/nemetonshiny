@@ -272,7 +272,10 @@ mod_home_server <- function(id, app_state) {
 
       # Show loading notification immediately
       loading_id <- shiny::showNotification(
-        i18n$t("loading_project") %||% "Chargement du projet\u2026",
+        htmltools::tagList(
+          shiny::icon("spinner", class = "fa-spin me-2"),
+          i18n$t("loading_project") %||% "Chargement du projet\u2026"
+        ),
         type = "message",
         duration = NULL,
         closeButton = FALSE
