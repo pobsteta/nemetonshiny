@@ -43,6 +43,127 @@ get_dem_raster <- function(layers) {
 }
 
 
+#' Set NDP attributes on indicator results
+#'
+#' Annotates results with data source availability flags from the layers
+#' object. These attributes are later read by detect_ndp() to determine
+#' the evidence level (NDP 0-4).
+#'
+#' @param results data.frame or sf object with indicator columns.
+#' @param layers nemeton_layers object with rasters/vectors/point_clouds.
+#' @return The results object with ndp source attributes set.
+#' @noRd
+set_ndp_attributes <- function(results, layers) {
+  rasters <- layers$rasters %||% list()
+  vectors <- layers$vectors %||% list()
+  point_clouds <- layers$point_clouds %||% list()
+
+  attr(results, "ndp_has_ndvi") <- !is.null(rasters$ndvi)
+  attr(results, "ndp_has_dem") <- !is.null(rasters$dem) || !is.null(rasters$lidar_mnt)
+  attr(results, "ndp_has_lidar_mnh") <- !is.null(rasters$lidar_mnh)
+  attr(results, "ndp_has_lidar_mnt") <- !is.null(rasters$lidar_mnt)
+  attr(results, "ndp_has_lidar_copc") <- length(point_clouds) > 0
+  attr(results, "ndp_has_bdforet") <- !is.null(vectors$bdforet)
+  attr(results, "ndp_has_field_data") <- any(c("species", "dbh", "density") %in% names(results))
+
+  results
+}
+
+
+#' Detect NDP level from indicator attributes
+#'
+#' Reads the ndp source flags set by set_ndp_attributes() and determines
+#' the evidence level:
+#'
+#' - NDP 0: No spatial data
+#' - NDP 1: Remote sensing only (NDVI, satellite)
+#' - NDP 2: + Cartographic data (BD Foret, IGN BD TOPO)
+#' - NDP 3: + LiDAR data
+#' - NDP 4: + Field inventory data
+#'
+#' @param indicators data.frame with ndp_* attributes.
+#' @return Integer NDP level (0-4).
+#' @noRd
+detect_ndp <- function(indicators) {
+  if (isTRUE(attr(indicators, "ndp_has_field_data"))) return(4L)
+  if (isTRUE(attr(indicators, "ndp_has_lidar_mnh")) ||
+      isTRUE(attr(indicators, "ndp_has_lidar_copc"))) return(3L)
+  if (isTRUE(attr(indicators, "ndp_has_bdforet"))) return(2L)
+  if (isTRUE(attr(indicators, "ndp_has_ndvi")) ||
+      isTRUE(attr(indicators, "ndp_has_dem"))) return(1L)
+  0L
+}
+
+
+#' Detect NDP level from cached indicator files
+#'
+#' Fallback when attributes are not available (e.g., after parquet load).
+#' Checks which indicator files exist on disk to infer data availability.
+#'
+#' @param project_path Character. Path to the project directory.
+#' @return Integer NDP level (0-4).
+#' @noRd
+detect_ndp_from_cache <- function(project_path) {
+  data_dir <- file.path(project_path, "data")
+  if (!dir.exists(data_dir)) return(0L)
+
+  files <- list.files(data_dir, pattern = "^indicateur_.*\\.parquet$")
+
+  # LiDAR-dependent indicators suggest NDP >= 3
+  lidar_indicators <- c("indicateur_b2_structure")
+  if (any(lidar_indicators %in% tools::file_path_sans_ext(files))) return(3L)
+
+  # BD Foret-dependent indicators suggest NDP >= 2
+  bdforet_indicators <- c("indicateur_c1_biomasse", "indicateur_t1_anciennete")
+  if (any(bdforet_indicators %in% tools::file_path_sans_ext(files))) return(2L)
+
+  # Basic remote sensing indicators suggest NDP >= 1
+  if (length(files) > 0) return(1L)
+
+  0L
+}
+
+
+#' Get NDP level metadata
+#'
+#' Returns the name and confidence coefficient for a given NDP level.
+#'
+#' @param ndp_level Integer NDP level (0-4).
+#' @return List with \code{name} (character) and \code{confidence} (numeric 0-1).
+#' @noRd
+get_ndp_level <- function(ndp_level) {
+  ndp_level <- as.integer(ndp_level %||% 0L)
+  levels <- list(
+    `0` = list(name = "Aucune donnee spatiale", confidence = 0.2),
+    `1` = list(name = "Teledetection", confidence = 0.4),
+    `2` = list(name = "Cartographique", confidence = 0.6),
+    `3` = list(name = "LiDAR", confidence = 0.8),
+    `4` = list(name = "Terrain", confidence = 1.0)
+  )
+  levels[[as.character(ndp_level)]] %||% levels[["0"]]
+}
+
+
+#' Compute general Nemeton index
+#'
+#' Computes the weighted global score from family means, adjusted by NDP
+#' confidence coefficient.
+#'
+#' @param family_means Named numeric vector of family mean scores (0-100).
+#' @param ndp Integer NDP level (0-4).
+#' @return List with \code{score} (numeric 0-100) and \code{confidence} (numeric 0-1).
+#' @noRd
+compute_general_index <- function(family_means, ndp = 0L) {
+  ndp_info <- get_ndp_level(ndp)
+  raw_score <- mean(family_means, na.rm = TRUE)
+  list(
+    score = round(raw_score, 1),
+    confidence = ndp_info$confidence,
+    ndp_level = as.integer(ndp)
+  )
+}
+
+
 #' Restore NDP attributes after parquet deserialization
 #'
 #' Parquet round-trip strips R attributes. This function restores the
