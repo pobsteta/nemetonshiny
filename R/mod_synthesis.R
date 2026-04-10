@@ -343,55 +343,21 @@ mod_synthesis_server <- function(id, app_state) {
                                ndp_level, ndp_info$name,
                                i18n$t("ndp_confidence"), confidence_pct)
 
-      # Build radar data in canonical INDICATOR_FAMILIES order
+      # Aggregate to single row (mean per family) for radar - multiple parcels
+      # cause nemeton_radar to draw one polygon per row, creating visual chaos
       df <- sf::st_drop_geometry(sf_data)
-      canonical_codes <- names(INDICATOR_FAMILIES)
-      radar_data <- data.frame(
-        family = character(0), label = character(0),
-        value = numeric(0), stringsAsFactors = FALSE
-      )
-      for (code in canonical_codes) {
-        col <- get_famille_col(code)
-        if (col %in% names(df)) {
-          fam <- INDICATOR_FAMILIES[[code]]
-          label <- if (i18n$language == "fr") fam$name_fr else fam$name_en
-          radar_data <- rbind(radar_data, data.frame(
-            family = code, label = label,
-            value = mean(df[[col]], na.rm = TRUE),
-            stringsAsFactors = FALSE
-          ))
-        }
-      }
-      # Set factor levels in canonical order to control axis placement
-      radar_data$label <- factor(radar_data$label, levels = radar_data$label)
+      family_means <- as.data.frame(lapply(df[, family_cols, drop = FALSE],
+                                           function(x) mean(x, na.rm = TRUE)))
 
-      # Draw radar with ggplot2 + coord_polar
-      p <- ggplot2::ggplot(radar_data, ggplot2::aes(x = label, y = value)) +
-        ggplot2::geom_polygon(
-          ggplot2::aes(group = 1),
-          fill = "steelblue", alpha = 0.3, color = "steelblue", linewidth = 1
-        ) +
-        ggplot2::geom_point(color = "steelblue", size = 3) +
-        ggplot2::coord_polar(clip = "off") +
-        ggplot2::scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 25)) +
-        ggplot2::labs(
-          title = i18n$t("radar_title"),
-          subtitle = ndp_subtitle,
-          x = NULL, y = NULL
-        ) +
-        ggplot2::theme_minimal() +
+      p <- nemeton_radar(family_means, mode = "family", normalize = FALSE,
+                         title = i18n$t("radar_title"))
+      p + ggplot2::labs(subtitle = ndp_subtitle) +
         ggplot2::theme(
-          plot.title = ggplot2::element_text(hjust = 0.5, face = "bold", size = 14),
           plot.subtitle = ggplot2::element_text(
             hjust = 0.5, size = 11, color = "gray40",
             margin = ggplot2::margin(b = 10)
-          ),
-          axis.text.x = ggplot2::element_text(size = 11, face = "bold"),
-          axis.text.y = ggplot2::element_blank(),
-          panel.grid.major.y = ggplot2::element_line(color = "gray80"),
-          panel.grid.minor = ggplot2::element_blank()
+          )
         )
-      p
     })
 
     # ================================================================
