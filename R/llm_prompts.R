@@ -21,7 +21,7 @@ load_expert_profiles <- function() {
   profiles <- list()
 
   # 1. Package profiles
-  pkg_dir <- system.file("experts", package = "nemeton")
+  pkg_dir <- system.file("experts", package = "nemetonShiny")
   if (pkg_dir != "") {
     pkg_files <- list.files(pkg_dir, pattern = "\\.ya?ml$", full.names = TRUE)
     for (f in pkg_files) {
@@ -43,7 +43,7 @@ load_expert_profiles <- function() {
   if (!dir.exists(user_dir)) {
     dir.create(user_dir, recursive = TRUE, showWarnings = FALSE)
     # Copy example template if freshly created
-    example_src <- system.file("experts", "_example.yml.template", package = "nemeton")
+    example_src <- system.file("experts", "_example.yml.template", package = "nemetonShiny")
     if (example_src != "") {
       file.copy(example_src, file.path(user_dir, "_example.yml.template"),
                 overwrite = FALSE)

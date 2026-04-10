@@ -1,2 +1,2 @@
 pkgload::load_all(export_all = FALSE, helpers = FALSE, attach_testthat = FALSE)
-nemeton::run_app()
+nemetonShiny::run_app()

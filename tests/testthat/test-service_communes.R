@@ -7,7 +7,7 @@
 # ==============================================================================
 
 test_that("get_departments returns all French departments", {
-  depts <- nemeton:::get_departments()
+  depts <- nemetonShiny:::get_departments()
 
   expect_type(depts, "character")
   expect_true(length(depts) >= 100)  # France has ~100 departments
@@ -20,7 +20,7 @@ test_that("get_departments returns all French departments", {
 })
 
 test_that("get_departments returns named vector", {
-  depts <- nemeton:::get_departments()
+  depts <- nemetonShiny:::get_departments()
 
   expect_true(!is.null(names(depts)))
   expect_true(all(nchar(names(depts)) > 0))
@@ -30,7 +30,7 @@ test_that("get_departments returns named vector", {
 })
 
 test_that("get_departments includes overseas departments", {
-  depts <- nemeton:::get_departments()
+  depts <- nemetonShiny:::get_departments()
 
   # Overseas departments
   expect_true("971" %in% depts)  # Guadeloupe
@@ -41,7 +41,7 @@ test_that("get_departments includes overseas departments", {
 })
 
 test_that("get_departments has correct Corsican codes", {
-  depts <- nemeton:::get_departments()
+  depts <- nemetonShiny:::get_departments()
 
   # Corsican departments use alphanumeric codes
 
@@ -54,7 +54,7 @@ test_that("get_departments has correct Corsican codes", {
 # ==============================================================================
 
 test_that("validate_insee_code accepts valid codes", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_true(validate("75056"))   # Paris
   expect_true(validate("01001"))   # Ain
@@ -64,7 +64,7 @@ test_that("validate_insee_code accepts valid codes", {
 })
 
 test_that("validate_insee_code rejects invalid codes", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_false(validate("1234"))      # Too short
   expect_false(validate("123456"))    # Too long
@@ -76,7 +76,7 @@ test_that("validate_insee_code rejects invalid codes", {
 })
 
 test_that("validate_insee_code rejects invalid alphanumeric codes", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_false(validate("2C001"))     # C not allowed (only 0-9, A, B)
   expect_false(validate("2a001"))     # lowercase not allowed
@@ -85,7 +85,7 @@ test_that("validate_insee_code rejects invalid alphanumeric codes", {
 })
 
 test_that("validate_insee_code accepts codes with A and B anywhere", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   # The regex allows A and B anywhere in the 5-character code
   expect_true(validate("A0001"))      # Leading letter A valid
@@ -108,7 +108,7 @@ test_that("format_communes_for_selectize returns correct structure", {
     stringsAsFactors = FALSE
   )
 
-  result <- nemeton:::format_communes_for_selectize(communes)
+  result <- nemetonShiny:::format_communes_for_selectize(communes)
 
   expect_type(result, "character")
   expect_length(result, 2)
@@ -124,14 +124,14 @@ test_that("format_communes_for_selectize handles empty data", {
     label = character(0)
   )
 
-  result <- nemeton:::format_communes_for_selectize(communes)
+  result <- nemetonShiny:::format_communes_for_selectize(communes)
 
   expect_length(result, 0)
   expect_type(result, "character")
 })
 
 test_that("format_communes_for_selectize handles NULL input", {
-  result <- nemeton:::format_communes_for_selectize(NULL)
+  result <- nemetonShiny:::format_communes_for_selectize(NULL)
   expect_length(result, 0)
   expect_type(result, "character")
 })
@@ -145,7 +145,7 @@ test_that("format_communes_for_selectize handles single commune", {
     stringsAsFactors = FALSE
   )
 
-  result <- nemeton:::format_communes_for_selectize(communes)
+  result <- nemetonShiny:::format_communes_for_selectize(communes)
 
   expect_length(result, 1)
   expect_equal(result[["Paris (75001)"]], "75056")
@@ -157,7 +157,7 @@ test_that("format_communes_for_selectize handles single commune", {
 
 test_that("search_communes returns empty for short query", {
   # Query too short (< 3 chars), no API call needed
-  result <- nemeton:::search_communes("Pa")
+  result <- nemetonShiny:::search_communes("Pa")
   expect_equal(nrow(result), 0)
   expect_true("code_insee" %in% names(result))
   expect_true("nom" %in% names(result))
@@ -165,17 +165,17 @@ test_that("search_communes returns empty for short query", {
   expect_true("label" %in% names(result))
 })
 test_that("search_communes returns empty for empty query", {
-  result <- nemeton:::search_communes("")
+  result <- nemetonShiny:::search_communes("")
   expect_equal(nrow(result), 0)
 })
 
 test_that("search_communes returns empty for single character query", {
-  result <- nemeton:::search_communes("P")
+  result <- nemetonShiny:::search_communes("P")
   expect_equal(nrow(result), 0)
 })
 
 test_that("search_communes returns empty for two character query", {
-  result <- nemeton:::search_communes("Pa")
+  result <- nemetonShiny:::search_communes("Pa")
   expect_equal(nrow(result), 0)
 })
 
@@ -210,7 +210,7 @@ test_that("search_communes parses API response correctly", {
     .package = "httr2"
   )
 
-  result <- nemeton:::search_communes("Paris", limit = 5)
+  result <- nemetonShiny:::search_communes("Paris", limit = 5)
 
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 2)
@@ -233,7 +233,7 @@ test_that("search_communes handles empty API response", {
     .package = "httr2"
   )
 
-  result <- nemeton:::search_communes("NonexistentCommune", limit = 5)
+  result <- nemetonShiny:::search_communes("NonexistentCommune", limit = 5)
 
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
@@ -251,7 +251,7 @@ test_that("search_communes handles API errors gracefully", {
 
   # Should not throw, should return empty data.frame with warning
   expect_warning(
-    result <- nemeton:::search_communes("Paris"),
+    result <- nemetonShiny:::search_communes("Paris"),
     regexp = "Error searching communes"
   )
 
@@ -279,7 +279,7 @@ test_that("search_communes with department filter returns data", {
     .package = "httr2"
   )
 
-  result <- nemeton:::search_communes("Saint", department = "73")
+  result <- nemetonShiny:::search_communes("Saint", department = "73")
 
   # Function should work with department parameter
   expect_s3_class(result, "data.frame")
@@ -314,12 +314,12 @@ test_that("search_communes without department filter returns data", {
   )
 
   # Test with empty string department
-  result <- nemeton:::search_communes("Saint", department = "")
+  result <- nemetonShiny:::search_communes("Saint", department = "")
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 2)
 
   # Test with NULL department
-  result <- nemeton:::search_communes("Saint", department = NULL)
+  result <- nemetonShiny:::search_communes("Saint", department = NULL)
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 2)
 })
@@ -330,21 +330,21 @@ test_that("search_communes without department filter returns data", {
 
 test_that("search_by_postal_code validates input format", {
   # Invalid postal code formats
-  result <- nemeton:::search_by_postal_code("123")
+  result <- nemetonShiny:::search_by_postal_code("123")
   expect_equal(nrow(result), 0)
 
-  result <- nemeton:::search_by_postal_code("ABCDE")
+  result <- nemetonShiny:::search_by_postal_code("ABCDE")
   expect_equal(nrow(result), 0)
 
-  result <- nemeton:::search_by_postal_code("123456")
+  result <- nemetonShiny:::search_by_postal_code("123456")
   expect_equal(nrow(result), 0)
 
-  result <- nemeton:::search_by_postal_code("7500")
+  result <- nemetonShiny:::search_by_postal_code("7500")
   expect_equal(nrow(result), 0)
 })
 
 test_that("search_by_postal_code returns correct structure for invalid input", {
-  result <- nemeton:::search_by_postal_code("ABC")
+  result <- nemetonShiny:::search_by_postal_code("ABC")
 
   expect_s3_class(result, "data.frame")
   expect_true("code_insee" %in% names(result))
@@ -374,7 +374,7 @@ test_that("search_by_postal_code parses API response correctly", {
     .package = "httr2"
   )
 
-  result <- nemeton:::search_by_postal_code("75001")
+  result <- nemetonShiny:::search_by_postal_code("75001")
 
   expect_equal(nrow(result), 1)
   expect_equal(result$code_insee[1], "75101")
@@ -408,7 +408,7 @@ test_that("search_by_postal_code handles multiple communes for same postal code"
     .package = "httr2"
   )
 
-  result <- nemeton:::search_by_postal_code("01100")
+  result <- nemetonShiny:::search_by_postal_code("01100")
 
   expect_equal(nrow(result), 2)
 })
@@ -424,7 +424,7 @@ test_that("search_by_postal_code handles API errors gracefully", {
   )
 
   expect_warning(
-    result <- nemeton:::search_by_postal_code("75001"),
+    result <- nemetonShiny:::search_by_postal_code("75001"),
     regexp = "Error searching by postal code"
   )
 
@@ -438,7 +438,7 @@ test_that("search_by_postal_code handles API errors gracefully", {
 test_that("get_commune_geometry validates INSEE code format", {
   # Invalid code returns NULL with warning
   expect_warning(
-    result <- nemeton:::get_commune_geometry("invalid"),
+    result <- nemetonShiny:::get_commune_geometry("invalid"),
     regexp = "Invalid"
   )
   expect_null(result)
@@ -446,7 +446,7 @@ test_that("get_commune_geometry validates INSEE code format", {
 
 test_that("get_commune_geometry validates short codes", {
   expect_warning(
-    result <- nemeton:::get_commune_geometry("1234"),
+    result <- nemetonShiny:::get_commune_geometry("1234"),
     regexp = "Invalid"
   )
   expect_null(result)
@@ -454,7 +454,7 @@ test_that("get_commune_geometry validates short codes", {
 
 test_that("get_commune_geometry validates long codes", {
   expect_warning(
-    result <- nemeton:::get_commune_geometry("123456"),
+    result <- nemetonShiny:::get_commune_geometry("123456"),
     regexp = "Invalid"
   )
   expect_null(result)
@@ -478,7 +478,7 @@ test_that("get_commune_geometry handles missing contour", {
   )
 
   expect_warning(
-    result <- nemeton:::get_commune_geometry("75056"),
+    result <- nemetonShiny:::get_commune_geometry("75056"),
     regexp = "No contour"
   )
   expect_null(result)
@@ -495,7 +495,7 @@ test_that("get_commune_geometry handles API errors gracefully", {
   )
 
   expect_warning(
-    result <- nemeton:::get_commune_geometry("75056"),
+    result <- nemetonShiny:::get_commune_geometry("75056"),
     regexp = "Error getting commune geometry"
   )
   expect_null(result)
@@ -523,7 +523,7 @@ test_that("get_commune_centroid parses response correctly", {
     .package = "httr2"
   )
 
-  result <- nemeton:::get_commune_centroid("75056")
+  result <- nemetonShiny:::get_commune_centroid("75056")
 
   expect_type(result, "double")
   expect_length(result, 2)
@@ -548,7 +548,7 @@ test_that("get_commune_centroid handles missing centre", {
     .package = "httr2"
   )
 
-  result <- nemeton:::get_commune_centroid("75056")
+  result <- nemetonShiny:::get_commune_centroid("75056")
   expect_null(result)
 })
 
@@ -570,7 +570,7 @@ test_that("get_commune_centroid handles missing coordinates", {
     .package = "httr2"
   )
 
-  result <- nemeton:::get_commune_centroid("75056")
+  result <- nemetonShiny:::get_commune_centroid("75056")
   expect_null(result)
 })
 
@@ -585,7 +585,7 @@ test_that("get_commune_centroid handles API errors gracefully", {
   )
 
   expect_warning(
-    result <- nemeton:::get_commune_centroid("75056"),
+    result <- nemetonShiny:::get_commune_centroid("75056"),
     regexp = "Error getting commune centroid"
   )
   expect_null(result)
@@ -596,12 +596,12 @@ test_that("get_commune_centroid handles API errors gracefully", {
 # ==============================================================================
 
 test_that("get_communes_in_department returns empty for NULL department", {
-  result <- nemeton:::get_communes_in_department(NULL)
+  result <- nemetonShiny:::get_communes_in_department(NULL)
   expect_equal(nrow(result), 0)
 })
 
 test_that("get_communes_in_department returns empty for empty department", {
-  result <- nemeton:::get_communes_in_department("")
+  result <- nemetonShiny:::get_communes_in_department("")
   expect_equal(nrow(result), 0)
 })
 
@@ -629,7 +629,7 @@ test_that("get_communes_in_department parses response correctly", {
     .package = "httr2"
   )
 
-  result <- nemeton:::get_communes_in_department("75")
+  result <- nemetonShiny:::get_communes_in_department("75")
 
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 2)
@@ -668,7 +668,7 @@ test_that("get_communes_in_department sorts results by name", {
     .package = "httr2"
   )
 
-  result <- nemeton:::get_communes_in_department("01")
+  result <- nemetonShiny:::get_communes_in_department("01")
 
   # Should be sorted: Aville, Middleton, Zebourg
   expect_equal(result$nom[1], "Aville")
@@ -695,7 +695,7 @@ test_that("get_communes_in_department handles empty postal codes", {
     .package = "httr2"
   )
 
-  result <- nemeton:::get_communes_in_department("975")
+  result <- nemetonShiny:::get_communes_in_department("975")
 
   expect_equal(nrow(result), 1)
   expect_equal(result$code_postal[1], "")
@@ -712,7 +712,7 @@ test_that("get_communes_in_department handles empty API response", {
     .package = "httr2"
   )
 
-  result <- nemeton:::get_communes_in_department("99")
+  result <- nemetonShiny:::get_communes_in_department("99")
 
   expect_equal(nrow(result), 0)
 })
@@ -728,7 +728,7 @@ test_that("get_communes_in_department handles network errors", {
   )
 
   expect_warning(
-    result <- nemeton:::get_communes_in_department("75"),
+    result <- nemetonShiny:::get_communes_in_department("75"),
     regexp = "Error getting communes"
   )
 
@@ -748,7 +748,7 @@ test_that("get_communes_in_department handles timeout errors", {
   )
 
   expect_warning(
-    result <- nemeton:::get_communes_in_department("75"),
+    result <- nemetonShiny:::get_communes_in_department("75"),
     regexp = "Error getting communes"
   )
 
@@ -767,7 +767,7 @@ test_that("get_communes_in_department handles curl errors", {
   )
 
   expect_warning(
-    result <- nemeton:::get_communes_in_department("75"),
+    result <- nemetonShiny:::get_communes_in_department("75"),
     regexp = "Error getting communes"
   )
 
@@ -785,7 +785,7 @@ test_that("get_communes_in_department handles non-network errors", {
   )
 
   expect_warning(
-    result <- nemeton:::get_communes_in_department("75"),
+    result <- nemetonShiny:::get_communes_in_department("75"),
     regexp = "Error getting communes"
   )
 
@@ -801,7 +801,7 @@ test_that("search_communes returns correct structure with real API", {
   skip_if_offline()
   skip_on_cran()
 
-  result <- nemeton:::search_communes("Paris", limit = 5)
+  result <- nemetonShiny:::search_communes("Paris", limit = 5)
 
   if (nrow(result) > 0) {
     expect_true("code_insee" %in% names(result))
@@ -816,7 +816,7 @@ test_that("search_communes finds Paris with real API", {
   skip_if_offline()
   skip_on_cran()
 
-  result <- nemeton:::search_communes("Paris", limit = 20)
+  result <- nemetonShiny:::search_communes("Paris", limit = 20)
 
   if (nrow(result) > 0) {
     # Paris should be in results
@@ -833,7 +833,7 @@ test_that("get_commune_geometry returns sf object with real API", {
   skip_if_not_installed("sf")
 
   # Use Paris as test case (stable)
-  geom <- nemeton:::get_commune_geometry("75056")
+  geom <- nemetonShiny:::get_commune_geometry("75056")
 
   if (!is.null(geom)) {
     expect_s3_class(geom, "sf")
@@ -845,7 +845,7 @@ test_that("get_communes_in_department filters correctly with real API", {
   skip_if_offline()
   skip_on_cran()
 
-  result <- nemeton:::get_communes_in_department("75")
+  result <- nemetonShiny:::get_communes_in_department("75")
 
   if (nrow(result) > 0) {
     # All should be Paris arrondissements
@@ -857,7 +857,7 @@ test_that("search_by_postal_code works with real API", {
   skip_if_offline()
   skip_on_cran()
 
-  result <- nemeton:::search_by_postal_code("75001")
+  result <- nemetonShiny:::search_by_postal_code("75001")
 
   if (nrow(result) > 0) {
     expect_true(any(grepl("Paris", result$nom)))
@@ -868,7 +868,7 @@ test_that("get_commune_centroid returns coordinates with real API", {
   skip_if_offline()
   skip_on_cran()
 
-  result <- nemeton:::get_commune_centroid("75056")
+  result <- nemetonShiny:::get_commune_centroid("75056")
 
   if (!is.null(result)) {
     expect_length(result, 2)

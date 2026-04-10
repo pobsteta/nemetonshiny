@@ -170,7 +170,7 @@ app_ui <- function(request) {
 #' @noRd
 app_add_external_resources <- function() {
   # Add resource path for static files (www folder)
-  www_path <- system.file("app/www", package = "nemeton")
+  www_path <- system.file("app/www", package = "nemetonShiny")
   if (www_path != "") {
     shiny::addResourcePath("www", www_path)
   }

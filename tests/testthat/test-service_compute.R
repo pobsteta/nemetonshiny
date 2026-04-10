@@ -6,7 +6,7 @@
 # ==============================================================================
 
 test_that("DATA_SOURCES contains required raster sources", {
-  ds <- nemeton:::DATA_SOURCES
+  ds <- nemetonShiny:::DATA_SOURCES
 
   expect_type(ds, "list")
   expect_true("rasters" %in% names(ds))
@@ -27,7 +27,7 @@ test_that("DATA_SOURCES contains required raster sources", {
 })
 
 test_that("DATA_SOURCES contains required vector sources", {
-  ds <- nemeton:::DATA_SOURCES
+  ds <- nemetonShiny:::DATA_SOURCES
 
   vectors <- ds$vectors
   expect_true("protected_areas" %in% names(vectors))
@@ -45,7 +45,7 @@ test_that("DATA_SOURCES contains required vector sources", {
 })
 
 test_that("DATA_SOURCES contains point cloud sources", {
-  ds <- nemeton:::DATA_SOURCES
+  ds <- nemetonShiny:::DATA_SOURCES
 
   expect_true("point_clouds" %in% names(ds))
   pc <- ds$point_clouds
@@ -60,7 +60,7 @@ test_that("DATA_SOURCES contains point cloud sources", {
 # ==============================================================================
 
 test_that("COMPUTE_STATUS contains all expected states", {
-  status <- nemeton:::COMPUTE_STATUS
+  status <- nemetonShiny:::COMPUTE_STATUS
 
   expect_type(status, "list")
   expect_equal(status$PENDING, "pending")
@@ -77,7 +77,7 @@ test_that("COMPUTE_STATUS contains all expected states", {
 
 test_that("get_global_cache_dir returns valid directory path", {
   # Temporarily mock rappdirs if available
-  cache_dir <- nemeton:::get_global_cache_dir()
+  cache_dir <- nemetonShiny:::get_global_cache_dir()
 
   expect_type(cache_dir, "character")
   expect_true(nchar(cache_dir) > 0)
@@ -87,7 +87,7 @@ test_that("get_global_cache_dir returns valid directory path", {
 
 test_that("get_global_cache_dir creates directory if missing", {
   # The function creates the directory if it doesn't exist
-  cache_dir <- nemeton:::get_global_cache_dir()
+  cache_dir <- nemetonShiny:::get_global_cache_dir()
   expect_true(dir.exists(cache_dir))
 })
 
@@ -96,7 +96,7 @@ test_that("get_global_cache_dir creates directory if missing", {
 # ==============================================================================
 
 test_that("list_available_indicators returns all indicator names", {
-  indicators <- nemeton:::list_available_indicators()
+  indicators <- nemetonShiny:::list_available_indicators()
 
   expect_type(indicators, "character")
   expect_true(length(indicators) > 0)
@@ -115,7 +115,7 @@ test_that("list_available_indicators returns all indicator names", {
 })
 
 test_that("list_available_indicators returns no duplicates", {
-  indicators <- nemeton:::list_available_indicators()
+  indicators <- nemetonShiny:::list_available_indicators()
   expect_equal(length(indicators), length(unique(indicators)))
 })
 
@@ -133,11 +133,11 @@ test_that("init_compute_state creates proper state structure", {
     get_project_path = function(id) NULL,
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     {
-      state <- nemeton:::init_compute_state("test_project", c("indicateur_c1_biomasse", "indicateur_c2_ndvi"))
+      state <- nemetonShiny:::init_compute_state("test_project", c("indicateur_c1_biomasse", "indicateur_c2_ndvi"))
 
       expect_type(state, "list")
       expect_equal(state$project_id, "test_project")
-      expect_equal(state$status, nemeton:::COMPUTE_STATUS$PENDING)
+      expect_equal(state$status, nemetonShiny:::COMPUTE_STATUS$PENDING)
       expect_equal(state$phase, "init")
       expect_equal(state$progress, 0)
       expect_equal(state$indicators_total, 2)
@@ -158,9 +158,9 @@ test_that("init_compute_state expands 'all' to full indicator list", {
     get_project_path = function(id) NULL,
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     {
-      state <- nemeton:::init_compute_state("test_project", "all")
+      state <- nemetonShiny:::init_compute_state("test_project", "all")
 
-      all_indicators <- nemeton:::list_available_indicators()
+      all_indicators <- nemetonShiny:::list_available_indicators()
       expect_equal(state$indicators_total, length(all_indicators))
     }
   )
@@ -176,7 +176,7 @@ test_that("init_compute_state handles resume with existing progress", {
       )
     },
     {
-      state <- nemeton:::init_compute_state(
+      state <- nemetonShiny:::init_compute_state(
         "test_project",
         c("indicateur_c1_biomasse", "indicateur_c2_ndvi", "indicateur_w1_reseau")
       )
@@ -199,7 +199,7 @@ test_that("init_compute_state handles resume with existing progress", {
 test_that("normalize_indicator scales indicateur_c1_biomasse correctly", {
   # indicateur_c1_biomasse has ref_max = 150 tC/ha
   values <- c(0, 75, 150, 200)
-  normalized <- nemeton:::normalize_indicator("indicateur_c1_biomasse", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_c1_biomasse", values)
 
   expect_equal(normalized[1], 0)
 
@@ -211,7 +211,7 @@ test_that("normalize_indicator scales indicateur_c1_biomasse correctly", {
 test_that("normalize_indicator handles NDVI special case", {
   # indicateur_c2_ndvi: 0-1 scale -> 0-100
   values <- c(0, 0.5, 1, 1.5)
-  normalized <- nemeton:::normalize_indicator("indicateur_c2_ndvi", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_c2_ndvi", values)
 
   expect_equal(normalized[1], 0)
   expect_equal(normalized[2], 50)
@@ -222,7 +222,7 @@ test_that("normalize_indicator handles NDVI special case", {
 test_that("normalize_indicator handles TWI special case", {
   # indicateur_w3_humidite: [2.5, 4.5] -> [0, 100]
   values <- c(2.5, 3.5, 4.5, 5.5)
-  normalized <- nemeton:::normalize_indicator("indicateur_w3_humidite", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_w3_humidite", values)
 
   expect_equal(normalized[1], 0)
   expect_equal(normalized[2], 50)
@@ -233,7 +233,7 @@ test_that("normalize_indicator handles TWI special case", {
 test_that("normalize_indicator handles distance indicators (inverse)", {
   # indicateur_s1_routes: 0m -> 100, 2000m -> 0
   values <- c(0, 1000, 2000, 3000)
-  normalized <- nemeton:::normalize_indicator("indicateur_s1_routes", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_s1_routes", values)
 
   expect_equal(normalized[1], 100)
   expect_equal(normalized[2], 50)
@@ -244,7 +244,7 @@ test_that("normalize_indicator handles distance indicators (inverse)", {
 test_that("normalize_indicator clamps 0-100 indicators", {
   # Indicators already 0-100 should just be clamped
   values <- c(-10, 50, 110)
-  normalized <- nemeton:::normalize_indicator("indicateur_b1_protection", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_b1_protection", values)
 
   expect_equal(normalized[1], 0)
   expect_equal(normalized[2], 50)
@@ -260,7 +260,7 @@ test_that("start_computation fails for missing project", {
     get_project_path = function(id) NULL,
     {
       expect_error(
-        nemeton:::start_computation("nonexistent_project"),
+        nemetonShiny:::start_computation("nonexistent_project"),
         regexp = "Project not found"
       )
     }
@@ -281,7 +281,7 @@ test_that("start_computation fails for project without parcels", {
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),
     {
-      result <- nemeton:::start_computation("test_project", indicators = "indicateur_c1_biomasse")
+      result <- nemetonShiny:::start_computation("test_project", indicators = "indicateur_c1_biomasse")
 
       expect_false(result$success)
       expect_equal(result$state$status, "error")
@@ -342,7 +342,7 @@ test_that("start_computation calls progress_callback", {
     },
     save_indicators = function(project_id, results) TRUE,
     {
-      result <- nemeton:::start_computation(
+      result <- nemetonShiny:::start_computation(
         "test_project",
         indicators = "indicateur_c1_biomasse",
         progress_callback = progress_cb
@@ -383,7 +383,7 @@ test_that("download_layers_for_parcels creates cache directory", {
     download_vector_source = function(...) NULL,
     download_ign_lidar_hd = function(...) NULL,
     {
-      result <- nemeton:::download_layers_for_parcels(
+      result <- nemetonShiny:::download_layers_for_parcels(
         parcels = mock_parcels,
         project_path = project_dir,
         progress_callback = NULL
@@ -420,7 +420,7 @@ test_that("download_layers_for_parcels returns nemeton_layers structure", {
     download_vector_source = function(...) NULL,
     download_ign_lidar_hd = function(...) NULL,
     {
-      result <- nemeton:::download_layers_for_parcels(
+      result <- nemetonShiny:::download_layers_for_parcels(
         parcels = mock_parcels,
         project_path = project_dir
       )
@@ -462,7 +462,7 @@ test_that("compute_all_indicators handles empty indicator list", {
     load_indicators = function(id) NULL,
     is_cancelled = function(id) FALSE,
     {
-      result <- nemeton:::compute_all_indicators(
+      result <- nemetonShiny:::compute_all_indicators(
         parcels = mock_parcels,
         layers = mock_layers,
         indicators = character(0),
@@ -505,7 +505,7 @@ test_that("compute_all_indicators tracks progress correctly", {
     },
     save_indicators_incremental = function(...) TRUE,
     {
-      result <- nemeton:::compute_all_indicators(
+      result <- nemetonShiny:::compute_all_indicators(
         parcels = mock_parcels,
         layers = mock_layers,
         indicators = c("indicateur_c1_biomasse", "indicateur_c2_ndvi"),
@@ -549,7 +549,7 @@ test_that("compute_all_indicators handles indicator computation errors", {
     },
     save_indicators_incremental = function(...) TRUE,
     {
-      result <- suppressWarnings(nemeton:::compute_all_indicators(
+      result <- suppressWarnings(nemetonShiny:::compute_all_indicators(
         parcels = mock_parcels,
         layers = mock_layers,
         indicators = c("indicateur_c1_biomasse", "indicateur_c2_ndvi"),
@@ -593,7 +593,7 @@ test_that("compute_all_indicators respects cancellation", {
     },
     save_indicators_incremental = function(...) TRUE,
     {
-      result <- nemeton:::compute_all_indicators(
+      result <- nemetonShiny:::compute_all_indicators(
         parcels = mock_parcels,
         layers = mock_layers,
         indicators = c("indicateur_c1_biomasse", "indicateur_c2_ndvi", "indicateur_w1_reseau"),
@@ -634,7 +634,7 @@ test_that("save_indicators creates parquet file", {
     get_project_path = function(id) project_dir,
     update_project_metadata = function(id, updates) invisible(NULL),
     {
-      result <- nemeton:::save_indicators("test_project", mock_results)
+      result <- nemetonShiny:::save_indicators("test_project", mock_results)
 
       expect_true(result)
       expect_true(file.exists(file.path(data_dir, "indicators.parquet")))
@@ -654,7 +654,7 @@ test_that("load_indicators returns NULL for missing file", {
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      result <- nemeton:::load_indicators("test_project")
+      result <- nemetonShiny:::load_indicators("test_project")
       expect_null(result)
     }
   )
@@ -683,8 +683,8 @@ test_that("save_indicators and load_indicators roundtrip works", {
     get_project_path = function(id) project_dir,
     update_project_metadata = function(id, updates) invisible(NULL),
     {
-      nemeton:::save_indicators("test_project", mock_results)
-      loaded <- nemeton:::load_indicators("test_project")
+      nemetonShiny:::save_indicators("test_project", mock_results)
+      loaded <- nemetonShiny:::load_indicators("test_project")
 
       expect_s3_class(loaded, "data.frame")
       expect_equal(nrow(loaded), 2)
@@ -711,7 +711,7 @@ test_that("cancel_computation creates cancel file", {
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      nemeton:::cancel_computation("test_project")
+      nemetonShiny:::cancel_computation("test_project")
 
       cancel_file <- file.path(data_dir, "cancel_requested")
       expect_true(file.exists(cancel_file))
@@ -732,13 +732,13 @@ test_that("is_cancelled detects cancel file", {
     get_project_path = function(id) project_dir,
     {
       # Initially not cancelled
-      expect_false(nemeton:::is_cancelled("test_project"))
+      expect_false(nemetonShiny:::is_cancelled("test_project"))
 
       # Create cancel file
       writeLines("cancel", file.path(data_dir, "cancel_requested"))
 
       # Now cancelled
-      expect_true(nemeton:::is_cancelled("test_project"))
+      expect_true(nemetonShiny:::is_cancelled("test_project"))
     }
   )
 
@@ -760,7 +760,7 @@ test_that("clear_cancel removes cancel file", {
     {
       expect_true(file.exists(cancel_file))
 
-      nemeton:::clear_cancel("test_project")
+      nemetonShiny:::clear_cancel("test_project")
 
       expect_false(file.exists(cancel_file))
     }
@@ -799,7 +799,7 @@ test_that("save_progress_state creates JSON file", {
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      nemeton:::save_progress_state("test_project", state)
+      nemetonShiny:::save_progress_state("test_project", state)
 
       progress_file <- file.path(data_dir, "progress_state.json")
       expect_true(file.exists(progress_file))
@@ -824,7 +824,7 @@ test_that("read_progress_state returns NULL for missing file", {
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      result <- nemeton:::read_progress_state("test_project")
+      result <- nemetonShiny:::read_progress_state("test_project")
       expect_null(result)
     }
   )
@@ -849,7 +849,7 @@ test_that("read_progress_state returns saved state", {
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      result <- nemeton:::read_progress_state("test_project")
+      result <- nemetonShiny:::read_progress_state("test_project")
 
       expect_type(result, "list")
       expect_equal(result$project_id, "test_project")
@@ -880,7 +880,7 @@ test_that("clear_computation_cache removes cache files", {
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      result <- nemeton:::clear_computation_cache("test_project")
+      result <- nemetonShiny:::clear_computation_cache("test_project")
 
       expect_true(result)
       expect_false(file.exists(file.path(data_dir, "indicators.parquet")))
@@ -896,7 +896,7 @@ test_that("clear_computation_cache returns FALSE for invalid project", {
   with_mocked_bindings(
     get_project_path = function(id) NULL,
     {
-      result <- nemeton:::clear_computation_cache("nonexistent")
+      result <- nemetonShiny:::clear_computation_cache("nonexistent")
       expect_false(result)
     }
   )
@@ -916,7 +916,7 @@ test_that("get_computation_progress returns empty for new project", {
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      result <- nemeton:::get_computation_progress("test_project")
+      result <- nemetonShiny:::get_computation_progress("test_project")
 
       expect_type(result, "list")
       expect_equal(result$computed_indicators, character(0))
@@ -949,7 +949,7 @@ test_that("get_computation_progress reads existing progress", {
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      result <- nemeton:::get_computation_progress("test_project")
+      result <- nemetonShiny:::get_computation_progress("test_project")
 
       expect_equal(result$last_indicator, "indicateur_c2_ndvi")
       expect_equal(result$last_saved_at, "2026-01-01 12:00:00")
@@ -973,7 +973,7 @@ test_that("find_url_column finds URL columns", {
     geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
   )
 
-  result <- nemeton:::find_url_column(mock_sf)
+  result <- nemetonShiny:::find_url_column(mock_sf)
   expect_equal(result, "url_telechargement")
 })
 
@@ -986,7 +986,7 @@ test_that("find_url_column finds alternative URL columns", {
     geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
   )
 
-  result <- nemeton:::find_url_column(mock_sf)
+  result <- nemetonShiny:::find_url_column(mock_sf)
   expect_equal(result, "lien")
 })
 
@@ -999,7 +999,7 @@ test_that("find_url_column returns NULL when no URL column found", {
     geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
   )
 
-  result <- nemeton:::find_url_column(mock_sf)
+  result <- nemetonShiny:::find_url_column(mock_sf)
   expect_null(result)
 })
 
@@ -1009,7 +1009,7 @@ test_that("extract_tile_names extracts filenames from URLs", {
     "http://example.com/data/tile_002.tif"
   )
 
-  result <- nemeton:::extract_tile_names(urls, ".tif")
+  result <- nemetonShiny:::extract_tile_names(urls, ".tif")
 
   expect_equal(result[1], "tile_001.tif")
   expect_equal(result[2], "tile_002.tif")
@@ -1021,7 +1021,7 @@ test_that("extract_tile_names generates names for invalid URLs", {
     "http://example.com/download?id=456"
   )
 
-  result <- nemeton:::extract_tile_names(urls, ".tif")
+  result <- nemetonShiny:::extract_tile_names(urls, ".tif")
 
   expect_true(grepl("\\.tif$", result[1]))
   expect_true(grepl("\\.tif$", result[2]))
@@ -1032,7 +1032,7 @@ test_that("extract_tile_names generates names for invalid URLs", {
 # ==============================================================================
 
 test_that("DATA_SOURCES raster entries have valid structure", {
-  ds <- nemeton:::DATA_SOURCES
+  ds <- nemetonShiny:::DATA_SOURCES
 
   for (name in names(ds$rasters)) {
     raster <- ds$rasters[[name]]
@@ -1045,7 +1045,7 @@ test_that("DATA_SOURCES raster entries have valid structure", {
 })
 
 test_that("DATA_SOURCES vector entries have valid structure", {
-  ds <- nemeton:::DATA_SOURCES
+  ds <- nemetonShiny:::DATA_SOURCES
 
   for (name in names(ds$vectors)) {
     vector <- ds$vectors[[name]]
@@ -1058,7 +1058,7 @@ test_that("DATA_SOURCES vector entries have valid structure", {
 })
 
 test_that("DATA_SOURCES sources are recognized types", {
-  ds <- nemeton:::DATA_SOURCES
+  ds <- nemetonShiny:::DATA_SOURCES
   valid_raster_sources <- c("ign_irc", "ign_bd_alti", "oso", "ign_lidar_hd")
   valid_vector_sources <- c("inpn_wfs", "ign_bd_topo", "ign_bdforet")
 
@@ -1078,7 +1078,7 @@ test_that("DATA_SOURCES sources are recognized types", {
 })
 
 test_that("DATA_SOURCES LiDAR entries have product specification", {
-  ds <- nemeton:::DATA_SOURCES
+  ds <- nemetonShiny:::DATA_SOURCES
 
   # Check raster LiDAR entries
  for (name in names(ds$rasters)) {
@@ -1106,7 +1106,7 @@ test_that("DATA_SOURCES LiDAR entries have product specification", {
 # ==============================================================================
 
 test_that("resolve_raster_layer returns NULL for non-nemeton_layers object", {
-  result <- nemeton:::resolve_raster_layer(list(rasters = list()), "ndvi")
+  result <- nemetonShiny:::resolve_raster_layer(list(rasters = list()), "ndvi")
   expect_null(result)
 })
 
@@ -1116,7 +1116,7 @@ test_that("resolve_raster_layer returns NULL for missing layer", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::resolve_raster_layer(mock_layers, "nonexistent")
+  result <- nemetonShiny:::resolve_raster_layer(mock_layers, "nonexistent")
   expect_null(result)
 })
 
@@ -1138,7 +1138,7 @@ test_that("resolve_raster_layer returns SpatRaster directly", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::resolve_raster_layer(mock_layers, "ndvi")
+  result <- nemetonShiny:::resolve_raster_layer(mock_layers, "ndvi")
   expect_s4_class(result, "SpatRaster")
 })
 
@@ -1163,7 +1163,7 @@ test_that("resolve_raster_layer loads from path when entry is a list", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::resolve_raster_layer(mock_layers, "ndvi")
+  result <- nemetonShiny:::resolve_raster_layer(mock_layers, "ndvi")
   expect_s4_class(result, "SpatRaster")
 
   unlink(temp_file)
@@ -1187,12 +1187,12 @@ test_that("resolve_raster_layer returns object from list if available", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::resolve_raster_layer(mock_layers, "ndvi")
+  result <- nemetonShiny:::resolve_raster_layer(mock_layers, "ndvi")
   expect_s4_class(result, "SpatRaster")
 })
 
 test_that("resolve_vector_layer returns NULL for non-nemeton_layers object", {
-  result <- nemeton:::resolve_vector_layer(list(vectors = list()), "roads")
+  result <- nemetonShiny:::resolve_vector_layer(list(vectors = list()), "roads")
   expect_null(result)
 })
 
@@ -1202,7 +1202,7 @@ test_that("resolve_vector_layer returns NULL for missing layer", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::resolve_vector_layer(mock_layers, "nonexistent")
+  result <- nemetonShiny:::resolve_vector_layer(mock_layers, "nonexistent")
   expect_null(result)
 })
 
@@ -1227,7 +1227,7 @@ test_that("resolve_vector_layer returns sf directly", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::resolve_vector_layer(mock_layers, "roads")
+  result <- nemetonShiny:::resolve_vector_layer(mock_layers, "roads")
   expect_s3_class(result, "sf")
   expect_equal(nrow(result), 3)
 })
@@ -1256,7 +1256,7 @@ test_that("resolve_vector_layer loads from path when entry is a list", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::resolve_vector_layer(mock_layers, "roads")
+  result <- nemetonShiny:::resolve_vector_layer(mock_layers, "roads")
   expect_s3_class(result, "sf")
   expect_equal(nrow(result), 3)
 
@@ -1288,7 +1288,7 @@ test_that("get_dem_raster prefers lidar_mnt over dem", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::get_dem_raster(mock_layers)
+  result <- nemetonShiny:::get_dem_raster(mock_layers)
   expect_s4_class(result, "SpatRaster")
   # Should return lidar_mnt (higher values)
   expect_true(mean(terra::values(result), na.rm = TRUE) > 50)
@@ -1312,7 +1312,7 @@ test_that("get_dem_raster falls back to dem when lidar_mnt missing", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::get_dem_raster(mock_layers)
+  result <- nemetonShiny:::get_dem_raster(mock_layers)
   expect_s4_class(result, "SpatRaster")
 })
 
@@ -1322,7 +1322,7 @@ test_that("get_dem_raster returns NULL when no DEM available", {
     class = "nemeton_layers"
   )
 
-  result <- nemeton:::get_dem_raster(mock_layers)
+  result <- nemetonShiny:::get_dem_raster(mock_layers)
   expect_null(result)
 })
 
@@ -1347,7 +1347,7 @@ test_that("compute_single_indicator uses placeholder for unknown indicator", {
   )
 
   # Test with a completely non-existent indicator
-  result <- nemeton:::compute_single_indicator(
+  result <- nemetonShiny:::compute_single_indicator(
     "nonexistent_indicator_xyz",
     mock_parcels,
     mock_layers
@@ -1375,7 +1375,7 @@ test_that("compute_single_indicator returns placeholder for non-existent functio
   )
 
   # Test with a completely non-existent indicator - should fall through to placeholder
-  result <- nemeton:::compute_single_indicator(
+  result <- nemetonShiny:::compute_single_indicator(
     "placeholder_test_xyz",
     mock_parcels,
     mock_layers
@@ -1391,7 +1391,7 @@ test_that("compute_single_indicator returns placeholder for non-existent functio
 
 test_that("normalize_indicator handles NA values", {
   values <- c(0, NA, 75, 150)
-  normalized <- nemeton:::normalize_indicator("indicateur_c1_biomasse", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_c1_biomasse", values)
 
   expect_equal(normalized[1], 0)
   expect_true(is.na(normalized[2]))
@@ -1401,7 +1401,7 @@ test_that("normalize_indicator handles NA values", {
 
 test_that("normalize_indicator handles negative values", {
   values <- c(-50, 0, 50, 100)
-  normalized <- nemeton:::normalize_indicator("indicateur_c1_biomasse", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_c1_biomasse", values)
 
   # Negative values should be clamped to 0
   expect_equal(normalized[1], 0)
@@ -1411,7 +1411,7 @@ test_that("normalize_indicator handles negative values", {
 test_that("normalize_indicator handles indicateur_w1_reseau correctly", {
   # indicateur_w1_reseau: ref_max = 50 m/ha
   values <- c(0, 25, 50, 100)
-  normalized <- nemeton:::normalize_indicator("indicateur_w1_reseau", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_w1_reseau", values)
 
   expect_equal(normalized[1], 0)
   expect_equal(normalized[2], 50)
@@ -1422,7 +1422,7 @@ test_that("normalize_indicator handles indicateur_w1_reseau correctly", {
 test_that("normalize_indicator handles indicateur_w2_zones_humides correctly", {
   # indicateur_w2_zones_humides: ref_max = 5%
   values <- c(0, 2.5, 5, 10)
-  normalized <- nemeton:::normalize_indicator("indicateur_w2_zones_humides", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_w2_zones_humides", values)
 
   expect_equal(normalized[1], 0)
   expect_equal(normalized[2], 50)
@@ -1433,7 +1433,7 @@ test_that("normalize_indicator handles indicateur_w2_zones_humides correctly", {
 test_that("normalize_indicator handles indicateur_s2_bati inverse", {
   # indicateur_s2_bati: 0m -> 100, 2000m -> 0
   values <- c(0, 500, 1000, 2000, 4000)
-  normalized <- nemeton:::normalize_indicator("indicateur_s2_bati", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_s2_bati", values)
 
   expect_equal(normalized[1], 100)
   expect_equal(normalized[2], 75)
@@ -1445,7 +1445,7 @@ test_that("normalize_indicator handles indicateur_s2_bati inverse", {
 test_that("normalize_indicator handles indicateur_p1_volume correctly", {
   # indicateur_p1_volume: ref_max = 800 m3/ha
   values <- c(0, 400, 800, 1200)
-  normalized <- nemeton:::normalize_indicator("indicateur_p1_volume", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_p1_volume", values)
 
   expect_equal(normalized[1], 0)
   expect_equal(normalized[2], 50)
@@ -1456,7 +1456,7 @@ test_that("normalize_indicator handles indicateur_p1_volume correctly", {
 test_that("normalize_indicator handles indicateur_e1_bois_energie correctly", {
   # indicateur_e1_bois_energie: ref_max = 0.3 tep/ha/yr
   values <- c(0, 0.15, 0.3, 0.6)
-  normalized <- nemeton:::normalize_indicator("indicateur_e1_bois_energie", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_e1_bois_energie", values)
 
   expect_equal(normalized[1], 0)
   expect_equal(normalized[2], 50)
@@ -1467,7 +1467,7 @@ test_that("normalize_indicator handles indicateur_e1_bois_energie correctly", {
 test_that("normalize_indicator handles indicateur_e2_evitement correctly", {
   # indicateur_e2_evitement: ref_max = 0.75 tCO2/ha/yr
   values <- c(0, 0.375, 0.75, 1.5)
-  normalized <- nemeton:::normalize_indicator("indicateur_e2_evitement", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_e2_evitement", values)
 
   expect_equal(normalized[1], 0)
   expect_equal(normalized[2], 50)
@@ -1478,7 +1478,7 @@ test_that("normalize_indicator handles indicateur_e2_evitement correctly", {
 test_that("normalize_indicator passes through 0-100 indicators with clamping", {
   # indicateur_b1_protection already returns 0-100, just clamp
   values <- c(-20, 0, 50, 100, 150)
-  normalized <- nemeton:::normalize_indicator("indicateur_b1_protection", values)
+  normalized <- nemetonShiny:::normalize_indicator("indicateur_b1_protection", values)
 
   expect_equal(normalized[1], 0)
   expect_equal(normalized[2], 0)
@@ -1507,7 +1507,7 @@ test_that("download_raster_source returns cached file if exists", {
   terra::values(mock_raster) <- runif(100)
   terra::writeRaster(mock_raster, cache_file)
 
-  result <- nemeton:::download_raster_source(
+  result <- nemetonShiny:::download_raster_source(
     source_name = "ndvi",
     source_config = list(source = "ign_irc"),
     bbox = c(0, 0, 1, 1),
@@ -1525,7 +1525,7 @@ test_that("download_raster_source warns for unknown source", {
 
   # cli::cli_warn triggers a warning condition
   expect_warning(
-    result <- nemeton:::download_raster_source(
+    result <- nemetonShiny:::download_raster_source(
       source_name = "test",
       source_config = list(source = "unknown_source_xyz"),
       bbox = c(0, 0, 1, 1),
@@ -1562,7 +1562,7 @@ test_that("download_vector_source returns cached file if exists", {
   )
   sf::st_write(mock_sf, cache_file, quiet = TRUE)
 
-  result <- nemeton:::download_vector_source(
+  result <- nemetonShiny:::download_vector_source(
     source_name = "roads",
     source_config = list(source = "ign_bd_topo"),
     bbox = c(0, 0, 3, 3),
@@ -1581,7 +1581,7 @@ test_that("download_vector_source warns for unknown source", {
 
   # cli::cli_warn triggers a warning condition
   expect_warning(
-    result <- nemeton:::download_vector_source(
+    result <- nemetonShiny:::download_vector_source(
       source_name = "test",
       source_config = list(source = "unknown_source_xyz"),
       bbox = c(0, 0, 1, 1),
@@ -1604,7 +1604,7 @@ test_that("create_synthetic_ndvi creates valid raster", {
 
   temp_file <- tempfile(fileext = ".tif")
 
-  result <- nemeton:::create_synthetic_ndvi(
+  result <- nemetonShiny:::create_synthetic_ndvi(
     bbox = c(2.0, 48.0, 2.01, 48.01),
     cache_file = temp_file
   )
@@ -1640,7 +1640,7 @@ test_that("mosaic_lidar_tiles handles single tile", {
   terra::writeRaster(mock_raster, tile_file)
 
   output_file <- file.path(temp_dir, "mosaic.tif")
-  result <- nemeton:::mosaic_lidar_tiles(tile_file, output_file)
+  result <- nemetonShiny:::mosaic_lidar_tiles(tile_file, output_file)
 
   expect_s4_class(result, "SpatRaster")
   expect_true(file.exists(output_file))
@@ -1675,7 +1675,7 @@ test_that("mosaic_lidar_tiles handles multiple tiles", {
   terra::writeRaster(rast2, tile2)
 
   output_file <- file.path(temp_dir, "mosaic.tif")
-  result <- nemeton:::mosaic_lidar_tiles(c(tile1, tile2), output_file)
+  result <- nemetonShiny:::mosaic_lidar_tiles(c(tile1, tile2), output_file)
 
   expect_s4_class(result, "SpatRaster")
   expect_true(file.exists(output_file))
@@ -1695,7 +1695,7 @@ test_that("mosaic_lidar_tiles handles invalid file paths gracefully", {
   output_file <- file.path(temp_dir, "mosaic.tif")
 
   # Pass non-existent files - should return NULL or first tile attempt
-  result <- suppressWarnings(nemeton:::mosaic_lidar_tiles(
+  result <- suppressWarnings(nemetonShiny:::mosaic_lidar_tiles(
     c("nonexistent1.tif", "nonexistent2.tif"),
     output_file
   ))
@@ -1721,7 +1721,7 @@ test_that("query_lidar_wfs constructs correct URL", {
   # This is tested indirectly through the function behavior
   # When network is unavailable, it should return NULL
   result <- tryCatch(
-    nemeton:::query_lidar_wfs(wfs_layer, bbox),
+    nemetonShiny:::query_lidar_wfs(wfs_layer, bbox),
     error = function(e) NULL
   )
 
@@ -1737,7 +1737,7 @@ test_that("download_lidar_tile returns NULL for invalid URL", {
   temp_file <- tempfile(fileext = ".tif")
 
   # Pass an invalid/unreachable URL
-  result <- nemeton:::download_lidar_tile(
+  result <- nemetonShiny:::download_lidar_tile(
     "http://invalid-url-that-does-not-exist-xyz123.com/tile.tif",
     temp_file
   )
@@ -1752,7 +1752,7 @@ test_that("download_lidar_tile uses retry logic", {
   temp_file <- tempfile(fileext = ".tif")
 
   # The function should retry and eventually return NULL for bad URL
-  result <- nemeton:::download_lidar_tile(
+  result <- nemetonShiny:::download_lidar_tile(
     "http://localhost:99999/nonexistent.tif",  # Should fail
     temp_file
   )
@@ -1777,7 +1777,7 @@ test_that("init_compute_state handles list input for computed_indicators", {
       )
     },
     {
-      state <- nemeton:::init_compute_state(
+      state <- nemetonShiny:::init_compute_state(
         "test_project",
         c("indicateur_c1_biomasse", "indicateur_c2_ndvi", "indicateur_w1_reseau")
       )
@@ -1798,7 +1798,7 @@ test_that("init_compute_state handles empty list for computed_indicators", {
       )
     },
     {
-      state <- nemeton:::init_compute_state(
+      state <- nemetonShiny:::init_compute_state(
         "test_project",
         c("indicateur_c1_biomasse", "indicateur_c2_ndvi")
       )
@@ -1820,7 +1820,7 @@ test_that("init_compute_state handles NULL computed_indicators", {
       )
     },
     {
-      state <- nemeton:::init_compute_state(
+      state <- nemetonShiny:::init_compute_state(
         "test_project",
         c("indicateur_c1_biomasse", "indicateur_c2_ndvi")
       )
@@ -1839,7 +1839,7 @@ test_that("save_indicators_incremental returns FALSE for missing project", {
   with_mocked_bindings(
     get_project_path = function(id) NULL,
     {
-      result <- nemeton:::save_indicators_incremental(
+      result <- nemetonShiny:::save_indicators_incremental(
         "nonexistent",
         data.frame(id = 1),
         "indicateur_c1_biomasse"
@@ -1867,7 +1867,7 @@ test_that("save_indicators_incremental handles data.frame without geometry", {
     get_project_path = function(id) project_dir,
     {
       # Should warn but not error
-      result <- suppressWarnings(nemeton:::save_indicators_incremental(
+      result <- suppressWarnings(nemetonShiny:::save_indicators_incremental(
         "test_project",
         mock_results,
         "indicateur_c1_biomasse"
@@ -1900,7 +1900,7 @@ test_that("save_indicators_incremental handles sf object correctly", {
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      result <- nemeton:::save_indicators_incremental(
+      result <- nemetonShiny:::save_indicators_incremental(
         "test_project",
         mock_results,
         "indicateur_c1_biomasse"
@@ -1923,7 +1923,7 @@ test_that("save_progress_state handles missing project path", {
     get_project_path = function(id) NULL,
     {
       # Should return silently without error
-      result <- nemeton:::save_progress_state("nonexistent", list())
+      result <- nemetonShiny:::save_progress_state("nonexistent", list())
       expect_null(result)
     }
   )
@@ -1937,7 +1937,7 @@ test_that("save_progress_state handles nonexistent directory", {
     get_project_path = function(id) temp_dir,
     {
       # Should return silently (dir doesn't exist)
-      result <- nemeton:::save_progress_state("test", list(project_id = "test"))
+      result <- nemetonShiny:::save_progress_state("test", list(project_id = "test"))
       expect_null(result)
     }
   )
@@ -1967,7 +1967,7 @@ test_that("save_progress_state creates data directory if needed", {
   with_mocked_bindings(
     get_project_path = function(id) temp_dir,
     {
-      nemeton:::save_progress_state("test", state)
+      nemetonShiny:::save_progress_state("test", state)
       expect_true(dir.exists(file.path(temp_dir, "data")))
       expect_true(file.exists(file.path(temp_dir, "data", "progress_state.json")))
     }
@@ -2001,7 +2001,7 @@ test_that("start_computation handles empty parcels file", {
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),
     {
-      result <- nemeton:::start_computation("test_project", indicators = "indicateur_c1_biomasse")
+      result <- nemetonShiny:::start_computation("test_project", indicators = "indicateur_c1_biomasse")
 
       expect_false(result$success)
       expect_equal(result$state$status, "error")
@@ -2046,7 +2046,7 @@ test_that("start_computation handles cancellation during download phase", {
     },
     is_cancelled = function(id) TRUE,  # Always cancelled
     {
-      result <- nemeton:::start_computation("test_project", indicators = "indicateur_c1_biomasse")
+      result <- nemetonShiny:::start_computation("test_project", indicators = "indicateur_c1_biomasse")
 
       expect_false(result$success)
       expect_equal(result$state$status, "cancelled")
@@ -2087,7 +2087,7 @@ test_that("download_layers_for_parcels collects download warnings", {
     download_vector_source = function(...) NULL,
     download_ign_lidar_hd = function(...) NULL,
     {
-      result <- nemeton:::download_layers_for_parcels(
+      result <- nemetonShiny:::download_layers_for_parcels(
         parcels = mock_parcels,
         project_path = project_dir,
         progress_callback = NULL
@@ -2137,7 +2137,7 @@ test_that("compute_all_indicators skips already computed indicators with values"
     },
     save_indicators_incremental = function(...) TRUE,
     {
-      result <- nemeton:::compute_all_indicators(
+      result <- nemetonShiny:::compute_all_indicators(
         parcels = mock_parcels,
         layers = mock_layers,
         indicators = c("indicateur_c1_biomasse", "indicateur_c2_ndvi"),
@@ -2183,7 +2183,7 @@ test_that("compute_all_indicators recomputes all-zero indicators", {
     },
     save_indicators_incremental = function(...) TRUE,
     {
-      result <- nemeton:::compute_all_indicators(
+      result <- nemetonShiny:::compute_all_indicators(
         parcels = mock_parcels,
         layers = mock_layers,
         indicators = c("indicateur_c1_biomasse"),
@@ -2210,7 +2210,7 @@ test_that("find_url_column finds case-insensitive matches", {
     geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
   )
 
-  result <- nemeton:::find_url_column(mock_sf)
+  result <- nemetonShiny:::find_url_column(mock_sf)
   expect_equal(result, "URL_TELECHARGEMENT")
 })
 
@@ -2222,7 +2222,7 @@ test_that("find_url_column finds partial matches", {
     geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
   )
 
-  result <- nemeton:::find_url_column(mock_sf)
+  result <- nemetonShiny:::find_url_column(mock_sf)
   expect_equal(result, "download_link")
 })
 
@@ -2232,7 +2232,7 @@ test_that("find_url_column finds partial matches", {
 
 test_that("get_global_cache_dir uses fallback without rappdirs", {
   # This test verifies the fallback behavior
-  cache_dir <- nemeton:::get_global_cache_dir()
+  cache_dir <- nemetonShiny:::get_global_cache_dir()
 
   expect_type(cache_dir, "character")
   expect_true(nchar(cache_dir) > 0)
@@ -2245,52 +2245,52 @@ test_that("get_global_cache_dir uses fallback without rappdirs", {
 
 test_that("normalize_indicator scales indicateur_c1_biomasse correctly", {
   # ref_max = 150: 75 tC/ha -> 50%
-  result <- nemeton:::normalize_indicator("indicateur_c1_biomasse", c(0, 75, 150, 300))
+  result <- nemetonShiny:::normalize_indicator("indicateur_c1_biomasse", c(0, 75, 150, 300))
   expect_equal(result, c(0, 50, 100, 100))
 })
 
 test_that("normalize_indicator scales indicateur_c2_ndvi 0-1 to 0-100", {
-  result <- nemeton:::normalize_indicator("indicateur_c2_ndvi", c(0, 0.5, 1.0))
+  result <- nemetonShiny:::normalize_indicator("indicateur_c2_ndvi", c(0, 0.5, 1.0))
   expect_equal(result, c(0, 50, 100))
 })
 
 test_that("normalize_indicator scales indicateur_w3_humidite with offset", {
   # TWI: (values - 2.5) / 2 * 100
-  result <- nemeton:::normalize_indicator("indicateur_w3_humidite", c(2.5, 3.5, 4.5))
+  result <- nemetonShiny:::normalize_indicator("indicateur_w3_humidite", c(2.5, 3.5, 4.5))
   expect_equal(result, c(0, 50, 100))
 })
 
 test_that("normalize_indicator inverts indicateur_s1_routes distance", {
   # 0m -> 100, 2000m -> 0
-  result <- nemeton:::normalize_indicator("indicateur_s1_routes", c(0, 1000, 2000))
+  result <- nemetonShiny:::normalize_indicator("indicateur_s1_routes", c(0, 1000, 2000))
   expect_equal(result, c(100, 50, 0))
 })
 
 test_that("normalize_indicator inverts indicateur_s2_bati distance", {
-  result <- nemeton:::normalize_indicator("indicateur_s2_bati", c(0, 1000, 2000))
+  result <- nemetonShiny:::normalize_indicator("indicateur_s2_bati", c(0, 1000, 2000))
   expect_equal(result, c(100, 50, 0))
 })
 
 test_that("normalize_indicator clamps already-normalized indicators", {
   # biodiversity indicators return 0-100, just clamped
-  result <- nemeton:::normalize_indicator("indicateur_b1_protection", c(-10, 50, 110))
+  result <- nemetonShiny:::normalize_indicator("indicateur_b1_protection", c(-10, 50, 110))
   expect_equal(result, c(0, 50, 100))
 })
 
 test_that("normalize_indicator scales indicateur_w1_reseau correctly", {
   # ref_max = 50: 25 m/ha -> 50
-  result <- nemeton:::normalize_indicator("indicateur_w1_reseau", c(0, 25, 50, 100))
+  result <- nemetonShiny:::normalize_indicator("indicateur_w1_reseau", c(0, 25, 50, 100))
   expect_equal(result, c(0, 50, 100, 100))
 })
 
 test_that("normalize_indicator scales indicateur_p1_volume correctly", {
   # ref_max = 800: 400 m3/ha -> 50
-  result <- nemeton:::normalize_indicator("indicateur_p1_volume", c(0, 400, 800))
+  result <- nemetonShiny:::normalize_indicator("indicateur_p1_volume", c(0, 400, 800))
   expect_equal(result, c(0, 50, 100))
 })
 
 test_that("normalize_indicator handles NA values", {
-  result <- nemeton:::normalize_indicator("indicateur_c1_biomasse", c(NA, 75, NA))
+  result <- nemetonShiny:::normalize_indicator("indicateur_c1_biomasse", c(NA, 75, NA))
   expect_true(is.na(result[1]))
   expect_equal(result[2], 50)
   expect_true(is.na(result[3]))
@@ -2298,11 +2298,11 @@ test_that("normalize_indicator handles NA values", {
 
 test_that("normalize_indicator scales energy indicators", {
   # indicateur_e1_bois_energie ref_max = 0.3
-  result <- nemeton:::normalize_indicator("indicateur_e1_bois_energie", c(0, 0.15, 0.3))
+  result <- nemetonShiny:::normalize_indicator("indicateur_e1_bois_energie", c(0, 0.15, 0.3))
   expect_equal(result, c(0, 50, 100))
 
   # indicateur_e2_evitement ref_max = 0.75
-  result2 <- nemeton:::normalize_indicator("indicateur_e2_evitement", c(0, 0.375, 0.75))
+  result2 <- nemetonShiny:::normalize_indicator("indicateur_e2_evitement", c(0, 0.375, 0.75))
   expect_equal(result2, c(0, 50, 100))
 })
 
@@ -2334,10 +2334,10 @@ test_that("cancel_computation creates marker file", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
-    nemeton:::cancel_computation("test_cancel_proj")
+    nemetonShiny:::cancel_computation("test_cancel_proj")
 
     cancel_file <- file.path(data_dir, "cancel_requested")
     expect_true(file.exists(cancel_file))
@@ -2353,15 +2353,15 @@ test_that("is_cancelled detects cancel marker", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
     # Not cancelled yet
-    expect_false(nemeton:::is_cancelled("test_cancel2"))
+    expect_false(nemetonShiny:::is_cancelled("test_cancel2"))
 
     # Cancel
-    nemeton:::cancel_computation("test_cancel2")
-    expect_true(nemeton:::is_cancelled("test_cancel2"))
+    nemetonShiny:::cancel_computation("test_cancel2")
+    expect_true(nemetonShiny:::is_cancelled("test_cancel2"))
   })
 })
 
@@ -2374,43 +2374,43 @@ test_that("clear_cancel removes marker file", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
-    nemeton:::cancel_computation("test_clear")
-    expect_true(nemeton:::is_cancelled("test_clear"))
+    nemetonShiny:::cancel_computation("test_clear")
+    expect_true(nemetonShiny:::is_cancelled("test_clear"))
 
-    nemeton:::clear_cancel("test_clear")
-    expect_false(nemeton:::is_cancelled("test_clear"))
+    nemetonShiny:::clear_cancel("test_clear")
+    expect_false(nemetonShiny:::is_cancelled("test_clear"))
   })
 })
 
 test_that("cancel_computation handles NULL project path gracefully", {
   local_mocked_bindings(
     get_project_path = function(project_id) NULL,
-    .package = "nemeton"
+    .package = "nemetonShiny"
   )
 
   # Should not error
-  expect_no_error(nemeton:::cancel_computation("nonexistent"))
+  expect_no_error(nemetonShiny:::cancel_computation("nonexistent"))
 })
 
 test_that("is_cancelled returns FALSE for NULL project path", {
   local_mocked_bindings(
     get_project_path = function(project_id) NULL,
-    .package = "nemeton"
+    .package = "nemetonShiny"
   )
 
-  expect_false(nemeton:::is_cancelled("nonexistent"))
+  expect_false(nemetonShiny:::is_cancelled("nonexistent"))
 })
 
 test_that("clear_cancel handles NULL project path gracefully", {
   local_mocked_bindings(
     get_project_path = function(project_id) NULL,
-    .package = "nemeton"
+    .package = "nemetonShiny"
   )
 
-  expect_no_error(nemeton:::clear_cancel("nonexistent"))
+  expect_no_error(nemetonShiny:::clear_cancel("nonexistent"))
 })
 
 # ==============================================================================
@@ -2425,7 +2425,7 @@ test_that("save_progress_state and read_progress_state roundtrip", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
     state <- list(
@@ -2445,14 +2445,14 @@ test_that("save_progress_state and read_progress_state roundtrip", {
       completed_at = NULL
     )
 
-    nemeton:::save_progress_state("test_progress", state)
+    nemetonShiny:::save_progress_state("test_progress", state)
 
     # Verify file exists
     progress_file <- file.path(proj_dir, "data", "progress_state.json")
     expect_true(file.exists(progress_file))
 
     # Read back
-    result <- nemeton:::read_progress_state("test_progress")
+    result <- nemetonShiny:::read_progress_state("test_progress")
     expect_type(result, "list")
     expect_equal(result$status, "computing")
     expect_equal(result$progress, 5)
@@ -2470,7 +2470,7 @@ test_that("save_progress_state creates data directory if missing", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
     state <- list(
@@ -2489,7 +2489,7 @@ test_that("save_progress_state creates data directory if missing", {
       completed_at = NULL
     )
 
-    nemeton:::save_progress_state("test_progress_nodata", state)
+    nemetonShiny:::save_progress_state("test_progress_nodata", state)
 
     data_dir <- file.path(proj_dir, "data")
     expect_true(dir.exists(data_dir))
@@ -2500,21 +2500,21 @@ test_that("save_progress_state creates data directory if missing", {
 test_that("save_progress_state handles NULL project path", {
   local_mocked_bindings(
     get_project_path = function(project_id) NULL,
-    .package = "nemeton"
+    .package = "nemetonShiny"
   )
 
   state <- list(status = "computing")
   # Should return silently without error
-  expect_no_error(nemeton:::save_progress_state("nonexistent", state))
+  expect_no_error(nemetonShiny:::save_progress_state("nonexistent", state))
 })
 
 test_that("read_progress_state returns NULL for non-existent project", {
   local_mocked_bindings(
     get_project_path = function(project_id) NULL,
-    .package = "nemeton"
+    .package = "nemetonShiny"
   )
 
-  result <- nemeton:::read_progress_state("nonexistent_project")
+  result <- nemetonShiny:::read_progress_state("nonexistent_project")
   expect_null(result)
 })
 
@@ -2526,10 +2526,10 @@ test_that("read_progress_state returns NULL when progress file missing", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
-    result <- nemeton:::read_progress_state("test_no_progress")
+    result <- nemetonShiny:::read_progress_state("test_no_progress")
     expect_null(result)
   })
 })
@@ -2546,10 +2546,10 @@ test_that("read_progress_state handles corrupted JSON", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
-    result <- nemeton:::read_progress_state("test_corrupt")
+    result <- nemetonShiny:::read_progress_state("test_corrupt")
     expect_null(result)
   })
 })
@@ -2566,10 +2566,10 @@ test_that("get_computation_progress returns empty list for new project", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
-    result <- nemeton:::get_computation_progress("test_new_proj")
+    result <- nemetonShiny:::get_computation_progress("test_new_proj")
     expect_type(result, "list")
     expect_equal(result$computed_indicators, character(0))
     expect_null(result$last_indicator)
@@ -2586,7 +2586,7 @@ test_that("get_computation_progress reads saved progress", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
     # Write progress JSON directly
@@ -2598,7 +2598,7 @@ test_that("get_computation_progress reads saved progress", {
     jsonlite::write_json(progress, file.path(data_dir, "compute_progress.json"),
                          auto_unbox = TRUE, pretty = TRUE)
 
-    result <- nemeton:::get_computation_progress("test_comp_progress")
+    result <- nemetonShiny:::get_computation_progress("test_comp_progress")
     expect_type(result, "list")
     expect_true("computed_indicators" %in% names(result))
     expect_equal(length(result$computed_indicators), 2)
@@ -2608,10 +2608,10 @@ test_that("get_computation_progress reads saved progress", {
 test_that("get_computation_progress returns NULL for NULL project path", {
   local_mocked_bindings(
     get_project_path = function(project_id) NULL,
-    .package = "nemeton"
+    .package = "nemetonShiny"
   )
 
-  result <- nemeton:::get_computation_progress("nonexistent")
+  result <- nemetonShiny:::get_computation_progress("nonexistent")
   expect_null(result)
 })
 
@@ -2627,10 +2627,10 @@ test_that("get_computation_progress handles corrupted JSON gracefully", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
-    result <- nemeton:::get_computation_progress("test_corrupt_progress")
+    result <- nemetonShiny:::get_computation_progress("test_corrupt_progress")
     expect_type(result, "list")
     expect_equal(result$computed_indicators, character(0))
   })
@@ -2653,7 +2653,7 @@ test_that("find_url_column finds standard column names", {
     )
   )
 
-  result <- nemeton:::find_url_column(df)
+  result <- nemetonShiny:::find_url_column(df)
   expect_equal(result, "url")
 })
 
@@ -2670,7 +2670,7 @@ test_that("find_url_column finds url_telechargement column", {
     )
   )
 
-  result <- nemeton:::find_url_column(df)
+  result <- nemetonShiny:::find_url_column(df)
   expect_equal(result, "url_telechargement")
 })
 
@@ -2686,7 +2686,7 @@ test_that("find_url_column finds lien_telechargement column", {
     )
   )
 
-  result <- nemeton:::find_url_column(df)
+  result <- nemetonShiny:::find_url_column(df)
   expect_equal(result, "lien_telechargement")
 })
 
@@ -2703,7 +2703,7 @@ test_that("find_url_column returns NULL when no URL column exists", {
     )
   )
 
-  result <- nemeton:::find_url_column(df)
+  result <- nemetonShiny:::find_url_column(df)
   expect_null(result)
 })
 
@@ -2719,7 +2719,7 @@ test_that("find_url_column uses case-insensitive matching", {
     )
   )
 
-  result <- nemeton:::find_url_column(df)
+  result <- nemetonShiny:::find_url_column(df)
   # Should find via case-insensitive match
   expect_equal(result, "URL")
 })
@@ -2736,7 +2736,7 @@ test_that("find_url_column uses partial match on url-like column names", {
     )
   )
 
-  result <- nemeton:::find_url_column(df)
+  result <- nemetonShiny:::find_url_column(df)
   # Should find via partial match on "url"
   expect_equal(result, "download_link_url")
 })
@@ -2750,7 +2750,7 @@ test_that("extract_tile_names extracts filenames from URLs", {
     "https://storage.com/tiles/tile_001.laz",
     "https://storage.com/tiles/tile_002.laz"
   )
-  result <- nemeton:::extract_tile_names(urls, ".laz")
+  result <- nemetonShiny:::extract_tile_names(urls, ".laz")
   expect_type(result, "character")
   expect_length(result, 2)
   expect_equal(result, c("tile_001.laz", "tile_002.laz"))
@@ -2761,7 +2761,7 @@ test_that("extract_tile_names generates names for URLs without extension", {
     "https://storage.com/api/download?id=123",
     "https://storage.com/api/download?id=456"
   )
-  result <- nemeton:::extract_tile_names(urls, ".tif")
+  result <- nemetonShiny:::extract_tile_names(urls, ".tif")
   expect_type(result, "character")
   expect_length(result, 2)
   # URLs without .tif extension should get generated names
@@ -2774,7 +2774,7 @@ test_that("extract_tile_names handles mixed URLs", {
     "https://storage.com/tiles/real_file.tif",
     "https://api.example.com/get?tile=abc"
   )
-  result <- nemeton:::extract_tile_names(urls, ".tif")
+  result <- nemetonShiny:::extract_tile_names(urls, ".tif")
   expect_length(result, 2)
   expect_equal(result[1], "real_file.tif")
   # Second one should be generated
@@ -2784,7 +2784,7 @@ test_that("extract_tile_names handles mixed URLs", {
 test_that("extract_tile_names handles list input (from JSON parsing)", {
   # WFS GeoJSON parsing may return urls as a list
   urls <- list("https://storage.com/tile_a.laz", "https://storage.com/tile_b.laz")
-  result <- nemeton:::extract_tile_names(urls, ".laz")
+  result <- nemetonShiny:::extract_tile_names(urls, ".laz")
   expect_type(result, "character")
   expect_length(result, 2)
 })
@@ -2794,7 +2794,7 @@ test_that("extract_tile_names handles copc.laz extension", {
     "https://storage.com/tiles/lidar_001.copc.laz",
     "https://storage.com/tiles/lidar_002.copc.laz"
   )
-  result <- nemeton:::extract_tile_names(urls, ".copc.laz")
+  result <- nemetonShiny:::extract_tile_names(urls, ".copc.laz")
   expect_length(result, 2)
   expect_equal(result, c("lidar_001.copc.laz", "lidar_002.copc.laz"))
 })
@@ -2810,7 +2810,7 @@ test_that("create_synthetic_ndvi creates a raster file", {
     bbox <- c(xmin = 2.0, ymin = 47.0, xmax = 2.01, ymax = 47.01)
     cache_file <- file.path(getwd(), "test_ndvi.tif")
 
-    result <- nemeton:::create_synthetic_ndvi(bbox, cache_file)
+    result <- nemetonShiny:::create_synthetic_ndvi(bbox, cache_file)
 
     expect_true(inherits(result, "SpatRaster"))
     expect_true(file.exists(cache_file))
@@ -2828,7 +2828,7 @@ test_that("create_synthetic_ndvi raster has ndvi layer name", {
     bbox <- c(xmin = 2.0, ymin = 47.0, xmax = 2.005, ymax = 47.005)
     cache_file <- file.path(getwd(), "test_ndvi2.tif")
 
-    result <- nemeton:::create_synthetic_ndvi(bbox, cache_file)
+    result <- nemetonShiny:::create_synthetic_ndvi(bbox, cache_file)
 
     expect_equal(names(result), "ndvi")
   })
@@ -2841,7 +2841,7 @@ test_that("create_synthetic_ndvi uses EPSG:4326 CRS", {
     bbox <- c(xmin = 2.0, ymin = 47.0, xmax = 2.005, ymax = 47.005)
     cache_file <- file.path(getwd(), "test_ndvi3.tif")
 
-    result <- nemeton:::create_synthetic_ndvi(bbox, cache_file)
+    result <- nemetonShiny:::create_synthetic_ndvi(bbox, cache_file)
 
     crs_desc <- terra::crs(result, describe = TRUE)
     expect_equal(crs_desc$code, "4326")
@@ -2859,7 +2859,7 @@ test_that("create_synthetic_ndvi overwrites existing cache file", {
     writeLines("dummy", cache_file)
     expect_true(file.exists(cache_file))
 
-    result <- nemeton:::create_synthetic_ndvi(bbox, cache_file)
+    result <- nemetonShiny:::create_synthetic_ndvi(bbox, cache_file)
 
     expect_true(inherits(result, "SpatRaster"))
     # File should now be a valid raster, not the dummy content
@@ -2873,23 +2873,23 @@ test_that("create_synthetic_ndvi overwrites existing cache file", {
 # ==============================================================================
 
 test_that("get_global_cache_dir returns a path string", {
-  result <- nemeton:::get_global_cache_dir()
+  result <- nemetonShiny:::get_global_cache_dir()
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
 })
 
 test_that("get_global_cache_dir creates directory if needed", {
-  result <- nemeton:::get_global_cache_dir()
+  result <- nemetonShiny:::get_global_cache_dir()
   expect_true(dir.exists(result))
 })
 
 test_that("get_global_cache_dir includes nemeton in path", {
-  result <- nemeton:::get_global_cache_dir()
+  result <- nemetonShiny:::get_global_cache_dir()
   expect_true(grepl("nemeton", result))
 })
 
 test_that("get_global_cache_dir includes cache subdirectory", {
-  result <- nemeton:::get_global_cache_dir()
+  result <- nemetonShiny:::get_global_cache_dir()
   expect_true(grepl("cache", result))
 })
 
@@ -2900,11 +2900,11 @@ test_that("get_global_cache_dir includes cache subdirectory", {
 test_that("clear_computation_cache handles non-existent project gracefully", {
   local_mocked_bindings(
     get_project_path = function(project_id) NULL,
-    .package = "nemeton"
+    .package = "nemetonShiny"
   )
 
   # Should return FALSE for non-existent project
-  result <- nemeton:::clear_computation_cache("nonexistent_clear")
+  result <- nemetonShiny:::clear_computation_cache("nonexistent_clear")
   expect_false(result)
 })
 
@@ -2921,10 +2921,10 @@ test_that("clear_computation_cache removes progress files", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
-    result <- nemeton:::clear_computation_cache("test_clear_cache")
+    result <- nemetonShiny:::clear_computation_cache("test_clear_cache")
     expect_true(result)
     expect_false(file.exists(file.path(data_dir, "progress_state.json")))
     expect_false(file.exists(file.path(data_dir, "compute_progress.json")))
@@ -2940,11 +2940,11 @@ test_that("clear_computation_cache returns TRUE when no files exist", {
 
     local_mocked_bindings(
       get_project_path = function(project_id) proj_dir,
-      .package = "nemeton"
+      .package = "nemetonShiny"
     )
 
     # No files to remove - should still succeed
-    result <- nemeton:::clear_computation_cache("test_empty_clear")
+    result <- nemetonShiny:::clear_computation_cache("test_empty_clear")
     expect_true(result)
   })
 })
@@ -2972,7 +2972,7 @@ test_that("download_ign_dem handles numeric bbox input", {
       resp_status = function(resp) 500L,
       .package = "httr2",
       {
-        result <- suppressWarnings(nemeton:::download_ign_dem(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_dem(bbox, cache_file))
         expect_null(result)
       }
     )
@@ -2995,7 +2995,7 @@ test_that("download_ign_dem handles sf bbox input", {
       },
       .package = "httr2",
       {
-        result <- suppressWarnings(nemeton:::download_ign_dem(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_dem(bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3017,7 +3017,7 @@ test_that("download_ign_dem calculates image dimensions correctly", {
       },
       .package = "httr2",
       {
-        result <- suppressWarnings(nemeton:::download_ign_dem(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_dem(bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3042,7 +3042,7 @@ test_that("download_ign_irc_ndvi falls back to synthetic NDVI on HTTP error", {
       },
       .package = "httr2",
       {
-        result <- suppressWarnings(nemeton:::download_ign_irc_ndvi(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_irc_ndvi(bbox, cache_file))
         # Should fall back to synthetic NDVI
         expect_true(inherits(result, "SpatRaster"))
         expect_equal(names(result), "ndvi")
@@ -3066,7 +3066,7 @@ test_that("download_ign_irc_ndvi handles sf bbox input", {
       },
       .package = "httr2",
       {
-        result <- suppressWarnings(nemeton:::download_ign_irc_ndvi(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_irc_ndvi(bbox, cache_file))
         # Should fall back to synthetic NDVI
         expect_true(inherits(result, "SpatRaster"))
       }
@@ -3095,7 +3095,7 @@ test_that("download_ign_irc_ndvi uses cached IRC if available", {
     )
     terra::writeRaster(irc, irc_cache, overwrite = TRUE)
 
-    result <- nemeton:::download_ign_irc_ndvi(bbox, cache_file)
+    result <- nemetonShiny:::download_ign_irc_ndvi(bbox, cache_file)
     expect_true(inherits(result, "SpatRaster"))
     expect_equal(names(result), "ndvi")
     expect_true(file.exists(cache_file))
@@ -3117,7 +3117,7 @@ test_that("download_ign_irc_ndvi handles large bbox with dimension limiting", {
       },
       .package = "httr2",
       {
-        result <- suppressWarnings(nemeton:::download_ign_irc_ndvi(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_irc_ndvi(bbox, cache_file))
         expect_true(inherits(result, "SpatRaster"))
       }
     )
@@ -3144,7 +3144,7 @@ test_that("download_inpn_wfs returns NULL when happign not available", {
       },
       .package = "happign",
       {
-        result <- suppressWarnings(nemeton:::download_inpn_wfs("protected_areas", bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_inpn_wfs("protected_areas", bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3167,7 +3167,7 @@ test_that("download_inpn_wfs handles unknown layer name", {
       .package = "happign",
       {
         expect_warning(
-          result <- nemeton:::download_inpn_wfs("unknown_layer", bbox, cache_file),
+          result <- nemetonShiny:::download_inpn_wfs("unknown_layer", bbox, cache_file),
           regexp = "Unknown INPN layer"
         )
         expect_null(result)
@@ -3190,7 +3190,7 @@ test_that("download_inpn_wfs returns NULL when WFS metadata fails", {
       },
       .package = "happign",
       {
-        result <- suppressWarnings(nemeton:::download_inpn_wfs("protected_areas", bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_inpn_wfs("protected_areas", bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3213,7 +3213,7 @@ test_that("download_inpn_wfs returns NULL when no patrinat layers match", {
       },
       .package = "happign",
       {
-        result <- nemeton:::download_inpn_wfs("protected_areas", bbox, cache_file)
+        result <- nemetonShiny:::download_inpn_wfs("protected_areas", bbox, cache_file)
         expect_null(result)
       }
     )
@@ -3239,7 +3239,7 @@ test_that("download_inpn_wfs returns NULL when no features found", {
       },
       .package = "happign",
       {
-        result <- nemeton:::download_inpn_wfs("protected_areas", bbox, cache_file)
+        result <- nemetonShiny:::download_inpn_wfs("protected_areas", bbox, cache_file)
         expect_null(result)
       }
     )
@@ -3274,7 +3274,7 @@ test_that("download_inpn_wfs retrieves and combines features", {
       },
       .package = "happign",
       {
-        result <- nemeton:::download_inpn_wfs("protected_areas", bbox, cache_file)
+        result <- nemetonShiny:::download_inpn_wfs("protected_areas", bbox, cache_file)
         expect_true(inherits(result, "sf"))
         expect_true(nrow(result) > 0)
         expect_true("zone_id" %in% names(result))
@@ -3303,7 +3303,7 @@ test_that("download_inpn_wfs handles sf bbox input", {
       get_wfs = function(...) NULL,
       .package = "happign",
       {
-        result <- nemeton:::download_inpn_wfs("wetlands", bbox, cache_file)
+        result <- nemetonShiny:::download_inpn_wfs("wetlands", bbox, cache_file)
         expect_null(result)
       }
     )
@@ -3328,7 +3328,7 @@ test_that("download_ign_bdtopo returns NULL when happign errors", {
       },
       .package = "happign",
       {
-        result <- suppressWarnings(nemeton:::download_ign_bdtopo("roads", bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_bdtopo("roads", bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3344,7 +3344,7 @@ test_that("download_ign_bdtopo warns for unknown layer", {
     bbox <- c(2.0, 48.0, 2.01, 48.01)
 
     expect_warning(
-      result <- nemeton:::download_ign_bdtopo("unknown_layer", bbox, cache_file),
+      result <- nemetonShiny:::download_ign_bdtopo("unknown_layer", bbox, cache_file),
       regexp = "Unknown BD TOPO layer"
     )
     expect_null(result)
@@ -3373,7 +3373,7 @@ test_that("download_ign_bdtopo downloads and caches roads", {
       },
       .package = "happign",
       {
-        result <- nemeton:::download_ign_bdtopo("roads", bbox, cache_file)
+        result <- nemetonShiny:::download_ign_bdtopo("roads", bbox, cache_file)
         expect_true(inherits(result, "sf"))
         expect_equal(nrow(result), 2)
         expect_true(file.exists(cache_file))
@@ -3398,7 +3398,7 @@ test_that("download_ign_bdtopo returns NULL when get_wfs returns empty", {
       },
       .package = "happign",
       {
-        result <- nemeton:::download_ign_bdtopo("buildings", bbox, cache_file)
+        result <- nemetonShiny:::download_ign_bdtopo("buildings", bbox, cache_file)
         expect_null(result)
       }
     )
@@ -3419,7 +3419,7 @@ test_that("download_ign_bdtopo handles HTTP error gracefully", {
       },
       .package = "happign",
       {
-        result <- suppressWarnings(nemeton:::download_ign_bdtopo("indicateur_w1_reseau", bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_bdtopo("indicateur_w1_reseau", bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3448,7 +3448,7 @@ test_that("download_ign_bdforet handles non-200 HTTP status", {
       resp_status = function(resp) 503L,
       .package = "httr2",
       {
-        result <- suppressWarnings(nemeton:::download_ign_bdforet(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_bdforet(bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3474,7 +3474,7 @@ test_that("download_ign_bdforet handles empty GeoJSON response", {
       resp_body_string = function(resp, ...) "{}",
       .package = "httr2",
       {
-        result <- nemeton:::download_ign_bdforet(bbox, cache_file)
+        result <- nemetonShiny:::download_ign_bdforet(bbox, cache_file)
         expect_null(result)
       }
     )
@@ -3496,7 +3496,7 @@ test_that("download_ign_bdforet handles sf bbox input", {
       },
       .package = "httr2",
       {
-        result <- suppressWarnings(nemeton:::download_ign_bdforet(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_ign_bdforet(bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3544,7 +3544,7 @@ test_that("download_ign_bdforet downloads and caches features", {
       resp_body_string = function(resp, ...) geojson_text,
       .package = "httr2",
       {
-        result <- nemeton:::download_ign_bdforet(bbox, cache_file)
+        result <- nemetonShiny:::download_ign_bdforet(bbox, cache_file)
         expect_true(inherits(result, "sf"))
         expect_equal(nrow(result), 2)
         expect_true(file.exists(cache_file))
@@ -3574,7 +3574,7 @@ test_that("download_oso returns NULL when oso_path missing after download", {
         invisible(NULL)
       },
       {
-        result <- suppressWarnings(nemeton:::download_oso(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_oso(bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3596,7 +3596,7 @@ test_that("download_oso handles sf bbox input", {
         invisible(NULL)
       },
       {
-        result <- suppressWarnings(nemeton:::download_oso(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_oso(bbox, cache_file))
         expect_null(result)
       }
     )
@@ -3628,7 +3628,7 @@ test_that("download_oso crops existing global OSO to bbox", {
     with_mocked_bindings(
       get_global_cache_dir = function() getwd(),
       {
-        result <- suppressWarnings(nemeton:::download_oso(bbox, cache_file))
+        result <- suppressWarnings(nemetonShiny:::download_oso(bbox, cache_file))
         # The crop may fail if bbox does not overlap with mock extent
         # but the function should handle this gracefully
         expect_true(is.null(result) || inherits(result, "SpatRaster"))
@@ -3658,7 +3658,7 @@ test_that("download_oso_global detects existing tar archive", {
       },
       .package = "curl",
       {
-        result <- suppressWarnings(nemeton:::download_oso_global(oso_path, global_cache))
+        result <- suppressWarnings(nemetonShiny:::download_oso_global(oso_path, global_cache))
         expect_null(result)
         expect_false(file.exists(oso_path))
       }
@@ -3679,7 +3679,7 @@ test_that("download_oso_global handles curl download failure", {
       },
       .package = "curl",
       {
-        result <- suppressWarnings(nemeton:::download_oso_global(oso_path, global_cache))
+        result <- suppressWarnings(nemetonShiny:::download_oso_global(oso_path, global_cache))
         expect_null(result)
         expect_false(file.exists(oso_path))
       }
@@ -3708,7 +3708,7 @@ test_that("download_ign_lidar_hd returns cached mosaic if available", {
     terra::values(mock_raster) <- runif(100, 0, 30)
     terra::writeRaster(mock_raster, mosaic_file)
 
-    result <- nemeton:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
+    result <- nemetonShiny:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
     expect_s4_class(result, "SpatRaster")
   })
 })
@@ -3724,7 +3724,7 @@ test_that("download_ign_lidar_hd returns cached COPC tiles if available", {
     writeLines("fake copc data", file.path(copc_dir, "tile1.copc.laz"))
     writeLines("fake copc data", file.path(copc_dir, "tile2.copc.laz"))
 
-    result <- nemeton:::download_ign_lidar_hd(bbox, cache_dir, product = "nuage")
+    result <- nemetonShiny:::download_ign_lidar_hd(bbox, cache_dir, product = "nuage")
     expect_type(result, "character")
     expect_equal(length(result), 2)
   })
@@ -3740,7 +3740,7 @@ test_that("download_ign_lidar_hd returns NULL when no tiles found", {
     with_mocked_bindings(
       query_lidar_wfs = function(...) NULL,
       {
-        result <- nemeton:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
+        result <- nemetonShiny:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
         expect_null(result)
       }
     )
@@ -3767,7 +3767,7 @@ test_that("download_ign_lidar_hd returns NULL when tiles have no URL column", {
         )
       },
       {
-        result <- nemeton:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
+        result <- nemetonShiny:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
         expect_null(result)
       }
     )
@@ -3801,7 +3801,7 @@ test_that("download_ign_lidar_hd downloads and mosaics tiles", {
         return(dest_file)
       },
       {
-        result <- nemeton:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
+        result <- nemetonShiny:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
         expect_true(inherits(result, "SpatRaster"))
       }
     )
@@ -3824,7 +3824,7 @@ test_that("download_ign_lidar_hd handles all tile download failures", {
       },
       download_lidar_tile = function(url, dest_file) NULL,
       {
-        result <- nemeton:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
+        result <- nemetonShiny:::download_ign_lidar_hd(bbox, cache_dir, product = "mnh")
         expect_null(result)
       }
     )
@@ -3842,7 +3842,7 @@ test_that("download_ign_lidar_hd handles sf bbox input", {
     with_mocked_bindings(
       query_lidar_wfs = function(...) NULL,
       {
-        result <- nemeton:::download_ign_lidar_hd(bbox, cache_dir, product = "mnt")
+        result <- nemetonShiny:::download_ign_lidar_hd(bbox, cache_dir, product = "mnt")
         expect_null(result)
       }
     )
@@ -3870,7 +3870,7 @@ test_that("download_ign_lidar_hd reports progress callback", {
       },
       download_lidar_tile = function(url, dest_file) NULL,
       {
-        result <- nemeton:::download_ign_lidar_hd(
+        result <- nemetonShiny:::download_ign_lidar_hd(
           bbox, cache_dir, product = "mnh",
           progress_callback = progress_cb
         )
@@ -3900,7 +3900,7 @@ test_that("query_lidar_wfs returns NULL on non-200 status", {
     resp_status = function(resp) 500L,
     .package = "httr2",
     {
-      result <- suppressWarnings(nemeton:::query_lidar_wfs("IGNF_MNH-LIDAR-HD:dalle", bbox))
+      result <- suppressWarnings(nemetonShiny:::query_lidar_wfs("IGNF_MNH-LIDAR-HD:dalle", bbox))
       expect_null(result)
     }
   )
@@ -3923,7 +3923,7 @@ test_that("query_lidar_wfs returns NULL for empty GeoJSON", {
     resp_body_string = function(resp, ...) "{}",
     .package = "httr2",
     {
-      result <- nemeton:::query_lidar_wfs("IGNF_MNH-LIDAR-HD:dalle", bbox)
+      result <- nemetonShiny:::query_lidar_wfs("IGNF_MNH-LIDAR-HD:dalle", bbox)
       expect_null(result)
     }
   )
@@ -3941,7 +3941,7 @@ test_that("query_lidar_wfs handles HTTP error gracefully", {
     },
     .package = "httr2",
     {
-      result <- suppressWarnings(nemeton:::query_lidar_wfs("IGNF_MNH-LIDAR-HD:dalle", bbox))
+      result <- suppressWarnings(nemetonShiny:::query_lidar_wfs("IGNF_MNH-LIDAR-HD:dalle", bbox))
       expect_null(result)
     }
   )
@@ -3979,7 +3979,7 @@ test_that("query_lidar_wfs parses valid GeoJSON response", {
     resp_body_string = function(resp, ...) geojson_text,
     .package = "httr2",
     {
-      result <- nemeton:::query_lidar_wfs("IGNF_MNH-LIDAR-HD:dalle", bbox)
+      result <- nemetonShiny:::query_lidar_wfs("IGNF_MNH-LIDAR-HD:dalle", bbox)
       expect_true(inherits(result, "sf"))
       expect_equal(nrow(result), 1)
     }
@@ -4017,7 +4017,7 @@ test_that("download_layers_for_parcels reports progress callbacks", {
     download_vector_source = function(...) NULL,
     download_ign_lidar_hd = function(...) NULL,
     {
-      result <- nemeton:::download_layers_for_parcels(
+      result <- nemetonShiny:::download_layers_for_parcels(
         parcels = mock_parcels,
         project_path = project_dir,
         progress_callback = progress_cb
@@ -4055,7 +4055,7 @@ test_that("download_layers_for_parcels generates vector download warnings", {
     download_vector_source = function(...) NULL,
     download_ign_lidar_hd = function(...) NULL,
     {
-      result <- nemeton:::download_layers_for_parcels(
+      result <- nemetonShiny:::download_layers_for_parcels(
         parcels = mock_parcels,
         project_path = project_dir,
         progress_callback = NULL
@@ -4095,7 +4095,7 @@ test_that("download_layers_for_parcels handles raster download errors", {
     {
       # Should not crash even when raster downloads throw errors
       expect_warning(
-        result <- nemeton:::download_layers_for_parcels(
+        result <- nemetonShiny:::download_layers_for_parcels(
           parcels = mock_parcels,
           project_path = project_dir,
           progress_callback = NULL
@@ -4134,7 +4134,7 @@ test_that("compute_single_indicator dispatches to existing function", {
 
   # Test that a known indicator can be dispatched (even with no data)
   result <- tryCatch(
-    nemeton:::compute_single_indicator("indicateur_c1_biomasse", mock_parcels, mock_layers),
+    nemetonShiny:::compute_single_indicator("indicateur_c1_biomasse", mock_parcels, mock_layers),
     error = function(e) NULL
   )
 
@@ -4165,7 +4165,7 @@ test_that("compute_single_indicator handles multi-parcel input", {
   )
 
   # Placeholder fallback should return one value per parcel
-  result <- nemeton:::compute_single_indicator(
+  result <- nemetonShiny:::compute_single_indicator(
     "placeholder_test_multi",
     mock_parcels,
     mock_layers
@@ -4218,7 +4218,7 @@ test_that("start_computation succeeds with all mocked functions", {
     save_indicators = function(project_id, results) TRUE,
     update_project_metadata = function(id, updates) invisible(NULL),
     {
-      result <- nemeton:::start_computation(
+      result <- nemetonShiny:::start_computation(
         "test_project",
         indicators = "indicateur_c1_biomasse"
       )
@@ -4270,7 +4270,7 @@ test_that("start_computation uses provided project_path", {
     save_indicators = function(project_id, results) TRUE,
     update_project_metadata = function(id, updates) invisible(NULL),
     {
-      result <- nemeton:::start_computation(
+      result <- nemetonShiny:::start_computation(
         "test_project",
         indicators = "indicateur_c1_biomasse",
         project_path = project_dir
@@ -4330,7 +4330,7 @@ test_that("start_computation propagates download warnings", {
     save_indicators = function(project_id, results) TRUE,
     update_project_metadata = function(id, updates) invisible(NULL),
     {
-      result <- nemeton:::start_computation(
+      result <- nemetonShiny:::start_computation(
         "test_project",
         indicators = "indicateur_c1_biomasse",
         progress_callback = progress_cb
@@ -4388,7 +4388,7 @@ test_that("start_computation handles cancellation after compute phase", {
       parcels
     },
     {
-      result <- nemeton:::start_computation(
+      result <- nemetonShiny:::start_computation(
         "test_project",
         indicators = "indicateur_c1_biomasse"
       )
@@ -4441,7 +4441,7 @@ test_that("start_computation with use_file_progress writes progress file", {
     save_indicators = function(project_id, results) TRUE,
     update_project_metadata = function(id, updates) invisible(NULL),
     {
-      result <- nemeton:::start_computation(
+      result <- nemetonShiny:::start_computation(
         "test_project",
         indicators = "indicateur_c1_biomasse",
         use_file_progress = TRUE
@@ -4486,7 +4486,7 @@ test_that("save_indicators_incremental tracks computed indicators in progress", 
   with_mocked_bindings(
     get_project_path = function(id) project_dir,
     {
-      result <- nemeton:::save_indicators_incremental(
+      result <- nemetonShiny:::save_indicators_incremental(
         "test_project",
         mock_results,
         "indicateur_c2_ndvi"
@@ -4526,14 +4526,14 @@ test_that("save_indicators_incremental handles write error gracefully", {
   # Use local_mocked_bindings for nemeton package, then separately mock arrow
   local_mocked_bindings(
     get_project_path = function(id) project_dir,
-    .package = "nemeton"
+    .package = "nemetonShiny"
   )
 
   with_mocked_bindings(
     write_parquet = function(...) stop("Mocked write failure"),
     .package = "arrow",
     {
-      result <- suppressWarnings(nemeton:::save_indicators_incremental(
+      result <- suppressWarnings(nemetonShiny:::save_indicators_incremental(
         "test_project",
         mock_results,
         "indicateur_c1_biomasse"
@@ -4587,7 +4587,7 @@ test_that("compute_all_indicators handles NULL existing results with mismatched 
     },
     save_indicators_incremental = function(...) TRUE,
     {
-      result <- nemeton:::compute_all_indicators(
+      result <- nemetonShiny:::compute_all_indicators(
         parcels = mock_parcels,
         layers = mock_layers,
         indicators = c("indicateur_c1_biomasse"),
@@ -4634,7 +4634,7 @@ test_that("compute_all_indicators reports skipped indicators in progress", {
     },
     save_indicators_incremental = function(...) TRUE,
     {
-      result <- nemeton:::compute_all_indicators(
+      result <- nemetonShiny:::compute_all_indicators(
         parcels = mock_parcels,
         layers = mock_layers,
         indicators = c("indicateur_c1_biomasse", "indicateur_c2_ndvi"),
@@ -4671,7 +4671,7 @@ test_that("download_raster_source dispatches to download_ign_irc_ndvi", {
         terra::rast(cache_file)
       },
       {
-        result <- nemeton:::download_raster_source(
+        result <- nemetonShiny:::download_raster_source(
           source_name = "ndvi",
           source_config = list(source = "ign_irc"),
           bbox = c(0, 0, 1, 1),
@@ -4698,7 +4698,7 @@ test_that("download_raster_source dispatches to download_ign_dem", {
         terra::rast(cache_file)
       },
       {
-        result <- nemeton:::download_raster_source(
+        result <- nemetonShiny:::download_raster_source(
           source_name = "dem",
           source_config = list(source = "ign_bd_alti"),
           bbox = c(0, 0, 1, 1),
@@ -4725,7 +4725,7 @@ test_that("download_raster_source dispatches to download_oso", {
         terra::rast(cache_file)
       },
       {
-        result <- nemeton:::download_raster_source(
+        result <- nemetonShiny:::download_raster_source(
           source_name = "forest_cover",
           source_config = list(source = "oso"),
           bbox = c(0, 0, 1, 1),
@@ -4751,7 +4751,7 @@ test_that("download_raster_source dispatches to download_ign_lidar_hd", {
         r
       },
       {
-        result <- nemeton:::download_raster_source(
+        result <- nemetonShiny:::download_raster_source(
           source_name = "lidar_mnh",
           source_config = list(source = "ign_lidar_hd", product = "mnh"),
           bbox = c(0, 0, 1, 1),
@@ -4785,7 +4785,7 @@ test_that("download_vector_source dispatches to download_inpn_wfs", {
         mock_sf
       },
       {
-        result <- nemeton:::download_vector_source(
+        result <- nemetonShiny:::download_vector_source(
           source_name = "protected_areas",
           source_config = list(source = "inpn_wfs"),
           bbox = c(0, 0, 1, 1),
@@ -4816,7 +4816,7 @@ test_that("download_vector_source dispatches to download_ign_bdtopo", {
         mock_sf
       },
       {
-        result <- nemeton:::download_vector_source(
+        result <- nemetonShiny:::download_vector_source(
           source_name = "roads",
           source_config = list(source = "ign_bd_topo"),
           bbox = c(0, 0, 1, 1),
@@ -4848,7 +4848,7 @@ test_that("download_vector_source dispatches to download_ign_bdforet", {
         mock_sf
       },
       {
-        result <- nemeton:::download_vector_source(
+        result <- nemetonShiny:::download_vector_source(
           source_name = "bdforet",
           source_config = list(source = "ign_bdforet"),
           bbox = c(0, 0, 1, 1),

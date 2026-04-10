@@ -9,7 +9,7 @@ library(testthat)
 # ==============================================================================
 
 test_that("get_expert_profiles() contains all expected expert profiles", {
-  profiles <- nemeton:::get_expert_profiles()
+  profiles <- nemetonShiny:::get_expert_profiles()
 
   expect_type(profiles, "list")
 
@@ -23,7 +23,7 @@ test_that("get_expert_profiles() contains all expected expert profiles", {
 })
 
 test_that("get_expert_profiles() has label and prompt with fr/en for all profiles", {
-  profiles <- nemeton:::get_expert_profiles()
+  profiles <- nemetonShiny:::get_expert_profiles()
 
   for (profile_name in names(profiles)) {
     profile <- profiles[[profile_name]]
@@ -39,7 +39,7 @@ test_that("get_expert_profiles() has label and prompt with fr/en for all profile
 })
 
 test_that("get_expert_profiles() prompts are non-empty strings", {
-  profiles <- nemeton:::get_expert_profiles()
+  profiles <- nemetonShiny:::get_expert_profiles()
 
   for (profile_name in names(profiles)) {
     profile <- profiles[[profile_name]]
@@ -54,7 +54,7 @@ test_that("get_expert_profiles() prompts are non-empty strings", {
 })
 
 test_that("get_expert_profiles() French prompts contain French-specific content", {
-  profiles <- nemeton:::get_expert_profiles()
+  profiles <- nemetonShiny:::get_expert_profiles()
 
   # French prompts should contain French words/phrases
   french_indicators <- c("Tu es", "analyse", "Fournis", "orient")
@@ -68,7 +68,7 @@ test_that("get_expert_profiles() French prompts contain French-specific content"
 })
 
 test_that("get_expert_profiles() English prompts contain English-specific content", {
-  profiles <- nemeton:::get_expert_profiles()
+  profiles <- nemetonShiny:::get_expert_profiles()
 
   # English prompts should contain English words/phrases
   english_indicators <- c("You are", "analyze", "Provide", "focused")
@@ -86,7 +86,7 @@ test_that("get_expert_profiles() English prompts contain English-specific conten
 # ==============================================================================
 
 test_that("build_system_prompt returns French prompt for French language", {
-  result <- nemeton:::build_system_prompt("fran\u00e7ais", expert = "generalist")
+  result <- nemetonShiny:::build_system_prompt("fran\u00e7ais", expert = "generalist")
 
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
@@ -96,7 +96,7 @@ test_that("build_system_prompt returns French prompt for French language", {
 })
 
 test_that("build_system_prompt returns English prompt for English language", {
-  result <- nemeton:::build_system_prompt("English", expert = "generalist")
+  result <- nemetonShiny:::build_system_prompt("English", expert = "generalist")
 
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
@@ -104,9 +104,9 @@ test_that("build_system_prompt returns English prompt for English language", {
 })
 
 test_that("build_system_prompt uses different expert profiles", {
-  result_generalist <- nemeton:::build_system_prompt("English", expert = "generalist")
-  result_owner <- nemeton:::build_system_prompt("English", expert = "owner")
-  result_hunter <- nemeton:::build_system_prompt("English", expert = "hunter")
+  result_generalist <- nemetonShiny:::build_system_prompt("English", expert = "generalist")
+  result_owner <- nemetonShiny:::build_system_prompt("English", expert = "owner")
+  result_hunter <- nemetonShiny:::build_system_prompt("English", expert = "hunter")
 
   # All should be different
 
@@ -117,8 +117,8 @@ test_that("build_system_prompt uses different expert profiles", {
 
 test_that("build_system_prompt falls back to generalist for invalid expert",
 {
-  result_invalid <- nemeton:::build_system_prompt("English", expert = "invalid_expert")
-  result_generalist <- nemeton:::build_system_prompt("English", expert = "generalist")
+  result_invalid <- nemetonShiny:::build_system_prompt("English", expert = "invalid_expert")
+  result_generalist <- nemetonShiny:::build_system_prompt("English", expert = "generalist")
 
   # Should fall back to generalist
   expect_equal(result_invalid, result_generalist)
@@ -129,8 +129,8 @@ test_that("build_system_prompt handles all expert profiles", {
                "producer", "hunter")
 
   for (expert in experts) {
-    result_fr <- nemeton:::build_system_prompt("fran\u00e7ais", expert = expert)
-    result_en <- nemeton:::build_system_prompt("English", expert = expert)
+    result_fr <- nemetonShiny:::build_system_prompt("fran\u00e7ais", expert = expert)
+    result_en <- nemetonShiny:::build_system_prompt("English", expert = expert)
 
     expect_type(result_fr, "character")
     expect_type(result_en, "character")
@@ -142,8 +142,8 @@ test_that("build_system_prompt handles all expert profiles", {
 })
 
 test_that("build_system_prompt appends language instruction", {
-  result_fr <- nemeton:::build_system_prompt("fran\u00e7ais", expert = "generalist")
-  result_en <- nemeton:::build_system_prompt("English", expert = "generalist")
+  result_fr <- nemetonShiny:::build_system_prompt("fran\u00e7ais", expert = "generalist")
+  result_en <- nemetonShiny:::build_system_prompt("English", expert = "generalist")
 
   # Both should contain "Reponds en" followed by language
   expect_match(result_fr, "R\u00e9ponds en fran\u00e7ais", fixed = TRUE)
@@ -163,9 +163,9 @@ test_that("build_analysis_prompt generates prompt from family config and data", 
   )
 
   # Get Carbon family config
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
@@ -184,10 +184,10 @@ test_that("build_analysis_prompt handles sf objects correctly", {
   units$C1 <- c(50, 60, 55)
   units$C2 <- c(70, 75, 72)
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
   # Should not error with sf object
-  result <- nemeton:::build_analysis_prompt(family_config, units, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, units, "English")
 
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
@@ -199,9 +199,9 @@ test_that("build_analysis_prompt calculates correct statistics", {
     C1 = c(10, 20, 30, 40, 50)  # min=10, max=50, mean=30, sd~15.81
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   # Check statistics are included
   expect_match(result, "min=10")
@@ -217,9 +217,9 @@ test_that("build_analysis_prompt handles NA values in statistics", {
     C2 = c(NA, NA, NA)  # All NA
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   expect_type(result, "character")
   # Should handle all-NA column gracefully
@@ -232,9 +232,9 @@ test_that("build_analysis_prompt works with French language", {
     C1 = c(50, 60)
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "fran\u00e7ais")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "fran\u00e7ais")
 
   expect_type(result, "character")
   # Should use French family name
@@ -247,9 +247,9 @@ test_that("build_analysis_prompt includes family code", {
     W1 = c(10, 15)
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$W
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$W
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   # Should include family code
   expect_match(result, "code: W|W\\)", ignore.case = TRUE)
@@ -264,9 +264,9 @@ test_that("build_analysis_prompt handles different families", {
   families_to_test <- c("C", "B", "W", "R", "S")
 
   for (fam_code in families_to_test) {
-    family_config <- nemeton:::INDICATOR_FAMILIES[[fam_code]]
+    family_config <- nemetonShiny:::INDICATOR_FAMILIES[[fam_code]]
 
-    result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+    result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
     expect_type(result, "character")
     expect_true(nchar(result) > 0,
@@ -281,9 +281,9 @@ test_that("build_analysis_prompt calculates CV correctly", {
     C1 = c(100, 100, 100, 100)  # No variation, CV should be 0
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   # CV should be 0% for constant values
   expect_match(result, "CV=0%|CV=0\\.0%")
@@ -302,7 +302,7 @@ test_that("build_synthesis_prompt generates prompt from family scores", {
     famille_eau = c(40, 45, 42)
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
@@ -320,7 +320,7 @@ test_that("build_synthesis_prompt handles sf objects correctly", {
   units$famille_biodiversite <- c(50, 55, 52)
 
   # Should not error with sf object
-  result <- nemeton:::build_synthesis_prompt(units, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(units, "English")
 
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
@@ -335,7 +335,7 @@ test_that("build_synthesis_prompt calculates global score correctly", {
   )
   # Global = mean of family means = (70 + 50) / 2 = 60
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   # Should show global score around 60
   expect_match(result, "60|60\\.0")
@@ -348,7 +348,7 @@ test_that("build_synthesis_prompt includes family names from config", {
     famille_eau = c(40, 50)
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   # Should include family names
   expect_match(result, "Carbon|Vitality", ignore.case = TRUE)
@@ -362,7 +362,7 @@ test_that("build_synthesis_prompt works with French language", {
     famille_biodiversite = c(50, 55)
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "fran\u00e7ais")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "fran\u00e7ais")
 
   expect_type(result, "character")
   # Should use French text
@@ -376,7 +376,7 @@ test_that("build_synthesis_prompt handles NA values in family scores", {
     famille_biodiversite = c(NA, NA, NA)  # All NA
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   expect_type(result, "character")
   # Should handle NA gracefully
@@ -389,7 +389,7 @@ test_that("build_synthesis_prompt includes min/max/mean statistics", {
     famille_carbone = c(40, 60, 80)  # min=40, max=80, mean=60
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   # Should include statistics
   expect_match(result, "mean=60|mean=60\\.0")
@@ -403,7 +403,7 @@ test_that("build_synthesis_prompt adds recommendations request in English", {
     famille_carbone = c(60, 70)
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   # Should ask for analysis
   expect_match(result, "strengths|weaknesses|recommendations", ignore.case = TRUE)
@@ -415,7 +415,7 @@ test_that("build_synthesis_prompt adds recommendations request in French", {
     famille_carbone = c(60, 70)
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "fran\u00e7ais")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "fran\u00e7ais")
 
   # Should ask for analysis in French
   expect_match(result, "points forts|faiblesses|recommandations", ignore.case = TRUE)
@@ -429,7 +429,7 @@ test_that("build_synthesis_prompt handles unknown family codes gracefully", {
     family_X = c(30, 40)  # Unknown family
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   expect_type(result, "character")
   # Should mention unknown family
@@ -454,7 +454,7 @@ test_that("build_synthesis_prompt handles all 12 families", {
     famille_naturalite = c(45, 50)
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   expect_type(result, "character")
   expect_true(nchar(result) > 200)  # Should be substantial with all families
@@ -470,11 +470,11 @@ test_that("Prompt generation workflow works end-to-end for family analysis", {
   units$C1 <- c(150, 180, 160, 170, 165)
   units$C2 <- c(0.7, 0.8, 0.75, 0.78, 0.72)
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
   # Generate prompts
-  system_prompt <- nemeton:::build_system_prompt("English", expert = "generalist")
-  analysis_prompt <- nemeton:::build_analysis_prompt(family_config, units, "English")
+  system_prompt <- nemetonShiny:::build_system_prompt("English", expert = "generalist")
+  analysis_prompt <- nemetonShiny:::build_analysis_prompt(family_config, units, "English")
 
   expect_type(system_prompt, "character")
   expect_type(analysis_prompt, "character")
@@ -491,8 +491,8 @@ test_that("Prompt generation workflow works end-to-end for synthesis", {
   units$famille_risque <- c(75, 82, 78, 80)
 
   # Generate prompts
-  system_prompt <- nemeton:::build_system_prompt("English", expert = "owner")
-  synthesis_prompt <- nemeton:::build_synthesis_prompt(units, "English")
+  system_prompt <- nemetonShiny:::build_system_prompt("English", expert = "owner")
+  synthesis_prompt <- nemetonShiny:::build_synthesis_prompt(units, "English")
 
   expect_type(system_prompt, "character")
   expect_type(synthesis_prompt, "character")
@@ -507,21 +507,21 @@ test_that("French and English prompts are consistently different", {
     famille_carbone = c(55, 65)
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
   # System prompts
-  system_fr <- nemeton:::build_system_prompt("fran\u00e7ais", expert = "generalist")
-  system_en <- nemeton:::build_system_prompt("English", expert = "generalist")
+  system_fr <- nemetonShiny:::build_system_prompt("fran\u00e7ais", expert = "generalist")
+  system_en <- nemetonShiny:::build_system_prompt("English", expert = "generalist")
   expect_false(system_fr == system_en)
 
   # Analysis prompts
-  analysis_fr <- nemeton:::build_analysis_prompt(family_config, test_data, "fran\u00e7ais")
-  analysis_en <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  analysis_fr <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "fran\u00e7ais")
+  analysis_en <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
   expect_false(analysis_fr == analysis_en)
 
   # Synthesis prompts
-  synthesis_fr <- nemeton:::build_synthesis_prompt(test_data, "fran\u00e7ais")
-  synthesis_en <- nemeton:::build_synthesis_prompt(test_data, "English")
+  synthesis_fr <- nemetonShiny:::build_synthesis_prompt(test_data, "fran\u00e7ais")
+  synthesis_en <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
   expect_false(synthesis_fr == synthesis_en)
 })
 
@@ -535,9 +535,9 @@ test_that("build_analysis_prompt handles single-row data", {
     C1 = 50
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   expect_type(result, "character")
   expect_match(result, "1 parcelle|1 parcel", ignore.case = TRUE)
@@ -549,7 +549,7 @@ test_that("build_synthesis_prompt handles single-row data", {
     famille_carbone = 60
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   expect_type(result, "character")
   expect_match(result, "1 parcelle|1 parcel", ignore.case = TRUE)
@@ -565,10 +565,10 @@ test_that("build_analysis_prompt handles data with only id column (no indicators
     area = c(1000, 2000)
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
   # The function should handle this and return a prompt with "no data" for stats
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
@@ -580,7 +580,7 @@ test_that("build_synthesis_prompt handles data with no family_* columns", {
     C1 = c(50, 60)  # Not famille_carbone
   )
 
-  result <- nemeton:::build_synthesis_prompt(test_data, "English")
+  result <- nemetonShiny:::build_synthesis_prompt(test_data, "English")
 
   expect_type(result, "character")
   # Should mention that there are no family scores or handle gracefully
@@ -592,9 +592,9 @@ test_that("build_analysis_prompt handles zero-variance data", {
     C1 = c(50, 50, 50)  # No variance
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   expect_type(result, "character")
   # SD should be 0
@@ -607,9 +607,9 @@ test_that("build_analysis_prompt handles negative values", {
     C1 = c(-10, 0, 10)
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   expect_type(result, "character")
   expect_match(result, "min=-10")
@@ -621,9 +621,9 @@ test_that("build_analysis_prompt handles very large values", {
     C1 = c(1e6, 2e6)
   )
 
-  family_config <- nemeton:::INDICATOR_FAMILIES$C
+  family_config <- nemetonShiny:::INDICATOR_FAMILIES$C
 
-  result <- nemeton:::build_analysis_prompt(family_config, test_data, "English")
+  result <- nemetonShiny:::build_analysis_prompt(family_config, test_data, "English")
 
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
@@ -634,8 +634,8 @@ test_that("build_analysis_prompt handles very large values", {
 # ==============================================================================
 
 test_that("owner profile mentions financial/patrimoine concepts", {
-  result_fr <- nemeton:::build_system_prompt("fran\u00e7ais", expert = "owner")
-  result_en <- nemeton:::build_system_prompt("English", expert = "owner")
+  result_fr <- nemetonShiny:::build_system_prompt("fran\u00e7ais", expert = "owner")
+  result_en <- nemetonShiny:::build_system_prompt("English", expert = "owner")
 
   # French should mention patrimoine/financier concepts
   expect_match(result_fr, "patrimoine|rentabilit|financ", ignore.case = TRUE)
@@ -645,8 +645,8 @@ test_that("owner profile mentions financial/patrimoine concepts", {
 })
 
 test_that("manager profile mentions silviculture concepts", {
-  result_fr <- nemeton:::build_system_prompt("fran\u00e7ais", expert = "manager")
-  result_en <- nemeton:::build_system_prompt("English", expert = "manager")
+  result_fr <- nemetonShiny:::build_system_prompt("fran\u00e7ais", expert = "manager")
+  result_en <- nemetonShiny:::build_system_prompt("English", expert = "manager")
 
   # French should mention sylviculture
   expect_match(result_fr, "sylvicult|peuplement|itin\u00e9raire", ignore.case = TRUE)
@@ -656,8 +656,8 @@ test_that("manager profile mentions silviculture concepts", {
 })
 
 test_that("hunter profile mentions game management concepts", {
-  result_fr <- nemeton:::build_system_prompt("fran\u00e7ais", expert = "hunter")
-  result_en <- nemeton:::build_system_prompt("English", expert = "hunter")
+  result_fr <- nemetonShiny:::build_system_prompt("fran\u00e7ais", expert = "hunter")
+  result_en <- nemetonShiny:::build_system_prompt("English", expert = "hunter")
 
   # French should mention cynegetic concepts
   expect_match(result_fr, "cyn\u00e9g\u00e9tique|gibier|abroutissement", ignore.case = TRUE)
@@ -667,8 +667,8 @@ test_that("hunter profile mentions game management concepts", {
 })
 
 test_that("producer profile mentions timber industry concepts", {
-  result_fr <- nemeton:::build_system_prompt("fran\u00e7ais", expert = "producer")
-  result_en <- nemeton:::build_system_prompt("English", expert = "producer")
+  result_fr <- nemetonShiny:::build_system_prompt("fran\u00e7ais", expert = "producer")
+  result_en <- nemetonShiny:::build_system_prompt("English", expert = "producer")
 
   # French should mention filiere bois
   expect_match(result_fr, "fili\u00e8re|bois|march|production", ignore.case = TRUE)

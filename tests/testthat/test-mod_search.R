@@ -13,7 +13,7 @@ test_that("mod_search_ui returns valid Shiny UI", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemeton:::mod_search_ui("test")
+      ui <- nemetonShiny:::mod_search_ui("test")
 
       expect_s3_class(ui, "shiny.tag.list")
     }
@@ -27,7 +27,7 @@ test_that("mod_search_ui creates namespaced inputs", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemeton:::mod_search_ui("test_ns")
+      ui <- nemetonShiny:::mod_search_ui("test_ns")
       ui_html <- as.character(ui)
 
       # Check for namespaced input IDs
@@ -44,7 +44,7 @@ test_that("mod_search_ui includes department selector", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemeton:::mod_search_ui("test")
+      ui <- nemetonShiny:::mod_search_ui("test")
       ui_html <- as.character(ui)
 
       expect_true(grepl("departement", ui_html))
@@ -60,7 +60,7 @@ test_that("mod_search_ui includes commune autocomplete", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemeton:::mod_search_ui("test")
+      ui <- nemetonShiny:::mod_search_ui("test")
       ui_html <- as.character(ui)
 
       expect_true(grepl("commune", ui_html))
@@ -76,7 +76,7 @@ test_that("mod_search_ui includes search_info output", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemeton:::mod_search_ui("test")
+      ui <- nemetonShiny:::mod_search_ui("test")
       ui_html <- as.character(ui)
 
       expect_true(grepl("search_info", ui_html))
@@ -91,7 +91,7 @@ test_that("mod_search_ui includes loading indicator", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemeton:::mod_search_ui("test")
+      ui <- nemetonShiny:::mod_search_ui("test")
       ui_html <- as.character(ui)
 
       expect_true(grepl("loading_indicator", ui_html))
@@ -107,7 +107,7 @@ test_that("mod_search_ui works in English", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      ui <- nemeton:::mod_search_ui("test")
+      ui <- nemetonShiny:::mod_search_ui("test")
 
       expect_s3_class(ui, "shiny.tag.list")
       ui_html <- as.character(ui)
@@ -127,7 +127,7 @@ test_that("mod_search_ui contains geo-alt icon for department", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemeton:::mod_search_ui("test")
+      ui <- nemetonShiny:::mod_search_ui("test")
       ui_html <- as.character(ui)
 
       # bsicons adds svg with class containing geo-alt or similar
@@ -144,7 +144,7 @@ test_that("mod_search_ui contains building icon for commune", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemeton:::mod_search_ui("test")
+      ui <- nemetonShiny:::mod_search_ui("test")
       ui_html <- as.character(ui)
 
       # bsicons adds svg for building icon
@@ -158,12 +158,12 @@ test_that("mod_search_ui contains building icon for commune", {
 # ==============================================================================
 
 test_that("mod_search_server is a function", {
-  expect_type(nemeton:::mod_search_server, "closure")
+  expect_type(nemetonShiny:::mod_search_server, "closure")
 })
 
 test_that("mod_search_server accepts required parameters", {
   # Check function signature
-  args <- names(formals(nemeton:::mod_search_server))
+  args <- names(formals(nemetonShiny:::mod_search_server))
 
   expect_true("id" %in% args)
   expect_true("app_state" %in% args)
@@ -202,7 +202,7 @@ test_that("mod_search_server returns expected reactive values", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -251,7 +251,7 @@ test_that("mod_search_server initializes with NULL values", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -298,7 +298,7 @@ test_that("mod_search_server handles empty department selection", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Set empty department
@@ -342,7 +342,7 @@ test_that("mod_search_server triggers department observer on department selectio
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -397,7 +397,7 @@ test_that("mod_search_server clears selection on empty commune", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -441,7 +441,7 @@ test_that("mod_search_server handles NULL commune", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -489,7 +489,7 @@ test_that("mod_search_server handles network error in get_communes_in_department
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Select department (triggers API call)
@@ -534,7 +534,7 @@ test_that("mod_search_server handles other API error", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           session$setInputs(departement = "01")
@@ -579,7 +579,7 @@ test_that("mod_search_server handles missing language with fallback", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Should not crash even with NULL language
@@ -618,7 +618,7 @@ test_that("mod_search_server handles empty language string with fallback", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Should use "fr" fallback
@@ -675,7 +675,7 @@ test_that("mod_search_server handles restore_project trigger", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Trigger restore
@@ -720,7 +720,7 @@ test_that("mod_search_server ignores restore with NULL commune_code", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Restore with NULL commune_code should be ignored
@@ -770,7 +770,7 @@ test_that("mod_search_server sets is_restoring flag during restore", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Trigger restore
@@ -793,7 +793,7 @@ test_that("mod_search_server sets is_restoring flag during restore", {
 # ==============================================================================
 
 test_that("i18n keys for search module exist in French", {
-  i18n <- nemeton:::get_i18n("fr")
+  i18n <- nemetonShiny:::get_i18n("fr")
 
   search_keys <- c(
     "department",
@@ -811,7 +811,7 @@ test_that("i18n keys for search module exist in French", {
 })
 
 test_that("i18n keys for search module exist in English", {
-  i18n <- nemeton:::get_i18n("en")
+  i18n <- nemetonShiny:::get_i18n("en")
 
   search_keys <- c(
     "department",
@@ -829,8 +829,8 @@ test_that("i18n keys for search module exist in English", {
 })
 
 test_that("i18n translations are non-empty for search module keys", {
-  fr <- nemeton:::get_i18n("fr")
-  en <- nemeton:::get_i18n("en")
+  fr <- nemetonShiny:::get_i18n("fr")
+  en <- nemetonShiny:::get_i18n("en")
 
   keys <- c("department", "commune", "search_commune")
 
@@ -881,7 +881,7 @@ test_that("mod_search_server handles rapid department changes", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Rapid changes
@@ -924,7 +924,7 @@ test_that("mod_search_server handles department with no communes", {
       )
 
       shiny::testServer(
-        nemeton:::mod_search_server,
+        nemetonShiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Select department with no communes
@@ -952,7 +952,7 @@ test_that("format_communes_for_selectize returns named vector", {
     stringsAsFactors = FALSE
   )
 
-  result <- nemeton:::format_communes_for_selectize(communes)
+  result <- nemetonShiny:::format_communes_for_selectize(communes)
 
   expect_type(result, "character")
   expect_length(result, 3)
@@ -969,14 +969,14 @@ test_that("format_communes_for_selectize handles empty data frame", {
     stringsAsFactors = FALSE
   )
 
-  result <- nemeton:::format_communes_for_selectize(communes)
+  result <- nemetonShiny:::format_communes_for_selectize(communes)
 
   expect_type(result, "character")
   expect_length(result, 0)
 })
 
 test_that("format_communes_for_selectize handles NULL input", {
-  result <- nemeton:::format_communes_for_selectize(NULL)
+  result <- nemetonShiny:::format_communes_for_selectize(NULL)
 
   expect_type(result, "character")
   expect_length(result, 0)
@@ -991,7 +991,7 @@ test_that("format_communes_for_selectize handles single row", {
     stringsAsFactors = FALSE
   )
 
-  result <- nemeton:::format_communes_for_selectize(communes)
+  result <- nemetonShiny:::format_communes_for_selectize(communes)
 
   expect_type(result, "character")
   expect_length(result, 1)
@@ -1004,14 +1004,14 @@ test_that("format_communes_for_selectize handles single row", {
 # ==============================================================================
 
 test_that("get_departments returns all French departments", {
-  depts <- nemeton:::get_departments()
+  depts <- nemetonShiny:::get_departments()
 
   expect_type(depts, "character")
   expect_true(length(depts) >= 100) # France has ~100 departments
 })
 
 test_that("get_departments includes metropolitan departments", {
-  depts <- nemeton:::get_departments()
+  depts <- nemetonShiny:::get_departments()
 
   # Check some known metropolitan departments
   expect_true("01" %in% depts) # Ain
@@ -1021,14 +1021,14 @@ test_that("get_departments includes metropolitan departments", {
 })
 
 test_that("get_departments includes Corsica departments", {
-  depts <- nemeton:::get_departments()
+  depts <- nemetonShiny:::get_departments()
 
   expect_true("2A" %in% depts) # Corse-du-Sud
   expect_true("2B" %in% depts) # Haute-Corse
 })
 
 test_that("get_departments includes overseas departments", {
-  depts <- nemeton:::get_departments()
+  depts <- nemetonShiny:::get_departments()
 
   expect_true("971" %in% depts) # Guadeloupe
   expect_true("972" %in% depts) # Martinique
@@ -1038,7 +1038,7 @@ test_that("get_departments includes overseas departments", {
 })
 
 test_that("get_departments returns named vector", {
-  depts <- nemeton:::get_departments()
+  depts <- nemetonShiny:::get_departments()
 
   expect_true(!is.null(names(depts)))
   expect_true(all(nchar(names(depts)) > 0))
@@ -1052,7 +1052,7 @@ test_that("get_departments returns named vector", {
 # ==============================================================================
 
 test_that("validate_insee_code accepts valid 5-digit codes", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_true(validate("01001"))
   expect_true(validate("75056"))
@@ -1060,7 +1060,7 @@ test_that("validate_insee_code accepts valid 5-digit codes", {
 })
 
 test_that("validate_insee_code accepts Corsica codes", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_true(validate("2A004")) # Corse-du-Sud
 
@@ -1068,14 +1068,14 @@ test_that("validate_insee_code accepts Corsica codes", {
 })
 
 test_that("validate_insee_code accepts overseas codes", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_true(validate("97105")) # Guadeloupe
   expect_true(validate("97411")) # La Reunion
 })
 
 test_that("validate_insee_code rejects short codes", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_false(validate("1234"))
   expect_false(validate("123"))
@@ -1083,14 +1083,14 @@ test_that("validate_insee_code rejects short codes", {
 })
 
 test_that("validate_insee_code rejects long codes", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_false(validate("123456"))
   expect_false(validate("1234567"))
 })
 
 test_that("validate_insee_code rejects invalid characters", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_false(validate("ABCDE"))
   expect_false(validate("1234X"))
@@ -1099,7 +1099,7 @@ test_that("validate_insee_code rejects invalid characters", {
 })
 
 test_that("validate_insee_code rejects empty and NA values", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_false(validate(""))
   expect_false(validate(NA))
@@ -1107,7 +1107,7 @@ test_that("validate_insee_code rejects empty and NA values", {
 })
 
 test_that("validate_insee_code rejects non-character input", {
-  validate <- nemeton:::validate_insee_code
+  validate <- nemetonShiny:::validate_insee_code
 
   expect_false(validate(12345))
   expect_false(validate(TRUE))

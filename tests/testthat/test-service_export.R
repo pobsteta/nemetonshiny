@@ -5,14 +5,14 @@
 # ==============================================================================
 
 test_that("is_quarto_installed returns logical", {
-  result <- nemeton:::is_quarto_installed()
+  result <- nemetonShiny:::is_quarto_installed()
   expect_type(result, "logical")
 })
 
 test_that("ensure_quarto_installed wraps is_quarto_installed", {
-  result <- nemeton:::ensure_quarto_installed()
+  result <- nemetonShiny:::ensure_quarto_installed()
   expect_type(result, "logical")
-  expect_equal(result, nemeton:::is_quarto_installed())
+  expect_equal(result, nemetonShiny:::is_quarto_installed())
 })
 
 # ==============================================================================
@@ -20,47 +20,47 @@ test_that("ensure_quarto_installed wraps is_quarto_installed", {
 # ==============================================================================
 
 test_that("clean_text_for_pdf handles NULL and empty text", {
-  expect_null(nemeton:::clean_text_for_pdf(NULL))
-  expect_equal(nemeton:::clean_text_for_pdf(""), "")
+  expect_null(nemetonShiny:::clean_text_for_pdf(NULL))
+  expect_equal(nemetonShiny:::clean_text_for_pdf(""), "")
 })
 
 test_that("clean_text_for_pdf replaces curly quotes", {
   # Left and right single quotes
   text <- "\u2018hello\u2019"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "'hello'")
 
   # Left and right double quotes
   text <- "\u201Chello\u201D"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "\"hello\"")
 })
 
 test_that("clean_text_for_pdf replaces dashes", {
   # En dash
   text <- "2020\u20132025"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "2020-2025")
 
   # Em dash
   text <- "hello\u2014world"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "hello-world")
 })
 
 test_that("clean_text_for_pdf replaces ellipsis and non-breaking space", {
   text <- "Loading\u2026"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "Loading...")
 
   text <- "Hello\u00A0World"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "Hello World")
 })
 
 test_that("clean_text_for_pdf handles combined replacements", {
   text <- "\u201CTest\u201D \u2013 \u2018Example\u2019\u2026"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "\"Test\" - 'Example'...")
 })
 
@@ -70,37 +70,37 @@ test_that("clean_text_for_pdf handles combined replacements", {
 
 test_that("strip_markdown_for_display removes bold markers", {
   text <- "This is **bold** text"
-  result <- nemeton:::strip_markdown_for_display(text)
+  result <- nemetonShiny:::strip_markdown_for_display(text)
   expect_equal(result, "This is bold text")
 })
 
 test_that("strip_markdown_for_display removes italic markers", {
   text <- "This is *italic* text"
-  result <- nemeton:::strip_markdown_for_display(text)
+  result <- nemetonShiny:::strip_markdown_for_display(text)
   expect_equal(result, "This is italic text")
 })
 
 test_that("strip_markdown_for_display removes strikethrough markers", {
   text <- "This is ~~strikethrough~~ text"
-  result <- nemeton:::strip_markdown_for_display(text)
+  result <- nemetonShiny:::strip_markdown_for_display(text)
   expect_equal(result, "This is strikethrough text")
 })
 
 test_that("strip_markdown_for_display removes inline code markers", {
   text <- "This is `code` text"
-  result <- nemeton:::strip_markdown_for_display(text)
+  result <- nemetonShiny:::strip_markdown_for_display(text)
   expect_equal(result, "This is code text")
 })
 
 test_that("strip_markdown_for_display removes links but keeps text", {
   text <- "Visit [our site](https://example.com) today"
-  result <- nemeton:::strip_markdown_for_display(text)
+  result <- nemetonShiny:::strip_markdown_for_display(text)
   expect_equal(result, "Visit our site today")
 })
 
 test_that("strip_markdown_for_display handles combined formatting", {
   text <- "**Bold** and *italic* with `code` and [link](url)"
-  result <- nemeton:::strip_markdown_for_display(text)
+  result <- nemetonShiny:::strip_markdown_for_display(text)
   expect_equal(result, "Bold and italic with code and link")
 })
 
@@ -144,7 +144,7 @@ test_that("prepare_report_data creates valid structure", {
     )
   )
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL)
 
   expect_type(result, "list")
   expect_equal(result$project_name, "Test Project")
@@ -184,7 +184,7 @@ test_that("prepare_report_data works with en language", {
     geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 2154)
   )
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "en", "Test comments")
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "en", "Test comments")
 
   expect_equal(result$language, "en")
   expect_equal(result$synthesis_comments, "Test comments")
@@ -221,7 +221,7 @@ test_that("prepare_report_data handles family_comments parameter", {
   )
 
   family_comments <- list(C = "Carbon comment", B = "Biodiversity comment")
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL, family_comments)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL, family_comments)
 
   expect_equal(result$family_comments$C, "Carbon comment")
   expect_equal(result$family_comments$B, "Biodiversity comment")
@@ -256,7 +256,7 @@ test_that("prepare_report_data works with non-sf data (drops geometry)", {
     famille_naturalite = 50
   )
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL)
 
   expect_equal(result$n_parcels, 1)
   expect_equal(result$global_score, 50)
@@ -283,7 +283,7 @@ test_that("export_geopackage creates valid file", {
   temp_file <- tempfile(fileext = ".gpkg")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::export_geopackage(test_sf, temp_file)
+  result <- nemetonShiny:::export_geopackage(test_sf, temp_file)
 
   expect_true(file.exists(result))
   expect_equal(result, temp_file)
@@ -296,7 +296,7 @@ test_that("export_geopackage creates valid file", {
 
 test_that("export_geopackage fails for non-sf input", {
   expect_error(
-    nemeton:::export_geopackage(data.frame(x = 1), tempfile()),
+    nemetonShiny:::export_geopackage(data.frame(x = 1), tempfile()),
     "must be an sf object"
   )
 })
@@ -313,7 +313,7 @@ test_that("export_geopackage uses custom layer name", {
   temp_file <- tempfile(fileext = ".gpkg")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::export_geopackage(test_sf, temp_file, layer_name = "custom_layer")
+  result <- nemetonShiny:::export_geopackage(test_sf, temp_file, layer_name = "custom_layer")
 
   expect_true(file.exists(result))
 
@@ -346,12 +346,12 @@ test_that("export_geopackage overwrites existing file", {
   on.exit(unlink(temp_file), add = TRUE)
 
   # Create first file
-  nemeton:::export_geopackage(test_sf1, temp_file)
+  nemetonShiny:::export_geopackage(test_sf1, temp_file)
   read_back1 <- sf::st_read(temp_file, quiet = TRUE)
   expect_equal(nrow(read_back1), 1)
 
   # Overwrite with second file
-  nemeton:::export_geopackage(test_sf2, temp_file)
+  nemetonShiny:::export_geopackage(test_sf2, temp_file)
   read_back2 <- sf::st_read(temp_file, quiet = TRUE)
   expect_equal(nrow(read_back2), 3)
 })
@@ -361,7 +361,7 @@ test_that("export_geopackage overwrites existing file", {
 # ==============================================================================
 
 test_that("generate_indicator_map returns NULL for non-sf input", {
-  result <- nemeton:::generate_indicator_map(
+  result <- nemetonShiny:::generate_indicator_map(
     data.frame(x = 1),
     "x",
     "Test"
@@ -379,7 +379,7 @@ test_that("generate_indicator_map returns NULL for missing column", {
     geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 2154)
   )
 
-  result <- nemeton:::generate_indicator_map(data, "nonexistent", "Test")
+  result <- nemetonShiny:::generate_indicator_map(data, "nonexistent", "Test")
   expect_null(result)
 })
 
@@ -396,7 +396,7 @@ test_that("generate_indicator_map returns NULL for all NA values", {
     )
   )
 
-  result <- nemeton:::generate_indicator_map(data, "value", "Test")
+  result <- nemetonShiny:::generate_indicator_map(data, "value", "Test")
   expect_null(result)
 })
 
@@ -417,7 +417,7 @@ test_that("generate_indicator_map creates PNG file when output_file specified", 
   temp_file <- tempfile(fileext = ".png")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_indicator_map(data, "value", "Test Map", output_file = temp_file)
+  result <- nemetonShiny:::generate_indicator_map(data, "value", "Test Map", output_file = temp_file)
 
   expect_null(result)
   expect_true(file.exists(temp_file))
@@ -443,7 +443,7 @@ test_that("draw_parcel_table returns NULL for missing column", {
   grDevices::pdf(temp_file)
   on.exit(grDevices::dev.off(), add = TRUE)
 
-  result <- nemeton:::draw_parcel_table(data, "nonexistent", "id", "fr")
+  result <- nemetonShiny:::draw_parcel_table(data, "nonexistent", "id", "fr")
   expect_null(result)
 })
 
@@ -472,8 +472,8 @@ test_that("draw_parcel_table handles sf and non-sf data", {
   grDevices::pdf(temp_file)
 
   # Both should work without error
-  expect_no_error(nemeton:::draw_parcel_table(sf_data, "score", "id", "fr"))
-  expect_no_error(nemeton:::draw_parcel_table(df_data, "score", "id", "en"))
+  expect_no_error(nemetonShiny:::draw_parcel_table(sf_data, "score", "id", "fr"))
+  expect_no_error(nemetonShiny:::draw_parcel_table(df_data, "score", "id", "en"))
 
   grDevices::dev.off()
 })
@@ -496,7 +496,7 @@ test_that("draw_parcel_table handles NA values", {
   on.exit(unlink(temp_file), add = TRUE)
   grDevices::pdf(temp_file)
 
-  expect_no_error(nemeton:::draw_parcel_table(data, "score", "id", "fr"))
+  expect_no_error(nemetonShiny:::draw_parcel_table(data, "score", "id", "fr"))
 
   grDevices::dev.off()
 })
@@ -518,7 +518,7 @@ test_that("draw_parcel_table handles missing parcel_id_col", {
   grDevices::pdf(temp_file)
 
   # Should use seq_len(nrow(data)) as IDs
-  expect_no_error(nemeton:::draw_parcel_table(data, "score", "nonexistent_id", "fr"))
+  expect_no_error(nemetonShiny:::draw_parcel_table(data, "score", "nonexistent_id", "fr"))
 
   grDevices::dev.off()
 })
@@ -537,7 +537,7 @@ test_that("draw_parcel_table shows indicator_title when provided", {
   grDevices::pdf(temp_file)
 
   expect_no_error(
-    nemeton:::draw_parcel_table(data, "score", "id", "fr", indicator_title = "C1 - Carbon Biomass")
+    nemetonShiny:::draw_parcel_table(data, "score", "id", "fr", indicator_title = "C1 - Carbon Biomass")
   )
 
   grDevices::dev.off()
@@ -568,7 +568,7 @@ test_that("draw_standard_cover_page renders without error", {
   on.exit(unlink(temp_file), add = TRUE)
   grDevices::pdf(temp_file)
 
-  expect_no_error(nemeton:::draw_standard_cover_page(report_data, "fr"))
+  expect_no_error(nemetonShiny:::draw_standard_cover_page(report_data, "fr"))
 
   grDevices::dev.off()
   expect_true(file.exists(temp_file))
@@ -595,7 +595,7 @@ test_that("draw_standard_cover_page handles NULL description", {
   on.exit(unlink(temp_file), add = TRUE)
   grDevices::pdf(temp_file)
 
-  expect_no_error(nemeton:::draw_standard_cover_page(report_data, "fr"))
+  expect_no_error(nemetonShiny:::draw_standard_cover_page(report_data, "fr"))
 
   grDevices::dev.off()
 })
@@ -614,7 +614,7 @@ test_that("draw_standard_cover_page handles different score ranges", {
       project_name = "Test", project_description = NULL, n_parcels = 1,
       created_at = "2026-01-01", global_score = score
     )
-    expect_no_error(nemeton:::draw_standard_cover_page(report_data, "fr"))
+    expect_no_error(nemetonShiny:::draw_standard_cover_page(report_data, "fr"))
   }
 
   grDevices::dev.off()
@@ -638,7 +638,7 @@ test_that("draw_indicator_map_page handles missing column", {
   grDevices::pdf(temp_file)
 
   expect_no_error(
-    nemeton:::draw_indicator_map_page(data, "nonexistent", "Test", "#228B22", "fr")
+    nemetonShiny:::draw_indicator_map_page(data, "nonexistent", "Test", "#228B22", "fr")
   )
 
   grDevices::dev.off()
@@ -662,7 +662,7 @@ test_that("draw_indicator_map_page handles all NA values", {
   grDevices::pdf(temp_file)
 
   expect_no_error(
-    nemeton:::draw_indicator_map_page(data, "value", "Test", "#228B22", "en")
+    nemetonShiny:::draw_indicator_map_page(data, "value", "Test", "#228B22", "en")
   )
 
   grDevices::dev.off()
@@ -686,7 +686,7 @@ test_that("draw_indicator_map_page renders polygon data", {
   grDevices::pdf(temp_file)
 
   expect_no_error(
-    nemeton:::draw_indicator_map_page(data, "value", "Test Map", "#9932CC", "fr")
+    nemetonShiny:::draw_indicator_map_page(data, "value", "Test Map", "#9932CC", "fr")
   )
 
   grDevices::dev.off()
@@ -697,7 +697,7 @@ test_that("draw_indicator_map_page renders polygon data", {
 # ==============================================================================
 
 test_that("add_parcel_labels returns NULL for non-sf input", {
-  result <- nemeton:::add_parcel_labels(data.frame(x = 1))
+  result <- nemetonShiny:::add_parcel_labels(data.frame(x = 1))
   expect_null(result)
 })
 
@@ -720,7 +720,7 @@ test_that("add_parcel_labels uses sequential IDs when id_col missing", {
   # Create base plot first
   plot(sf::st_geometry(data))
 
-  expect_no_error(nemeton:::add_parcel_labels(data, id_col = "nonexistent"))
+  expect_no_error(nemetonShiny:::add_parcel_labels(data, id_col = "nonexistent"))
 
   grDevices::dev.off()
 })
@@ -742,7 +742,7 @@ test_that("add_parcel_labels truncates long IDs to last 6 characters", {
   grDevices::pdf(temp_file)
 
   plot(sf::st_geometry(data))
-  expect_no_error(nemeton:::add_parcel_labels(data))
+  expect_no_error(nemetonShiny:::add_parcel_labels(data))
 
   grDevices::dev.off()
 })
@@ -753,7 +753,7 @@ test_that("add_parcel_labels truncates long IDs to last 6 characters", {
 
 test_that("generate_family_maps returns NULL for non-sf input", {
   temp_dir <- tempdir()
-  result <- nemeton:::generate_family_maps(data.frame(x = 1), temp_dir, "fr")
+  result <- nemetonShiny:::generate_family_maps(data.frame(x = 1), temp_dir, "fr")
   expect_null(result)
 })
 
@@ -776,7 +776,7 @@ test_that("generate_family_maps creates map files for family columns", {
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
   suppressWarnings(
-    expect_no_error(nemeton:::generate_family_maps(family_scores, temp_dir, "fr"))
+    expect_no_error(nemetonShiny:::generate_family_maps(family_scores, temp_dir, "fr"))
   )
 
   # Check that map files were created
@@ -802,7 +802,7 @@ test_that("generate_family_maps handles all NA values", {
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
   suppressWarnings(
-    expect_no_error(nemeton:::generate_family_maps(family_scores, temp_dir, "en"))
+    expect_no_error(nemetonShiny:::generate_family_maps(family_scores, temp_dir, "en"))
   )
 })
 
@@ -842,7 +842,7 @@ test_that("generate_radar_image creates PNG file", {
   temp_file <- tempfile(fileext = ".png")
   on.exit(unlink(temp_file), add = TRUE)
 
-  expect_no_error(nemeton:::generate_radar_image(family_scores, temp_file, "fr"))
+  expect_no_error(nemetonShiny:::generate_radar_image(family_scores, temp_file, "fr"))
 
   # File may not be created in some environments without proper display
   skip_if_not(file.exists(temp_file), "PNG file not created (display issue)")
@@ -859,10 +859,10 @@ test_that("render_markdown_text handles NULL and empty text", {
   grDevices::pdf(temp_file)
   plot.new()
 
-  result_null <- nemeton:::render_markdown_text(NULL, 0.1, 0.9)
+  result_null <- nemetonShiny:::render_markdown_text(NULL, 0.1, 0.9)
   expect_equal(result_null, 0.9)
 
-  result_empty <- nemeton:::render_markdown_text("", 0.1, 0.9)
+  result_empty <- nemetonShiny:::render_markdown_text("", 0.1, 0.9)
   expect_equal(result_empty, 0.9)
 
   grDevices::dev.off()
@@ -875,7 +875,7 @@ test_that("render_markdown_text processes headers", {
   plot.new()
 
   text <- "# Header 1\n## Header 2\n### Header 3\nRegular text"
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
 
   # Should return a lower y position
   expect_true(result < 0.9)
@@ -890,7 +890,7 @@ test_that("render_markdown_text processes blockquotes", {
   plot.new()
 
   text <- "> This is a blockquote\n> Another line"
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
 
   expect_true(result < 0.9)
 
@@ -904,7 +904,7 @@ test_that("render_markdown_text processes bullet lists", {
   plot.new()
 
   text <- "- First item\n- Second item\n* Third item"
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
 
   expect_true(result < 0.9)
 
@@ -918,7 +918,7 @@ test_that("render_markdown_text processes numbered lists", {
   plot.new()
 
   text <- "1. First item\n2. Second item\n3. Third item"
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
 
   expect_true(result < 0.9)
 
@@ -932,7 +932,7 @@ test_that("render_markdown_text handles empty lines (paragraph breaks)", {
   plot.new()
 
   text <- "Paragraph 1\n\nParagraph 2"
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
 
   expect_true(result < 0.9)
 
@@ -950,7 +950,7 @@ test_that("render_formatted_line handles plain text", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("Plain text without formatting", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("Plain text without formatting", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -963,7 +963,7 @@ test_that("render_formatted_line handles bold text", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("This is **bold** text", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("This is **bold** text", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -976,7 +976,7 @@ test_that("render_formatted_line handles italic text", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("This is *italic* text", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("This is *italic* text", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -989,7 +989,7 @@ test_that("render_formatted_line handles inline code", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("This is `code` text", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("This is `code` text", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -1002,7 +1002,7 @@ test_that("render_formatted_line handles strikethrough text", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("This is ~~strikethrough~~ text", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("This is ~~strikethrough~~ text", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -1015,7 +1015,7 @@ test_that("render_formatted_line handles links", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("Visit [our site](https://example.com)", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("Visit [our site](https://example.com)", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -1061,7 +1061,7 @@ test_that("generate_simple_pdf_report creates file", {
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "fr",
     synthesis_comments = "Test comments for PDF"
@@ -1095,7 +1095,7 @@ test_that("generate_simple_pdf_report works with English language", {
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "en"
   )
@@ -1131,7 +1131,7 @@ test_that("generate_simple_pdf_report includes family_comments", {
     B = "Biodiversity family analysis"
   )
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "fr",
     family_comments = family_comments
@@ -1179,7 +1179,7 @@ test_that("generate_simple_pdf_report handles polygon geometry", {
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "fr"
   )
@@ -1216,7 +1216,7 @@ test_that("generate_report_pdf works without Quarto", {
   on.exit(unlink(temp_file), add = TRUE)
 
   # Force fallback by setting use_quarto = FALSE
-  result <- nemeton:::generate_report_pdf(
+  result <- nemetonShiny:::generate_report_pdf(
     project, family_scores, temp_file,
     language = "en",
     use_quarto = FALSE
@@ -1261,7 +1261,7 @@ test_that("generate_report_pdf handles synthesis_comments and family_comments", 
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_report_pdf(
+  result <- nemetonShiny:::generate_report_pdf(
     project, family_scores, temp_file,
     language = "fr",
     synthesis_comments = "# Analysis Summary\n\nThis is **important** analysis.",
@@ -1291,12 +1291,12 @@ test_that("export functions handle empty data gracefully", {
   on.exit(unlink(temp_file), add = TRUE)
 
   # This should work (write empty layer)
-  expect_no_error(nemeton:::export_geopackage(empty_sf, temp_file))
+  expect_no_error(nemetonShiny:::export_geopackage(empty_sf, temp_file))
 })
 
 test_that("clean_text_for_pdf handles special characters in sequence", {
   text <- "\u201C\u2018Test\u2019 \u2013 \u2014 \u2026\u00A0\u201D"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "\"'Test' - - ... \"")
 })
 
@@ -1321,7 +1321,7 @@ test_that("prepare_report_data calculates correct global score", {
     geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 2154)
   )
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL)
 
   expect_equal(result$global_score, 75)
 })
@@ -1361,7 +1361,7 @@ test_that("prepare_report_data handles multiple parcels for statistics", {
     )
   )
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL)
 
   expect_equal(result$family_stats$C$mean, 50)
   expect_equal(result$family_stats$C$min, 20)
@@ -1379,7 +1379,7 @@ create_test_family_scores <- function(n = 3) {
   units <- create_test_units(n_features = n)
   # Add family score columns
   for (code in c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")) {
-    units[[nemeton:::get_famille_col(code)]] <- runif(n, 20, 80)
+    units[[nemetonShiny:::get_famille_col(code)]] <- runif(n, 20, 80)
   }
   units$id <- paste0("PARCEL_", seq_len(n))
   units
@@ -1415,13 +1415,13 @@ test_that("is_quarto_installed returns FALSE when quarto package not available",
   )
   # Because we cannot easily mock requireNamespace at package level,
   # we verify the function is callable and returns logical
-  result <- nemeton:::is_quarto_installed()
+  result <- nemetonShiny:::is_quarto_installed()
   expect_type(result, "logical")
 })
 
 test_that("is_quarto_installed handles system2 error gracefully", {
   # Verify the function handles edge cases and always returns logical
-  result <- nemeton:::is_quarto_installed()
+  result <- nemetonShiny:::is_quarto_installed()
   expect_type(result, "logical")
   expect_length(result, 1)
 })
@@ -1431,12 +1431,12 @@ test_that("is_quarto_installed handles system2 error gracefully", {
 # ==============================================================================
 
 test_that("strip_markdown_for_display handles empty string", {
-  expect_equal(nemeton:::strip_markdown_for_display(""), "")
+  expect_equal(nemetonShiny:::strip_markdown_for_display(""), "")
 })
 
 test_that("strip_markdown_for_display handles text with no markdown", {
   expect_equal(
-    nemeton:::strip_markdown_for_display("Plain text with no formatting"),
+    nemetonShiny:::strip_markdown_for_display("Plain text with no formatting"),
     "Plain text with no formatting"
   )
 })
@@ -1444,19 +1444,19 @@ test_that("strip_markdown_for_display handles text with no markdown", {
 test_that("strip_markdown_for_display handles nested bold and italic", {
   # Bold with italic adjacent
   text <- "**Bold** and *italic* together"
-  result <- nemeton:::strip_markdown_for_display(text)
+  result <- nemetonShiny:::strip_markdown_for_display(text)
   expect_equal(result, "Bold and italic together")
 })
 
 test_that("strip_markdown_for_display handles multiple links", {
   text <- "Visit [site1](http://a.com) and [site2](http://b.com)"
-  result <- nemeton:::strip_markdown_for_display(text)
+  result <- nemetonShiny:::strip_markdown_for_display(text)
   expect_equal(result, "Visit site1 and site2")
 })
 
 test_that("strip_markdown_for_display handles combined inline code and bold", {
   text <- "Use `func()` and **important**"
-  result <- nemeton:::strip_markdown_for_display(text)
+  result <- nemetonShiny:::strip_markdown_for_display(text)
   expect_equal(result, "Use func() and important")
 })
 
@@ -1466,31 +1466,31 @@ test_that("strip_markdown_for_display handles combined inline code and bold", {
 
 test_that("clean_text_for_pdf handles multiple curly quotes in one string", {
   text <- "\u201CFirst\u201D and \u201CSecond\u201D"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "\"First\" and \"Second\"")
 })
 
 test_that("clean_text_for_pdf handles mixed single and double curly quotes", {
   text <- "\u2018word\u2019 \u201Cphrase\u201D"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "'word' \"phrase\"")
 })
 
 test_that("clean_text_for_pdf handles string with only special characters", {
   text <- "\u2013\u2014\u2026\u00A0"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "--... ")
 })
 
 test_that("clean_text_for_pdf handles multi-line text", {
   text <- "Line 1\u2013end\nLine 2\u2014end"
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, "Line 1-end\nLine 2-end")
 })
 
 test_that("clean_text_for_pdf handles normal ASCII text unchanged", {
   text <- "Normal ASCII text with 123 numbers."
-  result <- nemeton:::clean_text_for_pdf(text)
+  result <- nemetonShiny:::clean_text_for_pdf(text)
   expect_equal(result, text)
 })
 
@@ -1506,7 +1506,7 @@ test_that("render_markdown_text handles text reaching bottom of page", {
 
   # Create very long text that will exceed page bounds
   long_text <- paste(rep("Line of text that wraps.", 50), collapse = "\n")
-  result <- nemeton:::render_markdown_text(long_text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(long_text, 0.1, 0.9)
 
   # Should stop rendering when y < 0.05
   expect_true(result <= 0.9)
@@ -1536,7 +1536,7 @@ test_that("render_markdown_text handles mixed markdown elements", {
     "Final paragraph with `code` and [link](http://example.com).",
     sep = "\n"
   )
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
 
   expect_true(result < 0.9)
 
@@ -1550,7 +1550,7 @@ test_that("render_markdown_text handles bold followed by text without space", {
   plot.new()
 
   text <- "**bold**text here"
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
   expect_true(result < 0.9)
 
   grDevices::dev.off()
@@ -1563,7 +1563,7 @@ test_that("render_markdown_text handles italic followed by text without space", 
   plot.new()
 
   text <- "*italic*text"
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
   expect_true(result < 0.9)
 
   grDevices::dev.off()
@@ -1576,7 +1576,7 @@ test_that("render_markdown_text handles h2 and h3 headers", {
   plot.new()
 
   text <- "## Section Title\n\n### Subsection\n\nText here."
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
   expect_true(result < 0.9)
 
   grDevices::dev.off()
@@ -1592,7 +1592,7 @@ test_that("render_markdown_text handles long bullet list items that wrap", {
     "- ", paste(rep("word", 30), collapse = " "), "\n",
     "- Short item"
   )
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
   expect_true(result < 0.9)
 
   grDevices::dev.off()
@@ -1608,7 +1608,7 @@ test_that("render_markdown_text handles long numbered list items that wrap", {
     "1. ", paste(rep("long", 30), collapse = " "), "\n",
     "2. Short"
   )
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
   expect_true(result < 0.9)
 
   grDevices::dev.off()
@@ -1621,7 +1621,7 @@ test_that("render_markdown_text handles blockquote with multiple wrapped lines",
   plot.new()
 
   text <- paste0("> ", paste(rep("blockquote", 25), collapse = " "))
-  result <- nemeton:::render_markdown_text(text, 0.1, 0.9)
+  result <- nemetonShiny:::render_markdown_text(text, 0.1, 0.9)
   expect_true(result < 0.9)
 
   grDevices::dev.off()
@@ -1638,7 +1638,7 @@ test_that("render_formatted_line handles mixed bold and italic on same line", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("**Bold** and *italic* and `code` text", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("**Bold** and *italic* and `code` text", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -1652,7 +1652,7 @@ test_that("render_formatted_line handles unmatched marker gracefully", {
 
   # Single asterisk without closing - should fall through to skip one char
   expect_no_error(
-    nemeton:::render_formatted_line("Start * end", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("Start * end", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -1665,7 +1665,7 @@ test_that("render_formatted_line handles text before bold marker", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("Preceding text **bold** trailing text", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("Preceding text **bold** trailing text", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -1678,7 +1678,7 @@ test_that("render_formatted_line handles strikethrough with adjacent text", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("Before ~~strike~~ after", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("Before ~~strike~~ after", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -1691,7 +1691,7 @@ test_that("render_formatted_line handles link in the middle of text", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("Before [link text](http://x.com) after", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("Before [link text](http://x.com) after", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -1704,7 +1704,7 @@ test_that("render_formatted_line handles inline code in middle", {
   plot.new()
 
   expect_no_error(
-    nemeton:::render_formatted_line("Use `function()` in your code", 0.1, 0.5, 0.7, "black", 80)
+    nemetonShiny:::render_formatted_line("Use `function()` in your code", 0.1, 0.5, 0.7, "black", 80)
   )
 
   grDevices::dev.off()
@@ -1735,9 +1735,9 @@ test_that("draw_parcel_table renders all quality levels", {
   grDevices::pdf(temp_file)
 
   # French version
-  expect_no_error(nemeton:::draw_parcel_table(data, "score", "id", "fr"))
+  expect_no_error(nemetonShiny:::draw_parcel_table(data, "score", "id", "fr"))
   # English version
-  expect_no_error(nemeton:::draw_parcel_table(data, "score", "id", "en"))
+  expect_no_error(nemetonShiny:::draw_parcel_table(data, "score", "id", "en"))
 
   grDevices::dev.off()
 })
@@ -1760,8 +1760,8 @@ test_that("draw_parcel_table handles many rows (truncation)", {
   grDevices::pdf(temp_file)
 
   # Should handle the truncation message ("... N additional parcels")
-  expect_no_error(nemeton:::draw_parcel_table(data, "score", "id", "fr"))
-  expect_no_error(nemeton:::draw_parcel_table(data, "score", "id", "en"))
+  expect_no_error(nemetonShiny:::draw_parcel_table(data, "score", "id", "fr"))
+  expect_no_error(nemetonShiny:::draw_parcel_table(data, "score", "id", "en"))
 
   grDevices::dev.off()
 })
@@ -1780,7 +1780,7 @@ test_that("draw_parcel_table with indicator_title in English", {
   grDevices::pdf(temp_file)
 
   expect_no_error(
-    nemeton:::draw_parcel_table(data, "score", "id", "en", indicator_title = "C1 - Carbon Biomass")
+    nemetonShiny:::draw_parcel_table(data, "score", "id", "en", indicator_title = "C1 - Carbon Biomass")
   )
 
   grDevices::dev.off()
@@ -1810,7 +1810,7 @@ test_that("draw_indicator_map_page renders with polygon data using fallback", {
 
   # This should go through the fallback simple sf plot path
   expect_no_error(
-    nemeton:::draw_indicator_map_page(data, "value", "Test Map", "#228B22", "fr")
+    nemetonShiny:::draw_indicator_map_page(data, "value", "Test Map", "#228B22", "fr")
   )
 
   grDevices::dev.off()
@@ -1837,7 +1837,7 @@ test_that("draw_indicator_map_page handles values with NA mixed in", {
   grDevices::pdf(temp_file)
 
   expect_no_error(
-    nemeton:::draw_indicator_map_page(data, "value", "Mixed NAs", "#1E90FF", "en")
+    nemetonShiny:::draw_indicator_map_page(data, "value", "Mixed NAs", "#1E90FF", "en")
   )
 
   grDevices::dev.off()
@@ -1857,7 +1857,7 @@ test_that("draw_indicator_map_page renders in English with missing column", {
   grDevices::pdf(temp_file)
 
   expect_no_error(
-    nemeton:::draw_indicator_map_page(data, "nonexistent", "Test", "#228B22", "en")
+    nemetonShiny:::draw_indicator_map_page(data, "nonexistent", "Test", "#228B22", "en")
   )
 
   grDevices::dev.off()
@@ -1877,7 +1877,7 @@ test_that("draw_indicator_map_page renders in English with all NA values", {
   grDevices::pdf(temp_file)
 
   expect_no_error(
-    nemeton:::draw_indicator_map_page(data, "value", "Test", "#228B22", "en")
+    nemetonShiny:::draw_indicator_map_page(data, "value", "Test", "#228B22", "en")
   )
 
   grDevices::dev.off()
@@ -1907,7 +1907,7 @@ test_that("add_parcel_labels draws labels with halo effect on polygons", {
   plot(sf::st_geometry(data))
 
   # Exercise the label rendering (halo effect loop)
-  expect_no_error(nemeton:::add_parcel_labels(data, id_col = "id"))
+  expect_no_error(nemetonShiny:::add_parcel_labels(data, id_col = "id"))
 
   grDevices::dev.off()
 })
@@ -1929,7 +1929,7 @@ test_that("add_parcel_labels handles short IDs (less than 6 chars)", {
   grDevices::pdf(temp_file)
 
   plot(sf::st_geometry(data))
-  expect_no_error(nemeton:::add_parcel_labels(data, id_col = "id"))
+  expect_no_error(nemetonShiny:::add_parcel_labels(data, id_col = "id"))
 
   grDevices::dev.off()
 })
@@ -1957,7 +1957,7 @@ test_that("generate_indicator_map renders to current device when no output_file"
   grDevices::pdf(temp_file)
 
   # Call without output_file - should render to current device
-  result <- nemeton:::generate_indicator_map(data, "value", "Test Map")
+  result <- nemetonShiny:::generate_indicator_map(data, "value", "Test Map")
   expect_null(result)
 
   grDevices::dev.off()
@@ -1980,7 +1980,7 @@ test_that("generate_indicator_map handles NA values mixed with valid data", {
   temp_file <- tempfile(fileext = ".png")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_indicator_map(data, "value", "Test with NAs",
+  result <- nemetonShiny:::generate_indicator_map(data, "value", "Test with NAs",
                                               output_file = temp_file)
   expect_null(result)
   expect_true(file.exists(temp_file))
@@ -2003,7 +2003,7 @@ test_that("generate_indicator_map uses custom color", {
   temp_file <- tempfile(fileext = ".png")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_indicator_map(data, "value", "Custom Color",
+  result <- nemetonShiny:::generate_indicator_map(data, "value", "Custom Color",
                                               color = "#9932CC",
                                               output_file = temp_file)
   expect_null(result)
@@ -2024,12 +2024,12 @@ test_that("generate_family_maps creates maps for all 12 family columns", {
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
   suppressWarnings(
-    expect_no_error(nemeton:::generate_family_maps(family_scores, temp_dir, "fr"))
+    expect_no_error(nemetonShiny:::generate_family_maps(family_scores, temp_dir, "fr"))
   )
 
   # Verify maps for all families are created
   for (code in c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")) {
-    map_file <- file.path(temp_dir, paste0(nemeton:::get_famille_col(code), "_map.png"))
+    map_file <- file.path(temp_dir, paste0(nemetonShiny:::get_famille_col(code), "_map.png"))
     expect_true(file.exists(map_file), info = paste("Missing map for family", code))
     expect_true(file.size(map_file) > 0, info = paste("Empty map for family", code))
   }
@@ -2045,7 +2045,7 @@ test_that("generate_family_maps works with English language", {
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
   suppressWarnings(
-    expect_no_error(nemeton:::generate_family_maps(family_scores, temp_dir, "en"))
+    expect_no_error(nemetonShiny:::generate_family_maps(family_scores, temp_dir, "en"))
   )
 
   expect_true(file.exists(file.path(temp_dir, "famille_carbone_map.png")))
@@ -2065,7 +2065,7 @@ test_that("generate_radar_image creates file with English language", {
   temp_file <- tempfile(fileext = ".png")
   on.exit(unlink(temp_file), add = TRUE)
 
-  expect_no_error(nemeton:::generate_radar_image(family_scores, temp_file, "en"))
+  expect_no_error(nemetonShiny:::generate_radar_image(family_scores, temp_file, "en"))
 
   skip_if_not(file.exists(temp_file), "PNG file not created (display issue)")
   expect_true(file.size(temp_file) > 0)
@@ -2082,7 +2082,7 @@ test_that("generate_radar_image handles error gracefully (fallback plot)", {
   on.exit(unlink(temp_file), add = TRUE)
 
   # Should not error - has tryCatch fallback
-  expect_no_error(nemeton:::generate_radar_image(bad_data, temp_file, "fr"))
+  expect_no_error(nemetonShiny:::generate_radar_image(bad_data, temp_file, "fr"))
 })
 
 # ==============================================================================
@@ -2095,7 +2095,7 @@ test_that("prepare_report_data builds family_descriptions for all families", {
   project <- create_test_project()
   family_scores <- create_test_family_scores(n = 2)
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL)
 
   expect_type(result$family_descriptions, "list")
   expect_equal(length(result$family_descriptions), 12)
@@ -2114,7 +2114,7 @@ test_that("prepare_report_data builds family_descriptions in English", {
   project <- create_test_project()
   family_scores <- create_test_family_scores(n = 2)
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "en", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "en", NULL)
 
   for (code in names(result$family_descriptions)) {
     desc <- result$family_descriptions[[code]]
@@ -2131,7 +2131,7 @@ test_that("prepare_report_data builds indicator_stats correctly", {
   family_scores$indicateur_c1_biomasse <- c(100, 120, 80)
   family_scores$indicateur_c2_ndvi <- c(0.7, 0.8, 0.6)
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL)
 
   # indicator_stats should have data for family C since we added its columns
   ind_stats_c <- result$indicator_stats$C
@@ -2148,7 +2148,7 @@ test_that("prepare_report_data indicator_stats uses English column names", {
   family_scores <- create_test_family_scores(n = 2)
   family_scores$indicateur_c1_biomasse <- c(100, 120)
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "en", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "en", NULL)
 
   ind_stats_c <- result$indicator_stats$C
   if (nrow(ind_stats_c) > 0) {
@@ -2163,7 +2163,7 @@ test_that("prepare_report_data includes all labels in fr", {
   project <- create_test_project()
   family_scores <- create_test_family_scores(n = 1)
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL)
 
   expect_true(grepl("N\u00e9meton", result$labels$title))
   expect_type(result$labels$subtitle, "character")
@@ -2184,7 +2184,7 @@ test_that("prepare_report_data includes all labels in en", {
   project <- create_test_project()
   family_scores <- create_test_family_scores(n = 1)
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "en", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "en", NULL)
 
   expect_true(grepl("N\u00e9meton", result$labels$title))
   expect_type(result$labels$family_scores, "character")
@@ -2197,7 +2197,7 @@ test_that("prepare_report_data handles NULL family_comments by filling all codes
   project <- create_test_project()
   family_scores <- create_test_family_scores(n = 1)
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL, NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL, NULL)
 
   # family_comments should be filled with empty strings for all family codes
   expect_equal(length(result$family_comments), 12)
@@ -2213,7 +2213,7 @@ test_that("prepare_report_data passes through family_comments when provided", {
   family_scores <- create_test_family_scores(n = 1)
   comments <- list(C = "Carbon analysis", W = "Water analysis")
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL, comments)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL, comments)
 
   expect_equal(result$family_comments$C, "Carbon analysis")
   expect_equal(result$family_comments$W, "Water analysis")
@@ -2225,7 +2225,7 @@ test_that("prepare_report_data includes standard deviation in family_stats", {
   project <- create_test_project()
   family_scores <- create_test_family_scores(n = 5)
 
-  result <- nemeton:::prepare_report_data(project, family_scores, "fr", NULL)
+  result <- nemetonShiny:::prepare_report_data(project, family_scores, "fr", NULL)
 
   for (code in names(result$family_stats)) {
     expect_true("sd" %in% names(result$family_stats[[code]]))
@@ -2250,7 +2250,7 @@ test_that("generate_simple_pdf_report creates multi-page PDF with all families",
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "fr",
     synthesis_comments = "# Analysis\n\nThis is **important**.\n\n- Item 1\n- Item 2",
@@ -2276,7 +2276,7 @@ test_that("generate_simple_pdf_report with cover image path that does not exist"
   on.exit(unlink(temp_file), add = TRUE)
 
   # cover_image is set but does not exist -> should use standard cover
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "fr",
     cover_image = "/tmp/nonexistent_cover_image.png"
@@ -2307,7 +2307,7 @@ test_that("generate_simple_pdf_report with valid cover image PNG", {
     unlink(cover_file)
   }, add = TRUE)
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "fr",
     cover_image = cover_file
@@ -2326,7 +2326,7 @@ test_that("generate_simple_pdf_report works without synthesis_comments", {
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "fr",
     synthesis_comments = NULL
@@ -2344,7 +2344,7 @@ test_that("generate_simple_pdf_report with empty synthesis_comments", {
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "en",
     synthesis_comments = ""
@@ -2360,14 +2360,14 @@ test_that("generate_simple_pdf_report handles low global score coloring", {
   # Create data with all low scores
   units <- create_test_units(n_features = 2)
   for (code in c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")) {
-    units[[nemeton:::get_famille_col(code)]] <- c(15, 20)
+    units[[nemetonShiny:::get_famille_col(code)]] <- c(15, 20)
   }
   units$id <- c("P1", "P2")
 
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, units, temp_file,
     language = "fr"
   )
@@ -2381,14 +2381,14 @@ test_that("generate_simple_pdf_report handles medium global score coloring", {
   project <- create_test_project()
   units <- create_test_units(n_features = 2)
   for (code in c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")) {
-    units[[nemeton:::get_famille_col(code)]] <- c(45, 50)
+    units[[nemetonShiny:::get_famille_col(code)]] <- c(45, 50)
   }
   units$id <- c("P1", "P2")
 
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, units, temp_file,
     language = "en"
   )
@@ -2434,7 +2434,7 @@ test_that("generate_simple_pdf_report renders complete report with all comments"
     N = "Natural heritage is well preserved."
   )
 
-  result <- nemeton:::generate_simple_pdf_report(
+  result <- nemetonShiny:::generate_simple_pdf_report(
     project, family_scores, temp_file,
     language = "fr",
     synthesis_comments = "# Synthesis\n\n> Important finding\n\nOverall the forest is in good condition.\n\n1. Carbon stocks are high\n2. Biodiversity is diverse\n3. Water quality is good",
@@ -2459,9 +2459,9 @@ test_that("generate_pdf_report errors when Quarto not installed", {
   on.exit(unlink(temp_file), add = TRUE)
 
   # If Quarto is not installed, this should error with the expected message
-  if (!nemeton:::is_quarto_installed()) {
+  if (!nemetonShiny:::is_quarto_installed()) {
     expect_error(
-      nemeton:::generate_pdf_report(
+      nemetonShiny:::generate_pdf_report(
         project, family_scores, temp_file, language = "fr"
       ),
       "Quarto is required"
@@ -2487,7 +2487,7 @@ test_that("generate_report_pdf with use_quarto=TRUE falls back when Quarto unava
   on.exit(unlink(temp_file), add = TRUE)
 
   # With use_quarto = TRUE, it will try Quarto first then fall back
-  result <- suppressWarnings(nemeton:::generate_report_pdf(
+  result <- suppressWarnings(nemetonShiny:::generate_report_pdf(
     project, family_scores, temp_file,
     language = "fr",
     use_quarto = TRUE
@@ -2507,7 +2507,7 @@ test_that("generate_report_pdf passes cover_image through to simple PDF", {
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_report_pdf(
+  result <- nemetonShiny:::generate_report_pdf(
     project, family_scores, temp_file,
     language = "en",
     use_quarto = FALSE,
@@ -2526,7 +2526,7 @@ test_that("generate_report_pdf with all parameters produces valid PDF", {
   temp_file <- tempfile(fileext = ".pdf")
   on.exit(unlink(temp_file), add = TRUE)
 
-  result <- nemeton:::generate_report_pdf(
+  result <- nemetonShiny:::generate_report_pdf(
     project, family_scores, temp_file,
     language = "fr",
     synthesis_comments = "Test synthesis with **markdown**.",
@@ -2563,7 +2563,7 @@ test_that("draw_standard_cover_page with long description", {
   on.exit(unlink(temp_file), add = TRUE)
   grDevices::pdf(temp_file)
 
-  expect_no_error(nemeton:::draw_standard_cover_page(report_data, "fr"))
+  expect_no_error(nemetonShiny:::draw_standard_cover_page(report_data, "fr"))
 
   grDevices::dev.off()
 })
@@ -2585,7 +2585,7 @@ test_that("draw_standard_cover_page handles empty string description", {
   on.exit(unlink(temp_file), add = TRUE)
   grDevices::pdf(temp_file)
 
-  expect_no_error(nemeton:::draw_standard_cover_page(report_data, "en"))
+  expect_no_error(nemetonShiny:::draw_standard_cover_page(report_data, "en"))
 
   grDevices::dev.off()
 })

@@ -75,7 +75,7 @@ test_that("mod_home_ui returns valid Shiny UI with correct structure", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemeton:::mod_home_ui("test")
+      ui <- nemetonShiny:::mod_home_ui("test")
       expect_s3_class(ui, "shiny.tag")
       ui_html <- as.character(ui)
 
@@ -98,7 +98,7 @@ test_that("mod_home_ui works with English language", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      ui <- nemeton:::mod_home_ui("test_en")
+      ui <- nemetonShiny:::mod_home_ui("test_en")
       expect_s3_class(ui, "shiny.tag")
       ui_html <- as.character(ui)
       expect_true(grepl("test_en-", ui_html))
@@ -112,8 +112,8 @@ test_that("mod_home_ui works with English language", {
 # =============================================================================
 
 test_that("mod_home_server is a function with correct formals", {
-  expect_type(nemeton:::mod_home_server, "closure")
-  args <- names(formals(nemeton:::mod_home_server))
+  expect_type(nemetonShiny:::mod_home_server, "closure")
+  args <- names(formals(nemetonShiny:::mod_home_server))
   expect_true("id" %in% args)
   expect_true("app_state" %in% args)
 })
@@ -144,7 +144,7 @@ test_that("mod_home_server initializes and returns expected reactive list", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           result <- session$getReturned()
@@ -190,7 +190,7 @@ test_that("mod_home_server delegates to all child modules", {
     },
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           expect_true(called$search)
@@ -221,7 +221,7 @@ test_that("recent_projects_list renders empty message when no projects", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           # Trigger renderUI
@@ -262,7 +262,7 @@ test_that("recent_projects_list renders project cards with various statuses", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           html <- output$recent_projects_list
@@ -308,7 +308,7 @@ test_that("recent_projects_list marks active project correctly", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state(list(
           project_id = "active_proj"
         ))),
@@ -354,7 +354,7 @@ test_that("recent_projects_list handles corrupted project", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           html <- output$recent_projects_list
@@ -397,7 +397,7 @@ test_that("recent_projects_list shows singular parcel count", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           html <- output$recent_projects_list
@@ -428,7 +428,7 @@ test_that("compute_button_ui returns NULL when no project", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           html <- output$compute_button_ui
@@ -460,7 +460,7 @@ test_that("compute_button_ui shows compute button for draft project", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state(list(
           current_project = mock_project,
           project_id = "proj_draft"
@@ -496,7 +496,7 @@ test_that("compute_button_ui shows compute button for error project", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state(list(
           current_project = mock_project,
           project_id = "proj_err"
@@ -533,7 +533,7 @@ test_that("compute_button_ui shows view results for completed project", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state(list(
           current_project = mock_project,
           project_id = "proj_done"
@@ -571,7 +571,7 @@ test_that("compute_button_ui returns NULL for computing status", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state(list(
           current_project = mock_project,
           project_id = "proj_running"
@@ -625,7 +625,7 @@ test_that("load_project observer loads project and updates app_state", {
     {
       as <- make_app_state()
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           session$setInputs(load_project = "loaded_proj")
@@ -681,7 +681,7 @@ test_that("load_project handles DOM-TOM commune codes", {
     {
       as <- make_app_state()
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           session$setInputs(load_project = "dom_proj")
@@ -716,7 +716,7 @@ test_that("load_project skips already loaded project", {
     {
       as <- make_app_state(list(project_id = "already_loaded"))
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           # Try to load the same project
@@ -767,7 +767,7 @@ test_that("load_project handles parcels with invalid commune code", {
     {
       as <- make_app_state()
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           # This should trigger the invalid commune code path (L304-308)
@@ -802,7 +802,7 @@ test_that("delete_corrupted shows confirmation modal", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           # Trigger delete_corrupted input
@@ -837,7 +837,7 @@ test_that("confirm_delete deletes project and refreshes list", {
     {
       as <- make_app_state()
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           session$setInputs(delete_corrupted = "bad_proj")
@@ -896,7 +896,7 @@ test_that("recompute handler clears cache and resets status", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state(list(
           current_project = mock_project,
           project_id = "proj_recompute"
@@ -932,7 +932,7 @@ test_that("view_results navigates to synthesis tab", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           # Trigger view_results — should not error
@@ -969,7 +969,7 @@ test_that("start_compute shows confirmation modal", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state(list(
           current_project = mock_project,
           project_id = "proj_compute"
@@ -1026,7 +1026,7 @@ test_that("cancel computation updates state correctly", {
       ))
 
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           # ignoreInit = TRUE means first value change is ignored.
@@ -1116,7 +1116,7 @@ test_that("retry computation re-initializes and invokes task", {
       ))
 
       suppressWarnings(shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           # ignoreInit = TRUE — set twice to trigger
@@ -1152,7 +1152,7 @@ test_that("app_state view_results triggers navigation", {
     {
       as <- make_app_state()
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           as$view_results <- Sys.time()
@@ -1208,7 +1208,7 @@ test_that("resume progress tracking when loading computing project", {
     {
       as <- make_app_state()
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           # ignoreInit = TRUE — set twice to trigger
@@ -1256,7 +1256,7 @@ test_that("resume does not interfere when project has no ongoing computation", {
     {
       as <- make_app_state()
       suppressWarnings(shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           as$current_project <- mock_project
@@ -1306,7 +1306,7 @@ test_that("commune change resets project state", {
       ))
 
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           # ignoreInit = TRUE — set twice to trigger
@@ -1363,7 +1363,7 @@ test_that("commune change during restore does NOT reset project state", {
       ))
 
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           # Change commune during restore — should NOT reset
@@ -1406,7 +1406,7 @@ test_that("load_project with no parcels skips restore", {
     {
       as <- make_app_state()
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           session$setInputs(load_project = "proj_no_parcels")
@@ -1459,7 +1459,7 @@ test_that("load_project with parcels but no code_insee skips restore", {
     {
       as <- make_app_state()
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           session$setInputs(load_project = "proj_no_insee")
@@ -1493,7 +1493,7 @@ test_that("tour related observers exist when cicerone is available", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           # Tour observers should exist without error
@@ -1522,7 +1522,7 @@ test_that("tour auto-starts when not previously seen", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           # tour_seen_browser = FALSE means tour was not seen → auto-start
@@ -1552,7 +1552,7 @@ test_that("tour restart via app_state works", {
     {
       as <- make_app_state()
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = as),
         {
           as$restart_tour <- Sys.time()
@@ -1579,7 +1579,7 @@ test_that("tour_ready input triggers do_start_tour", {
     mod_progress_server = mock_progress_server,
     {
       shiny::testServer(
-        nemeton:::mod_home_server,
+        nemetonShiny:::mod_home_server,
         args = list(app_state = make_app_state()),
         {
           # Simulate JS callback — tour_ready fires do_start_tour

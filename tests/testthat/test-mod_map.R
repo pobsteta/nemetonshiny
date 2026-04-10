@@ -10,7 +10,7 @@ test_that("mod_map_ui returns valid bslib card", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test")
+  ui <- nemetonShiny:::mod_map_ui("test")
 
   expect_s3_class(ui, "shiny.tag")
   ui_html <- as.character(ui)
@@ -24,7 +24,7 @@ test_that("mod_map_ui creates namespaced elements", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test_ns")
+  ui <- nemetonShiny:::mod_map_ui("test_ns")
   ui_html <- as.character(ui)
 
   expect_true(grepl("test_ns-map", ui_html))
@@ -36,7 +36,7 @@ test_that("mod_map_ui includes basemap toggle buttons", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test")
+  ui <- nemetonShiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
   expect_true(grepl("basemap_osm", ui_html))
@@ -50,7 +50,7 @@ test_that("mod_map_ui includes clear selection button", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test")
+  ui <- nemetonShiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
   expect_true(grepl("clear_selection", ui_html))
@@ -61,7 +61,7 @@ test_that("mod_map_ui includes leaflet output", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test")
+  ui <- nemetonShiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
   expect_true(grepl("leaflet", ui_html, ignore.case = TRUE))
@@ -72,7 +72,7 @@ test_that("mod_map_ui includes selection summary", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test")
+  ui <- nemetonShiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
   expect_true(grepl("selection_summary", ui_html))
@@ -83,7 +83,7 @@ test_that("mod_map_ui includes map loading overlay", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test")
+  ui <- nemetonShiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
   expect_true(grepl("map_loading_overlay", ui_html))
@@ -95,7 +95,7 @@ test_that("mod_map_ui includes map card with full screen option", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test")
+  ui <- nemetonShiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
   expect_true(grepl("map_card", ui_html))
@@ -106,7 +106,7 @@ test_that("mod_map_ui includes selection text and area elements", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test")
+  ui <- nemetonShiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
   expect_true(grepl("selection_text", ui_html))
@@ -118,7 +118,7 @@ test_that("mod_map_ui has proper accessibility attributes", {
   skip_if_not_installed("bslib")
   skip_if_not_installed("leaflet")
 
-  ui <- nemeton:::mod_map_ui("test")
+  ui <- nemetonShiny:::mod_map_ui("test")
   ui_html <- as.character(ui)
 
   # Button group should have aria-label
@@ -132,11 +132,11 @@ test_that("mod_map_ui has proper accessibility attributes", {
 # ==============================================================================
 
 test_that("mod_map_server is a function", {
-  expect_type(nemeton:::mod_map_server, "closure")
+  expect_type(nemetonShiny:::mod_map_server, "closure")
 })
 
 test_that("mod_map_server accepts required parameters", {
-  args <- names(formals(nemeton:::mod_map_server))
+  args <- names(formals(nemetonShiny:::mod_map_server))
 
   expect_true("id" %in% args)
   expect_true("app_state" %in% args)
@@ -150,7 +150,7 @@ test_that("mod_map_server accepts required parameters", {
 
 test_that("MAX_PARCELS constant is defined correctly", {
   # Check app config returns correct value
-  max_parcels <- nemeton:::get_app_config("max_parcels", 20L)
+  max_parcels <- nemetonShiny:::get_app_config("max_parcels", 20L)
 
   expect_type(max_parcels, "integer")
   expect_equal(max_parcels, 20L)
@@ -204,7 +204,7 @@ test_that("mod_map_server returns expected reactive values", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -279,7 +279,7 @@ test_that("mod_map_server handles parcel selection", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -348,7 +348,7 @@ test_that("mod_map_server handles parcel deselection", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -419,7 +419,7 @@ test_that("mod_map_server enforces max parcels limit", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -495,7 +495,7 @@ test_that("mod_map_server blocks selection during computation", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -560,7 +560,7 @@ test_that("mod_map_server clear_selection button works", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -633,7 +633,7 @@ test_that("mod_map_server handles clear_map_selection from app_state", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -708,7 +708,7 @@ test_that("mod_map_server selected_parcels returns correct sf object", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -756,7 +756,7 @@ test_that("create_parcel_label generates valid HTML label", {
     )
   )
 
-  label <- nemeton:::create_parcel_label(parcel)
+  label <- nemetonShiny:::create_parcel_label(parcel)
 
   expect_type(label, "character")
   expect_true(grepl("AB", label))  # Section
@@ -777,7 +777,7 @@ test_that("create_parcel_label handles missing fields gracefully", {
     )
   )
 
-  label <- nemeton:::create_parcel_label(parcel)
+  label <- nemetonShiny:::create_parcel_label(parcel)
 
   expect_type(label, "character")
   # Should use "-" for missing section/numero
@@ -798,7 +798,7 @@ test_that("create_parcel_label handles NULL contenance", {
     )
   )
 
-  label <- nemeton:::create_parcel_label(parcel)
+  label <- nemetonShiny:::create_parcel_label(parcel)
 
   expect_type(label, "character")
   # Should not contain "ha" since area is NA
@@ -819,7 +819,7 @@ test_that("filter_selected_parcels returns correct subset", {
     )
   )
 
-  result <- nemeton:::filter_selected_parcels(parcels, c("B", "D"))
+  result <- nemetonShiny:::filter_selected_parcels(parcels, c("B", "D"))
 
   expect_s3_class(result, "sf")
   expect_equal(nrow(result), 2)
@@ -839,7 +839,7 @@ test_that("filter_selected_parcels returns empty sf for no selection", {
     )
   )
 
-  result <- nemeton:::filter_selected_parcels(parcels, character(0))
+  result <- nemetonShiny:::filter_selected_parcels(parcels, character(0))
 
   expect_s3_class(result, "sf")
   expect_equal(nrow(result), 0)
@@ -859,7 +859,7 @@ test_that("calculate_parcel_stats returns correct statistics", {
     )
   )
 
-  stats <- nemeton:::calculate_parcel_stats(parcels)
+  stats <- nemetonShiny:::calculate_parcel_stats(parcels)
 
   expect_type(stats, "list")
   expect_equal(stats$count, 3)
@@ -870,7 +870,7 @@ test_that("calculate_parcel_stats returns correct statistics", {
 })
 
 test_that("calculate_parcel_stats handles NULL input", {
-  stats <- nemeton:::calculate_parcel_stats(NULL)
+  stats <- nemetonShiny:::calculate_parcel_stats(NULL)
 
   expect_type(stats, "list")
   expect_equal(stats$count, 0)
@@ -887,7 +887,7 @@ test_that("calculate_parcel_stats handles empty sf", {
     geometry = sf::st_sfc(crs = 4326)
   )
 
-  stats <- nemeton:::calculate_parcel_stats(empty_parcels)
+  stats <- nemetonShiny:::calculate_parcel_stats(empty_parcels)
 
   expect_type(stats, "list")
   expect_equal(stats$count, 0)
@@ -899,8 +899,8 @@ test_that("calculate_parcel_stats handles empty sf", {
 # ==============================================================================
 
 test_that("i18n keys for map module exist in both languages", {
-  fr <- nemeton:::get_i18n("fr")
-  en <- nemeton:::get_i18n("en")
+  fr <- nemetonShiny:::get_i18n("fr")
+  en <- nemetonShiny:::get_i18n("en")
 
   map_keys <- c(
     "map_title",
@@ -947,7 +947,7 @@ test_that("mod_map_server handles basemap toggle to OSM", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -992,7 +992,7 @@ test_that("mod_map_server handles basemap toggle to Satellite", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -1040,7 +1040,7 @@ test_that("mod_map_server handles null click id gracefully", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -1085,7 +1085,7 @@ test_that("mod_map_server handles empty click event gracefully", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,
@@ -1152,7 +1152,7 @@ test_that("mod_map_server handles multiple rapid selections", {
       mock_commune_geometry <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemeton:::mod_map_server,
+        nemetonShiny:::mod_map_server,
         args = list(
           app_state = mock_app_state,
           commune_geometry = mock_commune_geometry,

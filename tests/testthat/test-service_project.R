@@ -14,7 +14,7 @@ test_that("get_projects_root creates directory if missing", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = temp_dir),
     {
-      root <- nemeton:::get_projects_root()
+      root <- nemetonShiny:::get_projects_root()
       expect_true(dir.exists(root))
     }
   )
@@ -24,24 +24,24 @@ test_that("get_projects_root creates directory if missing", {
 
 test_that("create_project validates name", {
   expect_error(
-    nemeton:::create_project(name = ""),
+    nemetonShiny:::create_project(name = ""),
     regexp = "required"
   )
 
   expect_error(
-    nemeton:::create_project(name = NULL),
+    nemetonShiny:::create_project(name = NULL),
     regexp = "required"
   )
 
   expect_error(
-    nemeton:::create_project(name = paste(rep("a", 101), collapse = "")),
+    nemetonShiny:::create_project(name = paste(rep("a", 101), collapse = "")),
     regexp = "100 characters"
   )
 })
 
 test_that("create_project validates description length", {
   expect_error(
-    nemeton:::create_project(
+    nemetonShiny:::create_project(
       name = "Test",
       description = paste(rep("a", 501), collapse = "")
     ),
@@ -51,7 +51,7 @@ test_that("create_project validates description length", {
 
 test_that("create_project validates owner length", {
   expect_error(
-    nemeton:::create_project(
+    nemetonShiny:::create_project(
       name = "Test",
       owner = paste(rep("a", 101), collapse = "")
     ),
@@ -67,7 +67,7 @@ test_that("create_project creates project structure", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = temp_dir),
     {
-      project <- nemeton:::create_project(
+      project <- nemetonShiny:::create_project(
         name = "Test Project",
         description = "Test description",
         owner = "Test Owner"
@@ -100,7 +100,7 @@ test_that("create_project sets correct metadata", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = temp_dir),
     {
-      project <- nemeton:::create_project(
+      project <- nemetonShiny:::create_project(
         name = "My Project",
         description = "My description",
         owner = "John Doe"
@@ -119,7 +119,7 @@ test_that("create_project sets correct metadata", {
 
 test_that("update_project_status validates status", {
   expect_error(
-    nemeton:::update_project_status("fake_id", "invalid_status"),
+    nemetonShiny:::update_project_status("fake_id", "invalid_status"),
     regexp = "Invalid status"
   )
 })
@@ -132,12 +132,12 @@ test_that("update_project_status accepts valid statuses", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = temp_dir),
     {
-      project <- nemeton:::create_project(name = "Test")
+      project <- nemetonShiny:::create_project(name = "Test")
 
       # Should not error for valid statuses
       for (status in c("draft", "downloading", "computing", "completed", "error")) {
         expect_no_error(
-          nemeton:::update_project_status(project$id, status)
+          nemetonShiny:::update_project_status(project$id, status)
         )
       }
     }
@@ -154,9 +154,9 @@ test_that("load_project_metadata returns metadata", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = temp_dir),
     {
-      project <- nemeton:::create_project(name = "Test Metadata")
+      project <- nemetonShiny:::create_project(name = "Test Metadata")
 
-      metadata <- nemeton:::load_project_metadata(project$id)
+      metadata <- nemetonShiny:::load_project_metadata(project$id)
 
       expect_type(metadata, "list")
       expect_equal(metadata$name, "Test Metadata")
@@ -170,7 +170,7 @@ test_that("load_project_metadata returns NULL for missing project", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = tempdir()),
     {
-      result <- nemeton:::load_project_metadata("nonexistent_project")
+      result <- nemetonShiny:::load_project_metadata("nonexistent_project")
       expect_null(result)
     }
   )
@@ -184,7 +184,7 @@ test_that("list_recent_projects returns empty data.frame when no projects", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = temp_dir),
     {
-      projects <- nemeton:::list_recent_projects()
+      projects <- nemetonShiny:::list_recent_projects()
 
       expect_s3_class(projects, "data.frame")
       expect_equal(nrow(projects), 0)
@@ -206,11 +206,11 @@ test_that("list_recent_projects returns projects sorted by date", {
     get_app_options = function() list(project_dir = temp_dir),
     {
       # Create projects with delay (1 second to ensure different timestamps)
-      p1 <- nemeton:::create_project(name = "First")
+      p1 <- nemetonShiny:::create_project(name = "First")
       Sys.sleep(1.1)
-      p2 <- nemeton:::create_project(name = "Second")
+      p2 <- nemetonShiny:::create_project(name = "Second")
 
-      projects <- nemeton:::list_recent_projects()
+      projects <- nemetonShiny:::list_recent_projects()
 
       expect_equal(nrow(projects), 2)
       # Most recent first (sorted by updated_at descending)
@@ -234,7 +234,7 @@ test_that("check_project_health detects missing metadata", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = temp_dir),
     {
-      health <- nemeton:::check_project_health("fake_project")
+      health <- nemetonShiny:::check_project_health("fake_project")
 
       expect_false(health$valid)
       expect_true(any(grepl("metadata", health$issues, ignore.case = TRUE)))
@@ -252,9 +252,9 @@ test_that("check_project_health returns valid for good project", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = temp_dir),
     {
-      project <- nemeton:::create_project(name = "Healthy Project")
+      project <- nemetonShiny:::create_project(name = "Healthy Project")
 
-      health <- nemeton:::check_project_health(project$id)
+      health <- nemetonShiny:::check_project_health(project$id)
 
       expect_true(health$valid)
       expect_length(health$issues, 0)
@@ -272,11 +272,11 @@ test_that("delete_project removes project directory", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = temp_dir),
     {
-      project <- nemeton:::create_project(name = "To Delete")
+      project <- nemetonShiny:::create_project(name = "To Delete")
 
       expect_true(dir.exists(project$path))
 
-      result <- nemeton:::delete_project(project$id)
+      result <- nemetonShiny:::delete_project(project$id)
 
       expect_true(result)
       expect_false(dir.exists(project$path))
@@ -290,7 +290,7 @@ test_that("delete_project returns FALSE for nonexistent project", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = tempdir()),
     {
-      result <- suppressWarnings(nemeton:::delete_project("nonexistent_id"))
+      result <- suppressWarnings(nemetonShiny:::delete_project("nonexistent_id"))
       expect_false(result)
     }
   )
@@ -300,9 +300,9 @@ test_that("get_project_path returns NULL for invalid ID", {
   with_mocked_bindings(
     get_app_options = function() list(project_dir = tempdir()),
     {
-      expect_null(nemeton:::get_project_path(NULL))
-      expect_null(nemeton:::get_project_path(""))
-      expect_null(nemeton:::get_project_path("nonexistent"))
+      expect_null(nemetonShiny:::get_project_path(NULL))
+      expect_null(nemetonShiny:::get_project_path(""))
+      expect_null(nemetonShiny:::get_project_path("nonexistent"))
     }
   )
 })
@@ -318,17 +318,17 @@ test_that("update_project_metadata updates fields correctly", {
       get_app_options = function() list(language = "en", project_dir = temp_root),
       {
         # Create a project
-        created <- nemeton:::create_project(name = "Update Test")
+        created <- nemetonShiny:::create_project(name = "Update Test")
 
         # Update metadata with new fields
-        nemeton:::update_project_metadata(created$id, list(
+        nemetonShiny:::update_project_metadata(created$id, list(
           name = "Updated Name",
           description = "Updated description",
           indicators_computed = TRUE
         ))
 
         # Reload and verify
-        metadata <- nemeton:::load_project_metadata(created$id)
+        metadata <- nemetonShiny:::load_project_metadata(created$id)
         expect_equal(metadata$name, "Updated Name")
         expect_equal(metadata$description, "Updated description")
         expect_true(metadata$indicators_computed)
@@ -352,7 +352,7 @@ test_that("create_project with parcels saves them and updates parcels_count", {
       get_app_options = function() list(project_dir = temp_root),
       {
         parcels <- create_test_units(crs = 2154, n_features = 3)
-        project <- nemeton:::create_project(
+        project <- nemetonShiny:::create_project(
           name = "Project With Parcels",
           description = "Has parcels",
           owner = "Tester",
@@ -385,7 +385,7 @@ test_that("create_project with empty sf (0 rows) does not save parcels", {
       {
         parcels <- create_test_units(crs = 2154, n_features = 1)
         empty_parcels <- parcels[0, ]
-        project <- nemeton:::create_project(
+        project <- nemetonShiny:::create_project(
           name = "Project Empty Parcels",
           parcels = empty_parcels
         )
@@ -408,10 +408,10 @@ test_that("save_parcels saves sf to gpkg and load_parcels reads it back", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Parcel Test")
+        project <- nemetonShiny:::create_project(name = "Parcel Test")
         parcels <- create_test_units(crs = 2154, n_features = 3)
 
-        result <- nemeton:::save_parcels(project$id, parcels)
+        result <- nemetonShiny:::save_parcels(project$id, parcels)
         expect_true(result)
 
         # Verify gpkg file exists
@@ -419,7 +419,7 @@ test_that("save_parcels saves sf to gpkg and load_parcels reads it back", {
         expect_true(file.exists(gpkg_path))
 
         # Load parcels back
-        loaded <- nemeton:::load_parcels(project$id)
+        loaded <- nemetonShiny:::load_parcels(project$id)
         expect_s3_class(loaded, "sf")
         expect_equal(nrow(loaded), 3)
       }
@@ -434,16 +434,16 @@ test_that("save_parcels with NA CRS sets it to WGS84", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "NA CRS Test")
+        project <- nemetonShiny:::create_project(name = "NA CRS Test")
         parcels <- create_test_units(crs = 2154, n_features = 2)
         # Remove CRS
         sf::st_crs(parcels) <- NA
 
-        result <- nemeton:::save_parcels(project$id, parcels)
+        result <- nemetonShiny:::save_parcels(project$id, parcels)
         expect_true(result)
 
         # Load back and check CRS is set
-        loaded <- nemeton:::load_parcels(project$id)
+        loaded <- nemetonShiny:::load_parcels(project$id)
         expect_s3_class(loaded, "sf")
         expect_false(is.na(sf::st_crs(loaded)))
       }
@@ -458,14 +458,14 @@ test_that("save_parcels overwrites existing gpkg file", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Overwrite Test")
+        project <- nemetonShiny:::create_project(name = "Overwrite Test")
         parcels1 <- create_test_units(crs = 2154, n_features = 2)
-        nemeton:::save_parcels(project$id, parcels1)
+        nemetonShiny:::save_parcels(project$id, parcels1)
 
         parcels2 <- create_test_units(crs = 2154, n_features = 5)
-        nemeton:::save_parcels(project$id, parcels2)
+        nemetonShiny:::save_parcels(project$id, parcels2)
 
-        loaded <- nemeton:::load_parcels(project$id)
+        loaded <- nemetonShiny:::load_parcels(project$id)
         expect_equal(nrow(loaded), 5)
       }
     )
@@ -474,7 +474,7 @@ test_that("save_parcels overwrites existing gpkg file", {
 
 test_that("save_parcels errors for non-sf input", {
   expect_error(
-    nemeton:::save_parcels("fake", data.frame(x = 1)),
+    nemetonShiny:::save_parcels("fake", data.frame(x = 1)),
     regexp = "sf object"
   )
 })
@@ -488,7 +488,7 @@ test_that("save_parcels errors for nonexistent project", {
       {
         parcels <- create_test_units(crs = 2154, n_features = 1)
         expect_error(
-          nemeton:::save_parcels("nonexistent_project", parcels),
+          nemetonShiny:::save_parcels("nonexistent_project", parcels),
           regexp = "not found"
         )
       }
@@ -502,7 +502,7 @@ test_that("load_parcels returns NULL for nonexistent project", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        result <- nemeton:::load_parcels("nonexistent_project")
+        result <- nemetonShiny:::load_parcels("nonexistent_project")
         expect_null(result)
       }
     )
@@ -515,8 +515,8 @@ test_that("load_parcels returns NULL when no parcel files exist", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "No Parcels")
-        result <- nemeton:::load_parcels(project$id)
+        project <- nemetonShiny:::create_project(name = "No Parcels")
+        result <- nemetonShiny:::load_parcels(project$id)
         expect_null(result)
       }
     )
@@ -535,14 +535,14 @@ test_that("update_project updates metadata and returns complete project", {
       get_app_options = function() list(project_dir = temp_root),
       {
         parcels <- create_test_units(crs = 2154, n_features = 2)
-        project <- nemeton:::create_project(
+        project <- nemetonShiny:::create_project(
           name = "Original Name",
           description = "Original desc",
           owner = "Original Owner",
           parcels = parcels
         )
 
-        updated <- nemeton:::update_project(
+        updated <- nemetonShiny:::update_project(
           project$id,
           name = "Updated Name",
           description = "Updated desc",
@@ -569,12 +569,12 @@ test_that("update_project with new parcels replaces them", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Parcel Update")
+        project <- nemetonShiny:::create_project(name = "Parcel Update")
         parcels_old <- create_test_units(crs = 2154, n_features = 2)
-        nemeton:::save_parcels(project$id, parcels_old)
+        nemetonShiny:::save_parcels(project$id, parcels_old)
 
         new_parcels <- create_test_units(crs = 2154, n_features = 5)
-        updated <- nemeton:::update_project(
+        updated <- nemetonShiny:::update_project(
           project$id,
           name = "Parcel Update",
           parcels = new_parcels
@@ -593,7 +593,7 @@ test_that("update_project errors for nonexistent project", {
       get_app_options = function() list(project_dir = temp_root),
       {
         expect_error(
-          nemeton:::update_project("nonexistent", name = "Test"),
+          nemetonShiny:::update_project("nonexistent", name = "Test"),
           regexp = "not found"
         )
       }
@@ -607,15 +607,15 @@ test_that("update_project validates name", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Validation Test")
+        project <- nemetonShiny:::create_project(name = "Validation Test")
 
         expect_error(
-          nemeton:::update_project(project$id, name = ""),
+          nemetonShiny:::update_project(project$id, name = ""),
           regexp = "required"
         )
 
         expect_error(
-          nemeton:::update_project(
+          nemetonShiny:::update_project(
             project$id,
             name = paste(rep("a", 101), collapse = "")
           ),
@@ -623,7 +623,7 @@ test_that("update_project validates name", {
         )
 
         expect_error(
-          nemeton:::update_project(
+          nemetonShiny:::update_project(
             project$id,
             name = "OK",
             description = paste(rep("a", 501), collapse = "")
@@ -632,7 +632,7 @@ test_that("update_project validates name", {
         )
 
         expect_error(
-          nemeton:::update_project(
+          nemetonShiny:::update_project(
             project$id,
             name = "OK",
             owner = paste(rep("a", 101), collapse = "")
@@ -655,7 +655,7 @@ test_that("save_indicators saves data.frame and load_indicators reads it back", 
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Indicators Test")
+        project <- nemetonShiny:::create_project(name = "Indicators Test")
 
         indicators_df <- data.frame(
           parcel_id = c("P001", "P002", "P003"),
@@ -664,7 +664,7 @@ test_that("save_indicators saves data.frame and load_indicators reads it back", 
           stringsAsFactors = FALSE
         )
 
-        result <- nemeton:::save_indicators(project$id, indicators_df)
+        result <- nemetonShiny:::save_indicators(project$id, indicators_df)
         expect_true(result)
 
         # Verify parquet file exists
@@ -672,14 +672,14 @@ test_that("save_indicators saves data.frame and load_indicators reads it back", 
         expect_true(file.exists(parquet_path))
 
         # Load back
-        loaded <- nemeton:::load_indicators(project$id)
+        loaded <- nemetonShiny:::load_indicators(project$id)
         expect_s3_class(loaded, "data.frame")
         expect_equal(nrow(loaded), 3)
         expect_true("parcel_id" %in% names(loaded))
         expect_true("indicateur_c1_biomasse" %in% names(loaded))
 
         # Verify metadata was updated
-        meta <- nemeton:::load_project_metadata(project$id)
+        meta <- nemetonShiny:::load_project_metadata(project$id)
         expect_true(meta$indicators_computed)
         expect_equal(meta$status, "completed")
       }
@@ -694,17 +694,17 @@ test_that("save_indicators converts list to data.frame", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "List Indicators")
+        project <- nemetonShiny:::create_project(name = "List Indicators")
 
         indicators_list <- list(
           parcel_id = c("P001", "P002"),
           score = c(75, 90)
         )
 
-        result <- nemeton:::save_indicators(project$id, indicators_list)
+        result <- nemetonShiny:::save_indicators(project$id, indicators_list)
         expect_true(result)
 
-        loaded <- nemeton:::load_indicators(project$id)
+        loaded <- nemetonShiny:::load_indicators(project$id)
         expect_s3_class(loaded, "data.frame")
         expect_equal(nrow(loaded), 2)
       }
@@ -720,7 +720,7 @@ test_that("save_indicators errors for nonexistent project", {
       get_app_options = function() list(project_dir = temp_root),
       {
         expect_error(
-          nemeton:::save_indicators("nonexistent", data.frame(x = 1)),
+          nemetonShiny:::save_indicators("nonexistent", data.frame(x = 1)),
           regexp = "not found"
         )
       }
@@ -734,8 +734,8 @@ test_that("load_indicators returns NULL when no indicators file", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "No Indicators")
-        result <- nemeton:::load_indicators(project$id)
+        project <- nemetonShiny:::create_project(name = "No Indicators")
+        result <- nemetonShiny:::load_indicators(project$id)
         expect_null(result)
       }
     )
@@ -748,7 +748,7 @@ test_that("load_indicators returns NULL for nonexistent project", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        result <- nemeton:::load_indicators("nonexistent_project")
+        result <- nemetonShiny:::load_indicators("nonexistent_project")
         expect_null(result)
       }
     )
@@ -767,14 +767,14 @@ test_that("load_project returns complete project data", {
       get_app_options = function() list(project_dir = temp_root),
       {
         parcels <- create_test_units(crs = 2154, n_features = 3)
-        project <- nemeton:::create_project(
+        project <- nemetonShiny:::create_project(
           name = "Load Test",
           description = "To be loaded",
           owner = "Loader",
           parcels = parcels
         )
 
-        loaded <- nemeton:::load_project(project$id)
+        loaded <- nemetonShiny:::load_project(project$id)
         expect_type(loaded, "list")
         expect_equal(loaded$id, project$id)
         expect_equal(loaded$path, project$path)
@@ -796,7 +796,7 @@ test_that("load_project returns NULL for nonexistent project", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        result <- suppressWarnings(nemeton:::load_project("nonexistent_id"))
+        result <- suppressWarnings(nemetonShiny:::load_project("nonexistent_id"))
         expect_null(result)
       }
     )
@@ -810,10 +810,10 @@ test_that("load_project returns NULL when metadata is missing", {
       get_app_options = function() list(project_dir = temp_root),
       {
         # Create a project and then delete the metadata
-        project <- nemeton:::create_project(name = "Missing Meta")
+        project <- nemetonShiny:::create_project(name = "Missing Meta")
         file.remove(file.path(project$path, "metadata.json"))
 
-        result <- nemeton:::load_project(project$id)
+        result <- nemetonShiny:::load_project(project$id)
         expect_null(result)
       }
     )
@@ -831,7 +831,7 @@ test_that("save_cache_data saves data.frame and load_cache_data reads it back", 
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Cache DF Test")
+        project <- nemetonShiny:::create_project(name = "Cache DF Test")
 
         test_df <- data.frame(
           code = c("A", "B", "C"),
@@ -839,7 +839,7 @@ test_that("save_cache_data saves data.frame and load_cache_data reads it back", 
           stringsAsFactors = FALSE
         )
 
-        result <- nemeton:::save_cache_data(project$id, "test_data", test_df)
+        result <- nemetonShiny:::save_cache_data(project$id, "test_data", test_df)
         expect_true(result)
 
         # Verify parquet file exists
@@ -847,7 +847,7 @@ test_that("save_cache_data saves data.frame and load_cache_data reads it back", 
         expect_true(file.exists(cache_file))
 
         # Load back
-        loaded <- nemeton:::load_cache_data(project$id, "test_data")
+        loaded <- nemetonShiny:::load_cache_data(project$id, "test_data")
         expect_s3_class(loaded, "data.frame")
         expect_equal(nrow(loaded), 3)
         expect_true("code" %in% names(loaded))
@@ -865,11 +865,11 @@ test_that("save_cache_data saves sf object with geometry_wkt conversion", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Cache SF Test")
+        project <- nemetonShiny:::create_project(name = "Cache SF Test")
 
         sf_data <- create_test_units(crs = 2154, n_features = 3)
 
-        result <- nemeton:::save_cache_data(project$id, "spatial_data", sf_data)
+        result <- nemetonShiny:::save_cache_data(project$id, "spatial_data", sf_data)
         expect_true(result)
 
         # Verify parquet and CRS files exist
@@ -883,7 +883,7 @@ test_that("save_cache_data saves sf object with geometry_wkt conversion", {
         expect_equal(crs_info$epsg, 2154)
 
         # Load back - exercises the geometry_wkt branch in load_cache_data
-        loaded <- nemeton:::load_cache_data(project$id, "spatial_data")
+        loaded <- nemetonShiny:::load_cache_data(project$id, "spatial_data")
         expect_s3_class(loaded, "data.frame")
         expect_equal(nrow(loaded), 3)
         # Note: load_cache_data removes geometry_wkt (which is the active
@@ -903,7 +903,7 @@ test_that("save_cache_data errors for nonexistent project", {
       get_app_options = function() list(project_dir = temp_root),
       {
         expect_error(
-          nemeton:::save_cache_data("nonexistent", "data", data.frame(x = 1)),
+          nemetonShiny:::save_cache_data("nonexistent", "data", data.frame(x = 1)),
           regexp = "not found"
         )
       }
@@ -918,13 +918,13 @@ test_that("save_cache_data creates cache directory if missing", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Cache Dir Test")
+        project <- nemetonShiny:::create_project(name = "Cache Dir Test")
         # Remove cache dir
         unlink(file.path(project$path, "cache"), recursive = TRUE)
         expect_false(dir.exists(file.path(project$path, "cache")))
 
         test_df <- data.frame(x = 1:3)
-        result <- nemeton:::save_cache_data(project$id, "recreated", test_df)
+        result <- nemetonShiny:::save_cache_data(project$id, "recreated", test_df)
         expect_true(result)
         expect_true(dir.exists(file.path(project$path, "cache")))
       }
@@ -938,8 +938,8 @@ test_that("load_cache_data returns NULL when no cache file", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "No Cache")
-        result <- nemeton:::load_cache_data(project$id, "nonexistent_data")
+        project <- nemetonShiny:::create_project(name = "No Cache")
+        result <- nemetonShiny:::load_cache_data(project$id, "nonexistent_data")
         expect_null(result)
       }
     )
@@ -952,7 +952,7 @@ test_that("load_cache_data returns NULL for nonexistent project", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        result <- nemeton:::load_cache_data("nonexistent_id", "data")
+        result <- nemetonShiny:::load_cache_data("nonexistent_id", "data")
         expect_null(result)
       }
     )
@@ -967,16 +967,16 @@ test_that("load_cache_data restores sf without CRS file (defaults to 4326)", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "No CRS File Test")
+        project <- nemetonShiny:::create_project(name = "No CRS File Test")
         sf_data <- create_test_units(crs = 2154, n_features = 2)
 
-        nemeton:::save_cache_data(project$id, "spatial_no_crs", sf_data)
+        nemetonShiny:::save_cache_data(project$id, "spatial_no_crs", sf_data)
 
         # Delete the CRS file
         crs_file <- file.path(project$path, "cache", "spatial_no_crs_crs.json")
         file.remove(crs_file)
 
-        loaded <- nemeton:::load_cache_data(project$id, "spatial_no_crs")
+        loaded <- nemetonShiny:::load_cache_data(project$id, "spatial_no_crs")
         # Exercises the no-CRS-file branch (crs defaults to 4326)
         # The geometry_wkt column removal causes sf class loss, but
         # the code path for CRS default is still exercised
@@ -998,12 +998,12 @@ test_that("check_project_health detects corrupted metadata JSON", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Corrupted Meta")
+        project <- nemetonShiny:::create_project(name = "Corrupted Meta")
 
         # Write invalid JSON to metadata file
         writeLines("{ invalid json }", file.path(project$path, "metadata.json"))
 
-        health <- nemeton:::check_project_health(project$id)
+        health <- nemetonShiny:::check_project_health(project$id)
         expect_false(health$valid)
         expect_true(any(grepl("Corrupted|orrupt", health$issues, ignore.case = TRUE)))
       }
@@ -1017,12 +1017,12 @@ test_that("check_project_health detects missing data directory", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Missing Data Dir")
+        project <- nemetonShiny:::create_project(name = "Missing Data Dir")
 
         # Remove data directory
         unlink(file.path(project$path, "data"), recursive = TRUE)
 
-        health <- nemeton:::check_project_health(project$id)
+        health <- nemetonShiny:::check_project_health(project$id)
         expect_false(health$valid)
         expect_true(any(grepl("data directory", health$issues, ignore.case = TRUE)))
       }
@@ -1036,7 +1036,7 @@ test_that("check_project_health detects missing name in metadata", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Name to Remove")
+        project <- nemetonShiny:::create_project(name = "Name to Remove")
 
         # Write metadata without name field
         meta_path <- file.path(project$path, "metadata.json")
@@ -1046,7 +1046,7 @@ test_that("check_project_health detects missing name in metadata", {
           auto_unbox = TRUE
         )
 
-        health <- nemeton:::check_project_health(project$id)
+        health <- nemetonShiny:::check_project_health(project$id)
         expect_false(health$valid)
         expect_true(any(grepl("name", health$issues, ignore.case = TRUE)))
       }
@@ -1060,7 +1060,7 @@ test_that("check_project_health detects missing parcels file when count > 0", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Missing Parcels File")
+        project <- nemetonShiny:::create_project(name = "Missing Parcels File")
 
         # Update metadata to say we have parcels, but don't save any
         meta_path <- file.path(project$path, "metadata.json")
@@ -1068,7 +1068,7 @@ test_that("check_project_health detects missing parcels file when count > 0", {
         meta$parcels_count <- 5
         jsonlite::write_json(meta, meta_path, auto_unbox = TRUE, pretty = TRUE)
 
-        health <- nemeton:::check_project_health(project$id)
+        health <- nemetonShiny:::check_project_health(project$id)
         expect_false(health$valid)
         expect_true(any(grepl("parcels", health$issues, ignore.case = TRUE)))
       }
@@ -1082,7 +1082,7 @@ test_that("check_project_health returns not found for nonexistent project", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        health <- nemeton:::check_project_health("totally_fake_project")
+        health <- nemetonShiny:::check_project_health("totally_fake_project")
         expect_false(health$valid)
         expect_true(any(grepl("not found", health$issues, ignore.case = TRUE)))
       }
@@ -1101,7 +1101,7 @@ test_that("list_recent_projects includes corrupted project in listing", {
       get_app_options = function() list(project_dir = temp_root),
       {
         # Create a valid project
-        p1 <- nemeton:::create_project(name = "Valid Project")
+        p1 <- nemetonShiny:::create_project(name = "Valid Project")
 
         # Create a corrupted project manually (with bad JSON)
         corrupted_dir <- file.path(temp_root, "corrupted_proj")
@@ -1109,7 +1109,7 @@ test_that("list_recent_projects includes corrupted project in listing", {
         dir.create(file.path(corrupted_dir, "data"))
         writeLines("not valid json!!!", file.path(corrupted_dir, "metadata.json"))
 
-        projects <- nemeton:::list_recent_projects()
+        projects <- nemetonShiny:::list_recent_projects()
         expect_s3_class(projects, "data.frame")
         # Should have 2 entries
         expect_equal(nrow(projects), 2)
@@ -1129,14 +1129,14 @@ test_that("list_recent_projects respects limit parameter", {
       get_app_options = function() list(project_dir = temp_root),
       {
         # Create 3 projects with distinct timestamps
-        nemeton:::create_project(name = "Project A")
+        nemetonShiny:::create_project(name = "Project A")
         Sys.sleep(1.1)
-        nemeton:::create_project(name = "Project B")
+        nemetonShiny:::create_project(name = "Project B")
         Sys.sleep(1.1)
-        nemeton:::create_project(name = "Project C")
+        nemetonShiny:::create_project(name = "Project C")
 
         # Limit to 2
-        projects <- nemeton:::list_recent_projects(limit = 2L)
+        projects <- nemetonShiny:::list_recent_projects(limit = 2L)
         expect_equal(nrow(projects), 2)
         # Most recent first
         expect_equal(projects$name[1], "Project C")
@@ -1152,13 +1152,13 @@ test_that("list_recent_projects handles dirs without metadata.json", {
       get_app_options = function() list(project_dir = temp_root),
       {
         # Create a valid project
-        p1 <- nemeton:::create_project(name = "With Metadata")
+        p1 <- nemetonShiny:::create_project(name = "With Metadata")
 
         # Create a directory without metadata
         bare_dir <- file.path(temp_root, "bare_directory")
         dir.create(bare_dir)
 
-        projects <- nemeton:::list_recent_projects()
+        projects <- nemetonShiny:::list_recent_projects()
         # Only the project with metadata should appear
         expect_equal(nrow(projects), 1)
         expect_equal(projects$name[1], "With Metadata")
@@ -1177,12 +1177,12 @@ test_that("load_project_metadata returns NULL for corrupted JSON", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Corrupted JSON")
+        project <- nemetonShiny:::create_project(name = "Corrupted JSON")
 
         # Write invalid JSON
         writeLines("{{bad json}}", file.path(project$path, "metadata.json"))
 
-        result <- suppressWarnings(nemeton:::load_project_metadata(project$id))
+        result <- suppressWarnings(nemetonShiny:::load_project_metadata(project$id))
         expect_null(result)
       }
     )
@@ -1195,10 +1195,10 @@ test_that("load_project_metadata returns NULL when metadata file is missing", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Delete Meta")
+        project <- nemetonShiny:::create_project(name = "Delete Meta")
         file.remove(file.path(project$path, "metadata.json"))
 
-        result <- nemeton:::load_project_metadata(project$id)
+        result <- nemetonShiny:::load_project_metadata(project$id)
         expect_null(result)
       }
     )
@@ -1215,8 +1215,8 @@ test_that("get_project_path returns valid path for existing project", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Path Test")
-        result <- nemeton:::get_project_path(project$id)
+        project <- nemetonShiny:::create_project(name = "Path Test")
+        result <- nemetonShiny:::get_project_path(project$id)
         expect_type(result, "character")
         expect_true(dir.exists(result))
         expect_equal(basename(result), project$id)
@@ -1236,7 +1236,7 @@ test_that("update_project_metadata errors for nonexistent project", {
       get_app_options = function() list(project_dir = temp_root),
       {
         expect_error(
-          nemeton:::update_project_metadata("nonexistent", list(name = "foo")),
+          nemetonShiny:::update_project_metadata("nonexistent", list(name = "foo")),
           regexp = "not found"
         )
       }
@@ -1250,11 +1250,11 @@ test_that("update_project_metadata errors for missing metadata file", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Delete Meta Update")
+        project <- nemetonShiny:::create_project(name = "Delete Meta Update")
         file.remove(file.path(project$path, "metadata.json"))
 
         expect_error(
-          nemeton:::update_project_metadata(project$id, list(name = "new")),
+          nemetonShiny:::update_project_metadata(project$id, list(name = "new")),
           regexp = "Metadata file not found"
         )
       }
@@ -1268,10 +1268,10 @@ test_that("update_project_metadata with project_path parameter", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Path Param Test")
+        project <- nemetonShiny:::create_project(name = "Path Param Test")
 
         # Use project_path parameter directly
-        result <- nemeton:::update_project_metadata(
+        result <- nemetonShiny:::update_project_metadata(
           project$id,
           list(status = "computing"),
           project_path = project$path
@@ -1279,7 +1279,7 @@ test_that("update_project_metadata with project_path parameter", {
         expect_true(result)
 
         # Verify update
-        meta <- nemeton:::load_project_metadata(project$id)
+        meta <- nemetonShiny:::load_project_metadata(project$id)
         expect_equal(meta$status, "computing")
       }
     )
@@ -1296,7 +1296,7 @@ test_that("delete_project fully removes project and its subdirectories", {
     with_mocked_bindings(
       get_app_options = function() list(project_dir = temp_root),
       {
-        project <- nemeton:::create_project(name = "Full Delete Test")
+        project <- nemetonShiny:::create_project(name = "Full Delete Test")
 
         # Verify everything exists
         expect_true(dir.exists(project$path))
@@ -1305,12 +1305,12 @@ test_that("delete_project fully removes project and its subdirectories", {
         expect_true(dir.exists(file.path(project$path, "exports")))
         expect_true(file.exists(file.path(project$path, "metadata.json")))
 
-        result <- nemeton:::delete_project(project$id)
+        result <- nemetonShiny:::delete_project(project$id)
         expect_true(result)
         expect_false(dir.exists(project$path))
 
         # Also check it no longer appears in listings
-        projects <- nemeton:::list_recent_projects()
+        projects <- nemetonShiny:::list_recent_projects()
         expect_equal(nrow(projects), 0)
       }
     )
@@ -1328,7 +1328,7 @@ test_that("get_projects_root uses HOME fallback when project_dir is NULL", {
       get_app_options = function() list(project_dir = NULL),
       {
         # This exercises the else branch of get_projects_root
-        root <- nemeton:::get_projects_root()
+        root <- nemetonShiny:::get_projects_root()
         expect_type(root, "character")
         expect_true(nchar(root) > 0)
       }
