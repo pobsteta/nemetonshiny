@@ -398,6 +398,16 @@ generate_radar_image <- function(family_scores, output_file, language,
   ndp_subtitle <- sprintf("NDP %d \u2013 %s | Confiance \u03c6 : %s%%",
                            ndp_level, ndp_info$name, confidence_pct)
 
+  # Reorder family columns to match nemeton_radar axis display order
+  fam_cols <- grep("^famille_[a-z]", names(family_scores), value = TRUE)
+  if (length(fam_cols) > 0) {
+    radar_axis_order <- c("F", "A", "W", "B", "N", "C", "E", "P", "S", "R", "T", "L")
+    ordered_fam_cols <- vapply(radar_axis_order, get_famille_col, character(1))
+    ordered_fam_cols <- intersect(ordered_fam_cols, fam_cols)
+    other_cols <- setdiff(names(family_scores), fam_cols)
+    family_scores <- family_scores[, c(other_cols, ordered_fam_cols)]
+  }
+
   tryCatch({
     p <- nemeton_radar(family_scores, mode = "family", normalize = FALSE,
                        title = i18n$t("radar_title"))

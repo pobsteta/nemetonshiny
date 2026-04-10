@@ -343,6 +343,14 @@ mod_synthesis_server <- function(id, app_state) {
                                ndp_level, ndp_info$name,
                                i18n$t("ndp_confidence"), confidence_pct)
 
+      # Reorder family columns to match nemeton_radar axis display order
+      # (F, A, W, B, N, C, E, P, S, R, T, L clockwise from top)
+      radar_axis_order <- c("F", "A", "W", "B", "N", "C", "E", "P", "S", "R", "T", "L")
+      ordered_fam_cols <- vapply(radar_axis_order, get_famille_col, character(1))
+      ordered_fam_cols <- intersect(ordered_fam_cols, family_cols)
+      other_cols <- setdiff(names(sf_data), family_cols)
+      sf_data <- sf_data[, c(other_cols, ordered_fam_cols)]
+
       p <- nemeton_radar(sf_data, mode = "family", normalize = FALSE,
                          title = i18n$t("radar_title"))
       p + ggplot2::labs(subtitle = ndp_subtitle) +
