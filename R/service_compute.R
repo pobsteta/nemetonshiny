@@ -2390,8 +2390,11 @@ save_indicators_incremental <- function(project_id, results, indicator) {
       return(FALSE)
     }
 
-    # Write parquet (overwrites with current state)
-    arrow::write_parquet(results_df, results_path)
+    # Write parquet via temp file to avoid Windows memory-mapped file lock
+    tmp_path <- paste0(results_path, ".tmp")
+    arrow::write_parquet(results_df, tmp_path)
+    if (file.exists(results_path)) file.remove(results_path)
+    file.rename(tmp_path, results_path)
 
     # Update progress tracking file
     progress <- list(

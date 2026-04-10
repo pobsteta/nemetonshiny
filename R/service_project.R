@@ -381,7 +381,11 @@ save_indicators <- function(project_id, indicators) {
       indicators_df <- indicators
     }
 
-    arrow::write_parquet(indicators_df, indicators_path)
+    # Write via temp file to avoid Windows memory-mapped file lock
+    tmp_path <- paste0(indicators_path, ".tmp")
+    arrow::write_parquet(indicators_df, tmp_path)
+    if (file.exists(indicators_path)) file.remove(indicators_path)
+    file.rename(tmp_path, indicators_path)
 
     # Update metadata (avec NDP detecte)
     # Essayer d'abord via les attributs, puis fallback sur le cache disque
