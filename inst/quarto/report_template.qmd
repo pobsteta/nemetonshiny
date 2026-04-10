@@ -419,6 +419,52 @@ for (code in family_order) {
 }
 ```
 
+```{r ug-composition, results='asis'}
+#| label: ug-composition
+# UG Composition section (only if UG data is available)
+if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
+    length(report_data$ug_composition) > 0) {
+
+  cat("# ", tr("ug_section_title"), "\n\n", sep = "")
+
+  if (params$language == "fr") {
+    cat(sprintf("Le projet comporte **%d unit\\'{e}(s) de gestion** r\\'{e}parties sur %d parcelle(s) cadastrale(s).\n\n",
+                report_data$n_ugs, report_data$n_parcels))
+  } else {
+    cat(sprintf("The project contains **%d management unit(s)** across %d cadastral parcel(s).\n\n",
+                report_data$n_ugs, report_data$n_parcels))
+  }
+
+  # UG table
+  cat("\\begin{center}\n")
+  cat("\\begin{tabular}{llrl}\n")
+  cat("\\toprule\n")
+  if (params$language == "fr") {
+    cat("\\textbf{UG} & \\textbf{Groupe} & \\textbf{Surface (ha)} & \\textbf{R\\'{e}f\\'{e}rences cadastrales} \\\\\n")
+  } else {
+    cat("\\textbf{UG} & \\textbf{Group} & \\textbf{Area (ha)} & \\textbf{Cadastral references} \\\\\n")
+  }
+  cat("\\midrule\n")
+
+  for (ug in report_data$ug_composition) {
+    groupe_str <- if (is.null(ug$groupe) || is.na(ug$groupe)) "---" else ug$groupe
+    cat(
+      escape_latex(ug$label), " & ",
+      escape_latex(groupe_str), " & ",
+      sprintf("%.2f", ug$surface_ha), " & ",
+      escape_latex(ug$cadastral_refs), " \\\\\n",
+      sep = ""
+    )
+  }
+
+  cat("\\bottomrule\n")
+  cat("\\end{tabular}\n")
+  cat("\\end{center}\n\n")
+
+  cat("\\newpage\n")
+}
+```
+
 \vfill
 
 *`r tr("generated_by")` v`r packageVersion("nemeton")` - `r Sys.Date()`*

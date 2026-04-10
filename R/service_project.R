@@ -1001,3 +1001,196 @@ load_cache_data <- function(project_id, data_name) {
     NULL
   })
 }
+
+
+# ==============================================================================
+# UG Data Persistence
+# ==============================================================================
+
+#' Save UG data (atomes + UG definitions) to project
+#'
+#' @description
+#' Saves atom geometries as GeoPackage and UG definitions as JSON.
+#'
+#' @param project_id Character. Project ID.
+#' @param projet List. Project with $atomes (sf) and $ugs (data.frame).
+#'
+#' @return Logical. TRUE if successful.
+#' @noRd
+save_ug_data <- function(project_id, projet) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  atomes <- projet$atomes
+  ugs <- projet$ugs
+
+  if (is.null(atomes) || is.null(ugs)) {
+    cli::cli_warn("No UG data to save")
+    return(FALSE)
+  }
+
+  data_dir <- file.path(project_path, "data")
+  if (!dir.exists(data_dir)) {
+    dir.create(data_dir, recursive = TRUE)
+  }
+
+  tryCatch({
+    # Save atomes as GeoPackage
+    atomes_path <- file.path(data_dir, "atomes.gpkg")
+    if (file.exists(atomes_path)) unlink(atomes_path)
+    sf::st_write(atomes, atomes_path, driver = "GPKG", quiet = TRUE)
+
+    # Save UG definitions as JSON
+    ugs_path <- file.path(data_dir, "ugs.json")
+    jsonlite::write_json(ugs, ugs_path, auto_unbox = TRUE, pretty = TRUE)
+
+    # Update metadata
+    update_project_metadata(project_id, list(
+      schema_version = "2.0",
+      ug_count = nrow(ugs),
+      updated_at = Sys.time()
+    ))
+
+    cli::cli_alert_success("Saved {nrow(ugs)} UGs with {nrow(atomes)} atomes")
+    TRUE
+
+  }, error = function(e) {
+    cli::cli_abort("Failed to save UG data: {e$message}")
+  })
+}
+
+
+#' Load UG data from project
+#'
+#' @description
+#' Loads atom geometries and UG definitions from project files.
+#'
+#' @param project_id Character. Project ID.
+#'
+#' @return List with $atomes (sf) and $ugs (data.frame), or NULL if not found.
+#' @noRd
+load_ug_data <- function(project_id) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path)) {
+    return(NULL)
+  }
+
+  data_dir <- file.path(project_path, "data")
+  atomes_path <- file.path(data_dir, "atomes.gpkg")
+  ugs_path <- file.path(data_dir, "ugs.json")
+
+  # Both files must exist
+
+  if (!file.exists(atomes_path) || !file.exists(ugs_path)) {
+    return(NULL)
+  }
+
+  tryCatch({
+    atomes <- sf::st_read(atomes_path, quiet = TRUE)
+    ugs <- jsonlite::read_json(ugs_path, simplifyVector = TRUE)
+
+    # Ensure ugs is a proper data.frame
+    if (!is.data.frame(ugs)) {
+      ugs <- as.data.frame(ugs, stringsAsFactors = FALSE)
+    }
+
+    # Ensure required columns exist
+    required_atome_cols <- c("atome_id", "parent_parcelle_id", "ug_id", "surface_m2")
+    required_ug_cols <- c("ug_id", "label", "groupe")
+
+    if (!all(required_atome_cols %in% names(atomes))) {
+      cli::cli_warn("Atomes file missing required columns")
+      return(NULL)
+    }
+
+    if (!all(required_ug_cols %in% names(ugs))) {
+      cli::cli_warn("UGs file missing required columns")
+      return(NULL)
+    }
+
+    list(atomes = atomes, ugs = ugs)
+
+  }, error = function(e) {
+    cli::cli_warn("Failed to load UG data: {e$message}")
+    NULL
+  })
+}
+
+
+#' Save UG-level aggregated indicators
+#'
+#' @param project_id Character. Project ID.
+#' @param indicators_ug sf object. UG-level indicators.
+#'
+#' @return Logical. TRUE if successful.
+#' @noRd
+save_indicators_ug <- function(project_id, indicators_ug) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  parquet_path <- file.path(project_path, "data", "indicators_ug.parquet")
+
+  tryCatch({
+    if (requireNamespace("arrow", quietly = TRUE)) {
+      ind_df <- indicators_ug
+      if (inherits(indicators_ug, "sf")) {
+        ind_df$geometry_wkt <- sf::st_as_text(sf::st_geometry(indicators_ug))
+        ind_df <- sf::st_drop_geometry(ind_df)
+      }
+      arrow::write_parquet(ind_df, parquet_path)
+      cli::cli_alert_success("Saved UG indicators: {nrow(indicators_ug)} UGs")
+      return(TRUE)
+    }
+
+    # Fallback: save as RDS
+    rds_path <- file.path(project_path, "data", "indicators_ug.rds")
+    saveRDS(indicators_ug, rds_path)
+    TRUE
+
+  }, error = function(e) {
+    cli::cli_warn("Failed to save UG indicators: {e$message}")
+    FALSE
+  })
+}
+
+
+#' Load UG-level aggregated indicators
+#'
+#' @param project_id Character. Project ID.
+#'
+#' @return sf object with UG-level indicators, or NULL if not found.
+#' @noRd
+load_indicators_ug <- function(project_id) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path)) return(NULL)
+
+  parquet_path <- file.path(project_path, "data", "indicators_ug.parquet")
+  rds_path <- file.path(project_path, "data", "indicators_ug.rds")
+
+  tryCatch({
+    if (file.exists(parquet_path) && requireNamespace("arrow", quietly = TRUE)) {
+      ind_df <- arrow::read_parquet(parquet_path)
+      if ("geometry_wkt" %in% names(ind_df)) {
+        crs <- sf::st_crs(4326)
+        ind_sf <- sf::st_as_sf(ind_df, wkt = "geometry_wkt", crs = crs)
+        ind_sf$geometry_wkt <- NULL
+        return(ind_sf)
+      }
+      return(ind_df)
+    }
+
+    if (file.exists(rds_path)) {
+      return(readRDS(rds_path))
+    }
+
+    NULL
+
+  }, error = function(e) {
+    cli::cli_warn("Failed to load UG indicators: {e$message}")
+    NULL
+  })
+}

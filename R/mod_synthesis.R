@@ -20,7 +20,12 @@ mod_synthesis_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(project) || is.null(project$indicators)) return(NULL)
 
-      df <- project$indicators
+      # Prefer UG-level indicators if available
+      df <- if (!is.null(project$indicators_ug) && inherits(project$indicators_ug, c("sf", "data.frame"))) {
+        project$indicators_ug
+      } else {
+        project$indicators
+      }
 
       # Drop geometry if sf (indicators from parquet may have geoarrow geometry)
       if (inherits(df, "sf")) {
@@ -44,6 +49,21 @@ mod_synthesis_server <- function(id, app_state) {
       if (is.null(indicators)) return(NULL)
 
       project <- app_state$current_project
+
+      # When UG-level indicators are available with geometries, use them directly
+      if (!is.null(project$indicators_ug) && inherits(project$indicators_ug, "sf")) {
+        merged <- project$indicators_ug
+        # Compute family indices on UG sf
+        return(tryCatch(
+          create_family_index(merged, method = "mean", na.rm = TRUE),
+          error = function(e) {
+            cli::cli_warn("Failed to compute family index on UG data: {conditionMessage(e)}")
+            NULL
+          }
+        ))
+      }
+
+      # Standard path: merge parcels + indicators
       if (is.null(project$parcels)) return(NULL)
 
       parcels <- project$parcels

@@ -185,6 +185,9 @@ app_server <- function(input, output, session) {
   # Synthesis module
   mod_synthesis_server("synthesis", app_state)
 
+  # UG (Management Units) module
+  mod_ug_server("ug", app_state)
+
   # ============================================================
   # LAZY LOADING: Family modules initialized on-demand
   # ============================================================
