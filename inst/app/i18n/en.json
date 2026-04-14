@@ -8,7 +8,7 @@
   "tab_tableau_ug": "UGF Table",
   "ug_map_card_title": "Forest Management Units Map",
   "ug_map_summary_count": "%d tenement(s)",
-  "ug_map_summary_surface": "Tenement area: %s ha / %s ha (cadastral parcels)",
+  "ug_map_summary_surface": "Cadastral area: %s ha | SIG area: %s ha",
   "search_title": "Search",
   "department": "Department",
   "select_department": "-- Select --",

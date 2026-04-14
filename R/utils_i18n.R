@@ -35,7 +35,7 @@ TRANSLATIONS <- list(
   tab_tableau_ug = list(fr = "Tableau UGF", en = "UGF Table"),
   ug_map_card_title = list(fr = "Carte des unit\u00e9s de gestion foresti\u00e8re", en = "Forest Management Units Map"),
   ug_map_summary_count = list(fr = "%d t\u00e8nement(s)", en = "%d tenement(s)"),
-  ug_map_summary_surface = list(fr = "Surface t\u00e8nements : %s ha / %s ha (parcelles cadastrales)", en = "Tenement area: %s ha / %s ha (cadastral parcels)"),
+  ug_map_summary_surface = list(fr = "Surface cadastrale : %s ha | Surface SIG : %s ha", en = "Cadastral area: %s ha | SIG area: %s ha"),
 
   # ============================================================
   # Search & Selection

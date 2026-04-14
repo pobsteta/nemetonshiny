@@ -472,28 +472,21 @@ mod_ug_server <- function(id, app_state) {
       projet <- rv$projet_ug
       if (is.null(projet) || !has_ug_data(projet)) return("")
 
-      # Total surface of tenements (in hectares)
-      surf_tenements_ha <- sum(projet$tenements$surface_m2, na.rm = TRUE) / 10000
-
-      # Total surface of cadastral parcels (the parent parcels that have tenements)
-      parcels <- projet$parcels
-      parent_ids <- unique(projet$tenements$parent_parcelle_id)
-      id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
-      surf_parcels_ha <- if (length(id_col) > 0) {
-        selected_parcels <- parcels[as.character(parcels[[id_col[1]]]) %in% parent_ids, ]
-        if ("contenance" %in% names(selected_parcels)) {
-          sum(as.numeric(selected_parcels$contenance), na.rm = TRUE) / 10000
-        } else {
-          sum(as.numeric(sf::st_area(selected_parcels)), na.rm = TRUE) / 10000
-        }
+      tenements <- projet$tenements
+      # Cadastral surface (authoritative, from contenance)
+      surf_cadastrale_ha <- sum(tenements$surface_m2, na.rm = TRUE) / 10000
+      # SIG surface (geometric, via st_area) — fallback to st_area if column missing
+      surf_sig_m2 <- if (!is.null(tenements$surface_sig_m2)) {
+        tenements$surface_sig_m2
       } else {
-        surf_tenements_ha
+        as.numeric(sf::st_area(tenements))
       }
+      surf_sig_ha <- sum(surf_sig_m2, na.rm = TRUE) / 10000
 
       sprintf(
         i18n()$t("ug_map_summary_surface"),
-        format(round(surf_tenements_ha, 2), nsmall = 2),
-        format(round(surf_parcels_ha, 2), nsmall = 2)
+        format(round(surf_cadastrale_ha, 2), nsmall = 2),
+        format(round(surf_sig_ha, 2), nsmall = 2)
       )
     })
 
@@ -1199,12 +1192,18 @@ mod_ug_server <- function(id, app_state) {
         ))
       }
 
-      # Build display table
+      # Build display table (show both cadastral and SIG surfaces)
+      sig_col <- if (!is.null(listing$surface_sig_m2)) {
+        round(listing$surface_sig_m2 / 10000, 2)
+      } else {
+        round(listing$surface_m2 / 10000, 2)
+      }
       display_df <- data.frame(
         Label = listing$label,
         Groupe = ifelse(is.na(listing$groupe), "---", listing$groupe),
         Tenements = listing$n_tenements,
-        `Surface (ha)` = round(listing$surface_m2 / 10000, 2),
+        `Surface cadastrale (ha)` = round(listing$surface_m2 / 10000, 2),
+        `Surface SIG (ha)` = sig_col,
         check.names = FALSE,
         stringsAsFactors = FALSE
       )

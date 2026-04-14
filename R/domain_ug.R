@@ -181,16 +181,21 @@ ug_init_default <- function(projet) {
   tenement_ids <- paste0("tnm_", seq_len(n))
   ug_ids <- paste0("ug_", seq_len(n))
 
-  # Build tenements sf
+  # Build tenements sf with BOTH cadastral (contenance) and SIG (st_area)
+  # surfaces so they can be compared in the UI.
+  cadastral_surface <- if ("contenance" %in% names(parcels)) {
+    as.numeric(parcels$contenance)
+  } else {
+    as.numeric(sf::st_area(parcels))
+  }
+  sig_surface <- as.numeric(sf::st_area(parcels))
+
   tenements <- sf::st_sf(
     tenement_id = tenement_ids,
     parent_parcelle_id = parcel_ids,
     ug_id = ug_ids,
-    surface_m2 = if ("contenance" %in% names(parcels)) {
-      as.numeric(parcels$contenance)
-    } else {
-      as.numeric(sf::st_area(parcels))
-    },
+    surface_m2 = cadastral_surface,
+    surface_sig_m2 = sig_surface,
     geometry = sf::st_geometry(parcels)
   )
 
@@ -605,7 +610,9 @@ ug_list <- function(projet, filter_groupe = NULL) {
   if (is.null(ugs) || nrow(ugs) == 0) {
     return(data.frame(
       ug_id = character(0), label = character(0), groupe = character(0),
-      n_tenements = integer(0), surface_m2 = numeric(0),
+      n_tenements = integer(0),
+      surface_m2 = numeric(0),
+      surface_sig_m2 = numeric(0),
       stringsAsFactors = FALSE
     ))
   }
@@ -615,7 +622,12 @@ ug_list <- function(projet, filter_groupe = NULL) {
     ugs <- ugs[!is.na(ugs$groupe) & ugs$groupe == filter_groupe, , drop = FALSE]
   }
 
-  # Compute statistics per UG
+  # Backward compat: older projects don't have surface_sig_m2 → compute on the fly
+  if (!"surface_sig_m2" %in% names(tenements)) {
+    tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
+  }
+
+  # Compute statistics per UG (both cadastral and SIG surfaces)
   result <- data.frame(
     ug_id = ugs$ug_id,
     label = ugs$label,
@@ -625,6 +637,9 @@ ug_list <- function(projet, filter_groupe = NULL) {
     }, integer(1)),
     surface_m2 = vapply(ugs$ug_id, function(uid) {
       sum(tenements$surface_m2[tenements$ug_id == uid], na.rm = TRUE)
+    }, numeric(1)),
+    surface_sig_m2 = vapply(ugs$ug_id, function(uid) {
+      sum(tenements$surface_sig_m2[tenements$ug_id == uid], na.rm = TRUE)
     }, numeric(1)),
     stringsAsFactors = FALSE
   )
@@ -663,13 +678,22 @@ ug_build_sf <- function(projet) {
   geom_sfc <- do.call(c, geoms)
   sf::st_crs(geom_sfc) <- sf::st_crs(tenements)
 
+  # Backward compat: compute surface_sig_m2 if missing
+  if (!"surface_sig_m2" %in% names(tenements)) {
+    tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
+  }
+
   # Build metadata
   n_tenements <- vapply(ugs$ug_id, function(uid) {
     sum(tenements$ug_id == uid, na.rm = TRUE)
   }, integer(1))
 
-  surfaces <- vapply(ugs$ug_id, function(uid) {
+  surfaces_cad <- vapply(ugs$ug_id, function(uid) {
     sum(tenements$surface_m2[tenements$ug_id == uid], na.rm = TRUE)
+  }, numeric(1))
+
+  surfaces_sig <- vapply(ugs$ug_id, function(uid) {
+    sum(tenements$surface_sig_m2[tenements$ug_id == uid], na.rm = TRUE)
   }, numeric(1))
 
   # Cadastral references as concatenated string
@@ -683,7 +707,8 @@ ug_build_sf <- function(projet) {
     ug_id = ugs$ug_id,
     label = ugs$label,
     groupe = ugs$groupe,
-    surface_m2 = surfaces,
+    surface_m2 = surfaces_cad,
+    surface_sig_m2 = surfaces_sig,
     n_tenements = n_tenements,
     cadastral_refs = cad_refs,
     geometry = geom_sfc

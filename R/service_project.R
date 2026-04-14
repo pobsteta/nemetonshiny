@@ -1130,6 +1130,12 @@ load_ug_data <- function(project_id) {
       return(NULL)
     }
 
+    # Backward compat: pre-v2.2 projects may lack surface_sig_m2 →
+    # compute it on-the-fly from the geometry so downstream code works.
+    if (!"surface_sig_m2" %in% names(tenements)) {
+      tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
+    }
+
     if (!all(required_ug_cols %in% names(ugs))) {
       cli::cli_warn("UGs file missing required columns")
       return(NULL)

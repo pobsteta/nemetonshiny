@@ -8,7 +8,7 @@
   "tab_tableau_ug": "Tableau UGF",
   "ug_map_card_title": "Carte des unités de gestion forestière",
   "ug_map_summary_count": "%d tènement(s)",
-  "ug_map_summary_surface": "Surface tènements : %s ha / %s ha (parcelles cadastrales)",
+  "ug_map_summary_surface": "Surface cadastrale : %s ha | Surface SIG : %s ha",
   "search_title": "Recherche",
   "department": "Département",
   "select_department": "-- Sélectionnez --",
