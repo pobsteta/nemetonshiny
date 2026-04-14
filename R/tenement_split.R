@@ -333,25 +333,7 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
     cli::cli_abort("The drawn polygon does not intersect any tenement.")
   }
 
-  # Filter out pure "edge touches" — require a minimum overlap area
-  # to avoid false positives from st_intersects (which reports touching).
-  overlap_areas <- vapply(which(hits), function(i) {
-    tryCatch({
-      as.numeric(sf::st_area(sf::st_intersection(
-        sf::st_geometry(tenements[i, ]), cutter
-      )))[1]
-    }, error = function(e) 0)
-  }, numeric(1))
-  real_hits <- which(hits)[!is.na(overlap_areas) & overlap_areas > tolerance_m2]
-
-  if (length(real_hits) == 0) {
-    cli::cli_abort(c(
-      "The drawn polygon only touches tenement boundaries, no significant overlap.",
-      i = "Draw the polygon so that it clearly covers part of a tenement (its boundary must cross the tenement geometry)."
-    ))
-  }
-
-  affected_idx <- real_hits
+  affected_idx <- which(hits)
   cli::cli_alert_info(
     "Splitting {length(affected_idx)} tenement(s) crossed by the drawn polygon"
   )
