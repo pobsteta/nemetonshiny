@@ -299,6 +299,7 @@
   "ndp_tip_conclusion": "L'application utilise des données publiques (Sentinel-2, BD TOPO, LiDAR HD IGN). Le NDP augmente automatiquement lorsque des sources de meilleure résolution sont disponibles (drone, inventaire terrain, scanner 3D).",
 
   "tab_ug": "Unités de Gestion Forestières",
+  "ug_sidebar_title": "Carte UGF",
   "ug_title": "Unités de Gestion Forestières",
   "ug_merge": "Regrouper",
   "ug_split": "Dissocier",

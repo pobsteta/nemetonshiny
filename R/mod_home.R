@@ -136,7 +136,7 @@ mod_home_ui <- function(id) {
             htmltools::div(
               class = "d-flex align-items-center",
               bsicons::bs_icon("diagram-3", class = "me-2"),
-              i18n$t("tab_ug")
+              i18n$t("ug_sidebar_title")
             ),
             bsicons::bs_icon("chevron-down", class = "collapse-icon")
           )

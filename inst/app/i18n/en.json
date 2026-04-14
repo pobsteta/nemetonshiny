@@ -299,6 +299,7 @@
   "ndp_tip_conclusion": "The application uses public data (Sentinel-2, BD TOPO, IGN LiDAR HD). The NDP increases automatically when higher-resolution data sources become available (drone, field inventory, 3D scanner).",
 
   "tab_ug": "Forest Management Units",
+  "ug_sidebar_title": "UGF Map",
   "ug_title": "Forest Management Units",
   "ug_merge": "Merge",
   "ug_split": "Split",
