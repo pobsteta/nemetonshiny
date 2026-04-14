@@ -331,7 +331,7 @@
   "ug_map_tab": "Carte",
   "ug_table_tab": "Tableau",
   "ug_map_click_hint": "Cliquez sur les tènements de la carte pour les sélectionner, puis créez une UG.",
-  "ug_create_from_map": "Créer UG depuis la sélection",
+  "ug_create_from_map": "Créer une UGF depuis la sélection",
   "ug_create_btn": "Créer l'UG",
   "ug_create_confirm": "Créer une UG avec %d tènement(s) sélectionné(s) ?",
   "ug_map_select_tenements_first": "Sélectionnez des tènements sur la carte d'abord.",
@@ -362,7 +362,7 @@
   "ug_poly_split_no_hit": "Le polygone dessiné ne traverse aucun tènement.",
   "ug_poly_split_success": "Tènements découpés avec succès",
 
-  "ug_move_to": "Déplacer vers une UG",
+  "ug_move_to": "Déplacer la sélection vers une UGF",
   "ug_move_desc": "Déplacer %d tènement(s) sélectionné(s) vers une UG existante.",
   "ug_move_target": "UG de destination",
   "ug_move_confirm": "Déplacer",

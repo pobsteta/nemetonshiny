@@ -331,7 +331,7 @@
   "ug_map_tab": "Map",
   "ug_table_tab": "Table",
   "ug_map_click_hint": "Click on tenements on the map to select them, then create a UG.",
-  "ug_create_from_map": "Create UG from selection",
+  "ug_create_from_map": "Create UGF from selection",
   "ug_create_btn": "Create UG",
   "ug_create_confirm": "Create a UG with %d selected tenement(s)?",
   "ug_map_select_tenements_first": "Select tenements on the map first.",
@@ -362,7 +362,7 @@
   "ug_poly_split_no_hit": "The drawn polygon does not intersect any tenement.",
   "ug_poly_split_success": "Tenements successfully split",
 
-  "ug_move_to": "Move to UG",
+  "ug_move_to": "Move selection to a UGF",
   "ug_move_desc": "Move %d selected tenement(s) to an existing UG.",
   "ug_move_target": "Target UG",
   "ug_move_confirm": "Move",
