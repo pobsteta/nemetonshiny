@@ -351,6 +351,10 @@
 
   "ug_draw_split_title": "Découper avec les formes dessinées",
   "ug_draw_split_desc": "Vous avez dessiné %d forme(s) sur la carte. Sélectionnez la parcelle à découper.",
+  "ug_line_split_select_one": "Pour découper avec une ligne, sélectionnez d'abord un seul tènement sur la carte (clic), puis dessinez la ligne.",
+  "ug_line_split_title": "Découper le tènement avec la ligne",
+  "ug_line_split_desc": "Couper le tènement « %s » le long de la ligne dessinée.",
+  "ug_line_split_success": "Tènement découpé avec succès",
 
   "ug_move_to": "Déplacer vers une UG",
   "ug_move_desc": "Déplacer %d tènement(s) sélectionné(s) vers une UG existante.",

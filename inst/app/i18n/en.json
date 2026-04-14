@@ -351,6 +351,10 @@
 
   "ug_draw_split_title": "Split using drawn shapes",
   "ug_draw_split_desc": "You drew %d shape(s) on the map. Select the parcel to subdivide.",
+  "ug_line_split_select_one": "To split with a line, first select exactly one tenement on the map (click), then draw the line.",
+  "ug_line_split_title": "Split tenement with the drawn line",
+  "ug_line_split_desc": "Cut tenement '%s' along the drawn line.",
+  "ug_line_split_success": "Tenement successfully split",
 
   "ug_move_to": "Move to UG",
   "ug_move_desc": "Move %d selected tenement(s) to an existing UG.",

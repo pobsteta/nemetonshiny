@@ -722,21 +722,63 @@ mod_ug_server <- function(id, app_state) {
     }
 
     # ================================================================
-    # MAP: Handle drawn polygons (interactive split)
     # ================================================================
-    # When the user finishes drawing polygons on the map, propose to
-    # split the underlying parcel using those drawn shapes.
+    # MAP: Handle drawn shapes (interactive split)
+    # ================================================================
+    # When the user finishes drawing on the map:
+    #   - LINESTRING → cut the SELECTED tenement along that line
+    #   - POLYGON / RECTANGLE → split the chosen PARCEL using those polygons
     shiny::observeEvent(input$ug_map_draw_all_features, {
       drawn <- input$ug_map_draw_all_features
       if (is.null(drawn) || length(drawn$features) == 0) return()
 
-      # Store the drawn GeoJSON for the split modal
-      rv$drawn_geojson <- jsonlite::toJSON(drawn, auto_unbox = TRUE)
-
-      # Find which parcel(s) the drawn shapes overlap with
       projet <- rv$projet_ug
       if (is.null(projet)) return()
 
+      # Detect geometry types of drawn features
+      geom_types <- vapply(drawn$features, function(f) {
+        f$geometry$type %||% ""
+      }, character(1))
+      n_lines <- sum(geom_types %in% c("LineString", "MultiLineString"))
+      n_polys <- sum(geom_types %in% c("Polygon", "MultiPolygon"))
+
+      # Store the drawn GeoJSON for later use
+      rv$drawn_geojson <- jsonlite::toJSON(drawn, auto_unbox = TRUE)
+
+      # ----- Case 1: LINE drawn → cut a SELECTED tenement -----
+      if (n_lines > 0 && n_polys == 0) {
+        sel_ids <- rv$selected_tenement_ids
+        if (length(sel_ids) != 1) {
+          shiny::showNotification(
+            i18n()$t("ug_line_split_select_one"),
+            type = "warning",
+            duration = 8
+          )
+          return()
+        }
+
+        target_id <- sel_ids[1]
+        target_label <- projet$tenements$tenement_id[
+          projet$tenements$tenement_id == target_id
+        ][1]
+
+        shiny::showModal(shiny::modalDialog(
+          title = i18n()$t("ug_line_split_title"),
+          shiny::p(sprintf(i18n()$t("ug_line_split_desc"), target_label)),
+          footer = htmltools::tagList(
+            shiny::modalButton(i18n()$t("cancel")),
+            shiny::actionButton(
+              ns("confirm_line_split"),
+              i18n()$t("ug_split_apply"),
+              class = "btn-info",
+              icon = shiny::icon("scissors")
+            )
+          )
+        ))
+        return()
+      }
+
+      # ----- Case 2: POLYGON drawn → split a chosen PARCEL -----
       parcels <- projet$parcels
       id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
       if (length(id_col) == 0) return()
@@ -751,7 +793,7 @@ mod_ug_server <- function(id, app_state) {
 
       shiny::showModal(shiny::modalDialog(
         title = i18n()$t("ug_draw_split_title"),
-        shiny::p(sprintf(i18n()$t("ug_draw_split_desc"), length(drawn$features))),
+        shiny::p(sprintf(i18n()$t("ug_draw_split_desc"), n_polys)),
         shiny::selectInput(
           ns("draw_split_parcelle"),
           label = i18n()$t("ug_split_select_parcel"),
@@ -769,6 +811,7 @@ mod_ug_server <- function(id, app_state) {
       ))
     })
 
+    # Confirm POLYGON split (split a parcel into sub-tenements)
     shiny::observeEvent(input$confirm_draw_split, {
       shiny::removeModal()
 
@@ -796,6 +839,47 @@ mod_ug_server <- function(id, app_state) {
         n_tenements <- sum(projet$tenements$parent_parcelle_id == parcelle_id)
         shiny::showNotification(
           sprintf(i18n()$t("ug_split_success"), parcelle_id, n_tenements),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(
+          paste(i18n()$t("ug_split_error"), e$message),
+          type = "error",
+          duration = 10
+        )
+      })
+    })
+
+    # Confirm LINE split (cut the selected tenement along the drawn line)
+    shiny::observeEvent(input$confirm_line_split, {
+      shiny::removeModal()
+
+      sel_ids <- rv$selected_tenement_ids
+      geojson <- rv$drawn_geojson
+      if (length(sel_ids) != 1 || is.null(geojson)) return()
+
+      target_id <- sel_ids[1]
+
+      tryCatch({
+        projet <- rv$projet_ug
+        projet <- tenement_split_by_line(projet, target_id, geojson)
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
+        }
+        rv$projet_ug <- projet
+        rv$needs_recompute <- TRUE
+        rv$drawn_geojson <- NULL
+        clear_tenement_selection()
+        app_state$current_project$tenements <- projet$tenements
+        app_state$current_project$ugs <- projet$ugs
+
+        # Clear drawn shapes from the map
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::clearGroup("draw")
+
+        shiny::showNotification(
+          i18n()$t("ug_line_split_success"),
           type = "message"
         )
       }, error = function(e) {
