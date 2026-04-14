@@ -145,33 +145,24 @@ mod_ug_table_panel <- function(id) {
 }
 
 
-#' UG actions bar (buttons, groupe selector, detail panel)
+#' UG map-actions bar (map-based + global actions)
 #'
 #' @description
-#' The sidebar-style action bar for UG management. Used both as
-#' the sidebar of mod_ug_ui and as a vertical panel embedded next
-#' to the map/table in other layouts.
+#' Buttons that operate on the map selection or are global to the
+#' project (create UG from map selection, move selection to UG,
+#' recompute, import/undo split). Map selection info.
 #'
 #' @param id Character. Module namespace ID.
-#' @return Shiny tag list with all UG actions.
+#' @return Shiny tag list.
 #' @noRd
-mod_ug_actions_bar <- function(id) {
+mod_ug_map_actions_bar <- function(id) {
   ns <- shiny::NS(id)
   opts <- get_app_options()
   i18n <- get_i18n(opts$language %||% "fr")
 
   htmltools::tagList(
-    # Action buttons
     htmltools::div(
       class = "d-grid gap-2 mb-3",
-
-      shiny::actionButton(
-        ns("btn_merge"),
-        label = i18n$t("ug_merge"),
-        icon = shiny::icon("object-group"),
-        class = "btn-success",
-        width = "100%"
-      ),
 
       shiny::actionButton(
         ns("btn_create_from_map"),
@@ -186,22 +177,6 @@ mod_ug_actions_bar <- function(id) {
         label = i18n$t("ug_move_to"),
         icon = shiny::icon("arrow-right-arrow-left"),
         class = "btn-outline-success btn-sm",
-        width = "100%"
-      ),
-
-      shiny::actionButton(
-        ns("btn_split"),
-        label = i18n$t("ug_split"),
-        icon = shiny::icon("scissors"),
-        class = "btn-warning",
-        width = "100%"
-      ),
-
-      shiny::actionButton(
-        ns("btn_rename"),
-        label = i18n$t("ug_rename"),
-        icon = shiny::icon("pen"),
-        class = "btn-outline-secondary",
         width = "100%"
       ),
 
@@ -226,6 +201,57 @@ mod_ug_actions_bar <- function(id) {
         label = i18n$t("ug_undo_split"),
         icon = shiny::icon("rotate-left"),
         class = "btn-outline-secondary btn-sm",
+        width = "100%"
+      )
+    ),
+
+    shiny::hr(),
+
+    # Map selection info
+    shiny::uiOutput(ns("map_selection_info"))
+  )
+}
+
+
+#' UG table-actions bar (buttons that act on the DT table selection)
+#'
+#' @description
+#' Buttons that operate on the current DT table row selection: merge,
+#' split, rename UGs. Also the groupe selector and UG detail panel.
+#'
+#' @param id Character. Module namespace ID.
+#' @return Shiny tag list.
+#' @noRd
+mod_ug_table_actions_bar <- function(id) {
+  ns <- shiny::NS(id)
+  opts <- get_app_options()
+  i18n <- get_i18n(opts$language %||% "fr")
+
+  htmltools::tagList(
+    htmltools::div(
+      class = "d-grid gap-2 mb-3",
+
+      shiny::actionButton(
+        ns("btn_merge"),
+        label = i18n$t("ug_merge"),
+        icon = shiny::icon("object-group"),
+        class = "btn-success",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_split"),
+        label = i18n$t("ug_split"),
+        icon = shiny::icon("scissors"),
+        class = "btn-warning",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_rename"),
+        label = i18n$t("ug_rename"),
+        icon = shiny::icon("pen"),
+        class = "btn-outline-secondary",
         width = "100%"
       )
     ),
@@ -257,17 +283,30 @@ mod_ug_actions_bar <- function(id) {
 
     shiny::hr(),
 
-    # Map selection info
-    shiny::uiOutput(ns("map_selection_info")),
-
-    shiny::hr(),
-
     # UG detail panel
     htmltools::div(
       id = ns("detail_panel"),
       shiny::h6(i18n$t("ug_composition")),
       shiny::uiOutput(ns("ug_detail"))
     )
+  )
+}
+
+
+#' UG actions bar (combined wrapper — map + table)
+#'
+#' @description
+#' Backward-compatible wrapper that includes both the map-action bar
+#' and the table-action bar. Used by the legacy single-sidebar layout.
+#'
+#' @param id Character. Module namespace ID.
+#' @return Shiny tag list with all UG actions.
+#' @noRd
+mod_ug_actions_bar <- function(id) {
+  htmltools::tagList(
+    mod_ug_map_actions_bar(id),
+    shiny::hr(),
+    mod_ug_table_actions_bar(id)
   )
 }
 

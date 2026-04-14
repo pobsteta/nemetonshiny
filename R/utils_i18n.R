@@ -949,6 +949,7 @@ TRANSLATIONS <- list(
   # UG (Management Units) translations
   tab_ug = list(fr = "Unit\u00e9s de Gestion Foresti\u00e8res", en = "Forest Management Units"),
   ug_sidebar_title = list(fr = "Carte UGF", en = "UGF Map"),
+  ug_table_sidebar_title = list(fr = "Tableau UGF", en = "UGF Table"),
   ug_title = list(fr = "Unit\u00e9s de Gestion Foresti\u00e8res", en = "Forest Management Units"),
   ug_merge = list(fr = "Regrouper", en = "Merge"),
   ug_split = list(fr = "Dissocier", en = "Split"),

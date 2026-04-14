@@ -120,17 +120,17 @@ mod_home_ui <- function(id) {
 
       htmltools::hr(class = "my-3"),
 
-      # UG Actions Section (collapsible, shown when project has UGs)
+      # Carte UGF actions (map-based + global actions)
       htmltools::tags$div(
-        id = ns("ug_actions_section"),
+        id = ns("ug_map_actions_section"),
         class = "card mb-3",
         htmltools::tags$div(
           class = "card-header bg-success text-white py-2",
           style = "cursor: pointer;",
           `data-bs-toggle` = "collapse",
-          `data-bs-target` = paste0("#", ns("ug_actions_collapse")),
+          `data-bs-target` = paste0("#", ns("ug_map_actions_collapse")),
           `aria-expanded` = "false",
-          `aria-controls` = ns("ug_actions_collapse"),
+          `aria-controls` = ns("ug_map_actions_collapse"),
           htmltools::div(
             class = "d-flex align-items-center justify-content-between",
             htmltools::div(
@@ -142,11 +142,42 @@ mod_home_ui <- function(id) {
           )
         ),
         htmltools::tags$div(
-          id = ns("ug_actions_collapse"),
+          id = ns("ug_map_actions_collapse"),
           class = "collapse",
           htmltools::tags$div(
             class = "card-body p-2",
-            mod_ug_actions_bar("ug")
+            mod_ug_map_actions_bar("ug")
+          )
+        )
+      ),
+
+      # Tableau UGF actions (table-based actions: merge, split, rename, groupe)
+      htmltools::tags$div(
+        id = ns("ug_table_actions_section"),
+        class = "card mb-3",
+        htmltools::tags$div(
+          class = "card-header bg-info text-white py-2",
+          style = "cursor: pointer;",
+          `data-bs-toggle` = "collapse",
+          `data-bs-target` = paste0("#", ns("ug_table_actions_collapse")),
+          `aria-expanded` = "false",
+          `aria-controls` = ns("ug_table_actions_collapse"),
+          htmltools::div(
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("table", class = "me-2"),
+              i18n$t("ug_table_sidebar_title")
+            ),
+            bsicons::bs_icon("chevron-down", class = "collapse-icon")
+          )
+        ),
+        htmltools::tags$div(
+          id = ns("ug_table_actions_collapse"),
+          class = "collapse",
+          htmltools::tags$div(
+            class = "card-body p-2",
+            mod_ug_table_actions_bar("ug")
           )
         )
       )
