@@ -1199,7 +1199,7 @@ mod_ug_server <- function(id, app_state) {
         round(listing$surface_m2 / 10000, 2)
       }
       display_df <- data.frame(
-        Label = listing$label,
+        `Label UGF` = listing$label,
         Groupe = ifelse(is.na(listing$groupe), "---", listing$groupe),
         Tenements = listing$n_tenements,
         `Surface cadastrale (ha)` = round(listing$surface_m2 / 10000, 2),
