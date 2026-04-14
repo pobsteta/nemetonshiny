@@ -178,7 +178,10 @@
 
 
   // ============================================================
-  // Clear all drawn items from a leaflet map (used after split)
+  // Clear all drawn items from a leaflet map (used after split).
+  // Drawn shapes from leaflet.draw live in either a feature group
+  // attached to the draw control, or as regular Polyline/Polygon
+  // layers on the map. We try both approaches.
   // ============================================================
   Shiny.addCustomMessageHandler('leafletClearDrawn', function(data) {
     var widget = HTMLWidgets.find('#' + data.id);
@@ -186,24 +189,45 @@
     var map = widget.getMap();
     if (!map) return;
 
-    // Walk all layers; remove anything that looks like a drawn shape
+    // Names of overlay groups WE manage (don't remove these layers)
+    var keepGroups = ['UGF', 'Tenements', 'Selection', 'basemap'];
+
+    // Walk all layers; remove drawn shapes
+    var toRemove = [];
     map.eachLayer(function(layer) {
-      // Drawn items are typically Polylines or Polygons added by leaflet.draw
-      // Their _drawn flag or feature.properties may identify them, but the
-      // safest is to remove non-tile, non-attribution layers that are
-      // Polyline / Polygon and not in known overlay groups.
       if (layer instanceof L.Polyline || layer instanceof L.Polygon) {
-        // Skip layers that have a layerId (those are managed by R-leaflet)
-        if (!layer.options || !layer.options.layerId) {
-          map.removeLayer(layer);
+        // Find which group this layer belongs to (if any)
+        var inKeptGroup = false;
+        for (var i = 0; i < keepGroups.length; i++) {
+          var g = map._layers; // not directly useful here
+          if (layer.options && layer.options.group === keepGroups[i]) {
+            inKeptGroup = true;
+            break;
+          }
+        }
+        // Also keep layers with a layerId managed by R-leaflet (sel_*)
+        if (!inKeptGroup) {
+          var lid = layer.options && layer.options.layerId;
+          if (lid && (String(lid).indexOf('sel_') === 0)) {
+            inKeptGroup = true;
+          }
+        }
+        if (!inKeptGroup) {
+          toRemove.push(layer);
         }
       }
     });
+    toRemove.forEach(function(l) { map.removeLayer(l); });
 
-    // Also clear leaflet.draw's FeatureGroup if exposed
+    // Also clear leaflet.draw's internal FeatureGroup if exposed
     if (map.drawControl && map.drawControl.options &&
         map.drawControl.options.edit && map.drawControl.options.edit.featureGroup) {
-      map.drawControl.options.edit.featureGroup.clearLayers();
+      try { map.drawControl.options.edit.featureGroup.clearLayers(); } catch (e) {}
+    }
+
+    // leaflet.extras stores its drawn group on the map under HTMLWidgets bindings
+    if (widget.layerManager) {
+      try { widget.layerManager.clearGroup('draw'); } catch (e) {}
     }
   });
 

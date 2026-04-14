@@ -1184,6 +1184,14 @@ mod_ug_server <- function(id, app_state) {
         )
     })
 
+    # Render the table even when the sub-tab is hidden. Otherwise Shiny
+    # suspends the output and the post-split data update is only picked
+    # up the next time the user navigates to "Tableau" — which sometimes
+    # doesn't trigger a refresh because the cached value looks the same.
+    shiny::outputOptions(output, "ug_table", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "ug_map_count", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "ug_map_surface", suspendWhenHidden = FALSE)
+
     # ================================================================
     # OUTPUT: Summary text
     # ================================================================
