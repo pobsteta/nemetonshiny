@@ -242,6 +242,146 @@ tenement_split_by_geometry <- function(projet,
 }
 
 
+#' Split all tenements crossed by a drawn polygon
+#'
+#' @description
+#' Auto-detects which tenements the drawn polygon(s) intersect and splits
+#' each one into "inside polygon" and "outside polygon" sub-tenements.
+#' Each new sub-tenement keeps the UG assignment of its parent tenement.
+#'
+#' Workflow: user draws a polygon spanning multiple tenements, every
+#' affected tenement is automatically split — no need to pick one parcel.
+#'
+#' @param projet List. Project with $tenements and $ugs.
+#' @param geojson Character. GeoJSON of the cutting polygon(s) from leaflet draw.
+#' @param tolerance_m2 Numeric. Area tolerance to discard slivers (default 0.01).
+#'
+#' @return Updated projet with all crossed tenements replaced by sub-tenements.
+#' @noRd
+tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01) {
+  if (!has_ug_data(projet)) {
+    cli::cli_abort("Project must have UG data.")
+  }
+
+  tenements <- projet$tenements
+
+  # Parse drawn polygon(s)
+  polys_sf <- tryCatch({
+    sf::st_read(geojson, quiet = TRUE)
+  }, error = function(e) {
+    cli::cli_abort("Invalid GeoJSON: {e$message}")
+  })
+  geom_types <- sf::st_geometry_type(polys_sf)
+  poly_mask <- geom_types %in% c("POLYGON", "MULTIPOLYGON")
+  if (!any(poly_mask)) {
+    cli::cli_abort("No polygon features found in the drawn shape.")
+  }
+  polys_sf <- polys_sf[poly_mask, ]
+
+  # Match CRS
+  if (!is.na(sf::st_crs(polys_sf)) && !is.na(sf::st_crs(tenements))) {
+    if (sf::st_crs(polys_sf) != sf::st_crs(tenements)) {
+      polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
+    }
+  } else if (is.na(sf::st_crs(polys_sf))) {
+    sf::st_crs(polys_sf) <- sf::st_crs(tenements)
+  }
+
+  cutter <- sf::st_make_valid(sf::st_union(sf::st_geometry(polys_sf)))
+
+  # Find tenements that intersect the cutter
+  hits <- tryCatch(
+    sf::st_intersects(sf::st_geometry(tenements), cutter, sparse = FALSE)[, 1],
+    error = function(e) rep(FALSE, nrow(tenements))
+  )
+  if (!any(hits)) {
+    cli::cli_abort("The drawn polygon does not intersect any tenement.")
+  }
+
+  affected_idx <- which(hits)
+  cli::cli_alert_info(
+    "Splitting {length(affected_idx)} tenement(s) crossed by the drawn polygon"
+  )
+
+  # Detect existing geometry column name
+  existing_geom_col <- attr(tenements, "sf_column") %||% "geometry"
+
+  # Process each affected tenement
+  all_new <- list()
+  removed_ids <- character(0)
+  ts <- format(Sys.time(), "%Y%m%d%H%M%S")
+  counter <- 0L
+
+  for (i in affected_idx) {
+    tn <- tenements[i, ]
+    tn_geom <- sf::st_make_valid(sf::st_geometry(tn))
+    parent_id <- tn$parent_parcelle_id
+    ug_id <- tn$ug_id
+
+    inside <- tryCatch(
+      sf::st_make_valid(sf::st_intersection(tn_geom, cutter)),
+      error = function(e) NULL
+    )
+    outside <- tryCatch(
+      sf::st_make_valid(sf::st_difference(tn_geom, cutter)),
+      error = function(e) NULL
+    )
+
+    # Filter to polygons + drop slivers
+    pieces <- list()
+    for (g in list(inside, outside)) {
+      if (is.null(g) || length(g) == 0) next
+      g_types <- sf::st_geometry_type(g)
+      g <- g[g_types %in% c("POLYGON", "MULTIPOLYGON")]
+      if (length(g) == 0) next
+      g <- sf::st_cast(g, "MULTIPOLYGON")
+      areas <- as.numeric(sf::st_area(g))
+      g <- g[areas > tolerance_m2]
+      if (length(g) > 0) pieces <- c(pieces, list(g))
+    }
+
+    if (length(pieces) < 2) next  # No real split for this tenement
+
+    geoms <- do.call(c, pieces)
+    n <- length(geoms)
+    counter <- counter + 1L
+    new_ids <- paste0("tnm_", ts, "_", counter, "_", seq_len(n))
+
+    new_df <- data.frame(
+      tenement_id = new_ids,
+      parent_parcelle_id = rep(parent_id, n),
+      ug_id = rep(ug_id, n),
+      surface_m2 = as.numeric(sf::st_area(geoms)),
+      stringsAsFactors = FALSE
+    )
+    new_df[[existing_geom_col]] <- geoms
+    new_sf <- sf::st_sf(new_df, sf_column_name = existing_geom_col)
+    sf::st_crs(new_sf) <- sf::st_crs(tenements)
+
+    all_new <- c(all_new, list(new_sf))
+    removed_ids <- c(removed_ids, tn$tenement_id)
+  }
+
+  if (length(all_new) == 0) {
+    cli::cli_abort("The drawn polygon did not split any tenement (only edge touches).")
+  }
+
+  # Remove original tenements + append new sub-tenements
+  tenements <- tenements[!tenements$tenement_id %in% removed_ids, , drop = FALSE]
+  combined <- do.call(rbind, all_new)
+  tenements <- rbind(tenements, combined)
+  projet$tenements <- tenements
+
+  projet_validate(projet)
+
+  cli::cli_alert_success(
+    "Split {length(removed_ids)} tenement(s) into {nrow(combined)} sub-tenements"
+  )
+
+  projet
+}
+
+
 #' Split an tenement by drawing a cutting line
 #'
 #' @description

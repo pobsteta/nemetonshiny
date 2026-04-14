@@ -799,27 +799,32 @@ mod_ug_server <- function(id, app_state) {
         return()
       }
 
-      # ----- Case 2: POLYGON drawn → split a chosen PARCEL -----
-      parcels <- projet$parcels
-      id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
-      if (length(id_col) == 0) return()
+      # ----- Case 2: POLYGON drawn → auto-split all crossed tenements -----
+      tenements <- projet$tenements
+      # Quick preview: how many tenements does the polygon cross?
+      n_affected <- tryCatch({
+        polys_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
+        if (!is.na(sf::st_crs(polys_sf)) && !is.na(sf::st_crs(tenements))) {
+          if (sf::st_crs(polys_sf) != sf::st_crs(tenements)) {
+            polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
+          }
+        }
+        cutter <- sf::st_union(sf::st_geometry(polys_sf))
+        sum(sf::st_intersects(sf::st_geometry(tenements), cutter, sparse = FALSE)[, 1])
+      }, error = function(e) 0L)
 
-      parcel_ids <- as.character(parcels[[id_col[1]]])
-      parcel_labels <- if ("geo_parcelle" %in% names(parcels)) {
-        as.character(parcels$geo_parcelle)
-      } else {
-        parcel_ids
+      if (n_affected == 0) {
+        shiny::showNotification(
+          i18n()$t("ug_poly_split_no_hit"),
+          type = "warning",
+          duration = 8
+        )
+        return()
       }
-      choices <- stats::setNames(parcel_ids, parcel_labels)
 
       shiny::showModal(shiny::modalDialog(
-        title = i18n()$t("ug_draw_split_title"),
-        shiny::p(sprintf(i18n()$t("ug_draw_split_desc"), n_polys)),
-        shiny::selectInput(
-          ns("draw_split_parcelle"),
-          label = i18n()$t("ug_split_select_parcel"),
-          choices = choices
-        ),
+        title = i18n()$t("ug_poly_split_title"),
+        shiny::p(sprintf(i18n()$t("ug_poly_split_desc"), n_affected)),
         footer = htmltools::tagList(
           shiny::modalButton(i18n()$t("cancel")),
           shiny::actionButton(
@@ -832,17 +837,16 @@ mod_ug_server <- function(id, app_state) {
       ))
     })
 
-    # Confirm POLYGON split (split a parcel into sub-tenements)
+    # Confirm POLYGON split (auto-split all tenements crossed by polygon)
     shiny::observeEvent(input$confirm_draw_split, {
       shiny::removeModal()
 
-      parcelle_id <- input$draw_split_parcelle
       geojson <- rv$drawn_geojson
-      if (is.null(parcelle_id) || is.null(geojson)) return()
+      if (is.null(geojson)) return()
 
       tryCatch({
         projet <- rv$projet_ug
-        projet <- tenement_split_by_geometry(projet, parcelle_id, geojson)
+        projet <- tenement_split_by_drawn_polygon(projet, geojson)
 
         if (!is.null(projet$metadata$id)) {
           save_ug_data(projet$metadata$id, projet)
@@ -859,9 +863,8 @@ mod_ug_server <- function(id, app_state) {
           leaflet::clearGroup("draw")
         session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
 
-        n_tenements <- sum(projet$tenements$parent_parcelle_id == parcelle_id)
         shiny::showNotification(
-          sprintf(i18n()$t("ug_split_success"), parcelle_id, n_tenements),
+          i18n()$t("ug_poly_split_success"),
           type = "message"
         )
       }, error = function(e) {
