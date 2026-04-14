@@ -343,6 +343,54 @@ mod_ug_server <- function(id, app_state) {
       redraw_counter = 0L        # incremented to force map polygon redraw
     )
 
+    # Helper: translate known English cli_abort messages emitted by the
+    # domain/split functions into user-language text. Falls back to the
+    # raw message when no match is found.
+    translate_split_error <- function(msg) {
+      if (is.null(msg) || length(msg) == 0) return("")
+      lg <- lang()
+      is_fr <- identical(lg, "fr")
+      patterns <- list(
+        list(re = "does not intersect any tenement",
+             fr = "Le polygone ne recouvre aucun t\u00e8nement.",
+             en = "The drawn polygon does not intersect any tenement."),
+        list(re = "did not split any tenement",
+             fr = "Le polygone n'a d\u00e9coup\u00e9 aucun t\u00e8nement (contacts de bord uniquement ou chevauchement trop faible).",
+             en = "The drawn polygon did not split any tenement."),
+        list(re = "does not cross any tenement",
+             fr = "La ligne ne traverse aucun t\u00e8nement.",
+             en = "The drawn line does not cross any tenement."),
+        list(re = "did not split any tenement \\(only edge touches\\)",
+             fr = "La ligne n'a d\u00e9coup\u00e9 aucun t\u00e8nement (contacts de bord uniquement).",
+             en = "The drawn line did not split any tenement (only edge touches)."),
+        list(re = "No polygon features found",
+             fr = "Aucun polygone trouv\u00e9 dans la forme import\u00e9e.",
+             en = "No polygon features found."),
+        list(re = "No line features found",
+             fr = "Aucune ligne trouv\u00e9e dans la forme import\u00e9e.",
+             en = "No line features found."),
+        list(re = "Tiling invariant violated",
+             fr = "Les polygones import\u00e9s ne couvrent pas exactement la parcelle (\u00e9cart de surface d\u00e9tect\u00e9).",
+             en = "Imported polygons do not cover the parcel exactly (area mismatch)."),
+        list(re = "Invalid GeoJSON",
+             fr = "Fichier GeoJSON invalide.",
+             en = "Invalid GeoJSON."),
+        list(re = "Project must have UG data",
+             fr = "Le projet ne contient pas de donn\u00e9es UGF.",
+             en = "Project must have UG data."),
+        list(re = "Parcel not found",
+             fr = "Parcelle introuvable.",
+             en = "Parcel not found.")
+      )
+      for (p in patterns) {
+        if (grepl(p$re, msg, ignore.case = TRUE)) {
+          return(if (is_fr) p$fr else p$en)
+        }
+      }
+      # Fallback: return the raw message
+      msg
+    }
+
     # Initialize UG data when project loads
     shiny::observe({
       project <- app_state$current_project
@@ -914,7 +962,7 @@ mod_ug_server <- function(id, app_state) {
         )
       }, error = function(e) {
         shiny::showNotification(
-          paste(i18n()$t("ug_split_error"), e$message),
+          paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
           type = "error",
           duration = 10
         )
@@ -954,7 +1002,7 @@ mod_ug_server <- function(id, app_state) {
         )
       }, error = function(e) {
         shiny::showNotification(
-          paste(i18n()$t("ug_split_error"), e$message),
+          paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
           type = "error",
           duration = 10
         )
@@ -1632,7 +1680,7 @@ mod_ug_server <- function(id, app_state) {
                        delete_dsn = TRUE)
         }, error = function(e) {
           shiny::showNotification(
-            paste(i18n()$t("ug_split_error"), e$message),
+            paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
             type = "error",
             duration = 10
           )
@@ -1726,7 +1774,7 @@ mod_ug_server <- function(id, app_state) {
         )
       }, error = function(e) {
         shiny::showNotification(
-          paste(i18n()$t("ug_split_error"), e$message),
+          paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
           type = "error",
           duration = 10
         )
