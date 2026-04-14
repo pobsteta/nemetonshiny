@@ -60,9 +60,57 @@ mod_ug_ui <- function(id) {
 #' @noRd
 mod_ug_map_panel <- function(id) {
   ns <- shiny::NS(id)
-  bslib::card_body(
-    class = "p-0",
-    leaflet::leafletOutput(ns("ug_map"), height = "600px")
+  opts <- get_app_options()
+  i18n <- get_i18n(opts$language %||% "fr")
+
+  htmltools::tagList(
+    # Header bar with basemap toggles (same pattern as mod_map)
+    bslib::card_header(
+      class = "d-flex justify-content-between align-items-center py-2",
+      htmltools::div(
+        class = "d-flex gap-2 align-items-center",
+        htmltools::div(
+          class = "btn-group btn-group-sm",
+          role = "group",
+          `aria-label` = "Basemap selection",
+          htmltools::tags$button(
+            id = ns("basemap_osm"),
+            type = "button",
+            class = "btn action-button basemap-btn basemap-btn-active",
+            `data-val` = 0,
+            "OSM"
+          ),
+          htmltools::tags$button(
+            id = ns("basemap_satellite"),
+            type = "button",
+            class = "btn action-button basemap-btn",
+            `data-val` = 0,
+            "Satellite"
+          )
+        )
+      )
+    ),
+
+    # Body: leaflet map
+    bslib::card_body(
+      padding = 0,
+      class = "p-0",
+      htmltools::div(
+        id = ns("ug_map_container"),
+        style = "height: 100%; min-height: 500px; position: relative;",
+        leaflet::leafletOutput(ns("ug_map"), height = "100%")
+      )
+    ),
+
+    # Footer: tenement count + surface ratio
+    bslib::card_footer(
+      class = "py-2",
+      htmltools::div(
+        class = "d-flex justify-content-between align-items-center text-muted small",
+        shiny::textOutput(ns("ug_map_count"), inline = TRUE),
+        shiny::textOutput(ns("ug_map_surface"), inline = TRUE)
+      )
+    )
   )
 }
 
@@ -276,20 +324,15 @@ mod_ug_server <- function(id, app_state) {
     # ================================================================
     # MAP: Render leaflet
     # ================================================================
+    # Basemap state
+    rv$basemap <- "osm"
+
     output$ug_map <- leaflet::renderLeaflet({
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles(
           leaflet::providers$OpenStreetMap,
-          group = "OSM"
-        ) |>
-        leaflet::addProviderTiles(
-          leaflet::providers$Esri.WorldImagery,
-          group = "Satellite"
-        ) |>
-        leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
-          overlayGroups = c("UG", "Tenements", "selection"),
-          options = leaflet::layersControlOptions(collapsed = TRUE)
+          group = "basemap",
+          layerId = "basemap_tiles"
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
 
@@ -324,6 +367,80 @@ mod_ug_server <- function(id, app_state) {
       }
 
       m
+    })
+
+    # ================================================================
+    # MAP: Basemap toggle (OSM / Satellite)
+    # ================================================================
+    shiny::observeEvent(input$basemap_osm, {
+      rv$basemap <- "osm"
+      leaflet::leafletProxy(ns("ug_map")) |>
+        leaflet::clearGroup("basemap") |>
+        leaflet::addProviderTiles(
+          leaflet::providers$OpenStreetMap,
+          group = "basemap",
+          layerId = "basemap_tiles"
+        )
+      session$sendCustomMessage("toggleBasemapButtons", list(
+        osmId = ns("basemap_osm"),
+        satId = ns("basemap_satellite"),
+        active = "osm"
+      ))
+    })
+
+    shiny::observeEvent(input$basemap_satellite, {
+      rv$basemap <- "satellite"
+      leaflet::leafletProxy(ns("ug_map")) |>
+        leaflet::clearGroup("basemap") |>
+        leaflet::addProviderTiles(
+          leaflet::providers$Esri.WorldImagery,
+          group = "basemap",
+          layerId = "basemap_tiles"
+        )
+      session$sendCustomMessage("toggleBasemapButtons", list(
+        osmId = ns("basemap_osm"),
+        satId = ns("basemap_satellite"),
+        active = "satellite"
+      ))
+    })
+
+    # ================================================================
+    # MAP FOOTER: tenement count and surface summary
+    # ================================================================
+    output$ug_map_count <- shiny::renderText({
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) return("")
+      n <- nrow(projet$tenements)
+      sprintf(i18n()$t("ug_map_summary_count"), n)
+    })
+
+    output$ug_map_surface <- shiny::renderText({
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) return("")
+
+      # Total surface of tenements (in hectares)
+      surf_tenements_ha <- sum(projet$tenements$surface_m2, na.rm = TRUE) / 10000
+
+      # Total surface of cadastral parcels (the parent parcels that have tenements)
+      parcels <- projet$parcels
+      parent_ids <- unique(projet$tenements$parent_parcelle_id)
+      id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
+      surf_parcels_ha <- if (length(id_col) > 0) {
+        selected_parcels <- parcels[as.character(parcels[[id_col[1]]]) %in% parent_ids, ]
+        if ("contenance" %in% names(selected_parcels)) {
+          sum(as.numeric(selected_parcels$contenance), na.rm = TRUE) / 10000
+        } else {
+          sum(as.numeric(sf::st_area(selected_parcels)), na.rm = TRUE) / 10000
+        }
+      } else {
+        surf_tenements_ha
+      }
+
+      sprintf(
+        i18n()$t("ug_map_summary_surface"),
+        format(round(surf_tenements_ha, 2), nsmall = 2),
+        format(round(surf_parcels_ha, 2), nsmall = 2)
+      )
     })
 
     # ================================================================
