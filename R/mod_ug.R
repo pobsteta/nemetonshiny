@@ -678,13 +678,18 @@ mod_ug_server <- function(id, app_state) {
         rv$map_needs_zoom <- FALSE
       }
 
-      # Add legend + re-add layers control (clearControls also removes it)
+      # Add legend + re-add layers control (clearControls also removes it).
+      # Then explicitly show every overlay group so leaflet doesn't keep
+      # them hidden after the control re-creation.
       proxy |>
         leaflet::clearControls() |>
         leaflet::addLayersControl(
           overlayGroups = c("UGF", "Tenements", "Selection"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
+        leaflet::showGroup("UGF") |>
+        leaflet::showGroup("Tenements") |>
+        leaflet::showGroup("Selection") |>
         leaflet::addLegend(
           position = "bottomright",
           colors = GROUPE_COLORS[names(GROUPE_COLORS) %in% ugs$groupe],
