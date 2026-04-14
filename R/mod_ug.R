@@ -1596,8 +1596,14 @@ mod_ug_server <- function(id, app_state) {
     # The exported GPKG carries all relevant columns as a template.
     output$btn_export_split <- shiny::downloadHandler(
       filename = function() {
-        pid <- rv$projet_ug$metadata$id %||% "projet"
-        sprintf("tenements_%s_%s.gpkg", pid, format(Sys.time(), "%Y%m%d_%H%M%S"))
+        meta <- rv$projet_ug$metadata
+        # Sanitize project name for use as filename prefix
+        pname <- meta$name %||% meta$id %||% "projet"
+        pname <- gsub("[^A-Za-z0-9_\\-]", "_", pname)
+        pname <- gsub("_+", "_", pname)
+        pname <- gsub("^_|_$", "", pname)
+        if (nchar(pname) == 0) pname <- "projet"
+        sprintf("%s_tenements_%s.gpkg", pname, format(Sys.time(), "%Y%m%d_%H%M%S"))
       },
       content = function(file) {
         projet <- rv$projet_ug
