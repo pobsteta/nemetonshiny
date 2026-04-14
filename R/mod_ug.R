@@ -327,6 +327,7 @@ mod_ug_server <- function(id, app_state) {
     # ================================================================
     ug_listing <- shiny::reactive({
       projet <- rv$projet_ug
+      rv$redraw_counter  # also invalidate when redraw is forced
       if (is.null(projet) || !has_ug_data(projet)) return(NULL)
       ug_list(projet)
     })
@@ -657,6 +658,26 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
+    # TABLE: force redraw when the "Tableau" sub-tab becomes visible
+    # ================================================================
+    shiny::observe({
+      root_session <- session$userData$root_session
+      if (is.null(root_session)) return()
+
+      top_nav <- root_session$input$main_nav
+      sub_nav <- root_session$input[["home-main_tabs"]]
+
+      if (is.null(top_nav) || top_nav != "selection") return()
+      if (is.null(sub_nav) || sub_nav != "table_ug") return()
+
+      projet <- shiny::isolate(rv$projet_ug)
+      if (is.null(projet) || !has_ug_data(projet)) return()
+
+      # Bump counter to invalidate ug_listing reactive
+      rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+    })
+
+    # ================================================================
     # MAP: Click handler for tenement selection (same pattern as mod_map.R)
     # ================================================================
     shiny::observeEvent(input$ug_map_shape_click, {
@@ -827,6 +848,7 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
+        rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
         rv$needs_recompute <- TRUE
         rv$drawn_geojson <- NULL
         app_state$current_project$tenements <- projet$tenements
@@ -868,6 +890,7 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
+        rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
         rv$needs_recompute <- TRUE
         rv$drawn_geojson <- NULL
         clear_tenement_selection()
