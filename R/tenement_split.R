@@ -161,11 +161,28 @@ tenement_split_by_import <- function(projet,
   # if loaded from GPKG or "geometry" by default).
   existing_geom_col <- attr(projet$tenements, "sf_column") %||% "geometry"
 
+  # Surface conservation: prefer the parcel's cadastral "contenance" as the
+  # authoritative total area, then scale sub-tenement geometric areas
+  # proportionally so that sum(surface_m2) == contenance.
+  parcel_row <- parcels[parcel_mask, ]
+  parcel_total <- if ("contenance" %in% names(parcel_row)) {
+    as.numeric(parcel_row$contenance)[1]
+  } else {
+    as.numeric(sf::st_area(parcel_row))
+  }
+  geom_areas <- as.numeric(sf::st_area(all_geoms))
+  total_geom <- sum(geom_areas)
+  sub_surfaces <- if (!is.na(parcel_total) && total_geom > 0) {
+    geom_areas * (parcel_total / total_geom)
+  } else {
+    geom_areas
+  }
+
   new_df <- data.frame(
     tenement_id = new_tenement_ids,
     parent_parcelle_id = rep(parcelle_id, n_fragments),
     ug_id = rep(original_ug_id, n_fragments),
-    surface_m2 = as.numeric(sf::st_area(all_geoms)),
+    surface_m2 = sub_surfaces,
     stringsAsFactors = FALSE
   )
   new_df[[existing_geom_col]] <- all_geoms
@@ -347,11 +364,22 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
     counter <- counter + 1L
     new_ids <- paste0("tnm_", ts, "_", counter, "_", seq_len(n))
 
+    # Surface conservation: sub-tenement areas scaled so their sum
+    # equals the original tenement's surface_m2 (cadastral source).
+    geom_areas <- as.numeric(sf::st_area(geoms))
+    total_geom <- sum(geom_areas)
+    original_area <- as.numeric(tn$surface_m2)
+    sub_surfaces <- if (total_geom > 0 && !is.na(original_area)) {
+      geom_areas * (original_area / total_geom)
+    } else {
+      geom_areas
+    }
+
     new_df <- data.frame(
       tenement_id = new_ids,
       parent_parcelle_id = rep(parent_id, n),
       ug_id = rep(ug_id, n),
-      surface_m2 = as.numeric(sf::st_area(geoms)),
+      surface_m2 = sub_surfaces,
       stringsAsFactors = FALSE
     )
     new_df[[existing_geom_col]] <- geoms
@@ -487,11 +515,21 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
     counter <- counter + 1L
     new_ids <- paste0("tnm_", ts, "_", counter, "_", seq_len(n))
 
+    # Surface conservation: scale sub-tenement areas to preserve total
+    geom_areas <- as.numeric(sf::st_area(fragments))
+    total_geom <- sum(geom_areas)
+    original_area <- as.numeric(tn$surface_m2)
+    sub_surfaces <- if (total_geom > 0 && !is.na(original_area)) {
+      geom_areas * (original_area / total_geom)
+    } else {
+      geom_areas
+    }
+
     new_df <- data.frame(
       tenement_id = new_ids,
       parent_parcelle_id = rep(parent_id, n),
       ug_id = rep(ug_id, n),
-      surface_m2 = as.numeric(sf::st_area(fragments)),
+      surface_m2 = sub_surfaces,
       stringsAsFactors = FALSE
     )
     new_df[[existing_geom_col]] <- fragments
