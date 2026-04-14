@@ -116,13 +116,66 @@ mod_home_ui <- function(id) {
       ),
 
       # Progress Module (shown during computation)
-      mod_progress_ui(ns("progress"))
+      mod_progress_ui(ns("progress")),
+
+      htmltools::hr(class = "my-3"),
+
+      # UG Actions Section (collapsible, shown when project has UGs)
+      htmltools::tags$div(
+        id = ns("ug_actions_section"),
+        class = "card mb-3",
+        htmltools::tags$div(
+          class = "card-header bg-success text-white py-2",
+          style = "cursor: pointer;",
+          `data-bs-toggle` = "collapse",
+          `data-bs-target` = paste0("#", ns("ug_actions_collapse")),
+          `aria-expanded` = "false",
+          `aria-controls` = ns("ug_actions_collapse"),
+          htmltools::div(
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("diagram-3", class = "me-2"),
+              i18n$t("tab_ug")
+            ),
+            bsicons::bs_icon("chevron-down", class = "collapse-icon")
+          )
+        ),
+        htmltools::tags$div(
+          id = ns("ug_actions_collapse"),
+          class = "collapse",
+          htmltools::tags$div(
+            class = "card-body p-2",
+            mod_ug_actions_bar("ug")
+          )
+        )
+      )
     ),
 
     # ========================================
-    # Main: Map
+    # Main: Tabbed maps + UG table
     # ========================================
-    mod_map_ui(ns("map"))
+    bslib::navset_card_tab(
+      id = ns("main_tabs"),
+      bslib::nav_panel(
+        title = i18n$t("tab_carte_cadastrale"),
+        icon = bsicons::bs_icon("geo-alt"),
+        value = "cadastral",
+        mod_map_ui(ns("map"))
+      ),
+      bslib::nav_panel(
+        title = i18n$t("tab_carte_tenements"),
+        icon = bsicons::bs_icon("diagram-3"),
+        value = "tenements",
+        mod_ug_map_panel("ug")
+      ),
+      bslib::nav_panel(
+        title = i18n$t("tab_tableau_ug"),
+        icon = bsicons::bs_icon("table"),
+        value = "table_ug",
+        mod_ug_table_panel("ug")
+      )
+    )
   )
 }
 

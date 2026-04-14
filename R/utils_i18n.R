@@ -30,6 +30,9 @@ TRANSLATIONS <- list(
   tab_selection = list(fr = "S\u00e9lection", en = "Selection"),
   tab_synthesis = list(fr = "Synth\u00e8se", en = "Synthesis"),
   tab_families = list(fr = "Familles d'indicateurs", en = "Indicator Families"),
+  tab_carte_cadastrale = list(fr = "Carte cadastrale", en = "Cadastral map"),
+  tab_carte_tenements = list(fr = "Carte t\u00e8nements", en = "Tenement map"),
+  tab_tableau_ug = list(fr = "Tableau", en = "Table"),
 
   # ============================================================
   # Search & Selection

@@ -49,7 +49,7 @@ app_ui <- function(request) {
       fillable = TRUE,
       navbar_options = bslib::navbar_options(bg = "#1B6B1B"),
 
-      # === Tab 1: Selection ===
+      # === Tab 1: Selection (includes cadastral map, tenement map, UG table) ===
       bslib::nav_panel(
         title = i18n$t("tab_selection"),
         value = "selection",
@@ -57,15 +57,7 @@ app_ui <- function(request) {
         mod_home_ui("home")
       ),
 
-      # === Tab 2: Unités de Gestion ===
-      bslib::nav_panel(
-        title = i18n$t("tab_ug"),
-        value = "ug",
-        icon = bsicons::bs_icon("diagram-3"),
-        mod_ug_ui("ug")
-      ),
-
-      # === Tab 3: Synthesis ===
+      # === Tab 2: Synthesis ===
       bslib::nav_panel(
         title = i18n$t("tab_synthesis"),
         value = "synthesis",

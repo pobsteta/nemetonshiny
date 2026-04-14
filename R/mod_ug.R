@@ -17,6 +17,9 @@ NULL
 #' @return Shiny UI tag list.
 #' @noRd
 mod_ug_ui <- function(id) {
+  # Composite UI (layout_sidebar) — used when the UG module has its own tab.
+  # When embedded in the Sélection tab, use the helpers below instead:
+  #   mod_ug_actions_bar(id), mod_ug_map_panel(id), mod_ug_table_panel(id)
   ns <- shiny::NS(id)
 
   opts <- get_app_options()
@@ -25,145 +28,188 @@ mod_ug_ui <- function(id) {
 
   bslib::layout_sidebar(
     fillable = TRUE,
-
-    # === Sidebar: actions and UG details ===
     sidebar = bslib::sidebar(
       title = i18n$t("ug_title"),
       width = 350,
-
-      # Action buttons
-      htmltools::div(
-        class = "d-grid gap-2 mb-3",
-
-        shiny::actionButton(
-          ns("btn_merge"),
-          label = i18n$t("ug_merge"),
-          icon = shiny::icon("object-group"),
-          class = "btn-success",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_create_from_map"),
-          label = i18n$t("ug_create_from_map"),
-          icon = shiny::icon("plus-circle"),
-          class = "btn-success btn-sm",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_move_to_ug"),
-          label = i18n$t("ug_move_to"),
-          icon = shiny::icon("arrow-right-arrow-left"),
-          class = "btn-outline-success btn-sm",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_split"),
-          label = i18n$t("ug_split"),
-          icon = shiny::icon("scissors"),
-          class = "btn-warning",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_rename"),
-          label = i18n$t("ug_rename"),
-          icon = shiny::icon("pen"),
-          class = "btn-outline-secondary",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_recompute"),
-          label = i18n$t("ug_recompute"),
-          icon = shiny::icon("calculator"),
-          class = "btn-primary",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_import_split"),
-          label = i18n$t("ug_import_split"),
-          icon = shiny::icon("file-import"),
-          class = "btn-outline-info",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_undo_split"),
-          label = i18n$t("ug_undo_split"),
-          icon = shiny::icon("rotate-left"),
-          class = "btn-outline-secondary btn-sm",
-          width = "100%"
-        )
-      ),
-
-      shiny::hr(),
-
-      # Groupe d'aménagement selector
-      htmltools::div(
-        class = "mb-3",
-        shiny::selectInput(
-          ns("sel_groupe"),
-          label = i18n$t("ug_group"),
-          choices = c(
-            "---" = "",
-            "AMETS" = "AMETS", "AMER" = "AMER", "IRR" = "IRR",
-            "TSF" = "TSF", "REGT" = "REGT", "REGF" = "REGF",
-            "HSN" = "HSN", "HSY" = "HSY", "PROT" = "PROT", "ACC" = "ACC"
-          ),
-          selected = ""
-        ),
-        shiny::actionButton(
-          ns("btn_set_groupe"),
-          label = i18n$t("ug_apply_group"),
-          icon = shiny::icon("tag"),
-          class = "btn-outline-primary btn-sm",
-          width = "100%"
-        )
-      ),
-
-      shiny::hr(),
-
-      # Map selection info
-      shiny::uiOutput(ns("map_selection_info")),
-
-      shiny::hr(),
-
-      # UG detail panel
-      htmltools::div(
-        id = ns("detail_panel"),
-        shiny::h6(i18n$t("ug_composition")),
-        shiny::uiOutput(ns("ug_detail"))
-      )
+      mod_ug_actions_bar(id)
     ),
-
-    # === Main content: map + table ===
     bslib::navset_card_tab(
-      # Tab 1: Map
       bslib::nav_panel(
         title = i18n$t("ug_map_tab"),
         icon = bsicons::bs_icon("map"),
-        bslib::card_body(
-          class = "p-0",
-          leaflet::leafletOutput(ns("ug_map"), height = "500px")
-        )
+        mod_ug_map_panel(id)
       ),
-      # Tab 2: Table
       bslib::nav_panel(
         title = i18n$t("ug_table_tab"),
         icon = bsicons::bs_icon("table"),
-        bslib::card_body(
-          htmltools::div(
-            class = "d-flex justify-content-between align-items-center mb-2",
-            shiny::h5(i18n$t("ug_title"), class = "mb-0"),
-            shiny::textOutput(ns("ug_summary"), inline = TRUE)
-          ),
-          DT::dataTableOutput(ns("ug_table"))
-        )
+        mod_ug_table_panel(id)
       )
+    )
+  )
+}
+
+
+#' UG map panel (leaflet output)
+#'
+#' @description
+#' Lightweight UI helper producing just the tenement leaflet output.
+#' Uses the given \code{id} as the module namespace.
+#'
+#' @param id Character. Module namespace ID (typically "ug").
+#' @return Shiny tag with the leaflet output.
+#' @noRd
+mod_ug_map_panel <- function(id) {
+  ns <- shiny::NS(id)
+  bslib::card_body(
+    class = "p-0",
+    leaflet::leafletOutput(ns("ug_map"), height = "600px")
+  )
+}
+
+
+#' UG table panel (DT output)
+#'
+#' @param id Character. Module namespace ID.
+#' @return Shiny tag with the UG data table.
+#' @noRd
+mod_ug_table_panel <- function(id) {
+  ns <- shiny::NS(id)
+  opts <- get_app_options()
+  i18n <- get_i18n(opts$language %||% "fr")
+
+  bslib::card_body(
+    htmltools::div(
+      class = "d-flex justify-content-between align-items-center mb-2",
+      shiny::h5(i18n$t("ug_title"), class = "mb-0"),
+      shiny::textOutput(ns("ug_summary"), inline = TRUE)
+    ),
+    DT::dataTableOutput(ns("ug_table"))
+  )
+}
+
+
+#' UG actions bar (buttons, groupe selector, detail panel)
+#'
+#' @description
+#' The sidebar-style action bar for UG management. Used both as
+#' the sidebar of mod_ug_ui and as a vertical panel embedded next
+#' to the map/table in other layouts.
+#'
+#' @param id Character. Module namespace ID.
+#' @return Shiny tag list with all UG actions.
+#' @noRd
+mod_ug_actions_bar <- function(id) {
+  ns <- shiny::NS(id)
+  opts <- get_app_options()
+  i18n <- get_i18n(opts$language %||% "fr")
+
+  htmltools::tagList(
+    # Action buttons
+    htmltools::div(
+      class = "d-grid gap-2 mb-3",
+
+      shiny::actionButton(
+        ns("btn_merge"),
+        label = i18n$t("ug_merge"),
+        icon = shiny::icon("object-group"),
+        class = "btn-success",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_create_from_map"),
+        label = i18n$t("ug_create_from_map"),
+        icon = shiny::icon("plus-circle"),
+        class = "btn-success btn-sm",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_move_to_ug"),
+        label = i18n$t("ug_move_to"),
+        icon = shiny::icon("arrow-right-arrow-left"),
+        class = "btn-outline-success btn-sm",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_split"),
+        label = i18n$t("ug_split"),
+        icon = shiny::icon("scissors"),
+        class = "btn-warning",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_rename"),
+        label = i18n$t("ug_rename"),
+        icon = shiny::icon("pen"),
+        class = "btn-outline-secondary",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_recompute"),
+        label = i18n$t("ug_recompute"),
+        icon = shiny::icon("calculator"),
+        class = "btn-primary",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_import_split"),
+        label = i18n$t("ug_import_split"),
+        icon = shiny::icon("file-import"),
+        class = "btn-outline-info",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_undo_split"),
+        label = i18n$t("ug_undo_split"),
+        icon = shiny::icon("rotate-left"),
+        class = "btn-outline-secondary btn-sm",
+        width = "100%"
+      )
+    ),
+
+    shiny::hr(),
+
+    # Groupe d'aménagement selector
+    htmltools::div(
+      class = "mb-3",
+      shiny::selectInput(
+        ns("sel_groupe"),
+        label = i18n$t("ug_group"),
+        choices = c(
+          "---" = "",
+          "AMETS" = "AMETS", "AMER" = "AMER", "IRR" = "IRR",
+          "TSF" = "TSF", "REGT" = "REGT", "REGF" = "REGF",
+          "HSN" = "HSN", "HSY" = "HSY", "PROT" = "PROT", "ACC" = "ACC"
+        ),
+        selected = ""
+      ),
+      shiny::actionButton(
+        ns("btn_set_groupe"),
+        label = i18n$t("ug_apply_group"),
+        icon = shiny::icon("tag"),
+        class = "btn-outline-primary btn-sm",
+        width = "100%"
+      )
+    ),
+
+    shiny::hr(),
+
+    # Map selection info
+    shiny::uiOutput(ns("map_selection_info")),
+
+    shiny::hr(),
+
+    # UG detail panel
+    htmltools::div(
+      id = ns("detail_panel"),
+      shiny::h6(i18n$t("ug_composition")),
+      shiny::uiOutput(ns("ug_detail"))
     )
   )
 }
@@ -422,17 +468,21 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # MAP: Re-zoom when UG tab becomes visible
+    # MAP: Re-zoom when the tenement map becomes visible
     # ================================================================
     # Leaflet fitBounds fails silently when the map container has 0 size
-    # (hidden tab). This observer fires when the user navigates to the
-    # UG tab and re-applies the pending zoom after a short delay.
+    # (hidden tab). The tenement map lives in a sub-tab of the "Sélection"
+    # top-level tab (home-main_tabs = "tenements"). This observer fires
+    # when that sub-tab becomes active and re-applies the pending zoom.
     shiny::observe({
       root_session <- session$userData$root_session
       if (is.null(root_session)) return()
 
-      nav <- root_session$input$main_nav
-      if (is.null(nav) || nav != "ug") return()
+      top_nav <- root_session$input$main_nav
+      sub_nav <- root_session$input[["home-main_tabs"]]
+
+      if (is.null(top_nav) || top_nav != "selection") return()
+      if (is.null(sub_nav) || sub_nav != "tenements") return()
 
       bbox <- shiny::isolate(rv$pending_bbox)
       if (is.null(bbox)) return()
