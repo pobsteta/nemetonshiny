@@ -346,7 +346,7 @@ mod_ug_server <- function(id, app_state) {
           layerId = "basemap_tiles"
         ) |>
         leaflet::addLayersControl(
-          overlayGroups = c("UG", "Tenements", "selection"),
+          overlayGroups = c("UGF", "Tenements", "Selection"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
@@ -507,8 +507,8 @@ mod_ug_server <- function(id, app_state) {
       proxy <- leaflet::leafletProxy(ns("ug_map"))
       proxy |>
         leaflet::clearGroup("Tenements") |>
-        leaflet::clearGroup("UG") |>
-        leaflet::clearGroup("selection") |>
+        leaflet::clearGroup("UGF") |>
+        leaflet::clearGroup("Selection") |>
         leaflet::addPolygons(
           data = tenements,
           group = "Tenements",
@@ -561,7 +561,7 @@ mod_ug_server <- function(id, app_state) {
           proxy |>
             leaflet::addPolygons(
               data = ug_sf,
-              group = "UG",
+              group = "UGF",
               fillColor = ug_colors,
               fillOpacity = 0.15,
               color = ug_colors,
@@ -593,7 +593,7 @@ mod_ug_server <- function(id, app_state) {
       proxy |>
         leaflet::clearControls() |>
         leaflet::addLayersControl(
-          overlayGroups = c("UG", "Tenements", "selection"),
+          overlayGroups = c("UGF", "Tenements", "Selection"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::addLegend(
@@ -722,7 +722,7 @@ mod_ug_server <- function(id, app_state) {
           leaflet::addPolygons(
             data = tenement,
             layerId = paste0("sel_", tenement_id),
-            group = "selection",
+            group = "Selection",
             color = "#FF4500",
             weight = 3,
             fillColor = "#FF6347",
@@ -738,7 +738,7 @@ mod_ug_server <- function(id, app_state) {
     # Clear all selection overlays (used by clear button and project load)
     clear_tenement_selection <- function() {
       leaflet::leafletProxy(ns("ug_map")) |>
-        leaflet::clearGroup("selection")
+        leaflet::clearGroup("Selection")
       rv$selected_tenement_ids <- character(0)
     }
 
@@ -854,9 +854,10 @@ mod_ug_server <- function(id, app_state) {
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
-        # Clear drawn shapes from the map
+        # Clear drawn shapes from the map (both leaflet group + JS fallback)
         leaflet::leafletProxy(ns("ug_map")) |>
           leaflet::clearGroup("draw")
+        session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
 
         n_tenements <- sum(projet$tenements$parent_parcelle_id == parcelle_id)
         shiny::showNotification(
@@ -897,9 +898,10 @@ mod_ug_server <- function(id, app_state) {
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
-        # Clear drawn shapes from the map
+        # Clear drawn shapes from the map (both leaflet group + JS fallback)
         leaflet::leafletProxy(ns("ug_map")) |>
           leaflet::clearGroup("draw")
+        session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
 
         shiny::showNotification(
           i18n()$t("ug_line_split_success"),

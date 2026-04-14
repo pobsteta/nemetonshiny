@@ -178,6 +178,37 @@
 
 
   // ============================================================
+  // Clear all drawn items from a leaflet map (used after split)
+  // ============================================================
+  Shiny.addCustomMessageHandler('leafletClearDrawn', function(data) {
+    var widget = HTMLWidgets.find('#' + data.id);
+    if (!widget || !widget.getMap) return;
+    var map = widget.getMap();
+    if (!map) return;
+
+    // Walk all layers; remove anything that looks like a drawn shape
+    map.eachLayer(function(layer) {
+      // Drawn items are typically Polylines or Polygons added by leaflet.draw
+      // Their _drawn flag or feature.properties may identify them, but the
+      // safest is to remove non-tile, non-attribution layers that are
+      // Polyline / Polygon and not in known overlay groups.
+      if (layer instanceof L.Polyline || layer instanceof L.Polygon) {
+        // Skip layers that have a layerId (those are managed by R-leaflet)
+        if (!layer.options || !layer.options.layerId) {
+          map.removeLayer(layer);
+        }
+      }
+    });
+
+    // Also clear leaflet.draw's FeatureGroup if exposed
+    if (map.drawControl && map.drawControl.options &&
+        map.drawControl.options.edit && map.drawControl.options.edit.featureGroup) {
+      map.drawControl.options.edit.featureGroup.clearLayers();
+    }
+  });
+
+
+  // ============================================================
   // Announcements for Screen Readers
   // ============================================================
 
