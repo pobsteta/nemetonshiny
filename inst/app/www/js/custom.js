@@ -163,6 +163,21 @@
 
 
   // ============================================================
+  // Leaflet invalidateSize — force a hidden map to redetect
+  // its container dimensions once the tab becomes visible.
+  // ============================================================
+  Shiny.addCustomMessageHandler('leafletInvalidateSize', function(data) {
+    var widget = HTMLWidgets.find('#' + data.id);
+    if (widget && widget.getMap) {
+      var map = widget.getMap();
+      if (map) {
+        setTimeout(function() { map.invalidateSize(true); }, 50);
+      }
+    }
+  });
+
+
+  // ============================================================
   // Announcements for Screen Readers
   // ============================================================
 

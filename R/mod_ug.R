@@ -597,9 +597,12 @@ mod_ug_server <- function(id, app_state) {
     # MAP: Re-zoom when the tenement map becomes visible
     # ================================================================
     # Leaflet fitBounds fails silently when the map container has 0 size
-    # (hidden tab). The tenement map lives in a sub-tab of the "Sélection"
-    # top-level tab (home-main_tabs = "tenements"). This observer fires
-    # when that sub-tab becomes active and re-applies the pending zoom.
+    # (hidden tab). The tenement map lives in a sub-tab of "Sélection"
+    # (home-main_tabs = "tenements"). Every time the user navigates to
+    # that sub-tab, we:
+    #  1. Recompute the bbox from the current rv$projet_ug (always fresh)
+    #  2. Ask leaflet to invalidate its size (redetect container dims)
+    #  3. Apply fitBounds with a small delay to let the DOM settle
     shiny::observe({
       root_session <- session$userData$root_session
       if (is.null(root_session)) return()
@@ -610,18 +613,31 @@ mod_ug_server <- function(id, app_state) {
       if (is.null(top_nav) || top_nav != "selection") return()
       if (is.null(sub_nav) || sub_nav != "tenements") return()
 
-      bbox <- shiny::isolate(rv$pending_bbox)
+      projet <- shiny::isolate(rv$projet_ug)
+      if (is.null(projet) || !has_ug_data(projet)) return()
+
+      # Always recompute bbox from current data (not cached)
+      tenements <- projet$tenements
+      if (!is.na(sf::st_crs(tenements)) && sf::st_crs(tenements)$epsg != 4326L) {
+        tenements <- sf::st_transform(tenements, 4326)
+      }
+      bbox <- tryCatch(sf::st_bbox(tenements), error = function(e) NULL)
       if (is.null(bbox)) return()
 
-      # Delay to let the tab fully render before zooming
+      # Force leaflet to re-detect its container size (critical for hidden tabs)
       later::later(function() {
-        leaflet::leafletProxy(ns("ug_map"), session = session) |>
-          leaflet::fitBounds(
-            lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
-            lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
-          )
-      }, delay = 0.5)
+        proxy <- leaflet::leafletProxy(ns("ug_map"), session = session)
+        # Trigger invalidateSize via custom message to the map
+        session$sendCustomMessage("leafletInvalidateSize", list(
+          id = ns("ug_map")
+        ))
+        proxy |> leaflet::fitBounds(
+          lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
+          lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
+        )
+      }, delay = 0.3)
 
+      # Consume pending_bbox if any (kept for compat)
       rv$pending_bbox <- NULL
     })
 
