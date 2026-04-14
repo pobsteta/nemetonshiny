@@ -71,6 +71,11 @@ tenement_split_by_import <- function(projet,
     sf::st_crs(sf_polygones) <- sf::st_crs(parcels)
   }
 
+  # Use planar GEOS operations (S2 rejects self-touching imported polygons)
+  prev_s2 <- sf::sf_use_s2()
+  sf::sf_use_s2(FALSE)
+  on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
+
   # Make geometries valid
   sf_polygones <- sf::st_make_valid(sf_polygones)
   parcel_geom <- sf::st_make_valid(parcel_geom)
@@ -308,6 +313,15 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
     sf::st_crs(polys_sf) <- sf::st_crs(tenements)
   }
 
+  # Temporarily disable S2 geometry for planar operations. Imported
+  # GeoJSON often has self-touching vertices that S2 rejects, whereas
+  # GEOS (planar) handles them fine.
+  prev_s2 <- sf::sf_use_s2()
+  sf::sf_use_s2(FALSE)
+  on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
+
+  # Make each imported polygon valid individually before union
+  polys_sf <- sf::st_make_valid(polys_sf)
   cutter <- sf::st_make_valid(sf::st_union(sf::st_geometry(polys_sf)))
 
   # Find tenements that intersect the cutter
@@ -458,6 +472,11 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
   } else if (is.na(sf::st_crs(line_sf))) {
     sf::st_crs(line_sf) <- sf::st_crs(tenements)
   }
+
+  # Use planar GEOS operations (S2 is too strict on imported geometries)
+  prev_s2 <- sf::sf_use_s2()
+  sf::sf_use_s2(FALSE)
+  on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
 
   cutting_line <- sf::st_union(sf::st_geometry(line_sf))
 
