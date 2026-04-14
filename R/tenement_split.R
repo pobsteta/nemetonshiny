@@ -196,8 +196,10 @@ tenement_split_by_import <- function(projet,
 
   projet$tenements <- tenements
 
-  # Validate tiling invariant
-  validate_tiling(projet, parcelle_id, tolerance_m2)
+  # Validate tiling invariant using the adaptive default tolerance
+  # (max(1 m², 0.05% of parcel area)) when the caller didn't override it.
+  validate_tiling(projet, parcelle_id,
+                  tolerance_m2 = if (identical(tolerance_m2, 0.01)) NULL else tolerance_m2)
 
   # Validate all invariants
   projet_validate(projet)
@@ -786,7 +788,7 @@ tenement_undo_split <- function(projet, parcelle_id) {
 #'
 #' @return Invisible TRUE if valid.
 #' @noRd
-validate_tiling <- function(projet, parcelle_id, tolerance_m2 = 0.01) {
+validate_tiling <- function(projet, parcelle_id, tolerance_m2 = NULL) {
   parcels <- projet$parcels
   tenements <- projet$tenements
 
@@ -802,9 +804,15 @@ validate_tiling <- function(projet, parcelle_id, tolerance_m2 = 0.01) {
 
   area_diff <- abs(parcel_area - tenements_area)
 
+  # Adaptive tolerance: 0.05 % of parcel area, min 1 m² (generous enough for
+  # typical WGS84 precision on GeoJSON/Shapefile round-trips).
+  if (is.null(tolerance_m2)) {
+    tolerance_m2 <- max(1, 0.0005 * parcel_area)
+  }
+
   if (area_diff > tolerance_m2) {
     cli::cli_abort(
-      "Tiling invariant violated for parcel {parcelle_id}: area difference = {round(area_diff, 4)} m\u00b2 (tolerance: {tolerance_m2} m\u00b2)"
+      "Tiling invariant violated for parcel {parcelle_id}: area difference = {round(area_diff, 4)} m\u00b2 (tolerance: {round(tolerance_m2, 2)} m\u00b2)"
     )
   }
 
