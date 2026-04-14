@@ -651,7 +651,7 @@ mod_ug_server <- function(id, app_state) {
               group = "UGF",
               fillColor = ug_colors,
               fillOpacity = 0.5,
-              color = "#333333",
+              color = ug_colors,
               weight = 1,
               label = lapply(ug_labels, htmltools::HTML),
               labelOptions = leaflet::labelOptions(
