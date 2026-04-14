@@ -343,6 +343,10 @@ mod_ug_server <- function(id, app_state) {
           group = "basemap",
           layerId = "basemap_tiles"
         ) |>
+        leaflet::addLayersControl(
+          overlayGroups = c("UG", "Tenements", "selection"),
+          options = leaflet::layersControlOptions(collapsed = FALSE)
+        ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
 
       # Add draw toolbar if leaflet.extras is available
@@ -581,9 +585,13 @@ mod_ug_server <- function(id, app_state) {
         rv$map_needs_zoom <- FALSE
       }
 
-      # Add legend
+      # Add legend + re-add layers control (clearControls also removes it)
       proxy |>
         leaflet::clearControls() |>
+        leaflet::addLayersControl(
+          overlayGroups = c("UG", "Tenements", "selection"),
+          options = leaflet::layersControlOptions(collapsed = FALSE)
+        ) |>
         leaflet::addLegend(
           position = "bottomright",
           colors = GROUPE_COLORS[names(GROUPE_COLORS) %in% ugs$groupe],
