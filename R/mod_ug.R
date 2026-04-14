@@ -293,7 +293,8 @@ mod_ug_server <- function(id, app_state) {
       needs_recompute = FALSE,   # flag: UGs changed, indicators need refresh
       selected_tenement_ids = character(0),  # tenements selected on the map
       map_needs_zoom = FALSE,    # flag: zoom to bounds on next map update
-      pending_bbox = NULL        # stored bbox for deferred zoom
+      pending_bbox = NULL,       # stored bbox for deferred zoom
+      redraw_counter = 0L        # incremented to force map polygon redraw
     )
 
     # Initialize UG data when project loads
@@ -457,10 +458,12 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # MAP: Update polygons when UG data changes
+    # MAP: Update polygons when UG data changes OR tab becomes visible
     # ================================================================
     shiny::observe({
+      # Dependencies: data change AND explicit redraw requests
       projet <- rv$projet_ug
+      rv$redraw_counter  # invalidate on redraw trigger
       if (is.null(projet) || !has_ug_data(projet)) return()
 
       tenements <- projet$tenements
@@ -631,6 +634,10 @@ mod_ug_server <- function(id, app_state) {
       }
       bbox <- tryCatch(sf::st_bbox(tenements), error = function(e) NULL)
       if (is.null(bbox)) return()
+
+      # Force re-drawing the polygons — they may have been issued while the
+      # tab was hidden (map not in DOM) and silently dropped by leaflet.
+      rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
 
       # Force leaflet to re-detect its container size (critical for hidden tabs)
       later::later(function() {
