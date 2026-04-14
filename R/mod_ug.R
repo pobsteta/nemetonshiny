@@ -605,7 +605,6 @@ mod_ug_server <- function(id, app_state) {
               fillOpacity = 0.15,
               color = ug_colors,
               weight = 3,
-              dashArray = "5,5",
               label = lapply(ug_labels, htmltools::HTML),
               labelOptions = leaflet::labelOptions(
                 style = list("font-size" = "13px", "font-weight" = "bold"),
