@@ -30,9 +30,10 @@ TRANSLATIONS <- list(
   tab_selection = list(fr = "S\u00e9lection", en = "Selection"),
   tab_synthesis = list(fr = "Synth\u00e8se", en = "Synthesis"),
   tab_families = list(fr = "Familles d'indicateurs", en = "Indicator Families"),
-  tab_carte_cadastrale = list(fr = "Carte des parcelles cadastrales", en = "Cadastral parcels map"),
+  tab_carte_cadastrale = list(fr = "Carte cadastrale", en = "Cadastral map"),
   tab_carte_tenements = list(fr = "Carte t\u00e8nement", en = "Tenement map"),
   tab_tableau_ug = list(fr = "Tableau", en = "Table"),
+  ug_map_card_title = list(fr = "Carte des unit\u00e9s de gestion foresti\u00e8re", en = "Forest Management Units Map"),
   ug_map_summary_count = list(fr = "%d t\u00e8nement(s)", en = "%d tenement(s)"),
   ug_map_summary_surface = list(fr = "Surface t\u00e8nements : %s ha / %s ha (parcelles cadastrales)", en = "Tenement area: %s ha / %s ha (cadastral parcels)"),
 
@@ -49,7 +50,7 @@ TRANSLATIONS <- list(
   # ============================================================
   # Map
   # ============================================================
-  map_title = list(fr = "Carte des parcelles", en = "Parcel Map"),
+  map_title = list(fr = "Carte des parcelles cadastrales", en = "Cadastral Parcels Map"),
   basemap_osm = list(fr = "OSM", en = "OSM"),
   basemap_satellite = list(fr = "Satellite", en = "Satellite"),
   loading_parcels = list(fr = "Chargement des parcelles...", en = "Loading parcels..."),

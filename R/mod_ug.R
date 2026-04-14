@@ -64,9 +64,18 @@ mod_ug_map_panel <- function(id) {
   i18n <- get_i18n(opts$language %||% "fr")
 
   htmltools::tagList(
-    # Header bar with basemap toggles (same pattern as mod_map)
+    # Header bar with title + basemap toggles (same pattern as mod_map)
     bslib::card_header(
       class = "d-flex justify-content-between align-items-center py-2",
+
+      # Title
+      htmltools::span(
+        bsicons::bs_icon("diagram-3"),
+        i18n$t("ug_map_card_title"),
+        class = "fw-semibold"
+      ),
+
+      # Controls
       htmltools::div(
         class = "d-flex gap-2 align-items-center",
         htmltools::div(
