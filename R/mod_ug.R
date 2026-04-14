@@ -1067,9 +1067,31 @@ mod_ug_server <- function(id, app_state) {
       projet <- rv$projet_ug
       if (is.null(projet) || !has_ug_data(projet)) return()
 
-      # Build UG choices (exclude UGs that contain ALL the selected tenements)
+      # Build UG choices from the freshest projet_ug state.
+      # Only include UGs that actually have at least one tenement.
       ugs <- projet$ugs
-      ug_choices <- stats::setNames(ugs$ug_id, ugs$label)
+      tenements <- projet$tenements
+      has_tenement <- vapply(ugs$ug_id, function(uid) {
+        any(tenements$ug_id == uid, na.rm = TRUE)
+      }, logical(1))
+      ugs <- ugs[has_tenement, , drop = FALSE]
+
+      if (nrow(ugs) == 0) {
+        shiny::showNotification(
+          i18n()$t("ug_no_data"),
+          type = "warning"
+        )
+        return()
+      }
+
+      # Disambiguate duplicate labels by appending a short suffix of the ID
+      label_counts <- table(ugs$label)
+      display_labels <- ifelse(
+        label_counts[ugs$label] > 1L,
+        paste0(ugs$label, " \u00b7 ", substr(ugs$ug_id, 1, 6)),
+        ugs$label
+      )
+      ug_choices <- stats::setNames(ugs$ug_id, display_labels)
 
       shiny::showModal(shiny::modalDialog(
         title = i18n()$t("ug_move_to"),
