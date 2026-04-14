@@ -157,13 +157,19 @@ tenement_split_by_import <- function(projet,
   # Create new tenements
   new_tenement_ids <- paste0("tnm_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", seq_len(n_fragments))
 
-  new_tenements <- sf::st_sf(
+  # Match the geometry column name of the existing tenements (could be "geom"
+  # if loaded from GPKG or "geometry" by default).
+  existing_geom_col <- attr(projet$tenements, "sf_column") %||% "geometry"
+
+  new_df <- data.frame(
     tenement_id = new_tenement_ids,
     parent_parcelle_id = rep(parcelle_id, n_fragments),
     ug_id = rep(original_ug_id, n_fragments),
     surface_m2 = as.numeric(sf::st_area(all_geoms)),
-    geometry = all_geoms
+    stringsAsFactors = FALSE
   )
+  new_df[[existing_geom_col]] <- all_geoms
+  new_tenements <- sf::st_sf(new_df, sf_column_name = existing_geom_col)
   sf::st_crs(new_tenements) <- sf::st_crs(parcels)
 
   # Append new tenements
@@ -363,14 +369,19 @@ tenement_split_by_line <- function(projet,
   # Remove old tenement
   tenements <- tenements[!tenement_mask, , drop = FALSE]
 
-  # Create new sub-tenements
-  new_tenements <- sf::st_sf(
+  # Detect existing geometry column name (could be "geom" if loaded from GPKG)
+  existing_geom_col <- attr(projet$tenements, "sf_column") %||% "geometry"
+
+  # Create new sub-tenements with the SAME geometry column name as existing
+  new_df <- data.frame(
     tenement_id = new_ids,
     parent_parcelle_id = rep(parent_id, n_fragments),
     ug_id = rep(original_ug_id, n_fragments),
     surface_m2 = as.numeric(sf::st_area(fragments)),
-    geometry = fragments
+    stringsAsFactors = FALSE
   )
+  new_df[[existing_geom_col]] <- fragments
+  new_tenements <- sf::st_sf(new_df, sf_column_name = existing_geom_col)
   sf::st_crs(new_tenements) <- sf::st_crs(projet$tenements)
 
   tenements <- rbind(tenements, new_tenements)
@@ -438,7 +449,10 @@ tenement_undo_split <- function(projet, parcelle_id) {
   parcel_sf <- parcels[parcel_mask, ]
   new_tenement_id <- paste0("tnm_", format(Sys.time(), "%Y%m%d%H%M%S"), "_1")
 
-  new_tenement <- sf::st_sf(
+  # Match the geometry column name of the existing tenements
+  existing_geom_col <- attr(projet$tenements, "sf_column") %||% "geometry"
+
+  new_df <- data.frame(
     tenement_id = new_tenement_id,
     parent_parcelle_id = parcelle_id,
     ug_id = target_ug_id,
@@ -447,8 +461,10 @@ tenement_undo_split <- function(projet, parcelle_id) {
     } else {
       as.numeric(sf::st_area(parcel_sf))
     },
-    geometry = sf::st_geometry(parcel_sf)
+    stringsAsFactors = FALSE
   )
+  new_df[[existing_geom_col]] <- sf::st_geometry(parcel_sf)
+  new_tenement <- sf::st_sf(new_df, sf_column_name = existing_geom_col)
 
   tenements <- rbind(tenements, new_tenement)
 
