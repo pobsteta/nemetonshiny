@@ -476,32 +476,19 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
   existing_geom_col <- attr(tenements, "sf_column") %||% "geometry"
 
   # Helper: split one polygon geometry by the cutting line.
-  # lwgeom::st_split() produces exact adjacent polygons with no gap.
-  # The buffer fallback is kept for resilience but uses a sub-millimetre
-  # buffer so the gap is imperceptible.
+  # Requires lwgeom (listed in DESCRIPTION::Imports) for exact splits
+  # that produce adjacent polygons with no visible gap.
   split_one <- function(poly_geom) {
-    fragments <- NULL
-    if (requireNamespace("lwgeom", quietly = TRUE)) {
-      tryCatch({
-        sp <- lwgeom::st_split(poly_geom, cutting_line)
-        polys <- sf::st_collection_extract(sp, "POLYGON")
-        if (length(polys) > 1) fragments <- polys
-      }, error = function(e) NULL)
-    } else {
-      cli::cli_warn("Package 'lwgeom' not installed; splitting falls back to a buffer method that may leave a tiny gap. Install lwgeom for precise splits.")
+    if (!requireNamespace("lwgeom", quietly = TRUE)) {
+      cli::cli_abort(c(
+        "Package 'lwgeom' is required to split tenements along a line.",
+        i = "Install it with: install.packages('lwgeom')"
+      ))
     }
-    if (is.null(fragments)) {
-      # 1e-9 deg ~ 0.1 mm at the equator — imperceptible on maps
-      blade <- sf::st_buffer(cutting_line, dist = 1e-9)
-      blade <- sf::st_make_valid(blade)
-      part <- sf::st_difference(poly_geom, blade)
-      part <- sf::st_make_valid(part)
-      parts <- sf::st_cast(part, "POLYGON")
-      areas <- as.numeric(sf::st_area(parts))
-      parts <- parts[areas > tolerance_m2]
-      if (length(parts) > 1) fragments <- parts
-    }
-    fragments
+    sp <- lwgeom::st_split(poly_geom, cutting_line)
+    polys <- sf::st_collection_extract(sp, "POLYGON")
+    if (length(polys) < 2) return(NULL)
+    polys
   }
 
   all_new <- list()
@@ -640,43 +627,18 @@ tenement_split_by_line <- function(projet,
   # Split the tenement geometry using the line
   tenement_geom <- sf::st_geometry(target_tenement)
 
-  fragments <- NULL
-
-  # Try lwgeom::st_split first (best method)
-  if (requireNamespace("lwgeom", quietly = TRUE)) {
-    tryCatch({
-      split_result <- lwgeom::st_split(tenement_geom, cutting_line)
-      # st_split returns a GEOMETRYCOLLECTION — extract polygons
-      split_collected <- sf::st_collection_extract(split_result, "POLYGON")
-      if (length(split_collected) > 1) {
-        fragments <- split_collected
-      }
-    }, error = function(e) {
-      cli::cli_warn("lwgeom::st_split failed: {e$message}. Trying buffer fallback.")
-    })
+  # lwgeom::st_split is required for exact (gap-free) splits.
+  if (!requireNamespace("lwgeom", quietly = TRUE)) {
+    cli::cli_abort(c(
+      "Package 'lwgeom' is required to split tenements along a line.",
+      i = "Install it with: install.packages('lwgeom')"
+    ))
   }
 
-  # Fallback: buffer the line slightly and use st_difference.
-  # Tiny buffer (sub-millimetre) so no visible gap appears.
-  if (is.null(fragments)) {
-    blade <- sf::st_buffer(cutting_line, dist = 1e-9)  # ~0.1 mm in WGS84
-    blade <- sf::st_make_valid(blade)
+  split_result <- lwgeom::st_split(tenement_geom, cutting_line)
+  fragments <- sf::st_collection_extract(split_result, "POLYGON")
 
-    part_a <- sf::st_difference(tenement_geom, blade)
-    part_a <- sf::st_make_valid(part_a)
-
-    # Extract individual polygons from potentially multi-part result
-    parts <- sf::st_cast(part_a, "POLYGON")
-    # Filter tiny slivers
-    areas <- as.numeric(sf::st_area(parts))
-    parts <- parts[areas > tolerance_m2]
-
-    if (length(parts) > 1) {
-      fragments <- parts
-    }
-  }
-
-  if (is.null(fragments) || length(fragments) < 2) {
+  if (length(fragments) < 2) {
     cli::cli_abort("The cutting line does not split the tenement into multiple parts. Ensure the line crosses the tenement completely.")
   }
 
