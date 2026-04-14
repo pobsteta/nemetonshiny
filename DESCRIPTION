@@ -12,8 +12,9 @@ Encoding: UTF-8
 LazyData: true
 Depends: R (>= 4.1.0)
 Imports: nemeton (>= 0.14.1), shiny (>= 1.8.0), bslib (>= 0.6.0),
-    htmltools, leaflet, sf, terra, cli, rlang, glue, jsonlite, httr2,
-    yaml, DT, promises, later, htmlwidgets, shinyWidgets, bsicons, ellmer
+    htmltools, leaflet, sf, lwgeom, terra, cli, rlang, glue, jsonlite,
+    httr2, yaml, DT, promises, later, htmlwidgets, shinyWidgets, bsicons,
+    ellmer
 Suggests: shinyOAuth, RPostgres, DBI, uuid, testthat (>= 3.0.0), withr,
     golem, arrow, geoarrow, shiny.i18n, cicerone, quarto, rappdirs,
     future, happign, leaflet.extras

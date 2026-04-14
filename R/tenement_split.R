@@ -475,7 +475,10 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
 
   existing_geom_col <- attr(tenements, "sf_column") %||% "geometry"
 
-  # Helper: split one polygon geometry by the cutting line
+  # Helper: split one polygon geometry by the cutting line.
+  # lwgeom::st_split() produces exact adjacent polygons with no gap.
+  # The buffer fallback is kept for resilience but uses a sub-millimetre
+  # buffer so the gap is imperceptible.
   split_one <- function(poly_geom) {
     fragments <- NULL
     if (requireNamespace("lwgeom", quietly = TRUE)) {
@@ -484,9 +487,12 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
         polys <- sf::st_collection_extract(sp, "POLYGON")
         if (length(polys) > 1) fragments <- polys
       }, error = function(e) NULL)
+    } else {
+      cli::cli_warn("Package 'lwgeom' not installed; splitting falls back to a buffer method that may leave a tiny gap. Install lwgeom for precise splits.")
     }
     if (is.null(fragments)) {
-      blade <- sf::st_buffer(cutting_line, dist = 0.00001)
+      # 1e-9 deg ~ 0.1 mm at the equator — imperceptible on maps
+      blade <- sf::st_buffer(cutting_line, dist = 1e-9)
       blade <- sf::st_make_valid(blade)
       part <- sf::st_difference(poly_geom, blade)
       part <- sf::st_make_valid(part)
@@ -650,10 +656,10 @@ tenement_split_by_line <- function(projet,
     })
   }
 
-  # Fallback: buffer the line slightly and use st_difference/st_intersection
+  # Fallback: buffer the line slightly and use st_difference.
+  # Tiny buffer (sub-millimetre) so no visible gap appears.
   if (is.null(fragments)) {
-    # Buffer the line to create a thin "blade"
-    blade <- sf::st_buffer(cutting_line, dist = 0.00001)  # ~1m in WGS84
+    blade <- sf::st_buffer(cutting_line, dist = 1e-9)  # ~0.1 mm in WGS84
     blade <- sf::st_make_valid(blade)
 
     part_a <- sf::st_difference(tenement_geom, blade)
