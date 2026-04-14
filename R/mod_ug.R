@@ -766,26 +766,33 @@ mod_ug_server <- function(id, app_state) {
       # Store the drawn GeoJSON for later use
       rv$drawn_geojson <- jsonlite::toJSON(drawn, auto_unbox = TRUE)
 
-      # ----- Case 1: LINE drawn → cut a SELECTED tenement -----
+      # ----- Case 1: LINE drawn → auto-split all crossed tenements -----
       if (n_lines > 0 && n_polys == 0) {
-        sel_ids <- rv$selected_tenement_ids
-        if (length(sel_ids) != 1) {
+        tenements <- projet$tenements
+        # Preview: how many tenements does the line cross?
+        n_affected <- tryCatch({
+          line_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
+          if (!is.na(sf::st_crs(line_sf)) && !is.na(sf::st_crs(tenements))) {
+            if (sf::st_crs(line_sf) != sf::st_crs(tenements)) {
+              line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
+            }
+          }
+          cutting_line <- sf::st_union(sf::st_geometry(line_sf))
+          sum(sf::st_intersects(sf::st_geometry(tenements), cutting_line, sparse = FALSE)[, 1])
+        }, error = function(e) 0L)
+
+        if (n_affected == 0) {
           shiny::showNotification(
-            i18n()$t("ug_line_split_select_one"),
+            i18n()$t("ug_line_split_no_hit"),
             type = "warning",
             duration = 8
           )
           return()
         }
 
-        target_id <- sel_ids[1]
-        target_label <- projet$tenements$tenement_id[
-          projet$tenements$tenement_id == target_id
-        ][1]
-
         shiny::showModal(shiny::modalDialog(
           title = i18n()$t("ug_line_split_title"),
-          shiny::p(sprintf(i18n()$t("ug_line_split_desc"), target_label)),
+          shiny::p(sprintf(i18n()$t("ug_line_split_desc"), n_affected)),
           footer = htmltools::tagList(
             shiny::modalButton(i18n()$t("cancel")),
             shiny::actionButton(
@@ -876,19 +883,16 @@ mod_ug_server <- function(id, app_state) {
       })
     })
 
-    # Confirm LINE split (cut the selected tenement along the drawn line)
+    # Confirm LINE split (auto-split all tenements crossed by the line)
     shiny::observeEvent(input$confirm_line_split, {
       shiny::removeModal()
 
-      sel_ids <- rv$selected_tenement_ids
       geojson <- rv$drawn_geojson
-      if (length(sel_ids) != 1 || is.null(geojson)) return()
-
-      target_id <- sel_ids[1]
+      if (is.null(geojson)) return()
 
       tryCatch({
         projet <- rv$projet_ug
-        projet <- tenement_split_by_line(projet, target_id, geojson)
+        projet <- tenement_split_by_drawn_line(projet, geojson)
 
         if (!is.null(projet$metadata$id)) {
           save_ug_data(projet$metadata$id, projet)

@@ -382,6 +382,145 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
 }
 
 
+#' Split all tenements crossed by a drawn polyline
+#'
+#' @description
+#' Auto-detects which tenements the drawn line(s) cross and splits each
+#' one along the line(s). Each new sub-tenement keeps the UG and parent
+#' parcel of its source tenement.
+#'
+#' Uses \code{lwgeom::st_split()} when available; falls back to a thin
+#' buffer + st_difference approach.
+#'
+#' @param projet List. Project with $tenements and $ugs.
+#' @param geojson Character. GeoJSON of the cutting polyline(s).
+#' @param tolerance_m2 Numeric. Sliver area threshold (default 0.01).
+#'
+#' @return Updated projet with crossed tenements replaced by sub-tenements.
+#' @noRd
+tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
+  if (!has_ug_data(projet)) {
+    cli::cli_abort("Project must have UG data.")
+  }
+
+  tenements <- projet$tenements
+
+  # Parse drawn line(s)
+  line_sf <- tryCatch({
+    sf::st_read(geojson, quiet = TRUE)
+  }, error = function(e) {
+    cli::cli_abort("Invalid GeoJSON: {e$message}")
+  })
+  geom_types <- sf::st_geometry_type(line_sf)
+  line_mask <- geom_types %in% c("LINESTRING", "MULTILINESTRING")
+  if (!any(line_mask)) {
+    cli::cli_abort("No line features found. Draw a polyline.")
+  }
+  line_sf <- line_sf[line_mask, ]
+
+  # Match CRS
+  if (!is.na(sf::st_crs(line_sf)) && !is.na(sf::st_crs(tenements))) {
+    if (sf::st_crs(line_sf) != sf::st_crs(tenements)) {
+      line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
+    }
+  } else if (is.na(sf::st_crs(line_sf))) {
+    sf::st_crs(line_sf) <- sf::st_crs(tenements)
+  }
+
+  cutting_line <- sf::st_union(sf::st_geometry(line_sf))
+
+  # Find tenements that intersect the line
+  hits <- tryCatch(
+    sf::st_intersects(sf::st_geometry(tenements), cutting_line, sparse = FALSE)[, 1],
+    error = function(e) rep(FALSE, nrow(tenements))
+  )
+  if (!any(hits)) {
+    cli::cli_abort("The drawn line does not cross any tenement.")
+  }
+
+  affected_idx <- which(hits)
+  cli::cli_alert_info(
+    "Splitting {length(affected_idx)} tenement(s) crossed by the drawn line"
+  )
+
+  existing_geom_col <- attr(tenements, "sf_column") %||% "geometry"
+
+  # Helper: split one polygon geometry by the cutting line
+  split_one <- function(poly_geom) {
+    fragments <- NULL
+    if (requireNamespace("lwgeom", quietly = TRUE)) {
+      tryCatch({
+        sp <- lwgeom::st_split(poly_geom, cutting_line)
+        polys <- sf::st_collection_extract(sp, "POLYGON")
+        if (length(polys) > 1) fragments <- polys
+      }, error = function(e) NULL)
+    }
+    if (is.null(fragments)) {
+      blade <- sf::st_buffer(cutting_line, dist = 0.00001)
+      blade <- sf::st_make_valid(blade)
+      part <- sf::st_difference(poly_geom, blade)
+      part <- sf::st_make_valid(part)
+      parts <- sf::st_cast(part, "POLYGON")
+      areas <- as.numeric(sf::st_area(parts))
+      parts <- parts[areas > tolerance_m2]
+      if (length(parts) > 1) fragments <- parts
+    }
+    fragments
+  }
+
+  all_new <- list()
+  removed_ids <- character(0)
+  ts <- format(Sys.time(), "%Y%m%d%H%M%S")
+  counter <- 0L
+
+  for (i in affected_idx) {
+    tn <- tenements[i, ]
+    tn_geom <- sf::st_make_valid(sf::st_geometry(tn))
+    parent_id <- tn$parent_parcelle_id
+    ug_id <- tn$ug_id
+
+    fragments <- split_one(tn_geom)
+    if (is.null(fragments) || length(fragments) < 2) next
+
+    fragments <- sf::st_cast(fragments, "MULTIPOLYGON")
+    n <- length(fragments)
+    counter <- counter + 1L
+    new_ids <- paste0("tnm_", ts, "_", counter, "_", seq_len(n))
+
+    new_df <- data.frame(
+      tenement_id = new_ids,
+      parent_parcelle_id = rep(parent_id, n),
+      ug_id = rep(ug_id, n),
+      surface_m2 = as.numeric(sf::st_area(fragments)),
+      stringsAsFactors = FALSE
+    )
+    new_df[[existing_geom_col]] <- fragments
+    new_sf <- sf::st_sf(new_df, sf_column_name = existing_geom_col)
+    sf::st_crs(new_sf) <- sf::st_crs(tenements)
+
+    all_new <- c(all_new, list(new_sf))
+    removed_ids <- c(removed_ids, tn$tenement_id)
+  }
+
+  if (length(all_new) == 0) {
+    cli::cli_abort("The drawn line did not split any tenement (only edge touches).")
+  }
+
+  tenements <- tenements[!tenements$tenement_id %in% removed_ids, , drop = FALSE]
+  combined <- do.call(rbind, all_new)
+  tenements <- rbind(tenements, combined)
+  projet$tenements <- tenements
+
+  projet_validate(projet)
+
+  cli::cli_alert_success(
+    "Split {length(removed_ids)} tenement(s) into {nrow(combined)} sub-tenements via line"
+  )
+
+  projet
+}
+
+
 #' Split an tenement by drawing a cutting line
 #'
 #' @description
