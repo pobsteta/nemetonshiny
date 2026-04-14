@@ -168,7 +168,7 @@ mod_ug_map_actions_bar <- function(id) {
         ns("btn_create_from_map"),
         label = i18n$t("ug_create_from_map"),
         icon = shiny::icon("plus-circle"),
-        class = "btn-success btn-sm",
+        class = "btn-success",
         width = "100%"
       ),
 
@@ -176,7 +176,7 @@ mod_ug_map_actions_bar <- function(id) {
         ns("btn_move_to_ug"),
         label = i18n$t("ug_move_to"),
         icon = shiny::icon("arrow-right-arrow-left"),
-        class = "btn-outline-success btn-sm",
+        class = "btn-outline-success",
         width = "100%"
       ),
 
@@ -200,14 +200,14 @@ mod_ug_map_actions_bar <- function(id) {
         ns("btn_export_split"),
         label = i18n$t("ug_export_split"),
         icon = shiny::icon("file-export"),
-        class = "btn-outline-info btn-sm"
+        class = "btn-outline-info w-100"
       ),
 
       shiny::actionButton(
         ns("btn_undo_split"),
         label = i18n$t("ug_undo_split"),
         icon = shiny::icon("rotate-left"),
-        class = "btn-outline-secondary btn-sm",
+        class = "btn-outline-secondary",
         width = "100%"
       )
     ),
@@ -283,7 +283,7 @@ mod_ug_table_actions_bar <- function(id) {
         ns("btn_set_groupe"),
         label = i18n$t("ug_apply_group"),
         icon = shiny::icon("tag"),
-        class = "btn-outline-primary btn-sm",
+        class = "btn-outline-primary",
         width = "100%"
       )
     ),
