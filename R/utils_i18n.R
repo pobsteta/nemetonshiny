@@ -985,6 +985,7 @@ TRANSLATIONS <- list(
   ug_map_select_tenements_first = list(fr = "S\u00e9lectionnez des tenements sur la carte d'abord.", en = "Select tenements on the map first."),
   ug_clear_selection = list(fr = "Effacer la s\u00e9lection", en = "Clear selection"),
   ug_import_split = list(fr = "Importer un d\u00e9coupage", en = "Import subdivision"),
+  ug_export_split = list(fr = "Exporter le d\u00e9coupage", en = "Export subdivision"),
   ug_undo_split = list(fr = "Annuler le d\u00e9coupage", en = "Undo subdivision"),
   ug_split_select_parcel = list(fr = "Parcelle \u00e0 d\u00e9couper", en = "Parcel to subdivide"),
   ug_split_file = list(fr = "Fichier de d\u00e9coupage", en = "Subdivision file"),

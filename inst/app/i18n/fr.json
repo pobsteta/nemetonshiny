@@ -338,6 +338,7 @@
   "ug_clear_selection": "Effacer la sélection",
 
   "ug_import_split": "Importer un découpage",
+  "ug_export_split": "Exporter le découpage",
   "ug_undo_split": "Annuler le découpage",
   "ug_split_select_parcel": "Parcelle à découper",
   "ug_split_file": "Fichier de découpage",

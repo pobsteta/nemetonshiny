@@ -196,6 +196,13 @@ mod_ug_map_actions_bar <- function(id) {
         width = "100%"
       ),
 
+      shiny::downloadButton(
+        ns("btn_export_split"),
+        label = i18n$t("ug_export_split"),
+        icon = shiny::icon("file-export"),
+        class = "btn-outline-info btn-sm"
+      ),
+
       shiny::actionButton(
         ns("btn_undo_split"),
         label = i18n$t("ug_undo_split"),
@@ -1582,6 +1589,51 @@ mod_ug_server <- function(id, app_state) {
         shiny::showNotification(paste("Erreur :", e$message), type = "error")
       })
     })
+
+    # ================================================================
+    # ACTION: Export current tenement split as GPKG
+    # ================================================================
+    # Users can edit the file externally and re-import via btn_import_split.
+    # The exported GPKG carries all relevant columns as a template.
+    output$btn_export_split <- shiny::downloadHandler(
+      filename = function() {
+        pid <- rv$projet_ug$metadata$id %||% "projet"
+        sprintf("tenements_%s_%s.gpkg", pid, format(Sys.time(), "%Y%m%d_%H%M%S"))
+      },
+      content = function(file) {
+        projet <- rv$projet_ug
+        if (is.null(projet) || !has_ug_data(projet)) {
+          shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
+          return()
+        }
+
+        tryCatch({
+          tenements <- projet$tenements
+
+          # Enrich with UG label and groupe (joined from projet$ugs)
+          ugs <- projet$ugs
+          if (!is.null(ugs) && "ug_id" %in% names(ugs)) {
+            idx <- match(tenements$ug_id, ugs$ug_id)
+            tenements$ug_label <- ugs$label[idx]
+            tenements$ug_groupe <- ugs$groupe[idx]
+          }
+
+          # Ensure SIG surface exists
+          if (!"surface_sig_m2" %in% names(tenements)) {
+            tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
+          }
+
+          sf::st_write(tenements, file, driver = "GPKG", quiet = TRUE,
+                       delete_dsn = TRUE)
+        }, error = function(e) {
+          shiny::showNotification(
+            paste(i18n()$t("ug_split_error"), e$message),
+            type = "error",
+            duration = 10
+          )
+        })
+      }
+    )
 
     # ================================================================
     # ACTION: Import split (GeoJSON/Shapefile)

@@ -338,6 +338,7 @@
   "ug_clear_selection": "Clear selection",
 
   "ug_import_split": "Import subdivision",
+  "ug_export_split": "Export subdivision",
   "ug_undo_split": "Undo subdivision",
   "ug_split_select_parcel": "Parcel to subdivide",
   "ug_split_file": "Subdivision file",
