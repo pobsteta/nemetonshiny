@@ -364,7 +364,7 @@ mod_ug_server <- function(id, app_state) {
             circleOptions = FALSE,
             circleMarkerOptions = FALSE,
             markerOptions = FALSE,
-            rectangleOptions = leaflet.extras::drawRectangleOptions(),
+            rectangleOptions = FALSE,
             polygonOptions = leaflet.extras::drawPolygonOptions(
               shapeOptions = leaflet.extras::drawShapeOptions(
                 color = "#FF4500",
