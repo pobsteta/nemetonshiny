@@ -2,7 +2,7 @@
 #'
 #' @description
 #' Shiny module for managing Unités de Gestion (UG).
-#' Boucle 1: table + leaflet map with atom selection, merge/split/rename,
+#' Boucle 1: table + leaflet map with tenement selection, merge/split/rename,
 #' groupe d'aménagement assignment, and color-coded map display.
 #'
 #' @name mod_ug
@@ -183,12 +183,12 @@ mod_ug_server <- function(id, app_state) {
     i18n <- shiny::reactive(get_i18n(lang()))
 
     # ================================================================
-    # REACTIVE: UG state (projet with atomes/ugs)
+    # REACTIVE: UG state (projet with tenements/ugs)
     # ================================================================
     rv <- shiny::reactiveValues(
-      projet_ug = NULL,          # projet list with $atomes, $ugs, $parcels
+      projet_ug = NULL,          # projet list with $tenements, $ugs, $parcels
       needs_recompute = FALSE,   # flag: UGs changed, indicators need refresh
-      selected_atome_ids = character(0),  # atoms selected on the map
+      selected_tenement_ids = character(0),  # tenements selected on the map
       map_needs_zoom = FALSE,    # flag: zoom to bounds on next map update
       pending_bbox = NULL        # stored bbox for deferred zoom
     )
@@ -198,14 +198,14 @@ mod_ug_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(project) || is.null(project$parcels)) {
         rv$projet_ug <- NULL
-        rv$selected_atome_ids <- character(0)
+        rv$selected_tenement_ids <- character(0)
         rv$map_needs_zoom <- FALSE
         return()
       }
 
       # Reset map zoom flag for new project
       rv$map_needs_zoom <- TRUE
-      rv$selected_atome_ids <- character(0)
+      rv$selected_tenement_ids <- character(0)
 
       # Try to load existing UG data
       if (has_ug_data(project)) {
@@ -213,7 +213,7 @@ mod_ug_server <- function(id, app_state) {
       } else if (!is.null(project$metadata$id)) {
         projet <- ensure_project_migrated(project$metadata$id, project)
         rv$projet_ug <- projet
-        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
       }
     }) |> shiny::bindEvent(app_state$current_project)
@@ -242,7 +242,7 @@ mod_ug_server <- function(id, app_state) {
         ) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
-          overlayGroups = c("UG", "Atomes", "selection"),
+          overlayGroups = c("UG", "Tenements", "selection"),
           options = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
@@ -252,7 +252,12 @@ mod_ug_server <- function(id, app_state) {
         m <- m |>
           leaflet.extras::addDrawToolbar(
             targetGroup = "draw",
-            polylineOptions = FALSE,
+            polylineOptions = leaflet.extras::drawPolylineOptions(
+              shapeOptions = leaflet.extras::drawShapeOptions(
+                color = "#FF0000",
+                weight = 3
+              )
+            ),
             circleOptions = FALSE,
             circleMarkerOptions = FALSE,
             markerOptions = FALSE,
@@ -282,18 +287,18 @@ mod_ug_server <- function(id, app_state) {
       projet <- rv$projet_ug
       if (is.null(projet) || !has_ug_data(projet)) return()
 
-      atomes <- projet$atomes
+      tenements <- projet$tenements
       ugs <- projet$ugs
 
       # Ensure WGS84 for leaflet
-      if (!is.na(sf::st_crs(atomes)) && sf::st_crs(atomes)$epsg != 4326L) {
-        atomes <- sf::st_transform(atomes, 4326)
+      if (!is.na(sf::st_crs(tenements)) && sf::st_crs(tenements)$epsg != 4326L) {
+        tenements <- sf::st_transform(tenements, 4326)
       }
 
-      # Compute fill colors per atom (based on UG groupe or index)
+      # Compute fill colors per tenement (based on UG groupe or index)
       ug_index_map <- stats::setNames(seq_len(nrow(ugs)), ugs$ug_id)
-      fill_colors <- vapply(seq_len(nrow(atomes)), function(i) {
-        uid <- atomes$ug_id[i]
+      fill_colors <- vapply(seq_len(nrow(tenements)), function(i) {
+        uid <- tenements$ug_id[i]
         ug_row <- ugs[ugs$ug_id == uid, ]
         if (nrow(ug_row) == 0) return("#CCCCCC")
         idx <- ug_index_map[[uid]]
@@ -301,8 +306,8 @@ mod_ug_server <- function(id, app_state) {
       }, character(1))
 
       # Labels for hover
-      atom_labels <- vapply(seq_len(nrow(atomes)), function(i) {
-        uid <- atomes$ug_id[i]
+      atom_labels <- vapply(seq_len(nrow(tenements)), function(i) {
+        uid <- tenements$ug_id[i]
         ug_row <- ugs[ugs$ug_id == uid, ]
         ug_label <- if (nrow(ug_row) > 0) ug_row$label[1] else "?"
         groupe_str <- if (nrow(ug_row) > 0 && !is.na(ug_row$groupe[1])) {
@@ -311,23 +316,23 @@ mod_ug_server <- function(id, app_state) {
           ""
         }
         sprintf(
-          "<b>%s</b>%s<br>Atome: %s<br>Surface: %s m\u00b2",
+          "<b>%s</b>%s<br>Tenement: %s<br>Surface: %s m\u00b2",
           ug_label, groupe_str,
-          atomes$atome_id[i],
-          format(round(atomes$surface_m2[i]), big.mark = " ")
+          tenements$tenement_id[i],
+          format(round(tenements$surface_m2[i]), big.mark = " ")
         )
       }, character(1))
 
-      # Clear and redraw atoms (selection is handled by separate overlay)
+      # Clear and redraw tenements (selection is handled by separate overlay)
       proxy <- leaflet::leafletProxy(ns("ug_map"))
       proxy |>
-        leaflet::clearGroup("Atomes") |>
+        leaflet::clearGroup("Tenements") |>
         leaflet::clearGroup("UG") |>
         leaflet::clearGroup("selection") |>
         leaflet::addPolygons(
-          data = atomes,
-          group = "Atomes",
-          layerId = atomes$atome_id,
+          data = tenements,
+          group = "Tenements",
+          layerId = tenements$tenement_id,
           fillColor = fill_colors,
           fillOpacity = 0.5,
           color = "#333333",
@@ -344,8 +349,8 @@ mod_ug_server <- function(id, app_state) {
           )
         )
 
-      # Clear selection state when atoms are redrawn (new project)
-      rv$selected_atome_ids <- character(0)
+      # Clear selection state when tenements are redrawn (new project)
+      rv$selected_tenement_ids <- character(0)
 
       # Add UG dissolved boundaries as an overlay
       tryCatch({
@@ -366,9 +371,9 @@ mod_ug_server <- function(id, app_state) {
               ""
             }
             sprintf(
-              "<b>%s</b>%s<br>%d atome(s) | %s ha",
+              "<b>%s</b>%s<br>%d tenement(s) | %s ha",
               ug_sf$label[i], groupe_str,
-              ug_sf$n_atomes[i],
+              ug_sf$n_tenements[i],
               format(round(ug_sf$surface_m2[i] / 10000, 2), nsmall = 2)
             )
           }, character(1))
@@ -395,7 +400,7 @@ mod_ug_server <- function(id, app_state) {
 
       # Store bbox and attempt zoom (may fail if tab not visible)
       if (isTRUE(rv$map_needs_zoom)) {
-        bbox <- sf::st_bbox(atomes)
+        bbox <- sf::st_bbox(tenements)
         rv$pending_bbox <- bbox
         proxy |> leaflet::fitBounds(
           lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
@@ -445,50 +450,50 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # MAP: Click handler for atom selection (same pattern as mod_map.R)
+    # MAP: Click handler for tenement selection (same pattern as mod_map.R)
     # ================================================================
     shiny::observeEvent(input$ug_map_shape_click, {
       click <- input$ug_map_shape_click
       if (is.null(click) || is.null(click$id)) return()
 
-      atome_id <- click$id
+      tenement_id <- click$id
       projet <- rv$projet_ug
       if (is.null(projet)) return()
 
-      # Only handle clicks on atoms (not UG overlay)
-      if (!atome_id %in% projet$atomes$atome_id) return()
+      # Only handle clicks on tenements (not UG overlay)
+      if (!tenement_id %in% projet$tenements$tenement_id) return()
 
-      if (atome_id %in% rv$selected_atome_ids) {
+      if (tenement_id %in% rv$selected_tenement_ids) {
         # Deselect: remove from selection overlay
-        rv$selected_atome_ids <- setdiff(rv$selected_atome_ids, atome_id)
+        rv$selected_tenement_ids <- setdiff(rv$selected_tenement_ids, tenement_id)
         leaflet::leafletProxy(ns("ug_map")) |>
-          leaflet::removeShape(paste0("sel_", atome_id))
+          leaflet::removeShape(paste0("sel_", tenement_id))
       } else {
         # Select: add to selection overlay
-        rv$selected_atome_ids <- c(rv$selected_atome_ids, atome_id)
-        update_atome_selection_style(atome_id, selected = TRUE)
+        rv$selected_tenement_ids <- c(rv$selected_tenement_ids, tenement_id)
+        update_tenement_selection_style(tenement_id, selected = TRUE)
       }
     })
 
-    # Helper: add/remove selection overlay for a single atom
-    update_atome_selection_style <- function(atome_id, selected) {
+    # Helper: add/remove selection overlay for a single tenement
+    update_tenement_selection_style <- function(tenement_id, selected) {
       projet <- rv$projet_ug
       if (is.null(projet)) return()
 
       if (selected) {
-        atomes <- projet$atomes
-        atome <- atomes[atomes$atome_id == atome_id, ]
-        if (nrow(atome) == 0) return()
+        tenements <- projet$tenements
+        tenement <- tenements[tenements$tenement_id == tenement_id, ]
+        if (nrow(tenement) == 0) return()
 
         # Ensure WGS84
-        if (!is.na(sf::st_crs(atome)) && sf::st_crs(atome)$epsg != 4326L) {
-          atome <- sf::st_transform(atome, 4326)
+        if (!is.na(sf::st_crs(tenement)) && sf::st_crs(tenement)$epsg != 4326L) {
+          tenement <- sf::st_transform(tenement, 4326)
         }
 
         leaflet::leafletProxy(ns("ug_map")) |>
           leaflet::addPolygons(
-            data = atome,
-            layerId = paste0("sel_", atome_id),
+            data = tenement,
+            layerId = paste0("sel_", tenement_id),
             group = "selection",
             color = "#FF4500",
             weight = 3,
@@ -498,15 +503,15 @@ mod_ug_server <- function(id, app_state) {
           )
       } else {
         leaflet::leafletProxy(ns("ug_map")) |>
-          leaflet::removeShape(paste0("sel_", atome_id))
+          leaflet::removeShape(paste0("sel_", tenement_id))
       }
     }
 
     # Clear all selection overlays (used by clear button and project load)
-    clear_atome_selection <- function() {
+    clear_tenement_selection <- function() {
       leaflet::leafletProxy(ns("ug_map")) |>
         leaflet::clearGroup("selection")
-      rv$selected_atome_ids <- character(0)
+      rv$selected_tenement_ids <- character(0)
     }
 
     # ================================================================
@@ -566,7 +571,7 @@ mod_ug_server <- function(id, app_state) {
 
       tryCatch({
         projet <- rv$projet_ug
-        projet <- atome_split_by_geometry(projet, parcelle_id, geojson)
+        projet <- tenement_split_by_geometry(projet, parcelle_id, geojson)
 
         if (!is.null(projet$metadata$id)) {
           save_ug_data(projet$metadata$id, projet)
@@ -574,16 +579,16 @@ mod_ug_server <- function(id, app_state) {
         rv$projet_ug <- projet
         rv$needs_recompute <- TRUE
         rv$drawn_geojson <- NULL
-        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
         # Clear drawn shapes from the map
         leaflet::leafletProxy(ns("ug_map")) |>
           leaflet::clearGroup("draw")
 
-        n_atoms <- sum(projet$atomes$parent_parcelle_id == parcelle_id)
+        n_tenements <- sum(projet$tenements$parent_parcelle_id == parcelle_id)
         shiny::showNotification(
-          sprintf(i18n()$t("ug_split_success"), parcelle_id, n_atoms),
+          sprintf(i18n()$t("ug_split_success"), parcelle_id, n_tenements),
           type = "message"
         )
       }, error = function(e) {
@@ -599,7 +604,7 @@ mod_ug_server <- function(id, app_state) {
     # OUTPUT: Map selection info
     # ================================================================
     output$map_selection_info <- shiny::renderUI({
-      n_sel <- length(rv$selected_atome_ids)
+      n_sel <- length(rv$selected_tenement_ids)
       if (n_sel == 0) {
         return(shiny::p(
           class = "text-muted small",
@@ -611,16 +616,16 @@ mod_ug_server <- function(id, app_state) {
       if (is.null(projet)) return(NULL)
 
       # Find which UGs are involved
-      sel_atomes <- projet$atomes[projet$atomes$atome_id %in% rv$selected_atome_ids, ]
-      ug_ids_involved <- unique(sel_atomes$ug_id)
+      sel_tenements <- projet$tenements[projet$tenements$tenement_id %in% rv$selected_tenement_ids, ]
+      ug_ids_involved <- unique(sel_tenements$ug_id)
       ug_labels <- projet$ugs$label[projet$ugs$ug_id %in% ug_ids_involved]
 
-      total_surface <- sum(sel_atomes$surface_m2, na.rm = TRUE)
+      total_surface <- sum(sel_tenements$surface_m2, na.rm = TRUE)
 
       htmltools::tagList(
         shiny::tags$span(
           class = "badge bg-warning",
-          sprintf("%d atome(s)", n_sel)
+          sprintf("%d tenement(s)", n_sel)
         ),
         shiny::br(),
         shiny::tags$small(
@@ -643,17 +648,17 @@ mod_ug_server <- function(id, app_state) {
     # Clear map selection
     # Clear map selection
     shiny::observeEvent(input$btn_clear_map_sel, {
-      clear_atome_selection()
+      clear_tenement_selection()
     })
 
     # ================================================================
-    # ACTION: Create UG from map-selected atoms
+    # ACTION: Create UG from map-selected tenements
     # ================================================================
     shiny::observeEvent(input$btn_create_from_map, {
-      sel_ids <- rv$selected_atome_ids
+      sel_ids <- rv$selected_tenement_ids
       if (length(sel_ids) == 0) {
         shiny::showNotification(
-          i18n()$t("ug_map_select_atoms_first"),
+          i18n()$t("ug_map_select_tenements_first"),
           type = "warning"
         )
         return()
@@ -690,7 +695,7 @@ mod_ug_server <- function(id, app_state) {
     shiny::observeEvent(input$confirm_create_from_map, {
       shiny::removeModal()
 
-      sel_ids <- rv$selected_atome_ids
+      sel_ids <- rv$selected_tenement_ids
       if (length(sel_ids) == 0) return()
 
       label <- trimws(input$create_map_label)
@@ -710,12 +715,12 @@ mod_ug_server <- function(id, app_state) {
         }
         rv$projet_ug <- projet
         rv$needs_recompute <- TRUE
-        rv$selected_atome_ids <- character(0)
-        app_state$current_project$atomes <- projet$atomes
+        rv$selected_tenement_ids <- character(0)
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(
-          sprintf("UG \u00ab %s \u00bb cr\u00e9\u00e9e avec %d atome(s)", label, length(sel_ids)),
+          sprintf("UG \u00ab %s \u00bb cr\u00e9\u00e9e avec %d tenement(s)", label, length(sel_ids)),
           type = "message"
         )
       }, error = function(e) {
@@ -724,13 +729,13 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # ACTION: Move selected atoms to an existing UG
+    # ACTION: Move selected tenements to an existing UG
     # ================================================================
     shiny::observeEvent(input$btn_move_to_ug, {
-      sel_ids <- rv$selected_atome_ids
+      sel_ids <- rv$selected_tenement_ids
       if (length(sel_ids) == 0) {
         shiny::showNotification(
-          i18n()$t("ug_map_select_atoms_first"),
+          i18n()$t("ug_map_select_tenements_first"),
           type = "warning"
         )
         return()
@@ -739,7 +744,7 @@ mod_ug_server <- function(id, app_state) {
       projet <- rv$projet_ug
       if (is.null(projet) || !has_ug_data(projet)) return()
 
-      # Build UG choices (exclude UGs that contain ALL the selected atoms)
+      # Build UG choices (exclude UGs that contain ALL the selected tenements)
       ugs <- projet$ugs
       ug_choices <- stats::setNames(ugs$ug_id, ugs$label)
 
@@ -766,16 +771,16 @@ mod_ug_server <- function(id, app_state) {
     shiny::observeEvent(input$confirm_move_to_ug, {
       shiny::removeModal()
 
-      sel_ids <- rv$selected_atome_ids
+      sel_ids <- rv$selected_tenement_ids
       target_ug_id <- input$move_target_ug
       if (length(sel_ids) == 0 || is.null(target_ug_id)) return()
 
       tryCatch({
         projet <- rv$projet_ug
 
-        # Move each atom to the target UG
-        for (atome_id in sel_ids) {
-          projet <- ug_assign_atom(projet, atome_id, target_ug_id)
+        # Move each tenement to the target UG
+        for (tenement_id in sel_ids) {
+          projet <- ug_assign_tenement(projet, tenement_id, target_ug_id)
         }
 
         if (!is.null(projet$metadata$id)) {
@@ -783,8 +788,8 @@ mod_ug_server <- function(id, app_state) {
         }
         rv$projet_ug <- projet
         rv$needs_recompute <- TRUE
-        clear_atome_selection()
-        app_state$current_project$atomes <- projet$atomes
+        clear_tenement_selection()
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
         target_label <- projet$ugs$label[projet$ugs$ug_id == target_ug_id]
@@ -814,7 +819,7 @@ mod_ug_server <- function(id, app_state) {
       display_df <- data.frame(
         Label = listing$label,
         Groupe = ifelse(is.na(listing$groupe), "---", listing$groupe),
-        Atomes = listing$n_atomes,
+        Tenements = listing$n_tenements,
         `Surface (ha)` = round(listing$surface_m2 / 10000, 2),
         check.names = FALSE,
         stringsAsFactors = FALSE
@@ -894,7 +899,7 @@ mod_ug_server <- function(id, app_state) {
             shiny::br(),
             shiny::tags$span(
               class = "text-muted",
-              sprintf("%s ha | %d atome(s)", surface_ha, listing$n_atomes[sel])
+              sprintf("%s ha | %d tenement(s)", surface_ha, listing$n_tenements[sel])
             ),
             if (!is.na(listing$groupe[sel])) {
               shiny::tags$span(
@@ -997,7 +1002,7 @@ mod_ug_server <- function(id, app_state) {
         }
         rv$projet_ug <- projet
         rv$needs_recompute <- TRUE
-        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(
@@ -1010,7 +1015,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # ACTION: Split UG (restore 1 UG per atom)
+    # ACTION: Split UG (restore 1 UG per tenement)
     # ================================================================
     shiny::observeEvent(input$btn_split, {
       sel <- input$ug_table_rows_selected
@@ -1022,9 +1027,9 @@ mod_ug_server <- function(id, app_state) {
       }
 
       uid <- listing$ug_id[sel]
-      n_atomes <- listing$n_atomes[sel]
+      n_tenements <- listing$n_tenements[sel]
 
-      if (n_atomes < 2) {
+      if (n_tenements < 2) {
         shiny::showNotification(i18n()$t("ug_cannot_split_single"), type = "warning")
         return()
       }
@@ -1038,11 +1043,11 @@ mod_ug_server <- function(id, app_state) {
         }
         rv$projet_ug <- projet
         rv$needs_recompute <- TRUE
-        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(
-          sprintf("UG dissoci\u00e9e en %d UG", n_atomes),
+          sprintf("UG dissoci\u00e9e en %d UG", n_tenements),
           type = "message"
         )
       }, error = function(e) {
@@ -1260,19 +1265,19 @@ mod_ug_server <- function(id, app_state) {
         }
 
         projet <- rv$projet_ug
-        projet <- atome_split_by_import(projet, parcelle_id, sf_polygones)
+        projet <- tenement_split_by_import(projet, parcelle_id, sf_polygones)
 
         if (!is.null(projet$metadata$id)) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
         rv$needs_recompute <- TRUE
-        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
-        n_atoms <- sum(projet$atomes$parent_parcelle_id == parcelle_id)
+        n_tenements <- sum(projet$tenements$parent_parcelle_id == parcelle_id)
         shiny::showNotification(
-          sprintf(i18n()$t("ug_split_success"), parcelle_id, n_atoms),
+          sprintf(i18n()$t("ug_split_success"), parcelle_id, n_tenements),
           type = "message"
         )
       }, error = function(e) {
@@ -1285,7 +1290,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # ACTION: Undo split (restore single atom per parcel)
+    # ACTION: Undo split (restore single tenement per parcel)
     # ================================================================
     shiny::observeEvent(input$btn_undo_split, {
       projet <- rv$projet_ug
@@ -1294,8 +1299,8 @@ mod_ug_server <- function(id, app_state) {
         return()
       }
 
-      # Find parcels that have multiple atoms (i.e., have been split)
-      atom_counts <- table(projet$atomes$parent_parcelle_id)
+      # Find parcels that have multiple tenements (i.e., have been split)
+      atom_counts <- table(projet$tenements$parent_parcelle_id)
       split_parcels <- names(atom_counts[atom_counts > 1])
 
       if (length(split_parcels) == 0) {
@@ -1343,14 +1348,14 @@ mod_ug_server <- function(id, app_state) {
 
       tryCatch({
         projet <- rv$projet_ug
-        projet <- atome_undo_split(projet, parcelle_id)
+        projet <- tenement_undo_split(projet, parcelle_id)
 
         if (!is.null(projet$metadata$id)) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
         rv$needs_recompute <- TRUE
-        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(

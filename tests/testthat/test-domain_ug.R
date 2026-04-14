@@ -33,27 +33,27 @@ create_test_projet <- function() {
 # Constructor tests
 # ==============================================================================
 
-test_that("new_atome creates valid atom", {
+test_that("new_tenement creates valid tenement", {
   geom <- sf::st_sfc(sf::st_polygon(list(matrix(c(
     0, 0, 1, 0, 1, 1, 0, 1, 0, 0
   ), ncol = 2, byrow = TRUE))), crs = 4326)
 
-  atome <- nemetonShiny:::new_atome("a1", "p1", geom, 10000)
+  tenement <- nemetonShiny:::new_tenement("a1", "p1", geom, 10000)
 
-  expect_true(inherits(atome, "sf"))
-  expect_equal(nrow(atome), 1)
-  expect_equal(atome$atome_id, "a1")
-  expect_equal(atome$parent_parcelle_id, "p1")
-  expect_true(is.na(atome$ug_id))
-  expect_equal(atome$surface_m2, 10000)
+  expect_true(inherits(tenement, "sf"))
+  expect_equal(nrow(tenement), 1)
+  expect_equal(tenement$tenement_id, "a1")
+  expect_equal(tenement$parent_parcelle_id, "p1")
+  expect_true(is.na(tenement$ug_id))
+  expect_equal(tenement$surface_m2, 10000)
 })
 
-test_that("new_atome rejects invalid input", {
+test_that("new_tenement rejects invalid input", {
   geom <- sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
 
-  expect_error(nemetonShiny:::new_atome("", "p1", geom, 100), "id is required")
-  expect_error(nemetonShiny:::new_atome("a1", "", geom, 100), "parent_parcelle_id")
-  expect_error(nemetonShiny:::new_atome("a1", "p1", geom, -1), "positive number")
+  expect_error(nemetonShiny:::new_tenement("", "p1", geom, 100), "id is required")
+  expect_error(nemetonShiny:::new_tenement("a1", "", geom, 100), "parent_parcelle_id")
+  expect_error(nemetonShiny:::new_tenement("a1", "p1", geom, -1), "positive number")
 })
 
 test_that("new_ug creates valid UG", {
@@ -76,18 +76,18 @@ test_that("new_ug rejects empty label", {
 # ug_init_default tests
 # ==============================================================================
 
-test_that("ug_init_default creates 1 atome and 1 UG per parcel", {
+test_that("ug_init_default creates 1 tenement and 1 UG per parcel", {
   projet <- create_test_projet()
   projet <- nemetonShiny:::ug_init_default(projet)
 
-  expect_equal(nrow(projet$atomes), 3)
+  expect_equal(nrow(projet$tenements), 3)
   expect_equal(nrow(projet$ugs), 3)
 
-  # Each atom has a unique UG
-  expect_equal(length(unique(projet$atomes$ug_id)), 3)
+  # Each tenement has a unique UG
+  expect_equal(length(unique(projet$tenements$ug_id)), 3)
 
-  # Each atom traces to a parcel
-  expect_equal(sort(projet$atomes$parent_parcelle_id), c("p1", "p2", "p3"))
+  # Each tenement traces to a parcel
+  expect_equal(sort(projet$tenements$parent_parcelle_id), c("p1", "p2", "p3"))
 })
 
 test_that("ug_init_default uses geo_parcelle as label", {
@@ -128,15 +128,15 @@ test_that("ug_merge combines two UGs into one", {
   # Should now have 2 UGs (3 - 2 merged + 1 new)
   expect_equal(nrow(projet$ugs), 2)
 
-  # The merged UG should have 2 atoms
+  # The merged UG should have 2 tenements
   merged_ug <- projet$ugs[projet$ugs$label == "Merged-UG", ]
   expect_equal(nrow(merged_ug), 1)
 
-  merged_atom_count <- sum(projet$atomes$ug_id == merged_ug$ug_id)
+  merged_atom_count <- sum(projet$tenements$ug_id == merged_ug$ug_id)
   expect_equal(merged_atom_count, 2)
 
-  # Still 3 atoms total
-  expect_equal(nrow(projet$atomes), 3)
+  # Still 3 tenements total
+  expect_equal(nrow(projet$tenements), 3)
 
   # Passes validation
   expect_true(nemetonShiny:::projet_validate(projet))
@@ -173,22 +173,22 @@ test_that("ug_merge preserves groupe when uniform", {
 # ug_create tests
 # ==============================================================================
 
-test_that("ug_create makes new UG from selected atoms", {
+test_that("ug_create makes new UG from selected tenements", {
   projet <- create_test_projet()
   projet <- nemetonShiny:::ug_init_default(projet)
 
-  # Get atom IDs for first two parcels
-  atome_ids <- projet$atomes$atome_id[1:2]
+  # Get tenement IDs for first two parcels
+  tenement_ids <- projet$tenements$tenement_id[1:2]
 
-  projet <- nemetonShiny:::ug_create(projet, atome_ids, "New-UG", "REGT")
+  projet <- nemetonShiny:::ug_create(projet, tenement_ids, "New-UG", "REGT")
 
   # The new UG should exist
   new_ug <- projet$ugs[projet$ugs$label == "New-UG", ]
   expect_equal(nrow(new_ug), 1)
   expect_equal(new_ug$groupe, "REGT")
 
-  # Its atoms should be reassigned
-  expect_equal(sum(projet$atomes$ug_id == new_ug$ug_id), 2)
+  # Its tenements should be reassigned
+  expect_equal(sum(projet$tenements$ug_id == new_ug$ug_id), 2)
 
   # Old empty UGs removed, so total = 2 (new + remaining)
   expect_equal(nrow(projet$ugs), 2)
@@ -196,7 +196,7 @@ test_that("ug_create makes new UG from selected atoms", {
   expect_true(nemetonShiny:::projet_validate(projet))
 })
 
-test_that("ug_create rejects empty atom list", {
+test_that("ug_create rejects empty tenement list", {
   projet <- create_test_projet()
   projet <- nemetonShiny:::ug_init_default(projet)
 
@@ -206,13 +206,13 @@ test_that("ug_create rejects empty atom list", {
   )
 })
 
-test_that("ug_create rejects unknown atom IDs", {
+test_that("ug_create rejects unknown tenement IDs", {
   projet <- create_test_projet()
   projet <- nemetonShiny:::ug_init_default(projet)
 
   expect_error(
     nemetonShiny:::ug_create(projet, "nonexistent", "Bad"),
-    "Unknown atom"
+    "Unknown tenement"
   )
 })
 
@@ -221,7 +221,7 @@ test_that("ug_create rejects unknown atom IDs", {
 # ug_split tests
 # ==============================================================================
 
-test_that("ug_split with default creates 1 UG per atom", {
+test_that("ug_split with default creates 1 UG per tenement", {
   projet <- create_test_projet()
   projet <- nemetonShiny:::ug_init_default(projet)
 
@@ -234,11 +234,11 @@ test_that("ug_split with default creates 1 UG per atom", {
 
   # Should now have 3 UGs again (2 from split + 1 unchanged)
   expect_equal(nrow(projet$ugs), 3)
-  expect_equal(nrow(projet$atomes), 3)
+  expect_equal(nrow(projet$tenements), 3)
   expect_true(nemetonShiny:::projet_validate(projet))
 })
 
-test_that("ug_split rejects single-atom UG", {
+test_that("ug_split rejects single-tenement UG", {
   projet <- create_test_projet()
   projet <- nemetonShiny:::ug_init_default(projet)
 
@@ -250,24 +250,24 @@ test_that("ug_split rejects single-atom UG", {
 
 
 # ==============================================================================
-# ug_assign_atom tests
+# ug_assign_tenement tests
 # ==============================================================================
 
-test_that("ug_assign_atom moves atom and removes empty UG", {
+test_that("ug_assign_tenement moves tenement and removes empty UG", {
   projet <- create_test_projet()
   projet <- nemetonShiny:::ug_init_default(projet)
 
-  # Move atom 1 to UG of atom 2
-  atome_to_move <- projet$atomes$atome_id[1]
-  target_ug <- projet$atomes$ug_id[2]
+  # Move tenement 1 to UG of tenement 2
+  tenement_to_move <- projet$tenements$tenement_id[1]
+  target_ug <- projet$tenements$ug_id[2]
 
-  projet <- nemetonShiny:::ug_assign_atom(projet, atome_to_move, target_ug)
+  projet <- nemetonShiny:::ug_assign_tenement(projet, tenement_to_move, target_ug)
 
   # UG count should decrease by 1 (source UG became empty)
   expect_equal(nrow(projet$ugs), 2)
 
-  # Target UG should now have 2 atoms
-  expect_equal(sum(projet$atomes$ug_id == target_ug), 2)
+  # Target UG should now have 2 tenements
+  expect_equal(sum(projet$tenements$ug_id == target_ug), 2)
 
   expect_true(nemetonShiny:::projet_validate(projet))
 })
@@ -358,8 +358,8 @@ test_that("ug_list returns all UGs with stats", {
 
   expect_true(is.data.frame(listing))
   expect_equal(nrow(listing), 3)
-  expect_true(all(c("ug_id", "label", "groupe", "n_atomes", "surface_m2") %in% names(listing)))
-  expect_true(all(listing$n_atomes == 1))
+  expect_true(all(c("ug_id", "label", "groupe", "n_tenements", "surface_m2") %in% names(listing)))
+  expect_true(all(listing$n_tenements == 1))
   expect_true(all(listing$surface_m2 == 10000))
 })
 
@@ -389,7 +389,7 @@ test_that("ug_build_sf creates valid sf with one row per UG", {
 
   expect_true(inherits(ug_sf, "sf"))
   expect_equal(nrow(ug_sf), 3)
-  expect_true(all(c("ug_id", "label", "groupe", "surface_m2", "n_atomes", "cadastral_refs") %in% names(ug_sf)))
+  expect_true(all(c("ug_id", "label", "groupe", "surface_m2", "n_tenements", "cadastral_refs") %in% names(ug_sf)))
   expect_true(all(sf::st_is_valid(ug_sf)))
 })
 
@@ -402,7 +402,7 @@ test_that("ug_build_sf after merge has fewer rows", {
   expect_equal(nrow(ug_sf), 2)
 
   merged_row <- ug_sf[ug_sf$label == "Merged", ]
-  expect_equal(merged_row$n_atomes, 2L)
+  expect_equal(merged_row$n_tenements, 2L)
   expect_equal(merged_row$surface_m2, 20000)
 })
 
@@ -427,12 +427,12 @@ test_that("has_ug_data returns TRUE after init", {
 # Validation tests
 # ==============================================================================
 
-test_that("projet_validate catches orphan atoms (no UG)", {
+test_that("projet_validate catches orphan tenements (no UG)", {
   projet <- create_test_projet()
   projet <- nemetonShiny:::ug_init_default(projet)
 
   # Manually break invariant
-  projet$atomes$ug_id[1] <- NA_character_
+  projet$tenements$ug_id[1] <- NA_character_
 
   expect_error(
     nemetonShiny:::projet_validate(projet),
@@ -456,11 +456,11 @@ test_that("projet_validate catches empty UG", {
   )
 })
 
-test_that("projet_validate catches atoms without parent parcel", {
+test_that("projet_validate catches tenements without parent parcel", {
   projet <- create_test_projet()
   projet <- nemetonShiny:::ug_init_default(projet)
 
-  projet$atomes$parent_parcelle_id[1] <- NA_character_
+  projet$tenements$parent_parcelle_id[1] <- NA_character_
 
   expect_error(
     nemetonShiny:::projet_validate(projet),

@@ -1019,13 +1019,13 @@ load_cache_data <- function(project_id, data_name) {
 # UG Data Persistence
 # ==============================================================================
 
-#' Save UG data (atomes + UG definitions) to project
+#' Save UG data (tenements + UG definitions) to project
 #'
 #' @description
-#' Saves atom geometries as GeoPackage and UG definitions as JSON.
+#' Saves tenement geometries as GeoPackage and UG definitions as JSON.
 #'
 #' @param project_id Character. Project ID.
-#' @param projet List. Project with $atomes (sf) and $ugs (data.frame).
+#' @param projet List. Project with $tenements (sf) and $ugs (data.frame).
 #'
 #' @return Logical. TRUE if successful.
 #' @noRd
@@ -1035,10 +1035,10 @@ save_ug_data <- function(project_id, projet) {
     cli::cli_abort("Project not found: {project_id}")
   }
 
-  atomes <- projet$atomes
+  tenements <- projet$tenements
   ugs <- projet$ugs
 
-  if (is.null(atomes) || is.null(ugs)) {
+  if (is.null(tenements) || is.null(ugs)) {
     cli::cli_warn("No UG data to save")
     return(FALSE)
   }
@@ -1049,10 +1049,10 @@ save_ug_data <- function(project_id, projet) {
   }
 
   tryCatch({
-    # Save atomes as GeoPackage
-    atomes_path <- file.path(data_dir, "atomes.gpkg")
-    if (file.exists(atomes_path)) unlink(atomes_path)
-    sf::st_write(atomes, atomes_path, driver = "GPKG", quiet = TRUE)
+    # Save tenements as GeoPackage
+    tenements_path <- file.path(data_dir, "tenements.gpkg")
+    if (file.exists(tenements_path)) unlink(tenements_path)
+    sf::st_write(tenements, tenements_path, driver = "GPKG", quiet = TRUE)
 
     # Save UG definitions as JSON
     ugs_path <- file.path(data_dir, "ugs.json")
@@ -1060,12 +1060,12 @@ save_ug_data <- function(project_id, projet) {
 
     # Update metadata
     update_project_metadata(project_id, list(
-      schema_version = "2.0",
+      schema_version = "2.1",
       ug_count = nrow(ugs),
       updated_at = Sys.time()
     ))
 
-    cli::cli_alert_success("Saved {nrow(ugs)} UGs with {nrow(atomes)} atomes")
+    cli::cli_alert_success("Saved {nrow(ugs)} UGs with {nrow(tenements)} tenements")
     TRUE
 
   }, error = function(e) {
@@ -1077,11 +1077,11 @@ save_ug_data <- function(project_id, projet) {
 #' Load UG data from project
 #'
 #' @description
-#' Loads atom geometries and UG definitions from project files.
+#' Loads tenement geometries and UG definitions from project files.
 #'
 #' @param project_id Character. Project ID.
 #'
-#' @return List with $atomes (sf) and $ugs (data.frame), or NULL if not found.
+#' @return List with $tenements (sf) and $ugs (data.frame), or NULL if not found.
 #' @noRd
 load_ug_data <- function(project_id) {
   project_path <- get_project_path(project_id)
@@ -1090,18 +1090,31 @@ load_ug_data <- function(project_id) {
   }
 
   data_dir <- file.path(project_path, "data")
-  atomes_path <- file.path(data_dir, "atomes.gpkg")
+  tenements_path <- file.path(data_dir, "tenements.gpkg")
+  legacy_atomes_path <- file.path(data_dir, "atomes.gpkg")  # pre-v2.1 name
   ugs_path <- file.path(data_dir, "ugs.json")
 
-  # Both files must exist
+  # Prefer new filename, fall back to legacy "atomes.gpkg" (schema v2.0 projects)
+  gpkg_path <- if (file.exists(tenements_path)) {
+    tenements_path
+  } else if (file.exists(legacy_atomes_path)) {
+    legacy_atomes_path
+  } else {
+    return(NULL)
+  }
 
-  if (!file.exists(atomes_path) || !file.exists(ugs_path)) {
+  if (!file.exists(ugs_path)) {
     return(NULL)
   }
 
   tryCatch({
-    atomes <- sf::st_read(atomes_path, quiet = TRUE)
+    tenements <- sf::st_read(gpkg_path, quiet = TRUE)
     ugs <- jsonlite::read_json(ugs_path, simplifyVector = TRUE)
+
+    # Backward compat: legacy schema used atome_id, rename to tenement_id
+    if ("atome_id" %in% names(tenements) && !"tenement_id" %in% names(tenements)) {
+      names(tenements)[names(tenements) == "atome_id"] <- "tenement_id"
+    }
 
     # Ensure ugs is a proper data.frame
     if (!is.data.frame(ugs)) {
@@ -1109,11 +1122,11 @@ load_ug_data <- function(project_id) {
     }
 
     # Ensure required columns exist
-    required_atome_cols <- c("atome_id", "parent_parcelle_id", "ug_id", "surface_m2")
+    required_tenement_cols <- c("tenement_id", "parent_parcelle_id", "ug_id", "surface_m2")
     required_ug_cols <- c("ug_id", "label", "groupe")
 
-    if (!all(required_atome_cols %in% names(atomes))) {
-      cli::cli_warn("Atomes file missing required columns")
+    if (!all(required_tenement_cols %in% names(tenements))) {
+      cli::cli_warn("Tenements file missing required columns")
       return(NULL)
     }
 
@@ -1122,7 +1135,7 @@ load_ug_data <- function(project_id) {
       return(NULL)
     }
 
-    list(atomes = atomes, ugs = ugs)
+    list(tenements = tenements, ugs = ugs)
 
   }, error = function(e) {
     cli::cli_warn("Failed to load UG data: {e$message}")

@@ -2636,14 +2636,14 @@ get_computation_progress <- function(project_id) {
 #'
 #' @description
 #' Computes UG-level indicators by weighted average (by surface) of the
-#' atom-level values. Family scores are recomputed from the aggregated
+#' tenement-level values. Family scores are recomputed from the aggregated
 #' indicator values.
 #'
 #' The parcel-level computation pipeline is unchanged. This function adds
 #' a post-processing step that aggregates results per UG.
 #'
 #' @param indicators_sf sf object. Parcel-level indicators (1 row per parcel).
-#' @param projet List. Project with $atomes, $ugs, $parcels.
+#' @param projet List. Project with $tenements, $ugs, $parcels.
 #'
 #' @return sf object with 1 row per UG, indicator columns aggregated,
 #'   plus ug_id, label, groupe, cadastral_refs columns.
@@ -2655,7 +2655,7 @@ aggregate_indicators_to_ug <- function(indicators_sf, projet) {
     return(NULL)
   }
 
-  atomes <- projet$atomes
+  tenements <- projet$tenements
   ugs <- projet$ugs
   parcels <- projet$parcels
 
@@ -2684,19 +2684,19 @@ aggregate_indicators_to_ug <- function(indicators_sf, projet) {
     indicators_sf
   }
 
-  # For each UG, compute weighted average of its atoms' indicators
+  # For each UG, compute weighted average of its tenements' indicators
   ug_rows <- lapply(seq_len(nrow(ugs)), function(i) {
     uid <- ugs$ug_id[i]
 
-    # Get atoms belonging to this UG
-    ug_atomes <- atomes[atomes$ug_id == uid, ]
-    if (nrow(ug_atomes) == 0) return(NULL)
+    # Get tenements belonging to this UG
+    ug_tenements <- tenements[tenements$ug_id == uid, ]
+    if (nrow(ug_tenements) == 0) return(NULL)
 
     # Get parent parcel IDs and their surfaces
-    parent_ids <- ug_atomes$parent_parcelle_id
-    surfaces <- ug_atomes$surface_m2
+    parent_ids <- ug_tenements$parent_parcelle_id
+    surfaces <- ug_tenements$surface_m2
 
-    # Match atoms to indicator rows via parent parcel ID
+    # Match tenements to indicator rows via parent parcel ID
     matching_rows <- which(as.character(ind_df[[id_col]]) %in% parent_ids)
     if (length(matching_rows) == 0) return(NULL)
 
@@ -2726,9 +2726,9 @@ aggregate_indicators_to_ug <- function(indicators_sf, projet) {
     row$label <- ugs$label[i]
     row$groupe <- ugs$groupe[i]
     row$surface_m2 <- sum(surfaces, na.rm = TRUE)
-    row$n_atomes <- nrow(ug_atomes)
+    row$n_tenements <- nrow(ug_tenements)
     row$cadastral_refs <- paste(
-      unique(ug_atomes$parent_parcelle_id),
+      unique(ug_tenements$parent_parcelle_id),
       collapse = ", "
     )
 
@@ -2746,7 +2746,7 @@ aggregate_indicators_to_ug <- function(indicators_sf, projet) {
     ug_geometry(projet, uid)
   })
   geom_sfc <- do.call(c, ug_geoms)
-  sf::st_crs(geom_sfc) <- sf::st_crs(atomes)
+  sf::st_crs(geom_sfc) <- sf::st_crs(tenements)
 
   # Create sf object
   ug_sf <- sf::st_sf(ug_df, geometry = geom_sfc)

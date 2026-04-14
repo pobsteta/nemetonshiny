@@ -1,4 +1,4 @@
-# Tests for atome_split.R
+# Tests for tenement_split.R
 # Parcel subdivision via imported geometries
 
 # ==============================================================================
@@ -26,10 +26,10 @@ create_split_test_projet <- function() {
 
 
 # ==============================================================================
-# atome_split_by_import tests
+# tenement_split_by_import tests
 # ==============================================================================
 
-test_that("split creates correct number of atoms", {
+test_that("split creates correct number of tenements", {
   projet <- create_split_test_projet()
 
   # Split with a polygon covering the left half
@@ -41,20 +41,20 @@ test_that("split creates correct number of atoms", {
     )
   )
 
-  result <- nemetonShiny:::atome_split_by_import(projet, "p1", left_half)
+  result <- nemetonShiny:::tenement_split_by_import(projet, "p1", left_half)
 
-  # Should have 2 atoms: left half + remainder (right half)
-  p1_atoms <- result$atomes[result$atomes$parent_parcelle_id == "p1", ]
-  expect_equal(nrow(p1_atoms), 2)
+  # Should have 2 tenements: left half + remainder (right half)
+  p1_tenements <- result$tenements[result$tenements$parent_parcelle_id == "p1", ]
+  expect_equal(nrow(p1_tenements), 2)
 
-  # All atoms should trace back to p1
-  expect_true(all(p1_atoms$parent_parcelle_id == "p1"))
+  # All tenements should trace back to p1
+  expect_true(all(p1_tenements$parent_parcelle_id == "p1"))
 
   # Validation should pass
   expect_true(nemetonShiny:::projet_validate(result))
 })
 
-test_that("split with two polygons creates 3 atoms (2 + remainder)", {
+test_that("split with two polygons creates 3 tenements (2 + remainder)", {
   projet <- create_split_test_projet()
 
   # Two polygons: bottom-left and top-left quarters
@@ -67,11 +67,11 @@ test_that("split with two polygons creates 3 atoms (2 + remainder)", {
     )
   )
 
-  result <- nemetonShiny:::atome_split_by_import(projet, "p1", quarters)
+  result <- nemetonShiny:::tenement_split_by_import(projet, "p1", quarters)
 
-  p1_atoms <- result$atomes[result$atomes$parent_parcelle_id == "p1", ]
-  # 2 quarters + right half remainder = 3 atoms
-  expect_equal(nrow(p1_atoms), 3)
+  p1_tenements <- result$tenements[result$tenements$parent_parcelle_id == "p1", ]
+  # 2 quarters + right half remainder = 3 tenements
+  expect_equal(nrow(p1_tenements), 3)
   expect_true(nemetonShiny:::projet_validate(result))
 })
 
@@ -88,11 +88,11 @@ test_that("split with full coverage creates no remainder", {
     )
   )
 
-  result <- nemetonShiny:::atome_split_by_import(projet, "p1", halves)
+  result <- nemetonShiny:::tenement_split_by_import(projet, "p1", halves)
 
-  p1_atoms <- result$atomes[result$atomes$parent_parcelle_id == "p1", ]
-  # Exactly 2 atoms, no remainder
-  expect_equal(nrow(p1_atoms), 2)
+  p1_tenements <- result$tenements[result$tenements$parent_parcelle_id == "p1", ]
+  # Exactly 2 tenements, no remainder
+  expect_equal(nrow(p1_tenements), 2)
   expect_true(nemetonShiny:::projet_validate(result))
 })
 
@@ -110,11 +110,11 @@ test_that("split preserves UG assignment", {
     )
   )
 
-  result <- nemetonShiny:::atome_split_by_import(projet, "p1", left)
+  result <- nemetonShiny:::tenement_split_by_import(projet, "p1", left)
 
-  # All new atoms should be assigned to the same UG
-  p1_atoms <- result$atomes[result$atomes$parent_parcelle_id == "p1", ]
-  expect_true(all(p1_atoms$ug_id == uid))
+  # All new tenements should be assigned to the same UG
+  p1_tenements <- result$tenements[result$tenements$parent_parcelle_id == "p1", ]
+  expect_true(all(p1_tenements$ug_id == uid))
 })
 
 test_that("split rejects non-overlapping polygons", {
@@ -129,7 +129,7 @@ test_that("split rejects non-overlapping polygons", {
   )
 
   expect_error(
-    nemetonShiny:::atome_split_by_import(projet, "p1", outside),
+    nemetonShiny:::tenement_split_by_import(projet, "p1", outside),
     "No valid polygon"
   )
 })
@@ -145,17 +145,17 @@ test_that("split rejects unknown parcel ID", {
   )
 
   expect_error(
-    nemetonShiny:::atome_split_by_import(projet, "nonexistent", poly),
+    nemetonShiny:::tenement_split_by_import(projet, "nonexistent", poly),
     "not found"
   )
 })
 
 
 # ==============================================================================
-# atome_undo_split tests
+# tenement_undo_split tests
 # ==============================================================================
 
-test_that("undo_split restores single atom", {
+test_that("undo_split restores single tenement", {
   projet <- create_split_test_projet()
 
   # Split first
@@ -165,20 +165,20 @@ test_that("undo_split restores single atom", {
       crs = 4326
     )
   )
-  projet <- nemetonShiny:::atome_split_by_import(projet, "p1", left)
-  expect_equal(nrow(projet$atomes[projet$atomes$parent_parcelle_id == "p1", ]), 2)
+  projet <- nemetonShiny:::tenement_split_by_import(projet, "p1", left)
+  expect_equal(nrow(projet$tenements[projet$tenements$parent_parcelle_id == "p1", ]), 2)
 
   # Undo
-  result <- nemetonShiny:::atome_undo_split(projet, "p1")
-  expect_equal(nrow(result$atomes[result$atomes$parent_parcelle_id == "p1", ]), 1)
+  result <- nemetonShiny:::tenement_undo_split(projet, "p1")
+  expect_equal(nrow(result$tenements[result$tenements$parent_parcelle_id == "p1", ]), 1)
   expect_true(nemetonShiny:::projet_validate(result))
 })
 
 test_that("undo_split on unsplit parcel is a no-op", {
   projet <- create_split_test_projet()
 
-  result <- nemetonShiny:::atome_undo_split(projet, "p1")
-  expect_equal(nrow(result$atomes), nrow(projet$atomes))
+  result <- nemetonShiny:::tenement_undo_split(projet, "p1")
+  expect_equal(nrow(result$tenements), nrow(projet$tenements))
 })
 
 
@@ -195,7 +195,7 @@ test_that("validate_tiling passes for valid tiling", {
       crs = 4326
     )
   )
-  projet <- nemetonShiny:::atome_split_by_import(projet, "p1", left)
+  projet <- nemetonShiny:::tenement_split_by_import(projet, "p1", left)
 
   expect_true(nemetonShiny:::validate_tiling(projet, "p1"))
 })
