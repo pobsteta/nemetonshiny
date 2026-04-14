@@ -176,7 +176,7 @@ mod_ug_map_actions_bar <- function(id) {
         ns("btn_move_to_ug"),
         label = i18n$t("ug_move_to"),
         icon = shiny::icon("arrow-right-arrow-left"),
-        class = "btn-outline-success",
+        class = "btn-success",
         width = "100%"
       ),
 
