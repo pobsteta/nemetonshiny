@@ -137,7 +137,7 @@ mod_ug_table_panel <- function(id) {
   bslib::card_body(
     htmltools::div(
       class = "d-flex justify-content-between align-items-center mb-2",
-      shiny::h5(i18n$t("ug_title"), class = "mb-0"),
+      shiny::h5(i18n$t("ug_table_title"), class = "mb-0"),
       shiny::textOutput(ns("ug_summary"), inline = TRUE)
     ),
     DT::dataTableOutput(ns("ug_table"))
