@@ -365,6 +365,8 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
   ts <- format(Sys.time(), "%Y%m%d%H%M%S")
   counter <- 0L
 
+  n_fully_contained <- 0L   # polygon fully covers a tenement (nothing to split)
+
   for (i in affected_idx) {
     tn <- tenements[i, ]
     tn_geom <- sf::st_make_valid(sf::st_geometry(tn))
@@ -393,7 +395,12 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
       if (length(g) > 0) pieces <- c(pieces, list(g))
     }
 
-    if (length(pieces) < 2) next  # No real split for this tenement
+    if (length(pieces) < 2) {
+      # Polygon fully contained this tenement (only "inside" = full tenement)
+      # or only edge-touched it (no real overlap). Skip but count.
+      n_fully_contained <- n_fully_contained + 1L
+      next
+    }
 
     geoms <- do.call(c, pieces)
     n <- length(geoms)
@@ -427,10 +434,18 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
   }
 
   if (length(all_new) == 0) {
+    if (n_fully_contained > 0) {
+      # Polygon fully wraps existing tenements — no cut needed.
+      # Return the project unchanged rather than erroring.
+      cli::cli_alert_info(
+        "The drawn polygon fully covers {n_fully_contained} tenement(s); no cut was needed (polygon boundaries do not cross the tenement geometry)."
+      )
+      return(projet)
+    }
     cli::cli_abort(c(
       "The drawn polygon did not split any tenement.",
-      i = "Possible causes: the polygon only touches edges, fully contains tenements without cutting through their boundaries, or the overlap is too small (< {tolerance_m2} m\u00b2).",
-      i = "Draw a polygon whose boundary crosses the tenement geometry."
+      i = "The polygon only touches edges or the overlap is below tolerance ({tolerance_m2} m\u00b2).",
+      i = "Draw a polygon whose boundary actually crosses the tenement geometry."
     ))
   }
 
