@@ -178,10 +178,10 @@
 
 
   // ============================================================
-  // Clear all drawn items from a leaflet map (used after split).
-  // Drawn shapes from leaflet.draw live in either a feature group
-  // attached to the draw control, or as regular Polyline/Polygon
-  // layers on the map. We try both approaches.
+  // Clear drawn items from a leaflet.draw layer on a leaflet map.
+  // Conservative: only touches the draw control's featureGroup and
+  // the R-leaflet layerManager's 'draw' group. Never walks all layers
+  // (which previously removed managed overlays like UGF polygons).
   // ============================================================
   Shiny.addCustomMessageHandler('leafletClearDrawn', function(data) {
     var widget = HTMLWidgets.find('#' + data.id);
@@ -189,43 +189,13 @@
     var map = widget.getMap();
     if (!map) return;
 
-    // Names of overlay groups WE manage (don't remove these layers)
-    var keepGroups = ['UGF', 'Tenements', 'Selection', 'basemap'];
-
-    // Walk all layers; remove drawn shapes
-    var toRemove = [];
-    map.eachLayer(function(layer) {
-      if (layer instanceof L.Polyline || layer instanceof L.Polygon) {
-        // Find which group this layer belongs to (if any)
-        var inKeptGroup = false;
-        for (var i = 0; i < keepGroups.length; i++) {
-          var g = map._layers; // not directly useful here
-          if (layer.options && layer.options.group === keepGroups[i]) {
-            inKeptGroup = true;
-            break;
-          }
-        }
-        // Also keep layers with a layerId managed by R-leaflet (sel_*)
-        if (!inKeptGroup) {
-          var lid = layer.options && layer.options.layerId;
-          if (lid && (String(lid).indexOf('sel_') === 0)) {
-            inKeptGroup = true;
-          }
-        }
-        if (!inKeptGroup) {
-          toRemove.push(layer);
-        }
-      }
-    });
-    toRemove.forEach(function(l) { map.removeLayer(l); });
-
-    // Also clear leaflet.draw's internal FeatureGroup if exposed
+    // Clear leaflet.draw's internal FeatureGroup if exposed
     if (map.drawControl && map.drawControl.options &&
         map.drawControl.options.edit && map.drawControl.options.edit.featureGroup) {
       try { map.drawControl.options.edit.featureGroup.clearLayers(); } catch (e) {}
     }
 
-    // leaflet.extras stores its drawn group on the map under HTMLWidgets bindings
+    // leaflet.extras stores its drawn group under HTMLWidgets bindings
     if (widget.layerManager) {
       try { widget.layerManager.clearGroup('draw'); } catch (e) {}
     }
