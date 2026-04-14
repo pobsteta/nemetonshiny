@@ -649,10 +649,11 @@ mod_ug_server <- function(id, app_state) {
             leaflet::addPolygons(
               data = ug_sf,
               group = "UGF",
-              fillColor = ug_colors,
-              fillOpacity = 0.15,
+              fill = FALSE,              # no fill — let Tenements show through
               color = ug_colors,
-              weight = 3,
+              weight = 4,                # thicker, clearly visible on top
+              opacity = 0.95,
+              dashArray = "8,6",         # dashed to distinguish from tenements
               label = lapply(ug_labels, htmltools::HTML),
               labelOptions = leaflet::labelOptions(
                 style = list("font-size" = "13px", "font-weight" = "bold"),
