@@ -1644,26 +1644,9 @@ mod_ug_server <- function(id, app_state) {
         return()
       }
 
-      # Build parcel choices
-      parcels <- projet$parcels
-      id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
-      if (length(id_col) == 0) return()
-      parcel_ids <- as.character(parcels[[id_col[1]]])
-      parcel_labels <- if ("geo_parcelle" %in% names(parcels)) {
-        as.character(parcels$geo_parcelle)
-      } else {
-        parcel_ids
-      }
-      choices <- stats::setNames(parcel_ids, parcel_labels)
-
       shiny::showModal(shiny::modalDialog(
         title = i18n()$t("ug_import_split"),
         size = "l",
-        shiny::selectInput(
-          ns("split_parcelle"),
-          label = i18n()$t("ug_split_select_parcel"),
-          choices = choices
-        ),
         shiny::fileInput(
           ns("split_file"),
           label = i18n()$t("ug_split_file"),
@@ -1688,9 +1671,8 @@ mod_ug_server <- function(id, app_state) {
 
     shiny::observeEvent(input$confirm_import_split, {
       file_info <- input$split_file
-      parcelle_id <- input$split_parcelle
 
-      if (is.null(file_info) || is.null(parcelle_id)) {
+      if (is.null(file_info)) {
         shiny::showNotification(i18n()$t("ug_split_no_file"), type = "warning")
         return()
       }
@@ -1706,20 +1688,34 @@ mod_ug_server <- function(id, app_state) {
           return()
         }
 
+        # Serialize as GeoJSON and reuse the auto-detect split function
+        # that already splits every tenement crossed by the polygons.
+        geojson_str <- sf::st_as_text(sf::st_geometry(sf_polygones))
+        # Build a GeoJSON FeatureCollection wrapper
+        gj <- sf::st_as_sf(
+          data.frame(id = seq_len(nrow(sf_polygones))),
+          geometry = sf::st_geometry(sf_polygones)
+        )
+        tmp <- tempfile(fileext = ".geojson")
+        on.exit(unlink(tmp), add = TRUE)
+        sf::st_write(gj, tmp, driver = "GeoJSON", quiet = TRUE,
+                     delete_dsn = TRUE)
+        gj_text <- paste(readLines(tmp, warn = FALSE), collapse = "")
+
         projet <- rv$projet_ug
-        projet <- tenement_split_by_import(projet, parcelle_id, sf_polygones)
+        projet <- tenement_split_by_drawn_polygon(projet, gj_text)
 
         if (!is.null(projet$metadata$id)) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
+        rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
         rv$needs_recompute <- TRUE
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
-        n_tenements <- sum(projet$tenements$parent_parcelle_id == parcelle_id)
         shiny::showNotification(
-          sprintf(i18n()$t("ug_split_success"), parcelle_id, n_tenements),
+          i18n()$t("ug_poly_split_success"),
           type = "message"
         )
       }, error = function(e) {
