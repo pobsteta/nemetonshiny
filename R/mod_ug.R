@@ -910,8 +910,12 @@ mod_ug_server <- function(id, app_state) {
       n_polys <- if (is_poly) 1L else 0L
       tenements <- projet$tenements
 
+      cli::cli_h2("Nouveau tracé : {geom_type}")
+      cli::cli_alert_info("Nombre de tènements dans le projet : {nrow(tenements)}")
+
       # ----- Case 1: LINE drawn → auto-split all crossed tenements -----
       if (is_line) {
+        cli::cli_alert_info("Type : POLYLIGNE — analyse du tracé...")
         # Preview: planar GEOS on Lambert 93 (matches the backend
         # which must use GEOS because lwgeom::st_split has no S2 mode).
         n_affected <- tryCatch({
@@ -935,10 +939,14 @@ mod_ug_server <- function(id, app_state) {
           cutting_line <- sf::st_union(sf::st_geometry(line_sf))
           n <- sum(sf::st_intersects(sf::st_geometry(tn_work), cutting_line,
                                      sparse = FALSE)[, 1])
-          cli::cli_alert_info("Line preview: n_affected = {n}")
+          cli::cli_alert_success(
+            "POLYLIGNE : traverse {n} tènement{?s} (sur {nrow(tenements)})"
+          )
           n
         }, error = function(e) {
-          cli::cli_alert_warning("Line preview failed: {e$message}")
+          cli::cli_alert_danger(
+            "POLYLIGNE : \u00e9chec du preview ({e$message})"
+          )
           0L
         })
 
@@ -969,11 +977,11 @@ mod_ug_server <- function(id, app_state) {
 
       # ----- Case 2: POLYGON drawn → auto-split all crossed tenements -----
       if (!is_poly) return()
+      cli::cli_alert_info("Type : POLYGONE \u2014 analyse du trac\u00e9...")
       # Quick preview: how many tenements does the polygon cross?
       # Mirror the backend: S2 spherical intersection on 4326 when
       # possible, fall back to planar on Lambert 93 if S2 rejects.
       n_affected <- tryCatch({
-        cli::cli_alert_info("Polygon preview starting")
         polys_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
         if (is.na(sf::st_crs(polys_sf))) {
           sf::st_crs(polys_sf) <- 4326
@@ -991,10 +999,14 @@ mod_ug_server <- function(id, app_state) {
         tryCatch({
           n <- sum(sf::st_intersects(sf::st_geometry(tenements), cutter,
                                      sparse = FALSE)[, 1])
-          cli::cli_alert_info("Polygon preview (S2): n_affected = {n}")
+          cli::cli_alert_success(
+            "POLYGONE (S2/4326) : traverse {n} tènement{?s} (sur {nrow(tenements)})"
+          )
           n
         }, error = function(e) {
-          cli::cli_alert_warning("Polygon S2 failed, fallback to 2154: {e$message}")
+          cli::cli_alert_warning(
+            "POLYGONE : S2 a \u00e9chou\u00e9, repli sur 2154 ({e$message})"
+          )
           sf::sf_use_s2(FALSE)
           tn_m <- if (isTRUE(sf::st_is_longlat(tenements))) {
             sf::st_transform(tenements, 2154)
@@ -1004,11 +1016,15 @@ mod_ug_server <- function(id, app_state) {
           } else cutter
           n <- sum(sf::st_intersects(sf::st_geometry(tn_m), cu_m,
                                      sparse = FALSE)[, 1])
-          cli::cli_alert_info("Polygon preview (2154): n_affected = {n}")
+          cli::cli_alert_success(
+            "POLYGONE (GEOS/2154) : traverse {n} t\u00e8nement{?s} (sur {nrow(tenements)})"
+          )
           n
         })
       }, error = function(e) {
-        cli::cli_alert_warning("Polygon preview failed: {e$message}")
+        cli::cli_alert_danger(
+          "POLYGONE : \u00e9chec du preview ({e$message})"
+        )
         0L
       })
 

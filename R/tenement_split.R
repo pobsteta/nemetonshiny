@@ -353,7 +353,7 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
 
   affected_idx <- which(hits)
   cli::cli_alert_info(
-    "Splitting {length(affected_idx)} tenement(s) crossed by the drawn polygon"
+    "[BACKEND POLYGONE] d\u00e9coupe de {length(affected_idx)} t\u00e8nement{?s}"
   )
 
   # Detect existing geometry column name
@@ -563,7 +563,7 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
     error = function(e) rep(FALSE, nrow(tenements_work))
   )
   cli::cli_alert_info(
-    "Line split: {sum(hits)} tenement(s) crossed (CRS={if (use_projection) 'EPSG:2154' else as.character(orig_crs$input)})"
+    "[BACKEND POLYLIGNE] d\u00e9tection : {sum(hits)} t\u00e8nement{?s} crois\u00e9{?s} (CRS={if (use_projection) 'EPSG:2154' else as.character(orig_crs$input)})"
   )
   if (!any(hits)) {
     cli::cli_abort("The drawn line does not cross any tenement.")
@@ -571,7 +571,7 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
 
   affected_idx <- which(hits)
   cli::cli_alert_info(
-    "Splitting {length(affected_idx)} tenement(s) crossed by the drawn line"
+    "[BACKEND POLYLIGNE] d\u00e9coupe de {length(affected_idx)} t\u00e8nement{?s}"
   )
 
   existing_geom_col <- attr(tenements, "sf_column") %||% "geometry"
