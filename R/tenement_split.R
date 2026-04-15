@@ -535,35 +535,17 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
     line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
   }
 
+  # Planar GEOS on Lambert 93. lwgeom::st_split (step 2 below) requires
+  # GEOS, and detecting hits in the same CRS guarantees preview and
+  # actual split agree on which tenements are affected. S2 is too
+  # error-prone on imported GeoJSON linestrings.
   orig_crs <- sf::st_crs(tenements)
   use_projection <- !is.na(orig_crs) && isTRUE(sf::st_is_longlat(tenements))
 
-  # Step 1 — detect which tenements the line crosses. Try S2 on 4326
-  # first (better at near-tangent line/polygon intersections); fall
-  # back to GEOS on Lambert 93 if S2 rejects something.
   prev_s2 <- sf::sf_use_s2()
-  sf::sf_use_s2(TRUE)
+  sf::sf_use_s2(FALSE)
   on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
 
-  line_sf_for_hits <- tryCatch(sf::st_make_valid(line_sf),
-                               error = function(e) line_sf)
-  cutting_line_hits <- sf::st_union(sf::st_geometry(line_sf_for_hits))
-
-  hits <- tryCatch(
-    sf::st_intersects(sf::st_geometry(tenements), cutting_line_hits,
-                      sparse = FALSE)[, 1],
-    error = function(e) {
-      sf::sf_use_s2(FALSE)
-      tn_m <- if (use_projection) sf::st_transform(tenements, 2154) else tenements
-      ln_m <- if (use_projection) sf::st_transform(cutting_line_hits, 2154) else cutting_line_hits
-      sf::st_intersects(sf::st_geometry(tn_m), ln_m, sparse = FALSE)[, 1]
-    }
-  )
-
-  # Step 2 — lwgeom::st_split requires GEOS (no S2). Switch to planar
-  # and work in Lambert 93 so the split follows the drawn line
-  # precisely (no lat/lng skew).
-  sf::sf_use_s2(FALSE)
   if (use_projection) {
     work_crs <- sf::st_crs(2154)
     tenements_work <- sf::st_transform(tenements, work_crs)
@@ -573,6 +555,16 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
   }
 
   cutting_line <- sf::st_union(sf::st_geometry(line_sf))
+
+  # Find tenements that intersect the line (planar 2154)
+  hits <- tryCatch(
+    sf::st_intersects(sf::st_geometry(tenements_work), cutting_line,
+                      sparse = FALSE)[, 1],
+    error = function(e) rep(FALSE, nrow(tenements_work))
+  )
+  cli::cli_alert_info(
+    "Line split: {sum(hits)} tenement(s) crossed (CRS={if (use_projection) 'EPSG:2154' else as.character(orig_crs$input)})"
+  )
   if (!any(hits)) {
     cli::cli_abort("The drawn line does not cross any tenement.")
   }

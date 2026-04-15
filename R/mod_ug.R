@@ -906,10 +906,8 @@ mod_ug_server <- function(id, app_state) {
       # ----- Case 1: LINE drawn → auto-split all crossed tenements -----
       if (n_lines > 0 && n_polys == 0) {
         tenements <- projet$tenements
-        # Preview: how many tenements does the line cross?
-        # Use S2 on 4326 first (handles near-tangent intersections
-        # better and matches the precision we show on the map); fall
-        # back to Lambert 93 GEOS if S2 rejects the geometry.
+        # Preview: planar GEOS on Lambert 93 (matches the backend
+        # which must use GEOS because lwgeom::st_split has no S2 mode).
         n_affected <- tryCatch({
           line_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
           if (is.na(sf::st_crs(line_sf))) {
@@ -920,26 +918,23 @@ mod_ug_server <- function(id, app_state) {
             line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
           }
           prev_s2 <- sf::sf_use_s2()
-          sf::sf_use_s2(TRUE)
+          sf::sf_use_s2(FALSE)
           on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
-          line_sf <- tryCatch(sf::st_make_valid(line_sf),
-                              error = function(e) line_sf)
+          tn_work <- tenements
+          if (!is.na(sf::st_crs(tenements)) &&
+              isTRUE(sf::st_is_longlat(tenements))) {
+            tn_work  <- sf::st_transform(tenements, 2154)
+            line_sf  <- sf::st_transform(line_sf, 2154)
+          }
           cutting_line <- sf::st_union(sf::st_geometry(line_sf))
-          tryCatch({
-            sum(sf::st_intersects(sf::st_geometry(tenements), cutting_line,
-                                  sparse = FALSE)[, 1])
-          }, error = function(e) {
-            sf::sf_use_s2(FALSE)
-            tn_m <- if (isTRUE(sf::st_is_longlat(tenements))) {
-              sf::st_transform(tenements, 2154)
-            } else tenements
-            ln_m <- if (isTRUE(sf::st_is_longlat(cutting_line))) {
-              sf::st_transform(cutting_line, 2154)
-            } else cutting_line
-            sum(sf::st_intersects(sf::st_geometry(tn_m), ln_m,
-                                  sparse = FALSE)[, 1])
-          })
-        }, error = function(e) 0L)
+          n <- sum(sf::st_intersects(sf::st_geometry(tn_work), cutting_line,
+                                     sparse = FALSE)[, 1])
+          cli::cli_alert_info("Line preview: n_affected = {n}")
+          n
+        }, error = function(e) {
+          cli::cli_alert_warning("Line preview failed: {e$message}")
+          0L
+        })
 
         if (n_affected == 0) {
           shiny::showNotification(
