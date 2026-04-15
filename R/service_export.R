@@ -503,7 +503,11 @@ generate_family_maps <- function(family_scores, output_dir, language) {
 
     if (is.null(fam)) next
 
-    output_file <- file.path(output_dir, paste0(get_famille_col(code), "_map.png"))
+    # Filename must match what inst/quarto/report_template.qmd looks
+    # for: family_<CODE>_map.png (e.g. family_C_map.png). Do not use
+    # get_famille_col() — that returns "famille_carbone" which the
+    # template does not search for.
+    output_file <- file.path(output_dir, paste0("family_", code, "_map.png"))
 
     tryCatch({
       grDevices::png(output_file, width = 800, height = 600, res = 150)
