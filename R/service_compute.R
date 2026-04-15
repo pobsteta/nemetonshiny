@@ -350,6 +350,34 @@ start_computation <- function(project_id,
     if (is.null(compute_unit) || nrow(compute_unit) == 0) {
       stop("Could not build UGF sf for computation")
     }
+
+    # Enrich the UGF sf with columns that the nemeton indicator
+    # functions expect to find on cadastral parcels. Without these,
+    # most indicator_* functions error out before they even look at
+    # the geometry (they join / filter by parcel-like keys).
+    #  - id / nemeton_id / geo_parcelle : unique identifier (→ ug_id)
+    #  - contenance                      : cadastral surface (m²)
+    #  - code_insee                      : commune code, inherited
+    #                                     from the first parcel
+    #  - section / numero                : placeholder (UGFs don't
+    #                                     map to a single cadastral
+    #                                     ref — the list is kept in
+    #                                     cadastral_refs)
+    compute_unit$id <- compute_unit$ug_id
+    compute_unit$nemeton_id <- compute_unit$ug_id
+    compute_unit$geo_parcelle <- compute_unit$ug_id
+    if (!"contenance" %in% names(compute_unit)) {
+      compute_unit$contenance <- compute_unit$surface_m2
+    }
+    if ("code_insee" %in% names(parcels)) {
+      # Use the most common INSEE code across the parent parcels;
+      # a single UGF normally stays within one commune.
+      codes <- as.character(parcels$code_insee)
+      compute_unit$code_insee <- names(sort(table(codes), decreasing = TRUE))[1]
+    }
+    if (!"section" %in% names(compute_unit)) compute_unit$section <- NA_character_
+    if (!"numero"  %in% names(compute_unit)) compute_unit$numero  <- NA_character_
+
     cli::cli_alert_info(
       "Calcul des indicateurs sur {nrow(compute_unit)} UGF (dont {nrow(parcels)} parcelle{?s} cadastrale{?s})"
     )
@@ -2220,6 +2248,15 @@ compute_all_indicators <- function(parcels,
       status = status,
       errors = errors
     ))
+  }
+
+  # Summary of what failed — helps diagnose UGF-column compatibility
+  # issues with nemeton indicator functions.
+  if (failed > 0) {
+    cli::cli_h2("R\u00e9capitulatif des \u00e9checs de calcul ({failed}/{n_indicators} indicateur{?s})")
+    for (err in errors) {
+      cli::cli_alert_danger("{err$indicator} : {err$message}")
+    }
   }
 
   # Marquer les sources de donnees disponibles pour detect_ndp()
