@@ -825,7 +825,7 @@ mod_home_server <- function(id, app_state) {
               project$metadata$name %||% project$id
             ),
             htmltools::tags$li(
-              htmltools::strong("Unit\u00e9 de Gestion Foresti\u00e8re : "),
+              htmltools::strong("Unit\u00e9s de Gestion Foresti\u00e8res : "),
               n_ugs
             ),
             htmltools::tags$li(
