@@ -884,28 +884,34 @@ mod_ug_server <- function(id, app_state) {
     # MAP: Handle drawn shapes (interactive split)
     # ================================================================
     # When the user finishes drawing on the map:
-    #   - LINESTRING → cut the SELECTED tenement along that line
-    #   - POLYGON / RECTANGLE → split the chosen PARCEL using those polygons
-    shiny::observeEvent(input$ug_map_draw_all_features, {
-      drawn <- input$ug_map_draw_all_features
-      if (is.null(drawn) || length(drawn$features) == 0) return()
+    #   - LINESTRING → split tenements crossed by that line
+    #   - POLYGON / RECTANGLE → split tenements crossed by that polygon
+    # We key off input$ug_map_draw_new_feature (fires with ONLY the
+    # latest drawn shape) — draw_all_features accumulates every shape
+    # ever drawn, which caused a polygon drawn earlier to "win" over a
+    # polyline drawn afterwards.
+    shiny::observeEvent(input$ug_map_draw_new_feature, {
+      feat <- input$ug_map_draw_new_feature
+      if (is.null(feat) || is.null(feat$geometry)) return()
 
       projet <- rv$projet_ug
       if (is.null(projet)) return()
 
-      # Detect geometry types of drawn features
-      geom_types <- vapply(drawn$features, function(f) {
-        f$geometry$type %||% ""
-      }, character(1))
-      n_lines <- sum(geom_types %in% c("LineString", "MultiLineString"))
-      n_polys <- sum(geom_types %in% c("Polygon", "MultiPolygon"))
+      geom_type <- feat$geometry$type %||% ""
+      is_line  <- geom_type %in% c("LineString", "MultiLineString")
+      is_poly  <- geom_type %in% c("Polygon", "MultiPolygon")
+      if (!is_line && !is_poly) return()
 
-      # Store the drawn GeoJSON for later use
-      rv$drawn_geojson <- jsonlite::toJSON(drawn, auto_unbox = TRUE)
+      # Wrap the single feature in a FeatureCollection for sf::st_read
+      fc <- list(type = "FeatureCollection", features = list(feat))
+      rv$drawn_geojson <- jsonlite::toJSON(fc, auto_unbox = TRUE)
+
+      n_lines <- if (is_line) 1L else 0L
+      n_polys <- if (is_poly) 1L else 0L
+      tenements <- projet$tenements
 
       # ----- Case 1: LINE drawn → auto-split all crossed tenements -----
-      if (n_lines > 0 && n_polys == 0) {
-        tenements <- projet$tenements
+      if (is_line) {
         # Preview: planar GEOS on Lambert 93 (matches the backend
         # which must use GEOS because lwgeom::st_split has no S2 mode).
         n_affected <- tryCatch({
@@ -962,11 +968,12 @@ mod_ug_server <- function(id, app_state) {
       }
 
       # ----- Case 2: POLYGON drawn → auto-split all crossed tenements -----
-      tenements <- projet$tenements
+      if (!is_poly) return()
       # Quick preview: how many tenements does the polygon cross?
       # Mirror the backend: S2 spherical intersection on 4326 when
       # possible, fall back to planar on Lambert 93 if S2 rejects.
       n_affected <- tryCatch({
+        cli::cli_alert_info("Polygon preview starting")
         polys_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
         if (is.na(sf::st_crs(polys_sf))) {
           sf::st_crs(polys_sf) <- 4326
@@ -982,9 +989,12 @@ mod_ug_server <- function(id, app_state) {
                              error = function(e) polys_sf)
         cutter <- sf::st_union(sf::st_geometry(polys_sf))
         tryCatch({
-          sum(sf::st_intersects(sf::st_geometry(tenements), cutter,
-                                sparse = FALSE)[, 1])
+          n <- sum(sf::st_intersects(sf::st_geometry(tenements), cutter,
+                                     sparse = FALSE)[, 1])
+          cli::cli_alert_info("Polygon preview (S2): n_affected = {n}")
+          n
         }, error = function(e) {
+          cli::cli_alert_warning("Polygon S2 failed, fallback to 2154: {e$message}")
           sf::sf_use_s2(FALSE)
           tn_m <- if (isTRUE(sf::st_is_longlat(tenements))) {
             sf::st_transform(tenements, 2154)
@@ -992,10 +1002,15 @@ mod_ug_server <- function(id, app_state) {
           cu_m <- if (isTRUE(sf::st_is_longlat(cutter))) {
             sf::st_transform(cutter, 2154)
           } else cutter
-          sum(sf::st_intersects(sf::st_geometry(tn_m), cu_m,
-                                sparse = FALSE)[, 1])
+          n <- sum(sf::st_intersects(sf::st_geometry(tn_m), cu_m,
+                                     sparse = FALSE)[, 1])
+          cli::cli_alert_info("Polygon preview (2154): n_affected = {n}")
+          n
         })
-      }, error = function(e) 0L)
+      }, error = function(e) {
+        cli::cli_alert_warning("Polygon preview failed: {e$message}")
+        0L
+      })
 
       if (n_affected == 0) {
         shiny::showNotification(
