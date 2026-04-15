@@ -1895,10 +1895,15 @@ mod_ug_server <- function(id, app_state) {
       # painted before we block on the heavy computation. Without this
       # step, Shiny batches UI updates at the end of the reactive
       # context and the user would never see the spinner.
+      #
+      # The later callback runs OUTSIDE the reactive context, so every
+      # read of rv$ / app_state$ must be isolated, and every write is
+      # done via `<-` on the reactiveValues object (no context required).
+      datapath <- file_info$datapath
       later::later(function() {
         tryCatch({
           # Read the imported file
-          sf_polygones <- sf::st_read(file_info$datapath, quiet = TRUE)
+          sf_polygones <- sf::st_read(datapath, quiet = TRUE)
 
           if (nrow(sf_polygones) == 0) {
             shiny::removeNotification(notif_id, session = session)
@@ -1911,12 +1916,14 @@ mod_ug_server <- function(id, app_state) {
           #  - QGIS "Séparer les parties" (multipart → singleparts)
           #  - QGIS "Séparer l'entité"   (new rows appear in the file)
           #  - reshape / merge / delete in any GIS tool
-          projet <- rv$projet_ug
+          projet <- shiny::isolate(rv$projet_ug)
           projet <- tenement_import_replace(projet, sf_polygones)
 
           if (!is.null(projet$metadata$id)) {
             save_ug_data(projet$metadata$id, projet)
           }
+          # Writes to reactiveValues do not require a reactive context.
+          # Reads via shiny::isolate() where needed.
           rv$projet_ug <- projet
           rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
           rv$needs_recompute <- TRUE
