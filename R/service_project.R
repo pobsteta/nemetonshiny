@@ -1180,78 +1180,8 @@ load_ug_data <- function(project_id) {
 }
 
 
-#' Save UG-level aggregated indicators
-#'
-#' @param project_id Character. Project ID.
-#' @param indicators_ug sf object. UG-level indicators.
-#'
-#' @return Logical. TRUE if successful.
-#' @noRd
-save_indicators_ug <- function(project_id, indicators_ug) {
-  project_path <- get_project_path(project_id)
-  if (is.null(project_path)) {
-    cli::cli_abort("Project not found: {project_id}")
-  }
-
-  parquet_path <- file.path(project_path, "data", "indicators_ug.parquet")
-
-  tryCatch({
-    if (requireNamespace("arrow", quietly = TRUE)) {
-      ind_df <- indicators_ug
-      if (inherits(indicators_ug, "sf")) {
-        ind_df$geometry_wkt <- sf::st_as_text(sf::st_geometry(indicators_ug))
-        ind_df <- sf::st_drop_geometry(ind_df)
-      }
-      arrow::write_parquet(ind_df, parquet_path)
-      cli::cli_alert_success("Saved UG indicators: {nrow(indicators_ug)} UGs")
-      return(TRUE)
-    }
-
-    # Fallback: save as RDS
-    rds_path <- file.path(project_path, "data", "indicators_ug.rds")
-    saveRDS(indicators_ug, rds_path)
-    TRUE
-
-  }, error = function(e) {
-    cli::cli_warn("Failed to save UG indicators: {e$message}")
-    FALSE
-  })
-}
-
-
-#' Load UG-level aggregated indicators
-#'
-#' @param project_id Character. Project ID.
-#'
-#' @return sf object with UG-level indicators, or NULL if not found.
-#' @noRd
-load_indicators_ug <- function(project_id) {
-  project_path <- get_project_path(project_id)
-  if (is.null(project_path)) return(NULL)
-
-  parquet_path <- file.path(project_path, "data", "indicators_ug.parquet")
-  rds_path <- file.path(project_path, "data", "indicators_ug.rds")
-
-  tryCatch({
-    if (file.exists(parquet_path) && requireNamespace("arrow", quietly = TRUE)) {
-      ind_df <- arrow::read_parquet(parquet_path)
-      if ("geometry_wkt" %in% names(ind_df)) {
-        crs <- sf::st_crs(4326)
-        ind_sf <- sf::st_as_sf(ind_df, wkt = "geometry_wkt", crs = crs)
-        ind_sf$geometry_wkt <- NULL
-        return(ind_sf)
-      }
-      return(ind_df)
-    }
-
-    if (file.exists(rds_path)) {
-      return(readRDS(rds_path))
-    }
-
-    NULL
-
-  }, error = function(e) {
-    cli::cli_warn("Failed to load UG indicators: {e$message}")
-    NULL
-  })
-}
+# NB: save_indicators_ug() / load_indicators_ug() were removed along
+# with the obsolete "Recalculer les indicateurs" button. Indicators
+# are now computed directly on the UGF geometries in one pass and
+# stored in indicators.parquet — there is no separate UGF-level file
+# to persist or reload.

@@ -181,14 +181,6 @@ mod_ug_map_actions_bar <- function(id) {
       ),
 
       shiny::actionButton(
-        ns("btn_recompute"),
-        label = i18n$t("ug_recompute"),
-        icon = shiny::icon("calculator"),
-        class = "btn-primary",
-        width = "100%"
-      ),
-
-      shiny::actionButton(
         ns("btn_import_split"),
         label = i18n$t("ug_import_split"),
         icon = shiny::icon("file-import"),
@@ -336,7 +328,6 @@ mod_ug_server <- function(id, app_state) {
     # ================================================================
     rv <- shiny::reactiveValues(
       projet_ug = NULL,          # projet list with $tenements, $ugs, $parcels
-      needs_recompute = FALSE,   # flag: UGs changed, indicators need refresh
       selected_tenement_ids = character(0),  # tenements selected on the map
       map_needs_zoom = FALSE,    # flag: zoom to bounds on next map update
       pending_bbox = NULL,       # stored bbox for deferred zoom
@@ -1076,7 +1067,6 @@ mod_ug_server <- function(id, app_state) {
         }
         rv$projet_ug <- projet
         rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
-        rv$needs_recompute <- TRUE
         rv$drawn_geojson <- NULL
         clear_tenement_selection()
         app_state$current_project$tenements <- projet$tenements
@@ -1116,7 +1106,6 @@ mod_ug_server <- function(id, app_state) {
         }
         rv$projet_ug <- projet
         rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
-        rv$needs_recompute <- TRUE
         rv$drawn_geojson <- NULL
         clear_tenement_selection()
         app_state$current_project$tenements <- projet$tenements
@@ -1255,7 +1244,6 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
-        rv$needs_recompute <- TRUE
         rv$selected_tenement_ids <- character(0)
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
@@ -1350,7 +1338,6 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
-        rv$needs_recompute <- TRUE
         clear_tenement_selection()
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
@@ -1596,7 +1583,6 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
-        rv$needs_recompute <- TRUE
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
@@ -1637,7 +1623,6 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
-        rv$needs_recompute <- TRUE
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
@@ -1740,51 +1725,6 @@ mod_ug_server <- function(id, app_state) {
         sprintf("Groupe mis \u00e0 jour pour %d UG", length(sel)),
         type = "message"
       )
-    })
-
-    # ================================================================
-    # ACTION: Recompute indicators for UGs
-    # ================================================================
-    shiny::observeEvent(input$btn_recompute, {
-      projet <- rv$projet_ug
-      project <- app_state$current_project
-
-      if (is.null(projet) || is.null(project$indicators)) {
-        shiny::showNotification(i18n()$t("ug_no_indicators"), type = "warning")
-        return()
-      }
-
-      tryCatch({
-        shiny::showNotification(
-          i18n()$t("ug_recomputing"),
-          type = "message",
-          id = "ug_recompute_notif"
-        )
-
-        indicators_ug <- aggregate_indicators_to_ug(project$indicators, projet)
-
-        if (!is.null(indicators_ug)) {
-          if (!is.null(project$metadata$id)) {
-            save_indicators_ug(project$metadata$id, indicators_ug)
-          }
-
-          app_state$current_project$indicators_ug <- indicators_ug
-          rv$needs_recompute <- FALSE
-
-          shiny::showNotification(
-            sprintf(i18n()$t("ug_recompute_done"), nrow(indicators_ug)),
-            type = "message",
-            id = "ug_recompute_notif"
-          )
-        } else {
-          shiny::showNotification(
-            i18n()$t("ug_recompute_failed"),
-            type = "error"
-          )
-        }
-      }, error = function(e) {
-        shiny::showNotification(paste("Erreur :", e$message), type = "error")
-      })
     })
 
     # ================================================================
@@ -1963,7 +1903,6 @@ mod_ug_server <- function(id, app_state) {
           # because `x$a$b <- y` reads x$a under the hood.
           rv$projet_ug <- projet
           rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
-          rv$needs_recompute <- TRUE
 
           # clear selection — its leafletProxy() call needs a reactive
           # domain, so we pass session explicitly.
@@ -2061,7 +2000,6 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
-        rv$needs_recompute <- TRUE
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
