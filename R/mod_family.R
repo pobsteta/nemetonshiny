@@ -718,9 +718,21 @@ make_indicator_leaflet <- function(sf_data, ind_col, title) {
 #' @noRd
 get_indicator_cols <- function(data) {
   all_cols <- names(data)
-  exclude <- c("nemeton_id", "id", "geo_parcelle", "geometry", "geom",
-                "nomcommune", "codecommune", "area", "surface_geo")
-  setdiff(all_cols, exclude)
+  exclude <- c(
+    # Legacy parcel-level metadata
+    "nemeton_id", "id", "geo_parcelle", "geometry", "geom",
+    "nomcommune", "codecommune", "area", "surface_geo",
+    # UGF metadata columns injected by ug_build_sf() / load_project()
+    "ug_id", "label", "groupe", "cadastral_refs",
+    "surface_m2", "surface_sig_m2", "n_tenements",
+    # Computation helpers aliased by start_computation()
+    "contenance", "code_insee", "section", "numero"
+  )
+  cols <- setdiff(all_cols, exclude)
+  # Extra safety: keep only numeric columns (metadata that slipped
+  # through would otherwise break mean/range/sd downstream).
+  is_num <- vapply(cols, function(c) is.numeric(data[[c]]), logical(1))
+  cols[is_num]
 }
 
 
