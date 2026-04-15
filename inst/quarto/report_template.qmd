@@ -172,7 +172,8 @@ cat("\\colorbox[HTML]{", ndp_col, "}{\\textcolor{white}{\\small\\textbf{ NDP ",
 cat("{\\small ", escape_latex(tr("ndp_confidence_label")),
     " : ", confidence_pct, "\\%}\n\n", sep = "")
 cat("\\vspace{0.3cm}\n")
-cat("{\\large ", report_data$n_parcels, " ",
+cat("{\\large ", report_data$n_ugs, " UGF / ",
+    report_data$n_parcels, " ",
     escape_latex(tr("parcels")), "}\n\n", sep = "")
 cat("\\vspace{0.8cm}\n")
 cat("{\\small\\textcolor{gray}{", escape_latex(tr("generated_by")),
@@ -191,6 +192,7 @@ cat("\\newpage\n")
 
 `r if (!is.null(report_data$project_owner) && nchar(report_data$project_owner) > 0) paste0("**", tr("owner"), ":** ", report_data$project_owner)`
 
+- **UGF :** `r report_data$n_ugs`
 - **`r tr("parcels")`:** `r report_data$n_parcels`
 - **`r tr("created_at")`:** `r report_data$created_at`
 
@@ -364,19 +366,19 @@ for (code in family_order) {
     }
   }
 
-  # Per-parcel scores table
+  # Per-UGF scores table
   if (!is.null(report_data$parcel_scores[[code]])) {
     ps <- report_data$parcel_scores[[code]]
     if (nrow(ps) > 0) {
-      cat("### ", if (params$language == "fr") "Scores par parcelle" else "Scores per parcel", "\n\n", sep = "")
+      cat("### ", if (params$language == "fr") "Scores par UGF" else "Scores per UGF", "\n\n", sep = "")
 
       cat("\\begin{center}\n")
       cat("\\begin{tabular}{lcc}\n")
       cat("\\toprule\n")
       if (params$language == "fr") {
-        cat("\\textbf{Parcelle} & \\textbf{Score} & \\textbf{Qualit\\'{e}} \\\\\n")
+        cat("\\textbf{UGF} & \\textbf{Score} & \\textbf{Qualit\\'{e}} \\\\\n")
       } else {
-        cat("\\textbf{Parcel} & \\textbf{Score} & \\textbf{Quality} \\\\\n")
+        cat("\\textbf{UGF} & \\textbf{Score} & \\textbf{Quality} \\\\\n")
       }
       cat("\\midrule\n")
 
@@ -399,9 +401,9 @@ for (code in family_order) {
       if (nrow(ps) > 20) {
         remaining <- nrow(ps) - 20
         msg <- if (params$language == "fr") {
-          sprintf("\\textit{... %d parcelles suppl\\'{e}mentaires}", remaining)
+          sprintf("\\textit{... %d UGF suppl\\'{e}mentaires}", remaining)
         } else {
-          sprintf("\\textit{... %d additional parcels}", remaining)
+          sprintf("\\textit{... %d additional UGFs}", remaining)
         }
         cat("\\begin{center}\n", msg, "\n\\end{center}\n\n", sep = "")
       }

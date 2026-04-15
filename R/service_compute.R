@@ -330,6 +330,30 @@ start_computation <- function(project_id,
       stop("No parcels found in project")
     }
 
+    # ------------------------------------------------------------------
+    # UGF mode: indicators are computed on UGF geometries (one row per
+    # Unité de Gestion Forestière), not on cadastral parcels. We load
+    # the UGF data, build the dissolved UGF sf, and pass that as the
+    # compute unit. Parcels stay loaded for reference (they're still
+    # used by download_layers_for_parcels to fetch the right map tiles).
+    # ------------------------------------------------------------------
+    projet_for_ug <- tryCatch(
+      load_project(project_id),
+      error = function(e) NULL
+    )
+    if (is.null(projet_for_ug) || !has_ug_data(projet_for_ug)) {
+      # First-time compute on a freshly loaded v1 project: make sure
+      # UGF data exists (1 UGF = 1 parcel by default).
+      projet_for_ug <- ensure_project_migrated(project_id, projet_for_ug)
+    }
+    compute_unit <- ug_build_sf(projet_for_ug)
+    if (is.null(compute_unit) || nrow(compute_unit) == 0) {
+      stop("Could not build UGF sf for computation")
+    }
+    cli::cli_alert_info(
+      "Calcul des indicateurs sur {nrow(compute_unit)} UGF (dont {nrow(parcels)} parcelle{?s} cadastrale{?s})"
+    )
+
     # Update project status (with path for async mode)
     update_project_status(project_id, "computing")
 
@@ -379,7 +403,7 @@ start_computation <- function(project_id,
     report_progress(state)
 
     results <- compute_all_indicators(
-      parcels = parcels,
+      parcels = compute_unit,
       layers = layers,
       indicators = if (length(indicators) == 1 && indicators == "all") {
         list_available_indicators()

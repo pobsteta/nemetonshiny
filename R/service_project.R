@@ -386,8 +386,12 @@ save_indicators <- function(project_id, indicators) {
       cli::cli_abort("Package 'arrow' is required")
     }
 
-    # Convert to data.frame if needed
-    if (is.list(indicators) && !is.data.frame(indicators)) {
+    # Convert to data.frame (drop geometry if sf — UGF geometry is
+    # rebuilt from tenements.gpkg + ugs.json at load time via
+    # ug_build_sf(), keeping indicators.parquet geometry-free).
+    if (inherits(indicators, "sf")) {
+      indicators_df <- sf::st_drop_geometry(indicators)
+    } else if (is.list(indicators) && !is.data.frame(indicators)) {
       indicators_df <- as.data.frame(indicators)
     } else {
       indicators_df <- indicators
@@ -490,13 +494,27 @@ load_project <- function(project_id) {
   # Auto-migrate to v2 (UG support) if needed
   tryCatch({
     project <- ensure_project_migrated(project_id, project)
-    # Also load UG-level indicators if available
-    indicators_ug <- load_indicators_ug(project_id)
-    if (!is.null(indicators_ug)) {
-      project$indicators_ug <- indicators_ug
+    # Build indicators_sf: one row per UGF with geometry + indicator
+    # columns joined via ug_id. Used by family/synthesis/export so
+    # they can map, score and aggregate at the UGF level without
+    # rejoining parcels. Requires both UGF data and indicator data.
+    if (!is.null(project$indicators) && has_ug_data(project) &&
+        "ug_id" %in% names(project$indicators)) {
+      ug_sf <- ug_build_sf(project)
+      if (!is.null(ug_sf) && nrow(ug_sf) > 0) {
+        # Drop duplicate metadata columns from indicators before merge
+        dup_cols <- intersect(
+          c("label", "groupe", "surface_m2", "surface_sig_m2",
+            "n_tenements", "cadastral_refs"),
+          names(project$indicators)
+        )
+        ind <- project$indicators[, setdiff(names(project$indicators), dup_cols),
+                                  drop = FALSE]
+        project$indicators_sf <- merge(ug_sf, ind, by = "ug_id", all.x = TRUE)
+      }
     }
   }, error = function(e) {
-    cli::cli_warn("UG migration on load failed (non-blocking): {e$message}")
+    cli::cli_warn("UG load / indicators_sf build failed (non-blocking): {e$message}")
   })
 
   # Sync vers PostGIS si configure et si le projet a des indicateurs

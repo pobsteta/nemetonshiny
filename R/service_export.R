@@ -278,11 +278,11 @@ prepare_report_data <- function(project, family_scores, language,
 
   # Metadata
   meta <- project$metadata
-  n_parcels <- nrow(family_scores)
-
-  # UG data (if available)
+  # family_scores is now a UGF-level sf (one row per Unité de Gestion
+  # Forestière); parcel count is the number of cadastral parcels.
   has_ugs <- has_ug_data(project)
-  n_ugs <- if (has_ugs) nrow(project$ugs) else 0L
+  n_ugs <- nrow(family_scores)
+  n_parcels <- if (!is.null(project$parcels)) nrow(project$parcels) else n_ugs
 
   # Ensure family_comments is a named list with all family codes
   if (is.null(family_comments)) {
@@ -297,20 +297,27 @@ prepare_report_data <- function(project, family_scores, language,
     INDICATOR_FAMILIES[[code]]$color
   }, character(1))
 
-  # Build per-parcel score data for detailed tables
+  # Build per-UGF score data for detailed tables. Prefer the UGF label
+  # (assigned by the user — e.g. "TSF-Sud", "Parc 22a") over a
+  # truncated ID. Kept under the `parcel_scores` list name for
+  # backwards-compat with the existing Quarto template.
   parcel_scores <- list()
+  row_labels <- if ("label" %in% names(scores_df)) {
+    as.character(scores_df[["label"]])
+  } else if ("ug_id" %in% names(scores_df)) {
+    ug_ids <- as.character(scores_df[["ug_id"]])
+    substr(ug_ids, pmax(1, nchar(ug_ids) - 5), nchar(ug_ids))
+  } else if ("id" %in% names(scores_df)) {
+    pids <- as.character(scores_df[["id"]])
+    substr(pids, pmax(1, nchar(pids) - 5), nchar(pids))
+  } else {
+    as.character(seq_len(nrow(scores_df)))
+  }
   for (code in names(INDICATOR_FAMILIES)) {
     fam_col <- get_famille_col(code)
     if (fam_col %in% names(scores_df)) {
-      parcel_ids <- if ("id" %in% names(scores_df)) {
-        as.character(scores_df[["id"]])
-      } else {
-        as.character(seq_len(nrow(scores_df)))
-      }
-      # Use last 6 chars of ID for display
-      short_ids <- substr(parcel_ids, pmax(1, nchar(parcel_ids) - 5), nchar(parcel_ids))
       parcel_scores[[code]] <- data.frame(
-        id = short_ids,
+        id = row_labels,
         score = round(scores_df[[fam_col]], 1),
         stringsAsFactors = FALSE
       )

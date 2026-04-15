@@ -25,7 +25,7 @@ mod_family_server <- function(id, family_code, app_state) {
 
       df <- project$indicators
 
-      # Drop geometry if sf (indicators from parquet may have geoarrow geometry)
+      # Drop geometry if sf
       if (inherits(df, "sf")) {
         df <- tryCatch(sf::st_drop_geometry(df),
                        error = function(e) {
@@ -38,11 +38,10 @@ mod_family_server <- function(id, family_code, app_state) {
 
       all_cols <- names(df)
 
-      # Try both short codes (C1, C2) and long-form column names (indicateur_c1_biomasse)
+      # Try both short codes (C1, C2) and long-form column names
       candidates <- c(family_config$indicators, family_config$column_names)
       matched <- character(0)
       for (col in candidates) {
-        # Prefer normalized version
         norm_col <- paste0(col, "_norm")
         if (norm_col %in% all_cols) {
           matched <- c(matched, norm_col)
@@ -51,45 +50,59 @@ mod_family_server <- function(id, family_code, app_state) {
         }
       }
 
-      # Deduplicate (in case short and long both matched)
       matched <- unique(matched)
       if (length(matched) == 0) return(NULL)
 
-      # Keep id column for joining + matched indicator columns
-      id_col <- intersect(c("nemeton_id", "id", "geo_parcelle"), all_cols)
-      keep_cols <- c(id_col, matched)
-      df[, keep_cols, drop = FALSE]
+      # Keep the UGF identifier + display metadata + matched indicators.
+      # UGF pipeline: rows are keyed by ug_id with label/groupe/refs.
+      meta_cols <- intersect(
+        c("ug_id", "label", "groupe", "cadastral_refs",
+          "surface_m2", "surface_sig_m2", "n_tenements",
+          # legacy parcel-level keys for backwards-compat
+          "nemeton_id", "id", "geo_parcelle"),
+        all_cols
+      )
+      df[, c(meta_cols, matched), drop = FALSE]
     })
 
     # ================================================================
-    # REACTIVE: Join indicators with parcel geometries for maps
+    # REACTIVE: UGF sf (geometry + selected indicator columns)
     # ================================================================
     indicators_sf <- shiny::reactive({
       ind_data <- indicators_data()
       if (is.null(ind_data)) return(NULL)
 
       project <- app_state$current_project
+
+      # UGF pipeline: project$indicators_sf is pre-built in load_project()
+      # with one row per UGF and geometry from ug_build_sf(). We subset
+      # it to the indicator columns the current family cares about.
+      if (!is.null(project$indicators_sf) && inherits(project$indicators_sf, "sf")) {
+        sf_all <- project$indicators_sf
+        matched <- setdiff(names(ind_data),
+                           c("ug_id", "label", "groupe", "cadastral_refs",
+                             "surface_m2", "surface_sig_m2", "n_tenements",
+                             "nemeton_id", "id", "geo_parcelle"))
+        keep <- intersect(c("ug_id", "label", "groupe", "cadastral_refs",
+                            matched, attr(sf_all, "sf_column") %||% "geometry"),
+                          names(sf_all))
+        return(sf_all[, keep, drop = FALSE])
+      }
+
+      # Legacy fallback (projects that still have parcel-keyed indicators)
       if (is.null(project$parcels)) return(NULL)
-
       parcels <- project$parcels
-
-      # Determine join column
-      ind_cols <- names(ind_data)
-      parcel_cols <- names(parcels)
       join_col <- NULL
       for (candidate in c("nemeton_id", "id", "geo_parcelle")) {
-        if (candidate %in% ind_cols && candidate %in% parcel_cols) {
+        if (candidate %in% names(ind_data) && candidate %in% names(parcels)) {
           join_col <- candidate
           break
         }
       }
-
       if (is.null(join_col)) return(NULL)
-
-      # Merge: keep geometry from parcels, add indicator values
-      merged <- merge(parcels[, join_col, drop = FALSE], ind_data, by = join_col, all.x = FALSE)
+      merged <- merge(parcels[, join_col, drop = FALSE], ind_data,
+                      by = join_col, all.x = FALSE)
       if (nrow(merged) == 0) return(NULL)
-
       merged
     })
 
