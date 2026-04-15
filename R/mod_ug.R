@@ -465,7 +465,12 @@ mod_ug_server <- function(id, app_state) {
           layerId = "basemap_tiles"
         ) |>
         leaflet::addLayersControl(
-          overlayGroups = c("UGF", "Tenements", "Selection", "Dessin"),
+          # "Selection" is an internal-only visual overlay: we still draw
+          # the orange highlight via addPolygons(group = "Selection") and
+          # wipe it with clearGroup("Selection"), but it doesn't belong
+          # in the user-facing layers control (toggling it off wouldn't
+          # actually deselect tenements — the IDs live in rv$selected_tenement_ids).
+          overlayGroups = c("UGF", "Tenements", "Dessin"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
@@ -715,12 +720,11 @@ mod_ug_server <- function(id, app_state) {
       proxy |>
         leaflet::clearControls() |>
         leaflet::addLayersControl(
-          overlayGroups = c("UGF", "Tenements", "Selection", "Dessin"),
+          overlayGroups = c("UGF", "Tenements", "Dessin"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::showGroup("UGF") |>
         leaflet::showGroup("Tenements") |>
-        leaflet::showGroup("Selection") |>
         leaflet::showGroup("Dessin")
 
       if (length(used_codes) > 0) {
