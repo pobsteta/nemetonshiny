@@ -1004,6 +1004,7 @@ TRANSLATIONS <- list(
   ug_split_empty_file = list(fr = "Le fichier import\u00e9 ne contient aucun polygone.", en = "The imported file contains no polygons."),
   ug_split_success = list(fr = "Parcelle %s d\u00e9coup\u00e9e en %d tenements", en = "Parcel %s subdivided into %d tenements"),
   ug_split_error = list(fr = "Erreur lors du d\u00e9coupage :", en = "Subdivision error:"),
+  ug_import_running = list(fr = "Import du d\u00e9coupage en cours", en = "Import in progress"),
   ug_no_split_to_undo = list(fr = "Aucune parcelle n'a \u00e9t\u00e9 d\u00e9coup\u00e9e.", en = "No parcel has been subdivided."),
   ug_undo_split_hint = list(fr = "Cette action restaure un tenement unique pour la parcelle s\u00e9lectionn\u00e9e.", en = "This action restores a single tenement for the selected parcel."),
   ug_undo_split_success = list(fr = "D\u00e9coupage annul\u00e9 pour la parcelle %s", en = "Subdivision undone for parcel %s"),

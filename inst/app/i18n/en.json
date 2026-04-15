@@ -351,6 +351,7 @@
   "ug_split_empty_file": "The imported file contains no polygons.",
   "ug_split_success": "Parcel %s subdivided into %d tenements",
   "ug_split_error": "Subdivision error:",
+  "ug_import_running": "Import in progress",
   "ug_no_split_to_undo": "No parcel has been subdivided.",
   "ug_undo_split_hint": "This action restores a single tenement for the selected parcel.",
   "ug_undo_split_success": "Subdivision undone for parcel %s",

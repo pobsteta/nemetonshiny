@@ -351,6 +351,7 @@
   "ug_split_empty_file": "Le fichier importé ne contient aucun polygone.",
   "ug_split_success": "Parcelle %s découpée en %d tènements",
   "ug_split_error": "Erreur lors du découpage :",
+  "ug_import_running": "Import du découpage en cours",
   "ug_no_split_to_undo": "Aucune parcelle n'a été découpée.",
   "ug_undo_split_hint": "Cette action restaure un tènement unique pour la parcelle sélectionnée.",
   "ug_undo_split_success": "Découpage annulé pour la parcelle %s",

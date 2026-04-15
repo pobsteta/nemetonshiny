@@ -1875,44 +1875,69 @@ mod_ug_server <- function(id, app_state) {
 
       shiny::removeModal()
 
-      tryCatch({
-        # Read the imported file
-        sf_polygones <- sf::st_read(file_info$datapath, quiet = TRUE)
+      # Persistent spinner notification while the import runs. The
+      # spatial joins + area recomputation can take a few seconds on
+      # large projects, so give the user immediate visual feedback.
+      notif_id <- "ug_import_loading"
+      shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("cog", class = "fa-spin me-2"),
+          sprintf("%s...", i18n()$t("ug_import_running"))
+        ),
+        type = "message",
+        duration = NULL,
+        closeButton = FALSE,
+        id = notif_id,
+        session = session
+      )
 
-        if (nrow(sf_polygones) == 0) {
-          shiny::showNotification(i18n()$t("ug_split_empty_file"), type = "error")
-          return()
-        }
+      # Schedule the actual work via later::later so the spinner gets
+      # painted before we block on the heavy computation. Without this
+      # step, Shiny batches UI updates at the end of the reactive
+      # context and the user would never see the spinner.
+      later::later(function() {
+        tryCatch({
+          # Read the imported file
+          sf_polygones <- sf::st_read(file_info$datapath, quiet = TRUE)
 
-        # Apply as a full layout replacement. The imported file is the
-        # NEW tenement configuration — not a cutter. Handles:
-        #  - QGIS "Séparer les parties" (multipart → singleparts)
-        #  - QGIS "Séparer l'entité"   (new rows appear in the file)
-        #  - reshape / merge / delete in any GIS tool
-        projet <- rv$projet_ug
-        projet <- tenement_import_replace(projet, sf_polygones)
+          if (nrow(sf_polygones) == 0) {
+            shiny::removeNotification(notif_id, session = session)
+            shiny::showNotification(i18n()$t("ug_split_empty_file"), type = "error")
+            return()
+          }
 
-        if (!is.null(projet$metadata$id)) {
-          save_ug_data(projet$metadata$id, projet)
-        }
-        rv$projet_ug <- projet
-        rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
-        rv$needs_recompute <- TRUE
-        clear_tenement_selection()
-        app_state$current_project$tenements <- projet$tenements
-        app_state$current_project$ugs <- projet$ugs
+          # Apply as a full layout replacement. The imported file is the
+          # NEW tenement configuration — not a cutter. Handles:
+          #  - QGIS "Séparer les parties" (multipart → singleparts)
+          #  - QGIS "Séparer l'entité"   (new rows appear in the file)
+          #  - reshape / merge / delete in any GIS tool
+          projet <- rv$projet_ug
+          projet <- tenement_import_replace(projet, sf_polygones)
 
-        shiny::showNotification(
-          i18n()$t("ug_poly_split_success"),
-          type = "message"
-        )
-      }, error = function(e) {
-        shiny::showNotification(
-          paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
-          type = "error",
-          duration = 10
-        )
-      })
+          if (!is.null(projet$metadata$id)) {
+            save_ug_data(projet$metadata$id, projet)
+          }
+          rv$projet_ug <- projet
+          rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+          rv$needs_recompute <- TRUE
+          clear_tenement_selection()
+          app_state$current_project$tenements <- projet$tenements
+          app_state$current_project$ugs <- projet$ugs
+
+          shiny::removeNotification(notif_id, session = session)
+          shiny::showNotification(
+            i18n()$t("ug_poly_split_success"),
+            type = "message"
+          )
+        }, error = function(e) {
+          shiny::removeNotification(notif_id, session = session)
+          shiny::showNotification(
+            paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
+            type = "error",
+            duration = 10
+          )
+        })
+      }, delay = 0.05)
     })
 
     # ================================================================
