@@ -825,11 +825,11 @@ mod_home_server <- function(id, app_state) {
               project$metadata$name %||% project$id
             ),
             htmltools::tags$li(
-              htmltools::strong("UGF : "),
+              htmltools::strong("Unit\u00e9 de Gestion Foresti\u00e8re : "),
               n_ugs
             ),
             htmltools::tags$li(
-              htmltools::strong(i18n$t("parcels_count"), ": "),
+              htmltools::strong("Parcelles cadastrales : "),
               n_parcels
             )
           ),
