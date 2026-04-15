@@ -40,38 +40,15 @@ mod_synthesis_server <- function(id, app_state) {
     # REACTIVE: Build sf with family scores (one row per UGF)
     # ================================================================
     family_scores <- shiny::reactive({
-      indicators <- project_indicators()
-      if (is.null(indicators)) return(NULL)
-
       project <- app_state$current_project
+      if (is.null(project)) return(NULL)
 
-      # UGF pipeline: project$indicators_sf is already an sf with one
-      # row per UGF (geometry + indicator columns + label/groupe/refs).
-      # Use it directly for family index computation.
-      base_sf <- NULL
-      if (!is.null(project$indicators_sf) &&
-          inherits(project$indicators_sf, "sf")) {
-        base_sf <- project$indicators_sf
-      } else if (!is.null(project$parcels)) {
-        # Legacy fallback: parcel-level indicators
-        parcels <- project$parcels
-        join_col <- NULL
-        for (candidate in c("nemeton_id", "id", "geo_parcelle")) {
-          if (candidate %in% names(indicators) && candidate %in% names(parcels)) {
-            join_col <- candidate
-            break
-          }
-        }
-        if (is.null(join_col)) return(NULL)
-        all_indicator_cols <- get_all_column_names()
-        norm_cols <- paste0(all_indicator_cols, "_norm")
-        keep_cols <- intersect(names(indicators),
-                               c(join_col, all_indicator_cols, norm_cols))
-        indicators_subset <- indicators[, keep_cols, drop = FALSE]
-        base_sf <- merge(parcels, indicators_subset, by = join_col, all.x = FALSE)
+      # project$indicators_sf is always built by load_project(): one
+      # row per UGF with geometry + indicator columns + label/groupe.
+      base_sf <- project$indicators_sf
+      if (is.null(base_sf) || !inherits(base_sf, "sf") || nrow(base_sf) == 0) {
+        return(NULL)
       }
-
-      if (is.null(base_sf) || nrow(base_sf) == 0) return(NULL)
 
       tryCatch(
         create_family_index(base_sf, method = "mean", na.rm = TRUE),
@@ -496,8 +473,8 @@ mod_synthesis_server <- function(id, app_state) {
             matched <- unique(matched)
             if (length(matched) == 0) next
 
-            id_col <- intersect(c("nemeton_id", "id", "geo_parcelle"), all_cols)
-            fam_ind_data <- all_indicators[, c(id_col, matched), drop = FALSE]
+            meta_cols <- intersect(c("ug_id", "label", "groupe"), all_cols)
+            fam_ind_data <- all_indicators[, c(meta_cols, matched), drop = FALSE]
 
             # Generate LLM comment
             fam_prompt <- build_analysis_prompt(fam_config, fam_ind_data, language)
