@@ -2306,7 +2306,8 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     # Extract specific layers from nemeton_layers structure
     # Rasters are in layers$rasters, vectors in layers$vectors
     if ("dem" %in% func_args) {
-      dem <- get_dem_raster(layers)
+      dem <- resolve_raster_layer(layers, "dem")
+      if (is.null(dem)) dem <- resolve_raster_layer(layers, "elevation")
       if (!is.null(dem)) args$dem <- dem
     }
     if ("ndvi" %in% func_args) {
