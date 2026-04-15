@@ -530,7 +530,25 @@ ug_geometry <- function(projet, ug_id) {
     g <- tryCatch(sf::st_make_valid(geoms), error = function(e) geoms)
     sf::st_union(g)
   })
-  tryCatch(sf::st_make_valid(out), error = function(e) out)
+  out <- tryCatch(sf::st_make_valid(out), error = function(e) out)
+
+  # Normalise the result to (MULTI)POLYGON. st_union() may return a
+  # GEOMETRYCOLLECTION if st_make_valid introduced sliver lines or
+  # points — those would break every indicateur_* function that
+  # expects an area. We extract the polygon components and cast to
+  # MULTIPOLYGON for consistency.
+  out_type <- as.character(sf::st_geometry_type(out)[[1]])
+  if (identical(out_type, "GEOMETRYCOLLECTION")) {
+    out <- tryCatch(
+      sf::st_collection_extract(out, "POLYGON"),
+      error = function(e) out
+    )
+  }
+  if (!inherits(out, "sfc_MULTIPOLYGON")) {
+    out <- tryCatch(sf::st_cast(out, "MULTIPOLYGON"),
+                    error = function(e) out)
+  }
+  out
 }
 
 
