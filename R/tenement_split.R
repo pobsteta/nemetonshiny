@@ -963,8 +963,11 @@ tenement_import_replace <- function(projet, imported_sf) {
   parcels    <- projet$parcels
   tenements  <- projet$tenements
   ugs        <- projet$ugs
+  # Match the regex in translate_split_error(): "Project must have UG data"
+  # so the abort message is rendered in the user's language if it ever
+  # reaches the UI (the import button itself blocks this case up-front).
   if (is.null(parcels) || is.null(tenements) || is.null(ugs)) {
-    cli::cli_abort("Project must have parcels / tenements / ugs to import a layout.")
+    cli::cli_abort("Project must have UG data to import a layout.")
   }
 
   prev_s2 <- sf::sf_use_s2()
