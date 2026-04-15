@@ -983,6 +983,9 @@ tenement_import_replace <- function(projet, imported_sf) {
     imported_sf <- sf::st_transform(imported_sf, sf::st_crs(tenements))
   }
 
+  n_raw <- nrow(imported_sf)
+  cli::cli_alert_info("Import: {n_raw} feature{?s} brut{?e/s} dans le fichier")
+
   # Normalise to singleparts: QGIS "Séparer les parties" splits parts
   # inside a single row — casting to single polygons turns those into
   # proper separate features.

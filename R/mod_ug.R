@@ -592,6 +592,14 @@ mod_ug_server <- function(id, app_state) {
         tenements <- sf::st_transform(tenements, 4326)
       }
 
+      # Sort tenements by descending SIG surface so larger polygons
+      # are drawn FIRST and smaller ones (typically nested inclusions
+      # the user added after the initial split — e.g. a clearing
+      # carved out of a large tenement) land ON TOP and stay visible.
+      if ("surface_sig_m2" %in% names(tenements) && nrow(tenements) > 1) {
+        tenements <- tenements[order(-tenements$surface_sig_m2), , drop = FALSE]
+      }
+
       # Compute fill colors per tenement (based on UG groupe or index).
       # Uses the project's classification profile (ONF / CRPF / OFB / ...)
       # to resolve groupe -> color from the YAML config.
