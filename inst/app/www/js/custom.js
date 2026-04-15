@@ -189,31 +189,34 @@
     var map = widget.getMap();
     if (!map) return;
 
-    // 1. Clear leaflet.draw's internal edit FeatureGroup (where
-    //    drawn shapes are stored to make them editable/removable).
+    // 1. leaflet.extras adds drawn shapes DIRECTLY to the FeatureGroup
+    //    (featureGroup.addLayer), bypassing R-leaflet layerManager.
+    //    So layerManager.clearGroup() doesn't find them in its
+    //    stamp-keyed _byGroup registry. We have to call clearLayers()
+    //    on the FeatureGroup itself.
+    if (widget.layerManager &&
+        typeof widget.layerManager.getLayerGroup === 'function') {
+      ['Dessin', 'draw'].forEach(function(name) {
+        try {
+          var fg = widget.layerManager.getLayerGroup(name, false);
+          if (fg && typeof fg.clearLayers === 'function') {
+            fg.clearLayers();
+          }
+        } catch (e) {}
+      });
+    }
+
+    // 2. Extra safety: leaflet.draw may stash the edit featureGroup
+    //    at map.drawControl.options.edit.featureGroup.
     if (map.drawControl && map.drawControl.options &&
         map.drawControl.options.edit && map.drawControl.options.edit.featureGroup) {
       try { map.drawControl.options.edit.featureGroup.clearLayers(); } catch (e) {}
     }
 
-    // 2. leaflet.extras stores its drawn group under HTMLWidgets bindings.
-    //    The R module uses targetGroup = "Dessin"; keep the legacy "draw"
-    //    fallback in case older sessions still reference it.
-    if (widget.layerManager) {
-      try { widget.layerManager.clearGroup('Dessin'); } catch (e) {}
-      try { widget.layerManager.clearGroup('draw'); } catch (e) {}
-    }
-
-    // 3. Walk every L.FeatureGroup on the map and clear the ones that
-    //    are NOT registered as a named group in R-leaflet's layerManager.
-    //    Managed overlays (Tenements / UGF / Selection) carry a group
-    //    option; the leaflet.draw edit featureGroup does not. This
-    //    catches the case where leaflet.extras stashes the drawn shape
-    //    in an unnamed FeatureGroup not exposed via map.drawControl.
-    var knownGroups = {};
-    if (widget.layerManager && widget.layerManager._byGroup) {
-      knownGroups = widget.layerManager._byGroup;
-    }
+    // 3. Last-resort walk: clear any L.FeatureGroup on the map whose
+    //    group option is NOT registered in R-leaflet's layerManager
+    //    (managed overlays always have a registered group name).
+    var knownGroups = (widget.layerManager && widget.layerManager._byGroup) || {};
     map.eachLayer(function(layer) {
       if (!(layer instanceof L.FeatureGroup)) return;
       if (layer instanceof L.GeoJSON) return;
