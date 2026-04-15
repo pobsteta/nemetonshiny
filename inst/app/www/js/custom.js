@@ -189,19 +189,33 @@
     var map = widget.getMap();
     if (!map) return;
 
-    // Clear leaflet.draw's internal FeatureGroup if exposed
+    // 1. Clear leaflet.draw's internal edit FeatureGroup (where
+    //    drawn shapes are stored to make them editable/removable).
     if (map.drawControl && map.drawControl.options &&
         map.drawControl.options.edit && map.drawControl.options.edit.featureGroup) {
       try { map.drawControl.options.edit.featureGroup.clearLayers(); } catch (e) {}
     }
 
-    // leaflet.extras stores its drawn group under HTMLWidgets bindings.
-    // The R module uses targetGroup = "Dessin"; keep the legacy "draw"
-    // fallback in case older sessions still reference it.
+    // 2. leaflet.extras stores its drawn group under HTMLWidgets bindings.
+    //    The R module uses targetGroup = "Dessin"; keep the legacy "draw"
+    //    fallback in case older sessions still reference it.
     if (widget.layerManager) {
       try { widget.layerManager.clearGroup('Dessin'); } catch (e) {}
       try { widget.layerManager.clearGroup('draw'); } catch (e) {}
     }
+
+    // 3. Belt-and-braces: leaflet.extras stores the draw FeatureGroup
+    //    at several potential paths depending on the version; try each.
+    var candidates = [
+      map.drawnItems,
+      map._drawnItems,
+      map.drawFeatureGroup
+    ];
+    candidates.forEach(function(fg) {
+      if (fg && typeof fg.clearLayers === 'function') {
+        try { fg.clearLayers(); } catch (e) {}
+      }
+    });
   });
 
 

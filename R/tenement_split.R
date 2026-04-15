@@ -323,14 +323,29 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
   sf::sf_use_s2(FALSE)
   on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
 
+  # Geometric cuts must be done in a METRIC CRS, otherwise planar math
+  # on lat/lng coordinates at ~47° N produces a visible north–south
+  # skew (degrees are not equal in X and Y). We work in Lambert 93
+  # (EPSG:2154, metric, France mainland) and transform results back
+  # to the original CRS at the end.
+  orig_crs <- sf::st_crs(tenements)
+  use_projection <- !is.na(orig_crs) && isTRUE(sf::st_is_longlat(tenements))
+  if (use_projection) {
+    work_crs <- sf::st_crs(2154)
+    tenements_work <- sf::st_transform(tenements, work_crs)
+    polys_sf      <- sf::st_transform(polys_sf, work_crs)
+  } else {
+    tenements_work <- tenements
+  }
+
   # Make each imported polygon valid individually before union
   polys_sf <- sf::st_make_valid(polys_sf)
   cutter <- sf::st_make_valid(sf::st_union(sf::st_geometry(polys_sf)))
 
-  # Find tenements that intersect the cutter
+  # Find tenements that intersect the cutter (metric work CRS)
   hits <- tryCatch(
-    sf::st_intersects(sf::st_geometry(tenements), cutter, sparse = FALSE)[, 1],
-    error = function(e) rep(FALSE, nrow(tenements))
+    sf::st_intersects(sf::st_geometry(tenements_work), cutter, sparse = FALSE)[, 1],
+    error = function(e) rep(FALSE, nrow(tenements_work))
   )
   if (!any(hits)) {
     cli::cli_abort("The drawn polygon does not intersect any tenement.")
@@ -353,7 +368,7 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
   n_fully_contained <- 0L   # polygon fully covers a tenement (nothing to split)
 
   for (i in affected_idx) {
-    tn <- tenements[i, ]
+    tn <- tenements_work[i, ]
     tn_geom <- sf::st_make_valid(sf::st_geometry(tn))
     parent_id <- tn$parent_parcelle_id
     ug_id <- tn$ug_id
@@ -392,7 +407,8 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
     counter <- counter + 1L
     new_ids <- paste0("tnm_", ts, "_", counter, "_", seq_len(n))
 
-    # Keep BOTH cadastral and SIG surfaces for each sub-tenement
+    # Keep BOTH cadastral and SIG surfaces for each sub-tenement.
+    # Areas must be computed in the metric work CRS, not in lng/lat.
     geom_areas <- as.numeric(sf::st_area(geoms))
     total_geom <- sum(geom_areas)
     original_cadastral <- as.numeric(tn$surface_m2)
@@ -400,6 +416,11 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
       geom_areas * (original_cadastral / total_geom)
     } else {
       geom_areas
+    }
+
+    # Transform geometry back to the original CRS before appending
+    if (use_projection) {
+      geoms <- sf::st_transform(geoms, orig_crs)
     }
 
     new_df <- data.frame(
@@ -503,12 +524,25 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
   sf::sf_use_s2(FALSE)
   on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
 
+  # Work in a METRIC CRS so the split follows the drawn line precisely.
+  # Planar ops on lat/lng at ~47° N produce a visible skew — see the
+  # polygon-split function for the full rationale.
+  orig_crs <- sf::st_crs(tenements)
+  use_projection <- !is.na(orig_crs) && isTRUE(sf::st_is_longlat(tenements))
+  if (use_projection) {
+    work_crs <- sf::st_crs(2154)
+    tenements_work <- sf::st_transform(tenements, work_crs)
+    line_sf        <- sf::st_transform(line_sf, work_crs)
+  } else {
+    tenements_work <- tenements
+  }
+
   cutting_line <- sf::st_union(sf::st_geometry(line_sf))
 
-  # Find tenements that intersect the line
+  # Find tenements that intersect the line (metric work CRS)
   hits <- tryCatch(
-    sf::st_intersects(sf::st_geometry(tenements), cutting_line, sparse = FALSE)[, 1],
-    error = function(e) rep(FALSE, nrow(tenements))
+    sf::st_intersects(sf::st_geometry(tenements_work), cutting_line, sparse = FALSE)[, 1],
+    error = function(e) rep(FALSE, nrow(tenements_work))
   )
   if (!any(hits)) {
     cli::cli_abort("The drawn line does not cross any tenement.")
@@ -543,7 +577,7 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
   counter <- 0L
 
   for (i in affected_idx) {
-    tn <- tenements[i, ]
+    tn <- tenements_work[i, ]
     tn_geom <- sf::st_make_valid(sf::st_geometry(tn))
     parent_id <- tn$parent_parcelle_id
     ug_id <- tn$ug_id
@@ -556,7 +590,8 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
     counter <- counter + 1L
     new_ids <- paste0("tnm_", ts, "_", counter, "_", seq_len(n))
 
-    # Keep BOTH cadastral and SIG surfaces for each sub-tenement
+    # Keep BOTH cadastral and SIG surfaces for each sub-tenement.
+    # Areas are computed in the metric work CRS.
     geom_areas <- as.numeric(sf::st_area(fragments))
     total_geom <- sum(geom_areas)
     original_cadastral <- as.numeric(tn$surface_m2)
@@ -564,6 +599,11 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
       geom_areas * (original_cadastral / total_geom)
     } else {
       geom_areas
+    }
+
+    # Transform fragments back to the original CRS before appending
+    if (use_projection) {
+      fragments <- sf::st_transform(fragments, orig_crs)
     }
 
     new_df <- data.frame(

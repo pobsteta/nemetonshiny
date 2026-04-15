@@ -1012,10 +1012,18 @@ mod_ug_server <- function(id, app_state) {
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
-        # Clear drawn shapes from the map (both leaflet group + JS fallback)
+        # Clear drawn shapes from the map (both leaflet group + JS fallback).
+        # We run the clear twice — once immediately, once after 300 ms —
+        # because the redraw observer and the proxy queue can re-add
+        # managed shapes before the drawn layer is fully gone.
         leaflet::leafletProxy(ns("ug_map")) |>
           leaflet::clearGroup("Dessin")
         session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
+        later::later(function() {
+          leaflet::leafletProxy(ns("ug_map")) |>
+            leaflet::clearGroup("Dessin")
+          session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
+        }, delay = 0.3)
 
         shiny::showNotification(
           i18n()$t("ug_poly_split_success"),
@@ -1052,10 +1060,18 @@ mod_ug_server <- function(id, app_state) {
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
-        # Clear drawn shapes from the map (both leaflet group + JS fallback)
+        # Clear drawn shapes from the map (both leaflet group + JS fallback).
+        # We run the clear twice — once immediately, once after 300 ms —
+        # because the redraw observer and the proxy queue can re-add
+        # managed shapes before the drawn layer is fully gone.
         leaflet::leafletProxy(ns("ug_map")) |>
           leaflet::clearGroup("Dessin")
         session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
+        later::later(function() {
+          leaflet::leafletProxy(ns("ug_map")) |>
+            leaflet::clearGroup("Dessin")
+          session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
+        }, delay = 0.3)
 
         shiny::showNotification(
           i18n()$t("ug_line_split_success"),
