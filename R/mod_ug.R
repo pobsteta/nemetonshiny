@@ -1302,6 +1302,20 @@ mod_ug_server <- function(id, app_state) {
       # Column header for the groupe column matches the profile's
       # field_label (e.g. "Groupe d'aménagement" / "Groupe" / "Zone").
       groupe_col <- get_groupes_field_label(profile_key(), lang = lang())
+
+      # Build a pale background tint from each profile color (85% white
+      # mixed with 15% of the map color). Used by DT::formatStyle below.
+      lighten <- function(hex, mix = 0.85) {
+        tryCatch({
+          rgb <- grDevices::col2rgb(hex)[, 1]
+          r <- round(rgb["red"]   * (1 - mix) + 255 * mix)
+          g <- round(rgb["green"] * (1 - mix) + 255 * mix)
+          b <- round(rgb["blue"]  * (1 - mix) + 255 * mix)
+          sprintf("#%02X%02X%02X", r, g, b)
+        }, error = function(e) "#ffffff")
+      }
+      profile_colors_full <- get_groupes_colors(profile_key())
+      groupe_bg_colors <- vapply(profile_colors_full, lighten, character(1))
       display_df <- data.frame(
         `Label UGF` = listing$label,
         `__groupe__` = ifelse(is.na(listing$groupe), "---", listing$groupe),
@@ -1340,11 +1354,11 @@ mod_ug_server <- function(id, app_state) {
           }
         )
       ) |>
-        DT::formatStyle("Groupe",
+        DT::formatStyle(
+          groupe_col,
           backgroundColor = DT::styleEqual(
-            c("TSF", "REGT", "REGF", "IRR", "HSN", "HSY", "PROT", "ACC", "AMETS", "AMER"),
-            c("#e8f5e9", "#fff3e0", "#fff3e0", "#e3f2fd", "#f3e5f5", "#fce4ec",
-              "#e0f7fa", "#fff9c4", "#e8f5e9", "#fff3e0")
+            names(groupe_bg_colors),
+            unname(groupe_bg_colors)
           )
         )
     })
