@@ -37,6 +37,8 @@
   "project_description_placeholder": "Description optionnelle...",
   "project_owner": "Propriétaire / Gestionnaire",
   "project_owner_placeholder": "Nom du propriétaire",
+  "project_groupes_profile": "Profil de classement UGF",
+  "project_groupes_profile_help": "Détermine les libellés et codes de la liste déroulante 'groupe/zone' des UGF (ONF, CRPF, OFB, autre).",
   "project_date": "Date de création",
   "created_at": "Créé le",
   "auto_generated": "Généré automatiquement",

@@ -19,38 +19,31 @@ NULL
 
 
 # ==============================================================================
-# Predefined management groups (groupes d'aménagement)
+# Management groups (groupes d'aménagement / groupes de gestion / zones)
+#
+# Codes, labels and colors are now loaded dynamically from
+# inst/config/groupes_amenagement.yaml via R/config_groupes.R, so that the
+# terminology can be adapted to the user's context (ONF / CRPF / OFB / other).
+#
+# The constants below are kept for backward compatibility and tests; they
+# reflect the union of codes from the ONF profile (historical default).
 # ==============================================================================
 
-#' Known management group codes
+#' Known management group codes (backward-compat: ONF profile)
 #' @noRd
 GROUPES_AMENAGEMENT <- c(
-  "AMETS",  # Amélioration de taillis sous futaie
-  "AMER",   # Amélioration en régénération
-  "IRR",    # Irrégulier
-  "TSF",    # Taillis sous futaie
-  "REGT",   # Régénération par taillis
-  "REGF",   # Régénération par futaie
-  "HSN",    # Hors sylviculture naturelle
-  "HSY",    # Hors sylviculture
-  "PROT",   # Protection
-  "ACC"     # Accueil
+  "AMETS", "AMER", "IRR", "TSF", "REGT", "REGF",
+  "HSN", "HSY", "PROT", "ACC"
 )
 
 
-#' Color palette for management groups
+#' Color palette for ONF management groups (backward-compat)
 #' @noRd
 GROUPE_COLORS <- c(
-  "AMETS" = "#228B22",  # ForestGreen
-  "AMER"  = "#2E8B57",  # SeaGreen
-  "IRR"   = "#4682B4",  # SteelBlue
-  "TSF"   = "#DAA520",  # Goldenrod
-  "REGT"  = "#D2691E",  # Chocolate
-  "REGF"  = "#CD853F",  # Peru
-  "HSN"   = "#9932CC",  # DarkOrchid
-  "HSY"   = "#8B008B",  # DarkMagenta
-  "PROT"  = "#20B2AA",  # LightSeaGreen
-  "ACC"   = "#FFD700"   # Gold
+  "AMETS" = "#228B22", "AMER"  = "#2E8B57", "IRR" = "#4682B4",
+  "TSF"   = "#DAA520", "REGT"  = "#D2691E", "REGF" = "#CD853F",
+  "HSN"   = "#9932CC", "HSY"   = "#8B008B", "PROT" = "#20B2AA",
+  "ACC"   = "#FFD700"
 )
 
 
@@ -66,14 +59,28 @@ UG_PALETTE <- c(
 
 #' Get fill color for a UG based on its groupe or index
 #'
+#' @description
+#' Looks up the color in the configured profile first (YAML config),
+#' then falls back to the legacy ONF palette, then to the neutral
+#' UG_PALETTE indexed by position.
+#'
 #' @param groupe Character. Management group code (can be NA).
 #' @param index Integer. UG index (used for fallback color).
+#' @param profile_key Character. Optional profile key ("onf", "crpf", "ofb",
+#'   "generic"...). If NULL, uses the default profile from config.
 #'
 #' @return Character. Hex color string.
 #' @noRd
-ug_color <- function(groupe, index = 1L) {
-  if (!is.na(groupe) && nchar(groupe) > 0 && groupe %in% names(GROUPE_COLORS)) {
-    return(GROUPE_COLORS[[groupe]])
+ug_color <- function(groupe, index = 1L, profile_key = NULL) {
+  if (!is.null(groupe) && !is.na(groupe) && nchar(groupe) > 0) {
+    # 1. Try the configured profile
+    col <- tryCatch(
+      get_groupe_color(groupe, profile_key = profile_key, default = NA_character_),
+      error = function(e) NA_character_
+    )
+    if (!is.na(col) && nzchar(col)) return(col)
+    # 2. Legacy ONF constants
+    if (groupe %in% names(GROUPE_COLORS)) return(GROUPE_COLORS[[groupe]])
   }
   UG_PALETTE[((index - 1L) %% length(UG_PALETTE)) + 1L]
 }
@@ -442,9 +449,17 @@ ug_set_groupe <- function(projet, ug_id, groupe) {
     cli::cli_abort("Unknown UG ID: {ug_id}")
   }
 
-  # Validate groupe if not NA
-  if (!is.na(groupe) && nchar(groupe) > 0 && !groupe %in% GROUPES_AMENAGEMENT) {
-    cli::cli_warn("Unknown management group: {groupe}. Known groups: {paste(GROUPES_AMENAGEMENT, collapse = ', ')}")
+  # Validate groupe if not NA against the project's profile (falling back
+  # to the legacy ONF list).
+  if (!is.na(groupe) && nchar(groupe) > 0) {
+    profile_key <- projet$metadata$groupes_profile %||% NULL
+    known <- tryCatch(get_groupes_codes(profile_key), error = function(e) character(0))
+    if (length(known) == 0) known <- GROUPES_AMENAGEMENT
+    if (!groupe %in% known) {
+      cli::cli_warn(
+        "Unknown management group: {groupe}. Known codes for this profile: {paste(known, collapse = ', ')}"
+      )
+    }
   }
 
   ugs$groupe[ugs$ug_id == ug_id] <- groupe

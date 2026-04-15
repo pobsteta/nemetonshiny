@@ -343,6 +343,31 @@ mod_ug_server <- function(id, app_state) {
       redraw_counter = 0L        # incremented to force map polygon redraw
     )
 
+    # Current classification profile (ONF / CRPF / OFB / ...) driven by the
+    # project metadata. Falls back to the config default. Determines the
+    # dropdown label (e.g. "Groupe d'aménagement" / "Groupe" / "Zone"),
+    # the available codes and the map legend.
+    profile_key <- shiny::reactive({
+      pk <- rv$projet_ug$metadata$groupes_profile
+      if (is.null(pk) || !nzchar(pk)) {
+        return(tryCatch(get_default_groupes_profile(),
+                        error = function(e) "onf"))
+      }
+      pk
+    })
+
+    # Update the sidebar groupe selector (label + choices) when the profile
+    # changes — i.e. when a project with a different profile is loaded.
+    shiny::observe({
+      pk <- profile_key()
+      shiny::updateSelectInput(
+        session,
+        "sel_groupe",
+        label = get_groupes_field_label(pk, lang = lang()),
+        choices = get_groupes_choices(pk, lang = lang(), include_empty = TRUE)
+      )
+    })
+
     # Helper: translate known English cli_abort messages emitted by the
     # domain/split functions into user-language text. Falls back to the
     # raw message when no match is found.
@@ -562,14 +587,17 @@ mod_ug_server <- function(id, app_state) {
         tenements <- sf::st_transform(tenements, 4326)
       }
 
-      # Compute fill colors per tenement (based on UG groupe or index)
+      # Compute fill colors per tenement (based on UG groupe or index).
+      # Uses the project's classification profile (ONF / CRPF / OFB / ...)
+      # to resolve groupe -> color from the YAML config.
+      pk <- profile_key()
       ug_index_map <- stats::setNames(seq_len(nrow(ugs)), ugs$ug_id)
       fill_colors <- vapply(seq_len(nrow(tenements)), function(i) {
         uid <- tenements$ug_id[i]
         ug_row <- ugs[ugs$ug_id == uid, ]
         if (nrow(ug_row) == 0) return("#CCCCCC")
         idx <- ug_index_map[[uid]]
-        ug_color(ug_row$groupe[1], idx)
+        ug_color(ug_row$groupe[1], idx, profile_key = pk)
       }, character(1))
 
       # Labels for hover
@@ -628,7 +656,7 @@ mod_ug_server <- function(id, app_state) {
           }
 
           ug_colors <- vapply(seq_len(nrow(ug_sf)), function(i) {
-            ug_color(ug_sf$groupe[i], i)
+            ug_color(ug_sf$groupe[i], i, profile_key = pk)
           }, character(1))
 
           ug_labels <- vapply(seq_len(nrow(ug_sf)), function(i) {
@@ -678,6 +706,12 @@ mod_ug_server <- function(id, app_state) {
       # Add legend + re-add layers control (clearControls also removes it).
       # Then explicitly show every overlay group so leaflet doesn't keep
       # them hidden after the control re-creation.
+      # Build the legend from the active profile (ONF / CRPF / OFB / ...).
+      profile_colors <- get_groupes_colors(pk)
+      groupe_vals <- ugs$groupe[!is.na(ugs$groupe) & nzchar(ugs$groupe)]
+      used_codes <- intersect(names(profile_colors), unique(groupe_vals))
+      legend_title <- get_groupes_field_label(pk, lang = lang())
+
       proxy |>
         leaflet::clearControls() |>
         leaflet::addLayersControl(
@@ -686,14 +720,21 @@ mod_ug_server <- function(id, app_state) {
         ) |>
         leaflet::showGroup("UGF") |>
         leaflet::showGroup("Tenements") |>
-        leaflet::showGroup("Selection") |>
-        leaflet::addLegend(
-          position = "bottomright",
-          colors = GROUPE_COLORS[names(GROUPE_COLORS) %in% ugs$groupe],
-          labels = names(GROUPE_COLORS)[names(GROUPE_COLORS) %in% ugs$groupe],
-          title = i18n()$t("ug_group"),
-          opacity = 0.8
-        )
+        leaflet::showGroup("Selection")
+
+      if (length(used_codes) > 0) {
+        legend_labels <- vapply(used_codes, function(c) {
+          sprintf("%s - %s", c, get_groupe_label(c, pk, lang = lang()))
+        }, character(1))
+        proxy |>
+          leaflet::addLegend(
+            position = "bottomright",
+            colors = unname(profile_colors[used_codes]),
+            labels = legend_labels,
+            title = legend_title,
+            opacity = 0.8
+          )
+      }
     })
 
     # ================================================================
@@ -1087,8 +1128,9 @@ mod_ug_server <- function(id, app_state) {
         ),
         shiny::selectInput(
           ns("create_map_groupe"),
-          label = i18n()$t("ug_group"),
-          choices = c("---" = "", stats::setNames(GROUPES_AMENAGEMENT, GROUPES_AMENAGEMENT)),
+          label = get_groupes_field_label(profile_key(), lang = lang()),
+          choices = get_groupes_choices(profile_key(), lang = lang(),
+                                        include_empty = TRUE),
           selected = ""
         ),
         shiny::p(
@@ -1257,15 +1299,19 @@ mod_ug_server <- function(id, app_state) {
       } else {
         round(listing$surface_m2 / 10000, 2)
       }
+      # Column header for the groupe column matches the profile's
+      # field_label (e.g. "Groupe d'aménagement" / "Groupe" / "Zone").
+      groupe_col <- get_groupes_field_label(profile_key(), lang = lang())
       display_df <- data.frame(
         `Label UGF` = listing$label,
-        Groupe = ifelse(is.na(listing$groupe), "---", listing$groupe),
+        `__groupe__` = ifelse(is.na(listing$groupe), "---", listing$groupe),
         Tenements = listing$n_tenements,
         `Surface cadastrale (ha)` = round(listing$surface_m2 / 10000, 2),
         `Surface SIG (ha)` = sig_col,
         check.names = FALSE,
         stringsAsFactors = FALSE
       )
+      names(display_df)[names(display_df) == "__groupe__"] <- groupe_col
 
       # Get cadastral refs for each UG
       projet <- rv$projet_ug
@@ -1340,7 +1386,7 @@ mod_ug_server <- function(id, app_state) {
         uid <- listing$ug_id[sel]
         refs <- ug_cadastral_refs(projet, uid)
         surface_ha <- round(ug_surface(projet, uid) / 10000, 2)
-        color <- ug_color(listing$groupe[sel], sel)
+        color <- ug_color(listing$groupe[sel], sel, profile_key = profile_key())
 
         htmltools::tagList(
           htmltools::div(

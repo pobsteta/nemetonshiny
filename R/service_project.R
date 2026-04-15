@@ -53,7 +53,8 @@ if (!dir.exists(root)) {
 #' @return List with project info (id, path, metadata).
 #'
 #' @noRd
-create_project <- function(name, description = "", owner = "", parcels = NULL) {
+create_project <- function(name, description = "", owner = "", parcels = NULL,
+                           groupes_profile = NULL) {
   # Validate name
   if (missing(name) || is.null(name) || nchar(trimws(name)) == 0) {
     cli::cli_abort("Project name is required")
@@ -91,6 +92,12 @@ create_project <- function(name, description = "", owner = "", parcels = NULL) {
   dir.create(file.path(project_path, "cache"), showWarnings = FALSE)
   dir.create(file.path(project_path, "exports"), showWarnings = FALSE)
 
+  # Resolve UGF groupes profile (default from YAML config)
+  if (is.null(groupes_profile) || !nzchar(groupes_profile)) {
+    groupes_profile <- tryCatch(get_default_groupes_profile(),
+                                error = function(e) "onf")
+  }
+
   # Create metadata
   metadata <- list(
     id = project_id,
@@ -102,7 +109,8 @@ create_project <- function(name, description = "", owner = "", parcels = NULL) {
     status = "draft",
     version = "0.7.0",
     parcels_count = 0L,
-    indicators_computed = FALSE
+    indicators_computed = FALSE,
+    groupes_profile = groupes_profile
  )
 
   # Save metadata
@@ -145,7 +153,8 @@ create_project <- function(name, description = "", owner = "", parcels = NULL) {
 #' @return List with project info (id, path, metadata, parcels).
 #'
 #' @noRd
-update_project <- function(project_id, name, description = "", owner = "", parcels = NULL) {
+update_project <- function(project_id, name, description = "", owner = "",
+                           parcels = NULL, groupes_profile = NULL) {
   # Check project exists
   project_path <- get_project_path(project_id)
   if (is.null(project_path)) {
@@ -183,6 +192,9 @@ update_project <- function(project_id, name, description = "", owner = "", parce
   metadata$description <- description
   metadata$owner <- owner
   metadata$updated_at <- Sys.time()
+  if (!is.null(groupes_profile) && nzchar(groupes_profile)) {
+    metadata$groupes_profile <- groupes_profile
+  }
 
   # Update parcels if provided
   if (!is.null(parcels) && inherits(parcels, "sf") && nrow(parcels) > 0) {

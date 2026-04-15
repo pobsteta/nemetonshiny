@@ -94,6 +94,14 @@ TRANSLATIONS <- list(
   ),
   project_owner = list(fr = "Propri\u00e9taire / Gestionnaire", en = "Owner / Manager"),
   project_owner_placeholder = list(fr = "Nom du propri\u00e9taire", en = "Owner name"),
+  project_groupes_profile = list(
+    fr = "Profil de classement UGF",
+    en = "UGF classification profile"
+  ),
+  project_groupes_profile_help = list(
+    fr = "D\u00e9termine les libell\u00e9s et codes de la liste d\u00e9roulante 'groupe/zone' des UGF (ONF, CRPF, OFB, autre).",
+    en = "Defines the labels and codes of the UGF 'group/zone' dropdown (ONF, CRPF, OFB, other)."
+  ),
   project_date = list(fr = "Date de cr\u00e9ation", en = "Creation date"),
   created_at = list(fr = "Cr\u00e9\u00e9 le", en = "Created on"),
   auto_generated = list(fr = "G\u00e9n\u00e9r\u00e9 automatiquement", en = "Auto-generated"),
