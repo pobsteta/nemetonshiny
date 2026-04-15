@@ -923,3 +923,211 @@ validate_tiling <- function(projet, parcelle_id, tolerance_m2 = NULL) {
 
   invisible(TRUE)
 }
+
+
+#' Replace the tenement layout with an edited sf object
+#'
+#' @description
+#' Used when the user exports the tenements to a GPKG/GeoJSON, edits
+#' it in an external GIS (QGIS: split feature, reshape, merge…), and
+#' reimports the file. The imported file is treated as the **new
+#' tenement layout**, not as a cutting geometry.
+#'
+#' Pipeline:
+#' \enumerate{
+#'   \item Multipart geometries are cast to singleparts. This handles
+#'     the common QGIS workflow where the user uses "Séparer les
+#'     parties" which only splits parts inside a single feature row.
+#'   \item Each new feature is assigned to its parent cadastral parcel
+#'     via largest-overlap spatial join with \code{projet$parcels}.
+#'   \item Each new feature inherits the UGF of the existing tenement
+#'     it most overlaps (preserves the user's UGF grouping whenever
+#'     possible).
+#'   \item \code{surface_sig_m2} is recomputed in Lambert 93;
+#'     \code{surface_m2} is rescaled so that the total per-parent-
+#'     parcel remains equal to the cadastral contenance
+#'     (invariant 5 of the domain).
+#'   \item A fresh \code{tenement_id} is generated for every feature.
+#' }
+#'
+#' @param projet List. Project with $parcels, $tenements, $ugs.
+#' @param imported_sf sf. User-edited layout from the external GIS.
+#'
+#' @return Updated projet with a new $tenements sf.
+#' @noRd
+tenement_import_replace <- function(projet, imported_sf) {
+  if (!inherits(imported_sf, "sf") || nrow(imported_sf) == 0) {
+    cli::cli_abort("Imported file is empty or not an sf object.")
+  }
+
+  parcels    <- projet$parcels
+  tenements  <- projet$tenements
+  ugs        <- projet$ugs
+  if (is.null(parcels) || is.null(tenements) || is.null(ugs)) {
+    cli::cli_abort("Project must have parcels / tenements / ugs to import a layout.")
+  }
+
+  prev_s2 <- sf::sf_use_s2()
+  sf::sf_use_s2(FALSE)
+  on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
+
+  # Match CRS to the tenements CRS
+  if (is.na(sf::st_crs(imported_sf))) {
+    sf::st_crs(imported_sf) <- 4326
+  }
+  if (!is.na(sf::st_crs(tenements)) &&
+      sf::st_crs(imported_sf) != sf::st_crs(tenements)) {
+    imported_sf <- sf::st_transform(imported_sf, sf::st_crs(tenements))
+  }
+
+  # Normalise to singleparts: QGIS "Séparer les parties" splits parts
+  # inside a single row — casting to single polygons turns those into
+  # proper separate features.
+  imported_sf <- tryCatch(sf::st_make_valid(imported_sf),
+                          error = function(e) imported_sf)
+  imported_sf <- suppressWarnings(sf::st_cast(imported_sf, "MULTIPOLYGON"))
+  singleparts <- suppressWarnings(sf::st_cast(imported_sf, "POLYGON"))
+  if (nrow(singleparts) >= nrow(imported_sf)) {
+    imported_sf <- singleparts
+  }
+  imported_sf <- suppressWarnings(
+    sf::st_cast(sf::st_make_valid(imported_sf), "MULTIPOLYGON")
+  )
+
+  n_new <- nrow(imported_sf)
+  cli::cli_alert_info(
+    "Import: {n_new} feature{?s} apr\u00e8s \u00e9clatement en singleparts"
+  )
+
+  # Work in metric CRS for accurate overlap + area calculations
+  orig_crs <- sf::st_crs(tenements)
+  use_proj <- !is.na(orig_crs) && isTRUE(sf::st_is_longlat(tenements))
+  if (use_proj) {
+    parcels_m   <- sf::st_transform(parcels,   2154)
+    tenements_m <- sf::st_transform(tenements, 2154)
+    imported_m  <- sf::st_transform(imported_sf, 2154)
+  } else {
+    parcels_m   <- parcels
+    tenements_m <- tenements
+    imported_m  <- imported_sf
+  }
+
+  # Area in m² (metric CRS)
+  geom_areas <- as.numeric(sf::st_area(imported_m))
+
+  # Parent parcel: pick the parcel whose intersection area with the
+  # imported feature is the largest.
+  parcel_id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"),
+                             names(parcels_m))[1]
+  if (is.na(parcel_id_col) || is.null(parcel_id_col)) {
+    cli::cli_abort("Parcels layer has no id / nemeton_id / geo_parcelle column.")
+  }
+
+  parent_ids <- vapply(seq_len(nrow(imported_m)), function(i) {
+    f <- sf::st_geometry(imported_m)[i]
+    inter <- tryCatch(
+      sf::st_intersection(sf::st_geometry(parcels_m), f),
+      error = function(e) NULL
+    )
+    if (is.null(inter) || length(inter) == 0) return(NA_character_)
+    a <- as.numeric(sf::st_area(inter))
+    hit_rows <- which(lengths(sf::st_intersects(
+      sf::st_geometry(parcels_m), f)) > 0)
+    if (length(hit_rows) == 0) return(NA_character_)
+    # Use the parcel with the largest intersection area
+    areas <- vapply(hit_rows, function(k) {
+      ii <- tryCatch(
+        sf::st_intersection(sf::st_geometry(parcels_m)[k], f),
+        error = function(e) NULL
+      )
+      if (is.null(ii) || length(ii) == 0) 0 else as.numeric(sum(sf::st_area(ii)))
+    }, numeric(1))
+    as.character(parcels_m[[parcel_id_col]][hit_rows[which.max(areas)]])
+  }, character(1))
+
+  if (any(is.na(parent_ids))) {
+    cli::cli_warn(
+      "{sum(is.na(parent_ids))} feature{?s} sans parcelle cadastrale parent \u2014 mises sur la premi\u00e8re parcelle du projet."
+    )
+    parent_ids[is.na(parent_ids)] <-
+      as.character(parcels_m[[parcel_id_col]][1])
+  }
+
+  # Inherit UGF from the existing tenement with the largest overlap;
+  # if a new feature has zero overlap with any existing tenement
+  # (shouldn't happen if tiling is preserved), fall back to the first
+  # UGF of the parent parcel.
+  ug_ids <- vapply(seq_len(nrow(imported_m)), function(i) {
+    f <- sf::st_geometry(imported_m)[i]
+    hit_rows <- which(lengths(sf::st_intersects(
+      sf::st_geometry(tenements_m), f)) > 0)
+    if (length(hit_rows) == 0) {
+      # Fallback: any existing tenement of the parent parcel
+      cand <- which(tenements_m$parent_parcelle_id == parent_ids[i])
+      if (length(cand) == 0) return(NA_character_)
+      return(as.character(tenements_m$ug_id[cand[1]]))
+    }
+    areas <- vapply(hit_rows, function(k) {
+      ii <- tryCatch(
+        sf::st_intersection(sf::st_geometry(tenements_m)[k], f),
+        error = function(e) NULL
+      )
+      if (is.null(ii) || length(ii) == 0) 0 else as.numeric(sum(sf::st_area(ii)))
+    }, numeric(1))
+    as.character(tenements_m$ug_id[hit_rows[which.max(areas)]])
+  }, character(1))
+
+  # Rescale surface_m2 per parent parcel so the total matches the
+  # cadastral contenance (surface_m2 of the original parcel).
+  parent_cad_total <- vapply(split(seq_along(parent_ids), parent_ids),
+                             function(ix) {
+    rows <- which(tenements$parent_parcelle_id == parent_ids[ix[1]])
+    sum(tenements$surface_m2[rows], na.rm = TRUE)
+  }, numeric(1))
+  parent_geom_total <- vapply(split(seq_along(parent_ids), parent_ids),
+                              function(ix) sum(geom_areas[ix]), numeric(1))
+  scale <- stats::setNames(
+    ifelse(parent_geom_total > 0,
+           parent_cad_total / parent_geom_total, 1),
+    names(parent_cad_total)
+  )
+  surface_m2_new <- geom_areas * as.numeric(scale[parent_ids])
+
+  # Build new tenements sf
+  ts <- format(Sys.time(), "%Y%m%d%H%M%S")
+  new_ids <- paste0("tnm_", ts, "_", seq_len(n_new))
+
+  # Geometry in original CRS for storage
+  geoms_out <- if (use_proj) {
+    sf::st_transform(sf::st_geometry(imported_m), orig_crs)
+  } else {
+    sf::st_geometry(imported_m)
+  }
+
+  existing_geom_col <- attr(tenements, "sf_column") %||% "geometry"
+  df <- data.frame(
+    tenement_id        = new_ids,
+    parent_parcelle_id = parent_ids,
+    ug_id              = ug_ids,
+    surface_m2         = surface_m2_new,
+    surface_sig_m2     = geom_areas,
+    stringsAsFactors   = FALSE
+  )
+  df[[existing_geom_col]] <- geoms_out
+  new_tenements <- sf::st_sf(df, sf_column_name = existing_geom_col)
+  sf::st_crs(new_tenements) <- sf::st_crs(tenements)
+
+  projet$tenements <- new_tenements
+
+  # Remove UGs that became empty after the new layout
+  active <- unique(new_tenements$ug_id)
+  projet$ugs <- projet$ugs[projet$ugs$ug_id %in% active, , drop = FALSE]
+
+  # Validate the 5 invariants
+  projet_validate(projet)
+
+  cli::cli_alert_success(
+    "Import appliqu\u00e9 : {n_new} t\u00e8nement{?s} (au lieu de {nrow(tenements)})"
+  )
+  projet
+}

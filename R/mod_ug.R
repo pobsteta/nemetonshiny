@@ -1884,22 +1884,13 @@ mod_ug_server <- function(id, app_state) {
           return()
         }
 
-        # Serialize as GeoJSON and reuse the auto-detect split function
-        # that already splits every tenement crossed by the polygons.
-        geojson_str <- sf::st_as_text(sf::st_geometry(sf_polygones))
-        # Build a GeoJSON FeatureCollection wrapper
-        gj <- sf::st_as_sf(
-          data.frame(id = seq_len(nrow(sf_polygones))),
-          geometry = sf::st_geometry(sf_polygones)
-        )
-        tmp <- tempfile(fileext = ".geojson")
-        on.exit(unlink(tmp), add = TRUE)
-        sf::st_write(gj, tmp, driver = "GeoJSON", quiet = TRUE,
-                     delete_dsn = TRUE)
-        gj_text <- paste(readLines(tmp, warn = FALSE), collapse = "")
-
+        # Apply as a full layout replacement. The imported file is the
+        # NEW tenement configuration — not a cutter. Handles:
+        #  - QGIS "Séparer les parties" (multipart → singleparts)
+        #  - QGIS "Séparer l'entité"   (new rows appear in the file)
+        #  - reshape / merge / delete in any GIS tool
         projet <- rv$projet_ug
-        projet <- tenement_split_by_drawn_polygon(projet, gj_text)
+        projet <- tenement_import_replace(projet, sf_polygones)
 
         if (!is.null(projet$metadata$id)) {
           save_ug_data(projet$metadata$id, projet)
