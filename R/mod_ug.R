@@ -1003,6 +1003,7 @@ mod_ug_server <- function(id, app_state) {
         rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
         rv$needs_recompute <- TRUE
         rv$drawn_geojson <- NULL
+        clear_tenement_selection()
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
@@ -1839,6 +1840,7 @@ mod_ug_server <- function(id, app_state) {
         rv$projet_ug <- projet
         rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
         rv$needs_recompute <- TRUE
+        clear_tenement_selection()
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
