@@ -188,17 +188,31 @@ mod_family_server <- function(id, family_code, app_state) {
       ind_data <- indicators_data()
       if (is.null(ind_data)) return(NULL)
 
-      # Drop geometry if present (should be a data.frame already)
+      # Drop geometry if present
       if (inherits(ind_data, "sf")) {
         ind_data <- sf::st_drop_geometry(ind_data)
       }
+
+      # Keep only: label (UGF), groupe, and indicator values.
+      # Indicator columns are everything numeric that's not UGF /
+      # parcel metadata (same rule as get_indicator_cols()).
+      ind_cols <- get_indicator_cols(ind_data)
+      keep <- intersect(c("label", "groupe", ind_cols), names(ind_data))
+      ind_data <- ind_data[, keep, drop = FALSE]
 
       # Round numeric columns
       num_cols <- vapply(ind_data, is.numeric, logical(1))
       ind_data[num_cols] <- lapply(ind_data[num_cols], round, digits = 3)
 
-      # Clean column names: use short codes (B1, B2, C1, etc.)
+      # Clean column names: use short codes (B1, B2, C1, etc.) for
+      # indicators; keep Label / Groupe headers in plain French.
+      i18n <- get_i18n(app_state$language)
       clean_names <- vapply(names(ind_data), function(col) {
+        if (col == "label")  return("Label UGF")
+        if (col == "groupe") return(get_groupes_field_label(
+          app_state$current_project$metadata$groupes_profile,
+          lang = app_state$language %||% "fr"
+        ))
         base <- sub("_norm$", "", col)
         for (fam in INDICATOR_FAMILIES) {
           if (!is.null(fam$column_names) && base %in% fam$column_names) {
@@ -212,6 +226,7 @@ mod_family_server <- function(id, family_code, app_state) {
 
       DT::datatable(ind_data,
                      selection = "single",
+                     rownames = TRUE,
                      options = list(
                        pageLength = 10,
                        scrollX = TRUE,
