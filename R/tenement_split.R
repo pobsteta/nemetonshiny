@@ -304,13 +304,16 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
   }
   polys_sf <- polys_sf[poly_mask, ]
 
-  # Match CRS
-  if (!is.na(sf::st_crs(polys_sf)) && !is.na(sf::st_crs(tenements))) {
-    if (sf::st_crs(polys_sf) != sf::st_crs(tenements)) {
-      polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
-    }
-  } else if (is.na(sf::st_crs(polys_sf))) {
-    sf::st_crs(polys_sf) <- sf::st_crs(tenements)
+  # Match CRS. Drawn GeoJSON coming from Leaflet is always in EPSG:4326,
+  # but sf::st_read on an in-memory GeoJSON string sometimes returns NA —
+  # force WGS84 then reproject to the tenements CRS. Never silently
+  # re-tag coordinates without a transform: that would misalign geometry.
+  if (is.na(sf::st_crs(polys_sf))) {
+    sf::st_crs(polys_sf) <- 4326
+  }
+  if (!is.na(sf::st_crs(tenements)) &&
+      sf::st_crs(polys_sf) != sf::st_crs(tenements)) {
+    polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
   }
 
   # Temporarily disable S2 geometry for planar operations. Imported
@@ -483,13 +486,16 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
   }
   line_sf <- line_sf[line_mask, ]
 
-  # Match CRS
-  if (!is.na(sf::st_crs(line_sf)) && !is.na(sf::st_crs(tenements))) {
-    if (sf::st_crs(line_sf) != sf::st_crs(tenements)) {
-      line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
-    }
-  } else if (is.na(sf::st_crs(line_sf))) {
-    sf::st_crs(line_sf) <- sf::st_crs(tenements)
+  # Match CRS. Drawn GeoJSON coming from Leaflet is always in EPSG:4326,
+  # but sf::st_read on an in-memory GeoJSON string sometimes returns NA —
+  # force WGS84 then reproject to the tenements CRS. Never silently
+  # re-tag coordinates without a transform: that would misalign geometry.
+  if (is.na(sf::st_crs(line_sf))) {
+    sf::st_crs(line_sf) <- 4326
+  }
+  if (!is.na(sf::st_crs(tenements)) &&
+      sf::st_crs(line_sf) != sf::st_crs(tenements)) {
+    line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
   }
 
   # Use planar GEOS operations (S2 is too strict on imported geometries)

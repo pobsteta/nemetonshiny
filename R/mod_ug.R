@@ -904,10 +904,15 @@ mod_ug_server <- function(id, app_state) {
         # Preview: how many tenements does the line cross?
         n_affected <- tryCatch({
           line_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
-          if (!is.na(sf::st_crs(line_sf)) && !is.na(sf::st_crs(tenements))) {
-            if (sf::st_crs(line_sf) != sf::st_crs(tenements)) {
-              line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
-            }
+          # Leaflet always emits WGS84 (EPSG:4326). sf::st_read on a
+          # GeoJSON string sometimes returns NA CRS — force it to 4326
+          # so the transform below runs.
+          if (is.na(sf::st_crs(line_sf))) {
+            sf::st_crs(line_sf) <- 4326
+          }
+          if (!is.na(sf::st_crs(tenements)) &&
+              sf::st_crs(line_sf) != sf::st_crs(tenements)) {
+            line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
           }
           cutting_line <- sf::st_union(sf::st_geometry(line_sf))
           sum(sf::st_intersects(sf::st_geometry(tenements), cutting_line, sparse = FALSE)[, 1])
@@ -943,10 +948,14 @@ mod_ug_server <- function(id, app_state) {
       # Quick preview: how many tenements does the polygon cross?
       n_affected <- tryCatch({
         polys_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
-        if (!is.na(sf::st_crs(polys_sf)) && !is.na(sf::st_crs(tenements))) {
-          if (sf::st_crs(polys_sf) != sf::st_crs(tenements)) {
-            polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
-          }
+        # Leaflet always emits WGS84 (EPSG:4326) — force it when sf
+        # returns NA CRS for the in-memory GeoJSON string.
+        if (is.na(sf::st_crs(polys_sf))) {
+          sf::st_crs(polys_sf) <- 4326
+        }
+        if (!is.na(sf::st_crs(tenements)) &&
+            sf::st_crs(polys_sf) != sf::st_crs(tenements)) {
+          polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
         }
         cutter <- sf::st_union(sf::st_geometry(polys_sf))
         sum(sf::st_intersects(sf::st_geometry(tenements), cutter, sparse = FALSE)[, 1])
