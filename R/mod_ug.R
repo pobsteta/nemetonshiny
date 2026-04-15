@@ -1878,10 +1878,12 @@ mod_ug_server <- function(id, app_state) {
       # Persistent spinner notification while the import runs. The
       # spatial joins + area recomputation can take a few seconds on
       # large projects, so give the user immediate visual feedback.
+      # Same visual pattern as the project-loading notification in
+      # mod_home.R (spinner icon, persistent, no close button).
       notif_id <- "ug_import_loading"
       shiny::showNotification(
         htmltools::tagList(
-          shiny::icon("cog", class = "fa-spin me-2"),
+          shiny::icon("spinner", class = "fa-spin me-2"),
           sprintf("%s...", i18n()$t("ug_import_running"))
         ),
         type = "message",
