@@ -195,8 +195,11 @@
       try { map.drawControl.options.edit.featureGroup.clearLayers(); } catch (e) {}
     }
 
-    // leaflet.extras stores its drawn group under HTMLWidgets bindings
+    // leaflet.extras stores its drawn group under HTMLWidgets bindings.
+    // The R module uses targetGroup = "Dessin"; keep the legacy "draw"
+    // fallback in case older sessions still reference it.
     if (widget.layerManager) {
+      try { widget.layerManager.clearGroup('Dessin'); } catch (e) {}
       try { widget.layerManager.clearGroup('draw'); } catch (e) {}
     }
   });

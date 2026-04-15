@@ -465,7 +465,7 @@ mod_ug_server <- function(id, app_state) {
           layerId = "basemap_tiles"
         ) |>
         leaflet::addLayersControl(
-          overlayGroups = c("UGF", "Tenements", "Selection"),
+          overlayGroups = c("UGF", "Tenements", "Selection", "Dessin"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
@@ -474,7 +474,7 @@ mod_ug_server <- function(id, app_state) {
       if (requireNamespace("leaflet.extras", quietly = TRUE)) {
         m <- m |>
           leaflet.extras::addDrawToolbar(
-            targetGroup = "draw",
+            targetGroup = "Dessin",
             polylineOptions = leaflet.extras::drawPolylineOptions(
               shapeOptions = leaflet.extras::drawShapeOptions(
                 color = "#FF0000",
@@ -715,12 +715,13 @@ mod_ug_server <- function(id, app_state) {
       proxy |>
         leaflet::clearControls() |>
         leaflet::addLayersControl(
-          overlayGroups = c("UGF", "Tenements", "Selection"),
+          overlayGroups = c("UGF", "Tenements", "Selection", "Dessin"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::showGroup("UGF") |>
         leaflet::showGroup("Tenements") |>
-        leaflet::showGroup("Selection")
+        leaflet::showGroup("Selection") |>
+        leaflet::showGroup("Dessin")
 
       if (length(used_codes) > 0) {
         legend_labels <- vapply(used_codes, function(c) {
@@ -1009,7 +1010,7 @@ mod_ug_server <- function(id, app_state) {
 
         # Clear drawn shapes from the map (both leaflet group + JS fallback)
         leaflet::leafletProxy(ns("ug_map")) |>
-          leaflet::clearGroup("draw")
+          leaflet::clearGroup("Dessin")
         session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
 
         shiny::showNotification(
@@ -1049,7 +1050,7 @@ mod_ug_server <- function(id, app_state) {
 
         # Clear drawn shapes from the map (both leaflet group + JS fallback)
         leaflet::leafletProxy(ns("ug_map")) |>
-          leaflet::clearGroup("draw")
+          leaflet::clearGroup("Dessin")
         session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
 
         shiny::showNotification(
