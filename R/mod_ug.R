@@ -962,8 +962,8 @@ mod_ug_server <- function(id, app_state) {
       # ----- Case 2: POLYGON drawn → auto-split all crossed tenements -----
       tenements <- projet$tenements
       # Quick preview: how many tenements does the polygon cross?
-      # Mirror the backend: 4326 → tenements CRS → metric 2154 with
-      # S2 off. Keeps preview and split in sync.
+      # Mirror the backend: S2 spherical intersection on 4326 when
+      # possible, fall back to planar on Lambert 93 if S2 rejects.
       n_affected <- tryCatch({
         polys_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
         if (is.na(sf::st_crs(polys_sf))) {
@@ -974,16 +974,25 @@ mod_ug_server <- function(id, app_state) {
           polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
         }
         prev_s2 <- sf::sf_use_s2()
-        sf::sf_use_s2(FALSE)
+        sf::sf_use_s2(TRUE)
         on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
-        tn_work <- tenements
-        if (!is.na(sf::st_crs(tenements)) &&
-            isTRUE(sf::st_is_longlat(tenements))) {
-          tn_work <- sf::st_transform(tenements, 2154)
-          polys_sf <- sf::st_transform(polys_sf, 2154)
-        }
+        polys_sf <- tryCatch(sf::st_make_valid(polys_sf),
+                             error = function(e) polys_sf)
         cutter <- sf::st_union(sf::st_geometry(polys_sf))
-        sum(sf::st_intersects(sf::st_geometry(tn_work), cutter, sparse = FALSE)[, 1])
+        tryCatch({
+          sum(sf::st_intersects(sf::st_geometry(tenements), cutter,
+                                sparse = FALSE)[, 1])
+        }, error = function(e) {
+          sf::sf_use_s2(FALSE)
+          tn_m <- if (isTRUE(sf::st_is_longlat(tenements))) {
+            sf::st_transform(tenements, 2154)
+          } else tenements
+          cu_m <- if (isTRUE(sf::st_is_longlat(cutter))) {
+            sf::st_transform(cutter, 2154)
+          } else cutter
+          sum(sf::st_intersects(sf::st_geometry(tn_m), cu_m,
+                                sparse = FALSE)[, 1])
+        })
       }, error = function(e) 0L)
 
       if (n_affected == 0) {

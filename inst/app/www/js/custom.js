@@ -204,17 +204,22 @@
       try { widget.layerManager.clearGroup('draw'); } catch (e) {}
     }
 
-    // 3. Belt-and-braces: leaflet.extras stores the draw FeatureGroup
-    //    at several potential paths depending on the version; try each.
-    var candidates = [
-      map.drawnItems,
-      map._drawnItems,
-      map.drawFeatureGroup
-    ];
-    candidates.forEach(function(fg) {
-      if (fg && typeof fg.clearLayers === 'function') {
-        try { fg.clearLayers(); } catch (e) {}
-      }
+    // 3. Walk every L.FeatureGroup on the map and clear the ones that
+    //    are NOT registered as a named group in R-leaflet's layerManager.
+    //    Managed overlays (Tenements / UGF / Selection) carry a group
+    //    option; the leaflet.draw edit featureGroup does not. This
+    //    catches the case where leaflet.extras stashes the drawn shape
+    //    in an unnamed FeatureGroup not exposed via map.drawControl.
+    var knownGroups = {};
+    if (widget.layerManager && widget.layerManager._byGroup) {
+      knownGroups = widget.layerManager._byGroup;
+    }
+    map.eachLayer(function(layer) {
+      if (!(layer instanceof L.FeatureGroup)) return;
+      if (layer instanceof L.GeoJSON) return;
+      var groupName = layer.options && layer.options.group;
+      if (groupName && knownGroups[groupName]) return;
+      try { layer.clearLayers(); } catch (e) {}
     });
   });
 

@@ -316,36 +316,36 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
     polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
   }
 
-  # Temporarily disable S2 geometry for planar operations. Imported
-  # GeoJSON often has self-touching vertices that S2 rejects, whereas
-  # GEOS (planar) handles them fine.
+  # For polygon cuts we use S2 spherical geometry directly on the
+  # 4326 lng/lat coordinates. This is the ONLY way to preserve the
+  # drawn polygon vertices exactly as the user traced them — any
+  # 4326 ↔ 2154 round-trip introduces a small but visible offset at
+  # high zoom. S2 can be strict about self-touching vertices in
+  # imported GeoJSON; we run st_make_valid on the cutter and on each
+  # tenement before the op. If S2 still throws, we fall back to GEOS
+  # operations in Lambert 93 per-tenement.
+  orig_crs <- sf::st_crs(tenements)
   prev_s2 <- sf::sf_use_s2()
-  sf::sf_use_s2(FALSE)
+  sf::sf_use_s2(TRUE)
   on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
 
-  # Geometric cuts must be done in a METRIC CRS, otherwise planar math
-  # on lat/lng coordinates at ~47° N produces a visible north–south
-  # skew (degrees are not equal in X and Y). We work in Lambert 93
-  # (EPSG:2154, metric, France mainland) and transform results back
-  # to the original CRS at the end.
-  orig_crs <- sf::st_crs(tenements)
-  use_projection <- !is.na(orig_crs) && isTRUE(sf::st_is_longlat(tenements))
-  if (use_projection) {
-    work_crs <- sf::st_crs(2154)
-    tenements_work <- sf::st_transform(tenements, work_crs)
-    polys_sf      <- sf::st_transform(polys_sf, work_crs)
-  } else {
-    tenements_work <- tenements
-  }
+  # Normalize valid geometries (S2-compatible)
+  polys_sf <- tryCatch(sf::st_make_valid(polys_sf), error = function(e) polys_sf)
+  cutter <- tryCatch(
+    sf::st_make_valid(sf::st_union(sf::st_geometry(polys_sf))),
+    error = function(e) sf::st_union(sf::st_geometry(polys_sf))
+  )
 
-  # Make each imported polygon valid individually before union
-  polys_sf <- sf::st_make_valid(polys_sf)
-  cutter <- sf::st_make_valid(sf::st_union(sf::st_geometry(polys_sf)))
-
-  # Find tenements that intersect the cutter (metric work CRS)
+  # Find tenements that intersect the cutter (S2, native 4326)
   hits <- tryCatch(
-    sf::st_intersects(sf::st_geometry(tenements_work), cutter, sparse = FALSE)[, 1],
-    error = function(e) rep(FALSE, nrow(tenements_work))
+    sf::st_intersects(sf::st_geometry(tenements), cutter, sparse = FALSE)[, 1],
+    error = function(e) {
+      # S2 rejected one of the geometries — fall back to planar on 2154
+      sf::sf_use_s2(FALSE)
+      tw <- sf::st_transform(tenements, 2154)
+      cw <- sf::st_transform(cutter, 2154)
+      sf::st_intersects(sf::st_geometry(tw), cw, sparse = FALSE)[, 1]
+    }
   )
   if (!any(hits)) {
     cli::cli_abort("The drawn polygon does not intersect any tenement.")
@@ -368,21 +368,43 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
   n_fully_contained <- 0L   # polygon fully covers a tenement (nothing to split)
 
   for (i in affected_idx) {
-    tn <- tenements_work[i, ]
+    tn <- tenements[i, ]
     tn_geom <- sf::st_make_valid(sf::st_geometry(tn))
     parent_id <- tn$parent_parcelle_id
     ug_id <- tn$ug_id
 
-    inside <- tryCatch(
-      sf::st_make_valid(sf::st_intersection(tn_geom, cutter)),
-      error = function(e) NULL
-    )
-    outside <- tryCatch(
-      sf::st_make_valid(sf::st_difference(tn_geom, cutter)),
-      error = function(e) NULL
-    )
+    # S2 intersection/difference on the 4326 geometries — keeps the
+    # drawn polygon vertices exactly. If S2 rejects a geometry we
+    # fall back to GEOS on Lambert 93 for this tenement only.
+    run_cut <- function() {
+      list(
+        inside  = sf::st_make_valid(sf::st_intersection(tn_geom, cutter)),
+        outside = sf::st_make_valid(sf::st_difference(tn_geom, cutter))
+      )
+    }
+    res <- tryCatch(run_cut(), error = function(e) NULL)
+    if (is.null(res)) {
+      prev_inner <- sf::sf_use_s2()
+      sf::sf_use_s2(FALSE)
+      res <- tryCatch({
+        tn_m  <- sf::st_transform(tn_geom, 2154)
+        cut_m <- sf::st_transform(cutter, 2154)
+        list(
+          inside  = sf::st_transform(
+            sf::st_make_valid(sf::st_intersection(tn_m, cut_m)), orig_crs
+          ),
+          outside = sf::st_transform(
+            sf::st_make_valid(sf::st_difference(tn_m, cut_m)), orig_crs
+          )
+        )
+      }, error = function(e) list(inside = NULL, outside = NULL))
+      sf::sf_use_s2(prev_inner)
+    }
+    inside  <- res$inside
+    outside <- res$outside
 
-    # Filter to polygons + drop slivers
+    # Filter to polygons + drop slivers (areas always in m² — st_area
+    # uses great-circle distance when the CRS is lng/lat)
     pieces <- list()
     for (g in list(inside, outside)) {
       if (is.null(g) || length(g) == 0) next
@@ -408,7 +430,6 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
     new_ids <- paste0("tnm_", ts, "_", counter, "_", seq_len(n))
 
     # Keep BOTH cadastral and SIG surfaces for each sub-tenement.
-    # Areas must be computed in the metric work CRS, not in lng/lat.
     geom_areas <- as.numeric(sf::st_area(geoms))
     total_geom <- sum(geom_areas)
     original_cadastral <- as.numeric(tn$surface_m2)
@@ -416,11 +437,6 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
       geom_areas * (original_cadastral / total_geom)
     } else {
       geom_areas
-    }
-
-    # Transform geometry back to the original CRS before appending
-    if (use_projection) {
-      geoms <- sf::st_transform(geoms, orig_crs)
     }
 
     new_df <- data.frame(
