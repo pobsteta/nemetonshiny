@@ -1925,13 +1925,21 @@ mod_ug_server <- function(id, app_state) {
             save_ug_data(projet$metadata$id, projet)
           }
           # Writes to reactiveValues do not require a reactive context.
-          # Reads via shiny::isolate() where needed.
+          # Reads via shiny::isolate() where needed. Deep assignments
+          # like `app_state$current_project$tenements <- X` secretly
+          # READ app_state$current_project first, which would trigger
+          # the "Operation not allowed without an active reactive
+          # context" error — so we go through a local copy.
           rv$projet_ug <- projet
           rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
           rv$needs_recompute <- TRUE
           clear_tenement_selection()
-          app_state$current_project$tenements <- projet$tenements
-          app_state$current_project$ugs <- projet$ugs
+          cur_proj <- shiny::isolate(app_state$current_project)
+          if (!is.null(cur_proj)) {
+            cur_proj$tenements <- projet$tenements
+            cur_proj$ugs       <- projet$ugs
+            app_state$current_project <- cur_proj
+          }
 
           shiny::removeNotification(notif_id, session = session)
           shiny::showNotification(
