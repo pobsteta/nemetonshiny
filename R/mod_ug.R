@@ -1898,10 +1898,35 @@ mod_ug_server <- function(id, app_state) {
       # step, Shiny batches UI updates at the end of the reactive
       # context and the user would never see the spinner.
       #
-      # The later callback runs OUTSIDE the reactive context, so every
-      # read of rv$ / app_state$ must be isolated, and every write is
-      # done via `<-` on the reactiveValues object (no context required).
-      datapath <- file_info$datapath
+      # The later callback runs OUTSIDE any reactive context, so ALL
+      # reactive reads must be isolated. We snapshot the things we need
+      # now, then pass them in by closure — simpler and faster than
+      # calling shiny::isolate() on every single line.
+      datapath       <- file_info$datapath
+      i18n_snap      <- shiny::isolate(i18n())
+      lang_snap      <- shiny::isolate(lang())
+      translate_err  <- function(msg) {
+        if (is.null(msg) || length(msg) == 0) return("")
+        is_fr <- identical(lang_snap, "fr")
+        patterns <- list(
+          list(re = "does not intersect any tenement",
+               fr = "Le polygone ne recouvre aucun t\u00e8nement.",
+               en = "The drawn polygon does not intersect any tenement."),
+          list(re = "Project must have UG data",
+               fr = "Le projet ne contient pas de donn\u00e9es UGF.",
+               en = "Project must have UG data."),
+          list(re = "Invalid GeoJSON",
+               fr = "Fichier GeoJSON invalide.",
+               en = "Invalid GeoJSON.")
+        )
+        for (p in patterns) {
+          if (grepl(p$re, msg, ignore.case = TRUE)) {
+            return(if (is_fr) p$fr else p$en)
+          }
+        }
+        msg
+      }
+
       later::later(function() {
         tryCatch({
           # Read the imported file
@@ -1909,7 +1934,7 @@ mod_ug_server <- function(id, app_state) {
 
           if (nrow(sf_polygones) == 0) {
             shiny::removeNotification(notif_id, session = session)
-            shiny::showNotification(i18n()$t("ug_split_empty_file"), type = "error")
+            shiny::showNotification(i18n_snap$t("ug_split_empty_file"), type = "error")
             return()
           }
 
@@ -1924,16 +1949,20 @@ mod_ug_server <- function(id, app_state) {
           if (!is.null(projet$metadata$id)) {
             save_ug_data(projet$metadata$id, projet)
           }
+
           # Writes to reactiveValues do not require a reactive context.
-          # Reads via shiny::isolate() where needed. Deep assignments
-          # like `app_state$current_project$tenements <- X` secretly
-          # READ app_state$current_project first, which would trigger
-          # the "Operation not allowed without an active reactive
-          # context" error — so we go through a local copy.
+          # Deep assignments on app_state require an isolated read first
+          # because `x$a$b <- y` reads x$a under the hood.
           rv$projet_ug <- projet
           rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
           rv$needs_recompute <- TRUE
-          clear_tenement_selection()
+
+          # clear selection — its leafletProxy() call needs a reactive
+          # domain, so we pass session explicitly.
+          leaflet::leafletProxy("ug_map", session = session) |>
+            leaflet::clearGroup("Selection")
+          rv$selected_tenement_ids <- character(0)
+
           cur_proj <- shiny::isolate(app_state$current_project)
           if (!is.null(cur_proj)) {
             cur_proj$tenements <- projet$tenements
@@ -1943,15 +1972,17 @@ mod_ug_server <- function(id, app_state) {
 
           shiny::removeNotification(notif_id, session = session)
           shiny::showNotification(
-            i18n()$t("ug_poly_split_success"),
-            type = "message"
+            i18n_snap$t("ug_poly_split_success"),
+            type = "message",
+            session = session
           )
         }, error = function(e) {
           shiny::removeNotification(notif_id, session = session)
           shiny::showNotification(
-            paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
+            paste(i18n_snap$t("ug_split_error"), translate_err(e$message)),
             type = "error",
-            duration = 10
+            duration = 10,
+            session = session
           )
         })
       }, delay = 0.05)
