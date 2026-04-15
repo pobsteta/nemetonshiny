@@ -185,49 +185,49 @@
   // ============================================================
   Shiny.addCustomMessageHandler('leafletClearDrawn', function(data) {
     var widget = HTMLWidgets.find('#' + data.id);
-    if (!widget || !widget.getMap) return;
+    if (!widget || !widget.getMap) {
+      console.warn('[leafletClearDrawn] widget not found for #' + data.id);
+      return;
+    }
     var map = widget.getMap();
-    if (!map) return;
+    if (!map) {
+      console.warn('[leafletClearDrawn] map not available');
+      return;
+    }
 
-    // APPROACH A — leaflet.draw handler API. Same entry point as the
-    // "Delete layers" → "Clear All" → "Save" UI sequence, so this is
-    // guaranteed to do what the user does manually.
+    var removed = 0;
+
+    // APPROACH 1 — TARGETED COLOR MATCH. Our draw toolbar uses two
+    // specific stroke colors (#FF0000 polyline, #FF4500 polygon). Any
+    // L.Path with those colors is necessarily a drawn shape — managed
+    // overlays get profile colors which never match these literals.
+    // Runs FIRST so we don't depend on internal leaflet.draw APIs.
+    map.eachLayer(function(layer) {
+      if (!(layer instanceof L.Path)) return;
+      var col = layer.options && layer.options.color;
+      if (col === '#FF0000' || col === '#FF4500') {
+        try { map.removeLayer(layer); removed++; } catch (e) {}
+      }
+    });
+
+    // APPROACH 2 — leaflet.draw handler API (same as the "Delete layers"
+    // → "Clear All" → "Save" UI sequence).
     function runDeleteHandler(control) {
       try {
         var toolbar = control && control._toolbars && control._toolbars.edit;
-        if (!toolbar || !toolbar._modes || !toolbar._modes.remove) return false;
+        if (!toolbar || !toolbar._modes || !toolbar._modes.remove) return;
         var handler = toolbar._modes.remove.handler;
-        if (!handler) return false;
+        if (!handler) return;
         handler.enable();
         if (typeof handler.removeAllLayers === 'function') {
           handler.removeAllLayers();
         }
         handler.disable();
-        return true;
-      } catch (e) { return false; }
+      } catch (e) {}
     }
-    // Try map.drawControl (set by leaflet.extras when available)…
     runDeleteHandler(map.drawControl);
 
-    // …then scan any attached control in case map.drawControl is not set
-    // (some leaflet.extras versions don't assign it).
-    try {
-      if (map._controlContainer) {
-        var controls = map._controls || [];
-        controls.forEach(function(ctrl) {
-          if (window.L && L.Control && L.Control.Draw &&
-              ctrl instanceof L.Control.Draw) {
-            runDeleteHandler(ctrl);
-          }
-        });
-      }
-    } catch (e) {}
-
-    // APPROACH B — clear the FeatureGroup that leaflet.extras uses
-    // as both targetGroup ("Dessin") and edit featureGroup. Drawn
-    // layers are added via featureGroup.addLayer() directly, bypassing
-    // R-leaflet layerManager, so layerManager.clearGroup is a no-op
-    // on them — we have to call clearLayers() on the group itself.
+    // APPROACH 3 — clear the named FeatureGroup and the edit featureGroup.
     if (widget.layerManager &&
         typeof widget.layerManager.getLayerGroup === 'function') {
       ['Dessin', 'draw'].forEach(function(name) {
@@ -242,18 +242,7 @@
       try { map.drawControl.options.edit.featureGroup.clearLayers(); } catch (e) {}
     }
 
-    // APPROACH C — targeted color match. Our draw toolbar uses two
-    // specific stroke colors (#FF0000 polyline, #FF4500 polygon). Any
-    // L.Path with those colors is necessarily a drawn shape. This
-    // can't affect managed overlays (they get profile colors which
-    // never match these exact values).
-    map.eachLayer(function(layer) {
-      if (!(layer instanceof L.Path)) return;
-      var col = layer.options && layer.options.color;
-      if (col === '#FF0000' || col === '#FF4500') {
-        try { map.removeLayer(layer); } catch (e) {}
-      }
-    });
+    console.log('[leafletClearDrawn] removed ' + removed + ' drawn shape(s) by color match');
   });
 
 
