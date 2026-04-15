@@ -808,8 +808,11 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       shiny::req(project)
 
-      # Get parcel count for confirmation message
+      # Get counts for the confirmation dialog — indicators are
+      # computed on UGF geometries, so the UGF count is what really
+      # drives runtime. Keep the cadastral count for context.
       n_parcels <- if (!is.null(project$parcels)) nrow(project$parcels) else 0
+      n_ugs     <- if (!is.null(project$ugs))     nrow(project$ugs)     else 0
 
       # Show confirmation modal
       shiny::showModal(shiny::modalDialog(
@@ -820,6 +823,10 @@ mod_home_server <- function(id, app_state) {
             htmltools::tags$li(
               htmltools::strong(i18n$t("project_name"), ": "),
               project$metadata$name %||% project$id
+            ),
+            htmltools::tags$li(
+              htmltools::strong("UGF : "),
+              n_ugs
             ),
             htmltools::tags$li(
               htmltools::strong(i18n$t("parcels_count"), ": "),
