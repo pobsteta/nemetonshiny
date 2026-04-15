@@ -907,11 +907,13 @@ mod_ug_server <- function(id, app_state) {
       if (n_lines > 0 && n_polys == 0) {
         tenements <- projet$tenements
         # Preview: how many tenements does the line cross?
+        # Mirror the backend exactly: force 4326, reproject to the
+        # tenements CRS, disable S2 and work in EPSG:2154 for planar
+        # math. If preview disagrees with backend the user would see
+        # "the line does not cross any tenement" even though the split
+        # would have succeeded (or vice versa).
         n_affected <- tryCatch({
           line_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
-          # Leaflet always emits WGS84 (EPSG:4326). sf::st_read on a
-          # GeoJSON string sometimes returns NA CRS — force it to 4326
-          # so the transform below runs.
           if (is.na(sf::st_crs(line_sf))) {
             sf::st_crs(line_sf) <- 4326
           }
@@ -919,8 +921,17 @@ mod_ug_server <- function(id, app_state) {
               sf::st_crs(line_sf) != sf::st_crs(tenements)) {
             line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
           }
+          prev_s2 <- sf::sf_use_s2()
+          sf::sf_use_s2(FALSE)
+          on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
+          tn_work <- tenements
+          if (!is.na(sf::st_crs(tenements)) &&
+              isTRUE(sf::st_is_longlat(tenements))) {
+            tn_work <- sf::st_transform(tenements, 2154)
+            line_sf <- sf::st_transform(line_sf, 2154)
+          }
           cutting_line <- sf::st_union(sf::st_geometry(line_sf))
-          sum(sf::st_intersects(sf::st_geometry(tenements), cutting_line, sparse = FALSE)[, 1])
+          sum(sf::st_intersects(sf::st_geometry(tn_work), cutting_line, sparse = FALSE)[, 1])
         }, error = function(e) 0L)
 
         if (n_affected == 0) {
@@ -951,10 +962,10 @@ mod_ug_server <- function(id, app_state) {
       # ----- Case 2: POLYGON drawn → auto-split all crossed tenements -----
       tenements <- projet$tenements
       # Quick preview: how many tenements does the polygon cross?
+      # Mirror the backend: 4326 → tenements CRS → metric 2154 with
+      # S2 off. Keeps preview and split in sync.
       n_affected <- tryCatch({
         polys_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
-        # Leaflet always emits WGS84 (EPSG:4326) — force it when sf
-        # returns NA CRS for the in-memory GeoJSON string.
         if (is.na(sf::st_crs(polys_sf))) {
           sf::st_crs(polys_sf) <- 4326
         }
@@ -962,8 +973,17 @@ mod_ug_server <- function(id, app_state) {
             sf::st_crs(polys_sf) != sf::st_crs(tenements)) {
           polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
         }
+        prev_s2 <- sf::sf_use_s2()
+        sf::sf_use_s2(FALSE)
+        on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
+        tn_work <- tenements
+        if (!is.na(sf::st_crs(tenements)) &&
+            isTRUE(sf::st_is_longlat(tenements))) {
+          tn_work <- sf::st_transform(tenements, 2154)
+          polys_sf <- sf::st_transform(polys_sf, 2154)
+        }
         cutter <- sf::st_union(sf::st_geometry(polys_sf))
-        sum(sf::st_intersects(sf::st_geometry(tenements), cutter, sparse = FALSE)[, 1])
+        sum(sf::st_intersects(sf::st_geometry(tn_work), cutter, sparse = FALSE)[, 1])
       }, error = function(e) 0L)
 
       if (n_affected == 0) {
@@ -1012,18 +1032,10 @@ mod_ug_server <- function(id, app_state) {
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
-        # Clear drawn shapes from the map (both leaflet group + JS fallback).
-        # We run the clear twice — once immediately, once after 300 ms —
-        # because the redraw observer and the proxy queue can re-add
-        # managed shapes before the drawn layer is fully gone.
+        # Clear drawn shapes from the map (leaflet group + JS fallback).
         leaflet::leafletProxy(ns("ug_map")) |>
           leaflet::clearGroup("Dessin")
         session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
-        later::later(function() {
-          leaflet::leafletProxy(ns("ug_map")) |>
-            leaflet::clearGroup("Dessin")
-          session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
-        }, delay = 0.3)
 
         shiny::showNotification(
           i18n()$t("ug_poly_split_success"),
@@ -1060,18 +1072,10 @@ mod_ug_server <- function(id, app_state) {
         app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
-        # Clear drawn shapes from the map (both leaflet group + JS fallback).
-        # We run the clear twice — once immediately, once after 300 ms —
-        # because the redraw observer and the proxy queue can re-add
-        # managed shapes before the drawn layer is fully gone.
+        # Clear drawn shapes from the map (leaflet group + JS fallback).
         leaflet::leafletProxy(ns("ug_map")) |>
           leaflet::clearGroup("Dessin")
         session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
-        later::later(function() {
-          leaflet::leafletProxy(ns("ug_map")) |>
-            leaflet::clearGroup("Dessin")
-          session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
-        }, delay = 0.3)
 
         shiny::showNotification(
           i18n()$t("ug_line_split_success"),
