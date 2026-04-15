@@ -515,7 +515,22 @@ ug_geometry <- function(projet, ug_id) {
     cli::cli_abort("UG {ug_id} has no tenements")
   }
 
-  sf::st_union(sf::st_geometry(ug_tenements))
+  # Dissolve the tenements making up this UGF. S2 is strict about
+  # self-touching vertices that often arise from splits / make_valid
+  # cascades — fall back to planar GEOS when S2 complains. We also
+  # make_valid each geometry first and after the union.
+  prev_s2 <- sf::sf_use_s2()
+  on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
+  geoms <- sf::st_geometry(ug_tenements)
+  geoms <- tryCatch(sf::st_make_valid(geoms), error = function(e) geoms)
+  out <- tryCatch({
+    sf::st_union(geoms)
+  }, error = function(e) {
+    sf::sf_use_s2(FALSE)
+    g <- tryCatch(sf::st_make_valid(geoms), error = function(e) geoms)
+    sf::st_union(g)
+  })
+  tryCatch(sf::st_make_valid(out), error = function(e) out)
 }
 
 
