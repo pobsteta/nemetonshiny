@@ -442,7 +442,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
   # Summary table — longtable so the 1-row-per-UGF list (can easily
   # exceed a page when there are dozens of UGFs) breaks across pages
   # with the header repeated on every continuation page.
-  cat("{\\setlength{\\LTleft}{\\fill}\\setlength{\\LTright}{\\fill}\n")
+  cat("\\begingroup\\setlength{\\LTleft}{\\fill}\\setlength{\\LTright}{\\fill}\n")
   cat("\\begin{longtable}{llrl}\n")
   cat("\\toprule\n")
   if (params$language == "fr") {
@@ -486,7 +486,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
     )
   }
 
-  cat("\\end{longtable}}\n\n")
+  cat("\\end{longtable}\\endgroup\n\n")
 
   # Detailed annex: ONF Annexe 2 style (per-UG cadastral breakdown)
   if (params$language == "fr") {
@@ -504,7 +504,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
     if (!is.null(refs) && is.data.frame(refs) && nrow(refs) > 0) {
       # longtable so a UG with many parcels still breaks across pages
       # and keeps its column header repeating.
-      cat("{\\setlength{\\LTleft}{\\fill}\\setlength{\\LTright}{\\fill}\n")
+      cat("\\begingroup\\setlength{\\LTleft}{\\fill}\\setlength{\\LTright}{\\fill}\n")
       cat("\\begin{longtable}{llrr}\n")
       cat("\\toprule\n")
       if (params$language == "fr") {
@@ -543,7 +543,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
         )
       }
 
-      cat("\\end{longtable}}\n\n")
+      cat("\\end{longtable}\\endgroup\n\n")
     }
   }
 
