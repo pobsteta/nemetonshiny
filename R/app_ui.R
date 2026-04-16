@@ -212,9 +212,9 @@ app_add_external_resources <- function() {
       )
     ),
 
-    # Custom JS (cache-busting query string forces browser to reload on each app start)
+    # Custom JS - minified for performance (cache-busting to ensure latest version)
     htmltools::tags$script(
-      src = paste0("www/js/custom.js?v=", as.integer(Sys.time()))
+      src = paste0("www/js/custom.min.js?v=", as.integer(Sys.time()))
     )
   )
 }
