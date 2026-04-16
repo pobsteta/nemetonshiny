@@ -1896,6 +1896,14 @@ mod_ug_server <- function(id, app_state) {
 
           if (!is.null(projet$metadata$id)) {
             save_ug_data(projet$metadata$id, projet)
+            # The new layout may introduce brand-new ug_ids (either from
+            # label_ugf or from the tenement-id regeneration). Any cached
+            # indicators.parquet still references the OLD ug_ids, which
+            # would cause compute_all_indicators() to skip everything
+            # ("already computed") and leave the fresh UGFs unpopulated.
+            # Drop the cache so the next "Lancer les calculs" starts from
+            # scratch on the new layout.
+            invalidate_indicators(projet$metadata$id)
           }
 
           # Writes to reactiveValues do not require a reactive context.
@@ -1914,6 +1922,16 @@ mod_ug_server <- function(id, app_state) {
           if (!is.null(cur_proj)) {
             cur_proj$tenements <- projet$tenements
             cur_proj$ugs       <- projet$ugs
+            # Mirror invalidate_indicators() in memory: the cached
+            # indicator columns would otherwise render on top of the
+            # new UGF layout with mismatched ug_ids, and also prevent
+            # the "Lancer les calculs" button from showing up again.
+            cur_proj$indicators <- NULL
+            cur_proj$indicators_sf <- NULL
+            if (!is.null(cur_proj$metadata)) {
+              cur_proj$metadata$indicators_computed <- FALSE
+              cur_proj$metadata$status <- "draft"
+            }
             app_state$current_project <- cur_proj
           }
 
