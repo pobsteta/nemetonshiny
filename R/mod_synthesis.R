@@ -461,6 +461,8 @@ mod_synthesis_server <- function(id, app_state) {
 
       # Fill all family comments if switch is checked
       family_comments_local <- as.list(shiny::isolate(app_state$family_comments))
+      failed_families <- character(0)
+      skipped_families <- character(0)
       if (isTRUE(input$fill_all_comments)) {
         all_indicators <- project_indicators()
         if (!is.null(all_indicators)) {
@@ -469,10 +471,10 @@ mod_synthesis_server <- function(id, app_state) {
           for (i in seq_along(family_codes)) {
             fc <- family_codes[i]
             fam_config <- get_family_config(fc)
+            fam_name <- if (identical(app_state$language, "fr")) fam_config$name_fr else fam_config$name_en
 
             # Notification with progress
             shiny::removeNotification(notif_id)
-            fam_name <- if (identical(app_state$language, "fr")) fam_config$name_fr else fam_config$name_en
             notif_id <- shiny::showNotification(
               htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
                              sprintf("%s (%d/%d)...", fam_name, i, length(family_codes))),
@@ -488,28 +490,91 @@ mod_synthesis_server <- function(id, app_state) {
               else if (col %in% all_cols) matched <- c(matched, col)
             }
             matched <- unique(matched)
-            if (length(matched) == 0) next
+            if (length(matched) == 0) {
+              cli::cli_warn("Skipping family {fc} ({fam_name}): no matching indicator columns")
+              skipped_families <- c(skipped_families, fam_name)
+              next
+            }
 
             meta_cols <- intersect(c("ug_id", "label", "groupe"), all_cols)
             fam_ind_data <- all_indicators[, c(meta_cols, matched), drop = FALSE]
 
-            # Generate LLM comment
+            # Generate LLM comment. Retry once on transient errors
+            # (rate-limit 429 / timeout / empty response) — Mistral's
+            # free tier in particular throttles bursts of consecutive
+            # requests, which is exactly what fill-all does.
             fam_prompt <- build_analysis_prompt(fam_config, fam_ind_data, language)
-            fam_response <- tryCatch({
-              fam_chat <- create_llm_chat(system_prompt)
-              as.character(fam_chat$chat(fam_prompt, echo = FALSE))
-            }, error = function(e) {
-              cli::cli_warn("Failed to generate comment for family {fc}: {conditionMessage(e)}")
-              NULL
-            })
+            fam_response <- NULL
+            for (attempt in seq_len(2L)) {
+              fam_response <- tryCatch({
+                fam_chat <- create_llm_chat(system_prompt)
+                out <- as.character(fam_chat$chat(fam_prompt, echo = FALSE))
+                # Treat empty / whitespace-only responses as a failure
+                # so the retry kicks in — without this, nchar == 0 would
+                # overwrite a previously-good comment with an empty
+                # string and the family tab would simply show nothing.
+                if (length(out) == 0L || !any(nzchar(trimws(out)))) {
+                  stop("Empty response from LLM", call. = FALSE)
+                }
+                paste(out, collapse = "\n")
+              }, error = function(e) {
+                cli::cli_warn(
+                  "AI attempt {attempt}/2 failed for family {fc} ({fam_name}): {conditionMessage(e)}"
+                )
+                NULL
+              })
+              if (!is.null(fam_response)) break
+              if (attempt < 2L) Sys.sleep(1)  # tiny backoff before retry
+            }
+
             if (!is.null(fam_response)) {
               family_comments_local[[fc]] <- fam_response
-              app_state$family_comments[[fc]] <- fam_response
+              cli::cli_alert_success("AI comment generated for family {fc} ({fam_name})")
+            } else {
+              failed_families <- c(failed_families, fam_name)
             }
           }
           shiny::removeNotification(notif_id)
-          # Signal family modules to reload comments
+
+          # Commit all family comments to app_state in a single atomic
+          # write. Per-iteration deep assignments (app_state$family_comments[[fc]] <- ...)
+          # used to invalidate observers bound to app_state$family_comments
+          # mid-loop and occasionally lost the most recent comment. Writing
+          # the full list at the end keeps the reactive graph in a single
+          # consistent state and fires mod_family observers once.
+          app_state$family_comments <- family_comments_local
           app_state$refresh_family_comments <- Sys.time()
+
+          # Surface failures to the user — the old code only logged to the
+          # console, so a failed family (e.g. Mistral 429 rate limit) looked
+          # indistinguishable from a successful blank comment.
+          if (length(failed_families) > 0L || length(skipped_families) > 0L) {
+            msg_parts <- character(0)
+            if (length(failed_families) > 0L) {
+              msg_parts <- c(
+                msg_parts,
+                if (identical(app_state$language, "fr")) {
+                  sprintf("\u00c9chec IA : %s", paste(failed_families, collapse = ", "))
+                } else {
+                  sprintf("AI failed: %s", paste(failed_families, collapse = ", "))
+                }
+              )
+            }
+            if (length(skipped_families) > 0L) {
+              msg_parts <- c(
+                msg_parts,
+                if (identical(app_state$language, "fr")) {
+                  sprintf("Sans donn\u00e9es : %s", paste(skipped_families, collapse = ", "))
+                } else {
+                  sprintf("No data: %s", paste(skipped_families, collapse = ", "))
+                }
+              )
+            }
+            shiny::showNotification(
+              paste(msg_parts, collapse = " \u2014 "),
+              type = "warning", duration = 12
+            )
+          }
         }
       }
 
