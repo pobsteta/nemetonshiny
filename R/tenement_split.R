@@ -940,9 +940,12 @@ validate_tiling <- function(projet, parcelle_id, tolerance_m2 = NULL) {
 #'     parties" which only splits parts inside a single feature row.
 #'   \item Each new feature is assigned to its parent cadastral parcel
 #'     via largest-overlap spatial join with \code{projet$parcels}.
-#'   \item Each new feature inherits the UGF of the existing tenement
-#'     it most overlaps (preserves the user's UGF grouping whenever
-#'     possible).
+#'   \item UGF assignment: if the imported file has a \code{label_ugf}
+#'     column, each unique value defines a UGF (existing UGFs with the
+#'     same label are reused so their \code{groupe} survives; new labels
+#'     create new UGFs). Rows with a missing / blank \code{label_ugf}
+#'     — and files without the column — fall back to the legacy
+#'     inherit-UGF-by-largest-overlap behaviour.
 #'   \item \code{surface_sig_m2} is recomputed in Lambert 93;
 #'     \code{surface_m2} is rescaled so that the total per-parent-
 #'     parcel remains equal to the cadastral contenance
@@ -1059,11 +1062,56 @@ tenement_import_replace <- function(projet, imported_sf) {
       as.character(parcels_m[[parcel_id_col]][1])
   }
 
+  # If the imported file carries a label_ugf column, drive the UGF
+  # assignment from that column: each unique label becomes one UGF
+  # (existing UGFs with a matching label are reused so their `groupe`
+  # and other attributes survive the import).
+  #
+  # Rows with a missing / blank label_ugf fall back to the legacy
+  # "inherit UGF by overlap" behaviour below.
+  label_ugf_vec <- if ("label_ugf" %in% names(imported_m)) {
+    trimmed <- trimws(as.character(imported_m$label_ugf))
+    ifelse(is.na(trimmed) | !nzchar(trimmed), NA_character_, trimmed)
+  } else {
+    rep(NA_character_, nrow(imported_m))
+  }
+
+  # Build a label -> ug_id map (reuse existing UG, create new ids otherwise)
+  unique_labels <- unique(stats::na.omit(label_ugf_vec))
+  label_to_ug <- stats::setNames(character(length(unique_labels)),
+                                 unique_labels)
+  new_ugs_rows <- list()
+  ts_ugf <- format(Sys.time(), "%Y%m%d%H%M%S")
+  for (i in seq_along(unique_labels)) {
+    lbl <- unique_labels[i]
+    hit <- which(ugs$label == lbl)
+    if (length(hit) >= 1) {
+      label_to_ug[[lbl]] <- as.character(ugs$ug_id[hit[1]])
+    } else {
+      new_id <- sprintf("ug_%s_%03d", ts_ugf, i)
+      label_to_ug[[lbl]] <- new_id
+      new_ugs_rows[[length(new_ugs_rows) + 1L]] <- data.frame(
+        ug_id = new_id,
+        label = lbl,
+        groupe = NA_character_,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (length(new_ugs_rows) > 0L) {
+    ugs <- rbind(ugs, do.call(rbind, new_ugs_rows))
+    projet$ugs <- ugs
+  }
+
   # Inherit UGF from the existing tenement with the largest overlap;
   # if a new feature has zero overlap with any existing tenement
   # (shouldn't happen if tiling is preserved), fall back to the first
   # UGF of the parent parcel.
   ug_ids <- vapply(seq_len(nrow(imported_m)), function(i) {
+    # Explicit label_ugf takes precedence over geometric inheritance
+    if (!is.na(label_ugf_vec[i])) {
+      return(label_to_ug[[label_ugf_vec[i]]])
+    }
     f <- sf::st_geometry(imported_m)[i]
     hit_rows <- which(lengths(sf::st_intersects(
       sf::st_geometry(tenements_m), f)) > 0)
@@ -1082,6 +1130,14 @@ tenement_import_replace <- function(projet, imported_sf) {
     }, numeric(1))
     as.character(tenements_m$ug_id[hit_rows[which.max(areas)]])
   }, character(1))
+
+  # Log how many tenements were assigned via label_ugf (for troubleshooting)
+  n_via_label <- sum(!is.na(label_ugf_vec))
+  if (n_via_label > 0L) {
+    cli::cli_alert_info(
+      "Import: {n_via_label} t\u00e8nement{?s} assign\u00e9{?s} via label_ugf ({length(unique_labels)} UGF distincte{?s})"
+    )
+  }
 
   # Rescale surface_m2 per parent parcel so the total matches the
   # cadastral contenance (surface_m2 of the original parcel).

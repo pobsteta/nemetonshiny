@@ -756,6 +756,76 @@ test_that("load_indicators returns NULL for nonexistent project", {
 })
 
 # ==============================================================================
+# invalidate_indicators
+# ==============================================================================
+
+test_that("invalidate_indicators removes cached file and resets metadata", {
+  skip_if_not_installed("arrow")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonShiny:::create_project(name = "Invalidate Test")
+
+        # Seed an indicators.parquet file + computed=TRUE metadata
+        indicators_df <- data.frame(
+          ug_id = c("ug_old_1", "ug_old_2"),
+          indicateur_c1_biomasse = c(120.5, 85.3),
+          stringsAsFactors = FALSE
+        )
+        nemetonShiny:::save_indicators(project$id, indicators_df)
+
+        parquet_path <- file.path(project$path, "data", "indicators.parquet")
+        expect_true(file.exists(parquet_path))
+        expect_true(nemetonShiny:::load_project_metadata(project$id)$indicators_computed)
+
+        # Invalidate
+        removed <- nemetonShiny:::invalidate_indicators(project$id)
+
+        expect_true(removed)
+        expect_false(file.exists(parquet_path))
+        meta <- nemetonShiny:::load_project_metadata(project$id)
+        expect_false(meta$indicators_computed)
+        expect_equal(meta$status, "draft")
+      }
+    )
+  })
+})
+
+test_that("invalidate_indicators is a no-op when no indicators file", {
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonShiny:::create_project(name = "No Cache Test")
+
+        # No indicators saved — invalidate should still flip the flag
+        removed <- nemetonShiny:::invalidate_indicators(project$id)
+
+        expect_false(removed)
+        meta <- nemetonShiny:::load_project_metadata(project$id)
+        expect_false(meta$indicators_computed %||% FALSE)
+      }
+    )
+  })
+})
+
+test_that("invalidate_indicators returns FALSE for nonexistent project", {
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        result <- nemetonShiny:::invalidate_indicators("nope")
+        expect_false(result)
+      }
+    )
+  })
+})
+
+# ==============================================================================
 # load_project (full round-trip)
 # ==============================================================================
 

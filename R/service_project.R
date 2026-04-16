@@ -464,6 +464,56 @@ load_indicators <- function(project_id) {
 }
 
 
+#' Invalidate cached indicator results
+#'
+#' @description
+#' Removes \code{indicators.parquet} and flips the \code{indicators_computed}
+#' metadata flag back to \code{FALSE}. Call this whenever the UGF layout
+#' changes in a way that invalidates previously computed indicator values
+#' (e.g. after a découpage import that renumbers \code{ug_id}s — the
+#' cached values are keyed on ug_id and silently tell
+#' \code{compute_all_indicators()} that "everything is already done",
+#' leaving the new UGFs unpopulated).
+#'
+#' The parcels cache and the UGF layout files (\code{tenements.gpkg},
+#' \code{ugs.json}) are untouched — only the indicator results.
+#'
+#' @param project_id Character. Project ID.
+#'
+#' @return Invisible TRUE if the indicators file was present and removed,
+#'   FALSE if there was nothing to invalidate.
+#' @noRd
+invalidate_indicators <- function(project_id) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path)) {
+    return(invisible(FALSE))
+  }
+
+  indicators_path <- file.path(project_path, "data", "indicators.parquet")
+  removed <- FALSE
+  if (file.exists(indicators_path)) {
+    removed <- file.remove(indicators_path)
+  }
+
+  # Reset the computed flag + status so the UI knows the project is
+  # back to a "needs compute" state.
+  tryCatch({
+    update_project_metadata(project_id, list(
+      indicators_computed = FALSE,
+      status = "draft",
+      updated_at = Sys.time()
+    ))
+  }, error = function(e) {
+    cli::cli_warn("Failed to reset indicators flag: {e$message}")
+  })
+
+  if (removed) {
+    cli::cli_alert_info("Invalidated cached indicators for project {project_id}")
+  }
+  invisible(removed)
+}
+
+
 #' Load project
 #'
 #' @description

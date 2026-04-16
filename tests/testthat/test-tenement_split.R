@@ -199,3 +199,103 @@ test_that("validate_tiling passes for valid tiling", {
 
   expect_true(nemetonShiny:::validate_tiling(projet, "p1"))
 })
+
+
+# ==============================================================================
+# tenement_import_replace tests — label_ugf handling
+# ==============================================================================
+
+# Helper: two contiguous halves covering the parent parcel
+make_two_halves <- function(labels = NULL) {
+  left <- sf::st_polygon(list(matrix(
+    c(0,0, 1,0, 1,2, 0,2, 0,0), ncol = 2, byrow = TRUE
+  )))
+  right <- sf::st_polygon(list(matrix(
+    c(1,0, 2,0, 2,2, 1,2, 1,0), ncol = 2, byrow = TRUE
+  )))
+  sf <- sf::st_sf(
+    geometry = sf::st_sfc(left, right, crs = 4326)
+  )
+  if (!is.null(labels)) sf$label_ugf <- labels
+  sf
+}
+
+
+test_that("tenement_import_replace without label_ugf falls back to overlap-inheritance", {
+  projet <- create_split_test_projet()
+  # Two halves, no label_ugf column
+  imported <- make_two_halves()
+
+  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+
+  # Two tenements, both sharing the single pre-existing UG
+  expect_equal(nrow(result$tenements), 2)
+  expect_equal(length(unique(result$tenements$ug_id)), 1)
+  expect_equal(nrow(result$ugs), 1)
+  expect_true(nemetonShiny:::projet_validate(result))
+})
+
+
+test_that("tenement_import_replace creates UGF from distinct label_ugf values", {
+  projet <- create_split_test_projet()
+  imported <- make_two_halves(labels = c("UGF-Ouest", "UGF-Est"))
+
+  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+
+  expect_equal(nrow(result$tenements), 2)
+  expect_equal(sort(result$ugs$label), c("UGF-Est", "UGF-Ouest"))
+  # Each tenement maps to its own UGF
+  expect_equal(length(unique(result$tenements$ug_id)), 2)
+  expect_true(nemetonShiny:::projet_validate(result))
+})
+
+
+test_that("tenement_import_replace groups tenements sharing the same label_ugf", {
+  projet <- create_split_test_projet()
+  imported <- make_two_halves(labels = c("UGF-Unique", "UGF-Unique"))
+
+  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+
+  expect_equal(nrow(result$tenements), 2)
+  expect_equal(length(unique(result$tenements$ug_id)), 1)
+  expect_equal(result$ugs$label, "UGF-Unique")
+  expect_true(nemetonShiny:::projet_validate(result))
+})
+
+
+test_that("tenement_import_replace reuses existing UGF when label matches", {
+  projet <- create_split_test_projet()
+
+  # Assign a groupe to the existing UG so we can tell if it's reused
+  original_ug_id <- projet$ugs$ug_id[1]
+  original_label <- projet$ugs$label[1]
+  projet$ugs$groupe[projet$ugs$ug_id == original_ug_id] <- "TSF"
+
+  # Re-import with one half using the existing UG label and another new label
+  imported <- make_two_halves(labels = c(original_label, "UGF-Nouveau"))
+
+  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+
+  # Existing UG preserved (same id + groupe) and a new one appended
+  expect_true(original_ug_id %in% result$ugs$ug_id)
+  expect_equal(
+    result$ugs$groupe[result$ugs$ug_id == original_ug_id], "TSF"
+  )
+  expect_true("UGF-Nouveau" %in% result$ugs$label)
+  expect_true(nemetonShiny:::projet_validate(result))
+})
+
+
+test_that("tenement_import_replace treats empty/NA label_ugf as fallback", {
+  projet <- create_split_test_projet()
+
+  # First half has a label, second half has a blank one
+  imported <- make_two_halves(labels = c("UGF-Unique", "  "))
+
+  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+
+  # UGF-Unique created; blank-label row falls back to existing UG via overlap
+  expect_true("UGF-Unique" %in% result$ugs$label)
+  expect_true(nrow(result$ugs) >= 1)
+  expect_true(nemetonShiny:::projet_validate(result))
+})
