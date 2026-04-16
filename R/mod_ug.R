@@ -1,9 +1,9 @@
 #' UG (Management Units) Module
 #'
 #' @description
-#' Shiny module for managing Unités de Gestion (UG).
+#' Shiny module for managing Unites de Gestion (UG).
 #' Boucle 1: table + leaflet map with tenement selection, merge/split/rename,
-#' groupe d'aménagement assignment, and color-coded map display.
+#' groupe d'amenagement assignment, and color-coded map display.
 #'
 #' @name mod_ug
 #' @keywords internal
@@ -17,8 +17,8 @@ NULL
 #' @return Shiny UI tag list.
 #' @noRd
 mod_ug_ui <- function(id) {
-  # Composite UI (layout_sidebar) — used when the UG module has its own tab.
-  # When embedded in the Sélection tab, use the helpers below instead:
+  # Composite UI (layout_sidebar) -- used when the UG module has its own tab.
+  # When embedded in the Selection tab, use the helpers below instead:
   #   mod_ug_actions_bar(id), mod_ug_map_panel(id), mod_ug_table_panel(id)
   ns <- shiny::NS(id)
 
@@ -257,7 +257,7 @@ mod_ug_table_actions_bar <- function(id) {
 
     shiny::hr(),
 
-    # Groupe d'aménagement selector
+    # Groupe d'amenagement selector
     htmltools::div(
       class = "mb-3",
       shiny::selectInput(
@@ -292,7 +292,7 @@ mod_ug_table_actions_bar <- function(id) {
 }
 
 
-#' UG actions bar (combined wrapper — map + table)
+#' UG actions bar (combined wrapper -- map + table)
 #'
 #' @description
 #' Backward-compatible wrapper that includes both the map-action bar
@@ -336,7 +336,7 @@ mod_ug_server <- function(id, app_state) {
 
     # Current classification profile (ONF / CRPF / OFB / ...) driven by the
     # project metadata. Falls back to the config default. Determines the
-    # dropdown label (e.g. "Groupe d'aménagement" / "Groupe" / "Zone"),
+    # dropdown label (e.g. "Groupe d'amenagement" / "Groupe" / "Zone"),
     # the available codes and the map legend.
     profile_key <- shiny::reactive({
       pk <- rv$projet_ug$metadata$groupes_profile
@@ -348,7 +348,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # Update the sidebar groupe selector (label + choices) when the profile
-    # changes — i.e. when a project with a different profile is loaded.
+    # changes -- i.e. when a project with a different profile is loaded.
     shiny::observe({
       pk <- profile_key()
       shiny::updateSelectInput(
@@ -460,7 +460,7 @@ mod_ug_server <- function(id, app_state) {
           # the orange highlight via addPolygons(group = "Selection") and
           # wipe it with clearGroup("Selection"), but it doesn't belong
           # in the user-facing layers control (toggling it off wouldn't
-          # actually deselect tenements — the IDs live in rv$selected_tenement_ids).
+          # actually deselect tenements -- the IDs live in rv$selected_tenement_ids).
           overlayGroups = c("UGF", "Tenements", "Dessin"),
           options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
@@ -551,7 +551,7 @@ mod_ug_server <- function(id, app_state) {
       tenements <- projet$tenements
       # Cadastral surface (authoritative, from contenance)
       surf_cadastrale_ha <- sum(tenements$surface_m2, na.rm = TRUE) / 10000
-      # SIG surface (geometric, via st_area) — fallback to st_area if column missing
+      # SIG surface (geometric, via st_area) -- fallback to st_area if column missing
       surf_sig_m2 <- if (!is.null(tenements$surface_sig_m2)) {
         tenements$surface_sig_m2
       } else {
@@ -585,7 +585,7 @@ mod_ug_server <- function(id, app_state) {
 
       # Sort tenements by descending SIG surface so larger polygons
       # are drawn FIRST and smaller ones (typically nested inclusions
-      # the user added after the initial split — e.g. a clearing
+      # the user added after the initial split -- e.g. a clearing
       # carved out of a large tenement) land ON TOP and stay visible.
       if ("surface_sig_m2" %in% names(tenements) && nrow(tenements) > 1) {
         tenements <- tenements[order(-tenements$surface_sig_m2), , drop = FALSE]
@@ -745,7 +745,7 @@ mod_ug_server <- function(id, app_state) {
     # MAP: Re-zoom when the tenement map becomes visible
     # ================================================================
     # Leaflet fitBounds fails silently when the map container has 0 size
-    # (hidden tab). The tenement map lives in a sub-tab of "Sélection"
+    # (hidden tab). The tenement map lives in a sub-tab of "Selection"
     # (home-main_tabs = "tenements"). Every time the user navigates to
     # that sub-tab, we:
     #  1. Recompute the bbox from the current rv$projet_ug (always fresh)
@@ -772,7 +772,7 @@ mod_ug_server <- function(id, app_state) {
       bbox <- tryCatch(sf::st_bbox(tenements), error = function(e) NULL)
       if (is.null(bbox)) return()
 
-      # Force re-drawing the polygons — they may have been issued while the
+      # Force re-drawing the polygons -- they may have been issued while the
       # tab was hidden (map not in DOM) and silently dropped by leaflet.
       rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
 
@@ -883,10 +883,10 @@ mod_ug_server <- function(id, app_state) {
     # MAP: Handle drawn shapes (interactive split)
     # ================================================================
     # When the user finishes drawing on the map:
-    #   - LINESTRING → split tenements crossed by that line
-    #   - POLYGON / RECTANGLE → split tenements crossed by that polygon
+    #   - LINESTRING -> split tenements crossed by that line
+    #   - POLYGON / RECTANGLE -> split tenements crossed by that polygon
     # We key off input$ug_map_draw_new_feature (fires with ONLY the
-    # latest drawn shape) — draw_all_features accumulates every shape
+    # latest drawn shape) -- draw_all_features accumulates every shape
     # ever drawn, which caused a polygon drawn earlier to "win" over a
     # polyline drawn afterwards.
     shiny::observeEvent(input$ug_map_draw_new_feature, {
@@ -909,12 +909,12 @@ mod_ug_server <- function(id, app_state) {
       n_polys <- if (is_poly) 1L else 0L
       tenements <- projet$tenements
 
-      cli::cli_h2("Nouveau tracé : {geom_type}")
-      cli::cli_alert_info("Nombre de tènements dans le projet : {nrow(tenements)}")
+      cli::cli_h2("Nouveau trac\u00e9 : {geom_type}")
+      cli::cli_alert_info("Nombre de t\u00e8nements dans le projet : {nrow(tenements)}")
 
-      # ----- Case 1: LINE drawn → auto-split all crossed tenements -----
+      # ----- Case 1: LINE drawn -> auto-split all crossed tenements -----
       if (is_line) {
-        cli::cli_alert_info("Type : POLYLIGNE — analyse du tracé...")
+        cli::cli_alert_info("Type : POLYLIGNE \u2014 analyse du trac\u00e9...")
         # Preview: planar GEOS on Lambert 93 (matches the backend
         # which must use GEOS because lwgeom::st_split has no S2 mode).
         n_affected <- tryCatch({
@@ -939,7 +939,7 @@ mod_ug_server <- function(id, app_state) {
           n <- sum(sf::st_intersects(sf::st_geometry(tn_work), cutting_line,
                                      sparse = FALSE)[, 1])
           cli::cli_alert_success(
-            "POLYLIGNE : traverse {n} tènement{?s} (sur {nrow(tenements)})"
+            "POLYLIGNE : traverse {n} t\u00e8nement{?s} (sur {nrow(tenements)})"
           )
           n
         }, error = function(e) {
@@ -974,7 +974,7 @@ mod_ug_server <- function(id, app_state) {
         return()
       }
 
-      # ----- Case 2: POLYGON drawn → auto-split all crossed tenements -----
+      # ----- Case 2: POLYGON drawn -> auto-split all crossed tenements -----
       if (!is_poly) return()
       cli::cli_alert_info("Type : POLYGONE \u2014 analyse du trac\u00e9...")
       # Quick preview: how many tenements does the polygon cross?
@@ -999,7 +999,7 @@ mod_ug_server <- function(id, app_state) {
           n <- sum(sf::st_intersects(sf::st_geometry(tenements), cutter,
                                      sparse = FALSE)[, 1])
           cli::cli_alert_success(
-            "POLYGONE (S2/4326) : traverse {n} tènement{?s} (sur {nrow(tenements)})"
+            "POLYGONE (S2/4326) : traverse {n} t\u00e8nement{?s} (sur {nrow(tenements)})"
           )
           n
         }, error = function(e) {
@@ -1372,7 +1372,7 @@ mod_ug_server <- function(id, app_state) {
         round(listing$surface_m2 / 10000, 2)
       }
       # Column header for the groupe column matches the profile's
-      # field_label (e.g. "Groupe d'aménagement" / "Groupe" / "Zone").
+      # field_label (e.g. "Groupe d'amenagement" / "Groupe" / "Zone").
       groupe_col <- get_groupes_field_label(profile_key(), lang = lang())
 
       # Build a pale background tint from each profile color (85% white
@@ -1437,7 +1437,7 @@ mod_ug_server <- function(id, app_state) {
 
     # Render the table even when the sub-tab is hidden. Otherwise Shiny
     # suspends the output and the post-split data update is only picked
-    # up the next time the user navigates to "Tableau" — which sometimes
+    # up the next time the user navigates to "Tableau" -- which sometimes
     # doesn't trigger a refresh because the cached value looks the same.
     shiny::outputOptions(output, "ug_table", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "ug_map_count", suspendWhenHidden = FALSE)
@@ -1696,7 +1696,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # ACTION: Set groupe d'aménagement
+    # ACTION: Set groupe d'amenagement
     # ================================================================
     shiny::observeEvent(input$btn_set_groupe, {
       sel <- input$ug_table_rows_selected
@@ -1848,7 +1848,7 @@ mod_ug_server <- function(id, app_state) {
       #
       # The later callback runs OUTSIDE any reactive context, so ALL
       # reactive reads must be isolated. We snapshot the things we need
-      # now, then pass them in by closure — simpler and faster than
+      # now, then pass them in by closure -- simpler and faster than
       # calling shiny::isolate() on every single line.
       datapath       <- file_info$datapath
       i18n_snap      <- shiny::isolate(i18n())
@@ -1887,9 +1887,9 @@ mod_ug_server <- function(id, app_state) {
           }
 
           # Apply as a full layout replacement. The imported file is the
-          # NEW tenement configuration — not a cutter. Handles:
-          #  - QGIS "Séparer les parties" (multipart → singleparts)
-          #  - QGIS "Séparer l'entité"   (new rows appear in the file)
+          # NEW tenement configuration -- not a cutter. Handles:
+          #  - QGIS "Separer les parties" (multipart -> singleparts)
+          #  - QGIS "Separer l'entite"   (new rows appear in the file)
           #  - reshape / merge / delete in any GIS tool
           projet <- shiny::isolate(rv$projet_ug)
           projet <- tenement_import_replace(projet, sf_polygones)
@@ -1912,7 +1912,7 @@ mod_ug_server <- function(id, app_state) {
           rv$projet_ug <- projet
           rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
 
-          # clear selection — its leafletProxy() call needs a reactive
+          # clear selection -- its leafletProxy() call needs a reactive
           # domain, so we pass session explicitly.
           leaflet::leafletProxy("ug_map", session = session) |>
             leaflet::clearGroup("Selection")

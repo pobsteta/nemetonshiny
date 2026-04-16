@@ -24,7 +24,7 @@ NULL
 #' @noRd
 ndp_badge <- function(ndp, lang = "fr") {
   ndp <- as.integer(ndp)
-  level <- nemeton:::get_ndp_level(ndp)
+  level <- nemeton::get_ndp_level(ndp)
 
   colors <- c(
     "#6c757d",  # NDP 0 - gray
@@ -62,7 +62,7 @@ ndp_badge <- function(ndp, lang = "fr") {
 #' @noRd
 ndp_progress_bar <- function(ndp, lang = "fr") {
   ndp <- as.integer(ndp)
-  level <- nemeton:::get_ndp_level(ndp)
+  level <- nemeton::get_ndp_level(ndp)
   pct <- round(level$confidence * 100, 1)
 
   label <- if (lang == "en") {

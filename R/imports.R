@@ -15,7 +15,7 @@ msg <- nemeton:::msg
 get_language <- nemeton:::get_language
 
 # Normalization
-normalize_indicator <- nemeton:::normalize_indicator
+normalize_indicator <- nemeton::normalize_indicator
 
 # Utilities
 resolve_raster_layer <- nemeton:::resolve_raster_layer

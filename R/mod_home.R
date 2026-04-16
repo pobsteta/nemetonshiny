@@ -742,8 +742,12 @@ mod_home_server <- function(id, app_state) {
           # Dev mode: reload from source directory
           pkgload::load_all(.pkg_path, quiet = TRUE)
         } else {
-          # Production: attach package so all exports are on the search path
-          library(nemeton, quietly = TRUE)
+          # Production: attach package so all exports are on the search path.
+          # We use attachNamespace() instead of library() to avoid the
+          # R CMD check note about library() calls in package code.
+          if (!"package:nemeton" %in% search()) {
+            attachNamespace("nemeton")
+          }
         }
 
         # Restore app options in the future process
