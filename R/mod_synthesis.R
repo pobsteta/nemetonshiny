@@ -20,14 +20,9 @@ mod_synthesis_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(project) || is.null(project$indicators)) return(NULL)
 
-      # Prefer UG-level indicators if available
-      df <- if (!is.null(project$indicators_ug) && inherits(project$indicators_ug, c("sf", "data.frame"))) {
-        project$indicators_ug
-      } else {
-        project$indicators
-      }
+      df <- project$indicators
 
-      # Drop geometry if sf (indicators from parquet may have geoarrow geometry)
+      # Drop geometry if sf
       if (inherits(df, "sf")) {
         df <- tryCatch(sf::st_drop_geometry(df),
                        error = function(e) {
@@ -42,61 +37,21 @@ mod_synthesis_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # REACTIVE: Build sf with family scores
+    # REACTIVE: Build sf with family scores (one row per UGF)
     # ================================================================
     family_scores <- shiny::reactive({
-      indicators <- project_indicators()
-      if (is.null(indicators)) return(NULL)
-
       project <- app_state$current_project
+      if (is.null(project)) return(NULL)
 
-      # When UG-level indicators are available with geometries, use them directly
-      if (!is.null(project$indicators_ug) && inherits(project$indicators_ug, "sf")) {
-        merged <- project$indicators_ug
-        # Compute family indices on UG sf
-        return(tryCatch(
-          create_family_index(merged, method = "mean", na.rm = TRUE),
-          error = function(e) {
-            cli::cli_warn("Failed to compute family index on UG data: {conditionMessage(e)}")
-            NULL
-          }
-        ))
+      # project$indicators_sf is always built by load_project(): one
+      # row per UGF with geometry + indicator columns + label/groupe.
+      base_sf <- project$indicators_sf
+      if (is.null(base_sf) || !inherits(base_sf, "sf") || nrow(base_sf) == 0) {
+        return(NULL)
       }
 
-      # Standard path: merge parcels + indicators
-      if (is.null(project$parcels)) return(NULL)
-
-      parcels <- project$parcels
-
-      # Determine join column
-      ind_cols <- names(indicators)
-      parcel_cols <- names(parcels)
-      join_col <- NULL
-      for (candidate in c("nemeton_id", "id", "geo_parcelle")) {
-        if (candidate %in% ind_cols && candidate %in% parcel_cols) {
-          join_col <- candidate
-          break
-        }
-      }
-
-      if (is.null(join_col)) return(NULL)
-
-      # Subset indicators to only keep join column + actual indicator columns
-      # (avoid duplicating metadata columns like section, numero, contenance, etc.)
-      all_indicator_cols <- get_all_column_names()
-      # Also include _norm variants
-      norm_cols <- paste0(all_indicator_cols, "_norm")
-      keep_cols <- intersect(names(indicators),
-                             c(join_col, all_indicator_cols, norm_cols))
-      indicators_subset <- indicators[, keep_cols, drop = FALSE]
-
-      # Merge: parcels (sf) + indicators subset (data.frame)
-      merged <- merge(parcels, indicators_subset, by = join_col, all.x = FALSE)
-      if (nrow(merged) == 0) return(NULL)
-
-      # Compute family indices
       tryCatch(
-        create_family_index(merged, method = "mean", na.rm = TRUE),
+        create_family_index(base_sf, method = "mean", na.rm = TRUE),
         error = function(e) {
           cli::cli_warn("Failed to compute family index: {conditionMessage(e)}")
           NULL
@@ -120,6 +75,7 @@ mod_synthesis_server <- function(id, app_state) {
 
       meta <- project$metadata
       nb_parcels <- if (!is.null(project$parcels)) nrow(project$parcels) else 0L
+      nb_ugs <- if (!is.null(project$ugs)) nrow(project$ugs) else 0L
 
       htmltools::div(
         shiny::h5(meta$name),
@@ -132,7 +88,7 @@ mod_synthesis_server <- function(id, app_state) {
         ),
         shiny::p(
           class = "small",
-          sprintf("%d %s", nb_parcels,
+          sprintf("%d UGF / %d %s", nb_ugs, nb_parcels,
                   if (nb_parcels <= 1) i18n$t("parcel") else i18n$t("parcels"))
         ),
         shiny::tags$span(
@@ -169,7 +125,7 @@ mod_synthesis_server <- function(id, app_state) {
       }, numeric(1))
       # NDP depuis les metadonnees du projet (les attributs sf sont perdus par merge)
       ndp_level <- as.integer(app_state$current_project$metadata$ndp_level %||% 0L)
-      ndp_result <- compute_general_index(family_means, ndp = ndp_level)
+      ndp_result <- nemeton:::compute_general_index(family_means, ndp = ndp_level)
       global <- ndp_result$score
 
       # Color based on score
@@ -357,7 +313,7 @@ mod_synthesis_server <- function(id, app_state) {
       }
 
       ndp_level <- as.integer(app_state$current_project$metadata$ndp_level %||% 0L)
-      ndp_info <- get_ndp_level(ndp_level)
+      ndp_info <- nemeton:::get_ndp_level(ndp_level)
       confidence_pct <- round(ndp_info$confidence * 100, 1)
       ndp_subtitle <- sprintf("NDP %d \u2013 %s | %s : %s%%",
                                ndp_level, ndp_info$name,
@@ -517,8 +473,8 @@ mod_synthesis_server <- function(id, app_state) {
             matched <- unique(matched)
             if (length(matched) == 0) next
 
-            id_col <- intersect(c("nemeton_id", "id", "geo_parcelle"), all_cols)
-            fam_ind_data <- all_indicators[, c(id_col, matched), drop = FALSE]
+            meta_cols <- intersect(c("ug_id", "label", "groupe"), all_cols)
+            fam_ind_data <- all_indicators[, c(meta_cols, matched), drop = FALSE]
 
             # Generate LLM comment
             fam_prompt <- build_analysis_prompt(fam_config, fam_ind_data, language)

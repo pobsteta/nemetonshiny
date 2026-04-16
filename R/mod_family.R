@@ -25,7 +25,7 @@ mod_family_server <- function(id, family_code, app_state) {
 
       df <- project$indicators
 
-      # Drop geometry if sf (indicators from parquet may have geoarrow geometry)
+      # Drop geometry if sf
       if (inherits(df, "sf")) {
         df <- tryCatch(sf::st_drop_geometry(df),
                        error = function(e) {
@@ -38,11 +38,10 @@ mod_family_server <- function(id, family_code, app_state) {
 
       all_cols <- names(df)
 
-      # Try both short codes (C1, C2) and long-form column names (indicateur_c1_biomasse)
+      # Try both short codes (C1, C2) and long-form column names
       candidates <- c(family_config$indicators, family_config$column_names)
       matched <- character(0)
       for (col in candidates) {
-        # Prefer normalized version
         norm_col <- paste0(col, "_norm")
         if (norm_col %in% all_cols) {
           matched <- c(matched, norm_col)
@@ -51,46 +50,38 @@ mod_family_server <- function(id, family_code, app_state) {
         }
       }
 
-      # Deduplicate (in case short and long both matched)
       matched <- unique(matched)
       if (length(matched) == 0) return(NULL)
 
-      # Keep id column for joining + matched indicator columns
-      id_col <- intersect(c("nemeton_id", "id", "geo_parcelle"), all_cols)
-      keep_cols <- c(id_col, matched)
-      df[, keep_cols, drop = FALSE]
+      # Keep the UGF identifier + display metadata + matched indicators.
+      # Rows are always keyed by ug_id with label / groupe / refs.
+      meta_cols <- intersect(
+        c("ug_id", "label", "groupe", "cadastral_refs",
+          "surface_m2", "surface_sig_m2", "n_tenements"),
+        all_cols
+      )
+      df[, c(meta_cols, matched), drop = FALSE]
     })
 
     # ================================================================
-    # REACTIVE: Join indicators with parcel geometries for maps
+    # REACTIVE: UGF sf (geometry + selected indicator columns)
     # ================================================================
     indicators_sf <- shiny::reactive({
       ind_data <- indicators_data()
       if (is.null(ind_data)) return(NULL)
 
       project <- app_state$current_project
-      if (is.null(project$parcels)) return(NULL)
+      if (is.null(project$indicators_sf) ||
+          !inherits(project$indicators_sf, "sf")) return(NULL)
 
-      parcels <- project$parcels
-
-      # Determine join column
-      ind_cols <- names(ind_data)
-      parcel_cols <- names(parcels)
-      join_col <- NULL
-      for (candidate in c("nemeton_id", "id", "geo_parcelle")) {
-        if (candidate %in% ind_cols && candidate %in% parcel_cols) {
-          join_col <- candidate
-          break
-        }
-      }
-
-      if (is.null(join_col)) return(NULL)
-
-      # Merge: keep geometry from parcels, add indicator values
-      merged <- merge(parcels[, join_col, drop = FALSE], ind_data, by = join_col, all.x = FALSE)
-      if (nrow(merged) == 0) return(NULL)
-
-      merged
+      sf_all <- project$indicators_sf
+      matched <- setdiff(names(ind_data),
+                         c("ug_id", "label", "groupe", "cadastral_refs",
+                           "surface_m2", "surface_sig_m2", "n_tenements"))
+      keep <- intersect(c("ug_id", "label", "groupe", "cadastral_refs",
+                          matched, attr(sf_all, "sf_column") %||% "geometry"),
+                        names(sf_all))
+      sf_all[, keep, drop = FALSE]
     })
 
     # ================================================================
@@ -175,17 +166,31 @@ mod_family_server <- function(id, family_code, app_state) {
       ind_data <- indicators_data()
       if (is.null(ind_data)) return(NULL)
 
-      # Drop geometry if present (should be a data.frame already)
+      # Drop geometry if present
       if (inherits(ind_data, "sf")) {
         ind_data <- sf::st_drop_geometry(ind_data)
       }
+
+      # Keep only: label (UGF), groupe, and indicator values.
+      # Indicator columns are everything numeric that's not UGF /
+      # parcel metadata (same rule as get_indicator_cols()).
+      ind_cols <- get_indicator_cols(ind_data)
+      keep <- intersect(c("label", "groupe", ind_cols), names(ind_data))
+      ind_data <- ind_data[, keep, drop = FALSE]
 
       # Round numeric columns
       num_cols <- vapply(ind_data, is.numeric, logical(1))
       ind_data[num_cols] <- lapply(ind_data[num_cols], round, digits = 3)
 
-      # Clean column names: use short codes (B1, B2, C1, etc.)
+      # Clean column names: use short codes (B1, B2, C1, etc.) for
+      # indicators; keep Label / Groupe headers in plain French.
+      i18n <- get_i18n(app_state$language)
       clean_names <- vapply(names(ind_data), function(col) {
+        if (col == "label")  return("Label UGF")
+        if (col == "groupe") return(get_groupes_field_label(
+          app_state$current_project$metadata$groupes_profile,
+          lang = app_state$language %||% "fr"
+        ))
         base <- sub("_norm$", "", col)
         for (fam in INDICATOR_FAMILIES) {
           if (!is.null(fam$column_names) && base %in% fam$column_names) {
@@ -199,6 +204,7 @@ mod_family_server <- function(id, family_code, app_state) {
 
       DT::datatable(ind_data,
                      selection = "single",
+                     rownames = TRUE,
                      options = list(
                        pageLength = 10,
                        scrollX = TRUE,
@@ -229,10 +235,11 @@ mod_family_server <- function(id, family_code, app_state) {
       ind_data <- indicators_data()
       if (is.null(ind_data) || row_idx > nrow(ind_data)) return()
 
-      id_cols <- intersect(c("nemeton_id", "id", "geo_parcelle"), names(ind_data))
-      if (length(id_cols) > 0) {
-        selected_id <- ind_data[[id_cols[1]]][row_idx]
-        sf_match <- which(sf_data[[id_cols[1]]] == selected_id)
+      # Rows are keyed by ug_id — resolve selection through it, not
+      # by row index (which changes after sort / search in DataTables).
+      if ("ug_id" %in% names(ind_data) && "ug_id" %in% names(sf_data)) {
+        selected_id <- ind_data[["ug_id"]][row_idx]
+        sf_match <- which(sf_data[["ug_id"]] == selected_id)
         if (length(sf_match) == 0) return()
         selected <- sf_data[sf_match[1], ]
       } else {
@@ -261,8 +268,15 @@ mod_family_server <- function(id, family_code, app_state) {
       popup_lat <- centroid[1, 2]
 
       ind_cols <- get_indicator_cols(sf_data)
-      id_col <- intersect(c("nemeton_id", "id", "geo_parcelle"), names(sf_data))
-      parcel_id <- if (length(id_col) > 0) selected_wgs84[[id_col[1]]] else row_idx
+      # Popup header: the UGF label (user-assigned, e.g. "TSF-Sud"),
+      # with ug_id as fallback and row index as last resort.
+      ug_label <- if ("label" %in% names(sf_data)) {
+        as.character(selected_wgs84[["label"]])
+      } else if ("ug_id" %in% names(sf_data)) {
+        as.character(selected_wgs84[["ug_id"]])
+      } else {
+        as.character(row_idx)
+      }
       dropped <- sf::st_drop_geometry(selected_wgs84)
 
       popup_lines <- vapply(ind_cols, function(col) {
@@ -270,7 +284,7 @@ mod_family_server <- function(id, family_code, app_state) {
         val <- dropped[[col]]
         sprintf("%s: %s", label, if (is.na(val)) "NA" else round(val, 3))
       }, character(1))
-      popup_html <- paste0("<strong>", parcel_id, "</strong><br/>",
+      popup_html <- paste0("<strong>", ug_label, "</strong><br/>",
                            paste(popup_lines, collapse = "<br/>"))
 
       # Zoom all maps and show popup
@@ -664,15 +678,27 @@ make_indicator_leaflet <- function(sf_data, ind_col, title) {
   pal_name <- if (is_risk) "YlOrRd" else "viridis"
   pal <- leaflet::colorNumeric(pal_name, domain = val_range, na.color = "#cccccc")
 
-  # Build hover labels
-  id_col <- intersect(c("nemeton_id", "id", "geo_parcelle"), names(sf_wgs84))
-  ids <- if (length(id_col) > 0) sf_wgs84[[id_col[1]]] else seq_len(nrow(sf_wgs84))
+  # Build hover labels — prefer the user-assigned UGF label, fall
+  # back to ug_id, then to row index as last resort.
+  ids <- if ("label" %in% names(sf_wgs84)) {
+    as.character(sf_wgs84[["label"]])
+  } else if ("ug_id" %in% names(sf_wgs84)) {
+    as.character(sf_wgs84[["ug_id"]])
+  } else {
+    as.character(seq_len(nrow(sf_wgs84)))
+  }
   labels <- sprintf("<strong>%s</strong><br/>%s: %s",
                     ids, title, round(vals, 3)) |>
     lapply(htmltools::HTML)
 
-  # Build layerId from parcel identifier
-  layer_ids <- as.character(ids)
+  # Build layerId from the UGF identifier when available (stable
+  # across filter/sort in the DataTable); fall back to the display
+  # label (also unique within a project).
+  layer_ids <- if ("ug_id" %in% names(sf_wgs84)) {
+    as.character(sf_wgs84[["ug_id"]])
+  } else {
+    as.character(ids)
+  }
 
   leaflet::leaflet(sf_wgs84) |>
     leaflet::addTiles() |>
@@ -705,9 +731,22 @@ make_indicator_leaflet <- function(sf_data, ind_col, title) {
 #' @noRd
 get_indicator_cols <- function(data) {
   all_cols <- names(data)
-  exclude <- c("nemeton_id", "id", "geo_parcelle", "geometry", "geom",
-                "nomcommune", "codecommune", "area", "surface_geo")
-  setdiff(all_cols, exclude)
+  exclude <- c(
+    # UGF metadata columns injected by ug_build_sf() / load_project()
+    "ug_id", "label", "groupe", "cadastral_refs",
+    "surface_m2", "surface_sig_m2", "n_tenements",
+    # Parcel-compat aliases added by start_computation() so the
+    # nemeton::indicateur_* functions accept the UGF sf
+    "id", "nemeton_id", "geo_parcelle",
+    "contenance", "code_insee", "section", "numero",
+    # Geometry
+    "geometry", "geom"
+  )
+  cols <- setdiff(all_cols, exclude)
+  # Extra safety: keep only numeric columns. Any future metadata
+  # that slips through won't poison mean/range/sd downstream.
+  is_num <- vapply(cols, function(c) is.numeric(data[[c]]), logical(1))
+  cols[is_num]
 }
 
 

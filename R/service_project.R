@@ -53,7 +53,8 @@ if (!dir.exists(root)) {
 #' @return List with project info (id, path, metadata).
 #'
 #' @noRd
-create_project <- function(name, description = "", owner = "", parcels = NULL) {
+create_project <- function(name, description = "", owner = "", parcels = NULL,
+                           groupes_profile = NULL) {
   # Validate name
   if (missing(name) || is.null(name) || nchar(trimws(name)) == 0) {
     cli::cli_abort("Project name is required")
@@ -91,6 +92,12 @@ create_project <- function(name, description = "", owner = "", parcels = NULL) {
   dir.create(file.path(project_path, "cache"), showWarnings = FALSE)
   dir.create(file.path(project_path, "exports"), showWarnings = FALSE)
 
+  # Resolve UGF groupes profile (default from YAML config)
+  if (is.null(groupes_profile) || !nzchar(groupes_profile)) {
+    groupes_profile <- tryCatch(get_default_groupes_profile(),
+                                error = function(e) "onf")
+  }
+
   # Create metadata
   metadata <- list(
     id = project_id,
@@ -102,7 +109,8 @@ create_project <- function(name, description = "", owner = "", parcels = NULL) {
     status = "draft",
     version = "0.7.0",
     parcels_count = 0L,
-    indicators_computed = FALSE
+    indicators_computed = FALSE,
+    groupes_profile = groupes_profile
  )
 
   # Save metadata
@@ -145,7 +153,8 @@ create_project <- function(name, description = "", owner = "", parcels = NULL) {
 #' @return List with project info (id, path, metadata, parcels).
 #'
 #' @noRd
-update_project <- function(project_id, name, description = "", owner = "", parcels = NULL) {
+update_project <- function(project_id, name, description = "", owner = "",
+                           parcels = NULL, groupes_profile = NULL) {
   # Check project exists
   project_path <- get_project_path(project_id)
   if (is.null(project_path)) {
@@ -183,6 +192,9 @@ update_project <- function(project_id, name, description = "", owner = "", parce
   metadata$description <- description
   metadata$owner <- owner
   metadata$updated_at <- Sys.time()
+  if (!is.null(groupes_profile) && nzchar(groupes_profile)) {
+    metadata$groupes_profile <- groupes_profile
+  }
 
   # Update parcels if provided
   if (!is.null(parcels) && inherits(parcels, "sf") && nrow(parcels) > 0) {
@@ -374,8 +386,12 @@ save_indicators <- function(project_id, indicators) {
       cli::cli_abort("Package 'arrow' is required")
     }
 
-    # Convert to data.frame if needed
-    if (is.list(indicators) && !is.data.frame(indicators)) {
+    # Convert to data.frame (drop geometry if sf — UGF geometry is
+    # rebuilt from tenements.gpkg + ugs.json at load time via
+    # ug_build_sf(), keeping indicators.parquet geometry-free).
+    if (inherits(indicators, "sf")) {
+      indicators_df <- sf::st_drop_geometry(indicators)
+    } else if (is.list(indicators) && !is.data.frame(indicators)) {
       indicators_df <- as.data.frame(indicators)
     } else {
       indicators_df <- indicators
@@ -385,9 +401,9 @@ save_indicators <- function(project_id, indicators) {
 
     # Update metadata (avec NDP detecte)
     # Essayer d'abord via les attributs, puis fallback sur le cache disque
-    ndp_level <- detect_ndp(indicators)
+    ndp_level <- nemeton:::detect_ndp(indicators)
     if (ndp_level == 0L) {
-      ndp_level <- detect_ndp_from_cache(project_path)
+      ndp_level <- nemeton:::detect_ndp_from_cache(project_path)
     }
     update_project_metadata(project_id, list(
       indicators_computed = TRUE,
@@ -433,7 +449,7 @@ load_indicators <- function(project_id) {
     # Restaurer les attributs NDP depuis les metadonnees projet
     meta <- load_project_metadata(project_id)
     if (!is.null(meta$ndp_level)) {
-      results <- restore_ndp_attributes(results, meta$ndp_level)
+      results <- nemeton:::restore_ndp_attributes(results, meta$ndp_level)
     }
 
     results
@@ -474,6 +490,32 @@ load_project <- function(project_id) {
     indicators = load_indicators(project_id),
     comments = load_comments(project_id)
   )
+
+  # Auto-migrate to v2 (UG support) if needed
+  tryCatch({
+    project <- ensure_project_migrated(project_id, project)
+    # Build indicators_sf: one row per UGF with geometry + indicator
+    # columns joined via ug_id. Used by family/synthesis/export so
+    # they can map, score and aggregate at the UGF level without
+    # rejoining parcels. Requires both UGF data and indicator data.
+    if (!is.null(project$indicators) && has_ug_data(project) &&
+        "ug_id" %in% names(project$indicators)) {
+      ug_sf <- ug_build_sf(project)
+      if (!is.null(ug_sf) && nrow(ug_sf) > 0) {
+        # Drop duplicate metadata columns from indicators before merge
+        dup_cols <- intersect(
+          c("label", "groupe", "surface_m2", "surface_sig_m2",
+            "n_tenements", "cadastral_refs"),
+          names(project$indicators)
+        )
+        ind <- project$indicators[, setdiff(names(project$indicators), dup_cols),
+                                  drop = FALSE]
+        project$indicators_sf <- merge(ug_sf, ind, by = "ug_id", all.x = TRUE)
+      }
+    }
+  }, error = function(e) {
+    cli::cli_warn("UG load / indicators_sf build failed (non-blocking): {e$message}")
+  })
 
   # Sync vers PostGIS si configure et si le projet a des indicateurs
   if (is_db_configured() && isTRUE(metadata$indicators_computed)) {
@@ -1007,13 +1049,13 @@ load_cache_data <- function(project_id, data_name) {
 # UG Data Persistence
 # ==============================================================================
 
-#' Save UG data (atomes + UG definitions) to project
+#' Save UG data (tenements + UG definitions) to project
 #'
 #' @description
-#' Saves atom geometries as GeoPackage and UG definitions as JSON.
+#' Saves tenement geometries as GeoPackage and UG definitions as JSON.
 #'
 #' @param project_id Character. Project ID.
-#' @param projet List. Project with $atomes (sf) and $ugs (data.frame).
+#' @param projet List. Project with $tenements (sf) and $ugs (data.frame).
 #'
 #' @return Logical. TRUE if successful.
 #' @noRd
@@ -1023,10 +1065,10 @@ save_ug_data <- function(project_id, projet) {
     cli::cli_abort("Project not found: {project_id}")
   }
 
-  atomes <- projet$atomes
+  tenements <- projet$tenements
   ugs <- projet$ugs
 
-  if (is.null(atomes) || is.null(ugs)) {
+  if (is.null(tenements) || is.null(ugs)) {
     cli::cli_warn("No UG data to save")
     return(FALSE)
   }
@@ -1037,10 +1079,10 @@ save_ug_data <- function(project_id, projet) {
   }
 
   tryCatch({
-    # Save atomes as GeoPackage
-    atomes_path <- file.path(data_dir, "atomes.gpkg")
-    if (file.exists(atomes_path)) unlink(atomes_path)
-    sf::st_write(atomes, atomes_path, driver = "GPKG", quiet = TRUE)
+    # Save tenements as GeoPackage
+    tenements_path <- file.path(data_dir, "tenements.gpkg")
+    if (file.exists(tenements_path)) unlink(tenements_path)
+    sf::st_write(tenements, tenements_path, driver = "GPKG", quiet = TRUE)
 
     # Save UG definitions as JSON
     ugs_path <- file.path(data_dir, "ugs.json")
@@ -1048,12 +1090,12 @@ save_ug_data <- function(project_id, projet) {
 
     # Update metadata
     update_project_metadata(project_id, list(
-      schema_version = "2.0",
+      schema_version = "2.1",
       ug_count = nrow(ugs),
       updated_at = Sys.time()
     ))
 
-    cli::cli_alert_success("Saved {nrow(ugs)} UGs with {nrow(atomes)} atomes")
+    cli::cli_alert_success("Saved {nrow(ugs)} UGs with {nrow(tenements)} tenements")
     TRUE
 
   }, error = function(e) {
@@ -1065,11 +1107,11 @@ save_ug_data <- function(project_id, projet) {
 #' Load UG data from project
 #'
 #' @description
-#' Loads atom geometries and UG definitions from project files.
+#' Loads tenement geometries and UG definitions from project files.
 #'
 #' @param project_id Character. Project ID.
 #'
-#' @return List with $atomes (sf) and $ugs (data.frame), or NULL if not found.
+#' @return List with $tenements (sf) and $ugs (data.frame), or NULL if not found.
 #' @noRd
 load_ug_data <- function(project_id) {
   project_path <- get_project_path(project_id)
@@ -1078,18 +1120,31 @@ load_ug_data <- function(project_id) {
   }
 
   data_dir <- file.path(project_path, "data")
-  atomes_path <- file.path(data_dir, "atomes.gpkg")
+  tenements_path <- file.path(data_dir, "tenements.gpkg")
+  legacy_atomes_path <- file.path(data_dir, "atomes.gpkg")  # pre-v2.1 name
   ugs_path <- file.path(data_dir, "ugs.json")
 
-  # Both files must exist
+  # Prefer new filename, fall back to legacy "atomes.gpkg" (schema v2.0 projects)
+  gpkg_path <- if (file.exists(tenements_path)) {
+    tenements_path
+  } else if (file.exists(legacy_atomes_path)) {
+    legacy_atomes_path
+  } else {
+    return(NULL)
+  }
 
-  if (!file.exists(atomes_path) || !file.exists(ugs_path)) {
+  if (!file.exists(ugs_path)) {
     return(NULL)
   }
 
   tryCatch({
-    atomes <- sf::st_read(atomes_path, quiet = TRUE)
+    tenements <- sf::st_read(gpkg_path, quiet = TRUE)
     ugs <- jsonlite::read_json(ugs_path, simplifyVector = TRUE)
+
+    # Backward compat: legacy schema used atome_id, rename to tenement_id
+    if ("atome_id" %in% names(tenements) && !"tenement_id" %in% names(tenements)) {
+      names(tenements)[names(tenements) == "atome_id"] <- "tenement_id"
+    }
 
     # Ensure ugs is a proper data.frame
     if (!is.data.frame(ugs)) {
@@ -1097,12 +1152,18 @@ load_ug_data <- function(project_id) {
     }
 
     # Ensure required columns exist
-    required_atome_cols <- c("atome_id", "parent_parcelle_id", "ug_id", "surface_m2")
+    required_tenement_cols <- c("tenement_id", "parent_parcelle_id", "ug_id", "surface_m2")
     required_ug_cols <- c("ug_id", "label", "groupe")
 
-    if (!all(required_atome_cols %in% names(atomes))) {
-      cli::cli_warn("Atomes file missing required columns")
+    if (!all(required_tenement_cols %in% names(tenements))) {
+      cli::cli_warn("Tenements file missing required columns")
       return(NULL)
+    }
+
+    # Backward compat: pre-v2.2 projects may lack surface_sig_m2 →
+    # compute it on-the-fly from the geometry so downstream code works.
+    if (!"surface_sig_m2" %in% names(tenements)) {
+      tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
     }
 
     if (!all(required_ug_cols %in% names(ugs))) {
@@ -1110,7 +1171,7 @@ load_ug_data <- function(project_id) {
       return(NULL)
     }
 
-    list(atomes = atomes, ugs = ugs)
+    list(tenements = tenements, ugs = ugs)
 
   }, error = function(e) {
     cli::cli_warn("Failed to load UG data: {e$message}")
@@ -1119,78 +1180,8 @@ load_ug_data <- function(project_id) {
 }
 
 
-#' Save UG-level aggregated indicators
-#'
-#' @param project_id Character. Project ID.
-#' @param indicators_ug sf object. UG-level indicators.
-#'
-#' @return Logical. TRUE if successful.
-#' @noRd
-save_indicators_ug <- function(project_id, indicators_ug) {
-  project_path <- get_project_path(project_id)
-  if (is.null(project_path)) {
-    cli::cli_abort("Project not found: {project_id}")
-  }
-
-  parquet_path <- file.path(project_path, "data", "indicators_ug.parquet")
-
-  tryCatch({
-    if (requireNamespace("arrow", quietly = TRUE)) {
-      ind_df <- indicators_ug
-      if (inherits(indicators_ug, "sf")) {
-        ind_df$geometry_wkt <- sf::st_as_text(sf::st_geometry(indicators_ug))
-        ind_df <- sf::st_drop_geometry(ind_df)
-      }
-      arrow::write_parquet(ind_df, parquet_path)
-      cli::cli_alert_success("Saved UG indicators: {nrow(indicators_ug)} UGs")
-      return(TRUE)
-    }
-
-    # Fallback: save as RDS
-    rds_path <- file.path(project_path, "data", "indicators_ug.rds")
-    saveRDS(indicators_ug, rds_path)
-    TRUE
-
-  }, error = function(e) {
-    cli::cli_warn("Failed to save UG indicators: {e$message}")
-    FALSE
-  })
-}
-
-
-#' Load UG-level aggregated indicators
-#'
-#' @param project_id Character. Project ID.
-#'
-#' @return sf object with UG-level indicators, or NULL if not found.
-#' @noRd
-load_indicators_ug <- function(project_id) {
-  project_path <- get_project_path(project_id)
-  if (is.null(project_path)) return(NULL)
-
-  parquet_path <- file.path(project_path, "data", "indicators_ug.parquet")
-  rds_path <- file.path(project_path, "data", "indicators_ug.rds")
-
-  tryCatch({
-    if (file.exists(parquet_path) && requireNamespace("arrow", quietly = TRUE)) {
-      ind_df <- arrow::read_parquet(parquet_path)
-      if ("geometry_wkt" %in% names(ind_df)) {
-        crs <- sf::st_crs(4326)
-        ind_sf <- sf::st_as_sf(ind_df, wkt = "geometry_wkt", crs = crs)
-        ind_sf$geometry_wkt <- NULL
-        return(ind_sf)
-      }
-      return(ind_df)
-    }
-
-    if (file.exists(rds_path)) {
-      return(readRDS(rds_path))
-    }
-
-    NULL
-
-  }, error = function(e) {
-    cli::cli_warn("Failed to load UG indicators: {e$message}")
-    NULL
-  })
-}
+# NB: save_indicators_ug() / load_indicators_ug() were removed along
+# with the obsolete "Recalculer les indicateurs" button. Indicators
+# are now computed directly on the UGF geometries in one pass and
+# stored in indicators.parquet — there is no separate UGF-level file
+# to persist or reload.

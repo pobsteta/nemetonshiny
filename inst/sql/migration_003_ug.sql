@@ -1,6 +1,6 @@
 -- Migration 003: Add UG (Unités de Gestion / Management Units) support
 -- ADR: UG as the operational forestry unit, distinct from cadastral parcels.
--- This migration adds tables for atoms, UGs, and UG-level indicators.
+-- This migration adds tables for tenements, UGs, and UG-level indicators.
 
 -- ============================================================
 -- Table: UGs (Management Units)
@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS nemeton.ugs (
 CREATE INDEX IF NOT EXISTS idx_ugs_project ON nemeton.ugs(project_id);
 
 -- ============================================================
--- Table: Atomes (smallest geometric subdivision)
+-- Table: Tenements (smallest geometric subdivision)
 -- ============================================================
-CREATE TABLE IF NOT EXISTS nemeton.atomes (
+CREATE TABLE IF NOT EXISTS nemeton.tenements (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID REFERENCES nemeton.projects(id) ON DELETE CASCADE,
   parent_parcel_id UUID REFERENCES nemeton.parcels(id) ON DELETE CASCADE,
@@ -29,10 +29,10 @@ CREATE TABLE IF NOT EXISTS nemeton.atomes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_atomes_project ON nemeton.atomes(project_id);
-CREATE INDEX IF NOT EXISTS idx_atomes_ug ON nemeton.atomes(ug_id);
-CREATE INDEX IF NOT EXISTS idx_atomes_parcel ON nemeton.atomes(parent_parcel_id);
-CREATE INDEX IF NOT EXISTS idx_atomes_geometry ON nemeton.atomes USING GIST(geometry);
+CREATE INDEX IF NOT EXISTS idx_tenements_project ON nemeton.tenements(project_id);
+CREATE INDEX IF NOT EXISTS idx_tenements_ug ON nemeton.tenements(ug_id);
+CREATE INDEX IF NOT EXISTS idx_tenements_parcel ON nemeton.tenements(parent_parcel_id);
+CREATE INDEX IF NOT EXISTS idx_tenements_geometry ON nemeton.tenements USING GIST(geometry);
 
 -- ============================================================
 -- Table: UG-level indicators (aggregated from parcel-level)

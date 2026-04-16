@@ -1,0 +1,303 @@
+# ==============================================================================
+# Configuration des profils de classement territorial des UGF
+# ==============================================================================
+#
+# Ce fichier définit les profils disponibles pour classer les Unités de Gestion
+# Forestière (UGF). Chaque profil correspond à une pratique métier distincte :
+#
+#   - onf     : groupes d'aménagement ONF (forêts publiques)
+#   - crpf    : groupes de gestion CRPF (forêts privées, PSG)
+#   - ofb     : zones ENS (Espaces Naturels Sensibles, OFB / CD)
+#   - generic : liste minimale, libellés neutres, pour tout autre contexte
+#
+# Chaque profil a :
+#   label          : nom du profil (fr, en) — affiché dans le sélecteur de profil
+#   field_label    : libellé de la liste déroulante (fr, en) — ex. "Groupe
+#                    d'aménagement", "Groupe de gestion", "Zone"
+#   description    : brève description (fr, en)
+#   groupes        : liste de codes et libellés
+#     code             : identifiant court unique dans le profil (ex. "AMETS")
+#     label            : libellé lisible (fr, en)
+#     color            : couleur hex (#RRGGBB) pour la carte
+#     hors_production  : logique d'exclusion des indicateurs de production
+#
+# Ce fichier peut être surchargé par l'utilisateur en plaçant un fichier
+# homonyme dans :
+#   ~/.local/share/nemeton/groupes_amenagement.yaml
+# (ou le répertoire défini via l'option R `nemeton.groupes_config`).
+# ==============================================================================
+
+default_profile: onf
+
+profiles:
+
+  # --------------------------------------------------------------------------
+  # ONF — Office National des Forêts (forêts publiques, aménagements)
+  # --------------------------------------------------------------------------
+  onf:
+    label:
+      fr: "ONF — Forêts publiques"
+      en: "ONF — Public forests"
+    field_label:
+      fr: "Groupe d'aménagement"
+      en: "Management group"
+    description:
+      fr: "Groupes d'aménagement standards des aménagements forestiers ONF."
+      en: "Standard management groups used in ONF forest management plans."
+    groupes:
+      - code: AMETS
+        label:
+          fr: "Amélioration taillis sous futaie"
+          en: "Coppice-with-standards improvement"
+        color: "#228B22"
+        hors_production: false
+      - code: AMER
+        label:
+          fr: "Amélioration futaie régulière"
+          en: "Even-aged high forest improvement"
+        color: "#2E8B57"
+        hors_production: false
+      - code: IRR
+        label:
+          fr: "Conversion en futaie irrégulière"
+          en: "Conversion to uneven-aged high forest"
+        color: "#4682B4"
+        hors_production: false
+      - code: TSF
+        label:
+          fr: "Taillis sous futaie (maintien)"
+          en: "Coppice-with-standards (maintained)"
+        color: "#DAA520"
+        hors_production: false
+      - code: REGT
+        label:
+          fr: "Régénération par taillis"
+          en: "Coppice regeneration"
+        color: "#D2691E"
+        hors_production: false
+      - code: REGF
+        label:
+          fr: "Régénération par futaie"
+          en: "High-forest regeneration"
+        color: "#CD853F"
+        hors_production: false
+      - code: HSN
+        label:
+          fr: "Hors sylviculture (réserve naturelle)"
+          en: "No silviculture (natural reserve)"
+        color: "#9932CC"
+        hors_production: true
+      - code: HSY
+        label:
+          fr: "Hors sylviculture (autre)"
+          en: "No silviculture (other)"
+        color: "#8B008B"
+        hors_production: true
+      - code: PROT
+        label:
+          fr: "Rôle de protection (DFCI, RTM, berges)"
+          en: "Protection role (fire, soil, banks)"
+        color: "#20B2AA"
+        hors_production: true
+      - code: ACC
+        label:
+          fr: "Accueil du public"
+          en: "Public reception"
+        color: "#FFD700"
+        hors_production: false
+
+  # --------------------------------------------------------------------------
+  # CRPF — Centre Régional de la Propriété Forestière
+  # Plans Simples de Gestion (PSG) et Codes des Bonnes Pratiques Sylvicoles
+  # --------------------------------------------------------------------------
+  crpf:
+    label:
+      fr: "CRPF — Forêts privées (PSG)"
+      en: "CRPF — Private forests (PSG)"
+    field_label:
+      fr: "Groupe de gestion"
+      en: "Management group"
+    description:
+      fr: "Classement des peuplements utilisé dans les Plans Simples de Gestion."
+      en: "Stand classification used in Simple Management Plans (PSG)."
+    groupes:
+      - code: FR
+        label:
+          fr: "Futaie régulière"
+          en: "Even-aged high forest"
+        color: "#2E8B57"
+        hors_production: false
+      - code: FI
+        label:
+          fr: "Futaie irrégulière"
+          en: "Uneven-aged high forest"
+        color: "#4682B4"
+        hors_production: false
+      - code: TSF
+        label:
+          fr: "Taillis sous futaie"
+          en: "Coppice with standards"
+        color: "#DAA520"
+        hors_production: false
+      - code: TS
+        label:
+          fr: "Taillis simple"
+          en: "Simple coppice"
+        color: "#D2691E"
+        hors_production: false
+      - code: FF
+        label:
+          fr: "Futaie feuillue"
+          en: "Broadleaved high forest"
+        color: "#228B22"
+        hors_production: false
+      - code: FC
+        label:
+          fr: "Futaie résineuse"
+          en: "Coniferous high forest"
+        color: "#556B2F"
+        hors_production: false
+      - code: FM
+        label:
+          fr: "Futaie mélangée"
+          en: "Mixed high forest"
+        color: "#6B8E23"
+        hors_production: false
+      - code: ILOT_SEN
+        label:
+          fr: "Îlot de sénescence"
+          en: "Senescence island"
+        color: "#9932CC"
+        hors_production: true
+      - code: ILOT_VIE
+        label:
+          fr: "Îlot de vieillissement"
+          en: "Old-growth island"
+        color: "#BA55D3"
+        hors_production: false
+      - code: AUTRE
+        label:
+          fr: "Autre (clairière, lande, emprise)"
+          en: "Other (clearing, moor, right-of-way)"
+        color: "#A9A9A9"
+        hors_production: true
+
+  # --------------------------------------------------------------------------
+  # OFB / ENS — Espaces Naturels Sensibles, Office Français de la Biodiversité
+  # --------------------------------------------------------------------------
+  ofb:
+    label:
+      fr: "OFB — Espaces Naturels Sensibles (ENS)"
+      en: "OFB — Sensitive Natural Areas (ENS)"
+    field_label:
+      fr: "Zone"
+      en: "Zone"
+    description:
+      fr: "Zonage de gestion utilisé dans les plans de gestion ENS (OFB / CD)."
+      en: "Management zoning used in ENS management plans (OFB / Dept.)."
+    groupes:
+      - code: CONS_STRICTE
+        label:
+          fr: "Conservation stricte (non-intervention)"
+          en: "Strict conservation (no intervention)"
+        color: "#800080"
+        hors_production: true
+      - code: GEST_CONS
+        label:
+          fr: "Gestion conservatoire"
+          en: "Conservation management"
+        color: "#9932CC"
+        hors_production: true
+      - code: RESTAURATION
+        label:
+          fr: "Zone de restauration écologique"
+          en: "Ecological restoration"
+        color: "#FF8C00"
+        hors_production: true
+      - code: QUIETUDE
+        label:
+          fr: "Zone de quiétude de la faune"
+          en: "Wildlife quiet zone"
+        color: "#4B0082"
+        hors_production: true
+      - code: PATURAGE
+        label:
+          fr: "Pâturage extensif"
+          en: "Extensive grazing"
+        color: "#DAA520"
+        hors_production: true
+      - code: FAUCHE
+        label:
+          fr: "Fauche tardive"
+          en: "Late mowing"
+        color: "#BDB76B"
+        hors_production: true
+      - code: ACCUEIL
+        label:
+          fr: "Zone d'accueil du public"
+          en: "Public reception zone"
+        color: "#FFD700"
+        hors_production: true
+      - code: SUIVI
+        label:
+          fr: "Suivi scientifique"
+          en: "Scientific monitoring"
+        color: "#1E90FF"
+        hors_production: true
+      - code: ZH
+        label:
+          fr: "Zone humide (gestion hydraulique)"
+          en: "Wetland (hydraulic management)"
+        color: "#20B2AA"
+        hors_production: true
+      - code: AUTRE
+        label:
+          fr: "Autre"
+          en: "Other"
+        color: "#A9A9A9"
+        hors_production: true
+
+  # --------------------------------------------------------------------------
+  # Générique — liste minimale, libellés neutres
+  # --------------------------------------------------------------------------
+  generic:
+    label:
+      fr: "Générique — Autre contexte"
+      en: "Generic — Other context"
+    field_label:
+      fr: "Catégorie"
+      en: "Category"
+    description:
+      fr: "Liste minimale et neutre pour les cas non couverts par ONF/CRPF/OFB."
+      en: "Minimal neutral list for cases not covered by ONF/CRPF/OFB."
+    groupes:
+      - code: PROD
+        label:
+          fr: "Production"
+          en: "Production"
+        color: "#228B22"
+        hors_production: false
+      - code: MIXTE
+        label:
+          fr: "Multifonctionnelle"
+          en: "Multifunctional"
+        color: "#DAA520"
+        hors_production: false
+      - code: CONS
+        label:
+          fr: "Conservation"
+          en: "Conservation"
+        color: "#9932CC"
+        hors_production: true
+      - code: PROT
+        label:
+          fr: "Protection"
+          en: "Protection"
+        color: "#20B2AA"
+        hors_production: true
+      - code: AUTRE
+        label:
+          fr: "Autre"
+          en: "Other"
+        color: "#A9A9A9"
+        hors_production: false

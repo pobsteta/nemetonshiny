@@ -278,11 +278,11 @@ prepare_report_data <- function(project, family_scores, language,
 
   # Metadata
   meta <- project$metadata
-  n_parcels <- nrow(family_scores)
-
-  # UG data (if available)
+  # family_scores is now a UGF-level sf (one row per Unité de Gestion
+  # Forestière); parcel count is the number of cadastral parcels.
   has_ugs <- has_ug_data(project)
-  n_ugs <- if (has_ugs) nrow(project$ugs) else 0L
+  n_ugs <- nrow(family_scores)
+  n_parcels <- if (!is.null(project$parcels)) nrow(project$parcels) else n_ugs
 
   # Ensure family_comments is a named list with all family codes
   if (is.null(family_comments)) {
@@ -297,20 +297,27 @@ prepare_report_data <- function(project, family_scores, language,
     INDICATOR_FAMILIES[[code]]$color
   }, character(1))
 
-  # Build per-parcel score data for detailed tables
+  # Build per-UGF score data for detailed tables. Prefer the UGF label
+  # (assigned by the user — e.g. "TSF-Sud", "Parc 22a") over a
+  # truncated ID. Kept under the `parcel_scores` list name for
+  # backwards-compat with the existing Quarto template.
   parcel_scores <- list()
+  row_labels <- if ("label" %in% names(scores_df)) {
+    as.character(scores_df[["label"]])
+  } else if ("ug_id" %in% names(scores_df)) {
+    ug_ids <- as.character(scores_df[["ug_id"]])
+    substr(ug_ids, pmax(1, nchar(ug_ids) - 5), nchar(ug_ids))
+  } else if ("id" %in% names(scores_df)) {
+    pids <- as.character(scores_df[["id"]])
+    substr(pids, pmax(1, nchar(pids) - 5), nchar(pids))
+  } else {
+    as.character(seq_len(nrow(scores_df)))
+  }
   for (code in names(INDICATOR_FAMILIES)) {
     fam_col <- get_famille_col(code)
     if (fam_col %in% names(scores_df)) {
-      parcel_ids <- if ("id" %in% names(scores_df)) {
-        as.character(scores_df[["id"]])
-      } else {
-        as.character(seq_len(nrow(scores_df)))
-      }
-      # Use last 6 chars of ID for display
-      short_ids <- substr(parcel_ids, pmax(1, nchar(parcel_ids) - 5), nchar(parcel_ids))
       parcel_scores[[code]] <- data.frame(
-        id = short_ids,
+        id = row_labels,
         score = round(scores_df[[fam_col]], 1),
         stringsAsFactors = FALSE
       )
@@ -318,9 +325,9 @@ prepare_report_data <- function(project, family_scores, language,
   }
 
   # Calculer les donnees NDP
-  ndp_level <- detect_ndp(family_scores)
-  ndp_info <- get_ndp_level(ndp_level)
-  ndp_result <- compute_general_index(
+  ndp_level <- nemeton:::detect_ndp(family_scores)
+  ndp_info <- nemeton:::get_ndp_level(ndp_level)
+  ndp_result <- nemeton:::compute_general_index(
     vapply(family_stats, `[[`, numeric(1), "mean"),
     ndp = ndp_level
   )
@@ -424,7 +431,7 @@ generate_radar_image <- function(family_scores, output_file, language,
 
   # Construire le sous-titre NDP
   ndp_level <- as.integer(ndp_level %||% 0L)
-  ndp_info <- get_ndp_level(ndp_level)
+  ndp_info <- nemeton:::get_ndp_level(ndp_level)
   confidence_pct <- round(ndp_info$confidence * 100, 1)
   ndp_subtitle <- sprintf("NDP %d \u2013 %s | Confiance \u03c6 : %s%%",
                            ndp_level, ndp_info$name, confidence_pct)
@@ -496,7 +503,11 @@ generate_family_maps <- function(family_scores, output_dir, language) {
 
     if (is.null(fam)) next
 
-    output_file <- file.path(output_dir, paste0(get_famille_col(code), "_map.png"))
+    # Filename must match what inst/quarto/report_template.qmd looks
+    # for: family_<CODE>_map.png (e.g. family_C_map.png). Do not use
+    # get_famille_col() — that returns "famille_carbone" which the
+    # template does not search for.
+    output_file <- file.path(output_dir, paste0("family_", code, "_map.png"))
 
     tryCatch({
       grDevices::png(output_file, width = 800, height = 600, res = 150)

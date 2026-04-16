@@ -163,6 +163,90 @@
 
 
   // ============================================================
+  // Leaflet invalidateSize — force a hidden map to redetect
+  // its container dimensions once the tab becomes visible.
+  // ============================================================
+  Shiny.addCustomMessageHandler('leafletInvalidateSize', function(data) {
+    var widget = HTMLWidgets.find('#' + data.id);
+    if (widget && widget.getMap) {
+      var map = widget.getMap();
+      if (map) {
+        setTimeout(function() { map.invalidateSize(true); }, 50);
+      }
+    }
+  });
+
+
+  // ============================================================
+  // Clear drawn items from a leaflet.draw layer on a leaflet map.
+  // Conservative: only touches the draw control's featureGroup and
+  // the R-leaflet layerManager's 'draw' group. Never walks all layers
+  // (which previously removed managed overlays like UGF polygons).
+  // ============================================================
+  Shiny.addCustomMessageHandler('leafletClearDrawn', function(data) {
+    var widget = HTMLWidgets.find('#' + data.id);
+    if (!widget || !widget.getMap) {
+      console.warn('[leafletClearDrawn] widget not found for #' + data.id);
+      return;
+    }
+    var map = widget.getMap();
+    if (!map) {
+      console.warn('[leafletClearDrawn] map not available');
+      return;
+    }
+
+    var removed = 0;
+
+    // APPROACH 1 — TARGETED COLOR MATCH. Our draw toolbar uses two
+    // specific stroke colors (#FF0000 polyline, #FF4500 polygon). Any
+    // L.Path with those colors is necessarily a drawn shape — managed
+    // overlays get profile colors which never match these literals.
+    // Runs FIRST so we don't depend on internal leaflet.draw APIs.
+    map.eachLayer(function(layer) {
+      if (!(layer instanceof L.Path)) return;
+      var col = layer.options && layer.options.color;
+      if (col === '#FF0000' || col === '#FF4500') {
+        try { map.removeLayer(layer); removed++; } catch (e) {}
+      }
+    });
+
+    // APPROACH 2 — leaflet.draw handler API (same as the "Delete layers"
+    // → "Clear All" → "Save" UI sequence).
+    function runDeleteHandler(control) {
+      try {
+        var toolbar = control && control._toolbars && control._toolbars.edit;
+        if (!toolbar || !toolbar._modes || !toolbar._modes.remove) return;
+        var handler = toolbar._modes.remove.handler;
+        if (!handler) return;
+        handler.enable();
+        if (typeof handler.removeAllLayers === 'function') {
+          handler.removeAllLayers();
+        }
+        handler.disable();
+      } catch (e) {}
+    }
+    runDeleteHandler(map.drawControl);
+
+    // APPROACH 3 — clear the named FeatureGroup and the edit featureGroup.
+    if (widget.layerManager &&
+        typeof widget.layerManager.getLayerGroup === 'function') {
+      ['Dessin', 'draw'].forEach(function(name) {
+        try {
+          var fg = widget.layerManager.getLayerGroup(name, false);
+          if (fg && typeof fg.clearLayers === 'function') fg.clearLayers();
+        } catch (e) {}
+      });
+    }
+    if (map.drawControl && map.drawControl.options &&
+        map.drawControl.options.edit && map.drawControl.options.edit.featureGroup) {
+      try { map.drawControl.options.edit.featureGroup.clearLayers(); } catch (e) {}
+    }
+
+    console.log('[leafletClearDrawn] removed ' + removed + ' drawn shape(s) by color match');
+  });
+
+
+  // ============================================================
   // Announcements for Screen Readers
   // ============================================================
 

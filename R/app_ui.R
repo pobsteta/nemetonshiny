@@ -49,7 +49,7 @@ app_ui <- function(request) {
       fillable = TRUE,
       navbar_options = bslib::navbar_options(bg = "#1B6B1B"),
 
-      # === Tab 1: Selection ===
+      # === Tab 1: Selection (includes cadastral map, tenement map, UG table) ===
       bslib::nav_panel(
         title = i18n$t("tab_selection"),
         value = "selection",
@@ -57,20 +57,12 @@ app_ui <- function(request) {
         mod_home_ui("home")
       ),
 
-      # === Tab 2: Synthesis (conditional) ===
+      # === Tab 2: Synthesis ===
       bslib::nav_panel(
         title = i18n$t("tab_synthesis"),
         value = "synthesis",
         icon = bsicons::bs_icon("pie-chart"),
         mod_synthesis_ui("synthesis")
-      ),
-
-      # === Tab 3: Unités de Gestion ===
-      bslib::nav_panel(
-        title = i18n$t("tab_ug"),
-        value = "ug",
-        icon = bsicons::bs_icon("diagram-3"),
-        mod_ug_ui("ug")
       ),
 
       # === Tabs 4-15: Indicator Families ===
@@ -220,9 +212,9 @@ app_add_external_resources <- function() {
       )
     ),
 
-    # Custom JS - minified for performance (cache-busting query string forces browser to reload on each app start)
+    # Custom JS (cache-busting query string forces browser to reload on each app start)
     htmltools::tags$script(
-      src = paste0("www/js/custom.min.js?v=", as.integer(Sys.time()))
+      src = paste0("www/js/custom.js?v=", as.integer(Sys.time()))
     )
   )
 }

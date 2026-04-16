@@ -106,6 +106,22 @@ mod_project_ui <- function(id) {
             )
           ),
 
+          # UGF classification profile (ONF / CRPF / OFB / Generic, configurable)
+          htmltools::div(
+            class = "mb-3",
+            shiny::selectInput(
+              ns("groupes_profile"),
+              label = i18n$t("project_groupes_profile"),
+              choices = get_groupes_profile_choices(lang = lang),
+              selected = get_default_groupes_profile(),
+              width = "100%"
+            ),
+            htmltools::tags$small(
+              class = "text-muted",
+              i18n$t("project_groupes_profile_help")
+            )
+          ),
+
           # Creation date (auto)
           htmltools::div(
             class = "mb-3",
@@ -274,6 +290,8 @@ mod_project_server <- function(id, app_state, selected_parcels) {
         shiny::updateTextInput(session, "name", value = "")
         shiny::updateTextAreaInput(session, "description", value = "")
         shiny::updateTextInput(session, "owner", value = "")
+        shiny::updateSelectInput(session, "groupes_profile",
+                                 selected = get_default_groupes_profile())
         rv$editing_project_id <- NULL
         rv$current_project <- NULL
         rv$project_date <- format(Sys.time(), "%d/%m/%Y %H:%M")
@@ -304,6 +322,14 @@ mod_project_server <- function(id, app_state, selected_parcels) {
         session,
         "owner",
         value = project$metadata$owner %||% ""
+      )
+
+      # Restore UGF groupes profile (fall back to config default)
+      shiny::updateSelectInput(
+        session,
+        "groupes_profile",
+        choices = get_groupes_profile_choices(lang = lang),
+        selected = project$metadata$groupes_profile %||% get_default_groupes_profile()
       )
 
       # Store date for display update
@@ -409,7 +435,8 @@ mod_project_server <- function(id, app_state, selected_parcels) {
             name = trimws(input$name),
             description = input$description %||% "",
             owner = input$owner %||% "",
-            parcels = parcels
+            parcels = parcels,
+            groupes_profile = input$groupes_profile %||% NULL
           )
 
           rv$current_project <- project
@@ -431,7 +458,8 @@ mod_project_server <- function(id, app_state, selected_parcels) {
             name = trimws(input$name),
             description = input$description %||% "",
             owner = input$owner %||% "",
-            parcels = parcels
+            parcels = parcels,
+            groupes_profile = input$groupes_profile %||% NULL
           )
 
           rv$current_project <- project
@@ -494,6 +522,8 @@ mod_project_server <- function(id, app_state, selected_parcels) {
         shiny::updateTextInput(session, "name", value = "")
         shiny::updateTextAreaInput(session, "description", value = "")
         shiny::updateTextInput(session, "owner", value = "")
+        shiny::updateSelectInput(session, "groupes_profile",
+                                 selected = get_default_groupes_profile())
 
         # Update app state
         app_state$current_project <- NULL

@@ -330,6 +330,58 @@ start_computation <- function(project_id,
       stop("No parcels found in project")
     }
 
+    # ------------------------------------------------------------------
+    # UGF mode: indicators are computed on UGF geometries (one row per
+    # Unité de Gestion Forestière), not on cadastral parcels. We load
+    # the UGF data, build the dissolved UGF sf, and pass that as the
+    # compute unit. Parcels stay loaded for reference (they're still
+    # used by download_layers_for_parcels to fetch the right map tiles).
+    # ------------------------------------------------------------------
+    projet_for_ug <- tryCatch(
+      load_project(project_id),
+      error = function(e) NULL
+    )
+    if (is.null(projet_for_ug) || !has_ug_data(projet_for_ug)) {
+      # First-time compute on a freshly loaded v1 project: make sure
+      # UGF data exists (1 UGF = 1 parcel by default).
+      projet_for_ug <- ensure_project_migrated(project_id, projet_for_ug)
+    }
+    compute_unit <- ug_build_sf(projet_for_ug)
+    if (is.null(compute_unit) || nrow(compute_unit) == 0) {
+      stop("Could not build UGF sf for computation")
+    }
+
+    # Enrich the UGF sf with columns that the nemeton indicator
+    # functions expect to find on cadastral parcels. Without these,
+    # most indicator_* functions error out before they even look at
+    # the geometry (they join / filter by parcel-like keys).
+    #  - id / nemeton_id / geo_parcelle : unique identifier (→ ug_id)
+    #  - contenance                      : cadastral surface (m²)
+    #  - code_insee                      : commune code, inherited
+    #                                     from the first parcel
+    #  - section / numero                : placeholder (UGFs don't
+    #                                     map to a single cadastral
+    #                                     ref — the list is kept in
+    #                                     cadastral_refs)
+    compute_unit$id <- compute_unit$ug_id
+    compute_unit$nemeton_id <- compute_unit$ug_id
+    compute_unit$geo_parcelle <- compute_unit$ug_id
+    if (!"contenance" %in% names(compute_unit)) {
+      compute_unit$contenance <- compute_unit$surface_m2
+    }
+    if ("code_insee" %in% names(parcels)) {
+      # Use the most common INSEE code across the parent parcels;
+      # a single UGF normally stays within one commune.
+      codes <- as.character(parcels$code_insee)
+      compute_unit$code_insee <- names(sort(table(codes), decreasing = TRUE))[1]
+    }
+    if (!"section" %in% names(compute_unit)) compute_unit$section <- NA_character_
+    if (!"numero"  %in% names(compute_unit)) compute_unit$numero  <- NA_character_
+
+    cli::cli_alert_info(
+      "Calcul des indicateurs sur {nrow(compute_unit)} UGF (dont {nrow(parcels)} parcelle{?s} cadastrale{?s})"
+    )
+
     # Update project status (with path for async mode)
     update_project_status(project_id, "computing")
 
@@ -379,7 +431,7 @@ start_computation <- function(project_id,
     report_progress(state)
 
     results <- compute_all_indicators(
-      parcels = parcels,
+      parcels = compute_unit,
       layers = layers,
       indicators = if (length(indicators) == 1 && indicators == "all") {
         list_available_indicators()
@@ -2198,8 +2250,17 @@ compute_all_indicators <- function(parcels,
     ))
   }
 
+  # Summary of what failed — helps diagnose UGF-column compatibility
+  # issues with nemeton indicator functions.
+  if (failed > 0) {
+    cli::cli_h2("R\u00e9capitulatif des \u00e9checs de calcul ({failed}/{n_indicators} indicateur{?s})")
+    for (err in errors) {
+      cli::cli_alert_danger("{err$indicator} : {err$message}")
+    }
+  }
+
   # Marquer les sources de donnees disponibles pour detect_ndp()
-  results <- set_ndp_attributes(results, layers)
+  results <- nemeton:::set_ndp_attributes(results, layers)
 
   results
 }
@@ -2245,7 +2306,8 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     # Extract specific layers from nemeton_layers structure
     # Rasters are in layers$rasters, vectors in layers$vectors
     if ("dem" %in% func_args) {
-      dem <- get_dem_raster(layers)
+      dem <- resolve_raster_layer(layers, "dem")
+      if (is.null(dem)) dem <- resolve_raster_layer(layers, "elevation")
       if (!is.null(dem)) args$dem <- dem
     }
     if ("ndvi" %in% func_args) {
@@ -2628,134 +2690,7 @@ get_computation_progress <- function(project_id) {
 # Ne pas les redefinir ici pour eviter les conflits de masquage.
 
 
-# ==============================================================================
-# UG Indicator Aggregation
-# ==============================================================================
-
-#' Aggregate parcel-level indicators to UG level
-#'
-#' @description
-#' Computes UG-level indicators by weighted average (by surface) of the
-#' atom-level values. Family scores are recomputed from the aggregated
-#' indicator values.
-#'
-#' The parcel-level computation pipeline is unchanged. This function adds
-#' a post-processing step that aggregates results per UG.
-#'
-#' @param indicators_sf sf object. Parcel-level indicators (1 row per parcel).
-#' @param projet List. Project with $atomes, $ugs, $parcels.
-#'
-#' @return sf object with 1 row per UG, indicator columns aggregated,
-#'   plus ug_id, label, groupe, cadastral_refs columns.
-#'   Returns NULL if no UG data is available.
-#'
-#' @noRd
-aggregate_indicators_to_ug <- function(indicators_sf, projet) {
-  if (!has_ug_data(projet)) {
-    return(NULL)
-  }
-
-  atomes <- projet$atomes
-  ugs <- projet$ugs
-  parcels <- projet$parcels
-
-  # Determine parcel ID column in indicators
-  id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(indicators_sf))
-  if (length(id_col) == 0) {
-    cli::cli_warn("Cannot aggregate: no parcel ID column found in indicators")
-    return(NULL)
-  }
-  id_col <- id_col[1]
-
-  # Identify indicator columns (both raw and family scores)
-  ind_cols <- grep("^indicateur_", names(indicators_sf), value = TRUE)
-  fam_cols <- grep("^famille_", names(indicators_sf), value = TRUE)
-  all_score_cols <- c(ind_cols, fam_cols)
-
-  if (length(all_score_cols) == 0) {
-    cli::cli_warn("No indicator columns found in data")
-    return(NULL)
-  }
-
-  # Drop geometry from indicators for aggregation
-  ind_df <- if (inherits(indicators_sf, "sf")) {
-    sf::st_drop_geometry(indicators_sf)
-  } else {
-    indicators_sf
-  }
-
-  # For each UG, compute weighted average of its atoms' indicators
-  ug_rows <- lapply(seq_len(nrow(ugs)), function(i) {
-    uid <- ugs$ug_id[i]
-
-    # Get atoms belonging to this UG
-    ug_atomes <- atomes[atomes$ug_id == uid, ]
-    if (nrow(ug_atomes) == 0) return(NULL)
-
-    # Get parent parcel IDs and their surfaces
-    parent_ids <- ug_atomes$parent_parcelle_id
-    surfaces <- ug_atomes$surface_m2
-
-    # Match atoms to indicator rows via parent parcel ID
-    matching_rows <- which(as.character(ind_df[[id_col]]) %in% parent_ids)
-    if (length(matching_rows) == 0) return(NULL)
-
-    matched_ind <- ind_df[matching_rows, , drop = FALSE]
-    matched_ids <- as.character(matched_ind[[id_col]])
-
-    # Build weights aligned with matched rows
-    weights <- vapply(matched_ids, function(pid) {
-      sum(surfaces[parent_ids == pid], na.rm = TRUE)
-    }, numeric(1))
-    total_weight <- sum(weights, na.rm = TRUE)
-    if (total_weight <= 0) total_weight <- 1
-
-    # Weighted average for each score column
-    agg_values <- vapply(all_score_cols, function(col) {
-      vals <- matched_ind[[col]]
-      if (all(is.na(vals))) return(NA_real_)
-      # For weighted mean, replace NA with 0 weight
-      w <- ifelse(is.na(vals), 0, weights)
-      v <- ifelse(is.na(vals), 0, vals)
-      if (sum(w) == 0) return(NA_real_)
-      sum(v * w) / sum(w)
-    }, numeric(1))
-
-    row <- as.data.frame(as.list(agg_values), stringsAsFactors = FALSE)
-    row$ug_id <- uid
-    row$label <- ugs$label[i]
-    row$groupe <- ugs$groupe[i]
-    row$surface_m2 <- sum(surfaces, na.rm = TRUE)
-    row$n_atomes <- nrow(ug_atomes)
-    row$cadastral_refs <- paste(
-      unique(ug_atomes$parent_parcelle_id),
-      collapse = ", "
-    )
-
-    row
-  })
-
-  # Combine into data.frame
-  ug_rows <- ug_rows[!vapply(ug_rows, is.null, logical(1))]
-  if (length(ug_rows) == 0) return(NULL)
-
-  ug_df <- do.call(rbind, ug_rows)
-
-  # Build UG geometries
-  ug_geoms <- lapply(ugs$ug_id, function(uid) {
-    ug_geometry(projet, uid)
-  })
-  geom_sfc <- do.call(c, ug_geoms)
-  sf::st_crs(geom_sfc) <- sf::st_crs(atomes)
-
-  # Create sf object
-  ug_sf <- sf::st_sf(ug_df, geometry = geom_sfc)
-
-  # Propagate NDP attributes if present
-  if (!is.null(attr(indicators_sf, "ndp_sources"))) {
-    attr(ug_sf, "ndp_sources") <- attr(indicators_sf, "ndp_sources")
-  }
-
-  ug_sf
-}
+# NB: aggregate_indicators_to_ug() was removed. Indicators are now
+# computed directly on the UGF geometries in a single pass by
+# compute_all_indicators() — there is nothing to aggregate post-hoc.
 

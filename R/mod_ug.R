@@ -2,7 +2,7 @@
 #'
 #' @description
 #' Shiny module for managing Unités de Gestion (UG).
-#' Boucle 1: table + leaflet map with atom selection, merge/split/rename,
+#' Boucle 1: table + leaflet map with tenement selection, merge/split/rename,
 #' groupe d'aménagement assignment, and color-coded map display.
 #'
 #' @name mod_ug
@@ -17,6 +17,9 @@ NULL
 #' @return Shiny UI tag list.
 #' @noRd
 mod_ug_ui <- function(id) {
+  # Composite UI (layout_sidebar) — used when the UG module has its own tab.
+  # When embedded in the Sélection tab, use the helpers below instead:
+  #   mod_ug_actions_bar(id), mod_ug_map_panel(id), mod_ug_table_panel(id)
   ns <- shiny::NS(id)
 
   opts <- get_app_options()
@@ -25,122 +28,284 @@ mod_ug_ui <- function(id) {
 
   bslib::layout_sidebar(
     fillable = TRUE,
-
-    # === Sidebar: actions and UG details ===
     sidebar = bslib::sidebar(
       title = i18n$t("ug_title"),
       width = 350,
-
-      # Action buttons
-      htmltools::div(
-        class = "d-grid gap-2 mb-3",
-
-        shiny::actionButton(
-          ns("btn_merge"),
-          label = i18n$t("ug_merge"),
-          icon = shiny::icon("object-group"),
-          class = "btn-success",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_create_from_map"),
-          label = i18n$t("ug_create_from_map"),
-          icon = shiny::icon("plus-circle"),
-          class = "btn-success btn-sm",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_split"),
-          label = i18n$t("ug_split"),
-          icon = shiny::icon("scissors"),
-          class = "btn-warning",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_rename"),
-          label = i18n$t("ug_rename"),
-          icon = shiny::icon("pen"),
-          class = "btn-outline-secondary",
-          width = "100%"
-        ),
-
-        shiny::actionButton(
-          ns("btn_recompute"),
-          label = i18n$t("ug_recompute"),
-          icon = shiny::icon("calculator"),
-          class = "btn-primary",
-          width = "100%"
-        )
-      ),
-
-      shiny::hr(),
-
-      # Groupe d'aménagement selector
-      htmltools::div(
-        class = "mb-3",
-        shiny::selectInput(
-          ns("sel_groupe"),
-          label = i18n$t("ug_group"),
-          choices = c(
-            "---" = "",
-            "AMETS" = "AMETS", "AMER" = "AMER", "IRR" = "IRR",
-            "TSF" = "TSF", "REGT" = "REGT", "REGF" = "REGF",
-            "HSN" = "HSN", "HSY" = "HSY", "PROT" = "PROT", "ACC" = "ACC"
-          ),
-          selected = ""
-        ),
-        shiny::actionButton(
-          ns("btn_set_groupe"),
-          label = i18n$t("ug_apply_group"),
-          icon = shiny::icon("tag"),
-          class = "btn-outline-primary btn-sm",
-          width = "100%"
-        )
-      ),
-
-      shiny::hr(),
-
-      # Map selection info
-      shiny::uiOutput(ns("map_selection_info")),
-
-      shiny::hr(),
-
-      # UG detail panel
-      htmltools::div(
-        id = ns("detail_panel"),
-        shiny::h6(i18n$t("ug_composition")),
-        shiny::uiOutput(ns("ug_detail"))
-      )
+      mod_ug_actions_bar(id)
     ),
-
-    # === Main content: map + table ===
     bslib::navset_card_tab(
-      # Tab 1: Map
       bslib::nav_panel(
         title = i18n$t("ug_map_tab"),
         icon = bsicons::bs_icon("map"),
-        bslib::card_body(
-          class = "p-0",
-          leaflet::leafletOutput(ns("ug_map"), height = "500px")
-        )
+        mod_ug_map_panel(id)
       ),
-      # Tab 2: Table
       bslib::nav_panel(
         title = i18n$t("ug_table_tab"),
         icon = bsicons::bs_icon("table"),
-        bslib::card_body(
-          htmltools::div(
-            class = "d-flex justify-content-between align-items-center mb-2",
-            shiny::h5(i18n$t("ug_title"), class = "mb-0"),
-            shiny::textOutput(ns("ug_summary"), inline = TRUE)
-          ),
-          DT::dataTableOutput(ns("ug_table"))
-        )
+        mod_ug_table_panel(id)
       )
     )
+  )
+}
+
+
+#' UG map panel (leaflet output)
+#'
+#' @description
+#' Lightweight UI helper producing just the tenement leaflet output.
+#' Uses the given \code{id} as the module namespace.
+#'
+#' @param id Character. Module namespace ID (typically "ug").
+#' @return Shiny tag with the leaflet output.
+#' @noRd
+mod_ug_map_panel <- function(id) {
+  ns <- shiny::NS(id)
+  opts <- get_app_options()
+  i18n <- get_i18n(opts$language %||% "fr")
+
+  htmltools::tagList(
+    # Header bar with title + basemap toggles (same pattern as mod_map)
+    bslib::card_header(
+      class = "d-flex justify-content-between align-items-center py-2",
+
+      # Title
+      htmltools::span(
+        bsicons::bs_icon("diagram-3"),
+        i18n$t("ug_map_card_title"),
+        class = "fw-semibold"
+      ),
+
+      # Controls
+      htmltools::div(
+        class = "d-flex gap-2 align-items-center",
+        htmltools::div(
+          class = "btn-group btn-group-sm",
+          role = "group",
+          `aria-label` = "Basemap selection",
+          htmltools::tags$button(
+            id = ns("basemap_osm"),
+            type = "button",
+            class = "btn action-button basemap-btn basemap-btn-active",
+            `data-val` = 0,
+            "OSM"
+          ),
+          htmltools::tags$button(
+            id = ns("basemap_satellite"),
+            type = "button",
+            class = "btn action-button basemap-btn",
+            `data-val` = 0,
+            "Satellite"
+          )
+        )
+      )
+    ),
+
+    # Body: leaflet map
+    bslib::card_body(
+      padding = 0,
+      class = "p-0",
+      htmltools::div(
+        id = ns("ug_map_container"),
+        style = "height: 100%; min-height: 500px; position: relative;",
+        leaflet::leafletOutput(ns("ug_map"), height = "100%")
+      )
+    ),
+
+    # Footer: tenement count + surface ratio
+    bslib::card_footer(
+      class = "py-2",
+      htmltools::div(
+        class = "d-flex justify-content-between align-items-center text-muted small",
+        shiny::textOutput(ns("ug_map_count"), inline = TRUE),
+        shiny::textOutput(ns("ug_map_surface"), inline = TRUE)
+      )
+    )
+  )
+}
+
+
+#' UG table panel (DT output)
+#'
+#' @param id Character. Module namespace ID.
+#' @return Shiny tag with the UG data table.
+#' @noRd
+mod_ug_table_panel <- function(id) {
+  ns <- shiny::NS(id)
+  opts <- get_app_options()
+  i18n <- get_i18n(opts$language %||% "fr")
+
+  bslib::card_body(
+    htmltools::div(
+      class = "d-flex justify-content-between align-items-center mb-2",
+      shiny::h5(i18n$t("ug_table_title"), class = "mb-0"),
+      shiny::textOutput(ns("ug_summary"), inline = TRUE)
+    ),
+    DT::dataTableOutput(ns("ug_table"))
+  )
+}
+
+
+#' UG map-actions bar (map-based + global actions)
+#'
+#' @description
+#' Buttons that operate on the map selection or are global to the
+#' project (create UG from map selection, move selection to UG,
+#' recompute, import/undo split). Map selection info.
+#'
+#' @param id Character. Module namespace ID.
+#' @return Shiny tag list.
+#' @noRd
+mod_ug_map_actions_bar <- function(id) {
+  ns <- shiny::NS(id)
+  opts <- get_app_options()
+  i18n <- get_i18n(opts$language %||% "fr")
+
+  htmltools::tagList(
+    htmltools::div(
+      class = "d-grid gap-2 mb-3",
+
+      shiny::actionButton(
+        ns("btn_create_from_map"),
+        label = i18n$t("ug_create_from_map"),
+        icon = shiny::icon("plus-circle"),
+        class = "btn-success",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_move_to_ug"),
+        label = i18n$t("ug_move_to"),
+        icon = shiny::icon("arrow-right-arrow-left"),
+        class = "btn-success",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_import_split"),
+        label = i18n$t("ug_import_split"),
+        icon = shiny::icon("file-import"),
+        class = "btn-outline-info",
+        width = "100%"
+      ),
+
+      shiny::downloadButton(
+        ns("btn_export_split"),
+        label = i18n$t("ug_export_split"),
+        icon = shiny::icon("file-export"),
+        class = "btn-outline-info w-100"
+      ),
+
+      shiny::actionButton(
+        ns("btn_undo_split"),
+        label = i18n$t("ug_undo_split"),
+        icon = shiny::icon("rotate-left"),
+        class = "btn-outline-secondary",
+        width = "100%"
+      )
+    ),
+
+    shiny::hr(),
+
+    # Map selection info
+    shiny::uiOutput(ns("map_selection_info"))
+  )
+}
+
+
+#' UG table-actions bar (buttons that act on the DT table selection)
+#'
+#' @description
+#' Buttons that operate on the current DT table row selection: merge,
+#' split, rename UGs. Also the groupe selector and UG detail panel.
+#'
+#' @param id Character. Module namespace ID.
+#' @return Shiny tag list.
+#' @noRd
+mod_ug_table_actions_bar <- function(id) {
+  ns <- shiny::NS(id)
+  opts <- get_app_options()
+  i18n <- get_i18n(opts$language %||% "fr")
+
+  htmltools::tagList(
+    htmltools::div(
+      class = "d-grid gap-2 mb-3",
+
+      shiny::actionButton(
+        ns("btn_merge"),
+        label = i18n$t("ug_merge"),
+        icon = shiny::icon("object-group"),
+        class = "btn-success",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_split"),
+        label = i18n$t("ug_split"),
+        icon = shiny::icon("scissors"),
+        class = "btn-warning",
+        width = "100%"
+      ),
+
+      shiny::actionButton(
+        ns("btn_rename"),
+        label = i18n$t("ug_rename"),
+        icon = shiny::icon("pen"),
+        class = "btn-outline-secondary",
+        width = "100%"
+      )
+    ),
+
+    shiny::hr(),
+
+    # Groupe d'aménagement selector
+    htmltools::div(
+      class = "mb-3",
+      shiny::selectInput(
+        ns("sel_groupe"),
+        label = i18n$t("ug_group"),
+        choices = c(
+          "---" = "",
+          "AMETS" = "AMETS", "AMER" = "AMER", "IRR" = "IRR",
+          "TSF" = "TSF", "REGT" = "REGT", "REGF" = "REGF",
+          "HSN" = "HSN", "HSY" = "HSY", "PROT" = "PROT", "ACC" = "ACC"
+        ),
+        selected = ""
+      ),
+      shiny::actionButton(
+        ns("btn_set_groupe"),
+        label = i18n$t("ug_apply_group"),
+        icon = shiny::icon("tag"),
+        class = "btn-outline-primary",
+        width = "100%"
+      )
+    ),
+
+    shiny::hr(),
+
+    # UG detail panel
+    htmltools::div(
+      id = ns("detail_panel"),
+      shiny::h6(i18n$t("ug_composition")),
+      shiny::uiOutput(ns("ug_detail"))
+    )
+  )
+}
+
+
+#' UG actions bar (combined wrapper — map + table)
+#'
+#' @description
+#' Backward-compatible wrapper that includes both the map-action bar
+#' and the table-action bar. Used by the legacy single-sidebar layout.
+#'
+#' @param id Character. Module namespace ID.
+#' @return Shiny tag list with all UG actions.
+#' @noRd
+mod_ug_actions_bar <- function(id) {
+  htmltools::tagList(
+    mod_ug_map_actions_bar(id),
+    shiny::hr(),
+    mod_ug_table_actions_bar(id)
   )
 }
 
@@ -159,24 +324,102 @@ mod_ug_server <- function(id, app_state) {
     i18n <- shiny::reactive(get_i18n(lang()))
 
     # ================================================================
-    # REACTIVE: UG state (projet with atomes/ugs)
+    # REACTIVE: UG state (projet with tenements/ugs)
     # ================================================================
     rv <- shiny::reactiveValues(
-      projet_ug = NULL,          # projet list with $atomes, $ugs, $parcels
-      needs_recompute = FALSE,   # flag: UGs changed, indicators need refresh
-      selected_atome_ids = character(0),  # atoms selected on the map
-      map_initialized = FALSE
+      projet_ug = NULL,          # projet list with $tenements, $ugs, $parcels
+      selected_tenement_ids = character(0),  # tenements selected on the map
+      map_needs_zoom = FALSE,    # flag: zoom to bounds on next map update
+      pending_bbox = NULL,       # stored bbox for deferred zoom
+      redraw_counter = 0L        # incremented to force map polygon redraw
     )
+
+    # Current classification profile (ONF / CRPF / OFB / ...) driven by the
+    # project metadata. Falls back to the config default. Determines the
+    # dropdown label (e.g. "Groupe d'aménagement" / "Groupe" / "Zone"),
+    # the available codes and the map legend.
+    profile_key <- shiny::reactive({
+      pk <- rv$projet_ug$metadata$groupes_profile
+      if (is.null(pk) || !nzchar(pk)) {
+        return(tryCatch(get_default_groupes_profile(),
+                        error = function(e) "onf"))
+      }
+      pk
+    })
+
+    # Update the sidebar groupe selector (label + choices) when the profile
+    # changes — i.e. when a project with a different profile is loaded.
+    shiny::observe({
+      pk <- profile_key()
+      shiny::updateSelectInput(
+        session,
+        "sel_groupe",
+        label = get_groupes_field_label(pk, lang = lang()),
+        choices = get_groupes_choices(pk, lang = lang(), include_empty = TRUE)
+      )
+    })
+
+    # Helper: translate known English cli_abort messages emitted by the
+    # domain/split functions into user-language text. Falls back to the
+    # raw message when no match is found.
+    translate_split_error <- function(msg) {
+      if (is.null(msg) || length(msg) == 0) return("")
+      lg <- lang()
+      is_fr <- identical(lg, "fr")
+      patterns <- list(
+        list(re = "does not intersect any tenement",
+             fr = "Le polygone ne recouvre aucun t\u00e8nement.",
+             en = "The drawn polygon does not intersect any tenement."),
+        list(re = "did not split any tenement",
+             fr = "Le polygone n'a d\u00e9coup\u00e9 aucun t\u00e8nement (contacts de bord uniquement ou chevauchement trop faible).",
+             en = "The drawn polygon did not split any tenement."),
+        list(re = "does not cross any tenement",
+             fr = "La ligne ne traverse aucun t\u00e8nement.",
+             en = "The drawn line does not cross any tenement."),
+        list(re = "did not split any tenement \\(only edge touches\\)",
+             fr = "La ligne n'a d\u00e9coup\u00e9 aucun t\u00e8nement (contacts de bord uniquement).",
+             en = "The drawn line did not split any tenement (only edge touches)."),
+        list(re = "No polygon features found",
+             fr = "Aucun polygone trouv\u00e9 dans la forme import\u00e9e.",
+             en = "No polygon features found."),
+        list(re = "No line features found",
+             fr = "Aucune ligne trouv\u00e9e dans la forme import\u00e9e.",
+             en = "No line features found."),
+        list(re = "Tiling invariant violated",
+             fr = "Les polygones import\u00e9s ne couvrent pas exactement la parcelle (\u00e9cart de surface d\u00e9tect\u00e9).",
+             en = "Imported polygons do not cover the parcel exactly (area mismatch)."),
+        list(re = "Invalid GeoJSON",
+             fr = "Fichier GeoJSON invalide.",
+             en = "Invalid GeoJSON."),
+        list(re = "Project must have UG data",
+             fr = "Le projet ne contient pas de donn\u00e9es UGF.",
+             en = "Project must have UG data."),
+        list(re = "Parcel not found",
+             fr = "Parcelle introuvable.",
+             en = "Parcel not found.")
+      )
+      for (p in patterns) {
+        if (grepl(p$re, msg, ignore.case = TRUE)) {
+          return(if (is_fr) p$fr else p$en)
+        }
+      }
+      # Fallback: return the raw message
+      msg
+    }
 
     # Initialize UG data when project loads
     shiny::observe({
       project <- app_state$current_project
       if (is.null(project) || is.null(project$parcels)) {
         rv$projet_ug <- NULL
-        rv$selected_atome_ids <- character(0)
-        rv$map_initialized <- FALSE
+        rv$selected_tenement_ids <- character(0)
+        rv$map_needs_zoom <- FALSE
         return()
       }
+
+      # Reset map zoom flag for new project
+      rv$map_needs_zoom <- TRUE
+      rv$selected_tenement_ids <- character(0)
 
       # Try to load existing UG data
       if (has_ug_data(project)) {
@@ -184,7 +427,7 @@ mod_ug_server <- function(id, app_state) {
       } else if (!is.null(project$metadata$id)) {
         projet <- ensure_project_migrated(project$metadata$id, project)
         rv$projet_ug <- projet
-        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
       }
     }) |> shiny::bindEvent(app_state$current_project)
@@ -194,6 +437,7 @@ mod_ug_server <- function(id, app_state) {
     # ================================================================
     ug_listing <- shiny::reactive({
       projet <- rv$projet_ug
+      rv$redraw_counter  # also invalidate when redraw is forced
       if (is.null(projet) || !has_ug_data(projet)) return(NULL)
       ug_list(projet)
     })
@@ -201,52 +445,168 @@ mod_ug_server <- function(id, app_state) {
     # ================================================================
     # MAP: Render leaflet
     # ================================================================
+    # Basemap state
+    rv$basemap <- "osm"
+
     output$ug_map <- leaflet::renderLeaflet({
-      leaflet::leaflet() |>
+      m <- leaflet::leaflet() |>
         leaflet::addProviderTiles(
           leaflet::providers$OpenStreetMap,
-          group = "OSM"
-        ) |>
-        leaflet::addProviderTiles(
-          leaflet::providers$Esri.WorldImagery,
-          group = "Satellite"
+          group = "basemap",
+          layerId = "basemap_tiles"
         ) |>
         leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
-          overlayGroups = c("UG", "Atomes"),
-          options = leaflet::layersControlOptions(collapsed = TRUE)
+          # "Selection" is an internal-only visual overlay: we still draw
+          # the orange highlight via addPolygons(group = "Selection") and
+          # wipe it with clearGroup("Selection"), but it doesn't belong
+          # in the user-facing layers control (toggling it off wouldn't
+          # actually deselect tenements — the IDs live in rv$selected_tenement_ids).
+          overlayGroups = c("UGF", "Tenements", "Dessin"),
+          options = leaflet::layersControlOptions(collapsed = FALSE)
         ) |>
         leaflet::setView(lng = 2.5, lat = 46.5, zoom = 6)
+
+      # Add draw toolbar if leaflet.extras is available
+      if (requireNamespace("leaflet.extras", quietly = TRUE)) {
+        m <- m |>
+          leaflet.extras::addDrawToolbar(
+            targetGroup = "Dessin",
+            polylineOptions = leaflet.extras::drawPolylineOptions(
+              shapeOptions = leaflet.extras::drawShapeOptions(
+                color = "#FF0000",
+                weight = 3
+              )
+            ),
+            circleOptions = FALSE,
+            circleMarkerOptions = FALSE,
+            markerOptions = FALSE,
+            rectangleOptions = FALSE,
+            polygonOptions = leaflet.extras::drawPolygonOptions(
+              shapeOptions = leaflet.extras::drawShapeOptions(
+                color = "#FF4500",
+                fillColor = "#FF6347",
+                fillOpacity = 0.3,
+                weight = 2
+              )
+            ),
+            editOptions = leaflet.extras::editToolbarOptions(
+              edit = TRUE,
+              remove = TRUE
+            )
+          )
+      }
+
+      m
     })
 
     # ================================================================
-    # MAP: Update polygons when UG data changes
+    # MAP: Basemap toggle (OSM / Satellite)
+    # ================================================================
+    shiny::observeEvent(input$basemap_osm, {
+      rv$basemap <- "osm"
+      leaflet::leafletProxy(ns("ug_map")) |>
+        leaflet::clearGroup("basemap") |>
+        leaflet::addProviderTiles(
+          leaflet::providers$OpenStreetMap,
+          group = "basemap",
+          layerId = "basemap_tiles"
+        )
+      session$sendCustomMessage("toggleBasemapButtons", list(
+        osmId = ns("basemap_osm"),
+        satId = ns("basemap_satellite"),
+        active = "osm"
+      ))
+    })
+
+    shiny::observeEvent(input$basemap_satellite, {
+      rv$basemap <- "satellite"
+      leaflet::leafletProxy(ns("ug_map")) |>
+        leaflet::clearGroup("basemap") |>
+        leaflet::addProviderTiles(
+          leaflet::providers$Esri.WorldImagery,
+          group = "basemap",
+          layerId = "basemap_tiles"
+        )
+      session$sendCustomMessage("toggleBasemapButtons", list(
+        osmId = ns("basemap_osm"),
+        satId = ns("basemap_satellite"),
+        active = "satellite"
+      ))
+    })
+
+    # ================================================================
+    # MAP FOOTER: tenement count and surface summary
+    # ================================================================
+    output$ug_map_count <- shiny::renderText({
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) return("")
+      n <- nrow(projet$tenements)
+      sprintf(i18n()$t("ug_map_summary_count"), n)
+    })
+
+    output$ug_map_surface <- shiny::renderText({
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) return("")
+
+      tenements <- projet$tenements
+      # Cadastral surface (authoritative, from contenance)
+      surf_cadastrale_ha <- sum(tenements$surface_m2, na.rm = TRUE) / 10000
+      # SIG surface (geometric, via st_area) — fallback to st_area if column missing
+      surf_sig_m2 <- if (!is.null(tenements$surface_sig_m2)) {
+        tenements$surface_sig_m2
+      } else {
+        as.numeric(sf::st_area(tenements))
+      }
+      surf_sig_ha <- sum(surf_sig_m2, na.rm = TRUE) / 10000
+
+      sprintf(
+        i18n()$t("ug_map_summary_surface"),
+        format(round(surf_cadastrale_ha, 2), nsmall = 2),
+        format(round(surf_sig_ha, 2), nsmall = 2)
+      )
+    })
+
+    # ================================================================
+    # MAP: Update polygons when UG data changes OR tab becomes visible
     # ================================================================
     shiny::observe({
+      # Dependencies: data change AND explicit redraw requests
       projet <- rv$projet_ug
+      rv$redraw_counter  # invalidate on redraw trigger
       if (is.null(projet) || !has_ug_data(projet)) return()
 
-      atomes <- projet$atomes
+      tenements <- projet$tenements
       ugs <- projet$ugs
 
       # Ensure WGS84 for leaflet
-      if (!is.na(sf::st_crs(atomes)) && sf::st_crs(atomes)$epsg != 4326L) {
-        atomes <- sf::st_transform(atomes, 4326)
+      if (!is.na(sf::st_crs(tenements)) && sf::st_crs(tenements)$epsg != 4326L) {
+        tenements <- sf::st_transform(tenements, 4326)
       }
 
-      # Compute fill colors per atom (based on UG groupe or index)
+      # Sort tenements by descending SIG surface so larger polygons
+      # are drawn FIRST and smaller ones (typically nested inclusions
+      # the user added after the initial split — e.g. a clearing
+      # carved out of a large tenement) land ON TOP and stay visible.
+      if ("surface_sig_m2" %in% names(tenements) && nrow(tenements) > 1) {
+        tenements <- tenements[order(-tenements$surface_sig_m2), , drop = FALSE]
+      }
+
+      # Compute fill colors per tenement (based on UG groupe or index).
+      # Uses the project's classification profile (ONF / CRPF / OFB / ...)
+      # to resolve groupe -> color from the YAML config.
+      pk <- profile_key()
       ug_index_map <- stats::setNames(seq_len(nrow(ugs)), ugs$ug_id)
-      fill_colors <- vapply(seq_len(nrow(atomes)), function(i) {
-        uid <- atomes$ug_id[i]
+      fill_colors <- vapply(seq_len(nrow(tenements)), function(i) {
+        uid <- tenements$ug_id[i]
         ug_row <- ugs[ugs$ug_id == uid, ]
         if (nrow(ug_row) == 0) return("#CCCCCC")
         idx <- ug_index_map[[uid]]
-        ug_color(ug_row$groupe[1], idx)
+        ug_color(ug_row$groupe[1], idx, profile_key = pk)
       }, character(1))
 
       # Labels for hover
-      atom_labels <- vapply(seq_len(nrow(atomes)), function(i) {
-        uid <- atomes$ug_id[i]
+      atom_labels <- vapply(seq_len(nrow(tenements)), function(i) {
+        uid <- tenements$ug_id[i]
         ug_row <- ugs[ugs$ug_id == uid, ]
         ug_label <- if (nrow(ug_row) > 0) ug_row$label[1] else "?"
         groupe_str <- if (nrow(ug_row) > 0 && !is.na(ug_row$groupe[1])) {
@@ -255,37 +615,27 @@ mod_ug_server <- function(id, app_state) {
           ""
         }
         sprintf(
-          "<b>%s</b>%s<br>Atome: %s<br>Surface: %s m\u00b2",
+          "<b>%s</b>%s<br>Tenement: %s<br>Surface: %s m\u00b2",
           ug_label, groupe_str,
-          atomes$atome_id[i],
-          format(round(atomes$surface_m2[i]), big.mark = " ")
+          tenements$tenement_id[i],
+          format(round(tenements$surface_m2[i]), big.mark = " ")
         )
       }, character(1))
 
-      # Highlight selected atoms
-      border_colors <- ifelse(
-        atomes$atome_id %in% rv$selected_atome_ids,
-        "#FF4500",  # OrangeRed for selected
-        "#333333"
-      )
-      border_weights <- ifelse(
-        atomes$atome_id %in% rv$selected_atome_ids,
-        3, 1
-      )
-
-      # Clear and redraw atoms
+      # Clear and redraw tenements (selection is handled by separate overlay)
       proxy <- leaflet::leafletProxy(ns("ug_map"))
       proxy |>
-        leaflet::clearGroup("Atomes") |>
-        leaflet::clearGroup("UG") |>
+        leaflet::clearGroup("Tenements") |>
+        leaflet::clearGroup("UGF") |>
+        leaflet::clearGroup("Selection") |>
         leaflet::addPolygons(
-          data = atomes,
-          group = "Atomes",
-          layerId = atomes$atome_id,
+          data = tenements,
+          group = "Tenements",
+          layerId = tenements$tenement_id,
           fillColor = fill_colors,
           fillOpacity = 0.5,
-          color = border_colors,
-          weight = border_weights,
+          color = "#333333",
+          weight = 1,
           label = lapply(atom_labels, htmltools::HTML),
           labelOptions = leaflet::labelOptions(
             style = list("font-size" = "12px", "background" = "white"),
@@ -298,6 +648,9 @@ mod_ug_server <- function(id, app_state) {
           )
         )
 
+      # Clear selection state when tenements are redrawn (new project)
+      rv$selected_tenement_ids <- character(0)
+
       # Add UG dissolved boundaries as an overlay
       tryCatch({
         ug_sf <- ug_build_sf(projet)
@@ -307,7 +660,7 @@ mod_ug_server <- function(id, app_state) {
           }
 
           ug_colors <- vapply(seq_len(nrow(ug_sf)), function(i) {
-            ug_color(ug_sf$groupe[i], i)
+            ug_color(ug_sf$groupe[i], i, profile_key = pk)
           }, character(1))
 
           ug_labels <- vapply(seq_len(nrow(ug_sf)), function(i) {
@@ -317,9 +670,9 @@ mod_ug_server <- function(id, app_state) {
               ""
             }
             sprintf(
-              "<b>%s</b>%s<br>%d atome(s) | %s ha",
+              "<b>%s</b>%s<br>%d tenement(s) | %s ha",
               ug_sf$label[i], groupe_str,
-              ug_sf$n_atomes[i],
+              ug_sf$n_tenements[i],
               format(round(ug_sf$surface_m2[i] / 10000, 2), nsmall = 2)
             )
           }, character(1))
@@ -327,12 +680,11 @@ mod_ug_server <- function(id, app_state) {
           proxy |>
             leaflet::addPolygons(
               data = ug_sf,
-              group = "UG",
+              group = "UGF",
               fillColor = ug_colors,
-              fillOpacity = 0.15,
+              fillOpacity = 0.5,
               color = ug_colors,
-              weight = 3,
-              dashArray = "5,5",
+              weight = 1,
               label = lapply(ug_labels, htmltools::HTML),
               labelOptions = leaflet::labelOptions(
                 style = list("font-size" = "13px", "font-weight" = "bold"),
@@ -344,56 +696,444 @@ mod_ug_server <- function(id, app_state) {
         cli::cli_warn("Failed to render UG boundaries: {e$message}")
       })
 
-      # Fit bounds on first load
-      if (!rv$map_initialized) {
-        bbox <- sf::st_bbox(atomes)
+      # Store bbox and attempt zoom (may fail if tab not visible)
+      if (isTRUE(rv$map_needs_zoom)) {
+        bbox <- sf::st_bbox(tenements)
+        rv$pending_bbox <- bbox
         proxy |> leaflet::fitBounds(
           lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
           lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
         )
-        rv$map_initialized <- TRUE
+        rv$map_needs_zoom <- FALSE
       }
 
-      # Add legend
+      # Add legend + re-add layers control (clearControls also removes it).
+      # Then explicitly show every overlay group so leaflet doesn't keep
+      # them hidden after the control re-creation.
+      # Build the legend from the active profile (ONF / CRPF / OFB / ...).
+      profile_colors <- get_groupes_colors(pk)
+      groupe_vals <- ugs$groupe[!is.na(ugs$groupe) & nzchar(ugs$groupe)]
+      used_codes <- intersect(names(profile_colors), unique(groupe_vals))
+      legend_title <- get_groupes_field_label(pk, lang = lang())
+
       proxy |>
         leaflet::clearControls() |>
-        leaflet::addLegend(
-          position = "bottomright",
-          colors = GROUPE_COLORS[names(GROUPE_COLORS) %in% ugs$groupe],
-          labels = names(GROUPE_COLORS)[names(GROUPE_COLORS) %in% ugs$groupe],
-          title = i18n()$t("ug_group"),
-          opacity = 0.8
-        )
+        leaflet::addLayersControl(
+          overlayGroups = c("UGF", "Tenements", "Dessin"),
+          options = leaflet::layersControlOptions(collapsed = FALSE)
+        ) |>
+        leaflet::showGroup("UGF") |>
+        leaflet::showGroup("Tenements") |>
+        leaflet::showGroup("Dessin")
+
+      if (length(used_codes) > 0) {
+        legend_labels <- vapply(used_codes, function(c) {
+          sprintf("%s - %s", c, get_groupe_label(c, pk, lang = lang()))
+        }, character(1))
+        proxy |>
+          leaflet::addLegend(
+            position = "bottomright",
+            colors = unname(profile_colors[used_codes]),
+            labels = legend_labels,
+            title = legend_title,
+            opacity = 0.8
+          )
+      }
     })
 
     # ================================================================
-    # MAP: Click handler for atom selection
+    # MAP: Re-zoom when the tenement map becomes visible
+    # ================================================================
+    # Leaflet fitBounds fails silently when the map container has 0 size
+    # (hidden tab). The tenement map lives in a sub-tab of "Sélection"
+    # (home-main_tabs = "tenements"). Every time the user navigates to
+    # that sub-tab, we:
+    #  1. Recompute the bbox from the current rv$projet_ug (always fresh)
+    #  2. Ask leaflet to invalidate its size (redetect container dims)
+    #  3. Apply fitBounds with a small delay to let the DOM settle
+    shiny::observe({
+      root_session <- session$userData$root_session
+      if (is.null(root_session)) return()
+
+      top_nav <- root_session$input$main_nav
+      sub_nav <- root_session$input[["home-main_tabs"]]
+
+      if (is.null(top_nav) || top_nav != "selection") return()
+      if (is.null(sub_nav) || sub_nav != "tenements") return()
+
+      projet <- shiny::isolate(rv$projet_ug)
+      if (is.null(projet) || !has_ug_data(projet)) return()
+
+      # Always recompute bbox from current data (not cached)
+      tenements <- projet$tenements
+      if (!is.na(sf::st_crs(tenements)) && sf::st_crs(tenements)$epsg != 4326L) {
+        tenements <- sf::st_transform(tenements, 4326)
+      }
+      bbox <- tryCatch(sf::st_bbox(tenements), error = function(e) NULL)
+      if (is.null(bbox)) return()
+
+      # Force re-drawing the polygons — they may have been issued while the
+      # tab was hidden (map not in DOM) and silently dropped by leaflet.
+      rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+
+      # Force leaflet to re-detect its container size (critical for hidden tabs)
+      later::later(function() {
+        proxy <- leaflet::leafletProxy(ns("ug_map"), session = session)
+        # Trigger invalidateSize via custom message to the map
+        session$sendCustomMessage("leafletInvalidateSize", list(
+          id = ns("ug_map")
+        ))
+        proxy |> leaflet::fitBounds(
+          lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
+          lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
+        )
+      }, delay = 0.3)
+
+      # Consume pending_bbox if any (kept for compat)
+      rv$pending_bbox <- NULL
+    })
+
+    # ================================================================
+    # TABLE: force redraw when the "Tableau" sub-tab becomes visible
+    # ================================================================
+    shiny::observe({
+      root_session <- session$userData$root_session
+      if (is.null(root_session)) return()
+
+      top_nav <- root_session$input$main_nav
+      sub_nav <- root_session$input[["home-main_tabs"]]
+
+      if (is.null(top_nav) || top_nav != "selection") return()
+      if (is.null(sub_nav) || sub_nav != "table_ug") return()
+
+      projet <- shiny::isolate(rv$projet_ug)
+      if (is.null(projet) || !has_ug_data(projet)) return()
+
+      # Bump counter to invalidate ug_listing reactive
+      rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+    })
+
+    # ================================================================
+    # MAP: Click handler for tenement selection (same pattern as mod_map.R)
     # ================================================================
     shiny::observeEvent(input$ug_map_shape_click, {
       click <- input$ug_map_shape_click
       if (is.null(click) || is.null(click$id)) return()
 
-      atome_id <- click$id
+      tenement_id <- click$id
       projet <- rv$projet_ug
       if (is.null(projet)) return()
 
-      # Only handle clicks on atoms
-      if (!atome_id %in% projet$atomes$atome_id) return()
+      # Only handle clicks on tenements (not UG overlay)
+      if (!tenement_id %in% projet$tenements$tenement_id) return()
 
-      # Toggle selection
-      current <- rv$selected_atome_ids
-      if (atome_id %in% current) {
-        rv$selected_atome_ids <- setdiff(current, atome_id)
+      if (tenement_id %in% rv$selected_tenement_ids) {
+        # Deselect: remove from selection overlay
+        rv$selected_tenement_ids <- setdiff(rv$selected_tenement_ids, tenement_id)
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::removeShape(paste0("sel_", tenement_id))
       } else {
-        rv$selected_atome_ids <- c(current, atome_id)
+        # Select: add to selection overlay
+        rv$selected_tenement_ids <- c(rv$selected_tenement_ids, tenement_id)
+        update_tenement_selection_style(tenement_id, selected = TRUE)
       }
+    })
+
+    # Helper: add/remove selection overlay for a single tenement
+    update_tenement_selection_style <- function(tenement_id, selected) {
+      projet <- rv$projet_ug
+      if (is.null(projet)) return()
+
+      if (selected) {
+        tenements <- projet$tenements
+        tenement <- tenements[tenements$tenement_id == tenement_id, ]
+        if (nrow(tenement) == 0) return()
+
+        # Ensure WGS84
+        if (!is.na(sf::st_crs(tenement)) && sf::st_crs(tenement)$epsg != 4326L) {
+          tenement <- sf::st_transform(tenement, 4326)
+        }
+
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::addPolygons(
+            data = tenement,
+            layerId = paste0("sel_", tenement_id),
+            group = "Selection",
+            color = "#FF4500",
+            weight = 3,
+            fillColor = "#FF6347",
+            fillOpacity = 0.4,
+            options = leaflet::pathOptions(interactive = FALSE)
+          )
+      } else {
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::removeShape(paste0("sel_", tenement_id))
+      }
+    }
+
+    # Clear all selection overlays (used by clear button and project load)
+    clear_tenement_selection <- function() {
+      leaflet::leafletProxy(ns("ug_map")) |>
+        leaflet::clearGroup("Selection")
+      rv$selected_tenement_ids <- character(0)
+    }
+
+    # ================================================================
+    # ================================================================
+    # MAP: Handle drawn shapes (interactive split)
+    # ================================================================
+    # When the user finishes drawing on the map:
+    #   - LINESTRING → split tenements crossed by that line
+    #   - POLYGON / RECTANGLE → split tenements crossed by that polygon
+    # We key off input$ug_map_draw_new_feature (fires with ONLY the
+    # latest drawn shape) — draw_all_features accumulates every shape
+    # ever drawn, which caused a polygon drawn earlier to "win" over a
+    # polyline drawn afterwards.
+    shiny::observeEvent(input$ug_map_draw_new_feature, {
+      feat <- input$ug_map_draw_new_feature
+      if (is.null(feat) || is.null(feat$geometry)) return()
+
+      projet <- rv$projet_ug
+      if (is.null(projet)) return()
+
+      geom_type <- feat$geometry$type %||% ""
+      is_line  <- geom_type %in% c("LineString", "MultiLineString")
+      is_poly  <- geom_type %in% c("Polygon", "MultiPolygon")
+      if (!is_line && !is_poly) return()
+
+      # Wrap the single feature in a FeatureCollection for sf::st_read
+      fc <- list(type = "FeatureCollection", features = list(feat))
+      rv$drawn_geojson <- jsonlite::toJSON(fc, auto_unbox = TRUE)
+
+      n_lines <- if (is_line) 1L else 0L
+      n_polys <- if (is_poly) 1L else 0L
+      tenements <- projet$tenements
+
+      cli::cli_h2("Nouveau tracé : {geom_type}")
+      cli::cli_alert_info("Nombre de tènements dans le projet : {nrow(tenements)}")
+
+      # ----- Case 1: LINE drawn → auto-split all crossed tenements -----
+      if (is_line) {
+        cli::cli_alert_info("Type : POLYLIGNE — analyse du tracé...")
+        # Preview: planar GEOS on Lambert 93 (matches the backend
+        # which must use GEOS because lwgeom::st_split has no S2 mode).
+        n_affected <- tryCatch({
+          line_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
+          if (is.na(sf::st_crs(line_sf))) {
+            sf::st_crs(line_sf) <- 4326
+          }
+          if (!is.na(sf::st_crs(tenements)) &&
+              sf::st_crs(line_sf) != sf::st_crs(tenements)) {
+            line_sf <- sf::st_transform(line_sf, sf::st_crs(tenements))
+          }
+          prev_s2 <- sf::sf_use_s2()
+          sf::sf_use_s2(FALSE)
+          on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
+          tn_work <- tenements
+          if (!is.na(sf::st_crs(tenements)) &&
+              isTRUE(sf::st_is_longlat(tenements))) {
+            tn_work  <- sf::st_transform(tenements, 2154)
+            line_sf  <- sf::st_transform(line_sf, 2154)
+          }
+          cutting_line <- sf::st_union(sf::st_geometry(line_sf))
+          n <- sum(sf::st_intersects(sf::st_geometry(tn_work), cutting_line,
+                                     sparse = FALSE)[, 1])
+          cli::cli_alert_success(
+            "POLYLIGNE : traverse {n} tènement{?s} (sur {nrow(tenements)})"
+          )
+          n
+        }, error = function(e) {
+          cli::cli_alert_danger(
+            "POLYLIGNE : \u00e9chec du preview ({e$message})"
+          )
+          0L
+        })
+
+        if (n_affected == 0) {
+          shiny::showNotification(
+            i18n()$t("ug_line_split_no_hit"),
+            type = "warning",
+            duration = 8
+          )
+          return()
+        }
+
+        shiny::showModal(shiny::modalDialog(
+          title = i18n()$t("ug_line_split_title"),
+          shiny::p(sprintf(i18n()$t("ug_line_split_desc"), n_affected)),
+          footer = htmltools::tagList(
+            shiny::modalButton(i18n()$t("cancel")),
+            shiny::actionButton(
+              ns("confirm_line_split"),
+              i18n()$t("ug_split_apply"),
+              class = "btn-info",
+              icon = shiny::icon("scissors")
+            )
+          )
+        ))
+        return()
+      }
+
+      # ----- Case 2: POLYGON drawn → auto-split all crossed tenements -----
+      if (!is_poly) return()
+      cli::cli_alert_info("Type : POLYGONE \u2014 analyse du trac\u00e9...")
+      # Quick preview: how many tenements does the polygon cross?
+      # Mirror the backend: S2 spherical intersection on 4326 when
+      # possible, fall back to planar on Lambert 93 if S2 rejects.
+      n_affected <- tryCatch({
+        polys_sf <- sf::st_read(rv$drawn_geojson, quiet = TRUE)
+        if (is.na(sf::st_crs(polys_sf))) {
+          sf::st_crs(polys_sf) <- 4326
+        }
+        if (!is.na(sf::st_crs(tenements)) &&
+            sf::st_crs(polys_sf) != sf::st_crs(tenements)) {
+          polys_sf <- sf::st_transform(polys_sf, sf::st_crs(tenements))
+        }
+        prev_s2 <- sf::sf_use_s2()
+        sf::sf_use_s2(TRUE)
+        on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
+        polys_sf <- tryCatch(sf::st_make_valid(polys_sf),
+                             error = function(e) polys_sf)
+        cutter <- sf::st_union(sf::st_geometry(polys_sf))
+        tryCatch({
+          n <- sum(sf::st_intersects(sf::st_geometry(tenements), cutter,
+                                     sparse = FALSE)[, 1])
+          cli::cli_alert_success(
+            "POLYGONE (S2/4326) : traverse {n} tènement{?s} (sur {nrow(tenements)})"
+          )
+          n
+        }, error = function(e) {
+          cli::cli_alert_warning(
+            "POLYGONE : S2 a \u00e9chou\u00e9, repli sur 2154 ({e$message})"
+          )
+          sf::sf_use_s2(FALSE)
+          tn_m <- if (isTRUE(sf::st_is_longlat(tenements))) {
+            sf::st_transform(tenements, 2154)
+          } else tenements
+          cu_m <- if (isTRUE(sf::st_is_longlat(cutter))) {
+            sf::st_transform(cutter, 2154)
+          } else cutter
+          n <- sum(sf::st_intersects(sf::st_geometry(tn_m), cu_m,
+                                     sparse = FALSE)[, 1])
+          cli::cli_alert_success(
+            "POLYGONE (GEOS/2154) : traverse {n} t\u00e8nement{?s} (sur {nrow(tenements)})"
+          )
+          n
+        })
+      }, error = function(e) {
+        cli::cli_alert_danger(
+          "POLYGONE : \u00e9chec du preview ({e$message})"
+        )
+        0L
+      })
+
+      if (n_affected == 0) {
+        shiny::showNotification(
+          i18n()$t("ug_poly_split_no_hit"),
+          type = "warning",
+          duration = 8
+        )
+        return()
+      }
+
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("ug_poly_split_title"),
+        shiny::p(sprintf(i18n()$t("ug_poly_split_desc"), n_affected)),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(
+            ns("confirm_draw_split"),
+            i18n()$t("ug_split_apply"),
+            class = "btn-info",
+            icon = shiny::icon("scissors")
+          )
+        )
+      ))
+    })
+
+    # Confirm POLYGON split (auto-split all tenements crossed by polygon)
+    shiny::observeEvent(input$confirm_draw_split, {
+      shiny::removeModal()
+
+      geojson <- rv$drawn_geojson
+      if (is.null(geojson)) return()
+
+      tryCatch({
+        projet <- rv$projet_ug
+        projet <- tenement_split_by_drawn_polygon(projet, geojson)
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
+        }
+        rv$projet_ug <- projet
+        rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+        rv$drawn_geojson <- NULL
+        clear_tenement_selection()
+        app_state$current_project$tenements <- projet$tenements
+        app_state$current_project$ugs <- projet$ugs
+
+        # Clear drawn shapes from the map (leaflet group + JS fallback).
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::clearGroup("Dessin")
+        session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
+
+        shiny::showNotification(
+          i18n()$t("ug_poly_split_success"),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(
+          paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
+          type = "error",
+          duration = 10
+        )
+      })
+    })
+
+    # Confirm LINE split (auto-split all tenements crossed by the line)
+    shiny::observeEvent(input$confirm_line_split, {
+      shiny::removeModal()
+
+      geojson <- rv$drawn_geojson
+      if (is.null(geojson)) return()
+
+      tryCatch({
+        projet <- rv$projet_ug
+        projet <- tenement_split_by_drawn_line(projet, geojson)
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
+        }
+        rv$projet_ug <- projet
+        rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+        rv$drawn_geojson <- NULL
+        clear_tenement_selection()
+        app_state$current_project$tenements <- projet$tenements
+        app_state$current_project$ugs <- projet$ugs
+
+        # Clear drawn shapes from the map (leaflet group + JS fallback).
+        leaflet::leafletProxy(ns("ug_map")) |>
+          leaflet::clearGroup("Dessin")
+        session$sendCustomMessage("leafletClearDrawn", list(id = ns("ug_map")))
+
+        shiny::showNotification(
+          i18n()$t("ug_line_split_success"),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(
+          paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
+          type = "error",
+          duration = 10
+        )
+      })
     })
 
     # ================================================================
     # OUTPUT: Map selection info
     # ================================================================
     output$map_selection_info <- shiny::renderUI({
-      n_sel <- length(rv$selected_atome_ids)
+      n_sel <- length(rv$selected_tenement_ids)
       if (n_sel == 0) {
         return(shiny::p(
           class = "text-muted small",
@@ -405,16 +1145,16 @@ mod_ug_server <- function(id, app_state) {
       if (is.null(projet)) return(NULL)
 
       # Find which UGs are involved
-      sel_atomes <- projet$atomes[projet$atomes$atome_id %in% rv$selected_atome_ids, ]
-      ug_ids_involved <- unique(sel_atomes$ug_id)
+      sel_tenements <- projet$tenements[projet$tenements$tenement_id %in% rv$selected_tenement_ids, ]
+      ug_ids_involved <- unique(sel_tenements$ug_id)
       ug_labels <- projet$ugs$label[projet$ugs$ug_id %in% ug_ids_involved]
 
-      total_surface <- sum(sel_atomes$surface_m2, na.rm = TRUE)
+      total_surface <- sum(sel_tenements$surface_m2, na.rm = TRUE)
 
       htmltools::tagList(
         shiny::tags$span(
           class = "badge bg-warning",
-          sprintf("%d atome(s)", n_sel)
+          sprintf("%d tenement(s)", n_sel)
         ),
         shiny::br(),
         shiny::tags$small(
@@ -435,18 +1175,19 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # Clear map selection
+    # Clear map selection
     shiny::observeEvent(input$btn_clear_map_sel, {
-      rv$selected_atome_ids <- character(0)
+      clear_tenement_selection()
     })
 
     # ================================================================
-    # ACTION: Create UG from map-selected atoms
+    # ACTION: Create UG from map-selected tenements
     # ================================================================
     shiny::observeEvent(input$btn_create_from_map, {
-      sel_ids <- rv$selected_atome_ids
+      sel_ids <- rv$selected_tenement_ids
       if (length(sel_ids) == 0) {
         shiny::showNotification(
-          i18n()$t("ug_map_select_atoms_first"),
+          i18n()$t("ug_map_select_tenements_first"),
           type = "warning"
         )
         return()
@@ -461,8 +1202,9 @@ mod_ug_server <- function(id, app_state) {
         ),
         shiny::selectInput(
           ns("create_map_groupe"),
-          label = i18n()$t("ug_group"),
-          choices = c("---" = "", stats::setNames(GROUPES_AMENAGEMENT, GROUPES_AMENAGEMENT)),
+          label = get_groupes_field_label(profile_key(), lang = lang()),
+          choices = get_groupes_choices(profile_key(), lang = lang(),
+                                        include_empty = TRUE),
           selected = ""
         ),
         shiny::p(
@@ -483,7 +1225,7 @@ mod_ug_server <- function(id, app_state) {
     shiny::observeEvent(input$confirm_create_from_map, {
       shiny::removeModal()
 
-      sel_ids <- rv$selected_atome_ids
+      sel_ids <- rv$selected_tenement_ids
       if (length(sel_ids) == 0) return()
 
       label <- trimws(input$create_map_label)
@@ -502,13 +1244,107 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
-        rv$needs_recompute <- TRUE
-        rv$selected_atome_ids <- character(0)
-        app_state$current_project$atomes <- projet$atomes
+        rv$selected_tenement_ids <- character(0)
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(
-          sprintf("UG \u00ab %s \u00bb cr\u00e9\u00e9e avec %d atome(s)", label, length(sel_ids)),
+          sprintf("UG \u00ab %s \u00bb cr\u00e9\u00e9e avec %d tenement(s)", label, length(sel_ids)),
+          type = "message"
+        )
+      }, error = function(e) {
+        shiny::showNotification(e$message, type = "error")
+      })
+    })
+
+    # ================================================================
+    # ACTION: Move selected tenements to an existing UG
+    # ================================================================
+    shiny::observeEvent(input$btn_move_to_ug, {
+      sel_ids <- rv$selected_tenement_ids
+      if (length(sel_ids) == 0) {
+        shiny::showNotification(
+          i18n()$t("ug_map_select_tenements_first"),
+          type = "warning"
+        )
+        return()
+      }
+
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) return()
+
+      # Build UG choices from the freshest projet_ug state.
+      # Only include UGs that actually have at least one tenement.
+      ugs <- projet$ugs
+      tenements <- projet$tenements
+      has_tenement <- vapply(ugs$ug_id, function(uid) {
+        any(tenements$ug_id == uid, na.rm = TRUE)
+      }, logical(1))
+      ugs <- ugs[has_tenement, , drop = FALSE]
+
+      if (nrow(ugs) == 0) {
+        shiny::showNotification(
+          i18n()$t("ug_no_data"),
+          type = "warning"
+        )
+        return()
+      }
+
+      # Disambiguate duplicate labels by appending a short suffix of the ID
+      label_counts <- table(ugs$label)
+      display_labels <- ifelse(
+        label_counts[ugs$label] > 1L,
+        paste0(ugs$label, " \u00b7 ", substr(ugs$ug_id, 1, 6)),
+        ugs$label
+      )
+      ug_choices <- stats::setNames(ugs$ug_id, display_labels)
+
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("ug_move_to"),
+        shiny::p(sprintf(i18n()$t("ug_move_desc"), length(sel_ids))),
+        shiny::selectInput(
+          ns("move_target_ug"),
+          label = i18n()$t("ug_move_target"),
+          choices = ug_choices
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(
+            ns("confirm_move_to_ug"),
+            i18n()$t("ug_move_confirm"),
+            class = "btn-success",
+            icon = shiny::icon("arrow-right-arrow-left")
+          )
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$confirm_move_to_ug, {
+      shiny::removeModal()
+
+      sel_ids <- rv$selected_tenement_ids
+      target_ug_id <- input$move_target_ug
+      if (length(sel_ids) == 0 || is.null(target_ug_id)) return()
+
+      tryCatch({
+        projet <- rv$projet_ug
+
+        # Move each tenement to the target UG
+        for (tenement_id in sel_ids) {
+          projet <- ug_assign_tenement(projet, tenement_id, target_ug_id)
+        }
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
+        }
+        rv$projet_ug <- projet
+        clear_tenement_selection()
+        app_state$current_project$tenements <- projet$tenements
+        app_state$current_project$ugs <- projet$ugs
+
+        target_label <- projet$ugs$label[projet$ugs$ug_id == target_ug_id]
+        shiny::showNotification(
+          sprintf(i18n()$t("ug_move_success"), length(sel_ids), target_label),
           type = "message"
         )
       }, error = function(e) {
@@ -529,15 +1365,39 @@ mod_ug_server <- function(id, app_state) {
         ))
       }
 
-      # Build display table
+      # Build display table (show both cadastral and SIG surfaces)
+      sig_col <- if (!is.null(listing$surface_sig_m2)) {
+        round(listing$surface_sig_m2 / 10000, 2)
+      } else {
+        round(listing$surface_m2 / 10000, 2)
+      }
+      # Column header for the groupe column matches the profile's
+      # field_label (e.g. "Groupe d'aménagement" / "Groupe" / "Zone").
+      groupe_col <- get_groupes_field_label(profile_key(), lang = lang())
+
+      # Build a pale background tint from each profile color (85% white
+      # mixed with 15% of the map color). Used by DT::formatStyle below.
+      lighten <- function(hex, mix = 0.85) {
+        tryCatch({
+          rgb <- grDevices::col2rgb(hex)[, 1]
+          r <- round(rgb["red"]   * (1 - mix) + 255 * mix)
+          g <- round(rgb["green"] * (1 - mix) + 255 * mix)
+          b <- round(rgb["blue"]  * (1 - mix) + 255 * mix)
+          sprintf("#%02X%02X%02X", r, g, b)
+        }, error = function(e) "#ffffff")
+      }
+      profile_colors_full <- get_groupes_colors(profile_key())
+      groupe_bg_colors <- vapply(profile_colors_full, lighten, character(1))
       display_df <- data.frame(
-        Label = listing$label,
-        Groupe = ifelse(is.na(listing$groupe), "---", listing$groupe),
-        Atomes = listing$n_atomes,
-        `Surface (ha)` = round(listing$surface_m2 / 10000, 2),
+        `Label UGF` = listing$label,
+        `__groupe__` = ifelse(is.na(listing$groupe), "---", listing$groupe),
+        Tenements = listing$n_tenements,
+        `Surface cadastrale (ha)` = round(listing$surface_m2 / 10000, 2),
+        `Surface SIG (ha)` = sig_col,
         check.names = FALSE,
         stringsAsFactors = FALSE
       )
+      names(display_df)[names(display_df) == "__groupe__"] <- groupe_col
 
       # Get cadastral refs for each UG
       projet <- rv$projet_ug
@@ -566,14 +1426,22 @@ mod_ug_server <- function(id, app_state) {
           }
         )
       ) |>
-        DT::formatStyle("Groupe",
+        DT::formatStyle(
+          groupe_col,
           backgroundColor = DT::styleEqual(
-            c("TSF", "REGT", "REGF", "IRR", "HSN", "HSY", "PROT", "ACC", "AMETS", "AMER"),
-            c("#e8f5e9", "#fff3e0", "#fff3e0", "#e3f2fd", "#f3e5f5", "#fce4ec",
-              "#e0f7fa", "#fff9c4", "#e8f5e9", "#fff3e0")
+            names(groupe_bg_colors),
+            unname(groupe_bg_colors)
           )
         )
     })
+
+    # Render the table even when the sub-tab is hidden. Otherwise Shiny
+    # suspends the output and the post-split data update is only picked
+    # up the next time the user navigates to "Tableau" — which sometimes
+    # doesn't trigger a refresh because the cached value looks the same.
+    shiny::outputOptions(output, "ug_table", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "ug_map_count", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "ug_map_surface", suspendWhenHidden = FALSE)
 
     # ================================================================
     # OUTPUT: Summary text
@@ -604,7 +1472,7 @@ mod_ug_server <- function(id, app_state) {
         uid <- listing$ug_id[sel]
         refs <- ug_cadastral_refs(projet, uid)
         surface_ha <- round(ug_surface(projet, uid) / 10000, 2)
-        color <- ug_color(listing$groupe[sel], sel)
+        color <- ug_color(listing$groupe[sel], sel, profile_key = profile_key())
 
         htmltools::tagList(
           htmltools::div(
@@ -613,7 +1481,7 @@ mod_ug_server <- function(id, app_state) {
             shiny::br(),
             shiny::tags$span(
               class = "text-muted",
-              sprintf("%s ha | %d atome(s)", surface_ha, listing$n_atomes[sel])
+              sprintf("%s ha | %d tenement(s)", surface_ha, listing$n_tenements[sel])
             ),
             if (!is.na(listing$groupe[sel])) {
               shiny::tags$span(
@@ -715,8 +1583,7 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
-        rv$needs_recompute <- TRUE
-        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(
@@ -729,7 +1596,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # ACTION: Split UG (restore 1 UG per atom)
+    # ACTION: Split UG (restore 1 UG per tenement)
     # ================================================================
     shiny::observeEvent(input$btn_split, {
       sel <- input$ug_table_rows_selected
@@ -741,9 +1608,9 @@ mod_ug_server <- function(id, app_state) {
       }
 
       uid <- listing$ug_id[sel]
-      n_atomes <- listing$n_atomes[sel]
+      n_tenements <- listing$n_tenements[sel]
 
-      if (n_atomes < 2) {
+      if (n_tenements < 2) {
         shiny::showNotification(i18n()$t("ug_cannot_split_single"), type = "warning")
         return()
       }
@@ -756,12 +1623,11 @@ mod_ug_server <- function(id, app_state) {
           save_ug_data(projet$metadata$id, projet)
         }
         rv$projet_ug <- projet
-        rv$needs_recompute <- TRUE
-        app_state$current_project$atomes <- projet$atomes
+        app_state$current_project$tenements <- projet$tenements
         app_state$current_project$ugs <- projet$ugs
 
         shiny::showNotification(
-          sprintf("UG dissoci\u00e9e en %d UG", n_atomes),
+          sprintf("UG dissoci\u00e9e en %d UG", n_tenements),
           type = "message"
         )
       }, error = function(e) {
@@ -862,47 +1728,287 @@ mod_ug_server <- function(id, app_state) {
     })
 
     # ================================================================
-    # ACTION: Recompute indicators for UGs
+    # ACTION: Export current tenement split as GPKG
     # ================================================================
-    shiny::observeEvent(input$btn_recompute, {
-      projet <- rv$projet_ug
-      project <- app_state$current_project
+    # Users can edit the file externally and re-import via btn_import_split.
+    # The exported GPKG carries all relevant columns as a template.
+    output$btn_export_split <- shiny::downloadHandler(
+      filename = function() {
+        meta <- rv$projet_ug$metadata
+        # Sanitize project name for use as filename prefix
+        pname <- meta$name %||% meta$id %||% "projet"
+        pname <- gsub("[^A-Za-z0-9_\\-]", "_", pname)
+        pname <- gsub("_+", "_", pname)
+        pname <- gsub("^_|_$", "", pname)
+        if (nchar(pname) == 0) pname <- "projet"
+        sprintf("%s_tenements_%s.gpkg", pname, format(Sys.time(), "%Y%m%d_%H%M%S"))
+      },
+      content = function(file) {
+        projet <- rv$projet_ug
+        if (is.null(projet) || !has_ug_data(projet)) {
+          shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
+          return()
+        }
 
-      if (is.null(projet) || is.null(project$indicators)) {
-        shiny::showNotification(i18n()$t("ug_no_indicators"), type = "warning")
+        tryCatch({
+          tenements <- projet$tenements
+
+          # Enrich with UG label and groupe (joined from projet$ugs)
+          ugs <- projet$ugs
+          if (!is.null(ugs) && "ug_id" %in% names(ugs)) {
+            idx <- match(tenements$ug_id, ugs$ug_id)
+            tenements$ug_label <- ugs$label[idx]
+            tenements$ug_groupe <- ugs$groupe[idx]
+          }
+
+          # Ensure SIG surface exists
+          if (!"surface_sig_m2" %in% names(tenements)) {
+            tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
+          }
+
+          sf::st_write(tenements, file, driver = "GPKG", quiet = TRUE,
+                       delete_dsn = TRUE)
+        }, error = function(e) {
+          shiny::showNotification(
+            paste(i18n()$t("ug_split_error"), translate_split_error(e$message)),
+            type = "error",
+            duration = 10
+          )
+        })
+      }
+    )
+
+    # ================================================================
+    # ACTION: Import split (GeoJSON/Shapefile)
+    # ================================================================
+    shiny::observeEvent(input$btn_import_split, {
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) {
+        shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
         return()
       }
 
-      tryCatch({
-        shiny::showNotification(
-          i18n()$t("ug_recomputing"),
-          type = "message",
-          id = "ug_recompute_notif"
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("ug_import_split"),
+        size = "l",
+        shiny::fileInput(
+          ns("split_file"),
+          label = i18n()$t("ug_split_file"),
+          accept = c(".geojson", ".json", ".shp", ".gpkg"),
+          placeholder = "GeoJSON / Shapefile / GeoPackage"
+        ),
+        shiny::p(
+          class = "text-muted small",
+          i18n()$t("ug_split_hint")
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(
+            ns("confirm_import_split"),
+            i18n()$t("ug_split_apply"),
+            class = "btn-info",
+            icon = shiny::icon("scissors")
+          )
         )
+      ))
+    })
 
-        indicators_ug <- aggregate_indicators_to_ug(project$indicators, projet)
+    shiny::observeEvent(input$confirm_import_split, {
+      file_info <- input$split_file
 
-        if (!is.null(indicators_ug)) {
-          if (!is.null(project$metadata$id)) {
-            save_indicators_ug(project$metadata$id, indicators_ug)
+      if (is.null(file_info)) {
+        shiny::showNotification(i18n()$t("ug_split_no_file"), type = "warning")
+        return()
+      }
+
+      shiny::removeModal()
+
+      # Persistent spinner notification while the import runs. The
+      # spatial joins + area recomputation can take a few seconds on
+      # large projects, so give the user immediate visual feedback.
+      # Same visual pattern as the project-loading notification in
+      # mod_home.R (spinner icon, persistent, no close button).
+      notif_id <- "ug_import_loading"
+      shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("spinner", class = "fa-spin me-2"),
+          sprintf("%s...", i18n()$t("ug_import_running"))
+        ),
+        type = "message",
+        duration = NULL,
+        closeButton = FALSE,
+        id = notif_id,
+        session = session
+      )
+
+      # Schedule the actual work via later::later so the spinner gets
+      # painted before we block on the heavy computation. Without this
+      # step, Shiny batches UI updates at the end of the reactive
+      # context and the user would never see the spinner.
+      #
+      # The later callback runs OUTSIDE any reactive context, so ALL
+      # reactive reads must be isolated. We snapshot the things we need
+      # now, then pass them in by closure — simpler and faster than
+      # calling shiny::isolate() on every single line.
+      datapath       <- file_info$datapath
+      i18n_snap      <- shiny::isolate(i18n())
+      lang_snap      <- shiny::isolate(lang())
+      translate_err  <- function(msg) {
+        if (is.null(msg) || length(msg) == 0) return("")
+        is_fr <- identical(lang_snap, "fr")
+        patterns <- list(
+          list(re = "does not intersect any tenement",
+               fr = "Le polygone ne recouvre aucun t\u00e8nement.",
+               en = "The drawn polygon does not intersect any tenement."),
+          list(re = "Project must have UG data",
+               fr = "Le projet ne contient pas de donn\u00e9es UGF.",
+               en = "Project must have UG data."),
+          list(re = "Invalid GeoJSON",
+               fr = "Fichier GeoJSON invalide.",
+               en = "Invalid GeoJSON.")
+        )
+        for (p in patterns) {
+          if (grepl(p$re, msg, ignore.case = TRUE)) {
+            return(if (is_fr) p$fr else p$en)
+          }
+        }
+        msg
+      }
+
+      later::later(function() {
+        tryCatch({
+          # Read the imported file
+          sf_polygones <- sf::st_read(datapath, quiet = TRUE)
+
+          if (nrow(sf_polygones) == 0) {
+            shiny::removeNotification(notif_id, session = session)
+            shiny::showNotification(i18n_snap$t("ug_split_empty_file"), type = "error")
+            return()
           }
 
-          app_state$current_project$indicators_ug <- indicators_ug
-          rv$needs_recompute <- FALSE
+          # Apply as a full layout replacement. The imported file is the
+          # NEW tenement configuration — not a cutter. Handles:
+          #  - QGIS "Séparer les parties" (multipart → singleparts)
+          #  - QGIS "Séparer l'entité"   (new rows appear in the file)
+          #  - reshape / merge / delete in any GIS tool
+          projet <- shiny::isolate(rv$projet_ug)
+          projet <- tenement_import_replace(projet, sf_polygones)
 
+          if (!is.null(projet$metadata$id)) {
+            save_ug_data(projet$metadata$id, projet)
+          }
+
+          # Writes to reactiveValues do not require a reactive context.
+          # Deep assignments on app_state require an isolated read first
+          # because `x$a$b <- y` reads x$a under the hood.
+          rv$projet_ug <- projet
+          rv$redraw_counter <- shiny::isolate(rv$redraw_counter) + 1L
+
+          # clear selection — its leafletProxy() call needs a reactive
+          # domain, so we pass session explicitly.
+          leaflet::leafletProxy("ug_map", session = session) |>
+            leaflet::clearGroup("Selection")
+          rv$selected_tenement_ids <- character(0)
+
+          cur_proj <- shiny::isolate(app_state$current_project)
+          if (!is.null(cur_proj)) {
+            cur_proj$tenements <- projet$tenements
+            cur_proj$ugs       <- projet$ugs
+            app_state$current_project <- cur_proj
+          }
+
+          shiny::removeNotification(notif_id, session = session)
           shiny::showNotification(
-            sprintf(i18n()$t("ug_recompute_done"), nrow(indicators_ug)),
+            i18n_snap$t("ug_poly_split_success"),
             type = "message",
-            id = "ug_recompute_notif"
+            session = session
           )
-        } else {
+        }, error = function(e) {
+          shiny::removeNotification(notif_id, session = session)
           shiny::showNotification(
-            i18n()$t("ug_recompute_failed"),
-            type = "error"
+            paste(i18n_snap$t("ug_split_error"), translate_err(e$message)),
+            type = "error",
+            duration = 10,
+            session = session
           )
+        })
+      }, delay = 0.05)
+    })
+
+    # ================================================================
+    # ACTION: Undo split (restore single tenement per parcel)
+    # ================================================================
+    shiny::observeEvent(input$btn_undo_split, {
+      projet <- rv$projet_ug
+      if (is.null(projet) || !has_ug_data(projet)) {
+        shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
+        return()
+      }
+
+      # Find parcels that have multiple tenements (i.e., have been split)
+      atom_counts <- table(projet$tenements$parent_parcelle_id)
+      split_parcels <- names(atom_counts[atom_counts > 1])
+
+      if (length(split_parcels) == 0) {
+        shiny::showNotification(i18n()$t("ug_no_split_to_undo"), type = "info")
+        return()
+      }
+
+      # Build choices
+      parcels <- projet$parcels
+      id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"), names(parcels))
+      parcel_labels <- if ("geo_parcelle" %in% names(parcels)) {
+        geo_refs <- as.character(parcels$geo_parcelle)
+        ids <- as.character(parcels[[id_col[1]]])
+        stats::setNames(ids, geo_refs)[split_parcels]
+      } else {
+        stats::setNames(split_parcels, split_parcels)
+      }
+
+      shiny::showModal(shiny::modalDialog(
+        title = i18n()$t("ug_undo_split"),
+        shiny::selectInput(
+          ns("undo_split_parcelle"),
+          label = i18n()$t("ug_split_select_parcel"),
+          choices = parcel_labels
+        ),
+        shiny::p(
+          class = "text-muted",
+          i18n()$t("ug_undo_split_hint")
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n()$t("cancel")),
+          shiny::actionButton(
+            ns("confirm_undo_split"),
+            i18n()$t("ug_undo_split"),
+            class = "btn-warning"
+          )
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$confirm_undo_split, {
+      shiny::removeModal()
+      parcelle_id <- input$undo_split_parcelle
+      if (is.null(parcelle_id)) return()
+
+      tryCatch({
+        projet <- rv$projet_ug
+        projet <- tenement_undo_split(projet, parcelle_id)
+
+        if (!is.null(projet$metadata$id)) {
+          save_ug_data(projet$metadata$id, projet)
         }
+        rv$projet_ug <- projet
+        app_state$current_project$tenements <- projet$tenements
+        app_state$current_project$ugs <- projet$ugs
+
+        shiny::showNotification(
+          sprintf(i18n()$t("ug_undo_split_success"), parcelle_id),
+          type = "message"
+        )
       }, error = function(e) {
-        shiny::showNotification(paste("Erreur :", e$message), type = "error")
+        shiny::showNotification(e$message, type = "error")
       })
     })
 

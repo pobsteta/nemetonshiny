@@ -116,13 +116,97 @@ mod_home_ui <- function(id) {
       ),
 
       # Progress Module (shown during computation)
-      mod_progress_ui(ns("progress"))
+      mod_progress_ui(ns("progress")),
+
+      htmltools::hr(class = "my-3"),
+
+      # Carte UGF actions (map-based + global actions)
+      htmltools::tags$div(
+        id = ns("ug_map_actions_section"),
+        class = "card mb-3",
+        htmltools::tags$div(
+          class = "card-header bg-success text-white py-2",
+          style = "cursor: pointer;",
+          `data-bs-toggle` = "collapse",
+          `data-bs-target` = paste0("#", ns("ug_map_actions_collapse")),
+          `aria-expanded` = "false",
+          `aria-controls` = ns("ug_map_actions_collapse"),
+          htmltools::div(
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("diagram-3", class = "me-2"),
+              i18n$t("ug_sidebar_title")
+            ),
+            bsicons::bs_icon("chevron-down", class = "collapse-icon")
+          )
+        ),
+        htmltools::tags$div(
+          id = ns("ug_map_actions_collapse"),
+          class = "collapse",
+          htmltools::tags$div(
+            class = "card-body p-2",
+            mod_ug_map_actions_bar("ug")
+          )
+        )
+      ),
+
+      # Tableau UGF actions (table-based actions: merge, split, rename, groupe)
+      htmltools::tags$div(
+        id = ns("ug_table_actions_section"),
+        class = "card mb-3",
+        htmltools::tags$div(
+          class = "card-header bg-info text-white py-2",
+          style = "cursor: pointer;",
+          `data-bs-toggle` = "collapse",
+          `data-bs-target` = paste0("#", ns("ug_table_actions_collapse")),
+          `aria-expanded` = "false",
+          `aria-controls` = ns("ug_table_actions_collapse"),
+          htmltools::div(
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("table", class = "me-2"),
+              i18n$t("ug_table_sidebar_title")
+            ),
+            bsicons::bs_icon("chevron-down", class = "collapse-icon")
+          )
+        ),
+        htmltools::tags$div(
+          id = ns("ug_table_actions_collapse"),
+          class = "collapse",
+          htmltools::tags$div(
+            class = "card-body p-2",
+            mod_ug_table_actions_bar("ug")
+          )
+        )
+      )
     ),
 
     # ========================================
-    # Main: Map
+    # Main: Tabbed maps + UG table
     # ========================================
-    mod_map_ui(ns("map"))
+    bslib::navset_card_tab(
+      id = ns("main_tabs"),
+      bslib::nav_panel(
+        title = i18n$t("tab_carte_cadastrale"),
+        icon = bsicons::bs_icon("geo-alt"),
+        value = "cadastral",
+        mod_map_ui(ns("map"))
+      ),
+      bslib::nav_panel(
+        title = i18n$t("tab_carte_tenements"),
+        icon = bsicons::bs_icon("diagram-3"),
+        value = "tenements",
+        mod_ug_map_panel("ug")
+      ),
+      bslib::nav_panel(
+        title = i18n$t("tab_tableau_ug"),
+        icon = bsicons::bs_icon("table"),
+        value = "table_ug",
+        mod_ug_table_panel("ug")
+      )
+    )
   )
 }
 
@@ -270,6 +354,18 @@ mod_home_server <- function(id, app_state) {
         return()
       }
 
+      # Immediate feedback: show loading notification
+      shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("spinner", class = "fa-spin me-2"),
+          sprintf("%s...", i18n$t("project_loading"))
+        ),
+        type = "message",
+        duration = NULL,
+        id = "project_loading_notif",
+        session = session
+      )
+
       # Load the project from disk (sync PostGIS si configure)
       project <- load_project(project_id)
       shiny::req(project)
@@ -342,11 +438,17 @@ mod_home_server <- function(id, app_state) {
         }
       }
 
-      # Notify
+      # Replace loading notification with success
       shiny::showNotification(
-        sprintf("%s: %s", i18n$t("project_loaded"),
-                project$metadata$name %||% project$id),
-        type = "message"
+        htmltools::tagList(
+          shiny::icon("check-circle", class = "me-2"),
+          sprintf("%s: %s", i18n$t("project_loaded"),
+                  project$metadata$name %||% project$id)
+        ),
+        type = "message",
+        duration = 5,
+        id = "project_loading_notif",
+        session = session
       )
 
       # If project has indicators, stay on Selection tab so the user
@@ -706,8 +808,11 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       shiny::req(project)
 
-      # Get parcel count for confirmation message
+      # Get counts for the confirmation dialog — indicators are
+      # computed on UGF geometries, so the UGF count is what really
+      # drives runtime. Keep the cadastral count for context.
       n_parcels <- if (!is.null(project$parcels)) nrow(project$parcels) else 0
+      n_ugs     <- if (!is.null(project$ugs))     nrow(project$ugs)     else 0
 
       # Show confirmation modal
       shiny::showModal(shiny::modalDialog(
@@ -720,7 +825,11 @@ mod_home_server <- function(id, app_state) {
               project$metadata$name %||% project$id
             ),
             htmltools::tags$li(
-              htmltools::strong(i18n$t("parcels_count"), ": "),
+              htmltools::strong("Unit\u00e9s de Gestion Foresti\u00e8res : "),
+              n_ugs
+            ),
+            htmltools::tags$li(
+              htmltools::strong("Parcelles cadastrales : "),
               n_parcels
             )
           ),
