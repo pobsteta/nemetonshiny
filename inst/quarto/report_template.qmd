@@ -378,7 +378,7 @@ for (code in family_order) {
       cat("\\begin{tabular}{lcc}\n")
       cat("\\toprule\n")
       if (params$language == "fr") {
-        cat("\\textbf{UGF} & \\textbf{Score} & \\textbf{Qualit\\'{e}} \\\\\n")
+        cat("\\textbf{UGF} & \\textbf{Score} & \\textbf{Qualit\u00e9} \\\\\n")
       } else {
         cat("\\textbf{UGF} & \\textbf{Score} & \\textbf{Quality} \\\\\n")
       }
@@ -403,7 +403,7 @@ for (code in family_order) {
       if (nrow(ps) > 20) {
         remaining <- nrow(ps) - 20
         msg <- if (params$language == "fr") {
-          sprintf("\\textit{... %d UGF suppl\\'{e}mentaires}", remaining)
+          sprintf("\\textit{... %d UGF suppl\u00e9mentaires}", remaining)
         } else {
           sprintf("\\textit{... %d additional UGFs}", remaining)
         }
@@ -432,7 +432,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
   cat("# ", tr("ug_section_title"), "\n\n", sep = "")
 
   if (params$language == "fr") {
-    cat(sprintf("Le projet comporte **%d unit\\'{e}(s) de gestion** r\\'{e}parties sur %d parcelle(s) cadastrale(s).\n\n",
+    cat(sprintf("Le projet comporte **%d unit\u00e9(s) de gestion** r\u00e9parties sur %d parcelle(s) cadastrale(s).\n\n",
                 report_data$n_ugs, report_data$n_parcels))
   } else {
     cat(sprintf("The project contains **%d management unit(s)** across %d cadastral parcel(s).\n\n",
@@ -444,7 +444,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
   cat("\\begin{tabular}{llrl}\n")
   cat("\\toprule\n")
   if (params$language == "fr") {
-    cat("\\textbf{UG} & \\textbf{Groupe} & \\textbf{Surface (ha)} & \\textbf{R\\'{e}f\\'{e}rences cadastrales} \\\\\n")
+    cat("\\textbf{UG} & \\textbf{Groupe} & \\textbf{Surface (ha)} & \\textbf{R\u00e9f\u00e9rences cadastrales} \\\\\n")
   } else {
     cat("\\textbf{UG} & \\textbf{Group} & \\textbf{Area (ha)} & \\textbf{Cadastral references} \\\\\n")
   }
@@ -467,7 +467,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
 
   # Detailed annex: ONF Annexe 2 style (per-UG cadastral breakdown)
   if (params$language == "fr") {
-    cat("## Annexe : Composition cadastrale d\\'{e}taill\\'{e}e\n\n")
+    cat("## Annexe : Composition cadastrale d\u00e9taill\u00e9e\n\n")
   } else {
     cat("## Annex: Detailed Cadastral Composition\n\n")
   }
@@ -482,7 +482,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
       cat("\\begin{center}\n")
       cat("\\begin{tabular}{llrr}\n")
       if (params$language == "fr") {
-        cat("\\textbf{R\\'{e}f. cadastrale} & \\textbf{Section} & \\textbf{N\\textsuperscript{o}} & \\textbf{Surface (m\\textsuperscript{2})} \\\\\n")
+        cat("\\textbf{R\u00e9f. cadastrale} & \\textbf{Section} & \\textbf{N\\textsuperscript{o}} & \\textbf{Surface (m\\textsuperscript{2})} \\\\\n")
       } else {
         cat("\\textbf{Cadastral ref.} & \\textbf{Section} & \\textbf{No.} & \\textbf{Area (m\\textsuperscript{2})} \\\\\n")
       }
