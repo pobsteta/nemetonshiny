@@ -328,9 +328,9 @@ prepare_report_data <- function(project, family_scores, language,
   }
 
   # Calculer les donnees NDP
-  ndp_level <- nemeton:::detect_ndp(family_scores)
-  ndp_info <- nemeton:::get_ndp_level(ndp_level)
-  ndp_result <- nemeton:::compute_general_index(
+  ndp_level <- nemeton::detect_ndp(family_scores)
+  ndp_info <- nemeton::get_ndp_level(ndp_level)
+  ndp_result <- nemeton::compute_general_index(
     vapply(family_stats, `[[`, numeric(1), "mean"),
     ndp = ndp_level
   )
@@ -434,7 +434,7 @@ generate_radar_image <- function(family_scores, output_file, language,
 
   # Construire le sous-titre NDP
   ndp_level <- as.integer(ndp_level %||% 0L)
-  ndp_info <- nemeton:::get_ndp_level(ndp_level)
+  ndp_info <- nemeton::get_ndp_level(ndp_level)
   confidence_pct <- round(ndp_info$confidence * 100, 1)
   ndp_subtitle <- sprintf("NDP %d \u2013 %s | Confiance \u03c6 : %s%%",
                            ndp_level, ndp_info$name, confidence_pct)

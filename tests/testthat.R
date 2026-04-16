@@ -10,6 +10,6 @@ library(testthat)
 library(nemetonShiny)
 
 # Force English language for consistent test messages
-nemeton_set_language("en")
+nemeton::nemeton_set_language("en")
 
 test_check("nemetonShiny")

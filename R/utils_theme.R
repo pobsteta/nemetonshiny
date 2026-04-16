@@ -425,32 +425,32 @@ plot_nemeton_radar <- function(radar_df, title = "", subtitle = "",
     # Grid circles
     ggplot2::geom_path(
       data = grid_df,
-      ggplot2::aes(x = x, y = y, group = r),
+      ggplot2::aes(x = .data$x, y = .data$y, group = .data$r),
       color = "gray80", linewidth = 0.3
     ) +
     # Spokes
     ggplot2::geom_segment(
       data = spokes_df,
-      ggplot2::aes(x = x, y = y, xend = xend, yend = yend),
+      ggplot2::aes(x = .data$x, y = .data$y, xend = .data$xend, yend = .data$yend),
       color = "gray80", linewidth = 0.3
     ) +
     # Data polygon (straight lines)
     ggplot2::geom_polygon(
       data = poly_df,
-      ggplot2::aes(x = x, y = y),
+      ggplot2::aes(x = .data$x, y = .data$y),
       fill = fill_color, alpha = 0.25,
       color = line_color, linewidth = 1.2
     ) +
     # Data points
     ggplot2::geom_point(
       data = radar_df,
-      ggplot2::aes(x = x, y = y),
+      ggplot2::aes(x = .data$x, y = .data$y),
       color = line_color, size = 3
     ) +
     # Axis labels
     ggplot2::geom_text(
       data = label_df,
-      ggplot2::aes(x = x, y = y, label = label),
+      ggplot2::aes(x = .data$x, y = .data$y, label = .data$label),
       size = 3.5, fontface = "bold"
     ) +
     ggplot2::coord_fixed() +

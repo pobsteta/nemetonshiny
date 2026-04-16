@@ -405,9 +405,9 @@ save_indicators <- function(project_id, indicators) {
 
     # Update metadata (avec NDP detecte)
     # Essayer d'abord via les attributs, puis fallback sur le cache disque
-    ndp_level <- nemeton:::detect_ndp(indicators)
+    ndp_level <- nemeton::detect_ndp(indicators)
     if (ndp_level == 0L) {
-      ndp_level <- nemeton:::detect_ndp_from_cache(project_path)
+      ndp_level <- detect_ndp_from_cache(project_path)
     }
     update_project_metadata(project_id, list(
       indicators_computed = TRUE,
@@ -453,7 +453,7 @@ load_indicators <- function(project_id) {
     # Restaurer les attributs NDP depuis les metadonnees projet
     meta <- load_project_metadata(project_id)
     if (!is.null(meta$ndp_level)) {
-      results <- nemeton:::restore_ndp_attributes(results, meta$ndp_level)
+      results <- restore_ndp_attributes(results, meta$ndp_level)
     }
 
     results

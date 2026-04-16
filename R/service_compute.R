@@ -2261,7 +2261,7 @@ compute_all_indicators <- function(parcels,
   }
 
   # Marquer les sources de donnees disponibles pour detect_ndp()
-  results <- nemeton:::set_ndp_attributes(results, layers)
+  results <- set_ndp_attributes(results, layers)
 
   results
 }
