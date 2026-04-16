@@ -1324,7 +1324,7 @@ mod_home_server <- function(id, app_state) {
             step(
               el = el_map,
               title = i18n$t("tour_map_title"),
-              description = i18n$t("tour_map_desc")
+              description = i18n$t("tour_map_desc", max = get_app_config("max_parcels", 30L))
             )$
             step(
               el = el_name,

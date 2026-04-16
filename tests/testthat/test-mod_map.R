@@ -149,11 +149,14 @@ test_that("mod_map_server accepts required parameters", {
 # ==============================================================================
 
 test_that("MAX_PARCELS constant is defined correctly", {
-  # Check app config returns correct value
-  max_parcels <- nemetonShiny:::get_app_config("max_parcels", 20L)
+  # Ensure no runtime override is active (run_app sets it otherwise)
+  withr::local_options(nemeton.app_options = NULL)
+
+  # Check app config returns correct default value
+  max_parcels <- nemetonShiny:::get_app_config("max_parcels", 30L)
 
   expect_type(max_parcels, "integer")
-  expect_equal(max_parcels, 20L)
+  expect_equal(max_parcels, 30L)
 })
 
 test_that("Map styling constants are properly defined", {

@@ -141,7 +141,7 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
     # Constants
     # ========================================
 
-    MAX_PARCELS <- get_app_config("max_parcels", 20L)
+    MAX_PARCELS <- get_app_config("max_parcels", 30L)
 
     # Map styling
     STYLE <- list(
@@ -475,7 +475,7 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
         # Check limit
         if (length(rv$selected_ids) >= MAX_PARCELS) {
           shiny::showNotification(
-            i18n$t("max_parcels_warning"),
+            i18n$t("max_parcels_warning", max = MAX_PARCELS),
             type = "warning"
           )
           return()

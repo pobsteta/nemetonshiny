@@ -48,9 +48,33 @@ test_that("APP_CONFIG contains required keys", {
   }
 })
 
-test_that("APP_CONFIG max_parcels is 20", {
+test_that("APP_CONFIG max_parcels default is 30", {
   config <- nemetonShiny:::APP_CONFIG
-  expect_equal(config$max_parcels, 20L)
+  expect_equal(config$max_parcels, 30L)
+})
+
+test_that("run_app exposes a max_parcels argument defaulting to 30", {
+  fmls <- formals(nemetonShiny::run_app)
+  expect_true("max_parcels" %in% names(fmls))
+  expect_equal(eval(fmls$max_parcels), 30L)
+})
+
+test_that("run_app max_parcels override is surfaced through get_app_config", {
+  # Simulate what run_app() does without actually launching the Shiny app
+  withr::local_options(nemeton.app_options = list(
+    language = "fr",
+    project_dir = tempdir(),
+    max_parcels = 75L
+  ))
+  expect_equal(nemetonShiny:::get_app_config("max_parcels"), 75L)
+})
+
+test_that("run_app validates max_parcels", {
+  expect_error(nemetonShiny::run_app(max_parcels = 0), "positive integer")
+  expect_error(nemetonShiny::run_app(max_parcels = -5), "positive integer")
+  expect_error(nemetonShiny::run_app(max_parcels = 1.5), "positive integer")
+  expect_error(nemetonShiny::run_app(max_parcels = "20"), "positive integer")
+  expect_error(nemetonShiny::run_app(max_parcels = c(10, 20)), "positive integer")
 })
 
 test_that("APP_CONFIG project_states are valid", {

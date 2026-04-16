@@ -68,8 +68,8 @@ TRANSLATIONS <- list(
   parcels_selected = list(fr = "parcelles", en = "parcels"),
   no_selection = list(fr = "Aucune parcelle s\u00e9lectionn\u00e9e", en = "No parcel selected"),
   max_parcels_warning = list(
-    fr = "Limite de 20 parcelles atteinte",
-    en = "Maximum 20 parcels reached"
+    fr = "Limite de {max} parcelles atteinte",
+    en = "Maximum {max} parcels reached"
   ),
   clear_selection = list(fr = "Tout d\u00e9s\u00e9lectionner", en = "Clear selection"),
   selection_blocked_during_computation = list(
@@ -757,8 +757,8 @@ TRANSLATIONS <- list(
   ),
   tour_map_title = list(fr = "S\u00e9lection des parcelles", en = "Parcel Selection"),
   tour_map_desc = list(
-    fr = "Cliquez sur les parcelles cadastrales pour les s\u00e9lectionner. Un second clic les d\u00e9s\u00e9lectionne. Maximum 20 parcelles.",
-    en = "Click on cadastral parcels to select them. A second click deselects them. Maximum 20 parcels."
+    fr = "Cliquez sur les parcelles cadastrales pour les s\u00e9lectionner. Un second clic les d\u00e9s\u00e9lectionne. Maximum {max} parcelles.",
+    en = "Click on cadastral parcels to select them. A second click deselects them. Maximum {max} parcels."
   ),
   tour_project_title = list(fr = "Nom du projet", en = "Project Name"),
   tour_project_desc = list(

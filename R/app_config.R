@@ -19,7 +19,8 @@ APP_CONFIG <- list(
   app_title_en = "N\u00e9m\u00e9ton - Forest Diagnostic",
 
   # Limits
-  max_parcels = 20L,
+  # Note: can be overridden at runtime via run_app(max_parcels = ...)
+  max_parcels = 30L,
   max_project_name_length = 100L,
   max_description_length = 500L,
 
@@ -62,11 +63,24 @@ APP_CONFIG <- list(
 
 #' Get app configuration value
 #'
+#' @description
+#' Looks up a configuration value. Runtime overrides set by
+#' \code{\link{run_app}} (stored in \code{getOption("nemeton.app_options")})
+#' take precedence over the static \code{APP_CONFIG} defaults, so callers can
+#' pass \code{max_parcels} (and any other future knob) through
+#' \code{run_app(max_parcels = ...)}.
+#'
 #' @param key Character. Configuration key to retrieve.
 #' @param default Default value if key not found.
 #' @return Configuration value.
 #' @noRd
 get_app_config <- function(key, default = NULL) {
+  # Runtime overrides (from run_app) take precedence
+  app_options <- getOption("nemeton.app_options")
+  if (is.list(app_options) && key %in% names(app_options) &&
+      !is.null(app_options[[key]])) {
+    return(app_options[[key]])
+  }
   if (key %in% names(APP_CONFIG)) {
     return(APP_CONFIG[[key]])
   }

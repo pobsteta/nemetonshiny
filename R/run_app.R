@@ -16,6 +16,8 @@
 #'   If NULL, the system language is auto-detected.
 #' @param project_dir Character. Directory for storing projects.
 #'   Default: \code{~/.nemeton/projects}
+#' @param max_parcels Integer. Maximum number of parcels that can be selected
+#'   simultaneously on the map. Default: \code{30}. Must be a positive integer.
 #' @param ... Additional arguments passed to \code{\link[shiny]{shinyApp}}.
 #'
 #' @return A Shiny application object (invisibly).
@@ -50,18 +52,31 @@
 #'
 #'   # Custom project directory
 #'   run_app(project_dir = "~/my_nemeton_projects")
+#'
+#'   # Raise the selectable parcels limit to 50
+#'   run_app(max_parcels = 50)
 #' }
 run_app <- function(language = NULL,
                     project_dir = NULL,
+                    max_parcels = 30L,
                     ...) {
-  # Check required packages
+  # Validate max_parcels early (argument check, no side effects)
+  if (!is.numeric(max_parcels) || length(max_parcels) != 1 ||
+      is.na(max_parcels) || max_parcels < 1 ||
+      max_parcels != as.integer(max_parcels)) {
+    cli::cli_abort(
+      "{.arg max_parcels} must be a single positive integer (got {.val {max_parcels}})."
+    )
+  }
 
+  # Check required packages
   check_app_dependencies()
 
  # Set options
   app_options <- list(
     language = language %||% detect_system_language(),
-    project_dir = project_dir %||% get_default_project_dir()
+    project_dir = project_dir %||% get_default_project_dir(),
+    max_parcels = as.integer(max_parcels)
   )
 
   # Ensure project directory exists
@@ -149,6 +164,7 @@ get_default_project_dir <- function() {
 get_app_options <- function() {
   getOption("nemeton.app_options", list(
     language = "fr",
-    project_dir = get_default_project_dir()
+    project_dir = get_default_project_dir(),
+    max_parcels = 30L
   ))
 }

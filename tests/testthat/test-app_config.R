@@ -44,7 +44,7 @@ test_that("APP_CONFIG values have correct types", {
 test_that("APP_CONFIG numeric values are reasonable", {
   config <- nemetonShiny:::APP_CONFIG
 
-  expect_equal(config$max_parcels, 20L)
+  expect_equal(config$max_parcels, 30L)
   expect_equal(config$default_crs, 2154L)
   expect_equal(config$max_retries, 3L)
   expect_true(config$api_timeout > 0)
@@ -57,10 +57,21 @@ test_that("APP_CONFIG numeric values are reasonable", {
 # ==============================================================================
 
 test_that("get_app_config returns correct values for known keys", {
-  expect_equal(nemetonShiny:::get_app_config("max_parcels"), 20L)
+  # Ensure no runtime override is active (run_app() sets it)
+  withr::local_options(nemeton.app_options = NULL)
+
+  expect_equal(nemetonShiny:::get_app_config("max_parcels"), 30L)
   expect_equal(nemetonShiny:::get_app_config("default_crs"), 2154L)
   expect_equal(nemetonShiny:::get_app_config("max_retries"), 3L)
   expect_equal(nemetonShiny:::get_app_config("cache_format"), "parquet")
+})
+
+test_that("get_app_config respects runtime overrides from app_options", {
+  withr::local_options(nemeton.app_options = list(max_parcels = 50L))
+
+  expect_equal(nemetonShiny:::get_app_config("max_parcels"), 50L)
+  # Keys not overridden still resolve from APP_CONFIG
+  expect_equal(nemetonShiny:::get_app_config("default_crs"), 2154L)
 })
 
 test_that("get_app_config returns app_name", {
