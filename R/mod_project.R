@@ -442,8 +442,17 @@ mod_project_server <- function(id, app_state, selected_parcels) {
           rv$current_project <- project
           rv$editing_project_id <- project$id
 
-          # Update app state
-          app_state$current_project <- project
+          # Update app state — reload through load_project() so the UGF
+          # tab receives a fully-populated object (parcels + tenements +
+          # ugs auto-generated via ensure_project_migrated). Without
+          # this, create_project() only returns list(id, path, metadata)
+          # and the mod_ug observer short-circuits on is.null(parcels),
+          # leaving the UGF map empty.
+          full_project <- tryCatch(
+            load_project(project$id),
+            error = function(e) project
+          )
+          app_state$current_project <- full_project %||% project
           app_state$project_id <- project$id
           app_state$refresh_projects <- Sys.time()  # Refresh recent projects list
 
@@ -464,8 +473,16 @@ mod_project_server <- function(id, app_state, selected_parcels) {
 
           rv$current_project <- project
 
-          # Update app state
-          app_state$current_project <- project
+          # Update app state — see CREATE branch above. update_project()
+          # returns parcels + indicators but no tenements/ugs, so we
+          # also reload through load_project() to keep the UGF map in
+          # sync (especially after a parcel change that may have made
+          # the previous UGF layout obsolete).
+          full_project <- tryCatch(
+            load_project(project$id),
+            error = function(e) project
+          )
+          app_state$current_project <- full_project %||% project
           app_state$refresh_projects <- Sys.time()
 
           shiny::showNotification(
