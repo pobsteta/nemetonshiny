@@ -2,7 +2,7 @@
 # Phase 1: Core app setup and configuration
 
 test_that("run_app function exists and is exported", {
-  expect_true(exists("run_app", where = asNamespace("nemeton"), inherits = FALSE))
+  expect_true(exists("run_app", where = asNamespace("nemetonShiny"), inherits = FALSE))
 })
 
 test_that("detect_system_language returns valid language code", {
