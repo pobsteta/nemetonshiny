@@ -502,11 +502,20 @@ load_project <- function(project_id) {
     # columns joined via ug_id. Used by family/synthesis/export so
     # they can map, score and aggregate at the UGF level without
     # rejoining parcels. Requires both UGF data and indicator data.
+    #
+    # IMPORTANT: indicators.parquet captures UGF metadata (label, groupe,
+    # surfaces, cadastral_refs) AT COMPUTE TIME. If the user later renames
+    # / re-groups / splits UGFs, ugs.json gets updated but the parquet
+    # still carries stale metadata. We therefore rebuild BOTH
+    # project$indicators and project$indicators_sf from the fresh ug_sf,
+    # keeping only the indicator VALUES from the parquet. This way every
+    # consumer (mod_family table, mod_synthesis, export, ...) sees the
+    # current UGF labels/groupes without having to re-join manually.
     if (!is.null(project$indicators) && has_ug_data(project) &&
         "ug_id" %in% names(project$indicators)) {
       ug_sf <- ug_build_sf(project)
       if (!is.null(ug_sf) && nrow(ug_sf) > 0) {
-        # Drop duplicate metadata columns from indicators before merge
+        # Drop stale UGF metadata columns from indicators before merge
         dup_cols <- intersect(
           c("label", "groupe", "surface_m2", "surface_sig_m2",
             "n_tenements", "cadastral_refs"),
@@ -515,6 +524,10 @@ load_project <- function(project_id) {
         ind <- project$indicators[, setdiff(names(project$indicators), dup_cols),
                                   drop = FALSE]
         project$indicators_sf <- merge(ug_sf, ind, by = "ug_id", all.x = TRUE)
+        # Refresh the geometry-free indicators with fresh UGF metadata.
+        # Single source of truth so mod_family, mod_synthesis and
+        # service_export stay in sync with the UGF tab.
+        project$indicators <- sf::st_drop_geometry(project$indicators_sf)
       }
     }
   }, error = function(e) {
