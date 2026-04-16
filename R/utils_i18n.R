@@ -994,7 +994,7 @@ TRANSLATIONS <- list(
   ug_undo_split = list(fr = "Annuler le d\u00e9coupage", en = "Undo subdivision"),
   ug_split_select_parcel = list(fr = "Parcelle \u00e0 d\u00e9couper", en = "Parcel to subdivide"),
   ug_split_file = list(fr = "Fichier de d\u00e9coupage", en = "Subdivision file"),
-  ug_split_hint = list(fr = "Importez un fichier GeoJSON, Shapefile ou GeoPackage contenant les polygones de subdivision.", en = "Import a GeoJSON, Shapefile or GeoPackage containing subdivision polygons."),
+  ug_split_hint = list(fr = "Importez un fichier GeoJSON, Shapefile ou GeoPackage contenant les polygones du d\u00e9coupage. Ajoutez une colonne <code>label_ugf</code> pour nommer chaque UGF ; les polygones partageant la m\u00eame valeur sont regroup\u00e9s dans la m\u00eame UGF (les valeurs vides retombent sur le comportement par recouvrement).", en = "Import a GeoJSON, Shapefile or GeoPackage containing the layout polygons. Add a <code>label_ugf</code> column to name each UGF; polygons sharing the same value are grouped into the same UGF (blank values fall back to overlap-inherited UGF)."),
   ug_split_apply = list(fr = "Appliquer le d\u00e9coupage", en = "Apply subdivision"),
   ug_split_no_file = list(fr = "Veuillez s\u00e9lectionner un fichier.", en = "Please select a file."),
   ug_split_empty_file = list(fr = "Le fichier import\u00e9 ne contient aucun polygone.", en = "The imported file contains no polygons."),

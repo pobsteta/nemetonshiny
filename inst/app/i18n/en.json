@@ -341,7 +341,7 @@
   "ug_undo_split": "Undo subdivision",
   "ug_split_select_parcel": "Parcel to subdivide",
   "ug_split_file": "Subdivision file",
-  "ug_split_hint": "Import a GeoJSON, Shapefile or GeoPackage containing subdivision polygons. Uncovered areas will be grouped into a 'remainder' tenement.",
+  "ug_split_hint": "Import a GeoJSON, Shapefile or GeoPackage containing the layout polygons. Add a <code>label_ugf</code> column to name each UGF; polygons sharing the same value are grouped into the same UGF (blank values fall back to overlap-inherited UGF).",
   "ug_split_apply": "Apply subdivision",
   "ug_split_no_file": "Please select a file.",
   "ug_split_empty_file": "The imported file contains no polygons.",

@@ -341,7 +341,7 @@
   "ug_undo_split": "Annuler le découpage",
   "ug_split_select_parcel": "Parcelle à découper",
   "ug_split_file": "Fichier de découpage",
-  "ug_split_hint": "Importez un fichier GeoJSON, Shapefile ou GeoPackage contenant les polygones de subdivision. Les zones non couvertes seront regroupées dans un tènement 'reste'.",
+  "ug_split_hint": "Importez un fichier GeoJSON, Shapefile ou GeoPackage contenant les polygones du découpage. Ajoutez une colonne <code>label_ugf</code> pour nommer chaque UGF ; les polygones partageant la même valeur sont regroupés dans la même UGF (les valeurs vides retombent sur le comportement par recouvrement).",
   "ug_split_apply": "Appliquer le découpage",
   "ug_split_no_file": "Veuillez sélectionner un fichier.",
   "ug_split_empty_file": "Le fichier importé ne contient aucun polygone.",

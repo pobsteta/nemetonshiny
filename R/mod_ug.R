@@ -1799,7 +1799,7 @@ mod_ug_server <- function(id, app_state) {
         ),
         shiny::p(
           class = "text-muted small",
-          i18n()$t("ug_split_hint")
+          htmltools::HTML(i18n()$t("ug_split_hint"))
         ),
         footer = htmltools::tagList(
           shiny::modalButton(i18n()$t("cancel")),
