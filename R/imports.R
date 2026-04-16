@@ -1,4 +1,4 @@
-﻿# Import internal functions from nemeton core package
+# Import internal functions from nemeton core package
 # These functions are not exported by nemeton but are needed by the Shiny app
 
 # Family system
@@ -26,3 +26,12 @@ enrich_parcels_bdforet <- nemeton:::enrich_parcels_bdforet
 map_essence_to_species <- nemeton:::map_essence_to_species
 get_allometric_coefficients <- nemeton:::get_allometric_coefficients
 clean_indicator_name <- nemeton:::clean_indicator_name
+get_dem_raster <- nemeton:::get_dem_raster
+
+# NDP system (Niveau de Donnees Probant)
+set_ndp_attributes <- nemeton:::set_ndp_attributes
+detect_ndp_from_cache <- nemeton:::detect_ndp_from_cache
+restore_ndp_attributes <- nemeton:::restore_ndp_attributes
+
+# ndp_badge() and ndp_progress_bar() live in R/ndp.R — they are
+# Shiny-specific widgets, not simple aliases of the core package.

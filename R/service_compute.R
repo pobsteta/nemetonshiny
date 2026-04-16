@@ -570,8 +570,9 @@ download_layers_for_parcels <- function(parcels,
     forest_cover = "source_forest_cover",
     lidar_mnh = "source_lidar_mnh",
     lidar_mnt = "source_lidar_mnt",
+    lidar_copc = "source_lidar_copc",
     protected_areas = "source_protected_areas",
-    indicateur_w1_reseau = "source_water_network",
+    water_network = "source_water_network",
     water_surfaces = "source_water_surfaces",
     wetlands = "source_wetlands",
     roads = "source_roads",
@@ -2451,8 +2452,11 @@ save_indicators_incremental <- function(project_id, results, indicator) {
       return(FALSE)
     }
 
-    # Write parquet (overwrites with current state)
-    arrow::write_parquet(results_df, results_path)
+    # Write parquet via temp file to avoid Windows memory-mapped file lock
+    tmp_path <- paste0(results_path, ".tmp")
+    arrow::write_parquet(results_df, tmp_path)
+    if (file.exists(results_path)) file.remove(results_path)
+    file.rename(tmp_path, results_path)
 
     # Update progress tracking file
     progress <- list(

@@ -127,11 +127,13 @@ cat("\\newgeometry{top=0mm,bottom=0mm,left=0mm,right=0mm}\n")
 has_cover <- nchar(params$cover_image) > 0 && file.exists(params$cover_image)
 
 if (has_cover) {
+  # Normalize path for LaTeX (forward slashes, no backslashes)
+  cover_path <- normalizePath(params$cover_image, winslash = "/", mustWork = FALSE)
   # Cover with background image
   cat("\\begin{tikzpicture}[remember picture, overlay]\n")
   cat("  \\node[anchor=center, inner sep=0pt] at (current page.center) {\n")
   cat("    \\includegraphics[width=\\paperwidth, height=\\paperheight, keepaspectratio=false]{",
-      params$cover_image, "}\n", sep = "")
+      cover_path, "}\n", sep = "")
   cat("  };\n")
   # Semi-transparent white overlay at top
   cat("  \\fill[white, opacity=0.88] (current page.north west) rectangle ",

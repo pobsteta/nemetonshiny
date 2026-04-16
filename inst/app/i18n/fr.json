@@ -81,6 +81,7 @@
   "computing_indicator": "Calcul de l'indicateur {indicator}...",
   "computation_complete": "Calculs terminés",
   "computation_cancelled": "Calculs annulés",
+  "recomputing": "Relance du calcul en cours\u2026",
   "computation_error": "Erreur lors du calcul",
   "progress_overall": "Progression globale",
   "completed": "terminés",

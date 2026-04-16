@@ -135,16 +135,19 @@ generate_pdf_report <- function(project,
   }
 
   # Render with Quarto
+  # Normalize all paths to forward slashes for LaTeX compatibility on Windows
   tryCatch({
     quarto::quarto_render(
       input = report_qmd,
       output_format = "pdf",
       execute_params = list(
-        data_file = data_file,
-        radar_file = radar_file,
-        family_maps_dir = family_maps_dir,
+        data_file = normalizePath(data_file, winslash = "/", mustWork = FALSE),
+        radar_file = normalizePath(radar_file, winslash = "/", mustWork = FALSE),
+        family_maps_dir = normalizePath(family_maps_dir, winslash = "/", mustWork = FALSE),
         language = language,
-        cover_image = cover_image_param
+        cover_image = if (nzchar(cover_image_param)) {
+          normalizePath(cover_image_param, winslash = "/", mustWork = FALSE)
+        } else ""
       ),
       quiet = FALSE
     )
@@ -437,9 +440,26 @@ generate_radar_image <- function(family_scores, output_file, language,
                            ndp_level, ndp_info$name, confidence_pct)
 
   tryCatch({
-    p <- nemeton_radar(family_scores, mode = "family", normalize = FALSE,
+    # 1. Aggregate to single row
+    df <- if (inherits(family_scores, "sf")) sf::st_drop_geometry(family_scores) else family_scores
+    fam_cols <- grep("^famille_[a-z]", names(df), value = TRUE)
+    family_means <- as.data.frame(lapply(df[, fam_cols, drop = FALSE],
+                                         function(x) mean(x, na.rm = TRUE)))
+
+    # 2. Reorder to match nemeton_radar axis order
+    radar_axis_order <- c("F", "A", "W", "B", "N", "C", "E", "P", "S", "R", "T", "L")
+    ordered_cols <- vapply(radar_axis_order, get_famille_col, character(1))
+    ordered_cols <- intersect(ordered_cols, names(family_means))
+    family_means <- family_means[, ordered_cols, drop = FALSE]
+
+    # 3. Wrap as sf
+    family_means_sf <- sf::st_as_sf(
+      family_means,
+      geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
+    )
+
+    p <- nemeton_radar(family_means_sf, mode = "family", normalize = FALSE,
                        title = i18n$t("radar_title"))
-    # Ajouter le sous-titre NDP
     p <- p + ggplot2::labs(subtitle = ndp_subtitle) +
       ggplot2::theme(
         plot.subtitle = ggplot2::element_text(

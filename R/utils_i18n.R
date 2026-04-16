@@ -179,6 +179,7 @@ TRANSLATIONS <- list(
   ),
   computation_complete = list(fr = "Calculs termin\u00e9s", en = "Calculations complete"),
   computation_cancelled = list(fr = "Calculs annul\u00e9s", en = "Calculations cancelled"),
+  recomputing = list(fr = "Relance du calcul en cours\u2026", en = "Restarting computation\u2026"),
   computation_error = list(fr = "Erreur lors du calcul", en = "Computation error"),
 
   # Progress module
