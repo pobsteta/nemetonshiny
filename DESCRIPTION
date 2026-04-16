@@ -1,7 +1,7 @@
 Package: nemetonShiny
 Type: Package
 Title: Nemeton Shiny Application for Systemic Forest Analysis
-Version: 0.1.0
+Version: 0.15.1
 Authors@R: c(
     person("Pascal", "Obstetar", email = "pascal.obstetar@gmail.com", role = c("aut", "cre"))
   )
@@ -11,7 +11,7 @@ License: file LICENSE
 Encoding: UTF-8
 LazyData: true
 Depends: R (>= 4.1.0)
-Imports: nemeton (>= 0.14.1), shiny (>= 1.8.0), bslib (>= 0.6.0),
+Imports: nemeton (>= 0.15.1), shiny (>= 1.8.0), bslib (>= 0.6.0),
     htmltools, leaflet, sf, lwgeom, terra, cli, rlang, glue, jsonlite,
     httr2, yaml, DT, promises, later, htmlwidgets, shinyWidgets, bsicons,
     ellmer
