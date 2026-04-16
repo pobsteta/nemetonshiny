@@ -1151,9 +1151,20 @@ save_ug_data <- function(project_id, projet) {
     if (file.exists(tenements_path)) unlink(tenements_path)
     sf::st_write(tenements, tenements_path, driver = "GPKG", quiet = TRUE)
 
-    # Save UG definitions as JSON
+    # Save UG definitions as JSON.
+    # NB: We use `dataframe = "columns"` (column-oriented object) instead of
+    # the default row-oriented array. When a column is entirely NA (e.g.
+    # `groupe` for fresh UGFs), the row-oriented serialisation emits
+    # `"groupe": null` on every row, which `read_json(simplifyVector = TRUE)`
+    # elides when reconstructing the data.frame — dropping the column
+    # entirely. `load_ug_data()` would then see "UGs file missing required
+    # columns" and `ensure_project_migrated()` would silently wipe the
+    # imported UGF layout with the default 1-UGF-per-parcel migration.
+    # Column-oriented output keeps every key present regardless of NA
+    # density.
     ugs_path <- file.path(data_dir, "ugs.json")
-    jsonlite::write_json(ugs, ugs_path, auto_unbox = TRUE, pretty = TRUE)
+    jsonlite::write_json(ugs, ugs_path, auto_unbox = TRUE, pretty = TRUE,
+                         dataframe = "columns")
 
     # Update metadata
     update_project_metadata(project_id, list(
@@ -1233,9 +1244,33 @@ load_ug_data <- function(project_id) {
       tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
     }
 
-    if (!all(required_ug_cols %in% names(ugs))) {
-      cli::cli_warn("UGs file missing required columns")
+    # Normalise list-columns produced by jsonlite when a field was all
+    # `null` in a row-oriented JSON (legacy save format): convert them
+    # back to proper character vectors with NA_character_ for empty
+    # entries so downstream column checks work.
+    for (col in intersect(required_ug_cols, names(ugs))) {
+      if (is.list(ugs[[col]])) {
+        ugs[[col]] <- vapply(ugs[[col]], function(x) {
+          if (is.null(x) || length(x) == 0L) NA_character_ else as.character(x[[1L]])
+        }, character(1))
+      }
+    }
+
+    # Without ug_id there is no way to link tenements to UGs → genuinely
+    # broken file, skip.
+    if (!"ug_id" %in% names(ugs)) {
+      cli::cli_warn("UGs file missing ug_id column")
       return(NULL)
+    }
+
+    # `label` and `groupe` can legitimately be all-NA (fresh UGFs have
+    # no management group). Older jsonlite round-trips (row-oriented +
+    # `null`) dropped these columns entirely — rather than re-triggering
+    # the default migration (which silently wipes the imported layout),
+    # backfill them with NA so the UGF layout on disk is preserved.
+    for (col in setdiff(required_ug_cols, c("ug_id", names(ugs)))) {
+      cli::cli_alert_info("Backfilling missing {.val {col}} column in ugs.json")
+      ugs[[col]] <- NA_character_
     }
 
     list(tenements = tenements, ugs = ugs)
