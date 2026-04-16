@@ -6,7 +6,8 @@
 #'
 #' All other NDP functions (NDP_LEVELS, detect_ndp, compute_general_index,
 #' get_ndp_level, set/restore_ndp_attributes, etc.) live in the nemeton
-#' core package and are called via nemeton:::.
+#' core package. Exported ones are called via nemeton::, while internal
+#' helpers are imported once in R/imports.R via utils::getFromNamespace().
 #'
 #' @name ndp_widgets
 #' @keywords internal

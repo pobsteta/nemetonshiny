@@ -1,6 +1,7 @@
 export(run_app)
 import(nemeton)
 importFrom(rlang,"%||%")
+importFrom(rlang,.data)
 importFrom(glue,glue)
 importFrom(promises,"%...!%")
 importFrom(promises,"%...>%")
