@@ -439,9 +439,11 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
                 report_data$n_ugs, report_data$n_parcels))
   }
 
-  # Summary table
-  cat("\\begin{center}\n")
-  cat("\\begin{tabular}{llrl}\n")
+  # Summary table — longtable so the 1-row-per-UGF list (can easily
+  # exceed a page when there are dozens of UGFs) breaks across pages
+  # with the header repeated on every continuation page.
+  cat("{\\setlength{\\LTleft}{\\fill}\\setlength{\\LTright}{\\fill}\n")
+  cat("\\begin{longtable}{llrl}\n")
   cat("\\toprule\n")
   if (params$language == "fr") {
     cat("\\textbf{UG} & \\textbf{Groupe} & \\textbf{Surface (ha)} & \\textbf{R\u00e9f\u00e9rences cadastrales} \\\\\n")
@@ -449,6 +451,29 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
     cat("\\textbf{UG} & \\textbf{Group} & \\textbf{Area (ha)} & \\textbf{Cadastral references} \\\\\n")
   }
   cat("\\midrule\n")
+  cat("\\endfirsthead\n")
+  # Header repeated on continuation pages — adds a "(suite)" / "(continued)"
+  # marker so the reader knows the table spills over.
+  cat("\\toprule\n")
+  if (params$language == "fr") {
+    cat("\\textbf{UG} & \\textbf{Groupe} & \\textbf{Surface (ha)} & \\textbf{R\u00e9f\u00e9rences cadastrales} \\\\\n")
+    cat("\\multicolumn{4}{r}{\\textit{(suite de la page pr\u00e9c\u00e9dente)}} \\\\\n")
+  } else {
+    cat("\\textbf{UG} & \\textbf{Group} & \\textbf{Area (ha)} & \\textbf{Cadastral references} \\\\\n")
+    cat("\\multicolumn{4}{r}{\\textit{(continued from previous page)}} \\\\\n")
+  }
+  cat("\\midrule\n")
+  cat("\\endhead\n")
+  # Footer on intermediate pages
+  if (params$language == "fr") {
+    cat("\\midrule\n\\multicolumn{4}{r}{\\textit{(suite page suivante)}} \\\\\n")
+  } else {
+    cat("\\midrule\n\\multicolumn{4}{r}{\\textit{(continued on next page)}} \\\\\n")
+  }
+  cat("\\endfoot\n")
+  # Footer on the very last page
+  cat("\\bottomrule\n")
+  cat("\\endlastfoot\n")
 
   for (ug in report_data$ug_composition) {
     groupe_str <- if (is.null(ug$groupe) || is.na(ug$groupe)) "---" else ug$groupe
@@ -461,9 +486,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
     )
   }
 
-  cat("\\bottomrule\n")
-  cat("\\end{tabular}\n")
-  cat("\\end{center}\n\n")
+  cat("\\end{longtable}}\n\n")
 
   # Detailed annex: ONF Annexe 2 style (per-UG cadastral breakdown)
   if (params$language == "fr") {
@@ -479,14 +502,36 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
 
     refs <- ug$refs_detail
     if (!is.null(refs) && is.data.frame(refs) && nrow(refs) > 0) {
-      cat("\\begin{center}\n")
-      cat("\\begin{tabular}{llrr}\n")
+      # longtable so a UG with many parcels still breaks across pages
+      # and keeps its column header repeating.
+      cat("{\\setlength{\\LTleft}{\\fill}\\setlength{\\LTright}{\\fill}\n")
+      cat("\\begin{longtable}{llrr}\n")
+      cat("\\toprule\n")
       if (params$language == "fr") {
         cat("\\textbf{R\u00e9f. cadastrale} & \\textbf{Section} & \\textbf{N\\textsuperscript{o}} & \\textbf{Surface (m\\textsuperscript{2})} \\\\\n")
       } else {
         cat("\\textbf{Cadastral ref.} & \\textbf{Section} & \\textbf{No.} & \\textbf{Area (m\\textsuperscript{2})} \\\\\n")
       }
-      cat("\\hline\n")
+      cat("\\midrule\n")
+      cat("\\endfirsthead\n")
+      cat("\\toprule\n")
+      if (params$language == "fr") {
+        cat("\\textbf{R\u00e9f. cadastrale} & \\textbf{Section} & \\textbf{N\\textsuperscript{o}} & \\textbf{Surface (m\\textsuperscript{2})} \\\\\n")
+        cat("\\multicolumn{4}{r}{\\textit{(suite de la page pr\u00e9c\u00e9dente)}} \\\\\n")
+      } else {
+        cat("\\textbf{Cadastral ref.} & \\textbf{Section} & \\textbf{No.} & \\textbf{Area (m\\textsuperscript{2})} \\\\\n")
+        cat("\\multicolumn{4}{r}{\\textit{(continued from previous page)}} \\\\\n")
+      }
+      cat("\\midrule\n")
+      cat("\\endhead\n")
+      if (params$language == "fr") {
+        cat("\\midrule\n\\multicolumn{4}{r}{\\textit{(suite page suivante)}} \\\\\n")
+      } else {
+        cat("\\midrule\n\\multicolumn{4}{r}{\\textit{(continued on next page)}} \\\\\n")
+      }
+      cat("\\endfoot\n")
+      cat("\\bottomrule\n")
+      cat("\\endlastfoot\n")
 
       for (j in seq_len(nrow(refs))) {
         cat(
@@ -498,8 +543,7 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
         )
       }
 
-      cat("\\end{tabular}\n")
-      cat("\\end{center}\n\n")
+      cat("\\end{longtable}}\n\n")
     }
   }
 
