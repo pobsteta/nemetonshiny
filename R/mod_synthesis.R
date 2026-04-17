@@ -452,7 +452,7 @@ mod_synthesis_server <- function(id, app_state) {
       }, error = function(e) {
         shiny::removeNotification(notif_id)
         shiny::showNotification(
-          paste(i18n$t("ai_error"), ":", conditionMessage(e)),
+          paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e))),
           type = "error",
           duration = 8
         )
