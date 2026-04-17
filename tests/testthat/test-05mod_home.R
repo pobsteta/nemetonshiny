@@ -1219,6 +1219,12 @@ test_that("resume progress tracking when loading computing project", {
 
           expect_true(reset_called)
           expect_true(send_update_called)
+
+          # Cleanup: the resume branch scheduled a self-rescheduling poll_fn via
+          # later::later. Clearing computing_project_id causes poll_fn to return
+          # early when run_now(0) drains the queue at end of file, preventing an
+          # infinite loop under R CMD check batch-mode test execution.
+          computing_project_id(NULL)
         }
       )
     }
