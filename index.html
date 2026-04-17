@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>nemetonShiny - Application Shiny pour l'analyse systemique forestiere • nemetonShiny</title>
+<title>nemetonshiny - Application Shiny pour l'analyse systemique forestiere • nemetonshiny</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="nemetonShiny - Application Shiny pour l'analyse systemique forestiere">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="nemetonshiny - Application Shiny pour l'analyse systemique forestiere">
 <meta name="description" content="Application Shiny/golem pour la plateforme Nemeton. Interface web interactive permettant la selection de parcelles cadastrales, le calcul des 31 indicateurs biophysiques, la synthese LLM et l'export PDF/GeoPackage.
 ">
 <meta property="og:description" content="Application Shiny/golem pour la plateforme Nemeton. Interface web interactive permettant la selection de parcelles cadastrales, le calcul des 31 indicateurs biophysiques, la synthese LLM et l'export PDF/GeoPackage.
@@ -22,7 +22,7 @@
 
     <nav class="navbar navbar-expand-lg fixed-top bg-primary" data-bs-theme="dark" aria-label="Site navigation"><div class="container">
 
-    <a class="navbar-brand me-2" href="index.html">nemetonShiny</a>
+    <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
     <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.1</small>
 
@@ -47,12 +47,12 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="nemetonshiny">nemetonShiny<a class="anchor" aria-label="anchor" href="#nemetonshiny"></a>
+<div class="page-header"><h1 id="nemetonshiny">nemetonshiny<a class="anchor" aria-label="anchor" href="#nemetonshiny"></a>
 </h1></div>
 <!-- badges: start -->
 
 <p>Application Shiny/golem pour la plateforme d’analyse systemique forestiere <strong>Nemeton</strong>.</p>
-<p><code>nemetonShiny</code> fournit l’interface utilisateur interactive. La logique metier (indicateurs, calculs, referentiels) est portee par le package <a href="https://github.com/pobsteta/nemeton" class="external-link"><code>nemeton</code></a> (&gt;= 0.15.1).</p>
+<p><code>nemetonshiny</code> fournit l’interface utilisateur interactive. La logique metier (indicateurs, calculs, referentiels) est portee par le package <a href="https://github.com/pobsteta/nemeton" class="external-link"><code>nemeton</code></a> (&gt;= 0.15.1).</p>
 <div class="section level2">
 <h2 id="fonctionnalites">Fonctionnalites<a class="anchor" aria-label="anchor" href="#fonctionnalites"></a>
 </h2>
@@ -99,8 +99,8 @@
 <code class="sourceCode R"><span><span class="co"># Installer le package core nemeton</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"pobsteta/nemeton"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Installer nemetonShiny</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"pobsteta/nemeton_shiny"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># Installer nemetonshiny</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="utilisation">Utilisation<a class="anchor" aria-label="anchor" href="#utilisation"></a>
@@ -109,7 +109,7 @@
 <h3 id="lancement-direct">Lancement direct<a class="anchor" aria-label="anchor" href="#lancement-direct"></a>
 </h3>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">nemetonShiny</span><span class="fu">::</span><span class="fu">run_app</span><span class="op">(</span>language <span class="op">=</span> <span class="st">"fr"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">nemetonshiny</span><span class="fu">::</span><span class="fu">run_app</span><span class="op">(</span>language <span class="op">=</span> <span class="st">"fr"</span><span class="op">)</span></span></code></pre></div>
 <p>Options disponibles :</p>
 <table class="table">
 <thead><tr class="header">
@@ -135,7 +135,7 @@
 <h3 id="lancement-avec-docker">Lancement avec Docker<a class="anchor" aria-label="anchor" href="#lancement-avec-docker"></a>
 </h3>
 <div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">docker</span> compose up <span class="at">-d</span></span></code></pre></div>
-<p>Le <code>docker-compose.yml</code> demarre : - <strong>Keycloak</strong> (port 8080) – authentification OAuth2/OIDC - <strong>nemetonShiny</strong> (port 3838) – application Shiny</p>
+<p>Le <code>docker-compose.yml</code> demarre : - <strong>Keycloak</strong> (port 8080) – authentification OAuth2/OIDC - <strong>nemetonshiny</strong> (port 3838) – application Shiny</p>
 <p>Variables d’environnement configurables dans <code>docker-compose.yml</code> : - <code>NEMETON_LANG</code> – langue (defaut : <code>fr</code>) - <code>NEMETON_PAYS</code> – pays (defaut : <code>FR</code>) - <code>MISTRAL_API_KEY</code> – cle API Mistral pour la synthese LLM</p>
 </div>
 </div>
@@ -176,7 +176,7 @@ inst/
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/pobsteta/nemeton_shiny" class="external-link">Voir sur GitHub</a></li>
+<li><a href="https://github.com/pobsteta/nemetonshiny" class="external-link">Voir sur GitHub</a></li>
 <li><a href="https://github.com/pobsteta/nemeton" class="external-link">Package coeur (nemeton)</a></li>
 </ul>
 </div>
@@ -193,7 +193,7 @@ inst/
 <div class="citation">
 <h2 data-toc-skip>Citation</h2>
 <ul class="list-unstyled">
-<li><a href="authors.html#citation">Citing nemetonShiny</a></li>
+<li><a href="authors.html#citation">Citing nemetonshiny</a></li>
 </ul>
 </div>
 
@@ -207,10 +207,10 @@ inst/
 <div class="dev-status">
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/pobsteta/nemeton_shiny/actions/workflows/r.yml" class="external-link"><img src="https://github.com/pobsteta/nemeton_shiny/actions/workflows/r.yml/badge.svg" alt="R-CMD-check"></a></li>
-<li><a href="https://github.com/pobsteta/nemeton_shiny" class="external-link"><img src="https://img.shields.io/badge/version-0.15.1-blue.svg?logo=github" alt="Version"></a></li>
-<li><a href="https://pobsteta.github.io/nemeton_shiny/"><img src="https://github.com/pobsteta/nemeton_shiny/actions/workflows/pkgdown.yaml/badge.svg" alt="pkgdown"></a></li>
-<li><a href="https://codecov.io/gh/pobsteta/nemeton_shiny" class="external-link"><img src="https://codecov.io/gh/pobsteta/nemeton_shiny/graph/badge.svg" alt="codecov"></a></li>
+<li><a href="https://github.com/pobsteta/nemetonshiny/actions/workflows/r.yml" class="external-link"><img src="https://github.com/pobsteta/nemetonshiny/actions/workflows/r.yml/badge.svg" alt="R-CMD-check"></a></li>
+<li><a href="https://github.com/pobsteta/nemetonshiny" class="external-link"><img src="https://img.shields.io/badge/version-0.15.1-blue.svg?logo=github" alt="Version"></a></li>
+<li><a href="https://pobsteta.github.io/nemetonshiny/"><img src="https://github.com/pobsteta/nemetonshiny/actions/workflows/pkgdown.yaml/badge.svg" alt="pkgdown"></a></li>
+<li><a href="https://codecov.io/gh/pobsteta/nemetonshiny" class="external-link"><img src="https://codecov.io/gh/pobsteta/nemetonshiny/graph/badge.svg" alt="codecov"></a></li>
 <li><a href="https://opensource.org/licenses/EUPL-1.2" class="external-link"><img src="https://img.shields.io/badge/License-EUPL%20v1.2-blue.svg?logo=opensourceinitiative" alt="License: EUPL v1.2"></a></li>
 </ul>
 </div>

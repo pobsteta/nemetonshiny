@@ -1,9 +1,9 @@
-# nemetonShiny
+# nemetonshiny
 
 Application Shiny/golem pour la plateforme d’analyse systemique
 forestiere **Nemeton**.
 
-`nemetonShiny` fournit l’interface utilisateur interactive. La logique
+`nemetonshiny` fournit l’interface utilisateur interactive. La logique
 metier (indicateurs, calculs, referentiels) est portee par le package
 [`nemeton`](https://github.com/pobsteta/nemeton) (\>= 0.15.1).
 
@@ -36,7 +36,7 @@ metier (indicateurs, calculs, referentiels) est portee par le package
 `httr2`, `yaml`, `jsonlite`.
 
 Voir le fichier
-[`DESCRIPTION`](https://pobsteta.github.io/nemeton_shiny/DESCRIPTION)
+[`DESCRIPTION`](https://pobsteta.github.io/nemetonshiny/DESCRIPTION)
 pour la liste complete.
 
 ## Installation
@@ -45,8 +45,8 @@ pour la liste complete.
 # Installer le package core nemeton
 remotes::install_github("pobsteta/nemeton")
 
-# Installer nemetonShiny
-remotes::install_github("pobsteta/nemeton_shiny")
+# Installer nemetonshiny
+remotes::install_github("pobsteta/nemetonshiny")
 ```
 
 ## Utilisation
@@ -54,7 +54,7 @@ remotes::install_github("pobsteta/nemeton_shiny")
 ### Lancement direct
 
 ``` r
-nemetonShiny::run_app(language = "fr")
+nemetonshiny::run_app(language = "fr")
 ```
 
 Options disponibles :
@@ -71,7 +71,7 @@ docker compose up -d
 ```
 
 Le `docker-compose.yml` demarre : - **Keycloak** (port 8080) –
-authentification OAuth2/OIDC - **nemetonShiny** (port 3838) –
+authentification OAuth2/OIDC - **nemetonshiny** (port 3838) –
 application Shiny
 
 Variables d’environnement configurables dans `docker-compose.yml` : -
@@ -109,7 +109,7 @@ devtools::test()
 
 ## Licence
 
-[EUPL v1.2](https://pobsteta.github.io/nemeton_shiny/LICENSE-EUPL.md)
+[EUPL v1.2](https://pobsteta.github.io/nemetonshiny/LICENSE-EUPL.md)
 
 Les donnees sont soumises a des conditions specifiques decrites dans
-[LICENSE-DATA.md](https://pobsteta.github.io/nemeton_shiny/LICENSE-DATA.md).
+[LICENSE-DATA.md](https://pobsteta.github.io/nemetonshiny/LICENSE-DATA.md).
