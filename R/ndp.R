@@ -2,7 +2,7 @@
 #'
 #' @description
 #' Shiny-specific NDP widgets (badge, progress bar). These are UI components
-#' that belong in nemeton_shiny, not in the nemeton core package.
+#' that belong in nemetonshiny, not in the nemeton core package.
 #'
 #' All other NDP functions (NDP_LEVELS, detect_ndp, compute_general_index,
 #' get_ndp_level, set/restore_ndp_attributes, etc.) live in the nemeton

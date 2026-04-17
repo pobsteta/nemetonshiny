@@ -13,7 +13,7 @@ test_that("mod_synthesis_ui returns valid Shiny UI", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       expect_s3_class(ui, "shiny.tag")
     }
   )
@@ -26,7 +26,7 @@ test_that("mod_synthesis_ui contains expected output elements", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
       # Should contain project summary
@@ -52,7 +52,7 @@ test_that("mod_synthesis_ui works in English", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      ui <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
       # Should contain English title
@@ -69,7 +69,7 @@ test_that("mod_synthesis_ui contains download buttons with correct classes", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
       # PDF button has success class
@@ -87,7 +87,7 @@ test_that("mod_synthesis_ui contains AI generate button", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
       # Should contain AI generate button
@@ -104,7 +104,7 @@ test_that("mod_synthesis_ui contains expert profile selector", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
       # Should contain expert profile selector
@@ -120,7 +120,7 @@ test_that("mod_synthesis_ui contains synthesis comments textarea", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
       # Should contain synthesis comments textarea
@@ -136,7 +136,7 @@ test_that("mod_synthesis_ui contains cover image upload", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
       # Should contain cover image file input
@@ -152,7 +152,7 @@ test_that("mod_synthesis_ui contains global_score output", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_html <- as.character(ui)
 
       # Should contain global score output
@@ -166,11 +166,11 @@ test_that("mod_synthesis_ui contains global_score output", {
 # ==============================================================================
 
 test_that("mod_synthesis_server is a function", {
-  expect_type(nemetonShiny:::mod_synthesis_server, "closure")
+  expect_type(nemetonshiny:::mod_synthesis_server, "closure")
 })
 
 test_that("mod_synthesis_server accepts required parameters", {
-  args <- names(formals(nemetonShiny:::mod_synthesis_server))
+  args <- names(formals(nemetonshiny:::mod_synthesis_server))
 
   expect_true("id" %in% args)
   expect_true("app_state" %in% args)
@@ -190,7 +190,7 @@ test_that("mod_synthesis_server handles NULL project", {
       )
 
       suppressWarnings(shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # With NULL project, outputs should render without error
@@ -228,7 +228,7 @@ test_that("mod_synthesis_server handles project with NULL indicators", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # With NULL indicators, outputs should render without error
@@ -277,7 +277,7 @@ test_that("mod_synthesis_server renders project summary with valid project", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # project_summary should render with project info
@@ -336,7 +336,7 @@ test_that("mod_synthesis_server handles sf indicators with geometry", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # Should handle sf indicators without error
@@ -354,8 +354,8 @@ test_that("mod_synthesis_server handles sf indicators with geometry", {
 # ==============================================================================
 
 test_that("i18n keys for synthesis exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   keys <- c("synthesis_title", "radar_title", "summary_table_title",
             "download_pdf", "download_gpkg", "no_project", "no_data",
@@ -368,10 +368,10 @@ test_that("i18n keys for synthesis exist in both languages", {
 })
 
 test_that("i18n keys for indicator codes exist", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
-  all_codes <- nemetonShiny:::get_all_indicator_codes()
+  all_codes <- nemetonshiny:::get_all_indicator_codes()
 
   for (code in all_codes) {
     key <- paste0("indicator_", code)
@@ -381,21 +381,21 @@ test_that("i18n keys for indicator codes exist", {
 })
 
 test_that("i18n keys for family names exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   family_codes <- c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")
 
   for (code in family_codes) {
-    key <- nemetonShiny:::get_famille_col(code)
+    key <- nemetonshiny:::get_famille_col(code)
     expect_true(fr$has(key), info = paste("FR missing:", key))
     expect_true(en$has(key), info = paste("EN missing:", key))
   }
 })
 
 test_that("i18n keys for AI generation exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   keys <- c("ai_generate", "ai_generating", "ai_error", "ai_no_api_key")
 
@@ -406,8 +406,8 @@ test_that("i18n keys for AI generation exist in both languages", {
 })
 
 test_that("get_expert_choices returns named vector for both languages", {
-  choices_fr <- nemetonShiny:::get_expert_choices("fr")
-  choices_en <- nemetonShiny:::get_expert_choices("en")
+  choices_fr <- nemetonshiny:::get_expert_choices("fr")
+  choices_en <- nemetonshiny:::get_expert_choices("en")
 
   expect_type(choices_fr, "character")
   expect_type(choices_en, "character")
@@ -426,8 +426,8 @@ test_that("get_expert_choices returns named vector for both languages", {
 })
 
 test_that("i18n keys for comments exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   keys <- c("comments_title", "synthesis_comments_placeholder")
 
@@ -442,7 +442,7 @@ test_that("i18n keys for comments exist in both languages", {
 # ==============================================================================
 
 test_that("INDICATOR_FAMILIES have indicator_labels for all indicators", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   for (fam_code in names(families)) {
     fam <- families[[fam_code]]
@@ -461,7 +461,7 @@ test_that("INDICATOR_FAMILIES have indicator_labels for all indicators", {
 })
 
 test_that("INDICATOR_FAMILIES have all required fields", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   required_fields <- c("code", "name_fr", "name_en", "icon", "color",
                        "indicators", "column_names")
@@ -476,7 +476,7 @@ test_that("INDICATOR_FAMILIES have all required fields", {
 })
 
 test_that("INDICATOR_FAMILIES codes match their keys", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   for (fam_code in names(families)) {
     expect_equal(families[[fam_code]]$code, fam_code,
@@ -496,7 +496,7 @@ test_that("build_synthesis_prompt returns valid prompt string", {
     famille_eau = c(30, 40, 50)
   )
 
-  prompt <- nemetonShiny:::build_synthesis_prompt(family_scores, "English")
+  prompt <- nemetonshiny:::build_synthesis_prompt(family_scores, "English")
   expect_type(prompt, "character")
   expect_true(nchar(prompt) > 0)
   expect_true(grepl("3 parcels", prompt))
@@ -511,7 +511,7 @@ test_that("build_synthesis_prompt works with French language", {
     famille_biodiversite = c(40, 50)
   )
 
-  prompt <- nemetonShiny:::build_synthesis_prompt(family_scores, "fran\u00e7ais")
+  prompt <- nemetonshiny:::build_synthesis_prompt(family_scores, "fran\u00e7ais")
   expect_type(prompt, "character")
   expect_true(grepl("2 parcelles", prompt))
   expect_true(grepl("Score global", prompt))
@@ -530,7 +530,7 @@ test_that("build_synthesis_prompt handles sf input", {
     )
   )
 
-  prompt <- nemetonShiny:::build_synthesis_prompt(family_scores, "English")
+  prompt <- nemetonshiny:::build_synthesis_prompt(family_scores, "English")
   expect_type(prompt, "character")
   expect_true(nchar(prompt) > 0)
 })
@@ -542,7 +542,7 @@ test_that("build_synthesis_prompt handles NA values", {
     famille_biodiversite = c(NA, NA, NA)
   )
 
-  prompt <- nemetonShiny:::build_synthesis_prompt(family_scores, "English")
+  prompt <- nemetonshiny:::build_synthesis_prompt(family_scores, "English")
   expect_type(prompt, "character")
   expect_true(nchar(prompt) > 0)
 })
@@ -556,8 +556,8 @@ test_that("build_system_prompt returns valid prompt for each expert", {
                "producer", "citizen", "hunter")
 
   for (expert in experts) {
-    prompt_fr <- nemetonShiny:::build_system_prompt("fran\u00e7ais", expert)
-    prompt_en <- nemetonShiny:::build_system_prompt("English", expert)
+    prompt_fr <- nemetonshiny:::build_system_prompt("fran\u00e7ais", expert)
+    prompt_en <- nemetonshiny:::build_system_prompt("English", expert)
 
     expect_type(prompt_fr, "character")
     expect_type(prompt_en, "character")
@@ -567,16 +567,16 @@ test_that("build_system_prompt returns valid prompt for each expert", {
 })
 
 test_that("build_system_prompt defaults to generalist for unknown expert", {
-  prompt <- nemetonShiny:::build_system_prompt("English", "unknown_expert")
-  generalist_prompt <- nemetonShiny:::build_system_prompt("English", "generalist")
+  prompt <- nemetonshiny:::build_system_prompt("English", "unknown_expert")
+  generalist_prompt <- nemetonshiny:::build_system_prompt("English", "generalist")
 
   # Should use generalist
   expect_equal(prompt, generalist_prompt)
 })
 
 test_that("build_system_prompt includes language instruction", {
-  prompt_fr <- nemetonShiny:::build_system_prompt("fran\u00e7ais", "generalist")
-  prompt_en <- nemetonShiny:::build_system_prompt("English", "generalist")
+  prompt_fr <- nemetonshiny:::build_system_prompt("fran\u00e7ais", "generalist")
+  prompt_en <- nemetonshiny:::build_system_prompt("English", "generalist")
 
   expect_true(grepl("fran\u00e7ais", prompt_fr))
   expect_true(grepl("English", prompt_en))
@@ -587,13 +587,13 @@ test_that("build_system_prompt includes language instruction", {
 # ==============================================================================
 
 test_that("get_llm_api_key_var returns correct env var names", {
-  expect_equal(nemetonShiny:::get_llm_api_key_var("anthropic"), "ANTHROPIC_API_KEY")
-  expect_equal(nemetonShiny:::get_llm_api_key_var("mistral"), "MISTRAL_API_KEY")
-  expect_equal(nemetonShiny:::get_llm_api_key_var("openai"), "OPENAI_API_KEY")
-  expect_equal(nemetonShiny:::get_llm_api_key_var("google"), "GOOGLE_API_KEY")
-  expect_equal(nemetonShiny:::get_llm_api_key_var("deepseek"), "DEEPSEEK_API_KEY")
-  expect_null(nemetonShiny:::get_llm_api_key_var("ollama"))
-  expect_null(nemetonShiny:::get_llm_api_key_var("nonexistent"))
+  expect_equal(nemetonshiny:::get_llm_api_key_var("anthropic"), "ANTHROPIC_API_KEY")
+  expect_equal(nemetonshiny:::get_llm_api_key_var("mistral"), "MISTRAL_API_KEY")
+  expect_equal(nemetonshiny:::get_llm_api_key_var("openai"), "OPENAI_API_KEY")
+  expect_equal(nemetonshiny:::get_llm_api_key_var("google"), "GOOGLE_API_KEY")
+  expect_equal(nemetonshiny:::get_llm_api_key_var("deepseek"), "DEEPSEEK_API_KEY")
+  expect_null(nemetonshiny:::get_llm_api_key_var("ollama"))
+  expect_null(nemetonshiny:::get_llm_api_key_var("nonexistent"))
 })
 
 # ==============================================================================
@@ -623,7 +623,7 @@ test_that("mod_synthesis_server download_gpkg filename is correct", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # Access the download handler to verify filename logic
@@ -678,7 +678,7 @@ test_that("family_scores reactive handles missing join column gracefully", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # Should handle missing join column without error
@@ -748,7 +748,7 @@ test_that("mod_synthesis_server handles AI generate without API key", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # Set expert profile input
@@ -783,7 +783,7 @@ test_that("cover_image_path reactive returns NULL when no image uploaded", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # With no cover_image input, reactive should return NULL
@@ -829,7 +829,7 @@ test_that("project_summary shows correct status badge", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           summary <- output$project_summary
@@ -867,7 +867,7 @@ test_that("summary_table returns NULL when no family_scores available", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           table <- output$summary_table
@@ -913,7 +913,7 @@ test_that("synthesis module responds to language change", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui_fr <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui_fr <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_fr_html <- as.character(ui_fr)
       expect_true(grepl("Synth\u00e8se", ui_fr_html) || grepl("Telecharg", ui_fr_html, ignore.case = TRUE))
     }
@@ -923,7 +923,7 @@ test_that("synthesis module responds to language change", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      ui_en <- nemetonShiny:::mod_synthesis_ui("synthesis")
+      ui_en <- nemetonshiny:::mod_synthesis_ui("synthesis")
       ui_en_html <- as.character(ui_en)
       expect_true(grepl("Synthesis", ui_en_html) || grepl("Download", ui_en_html))
     }
@@ -964,7 +964,7 @@ test_that("synthesis handles empty parcel set", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # Should handle empty parcels without error
@@ -1006,7 +1006,7 @@ test_that("synthesis handles project with description", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           summary <- output$project_summary
@@ -1048,7 +1048,7 @@ test_that("synthesis handles family_comments in app_state", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_synthesis_server,
+        nemetonshiny:::mod_synthesis_server,
         args = list(app_state = mock_app_state),
         {
           # Should handle family_comments without error

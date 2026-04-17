@@ -21,7 +21,7 @@ create_split_test_projet <- function() {
   )
 
   projet <- list(parcels = parcels)
-  nemetonShiny:::ug_init_default(projet)
+  nemetonshiny:::ug_init_default(projet)
 }
 
 
@@ -41,7 +41,7 @@ test_that("split creates correct number of tenements", {
     )
   )
 
-  result <- nemetonShiny:::tenement_split_by_import(projet, "p1", left_half)
+  result <- nemetonshiny:::tenement_split_by_import(projet, "p1", left_half)
 
   # Should have 2 tenements: left half + remainder (right half)
   p1_tenements <- result$tenements[result$tenements$parent_parcelle_id == "p1", ]
@@ -51,7 +51,7 @@ test_that("split creates correct number of tenements", {
   expect_true(all(p1_tenements$parent_parcelle_id == "p1"))
 
   # Validation should pass
-  expect_true(nemetonShiny:::projet_validate(result))
+  expect_true(nemetonshiny:::projet_validate(result))
 })
 
 test_that("split with two polygons creates 3 tenements (2 + remainder)", {
@@ -67,12 +67,12 @@ test_that("split with two polygons creates 3 tenements (2 + remainder)", {
     )
   )
 
-  result <- nemetonShiny:::tenement_split_by_import(projet, "p1", quarters)
+  result <- nemetonshiny:::tenement_split_by_import(projet, "p1", quarters)
 
   p1_tenements <- result$tenements[result$tenements$parent_parcelle_id == "p1", ]
   # 2 quarters + right half remainder = 3 tenements
   expect_equal(nrow(p1_tenements), 3)
-  expect_true(nemetonShiny:::projet_validate(result))
+  expect_true(nemetonshiny:::projet_validate(result))
 })
 
 test_that("split with full coverage creates no remainder", {
@@ -88,12 +88,12 @@ test_that("split with full coverage creates no remainder", {
     )
   )
 
-  result <- nemetonShiny:::tenement_split_by_import(projet, "p1", halves)
+  result <- nemetonshiny:::tenement_split_by_import(projet, "p1", halves)
 
   p1_tenements <- result$tenements[result$tenements$parent_parcelle_id == "p1", ]
   # Exactly 2 tenements, no remainder
   expect_equal(nrow(p1_tenements), 2)
-  expect_true(nemetonShiny:::projet_validate(result))
+  expect_true(nemetonshiny:::projet_validate(result))
 })
 
 test_that("split preserves UG assignment", {
@@ -101,7 +101,7 @@ test_that("split preserves UG assignment", {
 
   # Set a groupe before splitting
   uid <- projet$ugs$ug_id[1]
-  projet <- nemetonShiny:::ug_set_groupe(projet, uid, "TSF")
+  projet <- nemetonshiny:::ug_set_groupe(projet, uid, "TSF")
 
   left <- sf::st_sf(
     geometry = sf::st_sfc(
@@ -110,7 +110,7 @@ test_that("split preserves UG assignment", {
     )
   )
 
-  result <- nemetonShiny:::tenement_split_by_import(projet, "p1", left)
+  result <- nemetonshiny:::tenement_split_by_import(projet, "p1", left)
 
   # All new tenements should be assigned to the same UG
   p1_tenements <- result$tenements[result$tenements$parent_parcelle_id == "p1", ]
@@ -129,7 +129,7 @@ test_that("split rejects non-overlapping polygons", {
   )
 
   expect_error(
-    nemetonShiny:::tenement_split_by_import(projet, "p1", outside),
+    nemetonshiny:::tenement_split_by_import(projet, "p1", outside),
     "No valid polygon"
   )
 })
@@ -145,7 +145,7 @@ test_that("split rejects unknown parcel ID", {
   )
 
   expect_error(
-    nemetonShiny:::tenement_split_by_import(projet, "nonexistent", poly),
+    nemetonshiny:::tenement_split_by_import(projet, "nonexistent", poly),
     "not found"
   )
 })
@@ -165,19 +165,19 @@ test_that("undo_split restores single tenement", {
       crs = 4326
     )
   )
-  projet <- nemetonShiny:::tenement_split_by_import(projet, "p1", left)
+  projet <- nemetonshiny:::tenement_split_by_import(projet, "p1", left)
   expect_equal(nrow(projet$tenements[projet$tenements$parent_parcelle_id == "p1", ]), 2)
 
   # Undo
-  result <- nemetonShiny:::tenement_undo_split(projet, "p1")
+  result <- nemetonshiny:::tenement_undo_split(projet, "p1")
   expect_equal(nrow(result$tenements[result$tenements$parent_parcelle_id == "p1", ]), 1)
-  expect_true(nemetonShiny:::projet_validate(result))
+  expect_true(nemetonshiny:::projet_validate(result))
 })
 
 test_that("undo_split on unsplit parcel is a no-op", {
   projet <- create_split_test_projet()
 
-  result <- nemetonShiny:::tenement_undo_split(projet, "p1")
+  result <- nemetonshiny:::tenement_undo_split(projet, "p1")
   expect_equal(nrow(result$tenements), nrow(projet$tenements))
 })
 
@@ -195,9 +195,9 @@ test_that("validate_tiling passes for valid tiling", {
       crs = 4326
     )
   )
-  projet <- nemetonShiny:::tenement_split_by_import(projet, "p1", left)
+  projet <- nemetonshiny:::tenement_split_by_import(projet, "p1", left)
 
-  expect_true(nemetonShiny:::validate_tiling(projet, "p1"))
+  expect_true(nemetonshiny:::validate_tiling(projet, "p1"))
 })
 
 
@@ -226,13 +226,13 @@ test_that("tenement_import_replace without label_ugf falls back to overlap-inher
   # Two halves, no label_ugf column
   imported <- make_two_halves()
 
-  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+  result <- nemetonshiny:::tenement_import_replace(projet, imported)
 
   # Two tenements, both sharing the single pre-existing UG
   expect_equal(nrow(result$tenements), 2)
   expect_equal(length(unique(result$tenements$ug_id)), 1)
   expect_equal(nrow(result$ugs), 1)
-  expect_true(nemetonShiny:::projet_validate(result))
+  expect_true(nemetonshiny:::projet_validate(result))
 })
 
 
@@ -240,13 +240,13 @@ test_that("tenement_import_replace creates UGF from distinct label_ugf values", 
   projet <- create_split_test_projet()
   imported <- make_two_halves(labels = c("UGF-Ouest", "UGF-Est"))
 
-  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+  result <- nemetonshiny:::tenement_import_replace(projet, imported)
 
   expect_equal(nrow(result$tenements), 2)
   expect_equal(sort(result$ugs$label), c("UGF-Est", "UGF-Ouest"))
   # Each tenement maps to its own UGF
   expect_equal(length(unique(result$tenements$ug_id)), 2)
-  expect_true(nemetonShiny:::projet_validate(result))
+  expect_true(nemetonshiny:::projet_validate(result))
 })
 
 
@@ -254,12 +254,12 @@ test_that("tenement_import_replace groups tenements sharing the same label_ugf",
   projet <- create_split_test_projet()
   imported <- make_two_halves(labels = c("UGF-Unique", "UGF-Unique"))
 
-  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+  result <- nemetonshiny:::tenement_import_replace(projet, imported)
 
   expect_equal(nrow(result$tenements), 2)
   expect_equal(length(unique(result$tenements$ug_id)), 1)
   expect_equal(result$ugs$label, "UGF-Unique")
-  expect_true(nemetonShiny:::projet_validate(result))
+  expect_true(nemetonshiny:::projet_validate(result))
 })
 
 
@@ -274,7 +274,7 @@ test_that("tenement_import_replace reuses existing UGF when label matches", {
   # Re-import with one half using the existing UG label and another new label
   imported <- make_two_halves(labels = c(original_label, "UGF-Nouveau"))
 
-  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+  result <- nemetonshiny:::tenement_import_replace(projet, imported)
 
   # Existing UG preserved (same id + groupe) and a new one appended
   expect_true(original_ug_id %in% result$ugs$ug_id)
@@ -282,7 +282,7 @@ test_that("tenement_import_replace reuses existing UGF when label matches", {
     result$ugs$groupe[result$ugs$ug_id == original_ug_id], "TSF"
   )
   expect_true("UGF-Nouveau" %in% result$ugs$label)
-  expect_true(nemetonShiny:::projet_validate(result))
+  expect_true(nemetonshiny:::projet_validate(result))
 })
 
 
@@ -292,10 +292,10 @@ test_that("tenement_import_replace treats empty/NA label_ugf as fallback", {
   # First half has a label, second half has a blank one
   imported <- make_two_halves(labels = c("UGF-Unique", "  "))
 
-  result <- nemetonShiny:::tenement_import_replace(projet, imported)
+  result <- nemetonshiny:::tenement_import_replace(projet, imported)
 
   # UGF-Unique created; blank-label row falls back to existing UG via overlap
   expect_true("UGF-Unique" %in% result$ugs$label)
   expect_true(nrow(result$ugs) >= 1)
-  expect_true(nemetonShiny:::projet_validate(result))
+  expect_true(nemetonshiny:::projet_validate(result))
 })

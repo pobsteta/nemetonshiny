@@ -36,7 +36,7 @@ NULL
 load_groupes_config <- function() {
   # 1. Package config (always present)
   pkg_path <- system.file("config", "groupes_amenagement.yaml",
-                          package = "nemetonShiny")
+                          package = "nemetonshiny")
   cfg <- if (nzchar(pkg_path) && file.exists(pkg_path)) {
     tryCatch(
       yaml::read_yaml(pkg_path),

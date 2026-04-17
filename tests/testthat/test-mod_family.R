@@ -8,8 +8,8 @@ test_that("mod_family_ui returns valid Shiny UI for each family", {
 
   withr::local_options(nemeton.app_options = list(language = "fr"))
 
-  for (code in nemetonShiny:::get_family_codes()) {
-    ui <- nemetonShiny:::mod_family_ui(nemetonShiny:::get_famille_col(code), code)
+  for (code in nemetonshiny:::get_family_codes()) {
+    ui <- nemetonshiny:::mod_family_ui(nemetonshiny:::get_famille_col(code), code)
     # UI returns tagList which is shiny.tag.list
     expect_true(inherits(ui, "shiny.tag.list") || inherits(ui, "shiny.tag"))
   }
@@ -22,7 +22,7 @@ test_that("mod_family_ui contains expected output elements", {
 
   withr::local_options(nemeton.app_options = list(language = "fr"))
 
-  ui <- nemetonShiny:::mod_family_ui("famille_carbone", "C")
+  ui <- nemetonshiny:::mod_family_ui("famille_carbone", "C")
   ui_html <- as.character(ui)
 
   # Should contain dynamic map output (rendered via renderUI)
@@ -42,7 +42,7 @@ test_that("mod_family_ui works in English", {
 
   withr::local_options(nemeton.app_options = list(language = "en"))
 
-  ui <- nemetonShiny:::mod_family_ui("famille_biodiversite", "B")
+  ui <- nemetonshiny:::mod_family_ui("famille_biodiversite", "B")
   ui_html <- as.character(ui)
 
   # Should contain English family name
@@ -58,15 +58,15 @@ test_that("get_indicator_cols excludes metadata columns", {
     geometry = rep("POINT(0 0)", 3)
   )
 
-  result <- nemetonShiny:::get_indicator_cols(df)
+  result <- nemetonshiny:::get_indicator_cols(df)
   expect_equal(result, c("C1", "C2"))
 })
 
 test_that("clean_indicator_label strips _norm suffix", {
   withr::local_options(nemeton.app_options = list(language = "fr"))
 
-  i18n <- nemetonShiny:::get_i18n("fr")
-  label <- nemetonShiny:::clean_indicator_label("C1_norm", i18n)
+  i18n <- nemetonshiny:::get_i18n("fr")
+  label <- nemetonshiny:::clean_indicator_label("C1_norm", i18n)
   # Should match indicator_C1 translation with code prefix
   expect_equal(label, "C1 - Biomasse carbone (tC/ha)")
 })
@@ -74,19 +74,19 @@ test_that("clean_indicator_label strips _norm suffix", {
 test_that("clean_indicator_label falls back to humanized name", {
   withr::local_options(nemeton.app_options = list(language = "fr"))
 
-  i18n <- nemetonShiny:::get_i18n("fr")
-  label <- nemetonShiny:::clean_indicator_label("UNKNOWN_IND", i18n)
+  i18n <- nemetonshiny:::get_i18n("fr")
+  label <- nemetonshiny:::clean_indicator_label("UNKNOWN_IND", i18n)
   expect_equal(label, "UNKNOWN IND")
 })
 
 test_that("clean_indicator_label resolves long-form column names", {
   withr::local_options(nemeton.app_options = list(language = "fr"))
 
-  i18n <- nemetonShiny:::get_i18n("fr")
-  label <- nemetonShiny:::clean_indicator_label("indicateur_c1_biomasse", i18n)
+  i18n <- nemetonshiny:::get_i18n("fr")
+  label <- nemetonshiny:::clean_indicator_label("indicateur_c1_biomasse", i18n)
   expect_equal(label, "C1 - Biomasse carbone (tC/ha)")
 
-  label_en <- nemetonShiny:::clean_indicator_label("indicateur_w3_humidite", nemetonShiny:::get_i18n("en"))
+  label_en <- nemetonshiny:::clean_indicator_label("indicateur_w3_humidite", nemetonshiny:::get_i18n("en"))
   expect_equal(label_en, "W3 - Topographic Wetness Index")
 })
 
@@ -97,7 +97,7 @@ test_that("mod_family_ui contains AI generate button", {
 
   withr::local_options(nemeton.app_options = list(language = "fr"))
 
-  ui <- nemetonShiny:::mod_family_ui("famille_carbone", "C")
+  ui <- nemetonshiny:::mod_family_ui("famille_carbone", "C")
   ui_html <- as.character(ui)
 
   # Should contain AI generate button
@@ -106,14 +106,14 @@ test_that("mod_family_ui contains AI generate button", {
 })
 
 test_that("build_analysis_prompt returns valid prompt string", {
-  family_config <- nemetonShiny:::get_family_config("C")
+  family_config <- nemetonshiny:::get_family_config("C")
   ind_data <- data.frame(
     nemeton_id = c("p1", "p2", "p3"),
     carbon_biomass_norm = c(0.5, 0.7, 0.3),
     carbon_ndvi_norm = c(0.8, 0.6, 0.9)
   )
 
-  prompt <- nemetonShiny:::build_analysis_prompt(family_config, ind_data, "fran\u00e7ais")
+  prompt <- nemetonshiny:::build_analysis_prompt(family_config, ind_data, "fran\u00e7ais")
   expect_type(prompt, "character")
   expect_true(nchar(prompt) > 0)
   expect_true(grepl("3 parcelles", prompt))
@@ -124,13 +124,13 @@ test_that("build_analysis_prompt returns valid prompt string", {
 })
 
 test_that("build_analysis_prompt handles all-NA indicator", {
-  family_config <- nemetonShiny:::get_family_config("W")
+  family_config <- nemetonshiny:::get_family_config("W")
   ind_data <- data.frame(
     nemeton_id = c("p1", "p2"),
     water_network_norm = c(NA_real_, NA_real_)
   )
 
-  prompt <- nemetonShiny:::build_analysis_prompt(family_config, ind_data, "English")
+  prompt <- nemetonshiny:::build_analysis_prompt(family_config, ind_data, "English")
   expect_true(grepl("no data", prompt))
 })
 
@@ -149,13 +149,13 @@ test_that("create_llm_chat uses configured provider", {
 })
 
 test_that("get_llm_api_key_var returns correct env var names", {
-  expect_equal(nemetonShiny:::get_llm_api_key_var("anthropic"), "ANTHROPIC_API_KEY")
-  expect_equal(nemetonShiny:::get_llm_api_key_var("mistral"), "MISTRAL_API_KEY")
-  expect_equal(nemetonShiny:::get_llm_api_key_var("openai"), "OPENAI_API_KEY")
-  expect_equal(nemetonShiny:::get_llm_api_key_var("google"), "GOOGLE_API_KEY")
-  expect_equal(nemetonShiny:::get_llm_api_key_var("deepseek"), "DEEPSEEK_API_KEY")
-  expect_null(nemetonShiny:::get_llm_api_key_var("ollama"))
-  expect_null(nemetonShiny:::get_llm_api_key_var("nonexistent"))
+  expect_equal(nemetonshiny:::get_llm_api_key_var("anthropic"), "ANTHROPIC_API_KEY")
+  expect_equal(nemetonshiny:::get_llm_api_key_var("mistral"), "MISTRAL_API_KEY")
+  expect_equal(nemetonshiny:::get_llm_api_key_var("openai"), "OPENAI_API_KEY")
+  expect_equal(nemetonshiny:::get_llm_api_key_var("google"), "GOOGLE_API_KEY")
+  expect_equal(nemetonshiny:::get_llm_api_key_var("deepseek"), "DEEPSEEK_API_KEY")
+  expect_null(nemetonshiny:::get_llm_api_key_var("ollama"))
+  expect_null(nemetonshiny:::get_llm_api_key_var("nonexistent"))
 })
 
 test_that("mod_family_ui returns valid UI for unknown family", {
@@ -164,7 +164,7 @@ test_that("mod_family_ui returns valid UI for unknown family", {
 
   withr::local_options(nemeton.app_options = list(language = "fr"))
 
-  ui <- nemetonShiny:::mod_family_ui("family_Z", "Z")
+  ui <- nemetonshiny:::mod_family_ui("family_Z", "Z")
   ui_html <- as.character(ui)
   expect_true(grepl("Unknown family", ui_html))
 })
@@ -175,34 +175,34 @@ test_that("mod_family_ui returns valid UI for unknown family", {
 # =============================================================================
 
 test_that("get_indicator_tooltip returns tooltips for short codes", {
-  tooltip_fr <- nemetonShiny:::get_indicator_tooltip("C1", "fr")
+  tooltip_fr <- nemetonshiny:::get_indicator_tooltip("C1", "fr")
   expect_type(tooltip_fr, "character")
   expect_true(nchar(tooltip_fr) > 0)
   expect_true(grepl("carbone", tooltip_fr, ignore.case = TRUE))
 
-  tooltip_en <- nemetonShiny:::get_indicator_tooltip("C1", "en")
+  tooltip_en <- nemetonshiny:::get_indicator_tooltip("C1", "en")
   expect_type(tooltip_en, "character")
   expect_true(grepl("carbon", tooltip_en, ignore.case = TRUE))
 })
 
 test_that("get_indicator_tooltip returns tooltips for long column names", {
-  tooltip <- nemetonShiny:::get_indicator_tooltip("indicateur_c1_biomasse", "fr")
+  tooltip <- nemetonshiny:::get_indicator_tooltip("indicateur_c1_biomasse", "fr")
   expect_type(tooltip, "character")
   expect_true(nchar(tooltip) > 0)
 
-  tooltip_norm <- nemetonShiny:::get_indicator_tooltip("carbon_biomass_norm", "fr")
+  tooltip_norm <- nemetonshiny:::get_indicator_tooltip("carbon_biomass_norm", "fr")
   expect_type(tooltip_norm, "character")
   expect_true(nchar(tooltip_norm) > 0)
 })
 
 test_that("get_indicator_tooltip returns NULL for unknown indicators", {
-  tooltip <- nemetonShiny:::get_indicator_tooltip("unknown_indicator", "fr")
+  tooltip <- nemetonshiny:::get_indicator_tooltip("unknown_indicator", "fr")
   expect_null(tooltip)
 })
 
 test_that("get_indicator_tooltip falls back to English", {
   # Test fallback by using an indicator that should exist
-  tooltip <- nemetonShiny:::get_indicator_tooltip("B1", "de")  # German not supported
+  tooltip <- nemetonshiny:::get_indicator_tooltip("B1", "de")  # German not supported
   # Should fallback to English if French not found, or return English directly
   # If implementation falls back correctly, should still return something
   expect_true(is.null(tooltip) || is.character(tooltip))
@@ -221,7 +221,7 @@ test_that("get_indicator_cols filters correctly", {
     area = c(100, 200, 300)
   )
 
-  result <- nemetonShiny:::get_indicator_cols(df)
+  result <- nemetonshiny:::get_indicator_cols(df)
   expect_equal(sort(result), c("B1", "C1", "C2"))
   expect_false("nemeton_id" %in% result)
   expect_false("geometry" %in% result)
@@ -248,7 +248,7 @@ test_that("make_indicator_leaflet creates leaflet map", {
     )
   )
 
-  map <- nemetonShiny:::make_indicator_leaflet(sf_data, "C1", "Test Indicator")
+  map <- nemetonshiny:::make_indicator_leaflet(sf_data, "C1", "Test Indicator")
   expect_s3_class(map, "leaflet")
 })
 
@@ -266,7 +266,7 @@ test_that("make_indicator_leaflet handles all NA values", {
     )
   )
 
-  map <- nemetonShiny:::make_indicator_leaflet(sf_data, "C1", "Test")
+  map <- nemetonshiny:::make_indicator_leaflet(sf_data, "C1", "Test")
   expect_s3_class(map, "leaflet")
 })
 
@@ -285,7 +285,7 @@ test_that("make_indicator_leaflet handles identical values", {
     )
   )
 
-  map <- nemetonShiny:::make_indicator_leaflet(sf_data, "C1", "Test")
+  map <- nemetonshiny:::make_indicator_leaflet(sf_data, "C1", "Test")
   expect_s3_class(map, "leaflet")
 })
 
@@ -303,7 +303,7 @@ test_that("make_indicator_leaflet uses YlOrRd for risk indicators", {
     )
   )
 
-  map <- nemetonShiny:::make_indicator_leaflet(sf_data, "R1", "Fire Risk")
+  map <- nemetonshiny:::make_indicator_leaflet(sf_data, "R1", "Fire Risk")
   expect_s3_class(map, "leaflet")
 })
 
@@ -323,7 +323,7 @@ test_that("mod_family_server handles NULL project gracefully", {
   )
 
   shiny::testServer(
-    nemetonShiny:::mod_family_server,
+    nemetonshiny:::mod_family_server,
     args = list(
       family_code = "C",
       app_state = mock_app_state
@@ -370,7 +370,7 @@ test_that("mod_family_server processes project with indicators", {
   )
 
   shiny::testServer(
-    nemetonShiny:::mod_family_server,
+    nemetonshiny:::mod_family_server,
     args = list(
       family_code = "C",
       app_state = mock_app_state
@@ -421,7 +421,7 @@ test_that("mod_family_server returns NULL for family with no indicators", {
   )
 
   shiny::testServer(
-    nemetonShiny:::mod_family_server,
+    nemetonshiny:::mod_family_server,
     args = list(
       family_code = "B",  # Biodiversity - not in indicators
       app_state = mock_app_state
@@ -466,7 +466,7 @@ test_that("mod_family_server handles sf indicators data", {
   )
 
   shiny::testServer(
-    nemetonShiny:::mod_family_server,
+    nemetonshiny:::mod_family_server,
     args = list(
       family_code = "C",
       app_state = mock_app_state
@@ -486,8 +486,8 @@ test_that("mod_family_server handles sf indicators data", {
 # =============================================================================
 
 test_that("get_family_config returns valid configs", {
-  for (code in nemetonShiny:::get_family_codes()) {
-    config <- nemetonShiny:::get_family_config(code)
+  for (code in nemetonshiny:::get_family_codes()) {
+    config <- nemetonshiny:::get_family_config(code)
     expect_type(config, "list")
     expect_true("name_fr" %in% names(config) || "name_en" %in% names(config))
     expect_true("icon" %in% names(config))
@@ -497,12 +497,12 @@ test_that("get_family_config returns valid configs", {
 })
 
 test_that("get_family_config returns NULL for unknown family", {
-  config <- nemetonShiny:::get_family_config("UNKNOWN")
+  config <- nemetonshiny:::get_family_config("UNKNOWN")
   expect_null(config)
 })
 
 test_that("get_family_codes returns all family codes", {
-  codes <- nemetonShiny:::get_family_codes()
+  codes <- nemetonshiny:::get_family_codes()
   expect_true(length(codes) > 0)
   expect_true("C" %in% codes)  # Carbon
   expect_true("B" %in% codes)  # Biodiversity
@@ -516,7 +516,7 @@ test_that("get_family_codes returns all family codes", {
 
 test_that("INDICATOR_FAMILIES contains column_names mappings", {
   # Test that family config has column_names for mapping
-  config <- nemetonShiny:::get_family_config("C")
+  config <- nemetonshiny:::get_family_config("C")
   expect_true("column_names" %in% names(config))
   expect_equal(config$column_names, c("indicateur_c1_biomasse", "indicateur_c2_ndvi"))
 
@@ -531,7 +531,7 @@ test_that("INDICATOR_FAMILIES contains column_names mappings", {
 # ==============================================================================
 
 test_that("all 12 families have valid icon names", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
   for (code in names(families)) {
     fam <- families[[code]]
     expect_true(is.character(fam$icon), info = paste("Family", code, "icon"))
@@ -540,7 +540,7 @@ test_that("all 12 families have valid icon names", {
 })
 
 test_that("all families have matching indicator counts between indicators and column_names", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
   for (code in names(families)) {
     fam <- families[[code]]
     expect_equal(
@@ -551,7 +551,7 @@ test_that("all families have matching indicator counts between indicators and co
 })
 
 test_that("all families have indicator_labels for each indicator", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
   for (code in names(families)) {
     fam <- families[[code]]
     for (ind in fam$indicators) {
@@ -567,7 +567,7 @@ test_that("all families have indicator_labels for each indicator", {
 })
 
 test_that("all families have indicator_tooltips for each indicator", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
   for (code in names(families)) {
     fam <- families[[code]]
     for (ind in fam$indicators) {
@@ -583,7 +583,7 @@ test_that("all families have indicator_tooltips for each indicator", {
 })
 
 test_that("family colors are valid hex codes", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
   for (code in names(families)) {
     color <- families[[code]]$color
     expect_true(

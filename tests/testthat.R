@@ -7,9 +7,9 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(nemetonShiny)
+library(nemetonshiny)
 
 # Force English language for consistent test messages
 nemeton::nemeton_set_language("en")
 
-test_check("nemetonShiny")
+test_check("nemetonshiny")

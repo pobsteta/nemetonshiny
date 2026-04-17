@@ -2,12 +2,12 @@
 # Phase 1: Core app setup and configuration
 
 test_that("run_app function exists and is exported", {
-  expect_true(exists("run_app", where = asNamespace("nemetonShiny"), inherits = FALSE))
+  expect_true(exists("run_app", where = asNamespace("nemetonshiny"), inherits = FALSE))
 })
 
 test_that("detect_system_language returns valid language code", {
   # Access internal function
-  detect_lang <- nemetonShiny:::detect_system_language
+  detect_lang <- nemetonshiny:::detect_system_language
 
   # Should return "fr" or "en"
   result <- detect_lang()
@@ -17,7 +17,7 @@ test_that("detect_system_language returns valid language code", {
 })
 
 test_that("get_default_project_dir returns valid path", {
-  get_dir <- nemetonShiny:::get_default_project_dir
+  get_dir <- nemetonshiny:::get_default_project_dir
 
   result <- get_dir()
   expect_type(result, "character")
@@ -27,7 +27,7 @@ test_that("get_default_project_dir returns valid path", {
 })
 
 test_that("APP_CONFIG contains required keys", {
-  config <- nemetonShiny:::APP_CONFIG
+  config <- nemetonshiny:::APP_CONFIG
 
   required_keys <- c(
     "app_name",
@@ -49,12 +49,12 @@ test_that("APP_CONFIG contains required keys", {
 })
 
 test_that("APP_CONFIG max_parcels default is 30", {
-  config <- nemetonShiny:::APP_CONFIG
+  config <- nemetonshiny:::APP_CONFIG
   expect_equal(config$max_parcels, 30L)
 })
 
 test_that("run_app exposes a max_parcels argument defaulting to 30", {
-  fmls <- formals(nemetonShiny::run_app)
+  fmls <- formals(nemetonshiny::run_app)
   expect_true("max_parcels" %in% names(fmls))
   expect_equal(eval(fmls$max_parcels), 30L)
 })
@@ -66,25 +66,25 @@ test_that("run_app max_parcels override is surfaced through get_app_config", {
     project_dir = tempdir(),
     max_parcels = 75L
   ))
-  expect_equal(nemetonShiny:::get_app_config("max_parcels"), 75L)
+  expect_equal(nemetonshiny:::get_app_config("max_parcels"), 75L)
 })
 
 test_that("run_app validates max_parcels", {
-  expect_error(nemetonShiny::run_app(max_parcels = 0), "positive integer")
-  expect_error(nemetonShiny::run_app(max_parcels = -5), "positive integer")
-  expect_error(nemetonShiny::run_app(max_parcels = 1.5), "positive integer")
-  expect_error(nemetonShiny::run_app(max_parcels = "20"), "positive integer")
-  expect_error(nemetonShiny::run_app(max_parcels = c(10, 20)), "positive integer")
+  expect_error(nemetonshiny::run_app(max_parcels = 0), "positive integer")
+  expect_error(nemetonshiny::run_app(max_parcels = -5), "positive integer")
+  expect_error(nemetonshiny::run_app(max_parcels = 1.5), "positive integer")
+  expect_error(nemetonshiny::run_app(max_parcels = "20"), "positive integer")
+  expect_error(nemetonshiny::run_app(max_parcels = c(10, 20)), "positive integer")
 })
 
 test_that("APP_CONFIG project_states are valid", {
-  config <- nemetonShiny:::APP_CONFIG
+  config <- nemetonshiny:::APP_CONFIG
   expected_states <- c("draft", "downloading", "computing", "completed", "error")
   expect_equal(config$project_states, expected_states)
 })
 
 test_that("INDICATOR_FAMILIES contains 12 families", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
   expect_length(families, 12)
 
   expected_codes <- c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")
@@ -92,7 +92,7 @@ test_that("INDICATOR_FAMILIES contains 12 families", {
 })
 
 test_that("Each indicator family has required fields", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   required_fields <- c("code", "name_fr", "name_en", "icon", "color", "indicators")
 
@@ -108,13 +108,13 @@ test_that("Each indicator family has required fields", {
 })
 
 test_that("get_family_codes returns all 12 codes", {
-  codes <- nemetonShiny:::get_family_codes()
+  codes <- nemetonshiny:::get_family_codes()
   expect_length(codes, 12)
   expect_equal(codes, c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N"))
 })
 
 test_that("get_family_config returns valid config or NULL", {
-  get_config <- nemetonShiny:::get_family_config
+  get_config <- nemetonshiny:::get_family_config
 
   # Valid code
   carbon <- get_config("C")
@@ -128,7 +128,7 @@ test_that("get_family_config returns valid config or NULL", {
 })
 
 test_that("get_all_indicator_codes returns 31 indicators", {
-  codes <- nemetonShiny:::get_all_indicator_codes()
+  codes <- nemetonshiny:::get_all_indicator_codes()
   expect_type(codes, "character")
   expect_length(codes, 31)
 

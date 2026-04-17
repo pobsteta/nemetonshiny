@@ -53,7 +53,7 @@ test_that("department selection sets department_changed", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -106,7 +106,7 @@ test_that("department observer skips when is_restoring is TRUE", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Trigger a restore first to set is_restoring = TRUE
@@ -149,7 +149,7 @@ test_that("department selection with NULL dept clears commune choices", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # First select a real department to start the observer
@@ -193,7 +193,7 @@ test_that("commune selection with empty code clears all values", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # First set a commune, then clear it
@@ -235,7 +235,7 @@ test_that("commune selection with valid code sets is_loading and invokes task", 
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Set a department first
@@ -277,7 +277,7 @@ test_that("commune selection during restore returns early and schedules flag cle
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # First trigger a restore to set is_restoring = TRUE
@@ -321,7 +321,7 @@ test_that("commune selection skips if geometry already available for same commun
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Set commune (triggers commune_task)
@@ -357,7 +357,7 @@ test_that("clearing commune during restore returns early (no clearing geometry)"
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Trigger restore
@@ -404,7 +404,7 @@ test_that("restore sets is_restoring flag, clears geometry, and invokes restore_
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -444,7 +444,7 @@ test_that("restore ignores NULL commune_code", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -481,7 +481,7 @@ test_that("restore ignores NULL restore_project", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -517,7 +517,7 @@ test_that("rapid project switching increments restore_gen", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # First restore
@@ -564,7 +564,7 @@ test_that("get_lang returns 'fr' when language is NULL", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # The module initializes with NULL language.
@@ -601,7 +601,7 @@ test_that("get_lang returns 'fr' when language is empty string", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -635,7 +635,7 @@ test_that("get_lang returns actual language when set", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # English language should work too
@@ -679,7 +679,7 @@ test_that("initialization populates department dropdown", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # The initialization observer fires once on start
@@ -722,7 +722,7 @@ test_that("full workflow: department -> commune selection", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -764,7 +764,7 @@ test_that("full workflow: department -> commune -> clear commune", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -813,7 +813,7 @@ test_that("switching departments does not crash", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -861,7 +861,7 @@ test_that("after restore completes, normal department selection works", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -908,7 +908,7 @@ test_that("all returned reactives are callable and return expected types", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           result <- session$getReturned()
@@ -958,7 +958,7 @@ test_that("ensure_future_plan is exercised during department selection", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Selecting a department invokes dept_task which calls ensure_future_plan
@@ -985,7 +985,7 @@ test_that("mod_search_ui creates complete tag structure", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_search_ui("search_test")
+      ui <- nemetonshiny:::mod_search_ui("search_test")
 
       # Should be a tagList
       expect_s3_class(ui, "shiny.tag.list")
@@ -1014,7 +1014,7 @@ test_that("mod_search_ui respects English language", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      ui <- nemetonShiny:::mod_search_ui("en_test")
+      ui <- nemetonshiny:::mod_search_ui("en_test")
 
       expect_s3_class(ui, "shiny.tag.list")
       html <- as.character(ui)
@@ -1051,7 +1051,7 @@ test_that("restore handles busy restore_task gracefully", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Trigger first restore
@@ -1110,7 +1110,7 @@ test_that("setting both departement and commune simultaneously works", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Set both at once (ExtendedTask invoke may throw)
@@ -1145,7 +1145,7 @@ test_that("language change during operation doesn't crash", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_search_server,
+        nemetonshiny:::mod_search_server,
         args = list(app_state = mock_app_state),
         {
           # Start with French

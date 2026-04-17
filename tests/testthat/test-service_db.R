@@ -30,7 +30,7 @@ test_that("get_db_connection returns NULL when not configured", {
 })
 
 test_that("schema.sql file exists", {
-  schema_file <- system.file("sql", "schema.sql", package = "nemetonShiny")
+  schema_file <- system.file("sql", "schema.sql", package = "nemetonshiny")
   expect_true(nzchar(schema_file))
   sql <- readLines(schema_file)
   expect_true(any(grepl("CREATE TABLE", sql)))

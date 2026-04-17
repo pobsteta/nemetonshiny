@@ -6,7 +6,7 @@
 # ==============================================================================
 
 test_that("APP_CONFIG has expected keys", {
-  config <- nemetonShiny:::APP_CONFIG
+  config <- nemetonshiny:::APP_CONFIG
 
   expected_keys <- c(
     "app_name", "app_version",
@@ -30,7 +30,7 @@ test_that("APP_CONFIG has expected keys", {
 })
 
 test_that("APP_CONFIG values have correct types", {
-  config <- nemetonShiny:::APP_CONFIG
+  config <- nemetonshiny:::APP_CONFIG
 
   expect_type(config$app_name, "character")
   expect_type(config$app_version, "character")
@@ -42,7 +42,7 @@ test_that("APP_CONFIG values have correct types", {
 })
 
 test_that("APP_CONFIG numeric values are reasonable", {
-  config <- nemetonShiny:::APP_CONFIG
+  config <- nemetonshiny:::APP_CONFIG
 
   expect_equal(config$max_parcels, 30L)
   expect_equal(config$default_crs, 2154L)
@@ -60,39 +60,39 @@ test_that("get_app_config returns correct values for known keys", {
   # Ensure no runtime override is active (run_app() sets it)
   withr::local_options(nemeton.app_options = NULL)
 
-  expect_equal(nemetonShiny:::get_app_config("max_parcels"), 30L)
-  expect_equal(nemetonShiny:::get_app_config("default_crs"), 2154L)
-  expect_equal(nemetonShiny:::get_app_config("max_retries"), 3L)
-  expect_equal(nemetonShiny:::get_app_config("cache_format"), "parquet")
+  expect_equal(nemetonshiny:::get_app_config("max_parcels"), 30L)
+  expect_equal(nemetonshiny:::get_app_config("default_crs"), 2154L)
+  expect_equal(nemetonshiny:::get_app_config("max_retries"), 3L)
+  expect_equal(nemetonshiny:::get_app_config("cache_format"), "parquet")
 })
 
 test_that("get_app_config respects runtime overrides from app_options", {
   withr::local_options(nemeton.app_options = list(max_parcels = 50L))
 
-  expect_equal(nemetonShiny:::get_app_config("max_parcels"), 50L)
+  expect_equal(nemetonshiny:::get_app_config("max_parcels"), 50L)
   # Keys not overridden still resolve from APP_CONFIG
-  expect_equal(nemetonShiny:::get_app_config("default_crs"), 2154L)
+  expect_equal(nemetonshiny:::get_app_config("default_crs"), 2154L)
 })
 
 test_that("get_app_config returns app_name", {
-  result <- nemetonShiny:::get_app_config("app_name")
+  result <- nemetonshiny:::get_app_config("app_name")
   expect_type(result, "character")
   expect_true(nchar(result) > 0)
 })
 
 test_that("get_app_config returns default for unknown keys", {
-  expect_null(nemetonShiny:::get_app_config("nonexistent_key"))
-  expect_equal(nemetonShiny:::get_app_config("nonexistent_key", "fallback"), "fallback")
-  expect_equal(nemetonShiny:::get_app_config("missing", 42), 42)
+  expect_null(nemetonshiny:::get_app_config("nonexistent_key"))
+  expect_equal(nemetonshiny:::get_app_config("nonexistent_key", "fallback"), "fallback")
+  expect_equal(nemetonshiny:::get_app_config("missing", 42), 42)
 })
 
 test_that("get_app_config returns NULL default when key missing", {
-  result <- nemetonShiny:::get_app_config("this_key_does_not_exist")
+  result <- nemetonshiny:::get_app_config("this_key_does_not_exist")
   expect_null(result)
 })
 
 test_that("get_app_config returns project_states correctly", {
-  states <- nemetonShiny:::get_app_config("project_states")
+  states <- nemetonshiny:::get_app_config("project_states")
   expect_type(states, "character")
   expect_true(length(states) >= 4)
   expect_true("draft" %in% states)
@@ -101,7 +101,7 @@ test_that("get_app_config returns project_states correctly", {
 })
 
 test_that("get_app_config returns llm_models as a list", {
-  models <- nemetonShiny:::get_app_config("llm_models")
+  models <- nemetonshiny:::get_app_config("llm_models")
   expect_type(models, "list")
   expect_true(length(models) > 0)
   expect_true("mistral" %in% names(models))
@@ -112,18 +112,18 @@ test_that("get_app_config returns llm_models as a list", {
 # ==============================================================================
 
 test_that("INDICATOR_FAMILIES has 12 families", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
   expect_length(families, 12)
 })
 
 test_that("INDICATOR_FAMILIES has correct family codes as names", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
   expected_codes <- c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")
   expect_equal(names(families), expected_codes)
 })
 
 test_that("Each family has required fields", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
   required_fields <- c(
     "code", "name_fr", "name_en", "icon", "color",
     "indicators", "column_names",
@@ -142,7 +142,7 @@ test_that("Each family has required fields", {
 })
 
 test_that("Each family code field matches its list name", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   for (fam_code in names(families)) {
     expect_equal(
@@ -153,7 +153,7 @@ test_that("Each family code field matches its list name", {
 })
 
 test_that("Family indicators and column_names have same length", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   for (fam_code in names(families)) {
     fam <- families[[fam_code]]
@@ -165,7 +165,7 @@ test_that("Family indicators and column_names have same length", {
 })
 
 test_that("Family indicator_labels keys match indicators", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   for (fam_code in names(families)) {
     fam <- families[[fam_code]]
@@ -177,7 +177,7 @@ test_that("Family indicator_labels keys match indicators", {
 })
 
 test_that("Family indicator_tooltips keys match indicators", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   for (fam_code in names(families)) {
     fam <- families[[fam_code]]
@@ -189,7 +189,7 @@ test_that("Family indicator_tooltips keys match indicators", {
 })
 
 test_that("Family labels have fr and en translations", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   for (fam_code in names(families)) {
     fam <- families[[fam_code]]
@@ -208,7 +208,7 @@ test_that("Family labels have fr and en translations", {
 })
 
 test_that("Family colors are valid hex colors", {
-  families <- nemetonShiny:::INDICATOR_FAMILIES
+  families <- nemetonshiny:::INDICATOR_FAMILIES
 
   for (fam_code in names(families)) {
     color <- families[[fam_code]]$color
@@ -224,7 +224,7 @@ test_that("Family colors are valid hex colors", {
 # ==============================================================================
 
 test_that("get_family_codes returns all 12 family codes", {
-  codes <- nemetonShiny:::get_family_codes()
+  codes <- nemetonshiny:::get_family_codes()
 
   expect_type(codes, "character")
   expect_length(codes, 12)
@@ -236,7 +236,7 @@ test_that("get_family_codes returns all 12 family codes", {
 # ==============================================================================
 
 test_that("get_family_config returns correct config for valid code", {
-  config_c <- nemetonShiny:::get_family_config("C")
+  config_c <- nemetonshiny:::get_family_config("C")
 
   expect_type(config_c, "list")
   expect_equal(config_c$code, "C")
@@ -250,7 +250,7 @@ test_that("get_family_config returns config for each family", {
   codes <- c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")
 
   for (code in codes) {
-    config <- nemetonShiny:::get_family_config(code)
+    config <- nemetonshiny:::get_family_config(code)
     expect_true(
       is.list(config),
       info = paste("NULL config for family:", code)
@@ -260,24 +260,24 @@ test_that("get_family_config returns config for each family", {
 })
 
 test_that("get_family_config returns NULL for invalid code", {
-  expect_null(nemetonShiny:::get_family_config("Z"))
-  expect_null(nemetonShiny:::get_family_config("X"))
-  expect_null(nemetonShiny:::get_family_config(""))
-  expect_null(nemetonShiny:::get_family_config("invalid"))
+  expect_null(nemetonshiny:::get_family_config("Z"))
+  expect_null(nemetonshiny:::get_family_config("X"))
+  expect_null(nemetonshiny:::get_family_config(""))
+  expect_null(nemetonshiny:::get_family_config("invalid"))
 })
 
 test_that("get_family_config is case-insensitive", {
-  config_upper <- nemetonShiny:::get_family_config("C")
-  config_lower <- nemetonShiny:::get_family_config("c")
+  config_upper <- nemetonshiny:::get_family_config("C")
+  config_lower <- nemetonshiny:::get_family_config("c")
 
   expect_equal(config_upper, config_lower)
   expect_equal(config_upper$code, "C")
 
   # Also test with other letters
-  config_b <- nemetonShiny:::get_family_config("b")
+  config_b <- nemetonshiny:::get_family_config("b")
   expect_equal(config_b$code, "B")
 
-  config_w <- nemetonShiny:::get_family_config("w")
+  config_w <- nemetonshiny:::get_family_config("w")
   expect_equal(config_w$code, "W")
 })
 
@@ -286,14 +286,14 @@ test_that("get_family_config is case-insensitive", {
 # ==============================================================================
 
 test_that("get_all_indicator_codes returns all 31 indicators", {
-  codes <- nemetonShiny:::get_all_indicator_codes()
+  codes <- nemetonshiny:::get_all_indicator_codes()
 
   expect_type(codes, "character")
   expect_length(codes, 31)
 })
 
 test_that("get_all_indicator_codes contains expected indicators", {
-  codes <- nemetonShiny:::get_all_indicator_codes()
+  codes <- nemetonshiny:::get_all_indicator_codes()
 
   # Check a selection of expected indicator codes
   expect_true("C1" %in% codes)
@@ -307,12 +307,12 @@ test_that("get_all_indicator_codes contains expected indicators", {
 })
 
 test_that("get_all_indicator_codes returns unnamed vector", {
-  codes <- nemetonShiny:::get_all_indicator_codes()
+  codes <- nemetonshiny:::get_all_indicator_codes()
   expect_null(names(codes))
 })
 
 test_that("get_all_indicator_codes has no duplicates", {
-  codes <- nemetonShiny:::get_all_indicator_codes()
+  codes <- nemetonshiny:::get_all_indicator_codes()
   expect_equal(length(codes), length(unique(codes)))
 })
 
@@ -321,21 +321,21 @@ test_that("get_all_indicator_codes has no duplicates", {
 # ==============================================================================
 
 test_that("get_all_column_names returns same count as indicator codes", {
-  columns <- nemetonShiny:::get_all_column_names()
-  indicators <- nemetonShiny:::get_all_indicator_codes()
+  columns <- nemetonshiny:::get_all_column_names()
+  indicators <- nemetonshiny:::get_all_indicator_codes()
 
   expect_equal(length(columns), length(indicators))
 })
 
 test_that("get_all_column_names returns character vector", {
-  columns <- nemetonShiny:::get_all_column_names()
+  columns <- nemetonshiny:::get_all_column_names()
 
   expect_type(columns, "character")
   expect_true(length(columns) > 0)
 })
 
 test_that("get_all_column_names contains expected column names", {
-  columns <- nemetonShiny:::get_all_column_names()
+  columns <- nemetonshiny:::get_all_column_names()
 
   expect_true("indicateur_c1_biomasse" %in% columns)
   expect_true("indicateur_c2_ndvi" %in% columns)
@@ -345,7 +345,7 @@ test_that("get_all_column_names contains expected column names", {
 })
 
 test_that("get_all_column_names has no duplicates", {
-  columns <- nemetonShiny:::get_all_column_names()
+  columns <- nemetonshiny:::get_all_column_names()
   expect_equal(length(columns), length(unique(columns)))
 })
 
@@ -354,14 +354,14 @@ test_that("get_all_column_names has no duplicates", {
 # ==============================================================================
 
 test_that("get_column_family_map returns named character vector", {
-  map <- nemetonShiny:::get_column_family_map()
+  map <- nemetonshiny:::get_column_family_map()
 
   expect_type(map, "character")
   expect_true(length(names(map)) > 0)
 })
 
 test_that("get_column_family_map maps column names to family codes correctly", {
-  map <- nemetonShiny:::get_column_family_map()
+  map <- nemetonshiny:::get_column_family_map()
 
   # Long-form column name mappings
   expect_equal(unname(map["indicateur_c1_biomasse"]), "C")
@@ -373,7 +373,7 @@ test_that("get_column_family_map maps column names to family codes correctly", {
 })
 
 test_that("get_column_family_map maps short indicator codes to family codes", {
-  map <- nemetonShiny:::get_column_family_map()
+  map <- nemetonshiny:::get_column_family_map()
 
   # Short indicator code mappings
   expect_equal(unname(map["C1"]), "C")
@@ -386,14 +386,14 @@ test_that("get_column_family_map maps short indicator codes to family codes", {
 })
 
 test_that("get_column_family_map contains both long and short forms", {
-  map <- nemetonShiny:::get_column_family_map()
+  map <- nemetonshiny:::get_column_family_map()
 
   # Should have 31 column names + 31 indicator codes = 62 entries
   expect_equal(length(map), 62)
 })
 
 test_that("get_column_family_map values are valid family codes", {
-  map <- nemetonShiny:::get_column_family_map()
+  map <- nemetonshiny:::get_column_family_map()
   valid_codes <- c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")
 
   for (val in unique(map)) {
@@ -409,7 +409,7 @@ test_that("get_column_family_map values are valid family codes", {
 # ==============================================================================
 
 test_that("DATA_SOURCES has expected top-level categories", {
-  sources <- nemetonShiny:::DATA_SOURCES
+  sources <- nemetonshiny:::DATA_SOURCES
 
   expected_categories <- c("rasters", "vectors", "point_clouds")
 
@@ -422,7 +422,7 @@ test_that("DATA_SOURCES has expected top-level categories", {
 })
 
 test_that("DATA_SOURCES rasters contains expected sources", {
-  rasters <- nemetonShiny:::DATA_SOURCES$rasters
+  rasters <- nemetonshiny:::DATA_SOURCES$rasters
 
   expect_type(rasters, "list")
   expect_true(length(rasters) > 0)
@@ -450,7 +450,7 @@ test_that("DATA_SOURCES rasters contains expected sources", {
 })
 
 test_that("DATA_SOURCES vectors contains expected sources", {
-  vectors <- nemetonShiny:::DATA_SOURCES$vectors
+  vectors <- nemetonshiny:::DATA_SOURCES$vectors
 
   expect_type(vectors, "list")
   expect_true(length(vectors) > 0)
@@ -470,26 +470,26 @@ test_that("DATA_SOURCES vectors contains expected sources", {
 })
 
 test_that("get_data_source_config returns correct config for rasters", {
-  rasters_config <- nemetonShiny:::get_data_source_config("rasters")
+  rasters_config <- nemetonshiny:::get_data_source_config("rasters")
 
   expect_type(rasters_config, "list")
   expect_true(length(rasters_config) > 0)
 })
 
 test_that("get_data_source_config returns correct config for vectors", {
-  vectors_config <- nemetonShiny:::get_data_source_config("vectors")
+  vectors_config <- nemetonshiny:::get_data_source_config("vectors")
 
   expect_type(vectors_config, "list")
   expect_true(length(vectors_config) > 0)
 })
 
 test_that("get_data_source_config returns NULL for unknown source", {
-  expect_null(nemetonShiny:::get_data_source_config("nonexistent"))
-  expect_null(nemetonShiny:::get_data_source_config(""))
+  expect_null(nemetonshiny:::get_data_source_config("nonexistent"))
+  expect_null(nemetonshiny:::get_data_source_config(""))
 })
 
 test_that("get_data_source_config returns point_clouds config", {
-  pc_config <- nemetonShiny:::get_data_source_config("point_clouds")
+  pc_config <- nemetonshiny:::get_data_source_config("point_clouds")
 
   expect_type(pc_config, "list")
   expect_true(length(pc_config) > 0)

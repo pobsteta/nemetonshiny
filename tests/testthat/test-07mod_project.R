@@ -13,7 +13,7 @@ test_that("mod_project_ui returns valid Shiny UI", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
 
       expect_true(
         inherits(ui, "shiny.tag") || inherits(ui, "shiny.tag.list")
@@ -29,7 +29,7 @@ test_that("mod_project_ui creates namespaced inputs", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test_ns")
+      ui <- nemetonshiny:::mod_project_ui("test_ns")
       ui_html <- as.character(ui)
 
       # Check for namespaced input IDs
@@ -49,7 +49,7 @@ test_that("mod_project_ui includes required field marker", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
       ui_html <- as.character(ui)
 
       # Name should have required marker (*)
@@ -65,7 +65,7 @@ test_that("mod_project_ui includes character limit hints", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
       ui_html <- as.character(ui)
 
       # Should mention character limits
@@ -82,7 +82,7 @@ test_that("mod_project_ui contains collapsible card structure", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
       ui_html <- as.character(ui)
 
       # Card structure
@@ -103,7 +103,7 @@ test_that("mod_project_ui contains date display output", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
       ui_html <- as.character(ui)
 
       # Date display output
@@ -119,7 +119,7 @@ test_that("mod_project_ui contains validation message output", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
       ui_html <- as.character(ui)
 
       # Validation message output
@@ -135,7 +135,7 @@ test_that("mod_project_ui includes JavaScript for character limits", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
       ui_html <- as.character(ui)
 
       # JavaScript for character limit enforcement
@@ -151,7 +151,7 @@ test_that("mod_project_ui has Bootstrap collapse attributes", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
       ui_html <- as.character(ui)
 
       # Bootstrap collapse attributes
@@ -168,7 +168,7 @@ test_that("mod_project_ui works in English", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
 
       expect_true(
         inherits(ui, "shiny.tag") || inherits(ui, "shiny.tag.list")
@@ -184,7 +184,7 @@ test_that("mod_project_ui uses success theme for card header", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
       ui_html <- as.character(ui)
 
       # Success theme class
@@ -201,7 +201,7 @@ test_that("mod_project_ui includes folder-plus icon", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_project_ui("test")
+      ui <- nemetonshiny:::mod_project_ui("test")
       ui_html <- as.character(ui)
 
       # Icon reference (bsicons generates SVG)
@@ -215,11 +215,11 @@ test_that("mod_project_ui includes folder-plus icon", {
 # ==============================================================================
 
 test_that("mod_project_server is a function", {
-  expect_type(nemetonShiny:::mod_project_server, "closure")
+  expect_type(nemetonshiny:::mod_project_server, "closure")
 })
 
 test_that("mod_project_server accepts required parameters", {
-  args <- names(formals(nemetonShiny:::mod_project_server))
+  args <- names(formals(nemetonshiny:::mod_project_server))
 
   expect_true("id" %in% args)
   expect_true("app_state" %in% args)
@@ -249,7 +249,7 @@ test_that("mod_project_server returns expected reactive list", {
       mock_selected_parcels <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -286,7 +286,7 @@ test_that("mod_project_server initializes with correct default values", {
       mock_selected_parcels <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -320,7 +320,7 @@ test_that("mod_project_server date_display output renders correctly", {
       mock_selected_parcels <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -362,7 +362,7 @@ test_that("mod_project_server action_button renders in create mode when parcels 
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -397,7 +397,7 @@ test_that("mod_project_server validation_message is empty when no errors", {
       mock_selected_parcels <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -447,7 +447,7 @@ test_that("mod_project_server validates empty name", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -503,7 +503,7 @@ test_that("mod_project_server validates name length", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -559,7 +559,7 @@ test_that("mod_project_server validates description length", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -615,7 +615,7 @@ test_that("mod_project_server validates owner length", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -678,7 +678,7 @@ test_that("mod_project_server creates project with valid inputs", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -728,7 +728,7 @@ test_that("mod_project_server requires parcels for project creation", {
       mock_selected_parcels <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -781,7 +781,7 @@ test_that("mod_project_server restores form fields when loading project", {
         crs = 4326
       )
 
-      project <- nemetonShiny:::create_project(
+      project <- nemetonshiny:::create_project(
         name = "Loaded Project",
         description = "Loaded description",
         owner = "Loaded Owner",
@@ -799,7 +799,7 @@ test_that("mod_project_server restores form fields when loading project", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -856,7 +856,7 @@ test_that("mod_project_server clears form when project is set to NULL", {
         crs = 4326
       )
 
-      project <- nemetonShiny:::create_project(
+      project <- nemetonshiny:::create_project(
         name = "Test Project",
         description = "Test description",
         owner = "Test Owner",
@@ -873,7 +873,7 @@ test_that("mod_project_server clears form when project is set to NULL", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -923,7 +923,7 @@ test_that("mod_project_server updates existing project", {
       )
 
       # Create initial project
-      project <- nemetonShiny:::create_project(
+      project <- nemetonshiny:::create_project(
         name = "Original Name",
         description = "Original description",
         owner = "Original Owner",
@@ -940,7 +940,7 @@ test_that("mod_project_server updates existing project", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -997,7 +997,7 @@ test_that("mod_project_server delete button shows confirmation modal", {
         crs = 4326
       )
 
-      project <- nemetonShiny:::create_project(
+      project <- nemetonshiny:::create_project(
         name = "Project to Delete",
         description = "Will be deleted",
         owner = "Owner",
@@ -1014,7 +1014,7 @@ test_that("mod_project_server delete button shows confirmation modal", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -1061,7 +1061,7 @@ test_that("mod_project_server confirms delete and removes project", {
         crs = 4326
       )
 
-      project <- nemetonShiny:::create_project(
+      project <- nemetonshiny:::create_project(
         name = "Project to Delete",
         description = "Will be deleted",
         owner = "Owner",
@@ -1079,7 +1079,7 @@ test_that("mod_project_server confirms delete and removes project", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -1145,7 +1145,7 @@ test_that("mod_project_server updates app_state.refresh_projects on create", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -1195,7 +1195,7 @@ test_that("mod_project_server handles restore_in_progress flag", {
         crs = 4326
       )
 
-      project <- nemetonShiny:::create_project(
+      project <- nemetonshiny:::create_project(
         name = "Restore Test",
         description = "Test restore",
         owner = "Owner",
@@ -1212,7 +1212,7 @@ test_that("mod_project_server handles restore_in_progress flag", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -1237,8 +1237,8 @@ test_that("mod_project_server handles restore_in_progress flag", {
 # ==============================================================================
 
 test_that("i18n keys for project module exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   project_keys <- c(
     "project_info",
@@ -1272,8 +1272,8 @@ test_that("i18n keys for project module exist in both languages", {
 })
 
 test_that("i18n keys for delete confirmation exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   delete_keys <- c(
     "delete",
@@ -1324,7 +1324,7 @@ test_that("mod_project_server handles whitespace-only name", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -1376,7 +1376,7 @@ test_that("mod_project_server handles empty parcels sf object", {
       mock_selected_parcels <- shiny::reactiveVal(empty_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -1431,7 +1431,7 @@ test_that("mod_project_server trims name whitespace", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -1487,7 +1487,7 @@ test_that("mod_project_server handles NULL input values gracefully", {
       mock_selected_parcels <- shiny::reactiveVal(mock_parcels)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -1530,7 +1530,7 @@ test_that("mod_project_server action button is disabled without parcels", {
       mock_selected_parcels <- shiny::reactiveVal(NULL)
 
       shiny::testServer(
-        nemetonShiny:::mod_project_server,
+        nemetonshiny:::mod_project_server,
         args = list(
           app_state = mock_app_state,
           selected_parcels = mock_selected_parcels
@@ -1571,7 +1571,7 @@ test_that("mod_project_server namespace isolation works correctly", {
       # Test with different namespace IDs
       for (ns_id in c("project1", "project2", "my_project_ns")) {
         shiny::testServer(
-          nemetonShiny:::mod_project_server,
+          nemetonshiny:::mod_project_server,
           args = list(
             app_state = mock_app_state,
             selected_parcels = mock_selected_parcels

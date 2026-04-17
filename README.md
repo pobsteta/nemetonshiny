@@ -1,16 +1,16 @@
-# nemetonShiny
+# nemetonshiny
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/pobsteta/nemeton_shiny/actions/workflows/r.yml/badge.svg)](https://github.com/pobsteta/nemeton_shiny/actions/workflows/r.yml)
-[![Version](https://img.shields.io/badge/version-0.15.1-blue.svg?logo=github)](https://github.com/pobsteta/nemeton_shiny)
-[![pkgdown](https://github.com/pobsteta/nemeton_shiny/actions/workflows/pkgdown.yaml/badge.svg)](https://pobsteta.github.io/nemeton_shiny/)
-[![codecov](https://codecov.io/gh/pobsteta/nemeton_shiny/graph/badge.svg)](https://codecov.io/gh/pobsteta/nemeton_shiny)
+[![R-CMD-check](https://github.com/pobsteta/nemetonshiny/actions/workflows/r.yml/badge.svg)](https://github.com/pobsteta/nemetonshiny/actions/workflows/r.yml)
+[![Version](https://img.shields.io/badge/version-0.15.1-blue.svg?logo=github)](https://github.com/pobsteta/nemetonshiny)
+[![pkgdown](https://github.com/pobsteta/nemetonshiny/actions/workflows/pkgdown.yaml/badge.svg)](https://pobsteta.github.io/nemetonshiny/)
+[![codecov](https://codecov.io/gh/pobsteta/nemetonshiny/graph/badge.svg)](https://codecov.io/gh/pobsteta/nemetonshiny)
 [![License: EUPL v1.2](https://img.shields.io/badge/License-EUPL%20v1.2-blue.svg?logo=opensourceinitiative)](https://opensource.org/licenses/EUPL-1.2)
 <!-- badges: end -->
 
 Application Shiny/golem pour la plateforme d'analyse systemique forestiere **Nemeton**.
 
-`nemetonShiny` fournit l'interface utilisateur interactive. La logique metier (indicateurs, calculs, referentiels) est portee par le package [`nemeton`](https://github.com/pobsteta/nemeton) (>= 0.15.1).
+`nemetonshiny` fournit l'interface utilisateur interactive. La logique metier (indicateurs, calculs, referentiels) est portee par le package [`nemeton`](https://github.com/pobsteta/nemeton) (>= 0.15.1).
 
 ## Fonctionnalites
 
@@ -41,8 +41,8 @@ Voir le fichier [`DESCRIPTION`](DESCRIPTION) pour la liste complete.
 # Installer le package core nemeton
 remotes::install_github("pobsteta/nemeton")
 
-# Installer nemetonShiny
-remotes::install_github("pobsteta/nemeton_shiny")
+# Installer nemetonshiny
+remotes::install_github("pobsteta/nemetonshiny")
 ```
 
 ## Utilisation
@@ -50,7 +50,7 @@ remotes::install_github("pobsteta/nemeton_shiny")
 ### Lancement direct
 
 ```r
-nemetonShiny::run_app(language = "fr")
+nemetonshiny::run_app(language = "fr")
 ```
 
 Options disponibles :
@@ -68,7 +68,7 @@ docker compose up -d
 
 Le `docker-compose.yml` demarre :
 - **Keycloak** (port 8080) -- authentification OAuth2/OIDC
-- **nemetonShiny** (port 3838) -- application Shiny
+- **nemetonshiny** (port 3838) -- application Shiny
 
 Variables d'environnement configurables dans `docker-compose.yml` :
 - `NEMETON_LANG` -- langue (defaut : `fr`)

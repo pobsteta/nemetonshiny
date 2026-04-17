@@ -13,7 +13,7 @@ test_that("mod_progress_ui returns valid Shiny UI", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
 
       expect_true(
         inherits(ui, "shiny.tag") || inherits(ui, "shiny.tag.list")
@@ -30,7 +30,7 @@ test_that("mod_progress_ui contains progress card", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # Progress card wrapper
@@ -51,7 +51,7 @@ test_that("mod_progress_ui contains completion card", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # Completion card wrapper
@@ -72,7 +72,7 @@ test_that("mod_progress_ui contains error card", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # Error card wrapper
@@ -93,7 +93,7 @@ test_that("mod_progress_ui contains indicator counters", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # Completed count
@@ -114,7 +114,7 @@ test_that("mod_progress_ui contains cancel button", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # Cancel button
@@ -132,7 +132,7 @@ test_that("mod_progress_ui contains task toast notification", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # Task toast wrapper
@@ -151,7 +151,7 @@ test_that("mod_progress_ui contains elapsed time display", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # Elapsed time element
@@ -168,7 +168,7 @@ test_that("mod_progress_ui contains phase text element", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # Phase text element
@@ -185,7 +185,7 @@ test_that("mod_progress_ui works in English", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # Should render without error
@@ -202,7 +202,7 @@ test_that("mod_progress_ui cards are hidden by default", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     {
-      ui <- nemetonShiny:::mod_progress_ui("test")
+      ui <- nemetonshiny:::mod_progress_ui("test")
       ui_html <- as.character(ui)
 
       # All card wrappers should have display: none style
@@ -218,11 +218,11 @@ test_that("mod_progress_ui cards are hidden by default", {
 # ==============================================================================
 
 test_that("mod_progress_server is a function", {
-  expect_type(nemetonShiny:::mod_progress_server, "closure")
+  expect_type(nemetonshiny:::mod_progress_server, "closure")
 })
 
 test_that("mod_progress_server accepts required parameters", {
-  args <- names(formals(nemetonShiny:::mod_progress_server))
+  args <- names(formals(nemetonshiny:::mod_progress_server))
 
   expect_true("id" %in% args)
   expect_true("compute_state" %in% args)
@@ -256,7 +256,7 @@ test_that("mod_progress_server returns expected list", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_progress_server,
+        nemetonshiny:::mod_progress_server,
         args = list(
           compute_state = mock_compute_state,
           app_state = mock_app_state
@@ -310,7 +310,7 @@ test_that("mod_progress_server cancel button sets app_state", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_progress_server,
+        nemetonshiny:::mod_progress_server,
         args = list(
           compute_state = mock_compute_state,
           app_state = mock_app_state
@@ -352,7 +352,7 @@ test_that("mod_progress_server retry button sets app_state", {
       )
 
       shiny::testServer(
-        nemetonShiny:::mod_progress_server,
+        nemetonshiny:::mod_progress_server,
         args = list(
           compute_state = mock_compute_state,
           app_state = mock_app_state
@@ -374,8 +374,8 @@ test_that("mod_progress_server retry button sets app_state", {
 # ==============================================================================
 
 test_that("i18n keys for progress module exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   # Core progress keys
   core_keys <- c(
@@ -399,8 +399,8 @@ test_that("i18n keys for progress module exist in both languages", {
 })
 
 test_that("i18n keys for progress phases exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   phase_keys <- c(
     "phase_init",
@@ -416,8 +416,8 @@ test_that("i18n keys for progress phases exist in both languages", {
 })
 
 test_that("i18n keys for task messages exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   task_keys <- c(
     "task_download_start",
@@ -438,8 +438,8 @@ test_that("i18n keys for task messages exist in both languages", {
 })
 
 test_that("i18n keys for computation summary exist in both languages", {
-  fr <- nemetonShiny:::get_i18n("fr")
-  en <- nemetonShiny:::get_i18n("en")
+  fr <- nemetonshiny:::get_i18n("fr")
+  en <- nemetonshiny:::get_i18n("en")
 
   summary_keys <- c(
     "computation_summary",
@@ -463,7 +463,7 @@ test_that("i18n keys for computation summary exist in both languages", {
 # ==============================================================================
 
 test_that("COMPUTE_STATUS constant exists and has required statuses", {
-  status <- nemetonShiny:::COMPUTE_STATUS
+  status <- nemetonshiny:::COMPUTE_STATUS
 
   expect_type(status, "list")
   expect_true("PENDING" %in% names(status))
@@ -475,7 +475,7 @@ test_that("COMPUTE_STATUS constant exists and has required statuses", {
 })
 
 test_that("COMPUTE_STATUS values are strings", {
-  status <- nemetonShiny:::COMPUTE_STATUS
+  status <- nemetonshiny:::COMPUTE_STATUS
 
   expect_equal(status$PENDING, "pending")
   expect_equal(status$DOWNLOADING, "downloading")
@@ -496,7 +496,7 @@ test_that("init_compute_state creates valid state structure", {
     get_computation_progress = function(project_id) list(computed_indicators = character(0)),
     list_available_indicators = function() c("indicateur_c1_biomasse", "indicateur_c2_ndvi", "indicateur_w1_reseau"),
     {
-      state <- nemetonShiny:::init_compute_state("test_project", "all")
+      state <- nemetonshiny:::init_compute_state("test_project", "all")
 
       expect_true("project_id" %in% names(state))
       expect_true("status" %in% names(state))
@@ -511,7 +511,7 @@ test_that("init_compute_state creates valid state structure", {
       expect_true("errors" %in% names(state))
 
       expect_equal(state$project_id, "test_project")
-      expect_equal(state$status, nemetonShiny:::COMPUTE_STATUS$PENDING)
+      expect_equal(state$status, nemetonshiny:::COMPUTE_STATUS$PENDING)
       expect_equal(state$phase, "init")
       expect_equal(state$progress, 0)
       expect_type(state$errors, "list")
@@ -530,7 +530,7 @@ test_that("init_compute_state handles resume with existing progress", {
       c("indicateur_c1_biomasse", "indicateur_c2_ndvi", "indicateur_w1_reseau")
     },
     {
-      state <- nemetonShiny:::init_compute_state("test_project", "all")
+      state <- nemetonshiny:::init_compute_state("test_project", "all")
 
       expect_equal(state$indicators_completed, 2)
       expect_equal(state$indicators_skipped, 2)
@@ -547,7 +547,7 @@ test_that("init_compute_state handles resume with existing progress", {
 # ==============================================================================
 
 test_that("list_available_indicators returns 31 indicators", {
-  indicators <- nemetonShiny:::list_available_indicators()
+  indicators <- nemetonshiny:::list_available_indicators()
   expect_length(indicators, 31)
   expect_true("indicateur_c1_biomasse" %in% indicators)
   expect_true("indicateur_n3_naturalite" %in% indicators)
@@ -557,7 +557,7 @@ test_that("init_compute_state returns correct structure with all 31 indicators",
   with_mocked_bindings(
     get_computation_progress = function(project_id) list(computed_indicators = character(0), last_saved_at = NULL),
     {
-      state <- nemetonShiny:::init_compute_state("test_project")
+      state <- nemetonshiny:::init_compute_state("test_project")
       expect_equal(state$project_id, "test_project")
       expect_equal(state$status, "pending")
       expect_equal(state$phase, "init")
@@ -581,7 +581,7 @@ test_that("init_compute_state supports resume with previously computed indicator
       )
     },
     {
-      state <- nemetonShiny:::init_compute_state("test_project")
+      state <- nemetonshiny:::init_compute_state("test_project")
       expect_equal(state$indicators_completed, 2)
       expect_equal(state$indicators_skipped, 2)
       expect_true(state$is_resume)

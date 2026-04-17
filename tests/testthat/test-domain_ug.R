@@ -38,7 +38,7 @@ test_that("new_tenement creates valid tenement", {
     0, 0, 1, 0, 1, 1, 0, 1, 0, 0
   ), ncol = 2, byrow = TRUE))), crs = 4326)
 
-  tenement <- nemetonShiny:::new_tenement("a1", "p1", geom, 10000)
+  tenement <- nemetonshiny:::new_tenement("a1", "p1", geom, 10000)
 
   expect_true(inherits(tenement, "sf"))
   expect_equal(nrow(tenement), 1)
@@ -51,13 +51,13 @@ test_that("new_tenement creates valid tenement", {
 test_that("new_tenement rejects invalid input", {
   geom <- sf::st_sfc(sf::st_point(c(0, 0)), crs = 4326)
 
-  expect_error(nemetonShiny:::new_tenement("", "p1", geom, 100), "id is required")
-  expect_error(nemetonShiny:::new_tenement("a1", "", geom, 100), "parent_parcelle_id")
-  expect_error(nemetonShiny:::new_tenement("a1", "p1", geom, -1), "positive number")
+  expect_error(nemetonshiny:::new_tenement("", "p1", geom, 100), "id is required")
+  expect_error(nemetonshiny:::new_tenement("a1", "", geom, 100), "parent_parcelle_id")
+  expect_error(nemetonshiny:::new_tenement("a1", "p1", geom, -1), "positive number")
 })
 
 test_that("new_ug creates valid UG", {
-  ug <- nemetonShiny:::new_ug("ug1", "TSF-Sud", "TSF")
+  ug <- nemetonshiny:::new_ug("ug1", "TSF-Sud", "TSF")
 
   expect_true(is.data.frame(ug))
   expect_equal(nrow(ug), 1)
@@ -67,8 +67,8 @@ test_that("new_ug creates valid UG", {
 })
 
 test_that("new_ug rejects empty label", {
-  expect_error(nemetonShiny:::new_ug("ug1", ""), "label is required")
-  expect_error(nemetonShiny:::new_ug("ug1", "  "), "label is required")
+  expect_error(nemetonshiny:::new_ug("ug1", ""), "label is required")
+  expect_error(nemetonshiny:::new_ug("ug1", "  "), "label is required")
 })
 
 
@@ -78,7 +78,7 @@ test_that("new_ug rejects empty label", {
 
 test_that("ug_init_default creates 1 tenement and 1 UG per parcel", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   expect_equal(nrow(projet$tenements), 3)
   expect_equal(nrow(projet$ugs), 3)
@@ -92,21 +92,21 @@ test_that("ug_init_default creates 1 tenement and 1 UG per parcel", {
 
 test_that("ug_init_default uses geo_parcelle as label", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   expect_equal(sort(projet$ugs$label), c("REF001", "REF002", "REF003"))
 })
 
 test_that("ug_init_default passes validation", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
-  expect_true(nemetonShiny:::projet_validate(projet))
+  expect_true(nemetonshiny:::projet_validate(projet))
 })
 
 test_that("ug_init_default rejects empty parcels", {
   expect_error(
-    nemetonShiny:::ug_init_default(list(parcels = NULL)),
+    nemetonshiny:::ug_init_default(list(parcels = NULL)),
     "non-empty parcels"
   )
 })
@@ -118,12 +118,12 @@ test_that("ug_init_default rejects empty parcels", {
 
 test_that("ug_merge combines two UGs into one", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   # Get first two UG ids
   ug_ids_to_merge <- projet$ugs$ug_id[1:2]
 
-  projet <- nemetonShiny:::ug_merge(projet, ug_ids_to_merge, "Merged-UG")
+  projet <- nemetonshiny:::ug_merge(projet, ug_ids_to_merge, "Merged-UG")
 
   # Should now have 2 UGs (3 - 2 merged + 1 new)
   expect_equal(nrow(projet$ugs), 2)
@@ -139,28 +139,28 @@ test_that("ug_merge combines two UGs into one", {
   expect_equal(nrow(projet$tenements), 3)
 
   # Passes validation
-  expect_true(nemetonShiny:::projet_validate(projet))
+  expect_true(nemetonshiny:::projet_validate(projet))
 })
 
 test_that("ug_merge rejects fewer than 2 UGs", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   expect_error(
-    nemetonShiny:::ug_merge(projet, projet$ugs$ug_id[1], "Single"),
+    nemetonshiny:::ug_merge(projet, projet$ugs$ug_id[1], "Single"),
     "At least two"
   )
 })
 
 test_that("ug_merge preserves groupe when uniform", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   # Set same groupe on first two UGs
-  projet <- nemetonShiny:::ug_set_groupe(projet, projet$ugs$ug_id[1], "TSF")
-  projet <- nemetonShiny:::ug_set_groupe(projet, projet$ugs$ug_id[2], "TSF")
+  projet <- nemetonshiny:::ug_set_groupe(projet, projet$ugs$ug_id[1], "TSF")
+  projet <- nemetonshiny:::ug_set_groupe(projet, projet$ugs$ug_id[2], "TSF")
 
-  merged <- nemetonShiny:::ug_merge(
+  merged <- nemetonshiny:::ug_merge(
     projet, projet$ugs$ug_id[1:2], "TSF-Merged"
   )
 
@@ -175,12 +175,12 @@ test_that("ug_merge preserves groupe when uniform", {
 
 test_that("ug_create makes new UG from selected tenements", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   # Get tenement IDs for first two parcels
   tenement_ids <- projet$tenements$tenement_id[1:2]
 
-  projet <- nemetonShiny:::ug_create(projet, tenement_ids, "New-UG", "REGT")
+  projet <- nemetonshiny:::ug_create(projet, tenement_ids, "New-UG", "REGT")
 
   # The new UG should exist
   new_ug <- projet$ugs[projet$ugs$label == "New-UG", ]
@@ -193,25 +193,25 @@ test_that("ug_create makes new UG from selected tenements", {
   # Old empty UGs removed, so total = 2 (new + remaining)
   expect_equal(nrow(projet$ugs), 2)
 
-  expect_true(nemetonShiny:::projet_validate(projet))
+  expect_true(nemetonshiny:::projet_validate(projet))
 })
 
 test_that("ug_create rejects empty tenement list", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   expect_error(
-    nemetonShiny:::ug_create(projet, character(0), "Empty"),
+    nemetonshiny:::ug_create(projet, character(0), "Empty"),
     "At least one"
   )
 })
 
 test_that("ug_create rejects unknown tenement IDs", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   expect_error(
-    nemetonShiny:::ug_create(projet, "nonexistent", "Bad"),
+    nemetonshiny:::ug_create(projet, "nonexistent", "Bad"),
     "Unknown tenement"
   )
 })
@@ -223,27 +223,27 @@ test_that("ug_create rejects unknown tenement IDs", {
 
 test_that("ug_split with default creates 1 UG per tenement", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   # First merge 2 UGs
   ug_ids <- projet$ugs$ug_id[1:2]
-  projet <- nemetonShiny:::ug_merge(projet, ug_ids, "ToSplit")
+  projet <- nemetonshiny:::ug_merge(projet, ug_ids, "ToSplit")
 
   merged_ug <- projet$ugs[projet$ugs$label == "ToSplit", ]
-  projet <- nemetonShiny:::ug_split(projet, merged_ug$ug_id)
+  projet <- nemetonshiny:::ug_split(projet, merged_ug$ug_id)
 
   # Should now have 3 UGs again (2 from split + 1 unchanged)
   expect_equal(nrow(projet$ugs), 3)
   expect_equal(nrow(projet$tenements), 3)
-  expect_true(nemetonShiny:::projet_validate(projet))
+  expect_true(nemetonshiny:::projet_validate(projet))
 })
 
 test_that("ug_split rejects single-tenement UG", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   expect_error(
-    nemetonShiny:::ug_split(projet, projet$ugs$ug_id[1]),
+    nemetonshiny:::ug_split(projet, projet$ugs$ug_id[1]),
     "fewer than 2"
   )
 })
@@ -255,13 +255,13 @@ test_that("ug_split rejects single-tenement UG", {
 
 test_that("ug_assign_tenement moves tenement and removes empty UG", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   # Move tenement 1 to UG of tenement 2
   tenement_to_move <- projet$tenements$tenement_id[1]
   target_ug <- projet$tenements$ug_id[2]
 
-  projet <- nemetonShiny:::ug_assign_tenement(projet, tenement_to_move, target_ug)
+  projet <- nemetonshiny:::ug_assign_tenement(projet, tenement_to_move, target_ug)
 
   # UG count should decrease by 1 (source UG became empty)
   expect_equal(nrow(projet$ugs), 2)
@@ -269,7 +269,7 @@ test_that("ug_assign_tenement moves tenement and removes empty UG", {
   # Target UG should now have 2 tenements
   expect_equal(sum(projet$tenements$ug_id == target_ug), 2)
 
-  expect_true(nemetonShiny:::projet_validate(projet))
+  expect_true(nemetonshiny:::projet_validate(projet))
 })
 
 
@@ -279,21 +279,21 @@ test_that("ug_assign_tenement moves tenement and removes empty UG", {
 
 test_that("ug_set_groupe updates groupe", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   uid <- projet$ugs$ug_id[1]
-  projet <- nemetonShiny:::ug_set_groupe(projet, uid, "TSF")
+  projet <- nemetonshiny:::ug_set_groupe(projet, uid, "TSF")
 
   expect_equal(projet$ugs$groupe[projet$ugs$ug_id == uid], "TSF")
 })
 
 test_that("ug_set_groupe warns on unknown groupe", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   uid <- projet$ugs$ug_id[1]
   expect_warning(
-    nemetonShiny:::ug_set_groupe(projet, uid, "UNKNOWN_GROUP"),
+    nemetonshiny:::ug_set_groupe(projet, uid, "UNKNOWN_GROUP"),
     "Unknown management group"
   )
 })
@@ -305,9 +305,9 @@ test_that("ug_set_groupe warns on unknown groupe", {
 
 test_that("ug_geometry returns valid union geometry", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
-  geom <- nemetonShiny:::ug_geometry(projet, projet$ugs$ug_id[1])
+  geom <- nemetonshiny:::ug_geometry(projet, projet$ugs$ug_id[1])
 
   expect_true(inherits(geom, "sfc"))
   expect_true(sf::st_is_valid(geom))
@@ -315,17 +315,17 @@ test_that("ug_geometry returns valid union geometry", {
 
 test_that("ug_surface returns correct value", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
-  surf <- nemetonShiny:::ug_surface(projet, projet$ugs$ug_id[1])
+  surf <- nemetonshiny:::ug_surface(projet, projet$ugs$ug_id[1])
   expect_equal(surf, 10000)
 })
 
 test_that("ug_cadastral_refs returns parcel references", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
-  refs <- nemetonShiny:::ug_cadastral_refs(projet, projet$ugs$ug_id[1])
+  refs <- nemetonshiny:::ug_cadastral_refs(projet, projet$ugs$ug_id[1])
 
   expect_true(is.data.frame(refs))
   expect_equal(nrow(refs), 1)
@@ -337,24 +337,24 @@ test_that("ug_cadastral_refs returns parcel references", {
 
 test_that("ug_cadastral_refs returns multiple refs after merge", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   # Merge first two UGs
-  projet <- nemetonShiny:::ug_merge(
+  projet <- nemetonshiny:::ug_merge(
     projet, projet$ugs$ug_id[1:2], "Merged"
   )
 
   merged_ug <- projet$ugs[projet$ugs$label == "Merged", ]
-  refs <- nemetonShiny:::ug_cadastral_refs(projet, merged_ug$ug_id)
+  refs <- nemetonshiny:::ug_cadastral_refs(projet, merged_ug$ug_id)
 
   expect_equal(nrow(refs), 2)
 })
 
 test_that("ug_list returns all UGs with stats", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
-  listing <- nemetonShiny:::ug_list(projet)
+  listing <- nemetonshiny:::ug_list(projet)
 
   expect_true(is.data.frame(listing))
   expect_equal(nrow(listing), 3)
@@ -365,14 +365,14 @@ test_that("ug_list returns all UGs with stats", {
 
 test_that("ug_list filters by groupe", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
-  projet <- nemetonShiny:::ug_set_groupe(projet, projet$ugs$ug_id[1], "TSF")
+  projet <- nemetonshiny:::ug_set_groupe(projet, projet$ugs$ug_id[1], "TSF")
 
-  filtered <- nemetonShiny:::ug_list(projet, filter_groupe = "TSF")
+  filtered <- nemetonshiny:::ug_list(projet, filter_groupe = "TSF")
   expect_equal(nrow(filtered), 1)
 
-  filtered_none <- nemetonShiny:::ug_list(projet, filter_groupe = "HSN")
+  filtered_none <- nemetonshiny:::ug_list(projet, filter_groupe = "HSN")
   expect_equal(nrow(filtered_none), 0)
 })
 
@@ -383,9 +383,9 @@ test_that("ug_list filters by groupe", {
 
 test_that("ug_build_sf creates valid sf with one row per UG", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
-  ug_sf <- nemetonShiny:::ug_build_sf(projet)
+  ug_sf <- nemetonshiny:::ug_build_sf(projet)
 
   expect_true(inherits(ug_sf, "sf"))
   expect_equal(nrow(ug_sf), 3)
@@ -395,10 +395,10 @@ test_that("ug_build_sf creates valid sf with one row per UG", {
 
 test_that("ug_build_sf after merge has fewer rows", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
-  projet <- nemetonShiny:::ug_merge(projet, projet$ugs$ug_id[1:2], "Merged")
+  projet <- nemetonshiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_merge(projet, projet$ugs$ug_id[1:2], "Merged")
 
-  ug_sf <- nemetonShiny:::ug_build_sf(projet)
+  ug_sf <- nemetonshiny:::ug_build_sf(projet)
   expect_equal(nrow(ug_sf), 2)
 
   merged_row <- ug_sf[ug_sf$label == "Merged", ]
@@ -413,13 +413,13 @@ test_that("ug_build_sf after merge has fewer rows", {
 
 test_that("has_ug_data returns FALSE for bare project", {
   projet <- create_test_projet()
-  expect_false(nemetonShiny:::has_ug_data(projet))
+  expect_false(nemetonshiny:::has_ug_data(projet))
 })
 
 test_that("has_ug_data returns TRUE after init", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
-  expect_true(nemetonShiny:::has_ug_data(projet))
+  projet <- nemetonshiny:::ug_init_default(projet)
+  expect_true(nemetonshiny:::has_ug_data(projet))
 })
 
 
@@ -429,20 +429,20 @@ test_that("has_ug_data returns TRUE after init", {
 
 test_that("projet_validate catches orphan tenements (no UG)", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   # Manually break invariant
   projet$tenements$ug_id[1] <- NA_character_
 
   expect_error(
-    nemetonShiny:::projet_validate(projet),
+    nemetonshiny:::projet_validate(projet),
     "Invariant 2"
   )
 })
 
 test_that("projet_validate catches empty UG", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   # Add an empty UG manually
   projet$ugs <- rbind(projet$ugs, data.frame(
@@ -451,19 +451,19 @@ test_that("projet_validate catches empty UG", {
   ))
 
   expect_error(
-    nemetonShiny:::projet_validate(projet),
+    nemetonshiny:::projet_validate(projet),
     "Invariant 3"
   )
 })
 
 test_that("projet_validate catches tenements without parent parcel", {
   projet <- create_test_projet()
-  projet <- nemetonShiny:::ug_init_default(projet)
+  projet <- nemetonshiny:::ug_init_default(projet)
 
   projet$tenements$parent_parcelle_id[1] <- NA_character_
 
   expect_error(
-    nemetonShiny:::projet_validate(projet),
+    nemetonshiny:::projet_validate(projet),
     "Invariant 4"
   )
 })

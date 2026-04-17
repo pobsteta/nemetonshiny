@@ -9,7 +9,7 @@ test_that("app_add_external_resources returns a valid Shiny tagList", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      result <- nemetonShiny:::app_add_external_resources()
+      result <- nemetonshiny:::app_add_external_resources()
 
       # Should return a tagList (which is a list of shiny tags)
       expect_true(inherits(result, "shiny.tag.list") || is.list(result))
@@ -21,7 +21,7 @@ test_that("app_add_external_resources contains CSS link tag", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      result <- nemetonShiny:::app_add_external_resources()
+      result <- nemetonshiny:::app_add_external_resources()
 
       # Use renderTags to get full HTML including head content
       rendered <- htmltools::renderTags(result)
@@ -40,7 +40,7 @@ test_that("app_add_external_resources contains JS script tag", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      result <- nemetonShiny:::app_add_external_resources()
+      result <- nemetonshiny:::app_add_external_resources()
 
       # Use renderTags to get full HTML including head content
       rendered <- htmltools::renderTags(result)
@@ -59,7 +59,7 @@ test_that("app_add_external_resources contains viewport meta tag", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      result <- nemetonShiny:::app_add_external_resources()
+      result <- nemetonshiny:::app_add_external_resources()
 
       rendered <- htmltools::renderTags(result)
       full_html <- paste(rendered$head, rendered$html)
@@ -77,7 +77,7 @@ test_that("app_add_external_resources contains favicon link", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      result <- nemetonShiny:::app_add_external_resources()
+      result <- nemetonshiny:::app_add_external_resources()
 
       rendered <- htmltools::renderTags(result)
       full_html <- paste(rendered$head, rendered$html)
@@ -95,7 +95,7 @@ test_that("app_add_external_resources contains theme-color meta tag", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      result <- nemetonShiny:::app_add_external_resources()
+      result <- nemetonshiny:::app_add_external_resources()
 
       rendered <- htmltools::renderTags(result)
       full_html <- paste(rendered$head, rendered$html)
@@ -113,7 +113,7 @@ test_that("app_add_external_resources contains inline critical CSS", {
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      result <- nemetonShiny:::app_add_external_resources()
+      result <- nemetonshiny:::app_add_external_resources()
 
       rendered <- htmltools::renderTags(result)
       full_html <- paste(rendered$head, rendered$html)
@@ -131,7 +131,7 @@ test_that("app_add_external_resources head content includes link and meta tags",
   with_mocked_bindings(
     get_app_options = function() list(language = "en"),
     {
-      result <- nemetonShiny:::app_add_external_resources()
+      result <- nemetonshiny:::app_add_external_resources()
 
       rendered <- htmltools::renderTags(result)
       head_html <- rendered$head

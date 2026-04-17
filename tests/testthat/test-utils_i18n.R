@@ -6,7 +6,7 @@
 # ==============================================================================
 
 test_that("TRANSLATIONS contains required keys", {
-  translations <- nemetonShiny:::TRANSLATIONS
+  translations <- nemetonshiny:::TRANSLATIONS
 
   required_keys <- c(
     "app_title",
@@ -28,7 +28,7 @@ test_that("TRANSLATIONS contains required keys", {
 })
 
 test_that("All translations have both fr and en versions", {
-  translations <- nemetonShiny:::TRANSLATIONS
+  translations <- nemetonshiny:::TRANSLATIONS
 
   for (key in names(translations)) {
     translation <- translations[[key]]
@@ -45,7 +45,7 @@ test_that("All translations have both fr and en versions", {
 })
 
 test_that("TRANSLATIONS contains navigation keys", {
-  translations <- nemetonShiny:::TRANSLATIONS
+  translations <- nemetonshiny:::TRANSLATIONS
 
   nav_keys <- c("tab_selection", "tab_synthesis", "tab_families")
 
@@ -57,7 +57,7 @@ test_that("TRANSLATIONS contains navigation keys", {
 })
 
 test_that("TRANSLATIONS contains all indicator keys", {
-  translations <- nemetonShiny:::TRANSLATIONS
+  translations <- nemetonshiny:::TRANSLATIONS
 
   indicator_keys <- c(
     "indicator_C1", "indicator_C2",
@@ -83,7 +83,7 @@ test_that("TRANSLATIONS contains all indicator keys", {
 })
 
 test_that("TRANSLATIONS contains error message keys", {
-  translations <- nemetonShiny:::TRANSLATIONS
+  translations <- nemetonshiny:::TRANSLATIONS
 
   error_keys <- c(
     "error", "error_api_cadastre", "error_no_parcels",
@@ -100,7 +100,7 @@ test_that("TRANSLATIONS contains error message keys", {
 })
 
 test_that("TRANSLATIONS contains project status keys", {
-  translations <- nemetonShiny:::TRANSLATIONS
+  translations <- nemetonshiny:::TRANSLATIONS
 
   status_keys <- c(
     "status_draft", "status_downloading", "status_computing",
@@ -116,7 +116,7 @@ test_that("TRANSLATIONS contains project status keys", {
 })
 
 test_that("TRANSLATIONS contains data source keys", {
-  translations <- nemetonShiny:::TRANSLATIONS
+  translations <- nemetonshiny:::TRANSLATIONS
 
   source_keys <- c(
     "source_ndvi", "source_dem", "source_forest_cover",
@@ -138,7 +138,7 @@ test_that("TRANSLATIONS contains data source keys", {
 # ==============================================================================
 
 test_that("get_i18n returns a translator object", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   expect_s3_class(i18n, "nemeton_i18n")
   expect_equal(i18n$language, "fr")
@@ -148,22 +148,22 @@ test_that("get_i18n returns a translator object", {
 })
 
 test_that("get_i18n defaults to valid language", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   expect_equal(i18n_fr$language, "fr")
   expect_equal(i18n_en$language, "en")
 })
 
 test_that("get_i18n rejects invalid language", {
-  expect_error(nemetonShiny:::get_i18n("de"))
-  expect_error(nemetonShiny:::get_i18n("es"))
-  expect_error(nemetonShiny:::get_i18n("invalid"))
-  expect_error(nemetonShiny:::get_i18n(""))
+  expect_error(nemetonshiny:::get_i18n("de"))
+  expect_error(nemetonshiny:::get_i18n("es"))
+  expect_error(nemetonshiny:::get_i18n("invalid"))
+  expect_error(nemetonshiny:::get_i18n(""))
 })
 
 test_that("get_i18n creates proper class structure", {
-  i18n <- nemetonShiny:::get_i18n("en")
+  i18n <- nemetonshiny:::get_i18n("en")
 
   expect_true("nemeton_i18n" %in% class(i18n))
   expect_true("list" %in% class(i18n))
@@ -175,8 +175,8 @@ test_that("get_i18n creates proper class structure", {
 # ==============================================================================
 
 test_that("Translator t() function returns correct translations", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   # French
 
@@ -189,7 +189,7 @@ test_that("Translator t() function returns correct translations", {
 })
 
 test_that("Translator t() returns key for missing translations", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   # Non-existent key should return the key itself
   expect_warning(
@@ -200,7 +200,7 @@ test_that("Translator t() returns key for missing translations", {
 })
 
 test_that("Translator t() supports string interpolation", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   # Test with placeholder
   result <- i18n$t("computing_indicator", indicator = "C1")
@@ -208,8 +208,8 @@ test_that("Translator t() supports string interpolation", {
 })
 
 test_that("Translator t() handles multiple placeholders", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   # Test alert_many_na which has {n} and {total} placeholders
   result_fr <- i18n_fr$t("alert_many_na", n = 5, total = 20)
@@ -222,7 +222,7 @@ test_that("Translator t() handles multiple placeholders", {
 })
 
 test_that("Translator t() returns character type", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   result <- i18n$t("app_title")
   expect_type(result, "character")
@@ -230,8 +230,8 @@ test_that("Translator t() returns character type", {
 })
 
 test_that("Translator t() handles downloading_source with placeholder", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   result_fr <- i18n_fr$t("downloading_source", source = "DEM")
   expect_true(grepl("DEM", result_fr))
@@ -243,7 +243,7 @@ test_that("Translator t() handles downloading_source with placeholder", {
 })
 
 test_that("Translator t() handles ai_no_api_key with placeholder", {
-  i18n <- nemetonShiny:::get_i18n("en")
+  i18n <- nemetonshiny:::get_i18n("en")
 
   result <- i18n$t("ai_no_api_key", key_var = "OPENAI_API_KEY")
   expect_true(grepl("OPENAI_API_KEY", result))
@@ -251,7 +251,7 @@ test_that("Translator t() handles ai_no_api_key with placeholder", {
 })
 
 test_that("Translator t() handles missing_indicator with reason placeholder", {
-  i18n <- nemetonShiny:::get_i18n("en")
+  i18n <- nemetonshiny:::get_i18n("en")
 
   result <- i18n$t("missing_indicator", reason = "No LiDAR data")
   expect_true(grepl("No LiDAR data", result))
@@ -262,7 +262,7 @@ test_that("Translator t() handles missing_indicator with reason placeholder", {
 # ==============================================================================
 
 test_that("Translator keys() returns all keys", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
   keys <- i18n$keys()
 
   expect_type(keys, "character")
@@ -271,8 +271,8 @@ test_that("Translator keys() returns all keys", {
 })
 
 test_that("Translator keys() returns same keys for both languages", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   keys_fr <- i18n_fr$keys()
   keys_en <- i18n_en$keys()
@@ -285,7 +285,7 @@ test_that("Translator keys() returns same keys for both languages", {
 # ==============================================================================
 
 test_that("Translator has() checks key existence", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   expect_true(i18n$has("app_title"))
   expect_true(i18n$has("help"))
@@ -293,7 +293,7 @@ test_that("Translator has() checks key existence", {
 })
 
 test_that("Translator has() returns boolean", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   expect_type(i18n$has("app_title"), "logical")
   expect_type(i18n$has("missing"), "logical")
@@ -304,13 +304,13 @@ test_that("Translator has() returns boolean", {
 # ==============================================================================
 
 test_that("get_available_languages returns fr and en", {
-  langs <- nemetonShiny:::get_available_languages()
+  langs <- nemetonshiny:::get_available_languages()
 
   expect_equal(langs, c("fr", "en"))
 })
 
 test_that("get_available_languages returns character vector", {
-  langs <- nemetonShiny:::get_available_languages()
+  langs <- nemetonshiny:::get_available_languages()
 
   expect_type(langs, "character")
   expect_length(langs, 2)
@@ -321,10 +321,10 @@ test_that("get_available_languages returns character vector", {
 # ==============================================================================
 
 test_that("print.nemeton_i18n displays translator information", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   # Call the print method directly since it's not exported
-  output <- capture.output(nemetonShiny:::print.nemeton_i18n(i18n))
+  output <- capture.output(nemetonshiny:::print.nemeton_i18n(i18n))
 
   expect_true(any(grepl("nemeton i18n translator", output)))
   expect_true(any(grepl("fr", output)))
@@ -332,21 +332,21 @@ test_that("print.nemeton_i18n displays translator information", {
 })
 
 test_that("print.nemeton_i18n returns object invisibly", {
-  i18n <- nemetonShiny:::get_i18n("en")
+  i18n <- nemetonshiny:::get_i18n("en")
 
   # Call the print method directly
-  result <- capture.output(returned <- nemetonShiny:::print.nemeton_i18n(i18n))
+  result <- capture.output(returned <- nemetonshiny:::print.nemeton_i18n(i18n))
 
   expect_identical(returned, i18n)
 })
 
 test_that("print.nemeton_i18n works for both languages", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   # Call the print method directly
-  output_fr <- capture.output(nemetonShiny:::print.nemeton_i18n(i18n_fr))
-  output_en <- capture.output(nemetonShiny:::print.nemeton_i18n(i18n_en))
+  output_fr <- capture.output(nemetonshiny:::print.nemeton_i18n(i18n_fr))
+  output_en <- capture.output(nemetonshiny:::print.nemeton_i18n(i18n_en))
 
   expect_true(any(grepl("\\[fr\\]", output_fr)))
   expect_true(any(grepl("\\[en\\]", output_en)))
@@ -357,103 +357,103 @@ test_that("print.nemeton_i18n works for both languages", {
 # ==============================================================================
 
 test_that("translate_task_message handles NULL and empty string", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
-  result_null <- nemetonShiny:::translate_task_message(NULL, i18n)
+  result_null <- nemetonshiny:::translate_task_message(NULL, i18n)
   expect_equal(result_null, "")
 
-  result_empty <- nemetonShiny:::translate_task_message("", i18n)
+  result_empty <- nemetonshiny:::translate_task_message("", i18n)
   expect_equal(result_empty, "")
 })
 
 test_that("translate_task_message handles special task keywords", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   # Test download_start
-  result_fr <- nemetonShiny:::translate_task_message("download_start", i18n_fr)
+  result_fr <- nemetonshiny:::translate_task_message("download_start", i18n_fr)
   expect_true(nchar(result_fr) > 0)
 
-  result_en <- nemetonShiny:::translate_task_message("download_start", i18n_en)
+  result_en <- nemetonshiny:::translate_task_message("download_start", i18n_en)
   expect_true(nchar(result_en) > 0)
 
   # Test compute_start
-  result <- nemetonShiny:::translate_task_message("compute_start", i18n_en)
+  result <- nemetonshiny:::translate_task_message("compute_start", i18n_en)
   expect_true(nchar(result) > 0)
 
   # Test complete
-  result <- nemetonShiny:::translate_task_message("complete", i18n_en)
+  result <- nemetonshiny:::translate_task_message("complete", i18n_en)
   expect_true(nchar(result) > 0)
 
   # Test error
-  result <- nemetonShiny:::translate_task_message("error", i18n_en)
+  result <- nemetonshiny:::translate_task_message("error", i18n_en)
   expect_true(nchar(result) > 0)
 
   # Test resuming
-  result <- nemetonShiny:::translate_task_message("resuming", i18n_en)
+  result <- nemetonshiny:::translate_task_message("resuming", i18n_en)
   expect_true(nchar(result) > 0)
 })
 
 test_that("translate_task_message handles download_complete", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
-  result_fr <- nemetonShiny:::translate_task_message("download_complete", i18n_fr)
+  result_fr <- nemetonshiny:::translate_task_message("download_complete", i18n_fr)
   expect_true(grepl("termin\u00e9", result_fr, ignore.case = TRUE))
 
-  result_en <- nemetonShiny:::translate_task_message("download_complete", i18n_en)
+  result_en <- nemetonshiny:::translate_task_message("download_complete", i18n_en)
   expect_true(grepl("complete", result_en, ignore.case = TRUE))
 })
 
 test_that("translate_task_message handles download:source_key format", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   # Test with source_ndvi
-  result_fr <- nemetonShiny:::translate_task_message("download:source_ndvi", i18n_fr)
+  result_fr <- nemetonshiny:::translate_task_message("download:source_ndvi", i18n_fr)
   expect_true(grepl("T\u00e9l\u00e9chargement", result_fr))
 
-  result_en <- nemetonShiny:::translate_task_message("download:source_ndvi", i18n_en)
+  result_en <- nemetonshiny:::translate_task_message("download:source_ndvi", i18n_en)
   expect_true(grepl("Downloading", result_en))
 
   # Test with source_dem
-  result <- nemetonShiny:::translate_task_message("download:source_dem", i18n_en)
+  result <- nemetonshiny:::translate_task_message("download:source_dem", i18n_en)
   expect_true(grepl("Downloading", result))
 })
 
 test_that("translate_task_message handles compute:indicator_key format", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   # Test with indicator key
-  result_fr <- nemetonShiny:::translate_task_message("compute:indicateur_c1_biomasse", i18n_fr)
+  result_fr <- nemetonshiny:::translate_task_message("compute:indicateur_c1_biomasse", i18n_fr)
   expect_true(grepl("Calcul", result_fr))
 
-  result_en <- nemetonShiny:::translate_task_message("compute:indicateur_c1_biomasse", i18n_en)
+  result_en <- nemetonshiny:::translate_task_message("compute:indicateur_c1_biomasse", i18n_en)
   expect_true(grepl("Computing", result_en))
 
   # Test with another indicator
-  result <- nemetonShiny:::translate_task_message("compute:indicateur_w3_humidite", i18n_en)
+  result <- nemetonshiny:::translate_task_message("compute:indicateur_w3_humidite", i18n_en)
   expect_true(grepl("Computing", result))
 })
 
 test_that("translate_task_message returns task as-is for unknown format", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
-  result <- nemetonShiny:::translate_task_message("unknown_task_format", i18n)
+  result <- nemetonshiny:::translate_task_message("unknown_task_format", i18n)
   expect_equal(result, "unknown_task_format")
 
-  result2 <- nemetonShiny:::translate_task_message("some_random_message", i18n)
+  result2 <- nemetonshiny:::translate_task_message("some_random_message", i18n)
   expect_equal(result2, "some_random_message")
 })
 
 test_that("translate_task_message works with both languages", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   # Same task should produce different results for different languages
-  result_fr <- nemetonShiny:::translate_task_message("download_start", i18n_fr)
-  result_en <- nemetonShiny:::translate_task_message("download_start", i18n_en)
+  result_fr <- nemetonshiny:::translate_task_message("download_start", i18n_fr)
+  result_en <- nemetonshiny:::translate_task_message("download_start", i18n_en)
 
   # Both should have content
   expect_true(nchar(result_fr) > 0)
@@ -473,7 +473,7 @@ test_that("export_translations_json creates output directory if needed", {
 
   expect_false(dir.exists(temp_dir))
 
-  nemetonShiny:::export_translations_json(temp_dir)
+  nemetonshiny:::export_translations_json(temp_dir)
 
   expect_true(dir.exists(temp_dir))
 
@@ -487,7 +487,7 @@ test_that("export_translations_json creates fr.json and en.json files", {
     unlink(temp_dir, recursive = TRUE)
   }
 
-  nemetonShiny:::export_translations_json(temp_dir)
+  nemetonshiny:::export_translations_json(temp_dir)
 
   expect_true(file.exists(file.path(temp_dir, "fr.json")))
   expect_true(file.exists(file.path(temp_dir, "en.json")))
@@ -502,7 +502,7 @@ test_that("export_translations_json creates valid JSON files", {
     unlink(temp_dir, recursive = TRUE)
   }
 
-  nemetonShiny:::export_translations_json(temp_dir)
+  nemetonshiny:::export_translations_json(temp_dir)
 
   # Read and parse JSON files
   fr_content <- jsonlite::read_json(file.path(temp_dir, "fr.json"))
@@ -525,7 +525,7 @@ test_that("export_translations_json returns NULL invisibly", {
     unlink(temp_dir, recursive = TRUE)
   }
 
-  result <- nemetonShiny:::export_translations_json(temp_dir)
+  result <- nemetonshiny:::export_translations_json(temp_dir)
 
   expect_null(result)
 
@@ -540,7 +540,7 @@ test_that("export_translations_json works with existing directory", {
   expect_true(dir.exists(temp_dir))
 
   # Should not error when directory exists
-  expect_no_error(nemetonShiny:::export_translations_json(temp_dir))
+  expect_no_error(nemetonshiny:::export_translations_json(temp_dir))
 
   expect_true(file.exists(file.path(temp_dir, "fr.json")))
   expect_true(file.exists(file.path(temp_dir, "en.json")))
@@ -554,10 +554,10 @@ test_that("export_translations_json works with existing directory", {
 # ==============================================================================
 
 test_that("All 12 family names are translated", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
-  family_keys <- unname(nemetonShiny:::FAMILLE_NMT_MAP[c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")])
+  family_keys <- unname(nemetonshiny:::FAMILLE_NMT_MAP[c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")])
 
   for (key in family_keys) {
     expect_true(i18n_fr$has(key), info = paste("Missing FR:", key))
@@ -570,10 +570,10 @@ test_that("All 12 family names are translated", {
 })
 
 test_that("All 12 family descriptions are translated", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
-  family_desc_keys <- paste0(unname(nemetonShiny:::FAMILLE_NMT_MAP[c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")]), "_desc")
+  family_desc_keys <- paste0(unname(nemetonshiny:::FAMILLE_NMT_MAP[c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")]), "_desc")
 
   for (key in family_desc_keys) {
     expect_true(i18n_fr$has(key), info = paste("Missing FR desc:", key))
@@ -586,7 +586,7 @@ test_that("All 12 family descriptions are translated", {
 # ==============================================================================
 
 test_that("Tour step translations exist", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   tour_keys <- c(
     "tour_search_title", "tour_search_desc",
@@ -601,7 +601,7 @@ test_that("Tour step translations exist", {
 })
 
 test_that("Help step translations exist", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   help_keys <- c(
     "help_title", "help_intro", "help_steps_title",
@@ -619,7 +619,7 @@ test_that("Help step translations exist", {
 # ==============================================================================
 
 test_that("Progress phase translations exist", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   phase_keys <- c(
     "phase_init", "phase_downloading",
@@ -632,7 +632,7 @@ test_that("Progress phase translations exist", {
 })
 
 test_that("Task message translations exist", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   task_keys <- c(
     "task_download_start", "task_compute_start",
@@ -649,10 +649,10 @@ test_that("Task message translations exist", {
 # ==============================================================================
 
 test_that("Expert label translation exists", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
   expect_true(i18n$has("expert_label"), info = "Missing expert_label key")
 
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_en <- nemetonshiny:::get_i18n("en")
   expect_true(i18n_en$has("expert_label"), info = "Missing expert_label key (en)")
 })
 
@@ -661,7 +661,7 @@ test_that("Expert label translation exists", {
 # ==============================================================================
 
 test_that("Statistic translations exist", {
-  i18n <- nemetonShiny:::get_i18n("fr")
+  i18n <- nemetonshiny:::get_i18n("fr")
 
   stat_keys <- c(
     "stat_min", "stat_max", "stat_mean",
@@ -678,8 +678,8 @@ test_that("Statistic translations exist", {
 # ==============================================================================
 
 test_that("JSON translation files exist", {
-  fr_path <- system.file("app/i18n/fr.json", package = "nemetonShiny")
-  en_path <- system.file("app/i18n/en.json", package = "nemetonShiny")
+  fr_path <- system.file("app/i18n/fr.json", package = "nemetonshiny")
+  en_path <- system.file("app/i18n/en.json", package = "nemetonshiny")
 
   # Skip if package not installed (during development)
   skip_if(fr_path == "")
@@ -693,8 +693,8 @@ test_that("JSON translation files exist", {
 # ==============================================================================
 
 test_that("Computation summary translations work with sprintf", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   # Get the raw translation strings
   summary_fr <- i18n_fr$t("computation_summary")
@@ -711,8 +711,8 @@ test_that("Computation summary translations work with sprintf", {
 })
 
 test_that("Computation failed translations work with sprintf", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   failed_fr <- i18n_fr$t("computation_failed")
   failed_en <- i18n_en$t("computation_failed")
@@ -725,8 +725,8 @@ test_that("Computation failed translations work with sprintf", {
 })
 
 test_that("and_n_more_errors translations work with sprintf", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   errors_fr <- i18n_fr$t("and_n_more_errors")
   errors_en <- i18n_en$t("and_n_more_errors")
@@ -743,7 +743,7 @@ test_that("and_n_more_errors translations work with sprintf", {
 # ==============================================================================
 
 test_that("French translations contain proper accented characters", {
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
 
   # app_title should have accented e
   app_title <- i18n_fr$t("app_title")

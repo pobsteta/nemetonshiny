@@ -3,10 +3,10 @@
 #
 # Historical note: earlier versions used `foo <- nemeton:::foo` which (a) emits
 # a NOTE about ':::' on non-exported objects, and (b) more importantly *inlines*
-# nemeton's function body into nemetonShiny's namespace at install time --
+# nemeton's function body into nemetonshiny's namespace at install time --
 # meaning R CMD check's codetools then sees every package that those inlined
 # functions use internally (e.g. exactextractr) and reports them as undeclared
-# imports on nemetonShiny. To avoid both issues we now wrap each internal
+# imports on nemetonshiny. To avoid both issues we now wrap each internal
 # helper in a thin closure that only resolves the symbol *at runtime*:
 # codetools sees only the wrapper, not the underlying implementation.
 

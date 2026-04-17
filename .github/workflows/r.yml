@@ -107,7 +107,7 @@ jobs:
 
       - name: Run tests
         run: |
-          testthat::test_package("nemetonShiny", reporter = "summary")
+          testthat::test_package("nemetonshiny", reporter = "summary")
         shell: Rscript {0}
 
   # ============================================================

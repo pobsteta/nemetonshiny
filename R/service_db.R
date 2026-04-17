@@ -121,7 +121,7 @@ db_init_schema <- function(con = NULL) {
   }
   on.exit(if (own_con) close_db_connection(con))
 
-  schema_file <- system.file("sql", "schema.sql", package = "nemetonShiny")
+  schema_file <- system.file("sql", "schema.sql", package = "nemetonshiny")
   if (!nzchar(schema_file)) {
     cli::cli_abort("Schema file not found: inst/sql/schema.sql")
   }

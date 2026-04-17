@@ -46,11 +46,11 @@ RUN install2.r --error --skipinstalled \
     ellmer \
     shinyOAuth
 
-# Copier le package nemetonShiny
+# Copier le package nemetonshiny
 WORKDIR /app
 COPY . /app
 
-# Installer le package nemetonShiny et ses dependances restantes
+# Installer le package nemetonshiny et ses dependances restantes
 RUN R -e "devtools::install_deps('.', dependencies = TRUE, upgrade = 'never')" \
     && R -e "devtools::install('.', upgrade = 'never')"
 
@@ -60,4 +60,4 @@ EXPOSE 3838
 ENV NEMETON_LANG=fr
 ENV NEMETON_PAYS=FR
 
-CMD ["R", "-e", "nemetonShiny::run_app(options = list(port = 3838, host = '0.0.0.0', launch.browser = FALSE))"]
+CMD ["R", "-e", "nemetonshiny::run_app(options = list(port = 3838, host = '0.0.0.0', launch.browser = FALSE))"]

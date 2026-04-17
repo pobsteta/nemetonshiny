@@ -3,17 +3,17 @@
 
 test_that("get_cadastral_parcels validates INSEE code format", {
   expect_error(
-    nemetonShiny:::get_cadastral_parcels("123"),
+    nemetonshiny:::get_cadastral_parcels("123"),
     regexp = "Invalid INSEE"
   )
 
   expect_error(
-    nemetonShiny:::get_cadastral_parcels("ABCDE"),
+    nemetonshiny:::get_cadastral_parcels("ABCDE"),
     regexp = "Invalid INSEE"
   )
 
   expect_error(
-    nemetonShiny:::get_cadastral_parcels(""),
+    nemetonshiny:::get_cadastral_parcels(""),
     regexp = "Invalid INSEE"
   )
 })
@@ -25,7 +25,7 @@ test_that("get_cadastral_parcels accepts valid INSEE codes", {
   # Don't actually call the API, just check format validation passes
   # Use a small commune for faster test
   expect_error(
-    nemetonShiny:::get_cadastral_parcels("01001"),
+    nemetonshiny:::get_cadastral_parcels("01001"),
     regexp = NA  # Should not error on format
   )
 })
@@ -47,7 +47,7 @@ test_that("standardize_parcels creates required columns", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::standardize_parcels(mock_parcels, "01001")
+  result <- nemetonshiny:::standardize_parcels(mock_parcels, "01001")
 
   # Check required columns exist
   expect_true("id" %in% names(result))
@@ -74,7 +74,7 @@ test_that("standardize_parcels generates IDs if missing", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::standardize_parcels(mock_parcels, "01001")
+  result <- nemetonshiny:::standardize_parcels(mock_parcels, "01001")
 
   expect_true("id" %in% names(result))
   expect_true(grepl("^01001_", result$id[1]))
@@ -100,7 +100,7 @@ test_that("standardize_parcels calculates area if missing", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::standardize_parcels(mock_parcels, "01001")
+  result <- nemetonshiny:::standardize_parcels(mock_parcels, "01001")
 
   expect_true("contenance" %in% names(result))
   expect_true(result$contenance[1] > 0)
@@ -121,7 +121,7 @@ test_that("get_parcel_by_id returns correct parcel", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::get_parcel_by_id("parcel_1", mock_parcels)
+  result <- nemetonshiny:::get_parcel_by_id("parcel_1", mock_parcels)
 
   expect_equal(nrow(result), 1)
   expect_equal(result$id, "parcel_1")
@@ -141,7 +141,7 @@ test_that("get_parcel_by_id returns NULL for non-existent ID", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::get_parcel_by_id("nonexistent", mock_parcels)
+  result <- nemetonshiny:::get_parcel_by_id("nonexistent", mock_parcels)
 
   expect_null(result)
 })
@@ -161,7 +161,7 @@ test_that("filter_selected_parcels returns subset", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::filter_selected_parcels(mock_parcels, c("p1", "p3"))
+  result <- nemetonshiny:::filter_selected_parcels(mock_parcels, c("p1", "p3"))
 
   expect_equal(nrow(result), 2)
   expect_true("p1" %in% result$id)
@@ -182,7 +182,7 @@ test_that("filter_selected_parcels handles empty selection", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::filter_selected_parcels(mock_parcels, character(0))
+  result <- nemetonshiny:::filter_selected_parcels(mock_parcels, character(0))
 
   expect_equal(nrow(result), 0)
 })
@@ -202,7 +202,7 @@ test_that("calculate_parcel_stats returns correct values", {
     geometry = mock_geom
   )
 
-  stats <- nemetonShiny:::calculate_parcel_stats(mock_parcels)
+  stats <- nemetonshiny:::calculate_parcel_stats(mock_parcels)
 
   expect_equal(stats$count, 2)
   expect_equal(stats$total_area_ha, 3)  # 30000 m² = 3 ha
@@ -212,7 +212,7 @@ test_that("calculate_parcel_stats returns correct values", {
 })
 
 test_that("calculate_parcel_stats handles NULL input", {
-  stats <- nemetonShiny:::calculate_parcel_stats(NULL)
+  stats <- nemetonshiny:::calculate_parcel_stats(NULL)
 
   expect_equal(stats$count, 0)
   expect_equal(stats$total_area_ha, 0)
@@ -228,7 +228,7 @@ test_that("calculate_parcel_stats handles empty data", {
     geometry = mock_geom
   )
 
-  stats <- nemetonShiny:::calculate_parcel_stats(mock_parcels)
+  stats <- nemetonshiny:::calculate_parcel_stats(mock_parcels)
 
   expect_equal(stats$count, 0)
   expect_equal(stats$total_area_ha, 0)
@@ -250,7 +250,7 @@ test_that("format_parcel_info returns French format", {
     geometry = mock_geom
   )[1, ]
 
-  result <- nemetonShiny:::format_parcel_info(mock_parcel, "fr")
+  result <- nemetonshiny:::format_parcel_info(mock_parcel, "fr")
 
   expect_true(grepl("Parcelle", result))
   expect_true(grepl("Section", result))
@@ -274,7 +274,7 @@ test_that("format_parcel_info returns English format", {
     geometry = mock_geom
   )[1, ]
 
-  result <- nemetonShiny:::format_parcel_info(mock_parcel, "en")
+  result <- nemetonshiny:::format_parcel_info(mock_parcel, "en")
 
   expect_true(grepl("Parcel", result))
   expect_true(grepl("Area", result))
@@ -296,7 +296,7 @@ test_that("create_parcel_popup returns HTML", {
     geometry = mock_geom
   )[1, ]
 
-  result <- nemetonShiny:::create_parcel_popup(mock_parcel)
+  result <- nemetonshiny:::create_parcel_popup(mock_parcel)
 
   expect_type(result, "character")
   expect_true(grepl("<strong>", result))
@@ -318,7 +318,7 @@ test_that("create_parcel_label returns HTML with section and numero", {
     lieudit = NULL
   )
 
-  result <- nemetonShiny:::create_parcel_label(parcel)
+  result <- nemetonshiny:::create_parcel_label(parcel)
 
   expect_type(result, "character")
   expect_true(grepl("<b>AB 0042</b>", result, fixed = TRUE))
@@ -335,7 +335,7 @@ test_that("create_parcel_label includes area in hectares", {
     lieudit = NULL
   )
 
-  result <- nemetonShiny:::create_parcel_label(parcel)
+  result <- nemetonshiny:::create_parcel_label(parcel)
 
   # 50000 m² = 5 ha
   expect_true(grepl("<b>5 ha</b>", result, fixed = TRUE))
@@ -351,7 +351,7 @@ test_that("create_parcel_label handles missing contenance (NA)", {
     lieudit = NULL
   )
 
-  result <- nemetonShiny:::create_parcel_label(parcel)
+  result <- nemetonshiny:::create_parcel_label(parcel)
 
   expect_type(result, "character")
   # Should not contain "ha" area text when contenance is NA
@@ -371,7 +371,7 @@ test_that("create_parcel_label includes lieu-dit when available (nom_com column)
     lieudit = NULL
   )
 
-  result <- nemetonShiny:::create_parcel_label(parcel)
+  result <- nemetonshiny:::create_parcel_label(parcel)
 
   expect_true(grepl("Les Grands Bois", result, fixed = TRUE))
   expect_true(grepl("color:#666", result, fixed = TRUE))
@@ -387,7 +387,7 @@ test_that("create_parcel_label excludes lieu-dit when 'NA' string", {
     lieudit = NULL
   )
 
-  result <- nemetonShiny:::create_parcel_label(parcel)
+  result <- nemetonshiny:::create_parcel_label(parcel)
 
   # Should NOT include the lieu-dit span when value is "NA" string
   expect_false(grepl("color:#666", result, fixed = TRUE))
@@ -403,7 +403,7 @@ test_that("create_parcel_label handles missing section/numero gracefully (shows 
     lieudit = NULL
   )
 
-  result <- nemetonShiny:::create_parcel_label(parcel)
+  result <- nemetonshiny:::create_parcel_label(parcel)
 
   expect_type(result, "character")
   # Should show "-" for missing section and numero
@@ -428,7 +428,7 @@ test_that("standardize_parcels uses idu column for id", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::standardize_parcels(mock_parcels, "01001")
+  result <- nemetonshiny:::standardize_parcels(mock_parcels, "01001")
 
   expect_true("id" %in% names(result))
   expect_equal(result$id[1], "01001000A0001")
@@ -446,7 +446,7 @@ test_that("standardize_parcels uses id_parcelle column for id", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::standardize_parcels(mock_parcels, "01001")
+  result <- nemetonshiny:::standardize_parcels(mock_parcels, "01001")
 
   expect_true("id" %in% names(result))
   expect_equal(result$id[1], "PARC_42")
@@ -466,7 +466,7 @@ test_that("standardize_parcels generates IDs when no id column at all", {
     geometry = mock_geom
   )
 
-  result <- nemetonShiny:::standardize_parcels(mock_parcels, "01001")
+  result <- nemetonshiny:::standardize_parcels(mock_parcels, "01001")
 
   expect_true("id" %in% names(result))
   expect_equal(result$id[1], "01001_1")
@@ -493,7 +493,7 @@ test_that("standardize_parcels filters non-polygon geometries", {
 
   # cli_alert_warning does not produce a standard R warning,
   # so just check that it runs and filters correctly
-  result <- nemetonShiny:::standardize_parcels(mock_parcels, "01001")
+  result <- nemetonshiny:::standardize_parcels(mock_parcels, "01001")
 
   # Only the polygon should remain
   expect_equal(nrow(result), 1)
@@ -512,7 +512,7 @@ test_that("standardize_parcels errors when no polygon geometries found", {
   )
 
   expect_error(
-    nemetonShiny:::standardize_parcels(mock_parcels, "01001"),
+    nemetonshiny:::standardize_parcels(mock_parcels, "01001"),
     "No polygon geometries"
   )
 })
@@ -522,13 +522,13 @@ test_that("standardize_parcels errors when no polygon geometries found", {
 test_that("get_cadastral_parcels rejects invalid formats", {
   # Too short
 
-  expect_error(nemetonShiny:::get_cadastral_parcels("123"), "Invalid INSEE")
+  expect_error(nemetonshiny:::get_cadastral_parcels("123"), "Invalid INSEE")
   # Letters that are not A or B
-  expect_error(nemetonShiny:::get_cadastral_parcels("CDEFG"), "Invalid INSEE")
+  expect_error(nemetonshiny:::get_cadastral_parcels("CDEFG"), "Invalid INSEE")
   # Empty
-  expect_error(nemetonShiny:::get_cadastral_parcels(""), "Invalid INSEE")
+  expect_error(nemetonshiny:::get_cadastral_parcels(""), "Invalid INSEE")
   # Special characters
-  expect_error(nemetonShiny:::get_cadastral_parcels("12!45"), "Invalid INSEE")
+  expect_error(nemetonshiny:::get_cadastral_parcels("12!45"), "Invalid INSEE")
 })
 
 test_that("get_cadastral_parcels accepts Corsican codes (2A, 2B)", {
@@ -557,7 +557,7 @@ test_that("calculate_parcel_stats with multiple parcels of varying sizes", {
     geometry = mock_geom
   )
 
-  stats <- nemetonShiny:::calculate_parcel_stats(mock_parcels)
+  stats <- nemetonshiny:::calculate_parcel_stats(mock_parcels)
 
   expect_equal(stats$count, 3)
   expect_equal(stats$total_area_ha, 9)  # (10000+30000+50000)/10000
@@ -578,7 +578,7 @@ test_that("create_parcel_label with lieu_dit column", {
     lieudit = NULL
   )
 
-  result <- nemetonShiny:::create_parcel_label(parcel)
+  result <- nemetonshiny:::create_parcel_label(parcel)
 
   expect_type(result, "character")
   expect_true(grepl("Le Bois Joli", result, fixed = TRUE))
@@ -594,7 +594,7 @@ test_that("create_parcel_label with lieudit column (third fallback)", {
     lieudit = "Les Chataigniers"
   )
 
-  result <- nemetonShiny:::create_parcel_label(parcel)
+  result <- nemetonshiny:::create_parcel_label(parcel)
 
   expect_type(result, "character")
   expect_true(grepl("Les Chataigniers", result, fixed = TRUE))
@@ -610,7 +610,7 @@ test_that("create_parcel_label with NULL contenance", {
     lieudit = NULL
   )
 
-  result <- nemetonShiny:::create_parcel_label(parcel)
+  result <- nemetonshiny:::create_parcel_label(parcel)
 
   expect_type(result, "character")
   # Should not contain area text
@@ -625,10 +625,10 @@ test_that("fetch_api_cadastre requires httr2 package", {
   # We cannot easily mock httr2 requests, but we can verify the function
 
   # exists and starts with the right check
-  expect_true(is.function(nemetonShiny:::fetch_api_cadastre))
+  expect_true(is.function(nemetonshiny:::fetch_api_cadastre))
 })
 
 test_that("fetch_happign_cadastre requires happign package", {
   # Verify function exists
-  expect_true(is.function(nemetonShiny:::fetch_happign_cadastre))
+  expect_true(is.function(nemetonshiny:::fetch_happign_cadastre))
 })

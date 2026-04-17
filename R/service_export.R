@@ -85,7 +85,7 @@ generate_pdf_report <- function(project,
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
   # Copy template to temp directory
-  template_path <- system.file("quarto", "report_template.qmd", package = "nemetonShiny")
+  template_path <- system.file("quarto", "report_template.qmd", package = "nemetonshiny")
   if (!file.exists(template_path)) {
     stop("Report template not found. Package may be incomplete.", call. = FALSE)
   }

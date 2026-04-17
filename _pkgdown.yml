@@ -1,4 +1,4 @@
-url: https://pobsteta.github.io/nemeton_shiny/
+url: https://pobsteta.github.io/nemetonshiny/
 template:
   bootstrap: 5
   bootswatch: flatly
@@ -8,14 +8,14 @@ template:
     success: "#4CAF50"
 
 home:
-  title: "nemetonShiny - Application Shiny pour l'analyse systemique forestiere"
+  title: "nemetonshiny - Application Shiny pour l'analyse systemique forestiere"
   description: >
     Application Shiny/golem pour la plateforme Nemeton. Interface web interactive
     permettant la selection de parcelles cadastrales, le calcul des 31 indicateurs
     biophysiques, la synthese LLM et l'export PDF/GeoPackage.
   links:
   - text: Voir sur GitHub
-    href: https://github.com/pobsteta/nemeton_shiny
+    href: https://github.com/pobsteta/nemetonshiny
   - text: Package coeur (nemeton)
     href: https://github.com/pobsteta/nemeton
 

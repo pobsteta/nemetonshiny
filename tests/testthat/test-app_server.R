@@ -22,11 +22,11 @@ mock_app_state <- function(language = "fr", project_status = "none") {
 # ============================================================
 
 test_that("app_server is a function", {
-  expect_type(nemetonShiny:::app_server, "closure")
+  expect_type(nemetonshiny:::app_server, "closure")
 })
 
 test_that("app_server accepts standard Shiny server parameters", {
-  args <- names(formals(nemetonShiny:::app_server))
+  args <- names(formals(nemetonshiny:::app_server))
 
   expect_true("input" %in% args)
   expect_true("output" %in% args)
@@ -34,7 +34,7 @@ test_that("app_server accepts standard Shiny server parameters", {
 })
 
 test_that("app_server has exactly 3 parameters", {
-  args <- names(formals(nemetonShiny:::app_server))
+  args <- names(formals(nemetonshiny:::app_server))
   expect_length(args, 3)
 })
 
@@ -43,7 +43,7 @@ test_that("app_server has exactly 3 parameters", {
 # ============================================================
 
 test_that("get_departments_list returns named character vector", {
-  deps <- nemetonShiny:::get_departments_list()
+  deps <- nemetonshiny:::get_departments_list()
 
   expect_type(deps, "character")
   expect_true(length(deps) > 90) # France has ~100 departments
@@ -51,7 +51,7 @@ test_that("get_departments_list returns named character vector", {
 })
 
 test_that("get_departments_list contains main French departments", {
-  deps <- nemetonShiny:::get_departments_list()
+  deps <- nemetonshiny:::get_departments_list()
 
   # Check some key departments
   expect_true("01" %in% deps) # Ain
@@ -62,7 +62,7 @@ test_that("get_departments_list contains main French departments", {
 
 test_that("get_departments_list has correct format", {
 
-  deps <- nemetonShiny:::get_departments_list()
+  deps <- nemetonshiny:::get_departments_list()
 
   # Values should be department codes (e.g., "01", "2A", "971")
   # Pattern: 1-3 digits, optionally followed by A or B (for Corsica)
@@ -73,7 +73,7 @@ test_that("get_departments_list has correct format", {
 })
 
 test_that("get_tour_preference returns logical", {
-  result <- nemetonShiny:::get_tour_preference()
+  result <- nemetonshiny:::get_tour_preference()
   expect_type(result, "logical")
 })
 
@@ -82,11 +82,11 @@ test_that("get_tour_preference reads from options", {
   old_opt <- getOption("nemeton.tour_seen")
   options(nemeton.tour_seen = TRUE)
 
-  result <- nemetonShiny:::get_tour_preference()
+  result <- nemetonshiny:::get_tour_preference()
   expect_true(result)
 
   options(nemeton.tour_seen = FALSE)
-  result <- nemetonShiny:::get_tour_preference()
+  result <- nemetonshiny:::get_tour_preference()
   expect_false(result)
 
   # Restore
@@ -120,7 +120,7 @@ test_that("app_server initializes app_state reactive values", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Test that app_state exists
         expect_true(exists("app_state"))
         expect_true(shiny::is.reactivevalues(app_state))
@@ -156,7 +156,7 @@ test_that("app_server initializes selection_state reactive values", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Test that selection_state exists
         expect_true(exists("selection_state"))
         expect_true(shiny::is.reactivevalues(selection_state))
@@ -193,7 +193,7 @@ test_that("app_server initializes compute_state reactive values", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Test that compute_state exists
         expect_true(exists("compute_state"))
         expect_true(shiny::is.reactivevalues(compute_state))
@@ -235,7 +235,7 @@ test_that("app_server handles language change", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Initial language should be French
         expect_equal(app_state$language, "fr")
 
@@ -279,7 +279,7 @@ test_that("app_server language change shows notification",
     {
       # Note: We cannot easily test showNotification in testServer
       # This test verifies that the observeEvent is wired up correctly
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Simulate language change - if it runs without error, the observer is working
         session$setInputs(app_language = "en")
         expect_equal(app_state$language, "en")
@@ -314,7 +314,7 @@ test_that("app_server show_help input triggers modal", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Trigger help button - this should not error
         # We cannot easily test that showModal was called, but we verify the observer works
         session$setInputs(show_help = 1)
@@ -349,7 +349,7 @@ test_that("app_server restart_tour input works", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Trigger restart tour
         session$setInputs(restart_tour = 1)
 
@@ -386,7 +386,7 @@ test_that("app_server tab navigation restricts access when not completed", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Initial status is "none"
         expect_equal(app_state$project_status, "none")
 
@@ -424,7 +424,7 @@ test_that("app_server allows navigation when project is completed", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Set status to completed
         app_state$project_status <- "completed"
         session$flushReact()
@@ -465,7 +465,7 @@ test_that("app_server calls mod_home_server", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         session$flushReact()
       })
     }
@@ -499,7 +499,7 @@ test_that("app_server calls mod_synthesis_server", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         session$flushReact()
       })
     }
@@ -533,7 +533,7 @@ test_that("app_server passes app_state to modules", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         session$flushReact()
       })
     }
@@ -573,7 +573,7 @@ test_that("app_server lazy loads family modules on navigation", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Initially no family modules should be loaded
         expect_length(family_calls, 0)
 
@@ -615,7 +615,7 @@ test_that("app_server does not reload already initialized family modules", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Navigate to Carbon tab twice
         session$setInputs(main_nav = "famille_carbone")
         session$flushReact()
@@ -655,7 +655,7 @@ test_that("app_server tracks initialized families correctly", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Check that initialized_families starts empty
         expect_equal(initialized_families(), character(0))
 
@@ -705,7 +705,7 @@ test_that("app_server updates selection_state from home module", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Initial state
         expect_null(selection_state$commune_code)
         expect_equal(selection_state$selected_ids, character(0))
@@ -750,7 +750,7 @@ test_that("app_server handles NULL parcels from home module", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Wait for initial state
         session$flushReact()
         expect_equal(selection_state$selected_ids, c("p1", "p2"))
@@ -792,7 +792,7 @@ test_that("app_server stores root_session in userData", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Check that root_session is stored
         expect_true(!is.null(session$userData$root_session))
       })
@@ -829,7 +829,7 @@ test_that("app_server handles missing future package gracefully", {
     {
       # Should not error even if future setup runs
       expect_no_error({
-        shiny::testServer(nemetonShiny:::app_server, {
+        shiny::testServer(nemetonshiny:::app_server, {
           session$flushReact()
         })
       })
@@ -863,7 +863,7 @@ test_that("app_state project_status has valid default", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Check default status
         expect_equal(app_state$project_status, "none")
 
@@ -897,7 +897,7 @@ test_that("app_state project_status can be changed", {
       shiny::moduleServer(id, function(input, output, session) { })
     },
     {
-      shiny::testServer(nemetonShiny:::app_server, {
+      shiny::testServer(nemetonshiny:::app_server, {
         # Transition through states
         app_state$project_status <- "draft"
         expect_equal(app_state$project_status, "draft")
@@ -925,8 +925,8 @@ test_that("app_server uses get_i18n for translations", {
   skip_if_not_installed("future")
 
   # get_i18n should be available and working
-  i18n_fr <- nemetonShiny:::get_i18n("fr")
-  i18n_en <- nemetonShiny:::get_i18n("en")
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
 
   # Keys used in app_server help modal should exist
   expect_true(i18n_fr$has("help"))
