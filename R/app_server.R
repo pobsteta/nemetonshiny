@@ -66,6 +66,33 @@ app_server <- function(input, output, session) {
 
 
   # ============================================================
+  # STARTUP CONFIGURATION CHECKS
+  # ============================================================
+
+  # Warn the user once per session when required external services are not
+  # configured (LLM API key, PostGIS database). These warnings surface silent
+  # fallbacks (local storage) or features that will fail on use (AI analysis).
+  session$onFlushed(function() {
+    i18n <- get_i18n(app_state$language)
+
+    provider <- get_app_config("llm_provider", "anthropic")
+    key_var <- get_llm_api_key_var(provider)
+    if (!is.null(key_var) && nchar(Sys.getenv(key_var)) == 0) {
+      msg <- gsub("\\{key_var\\}", key_var, i18n$t("ai_no_api_key"))
+      shiny::showNotification(msg, type = "warning", duration = 10)
+    }
+
+    if (!is_db_configured()) {
+      shiny::showNotification(
+        i18n$t("db_not_configured"),
+        type = "warning",
+        duration = 10
+      )
+    }
+  }, once = TRUE)
+
+
+  # ============================================================
   # LANGUAGE HANDLING
   # ============================================================
 
