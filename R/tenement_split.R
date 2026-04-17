@@ -1024,6 +1024,26 @@ tenement_import_replace <- function(projet, imported_sf) {
   # Area in m² (metric CRS)
   geom_areas <- as.numeric(sf::st_area(imported_m))
 
+  # Drop degenerate features (zero / NA area after make_valid + cast).
+  # Why: a sliver polygon would carry surface_m2 = 0 into a fresh UGF and
+  # break Invariant 5 ("UG has zero or NA total surface") at projet_validate().
+  keep <- !is.na(geom_areas) & geom_areas > 1e-3
+  n_dropped <- sum(!keep)
+  if (n_dropped > 0L) {
+    cli::cli_warn(
+      "Import: {n_dropped} feature{?s} d\u00e9g\u00e9n\u00e9r\u00e9{?s} (aire \u2248 0) ignor\u00e9{?s}."
+    )
+    imported_sf <- imported_sf[keep, , drop = FALSE]
+    imported_m  <- imported_m[keep, , drop = FALSE]
+    geom_areas  <- geom_areas[keep]
+    n_new       <- nrow(imported_m)
+  }
+  if (n_new == 0L) {
+    cli::cli_abort(
+      "Import: aucun feature exploitable apr\u00e8s nettoyage des g\u00e9om\u00e9tries."
+    )
+  }
+
   # Parent parcel: pick the parcel whose intersection area with the
   # imported feature is the largest.
   parcel_id_col <- intersect(c("id", "nemeton_id", "geo_parcelle"),
@@ -1149,7 +1169,7 @@ tenement_import_replace <- function(projet, imported_sf) {
   parent_geom_total <- vapply(split(seq_along(parent_ids), parent_ids),
                               function(ix) sum(geom_areas[ix]), numeric(1))
   scale <- stats::setNames(
-    ifelse(parent_geom_total > 0,
+    ifelse(parent_geom_total > 0 & parent_cad_total > 0,
            parent_cad_total / parent_geom_total, 1),
     names(parent_cad_total)
   )
