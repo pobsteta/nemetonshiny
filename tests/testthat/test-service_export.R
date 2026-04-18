@@ -779,9 +779,10 @@ test_that("generate_family_maps creates map files for family columns", {
     expect_no_error(nemetonshiny:::generate_family_maps(family_scores, temp_dir, "fr"))
   )
 
-  # Check that map files were created
-  expect_true(file.exists(file.path(temp_dir, "famille_carbone_map.png")))
-  expect_true(file.exists(file.path(temp_dir, "famille_biodiversite_map.png")))
+  # Check that map files were created. Filenames follow the pattern
+  # used by inst/quarto/report_template.qmd: family_<CODE>_map.png.
+  expect_true(file.exists(file.path(temp_dir, "family_C_map.png")))
+  expect_true(file.exists(file.path(temp_dir, "family_B_map.png")))
 })
 
 test_that("generate_family_maps handles all NA values", {
@@ -2027,9 +2028,10 @@ test_that("generate_family_maps creates maps for all 12 family columns", {
     expect_no_error(nemetonshiny:::generate_family_maps(family_scores, temp_dir, "fr"))
   )
 
-  # Verify maps for all families are created
+  # Verify maps for all families are created. Filenames follow the pattern
+  # used by inst/quarto/report_template.qmd: family_<CODE>_map.png.
   for (code in c("C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N")) {
-    map_file <- file.path(temp_dir, paste0(nemetonshiny:::get_famille_col(code), "_map.png"))
+    map_file <- file.path(temp_dir, paste0("family_", code, "_map.png"))
     expect_true(file.exists(map_file), info = paste("Missing map for family", code))
     expect_true(file.size(map_file) > 0, info = paste("Empty map for family", code))
   }
@@ -2048,7 +2050,7 @@ test_that("generate_family_maps works with English language", {
     expect_no_error(nemetonshiny:::generate_family_maps(family_scores, temp_dir, "en"))
   )
 
-  expect_true(file.exists(file.path(temp_dir, "famille_carbone_map.png")))
+  expect_true(file.exists(file.path(temp_dir, "family_C_map.png")))
 })
 
 # ==============================================================================
