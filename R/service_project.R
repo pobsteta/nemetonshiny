@@ -404,8 +404,10 @@ save_indicators <- function(project_id, indicators) {
     file.rename(tmp_path, indicators_path)
 
     # Update metadata (avec NDP detecte)
-    # Essayer d'abord via les attributs, puis fallback sur le cache disque
-    ndp_level <- nemeton::detect_ndp(indicators)
+    # Essayer d'abord via les attributs, puis fallback sur le cache disque.
+    # Depuis nemeton v0.16.0, detect_ndp() retourne un ndp_result (S3 list) ;
+    # as.integer() extrait le niveau pour persistance en base.
+    ndp_level <- as.integer(nemeton::detect_ndp(indicators))
     if (ndp_level == 0L) {
       ndp_level <- detect_ndp_from_cache(project_path)
     }

@@ -328,7 +328,9 @@ prepare_report_data <- function(project, family_scores, language,
   }
 
   # Calculer les donnees NDP
-  ndp_level <- nemeton::detect_ndp(family_scores)
+  # Depuis nemeton v0.16.0, detect_ndp() retourne un ndp_result ; on extrait
+  # le niveau entier pour compatibilite avec get_ndp_level/compute_general_index.
+  ndp_level <- as.integer(nemeton::detect_ndp(family_scores))
   ndp_info <- nemeton::get_ndp_level(ndp_level)
   ndp_result <- nemeton::compute_general_index(
     vapply(family_stats, `[[`, numeric(1), "mean"),
