@@ -970,7 +970,27 @@ load_project_metadata <- function(project_id) {
   }
 
   tryCatch({
-    jsonlite::read_json(metadata_path)
+    meta <- jsonlite::read_json(metadata_path)
+
+    # Heal metadata files written by a pre-v0.16.0 nemetonshiny where
+    # the ndp_level field was accidentally persisted as the full
+    # ndp_result object returned by nemeton::detect_ndp() (a nested
+    # JSON object with $level, $confidence, $augmented, $sources)
+    # instead of a plain integer. Downstream code (DB persistence,
+    # metadata updates) calls as.integer(meta$ndp_level), which
+    # errors out on a list: "l'objet 'list' ne peut être converti
+    # automatiquement en un type 'integer'".
+    if (!is.null(meta$ndp_level) && is.list(meta$ndp_level)) {
+      level <- tryCatch(
+        as.integer(meta$ndp_level$level %||% meta$ndp_level[[1]]),
+        error = function(e) 0L,
+        warning = function(w) 0L
+      )
+      if (is.na(level)) level <- 0L
+      meta$ndp_level <- level
+    }
+
+    meta
   }, error = function(e) {
     cli::cli_warn("Failed to load metadata: {e$message}")
     NULL

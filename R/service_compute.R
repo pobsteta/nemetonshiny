@@ -2151,8 +2151,23 @@ compute_all_indicators <- function(parcels,
     }
   }
 
-  # Start with existing results or parcels
+  # Start with existing results or parcels.
+  # When resuming from a parquet snapshot, existing_results is a plain
+  # data.frame (arrow::read_parquet drops the sf class). Re-attach the
+  # live geometry from `parcels` so subsequent calls to
+  # save_indicators_incremental() can extract geometry_wkt cleanly and
+  # do not emit the "Results is not an sf object" warning.
   if (!is.null(existing_results) && nrow(existing_results) == nrow(parcels)) {
+    if (!inherits(existing_results, "sf")) {
+      existing_results$geometry_wkt <- NULL  # dropped — rebuilt below
+      existing_results[[attr(parcels, "sf_column") %||% "geometry"]] <-
+        sf::st_geometry(parcels)
+      existing_results <- sf::st_as_sf(
+        existing_results,
+        sf_column_name = attr(parcels, "sf_column") %||% "geometry",
+        crs = sf::st_crs(parcels)
+      )
+    }
     results <- existing_results
   } else {
     results <- parcels

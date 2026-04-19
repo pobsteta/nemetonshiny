@@ -17,6 +17,22 @@ NULL
 # Connection Management
 # ============================================================
 
+# Internal: coerce an ndp_level field to an integer, tolerating
+# both scalars (int/numeric/char) and legacy list shapes produced
+# before v0.16.0 when nemeton::detect_ndp() started returning an
+# S3 ndp_result object (see load_project_metadata() healing).
+.coerce_ndp_level <- function(x) {
+  if (is.null(x)) return(0L)
+  if (inherits(x, "ndp_result")) return(as.integer(x))
+  if (is.list(x)) {
+    x <- x$level %||% x[[1]]
+    if (is.null(x)) return(0L)
+  }
+  n <- suppressWarnings(as.integer(x))
+  if (length(n) != 1L || is.na(n)) 0L else n
+}
+
+
 #' Check if database connection is configured
 #'
 #' Returns TRUE if PostgreSQL environment variables are set.
@@ -24,9 +40,13 @@ NULL
 #' @return Logical.
 #' @noRd
 is_db_configured <- function() {
-  host <- Sys.getenv("POSTGRESQL_ADDON_HOST",
-                     Sys.getenv("NEMETON_DB_HOST", ""))
-  nchar(host) > 0
+  # The two-arg Sys.getenv() only consults the default when the variable
+  # is UNSET; an explicit empty string ("") still short-circuits the
+  # lookup and skips the NEMETON_DB_HOST fallback. Check non-empty
+  # explicitly so `POSTGRESQL_ADDON_HOST=""` falls through.
+  primary <- Sys.getenv("POSTGRESQL_ADDON_HOST", "")
+  if (nzchar(primary)) return(TRUE)
+  nzchar(Sys.getenv("NEMETON_DB_HOST", ""))
 }
 
 
@@ -183,7 +203,7 @@ db_save_project <- function(con, project_id, metadata, parcels = NULL,
       metadata$name %||% "Sans nom",
       metadata$description %||% "",
       metadata$status %||% "draft",
-      as.integer(metadata$ndp_level %||% 0L),
+      .coerce_ndp_level(metadata$ndp_level),
       metadata$commune_code %||% NA_character_,
       metadata$commune_name %||% NA_character_,
       metadata$department_code %||% NA_character_,
