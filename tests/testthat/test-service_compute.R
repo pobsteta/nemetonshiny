@@ -31,7 +31,9 @@ test_that("DATA_SOURCES contains required vector sources", {
 
   vectors <- ds$vectors
   expect_true("protected_areas" %in% names(vectors))
-  expect_true("indicateur_w1_reseau" %in% names(vectors))
+  # The hydrographic network source is named water_network; it
+  # carries required_for = "indicateur_w1_reseau" internally.
+  expect_true("water_network" %in% names(vectors))
   expect_true("water_surfaces" %in% names(vectors))
   expect_true("wetlands" %in% names(vectors))
   expect_true("roads" %in% names(vectors))
@@ -4251,6 +4253,12 @@ test_that("start_computation uses provided project_path", {
   sf::st_write(mock_parcels, file.path(data_dir, "parcels.gpkg"), quiet = TRUE)
 
   with_mocked_bindings(
+    # start_computation honours the passed project_path, but
+    # load_project()/ensure_project_migrated() still resolve the
+    # project directory via get_project_path(); mock it so the
+    # migration writes/reads land in the provided project_dir.
+    get_project_path = function(id) project_dir,
+    get_app_options = function() list(project_dir = temp_dir),
     clear_cancel = function(id) invisible(NULL),
     get_computation_progress = function(id) list(computed_indicators = character(0)),
     update_project_status = function(id, status) invisible(NULL),

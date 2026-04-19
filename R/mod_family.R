@@ -739,6 +739,9 @@ get_indicator_cols <- function(data) {
     # nemeton::indicateur_* functions accept the UGF sf
     "id", "nemeton_id", "geo_parcelle",
     "contenance", "code_insee", "section", "numero",
+    # Generic area column carried by create_test_units() and various
+    # sf fixtures — never a valid indicator.
+    "area",
     # Geometry
     "geometry", "geom"
   )

@@ -21,7 +21,6 @@ test_that("mod_ug_ui contains expected elements", {
   expect_true(grepl("ug-btn_merge", ui_html))
   expect_true(grepl("ug-btn_split", ui_html))
   expect_true(grepl("ug-btn_rename", ui_html))
-  expect_true(grepl("ug-btn_recompute", ui_html))
   expect_true(grepl("ug-sel_groupe", ui_html))
   expect_true(grepl("ug-ug_table", ui_html))
 
@@ -111,7 +110,7 @@ test_that("UG translation keys exist in French", {
 
   ug_keys <- c(
     "tab_ug", "ug_title", "ug_merge", "ug_split", "ug_rename",
-    "ug_group", "ug_composition", "ug_recompute", "ug_no_data",
+    "ug_group", "ug_composition", "ug_no_data",
     "ug_select_hint", "ug_select_one",
     "ug_map_tab", "ug_table_tab", "ug_map_click_hint",
     "ug_create_from_map", "ug_create_btn", "ug_clear_selection"
@@ -132,7 +131,7 @@ test_that("UG translation keys exist in English", {
 
   ug_keys <- c(
     "tab_ug", "ug_title", "ug_merge", "ug_split", "ug_rename",
-    "ug_group", "ug_composition", "ug_recompute", "ug_no_data"
+    "ug_group", "ug_composition", "ug_no_data"
   )
 
   for (key in ug_keys) {

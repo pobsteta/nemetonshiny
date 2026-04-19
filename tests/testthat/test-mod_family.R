@@ -109,16 +109,16 @@ test_that("build_analysis_prompt returns valid prompt string", {
   family_config <- nemetonshiny:::get_family_config("C")
   ind_data <- data.frame(
     nemeton_id = c("p1", "p2", "p3"),
-    carbon_biomass_norm = c(0.5, 0.7, 0.3),
-    carbon_ndvi_norm = c(0.8, 0.6, 0.9)
+    indicateur_c1_biomasse_norm = c(0.5, 0.7, 0.3),
+    indicateur_c2_ndvi_norm = c(0.8, 0.6, 0.9)
   )
 
   prompt <- nemetonshiny:::build_analysis_prompt(family_config, ind_data, "fran\u00e7ais")
   expect_type(prompt, "character")
   expect_true(nchar(prompt) > 0)
   expect_true(grepl("3 parcelles", prompt))
-  expect_true(grepl("carbon_biomass_norm", prompt))
-  expect_true(grepl("carbon_ndvi_norm", prompt))
+  expect_true(grepl("indicateur_c1_biomasse_norm", prompt))
+  expect_true(grepl("indicateur_c2_ndvi_norm", prompt))
   expect_true(grepl("min=", prompt))
   expect_true(grepl("mean=", prompt))
 })
@@ -139,8 +139,9 @@ test_that("create_llm_chat uses configured provider", {
   # (Can't easily test unknown provider error without mocking APP_CONFIG)
   skip_if_not_installed("ellmer")
 
-  # The function should exist
-  expect_true(exists("create_llm_chat", envir = asNamespace("nemeton"), inherits = FALSE))
+  # The function should exist in nemetonshiny (moved from nemeton core
+  # when the Shiny app was split out — ADR-009).
+  expect_true(exists("create_llm_chat", envir = asNamespace("nemetonshiny"), inherits = FALSE))
 
   # Test error message format if we had an unknown provider
   # This tests the sprintf format string is correct
@@ -190,7 +191,9 @@ test_that("get_indicator_tooltip returns tooltips for long column names", {
   expect_type(tooltip, "character")
   expect_true(nchar(tooltip) > 0)
 
-  tooltip_norm <- nemetonshiny:::get_indicator_tooltip("carbon_biomass_norm", "fr")
+  # Long-form column names live in app_config.R's INDICATOR_FAMILIES.
+  # The _norm suffix is stripped before the lookup.
+  tooltip_norm <- nemetonshiny:::get_indicator_tooltip("indicateur_c1_biomasse_norm", "fr")
   expect_type(tooltip_norm, "character")
   expect_true(nchar(tooltip_norm) > 0)
 })
@@ -353,14 +356,26 @@ test_that("mod_family_server processes project with indicators", {
   )
 
   mock_indicators <- data.frame(
-    nemeton_id = c("p1", "p2", "p3"),
-    carbon_biomass_norm = c(0.5, 0.7, 0.3),
-    carbon_ndvi_norm = c(0.8, 0.6, 0.9)
+    ug_id = c("p1", "p2", "p3"),
+    indicateur_c1_biomasse_norm = c(0.5, 0.7, 0.3),
+    indicateur_c2_ndvi_norm = c(0.8, 0.6, 0.9)
+  )
+
+  # mod_family_server's indicators_sf() reactive reads from
+  # project$indicators_sf (populated by start_computation). Mirror the
+  # plain data.frame indicators into an sf object so the test exercises
+  # both reactives.
+  mock_indicators_sf <- sf::st_sf(
+    ug_id = c("p1", "p2", "p3"),
+    indicateur_c1_biomasse_norm = c(0.5, 0.7, 0.3),
+    indicateur_c2_ndvi_norm = c(0.8, 0.6, 0.9),
+    geometry = sf::st_geometry(mock_parcels)
   )
 
   mock_project <- list(
     parcels = mock_parcels,
-    indicators = mock_indicators
+    indicators = mock_indicators,
+    indicators_sf = mock_indicators_sf
   )
 
   mock_app_state <- shiny::reactiveValues(
@@ -379,8 +394,8 @@ test_that("mod_family_server processes project with indicators", {
       # With project containing C indicators, should have data
       data <- indicators_data()
       expect_false(is.null(data))
-      expect_true("carbon_biomass_norm" %in% names(data) ||
-                  "carbon_ndvi_norm" %in% names(data))
+      expect_true("indicateur_c1_biomasse_norm" %in% names(data) ||
+                  "indicateur_c2_ndvi_norm" %in% names(data))
 
       # indicators_sf should also work
       sf_data <- indicators_sf()
@@ -407,7 +422,7 @@ test_that("mod_family_server returns NULL for family with no indicators", {
 
   mock_indicators <- data.frame(
     nemeton_id = c("p1", "p2"),
-    carbon_biomass_norm = c(0.5, 0.7)  # Only Carbon, no Biodiversity
+    indicateur_c1_biomasse_norm = c(0.5, 0.7)  # Only Carbon, no Biodiversity
   )
 
   mock_project <- list(
@@ -451,7 +466,7 @@ test_that("mod_family_server handles sf indicators data", {
   # Indicators as sf object (can happen with geoarrow)
   mock_indicators <- sf::st_sf(
     nemeton_id = c("p1", "p2"),
-    carbon_biomass_norm = c(0.5, 0.7),
+    indicateur_c1_biomasse_norm = c(0.5, 0.7),
     geometry = mock_parcels$geometry
   )
 
