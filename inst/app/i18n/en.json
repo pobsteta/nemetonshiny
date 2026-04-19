@@ -283,6 +283,7 @@
   "ai_generating": "Analyzing...",
   "ai_error": "AI analysis error",
   "ai_no_api_key": "API key not configured. Set the {key_var} environment variable.",
+  "db_not_configured": "PostGIS database not configured. Set POSTGRESQL_ADDON_HOST/PORT/DB/USER/PASSWORD (or NEMETON_DB_*) environment variables. The app will use local storage.",
   "ndp_label": "Precision Level",
   "ndp_confidence": "Confidence φ",
   "ndp_decouverte": "Discovery",

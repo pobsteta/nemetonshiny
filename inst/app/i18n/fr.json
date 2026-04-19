@@ -283,6 +283,7 @@
   "ai_generating": "Analyse en cours...",
   "ai_error": "Erreur lors de l'analyse IA",
   "ai_no_api_key": "Clé API non configurée. Définissez la variable d'environnement {key_var}.",
+  "db_not_configured": "Base PostGIS non configurée. Définissez les variables d'environnement POSTGRESQL_ADDON_HOST/PORT/DB/USER/PASSWORD (ou NEMETON_DB_*). L'application utilisera le stockage local.",
   "ndp_label": "Niveau de Précision",
   "ndp_confidence": "Confiance φ",
   "ndp_decouverte": "Découverte",

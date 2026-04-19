@@ -457,7 +457,7 @@ mod_family_server <- function(id, family_code, app_state) {
       }, error = function(e) {
         shiny::removeNotification(notif_id)
         shiny::showNotification(
-          paste(i18n$t("ai_error"), ":", conditionMessage(e)),
+          paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e))),
           type = "error",
           duration = 8
         )
@@ -643,6 +643,19 @@ get_llm_api_key_var <- function(provider) {
     deepseek = "DEEPSEEK_API_KEY"
   )
   key_map[[provider]]
+}
+
+#' Strip ANSI escape codes from a string
+#'
+#' Errors from `ellmer`/`cli` can include ANSI color codes intended for the
+#' terminal. These codes render as garbage in a Shiny notification, so strip
+#' them before display.
+#'
+#' @param text Character.
+#' @return Character with ANSI escape sequences removed.
+#' @noRd
+strip_ansi <- function(text) {
+  gsub("\033\\[[0-9;]*[a-zA-Z]", "", text, perl = TRUE)
 }
 
 #' Create a Leaflet choropleth map for an indicator column
