@@ -415,6 +415,17 @@ start_computation <- function(project_id,
       report_progress(state)
     }
 
+    # Tag compute_unit with the CHM provenance so nemeton::detect_ndp()
+    # picks up the augmented flag (height_ml) when reporting NDP on the
+    # saved indicators. Only set when a chm raster is actually present
+    # in the downloaded layers (the Open-Canopy call may have failed
+    # and degraded silently to legacy mode).
+    if (!is.null(layers$rasters$chm) &&
+        !is.null(layers$chm_source) &&
+        !identical(layers$chm_source, "none")) {
+      attr(compute_unit, "chm_source") <- layers$chm_source
+    }
+
     # Check cancellation after download phase
     if (is_cancelled(project_id)) {
       state$status <- COMPUTE_STATUS$CANCELLED
@@ -755,6 +766,43 @@ download_layers_for_parcels <- function(parcels,
     completed <- completed + 1
   }
 
+  # Optional Canopy Height Model (spec 005 phase 6). Driven by the
+  # project metadata field `chm_source` written from the UI selector
+  # in mod_home. Supported values: "none" (default, skip),
+  # "opencanopy" (call opencanopy::pipeline_aoi_to_chm + sanitize).
+  chm_pct_masked <- NULL
+  chm_source <- tryCatch({
+    meta <- load_project_metadata(basename(project_path))
+    meta$chm_source %||% "none"
+  }, error = function(e) "none")
+
+  if (identical(chm_source, "opencanopy")) {
+    if (!is.null(progress_callback)) {
+      progress_callback(list(
+        completed = total_sources + length(pc_sources),
+        total     = total_sources + length(pc_sources),
+        current   = "download:source_chm_opencanopy",
+        source_key = "source_chm_opencanopy"
+      ))
+    }
+    chm_out <- tryCatch(
+      download_chm_opencanopy(parcels, cache_dir, rasters, vectors),
+      error = function(e) {
+        cli::cli_warn("Open-Canopy CHM fetch failed: {e$message}")
+        download_warnings <<- c(download_warnings, list(list(
+          type = "warning", source = "Open-Canopy",
+          message = paste0("Open-Canopy CHM non disponible: ", e$message),
+          time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        )))
+        NULL
+      }
+    )
+    if (!is.null(chm_out)) {
+      rasters$chm <- chm_out$chm
+      chm_pct_masked <- chm_out$pct_masked
+    }
+  }
+
   if (!is.null(progress_callback)) {
     progress_callback(list(
       completed = total_sources + length(pc_sources),
@@ -773,9 +821,87 @@ download_layers_for_parcels <- function(parcels,
       bbox = bbox_buffered,
       crs = sf::st_crs(parcels),
       cache_dir = cache_dir,
+      chm_source = chm_source,
+      chm_pct_masked = chm_pct_masked,
       warnings = download_warnings  # Include download warnings for UI display
     ),
     class = "nemeton_layers"
+  )
+}
+
+
+# ============================================================
+# CHM fetch via opencanopy (spec 005 phase 6)
+# ============================================================
+
+# Pipeline Open-Canopy + sanitize_chm, producing a cleaned CHM
+# suitable for indicators P1/P2/C1/B2/R2.
+#
+# Runs synchronously: opencanopy::pipeline_aoi_to_chm() downloads
+# IGN ortho (RVB + IRC), resamples to 1.5 m, runs the ML model
+# (Python + GPU recommended), then we apply nemeton::sanitize_chm
+# with whatever mask layers we already downloaded.
+#
+# @param parcels sf of UGFs (user parcels).
+# @param cache_dir Character. Project-level cache directory.
+# @param rasters List of already-downloaded raster layers (may
+#   include `ndvi`).
+# @param vectors List of already-downloaded vector layers (may
+#   include `bdforet`, `buildings`, `water_surfaces`).
+#
+# @return list(chm = SpatRaster, pct_masked = numeric,
+#   steps_applied = chr), or NULL if opencanopy is unavailable
+#   or the pipeline fails.
+#
+# @noRd
+download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors) {
+  if (!requireNamespace("opencanopy", quietly = TRUE)) {
+    stop("Package 'opencanopy' is not installed")
+  }
+  oc_dir <- file.path(cache_dir, "opencanopy")
+  if (!dir.exists(oc_dir)) dir.create(oc_dir, recursive = TRUE, showWarnings = FALSE)
+
+  chm_path <- file.path(oc_dir, "chm_1_5m.tif")
+  if (!file.exists(chm_path)) {
+    cli::cli_alert_info("Running opencanopy::pipeline_aoi_to_chm (may take several minutes)...")
+    aoi_path <- file.path(oc_dir, "aoi.gpkg")
+    parcels_l93 <- sf::st_transform(parcels, 2154)
+    aoi_bbox <- sf::st_as_sfc(sf::st_bbox(sf::st_buffer(parcels_l93, 50)))
+    sf::st_write(
+      sf::st_sf(id = 1L, geometry = aoi_bbox),
+      aoi_path, delete_dsn = TRUE, quiet = TRUE
+    )
+    pipe <- opencanopy::pipeline_aoi_to_chm(
+      aoi_path  = aoi_path,
+      output_dir = oc_dir
+    )
+    terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
+  }
+
+  chm <- terra::rast(chm_path)
+  cli::cli_alert_info("Sanitizing CHM with available mask layers...")
+
+  forest_mask <- vectors$bdforet$object %||% NULL
+  water       <- vectors$water_surfaces$object %||% NULL
+  buildings   <- vectors$buildings$object %||% NULL
+  ndvi        <- rasters$ndvi$object %||% NULL
+
+  cleaned <- nemeton::sanitize_chm(
+    chm,
+    forest_mask = forest_mask,
+    buildings   = buildings,
+    water       = water,
+    ndvi        = ndvi
+  )
+  cli::cli_alert_success(
+    "CHM ready: {round(cleaned$pct_masked * 100, 1)}% masked, \\
+    steps: {paste(cleaned$steps_applied, collapse = ', ')}"
+  )
+
+  list(
+    chm           = cleaned$chm_clean,
+    pct_masked    = cleaned$pct_masked,
+    steps_applied = cleaned$steps_applied
   )
 }
 
@@ -2350,6 +2476,19 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     if ("bdforet" %in% func_args) {
       bd <- resolve_vector_layer(layers, "bdforet")
       if (!is.null(bd)) args$bdforet <- bd
+    }
+
+    # Canopy Height Model (spec 005, NDP augmented). Routed to the
+    # spec-005-phase-[2-4] indicators that accept a chm argument:
+    # P1 volume, P2 station, C1 biomass, B2 structure, R2 storm.
+    # The raster is produced upstream by opencanopy and cleaned by
+    # nemeton::sanitize_chm() in download_layers_for_parcels().
+    if ("chm" %in% func_args) {
+      chm <- resolve_raster_layer(layers, "chm")
+      if (!is.null(chm)) args$chm <- chm
+    }
+    if ("pct_masked" %in% func_args && !is.null(layers$chm_pct_masked)) {
+      args$pct_masked <- layers$chm_pct_masked
     }
 
     # Call function with appropriate arguments

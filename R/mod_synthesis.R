@@ -230,6 +230,24 @@ mod_synthesis_server <- function(id, app_state) {
           htmltools::div(
             class = "d-flex align-items-center justify-content-center gap-2",
             ndp_badge(ndp_result$ndp, lang = i18n$language),
+            # Augmented NDP flag (spec 005 phase 6): when the user
+            # ran the computation with a CHM source, show a small
+            # badge so they see the ML-augmented provenance at a
+            # glance without changing the base NDP level.
+            {
+              chm_src <- app_state$current_project$metadata$chm_source %||% "none"
+              if (!identical(chm_src, "none")) {
+                bslib::tooltip(
+                  htmltools::tags$span(
+                    class = "badge text-bg-info",
+                    style = "font-size: 0.75rem;",
+                    htmltools::HTML("&#9889;"),
+                    " ", i18n$t("augmented_height_ml_badge")
+                  ),
+                  i18n$t("augmented_height_ml_tooltip")
+                )
+              }
+            },
             bslib::popover(
               htmltools::tags$span(
                 class = "text-info",

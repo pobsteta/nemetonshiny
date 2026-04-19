@@ -621,11 +621,36 @@ mod_home_server <- function(id, app_state) {
 
       # Show button only for draft status (not yet computed)
       if (status %in% c("draft", "error")) {
-        shiny::actionButton(
-          ns("start_compute"),
-          label = i18n$t("compute_button"),
-          class = "btn-primary w-100",
-          icon = bsicons::bs_icon("cpu")
+        # CHM source selector (spec 005 phase 6): drives the
+        # augmented-NDP pipeline for P1/P2/C1/B2/R2. Stored in
+        # the current project's metadata so that the compute worker
+        # (running in a future) can read the choice from disk.
+        current_chm_src <- project$metadata$chm_source %||% "none"
+        htmltools::tagList(
+          shiny::radioButtons(
+            ns("chm_source"),
+            label = shiny::tagList(
+              bsicons::bs_icon("layers-half"),
+              " ",
+              i18n$t("chm_source_label")
+            ),
+            choices = stats::setNames(
+              c("none", "opencanopy"),
+              c(i18n$t("chm_source_none"), i18n$t("chm_source_opencanopy"))
+            ),
+            selected = current_chm_src,
+            inline = TRUE
+          ),
+          htmltools::tags$small(
+            class = "text-muted d-block mb-2",
+            i18n$t("chm_source_opencanopy_hint")
+          ),
+          shiny::actionButton(
+            ns("start_compute"),
+            label = i18n$t("compute_button"),
+            class = "btn-primary w-100",
+            icon = bsicons::bs_icon("cpu")
+          )
         )
       } else if (status == "completed") {
         # Show "view results" button
@@ -809,6 +834,27 @@ mod_home_server <- function(id, app_state) {
           id = ns("progress-error_card_wrapper")
         ))
       }
+    }, ignoreInit = TRUE)
+
+    # Persist CHM source choice into the project metadata whenever
+    # the user toggles the selector (spec 005 phase 6). The choice is
+    # read back by download_layers_for_parcels() in the compute
+    # worker. Keep this separate from start_compute to allow the user
+    # to change their mind without triggering a run.
+    shiny::observeEvent(input$chm_source, {
+      project <- app_state$current_project
+      shiny::req(project)
+      new_src <- input$chm_source
+      current <- project$metadata$chm_source %||% "none"
+      if (identical(new_src, current)) return()
+      tryCatch({
+        update_project_metadata(project$id, list(chm_source = new_src))
+        # Refresh in-memory copy
+        project$metadata$chm_source <- new_src
+        app_state$current_project <- project
+      }, error = function(e) {
+        cli::cli_warn("Failed to persist chm_source: {e$message}")
+      })
     }, ignoreInit = TRUE)
 
     # Start computation handler - show confirmation modal (T088)

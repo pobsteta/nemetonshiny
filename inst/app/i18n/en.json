@@ -368,5 +368,13 @@
   "ug_move_desc": "Move %d selected tenement(s) to an existing UG.",
   "ug_move_target": "Target UG",
   "ug_move_confirm": "Move",
-  "ug_move_success": "%d tenement(s) moved to UG '%s'"
+  "ug_move_success": "%d tenement(s) moved to UG '%s'",
+
+  "chm_source_label": "CHM source (canopy height)",
+  "chm_source_none": "None",
+  "chm_source_opencanopy": "Open-Canopy",
+  "chm_source_opencanopy_hint": "Open-Canopy: height estimated by ML from IGN orthoimagery. Python + GPU recommended, several minutes of computation.",
+  "source_chm_opencanopy": "Open-Canopy CHM (ML height)",
+  "augmented_height_ml_badge": "ML height",
+  "augmented_height_ml_tooltip": "Augmented NDP: canopy height is derived from the Open-Canopy ML model (ADR-011). The global Fibonacci confidence φ is unchanged."
 }

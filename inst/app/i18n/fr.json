@@ -368,5 +368,13 @@
   "ug_move_desc": "Déplacer %d tènement(s) sélectionné(s) vers une UG existante.",
   "ug_move_target": "UG de destination",
   "ug_move_confirm": "Déplacer",
-  "ug_move_success": "%d tènement(s) déplacé(s) vers l'UG « %s »"
+  "ug_move_success": "%d tènement(s) déplacé(s) vers l'UG « %s »",
+
+  "chm_source_label": "Source CHM (hauteur de couvert)",
+  "chm_source_none": "Aucune",
+  "chm_source_opencanopy": "Open-Canopy",
+  "chm_source_opencanopy_hint": "Open-Canopy : hauteur estimée par ML sur ortho IGN. Python + GPU recommandés, plusieurs minutes de calcul.",
+  "source_chm_opencanopy": "CHM Open-Canopy (hauteur ML)",
+  "augmented_height_ml_badge": "hauteur ML",
+  "augmented_height_ml_tooltip": "NDP augmenté : la hauteur de couvert provient d'un modèle ML Open-Canopy (ADR-011). La confiance φ Fibonacci globale reste inchangée."
 }
