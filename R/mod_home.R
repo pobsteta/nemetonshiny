@@ -619,38 +619,26 @@ mod_home_server <- function(id, app_state) {
       # Check project status
       status <- project$metadata$status %||% "draft"
 
-      # CHM source selector (spec 005 phase 6): shown in both the
-      # first-run and recompute flows so the user can change the
-      # CHM provenance before (re-)triggering the pipeline.
-      current_chm_src <- project$metadata$chm_source %||% "none"
-      chm_selector <- htmltools::tagList(
-        shiny::radioButtons(
-          ns("chm_source"),
-          label = shiny::tagList(
-            bsicons::bs_icon("layers-half"),
-            " ",
-            i18n$t("chm_source_label")
-          ),
-          choices = stats::setNames(
-            c("none", "opencanopy"),
-            c(i18n$t("chm_source_none"), i18n$t("chm_source_opencanopy"))
-          ),
-          selected = current_chm_src,
-          inline = TRUE
-        ),
-        htmltools::tags$small(
-          class = "text-muted d-block mb-2",
-          i18n$t("chm_source_opencanopy_hint")
+      # CHM status (spec 005 phase 6, auto-detection): Open-Canopy is
+      # attempted automatically when the `opencanopy` package is
+      # available. The user sees a small informative badge rather than
+      # a toggle — the pipeline degrades silently if Python/model is
+      # missing.
+      chm_available <- chm_auto_enabled()
+      chm_status <- htmltools::div(
+        class = "mb-3 small",
+        bsicons::bs_icon(if (chm_available) "check-circle-fill" else "slash-circle"),
+        " ",
+        htmltools::tags$span(
+          class = if (chm_available) "text-success" else "text-muted",
+          if (chm_available) i18n$t("chm_status_auto_on") else i18n$t("chm_status_auto_off")
         )
       )
 
       # Show button only for draft status (not yet computed).
-      # The CHM selector sits inside a plain div so its radio
-      # buttons render flat (Bootstrap `d-grid` would treat them as
-      # grid items and collapse the layout).
       if (status %in% c("draft", "error")) {
         htmltools::div(
-          htmltools::div(class = "mb-3", chm_selector),
+          chm_status,
           htmltools::div(
             class = "d-grid",
             shiny::actionButton(
@@ -662,9 +650,6 @@ mod_home_server <- function(id, app_state) {
           )
         )
       } else if (status == "completed") {
-        # View + recompute buttons. The CHM selector is shown above
-        # the recompute button so the user can switch provenance
-        # (e.g. enable Open-Canopy) before relaunching the compute.
         htmltools::div(
           htmltools::div(
             class = "d-grid mb-2",
@@ -675,7 +660,7 @@ mod_home_server <- function(id, app_state) {
               icon = bsicons::bs_icon("bar-chart")
             )
           ),
-          htmltools::div(class = "mb-2", chm_selector),
+          chm_status,
           htmltools::div(
             class = "d-grid",
             shiny::actionButton(
@@ -851,27 +836,6 @@ mod_home_server <- function(id, app_state) {
           id = ns("progress-error_card_wrapper")
         ))
       }
-    }, ignoreInit = TRUE)
-
-    # Persist CHM source choice into the project metadata whenever
-    # the user toggles the selector (spec 005 phase 6). The choice is
-    # read back by download_layers_for_parcels() in the compute
-    # worker. Keep this separate from start_compute to allow the user
-    # to change their mind without triggering a run.
-    shiny::observeEvent(input$chm_source, {
-      project <- app_state$current_project
-      shiny::req(project)
-      new_src <- input$chm_source
-      current <- project$metadata$chm_source %||% "none"
-      if (identical(new_src, current)) return()
-      tryCatch({
-        update_project_metadata(project$id, list(chm_source = new_src))
-        # Refresh in-memory copy
-        project$metadata$chm_source <- new_src
-        app_state$current_project <- project
-      }, error = function(e) {
-        cli::cli_warn("Failed to persist chm_source: {e$message}")
-      })
     }, ignoreInit = TRUE)
 
     # Start computation handler - show confirmation modal (T088)

@@ -157,15 +157,13 @@ TRANSLATIONS <- list(
   # Computation
   # ============================================================
   compute_button = list(fr = "Lancer les calculs", en = "Start Calculations"),
-  chm_source_label = list(
-    fr = "Source CHM (hauteur de couvert)",
-    en = "CHM source (canopy height)"
+  chm_status_auto_on = list(
+    fr = "CHM Open-Canopy : activ\u00e9 automatiquement",
+    en = "CHM Open-Canopy: auto-enabled"
   ),
-  chm_source_none = list(fr = "Aucune", en = "None"),
-  chm_source_opencanopy = list(fr = "Open-Canopy", en = "Open-Canopy"),
-  chm_source_opencanopy_hint = list(
-    fr = "Open-Canopy : hauteur estim\u00e9e par ML sur ortho IGN. Python + GPU recommand\u00e9s, plusieurs minutes de calcul.",
-    en = "Open-Canopy: height estimated by ML from IGN orthoimagery. Python + GPU recommended, several minutes of computation."
+  chm_status_auto_off = list(
+    fr = "CHM Open-Canopy : indisponible (package manquant ou d\u00e9sactiv\u00e9)",
+    en = "CHM Open-Canopy: unavailable (package missing or disabled)"
   ),
   confirm_computation_title = list(
     fr = "Confirmer le lancement des calculs",

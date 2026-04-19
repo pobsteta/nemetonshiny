@@ -426,6 +426,19 @@ start_computation <- function(project_id,
       attr(compute_unit, "chm_source") <- layers$chm_source
     }
 
+    # Persist the actual CHM outcome so the synthesis badge reflects
+    # what really happened during this run (auto-detection result),
+    # not a pre-selected preference.
+    tryCatch(
+      update_project_metadata(
+        project_id,
+        list(chm_source = layers$chm_source %||% "none")
+      ),
+      error = function(e) {
+        cli::cli_warn("Failed to persist chm_source outcome: {e$message}")
+      }
+    )
+
     # Check cancellation after download phase
     if (is_cancelled(project_id)) {
       state$status <- COMPUTE_STATUS$CANCELLED
@@ -766,17 +779,17 @@ download_layers_for_parcels <- function(parcels,
     completed <- completed + 1
   }
 
-  # Optional Canopy Height Model (spec 005 phase 6). Driven by the
-  # project metadata field `chm_source` written from the UI selector
-  # in mod_home. Supported values: "none" (default, skip),
-  # "opencanopy" (call opencanopy::pipeline_aoi_to_chm + sanitize).
+  # Optional Canopy Height Model (spec 005 phase 6). Auto-enabled
+  # whenever the `opencanopy` package is installed, unless the user
+  # opted out via option `nemetonshiny.chm = "none"` or environment
+  # variable `NEMETONSHINY_DISABLE_CHM`. The effective provenance is
+  # reported back as `chm_source` (either "opencanopy" on success or
+  # "none" on skip/failure) so downstream code (badge in mod_synthesis,
+  # detect_ndp augmented flag) reflects what actually happened.
   chm_pct_masked <- NULL
-  chm_source <- tryCatch({
-    meta <- load_project_metadata(basename(project_path))
-    meta$chm_source %||% "none"
-  }, error = function(e) "none")
+  chm_source <- "none"
 
-  if (identical(chm_source, "opencanopy")) {
+  if (chm_auto_enabled()) {
     if (!is.null(progress_callback)) {
       progress_callback(list(
         completed = total_sources + length(pc_sources),
@@ -800,6 +813,7 @@ download_layers_for_parcels <- function(parcels,
     if (!is.null(chm_out)) {
       rasters$chm <- chm_out$chm
       chm_pct_masked <- chm_out$pct_masked
+      chm_source <- "opencanopy"
     }
   }
 
@@ -854,6 +868,25 @@ download_layers_for_parcels <- function(parcels,
 #   or the pipeline fails.
 #
 # @noRd
+#' Report whether Open-Canopy CHM should be attempted automatically.
+#'
+#' The pipeline is opt-out: it runs whenever the `opencanopy` package
+#' is installed, unless the user forces it off via
+#' `options(nemetonshiny.chm = "none")` or the environment variable
+#' `NEMETONSHINY_DISABLE_CHM=1`. A hard-failing opencanopy call
+#' (missing Python, missing model, network) is still caught by the
+#' tryCatch in `download_layers_for_parcels()` and degraded silently.
+#'
+#' @return Logical.
+#' @noRd
+chm_auto_enabled <- function() {
+  if (identical(getOption("nemetonshiny.chm"), "none")) return(FALSE)
+  if (nzchar(Sys.getenv("NEMETONSHINY_DISABLE_CHM")) &&
+      Sys.getenv("NEMETONSHINY_DISABLE_CHM") != "0") return(FALSE)
+  requireNamespace("opencanopy", quietly = TRUE)
+}
+
+
 download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors) {
   if (!requireNamespace("opencanopy", quietly = TRUE)) {
     stop("Package 'opencanopy' is not installed")
