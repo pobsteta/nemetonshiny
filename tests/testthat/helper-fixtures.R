@@ -1,5 +1,15 @@
 # Test fixtures and helper functions — automatically loaded before tests.
 
+# --- Disable Open-Canopy CHM auto-detection for the test suite ---
+#
+# download_layers_for_parcels() attempts CHM when the `opencanopy`
+# package is installed (which it is on dev boxes), which would run a
+# multi-minute Python ML pipeline inside every test that exercises
+# downloads. Tests already mock the IGN WFS / S2 downloads; CHM is
+# simply out of scope. Forcing the opt-out keeps test runs fast and
+# deterministic regardless of the host's Python/conda setup.
+Sys.setenv(NEMETONSHINY_DISABLE_CHM = "1")
+
 # --- Neutralise async primitives for the whole test session ---
 #
 # mod_home uses `shiny::ExtendedTask` + `promises::future_promise()`

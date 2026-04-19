@@ -914,10 +914,15 @@ download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors) {
   chm <- terra::rast(chm_path)
   cli::cli_alert_info("Sanitizing CHM with available mask layers...")
 
-  forest_mask <- vectors$bdforet$object %||% NULL
-  water       <- vectors$water_surfaces$object %||% NULL
-  buildings   <- vectors$buildings$object %||% NULL
-  ndvi        <- rasters$ndvi$object %||% NULL
+  # download_{raster,vector}_source() return bare SpatRaster / sf
+  # objects, not list(object = …) wrappers. Using $object on a
+  # SpatRaster dispatches to [[ and throws "[subset] invalid
+  # name(s)" when no layer of that name exists — which aborted the
+  # whole CHM pipeline and forced P2 back into legacy mode.
+  forest_mask <- vectors$bdforet
+  water       <- vectors$water_surfaces
+  buildings   <- vectors$buildings
+  ndvi        <- rasters$ndvi
 
   cleaned <- nemeton::sanitize_chm(
     chm,
