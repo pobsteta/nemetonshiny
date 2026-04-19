@@ -619,32 +619,35 @@ mod_home_server <- function(id, app_state) {
       # Check project status
       status <- project$metadata$status %||% "draft"
 
+      # CHM source selector (spec 005 phase 6): shown in both the
+      # first-run and recompute flows so the user can change the
+      # CHM provenance before (re-)triggering the pipeline.
+      current_chm_src <- project$metadata$chm_source %||% "none"
+      chm_selector <- htmltools::tagList(
+        shiny::radioButtons(
+          ns("chm_source"),
+          label = shiny::tagList(
+            bsicons::bs_icon("layers-half"),
+            " ",
+            i18n$t("chm_source_label")
+          ),
+          choices = stats::setNames(
+            c("none", "opencanopy"),
+            c(i18n$t("chm_source_none"), i18n$t("chm_source_opencanopy"))
+          ),
+          selected = current_chm_src,
+          inline = TRUE
+        ),
+        htmltools::tags$small(
+          class = "text-muted d-block mb-2",
+          i18n$t("chm_source_opencanopy_hint")
+        )
+      )
+
       # Show button only for draft status (not yet computed)
       if (status %in% c("draft", "error")) {
-        # CHM source selector (spec 005 phase 6): drives the
-        # augmented-NDP pipeline for P1/P2/C1/B2/R2. Stored in
-        # the current project's metadata so that the compute worker
-        # (running in a future) can read the choice from disk.
-        current_chm_src <- project$metadata$chm_source %||% "none"
         htmltools::tagList(
-          shiny::radioButtons(
-            ns("chm_source"),
-            label = shiny::tagList(
-              bsicons::bs_icon("layers-half"),
-              " ",
-              i18n$t("chm_source_label")
-            ),
-            choices = stats::setNames(
-              c("none", "opencanopy"),
-              c(i18n$t("chm_source_none"), i18n$t("chm_source_opencanopy"))
-            ),
-            selected = current_chm_src,
-            inline = TRUE
-          ),
-          htmltools::tags$small(
-            class = "text-muted d-block mb-2",
-            i18n$t("chm_source_opencanopy_hint")
-          ),
+          chm_selector,
           shiny::actionButton(
             ns("start_compute"),
             label = i18n$t("compute_button"),
@@ -653,7 +656,9 @@ mod_home_server <- function(id, app_state) {
           )
         )
       } else if (status == "completed") {
-        # Show "view results" button
+        # View + recompute buttons. The CHM selector is shown above
+        # the recompute button so the user can switch provenance
+        # (e.g. enable Open-Canopy) before relaunching the compute.
         htmltools::div(
           class = "d-grid gap-2",
           shiny::actionButton(
@@ -662,10 +667,11 @@ mod_home_server <- function(id, app_state) {
             class = "btn-success w-100",
             icon = bsicons::bs_icon("bar-chart")
           ),
+          chm_selector,
           shiny::actionButton(
             ns("recompute"),
             label = i18n$t("retry"),
-            class = "btn-outline-secondary btn-sm w-100 mt-2",
+            class = "btn-outline-secondary btn-sm w-100",
             icon = bsicons::bs_icon("arrow-repeat")
           )
         )
