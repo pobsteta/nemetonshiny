@@ -644,15 +644,21 @@ mod_home_server <- function(id, app_state) {
         )
       )
 
-      # Show button only for draft status (not yet computed)
+      # Show button only for draft status (not yet computed).
+      # The CHM selector sits inside a plain div so its radio
+      # buttons render flat (Bootstrap `d-grid` would treat them as
+      # grid items and collapse the layout).
       if (status %in% c("draft", "error")) {
-        htmltools::tagList(
-          chm_selector,
-          shiny::actionButton(
-            ns("start_compute"),
-            label = i18n$t("compute_button"),
-            class = "btn-primary w-100",
-            icon = bsicons::bs_icon("cpu")
+        htmltools::div(
+          htmltools::div(class = "mb-3", chm_selector),
+          htmltools::div(
+            class = "d-grid",
+            shiny::actionButton(
+              ns("start_compute"),
+              label = i18n$t("compute_button"),
+              class = "btn-primary w-100",
+              icon = bsicons::bs_icon("cpu")
+            )
           )
         )
       } else if (status == "completed") {
@@ -660,19 +666,24 @@ mod_home_server <- function(id, app_state) {
         # the recompute button so the user can switch provenance
         # (e.g. enable Open-Canopy) before relaunching the compute.
         htmltools::div(
-          class = "d-grid gap-2",
-          shiny::actionButton(
-            ns("view_results"),
-            label = i18n$t("view_results"),
-            class = "btn-success w-100",
-            icon = bsicons::bs_icon("bar-chart")
+          htmltools::div(
+            class = "d-grid mb-2",
+            shiny::actionButton(
+              ns("view_results"),
+              label = i18n$t("view_results"),
+              class = "btn-success w-100",
+              icon = bsicons::bs_icon("bar-chart")
+            )
           ),
-          chm_selector,
-          shiny::actionButton(
-            ns("recompute"),
-            label = i18n$t("retry"),
-            class = "btn-outline-secondary btn-sm w-100",
-            icon = bsicons::bs_icon("arrow-repeat")
+          htmltools::div(class = "mb-2", chm_selector),
+          htmltools::div(
+            class = "d-grid",
+            shiny::actionButton(
+              ns("recompute"),
+              label = i18n$t("retry"),
+              class = "btn-outline-secondary btn-sm w-100",
+              icon = bsicons::bs_icon("arrow-repeat")
+            )
           )
         )
       } else {
@@ -1189,38 +1200,21 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       shiny::req(project)
 
-      # Show notification with spinner while preparing
-      recompute_notif_id <- shiny::showNotification(
-        htmltools::tagList(
-          shiny::icon("spinner", class = "fa-spin me-2"),
-          i18n$t("recomputing") %||% "Relance du calcul en cours\u2026"
-        ),
-        type = "message",
-        duration = NULL,
-        closeButton = FALSE
-      )
-
       # Clear indicator cache to force full recomputation
       clear_computation_cache(project$id)
 
-      # Reset status to allow recomputation
+      # Reset status to allow recomputation. The UI will re-render
+      # the compute_button_ui with the CHM selector + the Start
+      # button, and the user clicks Start to actually launch the
+      # run. Single entry point for compute_task == input\$start_compute.
       update_project_status(project$id, "draft")
       app_state$current_project <- load_project(project$id)
 
-      # Initialize computation state
-      state <- init_compute_state(project$id)
-      compute_state(state)
-
-      # Store project ID and start non-reactive polling
-      computing_project_id(project$id)
       progress_result$reset_tracking()
-      start_progress_polling(project$id)
+      computing_project_id(NULL)
 
-      # Suppress busy bar flicker during computation
-      session$sendCustomMessage("setComputingMode", list(active = TRUE))
-
-      # Show progress card
-      session$sendCustomMessage("showElement", list(
+      session$sendCustomMessage("setComputingMode", list(active = FALSE))
+      session$sendCustomMessage("hideElement", list(
         id = ns("progress-progress_card_wrapper")
       ))
       session$sendCustomMessage("hideElement", list(
@@ -1229,12 +1223,6 @@ mod_home_server <- function(id, app_state) {
       session$sendCustomMessage("hideElement", list(
         id = ns("progress-error_card_wrapper")
       ))
-
-      # Start the async computation
-      compute_task$invoke(project$id, get_app_options())
-
-      # Remove notification now that progress card is visible
-      shiny::removeNotification(recompute_notif_id)
     })
 
     # View results handler
