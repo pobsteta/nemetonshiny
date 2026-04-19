@@ -1284,34 +1284,33 @@ mod_home_server <- function(id, app_state) {
       )
     }, ignoreInit = TRUE)
 
-    # Handle retry from progress module
+    # Handle retry from progress module.
+    #
+    # Previously this fired compute_task$invoke() immediately, which
+    # skipped any chance for the user to change the CHM source
+    # (spec 005 phase 6). Now we only reset the project to draft
+    # and hide the error card -- compute_button_ui will re-render
+    # with the CHM selector and the Start button, and the user
+    # launches the new run manually. That matches the Recompute
+    # flow on a completed project and keeps a single entry point
+    # to compute_task.
     shiny::observeEvent(app_state$retry_computation, {
       project <- app_state$current_project
       shiny::req(project)
 
-      # Get project path for async mode
-      project_path <- get_project_path(project$id)
-
       # Clear indicator cache to force full recomputation
       clear_computation_cache(project$id)
 
-      # Reset status to allow recomputation
+      # Reset status so compute_button_ui shows the selector + button
       update_project_status(project$id, "draft")
+      app_state$current_project <- load_project(project$id)
 
-      # Initialize computation state
-      state <- init_compute_state(project$id)
-      compute_state(state)
-
-      # Store project ID and start non-reactive polling
-      computing_project_id(project$id)
+      # Stop any stale progress polling, reset UI cards
       progress_result$reset_tracking()
-      start_progress_polling(project$id)
+      computing_project_id(NULL)
 
-      # Suppress busy bar flicker during computation
-      session$sendCustomMessage("setComputingMode", list(active = TRUE))
-
-      # Show progress card, hide error card
-      session$sendCustomMessage("showElement", list(
+      session$sendCustomMessage("setComputingMode", list(active = FALSE))
+      session$sendCustomMessage("hideElement", list(
         id = ns("progress-progress_card_wrapper")
       ))
       session$sendCustomMessage("hideElement", list(
@@ -1320,9 +1319,6 @@ mod_home_server <- function(id, app_state) {
       session$sendCustomMessage("hideElement", list(
         id = ns("progress-complete_card_wrapper")
       ))
-
-      # Start the async computation
-      compute_task$invoke(project$id, get_app_options())
     }, ignoreInit = TRUE)
 
     # Handle view_results from progress module
