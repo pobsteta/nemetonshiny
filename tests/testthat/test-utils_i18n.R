@@ -674,21 +674,6 @@ test_that("Statistic translations exist", {
 })
 
 # ==============================================================================
-# Tests for JSON translation files
-# ==============================================================================
-
-test_that("JSON translation files exist", {
-  fr_path <- system.file("app/i18n/fr.json", package = "nemetonshiny")
-  en_path <- system.file("app/i18n/en.json", package = "nemetonshiny")
-
-  # Skip if package not installed (during development)
-  skip_if(fr_path == "")
-
-  expect_true(file.exists(fr_path))
-  expect_true(file.exists(en_path))
-})
-
-# ==============================================================================
 # Tests for computation summary translations with sprintf format
 # ==============================================================================
 

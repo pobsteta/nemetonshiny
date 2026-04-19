@@ -15,7 +15,7 @@ Imports: nemeton (>= 0.15.1), shiny (>= 1.8.0), bslib (>= 0.6.0),
     httr2, yaml, DT, promises, later, htmlwidgets, bsicons,
     ellmer, ggplot2
 Suggests: shinyOAuth, RPostgres, DBI, uuid, testthat (>= 3.0.0), withr,
-    golem, arrow, geoarrow, shiny.i18n, cicerone, quarto, rappdirs,
+    golem, arrow, geoarrow, cicerone, quarto, rappdirs,
     future, happign, leaflet.extras, curl, jpeg, maptiles, pkgload,
     png, viridisLite
 Remotes: pobsteta/nemeton

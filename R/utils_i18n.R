@@ -157,6 +157,16 @@ TRANSLATIONS <- list(
   # Computation
   # ============================================================
   compute_button = list(fr = "Lancer les calculs", en = "Start Calculations"),
+  chm_source_label = list(
+    fr = "Source CHM (hauteur de couvert)",
+    en = "CHM source (canopy height)"
+  ),
+  chm_source_none = list(fr = "Aucune", en = "None"),
+  chm_source_opencanopy = list(fr = "Open-Canopy", en = "Open-Canopy"),
+  chm_source_opencanopy_hint = list(
+    fr = "Open-Canopy : hauteur estim\u00e9e par ML sur ortho IGN. Python + GPU recommand\u00e9s, plusieurs minutes de calcul.",
+    en = "Open-Canopy: height estimated by ML from IGN orthoimagery. Python + GPU recommended, several minutes of computation."
+  ),
   confirm_computation_title = list(
     fr = "Confirmer le lancement des calculs",
     en = "Confirm Calculation Start"
@@ -1106,8 +1116,9 @@ get_available_languages <- function() {
 #' Export translations to JSON files
 #'
 #' @description
-#' Exports the translation dictionary to JSON files for use with shiny.i18n
-#' or other i18n systems.
+#' Exports the translation dictionary to JSON files for external translators
+#' or external i18n tooling. The R list `TRANSLATIONS` remains the single
+#' source of truth consumed at runtime by `get_i18n()`.
 #'
 #' @param output_dir Directory to write JSON files.
 #'
