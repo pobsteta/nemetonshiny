@@ -882,6 +882,10 @@ TRANSLATIONS <- list(
   source_lidar_mnh = list(fr = "Hauteur de canop\u00e9e LiDAR HD (IGN)", en = "Canopy Height Model LiDAR HD (IGN)"),
   source_lidar_mnt = list(fr = "Mod\u00e8le Num\u00e9rique de Terrain LiDAR HD (IGN)", en = "Digital Terrain Model LiDAR HD (IGN)"),
   source_lidar_copc = list(fr = "Nuages de points LiDAR HD (IGN)", en = "LiDAR HD Point Clouds (IGN)"),
+  source_chm_opencanopy = list(
+    fr = "Mod\u00e8le de hauteur de canop\u00e9e (Open-Canopy)",
+    en = "Canopy Height Model (Open-Canopy)"
+  ),
 
   # ============================================================
   # Progress Messages - Indicator Names
