@@ -94,7 +94,6 @@ Le projet suit l’architecture
       utils_theme.R              -- theme et styles
 
     inst/
-      app/i18n/                  -- traductions (fr.json, en.json)
       experts/                   -- 16 profils d'experts LLM (YAML)
       quarto/                    -- template de rapport PDF
       sql/                       -- schema et migrations
