@@ -72,8 +72,14 @@ app_server <- function(input, output, session) {
   # Warn the user once per session when required external services are not
   # configured (LLM API key, PostGIS database). These warnings surface silent
   # fallbacks (local storage) or features that will fail on use (AI analysis).
+  #
+  # session$onFlushed() fires outside a reactive consumer, so reading
+  # app_state$language directly raises "Can't access reactive value ...
+  # outside of reactive consumer". Wrap the read in shiny::isolate() --
+  # we just need the current value, we don't need to react to language
+  # changes (the notification only fires once per session anyway).
   session$onFlushed(function() {
-    i18n <- get_i18n(app_state$language)
+    i18n <- get_i18n(shiny::isolate(app_state$language))
 
     provider <- get_app_config("llm_provider", "anthropic")
     key_var <- get_llm_api_key_var(provider)
