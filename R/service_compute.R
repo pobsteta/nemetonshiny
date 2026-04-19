@@ -2337,6 +2337,39 @@ compute_all_indicators <- function(parcels,
   n_indicators <- length(indicators)
   n_to_compute <- length(indicators_to_compute)
 
+  # BD Forêt enrichment (species/age) for P2 site index in CHM mode.
+  # indicateur_p2_station expects a `species` column and an `age`
+  # column on the units sf when called in CHM mode. These are derived
+  # from BD Forêt V2 via nemeton::enrich_parcels_bdforet. We enrich
+  # once up-front rather than inside compute_single_indicator because
+  # the enrichment does a spatial intersection that is not cheap.
+  # We skip P1/P3/E1: they additionally require dbh/stems-per-ha
+  # terrain inventory (NDP ≥ 2) and would still fail.
+  needs_bdforet_enrich <- "indicateur_p2_station" %in% indicators_to_compute &&
+    !all(c("species", "age") %in% names(parcels))
+  if (needs_bdforet_enrich) {
+    bd <- resolve_vector_layer(layers, "bdforet")
+    if (!is.null(bd) && nrow(bd) > 0) {
+      enriched <- tryCatch(
+        nemeton::enrich_parcels_bdforet(parcels, bd),
+        error = function(e) {
+          cli::cli_warn("BD Forêt enrichment failed: {e$message}")
+          NULL
+        }
+      )
+      if (!is.null(enriched)) {
+        if (!"species" %in% names(parcels)) parcels$species <- enriched$species
+        if (!"age" %in% names(parcels))     parcels$age     <- enriched$age
+        n_ok <- sum(!is.na(parcels$species))
+        cli::cli_alert_info(
+          "BD Forêt enrichment: species/age set on {n_ok}/{nrow(parcels)} UGF for P2"
+        )
+      }
+    } else {
+      cli::cli_alert_info("Skipping BD Forêt enrichment: layer not available")
+    }
+  }
+
   # Initialize counters (include already completed)
   completed <- length(computed_indicators)
   failed <- 0
