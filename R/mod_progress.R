@@ -250,36 +250,24 @@ mod_progress_server <- function(id, compute_state, app_state) {
     # Progress updates (all via JavaScript to avoid re-renders)
     # ========================================
 
-    # Helper: translate task message
+    # Translate a task identifier into a user-facing status line.
+    # Delegates to the canonical translate_task_message() so that
+    # new task kinds (CHM phases, Open-Canopy tiles, inference
+    # tiles) are handled in one place. The extra paste() fallback
+    # on an unrecognised task preserves the legacy behaviour:
+    # instead of leaking a raw "chm_tile:rvb:2:28" to the UI,
+    # show the base "Calcul en cours…" label with the task
+    # string appended (useful for debugging).
     translate_task <- function(task) {
-      if (is.null(task)) return("")
-      if (task %in% c("download_start", "compute_start", "complete", "error", "resuming")) {
-        return(i18n$t(paste0("task_", task)))
+      out <- translate_task_message(task, i18n)
+      if (identical(out, task)) {
+        # translate_task_message returned the raw task → unknown kind.
+        if (nzchar(task)) {
+          return(paste(i18n$t("computing"), task))
+        }
+        return("")
       }
-      if (task == "download_complete") return(i18n$t("download_complete"))
-      if (grepl("^download_oso_progress:", task)) {
-        pct <- sub("^download_oso_progress:", "", task)
-        return(paste0("T\u00e9l\u00e9chargement OSO : ", pct, " %"))
-      }
-      if (grepl("^download_lidar:", task)) {
-        parts <- strsplit(sub("^download_lidar:", "", task), ":")[[1]]
-        product <- tolower(parts[1])  # e.g. "mnh"
-        progress <- parts[2]  # e.g. "20/500"
-        # Map product to i18n key (nuage -> copc)
-        lidar_key_map <- c(mnh = "source_lidar_mnh", mnt = "source_lidar_mnt", nuage = "source_lidar_copc")
-        source_key <- if (product %in% names(lidar_key_map)) lidar_key_map[[product]] else paste0("source_lidar_", product)
-        return(paste0(i18n$t("downloading_source", source = i18n$t(source_key)),
-                      " (", progress, ")"))
-      }
-      if (grepl("^download:", task)) {
-        source_key <- sub("^download:", "", task)
-        return(i18n$t("downloading_source", source = i18n$t(source_key)))
-      }
-      if (grepl("^compute:", task)) {
-        indicator_key <- sub("^compute:", "", task)
-        return(i18n$t("computing_indicator_name", indicator = i18n$t(indicator_key)))
-      }
-      paste(i18n$t("computing_indicator"), task)
+      out
     }
 
     # Helper: translate indicator name for the summary table

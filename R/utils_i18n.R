@@ -1218,6 +1218,28 @@ translate_task_message <- function(task, i18n) {
     return(i18n$t("download_complete"))
   }
 
+  # OSO raster download progress "download_oso_progress:42"
+  if (grepl("^download_oso_progress:", task)) {
+    pct <- sub("^download_oso_progress:", "", task)
+    return(paste0(i18n$t("downloading_source",
+                         source = i18n$t("source_forest_cover")),
+                  " : ", pct, " %"))
+  }
+
+  # LiDAR HD per-tile download "download_lidar:mnh:20/500"
+  if (grepl("^download_lidar:", task)) {
+    parts <- strsplit(sub("^download_lidar:", "", task), ":", fixed = TRUE)[[1]]
+    product <- tolower(parts[1] %||% "mnh")
+    progress <- parts[2] %||% ""
+    lidar_key_map <- c(mnh = "source_lidar_mnh",
+                       mnt = "source_lidar_mnt",
+                       nuage = "source_lidar_copc")
+    source_key <- if (product %in% names(lidar_key_map)) lidar_key_map[[product]]
+                  else paste0("source_lidar_", product)
+    return(paste0(i18n$t("downloading_source", source = i18n$t(source_key)),
+                  " (", progress, ")"))
+  }
+
   # CHM inference (Open-Canopy ML pipeline, spec 005 phase 6).
   # Not a download — handled separately so the UI does not mislabel
   # a multi-minute ML run as a "Téléchargement".
