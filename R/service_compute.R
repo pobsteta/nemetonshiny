@@ -812,6 +812,13 @@ download_layers_for_parcels <- function(parcels,
       function(ev) {
         if (!is.list(ev) || is.null(ev$type)) return(invisible())
         current <- switch(ev$type,
+          phase = {
+            step <- ev$step %||% "?"
+            if (!is.null(ev$model) && nzchar(ev$model))
+              sprintf("chm_phase:%s:%s", step, ev$model)
+            else
+              sprintf("chm_phase:%s", step)
+          },
           tile_phase_start = sprintf("chm_tile_start:%s:%d",
                                      ev$prefix %||% "ortho",
                                      ev$n_tiles %||% 0L),
@@ -819,6 +826,11 @@ download_layers_for_parcels <- function(parcels,
                          ev$prefix %||% "ortho",
                          ev$idx %||% 0L,
                          ev$n_tiles %||% 0L),
+          inference_phase_start = sprintf("chm_inference_start:%d",
+                                          ev$n_tiles %||% 0L),
+          inference_tile = sprintf("chm_inference_tile:%d:%d",
+                                   ev$idx %||% 0L,
+                                   ev$n_tiles %||% 0L),
           NULL
         )
         if (is.null(current)) return(invisible())

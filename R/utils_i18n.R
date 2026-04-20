@@ -892,6 +892,39 @@ TRANSLATIONS <- list(
     fr = "T\u00e9l\u00e9chargement ortho IGN {type} : tuile {idx}/{n}\u2026",
     en = "Downloading IGN {type} ortho: tile {idx}/{n}\u2026"
   ),
+  # Open-Canopy pipeline phases — 5 steps
+  chm_phase_load_aoi = list(
+    fr = "\u00c9tape 1/5 : chargement de l'AOI\u2026",
+    en = "Step 1/5: loading AOI\u2026"
+  ),
+  chm_phase_download_ortho = list(
+    fr = "\u00c9tape 2/5 : t\u00e9l\u00e9chargement ortho IGN\u2026",
+    en = "Step 2/5: downloading IGN ortho\u2026"
+  ),
+  chm_phase_setup_python = list(
+    fr = "\u00c9tape 3/5 : configuration Python\u2026",
+    en = "Step 3/5: Python setup\u2026"
+  ),
+  chm_phase_download_model = list(
+    fr = "\u00c9tape 3/5 : t\u00e9l\u00e9chargement mod\u00e8le {model}\u2026",
+    en = "Step 3/5: downloading model {model}\u2026"
+  ),
+  chm_phase_inference = list(
+    fr = "\u00c9tape 4/5 : inf\u00e9rence du mod\u00e8le {model}\u2026",
+    en = "Step 4/5: running model {model}\u2026"
+  ),
+  chm_phase_export = list(
+    fr = "\u00c9tape 5/5 : export des r\u00e9sultats\u2026",
+    en = "Step 5/5: exporting results\u2026"
+  ),
+  chm_inference_start = list(
+    fr = "Inf\u00e9rence CHM : {n} tuile(s)\u2026",
+    en = "CHM inference: {n} tile(s)\u2026"
+  ),
+  chm_inference_tile = list(
+    fr = "Inf\u00e9rence CHM : tuile {idx}/{n}\u2026",
+    en = "CHM inference: tile {idx}/{n}\u2026"
+  ),
 
   # ============================================================
   # Progress Messages - Indicator Names
@@ -1192,6 +1225,27 @@ translate_task_message <- function(task, i18n) {
     return(i18n$t("chm_inference_opencanopy"))
   }
 
+  # Open-Canopy pipeline phases (5 steps).
+  #   "chm_phase:load_aoi"                   -> "Étape 1/5 : chargement de l'AOI…"
+  #   "chm_phase:download_ortho"             -> "Étape 2/5 : téléchargement ortho IGN…"
+  #   "chm_phase:setup_python"               -> "Étape 3/5 : configuration Python…"
+  #   "chm_phase:download_model:pvtv2"       -> "Étape 3/5 : téléchargement modèle pvtv2…"
+  #   "chm_phase:inference:pvtv2"            -> "Étape 4/5 : inférence modèle pvtv2…"
+  #   "chm_phase:export"                     -> "Étape 5/5 : export des résultats…"
+  if (grepl("^chm_phase:", task)) {
+    parts <- strsplit(sub("^chm_phase:", "", task), ":", fixed = TRUE)[[1]]
+    step <- parts[1] %||% ""
+    model <- parts[2] %||% NA_character_
+    key <- paste0("chm_phase_", step)
+    if (i18n$has(key)) {
+      if (!is.na(model) && nzchar(model)) {
+        return(i18n$t(key, model = model))
+      }
+      return(i18n$t(key))
+    }
+    return(task)
+  }
+
   # Per-tile IGN ortho download inside the CHM pipeline.
   #   "chm_tile_start:rvb:28"  -> "Téléchargement RVB : 28 tuiles…"
   #   "chm_tile:rvb:5:28"      -> "Téléchargement RVB : tuile 5/28 …"
@@ -1207,6 +1261,22 @@ translate_task_message <- function(task, i18n) {
     idx <- suppressWarnings(as.integer(parts[2] %||% "0"))
     n_tiles <- suppressWarnings(as.integer(parts[3] %||% "0"))
     return(i18n$t("chm_tile", type = type_label, idx = idx, n = n_tiles))
+  }
+
+  # Per-inference-tile progress during the ML step.
+  #   "chm_inference_start:3"       -> "Inférence : 3 tuile(s)…"
+  #   "chm_inference_tile:2:3"      -> "Inférence tuile 2/3…"
+  if (grepl("^chm_inference_start:", task)) {
+    n_tiles <- suppressWarnings(
+      as.integer(sub("^chm_inference_start:", "", task))
+    )
+    return(i18n$t("chm_inference_start", n = n_tiles))
+  }
+  if (grepl("^chm_inference_tile:", task)) {
+    parts <- strsplit(sub("^chm_inference_tile:", "", task), ":", fixed = TRUE)[[1]]
+    idx <- suppressWarnings(as.integer(parts[1] %||% "0"))
+    n_tiles <- suppressWarnings(as.integer(parts[2] %||% "0"))
+    return(i18n$t("chm_inference_tile", idx = idx, n = n_tiles))
   }
 
   # Handle new format: "download:source_key"
