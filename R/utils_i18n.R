@@ -1225,6 +1225,14 @@ translate_task_message <- function(task, i18n) {
     return(i18n$t("chm_inference_opencanopy"))
   }
 
+  # Backward-compat: pre-e74bdcc progress state files used
+  # "download:source_chm_opencanopy" for the same event. Migrate
+  # silently so resuming an old project doesn't spit a "key not
+  # found" warning.
+  if (task == "download:source_chm_opencanopy") {
+    return(i18n$t("chm_inference_opencanopy"))
+  }
+
   # Open-Canopy pipeline phases (5 steps).
   #   "chm_phase:load_aoi"                   -> "Étape 1/5 : chargement de l'AOI…"
   #   "chm_phase:download_ortho"             -> "Étape 2/5 : téléchargement ortho IGN…"
