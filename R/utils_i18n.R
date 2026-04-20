@@ -884,6 +884,14 @@ TRANSLATIONS <- list(
     fr = "Inf\u00e9rence CHM Open-Canopy (peut prendre plusieurs minutes)\u2026",
     en = "Open-Canopy CHM inference (may take several minutes)\u2026"
   ),
+  chm_tile_start = list(
+    fr = "T\u00e9l\u00e9chargement ortho IGN {type} : {n} tuile(s)\u2026",
+    en = "Downloading IGN {type} ortho: {n} tile(s)\u2026"
+  ),
+  chm_tile = list(
+    fr = "T\u00e9l\u00e9chargement ortho IGN {type} : tuile {idx}/{n}\u2026",
+    en = "Downloading IGN {type} ortho: tile {idx}/{n}\u2026"
+  ),
 
   # ============================================================
   # Progress Messages - Indicator Names
@@ -1182,6 +1190,23 @@ translate_task_message <- function(task, i18n) {
   # a multi-minute ML run as a "Téléchargement".
   if (task == "chm_inference_opencanopy") {
     return(i18n$t("chm_inference_opencanopy"))
+  }
+
+  # Per-tile IGN ortho download inside the CHM pipeline.
+  #   "chm_tile_start:rvb:28"  -> "Téléchargement RVB : 28 tuiles…"
+  #   "chm_tile:rvb:5:28"      -> "Téléchargement RVB : tuile 5/28 …"
+  if (grepl("^chm_tile_start:", task)) {
+    parts <- strsplit(sub("^chm_tile_start:", "", task), ":", fixed = TRUE)[[1]]
+    type_label <- toupper(parts[1] %||% "ortho")
+    n_tiles <- suppressWarnings(as.integer(parts[2] %||% "0"))
+    return(i18n$t("chm_tile_start", type = type_label, n = n_tiles))
+  }
+  if (grepl("^chm_tile:", task)) {
+    parts <- strsplit(sub("^chm_tile:", "", task), ":", fixed = TRUE)[[1]]
+    type_label <- toupper(parts[1] %||% "ortho")
+    idx <- suppressWarnings(as.integer(parts[2] %||% "0"))
+    n_tiles <- suppressWarnings(as.integer(parts[3] %||% "0"))
+    return(i18n$t("chm_tile", type = type_label, idx = idx, n = n_tiles))
   }
 
   # Handle new format: "download:source_key"

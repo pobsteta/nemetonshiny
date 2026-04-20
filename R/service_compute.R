@@ -803,8 +803,36 @@ download_layers_for_parcels <- function(parcels,
         source_key = NULL
       ))
     }
+    # Relay per-tile progress from opencanopy's WMS download loop
+    # into the outer progress_callback so the Shiny status line
+    # reads e.g. "Téléchargement tuile RVB 5/28 (Open-Canopy)…"
+    # rather than staying frozen on the generic "Inférence CHM"
+    # label while 2 minutes of tiles go by.
+    chm_progress <- if (is.null(progress_callback)) NULL else
+      function(ev) {
+        if (!is.list(ev) || is.null(ev$type)) return(invisible())
+        current <- switch(ev$type,
+          tile_phase_start = sprintf("chm_tile_start:%s:%d",
+                                     ev$prefix %||% "ortho",
+                                     ev$n_tiles %||% 0L),
+          tile = sprintf("chm_tile:%s:%d:%d",
+                         ev$prefix %||% "ortho",
+                         ev$idx %||% 0L,
+                         ev$n_tiles %||% 0L),
+          NULL
+        )
+        if (is.null(current)) return(invisible())
+        progress_callback(list(
+          completed = total_sources + length(pc_sources),
+          total     = total_sources + length(pc_sources),
+          current   = current,
+          source_key = NULL
+        ))
+      }
+
     chm_out <- tryCatch(
-      download_chm_opencanopy(parcels, cache_dir, rasters, vectors),
+      download_chm_opencanopy(parcels, cache_dir, rasters, vectors,
+                              progress_callback = chm_progress),
       error = function(e) {
         cli::cli_warn("Open-Canopy CHM fetch failed: {e$message}")
         download_warnings <<- c(download_warnings, list(list(
@@ -909,7 +937,8 @@ chm_auto_enabled <- function() {
 }
 
 
-download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors) {
+download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
+                                    progress_callback = NULL) {
   if (!requireNamespace("opencanopy", quietly = TRUE)) {
     stop("Package 'opencanopy' is not installed")
   }
@@ -926,10 +955,15 @@ download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors) {
       sf::st_sf(id = 1L, geometry = aoi_bbox),
       aoi_path, delete_dsn = TRUE, quiet = TRUE
     )
-    pipe <- opencanopy::pipeline_aoi_to_chm(
-      aoi_path  = aoi_path,
-      output_dir = oc_dir
-    )
+    # Forward per-tile progress only if opencanopy is new enough to
+    # accept it — older installs silently ignored a callback arg
+    # but some revisions errored on unused args.
+    pipe_args <- list(aoi_path = aoi_path, output_dir = oc_dir)
+    if ("progress_callback" %in%
+        names(formals(opencanopy::pipeline_aoi_to_chm))) {
+      pipe_args$progress_callback <- progress_callback
+    }
+    pipe <- do.call(opencanopy::pipeline_aoi_to_chm, pipe_args)
     terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
   }
 
