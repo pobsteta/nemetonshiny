@@ -880,10 +880,27 @@ download_layers_for_parcels <- function(parcels,
 #' @return Logical.
 #' @noRd
 chm_auto_enabled <- function() {
-  if (identical(getOption("nemetonshiny.chm"), "none")) return(FALSE)
-  if (nzchar(Sys.getenv("NEMETONSHINY_DISABLE_CHM")) &&
-      Sys.getenv("NEMETONSHINY_DISABLE_CHM") != "0") return(FALSE)
-  requireNamespace("opencanopy", quietly = TRUE)
+  if (identical(getOption("nemetonshiny.chm"), "none")) {
+    cli::cli_alert_info(
+      "CHM skipped: options(nemetonshiny.chm = \"none\") is set."
+    )
+    return(FALSE)
+  }
+  env_val <- Sys.getenv("NEMETONSHINY_DISABLE_CHM")
+  if (nzchar(env_val) && env_val != "0") {
+    cli::cli_alert_info(
+      "CHM skipped: env var NEMETONSHINY_DISABLE_CHM = {.val {env_val}}. \\
+       Unset with Sys.unsetenv(\"NEMETONSHINY_DISABLE_CHM\") to re-enable."
+    )
+    return(FALSE)
+  }
+  if (!requireNamespace("opencanopy", quietly = TRUE)) {
+    cli::cli_alert_info(
+      "CHM skipped: package {.pkg opencanopy} is not installed."
+    )
+    return(FALSE)
+  }
+  TRUE
 }
 
 
