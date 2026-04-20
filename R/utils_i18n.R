@@ -880,9 +880,9 @@ TRANSLATIONS <- list(
   source_lidar_mnh = list(fr = "Hauteur de canop\u00e9e LiDAR HD (IGN)", en = "Canopy Height Model LiDAR HD (IGN)"),
   source_lidar_mnt = list(fr = "Mod\u00e8le Num\u00e9rique de Terrain LiDAR HD (IGN)", en = "Digital Terrain Model LiDAR HD (IGN)"),
   source_lidar_copc = list(fr = "Nuages de points LiDAR HD (IGN)", en = "LiDAR HD Point Clouds (IGN)"),
-  source_chm_opencanopy = list(
-    fr = "Mod\u00e8le de hauteur de canop\u00e9e (Open-Canopy)",
-    en = "Canopy Height Model (Open-Canopy)"
+  chm_inference_opencanopy = list(
+    fr = "Inf\u00e9rence CHM Open-Canopy (peut prendre plusieurs minutes)\u2026",
+    en = "Open-Canopy CHM inference (may take several minutes)\u2026"
   ),
 
   # ============================================================
@@ -1175,6 +1175,13 @@ translate_task_message <- function(task, i18n) {
   # Handle download_complete
   if (task == "download_complete") {
     return(i18n$t("download_complete"))
+  }
+
+  # CHM inference (Open-Canopy ML pipeline, spec 005 phase 6).
+  # Not a download — handled separately so the UI does not mislabel
+  # a multi-minute ML run as a "Téléchargement".
+  if (task == "chm_inference_opencanopy") {
+    return(i18n$t("chm_inference_opencanopy"))
   }
 
   # Handle new format: "download:source_key"

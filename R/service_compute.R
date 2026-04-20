@@ -791,11 +791,16 @@ download_layers_for_parcels <- function(parcels,
 
   if (chm_auto_enabled()) {
     if (!is.null(progress_callback)) {
+      # Not "download:" — the pipeline fetches the IGN ortho once
+      # (cheap) but the bulk of the time is the PVTv2/UNet ML
+      # inference. Use a dedicated task key so the UI shows
+      # "Inférence CHM Open-Canopy" instead of a misleading
+      # "Téléchargement …" status.
       progress_callback(list(
         completed = total_sources + length(pc_sources),
         total     = total_sources + length(pc_sources),
-        current   = "download:source_chm_opencanopy",
-        source_key = "source_chm_opencanopy"
+        current   = "chm_inference_opencanopy",
+        source_key = NULL
       ))
     }
     chm_out <- tryCatch(
