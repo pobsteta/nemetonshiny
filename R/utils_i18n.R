@@ -165,6 +165,14 @@ TRANSLATIONS <- list(
     fr = "CHM Open-Canopy : indisponible (package manquant ou d\u00e9sactiv\u00e9)",
     en = "CHM Open-Canopy: unavailable (package missing or disabled)"
   ),
+  augmented_height_ml_badge = list(
+    fr = "Hauteur ML",
+    en = "ML height"
+  ),
+  augmented_height_ml_tooltip = list(
+    fr = "Les indicateurs de hauteur (P1, P2, C1, B2, R2) ont \u00e9t\u00e9 calcul\u00e9s \u00e0 partir d'un mod\u00e8le num\u00e9rique de hauteur de canop\u00e9e (CHM) pr\u00e9dit par apprentissage automatique (Open-Canopy sur ortho IGN). NDP augment\u00e9 par rapport aux donn\u00e9es publiques de base.",
+    en = "Height indicators (P1, P2, C1, B2, R2) were computed from a Canopy Height Model predicted by machine learning (Open-Canopy on IGN orthoimagery). Augmented NDP compared to baseline public data."
+  ),
   confirm_computation_title = list(
     fr = "Confirmer le lancement des calculs",
     en = "Confirm Calculation Start"
