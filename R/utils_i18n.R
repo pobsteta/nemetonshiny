@@ -898,6 +898,10 @@ TRANSLATIONS <- list(
   source_lidar_mnh = list(fr = "Hauteur de canop\u00e9e LiDAR HD (IGN)", en = "Canopy Height Model LiDAR HD (IGN)"),
   source_lidar_mnt = list(fr = "Mod\u00e8le Num\u00e9rique de Terrain LiDAR HD (IGN)", en = "Digital Terrain Model LiDAR HD (IGN)"),
   source_lidar_copc = list(fr = "Nuages de points LiDAR HD (IGN)", en = "LiDAR HD Point Clouds (IGN)"),
+  source_soil = list(
+    fr = "Sol - CEC topsoil (SoilGrids 2.0 / ISRIC)",
+    en = "Soil - topsoil CEC (SoilGrids 2.0 / ISRIC)"
+  ),
   chm_inference_opencanopy = list(
     fr = "Inf\u00e9rence CHM Open-Canopy (peut prendre plusieurs minutes)\u2026",
     en = "Open-Canopy CHM inference (may take several minutes)\u2026"
