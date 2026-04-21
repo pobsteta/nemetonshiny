@@ -542,6 +542,14 @@ html[data-shiny-busy] .bslib-card::after {
   to { transform: rotate(360deg); }
 }
 
+/* Spinning gear icon used in the task_toast while the computation
+   is initialising. Must be display:inline-block so the rotation
+   origin is the centre of the glyph, not the baseline. */
+.nmt-spin {
+  display: inline-block;
+  animation: spin 1.6s linear infinite;
+}
+
 
 /* ============================================================
    Selection Indicator

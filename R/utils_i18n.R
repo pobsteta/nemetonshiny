@@ -215,6 +215,8 @@ TRANSLATIONS <- list(
   phase_downloading = list(fr = "T\u00e9l\u00e9chargement des donn\u00e9es...", en = "Downloading data..."),
   phase_computing = list(fr = "Calcul des indicateurs...", en = "Computing indicators..."),
   phase_complete = list(fr = "Termin\u00e9", en = "Complete"),
+  task_initializing = list(fr = "Initialisation des calculs\u2026",
+                            en = "Initializing computation\u2026"),
   task_download_start = list(fr = "D\u00e9marrage du t\u00e9l\u00e9chargement", en = "Starting download"),
   task_compute_start = list(fr = "D\u00e9marrage des calculs", en = "Starting calculations"),
   task_complete = list(fr = "Traitement termin\u00e9", en = "Processing complete"),
@@ -1225,7 +1227,8 @@ translate_task_message <- function(task, i18n) {
   }
 
   # Handle special task keywords
-  if (task %in% c("download_start", "compute_start", "complete", "error", "resuming")) {
+  if (task %in% c("initializing", "download_start", "compute_start",
+                  "complete", "error", "resuming")) {
     return(i18n$t(paste0("task_", task)))
   }
 

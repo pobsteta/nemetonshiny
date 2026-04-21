@@ -388,8 +388,13 @@ mod_progress_server <- function(id, compute_state, app_state) {
         tracking$last_task <- current_task
         task_text <- translate_task(current_task)
 
-        toast_type <- if (grepl("^download", current_task)) "info" else "info"
-        toast_duration <- if (grepl("download_oso_progress", current_task)) 8000 else 4000
+        toast_type <- if (identical(current_task, "initializing")) "initializing"
+                      else if (grepl("^download", current_task)) "info"
+                      else "info"
+        # Initialising stays visible until replaced by a real task.
+        toast_duration <- if (identical(current_task, "initializing")) 0
+                          else if (grepl("download_oso_progress", current_task)) 8000
+                          else 4000
 
         session$sendCustomMessage("updateTaskToast", list(
           wrapperId = ns("task_toast"),

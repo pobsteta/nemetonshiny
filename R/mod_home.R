@@ -901,8 +901,15 @@ mod_home_server <- function(id, app_state) {
       # Get project path for async mode
       project_path <- get_project_path(project$id)
 
-      # Initialize computation state
+      # Initialize computation state. Tag it with a dedicated
+      # "initializing" task so the UI immediately shows a spinning
+      # gear + "Initialisation des calculs…" toast, instead of the
+      # few-seconds blank gap between the click and the first real
+      # progress update that used to be surfaced by the async worker.
       state <- init_compute_state(project$id)
+      state$current_task <- "initializing"
+      state$status <- COMPUTE_STATUS$DOWNLOADING  # kick polling display
+      state$phase <- "init"
       compute_state(state)
 
       # Write initial "pending" state to progress file BEFORE launching
@@ -931,6 +938,11 @@ mod_home_server <- function(id, app_state) {
       session$sendCustomMessage("hideElement", list(
         id = ns("progress-error_card_wrapper")
       ))
+
+      # Push the "initializing" status to the UI right away so the
+      # user sees a spinning gear the moment they click the button,
+      # rather than waiting 1-3 s for the first async progress write.
+      progress_result$send_running_update(state)
 
       # Start the async computation with project_id and app options
       # App options are passed explicitly because future runs in a separate R process

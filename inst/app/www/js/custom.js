@@ -550,17 +550,30 @@
       textEl.textContent = data.text || '';
       // Set toast style based on type
       if (inner) {
-        inner.className = 'toast show align-items-center border-0 text-bg-' +
-          (data.type === 'warning' ? 'warning' : data.type === 'error' ? 'danger' : 'info');
+        var bg = data.type === 'warning' ? 'warning'
+               : data.type === 'error' ? 'danger'
+               : data.type === 'initializing' ? 'secondary'
+               : 'info';
+        inner.className = 'toast show align-items-center border-0 text-bg-' + bg;
       }
       if (iconEl) {
-        iconEl.textContent = data.type === 'warning' ? '\u26a0' : data.type === 'error' ? '\u2716' : '\u2139';
+        var icon = data.type === 'warning' ? '\u26a0'
+                 : data.type === 'error' ? '\u2716'
+                 : data.type === 'initializing' ? '\u2699'
+                 : '\u2139';
+        iconEl.textContent = icon;
+        // Rotate the gear icon while initializing, stop otherwise.
+        if (data.type === 'initializing') {
+          iconEl.classList.add('nmt-spin');
+        } else {
+          iconEl.classList.remove('nmt-spin');
+        }
       }
       wrapper.style.display = 'block';
 
-      // Auto-hide after duration
+      // Auto-hide after duration (0 = keep visible until replaced).
+      if (wrapper._hideTimer) clearTimeout(wrapper._hideTimer);
       if (data.duration && data.duration > 0) {
-        if (wrapper._hideTimer) clearTimeout(wrapper._hideTimer);
         wrapper._hideTimer = setTimeout(function() {
           wrapper.style.display = 'none';
         }, data.duration);
