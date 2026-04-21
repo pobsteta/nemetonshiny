@@ -230,23 +230,57 @@ mod_synthesis_server <- function(id, app_state) {
           htmltools::div(
             class = "d-flex align-items-center justify-content-center gap-2",
             ndp_badge(ndp_result$ndp, lang = i18n$language),
-            # Augmented NDP flag (spec 005 phase 6): when the user
-            # ran the computation with a CHM source, show a small
-            # badge so they see the ML-augmented provenance at a
-            # glance without changing the base NDP level.
+            # Augmented NDP flags (spec 005). When the user ran the
+            # computation with a CHM source, surface two small badges:
+            # - "Hauteur ML" = CHM was consumed by height indicators
+            #   (always true when chm_source != "none").
+            # - "Inventaire estimé ML" = P1/P3/E1 also ran, meaning
+            #   their dbh/density inputs were synthesised from the
+            #   CHM via nemeton::ensure_inventory_fields() (Charru
+            #   2012 self-thinning). Only shown when at least one of
+            #   those indicators produced a value.
             {
               chm_src <- app_state$current_project$metadata$chm_source %||% "none"
+              badges <- list()
               if (!identical(chm_src, "none")) {
-                bslib::tooltip(
-                  htmltools::tags$span(
-                    class = "badge text-bg-info",
-                    style = "font-size: 0.75rem;",
-                    htmltools::HTML("&#9889;"),
-                    " ", i18n$t("augmented_height_ml_badge")
-                  ),
-                  i18n$t("augmented_height_ml_tooltip")
-                )
+                badges <- c(badges, list(
+                  bslib::tooltip(
+                    htmltools::tags$span(
+                      class = "badge text-bg-info",
+                      style = "font-size: 0.75rem;",
+                      htmltools::HTML("&#9889;"),
+                      " ", i18n$t("augmented_height_ml_badge")
+                    ),
+                    i18n$t("augmented_height_ml_tooltip")
+                  )
+                ))
+                # Synthetic inventory badge: P1/P3/E1 with non-NA
+                # values imply ensure_inventory_fields() fired on
+                # them (we have no NDP-2 terrain path today).
+                synth_cols <- c("indicateur_p1_volume",
+                                "indicateur_p3_qualite_bois",
+                                "indicateur_e1_bois_energie")
+                df <- sf::st_drop_geometry(sf_data)
+                has_synth <- any(vapply(
+                  intersect(synth_cols, names(df)),
+                  function(col) any(!is.na(df[[col]])),
+                  logical(1)
+                ))
+                if (has_synth) {
+                  badges <- c(badges, list(
+                    bslib::tooltip(
+                      htmltools::tags$span(
+                        class = "badge text-bg-warning",
+                        style = "font-size: 0.75rem;",
+                        htmltools::HTML("&#128203;"),
+                        " ", i18n$t("augmented_inventory_ml_badge")
+                      ),
+                      i18n$t("augmented_inventory_ml_tooltip")
+                    )
+                  ))
+                }
               }
+              do.call(htmltools::tagList, badges)
             },
             bslib::popover(
               htmltools::tags$span(
