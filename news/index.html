@@ -32,6 +32,18 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<div class="section level4">
+<h4 id="changes--f1-soil-fertility-development-version">Changes — F1 soil fertility<a class="anchor" aria-label="anchor" href="#changes--f1-soil-fertility-development-version"></a></h4>
+<ul><li>
+<strong>F1 now uses the absolute SoilGrids CEC scoring path</strong> from the core package. <code>compute_single_indicator()</code> passes <code>source = "soilgrids"</code> to <code>indicateur_f1_fertilite()</code>, which streams the 250 m CEC topsoil raster on demand via <code><a href="https://pobsteta.github.io/nemeton/reference/load_raster_source.html" class="external-link">nemeton::load_raster_source()</a></code> and applies <code><a href="https://pobsteta.github.io/nemeton/reference/cec_to_fertility_score.html" class="external-link">nemeton::cec_to_fertility_score()</a></code> (absolute 0-100). Scores are now comparable across projects instead of being min-maxed per AOI.</li>
+<li>
+<strong>Removed the duplicated <code>download_soilgrids_cec()</code></strong> and its entry in <code>DATA_SOURCES$rasters$soil</code>. The core package owns the download path (ADR-009), so the app no longer stages a SoilGrids layer in <code>layers$rasters$soil</code>. One less pre-compute step surfaces in the progress UI.</li>
+<li>
+<strong>Bumped the <code>nemeton</code> dependency</strong> to <code>&gt;= 0.17.0.9000</code> (the dev version introducing <code>load_raster_source()</code>, <code>source = "soilgrids"</code>, and the UTS → fertility crosswalk).</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.16.0" id="nemetonshiny-0160">nemetonshiny 0.16.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-0160"></a></h2>
 <p>First release targeting the v0.17.0 nemeton core. End-to-end integration of the Open-Canopy CHM pipeline, live per-step progress feedback, and a consolidated i18n layer.</p>
 <div class="section level4">
