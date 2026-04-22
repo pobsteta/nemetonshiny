@@ -73,13 +73,11 @@ DATA_SOURCES <- list(
       source = "ign_lidar_hd",
       product = "mnt",
       required_for = c("indicateur_w3_humidite", "risk_erosion", "indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse")
-    ),
-    soil = list(
-      name = "Soil CEC (SoilGrids 2.0)",
-      type = "raster",
-      source = "soilgrids_cec",
-      required_for = c("indicateur_f1_fertilite")
     )
+    # SoilGrids CEC is no longer pre-downloaded to a local cache:
+    # indicateur_f1_fertilite(source = "soilgrids") fetches it on
+    # demand via nemeton::load_raster_source(), so the app doesn't
+    # need to own the download path any more.
   ),
   # Vector sources
   vectors = list(
@@ -607,8 +605,7 @@ download_layers_for_parcels <- function(parcels,
     wetlands = "source_wetlands",
     roads = "source_roads",
     buildings = "source_buildings",
-    bdforet = "source_bdforet",
-    soil = "source_soil"
+    bdforet = "source_bdforet"
   )
 
   # Download raster sources
@@ -1042,7 +1039,6 @@ download_raster_source <- function(source_name,
     "ign_irc" = download_ign_irc_ndvi(bbox, cache_file),
     "ign_bd_alti" = download_ign_dem(bbox, cache_file),
     "oso" = download_oso(bbox, cache_file, progress_callback = progress_callback),
-    "soilgrids_cec" = download_soilgrids_cec(bbox, cache_file),
     "ign_lidar_hd" = download_ign_lidar_hd(
       bbox = bbox,
       cache_dir = dirname(cache_file),
@@ -1633,62 +1629,6 @@ download_oso_global <- function(oso_path, global_cache, progress_callback = NULL
 #' @return SpatRaster object, or NULL if download fails.
 #'
 #' @noRd
-#' Download SoilGrids 2.0 CEC topsoil layer for an AOI
-#'
-#' Streams a bbox-sized extract from the global SoilGrids 2.0 COG
-#' hosted by ISRIC, crops it to the requested extent, reprojects to
-#' Lambert-93 (EPSG:2154) and writes it to the project cache. Used
-#' by `indicateur_f1_fertilite()` as the topsoil fertility proxy:
-#' cation exchange capacity at 0-5 cm depth, in cmol(c)/kg × 10
-#' (SoilGrids native units). Higher CEC == more fertile topsoil.
-#'
-#' @param bbox Numeric vector c(xmin, ymin, xmax, ymax) in WGS84.
-#' @param cache_file Target GeoTIFF path.
-#'
-#' @return A terra SpatRaster, or NULL on failure.
-#'
-#' @noRd
-download_soilgrids_cec <- function(bbox, cache_file) {
-  cli::cli_alert_info("Downloading SoilGrids 2.0 CEC topsoil (0-5 cm)...")
-
-  if (inherits(bbox, "bbox")) bbox <- as.numeric(bbox)
-
-  url <- paste0(
-    "https://files.isric.org/soilgrids/latest/data/",
-    "cec/cec_0-5cm_mean.vrt"
-  )
-
-  tryCatch({
-    # /vsicurl/ lets GDAL stream just the bytes the bbox needs from the
-    # Cloud-Optimised GeoTIFF — no full-France download.
-    r_full <- terra::rast(paste0("/vsicurl/", url))
-
-    # SoilGrids 2.0 COG is in Homolosine (Goode's interrupted). Reproject
-    # the WGS84 bbox to that CRS before cropping, then bring the crop back
-    # to Lambert-93 for consistency with the rest of the nemeton layer stack.
-    bbox_sfc <- sf::st_as_sfc(sf::st_bbox(
-      c(xmin = bbox[1], ymin = bbox[2], xmax = bbox[3], ymax = bbox[4]),
-      crs = 4326
-    ))
-    bbox_igh <- sf::st_transform(bbox_sfc, terra::crs(r_full))
-    ext_igh  <- terra::ext(sf::st_bbox(bbox_igh))
-
-    r_crop <- terra::crop(r_full, ext_igh, snap = "out")
-    r_l93  <- terra::project(r_crop, "EPSG:2154", method = "bilinear")
-
-    terra::writeRaster(r_l93, cache_file, overwrite = TRUE,
-                       gdal = c("COMPRESS=LZW", "TILED=YES"))
-    cli::cli_alert_success(
-      "SoilGrids CEC cached: {cache_file} ({ncol(r_l93)}x{nrow(r_l93)} px)"
-    )
-    terra::rast(cache_file)
-  }, error = function(e) {
-    cli::cli_warn("SoilGrids CEC download failed: {e$message}")
-    NULL
-  })
-}
-
-
 download_ign_dem <- function(bbox, cache_file) {
   # IGN Geoplateforme WMS for elevation (source: inst/datasources/FR.json)
   dem_cfg <- get_layer_service("dem", "FR")
@@ -2692,6 +2632,16 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     }
     if ("pct_masked" %in% func_args && !is.null(layers$chm_pct_masked)) {
       args$pct_masked <- layers$chm_pct_masked
+    }
+
+    # F1 soil fertility: opt into the absolute SoilGrids CEC path
+    # (nemeton::cec_to_fertility_score — scores comparable across
+    # projects) instead of the legacy min-max "layer" mode. nemeton
+    # fetches SoilGrids itself via load_raster_source(), so no
+    # layer needs to be staged in `layers$rasters$soil`.
+    if (identical(indicator, "indicateur_f1_fertilite") &&
+        "source" %in% func_args) {
+      args$source <- "soilgrids"
     }
 
     # Call function with appropriate arguments

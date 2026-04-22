@@ -1,3 +1,24 @@
+# nemetonshiny (development version)
+
+### Changes — F1 soil fertility
+
+* **F1 now uses the absolute SoilGrids CEC scoring path** from the
+  core package. `compute_single_indicator()` passes
+  `source = "soilgrids"` to `indicateur_f1_fertilite()`, which
+  streams the 250 m CEC topsoil raster on demand via
+  `nemeton::load_raster_source()` and applies
+  `nemeton::cec_to_fertility_score()` (absolute 0-100). Scores are
+  now comparable across projects instead of being min-maxed per
+  AOI.
+* **Removed the duplicated `download_soilgrids_cec()`** and its
+  entry in `DATA_SOURCES$rasters$soil`. The core package owns the
+  download path (ADR-009), so the app no longer stages a SoilGrids
+  layer in `layers$rasters$soil`. One less pre-compute step
+  surfaces in the progress UI.
+* **Bumped the `nemeton` dependency** to `>= 0.17.0.9000` (the dev
+  version introducing `load_raster_source()`, `source = "soilgrids"`,
+  and the UTS → fertility crosswalk).
+
 # nemetonshiny 0.16.0
 
 First release targeting the v0.17.0 nemeton core. End-to-end

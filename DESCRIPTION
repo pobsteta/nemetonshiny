@@ -10,7 +10,7 @@ Description: Interactive Shiny/golem application for the Nemeton systemic forest
 License: file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
-Imports: nemeton (>= 0.17.0), shiny (>= 1.8.0), bslib (>= 0.6.0),
+Imports: nemeton (>= 0.17.0.9000), shiny (>= 1.8.0), bslib (>= 0.6.0),
     htmltools, leaflet, sf, lwgeom, terra, cli, rlang, glue, jsonlite,
     httr2, yaml, DT, promises, later, htmlwidgets, bsicons,
     ellmer, ggplot2
