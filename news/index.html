@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.16.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.16.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,16 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<div class="section level4">
+<h4 id="new-feature--field-sampling--qfield-export-e5a-development-version">New feature — Field sampling / QField export (E5.a)<a class="anchor" aria-label="anchor" href="#new-feature--field-sampling--qfield-export-e5a-development-version"></a></h4>
+<ul><li>
+<strong><code>R/mod_sampling.R</code></strong> — new “Terrain” tab: given the current project’s study area (union of <code>indicators_sf</code> polygons), the user sets <code>n_base</code> / <code>n_over</code> / seed / biogeographic region, clicks <em>Générer</em>, and previews the sample plots on a leaflet map. A <em>Télécharger le projet QField (.qgz)</em> button produces a QField-ready project via <code><a href="https://pobsteta.github.io/nemeton/reference/create_qfield_project.html" class="external-link">nemeton::create_qfield_project()</a></code> (placettes + empty arbres layer + pre-configured forms).</li>
+<li>First iteration uses a spatial random draw (<code><a href="https://r-spatial.github.io/sf/reference/st_sample.html" class="external-link">sf::st_sample</a></code>). The full stratified GRTS + TSP pipeline from the 09-sampling tutorial will be lifted to <code>nemeton::create_sampling_plan()</code> in a follow-up.</li>
+<li>
+<code>DESCRIPTION</code> now requires <code>nemeton (&gt;= 0.18.0.9000)</code> for <code>create_qfield_project()</code>.</li>
+<li>i18n: 14 new FR/EN keys (<code>tab_sampling</code>, <code>sampling_*</code>, <code>qfield_*</code>).</li>
+<li>Tests: <code>tests/testthat/test-mod_sampling.R</code> — 23 assertions covering UI controls, reactive draw, empty-state handling and a round-trip .qgz built from the module’s generated plots.</li>
+</ul></div>
 <div class="section level4">
 <h4 id="changes--f1-soil-fertility-development-version">Changes — F1 soil fertility<a class="anchor" aria-label="anchor" href="#changes--f1-soil-fertility-development-version"></a></h4>
 <ul><li>
