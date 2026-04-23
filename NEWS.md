@@ -1,5 +1,24 @@
 # nemetonshiny (development version)
 
+### New feature — Field sampling / QField export (E5.a)
+
+* **`R/mod_sampling.R`** — new "Terrain" tab: given the current
+  project's study area (union of `indicators_sf` polygons), the user
+  sets `n_base` / `n_over` / seed / biogeographic region, clicks
+  *Générer*, and previews the sample plots on a leaflet map. A
+  *Télécharger le projet QField (.qgz)* button produces a QField-ready
+  project via `nemeton::create_qfield_project()` (placettes + empty
+  arbres layer + pre-configured forms).
+* First iteration uses a spatial random draw (`sf::st_sample`). The
+  full stratified GRTS + TSP pipeline from the 09-sampling tutorial
+  will be lifted to `nemeton::create_sampling_plan()` in a follow-up.
+* `DESCRIPTION` now requires `nemeton (>= 0.18.0.9000)` for
+  `create_qfield_project()`.
+* i18n: 14 new FR/EN keys (`tab_sampling`, `sampling_*`, `qfield_*`).
+* Tests: `tests/testthat/test-mod_sampling.R` — 23 assertions
+  covering UI controls, reactive draw, empty-state handling and a
+  round-trip .qgz built from the module's generated plots.
+
 ### Changes — F1 soil fertility
 
 * **F1 now uses the absolute SoilGrids CEC scoring path** from the

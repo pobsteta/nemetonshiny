@@ -65,6 +65,14 @@ app_ui <- function(request) {
         mod_synthesis_ui("synthesis")
       ),
 
+      # === Tab 3: Field sampling / QField (E5.a) ===
+      bslib::nav_panel(
+        title = i18n$t("tab_sampling"),
+        value = "sampling",
+        icon = bsicons::bs_icon("crosshair"),
+        mod_sampling_ui("sampling")
+      ),
+
       # === Tabs 4-15: Indicator Families ===
       bslib::nav_menu(
         title = i18n$t("tab_families"),

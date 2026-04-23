@@ -33,6 +33,7 @@ TRANSLATIONS <- list(
   tab_carte_cadastrale = list(fr = "Carte cadastrale", en = "Cadastral map"),
   tab_carte_tenements = list(fr = "Carte UGF", en = "UGF Map"),
   tab_tableau_ug = list(fr = "Tableau UGF", en = "UGF Table"),
+  tab_sampling = list(fr = "Terrain", en = "Field"),
   ug_map_card_title = list(fr = "Carte des unit\u00e9s de gestion foresti\u00e8re", en = "Forest Management Units Map"),
   ug_map_summary_count = list(fr = "%d t\u00e8nement(s)", en = "%d tenement(s)"),
   ug_map_summary_surface = list(fr = "Surface cadastrale : %s ha | Surface SIG : %s ha", en = "Cadastral area: %s ha | SIG area: %s ha"),
@@ -1089,7 +1090,50 @@ TRANSLATIONS <- list(
   ug_move_desc = list(fr = "D\u00e9placer %d tenement(s) s\u00e9lectionn\u00e9(s) vers une UG existante.", en = "Move %d selected tenement(s) to an existing UG."),
   ug_move_target = list(fr = "UG de destination", en = "Target UG"),
   ug_move_confirm = list(fr = "D\u00e9placer", en = "Move"),
-  ug_move_success = list(fr = "%d tenement(s) d\u00e9plac\u00e9(s) vers l'UG \u00ab %s \u00bb", en = "%d tenement(s) moved to UG '%s'")
+  ug_move_success = list(fr = "%d tenement(s) d\u00e9plac\u00e9(s) vers l'UG \u00ab %s \u00bb", en = "%d tenement(s) moved to UG '%s'"),
+
+  # ============================================================
+  # Sampling / QField (E5.a)
+  # ============================================================
+  sampling_title = list(
+    fr = "Plan d'\u00e9chantillonnage terrain",
+    en = "Field sampling plan"
+  ),
+  sampling_subtitle = list(
+    fr = "G\u00e9n\u00e9rez des placettes dans la zone courante, puis t\u00e9l\u00e9chargez le projet QField pour la saisie terrain.",
+    en = "Generate sampling plots within the current area, then download the QField project for field capture."
+  ),
+  sampling_no_project = list(
+    fr = "S\u00e9lectionnez d'abord un projet (onglet S\u00e9lection).",
+    en = "Select a project first (Selection tab)."
+  ),
+  sampling_n_base = list(fr = "Nombre de placettes base", en = "Number of base plots"),
+  sampling_n_over = list(fr = "Nombre de placettes de remplacement", en = "Number of replacement plots"),
+  sampling_seed = list(fr = "Graine al\u00e9atoire", en = "Random seed"),
+  sampling_region = list(fr = "R\u00e9gion biog\u00e9ographique (esp\u00e8ces)", en = "Biogeographic region (species)"),
+  sampling_generate = list(fr = "G\u00e9n\u00e9rer les placettes", en = "Generate plots"),
+  sampling_map_title = list(fr = "Carte des placettes", en = "Plot map"),
+  sampling_empty = list(
+    fr = "Aucune placette g\u00e9n\u00e9r\u00e9e. Configurez les param\u00e8tres et cliquez sur G\u00e9n\u00e9rer.",
+    en = "No plots yet. Configure the parameters and click Generate."
+  ),
+  sampling_generated_count = list(
+    fr = "%d placettes g\u00e9n\u00e9r\u00e9es (%d base, %d remplacement)",
+    en = "%d plots generated (%d base, %d replacement)"
+  ),
+  sampling_method_note = list(
+    fr = "Tirage al\u00e9atoire spatial (st_sample). Pour un tirage GRTS stratifi\u00e9 complet, voir le tutoriel 09-sampling.",
+    en = "Spatial random draw (st_sample). For full stratified GRTS sampling, see tutorial 09-sampling."
+  ),
+  qfield_download = list(
+    fr = "T\u00e9l\u00e9charger le projet QField (.qgz)",
+    en = "Download QField project (.qgz)"
+  ),
+  qfield_project_name = list(fr = "Nom du projet", en = "Project name"),
+  qfield_ready = list(
+    fr = "Projet QField pr\u00eat au t\u00e9l\u00e9chargement.",
+    en = "QField project ready for download."
+  )
 )
 
 

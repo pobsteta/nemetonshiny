@@ -224,6 +224,9 @@ app_server <- function(input, output, session) {
   # UG (Management Units) module
   mod_ug_server("ug", app_state)
 
+  # Sampling / QField module (E5.a)
+  mod_sampling_server("sampling", app_state)
+
   # ============================================================
   # LAZY LOADING: Family modules initialized on-demand
   # ============================================================
