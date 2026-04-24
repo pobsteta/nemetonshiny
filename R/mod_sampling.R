@@ -250,6 +250,53 @@ mod_sampling_server <- function(id, app_state) {
       sf::st_sf(geometry = sf::st_sfc(zone, crs = 2154))
     })
 
+    # --- BD Forêt v2 overlay (cached during project compute) ---------
+    # Reads <project>/cache/layers/bdforet.gpkg, normalises the TFV
+    # key (trim + dashify + upper) and joins against
+    # nemeton::bdforet_v2_mapping() via both the code and the label
+    # (IGN WFS often exposes the French libellé in the `tfv` field).
+    # Returns sf in EPSG:4326 with a `context_key` column the map
+    # uses for colouring, or NULL when the cache is missing.
+    bdforet_sf <- shiny::reactive({
+      project <- app_state$current_project
+      if (is.null(project)) return(NULL)
+      project_path <- tryCatch(get_project_path(project$id),
+                               error = function(e) NULL)
+      if (is.null(project_path)) return(NULL)
+      gpkg <- file.path(project_path, "cache", "layers", "bdforet.gpkg")
+      if (!file.exists(gpkg)) return(NULL)
+
+      bd <- tryCatch(sf::st_read(gpkg, quiet = TRUE),
+                     error = function(e) NULL)
+      if (is.null(bd) || nrow(bd) == 0) return(NULL)
+
+      # Detect the TFV column (same heuristic as the compute_cv path).
+      tfv_candidates <- c("TFV", "tfv", "CODE_TFV", "code_tfv",
+                          "essence", "ESSENCE", "LIB_FV", "LIBELLE")
+      tfv_col <- intersect(tfv_candidates, names(bd))[1]
+      if (is.na(tfv_col)) return(NULL)
+
+      # Normalize and resolve context_key via the mapping (code -> label
+      # fallback).
+      map <- tryCatch(nemeton::bdforet_v2_mapping(),
+                      error = function(e) NULL)
+      if (is.null(map)) return(NULL)
+      key <- toupper(gsub("[_[:space:]]+", "-", trimws(bd[[tfv_col]])))
+      ctx <- map$context_key[match(key, map$tfv_code)]
+      if ("label_key" %in% names(map)) {
+        fb <- map$context_key[match(key, map$label_key)]
+        ctx[is.na(ctx)] <- fb[is.na(ctx)]
+      }
+      bd$context_key <- ctx
+
+      # Drop rows we cannot colour (non-forest, unknown) for a cleaner
+      # overlay.
+      bd <- bd[!is.na(bd$context_key), , drop = FALSE]
+      if (nrow(bd) == 0) return(NULL)
+
+      sf::st_transform(bd, 4326)
+    })
+
     # --- Helpers for the target_error path ---------------------------
     # Return the current CV as a fraction (from manual input or from
     # the cached cv_from_bdforet result), or NULL when not available.
@@ -521,17 +568,56 @@ mod_sampling_server <- function(id, app_state) {
     })
 
     # --- Map ---------------------------------------------------------
-    output$map <- leaflet::renderLeaflet({
-      base <- leaflet::leaflet() |>
-        leaflet::addProviderTiles("OpenStreetMap",  group = "OSM") |>
-        leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
-        leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
-          options = leaflet::layersControlOptions(collapsed = TRUE)
-        )
+    # Overlays (bottom to top on z-order): BD Forêt v2 (by context),
+    # UGF polygons, sampled plots. Each is drawn in its own leaflet
+    # group so the layersControl lets the user toggle them.
+    bdforet_palette <- function() {
+      ctx <- c("futaie_reguliere_resineuse",
+               "futaie_reguliere_feuillue",
+               "futaie_irreguliere",
+               "tsf_melange_futaie_taillis",
+               "taillis_simple")
+      cols <- c("#2E7D32",  # sapin foncé
+                "#8BC34A",  # vert clair
+                "#00897B",  # sarcelle
+                "#827717",  # olive
+                "#FBC02D")  # ambre
+      leaflet::colorFactor(cols, domain = ctx, na.color = "#9E9E9E")
+    }
 
+    output$map <- leaflet::renderLeaflet({
+      i18n <- get_i18n(app_state$language %||% "fr")
       units <- units_sf()
       plots <- sampling_rv$plots
+      bd    <- bdforet_sf()
+
+      base <- leaflet::leaflet() |>
+        leaflet::addProviderTiles("OpenStreetMap",  group = "OSM") |>
+        leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite")
+
+      overlays <- character(0)
+
+      if (!is.null(bd) && nrow(bd) > 0) {
+        pal_bd <- bdforet_palette()
+        base <- leaflet::addPolygons(
+          base, data = bd,
+          color = ~pal_bd(context_key), weight = 0,
+          fillColor = ~pal_bd(context_key), fillOpacity = 0.35,
+          label = ~as.character(context_key),
+          group = "BD Foret"
+        )
+        base <- leaflet::addLegend(
+          base, position = "topright",
+          pal = pal_bd,
+          values = c("futaie_reguliere_resineuse",
+                     "futaie_reguliere_feuillue",
+                     "futaie_irreguliere",
+                     "tsf_melange_futaie_taillis",
+                     "taillis_simple"),
+          title = "BD Forêt v2", opacity = 0.8
+        )
+        overlays <- c(overlays, "BD Foret")
+      }
 
       if (!is.null(units)) {
         units_ll <- sf::st_transform(units, 4326)
@@ -540,7 +626,9 @@ mod_sampling_server <- function(id, app_state) {
           color = "#1B6B1B", weight = 1, fillColor = "#1B6B1B",
           fillOpacity = 0.06, group = "Unites"
         )
+        overlays <- c(overlays, "Unites")
       }
+
       if (!is.null(plots) && nrow(plots) > 0) {
         plots_ll <- sf::st_transform(plots, 4326)
         pal <- leaflet::colorFactor(c("#1f77b4", "#ff7f0e"),
@@ -549,7 +637,8 @@ mod_sampling_server <- function(id, app_state) {
           base, data = plots_ll,
           radius = 5, weight = 1, color = "#333",
           fillColor = ~pal(type), fillOpacity = 0.9,
-          label = ~sprintf("%s (%s) — ordre %d", plot_id, type, visit_order),
+          label = ~sprintf("%s (%s) — ordre %d",
+                           plot_id, type, visit_order),
           group = "Placettes"
         )
         base <- leaflet::addLegend(
@@ -557,7 +646,15 @@ mod_sampling_server <- function(id, app_state) {
           pal = pal, values = c("Base", "Over"),
           title = "Placettes"
         )
+        overlays <- c(overlays, "Placettes")
       }
+
+      base <- leaflet::addLayersControl(
+        base,
+        baseGroups = c("OSM", "Satellite"),
+        overlayGroups = overlays,
+        options = leaflet::layersControlOptions(collapsed = TRUE)
+      )
       base
     })
 
