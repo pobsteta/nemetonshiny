@@ -10,7 +10,31 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
-## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.18.0...HEAD)
+## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...HEAD)
+
+## [0.19.0](https://github.com/pobsteta/nemetonshiny/compare/v0.18.0...v0.19.0) - 2026-04-24
+
+### Added
+
+- Tooltips on six sidebar inputs of the Export terrain sub-tab (target
+  error, alpha risk, over-sample ratio, CV position, seed, region).
+- Custom TSP legend on the leaflet map (inline-SVG glyphs for the route,
+  start and finish).
+- Immediate toast notification when clicking *Réessayer* on the
+  compute-error card, dispatched on the root session.
+- `URL` and `BugReports` fields in `DESCRIPTION` so the RStudio Packages
+  pane shows the documentation icon next to the package.
+
+### Changed
+
+- README counters synced to the real state (31 indicators, 13 expert
+  profiles, 504 i18n keys).
+- `sampling_tt_region` tooltip wording says QGIS, not QField.
+
+### Fixed
+
+- Duplicate PostGIS-sync toast at compute completion — removed the
+  second occurrence in `mod_progress`; the `mod_home` one remains.
 
 ## [0.18.0](https://github.com/pobsteta/nemetonshiny/compare/v0.16.0...v0.18.0) - 2026-04-24
 

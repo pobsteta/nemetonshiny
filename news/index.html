@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.19.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.19.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,28 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.19.0.9000" id="nemetonshiny-01909000-development">nemetonshiny 0.19.0.9000 (development)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01909000-development"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.19.0" id="nemetonshiny-0190-2026-04-24">nemetonshiny 0.19.0 (2026-04-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0190-2026-04-24"></a></h2>
+<div class="section level4">
+<h4 id="new-feature--sampling-ux-polish-0-19-0">New feature — Sampling UX polish<a class="anchor" aria-label="anchor" href="#new-feature--sampling-ux-polish-0-19-0"></a></h4>
+<ul><li>
+<strong>Tooltips</strong> on six sidebar inputs of the Export terrain sub-tab (target error, alpha risk, over-sample ratio, CV position, seed, region). Each tooltip explains the statistical or biological meaning of the parameter.</li>
+<li>
+<strong>TSP legend on the map</strong>: when a sampling plan with ≥ 2 Base plots is drawn, a legend panel appears at the bottom-left with three inline-SVG glyphs — dashed magenta line (<em>Ordre de visite</em>), open triangle (<em>Départ</em>), double concentric circle (<em>Arrivée</em>) — matching the markers and route on the map.</li>
+<li>
+<strong>Retry toast</strong>: clicking <em>Réessayer</em> now fires an immediate notification with a spinning arrow-clockwise icon (“Projet réinitialisé — prêt à relancer le calcul.”), dispatched on the root session so it lands in the top-level toast stack.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed-0-19-0">Fixed<a class="anchor" aria-label="anchor" href="#fixed-0-19-0"></a></h4>
+<ul><li>
+<strong>Duplicate PostGIS-sync toast</strong> on compute completion: the same notification used to fire both from <code>mod_home</code> and <code>mod_progress</code> with slightly different wording (“la base PostGIS” vs “la base de données PostGIS”). Kept the <code>mod_home</code> one (orchestrator), dropped the <code>mod_progress</code> one.</li>
+<li>
+<strong>Package documentation icon in RStudio’s Packages pane</strong>: added <code>URL</code> and <code>BugReports</code> fields to <code>DESCRIPTION</code> so the icon is now rendered alongside the globe and uninstall icons.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="docs-0-19-0">Docs<a class="anchor" aria-label="anchor" href="#docs-0-19-0"></a></h4>
+<ul><li>README: synced counters to the real state (31 indicators, 13 expert profiles, 504 i18n translation keys). Previously 29 / 16 / 293.</li>
+<li>i18n: <code>sampling_tt_region</code> tooltip says <em>QGIS</em>, not <em>QField</em> (the species dropdown is defined in the QGIS project descriptor).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.18.0" id="nemetonshiny-0180-2026-04-24">nemetonshiny 0.18.0 (2026-04-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0180-2026-04-24"></a></h2>

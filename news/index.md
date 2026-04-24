@@ -1,6 +1,40 @@
 # Changelog
 
-## nemetonshiny 0.19.0.9000 (development)
+## nemetonshiny 0.19.0 (2026-04-24)
+
+#### New feature — Sampling UX polish
+
+- **Tooltips** on six sidebar inputs of the Export terrain sub-tab
+  (target error, alpha risk, over-sample ratio, CV position, seed,
+  region). Each tooltip explains the statistical or biological meaning
+  of the parameter.
+- **TSP legend on the map**: when a sampling plan with ≥ 2 Base plots is
+  drawn, a legend panel appears at the bottom-left with three inline-SVG
+  glyphs — dashed magenta line (*Ordre de visite*), open triangle
+  (*Départ*), double concentric circle (*Arrivée*) — matching the
+  markers and route on the map.
+- **Retry toast**: clicking *Réessayer* now fires an immediate
+  notification with a spinning arrow-clockwise icon (“Projet
+  réinitialisé — prêt à relancer le calcul.”), dispatched on the root
+  session so it lands in the top-level toast stack.
+
+#### Fixed
+
+- **Duplicate PostGIS-sync toast** on compute completion: the same
+  notification used to fire both from `mod_home` and `mod_progress` with
+  slightly different wording (“la base PostGIS” vs “la base de données
+  PostGIS”). Kept the `mod_home` one (orchestrator), dropped the
+  `mod_progress` one.
+- **Package documentation icon in RStudio’s Packages pane**: added `URL`
+  and `BugReports` fields to `DESCRIPTION` so the icon is now rendered
+  alongside the globe and uninstall icons.
+
+#### Docs
+
+- README: synced counters to the real state (31 indicators, 13 expert
+  profiles, 504 i18n translation keys). Previously 29 / 16 / 293.
+- i18n: `sampling_tt_region` tooltip says *QGIS*, not *QField* (the
+  species dropdown is defined in the QGIS project descriptor).
 
 ## nemetonshiny 0.18.0 (2026-04-24)
 
