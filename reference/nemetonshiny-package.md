@@ -1,8 +1,4 @@
-# nemetonshiny: Nemeton Shiny Application for Systemic Forest Analysis
-
-Interactive Shiny/golem application for the Nemeton systemic forest
-analysis platform. Depends on the nemeton core package for business
-logic.
+# nemetonshiny: Shiny front-end for the Nemeton systemic forest analysis platform
 
 The nemetonshiny package provides the golem-based Shiny application that
 consumes the business logic of the nemeton core package. It covers
@@ -55,7 +51,3 @@ Currently 358+ FR / EN keys.
 ## Author
 
 **Pascal Obstétar** (<pascal.obstetar@gmail.com>)
-
-## Author
-
-**Maintainer**: Pascal Obstetar <pascal.obstetar@gmail.com>
