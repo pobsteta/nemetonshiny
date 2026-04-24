@@ -517,18 +517,10 @@ mod_progress_server <- function(id, compute_state, app_state) {
             ))
           }
 
-          # Notification sync PostGIS si configuree
-          if (is_db_configured()) {
-            db_msg <- if (i18n$language == "fr") {
-              "Projet synchronis\u00e9 avec la base de donn\u00e9es PostGIS"
-            } else {
-              "Project synced to PostGIS database"
-            }
-            shiny::showNotification(
-              htmltools::tagList(shiny::icon("database", class = "me-1"), db_msg),
-              type = "message", duration = 5
-            )
-          }
+          # Note: the PostGIS-sync toast used to fire here as well;
+          # it is now emitted from mod_home (orchestrator of the
+          # project lifecycle) so the same notification does not
+          # appear twice with slightly different wording.
 
           # Reset tracking for next computation
           reset_tracking()
