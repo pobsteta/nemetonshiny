@@ -2,7 +2,7 @@
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/pobsteta/nemetonshiny/actions/workflows/r.yml/badge.svg)](https://github.com/pobsteta/nemetonshiny/actions/workflows/r.yml)
-[![Version](https://img.shields.io/badge/version-0.19.0-blue.svg?logo=github)](https://github.com/pobsteta/nemetonshiny/releases/tag/v0.19.0)
+[![Version](https://img.shields.io/badge/version-0.20.0-blue.svg?logo=github)](https://github.com/pobsteta/nemetonshiny/releases/tag/v0.20.0)
 [![pkgdown](https://github.com/pobsteta/nemetonshiny/actions/workflows/pkgdown.yaml/badge.svg)](https://pobsteta.github.io/nemetonshiny/)
 [![codecov](https://codecov.io/gh/pobsteta/nemetonshiny/graph/badge.svg)](https://codecov.io/gh/pobsteta/nemetonshiny)
 [![License: EUPL v1.2](https://img.shields.io/badge/License-EUPL%20v1.2-blue.svg?logo=opensourceinitiative)](https://opensource.org/licenses/EUPL-1.2)
@@ -10,7 +10,7 @@
 
 Application Shiny/golem pour la plateforme d'analyse systemique forestiere **Nemeton**.
 
-`nemetonshiny` fournit l'interface utilisateur interactive. La logique metier (indicateurs, calculs, referentiels) est portee par le package [`nemeton`](https://github.com/pobsteta/nemeton) (>= 0.19.0).
+`nemetonshiny` fournit l'interface utilisateur interactive. La logique metier (indicateurs, calculs, referentiels) est portee par le package [`nemeton`](https://github.com/pobsteta/nemeton) (>= 0.19.5).
 
 ## Fonctionnalites
 
@@ -26,7 +26,7 @@ Application Shiny/golem pour la plateforme d'analyse systemique forestiere **Nem
 ## Prerequis
 
 - **R** >= 4.1.0
-- **nemeton** >= 0.19.0 (package core)
+- **nemeton** >= 0.19.5 (package core)
 - Librairies systeme : GDAL, GEOS, PROJ, libudunits2
 
 ### Dependances R principales
