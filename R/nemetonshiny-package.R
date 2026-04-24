@@ -1,4 +1,3 @@
-#' @keywords internal
 "_PACKAGE"
 
 #' nemetonshiny: Shiny front-end for the Nemeton systemic forest analysis platform
