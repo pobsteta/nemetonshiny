@@ -585,6 +585,45 @@ mod_sampling_server <- function(id, app_state) {
       leaflet::colorFactor(cols, domain = ctx, na.color = "#9E9E9E")
     }
 
+    # --- Orienteering icons (Start triangle, Finish double-circle) ---
+    # Inline SVG as a base64 data URI so the icons travel with the
+    # Shiny page: no new dependency, no static file to ship. Colour
+    # is the classic orienteering magenta (#E91E63).
+    svg_data_uri <- function(svg) {
+      b64 <- jsonlite::base64_enc(charToRaw(svg))
+      paste0("data:image/svg+xml;base64,", b64)
+    }
+    ori_icons <- function() {
+      start_svg <- paste0(
+        "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' ",
+        "viewBox='0 0 28 28'>",
+        "<polygon points='14,3 25,25 3,25' fill='white' ",
+        "fill-opacity='0.5' stroke='#E91E63' stroke-width='3' />",
+        "</svg>"
+      )
+      finish_svg <- paste0(
+        "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' ",
+        "viewBox='0 0 28 28'>",
+        "<circle cx='14' cy='14' r='12' fill='white' fill-opacity='0.5' ",
+        "stroke='#E91E63' stroke-width='3' />",
+        "<circle cx='14' cy='14' r='7' fill='none' ",
+        "stroke='#E91E63' stroke-width='3' />",
+        "</svg>"
+      )
+      list(
+        start = leaflet::makeIcon(
+          iconUrl    = svg_data_uri(start_svg),
+          iconWidth  = 28, iconHeight = 28,
+          iconAnchorX = 14, iconAnchorY = 14
+        ),
+        finish = leaflet::makeIcon(
+          iconUrl    = svg_data_uri(finish_svg),
+          iconWidth  = 28, iconHeight = 28,
+          iconAnchorX = 14, iconAnchorY = 14
+        )
+      )
+    }
+
     output$map <- leaflet::renderLeaflet({
       i18n <- get_i18n(app_state$language %||% "fr")
       units <- units_sf()
@@ -633,14 +672,74 @@ mod_sampling_server <- function(id, app_state) {
         plots_ll <- sf::st_transform(plots, 4326)
         pal <- leaflet::colorFactor(c("#1f77b4", "#ff7f0e"),
                                     domain = c("Base", "Over"))
-        base <- leaflet::addCircleMarkers(
-          base, data = plots_ll,
-          radius = 5, weight = 1, color = "#333",
-          fillColor = ~pal(type), fillOpacity = 0.9,
-          label = ~sprintf("%s (%s) — ordre %d",
-                           plot_id, type, visit_order),
-          group = "Placettes"
-        )
+
+        # TSP route: connect Base plots in visit_order. First Base ->
+        # start triangle; last Base -> finish double-circle; all
+        # intermediate Base + every Over remain standard circles.
+        base_plots <- plots_ll[plots_ll$type == "Base", , drop = FALSE]
+        over_plots <- plots_ll[plots_ll$type == "Over", , drop = FALSE]
+        if (nrow(base_plots) >= 2L) {
+          base_plots <- base_plots[order(base_plots$visit_order), , drop = FALSE]
+          coords <- sf::st_coordinates(base_plots)
+          line_sf <- sf::st_sf(
+            geometry = sf::st_sfc(sf::st_linestring(coords), crs = 4326)
+          )
+          base <- leaflet::addPolylines(
+            base, data = line_sf,
+            color = "#E91E63", weight = 2, opacity = 0.8,
+            dashArray = "6,6",
+            group = "Parcours"
+          )
+          overlays <- c(overlays, "Parcours")
+        }
+
+        # Middle Base plots (exclude first & last).
+        mid <- if (nrow(base_plots) >= 3L) {
+          base_plots[-c(1L, nrow(base_plots)), , drop = FALSE]
+        } else {
+          base_plots[0L, , drop = FALSE]
+        }
+        if (nrow(mid) > 0L) {
+          base <- leaflet::addCircleMarkers(
+            base, data = mid,
+            radius = 5, weight = 1, color = "#333",
+            fillColor = ~pal(type), fillOpacity = 0.9,
+            label = ~sprintf("%s (%s) — ordre %d",
+                             plot_id, type, visit_order),
+            group = "Placettes"
+          )
+        }
+        if (nrow(over_plots) > 0L) {
+          base <- leaflet::addCircleMarkers(
+            base, data = over_plots,
+            radius = 5, weight = 1, color = "#333",
+            fillColor = ~pal(type), fillOpacity = 0.9,
+            label = ~sprintf("%s (%s)", plot_id, type),
+            group = "Placettes"
+          )
+        }
+
+        # Orienteering start / finish icons.
+        if (nrow(base_plots) >= 1L) {
+          icons <- ori_icons()
+          start_pt <- base_plots[1L, , drop = FALSE]
+          base <- leaflet::addMarkers(
+            base, data = start_pt,
+            icon = icons$start,
+            label = ~sprintf("Départ — %s", plot_id),
+            group = "Placettes"
+          )
+          if (nrow(base_plots) >= 2L) {
+            end_pt <- base_plots[nrow(base_plots), , drop = FALSE]
+            base <- leaflet::addMarkers(
+              base, data = end_pt,
+              icon = icons$finish,
+              label = ~sprintf("Arrivée — %s", plot_id),
+              group = "Placettes"
+            )
+          }
+        }
+
         base <- leaflet::addLegend(
           base, position = "bottomright",
           pal = pal, values = c("Base", "Over"),

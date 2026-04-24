@@ -1164,8 +1164,8 @@ TRANSLATIONS <- list(
                                    en = "Mid"),
   sampling_cv_position_high = list(fr = "Haute (conservatrice)",
                                    en = "High (conservative)"),
-  sampling_cv_compute = list(fr = "Calculer le CV depuis BD For\u00eat v2",
-                             en = "Compute CV from BD For\u00eat v2"),
+  sampling_cv_compute = list(fr = "Calculer le CV",
+                             en = "Compute CV"),
   sampling_cv_bdforet_hint = list(
     fr = "BD For\u00eat v2 est charg\u00e9e lors du premier calcul du projet (cache). Lancez le calcul du projet au moins une fois pour activer le mode auto.",
     en = "BD For\u00eat v2 is fetched during the project's first compute run (cache). Run the project compute at least once to enable auto mode."
