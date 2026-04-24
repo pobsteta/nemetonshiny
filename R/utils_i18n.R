@@ -1135,6 +1135,10 @@ TRANSLATIONS <- list(
     fr = "Aucune placette g\u00e9n\u00e9r\u00e9e. Configurez les param\u00e8tres et cliquez sur G\u00e9n\u00e9rer.",
     en = "No plots yet. Configure the parameters and click Generate."
   ),
+  sampling_generating = list(
+    fr = "G\u00e9n\u00e9ration du plan d'\u00e9chantillonnage (n = %d + %d)\u2026",
+    en = "Generating sampling plan (n = %d + %d)\u2026"
+  ),
   sampling_generated_count = list(
     fr = "%d placettes g\u00e9n\u00e9r\u00e9es (%d base, %d remplacement)",
     en = "%d plots generated (%d base, %d replacement)"

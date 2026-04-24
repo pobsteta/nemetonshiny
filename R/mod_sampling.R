@@ -586,6 +586,24 @@ mod_sampling_server <- function(id, app_state) {
       n_over <- sized$n_over
       seed   <- as.integer(input$seed %||% 42)
 
+      # Immediate click-feedback toast, dispatched on the root
+      # session so it lands in the top-level stack. Same pattern as
+      # the "Projet chargé" / retry toasts. The call to
+      # create_sampling_plan() below can take a few seconds (GRTS
+      # stratification over thousands of candidates) and the user
+      # otherwise sees nothing until the plots appear on the map.
+      root_session <- session$userData$root_session %||% session
+      shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("gear", class = "me-2 fa-spin"),
+          sprintf(i18n$t("sampling_generating"), n_base, n_over)
+        ),
+        type = "message",
+        duration = 4,
+        id = "sampling_generate_notif",
+        session = root_session
+      )
+
       # Forest mask: reuse the project's cached BD Forêt v2 polygons
       # (already filtered to context_key not NA = true forest) so that
       # sample points falling in water, fields, roads or coupe rase
