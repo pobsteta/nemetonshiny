@@ -234,7 +234,7 @@ mod_synthesis_server <- function(id, app_state) {
             # computation with a CHM source, surface two small badges:
             # - "Hauteur ML" = CHM was consumed by height indicators
             #   (always true when chm_source != "none").
-            # - "Inventaire estimé ML" = P1/P3/E1 also ran, meaning
+            # - "Inventaire ML" = P1/P3/E1 also ran, meaning
             #   their dbh/density inputs were synthesised from the
             #   CHM via nemeton::ensure_inventory_fields() (Charru
             #   2012 self-thinning). Only shown when at least one of

@@ -176,7 +176,7 @@ TRANSLATIONS <- list(
     en = "Height indicators (P1, P2, C1, B2, R2) were computed from a Canopy Height Model predicted by machine learning (Open-Canopy on IGN orthoimagery). Augmented NDP compared to baseline public data."
   ),
   augmented_inventory_ml_badge = list(
-    fr = "Inventaire estim\u00e9 ML",
+    fr = "Inventaire ML",
     en = "ML inventory"
   ),
   augmented_inventory_ml_tooltip = list(
