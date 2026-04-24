@@ -1259,6 +1259,7 @@ mod_home_server <- function(id, app_state) {
     # flow on a completed project and keeps a single entry point
     # to compute_task.
     shiny::observeEvent(app_state$retry_computation, {
+      cli::cli_alert_info("retry_computation observer fired")
       project <- app_state$current_project
       shiny::req(project)
 
@@ -1267,6 +1268,10 @@ mod_home_server <- function(id, app_state) {
       # Immediate toast so the user gets a click-feedback the moment
       # "Réessayer" is pressed (cache clearing + reload can take a
       # few hundred ms). Same pattern as the "Projet chargé" toast.
+      # We dispatch on the root session so the notification always
+      # appears in the top-level toast stack, even when this observer
+      # fires from inside the home module.
+      root_session <- session$userData$root_session %||% session
       shiny::showNotification(
         htmltools::tagList(
           shiny::icon("arrow-clockwise", class = "me-2 fa-spin"),
@@ -1275,7 +1280,7 @@ mod_home_server <- function(id, app_state) {
         type = "message",
         duration = 4,
         id = "retry_notif",
-        session = session
+        session = root_session
       )
 
       # Clear indicator cache to force full recomputation
