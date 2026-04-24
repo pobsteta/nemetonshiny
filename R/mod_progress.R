@@ -9,6 +9,26 @@
 NULL
 
 
+#' Format a duration in seconds as a short human string
+#'
+#' Always rounds to the nearest second. Examples:
+#'   format_elapsed(23)   -> "23 s"
+#'   format_elapsed(83)   -> "1 min 23 s"
+#'   format_elapsed(3725) -> "1 h 02 min 05 s"
+#'
+#' @param secs Numeric. Elapsed duration in seconds.
+#' @return Character scalar.
+#' @noRd
+format_elapsed <- function(secs) {
+  if (!is.numeric(secs) || is.na(secs) || secs < 0) return("?")
+  s <- round(secs)
+  if (s < 60)    return(sprintf("%d s", s))
+  if (s < 3600)  return(sprintf("%d min %02d s", s %/% 60, s %% 60))
+  sprintf("%d h %02d min %02d s",
+          s %/% 3600, (s %% 3600) %/% 60, s %% 60)
+}
+
+
 #' Progress Module UI
 #'
 #' @param id Module namespace ID.
@@ -137,6 +157,10 @@ mod_progress_ui <- function(id) {
             htmltools::p(
               class = "mb-2",
               htmltools::span(id = ns("completion_message_text"))
+            ),
+            htmltools::p(
+              class = "mb-2 text-muted small",
+              htmltools::span(id = ns("completion_duration_text"))
             )
           ),
           htmltools::div(
@@ -491,6 +515,21 @@ mod_progress_server <- function(id, compute_state, app_state) {
             id = ns("completion_message_text"),
             text = summary_text
           ))
+
+          # Elapsed time shown on a second line under the summary.
+          # tracking$start_time was captured at the first progress
+          # update (line ~332); NULL it when the compute was resumed
+          # from a cold state and we never saw the first tick.
+          if (!is.null(tracking$start_time)) {
+            elapsed_sec <- as.numeric(difftime(
+              Sys.time(), tracking$start_time, units = "secs"
+            ))
+            session$sendCustomMessage("updateText", list(
+              id = ns("completion_duration_text"),
+              text = sprintf(i18n$t("computation_duration"),
+                             format_elapsed(elapsed_sec))
+            ))
+          }
 
           # Build indicator status table
           ind_status <- state$indicators_status

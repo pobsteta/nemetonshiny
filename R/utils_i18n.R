@@ -239,6 +239,10 @@ TRANSLATIONS <- list(
     fr = "%d indicateur(s) calcul\u00e9(s) sur %d",
     en = "%d indicator(s) computed out of %d"
   ),
+  computation_duration = list(
+    fr = "Dur\u00e9e du calcul : %s",
+    en = "Computation time: %s"
+  ),
   computation_failed = list(
     fr = "%d en \u00e9chec",
     en = "%d failed"
