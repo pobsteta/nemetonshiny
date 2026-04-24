@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.16.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,10 +34,27 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
 <div class="section level4">
+<h4 id="new-feature--field-ingest-e5b--qfield-return-path-development-version">New feature — Field ingest (E5.b — QField return path)<a class="anchor" aria-label="anchor" href="#new-feature--field-ingest-e5b--qfield-return-path-development-version"></a></h4>
+<ul><li>
+<strong><code>R/mod_field_ingest.R</code></strong> — new “Ingestion terrain” tab that closes the terrain → plateforme loop. A field agent drops the GeoPackage returned by QField; the module runs <code><a href="https://pobsteta.github.io/nemeton/reference/import_qfield_gpkg.html" class="external-link">nemeton::import_qfield_gpkg()</a></code> + <code>validate_field_data()</code>, renders a validation report (counts, errors, warnings), and previews the placettes / arbres on the project map.</li>
+<li>
+<strong>NDP bump on attach</strong>: clicking <em>Rattacher au projet</em> calls <code>aggregate_plot_metrics()</code> + <code>attach_field_data_to_units()</code> on the project’s UGF sf, tags it via <code>tag_field_data_sources()</code>, runs <code>detect_ndp()</code> along the alternative field path (NDP 2 with plots only, NDP 3 from 10 trees/plot on average), persists the GPKG to <code>&lt;project&gt;/data/field_data.gpkg</code> and updates project metadata so the bumped NDP is picked up by every downstream module (synthesis badge, family tabs). Before/after NDP badges make the change visible to the user.</li>
+<li>
+<strong>MVP scope</strong>: this iteration persists the field data and bumps the NDP, but does not rerun <code>compute_all_indicators()</code>. The indicators consuming field aggregates (P1, P2, B2, C1, R2) are picked up on the next compute triggered from the Home tab.</li>
+<li>i18n: 22 new FR/EN keys (<code>tab_field_ingest</code>, <code>field_ingest_*</code>, <code>field_ingest_ndp_before</code> / <code>_after</code>, report headers).</li>
+<li>Tests: <code>tests/testthat/test-mod_field_ingest.R</code> — 24 assertions covering UI controls, reactive NULL state, the validate flow on a real-ish GPKG (placettes + arbres) and the attach flow with mocked persistence (GPKG written to the project dir + metadata update recorded).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="sampling-module-now-uses-the-library-level-grts-pipeline-development-version">Sampling module now uses the library-level GRTS pipeline<a class="anchor" aria-label="anchor" href="#sampling-module-now-uses-the-library-level-grts-pipeline-development-version"></a></h4>
+<ul><li>
+<strong><code>R/mod_sampling.R</code></strong> — replace the temporary <code>sf::st_sample(..., type = "random")</code> draw with <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code>, which delivers GRTS stratification when CHM/DEM/BD Forêt layers are provided and falls back to spatially-balanced LPM2 or plain random otherwise. The notification now appends the draw method (<code>GRTS</code>, <code>LPM2</code>, <code>RANDOM</code>) so users can see which path was taken.</li>
+<li>i18n: <code>sampling_method_note</code> rewritten to describe the new behaviour.</li>
+</ul></div>
+<div class="section level4">
 <h4 id="new-feature--field-sampling--qfield-export-e5a-development-version">New feature — Field sampling / QField export (E5.a)<a class="anchor" aria-label="anchor" href="#new-feature--field-sampling--qfield-export-e5a-development-version"></a></h4>
 <ul><li>
 <strong><code>R/mod_sampling.R</code></strong> — new “Terrain” tab: given the current project’s study area (union of <code>indicators_sf</code> polygons), the user sets <code>n_base</code> / <code>n_over</code> / seed / biogeographic region, clicks <em>Générer</em>, and previews the sample plots on a leaflet map. A <em>Télécharger le projet QField (.qgz)</em> button produces a QField-ready project via <code><a href="https://pobsteta.github.io/nemeton/reference/create_qfield_project.html" class="external-link">nemeton::create_qfield_project()</a></code> (placettes + empty arbres layer + pre-configured forms).</li>
-<li>First iteration uses a spatial random draw (<code><a href="https://r-spatial.github.io/sf/reference/st_sample.html" class="external-link">sf::st_sample</a></code>). The full stratified GRTS + TSP pipeline from the 09-sampling tutorial will be lifted to <code>nemeton::create_sampling_plan()</code> in a follow-up.</li>
+<li>First iteration uses a spatial random draw (<code><a href="https://r-spatial.github.io/sf/reference/st_sample.html" class="external-link">sf::st_sample</a></code>). The full stratified GRTS + TSP pipeline from the 09-sampling tutorial will be lifted to <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> in a follow-up.</li>
 <li>
 <code>DESCRIPTION</code> now requires <code>nemeton (&gt;= 0.18.0.9000)</code> for <code>create_qfield_project()</code>.</li>
 <li>i18n: 14 new FR/EN keys (<code>tab_sampling</code>, <code>sampling_*</code>, <code>qfield_*</code>).</li>

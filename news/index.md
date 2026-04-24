@@ -2,6 +2,46 @@
 
 ## nemetonshiny (development version)
 
+#### New feature — Field ingest (E5.b — QField return path)
+
+- **`R/mod_field_ingest.R`** — new “Ingestion terrain” tab that closes
+  the terrain → plateforme loop. A field agent drops the GeoPackage
+  returned by QField; the module runs
+  [`nemeton::import_qfield_gpkg()`](https://pobsteta.github.io/nemeton/reference/import_qfield_gpkg.html) +
+  `validate_field_data()`, renders a validation report (counts, errors,
+  warnings), and previews the placettes / arbres on the project map.
+- **NDP bump on attach**: clicking *Rattacher au projet* calls
+  `aggregate_plot_metrics()` + `attach_field_data_to_units()` on the
+  project’s UGF sf, tags it via `tag_field_data_sources()`, runs
+  `detect_ndp()` along the alternative field path (NDP 2 with plots
+  only, NDP 3 from 10 trees/plot on average), persists the GPKG to
+  `<project>/data/field_data.gpkg` and updates project metadata so the
+  bumped NDP is picked up by every downstream module (synthesis badge,
+  family tabs). Before/after NDP badges make the change visible to the
+  user.
+- **MVP scope**: this iteration persists the field data and bumps the
+  NDP, but does not rerun `compute_all_indicators()`. The indicators
+  consuming field aggregates (P1, P2, B2, C1, R2) are picked up on the
+  next compute triggered from the Home tab.
+- i18n: 22 new FR/EN keys (`tab_field_ingest`, `field_ingest_*`,
+  `field_ingest_ndp_before` / `_after`, report headers).
+- Tests: `tests/testthat/test-mod_field_ingest.R` — 24 assertions
+  covering UI controls, reactive NULL state, the validate flow on a
+  real-ish GPKG (placettes + arbres) and the attach flow with mocked
+  persistence (GPKG written to the project dir + metadata update
+  recorded).
+
+#### Sampling module now uses the library-level GRTS pipeline
+
+- **`R/mod_sampling.R`** — replace the temporary
+  `sf::st_sample(..., type = "random")` draw with
+  [`nemeton::create_sampling_plan()`](https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html),
+  which delivers GRTS stratification when CHM/DEM/BD Forêt layers are
+  provided and falls back to spatially-balanced LPM2 or plain random
+  otherwise. The notification now appends the draw method (`GRTS`,
+  `LPM2`, `RANDOM`) so users can see which path was taken.
+- i18n: `sampling_method_note` rewritten to describe the new behaviour.
+
 #### New feature — Field sampling / QField export (E5.a)
 
 - **`R/mod_sampling.R`** — new “Terrain” tab: given the current
@@ -15,7 +55,9 @@
 - First iteration uses a spatial random draw
   ([`sf::st_sample`](https://r-spatial.github.io/sf/reference/st_sample.html)).
   The full stratified GRTS + TSP pipeline from the 09-sampling tutorial
-  will be lifted to `nemeton::create_sampling_plan()` in a follow-up.
+  will be lifted to
+  [`nemeton::create_sampling_plan()`](https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html)
+  in a follow-up.
 - `DESCRIPTION` now requires `nemeton (>= 0.18.0.9000)` for
   `create_qfield_project()`.
 - i18n: 14 new FR/EN keys (`tab_sampling`, `sampling_*`, `qfield_*`).
