@@ -122,6 +122,63 @@ test_that("mod_sampling_server defaults project_name to the current project name
 })
 
 
+test_that("target_error + manual CV sizes n_base via Cochran", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  skip_if_not_installed("nemeton")
+
+  shiny::testServer(
+    nemetonshiny:::mod_sampling_server,
+    args = list(app_state = make_fake_app_state()),
+    {
+      # 35 % CV, ±10 %, 95 % -> n ~= (1.96 * 0.35 / 0.10)^2 ~= 47; with
+      # Student correction a few plots more; over_ratio 20 % -> ~10.
+      session$setInputs(
+        sizing_mode = "target_error",
+        cv_source = "manual",
+        cv_pct = 35, target_error_pct = 10,
+        alpha_pct = 5, over_ratio_pct = 20,
+        region = "BFC", project_name = "t_target",
+        seed = 1,
+        generate = 1
+      )
+      plots <- session$returned$sample_plots()
+      expect_true(inherits(plots, "sf"))
+      # Expected n_base between 47 and 55 (normal + Student bump).
+      n_base <- sum(plots$type == "Base")
+      expect_gte(n_base, 45L)
+      expect_lte(n_base, 60L)
+      n_over <- sum(plots$type == "Over")
+      # Over ratio 20 % -> between 9 and 13.
+      expect_gte(n_over, 8L)
+      expect_lte(n_over, 14L)
+    }
+  )
+})
+
+
+test_that("target_error mode bails when the manual CV is missing / zero", {
+  skip_if_not_installed("shiny")
+
+  shiny::testServer(
+    nemetonshiny:::mod_sampling_server,
+    args = list(app_state = make_fake_app_state()),
+    {
+      session$setInputs(
+        sizing_mode = "target_error",
+        cv_source = "manual",
+        cv_pct = 0,  # invalid
+        target_error_pct = 10, alpha_pct = 5, over_ratio_pct = 20,
+        region = "BFC", project_name = "t_bad",
+        seed = 1,
+        generate = 1
+      )
+      expect_null(session$returned$sample_plots())
+    }
+  )
+})
+
+
 test_that("mod_sampling_server warns when no project is loaded", {
   skip_if_not_installed("shiny")
 

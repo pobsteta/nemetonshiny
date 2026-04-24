@@ -69,12 +69,85 @@ mod_sampling_ui <- function(id) {
             htmltools::tags$p(class = "text-muted small",
                               i18n$t("sampling_subtitle")),
 
-            shiny::numericInput(ns("n_base"),  i18n$t("sampling_n_base"),
-                                value = 20, min = 1, max = 1000, step = 1),
-            shiny::numericInput(ns("n_over"),  i18n$t("sampling_n_over"),
-                                value = 5,  min = 0, max = 1000, step = 1),
-            shiny::numericInput(ns("seed"),    i18n$t("sampling_seed"),
-                                value = 42,  min = 0, max = 1e6, step = 1),
+            shiny::radioButtons(
+              ns("sizing_mode"), i18n$t("sampling_sizing_mode"),
+              choices = stats::setNames(
+                c("fixed", "target_error"),
+                c(i18n$t("sampling_mode_fixed"),
+                  i18n$t("sampling_mode_error"))
+              ),
+              selected = "fixed",
+              inline = TRUE
+            ),
+
+            # --- Mode: fixed size ---------------------------------------
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'fixed'", ns("sizing_mode")),
+              shiny::numericInput(ns("n_base"), i18n$t("sampling_n_base"),
+                                  value = 20, min = 1, max = 10000, step = 1),
+              shiny::numericInput(ns("n_over"), i18n$t("sampling_n_over"),
+                                  value = 5,  min = 0, max = 10000, step = 1)
+            ),
+
+            # --- Mode: target error + CV --------------------------------
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'target_error'", ns("sizing_mode")),
+              shiny::numericInput(ns("target_error_pct"),
+                                  i18n$t("sampling_target_error_label"),
+                                  value = 10, min = 1, max = 50, step = 1),
+              shiny::numericInput(ns("alpha_pct"),
+                                  i18n$t("sampling_alpha_label"),
+                                  value = 5, min = 1, max = 20, step = 1),
+              shiny::numericInput(ns("over_ratio_pct"),
+                                  i18n$t("sampling_over_ratio_label"),
+                                  value = 20, min = 0, max = 100, step = 5),
+
+              shiny::radioButtons(
+                ns("cv_source"), i18n$t("sampling_cv_source_label"),
+                choices = stats::setNames(
+                  c("manual", "bdforet"),
+                  c(i18n$t("sampling_cv_source_manual"),
+                    i18n$t("sampling_cv_source_bdforet"))
+                ),
+                selected = "manual",
+                inline = TRUE
+              ),
+
+              # CV manual path
+              shiny::conditionalPanel(
+                condition = sprintf("input['%s'] == 'manual'", ns("cv_source")),
+                shiny::numericInput(ns("cv_pct"),
+                                    i18n$t("sampling_cv_manual_label"),
+                                    value = 35, min = 1, max = 200, step = 1)
+              ),
+
+              # CV from BD Forêt v2
+              shiny::conditionalPanel(
+                condition = sprintf("input['%s'] == 'bdforet'", ns("cv_source")),
+                shiny::selectInput(
+                  ns("cv_position"), i18n$t("sampling_cv_position"),
+                  choices = stats::setNames(
+                    c("low", "mid", "high"),
+                    c(i18n$t("sampling_cv_position_low"),
+                      i18n$t("sampling_cv_position_mid"),
+                      i18n$t("sampling_cv_position_high"))
+                  ),
+                  selected = "mid"
+                ),
+                shiny::actionButton(
+                  ns("compute_cv"), i18n$t("sampling_cv_compute"),
+                  icon = bsicons::bs_icon("calculator"),
+                  class = "btn-outline-secondary w-100 mb-2"
+                ),
+                htmltools::tags$p(class = "text-muted small fst-italic",
+                                  i18n$t("sampling_cv_bdforet_hint"))
+              ),
+
+              shiny::uiOutput(ns("sizing_report"))
+            ),
+
+            shiny::numericInput(ns("seed"), i18n$t("sampling_seed"),
+                                value = 42, min = 0, max = 1e6, step = 1),
 
             shiny::selectInput(
               ns("region"), i18n$t("sampling_region"),
@@ -130,8 +203,10 @@ mod_sampling_server <- function(id, app_state) {
     ns <- session$ns
 
     sampling_rv <- shiny::reactiveValues(
-      plots = NULL,  # sf POINT (Base + Over)
-      zone  = NULL   # sf POLYGON (union of project geometry)
+      plots      = NULL,  # sf POINT (Base + Over)
+      zone       = NULL,  # sf POLYGON (union of project geometry)
+      cv_result  = NULL,  # output of nemeton::cv_from_bdforet()
+      size_info  = NULL   # output of nemeton::compute_sample_size()
     )
 
     # --- Default the QField project_name to the current project -----
@@ -175,6 +250,178 @@ mod_sampling_server <- function(id, app_state) {
       sf::st_sf(geometry = sf::st_sfc(zone, crs = 2154))
     })
 
+    # --- Helpers for the target_error path ---------------------------
+    # Return the current CV as a fraction (from manual input or from
+    # the cached cv_from_bdforet result), or NULL when not available.
+    current_cv <- shiny::reactive({
+      src <- input$cv_source %||% "manual"
+      if (src == "manual") {
+        cv_pct <- input$cv_pct %||% 35
+        if (is.null(cv_pct) || is.na(cv_pct) || cv_pct <= 0) return(NULL)
+        cv_pct / 100
+      } else {
+        sampling_rv$cv_result$cv
+      }
+    })
+
+    # Derive (n_base, n_over) from the selected sizing mode. Returns
+    # NULL when nothing is ready yet (e.g. target_error mode with no
+    # CV available), letting the generate observer bail cleanly.
+    sized_inputs <- shiny::reactive({
+      mode <- input$sizing_mode %||% "fixed"
+      if (mode == "fixed") {
+        list(
+          n_base = max(1L, as.integer(input$n_base %||% 20)),
+          n_over = max(0L, as.integer(input$n_over %||% 5)),
+          source = "fixed",
+          size_info = NULL
+        )
+      } else {
+        cv <- current_cv()
+        if (is.null(cv)) return(NULL)
+        target <- (input$target_error_pct %||% 10) / 100
+        alpha  <- (input$alpha_pct %||% 5) / 100
+        over_r <- (input$over_ratio_pct %||% 20) / 100
+        res <- tryCatch(
+          nemeton::compute_sample_size(cv = cv, target_error = target,
+                                       alpha = alpha),
+          error = function(e) NULL
+        )
+        if (is.null(res)) return(NULL)
+        list(
+          n_base = res$n,
+          n_over = as.integer(ceiling(res$n * over_r)),
+          source = "target_error",
+          size_info = res
+        )
+      }
+    })
+
+    # --- Compute CV from BD Forêt v2 cache ---------------------------
+    # We reuse the cache populated by service_compute during a project
+    # compute run: <project_path>/cache/layers/bdforet.gpkg. When
+    # absent, surface a friendly notification pointing to the manual
+    # CV mode.
+    shiny::observeEvent(input$compute_cv, {
+      i18n <- get_i18n(app_state$language %||% "fr")
+      project <- app_state$current_project
+      if (is.null(project)) {
+        shiny::showNotification(i18n$t("sampling_no_project"),
+                                type = "warning", duration = 5)
+        return()
+      }
+      project_path <- tryCatch(get_project_path(project$id),
+                               error = function(e) NULL)
+      if (is.null(project_path)) {
+        shiny::showNotification(i18n$t("sampling_cv_bdforet_missing"),
+                                type = "warning", duration = 6)
+        return()
+      }
+      gpkg <- file.path(project_path, "cache", "layers", "bdforet.gpkg")
+      if (!file.exists(gpkg)) {
+        shiny::showNotification(i18n$t("sampling_cv_bdforet_missing"),
+                                type = "warning", duration = 6)
+        return()
+      }
+
+      bd <- tryCatch(
+        sf::st_read(gpkg, quiet = TRUE),
+        error = function(e) NULL
+      )
+      if (is.null(bd) || nrow(bd) == 0) {
+        shiny::showNotification(i18n$t("sampling_cv_bdforet_missing"),
+                                type = "warning", duration = 6)
+        return()
+      }
+      # Detect the TFV column (IGN uses "tfv" / "TFV" / "code_tfv").
+      tfv_col <- intersect(c("TFV", "tfv", "code_tfv"), names(bd))[1]
+      if (is.na(tfv_col)) {
+        shiny::showNotification("TFV column not found in BD Forêt v2 GPKG.",
+                                type = "error", duration = 6)
+        return()
+      }
+
+      aoi <- zone_etude()
+      res <- tryCatch(
+        nemeton::cv_from_bdforet(
+          bdforet_sf = sf::st_transform(bd, 2154),
+          position   = input$cv_position %||% "mid",
+          aoi        = aoi,
+          tfv_col    = tfv_col
+        ),
+        error = function(e) {
+          shiny::showNotification(
+            paste("cv_from_bdforet():", conditionMessage(e)),
+            type = "error", duration = 8
+          )
+          NULL
+        }
+      )
+      if (is.null(res)) return()
+      sampling_rv$cv_result <- res
+
+      cv_pct <- round(res$cv * 100, 1)
+      cov_pct <- round((res$coverage %||% NA) * 100, 1)
+      shiny::showNotification(
+        sprintf(i18n$t("sampling_cv_computed"), cv_pct, cov_pct),
+        type = "message", duration = 6
+      )
+    })
+
+    # --- Sizing report shown below the target_error inputs -----------
+    output$sizing_report <- shiny::renderUI({
+      i18n <- get_i18n(app_state$language %||% "fr")
+      if ((input$sizing_mode %||% "fixed") != "target_error") return(NULL)
+
+      cv <- current_cv()
+      if (is.null(cv)) {
+        return(htmltools::div(class = "alert alert-info py-2 mb-2",
+                              i18n$t("sampling_n_computed_missing")))
+      }
+      target <- (input$target_error_pct %||% 10) / 100
+      alpha  <- (input$alpha_pct %||% 5) / 100
+      res <- tryCatch(
+        nemeton::compute_sample_size(cv = cv, target_error = target,
+                                     alpha = alpha),
+        error = function(e) NULL
+      )
+      sampling_rv$size_info <- res
+      if (is.null(res)) return(NULL)
+
+      parts <- list(
+        htmltools::div(
+          class = "alert alert-secondary py-2 mb-2",
+          sprintf(i18n$t("sampling_n_computed"),
+                  res$n, res$t_used, res$df)
+        )
+      )
+
+      cv_res <- sampling_rv$cv_result
+      if (!is.null(cv_res) && (input$cv_source %||% "manual") == "bdforet") {
+        cv_pct <- round(cv_res$cv * 100, 1)
+        cov_pct <- round((cv_res$coverage %||% NA) * 100, 1)
+        parts <- c(parts, list(htmltools::div(
+          class = "alert alert-light py-2 mb-2",
+          sprintf(i18n$t("sampling_cv_computed"), cv_pct, cov_pct)
+        )))
+        n_amb <- nrow(cv_res$ambiguous %||% data.frame())
+        if (n_amb > 0L) {
+          parts <- c(parts, list(htmltools::div(
+            class = "alert alert-warning py-2 mb-2",
+            sprintf(i18n$t("sampling_cv_ambiguous"), n_amb)
+          )))
+        }
+        n_unm <- length(cv_res$unmapped %||% character(0))
+        if (n_unm > 0L) {
+          parts <- c(parts, list(htmltools::div(
+            class = "alert alert-warning py-2 mb-2",
+            sprintf(i18n$t("sampling_cv_unmapped"), n_unm)
+          )))
+        }
+      }
+      htmltools::tagList(parts)
+    })
+
     # --- Generate plots on click -------------------------------------
     shiny::observeEvent(input$generate, {
       i18n <- get_i18n(app_state$language %||% "fr")
@@ -186,8 +433,14 @@ mod_sampling_server <- function(id, app_state) {
         return()
       }
 
-      n_base <- max(1L, as.integer(input$n_base %||% 20))
-      n_over <- max(0L, as.integer(input$n_over %||% 5))
+      sized <- sized_inputs()
+      if (is.null(sized)) {
+        shiny::showNotification(i18n$t("sampling_n_computed_missing"),
+                                type = "warning", duration = 5)
+        return()
+      }
+      n_base <- sized$n_base
+      n_over <- sized$n_over
       seed   <- as.integer(input$seed %||% 42)
 
       plots <- tryCatch(

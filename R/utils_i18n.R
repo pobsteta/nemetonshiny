@@ -1127,6 +1127,73 @@ TRANSLATIONS <- list(
     fr = "Pipeline nemeton::create_sampling_plan() : GRTS stratifi\u00e9 si CHM/MNT/BD For\u00eat sont pass\u00e9s, sinon tirage spatialement \u00e9quilibr\u00e9 (LPM2) ou al\u00e9atoire.",
     en = "Pipeline nemeton::create_sampling_plan(): stratified GRTS when CHM/DEM/forest layer are provided, otherwise spatially-balanced LPM2 or random fallback."
   ),
+
+  # Sizing by target error + CV (E5.c)
+  sampling_sizing_mode = list(fr = "Mode de dimensionnement",
+                              en = "Sizing mode"),
+  sampling_mode_fixed  = list(fr = "Taille fixe",
+                              en = "Fixed size"),
+  sampling_mode_error  = list(fr = "Erreur cible (Cochran)",
+                              en = "Target error (Cochran)"),
+  sampling_target_error_label = list(
+    fr = "Erreur relative cible (%)",
+    en = "Target relative error (%)"
+  ),
+  sampling_alpha_label = list(
+    fr = "Risque alpha (%) \u2014 d\u00e9faut 5 %",
+    en = "Alpha risk (%) \u2014 default 5 %"
+  ),
+  sampling_over_ratio_label = list(
+    fr = "Ratio de r\u00e9serve (%)",
+    en = "Over-sample ratio (%)"
+  ),
+  sampling_cv_source_label = list(fr = "Source du CV",
+                                  en = "CV source"),
+  sampling_cv_source_manual  = list(fr = "Manuel",
+                                    en = "Manual"),
+  sampling_cv_source_bdforet = list(fr = "BD For\u00eat v2 (auto)",
+                                    en = "BD For\u00eat v2 (auto)"),
+  sampling_cv_manual_label = list(fr = "CV (%)", en = "CV (%)"),
+  sampling_cv_position = list(
+    fr = "Position dans la fourchette de CV",
+    en = "Position in the CV range"
+  ),
+  sampling_cv_position_low  = list(fr = "Basse (optimiste)",
+                                   en = "Low (optimistic)"),
+  sampling_cv_position_mid  = list(fr = "M\u00e9diane",
+                                   en = "Mid"),
+  sampling_cv_position_high = list(fr = "Haute (conservatrice)",
+                                   en = "High (conservative)"),
+  sampling_cv_compute = list(fr = "Calculer le CV depuis BD For\u00eat v2",
+                             en = "Compute CV from BD For\u00eat v2"),
+  sampling_cv_bdforet_hint = list(
+    fr = "BD For\u00eat v2 est charg\u00e9e lors du premier calcul du projet (cache). Lancez le calcul du projet au moins une fois pour activer le mode auto.",
+    en = "BD For\u00eat v2 is fetched during the project's first compute run (cache). Run the project compute at least once to enable auto mode."
+  ),
+  sampling_cv_bdforet_missing = list(
+    fr = "BD For\u00eat v2 indisponible dans le cache du projet. Lancez le calcul du projet ou utilisez le mode manuel.",
+    en = "BD For\u00eat v2 unavailable in the project cache. Run compute or fall back to manual mode."
+  ),
+  sampling_cv_computed = list(
+    fr = "CV calcul\u00e9 : %s %% (couverture %s %%)",
+    en = "Computed CV: %s %% (coverage %s %%)"
+  ),
+  sampling_cv_ambiguous = list(
+    fr = "%d code(s) TFV ambigu(s) \u2014 revoir bdforet_v2_mapping.csv si besoin.",
+    en = "%d ambiguous TFV code(s) \u2014 review bdforet_v2_mapping.csv if needed."
+  ),
+  sampling_cv_unmapped = list(
+    fr = "%d code(s) TFV inconnu(s) du mapping (ignor\u00e9(s)).",
+    en = "%d TFV code(s) not in the mapping (ignored)."
+  ),
+  sampling_n_computed = list(
+    fr = "Taille calcul\u00e9e : n = %d placettes (t = %.2f, df = %d).",
+    en = "Computed size: n = %d plots (t = %.2f, df = %d)."
+  ),
+  sampling_n_computed_missing = list(
+    fr = "Fournissez une erreur cible et un CV pour calculer n.",
+    en = "Provide a target error and a CV to compute n."
+  ),
   qfield_download = list(
     fr = "T\u00e9l\u00e9charger le projet QGIS",
     en = "Download QGIS project"
