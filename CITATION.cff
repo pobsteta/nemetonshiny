@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "nemetonshiny: Shiny front-end for the Nemeton systemic forest analysis platform"
+abstract: >
+  Interactive Shiny/golem application for the Nemeton systemic forest
+  analysis platform. Provides project management, indicator radar
+  visualisation, per-family dashboards, QField field workflow
+  (export plan + import returned field data), OAuth2 authentication
+  and LLM-powered expert profiles. Depends on the nemeton core
+  package for business logic; contains no business logic of its own
+  (ADR-009).
+authors:
+  - family-names: "Obstétar"
+    given-names: "Pascal"
+    email: "pascal.obstetar@gmail.com"
+    orcid: "https://orcid.org/0009-0003-5403-1187"
+version: "0.18.0"
+date-released: "2026-04-24"
+url: "https://github.com/pobsteta/nemetonshiny"
+repository-code: "https://github.com/pobsteta/nemetonshiny"
+repository-artifact: "https://github.com/pobsteta/nemetonshiny/releases"
+license: MIT
+keywords:
+  - forestry
+  - R
+  - shiny
+  - golem
+  - qfield
+  - oauth2
+  - llm
+  - spatial-analysis
+references:
+  - type: software
+    title: "nemeton"
+    authors:
+      - family-names: "Obstétar"
+        given-names: "Pascal"
+    url: "https://github.com/pobsteta/nemeton"

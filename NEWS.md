@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.18.0 (2026-04-24)
 
 ### New feature — Sample size from target error + BD Forêt v2 CV (E5.c)
 
