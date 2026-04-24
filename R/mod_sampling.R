@@ -584,12 +584,25 @@ mod_sampling_server <- function(id, app_state) {
       n_over <- sized$n_over
       seed   <- as.integer(input$seed %||% 42)
 
+      # Forest mask: reuse the project's cached BD Forêt v2 polygons
+      # (already filtered to context_key not NA = true forest) so that
+      # sample points falling in water, fields, roads or coupe rase
+      # are filtered out by the min_forest_cover = 0.7 constraint.
+      bd <- bdforet_sf()  # in EPSG:4326
+      mask <- if (!is.null(bd) && nrow(bd) > 0) {
+        tryCatch(sf::st_transform(bd, 2154),
+                 error = function(e) NULL)
+      } else {
+        NULL
+      }
+
       plots <- tryCatch(
         nemeton::create_sampling_plan(
-          zone    = zone,
-          n_base  = n_base,
-          n_over  = n_over,
-          seed    = seed
+          zone        = zone,
+          n_base      = n_base,
+          n_over      = n_over,
+          seed        = seed,
+          forest_mask = mask
         ),
         error = function(e) {
           shiny::showNotification(
