@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.18.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,9 +32,9 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.18.0" id="nemetonshiny-0180-2026-04-24">nemetonshiny 0.18.0 (2026-04-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0180-2026-04-24"></a></h2>
 <div class="section level4">
-<h4 id="new-feature--sample-size-from-target-error--bd-forêt-v2-cv-e5c-development-version">New feature — Sample size from target error + BD Forêt v2 CV (E5.c)<a class="anchor" aria-label="anchor" href="#new-feature--sample-size-from-target-error--bd-for%C3%AAt-v2-cv-e5c-development-version"></a></h4>
+<h4 id="new-feature--sample-size-from-target-error--bd-forêt-v2-cv-e5c-0-18-0">New feature — Sample size from target error + BD Forêt v2 CV (E5.c)<a class="anchor" aria-label="anchor" href="#new-feature--sample-size-from-target-error--bd-for%C3%AAt-v2-cv-e5c-0-18-0"></a></h4>
 <ul><li>
 <strong><code>R/mod_sampling.R</code></strong> — the sidebar accordion in the Export terrain sub-tab gains a <em>Mode de dimensionnement</em> radio (<em>Taille fixe</em> / <em>Erreur cible</em>). In <em>Erreur cible</em> mode the user picks a relative error (default 10 %), an alpha risk (default 5 %), an over-sample ratio (default 20 %) and either a manual CV or an automatic CV derived from BD Forêt v2 via <code><a href="https://pobsteta.github.io/nemeton/reference/cv_from_bdforet.html" class="external-link">nemeton::cv_from_bdforet()</a></code>. The computed sample size is shown live under the inputs, along with diagnostics on the BD Forêt v2 coverage and any ambiguous / unmapped TFV codes.</li>
 <li>BD Forêt v2 is read from the project cache populated during the first compute run (<code>&lt;project&gt;/cache/layers/bdforet.gpkg</code>). When the cache is absent, the UI points the user at the manual mode via an explicit warning.</li>
@@ -45,7 +45,7 @@
 <li>Tests: 6 new testServer assertions covering the Cochran sizing path (manual CV) and the bail-out when CV is zero. Full suite 5145 / 0 failure.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="new-feature--field-ingest-e5b--qfield-return-path-development-version">New feature — Field ingest (E5.b — QField return path)<a class="anchor" aria-label="anchor" href="#new-feature--field-ingest-e5b--qfield-return-path-development-version"></a></h4>
+<h4 id="new-feature--field-ingest-e5b--qfield-return-path-0-18-0">New feature — Field ingest (E5.b — QField return path)<a class="anchor" aria-label="anchor" href="#new-feature--field-ingest-e5b--qfield-return-path-0-18-0"></a></h4>
 <ul><li>
 <strong><code>R/mod_field_ingest.R</code></strong> — new “Ingestion terrain” tab that closes the terrain → plateforme loop. A field agent drops the GeoPackage returned by QField; the module runs <code><a href="https://pobsteta.github.io/nemeton/reference/import_qfield_gpkg.html" class="external-link">nemeton::import_qfield_gpkg()</a></code> + <code>validate_field_data()</code>, renders a validation report (counts, errors, warnings), and previews the placettes / arbres on the project map.</li>
 <li>
@@ -56,13 +56,13 @@
 <li>Tests: <code>tests/testthat/test-mod_field_ingest.R</code> — 24 assertions covering UI controls, reactive NULL state, the validate flow on a real-ish GPKG (placettes + arbres) and the attach flow with mocked persistence (GPKG written to the project dir + metadata update recorded).</li>
 </ul></div>
 <div class="section level4">
-<h4 id="sampling-module-now-uses-the-library-level-grts-pipeline-development-version">Sampling module now uses the library-level GRTS pipeline<a class="anchor" aria-label="anchor" href="#sampling-module-now-uses-the-library-level-grts-pipeline-development-version"></a></h4>
+<h4 id="sampling-module-now-uses-the-library-level-grts-pipeline-0-18-0">Sampling module now uses the library-level GRTS pipeline<a class="anchor" aria-label="anchor" href="#sampling-module-now-uses-the-library-level-grts-pipeline-0-18-0"></a></h4>
 <ul><li>
 <strong><code>R/mod_sampling.R</code></strong> — replace the temporary <code>sf::st_sample(..., type = "random")</code> draw with <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code>, which delivers GRTS stratification when CHM/DEM/BD Forêt layers are provided and falls back to spatially-balanced LPM2 or plain random otherwise. The notification now appends the draw method (<code>GRTS</code>, <code>LPM2</code>, <code>RANDOM</code>) so users can see which path was taken.</li>
 <li>i18n: <code>sampling_method_note</code> rewritten to describe the new behaviour.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="new-feature--field-sampling--qfield-export-e5a-development-version">New feature — Field sampling / QField export (E5.a)<a class="anchor" aria-label="anchor" href="#new-feature--field-sampling--qfield-export-e5a-development-version"></a></h4>
+<h4 id="new-feature--field-sampling--qfield-export-e5a-0-18-0">New feature — Field sampling / QField export (E5.a)<a class="anchor" aria-label="anchor" href="#new-feature--field-sampling--qfield-export-e5a-0-18-0"></a></h4>
 <ul><li>
 <strong><code>R/mod_sampling.R</code></strong> — new “Terrain” tab: given the current project’s study area (union of <code>indicators_sf</code> polygons), the user sets <code>n_base</code> / <code>n_over</code> / seed / biogeographic region, clicks <em>Générer</em>, and previews the sample plots on a leaflet map. A <em>Télécharger le projet QField (.qgz)</em> button produces a QField-ready project via <code><a href="https://pobsteta.github.io/nemeton/reference/create_qfield_project.html" class="external-link">nemeton::create_qfield_project()</a></code> (placettes + empty arbres layer + pre-configured forms).</li>
 <li>First iteration uses a spatial random draw (<code><a href="https://r-spatial.github.io/sf/reference/st_sample.html" class="external-link">sf::st_sample</a></code>). The full stratified GRTS + TSP pipeline from the 09-sampling tutorial will be lifted to <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> in a follow-up.</li>
@@ -72,7 +72,7 @@
 <li>Tests: <code>tests/testthat/test-mod_sampling.R</code> — 23 assertions covering UI controls, reactive draw, empty-state handling and a round-trip .qgz built from the module’s generated plots.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="changes--f1-soil-fertility-development-version">Changes — F1 soil fertility<a class="anchor" aria-label="anchor" href="#changes--f1-soil-fertility-development-version"></a></h4>
+<h4 id="changes--f1-soil-fertility-0-18-0">Changes — F1 soil fertility<a class="anchor" aria-label="anchor" href="#changes--f1-soil-fertility-0-18-0"></a></h4>
 <ul><li>
 <strong>F1 now uses the absolute SoilGrids CEC scoring path</strong> from the core package. <code>compute_single_indicator()</code> passes <code>source = "soilgrids"</code> to <code>indicateur_f1_fertilite()</code>, which streams the 250 m CEC topsoil raster on demand via <code><a href="https://pobsteta.github.io/nemeton/reference/load_raster_source.html" class="external-link">nemeton::load_raster_source()</a></code> and applies <code><a href="https://pobsteta.github.io/nemeton/reference/cec_to_fertility_score.html" class="external-link">nemeton::cec_to_fertility_score()</a></code> (absolute 0-100). Scores are now comparable across projects instead of being min-maxed per AOI.</li>
 <li>
