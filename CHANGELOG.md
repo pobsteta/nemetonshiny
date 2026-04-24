@@ -10,7 +10,42 @@ For a narrative, per-feature description of each release, see
 [NEWS.md](https://pobsteta.github.io/nemetonshiny/NEWS.md). This file is
 the concise, categorised trail.
 
-## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...HEAD)
+## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
+
+## [0.20.0](https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...v0.20.0) - 2026-04-24
+
+### Added
+
+- LiDAR HD MNH fetched via `happign` as the preferred CHM source
+  (Open-Canopy ML retained as fallback). E5.d phase 1.
+- LiDAR HD MNT promoted to the canonical `dem` slot (1 m vs 25 m BD
+  ALTI) so W3 / R1 / R2 / R3 / erosion use LiDAR resolution.
+- `has_lidar_hd` attribute auto-lifts NDP to 1 when any LiDAR HD product
+  is cached.
+- New “Hauteur LiDAR HD” badge on the Synthesis tab, distinct from
+  “Hauteur ML”.
+- Reactive loaders for cached CHM / MNT in mod_sampling; passed to
+  `create_sampling_plan()` so stratified GRTS kicks in.
+- `forest_mask` passed to the sampling plan (BD Forêt v2 filtered) —
+  points stop falling in water / roads.
+- Immediate spinning-gear toast when clicking *Générer les placettes*.
+- Tooltip on *Source du CV* radio clarifying that it only picks the CV
+  value, not the draw method.
+
+### Changed
+
+- Sampling-method note rewritten to describe candidates on a regular 50
+  m grid, forest mask filter, then GRTS → LPM2 → random selection.
+- Map auto-zoom fixed to the UGF extent instead of BD Forêt’s (which is
+  fetched with a buffer).
+- `chm_phase:lidar_hd_download` progress key translated.
+- Bumped `nemeton` minimum to `>= 0.19.5`.
+
+### Fixed
+
+- Duplicate PostGIS-sync toast at compute completion (kept the
+  `mod_home` one, dropped the `mod_progress` one).
+- Retry button now emits an immediate toast on the root session.
 
 ## [0.19.0](https://github.com/pobsteta/nemetonshiny/compare/v0.18.0...v0.19.0) - 2026-04-24
 

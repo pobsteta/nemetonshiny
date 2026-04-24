@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.20.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.20.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,44 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.20.0.9000" id="nemetonshiny-02009000-development">nemetonshiny 0.20.0.9000 (development)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02009000-development"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.20.0" id="nemetonshiny-0200-2026-04-24">nemetonshiny 0.20.0 (2026-04-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0200-2026-04-24"></a></h2>
+<div class="section level4">
+<h4 id="new-feature--lidar-hd-integration-e5d-0-20-0">New feature — LiDAR HD integration (E5.d)<a class="anchor" aria-label="anchor" href="#new-feature--lidar-hd-integration-e5d-0-20-0"></a></h4>
+<ul><li>
+<strong>LiDAR HD MNH as preferred CHM source</strong>. The download path now tries <code>download_ign_lidar_hd(product = "mnh")</code> via <code>happign</code> first — a direct airborne measurement (~0.5 m vertical accuracy, NDP 2 precision). Open-Canopy ML remains the fallback when LiDAR HD tiles are missing for the AOI.</li>
+<li>
+<strong>LiDAR HD MNT promoted to the <code>dem</code> slot</strong> (1 m vs 25 m BD ALTI) so W3 (TWI), R1 (feu), R2 (tempête), R3 (sécheresse) and the erosion risk all run at LiDAR HD resolution.</li>
+<li>
+<strong>NDP 1 “Observation” auto-lifts</strong> whenever any LiDAR HD product (MNH or MNT) is cached for the AOI, via <code>attr(compute_unit, "has_lidar_hd")</code> consumed by <code><a href="https://pobsteta.github.io/nemeton/reference/detect_ndp.html" class="external-link">nemeton::detect_ndp()</a></code>.</li>
+<li>
+<strong>Stratified GRTS kicks in on the sampling plan</strong>. Two new reactives (<code>chm_raster</code>, <code>mnt_raster</code>) load the cached CHM / MNT with the same LiDAR-first / fallback order and pass them to <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code>. The core upgrades from LPM2 to stratified GRTS whenever CHM + MNT + BD Forêt are all available. The draw method is surfaced in the generation toast.</li>
+<li>
+<strong>New “Hauteur LiDAR HD” badge</strong> on the Synthesis tab (<code>augmented_height_lidar_*</code> i18n keys) — green, distinct from the cyan “Hauteur ML” used for Open-Canopy.</li>
+<li>
+<code>chm_phase:lidar_hd_download</code> progress key translated so the compute status line reads “Téléchargement CHM LiDAR HD (IGN)…” instead of the raw key.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="new-feature--sampling-polish-0-20-0">New feature — Sampling polish<a class="anchor" aria-label="anchor" href="#new-feature--sampling-polish-0-20-0"></a></h4>
+<ul><li>
+<strong><code>forest_mask</code> passed to the sampling plan</strong>: reuse the project’s cached BD Forêt v2 polygons (filtered to true forest) so points falling in water, fields or roads are filtered by the <code>min_forest_cover = 0.7</code> constraint. Fixes the Couchey lake scenario.</li>
+<li>
+<strong>Map zoom fixed to the UGF extent</strong>, not BD Forêt’s (which is fetched with a buffer and was dominating the auto-fit).</li>
+<li>
+<strong>Immediate toast on Générer les placettes</strong> with a spinning gear, matching the Projet chargé / Retry pattern. Dispatched on the root session.</li>
+<li>
+<strong>Tooltip on the Source du CV radio</strong> explicitly states that the choice controls the CV value (Cochran), not the draw method (GRTS / LPM2 / random).</li>
+<li>
+<strong>Sampling method note rewritten</strong> to describe the full pipeline: candidates on a regular 50 m grid, filtered by the forest mask, then GRTS → LPM2 → random depending on what is provided.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed-0-20-0">Fixed<a class="anchor" aria-label="anchor" href="#fixed-0-20-0"></a></h4>
+<ul><li>Duplicate PostGIS-sync toast at compute completion — removed the second occurrence in <code>mod_progress</code>; only the <code>mod_home</code> one fires now.</li>
+<li>Immediate toast when clicking <em>Réessayer</em> on the compute-error card, dispatched on the root session.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="dependencies-0-20-0">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies-0-20-0"></a></h4>
+<ul><li>Bumped <code>nemeton</code> minimum to <code>&gt;= 0.19.5</code> (for <code>height_lidar</code> augmented flag and TSP tour integration).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.19.0" id="nemetonshiny-0190-2026-04-24">nemetonshiny 0.19.0 (2026-04-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0190-2026-04-24"></a></h2>

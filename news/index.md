@@ -1,6 +1,65 @@
 # Changelog
 
-## nemetonshiny 0.20.0.9000 (development)
+## nemetonshiny 0.20.0 (2026-04-24)
+
+#### New feature — LiDAR HD integration (E5.d)
+
+- **LiDAR HD MNH as preferred CHM source**. The download path now tries
+  `download_ign_lidar_hd(product = "mnh")` via `happign` first — a
+  direct airborne measurement (~0.5 m vertical accuracy, NDP 2
+  precision). Open-Canopy ML remains the fallback when LiDAR HD tiles
+  are missing for the AOI.
+- **LiDAR HD MNT promoted to the `dem` slot** (1 m vs 25 m BD ALTI) so
+  W3 (TWI), R1 (feu), R2 (tempête), R3 (sécheresse) and the erosion risk
+  all run at LiDAR HD resolution.
+- **NDP 1 “Observation” auto-lifts** whenever any LiDAR HD product (MNH
+  or MNT) is cached for the AOI, via
+  `attr(compute_unit, "has_lidar_hd")` consumed by
+  [`nemeton::detect_ndp()`](https://pobsteta.github.io/nemeton/reference/detect_ndp.html).
+- **Stratified GRTS kicks in on the sampling plan**. Two new reactives
+  (`chm_raster`, `mnt_raster`) load the cached CHM / MNT with the same
+  LiDAR-first / fallback order and pass them to
+  [`nemeton::create_sampling_plan()`](https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html).
+  The core upgrades from LPM2 to stratified GRTS whenever CHM + MNT + BD
+  Forêt are all available. The draw method is surfaced in the generation
+  toast.
+- **New “Hauteur LiDAR HD” badge** on the Synthesis tab
+  (`augmented_height_lidar_*` i18n keys) — green, distinct from the cyan
+  “Hauteur ML” used for Open-Canopy.
+- `chm_phase:lidar_hd_download` progress key translated so the compute
+  status line reads “Téléchargement CHM LiDAR HD (IGN)…” instead of the
+  raw key.
+
+#### New feature — Sampling polish
+
+- **`forest_mask` passed to the sampling plan**: reuse the project’s
+  cached BD Forêt v2 polygons (filtered to true forest) so points
+  falling in water, fields or roads are filtered by the
+  `min_forest_cover = 0.7` constraint. Fixes the Couchey lake scenario.
+- **Map zoom fixed to the UGF extent**, not BD Forêt’s (which is fetched
+  with a buffer and was dominating the auto-fit).
+- **Immediate toast on Générer les placettes** with a spinning gear,
+  matching the Projet chargé / Retry pattern. Dispatched on the root
+  session.
+- **Tooltip on the Source du CV radio** explicitly states that the
+  choice controls the CV value (Cochran), not the draw method (GRTS /
+  LPM2 / random).
+- **Sampling method note rewritten** to describe the full pipeline:
+  candidates on a regular 50 m grid, filtered by the forest mask, then
+  GRTS → LPM2 → random depending on what is provided.
+
+#### Fixed
+
+- Duplicate PostGIS-sync toast at compute completion — removed the
+  second occurrence in `mod_progress`; only the `mod_home` one fires
+  now.
+- Immediate toast when clicking *Réessayer* on the compute-error card,
+  dispatched on the root session.
+
+#### Dependencies
+
+- Bumped `nemeton` minimum to `>= 0.19.5` (for `height_lidar` augmented
+  flag and TSP tour integration).
 
 ## nemetonshiny 0.19.0 (2026-04-24)
 

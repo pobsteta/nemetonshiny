@@ -5,7 +5,7 @@ forestiere **Nemeton**.
 
 `nemetonshiny` fournit l’interface utilisateur interactive. La logique
 metier (indicateurs, calculs, referentiels) est portee par le package
-[`nemeton`](https://github.com/pobsteta/nemeton) (\>= 0.19.0).
+[`nemeton`](https://github.com/pobsteta/nemeton) (\>= 0.19.5).
 
 ## Fonctionnalites
 
@@ -27,7 +27,7 @@ metier (indicateurs, calculs, referentiels) est portee par le package
 ## Prerequis
 
 - **R** \>= 4.1.0
-- **nemeton** \>= 0.19.0 (package core)
+- **nemeton** \>= 0.19.5 (package core)
 - Librairies systeme : GDAL, GEOS, PROJ, libudunits2
 
 ### Dependances R principales

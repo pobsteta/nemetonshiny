@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.20.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.20.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,13 +38,43 @@
 <p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/" class="external-link">Keep a Changelog</a>, and this project adheres to <a href="https://semver.org/spec/v2.0.0.html" class="external-link">Semantic Versioning</a>.</p>
 <p>For a narrative, per-feature description of each release, see <a href="NEWS.html">NEWS.md</a>. This file is the concise, categorised trail.</p>
 <div class="section level2">
-<h2 id="unreleased"><a href="https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...HEAD" class="external-link">Unreleased</a><a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
+<h2 id="unreleased"><a href="https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD" class="external-link">Unreleased</a><a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
+</div>
+<div class="section level2">
+<h2 id="id_0200---2026-04-24">
+<a href="https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...v0.20.0" class="external-link">0.20.0</a> - 2026-04-24<a class="anchor" aria-label="anchor" href="#id_0200---2026-04-24"></a></h2>
+<div class="section level3">
+<h3 id="added">Added<a class="anchor" aria-label="anchor" href="#added"></a></h3>
+<ul><li>LiDAR HD MNH fetched via <code>happign</code> as the preferred CHM source (Open-Canopy ML retained as fallback). E5.d phase 1.</li>
+<li>LiDAR HD MNT promoted to the canonical <code>dem</code> slot (1 m vs 25 m BD ALTI) so W3 / R1 / R2 / R3 / erosion use LiDAR resolution.</li>
+<li>
+<code>has_lidar_hd</code> attribute auto-lifts NDP to 1 when any LiDAR HD product is cached.</li>
+<li>New “Hauteur LiDAR HD” badge on the Synthesis tab, distinct from “Hauteur ML”.</li>
+<li>Reactive loaders for cached CHM / MNT in mod_sampling; passed to <code>create_sampling_plan()</code> so stratified GRTS kicks in.</li>
+<li>
+<code>forest_mask</code> passed to the sampling plan (BD Forêt v2 filtered) — points stop falling in water / roads.</li>
+<li>Immediate spinning-gear toast when clicking <em>Générer les placettes</em>.</li>
+<li>Tooltip on <em>Source du CV</em> radio clarifying that it only picks the CV value, not the draw method.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="changed">Changed<a class="anchor" aria-label="anchor" href="#changed"></a></h3>
+<ul><li>Sampling-method note rewritten to describe candidates on a regular 50 m grid, forest mask filter, then GRTS → LPM2 → random selection.</li>
+<li>Map auto-zoom fixed to the UGF extent instead of BD Forêt’s (which is fetched with a buffer).</li>
+<li>
+<code>chm_phase:lidar_hd_download</code> progress key translated.</li>
+<li>Bumped <code>nemeton</code> minimum to <code>&gt;= 0.19.5</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<ul><li>Duplicate PostGIS-sync toast at compute completion (kept the <code>mod_home</code> one, dropped the <code>mod_progress</code> one).</li>
+<li>Retry button now emits an immediate toast on the root session.</li>
+</ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_0190---2026-04-24">
 <a href="https://github.com/pobsteta/nemetonshiny/compare/v0.18.0...v0.19.0" class="external-link">0.19.0</a> - 2026-04-24<a class="anchor" aria-label="anchor" href="#id_0190---2026-04-24"></a></h2>
 <div class="section level3">
-<h3 id="added">Added<a class="anchor" aria-label="anchor" href="#added"></a></h3>
+<h3 id="added-1">Added<a class="anchor" aria-label="anchor" href="#added-1"></a></h3>
 <ul><li>Tooltips on six sidebar inputs of the Export terrain sub-tab (target error, alpha risk, over-sample ratio, CV position, seed, region).</li>
 <li>Custom TSP legend on the leaflet map (inline-SVG glyphs for the route, start and finish).</li>
 <li>Immediate toast notification when clicking <em>Réessayer</em> on the compute-error card, dispatched on the root session.</li>
@@ -52,13 +82,13 @@
 <code>URL</code> and <code>BugReports</code> fields in <code>DESCRIPTION</code> so the RStudio Packages pane shows the documentation icon next to the package.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed">Changed<a class="anchor" aria-label="anchor" href="#changed"></a></h3>
+<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
 <ul><li>README counters synced to the real state (31 indicators, 13 expert profiles, 504 i18n keys).</li>
 <li>
 <code>sampling_tt_region</code> tooltip wording says QGIS, not QField.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
 <ul><li>Duplicate PostGIS-sync toast at compute completion — removed the second occurrence in <code>mod_progress</code>; the <code>mod_home</code> one remains.</li>
 </ul></div>
 </div>
@@ -66,7 +96,7 @@
 <h2 id="id_0180---2026-04-24">
 <a href="https://github.com/pobsteta/nemetonshiny/compare/v0.16.0...v0.18.0" class="external-link">0.18.0</a> - 2026-04-24<a class="anchor" aria-label="anchor" href="#id_0180---2026-04-24"></a></h2>
 <div class="section level3">
-<h3 id="added-1">Added<a class="anchor" aria-label="anchor" href="#added-1"></a></h3>
+<h3 id="added-2">Added<a class="anchor" aria-label="anchor" href="#added-2"></a></h3>
 <ul><li>
 <strong>Terrain top-level tab</strong> with two sub-tabs via <code><a href="https://rstudio.github.io/bslib/reference/navset.html" class="external-link">bslib::navset_card_underline()</a></code>:
 <ul><li>
@@ -90,7 +120,7 @@
 <code>CITATION.cff</code> and <code>CHANGELOG.md</code> — release-metadata files.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
+<h3 id="changed-2">Changed<a class="anchor" aria-label="anchor" href="#changed-2"></a></h3>
 <ul><li>
 <code>mod_sampling</code> now uses <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> (GRTS / LPM2 / random) instead of a plain <code><a href="https://r-spatial.github.io/sf/reference/st_sample.html" class="external-link">sf::st_sample()</a></code>. The generation notification reports the selected method.</li>
 <li>The Export terrain map now draws per-UGF polygons (matching the Import terrain style) instead of a single unioned zone; the unioned zone is still used internally by <code>create_sampling_plan()</code>.</li>
@@ -103,7 +133,7 @@
 <li>Bumped the <code>nemeton</code> dependency to <code>&gt;= 0.19.0</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
+<h3 id="fixed-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-2"></a></h3>
 <ul><li>BD Forêt v2 mapping diagnostics: the sizing report now lists the actual ambiguous and unmapped TFV codes (with libellé, resolved context and alternative) instead of a bare count.</li>
 <li>TFV column auto-detection in <code>mod_sampling</code> widened to <code>TFV / tfv / CODE_TFV / code_tfv / essence / ESSENCE / LIB_FV /   LIBELLE</code>.</li>
 </ul></div>
