@@ -34,7 +34,8 @@ TRANSLATIONS <- list(
   tab_carte_tenements = list(fr = "Carte UGF", en = "UGF Map"),
   tab_tableau_ug = list(fr = "Tableau UGF", en = "UGF Table"),
   tab_sampling = list(fr = "Terrain", en = "Field"),
-  tab_field_ingest = list(fr = "Ingestion terrain", en = "Field Ingest"),
+  tab_terrain_export = list(fr = "Export terrain",   en = "Field export"),
+  tab_terrain_import = list(fr = "Import terrain",   en = "Field import"),
   ug_map_card_title = list(fr = "Carte des unit\u00e9s de gestion foresti\u00e8re", en = "Forest Management Units Map"),
   ug_map_summary_count = list(fr = "%d t\u00e8nement(s)", en = "%d tenement(s)"),
   ug_map_summary_surface = list(fr = "Surface cadastrale : %s ha | Surface SIG : %s ha", en = "Cadastral area: %s ha | SIG area: %s ha"),
@@ -1142,6 +1143,10 @@ TRANSLATIONS <- list(
   field_ingest_title = list(
     fr = "Ingestion des donn\u00e9es de terrain",
     en = "Field data ingest"
+  ),
+  field_ingest_accordion_title = list(
+    fr = "Import des donn\u00e9es terrain",
+    en = "Field data import"
   ),
   field_ingest_subtitle = list(
     fr = "D\u00e9poser le GeoPackage renvoy\u00e9 par QField pour valider et rattacher les placettes au projet.",

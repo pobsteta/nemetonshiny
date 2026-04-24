@@ -42,40 +42,69 @@ mod_field_ingest_ui <- function(id) {
       width = 360,
       open = TRUE,
 
-      htmltools::tags$h5(i18n$t("field_ingest_title")),
-      htmltools::tags$p(class = "text-muted small",
-                        i18n$t("field_ingest_subtitle")),
+      # Collapsible card — mirrors the "Informations projet" accordion
+      # (mod_project.R) and the sampling form accordion (mod_sampling.R).
+      htmltools::tags$div(
+        class = "card mb-3",
+        htmltools::tags$div(
+          class = "card-header bg-success text-white py-2",
+          style = "cursor: pointer;",
+          `data-bs-toggle` = "collapse",
+          `data-bs-target` = paste0("#", ns("ingest_collapse")),
+          `aria-expanded` = "true",
+          `aria-controls` = ns("ingest_collapse"),
+          htmltools::div(
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("upload", class = "me-2"),
+              i18n$t("field_ingest_accordion_title")
+            ),
+            bsicons::bs_icon("chevron-down", class = "collapse-icon")
+          )
+        ),
+        htmltools::tags$div(
+          id = ns("ingest_collapse"),
+          class = "collapse show",
+          htmltools::tags$div(
+            class = "card-body",
 
-      shiny::fileInput(
-        ns("gpkg"),
-        i18n$t("field_ingest_upload"),
-        accept = c(".gpkg", "application/geopackage+sqlite3",
-                   "application/octet-stream"),
-        buttonLabel = i18n$t("field_ingest_browse"),
-        placeholder  = i18n$t("field_ingest_placeholder")
-      ),
+            htmltools::tags$p(class = "text-muted small",
+                              i18n$t("field_ingest_subtitle")),
 
-      shiny::selectInput(
-        ns("region"), i18n$t("sampling_region"),
-        choices = tryCatch(nemeton::list_species_regions(),
-                           error = function(e) c("BFC", "EU")),
-        selected = "BFC"
-      ),
+            shiny::fileInput(
+              ns("gpkg"),
+              i18n$t("field_ingest_upload"),
+              accept = c(".gpkg", "application/geopackage+sqlite3",
+                         "application/octet-stream"),
+              buttonLabel = i18n$t("field_ingest_browse"),
+              placeholder  = i18n$t("field_ingest_placeholder")
+            ),
 
-      shiny::actionButton(
-        ns("validate"), i18n$t("field_ingest_validate"),
-        icon = bsicons::bs_icon("check2-circle"),
-        class = "btn-primary w-100 mb-2"
-      ),
+            shiny::selectInput(
+              ns("region"), i18n$t("sampling_region"),
+              choices = tryCatch(nemeton::list_species_regions(),
+                                 error = function(e) c("BFC", "EU")),
+              selected = "BFC"
+            ),
 
-      shiny::actionButton(
-        ns("attach"), i18n$t("field_ingest_attach"),
-        icon = bsicons::bs_icon("link-45deg"),
-        class = "btn-success w-100"
-      ),
+            shiny::actionButton(
+              ns("validate"), i18n$t("field_ingest_validate"),
+              icon = bsicons::bs_icon("check2-circle"),
+              class = "btn-primary w-100 mb-2"
+            ),
 
-      htmltools::tags$p(class = "text-muted small mt-3 fst-italic",
-                        i18n$t("field_ingest_note"))
+            shiny::actionButton(
+              ns("attach"), i18n$t("field_ingest_attach"),
+              icon = bsicons::bs_icon("link-45deg"),
+              class = "btn-success w-100"
+            ),
+
+            htmltools::tags$p(class = "text-muted small mt-3 fst-italic",
+                              i18n$t("field_ingest_note"))
+          )
+        )
+      )
     ),
 
     # Main area: status, NDP before/after, validation report, map

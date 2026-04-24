@@ -65,23 +65,28 @@ app_ui <- function(request) {
         mod_synthesis_ui("synthesis")
       ),
 
-      # === Tab 3: Field sampling / QField (E5.a) ===
+      # === Tab 3: Terrain (sub-tabs: Export / Import, E5.a + E5.b) ===
       bslib::nav_panel(
         title = i18n$t("tab_sampling"),
-        value = "sampling",
+        value = "terrain",
         icon = bsicons::bs_icon("crosshair"),
-        mod_sampling_ui("sampling")
+        bslib::navset_card_underline(
+          bslib::nav_panel(
+            title = i18n$t("tab_terrain_export"),
+            value = "sampling",
+            icon = bsicons::bs_icon("download"),
+            mod_sampling_ui("sampling")
+          ),
+          bslib::nav_panel(
+            title = i18n$t("tab_terrain_import"),
+            value = "field_ingest",
+            icon = bsicons::bs_icon("upload"),
+            mod_field_ingest_ui("field_ingest")
+          )
+        )
       ),
 
-      # === Tab 4: Field ingest (E5.b — QField return path) ===
-      bslib::nav_panel(
-        title = i18n$t("tab_field_ingest"),
-        value = "field_ingest",
-        icon = bsicons::bs_icon("upload"),
-        mod_field_ingest_ui("field_ingest")
-      ),
-
-      # === Tabs 5-16: Indicator Families ===
+      # === Tabs 4-15: Indicator Families ===
       bslib::nav_menu(
         title = i18n$t("tab_families"),
         icon = bsicons::bs_icon("layers"),
