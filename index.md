@@ -13,14 +13,14 @@ metier (indicateurs, calculs, referentiels) est portee par le package
   et l’API cadastre IGN
 - **Gestion de projets** – creation, sauvegarde et restauration de
   diagnostics forestiers
-- **29 indicateurs Nemeton** – calcul automatique sur les parcelles
+- **31 indicateurs Nemeton** – calcul automatique sur les parcelles
   selectionnees
 - **12 familles d’indicateurs** – visualisation radar, scores et detail
   par famille
-- **Synthese LLM** – analyse contextuelle par 16 profils d’experts
+- **Synthese LLM** – analyse contextuelle par 13 profils d’experts
   (ellmer / Mistral)
 - **Export PDF & GeoPackage** – rapports Quarto et donnees geospatiales
-- **Internationalisation** – francais et anglais (293 cles de
+- **Internationalisation** – francais et anglais (504 cles de
   traduction)
 - **Accessibilite** – conformite WCAG 2.1 AA
 
