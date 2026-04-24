@@ -155,17 +155,23 @@ mod_sampling_server <- function(id, app_state) {
       )
     })
 
-    # --- Zone d'étude from current project ---------------------------
-    zone_etude <- shiny::reactive({
+    # --- UGF layer from current project (per-unit polygons, 2154) ----
+    # Used by the map (one polygon per UGF, matches the Import terrain
+    # sub-tab style). The zone consumed by create_sampling_plan() is
+    # the union of these, computed separately in zone_etude().
+    units_sf <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project) || is.null(project$indicators_sf)) return(NULL)
+      sf <- project$indicators_sf
+      if (!inherits(sf, "sf") || nrow(sf) == 0) return(NULL)
+      sf::st_transform(sf, 2154)
+    })
 
-      geom <- project$indicators_sf
-      if (!inherits(geom, "sf") || nrow(geom) == 0) return(NULL)
-
-      # Reproject to Lambert-93 and union to a single polygon
-      geom <- sf::st_transform(geom, 2154)
-      zone <- sf::st_union(geom)
+    # --- Zone d'étude from current project ---------------------------
+    zone_etude <- shiny::reactive({
+      units <- units_sf()
+      if (is.null(units)) return(NULL)
+      zone <- sf::st_union(units)
       sf::st_sf(geometry = sf::st_sfc(zone, crs = 2154))
     })
 
@@ -244,15 +250,15 @@ mod_sampling_server <- function(id, app_state) {
           options = leaflet::layersControlOptions(collapsed = TRUE)
         )
 
-      zone  <- sampling_rv$zone %||% zone_etude()
+      units <- units_sf()
       plots <- sampling_rv$plots
 
-      if (!is.null(zone)) {
-        zone_ll <- sf::st_transform(zone, 4326)
+      if (!is.null(units)) {
+        units_ll <- sf::st_transform(units, 4326)
         base <- leaflet::addPolygons(
-          base, data = zone_ll,
-          color = "#1B6B1B", weight = 2, fillColor = "#1B6B1B",
-          fillOpacity = 0.08, group = "Zone"
+          base, data = units_ll,
+          color = "#1B6B1B", weight = 1, fillColor = "#1B6B1B",
+          fillOpacity = 0.06, group = "Unites"
         )
       }
       if (!is.null(plots) && nrow(plots) > 0) {
