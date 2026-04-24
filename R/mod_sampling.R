@@ -276,6 +276,45 @@ mod_sampling_server <- function(id, app_state) {
       sf::st_sf(geometry = sf::st_sfc(zone, crs = 2154))
     })
 
+    # --- CHM / MNT from project cache (LiDAR HD preferred) -----------
+    # These reactives feed create_sampling_plan() so that GRTS kicks
+    # in properly: with a CHM + MNT + BD Forêt mask available, the
+    # core stratifies candidates by height quartile / topographic
+    # position / forest type. Without them, the pipeline falls back
+    # to LPM2 or random.
+    #   - CHM preference: <cache>/lidar_mnh_mosaic.tif (LiDAR HD,
+    #     direct measurement) -> <cache>/opencanopy/chm_1_5m.tif (ML).
+    #   - MNT preference: <cache>/lidar_mnt_mosaic.tif (LiDAR HD 1 m)
+    #     -> <cache>/dem.tif (BD ALTI 25 m).
+    cache_raster <- function(project, relpath) {
+      project_path <- tryCatch(get_project_path(project$id),
+                               error = function(e) NULL)
+      if (is.null(project_path)) return(NULL)
+      p <- file.path(project_path, "cache", "layers", relpath)
+      if (!file.exists(p)) return(NULL)
+      tryCatch(terra::rast(p), error = function(e) NULL)
+    }
+
+    chm_raster <- shiny::reactive({
+      project <- app_state$current_project
+      if (is.null(project)) return(NULL)
+      out <- cache_raster(project, "lidar_mnh_mosaic.tif")
+      if (is.null(out)) {
+        out <- cache_raster(project, file.path("opencanopy", "chm_1_5m.tif"))
+      }
+      out
+    })
+
+    mnt_raster <- shiny::reactive({
+      project <- app_state$current_project
+      if (is.null(project)) return(NULL)
+      out <- cache_raster(project, "lidar_mnt_mosaic.tif")
+      if (is.null(out)) {
+        out <- cache_raster(project, "dem.tif")
+      }
+      out
+    })
+
     # --- BD Forêt v2 overlay (cached during project compute) ---------
     # Reads <project>/cache/layers/bdforet.gpkg, normalises the TFV
     # key (trim + dashify + upper) and joins against
@@ -616,13 +655,21 @@ mod_sampling_server <- function(id, app_state) {
         NULL
       }
 
+      # CHM + MNT feed GRTS stratification (height quartile,
+      # topographic position). When both are present alongside the
+      # forest mask, the core upgrades from LPM2 to stratified GRTS.
+      chm_for_plan <- chm_raster()
+      mnt_for_plan <- mnt_raster()
+
       plots <- tryCatch(
         nemeton::create_sampling_plan(
           zone        = zone,
           n_base      = n_base,
           n_over      = n_over,
           seed        = seed,
-          forest_mask = mask
+          forest_mask = mask,
+          chm         = chm_for_plan,
+          mnt         = mnt_for_plan
         ),
         error = function(e) {
           shiny::showNotification(

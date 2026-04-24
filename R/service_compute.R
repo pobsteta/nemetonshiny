@@ -428,13 +428,14 @@ start_computation <- function(project_id,
         !is.null(layers$chm_source) &&
         !identical(layers$chm_source, "none")) {
       attr(compute_unit, "chm_source") <- layers$chm_source
-      # LiDAR HD is a direct airborne measurement — it lifts the NDP
-      # to 1 ("Observation") via detect_ndp()'s has_lidar_hd check.
-      # Open-Canopy ML predictions leave the NDP at 0 and are only
-      # reported as an augmented flag.
-      if (identical(layers$chm_source, "lidar_hd")) {
-        attr(compute_unit, "has_lidar_hd") <- TRUE
-      }
+    }
+    # NDP lifts to 1 ("Observation") as soon as ANY LiDAR HD product
+    # is available for the AOI (MNH canopy, MNT terrain, or both).
+    # Open-Canopy ML predictions leave the NDP at 0 and are only
+    # reported as an augmented flag.
+    if (!is.null(layers$rasters$lidar_mnh) ||
+        !is.null(layers$rasters$lidar_mnt)) {
+      attr(compute_unit, "has_lidar_hd") <- TRUE
     }
 
     # Persist the actual CHM outcome so the synthesis badge reflects
@@ -788,6 +789,20 @@ download_layers_for_parcels <- function(parcels,
     })
 
     completed <- completed + 1
+  }
+
+  # Promote LiDAR HD MNT (1 m) to the canonical `dem` slot when it
+  # is available: W3 (TWI), R1 (fire), R2 (storm), R3 (drought)
+  # and the erosion risk all look up `rasters$dem` via
+  # resolve_raster_layer(). Replacing BD ALTI 25 m with LiDAR MNT
+  # 1 m lifts the terrain-derived indicators to NDP-1 precision
+  # whenever LiDAR HD tiles exist for the AOI.
+  if (!is.null(rasters$lidar_mnt) &&
+      inherits(rasters$lidar_mnt, "SpatRaster")) {
+    cli::cli_alert_success(
+      "Using LiDAR HD MNT (1 m) for terrain indicators instead of BD ALTI 25 m"
+    )
+    rasters$dem <- rasters$lidar_mnt
   }
 
   # Optional Canopy Height Model (spec 005 phase 6). Auto-enabled
