@@ -80,6 +80,48 @@ test_that("mod_sampling_server generates POINT plots after clicking generate", {
 })
 
 
+test_that("mod_sampling_server defaults project_name to the current project name", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  poly <- sf::st_polygon(list(rbind(
+    c(900000, 6500000), c(901000, 6500000),
+    c(901000, 6501000), c(900000, 6501000), c(900000, 6500000)
+  )))
+  indicators_sf <- sf::st_sf(ug_id = 1L,
+                             geometry = sf::st_sfc(poly, crs = 2154))
+  state <- shiny::reactiveValues(
+    language = "fr",
+    current_project = list(
+      id = "proj-42",
+      indicators_sf = indicators_sf,
+      metadata = list(name = "Forêt de Gérardmer 2026")
+    )
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_sampling_server,
+    args = list(app_state = state),
+    {
+      # Non-ASCII + spaces must be sanitized to match the download
+      # filename's [a-zA-Z0-9_-] whitelist.
+      expect_equal(session$returned$default_project_name(),
+                   "For_t_de_G_rardmer_2026")
+    }
+  )
+
+  # No active project -> fallback to "echantillon".
+  empty_state <- shiny::reactiveValues(language = "fr", current_project = NULL)
+  shiny::testServer(
+    nemetonshiny:::mod_sampling_server,
+    args = list(app_state = empty_state),
+    {
+      expect_equal(session$returned$default_project_name(), "echantillon")
+    }
+  )
+})
+
+
 test_that("mod_sampling_server warns when no project is loaded", {
   skip_if_not_installed("shiny")
 

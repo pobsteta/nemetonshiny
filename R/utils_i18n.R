@@ -1127,8 +1127,8 @@ TRANSLATIONS <- list(
     en = "Pipeline nemeton::create_sampling_plan(): stratified GRTS when CHM/DEM/forest layer are provided, otherwise spatially-balanced LPM2 or random fallback."
   ),
   qfield_download = list(
-    fr = "T\u00e9l\u00e9charger le projet QField (.qgz)",
-    en = "Download QField project (.qgz)"
+    fr = "T\u00e9l\u00e9charger le projet QGIS",
+    en = "Download QGIS project"
   ),
   qfield_project_name = list(fr = "Nom du projet", en = "Project name"),
   qfield_ready = list(

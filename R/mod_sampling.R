@@ -104,6 +104,27 @@ mod_sampling_server <- function(id, app_state) {
       zone  = NULL   # sf POLYGON (union of project geometry)
     )
 
+    # --- Default the QField project_name to the current project -----
+    # Keeps the exported .qgz filename in sync with the project the
+    # user is working on (falls back to "echantillon" when no project
+    # is active). Users can still overwrite the field manually.
+    default_project_name <- shiny::reactive({
+      project <- app_state$current_project
+      nm <- if (!is.null(project)) {
+        project$metadata$name %||% project$id %||% "echantillon"
+      } else {
+        "echantillon"
+      }
+      gsub("[^a-zA-Z0-9_-]", "_", nm)
+    })
+
+    shiny::observe({
+      shiny::updateTextInput(
+        session, "project_name",
+        value = default_project_name()
+      )
+    })
+
     # --- Zone d'étude from current project ---------------------------
     zone_etude <- shiny::reactive({
       project <- app_state$current_project
@@ -266,8 +287,9 @@ mod_sampling_server <- function(id, app_state) {
 
     # --- Return (useful for tests / consumers) -----------------------
     list(
-      sample_plots = shiny::reactive(sampling_rv$plots),
-      zone_etude   = zone_etude
+      sample_plots         = shiny::reactive(sampling_rv$plots),
+      zone_etude           = zone_etude,
+      default_project_name = default_project_name
     )
   })
 }
