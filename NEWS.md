@@ -1,3 +1,5 @@
+# nemetonshiny 0.21.0.9000 (development)
+
 # nemetonshiny 0.20.0 (2026-04-24)
 
 ### New feature — LiDAR HD integration (E5.d)
