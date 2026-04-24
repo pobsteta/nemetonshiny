@@ -1217,8 +1217,8 @@ TRANSLATIONS <- list(
     en = "Random number generator seed. Guarantees reproducibility: same seed + same parameters = identical draw."
   ),
   sampling_tt_region = list(
-    fr = "Région biogéographique utilisée pour le domaine des espèces (liste déroulante dans QField). Ex. BFC = Bourgogne-Franche-Comté, EU = domaine européen générique.",
-    en = "Biogeographic region used for the species domain (dropdown in QField). E.g. BFC = Bourgogne-Franche-Comté, EU = generic European domain."
+    fr = "Région biogéographique utilisée pour le domaine des espèces (liste déroulante dans QGIS). Ex. BFC = Bourgogne-Franche-Comté, EU = domaine européen générique.",
+    en = "Biogeographic region used for the species domain (dropdown in QGIS). E.g. BFC = Bourgogne-Franche-Comté, EU = generic European domain."
   ),
 
   # TSP map legend
