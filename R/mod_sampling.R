@@ -39,40 +39,70 @@ mod_sampling_ui <- function(id) {
       width = 360,
       open = TRUE,
 
-      htmltools::tags$h5(i18n$t("sampling_title")),
-      htmltools::tags$p(class = "text-muted small", i18n$t("sampling_subtitle")),
+      # Collapsible card — mirrors the "Informations projet" accordion
+      # in the Selection tab (see mod_project.R).
+      htmltools::tags$div(
+        class = "card mb-3",
+        htmltools::tags$div(
+          class = "card-header bg-success text-white py-2",
+          style = "cursor: pointer;",
+          `data-bs-toggle` = "collapse",
+          `data-bs-target` = paste0("#", ns("sampling_collapse")),
+          `aria-expanded` = "true",
+          `aria-controls` = ns("sampling_collapse"),
+          htmltools::div(
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("crosshair", class = "me-2"),
+              i18n$t("sampling_title")
+            ),
+            bsicons::bs_icon("chevron-down", class = "collapse-icon")
+          )
+        ),
+        htmltools::tags$div(
+          id = ns("sampling_collapse"),
+          class = "collapse show",
+          htmltools::tags$div(
+            class = "card-body",
 
-      shiny::numericInput(ns("n_base"),  i18n$t("sampling_n_base"),
-                          value = 20, min = 1, max = 1000, step = 1),
-      shiny::numericInput(ns("n_over"),  i18n$t("sampling_n_over"),
-                          value = 5,  min = 0, max = 1000, step = 1),
-      shiny::numericInput(ns("seed"),    i18n$t("sampling_seed"),
-                          value = 42,  min = 0, max = 1e6, step = 1),
+            htmltools::tags$p(class = "text-muted small",
+                              i18n$t("sampling_subtitle")),
 
-      shiny::selectInput(
-        ns("region"), i18n$t("sampling_region"),
-        choices = tryCatch(nemeton::list_species_regions(),
-                           error = function(e) c("BFC", "EU")),
-        selected = "BFC"
-      ),
+            shiny::numericInput(ns("n_base"),  i18n$t("sampling_n_base"),
+                                value = 20, min = 1, max = 1000, step = 1),
+            shiny::numericInput(ns("n_over"),  i18n$t("sampling_n_over"),
+                                value = 5,  min = 0, max = 1000, step = 1),
+            shiny::numericInput(ns("seed"),    i18n$t("sampling_seed"),
+                                value = 42,  min = 0, max = 1e6, step = 1),
 
-      shiny::textInput(ns("project_name"), i18n$t("qfield_project_name"),
-                       value = "echantillon"),
+            shiny::selectInput(
+              ns("region"), i18n$t("sampling_region"),
+              choices = tryCatch(nemeton::list_species_regions(),
+                                 error = function(e) c("BFC", "EU")),
+              selected = "BFC"
+            ),
 
-      shiny::actionButton(
-        ns("generate"), i18n$t("sampling_generate"),
-        icon = bsicons::bs_icon("crosshair"),
-        class = "btn-primary w-100 mb-2"
-      ),
+            shiny::textInput(ns("project_name"), i18n$t("qfield_project_name"),
+                             value = "echantillon"),
 
-      shiny::downloadButton(
-        ns("download_qgz"), i18n$t("qfield_download"),
-        icon = bsicons::bs_icon("download"),
-        class = "btn-success w-100"
-      ),
+            shiny::actionButton(
+              ns("generate"), i18n$t("sampling_generate"),
+              icon = bsicons::bs_icon("crosshair"),
+              class = "btn-primary w-100 mb-2"
+            ),
 
-      htmltools::tags$p(class = "text-muted small mt-3 fst-italic",
-                       i18n$t("sampling_method_note"))
+            shiny::downloadButton(
+              ns("download_qgz"), i18n$t("qfield_download"),
+              icon = bsicons::bs_icon("download"),
+              class = "btn-success w-100"
+            ),
+
+            htmltools::tags$p(class = "text-muted small mt-3 fst-italic",
+                              i18n$t("sampling_method_note"))
+          )
+        )
+      )
     ),
 
     # Main area: status + map
