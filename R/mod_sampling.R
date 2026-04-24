@@ -295,6 +295,33 @@ mod_sampling_server <- function(id, app_state) {
       tryCatch(terra::rast(p), error = function(e) NULL)
     }
 
+    # Prep a raster for the sampling plan: crop to the zone bbox
+    # (with a small focal-window buffer) and aggregate to ~5 m if
+    # the native resolution is finer. 15-m plot buffers and a 100-m
+    # TPI focal window do not need sub-metre precision, and the
+    # un-cropped 1-m LiDAR HD mosaics (often 100M+ cells) would
+    # freeze `terra::focal()` and `terra::extract()` for minutes.
+    prep_sampling_raster <- function(r, zone, target_res_m = 5) {
+      if (is.null(r)) return(NULL)
+      tryCatch({
+        z_trans <- sf::st_transform(zone, sf::st_crs(r))
+        z_buf   <- sf::st_buffer(z_trans, 200)
+        r2 <- terra::crop(r, terra::vect(z_buf), snap = "out")
+        cur_res <- terra::res(r2)[1]
+        if (!is.na(cur_res) && cur_res < target_res_m) {
+          fact <- max(1L, round(target_res_m / cur_res))
+          if (fact > 1L) {
+            r2 <- terra::aggregate(r2, fact = fact, fun = "mean",
+                                    na.rm = TRUE)
+          }
+        }
+        r2
+      }, error = function(e) {
+        cli::cli_alert_warning("prep_sampling_raster failed: {e$message}")
+        r
+      })
+    }
+
     chm_raster <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project)) return(NULL)
@@ -658,8 +685,12 @@ mod_sampling_server <- function(id, app_state) {
       # CHM + MNT feed GRTS stratification (height quartile,
       # topographic position). When both are present alongside the
       # forest mask, the core upgrades from LPM2 to stratified GRTS.
-      chm_for_plan <- chm_raster()
-      mnt_for_plan <- mnt_raster()
+      # Native 1 m LiDAR HD mosaics are cropped to the AOI and
+      # aggregated to ~5 m so terra::focal / terra::extract stay
+      # snappy (buffers = 15 m, focal window = 100 m — sub-metre
+      # precision brings no value here).
+      chm_for_plan <- prep_sampling_raster(chm_raster(), zone)
+      mnt_for_plan <- prep_sampling_raster(mnt_raster(), zone)
 
       cli::cli_alert_info(
         "Generate: n_base={n_base}, n_over={n_over}, seed={seed}, \\
