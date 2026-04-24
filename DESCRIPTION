@@ -8,6 +8,8 @@ Authors@R: c(
 Description: Interactive Shiny/golem application for the Nemeton systemic forest
     analysis platform. Depends on the nemeton core package for business logic.
 License: file LICENSE
+URL: https://pobsteta.github.io/nemetonshiny/, https://github.com/pobsteta/nemetonshiny
+BugReports: https://github.com/pobsteta/nemetonshiny/issues
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports: nemeton (>= 0.19.0), shiny (>= 1.8.0), bslib (>= 0.6.0),
