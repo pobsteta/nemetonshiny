@@ -869,6 +869,19 @@ mod_sampling_server <- function(id, app_state) {
         overlayGroups = overlays,
         options = leaflet::layersControlOptions(collapsed = TRUE)
       )
+
+      # Zoom on the UGF extent, not the BD Forêt one (BD Forêt is
+      # fetched with a buffer and can be much larger than the actual
+      # project). Keep the basemap view centred on the forest units.
+      if (!is.null(units)) {
+        bb <- sf::st_bbox(sf::st_transform(units, 4326))
+        base <- leaflet::fitBounds(
+          base,
+          lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+          lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
+        )
+      }
+
       base
     })
 
