@@ -121,7 +121,9 @@ mod_sampling_ui <- function(id) {
                                   value = 20, min = 0, max = 100, step = 5),
 
               shiny::radioButtons(
-                ns("cv_source"), i18n$t("sampling_cv_source_label"),
+                ns("cv_source"),
+                label_tt(i18n$t("sampling_cv_source_label"),
+                         i18n$t("sampling_tt_cv_source")),
                 choices = stats::setNames(
                   c("manual", "bdforet"),
                   c(i18n$t("sampling_cv_source_manual"),

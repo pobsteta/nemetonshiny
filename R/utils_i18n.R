@@ -1140,8 +1140,8 @@ TRANSLATIONS <- list(
     en = "%d plots generated (%d base, %d replacement)"
   ),
   sampling_method_note = list(
-    fr = "Pipeline nemeton::create_sampling_plan() : GRTS stratifi\u00e9 si CHM/MNT/BD For\u00eat sont pass\u00e9s, sinon tirage spatialement \u00e9quilibr\u00e9 (LPM2) ou al\u00e9atoire.",
-    en = "Pipeline nemeton::create_sampling_plan(): stratified GRTS when CHM/DEM/forest layer are provided, otherwise spatially-balanced LPM2 or random fallback."
+    fr = "Candidats tir\u00e9s sur une grille r\u00e9guli\u00e8re (50 m par d\u00e9faut) filtr\u00e9e par le masque for\u00eat (BD For\u00eat v2 \u2014 couverture \u2265 70 %). M\u00e9thode de s\u00e9lection, dans l'ordre : GRTS stratifi\u00e9 (CHM + MNT + BD For\u00eat requis), sinon LPM2 spatialement \u00e9quilibr\u00e9 (BalancedSampling), sinon tirage al\u00e9atoire.",
+    en = "Candidates drawn on a regular grid (50 m default), filtered by the forest mask (BD For\u00eat v2, cover \u2265 70 %). Selection method, in order: stratified GRTS (needs CHM + DEM + BD For\u00eat), else spatially-balanced LPM2 (BalancedSampling), else random."
   ),
 
   # Sizing by target error + CV (E5.c)
@@ -1231,6 +1231,10 @@ TRANSLATIONS <- list(
   sampling_tt_seed = list(
     fr = "Graine du générateur aléatoire. Garantit la reproductibilité : avec la même graine et les mêmes paramètres, le tirage est identique.",
     en = "Random number generator seed. Guarantees reproducibility: same seed + same parameters = identical draw."
+  ),
+  sampling_tt_cv_source = list(
+    fr = "Source du coefficient de variation utilisé par la formule de Cochran. \"Manuel\" : vous fournissez le CV en %. \"BD Forêt v2 (auto)\" : le CV est dérivé automatiquement du cache BD Forêt v2 du projet (moyenne pondérée par surface des CV typiques par contexte sylvicole). Ce choix n'affecte PAS la méthode de tirage (GRTS / LPM2 / aléatoire), seulement la valeur de CV.",
+    en = "Source of the coefficient of variation fed to the Cochran formula. \"Manual\": you set the CV in %. \"BD Forêt v2 (auto)\": the CV is derived from the project's cached BD Forêt v2 (area-weighted mean of the typical CV per silvicultural context). This choice does NOT affect the draw method (GRTS / LPM2 / random), only the CV value."
   ),
   sampling_tt_region = list(
     fr = "Région biogéographique utilisée pour le domaine des espèces (liste déroulante dans QGIS). Ex. BFC = Bourgogne-Franche-Comté, EU = domaine européen générique.",

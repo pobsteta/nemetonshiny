@@ -428,6 +428,13 @@ start_computation <- function(project_id,
         !is.null(layers$chm_source) &&
         !identical(layers$chm_source, "none")) {
       attr(compute_unit, "chm_source") <- layers$chm_source
+      # LiDAR HD is a direct airborne measurement — it lifts the NDP
+      # to 1 ("Observation") via detect_ndp()'s has_lidar_hd check.
+      # Open-Canopy ML predictions leave the NDP at 0 and are only
+      # reported as an augmented flag.
+      if (identical(layers$chm_source, "lidar_hd")) {
+        attr(compute_unit, "has_lidar_hd") <- TRUE
+      }
     }
 
     # Persist the actual CHM outcome so the synthesis badge reflects
