@@ -133,28 +133,33 @@ mod_sampling_server <- function(id, app_state) {
       n_over <- max(0L, as.integer(input$n_over %||% 5))
       seed   <- as.integer(input$seed %||% 42)
 
-      set.seed(seed)
-      n_total <- n_base + n_over
-      pts_sfc <- sf::st_sample(zone, size = n_total, type = "random")
-      # st_sample may return fewer points than requested; clamp.
-      n_got <- length(pts_sfc)
-      types <- c(rep("Base", min(n_base, n_got)),
-                 rep("Over", max(0L, n_got - n_base)))
-
-      plots <- sf::st_sf(
-        plot_id     = sprintf("P%03d", seq_len(n_got)),
-        type        = types,
-        visit_order = seq_len(n_got),
-        geometry    = pts_sfc
+      plots <- tryCatch(
+        nemeton::create_sampling_plan(
+          zone    = zone,
+          n_base  = n_base,
+          n_over  = n_over,
+          seed    = seed
+        ),
+        error = function(e) {
+          shiny::showNotification(
+            paste("create_sampling_plan():", conditionMessage(e)),
+            type = "error", duration = 8
+          )
+          NULL
+        }
       )
-      sf::st_crs(plots) <- 2154
+      if (is.null(plots)) return()
 
       sampling_rv$plots <- plots
       sampling_rv$zone  <- zone
 
+      method <- attr(plots, "method") %||% "random"
       shiny::showNotification(
-        sprintf(i18n$t("sampling_generated_count"),
-                n_got, sum(types == "Base"), sum(types == "Over")),
+        sprintf("%s (%s)",
+                sprintf(i18n$t("sampling_generated_count"),
+                        nrow(plots), sum(plots$type == "Base"),
+                        sum(plots$type == "Over")),
+                toupper(method)),
         type = "message", duration = 5
       )
     })

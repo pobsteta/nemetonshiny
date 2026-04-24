@@ -1122,8 +1122,8 @@ TRANSLATIONS <- list(
     en = "%d plots generated (%d base, %d replacement)"
   ),
   sampling_method_note = list(
-    fr = "Tirage al\u00e9atoire spatial (st_sample). Pour un tirage GRTS stratifi\u00e9 complet, voir le tutoriel 09-sampling.",
-    en = "Spatial random draw (st_sample). For full stratified GRTS sampling, see tutorial 09-sampling."
+    fr = "Pipeline nemeton::create_sampling_plan() : GRTS stratifi\u00e9 si CHM/MNT/BD For\u00eat sont pass\u00e9s, sinon tirage spatialement \u00e9quilibr\u00e9 (LPM2) ou al\u00e9atoire.",
+    en = "Pipeline nemeton::create_sampling_plan(): stratified GRTS when CHM/DEM/forest layer are provided, otherwise spatially-balanced LPM2 or random fallback."
   ),
   qfield_download = list(
     fr = "T\u00e9l\u00e9charger le projet QField (.qgz)",
