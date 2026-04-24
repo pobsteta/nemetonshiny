@@ -661,6 +661,12 @@ mod_sampling_server <- function(id, app_state) {
       chm_for_plan <- chm_raster()
       mnt_for_plan <- mnt_raster()
 
+      cli::cli_alert_info(
+        "Generate: n_base={n_base}, n_over={n_over}, seed={seed}, \\
+         forest_mask={!is.null(mask)}, chm={!is.null(chm_for_plan)}, \\
+         mnt={!is.null(mnt_for_plan)}"
+      )
+      t_start <- Sys.time()
       plots <- tryCatch(
         nemeton::create_sampling_plan(
           zone        = zone,
@@ -672,6 +678,7 @@ mod_sampling_server <- function(id, app_state) {
           mnt         = mnt_for_plan
         ),
         error = function(e) {
+          cli::cli_alert_danger("create_sampling_plan error: {e$message}")
           shiny::showNotification(
             paste("create_sampling_plan():", conditionMessage(e)),
             type = "error", duration = 8
@@ -679,6 +686,15 @@ mod_sampling_server <- function(id, app_state) {
           NULL
         }
       )
+      dt <- round(as.numeric(difftime(Sys.time(), t_start, units = "secs")), 2)
+      if (is.null(plots)) {
+        cli::cli_alert_warning("create_sampling_plan returned NULL after {dt}s")
+      } else {
+        cli::cli_alert_success(
+          "create_sampling_plan ok in {dt}s: {nrow(plots)} rows \\
+           (method={attr(plots, 'method') %||% '?'})"
+        )
+      }
       if (is.null(plots)) return()
 
       sampling_rv$plots <- plots
