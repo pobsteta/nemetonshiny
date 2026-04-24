@@ -172,16 +172,16 @@ TRANSLATIONS <- list(
     en = "ML height"
   ),
   augmented_height_ml_tooltip = list(
-    fr = "Les indicateurs de hauteur (P1, P2, C1, B2, R2) ont \u00e9t\u00e9 calcul\u00e9s \u00e0 partir d'un mod\u00e8le num\u00e9rique de hauteur de canop\u00e9e (CHM) pr\u00e9dit par apprentissage automatique (Open-Canopy sur ortho IGN). NDP augment\u00e9 par rapport aux donn\u00e9es publiques de base.",
-    en = "Height indicators (P1, P2, C1, B2, R2) were computed from a Canopy Height Model predicted by machine learning (Open-Canopy on IGN orthoimagery). Augmented NDP compared to baseline public data."
+    fr = "ML = Machine Learning (apprentissage automatique). Les indicateurs de hauteur (P1, P2, C1, B2, R2) ont \u00e9t\u00e9 calcul\u00e9s \u00e0 partir d'un mod\u00e8le num\u00e9rique de hauteur de canop\u00e9e (CHM) pr\u00e9dit par apprentissage automatique (Open-Canopy sur ortho IGN). NDP augment\u00e9 par rapport aux donn\u00e9es publiques de base.",
+    en = "ML = Machine Learning. Height indicators (P1, P2, C1, B2, R2) were computed from a Canopy Height Model predicted by machine learning (Open-Canopy on IGN orthoimagery). Augmented NDP compared to baseline public data."
   ),
   augmented_inventory_ml_badge = list(
     fr = "Inventaire ML",
     en = "ML inventory"
   ),
   augmented_inventory_ml_tooltip = list(
-    fr = "Les indicateurs d'inventaire dendrom\u00e9trique (P1 volume, P3 qualit\u00e9, E1 bois-\u00e9nergie) ont \u00e9t\u00e9 calcul\u00e9s \u00e0 partir d'un diam\u00e8tre moyen (D_g) et d'une densit\u00e9 (tiges/ha) estim\u00e9s depuis le CHM par self-thinning de Charru 2012 (NDP 1 synth\u00e9tique). Moins fiable qu'un inventaire terrain (\u00b120-25 %) ; \u00e0 valider sur placette pour un usage d\u00e9cisionnel.",
-    en = "Dendrometric inventory indicators (P1 volume, P3 quality, E1 fuelwood) were estimated from a quadratic mean diameter (D_g) and stand density (stems/ha) derived from the CHM via the Charru 2012 self-thinning law (synthetic NDP 1). Less reliable than a terrain inventory (\u00b120-25 %); validate on plots before operational use."
+    fr = "ML = Machine Learning (apprentissage automatique). Les indicateurs d'inventaire dendrom\u00e9trique (P1 volume, P3 qualit\u00e9, E1 bois-\u00e9nergie) ont \u00e9t\u00e9 calcul\u00e9s \u00e0 partir d'un diam\u00e8tre moyen (D_g) et d'une densit\u00e9 (tiges/ha) estim\u00e9s depuis le CHM par self-thinning de Charru 2012 (NDP 1 synth\u00e9tique). Moins fiable qu'un inventaire terrain (\u00b120-25 %) ; \u00e0 valider sur placette pour un usage d\u00e9cisionnel.",
+    en = "ML = Machine Learning. Dendrometric inventory indicators (P1 volume, P3 quality, E1 fuelwood) were estimated from a quadratic mean diameter (D_g) and stand density (stems/ha) derived from the CHM via the Charru 2012 self-thinning law (synthetic NDP 1). Less reliable than a terrain inventory (\u00b120-25 %); validate on plots before operational use."
   ),
   confirm_computation_title = list(
     fr = "Confirmer le lancement des calculs",
