@@ -31,6 +31,21 @@ mod_sampling_ui <- function(id) {
   lang <- opts$language %||% "fr"
   i18n <- get_i18n(lang)
 
+  # Helper: combine a label with an info icon that carries a tooltip,
+  # matching the pattern used elsewhere in the app (mod_synthesis /
+  # mod_family).
+  label_tt <- function(label, tooltip) {
+    htmltools::tagList(
+      label,
+      " ",
+      bslib::tooltip(
+        bsicons::bs_icon("info-circle", class = "text-muted ms-1"),
+        tooltip,
+        placement = "right"
+      )
+    )
+  }
+
   bslib::layout_sidebar(
     fillable = TRUE,
 
@@ -93,13 +108,16 @@ mod_sampling_ui <- function(id) {
             shiny::conditionalPanel(
               condition = sprintf("input['%s'] == 'target_error'", ns("sizing_mode")),
               shiny::numericInput(ns("target_error_pct"),
-                                  i18n$t("sampling_target_error_label"),
+                                  label_tt(i18n$t("sampling_target_error_label"),
+                                           i18n$t("sampling_tt_target_error")),
                                   value = 10, min = 1, max = 50, step = 1),
               shiny::numericInput(ns("alpha_pct"),
-                                  i18n$t("sampling_alpha_label"),
+                                  label_tt(i18n$t("sampling_alpha_label"),
+                                           i18n$t("sampling_tt_alpha")),
                                   value = 5, min = 1, max = 20, step = 1),
               shiny::numericInput(ns("over_ratio_pct"),
-                                  i18n$t("sampling_over_ratio_label"),
+                                  label_tt(i18n$t("sampling_over_ratio_label"),
+                                           i18n$t("sampling_tt_over_ratio")),
                                   value = 20, min = 0, max = 100, step = 5),
 
               shiny::radioButtons(
@@ -125,7 +143,9 @@ mod_sampling_ui <- function(id) {
               shiny::conditionalPanel(
                 condition = sprintf("input['%s'] == 'bdforet'", ns("cv_source")),
                 shiny::selectInput(
-                  ns("cv_position"), i18n$t("sampling_cv_position"),
+                  ns("cv_position"),
+                  label_tt(i18n$t("sampling_cv_position"),
+                           i18n$t("sampling_tt_cv_position")),
                   choices = stats::setNames(
                     c("low", "mid", "high"),
                     c(i18n$t("sampling_cv_position_low"),
@@ -146,11 +166,15 @@ mod_sampling_ui <- function(id) {
               shiny::uiOutput(ns("sizing_report"))
             ),
 
-            shiny::numericInput(ns("seed"), i18n$t("sampling_seed"),
+            shiny::numericInput(ns("seed"),
+                                label_tt(i18n$t("sampling_seed"),
+                                         i18n$t("sampling_tt_seed")),
                                 value = 42, min = 0, max = 1e6, step = 1),
 
             shiny::selectInput(
-              ns("region"), i18n$t("sampling_region"),
+              ns("region"),
+              label_tt(i18n$t("sampling_region"),
+                       i18n$t("sampling_tt_region")),
               choices = tryCatch(nemeton::list_species_regions(),
                                  error = function(e) c("BFC", "EU")),
               selected = "BFC"
@@ -732,6 +756,41 @@ mod_sampling_server <- function(id, app_state) {
             color = "#E91E63", weight = 2, opacity = 0.8,
             dashArray = "6,6",
             group = "Parcours"
+          )
+          # TSP legend — custom HTML control, since leaflet::addLegend
+          # only handles categorical / numeric palettes; we want inline
+          # glyphs matching the map (dashed line + orienteering icons).
+          tsp_legend_html <- sprintf(paste0(
+            "<div style='background: white; padding: 6px 10px; ",
+            "border: 1px solid #aaa; border-radius: 4px; ",
+            "font-size: 12px; line-height: 1.5;'>",
+            "<div style='font-weight: bold; margin-bottom: 4px;'>%s</div>",
+            "<div><svg width='28' height='8'>",
+            "<line x1='2' y1='4' x2='26' y2='4' ",
+            "stroke='#E91E63' stroke-width='2' stroke-dasharray='4,3'/>",
+            "</svg> %s</div>",
+            "<div><svg width='16' height='16' viewBox='0 0 28 28' ",
+            "style='vertical-align: middle;'>",
+            "<polygon points='14,3 25,25 3,25' fill='white' ",
+            "fill-opacity='0.5' stroke='#E91E63' stroke-width='3'/>",
+            "</svg> %s</div>",
+            "<div><svg width='16' height='16' viewBox='0 0 28 28' ",
+            "style='vertical-align: middle;'>",
+            "<circle cx='14' cy='14' r='12' fill='white' ",
+            "fill-opacity='0.5' stroke='#E91E63' stroke-width='3'/>",
+            "<circle cx='14' cy='14' r='7' fill='none' ",
+            "stroke='#E91E63' stroke-width='3'/>",
+            "</svg> %s</div>",
+            "</div>"),
+            i18n$t("sampling_legend_tsp_title"),
+            i18n$t("sampling_legend_tsp_line"),
+            i18n$t("sampling_legend_tsp_start"),
+            i18n$t("sampling_legend_tsp_end")
+          )
+          base <- leaflet::addControl(
+            base, html = htmltools::HTML(tsp_legend_html),
+            position = "bottomleft",
+            className = "leaflet-tsp-legend"
           )
           overlays <- c(overlays, "Parcours")
         }

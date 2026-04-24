@@ -1194,6 +1194,38 @@ TRANSLATIONS <- list(
     fr = "Fournissez une erreur cible et un CV pour calculer n.",
     en = "Provide a target error and a CV to compute n."
   ),
+
+  # Tooltips on the sampling form (Export terrain)
+  sampling_tt_target_error = list(
+    fr = "Erreur relative acceptée sur la moyenne de la variable cible (surface terrière G/ha). Ex. 10 % signifie ±10 %. Plus c'est serré, plus n est grand (n ~ 1 / E²).",
+    en = "Acceptable relative error on the mean of the target variable (basal area G/ha). E.g. 10 % means ±10 %. The tighter, the larger n (n ~ 1 / E²)."
+  ),
+  sampling_tt_alpha = list(
+    fr = "Risque de 1ère espèce (α) : probabilité d'accepter à tort une erreur plus grande que la cible. Conventionnel à 5 % (intervalle de confiance 95 %).",
+    en = "Type-I error risk (α): probability of accepting a larger error than the target by chance. Standard 5 % (95 % confidence interval)."
+  ),
+  sampling_tt_over_ratio = list(
+    fr = "Placettes de remplacement en plus des Base, en % de n_base. Utilisées si une placette Base est inaccessible sur le terrain. 20 % est un compromis courant.",
+    en = "Replacement plots added on top of n_base, as a % of n_base. Used when a Base plot turns out to be inaccessible. 20 % is a common compromise."
+  ),
+  sampling_tt_cv_position = list(
+    fr = "Borne de la fourchette de CV (issue de la typologie) à utiliser. Basse = optimiste (n plus faible), Haute = conservatrice (n plus grand), Médiane = défaut.",
+    en = "Which bound of the CV range (from the typology) to use. Low = optimistic (smaller n), High = conservative (larger n), Mid = default."
+  ),
+  sampling_tt_seed = list(
+    fr = "Graine du générateur aléatoire. Garantit la reproductibilité : avec la même graine et les mêmes paramètres, le tirage est identique.",
+    en = "Random number generator seed. Guarantees reproducibility: same seed + same parameters = identical draw."
+  ),
+  sampling_tt_region = list(
+    fr = "Région biogéographique utilisée pour le domaine des espèces (liste déroulante dans QField). Ex. BFC = Bourgogne-Franche-Comté, EU = domaine européen générique.",
+    en = "Biogeographic region used for the species domain (dropdown in QField). E.g. BFC = Bourgogne-Franche-Comté, EU = generic European domain."
+  ),
+
+  # TSP map legend
+  sampling_legend_tsp_title = list(fr = "Parcours",        en = "Route"),
+  sampling_legend_tsp_start = list(fr = "Départ",          en = "Start"),
+  sampling_legend_tsp_end   = list(fr = "Arrivée",         en = "Finish"),
+  sampling_legend_tsp_line  = list(fr = "Ordre de visite", en = "Visit order"),
   qfield_download = list(
     fr = "T\u00e9l\u00e9charger le projet QGIS",
     en = "Download QGIS project"
