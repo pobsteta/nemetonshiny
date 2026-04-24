@@ -73,7 +73,15 @@ app_ui <- function(request) {
         mod_sampling_ui("sampling")
       ),
 
-      # === Tabs 4-15: Indicator Families ===
+      # === Tab 4: Field ingest (E5.b — QField return path) ===
+      bslib::nav_panel(
+        title = i18n$t("tab_field_ingest"),
+        value = "field_ingest",
+        icon = bsicons::bs_icon("upload"),
+        mod_field_ingest_ui("field_ingest")
+      ),
+
+      # === Tabs 5-16: Indicator Families ===
       bslib::nav_menu(
         title = i18n$t("tab_families"),
         icon = bsicons::bs_icon("layers"),

@@ -227,6 +227,9 @@ app_server <- function(input, output, session) {
   # Sampling / QField module (E5.a)
   mod_sampling_server("sampling", app_state)
 
+  # Field ingest module (E5.b — QField return path)
+  mod_field_ingest_server("field_ingest", app_state)
+
   # ============================================================
   # LAZY LOADING: Family modules initialized on-demand
   # ============================================================

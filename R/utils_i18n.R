@@ -34,6 +34,7 @@ TRANSLATIONS <- list(
   tab_carte_tenements = list(fr = "Carte UGF", en = "UGF Map"),
   tab_tableau_ug = list(fr = "Tableau UGF", en = "UGF Table"),
   tab_sampling = list(fr = "Terrain", en = "Field"),
+  tab_field_ingest = list(fr = "Ingestion terrain", en = "Field Ingest"),
   ug_map_card_title = list(fr = "Carte des unit\u00e9s de gestion foresti\u00e8re", en = "Forest Management Units Map"),
   ug_map_summary_count = list(fr = "%d t\u00e8nement(s)", en = "%d tenement(s)"),
   ug_map_summary_surface = list(fr = "Surface cadastrale : %s ha | Surface SIG : %s ha", en = "Cadastral area: %s ha | SIG area: %s ha"),
@@ -1133,7 +1134,81 @@ TRANSLATIONS <- list(
   qfield_ready = list(
     fr = "Projet QField pr\u00eat au t\u00e9l\u00e9chargement.",
     en = "QField project ready for download."
-  )
+  ),
+
+  # ============================================================
+  # Field Ingest (E5.b \u2014 QField return path)
+  # ============================================================
+  field_ingest_title = list(
+    fr = "Ingestion des donn\u00e9es de terrain",
+    en = "Field data ingest"
+  ),
+  field_ingest_subtitle = list(
+    fr = "D\u00e9poser le GeoPackage renvoy\u00e9 par QField pour valider et rattacher les placettes au projet.",
+    en = "Drop the GeoPackage returned by QField to validate and attach placettes to the project."
+  ),
+  field_ingest_upload = list(
+    fr = "D\u00e9poser un GeoPackage (.gpkg)",
+    en = "Drop a GeoPackage (.gpkg)"
+  ),
+  field_ingest_browse  = list(fr = "Parcourir...",     en = "Browse..."),
+  field_ingest_placeholder = list(fr = "Aucun fichier s\u00e9lectionn\u00e9",
+                                  en = "No file selected"),
+  field_ingest_validate = list(fr = "Valider",         en = "Validate"),
+  field_ingest_attach   = list(fr = "Rattacher au projet", en = "Attach to project"),
+  field_ingest_note = list(
+    fr = "Le rattachement persiste le GPKG dans le projet et met \u00e0 jour le NDP. Les indicateurs (P1, P2, B2, C1, R2) seront recalcul\u00e9s au prochain lancement de calcul.",
+    en = "Attaching persists the GPKG to the project and updates the NDP level. Indicators (P1, P2, B2, C1, R2) will be recomputed on the next compute run."
+  ),
+  field_ingest_waiting = list(
+    fr = "En attente d'un GeoPackage \u00e0 valider.",
+    en = "Waiting for a GeoPackage to validate."
+  ),
+  field_ingest_loaded = list(
+    fr = "Import\u00e9 : %d placettes, %d arbres.",
+    en = "Imported: %d plots, %d trees."
+  ),
+  field_ingest_validated = list(
+    fr = "Validation OK : %d placettes, %d arbres. Pr\u00eat \u00e0 rattacher.",
+    en = "Validation OK: %d plots, %d trees. Ready to attach."
+  ),
+  field_ingest_errors = list(
+    fr = "Validation KO : %d erreur(s). Corrigez le GeoPackage avant de rattacher.",
+    en = "Validation failed: %d error(s). Fix the GeoPackage before attaching."
+  ),
+  field_ingest_no_file = list(
+    fr = "Veuillez d\u00e9poser un fichier GeoPackage.",
+    en = "Please drop a GeoPackage file."
+  ),
+  field_ingest_no_project = list(
+    fr = "Aucun projet actif. Chargez un projet avant d'ingerer des donn\u00e9es terrain.",
+    en = "No active project. Load a project before ingesting field data."
+  ),
+  field_ingest_no_units = list(
+    fr = "Le projet ne contient pas d'unit\u00e9s de gestion foresti\u00e8re exploitable.",
+    en = "The active project has no usable forest management units."
+  ),
+  field_ingest_not_validated = list(
+    fr = "Validez d'abord le GeoPackage avant de rattacher.",
+    en = "Validate the GeoPackage before attaching."
+  ),
+  field_ingest_persist_failed = list(
+    fr = "\u00c9chec de la persistance du GeoPackage terrain.",
+    en = "Failed to persist the field GeoPackage."
+  ),
+  field_ingest_attached = list(
+    fr = "Donn\u00e9es terrain rattach\u00e9es. NDP projet mis \u00e0 jour : %d.",
+    en = "Field data attached. Project NDP updated to: %d."
+  ),
+  field_ingest_ndp_before = list(fr = "NDP actuel",  en = "Current NDP"),
+  field_ingest_ndp_after  = list(fr = "NDP apr\u00e8s ingestion",
+                                  en = "NDP after ingest"),
+  field_ingest_report_header = list(
+    fr = "%d erreur(s), %d avertissement(s).",
+    en = "%d error(s), %d warning(s)."
+  ),
+  field_ingest_report_errors   = list(fr = "Erreurs",       en = "Errors"),
+  field_ingest_report_warnings = list(fr = "Avertissements", en = "Warnings")
 )
 
 
