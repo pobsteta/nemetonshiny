@@ -1262,6 +1262,22 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       shiny::req(project)
 
+      i18n <- get_i18n(app_state$language %||% "fr")
+
+      # Immediate toast so the user gets a click-feedback the moment
+      # "Réessayer" is pressed (cache clearing + reload can take a
+      # few hundred ms). Same pattern as the "Projet chargé" toast.
+      shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("arrow-clockwise", class = "me-2 fa-spin"),
+          i18n$t("retry_toast")
+        ),
+        type = "message",
+        duration = 4,
+        id = "retry_notif",
+        session = session
+      )
+
       # Clear indicator cache to force full recomputation
       clear_computation_cache(project$id)
 

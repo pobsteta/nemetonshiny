@@ -238,6 +238,10 @@ TRANSLATIONS <- list(
   unknown_error = list(fr = "Erreur inconnue", en = "Unknown error"),
   and_n_more_errors = list(fr = "Et %d autre(s) erreur(s)...", en = "And %d more error(s)..."),
   retry = list(fr = "R\u00e9essayer", en = "Retry"),
+  retry_toast = list(
+    fr = "Projet r\u00e9initialis\u00e9 \u2014 pr\u00eat \u00e0 relancer le calcul.",
+    en = "Project reset \u2014 ready to recompute."
+  ),
   view_results = list(fr = "Voir les r\u00e9sultats", en = "View results"),
   resuming_computation = list(
     fr = "Reprise du calcul - %d indicateur(s) d\u00e9j\u00e0 calcul\u00e9(s)",
