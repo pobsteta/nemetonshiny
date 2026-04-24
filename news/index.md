@@ -2,6 +2,41 @@
 
 ## nemetonshiny (development version)
 
+#### New feature — Sample size from target error + BD Forêt v2 CV (E5.c)
+
+- **`R/mod_sampling.R`** — the sidebar accordion in the Export terrain
+  sub-tab gains a *Mode de dimensionnement* radio (*Taille fixe* /
+  *Erreur cible*). In *Erreur cible* mode the user picks a relative
+  error (default 10 %), an alpha risk (default 5 %), an over-sample
+  ratio (default 20 %) and either a manual CV or an automatic CV derived
+  from BD Forêt v2 via
+  [`nemeton::cv_from_bdforet()`](https://pobsteta.github.io/nemeton/reference/cv_from_bdforet.html).
+  The computed sample size is shown live under the inputs, along with
+  diagnostics on the BD Forêt v2 coverage and any ambiguous / unmapped
+  TFV codes.
+- BD Forêt v2 is read from the project cache populated during the first
+  compute run (`<project>/cache/layers/bdforet.gpkg`). When the cache is
+  absent, the UI points the user at the manual mode via an explicit
+  warning.
+- The TFV column is auto-detected (`TFV`, `tfv`, `code_tfv`) to cope
+  with different WFS layouts.
+- The existing *Taille fixe* path is preserved via a `conditionalPanel`;
+  `create_sampling_plan()` is called with `n_base` / `n_over` computed
+  upstream depending on the mode.
+- Bumped nemeton dependency to `>= 0.19.0.9000` (the dev version
+  introducing `compute_sample_size()`, `cv_from_bdforet()` and the
+  editable CV typology CSVs).
+- 19 new FR/EN i18n keys (`sampling_sizing_mode`, `sampling_mode_*`,
+  `sampling_target_error_label`, `sampling_alpha_label`,
+  `sampling_over_ratio_label`, `sampling_cv_source_*`,
+  `sampling_cv_position*`, `sampling_cv_compute`,
+  `sampling_cv_bdforet_hint`, `sampling_cv_bdforet_missing`,
+  `sampling_cv_computed`, `sampling_cv_ambiguous`,
+  `sampling_cv_unmapped`, `sampling_n_computed*`).
+- Tests: 6 new testServer assertions covering the Cochran sizing path
+  (manual CV) and the bail-out when CV is zero. Full suite 5145 / 0
+  failure.
+
 #### New feature — Field ingest (E5.b — QField return path)
 
 - **`R/mod_field_ingest.R`** — new “Ingestion terrain” tab that closes

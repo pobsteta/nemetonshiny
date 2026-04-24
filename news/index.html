@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.18.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,17 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<div class="section level4">
+<h4 id="new-feature--sample-size-from-target-error--bd-forêt-v2-cv-e5c-development-version">New feature — Sample size from target error + BD Forêt v2 CV (E5.c)<a class="anchor" aria-label="anchor" href="#new-feature--sample-size-from-target-error--bd-for%C3%AAt-v2-cv-e5c-development-version"></a></h4>
+<ul><li>
+<strong><code>R/mod_sampling.R</code></strong> — the sidebar accordion in the Export terrain sub-tab gains a <em>Mode de dimensionnement</em> radio (<em>Taille fixe</em> / <em>Erreur cible</em>). In <em>Erreur cible</em> mode the user picks a relative error (default 10 %), an alpha risk (default 5 %), an over-sample ratio (default 20 %) and either a manual CV or an automatic CV derived from BD Forêt v2 via <code><a href="https://pobsteta.github.io/nemeton/reference/cv_from_bdforet.html" class="external-link">nemeton::cv_from_bdforet()</a></code>. The computed sample size is shown live under the inputs, along with diagnostics on the BD Forêt v2 coverage and any ambiguous / unmapped TFV codes.</li>
+<li>BD Forêt v2 is read from the project cache populated during the first compute run (<code>&lt;project&gt;/cache/layers/bdforet.gpkg</code>). When the cache is absent, the UI points the user at the manual mode via an explicit warning.</li>
+<li>The TFV column is auto-detected (<code>TFV</code>, <code>tfv</code>, <code>code_tfv</code>) to cope with different WFS layouts.</li>
+<li>The existing <em>Taille fixe</em> path is preserved via a <code>conditionalPanel</code>; <code>create_sampling_plan()</code> is called with <code>n_base</code> / <code>n_over</code> computed upstream depending on the mode.</li>
+<li>Bumped nemeton dependency to <code>&gt;= 0.19.0.9000</code> (the dev version introducing <code>compute_sample_size()</code>, <code>cv_from_bdforet()</code> and the editable CV typology CSVs).</li>
+<li>19 new FR/EN i18n keys (<code>sampling_sizing_mode</code>, <code>sampling_mode_*</code>, <code>sampling_target_error_label</code>, <code>sampling_alpha_label</code>, <code>sampling_over_ratio_label</code>, <code>sampling_cv_source_*</code>, <code>sampling_cv_position*</code>, <code>sampling_cv_compute</code>, <code>sampling_cv_bdforet_hint</code>, <code>sampling_cv_bdforet_missing</code>, <code>sampling_cv_computed</code>, <code>sampling_cv_ambiguous</code>, <code>sampling_cv_unmapped</code>, <code>sampling_n_computed*</code>).</li>
+<li>Tests: 6 new testServer assertions covering the Cochran sizing path (manual CV) and the bail-out when CV is zero. Full suite 5145 / 0 failure.</li>
+</ul></div>
 <div class="section level4">
 <h4 id="new-feature--field-ingest-e5b--qfield-return-path-development-version">New feature — Field ingest (E5.b — QField return path)<a class="anchor" aria-label="anchor" href="#new-feature--field-ingest-e5b--qfield-return-path-development-version"></a></h4>
 <ul><li>
