@@ -478,18 +478,61 @@ mod_sampling_server <- function(id, app_state) {
           class = "alert alert-light py-2 mb-2",
           sprintf(i18n$t("sampling_cv_computed"), cv_pct, cov_pct)
         )))
-        n_amb <- nrow(cv_res$ambiguous %||% data.frame())
+        # Look up the TFV codes + labels + alt context so the user
+        # sees WHICH rows are ambiguous and what the alternative
+        # mapping would be. Handles the case where cv_from_bdforet()
+        # resolved via label_key (the amb$tfv_code field then holds a
+        # normalized label rather than a code).
+        map <- tryCatch(nemeton::bdforet_v2_mapping(),
+                        error = function(e) NULL)
+        find_row <- function(key) {
+          if (is.null(map)) return(NULL)
+          r <- map[map$tfv_code == key | map$label_key == key, , drop = FALSE]
+          if (nrow(r) == 0L) NULL else r[1L, ]
+        }
+        render_row <- function(key, ha) {
+          r <- find_row(key)
+          label <- if (!is.null(r)) r$label_fr else NA_character_
+          code  <- if (!is.null(r)) r$tfv_code else key
+          alt   <- if (!is.null(r)) r$alt_context_key else NA_character_
+          main  <- if (!is.na(label)) sprintf("%s (%s)", label, code) else code
+          htmltools::tags$li(
+            htmltools::tags$strong(main),
+            if (!is.null(r)) sprintf(
+              " — %.2f ha, contexte : %s%s",
+              ha, r$context_key,
+              if (!is.na(alt)) paste0(" (alt : ", alt, ")") else ""
+            ) else sprintf(" — %.2f ha", ha)
+          )
+        }
+
+        amb <- cv_res$ambiguous %||% data.frame()
+        n_amb <- nrow(amb)
         if (n_amb > 0L) {
+          items <- lapply(seq_len(n_amb), function(i) {
+            render_row(amb$tfv_code[i], amb$area_ha[i])
+          })
           parts <- c(parts, list(htmltools::div(
             class = "alert alert-warning py-2 mb-2",
-            sprintf(i18n$t("sampling_cv_ambiguous"), n_amb)
+            htmltools::tags$strong(
+              sprintf(i18n$t("sampling_cv_ambiguous"), n_amb)
+            ),
+            htmltools::tags$ul(class = "mb-0 ps-3", items)
           )))
         }
-        n_unm <- length(cv_res$unmapped %||% character(0))
+
+        unmapped <- unique(cv_res$unmapped %||% character(0))
+        n_unm <- length(unmapped)
         if (n_unm > 0L) {
+          items <- lapply(unmapped, function(k) {
+            htmltools::tags$li(htmltools::tags$code(k))
+          })
           parts <- c(parts, list(htmltools::div(
             class = "alert alert-warning py-2 mb-2",
-            sprintf(i18n$t("sampling_cv_unmapped"), n_unm)
+            htmltools::tags$strong(
+              sprintf(i18n$t("sampling_cv_unmapped"), n_unm)
+            ),
+            htmltools::tags$ul(class = "mb-0 ps-3", items)
           )))
         }
       }
