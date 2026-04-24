@@ -333,11 +333,17 @@ mod_sampling_server <- function(id, app_state) {
                                 type = "warning", duration = 6)
         return()
       }
-      # Detect the TFV column (IGN uses "tfv" / "TFV" / "code_tfv").
-      tfv_col <- intersect(c("TFV", "tfv", "code_tfv"), names(bd))[1]
+      # Detect the TFV column (IGN WFS varies: TFV / tfv / CODE_TFV /
+      # code_tfv; some older exports only expose essence / ESSENCE).
+      tfv_candidates <- c("TFV", "tfv", "CODE_TFV", "code_tfv",
+                          "essence", "ESSENCE", "LIB_FV", "LIBELLE")
+      tfv_col <- intersect(tfv_candidates, names(bd))[1]
       if (is.na(tfv_col)) {
-        shiny::showNotification("TFV column not found in BD Forêt v2 GPKG.",
-                                type = "error", duration = 6)
+        shiny::showNotification(
+          sprintf("TFV column not found. Columns present: %s",
+                  paste(head(names(bd), 10), collapse = ", ")),
+          type = "error", duration = 10
+        )
         return()
       }
 
@@ -359,6 +365,27 @@ mod_sampling_server <- function(id, app_state) {
       )
       if (is.null(res)) return()
       sampling_rv$cv_result <- res
+
+      # Diagnostic path: if no polygon was mappable, surface the
+      # actual column used + a sample of unmapped values so the user
+      # can see the mismatch (common cause: IGN WFS returns the label
+      # libellé_tfv instead of the code, or codes formatted without
+      # the hyphens).
+      if (is.na(res$cv) || isTRUE(res$coverage == 0)) {
+        sample_vals <- head(unique(as.character(res$unmapped)), 5)
+        shiny::showNotification(
+          sprintf(
+            paste0("CV non calculable. Colonne utilisée : %s. ",
+                   "Codes non mappés (%d uniques) : %s."),
+            tfv_col,
+            length(unique(res$unmapped)),
+            if (length(sample_vals)) paste(sample_vals, collapse = ", ")
+            else "(aucune valeur)"
+          ),
+          type = "warning", duration = 12
+        )
+        return()
+      }
 
       cv_pct <- round(res$cv * 100, 1)
       cov_pct <- round((res$coverage %||% NA) * 100, 1)
