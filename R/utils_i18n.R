@@ -950,6 +950,10 @@ TRANSLATIONS <- list(
     fr = "\u00c9tape 5/5 : export des r\u00e9sultats\u2026",
     en = "Step 5/5: exporting results\u2026"
   ),
+  chm_phase_lidar_hd_download = list(
+    fr = "T\u00e9l\u00e9chargement CHM LiDAR HD (IGN)\u2026",
+    en = "Downloading LiDAR HD CHM (IGN)\u2026"
+  ),
   chm_inference_start = list(
     fr = "Inf\u00e9rence CHM : {n} tuile(s)\u2026",
     en = "CHM inference: {n} tile(s)\u2026"
