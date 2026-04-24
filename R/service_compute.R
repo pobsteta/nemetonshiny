@@ -793,7 +793,37 @@ download_layers_for_parcels <- function(parcels,
   chm_pct_masked <- NULL
   chm_source <- "none"
 
-  if (chm_auto_enabled()) {
+  # Step 1: try LiDAR HD MNH (direct aerial measurement, ~0.5 m
+  # vertical accuracy). IGN coverage is partial in 2026 (full France
+  # planned by end of year); a missing-tile return lets us fall back
+  # to Open-Canopy ML for AOIs not yet flown.
+  if (chm_lidar_enabled()) {
+    if (!is.null(progress_callback)) {
+      progress_callback(list(
+        completed = total_sources + length(pc_sources),
+        total     = total_sources + length(pc_sources),
+        current   = "chm_phase:lidar_hd_download",
+        source_key = NULL
+      ))
+    }
+    lidar_out <- tryCatch(
+      download_chm_lidar_hd(parcels, cache_dir,
+                            progress_callback = progress_callback),
+      error = function(e) {
+        cli::cli_warn("LiDAR HD CHM fetch failed: {e$message}")
+        NULL
+      }
+    )
+    if (!is.null(lidar_out) && !is.null(lidar_out$chm)) {
+      rasters$chm <- lidar_out$chm
+      chm_pct_masked <- lidar_out$pct_masked
+      chm_source <- "lidar_hd"
+      cli::cli_alert_success("Using LiDAR HD MNH as CHM source")
+    }
+  }
+
+  # Step 2: Open-Canopy ML — only if LiDAR HD was skipped or failed.
+  if (chm_source == "none" && chm_auto_enabled()) {
     if (!is.null(progress_callback)) {
       # Not "download:" — the pipeline fetches the IGN ortho once
       # (cheap) but the bulk of the time is the PVTv2/UNet ML
@@ -950,6 +980,114 @@ chm_auto_enabled <- function() {
     return(FALSE)
   }
   TRUE
+}
+
+
+#' Report whether LiDAR HD MNH CHM should be attempted automatically.
+#'
+#' Opt-out: runs whenever \pkg{happign} is installed, unless the user
+#' forces it off via \code{options(nemetonshiny.chm = "none")},
+#' \code{options(nemetonshiny.chm_source = "opencanopy")} or env var
+#' \code{NEMETONSHINY_DISABLE_CHM=1}. LiDAR HD coverage is incomplete
+#' in France (target 2026); a missing-tile failure is caught by the
+#' tryCatch in \code{download_layers_for_parcels()} and the pipeline
+#' falls back to Open-Canopy ML.
+#'
+#' @return Logical.
+#' @noRd
+chm_lidar_enabled <- function() {
+  if (identical(getOption("nemetonshiny.chm"), "none")) return(FALSE)
+  env_val <- Sys.getenv("NEMETONSHINY_DISABLE_CHM")
+  if (nzchar(env_val) && env_val != "0") return(FALSE)
+  if (identical(getOption("nemetonshiny.chm_source"), "opencanopy")) {
+    cli::cli_alert_info(
+      "LiDAR HD CHM skipped: options(nemetonshiny.chm_source) = \"opencanopy\"."
+    )
+    return(FALSE)
+  }
+  if (!requireNamespace("happign", quietly = TRUE)) {
+    cli::cli_alert_info(
+      "LiDAR HD CHM skipped: package {.pkg happign} is not installed."
+    )
+    return(FALSE)
+  }
+  TRUE
+}
+
+
+#' Fetch CHM from IGN LiDAR HD MNH tiles via happign
+#'
+#' Wraps \code{download_ign_lidar_hd(bbox, cache_dir, product = "mnh")}
+#' into the same return shape as \code{download_chm_opencanopy()} so
+#' the call site in \code{download_layers_for_parcels()} can swap
+#' sources without further branching. LiDAR HD MNH is a direct
+#' airborne measurement (IGN, national flights 2021-2026) — when
+#' tiles are available for the AOI, it is preferred over the
+#' Open-Canopy ML prediction (which is a synthesised CHM from ortho
+#' imagery, less accurate).
+#'
+#' Returns \code{NULL} gracefully when the AOI is not yet covered
+#' by LiDAR HD flights (caller then falls back to Open-Canopy).
+#'
+#' @param parcels sf of project parcels (in any CRS).
+#' @param cache_dir Character. Project cache directory.
+#' @param progress_callback Optional function for per-tile progress
+#'   reporting. Same contract as the opencanopy path: receives a
+#'   list with \code{current}, \code{completed}, \code{total}.
+#'
+#' @return list(chm = SpatRaster, pct_masked = numeric or NULL,
+#'   steps_applied = character) or NULL if no tiles were fetched.
+#'
+#' @noRd
+download_chm_lidar_hd <- function(parcels, cache_dir,
+                                  progress_callback = NULL) {
+  if (!requireNamespace("happign", quietly = TRUE)) {
+    stop("Package 'happign' is not installed")
+  }
+
+  # bbox in WGS84 (same convention as download_ign_lidar_hd).
+  parcels_ll <- sf::st_transform(parcels, 4326)
+  bbox <- sf::st_bbox(sf::st_buffer(
+    sf::st_transform(parcels, 2154), 50
+  ))
+  bbox <- sf::st_bbox(sf::st_transform(
+    sf::st_as_sfc(bbox), 4326
+  ))
+
+  if (!is.null(progress_callback)) {
+    progress_callback(list(current = "chm_phase:lidar_hd_download",
+                           completed = 0, total = 1))
+  }
+
+  cli::cli_alert_info("Fetching IGN LiDAR HD MNH tiles (direct measurement)...")
+  mnh <- tryCatch(
+    download_ign_lidar_hd(bbox, cache_dir, product = "mnh",
+                         progress_callback = progress_callback),
+    error = function(e) {
+      cli::cli_alert_warning("LiDAR HD MNH fetch failed: {e$message}")
+      NULL
+    }
+  )
+  if (is.null(mnh)) return(NULL)
+
+  # sanitize_chm() applies the same 5-step cleaning as the
+  # opencanopy path (forest mask, buildings, water, slope, NDVI
+  # threshold, max height). Degrade gracefully when the helper
+  # layers are not available (e.g. happign didn't return buildings).
+  if ("sanitize_chm" %in% getNamespaceExports("nemeton")) {
+    cleaned <- tryCatch(
+      nemeton::sanitize_chm(mnh),
+      error = function(e) list(chm_clean = mnh, pct_masked = NA_real_,
+                               steps_applied = character(0))
+    )
+    return(list(
+      chm = cleaned$chm_clean,
+      pct_masked = cleaned$pct_masked,
+      steps_applied = cleaned$steps_applied
+    ))
+  }
+
+  list(chm = mnh, pct_masked = NA_real_, steps_applied = character(0))
 }
 
 

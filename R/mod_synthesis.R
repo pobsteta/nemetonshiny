@@ -243,17 +243,35 @@ mod_synthesis_server <- function(id, app_state) {
               chm_src <- app_state$current_project$metadata$chm_source %||% "none"
               badges <- list()
               if (!identical(chm_src, "none")) {
-                badges <- c(badges, list(
-                  bslib::tooltip(
-                    htmltools::tags$span(
-                      class = "badge text-bg-info",
-                      style = "font-size: 0.75rem;",
-                      htmltools::HTML("&#9889;"),
-                      " ", i18n$t("augmented_height_ml_badge")
-                    ),
-                    i18n$t("augmented_height_ml_tooltip")
-                  )
-                ))
+                # LiDAR HD is a direct airborne measurement; Open-Canopy
+                # is an ML prediction from ortho imagery. Surface the
+                # distinction to the user — different class (success
+                # vs info) and different tooltip.
+                if (identical(chm_src, "lidar_hd")) {
+                  badges <- c(badges, list(
+                    bslib::tooltip(
+                      htmltools::tags$span(
+                        class = "badge text-bg-success",
+                        style = "font-size: 0.75rem;",
+                        htmltools::HTML("&#9889;"),
+                        " ", i18n$t("augmented_height_lidar_badge")
+                      ),
+                      i18n$t("augmented_height_lidar_tooltip")
+                    )
+                  ))
+                } else {
+                  badges <- c(badges, list(
+                    bslib::tooltip(
+                      htmltools::tags$span(
+                        class = "badge text-bg-info",
+                        style = "font-size: 0.75rem;",
+                        htmltools::HTML("&#9889;"),
+                        " ", i18n$t("augmented_height_ml_badge")
+                      ),
+                      i18n$t("augmented_height_ml_tooltip")
+                    )
+                  ))
+                }
                 # Synthetic inventory badge: P1/P3/E1 with non-NA
                 # values imply ensure_inventory_fields() fired on
                 # them (we have no NDP-2 terrain path today).

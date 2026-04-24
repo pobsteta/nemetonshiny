@@ -168,6 +168,14 @@ TRANSLATIONS <- list(
     fr = "CHM Open-Canopy : indisponible (package manquant ou d\u00e9sactiv\u00e9)",
     en = "CHM Open-Canopy: unavailable (package missing or disabled)"
   ),
+  augmented_height_lidar_badge = list(
+    fr = "Hauteur LiDAR HD",
+    en = "LiDAR HD height"
+  ),
+  augmented_height_lidar_tooltip = list(
+    fr = "Les indicateurs de hauteur (P1, P2, C1, B2, R2) ont été calculés à partir du Modèle Numérique de Hauteur LiDAR HD (IGN, campagne aérienne nationale). Mesure directe (précision nominale ~0.5 m), pas de prédiction ML. NDP 2.",
+    en = "Height indicators (P1, P2, C1, B2, R2) were computed from the IGN LiDAR HD Canopy Height Model (national airborne campaign). Direct measurement (~0.5 m nominal accuracy), not an ML prediction. NDP 2."
+  ),
   augmented_height_ml_badge = list(
     fr = "Hauteur ML",
     en = "ML height"
