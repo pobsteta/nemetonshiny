@@ -249,6 +249,66 @@ list_available_indicators <- function() {
 }
 
 
+#' Re-apply field data persisted by mod_field_ingest, if any
+#'
+#' When the user has imported a QField GeoPackage via the Field Ingest
+#' tab, it is persisted at `<project>/data/field_data.gpkg`. This
+#' helper re-imports that file at compute time so that the indicators
+#' that consume terrain measurements (P1, P2, B2, C1, R2) see the
+#' aggregated metrics on the compute units.
+#'
+#' Errors are non-fatal: a missing file simply means "no field data,
+#' compute as usual"; a corrupted file logs a warning and falls back
+#' to the original `compute_unit`. The compute pipeline must never
+#' refuse to run because of a stale or unreadable field GPKG.
+#'
+#' @param compute_unit Sf object built from the project UGFs.
+#' @param project_path Character. Path to the project directory.
+#'
+#' @return The (possibly enriched) compute_unit, with attributes set
+#'   by `nemeton::tag_field_data_sources()` so `detect_ndp()` lifts
+#'   the NDP along the alternative field path.
+#'
+#' @noRd
+.apply_field_data_if_present <- function(compute_unit, project_path) {
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    return(compute_unit)
+  }
+  field_gpkg <- file.path(project_path, "data", "field_data.gpkg")
+  if (!file.exists(field_gpkg)) {
+    return(compute_unit)
+  }
+
+  result <- tryCatch({
+    imported <- nemeton::import_qfield_gpkg(field_gpkg)
+    if (is.null(imported$placettes) || nrow(imported$placettes) == 0) {
+      return(compute_unit)
+    }
+    agg <- nemeton::aggregate_plot_metrics(
+      placettes = imported$placettes,
+      arbres    = imported$arbres
+    )
+    enriched <- nemeton::attach_field_data_to_units(compute_unit, agg)
+    nemeton::tag_field_data_sources(
+      enriched,
+      placettes = imported$placettes,
+      arbres    = imported$arbres
+    )
+  }, error = function(e) {
+    cli::cli_warn(c(
+      "Failed to re-apply field data from {.path {field_gpkg}}: {conditionMessage(e)}",
+      "i" = "Compute will continue without field data."
+    ))
+    compute_unit
+  })
+
+  cli::cli_alert_info(
+    "Field data re-applied: {nrow(compute_unit)} UGF enriched from {.path {basename(field_gpkg)}}."
+  )
+  result
+}
+
+
 #' Start computation workflow
 #'
 #' @description
@@ -458,6 +518,13 @@ start_computation <- function(project_id,
       report_progress(state)
       return(list(success = FALSE, state = state, cancelled = TRUE))
     }
+
+    # E5 dette technique: re-apply field data persisted by
+    # mod_field_ingest (if any) before passing the compute_unit to
+    # the indicator pipeline. P1, P2, B2, C1 and R2 then see the
+    # aggregated terrain metrics and detect_ndp() lifts the NDP
+    # along the alternative field path.
+    compute_unit <- .apply_field_data_if_present(compute_unit, project_path)
 
     # Phase 2: Compute indicators
     state$phase <- "computing"

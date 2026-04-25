@@ -4867,3 +4867,87 @@ test_that("download_vector_source dispatches to download_ign_bdforet", {
     )
   })
 })
+
+# ==============================================================================
+# .apply_field_data_if_present — E5 dette technique (auto re-apply field data)
+# ==============================================================================
+
+make_compute_unit_for_field_test <- function() {
+  sf::st_sf(
+    ug_id = c("U01", "U02"),
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(rbind(c(0,0), c(1,0), c(1,1), c(0,0)))),
+      sf::st_polygon(list(rbind(c(2,0), c(3,0), c(3,1), c(2,0)))),
+      crs = 2154
+    )
+  )
+}
+
+test_that("apply_field_data_if_present returns input unchanged when project_path is NULL", {
+  cu <- make_compute_unit_for_field_test()
+  out <- nemetonshiny:::.apply_field_data_if_present(cu, NULL)
+  expect_identical(out, cu)
+})
+
+test_that("apply_field_data_if_present returns input unchanged when project_path does not exist", {
+  cu <- make_compute_unit_for_field_test()
+  out <- nemetonshiny:::.apply_field_data_if_present(cu, "/tmp/nemeton_no_such_dir_42")
+  expect_identical(out, cu)
+})
+
+test_that("apply_field_data_if_present is a no-op when field_data.gpkg is absent", {
+  cu <- make_compute_unit_for_field_test()
+  withr::with_tempdir({
+    dir.create("data")
+    out <- nemetonshiny:::.apply_field_data_if_present(cu, ".")
+    expect_identical(out, cu)
+  })
+})
+
+test_that("apply_field_data_if_present calls the nemeton field pipeline when GPKG is present", {
+  cu <- make_compute_unit_for_field_test()
+  enriched <- cu
+  enriched$dbh_mean_cm <- c(28.5, 32.1)  # marker that the pipeline ran
+
+  withr::with_tempdir({
+    dir.create("data")
+    file.create(file.path("data", "field_data.gpkg"))
+
+    testthat::local_mocked_bindings(
+      import_qfield_gpkg        = function(path) {
+        list(placettes = sf::st_sf(plot_id = "P01",
+                                   geometry = sf::st_sfc(sf::st_point(c(0.5, 0.5)),
+                                                         crs = 2154)),
+             arbres    = NULL)
+      },
+      aggregate_plot_metrics    = function(placettes, arbres) {
+        data.frame(plot_id = "P01", dbh_mean_cm = 28.5)
+      },
+      attach_field_data_to_units = function(units, agg) enriched,
+      tag_field_data_sources     = function(units, placettes, arbres) units,
+      .package = "nemeton"
+    )
+
+    out <- nemetonshiny:::.apply_field_data_if_present(cu, ".")
+    expect_true("dbh_mean_cm" %in% names(out))
+    expect_equal(out$dbh_mean_cm, c(28.5, 32.1))
+  })
+})
+
+test_that("apply_field_data_if_present falls back to compute_unit on error and warns", {
+  cu <- make_compute_unit_for_field_test()
+  withr::with_tempdir({
+    dir.create("data")
+    file.create(file.path("data", "field_data.gpkg"))
+
+    testthat::local_mocked_bindings(
+      import_qfield_gpkg = function(path) stop("corrupted GPKG"),
+      .package = "nemeton"
+    )
+    expect_warning(
+      out <- nemetonshiny:::.apply_field_data_if_present(cu, "."),
+      "Failed to re-apply field data"
+    )
+    expect_identical(out, cu)
+  })
+})
