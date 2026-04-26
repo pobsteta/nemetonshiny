@@ -12,3 +12,4 @@
 ^codecov\.yml$
 ^LICENSE-DATA\.md$
 ^LICENSE-EUPL\.md$
+^\.positai$
