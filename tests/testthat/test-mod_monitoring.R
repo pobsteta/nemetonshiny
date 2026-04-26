@@ -166,3 +166,170 @@ test_that("db_status renders the 'connected' card with zone count", {
     }
   )
 })
+
+
+# ---- Server: ingestion click handler (phase 2) ----------------------
+
+# A fake ExtendedTask that records every invoke() call. status()
+# always returns "initial" so the button observer in the module
+# treats it as idle.
+make_fake_ingest_task <- function() {
+  state <- new.env(parent = emptyenv())
+  state$calls <- list()
+  list(
+    invoke = function(...) {
+      state$calls[[length(state$calls) + 1L]] <- list(...)
+      invisible(NULL)
+    },
+    result = function() NULL,
+    status = function() "initial",
+    .calls = function() state$calls
+  )
+}
+
+fake_zones_df <- function() {
+  data.frame(id = c(1L, 2L), name = c("Foret", "Massif"),
+             stringsAsFactors = FALSE)
+}
+
+test_that("input$run with no zone selected fires a validation notification", {
+  skip_if_not_installed("shiny")
+
+  fake_task <- make_fake_ingest_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection  = function() "fake-con",
+    list_monitoring_zones         = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async           = function() fake_task,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          # Force zone_id empty (selectInput populated to "1" by the
+          # server observer; we override explicitly).
+          session$setInputs(
+            zone_id    = "",
+            bands      = c("NDVI", "NBR"),
+            date_range = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            run        = 1L
+          )
+          # Task must NOT have been invoked.
+          expect_length(fake_task$.calls(), 0L)
+        }
+      )
+    }
+  )
+})
+
+test_that("input$run with no band selected fires a validation notification", {
+  skip_if_not_installed("shiny")
+
+  fake_task <- make_fake_ingest_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection  = function() "fake-con",
+    list_monitoring_zones         = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async           = function() fake_task,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(
+            zone_id    = "1",
+            bands      = character(0),
+            date_range = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            run        = 1L
+          )
+          expect_length(fake_task$.calls(), 0L)
+        }
+      )
+    }
+  )
+})
+
+test_that("input$run with valid inputs invokes the ingest task", {
+  skip_if_not_installed("shiny")
+
+  fake_task <- make_fake_ingest_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection  = function() "fake-con",
+    list_monitoring_zones         = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async           = function() fake_task,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(
+            zone_id    = "1",
+            bands      = c("NDVI", "NBR"),
+            date_range = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            run        = 1L
+          )
+          calls <- fake_task$.calls()
+          expect_length(calls, 1L)
+          expect_equal(calls[[1]]$zone_id, 1L)
+          expect_equal(calls[[1]]$start,   as.Date("2025-06-01"))
+          expect_equal(calls[[1]]$end,     as.Date("2025-06-30"))
+          expect_equal(calls[[1]]$bands,   c("NDVI", "NBR"))
+        }
+      )
+    }
+  )
+})
+
+test_that("input$run with NA dates skips invocation", {
+  skip_if_not_installed("shiny")
+
+  fake_task <- make_fake_ingest_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection  = function() "fake-con",
+    list_monitoring_zones         = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async           = function() fake_task,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(
+            zone_id    = "1",
+            bands      = c("NDVI"),
+            date_range = c(as.Date(NA), as.Date(NA)),
+            run        = 1L
+          )
+          expect_length(fake_task$.calls(), 0L)
+        }
+      )
+    }
+  )
+})
+
+test_that("server returns ingest_task in its returned list", {
+  skip_if_not_installed("shiny")
+
+  fake_task <- make_fake_ingest_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection  = function() "fake-con",
+    list_monitoring_zones         = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async           = function() fake_task,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          expect_identical(session$returned$ingest_task, fake_task)
+        }
+      )
+    }
+  )
+})

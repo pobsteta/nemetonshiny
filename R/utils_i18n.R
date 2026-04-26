@@ -1390,9 +1390,29 @@ TRANSLATIONS <- list(
     fr = "Lancer ingestion",
     en = "Start ingestion"
   ),
-  monitoring_run_disabled_hint = list(
-    fr = "Disponible \u00e0 partir de la phase 2 d'E6.b.",
-    en = "Available from E6.b phase 2 onwards."
+  monitoring_validate_zone = list(
+    fr = "S\u00e9lectionnez une zone de suivi avant de lancer l'ingestion.",
+    en = "Select a monitoring zone before starting the ingestion."
+  ),
+  monitoring_validate_bands = list(
+    fr = "S\u00e9lectionnez au moins un indice spectral (NDVI ou NBR).",
+    en = "Select at least one spectral index (NDVI or NBR)."
+  ),
+  monitoring_validate_dates = list(
+    fr = "P\u00e9riode d'observation invalide.",
+    en = "Invalid observation period."
+  ),
+  monitoring_ingest_starting = list(
+    fr = "Ingestion Sentinel-2 en cours\u2026 cela peut prendre quelques minutes.",
+    en = "Sentinel-2 ingestion running\u2026 this can take a few minutes."
+  ),
+  monitoring_ingest_success = list(
+    fr = "Ingestion termin\u00e9e : %d sc\u00e8ne(s), %d observation(s) ins\u00e9r\u00e9e(s).",
+    en = "Ingestion finished: %d scene(s), %d observation(s) inserted."
+  ),
+  monitoring_ingest_error = list(
+    fr = "\u00c9chec de l'ingestion",
+    en = "Ingestion failed"
   ),
   monitoring_db_unavailable = list(
     fr = "Base de suivi non configur\u00e9e.",

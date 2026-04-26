@@ -104,9 +104,10 @@ mod_monitoring_ui <- function(id) {
               value = 30L, min = 7L, max = 90L, step = 1L
             ),
 
-            # Phase 1: button is rendered disabled (the ingestion task
-            # ships in phase 2). actionButton() drops unknown args from
-            # `...`, so we tag the bare HTML attribute explicitly.
+            # The button starts disabled and is enabled server-side once
+            # zones + bands are valid (and re-disabled while a task is
+            # running). actionButton() drops unknown args from `...`, so
+            # the bare HTML attribute is tagged explicitly here.
             htmltools::tagAppendAttributes(
               shiny::actionButton(
                 ns("run"), i18n$t("monitoring_run_btn"),
@@ -114,9 +115,7 @@ mod_monitoring_ui <- function(id) {
                 class = "btn-primary w-100"
               ),
               disabled = NA
-            ),
-            htmltools::tags$p(class = "text-muted small fst-italic mt-2",
-                              i18n$t("monitoring_run_disabled_hint"))
+            )
           )
         )
       )
@@ -230,8 +229,90 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
+    # ----- Async ingestion (phase 2) ----------------------------------
+
+    ingest_task <- run_ingestion_async()
+
+    # Reactive button state: enabled iff a zone is selected, at least one
+    # band is checked, and no task is currently running. ExtendedTask$status()
+    # is reactive, so this observer auto-fires when the task transitions
+    # from initial → running → success/error.
+    shiny::observe({
+      has_zone  <- isTRUE(nzchar(input$zone_id))
+      has_bands <- length(input$bands) > 0L
+      is_running <- identical(ingest_task$status(), "running")
+
+      shiny::updateActionButton(
+        session, "run",
+        disabled = !has_zone || !has_bands || is_running
+      )
+    })
+
+    # Click handler: validate state, build window dates, fire the task.
+    shiny::observeEvent(input$run, {
+      i18n <- i18n_r()
+      if (!isTRUE(nzchar(input$zone_id))) {
+        shiny::showNotification(i18n$t("monitoring_validate_zone"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      if (length(input$bands) == 0L) {
+        shiny::showNotification(i18n$t("monitoring_validate_bands"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      dr <- input$date_range
+      if (is.null(dr) || length(dr) != 2L || any(is.na(dr))) {
+        shiny::showNotification(i18n$t("monitoring_validate_dates"),
+                                type = "warning", duration = 4)
+        return()
+      }
+
+      shiny::showNotification(i18n$t("monitoring_ingest_starting"),
+                              type = "message", duration = 4,
+                              id = session$ns("ingest_starting_notif"))
+
+      ingest_task$invoke(
+        zone_id   = as.integer(input$zone_id),
+        start     = as.Date(dr[1]),
+        end       = as.Date(dr[2]),
+        bands     = input$bands,
+        max_cloud = 20
+      )
+    })
+
+    # Result handler: re-runs whenever the task transitions to a
+    # terminal state. While "running", task$result() throws
+    # shiny.silent.error which we re-raise to keep the observer paused.
+    shiny::observe({
+      i18n <- i18n_r()
+      result <- tryCatch(
+        ingest_task$result(),
+        error = function(e) {
+          if (inherits(e, "shiny.silent.error")) stop(e)
+          shiny::showNotification(
+            sprintf("%s : %s", i18n$t("monitoring_ingest_error"),
+                    e$message),
+            type = "error", duration = 8
+          )
+          NULL
+        }
+      )
+      if (!is.null(result)) {
+        shiny::showNotification(
+          sprintf(i18n$t("monitoring_ingest_success"),
+                  result$summary$n_scenes %||% 0L,
+                  result$summary$n_obs_inserted %||% 0L),
+          type = "message", duration = 6
+        )
+        zones_refresh(zones_refresh() + 1L)  # force re-fetch in case
+                                             # the ingestion changed state
+      }
+    })
+
     list(
-      zones = zones
+      zones        = zones,
+      ingest_task  = ingest_task
     )
   })
 }
