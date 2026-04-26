@@ -86,7 +86,15 @@ app_ui <- function(request) {
         )
       ),
 
-      # === Tabs 4-15: Indicator Families ===
+      # === Tab 4: Monitoring (E6.b — continuous Sentinel-2 NDVI/NBR) ===
+      bslib::nav_panel(
+        title = i18n$t("tab_monitoring"),
+        value = "monitoring",
+        icon = bsicons::bs_icon("activity"),
+        mod_monitoring_ui("monitoring")
+      ),
+
+      # === Tabs 5-16: Indicator Families ===
       bslib::nav_menu(
         title = i18n$t("tab_families"),
         icon = bsicons::bs_icon("layers"),

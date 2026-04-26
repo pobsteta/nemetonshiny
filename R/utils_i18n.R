@@ -1340,7 +1340,88 @@ TRANSLATIONS <- list(
     en = "%d error(s), %d warning(s)."
   ),
   field_ingest_report_errors   = list(fr = "Erreurs",       en = "Errors"),
-  field_ingest_report_warnings = list(fr = "Avertissements", en = "Warnings")
+  field_ingest_report_warnings = list(fr = "Avertissements", en = "Warnings"),
+
+  # ============================================================
+  # Monitoring (E6.b - Sentinel-2 NDVI/NBR continuous monitoring)
+  # ============================================================
+  tab_monitoring = list(fr = "Suivi", en = "Monitoring"),
+  monitoring_accordion_title = list(
+    fr = "Suivi continu Sentinel-2",
+    en = "Continuous Sentinel-2 monitoring"
+  ),
+  monitoring_subtitle = list(
+    fr = "D\u00e9tection des baisses NDVI / NBR sur les placettes enregistr\u00e9es.",
+    en = "Detect NDVI / NBR drops on the registered plots."
+  ),
+  monitoring_zone_label = list(
+    fr = "Zone de suivi",
+    en = "Monitoring zone"
+  ),
+  monitoring_zone_none = list(
+    fr = "Aucune zone enregistr\u00e9e dans la base de suivi.",
+    en = "No monitoring zone registered yet."
+  ),
+  monitoring_zone_register_hint = list(
+    fr = "Enregistrez une zone via R : nemeton::register_monitoring_zone(con, ...).",
+    en = "Register a zone from R: nemeton::register_monitoring_zone(con, ...)."
+  ),
+  monitoring_date_range = list(
+    fr = "P\u00e9riode d'observation",
+    en = "Observation period"
+  ),
+  monitoring_bands = list(
+    fr = "Indices spectraux",
+    en = "Spectral indices"
+  ),
+  monitoring_threshold_ndvi = list(
+    fr = "Seuil de baisse NDVI",
+    en = "NDVI drop threshold"
+  ),
+  monitoring_threshold_nbr = list(
+    fr = "Seuil de baisse NBR",
+    en = "NBR drop threshold"
+  ),
+  monitoring_window_days = list(
+    fr = "Fen\u00eatre roulante (jours)",
+    en = "Rolling window (days)"
+  ),
+  monitoring_run_btn = list(
+    fr = "Lancer ingestion",
+    en = "Start ingestion"
+  ),
+  monitoring_run_disabled_hint = list(
+    fr = "Disponible \u00e0 partir de la phase 2 d'E6.b.",
+    en = "Available from E6.b phase 2 onwards."
+  ),
+  monitoring_db_unavailable = list(
+    fr = "Base de suivi non configur\u00e9e.",
+    en = "Monitoring database not configured."
+  ),
+  monitoring_db_check_env = list(
+    fr = "Renseignez NEMETON_DB_URL ou les variables NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD.",
+    en = "Set NEMETON_DB_URL or the NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD variables."
+  ),
+  monitoring_db_connected = list(
+    fr = "Base de suivi connect\u00e9e \u2014 %d zone(s) disponible(s).",
+    en = "Monitoring database connected \u2014 %d zone(s) available."
+  ),
+  monitoring_timeseries_title = list(
+    fr = "S\u00e9rie temporelle NDVI / NBR",
+    en = "NDVI / NBR time series"
+  ),
+  monitoring_timeseries_placeholder = list(
+    fr = "Le graphique des indices appara\u00eetra apr\u00e8s la premi\u00e8re ingestion.",
+    en = "The time series will appear after the first ingestion."
+  ),
+  monitoring_alerts_title = list(
+    fr = "Alertes d\u00e9tect\u00e9es",
+    en = "Detected alerts"
+  ),
+  monitoring_alerts_placeholder = list(
+    fr = "La carte des alertes appara\u00eetra apr\u00e8s la premi\u00e8re ingestion.",
+    en = "The alerts map will appear after the first ingestion."
+  )
 )
 
 
