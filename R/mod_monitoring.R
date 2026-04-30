@@ -234,6 +234,10 @@ mod_monitoring_server <- function(id, app_state) {
       get_i18n(app_state$language %||% "fr")
     })
 
+    # Bumped after each FORDEAD run so the alerts reactive (wired in C5)
+    # re-fetches from the DB.
+    alerts_refresh <- shiny::reactiveVal(0L)
+
     # ----- Mode help text -------------------------------------------
     output$mode_help <- shiny::renderUI({
       i18n <- i18n_r()
@@ -435,9 +439,135 @@ mod_monitoring_server <- function(id, app_state) {
       }
     })
 
+    # ----- Async FORDEAD diagnosis (E6.c.5 — health mode) -----------
+
+    fordead_task <- run_fordead_async()
+
+    # Reactive button state for run_health.
+    shiny::observe({
+      has_zone   <- isTRUE(nzchar(input$zone_id))
+      is_running <- identical(fordead_task$status(), "running")
+
+      shiny::updateActionButton(
+        session, "run_health",
+        disabled = !has_zone || is_running
+      )
+    })
+
+    # Helper — kicks off the FORDEAD task with the current sidebar
+    # values. Called both from the direct-click path (validity OK) and
+    # from the modal "force anyway" path (G3 garde-fou).
+    .invoke_fordead <- function() {
+      i18n <- i18n_r()
+      con <- get_monitoring_db_connection()
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      aoi <- get_monitoring_zone_aoi(con, as.integer(input$zone_id))
+      if (is.null(aoi)) {
+        shiny::showNotification(i18n$t("monitoring_validate_zone"),
+                                type = "warning", duration = 4)
+        return(invisible(FALSE))
+      }
+      shiny::showNotification(i18n$t("monitoring_health_starting"),
+                              type = "message", duration = 6,
+                              id = session$ns("fordead_starting_notif"))
+      fordead_task$invoke(
+        aoi               = aoi,
+        dates_training    = as.character(input$dates_training),
+        dates_monitoring  = as.character(input$date_range),
+        threshold_anomaly = as.numeric(input$threshold_anomaly),
+        vegetation_index  = input$vegetation_index,
+        zone_id           = as.integer(input$zone_id)
+      )
+      invisible(TRUE)
+    }
+
+    # Click handler with G3 garde-fou: when the zone is out of validity
+    # domain (geographic OR species), pop a confirmation modal before
+    # invoking. The user can still proceed but knows the calibration
+    # warranty doesn't apply.
+    shiny::observeEvent(input$run_health, {
+      i18n <- i18n_r()
+      if (!isTRUE(nzchar(input$zone_id))) {
+        shiny::showNotification(i18n$t("monitoring_validate_zone"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      dr <- input$date_range
+      if (is.null(dr) || length(dr) != 2L || any(is.na(dr))) {
+        shiny::showNotification(i18n$t("monitoring_validate_dates"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      dt <- input$dates_training
+      if (is.null(dt) || length(dt) != 2L || any(is.na(dt))) {
+        shiny::showNotification(i18n$t("monitoring_validate_dates"),
+                                type = "warning", duration = 4)
+        return()
+      }
+
+      v <- validity()
+      if (!is.null(v) && isFALSE(v$overall_valid)) {
+        shiny::showModal(shiny::modalDialog(
+          title = i18n$t("monitoring_confirm_invalid_title"),
+          i18n$t("monitoring_confirm_invalid_body"),
+          easyClose = FALSE,
+          footer = htmltools::tagList(
+            shiny::modalButton(i18n$t("monitoring_confirm_no")),
+            shiny::actionButton(session$ns("confirm_invalid_run"),
+                                i18n$t("monitoring_confirm_yes"),
+                                class = "btn-warning")
+          )
+        ))
+        return()
+      }
+      .invoke_fordead()
+    })
+
+    # G3 modal "Run anyway" path.
+    shiny::observeEvent(input$confirm_invalid_run, {
+      shiny::removeModal()
+      .invoke_fordead()
+    })
+
+    # FORDEAD result handler.
+    shiny::observe({
+      i18n <- i18n_r()
+      result <- tryCatch(
+        fordead_task$result(),
+        error = function(e) {
+          if (inherits(e, "shiny.silent.error")) stop(e)
+          shiny::showNotification(
+            sprintf("%s : %s", i18n$t("monitoring_health_error"),
+                    e$message),
+            type = "error", duration = 10
+          )
+          NULL
+        }
+      )
+      if (!is.null(result)) {
+        if (identical(result$status, "error")) {
+          shiny::showNotification(
+            sprintf("%s : %s", i18n$t("monitoring_health_error"),
+                    result$message %||% ""),
+            type = "error", duration = 10
+          )
+        } else {
+          shiny::showNotification(
+            sprintf(i18n$t("monitoring_health_success"),
+                    result$n_alerts_inserted %||% 0L,
+                    result$duration_sec      %||% 0),
+            type = "message", duration = 8
+          )
+          alerts_refresh(alerts_refresh() + 1L)
+        }
+      }
+    })
+
     list(
-      zones        = zones,
-      ingest_task  = ingest_task
+      zones         = zones,
+      ingest_task   = ingest_task,
+      fordead_task  = fordead_task,
+      validity      = validity
     )
   })
 }
