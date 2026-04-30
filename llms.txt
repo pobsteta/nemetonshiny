@@ -42,6 +42,7 @@ pour la liste complete.
 ## Installation
 
 ``` r
+
 # Installer le package core nemeton
 remotes::install_github("pobsteta/nemeton")
 
@@ -54,15 +55,16 @@ remotes::install_github("pobsteta/nemetonshiny")
 ### Lancement direct
 
 ``` r
+
 nemetonshiny::run_app(language = "fr")
 ```
 
 Options disponibles :
 
-| Parametre  | Description                 | Defaut                                       |
-|------------|-----------------------------|----------------------------------------------|
-| `language` | Langue (`"fr"` ou `"en"`)   | `"fr"`                                       |
-| `options`  | Options Shiny (port, host…) | [`list()`](https://rdrr.io/r/base/list.html) |
+| Parametre | Description | Defaut |
+|----|----|----|
+| `language` | Langue (`"fr"` ou `"en"`) | `"fr"` |
+| `options` | Options Shiny (port, host…) | [`list()`](https://rdrr.io/r/base/list.html) |
 
 ### Lancement avec Docker
 
@@ -101,6 +103,7 @@ Le projet suit l’architecture
 ## Tests
 
 ``` r
+
 devtools::test()
 ```
 

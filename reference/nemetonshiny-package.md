@@ -13,6 +13,7 @@ other way around (ADR-009).
 
 ## Launching the app
 
+
     library(nemetonshiny)
     run_app()
 

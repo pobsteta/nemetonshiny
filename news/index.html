@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.21.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.21.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,33 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.21.0.9000" id="nemetonshiny-02109000-development">nemetonshiny 0.21.0.9000 (development)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02109000-development"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.21.0" id="nemetonshiny-0210-2026-04-30">nemetonshiny 0.21.0 (2026-04-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0210-2026-04-30"></a></h2>
+<div class="section level4">
+<h4 id="new-feature--forest-health-monitoring-e6c5-spec-0-21-0">New feature — Forest health monitoring (E6.c.5, spec 008)<a class="anchor" aria-label="anchor" href="#new-feature--forest-health-monitoring-e6c5-spec-0-21-0"></a></h4>
+<p>The Monitoring tab is now a two-mode forest health workstation.</p>
+<ul><li>
+<strong>Mode 1 — Surveillance rapide</strong> (existing E6.b NDVI/NBR rolling window, kept as-is) detects recent shocks (cuts, windthrows, fires) in seconds.</li>
+<li>
+<strong>Mode 2 — Diagnostic sanitaire (FORDEAD)</strong> wraps <code><a href="https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html" class="external-link">nemeton::run_fordead_dieback()</a></code> (CRSWIR + harmonic model via reticulate, GPL-3 isolated to the Python frontier) in a <code><a href="https://rdrr.io/pkg/shiny/man/ExtendedTask.html" class="external-link">shiny::ExtendedTask</a></code>. Detects progressive dieback (bark beetle, drought) on conifers in minutes-to-hours. Both pipelines write to the same <code>alert</code> table.</li>
+<li>
+<strong>G1 — class filter</strong>. By default the leaflet shows only <code>confidence_class</code> 3-forte and 4-sol-nu (&gt;70% true positives per ONF/DSF 2024). A “Inclure faible/moyenne” toggle adds the 1-2 classes and surfaces a <code>border-warning</code> banner citing the up-to-50% false-positive rate.</li>
+<li>
+<strong>G2 — disturbance classification</strong>. Alerts go through <code><a href="https://pobsteta.github.io/nemeton/reference/classify_disturbance.html" class="external-link">nemeton::classify_disturbance()</a></code> server-side, so the popup carries a <code>disturbance_type</code> to separate progressive dieback from mechanical intervention.</li>
+<li>
+<strong>G3 — validity banners + confirmation modal</strong>. <code><a href="https://pobsteta.github.io/nemeton/reference/check_fordead_validity.html" class="external-link">nemeton::check_fordead_validity()</a></code> is called on the current zone whenever the user enters health mode. Two <code>border-warning</code> banners fire when the AOI overlaps the 5 validated departments (88, 39, 01, 73, 74) under 50%, or when épicéa + sapin pectiné drops under 70%. Launching FORDEAD on an out-of-domain area pops a modal citing the ONF/DSF caveat; “Run anyway” forwards to the task.</li>
+<li>
+<strong>G4 — QField field-validation workflow</strong>. A new card in health mode lets the user pick <em>n</em> plots (default 30) and a sampling method (GRTS / random) and download a <code>.qgz</code>. Re-uploading the filled GPKG via the new “Validation sanitaire” sub-tab in <em>Données terrain</em> runs <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_health_validation.html" class="external-link">nemeton::ingest_health_validation()</a></code>, reports counts (confirmed / false-positive / unmatched), and updates <code>validation_status</code> + <code>validation_cause</code> per alert.</li>
+<li>
+<strong>G5 — R5 dieback indicator</strong>. The radar’s R-family picks up R5 automatically through <code>nemeton::INDICATOR_FAMILIES$R</code> (no UI change needed; the cœur computes it via <code><a href="https://pobsteta.github.io/nemeton/reference/indicateur_r5_deperissement.html" class="external-link">nemeton::indicateur_r5_deperissement()</a></code>).</li>
+<li>
+<strong>Plotly time series</strong>: in health mode shows the alert distribution by <code>confidence_class</code>. Quick-mode time series (NDVI/NBR per plot) ships with E6.b phase 3.</li>
+<li>
+<strong>Persistence</strong>: each FORDEAD launch writes <code>monitoring_mode</code>, <code>monitoring_threshold_anomaly</code>, <code>monitoring_vegetation_index</code>, <code>monitoring_dates_training</code>, plus the validity intersection percentages, to <code>metadata.json</code>. The module restores these inputs whenever a project is reopened.</li>
+<li>
+<strong>i18n</strong>: ~30 new keys (<code>monitoring_mode_*</code>, <code>monitoring_warning_*</code>, <code>monitoring_class_*</code>, <code>monitoring_qfield_*</code>, <code>health_validation_*</code>, <code>r5_*</code>). The tab itself is renamed <em>Suivi sanitaire</em> / <em>Forest health monitoring</em>.</li>
+<li>
+<strong>Dependencies</strong>: <code>plotly</code> promoted to Imports; <code>nemeton (&gt;= 0.20.1.9004)</code> (FORDEAD pipeline + helpers).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.20.0" id="nemetonshiny-0200-2026-04-24">nemetonshiny 0.20.0 (2026-04-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0200-2026-04-24"></a></h2>
@@ -191,7 +217,7 @@
 <li>
 <strong>Resume from a legacy progress file</strong> — <code>translate_task_message()</code> now maps the pre-<code>e74bdcc</code> literal <code>"download:source_chm_opencanopy"</code> to the new <code>"chm_inference_opencanopy"</code> label so re-opening an older project no longer spams “Translation key not found: source_chm_opencanopy”.</li>
 <li>
-<strong>Tests</strong> — <code>NEMETONSHINY_DISABLE_CHM=1</code> is now scoped to the test run via <code>withr::local_envvar(.local_envir =   testthat::teardown_env())</code> in a dedicated <code>setup-chm.R</code>, so <code>devtools::test()</code> in an interactive session no longer leaves the CHM pipeline silently disabled.</li>
+<strong>Tests</strong> — <code>NEMETONSHINY_DISABLE_CHM=1</code> is now scoped to the test run via <code>withr::local_envvar(.local_envir = testthat::teardown_env())</code> in a dedicated <code>setup-chm.R</code>, so <code>devtools::test()</code> in an interactive session no longer leaves the CHM pipeline silently disabled.</li>
 </ul></div>
 <div class="section level4">
 <h4 id="breaking-changes-0-16-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-16-0"></a></h4>

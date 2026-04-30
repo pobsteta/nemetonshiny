@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.21.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.21.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -99,10 +99,10 @@
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Installer le package core nemeton</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"pobsteta/nemeton"</span><span class="op">)</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"pobsteta/nemeton"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Installer nemetonshiny</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="utilisation">Utilisation<a class="anchor" aria-label="anchor" href="#utilisation"></a>
@@ -114,18 +114,18 @@
 <code class="sourceCode R"><span><span class="fu">nemetonshiny</span><span class="fu">::</span><span class="fu"><a href="reference/run_app.html">run_app</a></span><span class="op">(</span>language <span class="op">=</span> <span class="st">"fr"</span><span class="op">)</span></span></code></pre></div>
 <p>Options disponibles :</p>
 <table class="table">
-<thead><tr class="header">
+<thead><tr>
 <th>Parametre</th>
 <th>Description</th>
 <th>Defaut</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>language</code></td>
 <td>Langue (<code>"fr"</code> ou <code>"en"</code>)</td>
 <td><code>"fr"</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>options</code></td>
 <td>Options Shiny (port, host…)</td>
 <td><code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code></td>

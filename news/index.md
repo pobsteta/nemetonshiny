@@ -1,6 +1,63 @@
 # Changelog
 
-## nemetonshiny 0.21.0.9000 (development)
+## nemetonshiny 0.21.0 (2026-04-30)
+
+#### New feature — Forest health monitoring (E6.c.5, spec 008)
+
+The Monitoring tab is now a two-mode forest health workstation.
+
+- **Mode 1 — Surveillance rapide** (existing E6.b NDVI/NBR rolling
+  window, kept as-is) detects recent shocks (cuts, windthrows, fires) in
+  seconds.
+- **Mode 2 — Diagnostic sanitaire (FORDEAD)** wraps
+  [`nemeton::run_fordead_dieback()`](https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html)
+  (CRSWIR + harmonic model via reticulate, GPL-3 isolated to the Python
+  frontier) in a
+  [`shiny::ExtendedTask`](https://rdrr.io/pkg/shiny/man/ExtendedTask.html).
+  Detects progressive dieback (bark beetle, drought) on conifers in
+  minutes-to-hours. Both pipelines write to the same `alert` table.
+- **G1 — class filter**. By default the leaflet shows only
+  `confidence_class` 3-forte and 4-sol-nu (\>70% true positives per
+  ONF/DSF 2024). A “Inclure faible/moyenne” toggle adds the 1-2 classes
+  and surfaces a `border-warning` banner citing the up-to-50%
+  false-positive rate.
+- **G2 — disturbance classification**. Alerts go through
+  [`nemeton::classify_disturbance()`](https://pobsteta.github.io/nemeton/reference/classify_disturbance.html)
+  server-side, so the popup carries a `disturbance_type` to separate
+  progressive dieback from mechanical intervention.
+- **G3 — validity banners + confirmation modal**.
+  [`nemeton::check_fordead_validity()`](https://pobsteta.github.io/nemeton/reference/check_fordead_validity.html)
+  is called on the current zone whenever the user enters health mode.
+  Two `border-warning` banners fire when the AOI overlaps the 5
+  validated departments (88, 39, 01, 73, 74) under 50%, or when épicéa +
+  sapin pectiné drops under 70%. Launching FORDEAD on an out-of-domain
+  area pops a modal citing the ONF/DSF caveat; “Run anyway” forwards to
+  the task.
+- **G4 — QField field-validation workflow**. A new card in health mode
+  lets the user pick *n* plots (default 30) and a sampling method (GRTS
+  / random) and download a `.qgz`. Re-uploading the filled GPKG via the
+  new “Validation sanitaire” sub-tab in *Données terrain* runs
+  [`nemeton::ingest_health_validation()`](https://pobsteta.github.io/nemeton/reference/ingest_health_validation.html),
+  reports counts (confirmed / false-positive / unmatched), and updates
+  `validation_status` + `validation_cause` per alert.
+- **G5 — R5 dieback indicator**. The radar’s R-family picks up R5
+  automatically through `nemeton::INDICATOR_FAMILIES$R` (no UI change
+  needed; the cœur computes it via
+  [`nemeton::indicateur_r5_deperissement()`](https://pobsteta.github.io/nemeton/reference/indicateur_r5_deperissement.html)).
+- **Plotly time series**: in health mode shows the alert distribution by
+  `confidence_class`. Quick-mode time series (NDVI/NBR per plot) ships
+  with E6.b phase 3.
+- **Persistence**: each FORDEAD launch writes `monitoring_mode`,
+  `monitoring_threshold_anomaly`, `monitoring_vegetation_index`,
+  `monitoring_dates_training`, plus the validity intersection
+  percentages, to `metadata.json`. The module restores these inputs
+  whenever a project is reopened.
+- **i18n**: ~30 new keys (`monitoring_mode_*`, `monitoring_warning_*`,
+  `monitoring_class_*`, `monitoring_qfield_*`, `health_validation_*`,
+  `r5_*`). The tab itself is renamed *Suivi sanitaire* / *Forest health
+  monitoring*.
+- **Dependencies**: `plotly` promoted to Imports;
+  `nemeton (>= 0.20.1.9004)` (FORDEAD pipeline + helpers).
 
 ## nemetonshiny 0.20.0 (2026-04-24)
 
