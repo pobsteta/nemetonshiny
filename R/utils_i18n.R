@@ -1344,8 +1344,9 @@ TRANSLATIONS <- list(
 
   # ============================================================
   # Monitoring (E6.b - Sentinel-2 NDVI/NBR continuous monitoring)
+  # E6.c.5 (spec 008) - FORDEAD diagnostic mode
   # ============================================================
-  tab_monitoring = list(fr = "Suivi", en = "Monitoring"),
+  tab_monitoring = list(fr = "Suivi sanitaire", en = "Forest health monitoring"),
   monitoring_accordion_title = list(
     fr = "Suivi continu Sentinel-2",
     en = "Continuous Sentinel-2 monitoring"
@@ -1441,6 +1442,178 @@ TRANSLATIONS <- list(
   monitoring_alerts_placeholder = list(
     fr = "La carte des alertes appara\u00eetra apr\u00e8s la premi\u00e8re ingestion.",
     en = "The alerts map will appear after the first ingestion."
+  ),
+
+  # ----- Mode toggle (rapide / sanitaire) -----
+  monitoring_mode_label = list(
+    fr = "Mode de suivi",
+    en = "Monitoring mode"
+  ),
+  monitoring_mode_quick = list(
+    fr = "Surveillance rapide",
+    en = "Quick surveillance"
+  ),
+  monitoring_mode_health = list(
+    fr = "Diagnostic sanitaire (FORDEAD)",
+    en = "Health diagnosis (FORDEAD)"
+  ),
+  monitoring_mode_quick_help = list(
+    fr = "D\u00e9tection de chocs r\u00e9cents (coupe, chablis, incendie) via NDVI/NBR rolling-window. Quelques secondes.",
+    en = "Detect recent shocks (cut, windthrow, fire) using NDVI/NBR rolling-window. Seconds."
+  ),
+  monitoring_mode_health_help = list(
+    fr = "D\u00e9tection de d\u00e9p\u00e9rissement progressif (scolyte, s\u00e9cheresse) via FORDEAD. Plusieurs minutes \u00e0 heures.",
+    en = "Detect progressive dieback (bark beetle, drought) using FORDEAD. Minutes to hours."
+  ),
+
+  # ----- FORDEAD parameters -----
+  monitoring_dates_training_label = list(
+    fr = "P\u00e9riode d'entra\u00eenement (saine)",
+    en = "Training period (healthy reference)"
+  ),
+  monitoring_dates_monitoring_label = list(
+    fr = "P\u00e9riode de suivi",
+    en = "Monitoring period"
+  ),
+  monitoring_threshold_anomaly = list(
+    fr = "Seuil d'anomalie (CRSWIR)",
+    en = "Anomaly threshold (CRSWIR)"
+  ),
+  monitoring_vegetation_index = list(
+    fr = "Indice de v\u00e9g\u00e9tation",
+    en = "Vegetation index"
+  ),
+  monitoring_run_health_btn = list(
+    fr = "Lancer le diagnostic FORDEAD",
+    en = "Run FORDEAD diagnosis"
+  ),
+  monitoring_health_starting = list(
+    fr = "Diagnostic FORDEAD lanc\u00e9. Dur\u00e9e estim\u00e9e : plusieurs minutes.",
+    en = "FORDEAD diagnosis started. Estimated duration: several minutes."
+  ),
+  monitoring_health_success = list(
+    fr = "Diagnostic termin\u00e9 : %d alertes ins\u00e9r\u00e9es en %.0f s.",
+    en = "Diagnosis completed: %d alerts inserted in %.0f s."
+  ),
+  monitoring_health_error = list(
+    fr = "Erreur lors du diagnostic FORDEAD",
+    en = "FORDEAD diagnosis error"
+  ),
+
+  # ----- G3 banners (geographic + species validity) -----
+  monitoring_warning_geo_title = list(
+    fr = "Zone hors domaine de validation FORDEAD",
+    en = "Area outside FORDEAD validation domain"
+  ),
+  monitoring_warning_geo_body = list(
+    fr = "La zone d'\u00e9tude n'intersecte les d\u00e9partements valid\u00e9s (88, 39, 01, 73, 74) qu'\u00e0 %.0f %%. Calibration ONF/DSF 2024 non garantie.",
+    en = "The study area only overlaps validated departments (88, 39, 01, 73, 74) by %.0f%%. ONF/DSF 2024 calibration not guaranteed."
+  ),
+  monitoring_warning_species_title = list(
+    fr = "Composition d'essences hors domaine valid\u00e9",
+    en = "Species composition outside validated domain"
+  ),
+  monitoring_warning_species_body = list(
+    fr = "Seulement %.0f %% d'\u00e9pic\u00e9a + sapin pectin\u00e9 selon BD For\u00eat v2. FORDEAD n'est calibr\u00e9 que sur ces deux essences.",
+    en = "Only %.0f%% of Norway spruce + silver fir according to BD For\u00eat v2. FORDEAD is only calibrated on these two species."
+  ),
+  monitoring_warning_low_classes = list(
+    fr = "Inclure les classes faible/moyenne entra\u00eene jusqu'\u00e0 50 % de faux positifs (rapport ONF/DSF 2024).",
+    en = "Including low/medium classes yields up to 50% false positives (ONF/DSF 2024 report)."
+  ),
+  monitoring_confirm_invalid_title = list(
+    fr = "Lancer FORDEAD hors zone de validit\u00e9 ?",
+    en = "Run FORDEAD outside validity domain?"
+  ),
+  monitoring_confirm_invalid_body = list(
+    fr = "La zone et/ou les essences ne respectent pas les seuils ONF/DSF. Les r\u00e9sultats sont \u00e0 interpr\u00e9ter avec circonspection. Continuer ?",
+    en = "The area and/or species do not meet ONF/DSF thresholds. Results should be interpreted with caution. Continue?"
+  ),
+  monitoring_confirm_yes = list(fr = "Lancer quand m\u00eame", en = "Run anyway"),
+  monitoring_confirm_no  = list(fr = "Annuler",            en = "Cancel"),
+
+  # ----- Alert classes (leaflet legend + popups) -----
+  monitoring_class_1 = list(fr = "1 - faible",   en = "1 - low"),
+  monitoring_class_2 = list(fr = "2 - moyenne",  en = "2 - medium"),
+  monitoring_class_3 = list(fr = "3 - forte",    en = "3 - strong"),
+  monitoring_class_4 = list(fr = "4 - sol nu",   en = "4 - bare soil"),
+  monitoring_include_low = list(
+    fr = "Inclure les classes faible et moyenne",
+    en = "Include low and medium classes"
+  ),
+  monitoring_alert_popup_class       = list(fr = "Classe",        en = "Class"),
+  monitoring_alert_popup_stress      = list(fr = "Stress index",  en = "Stress index"),
+  monitoring_alert_popup_date        = list(fr = "Date",          en = "Date"),
+  monitoring_alert_popup_status      = list(fr = "Statut",        en = "Status"),
+  monitoring_alert_popup_disturbance = list(fr = "Type",          en = "Type"),
+  monitoring_alert_validate          = list(fr = "Valider",       en = "Confirm"),
+  monitoring_alert_false_positive    = list(fr = "Faux positif",  en = "False positive"),
+
+  # ----- QField health validation workflow -----
+  monitoring_qfield_btn = list(
+    fr = "G\u00e9n\u00e9rer placettes QField (v\u00e9rification terrain)",
+    en = "Generate QField plots (field verification)"
+  ),
+  monitoring_qfield_n_label = list(
+    fr = "Nombre de placettes",
+    en = "Number of plots"
+  ),
+  monitoring_qfield_method = list(
+    fr = "M\u00e9thode d'\u00e9chantillonnage",
+    en = "Sampling method"
+  ),
+  monitoring_qfield_no_alerts = list(
+    fr = "Aucune alerte FORDEAD pendante dans cette zone.",
+    en = "No pending FORDEAD alerts in this zone."
+  ),
+  monitoring_qfield_generated = list(
+    fr = "%d placettes g\u00e9n\u00e9r\u00e9es. T\u00e9l\u00e9chargez le projet QField.",
+    en = "%d plots generated. Download the QField project."
+  ),
+
+  # ----- Health validation tab (mod_field_ingest) -----
+  health_validation_tab_title = list(
+    fr = "Validation sanitaire",
+    en = "Health validation"
+  ),
+  health_validation_subtitle = list(
+    fr = "Importer un GPKG de placettes saisies sur le terrain pour mettre \u00e0 jour le statut des alertes FORDEAD.",
+    en = "Import a GPKG of field-collected plots to update FORDEAD alert statuses."
+  ),
+  health_validation_zone_label = list(
+    fr = "Zone de suivi cible",
+    en = "Target monitoring zone"
+  ),
+  health_validation_snap_label = list(
+    fr = "Distance de rattachement (m)",
+    en = "Snap distance (m)"
+  ),
+  health_validation_run_btn = list(
+    fr = "Ing\u00e9rer la validation",
+    en = "Ingest validation"
+  ),
+  health_validation_report_title = list(
+    fr = "Rapport d'ingestion",
+    en = "Ingestion report"
+  ),
+  health_validation_report_summary = list(
+    fr = "%d alertes mises \u00e0 jour : %d confirm\u00e9es, %d faux positifs, %d sans correspondance.",
+    en = "%d alerts updated: %d confirmed, %d false positives, %d unmatched."
+  ),
+  health_validation_no_file = list(
+    fr = "S\u00e9lectionnez d'abord un GeoPackage.",
+    en = "Select a GeoPackage first."
+  ),
+  health_validation_error = list(
+    fr = "Erreur lors de l'ingestion : %s",
+    en = "Ingestion error: %s"
+  ),
+
+  # ----- R5 (radar labels, future) -----
+  r5_label   = list(fr = "D\u00e9p\u00e9rissement (R5)", en = "Dieback (R5)"),
+  r5_tooltip = list(
+    fr = "Score 0-100 calcul\u00e9 \u00e0 partir des classes FORDEAD pond\u00e9r\u00e9es par leur fiabilit\u00e9 ONF/DSF (rapport 2024).",
+    en = "0-100 score from FORDEAD classes weighted by their ONF/DSF reliability (2024 report)."
   )
 )
 
