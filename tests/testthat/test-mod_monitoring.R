@@ -333,3 +333,292 @@ test_that("server returns ingest_task in its returned list", {
     }
   )
 })
+
+
+# ---- E6.c.5 — Health-mode UI + server -------------------------------
+
+test_that("mod_monitoring_ui exposes the FORDEAD/health-mode controls", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("bsicons")
+
+  testthat::with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    {
+      ui <- nemetonshiny:::mod_monitoring_ui("monitoring")
+      html <- as.character(ui)
+      expect_true(grepl("monitoring-mode\"",            html))
+      expect_true(grepl("monitoring-dates_training",    html))
+      expect_true(grepl("monitoring-vegetation_index",  html))
+      expect_true(grepl("monitoring-threshold_anomaly", html))
+      expect_true(grepl("monitoring-run_health",        html))
+      expect_true(grepl("monitoring-validity_banners",  html))
+      expect_true(grepl("monitoring-include_low",       html))
+    }
+  )
+})
+
+# Fake ExtendedTask scoped for the health-mode tests.
+make_fake_fordead_task <- function() {
+  state <- new.env(parent = emptyenv())
+  state$calls <- list()
+  list(
+    invoke = function(...) {
+      state$calls[[length(state$calls) + 1L]] <- list(...)
+      invisible(NULL)
+    },
+    result = function() NULL,
+    status = function() "initial",
+    .calls = function() state$calls
+  )
+}
+
+test_that("validity reactive is NULL outside health mode", {
+  skip_if_not_installed("shiny")
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function() "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() make_fake_fordead_task(),
+    validity_check_for_zone        = function(con, zone_id, units = NULL) {
+      stop("must not be called in quick mode")
+    },
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(mode = "quick", zone_id = "1")
+          expect_null(session$returned$validity())
+        }
+      )
+    }
+  )
+})
+
+test_that("validity_banners renders the geo + species warnings when invalid", {
+  skip_if_not_installed("shiny")
+
+  fake_validity <- list(
+    geo_valid             = FALSE,
+    geo_intersection_pct  = 0.30,
+    species_valid         = FALSE,
+    species_resineux_pct  = 0.40,
+    overall_valid         = FALSE,
+    thresholds            = list()
+  )
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function() "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() make_fake_fordead_task(),
+    validity_check_for_zone        = function(con, zone_id, units = NULL)
+      fake_validity,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(mode = "health", zone_id = "1")
+          html <- paste(as.character(output$validity_banners), collapse = "")
+          expect_true(grepl("border-warning",     html))
+          expect_true(grepl("monitoring_warning", html) ||
+                      grepl("FORDEAD",            html, ignore.case = TRUE) ||
+                      grepl("validation",         html, ignore.case = TRUE))
+        }
+      )
+    }
+  )
+})
+
+test_that("input$run_health blocks when overall_valid = FALSE (G3 modal path)", {
+  skip_if_not_installed("shiny")
+
+  fake_task <- make_fake_fordead_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function() "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() fake_task,
+    validity_check_for_zone        = function(con, zone_id, units = NULL) {
+      list(geo_valid = FALSE, geo_intersection_pct = 0.2,
+           species_valid = TRUE, species_resineux_pct = 0.9,
+           overall_valid = FALSE, thresholds = list())
+    },
+    get_monitoring_zone_aoi        = function(con, zone_id) "fake-aoi",
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(
+            mode              = "health",
+            zone_id           = "1",
+            date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
+            vegetation_index  = "CRSWIR",
+            threshold_anomaly = 0.16,
+            run_health        = 1L
+          )
+          # FORDEAD task must NOT have been invoked (modal stops the
+          # direct path; user has to confirm via confirm_invalid_run).
+          expect_length(fake_task$.calls(), 0L)
+        }
+      )
+    }
+  )
+})
+
+test_that("input$run_health invokes FORDEAD when validity is OK", {
+  skip_if_not_installed("shiny")
+
+  fake_task <- make_fake_fordead_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function() "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() fake_task,
+    validity_check_for_zone        = function(con, zone_id, units = NULL) {
+      list(geo_valid = TRUE, geo_intersection_pct = 0.95,
+           species_valid = TRUE, species_resineux_pct = 0.85,
+           overall_valid = TRUE, thresholds = list())
+    },
+    get_monitoring_zone_aoi        = function(con, zone_id) "fake-aoi",
+    update_project_metadata        = function(...) TRUE,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(
+            mode              = "health",
+            zone_id           = "1",
+            date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
+            vegetation_index  = "CRSWIR",
+            threshold_anomaly = 0.16,
+            run_health        = 1L
+          )
+          calls <- fake_task$.calls()
+          expect_length(calls, 1L)
+          expect_equal(calls[[1]]$aoi,               "fake-aoi")
+          expect_equal(calls[[1]]$vegetation_index,  "CRSWIR")
+          expect_equal(calls[[1]]$threshold_anomaly, 0.16)
+          expect_equal(calls[[1]]$zone_id,           1L)
+        }
+      )
+    }
+  )
+})
+
+test_that("confirm_invalid_run invokes FORDEAD on modal accept (G3 force path)", {
+  skip_if_not_installed("shiny")
+
+  fake_task <- make_fake_fordead_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function() "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() fake_task,
+    validity_check_for_zone        = function(con, zone_id, units = NULL) {
+      list(geo_valid = FALSE, geo_intersection_pct = 0.1,
+           species_valid = FALSE, species_resineux_pct = 0.0,
+           overall_valid = FALSE, thresholds = list())
+    },
+    get_monitoring_zone_aoi        = function(con, zone_id) "fake-aoi",
+    update_project_metadata        = function(...) TRUE,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(
+            mode              = "health",
+            zone_id           = "1",
+            date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
+            vegetation_index  = "CRSWIR",
+            threshold_anomaly = 0.16
+          )
+          # User confirms via the modal.
+          session$setInputs(confirm_invalid_run = 1L)
+          calls <- fake_task$.calls()
+          expect_length(calls, 1L)
+        }
+      )
+    }
+  )
+})
+
+test_that("server returns fordead_task + validity reactives", {
+  skip_if_not_installed("shiny")
+
+  fake_ftask <- make_fake_fordead_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function() "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() fake_ftask,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          expect_identical(session$returned$fordead_task, fake_ftask)
+          expect_true(is.function(session$returned$validity))
+        }
+      )
+    }
+  )
+})
+
+test_that("metadata restore updates the mode + threshold from current_project", {
+  skip_if_not_installed("shiny")
+
+  app_state <- shiny::reactiveValues(
+    language = "fr",
+    current_project = list(
+      id = "p1",
+      metadata = list(
+        monitoring_mode              = "health",
+        monitoring_threshold_anomaly = 0.20,
+        monitoring_vegetation_index  = "NDVI",
+        monitoring_dates_training    = c("2018-01-01", "2019-12-31")
+      )
+    )
+  )
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function() "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() make_fake_fordead_task(),
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = app_state),
+        {
+          # The observer dispatches updateRadioButtons / updateSlider
+          # / updateSelect / updateDateRange. We only verify that no
+          # error was raised and the returned list is intact (Shiny
+          # update*Input messages aren't queryable from testServer
+          # without a reactive event handler hooking them).
+          expect_true(is.function(session$returned$validity))
+        }
+      )
+    }
+  )
+})

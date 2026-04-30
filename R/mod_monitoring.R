@@ -237,6 +237,33 @@ mod_monitoring_server <- function(id, app_state) {
     # re-fetches from the DB.
     alerts_refresh <- shiny::reactiveVal(0L)
 
+    # ----- Restore monitoring config from project metadata ----------
+    # Fires whenever the user opens a project. Mirrors the persistence
+    # in .invoke_fordead() (and mode/threshold changes via the sidebar).
+    shiny::observe({
+      m <- app_state$current_project$metadata
+      if (is.null(m)) return()
+      if (!is.null(m$monitoring_mode)) {
+        shiny::updateRadioButtons(session, "mode",
+                                  selected = m$monitoring_mode)
+      }
+      if (!is.null(m$monitoring_threshold_anomaly)) {
+        shiny::updateSliderInput(session, "threshold_anomaly",
+                                 value = as.numeric(m$monitoring_threshold_anomaly))
+      }
+      if (!is.null(m$monitoring_vegetation_index)) {
+        shiny::updateSelectInput(session, "vegetation_index",
+                                 selected = m$monitoring_vegetation_index)
+      }
+      if (!is.null(m$monitoring_dates_training)) {
+        dt <- as.Date(unlist(m$monitoring_dates_training))
+        if (length(dt) == 2L && all(!is.na(dt))) {
+          shiny::updateDateRangeInput(session, "dates_training",
+                                      start = dt[1], end = dt[2])
+        }
+      }
+    })
+
     # ----- Mode help text -------------------------------------------
     output$mode_help <- shiny::renderUI({
       i18n <- i18n_r()
@@ -696,7 +723,31 @@ mod_monitoring_server <- function(id, app_state) {
         vegetation_index  = input$vegetation_index,
         zone_id           = as.integer(input$zone_id)
       )
+      .persist_monitoring_metadata()
       invisible(TRUE)
+    }
+
+    # Persist sidebar state in the project metadata.json so a reopen
+    # restores the user's last FORDEAD configuration. Best-effort —
+    # silent no-op if the project has no on-disk path or metadata.
+    .persist_monitoring_metadata <- function() {
+      project_id <- app_state$current_project$id
+      if (is.null(project_id)) return(invisible(FALSE))
+      v <- validity()
+      tryCatch(
+        update_project_metadata(project_id, list(
+          monitoring_mode               = input$mode,
+          monitoring_threshold_anomaly  = as.numeric(input$threshold_anomaly),
+          monitoring_vegetation_index   = input$vegetation_index,
+          monitoring_dates_training     = as.character(input$dates_training),
+          monitoring_validity_geo_pct   = v$geo_intersection_pct %||% NA_real_,
+          monitoring_validity_species_pct = v$species_resineux_pct %||% NA_real_
+        )),
+        error = function(e) {
+          cli::cli_warn("Could not persist monitoring metadata: {conditionMessage(e)}")
+          invisible(FALSE)
+        }
+      )
     }
 
     # Click handler with G3 garde-fou: when the zone is out of validity
