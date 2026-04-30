@@ -73,3 +73,63 @@ run_ingestion_async <- function() {
     }, seed = TRUE)
   })
 }
+
+
+#' Async FORDEAD dieback diagnosis (E6.c.5 — spec 008)
+#'
+#' Wraps `nemeton::run_fordead_dieback()` in a `shiny::ExtendedTask`.
+#' The full pipeline (5 phases via reticulate: vegetation index → train →
+#' forest mask → dieback detection → export) takes minutes to hours, so
+#' it must run in a `future` worker. The worker re-loads `nemetonshiny`
+#' and opens a fresh DB connection.
+#'
+#' Inputs are passed at `$invoke()` time:
+#' * `aoi`               — sf POLYGON EPSG:2154
+#' * `dates_training`    — length-2 Date or character (start, end)
+#' * `dates_monitoring`  — length-2 Date or character
+#' * `threshold_anomaly` — numeric, default 0.16 (ONF/DSF 2024)
+#' * `vegetation_index`  — "CRSWIR" / "NDVI" / "NDWI"
+#' * `zone_id`           — integer, used for the DB INSERT
+#'
+#' On success, `$result()` returns the list produced by
+#' `nemeton::run_fordead_dieback()`.
+#'
+#' @return A `shiny::ExtendedTask` object.
+#' @noRd
+run_fordead_async <- function() {
+  .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
+
+  shiny::ExtendedTask$new(function(aoi, dates_training, dates_monitoring,
+                                   threshold_anomaly = 0.16,
+                                   vegetation_index = "CRSWIR",
+                                   zone_id = NULL) {
+    if (requireNamespace("future", quietly = TRUE)) {
+      plan_classes <- class(future::plan())
+      is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
+      if (!is_parallel) future::plan("multisession")
+    }
+    promises::future_promise({
+      if (!is.null(.pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
+        pkgload::load_all(.pkg_path, quiet = TRUE)
+      } else if (requireNamespace("nemetonshiny", quietly = TRUE)) {
+        loadNamespace("nemetonshiny")
+      }
+
+      con <- get_monitoring_db_connection()
+      if (is.null(con)) {
+        stop("Monitoring DB not configured (set NEMETON_DB_URL or NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD).")
+      }
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+
+      nemeton::run_fordead_dieback(
+        aoi               = aoi,
+        dates_training    = dates_training,
+        dates_monitoring  = dates_monitoring,
+        threshold_anomaly = threshold_anomaly,
+        vegetation_index  = vegetation_index,
+        con               = con,
+        zone_id           = zone_id
+      )
+    }, seed = TRUE)
+  })
+}
