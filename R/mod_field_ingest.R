@@ -107,13 +107,54 @@ mod_field_ingest_ui <- function(id) {
       )
     ),
 
-    # Main area: status, NDP before/after, validation report, map
+    # Main area: navset with NDP terrain (E5.b, sidebar-driven) and
+    # Health validation (E6.c.5, self-contained inside the tab).
     htmltools::tags$div(
       class = "p-2",
-      shiny::uiOutput(ns("status")),
-      shiny::uiOutput(ns("ndp_cards")),
-      shiny::uiOutput(ns("report")),
-      leaflet::leafletOutput(ns("map"), height = "55vh")
+      bslib::navset_card_tab(
+        id = ns("subtab"),
+        bslib::nav_panel(
+          title = i18n$t("field_ingest_accordion_title"),
+          value = "ndp",
+          shiny::uiOutput(ns("status")),
+          shiny::uiOutput(ns("ndp_cards")),
+          shiny::uiOutput(ns("report")),
+          leaflet::leafletOutput(ns("map"), height = "55vh")
+        ),
+        bslib::nav_panel(
+          title = i18n$t("health_validation_tab_title"),
+          value = "health",
+          htmltools::tags$p(class = "text-muted small",
+                            i18n$t("health_validation_subtitle")),
+          shiny::fileInput(
+            ns("hv_gpkg"),
+            i18n$t("field_ingest_upload"),
+            accept = c(".gpkg", "application/geopackage+sqlite3",
+                       "application/octet-stream"),
+            buttonLabel = i18n$t("field_ingest_browse"),
+            placeholder = i18n$t("field_ingest_placeholder")
+          ),
+          shiny::selectInput(
+            ns("hv_zone_id"),
+            i18n$t("health_validation_zone_label"),
+            choices  = character(0),
+            selected = NULL
+          ),
+          shiny::numericInput(
+            ns("hv_snap"),
+            i18n$t("health_validation_snap_label"),
+            value = 50, min = 1, max = 500, step = 5
+          ),
+          shiny::actionButton(
+            ns("hv_run"),
+            i18n$t("health_validation_run_btn"),
+            icon  = bsicons::bs_icon("clipboard-check"),
+            class = "btn-primary"
+          ),
+          htmltools::tags$hr(),
+          shiny::uiOutput(ns("hv_report"))
+        )
+      )
     )
   )
 }
@@ -444,13 +485,102 @@ mod_field_ingest_server <- function(id, app_state) {
       base
     })
 
+    # --- Health validation sub-tab (E6.c.5, T6app.13) -----------------
+    hv_rv <- shiny::reactiveValues(report = NULL)
+
+    # Populate the zone selector lazily — only when the user opens the
+    # subtab. Mirrors mod_monitoring's zones reactive.
+    shiny::observe({
+      shiny::req(input$subtab)
+      if (!identical(input$subtab, "health")) return()
+      con <- get_monitoring_db_connection()
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      z <- list_monitoring_zones(con)
+      choices <- if (nrow(z))
+                   stats::setNames(as.character(z$id), z$name)
+                 else character(0)
+      shiny::updateSelectInput(session, "hv_zone_id",
+                               choices  = choices,
+                               selected = choices[1] %||% character(0))
+    })
+
+    shiny::observeEvent(input$hv_run, {
+      i18n_local <- get_i18n(app_state$language %||% "fr")
+      up <- input$hv_gpkg
+      if (is.null(up)) {
+        shiny::showNotification(i18n_local$t("health_validation_no_file"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      if (!isTRUE(nzchar(input$hv_zone_id))) {
+        shiny::showNotification(i18n_local$t("monitoring_validate_zone"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      con <- get_monitoring_db_connection()
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      if (is.null(con)) {
+        shiny::showNotification(i18n_local$t("monitoring_db_unavailable"),
+                                type = "error", duration = 6)
+        return()
+      }
+      report <- tryCatch(
+        nemeton::ingest_health_validation(
+          con,
+          gpkg_path       = up$datapath,
+          zone_id         = as.integer(input$hv_zone_id),
+          snap_distance_m = as.numeric(input$hv_snap %||% 50),
+          validated_by    = app_state$user$email %||%
+                            app_state$user$name  %||% NULL
+        ),
+        error = function(e) {
+          shiny::showNotification(
+            sprintf(i18n_local$t("health_validation_error"), e$message),
+            type = "error", duration = 8
+          )
+          NULL
+        }
+      )
+      if (is.null(report)) return()
+      hv_rv$report <- report
+      shiny::showNotification(
+        sprintf(i18n_local$t("health_validation_report_summary"),
+                report$n_updated         %||% 0L,
+                report$n_confirmed       %||% 0L,
+                report$n_false_positive  %||% 0L,
+                report$n_unmatched       %||% 0L),
+        type = "message", duration = 8
+      )
+    })
+
+    output$hv_report <- shiny::renderUI({
+      r <- hv_rv$report
+      i18n_local <- get_i18n(app_state$language %||% "fr")
+      if (is.null(r)) return(NULL)
+      details <- r$details
+      htmltools::tagList(
+        htmltools::tags$h5(i18n_local$t("health_validation_report_title")),
+        htmltools::tags$p(class = "small text-muted",
+          sprintf(i18n_local$t("health_validation_report_summary"),
+                  r$n_updated         %||% 0L,
+                  r$n_confirmed       %||% 0L,
+                  r$n_false_positive  %||% 0L,
+                  r$n_unmatched       %||% 0L)),
+        if (!is.null(details) && nrow(details))
+          DT::datatable(details,
+                        options = list(pageLength = 10, scrollX = TRUE),
+                        rownames = FALSE)
+      )
+    })
+
     # --- Return reactives (useful for tests) --------------------------
     list(
-      import     = shiny::reactive(field_rv$import),
-      validation = shiny::reactive(field_rv$validation),
-      field_agg  = shiny::reactive(field_rv$field_agg),
-      attached   = shiny::reactive(field_rv$attached),
-      new_ndp    = shiny::reactive(field_rv$new_ndp)
+      import       = shiny::reactive(field_rv$import),
+      validation   = shiny::reactive(field_rv$validation),
+      field_agg    = shiny::reactive(field_rv$field_agg),
+      attached     = shiny::reactive(field_rv$attached),
+      new_ndp      = shiny::reactive(field_rv$new_ndp),
+      health_report = shiny::reactive(hv_rv$report)
     )
   })
 }

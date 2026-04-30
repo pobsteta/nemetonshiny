@@ -430,10 +430,96 @@ mod_monitoring_server <- function(id, app_state) {
         )
     })
 
-    # ----- QField panel placeholder (wired in C6) -------------------
+    # ----- QField sanitaire panel (T6app.12) ------------------------
     output$qfield_panel <- shiny::renderUI({
-      NULL
+      ns <- session$ns
+      i18n <- i18n_r()
+      a <- alerts()
+      bslib::card(
+        bslib::card_header(
+          htmltools::div(
+            class = "d-flex align-items-center",
+            bsicons::bs_icon("clipboard-check", class = "me-2"),
+            i18n$t("monitoring_qfield_btn")
+          )
+        ),
+        bslib::card_body(
+          if (is.null(a) || !nrow(a))
+            htmltools::tags$p(class = "text-muted",
+                              i18n$t("monitoring_qfield_no_alerts"))
+          else htmltools::tagList(
+            shiny::numericInput(
+              ns("qfield_n"),
+              i18n$t("monitoring_qfield_n_label"),
+              value = min(30L, nrow(a)),
+              min = 1L, max = nrow(a), step = 1L
+            ),
+            shiny::radioButtons(
+              ns("qfield_method"),
+              i18n$t("monitoring_qfield_method"),
+              choices  = c(GRTS = "grts", Random = "random"),
+              selected = "grts",
+              inline   = TRUE
+            ),
+            shiny::downloadButton(
+              ns("qfield_download"),
+              i18n$t("monitoring_qfield_btn"),
+              icon  = bsicons::bs_icon("download"),
+              class = "btn-success w-100"
+            )
+          )
+        )
+      )
     })
+
+    # downloadHandler: build the placette plan + zip a .qgz on disk
+    # then stream it back. generate_health_validation_plots needs the
+    # *pending* alerts (not the leaflet-filtered ones), so we re-fetch
+    # without the include_low / class filtering.
+    output$qfield_download <- shiny::downloadHandler(
+      filename = function() {
+        sprintf("nemeton-health-validation-%s.qgz",
+                format(Sys.time(), "%Y%m%d-%H%M%S"))
+      },
+      content = function(file) {
+        i18n <- i18n_r()
+        con <- get_monitoring_db_connection()
+        on.exit(close_monitoring_db_connection(con), add = TRUE)
+        zone <- input$zone_id
+        a <- list_alerts_for_zone(
+          con, as.integer(zone),
+          classes           = c("1-faible", "2-moyenne",
+                                "3-forte",  "4-sol-nu"),
+          validation_status = "pending"
+        )
+        if (is.null(a) || !nrow(a)) {
+          shiny::showNotification(i18n$t("monitoring_qfield_no_alerts"),
+                                  type = "warning", duration = 6)
+          file.create(file)
+          return(invisible())
+        }
+        plots <- nemeton::generate_health_validation_plots(
+          a,
+          n      = as.integer(input$qfield_n %||% 30L),
+          method = input$qfield_method %||% "grts",
+          crs    = 2154
+        )
+        out_dir <- tempfile("qfield-health-")
+        dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+        qgz <- nemeton::create_qfield_project(
+          plots,
+          output_dir   = out_dir,
+          project_name = "health-validation",
+          region       = "BFC",
+          lang         = app_state$language %||% "fr"
+        )
+        file.copy(qgz, file, overwrite = TRUE)
+        shiny::showNotification(
+          sprintf(i18n$t("monitoring_qfield_generated"), nrow(plots)),
+          type = "message", duration = 6
+        )
+      }
+    )
 
     # Zones reactive: open a fresh connection, list, close. Re-runs on
     # session start and on demand via zones_refresh(). Keep cheap (one
