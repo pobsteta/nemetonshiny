@@ -205,10 +205,10 @@ mod_monitoring_ui <- function(id) {
           shiny::uiOutput(ns("alerts_panel"))
         )
       ),
-      # Health-mode QField generator (E6.c.5 — T6app.12, wired in C6)
+      # Health-mode QGIS generator (E6.c.5 — T6app.12, wired in C6)
       shiny::conditionalPanel(
         condition = sprintf("input['%s'] == 'health'", ns("mode")),
-        shiny::uiOutput(ns("qfield_panel"))
+        shiny::uiOutput(ns("qgis_panel"))
       )
     )
   )
@@ -457,8 +457,8 @@ mod_monitoring_server <- function(id, app_state) {
         )
     })
 
-    # ----- QField sanitaire panel (T6app.12) ------------------------
-    output$qfield_panel <- shiny::renderUI({
+    # ----- QGIS sanitaire panel (T6app.12) --------------------------
+    output$qgis_panel <- shiny::renderUI({
       ns <- session$ns
       i18n <- i18n_r()
       a <- alerts()
@@ -467,30 +467,30 @@ mod_monitoring_server <- function(id, app_state) {
           htmltools::div(
             class = "d-flex align-items-center",
             bsicons::bs_icon("clipboard-check", class = "me-2"),
-            i18n$t("monitoring_qfield_btn")
+            i18n$t("monitoring_qgis_btn")
           )
         ),
         bslib::card_body(
           if (is.null(a) || !nrow(a))
             htmltools::tags$p(class = "text-muted",
-                              i18n$t("monitoring_qfield_no_alerts"))
+                              i18n$t("monitoring_qgis_no_alerts"))
           else htmltools::tagList(
             shiny::numericInput(
-              ns("qfield_n"),
-              i18n$t("monitoring_qfield_n_label"),
+              ns("qgis_n"),
+              i18n$t("monitoring_qgis_n_label"),
               value = min(30L, nrow(a)),
               min = 1L, max = nrow(a), step = 1L
             ),
             shiny::radioButtons(
-              ns("qfield_method"),
-              i18n$t("monitoring_qfield_method"),
+              ns("qgis_method"),
+              i18n$t("monitoring_qgis_method"),
               choices  = c(GRTS = "grts", Random = "random"),
               selected = "grts",
               inline   = TRUE
             ),
             shiny::downloadButton(
-              ns("qfield_download"),
-              i18n$t("monitoring_qfield_btn"),
+              ns("qgis_download"),
+              i18n$t("monitoring_qgis_btn"),
               icon  = bsicons::bs_icon("download"),
               class = "btn-success w-100"
             )
@@ -503,7 +503,7 @@ mod_monitoring_server <- function(id, app_state) {
     # then stream it back. generate_health_validation_plots needs the
     # *pending* alerts (not the leaflet-filtered ones), so we re-fetch
     # without the include_low / class filtering.
-    output$qfield_download <- shiny::downloadHandler(
+    output$qgis_download <- shiny::downloadHandler(
       filename = function() {
         sprintf("nemeton-health-validation-%s.qgz",
                 format(Sys.time(), "%Y%m%d-%H%M%S"))
@@ -520,18 +520,18 @@ mod_monitoring_server <- function(id, app_state) {
           validation_status = "pending"
         )
         if (is.null(a) || !nrow(a)) {
-          shiny::showNotification(i18n$t("monitoring_qfield_no_alerts"),
+          shiny::showNotification(i18n$t("monitoring_qgis_no_alerts"),
                                   type = "warning", duration = 6)
           file.create(file)
           return(invisible())
         }
         plots <- nemeton::generate_health_validation_plots(
           a,
-          n      = as.integer(input$qfield_n %||% 30L),
-          method = input$qfield_method %||% "grts",
+          n      = as.integer(input$qgis_n %||% 30L),
+          method = input$qgis_method %||% "grts",
           crs    = 2154
         )
-        out_dir <- tempfile("qfield-health-")
+        out_dir <- tempfile("qgis-health-")
         dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
         qgz <- nemeton::create_qfield_project(
           plots,
@@ -542,7 +542,7 @@ mod_monitoring_server <- function(id, app_state) {
         )
         file.copy(qgz, file, overwrite = TRUE)
         shiny::showNotification(
-          sprintf(i18n$t("monitoring_qfield_generated"), nrow(plots)),
+          sprintf(i18n$t("monitoring_qgis_generated"), nrow(plots)),
           type = "message", duration = 6
         )
       }

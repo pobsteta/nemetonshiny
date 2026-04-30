@@ -1549,26 +1549,26 @@ TRANSLATIONS <- list(
   monitoring_alert_validate          = list(fr = "Valider",       en = "Confirm"),
   monitoring_alert_false_positive    = list(fr = "Faux positif",  en = "False positive"),
 
-  # ----- QField health validation workflow -----
-  monitoring_qfield_btn = list(
-    fr = "G\u00e9n\u00e9rer placettes QField (v\u00e9rification terrain)",
-    en = "Generate QField plots (field verification)"
+  # ----- QGIS health validation workflow -----
+  monitoring_qgis_btn = list(
+    fr = "G\u00e9n\u00e9rer placettes QGIS (v\u00e9rification terrain)",
+    en = "Generate QGIS plots (field verification)"
   ),
-  monitoring_qfield_n_label = list(
+  monitoring_qgis_n_label = list(
     fr = "Nombre de placettes",
     en = "Number of plots"
   ),
-  monitoring_qfield_method = list(
+  monitoring_qgis_method = list(
     fr = "M\u00e9thode d'\u00e9chantillonnage",
     en = "Sampling method"
   ),
-  monitoring_qfield_no_alerts = list(
+  monitoring_qgis_no_alerts = list(
     fr = "Aucune alerte FORDEAD pendante dans cette zone.",
     en = "No pending FORDEAD alerts in this zone."
   ),
-  monitoring_qfield_generated = list(
-    fr = "%d placettes g\u00e9n\u00e9r\u00e9es. T\u00e9l\u00e9chargez le projet QField.",
-    en = "%d plots generated. Download the QField project."
+  monitoring_qgis_generated = list(
+    fr = "%d placettes g\u00e9n\u00e9r\u00e9es. T\u00e9l\u00e9chargez le projet QGIS.",
+    en = "%d plots generated. Download the QGIS project."
   ),
 
   # ----- Health validation tab (mod_field_ingest) -----
