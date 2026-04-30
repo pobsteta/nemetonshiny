@@ -1,19 +1,20 @@
-#' Monitoring Module for nemetonApp (E6.b — phase 1 skeleton)
+#' Monitoring Module for nemetonApp (E6.b + E6.c.5 — health monitoring)
 #'
 #' @description
-#' Continuous Sentinel-2 monitoring (NDVI / NBR drops) for the plots of
-#' a registered zone. Phase 1 ships only the scaffolding:
+#' Two-mode forest health monitoring:
 #'
-#' * Sidebar with the configuration inputs (zone, dates, bands,
-#'   thresholds, rolling window).
-#' * DB status card (connected / configuration hint).
-#' * Zone selectInput populated from `monitoring_zone` via
-#'   [list_monitoring_zones()].
-#' * Disabled "Lancer ingestion" button (wired in phase 2).
-#' * Placeholder cards for the time series + alerts views (phases 3-4).
+#' * **Mode 1 — Surveillance rapide** (E6.b): rolling-window NDVI/NBR on
+#'   Sentinel-2, detects recent shocks (cuts, windthrows, fires).
+#'   Seconds-scale.
+#' * **Mode 2 — Diagnostic sanitaire** (E6.c.5, spec 008): FORDEAD via
+#'   reticulate (CRSWIR + harmonic model), detects progressive dieback
+#'   (bark beetle, drought). Minutes-to-hours scale.
 #'
-#' Persistence of the threshold inputs in `metadata.json` lands in
-#' phase 5; the smoke test in phase 6.
+#' Both pipelines write to the same `alert` table (alert_type
+#' discriminant). The G3 garde-fou (geographic + species validity check
+#' via `nemeton::check_fordead_validity`) is enforced before any FORDEAD
+#' run, with a confirmation modal when the user forces an out-of-domain
+#' run.
 #'
 #' @name mod_monitoring
 #' @keywords internal
@@ -71,6 +72,20 @@ mod_monitoring_ui <- function(id) {
             htmltools::tags$p(class = "text-muted small",
                               i18n$t("monitoring_subtitle")),
 
+            # --- Mode toggle (E6.c.5 — T6app.1) ---------------------
+            shiny::radioButtons(
+              ns("mode"), i18n$t("monitoring_mode_label"),
+              choices = stats::setNames(
+                c("quick", "health"),
+                c(i18n$t("monitoring_mode_quick"),
+                  i18n$t("monitoring_mode_health"))
+              ),
+              selected = "quick",
+              inline   = FALSE
+            ),
+            shiny::uiOutput(ns("mode_help")),
+
+            # --- Common: zone + date range --------------------------
             shiny::selectInput(
               ns("zone_id"), i18n$t("monitoring_zone_label"),
               choices = character(0),
@@ -84,47 +99,77 @@ mod_monitoring_ui <- function(id) {
               language = lang
             ),
 
-            shiny::checkboxGroupInput(
-              ns("bands"), i18n$t("monitoring_bands"),
-              choices  = c(NDVI = "NDVI", NBR = "NBR"),
-              selected = c("NDVI", "NBR"),
-              inline   = TRUE
-            ),
-
-            shiny::sliderInput(
-              ns("threshold_ndvi"), i18n$t("monitoring_threshold_ndvi"),
-              min = 0.05, max = 0.50, value = 0.15, step = 0.01
-            ),
-            shiny::sliderInput(
-              ns("threshold_nbr"), i18n$t("monitoring_threshold_nbr"),
-              min = 0.05, max = 0.50, value = 0.25, step = 0.01
-            ),
-            shiny::numericInput(
-              ns("window_days"), i18n$t("monitoring_window_days"),
-              value = 30L, min = 7L, max = 90L, step = 1L
-            ),
-
-            # The button starts disabled and is enabled server-side once
-            # zones + bands are valid (and re-disabled while a task is
-            # running). actionButton() drops unknown args from `...`, so
-            # the bare HTML attribute is tagged explicitly here.
-            htmltools::tagAppendAttributes(
-              shiny::actionButton(
-                ns("run"), i18n$t("monitoring_run_btn"),
-                icon  = bsicons::bs_icon("play-fill"),
-                class = "btn-primary w-100"
+            # --- Quick-mode parameters (NDVI/NBR) -------------------
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'quick'", ns("mode")),
+              shiny::checkboxGroupInput(
+                ns("bands"), i18n$t("monitoring_bands"),
+                choices  = c(NDVI = "NDVI", NBR = "NBR"),
+                selected = c("NDVI", "NBR"),
+                inline   = TRUE
               ),
-              disabled = NA
+              shiny::sliderInput(
+                ns("threshold_ndvi"), i18n$t("monitoring_threshold_ndvi"),
+                min = 0.05, max = 0.50, value = 0.15, step = 0.01
+              ),
+              shiny::sliderInput(
+                ns("threshold_nbr"), i18n$t("monitoring_threshold_nbr"),
+                min = 0.05, max = 0.50, value = 0.25, step = 0.01
+              ),
+              shiny::numericInput(
+                ns("window_days"), i18n$t("monitoring_window_days"),
+                value = 30L, min = 7L, max = 90L, step = 1L
+              ),
+              htmltools::tagAppendAttributes(
+                shiny::actionButton(
+                  ns("run"), i18n$t("monitoring_run_btn"),
+                  icon  = bsicons::bs_icon("play-fill"),
+                  class = "btn-primary w-100"
+                ),
+                disabled = NA
+              )
+            ),
+
+            # --- Health-mode parameters (FORDEAD) -------------------
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'health'", ns("mode")),
+              shiny::dateRangeInput(
+                ns("dates_training"),
+                i18n$t("monitoring_dates_training_label"),
+                start    = as.Date("2016-01-01"),
+                end      = as.Date("2017-12-31"),
+                language = lang
+              ),
+              shiny::selectInput(
+                ns("vegetation_index"),
+                i18n$t("monitoring_vegetation_index"),
+                choices  = c(CRSWIR = "CRSWIR", NDVI = "NDVI", NDWI = "NDWI"),
+                selected = "CRSWIR"
+              ),
+              shiny::sliderInput(
+                ns("threshold_anomaly"),
+                i18n$t("monitoring_threshold_anomaly"),
+                min = 0.05, max = 0.50, value = 0.16, step = 0.01
+              ),
+              htmltools::tagAppendAttributes(
+                shiny::actionButton(
+                  ns("run_health"), i18n$t("monitoring_run_health_btn"),
+                  icon  = bsicons::bs_icon("activity"),
+                  class = "btn-primary w-100"
+                ),
+                disabled = NA
+              )
             )
           )
         )
       )
     ),
 
-    # Main area: DB status + placeholders for time series & alerts map.
+    # Main area: DB status + G3 banners + time series & alerts map.
     htmltools::tags$div(
       class = "p-2",
       shiny::uiOutput(ns("db_status")),
+      shiny::uiOutput(ns("validity_banners")),
       bslib::card(
         bslib::card_header(
           htmltools::div(
@@ -141,15 +186,30 @@ mod_monitoring_ui <- function(id) {
       bslib::card(
         bslib::card_header(
           htmltools::div(
-            class = "d-flex align-items-center",
-            bsicons::bs_icon("exclamation-triangle", class = "me-2"),
-            i18n$t("monitoring_alerts_title")
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("exclamation-triangle", class = "me-2"),
+              i18n$t("monitoring_alerts_title")
+            ),
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'health'", ns("mode")),
+              shiny::checkboxInput(
+                ns("include_low"),
+                i18n$t("monitoring_include_low"),
+                value = FALSE
+              )
+            )
           )
         ),
         bslib::card_body(
-          htmltools::tags$p(class = "text-muted",
-                            i18n$t("monitoring_alerts_placeholder"))
+          shiny::uiOutput(ns("alerts_panel"))
         )
+      ),
+      # Health-mode QField generator (E6.c.5 — T6app.12, wired in C6)
+      shiny::conditionalPanel(
+        condition = sprintf("input['%s'] == 'health'", ns("mode")),
+        shiny::uiOutput(ns("qfield_panel"))
       )
     )
   )
@@ -172,6 +232,71 @@ mod_monitoring_server <- function(id, app_state) {
 
     i18n_r <- shiny::reactive({
       get_i18n(app_state$language %||% "fr")
+    })
+
+    # ----- Mode help text -------------------------------------------
+    output$mode_help <- shiny::renderUI({
+      i18n <- i18n_r()
+      key <- if (identical(input$mode, "health"))
+               "monitoring_mode_health_help" else "monitoring_mode_quick_help"
+      htmltools::tags$p(class = "text-muted small fst-italic", i18n$t(key))
+    })
+
+    # ----- G3 — Validity banners (geo + species) --------------------
+    # Recomputed when zone or mode changes. Quick mode does not need
+    # the FORDEAD validity check, so banners only show in health mode.
+    validity <- shiny::reactive({
+      if (!identical(input$mode, "health")) return(NULL)
+      zone <- input$zone_id
+      if (!isTRUE(nzchar(zone))) return(NULL)
+      con <- get_monitoring_db_connection()
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      units <- app_state$current_project$indicators_sf
+      validity_check_for_zone(con, as.integer(zone), units = units)
+    })
+
+    output$validity_banners <- shiny::renderUI({
+      v <- validity()
+      if (is.null(v)) return(NULL)
+      i18n <- i18n_r()
+      banners <- list()
+      if (isFALSE(v$geo_valid)) {
+        pct <- (v$geo_intersection_pct %||% 0) * 100
+        banners[[length(banners) + 1L]] <- .monitoring_validity_banner(
+          icon  = "geo-alt",
+          title = i18n$t("monitoring_warning_geo_title"),
+          body  = sprintf(i18n$t("monitoring_warning_geo_body"), pct)
+        )
+      }
+      if (isFALSE(v$species_valid)) {
+        pct <- (v$species_resineux_pct %||% 0) * 100
+        banners[[length(banners) + 1L]] <- .monitoring_validity_banner(
+          icon  = "tree",
+          title = i18n$t("monitoring_warning_species_title"),
+          body  = sprintf(i18n$t("monitoring_warning_species_body"), pct)
+        )
+      }
+      if (isTRUE(input$include_low)) {
+        banners[[length(banners) + 1L]] <- .monitoring_validity_banner(
+          icon  = "exclamation-triangle",
+          title = i18n$t("monitoring_warning_low_classes"),
+          body  = NULL
+        )
+      }
+      if (!length(banners)) return(NULL)
+      htmltools::tagList(banners)
+    })
+
+    # ----- Alerts panel placeholder (leaflet wired in C5) -----------
+    output$alerts_panel <- shiny::renderUI({
+      i18n <- i18n_r()
+      htmltools::tags$p(class = "text-muted",
+                        i18n$t("monitoring_alerts_placeholder"))
+    })
+
+    # ----- QField panel placeholder (wired in C6) -------------------
+    output$qfield_panel <- shiny::renderUI({
+      NULL
     })
 
     # Zones reactive: open a fresh connection, list, close. Re-runs on
@@ -331,6 +456,25 @@ mod_monitoring_server <- function(id, app_state) {
         htmltools::tags$div(
           htmltools::tags$strong(title),
           if (!is.null(body)) htmltools::tags$div(class = "text-muted small", body)
+        )
+      )
+    )
+  )
+}
+
+# G3 banner — used when zone is outside FORDEAD validity domain or when
+# the user opts into low/medium classes (>50% FP per ONF/DSF 2024).
+.monitoring_validity_banner <- function(icon, title, body = NULL) {
+  htmltools::tags$div(
+    class = "card border-warning mb-3",
+    htmltools::tags$div(
+      class = "card-body py-2",
+      htmltools::div(
+        class = "d-flex align-items-start",
+        bsicons::bs_icon(icon, class = "me-2 fs-4 text-warning"),
+        htmltools::tags$div(
+          htmltools::tags$strong(title),
+          if (!is.null(body)) htmltools::tags$div(class = "small", body)
         )
       )
     )
