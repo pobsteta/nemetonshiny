@@ -12,9 +12,9 @@ URL: https://pobsteta.github.io/nemetonshiny/, https://github.com/pobsteta/nemet
 BugReports: https://github.com/pobsteta/nemetonshiny/issues
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
-Imports: nemeton (>= 0.19.5), shiny (>= 1.8.0), bslib (>= 0.6.0),
-    htmltools, leaflet, sf, lwgeom, terra, cli, rlang, glue, jsonlite,
-    httr2, yaml, DT, promises, later, htmlwidgets, bsicons,
+Imports: nemeton (>= 0.20.1.9004), shiny (>= 1.8.0), bslib (>= 0.6.0),
+    htmltools, leaflet, plotly, sf, lwgeom, terra, cli, rlang, glue,
+    jsonlite, httr2, yaml, DT, promises, later, htmlwidgets, bsicons,
     ellmer, ggplot2
 Suggests: shinyOAuth, RPostgres, DBI, uuid, testthat (>= 3.0.0), withr,
     golem, arrow, geoarrow, cicerone, quarto, rappdirs,

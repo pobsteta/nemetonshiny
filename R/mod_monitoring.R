@@ -179,8 +179,7 @@ mod_monitoring_ui <- function(id) {
           )
         ),
         bslib::card_body(
-          htmltools::tags$p(class = "text-muted",
-                            i18n$t("monitoring_timeseries_placeholder"))
+          plotly::plotlyOutput(ns("timeseries"), height = "320px")
         )
       ),
       bslib::card(
@@ -291,11 +290,144 @@ mod_monitoring_server <- function(id, app_state) {
       htmltools::tagList(banners)
     })
 
-    # ----- Alerts panel placeholder (leaflet wired in C5) -----------
+    # ----- Alerts reactive (FORDEAD) --------------------------------
+    # G1: by default only classes 3-forte + 4-sol-nu. The "include_low"
+    # checkbox flips to all classes (1-2 inclusive). Re-fetches whenever
+    # the zone, the toggle, or alerts_refresh() change.
+    alerts <- shiny::reactive({
+      alerts_refresh()
+      zone <- input$zone_id
+      if (!isTRUE(nzchar(zone))) return(NULL)
+      if (!identical(input$mode, "health")) return(NULL)
+      classes <- if (isTRUE(input$include_low))
+                   c("1-faible", "2-moyenne", "3-forte", "4-sol-nu")
+                 else
+                   c("3-forte", "4-sol-nu")
+      con <- get_monitoring_db_connection()
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      list_alerts_for_zone(con, as.integer(zone), classes = classes)
+    })
+
+    # ----- Alerts leaflet (T6app.11) --------------------------------
     output$alerts_panel <- shiny::renderUI({
+      ns <- session$ns
       i18n <- i18n_r()
-      htmltools::tags$p(class = "text-muted",
-                        i18n$t("monitoring_alerts_placeholder"))
+      a <- alerts()
+      if (is.null(a) || !nrow(a)) {
+        return(htmltools::tags$p(class = "text-muted",
+                                 i18n$t("monitoring_alerts_placeholder")))
+      }
+      leaflet::leafletOutput(ns("alerts_map"), height = "55vh")
+    })
+
+    output$alerts_map <- leaflet::renderLeaflet({
+      a <- alerts()
+      if (is.null(a) || !nrow(a)) return(NULL)
+      i18n <- i18n_r()
+
+      a_ll <- if (sf::st_crs(a)$epsg %||% 4326L != 4326L)
+                sf::st_transform(a, 4326)
+              else a
+
+      colors <- c(
+        "1-faible"  = "#FFD27F",  # pale orange
+        "2-moyenne" = "#FF9933",  # orange
+        "3-forte"   = "#D62728",  # red
+        "4-sol-nu"  = "#222222"   # near-black
+      )
+      cls <- as.character(a_ll$confidence_class)
+      cls[!cls %in% names(colors)] <- "3-forte"
+      fill <- unname(colors[cls])
+
+      popups <- vapply(seq_len(nrow(a_ll)), function(i) {
+        sprintf(
+          "<strong>%s</strong>: %s<br/>%s: %.2f<br/>%s: %s<br/>%s: %s<br/>%s: %s",
+          i18n$t("monitoring_alert_popup_class"),
+          htmltools::htmlEscape(cls[i]),
+          i18n$t("monitoring_alert_popup_stress"),
+          as.numeric(a_ll$stress_index[i] %||% NA_real_),
+          i18n$t("monitoring_alert_popup_date"),
+          as.character(a_ll$trigger_date[i] %||% NA),
+          i18n$t("monitoring_alert_popup_status"),
+          htmltools::htmlEscape(as.character(a_ll$validation_status[i] %||% "")),
+          i18n$t("monitoring_alert_popup_disturbance"),
+          htmltools::htmlEscape(as.character(a_ll$disturbance_type[i] %||% "-"))
+        )
+      }, character(1))
+
+      legend_labels <- c(
+        i18n$t("monitoring_class_1"),
+        i18n$t("monitoring_class_2"),
+        i18n$t("monitoring_class_3"),
+        i18n$t("monitoring_class_4")
+      )
+
+      leaflet::leaflet(a_ll) |>
+        leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
+        leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        leaflet::addLayersControl(
+          baseGroups = c("OSM", "Satellite"),
+          options = leaflet::layersControlOptions(collapsed = TRUE)
+        ) |>
+        leaflet::addCircleMarkers(
+          radius = 6, weight = 1, color = "#000",
+          fillColor = fill, fillOpacity = 0.85,
+          popup = popups
+        ) |>
+        leaflet::addLegend(
+          position = "bottomright",
+          colors   = unname(colors),
+          labels   = legend_labels,
+          title    = i18n$t("monitoring_alert_popup_class"),
+          opacity  = 0.85
+        )
+    })
+
+    # ----- Time series plotly (T6app.10) ----------------------------
+    # Mode rapide: NDVI/NBR (data wiring lands with E6.b phase 3, so
+    # for now we render a "no data" plot with the right axis layout).
+    # Mode sanitaire: alerts distribution per class (informative without
+    # requiring per-pixel harmonic-model data, which isn't returned by
+    # run_fordead_dieback).
+    output$timeseries <- plotly::renderPlotly({
+      i18n <- i18n_r()
+      empty <- plotly::plot_ly(type = "scatter", mode = "lines") |>
+        plotly::layout(
+          annotations = list(list(
+            text      = i18n$t("monitoring_timeseries_placeholder"),
+            xref      = "paper", yref = "paper",
+            x = 0.5, y = 0.5, showarrow = FALSE,
+            font      = list(color = "#888")
+          )),
+          xaxis = list(visible = FALSE),
+          yaxis = list(visible = FALSE)
+        )
+
+      if (!identical(input$mode, "health")) return(empty)
+      a <- alerts()
+      if (is.null(a) || !nrow(a)) return(empty)
+
+      counts <- table(factor(a$confidence_class,
+                             levels = c("1-faible", "2-moyenne",
+                                        "3-forte",  "4-sol-nu")))
+      labels <- c(
+        "1-faible"  = i18n$t("monitoring_class_1"),
+        "2-moyenne" = i18n$t("monitoring_class_2"),
+        "3-forte"   = i18n$t("monitoring_class_3"),
+        "4-sol-nu"  = i18n$t("monitoring_class_4")
+      )
+      bar_colors <- c("#FFD27F", "#FF9933", "#D62728", "#222222")
+      plotly::plot_ly(
+        x = unname(labels[names(counts)]),
+        y = as.integer(counts),
+        type = "bar",
+        marker = list(color = bar_colors)
+      ) |>
+        plotly::layout(
+          margin = list(t = 20, b = 40, l = 40, r = 10),
+          yaxis = list(title = "n alertes"),
+          xaxis = list(title = "")
+        )
     })
 
     # ----- QField panel placeholder (wired in C6) -------------------
