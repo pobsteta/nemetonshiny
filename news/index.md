@@ -198,7 +198,7 @@ The Monitoring tab is now a two-mode forest health workstation.
 - **`R/mod_field_ingest.R`** — new “Ingestion terrain” tab that closes
   the terrain → plateforme loop. A field agent drops the GeoPackage
   returned by QField; the module runs
-  [`nemeton::import_qfield_gpkg()`](https://pobsteta.github.io/nemeton/reference/import_qfield_gpkg.html) +
+  [`nemeton::import_qfield_gpkg()`](https://pobsteta.github.io/nemeton/reference/import_qgis_gpkg.html) +
   `validate_field_data()`, renders a validation report (counts, errors,
   warnings), and previews the placettes / arbres on the project map.
 - **NDP bump on attach**: clicking *Rattacher au projet* calls
@@ -241,7 +241,7 @@ The Monitoring tab is now a two-mode forest health workstation.
   *Générer*, and previews the sample plots on a leaflet map. A
   *Télécharger le projet QField (.qgz)* button produces a QField-ready
   project via
-  [`nemeton::create_qfield_project()`](https://pobsteta.github.io/nemeton/reference/create_qfield_project.html)
+  [`nemeton::create_qfield_project()`](https://pobsteta.github.io/nemeton/reference/create_qgis_project.html)
   (placettes + empty arbres layer + pre-configured forms).
 - First iteration uses a spatial random draw
   ([`sf::st_sample`](https://r-spatial.github.io/sf/reference/st_sample.html)).
