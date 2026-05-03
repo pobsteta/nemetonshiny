@@ -731,6 +731,19 @@ mod_sampling_server <- function(id, app_state) {
       sampling_rv$plots <- plots
       sampling_rv$zone  <- zone
 
+      # Persist to disk so the plan survives a restart and can feed
+      # mod_monitoring's "register as zone" action without regenerating.
+      # Bump samples_refresh so monitoring's "samples present" reactive
+      # re-evaluates and the register button enables.
+      project <- app_state$current_project
+      if (!is.null(project) && !is.null(project$id)) {
+        saved <- tryCatch(save_samples(project$id, plots),
+                          error = function(e) FALSE)
+        if (isTRUE(saved)) {
+          app_state$samples_refresh <- (app_state$samples_refresh %||% 0L) + 1L
+        }
+      }
+
       method <- attr(plots, "method") %||% "random"
       shiny::showNotification(
         sprintf("%s (%s)",
@@ -741,6 +754,40 @@ mod_sampling_server <- function(id, app_state) {
         type = "message", duration = 5
       )
     })
+
+    # Restore samples from disk on project change so the map repopulates
+    # without the user having to regenerate a plan they already produced.
+    # Pure additive logic: only sets sampling_rv$plots when something is
+    # actually loaded — never clears, so it can't race with the generate
+    # handler in the same flush. ignoreInit avoids re-running at session
+    # startup (the inline isolate() block below handles that case).
+    .restore_samples <- function(project) {
+      if (is.null(project) || is.null(project$id)) return(invisible(NULL))
+      restored <- tryCatch(load_samples(project$id),
+                           error = function(e) NULL)
+      if (is.null(restored) || !inherits(restored, "sf") ||
+          nrow(restored) == 0L) {
+        return(invisible(NULL))
+      }
+      sampling_rv$plots <- restored
+      if (!is.null(project$indicators_sf) &&
+          inherits(project$indicators_sf, "sf") &&
+          nrow(project$indicators_sf) > 0L) {
+        u <- sf::st_transform(project$indicators_sf, 2154)
+        sampling_rv$zone <- sf::st_sf(
+          geometry = sf::st_sfc(sf::st_union(u), crs = 2154)
+        )
+      }
+      invisible(TRUE)
+    }
+
+    # Module is lazy-loaded after the user has already picked a project —
+    # restore once at startup so the map is populated when the tab opens.
+    shiny::isolate(.restore_samples(app_state$current_project))
+
+    shiny::observeEvent(app_state$current_project, {
+      .restore_samples(app_state$current_project)
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
     # --- Status banner -----------------------------------------------
     output$status <- shiny::renderUI({

@@ -236,3 +236,61 @@ test_that("generated plots feed create_qfield_project() into a valid .qgz", {
     expect_true(any(grepl("\\.gpkg$", contents$Name)))
   })
 })
+
+
+test_that("mod_sampling_server persists samples.gpkg when a real project is loaded", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  skip_if_not_installed("nemeton")
+
+  withr::with_tempdir({
+    temp_root <- getwd()
+    withr::with_envvar(c(NEMETONSHINY_DISABLE_DB = "1"), {
+      with_mocked_bindings(
+        get_app_options = function() list(project_dir = temp_root),
+        {
+          project <- nemetonshiny:::create_project(name = "Persist Test")
+
+          poly <- sf::st_polygon(list(rbind(
+            c(900000, 6500000), c(901000, 6500000),
+            c(901000, 6501000), c(900000, 6501000), c(900000, 6500000)
+          )))
+          indicators_sf <- sf::st_sf(
+            ug_id = 1L,
+            geometry = sf::st_sfc(poly, crs = 2154)
+          )
+          state <- shiny::reactiveValues(
+            language = "fr",
+            samples_refresh = 0L,
+            current_project = list(
+              id = project$id,
+              indicators_sf = indicators_sf,
+              metadata = list(name = "Persist Test")
+            )
+          )
+
+          shiny::testServer(
+            nemetonshiny:::mod_sampling_server,
+            args = list(app_state = state),
+            {
+              session$setInputs(n_base = 4, n_over = 1, seed = 9,
+                                region = "BFC", project_name = "persist_test",
+                                generate = 1)
+              # Plot reactive resolved -> save_samples() side-effect should
+              # have fired.
+              plots <- session$returned$sample_plots()
+              expect_equal(nrow(plots), 5)
+            }
+          )
+
+          gpkg_path <- file.path(project$path, "data", "samples.gpkg")
+          expect_true(file.exists(gpkg_path))
+
+          loaded <- nemetonshiny:::load_samples(project$id)
+          expect_s3_class(loaded, "sf")
+          expect_equal(nrow(loaded), 5)
+        }
+      )
+    })
+  })
+})

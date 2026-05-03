@@ -45,7 +45,9 @@ app_server <- function(input, output, session) {
     language = get_app_options()$language,
     project_dir = get_app_options()$project_dir,
     current_project = NULL,
-    project_status = "none"  # none, draft, downloading, computing, completed
+    project_status = "none",  # none, draft, downloading, computing, completed
+    samples_refresh = 0L      # bumped by mod_sampling after save_samples()
+                              # so mod_monitoring re-checks samples on disk
   )
 
   # Selection state

@@ -92,6 +92,21 @@ mod_monitoring_ui <- function(id) {
               selected = NULL
             ),
 
+            # Bridge between the loaded project (Home tab) and the
+            # monitoring DB: registers the project's UGF union + the
+            # placettes generated in the Sampling tab as a fresh
+            # `monitoring_zone` row, then auto-selects it above.
+            # Common to both modes (FAST + FORDEAD). Disabled until
+            # project + samples + DB are all ready.
+            htmltools::tagAppendAttributes(
+              shiny::actionButton(
+                ns("register"), i18n$t("monitoring_register_btn"),
+                icon  = bsicons::bs_icon("geo-alt-fill"),
+                class = "btn-outline-primary btn-sm w-100 mb-3"
+              ),
+              disabled = NA
+            ),
+
             shiny::dateRangeInput(
               ns("date_range"), i18n$t("monitoring_date_range"),
               start = Sys.Date() - 365L,
@@ -561,14 +576,124 @@ mod_monitoring_server <- function(id, app_state) {
     })
 
     # Push zones into the selectInput. Empty list → empty choices, the
-    # status card explains why.
+    # status card explains why. If the loaded project was previously
+    # registered as a zone (`metadata$monitoring_zone_id`), pre-select
+    # that zone instead of the first alphabetic one — saves the user a
+    # click on every project re-open.
     shiny::observe({
       z <- zones()
       choices <- if (nrow(z)) stats::setNames(as.character(z$id), z$name)
                  else character(0)
+
+      preferred <- character(0)
+      pmeta_id <- app_state$current_project$metadata$monitoring_zone_id
+      if (!is.null(pmeta_id) && length(pmeta_id) == 1L) {
+        candidate <- as.character(pmeta_id)
+        if (candidate %in% choices) preferred <- candidate
+      }
+      selected <- if (length(preferred)) preferred
+                  else (choices[1] %||% character(0))
+
       shiny::updateSelectInput(session, "zone_id",
                                choices  = choices,
-                               selected = choices[1] %||% character(0))
+                               selected = selected)
+    })
+
+    # ----- Register-this-project-as-zone bridge ----------------------
+
+    # Reactive: does the loaded project have a persisted sampling plan
+    # on disk? Reads <project>/data/samples.gpkg directly so this also
+    # works after an app restart. Bumped via `app_state$samples_refresh`
+    # whenever mod_sampling writes a new plan, so the button enables
+    # without forcing a project reload.
+    samples_present <- shiny::reactive({
+      app_state$samples_refresh  # invalidate dependency on sampling save
+      project <- app_state$current_project
+      if (is.null(project) || is.null(project$id)) return(FALSE)
+      pp <- get_project_path(project$id)
+      if (is.null(pp)) return(FALSE)
+      file.exists(file.path(pp, "data", "samples.gpkg"))
+    })
+
+    register_running <- shiny::reactiveVal(FALSE)
+
+    # Button state: enabled iff project is loaded, samples exist on
+    # disk, the DB is configured, and no registration is in flight.
+    shiny::observe({
+      has_project <- !is.null(app_state$current_project) &&
+                     !is.null(app_state$current_project$id)
+      has_db <- {
+        con <- get_monitoring_db_connection()
+        on.exit(close_monitoring_db_connection(con), add = TRUE)
+        !is.null(con)
+      }
+      shiny::updateActionButton(
+        session, "register",
+        disabled = !has_project || !samples_present() ||
+                   !has_db || isTRUE(register_running())
+      )
+    })
+
+    # Click handler: validate, register, persist zone_id, refresh
+    # dropdown. Idempotent — clicking twice on the same project just
+    # re-selects the existing zone (helper checks DB before inserting).
+    shiny::observeEvent(input$register, {
+      i18n <- i18n_r()
+      project <- app_state$current_project
+      if (is.null(project) || is.null(project$id)) {
+        shiny::showNotification(i18n$t("monitoring_register_no_project"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      if (!samples_present()) {
+        shiny::showNotification(i18n$t("monitoring_register_no_samples"),
+                                type = "warning", duration = 5)
+        return()
+      }
+      con <- get_monitoring_db_connection()
+      if (is.null(con)) {
+        shiny::showNotification(i18n$t("monitoring_register_no_db"),
+                                type = "error", duration = 5)
+        return()
+      }
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+
+      register_running(TRUE)
+      shiny::showNotification(i18n$t("monitoring_register_running"),
+                              type = "message", duration = 3,
+                              id = session$ns("register_running_notif"))
+
+      result <- tryCatch(
+        register_project_as_zone(con, project),
+        error = function(e) e
+      )
+      register_running(FALSE)
+
+      if (inherits(result, "error")) {
+        shiny::showNotification(
+          sprintf("%s : %s", i18n$t("monitoring_register_error"),
+                  conditionMessage(result)),
+          type = "error", duration = 8
+        )
+        return()
+      }
+
+      # Refresh dropdown so the new (or re-found) zone appears, then
+      # update the in-memory project metadata so auto-select picks the
+      # right id on the next reactive flush.
+      project$metadata$monitoring_zone_id <- result$zone_id
+      app_state$current_project <- project
+      zones_refresh(zones_refresh() + 1L)
+
+      msg_key <- if (isTRUE(result$was_existing)) {
+        "monitoring_register_already"
+      } else {
+        "monitoring_register_success"
+      }
+      shiny::showNotification(
+        sprintf(i18n$t(msg_key), result$zone_name, result$n_plots),
+        type = "message", duration = 5
+      )
     })
 
     # DB status card — three states: not configured, connected with

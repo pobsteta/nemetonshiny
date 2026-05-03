@@ -523,6 +523,140 @@ test_that("load_parcels returns NULL when no parcel files exist", {
   })
 })
 
+
+# ==============================================================================
+# save_samples and load_samples
+# ==============================================================================
+
+# Helper: build an sf POINT layer mimicking what create_sampling_plan() returns.
+# Two attributes — plot_id (character) and type (Base/Over) — are enough to
+# verify the round-trip. Coordinates land in Lambert-93.
+.test_sample_plots <- function(n = 5, crs = 2154) {
+  pts <- lapply(seq_len(n), function(i) {
+    sf::st_point(c(566500 + i * 25, 6615200 + i * 25))
+  })
+  sf::st_sf(
+    plot_id  = sprintf("P%03d", seq_len(n)),
+    type     = ifelse(seq_len(n) <= ceiling(n * 0.8), "Base", "Over"),
+    geometry = sf::st_sfc(pts, crs = crs)
+  )
+}
+
+test_that("save_samples writes samples.gpkg and load_samples reads it back", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "Samples Test")
+        plots <- .test_sample_plots(n = 6)
+
+        result <- nemetonshiny:::save_samples(project$id, plots)
+        expect_true(result)
+
+        gpkg_path <- file.path(project$path, "data", "samples.gpkg")
+        expect_true(file.exists(gpkg_path))
+
+        loaded <- nemetonshiny:::load_samples(project$id)
+        expect_s3_class(loaded, "sf")
+        expect_equal(nrow(loaded), 6)
+        expect_true(all(c("plot_id", "type") %in% names(loaded)))
+        expect_equal(sort(loaded$plot_id), sort(plots$plot_id))
+      }
+    )
+  })
+})
+
+test_that("save_samples updates metadata samples_count and samples_generated_at", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "Meta Samples Test")
+        plots <- .test_sample_plots(n = 4)
+        nemetonshiny:::save_samples(project$id, plots)
+
+        meta <- nemetonshiny:::load_project_metadata(project$id)
+        expect_equal(meta$samples_count, 4L)
+        expect_false(is.null(meta$samples_generated_at))
+      }
+    )
+  })
+})
+
+test_that("save_samples overwrites an existing samples.gpkg", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "Samples Overwrite")
+        nemetonshiny:::save_samples(project$id, .test_sample_plots(n = 3))
+        nemetonshiny:::save_samples(project$id, .test_sample_plots(n = 7))
+
+        loaded <- nemetonshiny:::load_samples(project$id)
+        expect_equal(nrow(loaded), 7)
+      }
+    )
+  })
+})
+
+test_that("save_samples warns and returns FALSE for non-sf input", {
+  expect_warning(
+    result <- nemetonshiny:::save_samples("fake_project", data.frame(x = 1)),
+    regexp = "sf object"
+  )
+  expect_false(result)
+})
+
+test_that("save_samples warns and returns FALSE for nonexistent project", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        plots <- .test_sample_plots(n = 1)
+        expect_warning(
+          result <- nemetonshiny:::save_samples("nonexistent", plots),
+          regexp = "not found"
+        )
+        expect_false(result)
+      }
+    )
+  })
+})
+
+test_that("load_samples returns NULL for nonexistent project", {
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        expect_null(nemetonshiny:::load_samples("nonexistent_project"))
+      }
+    )
+  })
+})
+
+test_that("load_samples returns NULL when samples.gpkg is missing", {
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "No Samples")
+        expect_null(nemetonshiny:::load_samples(project$id))
+      }
+    )
+  })
+})
+
+
 # ==============================================================================
 # update_project
 # ==============================================================================

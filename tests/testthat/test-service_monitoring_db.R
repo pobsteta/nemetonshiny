@@ -186,3 +186,242 @@ test_that("close_monitoring_db_connection delegates to nemeton::db_disconnect", 
     }
   )
 })
+
+
+# ---- register_project_as_zone ---------------------------------------
+
+# Helper: a project on disk with a saved samples.gpkg and a tiny
+# UGF polygon, ready to feed register_project_as_zone(). Returns the
+# project list in the same shape as `app_state$current_project`.
+.test_make_project_with_samples <- function(name = "Zone Test",
+                                            n_plots = 4L,
+                                            extra_meta = list()) {
+  poly <- sf::st_polygon(list(rbind(
+    c(900000, 6500000), c(901000, 6500000),
+    c(901000, 6501000), c(900000, 6501000), c(900000, 6500000)
+  )))
+  indicators_sf <- sf::st_sf(
+    ug_id = 1L,
+    geometry = sf::st_sfc(poly, crs = 2154)
+  )
+
+  proj <- nemetonshiny:::create_project(name = name)
+
+  pts <- lapply(seq_len(n_plots), function(i) {
+    sf::st_point(c(900200 + i * 50, 6500200 + i * 50))
+  })
+  plots <- sf::st_sf(
+    plot_id  = sprintf("P%03d", seq_len(n_plots)),
+    type     = "Base",
+    geometry = sf::st_sfc(pts, crs = 2154)
+  )
+  nemetonshiny:::save_samples(proj$id, plots)
+
+  if (length(extra_meta)) {
+    nemetonshiny:::update_project_metadata(proj$id, extra_meta)
+  }
+
+  list(
+    id            = proj$id,
+    path          = proj$path,
+    metadata      = nemetonshiny:::load_project_metadata(proj$id),
+    indicators_sf = indicators_sf
+  )
+}
+
+test_that("register_project_as_zone aborts when con is NULL", {
+  expect_error(
+    nemetonshiny:::register_project_as_zone(NULL, list(id = "x")),
+    regexp = "DB is not connected"
+  )
+})
+
+test_that("register_project_as_zone aborts when project is missing or has no id", {
+  expect_error(
+    nemetonshiny:::register_project_as_zone("fake-con", NULL),
+    regexp = "No project loaded"
+  )
+  expect_error(
+    nemetonshiny:::register_project_as_zone("fake-con", list(metadata = list())),
+    regexp = "No project loaded"
+  )
+})
+
+test_that("register_project_as_zone aborts when project has no sampling plan", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        proj <- nemetonshiny:::create_project(name = "No Plan")
+        project <- list(
+          id = proj$id, path = proj$path,
+          metadata = nemetonshiny:::load_project_metadata(proj$id),
+          indicators_sf = NULL
+        )
+        expect_error(
+          nemetonshiny:::register_project_as_zone("fake-con", project),
+          regexp = "no sampling plan"
+        )
+      }
+    )
+  })
+})
+
+test_that("register_project_as_zone calls nemeton + persists monitoring_zone_id", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("nemeton")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- .test_make_project_with_samples(name = "Forest A",
+                                                   n_plots = 6L)
+
+        captured_args <- NULL
+        testthat::with_mocked_bindings(
+          dbGetQuery = function(conn, ...) data.frame(),
+          .package = "DBI",
+          {
+            testthat::with_mocked_bindings(
+              register_monitoring_zone = function(con, zone_name,
+                                                  zone_polygon, placettes,
+                                                  radius_m = 15) {
+                captured_args <<- list(zone_name = zone_name,
+                                       n_plots = nrow(placettes))
+                42L
+              },
+              .package = "nemeton",
+              {
+                result <- nemetonshiny:::register_project_as_zone(
+                  con = "fake-con", project = project
+                )
+                expect_equal(result$zone_id, 42L)
+                expect_equal(result$zone_name, "Forest A")
+                expect_equal(result$n_plots, 6L)
+                expect_false(result$was_existing)
+              }
+            )
+          }
+        )
+        expect_equal(captured_args$zone_name, "Forest A")
+        expect_equal(captured_args$n_plots,   6L)
+
+        # Persistence: metadata.json now carries monitoring_zone_id.
+        meta <- nemetonshiny:::load_project_metadata(project$id)
+        expect_equal(as.integer(meta$monitoring_zone_id), 42L)
+      }
+    )
+  })
+})
+
+test_that("register_project_as_zone is idempotent when metadata id still exists in DB", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("nemeton")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- .test_make_project_with_samples(
+          name = "Forest B",
+          extra_meta = list(monitoring_zone_id = 7L)
+        )
+
+        register_call_count <- 0L
+        testthat::with_mocked_bindings(
+          dbGetQuery = function(conn, ...) {
+            data.frame(id = 7L, name = "Forest B (DB)",
+                       stringsAsFactors = FALSE)
+          },
+          .package = "DBI",
+          {
+            testthat::with_mocked_bindings(
+              register_monitoring_zone = function(...) {
+                register_call_count <<- register_call_count + 1L
+                999L
+              },
+              .package = "nemeton",
+              {
+                result <- nemetonshiny:::register_project_as_zone(
+                  con = "fake-con", project = project
+                )
+                expect_equal(result$zone_id, 7L)
+                expect_equal(result$zone_name, "Forest B (DB)")
+                expect_true(result$was_existing)
+              }
+            )
+          }
+        )
+        # No insert happened — zone was already there.
+        expect_equal(register_call_count, 0L)
+      }
+    )
+  })
+})
+
+test_that("register_project_as_zone re-creates zone when stored id has been deleted", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("nemeton")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- .test_make_project_with_samples(
+          name = "Forest C",
+          extra_meta = list(monitoring_zone_id = 13L)
+        )
+
+        testthat::with_mocked_bindings(
+          dbGetQuery = function(conn, ...) data.frame(),  # not in DB anymore
+          .package = "DBI",
+          {
+            testthat::with_mocked_bindings(
+              register_monitoring_zone = function(...) 88L,
+              .package = "nemeton",
+              {
+                result <- nemetonshiny:::register_project_as_zone(
+                  con = "fake-con", project = project
+                )
+                expect_equal(result$zone_id, 88L)
+                expect_false(result$was_existing)
+              }
+            )
+          }
+        )
+        meta <- nemetonshiny:::load_project_metadata(project$id)
+        expect_equal(as.integer(meta$monitoring_zone_id), 88L)
+      }
+    )
+  })
+})
+
+test_that("register_project_as_zone aborts when project has no UGF geometry", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- .test_make_project_with_samples(name = "No Geom")
+        project$indicators_sf <- NULL
+
+        testthat::with_mocked_bindings(
+          dbGetQuery = function(conn, ...) data.frame(),
+          .package = "DBI",
+          {
+            expect_error(
+              nemetonshiny:::register_project_as_zone(
+                con = "fake-con", project = project
+              ),
+              regexp = "UGF geometry"
+            )
+          }
+        )
+      }
+    )
+  })
+})

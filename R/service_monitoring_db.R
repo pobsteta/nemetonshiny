@@ -115,6 +115,101 @@ list_monitoring_zones <- function(con) {
 }
 
 
+#' Register the loaded project as a monitoring zone (idempotent)
+#'
+#' Reads the project's persisted samples ([load_samples()]), unions
+#' its UGF geometry into a zone polygon, and either re-uses the
+#' existing `monitoring_zone_id` from the project metadata (if that
+#' zone still exists in the DB) or calls
+#' [nemeton::register_monitoring_zone()] to insert a new row. On
+#' success, persists the resulting `zone_id` back to the project's
+#' `metadata.json`.
+#'
+#' @param con A DBIConnection (must be non-NULL).
+#' @param project A project list with `id`, `metadata`, and
+#'   `indicators_sf` (the UGF polygons). Typically
+#'   `app_state$current_project`.
+#'
+#' @return list with:
+#'   \itemize{
+#'     \item `zone_id`: integer DB id (existing or freshly inserted),
+#'     \item `zone_name`: character display name (from project metadata),
+#'     \item `n_plots`: integer number of placettes registered,
+#'     \item `was_existing`: TRUE if we re-used an already-registered zone.
+#'   }
+#'   Aborts with a helpful message on any precondition failure
+#'   (no DB, no project, no plan, no UGF geometry).
+#' @noRd
+register_project_as_zone <- function(con, project) {
+  if (is.null(con)) {
+    cli::cli_abort("Monitoring DB is not connected.")
+  }
+  if (is.null(project) || is.null(project$id)) {
+    cli::cli_abort("No project loaded.")
+  }
+
+  plots <- load_samples(project$id)
+  if (is.null(plots) || !inherits(plots, "sf") || nrow(plots) == 0L) {
+    cli::cli_abort("Project has no sampling plan on disk \\
+                    (run the sampling tab first).")
+  }
+  if (!"plot_id" %in% names(plots)) {
+    cli::cli_abort("samples.gpkg is missing the {.val plot_id} column.")
+  }
+
+  # Idempotency: the project metadata may already point at a registered
+  # zone. Check that the row still exists before reusing — the DB could
+  # have been wiped or the zone deleted out-of-band.
+  existing_id <- project$metadata$monitoring_zone_id
+  if (!is.null(existing_id) && length(existing_id) == 1L &&
+      !is.na(suppressWarnings(as.integer(existing_id)))) {
+    rs <- tryCatch(
+      DBI::dbGetQuery(
+        con,
+        "SELECT id, name FROM monitoring_zone WHERE id = $1",
+        params = list(as.integer(existing_id))
+      ),
+      error = function(e) NULL
+    )
+    if (!is.null(rs) && nrow(rs) > 0L) {
+      return(list(
+        zone_id      = as.integer(rs$id[1]),
+        zone_name    = as.character(rs$name[1]),
+        n_plots      = nrow(plots),
+        was_existing = TRUE
+      ))
+    }
+  }
+
+  if (is.null(project$indicators_sf) ||
+      !inherits(project$indicators_sf, "sf") ||
+      nrow(project$indicators_sf) == 0L) {
+    cli::cli_abort("Project has no UGF geometry to derive a zone polygon.")
+  }
+  zone_polygon <- sf::st_union(sf::st_transform(project$indicators_sf, 2154))
+  zone_polygon <- sf::st_sf(geometry = sf::st_sfc(zone_polygon, crs = 2154))
+
+  zone_name <- project$metadata$name %||% project$id
+  zone_id   <- nemeton::register_monitoring_zone(
+    con,
+    zone_name    = zone_name,
+    zone_polygon = zone_polygon,
+    placettes    = plots
+  )
+
+  update_project_metadata(project$id, list(
+    monitoring_zone_id = as.integer(zone_id)
+  ))
+
+  list(
+    zone_id      = as.integer(zone_id),
+    zone_name    = zone_name,
+    n_plots      = nrow(plots),
+    was_existing = FALSE
+  )
+}
+
+
 #' Fetch the AOI polygon for a monitoring zone
 #'
 #' Reads `monitoring_zone.zone_wkt` (EPSG:4326) and returns the polygon

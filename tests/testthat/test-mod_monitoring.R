@@ -622,3 +622,216 @@ test_that("metadata restore updates the mode + threshold from current_project", 
     }
   )
 })
+
+
+# ---- Server: register-zone click handler (project ↔ zone bridge) ----
+
+# Builds an app_state with a real on-disk project + saved samples.gpkg
+# so the "samples present" reactive returns TRUE. Caller is responsible
+# for being inside withr::with_tempdir() + a get_app_options mock.
+make_fake_app_state_with_project <- function(project_id, project_path,
+                                             monitoring_zone_id = NULL) {
+  poly <- sf::st_polygon(list(rbind(
+    c(900000, 6500000), c(901000, 6500000),
+    c(901000, 6501000), c(900000, 6501000), c(900000, 6500000)
+  )))
+  indicators_sf <- sf::st_sf(
+    ug_id = 1L,
+    geometry = sf::st_sfc(poly, crs = 2154)
+  )
+  meta <- list(name = "Test Forest")
+  if (!is.null(monitoring_zone_id)) {
+    meta$monitoring_zone_id <- monitoring_zone_id
+  }
+  shiny::reactiveValues(
+    language = "fr",
+    samples_refresh = 0L,
+    current_project = list(
+      id            = project_id,
+      path          = project_path,
+      metadata      = meta,
+      indicators_sf = indicators_sf
+    )
+  )
+}
+
+test_that("register click without a loaded project shows a notification and no-ops", {
+  skip_if_not_installed("shiny")
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function() "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() make_fake_fordead_task(),
+    register_project_as_zone       = function(con, project) {
+      stop("must not be called")
+    },
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          expect_silent(session$setInputs(register = 1L))
+        }
+      )
+    }
+  )
+})
+
+test_that("register click invokes register_project_as_zone and persists zone_id in app_state", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        proj <- nemetonshiny:::create_project(name = "Test Forest")
+        plots <- sf::st_sf(
+          plot_id  = c("P1", "P2", "P3"),
+          type     = "Base",
+          geometry = sf::st_sfc(
+            sf::st_point(c(900100, 6500100)),
+            sf::st_point(c(900200, 6500200)),
+            sf::st_point(c(900300, 6500300)),
+            crs = 2154
+          )
+        )
+        nemetonshiny:::save_samples(proj$id, plots)
+
+        captured_project <- NULL
+        testthat::with_mocked_bindings(
+          get_monitoring_db_connection   = function() "fake-con",
+          list_monitoring_zones          = function(con) fake_zones_df(),
+          close_monitoring_db_connection = function(con) invisible(TRUE),
+          run_ingestion_async            = function() make_fake_ingest_task(),
+          run_fordead_async              = function() make_fake_fordead_task(),
+          register_project_as_zone       = function(con, project) {
+            captured_project <<- project
+            list(zone_id = 99L, zone_name = "Test Forest",
+                 n_plots = 3L, was_existing = FALSE)
+          },
+          {
+            state <- make_fake_app_state_with_project(proj$id, proj$path)
+            shiny::testServer(
+              nemetonshiny:::mod_monitoring_server,
+              args = list(app_state = state),
+              {
+                session$setInputs(register = 1L)
+                expect_false(is.null(captured_project))
+                expect_equal(captured_project$id, proj$id)
+                expect_equal(state$current_project$metadata$monitoring_zone_id,
+                             99L)
+              }
+            )
+          }
+        )
+      }
+    )
+  })
+})
+
+test_that("register click flags 'already registered' when helper returns was_existing=TRUE", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        proj <- nemetonshiny:::create_project(name = "Test Forest")
+        plots <- sf::st_sf(
+          plot_id  = "P1", type = "Base",
+          geometry = sf::st_sfc(sf::st_point(c(900100, 6500100)), crs = 2154)
+        )
+        nemetonshiny:::save_samples(proj$id, plots)
+
+        testthat::with_mocked_bindings(
+          get_monitoring_db_connection   = function() "fake-con",
+          list_monitoring_zones          = function(con) fake_zones_df(),
+          close_monitoring_db_connection = function(con) invisible(TRUE),
+          run_ingestion_async            = function() make_fake_ingest_task(),
+          run_fordead_async              = function() make_fake_fordead_task(),
+          register_project_as_zone       = function(con, project) {
+            list(zone_id = 1L, zone_name = "Foret", n_plots = 1L,
+                 was_existing = TRUE)
+          },
+          {
+            state <- make_fake_app_state_with_project(
+              proj$id, proj$path, monitoring_zone_id = 1L
+            )
+            shiny::testServer(
+              nemetonshiny:::mod_monitoring_server,
+              args = list(app_state = state),
+              {
+                session$setInputs(register = 1L)
+                expect_equal(state$current_project$metadata$monitoring_zone_id,
+                             1L)
+              }
+            )
+          }
+        )
+      }
+    )
+  })
+})
+
+test_that("auto-select pre-selects the zone matching project metadata$monitoring_zone_id", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  # updateSelectInput sends a message to the client; testServer has no
+  # real client that echoes back into `input`, so we capture the call's
+  # `selected` argument directly to verify the pre-selection logic.
+  captured_selected <- NULL
+
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        proj <- nemetonshiny:::create_project(name = "Massif Central")
+
+        testthat::with_mocked_bindings(
+          get_monitoring_db_connection   = function() "fake-con",
+          list_monitoring_zones          = function(con) fake_zones_df(),
+          close_monitoring_db_connection = function(con) invisible(TRUE),
+          run_ingestion_async            = function() make_fake_ingest_task(),
+          run_fordead_async              = function() make_fake_fordead_task(),
+          {
+            testthat::with_mocked_bindings(
+              updateSelectInput = function(session, inputId, ...,
+                                           choices = NULL, selected = NULL) {
+                if (inputId == "zone_id") {
+                  captured_selected <<- selected
+                }
+                invisible(NULL)
+              },
+              .package = "shiny",
+              {
+                # Project carries id = 2 → zone "Massif" (id 2) should be
+                # selected rather than the default "Foret" (id 1).
+                state <- make_fake_app_state_with_project(
+                  proj$id, proj$path, monitoring_zone_id = 2L
+                )
+                shiny::testServer(
+                  nemetonshiny:::mod_monitoring_server,
+                  args = list(app_state = state),
+                  {
+                    session$flushReact()
+                    invisible(session$returned$zones())
+                  }
+                )
+              }
+            )
+          }
+        )
+      }
+    )
+  })
+
+  expect_equal(captured_selected, "2")
+})

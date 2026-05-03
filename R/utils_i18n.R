@@ -1391,6 +1391,38 @@ TRANSLATIONS <- list(
     fr = "Lancer ingestion",
     en = "Start ingestion"
   ),
+  monitoring_register_btn = list(
+    fr = "Enregistrer ce projet comme zone de suivi",
+    en = "Register this project as a monitoring zone"
+  ),
+  monitoring_register_no_project = list(
+    fr = "Chargez un projet avant d'enregistrer une zone de suivi.",
+    en = "Load a project before registering a monitoring zone."
+  ),
+  monitoring_register_no_samples = list(
+    fr = "Générez d'abord un plan d'échantillonnage (onglet Échantillonnage).",
+    en = "Generate a sampling plan first (Sampling tab)."
+  ),
+  monitoring_register_no_db = list(
+    fr = "Base de suivi non configurée — impossible d'enregistrer la zone.",
+    en = "Monitoring database not configured — cannot register zone."
+  ),
+  monitoring_register_running = list(
+    fr = "Enregistrement de la zone en cours…",
+    en = "Registering zone…"
+  ),
+  monitoring_register_success = list(
+    fr = "Zone « %s » enregistrée (%d placette(s)).",
+    en = "Zone “%s” registered (%d plot(s))."
+  ),
+  monitoring_register_already = list(
+    fr = "Zone « %s » déjà enregistrée (%d placette(s)) — sélection réactivée.",
+    en = "Zone “%s” already registered (%d plot(s)) — selection restored."
+  ),
+  monitoring_register_error = list(
+    fr = "Échec de l'enregistrement",
+    en = "Registration failed"
+  ),
   monitoring_validate_zone = list(
     fr = "S\u00e9lectionnez une zone de suivi avant de lancer l'ingestion.",
     en = "Select a monitoring zone before starting the ingestion."
