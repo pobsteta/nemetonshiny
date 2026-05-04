@@ -1147,6 +1147,10 @@ TRANSLATIONS <- list(
     fr = "%d placettes g\u00e9n\u00e9r\u00e9es (%d base, %d remplacement)",
     en = "%d plots generated (%d base, %d replacement)"
   ),
+  sampling_persist_failed = list(
+    fr = "Impossible d'enregistrer le plan d'\u00e9chantillonnage sur disque : %s. Le bouton \u00ab Enregistrer ce projet comme zone de suivi \u00bb restera inactif tant que le fichier samples.gpkg n'existe pas.",
+    en = "Failed to persist the sampling plan to disk: %s. The \"Register this project as a monitoring zone\" button will stay disabled until samples.gpkg exists."
+  ),
   sampling_method_note = list(
     fr = "Candidats tir\u00e9s sur une grille r\u00e9guli\u00e8re (50 m par d\u00e9faut) filtr\u00e9e par le masque for\u00eat (BD For\u00eat v2 \u2014 couverture \u2265 70 %). M\u00e9thode de s\u00e9lection, dans l'ordre : GRTS stratifi\u00e9 (CHM + MNT + BD For\u00eat requis), sinon LPM2 spatialement \u00e9quilibr\u00e9 (BalancedSampling), sinon tirage al\u00e9atoire.",
     en = "Candidates drawn on a regular grid (50 m default), filtered by the forest mask (BD For\u00eat v2, cover \u2265 70 %). Selection method, in order: stratified GRTS (needs CHM + DEM + BD For\u00eat), else spatially-balanced LPM2 (BalancedSampling), else random."

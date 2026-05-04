@@ -738,9 +738,22 @@ mod_sampling_server <- function(id, app_state) {
       project <- app_state$current_project
       if (!is.null(project) && !is.null(project$id)) {
         saved <- tryCatch(save_samples(project$id, plots),
-                          error = function(e) FALSE)
+                          error = function(e) e)
         if (isTRUE(saved)) {
           app_state$samples_refresh <- (app_state$samples_refresh %||% 0L) + 1L
+        } else {
+          # save_samples returned FALSE (cli_warn path: project not
+          # found, plots not sf, …) or threw. Surface explicitly so
+          # the user knows the plan won't be available to other tabs
+          # after a restart, and the "register as zone" button stays
+          # disabled.
+          msg <- if (inherits(saved, "condition")) conditionMessage(saved)
+                 else "save_samples returned FALSE"
+          cli::cli_alert_danger("save_samples failed: {msg}")
+          shiny::showNotification(
+            sprintf(i18n$t("sampling_persist_failed"), msg),
+            type = "error", duration = 10
+          )
         }
       }
 
