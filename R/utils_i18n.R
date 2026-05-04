@@ -1388,8 +1388,8 @@ TRANSLATIONS <- list(
     en = "Rolling window (days)"
   ),
   monitoring_run_btn = list(
-    fr = "Lancer ingestion",
-    en = "Start ingestion"
+    fr = "Lancer le diagnostic FAST",
+    en = "Run FAST diagnosis"
   ),
   monitoring_register_btn = list(
     fr = "Enregistrer ce projet comme zone de suivi",
@@ -1482,8 +1482,8 @@ TRANSLATIONS <- list(
     en = "Monitoring mode"
   ),
   monitoring_mode_quick = list(
-    fr = "Surveillance rapide",
-    en = "Quick surveillance"
+    fr = "Surveillance rapide (FAST)",
+    en = "Quick surveillance (FAST)"
   ),
   monitoring_mode_health = list(
     fr = "Diagnostic sanitaire (FORDEAD)",
