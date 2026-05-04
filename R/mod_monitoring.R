@@ -97,15 +97,17 @@ mod_monitoring_ui <- function(id) {
             # placettes generated in the Sampling tab as a fresh
             # `monitoring_zone` row, then auto-selects it above.
             # Common to both modes (FAST + FORDEAD). Disabled until
-            # project + samples + DB are all ready.
+            # project + samples + DB are all ready. The hint below
+            # the button surfaces which precondition is missing.
             htmltools::tagAppendAttributes(
               shiny::actionButton(
                 ns("register"), i18n$t("monitoring_register_btn"),
                 icon  = bsicons::bs_icon("geo-alt-fill"),
-                class = "btn-outline-primary btn-sm w-100 mb-3"
+                class = "btn-outline-primary btn-sm w-100"
               ),
               disabled = NA
             ),
+            shiny::uiOutput(ns("register_hint"), class = "mb-3"),
 
             shiny::dateRangeInput(
               ns("date_range"), i18n$t("monitoring_date_range"),
@@ -632,6 +634,30 @@ mod_monitoring_server <- function(id, app_state) {
         disabled = !has_project || !samples_present() ||
                    !has_db || isTRUE(register_running())
       )
+    })
+
+    # Hint surfaces the first failing gate so the user knows what to
+    # do (load a project / generate a sampling plan / configure the
+    # monitoring DB). Hidden when the button is enabled.
+    output$register_hint <- shiny::renderUI({
+      i18n <- i18n_r()
+      has_project <- !is.null(app_state$current_project) &&
+                     !is.null(app_state$current_project$id)
+      if (!has_project) {
+        return(htmltools::tags$small(class = "text-danger d-block",
+          i18n$t("monitoring_register_no_project")))
+      }
+      if (!samples_present()) {
+        return(htmltools::tags$small(class = "text-danger d-block",
+          i18n$t("monitoring_register_no_samples")))
+      }
+      con <- get_monitoring_db_connection()
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      if (is.null(con)) {
+        return(htmltools::tags$small(class = "text-danger d-block",
+          i18n$t("monitoring_register_no_db")))
+      }
+      NULL
     })
 
     # Click handler: validate, register, persist zone_id, refresh
