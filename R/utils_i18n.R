@@ -106,6 +106,7 @@ TRANSLATIONS <- list(
     en = "Defines the labels and codes of the UGF 'group/zone' dropdown (ONF, CRPF, OFB, other)."
   ),
   project_date = list(fr = "Date de cr\u00e9ation", en = "Creation date"),
+  project_path_label = list(fr = "R\u00e9pertoire de sauvegarde", en = "Storage directory"),
   created_at = list(fr = "Cr\u00e9\u00e9 le", en = "Created on"),
   auto_generated = list(fr = "G\u00e9n\u00e9r\u00e9 automatiquement", en = "Auto-generated"),
   create_project = list(fr = "Cr\u00e9er le projet", en = "Create project"),

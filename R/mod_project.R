@@ -134,7 +134,10 @@ mod_project_ui <- function(id) {
               class = "text-muted",
               i18n$t("auto_generated")
             )
-          )
+          ),
+
+          # Storage directory (visible only when a project is loaded)
+          shiny::uiOutput(ns("path_display"))
         ),
         # Footer
         htmltools::tags$div(
@@ -238,6 +241,26 @@ mod_project_server <- function(id, app_state, selected_parcels) {
       htmltools::div(
         class = "form-control-plaintext",
         rv$project_date
+      )
+    })
+
+    # Storage directory (only meaningful for a loaded/edited project)
+    output$path_display <- shiny::renderUI({
+      pid <- rv$editing_project_id
+      if (is.null(pid)) return(NULL)
+      path <- get_project_path(pid)
+      if (is.null(path)) return(NULL)
+      htmltools::div(
+        class = "mb-3",
+        htmltools::tags$label(
+          class = "form-label",
+          i18n$t("project_path_label")
+        ),
+        htmltools::tags$code(
+          class = "d-block text-break",
+          style = "background:#f8f9fa;padding:.4rem .6rem;border-radius:.25rem;",
+          path
+        )
       )
     })
 
