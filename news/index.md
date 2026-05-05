@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny 0.22.0.9000 (development)
+
 ## nemetonshiny 0.21.0 (2026-04-30)
 
 #### New feature — Forest health monitoring (E6.c.5, spec 008)
