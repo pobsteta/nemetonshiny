@@ -50,6 +50,20 @@ is_db_configured <- function() {
 }
 
 
+#' Short human label for the configured DB target ("dbname@host:port")
+#'
+#' Returns NULL if the database is not configured.
+#'
+#' @noRd
+db_target_label <- function() {
+  if (!is_db_configured()) return(NULL)
+  host   <- Sys.getenv("POSTGRESQL_ADDON_HOST", Sys.getenv("NEMETON_DB_HOST"))
+  port   <- Sys.getenv("POSTGRESQL_ADDON_PORT", Sys.getenv("NEMETON_DB_PORT", "5432"))
+  dbname <- Sys.getenv("POSTGRESQL_ADDON_DB",   Sys.getenv("NEMETON_DB_NAME"))
+  sprintf("%s@%s:%s", dbname, host, port)
+}
+
+
 #' Get database connection
 #'
 #' Creates or returns a cached connection to the PostgreSQL database.

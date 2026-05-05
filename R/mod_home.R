@@ -373,10 +373,11 @@ mod_home_server <- function(id, app_state) {
 
       # Notification sync PostGIS au chargement
       if (is_db_configured() && isTRUE(project$metadata$indicators_computed)) {
+        db_target <- db_target_label()
         db_msg <- if (i18n$language == "fr") {
-          "Projet synchronis\u00e9 avec la base PostGIS"
+          sprintf("Projet synchronis\u00e9 avec la base PostGIS \u2014 %s", db_target)
         } else {
-          "Project synced to PostGIS database"
+          sprintf("Project synced to PostGIS database \u2014 %s", db_target)
         }
         shiny::showNotification(
           htmltools::tagList(shiny::icon("database", class = "me-1"), db_msg),
@@ -1095,10 +1096,11 @@ mod_home_server <- function(id, app_state) {
 
           # Notification sync PostGIS
           if (is_db_configured()) {
+            db_target <- db_target_label()
             db_msg <- if (i18n$language == "fr") {
-              "Projet synchronis\u00e9 avec la base PostGIS"
+              sprintf("Projet synchronis\u00e9 avec la base PostGIS \u2014 %s", db_target)
             } else {
-              "Project synced to PostGIS database"
+              sprintf("Project synced to PostGIS database \u2014 %s", db_target)
             }
             shiny::showNotification(
               htmltools::tagList(shiny::icon("database", class = "me-1"), db_msg),
