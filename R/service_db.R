@@ -33,20 +33,79 @@ NULL
 }
 
 
-#' Check if database connection is configured
+#' Resolve DB connection parameters from env vars
 #'
-#' Returns TRUE if PostgreSQL environment variables are set.
+#' Resolution order (matches `service_monitoring_db.R` and the contract
+#' documented in user `.Renviron`):
+#'
+#' 1. `NEMETON_DB_URL` — URL parsed via httr2 (overrides everything else).
+#' 2. `POSTGRESQL_ADDON_*` — Clever Cloud addon vars.
+#' 3. `NEMETON_DB_HOST` / `_PORT` / `_NAME` / `_USER` / `_PASSWORD`.
+#'
+#' @return A list with `host`, `port`, `dbname`, `user`, `password`,
+#'   `sslmode`, and `source` (one of `"url"`, `"clever"`, `"vars"`),
+#'   or NULL when nothing is configured.
+#' @noRd
+.resolve_db_config <- function() {
+  url <- Sys.getenv("NEMETON_DB_URL", "")
+  if (nzchar(url) && requireNamespace("httr2", quietly = TRUE)) {
+    p <- tryCatch(httr2::url_parse(url), error = function(e) NULL)
+    if (!is.null(p) && nzchar(p$hostname %||% "")) {
+      host <- p$hostname
+      sslmode <- p$query$sslmode %||%
+        (if (host %in% c("localhost", "127.0.0.1")) "prefer" else "require")
+      return(list(
+        host     = host,
+        port     = p$port %||% "5432",
+        dbname   = sub("^/", "", p$path %||% ""),
+        user     = p$username %||% "",
+        password = p$password %||% "",
+        sslmode  = sslmode,
+        source   = "url"
+      ))
+    }
+  }
+
+  # Two-arg Sys.getenv() only consults the default when the variable is
+  # UNSET; an explicit empty string ("") still short-circuits the lookup,
+  # so we test nzchar() explicitly before falling back.
+  clever <- Sys.getenv("POSTGRESQL_ADDON_HOST", "")
+  if (nzchar(clever)) {
+    return(list(
+      host     = clever,
+      port     = Sys.getenv("POSTGRESQL_ADDON_PORT", "5432"),
+      dbname   = Sys.getenv("POSTGRESQL_ADDON_DB", ""),
+      user     = Sys.getenv("POSTGRESQL_ADDON_USER", ""),
+      password = Sys.getenv("POSTGRESQL_ADDON_PASSWORD", ""),
+      sslmode  = "require",
+      source   = "clever"
+    ))
+  }
+
+  generic <- Sys.getenv("NEMETON_DB_HOST", "")
+  if (nzchar(generic)) {
+    sslmode <- if (generic %in% c("localhost", "127.0.0.1")) "prefer" else "require"
+    return(list(
+      host     = generic,
+      port     = Sys.getenv("NEMETON_DB_PORT", "5432"),
+      dbname   = Sys.getenv("NEMETON_DB_NAME", ""),
+      user     = Sys.getenv("NEMETON_DB_USER", ""),
+      password = Sys.getenv("NEMETON_DB_PASSWORD", ""),
+      sslmode  = sslmode,
+      source   = "vars"
+    ))
+  }
+
+  NULL
+}
+
+
+#' Check if database connection is configured
 #'
 #' @return Logical.
 #' @noRd
 is_db_configured <- function() {
-  # The two-arg Sys.getenv() only consults the default when the variable
-  # is UNSET; an explicit empty string ("") still short-circuits the
-  # lookup and skips the NEMETON_DB_HOST fallback. Check non-empty
-  # explicitly so `POSTGRESQL_ADDON_HOST=""` falls through.
-  primary <- Sys.getenv("POSTGRESQL_ADDON_HOST", "")
-  if (nzchar(primary)) return(TRUE)
-  nzchar(Sys.getenv("NEMETON_DB_HOST", ""))
+  !is.null(.resolve_db_config())
 }
 
 
@@ -56,11 +115,9 @@ is_db_configured <- function() {
 #'
 #' @noRd
 db_target_label <- function() {
-  if (!is_db_configured()) return(NULL)
-  host   <- Sys.getenv("POSTGRESQL_ADDON_HOST", Sys.getenv("NEMETON_DB_HOST"))
-  port   <- Sys.getenv("POSTGRESQL_ADDON_PORT", Sys.getenv("NEMETON_DB_PORT", "5432"))
-  dbname <- Sys.getenv("POSTGRESQL_ADDON_DB",   Sys.getenv("NEMETON_DB_NAME"))
-  sprintf("%s@%s:%s", dbname, host, port)
+  cfg <- .resolve_db_config()
+  if (is.null(cfg)) return(NULL)
+  sprintf("%s@%s:%s", cfg$dbname, cfg$host, cfg$port)
 }
 
 
@@ -76,29 +133,23 @@ db_target_label <- function() {
 #'
 #' @noRd
 get_db_connection <- function(check_postgis = TRUE) {
-  if (!is_db_configured()) return(NULL)
+  cfg <- .resolve_db_config()
+  if (is.null(cfg)) return(NULL)
 
   if (!requireNamespace("RPostgres", quietly = TRUE)) {
     cli::cli_warn("Package {.pkg RPostgres} is required for database access.")
     return(NULL)
   }
 
-  # Supporter les deux conventions de nommage
-  host     <- Sys.getenv("POSTGRESQL_ADDON_HOST", Sys.getenv("NEMETON_DB_HOST"))
-  port     <- Sys.getenv("POSTGRESQL_ADDON_PORT", Sys.getenv("NEMETON_DB_PORT", "5432"))
-  dbname   <- Sys.getenv("POSTGRESQL_ADDON_DB",   Sys.getenv("NEMETON_DB_NAME"))
-  user     <- Sys.getenv("POSTGRESQL_ADDON_USER",  Sys.getenv("NEMETON_DB_USER"))
-  password <- Sys.getenv("POSTGRESQL_ADDON_PASSWORD", Sys.getenv("NEMETON_DB_PASSWORD"))
-
   tryCatch({
     con <- DBI::dbConnect(
       RPostgres::Postgres(),
-      host     = host,
-      port     = as.integer(port),
-      dbname   = dbname,
-      user     = user,
-      password = password,
-      sslmode  = "require"
+      host     = cfg$host,
+      port     = as.integer(cfg$port),
+      dbname   = cfg$dbname,
+      user     = cfg$user,
+      password = cfg$password,
+      sslmode  = cfg$sslmode
     )
 
     if (check_postgis) {
@@ -113,7 +164,7 @@ get_db_connection <- function(check_postgis = TRUE) {
       }
     }
 
-    cli::cli_alert_success("Connected to PostgreSQL: {dbname}@{host}:{port}")
+    cli::cli_alert_success("Connected to PostgreSQL: {cfg$dbname}@{cfg$host}:{cfg$port} (source: {cfg$source})")
     con
   }, error = function(e) {
     cli::cli_warn("Failed to connect to database: {e$message}")
