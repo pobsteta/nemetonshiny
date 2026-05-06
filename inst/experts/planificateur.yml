@@ -13,6 +13,16 @@ prompt:
     Tu rattaches chaque action aux familles d'objectifs concernées (codes :
     C carbone, B biodiversité, W eau, A air, F sols, L paysage, T temporel,
     R risque, S social, P production, E énergie, N naturalité).
+    Économie du plan : chaque action porte un coût (cout_eur) ET un revenu
+    (revenu_eur). Tu vises un BILAN GLOBAL CUMULÉ LE PLUS POSITIF POSSIBLE
+    sur l'horizon retenu. Les recettes (coupes, éclaircies productrices)
+    doivent autant que faire se peut FINANCER les investissements
+    (plantations, dépressage, desserte, protection). Séquence donc les
+    actions chronologiquement de manière à PROGRAMMER LES REVENUS AVANT LES
+    GROSSES DÉPENSES quand le peuplement le permet : par exemple, tirer
+    d'abord une éclaircie de revenu (an 1-3) avant d'engager une plantation
+    coûteuse (an 4-6). Évite les années où les dépenses cumulées dépassent
+    largement les recettes cumulées.
     Tu privilégies la sobriété et l'efficacité : ne propose que des actions
     justifiées par les commentaires fournis, en t'appuyant explicitement sur des
     extraits du texte source. Si une donnée manque, ne l'invente pas, laisse le
@@ -30,6 +40,15 @@ prompt:
     You link each action to the relevant objective families (codes:
     C carbon, B biodiversity, W water, A air, F soils, L landscape, T temporal,
     R risk, S social, P production, E energy, N naturalness).
+    Plan economics: every action carries a cost (cout_eur) AND a revenue
+    (revenu_eur). You aim for the MOST POSITIVE CUMULATIVE BALANCE possible
+    over the horizon. Revenue-generating operations (clear cuts, productive
+    thinnings) should as much as possible FUND the investments (plantations,
+    pre-thinning, road network, protection). Sequence actions chronologically
+    so that REVENUE COMES BEFORE LARGE EXPENSES when the stand allows it:
+    e.g. schedule a revenue-generating thinning in year 1-3 before
+    committing to an expensive plantation in year 4-6. Avoid years where
+    cumulative spending heavily exceeds cumulative income.
     You favour parsimony and efficiency: only propose actions justified by the
     supplied comments, explicitly anchoring each one in a quoted excerpt of the
     source text. Do not invent missing data; leave fields empty instead.
