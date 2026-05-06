@@ -1,5 +1,91 @@
 # Changelog
 
+## nemetonshiny 0.22.0 (2026-05-06)
+
+#### New feature — “Plan d’actions” tab
+
+A full new tab dedicated to building, visualising and exporting
+multi-year forest action plans, delivered across PRs
+[\#23](https://github.com/pobsteta/nemetonshiny/issues/23)..#34.
+
+- **Lot 1+2 (S1..S6,
+  [\#23](https://github.com/pobsteta/nemetonshiny/issues/23))** —
+  scaffold of the tab, interactive Leaflet map + DT table with two-way
+  sync, per-UGF action rows.
+- **Lot 3 (S7+S8,
+  [\#25](https://github.com/pobsteta/nemetonshiny/issues/25))** —
+  LLM-powered plan generation through a new `planificateur` expert
+  profile, Kanban board view, and an audit modal exposing the prompt,
+  model, latency and token counts for each generation.
+- **Lot 4 (S9..S11,
+  [\#30](https://github.com/pobsteta/nemetonshiny/issues/30))** —
+  cumulative balance sparkline per UGF, Gantt timeline of scheduled
+  actions, and bridges from each row to the Terrain tab (jump to the
+  matching plot).
+- **Lot 5 (S12+S13,
+  [\#32](https://github.com/pobsteta/nemetonshiny/issues/32))** —
+  GeoPackage export of the full plan and per-UGF PDF export through a
+  new Quarto template `inst/quarto/action_plan_template.qmd`.
+- **Bilan column + steered LLM
+  ([\#29](https://github.com/pobsteta/nemetonshiny/issues/29))** —
+  derive a per-UGF balance column (`revenu_eur - cout_eur`, cumulative)
+  and steer the LLM prompt toward solutions that keep the cumulative
+  balance positive over the planning horizon.
+- **`revenu_eur` field
+  ([\#28](https://github.com/pobsteta/nemetonshiny/issues/28))** — new
+  revenue column alongside `cout_eur`, propagated through all views,
+  exports and prompts.
+- **UI polish** — 50/50 layout with native DT filters and frozen UGF
+  label column
+  ([\#26](https://github.com/pobsteta/nemetonshiny/issues/26)), map
+  auto-refit on bbox change with calendar year display
+  ([\#27](https://github.com/pobsteta/nemetonshiny/issues/27)),
+  categorical year legend with UGF label in popup
+  ([\#31](https://github.com/pobsteta/nemetonshiny/issues/31)), Kanban
+  board with sticky DT header
+  ([\#33](https://github.com/pobsteta/nemetonshiny/issues/33)),
+  right-hand bslib action sidebar grouping all toolbar buttons by intent
+  ([\#34](https://github.com/pobsteta/nemetonshiny/issues/34), refs
+  [\#7](https://github.com/pobsteta/nemetonshiny/issues/7)).
+- **Robustness
+  ([\#24](https://github.com/pobsteta/nemetonshiny/issues/24))** — guard
+  map color palettes when the plan is empty so the tab never crashes on
+  a project with no actions.
+
+#### Other improvements
+
+- `feat(project)` — the *Informations projet* card now shows the storage
+  directory of the loaded project, so users can locate the GeoPackage
+  and metadata files without leaving the app.
+- `feat(home)` — the PostGIS sync toast now reports the actual target as
+  `dbname@host:port`, so users immediately know which database their
+  commune cache is going to.
+- `feat(home)` — load the active project into the Monitoring zone picker
+  so users do not have to redraw the AOI when switching tabs.
+- `feat(monitoring)` — the “Enregistrer comme zone” button now exposes a
+  tooltip explaining why it is disabled (no AOI drawn, no project
+  loaded, etc.).
+- `i18n(monitoring)` — clarify FAST naming in the quick-mode labels.
+- `refactor(monitoring)` — rename the health-export “QField” labels to
+  “QGIS” in the UI to match what is actually produced (.qgz project
+  file).
+- `fix(db)` — `service_db.R` now honors `NEMETON_DB_URL` priority over
+  the legacy `POSTGRESQL_ADDON_*` Clever Cloud variables, so local
+  overrides are respected.
+- `fix(sampling)` — surface silent `save_samples()` failures with a
+  user-visible toast instead of swallowing the error.
+
+#### Internal
+
+- New module `R/mod_action_plan.R` (~1816 LOC) and service layer
+  `R/service_action_plan.R` (~686 LOC).
+- New expert profile `inst/experts/planificateur.yml`.
+- New Quarto template `inst/quarto/action_plan_template.qmd`.
+- New tests `test-action_plan_prompts.R`, `test-mod_action_plan.R`,
+  `test-service_action_plan.R` (~500 LOC of testthat).
+- `R/utils_i18n.R` — +263 LOC of new keys (NMT convention) for the Plan
+  d’actions tab in FR/EN.
+
 ## nemetonshiny 0.21.0 (2026-04-30)
 
 #### New feature — Forest health monitoring (E6.c.5, spec 008)

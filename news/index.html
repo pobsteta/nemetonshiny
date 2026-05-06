@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.21.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,60 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.21.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.22.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.22.0" id="nemetonshiny-0220-2026-05-06">nemetonshiny 0.22.0 (2026-05-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0220-2026-05-06"></a></h2>
+<div class="section level4">
+<h4 id="new-feature--plan-dactions-tab-0-22-0">New feature — “Plan d’actions” tab<a class="anchor" aria-label="anchor" href="#new-feature--plan-dactions-tab-0-22-0"></a></h4>
+<p>A full new tab dedicated to building, visualising and exporting multi-year forest action plans, delivered across PRs <a href="https://github.com/pobsteta/nemetonshiny/issues/23" class="external-link">#23</a>..#34.</p>
+<ul><li>
+<strong>Lot 1+2 (S1..S6, <a href="https://github.com/pobsteta/nemetonshiny/issues/23" class="external-link">#23</a>)</strong> — scaffold of the tab, interactive Leaflet map + DT table with two-way sync, per-UGF action rows.</li>
+<li>
+<strong>Lot 3 (S7+S8, <a href="https://github.com/pobsteta/nemetonshiny/issues/25" class="external-link">#25</a>)</strong> — LLM-powered plan generation through a new <code>planificateur</code> expert profile, Kanban board view, and an audit modal exposing the prompt, model, latency and token counts for each generation.</li>
+<li>
+<strong>Lot 4 (S9..S11, <a href="https://github.com/pobsteta/nemetonshiny/issues/30" class="external-link">#30</a>)</strong> — cumulative balance sparkline per UGF, Gantt timeline of scheduled actions, and bridges from each row to the Terrain tab (jump to the matching plot).</li>
+<li>
+<strong>Lot 5 (S12+S13, <a href="https://github.com/pobsteta/nemetonshiny/issues/32" class="external-link">#32</a>)</strong> — GeoPackage export of the full plan and per-UGF PDF export through a new Quarto template <code>inst/quarto/action_plan_template.qmd</code>.</li>
+<li>
+<strong>Bilan column + steered LLM (<a href="https://github.com/pobsteta/nemetonshiny/issues/29" class="external-link">#29</a>)</strong> — derive a per-UGF balance column (<code>revenu_eur - cout_eur</code>, cumulative) and steer the LLM prompt toward solutions that keep the cumulative balance positive over the planning horizon.</li>
+<li>
+<strong><code>revenu_eur</code> field (<a href="https://github.com/pobsteta/nemetonshiny/issues/28" class="external-link">#28</a>)</strong> — new revenue column alongside <code>cout_eur</code>, propagated through all views, exports and prompts.</li>
+<li>
+<strong>UI polish</strong> — 50/50 layout with native DT filters and frozen UGF label column (<a href="https://github.com/pobsteta/nemetonshiny/issues/26" class="external-link">#26</a>), map auto-refit on bbox change with calendar year display (<a href="https://github.com/pobsteta/nemetonshiny/issues/27" class="external-link">#27</a>), categorical year legend with UGF label in popup (<a href="https://github.com/pobsteta/nemetonshiny/issues/31" class="external-link">#31</a>), Kanban board with sticky DT header (<a href="https://github.com/pobsteta/nemetonshiny/issues/33" class="external-link">#33</a>), right-hand bslib action sidebar grouping all toolbar buttons by intent (<a href="https://github.com/pobsteta/nemetonshiny/issues/34" class="external-link">#34</a>, refs <a href="https://github.com/pobsteta/nemetonshiny/issues/7" class="external-link">#7</a>).</li>
+<li>
+<strong>Robustness (<a href="https://github.com/pobsteta/nemetonshiny/issues/24" class="external-link">#24</a>)</strong> — guard map color palettes when the plan is empty so the tab never crashes on a project with no actions.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="other-improvements-0-22-0">Other improvements<a class="anchor" aria-label="anchor" href="#other-improvements-0-22-0"></a></h4>
+<ul><li>
+<code>feat(project)</code> — the <em>Informations projet</em> card now shows the storage directory of the loaded project, so users can locate the GeoPackage and metadata files without leaving the app.</li>
+<li>
+<code>feat(home)</code> — the PostGIS sync toast now reports the actual target as <code>dbname@host:port</code>, so users immediately know which database their commune cache is going to.</li>
+<li>
+<code>feat(home)</code> — load the active project into the Monitoring zone picker so users do not have to redraw the AOI when switching tabs.</li>
+<li>
+<code>feat(monitoring)</code> — the “Enregistrer comme zone” button now exposes a tooltip explaining why it is disabled (no AOI drawn, no project loaded, etc.).</li>
+<li>
+<code>i18n(monitoring)</code> — clarify FAST naming in the quick-mode labels.</li>
+<li>
+<code>refactor(monitoring)</code> — rename the health-export “QField” labels to “QGIS” in the UI to match what is actually produced (.qgz project file).</li>
+<li>
+<code>fix(db)</code> — <code>service_db.R</code> now honors <code>NEMETON_DB_URL</code> priority over the legacy <code>POSTGRESQL_ADDON_*</code> Clever Cloud variables, so local overrides are respected.</li>
+<li>
+<code>fix(sampling)</code> — surface silent <code>save_samples()</code> failures with a user-visible toast instead of swallowing the error.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="internal-0-22-0">Internal<a class="anchor" aria-label="anchor" href="#internal-0-22-0"></a></h4>
+<ul><li>New module <code>R/mod_action_plan.R</code> (~1816 LOC) and service layer <code>R/service_action_plan.R</code> (~686 LOC).</li>
+<li>New expert profile <code>inst/experts/planificateur.yml</code>.</li>
+<li>New Quarto template <code>inst/quarto/action_plan_template.qmd</code>.</li>
+<li>New tests <code>test-action_plan_prompts.R</code>, <code>test-mod_action_plan.R</code>, <code>test-service_action_plan.R</code> (~500 LOC of testthat).</li>
+<li>
+<code>R/utils_i18n.R</code> — +263 LOC of new keys (NMT convention) for the Plan d’actions tab in FR/EN.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.21.0" id="nemetonshiny-0210-2026-04-30">nemetonshiny 0.21.0 (2026-04-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0210-2026-04-30"></a></h2>
 <div class="section level4">
