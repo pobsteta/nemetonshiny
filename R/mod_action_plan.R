@@ -109,16 +109,50 @@ mod_action_plan_ui <- function(id) {
 
         bslib::card(
           bslib::card_header(
-            class = "d-flex justify-content-between align-items-center",
+            class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
             i18n$t("action_plan_table_title"),
             htmltools::div(
-              class = "d-flex gap-2 align-items-center",
+              class = "d-flex gap-2 align-items-center flex-wrap",
               shiny::textOutput(ns("table_count_inline"), inline = TRUE),
               shiny::actionButton(
                 ns("clear_map_selection"),
                 label = i18n$t("action_plan_clear_selection"),
                 icon = shiny::icon("eraser"),
                 class = "btn-sm btn-outline-secondary"
+              ),
+              shiny::actionButton(
+                ns("show_history"),
+                label = i18n$t("action_plan_show_history"),
+                icon = shiny::icon("clock-rotate-left"),
+                class = "btn-sm btn-outline-secondary"
+              ),
+              shiny::selectInput(
+                ns("bulk_status"), label = NULL,
+                choices = stats::setNames(
+                  c("",
+                    "validee", "planifiee", "realisee",
+                    "abandonnee", "proposee"),
+                  c(i18n$t("action_plan_bulk_status_placeholder"),
+                    i18n$t("action_plan_status_validee"),
+                    i18n$t("action_plan_status_planifiee"),
+                    i18n$t("action_plan_status_realisee"),
+                    i18n$t("action_plan_status_abandonnee"),
+                    i18n$t("action_plan_status_proposee"))
+                ),
+                width = "180px",
+                selected = ""
+              ),
+              shiny::actionButton(
+                ns("apply_bulk_status"),
+                label = i18n$t("action_plan_bulk_status_apply"),
+                icon = shiny::icon("forward"),
+                class = "btn-sm btn-outline-primary"
+              ),
+              shiny::actionButton(
+                ns("open_chat"),
+                label = i18n$t("action_plan_open_chat"),
+                icon = shiny::icon("comments"),
+                class = "btn-sm btn-outline-primary"
               ),
               shiny::actionButton(
                 ns("generate_all"),
@@ -643,16 +677,524 @@ mod_action_plan_server <- function(id, app_state) {
       sprintf(i18n$t("action_plan_table_count_fmt"), n)
     })
 
-    # Skeleton handlers for IA / add buttons (real impl in S5/S7)
+    # ============================================================
+    # S7 - IA generation (all UGFs / current selection)
+    # ============================================================
+
+    # Build LLM context from project comments + current ug_ids.
+    plan_llm_context <- shiny::reactive({
+      project <- app_state$current_project
+      if (is.null(project) || is.null(project$id)) return(NULL)
+      cmt <- tryCatch(load_comments(project$id), error = function(e) NULL)
+      list(
+        comments = list(
+          synthesis = as.character(cmt$synthesis %||% ""),
+          families  = as.list(cmt$families %||% list())
+        ),
+        ug_ids = ug_ids(),
+        horizon = (plan_rv()$horizon_annees %||% 20L),
+        language = if (identical(app_state$language, "fr")) "fran\u00e7ais" else "English"
+      )
+    })
+
+    # The IA generation flow opens a modal so the user picks the scope and
+    # confirms before any write happens.
     shiny::observeEvent(input$generate_all, {
       i18n <- get_i18n(app_state$language)
-      shiny::showNotification(i18n$t("action_plan_generate_pending"),
-                              type = "message", duration = 4)
+      project <- app_state$current_project
+      if (is.null(project)) {
+        shiny::showNotification(i18n$t("no_project"), type = "warning")
+        return()
+      }
+      ctx <- plan_llm_context()
+      if (is.null(ctx) || length(ctx$ug_ids) == 0L) {
+        shiny::showNotification(i18n$t("action_plan_no_ug"),
+                                type = "warning")
+        return()
+      }
+      sel_ugs <- selected_ug_rv()
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("action_plan_generate_title"),
+        easyClose = TRUE,
+        size = "m",
+        shiny::p(i18n$t("action_plan_generate_help")),
+        shiny::radioButtons(
+          ns("gen_scope"), label = i18n$t("action_plan_generate_scope"),
+          choices = stats::setNames(
+            c("all", "selected"),
+            c(i18n$t("action_plan_generate_scope_all"),
+              if (length(sel_ugs) > 0L)
+                sprintf(i18n$t("action_plan_generate_scope_sel_fmt"),
+                        length(sel_ugs))
+              else i18n$t("action_plan_generate_scope_sel_none"))
+          ),
+          selected = if (length(sel_ugs) > 0L) "selected" else "all"
+        ),
+        shiny::checkboxInput(
+          ns("gen_overwrite"), label = i18n$t("action_plan_generate_overwrite"),
+          value = FALSE
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n$t("cancel")),
+          shiny::actionButton(ns("gen_run"),
+                              label = i18n$t("action_plan_generate_run"),
+                              icon = shiny::icon("play"),
+                              class = "btn-primary")
+        )
+      ))
     })
+
+    shiny::observeEvent(input$gen_run, {
+      shiny::removeModal()
+      i18n <- get_i18n(app_state$language)
+      project <- app_state$current_project
+      ctx <- plan_llm_context()
+      if (is.null(ctx)) return()
+      sel_ugs <- selected_ug_rv()
+      scope <- input$gen_scope %||% "all"
+      target_ugs <- if (scope == "selected" && length(sel_ugs) > 0L) {
+        sel_ugs
+      } else {
+        ctx$ug_ids
+      }
+
+      # Pre-flight: warn (but don't block) if no comments are available.
+      no_text <- !nzchar(trimws(ctx$comments$synthesis %||% "")) &&
+                 (length(ctx$comments$families) == 0L ||
+                  all(!vapply(ctx$comments$families,
+                              function(x) nzchar(trimws(x %||% "")),
+                              logical(1))))
+      if (no_text) {
+        shiny::showNotification(i18n$t("action_plan_generate_no_comments"),
+                                type = "warning", duration = 8)
+        return()
+      }
+
+      provider <- get_app_config("llm_provider", "anthropic")
+      key_var <- get_llm_api_key_var(provider)
+      if (!is.null(key_var) && nchar(Sys.getenv(key_var)) == 0L) {
+        msg <- gsub("\\{key_var\\}", key_var, i18n$t("ai_no_api_key"))
+        shiny::showNotification(msg, type = "warning", duration = 8)
+        return()
+      }
+
+      notif <- shiny::showNotification(
+        htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
+                       i18n$t("action_plan_generating")),
+        type = "message", duration = NULL
+      )
+
+      # Build prompt: generate per UGF when targeting many, in a single
+      # call when scope = selected (one UGF) or to keep it simple here we
+      # stay one-shot "all UGFs from this list".
+      lang_param <- if (identical(app_state$language, "fr")) "fran\u00e7ais" else "English"
+      prompt <- build_action_plan_prompt(
+        comments       = ctx$comments,
+        ug_ids         = target_ugs,
+        horizon_annees = ctx$horizon,
+        language       = lang_param,
+        scope          = if (length(target_ugs) == 1L) "by_ug" else "all",
+        ug_id          = if (length(target_ugs) == 1L) target_ugs else NULL
+      )
+      system_prompt <- build_system_prompt(lang_param, expert = "planificateur")
+
+      response <- tryCatch({
+        chat <- create_llm_chat(system_prompt)
+        as.character(chat$chat(prompt, echo = FALSE))
+      }, error = function(e) {
+        shiny::removeNotification(notif)
+        shiny::showNotification(
+          paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e))),
+          type = "error", duration = 10
+        )
+        NULL
+      })
+      shiny::removeNotification(notif)
+      if (is.null(response)) return()
+
+      parsed <- parse_action_plan_response(
+        response,
+        ug_ids = target_ugs,
+        horizon_annees = ctx$horizon
+      )
+      if (length(parsed$actions) == 0L) {
+        shiny::showNotification(
+          paste(i18n$t("action_plan_generate_no_actions"),
+                if (length(parsed$errors) > 0L) {
+                  paste0(" (", parsed$errors[1], ")")
+                } else ""),
+          type = "warning", duration = 8
+        )
+        return()
+      }
+
+      cur_plan <- plan_rv()
+      if (isTRUE(input$gen_overwrite)) {
+        # Drop existing actions for the targeted UGFs.
+        cur_plan$actions <- Filter(
+          function(a) !(a$ug_id %in% target_ugs), cur_plan$actions
+        )
+      }
+      new_plan <- tryCatch({
+        bulk_upsert_actions(cur_plan, parsed$actions,
+                            ug_ids = ctx$ug_ids,
+                            user = "llm:planificateur")
+      }, error = function(e) {
+        shiny::showNotification(conditionMessage(e), type = "error",
+                                duration = 8)
+        NULL
+      })
+      if (is.null(new_plan)) return()
+
+      save_action_plan(project$id, new_plan)
+      plan_rv(new_plan)
+
+      shiny::showNotification(
+        sprintf(i18n$t("action_plan_generate_ok_fmt"),
+                length(parsed$actions),
+                length(parsed$errors)),
+        type = "message", duration = 6
+      )
+    })
+
+    # ============================================================
+    # S7 - Q/R chat for plan refinement
+    # ============================================================
+
+    chat_history_rv <- shiny::reactiveVal(list())
+
+    shiny::observeEvent(input$open_chat, {
+      i18n <- get_i18n(app_state$language)
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("action_plan_chat_title"),
+        size = "l",
+        easyClose = TRUE,
+        shiny::uiOutput(ns("chat_history_ui")),
+        shiny::textAreaInput(
+          ns("chat_input"),
+          label = i18n$t("action_plan_chat_input_label"),
+          placeholder = i18n$t("action_plan_chat_placeholder"),
+          rows = 3, width = "100%"
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n$t("close")),
+          shiny::actionButton(
+            ns("chat_clear"),
+            label = i18n$t("action_plan_chat_clear"),
+            icon = shiny::icon("broom"),
+            class = "btn-outline-secondary"
+          ),
+          shiny::actionButton(
+            ns("chat_send"),
+            label = i18n$t("action_plan_chat_send"),
+            icon = shiny::icon("paper-plane"),
+            class = "btn-primary"
+          )
+        )
+      ))
+    })
+
+    output$chat_history_ui <- shiny::renderUI({
+      hist <- chat_history_rv()
+      if (length(hist) == 0L) {
+        i18n <- get_i18n(app_state$language)
+        return(htmltools::div(class = "text-muted small",
+                              i18n$t("action_plan_chat_empty")))
+      }
+      htmltools::tagList(lapply(hist, function(msg) {
+        htmltools::div(
+          class = paste0("p-2 mb-2 rounded ",
+                         if (msg$role == "user") "bg-light" else "bg-success-subtle"),
+          htmltools::tags$strong(msg$role, ": "),
+          htmltools::tags$pre(
+            class = "mb-0",
+            style = "white-space: pre-wrap; font-size: 0.85rem;",
+            msg$text
+          )
+        )
+      }))
+    })
+
+    shiny::observeEvent(input$chat_clear, {
+      chat_history_rv(list())
+    })
+
+    shiny::observeEvent(input$chat_send, {
+      i18n <- get_i18n(app_state$language)
+      q <- trimws(input$chat_input %||% "")
+      if (!nzchar(q)) return()
+      ctx <- plan_llm_context()
+      if (is.null(ctx)) return()
+
+      # Append user message immediately
+      hist <- chat_history_rv()
+      hist <- c(hist, list(list(role = "user", text = q)))
+      chat_history_rv(hist)
+      shiny::updateTextAreaInput(session, "chat_input", value = "")
+
+      provider <- get_app_config("llm_provider", "anthropic")
+      key_var <- get_llm_api_key_var(provider)
+      if (!is.null(key_var) && nchar(Sys.getenv(key_var)) == 0L) {
+        msg <- gsub("\\{key_var\\}", key_var, i18n$t("ai_no_api_key"))
+        shiny::showNotification(msg, type = "warning")
+        return()
+      }
+
+      cur_actions_json <- jsonlite::toJSON(
+        lapply(plan_rv()$actions, function(a) {
+          list(id = a$id, ug_id = a$ug_id, type = a$type,
+               annee_cible = a$annee_cible, statut = a$statut,
+               priorite = a$priorite)
+        }),
+        auto_unbox = TRUE, null = "null"
+      )
+
+      lang_param <- if (identical(app_state$language, "fr")) "fran\u00e7ais" else "English"
+      prompt <- build_action_plan_chat_prompt(
+        question = q,
+        ctx = ctx,
+        plan_summary_json = as.character(cur_actions_json),
+        language = lang_param
+      )
+      system_prompt <- build_system_prompt(lang_param, expert = "planificateur")
+
+      response <- tryCatch({
+        chat <- create_llm_chat(system_prompt)
+        as.character(chat$chat(prompt, echo = FALSE))
+      }, error = function(e) {
+        msg <- paste(i18n$t("ai_error"), ":",
+                     strip_ansi(conditionMessage(e)))
+        shiny::showNotification(msg, type = "error", duration = 8)
+        NULL
+      })
+      if (is.null(response)) return()
+
+      hist <- chat_history_rv()
+      hist <- c(hist, list(list(role = "assistant", text = response)))
+      chat_history_rv(hist)
+
+      # Optional apply: if the response embeds a JSON `actions` block,
+      # try to parse + offer apply.
+      parsed <- parse_action_plan_response(
+        response,
+        ug_ids = ctx$ug_ids,
+        horizon_annees = ctx$horizon
+      )
+      if (length(parsed$actions) > 0L) {
+        shiny::showModal(shiny::modalDialog(
+          title = i18n$t("action_plan_chat_apply_title"),
+          size = "m", easyClose = TRUE,
+          shiny::p(sprintf(i18n$t("action_plan_chat_apply_fmt"),
+                           length(parsed$actions))),
+          footer = htmltools::tagList(
+            shiny::modalButton(i18n$t("cancel")),
+            shiny::actionButton(ns("chat_apply"),
+                                label = i18n$t("action_plan_chat_apply_btn"),
+                                icon = shiny::icon("check"),
+                                class = "btn-primary")
+          )
+        ))
+        # Stash for the apply observer
+        rv_state$pending_chat_actions <- parsed$actions
+      }
+    })
+
+    shiny::observeEvent(input$chat_apply, {
+      shiny::removeModal()
+      acts <- rv_state$pending_chat_actions
+      if (is.null(acts) || length(acts) == 0L) return()
+      i18n <- get_i18n(app_state$language)
+      project <- app_state$current_project
+      cur_plan <- plan_rv()
+      new_plan <- tryCatch(
+        bulk_upsert_actions(cur_plan, acts, ug_ids = ug_ids(),
+                            user = "llm:chat"),
+        error = function(e) {
+          shiny::showNotification(conditionMessage(e), type = "error")
+          NULL
+        }
+      )
+      if (is.null(new_plan)) return()
+      save_action_plan(project$id, new_plan)
+      plan_rv(new_plan)
+      rv_state$pending_chat_actions <- NULL
+      shiny::showNotification(
+        sprintf(i18n$t("action_plan_chat_applied_fmt"), length(acts)),
+        type = "message", duration = 4
+      )
+    })
+
+    # ============================================================
+    # S8 - Kanban transitions (bulk) + history modal
+    # ============================================================
+
+    shiny::observeEvent(input$apply_bulk_status, {
+      i18n <- get_i18n(app_state$language)
+      target <- input$bulk_status %||% ""
+      sel_rows <- input$action_table_rows_selected
+      df <- actions_df()
+      if (!nzchar(target)) {
+        shiny::showNotification(i18n$t("action_plan_bulk_status_pick"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      if (length(sel_rows) == 0L || nrow(df) == 0L) {
+        shiny::showNotification(i18n$t("action_plan_no_selection"),
+                                type = "warning", duration = 4)
+        return()
+      }
+
+      cur_plan <- plan_rv()
+      ids <- df$id[sel_rows]
+      ids <- ids[!is.na(ids)]
+      n_ok <- 0L
+      n_skip <- 0L
+      errors <- character()
+      for (aid in ids) {
+        idx <- find_action_index(cur_plan, aid)
+        if (is.na(idx)) { n_skip <- n_skip + 1L; next }
+        from <- cur_plan$actions[[idx]]$statut %||% "proposee"
+        if (!is_valid_status_transition(from, target)) {
+          errors <- c(errors, sprintf("%s: %s -> %s", aid, from, target))
+          n_skip <- n_skip + 1L
+          next
+        }
+        ok <- TRUE
+        cur_plan <- tryCatch(
+          update_action_in_plan(cur_plan, aid,
+                                list(statut = target),
+                                ug_ids = ug_ids(),
+                                user = Sys.info()[["user"]] %||% "user"),
+          error = function(e) {
+            errors <<- c(errors, conditionMessage(e))
+            ok <<- FALSE
+            cur_plan
+          }
+        )
+        if (ok) n_ok <- n_ok + 1L else n_skip <- n_skip + 1L
+      }
+
+      save_action_plan(app_state$current_project$id, cur_plan)
+      plan_rv(cur_plan)
+      shiny::showNotification(
+        sprintf(i18n$t("action_plan_bulk_status_ok_fmt"), n_ok, n_skip),
+        type = if (n_ok > 0L) "message" else "warning",
+        duration = 6
+      )
+      if (length(errors) > 0L) {
+        cli::cli_inform("Bulk status errors: {paste(errors, collapse = ' | ')}")
+      }
+    })
+
+    shiny::observeEvent(input$show_history, {
+      i18n <- get_i18n(app_state$language)
+      sel_rows <- input$action_table_rows_selected
+      df <- actions_df()
+      if (length(sel_rows) != 1L || nrow(df) == 0L) {
+        shiny::showNotification(i18n$t("action_plan_history_pick_one"),
+                                type = "warning", duration = 4)
+        return()
+      }
+      action_id <- df$id[sel_rows]
+      audit <- get_action_audit(plan_rv(), action_id)
+      body <- if (length(audit) == 0L) {
+        shiny::p(class = "text-muted",
+                 i18n$t("action_plan_history_empty"))
+      } else {
+        adf <- audit_to_dataframe(audit)
+        # Compact HTML table -- audits are typically small.
+        rows <- lapply(seq_len(nrow(adf)), function(i) {
+          htmltools::tags$tr(
+            htmltools::tags$td(adf$ts[i]),
+            htmltools::tags$td(adf$user[i]),
+            htmltools::tags$td(adf$op[i]),
+            htmltools::tags$td(adf$champ[i]),
+            htmltools::tags$td(adf$ancien[i]),
+            htmltools::tags$td(adf$nouveau[i])
+          )
+        })
+        htmltools::tags$table(
+          class = "table table-sm table-striped",
+          htmltools::tags$thead(htmltools::tags$tr(
+            htmltools::tags$th("ts"),
+            htmltools::tags$th("user"),
+            htmltools::tags$th("op"),
+            htmltools::tags$th("champ"),
+            htmltools::tags$th("ancien"),
+            htmltools::tags$th("nouveau")
+          )),
+          htmltools::tags$tbody(rows)
+        )
+      }
+      shiny::showModal(shiny::modalDialog(
+        title = sprintf(i18n$t("action_plan_history_title_fmt"), action_id),
+        easyClose = TRUE, size = "l",
+        body,
+        footer = shiny::modalButton(i18n$t("close"))
+      ))
+    })
+
+    # Manual add: simple modal
     shiny::observeEvent(input$add_action, {
       i18n <- get_i18n(app_state$language)
-      shiny::showNotification(i18n$t("action_plan_add_pending"),
-                              type = "message", duration = 4)
+      project <- app_state$current_project
+      if (is.null(project)) return()
+      sel_ugs <- selected_ug_rv()
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("action_plan_add_title"), size = "m",
+        easyClose = TRUE,
+        shiny::selectInput(ns("add_ug"), i18n$t("action_plan_ug"),
+                           choices = ug_ids(),
+                           selected = if (length(sel_ugs) == 1L) sel_ugs[1] else NULL),
+        shiny::selectInput(ns("add_type"), i18n$t("action_plan_type"),
+                           choices = ACTION_PLAN_TYPES,
+                           selected = "observation"),
+        shiny::numericInput(ns("add_year"), i18n$t("action_plan_year"),
+                            value = 1L, min = 1L,
+                            max = (plan_rv()$horizon_annees %||% 20L)),
+        shiny::selectInput(ns("add_priority"),
+                           i18n$t("action_plan_color_priority"),
+                           choices = ACTION_PLAN_PRIORITES,
+                           selected = "moyenne"),
+        shiny::textInput(ns("add_comment"),
+                         i18n$t("action_plan_comment"), value = ""),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n$t("cancel")),
+          shiny::actionButton(ns("add_run"),
+                              label = i18n$t("action_plan_add_run"),
+                              icon = shiny::icon("plus"),
+                              class = "btn-primary")
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$add_run, {
+      shiny::removeModal()
+      i18n <- get_i18n(app_state$language)
+      action <- list(
+        ug_id = input$add_ug,
+        type = input$add_type,
+        annee_cible = as.integer(input$add_year),
+        priorite = input$add_priority,
+        statut = "proposee",
+        commentaire = if (nzchar(input$add_comment %||% ""))
+                        input$add_comment else NULL
+      )
+      cur_plan <- plan_rv()
+      new_plan <- tryCatch(
+        add_action_to_plan(cur_plan, action,
+                           ug_ids = ug_ids(),
+                           user = Sys.info()[["user"]] %||% "user"),
+        error = function(e) {
+          shiny::showNotification(conditionMessage(e), type = "error")
+          NULL
+        }
+      )
+      if (is.null(new_plan)) return()
+      save_action_plan(app_state$current_project$id, new_plan)
+      plan_rv(new_plan)
+      shiny::showNotification(i18n$t("action_plan_add_ok"),
+                              type = "message", duration = 3)
     })
 
     invisible(NULL)

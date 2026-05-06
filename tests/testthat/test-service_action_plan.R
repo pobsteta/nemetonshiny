@@ -241,6 +241,26 @@ test_that("save_action_plan + load_action_plan round-trip preserves the plan", {
 
 # ---- DataFrame export -------------------------------------------------
 
+test_that("audit_to_dataframe collapses entries to a tidy data.frame", {
+  plan <- nemetonshiny:::init_empty_action_plan("p")
+  plan <- nemetonshiny:::add_action_to_plan(plan, make_action(),
+                                            ug_ids = "ug_1", user = "alice")
+  aid <- plan$actions[[1]]$id
+  plan <- nemetonshiny:::update_action_in_plan(plan, aid,
+                                               list(priorite = "haute"),
+                                               ug_ids = "ug_1", user = "bob")
+  audit <- nemetonshiny:::get_action_audit(plan, aid)
+  df <- nemetonshiny:::audit_to_dataframe(audit)
+  expect_s3_class(df, "data.frame")
+  expect_equal(nrow(df), 2L)
+  expect_true(all(c("ts", "user", "op", "champ",
+                    "ancien", "nouveau") %in% names(df)))
+  upd <- df[df$op == "update", , drop = FALSE]
+  expect_equal(upd$champ[1], "priorite")
+  expect_equal(upd$ancien[1], "moyenne")
+  expect_equal(upd$nouveau[1], "haute")
+})
+
 test_that("actions_to_dataframe returns one row per action with stable cols", {
   plan <- nemetonshiny:::init_empty_action_plan("p")
   plan <- nemetonshiny:::add_action_to_plan(plan,
