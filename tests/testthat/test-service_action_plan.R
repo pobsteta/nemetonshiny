@@ -241,6 +241,41 @@ test_that("save_action_plan + load_action_plan round-trip preserves the plan", {
 
 # ---- DataFrame export -------------------------------------------------
 
+test_that("export_action_plan_gpkg writes actions + ugf layers", {
+  skip_if_not_installed("sf")
+  # Tiny demo geometry: two square UGFs.
+  ugs <- sf::st_sf(
+    ug_id = c("ug_1", "ug_2"),
+    label = c("Pierre", "Foret"),
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(rbind(c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0)))),
+      sf::st_polygon(list(rbind(c(2, 0), c(3, 0), c(3, 1), c(2, 1), c(2, 0)))),
+      crs = 4326
+    )
+  )
+  plan <- nemetonshiny:::init_empty_action_plan("p")
+  plan <- nemetonshiny:::add_action_to_plan(plan,
+            make_action(ug_id = "ug_1", type = "eclaircie",
+                        annee_cible = 3L,
+                        objectifs_lies = c("C")),
+            ug_ids = c("ug_1", "ug_2"))
+  plan <- nemetonshiny:::add_action_to_plan(plan,
+            make_action(ug_id = "ug_2", type = "plantation",
+                        annee_cible = 4L),
+            ug_ids = c("ug_1", "ug_2"))
+
+  tmp <- tempfile(fileext = ".gpkg")
+  on.exit(unlink(tmp), add = TRUE)
+  ok <- nemetonshiny:::export_action_plan_gpkg(plan, ugs, tmp)
+  expect_true(ok)
+  expect_true(file.exists(tmp))
+  layers <- sf::st_layers(tmp)$name
+  expect_true(all(c("actions", "ugf") %in% layers))
+  acts <- sf::st_read(tmp, layer = "actions", quiet = TRUE)
+  expect_equal(nrow(acts), 2L)
+  expect_true(all(c("ug_id", "type", "annee_cible") %in% names(acts)))
+})
+
 test_that("audit_to_dataframe collapses entries to a tidy data.frame", {
   plan <- nemetonshiny:::init_empty_action_plan("p")
   plan <- nemetonshiny:::add_action_to_plan(plan, make_action(),

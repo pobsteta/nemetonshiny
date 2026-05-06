@@ -1,0 +1,100 @@
+---
+title: "Plan d'actions Nemeton"
+subtitle: "Fiche par UGF"
+lang: fr
+format:
+  pdf:
+    documentclass: article
+    geometry:
+      - margin=2cm
+    toc: false
+    number-sections: false
+    fig-pos: H
+    keep-tex: false
+    pdf-engine: xelatex
+    mainfont: "DejaVu Sans"
+params:
+  data_file: ""
+  language: "fr"
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+data <- readRDS(params$data_file)
+lang <- params$language
+
+f_eur <- function(x) {
+  if (is.na(x)) return("--")
+  formatC(round(x), format = "d", big.mark = " ")
+}
+```
+
+# `r data$project_name`
+
+**`r if (lang == "fr") "Date d'edition" else "Issued"` :** `r format(Sys.Date())`
+**`r if (lang == "fr") "Horizon" else "Horizon"` :** `r data$horizon` ans
+**`r if (lang == "fr") "Nombre d'actions" else "Action count"` :** `r data$n_actions` (`r data$n_ugfs` UGF)
+
+```{r totals}
+totals <- data$totals
+cat(sprintf(
+  if (lang == "fr") {
+    "**Cout total :** %s EUR  \n**Revenu total :** %s EUR  \n**Bilan :** %s EUR\n"
+  } else {
+    "**Total cost:** %s EUR  \n**Total revenue:** %s EUR  \n**Balance:** %s EUR\n"
+  },
+  f_eur(totals$cout), f_eur(totals$revenu), f_eur(totals$bilan)
+))
+```
+
+\newpage
+
+```{r per-ug, results = "asis"}
+for (ug in data$ugfs) {
+  cat("# ", ug$label, " (", ug$ug_id, ")\n\n", sep = "")
+  cat("**", if (lang == "fr") "Surface" else "Area", " :** ",
+      formatC(round(ug$surface_ha, 2), format = "f", digits = 2),
+      " ha\n\n", sep = "")
+
+  if (length(ug$actions) == 0L) {
+    cat(if (lang == "fr") "_Aucune action planifiee._\n\n"
+        else                "_No action planned._\n\n")
+    next
+  }
+
+  # Per-UGF totals
+  cat("**", if (lang == "fr") "Cout" else "Cost", " :** ", f_eur(ug$cout),
+      " EUR  ", "\n", sep = "")
+  cat("**", if (lang == "fr") "Revenu" else "Revenue", " :** ", f_eur(ug$revenu),
+      " EUR  ", "\n", sep = "")
+  cat("**", if (lang == "fr") "Bilan" else "Balance", " :** ", f_eur(ug$bilan),
+      " EUR\n\n", sep = "")
+
+  # Action table
+  hdr <- if (lang == "fr") {
+    c("Annee", "Type", "Priorite", "Statut", "Cout", "Revenu", "Bilan",
+      "Objectifs")
+  } else {
+    c("Year", "Type", "Priority", "Status", "Cost", "Revenue", "Balance",
+      "Objectives")
+  }
+  cat("|", paste(hdr, collapse = "|"), "|\n",
+      "|", paste(rep("---", length(hdr)), collapse = "|"), "|\n",
+      sep = "")
+  for (a in ug$actions) {
+    cat("| ", a$annee_realisation,
+        " | ", a$type,
+        " | ", a$priorite,
+        " | ", a$statut,
+        " | ", f_eur(a$cout_eur),
+        " | ", f_eur(a$revenu_eur),
+        " | ", f_eur(a$bilan_eur),
+        " | ", paste(a$objectifs_lies, collapse = ", "),
+        " |\n", sep = "")
+  }
+  cat("\n\n\\newpage\n\n")
+}
+```

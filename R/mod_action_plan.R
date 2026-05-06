@@ -97,6 +97,18 @@ mod_action_plan_ui <- function(id) {
       label = i18n$t("action_plan_export_terrain"),
       icon = shiny::icon("crosshairs"),
       class = "btn-sm btn-outline-success"
+    ),
+    shiny::downloadButton(
+      ns("download_gpkg"),
+      label = i18n$t("action_plan_download_gpkg"),
+      icon = shiny::icon("database"),
+      class = "btn-sm btn-outline-success"
+    ),
+    shiny::downloadButton(
+      ns("download_pdf"),
+      label = i18n$t("action_plan_download_pdf"),
+      icon = shiny::icon("file-pdf"),
+      class = "btn-sm btn-outline-success"
     )
   )
 
@@ -955,6 +967,91 @@ mod_action_plan_server <- function(id, app_state) {
                                 type = "error", duration = 6)
       }
     })
+
+    # ============================================================
+    # S12 - GeoPackage export (respects DT visible-rows filtering)
+    # ============================================================
+
+    output$download_gpkg <- shiny::downloadHandler(
+      filename = function() {
+        project <- app_state$current_project
+        base <- if (!is.null(project$metadata$name)) {
+          gsub("[^a-zA-Z0-9_-]", "_", project$metadata$name)
+        } else {
+          "nemeton_action_plan"
+        }
+        paste0(base, "_action_plan.gpkg")
+      },
+      content = function(file) {
+        i18n <- get_i18n(app_state$language)
+        plan <- plan_rv()
+        sf_ug <- ug_sf_4326()
+        if (is.null(plan) || is.null(sf_ug)) {
+          writeLines("No data available", file)
+          return()
+        }
+        # Honour the table's visible-rows filter if any.
+        visible_ids <- actions_df()$id
+        ok <- export_action_plan_gpkg(plan, sf_ug, file,
+                                      filter_action_ids = visible_ids)
+        if (!isTRUE(ok)) {
+          shiny::showNotification(i18n$t("action_plan_export_terrain_failed"),
+                                  type = "error", duration = 6)
+        }
+      }
+    )
+
+    # ============================================================
+    # S13 - Per-UGF PDF report
+    # ============================================================
+
+    output$download_pdf <- shiny::downloadHandler(
+      filename = function() {
+        project <- app_state$current_project
+        base <- if (!is.null(project$metadata$name)) {
+          gsub("[^a-zA-Z0-9_-]", "_", project$metadata$name)
+        } else {
+          "nemeton_action_plan"
+        }
+        paste0(base, "_action_plan.pdf")
+      },
+      content = function(file) {
+        i18n <- get_i18n(app_state$language)
+        plan <- plan_rv()
+        project <- app_state$current_project
+        sf_ug <- ug_sf_4326()
+        if (is.null(plan) || is.null(project) || is.null(sf_ug)) {
+          writeLines("No data available", file)
+          return()
+        }
+        notif <- shiny::showNotification(
+          htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
+                         i18n$t("action_plan_pdf_generating")),
+          type = "message", duration = NULL
+        )
+        on.exit(shiny::removeNotification(notif), add = TRUE)
+        visible <- actions_df()
+        result <- tryCatch(
+          generate_action_plan_pdf(
+            project = project, plan = plan, ug_sf = sf_ug,
+            output_file = file,
+            language = app_state$language %||% "fr",
+            filter_action_ids = visible$id
+          ),
+          error = function(e) {
+            shiny::showNotification(
+              paste(i18n$t("action_plan_pdf_failed"), ":",
+                    conditionMessage(e)),
+              type = "error", duration = 8
+            )
+            NULL
+          }
+        )
+        if (is.null(result)) {
+          writeLines("PDF generation failed", file)
+        }
+      }
+    )
 
     # ============================================================
     # S11 - When mod_field_ingest reports a successful import, flip
