@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,35 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.22.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.22.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.22.2" id="nemetonshiny-0222-2026-05-06">nemetonshiny 0.22.2 (2026-05-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0222-2026-05-06"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--table--kanban-polish-0-22-2">Plan d’actions — table &amp; Kanban polish<a class="anchor" aria-label="anchor" href="#plan-dactions--table--kanban-polish-0-22-2"></a></h4>
+<ul><li>
+<code>refactor(action_plan)</code> — DT table trimmed and stabilised. Removed columns <em>Type libre</em>, <em>Objectifs</em>, <em>RDI</em>, and <em>Source</em> — they were rarely used, made horizontal scroll worse, and the underlying fields are still editable through the row-level form. Per-column filter row dropped (<code>filter = "top"</code> → <code>filter = "none"</code>); the global search box is the single filter exposed. Rows now have a uniform height: the datatable carries <code>class = "compact stripe hover nowrap"</code> and a scoped <code>.dt-truncate</code> rule (<code>max-width: 220px; overflow: hidden; text-overflow: ellipsis</code>) keeps long commentaire / labels on a single line. The two pinned left columns (UGF + Année) are unchanged.</li>
+<li>
+<code>feat(action_plan)</code> — Kanban board layout reorganised. The four active workflow stages (<em>Proposée</em>, <em>Validée</em>, <em>Planifiée</em>, <em>Réalisée</em>) sit side by side as a 4-column grid; <em>Abandonnée</em> is rendered full-width below as a separate, less prominent archive lane. Empty columns now reserve a 60 px drop zone so cards can be dragged into them.</li>
+<li>
+<code>feat(action_plan)</code> — <strong>Drag-and-drop on the Kanban board</strong>. Cards can be moved between columns by dragging. SortableJS 1.15.6 is vendored under <code>inst/app/www/js/Sortable-1.15.6.min.js</code> (MIT, ~45 KB), wired up by a small init script (<code>action_plan_kanban.js</code>) that re-binds on every renderUI tick to avoid stale instances. On drop, the JS pushes <code>input$kanban_drop = list(action_id, target_status, source_status, nonce)</code> to the server, where a new observer validates the transition through the existing <code>is_valid_status_transition()</code> rules:
+<ul><li>
+<strong>Allowed transition</strong> → <code>update_action_in_plan()</code> + <code>save_action_plan()</code>, then <code>plan_rv()</code> is bumped, which triggers a renderUI re-run that confirms the move.</li>
+<li>
+<strong>Refused transition</strong> (e.g. trying to drag a <em>Réalisée</em> card back to <em>Proposée</em>) → a warning toast surfaces with the offending pair, and <code>kanban_render_token</code> is bumped to re-render the board, which puts the card back where the data says it belongs. The previous per-card <em>Déplacer</em> dropdown is preserved — both paths share the same validator + persistence code.</li>
+</ul></li>
+</ul></div>
+<div class="section level4">
+<h4 id="i18n-0-22-2">i18n<a class="anchor" aria-label="anchor" href="#i18n-0-22-2"></a></h4>
+<ul><li>New key <code>action_plan_kanban_drop_invalid_fmt</code> (FR/EN) for the refused-transition toast.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="tests-0-22-2">Tests<a class="anchor" aria-label="anchor" href="#tests-0-22-2"></a></h4>
+<ul><li>
+<code>tests/testthat/test-mod_action_plan.R</code> — three new test_thats: vendored asset existence (<code>Sortable-1.15.6.min.js</code> + <code>action_plan_kanban.js</code>), validator coverage for legal vs refused drag-drop transitions, and presence of the new i18n key in both locales.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.22.1" id="nemetonshiny-0221-2026-05-06">nemetonshiny 0.22.1 (2026-05-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0221-2026-05-06"></a></h2>
 <div class="section level4">
