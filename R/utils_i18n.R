@@ -95,6 +95,18 @@ TRANSLATIONS <- list(
     en = "Clear selection"
   ),
 
+  # ----- Action sidebar sections (right-hand toolbar) ---------------
+  action_plan_actions_title = list(fr = "Actions", en = "Actions"),
+  action_plan_section_selection = list(
+    fr = "Sélection", en = "Selection"
+  ),
+  action_plan_section_kanban = list(
+    fr = "Statut Kanban", en = "Kanban status"
+  ),
+  action_plan_section_ia = list(fr = "IA", en = "AI"),
+  action_plan_section_manual = list(fr = "Saisie manuelle", en = "Manual entry"),
+  action_plan_section_exports = list(fr = "Exports", en = "Exports"),
+
   # ----- Localised table column headers -----------------------------
   action_plan_col_id          = list(fr = "id",            en = "id"),
   action_plan_col_ug_id       = list(fr = "ug_id",         en = "ug_id"),
