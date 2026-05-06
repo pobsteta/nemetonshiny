@@ -36,22 +36,35 @@ mod_action_plan_ui <- function(id) {
   lang <- opts$language %||% "fr"
   i18n <- get_i18n(lang)
 
-  # Toolbar shared by the Map+Table view (placed in the table card header).
-  table_toolbar <- htmltools::div(
-    class = "d-flex gap-2 align-items-center flex-wrap",
-    shiny::textOutput(ns("table_count_inline"), inline = TRUE),
+  # Right-side action sidebar: groups every button / control that used
+  # to live in the table card header. Same UX pattern as the left
+  # sidebars in `mod_monitoring` / `mod_sampling`, just on the right.
+  action_sidebar <- bslib::sidebar(
+    id = ns("action_sidebar"),
+    title = i18n$t("action_plan_actions_title"),
+    position = "right",
+    width = 300,
+    open = TRUE,
+    bg = "#f8f9fa",
+
+    # ---- Selection -------------------------------------------------
+    htmltools::tags$h6(class = "mt-1",
+                       i18n$t("action_plan_section_selection")),
     shiny::actionButton(
       ns("clear_map_selection"),
       label = i18n$t("action_plan_clear_selection"),
       icon = shiny::icon("eraser"),
-      class = "btn-sm btn-outline-secondary"
+      class = "btn-sm btn-outline-secondary w-100 mb-2"
     ),
     shiny::actionButton(
       ns("show_history"),
       label = i18n$t("action_plan_show_history"),
       icon = shiny::icon("clock-rotate-left"),
-      class = "btn-sm btn-outline-secondary"
+      class = "btn-sm btn-outline-secondary w-100 mb-3"
     ),
+
+    # ---- Statut Kanban en lot --------------------------------------
+    htmltools::tags$h6(i18n$t("action_plan_section_kanban")),
     shiny::selectInput(
       ns("bulk_status"), label = NULL,
       choices = stats::setNames(
@@ -65,120 +78,134 @@ mod_action_plan_ui <- function(id) {
           i18n$t("action_plan_status_abandonnee"),
           i18n$t("action_plan_status_proposee"))
       ),
-      width = "180px",
+      width = "100%",
       selected = ""
     ),
     shiny::actionButton(
       ns("apply_bulk_status"),
       label = i18n$t("action_plan_bulk_status_apply"),
       icon = shiny::icon("forward"),
-      class = "btn-sm btn-outline-primary"
+      class = "btn-sm btn-outline-primary w-100 mb-3"
+    ),
+
+    # ---- IA --------------------------------------------------------
+    htmltools::tags$h6(i18n$t("action_plan_section_ia")),
+    shiny::actionButton(
+      ns("generate_all"),
+      label = i18n$t("action_plan_generate_all"),
+      icon = shiny::icon("wand-magic-sparkles"),
+      class = "btn-sm btn-primary w-100 mb-2"
     ),
     shiny::actionButton(
       ns("open_chat"),
       label = i18n$t("action_plan_open_chat"),
       icon = shiny::icon("comments"),
-      class = "btn-sm btn-outline-primary"
+      class = "btn-sm btn-outline-primary w-100 mb-3"
     ),
-    shiny::actionButton(
-      ns("generate_all"),
-      label = i18n$t("action_plan_generate_all"),
-      icon = shiny::icon("wand-magic-sparkles"),
-      class = "btn-sm btn-primary"
-    ),
+
+    # ---- Manuel ----------------------------------------------------
+    htmltools::tags$h6(i18n$t("action_plan_section_manual")),
     shiny::actionButton(
       ns("add_action"),
       label = i18n$t("action_plan_add"),
       icon = shiny::icon("plus"),
-      class = "btn-sm btn-outline-primary"
+      class = "btn-sm btn-outline-primary w-100 mb-3"
     ),
+
+    # ---- Exports ---------------------------------------------------
+    htmltools::tags$h6(i18n$t("action_plan_section_exports")),
     shiny::actionButton(
       ns("export_terrain"),
       label = i18n$t("action_plan_export_terrain"),
       icon = shiny::icon("crosshairs"),
-      class = "btn-sm btn-outline-success"
+      class = "btn-sm btn-outline-success w-100 mb-2"
     ),
     shiny::downloadButton(
       ns("download_gpkg"),
       label = i18n$t("action_plan_download_gpkg"),
       icon = shiny::icon("database"),
-      class = "btn-sm btn-outline-success"
+      class = "btn-sm btn-outline-success w-100 mb-2"
     ),
     shiny::downloadButton(
       ns("download_pdf"),
       label = i18n$t("action_plan_download_pdf"),
       icon = shiny::icon("file-pdf"),
-      class = "btn-sm btn-outline-success"
+      class = "btn-sm btn-outline-success w-100"
     )
   )
 
-  bslib::navset_card_underline(
-    id = ns("inner_nav"),
-    full_screen = TRUE,
+  bslib::layout_sidebar(
+    fillable = TRUE,
+    sidebar = action_sidebar,
 
-    bslib::nav_panel(
-      title = i18n$t("action_plan_view_map_table"),
-      value = "map_table",
-      icon = bsicons::bs_icon("map"),
+    bslib::navset_card_underline(
+      id = ns("inner_nav"),
+      full_screen = TRUE,
 
-      # Carte (gauche) + tableau (droite), 50/50 horizontal sur toute la
-      # hauteur disponible.
-      bslib::layout_columns(
-        col_widths = c(6, 6),
-        fillable = TRUE,
+      bslib::nav_panel(
+        title = i18n$t("action_plan_view_map_table"),
+        value = "map_table",
+        icon = bsicons::bs_icon("map"),
 
-        bslib::card(
-          full_screen = TRUE,
-          bslib::card_header(
-            class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
-            i18n$t("action_plan_map_title"),
-            shiny::radioButtons(
-              ns("map_color_by"),
-              label = NULL,
-              choices = stats::setNames(
-                c("annee", "type", "priorite"),
-                c(i18n$t("action_plan_color_year"),
-                  i18n$t("action_plan_color_type"),
-                  i18n$t("action_plan_color_priority"))
-              ),
-              selected = "annee",
-              inline = TRUE
+        # Carte (gauche) + tableau (droite), 50/50 horizontal sur toute la
+        # hauteur disponible.
+        bslib::layout_columns(
+          col_widths = c(6, 6),
+          fillable = TRUE,
+
+          bslib::card(
+            full_screen = TRUE,
+            bslib::card_header(
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
+              i18n$t("action_plan_map_title"),
+              shiny::radioButtons(
+                ns("map_color_by"),
+                label = NULL,
+                choices = stats::setNames(
+                  c("annee", "type", "priorite"),
+                  c(i18n$t("action_plan_color_year"),
+                    i18n$t("action_plan_color_type"),
+                    i18n$t("action_plan_color_priority"))
+                ),
+                selected = "annee",
+                inline = TRUE
+              )
+            ),
+            bslib::card_body(
+              class = "p-0",
+              leaflet::leafletOutput(ns("map"), height = "100%")
             )
           ),
-          bslib::card_body(
-            class = "p-0",
-            leaflet::leafletOutput(ns("map"), height = "100%")
-          )
-        ),
 
-        bslib::card(
-          full_screen = TRUE,
-          bslib::card_header(
-            class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
-            i18n$t("action_plan_table_title"),
-            table_toolbar
-          ),
-          bslib::card_body(
-            # Cumulative balance sparkline + totals strip on top
-            htmltools::div(
-              class = "border-bottom mb-2 pb-2",
-              shiny::uiOutput(ns("balance_summary"))
+          bslib::card(
+            full_screen = TRUE,
+            bslib::card_header(
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
+              i18n$t("action_plan_table_title"),
+              shiny::textOutput(ns("table_count_inline"), inline = TRUE)
             ),
-            DT::dataTableOutput(ns("action_table"))
+            bslib::card_body(
+              # Cumulative balance sparkline + totals strip on top
+              htmltools::div(
+                class = "border-bottom mb-2 pb-2",
+                shiny::uiOutput(ns("balance_summary"))
+              ),
+              DT::dataTableOutput(ns("action_table"))
+            )
           )
         )
-      )
-    ),
+      ),
 
-    bslib::nav_panel(
-      title = i18n$t("action_plan_view_kanban"),
-      value = "kanban",
-      icon = bsicons::bs_icon("kanban"),
-      bslib::card(
-        full_screen = TRUE,
-        bslib::card_header(i18n$t("action_plan_view_kanban")),
-        bslib::card_body(
-          shiny::uiOutput(ns("kanban_board"))
+      bslib::nav_panel(
+        title = i18n$t("action_plan_view_kanban"),
+        value = "kanban",
+        icon = bsicons::bs_icon("kanban"),
+        bslib::card(
+          full_screen = TRUE,
+          bslib::card_header(i18n$t("action_plan_view_kanban")),
+          bslib::card_body(
+            shiny::uiOutput(ns("kanban_board"))
+          )
         )
       )
     )
