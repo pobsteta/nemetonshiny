@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.22.1" id="nemetonshiny-0221-2026-05-06">nemetonshiny 0.22.1 (2026-05-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0221-2026-05-06"></a></h2>
+<div class="section level4">
+<h4 id="bug-fixes-0-22-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-22-1"></a></h4>
+<ul><li>
+<code>fix(action_plan)</code> — empty action plans no longer crash the reactive chain. <code>actions_df_all()</code> was assigning a length-1 <code>NA_character_</code> to <code>df$ug_label</code> on a 0-row data.frame, which R rejects with <em>“replacement has 1 row, data has 0”</em>. The 0-row branch now returns early with explicit empty columns. Surfaced on a fresh project with no actions yet (regression introduced in v0.22.0 with the new Plan d’actions tab).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="improvements-0-22-1">Improvements<a class="anchor" aria-label="anchor" href="#improvements-0-22-1"></a></h4>
+<ul><li>
+<code>feat(db)</code> — app schema (<code>nemeton.projects</code> and friends) is now initialized automatically on first connection through <code>get_db_connection()</code>. The existing idempotent <code><a href="../reference/db_init_schema.html">db_init_schema()</a></code> used to be exported but never invoked, so a freshly provisioned database surfaced <em>“relation "nemeton.projects" does not exist”</em> on the first project save. Memoized once per R session via <code>.nemeton_env</code>.</li>
+<li>
+<code>feat(monitoring)</code> — monitoring-DB migrations (<code>monitoring_zone</code>, <code>alert</code>, <code>obs_pixel</code>, …) are now applied automatically on first connection through <code>get_monitoring_db_connection()</code> by calling <code><a href="https://pobsteta.github.io/nemeton/reference/db_migrate.html" class="external-link">nemeton::db_migrate()</a></code>. The Monitoring tab no longer warns <em>“relation "monitoring_zone" does not exist”</em> on a fresh TimescaleDB. Memoized once per R session via <code>.nemeton_env</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.22.0" id="nemetonshiny-0220-2026-05-06">nemetonshiny 0.22.0 (2026-05-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0220-2026-05-06"></a></h2>
 <div class="section level4">

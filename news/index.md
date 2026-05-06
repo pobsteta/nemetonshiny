@@ -1,5 +1,35 @@
 # Changelog
 
+## nemetonshiny 0.22.1 (2026-05-06)
+
+#### Bug fixes
+
+- `fix(action_plan)` — empty action plans no longer crash the reactive
+  chain. `actions_df_all()` was assigning a length-1 `NA_character_` to
+  `df$ug_label` on a 0-row data.frame, which R rejects with
+  *“replacement has 1 row, data has 0”*. The 0-row branch now returns
+  early with explicit empty columns. Surfaced on a fresh project with no
+  actions yet (regression introduced in v0.22.0 with the new Plan
+  d’actions tab).
+
+#### Improvements
+
+- `feat(db)` — app schema (`nemeton.projects` and friends) is now
+  initialized automatically on first connection through
+  `get_db_connection()`. The existing idempotent
+  [`db_init_schema()`](https://pobsteta.github.io/nemetonshiny/reference/db_init_schema.md)
+  used to be exported but never invoked, so a freshly provisioned
+  database surfaced *“relation "nemeton.projects" does not exist”* on
+  the first project save. Memoized once per R session via
+  `.nemeton_env`.
+- `feat(monitoring)` — monitoring-DB migrations (`monitoring_zone`,
+  `alert`, `obs_pixel`, …) are now applied automatically on first
+  connection through `get_monitoring_db_connection()` by calling
+  [`nemeton::db_migrate()`](https://pobsteta.github.io/nemeton/reference/db_migrate.html).
+  The Monitoring tab no longer warns *“relation "monitoring_zone" does
+  not exist”* on a fresh TimescaleDB. Memoized once per R session via
+  `.nemeton_env`.
+
 ## nemetonshiny 0.22.0 (2026-05-06)
 
 #### New feature — “Plan d’actions” tab
