@@ -2031,3 +2031,145 @@ generate_report_pdf <- function(project,
   generate_simple_pdf_report(project, family_scores, output_file, language,
                              synthesis_comments, family_comments, cover_image)
 }
+
+
+# ===========================================================================
+# Action plan exports (S13)
+# ===========================================================================
+
+#' Generate the per-UGF Action Plan PDF
+#'
+#' @description
+#' Renders the action plan as a PDF, one section per UGF, using a small
+#' Quarto template (`inst/quarto/action_plan_template.qmd`). The PDF
+#' carries a cover with project + global totals and one page per UGF
+#' with its actions, costs, revenue and balance.
+#'
+#' @param project List. Loaded project (with metadata, $ugs).
+#' @param plan List. Loaded action plan.
+#' @param ug_sf sf. UGF sf (with `ug_id`, `label`, geometry).
+#' @param output_file Character. Destination .pdf path.
+#' @param language Character. "fr" or "en".
+#' @param filter_ug_ids Character. Optional: only include these UGFs.
+#' @param filter_action_ids Character. Optional: only include these actions.
+#' @return Character. The output_file on success, NULL on failure.
+#' @noRd
+generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
+                                     language = "fr",
+                                     filter_ug_ids = NULL,
+                                     filter_action_ids = NULL) {
+  if (!ensure_quarto_installed()) {
+    stop("Quarto is required for the action plan PDF report.", call. = FALSE)
+  }
+  if (is.null(plan)) plan <- init_empty_action_plan(project$id %||% "p")
+
+  # Filter actions ---------------------------------------------------------
+  actions <- plan$actions
+  if (!is.null(filter_action_ids)) {
+    actions <- Filter(function(a) a$id %in% filter_action_ids, actions)
+  }
+  if (!is.null(filter_ug_ids)) {
+    actions <- Filter(function(a) a$ug_id %in% filter_ug_ids, actions)
+  }
+
+  # Aggregate per UGF ------------------------------------------------------
+  base_year <- as.integer(format(Sys.Date(), "%Y"))
+  ug_sf_df <- if (inherits(ug_sf, "sf")) sf::st_drop_geometry(ug_sf) else ug_sf
+
+  # Surfaces in hectares (best-effort)
+  surfaces <- if (!is.null(ug_sf$surface_sig_m2)) {
+    ug_sf$surface_sig_m2 / 10000
+  } else if (!is.null(ug_sf$surface_m2)) {
+    ug_sf$surface_m2 / 10000
+  } else {
+    rep(NA_real_, nrow(ug_sf_df))
+  }
+
+  ug_list <- lapply(seq_len(nrow(ug_sf_df)), function(i) {
+    uid <- as.character(ug_sf_df$ug_id[i])
+    if (!is.null(filter_ug_ids) && !(uid %in% filter_ug_ids)) return(NULL)
+    label <- if (!is.null(ug_sf_df$label) && nzchar(ug_sf_df$label[i])) {
+      as.character(ug_sf_df$label[i])
+    } else uid
+    ug_actions <- Filter(function(a) identical(a$ug_id, uid), actions)
+    enriched <- lapply(ug_actions, function(a) {
+      cout   <- as.numeric(a$quantite$cout_eur   %||% NA_real_)
+      revenu <- as.numeric(a$quantite$revenu_eur %||% NA_real_)
+      bilan  <- if (is.na(cout) && is.na(revenu)) NA_real_ else
+        (if (is.na(revenu)) 0 else revenu) - (if (is.na(cout)) 0 else cout)
+      list(
+        type = a$type %||% "",
+        priorite = a$priorite %||% "",
+        statut = a$statut %||% "",
+        annee_realisation = base_year + as.integer(a$annee_cible %||% 0L),
+        objectifs_lies = unlist(a$objectifs_lies %||% character()),
+        cout_eur = cout, revenu_eur = revenu, bilan_eur = bilan
+      )
+    })
+    cout_sum   <- sum(vapply(enriched, function(x) x$cout_eur,   numeric(1)),
+                      na.rm = TRUE)
+    revenu_sum <- sum(vapply(enriched, function(x) x$revenu_eur, numeric(1)),
+                      na.rm = TRUE)
+    list(
+      ug_id = uid,
+      label = label,
+      surface_ha = surfaces[i],
+      actions = enriched,
+      cout = cout_sum,
+      revenu = revenu_sum,
+      bilan = revenu_sum - cout_sum
+    )
+  })
+  ug_list <- Filter(Negate(is.null), ug_list)
+
+  total_cout   <- sum(vapply(ug_list, function(u) u$cout,   numeric(1)),
+                      na.rm = TRUE)
+  total_revenu <- sum(vapply(ug_list, function(u) u$revenu, numeric(1)),
+                      na.rm = TRUE)
+
+  data <- list(
+    project_name = project$metadata$name %||% (project$id %||% "Plan"),
+    horizon = plan$horizon_annees %||% 20L,
+    n_actions = length(actions),
+    n_ugfs = length(ug_list),
+    totals = list(cout = total_cout, revenu = total_revenu,
+                  bilan = total_revenu - total_cout),
+    ugfs = ug_list
+  )
+
+  # Render -----------------------------------------------------------------
+  template_path <- system.file("quarto", "action_plan_template.qmd",
+                               package = "nemetonshiny")
+  if (!file.exists(template_path)) {
+    stop("Action plan template not found.", call. = FALSE)
+  }
+
+  temp_dir <- tempfile("nemeton_actions_")
+  dir.create(temp_dir, recursive = TRUE)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+  qmd <- file.path(temp_dir, "action_plan.qmd")
+  file.copy(template_path, qmd)
+  data_file <- file.path(temp_dir, "action_plan_data.rds")
+  saveRDS(data, data_file)
+
+  tryCatch({
+    quarto::quarto_render(
+      input = qmd,
+      output_format = "pdf",
+      execute_params = list(
+        data_file = normalizePath(data_file, winslash = "/", mustWork = FALSE),
+        language = language
+      ),
+      quiet = TRUE
+    )
+    pdf_out <- sub("\\.qmd$", ".pdf", qmd)
+    if (file.exists(pdf_out)) {
+      file.copy(pdf_out, output_file, overwrite = TRUE)
+      return(output_file)
+    }
+    NULL
+  }, error = function(e) {
+    cli::cli_warn("Action plan PDF render failed: {e$message}")
+    NULL
+  })
+}

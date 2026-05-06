@@ -144,6 +144,22 @@ TRANSLATIONS <- list(
     fr = "Import terrain : %d action(s) d'observation passées en 'réalisée'.",
     en = "Field import: %d observation action(s) flipped to 'done'."
   ),
+  action_plan_download_gpkg = list(
+    fr = "Exporter GeoPackage",
+    en = "Export GeoPackage"
+  ),
+  action_plan_download_pdf = list(
+    fr = "Exporter PDF",
+    en = "Export PDF"
+  ),
+  action_plan_pdf_generating = list(
+    fr = "Génération du PDF en cours...",
+    en = "Generating PDF..."
+  ),
+  action_plan_pdf_failed = list(
+    fr = "Échec de la génération du PDF",
+    en = "PDF generation failed"
+  ),
   action_plan_col_commentaire = list(fr = "Commentaire",   en = "Comment"),
   action_plan_col_source      = list(fr = "Source",        en = "Source"),
 

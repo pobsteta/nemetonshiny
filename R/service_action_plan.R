@@ -511,6 +511,68 @@ get_action_audit <- function(plan, action_id) {
 }
 
 
+#' Export an action plan to GeoPackage
+#'
+#' @description
+#' Writes the plan's actions as a single layer "actions" with UGF
+#' geometries duplicated per row (so the file can be opened directly in
+#' QGIS, styled by `type`, `priorite`, etc.). A complementary layer
+#' "ugf" carries one row per UGF for join-style use.
+#'
+#' @param plan List. Loaded action plan.
+#' @param ug_sf sf. Project's UGF sf object (with at least `ug_id`,
+#'   `label` and geometry).
+#' @param file_path Character. Destination path (.gpkg).
+#' @param filter_action_ids Character vector. If non-NULL, restrict the
+#'   export to actions with these ids (used to honour DT filters).
+#' @return Logical. TRUE on success.
+#' @noRd
+export_action_plan_gpkg <- function(plan, ug_sf, file_path,
+                                    filter_action_ids = NULL) {
+  if (is.null(plan) || length(plan$actions) == 0L) {
+    cli::cli_warn("export_action_plan_gpkg: empty plan")
+    return(FALSE)
+  }
+  if (!inherits(ug_sf, "sf") || nrow(ug_sf) == 0L) {
+    cli::cli_warn("export_action_plan_gpkg: missing UGF geometry")
+    return(FALSE)
+  }
+  df <- actions_to_dataframe(plan)
+  if (!is.null(filter_action_ids)) {
+    df <- df[df$id %in% filter_action_ids, , drop = FALSE]
+  }
+  if (nrow(df) == 0L) {
+    cli::cli_warn("export_action_plan_gpkg: nothing to export after filter")
+    return(FALSE)
+  }
+
+  geom_idx <- match(as.character(df$ug_id), as.character(ug_sf$ug_id))
+  ok <- !is.na(geom_idx)
+  if (!any(ok)) {
+    cli::cli_warn("export_action_plan_gpkg: no UGF geometry matched")
+    return(FALSE)
+  }
+  df <- df[ok, , drop = FALSE]
+  geom_idx <- geom_idx[ok]
+
+  actions_sf <- sf::st_sf(
+    df,
+    geometry = sf::st_geometry(ug_sf)[geom_idx]
+  )
+  if (file.exists(file_path)) unlink(file_path)
+  tryCatch({
+    sf::st_write(actions_sf, file_path, layer = "actions",
+                 driver = "GPKG", delete_dsn = TRUE, quiet = TRUE)
+    sf::st_write(ug_sf, file_path, layer = "ugf",
+                 driver = "GPKG", append = TRUE, quiet = TRUE)
+    TRUE
+  }, error = function(e) {
+    cli::cli_warn("Failed to export action plan GPKG: {e$message}")
+    FALSE
+  })
+}
+
+
 #' Convert a list of audit entries into a tidy data.frame
 #'
 #' Used by the history modal in `mod_action_plan`.
