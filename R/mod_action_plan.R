@@ -175,11 +175,21 @@ mod_action_plan_server <- function(id, app_state) {
 
     plan_rv <- shiny::reactiveVal(NULL)
 
+    # Module-local state (e.g. one-shot map zoom flag, reset per project).
+    rv_state <- shiny::reactiveValues(map_zoomed = FALSE,
+                                      last_project_id = NULL)
+
     shiny::observe({
       project <- app_state$current_project
       if (is.null(project) || is.null(project$id)) {
         plan_rv(NULL)
+        rv_state$map_zoomed <- FALSE
+        rv_state$last_project_id <- NULL
         return()
+      }
+      if (!identical(rv_state$last_project_id, project$id)) {
+        rv_state$map_zoomed <- FALSE
+        rv_state$last_project_id <- project$id
       }
       plan <- tryCatch(
         load_action_plan(project$id),
@@ -336,12 +346,22 @@ mod_action_plan_server <- function(id, app_state) {
       pal(year)
     }
 
-    # Compute per-UGF color according to current toggle
+    # Compute per-UGF color according to current toggle. When the plan is
+    # empty for the current filters, every UGF is grey and no legend is
+    # rendered (leaflet::colorNumeric / colorFactor refuse empty domains).
     map_colors <- shiny::reactive({
       sf <- ug_sf_4326()
       shiny::req(sf)
       summary_list <- ugf_summary()
       mode <- input$map_color_by %||% "annee"
+      n_ug <- nrow(sf)
+
+      empty_result <- list(
+        colors = rep("#bbbbbb", n_ug),
+        legend_title = NULL,
+        legend_pal   = NULL,
+        legend_vals  = NULL
+      )
 
       if (mode == "annee") {
         firsts <- vapply(sf$ug_id, function(uid) {
@@ -350,13 +370,25 @@ mod_action_plan_server <- function(id, app_state) {
         }, numeric(1))
         ymin <- suppressWarnings(min(firsts, na.rm = TRUE))
         ymax <- suppressWarnings(max(firsts, na.rm = TRUE))
+        if (!is.finite(ymin) || !is.finite(ymax)) return(empty_result)
+        if (ymin == ymax) {
+          # Single distinct year: avoid degenerate colorNumeric domain.
+          colors <- ifelse(is.na(firsts), "#bbbbbb", "#fc8d59")
+          return(list(
+            colors = colors,
+            legend_title = "year",
+            legend_pal   = leaflet::colorFactor(
+              palette = "#fc8d59", domain = as.character(ymin)),
+            legend_vals  = as.character(ymin)
+          ))
+        }
         list(
           colors = vapply(firsts, year_color, ymin = ymin, ymax = ymax,
                           FUN.VALUE = character(1)),
           legend_title = "year",
           legend_pal   = leaflet::colorNumeric("YlOrRd",
                                                domain = c(ymin, ymax)),
-          legend_vals  = if (is.finite(ymin) && is.finite(ymax)) c(ymin, ymax) else numeric()
+          legend_vals  = c(ymin, ymax)
         )
       } else if (mode == "type") {
         firsts <- vapply(sf$ug_id, function(uid) {
@@ -364,6 +396,7 @@ mod_action_plan_server <- function(id, app_state) {
           if (length(ts) == 0L) return(NA_character_) else ts[1]
         }, character(1))
         all_types <- sort(unique(stats::na.omit(firsts)))
+        if (length(all_types) == 0L) return(empty_result)
         pal <- type_palette(all_types)
         col <- ifelse(is.na(firsts), "#bbbbbb", pal[firsts])
         list(
@@ -381,6 +414,7 @@ mod_action_plan_server <- function(id, app_state) {
           best <- intersect(hierarchy, ps)
           if (length(best) == 0L) return(NA_character_) else best[1]
         }, character(1))
+        if (all(is.na(firsts))) return(empty_result)
         col <- ifelse(is.na(firsts), "#bbbbbb", PALETTE_PRIO[firsts])
         list(
           colors = unname(col),
@@ -445,14 +479,16 @@ mod_action_plan_server <- function(id, app_state) {
           )
       }
 
-      # Re-bbox if any UG has actions, otherwise leave the view alone
-      if (any(vapply(summary_list, function(s) s$n > 0L, logical(1)))) {
+      # Fit the view to the project bbox once per project. Without this
+      # an empty plan keeps the world-level view of the basemap.
+      if (!isTRUE(rv_state$map_zoomed)) {
         bbox <- tryCatch(sf::st_bbox(sf), error = function(e) NULL)
         if (!is.null(bbox)) {
           proxy |> leaflet::fitBounds(
             lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
             lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
           )
+          rv_state$map_zoomed <- TRUE
         }
       }
     })
