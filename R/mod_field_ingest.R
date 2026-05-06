@@ -337,6 +337,33 @@ mod_field_ingest_server <- function(id, app_state) {
       # Reload project so downstream modules see the new NDP.
       app_state$current_project <- load_project(project$id)
 
+      # Cross-module signal: notify mod_action_plan (S11) that field
+      # data has just been ingested so it can flip matching observation
+      # actions to `realisee`. We pass the set of UGFs that received
+      # placettes; mod_action_plan does the rest.
+      tryCatch({
+        ugs_with_field <- character()
+        # Prefer the attached-to-units result (carries ug_id robustly);
+        # fall back to placettes' ug_id if the column is exposed there.
+        if (!is.null(field_rv$attached) &&
+            "ug_id" %in% names(field_rv$attached)) {
+          ugs_with_field <- unique(stats::na.omit(
+            as.character(field_rv$attached$ug_id)
+          ))
+        } else {
+          placettes <- field_rv$import$placettes
+          if (!is.null(placettes) && "ug_id" %in% names(placettes)) {
+            ugs_with_field <- unique(stats::na.omit(
+              as.character(placettes$ug_id)
+            ))
+          }
+        }
+        app_state$field_imported_ugs <- ugs_with_field
+        app_state$field_imported_at  <- Sys.time()
+      }, error = function(e) {
+        cli::cli_warn("field_imported_at signal failed: {e$message}")
+      })
+
       shiny::showNotification(
         sprintf(i18n$t("field_ingest_attached"), new_ndp),
         type = "message", duration = 6

@@ -113,6 +113,37 @@ TRANSLATIONS <- list(
   action_plan_col_cout        = list(fr = "Coût (€)",      en = "Cost (€)"),
   action_plan_col_revenu      = list(fr = "Revenu (€)",    en = "Revenue (€)"),
   action_plan_col_bilan       = list(fr = "Bilan (€)",     en = "Balance (€)"),
+  action_plan_balance_empty = list(
+    fr = "Aucune action chiffrée. Le bilan apparaîtra dès que vous saisirez coût ou revenu.",
+    en = "No costed action yet. Balance appears once cost or revenue is entered."
+  ),
+  action_plan_total_cout = list(fr = "Coût total", en = "Total cost"),
+  action_plan_total_revenu = list(fr = "Revenu total", en = "Total revenue"),
+  action_plan_total_bilan = list(fr = "Bilan", en = "Balance"),
+  action_plan_export_terrain = list(
+    fr = "Envoyer vers Terrain",
+    en = "Send to Field"
+  ),
+  action_plan_export_terrain_empty = list(
+    fr = "Le plan est vide.",
+    en = "Plan is empty."
+  ),
+  action_plan_export_terrain_no_obs = list(
+    fr = "Aucune action de type 'observation' à exporter.",
+    en = "No 'observation' action to export."
+  ),
+  action_plan_export_terrain_ok_fmt = list(
+    fr = "%d point(s) d'observation envoyés vers l'onglet Terrain.",
+    en = "%d observation point(s) sent to the Field tab."
+  ),
+  action_plan_export_terrain_failed = list(
+    fr = "Échec de l'écriture des points d'observation.",
+    en = "Failed to write observation points."
+  ),
+  action_plan_field_realised_fmt = list(
+    fr = "Import terrain : %d action(s) d'observation passées en 'réalisée'.",
+    en = "Field import: %d observation action(s) flipped to 'done'."
+  ),
   action_plan_col_commentaire = list(fr = "Commentaire",   en = "Comment"),
   action_plan_col_source      = list(fr = "Source",        en = "Source"),
 
