@@ -272,7 +272,21 @@ test_that("actions_to_dataframe returns one row per action with stable cols", {
   expect_s3_class(df, "data.frame")
   expect_equal(nrow(df), 1L)
   expect_true(all(c("ug_id", "annee_cible", "volume_m3",
-                    "objectifs_lies") %in% names(df)))
+                    "objectifs_lies", "cout_eur",
+                    "revenu_eur") %in% names(df)))
   expect_equal(df$volume_m3[1], 12.5)
   expect_equal(df$objectifs_lies[1], "C,B")
+})
+
+test_that("actions_to_dataframe reads cout_eur AND revenu_eur from quantite", {
+  plan <- nemetonshiny:::init_empty_action_plan("p")
+  plan <- nemetonshiny:::add_action_to_plan(
+    plan,
+    c(make_action(),
+      list(quantite = list(cout_eur = 250, revenu_eur = 1800))),
+    ug_ids = "ug_1"
+  )
+  df <- nemetonshiny:::actions_to_dataframe(plan)
+  expect_equal(df$cout_eur[1], 250)
+  expect_equal(df$revenu_eur[1], 1800)
 })

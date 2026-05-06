@@ -522,14 +522,14 @@ mod_action_plan_server <- function(id, app_state) {
       "type", "type_libre",
       "intensite", "priorite", "statut", "objectifs_lies",
       "volume_m3", "surface_ha", "nb_tiges", "rdi",
-      "cout_eur", "commentaire", "source_origine"
+      "cout_eur", "revenu_eur", "commentaire", "source_origine"
     )
     # Cells the user can edit. `annee_realisation` accepts a calendar
     # year and is converted back to an offset before persistence.
     EDITABLE_COLS <- c(
       "annee_realisation", "type", "type_libre", "intensite", "priorite",
       "statut", "objectifs_lies", "volume_m3", "surface_ha",
-      "nb_tiges", "rdi", "cout_eur", "commentaire"
+      "nb_tiges", "rdi", "cout_eur", "revenu_eur", "commentaire"
     )
 
     PLAN_BASE_YEAR <- function() as.integer(format(Sys.Date(), "%Y"))
@@ -583,6 +583,7 @@ mod_action_plan_server <- function(id, app_state) {
         i18n$t("action_plan_col_tiges"),
         i18n$t("action_plan_col_rdi"),
         i18n$t("action_plan_col_cout"),
+        i18n$t("action_plan_col_revenu"),
         i18n$t("action_plan_col_commentaire"),
         i18n$t("action_plan_col_source")
       )
@@ -643,7 +644,7 @@ mod_action_plan_server <- function(id, app_state) {
       raw_value <- info$value
       coerced <- coerce_table_value(field_disp, raw_value)
       updates <- if (field_disp %in% c("volume_m3", "surface_ha", "nb_tiges",
-                                       "rdi", "cout_eur")) {
+                                       "rdi", "cout_eur", "revenu_eur")) {
         existing_q <- plan_rv()$actions[[idx]]$quantite %||% list()
         list(quantite = utils::modifyList(
           existing_q,
@@ -1235,7 +1236,8 @@ coerce_table_value <- function(field, raw) {
   if (field %in% c("annee_cible", "duree", "nb_tiges")) {
     return(suppressWarnings(as.integer(raw)))
   }
-  if (field %in% c("volume_m3", "surface_ha", "rdi", "cout_eur")) {
+  if (field %in% c("volume_m3", "surface_ha", "rdi", "cout_eur",
+                   "revenu_eur")) {
     return(suppressWarnings(as.numeric(raw)))
   }
   as.character(raw)
