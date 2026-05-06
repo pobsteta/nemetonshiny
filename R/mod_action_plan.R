@@ -286,7 +286,9 @@ mod_action_plan_server <- function(id, app_state) {
       df[visible_indices(), , drop = FALSE]
     })
 
-    # Per-UGF aggregation for map coloring (over the *visible* actions)
+    # Per-UGF aggregation for map coloring (over the *visible* actions).
+    # `annees` carries the calendar years of execution (annee_realisation),
+    # not the storage offset.
     ugf_summary <- shiny::reactive({
       df <- actions_df()
       ugs <- ug_ids()
@@ -294,7 +296,7 @@ mod_action_plan_server <- function(id, app_state) {
         sub <- df[df$ug_id == uid & !is.na(df$ug_id), , drop = FALSE]
         list(
           n      = nrow(sub),
-          annees = sort(unique(stats::na.omit(sub$annee_cible))),
+          annees = sort(unique(stats::na.omit(sub$annee_realisation))),
           types  = sort(unique(stats::na.omit(sub$type))),
           prios  = sort(unique(stats::na.omit(sub$priorite)))
         )
@@ -328,13 +330,21 @@ mod_action_plan_server <- function(id, app_state) {
       stats::setNames(pal, types)
     }
 
-    year_color <- function(year, ymin, ymax) {
-      if (is.na(year) || is.na(ymin) || is.na(ymax) || ymax == ymin) {
-        return("#bbbbbb")
+    # Helper to build a warm year palette (one swatch per distinct year).
+    # Earliest year = pale yellow, latest year = deep red. Treated as a
+    # discrete factor so the leaflet legend lists every year explicitly.
+    year_factor_palette <- function(years) {
+      years <- as.character(sort(unique(stats::na.omit(years))))
+      if (length(years) == 0L) {
+        return(stats::setNames(character(0), character(0)))
       }
-      pal <- leaflet::colorNumeric("YlOrRd", domain = c(ymin, ymax),
-                                   reverse = FALSE)
-      pal(year)
+      n <- length(years)
+      cols <- if (n == 1L) {
+        "#fc8d59"
+      } else {
+        grDevices::colorRampPalette(c("#fee08b", "#fc8d59", "#b91c1c"))(n)
+      }
+      stats::setNames(cols, years)
     }
 
     # Compute per-UGF color according to current toggle. When the plan is
@@ -355,31 +365,28 @@ mod_action_plan_server <- function(id, app_state) {
       )
 
       if (mode == "annee") {
+        # Take the earliest action year per UGF (the "next" deadline).
         firsts <- vapply(sf$ug_id, function(uid) {
           ann <- summary_list[[uid]]$annees
-          if (length(ann) == 0L) return(NA_real_) else min(ann, na.rm = TRUE)
-        }, numeric(1))
-        ymin <- suppressWarnings(min(firsts, na.rm = TRUE))
-        ymax <- suppressWarnings(max(firsts, na.rm = TRUE))
-        if (!is.finite(ymin) || !is.finite(ymax)) return(empty_result)
-        if (ymin == ymax) {
-          # Single distinct year: avoid degenerate colorNumeric domain.
-          colors <- ifelse(is.na(firsts), "#bbbbbb", "#fc8d59")
-          return(list(
-            colors = colors,
-            legend_title = "year",
-            legend_pal   = leaflet::colorFactor(
-              palette = "#fc8d59", domain = as.character(ymin)),
-            legend_vals  = as.character(ymin)
-          ))
-        }
+          if (length(ann) == 0L) return(NA_integer_)
+          as.integer(min(ann, na.rm = TRUE))
+        }, integer(1))
+        all_years <- sort(unique(stats::na.omit(firsts)))
+        if (length(all_years) == 0L) return(empty_result)
+        all_years_chr <- as.character(all_years)
+        pal <- year_factor_palette(all_years)
+        cols <- ifelse(is.na(firsts), "#bbbbbb",
+                       pal[as.character(firsts)])
+        legend_pal <- leaflet::colorFactor(
+          palette = unname(pal),
+          domain  = all_years_chr,
+          ordered = TRUE
+        )
         list(
-          colors = vapply(firsts, year_color, ymin = ymin, ymax = ymax,
-                          FUN.VALUE = character(1)),
-          legend_title = "year",
-          legend_pal   = leaflet::colorNumeric("YlOrRd",
-                                               domain = c(ymin, ymax)),
-          legend_vals  = c(ymin, ymax)
+          colors = unname(cols),
+          legend_title = "annee",
+          legend_pal   = legend_pal,
+          legend_vals  = all_years_chr
         )
       } else if (mode == "type") {
         firsts <- vapply(sf$ug_id, function(uid) {
@@ -432,11 +439,20 @@ mod_action_plan_server <- function(id, app_state) {
 
       labels <- vapply(seq_len(nrow(sf)), function(i) {
         uid <- sf$ug_id[i]
+        # Prefer the UGF label (human readable); fall back to the id
+        # only when the project has no label set.
+        display_name <- if (!is.null(sf$label) &&
+                            !is.na(sf$label[i]) &&
+                            nzchar(sf$label[i])) {
+          sf$label[i]
+        } else {
+          as.character(uid)
+        }
         s <- summary_list[[uid]] %||% list(n = 0L, annees = integer(),
                                             types = character(), prios = character())
         sprintf(
           "<b>%s</b><br>%d action(s)<br>Annees: %s<br>Types: %s<br>Priorites: %s",
-          uid, s$n,
+          display_name, s$n,
           if (length(s$annees) == 0L) "-" else paste(s$annees, collapse = ", "),
           if (length(s$types)  == 0L) "-" else paste(s$types,  collapse = ", "),
           if (length(s$prios)  == 0L) "-" else paste(s$prios,  collapse = ", ")
