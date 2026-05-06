@@ -111,6 +111,7 @@ TRANSLATIONS <- list(
   action_plan_col_tiges       = list(fr = "Tiges",         en = "Stems"),
   action_plan_col_rdi         = list(fr = "RDI",           en = "RDI"),
   action_plan_col_cout        = list(fr = "Coût (€)",      en = "Cost (€)"),
+  action_plan_col_revenu      = list(fr = "Revenu (€)",    en = "Revenue (€)"),
   action_plan_col_commentaire = list(fr = "Commentaire",   en = "Comment"),
   action_plan_col_source      = list(fr = "Source",        en = "Source"),
 
