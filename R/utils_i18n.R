@@ -94,6 +94,11 @@ TRANSLATIONS <- list(
   action_plan_col_id          = list(fr = "id",            en = "id"),
   action_plan_col_ug_id       = list(fr = "ug_id",         en = "ug_id"),
   action_plan_col_ug_label    = list(fr = "UGF",           en = "UGF"),
+  action_plan_col_annee_offset = list(fr = "Décalage", en = "Offset"),
+  action_plan_invalid_year = list(
+    fr = "Année invalide.",
+    en = "Invalid year."
+  ),
   action_plan_col_annee       = list(fr = "Année",         en = "Year"),
   action_plan_col_type        = list(fr = "Type",          en = "Type"),
   action_plan_col_type_libre  = list(fr = "Type libre",    en = "Free type"),

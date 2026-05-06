@@ -181,20 +181,21 @@ mod_action_plan_server <- function(id, app_state) {
 
     plan_rv <- shiny::reactiveVal(NULL)
 
-    # Module-local state (e.g. one-shot map zoom flag, reset per project).
-    rv_state <- shiny::reactiveValues(map_zoomed = FALSE,
-                                      last_project_id = NULL)
+    # Module-local state (e.g. last-fitted bbox signature, project id).
+    rv_state <- shiny::reactiveValues(last_bbox_sig = NULL,
+                                      last_project_id = NULL,
+                                      pending_chat_actions = NULL)
 
     shiny::observe({
       project <- app_state$current_project
       if (is.null(project) || is.null(project$id)) {
         plan_rv(NULL)
-        rv_state$map_zoomed <- FALSE
+        rv_state$last_bbox_sig <- NULL
         rv_state$last_project_id <- NULL
         return()
       }
       if (!identical(rv_state$last_project_id, project$id)) {
-        rv_state$map_zoomed <- FALSE
+        rv_state$last_bbox_sig <- NULL
         rv_state$last_project_id <- project$id
       }
       plan <- tryCatch(
@@ -236,7 +237,9 @@ mod_action_plan_server <- function(id, app_state) {
     # ACTIONS (full plan + visible-rows view)
     # ============================================================
 
-    # Full plan as a data.frame (with the UGF label joined in for display).
+    # Full plan as a data.frame, augmented with derived display columns:
+    # - `ug_label`        : human-readable UGF name (joined from project$ugs)
+    # - `annee_realisation`: calendar year (current_year + annee_cible)
     actions_df_all <- shiny::reactive({
       plan <- plan_rv()
       df <- actions_to_dataframe(plan)
@@ -249,6 +252,10 @@ mod_action_plan_server <- function(id, app_state) {
       } else {
         df$ug_label <- NA_character_
       }
+      base_year <- as.integer(format(Sys.Date(), "%Y"))
+      df$annee_realisation <- ifelse(is.na(df$annee_cible),
+                                     NA_integer_,
+                                     base_year + as.integer(df$annee_cible))
       df
     })
 
@@ -451,16 +458,19 @@ mod_action_plan_server <- function(id, app_state) {
           )
       }
 
-      # Fit the view to the project bbox once per project. Without this
-      # an empty plan keeps the world-level view of the basemap.
-      if (!isTRUE(rv_state$map_zoomed)) {
-        bbox <- tryCatch(sf::st_bbox(sf), error = function(e) NULL)
-        if (!is.null(bbox)) {
+      # Fit the view to the project bbox whenever the *bbox value* changes
+      # (different project, or first render after leaflet remount).
+      # We track a signature of the last-fitted bbox so the user's manual
+      # pan/zoom on the same project is not overridden on every redraw.
+      bbox <- tryCatch(sf::st_bbox(sf), error = function(e) NULL)
+      if (!is.null(bbox)) {
+        sig <- paste(round(bbox, 4), collapse = "_")
+        if (!identical(rv_state$last_bbox_sig, sig)) {
           proxy |> leaflet::fitBounds(
             lng1 = bbox[["xmin"]], lat1 = bbox[["ymin"]],
             lng2 = bbox[["xmax"]], lat2 = bbox[["ymax"]]
           )
-          rv_state$map_zoomed <- TRUE
+          rv_state$last_bbox_sig <- sig
         }
       }
     })
@@ -503,18 +513,26 @@ mod_action_plan_server <- function(id, app_state) {
 
     # Display columns (in order). `id` and `ug_id` stay hidden but are
     # required to identify rows / drive map sync. `ug_label` is what the
-    # user sees instead of the raw ug_id.
+    # user sees instead of the raw ug_id. `annee_realisation` is the
+    # calendar year derived from the offset (`annee_cible`); the offset
+    # column is hidden but kept for backward compatibility.
     DISPLAY_COLS <- c(
-      "id", "ug_id", "ug_label", "annee_cible", "type", "type_libre",
+      "id", "ug_id", "annee_cible",
+      "ug_label", "annee_realisation",
+      "type", "type_libre",
       "intensite", "priorite", "statut", "objectifs_lies",
       "volume_m3", "surface_ha", "nb_tiges", "rdi",
       "cout_eur", "commentaire", "source_origine"
     )
+    # Cells the user can edit. `annee_realisation` accepts a calendar
+    # year and is converted back to an offset before persistence.
     EDITABLE_COLS <- c(
-      "annee_cible", "type", "type_libre", "intensite", "priorite",
+      "annee_realisation", "type", "type_libre", "intensite", "priorite",
       "statut", "objectifs_lies", "volume_m3", "surface_ha",
       "nb_tiges", "rdi", "cout_eur", "commentaire"
     )
+
+    PLAN_BASE_YEAR <- function() as.integer(format(Sys.Date(), "%Y"))
 
     output$action_table <- DT::renderDataTable({
       df <- actions_df_all()
@@ -547,31 +565,30 @@ mod_action_plan_server <- function(id, app_state) {
         }
       }
 
-      # Localised column headers: passed as a named character so DT shows
-      # the value as the header for the column whose internal name is
-      # the value of the named entry.
+      # Localised column headers, in the same order as DISPLAY_COLS.
       colname_map <- c(
-        i18n$t("action_plan_col_id")          %||% "id"          ,
-        i18n$t("action_plan_col_ug_id")       %||% "ug_id"       ,
-        i18n$t("action_plan_col_ug_label")    %||% "UGF"         ,
-        i18n$t("action_plan_col_annee")       %||% "Annee"       ,
-        i18n$t("action_plan_col_type")        %||% "Type"        ,
-        i18n$t("action_plan_col_type_libre")  %||% "Type libre"  ,
-        i18n$t("action_plan_col_intensite")   %||% "Intensite"   ,
-        i18n$t("action_plan_col_priorite")    %||% "Priorite"    ,
-        i18n$t("action_plan_col_statut")      %||% "Statut"      ,
-        i18n$t("action_plan_col_objectifs")   %||% "Objectifs"   ,
-        i18n$t("action_plan_col_volume")      %||% "Volume (m3)" ,
-        i18n$t("action_plan_col_surface")     %||% "Surface (ha)",
-        i18n$t("action_plan_col_tiges")       %||% "Tiges"       ,
-        i18n$t("action_plan_col_rdi")         %||% "RDI"         ,
-        i18n$t("action_plan_col_cout")        %||% "Cout (EUR)"  ,
-        i18n$t("action_plan_col_commentaire") %||% "Commentaire" ,
-        i18n$t("action_plan_col_source")      %||% "Source"
+        i18n$t("action_plan_col_id"),
+        i18n$t("action_plan_col_ug_id"),
+        i18n$t("action_plan_col_annee_offset"),
+        i18n$t("action_plan_col_ug_label"),
+        i18n$t("action_plan_col_annee"),
+        i18n$t("action_plan_col_type"),
+        i18n$t("action_plan_col_type_libre"),
+        i18n$t("action_plan_col_intensite"),
+        i18n$t("action_plan_col_priorite"),
+        i18n$t("action_plan_col_statut"),
+        i18n$t("action_plan_col_objectifs"),
+        i18n$t("action_plan_col_volume"),
+        i18n$t("action_plan_col_surface"),
+        i18n$t("action_plan_col_tiges"),
+        i18n$t("action_plan_col_rdi"),
+        i18n$t("action_plan_col_cout"),
+        i18n$t("action_plan_col_commentaire"),
+        i18n$t("action_plan_col_source")
       )
 
-      # Hidden columns: id (0), ug_id (1).
-      hidden_targets <- as.integer(c(0L, 1L))
+      # Hidden columns: id (0), ug_id (1), annee_cible offset (2).
+      hidden_targets <- as.integer(c(0L, 1L, 2L))
       editable_idx <- which(DISPLAY_COLS %in% EDITABLE_COLS) - 1L
 
       DT::datatable(
@@ -603,6 +620,7 @@ mod_action_plan_server <- function(id, app_state) {
     }, server = FALSE)
 
     shiny::outputOptions(output, "action_table", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "map", suspendWhenHidden = FALSE)
 
     # Inline edits -> persist via update_action_in_plan. The DT row index
     # corresponds to the *full* data.frame (actions_df_all) since DT is
@@ -634,6 +652,17 @@ mod_action_plan_server <- function(id, app_state) {
       } else if (field_disp == "objectifs_lies") {
         list(objectifs_lies = strsplit(as.character(raw_value),
                                        "\\s*,\\s*")[[1]])
+      } else if (field_disp == "annee_realisation") {
+        # User typed a calendar year; convert it back to an offset.
+        year <- suppressWarnings(as.integer(raw_value))
+        if (is.na(year)) {
+          i18n2 <- get_i18n(app_state$language)
+          shiny::showNotification(i18n2$t("action_plan_invalid_year"),
+                                  type = "error", duration = 4)
+          return()
+        }
+        offset <- year - PLAN_BASE_YEAR()
+        list(annee_cible = as.integer(offset))
       } else {
         stats::setNames(list(coerced), field_disp)
       }
