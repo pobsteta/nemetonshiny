@@ -91,6 +91,12 @@ mod_action_plan_ui <- function(id) {
       label = i18n$t("action_plan_add"),
       icon = shiny::icon("plus"),
       class = "btn-sm btn-outline-primary"
+    ),
+    shiny::actionButton(
+      ns("export_terrain"),
+      label = i18n$t("action_plan_export_terrain"),
+      icon = shiny::icon("crosshairs"),
+      class = "btn-sm btn-outline-success"
     )
   )
 
@@ -141,6 +147,11 @@ mod_action_plan_ui <- function(id) {
             table_toolbar
           ),
           bslib::card_body(
+            # Cumulative balance sparkline + totals strip on top
+            htmltools::div(
+              class = "border-bottom mb-2 pb-2",
+              shiny::uiOutput(ns("balance_summary"))
+            ),
             DT::dataTableOutput(ns("action_table"))
           )
         )
@@ -152,9 +163,10 @@ mod_action_plan_ui <- function(id) {
       value = "gantt",
       icon = bsicons::bs_icon("calendar-range"),
       bslib::card(
+        full_screen = TRUE,
+        bslib::card_header(i18n$t("action_plan_view_gantt")),
         bslib::card_body(
-          htmltools::div(class = "text-muted",
-                         i18n$t("action_plan_gantt_placeholder"))
+          plotly::plotlyOutput(ns("gantt_plot"), height = "70vh")
         )
       )
     )
@@ -707,6 +719,277 @@ mod_action_plan_server <- function(id, app_state) {
       n <- nrow(actions_df())
       sprintf(i18n$t("action_plan_table_count_fmt"), n)
     })
+
+    # ============================================================
+    # SPARKLINE + totals (cumulative balance over years, on filtered)
+    # ============================================================
+
+    cumulative_balance <- shiny::reactive({
+      df <- actions_df()
+      if (nrow(df) == 0L) return(NULL)
+      d <- df[!is.na(df$annee_realisation), c("annee_realisation",
+                                              "cout_eur", "revenu_eur",
+                                              "bilan_eur"), drop = FALSE]
+      if (nrow(d) == 0L) return(NULL)
+      agg <- stats::aggregate(
+        cbind(cout_eur, revenu_eur, bilan_eur) ~ annee_realisation,
+        data = d,
+        FUN = function(x) sum(x, na.rm = TRUE),
+        na.action = stats::na.pass
+      )
+      agg <- agg[order(agg$annee_realisation), , drop = FALSE]
+      agg$cumul_bilan  <- cumsum(agg$bilan_eur)
+      agg$cumul_revenu <- cumsum(agg$revenu_eur)
+      agg$cumul_cout   <- cumsum(agg$cout_eur)
+      agg
+    })
+
+    output$balance_summary <- shiny::renderUI({
+      i18n <- get_i18n(app_state$language)
+      df <- actions_df()
+      if (nrow(df) == 0L) {
+        return(htmltools::div(class = "text-muted small",
+                              i18n$t("action_plan_balance_empty")))
+      }
+      total_cout    <- sum(df$cout_eur,   na.rm = TRUE)
+      total_revenu  <- sum(df$revenu_eur, na.rm = TRUE)
+      total_bilan   <- total_revenu - total_cout
+      bilan_class   <- if (total_bilan > 0) "text-success"
+                       else if (total_bilan < 0) "text-danger"
+                       else "text-muted"
+
+      pill <- function(label, value, css = "") {
+        htmltools::tags$span(
+          class = paste("badge bg-light border me-2", css),
+          style = "font-size: 0.85rem;",
+          htmltools::tags$strong(label, ":", .noWS = "after"),
+          " ",
+          format(round(value), big.mark = " ", scientific = FALSE), " EUR"
+        )
+      }
+
+      htmltools::div(
+        class = "d-flex align-items-center justify-content-between gap-3 flex-wrap",
+        htmltools::div(
+          pill(i18n$t("action_plan_total_cout"),   total_cout,   "text-danger"),
+          pill(i18n$t("action_plan_total_revenu"), total_revenu, "text-success"),
+          pill(i18n$t("action_plan_total_bilan"),  total_bilan,  bilan_class)
+        ),
+        htmltools::div(
+          style = "min-width: 320px; flex: 1; max-width: 600px;",
+          plotly::plotlyOutput(session$ns("balance_sparkline"),
+                               height = "60px")
+        )
+      )
+    })
+
+    output$balance_sparkline <- plotly::renderPlotly({
+      d <- cumulative_balance()
+      if (is.null(d) || nrow(d) == 0L) return(plotly::plotly_empty())
+      pal <- ifelse(d$cumul_bilan >= 0, "#15803d", "#b91c1c")
+      plotly::plot_ly(
+        d,
+        x = ~annee_realisation,
+        y = ~cumul_bilan,
+        type = "scatter",
+        mode = "lines+markers",
+        line = list(color = "#374151", width = 2),
+        marker = list(color = pal, size = 7),
+        text = ~paste0(annee_realisation, " : ",
+                       format(round(cumul_bilan), big.mark = " "), " EUR"),
+        hoverinfo = "text"
+      ) |>
+        plotly::layout(
+          margin = list(l = 30, r = 5, t = 5, b = 25),
+          xaxis = list(title = "", tickformat = "d", fixedrange = TRUE),
+          yaxis = list(title = "", zeroline = TRUE,
+                       zerolinecolor = "#999", fixedrange = TRUE),
+          showlegend = FALSE,
+          plot_bgcolor = "rgba(0,0,0,0)",
+          paper_bgcolor = "rgba(0,0,0,0)"
+        ) |>
+        plotly::config(displayModeBar = FALSE)
+    })
+
+    # ============================================================
+    # GANTT (S9) - timeline per UGF, lanes = UGF, color = type
+    # ============================================================
+
+    output$gantt_plot <- plotly::renderPlotly({
+      i18n <- get_i18n(app_state$language)
+      df <- actions_df()
+      if (nrow(df) == 0L) return(plotly::plotly_empty())
+      df$end <- df$annee_realisation +
+        ifelse(is.na(df$duree) | df$duree < 1, 1L, as.integer(df$duree))
+      df$y_lane <- ifelse(!is.na(df$ug_label) & nzchar(df$ug_label),
+                          df$ug_label, df$ug_id)
+      pal <- grDevices::hcl.colors(
+        max(1L, length(unique(stats::na.omit(df$type)))),
+        palette = "Set 2"
+      )
+      type_levels <- sort(unique(stats::na.omit(df$type)))
+      color_map <- stats::setNames(pal, type_levels)
+      df$color <- ifelse(is.na(df$type), "#888888", color_map[df$type])
+
+      p <- plotly::plot_ly()
+      for (i in seq_len(nrow(df))) {
+        p <- p |> plotly::add_segments(
+          x = df$annee_realisation[i],
+          xend = df$end[i],
+          y = df$y_lane[i],
+          yend = df$y_lane[i],
+          line = list(color = df$color[i], width = 14),
+          showlegend = FALSE,
+          hoverinfo = "text",
+          hovertext = sprintf("%s | %s -> %s | %s | %s",
+                              df$type[i], df$annee_realisation[i],
+                              df$end[i], df$priorite[i], df$statut[i])
+        )
+      }
+      plotly::layout(
+        p,
+        title = NULL,
+        xaxis = list(title = i18n$t("action_plan_col_annee"),
+                     tickformat = "d", dtick = 1),
+        yaxis = list(title = i18n$t("action_plan_col_ug_label"),
+                     autorange = "reversed",
+                     categoryorder = "category ascending"),
+        hovermode = "closest",
+        margin = list(l = 80, r = 20, t = 30, b = 40)
+      )
+    })
+
+    shiny::outputOptions(output, "gantt_plot", suspendWhenHidden = FALSE)
+
+    # ============================================================
+    # S10 - Send observation actions to the Field tab as samples
+    # ============================================================
+
+    shiny::observeEvent(input$export_terrain, {
+      i18n <- get_i18n(app_state$language)
+      project <- app_state$current_project
+      if (is.null(project)) {
+        shiny::showNotification(i18n$t("no_project"), type = "warning")
+        return()
+      }
+      plan <- plan_rv()
+      if (is.null(plan) || length(plan$actions) == 0L) {
+        shiny::showNotification(i18n$t("action_plan_export_terrain_empty"),
+                                type = "warning", duration = 6)
+        return()
+      }
+      obs <- Filter(function(a) identical(a$type, "observation"),
+                    plan$actions)
+      if (length(obs) == 0L) {
+        shiny::showNotification(i18n$t("action_plan_export_terrain_no_obs"),
+                                type = "warning", duration = 6)
+        return()
+      }
+      sf_ug <- ug_sf_4326()
+      if (is.null(sf_ug) || nrow(sf_ug) == 0L) return()
+
+      # Build POINT sf at UGF centroid for each observation action
+      centroids <- tryCatch(
+        sf::st_centroid(sf::st_geometry(sf_ug)),
+        error = function(e) NULL
+      )
+      if (is.null(centroids)) return()
+      centroid_map <- stats::setNames(
+        seq_len(nrow(sf_ug)), as.character(sf_ug$ug_id)
+      )
+      rows <- lapply(obs, function(a) {
+        idx <- centroid_map[as.character(a$ug_id)]
+        if (is.na(idx)) return(NULL)
+        list(
+          plot_id = paste0("obs_", a$id),
+          action_id = a$id,
+          ug_id = a$ug_id,
+          type = a$type,
+          annee_cible = as.integer(a$annee_cible %||% NA_integer_),
+          priorite = a$priorite %||% NA_character_,
+          geom = centroids[[idx]]
+        )
+      })
+      rows <- Filter(Negate(is.null), rows)
+      if (length(rows) == 0L) return()
+
+      df <- data.frame(
+        plot_id     = vapply(rows, function(r) r$plot_id, character(1)),
+        action_id   = vapply(rows, function(r) r$action_id, character(1)),
+        ug_id       = vapply(rows, function(r) r$ug_id, character(1)),
+        type        = vapply(rows, function(r) r$type, character(1)),
+        annee_cible = vapply(rows, function(r) r$annee_cible, integer(1)),
+        priorite    = vapply(rows, function(r) r$priorite, character(1)),
+        stringsAsFactors = FALSE
+      )
+      sf_pts <- sf::st_sf(df,
+                          geometry = sf::st_sfc(lapply(rows, function(r) r$geom),
+                                                crs = sf::st_crs(sf_ug)))
+
+      ok <- save_samples(project$id, sf_pts)
+      if (isTRUE(ok)) {
+        # Bump the cross-module signal so mod_sampling refreshes.
+        app_state$samples_refresh <- (app_state$samples_refresh %||% 0L) + 1L
+        shiny::showNotification(
+          sprintf(i18n$t("action_plan_export_terrain_ok_fmt"), nrow(sf_pts)),
+          type = "message", duration = 6
+        )
+      } else {
+        shiny::showNotification(i18n$t("action_plan_export_terrain_failed"),
+                                type = "error", duration = 6)
+      }
+    })
+
+    # ============================================================
+    # S11 - When mod_field_ingest reports a successful import, flip
+    # observation actions to "realisee" for the imported UGFs.
+    # ============================================================
+
+    shiny::observeEvent(app_state$field_imported_at, {
+      ts <- app_state$field_imported_at
+      if (is.null(ts)) return()
+      project <- app_state$current_project
+      cur_plan <- plan_rv()
+      if (is.null(project) || is.null(cur_plan)) return()
+      if (length(cur_plan$actions) == 0L) return()
+
+      imported_ugs <- app_state$field_imported_ugs %||% character()
+
+      n_ok <- 0L
+      for (a in cur_plan$actions) {
+        if (!identical(a$type, "observation")) next
+        if (!(a$ug_id %in% imported_ugs)) next
+        from <- a$statut %||% "proposee"
+        if (identical(from, "realisee") || identical(from, "abandonnee")) next
+        # Allowed transitions toward "realisee": only from "planifiee".
+        # If the action is in proposee / validee, walk through validee /
+        # planifiee on the way to realisee so the audit logs the path.
+        plan2 <- cur_plan
+        steps <- character()
+        if (from == "proposee")  steps <- c("validee", "planifiee", "realisee")
+        if (from == "validee")   steps <- c("planifiee", "realisee")
+        if (from == "planifiee") steps <- c("realisee")
+        for (s in steps) {
+          plan2 <- tryCatch(
+            update_action_in_plan(plan2, a$id, list(statut = s),
+                                  ug_ids = ug_ids(),
+                                  user = "field_ingest"),
+            error = function(e) plan2
+          )
+        }
+        cur_plan <- plan2
+        n_ok <- n_ok + 1L
+      }
+      if (n_ok > 0L) {
+        save_action_plan(project$id, cur_plan)
+        plan_rv(cur_plan)
+        i18n <- get_i18n(app_state$language)
+        shiny::showNotification(
+          sprintf(i18n$t("action_plan_field_realised_fmt"), n_ok),
+          type = "message", duration = 6
+        )
+      }
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
     # ============================================================
     # S7 - IA generation (all UGFs / current selection)
