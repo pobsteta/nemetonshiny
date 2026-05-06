@@ -36,57 +36,83 @@ mod_action_plan_ui <- function(id) {
   lang <- opts$language %||% "fr"
   i18n <- get_i18n(lang)
 
-  bslib::layout_sidebar(
-    fillable = TRUE,
-    sidebar = bslib::sidebar(
-      id = ns("sidebar"),
-      width = 320,
-      open = TRUE,
-      shiny::tags$h6(i18n$t("action_plan_filters_title")),
-      shiny::sliderInput(
-        ns("filter_horizon"),
-        label = i18n$t("action_plan_horizon"),
-        min = 1L, max = 20L, value = c(1L, 20L), step = 1L
-      ),
-      shiny::selectizeInput(
-        ns("filter_type"),
-        label = i18n$t("action_plan_type"),
-        choices = NULL, multiple = TRUE
-      ),
-      shiny::selectizeInput(
-        ns("filter_statut"),
-        label = i18n$t("action_plan_statut"),
-        choices = NULL, multiple = TRUE
-      ),
-      shiny::selectizeInput(
-        ns("filter_famille"),
-        label = i18n$t("action_plan_famille"),
-        choices = NULL, multiple = TRUE
-      ),
-      shiny::selectizeInput(
-        ns("filter_ug"),
-        label = i18n$t("action_plan_ug"),
-        choices = NULL, multiple = TRUE
-      ),
-      shiny::actionButton(
-        ns("reset_filters"),
-        label = i18n$t("action_plan_reset_filters"),
-        icon = shiny::icon("rotate-left"),
-        class = "btn-sm btn-outline-secondary"
-      )
+  # Toolbar shared by the Map+Table view (placed in the table card header).
+  table_toolbar <- htmltools::div(
+    class = "d-flex gap-2 align-items-center flex-wrap",
+    shiny::textOutput(ns("table_count_inline"), inline = TRUE),
+    shiny::actionButton(
+      ns("clear_map_selection"),
+      label = i18n$t("action_plan_clear_selection"),
+      icon = shiny::icon("eraser"),
+      class = "btn-sm btn-outline-secondary"
     ),
+    shiny::actionButton(
+      ns("show_history"),
+      label = i18n$t("action_plan_show_history"),
+      icon = shiny::icon("clock-rotate-left"),
+      class = "btn-sm btn-outline-secondary"
+    ),
+    shiny::selectInput(
+      ns("bulk_status"), label = NULL,
+      choices = stats::setNames(
+        c("",
+          "validee", "planifiee", "realisee",
+          "abandonnee", "proposee"),
+        c(i18n$t("action_plan_bulk_status_placeholder"),
+          i18n$t("action_plan_status_validee"),
+          i18n$t("action_plan_status_planifiee"),
+          i18n$t("action_plan_status_realisee"),
+          i18n$t("action_plan_status_abandonnee"),
+          i18n$t("action_plan_status_proposee"))
+      ),
+      width = "180px",
+      selected = ""
+    ),
+    shiny::actionButton(
+      ns("apply_bulk_status"),
+      label = i18n$t("action_plan_bulk_status_apply"),
+      icon = shiny::icon("forward"),
+      class = "btn-sm btn-outline-primary"
+    ),
+    shiny::actionButton(
+      ns("open_chat"),
+      label = i18n$t("action_plan_open_chat"),
+      icon = shiny::icon("comments"),
+      class = "btn-sm btn-outline-primary"
+    ),
+    shiny::actionButton(
+      ns("generate_all"),
+      label = i18n$t("action_plan_generate_all"),
+      icon = shiny::icon("wand-magic-sparkles"),
+      class = "btn-sm btn-primary"
+    ),
+    shiny::actionButton(
+      ns("add_action"),
+      label = i18n$t("action_plan_add"),
+      icon = shiny::icon("plus"),
+      class = "btn-sm btn-outline-primary"
+    )
+  )
 
-    bslib::navset_card_underline(
-      id = ns("inner_nav"),
+  bslib::navset_card_underline(
+    id = ns("inner_nav"),
+    full_screen = TRUE,
 
-      bslib::nav_panel(
-        title = i18n$t("action_plan_view_map_table"),
-        value = "map_table",
-        icon = bsicons::bs_icon("map"),
+    bslib::nav_panel(
+      title = i18n$t("action_plan_view_map_table"),
+      value = "map_table",
+      icon = bsicons::bs_icon("map"),
+
+      # Carte (gauche) + tableau (droite), 50/50 horizontal sur toute la
+      # hauteur disponible.
+      bslib::layout_columns(
+        col_widths = c(6, 6),
+        fillable = TRUE,
 
         bslib::card(
+          full_screen = TRUE,
           bslib::card_header(
-            class = "d-flex justify-content-between align-items-center",
+            class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
             i18n$t("action_plan_map_title"),
             shiny::radioButtons(
               ns("map_color_by"),
@@ -102,87 +128,33 @@ mod_action_plan_ui <- function(id) {
             )
           ),
           bslib::card_body(
-            min_height = "320px",
-            leaflet::leafletOutput(ns("map"), height = "420px")
+            class = "p-0",
+            leaflet::leafletOutput(ns("map"), height = "100%")
           )
         ),
 
         bslib::card(
+          full_screen = TRUE,
           bslib::card_header(
             class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
             i18n$t("action_plan_table_title"),
-            htmltools::div(
-              class = "d-flex gap-2 align-items-center flex-wrap",
-              shiny::textOutput(ns("table_count_inline"), inline = TRUE),
-              shiny::actionButton(
-                ns("clear_map_selection"),
-                label = i18n$t("action_plan_clear_selection"),
-                icon = shiny::icon("eraser"),
-                class = "btn-sm btn-outline-secondary"
-              ),
-              shiny::actionButton(
-                ns("show_history"),
-                label = i18n$t("action_plan_show_history"),
-                icon = shiny::icon("clock-rotate-left"),
-                class = "btn-sm btn-outline-secondary"
-              ),
-              shiny::selectInput(
-                ns("bulk_status"), label = NULL,
-                choices = stats::setNames(
-                  c("",
-                    "validee", "planifiee", "realisee",
-                    "abandonnee", "proposee"),
-                  c(i18n$t("action_plan_bulk_status_placeholder"),
-                    i18n$t("action_plan_status_validee"),
-                    i18n$t("action_plan_status_planifiee"),
-                    i18n$t("action_plan_status_realisee"),
-                    i18n$t("action_plan_status_abandonnee"),
-                    i18n$t("action_plan_status_proposee"))
-                ),
-                width = "180px",
-                selected = ""
-              ),
-              shiny::actionButton(
-                ns("apply_bulk_status"),
-                label = i18n$t("action_plan_bulk_status_apply"),
-                icon = shiny::icon("forward"),
-                class = "btn-sm btn-outline-primary"
-              ),
-              shiny::actionButton(
-                ns("open_chat"),
-                label = i18n$t("action_plan_open_chat"),
-                icon = shiny::icon("comments"),
-                class = "btn-sm btn-outline-primary"
-              ),
-              shiny::actionButton(
-                ns("generate_all"),
-                label = i18n$t("action_plan_generate_all"),
-                icon = shiny::icon("wand-magic-sparkles"),
-                class = "btn-sm btn-primary"
-              ),
-              shiny::actionButton(
-                ns("add_action"),
-                label = i18n$t("action_plan_add"),
-                icon = shiny::icon("plus"),
-                class = "btn-sm btn-outline-primary"
-              )
-            )
+            table_toolbar
           ),
           bslib::card_body(
             DT::dataTableOutput(ns("action_table"))
           )
         )
-      ),
+      )
+    ),
 
-      bslib::nav_panel(
-        title = i18n$t("action_plan_view_gantt"),
-        value = "gantt",
-        icon = bsicons::bs_icon("calendar-range"),
-        bslib::card(
-          bslib::card_body(
-            htmltools::div(class = "text-muted",
-                           i18n$t("action_plan_gantt_placeholder"))
-          )
+    bslib::nav_panel(
+      title = i18n$t("action_plan_view_gantt"),
+      value = "gantt",
+      icon = bsicons::bs_icon("calendar-range"),
+      bslib::card(
+        bslib::card_body(
+          htmltools::div(class = "text-muted",
+                         i18n$t("action_plan_gantt_placeholder"))
         )
       )
     )
@@ -255,81 +227,47 @@ mod_action_plan_server <- function(id, app_state) {
     # Selected UGFs (clicks on map; sync'd with row selection downstream)
     selected_ug_rv <- shiny::reactiveVal(character())
 
-    # ============================================================
-    # SIDEBAR: choices + filter slider follow plan + project
-    # ============================================================
-
-    shiny::observe({
-      shiny::updateSelectizeInput(session, "filter_type",
-                                  choices = ACTION_PLAN_TYPES,
-                                  server = FALSE)
-      shiny::updateSelectizeInput(session, "filter_statut",
-                                  choices = ACTION_PLAN_STATUTS,
-                                  server = FALSE)
-      shiny::updateSelectizeInput(session, "filter_famille",
-                                  choices = ACTION_PLAN_FAMILY_CODES,
-                                  server = FALSE)
-      shiny::updateSelectizeInput(session, "filter_ug",
-                                  choices = ug_ids(),
-                                  server = FALSE)
-      plan <- plan_rv()
-      horizon <- plan$horizon_annees %||% 20L
-      shiny::updateSliderInput(session, "filter_horizon",
-                               min = 1L, max = as.integer(horizon),
-                               value = c(1L, as.integer(horizon)))
-    })
-
-    shiny::observeEvent(input$reset_filters, {
-      shiny::updateSelectizeInput(session, "filter_type",   selected = character())
-      shiny::updateSelectizeInput(session, "filter_statut", selected = character())
-      shiny::updateSelectizeInput(session, "filter_famille", selected = character())
-      shiny::updateSelectizeInput(session, "filter_ug",     selected = character())
-      plan <- plan_rv()
-      horizon <- plan$horizon_annees %||% 20L
-      shiny::updateSliderInput(session, "filter_horizon",
-                               value = c(1L, as.integer(horizon)))
-      selected_ug_rv(character())
-    })
-
     shiny::observeEvent(input$clear_map_selection, {
       selected_ug_rv(character())
       DT::selectRows(DT::dataTableProxy("action_table"), NULL)
     })
 
     # ============================================================
-    # FILTERED ACTIONS (used by map + table + Gantt)
+    # ACTIONS (full plan + visible-rows view)
     # ============================================================
 
-    filtered_actions <- shiny::reactive({
+    # Full plan as a data.frame (with the UGF label joined in for display).
+    actions_df_all <- shiny::reactive({
       plan <- plan_rv()
-      if (is.null(plan)) return(list())
-      h <- input$filter_horizon
-      ug_filter <- if (length(input$filter_ug) > 0) input$filter_ug else NULL
-      # Map click acts as a soft additional filter when the user has
-      # not explicitly set the UGF filter.
-      if (is.null(ug_filter) && length(selected_ug_rv()) > 0) {
-        ug_filter <- selected_ug_rv()
+      df <- actions_to_dataframe(plan)
+      sf <- ug_sf_4326()
+      if (!is.null(sf) && nrow(df) > 0L) {
+        label_map <- stats::setNames(as.character(sf$label),
+                                     as.character(sf$ug_id))
+        df$ug_label <- ifelse(is.na(df$ug_id), NA_character_,
+                              label_map[df$ug_id])
+      } else {
+        df$ug_label <- NA_character_
       }
-      filter_actions(
-        plan,
-        ug_id     = ug_filter,
-        type      = if (length(input$filter_type)    > 0) input$filter_type    else NULL,
-        statut    = if (length(input$filter_statut)  > 0) input$filter_statut  else NULL,
-        famille   = if (length(input$filter_famille) > 0) input$filter_famille else NULL,
-        annee_min = if (!is.null(h)) as.integer(h[1]) else NULL,
-        annee_max = if (!is.null(h)) as.integer(h[2]) else NULL
-      )
+      df
     })
 
+    # Indices of rows currently visible in the DT (after column filters /
+    # global search). Defaults to all rows when DT hasn't reported yet.
+    visible_indices <- shiny::reactive({
+      idx <- input$action_table_rows_all
+      n <- nrow(actions_df_all())
+      if (is.null(idx)) seq_len(n) else as.integer(idx)
+    })
+
+    # Visible actions as a data.frame, used by map colorization + Gantt.
     actions_df <- shiny::reactive({
-      plan <- plan_rv()
-      if (is.null(plan)) return(actions_to_dataframe(NULL))
-      tmp <- plan
-      tmp$actions <- filtered_actions()
-      actions_to_dataframe(tmp)
+      df <- actions_df_all()
+      if (nrow(df) == 0L) return(df)
+      df[visible_indices(), , drop = FALSE]
     })
 
-    # Per-UGF aggregation for map coloring (always over filtered actions)
+    # Per-UGF aggregation for map coloring (over the *visible* actions)
     ugf_summary <- shiny::reactive({
       df <- actions_df()
       ugs <- ug_ids()
@@ -560,9 +498,18 @@ mod_action_plan_server <- function(id, app_state) {
     })
 
     # ============================================================
-    # TABLE (DT) with multi-select + inline edition
+    # TABLE (DT) with multi-select + inline edition + column filters
     # ============================================================
 
+    # Display columns (in order). `id` and `ug_id` stay hidden but are
+    # required to identify rows / drive map sync. `ug_label` is what the
+    # user sees instead of the raw ug_id.
+    DISPLAY_COLS <- c(
+      "id", "ug_id", "ug_label", "annee_cible", "type", "type_libre",
+      "intensite", "priorite", "statut", "objectifs_lies",
+      "volume_m3", "surface_ha", "nb_tiges", "rdi",
+      "cout_eur", "commentaire", "source_origine"
+    )
     EDITABLE_COLS <- c(
       "annee_cible", "type", "type_libre", "intensite", "priorite",
       "statut", "objectifs_lies", "volume_m3", "surface_ha",
@@ -570,7 +517,7 @@ mod_action_plan_server <- function(id, app_state) {
     )
 
     output$action_table <- DT::renderDataTable({
-      df <- actions_df()
+      df <- actions_df_all()
       i18n <- get_i18n(app_state$language)
       if (nrow(df) == 0L) {
         return(DT::datatable(
@@ -579,27 +526,77 @@ mod_action_plan_server <- function(id, app_state) {
           selection = "none"
         ))
       }
-      # Reorder for display, keep the id hidden
-      display <- df[, c("id", "ug_id", "annee_cible", "type", "type_libre",
-                        "intensite", "priorite", "statut", "objectifs_lies",
-                        "volume_m3", "surface_ha", "nb_tiges", "rdi",
-                        "cout_eur", "commentaire", "source_origine")]
-      editable_idx <- which(names(display) %in% EDITABLE_COLS) - 1L  # 0-based
+
+      display <- df[, DISPLAY_COLS, drop = FALSE]
+
+      # Promote categorical columns to factors so DT renders dropdown
+      # filters above each column (filter = "top" auto-detects type).
+      for (cc in c("ug_label", "type", "priorite", "statut")) {
+        if (cc %in% names(display)) {
+          v <- display[[cc]]
+          v[is.na(v)] <- ""
+          lev <- sort(unique(c(
+            switch(cc,
+                   type     = ACTION_PLAN_TYPES,
+                   priorite = ACTION_PLAN_PRIORITES,
+                   statut   = ACTION_PLAN_STATUTS,
+                   character()),
+            v
+          )))
+          display[[cc]] <- factor(v, levels = lev)
+        }
+      }
+
+      # Localised column headers: passed as a named character so DT shows
+      # the value as the header for the column whose internal name is
+      # the value of the named entry.
+      colname_map <- c(
+        i18n$t("action_plan_col_id")          %||% "id"          ,
+        i18n$t("action_plan_col_ug_id")       %||% "ug_id"       ,
+        i18n$t("action_plan_col_ug_label")    %||% "UGF"         ,
+        i18n$t("action_plan_col_annee")       %||% "Annee"       ,
+        i18n$t("action_plan_col_type")        %||% "Type"        ,
+        i18n$t("action_plan_col_type_libre")  %||% "Type libre"  ,
+        i18n$t("action_plan_col_intensite")   %||% "Intensite"   ,
+        i18n$t("action_plan_col_priorite")    %||% "Priorite"    ,
+        i18n$t("action_plan_col_statut")      %||% "Statut"      ,
+        i18n$t("action_plan_col_objectifs")   %||% "Objectifs"   ,
+        i18n$t("action_plan_col_volume")      %||% "Volume (m3)" ,
+        i18n$t("action_plan_col_surface")     %||% "Surface (ha)",
+        i18n$t("action_plan_col_tiges")       %||% "Tiges"       ,
+        i18n$t("action_plan_col_rdi")         %||% "RDI"         ,
+        i18n$t("action_plan_col_cout")        %||% "Cout (EUR)"  ,
+        i18n$t("action_plan_col_commentaire") %||% "Commentaire" ,
+        i18n$t("action_plan_col_source")      %||% "Source"
+      )
+
+      # Hidden columns: id (0), ug_id (1).
+      hidden_targets <- as.integer(c(0L, 1L))
+      editable_idx <- which(DISPLAY_COLS %in% EDITABLE_COLS) - 1L
+
       DT::datatable(
         display,
+        colnames = colname_map,
         rownames = FALSE,
+        filter = "top",
         selection = list(mode = "multiple", target = "row"),
         editable  = list(target = "cell",
                          disable = list(columns = setdiff(seq_len(ncol(display)) - 1L,
                                                           editable_idx))),
+        extensions = c("FixedHeader"),
         options = list(
-          pageLength = 15,
+          pageLength = 25,
           dom = "frtip",
-          columnDefs = list(list(visible = FALSE, targets = 0L)),
+          fixedHeader = TRUE,
+          scrollX = TRUE,
+          columnDefs = list(
+            list(visible = FALSE, targets = hidden_targets)
+          ),
           language = if (identical(app_state$language, "en")) list() else list(
             search = "Rechercher :",
             info   = "_TOTAL_ action(s)",
-            lengthMenu = "Afficher _MENU_"
+            lengthMenu = "Afficher _MENU_",
+            paginate = list(previous = "Pr\u00e9c.", `next` = "Suiv.")
           )
         )
       )
@@ -607,38 +604,38 @@ mod_action_plan_server <- function(id, app_state) {
 
     shiny::outputOptions(output, "action_table", suspendWhenHidden = FALSE)
 
-    # Inline edits -> persist via update_action_in_plan
+    # Inline edits -> persist via update_action_in_plan. The DT row index
+    # corresponds to the *full* data.frame (actions_df_all) since DT is
+    # told about all rows; column filtering is purely client-side.
     shiny::observeEvent(input$action_table_cell_edit, {
       info <- input$action_table_cell_edit
-      df <- actions_df()
+      df <- actions_df_all()
       if (nrow(df) == 0L) return()
       row_idx <- info$row
       col_idx <- info$col + 1L  # DT is 0-based
-      # Display ordering uses the same order as in renderDataTable above:
-      display_cols <- c("id", "ug_id", "annee_cible", "type", "type_libre",
-                        "intensite", "priorite", "statut", "objectifs_lies",
-                        "volume_m3", "surface_ha", "nb_tiges", "rdi",
-                        "cout_eur", "commentaire", "source_origine")
-      if (col_idx < 1L || col_idx > length(display_cols)) return()
-      field <- display_cols[col_idx]
+      if (col_idx < 1L || col_idx > length(DISPLAY_COLS)) return()
+      field_disp <- DISPLAY_COLS[col_idx]
+      # ug_label is shown but not editable (it follows ug_id), drop it
+      # defensively here too.
+      if (!(field_disp %in% EDITABLE_COLS)) return()
       action_id <- df$id[row_idx]
       if (is.na(action_id)) return()
       idx <- find_action_index(plan_rv(), action_id)
       if (is.na(idx)) return()
       raw_value <- info$value
-      coerced <- coerce_table_value(field, raw_value)
-      updates <- if (field %in% c("volume_m3", "surface_ha", "nb_tiges",
-                                  "rdi", "cout_eur")) {
+      coerced <- coerce_table_value(field_disp, raw_value)
+      updates <- if (field_disp %in% c("volume_m3", "surface_ha", "nb_tiges",
+                                       "rdi", "cout_eur")) {
         existing_q <- plan_rv()$actions[[idx]]$quantite %||% list()
         list(quantite = utils::modifyList(
           existing_q,
-          stats::setNames(list(coerced), field)
+          stats::setNames(list(coerced), field_disp)
         ))
-      } else if (field == "objectifs_lies") {
+      } else if (field_disp == "objectifs_lies") {
         list(objectifs_lies = strsplit(as.character(raw_value),
                                        "\\s*,\\s*")[[1]])
       } else {
-        stats::setNames(list(coerced), field)
+        stats::setNames(list(coerced), field_disp)
       }
       tryCatch({
         new_plan <- update_action_in_plan(
@@ -654,16 +651,12 @@ mod_action_plan_server <- function(id, app_state) {
     })
 
     # Sync table row selection -> selected UGFs (for the map highlight).
-    # Using `selectRows` style updates instead of fully resetting filters,
-    # so the user can mix row selection + filters freely.
     shiny::observe({
       sel <- input$action_table_rows_selected
-      df <- actions_df()
+      df <- actions_df_all()
       if (length(sel) == 0L || nrow(df) == 0L) return()
       ugs <- unique(df$ug_id[sel])
       ugs <- ugs[!is.na(ugs)]
-      # Merge with existing map clicks: row selection IS the source of
-      # truth when present.
       selected_ug_rv(ugs)
     })
 
@@ -673,7 +666,7 @@ mod_action_plan_server <- function(id, app_state) {
 
     output$table_count_inline <- shiny::renderText({
       i18n <- get_i18n(app_state$language)
-      n <- length(filtered_actions())
+      n <- nrow(actions_df())
       sprintf(i18n$t("action_plan_table_count_fmt"), n)
     })
 
@@ -1032,7 +1025,7 @@ mod_action_plan_server <- function(id, app_state) {
       i18n <- get_i18n(app_state$language)
       target <- input$bulk_status %||% ""
       sel_rows <- input$action_table_rows_selected
-      df <- actions_df()
+      df <- actions_df_all()
       if (!nzchar(target)) {
         shiny::showNotification(i18n$t("action_plan_bulk_status_pick"),
                                 type = "warning", duration = 4)
@@ -1089,7 +1082,7 @@ mod_action_plan_server <- function(id, app_state) {
     shiny::observeEvent(input$show_history, {
       i18n <- get_i18n(app_state$language)
       sel_rows <- input$action_table_rows_selected
-      df <- actions_df()
+      df <- actions_df_all()
       if (length(sel_rows) != 1L || nrow(df) == 0L) {
         shiny::showNotification(i18n$t("action_plan_history_pick_one"),
                                 type = "warning", duration = 4)
