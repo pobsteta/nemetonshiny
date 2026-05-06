@@ -59,6 +59,10 @@ TRANSLATIONS <- list(
     fr = "Action déplacée vers : %s.",
     en = "Action moved to: %s."
   ),
+  action_plan_kanban_drop_invalid_fmt = list(
+    fr = "Transition refusée : %s → %s.",
+    en = "Transition refused: %s → %s."
+  ),
   action_plan_map_title = list(fr = "Carte des actions", en = "Action map"),
   action_plan_table_title = list(fr = "Tableau des actions", en = "Action table"),
   action_plan_color_year = list(fr = "Année", en = "Year"),

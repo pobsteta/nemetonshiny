@@ -1,3 +1,58 @@
+# nemetonshiny 0.22.2 (2026-05-06)
+
+### Plan d'actions — table & Kanban polish
+
+* `refactor(action_plan)` — DT table trimmed and stabilised.
+  Removed columns *Type libre*, *Objectifs*, *RDI*, and *Source* —
+  they were rarely used, made horizontal scroll worse, and the
+  underlying fields are still editable through the row-level form.
+  Per-column filter row dropped (`filter = "top"` → `filter = "none"`);
+  the global search box is the single filter exposed. Rows now have
+  a uniform height: the datatable carries `class = "compact stripe
+  hover nowrap"` and a scoped `.dt-truncate` rule (`max-width:
+  220px; overflow: hidden; text-overflow: ellipsis`) keeps long
+  commentaire / labels on a single line. The two pinned left
+  columns (UGF + Année) are unchanged.
+* `feat(action_plan)` — Kanban board layout reorganised. The four
+  active workflow stages (*Proposée*, *Validée*, *Planifiée*,
+  *Réalisée*) sit side by side as a 4-column grid; *Abandonnée* is
+  rendered full-width below as a separate, less prominent archive
+  lane. Empty columns now reserve a 60 px drop zone so cards can be
+  dragged into them.
+* `feat(action_plan)` — **Drag-and-drop on the Kanban board**.
+  Cards can be moved between columns by dragging. SortableJS 1.15.6
+  is vendored under `inst/app/www/js/Sortable-1.15.6.min.js` (MIT,
+  ~45 KB), wired up by a small init script
+  (`action_plan_kanban.js`) that re-binds on every renderUI tick to
+  avoid stale instances. On drop, the JS pushes
+  `input$kanban_drop = list(action_id, target_status, source_status,
+  nonce)` to the server, where a new observer validates the
+  transition through the existing `is_valid_status_transition()`
+  rules:
+    - **Allowed transition** → `update_action_in_plan()` +
+      `save_action_plan()`, then `plan_rv()` is bumped, which
+      triggers a renderUI re-run that confirms the move.
+    - **Refused transition** (e.g. trying to drag a *Réalisée* card
+      back to *Proposée*) → a warning toast surfaces with the
+      offending pair, and `kanban_render_token` is bumped to
+      re-render the board, which puts the card back where the data
+      says it belongs.
+  The previous per-card *Déplacer* dropdown is preserved — both
+  paths share the same validator + persistence code.
+
+### i18n
+
+* New key `action_plan_kanban_drop_invalid_fmt` (FR/EN) for the
+  refused-transition toast.
+
+### Tests
+
+* `tests/testthat/test-mod_action_plan.R` — three new test_thats:
+  vendored asset existence (`Sortable-1.15.6.min.js` +
+  `action_plan_kanban.js`), validator coverage for legal vs refused
+  drag-drop transitions, and presence of the new i18n key in both
+  locales.
+
 # nemetonshiny 0.22.1 (2026-05-06)
 
 ### Bug fixes

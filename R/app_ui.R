@@ -249,6 +249,14 @@ app_add_external_resources <- function() {
       )
     ),
 
+    # SortableJS for the Plan d'actions Kanban drag-and-drop. Vendored
+    # in inst/app/www/js/ to avoid an external runtime dependency.
+    htmltools::tags$script(src = "www/js/Sortable-1.15.6.min.js"),
+    htmltools::tags$script(
+      src = paste0("www/js/action_plan_kanban.js?v=",
+                   as.integer(Sys.time()))
+    ),
+
     # Custom JS - minified for performance (cache-busting to ensure latest version)
     htmltools::tags$script(
       src = paste0("www/js/custom.min.js?v=", as.integer(Sys.time()))

@@ -138,6 +138,19 @@ mod_action_plan_ui <- function(id) {
     fillable = TRUE,
     sidebar = action_sidebar,
 
+    # Scoped CSS: ellipsize long text in DT cells so every row keeps a
+    # uniform height. Combined with `class = "nowrap"` on the datatable
+    # itself this guarantees single-line cells without a wrapping
+    # overflow that would push some rows taller than others.
+    htmltools::tags$style(htmltools::HTML(sprintf("
+      #%s .dt-truncate {
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    ", ns("action_table")))),
+
     bslib::navset_card_underline(
       id = ns("inner_nav"),
       full_screen = TRUE,
@@ -231,6 +244,11 @@ mod_action_plan_server <- function(id, app_state) {
     # ============================================================
 
     plan_rv <- shiny::reactiveVal(NULL)
+
+    # Bumped after a refused Kanban drag-and-drop drop so the
+    # `kanban_board` renderUI reruns and puts the card back where the
+    # data says it belongs (plan_rv is untouched in that case).
+    kanban_render_token <- shiny::reactiveVal(0L)
 
     # Module-local state (e.g. last-fitted bbox signature, project id).
     rv_state <- shiny::reactiveValues(last_bbox_sig = NULL,
@@ -591,18 +609,18 @@ mod_action_plan_server <- function(id, app_state) {
     DISPLAY_COLS <- c(
       "id", "ug_id", "annee_cible",
       "ug_label", "annee_realisation",
-      "type", "type_libre",
-      "intensite", "priorite", "statut", "objectifs_lies",
-      "volume_m3", "surface_ha", "nb_tiges", "rdi",
+      "type",
+      "intensite", "priorite", "statut",
+      "volume_m3", "surface_ha", "nb_tiges",
       "cout_eur", "revenu_eur", "bilan_eur",
-      "commentaire", "source_origine"
+      "commentaire"
     )
     # Cells the user can edit. `annee_realisation` accepts a calendar
     # year and is converted back to an offset before persistence.
     EDITABLE_COLS <- c(
-      "annee_realisation", "type", "type_libre", "intensite", "priorite",
-      "statut", "objectifs_lies", "volume_m3", "surface_ha",
-      "nb_tiges", "rdi", "cout_eur", "revenu_eur", "commentaire"
+      "annee_realisation", "type", "intensite", "priorite",
+      "statut", "volume_m3", "surface_ha",
+      "nb_tiges", "cout_eur", "revenu_eur", "commentaire"
     )
 
     PLAN_BASE_YEAR <- function() as.integer(format(Sys.Date(), "%Y"))
@@ -646,20 +664,16 @@ mod_action_plan_server <- function(id, app_state) {
         i18n$t("action_plan_col_ug_label"),
         i18n$t("action_plan_col_annee"),
         i18n$t("action_plan_col_type"),
-        i18n$t("action_plan_col_type_libre"),
         i18n$t("action_plan_col_intensite"),
         i18n$t("action_plan_col_priorite"),
         i18n$t("action_plan_col_statut"),
-        i18n$t("action_plan_col_objectifs"),
         i18n$t("action_plan_col_volume"),
         i18n$t("action_plan_col_surface"),
         i18n$t("action_plan_col_tiges"),
-        i18n$t("action_plan_col_rdi"),
         i18n$t("action_plan_col_cout"),
         i18n$t("action_plan_col_revenu"),
         i18n$t("action_plan_col_bilan"),
-        i18n$t("action_plan_col_commentaire"),
-        i18n$t("action_plan_col_source")
+        i18n$t("action_plan_col_commentaire")
       )
 
       # Hidden columns: id (0), ug_id (1), annee_cible offset (2).
@@ -670,7 +684,12 @@ mod_action_plan_server <- function(id, app_state) {
         display,
         colnames = colname_map,
         rownames = FALSE,
-        filter = "top",
+        # No per-column filters; the global "search" box (dom 'f') is
+        # the only filter exposed to the user.
+        filter = "none",
+        # `compact` shrinks padding, `nowrap` forces single-line cells
+        # so every row has the same height regardless of content length.
+        class = "display compact stripe hover nowrap",
         selection = list(mode = "multiple", target = "row"),
         editable  = list(target = "cell",
                          disable = list(columns = setdiff(seq_len(ncol(display)) - 1L,
@@ -691,7 +710,11 @@ mod_action_plan_server <- function(id, app_state) {
           # when scrolling horizontally.
           fixedColumns = list(leftColumns = 5L),
           columnDefs = list(
-            list(visible = FALSE, targets = hidden_targets)
+            list(visible = FALSE, targets = hidden_targets),
+            # Cap visible-column widths so long commentaire / labels
+            # ellipsize instead of wrapping to a second line.
+            list(targets = "_all",
+                 className = "dt-truncate")
           ),
           language = if (identical(app_state$language, "en")) list() else list(
             search = "Rechercher :",
@@ -903,6 +926,14 @@ mod_action_plan_server <- function(id, app_state) {
                               i18n$t("action_plan_table_empty")))
       }
 
+      # Per-render token so we can force a re-render after a refused
+      # drag-and-drop drop (status transition not allowed). When the
+      # drop is valid, plan_rv() update already triggers re-render via
+      # actions_df_all() invalidation; when refused, plan_rv() is
+      # untouched, so we bump this to put the card back where the data
+      # says it belongs.
+      kanban_render_token()
+
       build_card <- function(row) {
         bilan <- row$bilan_eur
         bilan_color <- if (is.na(bilan)) "#6b7280"
@@ -954,7 +985,11 @@ mod_action_plan_server <- function(id, app_state) {
           paste0(" \u2014 ", row$objectifs_lies) else ""
 
         htmltools::div(
-          class = "card mb-2 shadow-sm",
+          class = "card mb-2 shadow-sm kanban-card",
+          # `data-action-id` is read by SortableJS' onAdd handler in
+          # action_plan_kanban.js to identify the dragged card on drop.
+          `data-action-id` = action_id,
+          style = "cursor: grab;",
           htmltools::div(
             class = "card-body p-2",
             htmltools::div(
@@ -982,7 +1017,7 @@ mod_action_plan_server <- function(id, app_state) {
         )
       }
 
-      cols <- lapply(KANBAN_STATUSES, function(st) {
+      build_col <- function(st, body_max_height) {
         sub <- df[!is.na(df$statut) & df$statut == st, , drop = FALSE]
         bslib::card(
           bslib::card_header(
@@ -994,8 +1029,13 @@ mod_action_plan_server <- function(id, app_state) {
                     nrow(sub))
           ),
           bslib::card_body(
-            class = "p-2",
-            style = "max-height: 70vh; overflow-y: auto;",
+            class = "p-2 kanban-col-body",
+            # `data-kanban-col` is the contract with action_plan_kanban.js:
+            # SortableJS uses `evt.from`/`evt.to.getAttribute("data-kanban-col")`
+            # to derive source and target statuses on drop.
+            `data-kanban-col` = st,
+            style = sprintf("max-height: %s; overflow-y: auto; min-height: 60px;",
+                            body_max_height),
             if (nrow(sub) == 0L) {
               htmltools::div(class = "text-muted small text-center py-3",
                              i18n$t("action_plan_kanban_empty_col"))
@@ -1006,14 +1046,97 @@ mod_action_plan_server <- function(id, app_state) {
             }
           )
         )
-      })
+      }
 
-      do.call(bslib::layout_columns,
-              c(list(col_widths = rep(12 / length(KANBAN_STATUSES),
-                                       length(KANBAN_STATUSES)),
-                     fillable = TRUE),
-                cols))
+      # Top row: the 4 active workflow stages side by side.
+      # Bottom row: "Abandonnée" full-width as a separate, less prominent
+      # archive lane.
+      top_statuses <- c("proposee", "validee", "planifiee", "realisee")
+      top_cols <- lapply(top_statuses, build_col, body_max_height = "55vh")
+      bottom_col <- build_col("abandonnee", body_max_height = "30vh")
+
+      # Inline init script: rebinds SortableJS to the freshly rendered
+      # column bodies. Re-runs on every renderUI invalidation (plan_rv
+      # update or kanban_render_token bump after a refused drop) so old
+      # bindings are torn down inside initKanbanSortable() to avoid
+      # double-firing onAdd.
+      board_id   <- session$ns("kanban_board")
+      drop_input <- session$ns("kanban_drop")
+      init_script <- htmltools::tags$script(htmltools::HTML(sprintf(
+        "if (window.initKanbanSortable) { window.initKanbanSortable(%s, %s); }",
+        jsonlite::toJSON(board_id, auto_unbox = TRUE),
+        jsonlite::toJSON(drop_input, auto_unbox = TRUE)
+      )))
+
+      htmltools::tagList(
+        do.call(bslib::layout_columns,
+                c(list(col_widths = rep(3L, length(top_statuses)),
+                       fillable = TRUE),
+                  top_cols)),
+        htmltools::div(class = "mt-3", bottom_col),
+        init_script
+      )
     })
+
+    # ============================================================
+    # KANBAN drag-and-drop dispatch (SortableJS in
+    # inst/app/www/js/action_plan_kanban.js).
+    # ============================================================
+    #
+    # Payload from JS: list(action_id, target_status, source_status,
+    # nonce). The `nonce` defeats Shiny input deduplication so
+    # consecutive drops between the same two columns still fire.
+    shiny::observeEvent(input$kanban_drop, {
+      payload <- input$kanban_drop
+      i18n <- get_i18n(app_state$language)
+      action_id <- payload$action_id
+      target <- payload$target_status
+      if (is.null(action_id) || is.null(target)) return()
+
+      cur_plan <- plan_rv()
+      idx <- find_action_index(cur_plan, action_id)
+      if (is.na(idx)) {
+        kanban_render_token(kanban_render_token() + 1L)
+        return()
+      }
+      from <- cur_plan$actions[[idx]]$statut %||% "proposee"
+      if (identical(from, target)) {
+        # Drop within the same column — no-op, but the DOM may have
+        # reordered cards; a re-render restores canonical order.
+        kanban_render_token(kanban_render_token() + 1L)
+        return()
+      }
+      if (!is_valid_status_transition(from, target)) {
+        shiny::showNotification(
+          sprintf(i18n$t("action_plan_kanban_drop_invalid_fmt"),
+                  i18n$t(paste0("action_plan_status_", from)),
+                  i18n$t(paste0("action_plan_status_", target))),
+          type = "warning", duration = 5
+        )
+        kanban_render_token(kanban_render_token() + 1L)
+        return()
+      }
+      new_plan <- tryCatch(
+        update_action_in_plan(cur_plan, action_id, list(statut = target),
+                              ug_ids = ug_ids(),
+                              user = Sys.info()[["user"]] %||% "user"),
+        error = function(e) {
+          shiny::showNotification(conditionMessage(e), type = "error")
+          NULL
+        }
+      )
+      if (is.null(new_plan)) {
+        kanban_render_token(kanban_render_token() + 1L)
+        return()
+      }
+      save_action_plan(app_state$current_project$id, new_plan)
+      plan_rv(new_plan)
+      shiny::showNotification(
+        sprintf(i18n$t("action_plan_kanban_moved_fmt"),
+                i18n$t(paste0("action_plan_status_", target))),
+        type = "message", duration = 3
+      )
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
     # Dispatch every Kanban card click. Inputs are named
     # `kanban_move_<action_id>__<target_status>`.
