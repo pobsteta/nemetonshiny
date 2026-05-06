@@ -235,3 +235,184 @@ build_synthesis_prompt <- function(family_scores_df, language) {
     }
   )
 }
+
+
+#' Build action plan extraction prompt
+#'
+#' @description
+#' Builds the user prompt asking the LLM to extract a structured action plan
+#' from textual synthesis and family comments. Output is constrained to JSON
+#' (parsed by `parse_action_plan_response`).
+#'
+#' @param comments List with `synthesis` (character) and `families` (named
+#'   list of family-code -> character).
+#' @param ug_ids Character. Allowed UGF identifiers for the project.
+#' @param horizon_annees Integer. Planning horizon (years from now).
+#' @param language Character. "fran\u00e7ais" or "English".
+#' @param scope Character. "all" (all UGFs) or "by_ug".
+#' @param ug_id Character. UGF id when `scope = "by_ug"`.
+#' @return Character. Prompt text.
+#' @noRd
+build_action_plan_prompt <- function(comments, ug_ids,
+                                     horizon_annees = 20L,
+                                     language = "fran\u00e7ais",
+                                     scope = c("all", "by_ug"),
+                                     ug_id = NULL) {
+  scope <- match.arg(scope)
+  fr <- identical(language, "fran\u00e7ais")
+
+  syn <- comments$synthesis %||% ""
+  fams <- comments$families %||% list()
+
+  fam_blocks <- vapply(names(fams), function(code) {
+    txt <- as.character(fams[[code]] %||% "")
+    if (!nzchar(trimws(txt))) return(NA_character_)
+    paste0("[family_", code, "]\n", txt)
+  }, character(1))
+  fam_blocks <- fam_blocks[!is.na(fam_blocks)]
+
+  ug_list_str <- paste(ug_ids, collapse = ", ")
+
+  schema <- paste(
+    "JSON schema (return ONLY this object, no prose):",
+    "{",
+    '  "actions": [',
+    "    {",
+    '      "ug_id": <one of the allowed ug_ids>,',
+    '      "type": <one of: coupe_rase, eclaircie, depressage, plantation,',
+    "                regeneration, cloisonnement, desserte, observation,",
+    "                protection, entretien, autre>,",
+    '      "type_libre": <free text if type=autre, else null>,',
+    '      "intensite": <e.g. faible|moderee|forte|null>,',
+    '      "annee_cible": <integer in 1..HORIZON>,',
+    '      "duree": <integer years or null>,',
+    '      "priorite": <haute|moyenne|basse>,',
+    '      "objectifs_lies": [<family codes among C,B,W,A,F,L,T,R,S,P,E,N>],',
+    '      "quantite": {',
+    '        "volume_m3": <number or null>,',
+    '        "surface_ha": <number or null>,',
+    '        "nb_tiges": <integer or null>,',
+    '        "rdi": <number or null>,',
+    '        "cout_eur": <number or null>',
+    "      },",
+    '      "source": {',
+    '        "origine": <"synthesis" | "family_C" | "family_B" | ...>,',
+    '        "extrait_texte": <verbatim short excerpt that justifies the action>',
+    "      },",
+    '      "commentaire": <short note or null>',
+    "    }",
+    "  ]",
+    "}",
+    sep = "\n"
+  )
+
+  intro <- if (fr) {
+    paste0("Extrais un plan d'actions sylvicoles \u00e0 partir des commentaires ci-dessous. ",
+           "Horizon : ", horizon_annees, " ans (pas annuel).")
+  } else {
+    paste0("Extract a silvicultural action plan from the comments below. ",
+           "Horizon: ", horizon_annees, " years (annual step).")
+  }
+
+  scope_str <- if (scope == "by_ug" && !is.null(ug_id)) {
+    if (fr) paste0("Limite-toi strictement \u00e0 l'UGF '", ug_id, "'.")
+    else    paste0("Restrict strictly to UGF '", ug_id, "'.")
+  } else {
+    if (fr) "Couvre toutes les UGF list\u00e9es."
+    else    "Cover all listed UGFs."
+  }
+
+  ug_str <- if (fr) {
+    paste0("UGF autoris\u00e9es (utilise ces ug_id, jamais d'autres) : ", ug_list_str, ".")
+  } else {
+    paste0("Allowed UGFs (use these ug_id values, never others): ", ug_list_str, ".")
+  }
+
+  syn_block <- if (nzchar(trimws(syn))) {
+    paste0("[synthesis]\n", syn, "\n")
+  } else {
+    if (fr) "[synthesis]\n(aucun commentaire de synth\u00e8se fourni)\n"
+    else    "[synthesis]\n(no synthesis comment provided)\n"
+  }
+
+  fams_section <- if (length(fam_blocks) > 0) {
+    paste(fam_blocks, collapse = "\n\n")
+  } else {
+    if (fr) "(aucun commentaire de famille fourni)"
+    else    "(no family comment provided)"
+  }
+
+  paste(
+    intro,
+    scope_str,
+    ug_str,
+    "",
+    syn_block,
+    fams_section,
+    "",
+    sub("HORIZON", as.character(horizon_annees), schema, fixed = TRUE),
+    sep = "\n"
+  )
+}
+
+
+#' Parse and validate an LLM action plan response
+#'
+#' @description
+#' Parses a (potentially noisy) JSON string returned by the LLM, extracts the
+#' `actions` array and runs each entry through `validate_action`. Invalid
+#' actions are dropped (with a warning collected in the result).
+#'
+#' @param response Character. Raw text returned by the LLM.
+#' @param ug_ids Character. Allowed UGF IDs.
+#' @param horizon_annees Integer. Planning horizon.
+#' @return List with `actions` (list of validated actions, statut forced to
+#'   `proposee`) and `errors` (character \u2014 one entry per dropped action).
+#' @noRd
+parse_action_plan_response <- function(response, ug_ids,
+                                       horizon_annees = 20L) {
+  if (!is.character(response) || length(response) == 0L ||
+      !nzchar(response)) {
+    return(list(actions = list(), errors = "empty response"))
+  }
+
+  # Heuristic: the LLM may wrap the JSON in markdown fences or prose.
+  txt <- response
+  txt <- sub("(?s).*?```(?:json)?\\s*", "", txt, perl = TRUE)
+  txt <- sub("(?s)```.*$", "", txt, perl = TRUE)
+  # If the above did nothing useful, try to grab the outermost {...}
+  m <- regmatches(txt, regexpr("\\{[\\s\\S]*\\}", txt, perl = TRUE))
+  if (length(m) > 0 && nzchar(m)) txt <- m
+
+  parsed <- tryCatch(
+    jsonlite::fromJSON(txt, simplifyVector = FALSE),
+    error = function(e) NULL
+  )
+  if (is.null(parsed) || is.null(parsed$actions)) {
+    return(list(actions = list(),
+                errors = "could not parse JSON or 'actions' missing"))
+  }
+
+  actions <- list()
+  errors  <- character()
+  for (i in seq_along(parsed$actions)) {
+    a <- parsed$actions[[i]]
+    if (!is.list(a)) {
+      errors <- c(errors, sprintf("action #%d not an object", i))
+      next
+    }
+    a$statut <- "proposee"
+    if (is.null(a$priorite)) a$priorite <- "moyenne"
+    v <- validate_action(a, ug_ids = ug_ids,
+                         horizon_annees = horizon_annees)
+    if (!v$valid) {
+      errors <- c(errors,
+                  sprintf("action #%d dropped: %s",
+                          i, paste(v$errors, collapse = "; ")))
+      next
+    }
+    actions <- c(actions, list(a))
+  }
+
+  list(actions = actions, errors = errors)
+}

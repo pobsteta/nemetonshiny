@@ -36,6 +36,59 @@ TRANSLATIONS <- list(
   tab_sampling = list(fr = "Terrain", en = "Field"),
   tab_terrain_export = list(fr = "Export terrain",   en = "Field export"),
   tab_terrain_import = list(fr = "Import terrain",   en = "Field import"),
+  tab_action_plan = list(fr = "Plan d'actions", en = "Action Plan"),
+
+  # ============================================================
+  # Action Plan tab (S3 skeleton)
+  # ============================================================
+  action_plan_filters_title = list(fr = "Filtres", en = "Filters"),
+  action_plan_horizon = list(fr = "Horizon (années)", en = "Horizon (years)"),
+  action_plan_type = list(fr = "Type d'action", en = "Action type"),
+  action_plan_statut = list(fr = "Statut", en = "Status"),
+  action_plan_famille = list(fr = "Famille d'objectifs", en = "Objective family"),
+  action_plan_ug = list(fr = "UGF", en = "UGF"),
+  action_plan_reset_filters = list(fr = "Réinitialiser", en = "Reset"),
+  action_plan_view_map_table = list(fr = "Carte + Tableau", en = "Map + Table"),
+  action_plan_view_gantt = list(fr = "Gantt", en = "Gantt"),
+  action_plan_map_title = list(fr = "Carte des actions", en = "Action map"),
+  action_plan_table_title = list(fr = "Tableau des actions", en = "Action table"),
+  action_plan_color_year = list(fr = "Année", en = "Year"),
+  action_plan_color_type = list(fr = "Type", en = "Type"),
+  action_plan_color_priority = list(fr = "Priorité", en = "Priority"),
+  action_plan_generate_all = list(fr = "Générer (IA)", en = "Generate (AI)"),
+  action_plan_add = list(fr = "Ajouter une action", en = "Add action"),
+  action_plan_map_pending = list(
+    fr = "La carte interactive sera disponible avec la story S4.",
+    en = "The interactive map will be available with story S4."
+  ),
+  action_plan_table_pending = list(
+    fr = "Le tableau interactif sera disponible avec la story S5.",
+    en = "The interactive table will be available with story S5."
+  ),
+  action_plan_table_count_fmt = list(
+    fr = "%d action(s) après filtres.",
+    en = "%d action(s) after filtering."
+  ),
+  action_plan_gantt_placeholder = list(
+    fr = "La vue Gantt sera disponible avec la story S9.",
+    en = "Gantt view will be available with story S9."
+  ),
+  action_plan_generate_pending = list(
+    fr = "Génération IA disponible avec la story S7.",
+    en = "AI generation will be available with story S7."
+  ),
+  action_plan_add_pending = list(
+    fr = "Ajout manuel disponible avec la story S5.",
+    en = "Manual add will be available with story S5."
+  ),
+  action_plan_table_empty = list(
+    fr = "Aucune action dans le plan pour le moment.",
+    en = "No action in the plan yet."
+  ),
+  action_plan_clear_selection = list(
+    fr = "Effacer la sélection",
+    en = "Clear selection"
+  ),
   ug_map_card_title = list(fr = "Carte des unit\u00e9s de gestion foresti\u00e8re", en = "Forest Management Units Map"),
   ug_map_summary_count = list(fr = "%d t\u00e8nement(s)", en = "%d tenement(s)"),
   ug_map_summary_surface = list(fr = "Surface cadastrale : %s ha | Surface SIG : %s ha", en = "Cadastral area: %s ha | SIG area: %s ha"),
