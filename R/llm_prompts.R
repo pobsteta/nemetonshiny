@@ -356,6 +356,70 @@ build_action_plan_prompt <- function(comments, ug_ids,
 }
 
 
+#' Build a Q/R chat prompt for plan refinement
+#'
+#' @param question Character. User's question / request.
+#' @param ctx List with `comments`, `ug_ids`, `horizon`.
+#' @param plan_summary_json Character. JSON snapshot of the current plan
+#'   actions (id, ug_id, type, annee_cible, statut, priorite).
+#' @param language Character. "fran\u00e7ais" or "English".
+#' @return Character prompt.
+#' @noRd
+build_action_plan_chat_prompt <- function(question, ctx,
+                                          plan_summary_json,
+                                          language = "fran\u00e7ais") {
+  fr <- identical(language, "fran\u00e7ais")
+  intro <- if (fr) {
+    paste0(
+      "L'utilisateur pose une question ou formule une demande sur le plan d'actions ",
+      "sylvicole en cours. Si la demande implique d'ajouter ou modifier des actions, ",
+      "renvoie EN PLUS de ta r\u00e9ponse texte un bloc JSON ",
+      "`{ \"actions\": [ ... ] }` strictement conforme au sch\u00e9ma utilis\u00e9 par ",
+      "build_action_plan_prompt (m\u00eames champs, m\u00eames contraintes), ",
+      "encapsul\u00e9 dans un fence ```json ... ```. ",
+      "Sinon, r\u00e9ponds en texte simple sans bloc JSON."
+    )
+  } else {
+    "The user asks a question or makes a request about the current silvicultural action plan. If the request implies adding or modifying actions, return - in addition to your text answer - a JSON block `{ \"actions\": [ ... ] }` strictly matching the schema used by build_action_plan_prompt (same fields, same constraints), wrapped in a ```json ... ``` fence. Otherwise reply in plain text only."
+  }
+
+  syn <- ctx$comments$synthesis %||% ""
+  fams <- ctx$comments$families %||% list()
+  fam_block <- if (length(fams) > 0L) {
+    paste(vapply(names(fams), function(code) {
+      txt <- as.character(fams[[code]] %||% "")
+      if (!nzchar(trimws(txt))) return(NA_character_)
+      sprintf("[family_%s]\n%s", code, txt)
+    }, character(1)) |> stats::na.omit(), collapse = "\n\n")
+  } else {
+    ""
+  }
+
+  paste(
+    intro,
+    "",
+    if (fr) "UGF disponibles :" else "Available UGFs:",
+    paste(ctx$ug_ids, collapse = ", "),
+    "",
+    if (fr) "Horizon (an) :" else "Horizon (years):",
+    as.character(ctx$horizon),
+    "",
+    if (fr) "Plan courant (resume JSON) :" else "Current plan (JSON summary):",
+    plan_summary_json,
+    "",
+    if (fr) "Commentaires de synthese :" else "Synthesis comments:",
+    if (nzchar(trimws(syn))) syn else if (fr) "(aucun)" else "(none)",
+    "",
+    if (fr) "Commentaires par famille :" else "Per-family comments:",
+    if (nzchar(fam_block)) fam_block else if (fr) "(aucun)" else "(none)",
+    "",
+    if (fr) "Question :" else "Question:",
+    question,
+    sep = "\n"
+  )
+}
+
+
 #' Parse and validate an LLM action plan response
 #'
 #' @description

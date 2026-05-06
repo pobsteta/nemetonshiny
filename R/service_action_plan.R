@@ -511,6 +511,40 @@ get_action_audit <- function(plan, action_id) {
 }
 
 
+#' Convert a list of audit entries into a tidy data.frame
+#'
+#' Used by the history modal in `mod_action_plan`.
+#'
+#' @param audit List of audit entries.
+#' @return data.frame.
+#' @noRd
+audit_to_dataframe <- function(audit) {
+  empty <- data.frame(ts = character(), user = character(),
+                      op = character(), champ = character(),
+                      ancien = character(), nouveau = character(),
+                      stringsAsFactors = FALSE)
+  if (is.null(audit) || length(audit) == 0L) return(empty)
+  shorten <- function(x) {
+    if (is.null(x)) return(NA_character_)
+    if (is.list(x)) return(jsonlite::toJSON(x, auto_unbox = TRUE,
+                                            null = "null"))
+    paste(as.character(x), collapse = ", ")
+  }
+  rows <- lapply(audit, function(e) {
+    data.frame(
+      ts      = as.character(e$ts %||% NA_character_),
+      user    = as.character(e$user %||% NA_character_),
+      op      = as.character(e$op %||% NA_character_),
+      champ   = as.character(e$champ %||% NA_character_),
+      ancien  = shorten(e$ancien),
+      nouveau = shorten(e$nouveau),
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, c(rows, list(make.row.names = FALSE)))
+}
+
+
 #' Convert a plan's actions into a tidy data.frame
 #'
 #' One row per action, scalar columns for tabular display.

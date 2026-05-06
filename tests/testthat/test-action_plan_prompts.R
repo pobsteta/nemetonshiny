@@ -79,6 +79,24 @@ test_that("parse_action_plan_response strips markdown code fences", {
   expect_equal(res$actions[[1]]$ug_id, "ug_x")
 })
 
+test_that("build_action_plan_chat_prompt embeds question + context + plan summary", {
+  prompt <- nemetonshiny:::build_action_plan_chat_prompt(
+    question = "Ajoute une eclaircie sur ug_a en annee 4.",
+    ctx = list(
+      comments = list(synthesis = "synth", families = list(C = "fam C")),
+      ug_ids = c("ug_a", "ug_b"),
+      horizon = 12L
+    ),
+    plan_summary_json = '[{"id":"act_1","ug_id":"ug_a"}]',
+    language = "francais"  # falls into the English branch
+  )
+  expect_type(prompt, "character")
+  expect_match(prompt, "ug_a", fixed = TRUE)
+  expect_match(prompt, "Ajoute une eclaircie", fixed = TRUE)
+  expect_match(prompt, "act_1", fixed = TRUE)
+  expect_match(prompt, "12", fixed = TRUE)
+})
+
 test_that("parse_action_plan_response handles empty/garbage input gracefully", {
   expect_equal(
     nemetonshiny:::parse_action_plan_response("", ug_ids = "ug_a")$actions,

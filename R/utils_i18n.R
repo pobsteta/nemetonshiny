@@ -89,6 +89,126 @@ TRANSLATIONS <- list(
     fr = "Effacer la sélection",
     en = "Clear selection"
   ),
+
+  # ----- Lot 3 (S7 IA + S8 Kanban) ----------------------------------
+  action_plan_no_ug = list(
+    fr = "Le projet ne contient aucune UGF.",
+    en = "The project has no UGF."
+  ),
+  action_plan_generate_title = list(
+    fr = "Générer un plan d'actions (IA)",
+    en = "Generate action plan (AI)"
+  ),
+  action_plan_generate_help = list(
+    fr = "L'IA produit un plan à partir des commentaires de synthèse + des familles enregistrés dans le projet. Les actions arrivent en statut 'proposée'.",
+    en = "The LLM produces a plan from the synthesis + family comments saved on the project. Actions land with status 'proposed'."
+  ),
+  action_plan_generate_scope = list(fr = "Portée", en = "Scope"),
+  action_plan_generate_scope_all = list(
+    fr = "Toutes les UGF du projet",
+    en = "All project UGFs"
+  ),
+  action_plan_generate_scope_sel_fmt = list(
+    fr = "UGF sélectionnées (%d)",
+    en = "Selected UGFs (%d)"
+  ),
+  action_plan_generate_scope_sel_none = list(
+    fr = "UGF sélectionnées (aucune pour l'instant)",
+    en = "Selected UGFs (none yet)"
+  ),
+  action_plan_generate_overwrite = list(
+    fr = "Remplacer les actions existantes pour ces UGF",
+    en = "Overwrite existing actions for these UGFs"
+  ),
+  action_plan_generate_run = list(fr = "Générer", en = "Generate"),
+  action_plan_generating = list(
+    fr = "Génération du plan en cours...",
+    en = "Generating plan..."
+  ),
+  action_plan_generate_no_comments = list(
+    fr = "Aucun commentaire (synthèse / famille) à exploiter. Génère d'abord la synthèse IA dans l'onglet 'Synthèse'.",
+    en = "No comments (synthesis / family) to work from. Generate the AI synthesis from the 'Synthesis' tab first."
+  ),
+  action_plan_generate_no_actions = list(
+    fr = "Le LLM n'a renvoyé aucune action exploitable.",
+    en = "The LLM returned no usable action."
+  ),
+  action_plan_generate_ok_fmt = list(
+    fr = "%d action(s) ajoutée(s) ; %d écartée(s).",
+    en = "%d action(s) added; %d discarded."
+  ),
+  action_plan_show_history = list(fr = "Historique", en = "History"),
+  action_plan_history_pick_one = list(
+    fr = "Sélectionnez exactement une action dans le tableau.",
+    en = "Select exactly one row in the table."
+  ),
+  action_plan_history_title_fmt = list(
+    fr = "Historique de l'action %s",
+    en = "History of action %s"
+  ),
+  action_plan_history_empty = list(
+    fr = "Aucun changement enregistré pour cette action.",
+    en = "No change recorded for this action yet."
+  ),
+  action_plan_bulk_status_placeholder = list(
+    fr = "-- changer le statut --",
+    en = "-- change status --"
+  ),
+  action_plan_bulk_status_apply = list(fr = "Appliquer", en = "Apply"),
+  action_plan_bulk_status_pick = list(
+    fr = "Choisissez un statut cible.",
+    en = "Pick a target status."
+  ),
+  action_plan_bulk_status_ok_fmt = list(
+    fr = "%d transition(s) appliquée(s) ; %d ignorée(s).",
+    en = "%d transition(s) applied; %d skipped."
+  ),
+  action_plan_no_selection = list(
+    fr = "Aucune ligne sélectionnée dans le tableau.",
+    en = "No row selected in the table."
+  ),
+  action_plan_status_proposee  = list(fr = "Proposée",  en = "Proposed"),
+  action_plan_status_validee   = list(fr = "Validée",   en = "Validated"),
+  action_plan_status_planifiee = list(fr = "Planifiée", en = "Planned"),
+  action_plan_status_realisee  = list(fr = "Réalisée",  en = "Done"),
+  action_plan_status_abandonnee = list(fr = "Abandonnée", en = "Abandoned"),
+  action_plan_open_chat = list(fr = "Chat IA", en = "AI Chat"),
+  action_plan_chat_title = list(
+    fr = "Affiner le plan avec l'IA",
+    en = "Refine the plan with AI"
+  ),
+  action_plan_chat_input_label = list(
+    fr = "Votre question ou demande",
+    en = "Your question or request"
+  ),
+  action_plan_chat_placeholder = list(
+    fr = "Ex. : Ajoute une éclaircie en année 5 sur les UGF du nord.",
+    en = "E.g. Add a thinning in year 5 on the northern UGFs."
+  ),
+  action_plan_chat_send = list(fr = "Envoyer", en = "Send"),
+  action_plan_chat_clear = list(fr = "Effacer", en = "Clear"),
+  action_plan_chat_empty = list(
+    fr = "Posez une première question pour démarrer.",
+    en = "Ask a first question to start."
+  ),
+  action_plan_chat_apply_title = list(
+    fr = "Appliquer les modifications proposées ?",
+    en = "Apply proposed changes?"
+  ),
+  action_plan_chat_apply_fmt = list(
+    fr = "L'IA propose %d action(s). Les ajouter au plan ?",
+    en = "The AI proposes %d action(s). Add them to the plan?"
+  ),
+  action_plan_chat_apply_btn = list(fr = "Appliquer", en = "Apply"),
+  action_plan_chat_applied_fmt = list(
+    fr = "%d action(s) appliquée(s).",
+    en = "%d action(s) applied."
+  ),
+  action_plan_add_title = list(fr = "Nouvelle action", en = "New action"),
+  action_plan_add_run = list(fr = "Créer", en = "Create"),
+  action_plan_add_ok = list(fr = "Action ajoutée.", en = "Action added."),
+  action_plan_year = list(fr = "Année cible", en = "Target year"),
+  action_plan_comment = list(fr = "Commentaire", en = "Comment"),
   ug_map_card_title = list(fr = "Carte des unit\u00e9s de gestion foresti\u00e8re", en = "Forest Management Units Map"),
   ug_map_summary_count = list(fr = "%d t\u00e8nement(s)", en = "%d tenement(s)"),
   ug_map_summary_surface = list(fr = "Surface cadastrale : %s ha | Surface SIG : %s ha", en = "Cadastral area: %s ha | SIG area: %s ha"),
