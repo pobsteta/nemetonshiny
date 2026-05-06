@@ -81,6 +81,14 @@ TRANSLATIONS <- list(
     fr = "Ajout manuel disponible avec la story S5.",
     en = "Manual add will be available with story S5."
   ),
+  action_plan_table_empty = list(
+    fr = "Aucune action dans le plan pour le moment.",
+    en = "No action in the plan yet."
+  ),
+  action_plan_clear_selection = list(
+    fr = "Effacer la sélection",
+    en = "Clear selection"
+  ),
   ug_map_card_title = list(fr = "Carte des unit\u00e9s de gestion foresti\u00e8re", en = "Forest Management Units Map"),
   ug_map_summary_count = list(fr = "%d t\u00e8nement(s)", en = "%d tenement(s)"),
   ug_map_summary_surface = list(fr = "Surface cadastrale : %s ha | Surface SIG : %s ha", en = "Cadastral area: %s ha | SIG area: %s ha"),
