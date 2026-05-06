@@ -7,16 +7,16 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/pobsteta/nemetonshiny/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/pobsteta/nemetonshiny/blob/v0.21.0/DESCRIPTION)
 
 Obstetar P (2026). *nemetonshiny: Nemeton Shiny Application for Systemic
-Forest Analysis*. R package version 0.22.0.9000,
+Forest Analysis*. R package version 0.21.0,
 <https://pobsteta.github.io/nemetonshiny/>.
 
     @Manual{,
       title = {nemetonshiny: Nemeton Shiny Application for Systemic Forest Analysis},
       author = {Pascal Obstetar},
       year = {2026},
-      note = {R package version 0.22.0.9000},
+      note = {R package version 0.21.0},
       url = {https://pobsteta.github.io/nemetonshiny/},
     }
