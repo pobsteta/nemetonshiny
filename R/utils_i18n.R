@@ -90,6 +90,25 @@ TRANSLATIONS <- list(
     en = "Clear selection"
   ),
 
+  # ----- Localised table column headers -----------------------------
+  action_plan_col_id          = list(fr = "id",            en = "id"),
+  action_plan_col_ug_id       = list(fr = "ug_id",         en = "ug_id"),
+  action_plan_col_ug_label    = list(fr = "UGF",           en = "UGF"),
+  action_plan_col_annee       = list(fr = "Année",         en = "Year"),
+  action_plan_col_type        = list(fr = "Type",          en = "Type"),
+  action_plan_col_type_libre  = list(fr = "Type libre",    en = "Free type"),
+  action_plan_col_intensite   = list(fr = "Intensité",     en = "Intensity"),
+  action_plan_col_priorite    = list(fr = "Priorité",      en = "Priority"),
+  action_plan_col_statut      = list(fr = "Statut",        en = "Status"),
+  action_plan_col_objectifs   = list(fr = "Objectifs",     en = "Objectives"),
+  action_plan_col_volume      = list(fr = "Volume (m³)",   en = "Volume (m³)"),
+  action_plan_col_surface     = list(fr = "Surface (ha)",  en = "Area (ha)"),
+  action_plan_col_tiges       = list(fr = "Tiges",         en = "Stems"),
+  action_plan_col_rdi         = list(fr = "RDI",           en = "RDI"),
+  action_plan_col_cout        = list(fr = "Coût (€)",      en = "Cost (€)"),
+  action_plan_col_commentaire = list(fr = "Commentaire",   en = "Comment"),
+  action_plan_col_source      = list(fr = "Source",        en = "Source"),
+
   # ----- Lot 3 (S7 IA + S8 Kanban) ----------------------------------
   action_plan_no_ug = list(
     fr = "Le projet ne contient aucune UGF.",
