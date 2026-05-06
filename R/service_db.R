@@ -165,11 +165,30 @@ get_db_connection <- function(check_postgis = TRUE) {
     }
 
     cli::cli_alert_success("Connected to PostgreSQL: {cfg$dbname}@{cfg$host}:{cfg$port} (source: {cfg$source})")
+    .ensure_app_schema(con)
     con
   }, error = function(e) {
     cli::cli_warn("Failed to connect to database: {e$message}")
     NULL
   })
+}
+
+
+#' Run app-schema migrations once per R session
+#'
+#' Idempotent (`CREATE TABLE IF NOT EXISTS` everywhere); cached in
+#' `.nemeton_env` so subsequent connections skip the round-trip.
+#'
+#' @noRd
+.ensure_app_schema <- function(con) {
+  if (is.null(con) || !DBI::dbIsValid(con)) return(invisible(FALSE))
+  if (isTRUE(.nemeton_env$.app_schema_initialized)) return(invisible(TRUE))
+  ok <- tryCatch(db_init_schema(con), error = function(e) {
+    cli::cli_warn("App schema initialization failed: {conditionMessage(e)}")
+    FALSE
+  })
+  if (isTRUE(ok)) .nemeton_env$.app_schema_initialized <- TRUE
+  invisible(ok)
 }
 
 

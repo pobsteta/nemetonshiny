@@ -295,7 +295,12 @@ mod_action_plan_server <- function(id, app_state) {
       plan <- plan_rv()
       df <- actions_to_dataframe(plan)
       sf <- ug_sf_4326()
-      if (!is.null(sf) && nrow(df) > 0L) {
+      if (nrow(df) == 0L) {
+        df$ug_label <- character(0)
+        df$annee_realisation <- integer(0)
+        return(df)
+      }
+      if (!is.null(sf)) {
         label_map <- stats::setNames(as.character(sf$label),
                                      as.character(sf$ug_id))
         df$ug_label <- ifelse(is.na(df$ug_id), NA_character_,

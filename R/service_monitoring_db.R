@@ -36,13 +36,38 @@ get_monitoring_db_connection <- function() {
   }
   if (!nzchar(url)) return(NULL)
 
-  tryCatch(
+  con <- tryCatch(
     nemeton::db_connect(url),
     error = function(e) {
       cli::cli_warn("Failed to connect to monitoring DB: {conditionMessage(e)}")
       NULL
     }
   )
+  .ensure_monitoring_schema(con)
+  con
+}
+
+
+#' Run monitoring-schema migrations once per R session
+#'
+#' Calls `nemeton::db_migrate()`, which is itself idempotent
+#' (`schema_migration` table tracks applied versions). Memoized in
+#' `.nemeton_env` so subsequent connections skip the round-trip.
+#'
+#' @noRd
+.ensure_monitoring_schema <- function(con) {
+  if (is.null(con)) return(invisible(FALSE))
+  if (!requireNamespace("nemeton", quietly = TRUE)) return(invisible(FALSE))
+  if (isTRUE(.nemeton_env$.monitoring_schema_initialized)) return(invisible(TRUE))
+  ok <- tryCatch({
+    nemeton::db_migrate(con)
+    TRUE
+  }, error = function(e) {
+    cli::cli_warn("Monitoring schema migration failed: {conditionMessage(e)}")
+    FALSE
+  })
+  if (isTRUE(ok)) .nemeton_env$.monitoring_schema_initialized <- TRUE
+  invisible(ok)
 }
 
 
