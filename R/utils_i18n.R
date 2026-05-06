@@ -49,7 +49,16 @@ TRANSLATIONS <- list(
   action_plan_ug = list(fr = "UGF", en = "UGF"),
   action_plan_reset_filters = list(fr = "Réinitialiser", en = "Reset"),
   action_plan_view_map_table = list(fr = "Carte + Tableau", en = "Map + Table"),
-  action_plan_view_gantt = list(fr = "Gantt", en = "Gantt"),
+  action_plan_view_kanban = list(fr = "Kanban", en = "Kanban"),
+  action_plan_kanban_move = list(fr = "Déplacer", en = "Move"),
+  action_plan_kanban_empty_col = list(
+    fr = "Aucune action.",
+    en = "No action."
+  ),
+  action_plan_kanban_moved_fmt = list(
+    fr = "Action déplacée vers : %s.",
+    en = "Action moved to: %s."
+  ),
   action_plan_map_title = list(fr = "Carte des actions", en = "Action map"),
   action_plan_table_title = list(fr = "Tableau des actions", en = "Action table"),
   action_plan_color_year = list(fr = "Année", en = "Year"),
@@ -68,10 +77,6 @@ TRANSLATIONS <- list(
   action_plan_table_count_fmt = list(
     fr = "%d action(s) après filtres.",
     en = "%d action(s) after filtering."
-  ),
-  action_plan_gantt_placeholder = list(
-    fr = "La vue Gantt sera disponible avec la story S9.",
-    en = "Gantt view will be available with story S9."
   ),
   action_plan_generate_pending = list(
     fr = "Génération IA disponible avec la story S7.",
