@@ -65,6 +65,14 @@ app_ui <- function(request) {
         mod_synthesis_ui("synthesis")
       ),
 
+      # === Tab 2bis: Action Plan ===
+      bslib::nav_panel(
+        title = i18n$t("tab_action_plan"),
+        value = "action_plan",
+        icon = bsicons::bs_icon("clipboard-check"),
+        mod_action_plan_ui("action_plan")
+      ),
+
       # === Tab 3: Terrain (sub-tabs: Export / Import, E5.a + E5.b) ===
       bslib::nav_panel(
         title = i18n$t("tab_sampling"),
