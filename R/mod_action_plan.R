@@ -522,7 +522,8 @@ mod_action_plan_server <- function(id, app_state) {
       "type", "type_libre",
       "intensite", "priorite", "statut", "objectifs_lies",
       "volume_m3", "surface_ha", "nb_tiges", "rdi",
-      "cout_eur", "revenu_eur", "commentaire", "source_origine"
+      "cout_eur", "revenu_eur", "bilan_eur",
+      "commentaire", "source_origine"
     )
     # Cells the user can edit. `annee_realisation` accepts a calendar
     # year and is converted back to an offset before persistence.
@@ -584,6 +585,7 @@ mod_action_plan_server <- function(id, app_state) {
         i18n$t("action_plan_col_rdi"),
         i18n$t("action_plan_col_cout"),
         i18n$t("action_plan_col_revenu"),
+        i18n$t("action_plan_col_bilan"),
         i18n$t("action_plan_col_commentaire"),
         i18n$t("action_plan_col_source")
       )
@@ -617,7 +619,13 @@ mod_action_plan_server <- function(id, app_state) {
             paginate = list(previous = "Pr\u00e9c.", `next` = "Suiv.")
           )
         )
-      )
+      ) |>
+        # Color the Bilan column: green when >= 0, red when negative.
+        DT::formatStyle(
+          "bilan_eur",
+          color = DT::styleInterval(c(-0.001, 0), c("#b91c1c", "#374151", "#15803d")),
+          fontWeight = "bold"
+        )
     }, server = FALSE)
 
     shiny::outputOptions(output, "action_table", suspendWhenHidden = FALSE)

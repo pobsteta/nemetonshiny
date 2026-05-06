@@ -343,10 +343,30 @@ build_action_plan_prompt <- function(comments, ug_ids,
     else    "(no family comment provided)"
   }
 
+  econ_hint <- if (fr) {
+    paste0(
+      "Contrainte economique : maximise le bilan cumule (somme des revenu_eur ",
+      "moins somme des cout_eur) sur l'horizon. Quand c'est possible, place ",
+      "une action genereuse en revenus AVANT une grosse depense, pour que les ",
+      "recettes financent les investissements. Evite les annees ou la depense ",
+      "cumulee depasse fortement la recette cumulee."
+    )
+  } else {
+    paste0(
+      "Economic constraint: maximise the cumulative balance (sum of revenu_eur ",
+      "minus sum of cout_eur) over the horizon. When possible, schedule a ",
+      "revenue-generating action BEFORE a large expense so that revenue funds ",
+      "investments. Avoid years where cumulative spending strongly exceeds ",
+      "cumulative income."
+    )
+  }
+
   paste(
     intro,
     scope_str,
     ug_str,
+    "",
+    econ_hint,
     "",
     syn_block,
     fams_section,

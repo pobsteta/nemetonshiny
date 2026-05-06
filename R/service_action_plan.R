@@ -569,6 +569,7 @@ actions_to_dataframe <- function(plan) {
     rdi = numeric(),
     cout_eur = numeric(),
     revenu_eur = numeric(),
+    bilan_eur = numeric(),
     statut = character(),
     source_origine = character(),
     source_extrait = character(),
@@ -582,6 +583,15 @@ actions_to_dataframe <- function(plan) {
   if (is.null(plan) || length(plan$actions) == 0L) return(empty)
 
   rows <- lapply(plan$actions, function(a) {
+    cout   <- suppressWarnings(as.numeric(a$quantite$cout_eur   %||% NA_real_))
+    revenu <- suppressWarnings(as.numeric(a$quantite$revenu_eur %||% NA_real_))
+    # Bilan = revenu - cout. Treat NA as 0 only when at least one of the
+    # two has a value, so a totally unknown action stays NA.
+    bilan <- if (is.na(cout) && is.na(revenu)) {
+      NA_real_
+    } else {
+      (if (is.na(revenu)) 0 else revenu) - (if (is.na(cout)) 0 else cout)
+    }
     data.frame(
       id           = as.character(a$id           %||% NA_character_),
       ug_id        = as.character(a$ug_id        %||% NA_character_),
@@ -596,8 +606,9 @@ actions_to_dataframe <- function(plan) {
       surface_ha   = suppressWarnings(as.numeric(a$quantite$surface_ha %||% NA_real_)),
       nb_tiges     = suppressWarnings(as.integer(a$quantite$nb_tiges   %||% NA_integer_)),
       rdi          = suppressWarnings(as.numeric(a$quantite$rdi        %||% NA_real_)),
-      cout_eur     = suppressWarnings(as.numeric(a$quantite$cout_eur   %||% NA_real_)),
-      revenu_eur   = suppressWarnings(as.numeric(a$quantite$revenu_eur %||% NA_real_)),
+      cout_eur     = cout,
+      revenu_eur   = revenu,
+      bilan_eur    = bilan,
       statut       = as.character(a$statut       %||% NA_character_),
       source_origine = as.character(a$source$origine        %||% NA_character_),
       source_extrait = as.character(a$source$extrait_texte  %||% NA_character_),

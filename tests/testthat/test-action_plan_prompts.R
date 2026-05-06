@@ -33,6 +33,11 @@ test_that("build_action_plan_prompt embeds horizon, ug_ids and comments", {
   expect_match(prompt, "déficit de biodiversité", fixed = TRUE)
   expect_match(prompt, "family_B", fixed = TRUE)
   expect_match(prompt, "JSON schema", fixed = TRUE)
+  # Balance hint must be embedded in the user prompt.
+  expect_match(prompt, "bilan cumule", fixed = TRUE)
+  # Schema documents both monetary fields.
+  expect_match(prompt, "cout_eur", fixed = TRUE)
+  expect_match(prompt, "revenu_eur", fixed = TRUE)
 })
 
 test_that("build_action_plan_prompt restricts to a single ug_id when scope=by_ug", {

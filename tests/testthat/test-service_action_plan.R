@@ -290,3 +290,39 @@ test_that("actions_to_dataframe reads cout_eur AND revenu_eur from quantite", {
   expect_equal(df$cout_eur[1], 250)
   expect_equal(df$revenu_eur[1], 1800)
 })
+
+test_that("actions_to_dataframe derives bilan_eur correctly", {
+  plan <- nemetonshiny:::init_empty_action_plan("p")
+  # Action 1: revenue only -> bilan = 1000
+  plan <- nemetonshiny:::add_action_to_plan(
+    plan,
+    c(make_action(),
+      list(quantite = list(revenu_eur = 1000))),
+    ug_ids = "ug_1"
+  )
+  # Action 2: cost only -> bilan = -300
+  plan <- nemetonshiny:::add_action_to_plan(
+    plan,
+    c(make_action(annee_cible = 2L),
+      list(quantite = list(cout_eur = 300))),
+    ug_ids = "ug_1"
+  )
+  # Action 3: both
+  plan <- nemetonshiny:::add_action_to_plan(
+    plan,
+    c(make_action(annee_cible = 3L),
+      list(quantite = list(cout_eur = 200, revenu_eur = 800))),
+    ug_ids = "ug_1"
+  )
+  # Action 4: neither -> bilan NA
+  plan <- nemetonshiny:::add_action_to_plan(
+    plan,
+    make_action(annee_cible = 4L),
+    ug_ids = "ug_1"
+  )
+  df <- nemetonshiny:::actions_to_dataframe(plan)
+  expect_equal(df$bilan_eur[1], 1000)
+  expect_equal(df$bilan_eur[2], -300)
+  expect_equal(df$bilan_eur[3], 600)
+  expect_true(is.na(df$bilan_eur[4]))
+})
