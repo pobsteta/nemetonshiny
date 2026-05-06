@@ -14,7 +14,7 @@
 #'       the table to that UGF, selecting rows in the table highlights /
 #'       zooms the corresponding UGFs on the map. Filters apply to both.
 #'
-#' Subsequent stories (S7 IA, S8 Kanban, S9 Gantt, S10/11 ponts terrain,
+#' Subsequent stories (S7 IA, S8 Kanban view, S10/11 ponts terrain,
 #' S12/13 exports, S15 permissions) will land in following lots.
 #'
 #' @name mod_action_plan
@@ -171,14 +171,14 @@ mod_action_plan_ui <- function(id) {
     ),
 
     bslib::nav_panel(
-      title = i18n$t("action_plan_view_gantt"),
-      value = "gantt",
-      icon = bsicons::bs_icon("calendar-range"),
+      title = i18n$t("action_plan_view_kanban"),
+      value = "kanban",
+      icon = bsicons::bs_icon("kanban"),
       bslib::card(
         full_screen = TRUE,
-        bslib::card_header(i18n$t("action_plan_view_gantt")),
+        bslib::card_header(i18n$t("action_plan_view_kanban")),
         bslib::card_body(
-          plotly::plotlyOutput(ns("gantt_plot"), height = "70vh")
+          shiny::uiOutput(ns("kanban_board"))
         )
       )
     )
@@ -643,12 +643,21 @@ mod_action_plan_server <- function(id, app_state) {
         editable  = list(target = "cell",
                          disable = list(columns = setdiff(seq_len(ncol(display)) - 1L,
                                                           editable_idx))),
-        extensions = c("FixedHeader"),
+        extensions = c("FixedColumns"),
         options = list(
-          pageLength = 25,
+          pageLength = 50,
           dom = "frtip",
-          fixedHeader = TRUE,
+          # Internal scroll inside the table so the column headers stay
+          # pinned as the user scrolls down (works inside a card_body,
+          # contrary to FixedHeader which attaches to the page viewport).
+          scrollY = "60vh",
+          scrollCollapse = TRUE,
           scrollX = TRUE,
+          # Freeze the first 5 columns: id (hidden), ug_id (hidden),
+          # annee_cible (hidden), UGF, and Ann\u00e9e. The hidden ones don't
+          # take screen space; visually only UGF + Ann\u00e9e stay pinned
+          # when scrolling horizontally.
+          fixedColumns = list(leftColumns = 5L),
           columnDefs = list(
             list(visible = FALSE, targets = hidden_targets)
           ),
@@ -840,54 +849,186 @@ mod_action_plan_server <- function(id, app_state) {
     })
 
     # ============================================================
-    # GANTT (S9) - timeline per UGF, lanes = UGF, color = type
+    # KANBAN BOARD - 5 columns of cards by status, click to advance.
     # ============================================================
 
-    output$gantt_plot <- plotly::renderPlotly({
-      i18n <- get_i18n(app_state$language)
-      df <- actions_df()
-      if (nrow(df) == 0L) return(plotly::plotly_empty())
-      df$end <- df$annee_realisation +
-        ifelse(is.na(df$duree) | df$duree < 1, 1L, as.integer(df$duree))
-      df$y_lane <- ifelse(!is.na(df$ug_label) & nzchar(df$ug_label),
-                          df$ug_label, df$ug_id)
-      pal <- grDevices::hcl.colors(
-        max(1L, length(unique(stats::na.omit(df$type)))),
-        palette = "Set 2"
-      )
-      type_levels <- sort(unique(stats::na.omit(df$type)))
-      color_map <- stats::setNames(pal, type_levels)
-      df$color <- ifelse(is.na(df$type), "#888888", color_map[df$type])
+    KANBAN_STATUSES <- c("proposee", "validee", "planifiee",
+                         "realisee", "abandonnee")
 
-      p <- plotly::plot_ly()
-      for (i in seq_len(nrow(df))) {
-        p <- p |> plotly::add_segments(
-          x = df$annee_realisation[i],
-          xend = df$end[i],
-          y = df$y_lane[i],
-          yend = df$y_lane[i],
-          line = list(color = df$color[i], width = 14),
-          showlegend = FALSE,
-          hoverinfo = "text",
-          hovertext = sprintf("%s | %s -> %s | %s | %s",
-                              df$type[i], df$annee_realisation[i],
-                              df$end[i], df$priorite[i], df$statut[i])
+    KANBAN_HEADER_BG <- c(
+      proposee   = "#e5e7eb",
+      validee    = "#dbeafe",
+      planifiee  = "#fde68a",
+      realisee   = "#bbf7d0",
+      abandonnee = "#fecaca"
+    )
+
+    output$kanban_board <- shiny::renderUI({
+      i18n <- get_i18n(app_state$language)
+      df <- actions_df_all()
+      if (nrow(df) == 0L) {
+        return(htmltools::div(class = "text-muted",
+                              i18n$t("action_plan_table_empty")))
+      }
+
+      build_card <- function(row) {
+        bilan <- row$bilan_eur
+        bilan_color <- if (is.na(bilan)) "#6b7280"
+                       else if (bilan > 0) "#15803d"
+                       else if (bilan < 0) "#b91c1c"
+                       else "#374151"
+        next_choices <- setdiff(
+          c(KANBAN_STATUSES, "abandonnee"),
+          row$statut
+        )
+        # Filter to only valid transitions from current status
+        valid_next <- Filter(
+          function(s) is_valid_status_transition(row$statut, s),
+          next_choices
+        )
+        action_id <- row$id
+        # Per-card status dropdown (mini)
+        dropdown <- if (length(valid_next) > 0L) {
+          htmltools::div(
+            class = "btn-group btn-group-sm",
+            role = "group",
+            htmltools::tags$button(
+              type = "button",
+              class = "btn btn-sm btn-outline-secondary dropdown-toggle",
+              `data-bs-toggle` = "dropdown",
+              `aria-expanded` = "false",
+              i18n$t("action_plan_kanban_move")
+            ),
+            htmltools::tags$ul(
+              class = "dropdown-menu",
+              lapply(valid_next, function(s) {
+                htmltools::tags$li(
+                  shiny::actionLink(
+                    inputId = ns(paste0("kanban_move_", action_id, "__", s)),
+                    label = i18n$t(paste0("action_plan_status_", s)),
+                    class = "dropdown-item"
+                  )
+                )
+              })
+            )
+          )
+        } else NULL
+
+        type_label <- if (!is.na(row$type) && nzchar(row$type))
+          row$type else "?"
+        ug_label   <- if (!is.na(row$ug_label) && nzchar(row$ug_label))
+          row$ug_label else as.character(row$ug_id)
+        objs <- if (nzchar(row$objectifs_lies %||% ""))
+          paste0(" \u2014 ", row$objectifs_lies) else ""
+
+        htmltools::div(
+          class = "card mb-2 shadow-sm",
+          htmltools::div(
+            class = "card-body p-2",
+            htmltools::div(
+              class = "d-flex justify-content-between align-items-start gap-2",
+              htmltools::div(
+                htmltools::tags$strong(type_label),
+                htmltools::tags$small(class = "text-muted",
+                                      sprintf(" %s", row$annee_realisation)),
+                htmltools::tags$br(),
+                htmltools::tags$small(class = "text-muted",
+                                      sprintf("%s%s", ug_label, objs))
+              ),
+              htmltools::tags$span(
+                style = sprintf("color: %s; font-weight: bold; white-space: nowrap;",
+                                bilan_color),
+                if (is.na(bilan)) "\u2014"
+                else sprintf("%s \u20ac", format(round(bilan), big.mark = " ",
+                                             scientific = FALSE))
+              )
+            ),
+            if (!is.null(dropdown)) {
+              htmltools::div(class = "mt-1", dropdown)
+            }
+          )
         )
       }
-      plotly::layout(
-        p,
-        title = NULL,
-        xaxis = list(title = i18n$t("action_plan_col_annee"),
-                     tickformat = "d", dtick = 1),
-        yaxis = list(title = i18n$t("action_plan_col_ug_label"),
-                     autorange = "reversed",
-                     categoryorder = "category ascending"),
-        hovermode = "closest",
-        margin = list(l = 80, r = 20, t = 30, b = 40)
-      )
+
+      cols <- lapply(KANBAN_STATUSES, function(st) {
+        sub <- df[!is.na(df$statut) & df$statut == st, , drop = FALSE]
+        bslib::card(
+          bslib::card_header(
+            class = "py-2 small fw-bold",
+            style = sprintf("background-color: %s;",
+                            KANBAN_HEADER_BG[[st]] %||% "#e5e7eb"),
+            sprintf("%s (%d)",
+                    i18n$t(paste0("action_plan_status_", st)),
+                    nrow(sub))
+          ),
+          bslib::card_body(
+            class = "p-2",
+            style = "max-height: 70vh; overflow-y: auto;",
+            if (nrow(sub) == 0L) {
+              htmltools::div(class = "text-muted small text-center py-3",
+                             i18n$t("action_plan_kanban_empty_col"))
+            } else {
+              htmltools::tagList(
+                lapply(seq_len(nrow(sub)), function(i) build_card(sub[i, ]))
+              )
+            }
+          )
+        )
+      })
+
+      do.call(bslib::layout_columns,
+              c(list(col_widths = rep(12 / length(KANBAN_STATUSES),
+                                       length(KANBAN_STATUSES)),
+                     fillable = TRUE),
+                cols))
     })
 
-    shiny::outputOptions(output, "gantt_plot", suspendWhenHidden = FALSE)
+    # Dispatch every Kanban card click. Inputs are named
+    # `kanban_move_<action_id>__<target_status>`.
+    shiny::observe({
+      lapply(grep("^kanban_move_", names(input), value = TRUE), function(nm) {
+        v <- input[[nm]]
+        if (is.null(v) || v == 0) return()
+        # avoid re-triggering on the same value
+        last <- isolate(rv_state[[paste0("k_", nm)]] %||% 0L)
+        if (v == last) return()
+        rv_state[[paste0("k_", nm)]] <- v
+
+        body <- sub("^kanban_move_", "", nm)
+        parts <- strsplit(body, "__", fixed = TRUE)[[1]]
+        if (length(parts) != 2L) return()
+        action_id <- parts[1]; target <- parts[2]
+        i18n <- get_i18n(app_state$language)
+        cur_plan <- plan_rv()
+        idx <- find_action_index(cur_plan, action_id)
+        if (is.na(idx)) return()
+        from <- cur_plan$actions[[idx]]$statut %||% "proposee"
+        if (!is_valid_status_transition(from, target)) {
+          shiny::showNotification(
+            sprintf("Transition refus\u00e9e : %s -> %s", from, target),
+            type = "warning", duration = 4
+          )
+          return()
+        }
+        new_plan <- tryCatch(
+          update_action_in_plan(cur_plan, action_id, list(statut = target),
+                                ug_ids = ug_ids(),
+                                user = Sys.info()[["user"]] %||% "user"),
+          error = function(e) {
+            shiny::showNotification(conditionMessage(e), type = "error")
+            NULL
+          }
+        )
+        if (is.null(new_plan)) return()
+        save_action_plan(app_state$current_project$id, new_plan)
+        plan_rv(new_plan)
+        shiny::showNotification(
+          sprintf(i18n$t("action_plan_kanban_moved_fmt"),
+                  i18n$t(paste0("action_plan_status_", target))),
+          type = "message", duration = 3
+        )
+      })
+    })
 
     # ============================================================
     # S10 - Send observation actions to the Field tab as samples
