@@ -685,11 +685,19 @@ mod_action_plan_server <- function(id, app_state) {
           # take screen space; visually only UGF + Ann\u00e9e stay pinned
           # when scrolling horizontally.
           fixedColumns = list(leftColumns = 5L),
+          # Enable regex on the global search box so the user can type
+          # "eclaircie|plantation" for an OR filter (default smart
+          # search uses AND across words). caseInsensitive keeps the
+          # search forgiving on accents-less typing.
+          search = list(regex = TRUE, caseInsensitive = TRUE,
+                        smart = FALSE),
           columnDefs = list(
             list(visible = FALSE, targets = hidden_targets)
           ),
-          language = if (identical(app_state$language, "en")) list() else list(
-            search = "Rechercher :",
+          language = if (identical(app_state$language, "en")) list(
+            search = "Search (regex, e.g. eclaircie|plantation):"
+          ) else list(
+            search = "Rechercher (regex, ex. eclaircie|plantation) :",
             info   = "_TOTAL_ action(s)",
             lengthMenu = "Afficher _MENU_",
             paginate = list(previous = "Pr\u00e9c.", `next` = "Suiv.")
