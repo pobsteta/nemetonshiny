@@ -854,23 +854,36 @@ mod_action_plan_server <- function(id, app_state) {
       total_cout    <- sum(df$cout_eur,   na.rm = TRUE)
       total_revenu  <- sum(df$revenu_eur, na.rm = TRUE)
       total_bilan   <- total_revenu - total_cout
+      total_surface <- sum(df$surface_ha, na.rm = TRUE)
       bilan_class   <- if (total_bilan > 0) "text-success"
                        else if (total_bilan < 0) "text-danger"
                        else "text-muted"
 
-      pill <- function(label, value, css = "") {
+      # `unit` adds a trailing label after the formatted number; default
+      # is "EUR" for the monetary pills. Surface uses "ha" with two
+      # decimals so a 0.32 ha eclaircie does not show as "0".
+      pill <- function(label, value, css = "", unit = "EUR",
+                       digits = 0L) {
+        formatted <- if (digits == 0L) {
+          format(round(value), big.mark = " ", scientific = FALSE)
+        } else {
+          formatC(round(value, digits), format = "f", digits = digits,
+                  big.mark = " ")
+        }
         htmltools::tags$span(
           class = paste("badge bg-light border me-2", css),
           style = "font-size: 0.85rem;",
           htmltools::tags$strong(label, ":", .noWS = "after"),
           " ",
-          format(round(value), big.mark = " ", scientific = FALSE), " EUR"
+          formatted, " ", unit
         )
       }
 
       htmltools::div(
         class = "d-flex align-items-center justify-content-between gap-3 flex-wrap",
         htmltools::div(
+          pill(i18n$t("action_plan_total_surface"), total_surface,
+               "text-primary", unit = "ha", digits = 2L),
           pill(i18n$t("action_plan_total_cout"),   total_cout,   "text-danger"),
           pill(i18n$t("action_plan_total_revenu"), total_revenu, "text-success"),
           pill(i18n$t("action_plan_total_bilan"),  total_bilan,  bilan_class)
