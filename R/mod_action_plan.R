@@ -132,9 +132,20 @@ mod_action_plan_ui <- function(id) {
     )
   )
 
-  bslib::layout_columns(
-    col_widths = c(9, 3),
+  bslib::layout_sidebar(
     fillable = TRUE,
+    # Right-hand sidebar -- same 350 px width as the cards in the
+    # `Selection` tab so the action panel does not eat half the
+    # screen on wide monitors. The action_panel card inside provides
+    # the click-to-collapse colored header (mirrors the home pattern).
+    sidebar = bslib::sidebar(
+      id = ns("action_sidebar"),
+      width = 350,
+      position = "right",
+      open = TRUE,
+      bg = "transparent",
+      action_panel
+    ),
 
     # Main pane: nav switcher (carte+tableau / kanban). Style scoped
     # to the inner DT to ellipsize long cells.
@@ -219,10 +230,8 @@ mod_action_plan_ui <- function(id) {
         )
       )
       )  # close navset_card_underline
-    ),   # close htmltools::tagList
-
-    # Right pane: collapsible action card
-    action_panel
+    )    # close htmltools::tagList -- action_panel lives in the
+         # right-hand sidebar above, not as a positional argument here.
   )
 }
 
