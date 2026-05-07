@@ -105,9 +105,6 @@ TRANSLATIONS <- list(
   action_plan_section_selection = list(
     fr = "Sélection", en = "Selection"
   ),
-  action_plan_section_kanban = list(
-    fr = "Statut Kanban", en = "Kanban status"
-  ),
   action_plan_section_ia = list(fr = "IA", en = "AI"),
   action_plan_section_manual = list(fr = "Saisie manuelle", en = "Manual entry"),
   action_plan_section_exports = list(fr = "Exports", en = "Exports"),
@@ -245,19 +242,6 @@ TRANSLATIONS <- list(
   action_plan_history_empty = list(
     fr = "Aucun changement enregistré pour cette action.",
     en = "No change recorded for this action yet."
-  ),
-  action_plan_bulk_status_placeholder = list(
-    fr = "-- changer le statut --",
-    en = "-- change status --"
-  ),
-  action_plan_bulk_status_apply = list(fr = "Appliquer", en = "Apply"),
-  action_plan_bulk_status_pick = list(
-    fr = "Choisissez un statut cible.",
-    en = "Pick a target status."
-  ),
-  action_plan_bulk_status_ok_fmt = list(
-    fr = "%d transition(s) appliquée(s) ; %d ignorée(s).",
-    en = "%d transition(s) applied; %d skipped."
   ),
   action_plan_no_selection = list(
     fr = "Aucune ligne sélectionnée dans le tableau.",

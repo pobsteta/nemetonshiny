@@ -36,135 +36,123 @@ mod_action_plan_ui <- function(id) {
   lang <- opts$language %||% "fr"
   i18n <- get_i18n(lang)
 
-  # Right-side action sidebar: groups every button / control that used
-  # to live in the table card header. Same UX pattern as the left
-  # sidebars in `mod_monitoring` / `mod_sampling`, just on the right.
-  # Title styled like the Selection-tab cards: a coloured header bar
-  # carrying an icon + the localised label. The bslib sidebar
-  # provides the retractable behaviour (chevron in the corner).
-  action_sidebar_title <- htmltools::tags$div(
-    class = "d-flex align-items-center gap-2 fw-semibold",
-    bsicons::bs_icon("clipboard-check"),
-    i18n$t("action_plan_actions_title")
-  )
+  # Right-side action panel: same collapsible-card pattern as the
+  # `Selection` tab cards (clickable colored header with icon + title +
+  # chevron, body folds underneath). Drag-and-drop on the Kanban board
+  # has replaced the bulk-status dropdown so that section is gone.
+  action_panel_id <- ns("actions_collapse")
+  action_panel <- htmltools::tags$div(
+    class = "card mb-3",
+    # Header: clickable, collapses the body
+    htmltools::tags$div(
+      class = "card-header bg-success text-white py-2",
+      style = "cursor: pointer;",
+      `data-bs-toggle` = "collapse",
+      `data-bs-target` = paste0("#", action_panel_id),
+      `aria-expanded` = "true",
+      `aria-controls` = action_panel_id,
+      htmltools::div(
+        class = "d-flex align-items-center justify-content-between",
+        htmltools::div(
+          class = "d-flex align-items-center",
+          bsicons::bs_icon("clipboard-check", class = "me-2"),
+          i18n$t("action_plan_actions_title")
+        ),
+        bsicons::bs_icon("chevron-down", class = "collapse-icon")
+      )
+    ),
+    # Collapsible body
+    htmltools::tags$div(
+      id = action_panel_id,
+      class = "collapse show",
+      htmltools::tags$div(
+        class = "card-body p-3",
 
-  action_sidebar <- bslib::sidebar(
-    id = ns("action_sidebar"),
-    title = action_sidebar_title,
-    position = "right",
-    width = 300,
-    open = TRUE,
-    bg = "#f8f9fa",
+        # ---- Selection ---------------------------------------------
+        htmltools::tags$h6(class = "mt-1",
+                           i18n$t("action_plan_section_selection")),
+        shiny::actionButton(
+          ns("clear_map_selection"),
+          label = i18n$t("action_plan_clear_selection"),
+          icon = shiny::icon("eraser"),
+          class = "btn-sm btn-outline-secondary w-100 mb-2"
+        ),
+        shiny::actionButton(
+          ns("show_history"),
+          label = i18n$t("action_plan_show_history"),
+          icon = shiny::icon("clock-rotate-left"),
+          class = "btn-sm btn-outline-secondary w-100 mb-3"
+        ),
 
-    # ---- Selection -------------------------------------------------
-    htmltools::tags$h6(class = "mt-1",
-                       i18n$t("action_plan_section_selection")),
-    shiny::actionButton(
-      ns("clear_map_selection"),
-      label = i18n$t("action_plan_clear_selection"),
-      icon = shiny::icon("eraser"),
-      class = "btn-sm btn-outline-secondary w-100 mb-2"
-    ),
-    shiny::actionButton(
-      ns("show_history"),
-      label = i18n$t("action_plan_show_history"),
-      icon = shiny::icon("clock-rotate-left"),
-      class = "btn-sm btn-outline-secondary w-100 mb-3"
-    ),
+        # ---- IA ----------------------------------------------------
+        htmltools::tags$h6(i18n$t("action_plan_section_ia")),
+        shiny::actionButton(
+          ns("generate_all"),
+          label = i18n$t("action_plan_generate_all"),
+          icon = shiny::icon("wand-magic-sparkles"),
+          class = "btn-sm btn-primary w-100 mb-2"
+        ),
+        shiny::actionButton(
+          ns("open_chat"),
+          label = i18n$t("action_plan_open_chat"),
+          icon = shiny::icon("comments"),
+          class = "btn-sm btn-outline-primary w-100 mb-3"
+        ),
 
-    # ---- Statut Kanban en lot --------------------------------------
-    htmltools::tags$h6(i18n$t("action_plan_section_kanban")),
-    shiny::selectInput(
-      ns("bulk_status"), label = NULL,
-      choices = stats::setNames(
-        c("",
-          "validee", "planifiee", "realisee",
-          "abandonnee", "proposee"),
-        c(i18n$t("action_plan_bulk_status_placeholder"),
-          i18n$t("action_plan_status_validee"),
-          i18n$t("action_plan_status_planifiee"),
-          i18n$t("action_plan_status_realisee"),
-          i18n$t("action_plan_status_abandonnee"),
-          i18n$t("action_plan_status_proposee"))
-      ),
-      width = "100%",
-      selected = ""
-    ),
-    shiny::actionButton(
-      ns("apply_bulk_status"),
-      label = i18n$t("action_plan_bulk_status_apply"),
-      icon = shiny::icon("forward"),
-      class = "btn-sm btn-outline-primary w-100 mb-3"
-    ),
+        # ---- Manuel ------------------------------------------------
+        htmltools::tags$h6(i18n$t("action_plan_section_manual")),
+        shiny::actionButton(
+          ns("add_action"),
+          label = i18n$t("action_plan_add"),
+          icon = shiny::icon("plus"),
+          class = "btn-sm btn-outline-primary w-100 mb-3"
+        ),
 
-    # ---- IA --------------------------------------------------------
-    htmltools::tags$h6(i18n$t("action_plan_section_ia")),
-    shiny::actionButton(
-      ns("generate_all"),
-      label = i18n$t("action_plan_generate_all"),
-      icon = shiny::icon("wand-magic-sparkles"),
-      class = "btn-sm btn-primary w-100 mb-2"
-    ),
-    shiny::actionButton(
-      ns("open_chat"),
-      label = i18n$t("action_plan_open_chat"),
-      icon = shiny::icon("comments"),
-      class = "btn-sm btn-outline-primary w-100 mb-3"
-    ),
-
-    # ---- Manuel ----------------------------------------------------
-    htmltools::tags$h6(i18n$t("action_plan_section_manual")),
-    shiny::actionButton(
-      ns("add_action"),
-      label = i18n$t("action_plan_add"),
-      icon = shiny::icon("plus"),
-      class = "btn-sm btn-outline-primary w-100 mb-3"
-    ),
-
-    # ---- Exports ---------------------------------------------------
-    htmltools::tags$h6(i18n$t("action_plan_section_exports")),
-    shiny::actionButton(
-      ns("export_terrain"),
-      label = i18n$t("action_plan_export_terrain"),
-      icon = shiny::icon("crosshairs"),
-      class = "btn-sm btn-outline-success w-100 mb-2"
-    ),
-    shiny::downloadButton(
-      ns("download_gpkg"),
-      label = i18n$t("action_plan_download_gpkg"),
-      icon = shiny::icon("database"),
-      class = "btn-sm btn-outline-success w-100 mb-2"
-    ),
-    shiny::downloadButton(
-      ns("download_pdf"),
-      label = i18n$t("action_plan_download_pdf"),
-      icon = shiny::icon("file-pdf"),
-      class = "btn-sm btn-outline-success w-100"
+        # ---- Exports -----------------------------------------------
+        htmltools::tags$h6(i18n$t("action_plan_section_exports")),
+        shiny::actionButton(
+          ns("export_terrain"),
+          label = i18n$t("action_plan_export_terrain"),
+          icon = shiny::icon("crosshairs"),
+          class = "btn-sm btn-outline-success w-100 mb-2"
+        ),
+        shiny::downloadButton(
+          ns("download_gpkg"),
+          label = i18n$t("action_plan_download_gpkg"),
+          icon = shiny::icon("database"),
+          class = "btn-sm btn-outline-success w-100 mb-2"
+        ),
+        shiny::downloadButton(
+          ns("download_pdf"),
+          label = i18n$t("action_plan_download_pdf"),
+          icon = shiny::icon("file-pdf"),
+          class = "btn-sm btn-outline-success w-100"
+        )
+      )
     )
   )
 
-  bslib::layout_sidebar(
+  bslib::layout_columns(
+    col_widths = c(9, 3),
     fillable = TRUE,
-    sidebar = action_sidebar,
 
-    # Scoped CSS: ellipsize long text in DT cells so every row keeps a
-    # uniform height. Combined with `class = "nowrap"` on the datatable
-    # itself this guarantees single-line cells without a wrapping
-    # overflow that would push some rows taller than others.
-    htmltools::tags$style(htmltools::HTML(sprintf("
-      #%s .dt-truncate {
-        max-width: 220px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    ", ns("action_table")))),
+    # Main pane: nav switcher (carte+tableau / kanban). Style scoped
+    # to the inner DT to ellipsize long cells.
+    htmltools::tagList(
+      htmltools::tags$style(htmltools::HTML(sprintf("
+        #%s .dt-truncate {
+          max-width: 220px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      ", ns("action_table")))),
 
-    bslib::navset_card_underline(
-      id = ns("inner_nav"),
-      full_screen = TRUE,
+      bslib::navset_card_underline(
+        id = ns("inner_nav"),
+        full_screen = TRUE,
 
-      bslib::nav_panel(
+        bslib::nav_panel(
         title = i18n$t("action_plan_view_map_table"),
         value = "map_table",
         icon = bsicons::bs_icon("map"),
@@ -230,7 +218,11 @@ mod_action_plan_ui <- function(id) {
           )
         )
       )
-    )
+      )  # close navset_card_underline
+    ),   # close htmltools::tagList
+
+    # Right pane: collapsible action card
+    action_panel
   )
 }
 
@@ -1778,66 +1770,9 @@ mod_action_plan_server <- function(id, app_state) {
     })
 
     # ============================================================
-    # S8 - Kanban transitions (bulk) + history modal
+    # S8 - History modal (bulk status transitions are now exclusively
+    # driven by the Kanban board's drag-and-drop -- see kanban_drop)
     # ============================================================
-
-    shiny::observeEvent(input$apply_bulk_status, {
-      i18n <- get_i18n(app_state$language)
-      target <- input$bulk_status %||% ""
-      sel_rows <- input$action_table_rows_selected
-      df <- actions_df_all()
-      if (!nzchar(target)) {
-        shiny::showNotification(i18n$t("action_plan_bulk_status_pick"),
-                                type = "warning", duration = 4)
-        return()
-      }
-      if (length(sel_rows) == 0L || nrow(df) == 0L) {
-        shiny::showNotification(i18n$t("action_plan_no_selection"),
-                                type = "warning", duration = 4)
-        return()
-      }
-
-      cur_plan <- plan_rv()
-      ids <- df$id[sel_rows]
-      ids <- ids[!is.na(ids)]
-      n_ok <- 0L
-      n_skip <- 0L
-      errors <- character()
-      for (aid in ids) {
-        idx <- find_action_index(cur_plan, aid)
-        if (is.na(idx)) { n_skip <- n_skip + 1L; next }
-        from <- cur_plan$actions[[idx]]$statut %||% "proposee"
-        if (!is_valid_status_transition(from, target)) {
-          errors <- c(errors, sprintf("%s: %s -> %s", aid, from, target))
-          n_skip <- n_skip + 1L
-          next
-        }
-        ok <- TRUE
-        cur_plan <- tryCatch(
-          update_action_in_plan(cur_plan, aid,
-                                list(statut = target),
-                                ug_ids = ug_ids(),
-                                user = Sys.info()[["user"]] %||% "user"),
-          error = function(e) {
-            errors <<- c(errors, conditionMessage(e))
-            ok <<- FALSE
-            cur_plan
-          }
-        )
-        if (ok) n_ok <- n_ok + 1L else n_skip <- n_skip + 1L
-      }
-
-      save_action_plan(app_state$current_project$id, cur_plan)
-      plan_rv(cur_plan)
-      shiny::showNotification(
-        sprintf(i18n$t("action_plan_bulk_status_ok_fmt"), n_ok, n_skip),
-        type = if (n_ok > 0L) "message" else "warning",
-        duration = 6
-      )
-      if (length(errors) > 0L) {
-        cli::cli_inform("Bulk status errors: {paste(errors, collapse = ' | ')}")
-      }
-    })
 
     shiny::observeEvent(input$show_history, {
       i18n <- get_i18n(app_state$language)
