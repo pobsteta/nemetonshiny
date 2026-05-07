@@ -138,6 +138,7 @@ TRANSLATIONS <- list(
     fr = "Aucune action chiffrée. Le bilan apparaîtra dès que vous saisirez coût ou revenu.",
     en = "No costed action yet. Balance appears once cost or revenue is entered."
   ),
+  action_plan_total_surface = list(fr = "Surface totale", en = "Total area"),
   action_plan_total_cout = list(fr = "Coût total", en = "Total cost"),
   action_plan_total_revenu = list(fr = "Revenu total", en = "Total revenue"),
   action_plan_total_bilan = list(fr = "Bilan", en = "Balance"),
