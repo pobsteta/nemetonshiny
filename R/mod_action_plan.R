@@ -39,9 +39,18 @@ mod_action_plan_ui <- function(id) {
   # Right-side action sidebar: groups every button / control that used
   # to live in the table card header. Same UX pattern as the left
   # sidebars in `mod_monitoring` / `mod_sampling`, just on the right.
+  # Title styled like the Selection-tab cards: a coloured header bar
+  # carrying an icon + the localised label. The bslib sidebar
+  # provides the retractable behaviour (chevron in the corner).
+  action_sidebar_title <- htmltools::tags$div(
+    class = "d-flex align-items-center gap-2 fw-semibold",
+    bsicons::bs_icon("clipboard-check"),
+    i18n$t("action_plan_actions_title")
+  )
+
   action_sidebar <- bslib::sidebar(
     id = ns("action_sidebar"),
-    title = i18n$t("action_plan_actions_title"),
+    title = action_sidebar_title,
     position = "right",
     width = 300,
     open = TRUE,

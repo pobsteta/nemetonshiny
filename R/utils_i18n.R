@@ -100,7 +100,8 @@ TRANSLATIONS <- list(
   ),
 
   # ----- Action sidebar sections (right-hand toolbar) ---------------
-  action_plan_actions_title = list(fr = "Actions", en = "Actions"),
+  action_plan_actions_title = list(fr = "Tableau des actions",
+                                   en = "Action board"),
   action_plan_section_selection = list(
     fr = "Sélection", en = "Selection"
   ),
