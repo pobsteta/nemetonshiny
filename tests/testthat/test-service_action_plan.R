@@ -276,6 +276,49 @@ test_that("export_action_plan_gpkg writes actions + ugf layers", {
   expect_true(all(c("ug_id", "type", "annee_cible") %in% names(acts)))
 })
 
+test_that("can_edit_action_plan: NULL / unauthenticated => FALSE", {
+  expect_false(nemetonshiny:::can_edit_action_plan(NULL))
+  expect_false(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = FALSE, user_roles = "editeur")
+  ))
+})
+
+test_that("can_edit_action_plan: authenticated + no role => editor (anonymous fallback)", {
+  expect_true(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = TRUE, user_roles = character(0))
+  ))
+})
+
+test_that("can_edit_action_plan: editor / proprietaire / admin roles allow edit", {
+  for (role in c("editeur", "proprietaire", "admin", "manager",
+                 "owner", "editor")) {
+    expect_true(
+      nemetonshiny:::can_edit_action_plan(
+        list(authenticated = TRUE, user_roles = role)
+      ),
+      info = sprintf("role '%s' should allow edit", role)
+    )
+  }
+})
+
+test_that("can_edit_action_plan: lecteur / unknown role => read-only", {
+  expect_false(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = TRUE, user_roles = "lecteur")
+  ))
+  expect_false(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = TRUE, user_roles = c("unknown_role", "viewer"))
+  ))
+})
+
+test_that("can_edit_action_plan: case-insensitive on roles", {
+  expect_true(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = TRUE, user_roles = "EDITEUR")
+  ))
+  expect_true(nemetonshiny:::can_edit_action_plan(
+    list(authenticated = TRUE, user_roles = "Owner")
+  ))
+})
+
 test_that("audit_to_dataframe collapses entries to a tidy data.frame", {
   plan <- nemetonshiny:::init_empty_action_plan("p")
   plan <- nemetonshiny:::add_action_to_plan(plan, make_action(),

@@ -206,6 +206,8 @@ mod_action_plan_ui <- function(id) {
               shiny::textOutput(ns("table_count_inline"), inline = TRUE)
             ),
             bslib::card_body(
+              # Read-only banner (S15) -- reactive on auth changes.
+              shiny::uiOutput(ns("readonly_banner")),
               # Cumulative balance sparkline + totals strip on top
               htmltools::div(
                 class = "border-bottom mb-2 pb-2",
@@ -254,6 +256,26 @@ mod_action_plan_server <- function(id, app_state) {
     # ============================================================
 
     plan_rv <- shiny::reactiveVal(NULL)
+
+    # ------------------------------------------------------------
+    # S15 -- permissions
+    # ------------------------------------------------------------
+    # Single source of truth for "may the current user mutate the
+    # plan?". Re-evaluated whenever auth changes (login / logout /
+    # token refresh). Mutation observers below all gate on this.
+    can_edit <- shiny::reactive({
+      can_edit_action_plan(app_state$auth)
+    })
+
+    # Helper: deny + toast if the user is read-only. Returns TRUE
+    # when the action should be cancelled (i.e. user can't edit).
+    deny_if_readonly <- function() {
+      if (isTRUE(can_edit())) return(FALSE)
+      i18n <- get_i18n(app_state$language)
+      shiny::showNotification(i18n$t("action_plan_readonly_locked"),
+                              type = "warning", duration = 5)
+      TRUE
+    }
 
     # Bumped after a refused Kanban drag-and-drop drop so the
     # `kanban_board` renderUI reruns and puts the card back where the
@@ -757,6 +779,7 @@ mod_action_plan_server <- function(id, app_state) {
     # corresponds to the *full* data.frame (actions_df_all) since DT is
     # told about all rows; column filtering is purely client-side.
     shiny::observeEvent(input$action_table_cell_edit, {
+      if (deny_if_readonly()) return()
       info <- input$action_table_cell_edit
       df <- actions_df_all()
       if (nrow(df) == 0L) return()
@@ -852,6 +875,16 @@ mod_action_plan_server <- function(id, app_state) {
       agg$cumul_revenu <- cumsum(agg$revenu_eur)
       agg$cumul_cout   <- cumsum(agg$cout_eur)
       agg
+    })
+
+    output$readonly_banner <- shiny::renderUI({
+      if (isTRUE(can_edit())) return(NULL)
+      i18n <- get_i18n(app_state$language)
+      htmltools::div(
+        class = "alert alert-warning py-1 px-2 mb-2 small",
+        shiny::icon("lock"), " ",
+        i18n$t("action_plan_readonly_banner")
+      )
     })
 
     output$balance_summary <- shiny::renderUI({
@@ -1118,6 +1151,11 @@ mod_action_plan_server <- function(id, app_state) {
     # nonce). The `nonce` defeats Shiny input deduplication so
     # consecutive drops between the same two columns still fire.
     shiny::observeEvent(input$kanban_drop, {
+      if (deny_if_readonly()) {
+        # Force a re-render so the dropped card snaps back visually.
+        kanban_render_token(isolate(kanban_render_token()) + 1L)
+        return()
+      }
       payload <- input$kanban_drop
       i18n <- get_i18n(app_state$language)
       action_id <- payload$action_id
@@ -1221,6 +1259,7 @@ mod_action_plan_server <- function(id, app_state) {
     # ============================================================
 
     shiny::observeEvent(input$export_terrain, {
+      if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       project <- app_state$current_project
       if (is.null(project)) {
@@ -1454,6 +1493,7 @@ mod_action_plan_server <- function(id, app_state) {
     # The IA generation flow opens a modal so the user picks the scope and
     # confirms before any write happens.
     shiny::observeEvent(input$generate_all, {
+      if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       project <- app_state$current_project
       if (is.null(project)) {
@@ -1500,6 +1540,7 @@ mod_action_plan_server <- function(id, app_state) {
 
     shiny::observeEvent(input$gen_run, {
       shiny::removeModal()
+      if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       project <- app_state$current_project
       ctx <- plan_llm_context()
@@ -1618,6 +1659,7 @@ mod_action_plan_server <- function(id, app_state) {
     chat_history_rv <- shiny::reactiveVal(list())
 
     shiny::observeEvent(input$open_chat, {
+      if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       shiny::showModal(shiny::modalDialog(
         title = i18n$t("action_plan_chat_title"),
@@ -1674,6 +1716,7 @@ mod_action_plan_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$chat_send, {
+      if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       q <- trimws(input$chat_input %||% "")
       if (!nzchar(q)) return()
@@ -1755,6 +1798,7 @@ mod_action_plan_server <- function(id, app_state) {
 
     shiny::observeEvent(input$chat_apply, {
       shiny::removeModal()
+      if (deny_if_readonly()) return()
       acts <- rv_state$pending_chat_actions
       if (is.null(acts) || length(acts) == 0L) return()
       i18n <- get_i18n(app_state$language)
@@ -1833,6 +1877,7 @@ mod_action_plan_server <- function(id, app_state) {
 
     # Manual add: simple modal
     shiny::observeEvent(input$add_action, {
+      if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       project <- app_state$current_project
       if (is.null(project)) return()
@@ -1867,6 +1912,7 @@ mod_action_plan_server <- function(id, app_state) {
 
     shiny::observeEvent(input$add_run, {
       shiny::removeModal()
+      if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       action <- list(
         ug_id = input$add_ug,

@@ -684,3 +684,44 @@ actions_to_dataframe <- function(plan) {
   })
   do.call(rbind, c(rows, list(make.row.names = FALSE)))
 }
+
+
+# ===========================================================================
+# Permissions (S15)
+# ===========================================================================
+
+#' Decide whether the current user may edit the action plan
+#'
+#' @description
+#' Convention used by the project (Keycloak realm roles):
+#'
+#' * `proprietaire` or `editeur` -> full read/write access.
+#' * `lecteur` -> read-only.
+#' * Anonymous (no OAuth configured) and any authenticated user with
+#'   no role at all -> editor by default, so the standalone app
+#'   stays usable without an identity provider.
+#'
+#' @param auth_state reactiveValues / list. Object returned by
+#'   `mod_auth_server` (or the slice exposed via `app_state$auth`).
+#'   May be NULL when the auth module has not initialised yet, in
+#'   which case the function returns FALSE to be safe.
+#'
+#' @return Logical (length 1).
+#' @noRd
+can_edit_action_plan <- function(auth_state) {
+  if (is.null(auth_state)) return(FALSE)
+  # ReactiveValues are not lists; access via [[ rather than $.
+  authenticated <- tryCatch(isTRUE(auth_state[["authenticated"]]),
+                            error = function(e) FALSE)
+  if (!authenticated) return(FALSE)
+
+  roles <- tryCatch(auth_state[["user_roles"]] %||% character(),
+                    error = function(e) character())
+  # Anonymous fallback: if no provider is configured, mod_auth puts
+  # `user_name = "Anonyme"` and an empty `user_roles` -- treat that
+  # as editor so demos / single-user installs keep working.
+  if (length(roles) == 0L) return(TRUE)
+
+  any(c("proprietaire", "editeur", "owner", "editor",
+        "admin", "manager") %in% tolower(roles))
+}

@@ -46,8 +46,12 @@ app_server <- function(input, output, session) {
     project_dir = get_app_options()$project_dir,
     current_project = NULL,
     project_status = "none",  # none, draft, downloading, computing, completed
-    samples_refresh = 0L      # bumped by mod_sampling after save_samples()
+    samples_refresh = 0L,     # bumped by mod_sampling after save_samples()
                               # so mod_monitoring re-checks samples on disk
+    # Auth carries `authenticated`, `user_name`, `user_email`,
+    # `user_roles` (filled by mod_auth_server). Other modules use
+    # `can_edit_action_plan(app_state$auth)` to decide permissions.
+    auth = auth_state
   )
 
   # Selection state
