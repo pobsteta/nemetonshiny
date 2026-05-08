@@ -108,6 +108,14 @@ TRANSLATIONS <- list(
   action_plan_section_ia = list(fr = "IA", en = "AI"),
   action_plan_section_manual = list(fr = "Saisie manuelle", en = "Manual entry"),
   action_plan_section_exports = list(fr = "Exports", en = "Exports"),
+  action_plan_readonly_banner = list(
+    fr = "Mode lecture seule (votre rôle ne permet pas l'édition).",
+    en = "Read-only mode (your role does not allow editing)."
+  ),
+  action_plan_readonly_locked = list(
+    fr = "Action interdite : votre rôle est en lecture seule.",
+    en = "Action denied: your role is read-only."
+  ),
 
   # ----- Localised table column headers -----------------------------
   action_plan_col_id          = list(fr = "id",            en = "id"),
