@@ -728,13 +728,18 @@ mod_action_plan_server <- function(id, app_state) {
                                                           editable_idx))),
         extensions = c("FixedColumns"),
         options = list(
-          pageLength = 50,
-          dom = "frtip",
-          # Internal scroll inside the table so the column headers stay
-          # pinned as the user scrolls down (works inside a card_body,
-          # contrary to FixedHeader which attaches to the page viewport).
-          scrollY = "60vh",
-          scrollCollapse = TRUE,
+          # 5 rows per page, paginate the rest. lengthMenu lets the
+          # user expand to 10 / 25 / 50 / All if they want a denser
+          # view; the search/filter still operates on the full plan.
+          pageLength = 5,
+          lengthMenu = list(c(5, 10, 25, 50, -1),
+                            c("5", "10", "25", "50", "All")),
+          # `l` adds the length selector (page size dropdown) to the
+          # left of the search box.
+          dom = "lfrtip",
+          # Horizontal scroll only — vertical scroll is replaced by
+          # pagination, so dropping scrollY/scrollCollapse keeps the
+          # 5-row table compact instead of padding it to 60vh.
           scrollX = TRUE,
           # Freeze the first 5 columns: id (hidden), ug_id (hidden),
           # annee_cible (hidden), UGF, and Ann\u00e9e. The hidden ones don't
@@ -925,11 +930,11 @@ mod_action_plan_server <- function(id, app_state) {
       htmltools::div(
         class = "d-flex align-items-center justify-content-between gap-3 flex-wrap",
         htmltools::div(
+          pill(i18n$t("action_plan_total_cout"),    total_cout,    "text-danger"),
+          pill(i18n$t("action_plan_total_revenu"),  total_revenu,  "text-success"),
+          pill(i18n$t("action_plan_total_bilan"),   total_bilan,   bilan_class),
           pill(i18n$t("action_plan_total_surface"), total_surface,
-               "text-primary", unit = "ha", digits = 2L),
-          pill(i18n$t("action_plan_total_cout"),   total_cout,   "text-danger"),
-          pill(i18n$t("action_plan_total_revenu"), total_revenu, "text-success"),
-          pill(i18n$t("action_plan_total_bilan"),  total_bilan,  bilan_class)
+               "text-primary", unit = "ha", digits = 2L)
         ),
         htmltools::div(
           style = "min-width: 320px; flex: 1; max-width: 600px;",
