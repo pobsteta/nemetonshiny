@@ -1,5 +1,47 @@
 # Changelog
 
+## nemetonshiny 0.23.1 (2026-05-09)
+
+#### Plan d’actions — chat IA en sidebar gauche
+
+- `feat(action_plan)` — le **chat IA** quitte la modal et s’installe
+  dans une **sidebar gauche persistante** de 350 px. Carte collapsible
+  (header `bg-info` avec icône `chat-dots`), historique scrollable
+  (max-height 50 vh, min-height 160 px, fond gris clair),
+  `textAreaInput` 3 lignes resize=vertical, boutons *Effacer* /
+  *Envoyer* en flex. La conversation reste visible pendant que
+  l’utilisateur navigue map / table / Kanban — auparavant un bouton
+  “Ouvrir le chat” déclenchait un modal qui se fermait à chaque
+  interaction.
+- `refactor(action_plan)` — le bouton **“Ouvrir le chat”** dans la
+  section IA de la sidebar droite est retiré (doublon avec le panel
+  persistant). L’observer `input$open_chat` (~30 LOC qui faisait
+  `showModal()`) supprimé. Layout passe à un double
+  [`bslib::layout_sidebar`](https://rstudio.github.io/bslib/reference/sidebar.html)
+  imbriqué : sidebar gauche (chat) → sidebar droite (action panel) →
+  contenu principal. Les deux sidebars se collapsent indépendamment via
+  le bouton bslib en bordure (utile sur écran portable).
+
+#### Plan d’actions — sync carte ↔︎ tableau
+
+- `fix(action_plan)` — clic sur une parcelle dans la **carte**
+  sélectionne maintenant **toutes les lignes correspondantes** dans le
+  tableau. Le handler `input$map_shape_click` (le toggle qui mettait à
+  jour `selected_ug_rv` et la couche orange Selection) ne propageait pas
+  la sélection à `DT` ; un appel
+  `DT::selectRows(proxy, which(df$ug_id %in% cur))` est ajouté. Le sens
+  table → carte (déjà fonctionnel via l’observer
+  `input$action_table_rows_selected`) reste inchangé. Pas de boucle
+  réactive : `reactiveVal` dedupe par
+  [`identical()`](https://rdrr.io/r/base/identical.html) donc le
+  round-trip map → selected_ug_rv → table → reverse-observer →
+  selected_ug_rv s’arrête au 2e pas.
+
+#### Removed
+
+- i18n: `action_plan_open_chat`, `action_plan_chat_input_label`
+  (orphelines après la refonte du chat en sidebar).
+
 ## nemetonshiny 0.23.0 (2026-05-09)
 
 #### Plan d’actions — Kanban libre + édition par double-clic

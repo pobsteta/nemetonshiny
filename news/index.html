@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,28 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.23.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.1" id="nemetonshiny-0231-2026-05-09">nemetonshiny 0.23.1 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0231-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--chat-ia-en-sidebar-gauche-0-23-1">Plan d’actions — chat IA en sidebar gauche<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-ia-en-sidebar-gauche-0-23-1"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — le <strong>chat IA</strong> quitte la modal et s’installe dans une <strong>sidebar gauche persistante</strong> de 350 px. Carte collapsible (header <code>bg-info</code> avec icône <code>chat-dots</code>), historique scrollable (max-height 50 vh, min-height 160 px, fond gris clair), <code>textAreaInput</code> 3 lignes resize=vertical, boutons <em>Effacer</em> / <em>Envoyer</em> en flex. La conversation reste visible pendant que l’utilisateur navigue map / table / Kanban — auparavant un bouton “Ouvrir le chat” déclenchait un modal qui se fermait à chaque interaction.</li>
+<li>
+<code>refactor(action_plan)</code> — le bouton <strong>“Ouvrir le chat”</strong> dans la section IA de la sidebar droite est retiré (doublon avec le panel persistant). L’observer <code>input$open_chat</code> (~30 LOC qui faisait <code>showModal()</code>) supprimé. Layout passe à un double <code><a href="https://rstudio.github.io/bslib/reference/sidebar.html" class="external-link">bslib::layout_sidebar</a></code> imbriqué : sidebar gauche (chat) → sidebar droite (action panel) → contenu principal. Les deux sidebars se collapsent indépendamment via le bouton bslib en bordure (utile sur écran portable).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--sync-carte--tableau-0-23-1">Plan d’actions — sync carte ↔︎ tableau<a class="anchor" aria-label="anchor" href="#plan-dactions--sync-carte--tableau-0-23-1"></a></h4>
+<ul><li>
+<code>fix(action_plan)</code> — clic sur une parcelle dans la <strong>carte</strong> sélectionne maintenant <strong>toutes les lignes correspondantes</strong> dans le tableau. Le handler <code>input$map_shape_click</code> (le toggle qui mettait à jour <code>selected_ug_rv</code> et la couche orange Selection) ne propageait pas la sélection à <code>DT</code> ; un appel <code>DT::selectRows(proxy, which(df$ug_id %in% cur))</code> est ajouté. Le sens table → carte (déjà fonctionnel via l’observer <code>input$action_table_rows_selected</code>) reste inchangé. Pas de boucle réactive : <code>reactiveVal</code> dedupe par <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> donc le round-trip map → selected_ug_rv → table → reverse-observer → selected_ug_rv s’arrête au 2e pas.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="removed-0-23-1">Removed<a class="anchor" aria-label="anchor" href="#removed-0-23-1"></a></h4>
+<ul><li>i18n: <code>action_plan_open_chat</code>, <code>action_plan_chat_input_label</code> (orphelines après la refonte du chat en sidebar).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.23.0" id="nemetonshiny-0230-2026-05-09">nemetonshiny 0.23.0 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0230-2026-05-09"></a></h2>
 <div class="section level4">
