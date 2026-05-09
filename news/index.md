@@ -1,5 +1,63 @@
 # Changelog
 
+## nemetonshiny 0.23.0 (2026-05-09)
+
+#### Plan d’actions — Kanban libre + édition par double-clic
+
+- `feat(action_plan)` — **drag-and-drop libre entre toutes les colonnes
+  du Kanban**. La sémantique du DAG (proposée → validée → planifiée →
+  réalisée → abandonnée) qui empêchait certaines transitions disparaît :
+  un utilisateur peut désormais déplacer n’importe quelle fiche vers
+  n’importe quelle colonne. Le service `update_action_in_plan()`
+  n’enforce plus le DAG ; il valide uniquement que le nouveau statut
+  figure dans `ACTION_PLAN_TRANSITIONS`. La fonction
+  `is_valid_status_transition()` reste exportée comme documentation du
+  flux naturel mais ne gate plus les writes.
+- `feat(action_plan)` — **double-clic sur une fiche Kanban ouvre une
+  modal d’édition** pré-remplie avec les valeurs courantes (statut,
+  priorité, année calendaire, commentaire). Le commentaire est éditable
+  en `textAreaInput` 6 lignes, c’est le cas d’usage principal de la
+  modal — l’édition inline du tableau DT est single-line et restait peu
+  pratique pour des commentaires longs. Le handler `dblclick` est
+  délégué au niveau du board (un seul listener pour toutes les cartes),
+  avec cleanup entre re-renders pour éviter les fuites.
+- `refactor(action_plan)` — le bouton **“Déplacer”** dans la dropdown de
+  chaque carte Kanban est supprimé : avec le drag-drop libre il faisait
+  doublon. ~50 lignes d’observer dispatcher `kanban_move_*` retirées en
+  conséquence. La constante `KANBAN_STATUSES` (uniquement utilisée par
+  la dropdown) retirée également.
+- `feat(action_plan)` — **tri chronologique des cartes par colonne** :
+  dans chaque statut Kanban, les fiches sont triées par
+  `annee_realisation` ascendante (NAs en queue), pour qu’une colonne se
+  lise du plus tôt au plus tard du haut vers le bas.
+- `feat(action_plan)` — **commentaire affiché sur chaque carte Kanban**.
+  Une div `.kanban-card-comment` (small text-muted, mt-1, word-break)
+  apparaît sous le bloc type/année/UGF si le commentaire est non-vide ;
+  rien si vide pour préserver la hauteur minimale.
+
+#### Plan d’actions — fiche d’ajout d’action
+
+- `fix(action_plan)` — la dropdown **UGF** dans la modal “Ajouter une
+  action” affichait le `ug_id` brut (ex. `ugf_42`) au lieu du libellé
+  humain. Construction d’un `ug_choices` via `setNames(ids, labels)` à
+  partir de `sf$label` mappé sur `sf$ug_id`, trié par label. Fallback
+  sur les IDs si `ug_sf_4326()` est indisponible.
+- `fix(action_plan)` — le champ **Année cible** de la même modal
+  affichait l’offset interne (1, 2, 3 …) au lieu d’une année calendaire.
+  Le `numericInput` montre désormais l’année réelle (default =
+  `base_year + 1`, min = `base_year + 1`, max = `base_year + horizon`) ;
+  la conversion en offset (`year - base_year`) se fait au moment du save
+  dans l’observer `add_run`.
+
+#### Plan d’actions — UX du tableau
+
+- `ui(action_plan)` — **total des actions affiché en bas à droite** du
+  tableau DT (auparavant à gauche). Le `dom` DT passe à un layout custom
+  `<"top"f>rt<"d-flex … dt-bottom-row"<"d-flex gap-3 align-items-center"lp>i>`
+  ; règles CSS scoped sur `.dt-bottom-row` neutralisent les `float`/
+  `clear` par défaut de `dataTables_info`/`_length`/`_paginate` et
+  alignent l’info à droite via `text-align: right`.
+
 ## nemetonshiny 0.22.4 (2026-05-09)
 
 #### Plan d’actions — UX polish

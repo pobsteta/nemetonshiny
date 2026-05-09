@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,37 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.22.4/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.0" id="nemetonshiny-0230-2026-05-09">nemetonshiny 0.23.0 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0230-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--kanban-libre--édition-par-double-clic-0-23-0">Plan d’actions — Kanban libre + édition par double-clic<a class="anchor" aria-label="anchor" href="#plan-dactions--kanban-libre--%C3%A9dition-par-double-clic-0-23-0"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — <strong>drag-and-drop libre entre toutes les colonnes du Kanban</strong>. La sémantique du DAG (proposée → validée → planifiée → réalisée → abandonnée) qui empêchait certaines transitions disparaît : un utilisateur peut désormais déplacer n’importe quelle fiche vers n’importe quelle colonne. Le service <code>update_action_in_plan()</code> n’enforce plus le DAG ; il valide uniquement que le nouveau statut figure dans <code>ACTION_PLAN_TRANSITIONS</code>. La fonction <code>is_valid_status_transition()</code> reste exportée comme documentation du flux naturel mais ne gate plus les writes.</li>
+<li>
+<code>feat(action_plan)</code> — <strong>double-clic sur une fiche Kanban ouvre une modal d’édition</strong> pré-remplie avec les valeurs courantes (statut, priorité, année calendaire, commentaire). Le commentaire est éditable en <code>textAreaInput</code> 6 lignes, c’est le cas d’usage principal de la modal — l’édition inline du tableau DT est single-line et restait peu pratique pour des commentaires longs. Le handler <code>dblclick</code> est délégué au niveau du board (un seul listener pour toutes les cartes), avec cleanup entre re-renders pour éviter les fuites.</li>
+<li>
+<code>refactor(action_plan)</code> — le bouton <strong>“Déplacer”</strong> dans la dropdown de chaque carte Kanban est supprimé : avec le drag-drop libre il faisait doublon. ~50 lignes d’observer dispatcher <code>kanban_move_*</code> retirées en conséquence. La constante <code>KANBAN_STATUSES</code> (uniquement utilisée par la dropdown) retirée également.</li>
+<li>
+<code>feat(action_plan)</code> — <strong>tri chronologique des cartes par colonne</strong> : dans chaque statut Kanban, les fiches sont triées par <code>annee_realisation</code> ascendante (NAs en queue), pour qu’une colonne se lise du plus tôt au plus tard du haut vers le bas.</li>
+<li>
+<code>feat(action_plan)</code> — <strong>commentaire affiché sur chaque carte Kanban</strong>. Une div <code>.kanban-card-comment</code> (small text-muted, mt-1, word-break) apparaît sous le bloc type/année/UGF si le commentaire est non-vide ; rien si vide pour préserver la hauteur minimale.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--fiche-dajout-daction-0-23-0">Plan d’actions — fiche d’ajout d’action<a class="anchor" aria-label="anchor" href="#plan-dactions--fiche-dajout-daction-0-23-0"></a></h4>
+<ul><li>
+<code>fix(action_plan)</code> — la dropdown <strong>UGF</strong> dans la modal “Ajouter une action” affichait le <code>ug_id</code> brut (ex. <code>ugf_42</code>) au lieu du libellé humain. Construction d’un <code>ug_choices</code> via <code>setNames(ids, labels)</code> à partir de <code>sf$label</code> mappé sur <code>sf$ug_id</code>, trié par label. Fallback sur les IDs si <code>ug_sf_4326()</code> est indisponible.</li>
+<li>
+<code>fix(action_plan)</code> — le champ <strong>Année cible</strong> de la même modal affichait l’offset interne (1, 2, 3 …) au lieu d’une année calendaire. Le <code>numericInput</code> montre désormais l’année réelle (default = <code>base_year + 1</code>, min = <code>base_year + 1</code>, max = <code>base_year + horizon</code>) ; la conversion en offset (<code>year - base_year</code>) se fait au moment du save dans l’observer <code>add_run</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--ux-du-tableau-0-23-0">Plan d’actions — UX du tableau<a class="anchor" aria-label="anchor" href="#plan-dactions--ux-du-tableau-0-23-0"></a></h4>
+<ul><li>
+<code>ui(action_plan)</code> — <strong>total des actions affiché en bas à droite</strong> du tableau DT (auparavant à gauche). Le <code>dom</code> DT passe à un layout custom <code>&lt;"top"f&gt;rt&lt;"d-flex … dt-bottom-row"&lt;"d-flex gap-3 align-items-center"lp&gt;i&gt;</code> ; règles CSS scoped sur <code>.dt-bottom-row</code> neutralisent les <code>float</code>/ <code>clear</code> par défaut de <code>dataTables_info</code>/<code>_length</code>/<code>_paginate</code> et alignent l’info à droite via <code>text-align: right</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.22.4" id="nemetonshiny-0224-2026-05-09">nemetonshiny 0.22.4 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0224-2026-05-09"></a></h2>
 <div class="section level4">
