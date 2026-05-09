@@ -380,11 +380,15 @@ update_action_in_plan <- function(plan, action_id, updates,
   current <- plan$actions[[idx]]
   horizon <- plan$horizon_annees %||% 20L
 
-  # Status transitions are constrained
+  # Status updates only need a known status name — the Kanban allows
+  # free movement between columns, so we no longer enforce a DAG of
+  # allowed transitions here. `is_valid_status_transition()` and
+  # `ACTION_PLAN_TRANSITIONS` are kept for callers that want to
+  # surface the natural workflow (e.g. tooltips, defaults), but they
+  # no longer gate writes.
   if ("statut" %in% names(updates) &&
-      !is_valid_status_transition(current$statut %||% "proposee",
-                                  updates$statut)) {
-    cli::cli_abort("invalid status transition: {current$statut} -> {updates$statut}")
+      !(updates$statut %in% names(ACTION_PLAN_TRANSITIONS))) {
+    cli::cli_abort("unknown status: {updates$statut}")
   }
 
   audit_entries <- list()

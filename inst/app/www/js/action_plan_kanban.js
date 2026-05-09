@@ -1,28 +1,29 @@
-// Kanban drag-and-drop init for the Plan d'actions tab.
+// Kanban drag-and-drop + double-click-to-edit init for the
+// Plan d'actions tab.
 //
-// Exposed as `window.initKanbanSortable(boardId, dropInputId)`. The
-// renderUI output emits an inline <script> at the end of every render
-// that calls this function, which:
+// Exposed as `window.initKanbanSortable(boardId, dropInputId,
+// editInputId)`. The renderUI output emits an inline <script> at the
+// end of every render that calls this function, which:
 //
 //   1. Tears down any previous Sortable instance bound to the column
 //      bodies (renderUI rebuilds the DOM, so old instances would leak).
 //   2. Creates one Sortable per column, all in the same `kanban` group
-//      so cards can be moved across columns.
+//      so cards can be moved across columns. The Kanban allows free
+//      movement: any source → any target.
 //   3. On drop into a different column, pushes a payload to the Shiny
 //      input named `dropInputId` with `priority: "event"` so that the
 //      same drop fires the observer reliably even when the previous
 //      payload was identical.
-//
-// The server-side observer validates the transition and either
-// persists the new status (which triggers a renderUI re-run via
-// plan_rv()) or surfaces an error and bumps `kanban_render_token` to
-// force a re-render that puts the card back where the data says it
-// belongs.
+//   4. Attaches a single delegated `dblclick` listener at the board
+//      level. Double-clicking any `[data-action-id]` card pushes the
+//      action_id to `editInputId`, which the server uses to open an
+//      edit modal pre-filled with the action's current values
+//      (commentaire is the primary use-case).
 
 (function() {
   if (typeof window === "undefined") return;
 
-  window.initKanbanSortable = function(boardId, dropInputId) {
+  window.initKanbanSortable = function(boardId, dropInputId, editInputId) {
     if (typeof Sortable === "undefined") return;
     var board = document.getElementById(boardId);
     if (!board) return;
@@ -53,5 +54,28 @@
         }
       });
     });
+
+    // Double-click → edit. We bind a single delegated listener at the
+    // board level; renderUI rebuilds the board DOM, so any previous
+    // listener attached to the same node is replaced when the new
+    // node appears. We still guard against re-binding the same
+    // function if the node persisted across renders.
+    if (editInputId) {
+      if (board._kanbanDblclickHandler) {
+        board.removeEventListener("dblclick", board._kanbanDblclickHandler);
+      }
+      board._kanbanDblclickHandler = function(evt) {
+        var card = evt.target.closest("[data-action-id]");
+        if (!card || !board.contains(card)) return;
+        var actionId = card.getAttribute("data-action-id");
+        if (!actionId) return;
+        if (typeof Shiny === "undefined" || !Shiny.setInputValue) return;
+        Shiny.setInputValue(editInputId, {
+          action_id: actionId,
+          nonce: Math.random()
+        }, { priority: "event" });
+      };
+      board.addEventListener("dblclick", board._kanbanDblclickHandler);
+    }
   };
 })();

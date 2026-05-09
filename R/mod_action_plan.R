@@ -157,7 +157,27 @@ mod_action_plan_ui <- function(id) {
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-      ", ns("action_table")))),
+        /* Push the action count (info) to the bottom-right; keep the
+           length selector + pagination on the left. The default DT
+           CSS uses floats which we neutralise inside the wrapper
+           layout produced by `dom`. */
+        #%s_wrapper .dt-bottom-row .dataTables_info,
+        #%s_wrapper .dt-bottom-row .dataTables_length,
+        #%s_wrapper .dt-bottom-row .dataTables_paginate {
+          float: none !important;
+          clear: none !important;
+          padding-top: 0 !important;
+          margin: 0 !important;
+        }
+        #%s_wrapper .dt-bottom-row .dataTables_info {
+          text-align: right;
+          white-space: nowrap;
+        }
+      ",
+        ns("action_table"),
+        ns("action_table"), ns("action_table"), ns("action_table"),
+        ns("action_table")
+      ))),
 
       bslib::navset_card_underline(
         id = ns("inner_nav"),
@@ -281,6 +301,11 @@ mod_action_plan_server <- function(id, app_state) {
     # `kanban_board` renderUI reruns and puts the card back where the
     # data says it belongs (plan_rv is untouched in that case).
     kanban_render_token <- shiny::reactiveVal(0L)
+
+    # Carries the action_id of the card being edited via the Kanban
+    # double-click → modal flow (see input$kanban_edit_request /
+    # input$kanban_edit_save below).
+    kanban_edit_id_rv <- shiny::reactiveVal(NULL)
 
     # Module-local state (e.g. last-fitted bbox signature, project id).
     rv_state <- shiny::reactiveValues(last_bbox_sig = NULL,
@@ -741,9 +766,17 @@ mod_action_plan_server <- function(id, app_state) {
           pageLength = 5,
           lengthMenu = list(c(5, 10, 25, 50, -1),
                             c("5", "10", "25", "50", "All")),
-          # `l` after `t` puts the length selector (page size dropdown)
-          # at the bottom of the table, alongside info + pagination.
-          dom = "frtilp",
+          # Bottom layout: search at the top alone; below the table a
+          # flex row keeps the length selector + pagination on the
+          # left and pushes the action count (`i`) to the right via
+          # the `.dt-bottom-row` CSS rules above.
+          dom = paste0(
+            '<"top"f>rt',
+            '<"d-flex justify-content-between align-items-center pt-2 dt-bottom-row"',
+              '<"d-flex gap-3 align-items-center"lp>',
+              'i',
+            '>'
+          ),
           # Horizontal scroll only — vertical scroll is replaced by
           # pagination, so dropping scrollY/scrollCollapse keeps the
           # 5-row table compact instead of padding it to 60vh.
@@ -982,9 +1015,6 @@ mod_action_plan_server <- function(id, app_state) {
     # KANBAN BOARD - 5 columns of cards by status, click to advance.
     # ============================================================
 
-    KANBAN_STATUSES <- c("proposee", "validee", "planifiee",
-                         "realisee", "abandonnee")
-
     KANBAN_HEADER_BG <- c(
       proposee   = "#e5e7eb",
       validee    = "#dbeafe",
@@ -1015,42 +1045,7 @@ mod_action_plan_server <- function(id, app_state) {
                        else if (bilan > 0) "#15803d"
                        else if (bilan < 0) "#b91c1c"
                        else "#374151"
-        next_choices <- setdiff(
-          c(KANBAN_STATUSES, "abandonnee"),
-          row$statut
-        )
-        # Filter to only valid transitions from current status
-        valid_next <- Filter(
-          function(s) is_valid_status_transition(row$statut, s),
-          next_choices
-        )
         action_id <- row$id
-        # Per-card status dropdown (mini)
-        dropdown <- if (length(valid_next) > 0L) {
-          htmltools::div(
-            class = "btn-group btn-group-sm",
-            role = "group",
-            htmltools::tags$button(
-              type = "button",
-              class = "btn btn-sm btn-outline-secondary dropdown-toggle",
-              `data-bs-toggle` = "dropdown",
-              `aria-expanded` = "false",
-              i18n$t("action_plan_kanban_move")
-            ),
-            htmltools::tags$ul(
-              class = "dropdown-menu",
-              lapply(valid_next, function(s) {
-                htmltools::tags$li(
-                  shiny::actionLink(
-                    inputId = ns(paste0("kanban_move_", action_id, "__", s)),
-                    label = i18n$t(paste0("action_plan_status_", s)),
-                    class = "dropdown-item"
-                  )
-                )
-              })
-            )
-          )
-        } else NULL
 
         type_label <- if (!is.na(row$type) && nzchar(row$type))
           row$type else "?"
@@ -1058,12 +1053,15 @@ mod_action_plan_server <- function(id, app_state) {
           row$ug_label else as.character(row$ug_id)
         objs <- if (nzchar(row$objectifs_lies %||% ""))
           paste0(" \u2014 ", row$objectifs_lies) else ""
+        commentaire <- row$commentaire %||% ""
 
         htmltools::div(
           class = "card mb-2 shadow-sm kanban-card",
-          # `data-action-id` is read by SortableJS' onAdd handler in
-          # action_plan_kanban.js to identify the dragged card on drop.
+          # `data-action-id` is read by SortableJS' onAdd handler and
+          # by the delegated dblclick handler in action_plan_kanban.js
+          # to identify the dragged or double-clicked card.
           `data-action-id` = action_id,
+          title = i18n$t("action_plan_kanban_card_hint"),
           style = "cursor: grab;",
           htmltools::div(
             class = "card-body p-2",
@@ -1085,8 +1083,12 @@ mod_action_plan_server <- function(id, app_state) {
                                              scientific = FALSE))
               )
             ),
-            if (!is.null(dropdown)) {
-              htmltools::div(class = "mt-1", dropdown)
+            if (nzchar(commentaire)) {
+              htmltools::div(
+                class = "small text-muted mt-1 kanban-card-comment",
+                style = "white-space: normal; word-break: break-word;",
+                commentaire
+              )
             }
           )
         )
@@ -1094,6 +1096,12 @@ mod_action_plan_server <- function(id, app_state) {
 
       build_col <- function(st, body_max_height) {
         sub <- df[!is.na(df$statut) & df$statut == st, , drop = FALSE]
+        # Sort by execution year (ascending, NAs last) so each column
+        # reads chronologically from top to bottom.
+        if (nrow(sub) > 0L) {
+          sub <- sub[order(sub$annee_realisation, na.last = TRUE), ,
+                     drop = FALSE]
+        }
         bslib::card(
           bslib::card_header(
             class = "py-2 small fw-bold",
@@ -1137,10 +1145,12 @@ mod_action_plan_server <- function(id, app_state) {
       # double-firing onAdd.
       board_id   <- session$ns("kanban_board")
       drop_input <- session$ns("kanban_drop")
+      edit_input <- session$ns("kanban_edit_request")
       init_script <- htmltools::tags$script(htmltools::HTML(sprintf(
-        "if (window.initKanbanSortable) { window.initKanbanSortable(%s, %s); }",
+        "if (window.initKanbanSortable) { window.initKanbanSortable(%s, %s, %s); }",
         jsonlite::toJSON(board_id, auto_unbox = TRUE),
-        jsonlite::toJSON(drop_input, auto_unbox = TRUE)
+        jsonlite::toJSON(drop_input, auto_unbox = TRUE),
+        jsonlite::toJSON(edit_input, auto_unbox = TRUE)
       )))
 
       htmltools::tagList(
@@ -1182,17 +1192,8 @@ mod_action_plan_server <- function(id, app_state) {
       from <- cur_plan$actions[[idx]]$statut %||% "proposee"
       if (identical(from, target)) {
         # Drop within the same column — no-op, but the DOM may have
-        # reordered cards; a re-render restores canonical order.
-        kanban_render_token(kanban_render_token() + 1L)
-        return()
-      }
-      if (!is_valid_status_transition(from, target)) {
-        shiny::showNotification(
-          sprintf(i18n$t("action_plan_kanban_drop_invalid_fmt"),
-                  i18n$t(paste0("action_plan_status_", from)),
-                  i18n$t(paste0("action_plan_status_", target))),
-          type = "warning", duration = 5
-        )
+        # reordered cards; a re-render restores canonical (year-sorted)
+        # order.
         kanban_render_token(kanban_render_token() + 1L)
         return()
       }
@@ -1218,51 +1219,116 @@ mod_action_plan_server <- function(id, app_state) {
       )
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
-    # Dispatch every Kanban card click. Inputs are named
-    # `kanban_move_<action_id>__<target_status>`.
-    shiny::observe({
-      lapply(grep("^kanban_move_", names(input), value = TRUE), function(nm) {
-        v <- input[[nm]]
-        if (is.null(v) || v == 0) return()
-        # avoid re-triggering on the same value
-        last <- isolate(rv_state[[paste0("k_", nm)]] %||% 0L)
-        if (v == last) return()
-        rv_state[[paste0("k_", nm)]] <- v
+    # Double-click on a Kanban card → open an edit modal pre-filled
+    # with the action's current values. Primary use-case: free-form
+    # editing of `commentaire` (cell-edit on the table is single-line
+    # only and lives behind a tab switch). The modal also exposes
+    # statut / priorite / annee for convenience.
+    shiny::observeEvent(input$kanban_edit_request, {
+      if (deny_if_readonly()) return()
+      payload <- input$kanban_edit_request
+      action_id <- payload$action_id
+      if (is.null(action_id) || !nzchar(action_id)) return()
+      cur_plan <- plan_rv()
+      idx <- find_action_index(cur_plan, action_id)
+      if (is.na(idx)) return()
+      act <- cur_plan$actions[[idx]]
+      i18n <- get_i18n(app_state$language)
+      kanban_edit_id_rv(action_id)
 
-        body <- sub("^kanban_move_", "", nm)
-        parts <- strsplit(body, "__", fixed = TRUE)[[1]]
-        if (length(parts) != 2L) return()
-        action_id <- parts[1]; target <- parts[2]
-        i18n <- get_i18n(app_state$language)
-        cur_plan <- plan_rv()
-        idx <- find_action_index(cur_plan, action_id)
-        if (is.na(idx)) return()
-        from <- cur_plan$actions[[idx]]$statut %||% "proposee"
-        if (!is_valid_status_transition(from, target)) {
-          shiny::showNotification(
-            sprintf("Transition refus\u00e9e : %s -> %s", from, target),
-            type = "warning", duration = 4
+      base_year <- PLAN_BASE_YEAR()
+      annee_value <- if (!is.null(act$annee_cible) && !is.na(act$annee_cible))
+        base_year + as.integer(act$annee_cible) else NA_integer_
+
+      status_choices <- stats::setNames(
+        ACTION_PLAN_STATUTS,
+        vapply(ACTION_PLAN_STATUTS, function(s)
+          i18n$t(paste0("action_plan_status_", s)), character(1))
+      )
+
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("action_plan_kanban_edit_title"),
+        easyClose = TRUE,
+        size = "l",
+        bslib::layout_columns(
+          col_widths = c(4, 4, 4),
+          shiny::selectInput(
+            ns("kanban_edit_statut"),
+            label = i18n$t("action_plan_col_statut"),
+            choices = status_choices,
+            selected = act$statut %||% "proposee"
+          ),
+          shiny::selectInput(
+            ns("kanban_edit_priorite"),
+            label = i18n$t("action_plan_col_priorite"),
+            choices = ACTION_PLAN_PRIORITES,
+            selected = act$priorite %||% "moyenne"
+          ),
+          shiny::numericInput(
+            ns("kanban_edit_annee"),
+            label = i18n$t("action_plan_col_annee"),
+            value = annee_value,
+            min = base_year, step = 1L
           )
-          return()
+        ),
+        shiny::textAreaInput(
+          ns("kanban_edit_commentaire"),
+          label = i18n$t("action_plan_col_commentaire"),
+          value = act$commentaire %||% "",
+          rows = 6, width = "100%",
+          resize = "vertical"
+        ),
+        footer = htmltools::tagList(
+          shiny::modalButton(i18n$t("cancel")),
+          shiny::actionButton(
+            ns("kanban_edit_save"),
+            label = i18n$t("action_plan_kanban_edit_save"),
+            icon = shiny::icon("save"),
+            class = "btn-primary"
+          )
+        )
+      ))
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+
+    shiny::observeEvent(input$kanban_edit_save, {
+      if (deny_if_readonly()) return()
+      i18n <- get_i18n(app_state$language)
+      action_id <- kanban_edit_id_rv()
+      if (is.null(action_id) || !nzchar(action_id)) return()
+      cur_plan <- plan_rv()
+      idx <- find_action_index(cur_plan, action_id)
+      if (is.na(idx)) return()
+
+      base_year <- PLAN_BASE_YEAR()
+      annee_input <- input$kanban_edit_annee
+      annee_cible <- if (is.null(annee_input) ||
+                         is.na(suppressWarnings(as.integer(annee_input))))
+        NULL
+      else as.integer(annee_input) - base_year
+
+      updates <- list(
+        statut      = input$kanban_edit_statut,
+        priorite    = input$kanban_edit_priorite,
+        commentaire = input$kanban_edit_commentaire %||% ""
+      )
+      if (!is.null(annee_cible)) updates$annee_cible <- annee_cible
+
+      new_plan <- tryCatch(
+        update_action_in_plan(cur_plan, action_id, updates,
+                              ug_ids = ug_ids(),
+                              user = Sys.info()[["user"]] %||% "user"),
+        error = function(e) {
+          shiny::showNotification(conditionMessage(e), type = "error")
+          NULL
         }
-        new_plan <- tryCatch(
-          update_action_in_plan(cur_plan, action_id, list(statut = target),
-                                ug_ids = ug_ids(),
-                                user = Sys.info()[["user"]] %||% "user"),
-          error = function(e) {
-            shiny::showNotification(conditionMessage(e), type = "error")
-            NULL
-          }
-        )
-        if (is.null(new_plan)) return()
-        save_action_plan(app_state$current_project$id, new_plan)
-        plan_rv(new_plan)
-        shiny::showNotification(
-          sprintf(i18n$t("action_plan_kanban_moved_fmt"),
-                  i18n$t(paste0("action_plan_status_", target))),
-          type = "message", duration = 3
-        )
-      })
+      )
+      if (is.null(new_plan)) return()
+      save_action_plan(app_state$current_project$id, new_plan)
+      plan_rv(new_plan)
+      kanban_edit_id_rv(NULL)
+      shiny::removeModal()
+      shiny::showNotification(i18n$t("action_plan_kanban_edit_saved"),
+                              type = "message", duration = 3)
     })
 
     # ============================================================
@@ -1893,18 +1959,38 @@ mod_action_plan_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(project)) return()
       sel_ugs <- selected_ug_rv()
+
+      # Map ug_id → human-readable label so the dropdown shows
+      # "Parcelle 12 — La Lande" instead of the raw "ugf_42" id.
+      sf <- ug_sf_4326()
+      if (!is.null(sf) && nrow(sf) > 0L) {
+        ids <- as.character(sf$ug_id)
+        labels <- as.character(sf$label %||% sf$ug_id)
+        ord <- order(labels, na.last = TRUE)
+        ug_choices <- stats::setNames(ids[ord], labels[ord])
+      } else {
+        ug_choices <- ug_ids()
+      }
+
+      base_year <- PLAN_BASE_YEAR()
+      horizon   <- plan_rv()$horizon_annees %||% 20L
+
       shiny::showModal(shiny::modalDialog(
         title = i18n$t("action_plan_add_title"), size = "m",
         easyClose = TRUE,
         shiny::selectInput(ns("add_ug"), i18n$t("action_plan_ug"),
-                           choices = ug_ids(),
+                           choices = ug_choices,
                            selected = if (length(sel_ugs) == 1L) sel_ugs[1] else NULL),
         shiny::selectInput(ns("add_type"), i18n$t("action_plan_type"),
                            choices = ACTION_PLAN_TYPES,
                            selected = "observation"),
+        # Real calendar year (e.g. 2027), not the internal offset (1).
+        # Stored as an offset = year - base_year on save below.
         shiny::numericInput(ns("add_year"), i18n$t("action_plan_year"),
-                            value = 1L, min = 1L,
-                            max = (plan_rv()$horizon_annees %||% 20L)),
+                            value = base_year + 1L,
+                            min = base_year + 1L,
+                            max = base_year + as.integer(horizon),
+                            step = 1L),
         shiny::selectInput(ns("add_priority"),
                            i18n$t("action_plan_color_priority"),
                            choices = ACTION_PLAN_PRIORITES,
@@ -1925,10 +2011,14 @@ mod_action_plan_server <- function(id, app_state) {
       shiny::removeModal()
       if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
+      base_year <- PLAN_BASE_YEAR()
+      year_input <- suppressWarnings(as.integer(input$add_year))
+      annee_cible <- if (is.na(year_input)) NA_integer_
+                     else year_input - base_year
       action <- list(
         ug_id = input$add_ug,
         type = input$add_type,
-        annee_cible = as.integer(input$add_year),
+        annee_cible = annee_cible,
         priorite = input$add_priority,
         statut = "proposee",
         commentaire = if (nzchar(input$add_comment %||% ""))

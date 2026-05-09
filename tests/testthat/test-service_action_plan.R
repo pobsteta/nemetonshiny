@@ -87,16 +87,19 @@ test_that("validate_action checks family codes in objectifs_lies", {
 
 # ---- Status transitions ----------------------------------------------
 
-test_that("is_valid_status_transition enforces the kanban", {
+test_that("is_valid_status_transition documents the natural Kanban DAG", {
+  # The function is no longer used to gate writes (the Kanban allows
+  # free movement between any columns); it stays as informational
+  # documentation of the natural workflow.
   expect_true(nemetonshiny:::is_valid_status_transition("proposee", "validee"))
   expect_true(nemetonshiny:::is_valid_status_transition("validee",  "planifiee"))
   expect_true(nemetonshiny:::is_valid_status_transition("planifiee", "realisee"))
   expect_true(nemetonshiny:::is_valid_status_transition("planifiee", "validee"))
-  # Realisee is terminal
+  # Realisee is terminal in the natural workflow…
   expect_false(nemetonshiny:::is_valid_status_transition("realisee", "validee"))
-  # Cannot jump from proposee to realisee
+  # …and proposee → realisee skips two steps.
   expect_false(nemetonshiny:::is_valid_status_transition("proposee", "realisee"))
-  # Identity is always valid
+  # Identity is always valid.
   expect_true(nemetonshiny:::is_valid_status_transition("validee", "validee"))
 })
 
@@ -142,16 +145,23 @@ test_that("update_action_in_plan logs field changes and bumps modifie_*", {
   expect_equal(upd[[1]]$nouveau, "haute")
 })
 
-test_that("update_action_in_plan rejects invalid status transition", {
+test_that("update_action_in_plan accepts any known status, rejects unknown", {
   plan <- nemetonshiny:::init_empty_action_plan("p")
   plan <- nemetonshiny:::add_action_to_plan(plan, make_action(),
                                             ug_ids = "ug_1")
   aid <- plan$actions[[1]]$id
+  # Free Kanban: the proposee → realisee jump (skipping two steps) is
+  # accepted now even though the natural-DAG validator returns FALSE.
+  updated <- nemetonshiny:::update_action_in_plan(
+    plan, aid, list(statut = "realisee"), ug_ids = "ug_1"
+  )
+  expect_identical(updated$actions[[1]]$statut, "realisee")
+  # An unknown status string remains a sanity error.
   expect_error(
     nemetonshiny:::update_action_in_plan(plan, aid,
-                                         list(statut = "realisee"),
+                                         list(statut = "garbage"),
                                          ug_ids = "ug_1"),
-    regexp = "transition"
+    regexp = "unknown status"
   )
 })
 

@@ -50,7 +50,6 @@ TRANSLATIONS <- list(
   action_plan_reset_filters = list(fr = "Réinitialiser", en = "Reset"),
   action_plan_view_map_table = list(fr = "Carte + Tableau", en = "Map + Table"),
   action_plan_view_kanban = list(fr = "Kanban", en = "Kanban"),
-  action_plan_kanban_move = list(fr = "Déplacer", en = "Move"),
   action_plan_kanban_empty_col = list(
     fr = "Aucune action.",
     en = "No action."
@@ -59,9 +58,21 @@ TRANSLATIONS <- list(
     fr = "Action déplacée vers : %s.",
     en = "Action moved to: %s."
   ),
-  action_plan_kanban_drop_invalid_fmt = list(
-    fr = "Transition refusée : %s → %s.",
-    en = "Transition refused: %s → %s."
+  action_plan_kanban_card_hint = list(
+    fr = "Double-clic pour éditer la fiche.",
+    en = "Double-click to edit the card."
+  ),
+  action_plan_kanban_edit_title = list(
+    fr = "Éditer la fiche action",
+    en = "Edit action card"
+  ),
+  action_plan_kanban_edit_save = list(
+    fr = "Enregistrer",
+    en = "Save"
+  ),
+  action_plan_kanban_edit_saved = list(
+    fr = "Fiche enregistrée.",
+    en = "Card saved."
   ),
   action_plan_map_title = list(fr = "Carte des actions", en = "Action map"),
   action_plan_table_title = list(fr = "Tableau des actions", en = "Action table"),

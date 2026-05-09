@@ -10,6 +10,54 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-05-09
+
+### Added
+
+- Kanban: double-click on a card opens an **edit modal**
+  pre-filled with statut / priorité / année / commentaire.
+  Primary use-case is editing long commentaires (DT inline
+  cell-edit is single-line). Delegated dblclick listener at
+  the board level with cleanup between renders.
+- Kanban cards: each card now displays the **commentaire**
+  under the type/year/UGF block when non-empty.
+- Kanban columns: cards are **sorted by `annee_realisation`**
+  ascending (NAs last) so each column reads chronologically.
+
+### Changed
+
+- Kanban: **free movement between any columns**. The
+  proposée → validée → planifiée → réalisée → abandonnée DAG
+  no longer gates drag-drop. `update_action_in_plan()` accepts
+  any known status, rejects only unknown strings.
+  `is_valid_status_transition()` and `ACTION_PLAN_TRANSITIONS`
+  stay as informational documentation of the natural workflow.
+- Kanban: per-card **"Déplacer"** dropdown removed (made
+  redundant by free drag-drop). The `kanban_move_*` dispatcher
+  observer (~50 LOC) and the unused `KANBAN_STATUSES`
+  constant are gone too.
+- Action plan table: **action count** moved from bottom-left to
+  bottom-right. DT `dom` switched to a custom flex layout
+  (`<"top"f>rt<"… dt-bottom-row"<"… "lp>i>`) with scoped CSS
+  rules to override the default DT floats.
+- Add action modal: the **UGF dropdown** now shows
+  `ug_label` (sorted) instead of the raw `ug_id`; **Année
+  cible** is now a real calendar year (default `base_year +
+  1`, range `base_year + 1` … `base_year + horizon`),
+  converted to the internal offset on save.
+
+### Fixed
+
+- Add action modal: previously surfaced the internal offset
+  (1, 2, …) for "Année cible" and the raw `ug_id` for the
+  UGF dropdown, both confusing for end-users.
+
+### Removed
+
+- i18n keys `action_plan_kanban_move` and
+  `action_plan_kanban_drop_invalid_fmt` (orphaned by the
+  Kanban refactor).
+
 ## [0.22.4] - 2026-05-09
 
 ### Changed
