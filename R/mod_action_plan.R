@@ -1894,6 +1894,23 @@ mod_action_plan_server <- function(id, app_state) {
         return()
       }
 
+      # "L'IA r\u00e9fl\u00e9chit\u2026" toast at the bottom-right with a spinning
+      # gear icon. `duration = NULL` + `closeButton = FALSE` keep it
+      # visible until the LLM round-trip ends; `on.exit` guarantees
+      # it is removed regardless of the return path (success, error,
+      # early-return after a failed parse, etc.).
+      thinking_id <- shiny::showNotification(
+        htmltools::tagList(
+          shiny::icon("gear", class = "fa-spin"),
+          " ",
+          i18n$t("action_plan_chat_thinking")
+        ),
+        duration = NULL,
+        closeButton = FALSE,
+        type = "default"
+      )
+      on.exit(shiny::removeNotification(thinking_id), add = TRUE)
+
       cur_actions_json <- jsonlite::toJSON(
         lapply(plan_rv()$actions, function(a) {
           list(id = a$id, ug_id = a$ug_id, type = a$type,

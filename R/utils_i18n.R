@@ -281,6 +281,10 @@ TRANSLATIONS <- list(
   ),
   action_plan_chat_send = list(fr = "Envoyer", en = "Send"),
   action_plan_chat_clear = list(fr = "Effacer", en = "Clear"),
+  action_plan_chat_thinking = list(
+    fr = "L'IA réfléchit…",
+    en = "AI is thinking…"
+  ),
   action_plan_chat_empty = list(
     fr = "Posez une première question pour démarrer.",
     en = "Ask a first question to start."

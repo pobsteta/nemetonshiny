@@ -1,3 +1,20 @@
+# nemetonshiny 0.23.3 (2026-05-09)
+
+### Plan d'actions — toast "L'IA réfléchit…"
+
+* `feat(action_plan)` — clic sur **Envoyer** dans le chat
+  IA fait apparaître un **toast en bas à droite** avec une
+  **roue dentée tournante** et le label *"L'IA réfléchit…"*.
+  Le toast reste affiché tant que la réponse du LLM n'est
+  pas reçue : `duration = NULL`, `closeButton = FALSE`,
+  type `"default"` (neutre). Suppression garantie via
+  `on.exit(shiny::removeNotification(thinking_id))` dans
+  toutes les branches de retour de l'observer (succès,
+  erreur LLM, parse échoué). L'engrenage utilise la classe
+  Font Awesome `fa-spin` sur l'icône `shiny::icon("gear")`.
+  Nouvelle clé i18n `action_plan_chat_thinking` (FR
+  *"L'IA réfléchit…"* / EN *"AI is thinking…"*).
+
 # nemetonshiny 0.23.2 (2026-05-09)
 
 ### Plan d'actions — chat dans la sidebar droite + auto-scroll
