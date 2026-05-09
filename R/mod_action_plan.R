@@ -182,6 +182,30 @@ mod_action_plan_ui <- function(id) {
           ),
           shiny::uiOutput(ns("chat_history_ui"))
         ),
+        # Scope + overwrite controls — same semantics as the
+        # "Générer les actions (IA)" modal (gen_scope / gen_overwrite),
+        # except the radio is always-visible so the user can flip it
+        # between turns. Static "Sélection courante" label here (the
+        # generate modal shows the count because it opens fresh each
+        # time; the persistent panel would need a renderUI to keep it
+        # in sync, which felt overkill — the user reads the count
+        # from the orange polygons on the map).
+        shiny::radioButtons(
+          ns("chat_scope"),
+          label = i18n$t("action_plan_generate_scope"),
+          choices = stats::setNames(
+            c("all", "selected"),
+            c(i18n$t("action_plan_generate_scope_all"),
+              i18n$t("action_plan_chat_scope_sel"))
+          ),
+          selected = "all",
+          inline = TRUE
+        ),
+        shiny::checkboxInput(
+          ns("chat_overwrite"),
+          label = i18n$t("action_plan_generate_overwrite"),
+          value = FALSE
+        ),
         shiny::textAreaInput(
           ns("chat_input"),
           label = NULL,
@@ -1889,6 +1913,26 @@ mod_action_plan_server <- function(id, app_state) {
       ctx <- plan_llm_context()
       if (is.null(ctx)) return()
 
+      # Resolve scope (all / selected) just like the generate flow:
+      # narrow ctx$ug_ids to the targeted set so the prompt builder
+      # only shows the relevant UGFs to the LLM. The chosen
+      # target_ugs is stashed in rv_state to drive the optional
+      # overwrite at apply time.
+      sel_ugs <- selected_ug_rv()
+      scope <- input$chat_scope %||% "all"
+      target_ugs <- if (scope == "selected" && length(sel_ugs) > 0L) {
+        sel_ugs
+      } else {
+        ctx$ug_ids
+      }
+      if (length(target_ugs) == 0L) {
+        shiny::showNotification(i18n$t("action_plan_no_ug"),
+                                type = "warning")
+        return()
+      }
+      ctx$ug_ids <- target_ugs
+      rv_state$pending_chat_target_ugs <- target_ugs
+
       # Append user message immediately
       hist <- chat_history_rv()
       hist <- c(hist, list(list(role = "user", text = q)))
@@ -1961,11 +2005,22 @@ mod_action_plan_server <- function(id, app_state) {
         horizon_annees = ctx$horizon
       )
       if (length(parsed$actions) > 0L) {
+        # Surface the overwrite intent in the apply modal: when the
+        # user toggled `chat_overwrite` ON in the chat panel, every
+        # existing action for the targeted UGFs will be wiped before
+        # the new ones are inserted. We show a warning paragraph so
+        # the user can still cancel.
+        overwrite_hint <- if (isTRUE(input$chat_overwrite)) {
+          shiny::p(class = "text-warning small",
+                   sprintf(i18n$t("action_plan_chat_apply_overwrite_warn_fmt"),
+                           length(target_ugs)))
+        } else NULL
         shiny::showModal(shiny::modalDialog(
           title = i18n$t("action_plan_chat_apply_title"),
           size = "m", easyClose = TRUE,
           shiny::p(sprintf(i18n$t("action_plan_chat_apply_fmt"),
                            length(parsed$actions))),
+          overwrite_hint,
           footer = htmltools::tagList(
             shiny::modalButton(i18n$t("cancel")),
             shiny::actionButton(ns("chat_apply"),
@@ -1987,6 +2042,15 @@ mod_action_plan_server <- function(id, app_state) {
       i18n <- get_i18n(app_state$language)
       project <- app_state$current_project
       cur_plan <- plan_rv()
+      # Optional overwrite: drop existing actions for the UGFs that
+      # were targeted at send time (stashed in pending_chat_target_ugs)
+      # before the bulk upsert. Mirrors the gen_run flow.
+      target_ugs <- rv_state$pending_chat_target_ugs %||% character(0)
+      if (isTRUE(input$chat_overwrite) && length(target_ugs) > 0L) {
+        cur_plan$actions <- Filter(
+          function(a) !(a$ug_id %in% target_ugs), cur_plan$actions
+        )
+      }
       new_plan <- tryCatch(
         bulk_upsert_actions(cur_plan, acts, ug_ids = ug_ids(),
                             user = "llm:chat"),
@@ -1999,6 +2063,7 @@ mod_action_plan_server <- function(id, app_state) {
       save_action_plan(project$id, new_plan)
       plan_rv(new_plan)
       rv_state$pending_chat_actions <- NULL
+      rv_state$pending_chat_target_ugs <- NULL
       shiny::showNotification(
         sprintf(i18n$t("action_plan_chat_applied_fmt"), length(acts)),
         type = "message", duration = 4

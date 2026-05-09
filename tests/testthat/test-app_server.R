@@ -245,8 +245,12 @@ test_that("app_server handles language change", {
         # Language should be updated
         expect_equal(app_state$language, "en")
 
-        # Option should be stored
-        expect_equal(getOption("nemeton.app_language"), "en")
+        # Persisted in `nemeton.app_options` (the option `app_ui`
+        # reads on the next session start) so a page reload picks
+        # up the new language. Note: the observer also calls
+        # `session$reload()`; testServer's stub session no-ops on
+        # reload, which lets us assert the option side-effect here.
+        expect_equal(getOption("nemeton.app_options")$language, "en")
       })
     }
   )
@@ -937,12 +941,10 @@ test_that("app_server uses get_i18n for translations", {
   expect_true(i18n_fr$has("tour_restart"))
   expect_true(i18n_fr$has("documentation_link"))
   expect_true(i18n_fr$has("close"))
-  expect_true(i18n_fr$has("language_changed"))
 
   # Same for English
   expect_true(i18n_en$has("help"))
   expect_true(i18n_en$has("help_title"))
-  expect_true(i18n_en$has("language_changed"))
 })
 
 # Drain async callbacks to prevent testServer session accumulation

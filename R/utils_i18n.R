@@ -293,6 +293,14 @@ TRANSLATIONS <- list(
     fr = "Assistant",
     en = "Assistant"
   ),
+  action_plan_chat_scope_sel = list(
+    fr = "Sélection courante",
+    en = "Current selection"
+  ),
+  action_plan_chat_apply_overwrite_warn_fmt = list(
+    fr = "⚠ Les actions existantes des %d UGF ciblées seront remplacées.",
+    en = "⚠ Existing actions for the %d targeted UGFs will be replaced."
+  ),
   action_plan_chat_empty = list(
     fr = "Posez une première question pour démarrer.",
     en = "Ask a first question to start."
@@ -1112,13 +1120,6 @@ TRANSLATIONS <- list(
   ),
 
   # ============================================================
-  # Language
-  # ============================================================
-  language_changed = list(
-    fr = "Langue chang\u00e9e. Rechargez la page pour appliquer.",
-    en = "Language changed. Reload the page to apply."
-  ),
-
   # ============================================================
   # Errors
   # ============================================================

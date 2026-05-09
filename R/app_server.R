@@ -108,16 +108,24 @@ app_server <- function(input, output, session) {
   # LANGUAGE HANDLING
   # ============================================================
 
-  # Update language when changed
+  # Update language when changed.
+  # `app_ui` reads the language once from `getOption("nemeton.app_options")$language`
+  # at session start, so static strings (navbar titles, button labels,
+  # sidebar headers) only update on a fresh UI build. We therefore:
+  #   1. persist the new language inside `nemeton.app_options` so the
+  #      rebuilt UI on reload picks it up (the previous code wrote to
+  #      `nemeton.app_language` — a different key — which left the
+  #      reload reverting to the startup language);
+  #   2. trigger an automatic page reload via `session$reload()` so
+  #      the user does not have to refresh the browser manually.
   shiny::observeEvent(input$app_language, {
-    app_state$language <- input$app_language
-    # Store preference
-    options(nemeton.app_language = input$app_language)
-    # Refresh UI would require page reload
-    shiny::showNotification(
-      get_i18n(input$app_language)$t("language_changed"),
-      type = "message"
-    )
+    new_lang <- input$app_language
+    if (identical(new_lang, shiny::isolate(app_state$language))) return()
+    app_state$language <- new_lang
+    app_opts <- get_app_options()
+    app_opts$language <- new_lang
+    options(nemeton.app_options = app_opts)
+    session$reload()
   })
 
 
