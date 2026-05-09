@@ -1,0 +1,31 @@
+# Action Plan Service for nemetonApp
+
+Service for managing the silvicultural action plan attached to a
+project. Each project may carry a \`data/action_plan.json\` file storing
+the list of planned actions per UGF, plus an audit trail of every
+change.
+
+Schema (JSON):
+
+
+    {
+      version: 1,
+      project_id: <chr>,
+      horizon_annees: 20,
+      actions: [ <action> ... ],
+      audit:   [ <audit_entry> ... ]
+    }
+
+    action: {
+      id, ug_id,
+      type, type_libre,
+      intensite, annee_cible, duree,
+      priorite, objectifs_lies (vector of family codes),
+      quantite: { volume_m3, surface_ha, nb_tiges, rdi, cout_eur, revenu_eur },
+      statut, source: { origine, extrait_texte },
+      commentaire,
+      cree_par, cree_le, modifie_par, modifie_le
+    }
+
+    audit_entry: { ts, user, action_id, op (create|update|delete),
+                   champ, ancien, nouveau }

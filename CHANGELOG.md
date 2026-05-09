@@ -12,6 +12,37 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.22.4\] - 2026-05-09
+
+### Changed
+
+- Action plan table: the page-size selector (“Afficher 5/10/25/50/All”)
+  moved **below the table**, next to the info count and pagination. Top
+  of the table now only carries the global search box. DT `dom` switched
+  from `"lfrtip"` to `"frtilp"`.
+- Action plan table: only **UGF + Année** are frozen during horizontal
+  scroll. `DISPLAY_COLS` reordered so hidden columns (`id`, `ug_id`,
+  `annee_cible`) sit at the tail; `fixedColumns.leftColumns` reduced
+  from 5 to 2 to match the count of visible frozen columns (DT’s
+  FixedColumns counts every DOM column, hidden included).
+- Action plan map: leaflet legend titles now translated. `legend_title`
+  literals (`"annee"`, `"type"`, `"priority"`) swapped for
+  `i18n$t("action_plan_col_*")` so the map shows “Année / Type /
+  Priorité” in FR and “Year / Type / Priority” in EN, switching with the
+  language toggle.
+
+### Fixed
+
+- `mod_auth_server()` no longer crashes on startup in anonymous mode
+  when `NEMETON_AUTH_DEV_ROLES` is set. The dev-roles branch
+  interpolated `{auth_state$user_roles}` through
+  [`cli::cli_alert_info()`](https://cli.r-lib.org/reference/cli_alert.html)
+  / glue outside any reactive consumer, which `reactiveValues` rejects.
+  The parsed roles are now captured in a local `parsed_roles` before
+  being assigned to `auth_state$user_roles`; the log message reads the
+  local instead of the reactiveValues. Regression introduced by \#41 in
+  v0.22.3.
+
 ## [0.20.0](https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...v0.20.0) - 2026-04-24
 
 ### Added

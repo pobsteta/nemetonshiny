@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,26 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.22.3/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.22.4" id="nemetonshiny-0224-2026-05-09">nemetonshiny 0.22.4 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0224-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--ux-polish-0-22-4">Plan d’actions — UX polish<a class="anchor" aria-label="anchor" href="#plan-dactions--ux-polish-0-22-4"></a></h4>
+<ul><li>
+<code>ui(action_plan)</code> — le sélecteur <strong>“Afficher 5/10/25/50/All”</strong> passe <strong>sous le tableau</strong> (à côté de l’info “<em>TOTAL</em> action(s)” et de la pagination Préc./Suiv.). Le <code>dom</code> DT passe de <code>"lfrtip"</code> à <code>"frtilp"</code> : la barre de recherche reste seule au-dessus du tableau, ce qui aère l’en-tête de la card.</li>
+<li>
+<code>ui(action_plan)</code> — <strong>figeage strict</strong> des colonnes UGF + Année lors du scroll horizontal. <code>DISPLAY_COLS</code> réordonné pour placer les colonnes cachées (<code>id</code>, <code>ug_id</code>, <code>annee_cible</code>) en queue ; <code>fixedColumns: leftColumns</code> passe de 5 à 2 — l’extension <code>FixedColumns</code> de DT compte toutes les colonnes du DOM (y compris <code>visible:FALSE</code>), donc seul le décompte sur les colonnes visibles évite les artefacts d’en-têtes clones. <code>colname_map</code> et <code>hidden_targets</code> ajustés en conséquence (cibles 13-15).</li>
+<li>
+<code>i18n(action_plan)</code> — titres de légende de la <strong>carte des actions</strong> traduits. Les littéraux <code>"annee"</code> / <code>"type"</code> / <code>"priority"</code> passés à <code>leaflet::addLegend(title = …)</code> sont remplacés par <code>i18n$t("action_plan_col_annee" | "_type" | "_priorite")</code> ; ré-utilisation des clés des en-têtes de colonnes pour rester cohérent avec le tableau. Affiche désormais “Année” / “Type” / “Priorité” en FR (et “Year” / “Type” / “Priority” en EN), avec switch dynamique au changement de langue.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="auth--fix-démarrage-anonyme-avec-dev-roles-0-22-4">Auth — fix démarrage anonyme avec dev roles<a class="anchor" aria-label="anchor" href="#auth--fix-d%C3%A9marrage-anonyme-avec-dev-roles-0-22-4"></a></h4>
+<ul><li>
+<code>fix(auth)</code> — <code>mod_auth_server()</code> plantait au démarrage en mode anonyme dès que <code>NEMETON_AUTH_DEV_ROLES</code> était défini : l’appel <code>cli::cli_alert_info("…dev roles: {.val {auth_state$user_roles}}.")</code> faisait évaluer <code>{auth_state$user_roles}</code> par <code>glue</code> hors d’un <code>reactive()/observe()</code>, ce que <code>reactiveValues</code> interdit (“Can’t access reactive value ‘user_roles’ outside of reactive consumer”). La valeur parsée est désormais capturée dans une locale <code>parsed_roles</code> avant l’assignation à <code>auth_state$user_roles</code> ; le message <code>cli</code> interpole la locale, plus le reactiveValues. Régression introduite par <a href="https://github.com/pobsteta/nemetonshiny/issues/41" class="external-link">#41</a> (v0.22.3).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.22.3" id="nemetonshiny-0223-2026-05-09">nemetonshiny 0.22.3 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0223-2026-05-09"></a></h2>
 <div class="section level4">
