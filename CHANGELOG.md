@@ -12,6 +12,26 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.23.2\] - 2026-05-09
+
+### Added
+
+- Plan d’actions: chat history **auto-scrolls to the bottom** on every
+  update so the latest message is always visible. Implemented via an
+  inline `setTimeout(0)` script appended to each `chat_history_ui`
+  render that sets `el.scrollTop = el.scrollHeight` on the
+  `.chat-history` div (now carrying a stable id).
+
+### Changed
+
+- Plan d’actions: chat panel **moves from a left sidebar to the right
+  sidebar**, sitting below the “Tableau des actions” panel. The nested
+  [`bslib::layout_sidebar`](https://rstudio.github.io/bslib/reference/sidebar.html)
+  introduced in 0.23.1 is replaced by a single right sidebar containing
+  both cards stacked top-to-bottom.
+- Plan d’actions: button label “Générer (IA)” renamed to “Générer les
+  actions (IA)” (FR) / “Generate actions (AI)” (EN) for clarity.
+
 ## \[0.23.1\] - 2026-05-09
 
 ### Added

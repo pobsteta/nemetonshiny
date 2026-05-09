@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,24 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.23.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.2" id="nemetonshiny-0232-2026-05-09">nemetonshiny 0.23.2 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0232-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--chat-dans-la-sidebar-droite--auto-scroll-0-23-2">Plan d’actions — chat dans la sidebar droite + auto-scroll<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-dans-la-sidebar-droite--auto-scroll-0-23-2"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — le <strong>chat IA</strong> rejoint la sidebar droite <strong>sous la carte “Tableau des actions”</strong>, plutôt que dans une sidebar gauche dédiée. Disposition haut → bas de la sidebar droite : <em>Tableau des actions</em> (Sélection / IA / Manuel / Exports) puis <em>Affiner le plan avec l’IA</em> (historique scrollable + textarea + boutons Effacer / Envoyer). Le double <code><a href="https://rstudio.github.io/bslib/reference/sidebar.html" class="external-link">bslib::layout_sidebar</a></code> imbriqué introduit en v0.23.1 disparaît, on revient à un seul <code>layout_sidebar</code> avec les deux cartes empilées dans la sidebar droite — meilleure densité d’information sur les écrans portables.</li>
+<li>
+<code>feat(action_plan)</code> — la zone d’historique du chat <strong>scrolle automatiquement vers le bas</strong> à chaque mise à jour. La div <code>.chat-history</code> reçoit un <code>id</code> stable (<code>ns("chat_history")</code>) ; <code>output$chat_history_ui</code> injecte à la fin de chaque render un <code>tags$script</code> qui fait <code>setTimeout(function(){ el.scrollTop = el.scrollHeight; }, 0)</code> — le <code>setTimeout(0)</code> diffère au prochain tick pour que le DOM soit à jour quand <code>scrollHeight</code> est lu. Le dernier message reste visible sans intervention manuelle.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--libellé-bouton-0-23-2">Plan d’actions — libellé bouton<a class="anchor" aria-label="anchor" href="#plan-dactions--libell%C3%A9-bouton-0-23-2"></a></h4>
+<ul><li>
+<code>i18n(action_plan)</code> — bouton <strong>“Générer (IA)”</strong> renommé <strong>“Générer les actions (IA)”</strong> (FR) / <strong>“Generate actions (AI)”</strong> (EN), pour clarifier que la cible est bien la génération du plan d’actions et pas autre chose (ex. : un rapport).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.23.1" id="nemetonshiny-0231-2026-05-09">nemetonshiny 0.23.1 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0231-2026-05-09"></a></h2>
 <div class="section level4">
