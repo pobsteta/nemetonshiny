@@ -1,3 +1,45 @@
+# nemetonshiny 0.22.4 (2026-05-09)
+
+### Plan d'actions — UX polish
+
+* `ui(action_plan)` — le sélecteur **"Afficher 5/10/25/50/All"**
+  passe **sous le tableau** (à côté de l'info "_TOTAL_ action(s)"
+  et de la pagination Préc./Suiv.). Le `dom` DT passe de
+  `"lfrtip"` à `"frtilp"` : la barre de recherche reste seule
+  au-dessus du tableau, ce qui aère l'en-tête de la card.
+* `ui(action_plan)` — **figeage strict** des colonnes UGF +
+  Année lors du scroll horizontal. `DISPLAY_COLS` réordonné
+  pour placer les colonnes cachées (`id`, `ug_id`,
+  `annee_cible`) en queue ; `fixedColumns: leftColumns` passe
+  de 5 à 2 — l'extension `FixedColumns` de DT compte toutes
+  les colonnes du DOM (y compris `visible:FALSE`), donc seul
+  le décompte sur les colonnes visibles évite les artefacts
+  d'en-têtes clones. `colname_map` et `hidden_targets`
+  ajustés en conséquence (cibles 13-15).
+* `i18n(action_plan)` — titres de légende de la **carte des
+  actions** traduits. Les littéraux `"annee"` / `"type"` /
+  `"priority"` passés à `leaflet::addLegend(title = …)` sont
+  remplacés par `i18n$t("action_plan_col_annee" | "_type" |
+  "_priorite")` ; ré-utilisation des clés des en-têtes de
+  colonnes pour rester cohérent avec le tableau. Affiche
+  désormais "Année" / "Type" / "Priorité" en FR (et "Year" /
+  "Type" / "Priority" en EN), avec switch dynamique au
+  changement de langue.
+
+### Auth — fix démarrage anonyme avec dev roles
+
+* `fix(auth)` — `mod_auth_server()` plantait au démarrage en
+  mode anonyme dès que `NEMETON_AUTH_DEV_ROLES` était défini :
+  l'appel `cli::cli_alert_info("…dev roles: {.val {auth_state$user_roles}}.")`
+  faisait évaluer `{auth_state$user_roles}` par `glue` hors
+  d'un `reactive()/observe()`, ce que `reactiveValues` interdit
+  ("Can't access reactive value 'user_roles' outside of
+  reactive consumer"). La valeur parsée est désormais capturée
+  dans une locale `parsed_roles` avant l'assignation à
+  `auth_state$user_roles` ; le message `cli` interpole la
+  locale, plus le reactiveValues. Régression introduite par
+  #41 (v0.22.3).
+
 # nemetonshiny 0.22.3 (2026-05-09)
 
 ### Plan d'actions — UX polish

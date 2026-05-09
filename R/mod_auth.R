@@ -150,9 +150,10 @@ mod_auth_server <- function(id) {
       # without standing up an OAuth provider.
       dev_roles <- Sys.getenv("NEMETON_AUTH_DEV_ROLES", unset = "")
       if (nzchar(dev_roles)) {
-        auth_state$user_roles <- trimws(strsplit(dev_roles, ",")[[1]])
+        parsed_roles <- trimws(strsplit(dev_roles, ",")[[1]])
+        auth_state$user_roles <- parsed_roles
         cli::cli_alert_info(
-          "OAuth not configured. Anonymous mode with dev roles: {.val {auth_state$user_roles}}."
+          "OAuth not configured. Anonymous mode with dev roles: {.val {parsed_roles}}."
         )
       } else {
         cli::cli_alert_info("OAuth not configured. Running in anonymous mode.")

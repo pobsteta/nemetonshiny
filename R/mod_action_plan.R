@@ -450,6 +450,7 @@ mod_action_plan_server <- function(id, app_state) {
       summary_list <- ugf_summary()
       mode <- input$map_color_by %||% "annee"
       n_ug <- nrow(sf)
+      i18n <- get_i18n(app_state$language)
 
       empty_result <- list(
         colors = rep("#bbbbbb", n_ug),
@@ -478,7 +479,7 @@ mod_action_plan_server <- function(id, app_state) {
         )
         list(
           colors = unname(cols),
-          legend_title = "annee",
+          legend_title = i18n$t("action_plan_col_annee"),
           legend_pal   = legend_pal,
           legend_vals  = all_years_chr
         )
@@ -493,7 +494,7 @@ mod_action_plan_server <- function(id, app_state) {
         col <- ifelse(is.na(firsts), "#bbbbbb", pal[firsts])
         list(
           colors = unname(col),
-          legend_title = "type",
+          legend_title = i18n$t("action_plan_col_type"),
           legend_pal   = leaflet::colorFactor(palette = unname(pal),
                                               domain = all_types),
           legend_vals  = all_types
@@ -510,7 +511,7 @@ mod_action_plan_server <- function(id, app_state) {
         col <- ifelse(is.na(firsts), "#bbbbbb", PALETTE_PRIO[firsts])
         list(
           colors = unname(col),
-          legend_title = "priority",
+          legend_title = i18n$t("action_plan_col_priorite"),
           legend_pal   = leaflet::colorFactor(
             palette = unname(PALETTE_PRIO[c("haute", "moyenne", "basse")]),
             domain = c("haute", "moyenne", "basse")),
@@ -639,13 +640,18 @@ mod_action_plan_server <- function(id, app_state) {
     # calendar year derived from the offset (`annee_cible`); the offset
     # column is hidden but kept for backward compatibility.
     DISPLAY_COLS <- c(
-      "id", "ug_id", "annee_cible",
+      # Visible columns first so FixedColumns(leftColumns = 2) freezes
+      # exactly UGF + Année (DT's FixedColumns extension counts every
+      # DOM column, including visible:FALSE ones, so hidden columns
+      # must live at the tail to keep the freeze count meaningful).
       "ug_label", "annee_realisation",
       "type",
       "intensite", "priorite", "statut",
       "volume_m3", "surface_ha", "nb_tiges",
       "cout_eur", "revenu_eur", "bilan_eur",
-      "commentaire"
+      "commentaire",
+      # Hidden columns (id, ug_id, annee_cible offset).
+      "id", "ug_id", "annee_cible"
     )
     # Cells the user can edit. `annee_realisation` accepts a calendar
     # year and is converted back to an offset before persistence.
@@ -690,9 +696,6 @@ mod_action_plan_server <- function(id, app_state) {
 
       # Localised column headers, in the same order as DISPLAY_COLS.
       colname_map <- c(
-        i18n$t("action_plan_col_id"),
-        i18n$t("action_plan_col_ug_id"),
-        i18n$t("action_plan_col_annee_offset"),
         i18n$t("action_plan_col_ug_label"),
         i18n$t("action_plan_col_annee"),
         i18n$t("action_plan_col_type"),
@@ -705,11 +708,15 @@ mod_action_plan_server <- function(id, app_state) {
         i18n$t("action_plan_col_cout"),
         i18n$t("action_plan_col_revenu"),
         i18n$t("action_plan_col_bilan"),
-        i18n$t("action_plan_col_commentaire")
+        i18n$t("action_plan_col_commentaire"),
+        i18n$t("action_plan_col_id"),
+        i18n$t("action_plan_col_ug_id"),
+        i18n$t("action_plan_col_annee_offset")
       )
 
-      # Hidden columns: id (0), ug_id (1), annee_cible offset (2).
-      hidden_targets <- as.integer(c(0L, 1L, 2L))
+      # Hidden columns: id, ug_id, annee_cible offset — sit at the tail
+      # of DISPLAY_COLS, so targets are the last 3 indices.
+      hidden_targets <- as.integer(c(13L, 14L, 15L))
       editable_idx <- which(DISPLAY_COLS %in% EDITABLE_COLS) - 1L
 
       DT::datatable(
@@ -734,18 +741,17 @@ mod_action_plan_server <- function(id, app_state) {
           pageLength = 5,
           lengthMenu = list(c(5, 10, 25, 50, -1),
                             c("5", "10", "25", "50", "All")),
-          # `l` adds the length selector (page size dropdown) to the
-          # left of the search box.
-          dom = "lfrtip",
+          # `l` after `t` puts the length selector (page size dropdown)
+          # at the bottom of the table, alongside info + pagination.
+          dom = "frtilp",
           # Horizontal scroll only — vertical scroll is replaced by
           # pagination, so dropping scrollY/scrollCollapse keeps the
           # 5-row table compact instead of padding it to 60vh.
           scrollX = TRUE,
-          # Freeze the first 5 columns: id (hidden), ug_id (hidden),
-          # annee_cible (hidden), UGF, and Ann\u00e9e. The hidden ones don't
-          # take screen space; visually only UGF + Ann\u00e9e stay pinned
-          # when scrolling horizontally.
-          fixedColumns = list(leftColumns = 5L),
+          # Freeze only UGF + Ann\u00e9e (the first two visible columns).
+          # Hidden columns now live at the tail of DISPLAY_COLS so this
+          # count maps cleanly onto what the user actually sees.
+          fixedColumns = list(leftColumns = 2L),
           # Enable regex on the global search box so the user can type
           # "eclaircie|plantation" for an OR filter (default smart
           # search uses AND across words). caseInsensitive keeps the
