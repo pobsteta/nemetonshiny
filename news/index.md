@@ -1,5 +1,87 @@
 # Changelog
 
+## nemetonshiny 0.22.3 (2026-05-09)
+
+#### Plan d’actions — UX polish
+
+- `feat(action_plan)` — global DT search box now uses **regex with OR
+  semantics**
+  ([\#35](https://github.com/pobsteta/nemetonshiny/issues/35)). Typing
+  `eclaircie|plantation` in the search box returns rows matching either
+  term. Search is case-insensitive (`caseInsensitive = TRUE`) so
+  accent-less typing keeps working.
+- `feat(action_plan)` — new **Surface totale** badge in the totals strip
+  above the action table
+  ([\#36](https://github.com/pobsteta/nemetonshiny/issues/36), plus
+  reorder in this release). Sums `surface_ha` over the rows currently
+  visible in the DT, formatted with two decimals + `ha`, rendered in
+  `text-primary`. The badge sits **after Bilan** so the monetary totals
+  (Coût / Revenu / Bilan) read first and the surface tally is the
+  trailing metric. The `pill()` helper now accepts optional `unit` and
+  `digits` arguments (defaulting to `"EUR"` / `0`) for backward-compat
+  with the three monetary pills.
+- `refactor(action_plan)` — DT table paginated at **5 rows per page**
+  (was 50 with a 60 vh internal scroll). New `lengthMenu` lets users
+  expand to 10 / 25 / 50 / All on demand; `dom` switched from `"frtip"`
+  to `"lfrtip"` so the length selector sits left of the global search.
+  Removed `scrollY` + `scrollCollapse` so the table card now contracts
+  around the visible rows instead of padding to 60 vh. `scrollX = TRUE`
+  and the two pinned columns (UGF + Année) are unchanged.
+- `ui(action_plan)` — sidebar title now carries an icon and reads
+  “Tableau des actions”
+  ([\#37](https://github.com/pobsteta/nemetonshiny/issues/37)) for a
+  tighter visual link to the table card it controls.
+- `ui(action_plan)` — bulk-status block (the *Statut Kanban* section
+  that duplicated the per-card Kanban moves) dropped in favour of a
+  **collapsible action card**
+  ([\#38](https://github.com/pobsteta/nemetonshiny/issues/38)) so the
+  sidebar stays scannable.
+- `ui(action_plan)` — right action panel resized to **350 px** with
+  **dual collapse** behavior
+  ([\#39](https://github.com/pobsteta/nemetonshiny/issues/39)): the
+  bslib sidebar itself can collapse, and the action card inside it has
+  its own collapse toggle.
+
+#### Plan d’actions — role-based permissions (Lot 6 S15)
+
+- `feat(action_plan)` — **role-based write permissions**
+  ([\#40](https://github.com/pobsteta/nemetonshiny/issues/40)). New
+  helper `can_edit_action_plan(auth_state)` centralises the role
+  convention used across the tab: roles `proprietaire`, `editeur`,
+  `admin`, `manager`, `owner`, `editor` are allowed to mutate the plan;
+  anonymous sessions default to *editor* to preserve the current dev
+  experience; the `lecteur` role (and any other unrecognised role) is
+  read-only. `app_state$auth` now exposes the auth reactive so the
+  action plan module can subscribe to it. Read-only sessions see a
+  banner above the action table and 8 server-side mutation observers
+  (add / edit / delete / bulk status / IA generation / Kanban drop /
+  GeoPackage write / PDF write) bounce back with a toast. The Kanban
+  drop handler also rolls back the optimistic UI move when the user
+  lacks edit rights. 5 unit tests on `can_edit_action_plan()`. Closes
+  [\#22](https://github.com/pobsteta/nemetonshiny/issues/22), refs
+  [\#7](https://github.com/pobsteta/nemetonshiny/issues/7).
+
+#### Auth
+
+- `feat(auth)` — **`NEMETON_AUTH_DEV_ROLES` env override**
+  ([\#41](https://github.com/pobsteta/nemetonshiny/issues/41)). In
+  anonymous mode (no OAuth client configured), `auth_state$user_roles`
+  is now seeded from the comma-separated env var
+  `NEMETON_AUTH_DEV_ROLES` (e.g. `NEMETON_AUTH_DEV_ROLES=lecteur` to
+  test the read-only banner). Lets developers exercise the role-based
+  mutation guards landed in PR
+  [\#40](https://github.com/pobsteta/nemetonshiny/issues/40) without
+  standing up a Keycloak realm. Refs
+  [\#7](https://github.com/pobsteta/nemetonshiny/issues/7).
+
+#### i18n
+
+- New key `action_plan_total_surface` (FR: *Surface totale* / EN: *Total
+  area*).
+- New keys for the Lot 6 read-only banner + permission-denied toast
+  (FR/EN), bundled in PR
+  [\#40](https://github.com/pobsteta/nemetonshiny/issues/40).
+
 ## nemetonshiny 0.22.2 (2026-05-06)
 
 #### Plan d’actions — table & Kanban polish

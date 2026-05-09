@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,39 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.22.3" id="nemetonshiny-0223-2026-05-09">nemetonshiny 0.22.3 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0223-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--ux-polish-0-22-3">Plan d’actions — UX polish<a class="anchor" aria-label="anchor" href="#plan-dactions--ux-polish-0-22-3"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — global DT search box now uses <strong>regex with OR semantics</strong> (<a href="https://github.com/pobsteta/nemetonshiny/issues/35" class="external-link">#35</a>). Typing <code>eclaircie|plantation</code> in the search box returns rows matching either term. Search is case-insensitive (<code>caseInsensitive = TRUE</code>) so accent-less typing keeps working.</li>
+<li>
+<code>feat(action_plan)</code> — new <strong>Surface totale</strong> badge in the totals strip above the action table (<a href="https://github.com/pobsteta/nemetonshiny/issues/36" class="external-link">#36</a>, plus reorder in this release). Sums <code>surface_ha</code> over the rows currently visible in the DT, formatted with two decimals + <code>ha</code>, rendered in <code>text-primary</code>. The badge sits <strong>after Bilan</strong> so the monetary totals (Coût / Revenu / Bilan) read first and the surface tally is the trailing metric. The <code>pill()</code> helper now accepts optional <code>unit</code> and <code>digits</code> arguments (defaulting to <code>"EUR"</code> / <code>0</code>) for backward-compat with the three monetary pills.</li>
+<li>
+<code>refactor(action_plan)</code> — DT table paginated at <strong>5 rows per page</strong> (was 50 with a 60 vh internal scroll). New <code>lengthMenu</code> lets users expand to 10 / 25 / 50 / All on demand; <code>dom</code> switched from <code>"frtip"</code> to <code>"lfrtip"</code> so the length selector sits left of the global search. Removed <code>scrollY</code> + <code>scrollCollapse</code> so the table card now contracts around the visible rows instead of padding to 60 vh. <code>scrollX = TRUE</code> and the two pinned columns (UGF + Année) are unchanged.</li>
+<li>
+<code>ui(action_plan)</code> — sidebar title now carries an icon and reads “Tableau des actions” (<a href="https://github.com/pobsteta/nemetonshiny/issues/37" class="external-link">#37</a>) for a tighter visual link to the table card it controls.</li>
+<li>
+<code>ui(action_plan)</code> — bulk-status block (the <em>Statut Kanban</em> section that duplicated the per-card Kanban moves) dropped in favour of a <strong>collapsible action card</strong> (<a href="https://github.com/pobsteta/nemetonshiny/issues/38" class="external-link">#38</a>) so the sidebar stays scannable.</li>
+<li>
+<code>ui(action_plan)</code> — right action panel resized to <strong>350 px</strong> with <strong>dual collapse</strong> behavior (<a href="https://github.com/pobsteta/nemetonshiny/issues/39" class="external-link">#39</a>): the bslib sidebar itself can collapse, and the action card inside it has its own collapse toggle.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--role-based-permissions-lot-s15-0-22-3">Plan d’actions — role-based permissions (Lot 6 S15)<a class="anchor" aria-label="anchor" href="#plan-dactions--role-based-permissions-lot-s15-0-22-3"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — <strong>role-based write permissions</strong> (<a href="https://github.com/pobsteta/nemetonshiny/issues/40" class="external-link">#40</a>). New helper <code>can_edit_action_plan(auth_state)</code> centralises the role convention used across the tab: roles <code>proprietaire</code>, <code>editeur</code>, <code>admin</code>, <code>manager</code>, <code>owner</code>, <code>editor</code> are allowed to mutate the plan; anonymous sessions default to <em>editor</em> to preserve the current dev experience; the <code>lecteur</code> role (and any other unrecognised role) is read-only. <code>app_state$auth</code> now exposes the auth reactive so the action plan module can subscribe to it. Read-only sessions see a banner above the action table and 8 server-side mutation observers (add / edit / delete / bulk status / IA generation / Kanban drop / GeoPackage write / PDF write) bounce back with a toast. The Kanban drop handler also rolls back the optimistic UI move when the user lacks edit rights. 5 unit tests on <code>can_edit_action_plan()</code>. Closes <a href="https://github.com/pobsteta/nemetonshiny/issues/22" class="external-link">#22</a>, refs <a href="https://github.com/pobsteta/nemetonshiny/issues/7" class="external-link">#7</a>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="auth-0-22-3">Auth<a class="anchor" aria-label="anchor" href="#auth-0-22-3"></a></h4>
+<ul><li>
+<code>feat(auth)</code> — <strong><code>NEMETON_AUTH_DEV_ROLES</code> env override</strong> (<a href="https://github.com/pobsteta/nemetonshiny/issues/41" class="external-link">#41</a>). In anonymous mode (no OAuth client configured), <code>auth_state$user_roles</code> is now seeded from the comma-separated env var <code>NEMETON_AUTH_DEV_ROLES</code> (e.g. <code>NEMETON_AUTH_DEV_ROLES=lecteur</code> to test the read-only banner). Lets developers exercise the role-based mutation guards landed in PR <a href="https://github.com/pobsteta/nemetonshiny/issues/40" class="external-link">#40</a> without standing up a Keycloak realm. Refs <a href="https://github.com/pobsteta/nemetonshiny/issues/7" class="external-link">#7</a>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="i18n-0-22-3">i18n<a class="anchor" aria-label="anchor" href="#i18n-0-22-3"></a></h4>
+<ul><li>New key <code>action_plan_total_surface</code> (FR: <em>Surface totale</em> / EN: <em>Total area</em>).</li>
+<li>New keys for the Lot 6 read-only banner + permission-denied toast (FR/EN), bundled in PR <a href="https://github.com/pobsteta/nemetonshiny/issues/40" class="external-link">#40</a>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.22.2" id="nemetonshiny-0222-2026-05-06">nemetonshiny 0.22.2 (2026-05-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0222-2026-05-06"></a></h2>
 <div class="section level4">
