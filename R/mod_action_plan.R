@@ -130,12 +130,16 @@ mod_action_plan_ui <- function(id) {
     )
   )
 
-  # Left-hand sidebar: persistent Q/R chat panel. Same 350 px width
-  # and collapsible-header pattern as the right `action_panel`, so
-  # both sides feel symmetric. The chat replaces the former
-  # "Ouvrir le chat" modal — the conversation stays visible while
-  # the user navigates the map / table / Kanban.
-  chat_panel_id <- ns("chat_collapse")
+  # Persistent Q/R chat panel. Lives in the right-hand sidebar
+  # below the `action_panel` ("Tableau des actions"), same
+  # collapsible-header pattern. Replaces the former "Ouvrir le
+  # chat" modal so the conversation stays visible while the user
+  # navigates the map / table / Kanban. The history div carries a
+  # stable id so the renderUI in the server can append a tiny
+  # inline script that auto-scrolls it to the bottom on every
+  # update.
+  chat_panel_id   <- ns("chat_collapse")
+  chat_history_id <- ns("chat_history")
   chat_panel <- htmltools::tags$div(
     class = "card mb-3",
     htmltools::tags$div(
@@ -162,8 +166,10 @@ mod_action_plan_ui <- function(id) {
         class = "card-body p-2",
         # Scrollable history. Capped via max-height so the textarea
         # + buttons stay visible even on long conversations; older
-        # messages scroll out of view.
+        # messages scroll out of view. The fixed id is what the
+        # auto-scroll snippet in chat_history_ui targets.
         htmltools::div(
+          id = chat_history_id,
           class = "chat-history mb-2",
           style = paste(
             "overflow-y: auto;",
@@ -204,31 +210,19 @@ mod_action_plan_ui <- function(id) {
 
   bslib::layout_sidebar(
     fillable = TRUE,
-    # Outer sidebar (LEFT): chat panel.
+    # Right-hand sidebar -- 350 px width. Contains the action
+    # panel ("Tableau des actions") at the top and the persistent
+    # chat panel below. The bslib sidebar exposes a built-in
+    # collapse toggle in its border for narrow monitors.
     sidebar = bslib::sidebar(
-      id = ns("chat_sidebar"),
+      id = ns("action_sidebar"),
       width = 350,
-      position = "left",
+      position = "right",
       open = TRUE,
       bg = "transparent",
+      action_panel,
       chat_panel
     ),
-
-    bslib::layout_sidebar(
-      fillable = TRUE,
-      # Inner sidebar (RIGHT): action panel (selection / IA /
-      # manuel / exports). Same 350 px width as the cards in the
-      # `Selection` tab so neither sidebar eats half the screen.
-      # Both sidebars expose bslib's built-in collapse toggle for
-      # narrow monitors.
-      sidebar = bslib::sidebar(
-        id = ns("action_sidebar"),
-        width = 350,
-        position = "right",
-        open = TRUE,
-        bg = "transparent",
-        action_panel
-      ),
 
     # Main pane: nav switcher (carte+tableau / kanban). Style scoped
     # to the inner DT to ellipsize long cells.
@@ -335,9 +329,9 @@ mod_action_plan_ui <- function(id) {
         )
       )
       )  # close navset_card_underline
-    )    # close htmltools::tagList
-    )    # close inner bslib::layout_sidebar (right action panel)
-  )      # close outer bslib::layout_sidebar (left chat panel)
+    )    # close htmltools::tagList — action_panel + chat_panel live
+         # in the right-hand sidebar above, not as positional args.
+  )      # close bslib::layout_sidebar
 }
 
 
@@ -1839,23 +1833,39 @@ mod_action_plan_server <- function(id, app_state) {
 
     output$chat_history_ui <- shiny::renderUI({
       hist <- chat_history_rv()
+      # Inline script: re-attached on every render, scrolls the
+      # parent .chat-history container to the bottom so the latest
+      # message is visible without manual scrolling. setTimeout(0)
+      # defers to the next tick so the DOM has the freshly-rendered
+      # nodes when scrollHeight is measured.
+      scroll_id <- session$ns("chat_history")
+      scroll_script <- htmltools::tags$script(htmltools::HTML(sprintf(
+        "setTimeout(function(){var el=document.getElementById(%s);if(el){el.scrollTop=el.scrollHeight;}},0);",
+        jsonlite::toJSON(scroll_id, auto_unbox = TRUE)
+      )))
       if (length(hist) == 0L) {
         i18n <- get_i18n(app_state$language)
-        return(htmltools::div(class = "text-muted small",
-                              i18n$t("action_plan_chat_empty")))
+        return(htmltools::tagList(
+          htmltools::div(class = "text-muted small",
+                         i18n$t("action_plan_chat_empty")),
+          scroll_script
+        ))
       }
-      htmltools::tagList(lapply(hist, function(msg) {
-        htmltools::div(
-          class = paste0("p-2 mb-2 rounded ",
-                         if (msg$role == "user") "bg-light" else "bg-success-subtle"),
-          htmltools::tags$strong(msg$role, ": "),
-          htmltools::tags$pre(
-            class = "mb-0",
-            style = "white-space: pre-wrap; font-size: 0.85rem;",
-            msg$text
+      htmltools::tagList(
+        lapply(hist, function(msg) {
+          htmltools::div(
+            class = paste0("p-2 mb-2 rounded ",
+                           if (msg$role == "user") "bg-light" else "bg-success-subtle"),
+            htmltools::tags$strong(msg$role, ": "),
+            htmltools::tags$pre(
+              class = "mb-0",
+              style = "white-space: pre-wrap; font-size: 0.85rem;",
+              msg$text
+            )
           )
-        )
-      }))
+        }),
+        scroll_script
+      )
     })
 
     shiny::observeEvent(input$chat_clear, {

@@ -1,3 +1,36 @@
+# nemetonshiny 0.23.2 (2026-05-09)
+
+### Plan d'actions — chat dans la sidebar droite + auto-scroll
+
+* `feat(action_plan)` — le **chat IA** rejoint la sidebar
+  droite **sous la carte "Tableau des actions"**, plutôt
+  que dans une sidebar gauche dédiée. Disposition haut → bas
+  de la sidebar droite : *Tableau des actions* (Sélection /
+  IA / Manuel / Exports) puis *Affiner le plan avec l'IA*
+  (historique scrollable + textarea + boutons Effacer /
+  Envoyer). Le double `bslib::layout_sidebar` imbriqué
+  introduit en v0.23.1 disparaît, on revient à un seul
+  `layout_sidebar` avec les deux cartes empilées dans la
+  sidebar droite — meilleure densité d'information sur les
+  écrans portables.
+* `feat(action_plan)` — la zone d'historique du chat
+  **scrolle automatiquement vers le bas** à chaque mise à
+  jour. La div `.chat-history` reçoit un `id` stable
+  (`ns("chat_history")`) ; `output$chat_history_ui` injecte
+  à la fin de chaque render un `tags$script` qui fait
+  `setTimeout(function(){ el.scrollTop = el.scrollHeight; }, 0)`
+  — le `setTimeout(0)` diffère au prochain tick pour que le
+  DOM soit à jour quand `scrollHeight` est lu. Le dernier
+  message reste visible sans intervention manuelle.
+
+### Plan d'actions — libellé bouton
+
+* `i18n(action_plan)` — bouton **"Générer (IA)"** renommé
+  **"Générer les actions (IA)"** (FR) / **"Generate
+  actions (AI)"** (EN), pour clarifier que la cible est
+  bien la génération du plan d'actions et pas autre chose
+  (ex. : un rapport).
+
 # nemetonshiny 0.23.1 (2026-05-09)
 
 ### Plan d'actions — chat IA en sidebar gauche

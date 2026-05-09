@@ -79,7 +79,7 @@ TRANSLATIONS <- list(
   action_plan_color_year = list(fr = "Année", en = "Year"),
   action_plan_color_type = list(fr = "Type", en = "Type"),
   action_plan_color_priority = list(fr = "Priorité", en = "Priority"),
-  action_plan_generate_all = list(fr = "Générer (IA)", en = "Generate (AI)"),
+  action_plan_generate_all = list(fr = "Générer les actions (IA)", en = "Generate actions (AI)"),
   action_plan_add = list(fr = "Ajouter une action", en = "Add action"),
   action_plan_map_pending = list(
     fr = "La carte interactive sera disponible avec la story S4.",
