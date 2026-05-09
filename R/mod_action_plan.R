@@ -1851,12 +1851,21 @@ mod_action_plan_server <- function(id, app_state) {
           scroll_script
         ))
       }
+      i18n_render <- get_i18n(app_state$language)
       htmltools::tagList(
         lapply(hist, function(msg) {
+          # Translate the raw LLM role names ("user" / "assistant")
+          # into the current UI language at display time. The
+          # underlying data model keeps the English keys so the
+          # prompt builder downstream stays unchanged.
+          role_label <- if (identical(msg$role, "user"))
+            i18n_render$t("action_plan_chat_role_user")
+          else
+            i18n_render$t("action_plan_chat_role_assistant")
           htmltools::div(
             class = paste0("p-2 mb-2 rounded ",
                            if (msg$role == "user") "bg-light" else "bg-success-subtle"),
-            htmltools::tags$strong(msg$role, ": "),
+            htmltools::tags$strong(role_label, " : "),
             htmltools::tags$pre(
               class = "mb-0",
               style = "white-space: pre-wrap; font-size: 0.85rem;",

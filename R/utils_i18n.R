@@ -285,6 +285,14 @@ TRANSLATIONS <- list(
     fr = "L'IA réfléchit…",
     en = "AI is thinking…"
   ),
+  action_plan_chat_role_user = list(
+    fr = "Vous",
+    en = "You"
+  ),
+  action_plan_chat_role_assistant = list(
+    fr = "Assistant",
+    en = "Assistant"
+  ),
   action_plan_chat_empty = list(
     fr = "Posez une première question pour démarrer.",
     en = "Ask a first question to start."

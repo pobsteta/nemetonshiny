@@ -1,3 +1,20 @@
+# nemetonshiny 0.23.4 (2026-05-09)
+
+### Plan d'actions — chat IA en français
+
+* `i18n(action_plan)` — les libellés de rôle dans
+  l'historique du chat passent par i18n : `msg$role` brut
+  ("user" / "assistant") n'apparaît plus tel quel dans
+  l'UI. `output$chat_history_ui` traduit au moment du
+  rendu en **"Vous"** / **"Assistant"** (FR) ou **"You"** /
+  **"Assistant"** (EN). Le modèle de données conserve les
+  clés anglaises (cohérent avec la convention LLM, le
+  prompt builder downstream reste intact) — la traduction
+  est purement cosmétique au display, et bascule
+  dynamiquement avec le switch de langue. Deux nouvelles
+  clés i18n : `action_plan_chat_role_user`,
+  `action_plan_chat_role_assistant`.
+
 # nemetonshiny 0.23.3 (2026-05-09)
 
 ### Plan d'actions — toast "L'IA réfléchit…"
