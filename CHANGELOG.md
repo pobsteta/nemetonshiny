@@ -12,6 +12,19 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.23.3\] - 2026-05-09
+
+### Added
+
+- Plan d’actions chat: clicking **Send** now displays a persistent
+  **bottom-right toast** with a **spinning gear icon** and the label
+  *“L’IA réfléchit…”* / *“AI is thinking…”*. The toast stays visible
+  until the LLM response arrives or the call fails. Implemented via
+  `shiny::showNotification(duration = NULL, closeButton = FALSE)` paired
+  with an `on.exit(removeNotification(...))` hook so every return path
+  (success, LLM error, parse error) clears the toast.
+- New i18n key `action_plan_chat_thinking`.
+
 ## \[0.23.2\] - 2026-05-09
 
 ### Added
