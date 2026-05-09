@@ -1,5 +1,47 @@
 # Changelog
 
+## nemetonshiny 0.23.5 (2026-05-09)
+
+#### Plan d’actions — chat IA : scope + écrasement
+
+- `feat(action_plan)` — le **chat IA gagne deux contrôles** juste sous
+  l’historique pour piloter chaque tour de conversation : un radio
+  **Toutes les UGF / Sélection courante** (`chat_scope`) et une checkbox
+  **Écraser le plan existant** (`chat_overwrite`). Mêmes sémantiques que
+  dans le modal “Générer les actions (IA)” :
+  - `scope = "selected"` restreint le `ctx$ug_ids` envoyé au prompt aux
+    seules UGF cochées sur la carte (sinon garde-fou `action_plan_no_ug`
+    si rien n’est sélectionné) ;
+  - `overwrite = TRUE` au moment de l’apply supprime les actions
+    existantes des UGF ciblées avant le `bulk_upsert_actions()`. Le
+    modal de confirmation qui s’ouvre quand le LLM renvoie un bloc
+    `actions` JSON affiche désormais une **bannière `text-warning`**
+    quand l’overwrite est coché, listant le nombre d’UGF impactées
+    (`action_plan_chat_apply_overwrite_warn_fmt`). Les UGF cibles sont
+    stashées dans `rv_state$pending_chat_target_ugs` au moment de
+    l’envoi pour rester cohérentes entre le tour qui propose les actions
+    et celui qui les applique. Nouvelle clé i18n
+    `action_plan_chat_scope_sel`.
+
+#### Bascule de langue FR ↔︎ EN
+
+- `fix(language)` — basculer FR↔︎EN dans le sélecteur de la navbar
+  **fonctionne enfin** : la page se recharge automatiquement en EN (ou
+  FR) et **ne reverse plus** sur la langue de démarrage. Deux bugs
+  combinés :
+  - `app_server.R` écrivait dans `nemeton.app_language` alors que
+    `app_ui` lit `getOption("nemeton.app_options")$language` (clé
+    totalement différente) — donc la préférence ne survivait pas au
+    reload. Désormais on persiste dans *la bonne* option
+    `nemeton.app_options$language`.
+  - L’observer affichait un toast *“Rechargez la page pour appliquer”*
+    sans recharger automatiquement. Remplacé par un appel direct
+    `session$reload()` pour que le rebuild d’`app_ui` se fasse sans
+    intervention de l’utilisateur. Garde anti-init : si la nouvelle
+    valeur est identique à `app_state$language`, l’observer retourne tôt
+    — pas de reload involontaire au démarrage de session.
+- `i18n` : clé orpheline `language_changed` (le toast manuel) retirée.
+
 ## nemetonshiny 0.23.4 (2026-05-09)
 
 #### Plan d’actions — chat IA en français

@@ -12,6 +12,36 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.23.5\] - 2026-05-09
+
+### Added
+
+- Plan d’actions chat: two new controls just below the history — **scope
+  radio** (all UGFs / current selection) and **overwrite checkbox**
+  (replace existing actions). Same semantics as the “Generate actions
+  (AI)” modal. When overwrite is on, the apply modal surfaces a warning
+  banner listing the number of targeted UGFs.
+- New i18n keys `action_plan_chat_scope_sel` and
+  `action_plan_chat_apply_overwrite_warn_fmt`.
+
+### Fixed
+
+- Language toggle FR ↔︎ EN in the navbar selector now actually applies.
+  Two combined bugs:
+  - The handler wrote to `nemeton.app_language` but `app_ui` reads
+    `getOption("nemeton.app_options")$language`, so the choice did not
+    survive a page reload. Now persists into the right option key.
+  - The handler showed a toast saying “Reload the page” without actually
+    reloading. Replaced by `session$reload()` so the UI rebuilds
+    automatically. Anti-init guard: if the new value equals
+    `app_state$language`, the observer returns early to avoid an
+    unwanted reload at session start.
+
+### Removed
+
+- Orphaned i18n key `language_changed` (was only used by the dropped
+  manual-reload toast).
+
 ## \[0.23.4\] - 2026-05-09
 
 ### Changed

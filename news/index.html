@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,33 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.23.4/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.5" id="nemetonshiny-0235-2026-05-09">nemetonshiny 0.23.5 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0235-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--chat-ia--scope--écrasement-0-23-5">Plan d’actions — chat IA : scope + écrasement<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-ia--scope--%C3%A9crasement-0-23-5"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — le <strong>chat IA gagne deux contrôles</strong> juste sous l’historique pour piloter chaque tour de conversation : un radio <strong>Toutes les UGF / Sélection courante</strong> (<code>chat_scope</code>) et une checkbox <strong>Écraser le plan existant</strong> (<code>chat_overwrite</code>). Mêmes sémantiques que dans le modal “Générer les actions (IA)” :
+<ul><li>
+<code>scope = "selected"</code> restreint le <code>ctx$ug_ids</code> envoyé au prompt aux seules UGF cochées sur la carte (sinon garde-fou <code>action_plan_no_ug</code> si rien n’est sélectionné) ;</li>
+<li>
+<code>overwrite = TRUE</code> au moment de l’apply supprime les actions existantes des UGF ciblées avant le <code>bulk_upsert_actions()</code>. Le modal de confirmation qui s’ouvre quand le LLM renvoie un bloc <code>actions</code> JSON affiche désormais une <strong>bannière <code>text-warning</code></strong> quand l’overwrite est coché, listant le nombre d’UGF impactées (<code>action_plan_chat_apply_overwrite_warn_fmt</code>). Les UGF cibles sont stashées dans <code>rv_state$pending_chat_target_ugs</code> au moment de l’envoi pour rester cohérentes entre le tour qui propose les actions et celui qui les applique. Nouvelle clé i18n <code>action_plan_chat_scope_sel</code>.</li>
+</ul></li>
+</ul></div>
+<div class="section level4">
+<h4 id="bascule-de-langue-fr--en-0-23-5">Bascule de langue FR ↔︎ EN<a class="anchor" aria-label="anchor" href="#bascule-de-langue-fr--en-0-23-5"></a></h4>
+<ul><li>
+<code>fix(language)</code> — basculer FR↔︎EN dans le sélecteur de la navbar <strong>fonctionne enfin</strong> : la page se recharge automatiquement en EN (ou FR) et <strong>ne reverse plus</strong> sur la langue de démarrage. Deux bugs combinés :
+<ul><li>
+<code>app_server.R</code> écrivait dans <code>nemeton.app_language</code> alors que <code>app_ui</code> lit <code>getOption("nemeton.app_options")$language</code> (clé totalement différente) — donc la préférence ne survivait pas au reload. Désormais on persiste dans <em>la bonne</em> option <code>nemeton.app_options$language</code>.</li>
+<li>L’observer affichait un toast <em>“Rechargez la page pour appliquer”</em> sans recharger automatiquement. Remplacé par un appel direct <code>session$reload()</code> pour que le rebuild d’<code>app_ui</code> se fasse sans intervention de l’utilisateur. Garde anti-init : si la nouvelle valeur est identique à <code>app_state$language</code>, l’observer retourne tôt — pas de reload involontaire au démarrage de session.</li>
+</ul></li>
+<li>
+<code>i18n</code> : clé orpheline <code>language_changed</code> (le toast manuel) retirée.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.23.4" id="nemetonshiny-0234-2026-05-09">nemetonshiny 0.23.4 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0234-2026-05-09"></a></h2>
 <div class="section level4">
