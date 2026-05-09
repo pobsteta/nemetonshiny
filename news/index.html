@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,17 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.23.3/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.23.4/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.4" id="nemetonshiny-0234-2026-05-09">nemetonshiny 0.23.4 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0234-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--chat-ia-en-français-0-23-4">Plan d’actions — chat IA en français<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-ia-en-fran%C3%A7ais-0-23-4"></a></h4>
+<ul><li>
+<code>i18n(action_plan)</code> — les libellés de rôle dans l’historique du chat passent par i18n : <code>msg$role</code> brut (“user” / “assistant”) n’apparaît plus tel quel dans l’UI. <code>output$chat_history_ui</code> traduit au moment du rendu en <strong>“Vous”</strong> / <strong>“Assistant”</strong> (FR) ou <strong>“You”</strong> / <strong>“Assistant”</strong> (EN). Le modèle de données conserve les clés anglaises (cohérent avec la convention LLM, le prompt builder downstream reste intact) — la traduction est purement cosmétique au display, et bascule dynamiquement avec le switch de langue. Deux nouvelles clés i18n : <code>action_plan_chat_role_user</code>, <code>action_plan_chat_role_assistant</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.23.3" id="nemetonshiny-0233-2026-05-09">nemetonshiny 0.23.3 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0233-2026-05-09"></a></h2>
 <div class="section level4">

@@ -12,6 +12,22 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.23.4\] - 2026-05-09
+
+### Changed
+
+- Plan d’actions chat: role labels in the conversation history now go
+  through i18n. The raw LLM keys (“user” / “assistant”) no longer
+  surface in the UI; they render as **“Vous”** / **“Assistant”** (FR) or
+  **“You”** / **“Assistant”** (EN), switching live with the language
+  toggle. The underlying data model still uses the English keys so the
+  prompt builder is unchanged.
+
+### Added
+
+- New i18n keys `action_plan_chat_role_user` and
+  `action_plan_chat_role_assistant`.
+
 ## \[0.23.3\] - 2026-05-09
 
 ### Added
