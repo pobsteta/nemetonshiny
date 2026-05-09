@@ -271,14 +271,9 @@ TRANSLATIONS <- list(
   action_plan_status_planifiee = list(fr = "Planifiée", en = "Planned"),
   action_plan_status_realisee  = list(fr = "Réalisée",  en = "Done"),
   action_plan_status_abandonnee = list(fr = "Abandonnée", en = "Abandoned"),
-  action_plan_open_chat = list(fr = "Chat IA", en = "AI Chat"),
   action_plan_chat_title = list(
     fr = "Affiner le plan avec l'IA",
     en = "Refine the plan with AI"
-  ),
-  action_plan_chat_input_label = list(
-    fr = "Votre question ou demande",
-    en = "Your question or request"
   ),
   action_plan_chat_placeholder = list(
     fr = "Ex. : Ajoute une éclaircie en année 5 sur les UGF du nord.",

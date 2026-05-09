@@ -10,6 +10,38 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-05-09
+
+### Added
+
+- Plan d'actions: **AI chat now lives in a persistent left
+  sidebar** (350 px, collapsible) instead of a modal. The
+  conversation stays visible while the user navigates map /
+  table / Kanban. Layout switches to a nested `layout_sidebar`
+  (left chat / right action panel / main content).
+
+### Changed
+
+- Plan d'actions: "Ouvrir le chat" button removed from the
+  right action panel (made redundant by the persistent
+  sidebar). `input$open_chat` observer (~30 LOC of `showModal`)
+  dropped.
+
+### Fixed
+
+- Plan d'actions map ↔ table sync: clicking a parcelle on the
+  **map** now selects every corresponding row in the table.
+  The `input$map_shape_click` handler now also calls
+  `DT::selectRows()`. The reverse direction (table → map) was
+  already working. No reactive loop: `reactiveVal` dedupes by
+  `identical()` so the round-trip stops after one pass.
+
+### Removed
+
+- i18n keys `action_plan_open_chat` and
+  `action_plan_chat_input_label` (orphaned by the chat
+  refactor).
+
 ## [0.23.0] - 2026-05-09
 
 ### Added

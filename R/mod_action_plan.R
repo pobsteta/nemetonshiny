@@ -90,14 +90,12 @@ mod_action_plan_ui <- function(id) {
           ns("generate_all"),
           label = i18n$t("action_plan_generate_all"),
           icon = shiny::icon("wand-magic-sparkles"),
-          class = "btn-sm btn-primary w-100 mb-2"
+          class = "btn-sm btn-primary w-100 mb-3"
         ),
-        shiny::actionButton(
-          ns("open_chat"),
-          label = i18n$t("action_plan_open_chat"),
-          icon = shiny::icon("comments"),
-          class = "btn-sm btn-outline-primary w-100 mb-3"
-        ),
+        # The Q/R chat used to live behind an "Ouvrir le chat" modal
+        # button here; it now lives in the persistent left sidebar
+        # (`chat_panel` below) so the conversation stays visible while
+        # the user works on the map / table / Kanban.
 
         # ---- Manuel ------------------------------------------------
         htmltools::tags$h6(i18n$t("action_plan_section_manual")),
@@ -132,20 +130,105 @@ mod_action_plan_ui <- function(id) {
     )
   )
 
+  # Left-hand sidebar: persistent Q/R chat panel. Same 350 px width
+  # and collapsible-header pattern as the right `action_panel`, so
+  # both sides feel symmetric. The chat replaces the former
+  # "Ouvrir le chat" modal — the conversation stays visible while
+  # the user navigates the map / table / Kanban.
+  chat_panel_id <- ns("chat_collapse")
+  chat_panel <- htmltools::tags$div(
+    class = "card mb-3",
+    htmltools::tags$div(
+      class = "card-header bg-info text-white py-2",
+      style = "cursor: pointer;",
+      `data-bs-toggle` = "collapse",
+      `data-bs-target` = paste0("#", chat_panel_id),
+      `aria-expanded` = "true",
+      `aria-controls` = chat_panel_id,
+      htmltools::div(
+        class = "d-flex align-items-center justify-content-between",
+        htmltools::div(
+          class = "d-flex align-items-center",
+          bsicons::bs_icon("chat-dots", class = "me-2"),
+          i18n$t("action_plan_chat_title")
+        ),
+        bsicons::bs_icon("chevron-down", class = "collapse-icon")
+      )
+    ),
+    htmltools::tags$div(
+      id = chat_panel_id,
+      class = "collapse show",
+      htmltools::tags$div(
+        class = "card-body p-2",
+        # Scrollable history. Capped via max-height so the textarea
+        # + buttons stay visible even on long conversations; older
+        # messages scroll out of view.
+        htmltools::div(
+          class = "chat-history mb-2",
+          style = paste(
+            "overflow-y: auto;",
+            "max-height: 50vh;",
+            "min-height: 160px;",
+            "border: 1px solid rgba(0,0,0,.075);",
+            "border-radius: .25rem;",
+            "padding: .5rem;",
+            "background: #fafafa;"
+          ),
+          shiny::uiOutput(ns("chat_history_ui"))
+        ),
+        shiny::textAreaInput(
+          ns("chat_input"),
+          label = NULL,
+          placeholder = i18n$t("action_plan_chat_placeholder"),
+          rows = 3, width = "100%",
+          resize = "vertical"
+        ),
+        htmltools::div(
+          class = "d-flex gap-2 mt-2",
+          shiny::actionButton(
+            ns("chat_clear"),
+            label = i18n$t("action_plan_chat_clear"),
+            icon = shiny::icon("broom"),
+            class = "btn-sm btn-outline-secondary flex-fill"
+          ),
+          shiny::actionButton(
+            ns("chat_send"),
+            label = i18n$t("action_plan_chat_send"),
+            icon = shiny::icon("paper-plane"),
+            class = "btn-sm btn-primary flex-fill"
+          )
+        )
+      )
+    )
+  )
+
   bslib::layout_sidebar(
     fillable = TRUE,
-    # Right-hand sidebar -- same 350 px width as the cards in the
-    # `Selection` tab so the action panel does not eat half the
-    # screen on wide monitors. The action_panel card inside provides
-    # the click-to-collapse colored header (mirrors the home pattern).
+    # Outer sidebar (LEFT): chat panel.
     sidebar = bslib::sidebar(
-      id = ns("action_sidebar"),
+      id = ns("chat_sidebar"),
       width = 350,
-      position = "right",
+      position = "left",
       open = TRUE,
       bg = "transparent",
-      action_panel
+      chat_panel
     ),
+
+    bslib::layout_sidebar(
+      fillable = TRUE,
+      # Inner sidebar (RIGHT): action panel (selection / IA /
+      # manuel / exports). Same 350 px width as the cards in the
+      # `Selection` tab so neither sidebar eats half the screen.
+      # Both sidebars expose bslib's built-in collapse toggle for
+      # narrow monitors.
+      sidebar = bslib::sidebar(
+        id = ns("action_sidebar"),
+        width = 350,
+        position = "right",
+        open = TRUE,
+        bg = "transparent",
+        action_panel
+      ),
 
     # Main pane: nav switcher (carte+tableau / kanban). Style scoped
     # to the inner DT to ellipsize long cells.
@@ -252,9 +335,9 @@ mod_action_plan_ui <- function(id) {
         )
       )
       )  # close navset_card_underline
-    )    # close htmltools::tagList -- action_panel lives in the
-         # right-hand sidebar above, not as a positional argument here.
-  )
+    )    # close htmltools::tagList
+    )    # close inner bslib::layout_sidebar (right action panel)
+  )      # close outer bslib::layout_sidebar (left chat panel)
 }
 
 
@@ -623,7 +706,14 @@ mod_action_plan_server <- function(id, app_state) {
       }
     })
 
-    # Map click on UGF -> select that UGF (toggle)
+    # Map click on UGF -> select that UGF (toggle) AND propagate the
+    # selection to the action table: every row whose ug_id is in the
+    # current selection gets highlighted via DT::selectRows. The
+    # reverse direction (table -> map) is handled by the
+    # `input$action_table_rows_selected` observer below; together they
+    # keep the two views in sync. `reactiveVal` dedupes by identical()
+    # so the round-trip (map -> selected_ug_rv -> table -> back) does
+    # not loop.
     shiny::observeEvent(input$map_shape_click, {
       click <- input$map_shape_click
       if (is.null(click$id)) return()
@@ -631,6 +721,12 @@ mod_action_plan_server <- function(id, app_state) {
       cur <- selected_ug_rv()
       cur <- if (uid %in% cur) setdiff(cur, uid) else c(cur, uid)
       selected_ug_rv(cur)
+
+      df <- actions_df_all()
+      if (nrow(df) == 0L) return()
+      rows <- which(df$ug_id %in% cur)
+      DT::selectRows(DT::dataTableProxy("action_table"),
+                     if (length(rows) > 0L) rows else NULL)
     })
 
     # Selection overlay (highlight selected UGFs)
@@ -1735,37 +1831,11 @@ mod_action_plan_server <- function(id, app_state) {
 
     chat_history_rv <- shiny::reactiveVal(list())
 
-    shiny::observeEvent(input$open_chat, {
-      if (deny_if_readonly()) return()
-      i18n <- get_i18n(app_state$language)
-      shiny::showModal(shiny::modalDialog(
-        title = i18n$t("action_plan_chat_title"),
-        size = "l",
-        easyClose = TRUE,
-        shiny::uiOutput(ns("chat_history_ui")),
-        shiny::textAreaInput(
-          ns("chat_input"),
-          label = i18n$t("action_plan_chat_input_label"),
-          placeholder = i18n$t("action_plan_chat_placeholder"),
-          rows = 3, width = "100%"
-        ),
-        footer = htmltools::tagList(
-          shiny::modalButton(i18n$t("close")),
-          shiny::actionButton(
-            ns("chat_clear"),
-            label = i18n$t("action_plan_chat_clear"),
-            icon = shiny::icon("broom"),
-            class = "btn-outline-secondary"
-          ),
-          shiny::actionButton(
-            ns("chat_send"),
-            label = i18n$t("action_plan_chat_send"),
-            icon = shiny::icon("paper-plane"),
-            class = "btn-primary"
-          )
-        )
-      ))
-    })
+    # The chat UI used to live in a modal triggered by `open_chat`;
+    # it now lives in the persistent left sidebar (`chat_panel` in
+    # the UI). The history / send / clear observers below operate
+    # against the same input ids — they just no longer need to be
+    # populated through showModal().
 
     output$chat_history_ui <- shiny::renderUI({
       hist <- chat_history_rv()
