@@ -1558,6 +1558,16 @@ mod_action_plan_server <- function(id, app_state) {
       },
       content = function(file) {
         i18n <- get_i18n(app_state$language)
+        # The toast spinner is shown client-side by
+        # nemetonShowDownloadToast on click and dismissed by the
+        # paired nemetonHideDownloadToast message we always send at
+        # the end of this content function (deferred via on.exit so
+        # it fires even when an error short-circuits the rest).
+        on.exit(
+          session$sendCustomMessage("nemetonHideDownloadToast", list()),
+          add = TRUE
+        )
+
         plan <- plan_rv()
         sf_ug <- ug_sf_4326()
         if (is.null(plan) || is.null(sf_ug)) {
@@ -1570,7 +1580,7 @@ mod_action_plan_server <- function(id, app_state) {
                                       filter_action_ids = visible_ids)
         if (!isTRUE(ok)) {
           shiny::showNotification(i18n$t("action_plan_export_terrain_failed"),
-                                  type = "error", duration = 6)
+                                  type = "error", duration = NULL)
         }
       }
     )
@@ -1591,6 +1601,18 @@ mod_action_plan_server <- function(id, app_state) {
       },
       content = function(file) {
         i18n <- get_i18n(app_state$language)
+        # The toast spinner ("Génération PDF…") is shown client-side
+        # by nemetonShowDownloadToast on click and is now sticky
+        # (duration: null). on.exit guarantees the matching
+        # nemetonHideDownloadToast is sent at the end of this
+        # function so the spinner disappears synchronously with the
+        # browser's save dialog — whether the export succeeds or
+        # errors out.
+        on.exit(
+          session$sendCustomMessage("nemetonHideDownloadToast", list()),
+          add = TRUE
+        )
+
         plan <- plan_rv()
         project <- app_state$current_project
         sf_ug <- ug_sf_4326()
@@ -1598,10 +1620,6 @@ mod_action_plan_server <- function(id, app_state) {
           writeLines("No data available", file)
           return()
         }
-        # The "Generation en cours" toast is now driven entirely by the
-        # client-side onclick on the download button
-        # (nemetonShowDownloadToast), the same pattern used by the
-        # GeoPackage export — keeping a single, coherent feedback.
         visible <- actions_df()
         result <- tryCatch(
           generate_action_plan_pdf(
@@ -1611,16 +1629,30 @@ mod_action_plan_server <- function(id, app_state) {
             filter_action_ids = visible$id
           ),
           error = function(e) {
+            # Log the real cause to the server console for ops and
+            # also surface it to the user as a sticky error toast
+            # so it is not missed amongst the (now sticky) generation
+            # spinner. Quarto / LaTeX failures usually need the
+            # message verbatim to diagnose.
+            err_msg <- conditionMessage(e)
+            cli::cli_warn("Action plan PDF export failed: {err_msg}")
             shiny::showNotification(
-              paste(i18n$t("action_plan_pdf_failed"), ":",
-                    conditionMessage(e)),
-              type = "error", duration = 8
+              paste(i18n$t("action_plan_pdf_failed"), ":", err_msg),
+              type = "error", duration = NULL
             )
             NULL
           }
         )
         if (is.null(result)) {
-          writeLines("PDF generation failed", file)
+          # The download response must produce a file. Writing a
+          # plain-text marker keeps the symptom visible to the user
+          # (the file won't open as a PDF) while the sticky error
+          # toast above carries the actual diagnostic.
+          writeLines(
+            c("PDF generation failed.",
+              "See the in-app error toast for the underlying cause."),
+            file
+          )
         }
       }
     )

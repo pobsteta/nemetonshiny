@@ -607,17 +607,40 @@
       id: id,
       html: html,
       type: 'default',
+      // No auto-dismiss: the server-side hideDownloadToast handler
+      // (sent at the end of the downloadHandler content function)
+      // removes the toast exactly when the file is ready. The
+      // 8 s auto-dismiss we used to have was too short for Quarto
+      // + xelatex exports (typically 15-30 s) and the spinner
+      // vanished before the browser's save dialog appeared.
       duration: null,
       closeButton: false
     });
     if (window._nemetonDownloadToastTimer) {
       clearTimeout(window._nemetonDownloadToastTimer);
     }
+    // Safety net: even if the server-side hide message is lost or
+    // the export crashes between the click and the file response,
+    // the toast disappears on its own after 2 min.
     window._nemetonDownloadToastTimer = setTimeout(function() {
       Shiny.notifications.remove(id);
       window._nemetonDownloadToastTimer = null;
-    }, 8000);
+    }, 120000);
   };
+
+  // Server-side dismiss: called by downloadHandler::content right
+  // before returning, so the spinner disappears synchronously with
+  // (or just before) the browser's save dialog.
+  if (window.Shiny && Shiny.addCustomMessageHandler) {
+    Shiny.addCustomMessageHandler('nemetonHideDownloadToast', function(message) {
+      if (!Shiny.notifications) return;
+      Shiny.notifications.remove('nemeton-download-toast');
+      if (window._nemetonDownloadToastTimer) {
+        clearTimeout(window._nemetonDownloadToastTimer);
+        window._nemetonDownloadToastTimer = null;
+      }
+    });
+  }
 
 
   // ============================================================
