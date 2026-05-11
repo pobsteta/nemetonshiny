@@ -1,3 +1,32 @@
+# nemetonshiny 0.23.6.9000 (dev)
+
+### Plan d'actions — Exports GPKG/PDF
+
+* `feat(action_plan)` — export GeoPackage : nouvelle colonne
+  **`annee_civile`** ajoutée à la couche `actions`, dérivée de
+  `current_year + annee_cible - 1L`. Le champ `annee_cible` du
+  schéma reste un offset relatif 1..HORIZON (utilisé par le LLM
+  et les calculs internes du plan) ; la colonne `annee_civile`
+  matérialise l'année calendaire au moment de l'export pour les
+  consommateurs QGIS/terrain. Ancre = année courante au clic
+  d'export (pas de stockage). Placée juste après `annee_cible`
+  dans la couche `actions`. Test de régression
+  `export_action_plan_gpkg writes actions + ugf layers` étendu
+  pour vérifier la présence + la valeur + l'ordre des colonnes.
+* `feat(action_plan)` — clic sur **Exporter GeoPackage** ou
+  **Exporter PDF** affiche maintenant un **toast roue dentée** en
+  bas à droite pendant la phase d'export. `downloadButton` ne
+  fournit aucun événement côté serveur (l'ouverture de la boîte
+  de dialogue de téléchargement est strictement client), donc
+  le toast est déclenché par un `onclick` JS qui appelle un
+  helper `nemetonShowDownloadToast()` ajouté dans `custom.js`.
+  Le toast utilise `Shiny.notifications.show` (même slot visuel
+  que `shiny::showNotification`) avec `duration: null,
+  closeButton: false`, et s'auto-dismisse après 8 s. Idempotent
+  sur re-clic (le timer est réinitialisé). Deux nouvelles clés
+  i18n FR/EN : `action_plan_export_running_gpkg`,
+  `action_plan_export_running_pdf`.
+
 # nemetonshiny 0.23.6 (2026-05-11)
 
 ### Plan d'actions — chat IA : surface / volume / coûts conservés
