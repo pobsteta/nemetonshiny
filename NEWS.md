@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.9.9000 (dev)
+# nemetonshiny 0.23.10 (2026-05-11)
 
 ### Envoyer vers Terrain — auto-refresh carte + légende correcte
 
