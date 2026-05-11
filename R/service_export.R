@@ -2257,6 +2257,13 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   data_file <- file.path(temp_dir, "action_plan_data.rds")
   saveRDS(data, data_file)
 
+  # quiet = FALSE so the underlying quarto / xelatex output is
+  # streamed to the R console. "Error running quarto CLI from R"
+  # is otherwise the only thing a user / dev sees, which makes
+  # diagnosing LaTeX errors (missing package, malformed
+  # \includegraphics, longtable issues) effectively impossible.
+  # The synthesis report (generate_pdf_report) already runs with
+  # quiet = FALSE for the same reason.
   tryCatch({
     quarto::quarto_render(
       input = qmd,
@@ -2265,7 +2272,7 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
         data_file = normalizePath(data_file, winslash = "/", mustWork = FALSE),
         language = language
       ),
-      quiet = TRUE
+      quiet = FALSE
     )
     pdf_out <- sub("\\.qmd$", ".pdf", qmd)
     if (file.exists(pdf_out)) {
