@@ -177,8 +177,12 @@ for (ug in data$ugfs) {
 
   # ---- Action table (longtable so it breaks across pages) ----
   cat("\\vspace{0.4em}\n")
-  cat("{\\small\n")
-  cat("\\begin{longtable}{lllrrrl}\n\\toprule\n")
+  # `\small` lives INSIDE the longtable environment on purpose:
+  # Pandoc preserves `\begin{longtable}...\end{longtable}` as raw
+  # LaTeX, but a bare `{` / `}` wrapper on its own paragraph is
+  # treated as plain text and rendered verbatim. The declaration
+  # inside the env scopes to the end of the group automatically.
+  cat("\\begin{longtable}{lllrrrl}\n\\small\n\\toprule\n")
   hdr <- if (identical(lang, "fr")) {
     c("Annee", "Type", "Priorite", "Cout (EUR)", "Revenu (EUR)",
       "Bilan (EUR)", "Objectifs")
@@ -201,7 +205,7 @@ for (ug in data$ugfs) {
         latex_escape(paste(a$objectifs_lies, collapse = ", ")),
         " \\\\\n", sep = "")
   }
-  cat("\\bottomrule\n\\end{longtable}\n}\n\n")
+  cat("\\bottomrule\n\\end{longtable}\n\n")
 
   # ---- Wide comments section ----
   comments <- Filter(function(a) nzchar(trimws(a$commentaire)), ug$actions)

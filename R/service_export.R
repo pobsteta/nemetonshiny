@@ -2082,23 +2082,58 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   temp_dir <- tempfile("nemeton_actions_")
   dir.create(temp_dir, recursive = TRUE)
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
-  has_maptiles <- requireNamespace("maptiles", quietly = TRUE) &&
-                  inherits(ug_sf, "sf")
+  has_sf       <- inherits(ug_sf, "sf")
+  has_maptiles <- requireNamespace("maptiles", quietly = TRUE)
   render_ug_map <- function(geom, out_path) {
-    if (!has_maptiles) return(NA_character_)
+    if (!has_sf) return(NA_character_)
     tryCatch({
       g_wgs84 <- sf::st_transform(geom, 4326)
-      tiles <- maptiles::get_tiles(g_wgs84, provider = "OpenStreetMap",
-                                   zoom = NULL, crop = TRUE,
-                                   cachedir = tempdir())
-      g_proj <- sf::st_transform(geom, sf::st_crs(tiles))
+      # Try OSM tiles first. Network failure / rate-limit / missing
+      # maptiles package each yields NULL — we still render a clean
+      # geometry-only fallback below so the report never ends up
+      # with a blank slot where the parcel map should be.
+      tiles <- if (has_maptiles) {
+        tryCatch(
+          maptiles::get_tiles(g_wgs84, provider = "OpenStreetMap",
+                              zoom = NULL, crop = TRUE,
+                              cachedir = tempdir()),
+          error = function(e) {
+            cli::cli_alert_info(
+              "UGF map: OSM tiles unavailable, drawing geometry only ({conditionMessage(e)})"
+            )
+            NULL
+          }
+        )
+      } else {
+        cli::cli_alert_info(
+          "UGF map: `maptiles` not installed, drawing geometry only"
+        )
+        NULL
+      }
+
       grDevices::png(out_path, width = 1200, height = 800, res = 180)
       on.exit(grDevices::dev.off(), add = TRUE)
       graphics::par(mar = c(0.5, 0.5, 0.5, 0.5))
-      maptiles::plot_tiles(tiles)
-      plot(sf::st_geometry(g_proj),
-           col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
-           border = "#1f77b4", lwd = 2.5, add = TRUE)
+
+      if (!is.null(tiles)) {
+        g_proj <- sf::st_transform(geom, sf::st_crs(tiles))
+        maptiles::plot_tiles(tiles)
+        plot(sf::st_geometry(g_proj),
+             col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
+             border = "#1f77b4", lwd = 2.5, add = TRUE)
+      } else {
+        # Tile-less fallback: geometry on a light neutral background
+        # with a small margin so the polygon doesn't touch the edge.
+        bbox <- sf::st_bbox(g_wgs84)
+        dx <- (bbox[["xmax"]] - bbox[["xmin"]]) * 0.08
+        dy <- (bbox[["ymax"]] - bbox[["ymin"]]) * 0.08
+        plot(sf::st_geometry(g_wgs84),
+             xlim = c(bbox[["xmin"]] - dx, bbox[["xmax"]] + dx),
+             ylim = c(bbox[["ymin"]] - dy, bbox[["ymax"]] + dy),
+             col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
+             border = "#1f77b4", lwd = 2.5,
+             axes = FALSE, main = "", bg = "#f6f6f6")
+      }
       out_path
     }, error = function(e) {
       cli::cli_warn("UGF map render failed: {conditionMessage(e)}")
