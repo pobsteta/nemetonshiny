@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.8.9000 (dev)
+# nemetonshiny 0.23.9 (2026-05-11)
 
 ### Envoyer vers Terrain — coexistence calibration + observations
 
