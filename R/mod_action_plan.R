@@ -1964,11 +1964,27 @@ mod_action_plan_server <- function(id, app_state) {
       )
       on.exit(shiny::removeNotification(thinking_id), add = TRUE)
 
+      # Send the full action payload (including the `quantite` block:
+      # volume, surface, nb_tiges, rdi, cout, revenu) so the LLM can
+      # preserve those values when emitting an updated action. The
+      # previous stripped summary forced the LLM to re-invent or null
+      # them out, which left the refined plan rows empty.
       cur_actions_json <- jsonlite::toJSON(
         lapply(plan_rv()$actions, function(a) {
-          list(id = a$id, ug_id = a$ug_id, type = a$type,
-               annee_cible = a$annee_cible, statut = a$statut,
-               priorite = a$priorite)
+          list(
+            id             = a$id,
+            ug_id          = a$ug_id,
+            type           = a$type,
+            type_libre     = a$type_libre,
+            intensite      = a$intensite,
+            annee_cible    = a$annee_cible,
+            duree          = a$duree,
+            priorite       = a$priorite,
+            statut         = a$statut,
+            objectifs_lies = a$objectifs_lies,
+            quantite       = a$quantite,
+            commentaire    = a$commentaire
+          )
         }),
         auto_unbox = TRUE, null = "null"
       )

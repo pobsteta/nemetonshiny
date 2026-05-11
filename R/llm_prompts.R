@@ -237,6 +237,75 @@ build_synthesis_prompt <- function(family_scores_df, language) {
 }
 
 
+#' Shared JSON schema for action-plan LLM prompts
+#'
+#' Used both by the generation prompt (`build_action_plan_prompt`) and by
+#' the chat refinement prompt (`build_action_plan_chat_prompt`) so the LLM
+#' always sees the same field list -- in particular the `quantite` block
+#' that drives surface/volume/cost columns in the action table.
+#'
+#' @noRd
+.action_plan_json_schema <- function() {
+  paste(
+    "JSON schema (return ONLY this object, no prose):",
+    "{",
+    '  "actions": [',
+    "    {",
+    '      "id": <existing action id when updating an action, else null>,',
+    '      "ug_id": <one of the allowed ug_ids>,',
+    '      "type": <one of: coupe_rase, eclaircie, depressage, plantation,',
+    "                regeneration, cloisonnement, desserte, observation,",
+    "                protection, entretien, autre>,",
+    '      "type_libre": <free text if type=autre, else null>,',
+    '      "intensite": <e.g. faible|moderee|forte|null>,',
+    '      "annee_cible": <integer in 1..HORIZON>,',
+    '      "duree": <integer years or null>,',
+    '      "priorite": <haute|moyenne|basse>,',
+    '      "objectifs_lies": [<family codes among C,B,W,A,F,L,T,R,S,P,E,N>],',
+    '      "quantite": {',
+    '        "volume_m3": <number or null>,',
+    '        "surface_ha": <number or null>,',
+    '        "nb_tiges": <integer or null>,',
+    '        "rdi": <number or null>,',
+    '        "cout_eur": <number or null, expense the action incurs>,',
+    '        "revenu_eur": <number or null, revenue the action generates, e.g. timber sales>',
+    "      },",
+    '      "source": {',
+    '        "origine": <"synthesis" | "family_C" | "family_B" | ...>,',
+    '        "extrait_texte": <verbatim short excerpt that justifies the action>',
+    "      },",
+    '      "commentaire": <short note or null>',
+    "    }",
+    "  ]",
+    "}",
+    sep = "\n"
+  )
+}
+
+
+#' Economic constraint hint shared by action-plan prompts
+#' @noRd
+.action_plan_econ_hint <- function(fr) {
+  if (fr) {
+    paste0(
+      "Contrainte economique : maximise le bilan cumule (somme des revenu_eur ",
+      "moins somme des cout_eur) sur l'horizon. Quand c'est possible, place ",
+      "une action genereuse en revenus AVANT une grosse depense, pour que les ",
+      "recettes financent les investissements. Evite les annees ou la depense ",
+      "cumulee depasse fortement la recette cumulee."
+    )
+  } else {
+    paste0(
+      "Economic constraint: maximise the cumulative balance (sum of revenu_eur ",
+      "minus sum of cout_eur) over the horizon. When possible, schedule a ",
+      "revenue-generating action BEFORE a large expense so that revenue funds ",
+      "investments. Avoid years where cumulative spending strongly exceeds ",
+      "cumulative income."
+    )
+  }
+}
+
+
 #' Build action plan extraction prompt
 #'
 #' @description
@@ -273,39 +342,7 @@ build_action_plan_prompt <- function(comments, ug_ids,
 
   ug_list_str <- paste(ug_ids, collapse = ", ")
 
-  schema <- paste(
-    "JSON schema (return ONLY this object, no prose):",
-    "{",
-    '  "actions": [',
-    "    {",
-    '      "ug_id": <one of the allowed ug_ids>,',
-    '      "type": <one of: coupe_rase, eclaircie, depressage, plantation,',
-    "                regeneration, cloisonnement, desserte, observation,",
-    "                protection, entretien, autre>,",
-    '      "type_libre": <free text if type=autre, else null>,',
-    '      "intensite": <e.g. faible|moderee|forte|null>,',
-    '      "annee_cible": <integer in 1..HORIZON>,',
-    '      "duree": <integer years or null>,',
-    '      "priorite": <haute|moyenne|basse>,',
-    '      "objectifs_lies": [<family codes among C,B,W,A,F,L,T,R,S,P,E,N>],',
-    '      "quantite": {',
-    '        "volume_m3": <number or null>,',
-    '        "surface_ha": <number or null>,',
-    '        "nb_tiges": <integer or null>,',
-    '        "rdi": <number or null>,',
-    '        "cout_eur": <number or null, expense the action incurs>,',
-    '        "revenu_eur": <number or null, revenue the action generates, e.g. timber sales>',
-    "      },",
-    '      "source": {',
-    '        "origine": <"synthesis" | "family_C" | "family_B" | ...>,',
-    '        "extrait_texte": <verbatim short excerpt that justifies the action>',
-    "      },",
-    '      "commentaire": <short note or null>',
-    "    }",
-    "  ]",
-    "}",
-    sep = "\n"
-  )
+  schema <- .action_plan_json_schema()
 
   intro <- if (fr) {
     paste0("Extrais un plan d'actions sylvicoles \u00e0 partir des commentaires ci-dessous. ",
@@ -343,23 +380,7 @@ build_action_plan_prompt <- function(comments, ug_ids,
     else    "(no family comment provided)"
   }
 
-  econ_hint <- if (fr) {
-    paste0(
-      "Contrainte economique : maximise le bilan cumule (somme des revenu_eur ",
-      "moins somme des cout_eur) sur l'horizon. Quand c'est possible, place ",
-      "une action genereuse en revenus AVANT une grosse depense, pour que les ",
-      "recettes financent les investissements. Evite les annees ou la depense ",
-      "cumulee depasse fortement la recette cumulee."
-    )
-  } else {
-    paste0(
-      "Economic constraint: maximise the cumulative balance (sum of revenu_eur ",
-      "minus sum of cout_eur) over the horizon. When possible, schedule a ",
-      "revenue-generating action BEFORE a large expense so that revenue funds ",
-      "investments. Avoid years where cumulative spending strongly exceeds ",
-      "cumulative income."
-    )
-  }
+  econ_hint <- .action_plan_econ_hint(fr)
 
   paste(
     intro,
@@ -395,14 +416,49 @@ build_action_plan_chat_prompt <- function(question, ctx,
       "L'utilisateur pose une question ou formule une demande sur le plan d'actions ",
       "sylvicole en cours. Si la demande implique d'ajouter ou modifier des actions, ",
       "renvoie EN PLUS de ta r\u00e9ponse texte un bloc JSON ",
-      "`{ \"actions\": [ ... ] }` strictement conforme au sch\u00e9ma utilis\u00e9 par ",
-      "build_action_plan_prompt (m\u00eames champs, m\u00eames contraintes), ",
+      "`{ \"actions\": [ ... ] }` strictement conforme au sch\u00e9ma ci-dessous ",
+      "(m\u00eames champs, m\u00eames contraintes), ",
       "encapsul\u00e9 dans un fence ```json ... ```. ",
       "Sinon, r\u00e9ponds en texte simple sans bloc JSON."
     )
   } else {
-    "The user asks a question or makes a request about the current silvicultural action plan. If the request implies adding or modifying actions, return - in addition to your text answer - a JSON block `{ \"actions\": [ ... ] }` strictly matching the schema used by build_action_plan_prompt (same fields, same constraints), wrapped in a ```json ... ``` fence. Otherwise reply in plain text only."
+    "The user asks a question or makes a request about the current silvicultural action plan. If the request implies adding or modifying actions, return - in addition to your text answer - a JSON block `{ \"actions\": [ ... ] }` strictly matching the schema below (same fields, same constraints), wrapped in a ```json ... ``` fence. Otherwise reply in plain text only."
   }
+
+  rules <- if (fr) {
+    paste0(
+      "R\u00e8gles pour le bloc JSON :\n",
+      "- Pour chaque action retourn\u00e9e (nouvelle OU modifi\u00e9e), remplis ",
+      "TOUS les champs du sch\u00e9ma, en particulier le bloc `quantite` ",
+      "(volume_m3, surface_ha, nb_tiges, rdi, cout_eur, revenu_eur). ",
+      "Mets une valeur num\u00e9rique chaque fois que l'information est ",
+      "disponible ou peut \u00eatre estim\u00e9e \u00e0 partir du plan courant et ",
+      "des commentaires ; n'utilise `null` que si l'estimation est ",
+      "vraiment impossible.\n",
+      "- Si tu modifies une action existante, reprends son `id` du plan ",
+      "courant et r\u00e9emets l'action enti\u00e8re (tous les champs), pas ",
+      "seulement les champs touch\u00e9s : les valeurs absentes seraient ",
+      "perdues.\n",
+      "- Pour une nouvelle action, laisse `id` \u00e0 null."
+    )
+  } else {
+    paste0(
+      "Rules for the JSON block:\n",
+      "- For every returned action (new OR updated), fill ALL schema ",
+      "fields, especially the `quantite` block (volume_m3, surface_ha, ",
+      "nb_tiges, rdi, cout_eur, revenu_eur). Use a numeric value ",
+      "whenever the information is available or can be estimated from ",
+      "the current plan and the comments; only use `null` when an ",
+      "estimate is truly impossible.\n",
+      "- When updating an existing action, reuse its `id` from the ",
+      "current plan and re-emit the whole action (all fields), not ",
+      "just the touched ones: missing values would be lost.\n",
+      "- For a new action, leave `id` as null."
+    )
+  }
+
+  econ_hint <- .action_plan_econ_hint(fr)
+  schema <- .action_plan_json_schema()
 
   syn <- ctx$comments$synthesis %||% ""
   fams <- ctx$comments$families %||% list()
@@ -419,13 +475,17 @@ build_action_plan_chat_prompt <- function(question, ctx,
   paste(
     intro,
     "",
+    rules,
+    "",
+    econ_hint,
+    "",
     if (fr) "UGF disponibles :" else "Available UGFs:",
     paste(ctx$ug_ids, collapse = ", "),
     "",
     if (fr) "Horizon (an) :" else "Horizon (years):",
     as.character(ctx$horizon),
     "",
-    if (fr) "Plan courant (resume JSON) :" else "Current plan (JSON summary):",
+    if (fr) "Plan courant (JSON) :" else "Current plan (JSON):",
     plan_summary_json,
     "",
     if (fr) "Commentaires de synthese :" else "Synthesis comments:",
@@ -433,6 +493,8 @@ build_action_plan_chat_prompt <- function(question, ctx,
     "",
     if (fr) "Commentaires par famille :" else "Per-family comments:",
     if (nzchar(fam_block)) fam_block else if (fr) "(aucun)" else "(none)",
+    "",
+    sub("HORIZON", as.character(ctx$horizon %||% 20L), schema, fixed = TRUE),
     "",
     if (fr) "Question :" else "Question:",
     question,
