@@ -1742,12 +1742,20 @@ TRANSLATIONS <- list(
     en = "Monitoring database not configured."
   ),
   monitoring_db_check_env = list(
-    fr = "Renseignez NEMETON_DB_URL ou les variables NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD.",
-    en = "Set NEMETON_DB_URL or the NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD variables."
+    fr = "Renseignez NEMETON_DB_URL ou les variables NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, ou ouvrez un projet pour utiliser le mode local (DuckDB).",
+    en = "Set NEMETON_DB_URL or the NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD variables, or open a project to use the local mode (DuckDB)."
   ),
   monitoring_db_connected = list(
     fr = "Base de suivi connect\u00e9e \u2014 %d zone(s) disponible(s).",
     en = "Monitoring database connected \u2014 %d zone(s) available."
+  ),
+  monitoring_db_local = list(
+    fr = "Mode local (DuckDB) \u2014 base de suivi monoposte stock\u00e9e dans le projet.",
+    en = "Local mode (DuckDB) \u2014 single-user monitoring database stored in the project."
+  ),
+  monitoring_db_local_hint = list(
+    fr = "Pour partager le suivi entre plusieurs utilisateurs, configurez Postgres+TimescaleDB via NEMETON_DB_URL.",
+    en = "To share monitoring between multiple users, configure Postgres+TimescaleDB via NEMETON_DB_URL."
   ),
   monitoring_timeseries_title = list(
     fr = "S\u00e9rie temporelle NDVI / NBR",

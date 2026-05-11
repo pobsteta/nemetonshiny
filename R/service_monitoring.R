@@ -34,7 +34,7 @@ run_ingestion_async <- function() {
   .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
 
   shiny::ExtendedTask$new(function(zone_id, start, end, bands,
-                                   max_cloud = 20) {
+                                   max_cloud = 20, db_url = "") {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -50,9 +50,13 @@ run_ingestion_async <- function() {
         loadNamespace("nemetonshiny")
       }
 
-      con <- get_monitoring_db_connection()
+      # The observer that calls $invoke() pre-resolves the URL from
+      # `app_state$current_project` (which workers can't reach) and
+      # passes it explicitly. An empty string means no PG env vars
+      # AND no project — i.e. no DB at all.
+      con <- get_monitoring_db_connection(db_url = db_url)
       if (is.null(con)) {
-        stop("Monitoring DB not configured (set NEMETON_DB_URL or NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD).")
+        stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local DuckDB fallback).")
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
@@ -102,7 +106,7 @@ run_fordead_async <- function() {
   shiny::ExtendedTask$new(function(aoi, dates_training, dates_monitoring,
                                    threshold_anomaly = 0.16,
                                    vegetation_index = "CRSWIR",
-                                   zone_id = NULL) {
+                                   zone_id = NULL, db_url = "") {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -115,9 +119,9 @@ run_fordead_async <- function() {
         loadNamespace("nemetonshiny")
       }
 
-      con <- get_monitoring_db_connection()
+      con <- get_monitoring_db_connection(db_url = db_url)
       if (is.null(con)) {
-        stop("Monitoring DB not configured (set NEMETON_DB_URL or NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD).")
+        stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local DuckDB fallback).")
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 

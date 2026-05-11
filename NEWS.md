@@ -1,3 +1,51 @@
+# nemetonshiny 0.23.17.9000 (dev)
+
+### Added — Suivi sanitaire en mode local (DuckDB)
+
+L'onglet *Suivi sanitaire* ne nécessite plus une instance
+PostgreSQL+TimescaleDB pour démarrer. Quand aucune variable
+d'environnement `NEMETON_DB_*` n'est définie et qu'un projet est
+chargé, la couche monitoring bascule automatiquement sur un fichier
+**DuckDB local** stocké à `<project>/data/monitoring.duckdb` (à
+côté de `samples.gpkg`).
+
+* **Bascule transparente** : `service_monitoring_db.R::.resolve_monitoring_db_url(project)`
+  inspecte les vars `NEMETON_DB_URL` / `NEMETON_DB_*` / `POSTGRESQL_ADDON_*`
+  et, à défaut, émet un `duckdb:///<project>/data/monitoring.duckdb`
+  exploitable par `nemeton::db_connect()` (v0.21.0).
+* **Pré-requis** : le package `duckdb (>= 0.8.0)` est ajouté en
+  `Suggests`. S'il n'est pas installé, la bascule reste silencieuse
+  et l'utilisateur voit l'ancien bandeau "Base non configurée".
+* **UI** : le bandeau de l'onglet *Suivi sanitaire* affiche
+  désormais **trois états** au lieu de deux :
+  - rouge : aucune base configurée et aucun projet chargé ;
+  - **bleu (NOUVEAU)** : *"Mode local (DuckDB) — base de suivi
+    monoposte stockée dans le projet"* avec un hint pour passer
+    en Postgres multi-utilisateurs ;
+  - vert : Postgres connecté, N zones disponibles.
+
+### Changed — Signatures async pour passer la DB URL au worker
+
+`run_ingestion_async()` et `run_fordead_async()` acceptent
+désormais un paramètre `db_url` dans leur `$invoke(...)`. Les
+observers dans `mod_monitoring.R` pré-résolvent l'URL via
+`.resolve_monitoring_db_url(app_state$current_project)` avant de
+lancer le worker — nécessaire parce que les futures workers ne
+voient pas `app_state` ni les vars Shiny.
+
+`get_monitoring_db_connection()` accepte deux nouveaux paramètres
+optionnels :
+* `project` : pour la résolution synchrone du fallback DuckDB
+  (utilisé par les 9 callsites dans `mod_monitoring.R`).
+* `db_url` : pour le path asynchrone qui reçoit l'URL déjà
+  résolue depuis l'observer.
+
+### Bumped — `Remotes: pobsteta/nemeton@v0.21.0`
+
+Pour bénéficier du backend DuckDB côté cœur (`nemeton::db_connect`
+détecte le scheme `duckdb://` et applique les migrations dans
+`inst/db/migrations/duckdb/`).
+
 # nemetonshiny 0.23.17 (2026-05-11)
 
 ### Plan d'actions — fond satellite Esri.WorldImagery

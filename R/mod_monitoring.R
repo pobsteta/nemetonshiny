@@ -296,7 +296,7 @@ mod_monitoring_server <- function(id, app_state) {
       if (!identical(input$mode, "health")) return(NULL)
       zone <- input$zone_id
       if (!isTRUE(nzchar(zone))) return(NULL)
-      con <- get_monitoring_db_connection()
+      con <- get_monitoring_db_connection(project = app_state$current_project)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       units <- app_state$current_project$indicators_sf
       validity_check_for_zone(con, as.integer(zone), units = units)
@@ -347,7 +347,7 @@ mod_monitoring_server <- function(id, app_state) {
                    c("1-faible", "2-moyenne", "3-forte", "4-sol-nu")
                  else
                    c("3-forte", "4-sol-nu")
-      con <- get_monitoring_db_connection()
+      con <- get_monitoring_db_connection(project = app_state$current_project)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       list_alerts_for_zone(con, as.integer(zone), classes = classes)
     })
@@ -527,7 +527,7 @@ mod_monitoring_server <- function(id, app_state) {
       },
       content = function(file) {
         i18n <- i18n_r()
-        con <- get_monitoring_db_connection()
+        con <- get_monitoring_db_connection(project = app_state$current_project)
         on.exit(close_monitoring_db_connection(con), add = TRUE)
         zone <- input$zone_id
         a <- list_alerts_for_zone(
@@ -572,7 +572,7 @@ mod_monitoring_server <- function(id, app_state) {
 
     zones <- shiny::reactive({
       zones_refresh()  # invalidate dependency
-      con <- get_monitoring_db_connection()
+      con <- get_monitoring_db_connection(project = app_state$current_project)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       list_monitoring_zones(con)
     })
@@ -625,7 +625,7 @@ mod_monitoring_server <- function(id, app_state) {
       has_project <- !is.null(app_state$current_project) &&
                      !is.null(app_state$current_project$id)
       has_db <- {
-        con <- get_monitoring_db_connection()
+        con <- get_monitoring_db_connection(project = app_state$current_project)
         on.exit(close_monitoring_db_connection(con), add = TRUE)
         !is.null(con)
       }
@@ -651,7 +651,7 @@ mod_monitoring_server <- function(id, app_state) {
         return(htmltools::tags$small(class = "text-danger d-block",
           i18n$t("monitoring_register_no_samples")))
       }
-      con <- get_monitoring_db_connection()
+      con <- get_monitoring_db_connection(project = app_state$current_project)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       if (is.null(con)) {
         return(htmltools::tags$small(class = "text-danger d-block",
@@ -676,7 +676,7 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 5)
         return()
       }
-      con <- get_monitoring_db_connection()
+      con <- get_monitoring_db_connection(project = app_state$current_project)
       if (is.null(con)) {
         shiny::showNotification(i18n$t("monitoring_register_no_db"),
                                 type = "error", duration = 5)
@@ -722,11 +722,16 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # DB status card — three states: not configured, connected with
-    # zero zones, connected with zones available.
+    # DB status card — four states:
+    #   1. nothing configured + no project loaded → warning
+    #   2. local DuckDB fallback active (no PG env, project loaded) → info
+    #   3. Postgres connected, zero zones → info
+    #   4. Postgres or DuckDB connected, zones available → success
     output$db_status <- shiny::renderUI({
-      i18n <- i18n_r()
-      con <- get_monitoring_db_connection()
+      i18n     <- i18n_r()
+      project  <- app_state$current_project
+      backend  <- monitoring_db_backend(project = project)
+      con      <- get_monitoring_db_connection(project = project)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
       if (is.null(con)) {
@@ -738,6 +743,24 @@ mod_monitoring_server <- function(id, app_state) {
         ))
       }
       n <- nrow(zones())
+      # Local DuckDB mode gets its own bandeau so the user sees it is
+      # a single-user fallback (not a misconfigured Postgres). Hint
+      # mentions how to switch to Postgres for multi-user setups.
+      if (identical(backend, "duckdb")) {
+        body <- if (n == 0L) {
+          paste(i18n$t("monitoring_zone_register_hint"),
+                i18n$t("monitoring_db_local_hint"), sep = " — ")
+        } else {
+          paste(sprintf(i18n$t("monitoring_db_connected"), n),
+                i18n$t("monitoring_db_local_hint"), sep = " — ")
+        }
+        return(.monitoring_status_card(
+          icon  = "database",
+          class = "border-info",
+          title = i18n$t("monitoring_db_local"),
+          body  = body
+        ))
+      }
       if (n == 0L) {
         return(.monitoring_status_card(
           icon  = "info-circle",
@@ -802,7 +825,12 @@ mod_monitoring_server <- function(id, app_state) {
         start     = as.Date(dr[1]),
         end       = as.Date(dr[2]),
         bands     = input$bands,
-        max_cloud = 20
+        max_cloud = 20,
+        # Pre-resolve here (the future worker can't see app_state) and
+        # pass the URL explicitly. The fallback to a local DuckDB file
+        # under <project>/data/monitoring.duckdb is selected when no
+        # PG env var is set — that's the v0.24.0 single-user path.
+        db_url    = .resolve_monitoring_db_url(app_state$current_project)
       )
     })
 
@@ -855,7 +883,7 @@ mod_monitoring_server <- function(id, app_state) {
     # from the modal "force anyway" path (G3 garde-fou).
     .invoke_fordead <- function() {
       i18n <- i18n_r()
-      con <- get_monitoring_db_connection()
+      con <- get_monitoring_db_connection(project = app_state$current_project)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       aoi <- get_monitoring_zone_aoi(con, as.integer(input$zone_id))
       if (is.null(aoi)) {
@@ -872,7 +900,8 @@ mod_monitoring_server <- function(id, app_state) {
         dates_monitoring  = as.character(input$date_range),
         threshold_anomaly = as.numeric(input$threshold_anomaly),
         vegetation_index  = input$vegetation_index,
-        zone_id           = as.integer(input$zone_id)
+        zone_id           = as.integer(input$zone_id),
+        db_url            = .resolve_monitoring_db_url(app_state$current_project)
       )
       .persist_monitoring_metadata()
       invisible(TRUE)

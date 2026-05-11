@@ -425,3 +425,124 @@ test_that("register_project_as_zone aborts when project has no UGF geometry", {
     )
   })
 })
+
+
+# ============================================================================
+# .resolve_monitoring_db_url — DuckDB local fallback (v0.24.0)
+# ============================================================================
+
+test_that(".resolve_monitoring_db_url passes through NEMETON_DB_URL", {
+  withr::local_envvar(c(NEMETON_DB_URL = "postgresql://u:p@host/db"))
+  expect_equal(
+    nemetonshiny:::.resolve_monitoring_db_url(NULL),
+    "postgresql://u:p@host/db"
+  )
+})
+
+test_that(".resolve_monitoring_db_url builds PG URL from env parts", {
+  clear_monitoring_db_envvars()
+  withr::local_envvar(c(
+    NEMETON_DB_HOST     = "127.0.0.1",
+    NEMETON_DB_NAME     = "nemeton",
+    NEMETON_DB_USER     = "nemeton",
+    NEMETON_DB_PASSWORD = "secret"
+  ))
+  url <- nemetonshiny:::.resolve_monitoring_db_url(NULL)
+  expect_match(url, "^postgresql://nemeton:secret@127\\.0\\.0\\.1:5432/nemeton$")
+})
+
+test_that(".resolve_monitoring_db_url returns DuckDB URL when project given and no PG env", {
+  skip_if_not_installed("duckdb")
+  clear_monitoring_db_envvars()
+  withr::with_tempdir({
+    project <- list(id = "p1",
+                    path = file.path(getwd(), "my_project"))
+    dir.create(project$path, recursive = TRUE)
+
+    url <- nemetonshiny:::.resolve_monitoring_db_url(project)
+    expect_match(url, "^duckdb:///")
+    expect_match(url, "monitoring\\.duckdb$")
+    # The parent <project>/data/ directory should have been created
+    # as a side effect (so DuckDB can later open the file).
+    expect_true(dir.exists(file.path(project$path, "data")))
+  })
+})
+
+test_that(".resolve_monitoring_db_url returns empty string when nothing usable", {
+  clear_monitoring_db_envvars()
+  expect_equal(
+    nemetonshiny:::.resolve_monitoring_db_url(NULL),
+    ""
+  )
+  # Project without path also yields empty
+  expect_equal(
+    nemetonshiny:::.resolve_monitoring_db_url(list(id = "no-path")),
+    ""
+  )
+})
+
+test_that("monitoring_db_backend classifies URLs correctly", {
+  clear_monitoring_db_envvars()
+
+  # Postgres URL
+  withr::with_envvar(c(NEMETON_DB_URL = "postgresql://u:p@h/db"), {
+    expect_equal(nemetonshiny:::monitoring_db_backend(NULL), "postgres")
+  })
+
+  # DuckDB fallback
+  if (requireNamespace("duckdb", quietly = TRUE)) {
+    withr::with_tempdir({
+      project <- list(id = "p1", path = file.path(getwd(), "p"))
+      dir.create(project$path)
+      expect_equal(
+        nemetonshiny:::monitoring_db_backend(project),
+        "duckdb"
+      )
+    })
+  }
+
+  # Nothing
+  expect_equal(nemetonshiny:::monitoring_db_backend(NULL), "none")
+})
+
+test_that("get_monitoring_db_connection opens a DuckDB file when no PG env is set", {
+  skip_if_not_installed("duckdb")
+  skip_if_not_installed("nemeton")
+  clear_monitoring_db_envvars()
+  withr::with_tempdir({
+    project <- list(id = "p1", path = file.path(getwd(), "proj"))
+    dir.create(project$path)
+
+    con <- nemetonshiny:::get_monitoring_db_connection(project = project)
+    on.exit(nemetonshiny:::close_monitoring_db_connection(con), add = TRUE)
+
+    expect_s4_class(con, "duckdb_connection")
+    expect_true(DBI::dbIsValid(con))
+    expect_true(file.exists(file.path(project$path, "data",
+                                      "monitoring.duckdb")))
+  })
+})
+
+test_that("get_monitoring_db_connection prefers explicit db_url over project", {
+  skip_if_not_installed("duckdb")
+  skip_if_not_installed("nemeton")
+  clear_monitoring_db_envvars()
+  withr::with_tempdir({
+    explicit <- file.path(getwd(), "explicit.duckdb")
+    # Pass a project too, but db_url should win.
+    project  <- list(id = "p1", path = file.path(getwd(), "proj"))
+    dir.create(project$path)
+
+    con <- nemetonshiny:::get_monitoring_db_connection(
+      project = project,
+      db_url  = paste0("duckdb:///", normalizePath(explicit, winslash = "/",
+                                                  mustWork = FALSE))
+    )
+    on.exit(nemetonshiny:::close_monitoring_db_connection(con), add = TRUE)
+
+    expect_true(file.exists(explicit))
+    # The project-derived path must NOT have been created (db_url won).
+    expect_false(file.exists(file.path(project$path, "data",
+                                       "monitoring.duckdb")))
+  })
+})
