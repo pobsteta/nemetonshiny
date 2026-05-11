@@ -904,7 +904,6 @@ mod_sampling_server <- function(id, app_state) {
       i18n <- get_i18n(app_state$language %||% "fr")
       units <- units_sf()
       plots <- sampling_rv$plots
-      obs   <- sampling_rv$observations
       bd    <- bdforet_sf()
 
       base <- leaflet::leaflet() |>
@@ -1055,54 +1054,14 @@ mod_sampling_server <- function(id, app_state) {
         overlays <- c(overlays, "Placettes")
       }
 
-      # Observation points sent from mod_action_plan ("Envoyer vers
-      # Terrain"). Their own leaflet group so the user can toggle them
-      # independently of the Base/Over calibration plan. Distinct
-      # green colour to stand apart from the Base/Over blue/orange.
-      if (!is.null(obs) && nrow(obs) > 0) {
-        obs_ll <- sf::st_transform(obs, 4326)
-        base <- leaflet::addCircleMarkers(
-          base, data = obs_ll,
-          radius = 6, weight = 1, color = "#333",
-          fillColor = "#2ca02c", fillOpacity = 0.9,
-          label = ~sprintf(
-            "%s — %s (UGF %s, an %s)",
-            plot_id, type, ug_id, annee_cible
-          ),
-          group = "Observations"
-        )
-        overlays <- c(overlays, "Observations")
-      }
-
-      # Unified legend: only the families actually drawn show up. The
-      # palette colour MUST match the fillColor used above so the
-      # legend swatch stays truthful when Base/Over/Observation appear
-      # in any combination.
-      present_types  <- character(0)
-      present_colors <- character(0)
-      if (!is.null(plots) && nrow(plots) > 0) {
-        for (tt in c("Base", "Over")) {
-          if (tt %in% plots$type) {
-            present_types  <- c(present_types,  tt)
-            present_colors <- c(present_colors,
-                                if (tt == "Base") "#1f77b4" else "#ff7f0e")
-          }
-        }
-      }
-      if (!is.null(obs) && nrow(obs) > 0) {
-        present_types  <- c(present_types,  "Observation")
-        present_colors <- c(present_colors, "#2ca02c")
-      }
-      if (length(present_types) > 0L) {
-        legend_pal <- leaflet::colorFactor(
-          palette = present_colors, domain = present_types
-        )
-        base <- leaflet::addLegend(
-          base, position = "bottomright",
-          pal = legend_pal, values = present_types,
-          title = i18n$t("sampling_legend_plots_title")
-        )
-      }
+      # NB: observation markers + dynamic legend are drawn via
+      # leafletProxy() in a dedicated observer below. Keeping them
+      # out of renderLeaflet avoids a full map redraw (and tile
+      # flicker / lost pan-zoom) every time mod_action_plan bumps
+      # samples_refresh after "Envoyer vers Terrain". We still
+      # declare the "Observations" overlay here so the layer control
+      # exposes the toggle from the first render.
+      overlays <- c(overlays, "Observations")
 
       base <- leaflet::addLayersControl(
         base,
@@ -1124,6 +1083,72 @@ mod_sampling_server <- function(id, app_state) {
       }
 
       base
+    })
+
+    # --- Live sync: Observations group + dynamic legend ---------------
+    # Reacts to changes in sampling_rv$observations (set either by
+    # .restore_samples on project change, or by the samples_refresh
+    # observer after mod_action_plan's "Envoyer vers Terrain"). Uses
+    # leafletProxy so the tile layer, pan/zoom and Base/Over markers
+    # stay put; only the "Observations" group and the plots legend
+    # are mutated. This is also what guarantees the map updates
+    # WITHOUT a full renderLeaflet redraw (which is suspended while
+    # the Terrain tab is hidden and would not fire when the user
+    # clicks "Envoyer vers Terrain" from the Plan d'actions tab).
+    shiny::observe({
+      i18n  <- get_i18n(app_state$language %||% "fr")
+      obs   <- sampling_rv$observations
+      plots <- sampling_rv$plots
+
+      proxy <- leaflet::leafletProxy(ns("map"))
+
+      leaflet::clearGroup(proxy, "Observations")
+      if (!is.null(obs) && nrow(obs) > 0) {
+        obs_ll <- sf::st_transform(obs, 4326)
+        leaflet::addCircleMarkers(
+          proxy, data = obs_ll,
+          radius = 6, weight = 1, color = "#333",
+          fillColor = "#2ca02c", fillOpacity = 0.9,
+          label = ~sprintf(
+            "%s — %s (UGF %s, an %s)",
+            plot_id, type, ug_id, annee_cible
+          ),
+          group = "Observations"
+        )
+      }
+
+      # Rebuild the legend in place. addLegend(colors=, labels=) is
+      # used instead of pal=colorFactor() because colorFactor sorts
+      # its domain alphabetically — that would map "Observation" to
+      # the orange swatch (Over's position 2) and "Over" to the green
+      # swatch (Observation's position 3), producing a legend that
+      # contradicts the markers actually drawn on the map.
+      leaflet::removeControl(proxy, "plots-legend")
+      present_labels <- character(0)
+      present_colors <- character(0)
+      if (!is.null(plots) && nrow(plots) > 0) {
+        if ("Base" %in% plots$type) {
+          present_labels <- c(present_labels, "Base")
+          present_colors <- c(present_colors, "#1f77b4")
+        }
+        if ("Over" %in% plots$type) {
+          present_labels <- c(present_labels, "Over")
+          present_colors <- c(present_colors, "#ff7f0e")
+        }
+      }
+      if (!is.null(obs) && nrow(obs) > 0) {
+        present_labels <- c(present_labels, "Observation")
+        present_colors <- c(present_colors, "#2ca02c")
+      }
+      if (length(present_labels) > 0L) {
+        leaflet::addLegend(
+          proxy, position = "bottomright",
+          colors = present_colors,
+          labels = present_labels,
+          title  = i18n$t("sampling_legend_plots_title"),
+          layerId = "plots-legend"
+        )
+      }
     })
 
     # --- Download handler: .qgz --------------------------------------

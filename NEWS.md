@@ -1,3 +1,42 @@
+# nemetonshiny 0.23.9.9000 (dev)
+
+### Envoyer vers Terrain — auto-refresh carte + légende correcte
+
+* `fix(samples)` — **légende inversée** : `leaflet::colorFactor()`
+  réordonne son `domain` par ordre **alphabétique** ; pour
+  `c("Base","Over","Observation")` il triait en
+  `c("Base","Observation","Over")` et mappait la palette
+  positionnellement → *Observation* héritait du saumon
+  `#ff7f0e` (place 2 = position d'*Over*) et *Over* héritait
+  du vert `#2ca02c` (place 3). Les pastilles légende
+  contredisaient les marqueurs sur la carte. Désormais la
+  légende est construite avec `addLegend(colors = …, labels =
+  …)` qui préserve strictement l'ordre passé.
+* `fix(samples)` — **la carte ne se mettait pas à jour
+  automatiquement** après *Envoyer vers Terrain* : l'output
+  `renderLeaflet` est suspendu (`suspendWhenHidden = TRUE`)
+  pendant que l'utilisateur reste sur l'onglet *Plan
+  d'actions* ; les changements de `sampling_rv$observations`
+  n'étaient observés qu'au retour sur l'onglet *Terrain* —
+  et encore, redessinaient la carte entière (flicker tuiles,
+  perte du pan/zoom). Désormais les points d'observation et la
+  légende sont gérés par un observer dédié `leafletProxy()`
+  qui synchronise **uniquement** le groupe `Observations` et
+  le contrôle légende (`layerId = "plots-legend"`). Conséquence :
+  - la carte se met à jour **immédiatement** au clic
+    *Envoyer vers Terrain*, même si l'onglet est masqué (le
+    proxy met les opérations en file d'attente côté serveur
+    et les rejoue dès que le client est connecté) ;
+  - les tuiles ne sont plus rechargées ;
+  - le pan/zoom courant est conservé ;
+  - la légende reflète strictement les marqueurs présents.
+* `refactor(samples)` — `renderLeaflet` ne dépend plus de
+  `sampling_rv$observations` ; le groupe `Observations` est
+  préinscrit dans le `addLayersControl` pour exposer le toggle
+  dès le premier render, et c'est le proxy qui peuple le
+  groupe. Le groupe peut être vide tant qu'aucun point n'a été
+  envoyé.
+
 # nemetonshiny 0.23.9 (2026-05-11)
 
 ### Envoyer vers Terrain — coexistence calibration + observations
