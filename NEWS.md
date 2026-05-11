@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.10.9000 (dev)
+# nemetonshiny 0.23.11 (2026-05-11)
 
 ### Terrain — légende plots restaurée au rendu initial
 
