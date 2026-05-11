@@ -777,20 +777,44 @@ mod_sampling_server <- function(id, app_state) {
     # startup (the inline isolate() block below handles that case).
     .restore_samples <- function(project) {
       if (is.null(project) || is.null(project$id)) return(invisible(NULL))
-      restored <- tryCatch(load_samples(project$id, layer = "plots"),
-                           error = function(e) NULL)
-      if (!is.null(restored) && inherits(restored, "sf") &&
-          nrow(restored) > 0L) {
-        sampling_rv$plots <- restored
+      # Single GPKG open: scan the available layers once and skip
+      # `load_samples()` (which would re-open the file via st_layers)
+      # for the layer that does not exist. Cheap, but matters when
+      # `current_project` is reassigned: every reassignment triggers
+      # this restore path and a stray double-open shows up.
+      project_path <- tryCatch(get_project_path(project$id),
+                               error = function(e) NULL)
+      gpkg_path <- if (!is.null(project_path))
+        file.path(project_path, "data", "samples.gpkg") else NULL
+      available <- if (!is.null(gpkg_path) && file.exists(gpkg_path)) {
+        tryCatch(sf::st_layers(gpkg_path)$name,
+                 error = function(e) character(0))
+      } else {
+        character(0)
+      }
+
+      if ("plots" %in% available) {
+        restored <- tryCatch(
+          sf::st_read(gpkg_path, layer = "plots", quiet = TRUE),
+          error = function(e) NULL
+        )
+        if (!is.null(restored) && inherits(restored, "sf") &&
+            nrow(restored) > 0L) {
+          sampling_rv$plots <- restored
+        }
       }
       # Observations are written by mod_action_plan's "Envoyer vers
       # Terrain" button into a sibling layer. Coexists with Base/Over
-      # without ever overwriting them. NULL when the layer is absent
-      # (== no observation point sent yet).
-      obs <- tryCatch(load_samples(project$id, layer = "observations"),
-                      error = function(e) NULL)
-      if (!is.null(obs) && inherits(obs, "sf") && nrow(obs) > 0L) {
-        sampling_rv$observations <- obs
+      # without ever overwriting them. Absent when no observation
+      # point has been sent yet.
+      if ("observations" %in% available) {
+        obs <- tryCatch(
+          sf::st_read(gpkg_path, layer = "observations", quiet = TRUE),
+          error = function(e) NULL
+        )
+        if (!is.null(obs) && inherits(obs, "sf") && nrow(obs) > 0L) {
+          sampling_rv$observations <- obs
+        }
       }
       if (!is.null(project$indicators_sf) &&
           inherits(project$indicators_sf, "sf") &&
@@ -1133,6 +1157,15 @@ mod_sampling_server <- function(id, app_state) {
     # the Terrain tab is hidden and would not fire when the user
     # clicks "Envoyer vers Terrain" from the Plan d'actions tab).
     shiny::observe({
+      # Gate behind the map being alive on the client. input$map_zoom
+      # is set by leaflet on its first render; before that the proxy
+      # would push messages into the void (and worse, accumulate
+      # them in the deferred-flush queue while every reactive change
+      # in unrelated tabs cascades here). Once the Sampling tab is
+      # opened and the map renders, this short-circuit lifts and the
+      # observer behaves normally.
+      shiny::req(input$map_zoom)
+
       i18n  <- get_i18n(app_state$language %||% "fr")
       obs   <- sampling_rv$observations
       plots <- sampling_rv$plots
