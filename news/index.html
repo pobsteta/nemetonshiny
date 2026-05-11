@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,26 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.7" id="nemetonshiny-0237-2026-05-11">nemetonshiny 0.23.7 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0237-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--exports-gpkg--pdf-0-23-7">Plan d’actions — Exports GPKG / PDF<a class="anchor" aria-label="anchor" href="#plan-dactions--exports-gpkg--pdf-0-23-7"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — export GeoPackage : nouvelle colonne <strong><code>annee_civile</code></strong> ajoutée à la couche <code>actions</code>, dérivée de <code>current_year + annee_cible - 1L</code>. Le champ <code>annee_cible</code> du schéma reste un offset relatif 1..HORIZON (utilisé par le LLM et les calculs internes du plan) ; la colonne <code>annee_civile</code> matérialise l’année calendaire au moment de l’export pour les consommateurs QGIS/terrain. Ancre = année courante au clic d’export (pas de stockage). Placée juste après <code>annee_cible</code> dans la couche <code>actions</code>. Test de régression <code>export_action_plan_gpkg writes actions + ugf layers</code> étendu pour vérifier la présence + la valeur + l’ordre des colonnes.</li>
+<li>
+<code>feat(action_plan)</code> — clic sur <strong>Exporter GeoPackage</strong> ou <strong>Exporter PDF</strong> affiche maintenant un <strong>toast roue dentée</strong> en bas à droite pendant la phase d’export. <code>downloadButton</code> ne fournit aucun événement côté serveur (l’ouverture de la boîte de dialogue de téléchargement est strictement client), donc le toast est déclenché par un <code>onclick</code> JS qui appelle un helper <code>nemetonShowDownloadToast()</code> ajouté dans <code>custom.js</code>. Le toast utilise <code>Shiny.notifications.show</code> (même slot visuel que <code><a href="https://rdrr.io/pkg/shiny/man/showNotification.html" class="external-link">shiny::showNotification</a></code>) avec <code>duration: null, closeButton: false</code>, et s’auto-dismisse après 8 s. Idempotent sur re-clic (le timer est réinitialisé). Deux nouvelles clés i18n FR/EN : <code>action_plan_export_running_gpkg</code>, <code>action_plan_export_running_pdf</code>.</li>
+<li>
+<code>feat(action_plan)</code> — <strong>rapport PDF Quarto refondu</strong>. Page de garde dédiée (titre, sous-titre, encadré bleu avec date / horizon / nombre d’actions / nombre d’UGF), header courant <em>fancyhdr</em>, synthèse globale en <code>tcolorbox</code> avec bilan coloré vert/rouge. Pour chaque UGF :
+<ul><li>une <strong>carte OSM</strong> centrée sur la parcelle est pré-rendue côté R via <code>maptiles::get_tiles(provider = "OpenStreetMap")</code>
+<ul><li>
+<code>plot_tiles()</code> + tracé du polygone (bleu translucide, bordure pleine). PNG 1200x800 sauvegardé dans le temp_dir et inclus via <code>\includegraphics</code>. Dégradation silencieuse si <code>maptiles</code> indisponible ou si la requête tuile échoue (le PDF est rendu sans la carte plutôt que de planter) ;</li>
+</ul></li>
+<li>une <strong>carte de synthèse UGF</strong> (surface, nb d’actions, coût, revenu, bilan coloré) en <code>tcolorbox</code> ;</li>
+<li>le <strong>tableau des actions</strong> passe en <code>longtable</code> (continue sur plusieurs pages si besoin), avec priorité en couleur (rouge / orange / vert) ;</li>
+<li>une <strong>zone “Commentaires” large</strong> en <code>tcolorbox</code> <em>breakable</em> sous le tableau, qui restitue le <code>commentaire</code> de chaque action non-vide avec l’année cible, le type et le statut coloré.</li>
+</ul><code>generate_action_plan_pdf()</code> enrichit le payload <code>data</code> passé au qmd : <code>commentaire</code> par action, <code>map_png</code> (chemin ou NA) par UGF, et factorise la création du <code>temp_dir</code> pour qu’il porte à la fois les PNG et le qmd rendu.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.23.6" id="nemetonshiny-0236-2026-05-11">nemetonshiny 0.23.6 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0236-2026-05-11"></a></h2>
 <div class="section level4">

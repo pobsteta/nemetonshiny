@@ -1,5 +1,57 @@
 # Changelog
 
+## nemetonshiny 0.23.7 (2026-05-11)
+
+#### Plan d’actions — Exports GPKG / PDF
+
+- `feat(action_plan)` — export GeoPackage : nouvelle colonne
+  **`annee_civile`** ajoutée à la couche `actions`, dérivée de
+  `current_year + annee_cible - 1L`. Le champ `annee_cible` du schéma
+  reste un offset relatif 1..HORIZON (utilisé par le LLM et les calculs
+  internes du plan) ; la colonne `annee_civile` matérialise l’année
+  calendaire au moment de l’export pour les consommateurs QGIS/terrain.
+  Ancre = année courante au clic d’export (pas de stockage). Placée
+  juste après `annee_cible` dans la couche `actions`. Test de régression
+  `export_action_plan_gpkg writes actions + ugf layers` étendu pour
+  vérifier la présence + la valeur + l’ordre des colonnes.
+- `feat(action_plan)` — clic sur **Exporter GeoPackage** ou **Exporter
+  PDF** affiche maintenant un **toast roue dentée** en bas à droite
+  pendant la phase d’export. `downloadButton` ne fournit aucun événement
+  côté serveur (l’ouverture de la boîte de dialogue de téléchargement
+  est strictement client), donc le toast est déclenché par un `onclick`
+  JS qui appelle un helper `nemetonShowDownloadToast()` ajouté dans
+  `custom.js`. Le toast utilise `Shiny.notifications.show` (même slot
+  visuel que
+  [`shiny::showNotification`](https://rdrr.io/pkg/shiny/man/showNotification.html))
+  avec `duration: null, closeButton: false`, et s’auto-dismisse après
+  8 s. Idempotent sur re-clic (le timer est réinitialisé). Deux
+  nouvelles clés i18n FR/EN : `action_plan_export_running_gpkg`,
+  `action_plan_export_running_pdf`.
+- `feat(action_plan)` — **rapport PDF Quarto refondu**. Page de garde
+  dédiée (titre, sous-titre, encadré bleu avec date / horizon / nombre
+  d’actions / nombre d’UGF), header courant *fancyhdr*, synthèse globale
+  en `tcolorbox` avec bilan coloré vert/rouge. Pour chaque UGF :
+  - une **carte OSM** centrée sur la parcelle est pré-rendue côté R via
+    `maptiles::get_tiles(provider = "OpenStreetMap")`
+    - `plot_tiles()` + tracé du polygone (bleu translucide, bordure
+      pleine). PNG 1200x800 sauvegardé dans le temp_dir et inclus via
+      `\includegraphics`. Dégradation silencieuse si `maptiles`
+      indisponible ou si la requête tuile échoue (le PDF est rendu sans
+      la carte plutôt que de planter) ;
+  - une **carte de synthèse UGF** (surface, nb d’actions, coût, revenu,
+    bilan coloré) en `tcolorbox` ;
+  - le **tableau des actions** passe en `longtable` (continue sur
+    plusieurs pages si besoin), avec priorité en couleur (rouge / orange
+    / vert) ;
+  - une **zone “Commentaires” large** en `tcolorbox` *breakable* sous le
+    tableau, qui restitue le `commentaire` de chaque action non-vide
+    avec l’année cible, le type et le statut coloré.
+
+  `generate_action_plan_pdf()` enrichit le payload `data` passé au qmd :
+  `commentaire` par action, `map_png` (chemin ou NA) par UGF, et
+  factorise la création du `temp_dir` pour qu’il porte à la fois les PNG
+  et le qmd rendu.
+
 ## nemetonshiny 0.23.6 (2026-05-11)
 
 #### Plan d’actions — chat IA : surface / volume / coûts conservés
