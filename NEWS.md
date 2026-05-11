@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.15.9000 (dev)
+# nemetonshiny 0.23.16 (2026-05-11)
 
 ### Export PDF Plan d'actions — \small retiré + verbose quarto
 
