@@ -1,3 +1,17 @@
+# nemetonshiny 0.23.7.9000 (dev)
+
+### Plan d'actions — toast PDF unifié
+
+* `fix(action_plan)` — l'export PDF avait deux toasts qui se
+  superposaient au clic sur **Exporter PDF** : un toast
+  serveur (`showNotification` avec icône `spinner` et libellé
+  *« Génération du PDF en cours… »*, dans `downloadHandler`) et
+  le nouveau toast client roue dentée v0.23.7 (helper JS
+  `nemetonShowDownloadToast`). Le serveur est retiré : on garde
+  uniquement le toast client, cohérent avec **Exporter
+  GeoPackage**. Clé i18n orpheline `action_plan_pdf_generating`
+  supprimée.
+
 # nemetonshiny 0.23.7 (2026-05-11)
 
 ### Plan d'actions — Exports GPKG / PDF

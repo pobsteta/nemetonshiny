@@ -199,10 +199,6 @@ TRANSLATIONS <- list(
     fr = "Génération du rapport PDF…",
     en = "Generating PDF report…"
   ),
-  action_plan_pdf_generating = list(
-    fr = "Génération du PDF en cours...",
-    en = "Generating PDF..."
-  ),
   action_plan_pdf_failed = list(
     fr = "Échec de la génération du PDF",
     en = "PDF generation failed"

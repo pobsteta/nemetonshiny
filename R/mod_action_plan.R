@@ -1595,12 +1595,10 @@ mod_action_plan_server <- function(id, app_state) {
           writeLines("No data available", file)
           return()
         }
-        notif <- shiny::showNotification(
-          htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
-                         i18n$t("action_plan_pdf_generating")),
-          type = "message", duration = NULL
-        )
-        on.exit(shiny::removeNotification(notif), add = TRUE)
+        # The "Generation en cours" toast is now driven entirely by the
+        # client-side onclick on the download button
+        # (nemetonShowDownloadToast), the same pattern used by the
+        # GeoPackage export — keeping a single, coherent feedback.
         visible <- actions_df()
         result <- tryCatch(
           generate_action_plan_pdf(
