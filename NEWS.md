@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.12.9000 (dev)
+# nemetonshiny 0.23.13 (2026-05-11)
 
 ### Rapport PDF Plan d'actions — accolades parasites + cartes UGF restaurées
 
