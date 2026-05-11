@@ -1,5 +1,47 @@
 # Changelog
 
+## nemetonshiny 0.23.9 (2026-05-11)
+
+#### Envoyer vers Terrain — coexistence calibration + observations
+
+- `fix(samples)` — bug critique : cliquer **Envoyer vers Terrain** dans
+  l’onglet *Plan d’actions* **détruisait silencieusement les placettes
+  de calibration Base/Over** générées dans l’onglet *Terrain*.
+  `save_samples()` faisait `unlink(samples.gpkg)` puis réécrivait le
+  fichier avec uniquement les points d’observation. Désormais :
+  - `save_samples(project_id, plots, layer = "plots"|"observations")`
+    écrit **un layer nommé** dans `samples.gpkg` avec
+    `append = FALSE, delete_layer = TRUE` — il remplace uniquement le
+    layer cible et préserve les autres ;
+  - les placettes de calibration (`mod_sampling`) restent dans le layer
+    `plots` (par défaut) ; les points d’observation (`mod_action_plan`)
+    sont écrits dans le layer `observations` ;
+  - `samples_count` / `samples_generated_at` (metadata projet) ne sont
+    mis à jour **que** pour le layer `plots` — l’envoi d’observations ne
+    perturbe plus la comptabilité du plan d’échantillonnage ;
+  - `load_samples(project_id, layer = "plots"|"observations")` lit un
+    layer spécifique et renvoie `NULL` si le layer est absent
+    (silencieusement).
+- `feat(samples)` — la **carte de l’onglet Terrain** affiche désormais
+  les **deux familles de points en simultané** :
+  - Base / Over (bleu / orange, parcours TSP, icônes orienteering
+    Départ/Arrivée) — inchangés ;
+  - Observations issues du plan d’actions (vert `#2ca02c`, groupe
+    leaflet dédié `Observations` toggle-able dans le layer control,
+    popup *plot_id — observation (UGF, an)*).
+- `feat(samples)` — **légende dynamique** : ne liste que les familles
+  effectivement présentes dans `plots` et `observations`. Plus de
+  `addLegend(values = c("Base","Over"))` en dur. Nouvelle clé i18n
+  `sampling_legend_plots_title` (FR *Placettes* / EN *Plots*).
+- `feat(samples)` — `mod_sampling` réagit à `samples_refresh` : quand
+  `mod_action_plan` bumpe ce signal après *Envoyer vers Terrain*, le
+  layer `observations` est rechargé sans changer de projet.
+- Couverture : test régression
+  `save_samples 'observations' layer coexists with 'plots' layer`
+  (couche calibration préservée par un save observations successif, et
+  inversement ; `samples_count` reste sur `plots` ; couche inconnue →
+  NULL silencieux).
+
 ## nemetonshiny 0.23.8 (2026-05-11)
 
 #### Plan d’actions — toast PDF unifié

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.23.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,32 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.9" id="nemetonshiny-0239-2026-05-11">nemetonshiny 0.23.9 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0239-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="envoyer-vers-terrain--coexistence-calibration--observations-0-23-9">Envoyer vers Terrain — coexistence calibration + observations<a class="anchor" aria-label="anchor" href="#envoyer-vers-terrain--coexistence-calibration--observations-0-23-9"></a></h4>
+<ul><li>
+<code>fix(samples)</code> — bug critique : cliquer <strong>Envoyer vers Terrain</strong> dans l’onglet <em>Plan d’actions</em> <strong>détruisait silencieusement les placettes de calibration Base/Over</strong> générées dans l’onglet <em>Terrain</em>. <code>save_samples()</code> faisait <code>unlink(samples.gpkg)</code> puis réécrivait le fichier avec uniquement les points d’observation. Désormais :
+<ul><li>
+<code>save_samples(project_id, plots, layer = "plots"|"observations")</code> écrit <strong>un layer nommé</strong> dans <code>samples.gpkg</code> avec <code>append = FALSE, delete_layer = TRUE</code> — il remplace uniquement le layer cible et préserve les autres ;</li>
+<li>les placettes de calibration (<code>mod_sampling</code>) restent dans le layer <code>plots</code> (par défaut) ; les points d’observation (<code>mod_action_plan</code>) sont écrits dans le layer <code>observations</code> ;</li>
+<li>
+<code>samples_count</code> / <code>samples_generated_at</code> (metadata projet) ne sont mis à jour <strong>que</strong> pour le layer <code>plots</code> — l’envoi d’observations ne perturbe plus la comptabilité du plan d’échantillonnage ;</li>
+<li>
+<code>load_samples(project_id, layer = "plots"|"observations")</code> lit un layer spécifique et renvoie <code>NULL</code> si le layer est absent (silencieusement).</li>
+</ul></li>
+<li>
+<code>feat(samples)</code> — la <strong>carte de l’onglet Terrain</strong> affiche désormais les <strong>deux familles de points en simultané</strong> :
+<ul><li>Base / Over (bleu / orange, parcours TSP, icônes orienteering Départ/Arrivée) — inchangés ;</li>
+<li>Observations issues du plan d’actions (vert <code>#2ca02c</code>, groupe leaflet dédié <code>Observations</code> toggle-able dans le layer control, popup <em>plot_id — observation (UGF, an)</em>).</li>
+</ul></li>
+<li>
+<code>feat(samples)</code> — <strong>légende dynamique</strong> : ne liste que les familles effectivement présentes dans <code>plots</code> et <code>observations</code>. Plus de <code>addLegend(values = c("Base","Over"))</code> en dur. Nouvelle clé i18n <code>sampling_legend_plots_title</code> (FR <em>Placettes</em> / EN <em>Plots</em>).</li>
+<li>
+<code>feat(samples)</code> — <code>mod_sampling</code> réagit à <code>samples_refresh</code> : quand <code>mod_action_plan</code> bumpe ce signal après <em>Envoyer vers Terrain</em>, le layer <code>observations</code> est rechargé sans changer de projet.</li>
+<li>Couverture : test régression <code>save_samples 'observations' layer coexists with 'plots' layer</code> (couche calibration préservée par un save observations successif, et inversement ; <code>samples_count</code> reste sur <code>plots</code> ; couche inconnue → NULL silencieux).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.23.8" id="nemetonshiny-0238-2026-05-11">nemetonshiny 0.23.8 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0238-2026-05-11"></a></h2>
 <div class="section level4">
