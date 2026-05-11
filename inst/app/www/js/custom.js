@@ -585,6 +585,42 @@
   });
 
   // ============================================================
+  // Download Toast (client-side, no Shiny roundtrip)
+  //
+  // shiny::downloadButton uses a synchronous href fetch — there is
+  // no observable click event server-side, so the only way to give
+  // the user a "working..." feedback during a large GeoPackage / PDF
+  // export is to flash a notification straight from the button's
+  // onclick. We use Shiny.notifications because the styling matches
+  // the rest of the app (same toast slot as showNotification()).
+  //
+  // The toast auto-dismisses after 8 s; for very large exports the
+  // browser's own download dialog appears well before that and the
+  // user dismisses naturally. Idempotent: re-clicks reset the timer.
+  // ============================================================
+  window.nemetonShowDownloadToast = function(message) {
+    if (!window.Shiny || !Shiny.notifications) return;
+    var id = 'nemeton-download-toast';
+    var html = '<i class="fa fa-gear fa-spin me-2" aria-hidden="true"></i>' +
+               (message || 'Export en cours…');
+    Shiny.notifications.show({
+      id: id,
+      html: html,
+      type: 'default',
+      duration: null,
+      closeButton: false
+    });
+    if (window._nemetonDownloadToastTimer) {
+      clearTimeout(window._nemetonDownloadToastTimer);
+    }
+    window._nemetonDownloadToastTimer = setTimeout(function() {
+      Shiny.notifications.remove(id);
+      window._nemetonDownloadToastTimer = null;
+    }, 8000);
+  };
+
+
+  // ============================================================
   // Tour Persistence (localStorage)
   // ============================================================
 

@@ -114,17 +114,31 @@ mod_action_plan_ui <- function(id) {
           icon = shiny::icon("crosshairs"),
           class = "btn-sm btn-outline-success w-100 mb-2"
         ),
-        shiny::downloadButton(
-          ns("download_gpkg"),
-          label = i18n$t("action_plan_download_gpkg"),
-          icon = shiny::icon("database"),
-          class = "btn-sm btn-outline-success w-100 mb-2"
+        htmltools::tagAppendAttributes(
+          shiny::downloadButton(
+            ns("download_gpkg"),
+            label = i18n$t("action_plan_download_gpkg"),
+            icon = shiny::icon("database"),
+            class = "btn-sm btn-outline-success w-100 mb-2"
+          ),
+          onclick = sprintf(
+            "nemetonShowDownloadToast(%s);",
+            jsonlite::toJSON(i18n$t("action_plan_export_running_gpkg"),
+                             auto_unbox = TRUE)
+          )
         ),
-        shiny::downloadButton(
-          ns("download_pdf"),
-          label = i18n$t("action_plan_download_pdf"),
-          icon = shiny::icon("file-pdf"),
-          class = "btn-sm btn-outline-success w-100"
+        htmltools::tagAppendAttributes(
+          shiny::downloadButton(
+            ns("download_pdf"),
+            label = i18n$t("action_plan_download_pdf"),
+            icon = shiny::icon("file-pdf"),
+            class = "btn-sm btn-outline-success w-100"
+          ),
+          onclick = sprintf(
+            "nemetonShowDownloadToast(%s);",
+            jsonlite::toJSON(i18n$t("action_plan_export_running_pdf"),
+                             auto_unbox = TRUE)
+          )
         )
       )
     )

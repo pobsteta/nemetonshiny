@@ -550,6 +550,21 @@ export_action_plan_gpkg <- function(plan, ug_sf, file_path,
     return(FALSE)
   }
 
+  # `annee_cible` is stored as a relative integer (1..HORIZON). The GPKG is
+  # typically opened in QGIS / handed to forest workers who think in civil
+  # years, so we derive `annee_civile = current_year + annee_cible - 1`
+  # right after `annee_cible` (current year at export time, per agreed
+  # convention).
+  ref_year <- as.integer(format(Sys.Date(), "%Y"))
+  df$annee_civile <- ifelse(is.na(df$annee_cible),
+                            NA_integer_,
+                            ref_year + df$annee_cible - 1L)
+  cols <- names(df)
+  insert_at <- match("annee_cible", cols)
+  cols <- cols[cols != "annee_civile"]
+  cols <- append(cols, "annee_civile", after = insert_at)
+  df <- df[, cols, drop = FALSE]
+
   geom_idx <- match(as.character(df$ug_id), as.character(ug_sf$ug_id))
   ok <- !is.na(geom_idx)
   if (!any(ok)) {

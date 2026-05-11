@@ -283,7 +283,17 @@ test_that("export_action_plan_gpkg writes actions + ugf layers", {
   expect_true(all(c("actions", "ugf") %in% layers))
   acts <- sf::st_read(tmp, layer = "actions", quiet = TRUE)
   expect_equal(nrow(acts), 2L)
-  expect_true(all(c("ug_id", "type", "annee_cible") %in% names(acts)))
+  expect_true(all(c("ug_id", "type", "annee_cible", "annee_civile")
+                  %in% names(acts)))
+  # annee_civile must be the civil year derived from current year +
+  # annee_cible - 1. Sort by annee_cible to make the assertion stable.
+  acts <- acts[order(acts$annee_cible), ]
+  this_year <- as.integer(format(Sys.Date(), "%Y"))
+  expect_equal(acts$annee_civile,
+               c(this_year + 2L, this_year + 3L))
+  # The derived column must appear immediately after annee_cible.
+  nm <- names(acts)
+  expect_equal(match("annee_civile", nm), match("annee_cible", nm) + 1L)
 })
 
 test_that("can_edit_action_plan: NULL / unauthenticated => FALSE", {

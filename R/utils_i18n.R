@@ -191,6 +191,14 @@ TRANSLATIONS <- list(
     fr = "Exporter PDF",
     en = "Export PDF"
   ),
+  action_plan_export_running_gpkg = list(
+    fr = "Export GeoPackage en cours…",
+    en = "Exporting GeoPackage…"
+  ),
+  action_plan_export_running_pdf = list(
+    fr = "Génération du rapport PDF…",
+    en = "Generating PDF report…"
+  ),
   action_plan_pdf_generating = list(
     fr = "Génération du PDF en cours...",
     en = "Generating PDF..."
