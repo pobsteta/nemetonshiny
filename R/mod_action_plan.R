@@ -1525,7 +1525,10 @@ mod_action_plan_server <- function(id, app_state) {
                           geometry = sf::st_sfc(lapply(rows, function(r) r$geom),
                                                 crs = sf::st_crs(sf_ug)))
 
-      ok <- save_samples(project$id, sf_pts)
+      # Write to the dedicated "observations" layer so we never clobber
+      # the Base/Over calibration plots produced by mod_sampling (which
+      # live in the default "plots" layer of the same samples.gpkg).
+      ok <- save_samples(project$id, sf_pts, layer = "observations")
       if (isTRUE(ok)) {
         # Bump the cross-module signal so mod_sampling refreshes.
         app_state$samples_refresh <- (app_state$samples_refresh %||% 0L) + 1L

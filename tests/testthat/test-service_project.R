@@ -605,6 +605,65 @@ test_that("save_samples overwrites an existing samples.gpkg", {
   })
 })
 
+test_that("save_samples 'observations' layer coexists with 'plots' layer", {
+  # Regression: clicking "Envoyer vers Terrain" used to wipe the
+  # calibration plots because save_samples unlinked the whole gpkg.
+  # The two layers must now coexist independently.
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "Two Layers")
+        plots <- .test_sample_plots(n = 5)
+        obs_pts <- lapply(1:3, function(i) {
+          sf::st_point(c(566600 + i * 20, 6615300 + i * 20))
+        })
+        obs <- sf::st_sf(
+          plot_id     = sprintf("obs_%d", 1:3),
+          action_id   = sprintf("act_%d", 1:3),
+          ug_id       = "ug_1",
+          type        = "observation",
+          annee_cible = 4L,
+          priorite    = "haute",
+          geometry    = sf::st_sfc(obs_pts, crs = 2154)
+        )
+
+        expect_true(nemetonshiny:::save_samples(project$id, plots))
+        expect_true(nemetonshiny:::save_samples(project$id, obs,
+                                                layer = "observations"))
+
+        # Both layers must be readable.
+        loaded_plots <- nemetonshiny:::load_samples(project$id)
+        loaded_obs   <- nemetonshiny:::load_samples(project$id,
+                                                    layer = "observations")
+        expect_equal(nrow(loaded_plots), 5L)
+        expect_equal(nrow(loaded_obs),   3L)
+        expect_true(all(loaded_plots$type %in% c("Base", "Over")))
+        expect_true(all(loaded_obs$type == "observation"))
+
+        # Re-saving calibration plots must NOT wipe observations.
+        expect_true(nemetonshiny:::save_samples(project$id,
+                                                .test_sample_plots(n = 9)))
+        expect_equal(nrow(nemetonshiny:::load_samples(project$id)), 9L)
+        expect_equal(nrow(nemetonshiny:::load_samples(project$id,
+                                                      layer = "observations")),
+                     3L)
+
+        # Saving observations must NOT touch the calibration plots'
+        # metadata `samples_count` — it is reserved for the plan size.
+        meta <- nemetonshiny:::load_project_metadata(project$id)
+        expect_equal(meta$samples_count, 9L)
+
+        # Reading a missing layer returns NULL silently.
+        expect_null(nemetonshiny:::load_samples(project$id,
+                                                layer = "ghost"))
+      }
+    )
+  })
+})
+
 test_that("save_samples warns and returns FALSE for non-sf input", {
   expect_warning(
     result <- nemetonshiny:::save_samples("fake_project", data.frame(x = 1)),
