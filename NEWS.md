@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.13.9000 (dev)
+# nemetonshiny 0.23.14 (2026-05-11)
 
 ### Export PDF Plan d'actions — toast persistant + résilience renderUGmap
 
