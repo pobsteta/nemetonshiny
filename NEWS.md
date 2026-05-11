@@ -1,3 +1,18 @@
+# nemetonshiny 0.23.17 (2026-05-11)
+
+### Plan d'actions — fond satellite Esri.WorldImagery
+
+* `feat(report)` — les cartes UGF du PDF *Plan d'actions* passent
+  d'`OpenTopoMap` (relief topographique) à **`Esri.WorldImagery`**
+  (imagerie satellite gratuite, sans clé API). Permet de voir la
+  canopée réelle / l'occupation du sol derrière chaque parcelle
+  plutôt que des courbes de niveau abstraites.
+* Le rapport *Synthèse* reste sur `OpenTopoMap` (différent
+  domaine d'usage : score par famille d'indicateurs, le relief
+  est plus parlant qu'une photo aérienne).
+* Le fallback géométrie-seule (déclenché si les tuiles
+  satellite sont inaccessibles côté serveur) est inchangé.
+
 # nemetonshiny 0.23.16 (2026-05-11)
 
 ### Export PDF Plan d'actions — \small retiré + verbose quarto

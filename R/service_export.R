@@ -2084,12 +2084,13 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
   has_sf       <- inherits(ug_sf, "sf")
   has_maptiles <- requireNamespace("maptiles", quietly = TRUE)
-  # Mirror the proven recipe from generate_family_maps() (synthesis
-  # report — which renders parcel maps reliably): OpenTopoMap
-  # provider, explicit auto-zoom from the bbox extent, modest PNG
-  # size with res=150. Earlier iterations used OpenStreetMap with
-  # `zoom = NULL` and that gave us blank PNGs in production while
-  # the synthesis path keeps working.
+  # Satellite imagery (Esri.WorldImagery) as basemap for the
+  # action-plan PDF — the user wants to see the actual canopy /
+  # terrain behind each parcel rather than the topographic shading
+  # used by the synthesis report. Provider is free, no API key
+  # required. Zoom / PNG size / fallback logic mirror the recipe
+  # from generate_family_maps() that compiles reliably in
+  # production.
   render_ug_map <- function(geom, out_path) {
     if (!has_sf) return(NA_character_)
     result <- tryCatch({
@@ -2105,12 +2106,12 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
 
       tiles <- if (has_maptiles) {
         tryCatch(
-          maptiles::get_tiles(g_wgs84, provider = "OpenTopoMap",
+          maptiles::get_tiles(g_wgs84, provider = "Esri.WorldImagery",
                               zoom = auto_zoom, crop = TRUE,
                               cachedir = tempdir()),
           error = function(e) {
             cli::cli_alert_info(
-              "UGF map: OSM tiles unavailable, drawing geometry only ({conditionMessage(e)})"
+              "UGF map: satellite tiles unavailable, drawing geometry only ({conditionMessage(e)})"
             )
             NULL
           }
