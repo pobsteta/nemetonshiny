@@ -12,6 +12,193 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.23.5\] - 2026-05-09
+
+### Added
+
+- Plan d’actions chat: two new controls just below the history — **scope
+  radio** (all UGFs / current selection) and **overwrite checkbox**
+  (replace existing actions). Same semantics as the “Generate actions
+  (AI)” modal. When overwrite is on, the apply modal surfaces a warning
+  banner listing the number of targeted UGFs.
+- New i18n keys `action_plan_chat_scope_sel` and
+  `action_plan_chat_apply_overwrite_warn_fmt`.
+
+### Fixed
+
+- Language toggle FR ↔︎ EN in the navbar selector now actually applies.
+  Two combined bugs:
+  - The handler wrote to `nemeton.app_language` but `app_ui` reads
+    `getOption("nemeton.app_options")$language`, so the choice did not
+    survive a page reload. Now persists into the right option key.
+  - The handler showed a toast saying “Reload the page” without actually
+    reloading. Replaced by `session$reload()` so the UI rebuilds
+    automatically. Anti-init guard: if the new value equals
+    `app_state$language`, the observer returns early to avoid an
+    unwanted reload at session start.
+
+### Removed
+
+- Orphaned i18n key `language_changed` (was only used by the dropped
+  manual-reload toast).
+
+## \[0.23.4\] - 2026-05-09
+
+### Changed
+
+- Plan d’actions chat: role labels in the conversation history now go
+  through i18n. The raw LLM keys (“user” / “assistant”) no longer
+  surface in the UI; they render as **“Vous”** / **“Assistant”** (FR) or
+  **“You”** / **“Assistant”** (EN), switching live with the language
+  toggle. The underlying data model still uses the English keys so the
+  prompt builder is unchanged.
+
+### Added
+
+- New i18n keys `action_plan_chat_role_user` and
+  `action_plan_chat_role_assistant`.
+
+## \[0.23.3\] - 2026-05-09
+
+### Added
+
+- Plan d’actions chat: clicking **Send** now displays a persistent
+  **bottom-right toast** with a **spinning gear icon** and the label
+  *“L’IA réfléchit…”* / *“AI is thinking…”*. The toast stays visible
+  until the LLM response arrives or the call fails. Implemented via
+  `shiny::showNotification(duration = NULL, closeButton = FALSE)` paired
+  with an `on.exit(removeNotification(...))` hook so every return path
+  (success, LLM error, parse error) clears the toast.
+- New i18n key `action_plan_chat_thinking`.
+
+## \[0.23.2\] - 2026-05-09
+
+### Added
+
+- Plan d’actions: chat history **auto-scrolls to the bottom** on every
+  update so the latest message is always visible. Implemented via an
+  inline `setTimeout(0)` script appended to each `chat_history_ui`
+  render that sets `el.scrollTop = el.scrollHeight` on the
+  `.chat-history` div (now carrying a stable id).
+
+### Changed
+
+- Plan d’actions: chat panel **moves from a left sidebar to the right
+  sidebar**, sitting below the “Tableau des actions” panel. The nested
+  [`bslib::layout_sidebar`](https://rstudio.github.io/bslib/reference/sidebar.html)
+  introduced in 0.23.1 is replaced by a single right sidebar containing
+  both cards stacked top-to-bottom.
+- Plan d’actions: button label “Générer (IA)” renamed to “Générer les
+  actions (IA)” (FR) / “Generate actions (AI)” (EN) for clarity.
+
+## \[0.23.1\] - 2026-05-09
+
+### Added
+
+- Plan d’actions: **AI chat now lives in a persistent left sidebar**
+  (350 px, collapsible) instead of a modal. The conversation stays
+  visible while the user navigates map / table / Kanban. Layout switches
+  to a nested `layout_sidebar` (left chat / right action panel / main
+  content).
+
+### Changed
+
+- Plan d’actions: “Ouvrir le chat” button removed from the right action
+  panel (made redundant by the persistent sidebar). `input$open_chat`
+  observer (~30 LOC of `showModal`) dropped.
+
+### Fixed
+
+- Plan d’actions map ↔︎ table sync: clicking a parcelle on the **map**
+  now selects every corresponding row in the table. The
+  `input$map_shape_click` handler now also calls
+  [`DT::selectRows()`](https://rdrr.io/pkg/DT/man/proxy.html). The
+  reverse direction (table → map) was already working. No reactive loop:
+  `reactiveVal` dedupes by
+  [`identical()`](https://rdrr.io/r/base/identical.html) so the
+  round-trip stops after one pass.
+
+### Removed
+
+- i18n keys `action_plan_open_chat` and `action_plan_chat_input_label`
+  (orphaned by the chat refactor).
+
+## \[0.23.0\] - 2026-05-09
+
+### Added
+
+- Kanban: double-click on a card opens an **edit modal** pre-filled with
+  statut / priorité / année / commentaire. Primary use-case is editing
+  long commentaires (DT inline cell-edit is single-line). Delegated
+  dblclick listener at the board level with cleanup between renders.
+- Kanban cards: each card now displays the **commentaire** under the
+  type/year/UGF block when non-empty.
+- Kanban columns: cards are **sorted by `annee_realisation`** ascending
+  (NAs last) so each column reads chronologically.
+
+### Changed
+
+- Kanban: **free movement between any columns**. The proposée → validée
+  → planifiée → réalisée → abandonnée DAG no longer gates drag-drop.
+  `update_action_in_plan()` accepts any known status, rejects only
+  unknown strings. `is_valid_status_transition()` and
+  `ACTION_PLAN_TRANSITIONS` stay as informational documentation of the
+  natural workflow.
+- Kanban: per-card **“Déplacer”** dropdown removed (made redundant by
+  free drag-drop). The `kanban_move_*` dispatcher observer (~50 LOC) and
+  the unused `KANBAN_STATUSES` constant are gone too.
+- Action plan table: **action count** moved from bottom-left to
+  bottom-right. DT `dom` switched to a custom flex layout
+  (`<"top"f>rt<"… dt-bottom-row"<"… "lp>i>`) with scoped CSS rules to
+  override the default DT floats.
+- Add action modal: the **UGF dropdown** now shows `ug_label` (sorted)
+  instead of the raw `ug_id`; **Année cible** is now a real calendar
+  year (default `base_year + 1`, range `base_year + 1` …
+  `base_year + horizon`), converted to the internal offset on save.
+
+### Fixed
+
+- Add action modal: previously surfaced the internal offset (1, 2, …)
+  for “Année cible” and the raw `ug_id` for the UGF dropdown, both
+  confusing for end-users.
+
+### Removed
+
+- i18n keys `action_plan_kanban_move` and
+  `action_plan_kanban_drop_invalid_fmt` (orphaned by the Kanban
+  refactor).
+
+## \[0.22.4\] - 2026-05-09
+
+### Changed
+
+- Action plan table: the page-size selector (“Afficher 5/10/25/50/All”)
+  moved **below the table**, next to the info count and pagination. Top
+  of the table now only carries the global search box. DT `dom` switched
+  from `"lfrtip"` to `"frtilp"`.
+- Action plan table: only **UGF + Année** are frozen during horizontal
+  scroll. `DISPLAY_COLS` reordered so hidden columns (`id`, `ug_id`,
+  `annee_cible`) sit at the tail; `fixedColumns.leftColumns` reduced
+  from 5 to 2 to match the count of visible frozen columns (DT’s
+  FixedColumns counts every DOM column, hidden included).
+- Action plan map: leaflet legend titles now translated. `legend_title`
+  literals (`"annee"`, `"type"`, `"priority"`) swapped for
+  `i18n$t("action_plan_col_*")` so the map shows “Année / Type /
+  Priorité” in FR and “Year / Type / Priority” in EN, switching with the
+  language toggle.
+
+### Fixed
+
+- `mod_auth_server()` no longer crashes on startup in anonymous mode
+  when `NEMETON_AUTH_DEV_ROLES` is set. The dev-roles branch
+  interpolated `{auth_state$user_roles}` through
+  [`cli::cli_alert_info()`](https://cli.r-lib.org/reference/cli_alert.html)
+  / glue outside any reactive consumer, which `reactiveValues` rejects.
+  The parsed roles are now captured in a local `parsed_roles` before
+  being assigned to `auth_state$user_roles`; the log message reads the
+  local instead of the reactiveValues. Regression introduced by \#41 in
+  v0.22.3.
+
 ## [0.20.0](https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...v0.20.0) - 2026-04-24
 
 ### Added
