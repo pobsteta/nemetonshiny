@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.11.9000 (dev)
+# nemetonshiny 0.23.12 (2026-05-11)
 
 ### Terrain — fixes défensifs init (réactivité UI)
 
