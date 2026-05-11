@@ -1,3 +1,30 @@
+# nemetonshiny 0.24.2.9000 (dev)
+
+### Suivi sanitaire — diagnostic d'erreur visible dans le bandeau
+
+* `feat(monitoring)` — `get_monitoring_db_connection()` capture
+  désormais l'erreur réelle de `nemeton::db_connect()` (et celle
+  de `db_migrate()`) dans `.nemeton_env$.last_monitoring_db_error`.
+  Le bandeau *Base de suivi non configurée* affiche ensuite cette
+  erreur après un tiret cadratin, par ex.
+  *"Renseignez NEMETON_DB_URL… — Invalid DB URL: C:/Users/…/monitoring.duckdb"*.
+  Avant : `cli_warn` partait dans la console R (souvent invisible
+  pour l'utilisateur Shiny) et le bandeau restait générique.
+* `feat(monitoring)` — feature-flag : `.resolve_monitoring_db_url()`
+  vérifie via `getFromNamespace(".detect_driver", "nemeton")` que
+  la version installée de `nemeton` supporte bien le backend
+  DuckDB (introduite en v0.21.0). Si non, message explicite
+  *"Installed nemeton is too old (no DuckDB support). Re-install
+  pobsteta/nemeton@v0.21.0."* dans le bandeau et un `cli_warn`
+  une fois par session expliquant comment réparer (`pak::pak()`
+  + clear cache).
+* `feat(monitoring)` — capture aussi les erreurs de
+  `db_migrate()` (qui s'exécute juste après la connexion) sous
+  forme *"Migration failed: <msg>"*. Si la migration échoue,
+  la connexion est refermée proprement et `NULL` est retourné
+  (au lieu de laisser une connexion sans schéma qui crasherait
+  les requêtes suivantes).
+
 # nemetonshiny 0.24.2 (2026-05-11)
 
 ### Suivi sanitaire — 4 fixes UX critiques
