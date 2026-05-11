@@ -2084,18 +2084,29 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
   has_sf       <- inherits(ug_sf, "sf")
   has_maptiles <- requireNamespace("maptiles", quietly = TRUE)
+  # Mirror the proven recipe from generate_family_maps() (synthesis
+  # report — which renders parcel maps reliably): OpenTopoMap
+  # provider, explicit auto-zoom from the bbox extent, modest PNG
+  # size with res=150. Earlier iterations used OpenStreetMap with
+  # `zoom = NULL` and that gave us blank PNGs in production while
+  # the synthesis path keeps working.
   render_ug_map <- function(geom, out_path) {
     if (!has_sf) return(NA_character_)
     result <- tryCatch({
       g_wgs84 <- sf::st_transform(geom, 4326)
-      # Try OSM tiles first. Network failure / rate-limit / missing
-      # maptiles package each yields NULL — we still render a clean
-      # geometry-only fallback below so the report never ends up
-      # with a blank slot where the parcel map should be.
+      bbox <- sf::st_bbox(g_wgs84)
+      extent_size <- max(bbox[["xmax"]] - bbox[["xmin"]],
+                         bbox[["ymax"]] - bbox[["ymin"]])
+      auto_zoom <- if (is.finite(extent_size) && extent_size > 0) {
+        min(17L, max(13L, round(17 - log2(extent_size * 100))))
+      } else {
+        15L
+      }
+
       tiles <- if (has_maptiles) {
         tryCatch(
-          maptiles::get_tiles(g_wgs84, provider = "OpenStreetMap",
-                              zoom = NULL, crop = TRUE,
+          maptiles::get_tiles(g_wgs84, provider = "OpenTopoMap",
+                              zoom = auto_zoom, crop = TRUE,
                               cachedir = tempdir()),
           error = function(e) {
             cli::cli_alert_info(
@@ -2111,12 +2122,11 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
         NULL
       }
 
-      grDevices::png(out_path, width = 1200, height = 800, res = 180)
-      # Close the device explicitly so the PNG is fully flushed to
-      # disk before the post-tryCatch size check below. on.exit
-      # only fires when render_ug_map returns, leaving a window
-      # where the file exists but is 0 bytes — and any 0-byte PNG
-      # passed to \includegraphics crashes xelatex.
+      # Same dimensions as the family maps used by the synthesis
+      # report (which compile cleanly downstream). The device is
+      # closed explicitly before the post-tryCatch size check so a
+      # 0-byte PNG can't slip through to \includegraphics.
+      grDevices::png(out_path, width = 800, height = 600, res = 150)
       graphics::par(mar = c(0.5, 0.5, 0.5, 0.5))
 
       if (!is.null(tiles)) {
@@ -2126,13 +2136,10 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
              col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
              border = "#1f77b4", lwd = 2.5, add = TRUE)
       } else {
-        # Tile-less fallback: minimal `plot.sf` call. Earlier
-        # iterations passed bg / xlim / ylim — those args are not
-        # uniformly supported by plot.sf across sf versions and
-        # could produce an invalid PNG, which then makes
-        # \includegraphics fail in xelatex and brings the whole
-        # Quarto export down with it. Keep it boring on purpose:
-        # plot.sf auto-fits the geometry's bbox.
+        # Tile-less fallback: minimal `plot.sf` call. Args like
+        # bg / xlim / ylim are not uniformly supported across sf
+        # versions and can produce an invalid PNG that crashes
+        # xelatex downstream. plot.sf auto-fits the geometry bbox.
         plot(sf::st_geometry(g_wgs84),
              col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
              border = "#1f77b4", lwd = 2.5,

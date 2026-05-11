@@ -1,3 +1,33 @@
+# nemetonshiny 0.23.15 (2026-05-11)
+
+### Plan d'actions — cartes UGF alignées sur le rapport Synthèse + libellés boutons
+
+* `fix(export)` — porte la recette éprouvée de
+  `generate_family_maps()` (utilisée par le rapport PDF de
+  l'onglet *Synthèse* qui rend ses cartes correctement) sur
+  `render_ug_map()` de l'export PDF Plan d'actions :
+  - provider **OpenTopoMap** (au lieu d'OpenStreetMap) ;
+  - **zoom explicite** calculé à partir de la bbox de la
+    parcelle (`auto_zoom <- min(17, max(13, round(17 -
+    log2(extent_size * 100))))`) au lieu de `zoom = NULL` ;
+  - dimensions PNG **800×600 res=150** (au lieu de 1200×800
+    res=180) pour rester aligné avec la sortie qui passe
+    déjà en production sur la Synthèse.
+
+  Les autres garde-fous v0.23.14 (fermeture explicite du
+  device avant la validation taille, fallback géométrie
+  seule sans tuiles, sanity check `file.size < 100 →
+  NA_character_`) sont conservés.
+* `ui(action_plan)` — libellés des boutons d'export
+  uniformisés avec le reste de l'app :
+  - "Exporter GeoPackage" → "Télécharger le GeoPackage"
+    (FR) / "Download GeoPackage" (EN)
+  - "Exporter PDF" → "Télécharger le PDF" (FR) /
+    "Download PDF" (EN)
+
+  Cohérent avec les libellés `download_pdf` (rapport
+  Synthèse) et `download_gpkg` (export projet) déjà existants.
+
 # nemetonshiny 0.23.14 (2026-05-11)
 
 ### Export PDF Plan d'actions — toast persistant + résilience renderUGmap
