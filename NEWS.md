@@ -1,3 +1,30 @@
+# nemetonshiny 0.23.16 (2026-05-11)
+
+### Export PDF Plan d'actions — \small retiré + verbose quarto
+
+* `fix(report)` — l'export PDF échouait encore avec une
+  erreur générique `"Error running quarto CLI from R"` même
+  quand toutes les UGF tombaient en fallback géométrie-seule
+  (tuiles OSM inaccessibles côté serveur, ce qui est légitime
+  et géré). Cause probable : la déclaration `\small` placée
+  en v0.23.13 dans `inst/quarto/action_plan_template.qmd`
+  entre `\begin{longtable}{...}` et `\toprule` — booktabs +
+  longtable peuvent mal traiter une déclaration de taille à
+  cet endroit sur certaines toolchains xelatex et faire
+  planter tout le rendu.
+  Désormais le template **ne wrappe plus le longtable** dans
+  un changement de taille ; il utilise la taille par défaut
+  qui compile de manière fiable. Les `{` `}` parasites
+  corrigés en v0.23.13 ne reviennent pas (puisqu'il n'y a
+  plus de wrapper à mal sortir).
+* `debug(report)` — `quarto::quarto_render()` passe en
+  `quiet = FALSE` côté Plan d'actions (aligné avec la
+  Synthèse qui était déjà verbose). La sortie quarto / xelatex
+  est désormais streamée dans la console R, ce qui permet de
+  diagnostiquer une vraie erreur LaTeX (package manquant,
+  `\includegraphics` malformé, etc.) au lieu du seul
+  "Error running quarto CLI from R" générique.
+
 # nemetonshiny 0.23.15 (2026-05-11)
 
 ### Plan d'actions — cartes UGF alignées sur le rapport Synthèse + libellés boutons
