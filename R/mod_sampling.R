@@ -1054,14 +1054,51 @@ mod_sampling_server <- function(id, app_state) {
         overlays <- c(overlays, "Placettes")
       }
 
-      # NB: observation markers + dynamic legend are drawn via
-      # leafletProxy() in a dedicated observer below. Keeping them
-      # out of renderLeaflet avoids a full map redraw (and tile
-      # flicker / lost pan-zoom) every time mod_action_plan bumps
-      # samples_refresh after "Envoyer vers Terrain". We still
-      # declare the "Observations" overlay here so the layer control
-      # exposes the toggle from the first render.
+      # Observation markers themselves are drawn via leafletProxy()
+      # in a dedicated observer below so that clicking "Envoyer vers
+      # Terrain" from mod_action_plan does not force a full
+      # renderLeaflet redraw (tile flicker / lost pan-zoom). But the
+      # LEGEND must be present from the first render — moving it
+      # entirely to the proxy lost it intermittently because the
+      # observer can fire before the map element is initialised on
+      # the client, and queued leaflet-calls can be dropped in that
+      # window. So renderLeaflet computes the initial legend
+      # (reading observations under isolate() to avoid forcing a full
+      # redraw on every observation change), and the proxy observer
+      # re-renders the same legend in place when it does change
+      # (addLegend + layerId replaces the previous one).
       overlays <- c(overlays, "Observations")
+
+      initial_obs <- shiny::isolate(sampling_rv$observations)
+      present_labels <- character(0)
+      present_colors <- character(0)
+      if (!is.null(plots) && nrow(plots) > 0) {
+        if ("Base" %in% plots$type) {
+          present_labels <- c(present_labels, "Base")
+          present_colors <- c(present_colors, "#1f77b4")
+        }
+        if ("Over" %in% plots$type) {
+          present_labels <- c(present_labels, "Over")
+          present_colors <- c(present_colors, "#ff7f0e")
+        }
+      }
+      if (!is.null(initial_obs) && nrow(initial_obs) > 0) {
+        present_labels <- c(present_labels, "Observation")
+        present_colors <- c(present_colors, "#2ca02c")
+      }
+      if (length(present_labels) > 0L) {
+        # addLegend(colors=, labels=) preserves the order of the
+        # vectors strictly — using pal = colorFactor() would sort
+        # the domain alphabetically and swap Over/Observation in
+        # the legend swatches (regression from v0.23.9).
+        base <- leaflet::addLegend(
+          base, position = "bottomright",
+          colors = present_colors,
+          labels = present_labels,
+          title  = i18n$t("sampling_legend_plots_title"),
+          layerId = "plots-legend"
+        )
+      }
 
       base <- leaflet::addLayersControl(
         base,

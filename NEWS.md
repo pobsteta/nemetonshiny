@@ -1,3 +1,30 @@
+# nemetonshiny 0.23.11 (2026-05-11)
+
+### Terrain — légende plots restaurée au rendu initial
+
+* `fix(samples)` — **la légende Base/Over/Observation n'apparaissait
+  plus** sur la carte *Terrain* depuis v0.23.10. La cause : la
+  légende avait été déplacée entièrement dans un observer
+  `leafletProxy()` séparé de `renderLeaflet`. Quand l'observer
+  proxy se déclenche **avant** que l'élément carte ne soit monté
+  sur le client (cas fréquent au premier flush — l'ordre entre
+  outputs et observers n'est pas garanti), les messages
+  `leaflet-calls` arrivent à un client sans carte et **sont
+  perdus**. Du coup, plus aucune légende.
+* La légende initiale est désormais redessinée **dans
+  `renderLeaflet`** avec `addLegend(colors = …, labels = …)`
+  (toujours sans `colorFactor`, donc l'ordre saumon ↔ vert reste
+  correct — pas de régression v0.23.9 → v0.23.10). Lecture de
+  `sampling_rv$observations` en `isolate()` pour ne PAS forcer
+  un full-redraw de la carte quand seules les observations
+  changent : la mise à jour dynamique reste portée par
+  l'observer `leafletProxy()` (qui réémet `removeControl +
+  addLegend` avec `layerId = "plots-legend"`).
+* Net : légende correcte au premier render (cas le plus fréquent
+  côté utilisateur) ; mise à jour live conservée au clic
+  *Envoyer vers Terrain* (pas de flicker tuiles, pan/zoom
+  préservé).
+
 # nemetonshiny 0.23.10 (2026-05-11)
 
 ### Envoyer vers Terrain — auto-refresh carte + légende correcte
