@@ -424,6 +424,63 @@ entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 - Quand un changement implique aussi `nemeton`, faire les deux releases
   dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).
 
+## Workflow de push (branche dev → main)
+
+Le workflow est en **deux temps** et doit être suivi systématiquement.
+
+### Temps 1 — Push sur la branche dev (automatique)
+
+Par défaut Claude pousse **toujours** sur la branche de développement
+imposée par la session (ex. `claude/fix-action-plan-data-9wgpI`). Ce
+push **ne nécessite pas** de confirmation supplémentaire — c’est le
+fonctionnement nominal.
+
+Lors d’un commit fonctionnel sur la branche dev, Claude bumpe le **cycle
+dev** (`X.Y.Z.9000+` → `X.Y.Z.9001+`) conformément à la section *Cycle
+dev vs release stable*, met à jour `NEWS.md` et `DESCRIPTION`
+localement, commit, puis `git push -u origin <branche-dev>`. Pas de tag,
+pas de release GitHub à cette étape.
+
+### Temps 2 — Merge vers `main` + release (sur autorisation)
+
+**Après chaque push réussi sur la branche dev**, Claude **doit
+systématiquement demander** à l’utilisateur via une question dédiée s’il
+faut merger sur `main` et déclencher la release. Le récapitulatif
+présenté doit contenir, en suivant les règles déjà décrites dans
+*Consignes de release* et *Règles de cohérence* :
+
+1.  La **branche source** (ex. `claude/fix-action-plan-data-9wgpI`) et
+    le ou les commits concernés (SHA + sujet).
+2.  Le **bump de version stable** proposé (`X.Y.Z` → `X.Y.Z+1` patch /
+    `X.Y+1.0` minor / `X+1.0.0` major) déduit du type Conventional
+    Commit (`fix:` / `feat:` / `BREAKING CHANGE:`). Pour un bump
+    **majeur**, demander une confirmation supplémentaire explicite
+    (cf. *Règles de cohérence*).
+3.  Les **fichiers de version** à mettre à jour : `DESCRIPTION`,
+    `NEWS.md` (résumé de l’entrée datée), `CITATION.cff` si présent,
+    `CHANGELOG.md` si présent (section `[X.Y.Z] - YYYY-MM-DD` avec
+    Added/Changed/Fixed/Removed).
+4.  Le **tag git annoté** prévu (`git tag -a vX.Y.Z -m "Release X.Y.Z"`)
+    et son push (`git push origin vX.Y.Z`).
+5.  La **release GitHub** prévue
+    (`gh release create vX.Y.Z --generate-notes`).
+6.  L’impact sur le **`PLAN.md` du repo `nemeton`** : case à cocher +
+    entrée datée du journal mentionnant `nemetonshiny@SHA` et le cycle
+    dev (cf. *Consignes de release* étape 8).
+7.  Toute release couplée côté `nemeton` requise par l’ordre **cœur →
+    app** (l’app dépend du cœur, jamais l’inverse).
+8.  Vérification que les **badges du README** et la **doc pkgdown**
+    pointent vers la nouvelle version.
+
+Tant que l’utilisateur n’a pas explicitement autorisé ce temps 2, Claude
+**ne fait pas** : `git checkout main`, `git merge`,
+`git push origin main`, `git tag -a vX.Y.Z`, `git push origin vX.Y.Z`,
+ni `gh release create`.
+
+Une autorisation vaut **pour la seule release récapitulée** : chaque
+nouveau cycle (nouveau push dev → nouvelle question de merge) demande
+une nouvelle confirmation.
+
 ## Règles strictes
 
 1.  **Aucune logique métier** dans `nemetonshiny` (indicateurs,
@@ -449,3 +506,10 @@ entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 10. Quand je travaille sur une tâche longue, maintenir le `PLAN.md` du
     repo `nemeton` à jour à chaque étape terminée (chantier en cours +
     journal).
+11. **Push branche dev = automatique ; merge `main` + tag + release =
+    autorisation explicite**. Après chaque push réussi sur la branche
+    dev, Claude doit systématiquement demander s’il faut merger sur
+    `main` en présentant le récapitulatif décrit dans *Workflow de push
+    (branche dev → main)*. Sans autorisation explicite, jamais de
+    `git push origin main`, jamais de tag, jamais de
+    `gh release create`, jamais de merge.
