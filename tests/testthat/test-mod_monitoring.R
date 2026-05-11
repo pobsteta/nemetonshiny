@@ -45,7 +45,7 @@ test_that("mod_monitoring_server zones reactive returns empty df when DB is unav
   skip_if_not_installed("shiny")
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection = function() NULL,
+    get_monitoring_db_connection = function(...) NULL,
     list_monitoring_zones        = function(con) {
       data.frame(id = integer(0), name = character(0),
                  stringsAsFactors = FALSE)
@@ -75,7 +75,7 @@ test_that("mod_monitoring_server zones reactive forwards DB rows", {
   )
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function() "fake-con",
+    get_monitoring_db_connection  = function(...) "fake-con",
     list_monitoring_zones         = function(con) fake_zones,
     close_monitoring_db_connection = function(con) invisible(TRUE),
     {
@@ -99,7 +99,7 @@ test_that("db_status renders the 'unavailable' card when DB is not configured", 
   skip_if_not_installed("shiny")
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function() NULL,
+    get_monitoring_db_connection  = function(...) NULL,
     list_monitoring_zones         = function(con) {
       data.frame(id = integer(0), name = character(0),
                  stringsAsFactors = FALSE)
@@ -123,7 +123,7 @@ test_that("db_status renders the 'no zone' card when DB has zero zones", {
   skip_if_not_installed("shiny")
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function() "fake-con",
+    get_monitoring_db_connection  = function(...) "fake-con",
     list_monitoring_zones         = function(con) {
       data.frame(id = integer(0), name = character(0),
                  stringsAsFactors = FALSE)
@@ -150,7 +150,7 @@ test_that("db_status renders the 'connected' card with zone count", {
                            stringsAsFactors = FALSE)
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function() "fake-con",
+    get_monitoring_db_connection  = function(...) "fake-con",
     list_monitoring_zones         = function(con) fake_zones,
     close_monitoring_db_connection = function(con) invisible(TRUE),
     {
@@ -198,7 +198,7 @@ test_that("input$run with no zone selected fires a validation notification", {
   fake_task <- make_fake_ingest_task()
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function() "fake-con",
+    get_monitoring_db_connection  = function(...) "fake-con",
     list_monitoring_zones         = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async           = function() fake_task,
@@ -229,7 +229,7 @@ test_that("input$run with no band selected fires a validation notification", {
   fake_task <- make_fake_ingest_task()
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function() "fake-con",
+    get_monitoring_db_connection  = function(...) "fake-con",
     list_monitoring_zones         = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async           = function() fake_task,
@@ -257,7 +257,7 @@ test_that("input$run with valid inputs invokes the ingest task", {
   fake_task <- make_fake_ingest_task()
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function() "fake-con",
+    get_monitoring_db_connection  = function(...) "fake-con",
     list_monitoring_zones         = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async           = function() fake_task,
@@ -290,7 +290,7 @@ test_that("input$run with NA dates skips invocation", {
   fake_task <- make_fake_ingest_task()
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function() "fake-con",
+    get_monitoring_db_connection  = function(...) "fake-con",
     list_monitoring_zones         = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async           = function() fake_task,
@@ -318,7 +318,7 @@ test_that("server returns ingest_task in its returned list", {
   fake_task <- make_fake_ingest_task()
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function() "fake-con",
+    get_monitoring_db_connection  = function(...) "fake-con",
     list_monitoring_zones         = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async           = function() fake_task,

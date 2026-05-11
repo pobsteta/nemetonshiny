@@ -14,25 +14,42 @@
 #' 2. `POSTGRESQL_ADDON_*` then `NEMETON_DB_*` parts — assembled into
 #'    a postgresql URL (credentials URL-encoded so passwords with `@`,
 #'    `:`, `/` … don't break the parse).
-#' 3. None of the above set — return NULL so the Monitoring tab can
-#'    show a configuration hint instead of crashing.
+#' 3. No PG env vars set AND a `project` is passed → fall back to a
+#'    **local DuckDB file** at `<project$path>/data/monitoring.duckdb`.
+#'    This is the single-user mode introduced in nemeton v0.21.0 ; it
+#'    avoids requiring a TimescaleDB instance for individual users.
+#'    Requires the `duckdb` R package.
+#' 4. None of the above — return NULL so the Monitoring tab can show
+#'    a configuration hint instead of crashing.
 #'
 #' @name service_monitoring_db
 #' @keywords internal
 NULL
 
 
-#' Open a connection to the monitoring (TimescaleDB) database
+#' Open a connection to the monitoring database
+#'
+#' @param project Optional. The current project list (typically
+#'   `app_state$current_project`). When provided and no PG env var is
+#'   set, a local DuckDB file is used at
+#'   `<project$path>/data/monitoring.duckdb`. When NULL and no PG env
+#'   var is set, returns NULL — preserves the pre-0.24.0 behaviour for
+#'   callers that don't have a project in scope.
+#' @param db_url Optional pre-resolved URL. Takes precedence over
+#'   `project`. Used by async workers (`run_ingestion_async`,
+#'   `run_fordead_async`) that cannot access `app_state` and instead
+#'   receive the URL from the observer that fires them.
 #'
 #' @return A DBIConnection or NULL when no DB is configured / the
 #'   connection failed.
 #' @noRd
-get_monitoring_db_connection <- function() {
+get_monitoring_db_connection <- function(project = NULL, db_url = NULL) {
   if (!requireNamespace("nemeton", quietly = TRUE)) return(NULL)
 
-  url <- Sys.getenv("NEMETON_DB_URL", "")
-  if (!nzchar(url)) {
-    url <- .build_monitoring_db_url()
+  url <- if (!is.null(db_url) && nzchar(db_url)) {
+    db_url
+  } else {
+    .resolve_monitoring_db_url(project)
   }
   if (!nzchar(url)) return(NULL)
 
@@ -45,6 +62,27 @@ get_monitoring_db_connection <- function() {
   )
   .ensure_monitoring_schema(con)
   con
+}
+
+
+#' Inspect the configured monitoring DB backend without opening it
+#'
+#' Used by the UI to decide which banner to show ("Postgres ready" vs
+#' "Local DuckDB" vs "Not configured"). Returns one of:
+#'
+#' * `"postgres"` — a PG URL is resolvable (env vars or NEMETON_DB_URL).
+#' * `"duckdb"`   — fallback to local DuckDB file (project provided,
+#'                  no PG env vars).
+#' * `"none"`     — nothing configured.
+#'
+#' @param project Optional project list (same semantic as
+#'   [get_monitoring_db_connection()]).
+#' @noRd
+monitoring_db_backend <- function(project = NULL) {
+  url <- .resolve_monitoring_db_url(project)
+  if (!nzchar(url)) return("none")
+  if (grepl("^duckdb:", url, ignore.case = TRUE)) return("duckdb")
+  "postgres"
 }
 
 
@@ -81,6 +119,55 @@ close_monitoring_db_connection <- function(con) {
     nemeton::db_disconnect(con)
   }
   invisible(TRUE)
+}
+
+
+#' Resolve a monitoring DB URL from env vars or project fallback
+#'
+#' Returns an empty string when nothing is usable — callers must treat
+#' "" as "not configured" and either skip the DB call or surface the
+#' configuration hint to the user.
+#'
+#' @noRd
+.resolve_monitoring_db_url <- function(project = NULL) {
+  url <- Sys.getenv("NEMETON_DB_URL", "")
+  if (nzchar(url)) return(url)
+
+  url <- .build_monitoring_db_url()
+  if (nzchar(url)) return(url)
+
+  # Single-user fallback (nemeton v0.21.0+): if a project is loaded
+  # and the `duckdb` package is available, drop a monitoring.duckdb
+  # next to samples.gpkg under the project's data directory.
+  # Requires duckdb (Suggests) — we surface a friendly cli_inform
+  # the first time it kicks in so the user understands the mode.
+  if (is.null(project) || is.null(project$path)) return("")
+  if (!requireNamespace("duckdb", quietly = TRUE)) {
+    if (!isTRUE(.nemeton_env$.duckdb_missing_warned)) {
+      cli::cli_inform(c(
+        "Local DuckDB fallback for monitoring is unavailable.",
+        "i" = "Install with {.code install.packages('duckdb')} or set {.envvar NEMETON_DB_URL}."
+      ))
+      .nemeton_env$.duckdb_missing_warned <- TRUE
+    }
+    return("")
+  }
+  data_dir <- file.path(project$path, "data")
+  if (!dir.exists(data_dir)) {
+    dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  duckdb_path <- file.path(data_dir, "monitoring.duckdb")
+  if (!isTRUE(.nemeton_env$.duckdb_announced)) {
+    cli::cli_alert_info(
+      "Monitoring uses local DuckDB at {.path {duckdb_path}} (no Postgres configured)."
+    )
+    .nemeton_env$.duckdb_announced <- TRUE
+  }
+  # nemeton::db_connect() accepts both `duckdb:///abs/path` (3-slash
+  # SQLite-style) and bare paths ending in `.duckdb`. Use the explicit
+  # scheme so the intent is unambiguous in logs.
+  paste0("duckdb:///", normalizePath(duckdb_path, winslash = "/",
+                                     mustWork = FALSE))
 }
 
 
