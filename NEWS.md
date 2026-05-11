@@ -1,3 +1,35 @@
+# nemetonshiny 0.23.12 (2026-05-11)
+
+### Terrain — fixes défensifs init (réactivité UI)
+
+* `fix(samples)` — l'observer `leafletProxy()` du *Terrain* est
+  désormais **gardé derrière `req(input$map_zoom)`**. Avant le
+  premier rendu de la carte Sampling (typiquement quand
+  l'utilisateur travaille dans un autre onglet — *Plan
+  d'actions* par ex.), l'observer tirait sur chaque changement
+  de `sampling_rv$plots` / `sampling_rv$observations` /
+  `app_state$language` et empilait des messages
+  `leaflet-calls` dans la file de flush différée pour une
+  carte qui n'existait pas encore côté client. Désormais
+  l'observer court-circuite tant que `input$map_zoom` est
+  NULL ; il reprend son comportement nominal dès que la carte
+  est ouverte au moins une fois.
+* `perf(samples)` — `.restore_samples` ouvre désormais
+  `samples.gpkg` **une seule fois** via `sf::st_layers()` pour
+  scanner les layers disponibles, puis lit directement les
+  layers présents via `sf::st_read()`. L'ancien chemin appelait
+  `load_samples(layer = ...)` deux fois (plots + observations),
+  ce qui ouvrait le GPKG quatre fois au total (chaque
+  `load_samples` faisait son propre `st_layers` + `st_read`).
+  Sur un projet où `current_project` est régulièrement
+  réassigné, cette demi-pile d'I/O disparaît.
+
+Ces deux mesures sont défensives. Si la sluggishness
+ressentie sur l'onglet *Plan d'actions* ne disparaît pas, il
+faut probablement chercher du côté de `ug_build_sf()` /
+`output$kanban_board` (renderUI sur grandes listes
+d'actions) — voir issue à venir.
+
 # nemetonshiny 0.23.11 (2026-05-11)
 
 ### Terrain — légende plots restaurée au rendu initial
