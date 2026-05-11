@@ -1,4 +1,4 @@
-# nemetonshiny 0.24.0.9000 (dev)
+# nemetonshiny 0.24.1 (2026-05-11)
 
 ### UX Suivi sanitaire — diagnostic précis + toast + séparateur "au"
 
