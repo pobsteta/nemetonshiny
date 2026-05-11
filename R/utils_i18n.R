@@ -184,12 +184,12 @@ TRANSLATIONS <- list(
     en = "Field import: %d observation action(s) flipped to 'done'."
   ),
   action_plan_download_gpkg = list(
-    fr = "Exporter GeoPackage",
-    en = "Export GeoPackage"
+    fr = "T\u00e9l\u00e9charger le GeoPackage",
+    en = "Download GeoPackage"
   ),
   action_plan_download_pdf = list(
-    fr = "Exporter PDF",
-    en = "Export PDF"
+    fr = "T\u00e9l\u00e9charger le PDF",
+    en = "Download PDF"
   ),
   action_plan_export_running_gpkg = list(
     fr = "Export GeoPackage en cours…",
