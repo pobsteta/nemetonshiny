@@ -1,3 +1,30 @@
+# nemetonshiny 0.23.12.9000 (dev)
+
+### Rapport PDF Plan d'actions — accolades parasites + cartes UGF restaurées
+
+* `fix(report)` — **`{` et `}` apparaissaient en littéral** dans
+  le PDF, au-dessus et au-dessous du tableau d'actions de
+  chaque UGF. Cause : le template écrivait `cat("{\\small\n")`
+  puis le longtable puis `cat("}\n\n")`. Pandoc voyait `{` /
+  `}` seuls sur leur propre paragraphe (séparés par des
+  newlines), ne les reconnaissait pas comme bloc LaTeX brut
+  (raw LaTeX = `\begin{env}…\end{env}` ou backticked
+  `\`\`\`{=latex}\`\`\`` fences) et les passait verbatim au PDF.
+  Désormais `\small` est placé **à l'intérieur** de
+  l'environnement `longtable` (Pandoc préserve son contenu
+  comme raw LaTeX) ; la déclaration scope automatiquement
+  jusqu'à `\end{longtable}`.
+* `fix(report)` — **cartes des parcelles absentes** du PDF.
+  `render_ug_map()` retournait `NA_character_` dès la
+  moindre erreur de `maptiles::get_tiles()` (réseau coupé sur
+  le serveur, rate-limit OSM, package `maptiles` non
+  installé) ; le template skippait alors silencieusement le
+  bloc `\includegraphics`. Désormais un **fallback
+  sans tuiles OSM** dessine la géométrie de la parcelle sur
+  fond gris clair, donc le rapport contient toujours une
+  carte par UGF — même réseau coupé. `cli::cli_alert_info`
+  documente la raison du fallback dans les logs R.
+
 # nemetonshiny 0.23.12 (2026-05-11)
 
 ### Terrain — fixes défensifs init (réactivité UI)
