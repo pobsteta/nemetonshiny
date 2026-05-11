@@ -2086,7 +2086,7 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   has_maptiles <- requireNamespace("maptiles", quietly = TRUE)
   render_ug_map <- function(geom, out_path) {
     if (!has_sf) return(NA_character_)
-    tryCatch({
+    result <- tryCatch({
       g_wgs84 <- sf::st_transform(geom, 4326)
       # Try OSM tiles first. Network failure / rate-limit / missing
       # maptiles package each yields NULL — we still render a clean
@@ -2112,7 +2112,11 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
       }
 
       grDevices::png(out_path, width = 1200, height = 800, res = 180)
-      on.exit(grDevices::dev.off(), add = TRUE)
+      # Close the device explicitly so the PNG is fully flushed to
+      # disk before the post-tryCatch size check below. on.exit
+      # only fires when render_ug_map returns, leaving a window
+      # where the file exists but is 0 bytes — and any 0-byte PNG
+      # passed to \includegraphics crashes xelatex.
       graphics::par(mar = c(0.5, 0.5, 0.5, 0.5))
 
       if (!is.null(tiles)) {
@@ -2122,23 +2126,39 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
              col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
              border = "#1f77b4", lwd = 2.5, add = TRUE)
       } else {
-        # Tile-less fallback: geometry on a light neutral background
-        # with a small margin so the polygon doesn't touch the edge.
-        bbox <- sf::st_bbox(g_wgs84)
-        dx <- (bbox[["xmax"]] - bbox[["xmin"]]) * 0.08
-        dy <- (bbox[["ymax"]] - bbox[["ymin"]]) * 0.08
+        # Tile-less fallback: minimal `plot.sf` call. Earlier
+        # iterations passed bg / xlim / ylim — those args are not
+        # uniformly supported by plot.sf across sf versions and
+        # could produce an invalid PNG, which then makes
+        # \includegraphics fail in xelatex and brings the whole
+        # Quarto export down with it. Keep it boring on purpose:
+        # plot.sf auto-fits the geometry's bbox.
         plot(sf::st_geometry(g_wgs84),
-             xlim = c(bbox[["xmin"]] - dx, bbox[["xmax"]] + dx),
-             ylim = c(bbox[["ymin"]] - dy, bbox[["ymax"]] + dy),
              col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
              border = "#1f77b4", lwd = 2.5,
-             axes = FALSE, main = "", bg = "#f6f6f6")
+             axes = FALSE, main = "")
       }
+      grDevices::dev.off()
       out_path
     }, error = function(e) {
+      # If the PNG device is still open at the time of the error,
+      # close it so the partial file is not held by R.
+      if (length(grDevices::dev.list())) {
+        tryCatch(grDevices::dev.off(), error = function(e2) NULL)
+      }
       cli::cli_warn("UGF map render failed: {conditionMessage(e)}")
       NA_character_
     })
+    # Final sanity check on the produced file. A 0/near-zero byte
+    # PNG passed downstream to \includegraphics will crash xelatex
+    # and bring the whole Quarto export down (1 KB output PDF that
+    # won't open). Treat an unreadably small file as missing so
+    # the template skips the figure entirely.
+    if (is.na(result) || !file.exists(result) ||
+        file.size(result) < 100L) {
+      return(NA_character_)
+    }
+    result
   }
 
   # Surfaces in hectares (best-effort)

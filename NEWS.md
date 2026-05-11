@@ -1,3 +1,57 @@
+# nemetonshiny 0.23.14 (2026-05-11)
+
+### Export PDF Plan d'actions — toast persistant + résilience renderUGmap
+
+* `fix(export)` — le toast *"Génération PDF…"* (roue dentée
+  animée) **s'auto-dismissait après 8 s** côté JS. Pour un
+  export Quarto + xelatex typique (15–30 s avec maps), le
+  spinner disparaissait bien avant que la boîte de dialogue
+  *Enregistrer le PDF* du navigateur n'apparaisse →
+  l'utilisateur voyait un écran vide puis une boîte de
+  dialogue sortie de nulle part.
+  Désormais `nemetonShowDownloadToast` :
+  - n'a plus d'auto-dismiss (`duration: null`) ;
+  - le serveur envoie un `nemetonHideDownloadToast` (custom
+    message Shiny) à la fin de `content` (via `on.exit` →
+    s'exécute même si l'export échoue), donc le spinner
+    disparaît **synchroniquement** avec l'envoi du fichier
+    par le serveur ;
+  - filet de sécurité 120 s (au lieu de 8 s) en cas de
+    perte du message custom.
+* `fix(export)` — le PDF généré faisait **1 KB et ne
+  s'ouvrait pas**. Cause : `generate_action_plan_pdf()`
+  levait une erreur (typiquement la fallback `render_ug_map`
+  v0.23.13 passait `bg` / `xlim` / `ylim` à `plot.sf` qui ne
+  les supporte pas uniformément selon la version de `sf` →
+  PNG corrompu ou 0 byte → `\includegraphics` plantait
+  xelatex → `quarto_render` échouait). Le tryCatch upstream
+  écrivait alors `"PDF generation failed"` (22 octets) dans
+  le fichier — d'où le PDF cassé livré à l'utilisateur.
+  Désormais :
+  - **fallback `render_ug_map` minimal** : appel `plot.sf`
+    sans `bg` / `xlim` / `ylim`, plot.sf auto-fit la bbox
+    de la géométrie ;
+  - **fermeture explicite du device PNG** avant la fin de
+    `render_ug_map` (au lieu de `on.exit`) pour garantir que
+    le fichier est complètement flushé avant la
+    validation ;
+  - **validation taille PNG** : si le fichier produit fait
+    moins de 100 octets ou n'existe pas, `render_ug_map`
+    renvoie `NA_character_` et le template skip
+    `\includegraphics` proprement (au lieu d'envoyer un
+    fichier corrompu à xelatex).
+* `fix(export)` — la notification d'erreur PDF est désormais
+  **sticky** (`duration = NULL` au lieu de `duration = 8`).
+  L'erreur réelle (`conditionMessage(e)`) reste affichée
+  jusqu'à fermeture manuelle, ce qui permet de diagnostiquer
+  la cause sans avoir à inspecter les logs serveur. Le
+  message verbatim est aussi loggué via `cli::cli_warn`.
+* `fix(export)` — quand la génération échoue, le fichier
+  livré contient maintenant le texte *"PDF generation
+  failed. See the in-app error toast for the underlying
+  cause."* (au lieu d'un cryptique *"PDF generation
+  failed"*) pour orienter vers la vraie diagnostic.
+
 # nemetonshiny 0.23.13 (2026-05-11)
 
 ### Rapport PDF Plan d'actions — accolades parasites + cartes UGF restaurées
