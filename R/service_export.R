@@ -2076,6 +2076,36 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   base_year <- as.integer(format(Sys.Date(), "%Y"))
   ug_sf_df <- if (inherits(ug_sf, "sf")) sf::st_drop_geometry(ug_sf) else ug_sf
 
+  # Per-UGF static PNG maps with OSM background. Pre-rendered in R so the
+  # qmd stays simple and any network/maptiles error degrades gracefully
+  # (NA path -> the template skips the figure).
+  temp_dir <- tempfile("nemeton_actions_")
+  dir.create(temp_dir, recursive = TRUE)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+  has_maptiles <- requireNamespace("maptiles", quietly = TRUE) &&
+                  inherits(ug_sf, "sf")
+  render_ug_map <- function(geom, out_path) {
+    if (!has_maptiles) return(NA_character_)
+    tryCatch({
+      g_wgs84 <- sf::st_transform(geom, 4326)
+      tiles <- maptiles::get_tiles(g_wgs84, provider = "OpenStreetMap",
+                                   zoom = NULL, crop = TRUE,
+                                   cachedir = tempdir())
+      g_proj <- sf::st_transform(geom, sf::st_crs(tiles))
+      grDevices::png(out_path, width = 1200, height = 800, res = 180)
+      on.exit(grDevices::dev.off(), add = TRUE)
+      graphics::par(mar = c(0.5, 0.5, 0.5, 0.5))
+      maptiles::plot_tiles(tiles)
+      plot(sf::st_geometry(g_proj),
+           col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
+           border = "#1f77b4", lwd = 2.5, add = TRUE)
+      out_path
+    }, error = function(e) {
+      cli::cli_warn("UGF map render failed: {conditionMessage(e)}")
+      NA_character_
+    })
+  }
+
   # Surfaces in hectares (best-effort)
   surfaces <- if (!is.null(ug_sf$surface_sig_m2)) {
     ug_sf$surface_sig_m2 / 10000
@@ -2098,18 +2128,31 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
       bilan  <- if (is.na(cout) && is.na(revenu)) NA_real_ else
         (if (is.na(revenu)) 0 else revenu) - (if (is.na(cout)) 0 else cout)
       list(
+        id = a$id %||% "",
         type = a$type %||% "",
         priorite = a$priorite %||% "",
         statut = a$statut %||% "",
         annee_realisation = base_year + as.integer(a$annee_cible %||% 0L),
         objectifs_lies = unlist(a$objectifs_lies %||% character()),
-        cout_eur = cout, revenu_eur = revenu, bilan_eur = bilan
+        cout_eur = cout, revenu_eur = revenu, bilan_eur = bilan,
+        commentaire = as.character(a$commentaire %||% "")
       )
     })
     cout_sum   <- sum(vapply(enriched, function(x) x$cout_eur,   numeric(1)),
                       na.rm = TRUE)
     revenu_sum <- sum(vapply(enriched, function(x) x$revenu_eur, numeric(1)),
                       na.rm = TRUE)
+    # Pre-render the per-UGF OSM map. Path is NA when maptiles is
+    # unavailable, the network fails, or the geometry is empty.
+    map_png <- NA_character_
+    if (inherits(ug_sf, "sf") &&
+        !is.null(sf::st_geometry(ug_sf)) &&
+        !sf::st_is_empty(sf::st_geometry(ug_sf)[i])) {
+      map_png <- render_ug_map(
+        ug_sf[i, ],
+        file.path(temp_dir, paste0("ug_", uid, "_map.png"))
+      )
+    }
     list(
       ug_id = uid,
       label = label,
@@ -2117,7 +2160,8 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
       actions = enriched,
       cout = cout_sum,
       revenu = revenu_sum,
-      bilan = revenu_sum - cout_sum
+      bilan = revenu_sum - cout_sum,
+      map_png = map_png
     )
   })
   ug_list <- Filter(Negate(is.null), ug_list)
@@ -2144,9 +2188,8 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
     stop("Action plan template not found.", call. = FALSE)
   }
 
-  temp_dir <- tempfile("nemeton_actions_")
-  dir.create(temp_dir, recursive = TRUE)
-  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+  # temp_dir was created earlier (above) so the per-UGF PNG maps share
+  # the same scratch directory as the rendered qmd.
   qmd <- file.path(temp_dir, "action_plan.qmd")
   file.copy(template_path, qmd)
   data_file <- file.path(temp_dir, "action_plan_data.rds")
