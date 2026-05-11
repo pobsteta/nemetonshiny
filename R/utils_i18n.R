@@ -1757,6 +1757,34 @@ TRANSLATIONS <- list(
     fr = "Pour partager le suivi entre plusieurs utilisateurs, configurez Postgres+TimescaleDB via NEMETON_DB_URL.",
     en = "To share monitoring between multiple users, configure Postgres+TimescaleDB via NEMETON_DB_URL."
   ),
+  monitoring_db_duckdb_missing = list(
+    fr = "Le paquet R {.pkg duckdb} n'est pas install\u00e9, le mode local n'est pas disponible. Installez avec install.packages(\"duckdb\") ou configurez Postgres.",
+    en = "The R {.pkg duckdb} package is not installed; local mode is unavailable. Run install.packages(\"duckdb\") or configure Postgres."
+  ),
+  monitoring_db_no_project = list(
+    fr = "Aucun projet charg\u00e9. S\u00e9lectionnez ou cr\u00e9ez un projet dans l'onglet S\u00e9lection pour activer le mode local (DuckDB).",
+    en = "No project loaded. Pick or create a project in the Selection tab to enable local mode (DuckDB)."
+  ),
+  monitoring_db_connecting = list(
+    fr = "Tentative de connexion \u00e0 la base de suivi\u2026",
+    en = "Connecting to the monitoring database\u2026"
+  ),
+  monitoring_db_local_creating = list(
+    fr = "Cr\u00e9ation de la base DuckDB locale dans le projet\u2026",
+    en = "Creating the local DuckDB database in the project\u2026"
+  ),
+  monitoring_db_local_ready = list(
+    fr = "Base locale (DuckDB) pr\u00eate.",
+    en = "Local database (DuckDB) ready."
+  ),
+  monitoring_db_remote_ready = list(
+    fr = "Base de suivi distante connect\u00e9e.",
+    en = "Remote monitoring database connected."
+  ),
+  date_range_separator = list(
+    fr = "au",
+    en = "to"
+  ),
   monitoring_timeseries_title = list(
     fr = "S\u00e9rie temporelle NDVI / NBR",
     en = "NDVI / NBR time series"

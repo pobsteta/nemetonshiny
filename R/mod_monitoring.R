@@ -113,7 +113,8 @@ mod_monitoring_ui <- function(id) {
               ns("date_range"), i18n$t("monitoring_date_range"),
               start = Sys.Date() - 365L,
               end   = Sys.Date(),
-              language = lang
+              language  = lang,
+              separator = i18n$t("date_range_separator")
             ),
 
             # --- Quick-mode parameters (NDVI/NBR) -------------------
@@ -153,9 +154,10 @@ mod_monitoring_ui <- function(id) {
               shiny::dateRangeInput(
                 ns("dates_training"),
                 i18n$t("monitoring_dates_training_label"),
-                start    = as.Date("2016-01-01"),
-                end      = as.Date("2017-12-31"),
-                language = lang
+                start     = as.Date("2016-01-01"),
+                end       = as.Date("2017-12-31"),
+                language  = lang,
+                separator = i18n$t("date_range_separator")
               ),
               shiny::selectInput(
                 ns("vegetation_index"),
@@ -651,6 +653,14 @@ mod_monitoring_server <- function(id, app_state) {
         return(htmltools::tags$small(class = "text-danger d-block",
           i18n$t("monitoring_register_no_samples")))
       }
+      # Distinguish "duckdb pkg missing" from "PG configured but
+      # unreachable" so the user gets an actionable hint instead of
+      # the generic "non configurée" message.
+      backend <- monitoring_db_backend(project = app_state$current_project)
+      if (identical(backend, "none")) {
+        return(htmltools::tags$small(class = "text-danger d-block",
+          i18n$t("monitoring_db_duckdb_missing")))
+      }
       con <- get_monitoring_db_connection(project = app_state$current_project)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       if (is.null(con)) {
@@ -722,17 +732,57 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # DB status card — four states:
-    #   1. nothing configured + no project loaded → warning
-    #   2. local DuckDB fallback active (no PG env, project loaded) → info
-    #   3. Postgres connected, zero zones → info
-    #   4. Postgres or DuckDB connected, zones available → success
+    # DB status card — six states:
+    #   1. No PG env AND no project → "open a project" hint (warning)
+    #   2. No PG env, project loaded, duckdb pkg missing → install hint (warning)
+    #   3. PG env set but connection failed (server down etc.) → generic warning
+    #   4. Local DuckDB ready → info banner with multi-user hint
+    #   5. Postgres connected, zero zones → info
+    #   6. Postgres or DuckDB connected, zones available → success
+    #
+    # The toast notifications below ("connecting…" / "creating…") fire
+    # the FIRST time the user lands on the tab so it does not look
+    # like the app is frozen during the schema bootstrap (which can
+    # take a couple of seconds on a fresh DuckDB).
     output$db_status <- shiny::renderUI({
       i18n     <- i18n_r()
       project  <- app_state$current_project
       backend  <- monitoring_db_backend(project = project)
-      con      <- get_monitoring_db_connection(project = project)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
+
+      # Diagnose first WITHOUT opening a connection, so we can pick
+      # the right user-facing message even when the connection itself
+      # would later fail.
+      if (identical(backend, "none")) {
+        if (is.null(project)) {
+          return(.monitoring_status_card(
+            icon  = "folder-open",
+            class = "border-warning",
+            title = i18n$t("monitoring_db_unavailable"),
+            body  = i18n$t("monitoring_db_no_project")
+          ))
+        }
+        # Project loaded, PG env absent, and not classified as duckdb
+        # means duckdb package is missing (otherwise the resolver
+        # would have produced a duckdb://… URL).
+        return(.monitoring_status_card(
+          icon  = "exclamation-circle",
+          class = "border-warning",
+          title = i18n$t("monitoring_db_unavailable"),
+          body  = i18n$t("monitoring_db_duckdb_missing")
+        ))
+      }
+
+      # Surface progress while opening the connection — DuckDB schema
+      # bootstrap can take ~1 s on a cold start, Postgres a bit less.
+      # The toast is removed by the on.exit below once the connection
+      # is established (or instantly when it fails).
+      .ensure_monitoring_db_announced(session, backend, i18n)
+      con <- get_monitoring_db_connection(project = project)
+      on.exit({
+        close_monitoring_db_connection(con)
+        shiny::removeNotification(session$ns("db_connecting_toast"),
+                                  session = session)
+      }, add = TRUE)
 
       if (is.null(con)) {
         return(.monitoring_status_card(
@@ -1023,6 +1073,54 @@ mod_monitoring_server <- function(id, app_state) {
 
 
 # ---- Internal --------------------------------------------------------
+
+# Show a single "connecting…" / "creating local DuckDB…" toast the
+# first time the user enters the Monitoring tab with a usable backend.
+# Idempotent across re-renders thanks to the fixed notification id.
+# session$userData$.monitoring_db_announced caches the announcement
+# state per session so we don't re-spam on every reactive flush.
+.ensure_monitoring_db_announced <- function(session, backend, i18n) {
+  if (!identical(backend, "duckdb") && !identical(backend, "postgres")) {
+    return(invisible(NULL))
+  }
+  if (isTRUE(session$userData$.monitoring_db_announced)) {
+    return(invisible(NULL))
+  }
+  msg_key <- if (identical(backend, "duckdb")) {
+    "monitoring_db_local_creating"
+  } else {
+    "monitoring_db_connecting"
+  }
+  shiny::showNotification(
+    i18n$t(msg_key),
+    type     = "default",
+    duration = NULL,
+    closeButton = FALSE,
+    id       = session$ns("db_connecting_toast"),
+    session  = session
+  )
+  # Schedule a "ready" toast after the connection has settled. The
+  # status-card renderUI removes the "connecting" toast via removeNotification
+  # in its on.exit, so this 1 s delayed "ready" toast gives the user
+  # explicit confirmation that the backend is now usable.
+  later::later(function() {
+    ready_key <- if (identical(backend, "duckdb")) {
+      "monitoring_db_local_ready"
+    } else {
+      "monitoring_db_remote_ready"
+    }
+    shiny::showNotification(
+      i18n$t(ready_key),
+      type     = "message",
+      duration = 4,
+      id       = session$ns("db_ready_toast"),
+      session  = session
+    )
+  }, delay = 1.2)
+  session$userData$.monitoring_db_announced <- TRUE
+  invisible(TRUE)
+}
+
 
 .monitoring_status_card <- function(icon, class, title, body = NULL) {
   htmltools::tags$div(

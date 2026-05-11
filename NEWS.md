@@ -1,3 +1,33 @@
+# nemetonshiny 0.24.1 (2026-05-11)
+
+### UX Suivi sanitaire — diagnostic précis + toast + séparateur "au"
+
+* `feat(i18n)` — le séparateur du `dateRangeInput` (sidebar
+  *Période d'observation* et *Période d'entraînement* FORDEAD)
+  était hardcodé en *"to"* malgré la langue FR. Nouvelle clé i18n
+  `date_range_separator` : *"au"* en FR, *"to"* en EN.
+* `feat(ux)` — un **toast "Tentative de connexion à la base…"
+  ou "Création de la base DuckDB locale…"** s'affiche en bas à
+  droite la première fois que l'utilisateur ouvre l'onglet
+  *Suivi sanitaire* (suivi 1,2 s plus tard d'un toast *"Base
+  prête"*). Avant cette release, l'onglet semblait figé pendant
+  le bootstrap du schéma (qui prend ~1 s sur un DuckDB neuf).
+  Le toast est idempotent (un par session, id stable).
+* `fix(ux)` — le bandeau *Base de suivi non configurée*
+  distingue maintenant **deux causes** au lieu d'une seule :
+  - **aucun projet chargé** → message *"Aucun projet chargé.
+    Sélectionnez ou créez un projet dans l'onglet Sélection
+    pour activer le mode local (DuckDB)."*
+  - **`duckdb` package manquant** → message *"Le paquet R
+    duckdb n'est pas installé, le mode local n'est pas
+    disponible. Installez avec install.packages('duckdb') ou
+    configurez Postgres."*
+  Avant : un seul message générique qui ne disait pas quoi faire.
+* Le `register_hint` (petit texte sous *Enregistrer ce projet
+  comme zone de suivi*) bénéficie du même diagnostic — il
+  indique désormais l'installation de `duckdb` plutôt que le
+  générique *"impossible d'enregistrer la zone"*.
+
 # nemetonshiny 0.24.0 (2026-05-11)
 
 ### Added — Suivi sanitaire en mode local (DuckDB)
