@@ -468,6 +468,40 @@ test_that(".resolve_monitoring_db_url returns DuckDB URL when project given and 
   })
 })
 
+test_that("NEMETON_DB_LOCAL=1 bypasses PG env vars and uses DuckDB", {
+  # Regression: a user with Clever Cloud POSTGRESQL_ADDON_* sitting
+  # in ~/.Renviron for production saw the app dial the prod Postgres
+  # (and time out) even when running locally and wanting DuckDB.
+  # NEMETON_DB_LOCAL=1 lets them keep the prod creds in env and
+  # force local mode at runtime.
+  skip_if_not_installed("duckdb")
+  clear_monitoring_db_envvars()
+  withr::local_envvar(c(
+    POSTGRESQL_ADDON_HOST     = "prod.example.com",
+    POSTGRESQL_ADDON_DB       = "nemeton",
+    POSTGRESQL_ADDON_USER     = "u",
+    POSTGRESQL_ADDON_PASSWORD = "p",
+    NEMETON_DB_LOCAL          = "1"
+  ))
+  withr::with_tempdir({
+    project <- list(id = "p1", path = file.path(getwd(), "p"))
+    dir.create(project$path)
+    url <- nemetonshiny:::.resolve_monitoring_db_url(project)
+    expect_match(url, "monitoring\\.duckdb$")
+    expect_false(grepl("^postgresql:", url))
+  })
+})
+
+test_that(".nemeton_truthy recognises common truthy spellings", {
+  for (v in c("1", "TRUE", "true", "YES", "yes", "on", "Y", "t")) {
+    expect_true(nemetonshiny:::.nemeton_truthy(v), info = v)
+  }
+  for (v in c("", "0", "false", "no", "off", "n")) {
+    expect_false(nemetonshiny:::.nemeton_truthy(v), info = paste0("'", v, "'"))
+  }
+})
+
+
 test_that(".resolve_monitoring_db_url returns empty string when nothing usable", {
   clear_monitoring_db_envvars()
   expect_equal(

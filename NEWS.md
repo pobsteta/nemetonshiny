@@ -1,5 +1,27 @@
 # nemetonshiny 0.24.2.9000 (dev)
 
+### Suivi sanitaire — override `NEMETON_DB_LOCAL=1` pour forcer le mode local
+
+* `feat(monitoring)` — nouvelle variable d'environnement
+  **`NEMETON_DB_LOCAL`** (truthy = `1` / `true` / `yes` / `on`,
+  case insensitive). Quand elle est truthy,
+  `.resolve_monitoring_db_url()` **saute** les vars `NEMETON_DB_URL`
+  et `POSTGRESQL_ADDON_*` et utilise directement la base DuckDB
+  locale du projet.
+
+  **Cas d'usage typique** : un développeur a les credentials
+  Clever Cloud (`POSTGRESQL_ADDON_*`) qui traînent dans son
+  `~/.Renviron` (déposés par un build CI ou copiés depuis
+  `clever env`). Sans l'override, l'app dialait la Postgres prod
+  depuis la machine locale, timeout, et le bandeau restait sur
+  "Base non configurée". Avec `NEMETON_DB_LOCAL=1`, la cascade
+  saute directement à la fallback DuckDB sans toucher au
+  `.Renviron`.
+
+  Le `cli_alert_info` mentionne désormais explicitement
+  l'override quand il est actif : *"Monitoring uses local DuckDB
+  at … (NEMETON_DB_LOCAL override)."*
+
 ### Suivi sanitaire — diagnostic d'erreur visible dans le bandeau
 
 * `feat(monitoring)` — `get_monitoring_db_connection()` capture

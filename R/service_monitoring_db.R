@@ -205,13 +205,30 @@ close_monitoring_db_connection <- function(con) {
 #' "" as "not configured" and either skip the DB call or surface the
 #' configuration hint to the user.
 #'
+#' Resolution order:
+#' 1. If `NEMETON_DB_LOCAL` is truthy (1 / true / yes / on, case
+#'    insensitive), JUMP STRAIGHT to the DuckDB fallback below. Useful
+#'    when developing locally with `POSTGRESQL_ADDON_*` credentials
+#'    sitting in `.Renviron` (Clever Cloud creds dumped by the build
+#'    pipeline) that would otherwise win the cascade and try to dial
+#'    an unreachable Postgres host.
+#' 2. `NEMETON_DB_URL` — passed straight through.
+#' 3. `POSTGRESQL_ADDON_*` / `NEMETON_DB_*` env parts — assembled into
+#'    a postgresql URL.
+#' 4. `project$path` + `duckdb` pkg present → local DuckDB file.
+#' 5. None of the above — return "".
+#'
 #' @noRd
 .resolve_monitoring_db_url <- function(project = NULL) {
-  url <- Sys.getenv("NEMETON_DB_URL", "")
-  if (nzchar(url)) return(url)
+  force_local <- isTRUE(.nemeton_truthy(Sys.getenv("NEMETON_DB_LOCAL", "")))
 
-  url <- .build_monitoring_db_url()
-  if (nzchar(url)) return(url)
+  if (!force_local) {
+    url <- Sys.getenv("NEMETON_DB_URL", "")
+    if (nzchar(url)) return(url)
+
+    url <- .build_monitoring_db_url()
+    if (nzchar(url)) return(url)
+  }
 
   # Single-user fallback (nemeton v0.21.0+): if a project is loaded
   # and the `duckdb` package is available, drop a monitoring.duckdb
@@ -252,9 +269,15 @@ close_monitoring_db_connection <- function(con) {
   }
   duckdb_path <- file.path(data_dir, "monitoring.duckdb")
   if (!isTRUE(.nemeton_env$.duckdb_announced)) {
-    cli::cli_alert_info(
-      "Monitoring uses local DuckDB at {.path {duckdb_path}} (no Postgres configured)."
-    )
+    if (force_local) {
+      cli::cli_alert_info(
+        "Monitoring uses local DuckDB at {.path {duckdb_path}} (NEMETON_DB_LOCAL override)."
+      )
+    } else {
+      cli::cli_alert_info(
+        "Monitoring uses local DuckDB at {.path {duckdb_path}} (no Postgres configured)."
+      )
+    }
     .nemeton_env$.duckdb_announced <- TRUE
   }
   # nemeton::db_connect() accepts both `duckdb:///abs/path` and bare
@@ -265,6 +288,16 @@ close_monitoring_db_connection <- function(con) {
   # leaves `/C:/Users/...` (with a leading slash) which DuckDB then
   # rejects as an invalid path.
   normalizePath(duckdb_path, winslash = "/", mustWork = FALSE)
+}
+
+
+# Recognize a wide set of truthy env-var spellings: "1", "TRUE",
+# "true", "yes", "on" (case insensitive). Everything else (incl.
+# empty string) is FALSE. Used by NEMETON_DB_LOCAL to bypass the PG
+# resolution branch.
+.nemeton_truthy <- function(x) {
+  if (is.null(x) || !length(x) || !nzchar(x)) return(FALSE)
+  tolower(x) %in% c("1", "true", "yes", "on", "y", "t")
 }
 
 
