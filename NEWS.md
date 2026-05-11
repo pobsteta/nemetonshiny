@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.6.9000 (dev)
+# nemetonshiny 0.23.7 (2026-05-11)
 
 ### Plan d'actions — Exports GPKG/PDF
 
