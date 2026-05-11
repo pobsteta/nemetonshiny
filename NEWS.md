@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.17.9000 (dev)
+# nemetonshiny 0.24.0 (2026-05-11)
 
 ### Added — Suivi sanitaire en mode local (DuckDB)
 
