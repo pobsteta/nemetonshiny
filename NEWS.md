@@ -1,3 +1,29 @@
+# nemetonshiny 0.23.6 (2026-05-11)
+
+### Plan d'actions — chat IA : surface / volume / coûts conservés
+
+* `fix(action_plan)` — quand l'utilisateur cliquait sur
+  **Affiner le plan avec l'IA**, les lignes proposées par
+  le LLM arrivaient avec les colonnes `surface_ha`,
+  `volume_m3`, `nb_tiges`, `rdi`, `cout_eur` et `revenu_eur`
+  **vides**. Deux causes côté prompt :
+  - `build_action_plan_chat_prompt()` se contentait de
+    référencer `build_action_plan_prompt` par son nom de
+    fonction R sans embarquer le schéma JSON, donc le LLM
+    ignorait l'existence du bloc `quantite` ;
+  - `mod_action_plan` envoyait au LLM un **résumé** des
+    actions courantes (juste `id, ug_id, type, annee_cible,
+    statut, priorite`), ce qui empêchait le LLM de réémettre
+    les quantités existantes lors d'une modification.
+  Le schéma JSON et le rappel économique sont maintenant
+  factorisés dans `.action_plan_json_schema()` et
+  `.action_plan_econ_hint()`, partagés par les deux prompts.
+  Le prompt de chat embarque désormais le schéma complet,
+  ajoute des règles explicites (« remplir tout le bloc
+  `quantite` », « réémettre l'action entière sur update »),
+  et reçoit le **JSON complet** du plan courant.
+  Couverture testthat : `build_action_plan_chat_prompt embeds the full JSON schema + econ hint`.
+
 # nemetonshiny 0.23.5 (2026-05-09)
 
 ### Plan d'actions — chat IA : scope + écrasement

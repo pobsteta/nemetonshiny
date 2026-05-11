@@ -102,6 +102,44 @@ test_that("build_action_plan_chat_prompt embeds question + context + plan summar
   expect_match(prompt, "12", fixed = TRUE)
 })
 
+test_that("build_action_plan_chat_prompt embeds the full JSON schema + econ hint", {
+  # Regression: the refine-chat flow used to reference the generation
+  # prompt by function name without inlining the schema, so the LLM
+  # left surface/volume/cost fields empty when refining a plan.
+  prompt <- nemetonshiny:::build_action_plan_chat_prompt(
+    question = "Ajoute une eclaircie sur ug_a en annee 4.",
+    ctx = list(
+      comments = list(synthesis = "synth", families = list(C = "fam C")),
+      ug_ids = c("ug_a", "ug_b"),
+      horizon = 12L
+    ),
+    plan_summary_json = '[{"id":"act_1","ug_id":"ug_a"}]',
+    language = "français"
+  )
+  # Full schema must be inlined so the LLM knows about `quantite`.
+  expect_match(prompt, "JSON schema", fixed = TRUE)
+  expect_match(prompt, "quantite", fixed = TRUE)
+  expect_match(prompt, "volume_m3", fixed = TRUE)
+  expect_match(prompt, "surface_ha", fixed = TRUE)
+  expect_match(prompt, "nb_tiges", fixed = TRUE)
+  expect_match(prompt, "cout_eur", fixed = TRUE)
+  expect_match(prompt, "revenu_eur", fixed = TRUE)
+  # Economic hint must travel with the chat prompt too.
+  expect_match(prompt, "bilan cumule", fixed = TRUE)
+  # Schema HORIZON placeholder must be substituted with the actual horizon.
+  expect_false(grepl("1..HORIZON", prompt, fixed = TRUE))
+  expect_match(prompt, "1..12", fixed = TRUE)
+})
+
+test_that(".action_plan_json_schema lists every persisted quantite field", {
+  schema <- nemetonshiny:::.action_plan_json_schema()
+  for (field in c("volume_m3", "surface_ha", "nb_tiges",
+                  "rdi", "cout_eur", "revenu_eur")) {
+    expect_match(schema, field, fixed = TRUE,
+                 info = sprintf("schema must document field '%s'", field))
+  }
+})
+
 test_that("parse_action_plan_response handles empty/garbage input gracefully", {
   expect_equal(
     nemetonshiny:::parse_action_plan_response("", ug_ids = "ug_a")$actions,
