@@ -1,4 +1,4 @@
-# nemetonshiny 0.24.1.9000 (dev)
+# nemetonshiny 0.24.2 (2026-05-11)
 
 ### Suivi sanitaire — 4 fixes UX critiques
 
