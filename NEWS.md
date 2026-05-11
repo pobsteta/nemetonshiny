@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.16.9000 (dev)
+# nemetonshiny 0.23.17 (2026-05-11)
 
 ### Plan d'actions — fond satellite Esri.WorldImagery
 
