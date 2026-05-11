@@ -1,4 +1,4 @@
-# nemetonshiny 0.23.7.9000 (dev)
+# nemetonshiny 0.23.8 (2026-05-11)
 
 ### Plan d'actions — toast PDF unifié
 
