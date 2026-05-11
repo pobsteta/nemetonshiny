@@ -97,15 +97,16 @@ mod_monitoring_ui <- function(id) {
             # placettes generated in the Sampling tab as a fresh
             # `monitoring_zone` row, then auto-selects it above.
             # Common to both modes (FAST + FORDEAD). Disabled until
-            # project + samples + DB are all ready. The hint below
-            # the button surfaces which precondition is missing.
-            htmltools::tagAppendAttributes(
-              shiny::actionButton(
-                ns("register"), i18n$t("monitoring_register_btn"),
-                icon  = bsicons::bs_icon("geo-alt-fill"),
-                class = "btn-outline-primary btn-sm w-100"
-              ),
-              disabled = NA
+            # The hint below the button surfaces which precondition
+            # is missing. The button is NOT disabled at the HTML
+            # level — clicking it when preconditions are not met
+            # triggers a clear error notification (see observer
+            # below). Hardcoding `disabled = NA` here would prevent
+            # the click entirely and confuse the user.
+            shiny::actionButton(
+              ns("register"), i18n$t("monitoring_register_btn"),
+              icon  = bsicons::bs_icon("geo-alt-fill"),
+              class = "btn-outline-primary btn-sm w-100"
             ),
             shiny::uiOutput(ns("register_hint"), class = "mb-3"),
 
@@ -204,19 +205,23 @@ mod_monitoring_ui <- function(id) {
       bslib::card(
         bslib::card_header(
           htmltools::div(
-            class = "d-flex align-items-center justify-content-between",
-            htmltools::div(
-              class = "d-flex align-items-center",
-              bsicons::bs_icon("exclamation-triangle", class = "me-2"),
-              i18n$t("monitoring_alerts_title")
-            ),
-            shiny::conditionalPanel(
-              condition = sprintf("input['%s'] == 'health'", ns("mode")),
-              shiny::checkboxInput(
-                ns("include_low"),
-                i18n$t("monitoring_include_low"),
-                value = FALSE
-              )
+            class = "d-flex align-items-center",
+            bsicons::bs_icon("exclamation-triangle", class = "me-2"),
+            i18n$t("monitoring_alerts_title")
+          )
+        ),
+        # The "include low confidence classes" toggle used to live
+        # inside card_header next to the title, but its long label
+        # wrapped awkwardly on narrow viewports. Lifted into its own
+        # row so it always sits on a single line above the alerts.
+        shiny::conditionalPanel(
+          condition = sprintf("input['%s'] == 'health'", ns("mode")),
+          htmltools::div(
+            class = "px-3 pt-2",
+            shiny::checkboxInput(
+              ns("include_low"),
+              i18n$t("monitoring_include_low"),
+              value = FALSE
             )
           )
         ),
@@ -774,15 +779,16 @@ mod_monitoring_server <- function(id, app_state) {
 
       # Surface progress while opening the connection — DuckDB schema
       # bootstrap can take ~1 s on a cold start, Postgres a bit less.
-      # The toast is removed by the on.exit below once the connection
-      # is established (or instantly when it fails).
+      # The "connecting" toast has its own 2.5 s auto-dismiss so it
+      # stays visible even when db_connect returns instantly. The
+      # "ready" toast below confirms success once the connection is
+      # established (separate id, no race against the dismiss).
       .ensure_monitoring_db_announced(session, backend, i18n)
       con <- get_monitoring_db_connection(project = project)
-      on.exit({
-        close_monitoring_db_connection(con)
-        shiny::removeNotification(session$ns("db_connecting_toast"),
-                                  session = session)
-      }, add = TRUE)
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      if (!is.null(con)) {
+        .announce_monitoring_db_ready(session, backend, i18n)
+      }
 
       if (is.null(con)) {
         return(.monitoring_status_card(
@@ -1074,11 +1080,16 @@ mod_monitoring_server <- function(id, app_state) {
 
 # ---- Internal --------------------------------------------------------
 
-# Show a single "connecting…" / "creating local DuckDB…" toast the
-# first time the user enters the Monitoring tab with a usable backend.
-# Idempotent across re-renders thanks to the fixed notification id.
-# session$userData$.monitoring_db_announced caches the announcement
-# state per session so we don't re-spam on every reactive flush.
+# Show a "connecting…" / "creating local DuckDB…" toast the first
+# time the user enters the Monitoring tab with a usable backend.
+# Idempotent across re-renders via the session$userData flag.
+#
+# The toast has `duration = 2.5` so it stays visible on screen even
+# when the DB connection itself completes in < 100 ms — without that
+# minimum exposure time the user briefly saw a flash (or nothing at
+# all) and assumed the app was frozen. A SEPARATE "ready" toast is
+# emitted by `.announce_monitoring_db_ready()` once the connection
+# has actually succeeded, so the two confirmations are independent.
 .ensure_monitoring_db_announced <- function(session, backend, i18n) {
   if (!identical(backend, "duckdb") && !identical(backend, "postgres")) {
     return(invisible(NULL))
@@ -1093,31 +1104,41 @@ mod_monitoring_server <- function(id, app_state) {
   }
   shiny::showNotification(
     i18n$t(msg_key),
-    type     = "default",
-    duration = NULL,
+    type        = "default",
+    duration    = 2.5,
     closeButton = FALSE,
-    id       = session$ns("db_connecting_toast"),
+    id          = session$ns("db_connecting_toast"),
+    session     = session
+  )
+  session$userData$.monitoring_db_announced <- TRUE
+  invisible(TRUE)
+}
+
+
+# Emit the "ready" toast once the connection has been confirmed
+# (called from output$db_status renderUI AFTER db_connect succeeded).
+# Idempotent via a separate session$userData flag so the toast does
+# not re-fire on every reactive re-render of the status card.
+.announce_monitoring_db_ready <- function(session, backend, i18n) {
+  if (!identical(backend, "duckdb") && !identical(backend, "postgres")) {
+    return(invisible(NULL))
+  }
+  if (isTRUE(session$userData$.monitoring_db_ready_announced)) {
+    return(invisible(NULL))
+  }
+  ready_key <- if (identical(backend, "duckdb")) {
+    "monitoring_db_local_ready"
+  } else {
+    "monitoring_db_remote_ready"
+  }
+  shiny::showNotification(
+    i18n$t(ready_key),
+    type     = "message",
+    duration = 4,
+    id       = session$ns("db_ready_toast"),
     session  = session
   )
-  # Schedule a "ready" toast after the connection has settled. The
-  # status-card renderUI removes the "connecting" toast via removeNotification
-  # in its on.exit, so this 1 s delayed "ready" toast gives the user
-  # explicit confirmation that the backend is now usable.
-  later::later(function() {
-    ready_key <- if (identical(backend, "duckdb")) {
-      "monitoring_db_local_ready"
-    } else {
-      "monitoring_db_remote_ready"
-    }
-    shiny::showNotification(
-      i18n$t(ready_key),
-      type     = "message",
-      duration = 4,
-      id       = session$ns("db_ready_toast"),
-      session  = session
-    )
-  }, delay = 1.2)
-  session$userData$.monitoring_db_announced <- TRUE
+  session$userData$.monitoring_db_ready_announced <- TRUE
   invisible(TRUE)
 }
 

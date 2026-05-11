@@ -1,3 +1,36 @@
+# nemetonshiny 0.24.1.9000 (dev)
+
+### Suivi sanitaire — 4 fixes UX critiques
+
+* `fix(duckdb)` — **bug Windows path** : sur Windows
+  `duckdb:///C:/Users/<projet>/data/monitoring.duckdb` était
+  parsé par `nemeton:::.parse_duckdb_url()` en
+  `/C:/Users/<projet>/data/monitoring.duckdb` (slash en trop)
+  → DuckDB refusait d'ouvrir → bandeau "Base non configurée"
+  affiché à tort alors que le toast disait "Base locale prête".
+  Fix : `.resolve_monitoring_db_url()` émet désormais un **bare
+  path** (sans préfixe `duckdb://`), reconnu cross-platform par
+  `nemeton:::.detect_driver()` via le suffixe `.duckdb`.
+* `fix(ux)` — **bouton "Enregistrer ce projet comme zone de
+  suivi"** était figé en `disabled = NA` au niveau HTML, donc
+  non cliquable même quand toutes les conditions étaient
+  réunies. Supprimé : l'observer du clic valide déjà les
+  préconditions et affiche une notification d'erreur si elles
+  ne sont pas remplies, donc l'utilisateur reçoit toujours un
+  feedback précis sans être bloqué à l'avance.
+* `fix(ux)` — **toast "Création de la base DuckDB locale…"**
+  apparaissait et disparaissait trop vite pour être perçu (la
+  connexion DuckDB est typiquement < 100 ms). Désormais le
+  toast a `duration = 2.5` s minimum et un toast séparé
+  "Base locale prête" est émis APRÈS confirmation de la
+  connexion (au lieu d'un `later::later` aveugle qui se
+  déclenchait même en cas d'échec).
+* `fix(ux)` — la **checkbox "Inclure les classes faible et
+  moyenne"** débordait du `card_header` next to *"Alertes
+  détectées"* sur les viewports étroits. Déplacée sur sa
+  propre ligne juste sous le header — toujours sur une seule
+  ligne, peu importe la largeur.
+
 # nemetonshiny 0.24.1 (2026-05-11)
 
 ### UX Suivi sanitaire — diagnostic précis + toast + séparateur "au"

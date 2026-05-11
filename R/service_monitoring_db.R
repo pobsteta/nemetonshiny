@@ -81,7 +81,12 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL) {
 monitoring_db_backend <- function(project = NULL) {
   url <- .resolve_monitoring_db_url(project)
   if (!nzchar(url)) return("none")
-  if (grepl("^duckdb:", url, ignore.case = TRUE)) return("duckdb")
+  # Match the same logic as nemeton:::.detect_driver: a leading
+  # `duckdb:` scheme OR a bare path ending in `.duckdb`.
+  if (grepl("^duckdb:", url, ignore.case = TRUE) ||
+      grepl("\\.duckdb$", url, ignore.case = TRUE)) {
+    return("duckdb")
+  }
   "postgres"
 }
 
@@ -163,11 +168,14 @@ close_monitoring_db_connection <- function(con) {
     )
     .nemeton_env$.duckdb_announced <- TRUE
   }
-  # nemeton::db_connect() accepts both `duckdb:///abs/path` (3-slash
-  # SQLite-style) and bare paths ending in `.duckdb`. Use the explicit
-  # scheme so the intent is unambiguous in logs.
-  paste0("duckdb:///", normalizePath(duckdb_path, winslash = "/",
-                                     mustWork = FALSE))
+  # nemeton::db_connect() accepts both `duckdb:///abs/path` and bare
+  # paths ending in `.duckdb`. We emit the BARE PATH form so Windows
+  # absolute paths (`C:/Users/...`) round-trip correctly. The
+  # 3-slash form (`duckdb:///C:/Users/...`) confuses nemeton's
+  # `.parse_duckdb_url` on Windows: `sub("^duckdb:(?://)?", "", url)`
+  # leaves `/C:/Users/...` (with a leading slash) which DuckDB then
+  # rejects as an invalid path.
+  normalizePath(duckdb_path, winslash = "/", mustWork = FALSE)
 }
 
 
