@@ -480,10 +480,15 @@ load_indicators <- function(project_id) {
 #'
 #' @param project_id Character. Project ID.
 #' @param plots sf POINT with at least a `plot_id` column.
+#' @param layer Character. GPKG layer name. Default `"plots"` for
+#'   Base/Over calibration plots from `mod_sampling`. Pass
+#'   `"observations"` when sending action-plan observation points
+#'   from `mod_action_plan`. The two layers coexist in the same
+#'   `samples.gpkg` file and never overwrite each other.
 #'
 #' @return Logical. TRUE on success.
 #' @noRd
-save_samples <- function(project_id, plots) {
+save_samples <- function(project_id, plots, layer = "plots") {
   if (!inherits(plots, "sf")) {
     cli::cli_warn("save_samples: plots must be an sf object")
     return(FALSE)
@@ -500,14 +505,26 @@ save_samples <- function(project_id, plots) {
   gpkg_path <- file.path(data_dir, "samples.gpkg")
 
   tryCatch({
-    if (file.exists(gpkg_path)) unlink(gpkg_path)
-    sf::st_write(plots, gpkg_path, driver = "GPKG", quiet = TRUE)
+    # Write only the named layer; keep any sibling layer intact.
+    # `delete_layer = TRUE` replaces just this layer if it already
+    # exists, so calibration "plots" survive an observations write
+    # and vice-versa. On an empty file GDAL creates it.
+    sf::st_write(plots, gpkg_path, layer = layer, driver = "GPKG",
+                 append = FALSE, delete_layer = TRUE, quiet = TRUE)
 
-    update_project_metadata(project_id, list(
-      samples_count        = nrow(plots),
-      samples_generated_at = Sys.time()
-    ))
-    cli::cli_alert_success("Saved {nrow(plots)} sample plots")
+    # `samples_count` documents the calibration plan size; only the
+    # default `"plots"` layer drives this metadata. Observations
+    # written by mod_action_plan have their own provenance and
+    # should not perturb the sampling plan's bookkeeping.
+    if (identical(layer, "plots")) {
+      update_project_metadata(project_id, list(
+        samples_count        = nrow(plots),
+        samples_generated_at = Sys.time()
+      ))
+    }
+    cli::cli_alert_success(
+      "Saved {nrow(plots)} sample plots to layer '{layer}'"
+    )
     TRUE
   }, error = function(e) {
     cli::cli_warn("Failed to save samples: {e$message}")
@@ -519,25 +536,32 @@ save_samples <- function(project_id, plots) {
 #' Load sampling plots from project
 #'
 #' @description
-#' Reads `<project>/data/samples.gpkg` written by [save_samples()].
-#' Returns NULL if the file is missing or unreadable — callers must
-#' treat NULL as "no plan generated yet".
+#' Reads a layer from `<project>/data/samples.gpkg` written by
+#' [save_samples()]. Returns NULL if the file or the requested
+#' layer is missing — callers must treat NULL as "no plan yet".
 #'
 #' @param project_id Character. Project ID.
+#' @param layer Character. GPKG layer name. Default `"plots"` for
+#'   Base/Over calibration plots. Pass `"observations"` to read
+#'   action-plan observation points.
 #'
 #' @return sf POINT, or NULL.
 #' @noRd
-load_samples <- function(project_id) {
+load_samples <- function(project_id, layer = "plots") {
   project_path <- get_project_path(project_id)
   if (is.null(project_path)) return(NULL)
 
   gpkg_path <- file.path(project_path, "data", "samples.gpkg")
   if (!file.exists(gpkg_path)) return(NULL)
 
+  available <- tryCatch(sf::st_layers(gpkg_path)$name,
+                        error = function(e) character(0))
+  if (!(layer %in% available)) return(NULL)
+
   tryCatch({
-    sf::st_read(gpkg_path, quiet = TRUE)
+    sf::st_read(gpkg_path, layer = layer, quiet = TRUE)
   }, error = function(e) {
-    cli::cli_warn("Failed to load samples: {e$message}")
+    cli::cli_warn("Failed to load samples layer '{layer}': {e$message}")
     NULL
   })
 }

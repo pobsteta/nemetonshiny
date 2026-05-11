@@ -1539,10 +1539,11 @@ TRANSLATIONS <- list(
   ),
 
   # TSP map legend
-  sampling_legend_tsp_title = list(fr = "Parcours",        en = "Route"),
-  sampling_legend_tsp_start = list(fr = "Départ",          en = "Start"),
-  sampling_legend_tsp_end   = list(fr = "Arrivée",         en = "Finish"),
-  sampling_legend_tsp_line  = list(fr = "Ordre de visite", en = "Visit order"),
+  sampling_legend_tsp_title   = list(fr = "Parcours",        en = "Route"),
+  sampling_legend_tsp_start   = list(fr = "Départ",          en = "Start"),
+  sampling_legend_tsp_end     = list(fr = "Arrivée",         en = "Finish"),
+  sampling_legend_tsp_line    = list(fr = "Ordre de visite", en = "Visit order"),
+  sampling_legend_plots_title = list(fr = "Placettes",       en = "Plots"),
   qfield_download = list(
     fr = "T\u00e9l\u00e9charger le projet QGIS",
     en = "Download QGIS project"

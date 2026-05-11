@@ -229,10 +229,11 @@ mod_sampling_server <- function(id, app_state) {
     ns <- session$ns
 
     sampling_rv <- shiny::reactiveValues(
-      plots      = NULL,  # sf POINT (Base + Over)
-      zone       = NULL,  # sf POLYGON (union of project geometry)
-      cv_result  = NULL,  # output of nemeton::cv_from_bdforet()
-      size_info  = NULL   # output of nemeton::compute_sample_size()
+      plots         = NULL,  # sf POINT (Base + Over, calibration plan)
+      observations  = NULL,  # sf POINT (observations from mod_action_plan)
+      zone          = NULL,  # sf POLYGON (union of project geometry)
+      cv_result     = NULL,  # output of nemeton::cv_from_bdforet()
+      size_info     = NULL   # output of nemeton::compute_sample_size()
     )
 
     # --- Default the QField project_name to the current project -----
@@ -776,13 +777,21 @@ mod_sampling_server <- function(id, app_state) {
     # startup (the inline isolate() block below handles that case).
     .restore_samples <- function(project) {
       if (is.null(project) || is.null(project$id)) return(invisible(NULL))
-      restored <- tryCatch(load_samples(project$id),
+      restored <- tryCatch(load_samples(project$id, layer = "plots"),
                            error = function(e) NULL)
-      if (is.null(restored) || !inherits(restored, "sf") ||
-          nrow(restored) == 0L) {
-        return(invisible(NULL))
+      if (!is.null(restored) && inherits(restored, "sf") &&
+          nrow(restored) > 0L) {
+        sampling_rv$plots <- restored
       }
-      sampling_rv$plots <- restored
+      # Observations are written by mod_action_plan's "Envoyer vers
+      # Terrain" button into a sibling layer. Coexists with Base/Over
+      # without ever overwriting them. NULL when the layer is absent
+      # (== no observation point sent yet).
+      obs <- tryCatch(load_samples(project$id, layer = "observations"),
+                      error = function(e) NULL)
+      if (!is.null(obs) && inherits(obs, "sf") && nrow(obs) > 0L) {
+        sampling_rv$observations <- obs
+      }
       if (!is.null(project$indicators_sf) &&
           inherits(project$indicators_sf, "sf") &&
           nrow(project$indicators_sf) > 0L) {
@@ -800,6 +809,19 @@ mod_sampling_server <- function(id, app_state) {
 
     shiny::observeEvent(app_state$current_project, {
       .restore_samples(app_state$current_project)
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+
+    # Whenever mod_action_plan bumps samples_refresh after "Envoyer
+    # vers Terrain", re-read the observations layer so the new points
+    # appear on the map without a project switch.
+    shiny::observeEvent(app_state$samples_refresh, {
+      project <- app_state$current_project
+      if (is.null(project) || is.null(project$id)) return()
+      obs <- tryCatch(load_samples(project$id, layer = "observations"),
+                      error = function(e) NULL)
+      sampling_rv$observations <- if (!is.null(obs) &&
+                                      inherits(obs, "sf") &&
+                                      nrow(obs) > 0L) obs else NULL
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
     # --- Status banner -----------------------------------------------
@@ -882,6 +904,7 @@ mod_sampling_server <- function(id, app_state) {
       i18n <- get_i18n(app_state$language %||% "fr")
       units <- units_sf()
       plots <- sampling_rv$plots
+      obs   <- sampling_rv$observations
       bd    <- bdforet_sf()
 
       base <- leaflet::leaflet() |>
@@ -1029,12 +1052,56 @@ mod_sampling_server <- function(id, app_state) {
           }
         }
 
+        overlays <- c(overlays, "Placettes")
+      }
+
+      # Observation points sent from mod_action_plan ("Envoyer vers
+      # Terrain"). Their own leaflet group so the user can toggle them
+      # independently of the Base/Over calibration plan. Distinct
+      # green colour to stand apart from the Base/Over blue/orange.
+      if (!is.null(obs) && nrow(obs) > 0) {
+        obs_ll <- sf::st_transform(obs, 4326)
+        base <- leaflet::addCircleMarkers(
+          base, data = obs_ll,
+          radius = 6, weight = 1, color = "#333",
+          fillColor = "#2ca02c", fillOpacity = 0.9,
+          label = ~sprintf(
+            "%s — %s (UGF %s, an %s)",
+            plot_id, type, ug_id, annee_cible
+          ),
+          group = "Observations"
+        )
+        overlays <- c(overlays, "Observations")
+      }
+
+      # Unified legend: only the families actually drawn show up. The
+      # palette colour MUST match the fillColor used above so the
+      # legend swatch stays truthful when Base/Over/Observation appear
+      # in any combination.
+      present_types  <- character(0)
+      present_colors <- character(0)
+      if (!is.null(plots) && nrow(plots) > 0) {
+        for (tt in c("Base", "Over")) {
+          if (tt %in% plots$type) {
+            present_types  <- c(present_types,  tt)
+            present_colors <- c(present_colors,
+                                if (tt == "Base") "#1f77b4" else "#ff7f0e")
+          }
+        }
+      }
+      if (!is.null(obs) && nrow(obs) > 0) {
+        present_types  <- c(present_types,  "Observation")
+        present_colors <- c(present_colors, "#2ca02c")
+      }
+      if (length(present_types) > 0L) {
+        legend_pal <- leaflet::colorFactor(
+          palette = present_colors, domain = present_types
+        )
         base <- leaflet::addLegend(
           base, position = "bottomright",
-          pal = pal, values = c("Base", "Over"),
-          title = "Placettes"
+          pal = legend_pal, values = present_types,
+          title = i18n$t("sampling_legend_plots_title")
         )
-        overlays <- c(overlays, "Placettes")
       }
 
       base <- leaflet::addLayersControl(
