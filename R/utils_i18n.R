@@ -1781,6 +1781,10 @@ TRANSLATIONS <- list(
     fr = "Base de suivi distante connect\u00e9e.",
     en = "Remote monitoring database connected."
   ),
+  monitoring_db_loading_hint = list(
+    fr = "Migration du sch\u00e9ma en cours, cela peut prendre quelques secondes au premier d\u00e9marrage\u2026",
+    en = "Schema migration in progress, this can take a few seconds on first start\u2026"
+  ),
   date_range_separator = list(
     fr = "au",
     en = "to"

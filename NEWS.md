@@ -1,3 +1,58 @@
+# nemetonshiny 0.24.4 (2026-05-12)
+
+### Suivi sanitaire — connexion DB asynchrone + correctif schéma DuckDB
+
+* `fix(monitoring)` — **table `monitoring_zone` manquante** sur les
+  fichiers DuckDB ouverts après le premier (erreur `Catalog Error:
+  Table with name monitoring_zone does not exist!` au clic sur
+  *Enregistrer ce projet comme zone de suivi*).
+
+  Cause : `.ensure_monitoring_schema()` mémoïsait le succès de
+  `db_migrate()` dans `.nemeton_env$.monitoring_schema_initialized`,
+  flag **process-level** partagé entre toutes les connexions de la
+  session R. Une fois TRUE après la 1re connexion réussie,
+  l'appel à `db_migrate()` était **systématiquement skippé** sur
+  les connexions suivantes — y compris quand celles-ci visaient un
+  **fichier DuckDB tout neuf** (changement de projet, suppression
+  du fichier, autre `db_url`). Résultat : `db_connect()` créait
+  bien le fichier (file I/O), mais aucune table n'y était jamais
+  insérée → le 1er `INSERT INTO monitoring_zone` plantait.
+
+  Correctif : suppression du cache wrapper. `nemeton::db_migrate()`
+  est **déjà idempotent** (la table `schema_migration` traque les
+  versions appliquées, une migration appliquée est sautée après un
+  simple SELECT). Le coût sur une base déjà migrée est sub-ms.
+
+* `feat(monitoring)` — **connexion DB asynchrone** (`ExtendedTask`) +
+  **bandeau "loading" persistant** avec roue dentée animée
+  (`.nmt-spin` + `bsicons::bs_icon("gear-fill")`). Remplace le
+  feedback par toasts qui auto-dismiss en 2.5 s et étaient
+  positionnés top-right (donc faciles à manquer).
+
+  Le worker `future::plan("multisession")` ouvre `db_connect +
+  db_migrate` en arrière-plan ; pendant l'exécution, le bandeau
+  *Connexion à la base de suivi… — Migration du schéma en cours,
+  cela peut prendre quelques secondes au premier démarrage…*
+  reste affiché en place dans la zone principale. Le résultat
+  (succès / échec avec message d'erreur réel) remplace ensuite le
+  bandeau de chargement, sans race ni clignotement.
+
+  Le worker ne fait qu'**éprouver la connexion** (DBI n'est pas
+  sérialisable entre processus) ; les reactives métier
+  (`validity()`, `alerts()`, `zones()`) continuent d'ouvrir leurs
+  propres connexions sync dans le main process — fast après la
+  migration initiale.
+
+* `chore(monitoring)` — suppression des helpers maintenant inutiles
+  `.ensure_monitoring_db_announced()` et
+  `.announce_monitoring_db_ready()` (toasts top-right), remplacés
+  par `.monitoring_loading_card()` (bandeau persistant in-place).
+
+* `feat(i18n)` — nouvelle clé `monitoring_db_loading_hint`
+  ("Migration du schéma en cours, cela peut prendre quelques
+  secondes au premier démarrage…").
+
+
 # nemetonshiny 0.24.3 (2026-05-11)
 
 ### Suivi sanitaire — override `NEMETON_DB_LOCAL=1` pour forcer le mode local
