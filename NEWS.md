@@ -1,4 +1,4 @@
-# nemetonshiny 0.24.7.9002 (2026-05-12)
+# nemetonshiny 0.24.8 (2026-05-12)
 
 ### Suivi sanitaire — progression "X/N tuiles Sentinel-2" + phases FORDEAD
 
@@ -36,8 +36,6 @@
   logique métier (savoir qu'une tuile est téléchargée, qu'une
   phase est terminée) reste dans `nemeton` ; nemetonshiny n'écoute
   que le canal callback exporté.
-
-# nemetonshiny 0.24.7.9001 (2026-05-12)
 
 ### Suivi sanitaire — bouton "Lancer le diagnostic FAST" muet au clic
 
