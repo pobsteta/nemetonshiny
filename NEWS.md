@@ -1,3 +1,39 @@
+# nemetonshiny 0.24.6 (2026-05-12)
+
+### Suivi sanitaire — worker async ne dépend plus de nemetonshiny
+
+* `fix(monitoring)` — bandeau d'erreur **"argument inutilisé
+  (db_url = db_url)"** au premier passage dans l'onglet *Suivi
+  sanitaire* après installation de v0.24.5.
+
+  Cause : la probe async passait par `nemetonshiny:::get_monitoring_db_connection(db_url = ...)`
+  via `getFromNamespace`. Quand le worker chargeait une version
+  obsolète de nemetonshiny (cache pak, dev checkout pas à jour
+  via `pkgload::load_all`, binaire shadowé), le wrapper résolu
+  était l'ancienne signature `get_monitoring_db_connection(project = NULL)`
+  sans `db_url` → erreur R *"argument inutilisé"* dans le worker
+  → bandeau warning avec le message brut.
+
+  Correctif : le worker ne passe **plus jamais** par les helpers
+  internes de nemetonshiny. Il appelle directement les fonctions
+  exportées de `nemeton` (`db_connect()`, `db_migrate()`,
+  `db_disconnect()`), qui sont l'API publique stable du paquet
+  cœur. Bénéfices :
+
+  - Plus de couplage entre la version de nemetonshiny dans le main
+    process et celle dans le worker subprocess.
+  - L'erreur de connexion (et de migration) est capturée
+    directement et transférée proprement au main process via la
+    valeur de retour de la promise.
+  - Code plus court et plus simple (suppression de
+    `.pkg_path_mon`, des trois `getFromNamespace`, du chargement
+    conditionnel pkgload/loadNamespace).
+
+* `chore(monitoring)` — suppression du capture
+  `.pkg_path_mon <- pkgload::pkg_path()` (devenu inutile depuis
+  que le worker ne charge plus nemetonshiny).
+
+
 # nemetonshiny 0.24.5 (2026-05-12)
 
 ### Suivi sanitaire — hardening du worker async contre un nemetonshiny obsolète

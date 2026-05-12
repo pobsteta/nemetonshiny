@@ -272,9 +272,6 @@ mod_monitoring_server <- function(id, app_state) {
     # serializable across processes, so the actual connection used by
     # validity()/alerts()/zones() is re-opened (sync, fast — schema
     # already migrated) in the main process once the probe succeeded.
-    .pkg_path_mon <- tryCatch(pkgload::pkg_path(),
-                              error = function(e) NULL)
-
     db_probe_task <- shiny::ExtendedTask$new(function(db_url) {
       if (requireNamespace("future", quietly = TRUE)) {
         plan_classes <- class(future::plan())
@@ -283,61 +280,33 @@ mod_monitoring_server <- function(id, app_state) {
         if (!is_parallel) future::plan("multisession")
       }
       promises::future_promise({
-        # Load nemetonshiny in the worker. Prefer dev mode (pkgload)
-        # when the parent session is in dev mode, otherwise loadNamespace
-        # from the installed library. The fallback matters: an old
-        # cached nemetonshiny in .libPaths() can shadow a freshly-built
-        # dev version in the parent — that's how the worker ended up
-        # without `last_monitoring_db_error` and threw "objet 'X'
-        # introuvable" in v0.24.4 just after release.
-        if (!is.null(.pkg_path_mon) &&
-            requireNamespace("pkgload", quietly = TRUE)) {
-          tryCatch(pkgload::load_all(.pkg_path_mon, quiet = TRUE),
-                   error = function(e) NULL)
-        }
-        if (!requireNamespace("nemetonshiny", quietly = TRUE)) {
-          return(list(
-            ok    = FALSE,
-            error = "Package 'nemetonshiny' not available in worker."
-          ))
-        }
+        # The worker only depends on `nemeton` (a hard dependency in
+        # DESCRIPTION) — never on nemetonshiny. Going through
+        # nemetonshiny's internal wrapper introduced two flavours of
+        # silent failure:
+        #   * `getFromNamespace("last_monitoring_db_error")` would throw
+        #     "objet 'X' introuvable" when an older nemetonshiny was
+        #     loaded in the worker (v0.24.4 regression);
+        #   * `get_monitoring_db_connection(db_url = ...)` would throw
+        #     "argument inutile (db_url = db_url)" when an older
+        #     nemetonshiny without the `db_url` parameter was loaded
+        #     (v0.24.5 regression — typically a stale dev checkout via
+        #     pkgload, or a binary cached by pak that shadowed the
+        #     fresh install for the worker subprocess).
+        # Calling nemeton:: directly bypasses both classes of mismatch.
         if (!nzchar(db_url)) {
           return(list(ok = FALSE, error = "no_url"))
         }
-
-        # Resolve the two internal helpers defensively. `getFromNamespace`
-        # throws "object 'X' not found" (localized "objet 'X' introuvable")
-        # when the function is missing — which surfaces as a confusing
-        # error in the bandeau. Wrap and emit a clear message instead.
-        get_conn <- tryCatch(
-          utils::getFromNamespace("get_monitoring_db_connection",
-                                  "nemetonshiny"),
-          error = function(e) NULL
-        )
-        close_conn <- tryCatch(
-          utils::getFromNamespace("close_monitoring_db_connection",
-                                  "nemetonshiny"),
-          error = function(e) NULL
-        )
-        if (is.null(get_conn) || is.null(close_conn)) {
+        if (!requireNamespace("nemeton", quietly = TRUE)) {
           return(list(
             ok    = FALSE,
-            error = paste(
-              "Outdated nemetonshiny in worker library path.",
-              "Re-install pobsteta/nemetonshiny@v0.24.4 with",
-              "pak::cache_clean(); pak::pak('pobsteta/nemetonshiny@v0.24.4')."
-            )
+            error = "Package 'nemeton' not available in worker."
           ))
         }
 
-        # get_monitoring_db_connection itself returns NULL + stashes the
-        # cause in a package-level env (not reachable across processes).
-        # We capture any direct throw here as a fallback so the user
-        # at least sees something meaningful even if the wrapper's
-        # NULL-path doesn't yield a transferable message.
         probe_err <- NULL
         con <- tryCatch(
-          get_conn(db_url = db_url),
+          nemeton::db_connect(db_url),
           error = function(e) {
             probe_err <<- conditionMessage(e)
             NULL
@@ -350,7 +319,22 @@ mod_monitoring_server <- function(id, app_state) {
                    "connect_failed"
           return(list(ok = FALSE, error = msg))
         }
-        tryCatch(close_conn(con), error = function(e) NULL)
+
+        # Migration is itself idempotent (schema_migration table). On
+        # a fresh DuckDB it creates the schema; on an already-migrated
+        # base it's a single SELECT.
+        mig_ok <- tryCatch({
+          nemeton::db_migrate(con)
+          TRUE
+        }, error = function(e) {
+          probe_err <<- paste0("Migration failed: ", conditionMessage(e))
+          FALSE
+        })
+        # Always close, even on migration failure.
+        tryCatch(nemeton::db_disconnect(con), error = function(e) NULL)
+        if (!isTRUE(mig_ok)) {
+          return(list(ok = FALSE, error = probe_err))
+        }
         list(ok = TRUE, error = NULL)
       }, seed = TRUE)
     })
