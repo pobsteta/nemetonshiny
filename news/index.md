@@ -1,5 +1,62 @@
 # Changelog
 
+## nemetonshiny 0.24.9 (2026-05-12)
+
+#### Suivi sanitaire — mirroring console des events de progression
+
+- `feat(monitoring)` — la progression du Suivi sanitaire n’apparaissait
+  que dans le toast UI. Aucune ligne dans la console R pour le
+  développeur qui lance l’app via `Rscript -e ...`.
+
+  Correctif : les deux observers de progression (ingestion + FORDEAD)
+  écrivent désormais une ligne
+  [`cli::cli_alert_info`](https://cli.r-lib.org/reference/cli_alert.html)
+  (ou `cli_alert_warning` sur `scene_error` / `phase_error`) à chaque
+  event, exactement une fois par tuile / phase grâce à la granularité du
+  `reactivePoll(500 ms)`.
+
+  Le format console est plus riche que le toast : on profite des champs
+  supplémentaires nemeton (`obs_date`, `cloud_pct`, `source`) pour
+  donner une ligne du genre :
+
+      ℹ Tuile Sentinel-2 S2A_MSIL2A_20260508T103651_R008_T31TFN_20260508T191011 (5/26) — 2026-05-08, 2.9% nuages, source=pc
+
+  Pour FORDEAD :
+
+      ℹ FORDEAD phase training (1/5)
+
+  Helpers : `.log_ingest_event()` et `.log_fordead_event()` dans la
+  section Internal de `mod_monitoring.R`. Aucune utilisation de
+  [`print()`](https://rdrr.io/r/base/print.html) /
+  [`message()`](https://rdrr.io/r/base/message.html) /
+  [`cat()`](https://rdrr.io/r/base/cat.html) (règle 9 CLAUDE.md).
+
+#### Suivi sanitaire — toast progression aligné sur le payload nemeton
+
+- `fix(monitoring)` — toast d’ingestion affichait **“Tuile Sentinel-2
+  0/0”** pendant tout le run alors que le `scene_id` arrivait
+  correctement.
+
+  Cause : <nemeton@v0.21.2> émet le payload sous la forme
+  `{current, completed, total, scene_id, obs_date, cloud_pct, source}`,
+  pas `{i, n, status, ...}` comme initialement spécifié. L’observer
+  cherchait `ev$i` / `ev$n` qui n’existaient pas, donc retombait
+  toujours sur le défaut `0L`.
+
+  Correctif :
+
+  - Lecture des champs `completed` / `total` avec fallback vers `i` /
+    `n` (au cas où le schéma évoluerait).
+  - Idem côté FORDEAD : `current` pour la phase, fallback vers `phase` /
+    `scene_id`.
+  - Reformatage des i18n : compteur **entre parenthèses** en fin de
+    message — `"Tuile Sentinel-2 <scene_id> (X/N)"` et
+    `"FORDEAD — phase <nom> (X/N)"`.
+  - Ajout d’une **roue dentée animée** devant chaque message
+    (`bsicons::bs_icon("gear-fill")` + classe `.nmt-spin`, keyframe déjà
+    définie dans `custom.css`). Le toast persistant ne ressemble plus à
+    un message figé.
+
 ## nemetonshiny 0.24.8 (2026-05-12)
 
 #### Suivi sanitaire — progression “X/N tuiles Sentinel-2” + phases FORDEAD

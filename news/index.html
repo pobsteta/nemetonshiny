@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,36 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.24.8/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.9" id="nemetonshiny-0249-2026-05-12">nemetonshiny 0.24.9 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0249-2026-05-12"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--mirroring-console-des-events-de-progression-0-24-9">Suivi sanitaire — mirroring console des events de progression<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--mirroring-console-des-events-de-progression-0-24-9"></a></h4>
+<ul><li>
+<p><code>feat(monitoring)</code> — la progression du Suivi sanitaire n’apparaissait que dans le toast UI. Aucune ligne dans la console R pour le développeur qui lance l’app via <code>Rscript -e ...</code>.</p>
+<p>Correctif : les deux observers de progression (ingestion + FORDEAD) écrivent désormais une ligne <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> (ou <code>cli_alert_warning</code> sur <code>scene_error</code> / <code>phase_error</code>) à chaque event, exactement une fois par tuile / phase grâce à la granularité du <code>reactivePoll(500 ms)</code>.</p>
+<p>Le format console est plus riche que le toast : on profite des champs supplémentaires nemeton (<code>obs_date</code>, <code>cloud_pct</code>, <code>source</code>) pour donner une ligne du genre :</p>
+<pre><code>ℹ Tuile Sentinel-2 S2A_MSIL2A_20260508T103651_R008_T31TFN_20260508T191011 (5/26) — 2026-05-08, 2.9% nuages, source=pc</code></pre>
+<p>Pour FORDEAD :</p>
+<pre><code>ℹ FORDEAD phase training (1/5)</code></pre>
+<p>Helpers : <code>.log_ingest_event()</code> et <code>.log_fordead_event()</code> dans la section Internal de <code>mod_monitoring.R</code>. Aucune utilisation de <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> / <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> / <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> (règle 9 CLAUDE.md).</p>
+</li>
+</ul></div>
+<div class="section level4">
+<h4 id="suivi-sanitaire--toast-progression-aligné-sur-le-payload-nemeton-0-24-9">Suivi sanitaire — toast progression aligné sur le payload nemeton<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--toast-progression-align%C3%A9-sur-le-payload-nemeton-0-24-9"></a></h4>
+<ul><li>
+<p><code>fix(monitoring)</code> — toast d’ingestion affichait <strong>“Tuile Sentinel-2 0/0”</strong> pendant tout le run alors que le <code>scene_id</code> arrivait correctement.</p>
+<p>Cause : <a href="mailto:nemeton@v0.21.2" class="email">nemeton@v0.21.2</a> émet le payload sous la forme <code>{current, completed, total, scene_id, obs_date, cloud_pct, source}</code>, pas <code>{i, n, status, ...}</code> comme initialement spécifié. L’observer cherchait <code>ev$i</code> / <code>ev$n</code> qui n’existaient pas, donc retombait toujours sur le défaut <code>0L</code>.</p>
+<p>Correctif :</p>
+<ul><li>Lecture des champs <code>completed</code> / <code>total</code> avec fallback vers <code>i</code> / <code>n</code> (au cas où le schéma évoluerait).</li>
+<li>Idem côté FORDEAD : <code>current</code> pour la phase, fallback vers <code>phase</code> / <code>scene_id</code>.</li>
+<li>Reformatage des i18n : compteur <strong>entre parenthèses</strong> en fin de message — <code>"Tuile Sentinel-2 &lt;scene_id&gt; (X/N)"</code> et <code>"FORDEAD — phase &lt;nom&gt; (X/N)"</code>.</li>
+<li>Ajout d’une <strong>roue dentée animée</strong> devant chaque message (<code>bsicons::bs_icon("gear-fill")</code> + classe <code>.nmt-spin</code>, keyframe déjà définie dans <code>custom.css</code>). Le toast persistant ne ressemble plus à un message figé.</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.24.8" id="nemetonshiny-0248-2026-05-12">nemetonshiny 0.24.8 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0248-2026-05-12"></a></h2>
 <div class="section level4">
