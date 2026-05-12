@@ -1,3 +1,29 @@
+# nemetonshiny 0.24.8.9001 (2026-05-12)
+
+### Suivi sanitaire — toast progression aligné sur le payload nemeton
+
+* `fix(monitoring)` — toast d'ingestion affichait **"Tuile Sentinel-2 0/0"**
+  pendant tout le run alors que le `scene_id` arrivait correctement.
+
+  Cause : nemeton@v0.21.2 émet le payload sous la forme
+  `{current, completed, total, scene_id, obs_date, cloud_pct, source}`,
+  pas `{i, n, status, ...}` comme initialement spécifié. L'observer
+  cherchait `ev$i` / `ev$n` qui n'existaient pas, donc retombait
+  toujours sur le défaut `0L`.
+
+  Correctif :
+  - Lecture des champs `completed` / `total` avec fallback vers
+    `i` / `n` (au cas où le schéma évoluerait).
+  - Idem côté FORDEAD : `current` pour la phase, fallback vers
+    `phase` / `scene_id`.
+  - Reformatage des i18n : compteur **entre parenthèses** en fin de
+    message — `"Tuile Sentinel-2 <scene_id> (X/N)"` et
+    `"FORDEAD — phase <nom> (X/N)"`.
+  - Ajout d'une **roue dentée animée** devant chaque message
+    (`bsicons::bs_icon("gear-fill")` + classe `.nmt-spin`,
+    keyframe déjà définie dans `custom.css`). Le toast persistant
+    ne ressemble plus à un message figé.
+
 # nemetonshiny 0.24.8 (2026-05-12)
 
 ### Suivi sanitaire — progression "X/N tuiles Sentinel-2" + phases FORDEAD

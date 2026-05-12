@@ -1002,29 +1002,35 @@ mod_monitoring_server <- function(id, app_state) {
 
     # Render the persistent progress toast. Each event from the worker
     # replaces the previous one (same notification id) so we don't
-    # stack 50 toasts during a long ingestion.
+    # stack 50 toasts during a long ingestion. The notification body
+    # is built as HTML so we can prepend a spinning gear icon.
+    #
+    # nemeton@v0.21.2 emits payloads of the shape:
+    #   { current: "s2:scene", completed: 0, total: 26,
+    #     scene_id: "...", obs_date: "...", cloud_pct: 2.94,
+    #     source: "pc" }
+    # We also accept `i`/`n`/`status`/`phase` as fallbacks so the
+    # observer survives a future schema rename without code changes.
     shiny::observe({
       ev <- ingest_progress()
       if (is.null(ev)) return()
       i18n <- i18n_r()
       status <- ev$status %||% "running"
-      # The "done" event is the LAST one — let the success observer
-      # render the final summary toast instead of overwriting it here.
       if (identical(status, "done")) return()
+      i_val <- as.integer(ev$completed %||% ev$i %||% 0L)
+      n_val <- as.integer(ev$total     %||% ev$n %||% 0L)
+      scene <- as.character(ev$scene_id %||% "")
       msg <- if (identical(status, "starting")) {
         i18n$t("monitoring_ingest_starting")
-      } else if (!is.null(ev$scene_id) && nzchar(as.character(ev$scene_id))) {
+      } else if (nzchar(scene)) {
         sprintf(i18n$t("monitoring_ingest_progress_named_fmt"),
-                as.integer(ev$i %||% 0L),
-                as.integer(ev$n %||% 0L),
-                as.character(ev$scene_id))
+                scene, i_val, n_val)
       } else {
         sprintf(i18n$t("monitoring_ingest_progress_fmt"),
-                as.integer(ev$i %||% 0L),
-                as.integer(ev$n %||% 0L))
+                i_val, n_val)
       }
       shiny::showNotification(
-        msg,
+        .monitoring_spinning_msg(msg),
         id          = session$ns("ingest_progress"),
         type        = if (identical(status, "scene_error")) "warning" else "message",
         duration    = NULL,
@@ -1169,20 +1175,21 @@ mod_monitoring_server <- function(id, app_state) {
       i18n <- i18n_r()
       status <- ev$status %||% "running"
       if (identical(status, "done")) return()
-      phase <- ev$phase %||% ev$scene_id %||% ""
-      msg <- if (identical(status, "starting") || !nzchar(as.character(phase))) {
+      # nemeton emits `current` for phases (e.g. "training"). Accept
+      # `phase` / `scene_id` as legacy fallbacks.
+      phase <- as.character(ev$current %||% ev$phase %||% ev$scene_id %||% "")
+      i_val <- as.integer(ev$completed %||% ev$i %||% 0L)
+      n_val <- as.integer(ev$total     %||% ev$n %||% 0L)
+      msg <- if (identical(status, "starting") || !nzchar(phase)) {
         i18n$t("monitoring_health_starting")
-      } else if (!is.null(ev$n) && as.integer(ev$n) > 0L) {
+      } else if (n_val > 0L) {
         sprintf(i18n$t("monitoring_health_phase_fmt"),
-                as.character(phase),
-                as.integer(ev$i %||% 0L),
-                as.integer(ev$n %||% 0L))
+                phase, i_val, n_val)
       } else {
-        sprintf(i18n$t("monitoring_health_phase_simple_fmt"),
-                as.character(phase))
+        sprintf(i18n$t("monitoring_health_phase_simple_fmt"), phase)
       }
       shiny::showNotification(
-        msg,
+        .monitoring_spinning_msg(msg),
         id          = session$ns("fordead_progress"),
         type        = if (identical(status, "phase_error")) "warning" else "message",
         duration    = NULL,
@@ -1394,6 +1401,26 @@ mod_monitoring_server <- function(id, app_state) {
   tryCatch(unlink(c(path, paste0(path, ".tmp"))),
            error = function(e) invisible(NULL))
   invisible(NULL)
+}
+
+# Wrap a message body with a spinning gear icon so the persistent
+# toast (`duration = NULL`) shows the user that something is still
+# happening. The `.nmt-spin` CSS keyframe is defined in
+# `inst/app/www/css/custom.css` and is also re-used by the DB probe
+# loading card (see `.monitoring_loading_card`).
+.monitoring_spinning_msg <- function(text) {
+  htmltools::tagList(
+    htmltools::tags$span(
+      class      = "nmt-spin me-2 text-secondary",
+      style      = "display:inline-block;vertical-align:middle;",
+      `aria-hidden` = "true",
+      bsicons::bs_icon("gear-fill")
+    ),
+    htmltools::tags$span(
+      style = "vertical-align:middle;",
+      text
+    )
+  )
 }
 
 # Persistent "connecting…" / "creating local DuckDB…" card shown while
