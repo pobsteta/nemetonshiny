@@ -139,13 +139,10 @@ mod_monitoring_ui <- function(id) {
                 ns("window_days"), i18n$t("monitoring_window_days"),
                 value = 30L, min = 7L, max = 90L, step = 1L
               ),
-              htmltools::tagAppendAttributes(
-                shiny::actionButton(
-                  ns("run"), i18n$t("monitoring_run_btn"),
-                  icon  = bsicons::bs_icon("play-fill"),
-                  class = "btn-primary w-100"
-                ),
-                disabled = NA
+              shiny::actionButton(
+                ns("run"), i18n$t("monitoring_run_btn"),
+                icon  = bsicons::bs_icon("play-fill"),
+                class = "btn-primary w-100"
               )
             ),
 
@@ -171,13 +168,10 @@ mod_monitoring_ui <- function(id) {
                 i18n$t("monitoring_threshold_anomaly"),
                 min = 0.05, max = 0.50, value = 0.16, step = 0.01
               ),
-              htmltools::tagAppendAttributes(
-                shiny::actionButton(
-                  ns("run_health"), i18n$t("monitoring_run_health_btn"),
-                  icon  = bsicons::bs_icon("activity"),
-                  class = "btn-primary w-100"
-                ),
-                disabled = NA
+              shiny::actionButton(
+                ns("run_health"), i18n$t("monitoring_run_health_btn"),
+                icon  = bsicons::bs_icon("activity"),
+                class = "btn-primary w-100"
               )
             )
           )
@@ -983,24 +977,24 @@ mod_monitoring_server <- function(id, app_state) {
 
     ingest_task <- run_ingestion_async()
 
-    # Reactive button state: enabled iff a zone is selected, at least one
-    # band is checked, and no task is currently running. ExtendedTask$status()
-    # is reactive, so this observer auto-fires when the task transitions
-    # from initial → running → success/error.
+    # Button state: only grey out during a running ingestion (double-click
+    # protection). Preconditions (zone / bands / dates) are NOT enforced
+    # at the HTML level so a click always triggers the observer below
+    # and the user gets an explicit toast for whichever precondition is
+    # missing — same UX as the "Enregistrer la zone" button.
     shiny::observe({
-      has_zone  <- isTRUE(nzchar(input$zone_id))
-      has_bands <- length(input$bands) > 0L
       is_running <- identical(ingest_task$status(), "running")
-
-      shiny::updateActionButton(
-        session, "run",
-        disabled = !has_zone || !has_bands || is_running
-      )
+      shiny::updateActionButton(session, "run", disabled = is_running)
     })
 
     # Click handler: validate state, build window dates, fire the task.
     shiny::observeEvent(input$run, {
       i18n <- i18n_r()
+      if (identical(ingest_task$status(), "running")) {
+        shiny::showNotification(i18n$t("monitoring_ingest_starting"),
+                                type = "message", duration = 4)
+        return()
+      }
       if (!isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
@@ -1069,15 +1063,12 @@ mod_monitoring_server <- function(id, app_state) {
 
     fordead_task <- run_fordead_async()
 
-    # Reactive button state for run_health.
+    # Button state for run_health: same logic as `run` — only grey out
+    # during an active FORDEAD run (long task), preconditions are
+    # validated in the click observer for explicit toast feedback.
     shiny::observe({
-      has_zone   <- isTRUE(nzchar(input$zone_id))
       is_running <- identical(fordead_task$status(), "running")
-
-      shiny::updateActionButton(
-        session, "run_health",
-        disabled = !has_zone || is_running
-      )
+      shiny::updateActionButton(session, "run_health", disabled = is_running)
     })
 
     # Helper — kicks off the FORDEAD task with the current sidebar
@@ -1138,6 +1129,11 @@ mod_monitoring_server <- function(id, app_state) {
     # warranty doesn't apply.
     shiny::observeEvent(input$run_health, {
       i18n <- i18n_r()
+      if (identical(fordead_task$status(), "running")) {
+        shiny::showNotification(i18n$t("monitoring_health_starting"),
+                                type = "message", duration = 4)
+        return()
+      }
       if (!isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)

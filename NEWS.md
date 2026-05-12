@@ -1,3 +1,34 @@
+# nemetonshiny 0.24.7.9001 (2026-05-12)
+
+### Suivi sanitaire — bouton "Lancer le diagnostic FAST" muet au clic
+
+* `fix(monitoring)` — clic sur **"Lancer le diagnostic FAST"** (ou
+  **"Lancer le diagnostic FORDEAD"** en mode santé) sans aucune
+  réaction : ni toast d'ingestion, ni toast d'erreur.
+
+  Cause : les deux boutons étaient rendus avec
+  `htmltools::tagAppendAttributes(..., disabled = NA)` (commit
+  `a880507`), ce qui les désactive **au niveau HTML** au premier
+  rendu. Un observer côté serveur les réactivait via
+  `updateActionButton(disabled = FALSE)`, mais le style `btn-primary`
+  masque visuellement l'état `disabled` du Bootstrap — l'utilisateur
+  voit un bouton bleu d'aspect cliquable alors que le navigateur
+  refuse le clic, donc aucun `observeEvent` ne se déclenche.
+
+  Correctif : on suit le pattern explicite déjà appliqué au bouton
+  **"Enregistrer la zone"** (commenté dans le module) :
+  - Suppression du wrapper `tagAppendAttributes(disabled = NA)` sur
+    `run` et `run_health` → les boutons partent toujours actifs.
+  - Les préconditions (zone sélectionnée, bands cochées, période
+    valide) ne désactivent **plus** le bouton — elles sont validées
+    dans l'`observeEvent` qui affiche un toast explicite par cause
+    (`monitoring_validate_zone` / `monitoring_validate_bands` /
+    `monitoring_validate_dates`).
+  - `updateActionButton(disabled = is_running)` reste pour griser le
+    bouton **pendant** la tâche async (protection double-clic).
+  - Garde `is_running` ajouté en tête des deux `observeEvent` pour
+    avaler un éventuel double-clic sans relancer la tâche.
+
 # nemetonshiny 0.24.7 (2026-05-12)
 
 ### Suivi sanitaire — bump nemeton 0.21.1 (fix DDL DuckDB)
