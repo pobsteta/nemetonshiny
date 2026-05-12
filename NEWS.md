@@ -1,4 +1,4 @@
-# nemetonshiny 0.24.6.9001 (2026-05-12)
+# nemetonshiny 0.24.7 (2026-05-12)
 
 ### Suivi sanitaire — bump nemeton 0.21.1 (fix DDL DuckDB)
 
