@@ -1737,6 +1737,14 @@ TRANSLATIONS <- list(
     fr = "\u00c9chec de l'ingestion",
     en = "Ingestion failed"
   ),
+  monitoring_ingest_progress_fmt = list(
+    fr = "Tuile Sentinel-2 %d/%d t\u00e9l\u00e9charg\u00e9e\u2026",
+    en = "Sentinel-2 tile %d/%d downloaded\u2026"
+  ),
+  monitoring_ingest_progress_named_fmt = list(
+    fr = "Tuile Sentinel-2 %d/%d : %s",
+    en = "Sentinel-2 tile %d/%d: %s"
+  ),
   monitoring_db_unavailable = list(
     fr = "Base de suivi non configur\u00e9e.",
     en = "Monitoring database not configured."
@@ -1860,6 +1868,14 @@ TRANSLATIONS <- list(
   monitoring_health_error = list(
     fr = "Erreur lors du diagnostic FORDEAD",
     en = "FORDEAD diagnosis error"
+  ),
+  monitoring_health_phase_fmt = list(
+    fr = "FORDEAD — phase : %s (%d/%d)",
+    en = "FORDEAD — phase: %s (%d/%d)"
+  ),
+  monitoring_health_phase_simple_fmt = list(
+    fr = "FORDEAD — phase : %s",
+    en = "FORDEAD — phase: %s"
   ),
 
   # ----- G3 banners (geographic + species validity) -----

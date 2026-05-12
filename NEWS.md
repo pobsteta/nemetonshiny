@@ -1,3 +1,42 @@
+# nemetonshiny 0.24.7.9002 (2026-05-12)
+
+### Suivi sanitaire — progression "X/N tuiles Sentinel-2" + phases FORDEAD
+
+* `feat(monitoring)` — pendant l'ingestion Sentinel-2 (FAST) et le
+  diagnostic FORDEAD, l'utilisateur reste sur un toast statique
+  pendant plusieurs minutes sans aucune indication de progression
+  intermédiaire. Le seul retour était le toast final résumé
+  (`%d scènes, %d observations insérées`).
+
+  Correctif (couplé avec `nemeton@v0.21.2` qui introduit l'argument
+  `progress_callback` sur `ingest_sentinel2_timeseries()` et
+  `run_fordead_dieback()`) :
+
+  - Le worker async (`run_ingestion_async` / `run_fordead_async`)
+    construit un callback qui sérialise chaque événement en JSON
+    atomique (write to `.tmp` + rename) vers
+    `<project>/data/ingest_progress.json` (resp.
+    `fordead_progress.json`).
+  - Côté main process, un `shiny::reactivePoll(500 ms)` lit le
+    fichier, et un observer met à jour un toast persistant (même
+    `id`) avec `"Tuile Sentinel-2 X/N : <scene_id>"` (ou simplement
+    `"X/N téléchargée…"` quand le scene_id n'est pas fourni) pour
+    l'ingestion, et `"FORDEAD — phase : <nom> (X/N)"` pour FORDEAD.
+  - À la fin de la tâche (succès ou erreur), le toast persistant
+    est retiré et le fichier `progress.json` purgé. Le toast final
+    `monitoring_ingest_success` / `monitoring_health_success`
+    reprend la main.
+
+  Nouvelles clés i18n FR/EN : `monitoring_ingest_progress_fmt`,
+  `monitoring_ingest_progress_named_fmt`,
+  `monitoring_health_phase_fmt`, `monitoring_health_phase_simple_fmt`.
+
+  Bump `DESCRIPTION` : `Imports: nemeton (>= 0.21.2)`,
+  `Remotes: pobsteta/nemeton@v0.21.2`. ADR-009 respecté — toute la
+  logique métier (savoir qu'une tuile est téléchargée, qu'une
+  phase est terminée) reste dans `nemeton` ; nemetonshiny n'écoute
+  que le canal callback exporté.
+
 # nemetonshiny 0.24.7.9001 (2026-05-12)
 
 ### Suivi sanitaire — bouton "Lancer le diagnostic FAST" muet au clic
