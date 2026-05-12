@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,7 +29,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>CLAUDE.md — Nemetonshiny Development Reference</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.24.3/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
     </div>
 
 
@@ -446,29 +446,6 @@ keycloak/                     → Compose dev + realms pour auth locale
 <li>Quand un changement implique aussi <code>nemeton</code>, faire les deux releases dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).</li>
 </ul></div>
 <div class="section level2">
-<h2 id="workflow-de-push-branche-dev--main">Workflow de push (branche dev → main)<a class="anchor" aria-label="anchor" href="#workflow-de-push-branche-dev--main"></a></h2>
-<p>Le workflow est en <strong>deux temps</strong> et doit être suivi systématiquement.</p>
-<div class="section level3">
-<h3 id="temps-1--push-sur-la-branche-dev-automatique">Temps 1 — Push sur la branche dev (automatique)<a class="anchor" aria-label="anchor" href="#temps-1--push-sur-la-branche-dev-automatique"></a></h3>
-<p>Par défaut Claude pousse <strong>toujours</strong> sur la branche de développement imposée par la session (ex. <code>claude/fix-action-plan-data-9wgpI</code>). Ce push <strong>ne nécessite pas</strong> de confirmation supplémentaire — c’est le fonctionnement nominal.</p>
-<p>Lors d’un commit fonctionnel sur la branche dev, Claude bumpe le <strong>cycle dev</strong> (<code>X.Y.Z.9000+</code> → <code>X.Y.Z.9001+</code>) conformément à la section <em>Cycle dev vs release stable</em>, met à jour <code>NEWS.md</code> et <code>DESCRIPTION</code> localement, commit, puis <code>git push -u origin &lt;branche-dev&gt;</code>. Pas de tag, pas de release GitHub à cette étape.</p>
-</div>
-<div class="section level3">
-<h3 id="temps-2--merge-vers-main--release-sur-autorisation">Temps 2 — Merge vers <code>main</code> + release (sur autorisation)<a class="anchor" aria-label="anchor" href="#temps-2--merge-vers-main--release-sur-autorisation"></a></h3>
-<p><strong>Après chaque push réussi sur la branche dev</strong>, Claude <strong>doit systématiquement demander</strong> à l’utilisateur via une question dédiée s’il faut merger sur <code>main</code> et déclencher la release. Le récapitulatif présenté doit contenir, en suivant les règles déjà décrites dans <em>Consignes de release</em> et <em>Règles de cohérence</em> :</p>
-<ol style="list-style-type: decimal"><li>La <strong>branche source</strong> (ex. <code>claude/fix-action-plan-data-9wgpI</code>) et le ou les commits concernés (SHA + sujet).</li>
-<li>Le <strong>bump de version stable</strong> proposé (<code>X.Y.Z</code> → <code>X.Y.Z+1</code> patch / <code>X.Y+1.0</code> minor / <code>X+1.0.0</code> major) déduit du type Conventional Commit (<code>fix:</code> / <code>feat:</code> / <code>BREAKING CHANGE:</code>). Pour un bump <strong>majeur</strong>, demander une confirmation supplémentaire explicite (cf. <em>Règles de cohérence</em>).</li>
-<li>Les <strong>fichiers de version</strong> à mettre à jour : <code>DESCRIPTION</code>, <code>NEWS.md</code> (résumé de l’entrée datée), <code>CITATION.cff</code> si présent, <code>CHANGELOG.md</code> si présent (section <code>[X.Y.Z] - YYYY-MM-DD</code> avec Added/Changed/Fixed/Removed).</li>
-<li>Le <strong>tag git annoté</strong> prévu (<code>git tag -a vX.Y.Z -m "Release X.Y.Z"</code>) et son push (<code>git push origin vX.Y.Z</code>).</li>
-<li>La <strong>release GitHub</strong> prévue (<code>gh release create vX.Y.Z --generate-notes</code>).</li>
-<li>L’impact sur le <strong><code>PLAN.md</code> du repo <code>nemeton</code></strong> : case à cocher + entrée datée du journal mentionnant <code>nemetonshiny@SHA</code> et le cycle dev (cf. <em>Consignes de release</em> étape 8).</li>
-<li>Toute release couplée côté <code>nemeton</code> requise par l’ordre <strong>cœur → app</strong> (l’app dépend du cœur, jamais l’inverse).</li>
-<li>Vérification que les <strong>badges du README</strong> et la <strong>doc pkgdown</strong> pointent vers la nouvelle version.</li>
-</ol><p>Tant que l’utilisateur n’a pas explicitement autorisé ce temps 2, Claude <strong>ne fait pas</strong> : <code>git checkout main</code>, <code>git merge</code>, <code>git push origin main</code>, <code>git tag -a vX.Y.Z</code>, <code>git push origin vX.Y.Z</code>, ni <code>gh release create</code>.</p>
-<p>Une autorisation vaut <strong>pour la seule release récapitulée</strong> : chaque nouveau cycle (nouveau push dev → nouvelle question de merge) demande une nouvelle confirmation.</p>
-</div>
-</div>
-<div class="section level2">
 <h2 id="règles-strictes">Règles strictes<a class="anchor" aria-label="anchor" href="#r%C3%A8gles-strictes"></a></h2>
 <ol style="list-style-type: decimal"><li>
 <strong>Aucune logique métier</strong> dans <code>nemetonshiny</code> (indicateurs, familles, NDP). Tout passe par <code>nemeton</code>.</li>
@@ -483,8 +460,6 @@ keycloak/                     → Compose dev + realms pour auth locale
 <li>Pas de secret en dur : OAuth, API LLM, DB → variables d’environnement (<code>.Renviron</code> gitignore).</li>
 <li>Pas de <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> / <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> / <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> en code de prod : passer par <code>cli::cli_*</code> ou <code><a href="https://rdrr.io/pkg/shiny/man/showNotification.html" class="external-link">shiny::showNotification</a></code> selon contexte.</li>
 <li>Quand je travaille sur une tâche longue, maintenir le <code>PLAN.md</code> du repo <code>nemeton</code> à jour à chaque étape terminée (chantier en cours + journal).</li>
-<li>
-<strong>Push branche dev = automatique ; merge <code>main</code> + tag + release = autorisation explicite</strong>. Après chaque push réussi sur la branche dev, Claude doit systématiquement demander s’il faut merger sur <code>main</code> en présentant le récapitulatif décrit dans <em>Workflow de push (branche dev → main)</em>. Sans autorisation explicite, jamais de <code>git push origin main</code>, jamais de tag, jamais de <code>gh release create</code>, jamais de merge.</li>
 </ol></div>
 </div>
 
