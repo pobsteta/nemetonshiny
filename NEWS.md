@@ -1,3 +1,37 @@
+# nemetonshiny 0.24.5 (2026-05-12)
+
+### Suivi sanitaire — hardening du worker async contre un nemetonshiny obsolète
+
+* `fix(monitoring)` — bandeau d'erreur **"objet 'last_monitoring_db_error'
+  introuvable"** au premier passage dans l'onglet *Suivi sanitaire*
+  après installation de v0.24.4.
+
+  Cause : la probe async lancée dans le worker `future::multisession`
+  appelait `utils::getFromNamespace("last_monitoring_db_error",
+  "nemetonshiny")`. Si le worker charge un nemetonshiny **plus ancien**
+  que celui de la session principale (cache pak, .libPaths divergent,
+  binaire obsolète qui shadow le dev), la fonction est absente du
+  namespace et `getFromNamespace` jette l'erreur localisée
+  "objet 'X' introuvable" — qui remontait telle quelle dans le
+  bandeau, sans hint pour l'utilisateur.
+
+  Correctif : le worker est maintenant entièrement défensif. Tous
+  les `getFromNamespace()` sont enveloppés dans `tryCatch()`, et si
+  un helper interne est manquant, le worker retourne un message
+  explicite *"Outdated nemetonshiny in worker library path. Re-install
+  pobsteta/nemetonshiny@v0.24.4 with pak::cache_clean(); pak::pak(…)."*
+  plutôt qu'une erreur cryptique. Le worker capture aussi
+  désormais l'erreur directe de `db_connect` (`probe_err`) pour le
+  cas où le helper retourne NULL sans contexte transférable entre
+  processus.
+
+* `chore(monitoring)` — suppression de la dépendance à
+  `last_monitoring_db_error()` dans le worker (le slot de package est
+  process-local, pas accessible depuis main de toute façon). La
+  dépendance à `%||%` est également retirée du worker (base R 4.4+
+  only) au profit de `if/else` explicite.
+
+
 # nemetonshiny 0.24.4 (2026-05-12)
 
 ### Suivi sanitaire — connexion DB asynchrone + correctif schéma DuckDB

@@ -283,26 +283,72 @@ mod_monitoring_server <- function(id, app_state) {
         if (!is_parallel) future::plan("multisession")
       }
       promises::future_promise({
+        # Load nemetonshiny in the worker. Prefer dev mode (pkgload)
+        # when the parent session is in dev mode, otherwise loadNamespace
+        # from the installed library. The fallback matters: an old
+        # cached nemetonshiny in .libPaths() can shadow a freshly-built
+        # dev version in the parent — that's how the worker ended up
+        # without `last_monitoring_db_error` and threw "objet 'X'
+        # introuvable" in v0.24.4 just after release.
         if (!is.null(.pkg_path_mon) &&
             requireNamespace("pkgload", quietly = TRUE)) {
-          pkgload::load_all(.pkg_path_mon, quiet = TRUE)
-        } else if (requireNamespace("nemetonshiny", quietly = TRUE)) {
-          loadNamespace("nemetonshiny")
+          tryCatch(pkgload::load_all(.pkg_path_mon, quiet = TRUE),
+                   error = function(e) NULL)
+        }
+        if (!requireNamespace("nemetonshiny", quietly = TRUE)) {
+          return(list(
+            ok    = FALSE,
+            error = "Package 'nemetonshiny' not available in worker."
+          ))
         }
         if (!nzchar(db_url)) {
           return(list(ok = FALSE, error = "no_url"))
         }
-        get_conn   <- utils::getFromNamespace("get_monitoring_db_connection",
-                                              "nemetonshiny")
-        close_conn <- utils::getFromNamespace("close_monitoring_db_connection",
-                                              "nemetonshiny")
-        last_err   <- utils::getFromNamespace("last_monitoring_db_error",
-                                              "nemetonshiny")
-        con <- tryCatch(get_conn(db_url = db_url),
-                        error = function(e) NULL)
+
+        # Resolve the two internal helpers defensively. `getFromNamespace`
+        # throws "object 'X' not found" (localized "objet 'X' introuvable")
+        # when the function is missing — which surfaces as a confusing
+        # error in the bandeau. Wrap and emit a clear message instead.
+        get_conn <- tryCatch(
+          utils::getFromNamespace("get_monitoring_db_connection",
+                                  "nemetonshiny"),
+          error = function(e) NULL
+        )
+        close_conn <- tryCatch(
+          utils::getFromNamespace("close_monitoring_db_connection",
+                                  "nemetonshiny"),
+          error = function(e) NULL
+        )
+        if (is.null(get_conn) || is.null(close_conn)) {
+          return(list(
+            ok    = FALSE,
+            error = paste(
+              "Outdated nemetonshiny in worker library path.",
+              "Re-install pobsteta/nemetonshiny@v0.24.4 with",
+              "pak::cache_clean(); pak::pak('pobsteta/nemetonshiny@v0.24.4')."
+            )
+          ))
+        }
+
+        # get_monitoring_db_connection itself returns NULL + stashes the
+        # cause in a package-level env (not reachable across processes).
+        # We capture any direct throw here as a fallback so the user
+        # at least sees something meaningful even if the wrapper's
+        # NULL-path doesn't yield a transferable message.
+        probe_err <- NULL
+        con <- tryCatch(
+          get_conn(db_url = db_url),
+          error = function(e) {
+            probe_err <<- conditionMessage(e)
+            NULL
+          }
+        )
         if (is.null(con)) {
-          return(list(ok = FALSE,
-                      error = last_err() %||% "connect_failed"))
+          msg <- if (!is.null(probe_err) && nzchar(probe_err))
+                   probe_err
+                 else
+                   "connect_failed"
+          return(list(ok = FALSE, error = msg))
         }
         tryCatch(close_conn(con), error = function(e) NULL)
         list(ok = TRUE, error = NULL)
