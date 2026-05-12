@@ -261,6 +261,93 @@ mod_monitoring_server <- function(id, app_state) {
     # re-fetches from the DB.
     alerts_refresh <- shiny::reactiveVal(0L)
 
+    # ----- Async DB probe (E6.x — persistent loading feedback) ------
+    # Open db_connect + db_migrate in a future worker so the user sees
+    # a real "loading" state (spinning gear card) while the schema
+    # bootstraps. On warm cache the round-trip is < 100 ms; on a fresh
+    # DuckDB or a slow Postgres it can take a couple of seconds — that
+    # is exactly when a visible state matters most.
+    #
+    # The worker only probes reachability: DBI connections are not
+    # serializable across processes, so the actual connection used by
+    # validity()/alerts()/zones() is re-opened (sync, fast — schema
+    # already migrated) in the main process once the probe succeeded.
+    .pkg_path_mon <- tryCatch(pkgload::pkg_path(),
+                              error = function(e) NULL)
+
+    db_probe_task <- shiny::ExtendedTask$new(function(db_url) {
+      if (requireNamespace("future", quietly = TRUE)) {
+        plan_classes <- class(future::plan())
+        is_parallel <- any(c("multisession", "multicore", "cluster") %in%
+                             plan_classes)
+        if (!is_parallel) future::plan("multisession")
+      }
+      promises::future_promise({
+        if (!is.null(.pkg_path_mon) &&
+            requireNamespace("pkgload", quietly = TRUE)) {
+          pkgload::load_all(.pkg_path_mon, quiet = TRUE)
+        } else if (requireNamespace("nemetonshiny", quietly = TRUE)) {
+          loadNamespace("nemetonshiny")
+        }
+        if (!nzchar(db_url)) {
+          return(list(ok = FALSE, error = "no_url"))
+        }
+        get_conn   <- utils::getFromNamespace("get_monitoring_db_connection",
+                                              "nemetonshiny")
+        close_conn <- utils::getFromNamespace("close_monitoring_db_connection",
+                                              "nemetonshiny")
+        last_err   <- utils::getFromNamespace("last_monitoring_db_error",
+                                              "nemetonshiny")
+        con <- tryCatch(get_conn(db_url = db_url),
+                        error = function(e) NULL)
+        if (is.null(con)) {
+          return(list(ok = FALSE,
+                      error = last_err() %||% "connect_failed"))
+        }
+        tryCatch(close_conn(con), error = function(e) NULL)
+        list(ok = TRUE, error = NULL)
+      }, seed = TRUE)
+    })
+
+    # Invoke the probe whenever the project changes (or the env URL
+    # changes via the resolver). `bindEvent` would also work but we
+    # want a fresh probe even when the same project is re-loaded.
+    shiny::observe({
+      project <- app_state$current_project
+      url     <- .resolve_monitoring_db_url(project)
+      backend <- monitoring_db_backend(project = project)
+      # Skip probe when there is nothing to probe — output$db_status
+      # handles the "no project / duckdb missing" cases synchronously.
+      if (identical(backend, "none") || !nzchar(url)) return()
+      db_probe_task$invoke(db_url = url)
+    })
+
+    # Turn the task status into a small UI-facing reactive — keeps
+    # output$db_status free of ExtendedTask plumbing.
+    db_probe_state <- shiny::reactive({
+      status <- db_probe_task$status()
+      if (identical(status, "initial")) return(list(state = "initial"))
+      if (identical(status, "running")) return(list(state = "running"))
+      if (identical(status, "error")) {
+        err <- tryCatch(
+          {
+            db_probe_task$result()
+            NULL
+          },
+          error = function(e) conditionMessage(e)
+        )
+        return(list(state = "error", error = err))
+      }
+      # status == "success"
+      res <- tryCatch(db_probe_task$result(),
+                      error = function(e) NULL)
+      if (is.null(res) || isFALSE(res$ok)) {
+        return(list(state = "error",
+                    error = res$error %||% "unknown"))
+      }
+      list(state = "ready")
+    })
+
     # ----- Restore monitoring config from project metadata ----------
     # Fires whenever the user opens a project. Mirrors the persistence
     # in .invoke_fordead() (and mode/threshold changes via the sidebar).
@@ -737,18 +824,18 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # DB status card — six states:
-    #   1. No PG env AND no project → "open a project" hint (warning)
+    # DB status card — seven states:
+    #   0. Async probe still running        → spinning gear card
+    #   1. No PG env AND no project         → "open a project" hint (warning)
     #   2. No PG env, project loaded, duckdb pkg missing → install hint (warning)
-    #   3. PG env set but connection failed (server down etc.) → generic warning
-    #   4. Local DuckDB ready → info banner with multi-user hint
-    #   5. Postgres connected, zero zones → info
-    #   6. Postgres or DuckDB connected, zones available → success
+    #   3. Probe failed (server down, bad URL, migration error, …) → warning + real message
+    #   4. Local DuckDB ready                → info banner with multi-user hint
+    #   5. Postgres connected, zero zones    → info
+    #   6. Postgres or DuckDB ready, zones available → success
     #
-    # The toast notifications below ("connecting…" / "creating…") fire
-    # the FIRST time the user lands on the tab so it does not look
-    # like the app is frozen during the schema bootstrap (which can
-    # take a couple of seconds on a fresh DuckDB).
+    # The probe (ExtendedTask) is fired by the observer above whenever
+    # the project changes. While it runs, the spinning gear card stays
+    # visible — no toast race, no perceived freeze, no busy overlay.
     output$db_status <- shiny::renderUI({
       i18n     <- i18n_r()
       project  <- app_state$current_project
@@ -777,25 +864,43 @@ mod_monitoring_server <- function(id, app_state) {
         ))
       }
 
-      # Surface progress while opening the connection — DuckDB schema
-      # bootstrap can take ~1 s on a cold start, Postgres a bit less.
-      # The "connecting" toast has its own 2.5 s auto-dismiss so it
-      # stays visible even when db_connect returns instantly. The
-      # "ready" toast below confirms success once the connection is
-      # established (separate id, no race against the dismiss).
-      .ensure_monitoring_db_announced(session, backend, i18n)
-      con <- get_monitoring_db_connection(project = project)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
-      if (!is.null(con)) {
-        .announce_monitoring_db_ready(session, backend, i18n)
+      # Probe still running or not yet fired — show the spinning gear.
+      st <- db_probe_state()
+      if (identical(st$state, "initial") || identical(st$state, "running")) {
+        title <- if (identical(backend, "duckdb"))
+                   i18n$t("monitoring_db_local_creating")
+                 else
+                   i18n$t("monitoring_db_connecting")
+        return(.monitoring_loading_card(
+          icon  = "gear-fill",
+          title = title,
+          body  = i18n$t("monitoring_db_loading_hint")
+        ))
       }
 
+      # Probe failed — surface the real cause captured in the worker
+      # (db_connect or migration error) so the user can act.
+      if (identical(st$state, "error")) {
+        err <- st$error
+        body <- if (!is.null(err) && nzchar(err) && !identical(err, "no_url")) {
+          paste0(i18n$t("monitoring_db_check_env"), " — ", err)
+        } else {
+          i18n$t("monitoring_db_check_env")
+        }
+        return(.monitoring_status_card(
+          icon  = "exclamation-circle",
+          class = "border-warning",
+          title = i18n$t("monitoring_db_unavailable"),
+          body  = body
+        ))
+      }
+
+      # Probe succeeded — open a sync connection in the main process to
+      # count zones for the success banner. Schema is already migrated
+      # so this is a fast handshake (< 100 ms typical).
+      con <- get_monitoring_db_connection(project = project)
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
       if (is.null(con)) {
-        # Surface the real cause (db_connect or migration error) so
-        # the user can act — generic "Renseignez NEMETON_DB_URL…"
-        # is unhelpful when DuckDB IS the chosen backend but failed
-        # for some other reason (path issue, nemeton version mismatch,
-        # disk full, …).
         err <- last_monitoring_db_error()
         body <- if (!is.null(err) && nzchar(err)) {
           paste0(i18n$t("monitoring_db_check_env"), " — ", err)
@@ -1091,66 +1196,29 @@ mod_monitoring_server <- function(id, app_state) {
 
 # ---- Internal --------------------------------------------------------
 
-# Show a "connecting…" / "creating local DuckDB…" toast the first
-# time the user enters the Monitoring tab with a usable backend.
-# Idempotent across re-renders via the session$userData flag.
-#
-# The toast has `duration = 2.5` so it stays visible on screen even
-# when the DB connection itself completes in < 100 ms — without that
-# minimum exposure time the user briefly saw a flash (or nothing at
-# all) and assumed the app was frozen. A SEPARATE "ready" toast is
-# emitted by `.announce_monitoring_db_ready()` once the connection
-# has actually succeeded, so the two confirmations are independent.
-.ensure_monitoring_db_announced <- function(session, backend, i18n) {
-  if (!identical(backend, "duckdb") && !identical(backend, "postgres")) {
-    return(invisible(NULL))
-  }
-  if (isTRUE(session$userData$.monitoring_db_announced)) {
-    return(invisible(NULL))
-  }
-  msg_key <- if (identical(backend, "duckdb")) {
-    "monitoring_db_local_creating"
-  } else {
-    "monitoring_db_connecting"
-  }
-  shiny::showNotification(
-    i18n$t(msg_key),
-    type        = "default",
-    duration    = 2.5,
-    closeButton = FALSE,
-    id          = session$ns("db_connecting_toast"),
-    session     = session
+# Persistent "connecting…" / "creating local DuckDB…" card shown while
+# the async DB probe (ExtendedTask) is running. The spinning gear icon
+# uses the existing `.nmt-spin` CSS keyframe from inst/app/www/css. The
+# card replaces the previous toast-based feedback (which was easy to
+# miss because Shiny notifications are top-right and auto-dismiss).
+.monitoring_loading_card <- function(icon = "gear-fill", title, body = NULL) {
+  htmltools::tags$div(
+    class = "card mb-3 border-secondary",
+    htmltools::tags$div(
+      class = "card-body py-3",
+      htmltools::div(
+        class = "d-flex align-items-center",
+        htmltools::tags$span(
+          class = "me-2 fs-4 nmt-spin text-secondary",
+          bsicons::bs_icon(icon)
+        ),
+        htmltools::tags$div(
+          htmltools::tags$strong(title),
+          if (!is.null(body)) htmltools::tags$div(class = "text-muted small", body)
+        )
+      )
+    )
   )
-  session$userData$.monitoring_db_announced <- TRUE
-  invisible(TRUE)
-}
-
-
-# Emit the "ready" toast once the connection has been confirmed
-# (called from output$db_status renderUI AFTER db_connect succeeded).
-# Idempotent via a separate session$userData flag so the toast does
-# not re-fire on every reactive re-render of the status card.
-.announce_monitoring_db_ready <- function(session, backend, i18n) {
-  if (!identical(backend, "duckdb") && !identical(backend, "postgres")) {
-    return(invisible(NULL))
-  }
-  if (isTRUE(session$userData$.monitoring_db_ready_announced)) {
-    return(invisible(NULL))
-  }
-  ready_key <- if (identical(backend, "duckdb")) {
-    "monitoring_db_local_ready"
-  } else {
-    "monitoring_db_remote_ready"
-  }
-  shiny::showNotification(
-    i18n$t(ready_key),
-    type     = "message",
-    duration = 4,
-    id       = session$ns("db_ready_toast"),
-    session  = session
-  )
-  session$userData$.monitoring_db_ready_announced <- TRUE
-  invisible(TRUE)
 }
 
 

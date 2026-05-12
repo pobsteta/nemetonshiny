@@ -163,17 +163,27 @@ monitoring_db_backend <- function(project = NULL) {
 }
 
 
-#' Run monitoring-schema migrations once per R session
+#' Run monitoring-schema migrations on every connection
 #'
-#' Calls `nemeton::db_migrate()`, which is itself idempotent
-#' (`schema_migration` table tracks applied versions). Memoized in
-#' `.nemeton_env` so subsequent connections skip the round-trip.
+#' Delegates to `nemeton::db_migrate()`, which is itself idempotent
+#' (the `schema_migration` table tracks applied versions, so already-
+#' applied migrations are skipped after a single SELECT). The cost on
+#' an already-migrated database is sub-millisecond.
+#'
+#' Historical note: a previous version of this helper memoized success
+#' in `.nemeton_env$.monitoring_schema_initialized`. That flag was
+#' process-level (shared across ALL connections in the R session),
+#' so opening a *fresh* DuckDB file in the same session — different
+#' project, deleted file, or just a different `db_url` — caused the
+#' migration to be silently SKIPPED, leaving the new file without any
+#' table. The bug surfaced as "Catalog Error: Table monitoring_zone
+#' does not exist!" at registration time. Always call `db_migrate()`
+#' now; the per-version check inside it is the right granularity.
 #'
 #' @noRd
 .ensure_monitoring_schema <- function(con) {
   if (is.null(con)) return(invisible(FALSE))
   if (!requireNamespace("nemeton", quietly = TRUE)) return(invisible(FALSE))
-  if (isTRUE(.nemeton_env$.monitoring_schema_initialized)) return(invisible(TRUE))
   ok <- tryCatch({
     nemeton::db_migrate(con)
     TRUE
@@ -181,7 +191,6 @@ monitoring_db_backend <- function(project = NULL) {
     cli::cli_warn("Monitoring schema migration failed: {conditionMessage(e)}")
     FALSE
   })
-  if (isTRUE(ok)) .nemeton_env$.monitoring_schema_initialized <- TRUE
   invisible(ok)
 }
 
