@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,424 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.24.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.3" id="nemetonshiny-0243-2026-05-11">nemetonshiny 0.24.3 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0243-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--override-nemeton_db_local1-pour-forcer-le-mode-local-0-24-3">Suivi sanitaire — override <code>NEMETON_DB_LOCAL=1</code> pour forcer le mode local<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--override-nemeton_db_local1-pour-forcer-le-mode-local-0-24-3"></a></h4>
+<ul><li>
+<p><code>feat(monitoring)</code> — nouvelle variable d’environnement <strong><code>NEMETON_DB_LOCAL</code></strong> (truthy = <code>1</code> / <code>true</code> / <code>yes</code> / <code>on</code>, case insensitive). Quand elle est truthy, <code>.resolve_monitoring_db_url()</code> <strong>saute</strong> les vars <code>NEMETON_DB_URL</code> et <code>POSTGRESQL_ADDON_*</code> et utilise directement la base DuckDB locale du projet.</p>
+<p><strong>Cas d’usage typique</strong> : un développeur a les credentials Clever Cloud (<code>POSTGRESQL_ADDON_*</code>) qui traînent dans son <code>~/.Renviron</code> (déposés par un build CI ou copiés depuis <code>clever env</code>). Sans l’override, l’app dialait la Postgres prod depuis la machine locale, timeout, et le bandeau restait sur “Base non configurée”. Avec <code>NEMETON_DB_LOCAL=1</code>, la cascade saute directement à la fallback DuckDB sans toucher au <code>.Renviron</code>.</p>
+<p>Le <code>cli_alert_info</code> mentionne désormais explicitement l’override quand il est actif : <em>“Monitoring uses local DuckDB at … (NEMETON_DB_LOCAL override).”</em></p>
+</li>
+</ul></div>
+<div class="section level4">
+<h4 id="suivi-sanitaire--diagnostic-derreur-visible-dans-le-bandeau-0-24-3">Suivi sanitaire — diagnostic d’erreur visible dans le bandeau<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--diagnostic-derreur-visible-dans-le-bandeau-0-24-3"></a></h4>
+<ul><li>
+<code>feat(monitoring)</code> — <code>get_monitoring_db_connection()</code> capture désormais l’erreur réelle de <code><a href="https://pobsteta.github.io/nemeton/reference/db_connect.html" class="external-link">nemeton::db_connect()</a></code> (et celle de <code>db_migrate()</code>) dans <code>.nemeton_env$.last_monitoring_db_error</code>. Le bandeau <em>Base de suivi non configurée</em> affiche ensuite cette erreur après un tiret cadratin, par ex. <em>“Renseignez NEMETON_DB_URL… — Invalid DB URL: C:/Users/…/monitoring.duckdb”</em>. Avant : <code>cli_warn</code> partait dans la console R (souvent invisible pour l’utilisateur Shiny) et le bandeau restait générique.</li>
+<li>
+<code>feat(monitoring)</code> — feature-flag : <code>.resolve_monitoring_db_url()</code> vérifie via <code>getFromNamespace(".detect_driver", "nemeton")</code> que la version installée de <code>nemeton</code> supporte bien le backend DuckDB (introduite en v0.21.0). Si non, message explicite <em>“Installed nemeton is too old (no DuckDB support). Re-install <a href="mailto:pobsteta/nemeton@v0.21.0" class="email">pobsteta/nemeton@v0.21.0</a>.”</em> dans le bandeau et un <code>cli_warn</code> une fois par session expliquant comment réparer (<code><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak::pak()</a></code>
+<ul><li>clear cache).</li>
+</ul></li>
+<li>
+<code>feat(monitoring)</code> — capture aussi les erreurs de <code>db_migrate()</code> (qui s’exécute juste après la connexion) sous forme <em>“Migration failed: <msg>”</msg></em>. Si la migration échoue, la connexion est refermée proprement et <code>NULL</code> est retourné (au lieu de laisser une connexion sans schéma qui crasherait les requêtes suivantes).</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.2" id="nemetonshiny-0242-2026-05-11">nemetonshiny 0.24.2 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0242-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--fixes-ux-critiques-0-24-2">Suivi sanitaire — 4 fixes UX critiques<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--fixes-ux-critiques-0-24-2"></a></h4>
+<ul><li>
+<code>fix(duckdb)</code> — <strong>bug Windows path</strong> : sur Windows <code>duckdb:///C:/Users/&lt;projet&gt;/data/monitoring.duckdb</code> était parsé par <code>nemeton:::.parse_duckdb_url()</code> en <code>/C:/Users/&lt;projet&gt;/data/monitoring.duckdb</code> (slash en trop) → DuckDB refusait d’ouvrir → bandeau “Base non configurée” affiché à tort alors que le toast disait “Base locale prête”. Fix : <code>.resolve_monitoring_db_url()</code> émet désormais un <strong>bare path</strong> (sans préfixe <code>duckdb://</code>), reconnu cross-platform par <code>nemeton:::.detect_driver()</code> via le suffixe <code>.duckdb</code>.</li>
+<li>
+<code>fix(ux)</code> — <strong>bouton “Enregistrer ce projet comme zone de suivi”</strong> était figé en <code>disabled = NA</code> au niveau HTML, donc non cliquable même quand toutes les conditions étaient réunies. Supprimé : l’observer du clic valide déjà les préconditions et affiche une notification d’erreur si elles ne sont pas remplies, donc l’utilisateur reçoit toujours un feedback précis sans être bloqué à l’avance.</li>
+<li>
+<code>fix(ux)</code> — <strong>toast “Création de la base DuckDB locale…”</strong> apparaissait et disparaissait trop vite pour être perçu (la connexion DuckDB est typiquement &lt; 100 ms). Désormais le toast a <code>duration = 2.5</code> s minimum et un toast séparé “Base locale prête” est émis APRÈS confirmation de la connexion (au lieu d’un <code><a href="https://later.r-lib.org/reference/later.html" class="external-link">later::later</a></code> aveugle qui se déclenchait même en cas d’échec).</li>
+<li>
+<code>fix(ux)</code> — la <strong>checkbox “Inclure les classes faible et moyenne”</strong> débordait du <code>card_header</code> next to <em>“Alertes détectées”</em> sur les viewports étroits. Déplacée sur sa propre ligne juste sous le header — toujours sur une seule ligne, peu importe la largeur.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.1" id="nemetonshiny-0241-2026-05-11">nemetonshiny 0.24.1 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0241-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="ux-suivi-sanitaire--diagnostic-précis--toast--séparateur-au-0-24-1">UX Suivi sanitaire — diagnostic précis + toast + séparateur “au”<a class="anchor" aria-label="anchor" href="#ux-suivi-sanitaire--diagnostic-pr%C3%A9cis--toast--s%C3%A9parateur-au-0-24-1"></a></h4>
+<ul><li>
+<code>feat(i18n)</code> — le séparateur du <code>dateRangeInput</code> (sidebar <em>Période d’observation</em> et <em>Période d’entraînement</em> FORDEAD) était hardcodé en <em>“to”</em> malgré la langue FR. Nouvelle clé i18n <code>date_range_separator</code> : <em>“au”</em> en FR, <em>“to”</em> en EN.</li>
+<li>
+<code>feat(ux)</code> — un <strong>toast “Tentative de connexion à la base…” ou “Création de la base DuckDB locale…”</strong> s’affiche en bas à droite la première fois que l’utilisateur ouvre l’onglet <em>Suivi sanitaire</em> (suivi 1,2 s plus tard d’un toast <em>“Base prête”</em>). Avant cette release, l’onglet semblait figé pendant le bootstrap du schéma (qui prend ~1 s sur un DuckDB neuf). Le toast est idempotent (un par session, id stable).</li>
+<li>
+<code>fix(ux)</code> — le bandeau <em>Base de suivi non configurée</em> distingue maintenant <strong>deux causes</strong> au lieu d’une seule :
+<ul><li>
+<strong>aucun projet chargé</strong> → message <em>“Aucun projet chargé. Sélectionnez ou créez un projet dans l’onglet Sélection pour activer le mode local (DuckDB).”</em>
+</li>
+<li>
+<strong><code>duckdb</code> package manquant</strong> → message <em>“Le paquet R duckdb n’est pas installé, le mode local n’est pas disponible. Installez avec install.packages(‘duckdb’) ou configurez Postgres.”</em> Avant : un seul message générique qui ne disait pas quoi faire.</li>
+</ul></li>
+<li>Le <code>register_hint</code> (petit texte sous <em>Enregistrer ce projet comme zone de suivi</em>) bénéficie du même diagnostic — il indique désormais l’installation de <code>duckdb</code> plutôt que le générique <em>“impossible d’enregistrer la zone”</em>.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.0" id="nemetonshiny-0240-2026-05-11">nemetonshiny 0.24.0 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0240-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="added--suivi-sanitaire-en-mode-local-duckdb-0-24-0">Added — Suivi sanitaire en mode local (DuckDB)<a class="anchor" aria-label="anchor" href="#added--suivi-sanitaire-en-mode-local-duckdb-0-24-0"></a></h4>
+<p>L’onglet <em>Suivi sanitaire</em> ne nécessite plus une instance PostgreSQL+TimescaleDB pour démarrer. Quand aucune variable d’environnement <code>NEMETON_DB_*</code> n’est définie et qu’un projet est chargé, la couche monitoring bascule automatiquement sur un fichier <strong>DuckDB local</strong> stocké à <code>&lt;project&gt;/data/monitoring.duckdb</code> (à côté de <code>samples.gpkg</code>).</p>
+<ul><li>
+<strong>Bascule transparente</strong> : <code>service_monitoring_db.R::.resolve_monitoring_db_url(project)</code> inspecte les vars <code>NEMETON_DB_URL</code> / <code>NEMETON_DB_*</code> / <code>POSTGRESQL_ADDON_*</code> et, à défaut, émet un <code>duckdb:///&lt;project&gt;/data/monitoring.duckdb</code> exploitable par <code><a href="https://pobsteta.github.io/nemeton/reference/db_connect.html" class="external-link">nemeton::db_connect()</a></code> (v0.21.0).</li>
+<li>
+<strong>Pré-requis</strong> : le package <code>duckdb (&gt;= 0.8.0)</code> est ajouté en <code>Suggests</code>. S’il n’est pas installé, la bascule reste silencieuse et l’utilisateur voit l’ancien bandeau “Base non configurée”.</li>
+<li>
+<strong>UI</strong> : le bandeau de l’onglet <em>Suivi sanitaire</em> affiche désormais <strong>trois états</strong> au lieu de deux :
+<ul><li>rouge : aucune base configurée et aucun projet chargé ;</li>
+<li>
+<strong>bleu (NOUVEAU)</strong> : <em>“Mode local (DuckDB) — base de suivi monoposte stockée dans le projet”</em> avec un hint pour passer en Postgres multi-utilisateurs ;</li>
+<li>vert : Postgres connecté, N zones disponibles.</li>
+</ul></li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--signatures-async-pour-passer-la-db-url-au-worker-0-24-0">Changed — Signatures async pour passer la DB URL au worker<a class="anchor" aria-label="anchor" href="#changed--signatures-async-pour-passer-la-db-url-au-worker-0-24-0"></a></h4>
+<p><code>run_ingestion_async()</code> et <code>run_fordead_async()</code> acceptent désormais un paramètre <code>db_url</code> dans leur <code>$invoke(...)</code>. Les observers dans <code>mod_monitoring.R</code> pré-résolvent l’URL via <code>.resolve_monitoring_db_url(app_state$current_project)</code> avant de lancer le worker — nécessaire parce que les futures workers ne voient pas <code>app_state</code> ni les vars Shiny.</p>
+<p><code>get_monitoring_db_connection()</code> accepte deux nouveaux paramètres optionnels : * <code>project</code> : pour la résolution synchrone du fallback DuckDB (utilisé par les 9 callsites dans <code>mod_monitoring.R</code>). * <code>db_url</code> : pour le path asynchrone qui reçoit l’URL déjà résolue depuis l’observer.</p>
+</div>
+<div class="section level4">
+<h4 id="bumped--remotes-pobstetanemetonv0210-0-24-0">Bumped — <code>Remotes: pobsteta/nemeton@v0.21.0</code>
+<a class="anchor" aria-label="anchor" href="#bumped--remotes-pobstetanemetonv0210-0-24-0"></a></h4>
+<p>Pour bénéficier du backend DuckDB côté cœur (<code><a href="https://pobsteta.github.io/nemeton/reference/db_connect.html" class="external-link">nemeton::db_connect</a></code> détecte le scheme <code>duckdb://</code> et applique les migrations dans <code>inst/db/migrations/duckdb/</code>).</p>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.17" id="nemetonshiny-02317-2026-05-11">nemetonshiny 0.23.17 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02317-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--fond-satellite-esriworldimagery-0-23-17">Plan d’actions — fond satellite Esri.WorldImagery<a class="anchor" aria-label="anchor" href="#plan-dactions--fond-satellite-esriworldimagery-0-23-17"></a></h4>
+<ul><li>
+<code>feat(report)</code> — les cartes UGF du PDF <em>Plan d’actions</em> passent d’<code>OpenTopoMap</code> (relief topographique) à <strong><code>Esri.WorldImagery</code></strong> (imagerie satellite gratuite, sans clé API). Permet de voir la canopée réelle / l’occupation du sol derrière chaque parcelle plutôt que des courbes de niveau abstraites.</li>
+<li>Le rapport <em>Synthèse</em> reste sur <code>OpenTopoMap</code> (différent domaine d’usage : score par famille d’indicateurs, le relief est plus parlant qu’une photo aérienne).</li>
+<li>Le fallback géométrie-seule (déclenché si les tuiles satellite sont inaccessibles côté serveur) est inchangé.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.16" id="nemetonshiny-02316-2026-05-11">nemetonshiny 0.23.16 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02316-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="export-pdf-plan-dactions--retiré--verbose-quarto-0-23-16">Export PDF Plan d’actions — retiré + verbose quarto<a class="anchor" aria-label="anchor" href="#export-pdf-plan-dactions--retir%C3%A9--verbose-quarto-0-23-16"></a></h4>
+<ul><li>
+<code>fix(report)</code> — l’export PDF échouait encore avec une erreur générique <code>"Error running quarto CLI from R"</code> même quand toutes les UGF tombaient en fallback géométrie-seule (tuiles OSM inaccessibles côté serveur, ce qui est légitime et géré). Cause probable : la déclaration <code>\small</code> placée en v0.23.13 dans <code>inst/quarto/action_plan_template.qmd</code> entre <code>\begin{longtable}{...}</code> et <code>\toprule</code> — booktabs + longtable peuvent mal traiter une déclaration de taille à cet endroit sur certaines toolchains xelatex et faire planter tout le rendu. Désormais le template <strong>ne wrappe plus le longtable</strong> dans un changement de taille ; il utilise la taille par défaut qui compile de manière fiable. Les <code>{</code> <code>}</code> parasites corrigés en v0.23.13 ne reviennent pas (puisqu’il n’y a plus de wrapper à mal sortir).</li>
+<li>
+<code>debug(report)</code> — <code><a href="https://quarto-dev.github.io/quarto-r/reference/quarto_render.html" class="external-link">quarto::quarto_render()</a></code> passe en <code>quiet = FALSE</code> côté Plan d’actions (aligné avec la Synthèse qui était déjà verbose). La sortie quarto / xelatex est désormais streamée dans la console R, ce qui permet de diagnostiquer une vraie erreur LaTeX (package manquant, <code>\includegraphics</code> malformé, etc.) au lieu du seul “Error running quarto CLI from R” générique.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.15" id="nemetonshiny-02315-2026-05-11">nemetonshiny 0.23.15 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02315-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--cartes-ugf-alignées-sur-le-rapport-synthèse--libellés-boutons-0-23-15">Plan d’actions — cartes UGF alignées sur le rapport Synthèse + libellés boutons<a class="anchor" aria-label="anchor" href="#plan-dactions--cartes-ugf-align%C3%A9es-sur-le-rapport-synth%C3%A8se--libell%C3%A9s-boutons-0-23-15"></a></h4>
+<ul><li>
+<code>fix(export)</code> — porte la recette éprouvée de <code>generate_family_maps()</code> (utilisée par le rapport PDF de l’onglet <em>Synthèse</em> qui rend ses cartes correctement) sur <code>render_ug_map()</code> de l’export PDF Plan d’actions :
+<ul><li>provider <strong>OpenTopoMap</strong> (au lieu d’OpenStreetMap) ;</li>
+<li>
+<strong>zoom explicite</strong> calculé à partir de la bbox de la parcelle (<code>auto_zoom &lt;- min(17, max(13, round(17 - log2(extent_size * 100))))</code>) au lieu de <code>zoom = NULL</code> ;</li>
+<li>dimensions PNG <strong>800×600 res=150</strong> (au lieu de 1200×800 res=180) pour rester aligné avec la sortie qui passe déjà en production sur la Synthèse.</li>
+</ul>
+Les autres garde-fous v0.23.14 (fermeture explicite du device avant la validation taille, fallback géométrie seule sans tuiles, sanity check <code>file.size &lt; 100 → NA_character_</code>) sont conservés.</li>
+<li>
+<code>ui(action_plan)</code> — libellés des boutons d’export uniformisés avec le reste de l’app :
+<ul><li>“Exporter GeoPackage” → “Télécharger le GeoPackage” (FR) / “Download GeoPackage” (EN)</li>
+<li>“Exporter PDF” → “Télécharger le PDF” (FR) / “Download PDF” (EN)</li>
+</ul>
+Cohérent avec les libellés <code>download_pdf</code> (rapport Synthèse) et <code>download_gpkg</code> (export projet) déjà existants.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.14" id="nemetonshiny-02314-2026-05-11">nemetonshiny 0.23.14 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02314-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="export-pdf-plan-dactions--toast-persistant--résilience-renderugmap-0-23-14">Export PDF Plan d’actions — toast persistant + résilience renderUGmap<a class="anchor" aria-label="anchor" href="#export-pdf-plan-dactions--toast-persistant--r%C3%A9silience-renderugmap-0-23-14"></a></h4>
+<ul><li>
+<code>fix(export)</code> — le toast <em>“Génération PDF…”</em> (roue dentée animée) <strong>s’auto-dismissait après 8 s</strong> côté JS. Pour un export Quarto + xelatex typique (15–30 s avec maps), le spinner disparaissait bien avant que la boîte de dialogue <em>Enregistrer le PDF</em> du navigateur n’apparaisse → l’utilisateur voyait un écran vide puis une boîte de dialogue sortie de nulle part. Désormais <code>nemetonShowDownloadToast</code> :
+<ul><li>n’a plus d’auto-dismiss (<code>duration: null</code>) ;</li>
+<li>le serveur envoie un <code>nemetonHideDownloadToast</code> (custom message Shiny) à la fin de <code>content</code> (via <code>on.exit</code> → s’exécute même si l’export échoue), donc le spinner disparaît <strong>synchroniquement</strong> avec l’envoi du fichier par le serveur ;</li>
+<li>filet de sécurité 120 s (au lieu de 8 s) en cas de perte du message custom.</li>
+</ul></li>
+<li>
+<code>fix(export)</code> — le PDF généré faisait <strong>1 KB et ne s’ouvrait pas</strong>. Cause : <code>generate_action_plan_pdf()</code> levait une erreur (typiquement la fallback <code>render_ug_map</code> v0.23.13 passait <code>bg</code> / <code>xlim</code> / <code>ylim</code> à <code>plot.sf</code> qui ne les supporte pas uniformément selon la version de <code>sf</code> → PNG corrompu ou 0 byte → <code>\includegraphics</code> plantait xelatex → <code>quarto_render</code> échouait). Le tryCatch upstream écrivait alors <code>"PDF generation failed"</code> (22 octets) dans le fichier — d’où le PDF cassé livré à l’utilisateur. Désormais :
+<ul><li>
+<strong>fallback <code>render_ug_map</code> minimal</strong> : appel <code>plot.sf</code> sans <code>bg</code> / <code>xlim</code> / <code>ylim</code>, plot.sf auto-fit la bbox de la géométrie ;</li>
+<li>
+<strong>fermeture explicite du device PNG</strong> avant la fin de <code>render_ug_map</code> (au lieu de <code>on.exit</code>) pour garantir que le fichier est complètement flushé avant la validation ;</li>
+<li>
+<strong>validation taille PNG</strong> : si le fichier produit fait moins de 100 octets ou n’existe pas, <code>render_ug_map</code> renvoie <code>NA_character_</code> et le template skip <code>\includegraphics</code> proprement (au lieu d’envoyer un fichier corrompu à xelatex).</li>
+</ul></li>
+<li>
+<code>fix(export)</code> — la notification d’erreur PDF est désormais <strong>sticky</strong> (<code>duration = NULL</code> au lieu de <code>duration = 8</code>). L’erreur réelle (<code>conditionMessage(e)</code>) reste affichée jusqu’à fermeture manuelle, ce qui permet de diagnostiquer la cause sans avoir à inspecter les logs serveur. Le message verbatim est aussi loggué via <code><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli::cli_warn</a></code>.</li>
+<li>
+<code>fix(export)</code> — quand la génération échoue, le fichier livré contient maintenant le texte <em>“PDF generation failed. See the in-app error toast for the underlying cause.”</em> (au lieu d’un cryptique <em>“PDF generation failed”</em>) pour orienter vers la vraie diagnostic.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.13" id="nemetonshiny-02313-2026-05-11">nemetonshiny 0.23.13 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02313-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="rapport-pdf-plan-dactions--accolades-parasites--cartes-ugf-restaurées-0-23-13">Rapport PDF Plan d’actions — accolades parasites + cartes UGF restaurées<a class="anchor" aria-label="anchor" href="#rapport-pdf-plan-dactions--accolades-parasites--cartes-ugf-restaur%C3%A9es-0-23-13"></a></h4>
+<ul><li>
+<code>fix(report)</code> — <strong><code>{</code> et <code>}</code> apparaissaient en littéral</strong> dans le PDF, au-dessus et au-dessous du tableau d’actions de chaque UGF. Cause : le template écrivait <code>cat("{\\small\n")</code> puis le longtable puis <code>cat("}\n\n")</code>. Pandoc voyait <code>{</code> / <code>}</code> seuls sur leur propre paragraphe (séparés par des newlines), ne les reconnaissait pas comme bloc LaTeX brut (raw LaTeX = <code>\begin{env}…\end{env}</code> ou backticked <code>\</code>``{=latex}```<code>fences) et les passait verbatim au PDF. Désormais</code><code>est placé **à l'intérieur** de l'environnement</code>longtable<code>(Pandoc préserve son contenu comme raw LaTeX) ; la déclaration scope automatiquement jusqu'à</code>\end{longtable}`.</li>
+<li>
+<code>fix(report)</code> — <strong>cartes des parcelles absentes</strong> du PDF. <code>render_ug_map()</code> retournait <code>NA_character_</code> dès la moindre erreur de <code><a href="https://rdrr.io/pkg/maptiles/man/get_tiles.html" class="external-link">maptiles::get_tiles()</a></code> (réseau coupé sur le serveur, rate-limit OSM, package <code>maptiles</code> non installé) ; le template skippait alors silencieusement le bloc <code>\includegraphics</code>. Désormais un <strong>fallback sans tuiles OSM</strong> dessine la géométrie de la parcelle sur fond gris clair, donc le rapport contient toujours une carte par UGF — même réseau coupé. <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> documente la raison du fallback dans les logs R.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.12" id="nemetonshiny-02312-2026-05-11">nemetonshiny 0.23.12 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02312-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="terrain--fixes-défensifs-init-réactivité-ui-0-23-12">Terrain — fixes défensifs init (réactivité UI)<a class="anchor" aria-label="anchor" href="#terrain--fixes-d%C3%A9fensifs-init-r%C3%A9activit%C3%A9-ui-0-23-12"></a></h4>
+<ul><li>
+<code>fix(samples)</code> — l’observer <code>leafletProxy()</code> du <em>Terrain</em> est désormais <strong>gardé derrière <code>req(input$map_zoom)</code></strong>. Avant le premier rendu de la carte Sampling (typiquement quand l’utilisateur travaille dans un autre onglet — <em>Plan d’actions</em> par ex.), l’observer tirait sur chaque changement de <code>sampling_rv$plots</code> / <code>sampling_rv$observations</code> / <code>app_state$language</code> et empilait des messages <code>leaflet-calls</code> dans la file de flush différée pour une carte qui n’existait pas encore côté client. Désormais l’observer court-circuite tant que <code>input$map_zoom</code> est NULL ; il reprend son comportement nominal dès que la carte est ouverte au moins une fois.</li>
+<li>
+<code>perf(samples)</code> — <code>.restore_samples</code> ouvre désormais <code>samples.gpkg</code> <strong>une seule fois</strong> via <code><a href="https://r-spatial.github.io/sf/reference/st_layers.html" class="external-link">sf::st_layers()</a></code> pour scanner les layers disponibles, puis lit directement les layers présents via <code><a href="https://r-spatial.github.io/sf/reference/st_read.html" class="external-link">sf::st_read()</a></code>. L’ancien chemin appelait <code>load_samples(layer = ...)</code> deux fois (plots + observations), ce qui ouvrait le GPKG quatre fois au total (chaque <code>load_samples</code> faisait son propre <code>st_layers</code> + <code>st_read</code>). Sur un projet où <code>current_project</code> est régulièrement réassigné, cette demi-pile d’I/O disparaît.</li>
+</ul><p>Ces deux mesures sont défensives. Si la sluggishness ressentie sur l’onglet <em>Plan d’actions</em> ne disparaît pas, il faut probablement chercher du côté de <code>ug_build_sf()</code> / <code>output$kanban_board</code> (renderUI sur grandes listes d’actions) — voir issue à venir.</p>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.11" id="nemetonshiny-02311-2026-05-11">nemetonshiny 0.23.11 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02311-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="terrain--légende-plots-restaurée-au-rendu-initial-0-23-11">Terrain — légende plots restaurée au rendu initial<a class="anchor" aria-label="anchor" href="#terrain--l%C3%A9gende-plots-restaur%C3%A9e-au-rendu-initial-0-23-11"></a></h4>
+<ul><li>
+<code>fix(samples)</code> — <strong>la légende Base/Over/Observation n’apparaissait plus</strong> sur la carte <em>Terrain</em> depuis v0.23.10. La cause : la légende avait été déplacée entièrement dans un observer <code>leafletProxy()</code> séparé de <code>renderLeaflet</code>. Quand l’observer proxy se déclenche <strong>avant</strong> que l’élément carte ne soit monté sur le client (cas fréquent au premier flush — l’ordre entre outputs et observers n’est pas garanti), les messages <code>leaflet-calls</code> arrivent à un client sans carte et <strong>sont perdus</strong>. Du coup, plus aucune légende.</li>
+<li>La légende initiale est désormais redessinée <strong>dans <code>renderLeaflet</code></strong> avec <code>addLegend(colors = …, labels = …)</code> (toujours sans <code>colorFactor</code>, donc l’ordre saumon ↔︎ vert reste correct — pas de régression v0.23.9 → v0.23.10). Lecture de <code>sampling_rv$observations</code> en <code>isolate()</code> pour ne PAS forcer un full-redraw de la carte quand seules les observations changent : la mise à jour dynamique reste portée par l’observer <code>leafletProxy()</code> (qui réémet <code>removeControl + addLegend</code> avec <code>layerId = "plots-legend"</code>).</li>
+<li>Net : légende correcte au premier render (cas le plus fréquent côté utilisateur) ; mise à jour live conservée au clic <em>Envoyer vers Terrain</em> (pas de flicker tuiles, pan/zoom préservé).</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.10" id="nemetonshiny-02310-2026-05-11">nemetonshiny 0.23.10 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02310-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="envoyer-vers-terrain--auto-refresh-carte--légende-correcte-0-23-10">Envoyer vers Terrain — auto-refresh carte + légende correcte<a class="anchor" aria-label="anchor" href="#envoyer-vers-terrain--auto-refresh-carte--l%C3%A9gende-correcte-0-23-10"></a></h4>
+<ul><li>
+<code>fix(samples)</code> — <strong>légende inversée</strong> : <code><a href="https://rstudio.github.io/leaflet/reference/colorNumeric.html" class="external-link">leaflet::colorFactor()</a></code> réordonne son <code>domain</code> par ordre <strong>alphabétique</strong> ; pour <code>c("Base","Over","Observation")</code> il triait en <code>c("Base","Observation","Over")</code> et mappait la palette positionnellement → <em>Observation</em> héritait du saumon <code>#ff7f0e</code> (place 2 = position d’<em>Over</em>) et <em>Over</em> héritait du vert <code>#2ca02c</code> (place 3). Les pastilles légende contredisaient les marqueurs sur la carte. Désormais la légende est construite avec <code>addLegend(colors = …, labels = …)</code> qui préserve strictement l’ordre passé.</li>
+<li>
+<code>fix(samples)</code> — <strong>la carte ne se mettait pas à jour automatiquement</strong> après <em>Envoyer vers Terrain</em> : l’output <code>renderLeaflet</code> est suspendu (<code>suspendWhenHidden = TRUE</code>) pendant que l’utilisateur reste sur l’onglet <em>Plan d’actions</em> ; les changements de <code>sampling_rv$observations</code> n’étaient observés qu’au retour sur l’onglet <em>Terrain</em> — et encore, redessinaient la carte entière (flicker tuiles, perte du pan/zoom). Désormais les points d’observation et la légende sont gérés par un observer dédié <code>leafletProxy()</code> qui synchronise <strong>uniquement</strong> le groupe <code>Observations</code> et le contrôle légende (<code>layerId = "plots-legend"</code>). Conséquence :
+<ul><li>la carte se met à jour <strong>immédiatement</strong> au clic <em>Envoyer vers Terrain</em>, même si l’onglet est masqué (le proxy met les opérations en file d’attente côté serveur et les rejoue dès que le client est connecté) ;</li>
+<li>les tuiles ne sont plus rechargées ;</li>
+<li>le pan/zoom courant est conservé ;</li>
+<li>la légende reflète strictement les marqueurs présents.</li>
+</ul></li>
+<li>
+<code>refactor(samples)</code> — <code>renderLeaflet</code> ne dépend plus de <code>sampling_rv$observations</code> ; le groupe <code>Observations</code> est préinscrit dans le <code>addLayersControl</code> pour exposer le toggle dès le premier render, et c’est le proxy qui peuple le groupe. Le groupe peut être vide tant qu’aucun point n’a été envoyé.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.9" id="nemetonshiny-0239-2026-05-11">nemetonshiny 0.23.9 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0239-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="envoyer-vers-terrain--coexistence-calibration--observations-0-23-9">Envoyer vers Terrain — coexistence calibration + observations<a class="anchor" aria-label="anchor" href="#envoyer-vers-terrain--coexistence-calibration--observations-0-23-9"></a></h4>
+<ul><li>
+<code>fix(samples)</code> — bug critique : cliquer <strong>Envoyer vers Terrain</strong> dans l’onglet <em>Plan d’actions</em> <strong>détruisait silencieusement les placettes de calibration Base/Over</strong> générées dans l’onglet <em>Terrain</em>. <code>save_samples()</code> faisait <code>unlink(samples.gpkg)</code> puis réécrivait le fichier avec uniquement les points d’observation. Désormais :
+<ul><li>
+<code>save_samples(project_id, plots, layer = "plots"|"observations")</code> écrit <strong>un layer nommé</strong> dans <code>samples.gpkg</code> avec <code>append = FALSE, delete_layer = TRUE</code> — il remplace uniquement le layer cible et préserve les autres ;</li>
+<li>les placettes de calibration (<code>mod_sampling</code>) restent dans le layer <code>plots</code> (par défaut) ; les points d’observation (<code>mod_action_plan</code>) sont écrits dans le layer <code>observations</code> ;</li>
+<li>
+<code>samples_count</code> / <code>samples_generated_at</code> (metadata projet) ne sont mis à jour <strong>que</strong> pour le layer <code>plots</code> — l’envoi d’observations ne perturbe plus la comptabilité du plan d’échantillonnage ;</li>
+<li>
+<code>load_samples(project_id, layer = "plots"|"observations")</code> lit un layer spécifique et renvoie <code>NULL</code> si le layer est absent (silencieusement).</li>
+</ul></li>
+<li>
+<code>feat(samples)</code> — la <strong>carte de l’onglet Terrain</strong> affiche désormais les <strong>deux familles de points en simultané</strong> :
+<ul><li>Base / Over (bleu / orange, parcours TSP, icônes orienteering Départ/Arrivée) — inchangés ;</li>
+<li>Observations issues du plan d’actions (vert <code>#2ca02c</code>, groupe leaflet dédié <code>Observations</code> toggle-able dans le layer control, popup <em>plot_id — observation (UGF, an)</em>).</li>
+</ul></li>
+<li>
+<code>feat(samples)</code> — <strong>légende dynamique</strong> : ne liste que les familles effectivement présentes dans <code>plots</code> et <code>observations</code>. Plus de <code>addLegend(values = c("Base","Over"))</code> en dur. Nouvelle clé i18n <code>sampling_legend_plots_title</code> (FR <em>Placettes</em> / EN <em>Plots</em>).</li>
+<li>
+<code>feat(samples)</code> — <code>mod_sampling</code> réagit à <code>samples_refresh</code> : quand <code>mod_action_plan</code> bumpe ce signal après <em>Envoyer vers Terrain</em>, le layer <code>observations</code> est rechargé sans changer de projet.</li>
+<li>Couverture : test régression <code>save_samples 'observations' layer coexists with 'plots' layer</code> (couche calibration préservée par un save observations successif, et inversement ; <code>samples_count</code> reste sur <code>plots</code> ; couche inconnue → NULL silencieux).</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.8" id="nemetonshiny-0238-2026-05-11">nemetonshiny 0.23.8 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0238-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--toast-pdf-unifié-0-23-8">Plan d’actions — toast PDF unifié<a class="anchor" aria-label="anchor" href="#plan-dactions--toast-pdf-unifi%C3%A9-0-23-8"></a></h4>
+<ul><li>
+<code>fix(action_plan)</code> — l’export PDF avait deux toasts qui se superposaient au clic sur <strong>Exporter PDF</strong> : un toast serveur (<code>showNotification</code> avec icône <code>spinner</code> et libellé <em>« Génération du PDF en cours… »</em>, dans <code>downloadHandler</code>) et le nouveau toast client roue dentée v0.23.7 (helper JS <code>nemetonShowDownloadToast</code>). Le serveur est retiré : on garde uniquement le toast client, cohérent avec <strong>Exporter GeoPackage</strong>. Clé i18n orpheline <code>action_plan_pdf_generating</code> supprimée.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.7" id="nemetonshiny-0237-2026-05-11">nemetonshiny 0.23.7 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0237-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--exports-gpkg--pdf-0-23-7">Plan d’actions — Exports GPKG / PDF<a class="anchor" aria-label="anchor" href="#plan-dactions--exports-gpkg--pdf-0-23-7"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — export GeoPackage : nouvelle colonne <strong><code>annee_civile</code></strong> ajoutée à la couche <code>actions</code>, dérivée de <code>current_year + annee_cible - 1L</code>. Le champ <code>annee_cible</code> du schéma reste un offset relatif 1..HORIZON (utilisé par le LLM et les calculs internes du plan) ; la colonne <code>annee_civile</code> matérialise l’année calendaire au moment de l’export pour les consommateurs QGIS/terrain. Ancre = année courante au clic d’export (pas de stockage). Placée juste après <code>annee_cible</code> dans la couche <code>actions</code>. Test de régression <code>export_action_plan_gpkg writes actions + ugf layers</code> étendu pour vérifier la présence + la valeur + l’ordre des colonnes.</li>
+<li>
+<code>feat(action_plan)</code> — clic sur <strong>Exporter GeoPackage</strong> ou <strong>Exporter PDF</strong> affiche maintenant un <strong>toast roue dentée</strong> en bas à droite pendant la phase d’export. <code>downloadButton</code> ne fournit aucun événement côté serveur (l’ouverture de la boîte de dialogue de téléchargement est strictement client), donc le toast est déclenché par un <code>onclick</code> JS qui appelle un helper <code>nemetonShowDownloadToast()</code> ajouté dans <code>custom.js</code>. Le toast utilise <code>Shiny.notifications.show</code> (même slot visuel que <code><a href="https://rdrr.io/pkg/shiny/man/showNotification.html" class="external-link">shiny::showNotification</a></code>) avec <code>duration: null, closeButton: false</code>, et s’auto-dismisse après 8 s. Idempotent sur re-clic (le timer est réinitialisé). Deux nouvelles clés i18n FR/EN : <code>action_plan_export_running_gpkg</code>, <code>action_plan_export_running_pdf</code>.</li>
+<li>
+<code>feat(action_plan)</code> — <strong>rapport PDF Quarto refondu</strong>. Page de garde dédiée (titre, sous-titre, encadré bleu avec date / horizon / nombre d’actions / nombre d’UGF), header courant <em>fancyhdr</em>, synthèse globale en <code>tcolorbox</code> avec bilan coloré vert/rouge. Pour chaque UGF :
+<ul><li>une <strong>carte OSM</strong> centrée sur la parcelle est pré-rendue côté R via <code>maptiles::get_tiles(provider = "OpenStreetMap")</code>
+<ul><li>
+<code>plot_tiles()</code> + tracé du polygone (bleu translucide, bordure pleine). PNG 1200x800 sauvegardé dans le temp_dir et inclus via <code>\includegraphics</code>. Dégradation silencieuse si <code>maptiles</code> indisponible ou si la requête tuile échoue (le PDF est rendu sans la carte plutôt que de planter) ;</li>
+</ul></li>
+<li>une <strong>carte de synthèse UGF</strong> (surface, nb d’actions, coût, revenu, bilan coloré) en <code>tcolorbox</code> ;</li>
+<li>le <strong>tableau des actions</strong> passe en <code>longtable</code> (continue sur plusieurs pages si besoin), avec priorité en couleur (rouge / orange / vert) ;</li>
+<li>une <strong>zone “Commentaires” large</strong> en <code>tcolorbox</code> <em>breakable</em> sous le tableau, qui restitue le <code>commentaire</code> de chaque action non-vide avec l’année cible, le type et le statut coloré.</li>
+</ul><code>generate_action_plan_pdf()</code> enrichit le payload <code>data</code> passé au qmd : <code>commentaire</code> par action, <code>map_png</code> (chemin ou NA) par UGF, et factorise la création du <code>temp_dir</code> pour qu’il porte à la fois les PNG et le qmd rendu.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.6" id="nemetonshiny-0236-2026-05-11">nemetonshiny 0.23.6 (2026-05-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0236-2026-05-11"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--chat-ia--surface--volume--coûts-conservés-0-23-6">Plan d’actions — chat IA : surface / volume / coûts conservés<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-ia--surface--volume--co%C3%BBts-conserv%C3%A9s-0-23-6"></a></h4>
+<ul><li>
+<code>fix(action_plan)</code> — quand l’utilisateur cliquait sur <strong>Affiner le plan avec l’IA</strong>, les lignes proposées par le LLM arrivaient avec les colonnes <code>surface_ha</code>, <code>volume_m3</code>, <code>nb_tiges</code>, <code>rdi</code>, <code>cout_eur</code> et <code>revenu_eur</code> <strong>vides</strong>. Deux causes côté prompt :
+<ul><li>
+<code>build_action_plan_chat_prompt()</code> se contentait de référencer <code>build_action_plan_prompt</code> par son nom de fonction R sans embarquer le schéma JSON, donc le LLM ignorait l’existence du bloc <code>quantite</code> ;</li>
+<li>
+<code>mod_action_plan</code> envoyait au LLM un <strong>résumé</strong> des actions courantes (juste <code>id, ug_id, type, annee_cible, statut, priorite</code>), ce qui empêchait le LLM de réémettre les quantités existantes lors d’une modification. Le schéma JSON et le rappel économique sont maintenant factorisés dans <code>.action_plan_json_schema()</code> et <code>.action_plan_econ_hint()</code>, partagés par les deux prompts. Le prompt de chat embarque désormais le schéma complet, ajoute des règles explicites (« remplir tout le bloc <code>quantite</code> », « réémettre l’action entière sur update »), et reçoit le <strong>JSON complet</strong> du plan courant. Couverture testthat : <code>build_action_plan_chat_prompt embeds the full JSON schema + econ hint</code>.</li>
+</ul></li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.5" id="nemetonshiny-0235-2026-05-09">nemetonshiny 0.23.5 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0235-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--chat-ia--scope--écrasement-0-23-5">Plan d’actions — chat IA : scope + écrasement<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-ia--scope--%C3%A9crasement-0-23-5"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — le <strong>chat IA gagne deux contrôles</strong> juste sous l’historique pour piloter chaque tour de conversation : un radio <strong>Toutes les UGF / Sélection courante</strong> (<code>chat_scope</code>) et une checkbox <strong>Écraser le plan existant</strong> (<code>chat_overwrite</code>). Mêmes sémantiques que dans le modal “Générer les actions (IA)” :
+<ul><li>
+<code>scope = "selected"</code> restreint le <code>ctx$ug_ids</code> envoyé au prompt aux seules UGF cochées sur la carte (sinon garde-fou <code>action_plan_no_ug</code> si rien n’est sélectionné) ;</li>
+<li>
+<code>overwrite = TRUE</code> au moment de l’apply supprime les actions existantes des UGF ciblées avant le <code>bulk_upsert_actions()</code>. Le modal de confirmation qui s’ouvre quand le LLM renvoie un bloc <code>actions</code> JSON affiche désormais une <strong>bannière <code>text-warning</code></strong> quand l’overwrite est coché, listant le nombre d’UGF impactées (<code>action_plan_chat_apply_overwrite_warn_fmt</code>). Les UGF cibles sont stashées dans <code>rv_state$pending_chat_target_ugs</code> au moment de l’envoi pour rester cohérentes entre le tour qui propose les actions et celui qui les applique. Nouvelle clé i18n <code>action_plan_chat_scope_sel</code>.</li>
+</ul></li>
+</ul></div>
+<div class="section level4">
+<h4 id="bascule-de-langue-fr--en-0-23-5">Bascule de langue FR ↔︎ EN<a class="anchor" aria-label="anchor" href="#bascule-de-langue-fr--en-0-23-5"></a></h4>
+<ul><li>
+<code>fix(language)</code> — basculer FR↔︎EN dans le sélecteur de la navbar <strong>fonctionne enfin</strong> : la page se recharge automatiquement en EN (ou FR) et <strong>ne reverse plus</strong> sur la langue de démarrage. Deux bugs combinés :
+<ul><li>
+<code>app_server.R</code> écrivait dans <code>nemeton.app_language</code> alors que <code>app_ui</code> lit <code>getOption("nemeton.app_options")$language</code> (clé totalement différente) — donc la préférence ne survivait pas au reload. Désormais on persiste dans <em>la bonne</em> option <code>nemeton.app_options$language</code>.</li>
+<li>L’observer affichait un toast <em>“Rechargez la page pour appliquer”</em> sans recharger automatiquement. Remplacé par un appel direct <code>session$reload()</code> pour que le rebuild d’<code>app_ui</code> se fasse sans intervention de l’utilisateur. Garde anti-init : si la nouvelle valeur est identique à <code>app_state$language</code>, l’observer retourne tôt — pas de reload involontaire au démarrage de session.</li>
+</ul></li>
+<li>
+<code>i18n</code> : clé orpheline <code>language_changed</code> (le toast manuel) retirée.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.4" id="nemetonshiny-0234-2026-05-09">nemetonshiny 0.23.4 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0234-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--chat-ia-en-français-0-23-4">Plan d’actions — chat IA en français<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-ia-en-fran%C3%A7ais-0-23-4"></a></h4>
+<ul><li>
+<code>i18n(action_plan)</code> — les libellés de rôle dans l’historique du chat passent par i18n : <code>msg$role</code> brut (“user” / “assistant”) n’apparaît plus tel quel dans l’UI. <code>output$chat_history_ui</code> traduit au moment du rendu en <strong>“Vous”</strong> / <strong>“Assistant”</strong> (FR) ou <strong>“You”</strong> / <strong>“Assistant”</strong> (EN). Le modèle de données conserve les clés anglaises (cohérent avec la convention LLM, le prompt builder downstream reste intact) — la traduction est purement cosmétique au display, et bascule dynamiquement avec le switch de langue. Deux nouvelles clés i18n : <code>action_plan_chat_role_user</code>, <code>action_plan_chat_role_assistant</code>.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.3" id="nemetonshiny-0233-2026-05-09">nemetonshiny 0.23.3 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0233-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--toast-lia-réfléchit-0-23-3">Plan d’actions — toast “L’IA réfléchit…”<a class="anchor" aria-label="anchor" href="#plan-dactions--toast-lia-r%C3%A9fl%C3%A9chit-0-23-3"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — clic sur <strong>Envoyer</strong> dans le chat IA fait apparaître un <strong>toast en bas à droite</strong> avec une <strong>roue dentée tournante</strong> et le label <em>“L’IA réfléchit…”</em>. Le toast reste affiché tant que la réponse du LLM n’est pas reçue : <code>duration = NULL</code>, <code>closeButton = FALSE</code>, type <code>"default"</code> (neutre). Suppression garantie via <code>on.exit(shiny::removeNotification(thinking_id))</code> dans toutes les branches de retour de l’observer (succès, erreur LLM, parse échoué). L’engrenage utilise la classe Font Awesome <code>fa-spin</code> sur l’icône <code>shiny::icon("gear")</code>. Nouvelle clé i18n <code>action_plan_chat_thinking</code> (FR <em>“L’IA réfléchit…”</em> / EN <em>“AI is thinking…”</em>).</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.2" id="nemetonshiny-0232-2026-05-09">nemetonshiny 0.23.2 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0232-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--chat-dans-la-sidebar-droite--auto-scroll-0-23-2">Plan d’actions — chat dans la sidebar droite + auto-scroll<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-dans-la-sidebar-droite--auto-scroll-0-23-2"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — le <strong>chat IA</strong> rejoint la sidebar droite <strong>sous la carte “Tableau des actions”</strong>, plutôt que dans une sidebar gauche dédiée. Disposition haut → bas de la sidebar droite : <em>Tableau des actions</em> (Sélection / IA / Manuel / Exports) puis <em>Affiner le plan avec l’IA</em> (historique scrollable + textarea + boutons Effacer / Envoyer). Le double <code><a href="https://rstudio.github.io/bslib/reference/sidebar.html" class="external-link">bslib::layout_sidebar</a></code> imbriqué introduit en v0.23.1 disparaît, on revient à un seul <code>layout_sidebar</code> avec les deux cartes empilées dans la sidebar droite — meilleure densité d’information sur les écrans portables.</li>
+<li>
+<code>feat(action_plan)</code> — la zone d’historique du chat <strong>scrolle automatiquement vers le bas</strong> à chaque mise à jour. La div <code>.chat-history</code> reçoit un <code>id</code> stable (<code>ns("chat_history")</code>) ; <code>output$chat_history_ui</code> injecte à la fin de chaque render un <code>tags$script</code> qui fait <code>setTimeout(function(){ el.scrollTop = el.scrollHeight; }, 0)</code> — le <code>setTimeout(0)</code> diffère au prochain tick pour que le DOM soit à jour quand <code>scrollHeight</code> est lu. Le dernier message reste visible sans intervention manuelle.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--libellé-bouton-0-23-2">Plan d’actions — libellé bouton<a class="anchor" aria-label="anchor" href="#plan-dactions--libell%C3%A9-bouton-0-23-2"></a></h4>
+<ul><li>
+<code>i18n(action_plan)</code> — bouton <strong>“Générer (IA)”</strong> renommé <strong>“Générer les actions (IA)”</strong> (FR) / <strong>“Generate actions (AI)”</strong> (EN), pour clarifier que la cible est bien la génération du plan d’actions et pas autre chose (ex. : un rapport).</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.1" id="nemetonshiny-0231-2026-05-09">nemetonshiny 0.23.1 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0231-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--chat-ia-en-sidebar-gauche-0-23-1">Plan d’actions — chat IA en sidebar gauche<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-ia-en-sidebar-gauche-0-23-1"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — le <strong>chat IA</strong> quitte la modal et s’installe dans une <strong>sidebar gauche persistante</strong> de 350 px. Carte collapsible (header <code>bg-info</code> avec icône <code>chat-dots</code>), historique scrollable (max-height 50 vh, min-height 160 px, fond gris clair), <code>textAreaInput</code> 3 lignes resize=vertical, boutons <em>Effacer</em> / <em>Envoyer</em> en flex. La conversation reste visible pendant que l’utilisateur navigue map / table / Kanban — auparavant un bouton “Ouvrir le chat” déclenchait un modal qui se fermait à chaque interaction.</li>
+<li>
+<code>refactor(action_plan)</code> — le bouton <strong>“Ouvrir le chat”</strong> dans la section IA de la sidebar droite est retiré (doublon avec le panel persistant). L’observer <code>input$open_chat</code> (~30 LOC qui faisait <code>showModal()</code>) supprimé. Layout passe à un double <code><a href="https://rstudio.github.io/bslib/reference/sidebar.html" class="external-link">bslib::layout_sidebar</a></code> imbriqué : sidebar gauche (chat) → sidebar droite (action panel) → contenu principal. Les deux sidebars se collapsent indépendamment via le bouton bslib en bordure (utile sur écran portable).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--sync-carte--tableau-0-23-1">Plan d’actions — sync carte ↔︎ tableau<a class="anchor" aria-label="anchor" href="#plan-dactions--sync-carte--tableau-0-23-1"></a></h4>
+<ul><li>
+<code>fix(action_plan)</code> — clic sur une parcelle dans la <strong>carte</strong> sélectionne maintenant <strong>toutes les lignes correspondantes</strong> dans le tableau. Le handler <code>input$map_shape_click</code> (le toggle qui mettait à jour <code>selected_ug_rv</code> et la couche orange Selection) ne propageait pas la sélection à <code>DT</code> ; un appel <code>DT::selectRows(proxy, which(df$ug_id %in% cur))</code> est ajouté. Le sens table → carte (déjà fonctionnel via l’observer <code>input$action_table_rows_selected</code>) reste inchangé. Pas de boucle réactive : <code>reactiveVal</code> dedupe par <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> donc le round-trip map → selected_ug_rv → table → reverse-observer → selected_ug_rv s’arrête au 2e pas.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="removed-0-23-1">Removed<a class="anchor" aria-label="anchor" href="#removed-0-23-1"></a></h4>
+<ul><li>i18n: <code>action_plan_open_chat</code>, <code>action_plan_chat_input_label</code> (orphelines après la refonte du chat en sidebar).</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.23.0" id="nemetonshiny-0230-2026-05-09">nemetonshiny 0.23.0 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0230-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--kanban-libre--édition-par-double-clic-0-23-0">Plan d’actions — Kanban libre + édition par double-clic<a class="anchor" aria-label="anchor" href="#plan-dactions--kanban-libre--%C3%A9dition-par-double-clic-0-23-0"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — <strong>drag-and-drop libre entre toutes les colonnes du Kanban</strong>. La sémantique du DAG (proposée → validée → planifiée → réalisée → abandonnée) qui empêchait certaines transitions disparaît : un utilisateur peut désormais déplacer n’importe quelle fiche vers n’importe quelle colonne. Le service <code>update_action_in_plan()</code> n’enforce plus le DAG ; il valide uniquement que le nouveau statut figure dans <code>ACTION_PLAN_TRANSITIONS</code>. La fonction <code>is_valid_status_transition()</code> reste exportée comme documentation du flux naturel mais ne gate plus les writes.</li>
+<li>
+<code>feat(action_plan)</code> — <strong>double-clic sur une fiche Kanban ouvre une modal d’édition</strong> pré-remplie avec les valeurs courantes (statut, priorité, année calendaire, commentaire). Le commentaire est éditable en <code>textAreaInput</code> 6 lignes, c’est le cas d’usage principal de la modal — l’édition inline du tableau DT est single-line et restait peu pratique pour des commentaires longs. Le handler <code>dblclick</code> est délégué au niveau du board (un seul listener pour toutes les cartes), avec cleanup entre re-renders pour éviter les fuites.</li>
+<li>
+<code>refactor(action_plan)</code> — le bouton <strong>“Déplacer”</strong> dans la dropdown de chaque carte Kanban est supprimé : avec le drag-drop libre il faisait doublon. ~50 lignes d’observer dispatcher <code>kanban_move_*</code> retirées en conséquence. La constante <code>KANBAN_STATUSES</code> (uniquement utilisée par la dropdown) retirée également.</li>
+<li>
+<code>feat(action_plan)</code> — <strong>tri chronologique des cartes par colonne</strong> : dans chaque statut Kanban, les fiches sont triées par <code>annee_realisation</code> ascendante (NAs en queue), pour qu’une colonne se lise du plus tôt au plus tard du haut vers le bas.</li>
+<li>
+<code>feat(action_plan)</code> — <strong>commentaire affiché sur chaque carte Kanban</strong>. Une div <code>.kanban-card-comment</code> (small text-muted, mt-1, word-break) apparaît sous le bloc type/année/UGF si le commentaire est non-vide ; rien si vide pour préserver la hauteur minimale.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--fiche-dajout-daction-0-23-0">Plan d’actions — fiche d’ajout d’action<a class="anchor" aria-label="anchor" href="#plan-dactions--fiche-dajout-daction-0-23-0"></a></h4>
+<ul><li>
+<code>fix(action_plan)</code> — la dropdown <strong>UGF</strong> dans la modal “Ajouter une action” affichait le <code>ug_id</code> brut (ex. <code>ugf_42</code>) au lieu du libellé humain. Construction d’un <code>ug_choices</code> via <code>setNames(ids, labels)</code> à partir de <code>sf$label</code> mappé sur <code>sf$ug_id</code>, trié par label. Fallback sur les IDs si <code>ug_sf_4326()</code> est indisponible.</li>
+<li>
+<code>fix(action_plan)</code> — le champ <strong>Année cible</strong> de la même modal affichait l’offset interne (1, 2, 3 …) au lieu d’une année calendaire. Le <code>numericInput</code> montre désormais l’année réelle (default = <code>base_year + 1</code>, min = <code>base_year + 1</code>, max = <code>base_year + horizon</code>) ; la conversion en offset (<code>year - base_year</code>) se fait au moment du save dans l’observer <code>add_run</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--ux-du-tableau-0-23-0">Plan d’actions — UX du tableau<a class="anchor" aria-label="anchor" href="#plan-dactions--ux-du-tableau-0-23-0"></a></h4>
+<ul><li>
+<code>ui(action_plan)</code> — <strong>total des actions affiché en bas à droite</strong> du tableau DT (auparavant à gauche). Le <code>dom</code> DT passe à un layout custom <code>&lt;"top"f&gt;rt&lt;"d-flex … dt-bottom-row"&lt;"d-flex gap-3 align-items-center"lp&gt;i&gt;</code> ; règles CSS scoped sur <code>.dt-bottom-row</code> neutralisent les <code>float</code>/ <code>clear</code> par défaut de <code>dataTables_info</code>/<code>_length</code>/<code>_paginate</code> et alignent l’info à droite via <code>text-align: right</code>.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.22.4" id="nemetonshiny-0224-2026-05-09">nemetonshiny 0.22.4 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0224-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--ux-polish-0-22-4">Plan d’actions — UX polish<a class="anchor" aria-label="anchor" href="#plan-dactions--ux-polish-0-22-4"></a></h4>
+<ul><li>
+<code>ui(action_plan)</code> — le sélecteur <strong>“Afficher 5/10/25/50/All”</strong> passe <strong>sous le tableau</strong> (à côté de l’info “<em>TOTAL</em> action(s)” et de la pagination Préc./Suiv.). Le <code>dom</code> DT passe de <code>"lfrtip"</code> à <code>"frtilp"</code> : la barre de recherche reste seule au-dessus du tableau, ce qui aère l’en-tête de la card.</li>
+<li>
+<code>ui(action_plan)</code> — <strong>figeage strict</strong> des colonnes UGF + Année lors du scroll horizontal. <code>DISPLAY_COLS</code> réordonné pour placer les colonnes cachées (<code>id</code>, <code>ug_id</code>, <code>annee_cible</code>) en queue ; <code>fixedColumns: leftColumns</code> passe de 5 à 2 — l’extension <code>FixedColumns</code> de DT compte toutes les colonnes du DOM (y compris <code>visible:FALSE</code>), donc seul le décompte sur les colonnes visibles évite les artefacts d’en-têtes clones. <code>colname_map</code> et <code>hidden_targets</code> ajustés en conséquence (cibles 13-15).</li>
+<li>
+<code>i18n(action_plan)</code> — titres de légende de la <strong>carte des actions</strong> traduits. Les littéraux <code>"annee"</code> / <code>"type"</code> / <code>"priority"</code> passés à <code>leaflet::addLegend(title = …)</code> sont remplacés par <code>i18n$t("action_plan_col_annee" | "_type" | "_priorite")</code> ; ré-utilisation des clés des en-têtes de colonnes pour rester cohérent avec le tableau. Affiche désormais “Année” / “Type” / “Priorité” en FR (et “Year” / “Type” / “Priority” en EN), avec switch dynamique au changement de langue.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="auth--fix-démarrage-anonyme-avec-dev-roles-0-22-4">Auth — fix démarrage anonyme avec dev roles<a class="anchor" aria-label="anchor" href="#auth--fix-d%C3%A9marrage-anonyme-avec-dev-roles-0-22-4"></a></h4>
+<ul><li>
+<code>fix(auth)</code> — <code>mod_auth_server()</code> plantait au démarrage en mode anonyme dès que <code>NEMETON_AUTH_DEV_ROLES</code> était défini : l’appel <code>cli::cli_alert_info("…dev roles: {.val {auth_state$user_roles}}.")</code> faisait évaluer <code>{auth_state$user_roles}</code> par <code>glue</code> hors d’un <code>reactive()/observe()</code>, ce que <code>reactiveValues</code> interdit (“Can’t access reactive value ‘user_roles’ outside of reactive consumer”). La valeur parsée est désormais capturée dans une locale <code>parsed_roles</code> avant l’assignation à <code>auth_state$user_roles</code> ; le message <code>cli</code> interpole la locale, plus le reactiveValues. Régression introduite par <a href="https://github.com/pobsteta/nemetonshiny/issues/41" class="external-link">#41</a> (v0.22.3).</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.22.3" id="nemetonshiny-0223-2026-05-09">nemetonshiny 0.22.3 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0223-2026-05-09"></a></h2>
+<div class="section level4">
+<h4 id="plan-dactions--ux-polish-0-22-3">Plan d’actions — UX polish<a class="anchor" aria-label="anchor" href="#plan-dactions--ux-polish-0-22-3"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — global DT search box now uses <strong>regex with OR semantics</strong> (<a href="https://github.com/pobsteta/nemetonshiny/issues/35" class="external-link">#35</a>). Typing <code>eclaircie|plantation</code> in the search box returns rows matching either term. Search is case-insensitive (<code>caseInsensitive = TRUE</code>) so accent-less typing keeps working.</li>
+<li>
+<code>feat(action_plan)</code> — new <strong>Surface totale</strong> badge in the totals strip above the action table (<a href="https://github.com/pobsteta/nemetonshiny/issues/36" class="external-link">#36</a>, plus reorder in this release). Sums <code>surface_ha</code> over the rows currently visible in the DT, formatted with two decimals + <code>ha</code>, rendered in <code>text-primary</code>. The badge sits <strong>after Bilan</strong> so the monetary totals (Coût / Revenu / Bilan) read first and the surface tally is the trailing metric. The <code>pill()</code> helper now accepts optional <code>unit</code> and <code>digits</code> arguments (defaulting to <code>"EUR"</code> / <code>0</code>) for backward-compat with the three monetary pills.</li>
+<li>
+<code>refactor(action_plan)</code> — DT table paginated at <strong>5 rows per page</strong> (was 50 with a 60 vh internal scroll). New <code>lengthMenu</code> lets users expand to 10 / 25 / 50 / All on demand; <code>dom</code> switched from <code>"frtip"</code> to <code>"lfrtip"</code> so the length selector sits left of the global search. Removed <code>scrollY</code> + <code>scrollCollapse</code> so the table card now contracts around the visible rows instead of padding to 60 vh. <code>scrollX = TRUE</code> and the two pinned columns (UGF + Année) are unchanged.</li>
+<li>
+<code>ui(action_plan)</code> — sidebar title now carries an icon and reads “Tableau des actions” (<a href="https://github.com/pobsteta/nemetonshiny/issues/37" class="external-link">#37</a>) for a tighter visual link to the table card it controls.</li>
+<li>
+<code>ui(action_plan)</code> — bulk-status block (the <em>Statut Kanban</em> section that duplicated the per-card Kanban moves) dropped in favour of a <strong>collapsible action card</strong> (<a href="https://github.com/pobsteta/nemetonshiny/issues/38" class="external-link">#38</a>) so the sidebar stays scannable.</li>
+<li>
+<code>ui(action_plan)</code> — right action panel resized to <strong>350 px</strong> with <strong>dual collapse</strong> behavior (<a href="https://github.com/pobsteta/nemetonshiny/issues/39" class="external-link">#39</a>): the bslib sidebar itself can collapse, and the action card inside it has its own collapse toggle.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="plan-dactions--role-based-permissions-lot-s15-0-22-3">Plan d’actions — role-based permissions (Lot 6 S15)<a class="anchor" aria-label="anchor" href="#plan-dactions--role-based-permissions-lot-s15-0-22-3"></a></h4>
+<ul><li>
+<code>feat(action_plan)</code> — <strong>role-based write permissions</strong> (<a href="https://github.com/pobsteta/nemetonshiny/issues/40" class="external-link">#40</a>). New helper <code>can_edit_action_plan(auth_state)</code> centralises the role convention used across the tab: roles <code>proprietaire</code>, <code>editeur</code>, <code>admin</code>, <code>manager</code>, <code>owner</code>, <code>editor</code> are allowed to mutate the plan; anonymous sessions default to <em>editor</em> to preserve the current dev experience; the <code>lecteur</code> role (and any other unrecognised role) is read-only. <code>app_state$auth</code> now exposes the auth reactive so the action plan module can subscribe to it. Read-only sessions see a banner above the action table and 8 server-side mutation observers (add / edit / delete / bulk status / IA generation / Kanban drop / GeoPackage write / PDF write) bounce back with a toast. The Kanban drop handler also rolls back the optimistic UI move when the user lacks edit rights. 5 unit tests on <code>can_edit_action_plan()</code>. Closes <a href="https://github.com/pobsteta/nemetonshiny/issues/22" class="external-link">#22</a>, refs <a href="https://github.com/pobsteta/nemetonshiny/issues/7" class="external-link">#7</a>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="auth-0-22-3">Auth<a class="anchor" aria-label="anchor" href="#auth-0-22-3"></a></h4>
+<ul><li>
+<code>feat(auth)</code> — <strong><code>NEMETON_AUTH_DEV_ROLES</code> env override</strong> (<a href="https://github.com/pobsteta/nemetonshiny/issues/41" class="external-link">#41</a>). In anonymous mode (no OAuth client configured), <code>auth_state$user_roles</code> is now seeded from the comma-separated env var <code>NEMETON_AUTH_DEV_ROLES</code> (e.g. <code>NEMETON_AUTH_DEV_ROLES=lecteur</code> to test the read-only banner). Lets developers exercise the role-based mutation guards landed in PR <a href="https://github.com/pobsteta/nemetonshiny/issues/40" class="external-link">#40</a> without standing up a Keycloak realm. Refs <a href="https://github.com/pobsteta/nemetonshiny/issues/7" class="external-link">#7</a>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="i18n-0-22-3">i18n<a class="anchor" aria-label="anchor" href="#i18n-0-22-3"></a></h4>
+<ul><li>New key <code>action_plan_total_surface</code> (FR: <em>Surface totale</em> / EN: <em>Total area</em>).</li>
+<li>New keys for the Lot 6 read-only banner + permission-denied toast (FR/EN), bundled in PR <a href="https://github.com/pobsteta/nemetonshiny/issues/40" class="external-link">#40</a>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.22.2" id="nemetonshiny-0222-2026-05-06">nemetonshiny 0.22.2 (2026-05-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0222-2026-05-06"></a></h2>
 <div class="section level4">
