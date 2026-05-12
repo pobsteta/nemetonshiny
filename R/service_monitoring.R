@@ -34,7 +34,8 @@ run_ingestion_async <- function() {
   .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
 
   shiny::ExtendedTask$new(function(zone_id, start, end, bands,
-                                   max_cloud = 20, db_url = "") {
+                                   max_cloud = 20, db_url = "",
+                                   progress_path = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -60,13 +61,16 @@ run_ingestion_async <- function() {
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
+      progress_cb <- .build_progress_writer(progress_path)
+
       summary <- nemeton::ingest_sentinel2_timeseries(
-        con       = con,
-        zone_id   = zone_id,
-        start     = start,
-        end       = end,
-        bands     = bands,
-        max_cloud = max_cloud
+        con               = con,
+        zone_id           = zone_id,
+        start             = start,
+        end               = end,
+        bands             = bands,
+        max_cloud         = max_cloud,
+        progress_callback = progress_cb
       )
 
       list(
@@ -76,6 +80,42 @@ run_ingestion_async <- function() {
       )
     }, seed = TRUE)
   })
+}
+
+
+#' Build a worker-side progress writer
+#'
+#' Returns a function that serialises a single event as JSON to
+#' `progress_path` (atomic write via .tmp + rename). Returns NULL when
+#' no path is provided so `nemeton::ingest_sentinel2_timeseries()`
+#' sees `progress_callback = NULL` and falls back to its silent path.
+#'
+#' Wrapped in `tryCatch` so a write error never propagates back into
+#' the ingestion (we'd rather lose a progress tick than abort the job).
+#'
+#' @noRd
+.build_progress_writer <- function(progress_path) {
+  if (is.null(progress_path) || !nzchar(progress_path)) return(NULL)
+  function(event) {
+    tryCatch({
+      tmp <- paste0(progress_path, ".tmp")
+      writeLines(
+        jsonlite::toJSON(event, auto_unbox = TRUE, null = "null",
+                         na = "null", POSIXt = "ISO8601"),
+        con = tmp,
+        useBytes = TRUE
+      )
+      # file.rename is atomic on POSIX, best-effort on Windows where
+      # the destination must not exist — fall back to a write+unlink
+      # cycle that is good enough for a polling reader (the reader
+      # always wraps the read in tryCatch).
+      ok <- suppressWarnings(file.rename(tmp, progress_path))
+      if (!isTRUE(ok)) {
+        file.copy(tmp, progress_path, overwrite = TRUE)
+        unlink(tmp)
+      }
+    }, error = function(e) invisible(NULL))
+  }
 }
 
 
@@ -106,7 +146,8 @@ run_fordead_async <- function() {
   shiny::ExtendedTask$new(function(aoi, dates_training, dates_monitoring,
                                    threshold_anomaly = 0.16,
                                    vegetation_index = "CRSWIR",
-                                   zone_id = NULL, db_url = "") {
+                                   zone_id = NULL, db_url = "",
+                                   progress_path = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -125,6 +166,8 @@ run_fordead_async <- function() {
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
+      progress_cb <- .build_progress_writer(progress_path)
+
       nemeton::run_fordead_dieback(
         aoi               = aoi,
         dates_training    = dates_training,
@@ -132,7 +175,8 @@ run_fordead_async <- function() {
         threshold_anomaly = threshold_anomaly,
         vegetation_index  = vegetation_index,
         con               = con,
-        zone_id           = zone_id
+        zone_id           = zone_id,
+        progress_callback = progress_cb
       )
     }, seed = TRUE)
   })

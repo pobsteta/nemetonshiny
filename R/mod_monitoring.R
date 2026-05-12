@@ -139,13 +139,10 @@ mod_monitoring_ui <- function(id) {
                 ns("window_days"), i18n$t("monitoring_window_days"),
                 value = 30L, min = 7L, max = 90L, step = 1L
               ),
-              htmltools::tagAppendAttributes(
-                shiny::actionButton(
-                  ns("run"), i18n$t("monitoring_run_btn"),
-                  icon  = bsicons::bs_icon("play-fill"),
-                  class = "btn-primary w-100"
-                ),
-                disabled = NA
+              shiny::actionButton(
+                ns("run"), i18n$t("monitoring_run_btn"),
+                icon  = bsicons::bs_icon("play-fill"),
+                class = "btn-primary w-100"
               )
             ),
 
@@ -171,13 +168,10 @@ mod_monitoring_ui <- function(id) {
                 i18n$t("monitoring_threshold_anomaly"),
                 min = 0.05, max = 0.50, value = 0.16, step = 0.01
               ),
-              htmltools::tagAppendAttributes(
-                shiny::actionButton(
-                  ns("run_health"), i18n$t("monitoring_run_health_btn"),
-                  icon  = bsicons::bs_icon("activity"),
-                  class = "btn-primary w-100"
-                ),
-                disabled = NA
+              shiny::actionButton(
+                ns("run_health"), i18n$t("monitoring_run_health_btn"),
+                icon  = bsicons::bs_icon("activity"),
+                class = "btn-primary w-100"
               )
             )
           )
@@ -983,24 +977,79 @@ mod_monitoring_server <- function(id, app_state) {
 
     ingest_task <- run_ingestion_async()
 
-    # Reactive button state: enabled iff a zone is selected, at least one
-    # band is checked, and no task is currently running. ExtendedTask$status()
-    # is reactive, so this observer auto-fires when the task transitions
-    # from initial → running → success/error.
-    shiny::observe({
-      has_zone  <- isTRUE(nzchar(input$zone_id))
-      has_bands <- length(input$bands) > 0L
-      is_running <- identical(ingest_task$status(), "running")
+    # Path to the progress.json file written by the ingest worker via
+    # the nemeton progress_callback API (>= 0.21.2). NULL until the
+    # first invoke. The reactivePoll below watches this path and the
+    # toast observer re-renders the persistent "X/N tuiles..." card.
+    ingest_progress_path <- shiny::reactiveVal(NULL)
 
-      shiny::updateActionButton(
-        session, "run",
-        disabled = !has_zone || !has_bands || is_running
+    ingest_progress <- shiny::reactivePoll(
+      intervalMillis = 500L, session,
+      checkFunc = function() {
+        p <- ingest_progress_path()
+        if (is.null(p) || !file.exists(p)) return("0")
+        as.character(file.info(p)$mtime)
+      },
+      valueFunc = function() {
+        p <- ingest_progress_path()
+        if (is.null(p) || !file.exists(p)) return(NULL)
+        tryCatch(
+          jsonlite::read_json(p, simplifyVector = TRUE),
+          error = function(e) NULL
+        )
+      }
+    )
+
+    # Render the persistent progress toast. Each event from the worker
+    # replaces the previous one (same notification id) so we don't
+    # stack 50 toasts during a long ingestion.
+    shiny::observe({
+      ev <- ingest_progress()
+      if (is.null(ev)) return()
+      i18n <- i18n_r()
+      status <- ev$status %||% "running"
+      # The "done" event is the LAST one — let the success observer
+      # render the final summary toast instead of overwriting it here.
+      if (identical(status, "done")) return()
+      msg <- if (identical(status, "starting")) {
+        i18n$t("monitoring_ingest_starting")
+      } else if (!is.null(ev$scene_id) && nzchar(as.character(ev$scene_id))) {
+        sprintf(i18n$t("monitoring_ingest_progress_named_fmt"),
+                as.integer(ev$i %||% 0L),
+                as.integer(ev$n %||% 0L),
+                as.character(ev$scene_id))
+      } else {
+        sprintf(i18n$t("monitoring_ingest_progress_fmt"),
+                as.integer(ev$i %||% 0L),
+                as.integer(ev$n %||% 0L))
+      }
+      shiny::showNotification(
+        msg,
+        id          = session$ns("ingest_progress"),
+        type        = if (identical(status, "scene_error")) "warning" else "message",
+        duration    = NULL,
+        closeButton = FALSE
       )
+    })
+
+    # Button state: only grey out during a running ingestion (double-click
+    # protection). Preconditions (zone / bands / dates) are NOT enforced
+    # at the HTML level so a click always triggers the observer below
+    # and the user gets an explicit toast for whichever precondition is
+    # missing — same UX as the "Enregistrer la zone" button.
+    shiny::observe({
+      is_running <- identical(ingest_task$status(), "running")
+      shiny::updateActionButton(session, "run", disabled = is_running)
     })
 
     # Click handler: validate state, build window dates, fire the task.
     shiny::observeEvent(input$run, {
       i18n <- i18n_r()
+      if (identical(ingest_task$status(), "running")) {
+        shiny::showNotification(i18n$t("monitoring_ingest_starting"),
+                                type = "message", duration = 4)
+        return()
+      }
       if (!isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
@@ -1018,21 +1067,38 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
 
-      shiny::showNotification(i18n$t("monitoring_ingest_starting"),
-                              type = "message", duration = 4,
-                              id = session$ns("ingest_starting_notif"))
+      # Initial persistent toast: replaced as soon as the worker emits
+      # its first progress event (typically <1 s after invoke).
+      shiny::showNotification(
+        i18n$t("monitoring_ingest_starting"),
+        id          = session$ns("ingest_progress"),
+        type        = "message",
+        duration    = NULL,
+        closeButton = FALSE
+      )
+
+      # Resolve where the worker will write progress.json. NULL when no
+      # project is open (PG-only setup) — in that case the progress
+      # bandeau just stays on "Ingestion en cours...".
+      ppath <- .resolve_progress_path(app_state$current_project,
+                                      "ingest_progress.json")
+      if (!is.null(ppath) && file.exists(ppath)) {
+        tryCatch(unlink(ppath), error = function(e) NULL)
+      }
+      ingest_progress_path(ppath)
 
       ingest_task$invoke(
-        zone_id   = as.integer(input$zone_id),
-        start     = as.Date(dr[1]),
-        end       = as.Date(dr[2]),
-        bands     = input$bands,
-        max_cloud = 20,
+        zone_id       = as.integer(input$zone_id),
+        start         = as.Date(dr[1]),
+        end           = as.Date(dr[2]),
+        bands         = input$bands,
+        max_cloud     = 20,
         # Pre-resolve here (the future worker can't see app_state) and
         # pass the URL explicitly. The fallback to a local DuckDB file
         # under <project>/data/monitoring.duckdb is selected when no
         # PG env var is set — that's the v0.24.0 single-user path.
-        db_url    = .resolve_monitoring_db_url(app_state$current_project)
+        db_url        = .resolve_monitoring_db_url(app_state$current_project),
+        progress_path = ppath
       )
     })
 
@@ -1045,6 +1111,9 @@ mod_monitoring_server <- function(id, app_state) {
         ingest_task$result(),
         error = function(e) {
           if (inherits(e, "shiny.silent.error")) stop(e)
+          shiny::removeNotification(session$ns("ingest_progress"))
+          .cleanup_progress_file(ingest_progress_path())
+          ingest_progress_path(NULL)
           shiny::showNotification(
             sprintf("%s : %s", i18n$t("monitoring_ingest_error"),
                     e$message),
@@ -1054,6 +1123,9 @@ mod_monitoring_server <- function(id, app_state) {
         }
       )
       if (!is.null(result)) {
+        shiny::removeNotification(session$ns("ingest_progress"))
+        .cleanup_progress_file(ingest_progress_path())
+        ingest_progress_path(NULL)
         shiny::showNotification(
           sprintf(i18n$t("monitoring_ingest_success"),
                   result$summary$n_scenes %||% 0L,
@@ -1069,15 +1141,61 @@ mod_monitoring_server <- function(id, app_state) {
 
     fordead_task <- run_fordead_async()
 
-    # Reactive button state for run_health.
-    shiny::observe({
-      has_zone   <- isTRUE(nzchar(input$zone_id))
-      is_running <- identical(fordead_task$status(), "running")
+    # Same per-task progress plumbing as ingestion. FORDEAD emits phase
+    # events (training / forest mask / dieback / export) — the toast
+    # surfaces whichever phase the worker is currently on.
+    fordead_progress_path <- shiny::reactiveVal(NULL)
 
-      shiny::updateActionButton(
-        session, "run_health",
-        disabled = !has_zone || is_running
+    fordead_progress <- shiny::reactivePoll(
+      intervalMillis = 500L, session,
+      checkFunc = function() {
+        p <- fordead_progress_path()
+        if (is.null(p) || !file.exists(p)) return("0")
+        as.character(file.info(p)$mtime)
+      },
+      valueFunc = function() {
+        p <- fordead_progress_path()
+        if (is.null(p) || !file.exists(p)) return(NULL)
+        tryCatch(
+          jsonlite::read_json(p, simplifyVector = TRUE),
+          error = function(e) NULL
+        )
+      }
+    )
+
+    shiny::observe({
+      ev <- fordead_progress()
+      if (is.null(ev)) return()
+      i18n <- i18n_r()
+      status <- ev$status %||% "running"
+      if (identical(status, "done")) return()
+      phase <- ev$phase %||% ev$scene_id %||% ""
+      msg <- if (identical(status, "starting") || !nzchar(as.character(phase))) {
+        i18n$t("monitoring_health_starting")
+      } else if (!is.null(ev$n) && as.integer(ev$n) > 0L) {
+        sprintf(i18n$t("monitoring_health_phase_fmt"),
+                as.character(phase),
+                as.integer(ev$i %||% 0L),
+                as.integer(ev$n %||% 0L))
+      } else {
+        sprintf(i18n$t("monitoring_health_phase_simple_fmt"),
+                as.character(phase))
+      }
+      shiny::showNotification(
+        msg,
+        id          = session$ns("fordead_progress"),
+        type        = if (identical(status, "phase_error")) "warning" else "message",
+        duration    = NULL,
+        closeButton = FALSE
       )
+    })
+
+    # Button state for run_health: same logic as `run` — only grey out
+    # during an active FORDEAD run (long task), preconditions are
+    # validated in the click observer for explicit toast feedback.
+    shiny::observe({
+      is_running <- identical(fordead_task$status(), "running")
+      shiny::updateActionButton(session, "run_health", disabled = is_running)
     })
 
     # Helper — kicks off the FORDEAD task with the current sidebar
@@ -1093,9 +1211,20 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return(invisible(FALSE))
       }
-      shiny::showNotification(i18n$t("monitoring_health_starting"),
-                              type = "message", duration = 6,
-                              id = session$ns("fordead_starting_notif"))
+      shiny::showNotification(
+        i18n$t("monitoring_health_starting"),
+        id          = session$ns("fordead_progress"),
+        type        = "message",
+        duration    = NULL,
+        closeButton = FALSE
+      )
+      ppath <- .resolve_progress_path(app_state$current_project,
+                                      "fordead_progress.json")
+      if (!is.null(ppath) && file.exists(ppath)) {
+        tryCatch(unlink(ppath), error = function(e) NULL)
+      }
+      fordead_progress_path(ppath)
+
       fordead_task$invoke(
         aoi               = aoi,
         dates_training    = as.character(input$dates_training),
@@ -1103,7 +1232,8 @@ mod_monitoring_server <- function(id, app_state) {
         threshold_anomaly = as.numeric(input$threshold_anomaly),
         vegetation_index  = input$vegetation_index,
         zone_id           = as.integer(input$zone_id),
-        db_url            = .resolve_monitoring_db_url(app_state$current_project)
+        db_url            = .resolve_monitoring_db_url(app_state$current_project),
+        progress_path     = ppath
       )
       .persist_monitoring_metadata()
       invisible(TRUE)
@@ -1138,6 +1268,11 @@ mod_monitoring_server <- function(id, app_state) {
     # warranty doesn't apply.
     shiny::observeEvent(input$run_health, {
       i18n <- i18n_r()
+      if (identical(fordead_task$status(), "running")) {
+        shiny::showNotification(i18n$t("monitoring_health_starting"),
+                                type = "message", duration = 4)
+        return()
+      }
       if (!isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
@@ -1187,6 +1322,9 @@ mod_monitoring_server <- function(id, app_state) {
         fordead_task$result(),
         error = function(e) {
           if (inherits(e, "shiny.silent.error")) stop(e)
+          shiny::removeNotification(session$ns("fordead_progress"))
+          .cleanup_progress_file(fordead_progress_path())
+          fordead_progress_path(NULL)
           shiny::showNotification(
             sprintf("%s : %s", i18n$t("monitoring_health_error"),
                     e$message),
@@ -1196,6 +1334,9 @@ mod_monitoring_server <- function(id, app_state) {
         }
       )
       if (!is.null(result)) {
+        shiny::removeNotification(session$ns("fordead_progress"))
+        .cleanup_progress_file(fordead_progress_path())
+        fordead_progress_path(NULL)
         if (identical(result$status, "error")) {
           shiny::showNotification(
             sprintf("%s : %s", i18n$t("monitoring_health_error"),
@@ -1225,6 +1366,35 @@ mod_monitoring_server <- function(id, app_state) {
 
 
 # ---- Internal --------------------------------------------------------
+
+# Resolve the absolute path where the async worker will write its
+# `progress.json`. Returns NULL when no project is loaded — in that
+# case the persistent "Ingestion en cours..." toast just stays put
+# without per-scene refresh (the worker still completes successfully,
+# we just have no progress channel).
+.resolve_progress_path <- function(project, filename) {
+  if (is.null(project) || is.null(project$path)) return(NULL)
+  data_dir <- file.path(project$path, "data")
+  if (!dir.exists(data_dir)) {
+    tryCatch(
+      dir.create(data_dir, recursive = TRUE, showWarnings = FALSE),
+      error = function(e) NULL
+    )
+  }
+  normalizePath(file.path(data_dir, filename),
+                winslash = "/", mustWork = FALSE)
+}
+
+# Best-effort removal of the progress.json file (and its .tmp sibling
+# if the worker was interrupted mid-write). Errors are swallowed —
+# leaving a stale file behind is harmless because the next invoke
+# clears it before firing.
+.cleanup_progress_file <- function(path) {
+  if (is.null(path)) return(invisible(NULL))
+  tryCatch(unlink(c(path, paste0(path, ".tmp"))),
+           error = function(e) invisible(NULL))
+  invisible(NULL)
+}
 
 # Persistent "connecting…" / "creating local DuckDB…" card shown while
 # the async DB probe (ExtendedTask) is running. The spinning gear icon
