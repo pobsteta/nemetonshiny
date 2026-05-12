@@ -1,3 +1,52 @@
+# nemetonshiny 0.24.3 (2026-05-11)
+
+### Suivi sanitaire — override `NEMETON_DB_LOCAL=1` pour forcer le mode local
+
+* `feat(monitoring)` — nouvelle variable d'environnement
+  **`NEMETON_DB_LOCAL`** (truthy = `1` / `true` / `yes` / `on`,
+  case insensitive). Quand elle est truthy,
+  `.resolve_monitoring_db_url()` **saute** les vars `NEMETON_DB_URL`
+  et `POSTGRESQL_ADDON_*` et utilise directement la base DuckDB
+  locale du projet.
+
+  **Cas d'usage typique** : un développeur a les credentials
+  Clever Cloud (`POSTGRESQL_ADDON_*`) qui traînent dans son
+  `~/.Renviron` (déposés par un build CI ou copiés depuis
+  `clever env`). Sans l'override, l'app dialait la Postgres prod
+  depuis la machine locale, timeout, et le bandeau restait sur
+  "Base non configurée". Avec `NEMETON_DB_LOCAL=1`, la cascade
+  saute directement à la fallback DuckDB sans toucher au
+  `.Renviron`.
+
+  Le `cli_alert_info` mentionne désormais explicitement
+  l'override quand il est actif : *"Monitoring uses local DuckDB
+  at … (NEMETON_DB_LOCAL override)."*
+
+### Suivi sanitaire — diagnostic d'erreur visible dans le bandeau
+
+* `feat(monitoring)` — `get_monitoring_db_connection()` capture
+  désormais l'erreur réelle de `nemeton::db_connect()` (et celle
+  de `db_migrate()`) dans `.nemeton_env$.last_monitoring_db_error`.
+  Le bandeau *Base de suivi non configurée* affiche ensuite cette
+  erreur après un tiret cadratin, par ex.
+  *"Renseignez NEMETON_DB_URL… — Invalid DB URL: C:/Users/…/monitoring.duckdb"*.
+  Avant : `cli_warn` partait dans la console R (souvent invisible
+  pour l'utilisateur Shiny) et le bandeau restait générique.
+* `feat(monitoring)` — feature-flag : `.resolve_monitoring_db_url()`
+  vérifie via `getFromNamespace(".detect_driver", "nemeton")` que
+  la version installée de `nemeton` supporte bien le backend
+  DuckDB (introduite en v0.21.0). Si non, message explicite
+  *"Installed nemeton is too old (no DuckDB support). Re-install
+  pobsteta/nemeton@v0.21.0."* dans le bandeau et un `cli_warn`
+  une fois par session expliquant comment réparer (`pak::pak()`
+  + clear cache).
+* `feat(monitoring)` — capture aussi les erreurs de
+  `db_migrate()` (qui s'exécute juste après la connexion) sous
+  forme *"Migration failed: <msg>"*. Si la migration échoue,
+  la connexion est refermée proprement et `NULL` est retourné
+  (au lieu de laisser une connexion sans schéma qui crasherait
+  les requêtes suivantes).
+
 # nemetonshiny 0.24.2 (2026-05-11)
 
 ### Suivi sanitaire — 4 fixes UX critiques

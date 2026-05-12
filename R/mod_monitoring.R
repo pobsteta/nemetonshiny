@@ -791,11 +791,22 @@ mod_monitoring_server <- function(id, app_state) {
       }
 
       if (is.null(con)) {
+        # Surface the real cause (db_connect or migration error) so
+        # the user can act — generic "Renseignez NEMETON_DB_URL…"
+        # is unhelpful when DuckDB IS the chosen backend but failed
+        # for some other reason (path issue, nemeton version mismatch,
+        # disk full, …).
+        err <- last_monitoring_db_error()
+        body <- if (!is.null(err) && nzchar(err)) {
+          paste0(i18n$t("monitoring_db_check_env"), " — ", err)
+        } else {
+          i18n$t("monitoring_db_check_env")
+        }
         return(.monitoring_status_card(
           icon  = "exclamation-circle",
           class = "border-warning",
           title = i18n$t("monitoring_db_unavailable"),
-          body  = i18n$t("monitoring_db_check_env")
+          body  = body
         ))
       }
       n <- nrow(zones())

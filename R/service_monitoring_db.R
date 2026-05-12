@@ -41,27 +41,99 @@ NULL
 #'   receive the URL from the observer that fires them.
 #'
 #' @return A DBIConnection or NULL when no DB is configured / the
-#'   connection failed.
+#'   connection failed. On failure, `last_monitoring_db_error()` returns
+#'   the human-readable cause so the UI can surface it.
 #' @noRd
 get_monitoring_db_connection <- function(project = NULL, db_url = NULL) {
-  if (!requireNamespace("nemeton", quietly = TRUE)) return(NULL)
+  # Reset the package-level error slot on every attempt so a previous
+  # transient failure doesn't get re-displayed once the user has fixed
+  # the cause.
+  .nemeton_env$.last_monitoring_db_error <- NULL
+
+  if (!requireNamespace("nemeton", quietly = TRUE)) {
+    .nemeton_env$.last_monitoring_db_error <-
+      "Package 'nemeton' not installed."
+    return(NULL)
+  }
 
   url <- if (!is.null(db_url) && nzchar(db_url)) {
     db_url
   } else {
     .resolve_monitoring_db_url(project)
   }
-  if (!nzchar(url)) return(NULL)
+  if (!nzchar(url)) {
+    # Empty URL is not an "error" per se — the resolver already
+    # decided we are not configured. The bandeau will show the
+    # diagnostic state (no project / duckdb missing / …).
+    return(NULL)
+  }
 
   con <- tryCatch(
     nemeton::db_connect(url),
     error = function(e) {
-      cli::cli_warn("Failed to connect to monitoring DB: {conditionMessage(e)}")
+      msg <- conditionMessage(e)
+      cli::cli_warn("Failed to connect to monitoring DB: {msg}")
+      # Surface the real error to the UI via the bandeau body. Strip
+      # nemeton's CRLF-padded multiline cli output to a single line
+      # so it fits the status card.
+      flat <- gsub("\\s+", " ", msg, perl = TRUE)
+      .nemeton_env$.last_monitoring_db_error <- substr(flat, 1L, 240L)
       NULL
     }
   )
-  .ensure_monitoring_schema(con)
+  if (is.null(con)) return(NULL)
+
+  # Migration can also fail (e.g. on a corrupted DuckDB file). Capture
+  # its error too so the user sees something actionable instead of an
+  # empty schema + downstream crashes.
+  schema_ok <- tryCatch({
+    .ensure_monitoring_schema(con)
+    TRUE
+  }, error = function(e) {
+    msg <- conditionMessage(e)
+    cli::cli_warn("Monitoring schema migration failed: {msg}")
+    .nemeton_env$.last_monitoring_db_error <-
+      paste0("Migration failed: ", substr(gsub("\\s+", " ", msg), 1L, 220L))
+    FALSE
+  })
+  if (!isTRUE(schema_ok)) {
+    tryCatch(close_monitoring_db_connection(con), error = function(e) NULL)
+    return(NULL)
+  }
   con
+}
+
+
+#' Last monitoring DB error message captured by [get_monitoring_db_connection()]
+#'
+#' Returns the most recent connection failure message (or NULL if the
+#' last attempt succeeded). Used by `mod_monitoring`'s status card to
+#' surface the real cause when the bandeau falls back to the generic
+#' "Base non configurée" path.
+#'
+#' @noRd
+last_monitoring_db_error <- function() {
+  .nemeton_env$.last_monitoring_db_error
+}
+
+
+# Feature-flag the DuckDB backend: nemeton >= 0.21.0 exposes
+# `.detect_driver` as part of the URL-dispatch rework. Older versions
+# (which only handle Postgres URLs) reject a duckdb:// or bare
+# .duckdb URL with "Invalid DB URL" — which manifested as a silent
+# "Base non configurée" bandeau even though `duckdb` itself was
+# installed correctly.
+.nemeton_supports_duckdb <- function() {
+  if (!requireNamespace("nemeton", quietly = TRUE)) return(FALSE)
+  tryCatch(
+    {
+      # `:::` would also work but is technically a CRAN policy
+      # violation; getFromNamespace is the sanctioned form.
+      utils::getFromNamespace(".detect_driver", "nemeton")
+      TRUE
+    },
+    error = function(e) FALSE
+  )
 }
 
 
@@ -133,13 +205,30 @@ close_monitoring_db_connection <- function(con) {
 #' "" as "not configured" and either skip the DB call or surface the
 #' configuration hint to the user.
 #'
+#' Resolution order:
+#' 1. If `NEMETON_DB_LOCAL` is truthy (1 / true / yes / on, case
+#'    insensitive), JUMP STRAIGHT to the DuckDB fallback below. Useful
+#'    when developing locally with `POSTGRESQL_ADDON_*` credentials
+#'    sitting in `.Renviron` (Clever Cloud creds dumped by the build
+#'    pipeline) that would otherwise win the cascade and try to dial
+#'    an unreachable Postgres host.
+#' 2. `NEMETON_DB_URL` — passed straight through.
+#' 3. `POSTGRESQL_ADDON_*` / `NEMETON_DB_*` env parts — assembled into
+#'    a postgresql URL.
+#' 4. `project$path` + `duckdb` pkg present → local DuckDB file.
+#' 5. None of the above — return "".
+#'
 #' @noRd
 .resolve_monitoring_db_url <- function(project = NULL) {
-  url <- Sys.getenv("NEMETON_DB_URL", "")
-  if (nzchar(url)) return(url)
+  force_local <- isTRUE(.nemeton_truthy(Sys.getenv("NEMETON_DB_LOCAL", "")))
 
-  url <- .build_monitoring_db_url()
-  if (nzchar(url)) return(url)
+  if (!force_local) {
+    url <- Sys.getenv("NEMETON_DB_URL", "")
+    if (nzchar(url)) return(url)
+
+    url <- .build_monitoring_db_url()
+    if (nzchar(url)) return(url)
+  }
 
   # Single-user fallback (nemeton v0.21.0+): if a project is loaded
   # and the `duckdb` package is available, drop a monitoring.duckdb
@@ -157,15 +246,38 @@ close_monitoring_db_connection <- function(con) {
     }
     return("")
   }
+  # Sanity-check that the installed nemeton actually knows about
+  # DuckDB. Pak / install_github sometimes serves a stale v0.21.0
+  # tag (or the user upgraded nemetonshiny but not nemeton itself).
+  # The `.detect_driver` helper was introduced in v0.21.0 alongside
+  # the DuckDB backend; its presence is a reliable feature flag.
+  if (!.nemeton_supports_duckdb()) {
+    if (!isTRUE(.nemeton_env$.nemeton_too_old_warned)) {
+      cli::cli_warn(c(
+        "Installed `nemeton` does not support the DuckDB backend.",
+        "i" = "Re-install with {.code pak::pak('pobsteta/nemeton@v0.21.0')} (clear cache if needed)."
+      ))
+      .nemeton_env$.nemeton_too_old_warned <- TRUE
+    }
+    .nemeton_env$.last_monitoring_db_error <-
+      "Installed nemeton is too old (no DuckDB support). Re-install pobsteta/nemeton@v0.21.0."
+    return("")
+  }
   data_dir <- file.path(project$path, "data")
   if (!dir.exists(data_dir)) {
     dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
   }
   duckdb_path <- file.path(data_dir, "monitoring.duckdb")
   if (!isTRUE(.nemeton_env$.duckdb_announced)) {
-    cli::cli_alert_info(
-      "Monitoring uses local DuckDB at {.path {duckdb_path}} (no Postgres configured)."
-    )
+    if (force_local) {
+      cli::cli_alert_info(
+        "Monitoring uses local DuckDB at {.path {duckdb_path}} (NEMETON_DB_LOCAL override)."
+      )
+    } else {
+      cli::cli_alert_info(
+        "Monitoring uses local DuckDB at {.path {duckdb_path}} (no Postgres configured)."
+      )
+    }
     .nemeton_env$.duckdb_announced <- TRUE
   }
   # nemeton::db_connect() accepts both `duckdb:///abs/path` and bare
@@ -176,6 +288,16 @@ close_monitoring_db_connection <- function(con) {
   # leaves `/C:/Users/...` (with a leading slash) which DuckDB then
   # rejects as an invalid path.
   normalizePath(duckdb_path, winslash = "/", mustWork = FALSE)
+}
+
+
+# Recognize a wide set of truthy env-var spellings: "1", "TRUE",
+# "true", "yes", "on" (case insensitive). Everything else (incl.
+# empty string) is FALSE. Used by NEMETON_DB_LOCAL to bypass the PG
+# resolution branch.
+.nemeton_truthy <- function(x) {
+  if (is.null(x) || !length(x) || !nzchar(x)) return(FALSE)
+  tolower(x) %in% c("1", "true", "yes", "on", "y", "t")
 }
 
 
