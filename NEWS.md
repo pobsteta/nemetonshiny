@@ -1,4 +1,4 @@
-# nemetonshiny 0.24.2.9000 (dev)
+# nemetonshiny 0.24.3 (2026-05-11)
 
 ### Suivi sanitaire — override `NEMETON_DB_LOCAL=1` pour forcer le mode local
 
