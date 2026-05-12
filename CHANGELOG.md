@@ -10,6 +10,31 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.24.9] - 2026-05-12
+
+### Added
+
+- Mirroring console des events de progression : chaque tuile
+  Sentinel-2 et chaque phase FORDEAD produit une ligne
+  `cli::cli_alert_info` (ou `cli_alert_warning` sur erreur) côté
+  console R, exactement une fois par event grâce au `reactivePoll`.
+  Format console plus riche que le toast (exploite `obs_date`,
+  `cloud_pct`, `source` du payload nemeton).
+- Roue dentée animée (`bsicons::bs_icon("gear-fill")` + classe
+  `.nmt-spin`) devant chaque message du toast persistant —
+  l'utilisateur voit que la tâche tourne toujours.
+
+### Fixed
+
+- Toast d'ingestion affichait `Tuile Sentinel-2 0/0` pendant tout
+  le run alors que le `scene_id` arrivait. Cause : nemeton@v0.21.2
+  émet `{current, completed, total, scene_id, obs_date, cloud_pct,
+  source}` et non `{i, n}`. Lecture défensive des champs avec
+  fallback `i` / `n` au cas où le schéma évoluerait.
+- Reformatage i18n : compteur **entre parenthèses** en fin de
+  message — `Tuile Sentinel-2 <scene_id> (X/N)` et
+  `FORDEAD — phase <nom> (X/N)`.
+
 ## [0.24.8] - 2026-05-12
 
 ### Added
