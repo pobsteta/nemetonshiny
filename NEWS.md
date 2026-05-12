@@ -1,3 +1,24 @@
+# nemetonshiny 0.24.6.9001 (2026-05-12)
+
+### Suivi sanitaire — bump nemeton 0.21.1 (fix DDL DuckDB)
+
+* `fix(monitoring)` — bandeau **"Migration failed: Parser Error:
+  syntax error at or near GENERATED"** au premier passage dans
+  l'onglet *Suivi sanitaire* en mode local (DuckDB).
+
+  Cause : le DDL des migrations de `nemeton::db_migrate()` utilisait
+  `id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY`, syntaxe
+  acceptée par PostgreSQL mais rejetée par DuckDB.
+
+  Correctif (côté `nemeton` v0.21.1) : remplacement par un DDL
+  portable Postgres/DuckDB (`CREATE SEQUENCE IF NOT EXISTS …` +
+  `DEFAULT nextval(…)`).
+
+  Côté `nemetonshiny` : on remonte le pin de `nemeton` à
+  `>= 0.21.1` (et `Remotes: pobsteta/nemeton@v0.21.1`). Aucune
+  modification de code applicatif — la correction est purement
+  dans le paquet cœur, conformément à ADR-009.
+
 # nemetonshiny 0.24.6 (2026-05-12)
 
 ### Suivi sanitaire — worker async ne dépend plus de nemetonshiny
