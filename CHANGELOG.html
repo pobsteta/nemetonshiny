@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.22.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,7 +29,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.24.5/CHANGELOG.md" class="external-link"><code>CHANGELOG.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/CHANGELOG.md" class="external-link"><code>CHANGELOG.md</code></a></small>
     </div>
 
 <div id="changelog" class="section level1">
@@ -41,10 +41,117 @@
 <h2 id="unreleased"><a href="https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD" class="external-link">Unreleased</a><a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
 </div>
 <div class="section level2">
+<h2 id="id_0235---2026-05-09">[0.23.5] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0235---2026-05-09"></a></h2>
+<div class="section level3">
+<h3 id="added">Added<a class="anchor" aria-label="anchor" href="#added"></a></h3>
+<ul><li>Plan d’actions chat: two new controls just below the history — <strong>scope radio</strong> (all UGFs / current selection) and <strong>overwrite checkbox</strong> (replace existing actions). Same semantics as the “Generate actions (AI)” modal. When overwrite is on, the apply modal surfaces a warning banner listing the number of targeted UGFs.</li>
+<li>New i18n keys <code>action_plan_chat_scope_sel</code> and <code>action_plan_chat_apply_overwrite_warn_fmt</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<ul><li>Language toggle FR ↔︎ EN in the navbar selector now actually applies. Two combined bugs:
+<ul><li>The handler wrote to <code>nemeton.app_language</code> but <code>app_ui</code> reads <code>getOption("nemeton.app_options")$language</code>, so the choice did not survive a page reload. Now persists into the right option key.</li>
+<li>The handler showed a toast saying “Reload the page” without actually reloading. Replaced by <code>session$reload()</code> so the UI rebuilds automatically. Anti-init guard: if the new value equals <code>app_state$language</code>, the observer returns early to avoid an unwanted reload at session start.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="removed">Removed<a class="anchor" aria-label="anchor" href="#removed"></a></h3>
+<ul><li>Orphaned i18n key <code>language_changed</code> (was only used by the dropped manual-reload toast).</li>
+</ul></div>
+</div>
+<div class="section level2">
+<h2 id="id_0234---2026-05-09">[0.23.4] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0234---2026-05-09"></a></h2>
+<div class="section level3">
+<h3 id="changed">Changed<a class="anchor" aria-label="anchor" href="#changed"></a></h3>
+<ul><li>Plan d’actions chat: role labels in the conversation history now go through i18n. The raw LLM keys (“user” / “assistant”) no longer surface in the UI; they render as <strong>“Vous”</strong> / <strong>“Assistant”</strong> (FR) or <strong>“You”</strong> / <strong>“Assistant”</strong> (EN), switching live with the language toggle. The underlying data model still uses the English keys so the prompt builder is unchanged.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="added-1">Added<a class="anchor" aria-label="anchor" href="#added-1"></a></h3>
+<ul><li>New i18n keys <code>action_plan_chat_role_user</code> and <code>action_plan_chat_role_assistant</code>.</li>
+</ul></div>
+</div>
+<div class="section level2">
+<h2 id="id_0233---2026-05-09">[0.23.3] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0233---2026-05-09"></a></h2>
+<div class="section level3">
+<h3 id="added-2">Added<a class="anchor" aria-label="anchor" href="#added-2"></a></h3>
+<ul><li>Plan d’actions chat: clicking <strong>Send</strong> now displays a persistent <strong>bottom-right toast</strong> with a <strong>spinning gear icon</strong> and the label <em>“L’IA réfléchit…”</em> / <em>“AI is thinking…”</em>. The toast stays visible until the LLM response arrives or the call fails. Implemented via <code>shiny::showNotification(duration = NULL, closeButton = FALSE)</code> paired with an <code>on.exit(removeNotification(...))</code> hook so every return path (success, LLM error, parse error) clears the toast.</li>
+<li>New i18n key <code>action_plan_chat_thinking</code>.</li>
+</ul></div>
+</div>
+<div class="section level2">
+<h2 id="id_0232---2026-05-09">[0.23.2] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0232---2026-05-09"></a></h2>
+<div class="section level3">
+<h3 id="added-3">Added<a class="anchor" aria-label="anchor" href="#added-3"></a></h3>
+<ul><li>Plan d’actions: chat history <strong>auto-scrolls to the bottom</strong> on every update so the latest message is always visible. Implemented via an inline <code>setTimeout(0)</code> script appended to each <code>chat_history_ui</code> render that sets <code>el.scrollTop = el.scrollHeight</code> on the <code>.chat-history</code> div (now carrying a stable id).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
+<ul><li>Plan d’actions: chat panel <strong>moves from a left sidebar to the right sidebar</strong>, sitting below the “Tableau des actions” panel. The nested <code><a href="https://rstudio.github.io/bslib/reference/sidebar.html" class="external-link">bslib::layout_sidebar</a></code> introduced in 0.23.1 is replaced by a single right sidebar containing both cards stacked top-to-bottom.</li>
+<li>Plan d’actions: button label “Générer (IA)” renamed to “Générer les actions (IA)” (FR) / “Generate actions (AI)” (EN) for clarity.</li>
+</ul></div>
+</div>
+<div class="section level2">
+<h2 id="id_0231---2026-05-09">[0.23.1] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0231---2026-05-09"></a></h2>
+<div class="section level3">
+<h3 id="added-4">Added<a class="anchor" aria-label="anchor" href="#added-4"></a></h3>
+<ul><li>Plan d’actions: <strong>AI chat now lives in a persistent left sidebar</strong> (350 px, collapsible) instead of a modal. The conversation stays visible while the user navigates map / table / Kanban. Layout switches to a nested <code>layout_sidebar</code> (left chat / right action panel / main content).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="changed-2">Changed<a class="anchor" aria-label="anchor" href="#changed-2"></a></h3>
+<ul><li>Plan d’actions: “Ouvrir le chat” button removed from the right action panel (made redundant by the persistent sidebar). <code>input$open_chat</code> observer (~30 LOC of <code>showModal</code>) dropped.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
+<ul><li>Plan d’actions map ↔︎ table sync: clicking a parcelle on the <strong>map</strong> now selects every corresponding row in the table. The <code>input$map_shape_click</code> handler now also calls <code><a href="https://rdrr.io/pkg/DT/man/proxy.html" class="external-link">DT::selectRows()</a></code>. The reverse direction (table → map) was already working. No reactive loop: <code>reactiveVal</code> dedupes by <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> so the round-trip stops after one pass.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="removed-1">Removed<a class="anchor" aria-label="anchor" href="#removed-1"></a></h3>
+<ul><li>i18n keys <code>action_plan_open_chat</code> and <code>action_plan_chat_input_label</code> (orphaned by the chat refactor).</li>
+</ul></div>
+</div>
+<div class="section level2">
+<h2 id="id_0230---2026-05-09">[0.23.0] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0230---2026-05-09"></a></h2>
+<div class="section level3">
+<h3 id="added-5">Added<a class="anchor" aria-label="anchor" href="#added-5"></a></h3>
+<ul><li>Kanban: double-click on a card opens an <strong>edit modal</strong> pre-filled with statut / priorité / année / commentaire. Primary use-case is editing long commentaires (DT inline cell-edit is single-line). Delegated dblclick listener at the board level with cleanup between renders.</li>
+<li>Kanban cards: each card now displays the <strong>commentaire</strong> under the type/year/UGF block when non-empty.</li>
+<li>Kanban columns: cards are <strong>sorted by <code>annee_realisation</code></strong> ascending (NAs last) so each column reads chronologically.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="changed-3">Changed<a class="anchor" aria-label="anchor" href="#changed-3"></a></h3>
+<ul><li>Kanban: <strong>free movement between any columns</strong>. The proposée → validée → planifiée → réalisée → abandonnée DAG no longer gates drag-drop. <code>update_action_in_plan()</code> accepts any known status, rejects only unknown strings. <code>is_valid_status_transition()</code> and <code>ACTION_PLAN_TRANSITIONS</code> stay as informational documentation of the natural workflow.</li>
+<li>Kanban: per-card <strong>“Déplacer”</strong> dropdown removed (made redundant by free drag-drop). The <code>kanban_move_*</code> dispatcher observer (~50 LOC) and the unused <code>KANBAN_STATUSES</code> constant are gone too.</li>
+<li>Action plan table: <strong>action count</strong> moved from bottom-left to bottom-right. DT <code>dom</code> switched to a custom flex layout (<code>&lt;"top"f&gt;rt&lt;"… dt-bottom-row"&lt;"… "lp&gt;i&gt;</code>) with scoped CSS rules to override the default DT floats.</li>
+<li>Add action modal: the <strong>UGF dropdown</strong> now shows <code>ug_label</code> (sorted) instead of the raw <code>ug_id</code>; <strong>Année cible</strong> is now a real calendar year (default <code>base_year + 1</code>, range <code>base_year + 1</code> … <code>base_year + horizon</code>), converted to the internal offset on save.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixed-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-2"></a></h3>
+<ul><li>Add action modal: previously surfaced the internal offset (1, 2, …) for “Année cible” and the raw <code>ug_id</code> for the UGF dropdown, both confusing for end-users.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="removed-2">Removed<a class="anchor" aria-label="anchor" href="#removed-2"></a></h3>
+<ul><li>i18n keys <code>action_plan_kanban_move</code> and <code>action_plan_kanban_drop_invalid_fmt</code> (orphaned by the Kanban refactor).</li>
+</ul></div>
+</div>
+<div class="section level2">
+<h2 id="id_0224---2026-05-09">[0.22.4] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0224---2026-05-09"></a></h2>
+<div class="section level3">
+<h3 id="changed-4">Changed<a class="anchor" aria-label="anchor" href="#changed-4"></a></h3>
+<ul><li>Action plan table: the page-size selector (“Afficher 5/10/25/50/All”) moved <strong>below the table</strong>, next to the info count and pagination. Top of the table now only carries the global search box. DT <code>dom</code> switched from <code>"lfrtip"</code> to <code>"frtilp"</code>.</li>
+<li>Action plan table: only <strong>UGF + Année</strong> are frozen during horizontal scroll. <code>DISPLAY_COLS</code> reordered so hidden columns (<code>id</code>, <code>ug_id</code>, <code>annee_cible</code>) sit at the tail; <code>fixedColumns.leftColumns</code> reduced from 5 to 2 to match the count of visible frozen columns (DT’s FixedColumns counts every DOM column, hidden included).</li>
+<li>Action plan map: leaflet legend titles now translated. <code>legend_title</code> literals (<code>"annee"</code>, <code>"type"</code>, <code>"priority"</code>) swapped for <code>i18n$t("action_plan_col_*")</code> so the map shows “Année / Type / Priorité” in FR and “Year / Type / Priority” in EN, switching with the language toggle.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="fixed-3">Fixed<a class="anchor" aria-label="anchor" href="#fixed-3"></a></h3>
+<ul><li>
+<code>mod_auth_server()</code> no longer crashes on startup in anonymous mode when <code>NEMETON_AUTH_DEV_ROLES</code> is set. The dev-roles branch interpolated <code>{auth_state$user_roles}</code> through <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info()</a></code> / glue outside any reactive consumer, which <code>reactiveValues</code> rejects. The parsed roles are now captured in a local <code>parsed_roles</code> before being assigned to <code>auth_state$user_roles</code>; the log message reads the local instead of the reactiveValues. Regression introduced by #41 in v0.22.3.</li>
+</ul></div>
+</div>
+<div class="section level2">
 <h2 id="id_0200---2026-04-24">
 <a href="https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...v0.20.0" class="external-link">0.20.0</a> - 2026-04-24<a class="anchor" aria-label="anchor" href="#id_0200---2026-04-24"></a></h2>
 <div class="section level3">
-<h3 id="added">Added<a class="anchor" aria-label="anchor" href="#added"></a></h3>
+<h3 id="added-6">Added<a class="anchor" aria-label="anchor" href="#added-6"></a></h3>
 <ul><li>LiDAR HD MNH fetched via <code>happign</code> as the preferred CHM source (Open-Canopy ML retained as fallback). E5.d phase 1.</li>
 <li>LiDAR HD MNT promoted to the canonical <code>dem</code> slot (1 m vs 25 m BD ALTI) so W3 / R1 / R2 / R3 / erosion use LiDAR resolution.</li>
 <li>
@@ -57,7 +164,7 @@
 <li>Tooltip on <em>Source du CV</em> radio clarifying that it only picks the CV value, not the draw method.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed">Changed<a class="anchor" aria-label="anchor" href="#changed"></a></h3>
+<h3 id="changed-5">Changed<a class="anchor" aria-label="anchor" href="#changed-5"></a></h3>
 <ul><li>Sampling-method note rewritten to describe candidates on a regular 50 m grid, forest mask filter, then GRTS → LPM2 → random selection.</li>
 <li>Map auto-zoom fixed to the UGF extent instead of BD Forêt’s (which is fetched with a buffer).</li>
 <li>
@@ -65,7 +172,7 @@
 <li>Bumped <code>nemeton</code> minimum to <code>&gt;= 0.19.5</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<h3 id="fixed-4">Fixed<a class="anchor" aria-label="anchor" href="#fixed-4"></a></h3>
 <ul><li>Duplicate PostGIS-sync toast at compute completion (kept the <code>mod_home</code> one, dropped the <code>mod_progress</code> one).</li>
 <li>Retry button now emits an immediate toast on the root session.</li>
 </ul></div>
@@ -74,7 +181,7 @@
 <h2 id="id_0190---2026-04-24">
 <a href="https://github.com/pobsteta/nemetonshiny/compare/v0.18.0...v0.19.0" class="external-link">0.19.0</a> - 2026-04-24<a class="anchor" aria-label="anchor" href="#id_0190---2026-04-24"></a></h2>
 <div class="section level3">
-<h3 id="added-1">Added<a class="anchor" aria-label="anchor" href="#added-1"></a></h3>
+<h3 id="added-7">Added<a class="anchor" aria-label="anchor" href="#added-7"></a></h3>
 <ul><li>Tooltips on six sidebar inputs of the Export terrain sub-tab (target error, alpha risk, over-sample ratio, CV position, seed, region).</li>
 <li>Custom TSP legend on the leaflet map (inline-SVG glyphs for the route, start and finish).</li>
 <li>Immediate toast notification when clicking <em>Réessayer</em> on the compute-error card, dispatched on the root session.</li>
@@ -82,13 +189,13 @@
 <code>URL</code> and <code>BugReports</code> fields in <code>DESCRIPTION</code> so the RStudio Packages pane shows the documentation icon next to the package.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
+<h3 id="changed-6">Changed<a class="anchor" aria-label="anchor" href="#changed-6"></a></h3>
 <ul><li>README counters synced to the real state (31 indicators, 13 expert profiles, 504 i18n keys).</li>
 <li>
 <code>sampling_tt_region</code> tooltip wording says QGIS, not QField.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
+<h3 id="fixed-5">Fixed<a class="anchor" aria-label="anchor" href="#fixed-5"></a></h3>
 <ul><li>Duplicate PostGIS-sync toast at compute completion — removed the second occurrence in <code>mod_progress</code>; the <code>mod_home</code> one remains.</li>
 </ul></div>
 </div>
@@ -96,7 +203,7 @@
 <h2 id="id_0180---2026-04-24">
 <a href="https://github.com/pobsteta/nemetonshiny/compare/v0.16.0...v0.18.0" class="external-link">0.18.0</a> - 2026-04-24<a class="anchor" aria-label="anchor" href="#id_0180---2026-04-24"></a></h2>
 <div class="section level3">
-<h3 id="added-2">Added<a class="anchor" aria-label="anchor" href="#added-2"></a></h3>
+<h3 id="added-8">Added<a class="anchor" aria-label="anchor" href="#added-8"></a></h3>
 <ul><li>
 <strong>Terrain top-level tab</strong> with two sub-tabs via <code><a href="https://rstudio.github.io/bslib/reference/navset.html" class="external-link">bslib::navset_card_underline()</a></code>:
 <ul><li>
@@ -120,7 +227,7 @@
 <code>CITATION.cff</code> and <code>CHANGELOG.md</code> — release-metadata files.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-2">Changed<a class="anchor" aria-label="anchor" href="#changed-2"></a></h3>
+<h3 id="changed-7">Changed<a class="anchor" aria-label="anchor" href="#changed-7"></a></h3>
 <ul><li>
 <code>mod_sampling</code> now uses <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> (GRTS / LPM2 / random) instead of a plain <code><a href="https://r-spatial.github.io/sf/reference/st_sample.html" class="external-link">sf::st_sample()</a></code>. The generation notification reports the selected method.</li>
 <li>The Export terrain map now draws per-UGF polygons (matching the Import terrain style) instead of a single unioned zone; the unioned zone is still used internally by <code>create_sampling_plan()</code>.</li>
@@ -133,7 +240,7 @@
 <li>Bumped the <code>nemeton</code> dependency to <code>&gt;= 0.19.0</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-2"></a></h3>
+<h3 id="fixed-6">Fixed<a class="anchor" aria-label="anchor" href="#fixed-6"></a></h3>
 <ul><li>BD Forêt v2 mapping diagnostics: the sizing report now lists the actual ambiguous and unmapped TFV codes (with libellé, resolved context and alternative) instead of a bare count.</li>
 <li>TFV column auto-detection in <code>mod_sampling</code> widened to <code>TFV / tfv / CODE_TFV / code_tfv / essence / ESSENCE / LIB_FV / LIBELLE</code>.</li>
 </ul></div>
