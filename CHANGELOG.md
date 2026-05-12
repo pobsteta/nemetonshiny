@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.24.7] - 2026-05-12
+
+### Fixed
+
+- Migration de la base DuckDB du Suivi sanitaire :
+  bump de `nemeton` vers `v0.21.1` (DDL portable
+  Postgres/DuckDB via `CREATE SEQUENCE` + `DEFAULT nextval(...)`,
+  remplace `INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY` qui
+  cassait DuckDB avec *"syntax error at or near GENERATED"*).
+- `DESCRIPTION`: `Imports: nemeton (>= 0.21.1)`,
+  `Remotes: pobsteta/nemeton@v0.21.1`.
+
 ## [0.23.5] - 2026-05-09
 
 ### Added
