@@ -1,3 +1,35 @@
+# nemetonshiny 0.24.8.9002 (2026-05-12)
+
+### Suivi sanitaire — mirroring console des events de progression
+
+* `feat(monitoring)` — la progression du Suivi sanitaire n'apparaissait
+  que dans le toast UI. Aucune ligne dans la console R pour le
+  développeur qui lance l'app via `Rscript -e ...`.
+
+  Correctif : les deux observers de progression (ingestion + FORDEAD)
+  écrivent désormais une ligne `cli::cli_alert_info` (ou
+  `cli_alert_warning` sur `scene_error` / `phase_error`) à chaque
+  event, exactement une fois par tuile / phase grâce à la
+  granularité du `reactivePoll(500 ms)`.
+
+  Le format console est plus riche que le toast : on profite des
+  champs supplémentaires nemeton (`obs_date`, `cloud_pct`, `source`)
+  pour donner une ligne du genre :
+
+  ```
+  ℹ Tuile Sentinel-2 S2A_MSIL2A_20260508T103651_R008_T31TFN_20260508T191011 (5/26) — 2026-05-08, 2.9% nuages, source=pc
+  ```
+
+  Pour FORDEAD :
+
+  ```
+  ℹ FORDEAD phase training (1/5)
+  ```
+
+  Helpers : `.log_ingest_event()` et `.log_fordead_event()` dans la
+  section Internal de `mod_monitoring.R`. Aucune utilisation de
+  `print()` / `message()` / `cat()` (règle 9 CLAUDE.md).
+
 # nemetonshiny 0.24.8.9001 (2026-05-12)
 
 ### Suivi sanitaire — toast progression aligné sur le payload nemeton

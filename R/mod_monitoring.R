@@ -1011,6 +1011,11 @@ mod_monitoring_server <- function(id, app_state) {
     #     source: "pc" }
     # We also accept `i`/`n`/`status`/`phase` as fallbacks so the
     # observer survives a future schema rename without code changes.
+    #
+    # The observer also mirrors each event to the R console via
+    # `cli::cli_alert_*` so a developer running the app from a
+    # terminal sees the same per-scene progress as in the browser
+    # (helpful for long ingestions and to spot scene-level errors).
     shiny::observe({
       ev <- ingest_progress()
       if (is.null(ev)) return()
@@ -1029,6 +1034,7 @@ mod_monitoring_server <- function(id, app_state) {
         sprintf(i18n$t("monitoring_ingest_progress_fmt"),
                 i_val, n_val)
       }
+      .log_ingest_event(ev, status, i_val, n_val, scene)
       shiny::showNotification(
         .monitoring_spinning_msg(msg),
         id          = session$ns("ingest_progress"),
@@ -1188,6 +1194,7 @@ mod_monitoring_server <- function(id, app_state) {
       } else {
         sprintf(i18n$t("monitoring_health_phase_simple_fmt"), phase)
       }
+      .log_fordead_event(ev, status, i_val, n_val, phase)
       shiny::showNotification(
         .monitoring_spinning_msg(msg),
         id          = session$ns("fordead_progress"),
@@ -1400,6 +1407,59 @@ mod_monitoring_server <- function(id, app_state) {
   if (is.null(path)) return(invisible(NULL))
   tryCatch(unlink(c(path, paste0(path, ".tmp"))),
            error = function(e) invisible(NULL))
+  invisible(NULL)
+}
+
+# Console mirror for an ingestion progress event. Called once per
+# event from the reactivePoll observer (which itself only fires on
+# mtime change), so we get exactly one line per scene without
+# duplicates. We don't reuse the toast text verbatim because the
+# console has more room for the extra fields nemeton emits
+# (obs_date, cloud_pct).
+.log_ingest_event <- function(ev, status, i_val, n_val, scene) {
+  if (identical(status, "starting")) {
+    cli::cli_alert_info("Sentinel-2 ingestion starting ({n_val} scene(s) to process).")
+    return(invisible(NULL))
+  }
+  extras <- c(
+    if (!is.null(ev$obs_date) && nzchar(as.character(ev$obs_date)))
+      paste0(as.character(ev$obs_date)),
+    if (!is.null(ev$cloud_pct) && is.finite(as.numeric(ev$cloud_pct)))
+      sprintf("%.1f%% nuages", as.numeric(ev$cloud_pct)),
+    if (!is.null(ev$source) && nzchar(as.character(ev$source)))
+      paste0("source=", as.character(ev$source))
+  )
+  suffix <- if (length(extras)) sprintf(" — %s", paste(extras, collapse = ", ")) else ""
+  scene_str <- if (nzchar(scene)) scene else "(scene_id missing)"
+  if (identical(status, "scene_error")) {
+    cli::cli_alert_warning(
+      "Tuile Sentinel-2 {scene_str} ({i_val}/{n_val}) — erreur{suffix}"
+    )
+  } else {
+    cli::cli_alert_info(
+      "Tuile Sentinel-2 {scene_str} ({i_val}/{n_val}){suffix}"
+    )
+  }
+  invisible(NULL)
+}
+
+# Console mirror for a FORDEAD phase event. The payload is simpler
+# than ingestion (no per-scene extras), so the line is just the
+# phase name and the X/N counter when nemeton emits one.
+.log_fordead_event <- function(ev, status, i_val, n_val, phase) {
+  if (identical(status, "starting") || !nzchar(phase)) {
+    cli::cli_alert_info("FORDEAD diagnosis starting.")
+    return(invisible(NULL))
+  }
+  if (identical(status, "phase_error")) {
+    cli::cli_alert_warning("FORDEAD phase {phase} — erreur")
+    return(invisible(NULL))
+  }
+  if (n_val > 0L) {
+    cli::cli_alert_info("FORDEAD phase {phase} ({i_val}/{n_val})")
+  } else {
+    cli::cli_alert_info("FORDEAD phase {phase}")
+  }
   invisible(NULL)
 }
 
