@@ -1,4 +1,4 @@
-# nemetonshiny 0.24.8.9002 (2026-05-12)
+# nemetonshiny 0.24.9 (2026-05-12)
 
 ### Suivi sanitaire — mirroring console des events de progression
 
@@ -29,8 +29,6 @@
   Helpers : `.log_ingest_event()` et `.log_fordead_event()` dans la
   section Internal de `mod_monitoring.R`. Aucune utilisation de
   `print()` / `message()` / `cat()` (règle 9 CLAUDE.md).
-
-# nemetonshiny 0.24.8.9001 (2026-05-12)
 
 ### Suivi sanitaire — toast progression aligné sur le payload nemeton
 
