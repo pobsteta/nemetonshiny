@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,37 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.24.7/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.8" id="nemetonshiny-0248-2026-05-12">nemetonshiny 0.24.8 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0248-2026-05-12"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--progression-xn-tuiles-sentinel--phases-fordead-0-24-8">Suivi sanitaire — progression “X/N tuiles Sentinel-2” + phases FORDEAD<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--progression-xn-tuiles-sentinel--phases-fordead-0-24-8"></a></h4>
+<ul><li>
+<p><code>feat(monitoring)</code> — pendant l’ingestion Sentinel-2 (FAST) et le diagnostic FORDEAD, l’utilisateur reste sur un toast statique pendant plusieurs minutes sans aucune indication de progression intermédiaire. Le seul retour était le toast final résumé (<code>%d scènes, %d observations insérées</code>).</p>
+<p>Correctif (couplé avec <code>nemeton@v0.21.2</code> qui introduit l’argument <code>progress_callback</code> sur <code>ingest_sentinel2_timeseries()</code> et <code>run_fordead_dieback()</code>) :</p>
+<ul><li>Le worker async (<code>run_ingestion_async</code> / <code>run_fordead_async</code>) construit un callback qui sérialise chaque événement en JSON atomique (write to <code>.tmp</code> + rename) vers <code>&lt;project&gt;/data/ingest_progress.json</code> (resp. <code>fordead_progress.json</code>).</li>
+<li>Côté main process, un <code>shiny::reactivePoll(500 ms)</code> lit le fichier, et un observer met à jour un toast persistant (même <code>id</code>) avec <code>"Tuile Sentinel-2 X/N : &lt;scene_id&gt;"</code> (ou simplement <code>"X/N téléchargée…"</code> quand le scene_id n’est pas fourni) pour l’ingestion, et <code>"FORDEAD — phase : &lt;nom&gt; (X/N)"</code> pour FORDEAD.</li>
+<li>À la fin de la tâche (succès ou erreur), le toast persistant est retiré et le fichier <code>progress.json</code> purgé. Le toast final <code>monitoring_ingest_success</code> / <code>monitoring_health_success</code> reprend la main.</li>
+</ul><p>Nouvelles clés i18n FR/EN : <code>monitoring_ingest_progress_fmt</code>, <code>monitoring_ingest_progress_named_fmt</code>, <code>monitoring_health_phase_fmt</code>, <code>monitoring_health_phase_simple_fmt</code>.</p>
+<p>Bump <code>DESCRIPTION</code> : <code>Imports: nemeton (&gt;= 0.21.2)</code>, <code>Remotes: pobsteta/nemeton@v0.21.2</code>. ADR-009 respecté — toute la logique métier (savoir qu’une tuile est téléchargée, qu’une phase est terminée) reste dans <code>nemeton</code> ; nemetonshiny n’écoute que le canal callback exporté.</p>
+</li>
+</ul></div>
+<div class="section level4">
+<h4 id="suivi-sanitaire--bouton-lancer-le-diagnostic-fast-muet-au-clic-0-24-8">Suivi sanitaire — bouton “Lancer le diagnostic FAST” muet au clic<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--bouton-lancer-le-diagnostic-fast-muet-au-clic-0-24-8"></a></h4>
+<ul><li>
+<p><code>fix(monitoring)</code> — clic sur <strong>“Lancer le diagnostic FAST”</strong> (ou <strong>“Lancer le diagnostic FORDEAD”</strong> en mode santé) sans aucune réaction : ni toast d’ingestion, ni toast d’erreur.</p>
+<p>Cause : les deux boutons étaient rendus avec <code>htmltools::tagAppendAttributes(..., disabled = NA)</code> (commit <code>a880507</code>), ce qui les désactive <strong>au niveau HTML</strong> au premier rendu. Un observer côté serveur les réactivait via <code>updateActionButton(disabled = FALSE)</code>, mais le style <code>btn-primary</code> masque visuellement l’état <code>disabled</code> du Bootstrap — l’utilisateur voit un bouton bleu d’aspect cliquable alors que le navigateur refuse le clic, donc aucun <code>observeEvent</code> ne se déclenche.</p>
+<p>Correctif : on suit le pattern explicite déjà appliqué au bouton <strong>“Enregistrer la zone”</strong> (commenté dans le module) :</p>
+<ul><li>Suppression du wrapper <code>tagAppendAttributes(disabled = NA)</code> sur <code>run</code> et <code>run_health</code> → les boutons partent toujours actifs.</li>
+<li>Les préconditions (zone sélectionnée, bands cochées, période valide) ne désactivent <strong>plus</strong> le bouton — elles sont validées dans l’<code>observeEvent</code> qui affiche un toast explicite par cause (<code>monitoring_validate_zone</code> / <code>monitoring_validate_bands</code> / <code>monitoring_validate_dates</code>).</li>
+<li>
+<code>updateActionButton(disabled = is_running)</code> reste pour griser le bouton <strong>pendant</strong> la tâche async (protection double-clic).</li>
+<li>Garde <code>is_running</code> ajouté en tête des deux <code>observeEvent</code> pour avaler un éventuel double-clic sans relancer la tâche.</li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.24.7" id="nemetonshiny-0247-2026-05-12">nemetonshiny 0.24.7 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0247-2026-05-12"></a></h2>
 <div class="section level4">

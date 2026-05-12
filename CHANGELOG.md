@@ -12,6 +12,38 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.24.8\] - 2026-05-12
+
+### Added
+
+- Progression “X/N tuiles Sentinel-2 téléchargées” pendant l’ingestion
+  FAST, et “FORDEAD — phase : %s (X/N)” pendant le diagnostic santé.
+  Couplé à `nemeton@v0.21.2` qui introduit `progress_callback` sur
+  `ingest_sentinel2_timeseries()` et `run_fordead_dieback()`. Le worker
+  async écrit un `<project>/data/{ingest,fordead}_progress.json`
+  atomique, le main process polle via `reactivePoll(500ms)` et rend un
+  toast persistant remplacé à chaque tick.
+- 4 nouvelles clés i18n FR/EN : `monitoring_ingest_progress_fmt`,
+  `monitoring_ingest_progress_named_fmt`, `monitoring_health_phase_fmt`,
+  `monitoring_health_phase_simple_fmt`.
+
+### Fixed
+
+- Boutons **“Lancer le diagnostic FAST”** et **“Lancer le diagnostic
+  FORDEAD”** muets au clic. Cause : `tagAppendAttributes(disabled = NA)`
+  HTML-disablait les boutons au premier rendu, et la classe
+  `btn-primary` masque visuellement l’état `disabled` Bootstrap — le
+  navigateur refuse le clic alors que l’utilisateur croit le bouton
+  actif. Correctif : suppression du wrapper `disabled = NA`,
+  simplification du `updateActionButton(disabled = is_running)` (greying
+  uniquement pendant la tâche async), garde `is_running` en tête des
+  `observeEvent` pour avaler les double-clics.
+
+### Changed
+
+- `DESCRIPTION`: `Imports: nemeton (>= 0.21.2)`,
+  `Remotes: pobsteta/nemeton@v0.21.2`.
+
 ## \[0.24.7\] - 2026-05-12
 
 ### Fixed

@@ -1,5 +1,74 @@
 # Changelog
 
+## nemetonshiny 0.24.8 (2026-05-12)
+
+#### Suivi sanitaire — progression “X/N tuiles Sentinel-2” + phases FORDEAD
+
+- `feat(monitoring)` — pendant l’ingestion Sentinel-2 (FAST) et le
+  diagnostic FORDEAD, l’utilisateur reste sur un toast statique pendant
+  plusieurs minutes sans aucune indication de progression intermédiaire.
+  Le seul retour était le toast final résumé
+  (`%d scènes, %d observations insérées`).
+
+  Correctif (couplé avec `nemeton@v0.21.2` qui introduit l’argument
+  `progress_callback` sur `ingest_sentinel2_timeseries()` et
+  `run_fordead_dieback()`) :
+
+  - Le worker async (`run_ingestion_async` / `run_fordead_async`)
+    construit un callback qui sérialise chaque événement en JSON
+    atomique (write to `.tmp` + rename) vers
+    `<project>/data/ingest_progress.json` (resp.
+    `fordead_progress.json`).
+  - Côté main process, un `shiny::reactivePoll(500 ms)` lit le fichier,
+    et un observer met à jour un toast persistant (même `id`) avec
+    `"Tuile Sentinel-2 X/N : <scene_id>"` (ou simplement
+    `"X/N téléchargée…"` quand le scene_id n’est pas fourni) pour
+    l’ingestion, et `"FORDEAD — phase : <nom> (X/N)"` pour FORDEAD.
+  - À la fin de la tâche (succès ou erreur), le toast persistant est
+    retiré et le fichier `progress.json` purgé. Le toast final
+    `monitoring_ingest_success` / `monitoring_health_success` reprend la
+    main.
+
+  Nouvelles clés i18n FR/EN : `monitoring_ingest_progress_fmt`,
+  `monitoring_ingest_progress_named_fmt`, `monitoring_health_phase_fmt`,
+  `monitoring_health_phase_simple_fmt`.
+
+  Bump `DESCRIPTION` : `Imports: nemeton (>= 0.21.2)`,
+  `Remotes: pobsteta/nemeton@v0.21.2`. ADR-009 respecté — toute la
+  logique métier (savoir qu’une tuile est téléchargée, qu’une phase est
+  terminée) reste dans `nemeton` ; nemetonshiny n’écoute que le canal
+  callback exporté.
+
+#### Suivi sanitaire — bouton “Lancer le diagnostic FAST” muet au clic
+
+- `fix(monitoring)` — clic sur **“Lancer le diagnostic FAST”** (ou
+  **“Lancer le diagnostic FORDEAD”** en mode santé) sans aucune réaction
+  : ni toast d’ingestion, ni toast d’erreur.
+
+  Cause : les deux boutons étaient rendus avec
+  `htmltools::tagAppendAttributes(..., disabled = NA)` (commit
+  `a880507`), ce qui les désactive **au niveau HTML** au premier rendu.
+  Un observer côté serveur les réactivait via
+  `updateActionButton(disabled = FALSE)`, mais le style `btn-primary`
+  masque visuellement l’état `disabled` du Bootstrap — l’utilisateur
+  voit un bouton bleu d’aspect cliquable alors que le navigateur refuse
+  le clic, donc aucun `observeEvent` ne se déclenche.
+
+  Correctif : on suit le pattern explicite déjà appliqué au bouton
+  **“Enregistrer la zone”** (commenté dans le module) :
+
+  - Suppression du wrapper `tagAppendAttributes(disabled = NA)` sur
+    `run` et `run_health` → les boutons partent toujours actifs.
+  - Les préconditions (zone sélectionnée, bands cochées, période valide)
+    ne désactivent **plus** le bouton — elles sont validées dans
+    l’`observeEvent` qui affiche un toast explicite par cause
+    (`monitoring_validate_zone` / `monitoring_validate_bands` /
+    `monitoring_validate_dates`).
+  - `updateActionButton(disabled = is_running)` reste pour griser le
+    bouton **pendant** la tâche async (protection double-clic).
+  - Garde `is_running` ajouté en tête des deux `observeEvent` pour
+    avaler un éventuel double-clic sans relancer la tâche.
+
 ## nemetonshiny 0.24.7 (2026-05-12)
 
 #### Suivi sanitaire — bump nemeton 0.21.1 (fix DDL DuckDB)
