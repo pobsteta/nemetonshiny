@@ -1,3 +1,29 @@
+# nemetonshiny 0.26.3 (2026-05-13)
+
+### Suivi sanitaire — propagation des `NEMETON_*` env vars vers le worker async
+
+* `fix(monitoring)` — `future::multisession` workers sur Windows
+  sont des processus `Rscript.exe` séparés qui n'héritent pas
+  systématiquement des variables d'environnement settées dans la
+  session principale après leur spawn. Conséquence pratique :
+  `Sys.setenv(NEMETON_S2_CACHE_DEBUG = "TRUE")` en console R ne se
+  voyait pas dans le worker → les lignes `[s2_cache HH:MM:SS] ...`
+  émises par `nemeton` restaient muettes même quand le cache
+  fonctionnait.
+
+  Correctif : `run_ingestion_async()` et `run_fordead_async()`
+  snapshottent à l'invoke les `NEMETON_*` env vars settées dans le
+  parent (`.capture_worker_envvars()`), `future` les pickle comme
+  globals automatiquement, et le worker les replay via
+  `.apply_worker_envvars()` en tout début de `future_promise()`.
+
+  Couvre : `NEMETON_S2_CACHE_DEBUG`, `NEMETON_DB_URL`,
+  `NEMETON_DB_LOCAL`, `NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD`.
+
+* `test` — `test-service_monitoring_wiring.R` couvre les deux
+  helpers (`.capture_worker_envvars` skip les valeurs vides ;
+  `.apply_worker_envvars` no-op sur NULL/empty + setenv correct).
+
 # nemetonshiny 0.26.2 (2026-05-13)
 
 ### Dépendance nemeton — pin à v0.21.9 (fix writeRaster .tif.tmp)

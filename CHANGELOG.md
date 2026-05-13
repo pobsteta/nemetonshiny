@@ -10,6 +10,26 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.26.3] - 2026-05-13
+
+### Fixed
+
+- `fix(monitoring)`: propagate `NEMETON_*` environment variables
+  from the Shiny main session to the `future::multisession` worker.
+  Windows workers are separate `Rscript.exe` processes that don't
+  inherit env vars set after their spawn — so
+  `Sys.setenv(NEMETON_S2_CACHE_DEBUG = "TRUE")` was silently lost.
+  `run_ingestion_async()` and `run_fordead_async()` now snapshot
+  the relevant `NEMETON_*` vars at invoke time (parent side) and
+  replay them at the top of the `future_promise()` body (worker
+  side).
+
+### Added
+
+- `.capture_worker_envvars()` / `.apply_worker_envvars()` helpers in
+  `R/service_monitoring.R` + 3 tests in
+  `tests/testthat/test-service_monitoring_wiring.R`.
+
 ## [0.26.2] - 2026-05-13
 
 ### Fixed

@@ -83,3 +83,30 @@ test_that(".resolve_s2_cache_dir returns NULL with no project", {
   expect_null(nemetonshiny:::.resolve_s2_cache_dir(NULL))
   expect_null(nemetonshiny:::.resolve_s2_cache_dir(list(id = "x")))
 })
+
+test_that(".capture_worker_envvars snapshots only set NEMETON_* vars", {
+  withr::with_envvar(
+    c(NEMETON_S2_CACHE_DEBUG = "TRUE",
+      NEMETON_DB_URL         = "",
+      NEMETON_DB_HOST        = "pg.example"),
+    {
+      snap <- nemetonshiny:::.capture_worker_envvars()
+      expect_true("NEMETON_S2_CACHE_DEBUG" %in% names(snap))
+      expect_equal(snap[["NEMETON_S2_CACHE_DEBUG"]], "TRUE")
+      expect_true("NEMETON_DB_HOST" %in% names(snap))
+      expect_false("NEMETON_DB_URL" %in% names(snap))  # empty → skipped
+    }
+  )
+})
+
+test_that(".apply_worker_envvars is a no-op on NULL / empty input", {
+  expect_silent(nemetonshiny:::.apply_worker_envvars(NULL))
+  expect_silent(nemetonshiny:::.apply_worker_envvars(character()))
+})
+
+test_that(".apply_worker_envvars sets env vars from a named vector", {
+  withr::with_envvar(c(NEMETON_S2_CACHE_DEBUG = ""), {
+    nemetonshiny:::.apply_worker_envvars(c(NEMETON_S2_CACHE_DEBUG = "TRUE"))
+    expect_equal(Sys.getenv("NEMETON_S2_CACHE_DEBUG"), "TRUE")
+  })
+})
