@@ -238,12 +238,21 @@ db_init_schema <- function(con = NULL) {
   statements <- trimws(statements)
   statements <- statements[nchar(statements) > 0]
 
+  # PostgreSQL renvoie une rafale de NOTICEs `... already exists,
+  # skipping` quand on rejoue les `CREATE ... IF NOT EXISTS`
+  # idempotents. Ces notices sont surfacées par RPostgres via
+  # `message()` et polluent la console à chaque démarrage de l'app
+  # alors qu'elles n'apportent aucune information actionnable. On les
+  # filtre via `suppressMessages` — les `warning()` et `stop()` restent
+  # visibles, donc une vraie erreur de migration n'est pas masquée.
   tryCatch({
-    for (stmt in statements) {
-      # Ignorer les commentaires seuls
-      if (grepl("^\\s*--", stmt) && !grepl("CREATE|ALTER|INSERT", stmt)) next
-      DBI::dbExecute(con, paste0(stmt, ";"))
-    }
+    suppressMessages({
+      for (stmt in statements) {
+        # Ignorer les commentaires seuls
+        if (grepl("^\\s*--", stmt) && !grepl("CREATE|ALTER|INSERT", stmt)) next
+        DBI::dbExecute(con, paste0(stmt, ";"))
+      }
+    })
     cli::cli_alert_success("Database schema initialized")
     TRUE
   }, error = function(e) {

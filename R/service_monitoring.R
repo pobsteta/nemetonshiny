@@ -59,12 +59,13 @@ run_ingestion_async <- function() {
       # values as the user set in the main session.
       .apply_worker_envvars(.worker_envvars)
 
-      # Sink stdout + message stream to log_path so the parent process
-      # can tail it and mirror nemeton's cli::cli_* lines into the
-      # interactive console. Without this, the worker's stdout is
-      # captured by `future` and never visible to the user.
-      # We sink the SAME connection twice (one per type) so output and
-      # warning/message lines end up interleaved in the same file.
+      # Mirror nemeton's cli::cli_* / message() lines into a log file
+      # the parent process can tail. Earlier attempt via sink() did NOT
+      # work: in non-interactive mode cli writes via `cat(file =
+      # stderr())` (a direct connection write), which bypasses
+      # sink(type = "message") entirely. We use withCallingHandlers
+      # later in the body to catch the `message` / `warning` conditions
+      # nemeton signals and rewrite them to disk with explicit flush().
       .ws_log_conn <- NULL
       if (!is.null(log_path) && nzchar(log_path)) {
         .ws_log_conn <- tryCatch(
@@ -72,16 +73,23 @@ run_ingestion_async <- function() {
           error = function(e) NULL
         )
         if (!is.null(.ws_log_conn)) {
-          tryCatch(sink(.ws_log_conn, type = "output", split = FALSE),
-                   error = function(e) invisible(NULL))
-          tryCatch(sink(.ws_log_conn, type = "message"),
-                   error = function(e) invisible(NULL))
-          on.exit({
-            tryCatch(sink(type = "message"), error = function(e) NULL)
-            tryCatch(sink(type = "output"),  error = function(e) NULL)
-            tryCatch(close(.ws_log_conn),    error = function(e) NULL)
-          }, add = TRUE)
+          on.exit(
+            tryCatch(close(.ws_log_conn), error = function(e) NULL),
+            add = TRUE
+          )
         }
+      }
+      # Helper that writes one line to the log connection and flushes
+      # immediately. Buffering on text-mode `file()` connections only
+      # spills on close; flushing per line is what makes the parent
+      # `reactivePoll` see content during the run, not at the end.
+      .ws_log_line <- function(line) {
+        if (is.null(.ws_log_conn)) return(invisible(NULL))
+        tryCatch({
+          writeLines(sub("[\r\n]+$", "", line),
+                     .ws_log_conn, useBytes = TRUE)
+          flush(.ws_log_conn)
+        }, error = function(e) invisible(NULL))
       }
 
       # Re-load nemetonshiny in the worker so we can use the
@@ -158,7 +166,19 @@ run_ingestion_async <- function() {
             cache_dir         = cache_dir,
             progress_callback = progress_cb
           ),
+          # Catch every `message()` signaled by nemeton — including
+          # `.s2_cache_log()` traces (gated on NEMETON_S2_CACHE_DEBUG)
+          # AND cli's `cli_alert_*` / `cli_inform` calls (cli inherits
+          # from `message` via `rlang::inform`). We rewrite each one to
+          # the log file with explicit flush so the parent tail picks
+          # it up live, then call `muffleMessage` to suppress the
+          # original write to stderr (which `future` discards anyway).
+          message = function(m) {
+            .ws_log_line(conditionMessage(m))
+            invokeRestart("muffleMessage")
+          },
           warning = function(w) {
+            .ws_log_line(paste0("warning: ", conditionMessage(w)))
             warns <<- c(warns, conditionMessage(w))
             invokeRestart("muffleWarning")
           }
