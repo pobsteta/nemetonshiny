@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.12</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,49 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.24.12/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.13" id="nemetonshiny-02413-2026-05-13">nemetonshiny 0.24.13 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02413-2026-05-13"></a></h2>
+<p>Release stable consolidant deux correctifs hardening sur le suivi sanitaire (cycle dev <code>0.24.12.9001</code> → <code>0.24.12.9002</code>).</p>
+<div class="section level4">
+<h4 id="suivi-sanitaire--cache-s2-aligné-sur-la-convention-projectcachelayers-0-24-13">Suivi sanitaire — cache S2 aligné sur la convention <code>&lt;project&gt;/cache/layers/</code>
+<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--cache-s2-align%C3%A9-sur-la-convention-projectcachelayers-0-24-13"></a></h4>
+<ul><li>
+<p><code>fix(monitoring)</code> — la v0.24.11 posait le cache des bandes Sentinel-2 sous <code>&lt;project&gt;/data/s2_cache/</code>, ce qui violait la convention NMT déjà en place pour les autres rasters (<code>&lt;project&gt;/cache/layers/lidar_mnh/</code>, <code>lidar_mnt/</code>, <code>lidar_nuage/</code>, <code>opencanopy/</code>, <code>bdforet.gpkg</code>, etc. — cf. <code>mod_sampling.R::cache_raster()</code>).</p>
+<p>Correctif : <code>.resolve_s2_cache_dir(project)</code> renvoie désormais <code>&lt;project&gt;/cache/layers/sentinel2/</code>. Layout attendu :</p>
+<pre><code>&lt;project&gt;/cache/layers/sentinel2/
+  S2A_MSIL2A_20240515.../
+    B04.tif
+    B08.tif
+    B12.tif</code></pre>
+<p><strong>Migration manuelle</strong> des anciens projets : si tu vois un dossier <code>&lt;project&gt;/data/s2_cache/</code> héritant de la v0.24.11, déplace-le à la main vers <code>&lt;project&gt;/cache/layers/sentinel2/</code> pour récupérer le cache existant. Sinon il sera juste ignoré et nemeton ré-téléchargera les bandes au prochain run.</p>
+</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.12.9001" id="nemetonshiny-024129001-2026-05-12">nemetonshiny 0.24.12.9001 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-024129001-2026-05-12"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--dédup-des-toasts-success--warning--error-0-24-12-9001">Suivi sanitaire — dédup des toasts success / warning / error<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--d%C3%A9dup-des-toasts-success--warning--error-0-24-12-9001"></a></h4>
+<ul><li>
+<p><code>fix(monitoring)</code> — les toasts finaux de l’ingestion et de FORDEAD s’empilaient à chaque re-clic au lieu de se remplacer (visible sur un 504 de Planetary Computer répété : 2-3 toasts identiques “Aucune scène Sentinel-2 trouvée…”).</p>
+<p>Cause : les <code><a href="https://rdrr.io/pkg/shiny/man/showNotification.html" class="external-link">shiny::showNotification()</a></code> finaux étaient appelés sans argument <code>id</code>. Sans id, Shiny crée à chaque fois une nouvelle notification.</p>
+<p>Correctif : <code>id = session$ns(...)</code> ajouté sur tous les toasts terminaux du module monitoring :</p>
+<ul><li>
+<code>ingest_zero</code> (0 scènes trouvées)</li>
+<li>
+<code>ingest_success</code> (ingestion réussie)</li>
+<li>
+<code>ingest_warns</code> (warnings non bloquants)</li>
+<li>
+<code>ingest_error</code> (worker exception)</li>
+<li>
+<code>fordead_success</code>, <code>fordead_error</code> (idem côté FORDEAD)</li>
+</ul><p>Le toast persistant <code>ingest_progress</code> / <code>fordead_progress</code> avait déjà son id ; la dédup ne concernait que les terminaux.</p>
+</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.24.12" id="nemetonshiny-02412-2026-05-12">nemetonshiny 0.24.12 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02412-2026-05-12"></a></h2>
 <div class="section level4">
@@ -41,7 +81,7 @@
 <p>Cause : la v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais j’ai oublié de bumper le <strong>pin</strong> dans <code>DESCRIPTION</code>. <code>Imports</code> et <code>Remotes</code> pointaient encore vers <code>nemeton@v0.21.2</code> qui ignore <code>cache_dir</code>, donc pak/install installait la vieille nemeton et R levait “argument inutilisé”.</p>
 <p>Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> et <code>Remotes: pobsteta/nemeton@v0.21.3</code>. Aucun changement applicatif.</p>
 <p>À refaire côté utilisateur après pull :</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB"</span><span class="op">)</span></span>
 <span><span class="co"># ou en local : devtools::install_local(".", force = TRUE)</span></span></code></pre></div>
 </li>

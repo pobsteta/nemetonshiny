@@ -1,5 +1,59 @@
 # Changelog
 
+## nemetonshiny 0.24.13 (2026-05-13)
+
+Release stable consolidant deux correctifs hardening sur le suivi
+sanitaire (cycle dev `0.24.12.9001` → `0.24.12.9002`).
+
+#### Suivi sanitaire — cache S2 aligné sur la convention `<project>/cache/layers/`
+
+- `fix(monitoring)` — la v0.24.11 posait le cache des bandes Sentinel-2
+  sous `<project>/data/s2_cache/`, ce qui violait la convention NMT déjà
+  en place pour les autres rasters (`<project>/cache/layers/lidar_mnh/`,
+  `lidar_mnt/`, `lidar_nuage/`, `opencanopy/`, `bdforet.gpkg`, etc. —
+  cf. `mod_sampling.R::cache_raster()`).
+
+  Correctif : `.resolve_s2_cache_dir(project)` renvoie désormais
+  `<project>/cache/layers/sentinel2/`. Layout attendu :
+
+      <project>/cache/layers/sentinel2/
+        S2A_MSIL2A_20240515.../
+          B04.tif
+          B08.tif
+          B12.tif
+
+  **Migration manuelle** des anciens projets : si tu vois un dossier
+  `<project>/data/s2_cache/` héritant de la v0.24.11, déplace-le à la
+  main vers `<project>/cache/layers/sentinel2/` pour récupérer le cache
+  existant. Sinon il sera juste ignoré et nemeton ré-téléchargera les
+  bandes au prochain run.
+
+## nemetonshiny 0.24.12.9001 (2026-05-12)
+
+#### Suivi sanitaire — dédup des toasts success / warning / error
+
+- `fix(monitoring)` — les toasts finaux de l’ingestion et de FORDEAD
+  s’empilaient à chaque re-clic au lieu de se remplacer (visible sur un
+  504 de Planetary Computer répété : 2-3 toasts identiques “Aucune scène
+  Sentinel-2 trouvée…”).
+
+  Cause : les
+  [`shiny::showNotification()`](https://rdrr.io/pkg/shiny/man/showNotification.html)
+  finaux étaient appelés sans argument `id`. Sans id, Shiny crée à
+  chaque fois une nouvelle notification.
+
+  Correctif : `id = session$ns(...)` ajouté sur tous les toasts
+  terminaux du module monitoring :
+
+  - `ingest_zero` (0 scènes trouvées)
+  - `ingest_success` (ingestion réussie)
+  - `ingest_warns` (warnings non bloquants)
+  - `ingest_error` (worker exception)
+  - `fordead_success`, `fordead_error` (idem côté FORDEAD)
+
+  Le toast persistant `ingest_progress` / `fordead_progress` avait déjà
+  son id ; la dédup ne concernait que les terminaux.
+
 ## nemetonshiny 0.24.12 (2026-05-12)
 
 #### Suivi sanitaire — bump effectif du pin nemeton à v0.21.3
