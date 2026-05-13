@@ -1,3 +1,27 @@
+# nemetonshiny 0.24.11.9001 (2026-05-12)
+
+### Suivi sanitaire — bump effectif du pin nemeton à v0.21.3
+
+* `fix(deps)` — toast d'erreur **"Échec du téléchargement : argument
+  inutilisé (cache_dir = cache_dir)"** au clic FAST après installation
+  de v0.24.11.
+
+  Cause : la v0.24.11 a livré le code applicatif qui appelle
+  `nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)` mais
+  j'ai oublié de bumper le **pin** dans `DESCRIPTION`. `Imports` et
+  `Remotes` pointaient encore vers `nemeton@v0.21.2` qui ignore
+  `cache_dir`, donc pak/install installait la vieille nemeton et
+  R levait "argument inutilisé".
+
+  Correctif : `Imports: nemeton (>= 0.21.3)` et
+  `Remotes: pobsteta/nemeton@v0.21.3`. Aucun changement applicatif.
+
+  À refaire côté utilisateur après pull :
+  ```r
+  pak::pak("pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB")
+  # ou en local : devtools::install_local(".", force = TRUE)
+  ```
+
 # nemetonshiny 0.24.11 (2026-05-12)
 
 ### Suivi sanitaire — cache local Sentinel-2 + events band-level
