@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.11</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,7 +29,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/CHANGELOG.md" class="external-link"><code>CHANGELOG.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.24.12/CHANGELOG.md" class="external-link"><code>CHANGELOG.md</code></a></small>
     </div>
 
 <div id="changelog" class="section level1">
@@ -39,6 +39,13 @@
 <p>For a narrative, per-feature description of each release, see <a href="NEWS.html">NEWS.md</a>. This file is the concise, categorised trail.</p>
 <div class="section level2">
 <h2 id="unreleased"><a href="https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD" class="external-link">Unreleased</a><a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
+</div>
+<div class="section level2">
+<h2 id="id_02412---2026-05-12">[0.24.12] - 2026-05-12<a class="anchor" aria-label="anchor" href="#id_02412---2026-05-12"></a></h2>
+<div class="section level3">
+<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<ul><li>Toast d’erreur <strong>“Échec du téléchargement : argument inutilisé (cache_dir = cache_dir)”</strong> au clic FAST après installation de v0.24.11. La v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais le pin nemeton dans <code>DESCRIPTION</code> était resté à <code>v0.21.2</code> qui ignore cet argument. Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> + <code>Remotes: pobsteta/nemeton@v0.21.3</code>.</li>
+</ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_02411---2026-05-12">[0.24.11] - 2026-05-12<a class="anchor" aria-label="anchor" href="#id_02411---2026-05-12"></a></h2>
@@ -57,7 +64,7 @@
 <li>5 nouvelles clés i18n FR/EN : <code>monitoring_stac_search</code>, <code>monitoring_stac_search_with_count_fmt</code>, <code>monitoring_ingest_zero_fmt</code>, <code>monitoring_ingest_zero_default</code>, <code>monitoring_ingest_warns_fmt</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
 <ul><li>Console R inondée de <code>Database schema up to date (N migrations applied).</code> à chaque interaction (30-50 lignes par clic). Cause : <code><a href="https://pobsteta.github.io/nemeton/reference/db_migrate.html" class="external-link">nemeton::db_migrate()</a></code> émet ce message à chaque connexion ré-ouverte (validity, zones, alerts, probe…). Correctif : <code>withCallingHandlers(message = ...)</code> autour de <code>db_migrate()</code> qui muffle uniquement les messages contenant “up to date” / “already migrated”. Les “Applied migration X” du premier run et les warnings/erreurs restent visibles.</li>
 <li>Toast et console affichaient <code>(scene_id missing) (0/159)</code> entre la recherche STAC et la première tuile reçue.</li>
 </ul></div>
@@ -74,7 +81,7 @@
 <li>Roue dentée animée (<code>bsicons::bs_icon("gear-fill")</code> + classe <code>.nmt-spin</code>) devant chaque message du toast persistant — l’utilisateur voit que la tâche tourne toujours.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
+<h3 id="fixed-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-2"></a></h3>
 <ul><li>Toast d’ingestion affichait <code>Tuile Sentinel-2 0/0</code> pendant tout le run alors que le <code>scene_id</code> arrivait. Cause : <a href="mailto:nemeton@v0.21.2" class="email">nemeton@v0.21.2</a> émet <code>{current, completed, total, scene_id, obs_date, cloud_pct, source}</code> et non <code>{i, n}</code>. Lecture défensive des champs avec fallback <code>i</code> / <code>n</code> au cas où le schéma évoluerait.</li>
 <li>Reformatage i18n : compteur <strong>entre parenthèses</strong> en fin de message — <code>Tuile Sentinel-2 &lt;scene_id&gt; (X/N)</code> et <code>FORDEAD — phase &lt;nom&gt; (X/N)</code>.</li>
 </ul></div>
@@ -87,7 +94,7 @@
 <li>4 nouvelles clés i18n FR/EN : <code>monitoring_ingest_progress_fmt</code>, <code>monitoring_ingest_progress_named_fmt</code>, <code>monitoring_health_phase_fmt</code>, <code>monitoring_health_phase_simple_fmt</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-2"></a></h3>
+<h3 id="fixed-3">Fixed<a class="anchor" aria-label="anchor" href="#fixed-3"></a></h3>
 <ul><li>Boutons <strong>“Lancer le diagnostic FAST”</strong> et <strong>“Lancer le diagnostic FORDEAD”</strong> muets au clic. Cause : <code>tagAppendAttributes(disabled = NA)</code> HTML-disablait les boutons au premier rendu, et la classe <code>btn-primary</code> masque visuellement l’état <code>disabled</code> Bootstrap — le navigateur refuse le clic alors que l’utilisateur croit le bouton actif. Correctif : suppression du wrapper <code>disabled = NA</code>, simplification du <code>updateActionButton(disabled = is_running)</code> (greying uniquement pendant la tâche async), garde <code>is_running</code> en tête des <code>observeEvent</code> pour avaler les double-clics.</li>
 </ul></div>
 <div class="section level3">
@@ -99,7 +106,7 @@
 <div class="section level2">
 <h2 id="id_0247---2026-05-12">[0.24.7] - 2026-05-12<a class="anchor" aria-label="anchor" href="#id_0247---2026-05-12"></a></h2>
 <div class="section level3">
-<h3 id="fixed-3">Fixed<a class="anchor" aria-label="anchor" href="#fixed-3"></a></h3>
+<h3 id="fixed-4">Fixed<a class="anchor" aria-label="anchor" href="#fixed-4"></a></h3>
 <ul><li>Migration de la base DuckDB du Suivi sanitaire : bump de <code>nemeton</code> vers <code>v0.21.1</code> (DDL portable Postgres/DuckDB via <code>CREATE SEQUENCE</code> + <code>DEFAULT nextval(...)</code>, remplace <code>INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY</code> qui cassait DuckDB avec <em>“syntax error at or near GENERATED”</em>).</li>
 <li>
 <code>DESCRIPTION</code>: <code>Imports: nemeton (&gt;= 0.21.1)</code>, <code>Remotes: pobsteta/nemeton@v0.21.1</code>.</li>
@@ -113,7 +120,7 @@
 <li>New i18n keys <code>action_plan_chat_scope_sel</code> and <code>action_plan_chat_apply_overwrite_warn_fmt</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-4">Fixed<a class="anchor" aria-label="anchor" href="#fixed-4"></a></h3>
+<h3 id="fixed-5">Fixed<a class="anchor" aria-label="anchor" href="#fixed-5"></a></h3>
 <ul><li>Language toggle FR ↔︎ EN in the navbar selector now actually applies. Two combined bugs:
 <ul><li>The handler wrote to <code>nemeton.app_language</code> but <code>app_ui</code> reads <code>getOption("nemeton.app_options")$language</code>, so the choice did not survive a page reload. Now persists into the right option key.</li>
 <li>The handler showed a toast saying “Reload the page” without actually reloading. Replaced by <code>session$reload()</code> so the UI rebuilds automatically. Anti-init guard: if the new value equals <code>app_state$language</code>, the observer returns early to avoid an unwanted reload at session start.</li>
@@ -166,7 +173,7 @@
 <ul><li>Plan d’actions: “Ouvrir le chat” button removed from the right action panel (made redundant by the persistent sidebar). <code>input$open_chat</code> observer (~30 LOC of <code>showModal</code>) dropped.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-5">Fixed<a class="anchor" aria-label="anchor" href="#fixed-5"></a></h3>
+<h3 id="fixed-6">Fixed<a class="anchor" aria-label="anchor" href="#fixed-6"></a></h3>
 <ul><li>Plan d’actions map ↔︎ table sync: clicking a parcelle on the <strong>map</strong> now selects every corresponding row in the table. The <code>input$map_shape_click</code> handler now also calls <code><a href="https://rdrr.io/pkg/DT/man/proxy.html" class="external-link">DT::selectRows()</a></code>. The reverse direction (table → map) was already working. No reactive loop: <code>reactiveVal</code> dedupes by <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> so the round-trip stops after one pass.</li>
 </ul></div>
 <div class="section level3">
@@ -190,7 +197,7 @@
 <li>Add action modal: the <strong>UGF dropdown</strong> now shows <code>ug_label</code> (sorted) instead of the raw <code>ug_id</code>; <strong>Année cible</strong> is now a real calendar year (default <code>base_year + 1</code>, range <code>base_year + 1</code> … <code>base_year + horizon</code>), converted to the internal offset on save.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-6">Fixed<a class="anchor" aria-label="anchor" href="#fixed-6"></a></h3>
+<h3 id="fixed-7">Fixed<a class="anchor" aria-label="anchor" href="#fixed-7"></a></h3>
 <ul><li>Add action modal: previously surfaced the internal offset (1, 2, …) for “Année cible” and the raw <code>ug_id</code> for the UGF dropdown, both confusing for end-users.</li>
 </ul></div>
 <div class="section level3">
@@ -207,7 +214,7 @@
 <li>Action plan map: leaflet legend titles now translated. <code>legend_title</code> literals (<code>"annee"</code>, <code>"type"</code>, <code>"priority"</code>) swapped for <code>i18n$t("action_plan_col_*")</code> so the map shows “Année / Type / Priorité” in FR and “Year / Type / Priority” in EN, switching with the language toggle.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-7">Fixed<a class="anchor" aria-label="anchor" href="#fixed-7"></a></h3>
+<h3 id="fixed-8">Fixed<a class="anchor" aria-label="anchor" href="#fixed-8"></a></h3>
 <ul><li>
 <code>mod_auth_server()</code> no longer crashes on startup in anonymous mode when <code>NEMETON_AUTH_DEV_ROLES</code> is set. The dev-roles branch interpolated <code>{auth_state$user_roles}</code> through <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info()</a></code> / glue outside any reactive consumer, which <code>reactiveValues</code> rejects. The parsed roles are now captured in a local <code>parsed_roles</code> before being assigned to <code>auth_state$user_roles</code>; the log message reads the local instead of the reactiveValues. Regression introduced by #41 in v0.22.3.</li>
 </ul></div>
@@ -237,7 +244,7 @@
 <li>Bumped <code>nemeton</code> minimum to <code>&gt;= 0.19.5</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-8">Fixed<a class="anchor" aria-label="anchor" href="#fixed-8"></a></h3>
+<h3 id="fixed-9">Fixed<a class="anchor" aria-label="anchor" href="#fixed-9"></a></h3>
 <ul><li>Duplicate PostGIS-sync toast at compute completion (kept the <code>mod_home</code> one, dropped the <code>mod_progress</code> one).</li>
 <li>Retry button now emits an immediate toast on the root session.</li>
 </ul></div>
@@ -260,7 +267,7 @@
 <code>sampling_tt_region</code> tooltip wording says QGIS, not QField.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-9">Fixed<a class="anchor" aria-label="anchor" href="#fixed-9"></a></h3>
+<h3 id="fixed-10">Fixed<a class="anchor" aria-label="anchor" href="#fixed-10"></a></h3>
 <ul><li>Duplicate PostGIS-sync toast at compute completion — removed the second occurrence in <code>mod_progress</code>; the <code>mod_home</code> one remains.</li>
 </ul></div>
 </div>
@@ -305,7 +312,7 @@
 <li>Bumped the <code>nemeton</code> dependency to <code>&gt;= 0.19.0</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-10">Fixed<a class="anchor" aria-label="anchor" href="#fixed-10"></a></h3>
+<h3 id="fixed-11">Fixed<a class="anchor" aria-label="anchor" href="#fixed-11"></a></h3>
 <ul><li>BD Forêt v2 mapping diagnostics: the sizing report now lists the actual ambiguous and unmapped TFV codes (with libellé, resolved context and alternative) instead of a bare count.</li>
 <li>TFV column auto-detection in <code>mod_sampling</code> widened to <code>TFV / tfv / CODE_TFV / code_tfv / essence / ESSENCE / LIB_FV / LIBELLE</code>.</li>
 </ul></div>
