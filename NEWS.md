@@ -1,3 +1,31 @@
+# nemetonshiny 0.24.9.9001 (2026-05-12)
+
+### Suivi sanitaire — "Ingestion Sentinel-2" → "Téléchargement Sentinel-2"
+
+* `chore(monitoring)` — le terme "ingestion" est trop technique pour
+  le contexte UI où l'on télécharge des scènes Sentinel-2 depuis
+  Planetary Computer. Renommage en "téléchargement" (FR) / "download"
+  (EN) sur **tous les textes utilisateur du contexte Sentinel-2** :
+
+  - `monitoring_validate_zone` : "lancer l'ingestion" → "lancer le téléchargement"
+  - `monitoring_ingest_starting` : "Ingestion Sentinel-2 en cours" → "Téléchargement Sentinel-2 en cours"
+  - `monitoring_ingest_success` : "Ingestion terminée" → "Téléchargement terminé"
+  - `monitoring_ingest_error` : "Échec de l'ingestion" → "Échec du téléchargement"
+  - `monitoring_timeseries_placeholder` / `monitoring_alerts_placeholder` :
+    "après la première ingestion" → "après le premier téléchargement"
+  - Console R (`cli_alert_info`) : "Sentinel-2 ingestion starting" →
+    "Sentinel-2 download starting"
+
+  **Volontairement non renommés** : `field_ingest_*` (import des
+  données terrain depuis QField/GPKG) et `health_validation_*`
+  (import des validations FORDEAD). Ce sont des uploads de données
+  utilisateur, pas des téléchargements distants — le terme
+  "ingestion" reste correct dans ces contextes.
+
+  Les **clés i18n** elles-mêmes (`monitoring_ingest_*`) ne sont pas
+  renommées — seul le contenu FR/EN change. Aucune cassure pour les
+  modules qui les consomment.
+
 # nemetonshiny 0.24.9 (2026-05-12)
 
 ### Suivi sanitaire — mirroring console des events de progression

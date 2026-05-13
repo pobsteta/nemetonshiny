@@ -1714,8 +1714,8 @@ TRANSLATIONS <- list(
     en = "Registration failed"
   ),
   monitoring_validate_zone = list(
-    fr = "S\u00e9lectionnez une zone de suivi avant de lancer l'ingestion.",
-    en = "Select a monitoring zone before starting the ingestion."
+    fr = "S\u00e9lectionnez une zone de suivi avant de lancer le t\u00e9l\u00e9chargement.",
+    en = "Select a monitoring zone before starting the download."
   ),
   monitoring_validate_bands = list(
     fr = "S\u00e9lectionnez au moins un indice spectral (NDVI ou NBR).",
@@ -1726,16 +1726,16 @@ TRANSLATIONS <- list(
     en = "Invalid observation period."
   ),
   monitoring_ingest_starting = list(
-    fr = "Ingestion Sentinel-2 en cours\u2026 cela peut prendre quelques minutes.",
-    en = "Sentinel-2 ingestion running\u2026 this can take a few minutes."
+    fr = "T\u00e9l\u00e9chargement Sentinel-2 en cours\u2026 cela peut prendre quelques minutes.",
+    en = "Sentinel-2 download running\u2026 this can take a few minutes."
   ),
   monitoring_ingest_success = list(
-    fr = "Ingestion termin\u00e9e : %d sc\u00e8ne(s), %d observation(s) ins\u00e9r\u00e9e(s).",
-    en = "Ingestion finished: %d scene(s), %d observation(s) inserted."
+    fr = "T\u00e9l\u00e9chargement termin\u00e9 : %d sc\u00e8ne(s), %d observation(s) ins\u00e9r\u00e9e(s).",
+    en = "Download finished: %d scene(s), %d observation(s) inserted."
   ),
   monitoring_ingest_error = list(
-    fr = "\u00c9chec de l'ingestion",
-    en = "Ingestion failed"
+    fr = "\u00c9chec du t\u00e9l\u00e9chargement",
+    en = "Download failed"
   ),
   monitoring_ingest_progress_fmt = list(
     fr = "Tuile Sentinel-2 t\u00e9l\u00e9charg\u00e9e (%d/%d)",
@@ -1802,16 +1802,16 @@ TRANSLATIONS <- list(
     en = "NDVI / NBR time series"
   ),
   monitoring_timeseries_placeholder = list(
-    fr = "Le graphique des indices appara\u00eetra apr\u00e8s la premi\u00e8re ingestion.",
-    en = "The time series will appear after the first ingestion."
+    fr = "Le graphique des indices appara\u00eetra apr\u00e8s le premier t\u00e9l\u00e9chargement.",
+    en = "The time series will appear after the first download."
   ),
   monitoring_alerts_title = list(
     fr = "Alertes d\u00e9tect\u00e9es",
     en = "Detected alerts"
   ),
   monitoring_alerts_placeholder = list(
-    fr = "La carte des alertes appara\u00eetra apr\u00e8s la premi\u00e8re ingestion.",
-    en = "The alerts map will appear after the first ingestion."
+    fr = "La carte des alertes appara\u00eetra apr\u00e8s le premier t\u00e9l\u00e9chargement.",
+    en = "The alerts map will appear after the first download."
   ),
 
   # ----- Mode toggle (rapide / sanitaire) -----

@@ -1418,7 +1418,7 @@ mod_monitoring_server <- function(id, app_state) {
 # (obs_date, cloud_pct).
 .log_ingest_event <- function(ev, status, i_val, n_val, scene) {
   if (identical(status, "starting")) {
-    cli::cli_alert_info("Sentinel-2 ingestion starting ({n_val} scene(s) to process).")
+    cli::cli_alert_info("Sentinel-2 download starting ({n_val} scene(s) to process).")
     return(invisible(NULL))
   }
   extras <- c(
