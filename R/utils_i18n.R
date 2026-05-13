@@ -1781,6 +1781,14 @@ TRANSLATIONS <- list(
     fr = "Cache COG actif : %s",
     en = "COG cache active: %s"
   ),
+  monitoring_ingest_worker_event_fmt = list(
+    fr = "Worker : \u00e9tape %s",
+    en = "Worker: step %s"
+  ),
+  monitoring_ingest_fatal_title = list(
+    fr = "Erreur fatale dans le worker d'ingestion",
+    en = "Fatal error in the ingestion worker"
+  ),
   monitoring_reprime_cache_label = list(
     fr = "R\u00e9amorcer le cache COG (skip_cached = FALSE)",
     en = "Re-prime COG cache (skip_cached = FALSE)"
