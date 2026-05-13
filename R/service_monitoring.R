@@ -33,6 +33,15 @@ run_ingestion_async <- function() {
   # inherit the parent's loaded namespaces.
   .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
 
+  # Capture diagnostic env vars in the parent so we can replay them
+  # inside the worker. `future::multisession` workers are separate
+  # Rscript.exe processes on Windows that may have been spawned BEFORE
+  # the user `Sys.setenv()`d these — they then run blind. We pickle
+  # the values via the auto-captured globals mechanism (future scans
+  # the expression for symbols defined in the parent) and re-set them
+  # at the top of the promise body.
+  .worker_envvars <- .capture_worker_envvars()
+
   shiny::ExtendedTask$new(function(zone_id, start, end, bands,
                                    max_cloud = 20, db_url = "",
                                    progress_path = NULL,
@@ -44,6 +53,11 @@ run_ingestion_async <- function() {
       if (!is_parallel) future::plan("multisession")
     }
     promises::future_promise({
+      # Replay diagnostic env vars captured in the parent so the
+      # worker sees the same NEMETON_S2_CACHE_DEBUG / NEMETON_*
+      # values as the user set in the main session.
+      .apply_worker_envvars(.worker_envvars)
+
       # Re-load nemetonshiny in the worker so we can use the
       # URL-resolution helper. In dev (load_all), .pkg_path points to
       # the source tree; in prod the installed namespace is used.
@@ -172,6 +186,7 @@ run_ingestion_async <- function() {
 #' @noRd
 run_fordead_async <- function() {
   .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
+  .worker_envvars <- .capture_worker_envvars()
 
   shiny::ExtendedTask$new(function(aoi, dates_training, dates_monitoring,
                                    threshold_anomaly = 0.16,
@@ -184,6 +199,8 @@ run_fordead_async <- function() {
       if (!is_parallel) future::plan("multisession")
     }
     promises::future_promise({
+      .apply_worker_envvars(.worker_envvars)
+
       if (!is.null(.pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
         pkgload::load_all(.pkg_path, quiet = TRUE)
       } else if (requireNamespace("nemetonshiny", quietly = TRUE)) {
@@ -210,4 +227,53 @@ run_fordead_async <- function() {
       )
     }, seed = TRUE)
   })
+}
+
+
+#' Capture env vars to replay in the worker
+#'
+#' `future::multisession` workers on Windows are separate Rscript.exe
+#' processes spawned (potentially) before the user `Sys.setenv()`d
+#' diagnostic flags. The worker then runs blind. We snapshot the
+#' relevant `NEMETON_*` env vars at invoke time (parent side) and
+#' replay them on the worker side via `.apply_worker_envvars()`.
+#'
+#' Returns a named character vector — `future` auto-pickles it as a
+#' captured global when it appears inside the `future_promise()`
+#' expression body.
+#'
+#' Only forwards env vars that are actually set in the parent
+#' (skipping empty/unset values) to avoid clobbering any worker
+#' defaults.
+#'
+#' @noRd
+.capture_worker_envvars <- function() {
+  keys <- c(
+    "NEMETON_S2_CACHE_DEBUG",
+    "NEMETON_DB_URL",
+    "NEMETON_DB_LOCAL",
+    "NEMETON_DB_HOST",
+    "NEMETON_DB_PORT",
+    "NEMETON_DB_NAME",
+    "NEMETON_DB_USER",
+    "NEMETON_DB_PASSWORD"
+  )
+  vals <- vapply(keys, function(k) Sys.getenv(k, unset = ""), character(1))
+  vals[nzchar(vals)]
+}
+
+#' Replay captured env vars on the worker side
+#'
+#' Called as the first line of the `future_promise()` body so all
+#' downstream `nemeton::*` calls — including the verbose tracing
+#' driven by `NEMETON_S2_CACHE_DEBUG` — see the same env as the
+#' parent.
+#'
+#' Robust to NULL / empty inputs (no-op).
+#'
+#' @noRd
+.apply_worker_envvars <- function(envvars) {
+  if (is.null(envvars) || length(envvars) == 0L) return(invisible(NULL))
+  do.call(Sys.setenv, as.list(envvars))
+  invisible(NULL)
 }
