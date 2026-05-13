@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.24.12] - 2026-05-12
+
+### Fixed
+
+- Toast d'erreur **"Échec du téléchargement : argument inutilisé
+  (cache_dir = cache_dir)"** au clic FAST après installation de
+  v0.24.11. La v0.24.11 a livré le code applicatif qui appelle
+  `nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)`
+  mais le pin nemeton dans `DESCRIPTION` était resté à
+  `v0.21.2` qui ignore cet argument. Correctif : `Imports:
+  nemeton (>= 0.21.3)` + `Remotes: pobsteta/nemeton@v0.21.3`.
+
 ## [0.24.11] - 2026-05-12
 
 ### Added

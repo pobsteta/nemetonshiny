@@ -1,4 +1,4 @@
-# nemetonshiny 0.24.11.9001 (2026-05-12)
+# nemetonshiny 0.24.12 (2026-05-12)
 
 ### Suivi sanitaire — bump effectif du pin nemeton à v0.21.3
 
