@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,27 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.24.10/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.11" id="nemetonshiny-02411-2026-05-12">nemetonshiny 0.24.11 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02411-2026-05-12"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--cache-local-sentinel--events-band-level-0-24-11">Suivi sanitaire — cache local Sentinel-2 + events band-level<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--cache-local-sentinel--events-band-level-0-24-11"></a></h4>
+<ul><li>
+<p><code>feat(monitoring)</code> — branche le <code>cache_dir</code> introduit par <code>nemeton@v0.21.3+</code> sur <code>ingest_sentinel2_timeseries()</code>. Le worker pose désormais les bandes Sentinel-2 sous <code>&lt;project&gt;/data/s2_cache/</code>. Les bandes déjà téléchargées sont réutilisées au prochain run pour la même scène — gain massif sur un re-run après un échec STAC ou une extension de fenêtre temporelle.</p>
+<p>Helper <code>.resolve_s2_cache_dir(project)</code> côté <code>mod_monitoring.R</code> : retourne <code>NULL</code> quand aucun projet n’est ouvert (nemeton retombe sur son chemin legacy in-memory), sinon crée le sous-dossier au besoin et passe le chemin normalisé au worker.</p>
+</li>
+<li>
+<p><code>feat(monitoring)</code> — abonnement aux nouveaux events progress <code>s2:band_cached</code> / <code>s2:band_fetched</code>. Chaque bande génère une ligne <code>cli_alert_info</code> dédiée dans la console R :</p>
+<pre><code>ℹ Tuile Sentinel-2 S2A_MSIL2A_20260508T103651_R008_T31TFN_20260508T191011 (5/26) — 2026-05-08, 2.9% nuages, source=pc
+  ⤷ Bande B04 (cache) — scène S2A_MSIL2A_20260508…
+  ⤷ Bande B08 (téléchargement) — scène S2A_MSIL2A_20260508…</code></pre>
+<p>Volontairement <strong>pas</strong> d’update du toast UI sur ces events : 2-4 bandes par scène à sub-second feraient flickerer le toast et perdraient le contexte scène. Le toast reste sur l’event <code>s2:scene</code>.</p>
+<p>Helper <code>.log_band_event(ev, current_phase)</code> dispatché en tête de l’observer après détection de <code>current %in% c("s2:band_cached", "s2:band_fetched")</code>.</p>
+</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.24.10" id="nemetonshiny-02410-2026-05-12">nemetonshiny 0.24.10 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02410-2026-05-12"></a></h2>
 <div class="section level4">

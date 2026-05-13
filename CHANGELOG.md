@@ -12,6 +12,22 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.24.11\] - 2026-05-12
+
+### Added
+
+- Cache local des bandes Sentinel-2 : branche le `cache_dir` introduit
+  par `nemeton@v0.21.3+` sur `ingest_sentinel2_timeseries()`. Les bandes
+  téléchargées sont posées sous `<project>/data/s2_cache/` et
+  réutilisées au prochain run — gain massif sur un re-run après échec
+  STAC ou extension de fenêtre. Helper `.resolve_s2_cache_dir(project)`
+  (NULL si pas de projet → fallback in-memory legacy de nemeton).
+- Abonnement aux events progress `s2:band_cached` / `s2:band_fetched` :
+  chaque bande génère une ligne `cli_alert_info` dédiée dans la console
+  R (`⤷ Bande B04 (cache) — scène S2A_MSIL2A_...`). Pas d’update du
+  toast UI (2-4 bandes par scène à sub-second feraient flickerer l’UI).
+  Helper `.log_band_event()`.
+
 ## \[0.24.10\] - 2026-05-12
 
 ### Added
