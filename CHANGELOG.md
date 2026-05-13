@@ -12,6 +12,35 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.26.6\] - 2026-05-13
+
+### Fixed
+
+- `fix(monitoring)`: worker `cli::cli_alert_*` output now actually
+  reaches the parent R console in real time. The v0.26.5
+  [`sink()`](https://rdrr.io/r/base/sink.html)- based approach silently
+  failed for cli messages because cli writes to
+  [`stderr()`](https://rdrr.io/r/base/showConnections.html) directly via
+  `cat(file = stderr())` in non-interactive mode, bypassing
+  `sink(type = "message")` entirely. Replaced by
+  `withCallingHandlers(message =, warning =)` wrapping
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html)
+  — every condition (cli + plain
+  [`message()`](https://rdrr.io/r/base/message.html) +
+  [`warning()`](https://rdrr.io/r/base/warning.html)) is rewritten to
+  the log file with
+  [`writeLines()`](https://rdrr.io/r/base/writeLines.html) +
+  [`flush()`](https://rdrr.io/r/base/connections.html) and the original
+  stderr write is muffled via `invokeRestart`. Includes
+  `[s2_cache HH:MM:SS] …` traces when `NEMETON_S2_CACHE_DEBUG=TRUE`.
+- `fix(db)`:
+  [`db_init_schema()`](https://pobsteta.github.io/nemetonshiny/reference/db_init_schema.md)
+  now suppresses the noisy `NOTICE: ... already exists, skipping` rafale
+  that RPostgres surfaces via
+  [`message()`](https://rdrr.io/r/base/message.html) on each
+  `CREATE ... IF NOT EXISTS`. The schema init loop is wrapped in
+  `suppressMessages({...})`. Warnings and errors continue to propagate.
+
 ## \[0.26.5\] - 2026-05-13
 
 ### Added

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,18 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.26.5/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.26.6/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.26.6" id="nemetonshiny-0266-2026-05-13">nemetonshiny 0.26.6 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0266-2026-05-13"></a></h2>
+<div class="section level4">
+<h4 id="console-worker--capture-réelle-des-messages-cli--suppression-des-notices-pg-0-26-6">Console worker — capture réelle des messages cli + suppression des NOTICEs PG<a class="anchor" aria-label="anchor" href="#console-worker--capture-r%C3%A9elle-des-messages-cli--suppression-des-notices-pg-0-26-6"></a></h4>
+<p>Deux frictions observées au démarrage et pendant l’ingestion S2 :</p>
+<ul><li><p><code>fix(monitoring)</code> — la console R ne voyait toujours aucun message émis par le worker <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> (notamment les traces <code>[s2_cache HH:MM:SS] …</code> quand <code>NEMETON_S2_CACHE_DEBUG=TRUE</code> et les <code>S2 band cache: enabled at …</code> que nemeton émet au démarrage), alors que v0.26.5 prétendait les rendre live. Cause : en mode non-interactif, <code>cli::cli_alert_*</code> écrit directement sur <code><a href="https://rdrr.io/r/base/showConnections.html" class="external-link">stderr()</a></code> via <code>cat(file = stderr())</code>, ce qui <strong>contourne</strong> <code>sink(type = "message")</code>. L’approche <code><a href="https://rdrr.io/r/base/sink.html" class="external-link">sink()</a></code> était dead-on-arrival pour la sortie cli. Bascule sur <code>withCallingHandlers(message =, warning =)</code> autour de <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code> : les conditions <code>message</code> (cli inclus, via <code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::inform</a></code>) et <code>warning</code> sont catchées et réécrites dans le log file avec <code><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines()</a></code> + <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">flush()</a></code> ligne par ligne ; chaque <code>invokeRestart</code> (<code>muffleMessage</code> / <code>muffleWarning</code>) supprime l’écriture stderr d’origine que <code>future</code> jetait de toute façon. Le <code>reactivePoll</code> côté parent voit maintenant chaque ligne au moment où elle est émise.</p></li>
+<li><p><code>fix(db)</code> — <code>R/service_db.R::db_init_schema()</code> rejouait les <code>CREATE TABLE/INDEX/EXTENSION … IF NOT EXISTS</code> du schéma à chaque démarrage, ce qui faisait remonter ~17 <code>NOTICE: … already exists, skipping</code> via le canal <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> de RPostgres. Pollution visuelle à chaque <code><a href="../reference/run_app.html">run_app()</a></code>. Wrappé le loop de statements dans <code>suppressMessages({...})</code> — les <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code> et <code><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop()</a></code> restent visibles, donc une vraie erreur de migration n’est pas masquée.</p></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.26.5" id="nemetonshiny-0265-2026-05-13">nemetonshiny 0.26.5 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0265-2026-05-13"></a></h2>
 <div class="section level4">

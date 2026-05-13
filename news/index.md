@@ -1,5 +1,47 @@
 # Changelog
 
+## nemetonshiny 0.26.6 (2026-05-13)
+
+#### Console worker — capture réelle des messages cli + suppression des NOTICEs PG
+
+Deux frictions observées au démarrage et pendant l’ingestion S2 :
+
+- `fix(monitoring)` — la console R ne voyait toujours aucun message émis
+  par le worker
+  [`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+  (notamment les traces `[s2_cache HH:MM:SS] …` quand
+  `NEMETON_S2_CACHE_DEBUG=TRUE` et les `S2 band cache: enabled at …` que
+  nemeton émet au démarrage), alors que v0.26.5 prétendait les rendre
+  live. Cause : en mode non-interactif, `cli::cli_alert_*` écrit
+  directement sur
+  [`stderr()`](https://rdrr.io/r/base/showConnections.html) via
+  `cat(file = stderr())`, ce qui **contourne** `sink(type = "message")`.
+  L’approche [`sink()`](https://rdrr.io/r/base/sink.html) était
+  dead-on-arrival pour la sortie cli. Bascule sur
+  `withCallingHandlers(message =, warning =)` autour de
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html)
+  : les conditions `message` (cli inclus, via
+  [`rlang::inform`](https://rlang.r-lib.org/reference/abort.html)) et
+  `warning` sont catchées et réécrites dans le log file avec
+  [`writeLines()`](https://rdrr.io/r/base/writeLines.html) +
+  [`flush()`](https://rdrr.io/r/base/connections.html) ligne par ligne ;
+  chaque `invokeRestart` (`muffleMessage` / `muffleWarning`) supprime
+  l’écriture stderr d’origine que `future` jetait de toute façon. Le
+  `reactivePoll` côté parent voit maintenant chaque ligne au moment où
+  elle est émise.
+
+- `fix(db)` — `R/service_db.R::db_init_schema()` rejouait les
+  `CREATE TABLE/INDEX/EXTENSION … IF NOT EXISTS` du schéma à chaque
+  démarrage, ce qui faisait remonter ~17
+  `NOTICE: … already exists, skipping` via le canal
+  [`message()`](https://rdrr.io/r/base/message.html) de RPostgres.
+  Pollution visuelle à chaque
+  [`run_app()`](https://pobsteta.github.io/nemetonshiny/reference/run_app.md).
+  Wrappé le loop de statements dans `suppressMessages({...})` — les
+  [`warning()`](https://rdrr.io/r/base/warning.html) et
+  [`stop()`](https://rdrr.io/r/base/stop.html) restent visibles, donc
+  une vraie erreur de migration n’est pas masquée.
+
 ## nemetonshiny 0.26.5 (2026-05-13)
 
 #### Suivi sanitaire — réamorçage forcé du cache COG + console worker en live
