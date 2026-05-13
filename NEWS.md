@@ -1,3 +1,27 @@
+# nemetonshiny 0.24.12.9001 (2026-05-12)
+
+### Suivi sanitaire — dédup des toasts success / warning / error
+
+* `fix(monitoring)` — les toasts finaux de l'ingestion et de FORDEAD
+  s'empilaient à chaque re-clic au lieu de se remplacer (visible sur
+  un 504 de Planetary Computer répété : 2-3 toasts identiques
+  "Aucune scène Sentinel-2 trouvée...").
+
+  Cause : les `shiny::showNotification()` finaux étaient appelés sans
+  argument `id`. Sans id, Shiny crée à chaque fois une nouvelle
+  notification.
+
+  Correctif : `id = session$ns(...)` ajouté sur tous les toasts
+  terminaux du module monitoring :
+  - `ingest_zero` (0 scènes trouvées)
+  - `ingest_success` (ingestion réussie)
+  - `ingest_warns` (warnings non bloquants)
+  - `ingest_error` (worker exception)
+  - `fordead_success`, `fordead_error` (idem côté FORDEAD)
+
+  Le toast persistant `ingest_progress` / `fordead_progress` avait
+  déjà son id ; la dédup ne concernait que les terminaux.
+
 # nemetonshiny 0.24.12 (2026-05-12)
 
 ### Suivi sanitaire — bump effectif du pin nemeton à v0.21.3

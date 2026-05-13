@@ -1155,7 +1155,8 @@ mod_monitoring_server <- function(id, app_state) {
           shiny::showNotification(
             sprintf("%s : %s", i18n$t("monitoring_ingest_error"),
                     e$message),
-            type = "error", duration = 8
+            id       = session$ns("ingest_error"),
+            type     = "error", duration = 8
           )
           NULL
         }
@@ -1171,7 +1172,9 @@ mod_monitoring_server <- function(id, app_state) {
           # 0 scènes peut signifier soit "vraiment rien dans la période"
           # soit "STAC en panne" (HTTP 504, timeout réseau...). On
           # surfaca les warnings capturés pour que l'utilisateur sache
-          # si c'est une vraie absence ou un échec backend.
+          # si c'est une vraie absence ou un échec backend. `id`
+          # explicite pour qu'un re-clic remplace le toast au lieu de
+          # l'empiler.
           detail <- if (length(warns) > 0L) {
             paste(warns, collapse = " ; ")
           } else {
@@ -1179,20 +1182,24 @@ mod_monitoring_server <- function(id, app_state) {
           }
           shiny::showNotification(
             sprintf(i18n$t("monitoring_ingest_zero_fmt"), detail),
-            type = "warning", duration = 12
+            id       = session$ns("ingest_zero"),
+            type     = "warning", duration = 12
           )
         } else {
           shiny::showNotification(
             sprintf(i18n$t("monitoring_ingest_success"), n_scenes, n_obs),
-            type = "message", duration = 6
+            id       = session$ns("ingest_success"),
+            type     = "message", duration = 6
           )
           # Si malgré le succès on a recolté des warnings non bloquants,
-          # on les montre en plus dans un toast secondaire.
+          # on les montre en plus dans un toast secondaire (id distinct
+          # pour cohabiter avec le toast success).
           if (length(warns) > 0L) {
             shiny::showNotification(
               sprintf(i18n$t("monitoring_ingest_warns_fmt"),
                       paste(warns, collapse = " ; ")),
-              type = "warning", duration = 10
+              id       = session$ns("ingest_warns"),
+              type     = "warning", duration = 10
             )
           }
         }
@@ -1394,7 +1401,8 @@ mod_monitoring_server <- function(id, app_state) {
           shiny::showNotification(
             sprintf("%s : %s", i18n$t("monitoring_health_error"),
                     e$message),
-            type = "error", duration = 10
+            id       = session$ns("fordead_error"),
+            type     = "error", duration = 10
           )
           NULL
         }
@@ -1407,14 +1415,16 @@ mod_monitoring_server <- function(id, app_state) {
           shiny::showNotification(
             sprintf("%s : %s", i18n$t("monitoring_health_error"),
                     result$message %||% ""),
-            type = "error", duration = 10
+            id       = session$ns("fordead_error"),
+            type     = "error", duration = 10
           )
         } else {
           shiny::showNotification(
             sprintf(i18n$t("monitoring_health_success"),
                     result$n_alerts_inserted %||% 0L,
                     result$duration_sec      %||% 0),
-            type = "message", duration = 8
+            id       = session$ns("fordead_success"),
+            type     = "message", duration = 8
           )
           alerts_refresh(alerts_refresh() + 1L)
         }
