@@ -139,6 +139,12 @@ mod_monitoring_ui <- function(id) {
                 ns("window_days"), i18n$t("monitoring_window_days"),
                 value = 30L, min = 7L, max = 90L, step = 1L
               ),
+              shiny::checkboxInput(
+                ns("reprime_cache"),
+                i18n$t("monitoring_reprime_cache_label"),
+                value = FALSE
+              ),
+              shiny::helpText(i18n$t("monitoring_reprime_cache_help")),
               shiny::actionButton(
                 ns("run"), i18n$t("monitoring_run_btn"),
                 icon  = bsicons::bs_icon("play-fill"),
@@ -1183,6 +1189,11 @@ mod_monitoring_server <- function(id, app_state) {
       # only, the legacy behavior).
       cache_dir <- .resolve_s2_cache_dir(app_state$current_project)
 
+      # `reprime_cache` checkbox forces `skip_cached = FALSE` on the
+      # nemeton side, which re-runs the per-plot extraction and
+      # therefore re-fetches every band, populating the COG cache
+      # under <project>/cache/layers/sentinel2/. INSERTs are
+      # `ON CONFLICT DO NOTHING` core-side, so the DB stays clean.
       ingest_task$invoke(
         zone_id       = as.integer(input$zone_id),
         start         = as.Date(dr[1]),
@@ -1195,7 +1206,8 @@ mod_monitoring_server <- function(id, app_state) {
         # PG env var is set — that's the v0.24.0 single-user path.
         db_url        = .resolve_monitoring_db_url(app_state$current_project),
         progress_path = ppath,
-        cache_dir     = cache_dir
+        cache_dir     = cache_dir,
+        skip_cached   = !isTRUE(input$reprime_cache)
       )
     })
 

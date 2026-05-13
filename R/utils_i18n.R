@@ -1781,6 +1781,14 @@ TRANSLATIONS <- list(
     fr = "Cache COG actif : %s",
     en = "COG cache active: %s"
   ),
+  monitoring_reprime_cache_label = list(
+    fr = "R\u00e9amorcer le cache COG (skip_cached = FALSE)",
+    en = "Re-prime COG cache (skip_cached = FALSE)"
+  ),
+  monitoring_reprime_cache_help = list(
+    fr = "Coche cette case lors du premier run d'une zone d\u00e9j\u00e0 pr\u00e9sente en DB : sans \u00e7a, nemeton court-circuite l\u2019extraction et le cache disque reste vide. Les INSERT sont ON CONFLICT DO NOTHING, la DB n\u2019est pas affect\u00e9e.",
+    en = "Tick this on the first run of a zone already in the DB: otherwise nemeton short-circuits the extraction and the disk cache stays empty. INSERTs are ON CONFLICT DO NOTHING, the DB is preserved."
+  ),
   monitoring_db_unavailable = list(
     fr = "Base de suivi non configur\u00e9e.",
     en = "Monitoring database not configured."
