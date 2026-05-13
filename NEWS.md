@@ -1,3 +1,30 @@
+# nemetonshiny 0.24.12.9002 (2026-05-12)
+
+### Suivi sanitaire — cache S2 aligné sur la convention `<project>/cache/layers/`
+
+* `fix(monitoring)` — la v0.24.11 posait le cache des bandes
+  Sentinel-2 sous `<project>/data/s2_cache/`, ce qui violait la
+  convention NMT déjà en place pour les autres rasters
+  (`<project>/cache/layers/lidar_mnh/`, `lidar_mnt/`, `lidar_nuage/`,
+  `opencanopy/`, `bdforet.gpkg`, etc. — cf. `mod_sampling.R::cache_raster()`).
+
+  Correctif : `.resolve_s2_cache_dir(project)` renvoie désormais
+  `<project>/cache/layers/sentinel2/`. Layout attendu :
+
+  ```
+  <project>/cache/layers/sentinel2/
+    S2A_MSIL2A_20240515.../
+      B04.tif
+      B08.tif
+      B12.tif
+  ```
+
+  **Migration manuelle** des anciens projets : si tu vois un dossier
+  `<project>/data/s2_cache/` héritant de la v0.24.11, déplace-le à la
+  main vers `<project>/cache/layers/sentinel2/` pour récupérer le
+  cache existant. Sinon il sera juste ignoré et nemeton ré-téléchargera
+  les bandes au prochain run.
+
 # nemetonshiny 0.24.12.9001 (2026-05-12)
 
 ### Suivi sanitaire — dédup des toasts success / warning / error

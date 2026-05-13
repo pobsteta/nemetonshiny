@@ -1463,12 +1463,22 @@ mod_monitoring_server <- function(id, app_state) {
 
 # Resolve the Sentinel-2 band cache directory for the current project.
 # Returns NULL when no project is loaded (no path = no cache, nemeton
-# falls back to its in-memory legacy path). Worker also re-creates the
-# directory if missing, but we do it here too so the path lookup is
-# consistent on subsequent calls.
+# falls back to its in-memory legacy path).
+#
+# Layout (NMT cache convention, aligned with lidar_mnh / lidar_mnt /
+# opencanopy/ already used by mod_sampling):
+#
+#   <project>/cache/layers/sentinel2/
+#     S2A_MSIL2A_20240515.../
+#       B04.tif
+#       B08.tif
+#       B12.tif
+#
+# Worker also re-creates the directory if missing, but we do it here
+# too so the path lookup is consistent on subsequent calls.
 .resolve_s2_cache_dir <- function(project) {
   if (is.null(project) || is.null(project$path)) return(NULL)
-  cache_dir <- file.path(project$path, "data", "s2_cache")
+  cache_dir <- file.path(project$path, "cache", "layers", "sentinel2")
   if (!dir.exists(cache_dir)) {
     tryCatch(
       dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE),
