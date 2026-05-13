@@ -10,6 +10,27 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.24.14] - 2026-05-13
+
+### Changed
+
+- `chore(deps)`: re-sync nemeton pin to `>= 0.21.5` (was `>= 0.21.3`)
+  to match the version installed locally. No functional impact —
+  removes `pak::pkg_install` resolution warnings on fresh machines.
+
+## [0.24.13] - 2026-05-13
+
+### Fixed
+
+- `fix(monitoring)`: terminal toasts (`ingest_zero`, `ingest_success`,
+  `ingest_warns`, `ingest_error`, `fordead_success`, `fordead_error`)
+  now use explicit `id = session$ns(...)` so repeated clicks replace
+  the previous toast instead of stacking duplicates.
+- `fix(monitoring)`: Sentinel-2 band cache moved from
+  `<project>/data/s2_cache/` to `<project>/cache/layers/sentinel2/`
+  to comply with the NMT cache convention shared with
+  `lidar_mnh/`, `lidar_mnt/`, `lidar_nuage/`, `opencanopy/`, etc.
+
 ## [0.24.12] - 2026-05-12
 
 ### Fixed

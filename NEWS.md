@@ -1,3 +1,20 @@
+# nemetonshiny 0.24.14 (2026-05-13)
+
+### Dépendance nemeton — pin re-synchronisé sur v0.21.5
+
+* `chore(deps)` — pin du cœur `nemeton` aligné sur la dernière version
+  stable installée en local (`>= 0.21.5`). Aucun changement
+  fonctionnel côté app : `nemeton` v0.21.4 / v0.21.5 sont des bumps
+  patch côté cœur (FORDEAD hardening + clarifications de
+  signatures internes), mais `DESCRIPTION` restait à `>= 0.21.3`,
+  ce qui provoquait des warnings `pak::pkg_install("nemetonshiny")`
+  sur les machines neuves (résolution OK mais désynchro pin / version
+  effectivement installée).
+
+  - `Imports: nemeton (>= 0.21.5)`
+  - `Remotes: pobsteta/nemeton@v0.21.5`
+  - `CITATION.cff` bumpé à `0.24.14`
+
 # nemetonshiny 0.24.13 (2026-05-13)
 
 Release stable consolidant deux correctifs hardening sur le suivi
