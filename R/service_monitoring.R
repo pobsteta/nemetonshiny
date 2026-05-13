@@ -35,7 +35,8 @@ run_ingestion_async <- function() {
 
   shiny::ExtendedTask$new(function(zone_id, start, end, bands,
                                    max_cloud = 20, db_url = "",
-                                   progress_path = NULL) {
+                                   progress_path = NULL,
+                                   cache_dir = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -63,6 +64,19 @@ run_ingestion_async <- function() {
 
       progress_cb <- .build_progress_writer(progress_path)
 
+      # If a cache_dir is provided, ensure the directory exists before
+      # the worker hands it to nemeton. The worker can't reach `dir.create`
+      # if the path's parent doesn't exist yet — happens on a brand-new
+      # project that hasn't created its `data/` folder yet.
+      if (!is.null(cache_dir) && nzchar(cache_dir)) {
+        if (!dir.exists(cache_dir)) {
+          tryCatch(
+            dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE),
+            error = function(e) invisible(NULL)
+          )
+        }
+      }
+
       # Capture STAC / HTTP warnings emitted by nemeton (e.g. when
       # Planetary Computer returns 504 and nemeton falls back to "0
       # scenes found" silently). We propagate them back to the main
@@ -77,6 +91,7 @@ run_ingestion_async <- function() {
           end               = end,
           bands             = bands,
           max_cloud         = max_cloud,
+          cache_dir         = cache_dir,
           progress_callback = progress_cb
         ),
         warning = function(w) {
