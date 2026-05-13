@@ -36,7 +36,8 @@ run_ingestion_async <- function() {
   shiny::ExtendedTask$new(function(zone_id, start, end, bands,
                                    max_cloud = 20, db_url = "",
                                    progress_path = NULL,
-                                   cache_dir = NULL) {
+                                   cache_dir = NULL,
+                                   skip_cached = TRUE) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -91,6 +92,7 @@ run_ingestion_async <- function() {
           end               = end,
           bands             = bands,
           max_cloud         = max_cloud,
+          skip_cached       = skip_cached,
           cache_dir         = cache_dir,
           progress_callback = progress_cb
         ),
