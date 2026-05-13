@@ -1,3 +1,43 @@
+# nemetonshiny 0.26.4 (2026-05-13)
+
+### Suivi sanitaire — instrumentation worker (diagnostic des hangs)
+
+Quand le worker `future::multisession` se bloque ou plante, la
+seule chose visible côté UI était `"MultisessionFuture was
+interrupted"`, sans aucune indication d'où ça a coincé. Cette
+release ajoute 2 heartbeats et 1 wrap d'erreur :
+
+* `feat(monitoring)` — heartbeats émis via `progress_callback`
+  AVANT l'appel `nemeton::ingest_sentinel2_timeseries()` :
+  - `s2:worker_started` — le worker a atteint le début de son
+    body (post `load_all` + `db_connect` + `progress_writer`).
+    Si ce heartbeat n'apparaît pas → le futur ne spawn pas du
+    tout (plan future cassé, env vars manquantes).
+  - `s2:nemeton_call_starting` — juste avant d'entrer dans
+    nemeton. Si on voit celui-là mais pas de scene events
+    derrière → nemeton hang au démarrage (STAC, auth Microsoft,
+    etc.).
+
+* `feat(monitoring)` — l'appel `nemeton::ingest_sentinel2_timeseries`
+  est wrappé dans un `tryCatch` qui émet
+  `current = "s2:fatal_error"` (avec `error_message` +
+  `error_class`) avant de re-throw. Conséquence : la cause exacte
+  de l'erreur arrive dans la console + un modal côté UI au lieu
+  d'un futur "interrupted" silencieux.
+
+* `feat(monitoring)` — observer routant :
+  - `s2:worker_started` / `s2:nemeton_call_starting` →
+    persistance toast + log `cli::cli_alert_info`
+  - `s2:fatal_error` → `cli::cli_alert_danger` + `showModal()`
+    avec le message complet
+
+* `feat(i18n)` — clés `monitoring_ingest_worker_event_fmt` +
+  `monitoring_ingest_fatal_title` (FR + EN, accents en `\uXXXX`).
+
+* Helper `.ws_emit(progress_cb, event)` — wrapper best-effort
+  qui swallow les erreurs d'écriture (un échec de heartbeat ne
+  doit JAMAIS tuer l'ingestion).
+
 # nemetonshiny 0.26.3 (2026-05-13)
 
 ### Suivi sanitaire — propagation des `NEMETON_*` env vars vers le worker async

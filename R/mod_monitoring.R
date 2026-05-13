@@ -1045,6 +1045,41 @@ mod_monitoring_server <- function(id, app_state) {
       status <- ev$status %||% "running"
       if (identical(status, "done")) return()
       current_phase <- as.character(ev$current %||% "")
+      # Worker instrumentation events (v0.26.4+) — mirror them to the
+      # console so developers see them in the terminal even when the
+      # Shiny toast pipeline is debounced. Keep the persistent toast
+      # updated so the user knows the worker reached each step.
+      if (current_phase %in% c("s2:worker_started",
+                               "s2:nemeton_call_starting")) {
+        cli::cli_alert_info("Worker event: {current_phase}")
+        shiny::showNotification(
+          .monitoring_spinning_msg(
+            sprintf(i18n$t("monitoring_ingest_worker_event_fmt"),
+                    current_phase)
+          ),
+          id          = session$ns("ingest_progress"),
+          type        = "message",
+          duration    = NULL,
+          closeButton = FALSE
+        )
+        return()
+      }
+      # Fatal-error event surfaced by the worker BEFORE the future
+      # rejects — gives us a real R error message instead of
+      # "MultisessionFuture was interrupted".
+      if (identical(current_phase, "s2:fatal_error")) {
+        msg <- as.character(ev$error_message %||% "(unknown)")
+        cls <- as.character(ev$error_class %||% "")
+        cli::cli_alert_danger("Worker fatal error ({cls}): {msg}")
+        shiny::showModal(shiny::modalDialog(
+          title = i18n$t("monitoring_ingest_fatal_title"),
+          shiny::tags$pre(msg),
+          if (nzchar(cls)) shiny::tags$p(shiny::tags$small(cls)),
+          easyClose = TRUE,
+          footer    = shiny::modalButton(i18n$t("close"))
+        ))
+        return()
+      }
       # Band-level success events fire sub-second per scene (2-4 bands
       # per scene) — letting them rewrite the toast would make it
       # flicker and lose the scene-level context. We log them to the

@@ -79,6 +79,14 @@ run_ingestion_async <- function() {
 
       progress_cb <- .build_progress_writer(progress_path)
 
+      # Heartbeat 1/3: worker reached the start of its body. Useful
+      # when the worker is silent — if we don't see this in the
+      # console after invoke, the worker never spawned (future plan
+      # broken).
+      .ws_emit(progress_cb, list(current = "s2:worker_started",
+                                 cache_dir = cache_dir,
+                                 skip_cached = skip_cached))
+
       # If a cache_dir is provided, ensure the directory exists before
       # the worker hands it to nemeton. The worker can't reach `dir.create`
       # if the path's parent doesn't exist yet — happens on a brand-new
@@ -92,27 +100,50 @@ run_ingestion_async <- function() {
         }
       }
 
+      # Heartbeat 2/3: about to enter the actual nemeton call. If we
+      # see this but never see scene events, nemeton is hanging at
+      # startup (probably the STAC query).
+      .ws_emit(progress_cb, list(current = "s2:nemeton_call_starting",
+                                 zone_id = zone_id,
+                                 n_bands = length(bands)))
+
       # Capture STAC / HTTP warnings emitted by nemeton (e.g. when
       # Planetary Computer returns 504 and nemeton falls back to "0
       # scenes found" silently). We propagate them back to the main
       # process so the result observer can surface the real cause
       # instead of a misleading "Téléchargement terminé : 0 scènes".
+      #
+      # Also wrap in tryCatch so any R error inside the worker
+      # surfaces explicitly via the progress channel BEFORE the
+      # future rejects — the standard future rejection message
+      # ("MultisessionFuture was interrupted") swallows the actual
+      # R error and leaves the user with no diagnostic.
       warns <- character()
-      summary <- withCallingHandlers(
-        nemeton::ingest_sentinel2_timeseries(
-          con               = con,
-          zone_id           = zone_id,
-          start             = start,
-          end               = end,
-          bands             = bands,
-          max_cloud         = max_cloud,
-          skip_cached       = skip_cached,
-          cache_dir         = cache_dir,
-          progress_callback = progress_cb
+      summary <- tryCatch(
+        withCallingHandlers(
+          nemeton::ingest_sentinel2_timeseries(
+            con               = con,
+            zone_id           = zone_id,
+            start             = start,
+            end               = end,
+            bands             = bands,
+            max_cloud         = max_cloud,
+            skip_cached       = skip_cached,
+            cache_dir         = cache_dir,
+            progress_callback = progress_cb
+          ),
+          warning = function(w) {
+            warns <<- c(warns, conditionMessage(w))
+            invokeRestart("muffleWarning")
+          }
         ),
-        warning = function(w) {
-          warns <<- c(warns, conditionMessage(w))
-          invokeRestart("muffleWarning")
+        error = function(e) {
+          .ws_emit(progress_cb, list(
+            current       = "s2:fatal_error",
+            error_message = conditionMessage(e),
+            error_class   = paste(class(e), collapse = "/")
+          ))
+          stop(e)
         }
       )
 
@@ -275,5 +306,19 @@ run_fordead_async <- function() {
 .apply_worker_envvars <- function(envvars) {
   if (is.null(envvars) || length(envvars) == 0L) return(invisible(NULL))
   do.call(Sys.setenv, as.list(envvars))
+  invisible(NULL)
+}
+
+
+#' Worker-side progress emit (best-effort, swallows errors)
+#'
+#' Wrapper around `progress_cb(event)` that is safe to call when
+#' `progress_cb` is NULL (no path provided). Used for heartbeats and
+#' fatal-error surfacing inside the future worker.
+#'
+#' @noRd
+.ws_emit <- function(progress_cb, event) {
+  if (is.null(progress_cb)) return(invisible(NULL))
+  tryCatch(progress_cb(event), error = function(e) invisible(NULL))
   invisible(NULL)
 }
