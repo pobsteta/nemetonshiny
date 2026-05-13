@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-05-13
+
+### Fixed
+
+- `fix(deps)`: bump nemeton pin to `>= 0.21.8`. v0.21.8 fixes a
+  per-scene S4→double coercion bug introduced in v0.21.4 (cache_dir
+  wiring) that made every Sentinel-2 scene skipped with
+  *"cannot coerce type 'S4' to vector of type 'double'"* on
+  `skip_cached = FALSE` runs. UI symptom in v0.26.0: ticking the
+  "Re-prime COG cache" checkbox triggered the run but neither the
+  DB nor the disk cache filled up because every scene errored out.
+
 ## [0.26.0] - 2026-05-13
 
 ### Added
