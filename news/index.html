@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.26.3" id="nemetonshiny-0263-2026-05-13">nemetonshiny 0.26.3 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0263-2026-05-13"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--propagation-des-nemeton_-env-vars-vers-le-worker-async-0-26-3">Suivi sanitaire — propagation des <code>NEMETON_*</code> env vars vers le worker async<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--propagation-des-nemeton_-env-vars-vers-le-worker-async-0-26-3"></a></h4>
+<ul><li>
+<p><code>fix(monitoring)</code> — <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> workers sur Windows sont des processus <code>Rscript.exe</code> séparés qui n’héritent pas systématiquement des variables d’environnement settées dans la session principale après leur spawn. Conséquence pratique : <code>Sys.setenv(NEMETON_S2_CACHE_DEBUG = "TRUE")</code> en console R ne se voyait pas dans le worker → les lignes <code>[s2_cache HH:MM:SS] ...</code> émises par <code>nemeton</code> restaient muettes même quand le cache fonctionnait.</p>
+<p>Correctif : <code>run_ingestion_async()</code> et <code>run_fordead_async()</code> snapshottent à l’invoke les <code>NEMETON_*</code> env vars settées dans le parent (<code>.capture_worker_envvars()</code>), <code>future</code> les pickle comme globals automatiquement, et le worker les replay via <code>.apply_worker_envvars()</code> en tout début de <code>future_promise()</code>.</p>
+<p>Couvre : <code>NEMETON_S2_CACHE_DEBUG</code>, <code>NEMETON_DB_URL</code>, <code>NEMETON_DB_LOCAL</code>, <code>NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD</code>.</p>
+</li>
+<li><p><code>test</code> — <code>test-service_monitoring_wiring.R</code> couvre les deux helpers (<code>.capture_worker_envvars</code> skip les valeurs vides ; <code>.apply_worker_envvars</code> no-op sur NULL/empty + setenv correct).</p></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.26.2" id="nemetonshiny-0262-2026-05-13">nemetonshiny 0.26.2 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0262-2026-05-13"></a></h2>
 <div class="section level4">
