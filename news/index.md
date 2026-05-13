@@ -1,5 +1,41 @@
 # Changelog
 
+## nemetonshiny 0.26.5 (2026-05-13)
+
+#### Suivi sanitaire — réamorçage forcé du cache COG + console worker en live
+
+Deux frictions remontées lors de l’usage réel de l’ingestion Sentinel-2
+sont levées :
+
+- `feat(monitoring)` — quand la case **« Réamorcer le cache COG »** est
+  cochée, le dossier `<project>/cache/layers/sentinel2/` est désormais
+  purgé via `unlink(recursive = TRUE, force = TRUE)` juste avant
+  `ingest_task$invoke()`. Sans cette purge, même avec
+  `skip_cached = FALSE`, `nemeton:::.get_s2_band_raster()` servait les
+  `B0X.tif` déjà présents sur disque (branche CACHE-HIT), ce qui
+  défaisait tout l’intérêt du toggle pour qui voulait vérifier le
+  re-fetch STAC. Le toggle force désormais un vrai re-téléchargement de
+  toutes les bandes (`writeRaster()` ré-exécuté scène par scène). Une
+  trace
+  [`cli::cli_alert_info`](https://cli.r-lib.org/reference/cli_alert.html)
+  confirme le nombre d’entrées purgées et le chemin du cache.
+
+- `feat(monitoring)` — la console R reçoit maintenant en temps réel
+  toutes les lignes émises par le worker
+  [`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+  (cli::cli_alert\_\*, message(), cat(), et les traces verboses
+  `[s2_cache …]` quand `NEMETON_S2_CACHE_DEBUG=TRUE`). Implémentation :
+  le worker [`sink()`](https://rdrr.io/r/base/sink.html) ses canaux
+  `output` ET `message` sur un fichier
+  `<project>/data/ingest_console.log` (nouvelle param `log_path` de
+  `run_ingestion_async`), et le parent tail ce fichier toutes les 500 ms
+  via `reactivePoll` en lisant les nouveaux octets depuis un offset
+  persistant, puis [`cat()`](https://rdrr.io/r/base/cat.html)e le delta
+  sur [`stderr()`](https://rdrr.io/r/base/showConnections.html). Bypass
+  complet de la capture stdout par `future` (qui ne libère le buffer
+  qu’à la fin du futur). Cleanup symétrique au `progress.json` dans les
+  handlers success/error.
+
 ## nemetonshiny 0.26.4 (2026-05-13)
 
 #### Suivi sanitaire — instrumentation worker (diagnostic des hangs)

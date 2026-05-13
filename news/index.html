@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.26.5" id="nemetonshiny-0265-2026-05-13">nemetonshiny 0.26.5 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0265-2026-05-13"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--réamorçage-forcé-du-cache-cog--console-worker-en-live-0-26-5">Suivi sanitaire — réamorçage forcé du cache COG + console worker en live<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--r%C3%A9amor%C3%A7age-forc%C3%A9-du-cache-cog--console-worker-en-live-0-26-5"></a></h4>
+<p>Deux frictions remontées lors de l’usage réel de l’ingestion Sentinel-2 sont levées :</p>
+<ul><li><p><code>feat(monitoring)</code> — quand la case <strong>« Réamorcer le cache COG »</strong> est cochée, le dossier <code>&lt;project&gt;/cache/layers/sentinel2/</code> est désormais purgé via <code>unlink(recursive = TRUE, force = TRUE)</code> juste avant <code>ingest_task$invoke()</code>. Sans cette purge, même avec <code>skip_cached = FALSE</code>, <code>nemeton:::.get_s2_band_raster()</code> servait les <code>B0X.tif</code> déjà présents sur disque (branche CACHE-HIT), ce qui défaisait tout l’intérêt du toggle pour qui voulait vérifier le re-fetch STAC. Le toggle force désormais un vrai re-téléchargement de toutes les bandes (<code>writeRaster()</code> ré-exécuté scène par scène). Une trace <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> confirme le nombre d’entrées purgées et le chemin du cache.</p></li>
+<li><p><code>feat(monitoring)</code> — la console R reçoit maintenant en temps réel toutes les lignes émises par le worker <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> (cli::cli_alert_*, message(), cat(), et les traces verboses <code>[s2_cache …]</code> quand <code>NEMETON_S2_CACHE_DEBUG=TRUE</code>). Implémentation : le worker <code><a href="https://rdrr.io/r/base/sink.html" class="external-link">sink()</a></code> ses canaux <code>output</code> ET <code>message</code> sur un fichier <code>&lt;project&gt;/data/ingest_console.log</code> (nouvelle param <code>log_path</code> de <code>run_ingestion_async</code>), et le parent tail ce fichier toutes les 500 ms via <code>reactivePoll</code> en lisant les nouveaux octets depuis un offset persistant, puis <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code>e le delta sur <code><a href="https://rdrr.io/r/base/showConnections.html" class="external-link">stderr()</a></code>. Bypass complet de la capture stdout par <code>future</code> (qui ne libère le buffer qu’à la fin du futur). Cleanup symétrique au <code>progress.json</code> dans les handlers success/error.</p></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.26.4" id="nemetonshiny-0264-2026-05-13">nemetonshiny 0.26.4 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0264-2026-05-13"></a></h2>
 <div class="section level4">

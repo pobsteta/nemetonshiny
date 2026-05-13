@@ -12,6 +12,41 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.26.5\] - 2026-05-13
+
+### Added
+
+- `feat(monitoring)`: when the **“Re-prime COG cache”** checkbox is
+  ticked, `<project>/cache/layers/sentinel2/` is now wiped via
+  `unlink(recursive = TRUE, force = TRUE)` right before
+  `ingest_task$invoke()`. Without this, even with `skip_cached = FALSE`,
+  nemeton’s `.get_s2_band_raster()` served the `B0X.tif` files already
+  present on disk (CACHE-HIT branch), silently defeating the toggle. The
+  on-disk cache and the DB cache are now both forced. A
+  [`cli::cli_alert_info`](https://cli.r-lib.org/reference/cli_alert.html)
+  reports how many entries were purged.
+- `feat(monitoring)`: worker stdout + message stream
+  [`sink()`](https://rdrr.io/r/base/sink.html)ed to
+  `<project>/data/ingest_console.log`. The parent process tails the file
+  every 500 ms via `reactivePoll`, reads newly-written bytes from a
+  persistent offset and [`cat()`](https://rdrr.io/r/base/cat.html)s them
+  to its own [`stderr()`](https://rdrr.io/r/base/showConnections.html).
+  Effect: every `cli::cli_*`,
+  [`message()`](https://rdrr.io/r/base/message.html),
+  [`cat()`](https://rdrr.io/r/base/cat.html) and `[s2_cache …]` trace
+  from
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html)
+  (including the verbose `NEMETON_S2_CACHE_DEBUG=TRUE` ones) lands in
+  the developer’s R console in real time, bypassing `future`’s built-in
+  stdout capture. Cleanup mirrors the existing `progress.json` channel
+  on success / error paths.
+
+### Changed
+
+- `run_ingestion_async()` (R/service_monitoring.R) gains an optional
+  `log_path` parameter on its `$invoke()` signature. NULL = no console
+  mirror (the legacy silent behaviour).
+
 ## \[0.26.4\] - 2026-05-13
 
 ### Added
