@@ -1765,6 +1765,22 @@ TRANSLATIONS <- list(
     fr = "Tuile Sentinel-2 %s (%d/%d)",
     en = "Sentinel-2 tile %s (%d/%d)"
   ),
+  monitoring_ingest_cache_lookup_fmt = list(
+    fr = "Cache DB : %d en cache, %d \u00e0 traiter",
+    en = "DB cache: %d cached, %d to process"
+  ),
+  monitoring_ingest_band_failed_fmt = list(
+    fr = "\u00c9chec bande %s : %s",
+    en = "Band %s failed: %s"
+  ),
+  monitoring_ingest_token_refreshed = list(
+    fr = "Token SAS Planetary Computer rafra\u00eechi",
+    en = "Planetary Computer SAS token refreshed"
+  ),
+  monitoring_cache_active_fmt = list(
+    fr = "Cache COG actif : %s",
+    en = "COG cache active: %s"
+  ),
   monitoring_db_unavailable = list(
     fr = "Base de suivi non configur\u00e9e.",
     en = "Monitoring database not configured."

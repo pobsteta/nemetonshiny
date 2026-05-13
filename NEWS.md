@@ -1,3 +1,66 @@
+# nemetonshiny 0.25.0 (2026-05-13)
+
+### Suivi sanitaire — routage complet des événements `progress_callback` Sentinel-2
+
+Cette release **complète le wiring** de
+`nemeton::ingest_sentinel2_timeseries(cache_dir = , progress_callback = )`
+côté UI. Le wiring de base (paramètres passés à la lambda
+`ExtendedTask`, fichier JSON poll-é, toast dédupé) était déjà en place
+depuis v0.24.11/v0.24.12 ; cette version ajoute le routage explicite
+sur trois events qui étaient capturés par le fallback générique :
+
+* `feat(monitoring)` — routage explicite des événements
+  `progress_callback` introduits par `nemeton@v0.21.4+` :
+  - `s2:cache_lookup` → toast persistant "Cache DB : N en cache,
+    M à traiter" (réutilise le même `id` que la barre de progression
+    pour éviter l'empilement)
+  - `s2:band_fetch_failed` → toast warning non-persistant (6 s) avec
+    `band` + `error_message`, sur un `id` distinct pour ne pas
+    masquer la progression scène
+  - `s2:pc_token_refreshed` → toast info éphémère (3 s) signalant la
+    rotation du token SAS Planetary Computer
+
+* `feat(monitoring)` — indicateur **"Cache COG actif"** sous le bouton
+  d'ingestion (mode quick) : affiche le chemin absolu du répertoire
+  `<project>/cache/layers/sentinel2/` où nemeton persiste les bandes
+  cropées en COG. Le tooltip natif duplique le chemin pour copie
+  rapide.
+
+* `chore(deps)` — pin `nemeton` bumpé à `>= 0.21.7` pour aligner sur
+  les versions qui exposent stablement la signature
+  `progress_callback` + `cache_dir`.
+
+### Priming du cache COG
+
+Note importante pour l'utilisateur : si la DB de monitoring est déjà
+peuplée par un run précédent, le défaut `skip_cached = TRUE` côté
+`nemeton::ingest_sentinel2_timeseries()` court-circuite l'extraction
+plot-par-plot → le cache disque sous
+`<project>/cache/layers/sentinel2/` **reste vide** même avec ce
+patch. C'est attendu. Pour amorcer le cache disque, il faut lancer
+au moins une fois avec `skip_cached = FALSE` (paramètre core, non
+encore exposé dans l'UI ; les INSERT sont `ON CONFLICT DO NOTHING`,
+la DB reste intacte).
+
+### i18n — nouvelles clés (FR + EN)
+
+* `monitoring_ingest_cache_lookup_fmt` — "Cache DB : %d en cache, %d
+  à traiter" / "DB cache: %d cached, %d to process"
+* `monitoring_ingest_band_failed_fmt` — "Échec bande %s : %s" /
+  "Band %s failed: %s"
+* `monitoring_ingest_token_refreshed` — "Token SAS Planetary Computer
+  rafraîchi" / "Planetary Computer SAS token refreshed"
+* `monitoring_cache_active_fmt` — "Cache COG actif : %s" / "COG
+  cache active: %s"
+
+### Tests
+
+* `tests/testthat/test-service_monitoring_wiring.R` — vérifie que
+  `run_ingestion_async()` transmet bien `cache_dir` et un
+  `progress_callback` non-NULL à
+  `nemeton::ingest_sentinel2_timeseries()` (mock via
+  `local_mocked_bindings`).
+
 # nemetonshiny 0.24.14 (2026-05-13)
 
 ### Dépendance nemeton — pin re-synchronisé sur v0.21.5
