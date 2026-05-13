@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.26.2] - 2026-05-13
+
+### Fixed
+
+- `fix(deps)`: bump nemeton pin to `>= 0.21.9`. v0.21.9 fixes a
+  `terra::writeRaster()` call in the S2 cache write path that
+  targeted a `.tif.tmp` path (atomic-write pattern) without an
+  explicit `filetype` argument — terra refused with *"cannot guess
+  file type from filename"*, so every band was fetched + cropped
+  successfully then lost at the write step. UI symptom in v0.26.1:
+  ingestion consumed 4-5 min per scene, reached N/N, but
+  `<project>/cache/layers/sentinel2/` stayed empty.
+
 ## [0.26.1] - 2026-05-13
 
 ### Fixed
