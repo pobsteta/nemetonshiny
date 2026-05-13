@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,7 +29,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.26.3/CHANGELOG.md" class="external-link"><code>CHANGELOG.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/CHANGELOG.md" class="external-link"><code>CHANGELOG.md</code></a></small>
     </div>
 
 <div id="changelog" class="section level1">
@@ -41,6 +41,24 @@
 <h2 id="unreleased"><a href="https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD" class="external-link">Unreleased</a><a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
 </div>
 <div class="section level2">
+<h2 id="id_0264---2026-05-13">[0.26.4] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_0264---2026-05-13"></a></h2>
+<div class="section level3">
+<h3 id="added">Added<a class="anchor" aria-label="anchor" href="#added"></a></h3>
+<ul><li>
+<code>feat(monitoring)</code>: worker instrumentation to diagnose async ingestion hangs. Two heartbeats emitted via <code>progress_callback</code> before the <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code> call:
+<ul><li>
+<code>s2:worker_started</code> (post load_all + db_connect)</li>
+<li>
+<code>s2:nemeton_call_starting</code> (about to enter nemeton)</li>
+</ul></li>
+<li>
+<code>feat(monitoring)</code>: wrap the nemeton call in <code>tryCatch</code> and emit <code>s2:fatal_error</code> (with <code>error_message</code> + <code>error_class</code>) before re-throwing. Replaces the opaque “MultisessionFuture was interrupted” with the real R error message.</li>
+<li>
+<code>feat(monitoring)</code>: observer routes the new events. Heartbeats update the persistent progress toast + <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> mirror; fatal errors trigger <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_danger</a></code> + <code>showModal()</code> with the full message.</li>
+<li>i18n: <code>monitoring_ingest_worker_event_fmt</code>, <code>monitoring_ingest_fatal_title</code>.</li>
+</ul></div>
+</div>
+<div class="section level2">
 <h2 id="id_0263---2026-05-13">[0.26.3] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_0263---2026-05-13"></a></h2>
 <div class="section level3">
 <h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
@@ -48,7 +66,7 @@
 <code>fix(monitoring)</code>: propagate <code>NEMETON_*</code> environment variables from the Shiny main session to the <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> worker. Windows workers are separate <code>Rscript.exe</code> processes that don’t inherit env vars set after their spawn — so <code>Sys.setenv(NEMETON_S2_CACHE_DEBUG = "TRUE")</code> was silently lost. <code>run_ingestion_async()</code> and <code>run_fordead_async()</code> now snapshot the relevant <code>NEMETON_*</code> vars at invoke time (parent side) and replay them at the top of the <code>future_promise()</code> body (worker side).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="added">Added<a class="anchor" aria-label="anchor" href="#added"></a></h3>
+<h3 id="added-1">Added<a class="anchor" aria-label="anchor" href="#added-1"></a></h3>
 <ul><li>
 <code>.capture_worker_envvars()</code> / <code>.apply_worker_envvars()</code> helpers in <code>R/service_monitoring.R</code> + 3 tests in <code>tests/testthat/test-service_monitoring_wiring.R</code>.</li>
 </ul></div>
@@ -72,7 +90,7 @@
 <div class="section level2">
 <h2 id="id_0260---2026-05-13">[0.26.0] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_0260---2026-05-13"></a></h2>
 <div class="section level3">
-<h3 id="added-1">Added<a class="anchor" aria-label="anchor" href="#added-1"></a></h3>
+<h3 id="added-2">Added<a class="anchor" aria-label="anchor" href="#added-2"></a></h3>
 <ul><li>
 <code>feat(monitoring)</code>: “Re-prime COG cache” checkbox under the ingestion button (mode quick). When ticked, plumbs <code>skip_cached = FALSE</code> through <code>run_ingestion_async()</code> to <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code>, which forces re-extraction and therefore re-fetches every band, finally populating <code>&lt;project&gt;/cache/layers/sentinel2/</code>. Default unchecked — preserves v0.25.0 behavior. INSERTs are <code>ON CONFLICT DO NOTHING</code> core-side, the DB is preserved.</li>
 <li>i18n: <code>monitoring_reprime_cache_label</code>, <code>monitoring_reprime_cache_help</code>.</li>
@@ -86,7 +104,7 @@
 <div class="section level2">
 <h2 id="id_0250---2026-05-13">[0.25.0] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_0250---2026-05-13"></a></h2>
 <div class="section level3">
-<h3 id="added-2">Added<a class="anchor" aria-label="anchor" href="#added-2"></a></h3>
+<h3 id="added-3">Added<a class="anchor" aria-label="anchor" href="#added-3"></a></h3>
 <ul><li>
 <code>feat(monitoring)</code>: explicit routing for <code>progress_callback</code> events emitted by <code>nemeton@v0.21.4+</code>:
 <ul><li>
@@ -137,7 +155,7 @@
 <div class="section level2">
 <h2 id="id_02411---2026-05-12">[0.24.11] - 2026-05-12<a class="anchor" aria-label="anchor" href="#id_02411---2026-05-12"></a></h2>
 <div class="section level3">
-<h3 id="added-3">Added<a class="anchor" aria-label="anchor" href="#added-3"></a></h3>
+<h3 id="added-4">Added<a class="anchor" aria-label="anchor" href="#added-4"></a></h3>
 <ul><li>Cache local des bandes Sentinel-2 : branche le <code>cache_dir</code> introduit par <code>nemeton@v0.21.3+</code> sur <code>ingest_sentinel2_timeseries()</code>. Les bandes téléchargées sont posées sous <code>&lt;project&gt;/data/s2_cache/</code> et réutilisées au prochain run — gain massif sur un re-run après échec STAC ou extension de fenêtre. Helper <code>.resolve_s2_cache_dir(project)</code> (NULL si pas de projet → fallback in-memory legacy de nemeton).</li>
 <li>Abonnement aux events progress <code>s2:band_cached</code> / <code>s2:band_fetched</code> : chaque bande génère une ligne <code>cli_alert_info</code> dédiée dans la console R (<code>⤷ Bande B04 (cache) — scène S2A_MSIL2A_...</code>). Pas d’update du toast UI (2-4 bandes par scène à sub-second feraient flickerer l’UI). Helper <code>.log_band_event()</code>.</li>
 </ul></div>
@@ -145,7 +163,7 @@
 <div class="section level2">
 <h2 id="id_02410---2026-05-12">[0.24.10] - 2026-05-12<a class="anchor" aria-label="anchor" href="#id_02410---2026-05-12"></a></h2>
 <div class="section level3">
-<h3 id="added-4">Added<a class="anchor" aria-label="anchor" href="#added-4"></a></h3>
+<h3 id="added-5">Added<a class="anchor" aria-label="anchor" href="#added-5"></a></h3>
 <ul><li>Capture des warnings STAC du worker async via <code>withCallingHandlers(warning = ...)</code>. Quand l’ingestion retourne 0 scènes, le toast surface maintenant la cause réelle (ex. <code>STAC backend "pc" failed: HTTP 504 Gateway Timeout</code>) au lieu d’un <code>Téléchargement terminé : 0 scène(s)</code> muet.</li>
 <li>Phase “Recherche STAC” distincte de la phase “Téléchargement tuile” : avant la première tuile reçue, le toast affiche “Recherche des scènes Sentinel-2 disponibles…” (ou “Préparation du téléchargement : N scène(s) trouvée(s)…” si nemeton a déjà pré-rempli le <code>total</code>).</li>
 <li>5 nouvelles clés i18n FR/EN : <code>monitoring_stac_search</code>, <code>monitoring_stac_search_with_count_fmt</code>, <code>monitoring_ingest_zero_fmt</code>, <code>monitoring_ingest_zero_default</code>, <code>monitoring_ingest_warns_fmt</code>.</li>
@@ -163,7 +181,7 @@
 <div class="section level2">
 <h2 id="id_0249---2026-05-12">[0.24.9] - 2026-05-12<a class="anchor" aria-label="anchor" href="#id_0249---2026-05-12"></a></h2>
 <div class="section level3">
-<h3 id="added-5">Added<a class="anchor" aria-label="anchor" href="#added-5"></a></h3>
+<h3 id="added-6">Added<a class="anchor" aria-label="anchor" href="#added-6"></a></h3>
 <ul><li>Mirroring console des events de progression : chaque tuile Sentinel-2 et chaque phase FORDEAD produit une ligne <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> (ou <code>cli_alert_warning</code> sur erreur) côté console R, exactement une fois par event grâce au <code>reactivePoll</code>. Format console plus riche que le toast (exploite <code>obs_date</code>, <code>cloud_pct</code>, <code>source</code> du payload nemeton).</li>
 <li>Roue dentée animée (<code>bsicons::bs_icon("gear-fill")</code> + classe <code>.nmt-spin</code>) devant chaque message du toast persistant — l’utilisateur voit que la tâche tourne toujours.</li>
 </ul></div>
@@ -176,7 +194,7 @@
 <div class="section level2">
 <h2 id="id_0248---2026-05-12">[0.24.8] - 2026-05-12<a class="anchor" aria-label="anchor" href="#id_0248---2026-05-12"></a></h2>
 <div class="section level3">
-<h3 id="added-6">Added<a class="anchor" aria-label="anchor" href="#added-6"></a></h3>
+<h3 id="added-7">Added<a class="anchor" aria-label="anchor" href="#added-7"></a></h3>
 <ul><li>Progression “X/N tuiles Sentinel-2 téléchargées” pendant l’ingestion FAST, et “FORDEAD — phase : %s (X/N)” pendant le diagnostic santé. Couplé à <code>nemeton@v0.21.2</code> qui introduit <code>progress_callback</code> sur <code>ingest_sentinel2_timeseries()</code> et <code>run_fordead_dieback()</code>. Le worker async écrit un <code>&lt;project&gt;/data/{ingest,fordead}_progress.json</code> atomique, le main process polle via <code>reactivePoll(500ms)</code> et rend un toast persistant remplacé à chaque tick.</li>
 <li>4 nouvelles clés i18n FR/EN : <code>monitoring_ingest_progress_fmt</code>, <code>monitoring_ingest_progress_named_fmt</code>, <code>monitoring_health_phase_fmt</code>, <code>monitoring_health_phase_simple_fmt</code>.</li>
 </ul></div>
@@ -202,7 +220,7 @@
 <div class="section level2">
 <h2 id="id_0235---2026-05-09">[0.23.5] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0235---2026-05-09"></a></h2>
 <div class="section level3">
-<h3 id="added-7">Added<a class="anchor" aria-label="anchor" href="#added-7"></a></h3>
+<h3 id="added-8">Added<a class="anchor" aria-label="anchor" href="#added-8"></a></h3>
 <ul><li>Plan d’actions chat: two new controls just below the history — <strong>scope radio</strong> (all UGFs / current selection) and <strong>overwrite checkbox</strong> (replace existing actions). Same semantics as the “Generate actions (AI)” modal. When overwrite is on, the apply modal surfaces a warning banner listing the number of targeted UGFs.</li>
 <li>New i18n keys <code>action_plan_chat_scope_sel</code> and <code>action_plan_chat_apply_overwrite_warn_fmt</code>.</li>
 </ul></div>
@@ -225,14 +243,14 @@
 <ul><li>Plan d’actions chat: role labels in the conversation history now go through i18n. The raw LLM keys (“user” / “assistant”) no longer surface in the UI; they render as <strong>“Vous”</strong> / <strong>“Assistant”</strong> (FR) or <strong>“You”</strong> / <strong>“Assistant”</strong> (EN), switching live with the language toggle. The underlying data model still uses the English keys so the prompt builder is unchanged.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="added-8">Added<a class="anchor" aria-label="anchor" href="#added-8"></a></h3>
+<h3 id="added-9">Added<a class="anchor" aria-label="anchor" href="#added-9"></a></h3>
 <ul><li>New i18n keys <code>action_plan_chat_role_user</code> and <code>action_plan_chat_role_assistant</code>.</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_0233---2026-05-09">[0.23.3] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0233---2026-05-09"></a></h2>
 <div class="section level3">
-<h3 id="added-9">Added<a class="anchor" aria-label="anchor" href="#added-9"></a></h3>
+<h3 id="added-10">Added<a class="anchor" aria-label="anchor" href="#added-10"></a></h3>
 <ul><li>Plan d’actions chat: clicking <strong>Send</strong> now displays a persistent <strong>bottom-right toast</strong> with a <strong>spinning gear icon</strong> and the label <em>“L’IA réfléchit…”</em> / <em>“AI is thinking…”</em>. The toast stays visible until the LLM response arrives or the call fails. Implemented via <code>shiny::showNotification(duration = NULL, closeButton = FALSE)</code> paired with an <code>on.exit(removeNotification(...))</code> hook so every return path (success, LLM error, parse error) clears the toast.</li>
 <li>New i18n key <code>action_plan_chat_thinking</code>.</li>
 </ul></div>
@@ -240,7 +258,7 @@
 <div class="section level2">
 <h2 id="id_0232---2026-05-09">[0.23.2] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0232---2026-05-09"></a></h2>
 <div class="section level3">
-<h3 id="added-10">Added<a class="anchor" aria-label="anchor" href="#added-10"></a></h3>
+<h3 id="added-11">Added<a class="anchor" aria-label="anchor" href="#added-11"></a></h3>
 <ul><li>Plan d’actions: chat history <strong>auto-scrolls to the bottom</strong> on every update so the latest message is always visible. Implemented via an inline <code>setTimeout(0)</code> script appended to each <code>chat_history_ui</code> render that sets <code>el.scrollTop = el.scrollHeight</code> on the <code>.chat-history</code> div (now carrying a stable id).</li>
 </ul></div>
 <div class="section level3">
@@ -252,7 +270,7 @@
 <div class="section level2">
 <h2 id="id_0231---2026-05-09">[0.23.1] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0231---2026-05-09"></a></h2>
 <div class="section level3">
-<h3 id="added-11">Added<a class="anchor" aria-label="anchor" href="#added-11"></a></h3>
+<h3 id="added-12">Added<a class="anchor" aria-label="anchor" href="#added-12"></a></h3>
 <ul><li>Plan d’actions: <strong>AI chat now lives in a persistent left sidebar</strong> (350 px, collapsible) instead of a modal. The conversation stays visible while the user navigates map / table / Kanban. Layout switches to a nested <code>layout_sidebar</code> (left chat / right action panel / main content).</li>
 </ul></div>
 <div class="section level3">
@@ -271,7 +289,7 @@
 <div class="section level2">
 <h2 id="id_0230---2026-05-09">[0.23.0] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0230---2026-05-09"></a></h2>
 <div class="section level3">
-<h3 id="added-12">Added<a class="anchor" aria-label="anchor" href="#added-12"></a></h3>
+<h3 id="added-13">Added<a class="anchor" aria-label="anchor" href="#added-13"></a></h3>
 <ul><li>Kanban: double-click on a card opens an <strong>edit modal</strong> pre-filled with statut / priorité / année / commentaire. Primary use-case is editing long commentaires (DT inline cell-edit is single-line). Delegated dblclick listener at the board level with cleanup between renders.</li>
 <li>Kanban cards: each card now displays the <strong>commentaire</strong> under the type/year/UGF block when non-empty.</li>
 <li>Kanban columns: cards are <strong>sorted by <code>annee_realisation</code></strong> ascending (NAs last) so each column reads chronologically.</li>
@@ -310,7 +328,7 @@
 <h2 id="id_0200---2026-04-24">
 <a href="https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...v0.20.0" class="external-link">0.20.0</a> - 2026-04-24<a class="anchor" aria-label="anchor" href="#id_0200---2026-04-24"></a></h2>
 <div class="section level3">
-<h3 id="added-13">Added<a class="anchor" aria-label="anchor" href="#added-13"></a></h3>
+<h3 id="added-14">Added<a class="anchor" aria-label="anchor" href="#added-14"></a></h3>
 <ul><li>LiDAR HD MNH fetched via <code>happign</code> as the preferred CHM source (Open-Canopy ML retained as fallback). E5.d phase 1.</li>
 <li>LiDAR HD MNT promoted to the canonical <code>dem</code> slot (1 m vs 25 m BD ALTI) so W3 / R1 / R2 / R3 / erosion use LiDAR resolution.</li>
 <li>
@@ -340,7 +358,7 @@
 <h2 id="id_0190---2026-04-24">
 <a href="https://github.com/pobsteta/nemetonshiny/compare/v0.18.0...v0.19.0" class="external-link">0.19.0</a> - 2026-04-24<a class="anchor" aria-label="anchor" href="#id_0190---2026-04-24"></a></h2>
 <div class="section level3">
-<h3 id="added-14">Added<a class="anchor" aria-label="anchor" href="#added-14"></a></h3>
+<h3 id="added-15">Added<a class="anchor" aria-label="anchor" href="#added-15"></a></h3>
 <ul><li>Tooltips on six sidebar inputs of the Export terrain sub-tab (target error, alpha risk, over-sample ratio, CV position, seed, region).</li>
 <li>Custom TSP legend on the leaflet map (inline-SVG glyphs for the route, start and finish).</li>
 <li>Immediate toast notification when clicking <em>Réessayer</em> on the compute-error card, dispatched on the root session.</li>
@@ -362,7 +380,7 @@
 <h2 id="id_0180---2026-04-24">
 <a href="https://github.com/pobsteta/nemetonshiny/compare/v0.16.0...v0.18.0" class="external-link">0.18.0</a> - 2026-04-24<a class="anchor" aria-label="anchor" href="#id_0180---2026-04-24"></a></h2>
 <div class="section level3">
-<h3 id="added-15">Added<a class="anchor" aria-label="anchor" href="#added-15"></a></h3>
+<h3 id="added-16">Added<a class="anchor" aria-label="anchor" href="#added-16"></a></h3>
 <ul><li>
 <strong>Terrain top-level tab</strong> with two sub-tabs via <code><a href="https://rstudio.github.io/bslib/reference/navset.html" class="external-link">bslib::navset_card_underline()</a></code>:
 <ul><li>

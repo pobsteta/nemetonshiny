@@ -12,6 +12,29 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.26.4\] - 2026-05-13
+
+### Added
+
+- `feat(monitoring)`: worker instrumentation to diagnose async ingestion
+  hangs. Two heartbeats emitted via `progress_callback` before the
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html)
+  call:
+  - `s2:worker_started` (post load_all + db_connect)
+  - `s2:nemeton_call_starting` (about to enter nemeton)
+- `feat(monitoring)`: wrap the nemeton call in `tryCatch` and emit
+  `s2:fatal_error` (with `error_message` + `error_class`) before
+  re-throwing. Replaces the opaque “MultisessionFuture was interrupted”
+  with the real R error message.
+- `feat(monitoring)`: observer routes the new events. Heartbeats update
+  the persistent progress toast +
+  [`cli::cli_alert_info`](https://cli.r-lib.org/reference/cli_alert.html)
+  mirror; fatal errors trigger
+  [`cli::cli_alert_danger`](https://cli.r-lib.org/reference/cli_alert.html) +
+  `showModal()` with the full message.
+- i18n: `monitoring_ingest_worker_event_fmt`,
+  `monitoring_ingest_fatal_title`.
+
 ## \[0.26.3\] - 2026-05-13
 
 ### Fixed

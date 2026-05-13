@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,34 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.26.3/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.26.4" id="nemetonshiny-0264-2026-05-13">nemetonshiny 0.26.4 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0264-2026-05-13"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--instrumentation-worker-diagnostic-des-hangs-0-26-4">Suivi sanitaire — instrumentation worker (diagnostic des hangs)<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--instrumentation-worker-diagnostic-des-hangs-0-26-4"></a></h4>
+<p>Quand le worker <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> se bloque ou plante, la seule chose visible côté UI était <code>"MultisessionFuture was interrupted"</code>, sans aucune indication d’où ça a coincé. Cette release ajoute 2 heartbeats et 1 wrap d’erreur :</p>
+<ul><li>
+<p><code>feat(monitoring)</code> — heartbeats émis via <code>progress_callback</code> AVANT l’appel <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code> :</p>
+<ul><li>
+<code>s2:worker_started</code> — le worker a atteint le début de son body (post <code>load_all</code> + <code>db_connect</code> + <code>progress_writer</code>). Si ce heartbeat n’apparaît pas → le futur ne spawn pas du tout (plan future cassé, env vars manquantes).</li>
+<li>
+<code>s2:nemeton_call_starting</code> — juste avant d’entrer dans nemeton. Si on voit celui-là mais pas de scene events derrière → nemeton hang au démarrage (STAC, auth Microsoft, etc.).</li>
+</ul></li>
+<li><p><code>feat(monitoring)</code> — l’appel <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries</a></code> est wrappé dans un <code>tryCatch</code> qui émet <code>current = "s2:fatal_error"</code> (avec <code>error_message</code> + <code>error_class</code>) avant de re-throw. Conséquence : la cause exacte de l’erreur arrive dans la console + un modal côté UI au lieu d’un futur “interrupted” silencieux.</p></li>
+<li>
+<p><code>feat(monitoring)</code> — observer routant :</p>
+<ul><li>
+<code>s2:worker_started</code> / <code>s2:nemeton_call_starting</code> → persistance toast + log <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code>
+</li>
+<li>
+<code>s2:fatal_error</code> → <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_danger</a></code> + <code>showModal()</code> avec le message complet</li>
+</ul></li>
+<li><p><code>feat(i18n)</code> — clés <code>monitoring_ingest_worker_event_fmt</code> + <code>monitoring_ingest_fatal_title</code> (FR + EN, accents en <code>\uXXXX</code>).</p></li>
+<li><p>Helper <code>.ws_emit(progress_cb, event)</code> — wrapper best-effort qui swallow les erreurs d’écriture (un échec de heartbeat ne doit JAMAIS tuer l’ingestion).</p></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.26.3" id="nemetonshiny-0263-2026-05-13">nemetonshiny 0.26.3 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0263-2026-05-13"></a></h2>
 <div class="section level4">
