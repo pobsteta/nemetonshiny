@@ -1,5 +1,29 @@
 # Changelog
 
+## nemetonshiny 0.26.0 (2026-05-13)
+
+#### Suivi sanitaire — exposition de `skip_cached` dans l’UI
+
+- `feat(monitoring)` — checkbox **“Réamorcer le cache COG”** ajoutée
+  sous le bouton d’ingestion en mode quick. Cochée → l’app appelle
+  `nemeton::ingest_sentinel2_timeseries(..., skip_cached = FALSE)` ce
+  qui force la ré-extraction plot-par-plot et donc le retéléchargement
+  des bandes, qui se persistent dans
+  `<project>/cache/layers/sentinel2/`. Décochée (défaut) → comportement
+  v0.25.0 inchangé (`skip_cached = TRUE`).
+
+  Contexte : v0.25.0 a finalisé le wiring `cache_dir` +
+  `progress_callback`, mais le défaut `skip_cached = TRUE` côté nemeton
+  court-circuite l’extraction quand la DB est déjà peuplée → le cache
+  disque restait vide tant que la table `obs_pixel` contenait des lignes
+  pour la zone + fenêtre demandées.
+
+  Note : les INSERT sont `ON CONFLICT DO NOTHING` côté core, donc cocher
+  la case n’écrase rien en DB.
+
+- `feat(i18n)` — clés `monitoring_reprime_cache_label` +
+  `monitoring_reprime_cache_help` (FR + EN, accents en `\uXXXX`).
+
 ## nemetonshiny 0.25.0 (2026-05-13)
 
 #### Suivi sanitaire — routage complet des événements `progress_callback` Sentinel-2
@@ -1068,7 +1092,7 @@ sur grandes listes d’actions) — voir issue à venir.
 
 ## nemetonshiny 0.23.5 (2026-05-09)
 
-#### Plan d’actions — chat IA : scope + écrasement
+#### Plan d’actions — chat IA : scope + 0e9crasement
 
 - `feat(action_plan)` — le **chat IA gagne deux contrôles** juste sous
   l’historique pour piloter chaque tour de conversation : un radio

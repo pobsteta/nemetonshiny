@@ -12,6 +12,27 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.26.0\] - 2026-05-13
+
+### Added
+
+- `feat(monitoring)`: “Re-prime COG cache” checkbox under the ingestion
+  button (mode quick). When ticked, plumbs `skip_cached = FALSE` through
+  `run_ingestion_async()` to
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html),
+  which forces re-extraction and therefore re-fetches every band,
+  finally populating `<project>/cache/layers/sentinel2/`. Default
+  unchecked — preserves v0.25.0 behavior. INSERTs are
+  `ON CONFLICT DO NOTHING` core-side, the DB is preserved.
+- i18n: `monitoring_reprime_cache_label`,
+  `monitoring_reprime_cache_help`.
+
+### Changed
+
+- `service_monitoring.R::run_ingestion_async()`: new `skip_cached`
+  parameter on the `ExtendedTask` lambda (default `TRUE`), forwarded to
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html).
+
 ## \[0.25.0\] - 2026-05-13
 
 ### Added

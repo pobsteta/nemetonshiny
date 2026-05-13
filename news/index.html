@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.25.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,21 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.25.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.26.0" id="nemetonshiny-0260-2026-05-13">nemetonshiny 0.26.0 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0260-2026-05-13"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--exposition-de-skip_cached-dans-lui-0-26-0">Suivi sanitaire — exposition de <code>skip_cached</code> dans l’UI<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--exposition-de-skip_cached-dans-lui-0-26-0"></a></h4>
+<ul><li>
+<p><code>feat(monitoring)</code> — checkbox <strong>“Réamorcer le cache COG”</strong> ajoutée sous le bouton d’ingestion en mode quick. Cochée → l’app appelle <code>nemeton::ingest_sentinel2_timeseries(..., skip_cached = FALSE)</code> ce qui force la ré-extraction plot-par-plot et donc le retéléchargement des bandes, qui se persistent dans <code>&lt;project&gt;/cache/layers/sentinel2/</code>. Décochée (défaut) → comportement v0.25.0 inchangé (<code>skip_cached = TRUE</code>).</p>
+<p>Contexte : v0.25.0 a finalisé le wiring <code>cache_dir</code> + <code>progress_callback</code>, mais le défaut <code>skip_cached = TRUE</code> côté nemeton court-circuite l’extraction quand la DB est déjà peuplée → le cache disque restait vide tant que la table <code>obs_pixel</code> contenait des lignes pour la zone + fenêtre demandées.</p>
+<p>Note : les INSERT sont <code>ON CONFLICT DO NOTHING</code> côté core, donc cocher la case n’écrase rien en DB.</p>
+</li>
+<li><p><code>feat(i18n)</code> — clés <code>monitoring_reprime_cache_label</code> + <code>monitoring_reprime_cache_help</code> (FR + EN, accents en <code>\uXXXX</code>).</p></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.25.0" id="nemetonshiny-0250-2026-05-13">nemetonshiny 0.25.0 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0250-2026-05-13"></a></h2>
 <div class="section level4">
@@ -578,7 +590,7 @@ Cohérent avec les libellés <code>download_pdf</code> (rapport Synthèse) et <c
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.23.5" id="nemetonshiny-0235-2026-05-09">nemetonshiny 0.23.5 (2026-05-09)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0235-2026-05-09"></a></h2>
 <div class="section level4">
-<h4 id="plan-dactions--chat-ia--scope--écrasement-0-23-5">Plan d’actions — chat IA : scope + écrasement<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-ia--scope--%C3%A9crasement-0-23-5"></a></h4>
+<h4 id="plan-dactions--chat-ia--scope-e9crasement-0-23-5">Plan d’actions — chat IA : scope + 0e9crasement<a class="anchor" aria-label="anchor" href="#plan-dactions--chat-ia--scope-e9crasement-0-23-5"></a></h4>
 <ul><li>
 <code>feat(action_plan)</code> — le <strong>chat IA gagne deux contrôles</strong> juste sous l’historique pour piloter chaque tour de conversation : un radio <strong>Toutes les UGF / Sélection courante</strong> (<code>chat_scope</code>) et une checkbox <strong>Écraser le plan existant</strong> (<code>chat_overwrite</code>). Mêmes sémantiques que dans le modal “Générer les actions (IA)” :
 <ul><li>
