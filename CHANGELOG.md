@@ -10,6 +10,35 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-05-13
+
+### Added
+
+- `feat(monitoring)`: explicit routing for `progress_callback` events
+  emitted by `nemeton@v0.21.4+`:
+  - `s2:cache_lookup` → persistent toast "DB cache: N cached, M to
+    process"
+  - `s2:band_fetch_failed` → 6 s warning toast with `band` +
+    `error_message`
+  - `s2:pc_token_refreshed` → 3 s info toast
+- `feat(monitoring)`: "COG cache active" hint under the ingestion
+  button, showing the absolute path of
+  `<project>/cache/layers/sentinel2/`.
+- `tests/testthat/test-service_monitoring_wiring.R`: smoke test
+  asserting `run_ingestion_async()` forwards `cache_dir` and a
+  non-NULL `progress_callback` to
+  `nemeton::ingest_sentinel2_timeseries()`.
+- i18n: `monitoring_ingest_cache_lookup_fmt`,
+  `monitoring_ingest_band_failed_fmt`,
+  `monitoring_ingest_token_refreshed`,
+  `monitoring_cache_active_fmt`.
+
+### Changed
+
+- `chore(deps)`: bump nemeton pin to `>= 0.21.7` to align on the
+  versions that expose a stable `cache_dir` + `progress_callback`
+  signature.
+
 ## [0.24.14] - 2026-05-13
 
 ### Changed

@@ -143,7 +143,8 @@ mod_monitoring_ui <- function(id) {
                 ns("run"), i18n$t("monitoring_run_btn"),
                 icon  = bsicons::bs_icon("play-fill"),
                 class = "btn-primary w-100"
-              )
+              ),
+              shiny::uiOutput(ns("cache_hint"), class = "small text-muted mt-1")
             ),
 
             # --- Health-mode parameters (FORDEAD) -------------------
@@ -975,6 +976,21 @@ mod_monitoring_server <- function(id, app_state) {
 
     # ----- Async ingestion (phase 2) ----------------------------------
 
+    # Surface the active Sentinel-2 COG cache path below the Run button
+    # so the user knows where bands are persisted between runs (and so
+    # they can wipe it from the filesystem if they need to). NULL when
+    # no project is open — in that case nemeton falls back to its
+    # in-memory legacy path and we display nothing.
+    output$cache_hint <- shiny::renderUI({
+      i18n <- i18n_r()
+      cache_dir <- .resolve_s2_cache_dir(app_state$current_project)
+      if (is.null(cache_dir)) return(NULL)
+      htmltools::tags$div(
+        title = sprintf(i18n$t("monitoring_cache_active_fmt"), cache_dir),
+        sprintf(i18n$t("monitoring_cache_active_fmt"), cache_dir)
+      )
+    })
+
     ingest_task <- run_ingestion_async()
 
     # Path to the progress.json file written by the ingest worker via
@@ -1023,13 +1039,56 @@ mod_monitoring_server <- function(id, app_state) {
       status <- ev$status %||% "running"
       if (identical(status, "done")) return()
       current_phase <- as.character(ev$current %||% "")
-      # Band-level events fire sub-second per scene (2-4 bands per
-      # scene) — letting them rewrite the toast would make it flicker
-      # and lose the scene-level context. We log them to the console
-      # (one line per band, with cache vs download info) and keep the
-      # toast on the last scene-level state.
+      # Band-level success events fire sub-second per scene (2-4 bands
+      # per scene) — letting them rewrite the toast would make it
+      # flicker and lose the scene-level context. We log them to the
+      # console (one line per band, with cache vs download info) and
+      # keep the toast on the last scene-level state.
       if (current_phase %in% c("s2:band_cached", "s2:band_fetched")) {
         .log_band_event(ev, current_phase)
+        return()
+      }
+      # Band-level FAILURE bubbles up as a non-persistent warning toast
+      # (separate id so it stacks alongside the scene-level toast
+      # instead of replacing it).
+      if (identical(current_phase, "s2:band_fetch_failed")) {
+        shiny::showNotification(
+          sprintf(i18n$t("monitoring_ingest_band_failed_fmt"),
+                  as.character(ev$band %||% "?"),
+                  as.character(ev$error_message %||% ev$error %||% "")),
+          id          = session$ns("ingest_band_failed"),
+          type        = "warning",
+          duration    = 6
+        )
+        return()
+      }
+      # PC SAS token rotation is informational only — we surface it so
+      # the user can correlate a brief pause with token rotation
+      # instead of suspecting a network issue.
+      if (identical(current_phase, "s2:pc_token_refreshed")) {
+        shiny::showNotification(
+          i18n$t("monitoring_ingest_token_refreshed"),
+          id       = session$ns("ingest_pc_token"),
+          type     = "default",
+          duration = 3
+        )
+        return()
+      }
+      # DB cache lookup result: helps the user understand why a run is
+      # fast (lots of obs already cached, skip_cached=TRUE shortcuts).
+      if (identical(current_phase, "s2:cache_lookup")) {
+        n_cached     <- as.integer(ev$n_cached     %||% 0L)
+        n_to_process <- as.integer(ev$n_to_process %||% ev$n_remaining %||% 0L)
+        shiny::showNotification(
+          .monitoring_spinning_msg(
+            sprintf(i18n$t("monitoring_ingest_cache_lookup_fmt"),
+                    n_cached, n_to_process)
+          ),
+          id          = session$ns("ingest_progress"),
+          type        = "message",
+          duration    = NULL,
+          closeButton = FALSE
+        )
         return()
       }
       i_val <- as.integer(ev$completed %||% ev$i %||% 0L)
