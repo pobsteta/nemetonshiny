@@ -1005,6 +1005,16 @@ mod_monitoring_server <- function(id, app_state) {
     # toast observer re-renders the persistent "X/N tuiles..." card.
     ingest_progress_path <- shiny::reactiveVal(NULL)
 
+    # Path to the worker console log. The worker `sink()`s its stdout
+    # and message stream to this file (see service_monitoring.R) so we
+    # can tail it from the parent and mirror every `cli::cli_*` line
+    # from nemeton into the developer's R console — including the
+    # CACHE-DEBUG traces (`NEMETON_S2_CACHE_DEBUG=TRUE`) that nemeton
+    # emits inside `.get_s2_band_raster`. Offset tracks how much has
+    # already been streamed so we only print new content per tick.
+    ingest_log_path   <- shiny::reactiveVal(NULL)
+    ingest_log_offset <- shiny::reactiveVal(0L)
+
     ingest_progress <- shiny::reactivePoll(
       intervalMillis = 500L, session,
       checkFunc = function() {
@@ -1021,6 +1031,48 @@ mod_monitoring_server <- function(id, app_state) {
         )
       }
     )
+
+    # Tail the worker console log: every 500 ms, check the file size;
+    # if it grew since the previous tick, read the new bytes and write
+    # them straight to the parent's stdout via cat(). This bypasses
+    # `future`'s built-in stdout capture (which would only release the
+    # output at task completion) and gives the developer line-by-line
+    # tracing in real time — exactly what running `run_app()` from a
+    # terminal expects.
+    ingest_log_tick <- shiny::reactivePoll(
+      intervalMillis = 500L, session,
+      checkFunc = function() {
+        p <- ingest_log_path()
+        if (is.null(p) || !file.exists(p)) return("0")
+        as.character(file.info(p)$size)
+      },
+      valueFunc = function() {
+        p <- ingest_log_path()
+        if (is.null(p) || !file.exists(p)) return(NULL)
+        sz <- as.numeric(file.info(p)$size)
+        if (is.na(sz) || sz <= 0) return(NULL)
+        off <- as.numeric(ingest_log_offset())
+        if (sz <= off) return(NULL)
+        chunk <- tryCatch({
+          con <- file(p, open = "rb")
+          on.exit(close(con), add = TRUE)
+          if (off > 0) seek(con, where = off, origin = "start")
+          raw <- readBin(con, what = "raw", n = sz - off)
+          rawToChar(raw)
+        }, error = function(e) "")
+        ingest_log_offset(as.integer(sz))
+        chunk
+      }
+    )
+
+    # Forward newly-tailed bytes to the parent console. Single line of
+    # cat() per tick keeps the worker's own newlines intact (we don't
+    # re-wrap with cli::cli_*).
+    shiny::observe({
+      chunk <- ingest_log_tick()
+      if (is.null(chunk) || !nzchar(chunk)) return()
+      cat(chunk, file = stderr())
+    })
 
     # Render the persistent progress toast. Each event from the worker
     # replaces the previous one (same notification id) so we don't
@@ -1229,6 +1281,41 @@ mod_monitoring_server <- function(id, app_state) {
       # therefore re-fetches every band, populating the COG cache
       # under <project>/cache/layers/sentinel2/. INSERTs are
       # `ON CONFLICT DO NOTHING` core-side, so the DB stays clean.
+      #
+      # Forcer le re-téléchargement complet : sans cette purge, même
+      # avec skip_cached=FALSE, `.get_s2_band_raster()` sert les
+      # B0X.tif déjà présents sur disque (branche CACHE-HIT). On vide
+      # le dossier pour garantir une vraie re-extraction STAC + écriture
+      # des .tif.
+      if (isTRUE(input$reprime_cache) && !is.null(cache_dir) &&
+          dir.exists(cache_dir)) {
+        entries <- list.files(cache_dir, full.names = TRUE,
+                              include.dirs = TRUE, no.. = TRUE,
+                              all.files = TRUE)
+        if (length(entries)) {
+          tryCatch(
+            unlink(entries, recursive = TRUE, force = TRUE),
+            error = function(e) NULL
+          )
+          cli::cli_alert_info(
+            "Cache S2 vidé avant réamorçage ({length(entries)} entrée(s)) : {.path {cache_dir}}"
+          )
+        }
+      }
+
+      # Console log channel: truncate the file before invoke and reset
+      # the tail offset so the parent picks the worker stream up from
+      # byte 0. NULL when no project is open — in that case the worker
+      # stays silent (its stdout is still captured by future).
+      lpath <- .resolve_progress_path(app_state$current_project,
+                                      "ingest_console.log")
+      if (!is.null(lpath)) {
+        tryCatch(writeLines(character(0), lpath, useBytes = TRUE),
+                 error = function(e) NULL)
+      }
+      ingest_log_path(lpath)
+      ingest_log_offset(0L)
+
       ingest_task$invoke(
         zone_id       = as.integer(input$zone_id),
         start         = as.Date(dr[1]),
@@ -1242,7 +1329,8 @@ mod_monitoring_server <- function(id, app_state) {
         db_url        = .resolve_monitoring_db_url(app_state$current_project),
         progress_path = ppath,
         cache_dir     = cache_dir,
-        skip_cached   = !isTRUE(input$reprime_cache)
+        skip_cached   = !isTRUE(input$reprime_cache),
+        log_path      = lpath
       )
     })
 
@@ -1258,6 +1346,9 @@ mod_monitoring_server <- function(id, app_state) {
           shiny::removeNotification(session$ns("ingest_progress"))
           .cleanup_progress_file(ingest_progress_path())
           ingest_progress_path(NULL)
+          .cleanup_progress_file(ingest_log_path())
+          ingest_log_path(NULL)
+          ingest_log_offset(0L)
           shiny::showNotification(
             sprintf("%s : %s", i18n$t("monitoring_ingest_error"),
                     e$message),
@@ -1271,6 +1362,9 @@ mod_monitoring_server <- function(id, app_state) {
         shiny::removeNotification(session$ns("ingest_progress"))
         .cleanup_progress_file(ingest_progress_path())
         ingest_progress_path(NULL)
+        .cleanup_progress_file(ingest_log_path())
+        ingest_log_path(NULL)
+        ingest_log_offset(0L)
         n_scenes <- as.integer(result$summary$n_scenes %||% 0L)
         n_obs    <- as.integer(result$summary$n_obs_inserted %||% 0L)
         warns    <- result$warnings %||% character(0)

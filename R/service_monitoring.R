@@ -46,7 +46,8 @@ run_ingestion_async <- function() {
                                    max_cloud = 20, db_url = "",
                                    progress_path = NULL,
                                    cache_dir = NULL,
-                                   skip_cached = TRUE) {
+                                   skip_cached = TRUE,
+                                   log_path = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -57,6 +58,31 @@ run_ingestion_async <- function() {
       # worker sees the same NEMETON_S2_CACHE_DEBUG / NEMETON_*
       # values as the user set in the main session.
       .apply_worker_envvars(.worker_envvars)
+
+      # Sink stdout + message stream to log_path so the parent process
+      # can tail it and mirror nemeton's cli::cli_* lines into the
+      # interactive console. Without this, the worker's stdout is
+      # captured by `future` and never visible to the user.
+      # We sink the SAME connection twice (one per type) so output and
+      # warning/message lines end up interleaved in the same file.
+      .ws_log_conn <- NULL
+      if (!is.null(log_path) && nzchar(log_path)) {
+        .ws_log_conn <- tryCatch(
+          file(log_path, open = "wt", encoding = "UTF-8"),
+          error = function(e) NULL
+        )
+        if (!is.null(.ws_log_conn)) {
+          tryCatch(sink(.ws_log_conn, type = "output", split = FALSE),
+                   error = function(e) invisible(NULL))
+          tryCatch(sink(.ws_log_conn, type = "message"),
+                   error = function(e) invisible(NULL))
+          on.exit({
+            tryCatch(sink(type = "message"), error = function(e) NULL)
+            tryCatch(sink(type = "output"),  error = function(e) NULL)
+            tryCatch(close(.ws_log_conn),    error = function(e) NULL)
+          }, add = TRUE)
+        }
+      }
 
       # Re-load nemetonshiny in the worker so we can use the
       # URL-resolution helper. In dev (load_all), .pkg_path points to
