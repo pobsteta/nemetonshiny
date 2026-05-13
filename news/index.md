@@ -1,5 +1,25 @@
 # Changelog
 
+## nemetonshiny 0.26.2 (2026-05-13)
+
+#### Dépendance nemeton — pin à v0.21.9 (fix writeRaster .tif.tmp)
+
+- `fix(deps)` — pin du cœur `nemeton` bumpé à `>= 0.21.9`. Cette version
+  corrige le bug d’écriture du cache S2 où
+  [`terra::writeRaster()`](https://rspatial.github.io/terra/reference/writeRaster.html)
+  était appelé sur un chemin `.tif.tmp` (pattern d’écriture atomique)
+  sans argument `filetype`, et terra refusait avec *“cannot guess file
+  type from filename”*. Toutes les bandes étaient FETCH + CROP avec
+  succès puis perdues à l’étape WRITE → le cache disque restait vide
+  même après le fix S4 de v0.21.8.
+
+  Symptôme côté UI v0.26.1 : le run consommait 4-5 min par scène
+  (FETCH + CROP), atteignait 26/26, mais
+  `<project>/cache/layers/sentinel2/` restait vide.
+
+  - `Imports: nemeton (>= 0.21.9)`
+  - `Remotes: pobsteta/nemeton@v0.21.9`
+
 ## nemetonshiny 0.26.1 (2026-05-13)
 
 #### Dépendance nemeton — pin à v0.21.8 (fix S4→double extraction)

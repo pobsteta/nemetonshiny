@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.26.2" id="nemetonshiny-0262-2026-05-13">nemetonshiny 0.26.2 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0262-2026-05-13"></a></h2>
+<div class="section level4">
+<h4 id="dépendance-nemeton--pin-à-v0219-fix-writeraster-tiftmp-0-26-2">Dépendance nemeton — pin à v0.21.9 (fix writeRaster .tif.tmp)<a class="anchor" aria-label="anchor" href="#d%C3%A9pendance-nemeton--pin-%C3%A0-v0219-fix-writeraster-tiftmp-0-26-2"></a></h4>
+<ul><li>
+<p><code>fix(deps)</code> — pin du cœur <code>nemeton</code> bumpé à <code>&gt;= 0.21.9</code>. Cette version corrige le bug d’écriture du cache S2 où <code><a href="https://rspatial.github.io/terra/reference/writeRaster.html" class="external-link">terra::writeRaster()</a></code> était appelé sur un chemin <code>.tif.tmp</code> (pattern d’écriture atomique) sans argument <code>filetype</code>, et terra refusait avec <em>“cannot guess file type from filename”</em>. Toutes les bandes étaient FETCH + CROP avec succès puis perdues à l’étape WRITE → le cache disque restait vide même après le fix S4 de v0.21.8.</p>
+<p>Symptôme côté UI v0.26.1 : le run consommait 4-5 min par scène (FETCH + CROP), atteignait 26/26, mais <code>&lt;project&gt;/cache/layers/sentinel2/</code> restait vide.</p>
+<ul><li><code>Imports: nemeton (&gt;= 0.21.9)</code></li>
+<li><code>Remotes: pobsteta/nemeton@v0.21.9</code></li>
+</ul></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.26.1" id="nemetonshiny-0261-2026-05-13">nemetonshiny 0.26.1 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0261-2026-05-13"></a></h2>
 <div class="section level4">
