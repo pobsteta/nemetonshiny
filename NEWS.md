@@ -1,4 +1,7 @@
-# nemetonshiny 0.24.12.9002 (2026-05-12)
+# nemetonshiny 0.24.13 (2026-05-13)
+
+Release stable consolidant deux correctifs hardening sur le suivi
+sanitaire (cycle dev `0.24.12.9001` → `0.24.12.9002`).
 
 ### Suivi sanitaire — cache S2 aligné sur la convention `<project>/cache/layers/`
 
