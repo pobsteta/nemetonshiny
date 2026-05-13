@@ -1,3 +1,23 @@
+# nemetonshiny 0.26.1 (2026-05-13)
+
+### Dépendance nemeton — pin à v0.21.8 (fix S4→double extraction)
+
+* `fix(deps)` — pin du cœur `nemeton` bumpé à `>= 0.21.8`. Cette
+  version corrige un bug d'extraction où chaque scène Sentinel-2
+  était skippée avec le message *"cannot coerce type 'S4' to vector
+  of type 'double'"* lors d'un run `skip_cached = FALSE`
+  (introduit en v0.21.4 avec le wiring `cache_dir`). Le bug se
+  manifestait dans le bloc per-scène : un `terra::SpatRaster` (classe
+  S4) était traité comme un vecteur numérique au lieu d'être extrait
+  via `terra::extract()` / `terra::values()`.
+
+  Conséquence côté UI v0.26.0 : cocher "Réamorcer le cache COG"
+  donnait bien `skip_cached = FALSE` mais toutes les scènes étaient
+  skippées → ni la DB ni le cache disque ne se remplissaient.
+
+  - `Imports: nemeton (>= 0.21.8)`
+  - `Remotes: pobsteta/nemeton@v0.21.8`
+
 # nemetonshiny 0.26.0 (2026-05-13)
 
 ### Suivi sanitaire — exposition de `skip_cached` dans l'UI
