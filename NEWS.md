@@ -1,3 +1,38 @@
+# nemetonshiny 0.24.10.9001 (2026-05-12)
+
+### Suivi sanitaire — cache local Sentinel-2 + events band-level
+
+* `feat(monitoring)` — branche le `cache_dir` introduit par
+  `nemeton@v0.21.3+` sur `ingest_sentinel2_timeseries()`. Le worker
+  pose désormais les bandes Sentinel-2 sous
+  `<project>/data/s2_cache/`. Les bandes déjà téléchargées sont
+  réutilisées au prochain run pour la même scène — gain massif sur
+  un re-run après un échec STAC ou une extension de fenêtre temporelle.
+
+  Helper `.resolve_s2_cache_dir(project)` côté `mod_monitoring.R` :
+  retourne `NULL` quand aucun projet n'est ouvert (nemeton retombe
+  sur son chemin legacy in-memory), sinon crée le sous-dossier au
+  besoin et passe le chemin normalisé au worker.
+
+* `feat(monitoring)` — abonnement aux nouveaux events progress
+  `s2:band_cached` / `s2:band_fetched`. Chaque bande génère une
+  ligne `cli_alert_info` dédiée dans la console R :
+
+  ```
+  ℹ Tuile Sentinel-2 S2A_MSIL2A_20260508T103651_R008_T31TFN_20260508T191011 (5/26) — 2026-05-08, 2.9% nuages, source=pc
+    ⤷ Bande B04 (cache) — scène S2A_MSIL2A_20260508…
+    ⤷ Bande B08 (téléchargement) — scène S2A_MSIL2A_20260508…
+  ```
+
+  Volontairement **pas** d'update du toast UI sur ces events :
+  2-4 bandes par scène à sub-second feraient flickerer le toast
+  et perdraient le contexte scène. Le toast reste sur l'event
+  `s2:scene`.
+
+  Helper `.log_band_event(ev, current_phase)` dispatché en tête de
+  l'observer après détection de `current %in% c("s2:band_cached",
+  "s2:band_fetched")`.
+
 # nemetonshiny 0.24.10 (2026-05-12)
 
 ### Suivi sanitaire — 3 fixes UX critiques

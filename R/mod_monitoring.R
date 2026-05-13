@@ -1022,6 +1022,16 @@ mod_monitoring_server <- function(id, app_state) {
       i18n <- i18n_r()
       status <- ev$status %||% "running"
       if (identical(status, "done")) return()
+      current_phase <- as.character(ev$current %||% "")
+      # Band-level events fire sub-second per scene (2-4 bands per
+      # scene) — letting them rewrite the toast would make it flicker
+      # and lose the scene-level context. We log them to the console
+      # (one line per band, with cache vs download info) and keep the
+      # toast on the last scene-level state.
+      if (current_phase %in% c("s2:band_cached", "s2:band_fetched")) {
+        .log_band_event(ev, current_phase)
+        return()
+      }
       i_val <- as.integer(ev$completed %||% ev$i %||% 0L)
       n_val <- as.integer(ev$total     %||% ev$n %||% 0L)
       scene <- as.character(ev$scene_id %||% "")
@@ -1099,13 +1109,20 @@ mod_monitoring_server <- function(id, app_state) {
 
       # Resolve where the worker will write progress.json. NULL when no
       # project is open (PG-only setup) — in that case the progress
-      # bandeau just stays on "Ingestion en cours...".
+      # bandeau just stays on "Téléchargement en cours...".
       ppath <- .resolve_progress_path(app_state$current_project,
                                       "ingest_progress.json")
       if (!is.null(ppath) && file.exists(ppath)) {
         tryCatch(unlink(ppath), error = function(e) NULL)
       }
       ingest_progress_path(ppath)
+
+      # Sentinel-2 band cache: nemeton@v0.21.3+ accepts `cache_dir` and
+      # reuses already-downloaded bands across runs. Drop it under the
+      # project so it follows the project (and so the user can wipe it
+      # by clearing the project data folder). NULL = no cache (in-memory
+      # only, the legacy behavior).
+      cache_dir <- .resolve_s2_cache_dir(app_state$current_project)
 
       ingest_task$invoke(
         zone_id       = as.integer(input$zone_id),
@@ -1118,7 +1135,8 @@ mod_monitoring_server <- function(id, app_state) {
         # under <project>/data/monitoring.duckdb is selected when no
         # PG env var is set — that's the v0.24.0 single-user path.
         db_url        = .resolve_monitoring_db_url(app_state$current_project),
-        progress_path = ppath
+        progress_path = ppath,
+        cache_dir     = cache_dir
       )
     })
 
@@ -1433,6 +1451,23 @@ mod_monitoring_server <- function(id, app_state) {
                 winslash = "/", mustWork = FALSE)
 }
 
+# Resolve the Sentinel-2 band cache directory for the current project.
+# Returns NULL when no project is loaded (no path = no cache, nemeton
+# falls back to its in-memory legacy path). Worker also re-creates the
+# directory if missing, but we do it here too so the path lookup is
+# consistent on subsequent calls.
+.resolve_s2_cache_dir <- function(project) {
+  if (is.null(project) || is.null(project$path)) return(NULL)
+  cache_dir <- file.path(project$path, "data", "s2_cache")
+  if (!dir.exists(cache_dir)) {
+    tryCatch(
+      dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE),
+      error = function(e) NULL
+    )
+  }
+  normalizePath(cache_dir, winslash = "/", mustWork = FALSE)
+}
+
 # Best-effort removal of the progress.json file (and its .tmp sibling
 # if the worker was interrupted mid-write). Errors are swallowed —
 # leaving a stale file behind is harmless because the next invoke
@@ -1482,6 +1517,28 @@ mod_monitoring_server <- function(id, app_state) {
   } else {
     cli::cli_alert_info(
       "Tuile Sentinel-2 {scene} ({i_val}/{n_val}){suffix}"
+    )
+  }
+  invisible(NULL)
+}
+
+# Console mirror for a Sentinel-2 band-level event
+# (`s2:band_cached` / `s2:band_fetched` emitted by nemeton@v0.21.3+).
+# Stays out of the toast — the scene-level event drives the UI — but
+# we log each band so a developer following along in the terminal
+# sees cache hits vs fresh downloads, which is the most useful info
+# for diagnosing why a run is slow or large on disk.
+.log_band_event <- function(ev, current_phase) {
+  band  <- as.character(ev$band %||% "?")
+  scene <- as.character(ev$scene_id %||% "")
+  scene_short <- if (nzchar(scene)) substr(scene, 1L, 24L) else "(?)"
+  if (identical(current_phase, "s2:band_cached")) {
+    cli::cli_alert_info(
+      "  ⤷ Bande {band} (cache) — scène {scene_short}…"
+    )
+  } else {
+    cli::cli_alert_info(
+      "  ⤷ Bande {band} (téléchargement) — scène {scene_short}…"
     )
   }
   invisible(NULL)
