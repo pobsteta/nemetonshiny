@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.24.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,52 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.24.9/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.24.10" id="nemetonshiny-02410-2026-05-12">nemetonshiny 0.24.10 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-02410-2026-05-12"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--fixes-ux-critiques-0-24-10">Suivi sanitaire — 3 fixes UX critiques<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--fixes-ux-critiques-0-24-10"></a></h4>
+<ul><li>
+<p><code>fix(monitoring)</code> — <strong>spam “Database schema up to date” en boucle</strong> dans la console : <code><a href="https://pobsteta.github.io/nemeton/reference/db_migrate.html" class="external-link">nemeton::db_migrate()</a></code> emet un <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> à chaque connexion ré-ouverte. Avec les reactives multiples du module (validity, zones, alerts, probe…), on tape 30-50 lignes identiques par interaction.</p>
+<p>Correctif : <code>withCallingHandlers(message = ...)</code> autour de <code>db_migrate()</code> qui muffle uniquement les messages contenant “up to date” / “already migrated”. Les “Applied migration X” du premier run et les warnings/erreurs restent visibles.</p>
+</li>
+<li>
+<p><code>feat(monitoring)</code> — <strong>0 scènes trouvées masquait un timeout Planetary Computer</strong> (HTTP 504). Le worker affichait juste <code>Téléchargement terminé : 0 scène(s)</code>, sans dire que le backend STAC avait timeout.</p>
+<p>Correctif : <code>withCallingHandlers(warning = ...)</code> dans le worker capture les warnings nemeton (<code>STAC backend "pc" failed: HTTP 504...</code>) et les remonte dans <code>result$warnings</code>. Côté result observer :</p>
+<ul><li>Si <code>n_scenes == 0</code> : toast warning rouge avec les warnings capturés (ou un hint générique “Élargis la fenêtre temporelle ou tolère plus de nuages”).</li>
+<li>Si succès mais warnings non bloquants : toast secondaire “Avertissement(s) du backend : …” pour ne pas les perdre.</li>
+</ul></li>
+<li>
+<p><code>fix(monitoring)</code> — <strong>toast affichait “Tuile Sentinel-2 (scene_id missing) (0/159)”</strong> entre la recherche STAC et la première tuile. Le log console était tout aussi opaque (<code>(scene_id missing)</code>).</p>
+<p>Correctif : quand <code>scene_id</code> est vide ET <code>completed == 0</code>, le toast affiche maintenant :</p>
+<ul><li>“Recherche des scènes Sentinel-2 disponibles…” (si total = 0)</li>
+<li>“Préparation du téléchargement : N scène(s) trouvée(s)…” (si total &gt; 0)</li>
+</ul><p>Et la console : “Sentinel-2 STAC search done: N scene(s) found.”</p>
+<p>Nouvelles clés i18n FR/EN : <code>monitoring_stac_search</code>, <code>monitoring_stac_search_with_count_fmt</code>, <code>monitoring_ingest_zero_fmt</code>, <code>monitoring_ingest_zero_default</code>, <code>monitoring_ingest_warns_fmt</code>.</p>
+</li>
+</ul></div>
+<div class="section level4">
+<h4 id="suivi-sanitaire--ingestion-sentinel--téléchargement-sentinel-0-24-10">Suivi sanitaire — “Ingestion Sentinel-2” → “Téléchargement Sentinel-2”<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--ingestion-sentinel--t%C3%A9l%C3%A9chargement-sentinel-0-24-10"></a></h4>
+<ul><li>
+<p><code>chore(monitoring)</code> — le terme “ingestion” est trop technique pour le contexte UI où l’on télécharge des scènes Sentinel-2 depuis Planetary Computer. Renommage en “téléchargement” (FR) / “download” (EN) sur <strong>tous les textes utilisateur du contexte Sentinel-2</strong> :</p>
+<ul><li>
+<code>monitoring_validate_zone</code> : “lancer l’ingestion” → “lancer le téléchargement”</li>
+<li>
+<code>monitoring_ingest_starting</code> : “Ingestion Sentinel-2 en cours” → “Téléchargement Sentinel-2 en cours”</li>
+<li>
+<code>monitoring_ingest_success</code> : “Ingestion terminée” → “Téléchargement terminé”</li>
+<li>
+<code>monitoring_ingest_error</code> : “Échec de l’ingestion” → “Échec du téléchargement”</li>
+<li>
+<code>monitoring_timeseries_placeholder</code> / <code>monitoring_alerts_placeholder</code> : “après la première ingestion” → “après le premier téléchargement”</li>
+<li>Console R (<code>cli_alert_info</code>) : “Sentinel-2 ingestion starting” → “Sentinel-2 download starting”</li>
+</ul><p><strong>Volontairement non renommés</strong> : <code>field_ingest_*</code> (import des données terrain depuis QField/GPKG) et <code>health_validation_*</code> (import des validations FORDEAD). Ce sont des uploads de données utilisateur, pas des téléchargements distants — le terme “ingestion” reste correct dans ces contextes.</p>
+<p>Les <strong>clés i18n</strong> elles-mêmes (<code>monitoring_ingest_*</code>) ne sont pas renommées — seul le contenu FR/EN change. Aucune cassure pour les modules qui les consomment.</p>
+</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.24.9" id="nemetonshiny-0249-2026-05-12">nemetonshiny 0.24.9 (2026-05-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0249-2026-05-12"></a></h2>
 <div class="section level4">

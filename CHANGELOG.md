@@ -12,6 +12,45 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.24.10\] - 2026-05-12
+
+### Added
+
+- Capture des warnings STAC du worker async via
+  `withCallingHandlers(warning = ...)`. Quand l’ingestion retourne 0
+  scènes, le toast surface maintenant la cause réelle (ex.
+  `STAC backend "pc" failed: HTTP 504 Gateway Timeout`) au lieu d’un
+  `Téléchargement terminé : 0 scène(s)` muet.
+- Phase “Recherche STAC” distincte de la phase “Téléchargement tuile” :
+  avant la première tuile reçue, le toast affiche “Recherche des scènes
+  Sentinel-2 disponibles…” (ou “Préparation du téléchargement : N
+  scène(s) trouvée(s)…” si nemeton a déjà pré-rempli le `total`).
+- 5 nouvelles clés i18n FR/EN : `monitoring_stac_search`,
+  `monitoring_stac_search_with_count_fmt`, `monitoring_ingest_zero_fmt`,
+  `monitoring_ingest_zero_default`, `monitoring_ingest_warns_fmt`.
+
+### Fixed
+
+- Console R inondée de
+  `Database schema up to date (N migrations applied).` à chaque
+  interaction (30-50 lignes par clic). Cause :
+  [`nemeton::db_migrate()`](https://pobsteta.github.io/nemeton/reference/db_migrate.html)
+  émet ce message à chaque connexion ré-ouverte (validity, zones,
+  alerts, probe…). Correctif : `withCallingHandlers(message = ...)`
+  autour de `db_migrate()` qui muffle uniquement les messages contenant
+  “up to date” / “already migrated”. Les “Applied migration X” du
+  premier run et les warnings/erreurs restent visibles.
+- Toast et console affichaient `(scene_id missing) (0/159)` entre la
+  recherche STAC et la première tuile reçue.
+
+### Changed
+
+- Le terme “ingestion” est remplacé par “téléchargement” (FR) /
+  “download” (EN) sur tous les textes utilisateur du contexte Sentinel-2
+  (`monitoring_*`). `field_ingest_*` et `health_validation_*` sont
+  volontairement préservés (uploads de données utilisateur, pas des
+  downloads distants).
+
 ## \[0.24.9\] - 2026-05-12
 
 ### Added
