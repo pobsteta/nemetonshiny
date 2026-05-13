@@ -184,13 +184,32 @@ monitoring_db_backend <- function(project = NULL) {
 .ensure_monitoring_schema <- function(con) {
   if (is.null(con)) return(invisible(FALSE))
   if (!requireNamespace("nemeton", quietly = TRUE)) return(invisible(FALSE))
-  ok <- tryCatch({
-    nemeton::db_migrate(con)
-    TRUE
-  }, error = function(e) {
-    cli::cli_warn("Monitoring schema migration failed: {conditionMessage(e)}")
-    FALSE
-  })
+  # `nemeton::db_migrate()` emits a `cli::cli_alert_info` line on every
+  # call — "Database schema up to date (N migrations applied)." That's
+  # informative the FIRST time but turns into noise once we re-open
+  # connections at every reactive tick (zones, validity, alerts...).
+  # We muffle ONLY the no-op message — the "Applied migration X" line
+  # of an actual first-run migration is still surfaced, as well as any
+  # warning/error.
+  ok <- tryCatch(
+    withCallingHandlers(
+      {
+        nemeton::db_migrate(con)
+        TRUE
+      },
+      message = function(m) {
+        msg <- conditionMessage(m)
+        if (grepl("schema up to date|up\\s*to\\s*date|already migrated",
+                  msg, ignore.case = TRUE)) {
+          invokeRestart("muffleMessage")
+        }
+      }
+    ),
+    error = function(e) {
+      cli::cli_warn("Monitoring schema migration failed: {conditionMessage(e)}")
+      FALSE
+    }
+  )
   invisible(ok)
 }
 
