@@ -1,4 +1,4 @@
-# nemetonshiny 0.24.9.9002 (2026-05-12)
+# nemetonshiny 0.24.10 (2026-05-12)
 
 ### Suivi sanitaire — 3 fixes UX critiques
 
@@ -43,8 +43,6 @@
   `monitoring_stac_search_with_count_fmt`,
   `monitoring_ingest_zero_fmt`, `monitoring_ingest_zero_default`,
   `monitoring_ingest_warns_fmt`.
-
-# nemetonshiny 0.24.9.9001 (2026-05-12)
 
 ### Suivi sanitaire — "Ingestion Sentinel-2" → "Téléchargement Sentinel-2"
 
