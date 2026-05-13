@@ -63,19 +63,32 @@ run_ingestion_async <- function() {
 
       progress_cb <- .build_progress_writer(progress_path)
 
-      summary <- nemeton::ingest_sentinel2_timeseries(
-        con               = con,
-        zone_id           = zone_id,
-        start             = start,
-        end               = end,
-        bands             = bands,
-        max_cloud         = max_cloud,
-        progress_callback = progress_cb
+      # Capture STAC / HTTP warnings emitted by nemeton (e.g. when
+      # Planetary Computer returns 504 and nemeton falls back to "0
+      # scenes found" silently). We propagate them back to the main
+      # process so the result observer can surface the real cause
+      # instead of a misleading "Téléchargement terminé : 0 scènes".
+      warns <- character()
+      summary <- withCallingHandlers(
+        nemeton::ingest_sentinel2_timeseries(
+          con               = con,
+          zone_id           = zone_id,
+          start             = start,
+          end               = end,
+          bands             = bands,
+          max_cloud         = max_cloud,
+          progress_callback = progress_cb
+        ),
+        warning = function(w) {
+          warns <<- c(warns, conditionMessage(w))
+          invokeRestart("muffleWarning")
+        }
       )
 
       list(
         status    = "success",
         summary   = summary,
+        warnings  = warns,
         timestamp = Sys.time()
       )
     }, seed = TRUE)

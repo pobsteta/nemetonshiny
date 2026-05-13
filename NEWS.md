@@ -1,3 +1,49 @@
+# nemetonshiny 0.24.9.9002 (2026-05-12)
+
+### Suivi sanitaire — 3 fixes UX critiques
+
+* `fix(monitoring)` — **spam "Database schema up to date" en boucle**
+  dans la console : `nemeton::db_migrate()` emet un
+  `cli::cli_alert_info` à chaque connexion ré-ouverte. Avec les
+  reactives multiples du module (validity, zones, alerts, probe...),
+  on tape 30-50 lignes identiques par interaction.
+
+  Correctif : `withCallingHandlers(message = ...)` autour de
+  `db_migrate()` qui muffle uniquement les messages contenant "up
+  to date" / "already migrated". Les "Applied migration X" du
+  premier run et les warnings/erreurs restent visibles.
+
+* `feat(monitoring)` — **0 scènes trouvées masquait un timeout
+  Planetary Computer** (HTTP 504). Le worker affichait juste
+  `Téléchargement terminé : 0 scène(s)`, sans dire que le backend
+  STAC avait timeout.
+
+  Correctif : `withCallingHandlers(warning = ...)` dans le worker
+  capture les warnings nemeton (`STAC backend "pc" failed:
+  HTTP 504...`) et les remonte dans `result$warnings`. Côté result
+  observer :
+  - Si `n_scenes == 0` : toast warning rouge avec les warnings
+    capturés (ou un hint générique "Élargis la fenêtre temporelle
+    ou tolère plus de nuages").
+  - Si succès mais warnings non bloquants : toast secondaire
+    "Avertissement(s) du backend : ..." pour ne pas les perdre.
+
+* `fix(monitoring)` — **toast affichait "Tuile Sentinel-2 (scene_id
+  missing) (0/159)"** entre la recherche STAC et la première tuile.
+  Le log console était tout aussi opaque (`(scene_id missing)`).
+
+  Correctif : quand `scene_id` est vide ET `completed == 0`, le
+  toast affiche maintenant :
+  - "Recherche des scènes Sentinel-2 disponibles…" (si total = 0)
+  - "Préparation du téléchargement : N scène(s) trouvée(s)…" (si total > 0)
+
+  Et la console : "Sentinel-2 STAC search done: N scene(s) found."
+
+  Nouvelles clés i18n FR/EN : `monitoring_stac_search`,
+  `monitoring_stac_search_with_count_fmt`,
+  `monitoring_ingest_zero_fmt`, `monitoring_ingest_zero_default`,
+  `monitoring_ingest_warns_fmt`.
+
 # nemetonshiny 0.24.9.9001 (2026-05-12)
 
 ### Suivi sanitaire — "Ingestion Sentinel-2" → "Téléchargement Sentinel-2"

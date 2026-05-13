@@ -1025,8 +1025,16 @@ mod_monitoring_server <- function(id, app_state) {
       i_val <- as.integer(ev$completed %||% ev$i %||% 0L)
       n_val <- as.integer(ev$total     %||% ev$n %||% 0L)
       scene <- as.character(ev$scene_id %||% "")
+      # When scene_id is empty AND completed == 0, we're between the
+      # STAC search and the first tile — show "Recherche STAC..." so
+      # the user doesn't see a misleading "Tuile Sentinel-2 (0/N)".
       msg <- if (identical(status, "starting")) {
         i18n$t("monitoring_ingest_starting")
+      } else if (!nzchar(scene) && i_val == 0L) {
+        if (n_val > 0L)
+          sprintf(i18n$t("monitoring_stac_search_with_count_fmt"), n_val)
+        else
+          i18n$t("monitoring_stac_search")
       } else if (nzchar(scene)) {
         sprintf(i18n$t("monitoring_ingest_progress_named_fmt"),
                 scene, i_val, n_val)
@@ -1138,12 +1146,38 @@ mod_monitoring_server <- function(id, app_state) {
         shiny::removeNotification(session$ns("ingest_progress"))
         .cleanup_progress_file(ingest_progress_path())
         ingest_progress_path(NULL)
-        shiny::showNotification(
-          sprintf(i18n$t("monitoring_ingest_success"),
-                  result$summary$n_scenes %||% 0L,
-                  result$summary$n_obs_inserted %||% 0L),
-          type = "message", duration = 6
-        )
+        n_scenes <- as.integer(result$summary$n_scenes %||% 0L)
+        n_obs    <- as.integer(result$summary$n_obs_inserted %||% 0L)
+        warns    <- result$warnings %||% character(0)
+        if (n_scenes == 0L) {
+          # 0 scènes peut signifier soit "vraiment rien dans la période"
+          # soit "STAC en panne" (HTTP 504, timeout réseau...). On
+          # surfaca les warnings capturés pour que l'utilisateur sache
+          # si c'est une vraie absence ou un échec backend.
+          detail <- if (length(warns) > 0L) {
+            paste(warns, collapse = " ; ")
+          } else {
+            i18n$t("monitoring_ingest_zero_default")
+          }
+          shiny::showNotification(
+            sprintf(i18n$t("monitoring_ingest_zero_fmt"), detail),
+            type = "warning", duration = 12
+          )
+        } else {
+          shiny::showNotification(
+            sprintf(i18n$t("monitoring_ingest_success"), n_scenes, n_obs),
+            type = "message", duration = 6
+          )
+          # Si malgré le succès on a recolté des warnings non bloquants,
+          # on les montre en plus dans un toast secondaire.
+          if (length(warns) > 0L) {
+            shiny::showNotification(
+              sprintf(i18n$t("monitoring_ingest_warns_fmt"),
+                      paste(warns, collapse = " ; ")),
+              type = "warning", duration = 10
+            )
+          }
+        }
         zones_refresh(zones_refresh() + 1L)  # force re-fetch in case
                                              # the ingestion changed state
       }
@@ -1421,6 +1455,17 @@ mod_monitoring_server <- function(id, app_state) {
     cli::cli_alert_info("Sentinel-2 download starting ({n_val} scene(s) to process).")
     return(invisible(NULL))
   }
+  # No scene_id + 0 completed = we're between the STAC search and the
+  # first actual tile. Don't pollute the console with a misleading
+  # "Tuile Sentinel-2 (scene_id missing) (0/N)".
+  if (!nzchar(scene) && i_val == 0L) {
+    if (n_val > 0L) {
+      cli::cli_alert_info("Sentinel-2 STAC search done: {n_val} scene(s) found.")
+    } else {
+      cli::cli_alert_info("Sentinel-2 STAC search in progress…")
+    }
+    return(invisible(NULL))
+  }
   extras <- c(
     if (!is.null(ev$obs_date) && nzchar(as.character(ev$obs_date)))
       paste0(as.character(ev$obs_date)),
@@ -1430,14 +1475,13 @@ mod_monitoring_server <- function(id, app_state) {
       paste0("source=", as.character(ev$source))
   )
   suffix <- if (length(extras)) sprintf(" — %s", paste(extras, collapse = ", ")) else ""
-  scene_str <- if (nzchar(scene)) scene else "(scene_id missing)"
   if (identical(status, "scene_error")) {
     cli::cli_alert_warning(
-      "Tuile Sentinel-2 {scene_str} ({i_val}/{n_val}) — erreur{suffix}"
+      "Tuile Sentinel-2 {scene} ({i_val}/{n_val}) — erreur{suffix}"
     )
   } else {
     cli::cli_alert_info(
-      "Tuile Sentinel-2 {scene_str} ({i_val}/{n_val}){suffix}"
+      "Tuile Sentinel-2 {scene} ({i_val}/{n_val}){suffix}"
     )
   }
   invisible(NULL)

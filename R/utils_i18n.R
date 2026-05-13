@@ -1737,6 +1737,26 @@ TRANSLATIONS <- list(
     fr = "\u00c9chec du t\u00e9l\u00e9chargement",
     en = "Download failed"
   ),
+  monitoring_stac_search = list(
+    fr = "Recherche des sc\u00e8nes Sentinel-2 disponibles\u2026",
+    en = "Searching for available Sentinel-2 scenes\u2026"
+  ),
+  monitoring_stac_search_with_count_fmt = list(
+    fr = "Pr\u00e9paration du t\u00e9l\u00e9chargement : %d sc\u00e8ne(s) trouv\u00e9e(s)\u2026",
+    en = "Preparing download: %d scene(s) found\u2026"
+  ),
+  monitoring_ingest_zero_fmt = list(
+    fr = "Aucune sc\u00e8ne Sentinel-2 trouv\u00e9e pour la zone et la p\u00e9riode demand\u00e9es. %s",
+    en = "No Sentinel-2 scene found for the requested zone and period. %s"
+  ),
+  monitoring_ingest_zero_default = list(
+    fr = "\u00c9largis la fen\u00eatre temporelle ou tol\u00e8re plus de nuages, puis r\u00e9essaie.",
+    en = "Widen the time window or allow more clouds, then try again."
+  ),
+  monitoring_ingest_warns_fmt = list(
+    fr = "Avertissement(s) du backend : %s",
+    en = "Backend warning(s): %s"
+  ),
   monitoring_ingest_progress_fmt = list(
     fr = "Tuile Sentinel-2 t\u00e9l\u00e9charg\u00e9e (%d/%d)",
     en = "Sentinel-2 tile downloaded (%d/%d)"
