@@ -1,3 +1,27 @@
+# nemetonshiny 0.27.3 (2026-05-15)
+
+### Suivi sanitaire — libellé toast cache lookup plus clair
+
+Le toast émis à l'événement `s2:cache_lookup` (one-shot, juste après
+la recherche STAC) disait *« Cache DB : 79 en cache, 26 à traiter »*.
+Le mot *« à traiter »* laissait penser qu'on allait re-télécharger
+26 scènes en entier — alors que dans la majorité des cas, ces 26
+scènes ont déjà des bandes sur disque (cache COG) et seul le
+**complément** est à fetcher (typiquement la 2ème bande quand un
+run précédent a planté entre les deux).
+
+Reformulation : *« Cache DB : %d scènes déjà ingérées (skip), %d
+à compléter »* / *« DB cache: %d scenes already ingested (skip),
+%d to complete »*. Le mot **« skip »** confirme que les premières
+sont totalement court-circuitées (ni HTTP, ni read disque), et
+**« à compléter »** indique que les secondes ne sont pas
+forcément des re-downloads complets. Pour le détail bande par
+bande, activer `NEMETON_S2_CACHE_DEBUG=TRUE` avant `run_app()` —
+chaque CACHE-HIT / CACHE-MISS / FETCH apparaît dans la console R
+en live (cf. v0.26.6).
+
+Pas de modif fonctionnelle, uniquement i18n.
+
 # nemetonshiny 0.27.2 (2026-05-15)
 
 ### Suivi sanitaire — bouton "Annuler / Réinitialiser" pour débloquer l'UI

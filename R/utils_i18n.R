@@ -1774,8 +1774,8 @@ TRANSLATIONS <- list(
     en = "Sentinel-2 tile %s (%d/%d)"
   ),
   monitoring_ingest_cache_lookup_fmt = list(
-    fr = "Cache DB : %d en cache, %d \u00e0 traiter",
-    en = "DB cache: %d cached, %d to process"
+    fr = "Cache DB : %d sc\u00e8nes d\u00e9j\u00e0 ing\u00e9r\u00e9es (skip), %d \u00e0 compl\u00e9ter",
+    en = "DB cache: %d scenes already ingested (skip), %d to complete"
   ),
   monitoring_ingest_band_failed_fmt = list(
     fr = "\u00c9chec bande %s : %s",
