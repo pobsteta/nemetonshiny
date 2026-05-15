@@ -1,3 +1,75 @@
+# nemetonshiny 0.27.0 (2026-05-15)
+
+### Suivi sanitaire — clôture du reliquat E6.b (phases 2, 3, 6)
+
+Trois sous-chantiers du reliquat de l'épaississement 6 (suivi sanitaire)
+sont livrés ensemble dans cette release. Le PLAN.md du repo `nemeton`
+coche désormais E6.b en intégralité.
+
+* `feat(monitoring)` — **Phase 3 — Plotly NDVI/NBR par placette**.
+  L'onglet Suivi sanitaire en mode rapide affiche enfin les séries
+  NDVI / NBR par placette, et plus le placeholder vide qui traînait
+  depuis la phase 1. Câblage : nouveau reactive `obs_pixel_data()`
+  dans `R/mod_monitoring.R` qui appelle `nemeton::read_obs_pixel()`
+  (fonction publique introduite côté cœur dans `nemeton@v0.21.11`)
+  avec les filtres `bands` (cases NDVI / NBR cochées dans la sidebar)
+  et `date_range` (input dateRange existant). Resultat : un
+  `data.frame` typé `(plot_id, obs_date, band, value, …)`. Le reactive
+  retourne `NULL` quand un prerequis manque (mode health, pas de
+  zone, pas de bandes cochées, dateRange invalide) — la renderPlotly
+  affiche alors un état vide avec le message i18n adéquat
+  (`monitoring_timeseries_placeholder` ou `monitoring_timeseries_no_plot_selected`).
+  Côté UI, ajout d'un `selectizeInput("plot_filter", multiple = TRUE)`
+  dans la card du time series (visible uniquement en mode quick),
+  avec plugin `remove_button` pour décocher d'un clic. L'observer
+  `observeEvent(obs_pixel_data())` met à jour ses choices à chaque
+  re-fetch et préserve la sélection courante si elle reste un sous-
+  ensemble des plots disponibles. Le plotly trace une ligne+marqueurs
+  par couple `(plot_id, band)` — couleur figée par bande
+  (NDVI vert, NBR rouge, NDWI bleu, B04/B08/B12 violet/marron/rose),
+  `legendgroup = band` pour cliquer une bande entière, hovertemplate
+  formaté `<plot · band> · YYYY-MM-DD · band = 0.xxx`. Layout
+  i18nisé (xaxis = "Date d'observation" / "Observation date",
+  yaxis = "Valeur de l'indice" / "Index value", légende horizontale
+  sous le graphique). 6 nouvelles clés i18n
+  (`monitoring_timeseries_select_plots`, `_select_plots_help`,
+  `_no_plot_selected`, `_no_data`, `_xaxis`, `_yaxis`). 3 tests
+  testServer dans `test-mod_monitoring.R` : (a) reader ne fire pas
+  en mode health, (b) reader forwarde correctement zone_id/bands/
+  date_from/date_to et l'observer rafraîchit `plot_filter` avec les
+  plot_ids présents, (c) reader retourne NULL et ne consulte pas la
+  DB quand une précondition manque (pas de zone, pas de bandes,
+  dateRange invalide).
+
+* `test(monitoring)` — **Phase 6 — Smoke E2E shinytest2**. Nouveau
+  fichier `tests/testthat/test-monitoring-smoke-e2e.R` : un seul
+  test `shinytest2::AppDriver` qui boot l'app via
+  `shiny::shinyApp(app_ui, app_server)` (golem path), navigue vers
+  l'onglet Monitoring (`main_nav = "monitoring"`), vérifie la
+  présence du radio `monitoring-mode` et la bidirectionnalité du
+  switch quick ↔ health. `on.exit(app$stop())` garanti même sur
+  échec. `shinytest2 (>= 0.3.0)` ajouté à Suggests. Skips multiples :
+  shinytest2 / chromote absents, pas de binaire Chrome détecté,
+  `nemeton::read_obs_pixel` non exporté (cœur < v0.21.11), boot
+  AppDriver échoué (avec message). Pas de DB requise — les zones
+  restent vides, ce qui est exactement l'état utile pour un smoke.
+
+* `chore(monitoring)` — **Phase 2 — Ingestion async + toasts**.
+  Marquée livrée rétroactivement dans `nemeton/PLAN.md` : ses 6
+  livrables (ExtendedTask, future_promise, progress_callback wired,
+  reactivePoll sur progress.json, toasts persistants/erreurs/band-
+  failure, console live) ont été câblés incrémentalement entre
+  `nemetonshiny@v0.24.13` et `nemetonshiny@v0.26.6` sans qu'aucun
+  commit n'identifie explicitement la phase. Pas de nouveau code
+  livré ici — uniquement traçabilité dans le PLAN.
+
+### Bumps
+
+* `Imports: nemeton (>= 0.21.11)` (était 0.21.9) — pour
+  `read_obs_pixel()`.
+* `Remotes: pobsteta/nemeton@v0.21.11` (était v0.21.9).
+* `Suggests: shinytest2 (>= 0.3.0)` ajouté pour le smoke E2E.
+
 # nemetonshiny 0.26.6 (2026-05-13)
 
 ### Console worker — capture réelle des messages cli + suppression des NOTICEs PG

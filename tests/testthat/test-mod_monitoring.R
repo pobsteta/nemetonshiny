@@ -835,3 +835,199 @@ test_that("auto-select pre-selects the zone matching project metadata$monitoring
 
   expect_equal(captured_selected, "2")
 })
+
+
+# ---- Server: phase 3 — obs_pixel reactive + plot_filter sync --------
+# E6.b phase 3 wires the time series plotly to nemeton::read_obs_pixel().
+# We can't reach into a `reactive({...})` defined inside moduleServer()
+# from the outside, so the tests below assert the *side effects* we
+# care about: how many times nemeton::read_obs_pixel was called, with
+# which arguments, and whether the plot_filter selectizeInput got
+# refreshed when obs data appears.
+
+.skip_if_no_read_obs_pixel <- function() {
+  testthat::skip_if_not_installed("nemeton")
+  if (!"read_obs_pixel" %in% getNamespaceExports("nemeton")) {
+    testthat::skip("nemeton::read_obs_pixel not exported (need >= v0.21.11)")
+  }
+}
+
+test_that("obs_pixel reactive does not fire in health mode", {
+  skip_if_not_installed("shiny")
+  .skip_if_no_read_obs_pixel()
+
+  call_count <- 0L
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection  = function(...) "fake-con",
+    list_monitoring_zones         = function(con) data.frame(
+      id = 1L, name = "Z", stringsAsFactors = FALSE),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    {
+      testthat::with_mocked_bindings(
+        read_obs_pixel = function(...) {
+          call_count <<- call_count + 1L
+          data.frame(plot_id = character(0), obs_date = as.Date(character(0)),
+                     band = character(0), value = numeric(0),
+                     cloud_pct = numeric(0), source = character(0),
+                     scene_id = character(0))
+        },
+        .package = "nemeton",
+        {
+          shiny::testServer(
+            nemetonshiny:::mod_monitoring_server,
+            args = list(app_state = make_fake_app_state()),
+            {
+              session$setInputs(
+                mode       = "health",
+                zone_id    = "1",
+                bands      = c("NDVI", "NBR"),
+                date_range = c(as.Date("2025-01-01"),
+                               as.Date("2025-12-31"))
+              )
+              session$flushReact()
+              # Health mode short-circuits → reader never invoked.
+              expect_equal(call_count, 0L)
+            }
+          )
+        }
+      )
+    }
+  )
+})
+
+test_that("obs_pixel reactive forwards filters to read_obs_pixel and refreshes plot_filter", {
+  skip_if_not_installed("shiny")
+  .skip_if_no_read_obs_pixel()
+
+  fake_obs <- data.frame(
+    plot_id   = c("P01", "P01", "P02", "P02"),
+    obs_date  = as.Date(c("2025-06-10", "2025-06-25",
+                          "2025-06-10", "2025-06-25")),
+    band      = c("NDVI", "NDVI", "NDVI", "NDVI"),
+    value     = c(0.70, 0.65, 0.72, 0.68),
+    cloud_pct = c(5, 8, 5, 8),
+    source    = "fake",
+    scene_id  = c("S1", "S2", "S1", "S2"),
+    stringsAsFactors = FALSE
+  )
+
+  captured <- list()
+  captured_choices  <- NULL
+  captured_selected <- NULL
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection  = function(...) "fake-con",
+    list_monitoring_zones         = function(con) data.frame(
+      id = 7L, name = "Z7", stringsAsFactors = FALSE),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    {
+      testthat::with_mocked_bindings(
+        read_obs_pixel = function(con, zone_id, plot_ids = NULL,
+                                  bands = NULL,
+                                  date_from = NULL, date_to = NULL) {
+          captured$zone_id   <<- zone_id
+          captured$bands     <<- bands
+          captured$date_from <<- date_from
+          captured$date_to   <<- date_to
+          fake_obs
+        },
+        .package = "nemeton",
+        {
+          testthat::with_mocked_bindings(
+            updateSelectizeInput = function(session, inputId,
+                                            choices = NULL,
+                                            selected = NULL, ...) {
+              if (inputId == "plot_filter") {
+                captured_choices  <<- choices
+                captured_selected <<- selected
+              }
+              invisible(NULL)
+            },
+            .package = "shiny",
+            {
+              shiny::testServer(
+                nemetonshiny:::mod_monitoring_server,
+                args = list(app_state = make_fake_app_state()),
+                {
+                  session$setInputs(
+                    mode       = "quick",
+                    zone_id    = "7",
+                    bands      = c("NDVI", "NBR"),
+                    date_range = c(as.Date("2025-01-01"),
+                                   as.Date("2025-12-31"))
+                  )
+                  session$flushReact()
+                }
+              )
+            }
+          )
+        }
+      )
+    }
+  )
+
+  expect_equal(captured$zone_id, 7L)
+  expect_equal(captured$bands, c("NDVI", "NBR"))
+  expect_equal(captured$date_from, as.Date("2025-01-01"))
+  expect_equal(captured$date_to,   as.Date("2025-12-31"))
+  expect_setequal(captured_choices,  c("P01", "P02"))
+  expect_setequal(captured_selected, c("P01", "P02"))
+})
+
+test_that("obs_pixel reactive returns NULL when zone, bands or dates missing", {
+  skip_if_not_installed("shiny")
+  .skip_if_no_read_obs_pixel()
+
+  call_count <- 0L
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection  = function(...) "fake-con",
+    list_monitoring_zones         = function(con) data.frame(
+      id = 1L, name = "Z", stringsAsFactors = FALSE),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    {
+      testthat::with_mocked_bindings(
+        read_obs_pixel = function(...) {
+          call_count <<- call_count + 1L
+          data.frame()
+        },
+        .package = "nemeton",
+        {
+          shiny::testServer(
+            nemetonshiny:::mod_monitoring_server,
+            args = list(app_state = make_fake_app_state()),
+            {
+              # Quick mode but bands empty → no fire.
+              session$setInputs(
+                mode       = "quick", zone_id = "1",
+                bands      = character(0),
+                date_range = c(as.Date("2025-01-01"),
+                               as.Date("2025-12-31"))
+              )
+              session$flushReact()
+              expect_equal(call_count, 0L)
+
+              # Quick mode but no zone → no fire.
+              session$setInputs(
+                mode       = "quick", zone_id = "",
+                bands      = "NDVI",
+                date_range = c(as.Date("2025-01-01"),
+                               as.Date("2025-12-31"))
+              )
+              session$flushReact()
+              expect_equal(call_count, 0L)
+
+              # Quick mode but invalid date_range → no fire.
+              session$setInputs(
+                mode       = "quick", zone_id = "1",
+                bands      = "NDVI",
+                date_range = c(as.Date(NA), as.Date(NA))
+              )
+              session$flushReact()
+              expect_equal(call_count, 0L)
+            }
+          )
+        }
+      )
+    }
+  )
+})

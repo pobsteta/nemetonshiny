@@ -199,6 +199,28 @@ mod_monitoring_ui <- function(id) {
             i18n$t("monitoring_timeseries_title")
           )
         ),
+        # Plot picker: only relevant in quick mode (per-plot NDVI/NBR
+        # series). In health mode the plotly shows an alert-distribution
+        # bar chart that doesn't depend on a per-plot selection.
+        shiny::conditionalPanel(
+          condition = sprintf("input['%s'] == 'quick'", ns("mode")),
+          htmltools::div(
+            class = "px-3 pt-2",
+            shiny::selectizeInput(
+              ns("plot_filter"),
+              i18n$t("monitoring_timeseries_select_plots"),
+              choices  = NULL,
+              selected = NULL,
+              multiple = TRUE,
+              width    = "100%",
+              options  = list(plugins = list("remove_button"))
+            ),
+            shiny::helpText(
+              class = "small text-muted",
+              i18n$t("monitoring_timeseries_select_plots_help")
+            )
+          )
+        ),
         bslib::card_body(
           plotly::plotlyOutput(ns("timeseries"), height = "320px")
         )
@@ -552,29 +574,158 @@ mod_monitoring_server <- function(id, app_state) {
         )
     })
 
-    # ----- Time series plotly (T6app.10) ----------------------------
-    # Mode rapide: NDVI/NBR (data wiring lands with E6.b phase 3, so
-    # for now we render a "no data" plot with the right axis layout).
-    # Mode sanitaire: alerts distribution per class (informative without
-    # requiring per-pixel harmonic-model data, which isn't returned by
-    # run_fordead_dieback).
+    # ----- Quick-mode obs_pixel reader (E6.b phase 3) ---------------
+    # Reads NDVI/NBR per-plot observations from the obs_pixel
+    # hypertable via nemeton::read_obs_pixel() — the public reader
+    # introduced in nemeton@v0.21.11. Going through the exported API
+    # keeps obs_pixel SQL out of nemetonshiny (CLAUDE.md §1).
+    #
+    # Re-fetched whenever the zone, the bands checkbox, or the date
+    # range changes. Returns NULL when prerequisites are missing
+    # (no zone, health mode, no bands picked) so the downstream
+    # plotly renderer can show a clean empty-state.
+    obs_pixel_data <- shiny::reactive({
+      if (!identical(input$mode, "quick")) return(NULL)
+      zone <- input$zone_id
+      if (!isTRUE(nzchar(zone))) return(NULL)
+      bands <- input$bands
+      if (!length(bands)) return(NULL)
+      dr <- input$date_range
+      if (length(dr) != 2L || any(is.na(dr))) return(NULL)
+
+      con <- get_monitoring_db_connection(project = app_state$current_project)
+      if (is.null(con)) return(NULL)
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+
+      tryCatch(
+        nemeton::read_obs_pixel(
+          con,
+          zone_id   = as.integer(zone),
+          bands     = as.character(bands),
+          date_from = dr[1],
+          date_to   = dr[2]
+        ),
+        error = function(e) {
+          cli::cli_alert_warning(sprintf(
+            "read_obs_pixel failed: %s", conditionMessage(e)))
+          NULL
+        }
+      )
+    })
+
+    # Refresh the plot picker whenever the underlying obs_pixel set
+    # changes. We pre-select every plot the first time data appears
+    # (so the user sees something) but preserve their selection on
+    # subsequent refreshes if it's still a subset of available plots.
+    shiny::observeEvent(obs_pixel_data(), {
+      df <- obs_pixel_data()
+      if (is.null(df) || !nrow(df)) {
+        shiny::updateSelectizeInput(session, "plot_filter",
+                                    choices = character(0),
+                                    selected = character(0))
+        return()
+      }
+      plots_avail <- sort(unique(df$plot_id))
+      cur_sel <- input$plot_filter
+      if (length(cur_sel) && all(cur_sel %in% plots_avail)) {
+        new_sel <- cur_sel
+      } else {
+        new_sel <- plots_avail
+      }
+      shiny::updateSelectizeInput(session, "plot_filter",
+                                  choices  = plots_avail,
+                                  selected = new_sel,
+                                  server   = FALSE)
+    }, ignoreNULL = FALSE)
+
+    # ----- Time series plotly (T6app.10 — phase 3 wired) ------------
+    # Mode rapide : NDVI/NBR per-plot via nemeton::read_obs_pixel.
+    #   * x = obs_date, y = value
+    #   * one trace per (plot_id, band) — color by band, name shows
+    #     "<plot> · <band>" so a busy zone stays readable in legend
+    # Mode sanitaire : alerts distribution per class (informative
+    # without requiring per-pixel harmonic-model data, which is not
+    # returned by run_fordead_dieback).
     output$timeseries <- plotly::renderPlotly({
       i18n <- i18n_r()
-      empty <- plotly::plot_ly(type = "scatter", mode = "lines") |>
-        plotly::layout(
-          annotations = list(list(
-            text      = i18n$t("monitoring_timeseries_placeholder"),
-            xref      = "paper", yref = "paper",
-            x = 0.5, y = 0.5, showarrow = FALSE,
-            font      = list(color = "#888")
-          )),
-          xaxis = list(visible = FALSE),
-          yaxis = list(visible = FALSE)
+      empty <- function(msg) {
+        plotly::plot_ly(type = "scatter", mode = "lines") |>
+          plotly::layout(
+            annotations = list(list(
+              text      = msg,
+              xref      = "paper", yref = "paper",
+              x = 0.5, y = 0.5, showarrow = FALSE,
+              font      = list(color = "#888")
+            )),
+            xaxis = list(visible = FALSE),
+            yaxis = list(visible = FALSE)
+          )
+      }
+
+      if (identical(input$mode, "quick")) {
+        df <- obs_pixel_data()
+        if (is.null(df) || !nrow(df)) {
+          return(empty(i18n$t("monitoring_timeseries_placeholder")))
+        }
+        sel <- input$plot_filter
+        if (length(sel)) df <- df[df$plot_id %in% sel, , drop = FALSE]
+        if (!nrow(df)) {
+          return(empty(i18n$t("monitoring_timeseries_no_plot_selected")))
+        }
+
+        # Stable color map per band — same palette in legend regardless
+        # of which bands the user picked at run time.
+        band_colors <- c(
+          NDVI = "#2CA02C",   # green
+          NBR  = "#D62728",   # red
+          NDWI = "#1F77B4",   # blue
+          B04  = "#9467BD",
+          B08  = "#8C564B",
+          B12  = "#E377C2"
         )
 
-      if (!identical(input$mode, "health")) return(empty)
+        df <- df[order(df$plot_id, df$band, df$obs_date), , drop = FALSE]
+        df$trace_key <- paste(df$plot_id, df$band, sep = " · ")
+
+        p <- plotly::plot_ly(type = "scatter", mode = "lines+markers")
+        for (k in unique(df$trace_key)) {
+          sub <- df[df$trace_key == k, , drop = FALSE]
+          band <- sub$band[1]
+          col  <- band_colors[band]
+          if (is.na(col)) col <- "#7F7F7F"
+          p <- plotly::add_trace(
+            p,
+            x      = sub$obs_date,
+            y      = sub$value,
+            name   = k,
+            mode   = "lines+markers",
+            line   = list(color = unname(col), width = 1.5),
+            marker = list(color = unname(col), size = 5),
+            legendgroup = band,
+            hovertemplate = paste0(
+              "<b>", htmltools::htmlEscape(k), "</b><br>",
+              "%{x|%Y-%m-%d}<br>",
+              band, " = %{y:.3f}<extra></extra>"
+            )
+          )
+        }
+        return(plotly::layout(
+          p,
+          margin = list(t = 20, b = 40, l = 50, r = 10),
+          xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
+                        type = "date"),
+          yaxis  = list(title = i18n$t("monitoring_timeseries_yaxis")),
+          legend = list(orientation = "h", y = -0.25)
+        ))
+      }
+
+      if (!identical(input$mode, "health")) {
+        return(empty(i18n$t("monitoring_timeseries_placeholder")))
+      }
       a <- alerts()
-      if (is.null(a) || !nrow(a)) return(empty)
+      if (is.null(a) || !nrow(a)) {
+        return(empty(i18n$t("monitoring_timeseries_placeholder")))
+      }
 
       counts <- table(factor(a$confidence_class,
                              levels = c("1-faible", "2-moyenne",
