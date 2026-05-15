@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,7 +29,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>CLAUDE.md — Nemetonshiny Development Reference</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.26.6/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
     </div>
 
 
@@ -355,7 +355,7 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.</code></pre
 <li>
 <code>testServer()</code> pour les modules Shiny (contribue à covr).</li>
 <li>
-<code>shinytest2::AppDriver</code> pour les tests E2E (ne contribue pas à covr) — <code>on.exit(app$stop())</code> obligatoire.</li>
+<code><a href="https://rstudio.github.io/shinytest2/reference/AppDriver.html" class="external-link">shinytest2::AppDriver</a></code> pour les tests E2E (ne contribue pas à covr) — <code>on.exit(app$stop())</code> obligatoire.</li>
 <li>Pour mocker une fonction métier : <code>testthat::local_mocked_bindings(nemeton_fonction = stub, .package = "nemeton")</code>.</li>
 <li>Variables DB de test : <code>NEMETON_DB_URL_TEST</code> (gitignore via <code>.Renviron</code>).</li>
 </ul></div>
@@ -485,6 +485,8 @@ keycloak/                     → Compose dev + realms pour auth locale
 <li>Quand je travaille sur une tâche longue, maintenir le <code>PLAN.md</code> du repo <code>nemeton</code> à jour à chaque étape terminée (chantier en cours + journal).</li>
 <li>
 <strong>Push branche dev = automatique ; merge <code>main</code> + tag + release = autorisation explicite</strong>. Après chaque push réussi sur la branche dev, Claude doit systématiquement demander s’il faut merger sur <code>main</code> en présentant le récapitulatif décrit dans <em>Workflow de push (branche dev → main)</em>. Sans autorisation explicite, jamais de <code>git push origin main</code>, jamais de tag, jamais de <code>gh release create</code>, jamais de merge.</li>
+<li>
+<strong>Ne jamais basculer dans le repo <code>nemeton</code> (cœur) depuis cette session.</strong> Cette session de développement est dédiée à <code>nemetonshiny</code> (<code>/home/pascal/dev/nemetonshiny</code>). Si une modification cœur (<code>nemeton</code>) est nécessaire — nouvelle fonction exportée, fix d’un helper interne, bump cycle dev cœur, mise à jour du <code>PLAN.md</code> cœur, etc. — Claude doit <strong>s’arrêter et demander à l’utilisateur d’ouvrir une nouvelle instance de dev sur le dépôt <code>/home/pascal/dev/nemeton</code></strong> avec les instructions précises (signature de fonction, contenu attendu, tests, NEWS, PLAN). Pas de <code>cd /home/pascal/dev/nemeton</code>, pas de <code>git checkout</code> côté cœur, pas de <code>Read</code>/<code>Edit</code>/<code>Write</code> sur des fichiers <code>/home/pascal/dev/nemeton/**</code>. Raison : opérer sur deux repos en parallèle dans la même session brouille l’état du shell, désynchronise le suivi des branches, et rend les récap de push ambigus pour l’utilisateur. Garder une session = un repo.</li>
 </ol></div>
 </div>
 

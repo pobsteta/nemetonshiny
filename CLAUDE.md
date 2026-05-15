@@ -306,8 +306,9 @@ Rscript -e 'pkgload::load_all("."); cat(nemetonshiny:::export_translations_json(
 - Framework : **testthat** edition 3.
 - Nommage : `tests/testthat/test-{module|service}.R`.
 - `testServer()` pour les modules Shiny (contribue à covr).
-- `shinytest2::AppDriver` pour les tests E2E (ne contribue pas à covr) —
-  `on.exit(app$stop())` obligatoire.
+- [`shinytest2::AppDriver`](https://rstudio.github.io/shinytest2/reference/AppDriver.html)
+  pour les tests E2E (ne contribue pas à covr) — `on.exit(app$stop())`
+  obligatoire.
 - Pour mocker une fonction métier :
   `testthat::local_mocked_bindings(nemeton_fonction = stub, .package = "nemeton")`.
 - Variables DB de test : `NEMETON_DB_URL_TEST` (gitignore via
@@ -513,3 +514,18 @@ une nouvelle confirmation.
     (branche dev → main)*. Sans autorisation explicite, jamais de
     `git push origin main`, jamais de tag, jamais de
     `gh release create`, jamais de merge.
+12. **Ne jamais basculer dans le repo `nemeton` (cœur) depuis cette
+    session.** Cette session de développement est dédiée à
+    `nemetonshiny` (`/home/pascal/dev/nemetonshiny`). Si une
+    modification cœur (`nemeton`) est nécessaire — nouvelle fonction
+    exportée, fix d’un helper interne, bump cycle dev cœur, mise à jour
+    du `PLAN.md` cœur, etc. — Claude doit **s’arrêter et demander à
+    l’utilisateur d’ouvrir une nouvelle instance de dev sur le dépôt
+    `/home/pascal/dev/nemeton`** avec les instructions précises
+    (signature de fonction, contenu attendu, tests, NEWS, PLAN). Pas de
+    `cd /home/pascal/dev/nemeton`, pas de `git checkout` côté cœur, pas
+    de `Read`/`Edit`/`Write` sur des fichiers
+    `/home/pascal/dev/nemeton/**`. Raison : opérer sur deux repos en
+    parallèle dans la même session brouille l’état du shell,
+    désynchronise le suivi des branches, et rend les récap de push
+    ambigus pour l’utilisateur. Garder une session = un repo.

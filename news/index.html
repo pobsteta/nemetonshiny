@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.26.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,33 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.26.6/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.27.0" id="nemetonshiny-0270-2026-05-15">nemetonshiny 0.27.0 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0270-2026-05-15"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--clôture-du-reliquat-e6b-phases-0-27-0">Suivi sanitaire — clôture du reliquat E6.b (phases 2, 3, 6)<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--cl%C3%B4ture-du-reliquat-e6b-phases-0-27-0"></a></h4>
+<p>Trois sous-chantiers du reliquat de l’épaississement 6 (suivi sanitaire) sont livrés ensemble dans cette release. Le PLAN.md du repo <code>nemeton</code> coche désormais E6.b en intégralité.</p>
+<ul><li><p><code>feat(monitoring)</code> — <strong>Phase 3 — Plotly NDVI/NBR par placette</strong>. L’onglet Suivi sanitaire en mode rapide affiche enfin les séries NDVI / NBR par placette, et plus le placeholder vide qui traînait depuis la phase 1. Câblage : nouveau reactive <code>obs_pixel_data()</code> dans <code>R/mod_monitoring.R</code> qui appelle <code>nemeton::read_obs_pixel()</code> (fonction publique introduite côté cœur dans <code>nemeton@v0.21.11</code>) avec les filtres <code>bands</code> (cases NDVI / NBR cochées dans la sidebar) et <code>date_range</code> (input dateRange existant). Resultat : un <code>data.frame</code> typé <code>(plot_id, obs_date, band, value, …)</code>. Le reactive retourne <code>NULL</code> quand un prerequis manque (mode health, pas de zone, pas de bandes cochées, dateRange invalide) — la renderPlotly affiche alors un état vide avec le message i18n adéquat (<code>monitoring_timeseries_placeholder</code> ou <code>monitoring_timeseries_no_plot_selected</code>). Côté UI, ajout d’un <code>selectizeInput("plot_filter", multiple = TRUE)</code> dans la card du time series (visible uniquement en mode quick), avec plugin <code>remove_button</code> pour décocher d’un clic. L’observer <code>observeEvent(obs_pixel_data())</code> met à jour ses choices à chaque re-fetch et préserve la sélection courante si elle reste un sous- ensemble des plots disponibles. Le plotly trace une ligne+marqueurs par couple <code>(plot_id, band)</code> — couleur figée par bande (NDVI vert, NBR rouge, NDWI bleu, B04/B08/B12 violet/marron/rose), <code>legendgroup = band</code> pour cliquer une bande entière, hovertemplate formaté <code>&lt;plot · band&gt; · YYYY-MM-DD · band = 0.xxx</code>. Layout i18nisé (xaxis = “Date d’observation” / “Observation date”, yaxis = “Valeur de l’indice” / “Index value”, légende horizontale sous le graphique). 6 nouvelles clés i18n (<code>monitoring_timeseries_select_plots</code>, <code>_select_plots_help</code>, <code>_no_plot_selected</code>, <code>_no_data</code>, <code>_xaxis</code>, <code>_yaxis</code>). 3 tests testServer dans <code>test-mod_monitoring.R</code> : (a) reader ne fire pas en mode health, (b) reader forwarde correctement zone_id/bands/ date_from/date_to et l’observer rafraîchit <code>plot_filter</code> avec les plot_ids présents, (c) reader retourne NULL et ne consulte pas la DB quand une précondition manque (pas de zone, pas de bandes, dateRange invalide).</p></li>
+<li><p><code>test(monitoring)</code> — <strong>Phase 6 — Smoke E2E shinytest2</strong>. Nouveau fichier <code>tests/testthat/test-monitoring-smoke-e2e.R</code> : un seul test <code><a href="https://rstudio.github.io/shinytest2/reference/AppDriver.html" class="external-link">shinytest2::AppDriver</a></code> qui boot l’app via <code>shiny::shinyApp(app_ui, app_server)</code> (golem path), navigue vers l’onglet Monitoring (<code>main_nav = "monitoring"</code>), vérifie la présence du radio <code>monitoring-mode</code> et la bidirectionnalité du switch quick ↔︎ health. <code>on.exit(app$stop())</code> garanti même sur échec. <code>shinytest2 (&gt;= 0.3.0)</code> ajouté à Suggests. Skips multiples : shinytest2 / chromote absents, pas de binaire Chrome détecté, <code>nemeton::read_obs_pixel</code> non exporté (cœur &lt; v0.21.11), boot AppDriver échoué (avec message). Pas de DB requise — les zones restent vides, ce qui est exactement l’état utile pour un smoke.</p></li>
+<li><p><code>chore(monitoring)</code> — <strong>Phase 2 — Ingestion async + toasts</strong>. Marquée livrée rétroactivement dans <code>nemeton/PLAN.md</code> : ses 6 livrables (ExtendedTask, future_promise, progress_callback wired, reactivePoll sur progress.json, toasts persistants/erreurs/band- failure, console live) ont été câblés incrémentalement entre <code>nemetonshiny@v0.24.13</code> et <code>nemetonshiny@v0.26.6</code> sans qu’aucun commit n’identifie explicitement la phase. Pas de nouveau code livré ici — uniquement traçabilité dans le PLAN.</p></li>
+</ul></div>
+<div class="section level4">
+<h4 id="ux-0-27-0">UX<a class="anchor" aria-label="anchor" href="#ux-0-27-0"></a></h4>
+<ul><li>
+<code>fix(monitoring)</code> — l’ID de tuile Sentinel-2 dans le toast de progression d’ingestion (« Tuile Sentinel-2 <em>S2A_MSIL2A_…</em> (X/N) ») faisait 60+ caractères et débordait la largeur ~250 px du toast Shiny en bas à droite, masquant les derniers segments (ex. tile code et timestamp de production). Wrappage du <code>scene_id</code> dans un <code>&lt;span style="font-size:9px;font-family:monospace;word-break:break-all"&gt;</code> injecté côté <code>R/mod_monitoring.R</code> (bloc <code>nzchar(scene)</code> du <code>progress</code> handler) : le label « Tuile Sentinel-2 » et le compteur (X/N) restent à la taille normale, seul l’identifiant passe en monospace 9 px et casse sur 2 lignes courtes au lieu d’être tronqué. Pas de modif i18n (la chaîne <code>monitoring_ingest_progress_named_fmt</code> est inchangée — le span est injecté avant le <code>sprintf</code>, le résultat est passé en <code>htmltools::HTML(...)</code> à <code>.monitoring_spinning_msg()</code>).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="bumps-0-27-0">Bumps<a class="anchor" aria-label="anchor" href="#bumps-0-27-0"></a></h4>
+<ul><li>
+<code>Imports: nemeton (&gt;= 0.21.11)</code> (était 0.21.9) — pour <code>read_obs_pixel()</code>.</li>
+<li>
+<code>Remotes: pobsteta/nemeton@v0.21.11</code> (était v0.21.9).</li>
+<li>
+<code>Suggests: shinytest2 (&gt;= 0.3.0)</code> ajouté pour le smoke E2E.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.26.6" id="nemetonshiny-0266-2026-05-13">nemetonshiny 0.26.6 (2026-05-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0266-2026-05-13"></a></h2>
 <div class="section level4">
