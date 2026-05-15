@@ -317,6 +317,14 @@ mod_monitoring_server <- function(id, app_state) {
     # re-fetches from the DB.
     alerts_refresh <- shiny::reactiveVal(0L)
 
+    # Bumped after each Sentinel-2 ingestion success so the
+    # obs_pixel_data() reactive (which depends only on UI inputs and
+    # would otherwise stay frozen on cached value) re-queries the DB.
+    # Without this, the per-plot plotly and the Carte pixel sub-tab
+    # don't reflect the rows just inserted by the worker — the user
+    # has to wiggle a control (bands / date range) to force a refetch.
+    obs_refresh <- shiny::reactiveVal(0L)
+
     # ----- Async DB probe (E6.x — persistent loading feedback) ------
     # Open db_connect + db_migrate in a future worker so the user sees
     # a real "loading" state (spinning gear card) while the schema
@@ -618,6 +626,7 @@ mod_monitoring_server <- function(id, app_state) {
     # (no zone, health mode, no bands picked) so the downstream
     # plotly renderer can show a clean empty-state.
     obs_pixel_data <- shiny::reactive({
+      obs_refresh()  # invalidate after each successful ingestion
       if (!identical(input$mode, "quick")) return(NULL)
       zone <- input$zone_id
       if (!isTRUE(nzchar(zone))) return(NULL)
@@ -1661,6 +1670,10 @@ mod_monitoring_server <- function(id, app_state) {
         }
         zones_refresh(zones_refresh() + 1L)  # force re-fetch in case
                                              # the ingestion changed state
+        # Tell obs_pixel_data() to re-query the DB so the per-plot
+        # plotly and the Carte pixel sub-tab pick up the newly
+        # inserted rows without the user having to touch a control.
+        obs_refresh(obs_refresh() + 1L)
       }
     })
 

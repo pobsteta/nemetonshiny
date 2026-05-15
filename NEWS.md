@@ -1,3 +1,27 @@
+# nemetonshiny 0.28.2 (2026-05-15)
+
+### Suivi sanitaire — refresh automatique après ingestion Sentinel-2
+
+À la fin d'un téléchargement Sentinel-2 réussi, l'onglet **Suivi
+sanitaire** ne reflétait pas les nouvelles données : le graphique
+plotly des placettes restait vide, et la sous-onglet **Carte pixel**
+ne construisait pas son raster. L'utilisateur devait toucher à un
+contrôle (bandes, fenêtre de dates, zone) pour forcer un rafraîchissement.
+
+Cause : la reactive `obs_pixel_data()` — qui alimente à la fois le
+plotly per-plot et la Carte pixel (via `scenes_df_r()`) — dépendait
+uniquement de `input$mode`, `input$zone_id`, `input$bands` et
+`input$date_range`. Aucune de ces entrées ne change quand l'ingestion
+insère des lignes dans `monitoring_obs` côté DB ; Shiny n'avait donc
+aucune raison de relancer la requête `nemeton::read_obs_pixel()`.
+
+Correctif (`R/mod_monitoring.R`) : ajout d'un `reactiveVal`
+`obs_refresh`, lu en première ligne de `obs_pixel_data()` pour créer
+la dépendance, et bumpé dans le handler de succès d'ingestion juste à
+côté de `zones_refresh`. Pattern symétrique à `alerts_refresh` côté
+FORDEAD. Effet utilisateur : la Carte pixel se peuple toute seule
+après ingestion, et le plotly également.
+
 # nemetonshiny 0.28.1 (2026-05-15)
 
 ### Suivi sanitaire — Carte pixel : fix bascule de fond perdue au défilement des dates
