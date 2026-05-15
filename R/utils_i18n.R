@@ -1893,6 +1893,62 @@ TRANSLATIONS <- list(
     fr = "Alertes d\u00e9tect\u00e9es",
     en = "Detected alerts"
   ),
+
+  # ----- Sub-tab labels (v0.28.0) -----
+  monitoring_subtab_alerts = list(
+    fr = "Alertes",
+    en = "Alerts"
+  ),
+  monitoring_subtab_per_plot = list(
+    fr = "S\u00e9ries par placette",
+    en = "Per-plot series"
+  ),
+  monitoring_subtab_pixel_map = list(
+    fr = "Carte pixel",
+    en = "Pixel map"
+  ),
+
+  # ----- Pixel map sub-tab (spec 010) -----
+  monitoring_pixel_map_title = list(
+    fr = "Carte pixel \u2014 NDVI / NBR \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
+    en = "Pixel map \u2014 NDVI / NBR at Sentinel-2 native resolution (10 m)"
+  ),
+  monitoring_pixel_map_index = list(
+    fr = "Indice spectral",
+    en = "Spectral index"
+  ),
+  monitoring_pixel_map_date = list(
+    fr = "Date d'observation",
+    en = "Observation date"
+  ),
+  monitoring_pixel_map_layer = list(
+    fr = "Indice spectral",
+    en = "Spectral index"
+  ),
+  monitoring_pixel_map_click_hint = list(
+    fr = "Clique sur un pixel pour voir sa s\u00e9rie temporelle compl\u00e8te (NDVI + NBR superpos\u00e9s).",
+    en = "Click a pixel to display its full time series (NDVI + NBR overlaid)."
+  ),
+  monitoring_pixel_map_modal_title_fmt = list(
+    fr = "Pixel \u00e0 (lat: %.5f, lon: %.5f)",
+    en = "Pixel at (lat: %.5f, lon: %.5f)"
+  ),
+  monitoring_pixel_map_no_cache = list(
+    fr = "Pas de cache disque disponible. Lance une ingestion FAST pour peupler le cache COG.",
+    en = "No disk cache available. Run a FAST ingestion to populate the COG cache."
+  ),
+  monitoring_pixel_map_loading = list(
+    fr = "Construction du stack d'indices\u2026",
+    en = "Building index stack\u2026"
+  ),
+  monitoring_pixel_map_no_pixel = list(
+    fr = "Aucune donn\u00e9e pour ce pixel (hors emprise ou bandes manquantes).",
+    en = "No data for this pixel (out of bounds or missing bands)."
+  ),
+  monitoring_pixel_map_scene_count_fmt = list(
+    fr = "%d sc\u00e8nes disponibles dans le cache.",
+    en = "%d scenes available in the cache."
+  ),
   monitoring_alerts_placeholder = list(
     fr = "La carte des alertes appara\u00eetra apr\u00e8s le premier t\u00e9l\u00e9chargement.",
     en = "The alerts map will appear after the first download."

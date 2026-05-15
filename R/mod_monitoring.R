@@ -215,76 +215,80 @@ mod_monitoring_ui <- function(id) {
       )
     ),
 
-    # Main area: DB status + G3 banners + time series & alerts map.
+    # Main area: DB status + G3 banners + 3 sub-tabs (Alerts / Per-plot
+    # time series / Pixel map). v0.28.0 wraps the previously single-
+    # column layout into a navset_card_tab so the new spec-010 "Carte
+    # pixel" view fits naturally without burying the existing alerts
+    # map deep below.
     htmltools::tags$div(
       class = "p-2",
       shiny::uiOutput(ns("db_status")),
       shiny::uiOutput(ns("validity_banners")),
-      bslib::card(
-        bslib::card_header(
-          htmltools::div(
-            class = "d-flex align-items-center",
-            bsicons::bs_icon("graph-up", class = "me-2"),
-            i18n$t("monitoring_timeseries_title")
-          )
-        ),
-        # Plot picker: only relevant in quick mode (per-plot NDVI/NBR
-        # series). In health mode the plotly shows an alert-distribution
-        # bar chart that doesn't depend on a per-plot selection.
-        shiny::conditionalPanel(
-          condition = sprintf("input['%s'] == 'quick'", ns("mode")),
-          htmltools::div(
-            class = "px-3 pt-2",
-            shiny::selectizeInput(
-              ns("plot_filter"),
-              i18n$t("monitoring_timeseries_select_plots"),
-              choices  = NULL,
-              selected = NULL,
-              multiple = TRUE,
-              width    = "100%",
-              options  = list(plugins = list("remove_button"))
-            ),
-            shiny::helpText(
-              class = "small text-muted",
-              i18n$t("monitoring_timeseries_select_plots_help")
+      bslib::navset_card_tab(
+        id = ns("subtab"),
+        # ----- Sub-tab 1 — Alerts (FORDEAD map + QGIS) ---------------
+        bslib::nav_panel(
+          title = i18n$t("monitoring_subtab_alerts"),
+          value = "alerts",
+          icon  = bsicons::bs_icon("exclamation-triangle"),
+          # The "include low confidence classes" toggle used to live
+          # inside card_header next to the title, but its long label
+          # wrapped awkwardly on narrow viewports. Lifted into its own
+          # row so it always sits on a single line above the alerts.
+          shiny::conditionalPanel(
+            condition = sprintf("input['%s'] == 'health'", ns("mode")),
+            htmltools::div(
+              class = "px-3 pt-2",
+              shiny::checkboxInput(
+                ns("include_low"),
+                i18n$t("monitoring_include_low"),
+                value = FALSE
+              )
             )
+          ),
+          shiny::uiOutput(ns("alerts_panel")),
+          # Health-mode QGIS generator (E6.c.5 — T6app.12, wired in C6)
+          shiny::conditionalPanel(
+            condition = sprintf("input['%s'] == 'health'", ns("mode")),
+            shiny::uiOutput(ns("qgis_panel"))
           )
         ),
-        bslib::card_body(
+        # ----- Sub-tab 2 — Per-plot time series ----------------------
+        bslib::nav_panel(
+          title = i18n$t("monitoring_subtab_per_plot"),
+          value = "per_plot",
+          icon  = bsicons::bs_icon("graph-up"),
+          # Plot picker: only relevant in quick mode. In health mode
+          # the plotly shows an alert-distribution bar chart that
+          # doesn't depend on a per-plot selection.
+          shiny::conditionalPanel(
+            condition = sprintf("input['%s'] == 'quick'", ns("mode")),
+            htmltools::div(
+              class = "px-3 pt-2",
+              shiny::selectizeInput(
+                ns("plot_filter"),
+                i18n$t("monitoring_timeseries_select_plots"),
+                choices  = NULL,
+                selected = NULL,
+                multiple = TRUE,
+                width    = "100%",
+                options  = list(plugins = list("remove_button"))
+              ),
+              shiny::helpText(
+                class = "small text-muted",
+                i18n$t("monitoring_timeseries_select_plots_help")
+              )
+            )
+          ),
           plotly::plotlyOutput(ns("timeseries"), height = "320px")
-        )
-      ),
-      bslib::card(
-        bslib::card_header(
-          htmltools::div(
-            class = "d-flex align-items-center",
-            bsicons::bs_icon("exclamation-triangle", class = "me-2"),
-            i18n$t("monitoring_alerts_title")
-          )
         ),
-        # The "include low confidence classes" toggle used to live
-        # inside card_header next to the title, but its long label
-        # wrapped awkwardly on narrow viewports. Lifted into its own
-        # row so it always sits on a single line above the alerts.
-        shiny::conditionalPanel(
-          condition = sprintf("input['%s'] == 'health'", ns("mode")),
-          htmltools::div(
-            class = "px-3 pt-2",
-            shiny::checkboxInput(
-              ns("include_low"),
-              i18n$t("monitoring_include_low"),
-              value = FALSE
-            )
-          )
-        ),
-        bslib::card_body(
-          shiny::uiOutput(ns("alerts_panel"))
+        # ----- Sub-tab 3 — Pixel map (spec 010, NEW v0.28.0) ---------
+        bslib::nav_panel(
+          title = i18n$t("monitoring_subtab_pixel_map"),
+          value = "pixel_map",
+          icon  = bsicons::bs_icon("map"),
+          mod_monitoring_pixel_map_ui(ns("pixel_map"))
         )
-      ),
-      # Health-mode QGIS generator (E6.c.5 — T6app.12, wired in C6)
-      shiny::conditionalPanel(
-        condition = sprintf("input['%s'] == 'health'", ns("mode")),
-        shiny::uiOutput(ns("qgis_panel"))
       )
     )
   )
@@ -1925,11 +1929,24 @@ mod_monitoring_server <- function(id, app_state) {
       }
     })
 
+    # Spec 010 — Carte pixel sub-tab. Re-uses the obs_pixel_data
+    # reactive (already wired above for the per-plot plotly) to
+    # derive scenes_df without a second SQL roundtrip. The pixel
+    # map only renders in quick mode (FORDEAD doesn't expose the
+    # raw raster output) — the module checks mode_input internally.
+    pixel_map_ret <- mod_monitoring_pixel_map_server(
+      "pixel_map",
+      app_state      = app_state,
+      obs_pixel_data = obs_pixel_data,
+      mode_input     = shiny::reactive(input$mode)
+    )
+
     list(
       zones         = zones,
       ingest_task   = ingest_task,
       fordead_task  = fordead_task,
-      validity      = validity
+      validity      = validity,
+      pixel_map     = pixel_map_ret
     )
   })
 }
