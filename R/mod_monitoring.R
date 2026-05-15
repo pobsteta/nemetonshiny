@@ -139,12 +139,34 @@ mod_monitoring_ui <- function(id) {
                 ns("window_days"), i18n$t("monitoring_window_days"),
                 value = 30L, min = 7L, max = 90L, step = 1L
               ),
-              shiny::checkboxInput(
-                ns("reprime_cache"),
-                i18n$t("monitoring_reprime_cache_label"),
-                value = FALSE
+              # Checkbox + popover info icon (same pattern as the
+              # "Tout" button popover in mod_synthesis): keeps the
+              # sidebar tight while making the long explanation
+              # one click away instead of pre-filling vertical space.
+              htmltools::div(
+                class = "d-flex align-items-center mb-1",
+                shiny::checkboxInput(
+                  ns("reprime_cache"),
+                  i18n$t("monitoring_reprime_cache_label"),
+                  value = FALSE,
+                  width = "100%"
+                ),
+                bslib::popover(
+                  htmltools::tags$span(
+                    class = "text-info ms-2",
+                    style = "cursor: help;",
+                    shiny::icon("circle-info", class = "fa-sm")
+                  ),
+                  htmltools::div(
+                    style = paste("max-width: 380px;",
+                                  "font-size: 0.85rem;",
+                                  "line-height: 1.5;"),
+                    htmltools::HTML(i18n$t("monitoring_reprime_cache_help"))
+                  ),
+                  options = list(customClass = "popover-lg"),
+                  title = NULL
+                )
               ),
-              shiny::helpText(i18n$t("monitoring_reprime_cache_help")),
               shiny::actionButton(
                 ns("run"), i18n$t("monitoring_run_btn"),
                 icon  = bsicons::bs_icon("play-fill"),

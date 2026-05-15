@@ -1790,12 +1790,12 @@ TRANSLATIONS <- list(
     en = "Fatal error in the ingestion worker"
   ),
   monitoring_reprime_cache_label = list(
-    fr = "R\u00e9amorcer le cache COG (skip_cached = FALSE)",
-    en = "Re-prime COG cache (skip_cached = FALSE)"
+    fr = "Ret\u00e9l\u00e9charger le cache COG",
+    en = "Re-download COG cache"
   ),
   monitoring_reprime_cache_help = list(
-    fr = "Coche cette case lors du premier run d'une zone d\u00e9j\u00e0 pr\u00e9sente en DB : sans \u00e7a, nemeton court-circuite l\u2019extraction et le cache disque reste vide. Les INSERT sont ON CONFLICT DO NOTHING, la DB n\u2019est pas affect\u00e9e.",
-    en = "Tick this on the first run of a zone already in the DB: otherwise nemeton short-circuits the extraction and the disk cache stays empty. INSERTs are ON CONFLICT DO NOTHING, the DB is preserved."
+    fr = "Coche cette case pour <strong>forcer le re-t\u00e9l\u00e9chargement</strong> des bandes Sentinel-2 sur disque, sc\u00e8ne par sc\u00e8ne.<br><br>Utile lors du premier run d'une zone d\u00e9j\u00e0 pr\u00e9sente en DB : sans \u00e7a, nemeton court-circuite l\u2019extraction (<code>skip_cached = TRUE</code> par d\u00e9faut) et le cache disque reste vide.<br><br>La DB n\u2019est pas affect\u00e9e \u2014 les INSERT sont <code>ON CONFLICT DO NOTHING</code>.",
+    en = "Tick this to <strong>force re-download</strong> of Sentinel-2 bands on disk, scene by scene.<br><br>Useful on the first run of a zone already in the DB: otherwise nemeton short-circuits the extraction (<code>skip_cached = TRUE</code> by default) and the disk cache stays empty.<br><br>The DB is preserved \u2014 INSERTs are <code>ON CONFLICT DO NOTHING</code>."
   ),
   monitoring_db_unavailable = list(
     fr = "Base de suivi non configur\u00e9e.",
