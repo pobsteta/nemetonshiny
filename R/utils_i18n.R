@@ -1857,6 +1857,30 @@ TRANSLATIONS <- list(
     fr = "Le graphique des indices appara\u00eetra apr\u00e8s le premier t\u00e9l\u00e9chargement.",
     en = "The time series will appear after the first download."
   ),
+  monitoring_timeseries_select_plots = list(
+    fr = "Placettes \u00e0 afficher",
+    en = "Plots to display"
+  ),
+  monitoring_timeseries_select_plots_help = list(
+    fr = "Vide = toutes les placettes de la zone.",
+    en = "Empty = all plots in the zone."
+  ),
+  monitoring_timeseries_no_plot_selected = list(
+    fr = "Aucune placette s\u00e9lectionn\u00e9e \u2014 cochez-en au moins une.",
+    en = "No plot selected \u2014 pick at least one."
+  ),
+  monitoring_timeseries_no_data = list(
+    fr = "Aucune observation pour les filtres courants. Lancez une ingestion ou \u00e9largissez la fen\u00eatre.",
+    en = "No observations for the current filters. Run an ingestion or widen the window."
+  ),
+  monitoring_timeseries_xaxis = list(
+    fr = "Date d'observation",
+    en = "Observation date"
+  ),
+  monitoring_timeseries_yaxis = list(
+    fr = "Valeur de l'indice",
+    en = "Index value"
+  ),
   monitoring_alerts_title = list(
     fr = "Alertes d\u00e9tect\u00e9es",
     en = "Detected alerts"
