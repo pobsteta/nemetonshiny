@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.28.1] - 2026-05-15
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : le fond satellite ne tenait pas
+  quand l'utilisateur faisait défiler le slider de date ou changeait
+  d'indice — Leaflet repassait sur OSM à chaque rendu. Le squelette
+  de carte est désormais rendu une seule fois, et le raster + la
+  légende sont mis à jour via `leafletProxy()`. Le choix de fond
+  reste actif (`R/mod_monitoring_pixel_map.R`).
+
 ## [0.26.6] - 2026-05-13
 
 ### Fixed

@@ -194,35 +194,51 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       )
     })
 
+    # Static map skeleton: rendered ONCE. Re-rendering the whole map on
+    # every date tick would reset the user's base-layer choice
+    # (Satellite → OSM) because `baseGroups` re-applies the first entry
+    # as default on each remount. Raster + legend updates go through
+    # leafletProxy() below.
     output$map <- leaflet::renderLeaflet({
-      i18n <- i18n_r()
-      r <- current_layer_r()
-      base <- leaflet::leaflet() |>
+      leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
           options = leaflet::layersControlOptions(collapsed = TRUE)
         )
-      if (is.null(r)) return(base)
-      # Index value range is roughly [-1, 1] for both NDVI and NBR.
-      # Use a divergent palette anchored on 0; NA stays transparent.
-      pal <- leaflet::colorNumeric(
-        palette  = c("#D62728", "#FFD27F", "#FFFFCC",
-                     "#A8DDB5", "#2CA02C"),
-        domain   = c(-1, 1),
-        na.color = "transparent"
-      )
-      base |>
+    })
+
+    # Index value range is roughly [-1, 1] for both NDVI and NBR.
+    # Use a divergent palette anchored on 0; NA stays transparent.
+    .pixel_palette <- leaflet::colorNumeric(
+      palette  = c("#D62728", "#FFD27F", "#FFFFCC",
+                   "#A8DDB5", "#2CA02C"),
+      domain   = c(-1, 1),
+      na.color = "transparent"
+    )
+
+    # Reactive raster + legend swap. Fires on date / index / project
+    # changes; preserves the base-layer selection because the map
+    # widget itself is not re-rendered.
+    shiny::observe({
+      i18n <- i18n_r()
+      r <- current_layer_r()
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearImages() |>
+        leaflet::removeControl("pixel_legend")
+      if (is.null(r)) return()
+      proxy |>
         leaflet::addRasterImage(
           x       = r,
-          colors  = pal,
+          colors  = .pixel_palette,
           opacity = 0.75,
           group   = i18n$t("monitoring_pixel_map_layer")
         ) |>
         leaflet::addLegend(
+          layerId  = "pixel_legend",
           position = "bottomright",
-          pal      = pal,
+          pal      = .pixel_palette,
           values   = c(-1, 1),
           title    = input$index,
           opacity  = 0.85
