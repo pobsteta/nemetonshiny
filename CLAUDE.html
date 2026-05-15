@@ -29,7 +29,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>CLAUDE.md — Nemetonshiny Development Reference</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.28.3/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
     </div>
 
 
@@ -445,6 +445,32 @@ keycloak/                     → Compose dev + realms pour auth locale
 <li>Toujours demander confirmation avant un bump majeur.</li>
 <li>Quand un changement implique aussi <code>nemeton</code>, faire les deux releases dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).</li>
 </ul></div>
+<div class="section level2">
+<h2 id="épingle-remotes-vers-nemeton-ordre-cœur--app">Épingle <code>Remotes:</code> vers <code>nemeton</code> (ordre cœur → app)<a class="anchor" aria-label="anchor" href="#%C3%A9pingle-remotes-vers-nemeton-ordre-c%C5%93ur--app"></a></h2>
+<p>Le champ <code>Remotes: pobsteta/nemeton@vX.Y.Z</code> du <code>DESCRIPTION</code> est une <strong>épingle tag stricte</strong> : l’installeur (<code><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">remotes::install_github</a></code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) tire toujours cette version précise, <strong>même si une version plus récente est déjà installée localement</strong> (downgrade silencieux). Le <code>Imports: nemeton (&gt;= X.Y.Z)</code> n’est qu’une borne d’API minimale — il ne contredit pas l’épingle.</p>
+<p>Conséquence : <strong>à chaque release stable <code>nemeton@vX.Y.Z+1</code>, bumper l’épingle ici dans la foulée</strong>, sinon les utilisateurs qui réinstallent <code>nemetonshiny</code> se retrouvent downgradés sans le savoir.</p>
+<div class="section level3">
+<h3 id="réflexe-à-appliquer">Réflexe à appliquer<a class="anchor" aria-label="anchor" href="#r%C3%A9flexe-%C3%A0-appliquer"></a></h3>
+<p>À l’ouverture d’une session sur <code>nemetonshiny</code>, et avant tout commit fonctionnel qui touche du code consommateur de <code>nemeton::*</code>, Claude doit <strong>vérifier l’épingle</strong> :</p>
+<ol style="list-style-type: decimal"><li>Lire le champ <code>Remotes:</code> du <code>DESCRIPTION</code> local (épingle nemetonshiny).</li>
+<li>Demander à l’utilisateur le tag stable le plus récent côté <code>nemeton</code> (règle 12 interdit l’accès direct au repo cœur depuis cette session, donc pas de <code>git -C /home/pascal/dev/nemeton describe</code> ni équivalent).</li>
+<li>Si écart : proposer un <code>chore(deps): bump nemeton pin to vX.Y.Z</code>, typiquement en patch release seule (ex. <code>0.28.2</code> → <code>0.28.3</code>) ou groupé avec le prochain commit fonctionnel.</li>
+</ol><p>Ce check est un <strong>réflexe de session</strong>, pas un check à chaque commit : si la session vient de bumper l’épingle, inutile de redemander.</p>
+</div>
+<div class="section level3">
+<h3 id="cas-particulier--développement-local-avec-pkgloadload_all">Cas particulier : développement local avec <code>pkgload::load_all()</code>
+<a class="anchor" aria-label="anchor" href="#cas-particulier--d%C3%A9veloppement-local-avec-pkgloadload_all"></a></h3>
+<p>En dev, on charge nemeton via <code>pkgload::load_all("/home/pascal/dev/nemeton")</code> ou <code>pak::local_install("/home/pascal/dev/nemeton")</code> — l’épingle <code>Remotes:</code> n’est pas consultée tant qu’on ne fait pas un install GitHub. C’est pour ça qu’un drift entre épingle et tag cœur peut passer inaperçu plusieurs jours côté développeur ; seuls les utilisateurs qui installent depuis GitHub le voient.</p>
+</div>
+<div class="section level3">
+<h3 id="alternatives-à-lépingle-tag-non-recommandées-par-défaut">Alternatives à l’épingle tag (non recommandées par défaut)<a class="anchor" aria-label="anchor" href="#alternatives-%C3%A0-l%C3%A9pingle-tag-non-recommand%C3%A9es-par-d%C3%A9faut"></a></h3>
+<ul><li>
+<code>pobsteta/nemeton@main</code> : zéro maintenance, mais une régression poussée sur main de nemeton casse l’install de tous les utilisateurs de nemetonshiny entre le push et le revert. Non reproductible dans 6 mois.</li>
+<li>
+<code>pobsteta/nemeton@release/v0.22</code> : suit la dernière patch d’une mineure, demande de maintenir une branche release côté cœur. À envisager si les bumps deviennent un coût récurrent.</li>
+</ul><p>Tant qu’il n’y a pas de friction observée, <strong>garder l’épingle tag</strong> et faire le bump en patch release dans la foulée d’une release cœur.</p>
+</div>
+</div>
 <div class="section level2">
 <h2 id="workflow-de-push-branche-dev--main">Workflow de push (branche dev → main)<a class="anchor" aria-label="anchor" href="#workflow-de-push-branche-dev--main"></a></h2>
 <p>Le workflow est en <strong>deux temps</strong> et doit être suivi systématiquement.</p>
