@@ -1,5 +1,97 @@
 # Changelog
 
+## nemetonshiny 0.28.0 (2026-05-15)
+
+#### Suivi sanitaire — nouveau sous-onglet « Carte pixel » (spec 010)
+
+L’onglet **Suivi sanitaire** est désormais structuré en 3 sous-onglets
+via
+[`bslib::navset_card_tab`](https://rstudio.github.io/bslib/reference/navset.html)
+:
+
+1.  **Alertes** — la carte des clusters FORDEAD (existant, déplacé)
+2.  **Séries par placette** — le plotly NDVI/NBR per-plot livré en
+    v0.27.0 (existant, déplacé)
+3.  **Carte pixel** — **nouveau** — visualisation des indices NDVI/NBR à
+    la résolution native Sentinel-2 (10 m), navigable dans le temps,
+    avec extraction de la série temporelle complète au clic sur un
+    pixel.
+
+Pourquoi : les vues existantes (carte alertes = POINT, plotly = moyenne
+⌀ 30 m sur les placettes) perdent la dynamique fine intra-parcelle. Un
+peuplement de 10 ha contient ~1000 pixels S2 ; quand FORDEAD détecte un
+cluster, le forestier veut voir lesquels ont décroché en premier et à
+quelle vitesse.
+
+Le matériau brut est déjà sur disque (cache COG sous
+`<project>/cache/layers/sentinel2/{scene_id}/{B04,B08,B12}.tif`, écrit
+par l’ingestion FAST) — cette release l’expose en carte sans coût
+supplémentaire (zéro HTTP, zéro DB write).
+
+##### Nouveau module `R/mod_monitoring_pixel_map.R`
+
+- **UI** :
+  [`bslib::layout_sidebar`](https://rstudio.github.io/bslib/reference/sidebar.html)
+  avec sidebar à droite (radio NDVI/NBR + slider de date avec animation
+  step-by-step) et
+  [`leaflet::leafletOutput`](https://rstudio.github.io/leaflet/reference/map-shiny.html)
+  plein écran à gauche, overlay spinner pendant le build du stack.
+- **Server** :
+  - `cache_dir_r()` résout `<project>/cache/layers/sentinel2` depuis
+    `app_state$current_project`.
+  - `scenes_df_r()` dérive `DISTINCT (scene_id, obs_date)` du
+    `obs_pixel_data` reactive partagé avec la sub-tab per-plot (zéro
+    requête DB additionnelle).
+  - `pixel_stack_r()` appelle
+    `nemeton::build_index_stack(cd, sdf, index = input$index)` (spec 010
+    §4.3) pour construire le
+    [`terra::SpatRaster`](https://rspatial.github.io/terra/reference/SpatRaster-class.html)
+    multi-temporel — debouncé sur (cache, scenes, index).
+  - `current_layer_r()` snap la date du slider sur la scène la plus
+    proche dans le stack (les obs S2 sont sparses, ~tous les 5 jours).
+  - `output$map` — leaflet avec palette divergente
+    `[#D62728, #FFD27F, #FFFFCC, #A8DDB5, `[`#2`](https://github.com/pobsteta/nemetonshiny/issues/2)`CA02C]`
+    (rouge → jaune → vert) ancrée sur 0, NA en transparent, légende avec
+    valeurs extrêmes \[-1, 1\].
+  - `observeEvent(input$map_click)` — appelle
+    `nemeton::extract_pixel_timeseries()` au lat/lng cliqué et pop un
+    modal `bslib::modalDialog(size = "l")` avec un plotly NDVI
+    - NBR superposés (couleurs figées identiques à la sub-tab per-plot
+      pour cohérence du modèle mental utilisateur).
+
+##### Refactor `R/mod_monitoring.R`
+
+L’UI principale (alertes + per-plot + nouveau pixel map) passe d’une
+liste verticale de cards à un
+[`bslib::navset_card_tab`](https://rstudio.github.io/bslib/reference/navset.html)
+à 3 panneaux. Les inputs côté sidebar (mode, zone, dates, bands…) sont
+inchangés — seul le main area est restructuré. Les conditionalPanels qui
+gèrent les contrôles spécifiques au mode (`include_low` health,
+`plot_filter` quick) sont déplacés à l’intérieur des sub-tabs
+correspondants.
+
+Server : un seul nouveau bloc, l’appel
+`mod_monitoring_pixel_map_server("pixel_map", app_state, obs_pixel_data, mode_input)`
+à la fin de `mod_monitoring_server`, avec
+`mode_input = shiny::reactive(input$mode)` parce que la pixel map ne
+s’active qu’en mode quick.
+
+##### i18n
+
+10 nouvelles clés FR/EN : `monitoring_subtab_alerts`,
+`monitoring_subtab_per_plot`, `monitoring_subtab_pixel_map`,
+`monitoring_pixel_map_title`, `_index`, `_date`, `_layer`,
+`_click_hint`, `_modal_title_fmt`, `_no_cache`, `_loading`, `_no_pixel`,
+`_scene_count_fmt`.
+
+##### Pré-requis
+
+- `nemeton@>=v0.22.0` installé (le pin DESCRIPTION est cohérent depuis
+  v0.27.3).
+- Un cache COG pré-existant — la pixel map affiche un message *« Pas de
+  cache disque disponible »* tant qu’aucune ingestion FAST n’a été
+  lancée pour la zone courante.
+
 ## nemetonshiny 0.27.3 (2026-05-15)
 
 #### Bump du pin nemeton vers v0.22.0

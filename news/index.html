@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,63 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.27.3/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.28.0" id="nemetonshiny-0280-2026-05-15">nemetonshiny 0.28.0 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0280-2026-05-15"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--nouveau-sous-onglet--carte-pixel--spec-0-28-0">Suivi sanitaire — nouveau sous-onglet « Carte pixel » (spec 010)<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--nouveau-sous-onglet--carte-pixel--spec-0-28-0"></a></h4>
+<p>L’onglet <strong>Suivi sanitaire</strong> est désormais structuré en 3 sous-onglets via <code><a href="https://rstudio.github.io/bslib/reference/navset.html" class="external-link">bslib::navset_card_tab</a></code> :</p>
+<ol style="list-style-type: decimal"><li>
+<strong>Alertes</strong> — la carte des clusters FORDEAD (existant, déplacé)</li>
+<li>
+<strong>Séries par placette</strong> — le plotly NDVI/NBR per-plot livré en v0.27.0 (existant, déplacé)</li>
+<li>
+<strong>Carte pixel</strong> — <strong>nouveau</strong> — visualisation des indices NDVI/NBR à la résolution native Sentinel-2 (10 m), navigable dans le temps, avec extraction de la série temporelle complète au clic sur un pixel.</li>
+</ol><p>Pourquoi : les vues existantes (carte alertes = POINT, plotly = moyenne ⌀ 30 m sur les placettes) perdent la dynamique fine intra-parcelle. Un peuplement de 10 ha contient ~1000 pixels S2 ; quand FORDEAD détecte un cluster, le forestier veut voir lesquels ont décroché en premier et à quelle vitesse.</p>
+<p>Le matériau brut est déjà sur disque (cache COG sous <code>&lt;project&gt;/cache/layers/sentinel2/{scene_id}/{B04,B08,B12}.tif</code>, écrit par l’ingestion FAST) — cette release l’expose en carte sans coût supplémentaire (zéro HTTP, zéro DB write).</p>
+<div class="section level5">
+<h5 id="nouveau-module-rmod_monitoring_pixel_mapr-0-28-0">Nouveau module <code>R/mod_monitoring_pixel_map.R</code>
+<a class="anchor" aria-label="anchor" href="#nouveau-module-rmod_monitoring_pixel_mapr-0-28-0"></a></h5>
+<ul><li>
+<strong>UI</strong> : <code><a href="https://rstudio.github.io/bslib/reference/sidebar.html" class="external-link">bslib::layout_sidebar</a></code> avec sidebar à droite (radio NDVI/NBR + slider de date avec animation step-by-step) et <code><a href="https://rstudio.github.io/leaflet/reference/map-shiny.html" class="external-link">leaflet::leafletOutput</a></code> plein écran à gauche, overlay spinner pendant le build du stack.</li>
+<li>
+<strong>Server</strong> :
+<ul><li>
+<code>cache_dir_r()</code> résout <code>&lt;project&gt;/cache/layers/sentinel2</code> depuis <code>app_state$current_project</code>.</li>
+<li>
+<code>scenes_df_r()</code> dérive <code>DISTINCT (scene_id, obs_date)</code> du <code>obs_pixel_data</code> reactive partagé avec la sub-tab per-plot (zéro requête DB additionnelle).</li>
+<li>
+<code>pixel_stack_r()</code> appelle <code>nemeton::build_index_stack(cd, sdf, index = input$index)</code> (spec 010 §4.3) pour construire le <code><a href="https://rspatial.github.io/terra/reference/SpatRaster-class.html" class="external-link">terra::SpatRaster</a></code> multi-temporel — debouncé sur (cache, scenes, index).</li>
+<li>
+<code>current_layer_r()</code> snap la date du slider sur la scène la plus proche dans le stack (les obs S2 sont sparses, ~tous les 5 jours).</li>
+<li>
+<code>output$map</code> — leaflet avec palette divergente <code>[#D62728, #FFD27F, #FFFFCC, #A8DDB5, <a href="https://github.com/pobsteta/nemetonshiny/issues/2" class="external-link">#2</a>CA02C]</code> (rouge → jaune → vert) ancrée sur 0, NA en transparent, légende avec valeurs extrêmes [-1, 1].</li>
+<li>
+<code>observeEvent(input$map_click)</code> — appelle <code>nemeton::extract_pixel_timeseries()</code> au lat/lng cliqué et pop un modal <code>bslib::modalDialog(size = "l")</code> avec un plotly NDVI
+<ul><li>NBR superposés (couleurs figées identiques à la sub-tab per-plot pour cohérence du modèle mental utilisateur).</li>
+</ul></li>
+</ul></li>
+</ul></div>
+<div class="section level5">
+<h5 id="refactor-rmod_monitoringr-0-28-0">Refactor <code>R/mod_monitoring.R</code>
+<a class="anchor" aria-label="anchor" href="#refactor-rmod_monitoringr-0-28-0"></a></h5>
+<p>L’UI principale (alertes + per-plot + nouveau pixel map) passe d’une liste verticale de cards à un <code><a href="https://rstudio.github.io/bslib/reference/navset.html" class="external-link">bslib::navset_card_tab</a></code> à 3 panneaux. Les inputs côté sidebar (mode, zone, dates, bands…) sont inchangés — seul le main area est restructuré. Les conditionalPanels qui gèrent les contrôles spécifiques au mode (<code>include_low</code> health, <code>plot_filter</code> quick) sont déplacés à l’intérieur des sub-tabs correspondants.</p>
+<p>Server : un seul nouveau bloc, l’appel <code>mod_monitoring_pixel_map_server("pixel_map", app_state, obs_pixel_data, mode_input)</code> à la fin de <code>mod_monitoring_server</code>, avec <code>mode_input = shiny::reactive(input$mode)</code> parce que la pixel map ne s’active qu’en mode quick.</p>
+</div>
+<div class="section level5">
+<h5 id="i18n-0-28-0">i18n<a class="anchor" aria-label="anchor" href="#i18n-0-28-0"></a></h5>
+<p>10 nouvelles clés FR/EN : <code>monitoring_subtab_alerts</code>, <code>monitoring_subtab_per_plot</code>, <code>monitoring_subtab_pixel_map</code>, <code>monitoring_pixel_map_title</code>, <code>_index</code>, <code>_date</code>, <code>_layer</code>, <code>_click_hint</code>, <code>_modal_title_fmt</code>, <code>_no_cache</code>, <code>_loading</code>, <code>_no_pixel</code>, <code>_scene_count_fmt</code>.</p>
+</div>
+<div class="section level5">
+<h5 id="pré-requis-0-28-0">Pré-requis<a class="anchor" aria-label="anchor" href="#pr%C3%A9-requis-0-28-0"></a></h5>
+<ul><li>
+<code>nemeton@&gt;=v0.22.0</code> installé (le pin DESCRIPTION est cohérent depuis v0.27.3).</li>
+<li>Un cache COG pré-existant — la pixel map affiche un message <em>« Pas de cache disque disponible »</em> tant qu’aucune ingestion FAST n’a été lancée pour la zone courante.</li>
+</ul></div>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.27.3" id="nemetonshiny-0273-2026-05-15">nemetonshiny 0.27.3 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0273-2026-05-15"></a></h2>
 <div class="section level4">
