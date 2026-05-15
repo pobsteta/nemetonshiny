@@ -194,6 +194,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       )
     })
 
+    # Stable, language-independent overlay group label. Used by BOTH
+    # addLayersControl(overlayGroups=) and addRasterImage(group=) — they
+    # MUST match exactly so the control knows the raster is an overlay
+    # to keep visible across base-layer toggles. Kept out of i18n so
+    # renderLeaflet stays free of reactive deps (preserves base-layer
+    # choice across language toggle).
+    .pixel_overlay_group <- "NDVI / NBR"
+
     # Static map skeleton: rendered ONCE. Re-rendering the whole map on
     # every date tick would reset the user's base-layer choice
     # (Satellite → OSM) because `baseGroups` re-applies the first entry
@@ -204,8 +212,9 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
-          options = leaflet::layersControlOptions(collapsed = TRUE)
+          baseGroups    = c("OSM", "Satellite"),
+          overlayGroups = .pixel_overlay_group,
+          options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
     })
 
@@ -222,7 +231,6 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # changes; preserves the base-layer selection because the map
     # widget itself is not re-rendered.
     shiny::observe({
-      i18n <- i18n_r()
       r <- current_layer_r()
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearImages() |>
@@ -233,7 +241,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           x       = r,
           colors  = .pixel_palette,
           opacity = 0.75,
-          group   = i18n$t("monitoring_pixel_map_layer")
+          group   = .pixel_overlay_group
         ) |>
         leaflet::addLegend(
           layerId  = "pixel_legend",

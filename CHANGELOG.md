@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.28.4] - 2026-05-15
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : la couche NDVI/NBR disparaissait
+  visuellement au basculement OSM↔Satellite parce que le `group =`
+  de `addRasterImage()` n'était pas déclaré dans
+  `addLayersControl(overlayGroups=)`. Déclaration explicite de la
+  couche overlay avec un libellé fixe « NDVI / NBR »
+  (`R/mod_monitoring_pixel_map.R`).
+
+### Removed
+
+- Clé i18n orpheline `monitoring_pixel_map_layer` (FR/EN)
+  supprimée — plus référencée depuis le fix ci-dessus
+  (`R/utils_i18n.R`).
+
 ## [0.28.3] - 2026-05-15
 
 ### Changed

@@ -1921,10 +1921,6 @@ TRANSLATIONS <- list(
     fr = "Date d'observation",
     en = "Observation date"
   ),
-  monitoring_pixel_map_layer = list(
-    fr = "Indice spectral",
-    en = "Spectral index"
-  ),
   monitoring_pixel_map_click_hint = list(
     fr = "Clique sur un pixel pour voir sa s\u00e9rie temporelle compl\u00e8te (NDVI + NBR superpos\u00e9s).",
     en = "Click a pixel to display its full time series (NDVI + NBR overlaid)."
