@@ -1,5 +1,32 @@
 # Changelog
 
+## nemetonshiny 0.27.1 (2026-05-15)
+
+#### Suivi sanitaire — UX du toggle de re-téléchargement du cache COG
+
+Deux ajustements UX sur la sidebar de l’onglet Suivi sanitaire en mode
+rapide, sans changement fonctionnel sous-jacent :
+
+- `feat(monitoring)` — Le label de la case à cocher *« Réamorcer le
+  cache COG (skip_cached = FALSE) »* devient **« Retélécharger le cache
+  COG »** (FR) / **« Re-download COG cache »** (EN). Plus court, plus
+  direct, le verbe décrit l’action que voit l’utilisateur (re-fetch des
+  bandes Sentinel-2) et non l’argument technique passé à
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html).
+
+- `feat(monitoring)` — L’explication détaillée *« Coche cette case lors
+  du premier run d’une zone… »* qui était posée en
+  [`shiny::helpText()`](https://rdrr.io/pkg/shiny/man/helpText.html)
+  sous la checkbox passe en **popover bslib** déclenché par une icône
+  info (`circle-info`) à côté du label. Même pattern que le bouton «
+  Tout » de l’onglet Synthèse. Permet de rendre la sidebar plus tight
+  (l’explication ne prend plus 3 lignes verticales) tout en gardant
+  l’info accessible d’un clic. Le contenu du popover supporte du HTML
+  (`<strong>`, `<code>`, `<br>`) pour mettre en évidence le verbe
+  d’action et le nom de l’argument cœur.
+
+Pas de modification cœur (`nemeton@v0.21.11` toujours pinné).
+
 ## nemetonshiny 0.27.0 (2026-05-15)
 
 #### Suivi sanitaire — clôture du reliquat E6.b (phases 2, 3, 6)

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,19 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.27.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.27.1" id="nemetonshiny-0271-2026-05-15">nemetonshiny 0.27.1 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0271-2026-05-15"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--ux-du-toggle-de-re-téléchargement-du-cache-cog-0-27-1">Suivi sanitaire — UX du toggle de re-téléchargement du cache COG<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--ux-du-toggle-de-re-t%C3%A9l%C3%A9chargement-du-cache-cog-0-27-1"></a></h4>
+<p>Deux ajustements UX sur la sidebar de l’onglet Suivi sanitaire en mode rapide, sans changement fonctionnel sous-jacent :</p>
+<ul><li><p><code>feat(monitoring)</code> — Le label de la case à cocher <em>« Réamorcer le cache COG (skip_cached = FALSE) »</em> devient <strong>« Retélécharger le cache COG »</strong> (FR) / <strong>« Re-download COG cache »</strong> (EN). Plus court, plus direct, le verbe décrit l’action que voit l’utilisateur (re-fetch des bandes Sentinel-2) et non l’argument technique passé à <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code>.</p></li>
+<li><p><code>feat(monitoring)</code> — L’explication détaillée <em>« Coche cette case lors du premier run d’une zone… »</em> qui était posée en <code><a href="https://rdrr.io/pkg/shiny/man/helpText.html" class="external-link">shiny::helpText()</a></code> sous la checkbox passe en <strong>popover bslib</strong> déclenché par une icône info (<code>circle-info</code>) à côté du label. Même pattern que le bouton « Tout » de l’onglet Synthèse. Permet de rendre la sidebar plus tight (l’explication ne prend plus 3 lignes verticales) tout en gardant l’info accessible d’un clic. Le contenu du popover supporte du HTML (<code>&lt;strong&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;br&gt;</code>) pour mettre en évidence le verbe d’action et le nom de l’argument cœur.</p></li>
+</ul><p>Pas de modification cœur (<code>nemeton@v0.21.11</code> toujours pinné).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.27.0" id="nemetonshiny-0270-2026-05-15">nemetonshiny 0.27.0 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0270-2026-05-15"></a></h2>
 <div class="section level4">
