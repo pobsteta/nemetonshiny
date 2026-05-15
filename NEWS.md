@@ -63,6 +63,23 @@ coche désormais E6.b en intégralité.
   commit n'identifie explicitement la phase. Pas de nouveau code
   livré ici — uniquement traçabilité dans le PLAN.
 
+### UX
+
+* `fix(monitoring)` — l'ID de tuile Sentinel-2 dans le toast de
+  progression d'ingestion (« Tuile Sentinel-2 *S2A_MSIL2A_…* (X/N) »)
+  faisait 60+ caractères et débordait la largeur ~250 px du toast
+  Shiny en bas à droite, masquant les derniers segments (ex. tile
+  code et timestamp de production). Wrappage du `scene_id` dans un
+  `<span style="font-size:9px;font-family:monospace;word-break:break-all">`
+  injecté côté `R/mod_monitoring.R` (bloc `nzchar(scene)` du
+  `progress` handler) : le label « Tuile Sentinel-2 » et le
+  compteur (X/N) restent à la taille normale, seul l'identifiant
+  passe en monospace 9 px et casse sur 2 lignes courtes au lieu
+  d'être tronqué. Pas de modif i18n (la chaîne
+  `monitoring_ingest_progress_named_fmt` est inchangée — le span
+  est injecté avant le `sprintf`, le résultat est passé en
+  `htmltools::HTML(...)` à `.monitoring_spinning_msg()`).
+
 ### Bumps
 
 * `Imports: nemeton (>= 0.21.11)` (était 0.21.9) — pour

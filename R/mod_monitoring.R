@@ -1349,8 +1349,21 @@ mod_monitoring_server <- function(id, app_state) {
         else
           i18n$t("monitoring_stac_search")
       } else if (nzchar(scene)) {
-        sprintf(i18n$t("monitoring_ingest_progress_named_fmt"),
-                scene, i_val, n_val)
+        # Sentinel-2 scene IDs are 60+ chars (e.g.
+        # S2A_MSIL2A_20250610T103631_N0500_R108_T31TFM_20250610T142536)
+        # and overflow the ~250 px Shiny notification box. Wrap the
+        # scene_id in a small monospace span so the full id stays
+        # readable on two short lines instead of being truncated.
+        scene_html <- sprintf(
+          paste0("<span style=\"font-size:9px;",
+                 "font-family:monospace;",
+                 "word-break:break-all;\">%s</span>"),
+          htmltools::htmlEscape(scene)
+        )
+        htmltools::HTML(sprintf(
+          i18n$t("monitoring_ingest_progress_named_fmt"),
+          scene_html, i_val, n_val
+        ))
       } else {
         sprintf(i18n$t("monitoring_ingest_progress_fmt"),
                 i_val, n_val)
