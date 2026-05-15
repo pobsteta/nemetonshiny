@@ -1,5 +1,34 @@
 # Changelog
 
+## nemetonshiny 0.28.4 (2026-05-15)
+
+#### Suivi sanitaire — Carte pixel : couche NDVI/NBR perdue au switch de fond
+
+Sur le sous-onglet **Carte pixel** de Suivi sanitaire, basculer entre le
+fond OSM et le fond satellite faisait disparaître visuellement la couche
+d’indice (NDVI ou NBR).
+
+Cause : `addRasterImage()` était appelé avec un argument `group =` **non
+déclaré** dans `addLayersControl()` (ni en `baseGroups` ni en
+`overlayGroups`). Le contrôle des couches Leaflet ne reconnaissait donc
+pas la couche raster, et selon le navigateur ou le timing du toggle, son
+`ImageOverlay` était soit retiré transitoirement, soit mal repositionné
+en z-index sous le tilePane.
+
+Correctif (`R/mod_monitoring_pixel_map.R`) : la couche raster est
+désormais **déclarée explicitement** comme `overlayGroups` dans
+`addLayersControl()`, avec un libellé fixe « NDVI / NBR »
+(langue-indépendant pour que `renderLeaflet()` reste sans dépendance
+réactive — préserve le choix de fond fait en v0.28.1). Le `group =` de
+`addRasterImage()` matche exactement le même libellé. Effet utilisateur
+: la couche reste visible au basculement OSM↔︎Satellite, et le contrôle
+expose en plus une case à cocher « NDVI / NBR » pour masquer/afficher la
+couche à volonté.
+
+Cleanup associé (`R/utils_i18n.R`) : suppression de la clé i18n
+orpheline `monitoring_pixel_map_layer` (FR/EN), qui n’est plus
+référencée nulle part.
+
 ## nemetonshiny 0.28.3 (2026-05-15)
 
 #### chore(deps) — bump épingle nemeton à v0.22.1

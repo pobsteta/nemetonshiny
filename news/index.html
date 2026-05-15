@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,16 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.28.4" id="nemetonshiny-0284-2026-05-15">nemetonshiny 0.28.4 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0284-2026-05-15"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--carte-pixel--couche-ndvinbr-perdue-au-switch-de-fond-0-28-4">Suivi sanitaire — Carte pixel : couche NDVI/NBR perdue au switch de fond<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--carte-pixel--couche-ndvinbr-perdue-au-switch-de-fond-0-28-4"></a></h4>
+<p>Sur le sous-onglet <strong>Carte pixel</strong> de Suivi sanitaire, basculer entre le fond OSM et le fond satellite faisait disparaître visuellement la couche d’indice (NDVI ou NBR).</p>
+<p>Cause : <code>addRasterImage()</code> était appelé avec un argument <code>group =</code> <strong>non déclaré</strong> dans <code>addLayersControl()</code> (ni en <code>baseGroups</code> ni en <code>overlayGroups</code>). Le contrôle des couches Leaflet ne reconnaissait donc pas la couche raster, et selon le navigateur ou le timing du toggle, son <code>ImageOverlay</code> était soit retiré transitoirement, soit mal repositionné en z-index sous le tilePane.</p>
+<p>Correctif (<code>R/mod_monitoring_pixel_map.R</code>) : la couche raster est désormais <strong>déclarée explicitement</strong> comme <code>overlayGroups</code> dans <code>addLayersControl()</code>, avec un libellé fixe « NDVI / NBR » (langue-indépendant pour que <code>renderLeaflet()</code> reste sans dépendance réactive — préserve le choix de fond fait en v0.28.1). Le <code>group =</code> de <code>addRasterImage()</code> matche exactement le même libellé. Effet utilisateur : la couche reste visible au basculement OSM↔︎Satellite, et le contrôle expose en plus une case à cocher « NDVI / NBR » pour masquer/afficher la couche à volonté.</p>
+<p>Cleanup associé (<code>R/utils_i18n.R</code>) : suppression de la clé i18n orpheline <code>monitoring_pixel_map_layer</code> (FR/EN), qui n’est plus référencée nulle part.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.28.3" id="nemetonshiny-0283-2026-05-15">nemetonshiny 0.28.3 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0283-2026-05-15"></a></h2>
 <div class="section level4">
