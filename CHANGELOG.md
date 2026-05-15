@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.28.3] - 2026-05-15
+
+### Changed
+
+- **Deps** : bump de l'épingle `Remotes: pobsteta/nemeton` de
+  `v0.22.0` vers `v0.22.1`. Sans ce bump, l'installation de
+  `nemetonshiny` faisait redescendre `nemeton` à `0.22.0` même
+  si une version plus récente était installée localement
+  (`DESCRIPTION`).
+
 ## [0.28.2] - 2026-05-15
 
 ### Fixed

@@ -1,3 +1,22 @@
+# nemetonshiny 0.28.3 (2026-05-15)
+
+### chore(deps) — bump épingle nemeton à v0.22.1
+
+L'installation de `nemetonshiny` (`remotes::install_github`,
+`pak::pkg_install`, `devtools::install`) faisait **redescendre**
+`nemeton` à la version `0.22.0`, même quand une version plus récente
+était déjà installée localement.
+
+Cause : le champ `Remotes: pobsteta/nemeton@v0.22.0` du `DESCRIPTION`
+épingle nemeton à exactement ce tag. L'épingle prime sur la borne
+souple `Imports: nemeton (>= 0.22.0)`, donc le résolveur de
+dépendances downgrade systématiquement.
+
+Correctif : bump de l'épingle vers `pobsteta/nemeton@v0.22.1` (dernier
+tag stable côté cœur). Aucun changement de code. Réflexe à adopter
+pour chaque release `nemeton` : bumper l'épingle ici dans la foulée
+(ordre cœur → app de CLAUDE.md).
+
 # nemetonshiny 0.28.2 (2026-05-15)
 
 ### Suivi sanitaire — refresh automatique après ingestion Sentinel-2
