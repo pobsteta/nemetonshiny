@@ -172,6 +172,12 @@ mod_monitoring_ui <- function(id) {
                 icon  = bsicons::bs_icon("play-fill"),
                 class = "btn-primary w-100"
               ),
+              # "Cancel / reset" button — only visible while the worker
+              # is running. Force-unlocks the UI without killing the
+              # background future (which Shiny's ExtendedTask cannot
+              # cancel anyway). See the run_cancel observer for the
+              # full story.
+              shiny::uiOutput(ns("run_cancel_panel")),
               shiny::uiOutput(ns("cache_hint"), class = "small text-muted mt-1")
             ),
 
@@ -201,7 +207,8 @@ mod_monitoring_ui <- function(id) {
                 ns("run_health"), i18n$t("monitoring_run_health_btn"),
                 icon  = bsicons::bs_icon("activity"),
                 class = "btn-primary w-100"
-              )
+              ),
+              shiny::uiOutput(ns("run_health_cancel_panel"))
             )
           )
         )
@@ -1400,19 +1407,78 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
+    # User-side override that force-unlocks the "Lancer" button even
+    # when the worker is technically still running. Used by the
+    # run_cancel button (see below): Shiny's ExtendedTask cannot be
+    # cancelled, so when the worker is stuck looping over scenes that
+    # all 403/404 (e.g. PC SAS token expired mid-run, Azure regional
+    # outage), the user has no way to relaunch without restarting the
+    # whole app. This flag lets them get a fresh "Lancer" button while
+    # the orphan future continues in the background — that's safe
+    # because the DB INSERTs are ON CONFLICT DO NOTHING.
+    force_unlock_quick <- shiny::reactiveVal(FALSE)
+
     # Button state: only grey out during a running ingestion (double-click
-    # protection). Preconditions (zone / bands / dates) are NOT enforced
-    # at the HTML level so a click always triggers the observer below
-    # and the user gets an explicit toast for whichever precondition is
-    # missing — same UX as the "Enregistrer la zone" button.
+    # protection) AND the user has not overridden via run_cancel. The
+    # observer fires every time `ingest_task$status()` (a Shiny reactive)
+    # transitions, which is the canonical way to track ExtendedTask
+    # state.
     shiny::observe({
-      is_running <- identical(ingest_task$status(), "running")
+      is_running <- identical(ingest_task$status(), "running") &&
+                    !isTRUE(force_unlock_quick())
       shiny::updateActionButton(session, "run", disabled = is_running)
+    })
+
+    # Render the cancel/reset button only while a real task is in
+    # flight AND the user hasn't already force-unlocked. The button is
+    # secondary-styled to make clear it's a recovery action, not the
+    # primary CTA.
+    output$run_cancel_panel <- shiny::renderUI({
+      ns <- session$ns
+      i18n <- i18n_r()
+      if (!identical(ingest_task$status(), "running")) return(NULL)
+      if (isTRUE(force_unlock_quick())) return(NULL)
+      shiny::actionButton(
+        ns("run_cancel"),
+        i18n$t("monitoring_run_cancel_btn"),
+        icon  = bsicons::bs_icon("x-circle"),
+        class = "btn-outline-secondary btn-sm w-100 mt-1"
+      )
+    })
+
+    shiny::observeEvent(input$run_cancel, {
+      i18n <- i18n_r()
+      # Force-unlock the button immediately so the user can relaunch.
+      force_unlock_quick(TRUE)
+      # Wipe every in-flight ingestion toast so the screen stops being
+      # polluted by the old worker's stream of 403/404 warnings.
+      for (nid in c("ingest_progress", "ingest_band_failed",
+                    "ingest_pc_token", "ingest_error",
+                    "ingest_warns", "ingest_zero", "ingest_success",
+                    "ingest_cache_lookup")) {
+        shiny::removeNotification(session$ns(nid))
+      }
+      # Cleanup local progress + log files so the next run starts on a
+      # blank slate (poll observers will treat NULL as "no run").
+      .cleanup_progress_file(ingest_progress_path())
+      ingest_progress_path(NULL)
+      .cleanup_progress_file(ingest_log_path())
+      ingest_log_path(NULL)
+      ingest_log_offset(0L)
+      shiny::showNotification(
+        i18n$t("monitoring_run_cancel_done"),
+        id       = session$ns("run_cancel_info"),
+        type     = "default",
+        duration = 6
+      )
     })
 
     # Click handler: validate state, build window dates, fire the task.
     shiny::observeEvent(input$run, {
       i18n <- i18n_r()
+      # New manual launch: discard any prior force-unlock so the
+      # button correctly greys out for the new worker.
+      force_unlock_quick(FALSE)
       if (identical(ingest_task$status(), "running")) {
         shiny::showNotification(i18n$t("monitoring_ingest_starting"),
                                 type = "message", duration = 4)
@@ -1649,12 +1715,51 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
+    # User-side override that force-unlocks the run_health button —
+    # same purpose as force_unlock_quick (cf. above). FORDEAD runs can
+    # take 10-30 minutes and have no built-in cancellation, so a stuck
+    # phase (network outage on STAC, reticulate Python OOM, etc.)
+    # would otherwise block the user from relaunching.
+    force_unlock_health <- shiny::reactiveVal(FALSE)
+
     # Button state for run_health: same logic as `run` — only grey out
-    # during an active FORDEAD run (long task), preconditions are
-    # validated in the click observer for explicit toast feedback.
+    # during an active FORDEAD run (long task) AND no user override,
+    # preconditions are validated in the click observer for explicit
+    # toast feedback.
     shiny::observe({
-      is_running <- identical(fordead_task$status(), "running")
+      is_running <- identical(fordead_task$status(), "running") &&
+                    !isTRUE(force_unlock_health())
       shiny::updateActionButton(session, "run_health", disabled = is_running)
+    })
+
+    output$run_health_cancel_panel <- shiny::renderUI({
+      ns <- session$ns
+      i18n <- i18n_r()
+      if (!identical(fordead_task$status(), "running")) return(NULL)
+      if (isTRUE(force_unlock_health())) return(NULL)
+      shiny::actionButton(
+        ns("run_health_cancel"),
+        i18n$t("monitoring_run_cancel_btn"),
+        icon  = bsicons::bs_icon("x-circle"),
+        class = "btn-outline-secondary btn-sm w-100 mt-1"
+      )
+    })
+
+    shiny::observeEvent(input$run_health_cancel, {
+      i18n <- i18n_r()
+      force_unlock_health(TRUE)
+      for (nid in c("fordead_progress", "fordead_error",
+                    "fordead_success", "fordead_warns")) {
+        shiny::removeNotification(session$ns(nid))
+      }
+      .cleanup_progress_file(fordead_progress_path())
+      fordead_progress_path(NULL)
+      shiny::showNotification(
+        i18n$t("monitoring_run_cancel_done"),
+        id       = session$ns("run_health_cancel_info"),
+        type     = "default",
+        duration = 6
+      )
     })
 
     # Helper — kicks off the FORDEAD task with the current sidebar
@@ -1727,6 +1832,9 @@ mod_monitoring_server <- function(id, app_state) {
     # warranty doesn't apply.
     shiny::observeEvent(input$run_health, {
       i18n <- i18n_r()
+      # New manual launch: discard any prior force-unlock so the
+      # button correctly greys out for the new worker.
+      force_unlock_health(FALSE)
       if (identical(fordead_task$status(), "running")) {
         shiny::showNotification(i18n$t("monitoring_health_starting"),
                                 type = "message", duration = 4)
