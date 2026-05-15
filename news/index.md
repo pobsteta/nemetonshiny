@@ -1,5 +1,30 @@
 # Changelog
 
+## nemetonshiny 0.28.1 (2026-05-15)
+
+#### Suivi sanitaire — Carte pixel : fix bascule de fond perdue au défilement des dates
+
+Sur le sous-onglet **Carte pixel** de Suivi sanitaire, basculer du fond
+OSM au fond satellite ne tenait pas : dès que l’utilisateur faisait
+défiler le slider de date (ou changeait d’indice NDVI/NBR), le fond
+revenait à OSM.
+
+Cause : `renderLeaflet()` dépendait de `current_layer_r()` (le raster de
+la date courante). Chaque changement de date relançait tout le rendu,
+reconstruisant la carte de zéro avec
+`baseGroups = c("OSM", "Satellite")` — OSM repris comme défaut, choix
+utilisateur perdu (le choix de fond vit côté client, dans le widget
+Leaflet, et n’est pas préservé à travers un remount).
+
+Correctif (`R/mod_monitoring_pixel_map.R`) : le squelette de carte (les
+deux fonds + le contrôle de couches) est désormais rendu **une seule
+fois** dans `renderLeaflet()`. Les mises à jour du raster et de la
+légende passent par `leafletProxy("map")` dans un `observe()` qui
+`clearImages()` + `removeControl("pixel_legend")` puis ré-ajoute l’image
+et la légende. Le widget Leaflet n’est plus remonté à chaque date — le
+choix de fond reste sélectionné, et la navigation temporelle est
+nettement plus fluide.
+
 ## nemetonshiny 0.28.0 (2026-05-15)
 
 #### Suivi sanitaire — nouveau sous-onglet « Carte pixel » (spec 010)

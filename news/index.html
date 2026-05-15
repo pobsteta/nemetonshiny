@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,18 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.28.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.28.1" id="nemetonshiny-0281-2026-05-15">nemetonshiny 0.28.1 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0281-2026-05-15"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--carte-pixel--fix-bascule-de-fond-perdue-au-défilement-des-dates-0-28-1">Suivi sanitaire — Carte pixel : fix bascule de fond perdue au défilement des dates<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--carte-pixel--fix-bascule-de-fond-perdue-au-d%C3%A9filement-des-dates-0-28-1"></a></h4>
+<p>Sur le sous-onglet <strong>Carte pixel</strong> de Suivi sanitaire, basculer du fond OSM au fond satellite ne tenait pas : dès que l’utilisateur faisait défiler le slider de date (ou changeait d’indice NDVI/NBR), le fond revenait à OSM.</p>
+<p>Cause : <code>renderLeaflet()</code> dépendait de <code>current_layer_r()</code> (le raster de la date courante). Chaque changement de date relançait tout le rendu, reconstruisant la carte de zéro avec <code>baseGroups = c("OSM", "Satellite")</code> — OSM repris comme défaut, choix utilisateur perdu (le choix de fond vit côté client, dans le widget Leaflet, et n’est pas préservé à travers un remount).</p>
+<p>Correctif (<code>R/mod_monitoring_pixel_map.R</code>) : le squelette de carte (les deux fonds + le contrôle de couches) est désormais rendu <strong>une seule fois</strong> dans <code>renderLeaflet()</code>. Les mises à jour du raster et de la légende passent par <code>leafletProxy("map")</code> dans un <code>observe()</code> qui <code>clearImages()</code> + <code>removeControl("pixel_legend")</code> puis ré-ajoute l’image et la légende. Le widget Leaflet n’est plus remonté à chaque date — le choix de fond reste sélectionné, et la navigation temporelle est nettement plus fluide.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.28.0" id="nemetonshiny-0280-2026-05-15">nemetonshiny 0.28.0 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0280-2026-05-15"></a></h2>
 <div class="section level4">
