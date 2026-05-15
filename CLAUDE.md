@@ -335,6 +335,58 @@ chaque entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 - Quand un changement implique aussi `nemeton`, faire les deux releases dans l'ordre cœur → app
   (l'app dépend du cœur, jamais l'inverse).
 
+## Épingle `Remotes:` vers `nemeton` (ordre cœur → app)
+
+Le champ `Remotes: pobsteta/nemeton@vX.Y.Z` du `DESCRIPTION` est une
+**épingle tag stricte** : l'installeur (`remotes::install_github`,
+`pak::pkg_install`, `devtools::install`) tire toujours cette version
+précise, **même si une version plus récente est déjà installée
+localement** (downgrade silencieux). Le `Imports: nemeton (>= X.Y.Z)`
+n'est qu'une borne d'API minimale — il ne contredit pas l'épingle.
+
+Conséquence : **à chaque release stable `nemeton@vX.Y.Z+1`, bumper
+l'épingle ici dans la foulée**, sinon les utilisateurs qui réinstallent
+`nemetonshiny` se retrouvent downgradés sans le savoir.
+
+### Réflexe à appliquer
+
+À l'ouverture d'une session sur `nemetonshiny`, et avant tout commit
+fonctionnel qui touche du code consommateur de `nemeton::*`, Claude
+doit **vérifier l'épingle** :
+
+1. Lire le champ `Remotes:` du `DESCRIPTION` local (épingle nemetonshiny).
+2. Demander à l'utilisateur le tag stable le plus récent côté `nemeton`
+   (règle 12 interdit l'accès direct au repo cœur depuis cette session,
+   donc pas de `git -C /home/pascal/dev/nemeton describe` ni équivalent).
+3. Si écart : proposer un `chore(deps): bump nemeton pin to vX.Y.Z`,
+   typiquement en patch release seule (ex. `0.28.2` → `0.28.3`) ou
+   groupé avec le prochain commit fonctionnel.
+
+Ce check est un **réflexe de session**, pas un check à chaque commit :
+si la session vient de bumper l'épingle, inutile de redemander.
+
+### Cas particulier : développement local avec `pkgload::load_all()`
+
+En dev, on charge nemeton via `pkgload::load_all("/home/pascal/dev/nemeton")`
+ou `pak::local_install("/home/pascal/dev/nemeton")` — l'épingle
+`Remotes:` n'est pas consultée tant qu'on ne fait pas un install
+GitHub. C'est pour ça qu'un drift entre épingle et tag cœur peut
+passer inaperçu plusieurs jours côté développeur ; seuls les
+utilisateurs qui installent depuis GitHub le voient.
+
+### Alternatives à l'épingle tag (non recommandées par défaut)
+
+- `pobsteta/nemeton@main` : zéro maintenance, mais une régression
+  poussée sur main de nemeton casse l'install de tous les
+  utilisateurs de nemetonshiny entre le push et le revert. Non
+  reproductible dans 6 mois.
+- `pobsteta/nemeton@release/v0.22` : suit la dernière patch d'une
+  mineure, demande de maintenir une branche release côté cœur.
+  À envisager si les bumps deviennent un coût récurrent.
+
+Tant qu'il n'y a pas de friction observée, **garder l'épingle tag**
+et faire le bump en patch release dans la foulée d'une release cœur.
+
 ## Workflow de push (branche dev → main)
 
 Le workflow est en **deux temps** et doit être suivi systématiquement.
