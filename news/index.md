@@ -1,5 +1,53 @@
 # Changelog
 
+## nemetonshiny 0.27.3 (2026-05-15)
+
+#### Bump du pin nemeton vers v0.22.0
+
+- `Imports: nemeton (>= 0.22.0)` (était `>= 0.21.11`)
+- `Remotes: pobsteta/nemeton@v0.22.0` (était `v0.21.11`)
+
+Récupère :
+
+- `fix(monitoring)` v0.21.12 —
+  [`terra::writeRaster()`](https://rspatial.github.io/terra/reference/writeRaster.html)
+  reçoit désormais explicitement `filetype = "GTiff"` quand on écrit
+  sous `<cache_dir>/{scene_id}/{band}.tif`. Sans ça, GDAL infère parfois
+  `MEM` ou un format ad hoc selon l’extension du fichier temporaire, et
+  l’écriture pouvait échouer silencieusement (notamment sur Windows et
+  certains runtimes Docker). Aucun changement d’API, 100% transparent
+  côté app.
+
+- **4 nouveaux exports cœur** disponibles (utilisés par la prochaine
+  release v0.28.0 pour la nouvelle vue *Carte pixel* — spec 010) :
+  `read_s2_band_raster()`, `read_s2_band_stack()`,
+  `build_index_stack()`, `extract_pixel_timeseries()`. Aucun câblage
+  côté app dans cette release — les fonctions sont juste rendues
+  disponibles pour la suivante.
+
+#### Suivi sanitaire — libellé toast cache lookup plus clair
+
+Le toast émis à l’événement `s2:cache_lookup` (one-shot, juste après la
+recherche STAC) disait *« Cache DB : 79 en cache, 26 à traiter »*. Le
+mot *« à traiter »* laissait penser qu’on allait re-télécharger 26
+scènes en entier — alors que dans la majorité des cas, ces 26 scènes ont
+déjà des bandes sur disque (cache COG) et seul le **complément** est à
+fetcher (typiquement la 2ème bande quand un run précédent a planté entre
+les deux).
+
+Reformulation : *« Cache DB : %d scènes déjà ingérées (skip), %d à
+compléter »* / *« DB cache: %d scenes already ingested (skip), %d to
+complete »*. Le mot **« skip »** confirme que les premières sont
+totalement court-circuitées (ni HTTP, ni read disque), et **« à
+compléter »** indique que les secondes ne sont pas forcément des
+re-downloads complets. Pour le détail bande par bande, activer
+`NEMETON_S2_CACHE_DEBUG=TRUE` avant
+[`run_app()`](https://pobsteta.github.io/nemetonshiny/reference/run_app.md)
+— chaque CACHE-HIT / CACHE-MISS / FETCH apparaît dans la console R en
+live (cf. v0.26.6).
+
+Pas de modif fonctionnelle, uniquement i18n.
+
 ## nemetonshiny 0.27.2 (2026-05-15)
 
 #### Suivi sanitaire — bouton “Annuler / Réinitialiser” pour débloquer l’UI

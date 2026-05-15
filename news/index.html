@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,28 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.27.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.27.3" id="nemetonshiny-0273-2026-05-15">nemetonshiny 0.27.3 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0273-2026-05-15"></a></h2>
+<div class="section level4">
+<h4 id="bump-du-pin-nemeton-vers-v0220-0-27-3">Bump du pin nemeton vers v0.22.0<a class="anchor" aria-label="anchor" href="#bump-du-pin-nemeton-vers-v0220-0-27-3"></a></h4>
+<ul><li>
+<code>Imports: nemeton (&gt;= 0.22.0)</code> (était <code>&gt;= 0.21.11</code>)</li>
+<li>
+<code>Remotes: pobsteta/nemeton@v0.22.0</code> (était <code>v0.21.11</code>)</li>
+</ul><p>Récupère :</p>
+<ul><li><p><code>fix(monitoring)</code> v0.21.12 — <code><a href="https://rspatial.github.io/terra/reference/writeRaster.html" class="external-link">terra::writeRaster()</a></code> reçoit désormais explicitement <code>filetype = "GTiff"</code> quand on écrit sous <code>&lt;cache_dir&gt;/{scene_id}/{band}.tif</code>. Sans ça, GDAL infère parfois <code>MEM</code> ou un format ad hoc selon l’extension du fichier temporaire, et l’écriture pouvait échouer silencieusement (notamment sur Windows et certains runtimes Docker). Aucun changement d’API, 100% transparent côté app.</p></li>
+<li><p><strong>4 nouveaux exports cœur</strong> disponibles (utilisés par la prochaine release v0.28.0 pour la nouvelle vue <em>Carte pixel</em> — spec 010) : <code>read_s2_band_raster()</code>, <code>read_s2_band_stack()</code>, <code>build_index_stack()</code>, <code>extract_pixel_timeseries()</code>. Aucun câblage côté app dans cette release — les fonctions sont juste rendues disponibles pour la suivante.</p></li>
+</ul></div>
+<div class="section level4">
+<h4 id="suivi-sanitaire--libellé-toast-cache-lookup-plus-clair-0-27-3">Suivi sanitaire — libellé toast cache lookup plus clair<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--libell%C3%A9-toast-cache-lookup-plus-clair-0-27-3"></a></h4>
+<p>Le toast émis à l’événement <code>s2:cache_lookup</code> (one-shot, juste après la recherche STAC) disait <em>« Cache DB : 79 en cache, 26 à traiter »</em>. Le mot <em>« à traiter »</em> laissait penser qu’on allait re-télécharger 26 scènes en entier — alors que dans la majorité des cas, ces 26 scènes ont déjà des bandes sur disque (cache COG) et seul le <strong>complément</strong> est à fetcher (typiquement la 2ème bande quand un run précédent a planté entre les deux).</p>
+<p>Reformulation : <em>« Cache DB : %d scènes déjà ingérées (skip), %d à compléter »</em> / <em>« DB cache: %d scenes already ingested (skip), %d to complete »</em>. Le mot <strong>« skip »</strong> confirme que les premières sont totalement court-circuitées (ni HTTP, ni read disque), et <strong>« à compléter »</strong> indique que les secondes ne sont pas forcément des re-downloads complets. Pour le détail bande par bande, activer <code>NEMETON_S2_CACHE_DEBUG=TRUE</code> avant <code><a href="../reference/run_app.html">run_app()</a></code> — chaque CACHE-HIT / CACHE-MISS / FETCH apparaît dans la console R en live (cf. v0.26.6).</p>
+<p>Pas de modif fonctionnelle, uniquement i18n.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.27.2" id="nemetonshiny-0272-2026-05-15">nemetonshiny 0.27.2 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0272-2026-05-15"></a></h2>
 <div class="section level4">
