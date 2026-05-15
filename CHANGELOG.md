@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.28.2\] - 2026-05-15
+
+### Fixed
+
+- **Suivi sanitaire** : après un téléchargement Sentinel-2 réussi, le
+  graphique plotly des placettes et la sous-onglet *Carte pixel* ne se
+  mettaient pas à jour automatiquement — l’utilisateur devait toucher à
+  un contrôle (bandes, dates, zone) pour rafraîchir. Ajout d’un
+  `reactiveVal` `obs_refresh` lu par `obs_pixel_data()` et bumpé en fin
+  d’ingestion. Pattern symétrique à `alerts_refresh` côté FORDEAD
+  (`R/mod_monitoring.R`).
+
 ## \[0.28.1\] - 2026-05-15
 
 ### Fixed
