@@ -1,5 +1,68 @@
 # Changelog
 
+## nemetonshiny 0.27.2 (2026-05-15)
+
+#### Suivi sanitaire — bouton “Annuler / Réinitialiser” pour débloquer l’UI
+
+**Symptôme remonté par l’utilisateur** : pendant une ingestion S2 où
+l’API Planetary Computer renvoyait des HTTP 403 sur quasiment toutes les
+bandes (typique d’un SAS token expiré mid-run ou d’une coupure régionale
+Azure), le bouton “Lancer le diagnostic FAST” restait désactivé pendant
+10+ minutes — le temps que le worker
+[`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+épuise toutes les scènes (3 retries × backoff exponentiel par bande),
+avec des toasts d’erreur HTTP 403 GDAL qui s’empilaient sans fin sur la
+droite.
+
+**Cause** : les warnings émis par `terra`
+(`GDAL Error 1: HTTP error code: 403`,
+`Scene "..." skipped: [rast] file does not exist`) sont capturés par
+`withCallingHandlers(warning = ...)` dans le worker
+(`R/service_monitoring.R:180-184`) puis suppressed via
+`invokeRestart("muffleWarning")`. L’ingestion **continue** sur les
+scènes suivantes — qui plantent à leur tour pour la même raison — au
+lieu de s’arrêter franchement. Le bouton ne se débloque qu’à la toute
+fin de la boucle. C’est délibéré (un blip transient ne doit pas tuer un
+long run), mais ça laisse l’utilisateur sans recours quand l’erreur est
+en fait persistante.
+
+**Fix** : nouveau bouton **« Annuler / Réinitialiser »** qui apparaît
+sous le bouton “Lancer” dès qu’un worker tourne, et disparaît dès qu’il
+termine. Au clic :
+
+- `force_unlock_quick(TRUE)` (un nouveau `reactiveVal`) qui override
+  l’observer du bouton — celui-ci passe de
+  `is_running <- identical( ingest_task$status(), "running")` à
+  `is_running <- … && !isTRUE(force_unlock_quick())`. Le bouton “Lancer”
+  redevient cliquable immédiatement.
+- Tous les toasts d’ingestion sont supprimés (`removeNotification` sur
+  `ingest_progress`, `ingest_band_failed`, `ingest_pc_token`,
+  `ingest_error`, `ingest_warns`, `ingest_zero`, `ingest_success`,
+  `ingest_cache_lookup`).
+- Les fichiers locaux `progress.json` et `ingest_console.log` sont
+  unlinkés et leurs `reactiveVal` resetés à NULL.
+- Toast info qui explique la situation : *“Bouton réinitialisé. Vous
+  pouvez relancer dès que le problème est corrigé. Note : le worker en
+  cours continue en arrière-plan (les INSERT en base sont
+  idempotents).”*
+
+**Le worker n’est PAS killé** : Shiny `ExtendedTask` ne supporte pas
+`cancel()`, et
+[`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+non plus. Le worker continue à boucler sur ses scènes en arrière-plan,
+mais c’est sans danger parce que les INSERT côté `obs_pixel` sont
+`ON CONFLICT DO NOTHING` (une scène qui finit par succeed après le reset
+ne crée pas de doublon). Au prochain clic sur “Lancer”,
+`force_unlock_quick(FALSE)` remet le verrou en place pour le nouveau
+worker.
+
+Même mécanisme dupliqué pour le mode HEALTH (`force_unlock_health`,
+`run_health_cancel`) où FORDEAD prend déjà 10-30 minutes en nominal et
+n’a aucun moyen d’interruption non plus.
+
+3 nouvelles clés i18n : `monitoring_run_cancel_btn`,
+`monitoring_run_cancel_done`. Pas de modif cœur.
+
 ## nemetonshiny 0.27.1 (2026-05-15)
 
 #### Suivi sanitaire — UX du toggle de re-téléchargement du cache COG

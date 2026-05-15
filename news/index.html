@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,27 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.27.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.27.2" id="nemetonshiny-0272-2026-05-15">nemetonshiny 0.27.2 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0272-2026-05-15"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--bouton-annuler--réinitialiser-pour-débloquer-lui-0-27-2">Suivi sanitaire — bouton “Annuler / Réinitialiser” pour débloquer l’UI<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--bouton-annuler--r%C3%A9initialiser-pour-d%C3%A9bloquer-lui-0-27-2"></a></h4>
+<p><strong>Symptôme remonté par l’utilisateur</strong> : pendant une ingestion S2 où l’API Planetary Computer renvoyait des HTTP 403 sur quasiment toutes les bandes (typique d’un SAS token expiré mid-run ou d’une coupure régionale Azure), le bouton “Lancer le diagnostic FAST” restait désactivé pendant 10+ minutes — le temps que le worker <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> épuise toutes les scènes (3 retries × backoff exponentiel par bande), avec des toasts d’erreur HTTP 403 GDAL qui s’empilaient sans fin sur la droite.</p>
+<p><strong>Cause</strong> : les warnings émis par <code>terra</code> (<code>GDAL Error 1: HTTP error code: 403</code>, <code>Scene "..." skipped: [rast] file does not exist</code>) sont capturés par <code>withCallingHandlers(warning = ...)</code> dans le worker (<code>R/service_monitoring.R:180-184</code>) puis suppressed via <code>invokeRestart("muffleWarning")</code>. L’ingestion <strong>continue</strong> sur les scènes suivantes — qui plantent à leur tour pour la même raison — au lieu de s’arrêter franchement. Le bouton ne se débloque qu’à la toute fin de la boucle. C’est délibéré (un blip transient ne doit pas tuer un long run), mais ça laisse l’utilisateur sans recours quand l’erreur est en fait persistante.</p>
+<p><strong>Fix</strong> : nouveau bouton <strong>« Annuler / Réinitialiser »</strong> qui apparaît sous le bouton “Lancer” dès qu’un worker tourne, et disparaît dès qu’il termine. Au clic :</p>
+<ul><li>
+<code>force_unlock_quick(TRUE)</code> (un nouveau <code>reactiveVal</code>) qui override l’observer du bouton — celui-ci passe de <code>is_running &lt;- identical( ingest_task$status(), "running")</code> à <code>is_running &lt;- … &amp;&amp; !isTRUE(force_unlock_quick())</code>. Le bouton “Lancer” redevient cliquable immédiatement.</li>
+<li>Tous les toasts d’ingestion sont supprimés (<code>removeNotification</code> sur <code>ingest_progress</code>, <code>ingest_band_failed</code>, <code>ingest_pc_token</code>, <code>ingest_error</code>, <code>ingest_warns</code>, <code>ingest_zero</code>, <code>ingest_success</code>, <code>ingest_cache_lookup</code>).</li>
+<li>Les fichiers locaux <code>progress.json</code> et <code>ingest_console.log</code> sont unlinkés et leurs <code>reactiveVal</code> resetés à NULL.</li>
+<li>Toast info qui explique la situation : <em>“Bouton réinitialisé. Vous pouvez relancer dès que le problème est corrigé. Note : le worker en cours continue en arrière-plan (les INSERT en base sont idempotents).”</em>
+</li>
+</ul><p><strong>Le worker n’est PAS killé</strong> : Shiny <code>ExtendedTask</code> ne supporte pas <code>cancel()</code>, et <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> non plus. Le worker continue à boucler sur ses scènes en arrière-plan, mais c’est sans danger parce que les INSERT côté <code>obs_pixel</code> sont <code>ON CONFLICT DO NOTHING</code> (une scène qui finit par succeed après le reset ne crée pas de doublon). Au prochain clic sur “Lancer”, <code>force_unlock_quick(FALSE)</code> remet le verrou en place pour le nouveau worker.</p>
+<p>Même mécanisme dupliqué pour le mode HEALTH (<code>force_unlock_health</code>, <code>run_health_cancel</code>) où FORDEAD prend déjà 10-30 minutes en nominal et n’a aucun moyen d’interruption non plus.</p>
+<p>3 nouvelles clés i18n : <code>monitoring_run_cancel_btn</code>, <code>monitoring_run_cancel_done</code>. Pas de modif cœur.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.27.1" id="nemetonshiny-0271-2026-05-15">nemetonshiny 0.27.1 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0271-2026-05-15"></a></h2>
 <div class="section level4">
