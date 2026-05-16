@@ -1,5 +1,43 @@
 # Changelog
 
+## nemetonshiny 0.30.0 (2026-05-16)
+
+#### Suivi sanitaire — Carte pixel : couche UGF + auto-zoom robuste
+
+**Ajout d’une couche UGF.** Les polygones du périmètre du projet
+(`current_project$indicators_sf`) sont désormais affichés sur la **Carte
+pixel** sous forme de contour orange (#FF6B35) au-dessus du raster
+NDVI/NBR. La couleur garantit la lisibilité aussi bien sur le fond OSM
+(clair) que sur le fond Satellite (verts forêt). Le fill est
+quasi-transparent (`fillOpacity = 0.05`) pour ne pas occulter l’indice.
+Le contrôle des couches Leaflet expose trois cases à cocher (« UGF », «
+NDVI / NBR », « Placettes ») toutes actives par défaut.
+
+**Refonte de l’auto-zoom.** Le correctif v0.29.1 (`observeEvent` sur
+`project$id`) ne marchait que si `indicators_sf` était déjà populé au
+moment où `id` était posé sur `app_state$current_project`. Si le
+chargement projet posait l’`id` d’abord et les géométries après
+(chargement async dans `mod_home`), l’`observeEvent` firait avec
+`geom = NULL`, retournait, et ne refirait plus — la carte restait sur la
+vue Leaflet par défaut (monde entier), où le raster et les marqueurs
+apparaissaient à 1 pixel, donnant l’impression qu’ils étaient
+invisibles.
+
+Correctif : remplacement par un `observe()` simple (qui re-fire à chaque
+mutation de `current_project`) avec un guard `reactiveVal`
+`.last_fitted_id`. L’observer fit dès que **les deux** conditions sont
+réunies (id présent + indicators_sf disponible), et marque l’`id` comme
+« fit done » — pas de re-zoom intempestif au prochain toggle d’une
+métadonnée projet, pan/zoom manuel préservé.
+
+Détails d’implémentation (`R/mod_monitoring_pixel_map.R`) : - Nouvelle
+constante `.ugf_overlay_group <- "UGF"`. - Inclusion dans
+`addLayersControl(overlayGroups = c("UGF", "NDVI / NBR", "Placettes"))`. -
+Nouvelle reactive `ugf_sf_r` (lit `indicators_sf`, transform 4326). -
+Nouvel `observe` qui pose les polygones via
+`leafletProxy() |> addPolygons(...)`. - Auto-zoom refactor :
+`reactiveVal .last_fitted_id` + `observe()` au lieu d’`observeEvent`.
+
 ## nemetonshiny 0.29.1 (2026-05-16)
 
 #### Suivi sanitaire — Carte pixel : auto-zoom sur les UGF au chargement projet

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.29.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.30.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,19 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.29.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.30.0" id="nemetonshiny-0300-2026-05-16">nemetonshiny 0.30.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0300-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--carte-pixel--couche-ugf--auto-zoom-robuste-0-30-0">Suivi sanitaire — Carte pixel : couche UGF + auto-zoom robuste<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--carte-pixel--couche-ugf--auto-zoom-robuste-0-30-0"></a></h4>
+<p><strong>Ajout d’une couche UGF.</strong> Les polygones du périmètre du projet (<code>current_project$indicators_sf</code>) sont désormais affichés sur la <strong>Carte pixel</strong> sous forme de contour orange (#FF6B35) au-dessus du raster NDVI/NBR. La couleur garantit la lisibilité aussi bien sur le fond OSM (clair) que sur le fond Satellite (verts forêt). Le fill est quasi-transparent (<code>fillOpacity = 0.05</code>) pour ne pas occulter l’indice. Le contrôle des couches Leaflet expose trois cases à cocher (« UGF », « NDVI / NBR », « Placettes ») toutes actives par défaut.</p>
+<p><strong>Refonte de l’auto-zoom.</strong> Le correctif v0.29.1 (<code>observeEvent</code> sur <code>project$id</code>) ne marchait que si <code>indicators_sf</code> était déjà populé au moment où <code>id</code> était posé sur <code>app_state$current_project</code>. Si le chargement projet posait l’<code>id</code> d’abord et les géométries après (chargement async dans <code>mod_home</code>), l’<code>observeEvent</code> firait avec <code>geom = NULL</code>, retournait, et ne refirait plus — la carte restait sur la vue Leaflet par défaut (monde entier), où le raster et les marqueurs apparaissaient à 1 pixel, donnant l’impression qu’ils étaient invisibles.</p>
+<p>Correctif : remplacement par un <code>observe()</code> simple (qui re-fire à chaque mutation de <code>current_project</code>) avec un guard <code>reactiveVal</code> <code>.last_fitted_id</code>. L’observer fit dès que <strong>les deux</strong> conditions sont réunies (id présent + indicators_sf disponible), et marque l’<code>id</code> comme « fit done » — pas de re-zoom intempestif au prochain toggle d’une métadonnée projet, pan/zoom manuel préservé.</p>
+<p>Détails d’implémentation (<code>R/mod_monitoring_pixel_map.R</code>) : - Nouvelle constante <code>.ugf_overlay_group &lt;- "UGF"</code>. - Inclusion dans <code>addLayersControl(overlayGroups = c("UGF", "NDVI / NBR", "Placettes"))</code>. - Nouvelle reactive <code>ugf_sf_r</code> (lit <code>indicators_sf</code>, transform 4326). - Nouvel <code>observe</code> qui pose les polygones via <code>leafletProxy() |&gt; addPolygons(...)</code>. - Auto-zoom refactor : <code>reactiveVal .last_fitted_id</code> + <code>observe()</code> au lieu d’<code>observeEvent</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.29.1" id="nemetonshiny-0291-2026-05-16">nemetonshiny 0.29.1 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0291-2026-05-16"></a></h2>
 <div class="section level4">

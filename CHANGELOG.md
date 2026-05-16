@@ -12,6 +12,26 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.30.0\] - 2026-05-16
+
+### Added
+
+- **Suivi sanitaire / Carte pixel** : couche UGF (périmètre du projet)
+  affichée en contour orange au-dessus du raster NDVI/NBR. Troisième
+  case à cocher « UGF » dans le contrôle des couches Leaflet, à côté de
+  « NDVI / NBR » et « Placettes ». Visible sur les deux fonds OSM et
+  Satellite (`R/mod_monitoring_pixel_map.R`).
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : auto-zoom au chargement projet
+  retravaillé. Le correctif v0.29.1 (`observeEvent` sur `project$id`)
+  ratait quand `indicators_sf` arrivait après `id` (chargement async) —
+  la carte restait alors sur la vue Leaflet par défaut, donnant
+  l’impression que le raster et les marqueurs étaient invisibles.
+  Passage à `observe()` + `reactiveVal .last_fitted_id` qui couvre tous
+  les ordres de population (`R/mod_monitoring_pixel_map.R`).
+
 ## \[0.29.1\] - 2026-05-16
 
 ### Fixed
