@@ -239,13 +239,15 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # changes; preserves the base-layer selection because the map
     # widget itself is not re-rendered.
     #
-    # priority = 100 (above the default 0) so this observe runs FIRST
-    # in any reactive flush where both this and the UGF observe are
-    # dirty — guarantees the raster gets added BEFORE the UGF
-    # polygons, so the polygons end up on top in overlayPane DOM
-    # order (Leaflet renders within a pane in the order layers are
-    # added). Without this, on project load Shiny could run the UGF
-    # observe first, then the raster paint over the polygons.
+    # v0.34.0 — raster pinned to `tilePane` (z-index 200) instead of
+    # the default `overlayPane` (z-index 400). With the raster a
+    # whole pane below the polygons + placette markers, ré-empiler
+    # ceux-ci à chaque tick de date n'est plus nécessaire : le z-order
+    # est maintenu par la séparation des panes, pas par l'ordre
+    # d'ajout DOM. Sur 30 ticks d'animation slider, ça divise le coût
+    # de redraw par ~3 (raster seul, plus de clearGroup/addPolygons
+    # pour les UGF ni de clearGroup/addCircleMarkers pour les
+    # placettes — qui ne re-firent que quand leur source change).
     shiny::observe({
       r <- current_layer_r()
       proxy <- leaflet::leafletProxy("map") |>
@@ -266,7 +268,8 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           # user keeps satellite context AROUND the bbox and can
           # toggle to OSM to see roads/parcels inside the zone.
           opacity = 1.0,
-          group   = .pixel_overlay_group
+          group   = .pixel_overlay_group,
+          options = leaflet::gridOptions(pane = "tilePane")
         ) |>
         leaflet::addLegend(
           layerId  = "pixel_legend",
@@ -276,7 +279,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           title    = input$index,
           opacity  = 0.9
         )
-    }, priority = 100L)
+    })
 
     # UGF / study-area overlay: outline drawn over the raster to give
     # the user a visible boundary of the area being analyzed.
@@ -375,23 +378,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # (forest greens). cli debug log on each fire so a developer
     # running from a terminal sees the reactive firing.
     #
-    # IMPORTANT — overlay stacking order (v0.31.2 dep + v0.31.4
-    # priority): the raster, UGF polygons and placette CircleMarkers
-    # all live in Leaflet's `overlayPane` (CircleMarkers are Paths,
-    # not L.Marker). DOM order within a pane determines click
-    # routing: the last-added layer is on top AND receives the
-    # clicks.
-    #
-    # Strict priority ladder ensures the order is deterministic:
-    #   raster    priority = 100  → first  → bottom
-    #   ugf       priority =  50  → second → middle (this observe)
-    #   placettes priority =   0  → third  → top (clickable!)
-    #
-    # The `current_layer_r()` dummy read re-fires this observe after
-    # each raster update so polygons get re-stacked above a freshly
-    # painted raster (date slider, index toggle, etc.).
+    # v0.34.0 — observe ne dépend plus de `current_layer_r()` : le
+    # raster vit désormais dans `tilePane` (z-index 200), sous
+    # `overlayPane` (z-index 400) où vivent les polygones et les
+    # CircleMarkers. Le z-order est garanti par la séparation des
+    # panes, plus par l'ordre d'ajout DOM. Conséquence : ré-empiler
+    # à chaque tick de date est inutile et l'observer ne re-fire que
+    # quand la source UGF change réellement (`app_state$current_project`).
     shiny::observe({
-      current_layer_r()  # re-fire after each raster update
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.ugf_overlay_group)
       ugf <- ugf_sf_r()
@@ -410,7 +404,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           fillColor   = "#FF6B35",
           fillOpacity = 0.05
         )
-    }, priority = 50L)
+    })
 
     # Auto-fit on project load + when the user navigates to the Carte
     # pixel sub-tab. Same problem as mod_ug.R:744-794 — Leaflet's
@@ -442,7 +436,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       top_nav <- root_session$input$main_nav
       sub_nav <- root_session$input[["monitoring-subtab"]]
       if (is.null(top_nav) || top_nav != "monitoring") return()
-      if (is.null(sub_nav) || sub_nav != "pixel_map") return()
+      if (is.null(sub_nav) || sub_nav != "pixel_map_fast") return()
 
       proj <- shiny::isolate(app_state$current_project)
       if (is.null(proj) || is.null(proj$id)) return()
@@ -501,27 +495,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # Radius bumped to 7 + black border so the markers stay readable
     # at the wide auto-fit zoom (a few km across).
     #
-    # IMPORTANT — overlay stacking order (v0.31.4):
-    #
-    # CircleMarkers are Leaflet Paths (NOT L.Marker), so they live in
-    # `overlayPane` along with the raster ImageOverlay and the UGF
-    # polygons. Within a pane, Leaflet renders in DOM order (last
-    # added = on top, and on top = receives clicks). So the placettes
-    # observe MUST run AFTER the raster and UGF observes within the
-    # same flush, otherwise the polygons end up over the markers and
-    # intercept the user's clicks.
-    #
-    # Strict priority ladder across the three observes:
-    #   raster    priority = 100  → first  → bottom (under polygons)
-    #   ugf       priority =  50  → second → middle (under markers)
-    #   placettes priority =   0  → third  → top    (clickable!)
-    #
-    # The dummy `current_layer_r()` read recreates the same dependency
-    # the UGF observe has — so when the date slider moves, this observe
-    # re-fires too and re-adds the markers AFTER the fresh raster /
-    # polygons in DOM order, staying clickable.
+    # v0.34.0 — observe ne dépend plus de `current_layer_r()` : le
+    # raster vit dans `tilePane` (sous `overlayPane`), donc le z-order
+    # est garanti sans besoin de ré-empiler les CircleMarkers à chaque
+    # tick de date. Les markers ne re-firent que quand
+    # `placettes_sf_r()` change (i.e. nouvelle obs_pixel_data ou
+    # nouveau projet). Clickabilité préservée : CircleMarkers (Paths)
+    # restent dans overlayPane, naturellement au-dessus du raster.
     shiny::observe({
-      current_layer_r()  # re-fire after each raster update
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.placettes_overlay_group)
       ps <- placettes_sf_r()
@@ -542,7 +523,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           fillOpacity = 0.9,
           label       = ~as.character(plot_id)
         )
-    }, priority = 0L)
+    })
 
     # Suppression flag for the pixel-click handler. CircleMarkers are
     # Leaflet Paths; their click events propagate to the map, so the
