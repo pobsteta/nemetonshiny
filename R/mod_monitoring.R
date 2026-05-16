@@ -1557,14 +1557,107 @@ mod_monitoring_server <- function(id, app_state) {
       }
     )
 
+    # FORDEAD progress dispatcher (v0.32.0). The cœur emits structured
+    # events via progress_callback; we route each `ev$current` value
+    # to its own toast strategy. Toasts position themselves in
+    # bottom-right via the .shiny-notification-panel CSS override
+    # in inst/app/www/css/custom.css (no per-call positioning API in
+    # Shiny).
+    #
+    # Event → behavior:
+    #   fordead:start       silent (button state is enough signal)
+    #   fordead:phase       persistent spinner toast
+    #                       "Phase {n}/{total} — {label}"
+    #   fordead:phase_done  brief check toast "✓ {label}" (1.5 s)
+    #   fordead:complete    8 s success toast with alert count + duration
+    #   fordead:error       persistent error toast (user closes)
+    #
+    # Phase labels are looked up via i18n with humanized fallback —
+    # see `.fordead_phase_label` — so a new phase name added in a
+    # future nemeton release auto-shows as a Title-Cased version of
+    # its raw key (no app release strictly required to consume it,
+    # though we should add proper i18n strings in the next patch).
+    #
+    # The legacy status-based branch is kept as a safety net for
+    # any pre-v0.22.5 nemeton that might still be in someone's env.
     shiny::observe({
       ev <- fordead_progress()
       if (is.null(ev)) return()
       i18n <- i18n_r()
+      current <- as.character(ev$current %||% "")
+
+      if (identical(current, "fordead:start")) {
+        # Silent — the disabled "Lancer" button is enough feedback.
+        return()
+      }
+
+      if (identical(current, "fordead:phase")) {
+        phase_name <- as.character(ev$phase_name %||% "")
+        completed  <- as.integer(ev$completed   %||% 0L)
+        total      <- as.integer(ev$total       %||% 0L)
+        label <- .fordead_phase_label(phase_name, i18n)
+        msg <- i18n$t("monitoring_fordead_phase_progress",
+                      n = completed + 1L, total = total, label = label)
+        .log_fordead_event(ev, "running", completed, total, phase_name)
+        shiny::showNotification(
+          .monitoring_spinning_msg(msg),
+          id          = session$ns("fordead_progress"),
+          type        = "message",
+          duration    = NULL,
+          closeButton = FALSE
+        )
+        return()
+      }
+
+      if (identical(current, "fordead:phase_done")) {
+        phase_name <- as.character(ev$phase_name %||% "")
+        label <- .fordead_phase_label(phase_name, i18n)
+        msg <- i18n$t("monitoring_fordead_phase_done", label = label)
+        shiny::showNotification(
+          msg,
+          id       = session$ns("fordead_phase_done"),
+          type     = "default",
+          duration = 1.5
+        )
+        return()
+      }
+
+      if (identical(current, "fordead:complete")) {
+        n_alerts <- as.integer(ev$n_alerts_inserted %||% 0L)
+        duration <- as.numeric(ev$duration_sec     %||% 0)
+        msg <- i18n$t("monitoring_fordead_complete",
+                      n = n_alerts, sec = round(duration, 1))
+        shiny::removeNotification(session$ns("fordead_progress"))
+        shiny::showNotification(
+          msg,
+          id       = session$ns("fordead_complete"),
+          type     = "message",
+          duration = 8
+        )
+        return()
+      }
+
+      if (identical(current, "fordead:error")) {
+        phase_name <- as.character(ev$phase_name    %||% "")
+        err_msg    <- as.character(ev$error_message %||% "")
+        msg <- i18n$t("monitoring_fordead_error",
+                      phase = phase_name, msg = err_msg)
+        shiny::removeNotification(session$ns("fordead_progress"))
+        shiny::showNotification(
+          msg,
+          id          = session$ns("fordead_error"),
+          type        = "error",
+          duration    = NULL,
+          closeButton = TRUE
+        )
+        return()
+      }
+
+      # ----- Legacy fallback (pre-v0.22.5 nemeton payloads) ---------
+      # Same code as before v0.32.0 — keeps the UI alive if the worker
+      # emits the older status/phase shape.
       status <- ev$status %||% "running"
       if (identical(status, "done")) return()
-      # nemeton emits `current` for phases (e.g. "training"). Accept
-      # `phase` / `scene_id` as legacy fallbacks.
       phase <- as.character(ev$current %||% ev$phase %||% ev$scene_id %||% "")
       i_val <- as.integer(ev$completed %||% ev$i %||% 0L)
       n_val <- as.integer(ev$total     %||% ev$n %||% 0L)
@@ -1940,6 +2033,20 @@ mod_monitoring_server <- function(id, app_state) {
     )
   }
   invisible(NULL)
+}
+
+# i18n label for a FORDEAD phase name. Looks up the
+# `monitoring_fordead_phase_<name>` key; if missing, returns a
+# humanized Title-Cased version of the raw name so a new phase
+# emitted by a future nemeton release still shows readably without
+# requiring an app update.
+.fordead_phase_label <- function(phase_name, i18n) {
+  if (!nzchar(phase_name)) return("")
+  key <- paste0("monitoring_fordead_phase_", phase_name)
+  if (i18n$has(key)) {
+    return(i18n$t(key))
+  }
+  tools::toTitleCase(gsub("_", " ", phase_name, fixed = TRUE))
 }
 
 # Console mirror for a FORDEAD phase event. The payload is simpler
