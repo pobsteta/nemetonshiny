@@ -284,6 +284,51 @@ test_that("input$run with valid inputs invokes the ingest task", {
   )
 })
 
+# Regression test for v0.30.1 — reprime_cache semantics inversion.
+# Before v0.30.1: skip_cached = !isTRUE(input$reprime_cache) →
+# unchecked checkbox produced skip_cached = TRUE, which short-
+# circuited on the DB and left the disk cache empty (broken
+# FORDEAD). After v0.30.1: skip_cached is hard-coded FALSE so
+# nemeton always consults the disk cache; the checkbox only
+# controls the wipe-before-invoke branch.
+test_that("input$run passes skip_cached = FALSE regardless of reprime_cache (v0.30.1+)", {
+  skip_if_not_installed("shiny")
+
+  for (reprime in c(FALSE, TRUE)) {
+    fake_task <- make_fake_ingest_task()
+
+    testthat::with_mocked_bindings(
+      get_monitoring_db_connection  = function(...) "fake-con",
+      list_monitoring_zones         = function(con) fake_zones_df(),
+      close_monitoring_db_connection = function(con) invisible(TRUE),
+      run_ingestion_async           = function() fake_task,
+      {
+        shiny::testServer(
+          nemetonshiny:::mod_monitoring_server,
+          args = list(app_state = make_fake_app_state()),
+          {
+            session$setInputs(
+              zone_id       = "1",
+              bands         = c("NDVI", "NBR"),
+              date_range    = c(as.Date("2025-06-01"),
+                                as.Date("2025-06-30")),
+              reprime_cache = reprime,
+              run           = 1L
+            )
+            calls <- fake_task$.calls()
+            expect_length(calls, 1L)
+            # The whole point of the v0.30.1 fix: skip_cached must be
+            # FALSE in BOTH branches so FORDEAD always finds a populated
+            # COG cache.
+            expect_identical(calls[[1]]$skip_cached, FALSE,
+                             info = sprintf("reprime_cache = %s", reprime))
+          }
+        )
+      }
+    )
+  }
+})
+
 test_that("input$run with NA dates skips invocation", {
   skip_if_not_installed("shiny")
 
