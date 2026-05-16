@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,29 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.31.4" id="nemetonshiny-0314-2026-05-16">nemetonshiny 0.31.4 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0314-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-pixel--placettes-redeviennent-cliquables-ordre-des-couches-0-31-4">Fixed — Carte pixel : placettes redeviennent cliquables (ordre des couches)<a class="anchor" aria-label="anchor" href="#fixed--carte-pixel--placettes-redeviennent-cliquables-ordre-des-couches-0-31-4"></a></h4>
+<p>L’utilisateur a signalé que les marqueurs placettes ne réagissaient plus au clic sur la Carte pixel — le modal placette ne s’ouvrait jamais.</p>
+<p>Diagnostic : les <code>CircleMarker</code> Leaflet sont des <strong><code>Path</code></strong> (pas des <code>L.Marker</code>), donc ils vivent dans le pane <code>overlayPane</code>, le même que le raster <code>ImageOverlay</code> et les polygones UGF. Dans un pane, c’est l’ordre DOM qui décide qui reçoit les clics — la dernière couche ajoutée est au-dessus et capte les clics.</p>
+<p>En v0.31.2 j’ai posé <code>priority = 100L</code> sur l’observe raster pour garantir qu’il fire en premier (raster en bas de pile). Mais les observes UGF et placettes étaient tous deux à la priorité 0 par défaut, et l’ordre relatif entre eux n’était pas déterministe. Quand le placettes observe firait AVANT l’UGF observe, les polygones orange finissaient au-dessus des marqueurs bleus et interceptaient tous leurs clics.</p>
+<p>Correctif (<code>R/mod_monitoring_pixel_map.R</code>) : échelle stricte de priorités, du bas vers le haut de <code>overlayPane</code> :</p>
+<table class="table"><thead><tr><th>Observe</th>
+<th>Priority</th>
+<th>Position</th>
+</tr></thead><tbody><tr><td>Raster</td>
+<td>100</td>
+<td>fond</td>
+</tr><tr><td>UGF</td>
+<td>50</td>
+<td>milieu</td>
+</tr><tr><td>Placettes</td>
+<td>0</td>
+<td>haut (cliquable)</td>
+</tr></tbody></table><p>Ajout aussi du dummy <code>current_layer_r()</code> dans le placettes observe (déjà présent sur UGF depuis v0.31.2) : quand l’utilisateur bouge le slider de date ou change NDVI/NBR, les marqueurs sont re-empilés au-dessus du raster fraîchement peint.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.31.3" id="nemetonshiny-0313-2026-05-16">nemetonshiny 0.31.3 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0313-2026-05-16"></a></h2>
 <div class="section level4">
