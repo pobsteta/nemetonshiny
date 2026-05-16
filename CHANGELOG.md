@@ -10,6 +10,36 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-05-16
+
+### Added
+
+- **Suivi sanitaire** : toasts de progression FORDEAD en bas à
+  droite. Branche le stream d'événements `fordead:start` /
+  `fordead:phase` / `fordead:phase_done` / `fordead:complete` /
+  `fordead:error` émis par `nemeton@v0.22.5+` sur des
+  `shiny::showNotification` positionnées en bottom-right via
+  override CSS `#shiny-notification-panel`. Affichage générique
+  (i18n + humanized fallback) : un nouveau nom de phase shippé en
+  `nemeton@v0.23.0` apparaît tel quel sans patch app
+  (`R/mod_monitoring.R`, `R/utils_i18n.R`,
+  `inst/app/www/css/custom.css`, `inst/app/www/css/custom.min.css`).
+- 11 nouvelles clés i18n FR/EN : 4 templates + 7 labels per-phase
+  1.x + 3 labels per-phase 2.x anticipés.
+
+### Changed
+
+- **DESCRIPTION** : `Imports: nemeton (>= 0.22.0)` → `(>= 0.22.5)`
+  pour aligner sur l'API du `progress_callback` consommée par les
+  toasts.
+
+### Tests
+
+- 3 nouveaux tests verrouillent le contrat du dispatcher
+  `.fordead_handle_progress_event` (fordead:phase avec libellé i18n,
+  fordead:start silencieux, fallback humanisé sur phase inconnue)
+  dans `tests/testthat/test-mod_monitoring.R`.
+
 ## [0.31.5] - 2026-05-16
 
 ### Fixed

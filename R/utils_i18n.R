@@ -2013,29 +2013,29 @@ TRANSLATIONS <- list(
   # Accents are encoded as \uXXXX per the convention enforced in this
   # file (utils_i18n.R, ~360 keys — see CLAUDE.md i18n rule 4).
   monitoring_fordead_phase_progress = list(
-    fr = "Phase {n}/{total} — {label}",
-    en = "Phase {n}/{total} — {label}"
+    fr = "Phase {n}/{total} \u2014 {label}",
+    en = "Phase {n}/{total} \u2014 {label}"
   ),
   monitoring_fordead_phase_done = list(
-    fr = "✓ {label}",
-    en = "✓ {label}"
+    fr = "\u2713 {label}",
+    en = "\u2713 {label}"
   ),
   monitoring_fordead_complete = list(
-    fr = "FORDEAD terminé · {n} alertes · {sec}s",
-    en = "FORDEAD complete · {n} alerts · {sec}s"
+    fr = "FORDEAD termin\u00e9 \u00b7 {n} alertes \u00b7 {sec}s",
+    en = "FORDEAD complete \u00b7 {n} alerts \u00b7 {sec}s"
   ),
   monitoring_fordead_error = list(
-    fr = "FORDEAD échec en {phase} : {msg}",
+    fr = "FORDEAD \u00e9chec en {phase} : {msg}",
     en = "FORDEAD failed at {phase}: {msg}"
   ),
 
-  # Per-phase labels — current 1.x sequence (nemeton@v0.22.5)
+  # Per-phase labels \u2014 current 1.x sequence (nemeton@v0.22.5)
   monitoring_fordead_phase_vegetation_index = list(
-    fr = "Indice de végétation",
+    fr = "Indice de v\u00e9g\u00e9tation",
     en = "Vegetation index"
   ),
   monitoring_fordead_phase_train_model = list(
-    fr = "Entraînement du modèle",
+    fr = "Entra\u00eenement du mod\u00e8le",
     en = "Model training"
   ),
   monitoring_fordead_phase_forest_mask = list(
@@ -2043,11 +2043,11 @@ TRANSLATIONS <- list(
     en = "Forest mask"
   ),
   monitoring_fordead_phase_dieback_detection = list(
-    fr = "Détection de dépérissement",
+    fr = "D\u00e9tection de d\u00e9p\u00e9rissement",
     en = "Dieback detection"
   ),
   monitoring_fordead_phase_export_results = list(
-    fr = "Export des résultats",
+    fr = "Export des r\u00e9sultats",
     en = "Results export"
   ),
   monitoring_fordead_phase_postprocess = list(
@@ -2060,17 +2060,17 @@ TRANSLATIONS <- list(
   ),
 
   # Anticipated for nemeton@v0.23.0 (4-5 phase STAC pipeline). Pre-shipped
-  # so a future cœur bump consumes these labels without an app release.
+  # so a future c\u0153ur bump consumes these labels without an app release.
   monitoring_fordead_phase_stac_assembly = list(
     fr = "Assemblage STAC",
     en = "STAC assembly"
   ),
   monitoring_fordead_phase_fit = list(
-    fr = "Entraînement (fit)",
+    fr = "Entra\u00eenement (fit)",
     en = "Training (fit)"
   ),
   monitoring_fordead_phase_predict = list(
-    fr = "Détection (predict)",
+    fr = "D\u00e9tection (predict)",
     en = "Detection (predict)"
   ),
 

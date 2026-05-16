@@ -217,6 +217,10 @@ app_add_external_resources <- function() {
     htmltools::tags$head(
       # Critical inline CSS: loads BEFORE external stylesheets to prevent
       # flash of white background while custom.css is being fetched.
+      # Also nudges the Shiny notification panel 13px off the bottom-right
+      # corner so toasts don't touch the viewport edges (FORDEAD phase
+      # toasts, v0.32.0). Shiny defaults to bottom:0/right:0 already, the
+      # offset just gives the cards a small breathing margin.
       htmltools::tags$style(htmltools::HTML("
         html, body { background-color: #f0f0f0 !important; }
         .bslib-page-fill, .html-fill-container { background-color: #f0f0f0 !important; }
@@ -225,6 +229,7 @@ app_add_external_resources <- function() {
         .html-fill-container::after, .html-fill-container::before {
           content: none !important; display: none !important;
         }
+        #shiny-notification-panel { bottom: 13px; right: 13px; }
       ")),
       # Custom CSS - minified for performance (cache-busting to ensure latest version)
       htmltools::tags$link(
