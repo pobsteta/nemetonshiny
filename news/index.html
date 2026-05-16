@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.29.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,24 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.28.5/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.29.0" id="nemetonshiny-0290-2026-05-16">nemetonshiny 0.29.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0290-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="suivi-sanitaire--carte-pixel--overlay-placettes-cliquable-0-29-0">Suivi sanitaire — Carte pixel : overlay placettes cliquable<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--carte-pixel--overlay-placettes-cliquable-0-29-0"></a></h4>
+<p>La sous-onglet <strong>Carte pixel</strong> affiche désormais, par-dessus le raster NDVI/NBR, les <strong>placettes</strong> du plan d’échantillonnage sous forme de marqueurs cliquables (cercles bleus à bord noir). Seules les placettes présentes dans <code>obs_pixel_data()</code> sont affichées — cohérent avec la fenêtre courante (zone, bandes, dates).</p>
+<p>Deux interactions distinctes :</p>
+<ul><li>
+<strong>Clic sur un pixel</strong> → modal « Pixel à (lat, lon) » avec la série pixel brute extraite via <code>nemeton::extract_pixel_timeseries()</code> (comportement inchangé depuis v0.28.0).</li>
+<li>
+<strong>Clic sur un marqueur placette</strong> → modal « Placette P01 — série NDVI / NBR (moyenne plot) » avec la série agrégée placette filtrée sur <code>plot_id</code> depuis <code>obs_pixel_data()</code>. C’est exactement la même donnée que celle de l’onglet <em>Séries par placette</em>, mais centrée sur une seule placette et accessible spatialement par un clic sur la carte plutôt qu’un selectizeInput.</li>
+</ul><p>Le contrôle des couches Leaflet (en haut à droite) expose maintenant deux cases à cocher (« NDVI / NBR » et « Placettes »), toutes deux actives par défaut. L’utilisateur peut masquer indépendamment chaque overlay.</p>
+<p>L’onglet <em>Séries par placette</em> est conservé tel quel — il garde sa valeur pour la comparaison multi-placettes simultanée (N traces sur la même plotly), que la nouvelle interaction par marqueur ne couvre pas (un clic = une placette).</p>
+<p>Détails d’implémentation : - Nouvelle reactive <code>placettes_sf_r</code> dans <code>mod_monitoring_pixel_map.R</code> qui consomme <code>load_samples(project$id, "plots")</code> (sf POINT, EPSG:2154) et <code>st_transform()</code> en 4326 pour Leaflet. - <code>addLayersControl(overlayGroups = c("NDVI / NBR", "Placettes"))</code> — les deux libellés sont fixes (langue-indépendants) pour ne pas introduire de dépendance i18n dans <code>renderLeaflet</code> (préserve le choix de fond + le bouton ON/OFF des overlays au switch de langue). - <code>addCircleMarkers(layerId = ~plot_id)</code> — l’identifiant remonte dans <code>input$map_marker_click$id</code>. - Handler <code>observeEvent(input$map_marker_click, ...)</code> qui filtre <code>obs_pixel_data()</code> sur ce plot_id, restreint à NDVI/NBR, et ouvre un modal plotly cohérent avec le modal pixel.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.28.5" id="nemetonshiny-0285-2026-05-16">nemetonshiny 0.28.5 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0285-2026-05-16"></a></h2>
 <div class="section level4">

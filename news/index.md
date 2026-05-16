@@ -1,5 +1,51 @@
 # Changelog
 
+## nemetonshiny 0.29.0 (2026-05-16)
+
+#### Suivi sanitaire — Carte pixel : overlay placettes cliquable
+
+La sous-onglet **Carte pixel** affiche désormais, par-dessus le raster
+NDVI/NBR, les **placettes** du plan d’échantillonnage sous forme de
+marqueurs cliquables (cercles bleus à bord noir). Seules les placettes
+présentes dans `obs_pixel_data()` sont affichées — cohérent avec la
+fenêtre courante (zone, bandes, dates).
+
+Deux interactions distinctes :
+
+- **Clic sur un pixel** → modal « Pixel à (lat, lon) » avec la série
+  pixel brute extraite via `nemeton::extract_pixel_timeseries()`
+  (comportement inchangé depuis v0.28.0).
+- **Clic sur un marqueur placette** → modal « Placette P01 — série NDVI
+  / NBR (moyenne plot) » avec la série agrégée placette filtrée sur
+  `plot_id` depuis `obs_pixel_data()`. C’est exactement la même donnée
+  que celle de l’onglet *Séries par placette*, mais centrée sur une
+  seule placette et accessible spatialement par un clic sur la carte
+  plutôt qu’un selectizeInput.
+
+Le contrôle des couches Leaflet (en haut à droite) expose maintenant
+deux cases à cocher (« NDVI / NBR » et « Placettes »), toutes deux
+actives par défaut. L’utilisateur peut masquer indépendamment chaque
+overlay.
+
+L’onglet *Séries par placette* est conservé tel quel — il garde sa
+valeur pour la comparaison multi-placettes simultanée (N traces sur la
+même plotly), que la nouvelle interaction par marqueur ne couvre pas (un
+clic = une placette).
+
+Détails d’implémentation : - Nouvelle reactive `placettes_sf_r` dans
+`mod_monitoring_pixel_map.R` qui consomme
+`load_samples(project$id, "plots")` (sf POINT, EPSG:2154) et
+`st_transform()` en 4326 pour Leaflet. -
+`addLayersControl(overlayGroups = c("NDVI / NBR", "Placettes"))` — les
+deux libellés sont fixes (langue-indépendants) pour ne pas introduire de
+dépendance i18n dans `renderLeaflet` (préserve le choix de fond + le
+bouton ON/OFF des overlays au switch de langue). -
+`addCircleMarkers(layerId = ~plot_id)` — l’identifiant remonte dans
+`input$map_marker_click$id`. - Handler
+`observeEvent(input$map_marker_click, ...)` qui filtre
+`obs_pixel_data()` sur ce plot_id, restreint à NDVI/NBR, et ouvre un
+modal plotly cohérent avec le modal pixel.
+
 ## nemetonshiny 0.28.5 (2026-05-16)
 
 #### chore(deps) — l’app suit désormais `nemeton@main` en continu
