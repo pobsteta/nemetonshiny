@@ -1,3 +1,27 @@
+# nemetonshiny 0.31.5 (2026-05-16)
+
+### Fixed — Carte pixel : raster NDVI/NBR visible sur fond Satellite
+
+L'utilisateur signalait que sur fond Satellite la couche NDVI/NBR
+restait imperceptible, alors qu'elle s'affichait correctement sur
+fond OSM. C'est la dernière conséquence du conflit de palette : la
+gamme NDVI conventionnelle (rouge → vert pâle → vert foncé) partage
+exactement les tons de l'imagerie naturelle Esri (forêts vert
+foncé). Pour les valeurs typiques en forêt (NBR ~0.5, dans la zone
+« vert pâle » #A8DDB5), même à 0.85 d'opacité (bump v0.31.1) le
+raster se fondait dans le satellite.
+
+Correctif (`R/mod_monitoring_pixel_map.R`) : opacité raster 0.85 →
+**1.0**. Les couleurs deviennent parfaitement lisibles sur les deux
+fonds.
+
+**Trade-off assumé** : sur l'emprise du raster (la zone d'analyse),
+l'imagerie satellite est masquée. L'utilisateur garde le contexte
+satellite **autour** de l'emprise (typiquement quelques km au-delà
+de la zone d'analyse, déjà visible). S'il a besoin de voir les
+routes/parcelles à l'intérieur de la zone, il peut basculer en OSM,
+toujours pleinement compatible avec le raster.
+
 # nemetonshiny 0.31.4 (2026-05-16)
 
 ### Fixed — Carte pixel : placettes redeviennent cliquables (ordre des couches)

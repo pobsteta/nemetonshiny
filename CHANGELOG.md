@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.31.5] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : raster NDVI/NBR invisible
+  sur fond Satellite (palette conventionnelle confondue avec
+  l'imagerie naturelle, même à 0.85 d'opacité). Opacité bumpée
+  0.85 → 1.0. Le contexte satellite reste visible autour du bbox
+  du raster ; l'utilisateur peut toggle OSM s'il veut voir les
+  parcelles à l'intérieur de la zone d'analyse
+  (`R/mod_monitoring_pixel_map.R`).
+
 ## [0.31.4] - 2026-05-16
 
 ### Fixed
