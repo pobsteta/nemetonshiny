@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.29.1] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : la carte ne se centrait pas sur
+  les UGF du projet au chargement — elle restait sur la vue Leaflet
+  par défaut depuis le passage en `renderLeaflet` statique de v0.28.1.
+  Ajout d'un `observeEvent` sur `project$id` qui appelle `fitBounds()`
+  via `leafletProxy()`. Préserve le pan/zoom manuel après le centrage
+  initial (`R/mod_monitoring_pixel_map.R`).
+
 ## [0.29.0] - 2026-05-16
 
 ### Added

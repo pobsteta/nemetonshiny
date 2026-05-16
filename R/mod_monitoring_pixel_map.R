@@ -301,6 +301,29 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         )
     })
 
+    # Auto-fit on project load. Fires only when project$id changes
+    # (new project loaded), not on internal mutations like metadata
+    # saves — so the user's manual pan/zoom is preserved across raster
+    # rebuilds, marker refresh, etc. UGF polygons live in
+    # current_project$indicators_sf (sf, CRS typically EPSG:2154).
+    shiny::observeEvent(app_state$current_project$id, {
+      proj <- app_state$current_project
+      if (is.null(proj)) return()
+      geom <- proj$indicators_sf
+      if (is.null(geom) || !inherits(geom, "sf") || !nrow(geom)) return()
+      if ((sf::st_crs(geom)$epsg %||% 4326L) != 4326L) {
+        geom <- tryCatch(sf::st_transform(geom, 4326),
+                         error = function(e) NULL)
+      }
+      if (is.null(geom)) return()
+      bb <- sf::st_bbox(geom)
+      leaflet::leafletProxy("map") |>
+        leaflet::fitBounds(
+          lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+          lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
+        )
+    }, ignoreNULL = TRUE)
+
     # Marker click handler: open a modal with the per-placette NDVI/NBR
     # time series. Reuses obs_pixel_data() — the values are already the
     # placette mean computed core-side, no re-aggregation needed.
