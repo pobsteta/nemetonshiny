@@ -261,37 +261,95 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         )
     })
 
-    # UGF overlay: forest stand polygons from the loaded project.
+    # UGF / study-area overlay: outline drawn over the raster to give
+    # the user a visible boundary of the area being analyzed.
     #
-    # Two possible sources of geometry, in order of preference:
-    # 1. `current_project$indicators_sf` — built post-indicator
-    #    computation by service_project.R::load_project (one row per
-    #    UGF with geom + indicator columns merged from the parquet).
-    # 2. `ug_build_sf(current_project)` — raw UGF polygons from
-    #    `ugs.json` + `tenements`, available as soon as the user has
-    #    defined UGFs in the UG tab (BEFORE running indicators).
+    # Fallback chain (first non-NULL wins):
+    #   1. `current_project$indicators_sf` — UGFs + indicator merge,
+    #      built by service_project.R::load_project after indicator
+    #      computation.
+    #   2. `ug_build_sf(current_project)` — raw UGF polygons from
+    #      `ugs.json` + `tenements`. Available as soon as UGFs are
+    #      defined in the UG tab, even before indicators run.
+    #   3. **Raster bbox** — extent of the current `pixel_stack_r()`
+    #      as a single rectangle. Useful when the project ships
+    #      placettes but no formally defined UGFs (the analysis area
+    #      is implicit in the ingestion).
+    #   4. **Placettes bbox** — extent of the current `placettes_sf_r()`.
+    #      Last-resort fallback when even the raster isn't built yet.
     #
-    # The v0.30.x fallback to (1) only was wrong: projects with UGFs
-    # defined but indicators not yet computed got NULL here, so the
-    # Carte pixel sub-tab couldn't draw the UGF outline or auto-zoom.
-    # CRS typically EPSG:2154 — st_transform to 4326 for Leaflet.
+    # In cases (3) and (4), the "UGF" label is technically a misnomer
+    # (we're drawing a study-area rectangle, not actual UGFs), but
+    # the visible behavior — an orange outline around the analysis
+    # area — is what users want, and it doesn't make sense to leave
+    # the map without spatial context. The cli logs below tell you
+    # which fallback fired.
+    #
+    # CRS typically EPSG:2154 for sources 1-2 — st_transform to 4326
+    # for Leaflet. Sources 3-4 already in 4326.
     ugf_sf_r <- shiny::reactive({
       proj <- app_state$current_project
       if (is.null(proj)) return(NULL)
+      to_wgs84 <- function(x) {
+        if ((sf::st_crs(x)$epsg %||% 4326L) != 4326L) {
+          return(tryCatch(sf::st_transform(x, 4326),
+                          error = function(e) NULL))
+        }
+        x
+      }
+
+      # 1. indicators_sf
       geom <- proj$indicators_sf
-      if (is.null(geom) || !inherits(geom, "sf") || !nrow(geom)) {
-        # Fall back to the raw UGF sf — same geometry, no indicator
-        # metadata (which we don't need for the overlay anyway).
-        geom <- tryCatch(ug_build_sf(proj), error = function(e) NULL)
+      if (!is.null(geom) && inherits(geom, "sf") && nrow(geom)) {
+        cli::cli_alert_info("UGF source: indicators_sf ({nrow(geom)} feature(s)).")
+        return(to_wgs84(geom))
       }
-      if (is.null(geom) || !inherits(geom, "sf") || !nrow(geom)) {
-        return(NULL)
+
+      # 2. raw ug_build_sf
+      geom <- tryCatch(ug_build_sf(proj), error = function(e) NULL)
+      if (!is.null(geom) && inherits(geom, "sf") && nrow(geom)) {
+        cli::cli_alert_info("UGF source: ug_build_sf ({nrow(geom)} feature(s)).")
+        return(to_wgs84(geom))
       }
-      if ((sf::st_crs(geom)$epsg %||% 4326L) != 4326L) {
-        geom <- tryCatch(sf::st_transform(geom, 4326),
-                         error = function(e) NULL)
+
+      # 3. raster bbox
+      r_stack <- tryCatch(pixel_stack_r(), error = function(e) NULL)
+      if (!is.null(r_stack)) {
+        ext_vec <- tryCatch(as.vector(terra::ext(r_stack)),
+                            error = function(e) NULL)
+        crs_str <- tryCatch(terra::crs(r_stack, proj = TRUE),
+                            error = function(e) NULL)
+        if (!is.null(ext_vec) && !is.null(crs_str) && nzchar(crs_str)) {
+          bb <- sf::st_bbox(
+            c(xmin = ext_vec[1], xmax = ext_vec[2],
+              ymin = ext_vec[3], ymax = ext_vec[4]),
+            crs = sf::st_crs(crs_str)
+          )
+          geom <- tryCatch(sf::st_as_sf(sf::st_as_sfc(bb)),
+                           error = function(e) NULL)
+          if (!is.null(geom) && nrow(geom)) {
+            cli::cli_alert_info("UGF source: raster bbox (fallback, no UGFs defined).")
+            return(to_wgs84(geom))
+          }
+        }
       }
-      geom
+
+      # 4. placettes bbox
+      ps <- tryCatch(placettes_sf_r(), error = function(e) NULL)
+      if (!is.null(ps) && nrow(ps)) {
+        bb <- tryCatch(sf::st_bbox(ps), error = function(e) NULL)
+        if (!is.null(bb)) {
+          geom <- tryCatch(sf::st_as_sf(sf::st_as_sfc(bb)),
+                           error = function(e) NULL)
+          if (!is.null(geom) && nrow(geom)) {
+            cli::cli_alert_info("UGF source: placettes bbox (last-resort fallback).")
+            return(geom)  # already WGS84 via placettes_sf_r
+          }
+        }
+      }
+
+      cli::cli_alert_info("UGF source: NONE — no indicators_sf, no ug_build_sf, no raster, no placettes.")
+      NULL
     })
 
     # UGF polygons swap. Outline only (near-transparent fill) so the
