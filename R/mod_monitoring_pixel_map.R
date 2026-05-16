@@ -238,6 +238,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # Reactive raster + legend swap. Fires on date / index / project
     # changes; preserves the base-layer selection because the map
     # widget itself is not re-rendered.
+    #
+    # priority = 100 (above the default 0) so this observe runs FIRST
+    # in any reactive flush where both this and the UGF observe are
+    # dirty — guarantees the raster gets added BEFORE the UGF
+    # polygons, so the polygons end up on top in overlayPane DOM
+    # order (Leaflet renders within a pane in the order layers are
+    # added). Without this, on project load Shiny could run the UGF
+    # observe first, then the raster paint over the polygons.
     shiny::observe({
       r <- current_layer_r()
       proxy <- leaflet::leafletProxy("map") |>
@@ -265,7 +273,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           title    = input$index,
           opacity  = 0.85
         )
-    })
+    }, priority = 100L)
 
     # UGF / study-area overlay: outline drawn over the raster to give
     # the user a visible boundary of the area being analyzed.
@@ -362,10 +370,20 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # raster underneath stays visible. Bright orange border (#FF6B35,
     # weight 3) — high contrast on both OSM (light bg) and Satellite
     # (forest greens). cli debug log on each fire so a developer
-    # running from a terminal sees the reactive firing (helps when
-    # the user reports "no UGF visible" to confirm whether the
-    # reactive completed at all).
+    # running from a terminal sees the reactive firing.
+    #
+    # IMPORTANT — render-order dependency (v0.31.2): we also read
+    # current_layer_r() here even though we don't use its value. This
+    # forces the observe to re-fire AFTER each raster update, so the
+    # polygons are re-added to the map LAST in DOM order. Without
+    # this, the raster observe (which fires later because
+    # build_index_stack is heavy I/O) painted its image AFTER the
+    # UGF polygons and ended up on top of them in overlayPane,
+    # hiding the orange outline completely. clearGroup + addPolygons
+    # here doesn't undo the previous raster — it just re-stacks the
+    # polygons above it.
     shiny::observe({
+      current_layer_r()  # re-fire after each raster update
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.ugf_overlay_group)
       ugf <- ugf_sf_r()
