@@ -200,6 +200,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # to keep visible across base-layer toggles. Kept out of i18n so
     # renderLeaflet stays free of reactive deps (preserves base-layer
     # choice across language toggle).
+    .ugf_overlay_group       <- "UGF"
     .pixel_overlay_group     <- "NDVI / NBR"
     .placettes_overlay_group <- "Placettes"
 
@@ -214,7 +215,9 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addLayersControl(
           baseGroups    = c("OSM", "Satellite"),
-          overlayGroups = c(.pixel_overlay_group, .placettes_overlay_group),
+          overlayGroups = c(.ugf_overlay_group,
+                            .pixel_overlay_group,
+                            .placettes_overlay_group),
           options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
     })
@@ -252,6 +255,66 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           title    = input$index,
           opacity  = 0.85
         )
+    })
+
+    # UGF overlay: forest stand polygons from the loaded project.
+    # `current_project$indicators_sf` is the canonical UGF sf
+    # data.frame (CRS typically EPSG:2154 — st_transform to 4326 for
+    # Leaflet). NULL when no project loaded.
+    ugf_sf_r <- shiny::reactive({
+      proj <- app_state$current_project
+      if (is.null(proj)) return(NULL)
+      geom <- proj$indicators_sf
+      if (is.null(geom) || !inherits(geom, "sf") || !nrow(geom)) {
+        return(NULL)
+      }
+      if ((sf::st_crs(geom)$epsg %||% 4326L) != 4326L) {
+        geom <- tryCatch(sf::st_transform(geom, 4326),
+                         error = function(e) NULL)
+      }
+      geom
+    })
+
+    # UGF polygons swap. Outline only (transparent fill) so the raster
+    # underneath stays visible. Orange border = high contrast on both
+    # OSM (light bg) and Satellite (forest greens).
+    shiny::observe({
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearGroup(.ugf_overlay_group)
+      ugf <- ugf_sf_r()
+      if (is.null(ugf) || !nrow(ugf)) return()
+      proxy |>
+        leaflet::addPolygons(
+          data        = ugf,
+          group       = .ugf_overlay_group,
+          color       = "#FF6B35",
+          weight      = 2,
+          opacity     = 0.9,
+          fillColor   = "#FF6B35",
+          fillOpacity = 0.05
+        )
+    })
+
+    # Auto-fit on project load — robust version. The v0.29.1 attempt
+    # used observeEvent on project$id, but if `indicators_sf` is
+    # populated AFTER `id` is set (async project load in mod_home),
+    # the observer fired with geom = NULL and never re-ran. Plain
+    # observe() with a .last_fitted_id guard handles all the
+    # population orders: id-then-geom, geom-then-id, or both at once.
+    .last_fitted_id <- shiny::reactiveVal(NULL)
+    shiny::observe({
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$id)) return()
+      if (identical(.last_fitted_id(), proj$id)) return()
+      ugf <- ugf_sf_r()
+      if (is.null(ugf) || !nrow(ugf)) return()
+      bb <- sf::st_bbox(ugf)
+      leaflet::leafletProxy("map") |>
+        leaflet::fitBounds(
+          lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+          lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
+        )
+      .last_fitted_id(proj$id)
     })
 
     # Placettes overlay: load_samples() returns sf POINT (EPSG:2154
@@ -300,29 +363,6 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           label       = ~as.character(plot_id)
         )
     })
-
-    # Auto-fit on project load. Fires only when project$id changes
-    # (new project loaded), not on internal mutations like metadata
-    # saves — so the user's manual pan/zoom is preserved across raster
-    # rebuilds, marker refresh, etc. UGF polygons live in
-    # current_project$indicators_sf (sf, CRS typically EPSG:2154).
-    shiny::observeEvent(app_state$current_project$id, {
-      proj <- app_state$current_project
-      if (is.null(proj)) return()
-      geom <- proj$indicators_sf
-      if (is.null(geom) || !inherits(geom, "sf") || !nrow(geom)) return()
-      if ((sf::st_crs(geom)$epsg %||% 4326L) != 4326L) {
-        geom <- tryCatch(sf::st_transform(geom, 4326),
-                         error = function(e) NULL)
-      }
-      if (is.null(geom)) return()
-      bb <- sf::st_bbox(geom)
-      leaflet::leafletProxy("map") |>
-        leaflet::fitBounds(
-          lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
-          lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
-        )
-    }, ignoreNULL = TRUE)
 
     # Marker click handler: open a modal with the per-placette NDVI/NBR
     # time series. Reuses obs_pixel_data() — the values are already the
