@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.32.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.33.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,42 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.32.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.33.0" id="nemetonshiny-0330-2026-05-16">nemetonshiny 0.33.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0330-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="changed--migration-vers-nemetonv0240-breaking-0-33-0">Changed — Migration vers <code>nemeton@v0.24.0</code> (BREAKING)<a class="anchor" aria-label="anchor" href="#changed--migration-vers-nemetonv0240-breaking-0-33-0"></a></h4>
+<p><code><a href="https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html" class="external-link">nemeton::run_fordead_dieback()</a></code> a changé de signature au cœur : <code>aoi</code> / <code>scenes_df</code> / <code>forest_mask</code> ont été retirés (le cœur les dérive lui-même depuis <code>(con, zone_id)</code> via le schéma monitoring), et trois nouveaux arguments <strong>requis</strong> sont ajoutés :</p>
+<table class="table"><colgroup><col width="16%"><col width="83%"></colgroup><thead><tr><th>Argument</th>
+<th>Rôle</th>
+</tr></thead><tbody><tr><td><code>con</code></td>
+<td>Connexion DBI sur la base monitoring (TimescaleDB)</td>
+</tr><tr><td><code>zone_id</code></td>
+<td>Identifiant entier de la zone — le cœur résout AOI + masque forêt + scenes_df</td>
+</tr><tr><td><code>cache_dir</code></td>
+<td>Répertoire <code>cache/layers/sentinel2/</code> partagé avec FAST (B04/B12 réutilisés)</td>
+</tr></tbody></table><p>Le pipeline passe de <strong>5 phases</strong> à <strong>6 phases</strong> : un nouveau <code>phase 0 = ingest</code> télécharge les bandes manquantes (B02, B05, B8A, B11) par-dessus celles déjà cachées par FAST. Cela réduit le coût réseau du tandem FAST → FORDEAD et clarifie l’ownership des fichiers (le cache <code>sentinel2/</code> est l’unique source vérité, plus de duplication).</p>
+<p><strong>Côté app</strong> — purement substitution d’arguments, aucune logique métier modifiée (conforme ADR-009) :</p>
+<ul><li>
+<code>R/service_monitoring.R</code> : le worker <code>run_fordead_async()</code> reçoit désormais <code>cache_dir</code> (résolu par <code>.resolve_s2_cache_dir()</code>), perd <code>aoi</code>, et ouvre lui-même la connexion DBI à passer au cœur.</li>
+<li>
+<code>R/mod_monitoring.R</code> : le helper <code>.invoke_fordead()</code> ne fabrique plus l’AOI via <code>get_monitoring_zone_aoi()</code> ni n’ouvre de connexion DBI éphémère — il passe juste <code>zone_id</code> et <code>cache_dir</code> au worker. La validation amont ne porte plus que sur <code>nzchar(input$zone_id)</code> ; l’existence effective de la zone est vérifiée côté cœur.</li>
+<li>
+<code>tests/testthat/test-mod_monitoring.R</code> : trois mocks <code>get_monitoring_zone_aoi</code> retirés et l’assertion <code>calls[[1]]$aoi</code> remplacée par une vérification de présence de <code>cache_dir</code> dans les arguments envoyés au task.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--libellé-i18n-pour-la-nouvelle-phase-ingest-0-33-0">Added — Libellé i18n pour la nouvelle phase ingest<a class="anchor" aria-label="anchor" href="#added--libell%C3%A9-i18n-pour-la-nouvelle-phase-ingest-0-33-0"></a></h4>
+<p>Nouvelle clé <code>monitoring_fordead_phase_ingest</code> (FR/EN) : « Téléchargement des bandes manquantes… » / « Downloading missing bands… ». Le dispatcher générique livré en v0.32.0 (<code>paste0("monitoring_fordead_phase_", payload$phase_name)</code>) la consomme automatiquement quand <code>phase_name = "ingest"</code> arrive du worker — aucun branchement applicatif spécifique.</p>
+</div>
+<div class="section level4">
+<h4 id="notes-opérationnelles-0-33-0">Notes opérationnelles<a class="anchor" aria-label="anchor" href="#notes-op%C3%A9rationnelles-0-33-0"></a></h4>
+<ul><li>Le plancher <code>Imports: nemeton (&gt;= 0.24.0)</code> interdit le downgrade sur un cœur encore en v0.23.x. <code>Remotes: pobsteta/nemeton@main</code> reste en place pour suivre le cœur en continu.</li>
+<li>Les autres fonctions du cœur consommées par l’app (<code>ingest_sentinel2_timeseries</code>, <code>read_obs_pixel</code>, <code>build_index_stack</code>, <code>extract_pixel_timeseries</code>, <code>check_fordead_validity</code>, …) sont <strong>inchangées</strong> dans v0.24.0.</li>
+<li>La séquence d’événements visible dans les toasts devient désormais <code>ingest → vegetation_index → train_model → forest_mask → dieback_detection → export_results</code> (les libellés post-process et persist 1.x deviennent obsolètes quand FORDEAD shippera son nouveau pipeline STAC, mais restent câblés pour rétrocompat).</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.32.0" id="nemetonshiny-0320-2026-05-16">nemetonshiny 0.32.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0320-2026-05-16"></a></h2>
 <div class="section level4">

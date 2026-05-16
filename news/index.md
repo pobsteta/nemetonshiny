@@ -1,5 +1,69 @@
 # Changelog
 
+## nemetonshiny 0.33.0 (2026-05-16)
+
+#### Changed — Migration vers `nemeton@v0.24.0` (BREAKING)
+
+[`nemeton::run_fordead_dieback()`](https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html)
+a changé de signature au cœur : `aoi` / `scenes_df` / `forest_mask` ont
+été retirés (le cœur les dérive lui-même depuis `(con, zone_id)` via le
+schéma monitoring), et trois nouveaux arguments **requis** sont ajoutés
+:
+
+| Argument | Rôle |
+|----|----|
+| `con` | Connexion DBI sur la base monitoring (TimescaleDB) |
+| `zone_id` | Identifiant entier de la zone — le cœur résout AOI + masque forêt + scenes_df |
+| `cache_dir` | Répertoire `cache/layers/sentinel2/` partagé avec FAST (B04/B12 réutilisés) |
+
+Le pipeline passe de **5 phases** à **6 phases** : un nouveau
+`phase 0 = ingest` télécharge les bandes manquantes (B02, B05, B8A, B11)
+par-dessus celles déjà cachées par FAST. Cela réduit le coût réseau du
+tandem FAST → FORDEAD et clarifie l’ownership des fichiers (le cache
+`sentinel2/` est l’unique source vérité, plus de duplication).
+
+**Côté app** — purement substitution d’arguments, aucune logique métier
+modifiée (conforme ADR-009) :
+
+- `R/service_monitoring.R` : le worker `run_fordead_async()` reçoit
+  désormais `cache_dir` (résolu par `.resolve_s2_cache_dir()`), perd
+  `aoi`, et ouvre lui-même la connexion DBI à passer au cœur.
+- `R/mod_monitoring.R` : le helper `.invoke_fordead()` ne fabrique plus
+  l’AOI via `get_monitoring_zone_aoi()` ni n’ouvre de connexion DBI
+  éphémère — il passe juste `zone_id` et `cache_dir` au worker. La
+  validation amont ne porte plus que sur `nzchar(input$zone_id)` ;
+  l’existence effective de la zone est vérifiée côté cœur.
+- `tests/testthat/test-mod_monitoring.R` : trois mocks
+  `get_monitoring_zone_aoi` retirés et l’assertion `calls[[1]]$aoi`
+  remplacée par une vérification de présence de `cache_dir` dans les
+  arguments envoyés au task.
+
+#### Added — Libellé i18n pour la nouvelle phase ingest
+
+Nouvelle clé `monitoring_fordead_phase_ingest` (FR/EN) : «
+Téléchargement des bandes manquantes… » / « Downloading missing bands…
+». Le dispatcher générique livré en v0.32.0
+(`paste0("monitoring_fordead_phase_", payload$phase_name)`) la consomme
+automatiquement quand `phase_name = "ingest"` arrive du worker — aucun
+branchement applicatif spécifique.
+
+#### Notes opérationnelles
+
+- Le plancher `Imports: nemeton (>= 0.24.0)` interdit le downgrade sur
+  un cœur encore en v0.23.x. `Remotes: pobsteta/nemeton@main` reste en
+  place pour suivre le cœur en continu.
+- Les autres fonctions du cœur consommées par l’app
+  (`ingest_sentinel2_timeseries`, `read_obs_pixel`, `build_index_stack`,
+  `extract_pixel_timeseries`, `check_fordead_validity`, …) sont
+  **inchangées** dans v0.24.0.
+- La séquence d’événements visible dans les toasts devient désormais
+  `ingest → vegetation_index → train_model → forest_mask → dieback_detection → export_results`
+  (les libellés post-process et persist 1.x deviennent obsolètes quand
+  FORDEAD shippera son nouveau pipeline STAC, mais restent câblés pour
+  rétrocompat).
+
+------------------------------------------------------------------------
+
 ## nemetonshiny 0.32.0 (2026-05-16)
 
 #### Added — Toasts de progression FORDEAD en bas à droite
