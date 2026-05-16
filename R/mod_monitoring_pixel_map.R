@@ -262,13 +262,28 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     })
 
     # UGF overlay: forest stand polygons from the loaded project.
-    # `current_project$indicators_sf` is the canonical UGF sf
-    # data.frame (CRS typically EPSG:2154 — st_transform to 4326 for
-    # Leaflet). NULL when no project loaded.
+    #
+    # Two possible sources of geometry, in order of preference:
+    # 1. `current_project$indicators_sf` — built post-indicator
+    #    computation by service_project.R::load_project (one row per
+    #    UGF with geom + indicator columns merged from the parquet).
+    # 2. `ug_build_sf(current_project)` — raw UGF polygons from
+    #    `ugs.json` + `tenements`, available as soon as the user has
+    #    defined UGFs in the UG tab (BEFORE running indicators).
+    #
+    # The v0.30.x fallback to (1) only was wrong: projects with UGFs
+    # defined but indicators not yet computed got NULL here, so the
+    # Carte pixel sub-tab couldn't draw the UGF outline or auto-zoom.
+    # CRS typically EPSG:2154 — st_transform to 4326 for Leaflet.
     ugf_sf_r <- shiny::reactive({
       proj <- app_state$current_project
       if (is.null(proj)) return(NULL)
       geom <- proj$indicators_sf
+      if (is.null(geom) || !inherits(geom, "sf") || !nrow(geom)) {
+        # Fall back to the raw UGF sf — same geometry, no indicator
+        # metadata (which we don't need for the overlay anyway).
+        geom <- tryCatch(ug_build_sf(proj), error = function(e) NULL)
+      }
       if (is.null(geom) || !inherits(geom, "sf") || !nrow(geom)) {
         return(NULL)
       }
