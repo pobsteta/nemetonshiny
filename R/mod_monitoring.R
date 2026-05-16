@@ -1583,100 +1583,7 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::observe({
       ev <- fordead_progress()
       if (is.null(ev)) return()
-      i18n <- i18n_r()
-      current <- as.character(ev$current %||% "")
-
-      if (identical(current, "fordead:start")) {
-        # Silent — the disabled "Lancer" button is enough feedback.
-        return()
-      }
-
-      if (identical(current, "fordead:phase")) {
-        phase_name <- as.character(ev$phase_name %||% "")
-        completed  <- as.integer(ev$completed   %||% 0L)
-        total      <- as.integer(ev$total       %||% 0L)
-        label <- .fordead_phase_label(phase_name, i18n)
-        msg <- i18n$t("monitoring_fordead_phase_progress",
-                      n = completed + 1L, total = total, label = label)
-        .log_fordead_event(ev, "running", completed, total, phase_name)
-        shiny::showNotification(
-          .monitoring_spinning_msg(msg),
-          id          = session$ns("fordead_progress"),
-          type        = "message",
-          duration    = NULL,
-          closeButton = FALSE
-        )
-        return()
-      }
-
-      if (identical(current, "fordead:phase_done")) {
-        phase_name <- as.character(ev$phase_name %||% "")
-        label <- .fordead_phase_label(phase_name, i18n)
-        msg <- i18n$t("monitoring_fordead_phase_done", label = label)
-        shiny::showNotification(
-          msg,
-          id       = session$ns("fordead_phase_done"),
-          type     = "default",
-          duration = 1.5
-        )
-        return()
-      }
-
-      if (identical(current, "fordead:complete")) {
-        n_alerts <- as.integer(ev$n_alerts_inserted %||% 0L)
-        duration <- as.numeric(ev$duration_sec     %||% 0)
-        msg <- i18n$t("monitoring_fordead_complete",
-                      n = n_alerts, sec = round(duration, 1))
-        shiny::removeNotification(session$ns("fordead_progress"))
-        shiny::showNotification(
-          msg,
-          id       = session$ns("fordead_complete"),
-          type     = "message",
-          duration = 8
-        )
-        return()
-      }
-
-      if (identical(current, "fordead:error")) {
-        phase_name <- as.character(ev$phase_name    %||% "")
-        err_msg    <- as.character(ev$error_message %||% "")
-        msg <- i18n$t("monitoring_fordead_error",
-                      phase = phase_name, msg = err_msg)
-        shiny::removeNotification(session$ns("fordead_progress"))
-        shiny::showNotification(
-          msg,
-          id          = session$ns("fordead_error"),
-          type        = "error",
-          duration    = NULL,
-          closeButton = TRUE
-        )
-        return()
-      }
-
-      # ----- Legacy fallback (pre-v0.22.5 nemeton payloads) ---------
-      # Same code as before v0.32.0 — keeps the UI alive if the worker
-      # emits the older status/phase shape.
-      status <- ev$status %||% "running"
-      if (identical(status, "done")) return()
-      phase <- as.character(ev$current %||% ev$phase %||% ev$scene_id %||% "")
-      i_val <- as.integer(ev$completed %||% ev$i %||% 0L)
-      n_val <- as.integer(ev$total     %||% ev$n %||% 0L)
-      msg <- if (identical(status, "starting") || !nzchar(phase)) {
-        i18n$t("monitoring_health_starting")
-      } else if (n_val > 0L) {
-        sprintf(i18n$t("monitoring_health_phase_fmt"),
-                phase, i_val, n_val)
-      } else {
-        sprintf(i18n$t("monitoring_health_phase_simple_fmt"), phase)
-      }
-      .log_fordead_event(ev, status, i_val, n_val, phase)
-      shiny::showNotification(
-        .monitoring_spinning_msg(msg),
-        id          = session$ns("fordead_progress"),
-        type        = if (identical(status, "phase_error")) "warning" else "message",
-        duration    = NULL,
-        closeButton = FALSE
-      )
+      .fordead_handle_progress_event(ev, session, i18n_r())
     })
 
     # User-side override that force-unlocks the run_health button —
@@ -2047,6 +1954,115 @@ mod_monitoring_server <- function(id, app_state) {
     return(i18n$t(key))
   }
   tools::toTitleCase(gsub("_", " ", phase_name, fixed = TRUE))
+}
+
+# Dispatcher for the FORDEAD progress event stream emitted by
+# nemeton@v0.22.5+. Extracted from the observe() body in
+# mod_monitoring_server so it can be unit-tested directly with a
+# fake session + i18n object (no reactivePoll plumbing needed).
+#
+# `ev`      : list parsed from the worker's JSON progress file.
+# `session` : the moduleServer session (used for ns() + side-effect
+#             notifications). Tests pass a stub list(ns = identity).
+# `i18n`    : the get_i18n() translator.
+#
+# Side effects only (showNotification / removeNotification). Returns
+# invisible NULL.
+.fordead_handle_progress_event <- function(ev, session, i18n) {
+  current <- as.character(ev$current %||% "")
+
+  if (identical(current, "fordead:start")) {
+    # Silent — the disabled "Lancer" button is enough feedback.
+    return(invisible(NULL))
+  }
+
+  if (identical(current, "fordead:phase")) {
+    phase_name <- as.character(ev$phase_name %||% "")
+    completed  <- as.integer(ev$completed   %||% 0L)
+    total      <- as.integer(ev$total       %||% 0L)
+    label <- .fordead_phase_label(phase_name, i18n)
+    msg <- i18n$t("monitoring_fordead_phase_progress",
+                  n = completed + 1L, total = total, label = label)
+    .log_fordead_event(ev, "running", completed, total, phase_name)
+    shiny::showNotification(
+      .monitoring_spinning_msg(msg),
+      id          = session$ns("fordead_progress"),
+      type        = "message",
+      duration    = NULL,
+      closeButton = FALSE
+    )
+    return(invisible(NULL))
+  }
+
+  if (identical(current, "fordead:phase_done")) {
+    phase_name <- as.character(ev$phase_name %||% "")
+    label <- .fordead_phase_label(phase_name, i18n)
+    msg <- i18n$t("monitoring_fordead_phase_done", label = label)
+    shiny::showNotification(
+      msg,
+      id       = session$ns("fordead_phase_done"),
+      type     = "default",
+      duration = 1.5
+    )
+    return(invisible(NULL))
+  }
+
+  if (identical(current, "fordead:complete")) {
+    n_alerts <- as.integer(ev$n_alerts_inserted %||% 0L)
+    duration <- as.numeric(ev$duration_sec     %||% 0)
+    msg <- i18n$t("monitoring_fordead_complete",
+                  n = n_alerts, sec = round(duration, 1))
+    shiny::removeNotification(session$ns("fordead_progress"))
+    shiny::showNotification(
+      msg,
+      id       = session$ns("fordead_complete"),
+      type     = "message",
+      duration = 8
+    )
+    return(invisible(NULL))
+  }
+
+  if (identical(current, "fordead:error")) {
+    phase_name <- as.character(ev$phase_name    %||% "")
+    err_msg    <- as.character(ev$error_message %||% "")
+    msg <- i18n$t("monitoring_fordead_error",
+                  phase = phase_name, msg = err_msg)
+    shiny::removeNotification(session$ns("fordead_progress"))
+    shiny::showNotification(
+      msg,
+      id          = session$ns("fordead_error"),
+      type        = "error",
+      duration    = NULL,
+      closeButton = TRUE
+    )
+    return(invisible(NULL))
+  }
+
+  # ----- Legacy fallback (pre-v0.22.5 nemeton payloads) -------------
+  # Same logic as before v0.32.0 — keeps the UI alive if the worker
+  # emits the older status/phase shape.
+  status <- ev$status %||% "running"
+  if (identical(status, "done")) return(invisible(NULL))
+  phase <- as.character(ev$current %||% ev$phase %||% ev$scene_id %||% "")
+  i_val <- as.integer(ev$completed %||% ev$i %||% 0L)
+  n_val <- as.integer(ev$total     %||% ev$n %||% 0L)
+  msg <- if (identical(status, "starting") || !nzchar(phase)) {
+    i18n$t("monitoring_health_starting")
+  } else if (n_val > 0L) {
+    sprintf(i18n$t("monitoring_health_phase_fmt"),
+            phase, i_val, n_val)
+  } else {
+    sprintf(i18n$t("monitoring_health_phase_simple_fmt"), phase)
+  }
+  .log_fordead_event(ev, status, i_val, n_val, phase)
+  shiny::showNotification(
+    .monitoring_spinning_msg(msg),
+    id          = session$ns("fordead_progress"),
+    type        = if (identical(status, "phase_error")) "warning" else "message",
+    duration    = NULL,
+    closeButton = FALSE
+  )
+  invisible(NULL)
 }
 
 # Console mirror for a FORDEAD phase event. The payload is simpler

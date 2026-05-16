@@ -629,6 +629,114 @@ test_that("server returns fordead_task + validity reactives", {
   )
 })
 
+# Regression test for v0.32.0 — FORDEAD progress dispatcher.
+# Verifies that the `fordead:phase` event triggers a showNotification
+# call with the expected message ("Phase 1/7 — <label>"). Calls the
+# extracted helper .fordead_handle_progress_event directly so we
+# bypass the reactivePoll plumbing and don't have to write a JSON
+# progress file + sleep for the poll to fire.
+test_that(".fordead_handle_progress_event toasts on fordead:phase (v0.32.0)", {
+  skip_if_not_installed("shiny")
+
+  captured <- list()
+  i18n <- nemetonshiny:::get_i18n("fr")
+  fake_session <- list(ns = function(id) paste0("monitoring-", id))
+
+  testthat::with_mocked_bindings(
+    showNotification = function(ui, id = NULL, ...) {
+      captured$ui   <<- ui
+      captured$id   <<- id
+      captured$args <<- list(...)
+      invisible(NULL)
+    },
+    .package = "shiny",
+    {
+      nemetonshiny:::.fordead_handle_progress_event(
+        ev = list(
+          current    = "fordead:phase",
+          phase_name = "vegetation_index",
+          completed  = 0L,
+          total      = 7L
+        ),
+        session = fake_session,
+        i18n    = i18n
+      )
+    }
+  )
+
+  # The UI body is a tagList from .monitoring_spinning_msg — convert
+  # to plain text so we can assert against the visible message.
+  expect_false(is.null(captured$ui))
+  rendered <- htmltools::renderTags(captured$ui)$html
+  expect_match(rendered, "Phase 1/7", fixed = TRUE)
+  # Phase label comes from monitoring_fordead_phase_vegetation_index.
+  expect_match(rendered, "végétation", ignore.case = TRUE)
+  expect_identical(captured$id, "monitoring-fordead_progress")
+  expect_identical(captured$args$type, "message")
+  expect_null(captured$args$duration)
+})
+
+test_that(".fordead_handle_progress_event is silent on fordead:start (v0.32.0)", {
+  skip_if_not_installed("shiny")
+
+  call_count <- 0L
+  fake_session <- list(ns = function(id) paste0("monitoring-", id))
+
+  testthat::with_mocked_bindings(
+    showNotification = function(...) {
+      call_count <<- call_count + 1L
+      invisible(NULL)
+    },
+    .package = "shiny",
+    {
+      nemetonshiny:::.fordead_handle_progress_event(
+        ev = list(
+          current        = "fordead:start",
+          total          = 7L,
+          python_env     = "fake-env",
+          fordead_version = "1.x"
+        ),
+        session = fake_session,
+        i18n    = nemetonshiny:::get_i18n("fr")
+      )
+    }
+  )
+
+  expect_equal(call_count, 0L)
+})
+
+test_that(".fordead_handle_progress_event humanizes unknown phase names (v0.32.0)", {
+  skip_if_not_installed("shiny")
+
+  captured_ui <- NULL
+  fake_session <- list(ns = function(id) paste0("monitoring-", id))
+
+  testthat::with_mocked_bindings(
+    showNotification = function(ui, ...) {
+      captured_ui <<- ui
+      invisible(NULL)
+    },
+    .package = "shiny",
+    {
+      nemetonshiny:::.fordead_handle_progress_event(
+        ev = list(
+          current    = "fordead:phase",
+          phase_name = "future_unknown_phase",
+          completed  = 2L,
+          total      = 5L
+        ),
+        session = fake_session,
+        i18n    = nemetonshiny:::get_i18n("fr")
+      )
+    }
+  )
+
+  rendered <- htmltools::renderTags(captured_ui)$html
+  expect_match(rendered, "Phase 3/5", fixed = TRUE)
+  # Title-cased humanized fallback: "future_unknown_phase" → "Future Unknown Phase"
+  expect_match(rendered, "Future Unknown Phase", fixed = TRUE)
+})
+
 test_that("metadata restore updates the mode + threshold from current_project", {
   skip_if_not_installed("shiny")
 
