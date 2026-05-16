@@ -12,6 +12,39 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.34.0\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte FAST** : cascade de redraws (raster + UGF +
+  placettes) à chaque tick du slider date. Le raster est désormais
+  épinglé dans un pane Leaflet custom `nemetonRaster` (z-index 250),
+  entre `tilePane` (200) et `overlayPane` (400), via `addMapPane()` +
+  `gridOptions(pane = "nemetonRaster")`. Le raster reste **visible** sur
+  Satellite (un essai initial dans `tilePane` le faisait disparaître
+  quand le `LayersControl` ré-ajoutait le tile satellite), tout en
+  restant **sous les polygones et CircleMarkers** (qui restent
+  cliquables sans ré-empilement). Les dépendances fictives
+  `current_layer_r()` des observers UGF / Placettes sont supprimées —
+  ils ne re-firent que quand leur source change vraiment
+  (`R/mod_monitoring_pixel_map.R`).
+
+### Added
+
+- **Suivi sanitaire** : sous-onglets « Carte pixel (FAST) » et « Carte
+  FORDEAD » séparés, visibilité pilotée par `input$mode` via
+  [`bslib::nav_show()`](https://rstudio.github.io/bslib/reference/nav_select.html)
+  / `nav_hide()`. La Carte FORDEAD est un placeholder en attendant que
+  le cœur expose le raster classifié des classes de dépérissement
+  (`R/mod_monitoring.R`, `R/utils_i18n.R`).
+- 4 nouvelles clés i18n FR/EN pour les libellés et le placeholder Carte
+  FORDEAD.
+
+### Changed
+
+- `R/mod_monitoring_pixel_map.R` : valeur du nav_panel renommée
+  `pixel_map` → `pixel_map_fast` (l’observe d’auto-zoom est aligné).
+
 ## \[0.33.0\] - 2026-05-16
 
 ### Changed

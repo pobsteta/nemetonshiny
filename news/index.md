@@ -1,5 +1,63 @@
 # Changelog
 
+## nemetonshiny 0.34.0 (2026-05-16)
+
+#### Fixed — Cascade de redraws sur la carte pixel pendant l’animation slider
+
+L’animation du curseur de date dans « Carte pixel » provoquait ~90
+redraws complets (raster + 63 polygones UGF + 105 marqueurs placettes)
+sur 30 ticks, avec un pattern observable de 2× UGF + 1× Placettes par
+cycle. Cause architecturale : `addRasterImage()` plaçait le raster dans
+`overlayPane` (le défaut), à la même profondeur que les polygones et les
+`CircleMarkers` (qui sont des `Path` Leaflet, pas des `L.Marker`).
+Chaque swap raster montait au-dessus de l’overlay, forçant les observers
+UGF et Placettes à re-fire via une dépendance fictive
+`current_layer_r()` pour se ré-empiler.
+
+**Correctif** — créer un pane Leaflet custom `nemetonRaster` à z-index
+250, entre `tilePane` (200, où vivent OSM et Satellite) et `overlayPane`
+(400, où vivent polygones et CircleMarkers). Le raster est épinglé dans
+ce pane via `addMapPane()` + `gridOptions(pane = …)`. Avantages cumulés
+:
+
+- le raster reste **toujours au-dessus du fond de carte**, qu’il
+  s’agisse d’OSM ou de Satellite (un test précédent avec le raster dans
+  `tilePane` cachait NDVI/NBR quand l’utilisateur basculait sur
+  Satellite, parce que le `LayersControl` ré-ajoutait le tile satellite
+  après le raster dans le DOM) ;
+- les polygones UGF et markers placettes restent **au-dessus du raster**
+  (donc cliquables) sans besoin de ré-empilement ;
+- les dépendances fictives `current_layer_r()` des observers UGF et
+  Placettes sont supprimées — ils ne re-firent que quand leur source
+  change réellement (projet, refresh obs).
+
+#### Added — Sous-onglets « Carte pixel (FAST) » et « Carte FORDEAD »
+
+L’onglet pixel unique ne reflétait pas la dichotomie modes **quick
+(FAST)** vs **health (FORDEAD)**. Désormais :
+
+| Sous-onglet | Valeur | Visible en mode | Contenu |
+|----|----|----|----|
+| `Alertes` | `alerts` | toujours | Carte des alertes + bouton QGIS |
+| `Carte FAST` | `pixel_map_fast` | quick | Raster NDVI/NBR + slider date + clic pixel/placette |
+| `Carte FORDEAD` | `pixel_map_fordead` | health | Placeholder (carte des classes de dépérissement à venir, cf. Notes) |
+
+La visibilité est pilotée par un `observe` côté server qui utilise
+[`bslib::nav_show()`](https://rstudio.github.io/bslib/reference/nav_select.html)
+/ `nav_hide()` selon `input$mode`. La Carte FORDEAD reste un placeholder
+explicatif tant que le cœur `nemeton` n’expose pas
+`read_fordead_dieback_mask()` — la coordination cœur↔︎app sera ouverte
+dans une session dédiée à `/home/pascal/dev/nemeton`.
+
+**Nouvelles clés i18n FR/EN** :
+
+- `monitoring_subtab_pixel_map_fast`
+- `monitoring_subtab_pixel_map_fordead`
+- `monitoring_fordead_map_placeholder_title`
+- `monitoring_fordead_map_placeholder_body`
+
+------------------------------------------------------------------------
+
 ## nemetonshiny 0.33.0 (2026-05-16)
 
 #### Changed — Migration vers `nemeton@v0.24.0` (BREAKING)

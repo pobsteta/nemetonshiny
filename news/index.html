@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.33.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.34.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,46 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.33.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.34.0" id="nemetonshiny-0340-2026-05-16">nemetonshiny 0.34.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0340-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--cascade-de-redraws-sur-la-carte-pixel-pendant-lanimation-slider-0-34-0">Fixed — Cascade de redraws sur la carte pixel pendant l’animation slider<a class="anchor" aria-label="anchor" href="#fixed--cascade-de-redraws-sur-la-carte-pixel-pendant-lanimation-slider-0-34-0"></a></h4>
+<p>L’animation du curseur de date dans « Carte pixel » provoquait ~90 redraws complets (raster + 63 polygones UGF + 105 marqueurs placettes) sur 30 ticks, avec un pattern observable de 2× UGF + 1× Placettes par cycle. Cause architecturale : <code>addRasterImage()</code> plaçait le raster dans <code>overlayPane</code> (le défaut), à la même profondeur que les polygones et les <code>CircleMarkers</code> (qui sont des <code>Path</code> Leaflet, pas des <code>L.Marker</code>). Chaque swap raster montait au-dessus de l’overlay, forçant les observers UGF et Placettes à re-fire via une dépendance fictive <code>current_layer_r()</code> pour se ré-empiler.</p>
+<p><strong>Correctif</strong> — créer un pane Leaflet custom <code>nemetonRaster</code> à z-index 250, entre <code>tilePane</code> (200, où vivent OSM et Satellite) et <code>overlayPane</code> (400, où vivent polygones et CircleMarkers). Le raster est épinglé dans ce pane via <code>addMapPane()</code> + <code>gridOptions(pane = …)</code>. Avantages cumulés :</p>
+<ul><li>le raster reste <strong>toujours au-dessus du fond de carte</strong>, qu’il s’agisse d’OSM ou de Satellite (un test précédent avec le raster dans <code>tilePane</code> cachait NDVI/NBR quand l’utilisateur basculait sur Satellite, parce que le <code>LayersControl</code> ré-ajoutait le tile satellite après le raster dans le DOM) ;</li>
+<li>les polygones UGF et markers placettes restent <strong>au-dessus du raster</strong> (donc cliquables) sans besoin de ré-empilement ;</li>
+<li>les dépendances fictives <code>current_layer_r()</code> des observers UGF et Placettes sont supprimées — ils ne re-firent que quand leur source change réellement (projet, refresh obs).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--sous-onglets--carte-pixel-fast--et--carte-fordead--0-34-0">Added — Sous-onglets « Carte pixel (FAST) » et « Carte FORDEAD »<a class="anchor" aria-label="anchor" href="#added--sous-onglets--carte-pixel-fast--et--carte-fordead--0-34-0"></a></h4>
+<p>L’onglet pixel unique ne reflétait pas la dichotomie modes <strong>quick (FAST)</strong> vs <strong>health (FORDEAD)</strong>. Désormais :</p>
+<table class="table"><colgroup><col width="18%"><col width="14%"><col width="12%"><col width="54%"></colgroup><thead><tr><th>Sous-onglet</th>
+<th>Valeur</th>
+<th>Visible en mode</th>
+<th>Contenu</th>
+</tr></thead><tbody><tr><td><code>Alertes</code></td>
+<td><code>alerts</code></td>
+<td>toujours</td>
+<td>Carte des alertes + bouton QGIS</td>
+</tr><tr><td><code>Carte FAST</code></td>
+<td><code>pixel_map_fast</code></td>
+<td>quick</td>
+<td>Raster NDVI/NBR + slider date + clic pixel/placette</td>
+</tr><tr><td><code>Carte FORDEAD</code></td>
+<td><code>pixel_map_fordead</code></td>
+<td>health</td>
+<td>Placeholder (carte des classes de dépérissement à venir, cf. Notes)</td>
+</tr></tbody></table><p>La visibilité est pilotée par un <code>observe</code> côté server qui utilise <code><a href="https://rstudio.github.io/bslib/reference/nav_select.html" class="external-link">bslib::nav_show()</a></code> / <code>nav_hide()</code> selon <code>input$mode</code>. La Carte FORDEAD reste un placeholder explicatif tant que le cœur <code>nemeton</code> n’expose pas <code>read_fordead_dieback_mask()</code> — la coordination cœur↔︎app sera ouverte dans une session dédiée à <code>/home/pascal/dev/nemeton</code>.</p>
+<p><strong>Nouvelles clés i18n FR/EN</strong> :</p>
+<ul><li><code>monitoring_subtab_pixel_map_fast</code></li>
+<li><code>monitoring_subtab_pixel_map_fordead</code></li>
+<li><code>monitoring_fordead_map_placeholder_title</code></li>
+<li><code>monitoring_fordead_map_placeholder_body</code></li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.33.0" id="nemetonshiny-0330-2026-05-16">nemetonshiny 0.33.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0330-2026-05-16"></a></h2>
 <div class="section level4">
