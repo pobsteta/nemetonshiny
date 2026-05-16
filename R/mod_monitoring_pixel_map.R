@@ -212,14 +212,25 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # Static map skeleton: rendered ONCE. Re-rendering the whole map on
     # every date tick would reset the user's base-layer choice
     # (Satellite → OSM) because `baseGroups` re-applies the first entry
-    # as default on each remount. Raster + markers + legend updates go
-    # through leafletProxy() below — they appear on the map and stay
-    # visible regardless of base-layer toggle (overlayPane > tilePane
-    # by default in Leaflet).
+    # as default on each remount.
+    #
+    # v0.34.0 — custom pane `nemetonRaster` à z-index 250, entre
+    # `tilePane` (200, où vivent OSM / Satellite) et `overlayPane`
+    # (400, où vivent les polygones UGF et les CircleMarkers). Ainsi
+    # le raster NDVI/NBR est toujours :
+    #   - AU-DESSUS du fond de carte (visible quand l'utilisateur
+    #     bascule sur Satellite — le tile satellite reste sous le
+    #     raster)
+    #   - EN-DESSOUS des polygones UGF et des markers placettes (qui
+    #     restent cliquables et visibles)
+    # Sans ce pane custom, le tile satellite ajouté APRÈS le raster
+    # via le LayersControl masquait NDVI/NBR (DOM order au sein de
+    # tilePane).
     output$map <- leaflet::renderLeaflet({
       leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
           options    = leaflet::layersControlOptions(collapsed = TRUE)
@@ -239,15 +250,19 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # changes; preserves the base-layer selection because the map
     # widget itself is not re-rendered.
     #
-    # v0.34.0 — raster pinned to `tilePane` (z-index 200) instead of
-    # the default `overlayPane` (z-index 400). With the raster a
-    # whole pane below the polygons + placette markers, ré-empiler
-    # ceux-ci à chaque tick de date n'est plus nécessaire : le z-order
-    # est maintenu par la séparation des panes, pas par l'ordre
-    # d'ajout DOM. Sur 30 ticks d'animation slider, ça divise le coût
-    # de redraw par ~3 (raster seul, plus de clearGroup/addPolygons
-    # pour les UGF ni de clearGroup/addCircleMarkers pour les
-    # placettes — qui ne re-firent que quand leur source change).
+    # v0.34.0 — raster épinglé dans le pane custom `nemetonRaster`
+    # (z-index 250), entre `tilePane` (200, fond OSM/Satellite) et
+    # `overlayPane` (400, polygones + CircleMarkers). Avantages :
+    #   - le raster reste visible quel que soit le fond choisi (le
+    #     tile satellite, ré-ajouté en DOM par le LayersControl,
+    #     reste dans tilePane à z=200, sous le raster)
+    #   - polygones et markers restent au-dessus, donc cliquables
+    #   - plus besoin de ré-empiler les overlays à chaque tick date :
+    #     le z-order est maintenu par la séparation des panes
+    # Sur 30 ticks d'animation slider, ça divise le coût de redraw
+    # par ~3 (raster seul, plus de clearGroup/addPolygons UGF ni de
+    # clearGroup/addCircleMarkers placettes — qui ne re-firent que
+    # quand leur source change).
     shiny::observe({
       r <- current_layer_r()
       proxy <- leaflet::leafletProxy("map") |>
@@ -269,7 +284,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           # toggle to OSM to see roads/parcels inside the zone.
           opacity = 1.0,
           group   = .pixel_overlay_group,
-          options = leaflet::gridOptions(pane = "tilePane")
+          options = leaflet::gridOptions(pane = "nemetonRaster")
         ) |>
         leaflet::addLegend(
           layerId  = "pixel_legend",
@@ -379,12 +394,12 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # running from a terminal sees the reactive firing.
     #
     # v0.34.0 — observe ne dépend plus de `current_layer_r()` : le
-    # raster vit désormais dans `tilePane` (z-index 200), sous
-    # `overlayPane` (z-index 400) où vivent les polygones et les
-    # CircleMarkers. Le z-order est garanti par la séparation des
-    # panes, plus par l'ordre d'ajout DOM. Conséquence : ré-empiler
-    # à chaque tick de date est inutile et l'observer ne re-fire que
-    # quand la source UGF change réellement (`app_state$current_project`).
+    # raster vit dans le pane custom `nemetonRaster` (z-index 250),
+    # sous `overlayPane` (z-index 400) où vivent les polygones. Le
+    # z-order est garanti par la séparation des panes, plus par
+    # l'ordre d'ajout DOM. Conséquence : ré-empiler à chaque tick
+    # de date est inutile et l'observer ne re-fire que quand la
+    # source UGF change réellement (`app_state$current_project`).
     shiny::observe({
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.ugf_overlay_group)
@@ -496,12 +511,13 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # at the wide auto-fit zoom (a few km across).
     #
     # v0.34.0 — observe ne dépend plus de `current_layer_r()` : le
-    # raster vit dans `tilePane` (sous `overlayPane`), donc le z-order
-    # est garanti sans besoin de ré-empiler les CircleMarkers à chaque
-    # tick de date. Les markers ne re-firent que quand
-    # `placettes_sf_r()` change (i.e. nouvelle obs_pixel_data ou
-    # nouveau projet). Clickabilité préservée : CircleMarkers (Paths)
-    # restent dans overlayPane, naturellement au-dessus du raster.
+    # raster vit dans `nemetonRaster` (z-index 250, sous overlayPane
+    # à 400), donc le z-order est garanti sans besoin de ré-empiler
+    # les CircleMarkers à chaque tick de date. Les markers ne
+    # re-firent que quand `placettes_sf_r()` change (i.e. nouvelle
+    # obs_pixel_data ou nouveau projet). Clickabilité préservée :
+    # CircleMarkers (Paths) restent dans overlayPane, naturellement
+    # au-dessus du raster.
     shiny::observe({
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.placettes_overlay_group)

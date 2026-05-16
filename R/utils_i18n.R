@@ -1892,8 +1892,8 @@ TRANSLATIONS <- list(
   # dépérissement, mode health). Visibilité pilotée côté server par
   # un observe mode-driven.
   monitoring_subtab_pixel_map_fast = list(
-    fr = "Carte pixel (FAST)",
-    en = "Pixel map (FAST)"
+    fr = "Carte FAST",
+    en = "FAST map"
   ),
   monitoring_subtab_pixel_map_fordead = list(
     fr = "Carte FORDEAD",
