@@ -1541,17 +1541,22 @@ mod_monitoring_server <- function(id, app_state) {
       # only, the legacy behavior).
       cache_dir <- .resolve_s2_cache_dir(app_state$current_project)
 
-      # `reprime_cache` checkbox forces `skip_cached = FALSE` on the
-      # nemeton side, which re-runs the per-plot extraction and
-      # therefore re-fetches every band, populating the COG cache
-      # under <project>/cache/layers/sentinel2/. INSERTs are
-      # `ON CONFLICT DO NOTHING` core-side, so the DB stays clean.
+      # `reprime_cache` checkbox semantics (inverted in v0.30.1):
+      #   ☐ default → skip_cached = FALSE always (DB INSERTs are
+      #              ON CONFLICT DO NOTHING, so re-running is safe).
+      #              nemeton checks the disk cache, only fetches
+      #              missing bands. This is what FORDEAD needs —
+      #              the DB-short-circuit default of v0.30.0 and
+      #              before left users with a populated DB but an
+      #              empty disk cache, and FORDEAD had to re-fetch
+      #              everything.
+      #   ☑ checked → wipe <cache_dir>/* then re-download every
+      #              scene + band from scratch. Use to recover from
+      #              a corrupted cache.
       #
-      # Forcer le re-téléchargement complet : sans cette purge, même
-      # avec skip_cached=FALSE, `.get_s2_band_raster()` sert les
-      # B0X.tif déjà présents sur disque (branche CACHE-HIT). On vide
-      # le dossier pour garantir une vraie re-extraction STAC + écriture
-      # des .tif.
+      # The skip_cached value passed to nemeton::ingest_sentinel2_timeseries
+      # is now FALSE in BOTH branches (see the $invoke call below).
+      # The branch below only differs by the wipe step.
       if (isTRUE(input$reprime_cache) && !is.null(cache_dir) &&
           dir.exists(cache_dir)) {
         entries <- list.files(cache_dir, full.names = TRUE,
@@ -1594,7 +1599,10 @@ mod_monitoring_server <- function(id, app_state) {
         db_url        = .resolve_monitoring_db_url(app_state$current_project),
         progress_path = ppath,
         cache_dir     = cache_dir,
-        skip_cached   = !isTRUE(input$reprime_cache),
+        # v0.30.1: always FALSE — nemeton checks disk cache + DB
+        # INSERTs are idempotent. See the comment block above the
+        # wipe branch for the full semantics.
+        skip_cached   = FALSE,
         log_path      = lpath
       )
     })
