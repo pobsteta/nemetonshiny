@@ -1,3 +1,39 @@
+# nemetonshiny 0.31.4 (2026-05-16)
+
+### Fixed — Carte pixel : placettes redeviennent cliquables (ordre des couches)
+
+L'utilisateur a signalé que les marqueurs placettes ne réagissaient
+plus au clic sur la Carte pixel — le modal placette ne s'ouvrait
+jamais.
+
+Diagnostic : les `CircleMarker` Leaflet sont des **`Path`** (pas
+des `L.Marker`), donc ils vivent dans le pane `overlayPane`, le
+même que le raster `ImageOverlay` et les polygones UGF. Dans un
+pane, c'est l'ordre DOM qui décide qui reçoit les clics — la
+dernière couche ajoutée est au-dessus et capte les clics.
+
+En v0.31.2 j'ai posé `priority = 100L` sur l'observe raster pour
+garantir qu'il fire en premier (raster en bas de pile). Mais les
+observes UGF et placettes étaient tous deux à la priorité 0 par
+défaut, et l'ordre relatif entre eux n'était pas déterministe.
+Quand le placettes observe firait AVANT l'UGF observe, les
+polygones orange finissaient au-dessus des marqueurs bleus et
+interceptaient tous leurs clics.
+
+Correctif (`R/mod_monitoring_pixel_map.R`) : échelle stricte de
+priorités, du bas vers le haut de `overlayPane` :
+
+| Observe   | Priority | Position |
+|-----------|----------|----------|
+| Raster    | 100      | fond     |
+| UGF       | 50       | milieu   |
+| Placettes | 0        | haut (cliquable) |
+
+Ajout aussi du dummy `current_layer_r()` dans le placettes observe
+(déjà présent sur UGF depuis v0.31.2) : quand l'utilisateur bouge
+le slider de date ou change NDVI/NBR, les marqueurs sont
+re-empilés au-dessus du raster fraîchement peint.
+
 # nemetonshiny 0.31.3 (2026-05-16)
 
 ### Fixed — Carte pixel : auto-zoom au chargement projet **vraiment** réparé

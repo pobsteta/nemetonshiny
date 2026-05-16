@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.31.4] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : les marqueurs placettes
+  n'étaient plus cliquables quand l'observe placettes firait avant
+  l'observe UGF dans le même flush — les polygones interceptaient
+  les clics. Échelle stricte de priorités : raster 100 (fond) →
+  UGF 50 (milieu) → placettes 0 (haut, cliquables). Ajout aussi
+  du dummy `current_layer_r()` dependency sur placettes pour
+  qu'ils restent en haut après chaque update du raster
+  (`R/mod_monitoring_pixel_map.R`).
+
 ## [0.31.3] - 2026-05-16
 
 ### Fixed
