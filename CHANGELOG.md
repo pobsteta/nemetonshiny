@@ -10,6 +10,30 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.30.1] - 2026-05-16
+
+### Changed
+
+- **Suivi sanitaire / Mode rapide** : sémantique de la checkbox
+  « Cache COG » inversée. Décoché (défaut) = nemeton vérifie le
+  cache disque et télécharge uniquement les bandes manquantes
+  (DB idempotente via `ON CONFLICT DO NOTHING`). Coché = wipe
+  `<cache_dir>/*` puis re-télécharge intégralement scène par
+  scène (pour récupérer d'un cache corrompu).
+- L'ancien défaut court-circuitait sur la DB et laissait le cache
+  disque vide, ce qui faisait re-télécharger intégralement
+  FORDEAD au premier diagnostic. Le nouveau défaut prépare
+  effectivement le terrain pour FORDEAD (`R/mod_monitoring.R`,
+  `R/utils_i18n.R`).
+
+### Tests
+
+- Nouveau test de régression dans
+  `tests/testthat/test-mod_monitoring.R` qui verrouille
+  l'invariant `skip_cached = FALSE` dans l'appel à
+  `ingest_task$invoke()`, quelle que soit la valeur de
+  `input$reprime_cache`.
+
 ## [0.30.0] - 2026-05-16
 
 ### Added

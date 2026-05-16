@@ -1,3 +1,57 @@
+# nemetonshiny 0.30.1 (2026-05-16)
+
+### Changed — inversion de la sémantique de la checkbox « Cache COG »
+
+La checkbox « Cache COG » du sous-onglet **Suivi sanitaire** (Mode
+rapide) change de sémantique. Auparavant elle était un opt-in pour
+peupler le cache disque ; désormais elle est un opt-in pour le wiper
+intégralement.
+
+| État | Avant (≤ v0.30.0) | Après (v0.30.1+) |
+|---|---|---|
+| ☐ Décoché (défaut) | `skip_cached = TRUE` → court-circuit DB, cache disque jamais peuplé | `skip_cached = FALSE` → nemeton vérifie le cache disque, télécharge uniquement les bandes manquantes |
+| ☑ Coché | wipe `<cache_dir>/*` puis `skip_cached = FALSE` | wipe `<cache_dir>/*` puis `skip_cached = FALSE` (inchangé) |
+
+Pourquoi ce changement : FORDEAD lit les COG sur disque, pas la
+table `monitoring_obs`. L'ancien défaut laissait les utilisateurs
+avec une DB pleine mais un cache disque vide. Quand l'utilisateur
+lançait ensuite un diagnostic FORDEAD, celui-ci re-téléchargeait
+intégralement parce que le cache disque n'avait jamais été peuplé,
+défaisant tout le bénéfice du pré-ingest.
+
+Le nouveau défaut (`skip_cached = FALSE` toujours) tire parti du
+support cache COG introduit dans `nemeton@v0.21.4` et du fix
+`writeRaster filetype` de `nemeton@v0.21.12`. Les `INSERT` DB
+restent idempotents (`ON CONFLICT DO NOTHING` côté cœur), donc
+re-lancer l'ingestion est sûr et bon marché.
+
+Le libellé et le texte d'aide de la checkbox sont remis à jour
+(`monitoring_reprime_cache_label`, `monitoring_reprime_cache_help`)
+pour refléter la nouvelle sémantique : décoché = vérif cache,
+coché = wipe & restart.
+
+**Note de migration** :
+
+- 1er run sur une zone vierge : aucun changement, le 1er ingest
+  télécharge tout dans tous les cas.
+- Re-runs sur une zone déjà ingérée : prennent quelques secondes
+  de plus (vérification cache disque scène par scène) mais le
+  cache se peuple réellement, et FORDEAD peut désormais s'en
+  servir.
+- Re-runs après un changement de fenêtre (nouvelles scènes
+  apparues, dates étendues) : nemeton télécharge seulement le
+  delta — bien plus rapide qu'avant où l'ancien défaut DB-cache
+  rendait le delta invisible.
+- Si tu rencontres un cache corrompu : coche la case pour wipe
+  et recommencer.
+
+Régression bloquée par `test-mod_monitoring.R` (nouveau test
+« input$run passes skip_cached = FALSE regardless of
+reprime_cache (v0.30.1+) »).
+
+Aucune modif côté `nemeton` requise — le cœur supporte ce mode
+depuis v0.21.4.
+
 # nemetonshiny 0.30.0 (2026-05-16)
 
 ### Suivi sanitaire — Carte pixel : couche UGF + auto-zoom robuste
