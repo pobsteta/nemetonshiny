@@ -248,7 +248,13 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::addRasterImage(
           x       = r,
           colors  = .pixel_palette,
-          opacity = 0.75,
+          # v0.31.1: bumped 0.75 → 0.85 because the NDVI/NBR palette
+          # (greens / yellows / oranges) shares its tonal range with
+          # Esri.WorldImagery forest/farmland imagery — at 0.75 the
+          # raster was invisible on Satellite background. 0.85 is
+          # enough to make the gradient pop without entirely hiding
+          # the underlying tile (useful for spatial context).
+          opacity = 0.85,
           group   = .pixel_overlay_group
         ) |>
         leaflet::addLegend(
