@@ -194,26 +194,27 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       )
     })
 
-    # Stable, language-independent overlay group label. Used by BOTH
-    # addLayersControl(overlayGroups=) and addRasterImage(group=) — they
-    # MUST match exactly so the control knows the raster is an overlay
+    # Stable, language-independent overlay group labels. Used by BOTH
+    # addLayersControl(overlayGroups=) and the leafletProxy() add* calls
+    # — they MUST match exactly so the control knows these are overlays
     # to keep visible across base-layer toggles. Kept out of i18n so
     # renderLeaflet stays free of reactive deps (preserves base-layer
     # choice across language toggle).
-    .pixel_overlay_group <- "NDVI / NBR"
+    .pixel_overlay_group     <- "NDVI / NBR"
+    .placettes_overlay_group <- "Placettes"
 
     # Static map skeleton: rendered ONCE. Re-rendering the whole map on
     # every date tick would reset the user's base-layer choice
     # (Satellite → OSM) because `baseGroups` re-applies the first entry
-    # as default on each remount. Raster + legend updates go through
-    # leafletProxy() below.
+    # as default on each remount. Raster + markers + legend updates go
+    # through leafletProxy() below.
     output$map <- leaflet::renderLeaflet({
       leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addLayersControl(
           baseGroups    = c("OSM", "Satellite"),
-          overlayGroups = .pixel_overlay_group,
+          overlayGroups = c(.pixel_overlay_group, .placettes_overlay_group),
           options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
     })
@@ -251,6 +252,119 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           title    = input$index,
           opacity  = 0.85
         )
+    })
+
+    # Placettes overlay: load_samples() returns sf POINT (EPSG:2154
+    # by convention). Filter to plot_ids that actually have observations
+    # in the current window so the markers reflect the same scope as the
+    # rest of the sub-tab. NULL when no plan, no project, no obs.
+    placettes_sf_r <- shiny::reactive({
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$id)) return(NULL)
+      df <- obs_pixel_data()
+      if (is.null(df) || !nrow(df)) return(NULL)
+      plots <- tryCatch(load_samples(proj$id, layer = "plots"),
+                        error = function(e) NULL)
+      if (is.null(plots) || !inherits(plots, "sf") || !nrow(plots)) {
+        return(NULL)
+      }
+      if (!"plot_id" %in% names(plots)) return(NULL)
+      plots <- plots[as.character(plots$plot_id) %in%
+                     unique(as.character(df$plot_id)), , drop = FALSE]
+      if (!nrow(plots)) return(NULL)
+      # Leaflet expects WGS84.
+      if ((sf::st_crs(plots)$epsg %||% 4326L) != 4326L) {
+        plots <- sf::st_transform(plots, 4326)
+      }
+      plots
+    })
+
+    # Markers swap. Same proxy pattern as the raster observe — clears
+    # the overlay group then re-adds. layerId = plot_id so the click
+    # handler downstream can identify which placette was tapped.
+    shiny::observe({
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearGroup(.placettes_overlay_group)
+      ps <- placettes_sf_r()
+      if (is.null(ps) || !nrow(ps)) return()
+      proxy |>
+        leaflet::addCircleMarkers(
+          data        = ps,
+          layerId     = ~as.character(plot_id),
+          group       = .placettes_overlay_group,
+          radius      = 5,
+          weight      = 2,
+          color       = "#000000",
+          fillColor   = "#1F77B4",
+          fillOpacity = 0.9,
+          label       = ~as.character(plot_id)
+        )
+    })
+
+    # Marker click handler: open a modal with the per-placette NDVI/NBR
+    # time series. Reuses obs_pixel_data() — the values are already the
+    # placette mean computed core-side, no re-aggregation needed.
+    shiny::observeEvent(input$map_marker_click, {
+      i18n <- i18n_r()
+      ev <- input$map_marker_click
+      pid <- as.character(ev$id %||% "")
+      if (!nzchar(pid)) return()
+      df <- obs_pixel_data()
+      if (is.null(df) || !nrow(df)) return()
+      sub <- df[as.character(df$plot_id) == pid, , drop = FALSE]
+      # Restrict to NDVI / NBR even if the user picked more bands —
+      # consistent with the pixel-click modal.
+      sub <- sub[as.character(sub$band) %in% c("NDVI", "NBR"), ,
+                 drop = FALSE]
+      if (!nrow(sub)) {
+        shiny::showNotification(
+          i18n$t("monitoring_pixel_map_no_placette_data"),
+          type = "warning", duration = 4
+        )
+        return()
+      }
+      band_colors <- c(NDVI = "#2CA02C", NBR = "#D62728")
+      p <- plotly::plot_ly(type = "scatter", mode = "lines+markers")
+      for (b in unique(sub$band)) {
+        bsub <- sub[sub$band == b, , drop = FALSE]
+        bsub <- bsub[order(bsub$obs_date), , drop = FALSE]
+        col  <- band_colors[b] %||% "#7F7F7F"
+        p <- plotly::add_trace(
+          p,
+          x      = as.Date(bsub$obs_date),
+          y      = as.numeric(bsub$value),
+          name   = b,
+          mode   = "lines+markers",
+          line   = list(color = unname(col), width = 1.5),
+          marker = list(color = unname(col), size = 5),
+          hovertemplate = paste0(
+            "<b>", b, "</b><br>",
+            "%{x|%Y-%m-%d}<br>",
+            b, " = %{y:.3f}<extra></extra>"
+          )
+        )
+      }
+      p <- plotly::layout(
+        p,
+        margin = list(t = 20, b = 40, l = 50, r = 10),
+        xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
+                      type = "date"),
+        yaxis  = list(title = i18n$t("monitoring_timeseries_yaxis"),
+                      range = c(-0.2, 1)),
+        legend = list(orientation = "h", y = -0.25)
+      )
+      shiny::showModal(shiny::modalDialog(
+        title = sprintf(
+          i18n$t("monitoring_pixel_map_placette_modal_title_fmt"),
+          pid
+        ),
+        size      = "l",
+        easyClose = TRUE,
+        plotly::plotlyOutput(session$ns("placette_ts_plot"),
+                             height = "320px"),
+        footer = shiny::modalButton(i18n$t("close"))
+      ))
+      output$placette_ts_plot <- plotly::renderPlotly(p)
     })
 
     # Click handler: extract the per-pixel time series at the clicked

@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-05-16
+
+### Added
+
+- **Suivi sanitaire / Carte pixel** : overlay placettes cliquable.
+  Les placettes du plan d'échantillonnage présentes dans la fenêtre
+  courante apparaissent comme marqueurs cercles sur la carte ; un
+  clic ouvre un modal plotly avec la série NDVI / NBR agrégée
+  placette pour ce `plot_id`. Cohabite avec le clic pixel existant
+  (`R/mod_monitoring_pixel_map.R`, `R/utils_i18n.R`).
+- Contrôle des couches Leaflet enrichi : cases à cocher « NDVI / NBR »
+  et « Placettes » permettent de masquer indépendamment chaque overlay.
+
 ## [0.28.5] - 2026-05-16
 
 ### Changed

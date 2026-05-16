@@ -1922,12 +1922,20 @@ TRANSLATIONS <- list(
     en = "Observation date"
   ),
   monitoring_pixel_map_click_hint = list(
-    fr = "Clique sur un pixel pour voir sa s\u00e9rie temporelle compl\u00e8te (NDVI + NBR superpos\u00e9s).",
-    en = "Click a pixel to display its full time series (NDVI + NBR overlaid)."
+    fr = "Clique sur un pixel pour voir sa s\u00e9rie compl\u00e8te (NDVI + NBR). Clique sur une placette pour la s\u00e9rie agr\u00e9g\u00e9e plot.",
+    en = "Click a pixel for its full series (NDVI + NBR). Click a plot marker for the placette-aggregated series."
   ),
   monitoring_pixel_map_modal_title_fmt = list(
     fr = "Pixel \u00e0 (lat: %.5f, lon: %.5f)",
     en = "Pixel at (lat: %.5f, lon: %.5f)"
+  ),
+  monitoring_pixel_map_placette_modal_title_fmt = list(
+    fr = "Placette %s \u2014 s\u00e9rie NDVI / NBR (moyenne plot)",
+    en = "Plot %s \u2014 NDVI / NBR series (plot mean)"
+  ),
+  monitoring_pixel_map_no_placette_data = list(
+    fr = "Pas de donn\u00e9es pour cette placette dans la fen\u00eatre courante.",
+    en = "No data for this plot in the current window."
   ),
   monitoring_pixel_map_no_cache = list(
     fr = "Pas de cache disque disponible. Lance une ingestion FAST pour peupler le cache COG.",
