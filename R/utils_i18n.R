@@ -2030,6 +2030,12 @@ TRANSLATIONS <- list(
   ),
 
   # Per-phase labels \u2014 current 1.x sequence (nemeton@v0.22.5)
+  # Phase 0 ingest (nemeton@v0.24.0): downloads missing S2 bands
+  # (B02/B05/B8A/B11) reusing FAST's cached B04/B12.
+  monitoring_fordead_phase_ingest = list(
+    fr = "T\u00e9l\u00e9chargement des bandes manquantes\u2026",
+    en = "Downloading missing bands\u2026"
+  ),
   monitoring_fordead_phase_vegetation_index = list(
     fr = "Indice de v\u00e9g\u00e9tation",
     en = "Vegetation index"
