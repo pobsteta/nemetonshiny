@@ -1,3 +1,30 @@
+# nemetonshiny 0.28.5 (2026-05-16)
+
+### chore(deps) — l'app suit désormais `nemeton@main` en continu
+
+L'épingle `Remotes: pobsteta/nemeton@v0.22.1` du `DESCRIPTION` est
+remplacée par `Remotes: pobsteta/nemeton@main`. Effet : les nouveaux
+installs `install_github("pobsteta/nemetonshiny")` récupèrent
+automatiquement le dernier commit `main` du cœur, sans qu'il soit
+nécessaire de publier une release app dédiée après chaque release
+cœur.
+
+Trade-offs assumés :
+
+- **Reproductibilité d'install dans le temps perdue** : `install_github("…@v0.28.5")`
+  fait dans 6 mois ne donnera plus le même état que le même appel fait
+  aujourd'hui, parce que `nemeton@main` aura bougé entre-temps. Pour
+  reproduire un état figé, utiliser `renv::snapshot()` côté projet
+  utilisateur.
+- **Une régression poussée sur `nemeton@main` casse l'install app**
+  jusqu'au revert/fix. Mitigation : pousser sur `nemeton@main`
+  uniquement avec CI verte côté cœur.
+
+Documentation associée mise à jour dans `CLAUDE.md` (section *Stack
+technique* + nouvelle section *Suivi de `nemeton@main` — implications
+pour les releases*). La section *Épingle Remotes vers nemeton* ajoutée
+en 0.28.3 est supprimée — devenue caduque avec ce changement.
+
 # nemetonshiny 0.28.4 (2026-05-15)
 
 ### Suivi sanitaire — Carte pixel : couche NDVI/NBR perdue au switch de fond
