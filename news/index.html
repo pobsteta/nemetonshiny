@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,33 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.31.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.31.3" id="nemetonshiny-0313-2026-05-16">nemetonshiny 0.31.3 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0313-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-pixel--auto-zoom-au-chargement-projet-vraiment-réparé-0-31-3">Fixed — Carte pixel : auto-zoom au chargement projet <strong>vraiment</strong> réparé<a class="anchor" aria-label="anchor" href="#fixed--carte-pixel--auto-zoom-au-chargement-projet-vraiment-r%C3%A9par%C3%A9-0-31-3"></a></h4>
+<p>Symptôme : malgré les correctifs v0.29.1, v0.30.0 et v0.31.0, la Carte pixel s’ouvrait toujours sur la vue Leaflet par défaut (monde entier) au chargement projet, avec un seul pixel rouge en plein milieu de la France pour marquer l’emprise du raster.</p>
+<p>Diagnostic : ma reactive auto-zoom était fonctionnellement correcte mais fire <strong>avant que le widget Leaflet ne soit dans le DOM</strong> dans le flow réel utilisateur :</p>
+<ol style="list-style-type: decimal"><li>L’utilisateur charge un projet (depuis l’onglet Sélection ou Accueil).</li>
+<li>Toutes mes reactives du module pixel_map fire (current_project change) → <code>leafletProxy("map") |&gt; fitBounds(...)</code> envoyé.</li>
+<li>Mais l’utilisateur n’est pas (encore) sur Carte pixel. Le widget Leaflet n’a pas été rendu côté client.</li>
+<li>Les commandes <code>leafletProxy</code> se queue, et sont rejouées quand le widget initialise.</li>
+<li>
+<strong>Mais</strong> <code>fitBounds</code> est silencieusement ignoré par Leaflet quand le container a une taille 0×0 (ce qui est le cas à l’instant T=0 du widget). Résultat : vue monde par défaut.</li>
+</ol><p>Correctif (<code>R/mod_monitoring_pixel_map.R</code>) : pattern emprunté à <code>mod_ug.R:744-794</code> qui résolvait déjà ce souci pour la Carte UGF :</p>
+<ul><li>Observer la navigation via <code>session$userData$root_session$input$main_nav</code>
+<ul><li>
+<code>monitoring-subtab</code> — l’observe ne fire <strong>que</strong> quand l’utilisateur regarde effectivement la Carte pixel (sous-onglet actif).</li>
+</ul></li>
+<li>
+<code>later::later(0.3s)</code> pour laisser le DOM se construire.</li>
+<li>Custom message <code>leafletInvalidateSize</code> (handler JS dans <code>inst/app/www/js/custom.js:169</code>) pour que Leaflet re-mesure son container, puis <code>fitBounds</code> via <code>leafletProxy</code>.</li>
+</ul><p>Le guard <code>.last_fitted_id</code> de v0.31.0 est retiré : l’observe est naturellement throttlée par la visibilité (un re-fit par visite de sous-onglet est désirable pour gérer les resize de fenêtre ou les multi-écrans).</p>
+<p>Mid-session le user peut maintenant naviguer entre Alertes ↔︎ Carte pixel sans perdre le centrage — chaque retour sur Carte pixel recadre proprement sur les UGFs.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.31.2" id="nemetonshiny-0312-2026-05-16">nemetonshiny 0.31.2 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0312-2026-05-16"></a></h2>
 <div class="section level4">

@@ -1,5 +1,51 @@
 # Changelog
 
+## nemetonshiny 0.31.3 (2026-05-16)
+
+#### Fixed — Carte pixel : auto-zoom au chargement projet **vraiment** réparé
+
+Symptôme : malgré les correctifs v0.29.1, v0.30.0 et v0.31.0, la Carte
+pixel s’ouvrait toujours sur la vue Leaflet par défaut (monde entier) au
+chargement projet, avec un seul pixel rouge en plein milieu de la France
+pour marquer l’emprise du raster.
+
+Diagnostic : ma reactive auto-zoom était fonctionnellement correcte mais
+fire **avant que le widget Leaflet ne soit dans le DOM** dans le flow
+réel utilisateur :
+
+1.  L’utilisateur charge un projet (depuis l’onglet Sélection ou
+    Accueil).
+2.  Toutes mes reactives du module pixel_map fire (current_project
+    change) → `leafletProxy("map") |> fitBounds(...)` envoyé.
+3.  Mais l’utilisateur n’est pas (encore) sur Carte pixel. Le widget
+    Leaflet n’a pas été rendu côté client.
+4.  Les commandes `leafletProxy` se queue, et sont rejouées quand le
+    widget initialise.
+5.  **Mais** `fitBounds` est silencieusement ignoré par Leaflet quand le
+    container a une taille 0×0 (ce qui est le cas à l’instant T=0 du
+    widget). Résultat : vue monde par défaut.
+
+Correctif (`R/mod_monitoring_pixel_map.R`) : pattern emprunté à
+`mod_ug.R:744-794` qui résolvait déjà ce souci pour la Carte UGF :
+
+- Observer la navigation via
+  `session$userData$root_session$input$main_nav`
+  - `monitoring-subtab` — l’observe ne fire **que** quand l’utilisateur
+    regarde effectivement la Carte pixel (sous-onglet actif).
+- `later::later(0.3s)` pour laisser le DOM se construire.
+- Custom message `leafletInvalidateSize` (handler JS dans
+  `inst/app/www/js/custom.js:169`) pour que Leaflet re-mesure son
+  container, puis `fitBounds` via `leafletProxy`.
+
+Le guard `.last_fitted_id` de v0.31.0 est retiré : l’observe est
+naturellement throttlée par la visibilité (un re-fit par visite de
+sous-onglet est désirable pour gérer les resize de fenêtre ou les
+multi-écrans).
+
+Mid-session le user peut maintenant naviguer entre Alertes ↔︎ Carte pixel
+sans perdre le centrage — chaque retour sur Carte pixel recadre
+proprement sur les UGFs.
+
 ## nemetonshiny 0.31.2 (2026-05-16)
 
 #### Fixed — Carte pixel : contour UGF désormais visible (problème de z-order)
