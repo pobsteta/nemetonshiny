@@ -10,6 +10,33 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-05-16
+
+### Removed (BREAKING)
+
+- **Suivi sanitaire** : sous-onglet « Séries par placette » retiré.
+  La vue multi-traces NDVI/NBR par placette (mode rapide) est
+  remplacée par le clic sur marqueur placette de la Carte pixel.
+  Le graphique de distribution d'alertes (mode sanitaire) qui
+  partageait le même output disparaît également — à ré-ajouter à
+  l'onglet Alertes si besoin (`R/mod_monitoring.R`,
+  `R/utils_i18n.R`).
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : le contour UGF n'apparaissait
+  pas et l'auto-zoom au chargement projet ne marchait pas pour les
+  projets sans indicateurs calculés. `ugf_sf_r` tombe désormais
+  sur `ug_build_sf(project)` quand `indicators_sf` est NULL — la
+  géométrie UGF est disponible dès que l'utilisateur a défini ses
+  UGFs (`R/mod_monitoring_pixel_map.R`).
+- **Suivi sanitaire / Carte pixel** : cliquer un marqueur placette
+  empilait le modal pixel sur le modal placette à cause de la
+  propagation des clics `CircleMarker` (Leaflet Path) vers
+  `map_click`. Flag horodaté `marker_just_clicked` posé par le
+  handler marker, vérifié par le handler pixel avec un seuil de
+  500 ms (`R/mod_monitoring_pixel_map.R`).
+
 ## [0.30.2] - 2026-05-16
 
 ### Fixed

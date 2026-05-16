@@ -1,3 +1,51 @@
+# nemetonshiny 0.31.0 (2026-05-16)
+
+### Breaking — suppression de l'onglet « Séries par placette »
+
+L'onglet **Séries par placette** est retiré du sous-onglet Suivi
+sanitaire. La vue multi-traces NDVI/NBR par placette (mode rapide)
+est désormais accessible **spatialement** : un clic sur un marqueur
+placette de la **Carte pixel** ouvre un modal avec la série agrégée
+plot pour cette placette unique.
+
+Note de régression pour les utilisateurs en mode sanitaire (FORDEAD) :
+le graphique en barres de distribution des classes de confiance
+d'alertes vivait dans le même output que les séries par placette et
+disparaît avec lui. Si ce graphique est utile pour ton workflow,
+ouvre un ticket et on l'ajoutera à l'onglet Alertes en patch.
+
+### Fixed — Carte pixel : contour UGF désormais affiché et zoom à l'ouverture
+
+Le contour UGF orange n'apparaissait pas et l'auto-zoom au chargement
+projet ne marchait pas, parce que la reactive `ugf_sf_r` ne
+consommait que `current_project$indicators_sf` — un champ qui n'est
+construit par `service_project.R::load_project` **qu'après** le
+calcul des indicateurs. Les projets avec UGFs définies mais
+indicateurs non calculés retournaient NULL.
+
+Correctif (`R/mod_monitoring_pixel_map.R`) : `ugf_sf_r` tente
+d'abord `indicators_sf`, puis tombe sur `ug_build_sf(project)` qui
+construit la sf POLYGON UGF directement depuis `ugs.json` +
+`tenements` — disponible dès que l'utilisateur a défini ses UGFs
+dans l'onglet UG. L'auto-zoom hérite automatiquement du fix puisque
+les deux observers consomment la même `ugf_sf_r()`.
+
+### Fixed — Carte pixel : plus de double modal au clic placette
+
+Cliquer un marqueur placette ouvrait le modal placette puis
+empilait immédiatement le modal pixel par-dessus. Cause : les
+`L.CircleMarker` Leaflet sont des `Path`, et leur événement click
+remonte naturellement à `map_click`. Les deux observers
+(`input$map_marker_click` et `input$map_click`) firaient sur le
+même tap.
+
+Correctif (`R/mod_monitoring_pixel_map.R`) : pattern flag horodaté.
+Le handler marker pose `Sys.time()` dans un `reactiveVal`
+`marker_just_clicked`. Le handler pixel vérifie le delta au début
+de son exécution et bail si < 500 ms (largement sous toute cadence
+de double-clic plausible, suffisant pour attraper la propagation
+synchrone d'un tap unique).
+
 # nemetonshiny 0.30.2 (2026-05-16)
 
 ### Fixed — Suivi sanitaire / Carte pixel : couches UGF, NDVI/NBR et Placettes invisibles
