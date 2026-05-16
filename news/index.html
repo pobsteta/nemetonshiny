@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.32.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,48 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.31.5/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.32.0" id="nemetonshiny-0320-2026-05-16">nemetonshiny 0.32.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0320-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="added--toasts-de-progression-fordead-en-bas-à-droite-0-32-0">Added — Toasts de progression FORDEAD en bas à droite<a class="anchor" aria-label="anchor" href="#added--toasts-de-progression-fordead-en-bas-%C3%A0-droite-0-32-0"></a></h4>
+<p>L’utilisateur voulait suivre l’avancée du pipeline FORDEAD pendant le diagnostic (10-30 min selon la taille de zone). Le worker <code><a href="https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html" class="external-link">nemeton::run_fordead_dieback()</a></code> émet déjà tous les événements nécessaires depuis <code>v0.22.5</code> via son <code>progress_callback</code>. L’app les reçoit via la <code>reactivePoll</code> sur le fichier JSON de progression et les route désormais vers des toasts Shiny positionnés en <strong>bas-droite</strong> :</p>
+<table style="width:100%;" class="table"><colgroup><col width="18%"><col width="63%"><col width="8%"><col width="9%"></colgroup><thead><tr><th>Événement cœur</th>
+<th>Toast app</th>
+<th>Type</th>
+<th>Durée</th>
+</tr></thead><tbody><tr><td><code>fordead:start</code></td>
+<td>(silencieux — le bouton « Lancer » désactivé suffit)</td>
+<td>—</td>
+<td>—</td>
+</tr><tr><td><code>fordead:phase</code></td>
+<td>« Phase 3/7 — Indice de végétation »</td>
+<td>message</td>
+<td>persistant</td>
+</tr><tr><td><code>fordead:phase_done</code></td>
+<td>« ✓ Indice de végétation »</td>
+<td>default</td>
+<td>1.5 s</td>
+</tr><tr><td><code>fordead:complete</code></td>
+<td>« FORDEAD terminé · 42 alertes · 142.3s »</td>
+<td>message</td>
+<td>8 s</td>
+</tr><tr><td><code>fordead:error</code></td>
+<td>« FORDEAD échec en train_model : Python OOM »</td>
+<td>error</td>
+<td>persistant (fermeture user)</td>
+</tr></tbody></table><p><strong>Design générique</strong> — pas de <code><a href="https://rdrr.io/r/base/switch.html" class="external-link">switch()</a></code> hardcodé sur <code>phase_name</code>. La fonction <code>.fordead_phase_label(phase_name, i18n)</code> cherche d’abord la clé <code>monitoring_fordead_phase_&lt;name&gt;</code> ; si absente, retombe sur une version Title-Case humanisée du nom brut (<code>future_unknown_phase</code> → « Future Unknown Phase »). Conséquence : quand <code>nemeton@v0.23.0</code> shippera sa nouvelle séquence de phases (STAC-based, 4-5 noms différents type <code>stac_assembly</code>, <code>fit</code>, <code>predict</code>), l’app les affichera <strong>sans nécessiter de release</strong> — les libellés propres suivront en patch.</p>
+<p><strong>Positionnement bas-droite</strong> via override CSS de <code>#shiny-notification-panel</code> dans <code>inst/app/www/css/custom.css</code> + <code>custom.min.css</code>. S’applique à toutes les notifications de l’app (s2:* ingestion, fordead:*, validations), pas seulement FORDEAD.</p>
+<p><strong>Nouvelles clés i18n</strong> (FR/EN) :</p>
+<ul><li>Templates : <code>monitoring_fordead_phase_progress</code>, <code>monitoring_fordead_phase_done</code>, <code>monitoring_fordead_complete</code>, <code>monitoring_fordead_error</code> (glue-style <code>{n}</code>/<code>{label}</code> consommé par <code>i18n$t(key, name = value)</code>).</li>
+<li>Per-phase 1.x : <code>vegetation_index</code>, <code>train_model</code>, <code>forest_mask</code>, <code>dieback_detection</code>, <code>export_results</code>, <code>postprocess</code>, <code>persist</code>.</li>
+<li>Per-phase 2.x anticipées : <code>stac_assembly</code>, <code>fit</code>, <code>predict</code>.</li>
+</ul><p><strong>Refactoring testable</strong> : l’observe a été simplifiée pour déléguer à <code>.fordead_handle_progress_event(ev, session, i18n)</code>, helper pur testable hors session Shiny. Trois tests de régression (<code>fordead:phase</code> avec libellé i18n, <code>fordead:start</code> silencieux, et le fallback humanisé sur phase inconnue) verrouillent le contrat.</p>
+<p><strong>Floor d’API</strong> : <code>Imports: nemeton (&gt;= 0.22.5)</code> — installs antérieurs émettront une erreur explicite plutôt qu’un silence sur les nouvelles clés d’event.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.31.5" id="nemetonshiny-0315-2026-05-16">nemetonshiny 0.31.5 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0315-2026-05-16"></a></h2>
 <div class="section level4">

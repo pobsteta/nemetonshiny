@@ -1,5 +1,61 @@
 # Changelog
 
+## nemetonshiny 0.32.0 (2026-05-16)
+
+#### Added — Toasts de progression FORDEAD en bas à droite
+
+L’utilisateur voulait suivre l’avancée du pipeline FORDEAD pendant le
+diagnostic (10-30 min selon la taille de zone). Le worker
+[`nemeton::run_fordead_dieback()`](https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html)
+émet déjà tous les événements nécessaires depuis `v0.22.5` via son
+`progress_callback`. L’app les reçoit via la `reactivePoll` sur le
+fichier JSON de progression et les route désormais vers des toasts Shiny
+positionnés en **bas-droite** :
+
+| Événement cœur | Toast app | Type | Durée |
+|----|----|----|----|
+| `fordead:start` | (silencieux — le bouton « Lancer » désactivé suffit) | — | — |
+| `fordead:phase` | « Phase 3/7 — Indice de végétation » | message | persistant |
+| `fordead:phase_done` | « ✓ Indice de végétation » | default | 1.5 s |
+| `fordead:complete` | « FORDEAD terminé · 42 alertes · 142.3s » | message | 8 s |
+| `fordead:error` | « FORDEAD échec en train_model : Python OOM » | error | persistant (fermeture user) |
+
+**Design générique** — pas de
+[`switch()`](https://rdrr.io/r/base/switch.html) hardcodé sur
+`phase_name`. La fonction `.fordead_phase_label(phase_name, i18n)`
+cherche d’abord la clé `monitoring_fordead_phase_<name>` ; si absente,
+retombe sur une version Title-Case humanisée du nom brut
+(`future_unknown_phase` → « Future Unknown Phase »). Conséquence : quand
+`nemeton@v0.23.0` shippera sa nouvelle séquence de phases (STAC-based,
+4-5 noms différents type `stac_assembly`, `fit`, `predict`), l’app les
+affichera **sans nécessiter de release** — les libellés propres suivront
+en patch.
+
+**Positionnement bas-droite** via override CSS de
+`#shiny-notification-panel` dans `inst/app/www/css/custom.css` +
+`custom.min.css`. S’applique à toutes les notifications de l’app (s2:\*
+ingestion, fordead:\*, validations), pas seulement FORDEAD.
+
+**Nouvelles clés i18n** (FR/EN) :
+
+- Templates : `monitoring_fordead_phase_progress`,
+  `monitoring_fordead_phase_done`, `monitoring_fordead_complete`,
+  `monitoring_fordead_error` (glue-style `{n}`/`{label}` consommé par
+  `i18n$t(key, name = value)`).
+- Per-phase 1.x : `vegetation_index`, `train_model`, `forest_mask`,
+  `dieback_detection`, `export_results`, `postprocess`, `persist`.
+- Per-phase 2.x anticipées : `stac_assembly`, `fit`, `predict`.
+
+**Refactoring testable** : l’observe a été simplifiée pour déléguer à
+`.fordead_handle_progress_event(ev, session, i18n)`, helper pur testable
+hors session Shiny. Trois tests de régression (`fordead:phase` avec
+libellé i18n, `fordead:start` silencieux, et le fallback humanisé sur
+phase inconnue) verrouillent le contrat.
+
+**Floor d’API** : `Imports: nemeton (>= 0.22.5)` — installs antérieurs
+émettront une erreur explicite plutôt qu’un silence sur les nouvelles
+clés d’event.
+
 ## nemetonshiny 0.31.5 (2026-05-16)
 
 #### Fixed — Carte pixel : raster NDVI/NBR visible sur fond Satellite
