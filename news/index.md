@@ -1,5 +1,55 @@
 # Changelog
 
+## nemetonshiny 0.30.2 (2026-05-16)
+
+#### Fixed — Suivi sanitaire / Carte pixel : couches UGF, NDVI/NBR et Placettes invisibles
+
+Sur la sous-onglet **Carte pixel**, malgré les trois cases à cocher «
+UGF », « NDVI / NBR », « Placettes » présentes et cochées par défaut
+dans le contrôle Leaflet, aucune des trois couches n’apparaissait
+visuellement sur la carte. Symptôme particulièrement visible sur le fond
+Satellite, où ni le contour UGF orange, ni les marqueurs placettes
+bleus, ni le raster d’indice n’étaient perceptibles.
+
+Cause :
+`addLayersControl(overlayGroups = c("UGF", "NDVI / NBR", "Placettes"))`
+était posé en `renderLeaflet` **avant** que les couches correspondantes
+ne soient ajoutées via `leafletProxy()` depuis les observes (qui
+dépendent de données async : raster cache, samples.gpkg,
+`current_project`). Côté JS, `L.Control.Layers` créait ses cases à
+cocher avec des références de couches indéfinies ; quand les couches
+arrivaient ensuite via le proxy, le contrôle ne les rattachait pas
+toujours à ses checkboxes — résultat « cases cochées mais couches
+invisibles ».
+
+La carte alerts du même module évite ce piège en n’utilisant pas
+`overlayGroups` (ses markers sont ajoutés synchronement dans le même
+chain `renderLeaflet`, donc le contrôle les voit à la construction). On
+peut pas suivre ce pattern ici parce que nos overlays dépendent de
+réactives async — on adopte donc la solution plus simple : retirer
+`overlayGroups` de `addLayersControl`. Les couches sont désormais
+**toujours visibles** (plus de checkbox individuelle pour les masquer),
+mais elles s’affichent de manière fiable. Le toggle de fond de carte
+(OSM / Satellite) continue de fonctionner via `baseGroups`.
+
+Polish associé pour rattraper le déficit de visibilité historique :
+
+- Contour UGF : `weight` 2 → 3, `opacity` 0.9 → 1.0.
+- Marqueurs placettes : `radius` 5 → 7.
+
+Diagnostic ajouté :
+[`cli::cli_alert_info()`](https://cli.r-lib.org/reference/cli_alert.html)
+sur chaque fire des reactives UGF, placettes et auto-zoom — pour qu’un
+développeur puisse, depuis le terminal, distinguer « la réactive renvoie
+NULL » de « la réactive appelle bien `addX()` mais Leaflet ne rend rien
+» si le problème ressurgit dans une autre configuration.
+
+Tirage historique : la tentative `overlayGroups` introduite en v0.28.4
+(« layer NDVI/NBR disparaît au switch de fond ») n’a jamais réellement
+résolu le problème — elle masquait juste un autre symptôme dans certains
+cas. La règle pratique pour ce module : **pas d’overlay groups dans
+`addLayersControl` quand les overlays sont ajoutés via `leafletProxy`**.
+
 ## nemetonshiny 0.30.1 (2026-05-16)
 
 #### Changed — inversion de la sémantique de la checkbox « Cache COG »

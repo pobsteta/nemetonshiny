@@ -12,6 +12,27 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.30.2\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : les trois couches d’overlay (UGF,
+  NDVI / NBR, Placettes) n’apparaissaient pas malgré leurs cases cochées
+  dans le contrôle Leaflet. Cause : `overlayGroups` dans
+  `addLayersControl` posait des cases pré-renderLeaflet alors que les
+  couches arrivaient via `leafletProxy` async ; les références de
+  couches restaient indéfinies côté JS. Drop de `overlayGroups`,
+  overlays toujours visibles (`R/mod_monitoring_pixel_map.R`).
+
+### Changed
+
+- Contour UGF : épaisseur 2 → 3, opacité 0.9 → 1.0.
+- Marqueurs placettes : rayon 5 → 7.
+- Logs
+  [`cli::cli_alert_info()`](https://cli.r-lib.org/reference/cli_alert.html)
+  ajoutés sur les reactives UGF, placettes et auto-zoom pour diagnostic
+  terminal.
+
 ## \[0.30.1\] - 2026-05-16
 
 ### Changed

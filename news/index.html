@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.30.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.30.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,23 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.30.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.30.2" id="nemetonshiny-0302-2026-05-16">nemetonshiny 0.30.2 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0302-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--suivi-sanitaire--carte-pixel--couches-ugf-ndvinbr-et-placettes-invisibles-0-30-2">Fixed — Suivi sanitaire / Carte pixel : couches UGF, NDVI/NBR et Placettes invisibles<a class="anchor" aria-label="anchor" href="#fixed--suivi-sanitaire--carte-pixel--couches-ugf-ndvinbr-et-placettes-invisibles-0-30-2"></a></h4>
+<p>Sur la sous-onglet <strong>Carte pixel</strong>, malgré les trois cases à cocher « UGF », « NDVI / NBR », « Placettes » présentes et cochées par défaut dans le contrôle Leaflet, aucune des trois couches n’apparaissait visuellement sur la carte. Symptôme particulièrement visible sur le fond Satellite, où ni le contour UGF orange, ni les marqueurs placettes bleus, ni le raster d’indice n’étaient perceptibles.</p>
+<p>Cause : <code>addLayersControl(overlayGroups = c("UGF", "NDVI / NBR", "Placettes"))</code> était posé en <code>renderLeaflet</code> <strong>avant</strong> que les couches correspondantes ne soient ajoutées via <code>leafletProxy()</code> depuis les observes (qui dépendent de données async : raster cache, samples.gpkg, <code>current_project</code>). Côté JS, <code>L.Control.Layers</code> créait ses cases à cocher avec des références de couches indéfinies ; quand les couches arrivaient ensuite via le proxy, le contrôle ne les rattachait pas toujours à ses checkboxes — résultat « cases cochées mais couches invisibles ».</p>
+<p>La carte alerts du même module évite ce piège en n’utilisant pas <code>overlayGroups</code> (ses markers sont ajoutés synchronement dans le même chain <code>renderLeaflet</code>, donc le contrôle les voit à la construction). On peut pas suivre ce pattern ici parce que nos overlays dépendent de réactives async — on adopte donc la solution plus simple : retirer <code>overlayGroups</code> de <code>addLayersControl</code>. Les couches sont désormais <strong>toujours visibles</strong> (plus de checkbox individuelle pour les masquer), mais elles s’affichent de manière fiable. Le toggle de fond de carte (OSM / Satellite) continue de fonctionner via <code>baseGroups</code>.</p>
+<p>Polish associé pour rattraper le déficit de visibilité historique :</p>
+<ul><li>Contour UGF : <code>weight</code> 2 → 3, <code>opacity</code> 0.9 → 1.0.</li>
+<li>Marqueurs placettes : <code>radius</code> 5 → 7.</li>
+</ul><p>Diagnostic ajouté : <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info()</a></code> sur chaque fire des reactives UGF, placettes et auto-zoom — pour qu’un développeur puisse, depuis le terminal, distinguer « la réactive renvoie NULL » de « la réactive appelle bien <code>addX()</code> mais Leaflet ne rend rien » si le problème ressurgit dans une autre configuration.</p>
+<p>Tirage historique : la tentative <code>overlayGroups</code> introduite en v0.28.4 (« layer NDVI/NBR disparaît au switch de fond ») n’a jamais réellement résolu le problème — elle masquait juste un autre symptôme dans certains cas. La règle pratique pour ce module : <strong>pas d’overlay groups dans <code>addLayersControl</code> quand les overlays sont ajoutés via <code>leafletProxy</code></strong>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.30.1" id="nemetonshiny-0301-2026-05-16">nemetonshiny 0.30.1 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0301-2026-05-16"></a></h2>
 <div class="section level4">
