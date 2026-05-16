@@ -1861,22 +1861,6 @@ TRANSLATIONS <- list(
     fr = "S\u00e9rie temporelle NDVI / NBR",
     en = "NDVI / NBR time series"
   ),
-  monitoring_timeseries_placeholder = list(
-    fr = "Le graphique des indices appara\u00eetra apr\u00e8s le premier t\u00e9l\u00e9chargement.",
-    en = "The time series will appear after the first download."
-  ),
-  monitoring_timeseries_select_plots = list(
-    fr = "Placettes \u00e0 afficher",
-    en = "Plots to display"
-  ),
-  monitoring_timeseries_select_plots_help = list(
-    fr = "Vide = toutes les placettes de la zone.",
-    en = "Empty = all plots in the zone."
-  ),
-  monitoring_timeseries_no_plot_selected = list(
-    fr = "Aucune placette s\u00e9lectionn\u00e9e \u2014 cochez-en au moins une.",
-    en = "No plot selected \u2014 pick at least one."
-  ),
   monitoring_timeseries_no_data = list(
     fr = "Aucune observation pour les filtres courants. Lancez une ingestion ou \u00e9largissez la fen\u00eatre.",
     en = "No observations for the current filters. Run an ingestion or widen the window."
@@ -1898,10 +1882,6 @@ TRANSLATIONS <- list(
   monitoring_subtab_alerts = list(
     fr = "Alertes",
     en = "Alerts"
-  ),
-  monitoring_subtab_per_plot = list(
-    fr = "S\u00e9ries par placette",
-    en = "Per-plot series"
   ),
   monitoring_subtab_pixel_map = list(
     fr = "Carte pixel",

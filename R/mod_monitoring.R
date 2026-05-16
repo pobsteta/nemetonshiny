@@ -253,36 +253,13 @@ mod_monitoring_ui <- function(id) {
             shiny::uiOutput(ns("qgis_panel"))
           )
         ),
-        # ----- Sub-tab 2 — Per-plot time series ----------------------
-        bslib::nav_panel(
-          title = i18n$t("monitoring_subtab_per_plot"),
-          value = "per_plot",
-          icon  = bsicons::bs_icon("graph-up"),
-          # Plot picker: only relevant in quick mode. In health mode
-          # the plotly shows an alert-distribution bar chart that
-          # doesn't depend on a per-plot selection.
-          shiny::conditionalPanel(
-            condition = sprintf("input['%s'] == 'quick'", ns("mode")),
-            htmltools::div(
-              class = "px-3 pt-2",
-              shiny::selectizeInput(
-                ns("plot_filter"),
-                i18n$t("monitoring_timeseries_select_plots"),
-                choices  = NULL,
-                selected = NULL,
-                multiple = TRUE,
-                width    = "100%",
-                options  = list(plugins = list("remove_button"))
-              ),
-              shiny::helpText(
-                class = "small text-muted",
-                i18n$t("monitoring_timeseries_select_plots_help")
-              )
-            )
-          ),
-          plotly::plotlyOutput(ns("timeseries"), height = "320px")
-        ),
-        # ----- Sub-tab 3 — Pixel map (spec 010, NEW v0.28.0) ---------
+        # Sub-tab "Per-plot time series" removed in v0.31.0: in quick
+        # mode the multi-trace placette plotly is now reachable
+        # spatially by clicking a placette marker on the Carte pixel
+        # sub-tab. In health mode the alert-distribution bar chart it
+        # used to host is dropped along with it (see release notes —
+        # add back to the Alerts sub-tab if users miss it).
+        # ----- Sub-tab — Pixel map (spec 010) ------------------------
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_pixel_map"),
           value = "pixel_map",
@@ -655,142 +632,11 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # Refresh the plot picker whenever the underlying obs_pixel set
-    # changes. We pre-select every plot the first time data appears
-    # (so the user sees something) but preserve their selection on
-    # subsequent refreshes if it's still a subset of available plots.
-    shiny::observeEvent(obs_pixel_data(), {
-      df <- obs_pixel_data()
-      if (is.null(df) || !nrow(df)) {
-        shiny::updateSelectizeInput(session, "plot_filter",
-                                    choices = character(0),
-                                    selected = character(0))
-        return()
-      }
-      plots_avail <- sort(unique(df$plot_id))
-      cur_sel <- input$plot_filter
-      if (length(cur_sel) && all(cur_sel %in% plots_avail)) {
-        new_sel <- cur_sel
-      } else {
-        new_sel <- plots_avail
-      }
-      shiny::updateSelectizeInput(session, "plot_filter",
-                                  choices  = plots_avail,
-                                  selected = new_sel,
-                                  server   = FALSE)
-    }, ignoreNULL = FALSE)
-
-    # ----- Time series plotly (T6app.10 — phase 3 wired) ------------
-    # Mode rapide : NDVI/NBR per-plot via nemeton::read_obs_pixel.
-    #   * x = obs_date, y = value
-    #   * one trace per (plot_id, band) — color by band, name shows
-    #     "<plot> · <band>" so a busy zone stays readable in legend
-    # Mode sanitaire : alerts distribution per class (informative
-    # without requiring per-pixel harmonic-model data, which is not
-    # returned by run_fordead_dieback).
-    output$timeseries <- plotly::renderPlotly({
-      i18n <- i18n_r()
-      empty <- function(msg) {
-        plotly::plot_ly(type = "scatter", mode = "lines") |>
-          plotly::layout(
-            annotations = list(list(
-              text      = msg,
-              xref      = "paper", yref = "paper",
-              x = 0.5, y = 0.5, showarrow = FALSE,
-              font      = list(color = "#888")
-            )),
-            xaxis = list(visible = FALSE),
-            yaxis = list(visible = FALSE)
-          )
-      }
-
-      if (identical(input$mode, "quick")) {
-        df <- obs_pixel_data()
-        if (is.null(df) || !nrow(df)) {
-          return(empty(i18n$t("monitoring_timeseries_placeholder")))
-        }
-        sel <- input$plot_filter
-        if (length(sel)) df <- df[df$plot_id %in% sel, , drop = FALSE]
-        if (!nrow(df)) {
-          return(empty(i18n$t("monitoring_timeseries_no_plot_selected")))
-        }
-
-        # Stable color map per band — same palette in legend regardless
-        # of which bands the user picked at run time.
-        band_colors <- c(
-          NDVI = "#2CA02C",   # green
-          NBR  = "#D62728",   # red
-          NDWI = "#1F77B4",   # blue
-          B04  = "#9467BD",
-          B08  = "#8C564B",
-          B12  = "#E377C2"
-        )
-
-        df <- df[order(df$plot_id, df$band, df$obs_date), , drop = FALSE]
-        df$trace_key <- paste(df$plot_id, df$band, sep = " · ")
-
-        p <- plotly::plot_ly(type = "scatter", mode = "lines+markers")
-        for (k in unique(df$trace_key)) {
-          sub <- df[df$trace_key == k, , drop = FALSE]
-          band <- sub$band[1]
-          col  <- band_colors[band]
-          if (is.na(col)) col <- "#7F7F7F"
-          p <- plotly::add_trace(
-            p,
-            x      = sub$obs_date,
-            y      = sub$value,
-            name   = k,
-            mode   = "lines+markers",
-            line   = list(color = unname(col), width = 1.5),
-            marker = list(color = unname(col), size = 5),
-            legendgroup = band,
-            hovertemplate = paste0(
-              "<b>", htmltools::htmlEscape(k), "</b><br>",
-              "%{x|%Y-%m-%d}<br>",
-              band, " = %{y:.3f}<extra></extra>"
-            )
-          )
-        }
-        return(plotly::layout(
-          p,
-          margin = list(t = 20, b = 40, l = 50, r = 10),
-          xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
-                        type = "date"),
-          yaxis  = list(title = i18n$t("monitoring_timeseries_yaxis")),
-          legend = list(orientation = "h", y = -0.25)
-        ))
-      }
-
-      if (!identical(input$mode, "health")) {
-        return(empty(i18n$t("monitoring_timeseries_placeholder")))
-      }
-      a <- alerts()
-      if (is.null(a) || !nrow(a)) {
-        return(empty(i18n$t("monitoring_timeseries_placeholder")))
-      }
-
-      counts <- table(factor(a$confidence_class,
-                             levels = c("1-faible", "2-moyenne",
-                                        "3-forte",  "4-sol-nu")))
-      labels <- c(
-        "1-faible"  = i18n$t("monitoring_class_1"),
-        "2-moyenne" = i18n$t("monitoring_class_2"),
-        "3-forte"   = i18n$t("monitoring_class_3"),
-        "4-sol-nu"  = i18n$t("monitoring_class_4")
-      )
-      bar_colors <- c("#FFD27F", "#FF9933", "#D62728", "#222222")
-      plotly::plot_ly(
-        x = unname(labels[names(counts)]),
-        y = as.integer(counts),
-        type = "bar",
-        marker = list(color = bar_colors)
-      ) |>
-        plotly::layout(
-          margin = list(t = 20, b = 40, l = 40, r = 10),
-          yaxis = list(title = "n alertes"),
-          xaxis = list(title = "")
-        )
-    })
+    # Per-plot plotly removed in v0.31.0: the multi-trace placette
+    # view (quick mode) is replaced by per-marker click on Carte pixel.
+    # The health-mode bar chart that shared this output is dropped
+    # along with it — if users need the alert-class distribution back,
+    # add it to the Alerts sub-tab in a follow-up.
 
     # ----- QGIS sanitaire panel (T6app.12) --------------------------
     output$qgis_panel <- shiny::renderUI({

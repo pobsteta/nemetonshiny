@@ -882,13 +882,18 @@ test_that("auto-select pre-selects the zone matching project metadata$monitoring
 })
 
 
-# ---- Server: phase 3 — obs_pixel reactive + plot_filter sync --------
-# E6.b phase 3 wires the time series plotly to nemeton::read_obs_pixel().
-# We can't reach into a `reactive({...})` defined inside moduleServer()
-# from the outside, so the tests below assert the *side effects* we
-# care about: how many times nemeton::read_obs_pixel was called, with
-# which arguments, and whether the plot_filter selectizeInput got
-# refreshed when obs data appears.
+# ---- Server: phase 3 — obs_pixel reactive --------------------------
+# E6.b phase 3 wires the obs_pixel reactive (consumed by the Carte
+# pixel sub-tab and its placette marker overlay) to
+# nemeton::read_obs_pixel(). We can't reach into a `reactive({...})`
+# defined inside moduleServer() from the outside, so the tests below
+# assert the *side effects* we care about: how many times
+# nemeton::read_obs_pixel was called, and with which arguments.
+#
+# The plot_filter selectizeInput refresh assertions that used to live
+# here were dropped in v0.31.0 along with the "Séries par placette"
+# sub-tab — the multi-trace placette view is now reachable spatially
+# via the Carte pixel marker click.
 
 .skip_if_no_read_obs_pixel <- function() {
   testthat::skip_if_not_installed("nemeton")
@@ -940,7 +945,7 @@ test_that("obs_pixel reactive does not fire in health mode", {
   )
 })
 
-test_that("obs_pixel reactive forwards filters to read_obs_pixel and refreshes plot_filter", {
+test_that("obs_pixel reactive forwards filters to read_obs_pixel", {
   skip_if_not_installed("shiny")
   .skip_if_no_read_obs_pixel()
 
@@ -957,8 +962,6 @@ test_that("obs_pixel reactive forwards filters to read_obs_pixel and refreshes p
   )
 
   captured <- list()
-  captured_choices  <- NULL
-  captured_selected <- NULL
 
   testthat::with_mocked_bindings(
     get_monitoring_db_connection  = function(...) "fake-con",
@@ -978,32 +981,18 @@ test_that("obs_pixel reactive forwards filters to read_obs_pixel and refreshes p
         },
         .package = "nemeton",
         {
-          testthat::with_mocked_bindings(
-            updateSelectizeInput = function(session, inputId,
-                                            choices = NULL,
-                                            selected = NULL, ...) {
-              if (inputId == "plot_filter") {
-                captured_choices  <<- choices
-                captured_selected <<- selected
-              }
-              invisible(NULL)
-            },
-            .package = "shiny",
+          shiny::testServer(
+            nemetonshiny:::mod_monitoring_server,
+            args = list(app_state = make_fake_app_state()),
             {
-              shiny::testServer(
-                nemetonshiny:::mod_monitoring_server,
-                args = list(app_state = make_fake_app_state()),
-                {
-                  session$setInputs(
-                    mode       = "quick",
-                    zone_id    = "7",
-                    bands      = c("NDVI", "NBR"),
-                    date_range = c(as.Date("2025-01-01"),
-                                   as.Date("2025-12-31"))
-                  )
-                  session$flushReact()
-                }
+              session$setInputs(
+                mode       = "quick",
+                zone_id    = "7",
+                bands      = c("NDVI", "NBR"),
+                date_range = c(as.Date("2025-01-01"),
+                               as.Date("2025-12-31"))
               )
+              session$flushReact()
             }
           )
         }
@@ -1015,8 +1004,6 @@ test_that("obs_pixel reactive forwards filters to read_obs_pixel and refreshes p
   expect_equal(captured$bands, c("NDVI", "NBR"))
   expect_equal(captured$date_from, as.Date("2025-01-01"))
   expect_equal(captured$date_to,   as.Date("2025-12-31"))
-  expect_setequal(captured_choices,  c("P01", "P02"))
-  expect_setequal(captured_selected, c("P01", "P02"))
 })
 
 test_that("obs_pixel reactive returns NULL when zone, bands or dates missing", {
