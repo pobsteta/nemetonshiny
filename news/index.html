@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.30.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,27 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.30.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.31.0" id="nemetonshiny-0310-2026-05-16">nemetonshiny 0.31.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0310-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="breaking--suppression-de-longlet--séries-par-placette--0-31-0">Breaking — suppression de l’onglet « Séries par placette »<a class="anchor" aria-label="anchor" href="#breaking--suppression-de-longlet--s%C3%A9ries-par-placette--0-31-0"></a></h4>
+<p>L’onglet <strong>Séries par placette</strong> est retiré du sous-onglet Suivi sanitaire. La vue multi-traces NDVI/NBR par placette (mode rapide) est désormais accessible <strong>spatialement</strong> : un clic sur un marqueur placette de la <strong>Carte pixel</strong> ouvre un modal avec la série agrégée plot pour cette placette unique.</p>
+<p>Note de régression pour les utilisateurs en mode sanitaire (FORDEAD) : le graphique en barres de distribution des classes de confiance d’alertes vivait dans le même output que les séries par placette et disparaît avec lui. Si ce graphique est utile pour ton workflow, ouvre un ticket et on l’ajoutera à l’onglet Alertes en patch.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--carte-pixel--contour-ugf-désormais-affiché-et-zoom-à-louverture-0-31-0">Fixed — Carte pixel : contour UGF désormais affiché et zoom à l’ouverture<a class="anchor" aria-label="anchor" href="#fixed--carte-pixel--contour-ugf-d%C3%A9sormais-affich%C3%A9-et-zoom-%C3%A0-louverture-0-31-0"></a></h4>
+<p>Le contour UGF orange n’apparaissait pas et l’auto-zoom au chargement projet ne marchait pas, parce que la reactive <code>ugf_sf_r</code> ne consommait que <code>current_project$indicators_sf</code> — un champ qui n’est construit par <code>service_project.R::load_project</code> <strong>qu’après</strong> le calcul des indicateurs. Les projets avec UGFs définies mais indicateurs non calculés retournaient NULL.</p>
+<p>Correctif (<code>R/mod_monitoring_pixel_map.R</code>) : <code>ugf_sf_r</code> tente d’abord <code>indicators_sf</code>, puis tombe sur <code>ug_build_sf(project)</code> qui construit la sf POLYGON UGF directement depuis <code>ugs.json</code> + <code>tenements</code> — disponible dès que l’utilisateur a défini ses UGFs dans l’onglet UG. L’auto-zoom hérite automatiquement du fix puisque les deux observers consomment la même <code>ugf_sf_r()</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--carte-pixel--plus-de-double-modal-au-clic-placette-0-31-0">Fixed — Carte pixel : plus de double modal au clic placette<a class="anchor" aria-label="anchor" href="#fixed--carte-pixel--plus-de-double-modal-au-clic-placette-0-31-0"></a></h4>
+<p>Cliquer un marqueur placette ouvrait le modal placette puis empilait immédiatement le modal pixel par-dessus. Cause : les <code>L.CircleMarker</code> Leaflet sont des <code>Path</code>, et leur événement click remonte naturellement à <code>map_click</code>. Les deux observers (<code>input$map_marker_click</code> et <code>input$map_click</code>) firaient sur le même tap.</p>
+<p>Correctif (<code>R/mod_monitoring_pixel_map.R</code>) : pattern flag horodaté. Le handler marker pose <code><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time()</a></code> dans un <code>reactiveVal</code> <code>marker_just_clicked</code>. Le handler pixel vérifie le delta au début de son exécution et bail si &lt; 500 ms (largement sous toute cadence de double-clic plausible, suffisant pour attraper la propagation synchrone d’un tap unique).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.30.2" id="nemetonshiny-0302-2026-05-16">nemetonshiny 0.30.2 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0302-2026-05-16"></a></h2>
 <div class="section level4">
