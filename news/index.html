@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,27 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.31.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.31.1" id="nemetonshiny-0311-2026-05-16">nemetonshiny 0.31.1 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0311-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-pixel--contour-de-zone-danalyse--raster-lisible-sur-satellite-0-31-1">Fixed — Carte pixel : contour de zone d’analyse + raster lisible sur Satellite<a class="anchor" aria-label="anchor" href="#fixed--carte-pixel--contour-de-zone-danalyse--raster-lisible-sur-satellite-0-31-1"></a></h4>
+<p><strong>Chaîne de fallback complète pour l’outline orange.</strong> Le contour n’apparaissait toujours pas pour les projets qui ont des placettes mais ni <code>indicators_sf</code> (indicateurs non calculés) ni <code>ugs.json</code> (UGFs non formellement définis) — cas courant quand on travaille directement avec un plan d’échantillonnage. La reactive <code>ugf_sf_r</code> de v0.31.0 retournait NULL dans ce scénario.</p>
+<p>Nouvelle chaîne dans <code>R/mod_monitoring_pixel_map.R</code>, premier non-NULL gagne :</p>
+<ol style="list-style-type: decimal"><li>
+<code>current_project$indicators_sf</code> — post-calcul indicateurs</li>
+<li>
+<code>ug_build_sf(current_project)</code> — UGFs définis en l’onglet UG</li>
+<li>
+<strong>Bbox du raster</strong> (<code>pixel_stack_r()</code>) — extent implicite de l’AOI d’ingestion, dérivé en rectangle</li>
+<li>
+<strong>Bbox des placettes</strong> (<code>placettes_sf_r()</code>) — dernier recours</li>
+</ol><p>En (3) et (4), le label « UGF » est techniquement un abus (on dessine un rectangle de zone d’analyse, pas des UGFs réelles), mais la valeur utilisateur — un cadre orange visible autour de la zone — est respectée même quand les UGFs ne sont pas définies. Un <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> indique au terminal quelle source a été utilisée (<code>UGF source: raster bbox (fallback, no UGFs defined).</code>), ce qui rend le diagnostic immédiat la prochaine fois.</p>
+<p><strong>Opacité du raster bumpée 0.75 → 0.85.</strong> Sur fond Satellite (Esri.WorldImagery), la palette NDVI/NBR (rouge/orange/jaune/vert) se confondait avec l’imagerie naturelle (vert forêt + jaune-brun champs) — la couche existait (légende affichée bottom-right) mais était indiscernable à l’œil. 0.85 laisse passer assez d’imagerie sous-jacente pour garder le contexte spatial (routes, parcelles visibles) tout en faisant ressortir le gradient. Sur OSM la visibilité était déjà bonne, on perd un peu de transparence sans problème.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.31.0" id="nemetonshiny-0310-2026-05-16">nemetonshiny 0.31.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0310-2026-05-16"></a></h2>
 <div class="section level4">

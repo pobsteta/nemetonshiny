@@ -1,5 +1,43 @@
 # Changelog
 
+## nemetonshiny 0.31.1 (2026-05-16)
+
+#### Fixed — Carte pixel : contour de zone d’analyse + raster lisible sur Satellite
+
+**Chaîne de fallback complète pour l’outline orange.** Le contour
+n’apparaissait toujours pas pour les projets qui ont des placettes mais
+ni `indicators_sf` (indicateurs non calculés) ni `ugs.json` (UGFs non
+formellement définis) — cas courant quand on travaille directement avec
+un plan d’échantillonnage. La reactive `ugf_sf_r` de v0.31.0 retournait
+NULL dans ce scénario.
+
+Nouvelle chaîne dans `R/mod_monitoring_pixel_map.R`, premier non-NULL
+gagne :
+
+1.  `current_project$indicators_sf` — post-calcul indicateurs
+2.  `ug_build_sf(current_project)` — UGFs définis en l’onglet UG
+3.  **Bbox du raster** (`pixel_stack_r()`) — extent implicite de l’AOI
+    d’ingestion, dérivé en rectangle
+4.  **Bbox des placettes** (`placettes_sf_r()`) — dernier recours
+
+En (3) et (4), le label « UGF » est techniquement un abus (on dessine un
+rectangle de zone d’analyse, pas des UGFs réelles), mais la valeur
+utilisateur — un cadre orange visible autour de la zone — est respectée
+même quand les UGFs ne sont pas définies. Un
+[`cli::cli_alert_info`](https://cli.r-lib.org/reference/cli_alert.html)
+indique au terminal quelle source a été utilisée
+(`UGF source: raster bbox (fallback, no UGFs defined).`), ce qui rend le
+diagnostic immédiat la prochaine fois.
+
+**Opacité du raster bumpée 0.75 → 0.85.** Sur fond Satellite
+(Esri.WorldImagery), la palette NDVI/NBR (rouge/orange/jaune/vert) se
+confondait avec l’imagerie naturelle (vert forêt + jaune-brun champs) —
+la couche existait (légende affichée bottom-right) mais était
+indiscernable à l’œil. 0.85 laisse passer assez d’imagerie sous-jacente
+pour garder le contexte spatial (routes, parcelles visibles) tout en
+faisant ressortir le gradient. Sur OSM la visibilité était déjà bonne,
+on perd un peu de transparence sans problème.
+
 ## nemetonshiny 0.31.0 (2026-05-16)
 
 #### Breaking — suppression de l’onglet « Séries par placette »

@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.31.1\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : le contour orange de zone
+  d’analyse n’apparaissait pas pour les projets sans `indicators_sf` ni
+  `ugs.json` (placettes-only). Chaîne de fallback étendue à 4 sources :
+  indicators_sf → ug_build_sf → raster bbox → placettes bbox. cli logs
+  ajoutés pour identifier la source utilisée
+  (`R/mod_monitoring_pixel_map.R`).
+- **Suivi sanitaire / Carte pixel** : le raster NDVI/NBR était invisible
+  sur fond Satellite (palette confondue avec l’imagerie naturelle).
+  Opacité bumpée 0.75 → 0.85 (`R/mod_monitoring_pixel_map.R`).
+
 ## \[0.31.0\] - 2026-05-16
 
 ### Removed (BREAKING)
