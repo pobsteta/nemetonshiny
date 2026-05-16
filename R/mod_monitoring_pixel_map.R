@@ -404,29 +404,62 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         )
     })
 
-    # Auto-fit on project load — robust version. The v0.29.1 attempt
-    # used observeEvent on project$id, but if `indicators_sf` is
-    # populated AFTER `id` is set (async project load in mod_home),
-    # the observer fired with geom = NULL and never re-ran. Plain
-    # observe() with a .last_fitted_id guard handles all the
-    # population orders: id-then-geom, geom-then-id, or both at once.
-    .last_fitted_id <- shiny::reactiveVal(NULL)
+    # Auto-fit on project load + when the user navigates to the Carte
+    # pixel sub-tab. Same problem as mod_ug.R:744-794 — Leaflet's
+    # fitBounds() is a no-op when the map container has zero size,
+    # which happens whenever the sub-tab is hidden. On project load,
+    # the user might be on any other tab; my proxy commands queue
+    # but, even after the queue is replayed when the sub-tab becomes
+    # visible, Leaflet silently drops fitBounds if the map hasn't
+    # picked up its container dimensions yet.
+    #
+    # Pattern mirrors mod_ug:
+    #   1. Detect navigation to Carte pixel via the parent session's
+    #      main_nav + monitoring-subtab inputs (accessed through
+    #      session$userData$root_session — populated by app_server.R).
+    #   2. Schedule a delayed re-fit via later::later (0.3 s) to let
+    #      the DOM settle.
+    #   3. Issue leafletInvalidateSize (custom JS handler defined in
+    #      inst/app/www/js/custom.js:169) so Leaflet re-detects the
+    #      container size, then fitBounds on the UGF bbox.
+    #
+    # The .last_fitted_id guard is dropped — the navigation observe
+    # is naturally throttled by tab visibility (it only fires when
+    # the user is actually looking at Carte pixel), so re-fitting on
+    # every sub-tab visit is fine and even desirable (covers the
+    # case where the user resizes the window and the bounds drifted).
     shiny::observe({
-      proj <- app_state$current_project
+      root_session <- session$userData$root_session
+      if (is.null(root_session)) return()
+      top_nav <- root_session$input$main_nav
+      sub_nav <- root_session$input[["monitoring-subtab"]]
+      if (is.null(top_nav) || top_nav != "monitoring") return()
+      if (is.null(sub_nav) || sub_nav != "pixel_map") return()
+
+      proj <- shiny::isolate(app_state$current_project)
       if (is.null(proj) || is.null(proj$id)) return()
-      if (identical(.last_fitted_id(), proj$id)) return()
-      ugf <- ugf_sf_r()
-      if (is.null(ugf) || !nrow(ugf)) return()
+      ugf <- shiny::isolate(ugf_sf_r())
+      if (is.null(ugf) || !nrow(ugf)) {
+        cli::cli_alert_info("Pixel map auto-zoom on tab visit: ugf_sf_r() NULL, skip.")
+        return()
+      }
       bb <- sf::st_bbox(ugf)
       cli::cli_alert_info(
-        "Pixel map auto-zoom: fitBounds on UGF [{round(bb[['xmin']], 4)}, {round(bb[['ymin']], 4)}] - [{round(bb[['xmax']], 4)}, {round(bb[['ymax']], 4)}] for project {proj$id}."
+        "Pixel map auto-zoom on tab visit: fitBounds [{round(bb[['xmin']], 4)}, {round(bb[['ymin']], 4)}] - [{round(bb[['xmax']], 4)}, {round(bb[['ymax']], 4)}] for project {proj$id}."
       )
-      leaflet::leafletProxy("map") |>
-        leaflet::fitBounds(
-          lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
-          lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
-        )
-      .last_fitted_id(proj$id)
+
+      # Delay 300 ms so the DOM has time to lay out the (formerly
+      # hidden) map container before invalidateSize + fitBounds fire.
+      later::later(function() {
+        session$sendCustomMessage("leafletInvalidateSize", list(
+          id = session$ns("map")
+        ))
+        leaflet::leafletProxy("map", session = session) |>
+          leaflet::fitBounds(
+            lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+            lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
+          )
+      }, delay = 0.3)
     })
 
     # Placettes overlay: load_samples() returns sf POINT (EPSG:2154
