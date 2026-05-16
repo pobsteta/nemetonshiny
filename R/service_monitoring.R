@@ -243,18 +243,33 @@ run_ingestion_async <- function() {
 #' Async FORDEAD dieback diagnosis (E6.c.5 — spec 008)
 #'
 #' Wraps `nemeton::run_fordead_dieback()` in a `shiny::ExtendedTask`.
-#' The full pipeline (5 phases via reticulate: vegetation index → train →
-#' forest mask → dieback detection → export) takes minutes to hours, so
-#' it must run in a `future` worker. The worker re-loads `nemetonshiny`
-#' and opens a fresh DB connection.
+#' Since nemeton@v0.24.0 the pipeline is **6 phases via reticulate**:
+#' ingest → vegetation index → train → forest mask → dieback detection
+#' → export. The full run takes minutes to hours, so it runs in a
+#' `future` worker. The worker re-loads `nemetonshiny` and opens a
+#' fresh DB connection.
+#'
+#' Breaking signature change in v0.24.0 (cf. spec 008 §13 + ADR-013
+#' amendement A2): `aoi` / `scenes_df` / `forest_mask` removed —
+#' the core now derives everything from `(con, zone_id, cache_dir)`.
+#' The new `ingest` phase 0 fetches the bands FAST didn't cache
+#' (B02 / B05 / B8A / B11) and reuses what FAST already downloaded
+#' (B04 / B12). It emits `s2:*` events through the same callback,
+#' so the existing s2 dispatcher in mod_monitoring picks them up
+#' transparently.
 #'
 #' Inputs are passed at `$invoke()` time:
-#' * `aoi`               — sf POLYGON EPSG:2154
 #' * `dates_training`    — length-2 Date or character (start, end)
 #' * `dates_monitoring`  — length-2 Date or character
 #' * `threshold_anomaly` — numeric, default 0.16 (ONF/DSF 2024)
 #' * `vegetation_index`  — "CRSWIR" / "NDVI" / "NDWI"
-#' * `zone_id`           — integer, used for the DB INSERT
+#' * `zone_id`           — integer, required for AOI lookup + DB INSERT
+#' * `cache_dir`         — path to the project's Sentinel-2 COG cache
+#'                         (typically `<project>/cache/layers/sentinel2`)
+#' * `db_url`            — pre-resolved DB URL (workers can't reach
+#'                         app_state)
+#' * `progress_path`     — JSON file the worker writes to for the
+#'                         parent's reactivePoll to tail
 #'
 #' On success, `$result()` returns the list produced by
 #' `nemeton::run_fordead_dieback()`.
@@ -265,11 +280,11 @@ run_fordead_async <- function() {
   .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
   .worker_envvars <- .capture_worker_envvars()
 
-  shiny::ExtendedTask$new(function(aoi, dates_training, dates_monitoring,
+  shiny::ExtendedTask$new(function(dates_training, dates_monitoring,
                                    threshold_anomaly = 0.16,
                                    vegetation_index = "CRSWIR",
-                                   zone_id = NULL, db_url = "",
-                                   progress_path = NULL) {
+                                   zone_id = NULL, cache_dir = NULL,
+                                   db_url = "", progress_path = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -293,13 +308,13 @@ run_fordead_async <- function() {
       progress_cb <- .build_progress_writer(progress_path)
 
       nemeton::run_fordead_dieback(
-        aoi               = aoi,
+        con               = con,
+        zone_id           = zone_id,
+        cache_dir         = cache_dir,
         dates_training    = dates_training,
         dates_monitoring  = dates_monitoring,
         threshold_anomaly = threshold_anomaly,
         vegetation_index  = vegetation_index,
-        con               = con,
-        zone_id           = zone_id,
         progress_callback = progress_cb
       )
     }, seed = TRUE)
