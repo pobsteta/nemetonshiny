@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,22 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.28.4/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.28.5" id="nemetonshiny-0285-2026-05-16">nemetonshiny 0.28.5 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0285-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="choredeps--lapp-suit-désormais-nemetonmain-en-continu-0-28-5">chore(deps) — l’app suit désormais <code>nemeton@main</code> en continu<a class="anchor" aria-label="anchor" href="#choredeps--lapp-suit-d%C3%A9sormais-nemetonmain-en-continu-0-28-5"></a></h4>
+<p>L’épingle <code>Remotes: pobsteta/nemeton@v0.22.1</code> du <code>DESCRIPTION</code> est remplacée par <code>Remotes: pobsteta/nemeton@main</code>. Effet : les nouveaux installs <code>install_github("pobsteta/nemetonshiny")</code> récupèrent automatiquement le dernier commit <code>main</code> du cœur, sans qu’il soit nécessaire de publier une release app dédiée après chaque release cœur.</p>
+<p>Trade-offs assumés :</p>
+<ul><li>
+<strong>Reproductibilité d’install dans le temps perdue</strong> : <code>install_github("…@v0.28.5")</code> fait dans 6 mois ne donnera plus le même état que le même appel fait aujourd’hui, parce que <code>nemeton@main</code> aura bougé entre-temps. Pour reproduire un état figé, utiliser <code>renv::snapshot()</code> côté projet utilisateur.</li>
+<li>
+<strong>Une régression poussée sur <code>nemeton@main</code> casse l’install app</strong> jusqu’au revert/fix. Mitigation : pousser sur <code>nemeton@main</code> uniquement avec CI verte côté cœur.</li>
+</ul><p>Documentation associée mise à jour dans <code>CLAUDE.md</code> (section <em>Stack technique</em> + nouvelle section <em>Suivi de <code>nemeton@main</code> — implications pour les releases</em>). La section <em>Épingle Remotes vers nemeton</em> ajoutée en 0.28.3 est supprimée — devenue caduque avec ce changement.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.28.4" id="nemetonshiny-0284-2026-05-15">nemetonshiny 0.28.4 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0284-2026-05-15"></a></h2>
 <div class="section level4">

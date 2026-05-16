@@ -12,6 +12,21 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.28.5\] - 2026-05-16
+
+### Changed
+
+- **Deps** : bascule de l’épingle `Remotes` de
+  `pobsteta/nemeton@v0.22.1` vers `pobsteta/nemeton@main`. Les installs
+  GitHub de `nemetonshiny` tirent désormais en continu le dernier commit
+  `main` de `nemeton` — plus besoin de bumper l’épingle après chaque
+  release cœur. Reproductibilité d’install dans le temps perdue
+  (cf. NEWS.md pour les trade-offs) (`DESCRIPTION`).
+- **Docs** : section *Stack technique* de `CLAUDE.md` mise à jour ;
+  ajout d’une nouvelle section *Suivi de `nemeton@main` — implications
+  pour les releases* ; suppression de la section *Épingle Remotes vers
+  nemeton* devenue caduque (`CLAUDE.md`).
+
 ## \[0.28.4\] - 2026-05-15
 
 ### Fixed

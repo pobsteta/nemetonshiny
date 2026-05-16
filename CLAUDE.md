@@ -226,9 +226,19 @@ sans rebuild, support dynamique du switch langue.
 - **cicerone** pour les tours guidés (Suggests)
 - **quarto** pour les exports rapport (Suggests)
 
-`Remotes: pobsteta/nemeton` dans `DESCRIPTION` — installation locale en
-dev via `pak::local_install("/home/pascal/dev/nemeton")` ou
-`pkgload::load_all("/home/pascal/dev/nemeton")`.
+`Remotes: pobsteta/nemeton@main` dans `DESCRIPTION` — **l’app suit en
+continu la branche `main` du cœur**, pas d’épingle tag. À chaque release
+`nemeton`, les nouveaux installs
+`install_github("pobsteta/nemetonshiny")` récupèrent automatiquement la
+dernière version cœur, sans intervention côté app. En contrepartie : (a)
+reproductibilité d’install perdue dans le temps
+(`install_github("…@v0.28.4")` ne donne plus le même résultat dans 6
+mois si `nemeton@main` a bougé), (b) toute régression poussée sur `main`
+côté cœur impacte immédiatement tous les installs jusqu’au fix/revert.
+Installation locale en dev via
+`pak::local_install("/home/pascal/dev/nemeton")` ou
+`pkgload::load_all("/home/pascal/dev/nemeton")` — pas d’aller-retour
+GitHub.
 
 ## Commandes de référence
 
@@ -425,62 +435,42 @@ entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 - Quand un changement implique aussi `nemeton`, faire les deux releases
   dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).
 
-## Épingle `Remotes:` vers `nemeton` (ordre cœur → app)
+## Suivi de `nemeton@main` — implications pour les releases
 
-Le champ `Remotes: pobsteta/nemeton@vX.Y.Z` du `DESCRIPTION` est une
-**épingle tag stricte** : l’installeur
-([`remotes::install_github`](https://remotes.r-lib.org/reference/install_github.html),
-[`pak::pkg_install`](https://pak.r-lib.org/reference/pkg_install.html),
-`devtools::install`) tire toujours cette version précise, **même si une
-version plus récente est déjà installée localement** (downgrade
-silencieux). Le `Imports: nemeton (>= X.Y.Z)` n’est qu’une borne d’API
-minimale — il ne contredit pas l’épingle.
+Choix architectural (cf. *Stack technique*) :
+`Remotes: pobsteta/nemeton@main` sans épingle tag. Les installs
+`install_github("pobsteta/nemetonshiny")` tirent toujours le dernier
+commit `main` du cœur, donc la dernière fonctionnalité exportée est
+immédiatement disponible sans avoir à publier une release app dédiée.
 
-Conséquence : **à chaque release stable `nemeton@vX.Y.Z+1`, bumper
-l’épingle ici dans la foulée**, sinon les utilisateurs qui réinstallent
-`nemetonshiny` se retrouvent downgradés sans le savoir.
+Conséquences pratiques :
 
-### Réflexe à appliquer
-
-À l’ouverture d’une session sur `nemetonshiny`, et avant tout commit
-fonctionnel qui touche du code consommateur de `nemeton::*`, Claude doit
-**vérifier l’épingle** :
-
-1.  Lire le champ `Remotes:` du `DESCRIPTION` local (épingle
-    nemetonshiny).
-2.  Demander à l’utilisateur le tag stable le plus récent côté `nemeton`
-    (règle 12 interdit l’accès direct au repo cœur depuis cette session,
-    donc pas de `git -C /home/pascal/dev/nemeton describe` ni
-    équivalent).
-3.  Si écart : proposer un `chore(deps): bump nemeton pin to vX.Y.Z`,
-    typiquement en patch release seule (ex. `0.28.2` → `0.28.3`) ou
-    groupé avec le prochain commit fonctionnel.
-
-Ce check est un **réflexe de session**, pas un check à chaque commit :
-si la session vient de bumper l’épingle, inutile de redemander.
-
-### Cas particulier : développement local avec `pkgload::load_all()`
-
-En dev, on charge nemeton via
-`pkgload::load_all("/home/pascal/dev/nemeton")` ou
-`pak::local_install("/home/pascal/dev/nemeton")` — l’épingle `Remotes:`
-n’est pas consultée tant qu’on ne fait pas un install GitHub. C’est pour
-ça qu’un drift entre épingle et tag cœur peut passer inaperçu plusieurs
-jours côté développeur ; seuls les utilisateurs qui installent depuis
-GitHub le voient.
-
-### Alternatives à l’épingle tag (non recommandées par défaut)
-
-- `pobsteta/nemeton@main` : zéro maintenance, mais une régression
-  poussée sur main de nemeton casse l’install de tous les utilisateurs
-  de nemetonshiny entre le push et le revert. Non reproductible dans 6
-  mois.
-- `pobsteta/nemeton@release/v0.22` : suit la dernière patch d’une
-  mineure, demande de maintenir une branche release côté cœur. À
-  envisager si les bumps deviennent un coût récurrent.
-
-Tant qu’il n’y a pas de friction observée, **garder l’épingle tag** et
-faire le bump en patch release dans la foulée d’une release cœur.
+- **Pas de bump `Remotes:` après une release cœur.** Inutile, puisque
+  l’épingle pointe sur la branche, pas sur un tag. Une release
+  `nemeton@vX.Y.Z` est consommée automatiquement par tous les nouveaux
+  installs app dès que le tag est mergé sur `main`.
+- **Reproductibilité d’install pure perdue.**
+  `install_github("pobsteta/nemetonshiny@v0.28.4")` fait dans 6 mois ne
+  donne plus le même état que le même appel fait aujourd’hui, parce que
+  `nemeton@main` aura bougé entre-temps. Pour un travail nécessitant la
+  reproductibilité (publication scientifique, bug-hunt sur une version
+  figée), s’appuyer sur `renv::snapshot()` côté projet utilisateur —
+  c’est le bon outil pour figer un état composite app+cœur, pas le
+  `Remotes:` du `DESCRIPTION`.
+- **Une régression poussée sur `nemeton@main` casse l’install app.**
+  Pendant la fenêtre push → revert/fix,
+  `install_github("pobsteta/nemetonshiny")` peut tomber. Mitigation : ne
+  jamais pousser sur `nemeton@main` sans CI verte côté cœur ; revert
+  rapide via PR si découvert.
+- **La règle 11 (ordre cœur → app) reste valable pour les changements
+  d’API**, mais le mécanisme de propagation a changé : ce n’est plus un
+  bump `Remotes:`, c’est juste l’attente que le commit cœur soit sur
+  `main`. L’app peut alors être éditée pour consommer la nouvelle API et
+  released normalement.
+- **Développement local** :
+  `pkgload::load_all("/home/pascal/dev/nemeton")` court-circuite GitHub,
+  comme avant. Le suivi de `main` ne change rien au workflow dev
+  quotidien.
 
 ## Workflow de push (branche dev → main)
 

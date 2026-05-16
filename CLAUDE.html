@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.28.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,7 +29,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>CLAUDE.md — Nemetonshiny Development Reference</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.28.4/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
     </div>
 
 
@@ -287,7 +287,7 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.</code></pre
 <strong>cicerone</strong> pour les tours guidés (Suggests)</li>
 <li>
 <strong>quarto</strong> pour les exports rapport (Suggests)</li>
-</ul><p><code>Remotes: pobsteta/nemeton</code> dans <code>DESCRIPTION</code> — installation locale en dev via <code>pak::local_install("/home/pascal/dev/nemeton")</code> ou <code>pkgload::load_all("/home/pascal/dev/nemeton")</code>.</p>
+</ul><p><code>Remotes: pobsteta/nemeton@main</code> dans <code>DESCRIPTION</code> — <strong>l’app suit en continu la branche <code>main</code> du cœur</strong>, pas d’épingle tag. À chaque release <code>nemeton</code>, les nouveaux installs <code>install_github("pobsteta/nemetonshiny")</code> récupèrent automatiquement la dernière version cœur, sans intervention côté app. En contrepartie : (a) reproductibilité d’install perdue dans le temps (<code>install_github("…@v0.28.4")</code> ne donne plus le même résultat dans 6 mois si <code>nemeton@main</code> a bougé), (b) toute régression poussée sur <code>main</code> côté cœur impacte immédiatement tous les installs jusqu’au fix/revert. Installation locale en dev via <code>pak::local_install("/home/pascal/dev/nemeton")</code> ou <code>pkgload::load_all("/home/pascal/dev/nemeton")</code> — pas d’aller-retour GitHub.</p>
 </div>
 <div class="section level2">
 <h2 id="commandes-de-référence">Commandes de référence<a class="anchor" aria-label="anchor" href="#commandes-de-r%C3%A9f%C3%A9rence"></a></h2>
@@ -446,31 +446,20 @@ keycloak/                     → Compose dev + realms pour auth locale
 <li>Quand un changement implique aussi <code>nemeton</code>, faire les deux releases dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).</li>
 </ul></div>
 <div class="section level2">
-<h2 id="épingle-remotes-vers-nemeton-ordre-cœur--app">Épingle <code>Remotes:</code> vers <code>nemeton</code> (ordre cœur → app)<a class="anchor" aria-label="anchor" href="#%C3%A9pingle-remotes-vers-nemeton-ordre-c%C5%93ur--app"></a></h2>
-<p>Le champ <code>Remotes: pobsteta/nemeton@vX.Y.Z</code> du <code>DESCRIPTION</code> est une <strong>épingle tag stricte</strong> : l’installeur (<code><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">remotes::install_github</a></code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) tire toujours cette version précise, <strong>même si une version plus récente est déjà installée localement</strong> (downgrade silencieux). Le <code>Imports: nemeton (&gt;= X.Y.Z)</code> n’est qu’une borne d’API minimale — il ne contredit pas l’épingle.</p>
-<p>Conséquence : <strong>à chaque release stable <code>nemeton@vX.Y.Z+1</code>, bumper l’épingle ici dans la foulée</strong>, sinon les utilisateurs qui réinstallent <code>nemetonshiny</code> se retrouvent downgradés sans le savoir.</p>
-<div class="section level3">
-<h3 id="réflexe-à-appliquer">Réflexe à appliquer<a class="anchor" aria-label="anchor" href="#r%C3%A9flexe-%C3%A0-appliquer"></a></h3>
-<p>À l’ouverture d’une session sur <code>nemetonshiny</code>, et avant tout commit fonctionnel qui touche du code consommateur de <code>nemeton::*</code>, Claude doit <strong>vérifier l’épingle</strong> :</p>
-<ol style="list-style-type: decimal"><li>Lire le champ <code>Remotes:</code> du <code>DESCRIPTION</code> local (épingle nemetonshiny).</li>
-<li>Demander à l’utilisateur le tag stable le plus récent côté <code>nemeton</code> (règle 12 interdit l’accès direct au repo cœur depuis cette session, donc pas de <code>git -C /home/pascal/dev/nemeton describe</code> ni équivalent).</li>
-<li>Si écart : proposer un <code>chore(deps): bump nemeton pin to vX.Y.Z</code>, typiquement en patch release seule (ex. <code>0.28.2</code> → <code>0.28.3</code>) ou groupé avec le prochain commit fonctionnel.</li>
-</ol><p>Ce check est un <strong>réflexe de session</strong>, pas un check à chaque commit : si la session vient de bumper l’épingle, inutile de redemander.</p>
-</div>
-<div class="section level3">
-<h3 id="cas-particulier--développement-local-avec-pkgloadload_all">Cas particulier : développement local avec <code>pkgload::load_all()</code>
-<a class="anchor" aria-label="anchor" href="#cas-particulier--d%C3%A9veloppement-local-avec-pkgloadload_all"></a></h3>
-<p>En dev, on charge nemeton via <code>pkgload::load_all("/home/pascal/dev/nemeton")</code> ou <code>pak::local_install("/home/pascal/dev/nemeton")</code> — l’épingle <code>Remotes:</code> n’est pas consultée tant qu’on ne fait pas un install GitHub. C’est pour ça qu’un drift entre épingle et tag cœur peut passer inaperçu plusieurs jours côté développeur ; seuls les utilisateurs qui installent depuis GitHub le voient.</p>
-</div>
-<div class="section level3">
-<h3 id="alternatives-à-lépingle-tag-non-recommandées-par-défaut">Alternatives à l’épingle tag (non recommandées par défaut)<a class="anchor" aria-label="anchor" href="#alternatives-%C3%A0-l%C3%A9pingle-tag-non-recommand%C3%A9es-par-d%C3%A9faut"></a></h3>
+<h2 id="suivi-de-nemetonmain--implications-pour-les-releases">Suivi de <code>nemeton@main</code> — implications pour les releases<a class="anchor" aria-label="anchor" href="#suivi-de-nemetonmain--implications-pour-les-releases"></a></h2>
+<p>Choix architectural (cf. <em>Stack technique</em>) : <code>Remotes: pobsteta/nemeton@main</code> sans épingle tag. Les installs <code>install_github("pobsteta/nemetonshiny")</code> tirent toujours le dernier commit <code>main</code> du cœur, donc la dernière fonctionnalité exportée est immédiatement disponible sans avoir à publier une release app dédiée.</p>
+<p>Conséquences pratiques :</p>
 <ul><li>
-<code>pobsteta/nemeton@main</code> : zéro maintenance, mais une régression poussée sur main de nemeton casse l’install de tous les utilisateurs de nemetonshiny entre le push et le revert. Non reproductible dans 6 mois.</li>
+<strong>Pas de bump <code>Remotes:</code> après une release cœur.</strong> Inutile, puisque l’épingle pointe sur la branche, pas sur un tag. Une release <code>nemeton@vX.Y.Z</code> est consommée automatiquement par tous les nouveaux installs app dès que le tag est mergé sur <code>main</code>.</li>
 <li>
-<code>pobsteta/nemeton@release/v0.22</code> : suit la dernière patch d’une mineure, demande de maintenir une branche release côté cœur. À envisager si les bumps deviennent un coût récurrent.</li>
-</ul><p>Tant qu’il n’y a pas de friction observée, <strong>garder l’épingle tag</strong> et faire le bump en patch release dans la foulée d’une release cœur.</p>
-</div>
-</div>
+<strong>Reproductibilité d’install pure perdue.</strong> <code>install_github("pobsteta/nemetonshiny@v0.28.4")</code> fait dans 6 mois ne donne plus le même état que le même appel fait aujourd’hui, parce que <code>nemeton@main</code> aura bougé entre-temps. Pour un travail nécessitant la reproductibilité (publication scientifique, bug-hunt sur une version figée), s’appuyer sur <code>renv::snapshot()</code> côté projet utilisateur — c’est le bon outil pour figer un état composite app+cœur, pas le <code>Remotes:</code> du <code>DESCRIPTION</code>.</li>
+<li>
+<strong>Une régression poussée sur <code>nemeton@main</code> casse l’install app.</strong> Pendant la fenêtre push → revert/fix, <code>install_github("pobsteta/nemetonshiny")</code> peut tomber. Mitigation : ne jamais pousser sur <code>nemeton@main</code> sans CI verte côté cœur ; revert rapide via PR si découvert.</li>
+<li>
+<strong>La règle 11 (ordre cœur → app) reste valable pour les changements d’API</strong>, mais le mécanisme de propagation a changé : ce n’est plus un bump <code>Remotes:</code>, c’est juste l’attente que le commit cœur soit sur <code>main</code>. L’app peut alors être éditée pour consommer la nouvelle API et released normalement.</li>
+<li>
+<strong>Développement local</strong> : <code>pkgload::load_all("/home/pascal/dev/nemeton")</code> court-circuite GitHub, comme avant. Le suivi de <code>main</code> ne change rien au workflow dev quotidien.</li>
+</ul></div>
 <div class="section level2">
 <h2 id="workflow-de-push-branche-dev--main">Workflow de push (branche dev → main)<a class="anchor" aria-label="anchor" href="#workflow-de-push-branche-dev--main"></a></h2>
 <p>Le workflow est en <strong>deux temps</strong> et doit être suivi systématiquement.</p>
