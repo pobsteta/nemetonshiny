@@ -1887,6 +1887,26 @@ TRANSLATIONS <- list(
     fr = "Carte pixel",
     en = "Pixel map"
   ),
+  # v0.34.0 — sous-onglets de carte pixel séparés par mode :
+  # FAST (NDVI/NBR raster, mode quick) vs FORDEAD (mask classifié de
+  # dépérissement, mode health). Visibilité pilotée côté server par
+  # un observe mode-driven.
+  monitoring_subtab_pixel_map_fast = list(
+    fr = "Carte pixel (FAST)",
+    en = "Pixel map (FAST)"
+  ),
+  monitoring_subtab_pixel_map_fordead = list(
+    fr = "Carte FORDEAD",
+    en = "FORDEAD map"
+  ),
+  monitoring_fordead_map_placeholder_title = list(
+    fr = "Carte FORDEAD — bientôt disponible",
+    en = "FORDEAD map — coming soon"
+  ),
+  monitoring_fordead_map_placeholder_body = list(
+    fr = "La carte des classes de dépérissement (sain / faible / moyenne / forte) sera affichée ici une fois que le cœur Nemeton exportera le raster classifié issu du run FORDEAD. En attendant, consulter l'onglet « Alertes » pour la liste des placettes flaguées et l'export QGIS associé.",
+    en = "The dieback class map (healthy / low / medium / high) will appear here once the Nemeton core exports the classified raster from the FORDEAD run. Meanwhile, see the “Alerts” tab for the flagged plots list and the matching QGIS export."
+  ),
 
   # ----- Pixel map sub-tab (spec 010) -----
   monitoring_pixel_map_title = list(
