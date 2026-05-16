@@ -1798,12 +1798,12 @@ TRANSLATIONS <- list(
     en = "Fatal error in the ingestion worker"
   ),
   monitoring_reprime_cache_label = list(
-    fr = "Ret\u00e9l\u00e9charger le cache COG",
-    en = "Re-download COG cache"
+    fr = "R\u00e9amorcer le cache COG (vider et recommencer)",
+    en = "Reset COG cache (wipe and restart)"
   ),
   monitoring_reprime_cache_help = list(
-    fr = "Coche cette case pour <strong>forcer le re-t\u00e9l\u00e9chargement</strong> des bandes Sentinel-2 sur disque, sc\u00e8ne par sc\u00e8ne.<br><br>Utile lors du premier run d'une zone d\u00e9j\u00e0 pr\u00e9sente en DB : sans \u00e7a, nemeton court-circuite l\u2019extraction (<code>skip_cached = TRUE</code> par d\u00e9faut) et le cache disque reste vide.<br><br>La DB n\u2019est pas affect\u00e9e \u2014 les INSERT sont <code>ON CONFLICT DO NOTHING</code>.",
-    en = "Tick this to <strong>force re-download</strong> of Sentinel-2 bands on disk, scene by scene.<br><br>Useful on the first run of a zone already in the DB: otherwise nemeton short-circuits the extraction (<code>skip_cached = TRUE</code> by default) and the disk cache stays empty.<br><br>The DB is preserved \u2014 INSERTs are <code>ON CONFLICT DO NOTHING</code>."
+    fr = "<strong>D\u00e9coch\u00e9</strong> (d\u00e9faut) : nemeton v\u00e9rifie le cache disque et ne t\u00e9l\u00e9charge que les bandes manquantes. INSERTs DB idempotents (<code>ON CONFLICT DO NOTHING</code>).<br><br><strong>Coch\u00e9</strong> : vide d'abord <code>cache_dir</code>, puis re-t\u00e9l\u00e9charge int\u00e9gralement sc\u00e8ne par sc\u00e8ne. \u00c0 utiliser pour r\u00e9cup\u00e9rer d'un cache corrompu.",
+    en = "<strong>Unchecked</strong> (default): nemeton checks the disk cache and only downloads missing bands. DB INSERTs are idempotent (<code>ON CONFLICT DO NOTHING</code>).<br><br><strong>Checked</strong>: wipes <code>cache_dir</code> first, then re-downloads every scene/band from scratch. Use to recover from a corrupted cache."
   ),
   monitoring_db_unavailable = list(
     fr = "Base de suivi non configur\u00e9e.",
