@@ -256,13 +256,16 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::addRasterImage(
           x       = r,
           colors  = .pixel_palette,
-          # v0.31.1: bumped 0.75 → 0.85 because the NDVI/NBR palette
-          # (greens / yellows / oranges) shares its tonal range with
-          # Esri.WorldImagery forest/farmland imagery — at 0.75 the
-          # raster was invisible on Satellite background. 0.85 is
-          # enough to make the gradient pop without entirely hiding
-          # the underlying tile (useful for spatial context).
-          opacity = 0.85,
+          # v0.31.5: bumped 0.85 → 1.0. The conventional NDVI palette
+          # uses pale greens (~#A8DDB5) for typical forest values
+          # (~0.5 NBR) which are visually indistinguishable from the
+          # Esri.WorldImagery dark-green forest imagery even at high
+          # opacity. Going full-opaque guarantees the raster colors
+          # are readable on both OSM and Satellite. Trade-off: the
+          # satellite imagery is hidden under the raster bbox; the
+          # user keeps satellite context AROUND the bbox and can
+          # toggle to OSM to see roads/parcels inside the zone.
+          opacity = 1.0,
           group   = .pixel_overlay_group
         ) |>
         leaflet::addLegend(
@@ -271,7 +274,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           pal      = .pixel_palette,
           values   = c(-1, 1),
           title    = input$index,
-          opacity  = 0.85
+          opacity  = 0.9
         )
     }, priority = 100L)
 
