@@ -10,6 +10,37 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-05-16
+
+### Changed
+
+- **BREAKING (dep) — Migration vers `nemeton@v0.24.0`** : la
+  signature de `nemeton::run_fordead_dieback()` a changé au cœur
+  (`aoi` / `scenes_df` / `forest_mask` retirés, `con` / `zone_id` /
+  `cache_dir` requis). Le pipeline passe de 5 à 6 phases avec une
+  nouvelle phase 0 `ingest` qui télécharge les bandes Sentinel-2
+  manquantes (B02/B05/B8A/B11) par-dessus celles déjà cachées par
+  FAST (B04/B12).
+- `R/service_monitoring.R` : worker `run_fordead_async()` adapté —
+  perd `aoi`, gagne `cache_dir`, ouvre lui-même la connexion DBI.
+- `R/mod_monitoring.R` : helper `.invoke_fordead()` simplifié — plus
+  de `get_monitoring_zone_aoi()` ni de DBI éphémère côté app ;
+  passage direct de `zone_id` et `cache_dir`.
+- `DESCRIPTION` : plancher `Imports: nemeton (>= 0.24.0)`.
+
+### Added
+
+- Clé i18n `monitoring_fordead_phase_ingest` (FR « Téléchargement des
+  bandes manquantes… » / EN « Downloading missing bands… »),
+  consommée automatiquement par le dispatcher générique de phases
+  livré en v0.32.0.
+
+### Removed
+
+- Mocks `get_monitoring_zone_aoi` (3×) et assertion
+  `calls[[1]]$aoi` dans `tests/testthat/test-mod_monitoring.R` —
+  l'AOI n'est plus matérialisée côté app.
+
 ## [0.32.0] - 2026-05-16
 
 ### Added
