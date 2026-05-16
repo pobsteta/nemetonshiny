@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.31.3] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : auto-zoom au chargement
+  projet n'a vraiment jamais marché parce que la reactive firait
+  AVANT que le widget Leaflet ne soit dans le DOM ; les commandes
+  `leafletProxy` étaient queue puis rejouées sur une carte de
+  taille 0×0, où `fitBounds` est un no-op silencieux. Refactor du
+  pattern d'auto-zoom calqué sur `mod_ug.R:744-794` : observer la
+  navigation `main_nav` + `monitoring-subtab` via `root_session`,
+  délai 300 ms via `later::later`, `leafletInvalidateSize` puis
+  `fitBounds` (`R/mod_monitoring_pixel_map.R`).
+
 ## [0.31.2] - 2026-05-16
 
 ### Fixed
