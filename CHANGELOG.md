@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.31.2] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : le contour UGF orange était
+  bien produit mais peint par-dessus par le raster NDVI/NBR (DOM
+  order de `overlayPane` : dernière couche ajoutée = au-dessus,
+  et le raster fire plus tard que l'UGF parce que `build_index_stack`
+  est lourd). Fix : observe UGF dépend de `current_layer_r()` pour
+  re-fire après chaque raster, et observe raster reçoit
+  `priority = 100L` pour passer en premier dans un flush où les
+  deux sont dirty (`R/mod_monitoring_pixel_map.R`).
+
 ## [0.31.1] - 2026-05-16
 
 ### Fixed
