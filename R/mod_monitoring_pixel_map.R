@@ -194,12 +194,17 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       )
     })
 
-    # Stable, language-independent overlay group labels. Used by BOTH
-    # addLayersControl(overlayGroups=) and the leafletProxy() add* calls
-    # — they MUST match exactly so the control knows these are overlays
-    # to keep visible across base-layer toggles. Kept out of i18n so
-    # renderLeaflet stays free of reactive deps (preserves base-layer
-    # choice across language toggle).
+    # Internal group labels for clearGroup() bookkeeping in the
+    # observes below. NOT listed in addLayersControl(overlayGroups=)
+    # anymore (see v0.30.2 fix): when overlayGroups is set in
+    # renderLeaflet BEFORE the layers are added via leafletProxy, the
+    # control's checkboxes are bound to undefined layer references,
+    # and depending on leaflet R / timing the overlays end up
+    # invisible despite the checkboxes appearing checked. Same
+    # approach as the alerts_map in this module — base-layer toggle
+    # only, overlays always visible. (Same constraint that drove the
+    # v0.28.4 attempt at overlayGroups; that fix never really worked,
+    # only masked by other behaviors in some cases.)
     .ugf_overlay_group       <- "UGF"
     .pixel_overlay_group     <- "NDVI / NBR"
     .placettes_overlay_group <- "Placettes"
@@ -208,17 +213,16 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # every date tick would reset the user's base-layer choice
     # (Satellite → OSM) because `baseGroups` re-applies the first entry
     # as default on each remount. Raster + markers + legend updates go
-    # through leafletProxy() below.
+    # through leafletProxy() below — they appear on the map and stay
+    # visible regardless of base-layer toggle (overlayPane > tilePane
+    # by default in Leaflet).
     output$map <- leaflet::renderLeaflet({
       leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addLayersControl(
-          baseGroups    = c("OSM", "Satellite"),
-          overlayGroups = c(.ugf_overlay_group,
-                            .pixel_overlay_group,
-                            .placettes_overlay_group),
-          options       = leaflet::layersControlOptions(collapsed = TRUE)
+          baseGroups = c("OSM", "Satellite"),
+          options    = leaflet::layersControlOptions(collapsed = TRUE)
         )
     })
 
@@ -275,21 +279,29 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       geom
     })
 
-    # UGF polygons swap. Outline only (transparent fill) so the raster
-    # underneath stays visible. Orange border = high contrast on both
-    # OSM (light bg) and Satellite (forest greens).
+    # UGF polygons swap. Outline only (near-transparent fill) so the
+    # raster underneath stays visible. Bright orange border (#FF6B35,
+    # weight 3) — high contrast on both OSM (light bg) and Satellite
+    # (forest greens). cli debug log on each fire so a developer
+    # running from a terminal sees the reactive firing (helps when
+    # the user reports "no UGF visible" to confirm whether the
+    # reactive completed at all).
     shiny::observe({
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.ugf_overlay_group)
       ugf <- ugf_sf_r()
-      if (is.null(ugf) || !nrow(ugf)) return()
+      if (is.null(ugf) || !nrow(ugf)) {
+        cli::cli_alert_info("UGF overlay: ugf_sf_r() is NULL/empty, no polygons drawn.")
+        return()
+      }
+      cli::cli_alert_info("UGF overlay: drawing {nrow(ugf)} polygon(s).")
       proxy |>
         leaflet::addPolygons(
           data        = ugf,
           group       = .ugf_overlay_group,
           color       = "#FF6B35",
-          weight      = 2,
-          opacity     = 0.9,
+          weight      = 3,
+          opacity     = 1.0,
           fillColor   = "#FF6B35",
           fillOpacity = 0.05
         )
@@ -309,6 +321,9 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       ugf <- ugf_sf_r()
       if (is.null(ugf) || !nrow(ugf)) return()
       bb <- sf::st_bbox(ugf)
+      cli::cli_alert_info(
+        "Pixel map auto-zoom: fitBounds on UGF [{round(bb[['xmin']], 4)}, {round(bb[['ymin']], 4)}] - [{round(bb[['xmax']], 4)}, {round(bb[['ymax']], 4)}] for project {proj$id}."
+      )
       leaflet::leafletProxy("map") |>
         leaflet::fitBounds(
           lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
@@ -345,17 +360,23 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # Markers swap. Same proxy pattern as the raster observe — clears
     # the overlay group then re-adds. layerId = plot_id so the click
     # handler downstream can identify which placette was tapped.
+    # Radius bumped to 7 + black border so the markers stay readable
+    # at the wide auto-fit zoom (a few km across).
     shiny::observe({
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.placettes_overlay_group)
       ps <- placettes_sf_r()
-      if (is.null(ps) || !nrow(ps)) return()
+      if (is.null(ps) || !nrow(ps)) {
+        cli::cli_alert_info("Placettes overlay: placettes_sf_r() is NULL/empty, no markers drawn.")
+        return()
+      }
+      cli::cli_alert_info("Placettes overlay: drawing {nrow(ps)} marker(s).")
       proxy |>
         leaflet::addCircleMarkers(
           data        = ps,
           layerId     = ~as.character(plot_id),
           group       = .placettes_overlay_group,
-          radius      = 5,
+          radius      = 7,
           weight      = 2,
           color       = "#000000",
           fillColor   = "#1F77B4",
