@@ -255,16 +255,41 @@ mod_monitoring_ui <- function(id) {
         ),
         # Sub-tab "Per-plot time series" removed in v0.31.0: in quick
         # mode the multi-trace placette plotly is now reachable
-        # spatially by clicking a placette marker on the Carte pixel
-        # sub-tab. In health mode the alert-distribution bar chart it
-        # used to host is dropped along with it (see release notes —
-        # add back to the Alerts sub-tab if users miss it).
-        # ----- Sub-tab — Pixel map (spec 010) ------------------------
+        # spatially par clic sur un marker placette dans la Carte pixel
+        # (FAST). En mode health, la distribution des classes d'alerte
+        # qu'il hébergeait est tombée avec lui (cf. notes de version —
+        # à réintroduire dans Alerts si nécessaire).
+        # ----- Sub-tab — Pixel map FAST (spec 010) -------------------
+        # Visible en mode quick (FAST) — raster NDVI/NBR + slider date.
+        # Masqué en mode health par l'observer mode-driven du server.
         bslib::nav_panel(
-          title = i18n$t("monitoring_subtab_pixel_map"),
-          value = "pixel_map",
+          title = i18n$t("monitoring_subtab_pixel_map_fast"),
+          value = "pixel_map_fast",
           icon  = bsicons::bs_icon("map"),
           mod_monitoring_pixel_map_ui(ns("pixel_map"))
+        ),
+        # ----- Sub-tab — Carte FORDEAD (placeholder) -----------------
+        # Visible en mode health — montrera le raster classifié du
+        # dépérissement (sain/faible/moyenne/forte). Tant que le cœur
+        # n'expose pas read_fordead_dieback_mask(), affiche un
+        # placeholder explicatif. Masqué en mode quick.
+        bslib::nav_panel(
+          title = i18n$t("monitoring_subtab_pixel_map_fordead"),
+          value = "pixel_map_fordead",
+          icon  = bsicons::bs_icon("tree"),
+          htmltools::div(
+            class = "p-4 text-center text-muted",
+            bsicons::bs_icon("hourglass-split",
+                             class = "fs-1 d-block mx-auto mb-3"),
+            htmltools::h5(
+              class = "mt-3",
+              i18n$t("monitoring_fordead_map_placeholder_title")
+            ),
+            htmltools::p(
+              class = "mb-0",
+              i18n$t("monitoring_fordead_map_placeholder_body")
+            )
+          )
         )
       )
     )
@@ -288,6 +313,29 @@ mod_monitoring_server <- function(id, app_state) {
 
     i18n_r <- shiny::reactive({
       get_i18n(app_state$language %||% "fr")
+    })
+
+    # Mode-driven sub-tab visibility (v0.34.0). Carte pixel (FAST)
+    # n'a de contenu utile qu'en mode quick (surveillance NDVI/NBR);
+    # Carte FORDEAD n'apparaît qu'en mode health (placeholder pour
+    # le futur raster classifié de dépérissement). On masque le
+    # sous-onglet inactif au lieu de juste vider son contenu — l'UX
+    # reste lisible et le coût reactif (build_index_stack, etc.) ne
+    # se déclenche pas en mode health sur un tab qu'on n'utilisera
+    # pas.
+    shiny::observe({
+      mode <- input$mode
+      if (identical(mode, "quick")) {
+        bslib::nav_show("subtab", target = "pixel_map_fast",
+                        session = session)
+        bslib::nav_hide("subtab", target = "pixel_map_fordead",
+                        session = session)
+      } else if (identical(mode, "health")) {
+        bslib::nav_hide("subtab", target = "pixel_map_fast",
+                        session = session)
+        bslib::nav_show("subtab", target = "pixel_map_fordead",
+                        session = session)
+      }
     })
 
     # Bumped after each FORDEAD run so the alerts reactive (wired in C5)
