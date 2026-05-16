@@ -1,5 +1,24 @@
 # Changelog
 
+## nemetonshiny 0.29.1 (2026-05-16)
+
+#### Suivi sanitaire — Carte pixel : auto-zoom sur les UGF au chargement projet
+
+À l’ouverture d’un projet, la sous-onglet **Carte pixel** restait
+centrée sur la vue Leaflet par défaut (monde entier) jusqu’à ce que
+l’utilisateur pan/zoom à la main vers la zone d’étude. La vue n’a jamais
+été rétablie depuis qu’on a basculé `renderLeaflet()` en squelette
+statique en v0.28.1 (pour préserver le choix de fond).
+
+Correctif (`R/mod_monitoring_pixel_map.R`) : ajout d’un
+`observeEvent(app_state$current_project$id)` qui appelle
+`leafletProxy("map") |> fitBounds()` sur l’emprise des UGF
+(`current_project$indicators_sf`, transformés en EPSG:4326). Le
+déclencheur est `project$id` — il ne se relance pas sur les mutations
+internes du projet (saves de métadonnées, ajout d’une placette…), donc
+le pan/zoom manuel de l’utilisateur reste stable quand le raster est
+rebuildé ou que les marqueurs placettes sont rafraîchis.
+
 ## nemetonshiny 0.29.0 (2026-05-16)
 
 #### Suivi sanitaire — Carte pixel : overlay placettes cliquable
