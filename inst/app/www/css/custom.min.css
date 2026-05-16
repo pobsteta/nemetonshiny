@@ -729,3 +729,19 @@ html[data-shiny-busy] .bslib-card::after {
 .popover.popover-lg {
   max-width: 450px;
 }
+
+/* ============================================================
+   Shiny notifications — bottom-right (v0.32.0)
+   ============================================================
+   Shiny's default position is top-right. Override the
+   #shiny-notification-panel container so all notifications
+   (ingestion s2:*, FORDEAD fordead:*, validation toasts, …) stack
+   in the bottom-right corner. !important is required because
+   Shiny renders an inline `style` attribute on the panel that
+   wins by default. */
+#shiny-notification-panel {
+  top: auto !important;
+  bottom: 20px !important;
+  right: 20px !important;
+  left: auto !important;
+}
