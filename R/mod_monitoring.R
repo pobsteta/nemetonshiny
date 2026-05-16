@@ -1636,12 +1636,17 @@ mod_monitoring_server <- function(id, app_state) {
     # Helper — kicks off the FORDEAD task with the current sidebar
     # values. Called both from the direct-click path (validity OK) and
     # from the modal "force anyway" path (G3 garde-fou).
+    #
+    # v0.33.0 migration: nemeton@v0.24.0 derives the AOI from
+    # (con, zone_id) internally — no need to fabricate `aoi` here
+    # or open a throwaway DB connection. The worker now takes
+    # cache_dir so its new phase-0 `ingest` can fetch missing bands
+    # (B02 / B05 / B8A / B11) on top of what FAST already cached
+    # (B04 / B12). zone_id presence is validated up front; the
+    # actual existence check happens core-side.
     .invoke_fordead <- function() {
       i18n <- i18n_r()
-      con <- get_monitoring_db_connection(project = app_state$current_project)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
-      aoi <- get_monitoring_zone_aoi(con, as.integer(input$zone_id))
-      if (is.null(aoi)) {
+      if (!isTRUE(nzchar(input$zone_id))) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
                                 type = "warning", duration = 4)
         return(invisible(FALSE))
@@ -1661,12 +1666,12 @@ mod_monitoring_server <- function(id, app_state) {
       fordead_progress_path(ppath)
 
       fordead_task$invoke(
-        aoi               = aoi,
         dates_training    = as.character(input$dates_training),
         dates_monitoring  = as.character(input$date_range),
         threshold_anomaly = as.numeric(input$threshold_anomaly),
         vegetation_index  = input$vegetation_index,
         zone_id           = as.integer(input$zone_id),
+        cache_dir         = .resolve_s2_cache_dir(app_state$current_project),
         db_url            = .resolve_monitoring_db_url(app_state$current_project),
         progress_path     = ppath
       )
