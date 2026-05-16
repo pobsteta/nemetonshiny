@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.30.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.30.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,38 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.30.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.30.1" id="nemetonshiny-0301-2026-05-16">nemetonshiny 0.30.1 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0301-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="changed--inversion-de-la-sémantique-de-la-checkbox--cache-cog--0-30-1">Changed — inversion de la sémantique de la checkbox « Cache COG »<a class="anchor" aria-label="anchor" href="#changed--inversion-de-la-s%C3%A9mantique-de-la-checkbox--cache-cog--0-30-1"></a></h4>
+<p>La checkbox « Cache COG » du sous-onglet <strong>Suivi sanitaire</strong> (Mode rapide) change de sémantique. Auparavant elle était un opt-in pour peupler le cache disque ; désormais elle est un opt-in pour le wiper intégralement.</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>État</th>
+<th>Avant (≤ v0.30.0)</th>
+<th>Après (v0.30.1+)</th>
+</tr></thead><tbody><tr><td>☐ Décoché (défaut)</td>
+<td>
+<code>skip_cached = TRUE</code> → court-circuit DB, cache disque jamais peuplé</td>
+<td>
+<code>skip_cached = FALSE</code> → nemeton vérifie le cache disque, télécharge uniquement les bandes manquantes</td>
+</tr><tr><td>☑ Coché</td>
+<td>wipe <code>&lt;cache_dir&gt;/*</code> puis <code>skip_cached = FALSE</code>
+</td>
+<td>wipe <code>&lt;cache_dir&gt;/*</code> puis <code>skip_cached = FALSE</code> (inchangé)</td>
+</tr></tbody></table><p>Pourquoi ce changement : FORDEAD lit les COG sur disque, pas la table <code>monitoring_obs</code>. L’ancien défaut laissait les utilisateurs avec une DB pleine mais un cache disque vide. Quand l’utilisateur lançait ensuite un diagnostic FORDEAD, celui-ci re-téléchargeait intégralement parce que le cache disque n’avait jamais été peuplé, défaisant tout le bénéfice du pré-ingest.</p>
+<p>Le nouveau défaut (<code>skip_cached = FALSE</code> toujours) tire parti du support cache COG introduit dans <code>nemeton@v0.21.4</code> et du fix <code>writeRaster filetype</code> de <code>nemeton@v0.21.12</code>. Les <code>INSERT</code> DB restent idempotents (<code>ON CONFLICT DO NOTHING</code> côté cœur), donc re-lancer l’ingestion est sûr et bon marché.</p>
+<p>Le libellé et le texte d’aide de la checkbox sont remis à jour (<code>monitoring_reprime_cache_label</code>, <code>monitoring_reprime_cache_help</code>) pour refléter la nouvelle sémantique : décoché = vérif cache, coché = wipe &amp; restart.</p>
+<p><strong>Note de migration</strong> :</p>
+<ul><li>1er run sur une zone vierge : aucun changement, le 1er ingest télécharge tout dans tous les cas.</li>
+<li>Re-runs sur une zone déjà ingérée : prennent quelques secondes de plus (vérification cache disque scène par scène) mais le cache se peuple réellement, et FORDEAD peut désormais s’en servir.</li>
+<li>Re-runs après un changement de fenêtre (nouvelles scènes apparues, dates étendues) : nemeton télécharge seulement le delta — bien plus rapide qu’avant où l’ancien défaut DB-cache rendait le delta invisible.</li>
+<li>Si tu rencontres un cache corrompu : coche la case pour wipe et recommencer.</li>
+</ul><p>Régression bloquée par <code>test-mod_monitoring.R</code> (nouveau test « input$run passes skip_cached = FALSE regardless of reprime_cache (v0.30.1+) »).</p>
+<p>Aucune modif côté <code>nemeton</code> requise — le cœur supporte ce mode depuis v0.21.4.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.30.0" id="nemetonshiny-0300-2026-05-16">nemetonshiny 0.30.0 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0300-2026-05-16"></a></h2>
 <div class="section level4">
