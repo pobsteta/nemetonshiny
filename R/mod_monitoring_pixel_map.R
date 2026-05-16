@@ -372,16 +372,21 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # (forest greens). cli debug log on each fire so a developer
     # running from a terminal sees the reactive firing.
     #
-    # IMPORTANT — render-order dependency (v0.31.2): we also read
-    # current_layer_r() here even though we don't use its value. This
-    # forces the observe to re-fire AFTER each raster update, so the
-    # polygons are re-added to the map LAST in DOM order. Without
-    # this, the raster observe (which fires later because
-    # build_index_stack is heavy I/O) painted its image AFTER the
-    # UGF polygons and ended up on top of them in overlayPane,
-    # hiding the orange outline completely. clearGroup + addPolygons
-    # here doesn't undo the previous raster — it just re-stacks the
-    # polygons above it.
+    # IMPORTANT — overlay stacking order (v0.31.2 dep + v0.31.4
+    # priority): the raster, UGF polygons and placette CircleMarkers
+    # all live in Leaflet's `overlayPane` (CircleMarkers are Paths,
+    # not L.Marker). DOM order within a pane determines click
+    # routing: the last-added layer is on top AND receives the
+    # clicks.
+    #
+    # Strict priority ladder ensures the order is deterministic:
+    #   raster    priority = 100  → first  → bottom
+    #   ugf       priority =  50  → second → middle (this observe)
+    #   placettes priority =   0  → third  → top (clickable!)
+    #
+    # The `current_layer_r()` dummy read re-fires this observe after
+    # each raster update so polygons get re-stacked above a freshly
+    # painted raster (date slider, index toggle, etc.).
     shiny::observe({
       current_layer_r()  # re-fire after each raster update
       proxy <- leaflet::leafletProxy("map") |>
@@ -402,7 +407,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           fillColor   = "#FF6B35",
           fillOpacity = 0.05
         )
-    })
+    }, priority = 50L)
 
     # Auto-fit on project load + when the user navigates to the Carte
     # pixel sub-tab. Same problem as mod_ug.R:744-794 — Leaflet's
@@ -492,7 +497,28 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # handler downstream can identify which placette was tapped.
     # Radius bumped to 7 + black border so the markers stay readable
     # at the wide auto-fit zoom (a few km across).
+    #
+    # IMPORTANT — overlay stacking order (v0.31.4):
+    #
+    # CircleMarkers are Leaflet Paths (NOT L.Marker), so they live in
+    # `overlayPane` along with the raster ImageOverlay and the UGF
+    # polygons. Within a pane, Leaflet renders in DOM order (last
+    # added = on top, and on top = receives clicks). So the placettes
+    # observe MUST run AFTER the raster and UGF observes within the
+    # same flush, otherwise the polygons end up over the markers and
+    # intercept the user's clicks.
+    #
+    # Strict priority ladder across the three observes:
+    #   raster    priority = 100  → first  → bottom (under polygons)
+    #   ugf       priority =  50  → second → middle (under markers)
+    #   placettes priority =   0  → third  → top    (clickable!)
+    #
+    # The dummy `current_layer_r()` read recreates the same dependency
+    # the UGF observe has — so when the date slider moves, this observe
+    # re-fires too and re-adds the markers AFTER the fresh raster /
+    # polygons in DOM order, staying clickable.
     shiny::observe({
+      current_layer_r()  # re-fire after each raster update
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.placettes_overlay_group)
       ps <- placettes_sf_r()
@@ -513,7 +539,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           fillOpacity = 0.9,
           label       = ~as.character(plot_id)
         )
-    })
+    }, priority = 0L)
 
     # Suppression flag for the pixel-click handler. CircleMarkers are
     # Leaflet Paths; their click events propagate to the map, so the
