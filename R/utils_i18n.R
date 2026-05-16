@@ -2002,6 +2002,78 @@ TRANSLATIONS <- list(
     en = "FORDEAD — phase %s"
   ),
 
+  # ----- FORDEAD phase toasts (v0.32.0) ---------------------------------
+  # Templates use glue-style {placeholder} args because get_i18n()$t()
+  # runs glue::glue() on the result. The fordead:* dispatcher in
+  # R/mod_monitoring.R passes named args matching these placeholders.
+  # Per-phase labels are resolved by .fordead_phase_label() — when a
+  # future nemeton release emits a phase_name with no matching key
+  # here, a Title-Cased version of the raw name is used as fallback.
+  #
+  # Accents are encoded as \uXXXX per the convention enforced in this
+  # file (utils_i18n.R, ~360 keys — see CLAUDE.md i18n rule 4).
+  monitoring_fordead_phase_progress = list(
+    fr = "Phase {n}/{total} — {label}",
+    en = "Phase {n}/{total} — {label}"
+  ),
+  monitoring_fordead_phase_done = list(
+    fr = "✓ {label}",
+    en = "✓ {label}"
+  ),
+  monitoring_fordead_complete = list(
+    fr = "FORDEAD terminé · {n} alertes · {sec}s",
+    en = "FORDEAD complete · {n} alerts · {sec}s"
+  ),
+  monitoring_fordead_error = list(
+    fr = "FORDEAD échec en {phase} : {msg}",
+    en = "FORDEAD failed at {phase}: {msg}"
+  ),
+
+  # Per-phase labels — current 1.x sequence (nemeton@v0.22.5)
+  monitoring_fordead_phase_vegetation_index = list(
+    fr = "Indice de végétation",
+    en = "Vegetation index"
+  ),
+  monitoring_fordead_phase_train_model = list(
+    fr = "Entraînement du modèle",
+    en = "Model training"
+  ),
+  monitoring_fordead_phase_forest_mask = list(
+    fr = "Masque forestier",
+    en = "Forest mask"
+  ),
+  monitoring_fordead_phase_dieback_detection = list(
+    fr = "Détection de dépérissement",
+    en = "Dieback detection"
+  ),
+  monitoring_fordead_phase_export_results = list(
+    fr = "Export des résultats",
+    en = "Results export"
+  ),
+  monitoring_fordead_phase_postprocess = list(
+    fr = "Post-traitement",
+    en = "Post-processing"
+  ),
+  monitoring_fordead_phase_persist = list(
+    fr = "Enregistrement DB",
+    en = "Database persistence"
+  ),
+
+  # Anticipated for nemeton@v0.23.0 (4-5 phase STAC pipeline). Pre-shipped
+  # so a future cœur bump consumes these labels without an app release.
+  monitoring_fordead_phase_stac_assembly = list(
+    fr = "Assemblage STAC",
+    en = "STAC assembly"
+  ),
+  monitoring_fordead_phase_fit = list(
+    fr = "Entraînement (fit)",
+    en = "Training (fit)"
+  ),
+  monitoring_fordead_phase_predict = list(
+    fr = "Détection (predict)",
+    en = "Detection (predict)"
+  ),
+
   # ----- G3 banners (geographic + species validity) -----
   monitoring_warning_geo_title = list(
     fr = "Zone hors domaine de validation FORDEAD",
