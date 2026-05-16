@@ -400,10 +400,20 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         )
     })
 
+    # Suppression flag for the pixel-click handler. CircleMarkers are
+    # Leaflet Paths; their click events propagate to the map, so the
+    # marker handler AND the pixel handler both fire on a single
+    # marker tap. Without this, clicking a placette opens the placette
+    # modal AND immediately stacks the pixel modal on top of it. The
+    # marker handler stamps Sys.time() here; the pixel handler bails
+    # if the timestamp is within 500 ms of its own invocation.
+    marker_just_clicked <- shiny::reactiveVal(NULL)
+
     # Marker click handler: open a modal with the per-placette NDVI/NBR
     # time series. Reuses obs_pixel_data() — the values are already the
     # placette mean computed core-side, no re-aggregation needed.
     shiny::observeEvent(input$map_marker_click, {
+      marker_just_clicked(Sys.time())
       i18n <- i18n_r()
       ev <- input$map_marker_click
       pid <- as.character(ev$id %||% "")
@@ -469,6 +479,16 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # Click handler: extract the per-pixel time series at the clicked
     # coordinate and pop a modal with NDVI + NBR superimposed.
     shiny::observeEvent(input$map_click, {
+      # Bail if a placette marker was just clicked — its click event
+      # propagated up to map_click (CircleMarkers are Leaflet Paths
+      # which bubble clicks by default). Without this guard, tapping a
+      # placette opens the placette modal AND immediately stacks the
+      # pixel modal on top.
+      last_marker <- marker_just_clicked()
+      if (!is.null(last_marker) &&
+          as.numeric(Sys.time() - last_marker, units = "secs") < 0.5) {
+        return()
+      }
       i18n <- i18n_r()
       cd <- cache_dir_r()
       sdf <- scenes_df_r()
