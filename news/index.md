@@ -1,5 +1,39 @@
 # Changelog
 
+## nemetonshiny 0.31.2 (2026-05-16)
+
+#### Fixed — Carte pixel : contour UGF désormais visible (problème de z-order)
+
+L’utilisateur signalait toujours l’absence du contour UGF dans la
+sous-onglet **Carte pixel**, alors que les mêmes UGFs s’affichaient
+correctement dans **Sélection / Carte UGF**. La donnée était bien là (la
+chaîne de fallback de v0.31.1 fonctionne), mais elle était **peinte
+par-dessus** par le raster NDVI/NBR à cause d’un problème de z-order
+dans le `overlayPane` Leaflet.
+
+Diagnostic : Leaflet rend les couches du `overlayPane` dans l’ordre DOM
+(dernière ajoutée = au-dessus). L’observe UGF est rapide (lecture de
+champ projet) et fire tôt ; l’observe raster est lent
+(`build_index_stack` lit N COGs) et fire tard. Résultat : polygones
+ajoutés en premier → raster ajouté ensuite, par-dessus → orange
+invisible.
+
+Correctif en deux temps dans `R/mod_monitoring_pixel_map.R` :
+
+1.  **L’observe UGF lit `current_layer_r()` en dépendance**, sans
+    utiliser sa valeur. Ainsi, à chaque update du raster, l’observe UGF
+    re-fire et ré-ajoute les polygones APRÈS le raster en DOM order —
+    polygones au-dessus.
+2.  **L’observe raster est marqué `priority = 100L`**. Dans un flush où
+    raster et UGF sont tous deux dirty (typiquement au chargement
+    projet), Shiny lance les observers de priorité élevée d’abord —
+    raster ajoute son image, UGF ajoute ses polygones après. Polygones
+    au-dessus de manière déterministe.
+
+Combinés, les deux mécanismes garantissent que le contour orange reste
+visible au-dessus du raster quel que soit l’ordre des réactives dans le
+flush.
+
 ## nemetonshiny 0.31.1 (2026-05-16)
 
 #### Fixed — Carte pixel : contour de zone d’analyse + raster lisible sur Satellite

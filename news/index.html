@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,23 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.31.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.31.2" id="nemetonshiny-0312-2026-05-16">nemetonshiny 0.31.2 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0312-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-pixel--contour-ugf-désormais-visible-problème-de-z-order-0-31-2">Fixed — Carte pixel : contour UGF désormais visible (problème de z-order)<a class="anchor" aria-label="anchor" href="#fixed--carte-pixel--contour-ugf-d%C3%A9sormais-visible-probl%C3%A8me-de-z-order-0-31-2"></a></h4>
+<p>L’utilisateur signalait toujours l’absence du contour UGF dans la sous-onglet <strong>Carte pixel</strong>, alors que les mêmes UGFs s’affichaient correctement dans <strong>Sélection / Carte UGF</strong>. La donnée était bien là (la chaîne de fallback de v0.31.1 fonctionne), mais elle était <strong>peinte par-dessus</strong> par le raster NDVI/NBR à cause d’un problème de z-order dans le <code>overlayPane</code> Leaflet.</p>
+<p>Diagnostic : Leaflet rend les couches du <code>overlayPane</code> dans l’ordre DOM (dernière ajoutée = au-dessus). L’observe UGF est rapide (lecture de champ projet) et fire tôt ; l’observe raster est lent (<code>build_index_stack</code> lit N COGs) et fire tard. Résultat : polygones ajoutés en premier → raster ajouté ensuite, par-dessus → orange invisible.</p>
+<p>Correctif en deux temps dans <code>R/mod_monitoring_pixel_map.R</code> :</p>
+<ol style="list-style-type: decimal"><li>
+<strong>L’observe UGF lit <code>current_layer_r()</code> en dépendance</strong>, sans utiliser sa valeur. Ainsi, à chaque update du raster, l’observe UGF re-fire et ré-ajoute les polygones APRÈS le raster en DOM order — polygones au-dessus.</li>
+<li>
+<strong>L’observe raster est marqué <code>priority = 100L</code></strong>. Dans un flush où raster et UGF sont tous deux dirty (typiquement au chargement projet), Shiny lance les observers de priorité élevée d’abord — raster ajoute son image, UGF ajoute ses polygones après. Polygones au-dessus de manière déterministe.</li>
+</ol><p>Combinés, les deux mécanismes garantissent que le contour orange reste visible au-dessus du raster quel que soit l’ordre des réactives dans le flush.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.31.1" id="nemetonshiny-0311-2026-05-16">nemetonshiny 0.31.1 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0311-2026-05-16"></a></h2>
 <div class="section level4">
