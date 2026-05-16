@@ -496,7 +496,6 @@ test_that("input$run_health blocks when overall_valid = FALSE (G3 modal path)", 
            species_valid = TRUE, species_resineux_pct = 0.9,
            overall_valid = FALSE, thresholds = list())
     },
-    get_monitoring_zone_aoi        = function(con, zone_id) "fake-aoi",
     {
       shiny::testServer(
         nemetonshiny:::mod_monitoring_server,
@@ -536,7 +535,6 @@ test_that("input$run_health invokes FORDEAD when validity is OK", {
            species_valid = TRUE, species_resineux_pct = 0.85,
            overall_valid = TRUE, thresholds = list())
     },
-    get_monitoring_zone_aoi        = function(con, zone_id) "fake-aoi",
     update_project_metadata        = function(...) TRUE,
     {
       shiny::testServer(
@@ -554,10 +552,12 @@ test_that("input$run_health invokes FORDEAD when validity is OK", {
           )
           calls <- fake_task$.calls()
           expect_length(calls, 1L)
-          expect_equal(calls[[1]]$aoi,               "fake-aoi")
           expect_equal(calls[[1]]$vegetation_index,  "CRSWIR")
           expect_equal(calls[[1]]$threshold_anomaly, 0.16)
           expect_equal(calls[[1]]$zone_id,           1L)
+          # v0.33.0: cache_dir is now passed; resolves from project path
+          # (NULL here because make_fake_app_state has no current_project).
+          expect_true("cache_dir" %in% names(calls[[1]]))
         }
       )
     }
@@ -580,7 +580,6 @@ test_that("confirm_invalid_run invokes FORDEAD on modal accept (G3 force path)",
            species_valid = FALSE, species_resineux_pct = 0.0,
            overall_valid = FALSE, thresholds = list())
     },
-    get_monitoring_zone_aoi        = function(con, zone_id) "fake-aoi",
     update_project_metadata        = function(...) TRUE,
     {
       shiny::testServer(
