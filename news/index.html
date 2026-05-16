@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.31.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,18 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.31.4/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.31.5" id="nemetonshiny-0315-2026-05-16">nemetonshiny 0.31.5 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0315-2026-05-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-pixel--raster-ndvinbr-visible-sur-fond-satellite-0-31-5">Fixed — Carte pixel : raster NDVI/NBR visible sur fond Satellite<a class="anchor" aria-label="anchor" href="#fixed--carte-pixel--raster-ndvinbr-visible-sur-fond-satellite-0-31-5"></a></h4>
+<p>L’utilisateur signalait que sur fond Satellite la couche NDVI/NBR restait imperceptible, alors qu’elle s’affichait correctement sur fond OSM. C’est la dernière conséquence du conflit de palette : la gamme NDVI conventionnelle (rouge → vert pâle → vert foncé) partage exactement les tons de l’imagerie naturelle Esri (forêts vert foncé). Pour les valeurs typiques en forêt (NBR ~0.5, dans la zone « vert pâle » #A8DDB5), même à 0.85 d’opacité (bump v0.31.1) le raster se fondait dans le satellite.</p>
+<p>Correctif (<code>R/mod_monitoring_pixel_map.R</code>) : opacité raster 0.85 → <strong>1.0</strong>. Les couleurs deviennent parfaitement lisibles sur les deux fonds.</p>
+<p><strong>Trade-off assumé</strong> : sur l’emprise du raster (la zone d’analyse), l’imagerie satellite est masquée. L’utilisateur garde le contexte satellite <strong>autour</strong> de l’emprise (typiquement quelques km au-delà de la zone d’analyse, déjà visible). S’il a besoin de voir les routes/parcelles à l’intérieur de la zone, il peut basculer en OSM, toujours pleinement compatible avec le raster.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.31.4" id="nemetonshiny-0314-2026-05-16">nemetonshiny 0.31.4 (2026-05-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0314-2026-05-16"></a></h2>
 <div class="section level4">
