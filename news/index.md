@@ -1,5 +1,53 @@
 # Changelog
 
+## nemetonshiny 0.36.2 (2026-05-17)
+
+#### Fixed — Zone monitoring qui ne se met pas à jour au changement de projet
+
+Deux bugs en chaîne dans `R/mod_monitoring.R` :
+
+1.  **Dépendance fantôme en mode Postgres**. Le reactive `zones` lisait
+    `app_state$current_project` uniquement via l’argument lazy
+    `project = ...` de `get_monitoring_db_connection()`. En mode
+    Postgres, `.resolve_monitoring_db_url()` retourne tôt sur la
+    variable d’environnement `NEMETON_DB_URL` sans jamais accéder à
+    `project`, donc le promise n’était jamais forcé et Shiny
+    n’enregistrait pas de dépendance sur `current_project`. Conséquence
+    : changer de projet n’invalidait pas la liste des zones. En mode
+    DuckDB local le bug était masqué parce que le resolver finit par
+    lire `project$path`.
+
+    Correctif : `proj <- app_state$current_project` en lecture explicite
+    avant l’appel, ce qui force le promise et enregistre la dépendance
+    dans tous les modes.
+
+2.  **Pré-sélection trompeuse sur projet neuf**. Quand le projet chargé
+    n’avait pas de `metadata$monitoring_zone_id` (cas typique d’un
+    projet neuf, jamais enregistré comme zone), l’observer qui pousse
+    les zones dans le `selectInput` retombait sur `choices[1]` — la
+    première zone alphabétique. En mode Postgres partagé, c’était la
+    zone d’un AUTRE projet, et l’utilisateur voyait ses alertes / sa
+    carte FAST / sa carte FORDEAD sans comprendre que la donnée ne
+    concernait pas son projet.
+
+    Correctif : quand le projet n’a pas de zone bindée, la sélection est
+    vidée (`character(0)`) au lieu de tomber sur la première zone. Tous
+    les reactives downstream (`alerts`, `validity`, `obs_pixel_data`,
+    modules FAST / FORDEAD) bailent déjà sur `!nzchar(input$zone_id)` →
+    empty-states cohérents et l’utilisateur enregistre explicitement sa
+    zone via le bouton dédié.
+
+#### Sémantique attendue (rappel)
+
+- Chaque projet a SA zone monitoring, persistée dans
+  `metadata$monitoring_zone_id` du `metadata.json` du projet.
+- En mode DuckDB local : chaque projet a sa propre base
+  `<project>/data/monitoring.duckdb`, isolation totale.
+- En mode Postgres partagé : la liste des zones est commune mais chaque
+  projet réfère à UNE zone précise via son metadata.
+
+------------------------------------------------------------------------
+
 ## nemetonshiny 0.36.1 (2026-05-17)
 
 #### Fixed — UX seuils FAST alignée sur la sémantique cœur

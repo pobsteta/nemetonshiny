@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,30 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.36.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.36.2" id="nemetonshiny-0362-2026-05-17">nemetonshiny 0.36.2 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0362-2026-05-17"></a></h2>
+<div class="section level4">
+<h4 id="fixed--zone-monitoring-qui-ne-se-met-pas-à-jour-au-changement-de-projet-0-36-2">Fixed — Zone monitoring qui ne se met pas à jour au changement de projet<a class="anchor" aria-label="anchor" href="#fixed--zone-monitoring-qui-ne-se-met-pas-%C3%A0-jour-au-changement-de-projet-0-36-2"></a></h4>
+<p>Deux bugs en chaîne dans <code>R/mod_monitoring.R</code> :</p>
+<ol style="list-style-type: decimal"><li>
+<p><strong>Dépendance fantôme en mode Postgres</strong>. Le reactive <code>zones</code> lisait <code>app_state$current_project</code> uniquement via l’argument lazy <code>project = ...</code> de <code>get_monitoring_db_connection()</code>. En mode Postgres, <code>.resolve_monitoring_db_url()</code> retourne tôt sur la variable d’environnement <code>NEMETON_DB_URL</code> sans jamais accéder à <code>project</code>, donc le promise n’était jamais forcé et Shiny n’enregistrait pas de dépendance sur <code>current_project</code>. Conséquence : changer de projet n’invalidait pas la liste des zones. En mode DuckDB local le bug était masqué parce que le resolver finit par lire <code>project$path</code>.</p>
+<p>Correctif : <code>proj &lt;- app_state$current_project</code> en lecture explicite avant l’appel, ce qui force le promise et enregistre la dépendance dans tous les modes.</p>
+</li>
+<li>
+<p><strong>Pré-sélection trompeuse sur projet neuf</strong>. Quand le projet chargé n’avait pas de <code>metadata$monitoring_zone_id</code> (cas typique d’un projet neuf, jamais enregistré comme zone), l’observer qui pousse les zones dans le <code>selectInput</code> retombait sur <code>choices[1]</code> — la première zone alphabétique. En mode Postgres partagé, c’était la zone d’un AUTRE projet, et l’utilisateur voyait ses alertes / sa carte FAST / sa carte FORDEAD sans comprendre que la donnée ne concernait pas son projet.</p>
+<p>Correctif : quand le projet n’a pas de zone bindée, la sélection est vidée (<code>character(0)</code>) au lieu de tomber sur la première zone. Tous les reactives downstream (<code>alerts</code>, <code>validity</code>, <code>obs_pixel_data</code>, modules FAST / FORDEAD) bailent déjà sur <code>!nzchar(input$zone_id)</code> → empty-states cohérents et l’utilisateur enregistre explicitement sa zone via le bouton dédié.</p>
+</li>
+</ol></div>
+<div class="section level4">
+<h4 id="sémantique-attendue-rappel-0-36-2">Sémantique attendue (rappel)<a class="anchor" aria-label="anchor" href="#s%C3%A9mantique-attendue-rappel-0-36-2"></a></h4>
+<ul><li>Chaque projet a SA zone monitoring, persistée dans <code>metadata$monitoring_zone_id</code> du <code>metadata.json</code> du projet.</li>
+<li>En mode DuckDB local : chaque projet a sa propre base <code>&lt;project&gt;/data/monitoring.duckdb</code>, isolation totale.</li>
+<li>En mode Postgres partagé : la liste des zones est commune mais chaque projet réfère à UNE zone précise via son metadata.</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.36.1" id="nemetonshiny-0361-2026-05-17">nemetonshiny 0.36.1 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0361-2026-05-17"></a></h2>
 <div class="section level4">
