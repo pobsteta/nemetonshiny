@@ -10,6 +10,32 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-05-17
+
+### Added
+
+- **Suivi sanitaire** : 4 sous-onglets symétriques FAST / FORDEAD —
+  `Alertes FAST` + `Carte FAST` visibles en mode quick, `Alertes
+  FORDEAD` + `Carte FORDEAD` visibles en mode health. Visibilité
+  pilotée côté server via `bslib::nav_show()` / `nav_hide()` étendus
+  aux 4 valeurs. Les deux placeholders (Alertes FAST, Carte FORDEAD)
+  attendent les exporteurs cœur `list_fast_alerts_for_zone()` et
+  `read_fordead_dieback_mask()` (`R/mod_monitoring.R`,
+  `R/utils_i18n.R`).
+- 4 nouvelles clés i18n FR/EN : `monitoring_subtab_alerts_fast`,
+  `monitoring_subtab_alerts_fordead`,
+  `monitoring_fast_alerts_placeholder_title`,
+  `monitoring_fast_alerts_placeholder_body`.
+
+### Changed
+
+- Sous-onglet `alerts` renommé `alerts_fordead` (même contenu,
+  label « Alertes FORDEAD »). Les `conditionalPanel` internes
+  filtrant sur `input$mode == 'health'` sont supprimés — l'onglet
+  entier est masqué en mode FAST par l'observer mode-driven.
+- Texte du placeholder Carte FORDEAD : référence pointée vers
+  « Alertes FORDEAD » au lieu de « Alertes ».
+
 ## [0.34.0] - 2026-05-16
 
 ### Fixed

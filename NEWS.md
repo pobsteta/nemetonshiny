@@ -1,3 +1,59 @@
+# nemetonshiny 0.35.0 (2026-05-17)
+
+### Added — Quatre sous-onglets Suivi sanitaire, symétriques FAST / FORDEAD
+
+L'onglet « Alertes » unique ne reflétait pas la dichotomie modes
+**quick (FAST)** vs **health (FORDEAD)** : en mode FAST il était
+vide (placeholder « Aucune alerte à afficher ») parce que la table
+`fordead_alerts` qui l'alimente n'est peuplée qu'après un run
+FORDEAD. Pareil pour le bloc QGIS d'échantillonnage en bas, lui
+aussi FORDEAD-only. Avec le split Carte FAST / Carte FORDEAD livré
+en v0.34.0, on étend la même mécanique au canal d'alerte :
+
+| Sous-onglet         | Valeur              | Visible en mode | Contenu                                                                          |
+|---------------------|---------------------|-----------------|----------------------------------------------------------------------------------|
+| `Alertes FAST`      | `alerts_fast`       | quick           | Placeholder — attend `nemeton::list_fast_alerts_for_zone()` (cf. spec PLAN.md)  |
+| `Carte FAST`        | `pixel_map_fast`    | quick           | Raster NDVI/NBR + slider date + clic pixel/placette                              |
+| `Alertes FORDEAD`   | `alerts_fordead`    | health          | Carte des placettes flaguées + bloc QGIS (renommé depuis `alerts`)              |
+| `Carte FORDEAD`     | `pixel_map_fordead` | health          | Placeholder — attend `nemeton::read_fordead_dieback_mask()`                     |
+
+Visibilité pilotée par un `observe` étendu côté server :
+`bslib::nav_show()` / `nav_hide()` sur les 4 valeurs selon `input$mode`.
+À l'écran, l'utilisateur ne voit jamais plus de 2 sous-onglets à la
+fois — exactement comme avant v0.35.0 avec 3 déclarations, mais avec
+le bon couple (alertes + carte) par mode.
+
+**Renommage** : l'ancien sous-onglet `alerts` devient `alerts_fordead`,
+même contenu (carte Leaflet `alerts_map`, popups par classe de
+confiance, bloc QGIS GRTS/Random). Les `conditionalPanel` internes
+qui filtraient sur `input$mode == 'health'` sont supprimés : tout le
+sous-onglet est désormais masqué en mode FAST, plus besoin de
+double-vérification.
+
+**4 nouvelles clés i18n FR/EN** :
+
+- `monitoring_subtab_alerts_fast`
+- `monitoring_subtab_alerts_fordead`
+- `monitoring_fast_alerts_placeholder_title`
+- `monitoring_fast_alerts_placeholder_body`
+
+Le placeholder Carte FORDEAD est mis à jour pour pointer vers
+« Alertes FORDEAD » (au lieu de « Alertes »).
+
+### Notes opérationnelles
+
+- Les deux placeholders (Alertes FAST + Carte FORDEAD) seront
+  câblés à de vrais modules dès que `nemeton@v0.25.0` shippera
+  `list_fast_alerts_for_zone()` et `read_fordead_dieback_mask()`.
+- Tant que ce n'est pas le cas, le mode FAST montre **Alertes FAST
+  placeholder + Carte FAST fonctionnelle**, et le mode FORDEAD
+  montre **Alertes FORDEAD fonctionnelle + Carte FORDEAD
+  placeholder**.
+- Aucune fonction métier ajoutée côté app — purement structuration
+  UI (ADR-009 respecté).
+
+---
+
 # nemetonshiny 0.34.0 (2026-05-16)
 
 ### Fixed — Cascade de redraws sur la carte pixel pendant l'animation slider
