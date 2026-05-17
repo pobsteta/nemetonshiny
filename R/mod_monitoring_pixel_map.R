@@ -216,16 +216,23 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     #
     # v0.34.0 — custom pane `nemetonRaster` à z-index 250, entre
     # `tilePane` (200, où vivent OSM / Satellite) et `overlayPane`
-    # (400, où vivent les polygones UGF et les CircleMarkers). Ainsi
-    # le raster NDVI/NBR est toujours :
-    #   - AU-DESSUS du fond de carte (visible quand l'utilisateur
-    #     bascule sur Satellite — le tile satellite reste sous le
-    #     raster)
-    #   - EN-DESSOUS des polygones UGF et des markers placettes (qui
-    #     restent cliquables et visibles)
-    # Sans ce pane custom, le tile satellite ajouté APRÈS le raster
-    # via le LayersControl masquait NDVI/NBR (DOM order au sein de
-    # tilePane).
+    # (400, où vivent les polygones UGF par défaut). Ainsi le raster
+    # NDVI/NBR est toujours AU-DESSUS du fond de carte (sinon le
+    # tile satellite ré-ajouté par le LayersControl masquait
+    # NDVI/NBR) et EN-DESSOUS des polygones UGF.
+    #
+    # v0.36.3 — les CircleMarkers (placettes) sont par défaut des
+    # Path dans `overlayPane` aux côtés des polygones UGF. Selon
+    # l'ordre de re-draw, les polygones pouvaient finir en fin de
+    # `<g>` SVG et masquer les markers (markers invisibles). On les
+    # pousse explicitement dans `markerPane` (z=600) côté observe,
+    # ce qui garantit la visibilité au-dessus des polygones.
+    #
+    # Z-stack final (du bas vers le haut) :
+    #   tilePane         z=200  OSM / Satellite
+    #   nemetonRaster    z=250  NDVI / NBR raster (épinglé custom)
+    #   overlayPane      z=400  Polygones UGF (défaut Path)
+    #   markerPane       z=600  CircleMarkers placettes (épinglées)
     output$map <- leaflet::renderLeaflet({
       leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
@@ -511,13 +518,22 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # at the wide auto-fit zoom (a few km across).
     #
     # v0.34.0 — observe ne dépend plus de `current_layer_r()` : le
-    # raster vit dans `nemetonRaster` (z-index 250, sous overlayPane
-    # à 400), donc le z-order est garanti sans besoin de ré-empiler
-    # les CircleMarkers à chaque tick de date. Les markers ne
+    # raster vit dans `nemetonRaster` (z-index 250). Les markers ne
     # re-firent que quand `placettes_sf_r()` change (i.e. nouvelle
-    # obs_pixel_data ou nouveau projet). Clickabilité préservée :
-    # CircleMarkers (Paths) restent dans overlayPane, naturellement
-    # au-dessus du raster.
+    # obs_pixel_data ou nouveau projet).
+    #
+    # v0.36.3 — markers pinned explicitly to `markerPane` (z-index
+    # 600). CircleMarkers are Path layers and by default land in
+    # `overlayPane` (z=400) along with UGF polygons. In some
+    # browsers / leaflet 2.x reflows the polygons ended up at the
+    # END of the SVG `<g>` in overlayPane (DOM order = z-order
+    # within a pane), making them paint OVER the CircleMarkers and
+    # rendering the blue dots invisible. Forcing markers up to
+    # `markerPane` (a separate pane Leaflet defines at z=600 for
+    # L.Marker icons) gives them their own pane above polygons,
+    # guaranteeing visibility regardless of polygon redraw timing.
+    # Clickability preserved (Paths emit `click` to `map_marker_click`
+    # via `layerId`).
     shiny::observe({
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.placettes_overlay_group)
@@ -537,7 +553,8 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           color       = "#000000",
           fillColor   = "#1F77B4",
           fillOpacity = 0.9,
-          label       = ~as.character(plot_id)
+          label       = ~as.character(plot_id),
+          options     = leaflet::pathOptions(pane = "markerPane")
         )
     })
 
