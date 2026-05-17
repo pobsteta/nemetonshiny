@@ -793,13 +793,25 @@ mod_monitoring_server <- function(id, app_state) {
     )
 
     # Zones reactive: open a fresh connection, list, close. Re-runs on
-    # session start and on demand via zones_refresh(). Keep cheap (one
-    # query, ~ms).
+    # session start, on demand via zones_refresh(), and whenever the
+    # active project changes (each project may have its own DuckDB DB
+    # in local mode, and even in shared Postgres mode we want a fresh
+    # list in case zones were added externally).
+    #
+    # v0.36.2 — explicit `proj <-` read to force the dep on
+    # `app_state$current_project`. Reading via the lazy `project =`
+    # function argument was insufficient: in Postgres mode
+    # `.resolve_monitoring_db_url()` returns early on the
+    # `NEMETON_DB_URL` envvar without ever forcing the promise, so the
+    # reactive missed its dep on `current_project` and never re-fetched
+    # on project switch. In DuckDB mode the bug was masked because the
+    # resolver does end up touching `project$path`.
     zones_refresh <- shiny::reactiveVal(0L)
 
     zones <- shiny::reactive({
-      zones_refresh()  # invalidate dependency
-      con <- get_monitoring_db_connection(project = app_state$current_project)
+      zones_refresh()                       # explicit refresh trigger
+      proj <- app_state$current_project     # explicit dep on project
+      con <- get_monitoring_db_connection(project = proj)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       list_monitoring_zones(con)
     })
@@ -809,6 +821,17 @@ mod_monitoring_server <- function(id, app_state) {
     # registered as a zone (`metadata$monitoring_zone_id`), pre-select
     # that zone instead of the first alphabetic one — saves the user a
     # click on every project re-open.
+    #
+    # v0.36.2 — when the active project has NO `monitoring_zone_id`
+    # (fresh project, zone never registered), clear the selection
+    # rather than falling back to `choices[1]`. Pre-selecting the first
+    # alphabetic zone was misleading because that zone belongs to
+    # *another* project and the user would see its alerts / pixel-map
+    # data thinking they were for the new project. An empty selection
+    # propagates correctly through downstream reactives (`alerts`,
+    # `validity`, `obs_pixel_data`, FAST/FORDEAD modules) which all
+    # bail on `!nzchar(input$zone_id)`. The user registers a zone via
+    # the dedicated button to bind it to this project.
     shiny::observe({
       z <- zones()
       choices <- if (nrow(z)) stats::setNames(as.character(z$id), z$name)
@@ -820,8 +843,7 @@ mod_monitoring_server <- function(id, app_state) {
         candidate <- as.character(pmeta_id)
         if (candidate %in% choices) preferred <- candidate
       }
-      selected <- if (length(preferred)) preferred
-                  else (choices[1] %||% character(0))
+      selected <- if (length(preferred)) preferred else character(0)
 
       shiny::updateSelectInput(session, "zone_id",
                                choices  = choices,
