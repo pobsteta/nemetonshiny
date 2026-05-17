@@ -1575,12 +1575,13 @@ mod_monitoring_server <- function(id, app_state) {
         if (n_scenes == 0L) {
           # 0 scènes peut signifier soit "vraiment rien dans la période"
           # soit "STAC en panne" (HTTP 504, timeout réseau...). On
-          # surfaca les warnings capturés pour que l'utilisateur sache
-          # si c'est une vraie absence ou un échec backend. `id`
-          # explicite pour qu'un re-clic remplace le toast au lieu de
-          # l'empiler.
+          # surface les warnings capturés (résumés pour rester
+          # lisibles — cf. .summarize_backend_warnings) pour que
+          # l'utilisateur sache si c'est une vraie absence ou un échec
+          # backend. `id` explicite pour qu'un re-clic remplace le
+          # toast au lieu de l'empiler.
           detail <- if (length(warns) > 0L) {
-            paste(warns, collapse = " ; ")
+            paste(.summarize_backend_warnings(warns), collapse = " ; ")
           } else {
             i18n$t("monitoring_ingest_zero_default")
           }
@@ -1597,11 +1598,15 @@ mod_monitoring_server <- function(id, app_state) {
           )
           # Si malgré le succès on a recolté des warnings non bloquants,
           # on les montre en plus dans un toast secondaire (id distinct
-          # pour cohabiter avec le toast success).
+          # pour cohabiter avec le toast success). Les warnings sont
+          # nettoyés (URLs pré-signées Azure / STAC strippées, cap à
+          # ~200 chars par entrée) pour éviter le mur de texte du SAS
+          # token quand un crop échoue en HTTP 403/404.
           if (length(warns) > 0L) {
             shiny::showNotification(
               sprintf(i18n$t("monitoring_ingest_warns_fmt"),
-                      paste(warns, collapse = " ; ")),
+                      paste(.summarize_backend_warnings(warns),
+                            collapse = " ; ")),
               id       = session$ns("ingest_warns"),
               type     = "warning", duration = 10
             )
@@ -1994,6 +1999,34 @@ mod_monitoring_server <- function(id, app_state) {
   tryCatch(unlink(c(path, paste0(path, ".tmp"))),
            error = function(e) invisible(NULL))
   invisible(NULL)
+}
+
+# Make backend warning strings readable in a Shiny toast (v0.36.4).
+#
+# Sentinel-2 STAC + Microsoft Planetary Computer warnings can carry
+# huge presigned SAS-token URLs (~400+ chars of `?st=…&se=…&sp=…&
+# sv=…&sr=…&skoid=…&sktid=…&skt=…&ske=…&sks=…&skv=…&sig=…`) which
+# turn the toast into a wall of text and obscure the useful part
+# (HTTP status, scene id, reason). We strip those URLs to a short
+# placeholder and hard-cap each warning at ~200 chars.
+#
+# Returns a character vector of the same length as `warns` (we
+# don't dedupe/aggregate at this layer — the caller can collapse
+# with " ; " to keep one entry per scene).
+.summarize_backend_warnings <- function(warns, max_per_warning = 200L) {
+  if (!length(warns)) return(character(0))
+  vapply(as.character(warns), function(w) {
+    if (is.na(w) || !nzchar(w)) return("")
+    # Collapse the long Azure / STAC URL to a tiny placeholder.
+    w <- gsub("https?://\\S+", "<URL>", w, perl = TRUE)
+    # Whitespace normalize so multi-line warnings fit one line.
+    w <- gsub("\\s+", " ", w, perl = TRUE)
+    w <- trimws(w)
+    if (nchar(w) > max_per_warning) {
+      w <- paste0(substr(w, 1L, max_per_warning - 1L), "…")
+    }
+    w
+  }, character(1), USE.NAMES = FALSE)
 }
 
 # Console mirror for an ingestion progress event. Called once per

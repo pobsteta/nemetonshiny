@@ -1170,3 +1170,47 @@ test_that("obs_pixel reactive returns NULL when zone, bands or dates missing", {
     }
   )
 })
+
+
+# ---- v0.36.4 — .summarize_backend_warnings -------------------------
+
+test_that(".summarize_backend_warnings strips presigned URLs and caps length", {
+  long_url_warn <- paste0(
+    "GDAL Error 1: HTTP error code : 403 ; Scene \"S2A_x\" skipped: ",
+    "[crop] file does not exist: https://sentinel2l2a01.blob.core.windows.net/",
+    "sentinel2-l2/31/T/GM/2025/09/07/foo.tif?st=2026-05-16T11:48:17Z&",
+    "se=2026-05-17T12:33:17Z&sp=rl&sv=2025-07-05&sr=c&skoid=foo&sktid=bar&",
+    "skt=baz&ske=qux&sks=quux&skv=corge&sig=grault"
+  )
+  short_warn <- "STAC catalog HTTP 504 timeout https://planetarycomputer.microsoft.com/api/stac/v1/search"
+
+  out <- nemetonshiny:::.summarize_backend_warnings(c(long_url_warn, short_warn))
+
+  expect_length(out, 2L)
+  # URLs replaced by <URL> placeholder.
+  expect_false(grepl("https?://", out[1]))
+  expect_true(grepl("<URL>", out[1]))
+  # Useful content (HTTP code, scene id) preserved.
+  expect_true(grepl("HTTP error code : 403", out[1]))
+  expect_true(grepl('S2A_x', out[1]))
+  # Length capped (default 200 chars).
+  expect_lte(nchar(out[1]), 200L)
+  # Short warning unchanged in content (just URL stripped).
+  expect_true(grepl("STAC catalog HTTP 504 timeout", out[2]))
+  expect_true(grepl("<URL>", out[2]))
+})
+
+test_that(".summarize_backend_warnings handles edge cases", {
+  expect_equal(nemetonshiny:::.summarize_backend_warnings(character(0)),
+               character(0))
+  expect_equal(nemetonshiny:::.summarize_backend_warnings(NULL),
+               character(0))
+  # NA → empty string, not NA.
+  expect_equal(nemetonshiny:::.summarize_backend_warnings(NA_character_),
+               "")
+  # Multi-line warning collapsed.
+  ml <- "line one\n\tline two   line three"
+  out <- nemetonshiny:::.summarize_backend_warnings(ml)
+  expect_false(grepl("\n", out))
+  expect_equal(out, "line one line two line three")
+})
