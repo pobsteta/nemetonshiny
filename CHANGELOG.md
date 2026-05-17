@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.36.2] - 2026-05-17
+
+### Fixed
+
+- **Suivi sanitaire / zone monitoring** : la liste des zones et la
+  zone sélectionnée ne se mettaient pas à jour au changement de
+  projet. Deux causes corrigées dans `R/mod_monitoring.R` :
+  - Le reactive `zones` n'avait pas de dépendance effective sur
+    `app_state$current_project` en mode Postgres (le resolver
+    d'URL retournait tôt sans forcer le promise lazy). Lecture
+    explicite via `proj <-` ajoutée.
+  - L'observer qui pousse les zones dans le `selectInput` retombait
+    sur la première zone alphabétique quand le projet n'avait pas
+    de `monitoring_zone_id` — affichant la zone d'un autre projet.
+    Sélection vidée (`character(0)`) à la place ; tous les
+    downstream bailent déjà proprement sur zone vide.
+
 ## [0.36.1] - 2026-05-17
 
 ### Fixed
