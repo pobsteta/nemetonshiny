@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,24 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.36.3/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.36.4" id="nemetonshiny-0364-2026-05-17">nemetonshiny 0.36.4 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0364-2026-05-17"></a></h2>
+<div class="section level4">
+<h4 id="fixed--toast-davertissements-backend-illisible-sas-token-azure-0-36-4">Fixed — Toast d’avertissements backend illisible (SAS token Azure)<a class="anchor" aria-label="anchor" href="#fixed--toast-davertissements-backend-illisible-sas-token-azure-0-36-4"></a></h4>
+<p>Quand l’ingestion Sentinel-2 remontait un warning du backend de type « GDAL Error 1: HTTP error code : 403 ; Scene “S2A_…” skipped: [crop] file does not exist: <a href="https://" class="external-link uri">https://</a>… », le toast Shiny affichait l’URL pré-signée complète Azure (~400 caractères de query string <code>?st=…&amp;se=…&amp;sp=…&amp;sv=…&amp;skoid=…&amp;sktid=…&amp;skt=…&amp;ske=…&amp;sks=…&amp;skv=…&amp;sig=…</code>) sans pertinence pour l’utilisateur, transformant le toast en mur de texte qui débordait l’écran.</p>
+<p><strong>Correctif</strong> — nouveau helper interne <code>.summarize_backend_warnings()</code> :</p>
+<ul><li>remplace toute URL <code>https?://...</code> par le placeholder <code>&lt;URL&gt;</code>,</li>
+<li>normalise les espaces (multi-ligne → une ligne),</li>
+<li>caps chaque warning à 200 caractères avec ellipse <code>…</code>.</li>
+</ul><p>Appliqué aux deux toasts qui affichent <code>result$warnings</code> :</p>
+<ul><li>« Ingest terminé avec 0 scène » (sur échec backend, warnings utiles pour diagnostiquer STAC 504 / timeout réseau).</li>
+<li>« Avertissement(s) du backend » (warnings non-bloquants à côté du succès, comme une scène individuelle skippée pour 403).</li>
+</ul><p>L’utilisateur garde l’info utile (code HTTP, scene id, raison du skip) sans le bruit du SAS token. Couverture testthat ajoutée (2 tests, 5 expectations).</p>
+<hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.36.3" id="nemetonshiny-0363-2026-05-17">nemetonshiny 0.36.3 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0363-2026-05-17"></a></h2>
 <div class="section level4">
