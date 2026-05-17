@@ -1666,12 +1666,12 @@ TRANSLATIONS <- list(
     en = "Spectral indices"
   ),
   monitoring_threshold_ndvi = list(
-    fr = "Seuil de baisse NDVI",
-    en = "NDVI drop threshold"
+    fr = "Seuil minimum NDVI",
+    en = "Minimum NDVI threshold"
   ),
   monitoring_threshold_nbr = list(
-    fr = "Seuil de baisse NBR",
-    en = "NBR drop threshold"
+    fr = "Seuil minimum NBR",
+    en = "Minimum NBR threshold"
   ),
   monitoring_window_days = list(
     fr = "Fen\u00eatre roulante (jours)",
@@ -1951,8 +1951,8 @@ TRANSLATIONS <- list(
     en = "No FAST alerts in window"
   ),
   monitoring_fast_alerts_empty_body = list(
-    fr = "Aucune placette n'est passée sous le seuil NDVI ou NBR configuré. Élargir la fenêtre, baisser le seuil ou changer la zone pour explorer d'autres scénarios.",
-    en = "No plot crossed the configured NDVI or NBR threshold. Widen the window, lower the threshold, or change zone to explore further."
+    fr = "Aucune placette n'est passée sous le seuil NDVI ou NBR configuré. Élargir la fenêtre, relever le seuil ou changer la zone pour explorer d'autres scénarios.",
+    en = "No plot crossed the configured NDVI or NBR threshold. Widen the window, raise the threshold, or change zone to explore further."
   ),
   monitoring_fast_alert_popup_plot = list(
     fr = "Placette",

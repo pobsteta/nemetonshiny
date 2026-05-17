@@ -127,13 +127,19 @@ mod_monitoring_ui <- function(id) {
                 selected = c("NDVI", "NBR"),
                 inline   = TRUE
               ),
+              # v0.36.1 — défauts et range alignés sur la sémantique
+              # « seuil absolu » consommée par nemeton::list_fast_alerts_for_zone()
+              # (depuis nemeton@v0.25.0). Une placette est en alerte quand
+              # son NDVI (ou NBR) tombe SOUS la valeur du slider. NDVI
+              # forestier sain est typiquement 0.6-0.8, NBR sain 0.4-0.6,
+              # d'où range 0.10-0.80. Défauts cœur : 0.40 / 0.30.
               shiny::sliderInput(
                 ns("threshold_ndvi"), i18n$t("monitoring_threshold_ndvi"),
-                min = 0.05, max = 0.50, value = 0.15, step = 0.01
+                min = 0.10, max = 0.80, value = 0.40, step = 0.01
               ),
               shiny::sliderInput(
                 ns("threshold_nbr"), i18n$t("monitoring_threshold_nbr"),
-                min = 0.05, max = 0.50, value = 0.25, step = 0.01
+                min = 0.10, max = 0.80, value = 0.30, step = 0.01
               ),
               shiny::numericInput(
                 ns("window_days"), i18n$t("monitoring_window_days"),
