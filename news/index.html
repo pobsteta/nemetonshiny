@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.35.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.35.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,21 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.35.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.35.1" id="nemetonshiny-0351-2026-05-17">nemetonshiny 0.35.1 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0351-2026-05-17"></a></h2>
+<div class="section level4">
+<h4 id="fixed--plan-déchantillonnage-avec-stratification-chm--mnt-0-35-1">Fixed — Plan d’échantillonnage avec stratification CHM × MNT<a class="anchor" aria-label="anchor" href="#fixed--plan-d%C3%A9chantillonnage-avec-stratification-chm--mnt-0-35-1"></a></h4>
+<p>Le bouton « Générer le plan » de l’onglet Terrain remontait en toast d’erreur le message :</p>
+<pre><code>create_sampling_plan(): le tableau de remplacement a 363 lignes,
+le tableau remplacé en a 337</code></pre>
+<p>dès qu’un CHM et/ou un MNT étaient présents sur l’AOI. Cause : côté cœur, le pool de candidats GRTS contenait des centroïdes tombant sur des pixels NA des rasters de stratification (bord d’AOI bordurale, hors mask forêt, hors emprise CHM/MNT), et la construction de la colonne stratum désalignait les longueurs.</p>
+<p>Le fix vit dans <code>nemeton@v0.24.1</code> (filtrage des candidats AVANT <code>spsurvey::grts()</code>, plus un <code><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli::cli_warn()</a></code> quand la réduction de pool dépasse 10 %, plus un <code><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli::cli_abort()</a></code> propre quand le pool stratification-valide tombe sous <code>n_base</code>). Côté app, aucune modification de code — le fix flow automatiquement via <code>Remotes: pobsteta/nemeton@main</code>.</p>
+<p><strong>Plancher Imports</strong> : <code>nemeton (&gt;= 0.24.1)</code> (au lieu de 0.24.0) pour bloquer un downgrade qui réintroduirait l’erreur.</p>
+<hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.35.0" id="nemetonshiny-0350-2026-05-17">nemetonshiny 0.35.0 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0350-2026-05-17"></a></h2>
 <div class="section level4">
@@ -732,7 +744,7 @@
 <p>Cause : la v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais j’ai oublié de bumper le <strong>pin</strong> dans <code>DESCRIPTION</code>. <code>Imports</code> et <code>Remotes</code> pointaient encore vers <code>nemeton@v0.21.2</code> qui ignore <code>cache_dir</code>, donc pak/install installait la vieille nemeton et R levait “argument inutilisé”.</p>
 <p>Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> et <code>Remotes: pobsteta/nemeton@v0.21.3</code>. Aucun changement applicatif.</p>
 <p>À refaire côté utilisateur après pull :</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB"</span><span class="op">)</span></span>
 <span><span class="co"># ou en local : devtools::install_local(".", force = TRUE)</span></span></code></pre></div>
 </li>
