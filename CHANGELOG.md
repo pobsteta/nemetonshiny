@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.36.3\] - 2026-05-17
+
+### Fixed
+
+- **Suivi sanitaire / Carte FAST** : markers placettes (cercles bleus)
+  invisibles depuis v0.34.0 sur certains navigateurs. Les CircleMarkers
+  vivaient dans `overlayPane` à côté des polygones UGF ; selon l’ordre
+  de re-draw les polygones finissaient en fin de `<g>` SVG et masquaient
+  les markers. Pinned explicitement dans `markerPane` (z=600) via
+  `pathOptions(pane = "markerPane")`, z-stack désormais strictement
+  séparé (`R/mod_monitoring_pixel_map.R`).
+
 ## \[0.36.2\] - 2026-05-17
 
 ### Fixed

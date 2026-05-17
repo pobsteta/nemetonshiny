@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,22 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.36.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.36.3" id="nemetonshiny-0363-2026-05-17">nemetonshiny 0.36.3 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0363-2026-05-17"></a></h2>
+<div class="section level4">
+<h4 id="fixed--markers-placettes-invisibles-sur-carte-fast-après-v0340-0-36-3">Fixed — Markers placettes invisibles sur Carte FAST après v0.34.0<a class="anchor" aria-label="anchor" href="#fixed--markers-placettes-invisibles-sur-carte-fast-apr%C3%A8s-v0340-0-36-3"></a></h4>
+<p>Conséquence latérale du fix <code>nemetonRaster</code> pane de v0.34.0 : les CircleMarkers placettes (cercles bleus, <code>#1F77B4</code>) restaient dans <code>overlayPane</code> (z=400) aux côtés des polygones UGF. Avec <code>leaflet 2.x</code> et l’ordre de re-draw observé sur certains navigateurs, les polygones finissaient en fin de <code>&lt;g&gt;</code> SVG → DOM order = z-order dans un même pane → polygones par-dessus markers → markers invisibles à l’écran.</p>
+<p><strong>Correctif</strong> — pousser explicitement les CircleMarkers dans <code>markerPane</code> (z-index 600, séparé de <code>overlayPane</code>) via <code>options = pathOptions(pane = "markerPane")</code> à l’appel <code>addCircleMarkers()</code>. Le z-stack devient strict :</p>
+<pre><code>tilePane         z=200  OSM / Satellite
+nemetonRaster    z=250  NDVI / NBR raster
+overlayPane      z=400  Polygones UGF
+markerPane       z=600  CircleMarkers placettes</code></pre>
+<p>Plus de course DOM entre polygones et markers : chacun dans son pane, z-order garanti par CSS Leaflet. Clickabilité préservée (les Paths émettent toujours <code>click</code> vers <code>map_marker_click</code>).</p>
+<hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.36.2" id="nemetonshiny-0362-2026-05-17">nemetonshiny 0.36.2 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0362-2026-05-17"></a></h2>
 <div class="section level4">
@@ -825,7 +838,7 @@ le tableau remplacé en a 337</code></pre>
 <p>Cause : la v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais j’ai oublié de bumper le <strong>pin</strong> dans <code>DESCRIPTION</code>. <code>Imports</code> et <code>Remotes</code> pointaient encore vers <code>nemeton@v0.21.2</code> qui ignore <code>cache_dir</code>, donc pak/install installait la vieille nemeton et R levait “argument inutilisé”.</p>
 <p>Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> et <code>Remotes: pobsteta/nemeton@v0.21.3</code>. Aucun changement applicatif.</p>
 <p>À refaire côté utilisateur après pull :</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB"</span><span class="op">)</span></span>
 <span><span class="co"># ou en local : devtools::install_local(".", force = TRUE)</span></span></code></pre></div>
 </li>
