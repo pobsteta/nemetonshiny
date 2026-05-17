@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.35.1] - 2026-05-17
+
+### Fixed
+
+- **Terrain / Plan d'échantillonnage** : erreur
+  `le tableau de remplacement a N lignes, le tableau remplacé en a M`
+  remontée en toast quand un CHM et/ou un MNT étaient fournis avec
+  une AOI bordurale. Fix dans `nemeton@v0.24.1` (filtrage des
+  candidats GRTS avant `spsurvey::grts()`), consommé automatiquement
+  via `Remotes: pobsteta/nemeton@main`. Aucun changement de code
+  côté app.
+
+### Changed
+
+- `DESCRIPTION` : plancher `Imports: nemeton (>= 0.24.1)` pour
+  bloquer un downgrade qui réintroduirait le bug sampling.
+
 ## [0.35.0] - 2026-05-17
 
 ### Added

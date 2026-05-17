@@ -1,3 +1,33 @@
+# nemetonshiny 0.35.1 (2026-05-17)
+
+### Fixed — Plan d'échantillonnage avec stratification CHM × MNT
+
+Le bouton « Générer le plan » de l'onglet Terrain remontait en
+toast d'erreur le message :
+
+```
+create_sampling_plan(): le tableau de remplacement a 363 lignes,
+le tableau remplacé en a 337
+```
+
+dès qu'un CHM et/ou un MNT étaient présents sur l'AOI. Cause :
+côté cœur, le pool de candidats GRTS contenait des centroïdes
+tombant sur des pixels NA des rasters de stratification (bord
+d'AOI bordurale, hors mask forêt, hors emprise CHM/MNT), et la
+construction de la colonne stratum désalignait les longueurs.
+
+Le fix vit dans `nemeton@v0.24.1` (filtrage des candidats AVANT
+`spsurvey::grts()`, plus un `cli::cli_warn()` quand la réduction
+de pool dépasse 10 %, plus un `cli::cli_abort()` propre quand le
+pool stratification-valide tombe sous `n_base`). Côté app, aucune
+modification de code — le fix flow automatiquement via
+`Remotes: pobsteta/nemeton@main`.
+
+**Plancher Imports** : `nemeton (>= 0.24.1)` (au lieu de 0.24.0)
+pour bloquer un downgrade qui réintroduirait l'erreur.
+
+---
+
 # nemetonshiny 0.35.0 (2026-05-17)
 
 ### Added — Quatre sous-onglets Suivi sanitaire, symétriques FAST / FORDEAD
