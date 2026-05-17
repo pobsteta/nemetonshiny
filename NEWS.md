@@ -1,3 +1,34 @@
+# nemetonshiny 0.36.4 (2026-05-17)
+
+### Fixed — Toast d'avertissements backend illisible (SAS token Azure)
+
+Quand l'ingestion Sentinel-2 remontait un warning du backend de type
+« GDAL Error 1: HTTP error code : 403 ; Scene "S2A_..." skipped: [crop]
+file does not exist: https://... », le toast Shiny affichait l'URL
+pré-signée complète Azure (~400 caractères de query string
+`?st=…&se=…&sp=…&sv=…&skoid=…&sktid=…&skt=…&ske=…&sks=…&skv=…&sig=…`)
+sans pertinence pour l'utilisateur, transformant le toast en mur de
+texte qui débordait l'écran.
+
+**Correctif** — nouveau helper interne `.summarize_backend_warnings()` :
+
+- remplace toute URL `https?://...` par le placeholder `<URL>`,
+- normalise les espaces (multi-ligne → une ligne),
+- caps chaque warning à 200 caractères avec ellipse `…`.
+
+Appliqué aux deux toasts qui affichent `result$warnings` :
+
+- « Ingest terminé avec 0 scène » (sur échec backend, warnings utiles
+  pour diagnostiquer STAC 504 / timeout réseau).
+- « Avertissement(s) du backend » (warnings non-bloquants à côté du
+  succès, comme une scène individuelle skippée pour 403).
+
+L'utilisateur garde l'info utile (code HTTP, scene id, raison du skip)
+sans le bruit du SAS token. Couverture testthat ajoutée (2 tests, 5
+expectations).
+
+---
+
 # nemetonshiny 0.36.3 (2026-05-17)
 
 ### Fixed — Markers placettes invisibles sur Carte FAST après v0.34.0

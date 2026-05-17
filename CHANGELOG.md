@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.36.4] - 2026-05-17
+
+### Fixed
+
+- **Suivi sanitaire / toast d'avertissement backend** : les warnings
+  Sentinel-2 contenant une URL pré-signée Azure (~400 chars de SAS
+  token) transformaient le toast en mur de texte. Nouveau helper
+  interne `.summarize_backend_warnings()` qui remplace les URLs par
+  `<URL>`, normalise les espaces et cap chaque warning à 200 chars
+  (`R/mod_monitoring.R`).
+
+### Added
+
+- 2 tests testthat pour `.summarize_backend_warnings()` (cas réel
+  SAS-token Azure + edge cases NULL / NA / multi-line)
+  (`tests/testthat/test-mod_monitoring.R`).
+
 ## [0.36.3] - 2026-05-17
 
 ### Fixed
