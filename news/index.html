@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.35.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,56 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.35.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.36.0" id="nemetonshiny-0360-2026-05-17">nemetonshiny 0.36.0 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0360-2026-05-17"></a></h2>
+<div class="section level4">
+<h4 id="added--câblage-des-sous-onglets-alertes-fast--carte-fordead-0-36-0">Added — Câblage des sous-onglets Alertes FAST + Carte FORDEAD<a class="anchor" aria-label="anchor" href="#added--c%C3%A2blage-des-sous-onglets-alertes-fast--carte-fordead-0-36-0"></a></h4>
+<p>Les deux placeholders posés en v0.35.0 sont désormais branchés sur les exporteurs <code>nemeton@v0.25.0</code> :</p>
+<table class="table"><colgroup><col width="18%"><col width="37%"><col width="45%"></colgroup><thead><tr><th>Sous-onglet</th>
+<th>Module</th>
+<th>Cœur consommé</th>
+</tr></thead><tbody><tr><td><code>Alertes FAST</code></td>
+<td><code>R/mod_monitoring_fast_alerts.R</code></td>
+<td><code>nemeton::list_fast_alerts_for_zone()</code></td>
+</tr><tr><td><code>Carte FORDEAD</code></td>
+<td><code>R/mod_monitoring_fordead_map.R</code></td>
+<td><code>nemeton::read_fordead_dieback_mask()</code></td>
+</tr></tbody></table><p><strong>Alertes FAST</strong> — carte Leaflet des placettes classées par sévérité (<code>critical</code> / <code>warning</code> / <code>info</code>) selon le ratio (NDVI ou NBR) / seuil. Trois zones de couleur correspondent aux buckets cœur : ratio <code>&lt; 0.5</code> (rouge <code>#D62728</code>), <code>[0.5, 1)</code> (orange <code>#FF9933</code>), <code>[1, 1.1)</code> (orange clair <code>#FFD27F</code> — corridor d’avertissement). Les placettes sécures (ratio <code>&gt;= 1.1</code>) ne remontent pas du cœur. Au-dessus de la carte, une rangée de compteurs montre la distribution par sévérité + total. Popups marker : <code>plot_id</code>, sévérité, NDVI / NBR avec leur Δ (drop) au seuil, dernière obs.</p>
+<p>Les arguments envoyés à <code>list_fast_alerts_for_zone()</code> sont liés 1-pour-1 aux widgets sidebar de Suivi sanitaire :</p>
+<ul><li>
+<code>zone_id</code> ← <code>input$zone_id</code>
+</li>
+<li>
+<code>threshold_ndvi</code> ← <code>input$threshold_ndvi</code>
+</li>
+<li>
+<code>threshold_nbr</code> ← <code>input$threshold_nbr</code>
+</li>
+<li>
+<code>window_days</code> ← <code>input$window_days</code>
+</li>
+<li>
+<code>date_from</code>, <code>date_to</code> ← <code>input$date_range</code>
+</li>
+</ul><p><strong>Note UX</strong> : les sliders sidebar sont historiquement libellés « seuil » avec des défauts (0.15 NDVI, 0.25 NBR) calibrés pour la sémantique <em>drop</em> (delta sur la fenêtre roulante E6.a). Le cœur v0.25.0 les utilise comme <em>seuils absolus</em> dans le ratio <code>value / threshold</code>. Avec les valeurs par défaut actuelles, peu de placettes remonteront car les NDVI forestiers typiques (~0.6+) sont bien au-dessus de 0.15. Pour des alertes utiles, cranker les sliders à 0.40 / 0.30 (les valeurs par défaut cœur). Une refonte des labels et défauts sidebar est prévue en patch ultérieur.</p>
+<p><strong>Carte FORDEAD</strong> — raster catégoriel 0..4 du dépérissement (<code>0</code>=sain <code>#2CA02C</code>, <code>1</code>=faible <code>#FFD27F</code>, <code>2</code>=moyenne <code>#FF9933</code>, <code>3</code>=forte <code>#D62728</code>, <code>4</code>=sol-nu <code>#222222</code>). Pinned dans le pane <code>nemetonRaster</code> (z-index 250) pour préserver la visibilité sur fond Satellite, même architecture que la Carte FAST. Légende sticky bottom-right.</p>
+<p><strong>Limite v0.36.0</strong> : <code>read_fordead_dieback_mask()</code> est shippé côté cœur mais le <strong>writer</strong> (persist hook dans <code>run_fordead_dieback()</code> qui doit écrire <code>dieback_mask_&lt;run_id&gt;.tif</code> dans <code>&lt;project&gt;/cache/layers/fordead/zone_&lt;id&gt;/</code>) n’est pas encore en production. Tant que ce hook ne ship pas, le reader retourne NULL et la sub-tab affiche un empty-state explicatif (« Aucun masque FORDEAD disponible »). Le câblage est en place : la sub-tab s’activera automatiquement le jour où le writer cœur ship.</p>
+</div>
+<div class="section level4">
+<h4 id="changed-0-36-0">Changed<a class="anchor" aria-label="anchor" href="#changed-0-36-0"></a></h4>
+<ul><li>
+<code>DESCRIPTION</code> : plancher <code>Imports: nemeton (&gt;= 0.25.0)</code> (depuis 0.24.1), pour bloquer un downgrade qui retirerait les deux exporteurs consommés.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="notes-opérationnelles-0-36-0">Notes opérationnelles<a class="anchor" aria-label="anchor" href="#notes-op%C3%A9rationnelles-0-36-0"></a></h4>
+<ul><li>Aucune logique métier ajoutée côté app — purement câblage UI vers les exporteurs cœur (ADR-009 respecté).</li>
+<li>17 nouvelles clés i18n FR/EN (sévérités, popups, classes FORDEAD, empty states).</li>
+<li>Les deux modules suivent le pattern golem (<code>mod_*_ui</code> + <code>mod_*_server</code>) et reçoivent les reactives sidebar du parent par paramètre — symétrie avec <code>mod_monitoring_pixel_map_server()</code>.</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.35.1" id="nemetonshiny-0351-2026-05-17">nemetonshiny 0.35.1 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0351-2026-05-17"></a></h2>
 <div class="section level4">

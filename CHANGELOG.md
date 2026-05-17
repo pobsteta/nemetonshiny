@@ -12,6 +12,35 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.36.0\] - 2026-05-17
+
+### Added
+
+- **Suivi sanitaire / Alertes FAST** : module
+  `mod_monitoring_fast_alerts` câblé sur
+  `nemeton::list_fast_alerts_for_zone()`. Carte Leaflet des placettes
+  par sévérité (critical/warning/info), compteurs au-dessus, popups par
+  marker avec valeurs NDVI/NBR + drop. Remplace le placeholder de
+  v0.35.0 (`R/mod_monitoring_fast_alerts.R`).
+- **Suivi sanitaire / Carte FORDEAD** : module
+  `mod_monitoring_fordead_map` câblé sur
+  `nemeton::read_fordead_dieback_mask()`. Raster catégoriel 0..4 affiché
+  dans le pane `nemetonRaster` (z-index 250). Empty state cohérent tant
+  que le writer cœur (persist du mask) n’a pas shippé
+  (`R/mod_monitoring_fordead_map.R`).
+- 17 nouvelles clés i18n FR/EN : sévérités FAST (`critical`, `warning`,
+  `info`), compteur total, empty states + popups FAST, titre + classes
+  0..4 FORDEAD, empty state FORDEAD.
+
+### Changed
+
+- `DESCRIPTION` : plancher `Imports: nemeton (>= 0.25.0)` (depuis
+  0.24.1) pour ancrer les deux nouveaux exporteurs consommés.
+- `R/mod_monitoring.R` : les nav_panels `alerts_fast` et
+  `pixel_map_fordead` consomment les UI modules au lieu d’inline
+  placeholders. Server instancie les deux nouveaux modules + retourne
+  leurs reactives.
+
 ## \[0.35.1\] - 2026-05-17
 
 ### Fixed

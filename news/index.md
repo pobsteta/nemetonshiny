@@ -1,5 +1,79 @@
 # Changelog
 
+## nemetonshiny 0.36.0 (2026-05-17)
+
+#### Added — Câblage des sous-onglets Alertes FAST + Carte FORDEAD
+
+Les deux placeholders posés en v0.35.0 sont désormais branchés sur les
+exporteurs `nemeton@v0.25.0` :
+
+| Sous-onglet | Module | Cœur consommé |
+|----|----|----|
+| `Alertes FAST` | `R/mod_monitoring_fast_alerts.R` | `nemeton::list_fast_alerts_for_zone()` |
+| `Carte FORDEAD` | `R/mod_monitoring_fordead_map.R` | `nemeton::read_fordead_dieback_mask()` |
+
+**Alertes FAST** — carte Leaflet des placettes classées par sévérité
+(`critical` / `warning` / `info`) selon le ratio (NDVI ou NBR) / seuil.
+Trois zones de couleur correspondent aux buckets cœur : ratio `< 0.5`
+(rouge `#D62728`), `[0.5, 1)` (orange `#FF9933`), `[1, 1.1)` (orange
+clair `#FFD27F` — corridor d’avertissement). Les placettes sécures
+(ratio `>= 1.1`) ne remontent pas du cœur. Au-dessus de la carte, une
+rangée de compteurs montre la distribution par sévérité + total. Popups
+marker : `plot_id`, sévérité, NDVI / NBR avec leur Δ (drop) au seuil,
+dernière obs.
+
+Les arguments envoyés à `list_fast_alerts_for_zone()` sont liés 1-pour-1
+aux widgets sidebar de Suivi sanitaire :
+
+- `zone_id` ← `input$zone_id`
+- `threshold_ndvi` ← `input$threshold_ndvi`
+- `threshold_nbr` ← `input$threshold_nbr`
+- `window_days` ← `input$window_days`
+- `date_from`, `date_to` ← `input$date_range`
+
+**Note UX** : les sliders sidebar sont historiquement libellés « seuil »
+avec des défauts (0.15 NDVI, 0.25 NBR) calibrés pour la sémantique
+*drop* (delta sur la fenêtre roulante E6.a). Le cœur v0.25.0 les utilise
+comme *seuils absolus* dans le ratio `value / threshold`. Avec les
+valeurs par défaut actuelles, peu de placettes remonteront car les NDVI
+forestiers typiques (~0.6+) sont bien au-dessus de 0.15. Pour des
+alertes utiles, cranker les sliders à 0.40 / 0.30 (les valeurs par
+défaut cœur). Une refonte des labels et défauts sidebar est prévue en
+patch ultérieur.
+
+**Carte FORDEAD** — raster catégoriel 0..4 du dépérissement (`0`=sain
+`#2CA02C`, `1`=faible `#FFD27F`, `2`=moyenne `#FF9933`, `3`=forte
+`#D62728`, `4`=sol-nu `#222222`). Pinned dans le pane `nemetonRaster`
+(z-index 250) pour préserver la visibilité sur fond Satellite, même
+architecture que la Carte FAST. Légende sticky bottom-right.
+
+**Limite v0.36.0** : `read_fordead_dieback_mask()` est shippé côté cœur
+mais le **writer** (persist hook dans `run_fordead_dieback()` qui doit
+écrire `dieback_mask_<run_id>.tif` dans
+`<project>/cache/layers/fordead/zone_<id>/`) n’est pas encore en
+production. Tant que ce hook ne ship pas, le reader retourne NULL et la
+sub-tab affiche un empty-state explicatif (« Aucun masque FORDEAD
+disponible »). Le câblage est en place : la sub-tab s’activera
+automatiquement le jour où le writer cœur ship.
+
+#### Changed
+
+- `DESCRIPTION` : plancher `Imports: nemeton (>= 0.25.0)` (depuis
+  0.24.1), pour bloquer un downgrade qui retirerait les deux exporteurs
+  consommés.
+
+#### Notes opérationnelles
+
+- Aucune logique métier ajoutée côté app — purement câblage UI vers les
+  exporteurs cœur (ADR-009 respecté).
+- 17 nouvelles clés i18n FR/EN (sévérités, popups, classes FORDEAD,
+  empty states).
+- Les deux modules suivent le pattern golem (`mod_*_ui` +
+  `mod_*_server`) et reçoivent les reactives sidebar du parent par
+  paramètre — symétrie avec `mod_monitoring_pixel_map_server()`.
+
+------------------------------------------------------------------------
+
 ## nemetonshiny 0.35.1 (2026-05-17)
 
 #### Fixed — Plan d’échantillonnage avec stratification CHM × MNT
