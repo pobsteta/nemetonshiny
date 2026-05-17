@@ -1,3 +1,33 @@
+# nemetonshiny 0.36.3 (2026-05-17)
+
+### Fixed — Markers placettes invisibles sur Carte FAST après v0.34.0
+
+Conséquence latérale du fix `nemetonRaster` pane de v0.34.0 : les
+CircleMarkers placettes (cercles bleus, `#1F77B4`) restaient dans
+`overlayPane` (z=400) aux côtés des polygones UGF. Avec `leaflet 2.x`
+et l'ordre de re-draw observé sur certains navigateurs, les
+polygones finissaient en fin de `<g>` SVG → DOM order = z-order
+dans un même pane → polygones par-dessus markers → markers
+invisibles à l'écran.
+
+**Correctif** — pousser explicitement les CircleMarkers dans
+`markerPane` (z-index 600, séparé de `overlayPane`) via
+`options = pathOptions(pane = "markerPane")` à l'appel
+`addCircleMarkers()`. Le z-stack devient strict :
+
+```
+tilePane         z=200  OSM / Satellite
+nemetonRaster    z=250  NDVI / NBR raster
+overlayPane      z=400  Polygones UGF
+markerPane       z=600  CircleMarkers placettes
+```
+
+Plus de course DOM entre polygones et markers : chacun dans son
+pane, z-order garanti par CSS Leaflet. Clickabilité préservée
+(les Paths émettent toujours `click` vers `map_marker_click`).
+
+---
+
 # nemetonshiny 0.36.2 (2026-05-17)
 
 ### Fixed — Zone monitoring qui ne se met pas à jour au changement de projet
