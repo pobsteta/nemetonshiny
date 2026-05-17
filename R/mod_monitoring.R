@@ -227,28 +227,16 @@ mod_monitoring_ui <- function(id) {
       bslib::navset_card_tab(
         id = ns("subtab"),
         # ---------- FAST mode sub-tabs (visible en mode quick) -------
-        # ----- Sub-tab — Alertes FAST (placeholder v0.35.0) ----------
-        # Affichera la liste des placettes dont NDVI ou NBR est passé
-        # sous le seuil rolling-window. Bloqué tant que le cœur n'a
-        # pas exporté `list_fast_alerts_for_zone()` (cf. PLAN.md
-        # nemeton, chantier E6.f.5). Masqué en mode health.
+        # ----- Sub-tab — Alertes FAST (wired v0.36.0) ----------------
+        # Carte Leaflet des placettes au-dessus du seuil NDVI/NBR
+        # rolling-window. Câblage sur `nemeton::list_fast_alerts_for_zone()`
+        # (shipped en nemeton@v0.25.0). Masqué en mode health par
+        # l'observer mode-driven.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_alerts_fast"),
           value = "alerts_fast",
           icon  = bsicons::bs_icon("bell"),
-          htmltools::div(
-            class = "p-4 text-center text-muted",
-            bsicons::bs_icon("hourglass-split",
-                             class = "fs-1 d-block mx-auto mb-3"),
-            htmltools::h5(
-              class = "mt-3",
-              i18n$t("monitoring_fast_alerts_placeholder_title")
-            ),
-            htmltools::p(
-              class = "mb-0",
-              i18n$t("monitoring_fast_alerts_placeholder_body")
-            )
-          )
+          mod_monitoring_fast_alerts_ui(ns("fast_alerts"))
         ),
         # ----- Sub-tab — Carte FAST (spec 010) -----------------------
         # Visible en mode quick — raster NDVI/NBR + slider date.
@@ -288,28 +276,18 @@ mod_monitoring_ui <- function(id) {
           # Health-mode QGIS generator (E6.c.5 — T6app.12, wired in C6)
           shiny::uiOutput(ns("qgis_panel"))
         ),
-        # ----- Sub-tab — Carte FORDEAD (placeholder v0.34.0) ---------
-        # Visible en mode health — montrera le raster classifié du
-        # dépérissement (sain/faible/moyenne/forte). Tant que le cœur
-        # n'expose pas read_fordead_dieback_mask(), affiche un
-        # placeholder explicatif. Masqué en mode quick.
+        # ----- Sub-tab — Carte FORDEAD (wired v0.36.0) ---------------
+        # Raster catégoriel 0-4 du dépérissement (sain/faible/moyenne/
+        # forte/sol-nu) lu via `nemeton::read_fordead_dieback_mask()`
+        # (shipped en nemeton@v0.25.0). Le reader retourne NULL tant
+        # que le writer cœur (persist hook dans run_fordead_dieback)
+        # n'a pas shippé — la sub-tab affiche alors un empty-state.
+        # Masqué en mode quick par l'observer mode-driven.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_pixel_map_fordead"),
           value = "pixel_map_fordead",
           icon  = bsicons::bs_icon("tree"),
-          htmltools::div(
-            class = "p-4 text-center text-muted",
-            bsicons::bs_icon("hourglass-split",
-                             class = "fs-1 d-block mx-auto mb-3"),
-            htmltools::h5(
-              class = "mt-3",
-              i18n$t("monitoring_fordead_map_placeholder_title")
-            ),
-            htmltools::p(
-              class = "mb-0",
-              i18n$t("monitoring_fordead_map_placeholder_body")
-            )
-          )
+          mod_monitoring_fordead_map_ui(ns("fordead_map"))
         )
       )
     )
@@ -1892,12 +1870,41 @@ mod_monitoring_server <- function(id, app_state) {
       mode_input     = shiny::reactive(input$mode)
     )
 
+    # v0.36.0 — Alertes FAST sub-tab. Wires the sidebar widgets
+    # (zone_id, date_range, threshold_ndvi, threshold_nbr,
+    # window_days) into `nemeton::list_fast_alerts_for_zone()`.
+    # The module owns its own Leaflet map + severity counters card.
+    fast_alerts_ret <- mod_monitoring_fast_alerts_server(
+      "fast_alerts",
+      app_state    = app_state,
+      zone_id_r    = shiny::reactive(input$zone_id),
+      date_range_r = shiny::reactive(input$date_range),
+      thresholds_r = shiny::reactive(list(
+        ndvi        = input$threshold_ndvi,
+        nbr         = input$threshold_nbr,
+        window_days = input$window_days
+      ))
+    )
+
+    # v0.36.0 — Carte FORDEAD sub-tab. Reader-only path : the cœur
+    # writer (mask persist hook in run_fordead_dieback) hasn't shipped
+    # yet, so this returns NULL → empty-state today. The wiring is
+    # in place so the moment the cœur writer ships, the panel
+    # activates without any app change.
+    fordead_map_ret <- mod_monitoring_fordead_map_server(
+      "fordead_map",
+      app_state = app_state,
+      zone_id_r = shiny::reactive(input$zone_id)
+    )
+
     list(
       zones         = zones,
       ingest_task   = ingest_task,
       fordead_task  = fordead_task,
       validity      = validity,
-      pixel_map     = pixel_map_ret
+      pixel_map     = pixel_map_ret,
+      fast_alerts   = fast_alerts_ret,
+      fordead_map   = fordead_map_ret
     )
   })
 }

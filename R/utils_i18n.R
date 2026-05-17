@@ -1927,6 +1927,88 @@ TRANSLATIONS <- list(
     fr = "La liste des placettes dont NDVI ou NBR est passé sous le seuil sur la fenêtre roulante sera affichée ici une fois que le cœur Nemeton exportera list_fast_alerts_for_zone(). En attendant, consulter la « Carte FAST » pour le raster NDVI/NBR à pleine résolution Sentinel-2.",
     en = "The list of plots whose NDVI or NBR dropped below the rolling-window threshold will appear here once the Nemeton core exports list_fast_alerts_for_zone(). Meanwhile, see the “FAST map” for the full-resolution Sentinel-2 NDVI/NBR raster."
   ),
+  # v0.36.0 — Alertes FAST module (nemeton::list_fast_alerts_for_zone)
+  # Severity buckets : critical (ratio < 0.5), warning ([0.5, 1)),
+  # info ([1, 1.1) — corridor d'avertissement).
+  monitoring_fast_severity_critical = list(
+    fr = "Critique",
+    en = "Critical"
+  ),
+  monitoring_fast_severity_warning = list(
+    fr = "Alerte",
+    en = "Warning"
+  ),
+  monitoring_fast_severity_info = list(
+    fr = "Vigilance",
+    en = "Info"
+  ),
+  monitoring_fast_total = list(
+    fr = "Total placettes",
+    en = "Total plots"
+  ),
+  monitoring_fast_alerts_empty_title = list(
+    fr = "Aucune alerte FAST sur la fenêtre",
+    en = "No FAST alerts in window"
+  ),
+  monitoring_fast_alerts_empty_body = list(
+    fr = "Aucune placette n'est passée sous le seuil NDVI ou NBR configuré. Élargir la fenêtre, baisser le seuil ou changer la zone pour explorer d'autres scénarios.",
+    en = "No plot crossed the configured NDVI or NBR threshold. Widen the window, lower the threshold, or change zone to explore further."
+  ),
+  monitoring_fast_alert_popup_plot = list(
+    fr = "Placette",
+    en = "Plot"
+  ),
+  monitoring_fast_alert_popup_severity = list(
+    fr = "Sévérité",
+    en = "Severity"
+  ),
+  monitoring_fast_alert_popup_ndvi = list(
+    fr = "NDVI",
+    en = "NDVI"
+  ),
+  monitoring_fast_alert_popup_nbr = list(
+    fr = "NBR",
+    en = "NBR"
+  ),
+  monitoring_fast_alert_popup_last_obs = list(
+    fr = "Dernière observation",
+    en = "Last observation"
+  ),
+
+  # v0.36.0 — Carte FORDEAD module (nemeton::read_fordead_dieback_mask)
+  # Empty state shown tant que le writer cœur n'a pas shippé.
+  monitoring_fordead_map_empty_title = list(
+    fr = "Aucun masque FORDEAD disponible",
+    en = "No FORDEAD mask available"
+  ),
+  monitoring_fordead_map_empty_body = list(
+    fr = "Lancer un diagnostic FORDEAD pour cette zone (mode Santé). Le masque classifié 0..4 du dépérissement s'affichera ici dès que le cœur Nemeton aura persisté le résultat sur disque (postprocess hook prévu dans une release ultérieure).",
+    en = "Run a FORDEAD diagnostic for this zone (Health mode). The 0..4 classified dieback mask will appear here once the Nemeton core persists the run output on disk (postprocess hook scheduled for a later release)."
+  ),
+  monitoring_fordead_class_title = list(
+    fr = "Classe de dépérissement",
+    en = "Dieback class"
+  ),
+  monitoring_fordead_class_0 = list(
+    fr = "sain",
+    en = "healthy"
+  ),
+  monitoring_fordead_class_1 = list(
+    fr = "faible",
+    en = "low"
+  ),
+  monitoring_fordead_class_2 = list(
+    fr = "moyenne",
+    en = "medium"
+  ),
+  monitoring_fordead_class_3 = list(
+    fr = "forte",
+    en = "high"
+  ),
+  monitoring_fordead_class_4 = list(
+    fr = "sol nu",
+    en = "bare soil"
+  ),
 
   # ----- Pixel map sub-tab (spec 010) -----
   monitoring_pixel_map_title = list(
