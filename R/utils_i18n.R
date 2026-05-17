@@ -1904,8 +1904,28 @@ TRANSLATIONS <- list(
     en = "FORDEAD map — coming soon"
   ),
   monitoring_fordead_map_placeholder_body = list(
-    fr = "La carte des classes de dépérissement (sain / faible / moyenne / forte) sera affichée ici une fois que le cœur Nemeton exportera le raster classifié issu du run FORDEAD. En attendant, consulter l'onglet « Alertes » pour la liste des placettes flaguées et l'export QGIS associé.",
-    en = "The dieback class map (healthy / low / medium / high) will appear here once the Nemeton core exports the classified raster from the FORDEAD run. Meanwhile, see the “Alerts” tab for the flagged plots list and the matching QGIS export."
+    fr = "La carte des classes de dépérissement (sain / faible / moyenne / forte) sera affichée ici une fois que le cœur Nemeton exportera le raster classifié issu du run FORDEAD. En attendant, consulter l'onglet « Alertes FORDEAD » pour la liste des placettes flaguées et l'export QGIS associé.",
+    en = "The dieback class map (healthy / low / medium / high) will appear here once the Nemeton core exports the classified raster from the FORDEAD run. Meanwhile, see the “FORDEAD alerts” tab for the flagged plots list and the matching QGIS export."
+  ),
+  # v0.35.0 — sous-onglets Alertes séparés par mode, symétriques aux
+  # cartes : Alertes FAST (placettes au-dessus du seuil NDVI/NBR
+  # rolling-window) vs Alertes FORDEAD (placettes flaguées par
+  # run_fordead_dieback). Visibilité pilotée par input$mode.
+  monitoring_subtab_alerts_fast = list(
+    fr = "Alertes FAST",
+    en = "FAST alerts"
+  ),
+  monitoring_subtab_alerts_fordead = list(
+    fr = "Alertes FORDEAD",
+    en = "FORDEAD alerts"
+  ),
+  monitoring_fast_alerts_placeholder_title = list(
+    fr = "Alertes FAST — bientôt disponible",
+    en = "FAST alerts — coming soon"
+  ),
+  monitoring_fast_alerts_placeholder_body = list(
+    fr = "La liste des placettes dont NDVI ou NBR est passé sous le seuil sur la fenêtre roulante sera affichée ici une fois que le cœur Nemeton exportera list_fast_alerts_for_zone(). En attendant, consulter la « Carte FAST » pour le raster NDVI/NBR à pleine résolution Sentinel-2.",
+    en = "The list of plots whose NDVI or NBR dropped below the rolling-window threshold will appear here once the Nemeton core exports list_fast_alerts_for_zone(). Meanwhile, see the “FAST map” for the full-resolution Sentinel-2 NDVI/NBR raster."
   ),
 
   # ----- Pixel map sub-tab (spec 010) -----

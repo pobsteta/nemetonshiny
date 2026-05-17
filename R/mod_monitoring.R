@@ -226,41 +226,32 @@ mod_monitoring_ui <- function(id) {
       shiny::uiOutput(ns("validity_banners")),
       bslib::navset_card_tab(
         id = ns("subtab"),
-        # ----- Sub-tab 1 — Alerts (FORDEAD map + QGIS) ---------------
+        # ---------- FAST mode sub-tabs (visible en mode quick) -------
+        # ----- Sub-tab — Alertes FAST (placeholder v0.35.0) ----------
+        # Affichera la liste des placettes dont NDVI ou NBR est passé
+        # sous le seuil rolling-window. Bloqué tant que le cœur n'a
+        # pas exporté `list_fast_alerts_for_zone()` (cf. PLAN.md
+        # nemeton, chantier E6.f.5). Masqué en mode health.
         bslib::nav_panel(
-          title = i18n$t("monitoring_subtab_alerts"),
-          value = "alerts",
-          icon  = bsicons::bs_icon("exclamation-triangle"),
-          # The "include low confidence classes" toggle used to live
-          # inside card_header next to the title, but its long label
-          # wrapped awkwardly on narrow viewports. Lifted into its own
-          # row so it always sits on a single line above the alerts.
-          shiny::conditionalPanel(
-            condition = sprintf("input['%s'] == 'health'", ns("mode")),
-            htmltools::div(
-              class = "px-3 pt-2",
-              shiny::checkboxInput(
-                ns("include_low"),
-                i18n$t("monitoring_include_low"),
-                value = FALSE
-              )
+          title = i18n$t("monitoring_subtab_alerts_fast"),
+          value = "alerts_fast",
+          icon  = bsicons::bs_icon("bell"),
+          htmltools::div(
+            class = "p-4 text-center text-muted",
+            bsicons::bs_icon("hourglass-split",
+                             class = "fs-1 d-block mx-auto mb-3"),
+            htmltools::h5(
+              class = "mt-3",
+              i18n$t("monitoring_fast_alerts_placeholder_title")
+            ),
+            htmltools::p(
+              class = "mb-0",
+              i18n$t("monitoring_fast_alerts_placeholder_body")
             )
-          ),
-          shiny::uiOutput(ns("alerts_panel")),
-          # Health-mode QGIS generator (E6.c.5 — T6app.12, wired in C6)
-          shiny::conditionalPanel(
-            condition = sprintf("input['%s'] == 'health'", ns("mode")),
-            shiny::uiOutput(ns("qgis_panel"))
           )
         ),
-        # Sub-tab "Per-plot time series" removed in v0.31.0: in quick
-        # mode the multi-trace placette plotly is now reachable
-        # spatially par clic sur un marker placette dans la Carte pixel
-        # (FAST). En mode health, la distribution des classes d'alerte
-        # qu'il hébergeait est tombée avec lui (cf. notes de version —
-        # à réintroduire dans Alerts si nécessaire).
-        # ----- Sub-tab — Pixel map FAST (spec 010) -------------------
-        # Visible en mode quick (FAST) — raster NDVI/NBR + slider date.
+        # ----- Sub-tab — Carte FAST (spec 010) -----------------------
+        # Visible en mode quick — raster NDVI/NBR + slider date.
         # Masqué en mode health par l'observer mode-driven du server.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_pixel_map_fast"),
@@ -268,7 +259,36 @@ mod_monitoring_ui <- function(id) {
           icon  = bsicons::bs_icon("map"),
           mod_monitoring_pixel_map_ui(ns("pixel_map"))
         ),
-        # ----- Sub-tab — Carte FORDEAD (placeholder) -----------------
+        # ---------- FORDEAD mode sub-tabs (visible en mode health) ---
+        # ----- Sub-tab — Alertes FORDEAD (FORDEAD map + QGIS) --------
+        # Anciennement « Alertes » avant v0.35.0. Renommé pour
+        # symétrie avec Alertes FAST et Carte FORDEAD. La logique
+        # reactive (alerts(), output$alerts_panel, output$alerts_map,
+        # output$qgis_panel) reste identique — seul le label et la
+        # value du nav_panel changent.
+        bslib::nav_panel(
+          title = i18n$t("monitoring_subtab_alerts_fordead"),
+          value = "alerts_fordead",
+          icon  = bsicons::bs_icon("exclamation-triangle"),
+          # The "include low confidence classes" toggle used to live
+          # inside card_header next to the title, but its long label
+          # wrapped awkwardly on narrow viewports. Lifted into its own
+          # row so it always sits on a single line above the alerts.
+          # Plus de conditionalPanel mode=='health' depuis v0.35.0 :
+          # tout le sous-onglet est caché en mode quick.
+          htmltools::div(
+            class = "px-3 pt-2",
+            shiny::checkboxInput(
+              ns("include_low"),
+              i18n$t("monitoring_include_low"),
+              value = FALSE
+            )
+          ),
+          shiny::uiOutput(ns("alerts_panel")),
+          # Health-mode QGIS generator (E6.c.5 — T6app.12, wired in C6)
+          shiny::uiOutput(ns("qgis_panel"))
+        ),
+        # ----- Sub-tab — Carte FORDEAD (placeholder v0.34.0) ---------
         # Visible en mode health — montrera le raster classifié du
         # dépérissement (sain/faible/moyenne/forte). Tant que le cœur
         # n'expose pas read_fordead_dieback_mask(), affiche un
@@ -315,23 +335,34 @@ mod_monitoring_server <- function(id, app_state) {
       get_i18n(app_state$language %||% "fr")
     })
 
-    # Mode-driven sub-tab visibility (v0.34.0). Carte pixel (FAST)
-    # n'a de contenu utile qu'en mode quick (surveillance NDVI/NBR);
-    # Carte FORDEAD n'apparaît qu'en mode health (placeholder pour
-    # le futur raster classifié de dépérissement). On masque le
-    # sous-onglet inactif au lieu de juste vider son contenu — l'UX
-    # reste lisible et le coût reactif (build_index_stack, etc.) ne
-    # se déclenche pas en mode health sur un tab qu'on n'utilisera
-    # pas.
+    # Mode-driven sub-tab visibility (v0.34.0 → v0.35.0). Quatre
+    # sous-onglets, deux affichés à la fois selon `input$mode` :
+    #
+    #   mode = "quick"  → Alertes FAST    + Carte FAST
+    #   mode = "health" → Alertes FORDEAD + Carte FORDEAD
+    #
+    # Symétrie : chaque mode a son couple (liste d'alertes + carte).
+    # Pattern uniforme `bslib::nav_show()` / `nav_hide()` plutôt qu'un
+    # conditionalPanel interne, parce qu'on veut aussi éviter de
+    # déclencher les reactives lourdes (build_index_stack côté FAST,
+    # list_alerts_for_zone côté FORDEAD) quand l'onglet est masqué.
     shiny::observe({
       mode <- input$mode
       if (identical(mode, "quick")) {
+        bslib::nav_show("subtab", target = "alerts_fast",
+                        session = session)
         bslib::nav_show("subtab", target = "pixel_map_fast",
+                        session = session)
+        bslib::nav_hide("subtab", target = "alerts_fordead",
                         session = session)
         bslib::nav_hide("subtab", target = "pixel_map_fordead",
                         session = session)
       } else if (identical(mode, "health")) {
+        bslib::nav_hide("subtab", target = "alerts_fast",
+                        session = session)
         bslib::nav_hide("subtab", target = "pixel_map_fast",
+                        session = session)
+        bslib::nav_show("subtab", target = "alerts_fordead",
                         session = session)
         bslib::nav_show("subtab", target = "pixel_map_fordead",
                         session = session)
