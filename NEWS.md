@@ -1,3 +1,34 @@
+# nemetonshiny 0.36.1 (2026-05-17)
+
+### Fixed — UX seuils FAST alignée sur la sémantique cœur
+
+Les sliders sidebar `threshold_ndvi` / `threshold_nbr` du mode FAST
+étaient calibrés pour la sémantique historique **drop** (delta NDVI
+ou NBR sur la fenêtre roulante E6.a) — défauts 0.15 / 0.25, range
+0.05-0.50. Mais `nemeton::list_fast_alerts_for_zone()` (consommé
+depuis v0.36.0) interprète ces valeurs comme des **seuils absolus**
+minimaux. Avec les anciens défauts, presque aucune placette ne
+remontait en alerte parce que le NDVI d'une forêt saine (0.6-0.8)
+était toujours bien au-dessus de 0.15.
+
+**Correctif** :
+
+- Slider `threshold_ndvi` : default `0.40` (cœur default), range
+  `[0.10, 0.80]` (couvre la plage NDVI forestière saine).
+- Slider `threshold_nbr` : default `0.30` (cœur default), range
+  `[0.10, 0.80]`.
+- Labels i18n : « Seuil de baisse NDVI/NBR » →
+  « Seuil minimum NDVI/NBR » (resp. drop → minimum threshold).
+  En anglais : « NDVI/NBR drop threshold » →
+  « Minimum NDVI/NBR threshold ».
+- Empty-state des Alertes FAST : « baisser le seuil » →
+  « relever le seuil » (avec sémantique absolue, raising the
+  threshold attrape plus de placettes en dessous).
+
+Aucun changement de signature côté cœur — pure resync app/cœur.
+
+---
+
 # nemetonshiny 0.36.0 (2026-05-17)
 
 ### Added — Câblage des sous-onglets Alertes FAST + Carte FORDEAD
