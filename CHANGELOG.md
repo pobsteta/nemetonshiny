@@ -12,6 +12,19 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.36.1\] - 2026-05-17
+
+### Fixed
+
+- **Suivi sanitaire / sidebar FAST** : sliders `threshold_ndvi` et
+  `threshold_nbr` réalignés sur la sémantique « seuil absolu » consommée
+  par `nemeton::list_fast_alerts_for_zone()` depuis v0.36.0. Défauts
+  `0.40 / 0.30` (cœur defaults), range `[0.10, 0.80]` (au lieu de
+  `0.15 / 0.25`, range `[0.05, 0.50]` hérités de la sémantique drop
+  E6.a). Labels i18n recyclés (« Seuil minimum NDVI/NBR »). Empty-state
+  des Alertes FAST : « relever le seuil » au lieu de « baisser le seuil
+  » (`R/mod_monitoring.R`, `R/utils_i18n.R`).
+
 ## \[0.36.0\] - 2026-05-17
 
 ### Added
