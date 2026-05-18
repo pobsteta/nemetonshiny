@@ -1,4 +1,4 @@
-# nemetonshiny 0.36.5.9001 (2026-05-18)
+# nemetonshiny 0.36.6 (2026-05-18)
 
 ### Changed — Résolution MNT/CHM déléguée à `nemeton::resolve_project_*`
 
