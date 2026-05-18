@@ -1,5 +1,40 @@
 # Changelog
 
+## nemetonshiny 0.36.6 (2026-05-18)
+
+#### Changed — Résolution MNT/CHM déléguée à `nemeton::resolve_project_*`
+
+Le module `mod_sampling` faisait sa propre résolution des rasters CHM et
+MNT depuis `<project>/cache/layers/` avec une liste de chemins
+hard-codés (`lidar_mnh_mosaic.tif`, `opencanopy/chm_1_5m.tif`,
+`lidar_mnt_mosaic.tif`, `dem.tif`). `nemeton (>= 0.21.10)` expose
+maintenant deux helpers qui font la même chose en couvrant les noms
+canoniques `dtm.tif`, `mnh.tif`, `lidar_mnh.tif`, etc., avec la même
+préférence LiDAR HD → opencanopy → BD ALTI.
+
+**Changements** :
+
+- `R/mod_sampling.R` : les réactives `chm_raster()` / `mnt_raster()`
+  appellent maintenant
+  `nemeton::resolve_project_chm(project_path, verbose = TRUE)` et
+  `nemeton::resolve_project_dem(...)`. L’helper interne `cache_raster()`
+  (résolution maison) est supprimé.
+- Pré-check ajouté dans l’`observeEvent(input$generate)` : si
+  `resolve_project_dem()` renvoie `NULL`, toast d’erreur i18n
+  `mnt_missing` (« Aucun MNT trouvé. Téléchargez via opencanopynemeton
+  (dtm.tif) ou IGN RGE ALTI. ») et arrêt avant l’appel à
+  `create_sampling_plan()`. Si le CHM est `NULL`, simple warning soft
+  (`chm_missing`) car la stratification hauteur tombe alors mais le plan
+  se génère via LPM2/random.
+- Toasts informatifs `mnt_found_fmt` / `chm_found_fmt` qui exposent la
+  couche résolue via `attr(., "nemeton_dem_layer")` /
+  `attr(., "nemeton_chm_layer")` (« MNT : LiDAR HD (1m) » vs « MNT :
+  opencanopy DTM »).
+- 4 nouvelles clés i18n bilingues : `mnt_found_fmt`, `mnt_missing`,
+  `chm_found_fmt`, `chm_missing` (`R/utils_i18n.R`).
+- `DESCRIPTION` : `Imports: nemeton (>= 0.21.10)` pour garantir la
+  présence des helpers.
+
 ## nemetonshiny 0.36.5 (2026-05-18)
 
 #### Fixed — Codes ANSI cli affichés dans la notification d’erreur de `create_sampling_plan()`

@@ -12,6 +12,28 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.36.6\] - 2026-05-18
+
+### Changed
+
+- **Sampling / résolution MNT/CHM déléguée à `nemeton`** : les réactives
+  `chm_raster()` / `mnt_raster()` de `mod_sampling` appellent désormais
+  `nemeton::resolve_project_chm()` et `nemeton::resolve_project_dem()`
+  (nemeton \>= 0.21.10) au lieu de faire leur propre lookup dans
+  `<project>/cache/layers/`. Couvre les noms canoniques `dtm.tif`,
+  `mnh.tif`, `lidar_mnh.tif` en plus des mosaics historiques
+  (`R/mod_sampling.R`).
+
+### Added
+
+- **Pré-check DEM/CHM avant `create_sampling_plan()`** : toast erreur
+  `mnt_missing` quand le DEM est absent (arrête l’appel pour éviter
+  l’abort « Stratification-valid candidate pool (0) is below n_base ») ;
+  warning soft `chm_missing` quand le CHM est absent ; toasts
+  informatifs `mnt_found_fmt` / `chm_found_fmt` exposant la couche
+  résolue via `attr(., "nemeton_dem_layer")` / `nemeton_chm_layer`.
+- 4 clés i18n bilingues FR/EN (`R/utils_i18n.R`).
+
 ## \[0.36.5\] - 2026-05-18
 
 ### Fixed
