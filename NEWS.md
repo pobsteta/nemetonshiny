@@ -1,4 +1,4 @@
-# nemetonshiny 0.36.4.9001 (2026-05-18)
+# nemetonshiny 0.36.5 (2026-05-18)
 
 ### Fixed — Codes ANSI cli affichés dans la notification d'erreur de `create_sampling_plan()`
 

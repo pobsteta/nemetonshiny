@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.36.5] - 2026-05-18
+
+### Fixed
+
+- **Sampling / notification d'erreur `create_sampling_plan()`** : les
+  séquences ANSI `cli` (`[38;5;250m`, `[31m`, `[36m`, `[39m`) issues de
+  `cli::cli_abort()` côté `nemeton` apparaissaient brutes dans le toast
+  Shiny. Le `conditionMessage(e)` est désormais nettoyé via
+  `cli::ansi_strip()` avant `showNotification()` (`R/mod_sampling.R`).
+
 ## [0.36.4] - 2026-05-17
 
 ### Fixed
