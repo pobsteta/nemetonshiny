@@ -226,9 +226,19 @@ sans rebuild, support dynamique du switch langue.
 - **cicerone** pour les tours guidés (Suggests)
 - **quarto** pour les exports rapport (Suggests)
 
-`Remotes: pobsteta/nemeton` dans `DESCRIPTION` — installation locale en
-dev via `pak::local_install("/home/pascal/dev/nemeton")` ou
-`pkgload::load_all("/home/pascal/dev/nemeton")`.
+`Remotes: pobsteta/nemeton@main` dans `DESCRIPTION` — **l’app suit en
+continu la branche `main` du cœur**, pas d’épingle tag. À chaque release
+`nemeton`, les nouveaux installs
+`install_github("pobsteta/nemetonshiny")` récupèrent automatiquement la
+dernière version cœur, sans intervention côté app. En contrepartie : (a)
+reproductibilité d’install perdue dans le temps
+(`install_github("…@v0.28.4")` ne donne plus le même résultat dans 6
+mois si `nemeton@main` a bougé), (b) toute régression poussée sur `main`
+côté cœur impacte immédiatement tous les installs jusqu’au fix/revert.
+Installation locale en dev via
+`pak::local_install("/home/pascal/dev/nemeton")` ou
+`pkgload::load_all("/home/pascal/dev/nemeton")` — pas d’aller-retour
+GitHub.
 
 ## Commandes de référence
 
@@ -425,6 +435,100 @@ entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 - Quand un changement implique aussi `nemeton`, faire les deux releases
   dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).
 
+## Suivi de `nemeton@main` — implications pour les releases
+
+Choix architectural (cf. *Stack technique*) :
+`Remotes: pobsteta/nemeton@main` sans épingle tag. Les installs
+`install_github("pobsteta/nemetonshiny")` tirent toujours le dernier
+commit `main` du cœur, donc la dernière fonctionnalité exportée est
+immédiatement disponible sans avoir à publier une release app dédiée.
+
+Conséquences pratiques :
+
+- **Pas de bump `Remotes:` après une release cœur.** Inutile, puisque
+  l’épingle pointe sur la branche, pas sur un tag. Une release
+  `nemeton@vX.Y.Z` est consommée automatiquement par tous les nouveaux
+  installs app dès que le tag est mergé sur `main`.
+- **Reproductibilité d’install pure perdue.**
+  `install_github("pobsteta/nemetonshiny@v0.28.4")` fait dans 6 mois ne
+  donne plus le même état que le même appel fait aujourd’hui, parce que
+  `nemeton@main` aura bougé entre-temps. Pour un travail nécessitant la
+  reproductibilité (publication scientifique, bug-hunt sur une version
+  figée), s’appuyer sur `renv::snapshot()` côté projet utilisateur —
+  c’est le bon outil pour figer un état composite app+cœur, pas le
+  `Remotes:` du `DESCRIPTION`.
+- **Une régression poussée sur `nemeton@main` casse l’install app.**
+  Pendant la fenêtre push → revert/fix,
+  `install_github("pobsteta/nemetonshiny")` peut tomber. Mitigation : ne
+  jamais pousser sur `nemeton@main` sans CI verte côté cœur ; revert
+  rapide via PR si découvert.
+- **La règle 11 (ordre cœur → app) reste valable pour les changements
+  d’API**, mais le mécanisme de propagation a changé : ce n’est plus un
+  bump `Remotes:`, c’est juste l’attente que le commit cœur soit sur
+  `main`. L’app peut alors être éditée pour consommer la nouvelle API et
+  released normalement.
+- **Développement local** :
+  `pkgload::load_all("/home/pascal/dev/nemeton")` court-circuite GitHub,
+  comme avant. Le suivi de `main` ne change rien au workflow dev
+  quotidien.
+
+## Workflow de push (branche dev → main)
+
+Le workflow est en **deux temps** et doit être suivi systématiquement.
+
+### Temps 1 — Push sur la branche dev (automatique)
+
+Par défaut Claude pousse **toujours** sur la branche de développement
+imposée par la session (ex. `claude/fix-action-plan-data-9wgpI`). Ce
+push **ne nécessite pas** de confirmation supplémentaire — c’est le
+fonctionnement nominal.
+
+Lors d’un commit fonctionnel sur la branche dev, Claude bumpe le **cycle
+dev** (`X.Y.Z.9000+` → `X.Y.Z.9001+`) conformément à la section *Cycle
+dev vs release stable*, met à jour `NEWS.md` et `DESCRIPTION`
+localement, commit, puis `git push -u origin <branche-dev>`. Pas de tag,
+pas de release GitHub à cette étape.
+
+### Temps 2 — Merge vers `main` + release (sur autorisation)
+
+**Après chaque push réussi sur la branche dev**, Claude **doit
+systématiquement demander** à l’utilisateur via une question dédiée s’il
+faut merger sur `main` et déclencher la release. Le récapitulatif
+présenté doit contenir, en suivant les règles déjà décrites dans
+*Consignes de release* et *Règles de cohérence* :
+
+1.  La **branche source** (ex. `claude/fix-action-plan-data-9wgpI`) et
+    le ou les commits concernés (SHA + sujet).
+2.  Le **bump de version stable** proposé (`X.Y.Z` → `X.Y.Z+1` patch /
+    `X.Y+1.0` minor / `X+1.0.0` major) déduit du type Conventional
+    Commit (`fix:` / `feat:` / `BREAKING CHANGE:`). Pour un bump
+    **majeur**, demander une confirmation supplémentaire explicite
+    (cf. *Règles de cohérence*).
+3.  Les **fichiers de version** à mettre à jour : `DESCRIPTION`,
+    `NEWS.md` (résumé de l’entrée datée), `CITATION.cff` si présent,
+    `CHANGELOG.md` si présent (section `[X.Y.Z] - YYYY-MM-DD` avec
+    Added/Changed/Fixed/Removed).
+4.  Le **tag git annoté** prévu (`git tag -a vX.Y.Z -m "Release X.Y.Z"`)
+    et son push (`git push origin vX.Y.Z`).
+5.  La **release GitHub** prévue
+    (`gh release create vX.Y.Z --generate-notes`).
+6.  L’impact sur le **`PLAN.md` du repo `nemeton`** : case à cocher +
+    entrée datée du journal mentionnant `nemetonshiny@SHA` et le cycle
+    dev (cf. *Consignes de release* étape 8).
+7.  Toute release couplée côté `nemeton` requise par l’ordre **cœur →
+    app** (l’app dépend du cœur, jamais l’inverse).
+8.  Vérification que les **badges du README** et la **doc pkgdown**
+    pointent vers la nouvelle version.
+
+Tant que l’utilisateur n’a pas explicitement autorisé ce temps 2, Claude
+**ne fait pas** : `git checkout main`, `git merge`,
+`git push origin main`, `git tag -a vX.Y.Z`, `git push origin vX.Y.Z`,
+ni `gh release create`.
+
+Une autorisation vaut **pour la seule release récapitulée** : chaque
+nouveau cycle (nouveau push dev → nouvelle question de merge) demande
+une nouvelle confirmation.
+
 ## Règles strictes
 
 1.  **Aucune logique métier** dans `nemetonshiny` (indicateurs,
@@ -450,3 +554,25 @@ entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 10. Quand je travaille sur une tâche longue, maintenir le `PLAN.md` du
     repo `nemeton` à jour à chaque étape terminée (chantier en cours +
     journal).
+11. **Push branche dev = automatique ; merge `main` + tag + release =
+    autorisation explicite**. Après chaque push réussi sur la branche
+    dev, Claude doit systématiquement demander s’il faut merger sur
+    `main` en présentant le récapitulatif décrit dans *Workflow de push
+    (branche dev → main)*. Sans autorisation explicite, jamais de
+    `git push origin main`, jamais de tag, jamais de
+    `gh release create`, jamais de merge.
+12. **Ne jamais basculer dans le repo `nemeton` (cœur) depuis cette
+    session.** Cette session de développement est dédiée à
+    `nemetonshiny` (`/home/pascal/dev/nemetonshiny`). Si une
+    modification cœur (`nemeton`) est nécessaire — nouvelle fonction
+    exportée, fix d’un helper interne, bump cycle dev cœur, mise à jour
+    du `PLAN.md` cœur, etc. — Claude doit **s’arrêter et demander à
+    l’utilisateur d’ouvrir une nouvelle instance de dev sur le dépôt
+    `/home/pascal/dev/nemeton`** avec les instructions précises
+    (signature de fonction, contenu attendu, tests, NEWS, PLAN). Pas de
+    `cd /home/pascal/dev/nemeton`, pas de `git checkout` côté cœur, pas
+    de `Read`/`Edit`/`Write` sur des fichiers
+    `/home/pascal/dev/nemeton/**`. Raison : opérer sur deux repos en
+    parallèle dans la même session brouille l’état du shell,
+    désynchronise le suivi des branches, et rend les récap de push
+    ambigus pour l’utilisateur. Garder une session = un repo.
