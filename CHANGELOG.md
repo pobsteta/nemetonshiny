@@ -10,6 +10,42 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.36.7] - 2026-05-18
+
+### Fixed
+
+- **Sampling / câblage MNT-CHM sur `create_sampling_plan()`** : les
+  rasters résolus via `nemeton::resolve_project_*` n'étaient pas
+  passés à `create_sampling_plan()` (manque de `mnt =` / `chm =` au
+  call site), si bien que `<project>/dtm.tif` opencanopy n'était
+  jamais consommé. Pré-check ajouté : DEM absent → toast bloquant
+  `sampling_no_dem_found_fmt` (i18n, avec chemin projet)
+  `id = session$ns("dem_missing")` et arrêt avant l'appel cœur ;
+  CHM absent → `cli::cli_alert_info` sans toast bloquant
+  (`R/mod_sampling.R`).
+
+### Changed
+
+- Toast informatif `sampling_dem_resolved_fmt` (« MNT : %s », 5 s)
+  qui surface `attr(dem, "nemeton_dem_layer")`
+  (« opencanopy DTM », « LiDAR HD MNT », « IGN BD ALTI »…).
+- 3 clés i18n FR/EN remplaçant les 4 ajoutées en v0.36.6 :
+  `sampling_no_dem_found_fmt`, `sampling_dem_resolved_fmt`,
+  `sampling_chm_missing` (`R/utils_i18n.R`).
+- `DESCRIPTION` : `Imports: nemeton (>= 0.25.4)` (au lieu de
+  `0.21.10`).
+
+### Added
+
+- 2 tests testthat ciblés (`tests/testthat/test-mod_sampling.R`) :
+  câblage `mnt = <SpatRaster> / chm = NULL` vérifié via mock de
+  `nemeton::create_sampling_plan` ; toast `dem_missing` + non-appel
+  cœur vérifié quand `resolve_project_dem` renvoie NULL.
+- Helper `make_fake_dem()` + 4 tests existants enveloppés dans
+  `testthat::local_mocked_bindings(resolve_project_dem = ...,
+  resolve_project_chm = ..., .package = "nemeton")` pour préserver
+  le contrat « generate produit des plots ».
+
 ## [0.36.6] - 2026-05-18
 
 ### Changed

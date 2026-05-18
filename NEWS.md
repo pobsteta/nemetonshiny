@@ -1,4 +1,4 @@
-# nemetonshiny 0.36.6.9001 (2026-05-18)
+# nemetonshiny 0.36.7 (2026-05-18)
 
 ### Fixed — Câblage `resolve_project_dem` / `resolve_project_chm` sur `create_sampling_plan()`
 
