@@ -1,3 +1,54 @@
+# nemetonshiny 0.36.6.9001 (2026-05-18)
+
+### Fixed — Câblage `resolve_project_dem` / `resolve_project_chm` sur `create_sampling_plan()`
+
+Suite de la livraison v0.36.6 : on alignait la résolution des rasters
+sur les nouveaux helpers `nemeton::resolve_project_*` mais l'appel à
+`create_sampling_plan()` ne passait toujours pas `mnt =` ni `chm =`,
+si bien que le DEM résolu n'était jamais consommé côté cœur (le
+pré-check « Stratification-valid candidate pool (0) is below
+`n_base` » de `nemeton@v0.25.1` aboutait alors avec un toast
+cryptique).
+
+**Changements** (`R/mod_sampling.R`) :
+
+- Les réactives `chm_raster()` / `mnt_raster()` perdent leur guard
+  `if (is.null(pp)) return(NULL)` : les helpers `resolve_project_*`
+  sont défensifs (typed errors sur NULL / "" / chemin manquant), le
+  `tryCatch` suffit.
+- Pré-check DEM avant l'appel : si `mnt_raster()` est NULL, toast
+  `sampling_no_dem_found_fmt` (i18n) avec `duration = NULL` (toast
+  bloquant), `id = session$ns("dem_missing")` et `return()` immédiat
+  — `create_sampling_plan()` n'est plus appelé du tout dans ce cas.
+- Toast informatif `sampling_dem_resolved_fmt` (`"MNT : %s"`)
+  exposant la couche résolue via `attr(dem, "nemeton_dem_layer")`
+  (« opencanopy DTM », « LiDAR HD MNT », « IGN BD ALTI », …),
+  `duration = 5`, `id = session$ns("dem_resolved")`.
+- CHM absent : simple `cli::cli_alert_info("sampling_chm_missing")`
+  sans toast bloquant — la stratification hauteur tombe mais
+  `create_sampling_plan()` retient le DEM seul et bascule sur
+  LPM2 / random.
+- 3 nouvelles clés i18n FR/EN remplaçant les 4 ajoutées la veille :
+  `sampling_no_dem_found_fmt`, `sampling_dem_resolved_fmt`,
+  `sampling_chm_missing` (`R/utils_i18n.R`).
+- `Imports: nemeton (>= 0.25.4)` (au lieu de `0.21.10`) pour
+  garantir la version qui ajoute le pré-check coeur côté nemeton.
+
+**Tests** (`tests/testthat/test-mod_sampling.R`) :
+
+- Helper `make_fake_dem()` qui fabrique un `SpatRaster` 100 m sur la
+  bbox des fixtures avec attribut `nemeton_dem_layer`.
+- 4 tests existants qui cliquent « Generate » sont enveloppés dans
+  `testthat::local_mocked_bindings(resolve_project_dem = ...,
+  resolve_project_chm = function(...) NULL, .package = "nemeton")`
+  pour préserver le contrat « plots non NULL après generate ».
+- 2 nouveaux tests :
+    * vérifie que `nemeton::create_sampling_plan` est bien appelé
+      avec `mnt = <SpatRaster>` et `chm = NULL` (capture via mock) ;
+    * vérifie que quand `resolve_project_dem` renvoie NULL, le toast
+      `dem_missing` est émis et `create_sampling_plan` n'est PAS
+      appelé.
+
 # nemetonshiny 0.36.6 (2026-05-18)
 
 ### Changed — Résolution MNT/CHM déléguée à `nemeton::resolve_project_*`

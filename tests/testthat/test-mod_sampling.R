@@ -38,6 +38,21 @@ make_fake_app_state <- function() {
   )
 }
 
+# Tiny SpatRaster fake covering the AOI used by make_fake_app_state(),
+# tagged with a `nemeton_dem_layer` attribute so the resolved-source
+# toast can render its layer name in the new pre-check path.
+make_fake_dem <- function(layer = "fake DEM") {
+  skip_if_not_installed("terra")
+  r <- terra::rast(
+    xmin = 899000, xmax = 902000,
+    ymin = 6499000, ymax = 6502000,
+    resolution = 100, crs = "EPSG:2154"
+  )
+  terra::values(r) <- stats::runif(terra::ncell(r), 100, 800)
+  attr(r, "nemeton_dem_layer") <- layer
+  r
+}
+
 
 test_that("mod_sampling_server returns NULL plots before generate is clicked", {
   skip_if_not_installed("shiny")
@@ -59,6 +74,14 @@ test_that("mod_sampling_server returns NULL plots before generate is clicked", {
 test_that("mod_sampling_server generates POINT plots after clicking generate", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+
+  fake_dem <- make_fake_dem()
+  testthat::local_mocked_bindings(
+    resolve_project_dem = function(...) fake_dem,
+    resolve_project_chm = function(...) NULL,
+    .package = "nemeton"
+  )
 
   shiny::testServer(
     nemetonshiny:::mod_sampling_server,
@@ -126,6 +149,14 @@ test_that("target_error + manual CV sizes n_base via Cochran", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("sf")
   skip_if_not_installed("nemeton")
+  skip_if_not_installed("terra")
+
+  fake_dem <- make_fake_dem()
+  testthat::local_mocked_bindings(
+    resolve_project_dem = function(...) fake_dem,
+    resolve_project_chm = function(...) NULL,
+    .package = "nemeton"
+  )
 
   shiny::testServer(
     nemetonshiny:::mod_sampling_server,
@@ -202,6 +233,14 @@ test_that("generated plots feed create_qfield_project() into a valid .qgz", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("sf")
   skip_if_not_installed("nemeton")
+  skip_if_not_installed("terra")
+
+  fake_dem <- make_fake_dem()
+  testthat::local_mocked_bindings(
+    resolve_project_dem = function(...) fake_dem,
+    resolve_project_chm = function(...) NULL,
+    .package = "nemeton"
+  )
 
   plots_captured <- NULL
   zone_captured  <- NULL
@@ -242,6 +281,14 @@ test_that("mod_sampling_server persists samples.gpkg when a real project is load
   skip_if_not_installed("shiny")
   skip_if_not_installed("sf")
   skip_if_not_installed("nemeton")
+  skip_if_not_installed("terra")
+
+  fake_dem <- make_fake_dem()
+  testthat::local_mocked_bindings(
+    resolve_project_dem = function(...) fake_dem,
+    resolve_project_chm = function(...) NULL,
+    .package = "nemeton"
+  )
 
   withr::with_tempdir({
     temp_root <- getwd()
@@ -293,4 +340,109 @@ test_that("mod_sampling_server persists samples.gpkg when a real project is load
       )
     })
   })
+})
+
+
+# ---------------------------------------------------------------------
+# nemeton::resolve_project_dem / _chm wiring (introduced 0.36.6.9001)
+# ---------------------------------------------------------------------
+
+test_that("clicking generate forwards resolve_project_dem output to create_sampling_plan as mnt", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  skip_if_not_installed("nemeton")
+  skip_if_not_installed("terra")
+
+  fake_dem <- make_fake_dem("LiDAR HD MNT")
+  captured <- new.env(parent = emptyenv())
+  captured$call <- NULL
+
+  testthat::local_mocked_bindings(
+    resolve_project_dem = function(...) fake_dem,
+    resolve_project_chm = function(...) NULL,
+    create_sampling_plan = function(zone, n_base, n_over, chm = NULL,
+                                    mnt = NULL, ...) {
+      captured$call <- list(chm = chm, mnt = mnt)
+      # Synthetic plan: n_base + n_over POINTs spread on the zone bbox.
+      bb <- sf::st_bbox(zone)
+      n_total <- n_base + n_over
+      x <- seq(bb["xmin"] + 50, bb["xmax"] - 50, length.out = n_total)
+      y <- rep(mean(c(bb["ymin"], bb["ymax"])), n_total)
+      pts <- sf::st_sf(
+        plot_id     = seq_len(n_total),
+        type        = c(rep("Base", n_base), rep("Over", n_over)),
+        visit_order = seq_len(n_total),
+        geometry    = sf::st_sfc(
+          lapply(seq_len(n_total),
+                 function(i) sf::st_point(c(x[i], y[i]))),
+          crs = 2154
+        )
+      )
+      attr(pts, "method") <- "mock"
+      pts
+    },
+    .package = "nemeton"
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_sampling_server,
+    args = list(app_state = make_fake_app_state()),
+    {
+      session$setInputs(n_base = 4, n_over = 1, seed = 1,
+                        region = "BFC", project_name = "wire_dem",
+                        generate = 1)
+      plots <- session$returned$sample_plots()
+      expect_true(inherits(plots, "sf"))
+      expect_equal(nrow(plots), 5L)
+    }
+  )
+
+  expect_false(is.null(captured$call))
+  expect_true(inherits(captured$call$mnt, "SpatRaster"))
+  expect_null(captured$call$chm)
+})
+
+
+test_that("clicking generate with no DEM shows dem_missing toast and skips create_sampling_plan", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("nemeton")
+
+  called <- new.env(parent = emptyenv())
+  called$create <- FALSE
+  notifications <- list()
+
+  testthat::local_mocked_bindings(
+    resolve_project_dem = function(...) NULL,
+    resolve_project_chm = function(...) NULL,
+    create_sampling_plan = function(...) {
+      called$create <- TRUE
+      NULL
+    },
+    .package = "nemeton"
+  )
+
+  # Spy on shiny::showNotification to capture the id of the error toast.
+  testthat::local_mocked_bindings(
+    showNotification = function(ui, ..., id = NULL) {
+      notifications[[length(notifications) + 1L]] <<- list(id = id)
+      invisible(id)
+    },
+    .package = "shiny"
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_sampling_server,
+    args = list(app_state = make_fake_app_state()),
+    {
+      session$setInputs(n_base = 4, n_over = 1, seed = 1,
+                        region = "BFC", project_name = "no_dem",
+                        generate = 1)
+      expect_null(session$returned$sample_plots())
+    }
+  )
+
+  expect_false(called$create)
+  ids <- vapply(notifications, function(n) n$id %||% NA_character_,
+                character(1))
+  expect_true(any(grepl("dem_missing", ids)))
 })

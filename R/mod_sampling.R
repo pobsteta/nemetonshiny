@@ -317,16 +317,16 @@ mod_sampling_server <- function(id, app_state) {
       tryCatch(get_project_path(project$id), error = function(e) NULL)
     })
 
+    # resolve_project_* are defensive (typed errors on NULL / "" /
+    # missing path) — no need for a pre-validation guard here.
     chm_raster <- shiny::reactive({
       pp <- project_path_r()
-      if (is.null(pp)) return(NULL)
       tryCatch(nemeton::resolve_project_chm(pp, verbose = TRUE),
                error = function(e) NULL)
     })
 
     mnt_raster <- shiny::reactive({
       pp <- project_path_r()
-      if (is.null(pp)) return(NULL)
       tryCatch(nemeton::resolve_project_dem(pp, verbose = TRUE),
                error = function(e) NULL)
     })
@@ -676,28 +676,28 @@ mod_sampling_server <- function(id, app_state) {
       # "Stratification-valid candidate pool (0) is below n_base".
       # CHM is optional (height stratification only); the call still
       # falls back to LPM2 / random when it is missing.
+      pp <- project_path_r()
       dem_raw <- mnt_raster()
       if (is.null(dem_raw)) {
-        shiny::showNotification(i18n$t("mnt_missing"),
-                                type = "error", duration = 8)
+        shiny::showNotification(
+          sprintf(i18n$t("sampling_no_dem_found_fmt"), pp %||% "?"),
+          type = "error",
+          duration = NULL,
+          id = session$ns("dem_missing")
+        )
         return()
       }
       dem_layer <- attr(dem_raw, "nemeton_dem_layer") %||% "unknown"
       shiny::showNotification(
-        sprintf(i18n$t("mnt_found_fmt"), dem_layer),
-        type = "message", duration = 4
+        sprintf(i18n$t("sampling_dem_resolved_fmt"), dem_layer),
+        type = "message",
+        duration = 5,
+        id = session$ns("dem_resolved")
       )
 
       chm_raw <- chm_raster()
       if (is.null(chm_raw)) {
-        shiny::showNotification(i18n$t("chm_missing"),
-                                type = "warning", duration = 6)
-      } else {
-        chm_layer <- attr(chm_raw, "nemeton_chm_layer") %||% "unknown"
-        shiny::showNotification(
-          sprintf(i18n$t("chm_found_fmt"), chm_layer),
-          type = "message", duration = 4
-        )
+        cli::cli_alert_info(i18n$t("sampling_chm_missing"))
       }
 
       # Native 1 m LiDAR HD mosaics are cropped to the AOI and
