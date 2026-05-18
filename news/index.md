@@ -1,5 +1,23 @@
 # Changelog
 
+## nemetonshiny 0.36.5 (2026-05-18)
+
+#### Fixed — Codes ANSI cli affichés dans la notification d’erreur de `create_sampling_plan()`
+
+Quand
+[`nemeton::create_sampling_plan()`](https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html)
+levait une erreur formatée par
+[`cli::cli_abort()`](https://cli.r-lib.org/reference/cli_abort.html)
+(par ex. « Stratification-valid candidate pool (0) is below `n_base`
+(50) » quand l’AOI dépasse la couverture CHM/MNT), le toast Shiny
+affichait les séquences d’échappement ANSI brutes (`[38;5;250m`, `[31m`,
+`[36m`, `[39m`) car `conditionMessage(e)` conserve le formatage `cli`
+qui n’a pas de sens en HTML.
+
+**Correctif** — `mod_sampling.R` enveloppe `conditionMessage(e)` dans
+[`cli::ansi_strip()`](https://cli.r-lib.org/reference/ansi_strip.html)
+avant la `showNotification()` pour ne montrer que le texte lisible.
+
 ## nemetonshiny 0.36.4 (2026-05-17)
 
 #### Fixed — Toast d’avertissements backend illisible (SAS token Azure)

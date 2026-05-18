@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,18 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.36.4/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.36.5" id="nemetonshiny-0365-2026-05-18">nemetonshiny 0.36.5 (2026-05-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0365-2026-05-18"></a></h2>
+<div class="section level4">
+<h4 id="fixed--codes-ansi-cli-affichés-dans-la-notification-derreur-de-create_sampling_plan-0-36-5">Fixed — Codes ANSI cli affichés dans la notification d’erreur de <code>create_sampling_plan()</code>
+<a class="anchor" aria-label="anchor" href="#fixed--codes-ansi-cli-affich%C3%A9s-dans-la-notification-derreur-de-create_sampling_plan-0-36-5"></a></h4>
+<p>Quand <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> levait une erreur formatée par <code><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli::cli_abort()</a></code> (par ex. « Stratification-valid candidate pool (0) is below <code>n_base</code> (50) » quand l’AOI dépasse la couverture CHM/MNT), le toast Shiny affichait les séquences d’échappement ANSI brutes (<code>[38;5;250m</code>, <code>[31m</code>, <code>[36m</code>, <code>[39m</code>) car <code>conditionMessage(e)</code> conserve le formatage <code>cli</code> qui n’a pas de sens en HTML.</p>
+<p><strong>Correctif</strong> — <code>mod_sampling.R</code> enveloppe <code>conditionMessage(e)</code> dans <code><a href="https://cli.r-lib.org/reference/ansi_strip.html" class="external-link">cli::ansi_strip()</a></code> avant la <code>showNotification()</code> pour ne montrer que le texte lisible.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.36.4" id="nemetonshiny-0364-2026-05-17">nemetonshiny 0.36.4 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0364-2026-05-17"></a></h2>
 <div class="section level4">
