@@ -712,7 +712,7 @@ mod_sampling_server <- function(id, app_state) {
         error = function(e) {
           cli::cli_alert_danger("create_sampling_plan error: {e$message}")
           shiny::showNotification(
-            paste("create_sampling_plan():", conditionMessage(e)),
+            paste("create_sampling_plan():", cli::ansi_strip(conditionMessage(e))),
             type = "error", duration = 8
           )
           NULL
