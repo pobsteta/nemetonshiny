@@ -1414,6 +1414,22 @@ TRANSLATIONS <- list(
     fr = "S\u00e9lectionnez d'abord un projet (onglet S\u00e9lection).",
     en = "Select a project first (Selection tab)."
   ),
+  mnt_found_fmt = list(
+    fr = "MNT trouv\u00e9 : %s",
+    en = "DEM found: %s"
+  ),
+  mnt_missing = list(
+    fr = "Aucun MNT trouv\u00e9. T\u00e9l\u00e9chargez le DTM via opencanopynemeton (dtm.tif) ou IGN RGE ALTI.",
+    en = "No DEM found. Download the DTM via opencanopynemeton (dtm.tif) or IGN RGE ALTI."
+  ),
+  chm_found_fmt = list(
+    fr = "CHM trouv\u00e9 : %s",
+    en = "CHM found: %s"
+  ),
+  chm_missing = list(
+    fr = "Aucun CHM trouv\u00e9 \u2014 la stratification GRTS par hauteur sera d\u00e9sactiv\u00e9e. T\u00e9l\u00e9chargez mnh.tif ou lidar_mnh.tif.",
+    en = "No CHM found \u2014 GRTS height stratification will be disabled. Download mnh.tif or lidar_mnh.tif."
+  ),
   sampling_n_base = list(fr = "Nombre de placettes base", en = "Number of base plots"),
   sampling_n_over = list(fr = "Nombre de placettes de remplacement", en = "Number of replacement plots"),
   sampling_seed = list(fr = "Graine al\u00e9atoire", en = "Random seed"),

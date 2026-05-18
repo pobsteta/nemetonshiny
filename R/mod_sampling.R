@@ -277,24 +277,12 @@ mod_sampling_server <- function(id, app_state) {
       sf::st_sf(geometry = sf::st_sfc(zone, crs = 2154))
     })
 
-    # --- CHM / MNT from project cache (LiDAR HD preferred) -----------
-    # These reactives feed create_sampling_plan() so that GRTS kicks
-    # in properly: with a CHM + MNT + BD Forêt mask available, the
-    # core stratifies candidates by height quartile / topographic
-    # position / forest type. Without them, the pipeline falls back
-    # to LPM2 or random.
-    #   - CHM preference: <cache>/lidar_mnh_mosaic.tif (LiDAR HD,
-    #     direct measurement) -> <cache>/opencanopy/chm_1_5m.tif (ML).
-    #   - MNT preference: <cache>/lidar_mnt_mosaic.tif (LiDAR HD 1 m)
-    #     -> <cache>/dem.tif (BD ALTI 25 m).
-    cache_raster <- function(project, relpath) {
-      project_path <- tryCatch(get_project_path(project$id),
-                               error = function(e) NULL)
-      if (is.null(project_path)) return(NULL)
-      p <- file.path(project_path, "cache", "layers", relpath)
-      if (!file.exists(p)) return(NULL)
-      tryCatch(terra::rast(p), error = function(e) NULL)
-    }
+    # --- CHM / MNT from project cache --------------------------------
+    # Delegated to nemeton (>= 0.21.10) helpers, which probe the
+    # project cache for the canonical filenames (dtm.tif, mnh.tif,
+    # lidar_mnh.tif, ...) with LiDAR HD preferred over opencanopy / BD
+    # ALTI fallbacks. The returned SpatRaster carries an attribute
+    # `nemeton_dem_layer` / `nemeton_chm_layer` we surface in the toast.
 
     # Prep a raster for the sampling plan: crop to the zone bbox
     # (with a small focal-window buffer) and aggregate to ~5 m if
@@ -323,24 +311,24 @@ mod_sampling_server <- function(id, app_state) {
       })
     }
 
-    chm_raster <- shiny::reactive({
+    project_path_r <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project)) return(NULL)
-      out <- cache_raster(project, "lidar_mnh_mosaic.tif")
-      if (is.null(out)) {
-        out <- cache_raster(project, file.path("opencanopy", "chm_1_5m.tif"))
-      }
-      out
+      tryCatch(get_project_path(project$id), error = function(e) NULL)
+    })
+
+    chm_raster <- shiny::reactive({
+      pp <- project_path_r()
+      if (is.null(pp)) return(NULL)
+      tryCatch(nemeton::resolve_project_chm(pp, verbose = TRUE),
+               error = function(e) NULL)
     })
 
     mnt_raster <- shiny::reactive({
-      project <- app_state$current_project
-      if (is.null(project)) return(NULL)
-      out <- cache_raster(project, "lidar_mnt_mosaic.tif")
-      if (is.null(out)) {
-        out <- cache_raster(project, "dem.tif")
-      }
-      out
+      pp <- project_path_r()
+      if (is.null(pp)) return(NULL)
+      tryCatch(nemeton::resolve_project_dem(pp, verbose = TRUE),
+               error = function(e) NULL)
     })
 
     # --- BD Forêt v2 overlay (cached during project compute) ---------
@@ -683,15 +671,41 @@ mod_sampling_server <- function(id, app_state) {
         NULL
       }
 
-      # CHM + MNT feed GRTS stratification (height quartile,
-      # topographic position). When both are present alongside the
-      # forest mask, the core upgrades from LPM2 to stratified GRTS.
+      # DEM is mandatory: without it the GRTS stratification has
+      # nothing to anchor on and create_sampling_plan() aborts with
+      # "Stratification-valid candidate pool (0) is below n_base".
+      # CHM is optional (height stratification only); the call still
+      # falls back to LPM2 / random when it is missing.
+      dem_raw <- mnt_raster()
+      if (is.null(dem_raw)) {
+        shiny::showNotification(i18n$t("mnt_missing"),
+                                type = "error", duration = 8)
+        return()
+      }
+      dem_layer <- attr(dem_raw, "nemeton_dem_layer") %||% "unknown"
+      shiny::showNotification(
+        sprintf(i18n$t("mnt_found_fmt"), dem_layer),
+        type = "message", duration = 4
+      )
+
+      chm_raw <- chm_raster()
+      if (is.null(chm_raw)) {
+        shiny::showNotification(i18n$t("chm_missing"),
+                                type = "warning", duration = 6)
+      } else {
+        chm_layer <- attr(chm_raw, "nemeton_chm_layer") %||% "unknown"
+        shiny::showNotification(
+          sprintf(i18n$t("chm_found_fmt"), chm_layer),
+          type = "message", duration = 4
+        )
+      }
+
       # Native 1 m LiDAR HD mosaics are cropped to the AOI and
       # aggregated to ~5 m so terra::focal / terra::extract stay
       # snappy (buffers = 15 m, focal window = 100 m — sub-metre
       # precision brings no value here).
-      chm_for_plan <- prep_sampling_raster(chm_raster(), zone)
-      mnt_for_plan <- prep_sampling_raster(mnt_raster(), zone)
+      chm_for_plan <- prep_sampling_raster(chm_raw, zone)
+      mnt_for_plan <- prep_sampling_raster(dem_raw, zone)
 
       cli::cli_alert_info(
         "Generate: n_base={n_base}, n_over={n_over}, seed={seed}, \\
