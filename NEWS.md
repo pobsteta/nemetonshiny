@@ -1,3 +1,78 @@
+# nemetonshiny 0.36.8 (2026-05-19)
+
+### Fixed — UX du diagnostic FORDEAD après résolution du run
+
+Cas reporté : un run FORDEAD complet et réussi se termine en 142 s
+côté cœur (`status == "success"`, `n_alerts_inserted == 0L`,
+`alerts_sf == NULL`), le toast bas-droite affiche bien
+« Diagnostic terminé : 0 alertes insérées en 142 s », mais l'UI
+restait dans un état ambigu :
+
+1. **Bouton « Lancer le diagnostic FORDEAD » resté grisé** après la
+   résolution. La logique en place (`observe` qui lisait
+   `fordead_task$status()` et appelait
+   `updateActionButton(disabled = is_running)`) aurait dû ré-activer
+   le bouton sur la transition de statut, mais une race ou un flush
+   manqué le laissait dans l'état grisé.
+
+   **Correctif** : belt-and-suspenders re-enable explicite dans le
+   handler `fordead_task$result()`, en plus du status-based observe.
+   Trois cas couverts (`success` avec alertes, `success` sans
+   alertes, `error`). Reset de `force_unlock_health(FALSE)` au
+   passage pour rester cohérent avec l'observer click.
+
+2. **Onglet « Alertes FORDEAD » muet** quand `n_alerts_inserted == 0L`.
+   L'utilisateur ne pouvait pas distinguer « pas encore lancé » /
+   « calcul en cours » / « run terminé, 0 anomalie ».
+
+   **Correctif** : nouvelle `reactiveVal` `fordead_last_result()` qui
+   capture le payload du dernier run résolu dans la session. Quand
+   `alerts()` est vide ET `fordead_last_result()$status == "success"`,
+   l'`output$alerts_panel` affiche une card « Zone saine — aucune
+   anomalie détectée » (bordure verte, icône `check-circle-fill`)
+   avec la durée du run en sous-titre. Cinq états distincts
+   maintenant lisibles dans le panneau Alertes FORDEAD :
+
+   | État | Affichage |
+   |---|---|
+   | Pas encore lancé / pas de zone sélectionnée | placeholder neutre |
+   | Run en cours | toast bas-droite avec phase 0..6 |
+   | Run terminé, ≥ 1 alerte | carte Leaflet (chemin actuel) |
+   | Run terminé, 0 alerte | card « Zone saine » avec durée |
+   | Run terminé en erreur | toast bas-droite + result snapshot capturé |
+
+3. **Onglet « Carte FORDEAD »** : empty-state déjà livré en v0.36.0
+   (« Aucun masque FORDEAD disponible » + « postprocess hook prévu
+   dans une release ultérieure de nemeton »). Pas de changement —
+   le wiring se réactivera automatiquement quand le cœur shippera
+   la persistance du raster 0..4.
+
+### Added
+
+- 3 nouvelles clés i18n FR/EN : `monitoring_fordead_no_alerts_title`,
+  `monitoring_fordead_no_alerts_body`, `monitoring_fordead_no_alerts_meta`.
+- Helper `make_fake_fordead_task()` widened pour accepter `result =`
+  / `status =` (préparation des futurs tests).
+
+### Notes opérationnelles
+
+- Aucun changement de signature côté cœur. Plancher `Imports` reste
+  à `nemeton (>= 0.25.4)` (hérité de v0.36.7).
+- Le bonus optionnel « badge persistant Diagnostic en cours »
+  mentionné dans le brief n'est pas livré — les toasts de phase
+  bas-droite (`monitoring_fordead_phase_*`, livrés v0.32.0) couvrent
+  déjà ce besoin.
+- Les tests testServer pour la card « Zone saine » prototypés
+  pendant ce ticket wedgent dans le graphe réactif de
+  `mod_monitoring_server` (multiples `reactivePoll` timers +
+  ExtendedTask + sous-module pixel-map — la file de tests existante
+  documente déjà ce problème de harness). La vérification du
+  rendering Zone-saine reste en QA manuelle pour cette release ;
+  les `.summarize_backend_warnings()` tests (v0.36.4) restent en
+  place et passent.
+
+---
+
 # nemetonshiny 0.36.7 (2026-05-18)
 
 ### Fixed — Câblage `resolve_project_dem` / `resolve_project_chm` sur `create_sampling_plan()`
@@ -97,6 +172,8 @@ conserve le formatage `cli` qui n'a pas de sens en HTML.
 **Correctif** — `mod_sampling.R` enveloppe `conditionMessage(e)` dans
 `cli::ansi_strip()` avant la `showNotification()` pour ne montrer que
 le texte lisible.
+
+---
 
 # nemetonshiny 0.36.4 (2026-05-17)
 

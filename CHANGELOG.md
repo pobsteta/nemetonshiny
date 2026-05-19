@@ -10,6 +10,33 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.36.8] - 2026-05-19
+
+### Fixed
+
+- **Suivi sanitaire / résolution FORDEAD** : trois fixes UX à la
+  fin d'un run FORDEAD réussi. (1) Le bouton « Lancer le diagnostic
+  FORDEAD » ne se ré-enable pas systématiquement quand
+  `fordead_task$status()` transite de « running » à « success » ;
+  ajout d'un `updateActionButton(disabled = FALSE)` + reset
+  `force_unlock_health(FALSE)` explicite dans le handler de résultat
+  (success ET error). (2) L'onglet « Alertes FORDEAD » restait
+  muet quand `n_alerts_inserted == 0L` ; nouvelle card « Zone
+  saine » avec durée du run quand `fordead_last_result()$status ==
+  "success"` et que `alerts()` est vide. (3) Le snapshot de
+  résultat est désormais conservé en `reactiveVal`
+  (`fordead_last_result`) pour distinguer « pas encore lancé » /
+  « run terminé sans anomalie » / « run terminé en erreur ».
+  (`R/mod_monitoring.R`)
+
+### Added
+
+- 3 nouvelles clés i18n FR/EN pour la card « Zone saine » :
+  `monitoring_fordead_no_alerts_title`, `_body`, `_meta`.
+- `make_fake_fordead_task()` widened pour accepter `result =` /
+  `status =` (préparation des futurs tests, harness actuel ne
+  permet pas un test testServer du nouveau branch d'affichage).
+
 ## [0.36.7] - 2026-05-18
 
 ### Fixed
