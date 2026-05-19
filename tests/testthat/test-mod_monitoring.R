@@ -404,17 +404,21 @@ test_that("mod_monitoring_ui exposes the FORDEAD/health-mode controls", {
 })
 
 # Fake ExtendedTask scoped for the health-mode tests.
-make_fake_fordead_task <- function() {
+make_fake_fordead_task <- function(result = NULL, status = "initial") {
   state <- new.env(parent = emptyenv())
   state$calls <- list()
+  state$result <- result
+  state$status <- status
   list(
     invoke = function(...) {
       state$calls[[length(state$calls) + 1L]] <- list(...)
       invisible(NULL)
     },
-    result = function() NULL,
-    status = function() "initial",
-    .calls = function() state$calls
+    result = function() state$result,
+    status = function() state$status,
+    .calls = function() state$calls,
+    .set_result = function(r) state$result <- r,
+    .set_status = function(s) state$status <- s
   )
 }
 
@@ -1213,4 +1217,94 @@ test_that(".summarize_backend_warnings handles edge cases", {
   out <- nemetonshiny:::.summarize_backend_warnings(ml)
   expect_false(grepl("\n", out))
   expect_equal(out, "line one line two line three")
+})
+
+
+# ---- v0.36.5 — FORDEAD result handler + Zone saine card ------------
+
+test_that("FORDEAD result snapshot + button re-enable on success with 0 alerts", {
+  skip_if_not_installed("shiny")
+
+  # Simulate a successful run that found nothing — the case reported
+  # in 2026-05-19 (run took 142s, n_alerts_inserted = 0).
+  ftask <- make_fake_fordead_task(
+    result = list(status = "success", n_alerts_inserted = 0L,
+                  duration_sec = 142.3),
+    status = "success"
+  )
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function(...) "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() ftask,
+    list_alerts_for_zone           = function(con, zone_id, classes = NULL) {
+      # Empty alerts sf — schema-stable but no row (zone saine).
+      sf::st_sf(confidence_class = character(0),
+                geometry = sf::st_sfc(crs = 4326))
+    },
+    validity_check_for_zone        = function(...) {
+      list(geo_valid = TRUE, geo_intersection_pct = 0.95,
+           species_valid = TRUE, species_resineux_pct = 0.85,
+           overall_valid = TRUE, thresholds = list())
+    },
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(mode = "health", zone_id = "1",
+                            include_low = FALSE)
+          session$flushReact()
+          # The result observe should have captured the snapshot — and
+          # the alerts_panel UI should now render the Zone-saine card
+          # rather than the generic placeholder.
+          html <- paste(as.character(output$alerts_panel),
+                        collapse = "")
+          expect_true(grepl("border-success", html))
+          expect_true(grepl("check-circle-fill", html))
+          # The localized title ("Zone saine") should show, but we
+          # match on the FR substring to keep the test robust against
+          # accent encoding (utils_i18n.R stores them as \uXXXX).
+          expect_true(grepl("Zone saine", html, fixed = TRUE) ||
+                      grepl("Healthy zone", html, fixed = TRUE))
+          # Duration meta line includes the formatted seconds value.
+          expect_true(grepl("142", html))
+        }
+      )
+    }
+  )
+})
+
+test_that("FORDEAD result snapshot is empty before any run (placeholder visible)", {
+  skip_if_not_installed("shiny")
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function(...) "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() make_fake_fordead_task(),
+    list_alerts_for_zone           = function(con, zone_id, classes = NULL) {
+      sf::st_sf(confidence_class = character(0),
+                geometry = sf::st_sfc(crs = 4326))
+    },
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(mode = "health", zone_id = "1",
+                            include_low = FALSE)
+          session$flushReact()
+          html <- paste(as.character(output$alerts_panel),
+                        collapse = "")
+          # No prior run → no Zone saine card, plain placeholder text.
+          expect_false(grepl("border-success", html))
+          expect_false(grepl("check-circle-fill", html))
+        }
+      )
+    }
+  )
 })
