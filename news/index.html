@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.37.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,46 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.36.8/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.37.0" id="nemetonshiny-0370-2026-05-19">nemetonshiny 0.37.0 (2026-05-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0370-2026-05-19"></a></h2>
+<div class="section level4">
+<h4 id="added--fallback-bd-forêt-v2-sur-le-check-de-validité-fordead-g3-espèces-0-37-0">Added — Fallback BD Forêt V2 sur le check de validité FORDEAD (G3 espèces)<a class="anchor" aria-label="anchor" href="#added--fallback-bd-for%C3%AAt-v2-sur-le-check-de-validit%C3%A9-fordead-g3-esp%C3%A8ces-0-37-0"></a></h4>
+<p>Symptôme avant ce fix : console R lors du lancement d’un diagnostic FORDEAD,</p>
+<pre><code>ℹ Database schema up to date (2 migrations applied).
+Avis : No species column found on `units`.
+ℹ Expected one of: essence_dominante, essence, species_label, species,
+  essence_principale.
+ℹ Skipping species check.</code></pre>
+<p>Les UGFs de l’app n’ont pas de colonne d’essence (l’essence n’est pas un attribut foncier — elle est dérivée d’autres sources comme BD Forêt V2 ou la classification Sentinel-2). Le garde-fou G3 sur les espèces validées (épicéa + sapin pectiné, calibration ONF/DSF 2024) était donc désactivé silencieusement, et <code>overall_valid</code> ne reflétait que le critère géographique.</p>
+<p><code>nemeton@v0.26.0</code> ajoute deux arguments à <code>check_fordead_validity()</code> : <code>bdforet</code> (sf de BD Forêt V2, formation_vegetale) et <code>layers</code> (un <code>nemeton_layers</code>). Quand <code>units</code> n’a pas de colonne d’essence ET que <code>bdforet</code> est fourni, le cœur dérive l’essence dominante par parcelle via <code>enrich_parcels_bdforet()</code> et lance le check espèces normalement.</p>
+<p><strong>Câblage côté app</strong> :</p>
+<ul><li>Nouveau helper <code>.load_project_bdforet(project)</code> dans <code>R/mod_monitoring.R</code> : lit <code>&lt;project&gt;/cache/layers/bdforet.gpkg</code> (alimenté par <code>download_ign_bdforet()</code> pendant le calcul des indicateurs) et retourne <code>sf</code> ou NULL.</li>
+<li>Le reactive <code>validity</code> du module Suivi sanitaire charge la BD Forêt depuis ce helper et la passe à <code>validity_check_for_zone()</code>.</li>
+<li>
+<code>validity_check_for_zone()</code> (dans <code>R/service_monitoring_db.R</code>) accepte désormais un argument <code>bdforet = NULL</code> qu’il transmet directement à <code><a href="https://pobsteta.github.io/nemeton/reference/check_fordead_validity.html" class="external-link">nemeton::check_fordead_validity()</a></code>.</li>
+</ul><p><strong>Comportement</strong> :</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>État du cache BD Forêt</th>
+<th>Sortie <code>species_valid</code>
+</th>
+</tr></thead><tbody><tr><td>Cache présent (<code>bdforet.gpkg</code>)</td>
+<td>
+<code>TRUE</code> ou <code>FALSE</code> selon le ratio résineux validés</td>
+</tr><tr><td>Cache absent (projet sans compute ou DL BD Forêt échoué)</td>
+<td>
+<code>NA</code> (fallback v0.25.9 préservé)</td>
+</tr></tbody></table></div>
+<div class="section level4">
+<h4 id="changed-0-37-0">Changed<a class="anchor" aria-label="anchor" href="#changed-0-37-0"></a></h4>
+<ul><li>Plancher <code>Imports: nemeton (&gt;= 0.26.0)</code> (au lieu de 0.25.4). Le <code>Remotes: pobsteta/nemeton@main</code> reste inchangé — les nouveaux installs récupèrent directement v0.26.0.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="tests-0-37-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-37-0"></a></h4>
+<ul><li>3 nouveaux tests testthat dans <code>tests/testthat/test-mod_monitoring.R</code> : <code>.load_project_bdforet()</code> NULL paths (NULL projet / sans path / sans cache), <code>.load_project_bdforet()</code> lecture GPKG fonctionnelle, et <code>validity_check_for_zone()</code> qui forwarde bien <code>bdforet</code> au cœur (mocked via <code>testthat::local_mocked_bindings(..., .package = "nemeton")</code>).</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.36.8" id="nemetonshiny-0368-2026-05-19">nemetonshiny 0.36.8 (2026-05-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0368-2026-05-19"></a></h2>
 <div class="section level4">
@@ -940,7 +977,7 @@ le tableau remplacé en a 337</code></pre>
 <p>Cause : la v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais j’ai oublié de bumper le <strong>pin</strong> dans <code>DESCRIPTION</code>. <code>Imports</code> et <code>Remotes</code> pointaient encore vers <code>nemeton@v0.21.2</code> qui ignore <code>cache_dir</code>, donc pak/install installait la vieille nemeton et R levait “argument inutilisé”.</p>
 <p>Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> et <code>Remotes: pobsteta/nemeton@v0.21.3</code>. Aucun changement applicatif.</p>
 <p>À refaire côté utilisateur après pull :</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pobsteta/nemetonshiny@claude/fix-remaining-errors-xbROB"</span><span class="op">)</span></span>
 <span><span class="co"># ou en local : devtools::install_local(".", force = TRUE)</span></span></code></pre></div>
 </li>

@@ -12,6 +12,31 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.37.0\] - 2026-05-19
+
+### Added
+
+- **Suivi sanitaire / G3 espèces — fallback BD Forêt V2** : le reactive
+  `validity` charge désormais `<project>/cache/layers/bdforet.gpkg` via
+  le nouveau helper `.load_project_bdforet()` et le passe à
+  `validity_check_for_zone()`. Quand `units` n’a pas de colonne
+  d’essence (cas par défaut des UGFs de l’app), le cœur
+  (`nemeton@v0.26.0+`) dérive l’essence dominante via
+  `enrich_parcels_bdforet()` et exécute le check espèces — le garde-fou
+  G3 cesse d’être silencieusement désactivé (`R/mod_monitoring.R`,
+  `R/service_monitoring_db.R`).
+- `validity_check_for_zone()` accepte désormais un paramètre
+  `bdforet = NULL` qu’il transmet directement à
+  [`nemeton::check_fordead_validity()`](https://pobsteta.github.io/nemeton/reference/check_fordead_validity.html).
+- 3 tests testthat couvrant le helper et le forwarding cœur
+  (`tests/testthat/test-mod_monitoring.R`).
+
+### Changed
+
+- `DESCRIPTION` : plancher `Imports: nemeton (>= 0.26.0)` (au lieu de
+  0.25.4) — ancre la version qui expose les nouveaux arguments `bdforet`
+  / `layers` de `check_fordead_validity()`.
+
 ## \[0.36.8\] - 2026-05-19
 
 ### Fixed
