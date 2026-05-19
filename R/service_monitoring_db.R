@@ -513,23 +513,37 @@ get_monitoring_zone_aoi <- function(con, zone_id) {
 #' G3 — validity check for a monitoring zone
 #'
 #' Thin wrapper around `nemeton::check_fordead_validity()` that pulls the
-#' zone AOI from the DB. `units` is optional — when missing, only the
-#' geographic check is informative and `species_valid` will be NA.
+#' zone AOI from the DB.
+#'
+#' `units` is optional — when missing OR when present but lacking a
+#' species column AND `bdforet` is also NULL, the species check is
+#' skipped and `species_valid` is NA. When `bdforet` is provided AND
+#' `units` lacks a species column, the cœur (nemeton@v0.26.0+) derives
+#' the dominant species from BD Forêt V2 via `enrich_parcels_bdforet()`
+#' and runs the species check normally — this is the common case for
+#' nemetonshiny since UGFs typically don't carry an essence column.
 #'
 #' @param con A DBIConnection or NULL.
 #' @param zone_id Integer.
 #' @param units Optional sf of forest units carrying a species column
 #'   (`essence_dominante` / `essence` / `species_label` / `species` /
 #'   `essence_principale`). When NULL, species check is skipped.
+#' @param bdforet Optional sf of BD Forêt V2 (formation_vegetale)
+#'   covering the AOI. Forwarded to `nemeton::check_fordead_validity()`
+#'   so it can resolve the dominant species when `units` doesn't carry
+#'   one. Caller-side: load from `<project>/cache/layers/bdforet.gpkg`
+#'   if present (see `R/mod_monitoring.R::validity` reactive).
 #' @return The list returned by `nemeton::check_fordead_validity()`, or
 #'   NULL if the zone or AOI cannot be resolved.
 #' @noRd
-validity_check_for_zone <- function(con, zone_id, units = NULL) {
+validity_check_for_zone <- function(con, zone_id, units = NULL,
+                                    bdforet = NULL) {
   aoi <- get_monitoring_zone_aoi(con, zone_id)
   if (is.null(aoi)) return(NULL)
   if (!requireNamespace("nemeton", quietly = TRUE)) return(NULL)
   tryCatch(
-    nemeton::check_fordead_validity(aoi, units = units),
+    nemeton::check_fordead_validity(aoi, units = units,
+                                    bdforet = bdforet),
     error = function(e) {
       cli::cli_warn("check_fordead_validity failed: {conditionMessage(e)}")
       NULL
