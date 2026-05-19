@@ -520,14 +520,29 @@ mod_monitoring_server <- function(id, app_state) {
     # ----- G3 — Validity banners (geo + species) --------------------
     # Recomputed when zone or mode changes. Quick mode does not need
     # the FORDEAD validity check, so banners only show in health mode.
+    #
+    # v0.37.0 — passe `bdforet` à `validity_check_for_zone()` quand le
+    # projet a une cache `<project>/cache/layers/bdforet.gpkg` (écrite
+    # par `download_ign_bdforet()` pendant le compute des indicateurs).
+    # Le cœur (nemeton@v0.26.0+) utilise BD Forêt V2 pour dériver
+    # l'essence dominante par parcelle quand `units` n'a pas de
+    # colonne d'essence — ce qui est le cas par défaut pour les UGFs
+    # de cette app. Sans cache (projet sans compute, ou compute
+    # lancé sur une fenêtre où le téléchargement BD Forêt a échoué),
+    # `bdforet = NULL` et le comportement v0.25.9 est préservé
+    # (warning « species check skipped »).
     validity <- shiny::reactive({
       if (!identical(input$mode, "health")) return(NULL)
       zone <- input$zone_id
       if (!isTRUE(nzchar(zone))) return(NULL)
-      con <- get_monitoring_db_connection(project = app_state$current_project)
+      proj <- app_state$current_project
+      con <- get_monitoring_db_connection(project = proj)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
-      units <- app_state$current_project$indicators_sf
-      validity_check_for_zone(con, as.integer(zone), units = units)
+      units   <- proj$indicators_sf
+      bdforet <- .load_project_bdforet(proj)
+      validity_check_for_zone(con, as.integer(zone),
+                              units   = units,
+                              bdforet = bdforet)
     })
 
     output$validity_banners <- shiny::renderUI({
@@ -2068,6 +2083,32 @@ mod_monitoring_server <- function(id, app_state) {
     )
   }
   normalizePath(cache_dir, winslash = "/", mustWork = FALSE)
+}
+
+# Load the project's BD Forêt V2 cache for the G3 validity check
+# (v0.37.0). nemeton@v0.26.0 accepts `bdforet =` on
+# `check_fordead_validity()` and derives the dominant species per
+# parcel via `enrich_parcels_bdforet()` when the UGFs don't carry an
+# essence column. The cache file is written by `download_ign_bdforet()`
+# during the indicator compute phase
+# (cf. `R/service_compute.R:1308`).
+#
+# Returns NULL when the project isn't loaded, no path, or the cache
+# isn't built yet — caller treats NULL as "skip species check",
+# matching nemeton@v0.25.9 behavior.
+.load_project_bdforet <- function(project) {
+  if (is.null(project) || is.null(project$path)) return(NULL)
+  gpkg <- file.path(project$path, "cache", "layers", "bdforet.gpkg")
+  if (!file.exists(gpkg)) return(NULL)
+  tryCatch(
+    sf::st_read(gpkg, quiet = TRUE),
+    error = function(e) {
+      cli::cli_warn(
+        ".load_project_bdforet failed for {.path {gpkg}}: {conditionMessage(e)}"
+      )
+      NULL
+    }
+  )
 }
 
 # Best-effort removal of the progress.json file (and its .tmp sibling
