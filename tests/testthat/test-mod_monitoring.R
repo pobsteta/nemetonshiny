@@ -1236,3 +1236,97 @@ test_that(".summarize_backend_warnings handles edge cases", {
 # Helper widening (make_fake_fordead_task accepts `result =` and
 # `status =`) is still useful for future tests that don't trigger the
 # full reactive graph — left in place above.
+
+
+# ---- v0.37.0 — BD Forêt fallback for G3 species validity ------------
+
+test_that(".load_project_bdforet returns NULL on missing project / path / file", {
+  expect_null(nemetonshiny:::.load_project_bdforet(NULL))
+  expect_null(nemetonshiny:::.load_project_bdforet(list(id = "x")))
+  withr::with_tempdir({
+    proj <- list(id = "x", path = getwd())
+    # cache/layers/bdforet.gpkg absent → NULL
+    expect_null(nemetonshiny:::.load_project_bdforet(proj))
+  })
+})
+
+test_that(".load_project_bdforet reads the cached GPKG when present", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    proj <- list(id = "x", path = getwd())
+    cache_dir <- file.path(proj$path, "cache", "layers")
+    dir.create(cache_dir, recursive = TRUE)
+    # Tiny fixture: 1 polygon with a `formation` column (representative
+    # of BD Forêt V2 schema, though the cœur enrichment uses
+    # essence-mapping internally — here we just verify the loader).
+    poly <- sf::st_polygon(list(rbind(
+      c(0, 0), c(0, 1), c(1, 1), c(1, 0), c(0, 0)
+    )))
+    bd <- sf::st_sf(formation = "FF1-09-09",
+                    geometry = sf::st_sfc(poly, crs = 2154))
+    sf::st_write(bd, file.path(cache_dir, "bdforet.gpkg"),
+                 quiet = TRUE)
+    out <- nemetonshiny:::.load_project_bdforet(proj)
+    expect_s3_class(out, "sf")
+    expect_equal(nrow(out), 1L)
+    expect_true("formation" %in% names(out))
+  })
+})
+
+test_that("validity_check_for_zone forwards bdforet to nemeton", {
+  skip_if_not_installed("sf")
+  # Capture the call to nemeton::check_fordead_validity to verify
+  # bdforet is forwarded (whatever its value).
+  captured <- new.env(parent = emptyenv())
+  fake_aoi <- sf::st_sf(zone_id = 1L, name = "Z",
+                       geometry = sf::st_sfc(
+                         sf::st_polygon(list(rbind(
+                           c(0, 0), c(0, 1), c(1, 1), c(1, 0), c(0, 0)
+                         ))),
+                         crs = 2154))
+  fake_bdforet <- sf::st_sf(formation = "FF1-09-09",
+                            geometry = sf::st_sfc(
+                              sf::st_polygon(list(rbind(
+                                c(0, 0), c(0, 1), c(1, 1), c(1, 0), c(0, 0)
+                              ))),
+                              crs = 2154))
+
+  testthat::with_mocked_bindings(
+    get_monitoring_zone_aoi = function(con, zone_id) fake_aoi,
+    {
+      testthat::local_mocked_bindings(
+        check_fordead_validity = function(aoi, units = NULL,
+                                           bdforet = NULL, ...) {
+          captured$called   <- TRUE
+          captured$has_bdf  <- !is.null(bdforet)
+          captured$bdf_rows <- if (is.null(bdforet)) NA_integer_
+                               else nrow(bdforet)
+          list(geo_valid = TRUE, geo_intersection_pct = 0.95,
+               species_valid = TRUE, species_resineux_pct = 0.85,
+               overall_valid = TRUE, thresholds = list())
+        },
+        .package = "nemeton"
+      )
+
+      # With bdforet provided
+      res <- nemetonshiny:::validity_check_for_zone(
+        con = "fake-con", zone_id = 1L,
+        units = NULL, bdforet = fake_bdforet
+      )
+      expect_true(isTRUE(captured$called))
+      expect_true(isTRUE(captured$has_bdf))
+      expect_equal(captured$bdf_rows, 1L)
+      expect_false(is.na(res$species_valid))
+
+      # Without bdforet — call still happens, bdforet stays NULL
+      captured$called  <- FALSE
+      captured$has_bdf <- TRUE  # init opposite of expected
+      res2 <- nemetonshiny:::validity_check_for_zone(
+        con = "fake-con", zone_id = 1L,
+        units = NULL, bdforet = NULL
+      )
+      expect_true(isTRUE(captured$called))
+      expect_false(isTRUE(captured$has_bdf))
+    }
+  )
+})
