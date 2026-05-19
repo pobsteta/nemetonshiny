@@ -580,16 +580,58 @@ mod_monitoring_server <- function(id, app_state) {
       list_alerts_for_zone(con, as.integer(zone), classes = classes)
     })
 
-    # ----- Alerts leaflet (T6app.11) --------------------------------
+    # ----- Alerts leaflet (T6app.11) + zone-saine card (v0.36.5) ----
+    #
+    # Trois états :
+    #   - alerts() retourne au moins une ligne   → carte Leaflet
+    #     (chemin actuel — placettes flaguées par classe)
+    #   - alerts() est vide ET un run FORDEAD a abouti dans la
+    #     session avec status = "success" → card « Zone saine » avec
+    #     la durée du run, pour confirmer à l'utilisateur que
+    #     0 anomalie = forêt saine (pas un run en cours, pas un échec
+    #     silencieux). Cf. bug report 2026-05-19.
+    #   - alerts() est vide ET aucun run dans la session → placeholder
+    #     générique (« Lancer un diagnostic FORDEAD pour cette zone »).
     output$alerts_panel <- shiny::renderUI({
       ns <- session$ns
       i18n <- i18n_r()
       a <- alerts()
-      if (is.null(a) || !nrow(a)) {
-        return(htmltools::tags$p(class = "text-muted",
-                                 i18n$t("monitoring_alerts_placeholder")))
+      last <- fordead_last_result()
+      if (!is.null(a) && nrow(a)) {
+        return(leaflet::leafletOutput(ns("alerts_map"), height = "55vh"))
       }
-      leaflet::leafletOutput(ns("alerts_map"), height = "55vh")
+      # Empty alerts list. Differentiate "fresh session, no run yet"
+      # from "run completed with 0 alerts" (zone saine).
+      if (!is.null(last) && identical(last$status, "success")) {
+        dur <- as.numeric(last$duration_sec %||% NA_real_)
+        meta <- if (is.finite(dur)) {
+          sprintf(i18n$t("monitoring_fordead_no_alerts_meta"), dur)
+        } else {
+          ""
+        }
+        return(bslib::card(
+          class = "border-success mt-2",
+          bslib::card_header(
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("check-circle-fill",
+                               class = "me-2 text-success fs-4"),
+              htmltools::tags$strong(
+                i18n$t("monitoring_fordead_no_alerts_title")
+              )
+            )
+          ),
+          bslib::card_body(
+            htmltools::tags$p(
+              i18n$t("monitoring_fordead_no_alerts_body")
+            ),
+            if (nzchar(meta))
+              htmltools::tags$p(class = "text-muted small mb-0", meta)
+          )
+        ))
+      }
+      htmltools::tags$p(class = "text-muted",
+                        i18n$t("monitoring_alerts_placeholder"))
     })
 
     output$alerts_map <- leaflet::renderLeaflet({
@@ -1625,6 +1667,14 @@ mod_monitoring_server <- function(id, app_state) {
 
     fordead_task <- run_fordead_async()
 
+    # v0.36.5 — snapshot du dernier résultat FORDEAD résolu. Permet
+    # à l'onglet « Alertes FORDEAD » d'afficher une card « Zone saine »
+    # avec la durée du run quand le diagnostic se termine avec 0
+    # alertes insérées (réponse à un cas réel reporté : run réussi en
+    # 142 s, n_alerts_inserted = 0, mais l'UI restait muette). NULL
+    # tant qu'aucun diagnostic n'a abouti dans la session.
+    fordead_last_result <- shiny::reactiveVal(NULL)
+
     # Same per-task progress plumbing as ingestion. FORDEAD emits phase
     # events (training / forest mask / dieback / export) — the toast
     # surfaces whichever phase the worker is currently on.
@@ -1849,6 +1899,20 @@ mod_monitoring_server <- function(id, app_state) {
     })
 
     # FORDEAD result handler.
+    #
+    # v0.36.5 — trois fixes pour le bug UX reporté (run réussi en 142 s
+    # avec 0 alertes mais bouton « Lancer » resté grisé + sous-onglets
+    # muets) :
+    #
+    #   1. Belt-and-suspenders re-enable du bouton via
+    #      updateActionButton(disabled = FALSE) en plus de l'observer
+    #      basé sur fordead_task$status() (au cas où une transition de
+    #      statut serait manquée par Shiny pour une raison quelconque).
+    #   2. Reset explicite de force_unlock_health(FALSE) pour rester
+    #      cohérent avec l'observer click qui le pose à TRUE puis FALSE.
+    #   3. Snapshot du résultat dans fordead_last_result() pour que
+    #      l'onglet « Alertes FORDEAD » puisse afficher la card
+    #      « Zone saine » avec la durée du run.
     shiny::observe({
       i18n <- i18n_r()
       result <- tryCatch(
@@ -1864,6 +1928,15 @@ mod_monitoring_server <- function(id, app_state) {
             id       = session$ns("fordead_error"),
             type     = "error", duration = 10
           )
+          # Belt-and-suspenders : re-enable + reset force-unlock pour
+          # ne pas laisser le bouton grisé en cas de timing race.
+          shiny::updateActionButton(session, "run_health",
+                                    disabled = FALSE)
+          force_unlock_health(FALSE)
+          # Mémoriser le statut "error" — l'UI Alertes FORDEAD distingue
+          # « pas encore lancé » de « run terminé en erreur ».
+          fordead_last_result(list(status = "error",
+                                   message = conditionMessage(e)))
           NULL
         }
       )
@@ -1871,6 +1944,7 @@ mod_monitoring_server <- function(id, app_state) {
         shiny::removeNotification(session$ns("fordead_progress"))
         .cleanup_progress_file(fordead_progress_path())
         fordead_progress_path(NULL)
+        fordead_last_result(result)
         if (identical(result$status, "error")) {
           shiny::showNotification(
             sprintf("%s : %s", i18n$t("monitoring_health_error"),
@@ -1888,6 +1962,12 @@ mod_monitoring_server <- function(id, app_state) {
           )
           alerts_refresh(alerts_refresh() + 1L)
         }
+        # Belt-and-suspenders : re-enable explicite du bouton après
+        # toute résolution (success ou error) en plus du status-based
+        # observe. Même reset de force_unlock_health pour cohérence.
+        shiny::updateActionButton(session, "run_health",
+                                  disabled = FALSE)
+        force_unlock_health(FALSE)
       }
     })
 

@@ -2071,6 +2071,21 @@ TRANSLATIONS <- list(
     fr = "La carte des alertes appara\u00eetra apr\u00e8s le premier t\u00e9l\u00e9chargement.",
     en = "The alerts map will appear after the first download."
   ),
+  # v0.36.5 \u2014 card \u00ab Zone saine \u00bb dans Alertes FORDEAD quand un run
+  # se termine avec n_alerts_inserted = 0. \u00c9vite que l'utilisateur
+  # confonde \u00ab pas encore lanc\u00e9 \u00bb / \u00ab run en cours \u00bb / \u00ab 0 anomalie \u00bb.
+  monitoring_fordead_no_alerts_title = list(
+    fr = "Zone saine \u2014 aucune anomalie d\u00e9tect\u00e9e",
+    en = "Healthy zone \u2014 no anomaly detected"
+  ),
+  monitoring_fordead_no_alerts_body = list(
+    fr = "Aucune placette ne pr\u00e9sente d'anomalie de d\u00e9p\u00e9rissement sur la p\u00e9riode d'observation. Le pipeline FORDEAD s'est termin\u00e9 avec succ\u00e8s mais n'a remont\u00e9 aucun pixel au-dessus du seuil d'anomalie configur\u00e9.",
+    en = "No plot shows a dieback anomaly over the observation window. The FORDEAD pipeline completed successfully but did not flag any pixel above the configured anomaly threshold."
+  ),
+  monitoring_fordead_no_alerts_meta = list(
+    fr = "Diagnostic termin\u00e9 en %.0f s.",
+    en = "Diagnosis completed in %.0f s."
+  ),
 
   # ----- Mode toggle (rapide / sanitaire) -----
   monitoring_mode_label = list(
