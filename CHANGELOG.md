@@ -12,6 +12,32 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.36.8\] - 2026-05-19
+
+### Fixed
+
+- **Suivi sanitaire / résolution FORDEAD** : trois fixes UX à la fin
+  d’un run FORDEAD réussi. (1) Le bouton « Lancer le diagnostic FORDEAD
+  » ne se ré-enable pas systématiquement quand `fordead_task$status()`
+  transite de « running » à « success » ; ajout d’un
+  `updateActionButton(disabled = FALSE)` + reset
+  `force_unlock_health(FALSE)` explicite dans le handler de résultat
+  (success ET error). (2) L’onglet « Alertes FORDEAD » restait muet
+  quand `n_alerts_inserted == 0L` ; nouvelle card « Zone saine » avec
+  durée du run quand `fordead_last_result()$status == "success"` et que
+  `alerts()` est vide. (3) Le snapshot de résultat est désormais
+  conservé en `reactiveVal` (`fordead_last_result`) pour distinguer «
+  pas encore lancé » / « run terminé sans anomalie » / « run terminé en
+  erreur ». (`R/mod_monitoring.R`)
+
+### Added
+
+- 3 nouvelles clés i18n FR/EN pour la card « Zone saine » :
+  `monitoring_fordead_no_alerts_title`, `_body`, `_meta`.
+- `make_fake_fordead_task()` widened pour accepter `result =` /
+  `status =` (préparation des futurs tests, harness actuel ne permet pas
+  un test testServer du nouveau branch d’affichage).
+
 ## \[0.36.7\] - 2026-05-18
 
 ### Fixed
@@ -136,12 +162,13 @@ the concise, categorised trail.
 
 - **Suivi sanitaire / sidebar FAST** : sliders `threshold_ndvi` et
   `threshold_nbr` réalignés sur la sémantique « seuil absolu » consommée
-  par `nemeton::list_fast_alerts_for_zone()` depuis v0.36.0. Défauts
-  `0.40 / 0.30` (cœur defaults), range `[0.10, 0.80]` (au lieu de
-  `0.15 / 0.25`, range `[0.05, 0.50]` hérités de la sémantique drop
-  E6.a). Labels i18n recyclés (« Seuil minimum NDVI/NBR »). Empty-state
-  des Alertes FAST : « relever le seuil » au lieu de « baisser le seuil
-  » (`R/mod_monitoring.R`, `R/utils_i18n.R`).
+  par
+  [`nemeton::list_fast_alerts_for_zone()`](https://pobsteta.github.io/nemeton/reference/list_fast_alerts_for_zone.html)
+  depuis v0.36.0. Défauts `0.40 / 0.30` (cœur defaults), range
+  `[0.10, 0.80]` (au lieu de `0.15 / 0.25`, range `[0.05, 0.50]` hérités
+  de la sémantique drop E6.a). Labels i18n recyclés (« Seuil minimum
+  NDVI/NBR »). Empty-state des Alertes FAST : « relever le seuil » au
+  lieu de « baisser le seuil » (`R/mod_monitoring.R`, `R/utils_i18n.R`).
 
 ## \[0.36.0\] - 2026-05-17
 
@@ -149,16 +176,16 @@ the concise, categorised trail.
 
 - **Suivi sanitaire / Alertes FAST** : module
   `mod_monitoring_fast_alerts` câblé sur
-  `nemeton::list_fast_alerts_for_zone()`. Carte Leaflet des placettes
-  par sévérité (critical/warning/info), compteurs au-dessus, popups par
-  marker avec valeurs NDVI/NBR + drop. Remplace le placeholder de
-  v0.35.0 (`R/mod_monitoring_fast_alerts.R`).
+  [`nemeton::list_fast_alerts_for_zone()`](https://pobsteta.github.io/nemeton/reference/list_fast_alerts_for_zone.html).
+  Carte Leaflet des placettes par sévérité (critical/warning/info),
+  compteurs au-dessus, popups par marker avec valeurs NDVI/NBR + drop.
+  Remplace le placeholder de v0.35.0 (`R/mod_monitoring_fast_alerts.R`).
 - **Suivi sanitaire / Carte FORDEAD** : module
   `mod_monitoring_fordead_map` câblé sur
-  `nemeton::read_fordead_dieback_mask()`. Raster catégoriel 0..4 affiché
-  dans le pane `nemetonRaster` (z-index 250). Empty state cohérent tant
-  que le writer cœur (persist du mask) n’a pas shippé
-  (`R/mod_monitoring_fordead_map.R`).
+  [`nemeton::read_fordead_dieback_mask()`](https://pobsteta.github.io/nemeton/reference/read_fordead_dieback_mask.html).
+  Raster catégoriel 0..4 affiché dans le pane `nemetonRaster` (z-index
+  250). Empty state cohérent tant que le writer cœur (persist du mask)
+  n’a pas shippé (`R/mod_monitoring_fordead_map.R`).
 - 17 nouvelles clés i18n FR/EN : sévérités FAST (`critical`, `warning`,
   `info`), compteur total, empty states + popups FAST, titre + classes
   0..4 FORDEAD, empty state FORDEAD.

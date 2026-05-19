@@ -1,5 +1,80 @@
 # Changelog
 
+## nemetonshiny 0.36.8 (2026-05-19)
+
+#### Fixed — UX du diagnostic FORDEAD après résolution du run
+
+Cas reporté : un run FORDEAD complet et réussi se termine en 142 s côté
+cœur (`status == "success"`, `n_alerts_inserted == 0L`,
+`alerts_sf == NULL`), le toast bas-droite affiche bien « Diagnostic
+terminé : 0 alertes insérées en 142 s », mais l’UI restait dans un état
+ambigu :
+
+1.  **Bouton « Lancer le diagnostic FORDEAD » resté grisé** après la
+    résolution. La logique en place (`observe` qui lisait
+    `fordead_task$status()` et appelait
+    `updateActionButton(disabled = is_running)`) aurait dû ré-activer le
+    bouton sur la transition de statut, mais une race ou un flush manqué
+    le laissait dans l’état grisé.
+
+    **Correctif** : belt-and-suspenders re-enable explicite dans le
+    handler `fordead_task$result()`, en plus du status-based observe.
+    Trois cas couverts (`success` avec alertes, `success` sans alertes,
+    `error`). Reset de `force_unlock_health(FALSE)` au passage pour
+    rester cohérent avec l’observer click.
+
+2.  **Onglet « Alertes FORDEAD » muet** quand `n_alerts_inserted == 0L`.
+    L’utilisateur ne pouvait pas distinguer « pas encore lancé » / «
+    calcul en cours » / « run terminé, 0 anomalie ».
+
+    **Correctif** : nouvelle `reactiveVal` `fordead_last_result()` qui
+    capture le payload du dernier run résolu dans la session. Quand
+    `alerts()` est vide ET `fordead_last_result()$status == "success"`,
+    l’`output$alerts_panel` affiche une card « Zone saine — aucune
+    anomalie détectée » (bordure verte, icône `check-circle-fill`) avec
+    la durée du run en sous-titre. Cinq états distincts maintenant
+    lisibles dans le panneau Alertes FORDEAD :
+
+    | État | Affichage |
+    |----|----|
+    | Pas encore lancé / pas de zone sélectionnée | placeholder neutre |
+    | Run en cours | toast bas-droite avec phase 0..6 |
+    | Run terminé, ≥ 1 alerte | carte Leaflet (chemin actuel) |
+    | Run terminé, 0 alerte | card « Zone saine » avec durée |
+    | Run terminé en erreur | toast bas-droite + result snapshot capturé |
+
+3.  **Onglet « Carte FORDEAD »** : empty-state déjà livré en v0.36.0 («
+    Aucun masque FORDEAD disponible » + « postprocess hook prévu dans
+    une release ultérieure de nemeton »). Pas de changement — le wiring
+    se réactivera automatiquement quand le cœur shippera la persistance
+    du raster 0..4.
+
+#### Added
+
+- 3 nouvelles clés i18n FR/EN : `monitoring_fordead_no_alerts_title`,
+  `monitoring_fordead_no_alerts_body`,
+  `monitoring_fordead_no_alerts_meta`.
+- Helper `make_fake_fordead_task()` widened pour accepter `result =` /
+  `status =` (préparation des futurs tests).
+
+#### Notes opérationnelles
+
+- Aucun changement de signature côté cœur. Plancher `Imports` reste à
+  `nemeton (>= 0.25.4)` (hérité de v0.36.7).
+- Le bonus optionnel « badge persistant Diagnostic en cours » mentionné
+  dans le brief n’est pas livré — les toasts de phase bas-droite
+  (`monitoring_fordead_phase_*`, livrés v0.32.0) couvrent déjà ce
+  besoin.
+- Les tests testServer pour la card « Zone saine » prototypés pendant ce
+  ticket wedgent dans le graphe réactif de `mod_monitoring_server`
+  (multiples `reactivePoll` timers + ExtendedTask + sous-module
+  pixel-map — la file de tests existante documente déjà ce problème de
+  harness). La vérification du rendering Zone-saine reste en QA manuelle
+  pour cette release ; les `.summarize_backend_warnings()` tests
+  (v0.36.4) restent en place et passent.
+
+------------------------------------------------------------------------
+
 ## nemetonshiny 0.36.7 (2026-05-18)
 
 #### Fixed — Câblage `resolve_project_dem` / `resolve_project_chm` sur `create_sampling_plan()`
@@ -103,6 +178,8 @@ qui n’a pas de sens en HTML.
 **Correctif** — `mod_sampling.R` enveloppe `conditionMessage(e)` dans
 [`cli::ansi_strip()`](https://cli.r-lib.org/reference/ansi_strip.html)
 avant la `showNotification()` pour ne montrer que le texte lisible.
+
+------------------------------------------------------------------------
 
 ## nemetonshiny 0.36.4 (2026-05-17)
 
@@ -217,11 +294,12 @@ Deux bugs en chaîne dans `R/mod_monitoring.R` :
 Les sliders sidebar `threshold_ndvi` / `threshold_nbr` du mode FAST
 étaient calibrés pour la sémantique historique **drop** (delta NDVI ou
 NBR sur la fenêtre roulante E6.a) — défauts 0.15 / 0.25, range
-0.05-0.50. Mais `nemeton::list_fast_alerts_for_zone()` (consommé depuis
-v0.36.0) interprète ces valeurs comme des **seuils absolus** minimaux.
-Avec les anciens défauts, presque aucune placette ne remontait en alerte
-parce que le NDVI d’une forêt saine (0.6-0.8) était toujours bien
-au-dessus de 0.15.
+0.05-0.50. Mais
+[`nemeton::list_fast_alerts_for_zone()`](https://pobsteta.github.io/nemeton/reference/list_fast_alerts_for_zone.html)
+(consommé depuis v0.36.0) interprète ces valeurs comme des **seuils
+absolus** minimaux. Avec les anciens défauts, presque aucune placette ne
+remontait en alerte parce que le NDVI d’une forêt saine (0.6-0.8) était
+toujours bien au-dessus de 0.15.
 
 **Correctif** :
 
@@ -249,8 +327,8 @@ exporteurs `nemeton@v0.25.0` :
 
 | Sous-onglet | Module | Cœur consommé |
 |----|----|----|
-| `Alertes FAST` | `R/mod_monitoring_fast_alerts.R` | `nemeton::list_fast_alerts_for_zone()` |
-| `Carte FORDEAD` | `R/mod_monitoring_fordead_map.R` | `nemeton::read_fordead_dieback_mask()` |
+| `Alertes FAST` | `R/mod_monitoring_fast_alerts.R` | [`nemeton::list_fast_alerts_for_zone()`](https://pobsteta.github.io/nemeton/reference/list_fast_alerts_for_zone.html) |
+| `Carte FORDEAD` | `R/mod_monitoring_fordead_map.R` | [`nemeton::read_fordead_dieback_mask()`](https://pobsteta.github.io/nemeton/reference/read_fordead_dieback_mask.html) |
 
 **Alertes FAST** — carte Leaflet des placettes classées par sévérité
 (`critical` / `warning` / `info`) selon le ratio (NDVI ou NBR) / seuil.
@@ -358,10 +436,10 @@ on étend la même mécanique au canal d’alerte :
 
 | Sous-onglet | Valeur | Visible en mode | Contenu |
 |----|----|----|----|
-| `Alertes FAST` | `alerts_fast` | quick | Placeholder — attend `nemeton::list_fast_alerts_for_zone()` (cf. spec PLAN.md) |
+| `Alertes FAST` | `alerts_fast` | quick | Placeholder — attend [`nemeton::list_fast_alerts_for_zone()`](https://pobsteta.github.io/nemeton/reference/list_fast_alerts_for_zone.html) (cf. spec PLAN.md) |
 | `Carte FAST` | `pixel_map_fast` | quick | Raster NDVI/NBR + slider date + clic pixel/placette |
 | `Alertes FORDEAD` | `alerts_fordead` | health | Carte des placettes flaguées + bloc QGIS (renommé depuis `alerts`) |
-| `Carte FORDEAD` | `pixel_map_fordead` | health | Placeholder — attend `nemeton::read_fordead_dieback_mask()` |
+| `Carte FORDEAD` | `pixel_map_fordead` | health | Placeholder — attend [`nemeton::read_fordead_dieback_mask()`](https://pobsteta.github.io/nemeton/reference/read_fordead_dieback_mask.html) |
 
 Visibilité pilotée par un `observe` étendu côté server :
 [`bslib::nav_show()`](https://rstudio.github.io/bslib/reference/nav_select.html)
@@ -974,7 +1052,8 @@ fenêtre courante (zone, bandes, dates).
 Deux interactions distinctes :
 
 - **Clic sur un pixel** → modal « Pixel à (lat, lon) » avec la série
-  pixel brute extraite via `nemeton::extract_pixel_timeseries()`
+  pixel brute extraite via
+  [`nemeton::extract_pixel_timeseries()`](https://pobsteta.github.io/nemeton/reference/extract_pixel_timeseries.html)
   (comportement inchangé depuis v0.28.0).
 - **Clic sur un marqueur placette** → modal « Placette P01 — série NDVI
   / NBR (moyenne plot) » avec la série agrégée placette filtrée sur
@@ -1098,7 +1177,8 @@ plotly per-plot et la Carte pixel (via `scenes_df_r()`) — dépendait
 uniquement de `input$mode`, `input$zone_id`, `input$bands` et
 `input$date_range`. Aucune de ces entrées ne change quand l’ingestion
 insère des lignes dans `monitoring_obs` côté DB ; Shiny n’avait donc
-aucune raison de relancer la requête `nemeton::read_obs_pixel()`.
+aucune raison de relancer la requête
+[`nemeton::read_obs_pixel()`](https://pobsteta.github.io/nemeton/reference/read_obs_pixel.html).
 
 Correctif (`R/mod_monitoring.R`) : ajout d’un `reactiveVal`
 `obs_refresh`, lu en première ligne de `obs_pixel_data()` pour créer la
@@ -1186,8 +1266,9 @@ supplémentaire (zéro HTTP, zéro DB write).
     (rouge → jaune → vert) ancrée sur 0, NA en transparent, légende avec
     valeurs extrêmes \[-1, 1\].
   - `observeEvent(input$map_click)` — appelle
-    `nemeton::extract_pixel_timeseries()` au lat/lng cliqué et pop un
-    modal `bslib::modalDialog(size = "l")` avec un plotly NDVI
+    [`nemeton::extract_pixel_timeseries()`](https://pobsteta.github.io/nemeton/reference/extract_pixel_timeseries.html)
+    au lat/lng cliqué et pop un modal `bslib::modalDialog(size = "l")`
+    avec un plotly NDVI
     - NBR superposés (couleurs figées identiques à la sub-tab per-plot
       pour cohérence du modèle mental utilisateur).
 
@@ -1374,9 +1455,10 @@ coche désormais E6.b en intégralité.
   L’onglet Suivi sanitaire en mode rapide affiche enfin les séries NDVI
   / NBR par placette, et plus le placeholder vide qui traînait depuis la
   phase 1. Câblage : nouveau reactive `obs_pixel_data()` dans
-  `R/mod_monitoring.R` qui appelle `nemeton::read_obs_pixel()` (fonction
-  publique introduite côté cœur dans `nemeton@v0.21.11`) avec les
-  filtres `bands` (cases NDVI / NBR cochées dans la sidebar) et
+  `R/mod_monitoring.R` qui appelle
+  [`nemeton::read_obs_pixel()`](https://pobsteta.github.io/nemeton/reference/read_obs_pixel.html)
+  (fonction publique introduite côté cœur dans `nemeton@v0.21.11`) avec
+  les filtres `bands` (cases NDVI / NBR cochées dans la sidebar) et
   `date_range` (input dateRange existant). Resultat : un `data.frame`
   typé `(plot_id, obs_date, band, value, …)`. Le reactive retourne
   `NULL` quand un prerequis manque (mode health, pas de zone, pas de
@@ -1414,9 +1496,10 @@ coche désormais E6.b en intégralité.
   switch quick ↔︎ health. `on.exit(app$stop())` garanti même sur échec.
   `shinytest2 (>= 0.3.0)` ajouté à Suggests. Skips multiples :
   shinytest2 / chromote absents, pas de binaire Chrome détecté,
-  `nemeton::read_obs_pixel` non exporté (cœur \< v0.21.11), boot
-  AppDriver échoué (avec message). Pas de DB requise — les zones restent
-  vides, ce qui est exactement l’état utile pour un smoke.
+  [`nemeton::read_obs_pixel`](https://pobsteta.github.io/nemeton/reference/read_obs_pixel.html)
+  non exporté (cœur \< v0.21.11), boot AppDriver échoué (avec message).
+  Pas de DB requise — les zones restent vides, ce qui est exactement
+  l’état utile pour un smoke.
 
 - `chore(monitoring)` — **Phase 2 — Ingestion async + toasts**. Marquée
   livrée rétroactivement dans `nemeton/PLAN.md` : ses 6 livrables

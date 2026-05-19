@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.36.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,48 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.36.5/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.36.8" id="nemetonshiny-0368-2026-05-19">nemetonshiny 0.36.8 (2026-05-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0368-2026-05-19"></a></h2>
+<div class="section level4">
+<h4 id="fixed--ux-du-diagnostic-fordead-après-résolution-du-run-0-36-8">Fixed — UX du diagnostic FORDEAD après résolution du run<a class="anchor" aria-label="anchor" href="#fixed--ux-du-diagnostic-fordead-apr%C3%A8s-r%C3%A9solution-du-run-0-36-8"></a></h4>
+<p>Cas reporté : un run FORDEAD complet et réussi se termine en 142 s côté cœur (<code>status == "success"</code>, <code>n_alerts_inserted == 0L</code>, <code>alerts_sf == NULL</code>), le toast bas-droite affiche bien « Diagnostic terminé : 0 alertes insérées en 142 s », mais l’UI restait dans un état ambigu :</p>
+<ol style="list-style-type: decimal"><li>
+<p><strong>Bouton « Lancer le diagnostic FORDEAD » resté grisé</strong> après la résolution. La logique en place (<code>observe</code> qui lisait <code>fordead_task$status()</code> et appelait <code>updateActionButton(disabled = is_running)</code>) aurait dû ré-activer le bouton sur la transition de statut, mais une race ou un flush manqué le laissait dans l’état grisé.</p>
+<p><strong>Correctif</strong> : belt-and-suspenders re-enable explicite dans le handler <code>fordead_task$result()</code>, en plus du status-based observe. Trois cas couverts (<code>success</code> avec alertes, <code>success</code> sans alertes, <code>error</code>). Reset de <code>force_unlock_health(FALSE)</code> au passage pour rester cohérent avec l’observer click.</p>
+</li>
+<li>
+<p><strong>Onglet « Alertes FORDEAD » muet</strong> quand <code>n_alerts_inserted == 0L</code>. L’utilisateur ne pouvait pas distinguer « pas encore lancé » / « calcul en cours » / « run terminé, 0 anomalie ».</p>
+<p><strong>Correctif</strong> : nouvelle <code>reactiveVal</code> <code>fordead_last_result()</code> qui capture le payload du dernier run résolu dans la session. Quand <code>alerts()</code> est vide ET <code>fordead_last_result()$status == "success"</code>, l’<code>output$alerts_panel</code> affiche une card « Zone saine — aucune anomalie détectée » (bordure verte, icône <code>check-circle-fill</code>) avec la durée du run en sous-titre. Cinq états distincts maintenant lisibles dans le panneau Alertes FORDEAD :</p>
+<table class="table"><thead><tr><th>État</th>
+<th>Affichage</th>
+</tr></thead><tbody><tr><td>Pas encore lancé / pas de zone sélectionnée</td>
+<td>placeholder neutre</td>
+</tr><tr><td>Run en cours</td>
+<td>toast bas-droite avec phase 0..6</td>
+</tr><tr><td>Run terminé, ≥ 1 alerte</td>
+<td>carte Leaflet (chemin actuel)</td>
+</tr><tr><td>Run terminé, 0 alerte</td>
+<td>card « Zone saine » avec durée</td>
+</tr><tr><td>Run terminé en erreur</td>
+<td>toast bas-droite + result snapshot capturé</td>
+</tr></tbody></table></li>
+<li><p><strong>Onglet « Carte FORDEAD »</strong> : empty-state déjà livré en v0.36.0 (« Aucun masque FORDEAD disponible » + « postprocess hook prévu dans une release ultérieure de nemeton »). Pas de changement — le wiring se réactivera automatiquement quand le cœur shippera la persistance du raster 0..4.</p></li>
+</ol></div>
+<div class="section level4">
+<h4 id="added-0-36-8">Added<a class="anchor" aria-label="anchor" href="#added-0-36-8"></a></h4>
+<ul><li>3 nouvelles clés i18n FR/EN : <code>monitoring_fordead_no_alerts_title</code>, <code>monitoring_fordead_no_alerts_body</code>, <code>monitoring_fordead_no_alerts_meta</code>.</li>
+<li>Helper <code>make_fake_fordead_task()</code> widened pour accepter <code>result =</code> / <code>status =</code> (préparation des futurs tests).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="notes-opérationnelles-0-36-8">Notes opérationnelles<a class="anchor" aria-label="anchor" href="#notes-op%C3%A9rationnelles-0-36-8"></a></h4>
+<ul><li>Aucun changement de signature côté cœur. Plancher <code>Imports</code> reste à <code>nemeton (&gt;= 0.25.4)</code> (hérité de v0.36.7).</li>
+<li>Le bonus optionnel « badge persistant Diagnostic en cours » mentionné dans le brief n’est pas livré — les toasts de phase bas-droite (<code>monitoring_fordead_phase_*</code>, livrés v0.32.0) couvrent déjà ce besoin.</li>
+<li>Les tests testServer pour la card « Zone saine » prototypés pendant ce ticket wedgent dans le graphe réactif de <code>mod_monitoring_server</code> (multiples <code>reactivePoll</code> timers + ExtendedTask + sous-module pixel-map — la file de tests existante documente déjà ce problème de harness). La vérification du rendering Zone-saine reste en QA manuelle pour cette release ; les <code>.summarize_backend_warnings()</code> tests (v0.36.4) restent en place et passent.</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.36.7" id="nemetonshiny-0367-2026-05-18">nemetonshiny 0.36.7 (2026-05-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0367-2026-05-18"></a></h2>
 <div class="section level4">
@@ -78,7 +117,7 @@
 <a class="anchor" aria-label="anchor" href="#fixed--codes-ansi-cli-affich%C3%A9s-dans-la-notification-derreur-de-create_sampling_plan-0-36-5"></a></h4>
 <p>Quand <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> levait une erreur formatée par <code><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli::cli_abort()</a></code> (par ex. « Stratification-valid candidate pool (0) is below <code>n_base</code> (50) » quand l’AOI dépasse la couverture CHM/MNT), le toast Shiny affichait les séquences d’échappement ANSI brutes (<code>[38;5;250m</code>, <code>[31m</code>, <code>[36m</code>, <code>[39m</code>) car <code>conditionMessage(e)</code> conserve le formatage <code>cli</code> qui n’a pas de sens en HTML.</p>
 <p><strong>Correctif</strong> — <code>mod_sampling.R</code> enveloppe <code>conditionMessage(e)</code> dans <code><a href="https://cli.r-lib.org/reference/ansi_strip.html" class="external-link">cli::ansi_strip()</a></code> avant la <code>showNotification()</code> pour ne montrer que le texte lisible.</p>
-</div>
+<hr></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.36.4" id="nemetonshiny-0364-2026-05-17">nemetonshiny 0.36.4 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0364-2026-05-17"></a></h2>
@@ -133,7 +172,7 @@ markerPane       z=600  CircleMarkers placettes</code></pre>
 <h2 class="pkg-version" data-toc-text="0.36.1" id="nemetonshiny-0361-2026-05-17">nemetonshiny 0.36.1 (2026-05-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0361-2026-05-17"></a></h2>
 <div class="section level4">
 <h4 id="fixed--ux-seuils-fast-alignée-sur-la-sémantique-cœur-0-36-1">Fixed — UX seuils FAST alignée sur la sémantique cœur<a class="anchor" aria-label="anchor" href="#fixed--ux-seuils-fast-align%C3%A9e-sur-la-s%C3%A9mantique-c%C5%93ur-0-36-1"></a></h4>
-<p>Les sliders sidebar <code>threshold_ndvi</code> / <code>threshold_nbr</code> du mode FAST étaient calibrés pour la sémantique historique <strong>drop</strong> (delta NDVI ou NBR sur la fenêtre roulante E6.a) — défauts 0.15 / 0.25, range 0.05-0.50. Mais <code>nemeton::list_fast_alerts_for_zone()</code> (consommé depuis v0.36.0) interprète ces valeurs comme des <strong>seuils absolus</strong> minimaux. Avec les anciens défauts, presque aucune placette ne remontait en alerte parce que le NDVI d’une forêt saine (0.6-0.8) était toujours bien au-dessus de 0.15.</p>
+<p>Les sliders sidebar <code>threshold_ndvi</code> / <code>threshold_nbr</code> du mode FAST étaient calibrés pour la sémantique historique <strong>drop</strong> (delta NDVI ou NBR sur la fenêtre roulante E6.a) — défauts 0.15 / 0.25, range 0.05-0.50. Mais <code><a href="https://pobsteta.github.io/nemeton/reference/list_fast_alerts_for_zone.html" class="external-link">nemeton::list_fast_alerts_for_zone()</a></code> (consommé depuis v0.36.0) interprète ces valeurs comme des <strong>seuils absolus</strong> minimaux. Avec les anciens défauts, presque aucune placette ne remontait en alerte parce que le NDVI d’une forêt saine (0.6-0.8) était toujours bien au-dessus de 0.15.</p>
 <p><strong>Correctif</strong> :</p>
 <ul><li>Slider <code>threshold_ndvi</code> : default <code>0.40</code> (cœur default), range <code>[0.10, 0.80]</code> (couvre la plage NDVI forestière saine).</li>
 <li>Slider <code>threshold_nbr</code> : default <code>0.30</code> (cœur default), range <code>[0.10, 0.80]</code>.</li>
@@ -152,10 +191,10 @@ markerPane       z=600  CircleMarkers placettes</code></pre>
 <th>Cœur consommé</th>
 </tr></thead><tbody><tr><td><code>Alertes FAST</code></td>
 <td><code>R/mod_monitoring_fast_alerts.R</code></td>
-<td><code>nemeton::list_fast_alerts_for_zone()</code></td>
+<td><code><a href="https://pobsteta.github.io/nemeton/reference/list_fast_alerts_for_zone.html" class="external-link">nemeton::list_fast_alerts_for_zone()</a></code></td>
 </tr><tr><td><code>Carte FORDEAD</code></td>
 <td><code>R/mod_monitoring_fordead_map.R</code></td>
-<td><code>nemeton::read_fordead_dieback_mask()</code></td>
+<td><code><a href="https://pobsteta.github.io/nemeton/reference/read_fordead_dieback_mask.html" class="external-link">nemeton::read_fordead_dieback_mask()</a></code></td>
 </tr></tbody></table><p><strong>Alertes FAST</strong> — carte Leaflet des placettes classées par sévérité (<code>critical</code> / <code>warning</code> / <code>info</code>) selon le ratio (NDVI ou NBR) / seuil. Trois zones de couleur correspondent aux buckets cœur : ratio <code>&lt; 0.5</code> (rouge <code>#D62728</code>), <code>[0.5, 1)</code> (orange <code>#FF9933</code>), <code>[1, 1.1)</code> (orange clair <code>#FFD27F</code> — corridor d’avertissement). Les placettes sécures (ratio <code>&gt;= 1.1</code>) ne remontent pas du cœur. Au-dessus de la carte, une rangée de compteurs montre la distribution par sévérité + total. Popups marker : <code>plot_id</code>, sévérité, NDVI / NBR avec leur Δ (drop) au seuil, dernière obs.</p>
 <p>Les arguments envoyés à <code>list_fast_alerts_for_zone()</code> sont liés 1-pour-1 aux widgets sidebar de Suivi sanitaire :</p>
 <ul><li>
@@ -213,7 +252,7 @@ le tableau remplacé en a 337</code></pre>
 </tr></thead><tbody><tr><td><code>Alertes FAST</code></td>
 <td><code>alerts_fast</code></td>
 <td>quick</td>
-<td>Placeholder — attend <code>nemeton::list_fast_alerts_for_zone()</code> (cf. spec PLAN.md)</td>
+<td>Placeholder — attend <code><a href="https://pobsteta.github.io/nemeton/reference/list_fast_alerts_for_zone.html" class="external-link">nemeton::list_fast_alerts_for_zone()</a></code> (cf. spec PLAN.md)</td>
 </tr><tr><td><code>Carte FAST</code></td>
 <td><code>pixel_map_fast</code></td>
 <td>quick</td>
@@ -225,7 +264,7 @@ le tableau remplacé en a 337</code></pre>
 </tr><tr><td><code>Carte FORDEAD</code></td>
 <td><code>pixel_map_fordead</code></td>
 <td>health</td>
-<td>Placeholder — attend <code>nemeton::read_fordead_dieback_mask()</code>
+<td>Placeholder — attend <code><a href="https://pobsteta.github.io/nemeton/reference/read_fordead_dieback_mask.html" class="external-link">nemeton::read_fordead_dieback_mask()</a></code>
 </td>
 </tr></tbody></table><p>Visibilité pilotée par un <code>observe</code> étendu côté server : <code><a href="https://rstudio.github.io/bslib/reference/nav_select.html" class="external-link">bslib::nav_show()</a></code> / <code>nav_hide()</code> sur les 4 valeurs selon <code>input$mode</code>. À l’écran, l’utilisateur ne voit jamais plus de 2 sous-onglets à la fois — exactement comme avant v0.35.0 avec 3 déclarations, mais avec le bon couple (alertes + carte) par mode.</p>
 <p><strong>Renommage</strong> : l’ancien sous-onglet <code>alerts</code> devient <code>alerts_fordead</code>, même contenu (carte Leaflet <code>alerts_map</code>, popups par classe de confiance, bloc QGIS GRTS/Random). Les <code>conditionalPanel</code> internes qui filtraient sur <code>input$mode == 'health'</code> sont supprimés : tout le sous-onglet est désormais masqué en mode FAST, plus besoin de double-vérification.</p>
@@ -526,7 +565,7 @@ le tableau remplacé en a 337</code></pre>
 <p>La sous-onglet <strong>Carte pixel</strong> affiche désormais, par-dessus le raster NDVI/NBR, les <strong>placettes</strong> du plan d’échantillonnage sous forme de marqueurs cliquables (cercles bleus à bord noir). Seules les placettes présentes dans <code>obs_pixel_data()</code> sont affichées — cohérent avec la fenêtre courante (zone, bandes, dates).</p>
 <p>Deux interactions distinctes :</p>
 <ul><li>
-<strong>Clic sur un pixel</strong> → modal « Pixel à (lat, lon) » avec la série pixel brute extraite via <code>nemeton::extract_pixel_timeseries()</code> (comportement inchangé depuis v0.28.0).</li>
+<strong>Clic sur un pixel</strong> → modal « Pixel à (lat, lon) » avec la série pixel brute extraite via <code><a href="https://pobsteta.github.io/nemeton/reference/extract_pixel_timeseries.html" class="external-link">nemeton::extract_pixel_timeseries()</a></code> (comportement inchangé depuis v0.28.0).</li>
 <li>
 <strong>Clic sur un marqueur placette</strong> → modal « Placette P01 — série NDVI / NBR (moyenne plot) » avec la série agrégée placette filtrée sur <code>plot_id</code> depuis <code>obs_pixel_data()</code>. C’est exactement la même donnée que celle de l’onglet <em>Séries par placette</em>, mais centrée sur une seule placette et accessible spatialement par un clic sur la carte plutôt qu’un selectizeInput.</li>
 </ul><p>Le contrôle des couches Leaflet (en haut à droite) expose maintenant deux cases à cocher (« NDVI / NBR » et « Placettes »), toutes deux actives par défaut. L’utilisateur peut masquer indépendamment chaque overlay.</p>
@@ -571,7 +610,7 @@ le tableau remplacé en a 337</code></pre>
 <div class="section level4">
 <h4 id="suivi-sanitaire--refresh-automatique-après-ingestion-sentinel-0-28-2">Suivi sanitaire — refresh automatique après ingestion Sentinel-2<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--refresh-automatique-apr%C3%A8s-ingestion-sentinel-0-28-2"></a></h4>
 <p>À la fin d’un téléchargement Sentinel-2 réussi, l’onglet <strong>Suivi sanitaire</strong> ne reflétait pas les nouvelles données : le graphique plotly des placettes restait vide, et la sous-onglet <strong>Carte pixel</strong> ne construisait pas son raster. L’utilisateur devait toucher à un contrôle (bandes, fenêtre de dates, zone) pour forcer un rafraîchissement.</p>
-<p>Cause : la reactive <code>obs_pixel_data()</code> — qui alimente à la fois le plotly per-plot et la Carte pixel (via <code>scenes_df_r()</code>) — dépendait uniquement de <code>input$mode</code>, <code>input$zone_id</code>, <code>input$bands</code> et <code>input$date_range</code>. Aucune de ces entrées ne change quand l’ingestion insère des lignes dans <code>monitoring_obs</code> côté DB ; Shiny n’avait donc aucune raison de relancer la requête <code>nemeton::read_obs_pixel()</code>.</p>
+<p>Cause : la reactive <code>obs_pixel_data()</code> — qui alimente à la fois le plotly per-plot et la Carte pixel (via <code>scenes_df_r()</code>) — dépendait uniquement de <code>input$mode</code>, <code>input$zone_id</code>, <code>input$bands</code> et <code>input$date_range</code>. Aucune de ces entrées ne change quand l’ingestion insère des lignes dans <code>monitoring_obs</code> côté DB ; Shiny n’avait donc aucune raison de relancer la requête <code><a href="https://pobsteta.github.io/nemeton/reference/read_obs_pixel.html" class="external-link">nemeton::read_obs_pixel()</a></code>.</p>
 <p>Correctif (<code>R/mod_monitoring.R</code>) : ajout d’un <code>reactiveVal</code> <code>obs_refresh</code>, lu en première ligne de <code>obs_pixel_data()</code> pour créer la dépendance, et bumpé dans le handler de succès d’ingestion juste à côté de <code>zones_refresh</code>. Pattern symétrique à <code>alerts_refresh</code> côté FORDEAD. Effet utilisateur : la Carte pixel se peuple toute seule après ingestion, et le plotly également.</p>
 </div>
 </div>
@@ -615,7 +654,7 @@ le tableau remplacé en a 337</code></pre>
 <li>
 <code>output$map</code> — leaflet avec palette divergente <code>[#D62728, #FFD27F, #FFFFCC, #A8DDB5, <a href="https://github.com/pobsteta/nemetonshiny/issues/2" class="external-link">#2</a>CA02C]</code> (rouge → jaune → vert) ancrée sur 0, NA en transparent, légende avec valeurs extrêmes [-1, 1].</li>
 <li>
-<code>observeEvent(input$map_click)</code> — appelle <code>nemeton::extract_pixel_timeseries()</code> au lat/lng cliqué et pop un modal <code>bslib::modalDialog(size = "l")</code> avec un plotly NDVI
+<code>observeEvent(input$map_click)</code> — appelle <code><a href="https://pobsteta.github.io/nemeton/reference/extract_pixel_timeseries.html" class="external-link">nemeton::extract_pixel_timeseries()</a></code> au lat/lng cliqué et pop un modal <code>bslib::modalDialog(size = "l")</code> avec un plotly NDVI
 <ul><li>NBR superposés (couleurs figées identiques à la sub-tab per-plot pour cohérence du modèle mental utilisateur).</li>
 </ul></li>
 </ul></li>
@@ -690,8 +729,8 @@ le tableau remplacé en a 337</code></pre>
 <div class="section level4">
 <h4 id="suivi-sanitaire--clôture-du-reliquat-e6b-phases-0-27-0">Suivi sanitaire — clôture du reliquat E6.b (phases 2, 3, 6)<a class="anchor" aria-label="anchor" href="#suivi-sanitaire--cl%C3%B4ture-du-reliquat-e6b-phases-0-27-0"></a></h4>
 <p>Trois sous-chantiers du reliquat de l’épaississement 6 (suivi sanitaire) sont livrés ensemble dans cette release. Le PLAN.md du repo <code>nemeton</code> coche désormais E6.b en intégralité.</p>
-<ul><li><p><code>feat(monitoring)</code> — <strong>Phase 3 — Plotly NDVI/NBR par placette</strong>. L’onglet Suivi sanitaire en mode rapide affiche enfin les séries NDVI / NBR par placette, et plus le placeholder vide qui traînait depuis la phase 1. Câblage : nouveau reactive <code>obs_pixel_data()</code> dans <code>R/mod_monitoring.R</code> qui appelle <code>nemeton::read_obs_pixel()</code> (fonction publique introduite côté cœur dans <code>nemeton@v0.21.11</code>) avec les filtres <code>bands</code> (cases NDVI / NBR cochées dans la sidebar) et <code>date_range</code> (input dateRange existant). Resultat : un <code>data.frame</code> typé <code>(plot_id, obs_date, band, value, …)</code>. Le reactive retourne <code>NULL</code> quand un prerequis manque (mode health, pas de zone, pas de bandes cochées, dateRange invalide) — la renderPlotly affiche alors un état vide avec le message i18n adéquat (<code>monitoring_timeseries_placeholder</code> ou <code>monitoring_timeseries_no_plot_selected</code>). Côté UI, ajout d’un <code>selectizeInput("plot_filter", multiple = TRUE)</code> dans la card du time series (visible uniquement en mode quick), avec plugin <code>remove_button</code> pour décocher d’un clic. L’observer <code>observeEvent(obs_pixel_data())</code> met à jour ses choices à chaque re-fetch et préserve la sélection courante si elle reste un sous- ensemble des plots disponibles. Le plotly trace une ligne+marqueurs par couple <code>(plot_id, band)</code> — couleur figée par bande (NDVI vert, NBR rouge, NDWI bleu, B04/B08/B12 violet/marron/rose), <code>legendgroup = band</code> pour cliquer une bande entière, hovertemplate formaté <code>&lt;plot · band&gt; · YYYY-MM-DD · band = 0.xxx</code>. Layout i18nisé (xaxis = “Date d’observation” / “Observation date”, yaxis = “Valeur de l’indice” / “Index value”, légende horizontale sous le graphique). 6 nouvelles clés i18n (<code>monitoring_timeseries_select_plots</code>, <code>_select_plots_help</code>, <code>_no_plot_selected</code>, <code>_no_data</code>, <code>_xaxis</code>, <code>_yaxis</code>). 3 tests testServer dans <code>test-mod_monitoring.R</code> : (a) reader ne fire pas en mode health, (b) reader forwarde correctement zone_id/bands/ date_from/date_to et l’observer rafraîchit <code>plot_filter</code> avec les plot_ids présents, (c) reader retourne NULL et ne consulte pas la DB quand une précondition manque (pas de zone, pas de bandes, dateRange invalide).</p></li>
-<li><p><code>test(monitoring)</code> — <strong>Phase 6 — Smoke E2E shinytest2</strong>. Nouveau fichier <code>tests/testthat/test-monitoring-smoke-e2e.R</code> : un seul test <code><a href="https://rstudio.github.io/shinytest2/reference/AppDriver.html" class="external-link">shinytest2::AppDriver</a></code> qui boot l’app via <code>shiny::shinyApp(app_ui, app_server)</code> (golem path), navigue vers l’onglet Monitoring (<code>main_nav = "monitoring"</code>), vérifie la présence du radio <code>monitoring-mode</code> et la bidirectionnalité du switch quick ↔︎ health. <code>on.exit(app$stop())</code> garanti même sur échec. <code>shinytest2 (&gt;= 0.3.0)</code> ajouté à Suggests. Skips multiples : shinytest2 / chromote absents, pas de binaire Chrome détecté, <code>nemeton::read_obs_pixel</code> non exporté (cœur &lt; v0.21.11), boot AppDriver échoué (avec message). Pas de DB requise — les zones restent vides, ce qui est exactement l’état utile pour un smoke.</p></li>
+<ul><li><p><code>feat(monitoring)</code> — <strong>Phase 3 — Plotly NDVI/NBR par placette</strong>. L’onglet Suivi sanitaire en mode rapide affiche enfin les séries NDVI / NBR par placette, et plus le placeholder vide qui traînait depuis la phase 1. Câblage : nouveau reactive <code>obs_pixel_data()</code> dans <code>R/mod_monitoring.R</code> qui appelle <code><a href="https://pobsteta.github.io/nemeton/reference/read_obs_pixel.html" class="external-link">nemeton::read_obs_pixel()</a></code> (fonction publique introduite côté cœur dans <code>nemeton@v0.21.11</code>) avec les filtres <code>bands</code> (cases NDVI / NBR cochées dans la sidebar) et <code>date_range</code> (input dateRange existant). Resultat : un <code>data.frame</code> typé <code>(plot_id, obs_date, band, value, …)</code>. Le reactive retourne <code>NULL</code> quand un prerequis manque (mode health, pas de zone, pas de bandes cochées, dateRange invalide) — la renderPlotly affiche alors un état vide avec le message i18n adéquat (<code>monitoring_timeseries_placeholder</code> ou <code>monitoring_timeseries_no_plot_selected</code>). Côté UI, ajout d’un <code>selectizeInput("plot_filter", multiple = TRUE)</code> dans la card du time series (visible uniquement en mode quick), avec plugin <code>remove_button</code> pour décocher d’un clic. L’observer <code>observeEvent(obs_pixel_data())</code> met à jour ses choices à chaque re-fetch et préserve la sélection courante si elle reste un sous- ensemble des plots disponibles. Le plotly trace une ligne+marqueurs par couple <code>(plot_id, band)</code> — couleur figée par bande (NDVI vert, NBR rouge, NDWI bleu, B04/B08/B12 violet/marron/rose), <code>legendgroup = band</code> pour cliquer une bande entière, hovertemplate formaté <code>&lt;plot · band&gt; · YYYY-MM-DD · band = 0.xxx</code>. Layout i18nisé (xaxis = “Date d’observation” / “Observation date”, yaxis = “Valeur de l’indice” / “Index value”, légende horizontale sous le graphique). 6 nouvelles clés i18n (<code>monitoring_timeseries_select_plots</code>, <code>_select_plots_help</code>, <code>_no_plot_selected</code>, <code>_no_data</code>, <code>_xaxis</code>, <code>_yaxis</code>). 3 tests testServer dans <code>test-mod_monitoring.R</code> : (a) reader ne fire pas en mode health, (b) reader forwarde correctement zone_id/bands/ date_from/date_to et l’observer rafraîchit <code>plot_filter</code> avec les plot_ids présents, (c) reader retourne NULL et ne consulte pas la DB quand une précondition manque (pas de zone, pas de bandes, dateRange invalide).</p></li>
+<li><p><code>test(monitoring)</code> — <strong>Phase 6 — Smoke E2E shinytest2</strong>. Nouveau fichier <code>tests/testthat/test-monitoring-smoke-e2e.R</code> : un seul test <code><a href="https://rstudio.github.io/shinytest2/reference/AppDriver.html" class="external-link">shinytest2::AppDriver</a></code> qui boot l’app via <code>shiny::shinyApp(app_ui, app_server)</code> (golem path), navigue vers l’onglet Monitoring (<code>main_nav = "monitoring"</code>), vérifie la présence du radio <code>monitoring-mode</code> et la bidirectionnalité du switch quick ↔︎ health. <code>on.exit(app$stop())</code> garanti même sur échec. <code>shinytest2 (&gt;= 0.3.0)</code> ajouté à Suggests. Skips multiples : shinytest2 / chromote absents, pas de binaire Chrome détecté, <code><a href="https://pobsteta.github.io/nemeton/reference/read_obs_pixel.html" class="external-link">nemeton::read_obs_pixel</a></code> non exporté (cœur &lt; v0.21.11), boot AppDriver échoué (avec message). Pas de DB requise — les zones restent vides, ce qui est exactement l’état utile pour un smoke.</p></li>
 <li><p><code>chore(monitoring)</code> — <strong>Phase 2 — Ingestion async + toasts</strong>. Marquée livrée rétroactivement dans <code>nemeton/PLAN.md</code> : ses 6 livrables (ExtendedTask, future_promise, progress_callback wired, reactivePoll sur progress.json, toasts persistants/erreurs/band- failure, console live) ont été câblés incrémentalement entre <code>nemetonshiny@v0.24.13</code> et <code>nemetonshiny@v0.26.6</code> sans qu’aucun commit n’identifie explicitement la phase. Pas de nouveau code livré ici — uniquement traçabilité dans le PLAN.</p></li>
 </ul></div>
 <div class="section level4">
