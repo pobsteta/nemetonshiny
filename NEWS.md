@@ -1,3 +1,70 @@
+# nemetonshiny 0.37.0 (2026-05-19)
+
+### Added — Fallback BD Forêt V2 sur le check de validité FORDEAD (G3 espèces)
+
+Symptôme avant ce fix : console R lors du lancement d'un diagnostic
+FORDEAD,
+
+```
+ℹ Database schema up to date (2 migrations applied).
+Avis : No species column found on `units`.
+ℹ Expected one of: essence_dominante, essence, species_label, species,
+  essence_principale.
+ℹ Skipping species check.
+```
+
+Les UGFs de l'app n'ont pas de colonne d'essence (l'essence n'est
+pas un attribut foncier — elle est dérivée d'autres sources comme
+BD Forêt V2 ou la classification Sentinel-2). Le garde-fou G3 sur
+les espèces validées (épicéa + sapin pectiné, calibration ONF/DSF
+2024) était donc désactivé silencieusement, et `overall_valid` ne
+reflétait que le critère géographique.
+
+`nemeton@v0.26.0` ajoute deux arguments à
+`check_fordead_validity()` : `bdforet` (sf de BD Forêt V2,
+formation_vegetale) et `layers` (un `nemeton_layers`). Quand
+`units` n'a pas de colonne d'essence ET que `bdforet` est fourni,
+le cœur dérive l'essence dominante par parcelle via
+`enrich_parcels_bdforet()` et lance le check espèces normalement.
+
+**Câblage côté app** :
+
+- Nouveau helper `.load_project_bdforet(project)` dans
+  `R/mod_monitoring.R` : lit
+  `<project>/cache/layers/bdforet.gpkg` (alimenté par
+  `download_ign_bdforet()` pendant le calcul des indicateurs)
+  et retourne `sf` ou NULL.
+- Le reactive `validity` du module Suivi sanitaire charge la
+  BD Forêt depuis ce helper et la passe à
+  `validity_check_for_zone()`.
+- `validity_check_for_zone()` (dans `R/service_monitoring_db.R`)
+  accepte désormais un argument `bdforet = NULL` qu'il transmet
+  directement à `nemeton::check_fordead_validity()`.
+
+**Comportement** :
+
+| État du cache BD Forêt | Sortie `species_valid` |
+|---|---|
+| Cache présent (`bdforet.gpkg`) | `TRUE` ou `FALSE` selon le ratio résineux validés |
+| Cache absent (projet sans compute ou DL BD Forêt échoué) | `NA` (fallback v0.25.9 préservé) |
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.26.0)` (au lieu de 0.25.4).
+  Le `Remotes: pobsteta/nemeton@main` reste inchangé — les nouveaux
+  installs récupèrent directement v0.26.0.
+
+### Tests
+
+- 3 nouveaux tests testthat dans `tests/testthat/test-mod_monitoring.R` :
+  `.load_project_bdforet()` NULL paths (NULL projet / sans path /
+  sans cache), `.load_project_bdforet()` lecture GPKG fonctionnelle,
+  et `validity_check_for_zone()` qui forwarde bien `bdforet` au cœur
+  (mocked via `testthat::local_mocked_bindings(..., .package =
+  "nemeton")`).
+
+---
+
 # nemetonshiny 0.36.8 (2026-05-19)
 
 ### Fixed — UX du diagnostic FORDEAD après résolution du run
