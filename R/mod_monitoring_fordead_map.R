@@ -113,7 +113,10 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (is.null(r)) return(NULL)
       i18n <- i18n_r()
 
-      cats   <- c("0", "1", "2", "3", "4")
+      # v0.38.7 — `levels` numériques 0:4, alignés sur les valeurs
+      # entières du raster catégoriel (le masque FORDEAD stocke
+      # 0=sain, 1=faible, 2=moyenne, 3=forte, 4=sol-nu).
+      cats   <- 0:4
       colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
       pal <- leaflet::colorFactor(colors, levels = cats,
                                   na.color = "transparent")
@@ -138,6 +141,15 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           x       = r,
           colors  = pal,
           opacity = 1.0,
+          # v0.38.7 — nearest-neighbour resampling. addRasterImage()
+          # reprojects to web-mercator and defaults to method =
+          # "bilinear", which interpolates BETWEEN the discrete
+          # classes of a categorical raster (0.7, 2.3…). Those
+          # fractional values match no colorFactor level → leaflet
+          # logs "Some values were outside the color scale and will
+          # be treated as NA" once per raster block. "ngb" keeps the
+          # integer classes intact.
+          method  = "ngb",
           options = leaflet::gridOptions(pane = "nemetonRaster")
         ) |>
         leaflet::addLegend(

@@ -287,6 +287,16 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::clearImages() |>
         leaflet::removeControl("pixel_legend")
       if (is.null(r)) return()
+      # v0.38.7 — clamp the index raster to the palette domain
+      # [-1, 1] before handing it to addRasterImage(). NDVI / NBR /
+      # CRSWIR are theoretically bounded to [-1, 1], but edge pixels
+      # and reprojection artefacts occasionally produce values just
+      # outside it. .pixel_palette is a colorNumeric anchored on
+      # [-1, 1] → those out-of-range values triggered leaflet's
+      # "Some values were outside the color scale" warning and were
+      # drawn transparent. Clamping pins them to the palette extremes
+      # (visually correct: a 1.02 NDVI is just "max green").
+      r <- terra::clamp(r, lower = -1, upper = 1, values = TRUE)
       proxy |>
         leaflet::addRasterImage(
           x       = r,
