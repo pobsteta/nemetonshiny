@@ -911,7 +911,59 @@ download_layers_for_parcels <- function(parcels,
     }
   }
 
-  # Step 2: Open-Canopy ML — only if LiDAR HD was skipped or failed.
+  # Step 1.5: Theia FORMSpoT — public canopy height (NDP 0), used when
+  # LiDAR HD is not available for the AOI. This is the primary path
+  # that unblocks the Production family (P1/P2/P3) and E1 from public
+  # Theia data. Only attempted when Theia is fully ready (Python SDK +
+  # API key); otherwise skipped silently and the pipeline degrades to
+  # Open-Canopy.
+  if (chm_source == "none" && theia_chm_enabled()) {
+    if (!is.null(progress_callback)) {
+      progress_callback(list(
+        completed = total_sources + length(pc_sources),
+        total     = total_sources + length(pc_sources),
+        current   = "chm_phase:theia_formspot",
+        source_key = NULL
+      ))
+    }
+    theia_out <- tryCatch(
+      download_chm_theia(parcels, rasters = rasters, vectors = vectors),
+      error = function(e) {
+        cli::cli_warn("Theia FORMSpoT CHM fetch failed: {e$message}")
+        download_warnings <<- c(download_warnings, list(list(
+          type = "warning", source = "Theia FORMSpoT",
+          message = paste0("CHM Theia FORMSpoT non disponible: ", e$message),
+          time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        )))
+        NULL
+      }
+    )
+    if (!is.null(theia_out) && !is.null(theia_out$chm)) {
+      rasters$chm <- theia_out$chm
+      chm_pct_masked <- theia_out$pct_masked
+      chm_source <- theia_out$source
+      cli::cli_alert_success("Using Theia FORMSpoT as CHM source")
+    }
+  }
+
+  # Step 1.6: Secondary Theia rasters (FAPAR, snow, soil moisture).
+  # Each is optional and forwarded to the matching nemeton indicator
+  # argument by compute_single_indicator(); a missing slot just means
+  # the indicator keeps its legacy data path.
+  if (theia_chm_enabled()) {
+    theia_layers <- tryCatch(
+      download_theia_layers(parcels),
+      error = function(e) {
+        cli::cli_warn("Theia secondary layers failed: {e$message}")
+        list()
+      }
+    )
+    for (slot in names(theia_layers)) {
+      if (is.null(rasters[[slot]])) rasters[[slot]] <- theia_layers[[slot]]
+    }
+  }
+
+  # Step 2: Open-Canopy ML — only if LiDAR HD / Theia was skipped or failed.
   if (chm_source == "none" && chm_auto_enabled()) {
     if (!is.null(progress_callback)) {
       # Not "download:" — the pipeline fetches the IGN ortho once
@@ -983,6 +1035,23 @@ download_layers_for_parcels <- function(parcels,
       chm_pct_masked <- chm_out$pct_masked
       chm_source <- "opencanopy"
     }
+  }
+
+  # No CHM at all and Theia is not ready: surface an explicit warning
+  # so the user understands why the Production family (P1/P2/P3) and
+  # E1 cannot be computed and how to fix it (configure the Theia API
+  # key / Python prerequisite via the gear menu).
+  if (chm_source == "none" && !isTRUE(theia_status()$ready)) {
+    download_warnings <- c(download_warnings, list(list(
+      type = "info",
+      source = "Theia FORMSpoT",
+      message = paste0(
+        "Aucun CHM disponible (LiDAR HD absent, Theia non configuré). ",
+        "Les indicateurs Production (P1/P2/P3) et E1 ne pourront pas être ",
+        "calculés. Configurez la clé API Theia via le menu de configuration."
+      ),
+      time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+    )))
   }
 
   if (!is.null(progress_callback)) {
@@ -2641,15 +2710,21 @@ compute_all_indicators <- function(parcels,
   n_indicators <- length(indicators)
   n_to_compute <- length(indicators_to_compute)
 
-  # BD Forêt enrichment (species/age) for P2 site index in CHM mode.
-  # indicateur_p2_station expects a `species` column and an `age`
-  # column on the units sf when called in CHM mode. These are derived
-  # from BD Forêt V2 via nemeton::enrich_parcels_bdforet. We enrich
-  # once up-front rather than inside compute_single_indicator because
-  # the enrichment does a spatial intersection that is not cheap.
-  # We skip P1/P3/E1: they additionally require dbh/stems-per-ha
-  # terrain inventory (NDP ≥ 2) and would still fail.
-  needs_bdforet_enrich <- "indicateur_p2_station" %in% indicators_to_compute &&
+  # BD Forêt enrichment (species/age) for the Production family and E1.
+  # In CHM mode (Theia FORMSpoT / LiDAR HD / Open-Canopy) the nemeton
+  # functions indicateur_p1_volume / p2_station / p3_qualite_bois /
+  # e1_bois_energie derive volume from canopy height and need a
+  # `species` column (and `age` for P2) to pick the right allometric
+  # model. These are filled from BD Forêt V2 via
+  # nemeton::enrich_parcels_bdforet. We enrich once up-front rather
+  # than inside compute_single_indicator because the enrichment does
+  # a spatial intersection that is not cheap.
+  bdforet_species_indicators <- c(
+    "indicateur_p1_volume", "indicateur_p2_station",
+    "indicateur_p3_qualite_bois", "indicateur_e1_bois_energie"
+  )
+  needs_bdforet_enrich <-
+    length(intersect(bdforet_species_indicators, indicators_to_compute)) > 0 &&
     !all(c("species", "age") %in% names(parcels))
   if (needs_bdforet_enrich) {
     bd <- resolve_vector_layer(layers, "bdforet")
@@ -2666,7 +2741,7 @@ compute_all_indicators <- function(parcels,
         if (!"age" %in% names(parcels))     parcels$age     <- enriched$age
         n_ok <- sum(!is.na(parcels$species))
         cli::cli_alert_info(
-          "BD Forêt enrichment: species/age set on {n_ok}/{nrow(parcels)} UGF for P2"
+          "BD Forêt enrichment: species/age set on {n_ok}/{nrow(parcels)} UGF for Production indicators"
         )
       }
     } else {
@@ -2859,6 +2934,31 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     }
     if ("pct_masked" %in% func_args && !is.null(layers$chm_pct_masked)) {
       args$pct_masked <- layers$chm_pct_masked
+    }
+
+    # Tree species column name. In CHM mode the Production indicators
+    # (P1/P2/P3, E1) need to know which `units` column carries the
+    # dominant species so they pick the right allometric model. The
+    # column itself is filled upstream by enrich_parcels_bdforet().
+    if ("species_field" %in% func_args && "species" %in% names(parcels)) {
+      args$species_field <- "species"
+    }
+
+    # Theia-derived rasters forwarded to the indicators that accept
+    # them (nemeton v0.40.0): FAPAR -> C2, snow days / soil moisture
+    # -> R3. Loaded upstream by download_theia_layers(). All optional:
+    # a missing layer leaves the indicator on its legacy data path.
+    if ("fapar" %in% func_args) {
+      fapar <- resolve_raster_layer(layers, "fapar")
+      if (!is.null(fapar)) args$fapar <- fapar
+    }
+    if ("snow" %in% func_args) {
+      snow <- resolve_raster_layer(layers, "snow")
+      if (!is.null(snow)) args$snow <- snow
+    }
+    if ("soil_moisture" %in% func_args) {
+      sm <- resolve_raster_layer(layers, "soil_moisture")
+      if (!is.null(sm)) args$soil_moisture <- sm
     }
 
     # F1 soil fertility: opt into the absolute SoilGrids CEC path

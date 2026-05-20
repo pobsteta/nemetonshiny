@@ -183,6 +183,9 @@ app_ui <- function(request) {
         )
       ),
 
+      # Theia / DATA TERRA configuration
+      mod_theia_config_ui("theia_config"),
+
       # Help button
       bslib::nav_item(
         shiny::actionLink(
