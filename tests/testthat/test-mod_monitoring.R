@@ -1330,3 +1330,63 @@ test_that("validity_check_for_zone forwards bdforet to nemeton", {
     }
   )
 })
+
+
+# ---- v0.38.4 — obs_pixel_data debounce ------------------------------
+
+test_that("obs_pixel_data debounces rapid successive input changes", {
+  skip_if_not_installed("shiny")
+
+  # obs_pixel_data depends on 5 inputs; on project load they are
+  # restored one after another, each a separate flush. Without the
+  # debounce the reactive re-ran read_obs_pixel once per flush. With
+  # shiny::debounce(300) a burst of changes collapses to one query.
+  query_count <- 0L
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function(...) "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_fordead_async              = function() make_fake_fordead_task(),
+    {
+      testthat::local_mocked_bindings(
+        read_obs_pixel = function(con, zone_id, bands,
+                                  date_from, date_to) {
+          query_count <<- query_count + 1L
+          NULL
+        },
+        .package = "nemeton"
+      )
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          # Keep the debounced reactive hot with a live observer.
+          shiny::observe({ obs_pixel_data() })
+
+          # Bring all 5 inputs to a valid state, settle the debounce.
+          session$setInputs(
+            mode       = "quick",
+            zone_id    = "1",
+            bands      = "NDVI",
+            date_range = c(as.Date("2025-01-01"), as.Date("2025-12-31"))
+          )
+          session$elapse(400)
+          baseline <- query_count
+          expect_equal(baseline, 1L)
+
+          # Three rapid zone_id changes — all preconditions stay met,
+          # so without the debounce each would issue its own query.
+          session$setInputs(zone_id = "2")
+          session$setInputs(zone_id = "3")
+          session$setInputs(zone_id = "1")
+          session$elapse(400)
+
+          # Debounced: the burst collapsed into a single extra query.
+          expect_equal(query_count, baseline + 1L)
+        }
+      )
+    }
+  )
+})
