@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,26 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.38.3/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.38.4" id="nemetonshiny-0384-2026-05-20">nemetonshiny 0.38.4 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0384-2026-05-20"></a></h2>
+<div class="section level4">
+<h4 id="changed--rafales-de-ré-exécution-de-obs_pixel_data-coupées-debounce-0-38-4">Changed — Rafales de ré-exécution de <code>obs_pixel_data</code> coupées (debounce)<a class="anchor" aria-label="anchor" href="#changed--rafales-de-r%C3%A9-ex%C3%A9cution-de-obs_pixel_data-coup%C3%A9es-debounce-0-38-4"></a></h4>
+<p>Au chargement d’un projet ou changement de zone, <code>obs_pixel_data</code> (dans <code>R/mod_monitoring.R</code>) se ré-exécutait 4-5 fois de suite. Cause : le <code>reactive()</code> dépend de 5 entrées (<code>input$mode</code>, <code>input$zone_id</code>, <code>input$bands</code>, <code>input$date_range</code>, <code>obs_refresh()</code>) restaurées les unes après les autres → un cycle de flush par entrée → une requête SQL <code>read_obs_pixel</code> redondante à chaque cycle, et la rafale se propageait à <code>placettes_sf_r()</code> puis à l’<code>observe()</code> des marqueurs. Pas une boucle infinie, mais du gaspillage : requêtes DB inutiles + bruit console.</p>
+<p><strong>Correctif</strong> — debounce d’un <em>déclencheur</em> peu coûteux, pas du reactive lui-même. Subtilité : <code><a href="https://rdrr.io/pkg/shiny/man/debounce.html" class="external-link">shiny::debounce()</a></code> évalue sa source de manière <strong>eager</strong> — il ne fait que retarder la <em>publication</em> de la valeur aux consommateurs aval. Debouncer <code>obs_pixel_data</code> directement n’aurait donc PAS épargné la requête SQL (vérifié par test : 3 changements rapides = 3 requêtes). On introduit à la place <code>obs_pixel_inputs</code>, un reactive qui assemble les 5 entrées dans une liste (coût nul), debouncé à 300 ms ; <code>obs_pixel_data</code> ne dépend plus que de ce paquet debouncé → la requête <code>read_obs_pixel</code> tourne une seule fois par rafale. Délai imperceptible ; tous les consommateurs (plotly par placette, handler <code>input$map_marker_click</code>, <code>placettes_sf_r()</code> dans <code>mod_monitoring_pixel_map</code>) lisent <code>obs_pixel_data()</code> sans changement.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--logs-de-debug-de-la-carte-pixel-derrière-un-drapeau-0-38-4">Changed — Logs de debug de la carte pixel derrière un drapeau<a class="anchor" aria-label="anchor" href="#changed--logs-de-debug-de-la-carte-pixel-derri%C3%A8re-un-drapeau-0-38-4"></a></h4>
+<p>Les <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info()</a></code> d’instrumentation « UGF source » / « UGF overlay » / « Placettes overlay » de <code>R/mod_monitoring_pixel_map.R</code> (9 lignes) s’affichaient en rafale à chaque chargement de projet. Ils sont désormais gatés derrière la variable d’environnement <code>NEMETON_PIXEL_MAP_DEBUG</code> (helper <code>.pixel_map_debug_enabled()</code>, même modèle que <code>NEMETON_S2_CACHE_DEBUG</code> côté cœur). Par défaut (variable non définie) → console silencieuse. Mettre <code>NEMETON_PIXEL_MAP_DEBUG=TRUE</code> pour réactiver le tracing depuis un terminal.</p>
+</div>
+<div class="section level4">
+<h4 id="tests-0-38-4">Tests<a class="anchor" aria-label="anchor" href="#tests-0-38-4"></a></h4>
+<ul><li>
+<code>test-mod_monitoring.R</code> : nouveau test <code>testServer()</code> du debounce de <code>obs_pixel_data</code> — 3 changements rapides de <code>input$zone_id</code> (toutes préconditions satisfaites) suivis de <code>session$elapse(400)</code> → une seule requête <code>read_obs_pixel</code> supplémentaire (mockée), au lieu de 3.</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.38.3" id="nemetonshiny-0383-2026-05-20">nemetonshiny 0.38.3 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0383-2026-05-20"></a></h2>
 <div class="section level4">

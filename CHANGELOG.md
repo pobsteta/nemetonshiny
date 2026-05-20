@@ -12,6 +12,32 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.38.4\] - 2026-05-20
+
+### Changed
+
+- **Suivi sanitaire / `obs_pixel_data` debounced** : au chargement de
+  projet, les 5 entrées dont dépend `obs_pixel_data` sont restaurées une
+  à une → 4-5 ré-exécutions avec autant de requêtes SQL `read_obs_pixel`
+  redondantes. Nouveau reactive `obs_pixel_inputs` (assemblage des 5
+  entrées) debouncé 300 ms ; `obs_pixel_data` ne dépend plus que de ce
+  paquet → la requête tourne une fois par rafale.
+  [`shiny::debounce()`](https://rdrr.io/pkg/shiny/man/debounce.html)
+  évaluant sa source de façon eager, c’est bien le *déclencheur* peu
+  coûteux qui est debouncé, pas le reactive coûteux
+  (`R/mod_monitoring.R`).
+- **Logs de debug de la carte pixel gatés** : les 9
+  [`cli::cli_alert_info()`](https://cli.r-lib.org/reference/cli_alert.html)
+  « UGF source / overlay / Placettes overlay » de
+  `R/mod_monitoring_pixel_map.R` passent derrière
+  `NEMETON_PIXEL_MAP_DEBUG` (helper `.pixel_map_debug_enabled()`).
+  Console silencieuse par défaut.
+
+### Tests
+
+- `test-mod_monitoring.R` : test `testServer()` du debounce de
+  `obs_pixel_data` (3 changements rapides de `zone_id` → 1 requête).
+
 ## \[0.38.3\] - 2026-05-20
 
 ### Fixed
