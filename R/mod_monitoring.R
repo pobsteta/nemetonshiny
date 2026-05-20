@@ -341,6 +341,12 @@ mod_monitoring_server <- function(id, app_state) {
                         session = session)
         bslib::nav_hide("subtab", target = "pixel_map_fordead",
                         session = session)
+        # v0.37.1 — re-anchor the active tab onto a visible one.
+        # Without this, when the user toggles mode the navset keeps
+        # its previously-active pane — which may now be hidden —
+        # leaving the content area in an inconsistent state.
+        bslib::nav_select("subtab", selected = "alerts_fast",
+                          session = session)
       } else if (identical(mode, "health")) {
         bslib::nav_hide("subtab", target = "alerts_fast",
                         session = session)
@@ -350,6 +356,8 @@ mod_monitoring_server <- function(id, app_state) {
                         session = session)
         bslib::nav_show("subtab", target = "pixel_map_fordead",
                         session = session)
+        bslib::nav_select("subtab", selected = "alerts_fordead",
+                          session = session)
       }
     })
 

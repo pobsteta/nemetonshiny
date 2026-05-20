@@ -134,6 +134,18 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r) {
         )
     })
 
+    # v0.37.1 — force the panel renderUI to evaluate even while the
+    # sub-tab is hidden. The Suivi sanitaire navset toggles its
+    # nav_panels with bslib::nav_show() / nav_hide() (mode-driven
+    # visibility). That mechanism leaves Shiny's per-output
+    # visibility detection unreliable : the `uiOutput(ns("panel"))`
+    # stayed suspended (suspendWhenHidden defaults to TRUE) and the
+    # empty-state never rendered even after the user clicked the
+    # Carte FORDEAD tab — the panel showed up blank. Disabling the
+    # suspend makes the empty-state / leaflet wrapper render
+    # unconditionally.
+    shiny::outputOptions(output, "panel", suspendWhenHidden = FALSE)
+
     invisible(list(mask = mask_r))
   })
 }

@@ -194,6 +194,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         )
     })
 
+    # v0.37.1 — see mod_monitoring_fordead_map.R : the navset toggles
+    # nav_panels with bslib::nav_show() / nav_hide(), which leaves
+    # Shiny's visibility detection unreliable and keeps the
+    # uiOutput-backed renderUI suspended. Force both dynamic outputs
+    # to evaluate unconditionally so the counters + panel render the
+    # moment the user opens the Alertes FAST sub-tab.
+    shiny::outputOptions(output, "panel",    suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "counters", suspendWhenHidden = FALSE)
+
     invisible(list(alerts = alerts))
   })
 }
