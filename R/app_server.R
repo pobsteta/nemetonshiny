@@ -219,6 +219,9 @@ app_server <- function(input, output, session) {
   # (modules receive a namespaced session that cannot update main_nav directly)
   session$userData$root_session <- session
 
+  # Theia / DATA TERRA configuration (navbar modal)
+  mod_theia_config_server("theia_config", app_state)
+
   # Home module (search, map, project form)
   home_result <- mod_home_server("home", app_state)
 

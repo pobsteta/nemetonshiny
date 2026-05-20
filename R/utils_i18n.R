@@ -1243,6 +1243,10 @@ TRANSLATIONS <- list(
     fr = "T\u00e9l\u00e9chargement CHM LiDAR HD (IGN)\u2026",
     en = "Downloading LiDAR HD CHM (IGN)\u2026"
   ),
+  chm_phase_theia_formspot = list(
+    fr = "T\u00e9l\u00e9chargement CHM Theia FORMSpoT\u2026",
+    en = "Downloading Theia FORMSpoT CHM\u2026"
+  ),
   chm_inference_start = list(
     fr = "Inf\u00e9rence CHM : {n} tuile(s)\u2026",
     en = "CHM inference: {n} tile(s)\u2026"
@@ -1250,6 +1254,81 @@ TRANSLATIONS <- list(
   chm_inference_tile = list(
     fr = "Inf\u00e9rence CHM : tuile {idx}/{n}\u2026",
     en = "CHM inference: tile {idx}/{n}\u2026"
+  ),
+
+  # ============================================================
+  # Theia / DATA TERRA configuration
+  # ============================================================
+  theia_config_open = list(
+    fr = "Configuration Theia / DATA TERRA",
+    en = "Theia / DATA TERRA settings"
+  ),
+  theia_config_title = list(
+    fr = "Sources de données Theia / DATA TERRA",
+    en = "Theia / DATA TERRA data sources"
+  ),
+  theia_config_intro = list(
+    fr = "Theia / DATA TERRA fournit des données satellitaires publiques (FORMSpoT, biophysique, sols, neige…) utilisées pour calculer les indicateurs en NDP 0.",
+    en = "Theia / DATA TERRA provides public satellite data (FORMSpoT, biophysical, soil, snow…) used to compute the indicators at NDP 0."
+  ),
+  theia_python_status_label = list(
+    fr = "Pré-requis Python / reticulate",
+    en = "Python / reticulate prerequisite"
+  ),
+  theia_key_status_label = list(
+    fr = "Clé API Theia",
+    en = "Theia API key"
+  ),
+  theia_status_ready = list(
+    fr = "Theia est prêt : les sources satellitaires sont accessibles.",
+    en = "Theia is ready: satellite sources are accessible."
+  ),
+  theia_error_reticulate = list(
+    fr = "Le paquet R 'reticulate' est absent. Installez-le pour accéder aux sources Theia.",
+    en = "The R package 'reticulate' is missing. Install it to access Theia sources."
+  ),
+  theia_error_python_modules = list(
+    fr = "Modules Python 'teledetection' / 'pystac_client' indisponibles. Ils sont déclarés automatiquement par reticulate::py_require().",
+    en = "Python modules 'teledetection' / 'pystac_client' unavailable. They are declared automatically by reticulate::py_require()."
+  ),
+  theia_error_no_key = list(
+    fr = "Aucune clé API Theia configurée. Renseignez-la ci-dessous.",
+    en = "No Theia API key configured. Enter it below."
+  ),
+  theia_key_label_access = list(fr = "Clé d'accès (access key)", en = "Access key"),
+  theia_key_label_secret = list(fr = "Clé secrète (secret key)", en = "Secret key"),
+  theia_key_help = list(
+    fr = "Créez une clé API sur https://gate.stac.teledetection.fr",
+    en = "Create an API key at https://gate.stac.teledetection.fr"
+  ),
+  theia_key_save = list(fr = "Enregistrer la clé", en = "Save key"),
+  theia_key_saved = list(
+    fr = "Clé API Theia enregistrée.",
+    en = "Theia API key saved."
+  ),
+  theia_key_save_failed = list(
+    fr = "Échec de l'enregistrement de la clé API Theia.",
+    en = "Failed to save the Theia API key."
+  ),
+  theia_key_missing = list(
+    fr = "Renseignez la clé d'accès et la clé secrète.",
+    en = "Enter both the access key and the secret key."
+  ),
+  theia_provenance_title = list(
+    fr = "Provenance et licence des sources Theia",
+    en = "Theia source provenance and licensing"
+  ),
+  theia_provenance_empty = list(
+    fr = "Métadonnées de provenance indisponibles.",
+    en = "Provenance metadata unavailable."
+  ),
+  theia_col_source = list(fr = "Source", en = "Source"),
+  theia_col_provenance = list(fr = "Provenance", en = "Provenance"),
+  theia_col_consumed_by = list(fr = "Indicateurs", en = "Consumed by"),
+  theia_col_license = list(fr = "Licence", en = "License"),
+  theia_chm_unavailable = list(
+    fr = "CHM Theia FORMSpoT indisponible : pré-requis Python ou clé API Theia manquant.",
+    en = "Theia FORMSpoT CHM unavailable: missing Python prerequisite or Theia API key."
   ),
 
   # ============================================================

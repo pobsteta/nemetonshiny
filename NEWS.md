@@ -1,3 +1,60 @@
+# nemetonshiny 0.38.0 (2026-05-20)
+
+### Added — Intégration des sources Theia / DATA TERRA (nemeton v0.40.0)
+
+`nemeton` v0.40.0 expose l'accès aux sources satellitaires publiques
+Theia / DATA TERRA. `nemetonshiny` les consomme désormais pour
+calculer les indicateurs en NDP 0 à partir de données publiques,
+et débloque en priorité la famille Production (P1 Volume, P2
+Productivité, P3 Qualité) et E1 (Bois-énergie), qui échouaient
+faute de CHM fourni aux fonctions `indicateur_*()`.
+
+**Service Theia (`R/service_theia.R`, nouveau)** :
+
+- `theia_python_ready()` / `theia_api_key_configured()` /
+  `theia_status()` : détection du pré-requis Python (`reticulate`
+  + modules `teledetection` / `pystac_client`) et de la clé API
+  Theia (`TLD_ACCESS_KEY` / `TLD_SECRET_KEY` ou
+  `~/.config/teledetection/.apikey`).
+- `theia_save_api_key()` : persistance de la clé.
+- `download_chm_theia()` : charge le CHM FORMSpoT via
+  `nemeton::load_theia_source("formspot", aoi, year)`, convertit
+  les décimètres en mètres (FORMSpoT stocke la hauteur de canopée
+  à 1,5 m **en décimètres**), puis nettoie via
+  `nemeton::sanitize_chm()`.
+- `download_theia_layers()` : charge FAPAR (C2), neige et humidité
+  du sol (R3) — chaque source est tolérante aux pannes.
+- `theia_source_provenance()` : provenance / licence des sources
+  via `nemeton::get_data_source()`.
+
+**Service de calcul (`R/service_compute.R`)** :
+
+- Nouvelle étape CHM Theia FORMSpoT dans
+  `download_layers_for_parcels()` : utilisée quand le LiDAR HD est
+  absent de l'AOI et que Theia est prêt, avant Open-Canopy.
+- `compute_single_indicator()` transmet `species_field = "species"`,
+  `fapar`, `snow` et `soil_moisture` aux fonctions `nemeton` qui les
+  acceptent. `fvc` (A1) et `texture` (F1/F2) restent sur leur chemin
+  legacy tant que les assets Theia correspondants ne sont pas
+  confirmés côté cœur.
+- Enrichissement BD Forêt V2 (`species`/`age`) étendu à P1, P3 et E1
+  (auparavant P2 seul) pour fournir l'essence dominante aux modèles
+  allométriques en mode CHM.
+
+**UI (`R/mod_theia_config.R`, nouveau)** :
+
+- Entrée navbar (engrenage) ouvrant une modale de configuration :
+  saisie de la clé API Theia, statut du pré-requis Python/reticulate,
+  affichage de la provenance / licence des sources Theia.
+
+**Gestion d'erreur** : quand aucun CHM n'est disponible (LiDAR HD
+absent, Theia non configuré), un avertissement i18n explicite est
+remonté à l'écran de calcul pour expliquer pourquoi la famille
+Production ne peut pas être calculée.
+
+`DESCRIPTION` : `Imports: nemeton (>= 0.40.0)`,
+`Remotes: pobsteta/nemeton@v0.40.0`, `reticulate` ajouté en Suggests.
+
 # nemetonshiny 0.37.0 (2026-05-19)
 
 ### Added — Fallback BD Forêt V2 sur le check de validité FORDEAD (G3 espèces)
