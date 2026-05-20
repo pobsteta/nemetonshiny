@@ -730,14 +730,43 @@ mod_monitoring_server <- function(id, app_state) {
     # range changes. Returns NULL when prerequisites are missing
     # (no zone, health mode, no bands picked) so the downstream
     # plotly renderer can show a clean empty-state.
+    #
+    # v0.38.4 — debounced trigger. obs_pixel_data depends on 5 inputs
+    # (mode, zone_id, bands, date_range, obs_refresh). On project load
+    # those inputs are restored one after another, each a separate
+    # flush → the read_obs_pixel SQL query re-ran once per input, and
+    # the burst propagated downstream (placettes_sf_r + the marker
+    # overlay observe).
+    #
+    # The fix debounces a *cheap upstream trigger*, NOT obs_pixel_data
+    # itself. shiny::debounce() evaluates its source reactive eagerly
+    # — it only delays the publication of the value to downstream
+    # consumers. Debouncing obs_pixel_data directly would therefore
+    # still re-run the SQL query on every input change. Instead we
+    # bundle the 5 inputs into `obs_pixel_inputs` (a no-cost list
+    # build), debounce that, and make obs_pixel_data depend solely on
+    # the debounced bundle — so the expensive query runs once per
+    # 300 ms burst. The delay is imperceptible; all consumers
+    # (per-plot plotly, map_marker_click handler, placettes_sf_r in
+    # mod_monitoring_pixel_map) read obs_pixel_data transparently.
+    obs_pixel_inputs <- shiny::reactive({
+      list(
+        refresh    = obs_refresh(),  # bumped after each ingestion
+        mode       = input$mode,
+        zone_id    = input$zone_id,
+        bands      = input$bands,
+        date_range = input$date_range
+      )
+    }) |> shiny::debounce(300)
+
     obs_pixel_data <- shiny::reactive({
-      obs_refresh()  # invalidate after each successful ingestion
-      if (!identical(input$mode, "quick")) return(NULL)
-      zone <- input$zone_id
+      ins <- obs_pixel_inputs()
+      if (!identical(ins$mode, "quick")) return(NULL)
+      zone <- ins$zone_id
       if (!isTRUE(nzchar(zone))) return(NULL)
-      bands <- input$bands
+      bands <- ins$bands
       if (!length(bands)) return(NULL)
-      dr <- input$date_range
+      dr <- ins$date_range
       if (length(dr) != 2L || any(is.na(dr))) return(NULL)
 
       con <- get_monitoring_db_connection(project = app_state$current_project)
