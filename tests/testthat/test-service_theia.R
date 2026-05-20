@@ -39,15 +39,25 @@ test_that("theia_status_key maps a status to an i18n key", {
     "theia_error_reticulate"
   )
   expect_identical(
-    nemetonshiny:::theia_status_key(list(
-      ready = FALSE, python_ok = FALSE, python_reason = "python_modules"
-    )),
-    "theia_error_python_modules"
-  )
-  expect_identical(
     nemetonshiny:::theia_status_key(list(ready = FALSE, python_ok = TRUE)),
     "theia_error_no_key"
   )
+})
+
+
+test_that("theia_python_ready does not probe Python modules", {
+  # Must only depend on the reticulate R package, never initialise the
+  # interpreter (which would lock it before nemeton declares py_require).
+  res <- nemetonshiny:::theia_python_ready()
+  expect_named(res, c("ok", "reason"))
+  expect_type(res$ok, "logical")
+  if (requireNamespace("reticulate", quietly = TRUE)) {
+    expect_true(res$ok)
+    expect_null(res$reason)
+  } else {
+    expect_false(res$ok)
+    expect_identical(res$reason, "reticulate")
+  }
 })
 
 

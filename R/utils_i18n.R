@@ -1283,6 +1283,14 @@ TRANSLATIONS <- list(
     fr = "Theia est prêt : les sources satellitaires sont accessibles.",
     en = "Theia is ready: satellite sources are accessible."
   ),
+  theia_python_ok = list(
+    fr = "reticulate est installé. Les modules Python (teledetection, pystac_client) sont provisionnés automatiquement au premier accès Theia.",
+    en = "reticulate is installed. The Python modules (teledetection, pystac_client) are provisioned automatically on first Theia access."
+  ),
+  theia_key_ok = list(
+    fr = "Clé API Theia configurée.",
+    en = "Theia API key configured."
+  ),
   theia_error_reticulate = list(
     fr = "Le paquet R 'reticulate' est absent. Installez-le pour accéder aux sources Theia.",
     en = "The R package 'reticulate' is missing. Install it to access Theia sources."
@@ -1331,8 +1339,12 @@ TRANSLATIONS <- list(
     en = "Theia FORMSpoT CHM unavailable: missing Python prerequisite or Theia API key."
   ),
   compute_chm_required = list(
-    fr = "Modèle de hauteur de canopée (CHM) indisponible. Les indicateurs Production (P1/P2/P3) et Bois-énergie (E1) nécessitent un CHM (Theia FORMSpoT, LiDAR HD ou Open-Canopy). Configurez la clé API Theia via le menu de configuration.",
-    en = "Canopy height model (CHM) unavailable. The Production indicators (P1/P2/P3) and Wood energy (E1) require a CHM (Theia FORMSpoT, LiDAR HD or Open-Canopy). Configure the Theia API key via the settings menu."
+    fr = "Modèle de hauteur de canopée (CHM) indisponible. Les indicateurs Production (P1/P2/P3) et Bois-énergie (E1) nécessitent un CHM (Theia FORMSpoT, LiDAR HD ou Open-Canopy).",
+    en = "Canopy height model (CHM) unavailable. The Production indicators (P1/P2/P3) and Wood energy (E1) require a CHM (Theia FORMSpoT, LiDAR HD or Open-Canopy)."
+  ),
+  theia_chm_load_failed = list(
+    fr = "La clé API Theia est configurée mais le chargement du CHM FORMSpoT a échoué (réseau, environnement Python, ou aucune donnée FORMSpoT pour cette zone). Voir les avertissements de téléchargement pour le détail.",
+    en = "The Theia API key is configured but the FORMSpoT CHM download failed (network, Python environment, or no FORMSpoT data for this area). See the download warnings for details."
   ),
 
   # ============================================================

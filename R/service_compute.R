@@ -274,11 +274,24 @@ CHM_REQUIRED_INDICATORS <- c(
 
 #' Build the translated "CHM unavailable" compute error message
 #'
+#' Appends a diagnostic suffix so the user knows *why* no CHM was
+#' available: `reticulate` missing, Theia API key missing, or Theia
+#' configured but the FORMSpoT load itself failed (network, Python
+#' provisioning, or no data for the AOI — the precise error is also
+#' surfaced as a download warning).
+#'
 #' @return Character. The message in the current app language.
 #' @noRd
 .compute_chm_required_message <- function() {
   lang <- tryCatch(get_app_options()$language, error = function(e) NULL)
-  get_i18n(lang %||% "fr")$t("compute_chm_required")
+  i18n <- get_i18n(lang %||% "fr")
+  base <- i18n$t("compute_chm_required")
+  status <- tryCatch(theia_status(), error = function(e) NULL)
+  if (is.null(status)) return(base)
+  if (isTRUE(status$ready)) {
+    return(paste(base, i18n$t("theia_chm_load_failed")))
+  }
+  paste(base, i18n$t(theia_status_key(status)))
 }
 
 

@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.38.2] - 2026-05-20
+
+### Fixed
+
+- **Faux négatif du pré-requis Python** : `theia_python_ready()` ne
+  sonde plus les modules Python via `reticulate::py_module_available()`
+  (qui initialisait l'interpréteur avant la déclaration `py_require()`
+  de `nemeton`, bloquant tout le CHM Theia même avec une clé API
+  valide). Seule la présence du paquet R `reticulate` est vérifiée ;
+  la disponibilité réelle est établie lors de l'appel à
+  `load_theia_source()`.
+- **Message d'échec CHM diagnostic** : précise la cause exacte
+  (reticulate absent / clé API absente / chargement FORMSpoT échoué,
+  via la nouvelle clé i18n `theia_chm_load_failed`).
+
 ## [0.38.1] - 2026-05-20
 
 ### Fixed

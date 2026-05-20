@@ -76,14 +76,12 @@ mod_theia_config_server <- function(id, app_state) {
       status <- theia_status()
 
       python_detail <- if (isTRUE(status$python_ok)) {
-        i18n$t("theia_status_ready")
-      } else if (identical(status$python_reason, "reticulate")) {
-        i18n$t("theia_error_reticulate")
+        i18n$t("theia_python_ok")
       } else {
-        i18n$t("theia_error_python_modules")
+        i18n$t("theia_error_reticulate")
       }
       key_detail <- if (isTRUE(status$key_ok)) {
-        i18n$t("theia_status_ready")
+        i18n$t("theia_key_ok")
       } else {
         i18n$t("theia_error_no_key")
       }

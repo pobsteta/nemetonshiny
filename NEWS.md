@@ -1,3 +1,35 @@
+# nemetonshiny 0.38.2 (2026-05-20)
+
+### Fixed — Faux négatif du pré-requis Python bloquant le CHM Theia
+
+Avec une clé API Theia correctement configurée (`.Renviron`),
+P1/P2/P3/E1 échouaient malgré tout avec « Modèle de hauteur de
+canopée (CHM) indisponible ».
+
+Cause : `theia_python_ready()` sondait les modules Python
+(`teledetection`, `pystac_client`) via
+`reticulate::py_module_available()`. Cet appel **initialise
+l'interpréteur Python avant que `nemeton` n'ait déclaré ses
+dépendances** par `reticulate::py_require()` — d'où un faux négatif
+systématique (modules absents de l'environnement à ce stade) et un
+interpréteur verrouillé sans les paquets nécessaires. Le test bloquait
+alors toute la chaîne Theia.
+
+Corrections :
+
+- `theia_python_ready()` ne vérifie plus que la présence du paquet R
+  `reticulate`. Les modules Python sont provisionnés paresseusement
+  par `nemeton` via `py_require()` ; leur disponibilité réelle est
+  établie quand `download_chm_theia()` appelle effectivement
+  `load_theia_source()`, et toute erreur y est capturée proprement.
+- Le message d'échec des indicateurs CHM est désormais **diagnostic** :
+  il précise si `reticulate` manque, si la clé API manque, ou si
+  Theia est configuré mais que le chargement FORMSpoT a échoué
+  (nouvelle clé i18n `theia_chm_load_failed`) — au lieu de toujours
+  renvoyer « configurez la clé API ».
+- Modale de configuration Theia : statut Python plus honnête
+  (`reticulate` installé + provisionnement automatique des modules).
+
 # nemetonshiny 0.38.1 (2026-05-20)
 
 ### Fixed — Câblage du CHM Theia vers les indicateurs Production / Énergie
