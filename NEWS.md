@@ -1,3 +1,38 @@
+# nemetonshiny 0.38.8 (2026-05-20)
+
+### Changed — `Remotes:` suit désormais la dernière release `nemeton` (`@*release`)
+
+Le `DESCRIPTION` épinglait `Remotes: pobsteta/nemeton@v0.41.0` — un
+tag figé. Conséquence : `install_github("pobsteta/nemetonshiny")`
+installait `nemeton 0.41.0` alors que le cœur était déjà publié en
+`v0.41.2`, et les correctifs `v0.41.1` (réinstallation Python
+FORDEAD à chaque run) / `v0.41.2` (déduplication des reprocessing
+Sentinel-2) n'étaient pas tirés sans bump manuel du pin.
+
+`Remotes: pobsteta/nemeton@*release` — la référence spéciale
+`@*release` de `remotes`/`pak` résout à chaque install le **tag de
+release le plus élevé** de `pobsteta/nemeton`. L'app consomme donc
+toujours la plus haute version cœur publiée, automatiquement, sans
+bump manuel du `Remotes:` à chaque release `nemeton`.
+
+- **Avantages** : dernière fonction/correctif cœur disponible dès
+  la release `nemeton` suivante ; on ne consomme que des **vraies
+  releases taguées**, jamais du `main` non publié.
+- **Contrepartie** : reproductibilité d'install pure perdue dans le
+  temps — pour figer un état composite app+cœur, `renv::snapshot()`
+  côté projet utilisateur.
+- Le plancher `Imports: nemeton (>= 0.41.0)` est **inchangé** : il
+  reste le minimum strict que le code app exige (garde-fou contre
+  un cœur déjà installé trop ancien), il ne suit pas la dernière
+  version.
+
+Historique du `Remotes:` : `@main` avant v0.38.0, pin tag figé
+`@vX.Y.Z` de v0.38.0 à v0.38.7, `@*release` depuis cette version.
+`CLAUDE.md` mis à jour en conséquence (sections *Stack technique*
+et *Suivi de la dernière release `nemeton`*).
+
+---
+
 # nemetonshiny 0.38.7 (2026-05-20)
 
 ### Fixed — Rafale de warnings leaflet « Some values were outside the color scale »
