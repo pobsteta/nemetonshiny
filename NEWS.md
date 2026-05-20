@@ -1,3 +1,53 @@
+# nemetonshiny 0.38.4 (2026-05-20)
+
+### Changed — Rafales de ré-exécution de `obs_pixel_data` coupées (debounce)
+
+Au chargement d'un projet ou changement de zone, `obs_pixel_data`
+(dans `R/mod_monitoring.R`) se ré-exécutait 4-5 fois de suite. Cause :
+le `reactive()` dépend de 5 entrées (`input$mode`, `input$zone_id`,
+`input$bands`, `input$date_range`, `obs_refresh()`) restaurées les
+unes après les autres → un cycle de flush par entrée → une requête
+SQL `read_obs_pixel` redondante à chaque cycle, et la rafale se
+propageait à `placettes_sf_r()` puis à l'`observe()` des marqueurs.
+Pas une boucle infinie, mais du gaspillage : requêtes DB inutiles
++ bruit console.
+
+**Correctif** — debounce d'un *déclencheur* peu coûteux, pas du
+reactive lui-même. Subtilité : `shiny::debounce()` évalue sa source
+de manière **eager** — il ne fait que retarder la *publication* de
+la valeur aux consommateurs aval. Debouncer `obs_pixel_data`
+directement n'aurait donc PAS épargné la requête SQL (vérifié par
+test : 3 changements rapides = 3 requêtes). On introduit à la place
+`obs_pixel_inputs`, un reactive qui assemble les 5 entrées dans une
+liste (coût nul), debouncé à 300 ms ; `obs_pixel_data` ne dépend
+plus que de ce paquet debouncé → la requête `read_obs_pixel` tourne
+une seule fois par rafale. Délai imperceptible ; tous les
+consommateurs (plotly par placette, handler `input$map_marker_click`,
+`placettes_sf_r()` dans `mod_monitoring_pixel_map`) lisent
+`obs_pixel_data()` sans changement.
+
+### Changed — Logs de debug de la carte pixel derrière un drapeau
+
+Les `cli::cli_alert_info()` d'instrumentation « UGF source » /
+« UGF overlay » / « Placettes overlay » de
+`R/mod_monitoring_pixel_map.R` (9 lignes) s'affichaient en rafale
+à chaque chargement de projet. Ils sont désormais gatés derrière
+la variable d'environnement `NEMETON_PIXEL_MAP_DEBUG` (helper
+`.pixel_map_debug_enabled()`, même modèle que `NEMETON_S2_CACHE_DEBUG`
+côté cœur). Par défaut (variable non définie) → console silencieuse.
+Mettre `NEMETON_PIXEL_MAP_DEBUG=TRUE` pour réactiver le tracing
+depuis un terminal.
+
+### Tests
+
+- `test-mod_monitoring.R` : nouveau test `testServer()` du debounce
+  de `obs_pixel_data` — 3 changements rapides de `input$zone_id`
+  (toutes préconditions satisfaites) suivis de `session$elapse(400)`
+  → une seule requête `read_obs_pixel` supplémentaire (mockée), au
+  lieu de 3.
+
+---
+
 # nemetonshiny 0.38.3 (2026-05-20)
 
 ### Fixed — Cache LiDAR HD non extent-aware (mauvaise zone réutilisée)
