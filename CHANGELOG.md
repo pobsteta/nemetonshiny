@@ -12,6 +12,25 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.38.6\] - 2026-05-20
+
+### Fixed
+
+- **Carte FORDEAD ne se rafraîchit pas après un run** : le masque 0-4
+  persisté par `nemeton@v0.41.0` était bien écrit sur disque mais le
+  sous-onglet restait sur son empty-state. Le reactive `mask_r()` de
+  `mod_monitoring_fordead_map` ne dépendait que de `input$zone_id` /
+  `current_project` — rien ne l’invalidait à la fin d’un run. Nouveau
+  paramètre `refresh_r` câblé sur le compteur `alerts_refresh` du parent
+  (bumpé par le handler de résultat FORDEAD) ; `mask_r()` le lit → un
+  run terminé relit le cache et affiche le masque (`R/mod_monitoring.R`,
+  `R/mod_monitoring_fordead_map.R`).
+
+### Tests
+
+- Nouveau `test-mod_monitoring_fordead_map.R` (3 tests : UI,
+  empty-state, refresh).
+
 ## \[0.38.5\] - 2026-05-20
 
 ### Changed

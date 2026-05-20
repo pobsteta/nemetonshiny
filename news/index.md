@@ -1,5 +1,39 @@
 # Changelog
 
+## nemetonshiny 0.38.6 (2026-05-20)
+
+#### Fixed — Carte FORDEAD ne se rafraîchit pas après un run
+
+Après un diagnostic FORDEAD réussi, le masque catégoriel 0-4 est bien
+persisté sur disque (`nemeton@v0.41.0` :
+`Dieback mask persisted: …/cache/layers/fordead/zone_<id>/dieback_mask_<ts>.tif`)
+mais le sous-onglet « Carte FORDEAD » restait sur son empty-state «
+Aucun masque FORDEAD disponible ».
+
+Cause : le reactive `mask_r()` de `mod_monitoring_fordead_map` ne
+dépendait que de `input$zone_id` et `app_state$current_project` — rien
+ne l’invalidait à la fin d’un run. Il était évalué une seule fois (avant
+le run, quand `cache/layers/fordead/` n’existait pas encore → NULL) puis
+restait figé. Même classe de bug que le « Zone saine » corrigé en
+v0.36.5.
+
+**Correctif** : nouveau paramètre `refresh_r` du module
+`mod_monitoring_fordead_map_server`, câblé sur le compteur
+`alerts_refresh` du parent (bumpé par le handler de résultat FORDEAD sur
+succès). `mask_r()` lit `refresh_r()` → un run terminé invalide le
+reactive → le module relit `<project>/cache/layers/fordead/zone_<id>/`
+et affiche le masque sans recharger le projet ni re-sélectionner la
+zone.
+
+#### Tests
+
+- Nouveau fichier `test-mod_monitoring_fordead_map.R` (3 tests) : UI =
+  uiOutput, empty-state quand le cache fordead est absent, et `mask_r`
+  qui relit le cache après un bump de `refresh_r` (mock de
+  [`nemeton::read_fordead_dieback_mask`](https://pobsteta.github.io/nemeton/reference/read_fordead_dieback_mask.html)).
+
+------------------------------------------------------------------------
+
 ## nemetonshiny 0.38.5 (2026-05-20)
 
 #### Changed — Bump `nemeton` v0.40.0 → v0.41.0 : Carte FORDEAD activée

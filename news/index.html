@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,22 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.38.6/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.38.6" id="nemetonshiny-0386-2026-05-20">nemetonshiny 0.38.6 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0386-2026-05-20"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-fordead-ne-se-rafraîchit-pas-après-un-run-0-38-6">Fixed — Carte FORDEAD ne se rafraîchit pas après un run<a class="anchor" aria-label="anchor" href="#fixed--carte-fordead-ne-se-rafra%C3%AEchit-pas-apr%C3%A8s-un-run-0-38-6"></a></h4>
+<p>Après un diagnostic FORDEAD réussi, le masque catégoriel 0-4 est bien persisté sur disque (<code>nemeton@v0.41.0</code> : <code>Dieback mask persisted: …/cache/layers/fordead/zone_&lt;id&gt;/dieback_mask_&lt;ts&gt;.tif</code>) mais le sous-onglet « Carte FORDEAD » restait sur son empty-state « Aucun masque FORDEAD disponible ».</p>
+<p>Cause : le reactive <code>mask_r()</code> de <code>mod_monitoring_fordead_map</code> ne dépendait que de <code>input$zone_id</code> et <code>app_state$current_project</code> — rien ne l’invalidait à la fin d’un run. Il était évalué une seule fois (avant le run, quand <code>cache/layers/fordead/</code> n’existait pas encore → NULL) puis restait figé. Même classe de bug que le « Zone saine » corrigé en v0.36.5.</p>
+<p><strong>Correctif</strong> : nouveau paramètre <code>refresh_r</code> du module <code>mod_monitoring_fordead_map_server</code>, câblé sur le compteur <code>alerts_refresh</code> du parent (bumpé par le handler de résultat FORDEAD sur succès). <code>mask_r()</code> lit <code>refresh_r()</code> → un run terminé invalide le reactive → le module relit <code>&lt;project&gt;/cache/layers/fordead/zone_&lt;id&gt;/</code> et affiche le masque sans recharger le projet ni re-sélectionner la zone.</p>
+</div>
+<div class="section level4">
+<h4 id="tests-0-38-6">Tests<a class="anchor" aria-label="anchor" href="#tests-0-38-6"></a></h4>
+<ul><li>Nouveau fichier <code>test-mod_monitoring_fordead_map.R</code> (3 tests) : UI = uiOutput, empty-state quand le cache fordead est absent, et <code>mask_r</code> qui relit le cache après un bump de <code>refresh_r</code> (mock de <code><a href="https://pobsteta.github.io/nemeton/reference/read_fordead_dieback_mask.html" class="external-link">nemeton::read_fordead_dieback_mask</a></code>).</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.38.5" id="nemetonshiny-0385-2026-05-20">nemetonshiny 0.38.5 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0385-2026-05-20"></a></h2>
 <div class="section level4">
