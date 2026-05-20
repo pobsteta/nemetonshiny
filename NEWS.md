@@ -1,3 +1,47 @@
+# nemetonshiny 0.38.5 (2026-05-20)
+
+### Changed — Bump `nemeton` v0.40.0 → v0.41.0 : Carte FORDEAD activée
+
+`nemeton@v0.41.0` ship le **writer du masque de dépérissement**
+FORDEAD. Jusqu'ici `run_fordead_dieback()` tournait dans un
+`tempfile()` effacé en fin de session : le raster catégoriel 0-4
+était perdu et `read_fordead_dieback_mask()` (livré dès v0.25.0
+avec sa convention de chemin) renvoyait toujours `NULL`. Côté app,
+le sous-onglet « Carte FORDEAD » (module `mod_monitoring_fordead_map`,
+câblé depuis v0.36.0) affichait donc en permanence son empty-state
+« Aucun masque FORDEAD disponible ».
+
+v0.41.0 ajoute un hook de persistance (toujours actif) qui écrit le
+masque dans
+`<mask_cache_dir>/zone_<zone_id>/dieback_mask_<YYYYMMDDTHHMMSS>.tif`
+— exactement le chemin que `read_fordead_dieback_mask()` interroge.
+`mask_cache_dir` est dérivé par défaut comme
+`<project>/cache/layers/fordead`, soit précisément le répertoire
+que lit `mod_monitoring_fordead_map`.
+
+**Aucun changement de code applicatif** : le câblage des deux côtés
+était déjà en place et correct. Ce bump de dépendance suffit à
+activer la Carte FORDEAD — après un run FORDEAD réussi, le masque
+0-4 (sain / faible / moyenne / forte / sol-nu) s'affiche désormais
+dans le sous-onglet.
+
+Vérifications faites avant bump :
+
+- `read_fordead_dieback_mask(con, zone_id, run_id = NULL,
+  cache_dir = NULL)` — signature **inchangée** depuis v0.25.0.
+- `run_fordead_dieback()` gagne `mask_cache_dir` et `keep_output`,
+  tous deux avec valeur par défaut → l'appel du worker
+  `run_fordead_async()` (qui ne les passe pas) reste valide. Le
+  `mask_cache_dir` par défaut (`NULL`) dérive le bon chemin à
+  partir du `cache_dir` Sentinel-2 transmis par le worker.
+
+`DESCRIPTION` : `Imports: nemeton (>= 0.41.0)`,
+`Remotes: pobsteta/nemeton@v0.41.0` (le pin tag est avancé — il
+n'est plus sur `@main`, un bump explicite est nécessaire à chaque
+montée de version cœur).
+
+---
+
 # nemetonshiny 0.38.4 (2026-05-20)
 
 ### Changed — Rafales de ré-exécution de `obs_pixel_data` coupées (debounce)
