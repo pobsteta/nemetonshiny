@@ -2224,6 +2224,46 @@ create_synthetic_ndvi <- function(bbox, cache_file) {
 # IGN LiDAR HD Download
 # ==============================================================================
 
+# Does a cached LiDAR mosaic cover the requested bbox? (v0.38.3)
+#
+# The LiDAR mosaic cache (`lidar_<product>_mosaic.tif`) used to be
+# reused on a bare `file.exists()`, with no check that its extent
+# covers the area being computed. Recomputing on a different zone
+# then returned the previous zone's raster. This helper compares
+# extents in a common CRS.
+#
+# `bbox` is the requested area as a numeric WGS84 vector
+# (xmin, ymin, xmax, ymax). The cached mosaic carries its own CRS
+# (LiDAR HD is EPSG:2154, but tests build WGS84 fixtures) — we
+# transform the requested bbox into the mosaic CRS before comparing.
+#
+# Returns TRUE only when the mosaic strictly contains the bbox.
+# Any failure (unreadable raster, missing CRS, transform error)
+# returns FALSE so the caller regenerates rather than trusts a
+# possibly-stale tile.
+.lidar_mosaic_covers_bbox <- function(mosaic_path, bbox) {
+  out <- tryCatch({
+    r <- terra::rast(mosaic_path)
+    req_poly <- sf::st_as_sfc(sf::st_bbox(
+      c(xmin = bbox[1], ymin = bbox[2], xmax = bbox[3], ymax = bbox[4]),
+      crs = sf::st_crs(4326)
+    ))
+    r_crs <- terra::crs(r)
+    if (!is.na(r_crs) && nzchar(r_crs)) {
+      req_poly <- sf::st_transform(req_poly, sf::st_crs(r_crs))
+    }
+    req <- sf::st_bbox(req_poly)
+    terra::xmin(r) <= req[["xmin"]] && terra::xmax(r) >= req[["xmax"]] &&
+      terra::ymin(r) <= req[["ymin"]] && terra::ymax(r) >= req[["ymax"]]
+  }, error = function(e) {
+    cli::cli_warn(
+      "Cached LiDAR mosaic extent check failed: {conditionMessage(e)}"
+    )
+    FALSE
+  })
+  isTRUE(out)
+}
+
 #' Download IGN LiDAR HD tiles (MNH canopy height model)
 #'
 #' @description
@@ -2280,27 +2320,39 @@ download_ign_lidar_hd <- function(bbox,
     dir.create(cache_subdir, recursive = TRUE)
   }
 
-  # Check for cached mosaic (raster products only)
-  mosaic_cache <- file.path(cache_dir, paste0("lidar_", product, "_mosaic.tif"))
-  if (product != "nuage" && file.exists(mosaic_cache)) {
-    cli::cli_alert_success("Using cached LiDAR {toupper(product)} mosaic")
-    return(terra::rast(mosaic_cache))
-  }
-
-  # For raw point clouds, check if we already have cached tiles
-  if (product == "nuage") {
-    cached_tiles <- list.files(cache_subdir, pattern = "\\.copc\\.laz$",
-      full.names = TRUE)
-    if (length(cached_tiles) > 0) {
-      cli::cli_alert_success("Using {length(cached_tiles)} cached LiDAR COPC tiles")
-      return(cached_tiles)
-    }
-  }
-
-  # Ensure bbox is numeric
+  # Ensure bbox is numeric — needed by the extent-aware mosaic check
+  # below, so this coercion is hoisted above the cache logic.
   if (inherits(bbox, "bbox")) {
     bbox <- as.numeric(bbox)
   }
+
+  # Check for cached mosaic (raster products only). v0.38.3 — the
+  # reuse is now extent-aware: a mosaic built for a previous zone
+  # must not be returned for a different one. We only short-circuit
+  # when the cached mosaic's extent actually covers the requested
+  # bbox; otherwise it is regenerated below from freshly-resolved
+  # tiles.
+  mosaic_cache <- file.path(cache_dir, paste0("lidar_", product, "_mosaic.tif"))
+  if (product != "nuage" && file.exists(mosaic_cache)) {
+    if (.lidar_mosaic_covers_bbox(mosaic_cache, bbox)) {
+      cli::cli_alert_success("Using cached LiDAR {toupper(product)} mosaic")
+      return(terra::rast(mosaic_cache))
+    }
+    cli::cli_alert_info(
+      "Cached LiDAR {toupper(product)} mosaic does not cover the requested area — regenerating"
+    )
+  }
+
+  # v0.38.3 — the previous global COPC short-circuit (return every
+  # cached .copc.laz the moment one exists) was NOT extent-aware: it
+  # returned zone A's tiles for a zone B request, and froze an
+  # incomplete set forever after an interrupted download. Removed.
+  # We always query the WFS for the tiles covering the current bbox;
+  # the per-tile cache in the download loop below (file.exists +
+  # file.size > 100 guard) still skips tiles already on disk — so a
+  # same-zone recompute does zero network I/O, a different zone only
+  # fetches its missing tiles, and an interrupted set self-heals on
+  # the next run.
 
   cli::cli_alert_info("Querying IGN WFS for LiDAR HD {toupper(product)} tiles...")
 
