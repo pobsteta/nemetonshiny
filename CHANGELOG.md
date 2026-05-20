@@ -12,6 +12,34 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.38.0\] - 2026-05-20
+
+### Added
+
+- **Intégration Theia / DATA TERRA (nemeton v0.40.0)** : nouveau service
+  `R/service_theia.R` (détection du pré-requis Python / reticulate et de
+  la clé API Theia, persistance de la clé, chargement du CHM FORMSpoT
+  via
+  [`nemeton::load_theia_source()`](https://pobsteta.github.io/nemeton/reference/load_theia_source.html)
+  avec conversion décimètres → mètres, chargement des rasters
+  secondaires FAPAR / neige / humidité du sol, provenance des sources).
+  Débloque la famille Production (P1/P2/P3) et E1 en NDP 0 à partir de
+  données publiques.
+- **Module de configuration Theia** (`R/mod_theia_config.R`) : entrée
+  navbar (engrenage) ouvrant une modale de saisie de la clé API, statut
+  du pré-requis Python et provenance / licence des sources Theia.
+
+### Changed
+
+- `R/service_compute.R` : nouvelle étape CHM Theia FORMSpoT dans
+  `download_layers_for_parcels()` (utilisée quand le LiDAR HD est
+  absent, avant Open-Canopy) ; `compute_single_indicator()` transmet
+  `species_field`, `fapar`, `snow` et `soil_moisture` aux fonctions
+  `nemeton` qui les acceptent ; enrichissement BD Forêt V2
+  (`species`/`age`) étendu à P1, P3 et E1.
+- `DESCRIPTION` : `Imports: nemeton (>= 0.40.0)`,
+  `Remotes: pobsteta/nemeton@v0.40.0`, `reticulate` en Suggests.
+
 ## \[0.37.0\] - 2026-05-19
 
 ### Added

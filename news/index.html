@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.37.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,38 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.37.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.38.0" id="nemetonshiny-0380-2026-05-20">nemetonshiny 0.38.0 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0380-2026-05-20"></a></h2>
+<div class="section level4">
+<h4 id="added--intégration-des-sources-theia--data-terra-nemeton-v0400-0-38-0">Added — Intégration des sources Theia / DATA TERRA (nemeton v0.40.0)<a class="anchor" aria-label="anchor" href="#added--int%C3%A9gration-des-sources-theia--data-terra-nemeton-v0400-0-38-0"></a></h4>
+<p><code>nemeton</code> v0.40.0 expose l’accès aux sources satellitaires publiques Theia / DATA TERRA. <code>nemetonshiny</code> les consomme désormais pour calculer les indicateurs en NDP 0 à partir de données publiques, et débloque en priorité la famille Production (P1 Volume, P2 Productivité, P3 Qualité) et E1 (Bois-énergie), qui échouaient faute de CHM fourni aux fonctions <code>indicateur_*()</code>.</p>
+<p><strong>Service Theia (<code>R/service_theia.R</code>, nouveau)</strong> :</p>
+<ul><li>
+<code>theia_python_ready()</code> / <code>theia_api_key_configured()</code> / <code>theia_status()</code> : détection du pré-requis Python (<code>reticulate</code>
+<ul><li>modules <code>teledetection</code> / <code>pystac_client</code>) et de la clé API Theia (<code>TLD_ACCESS_KEY</code> / <code>TLD_SECRET_KEY</code> ou <code>~/.config/teledetection/.apikey</code>).</li>
+</ul></li>
+<li>
+<code>theia_save_api_key()</code> : persistance de la clé.</li>
+<li>
+<code>download_chm_theia()</code> : charge le CHM FORMSpoT via <code>nemeton::load_theia_source("formspot", aoi, year)</code>, convertit les décimètres en mètres (FORMSpoT stocke la hauteur de canopée à 1,5 m <strong>en décimètres</strong>), puis nettoie via <code><a href="https://pobsteta.github.io/nemeton/reference/sanitize_chm.html" class="external-link">nemeton::sanitize_chm()</a></code>.</li>
+<li>
+<code>download_theia_layers()</code> : charge FAPAR (C2), neige et humidité du sol (R3) — chaque source est tolérante aux pannes.</li>
+<li>
+<code>theia_source_provenance()</code> : provenance / licence des sources via <code><a href="https://pobsteta.github.io/nemeton/reference/get_data_source.html" class="external-link">nemeton::get_data_source()</a></code>.</li>
+</ul><p><strong>Service de calcul (<code>R/service_compute.R</code>)</strong> :</p>
+<ul><li>Nouvelle étape CHM Theia FORMSpoT dans <code>download_layers_for_parcels()</code> : utilisée quand le LiDAR HD est absent de l’AOI et que Theia est prêt, avant Open-Canopy.</li>
+<li>
+<code>compute_single_indicator()</code> transmet <code>species_field = "species"</code>, <code>fapar</code>, <code>snow</code> et <code>soil_moisture</code> aux fonctions <code>nemeton</code> qui les acceptent. <code>fvc</code> (A1) et <code>texture</code> (F1/F2) restent sur leur chemin legacy tant que les assets Theia correspondants ne sont pas confirmés côté cœur.</li>
+<li>Enrichissement BD Forêt V2 (<code>species</code>/<code>age</code>) étendu à P1, P3 et E1 (auparavant P2 seul) pour fournir l’essence dominante aux modèles allométriques en mode CHM.</li>
+</ul><p><strong>UI (<code>R/mod_theia_config.R</code>, nouveau)</strong> :</p>
+<ul><li>Entrée navbar (engrenage) ouvrant une modale de configuration : saisie de la clé API Theia, statut du pré-requis Python/reticulate, affichage de la provenance / licence des sources Theia.</li>
+</ul><p><strong>Gestion d’erreur</strong> : quand aucun CHM n’est disponible (LiDAR HD absent, Theia non configuré), un avertissement i18n explicite est remonté à l’écran de calcul pour expliquer pourquoi la famille Production ne peut pas être calculée.</p>
+<p><code>DESCRIPTION</code> : <code>Imports: nemeton (&gt;= 0.40.0)</code>, <code>Remotes: pobsteta/nemeton@v0.40.0</code>, <code>reticulate</code> ajouté en Suggests.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.37.0" id="nemetonshiny-0370-2026-05-19">nemetonshiny 0.37.0 (2026-05-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0370-2026-05-19"></a></h2>
 <div class="section level4">
