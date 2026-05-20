@@ -3715,20 +3715,189 @@ test_that("download_ign_lidar_hd returns cached mosaic if available", {
   })
 })
 
-test_that("download_ign_lidar_hd returns cached COPC tiles if available", {
+test_that("download_ign_lidar_hd (COPC) reuses cached tiles without re-downloading", {
+  skip_if_not_installed("sf")
+
+  # v0.38.3 — the global COPC short-circuit was removed. The function
+  # always queries the WFS, then the per-tile cache (file.exists +
+  # file.size > 100) skips tiles already on disk. Same-zone recompute
+  # → zero downloads.
   withr::with_tempdir({
     cache_dir <- getwd()
     bbox <- c(2.0, 48.0, 2.01, 48.01)
 
-    # Create cached COPC tiles directory
+    # Pre-seed both tiles into the per-tile cache (size > 100 bytes).
     copc_dir <- file.path(cache_dir, "lidar_nuage")
     dir.create(copc_dir, recursive = TRUE)
-    writeLines("fake copc data", file.path(copc_dir, "tile1.copc.laz"))
-    writeLines("fake copc data", file.path(copc_dir, "tile2.copc.laz"))
+    big <- paste(rep("x", 200), collapse = "")
+    writeLines(big, file.path(copc_dir, "tile1.copc.laz"))
+    writeLines(big, file.path(copc_dir, "tile2.copc.laz"))
 
-    result <- nemetonshiny:::download_ign_lidar_hd(bbox, cache_dir, product = "nuage")
-    expect_type(result, "character")
-    expect_equal(length(result), 2)
+    dl_calls <- 0L
+    with_mocked_bindings(
+      query_lidar_wfs = function(...) {
+        sf::st_sf(
+          url_telechargement = c("http://example.com/tile1.copc.laz",
+                                 "http://example.com/tile2.copc.laz"),
+          geometry = sf::st_sfc(
+            sf::st_point(c(2.0, 48.0)),
+            sf::st_point(c(2.005, 48.005)),
+            crs = 4326
+          )
+        )
+      },
+      download_lidar_tile = function(url, dest_file) {
+        dl_calls <<- dl_calls + 1L
+        dest_file
+      },
+      {
+        result <- nemetonshiny:::download_ign_lidar_hd(
+          bbox, cache_dir, product = "nuage"
+        )
+        expect_type(result, "character")
+        expect_equal(length(result), 2L)
+        # Both tiles were cached → no network download.
+        expect_equal(dl_calls, 0L)
+      }
+    )
+  })
+})
+
+test_that("download_ign_lidar_hd (COPC) for a different zone fetches only missing tiles", {
+  skip_if_not_installed("sf")
+
+  # Zone A computed first leaves tileA on disk. Zone B's WFS response
+  # lists tileA (shared, cached) + tileB (new). Only tileB downloads,
+  # and the returned set covers zone B (both tiles).
+  withr::with_tempdir({
+    cache_dir <- getwd()
+    copc_dir <- file.path(cache_dir, "lidar_nuage")
+    dir.create(copc_dir, recursive = TRUE)
+    big <- paste(rep("x", 200), collapse = "")
+    # Only tileA pre-exists (zone A's previous run).
+    writeLines(big, file.path(copc_dir, "tileA.copc.laz"))
+
+    bbox_b <- c(5.0, 45.0, 5.01, 45.01)
+    downloaded <- character(0)
+    with_mocked_bindings(
+      query_lidar_wfs = function(...) {
+        sf::st_sf(
+          url_telechargement = c("http://example.com/tileA.copc.laz",
+                                 "http://example.com/tileB.copc.laz"),
+          geometry = sf::st_sfc(
+            sf::st_point(c(5.0, 45.0)),
+            sf::st_point(c(5.005, 45.005)),
+            crs = 4326
+          )
+        )
+      },
+      download_lidar_tile = function(url, dest_file) {
+        downloaded <<- c(downloaded, basename(dest_file))
+        writeLines(paste(rep("y", 200), collapse = ""), dest_file)
+        dest_file
+      },
+      {
+        result <- nemetonshiny:::download_ign_lidar_hd(
+          bbox_b, cache_dir, product = "nuage"
+        )
+        expect_type(result, "character")
+        # Returned set covers zone B: both tiles.
+        expect_equal(length(result), 2L)
+        expect_true(all(c("tileA.copc.laz", "tileB.copc.laz") %in%
+                          basename(result)))
+        # Only the missing tile (tileB) was downloaded.
+        expect_equal(downloaded, "tileB.copc.laz")
+      }
+    )
+  })
+})
+
+test_that("download_ign_lidar_hd (mosaic) regenerates when cache does not cover the new zone", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+
+  # A mosaic cached for zone A must not be returned for zone B.
+  withr::with_tempdir({
+    cache_dir <- getwd()
+
+    # Cached mosaic covers zone A only (2.0-2.01 / 48.0-48.01).
+    mosaic_file <- file.path(cache_dir, "lidar_mnh_mosaic.tif")
+    zone_a <- terra::rast(
+      nrows = 10, ncols = 10,
+      xmin = 2.0, xmax = 2.01, ymin = 48.0, ymax = 48.01,
+      crs = "EPSG:4326"
+    )
+    terra::values(zone_a) <- 1
+    terra::writeRaster(zone_a, mosaic_file)
+
+    # Request zone B — far away, not covered by the cached mosaic.
+    bbox_b <- c(5.0, 45.0, 5.01, 45.01)
+    regenerated <- FALSE
+    with_mocked_bindings(
+      query_lidar_wfs = function(...) {
+        sf::st_sf(
+          url_telechargement = c("http://example.com/tileB.tif"),
+          geometry = sf::st_sfc(sf::st_point(c(5.0, 45.0)), crs = 4326)
+        )
+      },
+      download_lidar_tile = function(url, dest_file) {
+        regenerated <<- TRUE
+        zone_b <- terra::rast(
+          nrows = 10, ncols = 10,
+          xmin = 5.0, xmax = 5.01, ymin = 45.0, ymax = 45.01,
+          crs = "EPSG:4326"
+        )
+        terra::values(zone_b) <- 2
+        terra::writeRaster(zone_b, dest_file, overwrite = TRUE)
+        dest_file
+      },
+      {
+        result <- nemetonshiny:::download_ign_lidar_hd(
+          bbox_b, cache_dir, product = "mnh"
+        )
+        expect_s4_class(result, "SpatRaster")
+        # The stale zone-A mosaic was NOT returned; WFS + download ran.
+        expect_true(regenerated)
+        expect_true(terra::xmin(result) >= 4.9)
+      }
+    )
+  })
+})
+
+test_that(".lidar_mosaic_covers_bbox detects coverage correctly", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+
+  withr::with_tempdir({
+    mosaic_file <- file.path(getwd(), "m.tif")
+    r <- terra::rast(
+      nrows = 10, ncols = 10,
+      xmin = 2.0, xmax = 2.10, ymin = 48.0, ymax = 48.10,
+      crs = "EPSG:4326"
+    )
+    terra::values(r) <- 1
+    terra::writeRaster(r, mosaic_file)
+
+    # bbox fully inside → covered
+    expect_true(nemetonshiny:::.lidar_mosaic_covers_bbox(
+      mosaic_file, c(2.02, 48.02, 2.05, 48.05)
+    ))
+    # bbox equal to extent → covered (boundary inclusive)
+    expect_true(nemetonshiny:::.lidar_mosaic_covers_bbox(
+      mosaic_file, c(2.0, 48.0, 2.10, 48.10)
+    ))
+    # bbox partly outside → not covered
+    expect_false(nemetonshiny:::.lidar_mosaic_covers_bbox(
+      mosaic_file, c(2.05, 48.05, 2.20, 48.20)
+    ))
+    # bbox entirely elsewhere → not covered
+    expect_false(nemetonshiny:::.lidar_mosaic_covers_bbox(
+      mosaic_file, c(5.0, 45.0, 5.01, 45.01)
+    ))
+    # unreadable path → FALSE (defensive)
+    expect_false(nemetonshiny:::.lidar_mosaic_covers_bbox(
+      file.path(getwd(), "does-not-exist.tif"), c(2.0, 48.0, 2.01, 48.01)
+    ))
   })
 })
 
