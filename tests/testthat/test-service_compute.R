@@ -4951,3 +4951,42 @@ test_that("apply_field_data_if_present falls back to compute_unit on error and w
     expect_identical(out, cu)
   })
 })
+
+
+# ==============================================================================
+# CHM-required Production indicators (Theia FORMSpoT wiring)
+# ==============================================================================
+
+test_that("CHM_REQUIRED_INDICATORS lists P1/P2/P3/E1", {
+  req <- nemetonshiny:::CHM_REQUIRED_INDICATORS
+  expect_setequal(
+    req,
+    c("indicateur_p1_volume", "indicateur_p2_station",
+      "indicateur_p3_qualite_bois", "indicateur_e1_bois_energie")
+  )
+  # C1 and B2 accept a chm argument but keep a legacy path: excluded.
+  expect_false("indicateur_c1_biomasse" %in% req)
+  expect_false("indicateur_b2_structure" %in% req)
+})
+
+
+test_that(".compute_chm_required_message returns a translated message", {
+  fr <- withr::with_options(
+    list(),
+    {
+      with_mocked_bindings(
+        get_app_options = function() list(language = "fr"),
+        nemetonshiny:::.compute_chm_required_message()
+      )
+    }
+  )
+  expect_true(nzchar(fr))
+  expect_match(fr, "CHM")
+
+  en <- with_mocked_bindings(
+    get_app_options = function() list(language = "en"),
+    nemetonshiny:::.compute_chm_required_message()
+  )
+  expect_match(en, "CHM")
+  expect_false(identical(fr, en))
+})

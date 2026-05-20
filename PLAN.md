@@ -72,5 +72,7 @@ aujourd'hui en échec faute de CHM / d'inventaire fournis aux fonctions
 ## Journal
 
 - 2026-05-20 — Câblage initial Theia / DATA TERRA, cycle dev 0.38.0.
+- 2026-05-20 — Fix câblage CHM → P1/P2/P3/E1 : `age_field` transmis à
+  P2, échec explicite i18n quand le CHM est absent. Cycle dev 0.38.1.
 </content>
 </invoke>

@@ -249,6 +249,39 @@ list_available_indicators <- function() {
 }
 
 
+#' Indicators that cannot be computed without a Canopy Height Model
+#'
+#' @description
+#' In NDP 0 (no terrain inventory), the Production family (P1 volume,
+#' P2 site index, P3 timber quality) and E1 (wood energy) derive their
+#' inputs from a canopy height model. Without a `chm` raster the
+#' nemeton functions fall back to the inventory mode and fail with
+#' cryptic "Missing required fields" errors (dbh, density, volume…).
+#' These four indicators are flagged so the compute service can fail
+#' with an explicit, translatable message instead.
+#'
+#' C1 and B2 also accept a `chm` argument but keep a usable legacy
+#' data path (OSO / NDVI), so they are intentionally excluded.
+#'
+#' @noRd
+CHM_REQUIRED_INDICATORS <- c(
+  "indicateur_p1_volume",
+  "indicateur_p2_station",
+  "indicateur_p3_qualite_bois",
+  "indicateur_e1_bois_energie"
+)
+
+
+#' Build the translated "CHM unavailable" compute error message
+#'
+#' @return Character. The message in the current app language.
+#' @noRd
+.compute_chm_required_message <- function() {
+  lang <- tryCatch(get_app_options()$language, error = function(e) NULL)
+  get_i18n(lang %||% "fr")$t("compute_chm_required")
+}
+
+
 #' Re-apply field data persisted by mod_field_ingest, if any
 #'
 #' When the user has imported a QField GeoPackage via the Field Ingest
@@ -2719,12 +2752,8 @@ compute_all_indicators <- function(parcels,
   # nemeton::enrich_parcels_bdforet. We enrich once up-front rather
   # than inside compute_single_indicator because the enrichment does
   # a spatial intersection that is not cheap.
-  bdforet_species_indicators <- c(
-    "indicateur_p1_volume", "indicateur_p2_station",
-    "indicateur_p3_qualite_bois", "indicateur_e1_bois_energie"
-  )
   needs_bdforet_enrich <-
-    length(intersect(bdforet_species_indicators, indicators_to_compute)) > 0 &&
+    length(intersect(CHM_REQUIRED_INDICATORS, indicators_to_compute)) > 0 &&
     !all(c("species", "age") %in% names(parcels))
   if (needs_bdforet_enrich) {
     bd <- resolve_vector_layer(layers, "bdforet")
@@ -2923,25 +2952,43 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       if (!is.null(bd)) args$bdforet <- bd
     }
 
-    # Canopy Height Model (spec 005, NDP augmented). Routed to the
-    # spec-005-phase-[2-4] indicators that accept a chm argument:
-    # P1 volume, P2 station, C1 biomass, B2 structure, R2 storm.
-    # The raster is produced upstream by opencanopy and cleaned by
-    # nemeton::sanitize_chm() in download_layers_for_parcels().
+    # Canopy Height Model. Routed to every nemeton indicator that
+    # accepts a `chm` argument: P1 volume, P2 site index, P3 timber
+    # quality, E1 wood energy, C1 biomass, B2 structure. The raster is
+    # produced upstream (Theia FORMSpoT / LiDAR HD / Open-Canopy) and
+    # staged in `layers$rasters$chm` by download_layers_for_parcels().
+    #
+    # For the four CHM-required indicators (P1/P2/P3/E1), a missing
+    # CHM means the nemeton function would fall back to inventory mode
+    # and fail with a cryptic "Missing required fields" error. We stop
+    # early here with an explicit, translatable message instead — the
+    # other indicators of the run are unaffected.
     if ("chm" %in% func_args) {
       chm <- resolve_raster_layer(layers, "chm")
-      if (!is.null(chm)) args$chm <- chm
+      if (!is.null(chm)) {
+        args$chm <- chm
+      } else if (indicator %in% CHM_REQUIRED_INDICATORS) {
+        stop(.compute_chm_required_message(), call. = FALSE)
+      }
     }
     if ("pct_masked" %in% func_args && !is.null(layers$chm_pct_masked)) {
       args$pct_masked <- layers$chm_pct_masked
     }
 
-    # Tree species column name. In CHM mode the Production indicators
-    # (P1/P2/P3, E1) need to know which `units` column carries the
-    # dominant species so they pick the right allometric model. The
-    # column itself is filled upstream by enrich_parcels_bdforet().
+    # Tree species column name. In CHM mode P1, P3 and E1 need to know
+    # which `units` column carries the dominant species so they pick
+    # the right allometric model. The `species` column is filled
+    # upstream by nemeton::enrich_parcels_bdforet() in
+    # compute_all_indicators().
     if ("species_field" %in% func_args && "species" %in% names(parcels)) {
       args$species_field <- "species"
+    }
+
+    # Stand age column name. In CHM mode P2 (site index) switches to
+    # the height/age model and needs the `age` column, also filled by
+    # enrich_parcels_bdforet().
+    if ("age_field" %in% func_args && "age" %in% names(parcels)) {
+      args$age_field <- "age"
     }
 
     # Theia-derived rasters forwarded to the indicators that accept
