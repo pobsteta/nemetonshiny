@@ -1330,6 +1330,10 @@ TRANSLATIONS <- list(
     fr = "CHM Theia FORMSpoT indisponible : pré-requis Python ou clé API Theia manquant.",
     en = "Theia FORMSpoT CHM unavailable: missing Python prerequisite or Theia API key."
   ),
+  compute_chm_required = list(
+    fr = "Modèle de hauteur de canopée (CHM) indisponible. Les indicateurs Production (P1/P2/P3) et Bois-énergie (E1) nécessitent un CHM (Theia FORMSpoT, LiDAR HD ou Open-Canopy). Configurez la clé API Theia via le menu de configuration.",
+    en = "Canopy height model (CHM) unavailable. The Production indicators (P1/P2/P3) and Wood energy (E1) require a CHM (Theia FORMSpoT, LiDAR HD or Open-Canopy). Configure the Theia API key via the settings menu."
+  ),
 
   # ============================================================
   # Progress Messages - Indicator Names
