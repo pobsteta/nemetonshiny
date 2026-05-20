@@ -2051,15 +2051,22 @@ mod_monitoring_server <- function(id, app_state) {
       ))
     )
 
-    # v0.36.0 — Carte FORDEAD sub-tab. Reader-only path : the cœur
-    # writer (mask persist hook in run_fordead_dieback) hasn't shipped
-    # yet, so this returns NULL → empty-state today. The wiring is
-    # in place so the moment the cœur writer ships, the panel
-    # activates without any app change.
+    # v0.36.0 — Carte FORDEAD sub-tab. nemeton@v0.41.0 ships the mask
+    # persist hook, so a completed FORDEAD run drops the categorical
+    # 0-4 raster into <project>/cache/layers/fordead/ and the module
+    # renders it.
+    #
+    # v0.38.6 — `refresh_r = alerts_refresh` is passed so the module's
+    # mask_r reactive re-reads the cache after each FORDEAD run.
+    # alerts_refresh is bumped by the FORDEAD result observer on
+    # success; without threading it in, the Carte FORDEAD panel
+    # stayed frozen on its pre-run empty-state even though the mask
+    # had just been written to disk.
     fordead_map_ret <- mod_monitoring_fordead_map_server(
       "fordead_map",
       app_state = app_state,
-      zone_id_r = shiny::reactive(input$zone_id)
+      zone_id_r = shiny::reactive(input$zone_id),
+      refresh_r = shiny::reactive(alerts_refresh())
     )
 
     list(

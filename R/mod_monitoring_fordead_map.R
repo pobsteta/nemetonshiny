@@ -36,9 +36,15 @@ mod_monitoring_fordead_map_ui <- function(id) {
 #' @param app_state Parent `reactiveValues` carrying `language`,
 #'   `current_project`.
 #' @param zone_id_r Reactive returning the active monitoring zone id.
+#' @param refresh_r Reactive bumped whenever a FORDEAD run completes
+#'   (the parent's `alerts_refresh` counter). `mask_r` reads it so the
+#'   sub-tab re-reads the freshly-persisted mask without the user
+#'   having to reload the project or re-pick the zone. Optional —
+#'   defaults to a constant reactive for back-compat / tests.
 #' @return invisible list with `mask` reactive.
 #' @noRd
-mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r) {
+mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
+                                              refresh_r = shiny::reactive(0L)) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
@@ -46,10 +52,19 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r) {
     })
 
     # ----- Core call ------------------------------------------------------
-    # cache_dir is resolved from the active project, same convention as the
-    # FORDEAD worker writes its outputs there. NULL until the cœur writer
-    # ships — caller-side handled by the empty-state branch of output$panel.
+    # cache_dir is resolved from the active project — nemeton@v0.41.0
+    # persists the categorical 0-4 mask to
+    # <project>/cache/layers/fordead/zone_<id>/dieback_mask_<ts>.tif
+    # after the postprocess phase.
+    #
+    # v0.38.6 — `refresh_r()` is read here so a completed FORDEAD run
+    # invalidates mask_r. Without it the reactive only depended on
+    # zone_id + current_project: it evaluated once (before the run,
+    # when cache/layers/fordead/ did not exist yet → NULL) and stayed
+    # frozen, so the sub-tab kept showing the empty-state even after
+    # the mask had been written to disk.
     mask_r <- shiny::reactive({
+      refresh_r()  # re-read after each FORDEAD run completion
       zone <- zone_id_r()
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
       proj <- app_state$current_project
