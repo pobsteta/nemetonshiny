@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,7 +29,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>CLAUDE.md — Nemetonshiny Development Reference</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.38.7/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
     </div>
 
 
@@ -287,7 +287,7 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.</code></pre
 <strong>cicerone</strong> pour les tours guidés (Suggests)</li>
 <li>
 <strong>quarto</strong> pour les exports rapport (Suggests)</li>
-</ul><p><code>Remotes: pobsteta/nemeton@vX.Y.Z</code> dans <code>DESCRIPTION</code> — <strong>l’app épingle une release tag précise du cœur</strong> (depuis v0.38.0 ; auparavant <code>@main</code>). Chaque montée de version cœur consommée par l’app exige un <strong>bump explicite du pin <code>Remotes:</code></strong> (+ du plancher <code>Imports: nemeton (&gt;= X.Y.Z)</code>). Avantage : reproductibilité d’install — <code>install_github("pobsteta/nemetonshiny@vA.B.C")</code> donne le même résultat dans 6 mois, et une régression poussée sur <code>nemeton@main</code> n’impacte pas les installs app. Contrepartie : une nouvelle fonction/correctif cœur n’est PAS disponible tant que le pin n’a pas été avancé — c’est un acte de release délibéré côté app. Installation locale en dev via <code>pak::local_install("/home/pascal/dev/nemeton")</code> ou <code>pkgload::load_all("/home/pascal/dev/nemeton")</code> — pas d’aller-retour GitHub.</p>
+</ul><p><code>Remotes: pobsteta/nemeton@*release</code> dans <code>DESCRIPTION</code> — <strong>l’app suit en continu la dernière release publiée du cœur</strong> (depuis v0.38.8 ; auparavant pin tag figé <code>@vX.Y.Z</code> de v0.38.0 à v0.38.7, et <code>@main</code> avant v0.38.0). La référence spéciale <code>@*release</code> de <code>remotes</code>/<code>pak</code> résout à chaque install le <strong>tag de release le plus élevé</strong> de <code>pobsteta/nemeton</code> : un <code>install_github("pobsteta/nemetonshiny")</code> tire toujours la plus haute version cœur, sans bump manuel du <code>Remotes:</code>. Avantages : (a) la dernière fonction/correctif cœur est disponible dès la release <code>nemeton</code> suivante, (b) on consomme toujours une <strong>vraie release taguée</strong>, jamais du <code>main</code> non publié. Contrepartie : reproductibilité d’install pure perdue dans le temps (<code>install_github("…@vA.B.C")</code> ne redonne pas le même état dans 6 mois si <code>nemeton</code> a publié des releases entre-temps) — pour figer un état composite app+cœur, utiliser <code>renv::snapshot()</code> côté projet utilisateur. Le plancher <code>Imports: nemeton (&gt;= X.Y.Z)</code> reste le <strong>minimum</strong> que le code app exige (garde-fou contre un cœur déjà installé trop ancien) — il ne suit PAS la dernière version, il est bumpé seulement quand le code app consomme une nouvelle API. Installation locale en dev via <code>pak::local_install("/home/pascal/dev/nemeton")</code> ou <code>pkgload::load_all("/home/pascal/dev/nemeton")</code> — pas d’aller-retour GitHub.</p>
 </div>
 <div class="section level2">
 <h2 id="commandes-de-référence">Commandes de référence<a class="anchor" aria-label="anchor" href="#commandes-de-r%C3%A9f%C3%A9rence"></a></h2>
@@ -446,24 +446,26 @@ keycloak/                     → Compose dev + realms pour auth locale
 <li>Quand un changement implique aussi <code>nemeton</code>, faire les deux releases dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).</li>
 </ul></div>
 <div class="section level2">
-<h2 id="épinglage-de-nemeton-par-tag--implications-pour-les-releases">Épinglage de <code>nemeton</code> par tag — implications pour les releases<a class="anchor" aria-label="anchor" href="#%C3%A9pinglage-de-nemeton-par-tag--implications-pour-les-releases"></a></h2>
-<p>Choix architectural (cf. <em>Stack technique</em>) : <code>Remotes: pobsteta/nemeton@vX.Y.Z</code> épinglé sur une <strong>release tag précise</strong> du cœur. Depuis v0.38.0 l’app n’est plus sur <code>@main</code> — chaque montée de version cœur consommée par l’app est un acte de release délibéré.</p>
+<h2 id="suivi-de-la-dernière-release-nemeton-release--implications">Suivi de la dernière release <code>nemeton</code> (<code>@*release</code>) — implications<a class="anchor" aria-label="anchor" href="#suivi-de-la-derni%C3%A8re-release-nemeton-release--implications"></a></h2>
+<p>Choix architectural (cf. <em>Stack technique</em>) : <code>Remotes: pobsteta/nemeton@*release</code>. La référence spéciale <code>@*release</code> (<code>remotes</code>/<code>pak</code>) résout à chaque install le <strong>tag de release le plus élevé</strong> de <code>pobsteta/nemeton</code> — l’app consomme donc toujours la plus haute version cœur publiée, sans intervention. Historique : <code>@main</code> avant v0.38.0, pin tag figé <code>@vX.Y.Z</code> de v0.38.0 à v0.38.7, <code>@*release</code> depuis v0.38.8.</p>
 <p>Conséquences pratiques :</p>
 <ul><li>
-<strong>Bump <code>Remotes:</code> explicite pour consommer une release cœur.</strong> Une nouvelle fonction exportée ou un correctif de <code>nemeton@vX.Y.Z</code> n’est PAS disponible côté app tant que le pin <code>Remotes:</code> n’a pas été avancé vers ce tag. Le bump du pin <strong>et</strong> du plancher <code>Imports: nemeton (&gt;= X.Y.Z)</code> est une étape de release à part entière (commit <code>chore(deps):</code> dédié, cf. <em>Consignes de release</em>).</li>
+<strong>Pas de bump <code>Remotes:</code> après une release cœur.</strong> Inutile : <code>@*release</code> ne pointe pas sur un tag figé. Une release <code>nemeton@vX.Y.Z</code> est consommée automatiquement par tous les nouveaux installs app dès sa publication GitHub.</li>
 <li>
-<strong>Vérifier la version <code>nemeton</code> avant tout travail cœur↔︎app.</strong> Avant de consommer une fonction cœur récente : (a) <code>gh release list --repo pobsteta/nemeton</code> pour voir les releases disponibles,
-<ol start="2" style="list-style-type: lower-alpha"><li>comparer au pin <code>Remotes:</code> actuel du <code>DESCRIPTION</code>,</li>
-<li>si la fonction visée est dans une version &gt; pin, prévoir le bump <code>Remotes:</code> + <code>Imports:</code> dans la livraison.</li>
+<strong>Le plancher <code>Imports: nemeton (&gt;= X.Y.Z)</code> n’est PAS la dernière version.</strong> C’est le <strong>minimum</strong> que le code app exige — un garde-fou contre un cœur déjà installé trop ancien. On le bumpe uniquement quand le code app se met à consommer une nouvelle API cœur (commit <code>chore(deps):</code> dédié), jamais « pour suivre » la dernière release. <code>@*release</code> se charge de tirer plus haut que le plancher.</li>
+<li>
+<strong>Vérifier la version <code>nemeton</code> avant tout travail cœur↔︎app.</strong> Avant de consommer une fonction cœur récente : (a) <code>gh release list --repo pobsteta/nemeton</code> pour voir la dernière release,
+<ol start="2" style="list-style-type: lower-alpha"><li>vérifier qu’elle expose bien la fonction visée,</li>
+<li>si oui, le code app peut l’appeler directement — <code>@*release</code> la fournira ; ne bumper <code>Imports:</code> que si l’app exige cette version comme minimum strict.</li>
 </ol></li>
 <li>
-<strong>Reproductibilité d’install garantie.</strong> <code>install_github("pobsteta/nemetonshiny@vA.B.C")</code> donne le même état composite app+cœur dans 6 mois qu’aujourd’hui : le tag app fige un tag cœur précis. C’est l’avantage majeur du pin tag sur l’ancien <code>@main</code>.</li>
+<strong>Reproductibilité d’install pure perdue.</strong> <code>install_github("pobsteta/nemetonshiny@vA.B.C")</code> fait dans 6 mois ne redonne pas le même état composite si <code>nemeton</code> a publié des releases entre-temps. Pour un travail exigeant la reproductibilité (publication scientifique, bug-hunt sur état figé), s’appuyer sur <code>renv::snapshot()</code> côté projet utilisateur — pas sur le <code>Remotes:</code> du <code>DESCRIPTION</code>.</li>
 <li>
-<strong>Une régression poussée sur <code>nemeton@main</code> n’impacte PAS les installs app.</strong> L’app ne consomme que des tags cœur publiés ; <code>main</code> côté cœur peut bouger librement sans casser <code>install_github("pobsteta/nemetonshiny")</code>.</li>
+<strong>Une régression dans une release <code>nemeton</code> casse l’install app.</strong> Comme <code>@*release</code> tire la dernière release, une release cœur boguée impacte les nouveaux installs app jusqu’à la release cœur corrective. Mitigation : ne publier une release <code>nemeton</code> qu’avec CI verte ; release patch rapide côté cœur si découvert. (<code>@main</code> était pire — exposait aussi le code non publié ; <code>@*release</code> ne consomme que des tags de release.)</li>
 <li>
-<strong>Règle 11 (ordre cœur → app).</strong> Toujours valable et désormais matérialisée par le pin : on release d’abord <code>nemeton@vX.Y.Z</code>, puis on bumpe le <code>Remotes:</code>/<code>Imports:</code> côté app dans une release app dédiée. La propagation n’est PAS automatique — elle passe par ce bump explicite.</li>
+<strong>Règle 11 (ordre cœur → app).</strong> Toujours valable pour les changements d’API : on release d’abord <code>nemeton@vX.Y.Z</code>, puis l’app peut consommer la nouvelle API. Mais la propagation est redevenue automatique — plus de bump <code>Remotes:</code>, juste l’attente que la release cœur soit publiée.</li>
 <li>
-<strong>Développement local</strong> : <code>pkgload::load_all("/home/pascal/dev/nemeton")</code> ou <code>pak::local_install("/home/pascal/dev/nemeton")</code> court-circuitent GitHub et le pin — le développeur teste contre son arbre cœur local quelle que soit la valeur du <code>Remotes:</code>. Le pin tag ne change rien au workflow dev quotidien ; il ne gouverne que les installs GitHub.</li>
+<strong>Développement local</strong> : <code>pkgload::load_all("/home/pascal/dev/nemeton")</code> ou <code>pak::local_install("/home/pascal/dev/nemeton")</code> court-circuitent GitHub et <code>@*release</code> — le développeur teste contre son arbre cœur local quelle que soit la dernière release. <code>@*release</code> ne gouverne que les installs GitHub.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="workflow-de-push-branche-dev--main">Workflow de push (branche dev → main)<a class="anchor" aria-label="anchor" href="#workflow-de-push-branche-dev--main"></a></h2>

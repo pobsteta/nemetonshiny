@@ -12,6 +12,19 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.38.8\] - 2026-05-20
+
+### Changed
+
+- **`Remotes:` suit la dernière release `nemeton`** : passage de
+  `pobsteta/nemeton@v0.41.0` (tag figé) à `pobsteta/nemeton@*release`.
+  La référence `@*release` résout à chaque install le tag de release le
+  plus élevé du cœur — l’app tire toujours la plus haute version
+  `nemeton` publiée, sans bump manuel du pin. Le tag figé forçait
+  l’install de `nemeton 0.41.0` alors que `v0.41.2` était publié.
+  Plancher `Imports: nemeton (>= 0.41.0)` inchangé (minimum strict, pas
+  un suivi). `CLAUDE.md` mis à jour (`DESCRIPTION`, `CLAUDE.md`).
+
 ## \[0.38.7\] - 2026-05-20
 
 ### Fixed

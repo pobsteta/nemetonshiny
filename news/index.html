@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,23 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.38.7/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.38.8" id="nemetonshiny-0388-2026-05-20">nemetonshiny 0.38.8 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0388-2026-05-20"></a></h2>
+<div class="section level4">
+<h4 id="changed--remotes-suit-désormais-la-dernière-release-nemeton-release-0-38-8">Changed — <code>Remotes:</code> suit désormais la dernière release <code>nemeton</code> (<code>@*release</code>)<a class="anchor" aria-label="anchor" href="#changed--remotes-suit-d%C3%A9sormais-la-derni%C3%A8re-release-nemeton-release-0-38-8"></a></h4>
+<p>Le <code>DESCRIPTION</code> épinglait <code>Remotes: pobsteta/nemeton@v0.41.0</code> — un tag figé. Conséquence : <code>install_github("pobsteta/nemetonshiny")</code> installait <code>nemeton 0.41.0</code> alors que le cœur était déjà publié en <code>v0.41.2</code>, et les correctifs <code>v0.41.1</code> (réinstallation Python FORDEAD à chaque run) / <code>v0.41.2</code> (déduplication des reprocessing Sentinel-2) n’étaient pas tirés sans bump manuel du pin.</p>
+<p><code>Remotes: pobsteta/nemeton@*release</code> — la référence spéciale <code>@*release</code> de <code>remotes</code>/<code>pak</code> résout à chaque install le <strong>tag de release le plus élevé</strong> de <code>pobsteta/nemeton</code>. L’app consomme donc toujours la plus haute version cœur publiée, automatiquement, sans bump manuel du <code>Remotes:</code> à chaque release <code>nemeton</code>.</p>
+<ul><li>
+<strong>Avantages</strong> : dernière fonction/correctif cœur disponible dès la release <code>nemeton</code> suivante ; on ne consomme que des <strong>vraies releases taguées</strong>, jamais du <code>main</code> non publié.</li>
+<li>
+<strong>Contrepartie</strong> : reproductibilité d’install pure perdue dans le temps — pour figer un état composite app+cœur, <code>renv::snapshot()</code> côté projet utilisateur.</li>
+<li>Le plancher <code>Imports: nemeton (&gt;= 0.41.0)</code> est <strong>inchangé</strong> : il reste le minimum strict que le code app exige (garde-fou contre un cœur déjà installé trop ancien), il ne suit pas la dernière version.</li>
+</ul><p>Historique du <code>Remotes:</code> : <code>@main</code> avant v0.38.0, pin tag figé <code>@vX.Y.Z</code> de v0.38.0 à v0.38.7, <code>@*release</code> depuis cette version. <code>CLAUDE.md</code> mis à jour en conséquence (sections <em>Stack technique</em> et <em>Suivi de la dernière release <code>nemeton</code></em>).</p>
+<hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.38.7" id="nemetonshiny-0387-2026-05-20">nemetonshiny 0.38.7 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0387-2026-05-20"></a></h2>
 <div class="section level4">
