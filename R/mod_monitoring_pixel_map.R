@@ -15,6 +15,17 @@
 # zero HTTP and zero DB write — the map is fully offline once the
 # ingestion has populated the cache.
 
+# Debug instrumentation gate (v0.38.4). The "UGF source" /
+# "UGF overlay" / "Placettes overlay" cli_alert_info() lines in the
+# overlay reactives below are developer instrumentation — handy when
+# chasing a reactive-firing issue from a terminal, but noisy on every
+# project load / zone change (they printed in bursts of 4-5 lines).
+# Gated behind the NEMETON_PIXEL_MAP_DEBUG env var, same pattern as
+# NEMETON_S2_CACHE_DEBUG in the nemeton core. Default (unset) → silent.
+.pixel_map_debug_enabled <- function() {
+  isTRUE(as.logical(Sys.getenv("NEMETON_PIXEL_MAP_DEBUG", "FALSE")))
+}
+
 #' Pixel map sub-tab UI
 #'
 #' @param id Module namespace.
@@ -343,14 +354,16 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       # 1. indicators_sf
       geom <- proj$indicators_sf
       if (!is.null(geom) && inherits(geom, "sf") && nrow(geom)) {
-        cli::cli_alert_info("UGF source: indicators_sf ({nrow(geom)} feature(s)).")
+        if (.pixel_map_debug_enabled())
+          cli::cli_alert_info("UGF source: indicators_sf ({nrow(geom)} feature(s)).")
         return(to_wgs84(geom))
       }
 
       # 2. raw ug_build_sf
       geom <- tryCatch(ug_build_sf(proj), error = function(e) NULL)
       if (!is.null(geom) && inherits(geom, "sf") && nrow(geom)) {
-        cli::cli_alert_info("UGF source: ug_build_sf ({nrow(geom)} feature(s)).")
+        if (.pixel_map_debug_enabled())
+          cli::cli_alert_info("UGF source: ug_build_sf ({nrow(geom)} feature(s)).")
         return(to_wgs84(geom))
       }
 
@@ -370,7 +383,8 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           geom <- tryCatch(sf::st_as_sf(sf::st_as_sfc(bb)),
                            error = function(e) NULL)
           if (!is.null(geom) && nrow(geom)) {
-            cli::cli_alert_info("UGF source: raster bbox (fallback, no UGFs defined).")
+            if (.pixel_map_debug_enabled())
+              cli::cli_alert_info("UGF source: raster bbox (fallback, no UGFs defined).")
             return(to_wgs84(geom))
           }
         }
@@ -384,13 +398,15 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           geom <- tryCatch(sf::st_as_sf(sf::st_as_sfc(bb)),
                            error = function(e) NULL)
           if (!is.null(geom) && nrow(geom)) {
-            cli::cli_alert_info("UGF source: placettes bbox (last-resort fallback).")
+            if (.pixel_map_debug_enabled())
+              cli::cli_alert_info("UGF source: placettes bbox (last-resort fallback).")
             return(geom)  # already WGS84 via placettes_sf_r
           }
         }
       }
 
-      cli::cli_alert_info("UGF source: NONE — no indicators_sf, no ug_build_sf, no raster, no placettes.")
+      if (.pixel_map_debug_enabled())
+        cli::cli_alert_info("UGF source: NONE — no indicators_sf, no ug_build_sf, no raster, no placettes.")
       NULL
     })
 
@@ -412,10 +428,12 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::clearGroup(.ugf_overlay_group)
       ugf <- ugf_sf_r()
       if (is.null(ugf) || !nrow(ugf)) {
-        cli::cli_alert_info("UGF overlay: ugf_sf_r() is NULL/empty, no polygons drawn.")
+        if (.pixel_map_debug_enabled())
+          cli::cli_alert_info("UGF overlay: ugf_sf_r() is NULL/empty, no polygons drawn.")
         return()
       }
-      cli::cli_alert_info("UGF overlay: drawing {nrow(ugf)} polygon(s).")
+      if (.pixel_map_debug_enabled())
+        cli::cli_alert_info("UGF overlay: drawing {nrow(ugf)} polygon(s).")
       proxy |>
         leaflet::addPolygons(
           data        = ugf,
@@ -539,10 +557,12 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::clearGroup(.placettes_overlay_group)
       ps <- placettes_sf_r()
       if (is.null(ps) || !nrow(ps)) {
-        cli::cli_alert_info("Placettes overlay: placettes_sf_r() is NULL/empty, no markers drawn.")
+        if (.pixel_map_debug_enabled())
+          cli::cli_alert_info("Placettes overlay: placettes_sf_r() is NULL/empty, no markers drawn.")
         return()
       }
-      cli::cli_alert_info("Placettes overlay: drawing {nrow(ps)} marker(s).")
+      if (.pixel_map_debug_enabled())
+        cli::cli_alert_info("Placettes overlay: drawing {nrow(ps)} marker(s).")
       proxy |>
         leaflet::addCircleMarkers(
           data        = ps,
