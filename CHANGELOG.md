@@ -12,6 +12,21 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.38.5\] - 2026-05-20
+
+### Changed
+
+- **Bump `nemeton` v0.40.0 → v0.41.0** (`DESCRIPTION` : `Imports`
+  floor + `Remotes` tag pin). v0.41.0 ship le writer du masque de
+  dépérissement FORDEAD : `run_fordead_dieback()` persiste le raster
+  catégoriel 0-4 dans
+  `<project>/cache/layers/fordead/zone_<id>/dieback_mask_<ts>.tif`, le
+  chemin lu par `read_fordead_dieback_mask()`. Le sous-onglet « Carte
+  FORDEAD » (`mod_monitoring_fordead_map`, câblé depuis v0.36.0) cesse
+  donc d’être un empty-state permanent et affiche le masque après un run
+  FORDEAD. Aucun changement de code app — pur bump de dépendance ;
+  signatures vérifiées rétrocompatibles.
+
 ## \[0.38.4\] - 2026-05-20
 
 ### Changed

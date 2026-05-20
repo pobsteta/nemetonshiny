@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,7 +29,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.38.4/CHANGELOG.md" class="external-link"><code>CHANGELOG.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/CHANGELOG.md" class="external-link"><code>CHANGELOG.md</code></a></small>
     </div>
 
 <div id="changelog" class="section level1">
@@ -41,9 +41,17 @@
 <h2 id="unreleased"><a href="https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD" class="external-link">Unreleased</a><a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
 </div>
 <div class="section level2">
-<h2 id="id_0384---2026-05-20">[0.38.4] - 2026-05-20<a class="anchor" aria-label="anchor" href="#id_0384---2026-05-20"></a></h2>
+<h2 id="id_0385---2026-05-20">[0.38.5] - 2026-05-20<a class="anchor" aria-label="anchor" href="#id_0385---2026-05-20"></a></h2>
 <div class="section level3">
 <h3 id="changed">Changed<a class="anchor" aria-label="anchor" href="#changed"></a></h3>
+<ul><li>
+<strong>Bump <code>nemeton</code> v0.40.0 → v0.41.0</strong> (<code>DESCRIPTION</code> : <code>Imports</code> floor + <code>Remotes</code> tag pin). v0.41.0 ship le writer du masque de dépérissement FORDEAD : <code>run_fordead_dieback()</code> persiste le raster catégoriel 0-4 dans <code>&lt;project&gt;/cache/layers/fordead/zone_&lt;id&gt;/dieback_mask_&lt;ts&gt;.tif</code>, le chemin lu par <code>read_fordead_dieback_mask()</code>. Le sous-onglet « Carte FORDEAD » (<code>mod_monitoring_fordead_map</code>, câblé depuis v0.36.0) cesse donc d’être un empty-state permanent et affiche le masque après un run FORDEAD. Aucun changement de code app — pur bump de dépendance ; signatures vérifiées rétrocompatibles.</li>
+</ul></div>
+</div>
+<div class="section level2">
+<h2 id="id_0384---2026-05-20">[0.38.4] - 2026-05-20<a class="anchor" aria-label="anchor" href="#id_0384---2026-05-20"></a></h2>
+<div class="section level3">
+<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / <code>obs_pixel_data</code> debounced</strong> : au chargement de projet, les 5 entrées dont dépend <code>obs_pixel_data</code> sont restaurées une à une → 4-5 ré-exécutions avec autant de requêtes SQL <code>read_obs_pixel</code> redondantes. Nouveau reactive <code>obs_pixel_inputs</code> (assemblage des 5 entrées) debouncé 300 ms ; <code>obs_pixel_data</code> ne dépend plus que de ce paquet → la requête tourne une fois par rafale. <code><a href="https://rdrr.io/pkg/shiny/man/debounce.html" class="external-link">shiny::debounce()</a></code> évaluant sa source de façon eager, c’est bien le <em>déclencheur</em> peu coûteux qui est debouncé, pas le reactive coûteux (<code>R/mod_monitoring.R</code>).</li>
 <li>
@@ -101,7 +109,7 @@
 <strong>Module de configuration Theia</strong> (<code>R/mod_theia_config.R</code>) : entrée navbar (engrenage) ouvrant une modale de saisie de la clé API, statut du pré-requis Python et provenance / licence des sources Theia.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
+<h3 id="changed-2">Changed<a class="anchor" aria-label="anchor" href="#changed-2"></a></h3>
 <ul><li>
 <code>R/service_compute.R</code> : nouvelle étape CHM Theia FORMSpoT dans <code>download_layers_for_parcels()</code> (utilisée quand le LiDAR HD est absent, avant Open-Canopy) ; <code>compute_single_indicator()</code> transmet <code>species_field</code>, <code>fapar</code>, <code>snow</code> et <code>soil_moisture</code> aux fonctions <code>nemeton</code> qui les acceptent ; enrichissement BD Forêt V2 (<code>species</code>/<code>age</code>) étendu à P1, P3 et E1.</li>
 <li>
@@ -119,7 +127,7 @@
 <li>3 tests testthat couvrant le helper et le forwarding cœur (<code>tests/testthat/test-mod_monitoring.R</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-2">Changed<a class="anchor" aria-label="anchor" href="#changed-2"></a></h3>
+<h3 id="changed-3">Changed<a class="anchor" aria-label="anchor" href="#changed-3"></a></h3>
 <ul><li>
 <code>DESCRIPTION</code> : plancher <code>Imports: nemeton (&gt;= 0.26.0)</code> (au lieu de 0.25.4) — ancre la version qui expose les nouveaux arguments <code>bdforet</code> / <code>layers</code> de <code>check_fordead_validity()</code>.</li>
 </ul></div>
@@ -146,7 +154,7 @@
 <strong>Sampling / câblage MNT-CHM sur <code>create_sampling_plan()</code></strong> : les rasters résolus via <code>nemeton::resolve_project_*</code> n’étaient pas passés à <code>create_sampling_plan()</code> (manque de <code>mnt =</code> / <code>chm =</code> au call site), si bien que <code>&lt;project&gt;/dtm.tif</code> opencanopy n’était jamais consommé. Pré-check ajouté : DEM absent → toast bloquant <code>sampling_no_dem_found_fmt</code> (i18n, avec chemin projet) <code>id = session$ns("dem_missing")</code> et arrêt avant l’appel cœur ; CHM absent → <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> sans toast bloquant (<code>R/mod_sampling.R</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-3">Changed<a class="anchor" aria-label="anchor" href="#changed-3"></a></h3>
+<h3 id="changed-4">Changed<a class="anchor" aria-label="anchor" href="#changed-4"></a></h3>
 <ul><li>Toast informatif <code>sampling_dem_resolved_fmt</code> (« MNT : %s », 5 s) qui surface <code>attr(dem, "nemeton_dem_layer")</code> (« opencanopy DTM », « LiDAR HD MNT », « IGN BD ALTI »…).</li>
 <li>3 clés i18n FR/EN remplaçant les 4 ajoutées en v0.36.6 : <code>sampling_no_dem_found_fmt</code>, <code>sampling_dem_resolved_fmt</code>, <code>sampling_chm_missing</code> (<code>R/utils_i18n.R</code>).</li>
 <li>
@@ -161,7 +169,7 @@
 <div class="section level2">
 <h2 id="id_0366---2026-05-18">[0.36.6] - 2026-05-18<a class="anchor" aria-label="anchor" href="#id_0366---2026-05-18"></a></h2>
 <div class="section level3">
-<h3 id="changed-4">Changed<a class="anchor" aria-label="anchor" href="#changed-4"></a></h3>
+<h3 id="changed-5">Changed<a class="anchor" aria-label="anchor" href="#changed-5"></a></h3>
 <ul><li>
 <strong>Sampling / résolution MNT/CHM déléguée à <code>nemeton</code></strong> : les réactives <code>chm_raster()</code> / <code>mnt_raster()</code> de <code>mod_sampling</code> appellent désormais <code><a href="https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html" class="external-link">nemeton::resolve_project_chm()</a></code> et <code><a href="https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html" class="external-link">nemeton::resolve_project_dem()</a></code> (nemeton &gt;= 0.21.10) au lieu de faire leur propre lookup dans <code>&lt;project&gt;/cache/layers/</code>. Couvre les noms canoniques <code>dtm.tif</code>, <code>mnh.tif</code>, <code>lidar_mnh.tif</code> en plus des mosaics historiques (<code>R/mod_sampling.R</code>).</li>
 </ul></div>
@@ -230,7 +238,7 @@
 <li>17 nouvelles clés i18n FR/EN : sévérités FAST (<code>critical</code>, <code>warning</code>, <code>info</code>), compteur total, empty states + popups FAST, titre + classes 0..4 FORDEAD, empty state FORDEAD.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-5">Changed<a class="anchor" aria-label="anchor" href="#changed-5"></a></h3>
+<h3 id="changed-6">Changed<a class="anchor" aria-label="anchor" href="#changed-6"></a></h3>
 <ul><li>
 <code>DESCRIPTION</code> : plancher <code>Imports: nemeton (&gt;= 0.25.0)</code> (depuis 0.24.1) pour ancrer les deux nouveaux exporteurs consommés.</li>
 <li>
@@ -245,7 +253,7 @@
 <strong>Terrain / Plan d’échantillonnage</strong> : erreur <code>le tableau de remplacement a N lignes, le tableau remplacé en a M</code> remontée en toast quand un CHM et/ou un MNT étaient fournis avec une AOI bordurale. Fix dans <code>nemeton@v0.24.1</code> (filtrage des candidats GRTS avant <code>spsurvey::grts()</code>), consommé automatiquement via <code>Remotes: pobsteta/nemeton@main</code>. Aucun changement de code côté app.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-6">Changed<a class="anchor" aria-label="anchor" href="#changed-6"></a></h3>
+<h3 id="changed-7">Changed<a class="anchor" aria-label="anchor" href="#changed-7"></a></h3>
 <ul><li>
 <code>DESCRIPTION</code> : plancher <code>Imports: nemeton (&gt;= 0.24.1)</code> pour bloquer un downgrade qui réintroduirait le bug sampling.</li>
 </ul></div>
@@ -259,7 +267,7 @@
 <li>4 nouvelles clés i18n FR/EN : <code>monitoring_subtab_alerts_fast</code>, <code>monitoring_subtab_alerts_fordead</code>, <code>monitoring_fast_alerts_placeholder_title</code>, <code>monitoring_fast_alerts_placeholder_body</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-7">Changed<a class="anchor" aria-label="anchor" href="#changed-7"></a></h3>
+<h3 id="changed-8">Changed<a class="anchor" aria-label="anchor" href="#changed-8"></a></h3>
 <ul><li>Sous-onglet <code>alerts</code> renommé <code>alerts_fordead</code> (même contenu, label « Alertes FORDEAD »). Les <code>conditionalPanel</code> internes filtrant sur <code>input$mode == 'health'</code> sont supprimés — l’onglet entier est masqué en mode FAST par l’observer mode-driven.</li>
 <li>Texte du placeholder Carte FORDEAD : référence pointée vers « Alertes FORDEAD » au lieu de « Alertes ».</li>
 </ul></div>
@@ -278,7 +286,7 @@
 <li>4 nouvelles clés i18n FR/EN pour les libellés et le placeholder Carte FORDEAD.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-8">Changed<a class="anchor" aria-label="anchor" href="#changed-8"></a></h3>
+<h3 id="changed-9">Changed<a class="anchor" aria-label="anchor" href="#changed-9"></a></h3>
 <ul><li>
 <code>R/mod_monitoring_pixel_map.R</code> : valeur du nav_panel renommée <code>pixel_map</code> → <code>pixel_map_fast</code> (l’observe d’auto-zoom est aligné).</li>
 </ul></div>
@@ -286,7 +294,7 @@
 <div class="section level2">
 <h2 id="id_0330---2026-05-16">[0.33.0] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0330---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="changed-9">Changed<a class="anchor" aria-label="anchor" href="#changed-9"></a></h3>
+<h3 id="changed-10">Changed<a class="anchor" aria-label="anchor" href="#changed-10"></a></h3>
 <ul><li>
 <strong>BREAKING (dep) — Migration vers <code>nemeton@v0.24.0</code></strong> : la signature de <code><a href="https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html" class="external-link">nemeton::run_fordead_dieback()</a></code> a changé au cœur (<code>aoi</code> / <code>scenes_df</code> / <code>forest_mask</code> retirés, <code>con</code> / <code>zone_id</code> / <code>cache_dir</code> requis). Le pipeline passe de 5 à 6 phases avec une nouvelle phase 0 <code>ingest</code> qui télécharge les bandes Sentinel-2 manquantes (B02/B05/B8A/B11) par-dessus celles déjà cachées par FAST (B04/B12).</li>
 <li>
@@ -314,7 +322,7 @@
 <li>11 nouvelles clés i18n FR/EN : 4 templates + 7 labels per-phase 1.x + 3 labels per-phase 2.x anticipés.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-10">Changed<a class="anchor" aria-label="anchor" href="#changed-10"></a></h3>
+<h3 id="changed-11">Changed<a class="anchor" aria-label="anchor" href="#changed-11"></a></h3>
 <ul><li>
 <strong>DESCRIPTION</strong> : <code>Imports: nemeton (&gt;= 0.22.0)</code> → <code>(&gt;= 0.22.5)</code> pour aligner sur l’API du <code>progress_callback</code> consommée par les toasts.</li>
 </ul></div>
@@ -388,7 +396,7 @@
 <strong>Suivi sanitaire / Carte pixel</strong> : les trois couches d’overlay (UGF, NDVI / NBR, Placettes) n’apparaissaient pas malgré leurs cases cochées dans le contrôle Leaflet. Cause : <code>overlayGroups</code> dans <code>addLayersControl</code> posait des cases pré-renderLeaflet alors que les couches arrivaient via <code>leafletProxy</code> async ; les références de couches restaient indéfinies côté JS. Drop de <code>overlayGroups</code>, overlays toujours visibles (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-11">Changed<a class="anchor" aria-label="anchor" href="#changed-11"></a></h3>
+<h3 id="changed-12">Changed<a class="anchor" aria-label="anchor" href="#changed-12"></a></h3>
 <ul><li>Contour UGF : épaisseur 2 → 3, opacité 0.9 → 1.0.</li>
 <li>Marqueurs placettes : rayon 5 → 7.</li>
 <li>Logs <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info()</a></code> ajoutés sur les reactives UGF, placettes et auto-zoom pour diagnostic terminal.</li>
@@ -397,7 +405,7 @@
 <div class="section level2">
 <h2 id="id_0301---2026-05-16">[0.30.1] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0301---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="changed-12">Changed<a class="anchor" aria-label="anchor" href="#changed-12"></a></h3>
+<h3 id="changed-13">Changed<a class="anchor" aria-label="anchor" href="#changed-13"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Mode rapide</strong> : sémantique de la checkbox « Cache COG » inversée. Décoché (défaut) = nemeton vérifie le cache disque et télécharge uniquement les bandes manquantes (DB idempotente via <code>ON CONFLICT DO NOTHING</code>). Coché = wipe <code>&lt;cache_dir&gt;/*</code> puis re-télécharge intégralement scène par scène (pour récupérer d’un cache corrompu).</li>
 <li>L’ancien défaut court-circuitait sur la DB et laissait le cache disque vide, ce qui faisait re-télécharger intégralement FORDEAD au premier diagnostic. Le nouveau défaut prépare effectivement le terrain pour FORDEAD (<code>R/mod_monitoring.R</code>, <code>R/utils_i18n.R</code>).</li>
@@ -440,7 +448,7 @@
 <div class="section level2">
 <h2 id="id_0285---2026-05-16">[0.28.5] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0285---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="changed-13">Changed<a class="anchor" aria-label="anchor" href="#changed-13"></a></h3>
+<h3 id="changed-14">Changed<a class="anchor" aria-label="anchor" href="#changed-14"></a></h3>
 <ul><li>
 <strong>Deps</strong> : bascule de l’épingle <code>Remotes</code> de <code>pobsteta/nemeton@v0.22.1</code> vers <code>pobsteta/nemeton@main</code>. Les installs GitHub de <code>nemetonshiny</code> tirent désormais en continu le dernier commit <code>main</code> de <code>nemeton</code> — plus besoin de bumper l’épingle après chaque release cœur. Reproductibilité d’install dans le temps perdue (cf. NEWS.md pour les trade-offs) (<code>DESCRIPTION</code>).</li>
 <li>
@@ -462,7 +470,7 @@
 <div class="section level2">
 <h2 id="id_0283---2026-05-15">[0.28.3] - 2026-05-15<a class="anchor" aria-label="anchor" href="#id_0283---2026-05-15"></a></h2>
 <div class="section level3">
-<h3 id="changed-14">Changed<a class="anchor" aria-label="anchor" href="#changed-14"></a></h3>
+<h3 id="changed-15">Changed<a class="anchor" aria-label="anchor" href="#changed-15"></a></h3>
 <ul><li>
 <strong>Deps</strong> : bump de l’épingle <code>Remotes: pobsteta/nemeton</code> de <code>v0.22.0</code> vers <code>v0.22.1</code>. Sans ce bump, l’installation de <code>nemetonshiny</code> faisait redescendre <code>nemeton</code> à <code>0.22.0</code> même si une version plus récente était installée localement (<code>DESCRIPTION</code>).</li>
 </ul></div>
@@ -503,7 +511,7 @@
 <code>feat(monitoring)</code>: worker stdout + message stream <code><a href="https://rdrr.io/r/base/sink.html" class="external-link">sink()</a></code>ed to <code>&lt;project&gt;/data/ingest_console.log</code>. The parent process tails the file every 500 ms via <code>reactivePoll</code>, reads newly-written bytes from a persistent offset and <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code>s them to its own <code><a href="https://rdrr.io/r/base/showConnections.html" class="external-link">stderr()</a></code>. Effect: every <code>cli::cli_*</code>, <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code>, <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> and <code>[s2_cache …]</code> trace from <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code> (including the verbose <code>NEMETON_S2_CACHE_DEBUG=TRUE</code> ones) lands in the developer’s R console in real time, bypassing <code>future</code>’s built-in stdout capture. Cleanup mirrors the existing <code>progress.json</code> channel on success / error paths.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-15">Changed<a class="anchor" aria-label="anchor" href="#changed-15"></a></h3>
+<h3 id="changed-16">Changed<a class="anchor" aria-label="anchor" href="#changed-16"></a></h3>
 <ul><li>
 <code>run_ingestion_async()</code> (R/service_monitoring.R) gains an optional <code>log_path</code> parameter on its <code>$invoke()</code> signature. NULL = no console mirror (the legacy silent behaviour).</li>
 </ul></div>
@@ -564,7 +572,7 @@
 <li>i18n: <code>monitoring_reprime_cache_label</code>, <code>monitoring_reprime_cache_help</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-16">Changed<a class="anchor" aria-label="anchor" href="#changed-16"></a></h3>
+<h3 id="changed-17">Changed<a class="anchor" aria-label="anchor" href="#changed-17"></a></h3>
 <ul><li>
 <code>service_monitoring.R::run_ingestion_async()</code>: new <code>skip_cached</code> parameter on the <code>ExtendedTask</code> lambda (default <code>TRUE</code>), forwarded to <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code>.</li>
 </ul></div>
@@ -590,7 +598,7 @@
 <li>i18n: <code>monitoring_ingest_cache_lookup_fmt</code>, <code>monitoring_ingest_band_failed_fmt</code>, <code>monitoring_ingest_token_refreshed</code>, <code>monitoring_cache_active_fmt</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-17">Changed<a class="anchor" aria-label="anchor" href="#changed-17"></a></h3>
+<h3 id="changed-18">Changed<a class="anchor" aria-label="anchor" href="#changed-18"></a></h3>
 <ul><li>
 <code>chore(deps)</code>: bump nemeton pin to <code>&gt;= 0.21.7</code> to align on the versions that expose a stable <code>cache_dir</code> + <code>progress_callback</code> signature.</li>
 </ul></div>
@@ -598,7 +606,7 @@
 <div class="section level2">
 <h2 id="id_02414---2026-05-13">[0.24.14] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_02414---2026-05-13"></a></h2>
 <div class="section level3">
-<h3 id="changed-18">Changed<a class="anchor" aria-label="anchor" href="#changed-18"></a></h3>
+<h3 id="changed-19">Changed<a class="anchor" aria-label="anchor" href="#changed-19"></a></h3>
 <ul><li>
 <code>chore(deps)</code>: re-sync nemeton pin to <code>&gt;= 0.21.5</code> (was <code>&gt;= 0.21.3</code>) to match the version installed locally. No functional impact — removes <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code> resolution warnings on fresh machines.</li>
 </ul></div>
@@ -642,7 +650,7 @@
 <li>Toast et console affichaient <code>(scene_id missing) (0/159)</code> entre la recherche STAC et la première tuile reçue.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-19">Changed<a class="anchor" aria-label="anchor" href="#changed-19"></a></h3>
+<h3 id="changed-20">Changed<a class="anchor" aria-label="anchor" href="#changed-20"></a></h3>
 <ul><li>Le terme “ingestion” est remplacé par “téléchargement” (FR) / “download” (EN) sur tous les textes utilisateur du contexte Sentinel-2 (<code>monitoring_*</code>). <code>field_ingest_*</code> et <code>health_validation_*</code> sont volontairement préservés (uploads de données utilisateur, pas des downloads distants).</li>
 </ul></div>
 </div>
@@ -671,7 +679,7 @@
 <ul><li>Boutons <strong>“Lancer le diagnostic FAST”</strong> et <strong>“Lancer le diagnostic FORDEAD”</strong> muets au clic. Cause : <code>tagAppendAttributes(disabled = NA)</code> HTML-disablait les boutons au premier rendu, et la classe <code>btn-primary</code> masque visuellement l’état <code>disabled</code> Bootstrap — le navigateur refuse le clic alors que l’utilisateur croit le bouton actif. Correctif : suppression du wrapper <code>disabled = NA</code>, simplification du <code>updateActionButton(disabled = is_running)</code> (greying uniquement pendant la tâche async), garde <code>is_running</code> en tête des <code>observeEvent</code> pour avaler les double-clics.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-20">Changed<a class="anchor" aria-label="anchor" href="#changed-20"></a></h3>
+<h3 id="changed-21">Changed<a class="anchor" aria-label="anchor" href="#changed-21"></a></h3>
 <ul><li>
 <code>DESCRIPTION</code>: <code>Imports: nemeton (&gt;= 0.21.2)</code>, <code>Remotes: pobsteta/nemeton@v0.21.2</code>.</li>
 </ul></div>
@@ -707,7 +715,7 @@
 <div class="section level2">
 <h2 id="id_0234---2026-05-09">[0.23.4] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0234---2026-05-09"></a></h2>
 <div class="section level3">
-<h3 id="changed-21">Changed<a class="anchor" aria-label="anchor" href="#changed-21"></a></h3>
+<h3 id="changed-22">Changed<a class="anchor" aria-label="anchor" href="#changed-22"></a></h3>
 <ul><li>Plan d’actions chat: role labels in the conversation history now go through i18n. The raw LLM keys (“user” / “assistant”) no longer surface in the UI; they render as <strong>“Vous”</strong> / <strong>“Assistant”</strong> (FR) or <strong>“You”</strong> / <strong>“Assistant”</strong> (EN), switching live with the language toggle. The underlying data model still uses the English keys so the prompt builder is unchanged.</li>
 </ul></div>
 <div class="section level3">
@@ -730,7 +738,7 @@
 <ul><li>Plan d’actions: chat history <strong>auto-scrolls to the bottom</strong> on every update so the latest message is always visible. Implemented via an inline <code>setTimeout(0)</code> script appended to each <code>chat_history_ui</code> render that sets <code>el.scrollTop = el.scrollHeight</code> on the <code>.chat-history</code> div (now carrying a stable id).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-22">Changed<a class="anchor" aria-label="anchor" href="#changed-22"></a></h3>
+<h3 id="changed-23">Changed<a class="anchor" aria-label="anchor" href="#changed-23"></a></h3>
 <ul><li>Plan d’actions: chat panel <strong>moves from a left sidebar to the right sidebar</strong>, sitting below the “Tableau des actions” panel. The nested <code><a href="https://rstudio.github.io/bslib/reference/sidebar.html" class="external-link">bslib::layout_sidebar</a></code> introduced in 0.23.1 is replaced by a single right sidebar containing both cards stacked top-to-bottom.</li>
 <li>Plan d’actions: button label “Générer (IA)” renamed to “Générer les actions (IA)” (FR) / “Generate actions (AI)” (EN) for clarity.</li>
 </ul></div>
@@ -742,7 +750,7 @@
 <ul><li>Plan d’actions: <strong>AI chat now lives in a persistent left sidebar</strong> (350 px, collapsible) instead of a modal. The conversation stays visible while the user navigates map / table / Kanban. Layout switches to a nested <code>layout_sidebar</code> (left chat / right action panel / main content).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-23">Changed<a class="anchor" aria-label="anchor" href="#changed-23"></a></h3>
+<h3 id="changed-24">Changed<a class="anchor" aria-label="anchor" href="#changed-24"></a></h3>
 <ul><li>Plan d’actions: “Ouvrir le chat” button removed from the right action panel (made redundant by the persistent sidebar). <code>input$open_chat</code> observer (~30 LOC of <code>showModal</code>) dropped.</li>
 </ul></div>
 <div class="section level3">
@@ -763,7 +771,7 @@
 <li>Kanban columns: cards are <strong>sorted by <code>annee_realisation</code></strong> ascending (NAs last) so each column reads chronologically.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-24">Changed<a class="anchor" aria-label="anchor" href="#changed-24"></a></h3>
+<h3 id="changed-25">Changed<a class="anchor" aria-label="anchor" href="#changed-25"></a></h3>
 <ul><li>Kanban: <strong>free movement between any columns</strong>. The proposée → validée → planifiée → réalisée → abandonnée DAG no longer gates drag-drop. <code>update_action_in_plan()</code> accepts any known status, rejects only unknown strings. <code>is_valid_status_transition()</code> and <code>ACTION_PLAN_TRANSITIONS</code> stay as informational documentation of the natural workflow.</li>
 <li>Kanban: per-card <strong>“Déplacer”</strong> dropdown removed (made redundant by free drag-drop). The <code>kanban_move_*</code> dispatcher observer (~50 LOC) and the unused <code>KANBAN_STATUSES</code> constant are gone too.</li>
 <li>Action plan table: <strong>action count</strong> moved from bottom-left to bottom-right. DT <code>dom</code> switched to a custom flex layout (<code>&lt;"top"f&gt;rt&lt;"… dt-bottom-row"&lt;"… "lp&gt;i&gt;</code>) with scoped CSS rules to override the default DT floats.</li>
@@ -781,7 +789,7 @@
 <div class="section level2">
 <h2 id="id_0224---2026-05-09">[0.22.4] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0224---2026-05-09"></a></h2>
 <div class="section level3">
-<h3 id="changed-25">Changed<a class="anchor" aria-label="anchor" href="#changed-25"></a></h3>
+<h3 id="changed-26">Changed<a class="anchor" aria-label="anchor" href="#changed-26"></a></h3>
 <ul><li>Action plan table: the page-size selector (“Afficher 5/10/25/50/All”) moved <strong>below the table</strong>, next to the info count and pagination. Top of the table now only carries the global search box. DT <code>dom</code> switched from <code>"lfrtip"</code> to <code>"frtilp"</code>.</li>
 <li>Action plan table: only <strong>UGF + Année</strong> are frozen during horizontal scroll. <code>DISPLAY_COLS</code> reordered so hidden columns (<code>id</code>, <code>ug_id</code>, <code>annee_cible</code>) sit at the tail; <code>fixedColumns.leftColumns</code> reduced from 5 to 2 to match the count of visible frozen columns (DT’s FixedColumns counts every DOM column, hidden included).</li>
 <li>Action plan map: leaflet legend titles now translated. <code>legend_title</code> literals (<code>"annee"</code>, <code>"type"</code>, <code>"priority"</code>) swapped for <code>i18n$t("action_plan_col_*")</code> so the map shows “Année / Type / Priorité” in FR and “Year / Type / Priority” in EN, switching with the language toggle.</li>
@@ -809,7 +817,7 @@
 <li>Tooltip on <em>Source du CV</em> radio clarifying that it only picks the CV value, not the draw method.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-26">Changed<a class="anchor" aria-label="anchor" href="#changed-26"></a></h3>
+<h3 id="changed-27">Changed<a class="anchor" aria-label="anchor" href="#changed-27"></a></h3>
 <ul><li>Sampling-method note rewritten to describe candidates on a regular 50 m grid, forest mask filter, then GRTS → LPM2 → random selection.</li>
 <li>Map auto-zoom fixed to the UGF extent instead of BD Forêt’s (which is fetched with a buffer).</li>
 <li>
@@ -834,7 +842,7 @@
 <code>URL</code> and <code>BugReports</code> fields in <code>DESCRIPTION</code> so the RStudio Packages pane shows the documentation icon next to the package.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-27">Changed<a class="anchor" aria-label="anchor" href="#changed-27"></a></h3>
+<h3 id="changed-28">Changed<a class="anchor" aria-label="anchor" href="#changed-28"></a></h3>
 <ul><li>README counters synced to the real state (31 indicators, 13 expert profiles, 504 i18n keys).</li>
 <li>
 <code>sampling_tt_region</code> tooltip wording says QGIS, not QField.</li>
@@ -872,7 +880,7 @@
 <code>CITATION.cff</code> and <code>CHANGELOG.md</code> — release-metadata files.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-28">Changed<a class="anchor" aria-label="anchor" href="#changed-28"></a></h3>
+<h3 id="changed-29">Changed<a class="anchor" aria-label="anchor" href="#changed-29"></a></h3>
 <ul><li>
 <code>mod_sampling</code> now uses <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> (GRTS / LPM2 / random) instead of a plain <code><a href="https://r-spatial.github.io/sf/reference/st_sample.html" class="external-link">sf::st_sample()</a></code>. The generation notification reports the selected method.</li>
 <li>The Export terrain map now draws per-UGF polygons (matching the Import terrain style) instead of a single unioned zone; the unioned zone is still used internally by <code>create_sampling_plan()</code>.</li>

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,24 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.38.4/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.38.5" id="nemetonshiny-0385-2026-05-20">nemetonshiny 0.38.5 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0385-2026-05-20"></a></h2>
+<div class="section level4">
+<h4 id="changed--bump-nemeton-v0400--v0410--carte-fordead-activée-0-38-5">Changed — Bump <code>nemeton</code> v0.40.0 → v0.41.0 : Carte FORDEAD activée<a class="anchor" aria-label="anchor" href="#changed--bump-nemeton-v0400--v0410--carte-fordead-activ%C3%A9e-0-38-5"></a></h4>
+<p><code>nemeton@v0.41.0</code> ship le <strong>writer du masque de dépérissement</strong> FORDEAD. Jusqu’ici <code>run_fordead_dieback()</code> tournait dans un <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile()</a></code> effacé en fin de session : le raster catégoriel 0-4 était perdu et <code>read_fordead_dieback_mask()</code> (livré dès v0.25.0 avec sa convention de chemin) renvoyait toujours <code>NULL</code>. Côté app, le sous-onglet « Carte FORDEAD » (module <code>mod_monitoring_fordead_map</code>, câblé depuis v0.36.0) affichait donc en permanence son empty-state « Aucun masque FORDEAD disponible ».</p>
+<p>v0.41.0 ajoute un hook de persistance (toujours actif) qui écrit le masque dans <code>&lt;mask_cache_dir&gt;/zone_&lt;zone_id&gt;/dieback_mask_&lt;YYYYMMDDTHHMMSS&gt;.tif</code> — exactement le chemin que <code>read_fordead_dieback_mask()</code> interroge. <code>mask_cache_dir</code> est dérivé par défaut comme <code>&lt;project&gt;/cache/layers/fordead</code>, soit précisément le répertoire que lit <code>mod_monitoring_fordead_map</code>.</p>
+<p><strong>Aucun changement de code applicatif</strong> : le câblage des deux côtés était déjà en place et correct. Ce bump de dépendance suffit à activer la Carte FORDEAD — après un run FORDEAD réussi, le masque 0-4 (sain / faible / moyenne / forte / sol-nu) s’affiche désormais dans le sous-onglet.</p>
+<p>Vérifications faites avant bump :</p>
+<ul><li>
+<code>read_fordead_dieback_mask(con, zone_id, run_id = NULL, cache_dir = NULL)</code> — signature <strong>inchangée</strong> depuis v0.25.0.</li>
+<li>
+<code>run_fordead_dieback()</code> gagne <code>mask_cache_dir</code> et <code>keep_output</code>, tous deux avec valeur par défaut → l’appel du worker <code>run_fordead_async()</code> (qui ne les passe pas) reste valide. Le <code>mask_cache_dir</code> par défaut (<code>NULL</code>) dérive le bon chemin à partir du <code>cache_dir</code> Sentinel-2 transmis par le worker.</li>
+</ul><p><code>DESCRIPTION</code> : <code>Imports: nemeton (&gt;= 0.41.0)</code>, <code>Remotes: pobsteta/nemeton@v0.41.0</code> (le pin tag est avancé — il n’est plus sur <code>@main</code>, un bump explicite est nécessaire à chaque montée de version cœur).</p>
+<hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.38.4" id="nemetonshiny-0384-2026-05-20">nemetonshiny 0.38.4 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0384-2026-05-20"></a></h2>
 <div class="section level4">
