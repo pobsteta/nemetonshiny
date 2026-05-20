@@ -160,7 +160,7 @@ L'implémentation est **maison** (pas `shiny.i18n`) : refresh automatique sans r
 - **cicerone** pour les tours guidés (Suggests)
 - **quarto** pour les exports rapport (Suggests)
 
-`Remotes: pobsteta/nemeton@main` dans `DESCRIPTION` — **l'app suit en continu la branche `main` du cœur**, pas d'épingle tag. À chaque release `nemeton`, les nouveaux installs `install_github("pobsteta/nemetonshiny")` récupèrent automatiquement la dernière version cœur, sans intervention côté app. En contrepartie : (a) reproductibilité d'install perdue dans le temps (`install_github("…@v0.28.4")` ne donne plus le même résultat dans 6 mois si `nemeton@main` a bougé), (b) toute régression poussée sur `main` côté cœur impacte immédiatement tous les installs jusqu'au fix/revert. Installation locale en dev via `pak::local_install("/home/pascal/dev/nemeton")` ou `pkgload::load_all("/home/pascal/dev/nemeton")` — pas d'aller-retour GitHub.
+`Remotes: pobsteta/nemeton@vX.Y.Z` dans `DESCRIPTION` — **l'app épingle une release tag précise du cœur** (depuis v0.38.0 ; auparavant `@main`). Chaque montée de version cœur consommée par l'app exige un **bump explicite du pin `Remotes:`** (+ du plancher `Imports: nemeton (>= X.Y.Z)`). Avantage : reproductibilité d'install — `install_github("pobsteta/nemetonshiny@vA.B.C")` donne le même résultat dans 6 mois, et une régression poussée sur `nemeton@main` n'impacte pas les installs app. Contrepartie : une nouvelle fonction/correctif cœur n'est PAS disponible tant que le pin n'a pas été avancé — c'est un acte de release délibéré côté app. Installation locale en dev via `pak::local_install("/home/pascal/dev/nemeton")` ou `pkgload::load_all("/home/pascal/dev/nemeton")` — pas d'aller-retour GitHub.
 
 ## Commandes de référence
 
@@ -335,39 +335,45 @@ chaque entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 - Quand un changement implique aussi `nemeton`, faire les deux releases dans l'ordre cœur → app
   (l'app dépend du cœur, jamais l'inverse).
 
-## Suivi de `nemeton@main` — implications pour les releases
+## Épinglage de `nemeton` par tag — implications pour les releases
 
-Choix architectural (cf. *Stack technique*) : `Remotes: pobsteta/nemeton@main`
-sans épingle tag. Les installs `install_github("pobsteta/nemetonshiny")`
-tirent toujours le dernier commit `main` du cœur, donc la dernière
-fonctionnalité exportée est immédiatement disponible sans avoir à
-publier une release app dédiée.
+Choix architectural (cf. *Stack technique*) : `Remotes: pobsteta/nemeton@vX.Y.Z`
+épinglé sur une **release tag précise** du cœur. Depuis v0.38.0 l'app
+n'est plus sur `@main` — chaque montée de version cœur consommée par
+l'app est un acte de release délibéré.
 
 Conséquences pratiques :
 
-- **Pas de bump `Remotes:` après une release cœur.** Inutile, puisque
-  l'épingle pointe sur la branche, pas sur un tag. Une release `nemeton@vX.Y.Z`
-  est consommée automatiquement par tous les nouveaux installs app dès
-  que le tag est mergé sur `main`.
-- **Reproductibilité d'install pure perdue.** `install_github("pobsteta/nemetonshiny@v0.28.4")`
-  fait dans 6 mois ne donne plus le même état que le même appel fait
-  aujourd'hui, parce que `nemeton@main` aura bougé entre-temps. Pour un
-  travail nécessitant la reproductibilité (publication scientifique,
-  bug-hunt sur une version figée), s'appuyer sur `renv::snapshot()`
-  côté projet utilisateur — c'est le bon outil pour figer un état
-  composite app+cœur, pas le `Remotes:` du `DESCRIPTION`.
-- **Une régression poussée sur `nemeton@main` casse l'install app.**
-  Pendant la fenêtre push → revert/fix, `install_github("pobsteta/nemetonshiny")`
-  peut tomber. Mitigation : ne jamais pousser sur `nemeton@main` sans
-  CI verte côté cœur ; revert rapide via PR si découvert.
-- **La règle 11 (ordre cœur → app) reste valable pour les changements
-  d'API**, mais le mécanisme de propagation a changé : ce n'est plus
-  un bump `Remotes:`, c'est juste l'attente que le commit cœur soit
-  sur `main`. L'app peut alors être éditée pour consommer la nouvelle
-  API et released normalement.
+- **Bump `Remotes:` explicite pour consommer une release cœur.** Une
+  nouvelle fonction exportée ou un correctif de `nemeton@vX.Y.Z`
+  n'est PAS disponible côté app tant que le pin `Remotes:` n'a pas
+  été avancé vers ce tag. Le bump du pin **et** du plancher
+  `Imports: nemeton (>= X.Y.Z)` est une étape de release à part
+  entière (commit `chore(deps):` dédié, cf. *Consignes de release*).
+- **Vérifier la version `nemeton` avant tout travail cœur↔app.**
+  Avant de consommer une fonction cœur récente : (a) `gh release list
+  --repo pobsteta/nemeton` pour voir les releases disponibles,
+  (b) comparer au pin `Remotes:` actuel du `DESCRIPTION`,
+  (c) si la fonction visée est dans une version > pin, prévoir le
+  bump `Remotes:` + `Imports:` dans la livraison.
+- **Reproductibilité d'install garantie.** `install_github("pobsteta/nemetonshiny@vA.B.C")`
+  donne le même état composite app+cœur dans 6 mois qu'aujourd'hui :
+  le tag app fige un tag cœur précis. C'est l'avantage majeur du pin
+  tag sur l'ancien `@main`.
+- **Une régression poussée sur `nemeton@main` n'impacte PAS les
+  installs app.** L'app ne consomme que des tags cœur publiés ;
+  `main` côté cœur peut bouger librement sans casser
+  `install_github("pobsteta/nemetonshiny")`.
+- **Règle 11 (ordre cœur → app).** Toujours valable et désormais
+  matérialisée par le pin : on release d'abord `nemeton@vX.Y.Z`,
+  puis on bumpe le `Remotes:`/`Imports:` côté app dans une release
+  app dédiée. La propagation n'est PAS automatique — elle passe
+  par ce bump explicite.
 - **Développement local** : `pkgload::load_all("/home/pascal/dev/nemeton")`
-  court-circuite GitHub, comme avant. Le suivi de `main` ne change
-  rien au workflow dev quotidien.
+  ou `pak::local_install("/home/pascal/dev/nemeton")` court-circuitent
+  GitHub et le pin — le développeur teste contre son arbre cœur local
+  quelle que soit la valeur du `Remotes:`. Le pin tag ne change rien
+  au workflow dev quotidien ; il ne gouverne que les installs GitHub.
 
 ## Workflow de push (branche dev → main)
 
