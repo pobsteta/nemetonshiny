@@ -1,5 +1,42 @@
 # Changelog
 
+## nemetonshiny 0.38.7 (2026-05-20)
+
+#### Fixed — Rafale de warnings leaflet « Some values were outside the color scale »
+
+La console R crachait
+`Warning in colors(.) : Some values were outside the color scale and will be treated as NA`
+en rafale lors du rendu des cartes du Suivi sanitaire. Deux causes
+distinctes.
+
+**Carte FORDEAD** (gros de la rafale, après un run). `output$map` de
+`mod_monitoring_fordead_map` colore le masque catégoriel 0-4 via
+`colorFactor`, mais `addRasterImage()` reprojette en web-mercator avec
+`method = "bilinear"` par défaut — l’interpolation bilinéaire crée des
+valeurs **fractionnaires** entre les classes discrètes (0.7, 2.3…) qui
+ne correspondent à aucun niveau de la palette → NA + warning, une fois
+par bloc de raster.
+
+Correctif : `addRasterImage(..., method = "ngb")` (nearest-neighbour —
+préserve les classes entières), et `colorFactor(levels = 0:4)` en
+niveaux numériques alignés sur les valeurs du raster.
+
+**Carte FAST** (warning isolé). `.pixel_palette` est un `colorNumeric`
+ancré sur `[-1, 1]` ; NDVI / NBR / CRSWIR sont théoriquement bornés à
+`[-1, 1]` mais des pixels de bord ou des artefacts de reprojection
+produisent parfois des valeurs juste au-delà → NA + warning.
+
+Correctif : `terra::clamp(r, -1, 1, values = TRUE)` avant
+`addRasterImage()` — les valeurs hors domaine sont ramenées aux extrêmes
+de la palette (un NDVI 1.02 devient « vert max », ce qui est
+visuellement correct) au lieu d’être rendues transparentes.
+
+Aucun de ces deux warnings n’était fatal — les valeurs hors échelle
+étaient simplement dessinées en transparent — mais ils noyaient la
+console.
+
+------------------------------------------------------------------------
+
 ## nemetonshiny 0.38.6 (2026-05-20)
 
 #### Fixed — Carte FORDEAD ne se rafraîchit pas après un run

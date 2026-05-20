@@ -12,6 +12,19 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.38.7\] - 2026-05-20
+
+### Fixed
+
+- **Warnings leaflet « Some values were outside the color scale »**.
+  Deux causes : (1) Carte FORDEAD — `addRasterImage()` rééchantillonnait
+  le masque catégoriel 0-4 en `bilinear` (défaut), créant des valeurs
+  fractionnaires hors des niveaux `colorFactor` ; fix `method = "ngb"`
+  - `colorFactor(levels = 0:4)`. (2) Carte FAST — `colorNumeric` ancré
+    sur `[-1, 1]` recevait des NDVI/NBR/CRSWIR de bord hors domaine ;
+    fix `terra::clamp(r, -1, 1, values = TRUE)` avant `addRasterImage()`
+    (`R/mod_monitoring_fordead_map.R`, `R/mod_monitoring_pixel_map.R`).
+
 ## \[0.38.6\] - 2026-05-20
 
 ### Fixed

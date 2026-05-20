@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,21 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.38.6/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.38.7" id="nemetonshiny-0387-2026-05-20">nemetonshiny 0.38.7 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0387-2026-05-20"></a></h2>
+<div class="section level4">
+<h4 id="fixed--rafale-de-warnings-leaflet--some-values-were-outside-the-color-scale--0-38-7">Fixed — Rafale de warnings leaflet « Some values were outside the color scale »<a class="anchor" aria-label="anchor" href="#fixed--rafale-de-warnings-leaflet--some-values-were-outside-the-color-scale--0-38-7"></a></h4>
+<p>La console R crachait <code>Warning in colors(.) : Some values were outside the color scale and will be treated as NA</code> en rafale lors du rendu des cartes du Suivi sanitaire. Deux causes distinctes.</p>
+<p><strong>Carte FORDEAD</strong> (gros de la rafale, après un run). <code>output$map</code> de <code>mod_monitoring_fordead_map</code> colore le masque catégoriel 0-4 via <code>colorFactor</code>, mais <code>addRasterImage()</code> reprojette en web-mercator avec <code>method = "bilinear"</code> par défaut — l’interpolation bilinéaire crée des valeurs <strong>fractionnaires</strong> entre les classes discrètes (0.7, 2.3…) qui ne correspondent à aucun niveau de la palette → NA + warning, une fois par bloc de raster.</p>
+<p>Correctif : <code>addRasterImage(..., method = "ngb")</code> (nearest-neighbour — préserve les classes entières), et <code>colorFactor(levels = 0:4)</code> en niveaux numériques alignés sur les valeurs du raster.</p>
+<p><strong>Carte FAST</strong> (warning isolé). <code>.pixel_palette</code> est un <code>colorNumeric</code> ancré sur <code>[-1, 1]</code> ; NDVI / NBR / CRSWIR sont théoriquement bornés à <code>[-1, 1]</code> mais des pixels de bord ou des artefacts de reprojection produisent parfois des valeurs juste au-delà → NA + warning.</p>
+<p>Correctif : <code>terra::clamp(r, -1, 1, values = TRUE)</code> avant <code>addRasterImage()</code> — les valeurs hors domaine sont ramenées aux extrêmes de la palette (un NDVI 1.02 devient « vert max », ce qui est visuellement correct) au lieu d’être rendues transparentes.</p>
+<p>Aucun de ces deux warnings n’était fatal — les valeurs hors échelle étaient simplement dessinées en transparent — mais ils noyaient la console.</p>
+<hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.38.6" id="nemetonshiny-0386-2026-05-20">nemetonshiny 0.38.6 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0386-2026-05-20"></a></h2>
 <div class="section level4">
