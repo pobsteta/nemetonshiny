@@ -1,3 +1,43 @@
+# nemetonshiny 0.38.2 (2026-05-20)
+
+### Fixed — Sous-onglets Suivi sanitaire blancs (Carte FORDEAD, Alertes FAST)
+
+Symptôme : après un run FORDEAD terminé, le sous-onglet « Carte
+FORDEAD » s'affichait totalement blanc — ni carte, ni message
+d'état, juste une fine bande grise. Pareil pour « Alertes FAST »
+en mode quick.
+
+Cause : les modules `mod_monitoring_fordead_map` et
+`mod_monitoring_fast_alerts` exposent leur contenu via
+`uiOutput()` / `renderUI()`. Le navset de Suivi sanitaire bascule
+ses `nav_panel` avec `bslib::nav_show()` / `nav_hide()`
+(visibilité pilotée par le mode quick/health, livrée v0.34.0–
+v0.35.0). Ce mécanisme rend la détection de visibilité par-output
+de Shiny non fiable : avec `suspendWhenHidden = TRUE` (défaut),
+les `uiOutput` restaient suspendus et le `renderUI` ne se
+déclenchait jamais, même après que l'utilisateur ait cliqué sur
+l'onglet. Le module fonctionne pourtant parfaitement en isolation
+(testé : l'empty-state se rend correctement).
+
+**Correctif** :
+
+- `shiny::outputOptions(output, "<id>", suspendWhenHidden = FALSE)`
+  sur `output$panel` (Carte FORDEAD) et sur `output$panel` +
+  `output$counters` (Alertes FAST) — le `renderUI` s'évalue
+  désormais inconditionnellement.
+- `bslib::nav_select()` ajouté dans l'observer mode-driven : au
+  changement de mode, l'onglet actif est ré-ancré sur un onglet
+  visible (`alerts_fast` en quick, `alerts_fordead` en health).
+  Sans ça, le navset gardait comme pane actif un onglet désormais
+  masqué, laissant la zone de contenu dans un état incohérent.
+
+Résultat : la « Carte FORDEAD » affiche bien son empty-state
+explicatif (« Aucun masque FORDEAD disponible — postprocess hook
+prévu dans une release ultérieure de nemeton »), et « Alertes
+FAST » rend ses compteurs + carte.
+
+---
+
 # nemetonshiny 0.38.1 (2026-05-20)
 
 ### Fixed — Câblage du CHM Theia vers les indicateurs Production / Énergie
@@ -81,7 +121,6 @@ Production ne peut pas être calculée.
 
 `DESCRIPTION` : `Imports: nemeton (>= 0.40.0)`,
 `Remotes: pobsteta/nemeton@v0.40.0`, `reticulate` ajouté en Suggests.
-
 # nemetonshiny 0.37.0 (2026-05-19)
 
 ### Added — Fallback BD Forêt V2 sur le check de validité FORDEAD (G3 espèces)

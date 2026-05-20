@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.38.2] - 2026-05-20
+
+### Fixed
+
+- **Suivi sanitaire / sous-onglets blancs** : « Carte FORDEAD » (et
+  « Alertes FAST ») s'affichaient totalement vides — pas même
+  l'empty-state. Les `uiOutput`/`renderUI` des modules
+  `mod_monitoring_fordead_map` et `mod_monitoring_fast_alerts`
+  restaient suspendus (`suspendWhenHidden = TRUE` par défaut)
+  parce que le mécanisme `bslib::nav_show()` / `nav_hide()` du
+  navset casse la détection de visibilité par-output de Shiny.
+  Fix : `outputOptions(..., suspendWhenHidden = FALSE)` sur les
+  outputs `panel` / `counters` des deux modules, + `nav_select()`
+  dans l'observer mode-driven pour ré-ancrer l'onglet actif sur
+  un onglet visible au changement de mode (`R/mod_monitoring.R`,
+  `R/mod_monitoring_fordead_map.R`,
+  `R/mod_monitoring_fast_alerts.R`).
+
 ## [0.38.1] - 2026-05-20
 
 ### Fixed
