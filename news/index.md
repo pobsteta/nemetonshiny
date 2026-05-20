@@ -1,5 +1,32 @@
 # Changelog
 
+## nemetonshiny 0.38.1 (2026-05-20)
+
+#### Fixed — Câblage du CHM Theia vers les indicateurs Production / Énergie
+
+À l’écran « Calculs terminés », les indicateurs P1 (Volume), P2
+(Productivité), P3 (Qualité bois) et E1 (Bois-énergie) échouaient avec
+les erreurs du mode sans CHM (`Missing required fields: dbh, density` /
+`fertility, climate` / `volume`).
+
+Deux corrections de câblage dans `R/service_compute.R` :
+
+- **`age_field` transmis à P2** : `compute_single_indicator()` passait
+  déjà `chm` et `species_field` (P1/P3/E1) mais pas `age_field`. En mode
+  CHM, `indicateur_p2_station()` bascule sur le modèle hauteur/âge et a
+  besoin de la colonne `age` — désormais transmise via
+  `age_field = "age"` (colonne alimentée par
+  [`nemeton::enrich_parcels_bdforet()`](https://pobsteta.github.io/nemeton/reference/enrich_parcels_bdforet.html)).
+- **Échec explicite quand le CHM est absent** : nouvelle constante
+  `CHM_REQUIRED_INDICATORS` (P1/P2/P3/E1). Si aucun CHM n’a pu être
+  chargé (Theia non configuré, LiDAR HD absent, Open-Canopy
+  indisponible), ces quatre indicateurs échouent désormais avec un
+  message i18n explicite (`compute_chm_required`) renvoyant vers le menu
+  de configuration Theia, au lieu de l’erreur cryptique du cœur
+  `nemeton`. Les autres indicateurs du calcul ne sont pas affectés. C1
+  et B2 acceptent aussi `chm` mais conservent un chemin legacy (OSO /
+  NDVI) et ne sont donc pas concernés.
+
 ## nemetonshiny 0.38.0 (2026-05-20)
 
 #### Added — Intégration des sources Theia / DATA TERRA (nemeton v0.40.0)

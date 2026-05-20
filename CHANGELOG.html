@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,16 @@
 <p>For a narrative, per-feature description of each release, see <a href="NEWS.html">NEWS.md</a>. This file is the concise, categorised trail.</p>
 <div class="section level2">
 <h2 id="unreleased"><a href="https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD" class="external-link">Unreleased</a><a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
+</div>
+<div class="section level2">
+<h2 id="id_0381---2026-05-20">[0.38.1] - 2026-05-20<a class="anchor" aria-label="anchor" href="#id_0381---2026-05-20"></a></h2>
+<div class="section level3">
+<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<ul><li>
+<strong>Câblage du CHM Theia vers P1/P2/P3/E1</strong> : <code>compute_single_indicator()</code> transmet désormais <code>age_field = "age"</code> à <code>indicateur_p2_station()</code> (mode CHM hauteur/âge), en plus de <code>chm</code> et <code>species_field</code> déjà câblés. Sans cela, P2 échouait avec <code>Missing required fields: fertility, climate</code>.</li>
+<li>
+<strong>Échec explicite sans CHM</strong> : nouvelle constante <code>CHM_REQUIRED_INDICATORS</code> (P1/P2/P3/E1). En l’absence de modèle de hauteur de canopée, ces indicateurs échouent avec un message i18n clair (<code>compute_chm_required</code>) au lieu de l’erreur cryptique du cœur <code>nemeton</code>, sans interrompre le reste du calcul.</li>
+</ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_0380---2026-05-20">[0.38.0] - 2026-05-20<a class="anchor" aria-label="anchor" href="#id_0380---2026-05-20"></a></h2>
@@ -76,7 +86,7 @@
 <div class="section level2">
 <h2 id="id_0368---2026-05-19">[0.36.8] - 2026-05-19<a class="anchor" aria-label="anchor" href="#id_0368---2026-05-19"></a></h2>
 <div class="section level3">
-<h3 id="fixed">Fixed<a class="anchor" aria-label="anchor" href="#fixed"></a></h3>
+<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / résolution FORDEAD</strong> : trois fixes UX à la fin d’un run FORDEAD réussi. (1) Le bouton « Lancer le diagnostic FORDEAD » ne se ré-enable pas systématiquement quand <code>fordead_task$status()</code> transite de « running » à « success » ; ajout d’un <code>updateActionButton(disabled = FALSE)</code> + reset <code>force_unlock_health(FALSE)</code> explicite dans le handler de résultat (success ET error). (2) L’onglet « Alertes FORDEAD » restait muet quand <code>n_alerts_inserted == 0L</code> ; nouvelle card « Zone saine » avec durée du run quand <code>fordead_last_result()$status == "success"</code> et que <code>alerts()</code> est vide. (3) Le snapshot de résultat est désormais conservé en <code>reactiveVal</code> (<code>fordead_last_result</code>) pour distinguer « pas encore lancé » / « run terminé sans anomalie » / « run terminé en erreur ». (<code>R/mod_monitoring.R</code>)</li>
 </ul></div>
@@ -90,7 +100,7 @@
 <div class="section level2">
 <h2 id="id_0367---2026-05-18">[0.36.7] - 2026-05-18<a class="anchor" aria-label="anchor" href="#id_0367---2026-05-18"></a></h2>
 <div class="section level3">
-<h3 id="fixed-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-1"></a></h3>
+<h3 id="fixed-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-2"></a></h3>
 <ul><li>
 <strong>Sampling / câblage MNT-CHM sur <code>create_sampling_plan()</code></strong> : les rasters résolus via <code>nemeton::resolve_project_*</code> n’étaient pas passés à <code>create_sampling_plan()</code> (manque de <code>mnt =</code> / <code>chm =</code> au call site), si bien que <code>&lt;project&gt;/dtm.tif</code> opencanopy n’était jamais consommé. Pré-check ajouté : DEM absent → toast bloquant <code>sampling_no_dem_found_fmt</code> (i18n, avec chemin projet) <code>id = session$ns("dem_missing")</code> et arrêt avant l’appel cœur ; CHM absent → <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> sans toast bloquant (<code>R/mod_sampling.R</code>).</li>
 </ul></div>
@@ -124,7 +134,7 @@
 <div class="section level2">
 <h2 id="id_0365---2026-05-18">[0.36.5] - 2026-05-18<a class="anchor" aria-label="anchor" href="#id_0365---2026-05-18"></a></h2>
 <div class="section level3">
-<h3 id="fixed-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-2"></a></h3>
+<h3 id="fixed-3">Fixed<a class="anchor" aria-label="anchor" href="#fixed-3"></a></h3>
 <ul><li>
 <strong>Sampling / notification d’erreur <code>create_sampling_plan()</code></strong> : les séquences ANSI <code>cli</code> (<code>[38;5;250m</code>, <code>[31m</code>, <code>[36m</code>, <code>[39m</code>) issues de <code><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli::cli_abort()</a></code> côté <code>nemeton</code> apparaissaient brutes dans le toast Shiny. Le <code>conditionMessage(e)</code> est désormais nettoyé via <code><a href="https://cli.r-lib.org/reference/ansi_strip.html" class="external-link">cli::ansi_strip()</a></code> avant <code>showNotification()</code> (<code>R/mod_sampling.R</code>).</li>
 </ul></div>
@@ -132,7 +142,7 @@
 <div class="section level2">
 <h2 id="id_0364---2026-05-17">[0.36.4] - 2026-05-17<a class="anchor" aria-label="anchor" href="#id_0364---2026-05-17"></a></h2>
 <div class="section level3">
-<h3 id="fixed-3">Fixed<a class="anchor" aria-label="anchor" href="#fixed-3"></a></h3>
+<h3 id="fixed-4">Fixed<a class="anchor" aria-label="anchor" href="#fixed-4"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / toast d’avertissement backend</strong> : les warnings Sentinel-2 contenant une URL pré-signée Azure (~400 chars de SAS token) transformaient le toast en mur de texte. Nouveau helper interne <code>.summarize_backend_warnings()</code> qui remplace les URLs par <code>&lt;URL&gt;</code>, normalise les espaces et cap chaque warning à 200 chars (<code>R/mod_monitoring.R</code>).</li>
 </ul></div>
@@ -144,7 +154,7 @@
 <div class="section level2">
 <h2 id="id_0363---2026-05-17">[0.36.3] - 2026-05-17<a class="anchor" aria-label="anchor" href="#id_0363---2026-05-17"></a></h2>
 <div class="section level3">
-<h3 id="fixed-4">Fixed<a class="anchor" aria-label="anchor" href="#fixed-4"></a></h3>
+<h3 id="fixed-5">Fixed<a class="anchor" aria-label="anchor" href="#fixed-5"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte FAST</strong> : markers placettes (cercles bleus) invisibles depuis v0.34.0 sur certains navigateurs. Les CircleMarkers vivaient dans <code>overlayPane</code> à côté des polygones UGF ; selon l’ordre de re-draw les polygones finissaient en fin de <code>&lt;g&gt;</code> SVG et masquaient les markers. Pinned explicitement dans <code>markerPane</code> (z=600) via <code>pathOptions(pane = "markerPane")</code>, z-stack désormais strictement séparé (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -152,7 +162,7 @@
 <div class="section level2">
 <h2 id="id_0362---2026-05-17">[0.36.2] - 2026-05-17<a class="anchor" aria-label="anchor" href="#id_0362---2026-05-17"></a></h2>
 <div class="section level3">
-<h3 id="fixed-5">Fixed<a class="anchor" aria-label="anchor" href="#fixed-5"></a></h3>
+<h3 id="fixed-6">Fixed<a class="anchor" aria-label="anchor" href="#fixed-6"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / zone monitoring</strong> : la liste des zones et la zone sélectionnée ne se mettaient pas à jour au changement de projet. Deux causes corrigées dans <code>R/mod_monitoring.R</code> :
 <ul><li>Le reactive <code>zones</code> n’avait pas de dépendance effective sur <code>app_state$current_project</code> en mode Postgres (le resolver d’URL retournait tôt sans forcer le promise lazy). Lecture explicite via <code>proj &lt;-</code> ajoutée.</li>
@@ -163,7 +173,7 @@
 <div class="section level2">
 <h2 id="id_0361---2026-05-17">[0.36.1] - 2026-05-17<a class="anchor" aria-label="anchor" href="#id_0361---2026-05-17"></a></h2>
 <div class="section level3">
-<h3 id="fixed-6">Fixed<a class="anchor" aria-label="anchor" href="#fixed-6"></a></h3>
+<h3 id="fixed-7">Fixed<a class="anchor" aria-label="anchor" href="#fixed-7"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / sidebar FAST</strong> : sliders <code>threshold_ndvi</code> et <code>threshold_nbr</code> réalignés sur la sémantique « seuil absolu » consommée par <code><a href="https://pobsteta.github.io/nemeton/reference/list_fast_alerts_for_zone.html" class="external-link">nemeton::list_fast_alerts_for_zone()</a></code> depuis v0.36.0. Défauts <code>0.40 / 0.30</code> (cœur defaults), range <code>[0.10, 0.80]</code> (au lieu de <code>0.15 / 0.25</code>, range <code>[0.05, 0.50]</code> hérités de la sémantique drop E6.a). Labels i18n recyclés (« Seuil minimum NDVI/NBR »). Empty-state des Alertes FAST : « relever le seuil » au lieu de « baisser le seuil » (<code>R/mod_monitoring.R</code>, <code>R/utils_i18n.R</code>).</li>
 </ul></div>
@@ -189,7 +199,7 @@
 <div class="section level2">
 <h2 id="id_0351---2026-05-17">[0.35.1] - 2026-05-17<a class="anchor" aria-label="anchor" href="#id_0351---2026-05-17"></a></h2>
 <div class="section level3">
-<h3 id="fixed-7">Fixed<a class="anchor" aria-label="anchor" href="#fixed-7"></a></h3>
+<h3 id="fixed-8">Fixed<a class="anchor" aria-label="anchor" href="#fixed-8"></a></h3>
 <ul><li>
 <strong>Terrain / Plan d’échantillonnage</strong> : erreur <code>le tableau de remplacement a N lignes, le tableau remplacé en a M</code> remontée en toast quand un CHM et/ou un MNT étaient fournis avec une AOI bordurale. Fix dans <code>nemeton@v0.24.1</code> (filtrage des candidats GRTS avant <code>spsurvey::grts()</code>), consommé automatiquement via <code>Remotes: pobsteta/nemeton@main</code>. Aucun changement de code côté app.</li>
 </ul></div>
@@ -216,7 +226,7 @@
 <div class="section level2">
 <h2 id="id_0340---2026-05-16">[0.34.0] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0340---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="fixed-8">Fixed<a class="anchor" aria-label="anchor" href="#fixed-8"></a></h3>
+<h3 id="fixed-9">Fixed<a class="anchor" aria-label="anchor" href="#fixed-9"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte FAST</strong> : cascade de redraws (raster + UGF + placettes) à chaque tick du slider date. Le raster est désormais épinglé dans un pane Leaflet custom <code>nemetonRaster</code> (z-index 250), entre <code>tilePane</code> (200) et <code>overlayPane</code> (400), via <code>addMapPane()</code> + <code>gridOptions(pane = "nemetonRaster")</code>. Le raster reste <strong>visible</strong> sur Satellite (un essai initial dans <code>tilePane</code> le faisait disparaître quand le <code>LayersControl</code> ré-ajoutait le tile satellite), tout en restant <strong>sous les polygones et CircleMarkers</strong> (qui restent cliquables sans ré-empilement). Les dépendances fictives <code>current_layer_r()</code> des observers UGF / Placettes sont supprimées — ils ne re-firent que quand leur source change vraiment (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -275,7 +285,7 @@
 <div class="section level2">
 <h2 id="id_0315---2026-05-16">[0.31.5] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0315---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="fixed-9">Fixed<a class="anchor" aria-label="anchor" href="#fixed-9"></a></h3>
+<h3 id="fixed-10">Fixed<a class="anchor" aria-label="anchor" href="#fixed-10"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : raster NDVI/NBR invisible sur fond Satellite (palette conventionnelle confondue avec l’imagerie naturelle, même à 0.85 d’opacité). Opacité bumpée 0.85 → 1.0. Le contexte satellite reste visible autour du bbox du raster ; l’utilisateur peut toggle OSM s’il veut voir les parcelles à l’intérieur de la zone d’analyse (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -283,7 +293,7 @@
 <div class="section level2">
 <h2 id="id_0314---2026-05-16">[0.31.4] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0314---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="fixed-10">Fixed<a class="anchor" aria-label="anchor" href="#fixed-10"></a></h3>
+<h3 id="fixed-11">Fixed<a class="anchor" aria-label="anchor" href="#fixed-11"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : les marqueurs placettes n’étaient plus cliquables quand l’observe placettes firait avant l’observe UGF dans le même flush — les polygones interceptaient les clics. Échelle stricte de priorités : raster 100 (fond) → UGF 50 (milieu) → placettes 0 (haut, cliquables). Ajout aussi du dummy <code>current_layer_r()</code> dependency sur placettes pour qu’ils restent en haut après chaque update du raster (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -291,7 +301,7 @@
 <div class="section level2">
 <h2 id="id_0313---2026-05-16">[0.31.3] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0313---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="fixed-11">Fixed<a class="anchor" aria-label="anchor" href="#fixed-11"></a></h3>
+<h3 id="fixed-12">Fixed<a class="anchor" aria-label="anchor" href="#fixed-12"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : auto-zoom au chargement projet n’a vraiment jamais marché parce que la reactive firait AVANT que le widget Leaflet ne soit dans le DOM ; les commandes <code>leafletProxy</code> étaient queue puis rejouées sur une carte de taille 0×0, où <code>fitBounds</code> est un no-op silencieux. Refactor du pattern d’auto-zoom calqué sur <code>mod_ug.R:744-794</code> : observer la navigation <code>main_nav</code> + <code>monitoring-subtab</code> via <code>root_session</code>, délai 300 ms via <code><a href="https://later.r-lib.org/reference/later.html" class="external-link">later::later</a></code>, <code>leafletInvalidateSize</code> puis <code>fitBounds</code> (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -299,7 +309,7 @@
 <div class="section level2">
 <h2 id="id_0312---2026-05-16">[0.31.2] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0312---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="fixed-12">Fixed<a class="anchor" aria-label="anchor" href="#fixed-12"></a></h3>
+<h3 id="fixed-13">Fixed<a class="anchor" aria-label="anchor" href="#fixed-13"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : le contour UGF orange était bien produit mais peint par-dessus par le raster NDVI/NBR (DOM order de <code>overlayPane</code> : dernière couche ajoutée = au-dessus, et le raster fire plus tard que l’UGF parce que <code>build_index_stack</code> est lourd). Fix : observe UGF dépend de <code>current_layer_r()</code> pour re-fire après chaque raster, et observe raster reçoit <code>priority = 100L</code> pour passer en premier dans un flush où les deux sont dirty (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -307,7 +317,7 @@
 <div class="section level2">
 <h2 id="id_0311---2026-05-16">[0.31.1] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0311---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="fixed-13">Fixed<a class="anchor" aria-label="anchor" href="#fixed-13"></a></h3>
+<h3 id="fixed-14">Fixed<a class="anchor" aria-label="anchor" href="#fixed-14"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : le contour orange de zone d’analyse n’apparaissait pas pour les projets sans <code>indicators_sf</code> ni <code>ugs.json</code> (placettes-only). Chaîne de fallback étendue à 4 sources : indicators_sf → ug_build_sf → raster bbox → placettes bbox. cli logs ajoutés pour identifier la source utilisée (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 <li>
@@ -322,7 +332,7 @@
 <strong>Suivi sanitaire</strong> : sous-onglet « Séries par placette » retiré. La vue multi-traces NDVI/NBR par placette (mode rapide) est remplacée par le clic sur marqueur placette de la Carte pixel. Le graphique de distribution d’alertes (mode sanitaire) qui partageait le même output disparaît également — à ré-ajouter à l’onglet Alertes si besoin (<code>R/mod_monitoring.R</code>, <code>R/utils_i18n.R</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-14">Fixed<a class="anchor" aria-label="anchor" href="#fixed-14"></a></h3>
+<h3 id="fixed-15">Fixed<a class="anchor" aria-label="anchor" href="#fixed-15"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : le contour UGF n’apparaissait pas et l’auto-zoom au chargement projet ne marchait pas pour les projets sans indicateurs calculés. <code>ugf_sf_r</code> tombe désormais sur <code>ug_build_sf(project)</code> quand <code>indicators_sf</code> est NULL — la géométrie UGF est disponible dès que l’utilisateur a défini ses UGFs (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 <li>
@@ -332,7 +342,7 @@
 <div class="section level2">
 <h2 id="id_0302---2026-05-16">[0.30.2] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0302---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="fixed-15">Fixed<a class="anchor" aria-label="anchor" href="#fixed-15"></a></h3>
+<h3 id="fixed-16">Fixed<a class="anchor" aria-label="anchor" href="#fixed-16"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : les trois couches d’overlay (UGF, NDVI / NBR, Placettes) n’apparaissaient pas malgré leurs cases cochées dans le contrôle Leaflet. Cause : <code>overlayGroups</code> dans <code>addLayersControl</code> posait des cases pré-renderLeaflet alors que les couches arrivaient via <code>leafletProxy</code> async ; les références de couches restaient indéfinies côté JS. Drop de <code>overlayGroups</code>, overlays toujours visibles (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -364,7 +374,7 @@
 <strong>Suivi sanitaire / Carte pixel</strong> : couche UGF (périmètre du projet) affichée en contour orange au-dessus du raster NDVI/NBR. Troisième case à cocher « UGF » dans le contrôle des couches Leaflet, à côté de « NDVI / NBR » et « Placettes ». Visible sur les deux fonds OSM et Satellite (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-16">Fixed<a class="anchor" aria-label="anchor" href="#fixed-16"></a></h3>
+<h3 id="fixed-17">Fixed<a class="anchor" aria-label="anchor" href="#fixed-17"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : auto-zoom au chargement projet retravaillé. Le correctif v0.29.1 (<code>observeEvent</code> sur <code>project$id</code>) ratait quand <code>indicators_sf</code> arrivait après <code>id</code> (chargement async) — la carte restait alors sur la vue Leaflet par défaut, donnant l’impression que le raster et les marqueurs étaient invisibles. Passage à <code>observe()</code> + <code>reactiveVal .last_fitted_id</code> qui couvre tous les ordres de population (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -372,7 +382,7 @@
 <div class="section level2">
 <h2 id="id_0291---2026-05-16">[0.29.1] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0291---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="fixed-17">Fixed<a class="anchor" aria-label="anchor" href="#fixed-17"></a></h3>
+<h3 id="fixed-18">Fixed<a class="anchor" aria-label="anchor" href="#fixed-18"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : la carte ne se centrait pas sur les UGF du projet au chargement — elle restait sur la vue Leaflet par défaut depuis le passage en <code>renderLeaflet</code> statique de v0.28.1. Ajout d’un <code>observeEvent</code> sur <code>project$id</code> qui appelle <code>fitBounds()</code> via <code>leafletProxy()</code>. Préserve le pan/zoom manuel après le centrage initial (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -399,7 +409,7 @@
 <div class="section level2">
 <h2 id="id_0284---2026-05-15">[0.28.4] - 2026-05-15<a class="anchor" aria-label="anchor" href="#id_0284---2026-05-15"></a></h2>
 <div class="section level3">
-<h3 id="fixed-18">Fixed<a class="anchor" aria-label="anchor" href="#fixed-18"></a></h3>
+<h3 id="fixed-19">Fixed<a class="anchor" aria-label="anchor" href="#fixed-19"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : la couche NDVI/NBR disparaissait visuellement au basculement OSM↔︎Satellite parce que le <code>group =</code> de <code>addRasterImage()</code> n’était pas déclaré dans <code>addLayersControl(overlayGroups=)</code>. Déclaration explicite de la couche overlay avec un libellé fixe « NDVI / NBR » (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -419,7 +429,7 @@
 <div class="section level2">
 <h2 id="id_0282---2026-05-15">[0.28.2] - 2026-05-15<a class="anchor" aria-label="anchor" href="#id_0282---2026-05-15"></a></h2>
 <div class="section level3">
-<h3 id="fixed-19">Fixed<a class="anchor" aria-label="anchor" href="#fixed-19"></a></h3>
+<h3 id="fixed-20">Fixed<a class="anchor" aria-label="anchor" href="#fixed-20"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire</strong> : après un téléchargement Sentinel-2 réussi, le graphique plotly des placettes et la sous-onglet <em>Carte pixel</em> ne se mettaient pas à jour automatiquement — l’utilisateur devait toucher à un contrôle (bandes, dates, zone) pour rafraîchir. Ajout d’un <code>reactiveVal</code> <code>obs_refresh</code> lu par <code>obs_pixel_data()</code> et bumpé en fin d’ingestion. Pattern symétrique à <code>alerts_refresh</code> côté FORDEAD (<code>R/mod_monitoring.R</code>).</li>
 </ul></div>
@@ -427,7 +437,7 @@
 <div class="section level2">
 <h2 id="id_0281---2026-05-15">[0.28.1] - 2026-05-15<a class="anchor" aria-label="anchor" href="#id_0281---2026-05-15"></a></h2>
 <div class="section level3">
-<h3 id="fixed-20">Fixed<a class="anchor" aria-label="anchor" href="#fixed-20"></a></h3>
+<h3 id="fixed-21">Fixed<a class="anchor" aria-label="anchor" href="#fixed-21"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Carte pixel</strong> : le fond satellite ne tenait pas quand l’utilisateur faisait défiler le slider de date ou changeait d’indice — Leaflet repassait sur OSM à chaque rendu. Le squelette de carte est désormais rendu une seule fois, et le raster + la légende sont mis à jour via <code>leafletProxy()</code>. Le choix de fond reste actif (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
@@ -435,7 +445,7 @@
 <div class="section level2">
 <h2 id="id_0266---2026-05-13">[0.26.6] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_0266---2026-05-13"></a></h2>
 <div class="section level3">
-<h3 id="fixed-21">Fixed<a class="anchor" aria-label="anchor" href="#fixed-21"></a></h3>
+<h3 id="fixed-22">Fixed<a class="anchor" aria-label="anchor" href="#fixed-22"></a></h3>
 <ul><li>
 <code>fix(monitoring)</code>: worker <code>cli::cli_alert_*</code> output now actually reaches the parent R console in real time. The v0.26.5 <code><a href="https://rdrr.io/r/base/sink.html" class="external-link">sink()</a></code>- based approach silently failed for cli messages because cli writes to <code><a href="https://rdrr.io/r/base/showConnections.html" class="external-link">stderr()</a></code> directly via <code>cat(file = stderr())</code> in non-interactive mode, bypassing <code>sink(type = "message")</code> entirely. Replaced by <code>withCallingHandlers(message =, warning =)</code> wrapping <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code> — every condition (cli + plain <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> + <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code>) is rewritten to the log file with <code><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines()</a></code> + <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">flush()</a></code> and the original stderr write is muffled via <code>invokeRestart</code>. Includes <code>[s2_cache HH:MM:SS] …</code> traces when <code>NEMETON_S2_CACHE_DEBUG=TRUE</code>.</li>
 <li>
@@ -478,7 +488,7 @@
 <div class="section level2">
 <h2 id="id_0263---2026-05-13">[0.26.3] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_0263---2026-05-13"></a></h2>
 <div class="section level3">
-<h3 id="fixed-22">Fixed<a class="anchor" aria-label="anchor" href="#fixed-22"></a></h3>
+<h3 id="fixed-23">Fixed<a class="anchor" aria-label="anchor" href="#fixed-23"></a></h3>
 <ul><li>
 <code>fix(monitoring)</code>: propagate <code>NEMETON_*</code> environment variables from the Shiny main session to the <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> worker. Windows workers are separate <code>Rscript.exe</code> processes that don’t inherit env vars set after their spawn — so <code>Sys.setenv(NEMETON_S2_CACHE_DEBUG = "TRUE")</code> was silently lost. <code>run_ingestion_async()</code> and <code>run_fordead_async()</code> now snapshot the relevant <code>NEMETON_*</code> vars at invoke time (parent side) and replay them at the top of the <code>future_promise()</code> body (worker side).</li>
 </ul></div>
@@ -491,7 +501,7 @@
 <div class="section level2">
 <h2 id="id_0262---2026-05-13">[0.26.2] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_0262---2026-05-13"></a></h2>
 <div class="section level3">
-<h3 id="fixed-23">Fixed<a class="anchor" aria-label="anchor" href="#fixed-23"></a></h3>
+<h3 id="fixed-24">Fixed<a class="anchor" aria-label="anchor" href="#fixed-24"></a></h3>
 <ul><li>
 <code>fix(deps)</code>: bump nemeton pin to <code>&gt;= 0.21.9</code>. v0.21.9 fixes a <code><a href="https://rspatial.github.io/terra/reference/writeRaster.html" class="external-link">terra::writeRaster()</a></code> call in the S2 cache write path that targeted a <code>.tif.tmp</code> path (atomic-write pattern) without an explicit <code>filetype</code> argument — terra refused with <em>“cannot guess file type from filename”</em>, so every band was fetched + cropped successfully then lost at the write step. UI symptom in v0.26.1: ingestion consumed 4-5 min per scene, reached N/N, but <code>&lt;project&gt;/cache/layers/sentinel2/</code> stayed empty.</li>
 </ul></div>
@@ -499,7 +509,7 @@
 <div class="section level2">
 <h2 id="id_0261---2026-05-13">[0.26.1] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_0261---2026-05-13"></a></h2>
 <div class="section level3">
-<h3 id="fixed-24">Fixed<a class="anchor" aria-label="anchor" href="#fixed-24"></a></h3>
+<h3 id="fixed-25">Fixed<a class="anchor" aria-label="anchor" href="#fixed-25"></a></h3>
 <ul><li>
 <code>fix(deps)</code>: bump nemeton pin to <code>&gt;= 0.21.8</code>. v0.21.8 fixes a per-scene S4→double coercion bug introduced in v0.21.4 (cache_dir wiring) that made every Sentinel-2 scene skipped with <em>“cannot coerce type ‘S4’ to vector of type ‘double’”</em> on <code>skip_cached = FALSE</code> runs. UI symptom in v0.26.0: ticking the “Re-prime COG cache” checkbox triggered the run but neither the DB nor the disk cache filled up because every scene errored out.</li>
 </ul></div>
@@ -555,7 +565,7 @@
 <div class="section level2">
 <h2 id="id_02413---2026-05-13">[0.24.13] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_02413---2026-05-13"></a></h2>
 <div class="section level3">
-<h3 id="fixed-25">Fixed<a class="anchor" aria-label="anchor" href="#fixed-25"></a></h3>
+<h3 id="fixed-26">Fixed<a class="anchor" aria-label="anchor" href="#fixed-26"></a></h3>
 <ul><li>
 <code>fix(monitoring)</code>: terminal toasts (<code>ingest_zero</code>, <code>ingest_success</code>, <code>ingest_warns</code>, <code>ingest_error</code>, <code>fordead_success</code>, <code>fordead_error</code>) now use explicit <code>id = session$ns(...)</code> so repeated clicks replace the previous toast instead of stacking duplicates.</li>
 <li>
@@ -565,7 +575,7 @@
 <div class="section level2">
 <h2 id="id_02412---2026-05-12">[0.24.12] - 2026-05-12<a class="anchor" aria-label="anchor" href="#id_02412---2026-05-12"></a></h2>
 <div class="section level3">
-<h3 id="fixed-26">Fixed<a class="anchor" aria-label="anchor" href="#fixed-26"></a></h3>
+<h3 id="fixed-27">Fixed<a class="anchor" aria-label="anchor" href="#fixed-27"></a></h3>
 <ul><li>Toast d’erreur <strong>“Échec du téléchargement : argument inutilisé (cache_dir = cache_dir)”</strong> au clic FAST après installation de v0.24.11. La v0.24.11 a livré le code applicatif qui appelle <code>nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)</code> mais le pin nemeton dans <code>DESCRIPTION</code> était resté à <code>v0.21.2</code> qui ignore cet argument. Correctif : <code>Imports: nemeton (&gt;= 0.21.3)</code> + <code>Remotes: pobsteta/nemeton@v0.21.3</code>.</li>
 </ul></div>
 </div>
@@ -586,7 +596,7 @@
 <li>5 nouvelles clés i18n FR/EN : <code>monitoring_stac_search</code>, <code>monitoring_stac_search_with_count_fmt</code>, <code>monitoring_ingest_zero_fmt</code>, <code>monitoring_ingest_zero_default</code>, <code>monitoring_ingest_warns_fmt</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-27">Fixed<a class="anchor" aria-label="anchor" href="#fixed-27"></a></h3>
+<h3 id="fixed-28">Fixed<a class="anchor" aria-label="anchor" href="#fixed-28"></a></h3>
 <ul><li>Console R inondée de <code>Database schema up to date (N migrations applied).</code> à chaque interaction (30-50 lignes par clic). Cause : <code><a href="https://pobsteta.github.io/nemeton/reference/db_migrate.html" class="external-link">nemeton::db_migrate()</a></code> émet ce message à chaque connexion ré-ouverte (validity, zones, alerts, probe…). Correctif : <code>withCallingHandlers(message = ...)</code> autour de <code>db_migrate()</code> qui muffle uniquement les messages contenant “up to date” / “already migrated”. Les “Applied migration X” du premier run et les warnings/erreurs restent visibles.</li>
 <li>Toast et console affichaient <code>(scene_id missing) (0/159)</code> entre la recherche STAC et la première tuile reçue.</li>
 </ul></div>
@@ -603,7 +613,7 @@
 <li>Roue dentée animée (<code>bsicons::bs_icon("gear-fill")</code> + classe <code>.nmt-spin</code>) devant chaque message du toast persistant — l’utilisateur voit que la tâche tourne toujours.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-28">Fixed<a class="anchor" aria-label="anchor" href="#fixed-28"></a></h3>
+<h3 id="fixed-29">Fixed<a class="anchor" aria-label="anchor" href="#fixed-29"></a></h3>
 <ul><li>Toast d’ingestion affichait <code>Tuile Sentinel-2 0/0</code> pendant tout le run alors que le <code>scene_id</code> arrivait. Cause : <a href="mailto:nemeton@v0.21.2" class="email">nemeton@v0.21.2</a> émet <code>{current, completed, total, scene_id, obs_date, cloud_pct, source}</code> et non <code>{i, n}</code>. Lecture défensive des champs avec fallback <code>i</code> / <code>n</code> au cas où le schéma évoluerait.</li>
 <li>Reformatage i18n : compteur <strong>entre parenthèses</strong> en fin de message — <code>Tuile Sentinel-2 &lt;scene_id&gt; (X/N)</code> et <code>FORDEAD — phase &lt;nom&gt; (X/N)</code>.</li>
 </ul></div>
@@ -616,7 +626,7 @@
 <li>4 nouvelles clés i18n FR/EN : <code>monitoring_ingest_progress_fmt</code>, <code>monitoring_ingest_progress_named_fmt</code>, <code>monitoring_health_phase_fmt</code>, <code>monitoring_health_phase_simple_fmt</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-29">Fixed<a class="anchor" aria-label="anchor" href="#fixed-29"></a></h3>
+<h3 id="fixed-30">Fixed<a class="anchor" aria-label="anchor" href="#fixed-30"></a></h3>
 <ul><li>Boutons <strong>“Lancer le diagnostic FAST”</strong> et <strong>“Lancer le diagnostic FORDEAD”</strong> muets au clic. Cause : <code>tagAppendAttributes(disabled = NA)</code> HTML-disablait les boutons au premier rendu, et la classe <code>btn-primary</code> masque visuellement l’état <code>disabled</code> Bootstrap — le navigateur refuse le clic alors que l’utilisateur croit le bouton actif. Correctif : suppression du wrapper <code>disabled = NA</code>, simplification du <code>updateActionButton(disabled = is_running)</code> (greying uniquement pendant la tâche async), garde <code>is_running</code> en tête des <code>observeEvent</code> pour avaler les double-clics.</li>
 </ul></div>
 <div class="section level3">
@@ -628,7 +638,7 @@
 <div class="section level2">
 <h2 id="id_0247---2026-05-12">[0.24.7] - 2026-05-12<a class="anchor" aria-label="anchor" href="#id_0247---2026-05-12"></a></h2>
 <div class="section level3">
-<h3 id="fixed-30">Fixed<a class="anchor" aria-label="anchor" href="#fixed-30"></a></h3>
+<h3 id="fixed-31">Fixed<a class="anchor" aria-label="anchor" href="#fixed-31"></a></h3>
 <ul><li>Migration de la base DuckDB du Suivi sanitaire : bump de <code>nemeton</code> vers <code>v0.21.1</code> (DDL portable Postgres/DuckDB via <code>CREATE SEQUENCE</code> + <code>DEFAULT nextval(...)</code>, remplace <code>INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY</code> qui cassait DuckDB avec <em>“syntax error at or near GENERATED”</em>).</li>
 <li>
 <code>DESCRIPTION</code>: <code>Imports: nemeton (&gt;= 0.21.1)</code>, <code>Remotes: pobsteta/nemeton@v0.21.1</code>.</li>
@@ -642,7 +652,7 @@
 <li>New i18n keys <code>action_plan_chat_scope_sel</code> and <code>action_plan_chat_apply_overwrite_warn_fmt</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-31">Fixed<a class="anchor" aria-label="anchor" href="#fixed-31"></a></h3>
+<h3 id="fixed-32">Fixed<a class="anchor" aria-label="anchor" href="#fixed-32"></a></h3>
 <ul><li>Language toggle FR ↔︎ EN in the navbar selector now actually applies. Two combined bugs:
 <ul><li>The handler wrote to <code>nemeton.app_language</code> but <code>app_ui</code> reads <code>getOption("nemeton.app_options")$language</code>, so the choice did not survive a page reload. Now persists into the right option key.</li>
 <li>The handler showed a toast saying “Reload the page” without actually reloading. Replaced by <code>session$reload()</code> so the UI rebuilds automatically. Anti-init guard: if the new value equals <code>app_state$language</code>, the observer returns early to avoid an unwanted reload at session start.</li>
@@ -695,7 +705,7 @@
 <ul><li>Plan d’actions: “Ouvrir le chat” button removed from the right action panel (made redundant by the persistent sidebar). <code>input$open_chat</code> observer (~30 LOC of <code>showModal</code>) dropped.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-32">Fixed<a class="anchor" aria-label="anchor" href="#fixed-32"></a></h3>
+<h3 id="fixed-33">Fixed<a class="anchor" aria-label="anchor" href="#fixed-33"></a></h3>
 <ul><li>Plan d’actions map ↔︎ table sync: clicking a parcelle on the <strong>map</strong> now selects every corresponding row in the table. The <code>input$map_shape_click</code> handler now also calls <code><a href="https://rdrr.io/pkg/DT/man/proxy.html" class="external-link">DT::selectRows()</a></code>. The reverse direction (table → map) was already working. No reactive loop: <code>reactiveVal</code> dedupes by <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> so the round-trip stops after one pass.</li>
 </ul></div>
 <div class="section level3">
@@ -719,7 +729,7 @@
 <li>Add action modal: the <strong>UGF dropdown</strong> now shows <code>ug_label</code> (sorted) instead of the raw <code>ug_id</code>; <strong>Année cible</strong> is now a real calendar year (default <code>base_year + 1</code>, range <code>base_year + 1</code> … <code>base_year + horizon</code>), converted to the internal offset on save.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-33">Fixed<a class="anchor" aria-label="anchor" href="#fixed-33"></a></h3>
+<h3 id="fixed-34">Fixed<a class="anchor" aria-label="anchor" href="#fixed-34"></a></h3>
 <ul><li>Add action modal: previously surfaced the internal offset (1, 2, …) for “Année cible” and the raw <code>ug_id</code> for the UGF dropdown, both confusing for end-users.</li>
 </ul></div>
 <div class="section level3">
@@ -736,7 +746,7 @@
 <li>Action plan map: leaflet legend titles now translated. <code>legend_title</code> literals (<code>"annee"</code>, <code>"type"</code>, <code>"priority"</code>) swapped for <code>i18n$t("action_plan_col_*")</code> so the map shows “Année / Type / Priorité” in FR and “Year / Type / Priority” in EN, switching with the language toggle.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-34">Fixed<a class="anchor" aria-label="anchor" href="#fixed-34"></a></h3>
+<h3 id="fixed-35">Fixed<a class="anchor" aria-label="anchor" href="#fixed-35"></a></h3>
 <ul><li>
 <code>mod_auth_server()</code> no longer crashes on startup in anonymous mode when <code>NEMETON_AUTH_DEV_ROLES</code> is set. The dev-roles branch interpolated <code>{auth_state$user_roles}</code> through <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info()</a></code> / glue outside any reactive consumer, which <code>reactiveValues</code> rejects. The parsed roles are now captured in a local <code>parsed_roles</code> before being assigned to <code>auth_state$user_roles</code>; the log message reads the local instead of the reactiveValues. Regression introduced by #41 in v0.22.3.</li>
 </ul></div>
@@ -766,7 +776,7 @@
 <li>Bumped <code>nemeton</code> minimum to <code>&gt;= 0.19.5</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-35">Fixed<a class="anchor" aria-label="anchor" href="#fixed-35"></a></h3>
+<h3 id="fixed-36">Fixed<a class="anchor" aria-label="anchor" href="#fixed-36"></a></h3>
 <ul><li>Duplicate PostGIS-sync toast at compute completion (kept the <code>mod_home</code> one, dropped the <code>mod_progress</code> one).</li>
 <li>Retry button now emits an immediate toast on the root session.</li>
 </ul></div>
@@ -789,7 +799,7 @@
 <code>sampling_tt_region</code> tooltip wording says QGIS, not QField.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-36">Fixed<a class="anchor" aria-label="anchor" href="#fixed-36"></a></h3>
+<h3 id="fixed-37">Fixed<a class="anchor" aria-label="anchor" href="#fixed-37"></a></h3>
 <ul><li>Duplicate PostGIS-sync toast at compute completion — removed the second occurrence in <code>mod_progress</code>; the <code>mod_home</code> one remains.</li>
 </ul></div>
 </div>
@@ -834,7 +844,7 @@
 <li>Bumped the <code>nemeton</code> dependency to <code>&gt;= 0.19.0</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="fixed-37">Fixed<a class="anchor" aria-label="anchor" href="#fixed-37"></a></h3>
+<h3 id="fixed-38">Fixed<a class="anchor" aria-label="anchor" href="#fixed-38"></a></h3>
 <ul><li>BD Forêt v2 mapping diagnostics: the sizing report now lists the actual ambiguous and unmapped TFV codes (with libellé, resolved context and alternative) instead of a bare count.</li>
 <li>TFV column auto-detection in <code>mod_sampling</code> widened to <code>TFV / tfv / CODE_TFV / code_tfv / essence / ESSENCE / LIB_FV / LIBELLE</code>.</li>
 </ul></div>

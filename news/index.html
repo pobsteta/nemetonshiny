@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.38.1" id="nemetonshiny-0381-2026-05-20">nemetonshiny 0.38.1 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0381-2026-05-20"></a></h2>
+<div class="section level4">
+<h4 id="fixed--câblage-du-chm-theia-vers-les-indicateurs-production--énergie-0-38-1">Fixed — Câblage du CHM Theia vers les indicateurs Production / Énergie<a class="anchor" aria-label="anchor" href="#fixed--c%C3%A2blage-du-chm-theia-vers-les-indicateurs-production--%C3%A9nergie-0-38-1"></a></h4>
+<p>À l’écran « Calculs terminés », les indicateurs P1 (Volume), P2 (Productivité), P3 (Qualité bois) et E1 (Bois-énergie) échouaient avec les erreurs du mode sans CHM (<code>Missing required fields: dbh, density</code> / <code>fertility, climate</code> / <code>volume</code>).</p>
+<p>Deux corrections de câblage dans <code>R/service_compute.R</code> :</p>
+<ul><li>
+<strong><code>age_field</code> transmis à P2</strong> : <code>compute_single_indicator()</code> passait déjà <code>chm</code> et <code>species_field</code> (P1/P3/E1) mais pas <code>age_field</code>. En mode CHM, <code>indicateur_p2_station()</code> bascule sur le modèle hauteur/âge et a besoin de la colonne <code>age</code> — désormais transmise via <code>age_field = "age"</code> (colonne alimentée par <code><a href="https://pobsteta.github.io/nemeton/reference/enrich_parcels_bdforet.html" class="external-link">nemeton::enrich_parcels_bdforet()</a></code>).</li>
+<li>
+<strong>Échec explicite quand le CHM est absent</strong> : nouvelle constante <code>CHM_REQUIRED_INDICATORS</code> (P1/P2/P3/E1). Si aucun CHM n’a pu être chargé (Theia non configuré, LiDAR HD absent, Open-Canopy indisponible), ces quatre indicateurs échouent désormais avec un message i18n explicite (<code>compute_chm_required</code>) renvoyant vers le menu de configuration Theia, au lieu de l’erreur cryptique du cœur <code>nemeton</code>. Les autres indicateurs du calcul ne sont pas affectés. C1 et B2 acceptent aussi <code>chm</code> mais conservent un chemin legacy (OSO / NDVI) et ne sont donc pas concernés.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.38.0" id="nemetonshiny-0380-2026-05-20">nemetonshiny 0.38.0 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0380-2026-05-20"></a></h2>
 <div class="section level4">

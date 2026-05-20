@@ -12,6 +12,21 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.38.1\] - 2026-05-20
+
+### Fixed
+
+- **Câblage du CHM Theia vers P1/P2/P3/E1** :
+  `compute_single_indicator()` transmet désormais `age_field = "age"` à
+  `indicateur_p2_station()` (mode CHM hauteur/âge), en plus de `chm` et
+  `species_field` déjà câblés. Sans cela, P2 échouait avec
+  `Missing required fields: fertility, climate`.
+- **Échec explicite sans CHM** : nouvelle constante
+  `CHM_REQUIRED_INDICATORS` (P1/P2/P3/E1). En l’absence de modèle de
+  hauteur de canopée, ces indicateurs échouent avec un message i18n
+  clair (`compute_chm_required`) au lieu de l’erreur cryptique du cœur
+  `nemeton`, sans interrompre le reste du calcul.
+
 ## \[0.38.0\] - 2026-05-20
 
 ### Added
