@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.38.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,26 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.38.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.38.3" id="nemetonshiny-0383-2026-05-20">nemetonshiny 0.38.3 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0383-2026-05-20"></a></h2>
+<div class="section level4">
+<h4 id="fixed--cache-lidar-hd-non-extent-aware-mauvaise-zone-réutilisée-0-38-3">Fixed — Cache LiDAR HD non extent-aware (mauvaise zone réutilisée)<a class="anchor" aria-label="anchor" href="#fixed--cache-lidar-hd-non-extent-aware-mauvaise-zone-r%C3%A9utilis%C3%A9e-0-38-3"></a></h4>
+<p>Le cache des dalles LiDAR HD téléchargées par <code>download_layers_for_parcels()</code> n’était pas conscient de l’emprise demandée. Deux bugs en découlaient.</p>
+<p><strong>Bug 1 — court-circuit global aveugle (nuages de points).</strong> <code>download_ign_lidar_hd(product = "nuage")</code> renvoyait <em>toutes</em> les dalles <code>.copc.laz</code> du répertoire de cache dès qu’<strong>une seule</strong> existait, sans comparaison de bbox. Conséquences : un calcul sur une zone B après une zone A renvoyait les dalles de A (celles de B n’étaient jamais téléchargées) ; un téléchargement interrompu figeait un jeu de dalles incomplet renvoyé indéfiniment.</p>
+<p><strong>Correctif</strong> : suppression du court-circuit global. La fonction interroge désormais toujours le WFS (<code>query_lidar_wfs</code>) pour la liste des dalles couvrant la bbox courante, puis s’appuie sur le cache <em>par dalle</em> déjà présent dans la boucle de téléchargement (<code><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists()</a></code> + <code>file.size() &gt; 100</code>). Résultat : recompute même zone → zéro I/O réseau ; zone différente → seules les dalles manquantes sont téléchargées, l’ensemble retourné couvre bien la nouvelle zone ; jeu incomplet → complété au run suivant au lieu d’être figé.</p>
+<p><strong>Bug 2 — mosaïque raster non extent-aware (MNH/MNT/MNS).</strong> <code>lidar_&lt;product&gt;_mosaic.tif</code> était réutilisée sur un simple <code><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists()</a></code>, sans vérifier que son emprise couvre la bbox courante — même problème de raster obsolète au changement de zone.</p>
+<p><strong>Correctif</strong> : nouveau helper interne <code>.lidar_mosaic_covers_bbox()</code> qui compare l’extent du raster en cache à la bbox demandée (en CRS commun — la bbox WGS84 est reprojetée vers le CRS de la mosaïque). La mosaïque n’est court-circuitée que si elle couvre réellement la zone ; sinon elle est régénérée à partir de dalles fraîches. Toute erreur de lecture / CRS manquant → régénération (pas de confiance à une dalle potentiellement périmée).</p>
+<p>Le garde anti-téléchargement-partiel (<code>file.size &gt; 100</code>) et le nettoyage des dalles échouées dans <code>download_lidar_tile()</code> sont conservés.</p>
+</div>
+<div class="section level4">
+<h4 id="tests-0-38-3">Tests<a class="anchor" aria-label="anchor" href="#tests-0-38-3"></a></h4>
+<ul><li>
+<code>test-service_compute.R</code> : test obsolète « returns cached COPC tiles if available » réécrit (le court-circuit global n’existe plus) ; 3 tests ajoutés — recompute même zone sans re-téléchargement, zone différente ne télécharge que les dalles manquantes, mosaïque régénérée quand le cache ne couvre pas la nouvelle zone — plus un test unitaire dédié de <code>.lidar_mosaic_covers_bbox()</code> (couverture, égalité, débordement, zone disjointe, chemin illisible). Suite <code>test-service_compute.R</code> : 218 tests, 0 échec.</li>
+</ul><hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.38.2" id="nemetonshiny-0382-2026-05-20">nemetonshiny 0.38.2 (2026-05-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0382-2026-05-20"></a></h2>
 <div class="section level4">

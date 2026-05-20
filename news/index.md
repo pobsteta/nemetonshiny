@@ -1,5 +1,61 @@
 # Changelog
 
+## nemetonshiny 0.38.3 (2026-05-20)
+
+#### Fixed — Cache LiDAR HD non extent-aware (mauvaise zone réutilisée)
+
+Le cache des dalles LiDAR HD téléchargées par
+`download_layers_for_parcels()` n’était pas conscient de l’emprise
+demandée. Deux bugs en découlaient.
+
+**Bug 1 — court-circuit global aveugle (nuages de points).**
+`download_ign_lidar_hd(product = "nuage")` renvoyait *toutes* les dalles
+`.copc.laz` du répertoire de cache dès qu’**une seule** existait, sans
+comparaison de bbox. Conséquences : un calcul sur une zone B après une
+zone A renvoyait les dalles de A (celles de B n’étaient jamais
+téléchargées) ; un téléchargement interrompu figeait un jeu de dalles
+incomplet renvoyé indéfiniment.
+
+**Correctif** : suppression du court-circuit global. La fonction
+interroge désormais toujours le WFS (`query_lidar_wfs`) pour la liste
+des dalles couvrant la bbox courante, puis s’appuie sur le cache *par
+dalle* déjà présent dans la boucle de téléchargement
+([`file.exists()`](https://rdrr.io/r/base/files.html) +
+`file.size() > 100`). Résultat : recompute même zone → zéro I/O réseau ;
+zone différente → seules les dalles manquantes sont téléchargées,
+l’ensemble retourné couvre bien la nouvelle zone ; jeu incomplet →
+complété au run suivant au lieu d’être figé.
+
+**Bug 2 — mosaïque raster non extent-aware (MNH/MNT/MNS).**
+`lidar_<product>_mosaic.tif` était réutilisée sur un simple
+[`file.exists()`](https://rdrr.io/r/base/files.html), sans vérifier que
+son emprise couvre la bbox courante — même problème de raster obsolète
+au changement de zone.
+
+**Correctif** : nouveau helper interne `.lidar_mosaic_covers_bbox()` qui
+compare l’extent du raster en cache à la bbox demandée (en CRS commun —
+la bbox WGS84 est reprojetée vers le CRS de la mosaïque). La mosaïque
+n’est court-circuitée que si elle couvre réellement la zone ; sinon elle
+est régénérée à partir de dalles fraîches. Toute erreur de lecture / CRS
+manquant → régénération (pas de confiance à une dalle potentiellement
+périmée).
+
+Le garde anti-téléchargement-partiel (`file.size > 100`) et le nettoyage
+des dalles échouées dans `download_lidar_tile()` sont conservés.
+
+#### Tests
+
+- `test-service_compute.R` : test obsolète « returns cached COPC tiles
+  if available » réécrit (le court-circuit global n’existe plus) ; 3
+  tests ajoutés — recompute même zone sans re-téléchargement, zone
+  différente ne télécharge que les dalles manquantes, mosaïque régénérée
+  quand le cache ne couvre pas la nouvelle zone — plus un test unitaire
+  dédié de `.lidar_mosaic_covers_bbox()` (couverture, égalité,
+  débordement, zone disjointe, chemin illisible). Suite
+  `test-service_compute.R` : 218 tests, 0 échec.
+
+------------------------------------------------------------------------
+
 ## nemetonshiny 0.38.2 (2026-05-20)
 
 #### Fixed — Sous-onglets Suivi sanitaire blancs (Carte FORDEAD, Alertes FAST)

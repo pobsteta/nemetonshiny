@@ -12,6 +12,31 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.38.3\] - 2026-05-20
+
+### Fixed
+
+- **Cache LiDAR HD non extent-aware** (`R/service_compute.R`). Deux bugs
+  corrigés dans `download_ign_lidar_hd()` :
+  - **Nuages de points** : le court-circuit global qui renvoyait toutes
+    les dalles `.copc.laz` du cache dès qu’une seule existait (sans
+    comparaison de bbox) est supprimé. La fonction interroge toujours le
+    WFS et s’appuie sur le cache par-dalle de la boucle de
+    téléchargement → recompute même zone = zéro réseau, zone différente
+    = seules les dalles manquantes, jeu incomplet auto-réparé.
+  - **Mosaïques raster (MNH/MNT/MNS)** : `lidar_<product>_mosaic.tif`
+    n’est plus réutilisée sur un simple
+    [`file.exists()`](https://rdrr.io/r/base/files.html). Nouveau helper
+    `.lidar_mosaic_covers_bbox()` qui vérifie que l’emprise du raster en
+    cache couvre la bbox demandée (comparaison en CRS commun) ; sinon la
+    mosaïque est régénérée.
+
+### Tests
+
+- `test-service_compute.R` : test COPC obsolète réécrit + 3 tests
+  ajoutés (recompute même zone, zone différente, régénération
+  mosaïque) + test unitaire de `.lidar_mosaic_covers_bbox()`.
+
 ## \[0.38.2\] - 2026-05-20
 
 ### Fixed
