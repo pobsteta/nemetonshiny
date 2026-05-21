@@ -12,6 +12,34 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.39.1\] - 2026-05-21
+
+### Fixed
+
+- **`db_status` plantait sans projet chargé** :
+  [`bsicons::bs_icon()`](https://rdrr.io/pkg/bsicons/man/bs_icon.html)
+  était appelé avec l’identifiant inexistant `folder-open` →
+  `folder2-open`.
+- **`.build_progress_writer` laissait fuir un avertissement** sur
+  écriture en répertoire absent →
+  [`suppressWarnings()`](https://rdrr.io/r/base/warning.html).
+- **`audit_to_dataframe` ne renvoyait pas un data.frame propre** : la
+  classe `json` de
+  [`jsonlite::toJSON()`](https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html)
+  se propageait à toute la colonne via
+  [`rbind()`](https://rdrr.io/r/base/cbind.html) → dé-classage
+  [`as.character()`](https://rdrr.io/r/base/character.html).
+
+### Changed
+
+- **Réparation des suites de tests `monitoring` et `sampling`** : 20
+  échecs préexistants corrigés (dérive tests↔︎code après évolutions).
+  Mocks à signature trop étroite élargis, isolation des variables
+  d’environnement DB, assertions de comptage de placettes recentrées sur
+  le contrat de l’app plutôt que sur l’arithmétique de stratification
+  GRTS du cœur. Deux tests `db_status` probe-gated marqués `skip()`
+  (sonde DB asynchrone non pilotable par testServer).
+
 ## \[0.39.0\] - 2026-05-21
 
 ### Added

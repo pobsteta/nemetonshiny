@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.39.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.39.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,39 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.39.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.39.1" id="nemetonshiny-0391-2026-05-21">nemetonshiny 0.39.1 (2026-05-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0391-2026-05-21"></a></h2>
+<div class="section level4">
+<h4 id="fixed--audit_to_dataframe-ne-renvoyait-pas-un-dataframe-propre-0-39-1">Fixed — <code>audit_to_dataframe</code> ne renvoyait pas un data.frame propre<a class="anchor" aria-label="anchor" href="#fixed--audit_to_dataframe-ne-renvoyait-pas-un-dataframe-propre-0-39-1"></a></h4>
+<p><code>audit_to_dataframe()</code> sérialise les entrées d’audit complexes (op <code>create</code> / <code>delete</code>, dont la valeur est l’action entière) via <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code>. Le résultat porte la classe <code>json</code> ; lors du <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind()</a></code> des lignes, cette classe se propageait à <strong>toute</strong> la colonne <code>nouveau</code> / <code>ancien</code>, y compris aux valeurs scalaires simples (« haute », « moyenne »). La colonne n’était donc plus un vecteur caractère « tidy ». Corrigé en dé-classant le JSON via <code><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character()</a></code>.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--réparation-de-la-suite-de-tests-sampling-0-39-1">Changed — réparation de la suite de tests <code>sampling</code>
+<a class="anchor" aria-label="anchor" href="#changed--r%C3%A9paration-de-la-suite-de-tests-sampling-0-39-1"></a></h4>
+<p>3 tests préexistants de <code>test-mod_sampling.R</code> échouaient : ils codaient en dur le nombre exact de placettes attendu (<code>n_base + n_over</code>). Or <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> fait un échantillonnage GRTS spatialement équilibré avec stratification — <code>n_base</code> / <code>n_over</code> sont des <strong>cibles</strong>, pas des garanties (une strate peut rejeter des candidats, le sur-échantillon dérive de <code>over_ratio</code>). Les assertions ont été recentrées sur le <strong>contrat de l’app</strong> : un plan non vide, bien formé (colonnes <code>plot_id</code> / <code>type</code> / <code>visit_order</code>, types ⊆ {Base, Over}, CRS 2154) et un aller-retour de persistance cohérent — au lieu de l’arithmétique de stratification du cœur. Le changement de comptage provient de <code>nemeton</code> 0.41.3.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--db_status-plantait-sans-projet-chargé-icône-bootstrap-invalide-0-39-1">Fixed — <code>db_status</code> plantait sans projet chargé (icône Bootstrap invalide)<a class="anchor" aria-label="anchor" href="#fixed--db_status-plantait-sans-projet-charg%C3%A9-ic%C3%B4ne-bootstrap-invalide-0-39-1"></a></h4>
+<p>La carte d’état de la base de suivi (<code>output$db_status</code>) appelait <code>bsicons::bs_icon("folder-open")</code> dans la branche « aucun projet chargé ». Cet identifiant d’icône n’existe pas dans la version courante de Bootstrap Icons — <code>bs_icon()</code> levait une erreur, donc l’onglet Suivi sanitaire ne rendait pas son panneau d’état tant qu’aucun projet n’était ouvert. Corrigé en <code>folder2-open</code> (icône valide). Bug révélé par la réparation des tests <code>db_status</code> (voir ci-dessous).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--build_progress_writer-laissait-fuir-un-avertissement-0-39-1">Fixed — <code>.build_progress_writer</code> laissait fuir un avertissement<a class="anchor" aria-label="anchor" href="#fixed--build_progress_writer-laissait-fuir-un-avertissement-0-39-1"></a></h4>
+<p>L’écriture du fichier de progression sous un répertoire inexistant émettait un <em>warning</em> « cannot open file » avant l’erreur ; seul le <code>tryCatch(error=)</code> l’absorbait. L’écriture est désormais aussi enveloppée dans <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings()</a></code> — la perte d’un tick de progression est totalement silencieuse, conformément à l’intention documentée de la fonction.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--réparation-de-la-suite-de-tests-monitoring-0-39-1">Changed — réparation de la suite de tests <code>monitoring</code>
+<a class="anchor" aria-label="anchor" href="#changed--r%C3%A9paration-de-la-suite-de-tests-monitoring-0-39-1"></a></h4>
+<p>14 échecs de tests préexistants (<code>test-mod_monitoring.R</code> : 13 ; <code>test-service_monitoring_wiring.R</code> : 1) corrigés — dérive entre les tests et le code après plusieurs évolutions :</p>
+<ul><li>mocks <code>get_monitoring_db_connection</code> à signature <code>function()</code> alors que le code appelle <code>get_monitoring_db_connection(project=)</code> → passés en <code>function(...)</code> ;</li>
+<li>mocks <code>validity_check_for_zone</code> sans le paramètre <code>bdforet</code> (ajouté côté cœur en v0.37.0) → signature élargie ;</li>
+<li>assertion UI obsolète (« bouton Lancer désactivé en phase 1 » — l’ingestion est câblée, le bouton est actif) ;</li>
+<li>tests <code>db_status</code> sensibles au <code>.Renviron</code> du développeur → isolation des variables d’environnement DB ;</li>
+<li>deux tests <code>db_status</code> (carte « aucune zone » / « connectée ») marqués <code>skip()</code> : leur rendu dépend de la sonde DB asynchrone (<code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code>) que <code>testServer</code> ne sait pas piloter de façon déterministe — ils exigent une base réellement joignable.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.39.0" id="nemetonshiny-0390-2026-05-21">nemetonshiny 0.39.0 (2026-05-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0390-2026-05-21"></a></h2>
 <div class="section level4">
