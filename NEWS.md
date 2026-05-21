@@ -1,3 +1,69 @@
+# nemetonshiny 0.39.1 (2026-05-21)
+
+### Fixed — `audit_to_dataframe` ne renvoyait pas un data.frame propre
+
+`audit_to_dataframe()` sérialise les entrées d'audit complexes (op
+`create` / `delete`, dont la valeur est l'action entière) via
+`jsonlite::toJSON()`. Le résultat porte la classe `json` ; lors du
+`rbind()` des lignes, cette classe se propageait à **toute** la
+colonne `nouveau` / `ancien`, y compris aux valeurs scalaires simples
+(« haute », « moyenne »). La colonne n'était donc plus un vecteur
+caractère « tidy ». Corrigé en dé-classant le JSON via `as.character()`.
+
+### Changed — réparation de la suite de tests `sampling`
+
+3 tests préexistants de `test-mod_sampling.R` échouaient : ils
+codaient en dur le nombre exact de placettes attendu
+(`n_base + n_over`). Or `nemeton::create_sampling_plan()` fait un
+échantillonnage GRTS spatialement équilibré avec stratification —
+`n_base` / `n_over` sont des **cibles**, pas des garanties (une strate
+peut rejeter des candidats, le sur-échantillon dérive de
+`over_ratio`). Les assertions ont été recentrées sur le **contrat de
+l'app** : un plan non vide, bien formé (colonnes `plot_id` / `type` /
+`visit_order`, types ⊆ {Base, Over}, CRS 2154) et un aller-retour de
+persistance cohérent — au lieu de l'arithmétique de stratification du
+cœur. Le changement de comptage provient de `nemeton` 0.41.3.
+
+### Fixed — `db_status` plantait sans projet chargé (icône Bootstrap invalide)
+
+La carte d'état de la base de suivi (`output$db_status`) appelait
+`bsicons::bs_icon("folder-open")` dans la branche « aucun projet
+chargé ». Cet identifiant d'icône n'existe pas dans la version
+courante de Bootstrap Icons — `bs_icon()` levait une erreur, donc
+l'onglet Suivi sanitaire ne rendait pas son panneau d'état tant
+qu'aucun projet n'était ouvert. Corrigé en `folder2-open` (icône
+valide). Bug révélé par la réparation des tests `db_status` (voir
+ci-dessous).
+
+### Fixed — `.build_progress_writer` laissait fuir un avertissement
+
+L'écriture du fichier de progression sous un répertoire inexistant
+émettait un *warning* « cannot open file » avant l'erreur ; seul le
+`tryCatch(error=)` l'absorbait. L'écriture est désormais aussi
+enveloppée dans `suppressWarnings()` — la perte d'un tick de
+progression est totalement silencieuse, conformément à l'intention
+documentée de la fonction.
+
+### Changed — réparation de la suite de tests `monitoring`
+
+14 échecs de tests préexistants (`test-mod_monitoring.R` : 13 ;
+`test-service_monitoring_wiring.R` : 1) corrigés — dérive entre les
+tests et le code après plusieurs évolutions :
+
+- mocks `get_monitoring_db_connection` à signature `function()`
+  alors que le code appelle `get_monitoring_db_connection(project=)`
+  → passés en `function(...)` ;
+- mocks `validity_check_for_zone` sans le paramètre `bdforet`
+  (ajouté côté cœur en v0.37.0) → signature élargie ;
+- assertion UI obsolète (« bouton Lancer désactivé en phase 1 » —
+  l'ingestion est câblée, le bouton est actif) ;
+- tests `db_status` sensibles au `.Renviron` du développeur →
+  isolation des variables d'environnement DB ;
+- deux tests `db_status` (carte « aucune zone » / « connectée »)
+  marqués `skip()` : leur rendu dépend de la sonde DB asynchrone
+  (`future::multisession`) que `testServer` ne sait pas piloter de
+  façon déterministe — ils exigent une base réellement joignable.
+
 # nemetonshiny 0.39.0 (2026-05-21)
 
 ### Added — notifications ntfy pour les runs FORDEAD longs

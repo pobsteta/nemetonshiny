@@ -218,24 +218,30 @@ run_ingestion_async <- function() {
 .build_progress_writer <- function(progress_path) {
   if (is.null(progress_path) || !nzchar(progress_path)) return(NULL)
   function(event) {
-    tryCatch({
-      tmp <- paste0(progress_path, ".tmp")
-      writeLines(
-        jsonlite::toJSON(event, auto_unbox = TRUE, null = "null",
-                         na = "null", POSIXt = "ISO8601"),
-        con = tmp,
-        useBytes = TRUE
-      )
-      # file.rename is atomic on POSIX, best-effort on Windows where
-      # the destination must not exist — fall back to a write+unlink
-      # cycle that is good enough for a polling reader (the reader
-      # always wraps the read in tryCatch).
-      ok <- suppressWarnings(file.rename(tmp, progress_path))
-      if (!isTRUE(ok)) {
-        file.copy(tmp, progress_path, overwrite = TRUE)
-        unlink(tmp)
-      }
-    }, error = function(e) invisible(NULL))
+    # suppressWarnings as well as tryCatch: writing under a missing
+    # directory emits a "cannot open file" *warning* before the error
+    # — losing a progress tick must be fully silent (the reader always
+    # wraps its read in tryCatch).
+    tryCatch(
+      suppressWarnings({
+        tmp <- paste0(progress_path, ".tmp")
+        writeLines(
+          jsonlite::toJSON(event, auto_unbox = TRUE, null = "null",
+                           na = "null", POSIXt = "ISO8601"),
+          con = tmp,
+          useBytes = TRUE
+        )
+        # file.rename is atomic on POSIX, best-effort on Windows where
+        # the destination must not exist — fall back to a write+unlink
+        # cycle that is good enough for a polling reader.
+        ok <- file.rename(tmp, progress_path)
+        if (!isTRUE(ok)) {
+          file.copy(tmp, progress_path, overwrite = TRUE)
+          unlink(tmp)
+        }
+      }),
+      error = function(e) invisible(NULL)
+    )
   }
 }
 

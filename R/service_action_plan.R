@@ -607,8 +607,12 @@ audit_to_dataframe <- function(audit) {
   if (is.null(audit) || length(audit) == 0L) return(empty)
   shorten <- function(x) {
     if (is.null(x)) return(NA_character_)
-    if (is.list(x)) return(jsonlite::toJSON(x, auto_unbox = TRUE,
-                                            null = "null"))
+    # as.character() strips the `json` class jsonlite::toJSON() stamps
+    # on its result — otherwise rbind() propagates it to the whole
+    # column and audit_to_dataframe() no longer returns a tidy
+    # plain-character data.frame.
+    if (is.list(x)) return(as.character(jsonlite::toJSON(
+      x, auto_unbox = TRUE, null = "null")))
     paste(as.character(x), collapse = ", ")
   }
   rows <- lapply(audit, function(e) {

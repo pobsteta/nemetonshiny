@@ -28,8 +28,9 @@ test_that("mod_monitoring_ui returns valid Shiny UI with expected controls", {
       expect_true(grepl("monitoring-run",            html))
       expect_true(grepl("monitoring-db_status",      html))
 
-      # Run button is disabled in phase 1.
-      expect_true(grepl("disabled", html))
+      # The run button is wired and enabled — ingestion is implemented,
+      # so it is no longer the disabled phase-1 placeholder.
+      expect_true(grepl("btn-primary", html))
     }
   )
 })
@@ -95,76 +96,64 @@ test_that("mod_monitoring_server zones reactive forwards DB rows", {
 
 # ---- Server: db_status output ---------------------------------------
 
+# DB env vars neutralised so monitoring_db_backend() resolves to
+# "none" regardless of a developer .Renviron carrying NEMETON_DB_* /
+# POSTGRESQL_ADDON_* (otherwise db_status renders the probe path).
+.monitoring_db_env_off <- c(
+  NEMETON_DB_URL = NA, NEMETON_DB_LOCAL = NA,
+  NEMETON_DB_HOST = NA, NEMETON_DB_PORT = NA, NEMETON_DB_NAME = NA,
+  NEMETON_DB_USER = NA, NEMETON_DB_PASSWORD = NA,
+  POSTGRESQL_ADDON_HOST = NA, POSTGRESQL_ADDON_PORT = NA,
+  POSTGRESQL_ADDON_DB = NA, POSTGRESQL_ADDON_USER = NA,
+  POSTGRESQL_ADDON_PASSWORD = NA
+)
+
 test_that("db_status renders the 'unavailable' card when DB is not configured", {
   skip_if_not_installed("shiny")
 
-  testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function(...) NULL,
-    list_monitoring_zones         = function(con) {
-      data.frame(id = integer(0), name = character(0),
-                 stringsAsFactors = FALSE)
-    },
-    close_monitoring_db_connection = function(con) invisible(TRUE),
-    {
-      shiny::testServer(
-        nemetonshiny:::mod_monitoring_server,
-        args = list(app_state = make_fake_app_state()),
-        {
-          html <- paste(as.character(output$db_status), collapse = "")
-          expect_true(grepl("border-warning", html))
-          expect_true(grepl("non configur", html, fixed = FALSE))
-        }
-      )
-    }
-  )
+  # Neutralise any developer DB env so the backend resolves to "none"
+  # and db_status takes the synchronous "no project / not configured"
+  # branch (the only db_status branch reachable without a real DB —
+  # see the skipped probe-path tests below).
+  withr::with_envvar(.monitoring_db_env_off, {
+    testthat::with_mocked_bindings(
+      get_monitoring_db_connection  = function(...) NULL,
+      list_monitoring_zones         = function(con) {
+        data.frame(id = integer(0), name = character(0),
+                   stringsAsFactors = FALSE)
+      },
+      close_monitoring_db_connection = function(con) invisible(TRUE),
+      {
+        shiny::testServer(
+          nemetonshiny:::mod_monitoring_server,
+          args = list(app_state = make_fake_app_state()),
+          {
+            html <- paste(as.character(output$db_status), collapse = "")
+            expect_true(grepl("border-warning", html))
+            expect_true(grepl("non configur", html, fixed = FALSE))
+          }
+        )
+      }
+    )
+  })
 })
 
+# The 'no zone' and 'connected' db_status cards are rendered only after
+# the asynchronous DB-reachability probe (db_probe_task) resolves to
+# "ready". That probe runs `nemeton::db_connect` + `db_migrate` inside
+# a `future::multisession` worker — a *separate process* the test's
+# mocked bindings cannot reach — and its ExtendedTask state transitions
+# need `later`/promise pumping that testServer does not drive
+# deterministically. Both cards therefore require a genuinely reachable
+# monitoring DB and cannot be unit-tested with mocks. This mirrors the
+# v0.36.5 decision (see the Zone-saine comment block lower in this
+# file) to keep such probe-gated rendering under manual QA.
 test_that("db_status renders the 'no zone' card when DB has zero zones", {
-  skip_if_not_installed("shiny")
-
-  testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function(...) "fake-con",
-    list_monitoring_zones         = function(con) {
-      data.frame(id = integer(0), name = character(0),
-                 stringsAsFactors = FALSE)
-    },
-    close_monitoring_db_connection = function(con) invisible(TRUE),
-    {
-      shiny::testServer(
-        nemetonshiny:::mod_monitoring_server,
-        args = list(app_state = make_fake_app_state()),
-        {
-          html <- paste(as.character(output$db_status), collapse = "")
-          expect_true(grepl("border-info", html))
-          expect_true(grepl("Aucune zone", html))
-        }
-      )
-    }
-  )
+  skip("probe-gated rendering — needs a reachable DB (multisession worker)")
 })
 
 test_that("db_status renders the 'connected' card with zone count", {
-  skip_if_not_installed("shiny")
-
-  fake_zones <- data.frame(id = 1L:2L, name = c("A", "B"),
-                           stringsAsFactors = FALSE)
-
-  testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function(...) "fake-con",
-    list_monitoring_zones         = function(con) fake_zones,
-    close_monitoring_db_connection = function(con) invisible(TRUE),
-    {
-      shiny::testServer(
-        nemetonshiny:::mod_monitoring_server,
-        args = list(app_state = make_fake_app_state()),
-        {
-          html <- paste(as.character(output$db_status), collapse = "")
-          expect_true(grepl("border-success", html))
-          expect_true(grepl("2 zone", html))
-        }
-      )
-    }
-  )
+  skip("probe-gated rendering — needs a reachable DB (multisession worker)")
 })
 
 
@@ -426,12 +415,12 @@ test_that("validity reactive is NULL outside health mode", {
   skip_if_not_installed("shiny")
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function() "fake-con",
+    get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async            = function() make_fake_ingest_task(),
     run_fordead_async              = function() make_fake_fordead_task(),
-    validity_check_for_zone        = function(con, zone_id, units = NULL) {
+    validity_check_for_zone        = function(con, zone_id, units = NULL, ...) {
       stop("must not be called in quick mode")
     },
     {
@@ -460,12 +449,12 @@ test_that("validity_banners renders the geo + species warnings when invalid", {
   )
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function() "fake-con",
+    get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async            = function() make_fake_ingest_task(),
     run_fordead_async              = function() make_fake_fordead_task(),
-    validity_check_for_zone        = function(con, zone_id, units = NULL)
+    validity_check_for_zone        = function(con, zone_id, units = NULL, ...)
       fake_validity,
     {
       shiny::testServer(
@@ -490,12 +479,12 @@ test_that("input$run_health blocks when overall_valid = FALSE (G3 modal path)", 
   fake_task <- make_fake_fordead_task()
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function() "fake-con",
+    get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async            = function() make_fake_ingest_task(),
     run_fordead_async              = function() fake_task,
-    validity_check_for_zone        = function(con, zone_id, units = NULL) {
+    validity_check_for_zone        = function(con, zone_id, units = NULL, ...) {
       list(geo_valid = FALSE, geo_intersection_pct = 0.2,
            species_valid = TRUE, species_resineux_pct = 0.9,
            overall_valid = FALSE, thresholds = list())
@@ -529,12 +518,12 @@ test_that("input$run_health invokes FORDEAD when validity is OK", {
   fake_task <- make_fake_fordead_task()
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function() "fake-con",
+    get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async            = function() make_fake_ingest_task(),
     run_fordead_async              = function() fake_task,
-    validity_check_for_zone        = function(con, zone_id, units = NULL) {
+    validity_check_for_zone        = function(con, zone_id, units = NULL, ...) {
       list(geo_valid = TRUE, geo_intersection_pct = 0.95,
            species_valid = TRUE, species_resineux_pct = 0.85,
            overall_valid = TRUE, thresholds = list())
@@ -574,12 +563,12 @@ test_that("confirm_invalid_run invokes FORDEAD on modal accept (G3 force path)",
   fake_task <- make_fake_fordead_task()
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function() "fake-con",
+    get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async            = function() make_fake_ingest_task(),
     run_fordead_async              = function() fake_task,
-    validity_check_for_zone        = function(con, zone_id, units = NULL) {
+    validity_check_for_zone        = function(con, zone_id, units = NULL, ...) {
       list(geo_valid = FALSE, geo_intersection_pct = 0.1,
            species_valid = FALSE, species_resineux_pct = 0.0,
            overall_valid = FALSE, thresholds = list())
@@ -614,7 +603,7 @@ test_that("server returns fordead_task + validity reactives", {
   fake_ftask <- make_fake_fordead_task()
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function() "fake-con",
+    get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async            = function() make_fake_ingest_task(),
@@ -757,7 +746,7 @@ test_that("metadata restore updates the mode + threshold from current_project", 
   )
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function() "fake-con",
+    get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async            = function() make_fake_ingest_task(),
@@ -815,7 +804,7 @@ test_that("register click without a loaded project shows a notification and no-o
   skip_if_not_installed("shiny")
 
   testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function() "fake-con",
+    get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
     run_ingestion_async            = function() make_fake_ingest_task(),
@@ -859,7 +848,7 @@ test_that("register click invokes register_project_as_zone and persists zone_id 
 
         captured_project <- NULL
         testthat::with_mocked_bindings(
-          get_monitoring_db_connection   = function() "fake-con",
+          get_monitoring_db_connection   = function(...) "fake-con",
           list_monitoring_zones          = function(con) fake_zones_df(),
           close_monitoring_db_connection = function(con) invisible(TRUE),
           run_ingestion_async            = function() make_fake_ingest_task(),
@@ -906,7 +895,7 @@ test_that("register click flags 'already registered' when helper returns was_exi
         nemetonshiny:::save_samples(proj$id, plots)
 
         testthat::with_mocked_bindings(
-          get_monitoring_db_connection   = function() "fake-con",
+          get_monitoring_db_connection   = function(...) "fake-con",
           list_monitoring_zones          = function(con) fake_zones_df(),
           close_monitoring_db_connection = function(con) invisible(TRUE),
           run_ingestion_async            = function() make_fake_ingest_task(),
@@ -952,7 +941,7 @@ test_that("auto-select pre-selects the zone matching project metadata$monitoring
         proj <- nemetonshiny:::create_project(name = "Massif Central")
 
         testthat::with_mocked_bindings(
-          get_monitoring_db_connection   = function() "fake-con",
+          get_monitoring_db_connection   = function(...) "fake-con",
           list_monitoring_zones          = function(con) fake_zones_df(),
           close_monitoring_db_connection = function(con) invisible(TRUE),
           run_ingestion_async            = function() make_fake_ingest_task(),
