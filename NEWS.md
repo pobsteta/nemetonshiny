@@ -1,3 +1,29 @@
+# nemetonshiny 0.39.0.9001 (2026-05-21)
+
+### Fixed — `audit_to_dataframe` ne renvoyait pas un data.frame propre
+
+`audit_to_dataframe()` sérialise les entrées d'audit complexes (op
+`create` / `delete`, dont la valeur est l'action entière) via
+`jsonlite::toJSON()`. Le résultat porte la classe `json` ; lors du
+`rbind()` des lignes, cette classe se propageait à **toute** la
+colonne `nouveau` / `ancien`, y compris aux valeurs scalaires simples
+(« haute », « moyenne »). La colonne n'était donc plus un vecteur
+caractère « tidy ». Corrigé en dé-classant le JSON via `as.character()`.
+
+### Changed — réparation de la suite de tests `sampling`
+
+3 tests préexistants de `test-mod_sampling.R` échouaient : ils
+codaient en dur le nombre exact de placettes attendu
+(`n_base + n_over`). Or `nemeton::create_sampling_plan()` fait un
+échantillonnage GRTS spatialement équilibré avec stratification —
+`n_base` / `n_over` sont des **cibles**, pas des garanties (une strate
+peut rejeter des candidats, le sur-échantillon dérive de
+`over_ratio`). Les assertions ont été recentrées sur le **contrat de
+l'app** : un plan non vide, bien formé (colonnes `plot_id` / `type` /
+`visit_order`, types ⊆ {Base, Over}, CRS 2154) et un aller-retour de
+persistance cohérent — au lieu de l'arithmétique de stratification du
+cœur. Le changement de comptage provient de `nemeton` 0.41.3.
+
 # nemetonshiny 0.39.0.9000 (2026-05-21)
 
 ### Fixed — `db_status` plantait sans projet chargé (icône Bootstrap invalide)
