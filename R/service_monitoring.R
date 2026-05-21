@@ -12,10 +12,10 @@
 #'
 #' Usage:
 #' ```r
-#' ingest_task <- run_ingestion_async()
-#' ingest_task$invoke(zone_id, start, end, bands, max_cloud)
+#' fast_task <- run_ingestion_async()
+#' fast_task$invoke(zone_id, start, end, bands, max_cloud)
 #' shiny::observe({
-#'   result <- tryCatch(ingest_task$result(), error = function(e) {
+#'   result <- tryCatch(fast_task$result(), error = function(e) {
 #'     if (inherits(e, "shiny.silent.error")) stop(e)
 #'     NULL
 #'   })

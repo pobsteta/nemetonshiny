@@ -1220,7 +1220,7 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    ingest_task <- run_ingestion_async()
+    fast_task <- run_ingestion_async()
 
     # Path to the progress.json file written by the ingest worker via
     # the nemeton progress_callback API (>= 0.21.2). NULL until the
@@ -1461,15 +1461,25 @@ mod_monitoring_server <- function(id, app_state) {
     # because the DB INSERTs are ON CONFLICT DO NOTHING.
     force_unlock_quick <- shiny::reactiveVal(FALSE)
 
-    # Button state: only grey out during a running ingestion (double-click
+    # Button state: grey out during a running ingestion (double-click
     # protection) AND the user has not overridden via run_cancel. The
-    # observer fires every time `ingest_task$status()` (a Shiny reactive)
+    # observer fires every time `fast_task$status()` (a Shiny reactive)
     # transitions, which is the canonical way to track ExtendedTask
     # state.
+    #
+    # Cross-lock (v0.39.2): also greyed while a FORDEAD run is in
+    # flight. FAST and FORDEAD share the project Sentinel-2 band cache
+    # (`cache/layers/sentinel2/<scene>/<band>.tif`) — running both at
+    # once risks two workers racing on the same `<band>.tif.tmp`. The
+    # lock respects the *other* task's force-unlock: if FORDEAD was
+    # abandoned via its cancel button, FAST is launchable again.
     shiny::observe({
-      is_running <- identical(ingest_task$status(), "running") &&
-                    !isTRUE(force_unlock_quick())
-      shiny::updateActionButton(session, "run", disabled = is_running)
+      fast_running    <- identical(fast_task$status(), "running") &&
+                         !isTRUE(force_unlock_quick())
+      fordead_running <- identical(fordead_task$status(), "running") &&
+                         !isTRUE(force_unlock_health())
+      shiny::updateActionButton(session, "run",
+                                disabled = fast_running || fordead_running)
     })
 
     # Render the cancel/reset button only while a real task is in
@@ -1479,7 +1489,7 @@ mod_monitoring_server <- function(id, app_state) {
     output$run_cancel_panel <- shiny::renderUI({
       ns <- session$ns
       i18n <- i18n_r()
-      if (!identical(ingest_task$status(), "running")) return(NULL)
+      if (!identical(fast_task$status(), "running")) return(NULL)
       if (isTRUE(force_unlock_quick())) return(NULL)
       shiny::actionButton(
         ns("run_cancel"),
@@ -1522,7 +1532,17 @@ mod_monitoring_server <- function(id, app_state) {
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
       force_unlock_quick(FALSE)
-      if (identical(ingest_task$status(), "running")) {
+      # Cross-lock: refuse to start FAST while a FORDEAD run is in
+      # flight (shared Sentinel-2 cache — cf. the run-button observer).
+      # An abandoned FORDEAD run (cancel button → force-unlock) does
+      # not block.
+      if (identical(fordead_task$status(), "running") &&
+          !isTRUE(force_unlock_health())) {
+        shiny::showNotification(i18n$t("monitoring_busy_fordead"),
+                                type = "warning", duration = 6)
+        return()
+      }
+      if (identical(fast_task$status(), "running")) {
         shiny::showNotification(i18n$t("monitoring_ingest_starting"),
                                 type = "message", duration = 4)
         return()
@@ -1616,7 +1636,7 @@ mod_monitoring_server <- function(id, app_state) {
       ingest_log_path(lpath)
       ingest_log_offset(0L)
 
-      ingest_task$invoke(
+      fast_task$invoke(
         zone_id       = as.integer(input$zone_id),
         start         = as.Date(dr[1]),
         end           = as.Date(dr[2]),
@@ -1643,7 +1663,7 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::observe({
       i18n <- i18n_r()
       result <- tryCatch(
-        ingest_task$result(),
+        fast_task$result(),
         error = function(e) {
           if (inherits(e, "shiny.silent.error")) stop(e)
           shiny::removeNotification(session$ns("ingest_progress"))
@@ -1790,14 +1810,21 @@ mod_monitoring_server <- function(id, app_state) {
     # would otherwise block the user from relaunching.
     force_unlock_health <- shiny::reactiveVal(FALSE)
 
-    # Button state for run_health: same logic as `run` — only grey out
+    # Button state for run_health: same logic as `run` — grey out
     # during an active FORDEAD run (long task) AND no user override,
     # preconditions are validated in the click observer for explicit
     # toast feedback.
+    #
+    # Cross-lock (v0.39.2): also greyed while a FAST ingestion is in
+    # flight (shared Sentinel-2 cache — cf. the run-button observer).
+    # Respects FAST's force-unlock symmetrically.
     shiny::observe({
-      is_running <- identical(fordead_task$status(), "running") &&
-                    !isTRUE(force_unlock_health())
-      shiny::updateActionButton(session, "run_health", disabled = is_running)
+      fordead_running <- identical(fordead_task$status(), "running") &&
+                         !isTRUE(force_unlock_health())
+      fast_running    <- identical(fast_task$status(), "running") &&
+                         !isTRUE(force_unlock_quick())
+      shiny::updateActionButton(session, "run_health",
+                                disabled = fordead_running || fast_running)
     })
 
     output$run_health_cancel_panel <- shiny::renderUI({
@@ -1911,6 +1938,15 @@ mod_monitoring_server <- function(id, app_state) {
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
       force_unlock_health(FALSE)
+      # Cross-lock: refuse to start FORDEAD while a FAST ingestion is
+      # in flight (shared Sentinel-2 cache — cf. the run_health button
+      # observer). An abandoned FAST run does not block.
+      if (identical(fast_task$status(), "running") &&
+          !isTRUE(force_unlock_quick())) {
+        shiny::showNotification(i18n$t("monitoring_busy_fast"),
+                                type = "warning", duration = 6)
+        return()
+      }
       if (identical(fordead_task$status(), "running")) {
         shiny::showNotification(i18n$t("monitoring_health_starting"),
                                 type = "message", duration = 4)
@@ -2130,7 +2166,7 @@ mod_monitoring_server <- function(id, app_state) {
 
     list(
       zones         = zones,
-      ingest_task   = ingest_task,
+      fast_task     = fast_task,
       fordead_task  = fordead_task,
       validity      = validity,
       pixel_map     = pixel_map_ret,

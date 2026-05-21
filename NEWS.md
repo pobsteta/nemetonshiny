@@ -1,3 +1,37 @@
+# nemetonshiny 0.39.1.9000 (2026-05-21)
+
+### Added — verrou croisé FAST ↔ FORDEAD
+
+FAST (surveillance rapide) et FORDEAD (diagnostic sanitaire) sont deux
+`ExtendedTask` indépendants : rien n'empêchait de les lancer en
+parallèle dans la même instance. Or les deux partagent le cache de
+bandes Sentinel-2 du projet (`cache/layers/sentinel2/<scène>/`) — deux
+workers concurrents pourraient écrire le même fichier
+`<bande>.tif.tmp` et le corrompre, en plus de se disputer la bande
+passante réseau.
+
+Les deux diagnostics sont désormais **mutuellement exclusifs** :
+
+- le bouton « Lancer » (FAST) est grisé tant qu'un run FORDEAD est en
+  cours, et inversement ;
+- un clic malgré tout affiche une notification explicite
+  (`monitoring_busy_fast` / `monitoring_busy_fordead`) et n'invoque
+  pas la tâche ;
+- le verrou respecte le *force-unlock* de l'autre tâche : si un run a
+  été abandonné via son bouton « Annuler », l'autre redevient
+  lançable immédiatement.
+
+### Changed — `ingest_task` renommé `fast_task`
+
+La variable interne `ingest_task` (module `mod_monitoring`) et le
+helper de test `make_fake_ingest_task()` sont renommés `fast_task` /
+`make_fake_fast_task()`, par symétrie avec `fordead_task` /
+`make_fake_fordead_task()`. La clé `ingest_task` de la liste retournée
+par `mod_monitoring_server()` devient `fast_task` (aucun consommateur
+applicatif — `app_server` n'exploite pas le retour du module). La
+fonction service `run_ingestion_async()` garde son nom (« ingestion »
+décrit fidèlement l'étape Sentinel-2 sous-jacente).
+
 # nemetonshiny 0.39.1 (2026-05-21)
 
 ### Fixed — `audit_to_dataframe` ne renvoyait pas un data.frame propre
