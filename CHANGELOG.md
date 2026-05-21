@@ -10,6 +10,34 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-05-21
+
+### Added
+
+- **Notifications ntfy pour les runs FORDEAD longs** : canal de push
+  `ntfy` émis côté worker `future` (donc indépendant de la survie de
+  la session Shiny) — message au démarrage, un message par étape
+  FORDEAD (dédupliqué), message de fin (nb d'alertes + durée lisible)
+  et message d'échec. Opt-in via `NEMETON_NTFY_TOPIC` ; serveur et
+  jeton optionnels (`NEMETON_NTFY_URL`, `NEMETON_NTFY_TOKEN`).
+  No-op silencieux si non configuré.
+
+### Fixed
+
+- **Onglets FORDEAD figés après un run hors-session** : « Alertes
+  FORDEAD » et « Carte FORDEAD » ne se rafraîchissaient pas quand un
+  run survivait à sa session Shiny (run long + déconnexion du
+  navigateur). Deux correctifs : (1) ouvrir un sous-onglet FORDEAD
+  force la re-lecture base + masque disque ; (2)
+  `.reconcile_fordead_state()` reconstruit le résultat « succès »
+  depuis le masque persisté au chargement du projet, affichant la
+  carte « Zone saine » datée au lieu du placeholder générique.
+
+### Changed
+
+- Libellé du placeholder « pas de cache » de la Carte FAST :
+  « Lance une ingestion FAST… » → « Lance le diagnostic FAST… ».
+
 ## [0.38.8] - 2026-05-20
 
 ### Changed

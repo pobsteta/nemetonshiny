@@ -1,4 +1,4 @@
-# nemetonshiny 0.38.8.9000 (2026-05-21)
+# nemetonshiny 0.39.0 (2026-05-21)
 
 ### Added — notifications ntfy pour les runs FORDEAD longs
 
