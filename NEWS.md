@@ -1,4 +1,4 @@
-# nemetonshiny 0.39.1.9000 (2026-05-21)
+# nemetonshiny 0.40.0 (2026-05-21)
 
 ### Added — verrou croisé FAST ↔ FORDEAD
 
