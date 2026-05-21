@@ -1101,7 +1101,7 @@ mod_monitoring_server <- function(id, app_state) {
       if (identical(backend, "none")) {
         if (is.null(project)) {
           return(.monitoring_status_card(
-            icon  = "folder-open",
+            icon  = "folder2-open",
             class = "border-warning",
             title = i18n$t("monitoring_db_unavailable"),
             body  = i18n$t("monitoring_db_no_project")

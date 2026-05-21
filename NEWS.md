@@ -1,3 +1,45 @@
+# nemetonshiny 0.39.0.9000 (2026-05-21)
+
+### Fixed — `db_status` plantait sans projet chargé (icône Bootstrap invalide)
+
+La carte d'état de la base de suivi (`output$db_status`) appelait
+`bsicons::bs_icon("folder-open")` dans la branche « aucun projet
+chargé ». Cet identifiant d'icône n'existe pas dans la version
+courante de Bootstrap Icons — `bs_icon()` levait une erreur, donc
+l'onglet Suivi sanitaire ne rendait pas son panneau d'état tant
+qu'aucun projet n'était ouvert. Corrigé en `folder2-open` (icône
+valide). Bug révélé par la réparation des tests `db_status` (voir
+ci-dessous).
+
+### Fixed — `.build_progress_writer` laissait fuir un avertissement
+
+L'écriture du fichier de progression sous un répertoire inexistant
+émettait un *warning* « cannot open file » avant l'erreur ; seul le
+`tryCatch(error=)` l'absorbait. L'écriture est désormais aussi
+enveloppée dans `suppressWarnings()` — la perte d'un tick de
+progression est totalement silencieuse, conformément à l'intention
+documentée de la fonction.
+
+### Changed — réparation de la suite de tests `monitoring`
+
+14 échecs de tests préexistants (`test-mod_monitoring.R` : 13 ;
+`test-service_monitoring_wiring.R` : 1) corrigés — dérive entre les
+tests et le code après plusieurs évolutions :
+
+- mocks `get_monitoring_db_connection` à signature `function()`
+  alors que le code appelle `get_monitoring_db_connection(project=)`
+  → passés en `function(...)` ;
+- mocks `validity_check_for_zone` sans le paramètre `bdforet`
+  (ajouté côté cœur en v0.37.0) → signature élargie ;
+- assertion UI obsolète (« bouton Lancer désactivé en phase 1 » —
+  l'ingestion est câblée, le bouton est actif) ;
+- tests `db_status` sensibles au `.Renviron` du développeur →
+  isolation des variables d'environnement DB ;
+- deux tests `db_status` (carte « aucune zone » / « connectée »)
+  marqués `skip()` : leur rendu dépend de la sonde DB asynchrone
+  (`future::multisession`) que `testServer` ne sait pas piloter de
+  façon déterministe — ils exigent une base réellement joignable.
+
 # nemetonshiny 0.39.0 (2026-05-21)
 
 ### Added — notifications ntfy pour les runs FORDEAD longs
