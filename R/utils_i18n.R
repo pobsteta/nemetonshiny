@@ -2135,8 +2135,8 @@ TRANSLATIONS <- list(
     en = "No data for this plot in the current window."
   ),
   monitoring_pixel_map_no_cache = list(
-    fr = "Pas de cache disque disponible. Lance une ingestion FAST pour peupler le cache COG.",
-    en = "No disk cache available. Run a FAST ingestion to populate the COG cache."
+    fr = "Pas de cache disque disponible. Lance le diagnostic FAST pour peupler le cache COG.",
+    en = "No disk cache available. Run a FAST diagnosis to populate the COG cache."
   ),
   monitoring_pixel_map_loading = list(
     fr = "Construction du stack d'indices\u2026",
@@ -2168,6 +2168,14 @@ TRANSLATIONS <- list(
   monitoring_fordead_no_alerts_meta = list(
     fr = "Diagnostic termin\u00e9 en %.0f s.",
     en = "Diagnosis completed in %.0f s."
+  ),
+  # Meta line when the "Zone saine" card is rebuilt from disk after a
+  # session reload (run completed out-of-session) \u2014 no in-session
+  # duration is available, so the persisted-mask timestamp is shown
+  # instead. Cf. .reconcile_fordead_state() in service_monitoring.R.
+  monitoring_fordead_no_alerts_meta_date = list(
+    fr = "Dernier diagnostic FORDEAD : %s.",
+    en = "Last FORDEAD diagnosis: %s."
   ),
 
   # ----- Mode toggle (rapide / sanitaire) -----
@@ -2259,6 +2267,29 @@ TRANSLATIONS <- list(
   monitoring_fordead_error = list(
     fr = "FORDEAD \u00e9chec en {phase} : {msg}",
     en = "FORDEAD failed at {phase}: {msg}"
+  ),
+
+  # ----- ntfy push messages (E6 \u2014 out-of-band FORDEAD progress) ------
+  # Sent worker-side by .ntfy_send() so a FORDEAD run that outlives
+  # its Shiny session still notifies the user. These strings are
+  # consumed via sprintf() (NOT glue) \u2014 hence %s / %d placeholders,
+  # which glue::glue() leaves untouched. Opt-in: no-op unless
+  # NEMETON_NTFY_TOPIC is set. Cf. service_monitoring.R.
+  monitoring_ntfy_fordead_start = list(
+    fr = "Diagnostic FORDEAD d\u00e9marr\u00e9 (zone %s).",
+    en = "FORDEAD diagnosis started (zone %s)."
+  ),
+  monitoring_ntfy_fordead_phase = list(
+    fr = "\u00c9tape en cours : %s",
+    en = "Current step: %s"
+  ),
+  monitoring_ntfy_fordead_complete = list(
+    fr = "Diagnostic FORDEAD termin\u00e9 : %d alerte(s) en %s.",
+    en = "FORDEAD diagnosis complete: %d alert(s) in %s."
+  ),
+  monitoring_ntfy_fordead_error = list(
+    fr = "\u00c9chec du diagnostic FORDEAD : %s",
+    en = "FORDEAD diagnosis failed: %s"
   ),
 
   # Per-phase labels \u2014 current 1.x sequence (nemeton@v0.22.5)

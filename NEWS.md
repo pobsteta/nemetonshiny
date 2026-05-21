@@ -1,3 +1,63 @@
+# nemetonshiny 0.39.0 (2026-05-21)
+
+### Added — notifications ntfy pour les runs FORDEAD longs
+
+Un diagnostic FORDEAD peut durer plusieurs heures (cas réel : 13 h 47 —
+l'essentiel du temps passé à re-télécharger les bandes Sentinel-2
+manquantes du cache). Sur un run aussi long, la session Shiny du
+navigateur se déconnecte (timeout WebSocket / onglet en veille) : le
+worker `future` termine bien — il écrit le masque de dépérissement et
+insère les alertes — mais le `$result()` orphelin n'est jamais livré à
+l'UI, qui reste figée.
+
+Nouveau canal de notification **ntfy** (<https://ntfy.sh>), émis
+**côté worker** (donc indépendant de la survie de la session) :
+
+- message au **démarrage** du diagnostic ;
+- un message **par étape FORDEAD** (ingest, fit, predict, dieback,
+  postprocess, persist), dédupliqué pour ne pas saturer le topic ;
+- message de **fin** avec le nombre d'alertes et la durée lisible
+  (`13 h 46 min`) ;
+- message d'**échec** avec la cause.
+
+Opt-in et sans secret en dur (cf. CLAUDE.md) : activé uniquement si
+`NEMETON_NTFY_TOPIC` est défini. `NEMETON_NTFY_URL` (défaut
+`https://ntfy.sh`) et `NEMETON_NTFY_TOKEN` (topic protégé, ntfy
+auto-hébergé) sont optionnels. Sans configuration, chaque envoi est un
+no-op silencieux. L'utilisateur s'abonne au topic depuis un téléphone
+ou un navigateur et suit le run sans garder l'app ouverte.
+
+### Fixed — les onglets FORDEAD ne se rafraîchissaient pas après un run hors-session
+
+Les onglets « Alertes FORDEAD » et « Carte FORDEAD » dépendaient tous
+deux du compteur `alerts_refresh`, bumpé uniquement par l'observer de
+résultat — qui ne s'exécute jamais si le run survit à sa session.
+Deux correctifs complémentaires :
+
+- **Piste 1 — re-lecture à l'ouverture d'un sous-onglet.** Ouvrir
+  « Alertes FORDEAD » ou « Carte FORDEAD » bumpe désormais
+  `alerts_refresh`, forçant `alerts()` à re-interroger la base et
+  `mask_r` à relire le masque persisté. Un run terminé hors-session
+  apparaît à la prochaine visite de l'onglet, sans recharger le
+  projet.
+- **Piste 2 — réconciliation depuis le disque.** Au chargement d'un
+  projet (ou changement de zone), `.reconcile_fordead_state()`
+  reconstruit un résultat « succès » synthétique à partir du masque
+  de dépérissement persisté
+  (`cache/layers/fordead/zone_<id>/dieback_mask_<ts>.tif`). La carte
+  « Zone saine » s'affiche alors avec la date du dernier diagnostic
+  (nouvelle clé i18n `monitoring_fordead_no_alerts_meta_date`), au
+  lieu du placeholder générique « pas encore lancé ». Un résultat
+  in-session pour la même zone (qui porte la vraie durée) n'est
+  jamais écrasé.
+
+### Changed — libellé Carte FAST
+
+Le placeholder « pas de cache » de la Carte FAST disait « Lance une
+ingestion FAST… » ; remplacé par « Lance le diagnostic FAST… » pour
+s'aligner sur le vocabulaire des onglets (clé
+`monitoring_pixel_map_no_cache`).
+
 # nemetonshiny 0.38.8 (2026-05-20)
 
 ### Changed — `Remotes:` suit désormais la dernière release `nemeton` (`@*release`)

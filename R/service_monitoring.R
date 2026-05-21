@@ -284,7 +284,8 @@ run_fordead_async <- function() {
                                    threshold_anomaly = 0.16,
                                    vegetation_index = "CRSWIR",
                                    zone_id = NULL, cache_dir = NULL,
-                                   db_url = "", progress_path = NULL) {
+                                   db_url = "", progress_path = NULL,
+                                   lang = "fr") {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -305,20 +306,259 @@ run_fordead_async <- function() {
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      progress_cb <- .build_progress_writer(progress_path)
+      # ntfy push channel — resolved worker-side (env vars replayed
+      # above). NULL when NEMETON_NTFY_TOPIC is unset → every
+      # `.ntfy_send()` call below is a silent no-op.
+      ntfy  <- .ntfy_config()
+      i18n  <- get_i18n(lang %||% "fr")
 
-      nemeton::run_fordead_dieback(
-        con               = con,
-        zone_id           = zone_id,
-        cache_dir         = cache_dir,
-        dates_training    = dates_training,
-        dates_monitoring  = dates_monitoring,
-        threshold_anomaly = threshold_anomaly,
-        vegetation_index  = vegetation_index,
-        progress_callback = progress_cb
+      # Composite progress callback: the file writer the parent's
+      # reactivePoll tails, PLUS a worker-side ntfy push on each new
+      # FORDEAD phase. Phase pushes are de-duplicated (one per phase
+      # name, not per progress tick) so a 6-phase run yields 6
+      # notifications, not hundreds.
+      progress_cb <- .build_fordead_progress_callback(progress_path,
+                                                      ntfy, i18n)
+
+      .ntfy_send(
+        ntfy,
+        sprintf(i18n$t("monitoring_ntfy_fordead_start"),
+                as.character(zone_id %||% "?")),
+        tags = "evergreen_tree"
       )
+
+      result <- tryCatch(
+        nemeton::run_fordead_dieback(
+          con               = con,
+          zone_id           = zone_id,
+          cache_dir         = cache_dir,
+          dates_training    = dates_training,
+          dates_monitoring  = dates_monitoring,
+          threshold_anomaly = threshold_anomaly,
+          vegetation_index  = vegetation_index,
+          progress_callback = progress_cb
+        ),
+        error = function(e) {
+          .ntfy_send(
+            ntfy,
+            sprintf(i18n$t("monitoring_ntfy_fordead_error"),
+                    conditionMessage(e)),
+            priority = "high", tags = "rotating_light"
+          )
+          stop(e)
+        }
+      )
+
+      .ntfy_send(
+        ntfy,
+        sprintf(i18n$t("monitoring_ntfy_fordead_complete"),
+                as.integer(result$n_alerts_inserted %||% 0L),
+                .format_duration_human(result$duration_sec %||% NA_real_)),
+        tags = "white_check_mark"
+      )
+      result
     }, seed = TRUE)
   })
+}
+
+
+#' Resolve the ntfy push configuration from the environment
+#'
+#' ntfy (<https://ntfy.sh>) is the out-of-band notification channel for
+#' long FORDEAD runs: the `future` worker outlives the Shiny session,
+#' so a browser disconnect would otherwise leave the user blind until
+#' they reopen the app. ntfy lets the worker push start / per-phase /
+#' completion / error messages to a topic the user subscribes to from
+#' a phone or browser.
+#'
+#' Returns `NULL` when `NEMETON_NTFY_TOPIC` is unset — every
+#' `.ntfy_send()` then becomes a silent no-op, so ntfy is strictly
+#' opt-in and the feature degrades cleanly when not configured.
+#'
+#' Env vars (cf. CLAUDE.md — no secret in code):
+#' * `NEMETON_NTFY_TOPIC` — topic name (required to enable).
+#' * `NEMETON_NTFY_URL`   — server, default `https://ntfy.sh`.
+#' * `NEMETON_NTFY_TOKEN` — bearer token for a protected topic
+#'   (optional, self-hosted ntfy).
+#'
+#' @return A named list (`url`, `topic`, `token`) or `NULL`.
+#' @noRd
+.ntfy_config <- function() {
+  topic <- Sys.getenv("NEMETON_NTFY_TOPIC", unset = "")
+  if (!nzchar(topic)) return(NULL)
+  url <- Sys.getenv("NEMETON_NTFY_URL", unset = "https://ntfy.sh")
+  list(
+    url   = sub("/+$", "", url),
+    topic = topic,
+    token = Sys.getenv("NEMETON_NTFY_TOKEN", unset = "")
+  )
+}
+
+
+#' Send a single ntfy notification (best-effort)
+#'
+#' POSTs `message` to `<url>/<topic>`. The HTTP body carries the
+#' (UTF-8, possibly accented) message; the `Title` header stays a
+#' fixed ASCII string because ntfy headers are not UTF-8 safe.
+#'
+#' Wrapped in `tryCatch` and given a short timeout: a notification is
+#' never worth aborting — or even slowing down — a FORDEAD run for.
+#' No-op when `cfg` is `NULL`.
+#'
+#' @param cfg Output of `.ntfy_config()` (or `NULL`).
+#' @param message Body text (UTF-8).
+#' @param priority ntfy priority (`"min"`/`"low"`/`"default"`/`"high"`/`"max"`).
+#' @param tags Character vector of ntfy tags / emoji short-codes.
+#' @return `TRUE` on a sent request, `FALSE` otherwise (invisibly).
+#' @noRd
+.ntfy_send <- function(cfg, message, priority = "default", tags = NULL) {
+  if (is.null(cfg)) return(invisible(FALSE))
+  tryCatch({
+    req <- httr2::request(paste0(cfg$url, "/", cfg$topic))
+    req <- httr2::req_body_raw(req, enc2utf8(as.character(message)),
+                               type = "text/plain; charset=utf-8")
+    req <- httr2::req_headers(req,
+                              Title    = "Nemeton FORDEAD",
+                              Priority = priority)
+    if (!is.null(tags) && length(tags)) {
+      req <- httr2::req_headers(req, Tags = paste(tags, collapse = ","))
+    }
+    if (nzchar(cfg$token)) {
+      req <- httr2::req_auth_bearer_token(req, cfg$token)
+    }
+    req <- httr2::req_timeout(req, 10)
+    httr2::req_perform(req)
+    invisible(TRUE)
+  }, error = function(e) invisible(FALSE))
+}
+
+
+#' Build the FORDEAD worker progress callback
+#'
+#' Composes the JSON-file writer (`.build_progress_writer()`, tailed by
+#' the parent's `reactivePoll`) with a worker-side ntfy push fired once
+#' per new FORDEAD phase. The phase name is tracked in a closure
+#' environment so repeated `fordead:phase` ticks within the same phase
+#' do not spam the topic.
+#'
+#' @param progress_path JSON file path (or `NULL`).
+#' @param ntfy `.ntfy_config()` output (or `NULL`).
+#' @param i18n A `get_i18n()` translator.
+#' @return A callback `function(event)`.
+#' @noRd
+.build_fordead_progress_callback <- function(progress_path, ntfy, i18n) {
+  file_cb <- .build_progress_writer(progress_path)
+  state   <- new.env(parent = emptyenv())
+  state$last_phase <- ""
+  function(event) {
+    if (!is.null(file_cb)) {
+      tryCatch(file_cb(event), error = function(e) invisible(NULL))
+    }
+    current <- as.character(event$current %||% "")
+    if (identical(current, "fordead:phase")) {
+      phase_name <- as.character(event$phase_name %||% "")
+      if (nzchar(phase_name) && !identical(phase_name, state$last_phase)) {
+        state$last_phase <- phase_name
+        .ntfy_send(
+          ntfy,
+          sprintf(i18n$t("monitoring_ntfy_fordead_phase"),
+                  .fordead_phase_label(phase_name, i18n)),
+          priority = "low", tags = "hourglass_flowing_sand"
+        )
+      }
+    }
+    invisible(NULL)
+  }
+}
+
+
+#' Human-readable duration string
+#'
+#' Formats a number of seconds as `"45 s"` / `"12 min"` / `"13 h 47 min"`.
+#' Returns `"?"` for `NULL` / non-finite input.
+#'
+#' @param sec Number of seconds.
+#' @return A length-1 character.
+#' @noRd
+.format_duration_human <- function(sec) {
+  if (is.null(sec)) return("?")
+  sec <- suppressWarnings(as.numeric(sec)[1])
+  if (length(sec) != 1L || !is.finite(sec)) return("?")
+  if (sec < 60) return(sprintf("%d s", as.integer(round(sec))))
+  total_min <- floor(sec / 60)
+  hours <- total_min %/% 60
+  mins  <- total_min %% 60
+  if (hours > 0) {
+    sprintf("%d h %02d min", hours, mins)
+  } else {
+    sprintf("%d min", mins)
+  }
+}
+
+
+#' Reconcile the FORDEAD UI state from disk after a session reload
+#'
+#' When a FORDEAD run outlives its Shiny session (long run + browser
+#' disconnect), the in-session `fordead_last_result()` reactiveVal is
+#' lost on reload — even though the worker completed and persisted its
+#' dieback mask. This helper rebuilds a synthetic "success" result by
+#' inspecting the on-disk mask cache, so the "Carte FORDEAD" /
+#' "Alertes FORDEAD" sub-tabs can show the completed run instead of a
+#' stale "not run yet" placeholder.
+#'
+#' Mask layout (written by the nemeton@>=0.41.0 persist hook):
+#' `<project>/cache/layers/fordead/zone_<id>/dieback_mask_<ts>.tif`.
+#'
+#' @param project The active project (`reactiveValues`-like list with
+#'   a `path`).
+#' @param zone_id Integer monitoring zone id.
+#' @return A named list (`status = "success"`, `reconciled = TRUE`,
+#'   `zone_id`, `mask_path`, `mask_timestamp`, `n_alerts_inserted`,
+#'   `duration_sec`) when a persisted mask exists, otherwise `NULL`.
+#' @noRd
+.reconcile_fordead_state <- function(project, zone_id) {
+  if (is.null(project) || is.null(project$path)) return(NULL)
+  zone_id <- suppressWarnings(as.integer(zone_id)[1])
+  if (length(zone_id) != 1L || is.na(zone_id)) return(NULL)
+  zdir <- file.path(project$path, "cache", "layers", "fordead",
+                    paste0("zone_", zone_id))
+  if (!dir.exists(zdir)) return(NULL)
+  masks <- list.files(zdir, pattern = "^dieback_mask_.*\\.tif$",
+                      full.names = TRUE)
+  if (!length(masks)) return(NULL)
+  mtimes <- file.info(masks)$mtime
+  latest <- masks[which.max(mtimes)]
+  list(
+    status            = "success",
+    reconciled        = TRUE,
+    zone_id           = zone_id,
+    mask_path         = latest,
+    mask_timestamp    = .parse_fordead_mask_timestamp(basename(latest)),
+    n_alerts_inserted = NA_integer_,
+    duration_sec      = NA_real_
+  )
+}
+
+
+#' Parse the timestamp embedded in a FORDEAD mask filename
+#'
+#' Mask files are named `dieback_mask_<YYYYMMDD>T<HHMMSS>.tif`. Returns
+#' a display-formatted `"YYYY-MM-DD HH:MM"` string, or `NA_character_`
+#' when no timestamp can be extracted.
+#'
+#' @param filename A mask file basename.
+#' @return A length-1 character.
+#' @noRd
+.parse_fordead_mask_timestamp <- function(filename) {
+  m <- regmatches(filename,
+                   regexpr("[0-9]{8}T[0-9]{6}", filename))
+  if (!length(m)) return(NA_character_)
+  dt <- tryCatch(
+    as.POSIXct(m, format = "%Y%m%dT%H%M%S", tz = ""),
+    error = function(e) NA
+  )
+  if (length(dt) != 1L || is.na(dt)) return(NA_character_)
+  format(dt, "%Y-%m-%d %H:%M")
 }
 
 
@@ -348,7 +588,14 @@ run_fordead_async <- function() {
     "NEMETON_DB_PORT",
     "NEMETON_DB_NAME",
     "NEMETON_DB_USER",
-    "NEMETON_DB_PASSWORD"
+    "NEMETON_DB_PASSWORD",
+    # ntfy push channel (E6 — out-of-band FORDEAD progress). The worker
+    # outlives the Shiny session on long runs; ntfy is how the user
+    # still gets notified. Forwarded so the worker can resolve the
+    # topic / server / token without reaching app_state.
+    "NEMETON_NTFY_URL",
+    "NEMETON_NTFY_TOPIC",
+    "NEMETON_NTFY_TOKEN"
   )
   vals <- vapply(keys, function(k) Sys.getenv(k, unset = ""), character(1))
   vals[nzchar(vals)]

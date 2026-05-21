@@ -627,8 +627,13 @@ mod_monitoring_server <- function(id, app_state) {
       # from "run completed with 0 alerts" (zone saine).
       if (!is.null(last) && identical(last$status, "success")) {
         dur <- as.numeric(last$duration_sec %||% NA_real_)
+        ts  <- last$mask_timestamp %||% NA_character_
         meta <- if (is.finite(dur)) {
           sprintf(i18n$t("monitoring_fordead_no_alerts_meta"), dur)
+        } else if (isTRUE(last$reconciled) && !is.na(ts) && nzchar(ts)) {
+          # Run reconciled from disk after a session reload — no
+          # in-session duration, show the persisted-mask timestamp.
+          sprintf(i18n$t("monitoring_fordead_no_alerts_meta_date"), ts)
         } else {
           ""
         }
@@ -1865,7 +1870,10 @@ mod_monitoring_server <- function(id, app_state) {
         zone_id           = as.integer(input$zone_id),
         cache_dir         = .resolve_s2_cache_dir(app_state$current_project),
         db_url            = .resolve_monitoring_db_url(app_state$current_project),
-        progress_path     = ppath
+        progress_path     = ppath,
+        # Forwarded so the worker builds its ntfy push messages in the
+        # user's language (the worker has no access to app_state).
+        lang              = app_state$language %||% "fr"
       )
       .persist_monitoring_metadata()
       invisible(TRUE)
@@ -1987,8 +1995,11 @@ mod_monitoring_server <- function(id, app_state) {
           force_unlock_health(FALSE)
           # Mémoriser le statut "error" — l'UI Alertes FORDEAD distingue
           # « pas encore lancé » de « run terminé en erreur ».
-          fordead_last_result(list(status = "error",
-                                   message = conditionMessage(e)))
+          fordead_last_result(list(
+            status  = "error",
+            message = conditionMessage(e),
+            zone_id = suppressWarnings(as.integer(input$zone_id))
+          ))
           NULL
         }
       )
@@ -1996,6 +2007,10 @@ mod_monitoring_server <- function(id, app_state) {
         shiny::removeNotification(session$ns("fordead_progress"))
         .cleanup_progress_file(fordead_progress_path())
         fordead_progress_path(NULL)
+        # Stamp the zone so the disk-reconciliation observer can tell
+        # this in-session result apart from a synthetic reconciled one
+        # and never clobbers it (cf. .reconcile_fordead_state).
+        result$zone_id <- suppressWarnings(as.integer(input$zone_id))
         fordead_last_result(result)
         if (identical(result$status, "error")) {
           shiny::showNotification(
@@ -2021,6 +2036,50 @@ mod_monitoring_server <- function(id, app_state) {
                                   disabled = FALSE)
         force_unlock_health(FALSE)
       }
+    })
+
+    # ----- Piste 1 — re-read disk + DB on FORDEAD sub-tab open -------
+    #
+    # `alerts_refresh` is normally bumped only by the run-completion
+    # observer above. That observer never fires when a FORDEAD run
+    # outlives its Shiny session (long run + browser disconnect): the
+    # `future` worker still finishes, persists the dieback mask and
+    # inserts alerts, but the orphaned `$result()` is never delivered.
+    # Bumping `alerts_refresh` whenever the user opens "Alertes
+    # FORDEAD" or "Carte FORDEAD" makes both `alerts()` and the Carte
+    # FORDEAD `mask_r` re-query the DB / re-read the mask, so a
+    # completed-but-undelivered run surfaces on the next tab visit.
+    shiny::observeEvent(input$subtab, {
+      if (isTRUE(input$subtab %in% c("alerts_fordead",
+                                     "pixel_map_fordead"))) {
+        alerts_refresh(alerts_refresh() + 1L)
+      }
+    }, ignoreInit = FALSE)
+
+    # ----- Piste 2 — reconcile FORDEAD result state from disk --------
+    #
+    # `fordead_last_result()` is an in-session reactiveVal: a reload
+    # loses it. A run that completed out-of-session therefore showed
+    # the generic "not run yet" placeholder on the Alertes FORDEAD
+    # tab instead of the "Zone saine" card. This observer rebuilds a
+    # synthetic success result from the persisted dieback mask
+    # whenever the project / zone changes — unless a genuine
+    # in-session result for that exact zone already exists (richer:
+    # it carries the real run duration). The mask timestamp drives
+    # the card's meta line (`monitoring_fordead_no_alerts_meta_date`).
+    shiny::observe({
+      proj <- app_state$current_project
+      zone <- input$zone_id
+      if (!identical(input$mode, "health")) return()
+      if (!isTRUE(nzchar(zone))) return()
+      if (identical(fordead_task$status(), "running")) return()
+      zone_int <- suppressWarnings(as.integer(zone))
+      cur <- shiny::isolate(fordead_last_result())
+      if (!is.null(cur) && !isTRUE(cur$reconciled) &&
+          identical(cur$zone_id, zone_int)) {
+        return()
+      }
+      fordead_last_result(.reconcile_fordead_state(proj, zone_int))
     })
 
     # Spec 010 — Carte pixel sub-tab. Re-uses the obs_pixel_data
