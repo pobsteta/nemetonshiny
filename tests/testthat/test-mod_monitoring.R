@@ -160,9 +160,9 @@ test_that("db_status renders the 'connected' card with zone count", {
 # ---- Server: ingestion click handler (phase 2) ----------------------
 
 # A fake ExtendedTask that records every invoke() call. status()
-# always returns "initial" so the button observer in the module
-# treats it as idle.
-make_fake_ingest_task <- function() {
+# defaults to "initial" so the button observer treats it as idle;
+# pass status = "running" to exercise the FAST<->FORDEAD cross-lock.
+make_fake_fast_task <- function(status = "initial") {
   state <- new.env(parent = emptyenv())
   state$calls <- list()
   list(
@@ -171,7 +171,7 @@ make_fake_ingest_task <- function() {
       invisible(NULL)
     },
     result = function() NULL,
-    status = function() "initial",
+    status = function() status,
     .calls = function() state$calls
   )
 }
@@ -184,7 +184,7 @@ fake_zones_df <- function() {
 test_that("input$run with no zone selected fires a validation notification", {
   skip_if_not_installed("shiny")
 
-  fake_task <- make_fake_ingest_task()
+  fake_task <- make_fake_fast_task()
 
   testthat::with_mocked_bindings(
     get_monitoring_db_connection  = function(...) "fake-con",
@@ -215,7 +215,7 @@ test_that("input$run with no zone selected fires a validation notification", {
 test_that("input$run with no band selected fires a validation notification", {
   skip_if_not_installed("shiny")
 
-  fake_task <- make_fake_ingest_task()
+  fake_task <- make_fake_fast_task()
 
   testthat::with_mocked_bindings(
     get_monitoring_db_connection  = function(...) "fake-con",
@@ -243,7 +243,7 @@ test_that("input$run with no band selected fires a validation notification", {
 test_that("input$run with valid inputs invokes the ingest task", {
   skip_if_not_installed("shiny")
 
-  fake_task <- make_fake_ingest_task()
+  fake_task <- make_fake_fast_task()
 
   testthat::with_mocked_bindings(
     get_monitoring_db_connection  = function(...) "fake-con",
@@ -284,7 +284,7 @@ test_that("input$run passes skip_cached = FALSE regardless of reprime_cache (v0.
   skip_if_not_installed("shiny")
 
   for (reprime in c(FALSE, TRUE)) {
-    fake_task <- make_fake_ingest_task()
+    fake_task <- make_fake_fast_task()
 
     testthat::with_mocked_bindings(
       get_monitoring_db_connection  = function(...) "fake-con",
@@ -321,7 +321,7 @@ test_that("input$run passes skip_cached = FALSE regardless of reprime_cache (v0.
 test_that("input$run with NA dates skips invocation", {
   skip_if_not_installed("shiny")
 
-  fake_task <- make_fake_ingest_task()
+  fake_task <- make_fake_fast_task()
 
   testthat::with_mocked_bindings(
     get_monitoring_db_connection  = function(...) "fake-con",
@@ -346,10 +346,10 @@ test_that("input$run with NA dates skips invocation", {
   )
 })
 
-test_that("server returns ingest_task in its returned list", {
+test_that("server returns fast_task in its returned list", {
   skip_if_not_installed("shiny")
 
-  fake_task <- make_fake_ingest_task()
+  fake_task <- make_fake_fast_task()
 
   testthat::with_mocked_bindings(
     get_monitoring_db_connection  = function(...) "fake-con",
@@ -361,7 +361,7 @@ test_that("server returns ingest_task in its returned list", {
         nemetonshiny:::mod_monitoring_server,
         args = list(app_state = make_fake_app_state()),
         {
-          expect_identical(session$returned$ingest_task, fake_task)
+          expect_identical(session$returned$fast_task, fake_task)
         }
       )
     }
@@ -411,6 +411,82 @@ make_fake_fordead_task <- function(result = NULL, status = "initial") {
   )
 }
 
+
+# ---- FAST <-> FORDEAD cross-lock (v0.39.2) --------------------------
+# FAST and FORDEAD share the project Sentinel-2 band cache; running
+# both concurrently risks racing on the same <band>.tif.tmp. The click
+# observers refuse to start one task while the other is running.
+
+test_that("input$run is refused while a FORDEAD run is in flight", {
+  skip_if_not_installed("shiny")
+
+  fast_task    <- make_fake_fast_task()
+  fordead_busy <- make_fake_fordead_task(status = "running")
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection  = function(...) "fake-con",
+    list_monitoring_zones         = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async           = function() fast_task,
+    run_fordead_async             = function() fordead_busy,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(
+            zone_id    = "1",
+            bands      = c("NDVI", "NBR"),
+            date_range = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            run        = 1L
+          )
+          # FORDEAD is running → the FAST task must NOT be invoked.
+          expect_length(fast_task$.calls(), 0L)
+        }
+      )
+    }
+  )
+})
+
+test_that("input$run_health is refused while a FAST run is in flight", {
+  skip_if_not_installed("shiny")
+
+  fast_busy    <- make_fake_fast_task(status = "running")
+  fordead_task <- make_fake_fordead_task()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function(...) "fake-con",
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    run_ingestion_async            = function() fast_busy,
+    run_fordead_async              = function() fordead_task,
+    validity_check_for_zone        = function(con, zone_id, units = NULL, ...) {
+      list(geo_valid = TRUE, geo_intersection_pct = 0.95,
+           species_valid = TRUE, species_resineux_pct = 0.85,
+           overall_valid = TRUE, thresholds = list())
+    },
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(
+            mode              = "health",
+            zone_id           = "1",
+            date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
+            vegetation_index  = "CRSWIR",
+            threshold_anomaly = 0.16,
+            run_health        = 1L
+          )
+          # FAST is running → the FORDEAD task must NOT be invoked.
+          expect_length(fordead_task$.calls(), 0L)
+        }
+      )
+    }
+  )
+})
+
 test_that("validity reactive is NULL outside health mode", {
   skip_if_not_installed("shiny")
 
@@ -418,7 +494,7 @@ test_that("validity reactive is NULL outside health mode", {
     get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_ingestion_async            = function() make_fake_fast_task(),
     run_fordead_async              = function() make_fake_fordead_task(),
     validity_check_for_zone        = function(con, zone_id, units = NULL, ...) {
       stop("must not be called in quick mode")
@@ -452,7 +528,7 @@ test_that("validity_banners renders the geo + species warnings when invalid", {
     get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_ingestion_async            = function() make_fake_fast_task(),
     run_fordead_async              = function() make_fake_fordead_task(),
     validity_check_for_zone        = function(con, zone_id, units = NULL, ...)
       fake_validity,
@@ -482,7 +558,7 @@ test_that("input$run_health blocks when overall_valid = FALSE (G3 modal path)", 
     get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_ingestion_async            = function() make_fake_fast_task(),
     run_fordead_async              = function() fake_task,
     validity_check_for_zone        = function(con, zone_id, units = NULL, ...) {
       list(geo_valid = FALSE, geo_intersection_pct = 0.2,
@@ -521,7 +597,7 @@ test_that("input$run_health invokes FORDEAD when validity is OK", {
     get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_ingestion_async            = function() make_fake_fast_task(),
     run_fordead_async              = function() fake_task,
     validity_check_for_zone        = function(con, zone_id, units = NULL, ...) {
       list(geo_valid = TRUE, geo_intersection_pct = 0.95,
@@ -566,7 +642,7 @@ test_that("confirm_invalid_run invokes FORDEAD on modal accept (G3 force path)",
     get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_ingestion_async            = function() make_fake_fast_task(),
     run_fordead_async              = function() fake_task,
     validity_check_for_zone        = function(con, zone_id, units = NULL, ...) {
       list(geo_valid = FALSE, geo_intersection_pct = 0.1,
@@ -606,7 +682,7 @@ test_that("server returns fordead_task + validity reactives", {
     get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_ingestion_async            = function() make_fake_fast_task(),
     run_fordead_async              = function() fake_ftask,
     {
       shiny::testServer(
@@ -749,7 +825,7 @@ test_that("metadata restore updates the mode + threshold from current_project", 
     get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_ingestion_async            = function() make_fake_fast_task(),
     run_fordead_async              = function() make_fake_fordead_task(),
     {
       shiny::testServer(
@@ -807,7 +883,7 @@ test_that("register click without a loaded project shows a notification and no-o
     get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_ingestion_async            = function() make_fake_fast_task(),
     run_fordead_async              = function() make_fake_fordead_task(),
     register_project_as_zone       = function(con, project) {
       stop("must not be called")
@@ -851,7 +927,7 @@ test_that("register click invokes register_project_as_zone and persists zone_id 
           get_monitoring_db_connection   = function(...) "fake-con",
           list_monitoring_zones          = function(con) fake_zones_df(),
           close_monitoring_db_connection = function(con) invisible(TRUE),
-          run_ingestion_async            = function() make_fake_ingest_task(),
+          run_ingestion_async            = function() make_fake_fast_task(),
           run_fordead_async              = function() make_fake_fordead_task(),
           register_project_as_zone       = function(con, project) {
             captured_project <<- project
@@ -898,7 +974,7 @@ test_that("register click flags 'already registered' when helper returns was_exi
           get_monitoring_db_connection   = function(...) "fake-con",
           list_monitoring_zones          = function(con) fake_zones_df(),
           close_monitoring_db_connection = function(con) invisible(TRUE),
-          run_ingestion_async            = function() make_fake_ingest_task(),
+          run_ingestion_async            = function() make_fake_fast_task(),
           run_fordead_async              = function() make_fake_fordead_task(),
           register_project_as_zone       = function(con, project) {
             list(zone_id = 1L, zone_name = "Foret", n_plots = 1L,
@@ -944,7 +1020,7 @@ test_that("auto-select pre-selects the zone matching project metadata$monitoring
           get_monitoring_db_connection   = function(...) "fake-con",
           list_monitoring_zones          = function(con) fake_zones_df(),
           close_monitoring_db_connection = function(con) invisible(TRUE),
-          run_ingestion_async            = function() make_fake_ingest_task(),
+          run_ingestion_async            = function() make_fake_fast_task(),
           run_fordead_async              = function() make_fake_fordead_task(),
           {
             testthat::with_mocked_bindings(
@@ -1336,7 +1412,7 @@ test_that("obs_pixel_data debounces rapid successive input changes", {
     get_monitoring_db_connection   = function(...) "fake-con",
     list_monitoring_zones          = function(con) fake_zones_df(),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_ingest_task(),
+    run_ingestion_async            = function() make_fake_fast_task(),
     run_fordead_async              = function() make_fake_fordead_task(),
     {
       testthat::local_mocked_bindings(

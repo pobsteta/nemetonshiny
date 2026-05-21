@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-05-21
+
+### Added
+
+- **Verrou croisé FAST ↔ FORDEAD** : les deux diagnostics partagent le
+  cache de bandes Sentinel-2 du projet ; ils sont désormais mutuellement
+  exclusifs. Le bouton de lancement de l'un est grisé tant que l'autre
+  tourne, un clic forcé affiche une notification explicite, et le
+  verrou respecte le *force-unlock* (run abandonné via « Annuler »).
+
+### Changed
+
+- **`ingest_task` renommé `fast_task`** (variable interne de
+  `mod_monitoring`, helper de test `make_fake_fast_task`, clé du retour
+  de `mod_monitoring_server()`), par symétrie avec `fordead_task`. La
+  fonction service `run_ingestion_async()` conserve son nom.
+
 ## [0.39.1] - 2026-05-21
 
 ### Fixed

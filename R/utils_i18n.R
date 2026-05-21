@@ -1832,6 +1832,17 @@ TRANSLATIONS <- list(
     fr = "T\u00e9l\u00e9chargement Sentinel-2 en cours\u2026 cela peut prendre quelques minutes.",
     en = "Sentinel-2 download running\u2026 this can take a few minutes."
   ),
+  # Verrou crois\u00e9 FAST <-> FORDEAD : les deux diagnostics partagent le
+  # cache de bandes Sentinel-2 du projet, les lancer en parall\u00e8le ferait
+  # courir deux workers sur le m\u00eame fichier <bande>.tif.tmp.
+  monitoring_busy_fordead = list(
+    fr = "Un diagnostic FORDEAD est en cours. Attendez sa fin avant de lancer une analyse FAST (cache Sentinel-2 partag\u00e9).",
+    en = "A FORDEAD diagnosis is running. Wait for it to finish before starting a FAST analysis (shared Sentinel-2 cache)."
+  ),
+  monitoring_busy_fast = list(
+    fr = "Une analyse FAST est en cours. Attendez sa fin avant de lancer un diagnostic FORDEAD (cache Sentinel-2 partag\u00e9).",
+    en = "A FAST analysis is running. Wait for it to finish before starting a FORDEAD diagnosis (shared Sentinel-2 cache)."
+  ),
   monitoring_ingest_success = list(
     fr = "T\u00e9l\u00e9chargement termin\u00e9 : %d sc\u00e8ne(s), %d observation(s) ins\u00e9r\u00e9e(s).",
     en = "Download finished: %d scene(s), %d observation(s) inserted."
