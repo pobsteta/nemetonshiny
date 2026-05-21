@@ -1,4 +1,4 @@
-# nemetonshiny 0.39.0.9001 (2026-05-21)
+# nemetonshiny 0.39.1 (2026-05-21)
 
 ### Fixed — `audit_to_dataframe` ne renvoyait pas un data.frame propre
 
@@ -23,8 +23,6 @@ l'app** : un plan non vide, bien formé (colonnes `plot_id` / `type` /
 `visit_order`, types ⊆ {Base, Over}, CRS 2154) et un aller-retour de
 persistance cohérent — au lieu de l'arithmétique de stratification du
 cœur. Le changement de comptage provient de `nemeton` 0.41.3.
-
-# nemetonshiny 0.39.0.9000 (2026-05-21)
 
 ### Fixed — `db_status` plantait sans projet chargé (icône Bootstrap invalide)
 

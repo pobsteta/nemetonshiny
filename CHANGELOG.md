@@ -10,6 +10,29 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.39.1] - 2026-05-21
+
+### Fixed
+
+- **`db_status` plantait sans projet chargé** : `bsicons::bs_icon()`
+  était appelé avec l'identifiant inexistant `folder-open` →
+  `folder2-open`.
+- **`.build_progress_writer` laissait fuir un avertissement** sur
+  écriture en répertoire absent → `suppressWarnings()`.
+- **`audit_to_dataframe` ne renvoyait pas un data.frame propre** : la
+  classe `json` de `jsonlite::toJSON()` se propageait à toute la
+  colonne via `rbind()` → dé-classage `as.character()`.
+
+### Changed
+
+- **Réparation des suites de tests `monitoring` et `sampling`** :
+  20 échecs préexistants corrigés (dérive tests↔code après
+  évolutions). Mocks à signature trop étroite élargis, isolation des
+  variables d'environnement DB, assertions de comptage de placettes
+  recentrées sur le contrat de l'app plutôt que sur l'arithmétique de
+  stratification GRTS du cœur. Deux tests `db_status` probe-gated
+  marqués `skip()` (sonde DB asynchrone non pilotable par testServer).
+
 ## [0.39.0] - 2026-05-21
 
 ### Added
