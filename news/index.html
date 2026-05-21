@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.39.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.40.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,25 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.39.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.40.0" id="nemetonshiny-0400-2026-05-21">nemetonshiny 0.40.0 (2026-05-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0400-2026-05-21"></a></h2>
+<div class="section level4">
+<h4 id="added--verrou-croisé-fast--fordead-0-40-0">Added — verrou croisé FAST ↔︎ FORDEAD<a class="anchor" aria-label="anchor" href="#added--verrou-crois%C3%A9-fast--fordead-0-40-0"></a></h4>
+<p>FAST (surveillance rapide) et FORDEAD (diagnostic sanitaire) sont deux <code>ExtendedTask</code> indépendants : rien n’empêchait de les lancer en parallèle dans la même instance. Or les deux partagent le cache de bandes Sentinel-2 du projet (<code>cache/layers/sentinel2/&lt;scène&gt;/</code>) — deux workers concurrents pourraient écrire le même fichier <code>&lt;bande&gt;.tif.tmp</code> et le corrompre, en plus de se disputer la bande passante réseau.</p>
+<p>Les deux diagnostics sont désormais <strong>mutuellement exclusifs</strong> :</p>
+<ul><li>le bouton « Lancer » (FAST) est grisé tant qu’un run FORDEAD est en cours, et inversement ;</li>
+<li>un clic malgré tout affiche une notification explicite (<code>monitoring_busy_fast</code> / <code>monitoring_busy_fordead</code>) et n’invoque pas la tâche ;</li>
+<li>le verrou respecte le <em>force-unlock</em> de l’autre tâche : si un run a été abandonné via son bouton « Annuler », l’autre redevient lançable immédiatement.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--ingest_task-renommé-fast_task-0-40-0">Changed — <code>ingest_task</code> renommé <code>fast_task</code>
+<a class="anchor" aria-label="anchor" href="#changed--ingest_task-renomm%C3%A9-fast_task-0-40-0"></a></h4>
+<p>La variable interne <code>ingest_task</code> (module <code>mod_monitoring</code>) et le helper de test <code>make_fake_ingest_task()</code> sont renommés <code>fast_task</code> / <code>make_fake_fast_task()</code>, par symétrie avec <code>fordead_task</code> / <code>make_fake_fordead_task()</code>. La clé <code>ingest_task</code> de la liste retournée par <code>mod_monitoring_server()</code> devient <code>fast_task</code> (aucun consommateur applicatif — <code>app_server</code> n’exploite pas le retour du module). La fonction service <code>run_ingestion_async()</code> garde son nom (« ingestion » décrit fidèlement l’étape Sentinel-2 sous-jacente).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.39.1" id="nemetonshiny-0391-2026-05-21">nemetonshiny 0.39.1 (2026-05-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0391-2026-05-21"></a></h2>
 <div class="section level4">
