@@ -1,6 +1,6 @@
 # Design note — Échantillonnage de validation sanitaire piloté par raster d'alerte
 
-> Statut : **proposition** · Cycle : post-v0.40.0 · Contexte DDD : `contexte_sante` ↔ `contexte_interoperabilite`
+> Statut : **décisions arrêtées** (cf. §13) · Cycle : post-v0.40.0 · Contexte DDD : `contexte_sante` ↔ `contexte_interoperabilite`
 > ADR liés : ADR-013 (suivi sanitaire), ADR-011 (NDP/φ), ADR-007 (pipeline NDP) · Spec liée : spec 008 (FORDEAD)
 > Repos concernés : `nemeton` (cœur) **et** `nemetonshiny` (app)
 
@@ -100,20 +100,13 @@ fordead_alert_mask(dieback_mask,
 Pourquoi cœur : le choix des classes retenues et du tampon est une décision
 méthodologique (cf. seuils ONF/DSF), pas une simple manipulation `terra`.
 
-### 6.2 Échantillonnage contraint / pondéré
+### 6.2 Échantillonnage pondéré par l'intensité (décision 3 — Option B)
 
-Deux options — **décision cœur** :
-
-- **Option A (minimale)** : documenter/bénir le paramètre **`forest_mask`**
-  déjà présent sur `create_sampling_plan()` pour accepter un masque d'alerte
-  comme domaine de candidats. Disponible immédiatement, mais sémantiquement un
-  détournement (`forest_mask` = « où est la forêt »).
-- **Option B (propre)** : ajouter un paramètre explicite **`priority_raster`**
-  → GRTS **pondéré** par l'intensité (placer plus de placettes là où la classe
-  de dépérissement est élevée, en exploitant les valeurs 0-4 plutôt qu'un
-  masque binaire).
-
-Recommandation : viser B, livrer A en transition.
+Ajouter un paramètre explicite **`priority_raster`** à l'échantillonnage
+cœur → GRTS **pondéré par l'intensité** : placer davantage de placettes là où
+la classe de dépérissement est sévère, en exploitant les valeurs 0-4 du raster
+plutôt qu'un simple masque binaire. Le `forest_mask` existant n'est **pas**
+détourné pour cet usage.
 
 ### 6.3 Entrée dédiée « plan de validation »
 
@@ -132,11 +125,14 @@ create_validation_sampling_plan(
 #   visit_order, geometry
 ```
 
-### 6.4 Raster d'alerte FAST
+### 6.4 Raster d'alerte FAST (décision 4 — dans le périmètre, phase A)
 
 FAST n'expose aujourd'hui que des alertes par placette. Pour la symétrie avec
-FORDEAD, le cœur doit **persister un raster d'alerte FAST continu** (sévérité
-rolling-window par pixel) et un lecteur `read_fast_alert_raster()`.
+FORDEAD — et puisque FAST et FORDEAD sont traités **de front** (décision 4) —
+le cœur doit **persister un raster d'alerte FAST continu** (sévérité
+rolling-window par pixel, échelle de classes alignée sur FORDEAD si possible)
+et exposer un lecteur `read_fast_alert_raster()`. C'est du travail cœur
+net-neuf, intégré à la phase A.
 
 ## 7. Travail app `nemetonshiny`
 
@@ -153,15 +149,23 @@ quand un raster d'alerte existe pour la zone.
 3. Le plan s'affiche **superposé au raster d'alerte** sur la carte.
 4. Persistance + export QField.
 
-### 7.2 Persistance & provenance
+### 7.2 Persistance & provenance (décision 2 — couche dans `samples.gpkg`)
 
-Le plan de validation est un jeu distinct du plan systémique. Options de
-stockage (décision §10) : couche dédiée dans `samples.gpkg`, fichier
-`validation_samples_<ts>.gpkg`, ou table DB.
+Le plan de validation est persisté comme une **couche dédiée
+`validation_plots`** dans le `samples.gpkg` du projet (à côté de la couche
+`plots` du plan systémique). Conséquences :
 
-Provenance obligatoire (traçabilité, NDP/φ) : `zone_id`,
-`fordead_run_id` / `mask_timestamp`, `source` ∈ {FORDEAD, FAST},
-`generated_at`, `classes`, `seed`.
+- `save_samples()` / `load_samples()` (helpers `nemetonshiny`) prennent un
+  paramètre `layer` (ou des variantes `save_validation_samples()` /
+  `load_validation_samples()`), la valeur historique restant `plots`.
+- Un nouveau run régénère le plan → la couche `validation_plots` est
+  **écrasée**. L'historique des campagnes de validation n'est donc pas
+  conservé dans le GPKG ; seule la provenance du **dernier** plan est tracée.
+  (Conservation d'un historique = évolution future, table DB.)
+
+Provenance obligatoire (traçabilité, NDP/φ) — portée en **attributs de
+chaque entité** de la couche : `zone_id`, `source` ∈ {FORDEAD, FAST},
+`fordead_run_id` / `mask_timestamp`, `generated_at`, `classes`, `seed`.
 
 ### 7.3 Réutilisation de l'existant
 
@@ -184,7 +188,9 @@ Plan de validation = `sf` POINT :
 | `visit_order` | int | ordre de tournée (TSP) |
 | `geometry` | POINT | CRS 2154 |
 
-+ métadonnées de provenance (§7.2) en attributs de couche / sidecar JSON.
++ les colonnes de provenance (§7.2) — `zone_id`, `source`, `fordead_run_id`,
+`mask_timestamp`, `generated_at`, `classes`, `seed` — portées sur chaque
+entité de la couche `validation_plots`.
 
 ## 9. i18n
 
@@ -218,28 +224,27 @@ d'erreur (« aucun raster d'alerte pour cette zone »), légende carte.
 
 | Phase | Repo | Contenu |
 |---|---|---|
-| **A** | `nemeton` | `fordead_alert_mask()`, `create_validation_sampling_plan()`, GRTS contraint (option A puis B), raster FAST + `read_fast_alert_raster()` |
-| **B** | `nemetonshiny` | Action « Plan de validation » (Carte FORDEAD d'abord), génération, carte superposée, persistance + provenance |
-| **C** | `nemetonshiny` | Export QField du plan de validation, raccord `mod_field_ingest` (E6.c.5), extension à FAST |
+| **A** | `nemeton` | `fordead_alert_mask()`, GRTS pondéré (`priority_raster`, décision 3), `create_validation_sampling_plan()` (placettes alerte + témoins, décision 5), persistance du raster d'alerte FAST + `read_fast_alert_raster()` (décision 4) |
+| **B** | `nemetonshiny` | Action « Plan de validation » sur Carte FORDEAD **et** Carte FAST, génération, carte superposée, persistance couche `validation_plots` + provenance |
+| **C** | `nemetonshiny` | Export QField du plan de validation, raccord `mod_field_ingest` (E6.c.5) |
 
 Ordre imposé cœur → app (règle 11) : Phase A livrée et release `nemeton`
 publiée **avant** la Phase B.
 
-## 13. Décisions ouvertes
+## 13. Décisions arrêtées
 
-1. **Emplacement de l'action** : `mod_monitoring` (Carte FORDEAD/FAST) — *a
-   priori* — ou nouveau mode dans `mod_sampling` ?
-2. **Stockage du plan de validation** : couche dans `samples.gpkg`, fichier
-   `validation_samples_<ts>.gpkg`, ou table DB monitoring ?
-3. **GRTS** : option A (`forest_mask`) suffisante, ou viser d'emblée
-   l'option B (`priority_raster` pondéré) ?
-4. **FAST** : traiter FORDEAD d'abord et FAST en Phase C, ou les deux de
-   front ?
-5. **Témoins** : générés dans le même appel cœur, ou étape app séparée ?
-6. **Classes d'alerte par défaut** : 3-4 (forte + sol-nu) ou 2-4 (inclure
-   moyenne) ? Aligner sur le garde-fou G1.
+Tranchées le 2026-05-22.
+
+| # | Décision | Choix retenu |
+|---|---|---|
+| 1 | Emplacement de l'action | **`mod_monitoring`** — bouton sur Carte FORDEAD/FAST. `mod_sampling` reste dédié au plan systémique. |
+| 2 | Stockage du plan | **Couche `validation_plots` dans `samples.gpkg`** — écrasée à chaque run, provenance en attributs d'entité (cf. §7.2). |
+| 3 | Mécanisme GRTS | **Option B — GRTS pondéré** par `priority_raster` (intensité 0-4). Pas de détournement de `forest_mask`. |
+| 4 | Périmètre FAST | **FAST et FORDEAD de front** — le raster d'alerte FAST continu fait partie de la phase A. |
+| 5 | Placettes témoins | **Cœur, même appel** — `create_validation_sampling_plan()` renvoie placettes d'alerte + témoins. |
+| 6 | Classes d'alerte par défaut | **3-4** (forte + sol-nu), aligné G1 ; élargissement à 2-4 possible via la modale. |
 
 ---
 
-*Document de travail — à valider avant ouverture de la session de dev
+*Décisions arrêtées — la spec est prête pour l'ouverture de la session de dev
 `nemeton` (Phase A).*
