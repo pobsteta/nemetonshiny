@@ -1,4 +1,4 @@
-# nemetonshiny 0.41.0.9001 (2026-05-23, cycle dev)
+# nemetonshiny 0.41.1 (2026-05-23)
 
 ### Changed — alertes FAST passent au lexique « pixel » (UX)
 
