@@ -430,18 +430,36 @@ register_project_as_zone <- function(con, project) {
   # Idempotency: the project metadata may already point at a registered
   # zone. Check that the row still exists before reusing — the DB could
   # have been wiped or the zone deleted out-of-band.
+  #
+  # Spec 011 (v0.41.0) — on reuse, also backfill `project_uuid` on the
+  # existing row when it is NULL. Migrates pre-spec-011 zones (registered
+  # before v0.44.0 cœur) without forcing the user to re-INSERT a zone.
   existing_id <- project$metadata$monitoring_zone_id
   if (!is.null(existing_id) && length(existing_id) == 1L &&
       !is.na(suppressWarnings(as.integer(existing_id)))) {
     rs <- tryCatch(
       DBI::dbGetQuery(
         con,
-        "SELECT id, name FROM monitoring_zone WHERE id = $1",
+        "SELECT id, name, project_uuid FROM monitoring_zone WHERE id = $1",
         params = list(as.integer(existing_id))
       ),
       error = function(e) NULL
     )
     if (!is.null(rs) && nrow(rs) > 0L) {
+      if (is.na(rs$project_uuid[1]) || !nzchar(rs$project_uuid[1])) {
+        tryCatch(
+          DBI::dbExecute(
+            con,
+            "UPDATE monitoring_zone SET project_uuid = $1 WHERE id = $2",
+            params = list(as.character(project$id),
+                          as.integer(existing_id))
+          ),
+          error = function(e) {
+            cli::cli_warn("Failed to backfill project_uuid on zone \\
+                          {.val {existing_id}}: {conditionMessage(e)}")
+          }
+        )
+      }
       return(list(
         zone_id      = as.integer(rs$id[1]),
         zone_name    = as.character(rs$name[1]),
@@ -464,7 +482,8 @@ register_project_as_zone <- function(con, project) {
     con,
     zone_name    = zone_name,
     zone_polygon = zone_polygon,
-    placettes    = plots
+    placettes    = plots,
+    project_uuid = project$id
   )
 
   update_project_metadata(project$id, list(

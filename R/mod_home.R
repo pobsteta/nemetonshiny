@@ -371,6 +371,21 @@ mod_home_server <- function(id, app_state) {
       project <- load_project(project_id)
       shiny::req(project)
 
+      # Spec 011 — hydrate `metadata$monitoring_zone_id` from the
+      # monitoring DB (`monitoring_zone.project_uuid` column, added in
+      # nemeton 0.44.0) when the metadata.json doesn't carry it. Covers
+      # pre-spec-011 zones (registered before this binding existed) and
+      # any project copy / metadata loss scenario. No-op when the
+      # metadata is already populated or the DB is not connected.
+      project <- tryCatch({
+        con <- get_monitoring_db_connection(project = project)
+        on.exit(close_monitoring_db_connection(con), add = TRUE)
+        hydrate_monitoring_zone_id(project, con)
+      }, error = function(e) {
+        cli::cli_warn("monitoring_zone_id hydration skipped: {conditionMessage(e)}")
+        project
+      })
+
       # Notification sync PostGIS au chargement
       if (is_db_configured() && isTRUE(project$metadata$indicators_computed)) {
         db_target <- db_target_label()

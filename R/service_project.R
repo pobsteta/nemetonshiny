@@ -700,6 +700,70 @@ load_project <- function(project_id) {
 }
 
 
+#' Hydrate `monitoring_zone_id` from a monitoring-DB lookup
+#'
+#' @description
+#' Spec 011 (v0.41.0). When a project is loaded and its `metadata.json`
+#' has no `monitoring_zone_id` (typical for projects registered as
+#' zones before spec 011, or projects whose metadata was wiped), look
+#' up the bound zone via `nemeton::find_zone_by_project(con, project$id)`
+#' and persist the result back to `metadata.json` so subsequent loads
+#' (and the monitoring tab's pre-select observer) find it immediately.
+#'
+#' This makes the project ↔ zone binding canonically driven by the
+#' DB column `monitoring_zone.project_uuid` (added in nemeton 0.44.0)
+#' rather than by the freely-editable `metadata.json` — surviving
+#' metadata loss, project copies, and out-of-band DB restores.
+#'
+#' No-ops (returns the project untouched) when:
+#'   * `project` is NULL or has no `id`,
+#'   * `metadata$monitoring_zone_id` is already set (truthy),
+#'   * `con` is NULL (DB not configured / connection failed),
+#'   * `nemeton` package is not loadable,
+#'   * `find_zone_by_project()` returns `integer(0)` or errors.
+#'
+#' On hit, mutates `project$metadata$monitoring_zone_id` AND persists
+#' the same value to disk via `update_project_metadata()`. Persistence
+#' failure is non-fatal — the in-memory project is still returned with
+#' the hydrated id so the current session benefits.
+#'
+#' @param project A project list (typically the return of
+#'   [load_project()]).
+#' @param con A monitoring-DB connection or NULL.
+#'
+#' @return The project, possibly with `metadata$monitoring_zone_id`
+#'   populated.
+#' @noRd
+hydrate_monitoring_zone_id <- function(project, con) {
+  if (is.null(project) || is.null(project$id)) return(project)
+  existing <- project$metadata$monitoring_zone_id
+  if (!is.null(existing) && length(existing) == 1L &&
+      !is.na(suppressWarnings(as.integer(existing)))) {
+    return(project)
+  }
+  if (is.null(con)) return(project)
+  if (!requireNamespace("nemeton", quietly = TRUE)) return(project)
+
+  zid <- tryCatch(
+    nemeton::find_zone_by_project(con, project$id),
+    error = function(e) integer(0)
+  )
+  if (length(zid) != 1L) return(project)
+  zid <- as.integer(zid)
+  if (is.na(zid)) return(project)
+
+  project$metadata$monitoring_zone_id <- zid
+  tryCatch(
+    update_project_metadata(project$id, list(monitoring_zone_id = zid)),
+    error = function(e) {
+      cli::cli_warn("Failed to persist hydrated monitoring_zone_id \\
+                    for {.val {project$id}}: {conditionMessage(e)}")
+    }
+  )
+  project
+}
+
+
 #' Save comments to project
 #'
 #' @description

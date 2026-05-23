@@ -288,9 +288,11 @@ test_that("register_project_as_zone calls nemeton + persists monitoring_zone_id"
             testthat::with_mocked_bindings(
               register_monitoring_zone = function(con, zone_name,
                                                   zone_polygon, placettes,
-                                                  radius_m = 15) {
-                captured_args <<- list(zone_name = zone_name,
-                                       n_plots = nrow(placettes))
+                                                  radius_m = 15,
+                                                  project_uuid = NULL) {
+                captured_args <<- list(zone_name    = zone_name,
+                                       n_plots      = nrow(placettes),
+                                       project_uuid = project_uuid)
                 42L
               },
               .package = "nemeton",
@@ -308,6 +310,8 @@ test_that("register_project_as_zone calls nemeton + persists monitoring_zone_id"
         )
         expect_equal(captured_args$zone_name, "Forest A")
         expect_equal(captured_args$n_plots,   6L)
+        # Spec 011 — project_uuid is forwarded from project$id.
+        expect_identical(captured_args$project_uuid, project$id)
 
         # Persistence: metadata.json now carries monitoring_zone_id.
         meta <- nemetonshiny:::load_project_metadata(project$id)
@@ -331,32 +335,104 @@ test_that("register_project_as_zone is idempotent when metadata id still exists 
         )
 
         register_call_count <- 0L
+        update_calls <- list()
         testthat::with_mocked_bindings(
           dbGetQuery = function(conn, ...) {
+            # Spec 011 — the SELECT now includes project_uuid.
+            # NA simulates a pre-spec-011 zone that needs backfill.
             data.frame(id = 7L, name = "Forest B (DB)",
+                       project_uuid = NA_character_,
                        stringsAsFactors = FALSE)
           },
           .package = "DBI",
           {
             testthat::with_mocked_bindings(
-              register_monitoring_zone = function(...) {
-                register_call_count <<- register_call_count + 1L
-                999L
-              },
-              .package = "nemeton",
-              {
-                result <- nemetonshiny:::register_project_as_zone(
-                  con = "fake-con", project = project
+              dbExecute = function(conn, statement, params = NULL, ...) {
+                update_calls[[length(update_calls) + 1L]] <<- list(
+                  statement = statement, params = params
                 )
-                expect_equal(result$zone_id, 7L)
-                expect_equal(result$zone_name, "Forest B (DB)")
-                expect_true(result$was_existing)
+                1L
+              },
+              .package = "DBI",
+              {
+                testthat::with_mocked_bindings(
+                  register_monitoring_zone = function(...) {
+                    register_call_count <<- register_call_count + 1L
+                    999L
+                  },
+                  .package = "nemeton",
+                  {
+                    result <- nemetonshiny:::register_project_as_zone(
+                      con = "fake-con", project = project
+                    )
+                    expect_equal(result$zone_id, 7L)
+                    expect_equal(result$zone_name, "Forest B (DB)")
+                    expect_true(result$was_existing)
+                  }
+                )
               }
             )
           }
         )
         # No insert happened — zone was already there.
         expect_equal(register_call_count, 0L)
+        # Backfill UPDATE was issued for the missing project_uuid.
+        expect_equal(length(update_calls), 1L)
+        expect_match(update_calls[[1]]$statement,
+                     "UPDATE monitoring_zone SET project_uuid")
+        expect_identical(update_calls[[1]]$params[[1]],
+                         as.character(project$id))
+        expect_identical(update_calls[[1]]$params[[2]], 7L)
+      }
+    )
+  })
+})
+
+test_that("register_project_as_zone skips backfill when project_uuid already set", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("nemeton")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- .test_make_project_with_samples(
+          name = "Forest B2",
+          extra_meta = list(monitoring_zone_id = 7L)
+        )
+
+        update_call_count <- 0L
+        testthat::with_mocked_bindings(
+          dbGetQuery = function(conn, ...) {
+            data.frame(id = 7L, name = "Forest B2 (DB)",
+                       project_uuid = project$id,
+                       stringsAsFactors = FALSE)
+          },
+          .package = "DBI",
+          {
+            testthat::with_mocked_bindings(
+              dbExecute = function(...) {
+                update_call_count <<- update_call_count + 1L
+                1L
+              },
+              .package = "DBI",
+              {
+                testthat::with_mocked_bindings(
+                  register_monitoring_zone = function(...) 999L,
+                  .package = "nemeton",
+                  {
+                    result <- nemetonshiny:::register_project_as_zone(
+                      con = "fake-con", project = project
+                    )
+                    expect_equal(result$zone_id, 7L)
+                    expect_true(result$was_existing)
+                  }
+                )
+              }
+            )
+          }
+        )
+        expect_equal(update_call_count, 0L)
       }
     )
   })
