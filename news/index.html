@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.41.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.41.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,31 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.41.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.41.1" id="nemetonshiny-0411-2026-05-23">nemetonshiny 0.41.1 (2026-05-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0411-2026-05-23"></a></h2>
+<div class="section level4">
+<h4 id="changed--alertes-fast-passent-au-lexique--pixel--ux-0-41-1">Changed — alertes FAST passent au lexique « pixel » (UX)<a class="anchor" aria-label="anchor" href="#changed--alertes-fast-passent-au-lexique--pixel--ux-0-41-1"></a></h4>
+<p>Préparation du basculement des alertes FAST d’une représentation marker-par-placette à un raster d’alerte pixel-par-pixel (cohérent avec FORDEAD, déjà raster). La fonction cœur <code>nemeton::read_fast_alert_raster()</code> qui consommera le wiring final n’est pas encore livrée — ce cycle dev ne touche que les libellés i18n et l’en-tête du popup Leaflet pour éviter une dette i18n quand le raster arrivera.</p>
+<ul><li>
+<code>monitoring_fast_alerts_empty_body</code> reformulé « placette → pixel » (FR : « Aucun pixel n’a déclenché d’alerte… » ; EN miroir).</li>
+<li>
+<code>monitoring_fast_alert_popup_plot</code> renommé en <code>monitoring_fast_alert_popup_coords</code> (« Coordonnées » / « Coordinates »), appliqué au site d’utilisation dans <code>mod_monitoring_fast_alerts.R</code> : le popup affiche désormais la latitude / longitude de l’alerte (5 décimales, ~1 m) plutôt que <code>plot_id</code>. Reste correct sous les deux représentations (marker actuel + raster futur).</li>
+<li>
+<code>monitoring_fast_alert_popup_severity</code> conservé « Sévérité » / « Severity » avec un TODO en commentaire : à arbitrer entre score continu (renommer en <code>monitoring_fast_alerts_legend_title</code>) et classes discrètes quand <code>nemeton::read_fast_alert_raster()</code> aura tranché.</li>
+<li>Ajout en anticipation : <code>monitoring_fast_alerts_legend_title</code> (« Score d’alerte »), <code>monitoring_fast_alerts_opacity_label</code> (« Opacité du raster »), <code>monitoring_fast_alerts_threshold_label</code> (« Masquer en dessous du seuil »). Non consommées tant que le wiring raster n’est pas en place — gating sur la livraison cœur.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="removed--clés-i18n--bientôt-disponible--obsolètes-0-41-1">Removed — clés i18n « bientôt disponible » obsolètes<a class="anchor" aria-label="anchor" href="#removed--cl%C3%A9s-i18n--bient%C3%B4t-disponible--obsol%C3%A8tes-0-41-1"></a></h4>
+<p>Les modules <code>mod_monitoring_fordead_map</code> et <code>mod_monitoring_fast_alerts</code> sont en place depuis v0.36.0 — leurs placeholders <code>*_placeholder_title</code> / <code>*_placeholder_body</code> n’étaient plus référencés. Quatre clés supprimées de <code>TRANSLATIONS</code> (<code>monitoring_fordead_map_*</code>, <code>monitoring_fast_alerts_*</code>).</p>
+</div>
+<div class="section level4">
+<h4 id="tests-0-41-1">Tests<a class="anchor" aria-label="anchor" href="#tests-0-41-1"></a></h4>
+<p><code>test-utils_i18n.R</code> : 4 nouveaux test cases (placeholders absents, renommage popup_plot → popup_coords avec textes attendus, présence FR+EN des 3 clés anticipation, lexique pixel dans empty_body). Suite full green : <strong>6373 PASS, 0 FAIL</strong>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.41.0" id="nemetonshiny-0410-2026-05-23">nemetonshiny 0.41.0 (2026-05-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0410-2026-05-23"></a></h2>
 <div class="section level4">
