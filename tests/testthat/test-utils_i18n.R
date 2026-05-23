@@ -724,6 +724,68 @@ test_that("and_n_more_errors translations work with sprintf", {
 })
 
 # ==============================================================================
+# Tests for v0.41.1 — FAST alerts UX cleanup (placette → pixel)
+# ==============================================================================
+
+test_that("v0.41.1 — orphan placeholder keys are removed", {
+  translations <- nemetonshiny:::TRANSLATIONS
+  removed <- c(
+    "monitoring_fordead_map_placeholder_title",
+    "monitoring_fordead_map_placeholder_body",
+    "monitoring_fast_alerts_placeholder_title",
+    "monitoring_fast_alerts_placeholder_body"
+  )
+  for (key in removed) {
+    expect_false(
+      key %in% names(translations),
+      info = paste("Removed key still present:", key)
+    )
+  }
+})
+
+test_that("v0.41.1 — FAST popup_plot is renamed to popup_coords", {
+  translations <- nemetonshiny:::TRANSLATIONS
+  expect_false("monitoring_fast_alert_popup_plot" %in% names(translations))
+  expect_true("monitoring_fast_alert_popup_coords" %in% names(translations))
+  expect_identical(translations$monitoring_fast_alert_popup_coords$fr,
+                   "Coordonnées")
+  expect_identical(translations$monitoring_fast_alert_popup_coords$en,
+                   "Coordinates")
+})
+
+test_that("v0.41.1 — FAST raster anticipation keys exist with FR + EN", {
+  translations <- nemetonshiny:::TRANSLATIONS
+  new_keys <- c(
+    "monitoring_fast_alerts_legend_title",
+    "monitoring_fast_alerts_opacity_label",
+    "monitoring_fast_alerts_threshold_label"
+  )
+  for (key in new_keys) {
+    expect_true(key %in% names(translations),
+                info = paste("Expected new key missing:", key))
+    expect_true(nzchar(translations[[key]]$fr),
+                info = paste("Empty FR for:", key))
+    expect_true(nzchar(translations[[key]]$en),
+                info = paste("Empty EN for:", key))
+  }
+})
+
+test_that("v0.41.1 — FAST empty_body wording uses pixel, not placette", {
+  translations <- nemetonshiny:::TRANSLATIONS
+  fr <- translations$monitoring_fast_alerts_empty_body$fr
+  en <- translations$monitoring_fast_alerts_empty_body$en
+  expect_false(grepl("placette", fr, ignore.case = TRUE),
+               info = sprintf("FR still mentions placette: %s", fr))
+  expect_true(grepl("pixel", fr, ignore.case = TRUE),
+              info = sprintf("FR should mention pixel: %s", fr))
+  expect_false(grepl("\\bplot\\b", en, ignore.case = TRUE),
+               info = sprintf("EN still mentions plot: %s", en))
+  expect_true(grepl("pixel", en, ignore.case = TRUE),
+              info = sprintf("EN should mention pixel: %s", en))
+})
+
+
+# ==============================================================================
 # Tests for special characters in translations
 # ==============================================================================
 

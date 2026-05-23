@@ -145,17 +145,24 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       sev[!sev %in% names(colors)] <- "warning"
       fill <- unname(colors[sev])
 
+      # v0.41.1 — popup header switched from plot_id to lat/lon (cf.
+      # rename popup_plot → popup_coords). FAST alerts are migrating
+      # from per-placette markers to a pixel raster ; "Coordonnées"
+      # makes sense in both representations whereas "Placette" no
+      # longer will once the raster is wired.
+      coords <- sf::st_coordinates(a_ll)
+
       popups <- vapply(seq_len(nrow(a_ll)), function(i) {
         sprintf(
           paste0(
-            "<strong>%s</strong>: %s<br/>",
+            "<strong>%s</strong>: %.5f, %.5f<br/>",
             "%s: %s<br/>",
             "%s: %.2f%s<br/>",
             "%s: %.2f%s<br/>",
             "%s: %s"
           ),
-          i18n$t("monitoring_fast_alert_popup_plot"),
-          htmltools::htmlEscape(as.character(a_ll$plot_id[i])),
+          i18n$t("monitoring_fast_alert_popup_coords"),
+          coords[i, "Y"], coords[i, "X"],
           i18n$t("monitoring_fast_alert_popup_severity"),
           htmltools::htmlEscape(sev[i]),
           i18n$t("monitoring_fast_alert_popup_ndvi"),

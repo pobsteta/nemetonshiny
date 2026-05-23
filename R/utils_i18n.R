@@ -2005,16 +2005,8 @@ TRANSLATIONS <- list(
     fr = "Carte FORDEAD",
     en = "FORDEAD map"
   ),
-  monitoring_fordead_map_placeholder_title = list(
-    fr = "Carte FORDEAD — bientôt disponible",
-    en = "FORDEAD map — coming soon"
-  ),
-  monitoring_fordead_map_placeholder_body = list(
-    fr = "La carte des classes de dépérissement (sain / faible / moyenne / forte) sera affichée ici une fois que le cœur Nemeton exportera le raster classifié issu du run FORDEAD. En attendant, consulter l'onglet « Alertes FORDEAD » pour la liste des placettes flaguées et l'export QGIS associé.",
-    en = "The dieback class map (healthy / low / medium / high) will appear here once the Nemeton core exports the classified raster from the FORDEAD run. Meanwhile, see the “FORDEAD alerts” tab for the flagged plots list and the matching QGIS export."
-  ),
   # v0.35.0 — sous-onglets Alertes séparés par mode, symétriques aux
-  # cartes : Alertes FAST (placettes au-dessus du seuil NDVI/NBR
+  # cartes : Alertes FAST (pixels au-dessus du seuil NDVI/NBR
   # rolling-window) vs Alertes FORDEAD (placettes flaguées par
   # run_fordead_dieback). Visibilité pilotée par input$mode.
   monitoring_subtab_alerts_fast = list(
@@ -2024,14 +2016,6 @@ TRANSLATIONS <- list(
   monitoring_subtab_alerts_fordead = list(
     fr = "Alertes FORDEAD",
     en = "FORDEAD alerts"
-  ),
-  monitoring_fast_alerts_placeholder_title = list(
-    fr = "Alertes FAST — bientôt disponible",
-    en = "FAST alerts — coming soon"
-  ),
-  monitoring_fast_alerts_placeholder_body = list(
-    fr = "La liste des placettes dont NDVI ou NBR est passé sous le seuil sur la fenêtre roulante sera affichée ici une fois que le cœur Nemeton exportera list_fast_alerts_for_zone(). En attendant, consulter la « Carte FAST » pour le raster NDVI/NBR à pleine résolution Sentinel-2.",
-    en = "The list of plots whose NDVI or NBR dropped below the rolling-window threshold will appear here once the Nemeton core exports list_fast_alerts_for_zone(). Meanwhile, see the “FAST map” for the full-resolution Sentinel-2 NDVI/NBR raster."
   ),
   # v0.36.0 — Alertes FAST module (nemeton::list_fast_alerts_for_zone)
   # Severity buckets : critical (ratio < 0.5), warning ([0.5, 1)),
@@ -2057,13 +2041,22 @@ TRANSLATIONS <- list(
     en = "No FAST alerts in window"
   ),
   monitoring_fast_alerts_empty_body = list(
-    fr = "Aucune placette n'est passée sous le seuil NDVI ou NBR configuré. Élargir la fenêtre, relever le seuil ou changer la zone pour explorer d'autres scénarios.",
-    en = "No plot crossed the configured NDVI or NBR threshold. Widen the window, raise the threshold, or change zone to explore further."
+    fr = "Aucun pixel n'a déclenché d'alerte sur la fenêtre choisie. Élargir la fenêtre, relever le seuil ou changer la zone pour explorer d'autres scénarios.",
+    en = "No pixel triggered an alert in the chosen window. Widen the window, raise the threshold, or change zone to explore further."
   ),
-  monitoring_fast_alert_popup_plot = list(
-    fr = "Placette",
-    en = "Plot"
+  # v0.41.1 — popup_plot renamed to popup_coords : FAST alerts are
+  # moving from per-placette markers to a pixel raster (cf. spec
+  # validation-sampling). The popup row anchors the user on a *position*
+  # rather than a logical plot, hence "Coordonnées" / "Coordinates".
+  monitoring_fast_alert_popup_coords = list(
+    fr = "Coordonnées",
+    en = "Coordinates"
   ),
+  # v0.41.1 — "Sévérité" est conservé le temps que
+  # nemeton::read_fast_alert_raster() tranche entre un score continu et
+  # des classes discrètes. Si score continu : reformuler en
+  # monitoring_fast_alerts_legend_title ("Score d'alerte"). Si classes :
+  # garder ce libellé.
   monitoring_fast_alert_popup_severity = list(
     fr = "Sévérité",
     en = "Severity"
@@ -2079,6 +2072,23 @@ TRANSLATIONS <- list(
   monitoring_fast_alert_popup_last_obs = list(
     fr = "Dernière observation",
     en = "Last observation"
+  ),
+  # v0.41.1 — anticipation du wiring raster d'alerte FAST. Ces trois
+  # clés ne sont pas encore consommées : elles seront utilisées par la
+  # legende continue et les contrôles d'opacité/seuil quand
+  # mod_monitoring_fast_alerts basculera sur addRasterImage() (Livrable 3,
+  # gating sur nemeton::read_fast_alert_raster()).
+  monitoring_fast_alerts_legend_title = list(
+    fr = "Score d'alerte",
+    en = "Alert score"
+  ),
+  monitoring_fast_alerts_opacity_label = list(
+    fr = "Opacité du raster",
+    en = "Raster opacity"
+  ),
+  monitoring_fast_alerts_threshold_label = list(
+    fr = "Masquer en dessous du seuil",
+    en = "Hide below threshold"
   ),
 
   # v0.36.0 — Carte FORDEAD module (nemeton::read_fordead_dieback_mask)

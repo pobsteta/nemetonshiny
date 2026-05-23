@@ -1,3 +1,50 @@
+# nemetonshiny 0.41.0.9001 (2026-05-23, cycle dev)
+
+### Changed — alertes FAST passent au lexique « pixel » (UX)
+
+Préparation du basculement des alertes FAST d'une représentation
+marker-par-placette à un raster d'alerte pixel-par-pixel (cohérent
+avec FORDEAD, déjà raster). La fonction cœur
+`nemeton::read_fast_alert_raster()` qui consommera le wiring final
+n'est pas encore livrée — ce cycle dev ne touche que les libellés
+i18n et l'en-tête du popup Leaflet pour éviter une dette i18n quand
+le raster arrivera.
+
+- `monitoring_fast_alerts_empty_body` reformulé « placette → pixel »
+  (FR : « Aucun pixel n'a déclenché d'alerte… » ; EN miroir).
+- `monitoring_fast_alert_popup_plot` renommé en
+  `monitoring_fast_alert_popup_coords` (« Coordonnées » /
+  « Coordinates »), appliqué au site d'utilisation dans
+  `mod_monitoring_fast_alerts.R` : le popup affiche désormais la
+  latitude / longitude de l'alerte (5 décimales, ~1 m) plutôt que
+  `plot_id`. Reste correct sous les deux représentations (marker
+  actuel + raster futur).
+- `monitoring_fast_alert_popup_severity` conservé « Sévérité » /
+  « Severity » avec un TODO en commentaire : à arbitrer entre score
+  continu (renommer en `monitoring_fast_alerts_legend_title`) et
+  classes discrètes quand `nemeton::read_fast_alert_raster()` aura
+  tranché.
+- Ajout en anticipation : `monitoring_fast_alerts_legend_title`
+  (« Score d'alerte »), `monitoring_fast_alerts_opacity_label`
+  (« Opacité du raster »), `monitoring_fast_alerts_threshold_label`
+  (« Masquer en dessous du seuil »). Non consommées tant que le
+  wiring raster n'est pas en place — gating sur la livraison cœur.
+
+### Removed — clés i18n « bientôt disponible » obsolètes
+
+Les modules `mod_monitoring_fordead_map` et `mod_monitoring_fast_alerts`
+sont en place depuis v0.36.0 — leurs placeholders
+`*_placeholder_title` / `*_placeholder_body` n'étaient plus référencés.
+Quatre clés supprimées de `TRANSLATIONS` (`monitoring_fordead_map_*`,
+`monitoring_fast_alerts_*`).
+
+### Tests
+
+`test-utils_i18n.R` : 4 nouveaux test cases (placeholders absents,
+renommage popup_plot → popup_coords avec textes attendus, présence
+FR+EN des 3 clés anticipation, lexique pixel dans empty_body).
+Suite full green : **6373 PASS, 0 FAIL**.
+
 # nemetonshiny 0.41.0 (2026-05-23)
 
 ### Added — spec 011 : liaison projet ↔ zone via `project_uuid`
