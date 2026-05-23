@@ -1,5 +1,43 @@
 # Changelog
 
+## nemetonshiny 0.41.0 (2026-05-23)
+
+#### Added — spec 011 : liaison projet ↔︎ zone via `project_uuid`
+
+Le diagnostic « le chargement d’un projet récent ne pré-sélectionne pas
+sa zone de suivi » avait pour cause racine que la liaison projet ↔︎ zone
+reposait uniquement sur `metadata.json$monitoring_zone_id` — un champ
+écrit côté app au moment de l’enregistrement, mais perdu dès qu’une
+copie de projet ou un `metadata.json` réécrit l’effaçait.
+
+Spec 011 (`nemeton` 0.44.0) ajoute une colonne canonique
+`monitoring_zone.project_uuid` côté DB et la fonction
+`nemeton::find_zone_by_project(con, project_uuid)`. Côté app :
+
+- **HOOK 1** — `register_project_as_zone()` passe désormais
+  `project_uuid = project$id` à
+  [`nemeton::register_monitoring_zone()`](https://pobsteta.github.io/nemeton/reference/register_monitoring_zone.html).
+  Toute nouvelle zone est canoniquement liée à son projet d’origine.
+- **HOOK 1bis — auto-migration** — sur réutilisation d’une zone déjà
+  enregistrée (chemin idempotent de `register_project_as_zone`), un
+  `UPDATE monitoring_zone SET project_uuid = $1 WHERE id = $2` est
+  effectué quand la colonne est NULL. Les zones pré-spec-011 (ex.
+  villards `zone_id = 1`) se migrent au prochain clic sur « Enregistrer
+  le projet comme zone » — pas de SQL manuel requis.
+- **HOOK 2** — `hydrate_monitoring_zone_id(project, con)`, nouvelle
+  helper dans `service_project.R`, lit `find_zone_by_project()` quand
+  `metadata$monitoring_zone_id` est absent. Appelée dans `mod_home.R`
+  juste après `load_project()`, elle re-remplit le metadata en mémoire
+  ET le persiste sur disque. Les chargements futurs voient ainsi le
+  `monitoring_zone_id` directement dans `metadata.json` et l’observer de
+  pré-sélection du dropdown (`mod_monitoring.R:934`) fonctionne
+  immédiatement.
+
+Le plancher `Imports: nemeton (>= 0.44.0)` est bumpé en conséquence.
+Couverture : 5 nouveaux tests offline dans
+`test-hydrate-monitoring-zone-id.R` (id déjà posé, hit DB, miss DB, con
+NULL, erreur de lookup).
+
 ## nemetonshiny 0.40.0 (2026-05-21)
 
 #### Added — verrou croisé FAST ↔︎ FORDEAD

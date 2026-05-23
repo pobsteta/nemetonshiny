@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.40.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.41.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.41.0" id="nemetonshiny-0410-2026-05-23">nemetonshiny 0.41.0 (2026-05-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0410-2026-05-23"></a></h2>
+<div class="section level4">
+<h4 id="added--spec--liaison-projet--zone-via-project_uuid-0-41-0">Added — spec 011 : liaison projet ↔︎ zone via <code>project_uuid</code>
+<a class="anchor" aria-label="anchor" href="#added--spec--liaison-projet--zone-via-project_uuid-0-41-0"></a></h4>
+<p>Le diagnostic « le chargement d’un projet récent ne pré-sélectionne pas sa zone de suivi » avait pour cause racine que la liaison projet ↔︎ zone reposait uniquement sur <code>metadata.json$monitoring_zone_id</code> — un champ écrit côté app au moment de l’enregistrement, mais perdu dès qu’une copie de projet ou un <code>metadata.json</code> réécrit l’effaçait.</p>
+<p>Spec 011 (<code>nemeton</code> 0.44.0) ajoute une colonne canonique <code>monitoring_zone.project_uuid</code> côté DB et la fonction <code>nemeton::find_zone_by_project(con, project_uuid)</code>. Côté app :</p>
+<ul><li>
+<strong>HOOK 1</strong> — <code>register_project_as_zone()</code> passe désormais <code>project_uuid = project$id</code> à <code><a href="https://pobsteta.github.io/nemeton/reference/register_monitoring_zone.html" class="external-link">nemeton::register_monitoring_zone()</a></code>. Toute nouvelle zone est canoniquement liée à son projet d’origine.</li>
+<li>
+<strong>HOOK 1bis — auto-migration</strong> — sur réutilisation d’une zone déjà enregistrée (chemin idempotent de <code>register_project_as_zone</code>), un <code>UPDATE monitoring_zone SET project_uuid = $1 WHERE id = $2</code> est effectué quand la colonne est NULL. Les zones pré-spec-011 (ex. villards <code>zone_id = 1</code>) se migrent au prochain clic sur « Enregistrer le projet comme zone » — pas de SQL manuel requis.</li>
+<li>
+<strong>HOOK 2</strong> — <code>hydrate_monitoring_zone_id(project, con)</code>, nouvelle helper dans <code>service_project.R</code>, lit <code>find_zone_by_project()</code> quand <code>metadata$monitoring_zone_id</code> est absent. Appelée dans <code>mod_home.R</code> juste après <code>load_project()</code>, elle re-remplit le metadata en mémoire ET le persiste sur disque. Les chargements futurs voient ainsi le <code>monitoring_zone_id</code> directement dans <code>metadata.json</code> et l’observer de pré-sélection du dropdown (<code>mod_monitoring.R:934</code>) fonctionne immédiatement.</li>
+</ul><p>Le plancher <code>Imports: nemeton (&gt;= 0.44.0)</code> est bumpé en conséquence. Couverture : 5 nouveaux tests offline dans <code>test-hydrate-monitoring-zone-id.R</code> (id déjà posé, hit DB, miss DB, con NULL, erreur de lookup).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.40.0" id="nemetonshiny-0400-2026-05-21">nemetonshiny 0.40.0 (2026-05-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0400-2026-05-21"></a></h2>
 <div class="section level4">
