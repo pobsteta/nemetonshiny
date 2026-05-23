@@ -1,4 +1,4 @@
-# nemetonshiny 0.40.0.9001 (2026-05-23, cycle dev)
+# nemetonshiny 0.41.0 (2026-05-23)
 
 ### Added — spec 011 : liaison projet ↔ zone via `project_uuid`
 
