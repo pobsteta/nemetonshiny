@@ -2108,6 +2108,13 @@ TRANSLATIONS <- list(
     fr = "Masquer en dessous du seuil",
     en = "Hide below threshold"
   ),
+  # v0.42.0 — annotation des lignes horizontales de seuil sur le plot
+  # modal pixel de Carte FAST (Livrable 3 spec 013). Format : %s reçoit
+  # le nom de la bande ("NDVI" / "NBR"), %.2f la valeur du seuil.
+  monitoring_pixel_plot_threshold_fmt = list(
+    fr = "seuil %s %.2f",
+    en = "%s threshold %.2f"
+  ),
 
   # v0.36.0 — Carte FORDEAD module (nemeton::read_fordead_dieback_mask)
   # Empty state shown tant que le writer cœur n'a pas shippé.

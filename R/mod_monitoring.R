@@ -2149,12 +2149,17 @@ mod_monitoring_server <- function(id, app_state) {
     # v0.42.0 — `refresh_r = fast_reload` allows cache_dir_r() to
     # re-evaluate after an ingestion creates the cache directory
     # (the dir.exists() check is not a Shiny dep on its own).
+    # `thresholds_r` feeds Livrable 3 — horizontal reference lines on
+    # the per-pixel modal plot drawn at the current sidebar NDVI / NBR
+    # threshold values.
     pixel_map_ret <- mod_monitoring_pixel_map_server(
       "pixel_map",
       app_state      = app_state,
       obs_pixel_data = obs_pixel_data,
       mode_input     = shiny::reactive(input$mode),
-      refresh_r      = shiny::reactive(fast_reload())
+      refresh_r      = shiny::reactive(fast_reload()),
+      thresholds_r   = shiny::reactive(list(ndvi = input$threshold_ndvi,
+                                            nbr  = input$threshold_nbr))
     )
 
     # v0.42.0 — Alertes FAST sub-tab. Spec 013 raster wiring : the
