@@ -127,12 +127,13 @@ mod_monitoring_ui <- function(id) {
                 selected = c("NDVI", "NBR"),
                 inline   = TRUE
               ),
-              # v0.36.1 — défauts et range alignés sur la sémantique
-              # « seuil absolu » consommée par nemeton::list_fast_alerts_for_zone()
-              # (depuis nemeton@v0.25.0). Une placette est en alerte quand
-              # son NDVI (ou NBR) tombe SOUS la valeur du slider. NDVI
-              # forestier sain est typiquement 0.6-0.8, NBR sain 0.4-0.6,
-              # d'où range 0.10-0.80. Défauts cœur : 0.40 / 0.30.
+              # v0.36.1 / v0.42.0 — défauts et range alignés sur la
+              # sémantique « seuil absolu » consommée par
+              # nemeton::read_fast_alert_raster() (spec 013, nemeton@v0.46.0).
+              # Un pixel est en alerte quand son NDVI (ou NBR) tombe SOUS
+              # la valeur du slider. NDVI forestier sain est typiquement
+              # 0.6-0.8, NBR sain 0.4-0.6, d'où range 0.10-0.80. Défauts
+              # cœur : 0.40 / 0.30.
               shiny::sliderInput(
                 ns("threshold_ndvi"), i18n$t("monitoring_threshold_ndvi"),
                 min = 0.10, max = 0.80, value = 0.40, step = 0.01
@@ -233,11 +234,12 @@ mod_monitoring_ui <- function(id) {
       bslib::navset_card_tab(
         id = ns("subtab"),
         # ---------- FAST mode sub-tabs (visible en mode quick) -------
-        # ----- Sub-tab — Alertes FAST (wired v0.36.0) ----------------
-        # Carte Leaflet des placettes au-dessus du seuil NDVI/NBR
-        # rolling-window. Câblage sur `nemeton::list_fast_alerts_for_zone()`
-        # (shipped en nemeton@v0.25.0). Masqué en mode health par
-        # l'observer mode-driven.
+        # ----- Sub-tab — Alertes FAST (raster depuis v0.42.0) --------
+        # Carte Leaflet d'un raster d'alerte pixel-par-pixel
+        # (10 m S2) produit par `nemeton::read_fast_alert_raster()`
+        # (spec 013, nemeton@v0.46.0). Toggle count / rolling exposé
+        # par le sous-module. Masqué en mode health par l'observer
+        # mode-driven.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_alerts_fast"),
           value = "alerts_fast",

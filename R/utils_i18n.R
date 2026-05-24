@@ -2073,14 +2073,32 @@ TRANSLATIONS <- list(
     fr = "Dernière observation",
     en = "Last observation"
   ),
-  # v0.41.1 — anticipation du wiring raster d'alerte FAST. Ces trois
-  # clés ne sont pas encore consommées : elles seront utilisées par la
-  # legende continue et les contrôles d'opacité/seuil quand
-  # mod_monitoring_fast_alerts basculera sur addRasterImage() (Livrable 3,
-  # gating sur nemeton::read_fast_alert_raster()).
+  # v0.42.0 — wiring raster d'alerte FAST (spec 013, nemeton 0.46.0).
+  # mod_monitoring_fast_alerts bascule de la liste markers per-placette
+  # à addRasterImage(read_fast_alert_raster()). Le module expose un
+  # toggle compte / rolling : `count` retourne un entier par pixel
+  # (nombre de dates en alerte), `rolling` un continu (magnitude).
+  # `legend_title` est utilisé pour le mode rolling, `legend_count_title`
+  # pour le mode count.
+  monitoring_fast_alerts_mode_label = list(
+    fr = "Mode raster",
+    en = "Raster mode"
+  ),
+  monitoring_fast_alerts_mode_count = list(
+    fr = "Compte",
+    en = "Count"
+  ),
+  monitoring_fast_alerts_mode_rolling = list(
+    fr = "Magnitude",
+    en = "Magnitude"
+  ),
   monitoring_fast_alerts_legend_title = list(
     fr = "Score d'alerte",
     en = "Alert score"
+  ),
+  monitoring_fast_alerts_legend_count_title = list(
+    fr = "Nombre d'alertes",
+    en = "Alert count"
   ),
   monitoring_fast_alerts_opacity_label = list(
     fr = "Opacité du raster",
