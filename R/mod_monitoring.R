@@ -373,6 +373,20 @@ mod_monitoring_server <- function(id, app_state) {
     # has to wiggle a control (bands / date range) to force a refetch.
     obs_refresh <- shiny::reactiveVal(0L)
 
+    # v0.42.0 — generic FAST refresh signal. Distinct from `obs_refresh`
+    # which targets `obs_pixel_data()` specifically: this one is wired
+    # into sub-modules whose reactives have no other path back to a
+    # post-ingestion state change. Bumped from the FAST success handler
+    # (see below). Consumed by :
+    #   - mod_monitoring_fast_alerts (alerts() / future raster reactive)
+    #   - mod_monitoring_pixel_map   (cache_dir_r — dir.exists() is not
+    #                                 a reactive dep, so the reactive
+    #                                 stays frozen on its pre-ingest
+    #                                 NULL value otherwise).
+    # Symmetric with how `alerts_refresh` is wired into FORDEAD-side
+    # modules.
+    fast_reload <- shiny::reactiveVal(0L)
+
     # ----- Async DB probe (E6.x — persistent loading feedback) ------
     # Open db_connect + db_migrate in a future worker so the user sees
     # a real "loading" state (spinning gear card) while the schema
@@ -1737,6 +1751,12 @@ mod_monitoring_server <- function(id, app_state) {
         # plotly and the Carte pixel sub-tab pick up the newly
         # inserted rows without the user having to touch a control.
         obs_refresh(obs_refresh() + 1L)
+        # v0.42.0 — propagate to Alertes FAST + Carte FAST so they pick
+        # up the new DB rows / new cache files. Before this bump, the
+        # toast "ingestion success" would show but those two tabs
+        # remained frozen on their pre-ingest empty state until the
+        # user touched a slider — cf. bug report 2026-05-23 sur villards.
+        fast_reload(fast_reload() + 1L)
       }
     })
 
@@ -2123,17 +2143,26 @@ mod_monitoring_server <- function(id, app_state) {
     # derive scenes_df without a second SQL roundtrip. The pixel
     # map only renders in quick mode (FORDEAD doesn't expose the
     # raw raster output) — the module checks mode_input internally.
+    #
+    # v0.42.0 — `refresh_r = fast_reload` allows cache_dir_r() to
+    # re-evaluate after an ingestion creates the cache directory
+    # (the dir.exists() check is not a Shiny dep on its own).
     pixel_map_ret <- mod_monitoring_pixel_map_server(
       "pixel_map",
       app_state      = app_state,
       obs_pixel_data = obs_pixel_data,
-      mode_input     = shiny::reactive(input$mode)
+      mode_input     = shiny::reactive(input$mode),
+      refresh_r      = shiny::reactive(fast_reload())
     )
 
-    # v0.36.0 — Alertes FAST sub-tab. Wires the sidebar widgets
+    # v0.42.0 — Alertes FAST sub-tab. Spec 013 raster wiring : the
+    # module now consumes `nemeton::read_fast_alert_raster()` (count
+    # / rolling modes, pixel resolution S2 10 m). Sidebar widgets
     # (zone_id, date_range, threshold_ndvi, threshold_nbr,
-    # window_days) into `nemeton::list_fast_alerts_for_zone()`.
-    # The module owns its own Leaflet map + severity counters card.
+    # window_days) are forwarded as before, plus the new `mode_r`
+    # toggle owned by the sub-module itself.
+    # `refresh_r = fast_reload` so the raster reactive picks up the
+    # post-ingestion DB state without a manual slider wiggle.
     fast_alerts_ret <- mod_monitoring_fast_alerts_server(
       "fast_alerts",
       app_state    = app_state,
@@ -2143,7 +2172,8 @@ mod_monitoring_server <- function(id, app_state) {
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
         window_days = input$window_days
-      ))
+      )),
+      refresh_r    = shiny::reactive(fast_reload())
     )
 
     # v0.36.0 — Carte FORDEAD sub-tab. nemeton@v0.41.0 ships the mask

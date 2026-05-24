@@ -81,11 +81,19 @@ mod_monitoring_pixel_map_ui <- function(id) {
 #' @param mode_input Reactive returning the current mode
 #'   (`"quick"` / `"health"`). The pixel map only makes sense in
 #'   quick mode (FORDEAD doesn't expose per-pixel raster output).
+#' @param refresh_r Reactive bump-counter (integer). Forces
+#'   `cache_dir_r()` to re-evaluate when the on-disk cache state
+#'   may have changed — typically after a Sentinel-2 ingestion
+#'   completes and creates `<project>/cache/layers/sentinel2/` for
+#'   the first time. Without it, the reactive stays frozen on its
+#'   pre-ingest NULL value because `dir.exists()` is not a Shiny
+#'   dep. v0.42.0.
 #'
 #' @noRd
 mod_monitoring_pixel_map_server <- function(id, app_state,
                                             obs_pixel_data,
-                                            mode_input) {
+                                            mode_input,
+                                            refresh_r = shiny::reactive(0L)) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
@@ -109,8 +117,16 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     })
 
     # Resolve <project>/cache/layers/sentinel2 from the active
-    # project. NULL when no project is loaded.
+    # project. NULL when no project is loaded or when the dir
+    # doesn't exist yet.
+    #
+    # v0.42.0 — `refresh_r()` is taken as an explicit dep so the
+    # reactive re-evaluates after a FAST ingestion that may have
+    # just created the cache directory. Otherwise `dir.exists()`
+    # is a plain filesystem check, not a Shiny dep, and the
+    # reactive value stays stuck on its pre-ingest NULL.
     cache_dir_r <- shiny::reactive({
+      refresh_r()  # invalidate on post-ingestion bump
       proj <- app_state$current_project
       if (is.null(proj)) return(NULL)
       ppath <- proj$path %||% proj$project_path

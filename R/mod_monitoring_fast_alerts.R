@@ -38,10 +38,16 @@ mod_monitoring_fast_alerts_ui <- function(id) {
 #' @param date_range_r Reactive returning a length-2 Date vector
 #'   `[date_from, date_to]`.
 #' @param thresholds_r Reactive returning `list(ndvi, nbr, window_days)`.
+#' @param refresh_r Reactive (length-1 integer). Bump-counter signalling
+#'   that the source FAST data has changed (typically after a Sentinel-2
+#'   ingestion success). The module's data reactives take it as an
+#'   explicit dep so they re-fetch from the DB without forcing the user
+#'   to wiggle a slider. v0.42.0.
 #' @return invisible list with `alerts` reactive.
 #' @noRd
 mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
-                                              date_range_r, thresholds_r) {
+                                              date_range_r, thresholds_r,
+                                              refresh_r = shiny::reactive(0L)) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
@@ -53,6 +59,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # with a complete request. NULL on any missing piece — the panel
     # downstream renders an empty state.
     alerts <- shiny::reactive({
+      refresh_r()  # v0.42.0 — invalidate on post-ingestion bump
       zone <- zone_id_r()
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
       dr <- date_range_r()
