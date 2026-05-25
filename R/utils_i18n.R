@@ -2360,6 +2360,87 @@ TRANSLATIONS <- list(
     en = "FAST ingestion failed: %s"
   ),
 
+  # v0.43.0 \u2014 Plan de validation terrain (spec 014). Sous-onglet
+  # \u00ab Plan de validation \u00bb de Suivi sanitaire, encapsule
+  # nemeton::create_validation_sampling_plan(). Voir
+  # mod_validation_sampling.R + service_validation_sampling.R.
+  validation_sampling_title = list(
+    fr = "Plan de validation",
+    en = "Validation plan"
+  ),
+  validation_source_label = list(
+    fr = "Source d'alerte",
+    en = "Alert source"
+  ),
+  validation_n_validation_label = list(
+    fr = "Placettes de validation",
+    en = "Validation plots"
+  ),
+  validation_n_control_label = list(
+    fr = "Placettes t\u00e9moins",
+    en = "Control plots"
+  ),
+  validation_classes_label = list(
+    fr = "Classes d'alerte retenues",
+    en = "Retained alert classes"
+  ),
+  validation_buffer_label = list(
+    fr = "Tampon (m) autour des alertes",
+    en = "Buffer (m) around alerts"
+  ),
+  validation_seed_label = list(
+    fr = "Graine al\u00e9atoire",
+    en = "Random seed"
+  ),
+  validation_generate_btn = list(
+    fr = "G\u00e9n\u00e9rer plan de validation",
+    en = "Generate validation plan"
+  ),
+  validation_persist_btn = list(
+    fr = "Persister dans samples.gpkg",
+    en = "Persist to samples.gpkg"
+  ),
+  validation_export_qgis_btn = list(
+    fr = "Exporter pour QGIS",
+    en = "Export for QGIS"
+  ),
+  validation_idle_hint = list(
+    fr = "Configurer les param\u00e8tres puis cliquer \u00ab G\u00e9n\u00e9rer plan de validation \u00bb.",
+    en = "Configure parameters then click \"Generate validation plan\"."
+  ),
+  validation_empty_mask_title = list(
+    fr = "Zone saine",
+    en = "Healthy zone"
+  ),
+  validation_empty_mask_body = list(
+    fr = "Aucune cellule d'alerte dans les classes retenues sur la fen\u00eatre courante \u2014 rien \u00e0 valider.",
+    en = "No alert cell in the retained classes on the current window \u2014 nothing to validate."
+  ),
+  validation_no_mask_title = list(
+    fr = "Mask d'alerte indisponible",
+    en = "Alert mask unavailable"
+  ),
+  validation_no_mask_body = list(
+    fr = "Aucun mask FORDEAD/FAST n'a \u00e9t\u00e9 produit pour cette zone. Lance d'abord le diagnostic.",
+    en = "No FORDEAD/FAST mask has been produced for this zone. Run the diagnostic first."
+  ),
+  validation_persisted_toast = list(
+    fr = "%d placettes enregistr\u00e9es dans samples.gpkg.",
+    en = "%d plots saved to samples.gpkg."
+  ),
+  validation_qgis_exported_toast = list(
+    fr = "Projet QGIS export\u00e9 : %s",
+    en = "QGIS project exported: %s"
+  ),
+  validation_legend_validation = list(
+    fr = "Validation",
+    en = "Validation"
+  ),
+  validation_legend_temoin = list(
+    fr = "T\u00e9moin",
+    en = "Control"
+  ),
+
   # Per-phase labels \u2014 current 1.x sequence (nemeton@v0.22.5)
   # Phase 0 ingest (nemeton@v0.24.0): downloads missing S2 bands
   # (B02/B05/B8A/B11) reusing FAST's cached B04/B12.

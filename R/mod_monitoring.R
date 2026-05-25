@@ -296,6 +296,18 @@ mod_monitoring_ui <- function(id) {
           value = "pixel_map_fordead",
           icon  = bsicons::bs_icon("tree"),
           mod_monitoring_fordead_map_ui(ns("fordead_map"))
+        ),
+        # ----- Sub-tab — Plan de validation (spec 014, v0.43.0) -----
+        # Toujours visible (pas mode-driven) — l'utilisateur choisit la
+        # source FORDEAD / FAST via radio dans le sous-module. Génère
+        # un plan d'échantillonnage de validation terrain ciblé sur
+        # les foyers détectés, persistable dans
+        # <project>/data/samples.gpkg (couche `validation_plots`).
+        bslib::nav_panel(
+          title = i18n$t("validation_sampling_title"),
+          value = "validation_sampling",
+          icon  = bsicons::bs_icon("compass"),
+          mod_validation_sampling_ui(ns("validation_sampling"))
         )
       )
     )
@@ -2205,14 +2217,30 @@ mod_monitoring_server <- function(id, app_state) {
       refresh_r = shiny::reactive(alerts_refresh())
     )
 
+    # v0.43.0 — Plan de validation sub-tab. Toujours visible quand la
+    # zone est posée, source FORDEAD ou FAST au choix de l'utilisateur.
+    validation_sampling_ret <- mod_validation_sampling_server(
+      "validation_sampling",
+      app_state    = app_state,
+      zone_id_r    = shiny::reactive(input$zone_id),
+      mode_r       = shiny::reactive(input$mode),
+      thresholds_r = shiny::reactive(list(
+        ndvi        = input$threshold_ndvi,
+        nbr         = input$threshold_nbr,
+        window_days = input$window_days
+      )),
+      date_range_r = shiny::reactive(input$date_range)
+    )
+
     list(
-      zones         = zones,
-      fast_task     = fast_task,
-      fordead_task  = fordead_task,
-      validity      = validity,
-      pixel_map     = pixel_map_ret,
-      fast_alerts   = fast_alerts_ret,
-      fordead_map   = fordead_map_ret
+      zones               = zones,
+      fast_task           = fast_task,
+      fordead_task        = fordead_task,
+      validity            = validity,
+      pixel_map           = pixel_map_ret,
+      fast_alerts         = fast_alerts_ret,
+      fordead_map         = fordead_map_ret,
+      validation_sampling = validation_sampling_ret
     )
   })
 }
