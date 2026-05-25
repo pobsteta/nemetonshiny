@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.43.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.43.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,19 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.43.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.43.1" id="nemetonshiny-0431-2026-05-25">nemetonshiny 0.43.1 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0431-2026-05-25"></a></h2>
+<div class="section level4">
+<h4 id="fixed--ntfy_send-titre-http-désormais-paramétrable-0-43-1">Fixed — <code>.ntfy_send()</code> titre HTTP désormais paramétrable<a class="anchor" aria-label="anchor" href="#fixed--ntfy_send-titre-http-d%C3%A9sormais-param%C3%A9trable-0-43-1"></a></h4>
+<p>Bug : les notifications ntfy émises par les runs FAST (<code>ingest_sentinel2_timeseries()</code>) arrivaient sur le device avec un en-tête <code>Title: "Nemeton FORDEAD"</code>, parce que <code>.ntfy_send()</code> dans <code>service_monitoring.R</code> hard-codait ce titre. Conséquence : les notifications FAST et FORDEAD étaient indistinguables côté téléphone.</p>
+<p>Fix : nouvel argument <code>title = "Nemeton"</code> (défaut neutre) sur <code>.ntfy_send(cfg, message, priority, tags, title)</code>. Threadé aux <strong>8 call sites</strong> : - FAST (<code>run_ingestion_async</code> + <code>.build_ingest_progress_callback</code>) : start / scenes / complete / error → <code>title = "Nemeton FAST"</code> - FORDEAD (<code>run_fordead_async</code> + <code>.build_fordead_progress_callback</code>) : start / phase / complete / error → <code>title = "Nemeton FORDEAD"</code></p>
+<p>Tests : 1 nouveau test case (<code>title</code> argument présent, default “Nemeton”, smoke avec cfg NULL).</p>
+<p>Smoke manuel attendu : lancer une ingestion FAST → la notif sur le téléphone affiche bien « Nemeton FAST » dans le titre.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.43.0" id="nemetonshiny-0430-2026-05-25">nemetonshiny 0.43.0 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0430-2026-05-25"></a></h2>
 <div class="section level4">
