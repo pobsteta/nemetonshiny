@@ -370,6 +370,38 @@ close_monitoring_db_connection <- function(con) {
 #' @param con A DBIConnection or NULL.
 #' @return data.frame.
 #' @noRd
+#' Resolve a monitoring zone name from its id (best-effort)
+#'
+#' Used by the FAST / FORDEAD workers to compose ntfy push messages
+#' that say « (zone villards) » instead of « (zone 1) » — the i18n
+#' templates take `%s` and the call site has only the integer id.
+#'
+#' Silent fallback to `as.character(zone_id)` when the zone row was
+#' deleted out-of-band between `$invoke()` and the worker pickup, or
+#' when the DB query itself errors (DBI driver hiccup). A best-effort
+#' cosmetic resolver MUST never abort a long-running compute.
+#'
+#' @param con A DBIConnection (or NULL).
+#' @param zone_id Integer.
+#' @return Character length-1 — the zone name, or the stringified id
+#'   when resolution fails / `con` is NULL / id is NULL.
+#' @noRd
+.resolve_zone_name <- function(con, zone_id) {
+  fallback <- if (is.null(zone_id)) "?" else as.character(zone_id)
+  if (is.null(con) || is.null(zone_id)) return(fallback)
+  tryCatch({
+    row <- DBI::dbGetQuery(
+      con,
+      "SELECT name FROM monitoring_zone WHERE id = $1",
+      params = list(as.integer(zone_id))
+    )
+    if (!is.null(row) && nrow(row) && nzchar(row$name[[1]])) {
+      as.character(row$name[[1]])
+    } else fallback
+  }, error = function(e) fallback)
+}
+
+
 list_monitoring_zones <- function(con) {
   empty <- data.frame(id = integer(0), name = character(0),
                       stringsAsFactors = FALSE)

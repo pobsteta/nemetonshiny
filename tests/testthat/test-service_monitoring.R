@@ -91,6 +91,50 @@ test_that(".ntfy_send is a silent no-op when config is NULL", {
   expect_false(nemetonshiny:::.ntfy_send(NULL, "message"))
 })
 
+test_that(".resolve_zone_name returns the DB name when the zone exists", {
+  # v0.43.2 — used by FAST / FORDEAD workers to emit ntfy messages
+  # with the zone name instead of the integer id.
+  testthat::local_mocked_bindings(
+    dbGetQuery = function(conn, ...) {
+      data.frame(name = "villards", stringsAsFactors = FALSE)
+    },
+    .package = "DBI"
+  )
+  expect_identical(
+    nemetonshiny:::.resolve_zone_name("fake-con", 1L),
+    "villards"
+  )
+})
+
+test_that(".resolve_zone_name falls back to the id when the zone is missing", {
+  testthat::local_mocked_bindings(
+    dbGetQuery = function(conn, ...) data.frame(),  # 0 rows
+    .package = "DBI"
+  )
+  expect_identical(
+    nemetonshiny:::.resolve_zone_name("fake-con", 42L),
+    "42"
+  )
+})
+
+test_that(".resolve_zone_name falls back to the id when DBI errors", {
+  testthat::local_mocked_bindings(
+    dbGetQuery = function(conn, ...) stop("driver hiccup"),
+    .package = "DBI"
+  )
+  expect_identical(
+    nemetonshiny:::.resolve_zone_name("fake-con", 7L),
+    "7"
+  )
+})
+
+test_that(".resolve_zone_name handles NULL con or NULL zone_id silently", {
+  expect_identical(nemetonshiny:::.resolve_zone_name(NULL, 1L),   "1")
+  expect_identical(nemetonshiny:::.resolve_zone_name("c", NULL),  "?")
+  expect_identical(nemetonshiny:::.resolve_zone_name(NULL, NULL), "?")
+})
+
+
 test_that(".ntfy_send accepts a title argument (defaults to 'Nemeton')", {
   # v0.43.1 fix : the Title HTTP header was hard-coded to
   # "Nemeton FORDEAD", mislabelling FAST notifications. The function
