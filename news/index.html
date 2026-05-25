@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.42.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.43.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,56 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.42.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.43.0" id="nemetonshiny-0430-2026-05-25">nemetonshiny 0.43.0 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0430-2026-05-25"></a></h2>
+<div class="section level4">
+<h4 id="added--spec-phase-b--plan-déchantillonnage-de-validation-terrain-0-43-0">Added — spec 014 phase B : plan d’échantillonnage de validation terrain<a class="anchor" aria-label="anchor" href="#added--spec-phase-b--plan-d%C3%A9chantillonnage-de-validation-terrain-0-43-0"></a></h4>
+<p>Ferme la boucle des alertes FAST/FORDEAD. Jusqu’ici, la projection des foyers détectés s’appuyait sur les placettes systémiques (Base/Over) qui peuvent rater un foyer si aucune placette n’est à proximité. Le nouveau plan de validation est <strong>ciblé sur les foyers eux-mêmes</strong>, generé par <code><a href="https://pobsteta.github.io/nemeton/reference/create_validation_sampling_plan.html" class="external-link">nemeton::create_validation_sampling_plan()</a></code> (cœur v0.47.0).</p>
+<p>Trois livrables indépendants, commits distincts.</p>
+<div class="section level5">
+<h5 id="livrable--service-generate_validation_plan-0-43-0">Livrable 1 — service <code>generate_validation_plan()</code>
+<a class="anchor" aria-label="anchor" href="#livrable--service-generate_validation_plan-0-43-0"></a></h5>
+<p>Nouveau <code>R/service_validation_sampling.R</code>. Encapsule la logique applicative : résolution <code>monitoring_zone_id</code> → AOI, lecture du mask d’alerte (FORDEAD : <code>read_fordead_dieback_mask()</code> ; FAST : <code>read_fast_alert_mask()</code> avec <code>compute_fast_alert_mask()</code> automatique si pas de mask récent), appel cœur, enrichissement avec <code>zone_id</code> / <code>source_run_id</code> / <code>generated_at</code>, traduction de <code>nemeton_empty_alert_mask</code> en erreur typée app pour message UI.</p>
+<p>Classes d’erreur typées : - <code>validation_no_project</code> / <code>validation_no_zone</code> (préconditions) - <code>validation_no_mask</code> (cache absent, lecture KO, FAST sans params) - <code>validation_empty_mask</code> (zone saine — wrapper du cœur)</p>
+</div>
+<div class="section level5">
+<h5 id="livrable--sous-onglet--plan-de-validation--0-43-0">Livrable 2 — sous-onglet « Plan de validation »<a class="anchor" aria-label="anchor" href="#livrable--sous-onglet--plan-de-validation--0-43-0"></a></h5>
+<p>Nouveau <code>R/mod_validation_sampling.R</code>, cinquième sous-onglet de Suivi sanitaire, toujours visible (pas mode-driven). Sidebar formulaire : radio source FORDEAD/FAST (défaut piloté par <code>input$mode</code> du sidebar parent), numericInput n_validation / n_control, checkboxGroupInput classes (3 / 4 par défaut, options 1 / 2 « moins fiables » exposées pour généralité), buffer_m, seed, bouton « Générer ». Sortie : carte Leaflet (raster d’alerte semi- transparent + markers Validation verts / Témoin gris + popup plot_id/type/alert_class/visit_order) et table DT.</p>
+<p>Le changement d’un input invalide le résultat silencieusement — l’utilisateur re-clique « Générer » pour recalculer.</p>
+<p>Boutons d’action : - <strong>Persister dans samples.gpkg</strong> — appelle <code>persist_validation_plan()</code>. - <strong>Exporter pour QGIS</strong> — <code>downloadHandler</code> qui produit un <code>.qgz</code> via <code>nemeton::create_qgis_project(zone_etude = indicators_sf,     crs = 2154, region = "BFC", lang)</code>, directement ouvrable en QGIS Desktop (synchronisable vers QField via QFieldSync au besoin).</p>
+</div>
+<div class="section level5">
+<h5 id="livrable--persistance-samplesgpkgvalidation_plots-0-43-0">Livrable 3 — persistance <code>samples.gpkg/validation_plots</code>
+<a class="anchor" aria-label="anchor" href="#livrable--persistance-samplesgpkgvalidation_plots-0-43-0"></a></h5>
+<p>Nouveau <code>R/service_samples_gpkg.R</code> : - <code>persist_validation_plan(plan, project_path, layer_name,     append)</code> — couche <strong>dédiée</strong> <code>validation_plots</code>, coexiste avec les couches systémiques (<code>plots</code>) et action-plan (<code>observations</code>). Append idempotent sur <code>(plot_id, generated_at)</code> — re-clicker « Persister » sur le même plan ne duplique pas les lignes. Override géo <code>geom</code> → <code>geometry</code> pour neutraliser le rename GPKG. - <code>load_validation_plan(project_path, layer_name)</code> — lecteur miroir.</p>
+</div>
+</div>
+<div class="section level4">
+<h4 id="dépendances-0-43-0">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-0-43-0"></a></h4>
+<p><code>Imports: nemeton (&gt;= 0.47.0)</code> — plancher bumpé pour <code>create_validation_sampling_plan</code>, <code>compute_fast_alert_mask</code>, <code>read_fast_alert_mask</code>, <code>fordead_alert_mask</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="i18n-0-43-0">i18n<a class="anchor" aria-label="anchor" href="#i18n-0-43-0"></a></h4>
+<p>17 nouvelles clés <code>validation_*</code> (FR + EN) : title, source_label, n_validation_label, n_control_label, classes_label, buffer_label, seed_label, generate_btn, persist_btn, export_qgis_btn, idle_hint, empty_mask_title/body, no_mask_title/body, persisted_toast, qgis_exported_toast, legend_validation, legend_temoin.</p>
+</div>
+<div class="section level4">
+<h4 id="tests-0-43-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-43-0"></a></h4>
+<ul><li>
+<code>test-service_validation_sampling.R</code> (13 PASS) : préconditions, happy path FORDEAD, happy path FAST avec cache hit, no_mask, empty_mask via <code>nemeton_empty_alert_mask</code>, FAST sans params.</li>
+<li>
+<code>test-service_samples_gpkg.R</code> (12 PASS) : création layer, append d’un nouveau run, idempotence sur <code>(plot_id, generated_at)</code>, overwrite <code>append = FALSE</code>, coexistence avec la couche <code>plots</code> systémique, round-trip <code>load_validation_plan</code>.</li>
+</ul><p>Suite full green : <strong>6476 PASS / 0 FAIL</strong> (+63 nouveaux).</p>
+</div>
+<div class="section level4">
+<h4 id="hors-scope-v1-0-43-0">Hors scope (V1)<a class="anchor" aria-label="anchor" href="#hors-scope-v1-0-43-0"></a></h4>
+<ul><li>Auto-call de <code>compute_fast_alert_mask()</code> à chaque ingestion FAST — V2 potentielle. Pour l’instant déclenché par le bouton Générer côté Validation.</li>
+<li>Suivi historique des plans (UI dédiée). La trace est en place via <code>generated_at</code> + <code>source_run_id</code> dans la couche, mais pas encore exploitée visuellement.</li>
+<li>Export QField direct mobile (V1 fournit le <code>.qgz</code> QGIS Desktop ; <code><a href="https://pobsteta.github.io/nemeton/reference/create_qgis_project.html" class="external-link">nemeton::create_qfield_project()</a></code> reste disponible pour V2).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.42.1" id="nemetonshiny-0421-2026-05-25">nemetonshiny 0.42.1 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0421-2026-05-25"></a></h2>
 <div class="section level4">
