@@ -91,6 +91,18 @@ test_that(".ntfy_send is a silent no-op when config is NULL", {
   expect_false(nemetonshiny:::.ntfy_send(NULL, "message"))
 })
 
+test_that(".ntfy_send accepts a title argument (defaults to 'Nemeton')", {
+  # v0.43.1 fix : the Title HTTP header was hard-coded to
+  # "Nemeton FORDEAD", mislabelling FAST notifications. The function
+  # now takes a `title` parameter (default neutral); FAST callers pass
+  # "Nemeton FAST", FORDEAD callers "Nemeton FORDEAD".
+  fn <- nemetonshiny:::.ntfy_send
+  expect_true("title" %in% names(formals(fn)))
+  expect_equal(eval(formals(fn)$title), "Nemeton")
+  # Smoke : passing custom title with NULL cfg is still a no-op
+  expect_false(fn(NULL, "msg", title = "Nemeton FAST"))
+})
+
 test_that(".format_duration_human formats seconds / minutes / hours", {
   expect_equal(nemetonshiny:::.format_duration_human(45), "45 s")
   expect_equal(nemetonshiny:::.format_duration_human(720), "12 min")

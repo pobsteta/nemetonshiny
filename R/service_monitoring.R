@@ -135,7 +135,8 @@ run_ingestion_async <- function() {
         ntfy,
         sprintf(i18n$t("monitoring_ntfy_ingest_start"),
                 as.character(zone_id %||% "?")),
-        tags = "satellite"
+        tags  = "satellite",
+        title = "Nemeton FAST"
       )
 
       # Heartbeat 1/3: worker reached the start of its body. Useful
@@ -218,7 +219,8 @@ run_ingestion_async <- function() {
             ntfy,
             sprintf(i18n$t("monitoring_ntfy_ingest_error"),
                     conditionMessage(e)),
-            priority = "high", tags = "rotating_light"
+            priority = "high", tags = "rotating_light",
+            title    = "Nemeton FAST"
           )
           stop(e)
         }
@@ -232,7 +234,8 @@ run_ingestion_async <- function() {
                 as.integer(summary$n_scenes        %||% 0L),
                 as.integer(summary$n_obs_inserted  %||% 0L),
                 .format_duration_human(duration_sec)),
-        tags = "white_check_mark"
+        tags  = "white_check_mark",
+        title = "Nemeton FAST"
       )
 
       list(
@@ -373,7 +376,8 @@ run_fordead_async <- function() {
         ntfy,
         sprintf(i18n$t("monitoring_ntfy_fordead_start"),
                 as.character(zone_id %||% "?")),
-        tags = "evergreen_tree"
+        tags  = "evergreen_tree",
+        title = "Nemeton FORDEAD"
       )
 
       result <- tryCatch(
@@ -392,7 +396,8 @@ run_fordead_async <- function() {
             ntfy,
             sprintf(i18n$t("monitoring_ntfy_fordead_error"),
                     conditionMessage(e)),
-            priority = "high", tags = "rotating_light"
+            priority = "high", tags = "rotating_light",
+            title    = "Nemeton FORDEAD"
           )
           stop(e)
         }
@@ -403,7 +408,8 @@ run_fordead_async <- function() {
         sprintf(i18n$t("monitoring_ntfy_fordead_complete"),
                 as.integer(result$n_alerts_inserted %||% 0L),
                 .format_duration_human(result$duration_sec %||% NA_real_)),
-        tags = "white_check_mark"
+        tags  = "white_check_mark",
+        title = "Nemeton FORDEAD"
       )
       result
     }, seed = TRUE)
@@ -458,16 +464,23 @@ run_fordead_async <- function() {
 #' @param message Body text (UTF-8).
 #' @param priority ntfy priority (`"min"`/`"low"`/`"default"`/`"high"`/`"max"`).
 #' @param tags Character vector of ntfy tags / emoji short-codes.
+#' @param title Title HTTP header — ASCII only (ntfy headers are not
+#'   UTF-8 safe). Defaults to a neutral `"Nemeton"`; FAST callers pass
+#'   `"Nemeton FAST"`, FORDEAD callers `"Nemeton FORDEAD"` so the
+#'   device groups notifications by stream (v0.43.1 fix : FAST runs
+#'   were mislabelled as `"Nemeton FORDEAD"` because the title was
+#'   hard-coded here).
 #' @return `TRUE` on a sent request, `FALSE` otherwise (invisibly).
 #' @noRd
-.ntfy_send <- function(cfg, message, priority = "default", tags = NULL) {
+.ntfy_send <- function(cfg, message, priority = "default",
+                       tags = NULL, title = "Nemeton") {
   if (is.null(cfg)) return(invisible(FALSE))
   tryCatch({
     req <- httr2::request(paste0(cfg$url, "/", cfg$topic))
     req <- httr2::req_body_raw(req, enc2utf8(as.character(message)),
                                type = "text/plain; charset=utf-8")
     req <- httr2::req_headers(req,
-                              Title    = "Nemeton FORDEAD",
+                              Title    = as.character(title),
                               Priority = priority)
     if (!is.null(tags) && length(tags)) {
       req <- httr2::req_headers(req, Tags = paste(tags, collapse = ","))
@@ -531,7 +544,8 @@ run_fordead_async <- function() {
         .ntfy_send(
           ntfy,
           sprintf(i18n$t("monitoring_ntfy_ingest_scenes"), total),
-          priority = "low", tags = "satellite_orbital"
+          priority = "low", tags = "satellite_orbital",
+          title    = "Nemeton FAST"
         )
       }
     }
@@ -557,7 +571,8 @@ run_fordead_async <- function() {
           ntfy,
           sprintf(i18n$t("monitoring_ntfy_fordead_phase"),
                   .fordead_phase_label(phase_name, i18n)),
-          priority = "low", tags = "hourglass_flowing_sand"
+          priority = "low", tags = "hourglass_flowing_sand",
+          title    = "Nemeton FORDEAD"
         )
       }
     }
