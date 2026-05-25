@@ -81,11 +81,25 @@ mod_monitoring_pixel_map_ui <- function(id) {
 #' @param mode_input Reactive returning the current mode
 #'   (`"quick"` / `"health"`). The pixel map only makes sense in
 #'   quick mode (FORDEAD doesn't expose per-pixel raster output).
+#' @param refresh_r Reactive bump-counter (integer). Forces
+#'   `cache_dir_r()` to re-evaluate when the on-disk cache state
+#'   may have changed — typically after a Sentinel-2 ingestion
+#'   completes and creates `<project>/cache/layers/sentinel2/` for
+#'   the first time. Without it, the reactive stays frozen on its
+#'   pre-ingest NULL value because `dir.exists()` is not a Shiny
+#'   dep. v0.42.0.
+#' @param thresholds_r Reactive returning `list(ndvi, nbr)` with the
+#'   current sidebar NDVI / NBR thresholds. Used to draw alert-coloured
+#'   horizontal reference lines on the per-pixel modal plot so the
+#'   user sees at a glance which dates would have triggered an alert.
+#'   v0.42.0.
 #'
 #' @noRd
 mod_monitoring_pixel_map_server <- function(id, app_state,
                                             obs_pixel_data,
-                                            mode_input) {
+                                            mode_input,
+                                            refresh_r = shiny::reactive(0L),
+                                            thresholds_r = shiny::reactive(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
@@ -109,8 +123,16 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     })
 
     # Resolve <project>/cache/layers/sentinel2 from the active
-    # project. NULL when no project is loaded.
+    # project. NULL when no project is loaded or when the dir
+    # doesn't exist yet.
+    #
+    # v0.42.0 — `refresh_r()` is taken as an explicit dep so the
+    # reactive re-evaluates after a FAST ingestion that may have
+    # just created the cache directory. Otherwise `dir.exists()`
+    # is a plain filesystem check, not a Shiny dep, and the
+    # reactive value stays stuck on its pre-ingest NULL.
     cache_dir_r <- shiny::reactive({
+      refresh_r()  # invalidate on post-ingestion bump
       proj <- app_state$current_project
       if (is.null(proj)) return(NULL)
       ppath <- proj$path %||% proj$project_path
@@ -729,6 +751,51 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           )
         )
       }
+      # v0.42.0 — threshold reference lines. Draw horizontal alert-
+      # coloured dashed lines at the current NDVI / NBR thresholds
+      # (sidebar sliders, threaded via `thresholds_r`) so the user
+      # sees instantly which dates would have flagged this pixel as
+      # an alert. Brief Livrable 3 — pair with the raster d'alerte
+      # of Livrable 2.
+      th <- thresholds_r()
+      shapes <- list()
+      annotations <- list()
+      if (!is.null(th)) {
+        th_ndvi <- suppressWarnings(as.numeric(th$ndvi))
+        th_nbr  <- suppressWarnings(as.numeric(th$nbr))
+        if (length(th_ndvi) == 1L && !is.na(th_ndvi)) {
+          shapes <- c(shapes, list(
+            list(type = "line",
+                 xref = "paper", x0 = 0, x1 = 1,
+                 yref = "y",     y0 = th_ndvi, y1 = th_ndvi,
+                 line = list(color = "#FF9933", dash = "dash", width = 1))
+          ))
+          annotations <- c(annotations, list(
+            list(xref = "paper", x = 1, xanchor = "right",
+                 yref = "y",     y = th_ndvi, yanchor = "bottom",
+                 text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
+                                "NDVI", th_ndvi),
+                 showarrow = FALSE,
+                 font = list(color = "#FF9933", size = 11))
+          ))
+        }
+        if (length(th_nbr) == 1L && !is.na(th_nbr)) {
+          shapes <- c(shapes, list(
+            list(type = "line",
+                 xref = "paper", x0 = 0, x1 = 1,
+                 yref = "y",     y0 = th_nbr, y1 = th_nbr,
+                 line = list(color = "#D62728", dash = "dash", width = 1))
+          ))
+          annotations <- c(annotations, list(
+            list(xref = "paper", x = 1, xanchor = "right",
+                 yref = "y",     y = th_nbr, yanchor = "bottom",
+                 text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
+                                "NBR", th_nbr),
+                 showarrow = FALSE,
+                 font = list(color = "#D62728", size = 11))
+          ))
+        }
+      }
       p <- plotly::layout(
         p,
         margin = list(t = 20, b = 40, l = 50, r = 10),
@@ -736,7 +803,9 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
                       type = "date"),
         yaxis  = list(title = i18n$t("monitoring_timeseries_yaxis"),
                       range = c(-0.2, 1)),
-        legend = list(orientation = "h", y = -0.25)
+        legend = list(orientation = "h", y = -0.25),
+        shapes = if (length(shapes)) shapes else NULL,
+        annotations = if (length(annotations)) annotations else NULL
       )
 
       shiny::showModal(shiny::modalDialog(

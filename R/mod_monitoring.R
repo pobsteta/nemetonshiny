@@ -127,12 +127,13 @@ mod_monitoring_ui <- function(id) {
                 selected = c("NDVI", "NBR"),
                 inline   = TRUE
               ),
-              # v0.36.1 — défauts et range alignés sur la sémantique
-              # « seuil absolu » consommée par nemeton::list_fast_alerts_for_zone()
-              # (depuis nemeton@v0.25.0). Une placette est en alerte quand
-              # son NDVI (ou NBR) tombe SOUS la valeur du slider. NDVI
-              # forestier sain est typiquement 0.6-0.8, NBR sain 0.4-0.6,
-              # d'où range 0.10-0.80. Défauts cœur : 0.40 / 0.30.
+              # v0.36.1 / v0.42.0 — défauts et range alignés sur la
+              # sémantique « seuil absolu » consommée par
+              # nemeton::read_fast_alert_raster() (spec 013, nemeton@v0.46.0).
+              # Un pixel est en alerte quand son NDVI (ou NBR) tombe SOUS
+              # la valeur du slider. NDVI forestier sain est typiquement
+              # 0.6-0.8, NBR sain 0.4-0.6, d'où range 0.10-0.80. Défauts
+              # cœur : 0.40 / 0.30.
               shiny::sliderInput(
                 ns("threshold_ndvi"), i18n$t("monitoring_threshold_ndvi"),
                 min = 0.10, max = 0.80, value = 0.40, step = 0.01
@@ -233,11 +234,12 @@ mod_monitoring_ui <- function(id) {
       bslib::navset_card_tab(
         id = ns("subtab"),
         # ---------- FAST mode sub-tabs (visible en mode quick) -------
-        # ----- Sub-tab — Alertes FAST (wired v0.36.0) ----------------
-        # Carte Leaflet des placettes au-dessus du seuil NDVI/NBR
-        # rolling-window. Câblage sur `nemeton::list_fast_alerts_for_zone()`
-        # (shipped en nemeton@v0.25.0). Masqué en mode health par
-        # l'observer mode-driven.
+        # ----- Sub-tab — Alertes FAST (raster depuis v0.42.0) --------
+        # Carte Leaflet d'un raster d'alerte pixel-par-pixel
+        # (10 m S2) produit par `nemeton::read_fast_alert_raster()`
+        # (spec 013, nemeton@v0.46.0). Toggle count / rolling exposé
+        # par le sous-module. Masqué en mode health par l'observer
+        # mode-driven.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_alerts_fast"),
           value = "alerts_fast",
@@ -372,6 +374,20 @@ mod_monitoring_server <- function(id, app_state) {
     # don't reflect the rows just inserted by the worker — the user
     # has to wiggle a control (bands / date range) to force a refetch.
     obs_refresh <- shiny::reactiveVal(0L)
+
+    # v0.42.0 — generic FAST refresh signal. Distinct from `obs_refresh`
+    # which targets `obs_pixel_data()` specifically: this one is wired
+    # into sub-modules whose reactives have no other path back to a
+    # post-ingestion state change. Bumped from the FAST success handler
+    # (see below). Consumed by :
+    #   - mod_monitoring_fast_alerts (alerts() / future raster reactive)
+    #   - mod_monitoring_pixel_map   (cache_dir_r — dir.exists() is not
+    #                                 a reactive dep, so the reactive
+    #                                 stays frozen on its pre-ingest
+    #                                 NULL value otherwise).
+    # Symmetric with how `alerts_refresh` is wired into FORDEAD-side
+    # modules.
+    fast_reload <- shiny::reactiveVal(0L)
 
     # ----- Async DB probe (E6.x — persistent loading feedback) ------
     # Open db_connect + db_migrate in a future worker so the user sees
@@ -1737,6 +1753,12 @@ mod_monitoring_server <- function(id, app_state) {
         # plotly and the Carte pixel sub-tab pick up the newly
         # inserted rows without the user having to touch a control.
         obs_refresh(obs_refresh() + 1L)
+        # v0.42.0 — propagate to Alertes FAST + Carte FAST so they pick
+        # up the new DB rows / new cache files. Before this bump, the
+        # toast "ingestion success" would show but those two tabs
+        # remained frozen on their pre-ingest empty state until the
+        # user touched a slider — cf. bug report 2026-05-23 sur villards.
+        fast_reload(fast_reload() + 1L)
       }
     })
 
@@ -2123,17 +2145,31 @@ mod_monitoring_server <- function(id, app_state) {
     # derive scenes_df without a second SQL roundtrip. The pixel
     # map only renders in quick mode (FORDEAD doesn't expose the
     # raw raster output) — the module checks mode_input internally.
+    #
+    # v0.42.0 — `refresh_r = fast_reload` allows cache_dir_r() to
+    # re-evaluate after an ingestion creates the cache directory
+    # (the dir.exists() check is not a Shiny dep on its own).
+    # `thresholds_r` feeds Livrable 3 — horizontal reference lines on
+    # the per-pixel modal plot drawn at the current sidebar NDVI / NBR
+    # threshold values.
     pixel_map_ret <- mod_monitoring_pixel_map_server(
       "pixel_map",
       app_state      = app_state,
       obs_pixel_data = obs_pixel_data,
-      mode_input     = shiny::reactive(input$mode)
+      mode_input     = shiny::reactive(input$mode),
+      refresh_r      = shiny::reactive(fast_reload()),
+      thresholds_r   = shiny::reactive(list(ndvi = input$threshold_ndvi,
+                                            nbr  = input$threshold_nbr))
     )
 
-    # v0.36.0 — Alertes FAST sub-tab. Wires the sidebar widgets
+    # v0.42.0 — Alertes FAST sub-tab. Spec 013 raster wiring : the
+    # module now consumes `nemeton::read_fast_alert_raster()` (count
+    # / rolling modes, pixel resolution S2 10 m). Sidebar widgets
     # (zone_id, date_range, threshold_ndvi, threshold_nbr,
-    # window_days) into `nemeton::list_fast_alerts_for_zone()`.
-    # The module owns its own Leaflet map + severity counters card.
+    # window_days) are forwarded as before, plus the new `mode_r`
+    # toggle owned by the sub-module itself.
+    # `refresh_r = fast_reload` so the raster reactive picks up the
+    # post-ingestion DB state without a manual slider wiggle.
     fast_alerts_ret <- mod_monitoring_fast_alerts_server(
       "fast_alerts",
       app_state    = app_state,
@@ -2143,7 +2179,8 @@ mod_monitoring_server <- function(id, app_state) {
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
         window_days = input$window_days
-      ))
+      )),
+      refresh_r    = shiny::reactive(fast_reload())
     )
 
     # v0.36.0 — Carte FORDEAD sub-tab. nemeton@v0.41.0 ships the mask

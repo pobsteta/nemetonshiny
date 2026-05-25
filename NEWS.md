@@ -1,3 +1,74 @@
+# nemetonshiny 0.42.0 (2026-05-25)
+
+### Added — spec 013 : wiring raster d'alerte FAST + fix réactif
+
+Trois livrables indépendants exposant `nemeton::read_fast_alert_raster()`
+(cœur v0.46.0) côté app, et corrigeant un bug réactif observé sur
+villards le 2026-05-23.
+
+#### Livrable 1 — propagation de la fin d'ingestion FAST (fix)
+
+Bug : après que le worker future ait terminé l'ingestion Sentinel-2,
+les onglets Alertes FAST et Carte FAST gardaient leur état pré-ingest
+(« Aucune alerte sur la fenêtre », « Pas de cache disque
+disponible ») jusqu'à ce que l'utilisateur bouge un slider ou
+recharge. Cause : `cache_dir_r()` de mod_monitoring_pixel_map ne
+dépend que de `app_state$current_project` (`dir.exists()` n'est pas un
+dep Shiny), et `alerts()` de mod_monitoring_fast_alerts ne dépend que
+des sliders — aucun chemin de re-invalidation depuis le worker.
+
+Fix : nouveau `fast_reload` reactiveVal dans mod_monitoring, bumpé
+par le success handler du fast_task. Threadé en `refresh_r` dans
+mod_monitoring_fast_alerts_server et mod_monitoring_pixel_map_server,
+pris comme dep par leurs réactives de données. Symétrique avec le
+couple `alerts_refresh` → FORDEAD.
+
+#### Livrable 2 — Alertes FAST bascule sur read_fast_alert_raster()
+
+mod_monitoring_fast_alerts passe d'une représentation markers-par-
+placette (list_fast_alerts_for_zone) à un raster d'alerte
+pixel-par-pixel à la résolution Sentinel-2 10 m, cohérent avec
+FORDEAD déjà raster.
+
+Deux modes (radio button) :
+
+  - **count** : entier par pixel = nombre de dates où NDVI<seuil OU
+    NBR<seuil sur [date_from, date_to]. Palette discrète 0
+    transparent / 1-2 jaune / 3-5 orange / 6+ rouge.
+  - **rolling** : continu par pixel = `max(deficit_ndvi, deficit_nbr)`
+    sur la fenêtre roulante trailing de window_days jours. Palette
+    continue jaune → rouge, borne haute capée sur le p95 pour
+    stabiliser l'échelle face à une queue minoritaire extrême.
+
+Suppression du chemin `list_fast_alerts_for_zone` côté app (la
+fonction reste exportée cœur, mais le module FAST n'en a plus
+besoin). Pas de popup au clic — l'exploration pixel se fait sur
+Carte FAST.
+
+i18n : 4 nouvelles clés (`mode_label`, `mode_count`, `mode_rolling`,
+`legend_count_title`) ; `legend_title` ajouté en v0.41.1 est désormais
+consommé en mode rolling.
+
+#### Livrable 3 — Carte FAST : lignes de seuil sur plot pixel
+
+Le plot modal qui s'ouvre au clic pixel sur Carte FAST
+(`extract_pixel_timeseries` → plotly NDVI + NBR) affiche désormais
+deux lignes horizontales pointillées colorées :
+
+  - seuil NDVI (orange, dashed) — annotation « seuil NDVI 0.40 »
+  - seuil NBR  (rouge,  dashed) — annotation « seuil NBR 0.30 »
+
+L'utilisateur voit immédiatement quelles dates feraient passer le
+pixel sous le seuil et déclencheraient une alerte. Pair UX direct
+avec le raster d'alerte du Livrable 2. `mod_monitoring_pixel_map_server`
+gagne l'arg `thresholds_r` (default NULL → comportement legacy).
+Nouveau format i18n `monitoring_pixel_plot_threshold_fmt`.
+
+### Dépendances
+
+`Imports: nemeton (>= 0.46.0)` — plancher bumpé pour
+`read_fast_alert_raster()`. Suite full green : **6383 PASS / 0 FAIL**.
+
 # nemetonshiny 0.41.1 (2026-05-23)
 
 ### Changed — alertes FAST passent au lexique « pixel » (UX)
