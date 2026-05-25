@@ -119,6 +119,12 @@ run_ingestion_async <- function() {
       ntfy <- .ntfy_config()
       i18n <- get_i18n(lang %||% "fr")
 
+      # v0.43.2 — resolve the zone *name* once (DB hit) so the start
+      # push reads « (zone villards) » instead of « (zone 1) ». Silent
+      # fallback to the integer id on any error — the resolver is
+      # cosmetic and MUST never abort a long-running ingestion.
+      zone_name <- .resolve_zone_name(con, zone_id)
+
       # Composite progress callback: the file writer the parent's
       # reactivePoll tails PLUS a worker-side ntfy push when the
       # first per-scene event arrives (one-shot, dedupé via state env).
@@ -134,7 +140,7 @@ run_ingestion_async <- function() {
       .ntfy_send(
         ntfy,
         sprintf(i18n$t("monitoring_ntfy_ingest_start"),
-                as.character(zone_id %||% "?")),
+                zone_name),
         tags  = "satellite",
         title = "Nemeton FAST"
       )
@@ -364,6 +370,10 @@ run_fordead_async <- function() {
       ntfy  <- .ntfy_config()
       i18n  <- get_i18n(lang %||% "fr")
 
+      # v0.43.2 — resolve the zone *name* once for the start push,
+      # symétrique avec FAST (cf. run_ingestion_async).
+      zone_name <- .resolve_zone_name(con, zone_id)
+
       # Composite progress callback: the file writer the parent's
       # reactivePoll tails, PLUS a worker-side ntfy push on each new
       # FORDEAD phase. Phase pushes are de-duplicated (one per phase
@@ -375,7 +385,7 @@ run_fordead_async <- function() {
       .ntfy_send(
         ntfy,
         sprintf(i18n$t("monitoring_ntfy_fordead_start"),
-                as.character(zone_id %||% "?")),
+                zone_name),
         tags  = "evergreen_tree",
         title = "Nemeton FORDEAD"
       )
