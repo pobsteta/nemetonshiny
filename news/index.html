@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.43.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.43.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,20 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.43.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.43.2" id="nemetonshiny-0432-2026-05-25">nemetonshiny 0.43.2 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0432-2026-05-25"></a></h2>
+<div class="section level4">
+<h4 id="fixed--ntfy-messages-utilisent-le-nom-de-zone--villards--plus-lid-0-43-2">Fixed — ntfy messages utilisent le nom de zone (« villards »), plus l’id<a class="anchor" aria-label="anchor" href="#fixed--ntfy-messages-utilisent-le-nom-de-zone--villards--plus-lid-0-43-2"></a></h4>
+<p>Bug : les notifications ntfy de FAST et FORDEAD disaient « (zone 1) » au lieu de « (zone villards) » parce que les call sites passaient <code>as.character(zone_id %||% "?")</code> au sprintf, alors que les templates i18n attendent sémantiquement le <strong>nom</strong> de zone (<code>monitoring_zone.name</code>, ex. “villards”).</p>
+<p>Le fix précédent du header HTTP (v0.43.1) a aligné le titre (« Nemeton FAST » vs « Nemeton FORDEAD »), il restait à corriger le corps des messages.</p>
+<p>Fix : nouveau helper <code>.resolve_zone_name(con, zone_id)</code> dans <code>service_monitoring_db.R</code> qui fait un <code>SELECT name FROM monitoring_zone WHERE id = $1</code> avec <strong>fallback silencieux sur l’id stringifié</strong> si la zone est absente / DBI erre / <code>con</code> est NULL — best-effort cosmétique qui ne doit JAMAIS aborter un run.</p>
+<p>Threadé dans les 2 workers FAST + FORDEAD : capture une seule fois au démarrage du worker, passe <code>zone_name</code> au sprintf du push « start ». Les autres templates ntfy (scenes / phase / complete / error) ne portent pas la zone dans leur format → rien à modifier côté callbacks (scope plus serré que le brief).</p>
+<p>Tests : 4 nouveaux test cases (<code>.resolve_zone_name</code> : DB hit, no row, DBI error, NULL con/zone_id). Suite full green : <strong>6485 PASS / 0 FAIL</strong>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.43.1" id="nemetonshiny-0431-2026-05-25">nemetonshiny 0.43.1 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0431-2026-05-25"></a></h2>
 <div class="section level4">
