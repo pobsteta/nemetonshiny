@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.41.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.42.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,20 +29,54 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.41.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.42.0" id="nemetonshiny-0420-2026-05-25">nemetonshiny 0.42.0 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0420-2026-05-25"></a></h2>
+<div class="section level4">
+<h4 id="added--spec--wiring-raster-dalerte-fast--fix-réactif-0-42-0">Added — spec 013 : wiring raster d’alerte FAST + fix réactif<a class="anchor" aria-label="anchor" href="#added--spec--wiring-raster-dalerte-fast--fix-r%C3%A9actif-0-42-0"></a></h4>
+<p>Trois livrables indépendants exposant <code><a href="https://pobsteta.github.io/nemeton/reference/read_fast_alert_raster.html" class="external-link">nemeton::read_fast_alert_raster()</a></code> (cœur v0.46.0) côté app, et corrigeant un bug réactif observé sur villards le 2026-05-23.</p>
+<div class="section level5">
+<h5 id="livrable--propagation-de-la-fin-dingestion-fast-fix-0-42-0">Livrable 1 — propagation de la fin d’ingestion FAST (fix)<a class="anchor" aria-label="anchor" href="#livrable--propagation-de-la-fin-dingestion-fast-fix-0-42-0"></a></h5>
+<p>Bug : après que le worker future ait terminé l’ingestion Sentinel-2, les onglets Alertes FAST et Carte FAST gardaient leur état pré-ingest (« Aucune alerte sur la fenêtre », « Pas de cache disque disponible ») jusqu’à ce que l’utilisateur bouge un slider ou recharge. Cause : <code>cache_dir_r()</code> de mod_monitoring_pixel_map ne dépend que de <code>app_state$current_project</code> (<code><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.exists()</a></code> n’est pas un dep Shiny), et <code>alerts()</code> de mod_monitoring_fast_alerts ne dépend que des sliders — aucun chemin de re-invalidation depuis le worker.</p>
+<p>Fix : nouveau <code>fast_reload</code> reactiveVal dans mod_monitoring, bumpé par le success handler du fast_task. Threadé en <code>refresh_r</code> dans mod_monitoring_fast_alerts_server et mod_monitoring_pixel_map_server, pris comme dep par leurs réactives de données. Symétrique avec le couple <code>alerts_refresh</code> → FORDEAD.</p>
+</div>
+<div class="section level5">
+<h5 id="livrable--alertes-fast-bascule-sur-read_fast_alert_raster-0-42-0">Livrable 2 — Alertes FAST bascule sur read_fast_alert_raster()<a class="anchor" aria-label="anchor" href="#livrable--alertes-fast-bascule-sur-read_fast_alert_raster-0-42-0"></a></h5>
+<p>mod_monitoring_fast_alerts passe d’une représentation markers-par- placette (list_fast_alerts_for_zone) à un raster d’alerte pixel-par-pixel à la résolution Sentinel-2 10 m, cohérent avec FORDEAD déjà raster.</p>
+<p>Deux modes (radio button) :</p>
+<ul><li>
+<strong>count</strong> : entier par pixel = nombre de dates où NDVI&lt;seuil OU NBR&lt;seuil sur [date_from, date_to]. Palette discrète 0 transparent / 1-2 jaune / 3-5 orange / 6+ rouge.</li>
+<li>
+<strong>rolling</strong> : continu par pixel = <code>max(deficit_ndvi, deficit_nbr)</code> sur la fenêtre roulante trailing de window_days jours. Palette continue jaune → rouge, borne haute capée sur le p95 pour stabiliser l’échelle face à une queue minoritaire extrême.</li>
+</ul><p>Suppression du chemin <code>list_fast_alerts_for_zone</code> côté app (la fonction reste exportée cœur, mais le module FAST n’en a plus besoin). Pas de popup au clic — l’exploration pixel se fait sur Carte FAST.</p>
+<p>i18n : 4 nouvelles clés (<code>mode_label</code>, <code>mode_count</code>, <code>mode_rolling</code>, <code>legend_count_title</code>) ; <code>legend_title</code> ajouté en v0.41.1 est désormais consommé en mode rolling.</p>
+</div>
+<div class="section level5">
+<h5 id="livrable--carte-fast--lignes-de-seuil-sur-plot-pixel-0-42-0">Livrable 3 — Carte FAST : lignes de seuil sur plot pixel<a class="anchor" aria-label="anchor" href="#livrable--carte-fast--lignes-de-seuil-sur-plot-pixel-0-42-0"></a></h5>
+<p>Le plot modal qui s’ouvre au clic pixel sur Carte FAST (<code>extract_pixel_timeseries</code> → plotly NDVI + NBR) affiche désormais deux lignes horizontales pointillées colorées :</p>
+<ul><li>seuil NDVI (orange, dashed) — annotation « seuil NDVI 0.40 »</li>
+<li>seuil NBR (rouge, dashed) — annotation « seuil NBR 0.30 »</li>
+</ul><p>L’utilisateur voit immédiatement quelles dates feraient passer le pixel sous le seuil et déclencheraient une alerte. Pair UX direct avec le raster d’alerte du Livrable 2. <code>mod_monitoring_pixel_map_server</code> gagne l’arg <code>thresholds_r</code> (default NULL → comportement legacy). Nouveau format i18n <code>monitoring_pixel_plot_threshold_fmt</code>.</p>
+</div>
+</div>
+<div class="section level4">
+<h4 id="dépendances-0-42-0">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-0-42-0"></a></h4>
+<p><code>Imports: nemeton (&gt;= 0.46.0)</code> — plancher bumpé pour <code>read_fast_alert_raster()</code>. Suite full green : <strong>6383 PASS / 0 FAIL</strong>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.41.1" id="nemetonshiny-0411-2026-05-23">nemetonshiny 0.41.1 (2026-05-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0411-2026-05-23"></a></h2>
 <div class="section level4">
 <h4 id="changed--alertes-fast-passent-au-lexique--pixel--ux-0-41-1">Changed — alertes FAST passent au lexique « pixel » (UX)<a class="anchor" aria-label="anchor" href="#changed--alertes-fast-passent-au-lexique--pixel--ux-0-41-1"></a></h4>
-<p>Préparation du basculement des alertes FAST d’une représentation marker-par-placette à un raster d’alerte pixel-par-pixel (cohérent avec FORDEAD, déjà raster). La fonction cœur <code>nemeton::read_fast_alert_raster()</code> qui consommera le wiring final n’est pas encore livrée — ce cycle dev ne touche que les libellés i18n et l’en-tête du popup Leaflet pour éviter une dette i18n quand le raster arrivera.</p>
+<p>Préparation du basculement des alertes FAST d’une représentation marker-par-placette à un raster d’alerte pixel-par-pixel (cohérent avec FORDEAD, déjà raster). La fonction cœur <code><a href="https://pobsteta.github.io/nemeton/reference/read_fast_alert_raster.html" class="external-link">nemeton::read_fast_alert_raster()</a></code> qui consommera le wiring final n’est pas encore livrée — ce cycle dev ne touche que les libellés i18n et l’en-tête du popup Leaflet pour éviter une dette i18n quand le raster arrivera.</p>
 <ul><li>
 <code>monitoring_fast_alerts_empty_body</code> reformulé « placette → pixel » (FR : « Aucun pixel n’a déclenché d’alerte… » ; EN miroir).</li>
 <li>
 <code>monitoring_fast_alert_popup_plot</code> renommé en <code>monitoring_fast_alert_popup_coords</code> (« Coordonnées » / « Coordinates »), appliqué au site d’utilisation dans <code>mod_monitoring_fast_alerts.R</code> : le popup affiche désormais la latitude / longitude de l’alerte (5 décimales, ~1 m) plutôt que <code>plot_id</code>. Reste correct sous les deux représentations (marker actuel + raster futur).</li>
 <li>
-<code>monitoring_fast_alert_popup_severity</code> conservé « Sévérité » / « Severity » avec un TODO en commentaire : à arbitrer entre score continu (renommer en <code>monitoring_fast_alerts_legend_title</code>) et classes discrètes quand <code>nemeton::read_fast_alert_raster()</code> aura tranché.</li>
+<code>monitoring_fast_alert_popup_severity</code> conservé « Sévérité » / « Severity » avec un TODO en commentaire : à arbitrer entre score continu (renommer en <code>monitoring_fast_alerts_legend_title</code>) et classes discrètes quand <code><a href="https://pobsteta.github.io/nemeton/reference/read_fast_alert_raster.html" class="external-link">nemeton::read_fast_alert_raster()</a></code> aura tranché.</li>
 <li>Ajout en anticipation : <code>monitoring_fast_alerts_legend_title</code> (« Score d’alerte »), <code>monitoring_fast_alerts_opacity_label</code> (« Opacité du raster »), <code>monitoring_fast_alerts_threshold_label</code> (« Masquer en dessous du seuil »). Non consommées tant que le wiring raster n’est pas en place — gating sur la livraison cœur.</li>
 </ul></div>
 <div class="section level4">
