@@ -1,4 +1,4 @@
-# nemetonshiny 0.41.1.9001 (2026-05-24, cycle dev)
+# nemetonshiny 0.42.0 (2026-05-25)
 
 ### Added — spec 013 : wiring raster d'alerte FAST + fix réactif
 
