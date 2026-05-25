@@ -1,5 +1,42 @@
 # Changelog
 
+## nemetonshiny 0.42.1 (2026-05-25)
+
+#### Added — ntfy push notifications pour l’ingestion FAST
+
+Symétrie complète avec FORDEAD. `run_ingestion_async()` envoie désormais
+3 (ou 4) messages ntfy par run, opt-in via `NEMETON_NTFY_TOPIC`
+(silencieux si non configuré) :
+
+- **start** — « Ingestion FAST démarrée (zone X). » au moment où le
+  worker démarre, avant l’appel à
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html).
+- **scenes** — « Téléchargement Sentinel-2 : N scènes à traiter. » à la
+  première event `s2:scene` (one-shot, dédupé via un state env — pas de
+  spam sur 30-100 scènes).
+- **complete** — « Ingestion FAST terminée : N scènes, M observations en
+  Ts. » à la sortie réussie, avec la durée mesurée worker-side.
+- **error** — « Échec de l’ingestion FAST : » en cas d’erreur fatale,
+  priority `high` + tag `rotating_light`.
+
+Implémentation : - Nouveau helper `.build_ingest_progress_callback()`
+dans `service_monitoring.R`, miroir de
+`.build_fordead_progress_callback()`. - L’argument `lang` est ajouté à
+`run_ingestion_async()` (default `"fr"`), threadé depuis
+`mod_monitoring.R` via `app_state$language` — le worker bâtit ses
+messages dans la langue de l’utilisateur (les workers `future` n’ont pas
+accès à `app_state`). - Le résultat retourné par le worker expose
+désormais `duration_sec` (auparavant absent côté FAST — seul FORDEAD le
+portait).
+
+i18n : 4 nouvelles clés `monitoring_ntfy_ingest_start` / `_scenes` /
+`_complete` / `_error` (FR + EN, sprintf placeholders).
+
+Tests : 4 nouveaux test cases dans `test-service_monitoring.R` — write
+progress JSON, tolérance d’un path NULL, parité FR + EN des clés, bonne
+formation des [`sprintf()`](https://rdrr.io/r/base/sprintf.html)
+placeholders. Suite full green : **6413 PASS / 0 FAIL**.
+
 ## nemetonshiny 0.42.0 (2026-05-25)
 
 #### Added — spec 013 : wiring raster d’alerte FAST + fix réactif

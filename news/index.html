@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.42.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.42.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,27 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.42.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.42.1" id="nemetonshiny-0421-2026-05-25">nemetonshiny 0.42.1 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0421-2026-05-25"></a></h2>
+<div class="section level4">
+<h4 id="added--ntfy-push-notifications-pour-lingestion-fast-0-42-1">Added — ntfy push notifications pour l’ingestion FAST<a class="anchor" aria-label="anchor" href="#added--ntfy-push-notifications-pour-lingestion-fast-0-42-1"></a></h4>
+<p>Symétrie complète avec FORDEAD. <code>run_ingestion_async()</code> envoie désormais 3 (ou 4) messages ntfy par run, opt-in via <code>NEMETON_NTFY_TOPIC</code> (silencieux si non configuré) :</p>
+<ul><li>
+<strong>start</strong> — « Ingestion FAST démarrée (zone X). » au moment où le worker démarre, avant l’appel à <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code>.</li>
+<li>
+<strong>scenes</strong> — « Téléchargement Sentinel-2 : N scènes à traiter. » à la première event <code>s2:scene</code> (one-shot, dédupé via un state env — pas de spam sur 30-100 scènes).</li>
+<li>
+<strong>complete</strong> — « Ingestion FAST terminée : N scènes, M observations en Ts. » à la sortie réussie, avec la durée mesurée worker-side.</li>
+<li>
+<strong>error</strong> — « Échec de l’ingestion FAST : <message> » en cas d’erreur fatale, priority <code>high</code> + tag <code>rotating_light</code>.</message></li>
+</ul><p>Implémentation : - Nouveau helper <code>.build_ingest_progress_callback()</code> dans <code>service_monitoring.R</code>, miroir de <code>.build_fordead_progress_callback()</code>. - L’argument <code>lang</code> est ajouté à <code>run_ingestion_async()</code> (default <code>"fr"</code>), threadé depuis <code>mod_monitoring.R</code> via <code>app_state$language</code> — le worker bâtit ses messages dans la langue de l’utilisateur (les workers <code>future</code> n’ont pas accès à <code>app_state</code>). - Le résultat retourné par le worker expose désormais <code>duration_sec</code> (auparavant absent côté FAST — seul FORDEAD le portait).</p>
+<p>i18n : 4 nouvelles clés <code>monitoring_ntfy_ingest_start</code> / <code>_scenes</code> / <code>_complete</code> / <code>_error</code> (FR + EN, sprintf placeholders).</p>
+<p>Tests : 4 nouveaux test cases dans <code>test-service_monitoring.R</code> — write progress JSON, tolérance d’un path NULL, parité FR + EN des clés, bonne formation des <code><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf()</a></code> placeholders. Suite full green : <strong>6413 PASS / 0 FAIL</strong>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.42.0" id="nemetonshiny-0420-2026-05-25">nemetonshiny 0.42.0 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0420-2026-05-25"></a></h2>
 <div class="section level4">
