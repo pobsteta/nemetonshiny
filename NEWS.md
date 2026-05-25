@@ -1,4 +1,4 @@
-# nemetonshiny 0.42.1.9001 (2026-05-25, cycle dev)
+# nemetonshiny 0.43.0 (2026-05-25)
 
 ### Added — spec 014 phase B : plan d'échantillonnage de validation terrain
 
