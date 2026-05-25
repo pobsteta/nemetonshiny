@@ -1,0 +1,248 @@
+# service_validation_sampling.R — Spec 014 phase B (app-side wrapper).
+#
+# `generate_validation_plan()` is the single entry point consumed by
+# `mod_validation_sampling`. It encapsulates the FORDEAD vs FAST mask
+# resolution, calls `nemeton::create_validation_sampling_plan()`,
+# enriches the result with app provenance columns and turns the cœur
+# error `nemeton_empty_alert_mask` plus a handful of preconditions
+# into typed errors the UI maps to friendly messages.
+#
+# Error classes :
+#   - validation_no_project    : no project loaded
+#   - validation_no_zone       : project has no monitoring_zone_id
+#   - validation_no_zone_geom  : zone polygon could not be derived
+#   - validation_no_mask       : no FORDEAD/FAST mask available
+#                                (cache absent, read failed, or
+#                                FAST compute parameters missing)
+#   - validation_empty_mask    : mask is well-formed but contains
+#                                no alert cell in the chosen classes
+#                                (zone saine — wrapper of the cœur
+#                                `nemeton_empty_alert_mask`)
+
+
+#' Generate a field validation sampling plan
+#'
+#' @param con DBI connection to the monitoring DB.
+#' @param project The loaded project list (`app_state$current_project`).
+#'   Must carry `id`, `path` and `metadata$monitoring_zone_id`.
+#' @param source One of `"FORDEAD"` / `"FAST"`. Drives which alert
+#'   mask the cœur planner consumes.
+#' @param n_validation Integer. Number of validation placettes.
+#' @param n_control Integer. Number of control placettes.
+#' @param classes Integer vector — alert classes to retain. Default
+#'   `c(3L, 4L)` matches the G1 guard-rail of spec 008.
+#' @param buffer_m Numeric. Tampon around alert cells in meters.
+#' @param seed Optional integer. Forwarded to the cœur planner.
+#' @param ndvi_threshold,nbr_threshold,mode,window_days,date_from,date_to
+#'   FAST mask parameters. Required (non-NULL) when `source == "FAST"`
+#'   and no recent mask exists in the project cache.
+#'
+#' @return An sf POINT (EPSG:2154) enriched with the columns
+#'   `plot_id`, `type` (Validation / Temoin), `alert_class`,
+#'   `visit_order`, `source`, `classes`, `seed`, plus the app
+#'   provenance columns `zone_id`, `source_run_id`, `generated_at`.
+#' @noRd
+generate_validation_plan <- function(con, project,
+                                     source = c("FORDEAD", "FAST"),
+                                     n_validation = 20L,
+                                     n_control    = 5L,
+                                     classes      = c(3L, 4L),
+                                     buffer_m     = 0,
+                                     seed         = NULL,
+                                     ndvi_threshold = NULL,
+                                     nbr_threshold  = NULL,
+                                     mode           = "count",
+                                     window_days    = 30L,
+                                     date_from      = NULL,
+                                     date_to        = NULL) {
+  source <- match.arg(source)
+  if (is.null(project) || is.null(project$id)) {
+    rlang::abort("No project loaded.", class = "validation_no_project")
+  }
+  zone_id_raw <- project$metadata$monitoring_zone_id
+  if (is.null(zone_id_raw) || !nzchar(as.character(zone_id_raw))) {
+    rlang::abort("Project has no monitoring zone.",
+                 class = "validation_no_zone")
+  }
+  zone_id <- suppressWarnings(as.integer(zone_id_raw))
+  if (is.na(zone_id)) {
+    rlang::abort("monitoring_zone_id is not an integer.",
+                 class = "validation_no_zone")
+  }
+
+  zone <- .resolve_validation_zone(project, con, zone_id)
+  if (is.null(zone)) {
+    rlang::abort("Could not derive zone polygon for validation plan.",
+                 class = "validation_no_zone_geom")
+  }
+
+  alert_raster <- .resolve_alert_raster(
+    project, con, zone_id, source,
+    ndvi_threshold = ndvi_threshold,
+    nbr_threshold  = nbr_threshold,
+    mode           = mode,
+    window_days    = window_days,
+    date_from      = date_from,
+    date_to        = date_to
+  )
+  if (is.null(alert_raster)) {
+    rlang::abort("No alert mask available for this zone.",
+                 class = "validation_no_mask")
+  }
+
+  plan <- tryCatch(
+    nemeton::create_validation_sampling_plan(
+      zone         = zone,
+      alert_raster = alert_raster,
+      n_validation = as.integer(n_validation),
+      n_control    = as.integer(n_control),
+      classes      = as.integer(classes),
+      buffer_m     = as.numeric(buffer_m),
+      source       = source,
+      seed         = seed
+    ),
+    error = function(e) {
+      if (inherits(e, "nemeton_empty_alert_mask")) {
+        rlang::abort("No alert cell in the chosen classes.",
+                     class = "validation_empty_mask",
+                     parent = e)
+      }
+      stop(e)
+    }
+  )
+
+  plan$zone_id       <- zone_id
+  plan$source_run_id <- .extract_mask_run_id(project, source, zone_id)
+  plan$generated_at  <- Sys.time()
+  plan
+}
+
+
+# Derive the zone polygon (EPSG:2154 sf POLYGON) for the validation
+# planner. Tries the on-disk monitoring DB lookup first (mirrors what
+# nemeton uses internally) and falls back to dissolving the project
+# UGF layer when the DB read fails or returns NULL (zone row deleted
+# out-of-band, cache wipe, …).
+.resolve_validation_zone <- function(project, con, zone_id) {
+  aoi <- tryCatch(get_monitoring_zone_aoi(con, zone_id),
+                  error = function(e) NULL)
+  if (!is.null(aoi) && inherits(aoi, "sf") && nrow(aoi) > 0L) {
+    return(sf::st_transform(aoi, 2154))
+  }
+  ug <- project$indicators_sf
+  if (is.null(ug) || !inherits(ug, "sf") || !nrow(ug)) return(NULL)
+  poly <- tryCatch(
+    sf::st_union(sf::st_transform(ug, 2154)),
+    error = function(e) NULL
+  )
+  if (is.null(poly)) return(NULL)
+  sf::st_sf(zone_id = zone_id,
+            geometry = sf::st_sfc(poly, crs = 2154))
+}
+
+
+# Resolve the SpatRaster used to feed create_validation_sampling_plan().
+# - FORDEAD : read the dieback mask from <project>/cache/layers/fordead.
+# - FAST    : try the FAST alert mask cache first (cache/layers/fast).
+#             If absent and the FAST compute parameters are complete,
+#             call compute_fast_alert_mask() then re-read. Returns NULL
+#             when no usable mask can be produced — caller turns this
+#             into a typed error.
+.resolve_alert_raster <- function(project, con, zone_id, source,
+                                  ndvi_threshold = NULL,
+                                  nbr_threshold  = NULL,
+                                  mode           = "count",
+                                  window_days    = 30L,
+                                  date_from      = NULL,
+                                  date_to        = NULL) {
+  if (is.null(project$path) || !nzchar(project$path)) return(NULL)
+  if (identical(source, "FORDEAD")) {
+    cd <- file.path(project$path, "cache", "layers", "fordead")
+    if (!dir.exists(cd)) return(NULL)
+    return(tryCatch(
+      nemeton::read_fordead_dieback_mask(con, zone_id, cache_dir = cd),
+      error = function(e) {
+        cli::cli_alert_warning(
+          "read_fordead_dieback_mask failed: {e$message}"
+        )
+        NULL
+      }
+    ))
+  }
+  # FAST path.
+  cd <- file.path(project$path, "cache", "layers", "fast")
+  if (!dir.exists(cd)) {
+    dir.create(cd, recursive = TRUE, showWarnings = FALSE)
+  }
+  r <- tryCatch(
+    nemeton::read_fast_alert_mask(con, zone_id, cache_dir = cd),
+    error = function(e) NULL
+  )
+  if (!is.null(r)) return(r)
+
+  # Need to compute. Validate FAST parameters first.
+  if (is.null(ndvi_threshold) || is.null(nbr_threshold) ||
+      is.null(date_from) || is.null(date_to)) {
+    cli::cli_alert_warning(
+      "FAST mask compute requires NDVI / NBR thresholds and date range."
+    )
+    return(NULL)
+  }
+  s2_cache <- file.path(project$path, "cache", "layers", "sentinel2")
+  if (!dir.exists(s2_cache)) {
+    cli::cli_alert_warning(
+      "FAST mask compute requires a populated Sentinel-2 cache."
+    )
+    return(NULL)
+  }
+  tryCatch(
+    nemeton::compute_fast_alert_mask(
+      con            = con,
+      zone_id        = zone_id,
+      threshold_ndvi = as.numeric(ndvi_threshold),
+      threshold_nbr  = as.numeric(nbr_threshold),
+      date_from      = as.Date(date_from),
+      date_to        = as.Date(date_to),
+      mode           = as.character(mode),
+      window_days    = as.integer(window_days),
+      cache_dir      = s2_cache,
+      mask_cache_dir = cd
+    ),
+    error = function(e) {
+      cli::cli_alert_warning(
+        "compute_fast_alert_mask failed: {e$message}"
+      )
+    }
+  )
+  tryCatch(
+    nemeton::read_fast_alert_mask(con, zone_id, cache_dir = cd),
+    error = function(e) NULL
+  )
+}
+
+
+# Best-effort extraction of the mask source filename's timestamp.
+# FORDEAD : <project>/cache/layers/fordead/zone_<id>/dieback_mask_<TS>.tif
+# FAST    : <project>/cache/layers/fast/zone_<id>/fast_alert_<TS>.tif
+# Returns the most recent timestamp suffix as a character or NA when
+# the path doesn't exist / no matching file is found.
+.extract_mask_run_id <- function(project, source, zone_id) {
+  if (is.null(project$path)) return(NA_character_)
+  base <- if (identical(source, "FORDEAD")) {
+    file.path(project$path, "cache", "layers", "fordead",
+              sprintf("zone_%d", zone_id))
+  } else {
+    file.path(project$path, "cache", "layers", "fast",
+              sprintf("zone_%d", zone_id))
+  }
+  if (!dir.exists(base)) return(NA_character_)
+  pattern <- if (identical(source, "FORDEAD")) {
+    "^dieback_mask_(.+)\\.tif$"
+  } else {
+    "^fast_alert_(.+)\\.tif$"
+  }
+  files <- list.files(base, pattern = pattern, full.names = FALSE)
+  if (!length(files)) return(NA_character_)
+  ts <- sub(pattern, "\\1", files)
+  ts[order(ts, decreasing = TRUE)][1]
+}
