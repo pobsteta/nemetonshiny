@@ -1,4 +1,4 @@
-# nemetonshiny 0.43.0.9001 (2026-05-25, cycle dev)
+# nemetonshiny 0.43.1 (2026-05-25)
 
 ### Fixed — `.ntfy_send()` titre HTTP désormais paramétrable
 
