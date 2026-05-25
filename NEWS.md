@@ -1,3 +1,34 @@
+# nemetonshiny 0.43.2 (2026-05-25)
+
+### Fixed — ntfy messages utilisent le nom de zone (« villards »), plus l'id
+
+Bug : les notifications ntfy de FAST et FORDEAD disaient
+« (zone 1) » au lieu de « (zone villards) » parce que les call sites
+passaient `as.character(zone_id %||% "?")` au sprintf, alors que les
+templates i18n attendent sémantiquement le **nom** de zone
+(`monitoring_zone.name`, ex. "villards").
+
+Le fix précédent du header HTTP (v0.43.1) a aligné le titre
+(« Nemeton FAST » vs « Nemeton FORDEAD »), il restait à corriger le
+corps des messages.
+
+Fix : nouveau helper `.resolve_zone_name(con, zone_id)` dans
+`service_monitoring_db.R` qui fait un
+`SELECT name FROM monitoring_zone WHERE id = $1` avec **fallback
+silencieux sur l'id stringifié** si la zone est absente / DBI erre /
+`con` est NULL — best-effort cosmétique qui ne doit JAMAIS aborter
+un run.
+
+Threadé dans les 2 workers FAST + FORDEAD : capture une seule fois
+au démarrage du worker, passe `zone_name` au sprintf du push
+« start ». Les autres templates ntfy (scenes / phase / complete /
+error) ne portent pas la zone dans leur format → rien à modifier
+côté callbacks (scope plus serré que le brief).
+
+Tests : 4 nouveaux test cases (`.resolve_zone_name` : DB hit, no
+row, DBI error, NULL con/zone_id). Suite full green : **6485 PASS /
+0 FAIL**.
+
 # nemetonshiny 0.43.1 (2026-05-25)
 
 ### Fixed — `.ntfy_send()` titre HTTP désormais paramétrable
