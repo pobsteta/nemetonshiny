@@ -1,3 +1,104 @@
+# nemetonshiny 0.42.1.9001 (2026-05-25, cycle dev)
+
+### Added — spec 014 phase B : plan d'échantillonnage de validation terrain
+
+Ferme la boucle des alertes FAST/FORDEAD. Jusqu'ici, la projection
+des foyers détectés s'appuyait sur les placettes systémiques
+(Base/Over) qui peuvent rater un foyer si aucune placette n'est à
+proximité. Le nouveau plan de validation est **ciblé sur les foyers
+eux-mêmes**, generé par `nemeton::create_validation_sampling_plan()`
+(cœur v0.47.0).
+
+Trois livrables indépendants, commits distincts.
+
+#### Livrable 1 — service `generate_validation_plan()`
+
+Nouveau `R/service_validation_sampling.R`. Encapsule la logique
+applicative : résolution `monitoring_zone_id` → AOI, lecture du
+mask d'alerte (FORDEAD : `read_fordead_dieback_mask()` ; FAST :
+`read_fast_alert_mask()` avec `compute_fast_alert_mask()` automatique
+si pas de mask récent), appel cœur, enrichissement avec
+`zone_id` / `source_run_id` / `generated_at`, traduction de
+`nemeton_empty_alert_mask` en erreur typée app pour message UI.
+
+Classes d'erreur typées :
+  - `validation_no_project` / `validation_no_zone` (préconditions)
+  - `validation_no_mask` (cache absent, lecture KO, FAST sans params)
+  - `validation_empty_mask` (zone saine — wrapper du cœur)
+
+#### Livrable 2 — sous-onglet « Plan de validation »
+
+Nouveau `R/mod_validation_sampling.R`, cinquième sous-onglet de
+Suivi sanitaire, toujours visible (pas mode-driven). Sidebar
+formulaire : radio source FORDEAD/FAST (défaut piloté par
+`input$mode` du sidebar parent), numericInput n_validation /
+n_control, checkboxGroupInput classes (3 / 4 par défaut, options
+1 / 2 « moins fiables » exposées pour généralité), buffer_m, seed,
+bouton « Générer ». Sortie : carte Leaflet (raster d'alerte semi-
+transparent + markers Validation verts / Témoin gris + popup
+plot_id/type/alert_class/visit_order) et table DT.
+
+Le changement d'un input invalide le résultat silencieusement —
+l'utilisateur re-clique « Générer » pour recalculer.
+
+Boutons d'action :
+  - **Persister dans samples.gpkg** — appelle `persist_validation_plan()`.
+  - **Exporter pour QGIS** — `downloadHandler` qui produit un `.qgz`
+    via `nemeton::create_qgis_project(zone_etude = indicators_sf,
+    crs = 2154, region = "BFC", lang)`, directement ouvrable en
+    QGIS Desktop (synchronisable vers QField via QFieldSync au
+    besoin).
+
+#### Livrable 3 — persistance `samples.gpkg/validation_plots`
+
+Nouveau `R/service_samples_gpkg.R` :
+  - `persist_validation_plan(plan, project_path, layer_name,
+    append)` — couche **dédiée** `validation_plots`, coexiste avec
+    les couches systémiques (`plots`) et action-plan
+    (`observations`). Append idempotent sur
+    `(plot_id, generated_at)` — re-clicker « Persister » sur le
+    même plan ne duplique pas les lignes. Override géo `geom` →
+    `geometry` pour neutraliser le rename GPKG.
+  - `load_validation_plan(project_path, layer_name)` — lecteur
+    miroir.
+
+### Dépendances
+
+`Imports: nemeton (>= 0.47.0)` — plancher bumpé pour
+`create_validation_sampling_plan`, `compute_fast_alert_mask`,
+`read_fast_alert_mask`, `fordead_alert_mask`.
+
+### i18n
+
+17 nouvelles clés `validation_*` (FR + EN) : title, source_label,
+n_validation_label, n_control_label, classes_label, buffer_label,
+seed_label, generate_btn, persist_btn, export_qgis_btn, idle_hint,
+empty_mask_title/body, no_mask_title/body, persisted_toast,
+qgis_exported_toast, legend_validation, legend_temoin.
+
+### Tests
+
+- `test-service_validation_sampling.R` (13 PASS) : préconditions,
+  happy path FORDEAD, happy path FAST avec cache hit, no_mask,
+  empty_mask via `nemeton_empty_alert_mask`, FAST sans params.
+- `test-service_samples_gpkg.R` (12 PASS) : création layer, append
+  d'un nouveau run, idempotence sur `(plot_id, generated_at)`,
+  overwrite `append = FALSE`, coexistence avec la couche `plots`
+  systémique, round-trip `load_validation_plan`.
+
+Suite full green : **6476 PASS / 0 FAIL** (+63 nouveaux).
+
+### Hors scope (V1)
+
+- Auto-call de `compute_fast_alert_mask()` à chaque ingestion FAST
+  — V2 potentielle. Pour l'instant déclenché par le bouton Générer
+  côté Validation.
+- Suivi historique des plans (UI dédiée). La trace est en place
+  via `generated_at` + `source_run_id` dans la couche, mais pas
+  encore exploitée visuellement.
+- Export QField direct mobile (V1 fournit le `.qgz` QGIS Desktop ;
+  `nemeton::create_qfield_project()` reste disponible pour V2).
+
 # nemetonshiny 0.42.1 (2026-05-25)
 
 ### Added — ntfy push notifications pour l'ingestion FAST
