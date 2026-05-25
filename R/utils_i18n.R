@@ -2368,6 +2368,17 @@ TRANSLATIONS <- list(
     fr = "Plan de validation",
     en = "Validation plan"
   ),
+  # v0.43.3 — split du sous-onglet validation en 2 instances mode-driven
+  # (symétriques avec Alertes FAST/FORDEAD et Carte FAST/FORDEAD).
+  # Source figée par onglet, plus de radio à choisir.
+  validation_sampling_title_fast = list(
+    fr = "Plan de validation FAST",
+    en = "FAST validation plan"
+  ),
+  validation_sampling_title_fordead = list(
+    fr = "Plan de validation FORDEAD",
+    en = "FORDEAD validation plan"
+  ),
   validation_source_label = list(
     fr = "Source d'alerte",
     en = "Alert source"

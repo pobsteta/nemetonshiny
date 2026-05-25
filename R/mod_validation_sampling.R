@@ -16,22 +16,41 @@
 #' Plan de validation sub-tab UI
 #'
 #' @param id Module namespace id.
+#' @param source Optional character `"FAST"` or `"FORDEAD"`. When
+#'   provided, the radio button « Source d'alerte » is omitted from
+#'   the sidebar — the source is **fixed** for this instance. This is
+#'   the mode used by `mod_monitoring`, which mounts two instances of
+#'   the module (one per source, mode-driven visibility like the
+#'   FAST / FORDEAD alerts and pixel map couples). v0.43.3.
+#'   When `NULL`, the radio is shown (legacy behaviour).
 #' @noRd
-mod_validation_sampling_ui <- function(id) {
+mod_validation_sampling_ui <- function(id, source = NULL) {
   ns <- shiny::NS(id)
   i18n <- get_i18n("fr")
+  radio_ui <- if (is.null(source)) {
+    shiny::radioButtons(
+      ns("source"),
+      label  = i18n$t("validation_source_label"),
+      inline = TRUE,
+      choices = c("FORDEAD" = "FORDEAD", "FAST" = "FAST"),
+      selected = "FORDEAD"
+    )
+  } else {
+    # Fixed source — surface it as a static badge so the user knows
+    # *which* source this sub-tab targets without exposing a control.
+    htmltools::div(
+      class = "mb-2",
+      htmltools::tags$small(class = "text-muted",
+                            i18n$t("validation_source_label"), ":"),
+      htmltools::tags$strong(class = "ms-1", as.character(source))
+    )
+  }
   bslib::layout_sidebar(
     sidebar = bslib::sidebar(
       width = 320,
       title = i18n$t("validation_sampling_title"),
 
-      shiny::radioButtons(
-        ns("source"),
-        label  = i18n$t("validation_source_label"),
-        inline = TRUE,
-        choices = c("FORDEAD" = "FORDEAD", "FAST" = "FAST"),
-        selected = "FORDEAD"
-      ),
+      radio_ui,
       shiny::numericInput(
         ns("n_validation"),
         label = i18n$t("validation_n_validation_label"),
@@ -98,35 +117,54 @@ mod_validation_sampling_ui <- function(id) {
 #'   `current_project`.
 #' @param zone_id_r Reactive returning the active monitoring zone id.
 #' @param mode_r Reactive returning the parent sidebar mode
-#'   (`"quick"` / `"health"`). Drives the default `source` radio.
+#'   (`"quick"` / `"health"`). When `source_fixed` is NULL, drives
+#'   the default of the inner `source` radio. Unused when the source
+#'   is fixed.
 #' @param thresholds_r Reactive returning the FAST sidebar thresholds
 #'   `list(ndvi, nbr, window_days)`.
 #' @param date_range_r Reactive returning the parent date range.
+#' @param source_fixed Optional character `"FAST"` or `"FORDEAD"`.
+#'   When non-NULL, the module ignores `input$source` (which the UI
+#'   omits) and uses this value verbatim. Pair with
+#'   [mod_validation_sampling_ui()] called with the same `source`.
+#'   v0.43.3.
 #' @noRd
 mod_validation_sampling_server <- function(id, app_state,
                                            zone_id_r,
                                            mode_r,
                                            thresholds_r,
-                                           date_range_r) {
+                                           date_range_r,
+                                           source_fixed = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
       get_i18n(app_state$language %||% "fr")
     })
 
+    # Reactive that returns the active source for this module instance.
+    # Either the fixed value passed at construction, or whatever the
+    # user picked in the radio.
+    current_source <- shiny::reactive({
+      if (!is.null(source_fixed)) return(as.character(source_fixed))
+      as.character(input$source %||% "FORDEAD")
+    })
+
     # Default the source radio to whatever the parent sidebar mode is
     # at first sub-tab open. After that the user owns the choice — the
     # observer only fires once per parent-mode flip.
-    last_mode <- shiny::reactiveVal(NULL)
-    shiny::observe({
-      m <- mode_r()
-      if (is.null(m) || identical(m, last_mode())) return()
-      last_mode(m)
-      target <- if (identical(m, "quick")) "FAST" else "FORDEAD"
-      if (!identical(input$source, target)) {
-        shiny::updateRadioButtons(session, "source", selected = target)
-      }
-    })
+    # No-op when source is fixed (the radio doesn't exist).
+    if (is.null(source_fixed)) {
+      last_mode <- shiny::reactiveVal(NULL)
+      shiny::observe({
+        m <- mode_r()
+        if (is.null(m) || identical(m, last_mode())) return()
+        last_mode(m)
+        target <- if (identical(m, "quick")) "FAST" else "FORDEAD"
+        if (!identical(input$source, target)) {
+          shiny::updateRadioButtons(session, "source", selected = target)
+        }
+      })
+    }
 
     # The plan reactive : only fires on the Generate button. eventReactive
     # makes input changes invalidate the value silently — the user must
@@ -154,7 +192,7 @@ mod_validation_sampling_server <- function(id, app_state,
         generate_validation_plan(
           con            = con,
           project        = proj,
-          source         = input$source,
+          source         = current_source(),
           n_validation   = as.integer(input$n_validation %||% 20L),
           n_control      = as.integer(input$n_control    %||% 5L),
           classes        = classes_int,
