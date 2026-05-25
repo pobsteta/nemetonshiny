@@ -1,4 +1,4 @@
-# nemetonshiny 0.42.0.9001 (2026-05-25, cycle dev)
+# nemetonshiny 0.42.1 (2026-05-25)
 
 ### Added — ntfy push notifications pour l'ingestion FAST
 
