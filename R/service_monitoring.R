@@ -47,7 +47,8 @@ run_ingestion_async <- function() {
                                    progress_path = NULL,
                                    cache_dir = NULL,
                                    skip_cached = TRUE,
-                                   log_path = NULL) {
+                                   log_path = NULL,
+                                   lang = "fr") {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -111,7 +112,31 @@ run_ingestion_async <- function() {
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      progress_cb <- .build_progress_writer(progress_path)
+      # ntfy push channel — resolved worker-side (env vars replayed
+      # above). NULL when NEMETON_NTFY_TOPIC is unset → every
+      # `.ntfy_send()` call below is a silent no-op. Symétrique avec
+      # FORDEAD (cf. run_fordead_async). v0.42.1.
+      ntfy <- .ntfy_config()
+      i18n <- get_i18n(lang %||% "fr")
+
+      # Composite progress callback: the file writer the parent's
+      # reactivePoll tails PLUS a worker-side ntfy push when the
+      # first per-scene event arrives (one-shot, dedupé via state env).
+      # Évite la noise pour les ingestions courtes et le spam pour
+      # les ingestions longues (30-100 scènes).
+      progress_cb <- .build_ingest_progress_callback(progress_path,
+                                                     ntfy, i18n)
+
+      # Timing for the complete-message. Sys.time() in the worker is
+      # naturally aligned with the user's perception of the run.
+      .ws_t0 <- Sys.time()
+
+      .ntfy_send(
+        ntfy,
+        sprintf(i18n$t("monitoring_ntfy_ingest_start"),
+                as.character(zone_id %||% "?")),
+        tags = "satellite"
+      )
 
       # Heartbeat 1/3: worker reached the start of its body. Useful
       # when the worker is silent — if we don't see this in the
@@ -189,15 +214,33 @@ run_ingestion_async <- function() {
             error_message = conditionMessage(e),
             error_class   = paste(class(e), collapse = "/")
           ))
+          .ntfy_send(
+            ntfy,
+            sprintf(i18n$t("monitoring_ntfy_ingest_error"),
+                    conditionMessage(e)),
+            priority = "high", tags = "rotating_light"
+          )
           stop(e)
         }
       )
 
+      duration_sec <- as.numeric(difftime(Sys.time(), .ws_t0,
+                                          units = "secs"))
+      .ntfy_send(
+        ntfy,
+        sprintf(i18n$t("monitoring_ntfy_ingest_complete"),
+                as.integer(summary$n_scenes        %||% 0L),
+                as.integer(summary$n_obs_inserted  %||% 0L),
+                .format_duration_human(duration_sec)),
+        tags = "white_check_mark"
+      )
+
       list(
-        status    = "success",
-        summary   = summary,
-        warnings  = warns,
-        timestamp = Sys.time()
+        status       = "success",
+        summary      = summary,
+        warnings     = warns,
+        duration_sec = duration_sec,
+        timestamp    = Sys.time()
       )
     }, seed = TRUE)
   })
@@ -452,6 +495,51 @@ run_fordead_async <- function() {
 #' @param i18n A `get_i18n()` translator.
 #' @return A callback `function(event)`.
 #' @noRd
+#' Composite progress callback for the FAST ingestion worker
+#'
+#' Wraps `.build_progress_writer()` (for the parent's reactivePoll
+#' tail) with a one-shot ntfy push when the first per-scene event
+#' arrives — that's when the worker confirms it knows the total scene
+#' count and is starting the actual download. Dédupliqué via state env
+#' (un push max par run, indépendant du nombre de scènes 30-100).
+#'
+#' Start / complete / error ntfy pushes are NOT here — they live in the
+#' worker body around the nemeton call (cf. `run_ingestion_async`).
+#' Putting them in the callback would mean intercepting an arbitrary
+#' event boundary; keeping them in the worker keeps the lifecycle
+#' explicit. v0.42.1.
+#'
+#' @param progress_path Path to the JSON progress file.
+#' @param ntfy `.ntfy_config()` output (or NULL).
+#' @param i18n `get_i18n()` output.
+#' @return A function suitable as `progress_callback` for
+#'   `nemeton::ingest_sentinel2_timeseries()`.
+#' @noRd
+.build_ingest_progress_callback <- function(progress_path, ntfy, i18n) {
+  file_cb <- .build_progress_writer(progress_path)
+  state   <- new.env(parent = emptyenv())
+  state$scenes_started <- FALSE
+  function(event) {
+    if (!is.null(file_cb)) {
+      tryCatch(file_cb(event), error = function(e) invisible(NULL))
+    }
+    current <- as.character(event$current %||% "")
+    if (identical(current, "s2:scene") && !isTRUE(state$scenes_started)) {
+      total <- as.integer(event$total %||% 0L)
+      if (total > 0L) {
+        state$scenes_started <- TRUE
+        .ntfy_send(
+          ntfy,
+          sprintf(i18n$t("monitoring_ntfy_ingest_scenes"), total),
+          priority = "low", tags = "satellite_orbital"
+        )
+      }
+    }
+    invisible(NULL)
+  }
+}
+
+
 .build_fordead_progress_callback <- function(progress_path, ntfy, i18n) {
   file_cb <- .build_progress_writer(progress_path)
   state   <- new.env(parent = emptyenv())

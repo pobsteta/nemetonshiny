@@ -167,3 +167,61 @@ test_that(".build_fordead_progress_callback tolerates a NULL progress path", {
   expect_silent(cb(list(current = "fordead:phase", phase_name = "predict")))
   expect_silent(cb(list(current = "fordead:complete")))
 })
+
+
+# ---- FAST ingestion progress callback (v0.42.1) ----------------------
+
+test_that(".build_ingest_progress_callback writes the JSON progress file", {
+  withr::with_tempdir({
+    ppath <- file.path(getwd(), "ingest_progress.json")
+    cb <- nemetonshiny:::.build_ingest_progress_callback(
+      ppath, NULL, get_i18n("fr"))
+    expect_true(is.function(cb))
+    cb(list(current = "s2:scene", scene_id = "ABC", obs_date = "2024-05-01",
+            completed = 0L, total = 12L))
+    expect_true(file.exists(ppath))
+    ev <- jsonlite::fromJSON(readLines(ppath, warn = FALSE))
+    expect_equal(ev$current, "s2:scene")
+    expect_equal(ev$scene_id, "ABC")
+  })
+})
+
+test_that(".build_ingest_progress_callback tolerates a NULL progress path", {
+  cb <- nemetonshiny:::.build_ingest_progress_callback(
+    NULL, NULL, get_i18n("fr"))
+  expect_silent(cb(list(current = "s2:scene", completed = 1L, total = 2L)))
+  expect_silent(cb(list(current = "s2:worker_started")))
+})
+
+
+# ---- v0.42.1 — i18n parity for the new FAST ntfy keys -----------------
+
+test_that("v0.42.1 — ntfy_ingest_* keys exist and have FR + EN", {
+  translations <- nemetonshiny:::TRANSLATIONS
+  keys <- c("monitoring_ntfy_ingest_start",
+            "monitoring_ntfy_ingest_scenes",
+            "monitoring_ntfy_ingest_complete",
+            "monitoring_ntfy_ingest_error")
+  for (key in keys) {
+    expect_true(key %in% names(translations),
+                info = paste("Missing key:", key))
+    expect_true(nzchar(translations[[key]]$fr),
+                info = paste("Empty FR for:", key))
+    expect_true(nzchar(translations[[key]]$en),
+                info = paste("Empty EN for:", key))
+  }
+})
+
+test_that("v0.42.1 — ntfy_ingest sprintf placeholders are well-formed", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  # start : %s (zone id)
+  expect_silent(sprintf(i18n$t("monitoring_ntfy_ingest_start"), "42"))
+  # scenes : %d (count)
+  expect_silent(sprintf(i18n$t("monitoring_ntfy_ingest_scenes"), 26L))
+  # complete : %d %d %s (n_scenes, n_obs, duration)
+  expect_silent(sprintf(i18n$t("monitoring_ntfy_ingest_complete"),
+                        26L, 5200L, "3 min"))
+  # error : %s (message)
+  expect_silent(sprintf(i18n$t("monitoring_ntfy_ingest_error"),
+                        "STAC 504"))
+})

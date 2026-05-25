@@ -2338,6 +2338,28 @@ TRANSLATIONS <- list(
     en = "FORDEAD diagnosis failed: %s"
   ),
 
+  # v0.42.1 \u2014 ntfy push messages for FAST ingestion (sym\u00e9trique avec
+  # FORDEAD ci-dessus). M\u00eame opt-in via NEMETON_NTFY_TOPIC ; sprintf
+  # placeholders. Sent worker-side par run_ingestion_async() : start
+  # avant l'appel n\u00e9meton, scenes (one-shot) \u00e0 la premi\u00e8re event
+  # s2:scene, complete/error en sortie.
+  monitoring_ntfy_ingest_start = list(
+    fr = "Ingestion FAST d\u00e9marr\u00e9e (zone %s).",
+    en = "FAST ingestion started (zone %s)."
+  ),
+  monitoring_ntfy_ingest_scenes = list(
+    fr = "T\u00e9l\u00e9chargement Sentinel-2 : %d sc\u00e8nes \u00e0 traiter.",
+    en = "Sentinel-2 download: %d scenes to process."
+  ),
+  monitoring_ntfy_ingest_complete = list(
+    fr = "Ingestion FAST termin\u00e9e : %d sc\u00e8nes, %d observations en %s.",
+    en = "FAST ingestion complete: %d scenes, %d observations in %s."
+  ),
+  monitoring_ntfy_ingest_error = list(
+    fr = "\u00c9chec de l'ingestion FAST : %s",
+    en = "FAST ingestion failed: %s"
+  ),
+
   # Per-phase labels \u2014 current 1.x sequence (nemeton@v0.22.5)
   # Phase 0 ingest (nemeton@v0.24.0): downloads missing S2 bands
   # (B02/B05/B8A/B11) reusing FAST's cached B04/B12.

@@ -1669,7 +1669,11 @@ mod_monitoring_server <- function(id, app_state) {
         # INSERTs are idempotent. See the comment block above the
         # wipe branch for the full semantics.
         skip_cached   = FALSE,
-        log_path      = lpath
+        log_path      = lpath,
+        # v0.42.1 — forwarded so the worker builds its ntfy push
+        # messages in the user's language (the worker has no access
+        # to app_state). Symétrique avec fordead_task$invoke.
+        lang          = app_state$language %||% "fr"
       )
     })
 
