@@ -1,3 +1,27 @@
+# nemetonshiny 0.43.1 (2026-05-25)
+
+### Fixed — `.ntfy_send()` titre HTTP désormais paramétrable
+
+Bug : les notifications ntfy émises par les runs FAST
+(`ingest_sentinel2_timeseries()`) arrivaient sur le device avec un
+en-tête `Title: "Nemeton FORDEAD"`, parce que `.ntfy_send()` dans
+`service_monitoring.R` hard-codait ce titre. Conséquence : les
+notifications FAST et FORDEAD étaient indistinguables côté téléphone.
+
+Fix : nouvel argument `title = "Nemeton"` (défaut neutre) sur
+`.ntfy_send(cfg, message, priority, tags, title)`. Threadé aux
+**8 call sites** :
+- FAST (`run_ingestion_async` + `.build_ingest_progress_callback`) :
+  start / scenes / complete / error → `title = "Nemeton FAST"`
+- FORDEAD (`run_fordead_async` + `.build_fordead_progress_callback`) :
+  start / phase / complete / error → `title = "Nemeton FORDEAD"`
+
+Tests : 1 nouveau test case (`title` argument présent, default
+"Nemeton", smoke avec cfg NULL).
+
+Smoke manuel attendu : lancer une ingestion FAST → la notif sur le
+téléphone affiche bien « Nemeton FAST » dans le titre.
+
 # nemetonshiny 0.43.0 (2026-05-25)
 
 ### Added — spec 014 phase B : plan d'échantillonnage de validation terrain
