@@ -1,4 +1,4 @@
-# nemetonshiny 0.44.0.9001 (2026-05-26)
+# nemetonshiny 0.45.0 (2026-05-26)
 
 ### Added — Fallback `lasR` pour le CHM depuis les nuages LiDAR HD locaux
 
