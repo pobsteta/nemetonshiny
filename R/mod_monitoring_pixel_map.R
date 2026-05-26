@@ -154,6 +154,29 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       out
     })
 
+    # v0.44.0 — disk inventory of the Sentinel-2 cache. Used to
+    # distinguish "no cache yet" from "cache present but 0 obs in DB"
+    # (typical symptom of HTTP 403 SAS-token-expiry races during the
+    # crop phase of a long ingestion). The cache directory holds one
+    # subdir per scene (named `<scene_id>/`), so counting them gives
+    # the actual on-disk inventory regardless of DB state.
+    disk_scenes_count_r <- shiny::reactive({
+      refresh_r()  # invalidate on post-ingestion bump
+      cd <- cache_dir_r()
+      if (is.null(cd)) return(0L)
+      entries <- tryCatch(list.dirs(cd, recursive = FALSE,
+                                    full.names = FALSE),
+                          error = function(e) character(0))
+      length(entries)
+    })
+
+    # v0.44.0 — capture the last build_index_stack error so the UI
+    # can surface it instead of the misleading "no cache disk" empty
+    # state. Typical message : "[rast] extents do not match" when
+    # cached rasters from different scenes / re-fetches don't share
+    # a common extent.
+    last_stack_error <- shiny::reactiveVal(NULL)
+
     # Build the multi-temporal index stack. Heavy compute (reads N
     # GeoTIFFs from disk + arithmetic), debounced on (cache_dir,
     # scenes_df, index) — re-runs only when one of those changes.
@@ -164,23 +187,69 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       if (is.null(cd) || is.null(sdf) || !nrow(sdf)) return(NULL)
       loading(TRUE)
       on.exit(loading(FALSE), add = TRUE)
-      tryCatch(
+      out <- tryCatch(
         nemeton::build_index_stack(cd, sdf, index = input$index),
         error = function(e) {
+          msg <- conditionMessage(e)
           cli::cli_alert_warning(sprintf(
-            "build_index_stack failed: %s", conditionMessage(e)))
+            "build_index_stack failed: %s", msg))
+          last_stack_error(msg)
           NULL
         }
       )
+      if (!is.null(out)) last_stack_error(NULL)  # clear on success
+      out
     })
 
     # Date slider built dynamically from the layer names of the
     # stack (one layer per obs_date).
+    #
+    # v0.44.0 — empty-state branches over three distinct failure modes
+    # so the user gets an actionable diagnostic instead of the legacy
+    # "no cache disk" catch-all :
+    #
+    #   1. cache directory absent              → "no cache" (legacy)
+    #   2. cache present, 0 observation in DB  → "scenes downloaded
+    #      but cropping failed — probably 403 SAS expirations"
+    #   3. cache + obs OK, but build_index_stack errored → surface
+    #      the cœur error message (typical : "[rast] extents do not
+    #      match")
     output$date_slider_ui <- shiny::renderUI({
       ns <- session$ns
       i18n <- i18n_r()
       st <- pixel_stack_r()
       if (is.null(st)) {
+        disk_n  <- disk_scenes_count_r()
+        sdf     <- scenes_df_r()
+        err_msg <- last_stack_error()
+
+        # Case 1 — no cache directory or empty.
+        if (is.null(cache_dir_r()) || disk_n == 0L) {
+          return(shiny::helpText(
+            class = "small text-muted",
+            i18n$t("monitoring_pixel_map_no_cache")
+          ))
+        }
+        # Case 2 — disk has scenes but DB has no observations.
+        # SAS tokens expired during crop is the dominant cause for
+        # long ingests (~100+ scenes). Surface scene count so the
+        # user knows downloads actually happened.
+        if (is.null(sdf) || !nrow(sdf)) {
+          return(htmltools::div(
+            class = "small alert alert-warning p-2 mb-0",
+            sprintf(i18n$t("monitoring_pixel_map_cache_no_obs_fmt"),
+                    as.integer(disk_n))
+          ))
+        }
+        # Case 3 — build_index_stack failed (typically extent mismatch).
+        if (!is.null(err_msg)) {
+          return(htmltools::div(
+            class = "small alert alert-danger p-2 mb-0",
+            sprintf(i18n$t("monitoring_pixel_map_stack_failed_fmt"),
+                    err_msg)
+          ))
+        }
+        # Fallback : something else turned pixel_stack into NULL.
         return(shiny::helpText(
           class = "small text-muted",
           i18n$t("monitoring_pixel_map_no_cache")

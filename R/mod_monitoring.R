@@ -297,17 +297,26 @@ mod_monitoring_ui <- function(id) {
           icon  = bsicons::bs_icon("tree"),
           mod_monitoring_fordead_map_ui(ns("fordead_map"))
         ),
-        # ----- Sub-tab — Plan de validation (spec 014, v0.43.0) -----
-        # Toujours visible (pas mode-driven) — l'utilisateur choisit la
-        # source FORDEAD / FAST via radio dans le sous-module. Génère
-        # un plan d'échantillonnage de validation terrain ciblé sur
-        # les foyers détectés, persistable dans
-        # <project>/data/samples.gpkg (couche `validation_plots`).
+        # ----- Sub-tabs — Plan de validation (spec 014, v0.43.0) -----
+        # v0.43.3 — passe de 1 onglet single avec radio à 2 sous-onglets
+        # mode-driven, symétriques avec les couples Alertes/Carte :
+        #   mode = "quick"  → Plan de validation FAST
+        #   mode = "health" → Plan de validation FORDEAD
+        # Cohérent avec la logique FAST vs FORDEAD du reste du module ;
+        # la source est implicite, pas de radio à choisir.
         bslib::nav_panel(
-          title = i18n$t("validation_sampling_title"),
-          value = "validation_sampling",
+          title = i18n$t("validation_sampling_title_fast"),
+          value = "validation_sampling_fast",
           icon  = bsicons::bs_icon("compass"),
-          mod_validation_sampling_ui(ns("validation_sampling"))
+          mod_validation_sampling_ui(ns("validation_sampling_fast"),
+                                     source = "FAST")
+        ),
+        bslib::nav_panel(
+          title = i18n$t("validation_sampling_title_fordead"),
+          value = "validation_sampling_fordead",
+          icon  = bsicons::bs_icon("compass"),
+          mod_validation_sampling_ui(ns("validation_sampling_fordead"),
+                                     source = "FORDEAD")
         )
       )
     )
@@ -336,14 +345,15 @@ mod_monitoring_server <- function(id, app_state) {
     # Mode-driven sub-tab visibility (v0.34.0 → v0.35.0). Quatre
     # sous-onglets, deux affichés à la fois selon `input$mode` :
     #
-    #   mode = "quick"  → Alertes FAST    + Carte FAST
-    #   mode = "health" → Alertes FORDEAD + Carte FORDEAD
+    #   mode = "quick"  → Alertes FAST    + Carte FAST    + Plan val. FAST
+    #   mode = "health" → Alertes FORDEAD + Carte FORDEAD + Plan val. FORDEAD
     #
-    # Symétrie : chaque mode a son couple (liste d'alertes + carte).
-    # Pattern uniforme `bslib::nav_show()` / `nav_hide()` plutôt qu'un
-    # conditionalPanel interne, parce qu'on veut aussi éviter de
-    # déclencher les reactives lourdes (build_index_stack côté FAST,
-    # list_alerts_for_zone côté FORDEAD) quand l'onglet est masqué.
+    # Symétrie : chaque mode a son trio (liste d'alertes + carte + plan
+    # de validation). Pattern uniforme `bslib::nav_show()` / `nav_hide()`
+    # plutôt qu'un conditionalPanel interne, parce qu'on veut aussi
+    # éviter de déclencher les reactives lourdes (build_index_stack
+    # côté FAST, list_alerts_for_zone côté FORDEAD, generate_validation_plan
+    # côté Plan val.) quand l'onglet est masqué.
     shiny::observe({
       mode <- input$mode
       if (identical(mode, "quick")) {
@@ -351,9 +361,13 @@ mod_monitoring_server <- function(id, app_state) {
                         session = session)
         bslib::nav_show("subtab", target = "pixel_map_fast",
                         session = session)
+        bslib::nav_show("subtab", target = "validation_sampling_fast",
+                        session = session)
         bslib::nav_hide("subtab", target = "alerts_fordead",
                         session = session)
         bslib::nav_hide("subtab", target = "pixel_map_fordead",
+                        session = session)
+        bslib::nav_hide("subtab", target = "validation_sampling_fordead",
                         session = session)
         # v0.37.1 — re-anchor the active tab onto a visible one.
         # Without this, when the user toggles mode the navset keeps
@@ -366,9 +380,13 @@ mod_monitoring_server <- function(id, app_state) {
                         session = session)
         bslib::nav_hide("subtab", target = "pixel_map_fast",
                         session = session)
+        bslib::nav_hide("subtab", target = "validation_sampling_fast",
+                        session = session)
         bslib::nav_show("subtab", target = "alerts_fordead",
                         session = session)
         bslib::nav_show("subtab", target = "pixel_map_fordead",
+                        session = session)
+        bslib::nav_show("subtab", target = "validation_sampling_fordead",
                         session = session)
         bslib::nav_select("subtab", selected = "alerts_fordead",
                           session = session)
@@ -2217,10 +2235,15 @@ mod_monitoring_server <- function(id, app_state) {
       refresh_r = shiny::reactive(alerts_refresh())
     )
 
-    # v0.43.0 — Plan de validation sub-tab. Toujours visible quand la
-    # zone est posée, source FORDEAD ou FAST au choix de l'utilisateur.
-    validation_sampling_ret <- mod_validation_sampling_server(
-      "validation_sampling",
+    # v0.43.3 — Plan de validation : 2 instances mode-driven (FAST +
+    # FORDEAD), source figée par instance. Symétrique avec les couples
+    # Alertes/Carte FAST/FORDEAD. Threading des reactives sidebar (zone,
+    # mode, thresholds, dates) identique pour les deux ; chaque instance
+    # ne consomme que ce dont elle a besoin (source FAST → thresholds +
+    # dates pour compute_fast_alert_mask ; source FORDEAD → ignore les
+    # thresholds car le mask FORDEAD est déjà sur disque).
+    validation_sampling_fast_ret <- mod_validation_sampling_server(
+      "validation_sampling_fast",
       app_state    = app_state,
       zone_id_r    = shiny::reactive(input$zone_id),
       mode_r       = shiny::reactive(input$mode),
@@ -2229,18 +2252,34 @@ mod_monitoring_server <- function(id, app_state) {
         nbr         = input$threshold_nbr,
         window_days = input$window_days
       )),
-      date_range_r = shiny::reactive(input$date_range)
+      date_range_r = shiny::reactive(input$date_range),
+      source_fixed = "FAST"
+    )
+
+    validation_sampling_fordead_ret <- mod_validation_sampling_server(
+      "validation_sampling_fordead",
+      app_state    = app_state,
+      zone_id_r    = shiny::reactive(input$zone_id),
+      mode_r       = shiny::reactive(input$mode),
+      thresholds_r = shiny::reactive(list(
+        ndvi        = input$threshold_ndvi,
+        nbr         = input$threshold_nbr,
+        window_days = input$window_days
+      )),
+      date_range_r = shiny::reactive(input$date_range),
+      source_fixed = "FORDEAD"
     )
 
     list(
-      zones               = zones,
-      fast_task           = fast_task,
-      fordead_task        = fordead_task,
-      validity            = validity,
-      pixel_map           = pixel_map_ret,
-      fast_alerts         = fast_alerts_ret,
-      fordead_map         = fordead_map_ret,
-      validation_sampling = validation_sampling_ret
+      zones                       = zones,
+      fast_task                   = fast_task,
+      fordead_task                = fordead_task,
+      validity                    = validity,
+      pixel_map                   = pixel_map_ret,
+      fast_alerts                 = fast_alerts_ret,
+      fordead_map                 = fordead_map_ret,
+      validation_sampling_fast    = validation_sampling_fast_ret,
+      validation_sampling_fordead = validation_sampling_fordead_ret
     )
   })
 }
