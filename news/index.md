@@ -1,5 +1,76 @@
 # Changelog
 
+## nemetonshiny 0.44.0 (2026-05-26)
+
+#### Changed — Plan de validation : 2 sous-onglets FAST / FORDEAD mode-driven
+
+Symétrie avec la logique FAST vs FORDEAD du reste du module Suivi
+sanitaire. Avant : un seul sous-onglet « Plan de validation » avec radio
+source dans le formulaire. Après : 2 sous-onglets mode-driven, source
+figée par instance — cohérent avec les couples Alertes/Carte déjà
+splittés.
+
+mode = “quick” → Plan de validation FAST (+ Alertes/Carte FAST) mode =
+“health” → Plan de validation FORDEAD (+ Alertes/Carte FORDEAD)
+
+Implémentation : - `mod_validation_sampling_ui(id, source = NULL)` : si
+`source` est fourni (« FAST » ou « FORDEAD »), omet le radio « Source
+d’alerte » et affiche une badge statique à la place. Sinon, comportement
+legacy. - `mod_validation_sampling_server(..., source_fixed = NULL)` :
+helper réactif `current_source()` qui retourne `source_fixed` quand
+non-NULL, sinon `input$source`. L’observer de défaut mode-driven est
+court-circuité quand la source est fixée. - `mod_monitoring.R` : 1
+nav_panel → 2 panels, observer `nav_show/nav_hide` étendu au trio par
+mode (alertes + carte + plan de validation).
+
+i18n : 2 nouvelles clés `validation_sampling_title_fast` et
+`validation_sampling_title_fordead` (FR + EN).
+
+#### Fixed — Carte FAST : diagnostic d’erreur explicite + plancher nemeton 0.47.5
+
+Bug villards 2026-05-26 : 56 scènes téléchargées mais Carte FAST
+affichait « Pas de cache disque disponible » (message contradictoire
+avec « 56 scènes disponibles dans le cache » dans la même sidebar).
+
+Cause racine :
+[`nemeton::build_index_stack()`](https://pobsteta.github.io/nemeton/reference/build_index_stack.html)
+échouait sur « `[rast] extents do not match` » (bug cœur corrigé en
+[nemeton@v0.47.5](https://github.com/pobsteta/nemeton/releases/tag/v0.47.5)).
+Le `tryCatch` côté app fallback silencieux sur NULL → l’UI affichait le
+message catch-all « Pas de cache » au lieu du message réel.
+
+Fix : - Bump `Imports: nemeton (>= 0.47.5)` pour bénéficier du fix cœur
+des extents. - Capture du message d’erreur de `build_index_stack` dans
+`last_stack_error` reactiveVal côté `mod_monitoring_pixel_map`. -
+Comptage des scènes sur disque via `disk_scenes_count_r()` (subdirs du
+`cache_dir`). - `output$date_slider_ui` branche sur 3 états distincts au
+lieu du catch-all unique : 1. cache absent → message legacy « lance FAST
+» 2. cache présent + 0 obs DB → diagnostic 403 SAS expirées, relancer
+l’ingestion 3. cache + obs OK + `build_index_stack` KO → surface le
+message d’erreur cœur (extents mismatch ou autre) - 2 nouvelles clés
+i18n `monitoring_pixel_map_cache_no_obs_fmt` et
+`monitoring_pixel_map_stack_failed_fmt` (FR + EN, sprintf avec scene
+count / error message).
+
+#### Fixed — idempotence `persist_validation_plan` (flake test)
+
+Bonus fix collatéral : flake intermittent du test
+`persist_validation_plan is idempotent on (plot_id, generated_at)` en
+full-suite (PASS en isolation, fail ~50% en suite complète).
+
+Cause : GPKG round-trip rounding sub-milliseconde — R écrit `.236371`
+µs, lit `.236000` ms — brisait la clé `%OS3` du dedup. Whole-second
+precision dans la clé d’idempotence : robuste à toute granularité de
+stockage GDAL/GPKG, amplement suffisant pour le workflow bouton-clic
+(deux clics dans la même seconde coalescent, ce qui est l’idempotence
+visée).
+
+Suite full green : **6493 PASS / 0 FAIL**.
+
+#### Dépendances
+
+`Imports: nemeton (>= 0.47.5)` (bump depuis 0.47.0 v0.43.0).
+
 ## nemetonshiny 0.43.2 (2026-05-25)
 
 #### Fixed — ntfy messages utilisent le nom de zone (« villards »), plus l’id

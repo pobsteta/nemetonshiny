@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.43.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.44.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,35 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.43.2/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.44.0" id="nemetonshiny-0440-2026-05-26">nemetonshiny 0.44.0 (2026-05-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0440-2026-05-26"></a></h2>
+<div class="section level4">
+<h4 id="changed--plan-de-validation--sous-onglets-fast--fordead-mode-driven-0-44-0">Changed — Plan de validation : 2 sous-onglets FAST / FORDEAD mode-driven<a class="anchor" aria-label="anchor" href="#changed--plan-de-validation--sous-onglets-fast--fordead-mode-driven-0-44-0"></a></h4>
+<p>Symétrie avec la logique FAST vs FORDEAD du reste du module Suivi sanitaire. Avant : un seul sous-onglet « Plan de validation » avec radio source dans le formulaire. Après : 2 sous-onglets mode-driven, source figée par instance — cohérent avec les couples Alertes/Carte déjà splittés.</p>
+<p>mode = “quick” → Plan de validation FAST (+ Alertes/Carte FAST) mode = “health” → Plan de validation FORDEAD (+ Alertes/Carte FORDEAD)</p>
+<p>Implémentation : - <code>mod_validation_sampling_ui(id, source = NULL)</code> : si <code>source</code> est fourni (« FAST » ou « FORDEAD »), omet le radio « Source d’alerte » et affiche une badge statique à la place. Sinon, comportement legacy. - <code>mod_validation_sampling_server(..., source_fixed = NULL)</code> : helper réactif <code>current_source()</code> qui retourne <code>source_fixed</code> quand non-NULL, sinon <code>input$source</code>. L’observer de défaut mode-driven est court-circuité quand la source est fixée. - <code>mod_monitoring.R</code> : 1 nav_panel → 2 panels, observer <code>nav_show/nav_hide</code> étendu au trio par mode (alertes + carte + plan de validation).</p>
+<p>i18n : 2 nouvelles clés <code>validation_sampling_title_fast</code> et <code>validation_sampling_title_fordead</code> (FR + EN).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--carte-fast--diagnostic-derreur-explicite--plancher-nemeton-0-44-0">Fixed — Carte FAST : diagnostic d’erreur explicite + plancher nemeton 0.47.5<a class="anchor" aria-label="anchor" href="#fixed--carte-fast--diagnostic-derreur-explicite--plancher-nemeton-0-44-0"></a></h4>
+<p>Bug villards 2026-05-26 : 56 scènes téléchargées mais Carte FAST affichait « Pas de cache disque disponible » (message contradictoire avec « 56 scènes disponibles dans le cache » dans la même sidebar).</p>
+<p>Cause racine : <code><a href="https://pobsteta.github.io/nemeton/reference/build_index_stack.html" class="external-link">nemeton::build_index_stack()</a></code> échouait sur « <code>[rast] extents do not match</code> » (bug cœur corrigé en <a href="https://github.com/pobsteta/nemeton/releases/tag/v0.47.5" class="external-link">nemeton@v0.47.5</a>). Le <code>tryCatch</code> côté app fallback silencieux sur NULL → l’UI affichait le message catch-all « Pas de cache » au lieu du message réel.</p>
+<p>Fix : - Bump <code>Imports: nemeton (&gt;= 0.47.5)</code> pour bénéficier du fix cœur des extents. - Capture du message d’erreur de <code>build_index_stack</code> dans <code>last_stack_error</code> reactiveVal côté <code>mod_monitoring_pixel_map</code>. - Comptage des scènes sur disque via <code>disk_scenes_count_r()</code> (subdirs du <code>cache_dir</code>). - <code>output$date_slider_ui</code> branche sur 3 états distincts au lieu du catch-all unique : 1. cache absent → message legacy « lance FAST » 2. cache présent + 0 obs DB → diagnostic 403 SAS expirées, relancer l’ingestion 3. cache + obs OK + <code>build_index_stack</code> KO → surface le message d’erreur cœur (extents mismatch ou autre) - 2 nouvelles clés i18n <code>monitoring_pixel_map_cache_no_obs_fmt</code> et <code>monitoring_pixel_map_stack_failed_fmt</code> (FR + EN, sprintf avec scene count / error message).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--idempotence-persist_validation_plan-flake-test-0-44-0">Fixed — idempotence <code>persist_validation_plan</code> (flake test)<a class="anchor" aria-label="anchor" href="#fixed--idempotence-persist_validation_plan-flake-test-0-44-0"></a></h4>
+<p>Bonus fix collatéral : flake intermittent du test <code>persist_validation_plan is idempotent on (plot_id, generated_at)</code> en full-suite (PASS en isolation, fail ~50% en suite complète).</p>
+<p>Cause : GPKG round-trip rounding sub-milliseconde — R écrit <code>.236371</code> µs, lit <code>.236000</code> ms — brisait la clé <code>%OS3</code> du dedup. Whole-second precision dans la clé d’idempotence : robuste à toute granularité de stockage GDAL/GPKG, amplement suffisant pour le workflow bouton-clic (deux clics dans la même seconde coalescent, ce qui est l’idempotence visée).</p>
+<p>Suite full green : <strong>6493 PASS / 0 FAIL</strong>.</p>
+</div>
+<div class="section level4">
+<h4 id="dépendances-0-44-0">Dépendances<a class="anchor" aria-label="anchor" href="#d%C3%A9pendances-0-44-0"></a></h4>
+<p><code>Imports: nemeton (&gt;= 0.47.5)</code> (bump depuis 0.47.0 v0.43.0).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.43.2" id="nemetonshiny-0432-2026-05-25">nemetonshiny 0.43.2 (2026-05-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0432-2026-05-25"></a></h2>
 <div class="section level4">
