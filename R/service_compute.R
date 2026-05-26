@@ -944,6 +944,53 @@ download_layers_for_parcels <- function(parcels,
     }
   }
 
+  # Step 1.2: Local lasR fallback — when the IGN MNH raster tiles
+  # failed (regularly the case in 2026: CDN serves the NUAGE COPC
+  # layer reliably but the pre-rasterised MNH/MNT layers return
+  # per-tile 404), derive the CHM directly from the cached
+  # `.copc.laz` point clouds via `nemeton::compute_dtm_chm_from_laz`
+  # (lasR pipeline). This is a real measurement (vs Open-Canopy's
+  # ML prediction), runs locally (no GPU / no model download), and
+  # has a lighter install footprint (`lasR` vs torch/rasterio/smp/timm).
+  # Open-Canopy keeps its place as a last-resort fallback for AOIs
+  # that are not yet flown by IGN LiDAR HD.
+  if (chm_source == "none" && chm_lasr_fallback_enabled()) {
+    if (!is.null(progress_callback)) {
+      progress_callback(list(
+        completed = total_sources + length(pc_sources),
+        total     = total_sources + length(pc_sources),
+        current   = "chm_phase:lasr_fallback",
+        source_key = NULL
+      ))
+    }
+    lasr_out <- tryCatch(
+      download_chm_lasr_from_copc(parcels, cache_dir,
+                                  progress_callback = progress_callback),
+      error = function(e) {
+        cli::cli_warn("lasR CHM derivation failed: {e$message}")
+        download_warnings <<- c(download_warnings, list(list(
+          type = "warning", source = "lasR",
+          message = paste0("Dérivation CHM via lasR échouée : ", e$message),
+          time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+        )))
+        NULL
+      }
+    )
+    if (!is.null(lasr_out) && !is.null(lasr_out$chm)) {
+      rasters$chm <- lasr_out$chm
+      if (!is.null(lasr_out$mnt) && is.null(rasters$lidar_mnt)) {
+        rasters$lidar_mnt <- lasr_out$mnt
+        rasters$dem <- lasr_out$mnt
+        cli::cli_alert_success(
+          "Using lasR-derived MNT (1 m) for terrain indicators"
+        )
+      }
+      chm_pct_masked <- NA_real_
+      chm_source <- "lasr"
+      cli::cli_alert_success("Using lasR-derived MNH as CHM source")
+    }
+  }
+
   # Step 1.5: Theia FORMSpoT — public canopy height (NDP 0), used when
   # LiDAR HD is not available for the AOI. This is the primary path
   # that unblocks the Production family (P1/P2/P3) and E1 from public
@@ -1203,6 +1250,146 @@ chm_lidar_enabled <- function() {
     return(FALSE)
   }
   TRUE
+}
+
+
+#' Is the lasR fallback enabled?
+#'
+#' @description
+#' Returns TRUE when both \pkg{lasR} (the R bindings to PDAL/lasR for
+#' point-cloud rasterisation) and \pkg{nemeton} (>= 0.48.0, exporting
+#' \code{compute_dtm_chm_from_laz}) are available, and the user has not
+#' opted out via \code{options(nemetonshiny.chm_lasr_fallback = "off")}
+#' or env var \code{NEMETONSHINY_DISABLE_CHM_LASR=1}.
+#'
+#' Emits a one-line cli::cli_alert_info on skip so the user understands
+#' why the fallback was bypassed and how to enable it (typically just
+#' \code{install.packages("lasR", repos = "https://r-lidar.r-universe.dev")}).
+#'
+#' @return Logical.
+#' @noRd
+chm_lasr_fallback_enabled <- function() {
+  if (identical(getOption("nemetonshiny.chm_lasr_fallback"), "off")) {
+    return(FALSE)
+  }
+  env_val <- Sys.getenv("NEMETONSHINY_DISABLE_CHM_LASR")
+  if (nzchar(env_val) && env_val != "0") return(FALSE)
+  if (!requireNamespace("lasR", quietly = TRUE)) {
+    cli::cli_alert_info(get_i18n("fr")$t("chm_fallback_lasr_skip_no_pkg"))
+    return(FALSE)
+  }
+  if (!"compute_dtm_chm_from_laz" %in% getNamespaceExports("nemeton")) {
+    cli::cli_alert_info(
+      "lasR fallback skipped: {.pkg nemeton} (>= 0.48.0) does not export
+       compute_dtm_chm_from_laz."
+    )
+    return(FALSE)
+  }
+  TRUE
+}
+
+
+#' Derive a CHM (and MNT) from cached LiDAR HD COPC tiles via lasR
+#'
+#' @description
+#' When the IGN pre-rasterised MNH/MNT layers fail to download (regular
+#' occurrence: the CDN serves NUAGE COPC reliably but pre-computed
+#' rasters return per-tile 404), but at least one
+#' \code{<cache_dir>/lidar_nuage/*.copc.laz} (or \code{*.laz}) is on
+#' disk, derive the CHM and MNT directly from the point cloud via
+#' \code{nemeton::compute_dtm_chm_from_laz()} (lasR pipeline). Mirrors
+#' the contract of \code{download_chm_lidar_hd()} and
+#' \code{download_chm_opencanopy()} so the call site can swap sources
+#' without further branching.
+#'
+#' @param parcels sf of project parcels (any CRS).
+#' @param cache_dir Character. Project cache directory (typically
+#'   \code{<project>/cache/layers}).
+#' @param progress_callback Optional progress callback (NULL or a
+#'   function compatible with the other CHM helpers).
+#'
+#' @return \code{list(chm = SpatRaster, mnt = SpatRaster, source = "lasr")}
+#'   or NULL when no .laz is present / lasR fails. The rasters are
+#'   loaded from the GeoTIFFs that
+#'   \code{nemeton::compute_dtm_chm_from_laz()} writes to
+#'   \code{<cache_dir>/lidar_mnt/dtm.tif} and
+#'   \code{<cache_dir>/lidar_mnh/chm.tif} (NMT cache convention, same
+#'   layout that \code{nemeton::resolve_project_*()} expects).
+#'
+#' @noRd
+download_chm_lasr_from_copc <- function(parcels, cache_dir,
+                                        progress_callback = NULL) {
+  laz_dir <- file.path(cache_dir, "lidar_nuage")
+  dtm_dir <- file.path(cache_dir, "lidar_mnt")
+  chm_dir <- file.path(cache_dir, "lidar_mnh")
+
+  i18n <- get_i18n("fr")
+
+  if (!dir.exists(laz_dir)) {
+    cli::cli_alert_info(i18n$t("chm_fallback_lasr_skip_no_tiles"))
+    return(NULL)
+  }
+  laz_files <- list.files(laz_dir,
+                          pattern = "\\.(copc\\.)?laz$",
+                          full.names = TRUE,
+                          ignore.case = TRUE)
+  laz_files <- laz_files[file.info(laz_files)$size > 1024]
+  if (length(laz_files) == 0) {
+    cli::cli_alert_info(i18n$t("chm_fallback_lasr_skip_no_tiles"))
+    return(NULL)
+  }
+
+  cli::cli_alert_info(
+    i18n$t("chm_fallback_lasr_start", n = length(laz_files))
+  )
+  if (!is.null(progress_callback)) {
+    progress_callback(list(current = "chm_phase:lasr_fallback",
+                           completed = 0, total = 1))
+  }
+
+  # AOI in Lambert-93 (IGN LiDAR HD native CRS) with a 50 m buffer to
+  # avoid edge artefacts at parcel boundaries.
+  aoi_l93 <- sf::st_buffer(sf::st_transform(parcels, 2154), 50)
+
+  ncores <- max(1L, parallel::detectCores(logical = FALSE) - 1L)
+  start <- Sys.time()
+  out <- nemeton::compute_dtm_chm_from_laz(
+    laz_dir = laz_dir,
+    dtm_dir = dtm_dir,
+    chm_dir = chm_dir,
+    res     = 1,
+    aoi     = aoi_l93,
+    ncores  = ncores,
+    overwrite = FALSE,
+    verbose = TRUE
+  )
+  elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
+
+  if (is.null(out) || is.null(out$chm)) {
+    return(NULL)
+  }
+
+  chm_path <- if (is.character(out$chm)) out$chm else NULL
+  mnt_path <- if (is.character(out$dtm)) out$dtm else
+              if (is.character(out$mnt)) out$mnt else NULL
+
+  if (is.null(chm_path) || !file.exists(chm_path)) {
+    cli::cli_warn("lasR returned but CHM file not found at expected path.")
+    return(NULL)
+  }
+
+  chm_rast <- terra::rast(chm_path)
+  mnt_rast <- if (!is.null(mnt_path) && file.exists(mnt_path)) {
+    terra::rast(mnt_path)
+  } else {
+    NULL
+  }
+
+  cli::cli_alert_success(
+    i18n$t("chm_fallback_lasr_success", sec = round(elapsed, 1))
+  )
+
+  list(chm = chm_rast, mnt = mnt_rast, source = "lasr")
 }
 
 
@@ -2415,6 +2602,34 @@ download_ign_lidar_hd <- function(bbox,
 
   if (length(downloaded_files) == 0) {
     cli::cli_alert_warning("No LiDAR HD tiles were successfully downloaded")
+    # When nemeton >= 0.48.0 exposes the probe helper, classify the
+    # failing URLs (404 / 403 / timeout / dns / server_error) so the
+    # user gets actionable diagnostics instead of a laconic "failed":
+    # 404 = production retardée côté IGN, timeout = réseau saturé, etc.
+    if ("probe_ign_lidar_tiles" %in% getNamespaceExports("nemeton")) {
+      tryCatch({
+        probe <- nemeton::probe_ign_lidar_tiles(download_urls)
+        # Accept either a named character vector or a data.frame with
+        # a `category` column — both are documented contracts of the
+        # helper across minor revisions.
+        cats <- if (is.data.frame(probe) && "category" %in% names(probe)) {
+          probe$category
+        } else if (is.character(probe)) {
+          unname(probe)
+        } else {
+          NULL
+        }
+        if (!is.null(cats) && length(cats) > 0) {
+          summary <- sort(table(cats), decreasing = TRUE)
+          cli::cli_alert_info(
+            "  Diagnostic IGN: {paste0(names(summary), '=', summary,
+             collapse = ', ')}"
+          )
+        }
+      }, error = function(e) {
+        cli::cli_alert_info("  Diagnostic IGN indisponible: {e$message}")
+      })
+    }
     return(NULL)
   }
 

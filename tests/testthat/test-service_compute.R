@@ -5159,3 +5159,110 @@ test_that(".compute_chm_required_message returns a translated message", {
   expect_match(en, "CHM")
   expect_false(identical(fr, en))
 })
+
+
+# ==============================================================================
+# lasR fallback for CHM derivation from cached COPC tiles (v0.44.0.9001)
+# ==============================================================================
+
+test_that("chm_lasr_fallback_enabled is FALSE when opt-out env is set", {
+  withr::with_envvar(
+    list(NEMETONSHINY_DISABLE_CHM_LASR = "1"),
+    expect_false(nemetonshiny:::chm_lasr_fallback_enabled())
+  )
+})
+
+test_that("chm_lasr_fallback_enabled is FALSE when option is 'off'", {
+  withr::with_options(
+    list(nemetonshiny.chm_lasr_fallback = "off"),
+    expect_false(nemetonshiny:::chm_lasr_fallback_enabled())
+  )
+})
+
+test_that("chm_lasr_fallback_enabled is FALSE when lasR is missing", {
+  skip_if(requireNamespace("lasR", quietly = TRUE),
+          "lasR is installed; opt-out branch already covered above")
+  withr::with_envvar(
+    list(NEMETONSHINY_DISABLE_CHM_LASR = ""),
+    expect_false(nemetonshiny:::chm_lasr_fallback_enabled())
+  )
+})
+
+test_that("download_chm_lasr_from_copc returns NULL when laz_dir is empty", {
+  tmp <- withr::local_tempdir()
+  parcels <- sf::st_sf(
+    id = 1L,
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(matrix(c(0, 0, 1, 0, 1, 1, 0, 1, 0, 0),
+                                 ncol = 2, byrow = TRUE))),
+      crs = 4326
+    )
+  )
+  # No lidar_nuage subdir -> early return NULL, no nemeton call.
+  out <- nemetonshiny:::download_chm_lasr_from_copc(parcels, tmp)
+  expect_null(out)
+})
+
+test_that("download_chm_lasr_from_copc returns NULL when only empty .laz exist", {
+  tmp <- withr::local_tempdir()
+  laz_dir <- file.path(tmp, "lidar_nuage")
+  dir.create(laz_dir, recursive = TRUE)
+  # 0-byte file (or < 1024 B) is filtered out as truncated/empty.
+  file.create(file.path(laz_dir, "empty.copc.laz"))
+  out <- nemetonshiny:::download_chm_lasr_from_copc(parcels = sf::st_sf(
+    id = 1L,
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(matrix(c(0, 0, 1, 0, 1, 1, 0, 1, 0, 0),
+                                 ncol = 2, byrow = TRUE))),
+      crs = 4326
+    )
+  ), cache_dir = tmp)
+  expect_null(out)
+})
+
+test_that("download_chm_lasr_from_copc forwards to nemeton::compute_dtm_chm_from_laz", {
+  skip_if_not_installed("terra")
+  tmp <- withr::local_tempdir()
+  laz_dir <- file.path(tmp, "lidar_nuage")
+  dir.create(laz_dir, recursive = TRUE)
+  # Fake "valid" laz file > 1024 bytes (content unread because we mock).
+  laz_path <- file.path(laz_dir, "tile_001.copc.laz")
+  writeBin(as.raw(rep(0xFF, 2048L)), laz_path)
+
+  # Fake output rasters (1 px) so we can assert they're loaded.
+  dtm_dir <- file.path(tmp, "lidar_mnt")
+  chm_dir <- file.path(tmp, "lidar_mnh")
+  dir.create(dtm_dir, recursive = TRUE)
+  dir.create(chm_dir, recursive = TRUE)
+  dtm_path <- file.path(dtm_dir, "dtm.tif")
+  chm_path <- file.path(chm_dir, "chm.tif")
+  terra::writeRaster(terra::rast(nrows = 1, ncols = 1, vals = 100), dtm_path,
+                     overwrite = TRUE)
+  terra::writeRaster(terra::rast(nrows = 1, ncols = 1, vals = 15), chm_path,
+                     overwrite = TRUE)
+
+  parcels <- sf::st_sf(
+    id = 1L,
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(matrix(c(0, 0, 1, 0, 1, 1, 0, 1, 0, 0),
+                                 ncol = 2, byrow = TRUE))),
+      crs = 4326
+    )
+  )
+
+  testthat::local_mocked_bindings(
+    compute_dtm_chm_from_laz = function(laz_dir, dtm_dir = NULL,
+                                        chm_dir = NULL, res = 1,
+                                        aoi = NULL, ncores = 1L,
+                                        overwrite = FALSE, verbose = TRUE) {
+      list(chm = chm_path, dtm = dtm_path, source = "lasr")
+    },
+    .package = "nemeton"
+  )
+
+  out <- nemetonshiny:::download_chm_lasr_from_copc(parcels, tmp)
+  expect_type(out, "list")
+  expect_true(inherits(out$chm, "SpatRaster"))
+  expect_true(inherits(out$mnt, "SpatRaster"))
+  expect_equal(out$source, "lasr")
+})

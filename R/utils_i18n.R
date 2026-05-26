@@ -1255,6 +1255,26 @@ TRANSLATIONS <- list(
     fr = "Inf\u00e9rence CHM : tuile {idx}/{n}\u2026",
     en = "CHM inference: tile {idx}/{n}\u2026"
   ),
+  chm_phase_lasr_fallback = list(
+    fr = "D\u00e9rivation CHM via lasR depuis les nuages LiDAR HD locaux\u2026",
+    en = "Deriving CHM via lasR from cached LiDAR HD point clouds\u2026"
+  ),
+  chm_fallback_lasr_start = list(
+    fr = "Bascule sur lasR pour d\u00e9river le CHM depuis {n} dalle(s) LiDAR HD locale(s)\u2026",
+    en = "Falling back to lasR to derive the CHM from {n} cached LiDAR HD tile(s)\u2026"
+  ),
+  chm_fallback_lasr_success = list(
+    fr = "CHM d\u00e9riv\u00e9 depuis le nuage de points LiDAR HD en {sec}s.",
+    en = "CHM derived from LiDAR HD point cloud in {sec}s."
+  ),
+  chm_fallback_lasr_skip_no_tiles = list(
+    fr = "Aucune dalle .laz locale, pas de fallback lasR.",
+    en = "No local .laz tile, lasR fallback skipped."
+  ),
+  chm_fallback_lasr_skip_no_pkg = list(
+    fr = "Package lasR non install\u00e9, pas de fallback lasR. Installer : install.packages('lasR', repos = 'https://r-lidar.r-universe.dev')",
+    en = "Package lasR is not installed, lasR fallback skipped. Install with: install.packages('lasR', repos = 'https://r-lidar.r-universe.dev')"
+  ),
 
   # ============================================================
   # Theia / DATA TERRA configuration
