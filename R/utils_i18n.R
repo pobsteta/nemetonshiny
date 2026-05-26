@@ -2184,6 +2184,18 @@ TRANSLATIONS <- list(
     fr = "Pas de cache disque disponible. Lance le diagnostic FAST pour peupler le cache COG.",
     en = "No disk cache available. Run a FAST diagnosis to populate the COG cache."
   ),
+  # v0.44.0 — diagnostic empty-states pour Carte FAST. Distingue le cas
+  # "cache absent" (existant) de "cache présent mais 0 obs en DB"
+  # (typique 403 SAS-token-expiry sur ingest long) et "build_index_stack
+  # KO" (extents incohérents entre scènes, multi-tuile MGRS).
+  monitoring_pixel_map_cache_no_obs_fmt = list(
+    fr = "Cache COG présent (%d scènes sur disque) mais aucune observation extraite en base. C’est probablement dû à des erreurs HTTP 403 pendant la phase de crop (tokens SAS Azure expirés sur ingest long). Relance le diagnostic FAST.",
+    en = "COG cache present (%d scenes on disk) but no observation extracted to the database. Typically caused by HTTP 403 errors during the crop phase (Azure SAS tokens expiring on long ingestions). Re-run the FAST diagnosis."
+  ),
+  monitoring_pixel_map_stack_failed_fmt = list(
+    fr = "Empilement raster échoué : %s. Probablement des extents incohérents entre scènes (multi-tuile MGRS ou re-fetch partiel du cache).",
+    en = "Raster stacking failed: %s. Likely extent mismatch between scenes (multi-tile MGRS or partial cache re-fetch)."
+  ),
   monitoring_pixel_map_loading = list(
     fr = "Construction du stack d'indices\u2026",
     en = "Building index stack\u2026"

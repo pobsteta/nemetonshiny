@@ -81,11 +81,20 @@ persist_validation_plan <- function(plan, project_path,
         error = function(e) NULL
       )
       if (!is.null(existing) && nrow(existing)) {
+        # v0.44.0 — whole-second precision in the idempotency key.
+        # GPKG stores POSIXct as ISO 8601 strings rounded to
+        # milliseconds (microsecond precision in R, e.g. .236371,
+        # vs .236000 after round-trip — sub-millisecond drift breaks
+        # the `%OS3` comparison intermittently). Whole-second is
+        # robust to any storage backend rounding and amply granular
+        # for a button-click persist workflow (two clicks within
+        # the same second would already coalesce, which is the
+        # desired idempotency anyway).
         key_new <- paste(plan$plot_id,
-                         format(plan$generated_at, "%Y-%m-%dT%H:%M:%OS3"))
+                         format(plan$generated_at, "%Y-%m-%dT%H:%M:%S"))
         key_old <- paste(existing$plot_id,
                          format(existing$generated_at,
-                                "%Y-%m-%dT%H:%M:%OS3"))
+                                "%Y-%m-%dT%H:%M:%S"))
         existing <- existing[!key_old %in% key_new, , drop = FALSE]
         if (nrow(existing)) {
           # GPKG round-trips the active geometry column name from
