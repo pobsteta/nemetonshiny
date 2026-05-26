@@ -1,3 +1,87 @@
+# nemetonshiny 0.45.0 (2026-05-26)
+
+### Added — Fallback `lasR` pour le CHM depuis les nuages LiDAR HD locaux
+
+Quand les dalles MNH/MNT pré-rasterisées de l'IGN échouent au
+téléchargement (régulier en 2026 : la couche `NUAGE` COPC est servie
+de manière fiable mais `IGNF_MNH-LIDAR-HD:dalle` /
+`IGNF_MNT-LIDAR-HD:dalle` retombent en 404 par dalle), `nemetonshiny`
+bascule désormais sur `nemeton::compute_dtm_chm_from_laz()` pour
+dériver localement le CHM (et le MNT) depuis les `.copc.laz` déjà en
+cache sous `<project>/cache/layers/lidar_nuage/`. C'est une mesure
+réelle (vs la prédiction ML d'Open-Canopy), purement locale (pas de
+modèle à télécharger, pas de GPU), avec une chaîne d'install légère
+(`lasR` seul, vs torch/rasterio/smp/timm/omegaconf côté Open-Canopy).
+
+Chaîne d'acquisition CHM mise à jour (par ordre de priorité) :
+
+1. **LiDAR HD MNH IGN** (`download_chm_lidar_hd` — `happign`,
+   raster pré-calculé)
+2. **lasR depuis NUAGE COPC local** (nouveau — `nemeton::compute_dtm_chm_from_laz`)
+3. **Theia FORMSpoT** (`download_chm_theia` — Python SDK + API key)
+4. **Open-Canopy ML** (`download_chm_opencanopy` — repli ultime,
+   inférence ViT)
+
+Le MNT dérivé par lasR est aussi promu vers `rasters$dem` (slot
+canonique consommé par W3/R1/R2/R3/F2) quand aucun MNT IGN n'est
+disponible, ce qui lifte les indicateurs terrain en NDP-1.
+
+Le fallback est opt-out via `options(nemetonshiny.chm_lasr_fallback = "off")`
+ou `Sys.setenv(NEMETONSHINY_DISABLE_CHM_LASR = "1")`.
+
+Implémentation :
+
+- `R/service_compute.R` :
+  - `chm_lasr_fallback_enabled()` : helper symétrique à
+    `chm_lidar_enabled()` (check `lasR` + export
+    `compute_dtm_chm_from_laz` côté `nemeton`).
+  - `download_chm_lasr_from_copc(parcels, cache_dir, progress_callback)` :
+    appel à `nemeton::compute_dtm_chm_from_laz()` avec
+    `ncores = parallel::detectCores(logical = FALSE) - 1L`, AOI
+    Lambert-93 buffer 50 m, sortie dans
+    `<cache_dir>/lidar_mnt/dtm.tif` et `<cache_dir>/lidar_mnh/chm.tif`
+    (alignée avec ce qu'attend `nemeton::resolve_project_*()`).
+  - Step 1.2 intercalée dans `download_data_layers()` entre LiDAR
+    HD MNH (Step 1) et Theia FORMSpoT (Step 1.5).
+
+- `R/utils_i18n.R` : 5 nouvelles clés bilingues
+  (`chm_phase_lasr_fallback`, `chm_fallback_lasr_start`,
+  `chm_fallback_lasr_success`, `chm_fallback_lasr_skip_no_tiles`,
+  `chm_fallback_lasr_skip_no_pkg`).
+
+- `DESCRIPTION` :
+  - Plancher `nemeton (>= 0.48.0)` — la nouvelle API
+    `compute_dtm_chm_from_laz` et `probe_ign_lidar_tiles` y sont
+    exportées.
+  - `lasR` ajouté en `Suggests:` (rester opt-in pour les
+    installations sans LiDAR).
+
+### Added — Diagnostic catégorisé des échecs de download IGN LiDAR HD
+
+`download_ign_lidar_hd()` appelle désormais
+`nemeton::probe_ign_lidar_tiles()` quand 0 tuile a été téléchargée
+avec succès, et affiche un résumé par catégorie (`not_found` /
+`forbidden` / `timeout` / `dns` / `connection` / `server_error`) au
+lieu du laconique `failed`. L'utilisateur sait alors si la zone est
+en attente de publication IGN (404 = patientez), si le réseau sature
+(timeout = réessayez), ou si la connexion est cassée (dns = vérifiez
+la connectivité).
+
+### Test plan utilisateur
+
+Sur le projet Lajoux 39274 (4 dalles NUAGE déjà en cache), relancer
+`run_app(language = "fr")` et vérifier dans le log la séquence :
+
+```
+! No LiDAR HD tiles were successfully downloaded
+ℹ Diagnostic IGN: not_found=4
+ℹ Bascule sur lasR pour dériver le CHM depuis 4 dalle(s) LiDAR HD locale(s)…
+✔ CHM dérivé depuis le nuage de points LiDAR HD en ~Xs.
+✔ Using lasR-derived MNH as CHM source
+```
+
+Et la disparition des 4 échecs P1/P2/P3/E1 du récapitulatif de fin.
+
 # nemetonshiny 0.44.0 (2026-05-26)
 
 ### Changed — Plan de validation : 2 sous-onglets FAST / FORDEAD mode-driven

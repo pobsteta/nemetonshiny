@@ -10,6 +10,39 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-05-26
+
+### Added
+
+- **Fallback `lasR` pour le CHM depuis les nuages LiDAR HD locaux**.
+  Quand les dalles MNH/MNT pré-rasterisées de l'IGN échouent au
+  téléchargement (régulier en 2026 : la couche `NUAGE` COPC reste
+  servie mais `IGNF_MNH-LIDAR-HD:dalle` et `IGNF_MNT-LIDAR-HD:dalle`
+  retombent en 404 par dalle), `nemetonshiny` bascule sur
+  `nemeton::compute_dtm_chm_from_laz()` pour dériver localement le
+  CHM (et le MNT) depuis les `.copc.laz` déjà en cache. Mesure
+  réelle (vs prédiction ML d'Open-Canopy), purement locale (pas de
+  modèle à télécharger, pas de GPU), chaîne d'install légère.
+  Intercalé dans la chaîne d'acquisition CHM entre LiDAR HD MNH
+  (Step 1) et Theia FORMSpoT (Step 1.5). Opt-out via
+  `options(nemetonshiny.chm_lasr_fallback = "off")` ou
+  `NEMETONSHINY_DISABLE_CHM_LASR=1`. Plancher
+  `nemeton (>= 0.48.0)`. `lasR` ajouté en `Suggests:`.
+- **Diagnostic catégorisé des échecs de download IGN LiDAR HD**.
+  `download_ign_lidar_hd()` appelle
+  `nemeton::probe_ign_lidar_tiles()` quand 0 tuile a été téléchargée
+  et affiche un résumé par catégorie (`not_found` / `forbidden` /
+  `timeout` / `dns` / `connection` / `server_error`) au lieu du
+  laconique `failed`.
+- 5 nouvelles clés i18n bilingues NMT-compliant
+  (`chm_phase_lasr_fallback`, `chm_fallback_lasr_start`,
+  `chm_fallback_lasr_success`, `chm_fallback_lasr_skip_no_tiles`,
+  `chm_fallback_lasr_skip_no_pkg`).
+- 5 tests unitaires dans `tests/testthat/test-service_compute.R`
+  couvrant les branches opt-out env, opt-out option, lasR manquant,
+  dossier vide, et l'appel mocké à
+  `nemeton::compute_dtm_chm_from_laz()`.
+
 ## [0.40.0] - 2026-05-21
 
 ### Added
