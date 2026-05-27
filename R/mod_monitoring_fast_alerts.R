@@ -206,12 +206,14 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 
       if (identical(mode, "count")) {
         # v0.45.0 — classification adaptative par quartiles sur les
-        # valeurs non-nulles. La version précédente (fixed bins
-        # 1-2 / 3-5 / 6+) écrasait tout en rouge dès qu'une scène
-        # avait > 10 alertes, masquant les gradients sur les zones
-        # moyennement touchées. Les quartiles offrent un découpage
-        # toujours lisible quel que soit le max.
-        cls <- .classify_alert_count(r_show)
+        # valeurs non-nulles. 4 classes préfixées « 1 — … » / « 2 — … »
+        # alignées avec les classes 1-4 du masque catégoriel
+        # FAST utilisé par Plan de validation (label unification —
+        # le module valid récupère ces mêmes labels via
+        # `.fast_class_labels()` pour ses checkboxes).
+        unit <- i18n$t("validation_class_unit_days")
+        unit_sfx <- if (nzchar(unit)) paste0(" ", unit) else ""
+        cls <- .classify_alert_count(r_show, unit = unit_sfx)
         if (length(cls$breaks) < 2L) return(m)
         cols <- .alert_count_palette(length(cls$labels))
         pal <- leaflet::colorBin(
@@ -286,54 +288,119 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 
 
 # v0.45.0 — adaptive quartile classification for the count-mode
-# alert raster. Computes 4 bins on the non-zero values' quartiles
-# (Q0..Q25..Q50..Q75..Q100), rounds breaks to integers, fuses
-# duplicates (collapses to fewer than 4 bins when the distribution
-# is degenerate — e.g. constant value 1, or only two distinct
-# counts). Returns NULL-shaped (length-1 breaks) when the raster
-# has no positive value, so the caller can early-return.
+# alert raster.
 #
-# Pair with `.alert_count_palette(n)` for the matching color ramp.
+# v0.45.0 (suite, label unification) — produit 4 classes alignées
+# avec les classes 1-4 du masque catégoriel utilisé par
+# `nemeton::compute_fast_alert_mask()` (qui découpe sur les
+# quartiles par défaut). Cohérence avec Plan de validation FAST :
+# les checkbox classes 1-4 du formulaire affichent EXACTEMENT les
+# mêmes intervalles que la légende Alertes FAST.
 #
-# @param r SpatRaster with NA outside the AOI and zeros masked
-#   upstream.
-# @return list(breaks, labels). Breaks include a leading 0 so the
-#   legend's lower bound matches the no-alert pixels. Labels are
-#   integer ranges or `"M-N"` strings.
-.classify_alert_count <- function(r) {
+# Labels préfixés par le numéro de classe + unité optionnelle. Ex :
+#   "1 — 1-12 j" / "2 — 13-25 j" / "3 — 26-37 j" / "4 — >37 j"
+#
+# Distribution dégénérée (constant value, < 4 valeurs distinctes)
+# collapse à moins de 4 classes — l'appelant adapte la palette via
+# `.alert_count_palette(length(labels))`.
+#
+# @param r SpatRaster avec NA hors AOI et zéros masqués upstream.
+# @param unit Suffixe optionnel pour chaque label (ex. "j" / "d").
+#   Pas d'espace ajouté ; passer `" j"` pour avoir « 1-12 j ».
+# @return list(breaks, labels). Breaks : 5 points pour 4 classes
+#   (ou moins si la distribution est dégénérée).
+.classify_alert_count <- function(r, unit = "") {
   vals <- tryCatch(terra::values(r), error = function(e) NULL)
-  if (is.null(vals)) return(list(breaks = c(0, 1), labels = "1+"))
+  if (is.null(vals)) return(list(breaks = c(0, 1),
+                                 labels = sprintf("1+%s", unit)))
   vals <- vals[!is.na(vals) & vals > 0]
-  if (!length(vals)) return(list(breaks = c(0, Inf), labels = character(0)))
+  if (!length(vals)) return(list(breaks = c(0, Inf),
+                                 labels = character(0)))
   q <- as.numeric(stats::quantile(vals, probs = c(0, .25, .50, .75, 1.0),
                                   na.rm = TRUE))
-  q <- unique(as.integer(round(q)))           # collapse duplicates
-  q <- q[q > 0]                                # zero is the lower bound
-  if (!length(q)) return(list(breaks = c(0, 1), labels = "1+"))
+  q <- unique(as.integer(round(q)))
+  q <- q[q > 0]
+  if (!length(q)) return(list(breaks = c(0, 1),
+                              labels = sprintf("1+%s", unit)))
   if (length(q) == 1L) {
-    # Single distinct value (constant raster) — one bucket only.
     return(list(breaks = c(0, q[1] + 0.5),
-                labels = sprintf("%d", q[1])))
+                labels = sprintf("1 — %d%s", q[1], unit)))
   }
-  # Build labels for n+1 breakpoints (n bins).
-  # First label : "Qmin" or "Qmin-Q1" depending on whether the
-  # quartiles span a range.
-  labels <- character(0)
-  q_pad  <- c(0, q)
-  for (i in seq_len(length(q_pad) - 1L)) {
-    lo <- q_pad[i] + 1L
-    hi <- q_pad[i + 1L]
-    labels <- c(labels,
-                if (lo == hi) sprintf("%d", lo) else sprintf("%d-%d", lo, hi))
+  # 4 quartiles produce up to 4 bins. Labels carry the class
+  # number prefix (1..n) + interval + optional unit.
+  n_bins <- length(q) - 1L
+  labels <- character(n_bins)
+  for (i in seq_len(n_bins)) {
+    lo <- q[i]
+    hi <- q[i + 1L] - 1L
+    rng <- if (i == n_bins) sprintf(">%d%s", q[i], unit)
+           else if (lo > hi) sprintf("%d%s", lo, unit)
+           else if (lo == hi) sprintf("%d%s", lo, unit)
+           else sprintf("%d-%d%s", lo, hi, unit)
+    labels[i] <- sprintf("%d — %s", i, rng)
   }
-  # Top bucket gets a "Q4+" cue when the max quantile is the actual
-  # max (informative for users : "this many alert-days max").
-  if (length(labels)) {
-    labels[length(labels)] <- sprintf("%d+", q_pad[length(q_pad) - 1L] + 1L)
-  }
-  # Bins for colorBin : c(0.5, Q1+.5, Q2+.5, Q3+.5, Q4+.5).
-  bins <- c(0.5, q + 0.5)
+  # Bins for colorBin : 5 points for 4 classes. Lower edges of
+  # bins 2..n on `q[i] - 0.5`, upper edge of the top bin on
+  # `q_last + 0.5` to include the max value.
+  bins <- c(0.5, q[-1] - 0.5)
+  bins[length(bins)] <- q[length(q)] + 0.5
   list(breaks = bins, labels = labels)
+}
+
+
+# v0.45.0 — wrapper produisant des labels par classe FAST/FORDEAD
+# pour les consommateurs externes (mod_validation_sampling au moins).
+# Pour FORDEAD, retourne les libellés biologiques fixes (1=faible,
+# 2=moyenne, 3=forte, 4=sol nu). Pour FAST, dérive les labels des
+# quartiles du raster fourni ; fallback statique générique quand le
+# raster est NULL.
+#
+# @param r SpatRaster mono-couche (count) ou NULL.
+# @param source "FAST" ou "FORDEAD".
+# @param mode "count" ou "rolling" — drive l'unité affichée.
+# @param i18n L'objet `get_i18n(lang)`.
+# @return named list "1".."4" -> label string.
+.fast_class_labels <- function(r, source = c("FAST", "FORDEAD"),
+                                mode   = c("count", "rolling"),
+                                i18n) {
+  source <- match.arg(source)
+  mode   <- match.arg(mode)
+  if (identical(source, "FORDEAD")) {
+    return(list(
+      "1" = i18n$t("validation_class_fordead_1"),
+      "2" = i18n$t("validation_class_fordead_2"),
+      "3" = i18n$t("validation_class_fordead_3"),
+      "4" = i18n$t("validation_class_fordead_4")
+    ))
+  }
+  if (is.null(r) || .fast_raster_is_empty(r)) {
+    return(list(
+      "1" = i18n$t("validation_class_fast_1"),
+      "2" = i18n$t("validation_class_fast_2"),
+      "3" = i18n$t("validation_class_fast_3"),
+      "4" = i18n$t("validation_class_fast_4")
+    ))
+  }
+  unit_key <- if (identical(mode, "count")) "validation_class_unit_days"
+              else                          "validation_class_unit_deficit"
+  unit <- i18n$t(unit_key)
+  unit_sfx <- if (nzchar(unit)) paste0(" ", unit) else ""
+  cls <- .classify_alert_count(r, unit = unit_sfx)
+  # Pad to exactly 4 entries with NA-safe fallbacks when the
+  # distribution is degenerate.
+  out <- list("1" = NA_character_, "2" = NA_character_,
+              "3" = NA_character_, "4" = NA_character_)
+  for (i in seq_along(cls$labels)) {
+    if (i <= 4L) out[[as.character(i)]] <- cls$labels[i]
+  }
+  # Substitute NA with the static fallback for the missing classes.
+  for (i in 1:4) {
+    k <- as.character(i)
+    if (is.na(out[[k]])) {
+      out[[k]] <- i18n$t(sprintf("validation_class_fast_%d", i))
+    }
+  }
+  out
 }
 
 

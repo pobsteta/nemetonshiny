@@ -61,13 +61,23 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         label = i18n$t("validation_n_control_label"),
         value = 5L, min = 0L, max = 100L, step = 1L
       ),
+      # v0.45.0 — labels initiaux depuis i18n. Source-aware : pour
+      # FORDEAD = labels biologiques fixes, pour FAST = labels
+      # génériques en attendant que l'observer serveur appelle
+      # updateCheckboxGroupInput avec les quartiles du raster.
       shiny::checkboxGroupInput(
         ns("classes"),
         label   = i18n$t("validation_classes_label"),
         choices = stats::setNames(
           c("3", "4", "1", "2"),
-          c("3 — forte", "4 — sol nu",
-            "1 — faible (moins fiable)", "2 — moyenne (moins fiable)")
+          local({
+            prefix <- if (identical(source, "FORDEAD"))
+              "validation_class_fordead_" else "validation_class_fast_"
+            c(i18n$t(paste0(prefix, "3")),
+              i18n$t(paste0(prefix, "4")),
+              i18n$t(paste0(prefix, "1")),
+              i18n$t(paste0(prefix, "2")))
+          })
         ),
         selected = c("3", "4"),
         inline = FALSE
@@ -165,6 +175,62 @@ mod_validation_sampling_server <- function(id, app_state,
         }
       })
     }
+
+    # v0.45.0 — label unification : pour FAST, charge best-effort le
+    # raster d'alerte continu et calcule les labels quartile via
+    # `.fast_class_labels()`, partagé avec Alertes FAST. Pour FORDEAD,
+    # labels biologiques statiques. Le résultat alimente le checkbox
+    # `classes` via updateCheckboxGroupInput (préserve la sélection
+    # courante).
+    preview_raster_r <- shiny::reactive({
+      if (!identical(current_source(), "FAST")) return(NULL)
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      zone_id <- suppressWarnings(as.integer(
+        proj$metadata$monitoring_zone_id))
+      if (is.na(zone_id)) return(NULL)
+      th <- thresholds_r()
+      dr <- date_range_r()
+      if (is.null(th$ndvi) || is.null(th$nbr) ||
+          length(dr) != 2L || any(is.na(dr))) return(NULL)
+      cd <- file.path(proj$path, "cache", "layers", "sentinel2")
+      if (!dir.exists(cd)) return(NULL)
+      con <- get_monitoring_db_connection(project = proj)
+      if (is.null(con)) return(NULL)
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      tryCatch(
+        nemeton::read_fast_alert_raster(
+          con,
+          zone_id        = zone_id,
+          threshold_ndvi = as.numeric(th$ndvi),
+          threshold_nbr  = as.numeric(th$nbr),
+          date_from      = dr[1],
+          date_to        = dr[2],
+          mode           = "count",
+          window_days    = as.integer(th$window_days %||% 30L),
+          cache_dir      = cd
+        ),
+        error = function(e) NULL
+      )
+    })
+
+    shiny::observe({
+      i18n <- i18n_r()
+      src  <- current_source()
+      r    <- preview_raster_r()
+      labels <- .fast_class_labels(r, source = src,
+                                   mode = "count", i18n = i18n)
+      # Order : 3, 4 first (defaults / G1 guard-rail), then 1, 2.
+      shiny::updateCheckboxGroupInput(
+        session, "classes",
+        choices = stats::setNames(
+          c("3", "4", "1", "2"),
+          c(labels[["3"]], labels[["4"]],
+            labels[["1"]], labels[["2"]])
+        ),
+        selected = input$classes %||% c("3", "4")
+      )
+    })
 
     # The plan reactive : only fires on the Generate button. eventReactive
     # makes input changes invalidate the value silently — the user must
