@@ -274,15 +274,39 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # Snap the requested date to the closest scene actually present
     # in the stack (the slider lets the user drag day-by-day, but
     # the data is sparse — typically every 5 days max).
+    #
+    # v0.46.5 — mosaic des layers d'une même date. Pour une AOI à
+    # cheval sur deux tuiles MGRS (cas villards : T31TFM + T31TGM),
+    # `scenes_df` retourne 2 scene_ids par obs_date, donc le stack
+    # contient 2 layers nommés avec la même date. Avant le fix, le
+    # `which.min(abs(dates - target))` retournait un seul index et
+    # l'affichage ne couvrait que la moitié de l'AOI (celle du tile
+    # gagnant). Désormais on mosaïque tous les layers ayant la date
+    # cible — terra::mosaic avec fun="mean" gère le recouvrement
+    # éventuel proprement.
     current_layer_r <- shiny::reactive({
       st <- pixel_stack_r()
       if (is.null(st)) return(NULL)
       target <- input$date
       if (is.null(target)) return(NULL)
       dates <- as.Date(names(st))
-      idx <- which.min(abs(as.numeric(dates - as.Date(target))))
+      if (!length(dates)) return(NULL)
+      closest <- dates[which.min(abs(as.numeric(dates - as.Date(target))))]
+      idx <- which(dates == closest)
       if (!length(idx)) return(NULL)
-      st[[idx]]
+      if (length(idx) == 1L) return(st[[idx]])
+      # Multi-tile MGRS : mosaic per date.
+      layers <- lapply(idx, function(i) st[[i]])
+      tryCatch(
+        Reduce(function(a, b) terra::mosaic(a, b, fun = "mean"), layers),
+        error = function(e) {
+          cli::cli_alert_warning(sprintf(
+            "mosaic of %d MGRS layers failed for %s: %s",
+            length(idx), closest, conditionMessage(e)))
+          # Fallback : premier layer (ancien comportement).
+          st[[idx[1]]]
+        }
+      )
     })
 
     output$scene_count_hint <- shiny::renderUI({
@@ -341,9 +365,17 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
         leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
-          options    = leaflet::layersControlOptions(collapsed = TRUE)
-        )
+          # v0.46.5 — UGF et Placettes toggleables via le LayersControl.
+          # Par défaut UGF visible / Placettes cachées (request user :
+          # « il ne devrait y avoir que les UGFs »). Les placettes
+          # restent dans la liste pour les workflows qui en ont besoin
+          # (clic placette → modal série temporelle agrégée), mais ne
+          # surchargent plus la carte par défaut.
+          baseGroups    = c("OSM", "Satellite"),
+          overlayGroups = c("UGF", "Placettes"),
+          options       = leaflet::layersControlOptions(collapsed = TRUE)
+        ) |>
+        leaflet::hideGroup("Placettes")
     })
 
     # Index value range is roughly [-1, 1] for both NDVI and NBR.

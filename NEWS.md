@@ -1,3 +1,39 @@
+# nemetonshiny 0.46.5 (2026-05-27)
+
+### Fixed — Carte FAST : placettes off par défaut + mosaic multi-tuile MGRS
+
+Deux problèmes UX observés sur villards (AOI à cheval sur les
+tuiles MGRS T31TFM et T31TGM).
+
+#### Placettes surchargeaient la carte
+
+~50 markers bleus pleins (les placettes du plan d'échantillonnage)
+étaient toujours affichés et masquaient les UGFs (polygones
+contour bleu) ainsi qu'une partie du raster NDVI/NBR. L'utilisateur
+ne pouvait plus distinguer sa zone.
+
+Fix : « Placettes » et « UGF » sont désormais dans le
+`addLayersControl(overlayGroups = ...)`, et `hideGroup("Placettes")`
+est appelé au render pour démarrer avec les placettes cachées.
+L'utilisateur peut les ré-afficher via la case à cocher du
+LayersControl s'il veut accéder au workflow click-placette (modal
+série temporelle agrégée). UGF reste visible par défaut.
+
+#### Raster n'affichait que la moitié de l'AOI
+
+`scenes_df_r()` retourne DISTINCT (scene_id, obs_date). Pour
+villards à cheval MGRS, chaque date a 2 scene_ids → le stack
+contient 2 layers avec la même date. Le `which.min(abs(dates -
+target))` ne retournait QU'UN index → seule la moitié du raster
+(celle du tile gagnant) s'affichait, l'autre moitié vide.
+
+Fix : `current_layer_r()` détecte les multiples layers à la même
+date et fait un `terra::mosaic(..., fun = "mean")` à la volée. Le
+recouvrement éventuel des deux tuiles est moyenné (les valeurs S2
+sont identiques dans l'overlap MGRS — mean ou first donnent le
+même résultat). Fallback safe sur le premier layer en cas d'erreur
+terra.
+
 # nemetonshiny 0.46.4 (2026-05-27)
 
 ### Fixed — Theia : drop du probe Python prématuré + diagnostic CHM
