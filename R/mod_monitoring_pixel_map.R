@@ -445,6 +445,26 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       # UGFs / les tuiles OSM.
       r <- tryCatch(terra::project(r, "EPSG:4326"),
                     error = function(e) r)
+      # v0.46.7 — clip raster aux UGFs : seuls les pixels DANS les
+      # polygones UGFs sont colorés, le reste devient transparent.
+      # Aide à se concentrer sur la zone d'analyse (forêt) et évite
+      # de colorer des champs / routes voisins qui ne sont pas
+      # pertinents. terra::mask met NA hors des polygones ; le NA
+      # est rendu transparent par .pixel_palette(na.color =
+      # "transparent"). En bonus, un clic sur un pixel hors UGF
+      # tombe dans une zone transparente → le modal pixel ne
+      # s'ouvre pas pour des coordonnées sans intérêt.
+      ugf <- tryCatch(ugf_sf_r(), error = function(e) NULL)
+      if (!is.null(ugf) && nrow(ugf) > 0) {
+        r <- tryCatch(
+          terra::mask(r, terra::vect(ugf)),
+          error = function(e) {
+            cli::cli_alert_warning(sprintf(
+              "terra::mask UGF failed: %s", conditionMessage(e)))
+            r
+          }
+        )
+      }
       proxy |>
         leaflet::addRasterImage(
           x       = r,
