@@ -1,3 +1,17 @@
+# nemetonshiny 0.46.2 (2026-05-27)
+
+### Fixed — alignement vertical « Mode du raster » / Fréquence / Intensité
+
+Le `form-group` Bootstrap qui enveloppe `radioButtons()` ajoute par
+défaut `margin-bottom: 1rem`. Combiné avec `align-items-center` sur
+le flex parent, le centre de la boîte (marge incluse) tombait
+légèrement plus haut que le texte voisin « Mode du raster », créant
+un décalage vertical de 6-8 px peu agréable visuellement.
+
+Fix : `tagAppendAttributes(class = "mb-0")` sur le `radioButtons()`
+pour neutraliser la marge bottom du form-group. Le centre visuel
+s'aligne désormais correctement avec le label.
+
 # nemetonshiny 0.46.1 (2026-05-27)
 
 ### Fixed — radio « Fréquence / Intensité » reste inline après refresh i18n
