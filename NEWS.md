@@ -58,6 +58,37 @@ reprojeté en WGS84, ou NULL si pas d'indicateurs calculés. Map UGF
 ajoutée comme groupe dans `addLayersControl(overlayGroups = "UGF")`
 quand disponible.
 
+#### Label unification — Alertes FAST ↔ Plan de validation
+
+Demande user : les classes 1-4 affichées dans Alertes FAST (légende
+quartile) et Plan de validation (checkbox group) doivent montrer
+**exactement les mêmes intervalles** — c'étaient les mêmes cellules
+sous-jacentes avec deux classifications visuelles différentes.
+
+Refactor `.classify_alert_count(r, unit)` : 4 classes (au lieu de
+5) alignées avec le masque catégoriel `nemeton::compute_fast_alert_mask()`,
+labels préfixés par numéro de classe + unité optionnelle.
+Ex : « 1 — 1-12 j », « 2 — 13-25 j », « 3 — 26-37 j », « 4 — >38 j ».
+
+Nouveau helper `.fast_class_labels(r, source, mode, i18n)` partagé :
+- **FORDEAD** → labels biologiques fixes (faible / moyenne / forte /
+  sol nu) ;
+- **FAST + raster** → quartiles dynamiques avec unité « j » (count)
+  ou « » (rolling) ;
+- **FAST + raster NULL** → fallback statique générique.
+
+Consommation :
+- `mod_monitoring_fast_alerts` : la légende Fréquence utilise les
+  labels préfixés.
+- `mod_validation_sampling` : nouveau `preview_raster_r()`
+  best-effort qui lit le raster d'alerte continu quand
+  source = FAST, et un observer qui appelle
+  `updateCheckboxGroupInput` avec `.fast_class_labels()`. La
+  sélection courante est préservée (G1 : `c("3", "4")` par défaut).
+
+i18n : 10 nouvelles clés (`validation_class_unit_days/_deficit`,
+`validation_class_fast_1..4`, `validation_class_fordead_1..4`).
+
 ### Tests
 
 Nouveau `test-mod_monitoring_fast_alerts.R` (7 cas) :
