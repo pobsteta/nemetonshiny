@@ -27,6 +27,21 @@ uniforme, violet → magenta → orange → jaune). Le vert haut-NDVI
 se confondait avec le fond OSM forêt ; plasma ne traverse pas le
 vert. Intuition conservée « valeurs hautes = jaune vif ».
 
+#### Plot pixel — seuils alignés sur la couleur de leur courbe
+
+Les lignes horizontales de seuil NDVI / NBR dans le modal pixel
+(clic sur Carte FAST) utilisaient des couleurs distinctes (orange /
+rouge) qui rompaient l'association visuelle « le seuil appartient
+à la même bande que sa courbe ». Désormais le seuil NDVI utilise
+la couleur de la courbe NDVI (`#2CA02C`), le seuil NBR celle de la
+courbe NBR (`#D62728`). Le dash style et l'annotation à droite
+suffisent à distinguer la ligne statique des points de mesure.
+
+Centralisation : couleurs lifted dans `.pixel_band_colors` en tête
+de `moduleServer` — élimine la duplication entre les 2 observers
+(modal placette + modal pixel) et garantit que toute évolution
+future palette + seuil reste synchronisée.
+
 #### Overlay UGF sur toutes les cartes Suivi sanitaire
 
 Ajout de polygones UGF (bleu vif `#1f78b4`, contour 2 pt, fill 0)
