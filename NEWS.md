@@ -1,3 +1,32 @@
+# nemetonshiny 0.46.3 (2026-05-27)
+
+### Fixed — Carte FAST restait vide à la première visite de l'onglet
+
+`mod_monitoring_pixel_map` n'avait pas
+`outputOptions(suspendWhenHidden = FALSE)` sur ses outputs. Le
+navset bslib manipule le DOM via `nav_show/nav_hide`, ce que Shiny
+ne détecte pas pour réveiller les outputs marqués `suspended` au
+démarrage de l'app. Conséquence : à la première visite de l'onglet
+**Carte FAST**, `output$map` n'avait jamais été démarré, et la zone
+restait visuellement vide (pas d'OSM, pas de slider date, pas de
+message d'état).
+
+Fix : `suspendWhenHidden = FALSE` sur les 4 outputs (`map`,
+`date_slider_ui`, `scene_count_hint`, `loading_overlay`).
+Symétrique avec `mod_monitoring_fast_alerts` et
+`mod_monitoring_fordead_map` qui ont ce fix depuis v0.37.1.
+
+### Changed — Alertes FAST sans alerte affiche désormais la carte + UGFs
+
+Avant : « Aucune alerte FAST sur la fenêtre » s'affichait en texte
+centré, sans aucune carte. L'utilisateur perdait le repère spatial
+de sa zone.
+
+Après : la carte est toujours rendue (OSM + Satellite + polygones
+UGF + fitBounds), et un bandeau success vert au-dessus indique
+« Zone saine, aucun pixel en alerte ». L'utilisateur garde le
+contexte géographique même en l'absence d'alerte.
+
 # nemetonshiny 0.46.2 (2026-05-27)
 
 ### Fixed — alignement vertical « Mode du raster » / Fréquence / Intensité
