@@ -435,10 +435,21 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       # drawn transparent. Clamping pins them to the palette extremes
       # (visually correct: a 1.02 NDVI is just "max green").
       r <- terra::clamp(r, lower = -1, upper = 1, values = TRUE)
+      # v0.46.6 — reprojection manuelle vers WGS84 avant addRasterImage,
+      # avec `project = FALSE` pour bypasser la reprojection interne de
+      # leaflet (qui décale visuellement les rasters UTM 31N — vu sur
+      # villards : le raster apparaissait ~1 km à l'ouest de sa vraie
+      # position en lon, tandis que les UGFs en EPSG:2154 reprojetés
+      # par sf::st_transform étaient au bon endroit). terra::project
+      # est fiable pour UTM ↔ WGS84 et préserve l'alignement avec les
+      # UGFs / les tuiles OSM.
+      r <- tryCatch(terra::project(r, "EPSG:4326"),
+                    error = function(e) r)
       proxy |>
         leaflet::addRasterImage(
           x       = r,
           colors  = .pixel_palette,
+          project = FALSE,
           # v0.31.5: bumped 0.85 → 1.0. The conventional NDVI palette
           # uses pale greens (~#A8DDB5) for typical forest values
           # (~0.5 NBR) which are visually indistinguishable from the
