@@ -1,3 +1,25 @@
+# nemetonshiny 0.46.7 (2026-05-27)
+
+### Changed — Carte FAST : raster masqué aux contours UGFs
+
+Avant : le raster NDVI/NBR couvrait toute l'AOI rectangulaire de
+la tuile MGRS, incluant des pixels hors UGFs (champs voisins,
+routes, etc.) sans intérêt pour l'analyse forestière.
+
+Après : `terra::mask(r, ugf)` est appliqué juste avant
+`addRasterImage`. Les pixels hors UGFs deviennent NA →
+transparents. Le raster ne colore plus que la forêt analysée.
+
+Bénéfices :
+- Focus visuel sur la zone d'intérêt
+- Plus de confusion avec les terres voisines
+- Bonus UX : un clic sur un pixel hors UGF tombe dans une zone
+  transparente → le modal pixel ne s'ouvre pas pour des
+  coordonnées sans intérêt.
+
+Si `ugf_sf_r()` retourne NULL (cas projet sans `indicators_sf`),
+le raster est affiché tel quel — pas de régression.
+
 # nemetonshiny 0.46.6 (2026-05-27)
 
 ### Fixed — Carte FAST : reprojection UTM → WGS84 manuelle avant addRasterImage
