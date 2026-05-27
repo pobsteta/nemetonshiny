@@ -906,6 +906,19 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       output$pixel_ts_plot <- plotly::renderPlotly(p)
     })
 
+    # v0.46.3 — force le rendu même quand l'onglet est masqué.
+    # Le navset bslib utilise nav_show/nav_hide qui manipule le DOM
+    # directement ; Shiny ne re-réveille pas les outputs marqués
+    # suspended au démarrage de l'app. Sans ces 4 outputOptions, la
+    # carte FAST reste vide la première fois qu'on clique sur l'onglet
+    # parce que `output$map` n'a jamais été démarré. Symétrique avec
+    # mod_monitoring_fast_alerts et mod_monitoring_fordead_map qui
+    # ont déjà ce fix depuis v0.37.1.
+    shiny::outputOptions(output, "map",             suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "date_slider_ui",  suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "scene_count_hint", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "loading_overlay", suspendWhenHidden = FALSE)
+
     invisible(list(
       pixel_stack    = pixel_stack_r,
       scenes_df      = scenes_df_r,

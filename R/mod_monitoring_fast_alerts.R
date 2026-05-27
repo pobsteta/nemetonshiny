@@ -162,34 +162,36 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       )
     })
 
-    # ----- Panel : empty state or leaflet output ----------------------
+    # ----- Panel : map (always rendered) + optional empty-state banner -----
+    # v0.46.3 — la carte (OSM + UGFs) est désormais affichée même
+    # quand le raster d'alerte est vide. Un bandeau « zone saine »
+    # vert s'affiche au-dessus pour donner l'info, mais l'utilisateur
+    # conserve le repère spatial (où est la zone, où sont les UGFs).
     output$panel <- shiny::renderUI({
       i18n <- i18n_r()
       r <- raster_r()
-      if (is.null(r) || .fast_raster_is_empty(r)) {
-        return(htmltools::div(
-          class = "p-4 text-center text-muted",
-          bsicons::bs_icon("check-circle",
-                           class = "fs-1 d-block mx-auto mb-3 text-success"),
-          htmltools::h5(class = "mt-3",
-                        i18n$t("monitoring_fast_alerts_empty_title")),
-          htmltools::p(class = "mb-0",
-                       i18n$t("monitoring_fast_alerts_empty_body"))
-        ))
-      }
-      leaflet::leafletOutput(session$ns("map"), height = "55vh")
+      banner <- if (is.null(r) || .fast_raster_is_empty(r)) {
+        htmltools::div(
+          class = "alert alert-success d-flex align-items-center gap-3 m-2 py-2 small",
+          bsicons::bs_icon("check-circle", class = "fs-3 flex-shrink-0"),
+          htmltools::div(
+            htmltools::tags$strong(i18n$t("monitoring_fast_alerts_empty_title")),
+            htmltools::tags$br(),
+            htmltools::tags$span(class = "text-muted",
+                                 i18n$t("monitoring_fast_alerts_empty_body"))
+          )
+        )
+      } else NULL
+      htmltools::tagList(
+        banner,
+        leaflet::leafletOutput(session$ns("map"), height = "55vh")
+      )
     })
 
     output$map <- leaflet::renderLeaflet({
       r <- raster_r()
-      if (is.null(r) || .fast_raster_is_empty(r)) return(NULL)
       i18n <- i18n_r()
       mode <- input$mode %||% "count"
-
-      # Zero = pas d'alerte → transparent. Le cœur retourne 0 (count)
-      # ou 0.0 (rolling) hors alerte, qu'on masque ici pour ne pas
-      # noircir / saturer la carte de pixels uniformes.
-      r_show <- terra::ifel(r == 0, NA, r)
 
       # v0.45.0 — overlay UGF (polygones bleu vif) au-dessus du
       # raster d'alerte pour le repère spatial demandé après les
@@ -216,6 +218,27 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
             fillOpacity = 0
           )
       }
+
+      # v0.46.3 — zone saine (raster vide) : on garde la carte de base
+      # + l'overlay UGF + fit bounds, sans raster ni légende. Donne le
+      # repère spatial même quand il n'y a rien à signaler.
+      if (is.null(r) || .fast_raster_is_empty(r)) {
+        if (!is.null(ugf_4326)) {
+          bb <- tryCatch(sf::st_bbox(ugf_4326), error = function(e) NULL)
+          if (!is.null(bb)) {
+            m <- m |> leaflet::fitBounds(
+              lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+              lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
+            )
+          }
+        }
+        return(m)
+      }
+
+      # Zero = pas d'alerte → transparent. Le cœur retourne 0 (count)
+      # ou 0.0 (rolling) hors alerte, qu'on masque ici pour ne pas
+      # noircir / saturer la carte de pixels uniformes.
+      r_show <- terra::ifel(r == 0, NA, r)
 
       if (identical(mode, "count")) {
         # v0.45.0 — classification adaptative par quartiles sur les
