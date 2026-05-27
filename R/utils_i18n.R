@@ -2100,25 +2100,29 @@ TRANSLATIONS <- list(
   # (nombre de dates en alerte), `rolling` un continu (magnitude).
   # `legend_title` est utilisé pour le mode rolling, `legend_count_title`
   # pour le mode count.
+  # v0.45.0 — libellés revus après tests user villards. "Compte" et
+  # "Magnitude" étaient abstraits ; "Fréquence" / "Intensité" parlent
+  # davantage du sens métier (jours en alerte vs intensité du déficit
+  # NDVI/NBR sur la fenêtre roulante).
   monitoring_fast_alerts_mode_label = list(
-    fr = "Mode raster",
+    fr = "Mode du raster",
     en = "Raster mode"
   ),
   monitoring_fast_alerts_mode_count = list(
-    fr = "Compte",
-    en = "Count"
+    fr = "Fréquence",
+    en = "Frequency"
   ),
   monitoring_fast_alerts_mode_rolling = list(
-    fr = "Magnitude",
-    en = "Magnitude"
+    fr = "Intensité",
+    en = "Intensity"
   ),
   monitoring_fast_alerts_legend_title = list(
-    fr = "Score d'alerte",
-    en = "Alert score"
+    fr = "Intensité du déficit",
+    en = "Deficit intensity"
   ),
   monitoring_fast_alerts_legend_count_title = list(
-    fr = "Nombre d'alertes",
-    en = "Alert count"
+    fr = "Jours en alerte",
+    en = "Alert days"
   ),
   monitoring_fast_alerts_opacity_label = list(
     fr = "Opacité du raster",
@@ -2426,6 +2430,56 @@ TRANSLATIONS <- list(
   validation_classes_label = list(
     fr = "Classes d'alerte retenues",
     en = "Retained alert classes"
+  ),
+  # v0.45.0 — labels unifiés FAST entre Alertes FAST (légende) et
+  # Plan de validation FAST (checkboxes). FAST = quartiles du raster
+  # d'alerte courant, calculés dynamiquement via .fast_class_labels().
+  # FORDEAD = labels biologiques statiques (le mask catégoriel
+  # FORDEAD est fixe).
+  validation_class_unit_days = list(
+    fr = "j",
+    en = "d"
+  ),
+  validation_class_unit_deficit = list(
+    fr = "",
+    en = ""
+  ),
+  # Fallback FAST quand le raster d'alerte n'est pas encore calculé
+  # (cache absent, ingestion pas encore lancée, etc.) — labels
+  # génériques par classe.
+  validation_class_fast_1 = list(
+    fr = "1 — faible (moins fiable)",
+    en = "1 — low (less reliable)"
+  ),
+  validation_class_fast_2 = list(
+    fr = "2 — moyenne (moins fiable)",
+    en = "2 — medium (less reliable)"
+  ),
+  validation_class_fast_3 = list(
+    fr = "3 — forte",
+    en = "3 — high"
+  ),
+  validation_class_fast_4 = list(
+    fr = "4 — très forte",
+    en = "4 — very high"
+  ),
+  # FORDEAD : libellés biologiques fixes (mapping cœur du masque
+  # catégoriel produit par run_fordead_dieback()).
+  validation_class_fordead_1 = list(
+    fr = "1 — faible (moins fiable)",
+    en = "1 — low (less reliable)"
+  ),
+  validation_class_fordead_2 = list(
+    fr = "2 — moyenne (moins fiable)",
+    en = "2 — medium (less reliable)"
+  ),
+  validation_class_fordead_3 = list(
+    fr = "3 — forte",
+    en = "3 — high"
+  ),
+  validation_class_fordead_4 = list(
+    fr = "4 — sol nu",
+    en = "4 — bare soil"
   ),
   validation_buffer_label = list(
     fr = "Tampon (m) autour des alertes",

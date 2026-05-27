@@ -347,13 +347,28 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     })
 
     # Index value range is roughly [-1, 1] for both NDVI and NBR.
-    # Use a divergent palette anchored on 0; NA stays transparent.
+    # v0.45.0 — switch from a divergent red→yellow→green ramp to
+    # `plasma` (sequential perceptually-uniform). Le vert "haut" du
+    # divergent se confondait avec le fond OSM (parcelles forestières).
+    # Plasma (violet → magenta → orange → jaune) ne traverse pas le
+    # vert, donc reste contrasté sur l'OSM ; intuition conservée
+    # "valeurs hautes = jaune vif, valeurs basses = violet sombre".
+    # NA reste transparent.
     .pixel_palette <- leaflet::colorNumeric(
-      palette  = c("#D62728", "#FFD27F", "#FFFFCC",
-                   "#A8DDB5", "#2CA02C"),
+      palette  = "plasma",
       domain   = c(-1, 1),
       na.color = "transparent"
     )
+
+    # v0.45.0 — couleurs centralisées des courbes plotly NDVI / NBR
+    # (modal per-plot + modal per-pixel) et de leurs lignes de seuil
+    # horizontales. Avant v0.45.0 elles étaient dupliquées inline dans
+    # les deux observers + les seuils utilisaient des couleurs distinctes
+    # (orange / rouge) qui rompaient l'association visuelle « le seuil
+    # appartient à la même bande que sa courbe ». Centralisation =
+    # garantie que toute évolution future palette + seuil reste
+    # synchronisée.
+    .pixel_band_colors <- c(NDVI = "#2CA02C", NBR = "#D62728")
 
     # Reactive raster + legend swap. Fires on date / index / project
     # changes; preserves the base-layer selection because the map
@@ -711,12 +726,11 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         )
         return()
       }
-      band_colors <- c(NDVI = "#2CA02C", NBR = "#D62728")
       p <- plotly::plot_ly(type = "scatter", mode = "lines+markers")
       for (b in unique(sub$band)) {
         bsub <- sub[sub$band == b, , drop = FALSE]
         bsub <- bsub[order(bsub$obs_date), , drop = FALSE]
-        col  <- band_colors[b] %||% "#7F7F7F"
+        col  <- .pixel_band_colors[b] %||% "#7F7F7F"
         p <- plotly::add_trace(
           p,
           x      = as.Date(bsub$obs_date),
@@ -798,13 +812,13 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         return()
       }
 
-      # Stable per-band colors (same palette as the per-plot view
-      # in v0.27.0 — keeps the user's mental model consistent).
-      band_colors <- c(NDVI = "#2CA02C", NBR = "#D62728")
+      # Stable per-band colors (centralisé en .pixel_band_colors
+      # depuis v0.45.0 — pair direct avec les lignes de seuil
+      # horizontales pour cohérence visuelle).
       p <- plotly::plot_ly(type = "scatter", mode = "lines+markers")
       for (b in unique(ts$index)) {
         sub <- ts[ts$index == b, , drop = FALSE]
-        col <- band_colors[b] %||% "#7F7F7F"
+        col <- .pixel_band_colors[b] %||% "#7F7F7F"
         p <- plotly::add_trace(
           p,
           x      = as.Date(sub$obs_date),
@@ -820,24 +834,25 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           )
         )
       }
-      # v0.42.0 — threshold reference lines. Draw horizontal alert-
-      # coloured dashed lines at the current NDVI / NBR thresholds
-      # (sidebar sliders, threaded via `thresholds_r`) so the user
-      # sees instantly which dates would have flagged this pixel as
-      # an alert. Brief Livrable 3 — pair with the raster d'alerte
-      # of Livrable 2.
+      # v0.42.0 / v0.45.0 — threshold reference lines, alignées sur la
+      # couleur de la courbe correspondante (au lieu d'orange/rouge
+      # arbitraire). Le dash style + annotation à droite suffit à
+      # différencier la ligne (statique) de la courbe (mesures).
+      # `thresholds_r` est threadé depuis la sidebar parent.
       th <- thresholds_r()
       shapes <- list()
       annotations <- list()
       if (!is.null(th)) {
         th_ndvi <- suppressWarnings(as.numeric(th$ndvi))
         th_nbr  <- suppressWarnings(as.numeric(th$nbr))
+        col_ndvi <- unname(.pixel_band_colors[["NDVI"]])
+        col_nbr  <- unname(.pixel_band_colors[["NBR"]])
         if (length(th_ndvi) == 1L && !is.na(th_ndvi)) {
           shapes <- c(shapes, list(
             list(type = "line",
                  xref = "paper", x0 = 0, x1 = 1,
                  yref = "y",     y0 = th_ndvi, y1 = th_ndvi,
-                 line = list(color = "#FF9933", dash = "dash", width = 1))
+                 line = list(color = col_ndvi, dash = "dash", width = 1))
           ))
           annotations <- c(annotations, list(
             list(xref = "paper", x = 1, xanchor = "right",
@@ -845,7 +860,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
                  text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
                                 "NDVI", th_ndvi),
                  showarrow = FALSE,
-                 font = list(color = "#FF9933", size = 11))
+                 font = list(color = col_ndvi, size = 11))
           ))
         }
         if (length(th_nbr) == 1L && !is.na(th_nbr)) {
@@ -853,7 +868,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
             list(type = "line",
                  xref = "paper", x0 = 0, x1 = 1,
                  yref = "y",     y0 = th_nbr, y1 = th_nbr,
-                 line = list(color = "#D62728", dash = "dash", width = 1))
+                 line = list(color = col_nbr, dash = "dash", width = 1))
           ))
           annotations <- c(annotations, list(
             list(xref = "paper", x = 1, xanchor = "right",
@@ -861,7 +876,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
                  text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
                                 "NBR", th_nbr),
                  showarrow = FALSE,
-                 font = list(color = "#D62728", size = 11))
+                 font = list(color = col_nbr, size = 11))
           ))
         }
       }

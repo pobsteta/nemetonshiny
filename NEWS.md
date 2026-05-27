@@ -1,3 +1,115 @@
+# nemetonshiny 0.46.0 (2026-05-27)
+
+### Changed — UX polish des cartes Suivi sanitaire (tests user villards)
+
+Réponse à 4 retours utilisateur après tests sur villards :
+
+#### Alertes FAST — classification adaptative + libellés métier
+
+Avant : palette fixe `c(0.5, 2.5, 5.5, +Inf)` qui écrasait tout en
+rouge dès qu'une scène dépassait 10 alertes. Après : classification
+**quartile adaptative** sur les valeurs non-nulles via le nouveau
+helper `.classify_alert_count(r)` qui produit 4-5 bins selon la
+distribution réelle, ramp jaune pâle → rouge profond
+(`.alert_count_palette(n)`).
+
+i18n revus :
+- « Compte » → « Fréquence » / « Frequency »
+- « Magnitude » → « Intensité » / « Intensity »
+- legend count title : « Nombre d'alertes » → « Jours en alerte »
+- legend rolling title : « Score d'alerte » → « Intensité du déficit »
+
+#### Carte FAST — palette plasma (plus de vert sur OSM vert)
+
+`mod_monitoring_pixel_map` passe de la divergente
+rouge → jaune → vert à `plasma` (séquentielle perceptuellement
+uniforme, violet → magenta → orange → jaune). Le vert haut-NDVI
+se confondait avec le fond OSM forêt ; plasma ne traverse pas le
+vert. Intuition conservée « valeurs hautes = jaune vif ».
+
+#### Plot pixel — seuils alignés sur la couleur de leur courbe
+
+Les lignes horizontales de seuil NDVI / NBR dans le modal pixel
+(clic sur Carte FAST) utilisaient des couleurs distinctes (orange /
+rouge) qui rompaient l'association visuelle « le seuil appartient
+à la même bande que sa courbe ». Désormais le seuil NDVI utilise
+la couleur de la courbe NDVI (`#2CA02C`), le seuil NBR celle de la
+courbe NBR (`#D62728`). Le dash style et l'annotation à droite
+suffisent à distinguer la ligne statique des points de mesure.
+
+Centralisation : couleurs lifted dans `.pixel_band_colors` en tête
+de `moduleServer` — élimine la duplication entre les 2 observers
+(modal placette + modal pixel) et garantit que toute évolution
+future palette + seuil reste synchronisée.
+
+#### Overlay UGF sur toutes les cartes Suivi sanitaire
+
+Ajout de polygones UGF (bleu vif `#1f78b4`, contour 2 pt, fill 0)
+sur les cartes :
+- **Alertes FAST** (raster d'alerte) — précédemment absent
+- **Plan de validation** (markers + raster optionnel) — précédemment
+  absent
+- **Carte FAST** (NDVI/NBR pixel) — déjà en place via observer
+  leafletProxy, inchangé
+
+Nouveau helper privé `.ugf_for_overlay(project)` (dans
+`mod_monitoring_fast_alerts.R`) : retourne `project$indicators_sf`
+reprojeté en WGS84, ou NULL si pas d'indicateurs calculés. Map UGF
+ajoutée comme groupe dans `addLayersControl(overlayGroups = "UGF")`
+quand disponible.
+
+#### Label unification — Alertes FAST ↔ Plan de validation
+
+Demande user : les classes 1-4 affichées dans Alertes FAST (légende
+quartile) et Plan de validation (checkbox group) doivent montrer
+**exactement les mêmes intervalles** — c'étaient les mêmes cellules
+sous-jacentes avec deux classifications visuelles différentes.
+
+Refactor `.classify_alert_count(r, unit)` : 4 classes (au lieu de
+5) alignées avec le masque catégoriel `nemeton::compute_fast_alert_mask()`,
+labels préfixés par numéro de classe + unité optionnelle.
+Ex : « 1 — 1-12 j », « 2 — 13-25 j », « 3 — 26-37 j », « 4 — >38 j ».
+
+Nouveau helper `.fast_class_labels(r, source, mode, i18n)` partagé :
+- **FORDEAD** → labels biologiques fixes (faible / moyenne / forte /
+  sol nu) ;
+- **FAST + raster** → quartiles dynamiques avec unité « j » (count)
+  ou « » (rolling) ;
+- **FAST + raster NULL** → fallback statique générique.
+
+Consommation :
+- `mod_monitoring_fast_alerts` : la légende Fréquence utilise les
+  labels préfixés.
+- `mod_validation_sampling` : nouveau `preview_raster_r()`
+  best-effort qui lit le raster d'alerte continu quand
+  source = FAST, et un observer qui appelle
+  `updateCheckboxGroupInput` avec `.fast_class_labels()`. La
+  sélection courante est préservée (G1 : `c("3", "4")` par défaut).
+
+i18n : 10 nouvelles clés (`validation_class_unit_days/_deficit`,
+`validation_class_fast_1..4`, `validation_class_fordead_1..4`).
+
+### Tests
+
+Nouveau `test-mod_monitoring_fast_alerts.R` (7 cas) :
+- `.classify_alert_count` : distribution large (5 bins quartile),
+  raster constant (1 bin), pas d'alerte (0 bin), NA pixels.
+- `.alert_count_palette` : longueurs (1 → max 5).
+- `.ugf_for_overlay` : reprojection WGS84, NULL safe quand
+  `indicators_sf` absent.
+
+Suite full green : **6511 PASS / 0 FAIL** (+18 nouveaux).
+
+### Non-fix documenté
+
+L'utilisateur signalait que le raster « ne couvre pas toute la zone ».
+**Fausse alerte** : villards est une parcelle longue et étroite
+(~440 m × ~2 km, 6 parcelles cadastrales en vallée). Une fois les
+contours UGF affichés via cette release, le raster correspond
+visuellement à la zone. La logique de crop cœur (nemeton@v0.47.5)
+est correcte.
+
+
 # nemetonshiny 0.45.0 (2026-05-26)
 
 ### Added — Fallback `lasR` pour le CHM depuis les nuages LiDAR HD locaux
