@@ -1,4 +1,4 @@
-# nemetonshiny 0.44.0.9001 (2026-05-27, cycle dev)
+# nemetonshiny 0.46.0 (2026-05-27)
 
 ### Changed — UX polish des cartes Suivi sanitaire (tests user villards)
 
