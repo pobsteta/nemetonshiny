@@ -37,14 +37,22 @@ mod_monitoring_fast_alerts_ui <- function(id) {
     htmltools::div(
       class = "px-3 pt-2 d-flex flex-wrap align-items-center gap-3 small",
       htmltools::tags$strong(i18n$t("monitoring_fast_alerts_mode_label")),
-      shiny::radioButtons(
-        ns("mode"),
-        label  = NULL,
-        inline = TRUE,
-        choiceNames  = list(i18n$t("monitoring_fast_alerts_mode_count"),
-                            i18n$t("monitoring_fast_alerts_mode_rolling")),
-        choiceValues = list("count", "rolling"),
-        selected     = "count"
+      # v0.46.2 — `mb-0` retire le margin-bottom 1rem du form-group
+      # par défaut, qui causait un léger décalage visuel vertical
+      # entre « Mode du raster » et les radios « Fréquence / Intensité »
+      # (align-items-center centre la boîte avec sa marge, pas le
+      # contenu visuel).
+      htmltools::tagAppendAttributes(
+        shiny::radioButtons(
+          ns("mode"),
+          label  = NULL,
+          inline = TRUE,
+          choiceNames  = list(i18n$t("monitoring_fast_alerts_mode_count"),
+                              i18n$t("monitoring_fast_alerts_mode_rolling")),
+          choiceValues = list("count", "rolling"),
+          selected     = "count"
+        ),
+        class = "mb-0"
       )
     ),
     shiny::uiOutput(ns("panel"))
