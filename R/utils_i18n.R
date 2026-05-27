@@ -1315,6 +1315,26 @@ TRANSLATIONS <- list(
     fr = "Aucune clé API Theia configurée. Renseignez-la ci-dessous.",
     en = "No Theia API key configured. Enter it below."
   ),
+  # v0.46.4 — wording honnête du panel Theia config. theia_python_ok
+  # remplace l'ancienne réutilisation de theia_status_ready qui
+  # mentait sur la dispo des modules Python (cf. fix
+  # theia_python_ready : on ne probe plus py_module_available, donc
+  # « Python ok » signifie juste « reticulate installé »).
+  theia_python_ok = list(
+    fr = "reticulate est installé. Les modules Python (teledetection, pystac_client) sont provisionnés automatiquement au premier accès Theia.",
+    en = "reticulate is installed. The Python modules (teledetection, pystac_client) are provisioned automatically on first Theia access."
+  ),
+  theia_key_ok = list(
+    fr = "Clé API Theia configurée.",
+    en = "Theia API key configured."
+  ),
+  # v0.46.4 — message diagnostic quand toute la config Theia est OK
+  # (reticulate + clé) mais load_theia_source() échoue à l'exécution.
+  # Distinct de theia_error_no_key / theia_error_reticulate.
+  theia_chm_load_failed = list(
+    fr = "La clé API Theia est configurée mais le chargement du CHM FORMSpoT a échoué (réseau, environnement Python, ou aucune donnée FORMSpoT pour cette zone). Voir les avertissements de téléchargement pour le détail.",
+    en = "The Theia API key is configured but the FORMSpoT CHM download failed (network, Python environment, or no FORMSpoT data for this area). See the download warnings for details."
+  ),
   theia_key_label_access = list(fr = "Clé d'accès (access key)", en = "Access key"),
   theia_key_label_secret = list(fr = "Clé secrète (secret key)", en = "Secret key"),
   theia_key_help = list(

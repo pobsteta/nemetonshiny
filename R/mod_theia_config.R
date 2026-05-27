@@ -75,15 +75,17 @@ mod_theia_config_server <- function(id, app_state) {
       status_refresh()  # take a dependency so the modal reflects saves
       status <- theia_status()
 
+      # v0.46.4 — wording honnête : python_ok signifie « reticulate
+      # installé », les modules Python sont provisionnés à l'usage
+      # (cf. theia_python_ready). Plus de fausse promesse « Python
+      # prerequisite ready » alors qu'on n'a pas pu le vérifier.
       python_detail <- if (isTRUE(status$python_ok)) {
-        i18n$t("theia_status_ready")
-      } else if (identical(status$python_reason, "reticulate")) {
-        i18n$t("theia_error_reticulate")
+        i18n$t("theia_python_ok")
       } else {
-        i18n$t("theia_error_python_modules")
+        i18n$t("theia_error_reticulate")
       }
       key_detail <- if (isTRUE(status$key_ok)) {
-        i18n$t("theia_status_ready")
+        i18n$t("theia_key_ok")
       } else {
         i18n$t("theia_error_no_key")
       }
