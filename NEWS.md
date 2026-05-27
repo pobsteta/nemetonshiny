@@ -1,3 +1,31 @@
+# nemetonshiny 0.47.0 (2026-05-27)
+
+### Added — Carte FAST : 3 contrôles UX du raster
+
+1. **Toggle visibilité** — `checkboxInput` « Afficher le raster »
+   dans la sidebar. Décoché → le raster n'est plus rendu du tout
+   (le proxy le clear avant). Permet d'avoir juste l'OSM + UGFs
+   sans la couche NDVI/NBR.
+2. **Slider opacité** — `sliderInput` 0 → 1 (step 0.05, default
+   1.0). Permet de voir l'OSM en transparence sous le raster.
+   Utile pour repérer des routes / parcelles cadastrales sous la
+   couche NDVI.
+3. **`NDVI/NBR` ajouté au LayersControl Leaflet** comme `overlayGroup`,
+   à côté de `UGF` et `Placettes`. L'utilisateur a maintenant **deux
+   façons** de cacher le raster : la checkbox sidebar (côté serveur,
+   ne rend rien) ou la case du LayersControl (côté client, hide
+   l'image après render). Les deux sont indépendantes et
+   complémentaires.
+
+2 nouvelles clés i18n (FR + EN) :
+- `monitoring_pixel_map_raster_visible` = « Afficher le raster » /
+  « Show raster »
+- `monitoring_pixel_map_raster_opacity` = « Opacité du raster » /
+  « Raster opacity »
+
+Suite full green : **6571 PASS / 0 FAIL** (+4 nouveaux tests
+implicites via parité FR/EN).
+
 # nemetonshiny 0.46.7 (2026-05-27)
 
 ### Changed — Carte FAST : raster masqué aux contours UGFs

@@ -54,6 +54,22 @@ mod_monitoring_pixel_map_ui <- function(id) {
           inline   = TRUE
         ),
         shiny::uiOutput(ns("date_slider_ui")),
+        # v0.47.0 — 3 contrôles UX du raster :
+        # - Toggle on/off (checkbox)
+        # - Slider opacité 0-1
+        # - Le raster est aussi listé dans le LayersControl Leaflet
+        #   sous "NDVI/NBR" via addLayersControl overlay group
+        #   (cf. addRasterImage(group = ...) plus bas).
+        shiny::checkboxInput(
+          ns("raster_visible"),
+          label = i18n$t("monitoring_pixel_map_raster_visible"),
+          value = TRUE
+        ),
+        shiny::sliderInput(
+          ns("raster_opacity"),
+          label = i18n$t("monitoring_pixel_map_raster_opacity"),
+          min = 0, max = 1, value = 1.0, step = 0.05
+        ),
         shiny::helpText(
           class = "small text-muted fst-italic",
           i18n$t("monitoring_pixel_map_click_hint")
@@ -332,7 +348,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # v0.28.4 attempt at overlayGroups; that fix never really worked,
     # only masked by other behaviors in some cases.)
     .ugf_overlay_group       <- "UGF"
-    .pixel_overlay_group     <- "NDVI / NBR"
+    .pixel_overlay_group     <- "NDVI/NBR"
     .placettes_overlay_group <- "Placettes"
 
     # Static map skeleton: rendered ONCE. Re-rendering the whole map on
@@ -365,14 +381,13 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
         leaflet::addLayersControl(
-          # v0.46.5 — UGF et Placettes toggleables via le LayersControl.
-          # Par défaut UGF visible / Placettes cachées (request user :
-          # « il ne devrait y avoir que les UGFs »). Les placettes
-          # restent dans la liste pour les workflows qui en ont besoin
-          # (clic placette → modal série temporelle agrégée), mais ne
-          # surchargent plus la carte par défaut.
+          # v0.46.5 / v0.47.0 — UGF, Placettes ET le raster NDVI/NBR
+          # toggleables via le LayersControl. Par défaut UGF + Raster
+          # visibles, Placettes cachées. Le raster est ajouté à
+          # l'overlay group `NDVI/NBR` ici puis attaché par
+          # addRasterImage(group = .pixel_overlay_group) plus bas.
           baseGroups    = c("OSM", "Satellite"),
-          overlayGroups = c("UGF", "Placettes"),
+          overlayGroups = c("UGF", "NDVI/NBR", "Placettes"),
           options       = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         leaflet::hideGroup("Placettes")
@@ -425,6 +440,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::clearImages() |>
         leaflet::removeControl("pixel_legend")
       if (is.null(r)) return()
+      # v0.47.0 — toggle global du raster + opacity dynamique. Si le
+      # user décoche `raster_visible`, on n'ajoute pas le raster du
+      # tout (le proxy l'a déjà clearé au-dessus). L'opacité est lue
+      # depuis le slider `raster_opacity`.
+      if (!isTRUE(input$raster_visible %||% TRUE)) return()
+      opacity <- as.numeric(input$raster_opacity %||% 1.0)
+      if (!is.finite(opacity) || opacity < 0) opacity <- 0
+      if (opacity > 1) opacity <- 1
       # v0.38.7 — clamp the index raster to the palette domain
       # [-1, 1] before handing it to addRasterImage(). NDVI / NBR /
       # CRSWIR are theoretically bounded to [-1, 1], but edge pixels
@@ -470,16 +493,13 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           x       = r,
           colors  = .pixel_palette,
           project = FALSE,
-          # v0.31.5: bumped 0.85 → 1.0. The conventional NDVI palette
-          # uses pale greens (~#A8DDB5) for typical forest values
-          # (~0.5 NBR) which are visually indistinguishable from the
-          # Esri.WorldImagery dark-green forest imagery even at high
-          # opacity. Going full-opaque guarantees the raster colors
-          # are readable on both OSM and Satellite. Trade-off: the
-          # satellite imagery is hidden under the raster bbox; the
-          # user keeps satellite context AROUND the bbox and can
-          # toggle to OSM to see roads/parcels inside the zone.
-          opacity = 1.0,
+          # v0.31.5 / v0.47.0 : opacité par défaut 1.0 (palette pale
+          # greens NDVI ~0.5 indistinguable de l'Esri.WorldImagery
+          # forêt à opacité plus basse). Désormais piloté par le
+          # slider `raster_opacity` côté UI — le user peut descendre
+          # à 0.3 pour voir l'OSM en dessous, ou monter à 1.0 pour
+          # un masquage complet du fond.
+          opacity = opacity,
           group   = .pixel_overlay_group,
           options = leaflet::gridOptions(pane = "nemetonRaster")
         ) |>
