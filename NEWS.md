@@ -1,3 +1,68 @@
+# nemetonshiny 0.44.0.9001 (2026-05-27, cycle dev)
+
+### Changed — UX polish des cartes Suivi sanitaire (tests user villards)
+
+Réponse à 4 retours utilisateur après tests sur villards :
+
+#### Alertes FAST — classification adaptative + libellés métier
+
+Avant : palette fixe `c(0.5, 2.5, 5.5, +Inf)` qui écrasait tout en
+rouge dès qu'une scène dépassait 10 alertes. Après : classification
+**quartile adaptative** sur les valeurs non-nulles via le nouveau
+helper `.classify_alert_count(r)` qui produit 4-5 bins selon la
+distribution réelle, ramp jaune pâle → rouge profond
+(`.alert_count_palette(n)`).
+
+i18n revus :
+- « Compte » → « Fréquence » / « Frequency »
+- « Magnitude » → « Intensité » / « Intensity »
+- legend count title : « Nombre d'alertes » → « Jours en alerte »
+- legend rolling title : « Score d'alerte » → « Intensité du déficit »
+
+#### Carte FAST — palette plasma (plus de vert sur OSM vert)
+
+`mod_monitoring_pixel_map` passe de la divergente
+rouge → jaune → vert à `plasma` (séquentielle perceptuellement
+uniforme, violet → magenta → orange → jaune). Le vert haut-NDVI
+se confondait avec le fond OSM forêt ; plasma ne traverse pas le
+vert. Intuition conservée « valeurs hautes = jaune vif ».
+
+#### Overlay UGF sur toutes les cartes Suivi sanitaire
+
+Ajout de polygones UGF (bleu vif `#1f78b4`, contour 2 pt, fill 0)
+sur les cartes :
+- **Alertes FAST** (raster d'alerte) — précédemment absent
+- **Plan de validation** (markers + raster optionnel) — précédemment
+  absent
+- **Carte FAST** (NDVI/NBR pixel) — déjà en place via observer
+  leafletProxy, inchangé
+
+Nouveau helper privé `.ugf_for_overlay(project)` (dans
+`mod_monitoring_fast_alerts.R`) : retourne `project$indicators_sf`
+reprojeté en WGS84, ou NULL si pas d'indicateurs calculés. Map UGF
+ajoutée comme groupe dans `addLayersControl(overlayGroups = "UGF")`
+quand disponible.
+
+### Tests
+
+Nouveau `test-mod_monitoring_fast_alerts.R` (7 cas) :
+- `.classify_alert_count` : distribution large (5 bins quartile),
+  raster constant (1 bin), pas d'alerte (0 bin), NA pixels.
+- `.alert_count_palette` : longueurs (1 → max 5).
+- `.ugf_for_overlay` : reprojection WGS84, NULL safe quand
+  `indicators_sf` absent.
+
+Suite full green : **6511 PASS / 0 FAIL** (+18 nouveaux).
+
+### Non-fix documenté
+
+L'utilisateur signalait que le raster « ne couvre pas toute la zone ».
+**Fausse alerte** : villards est une parcelle longue et étroite
+(~440 m × ~2 km, 6 parcelles cadastrales en vallée). Une fois les
+contours UGF affichés via cette release, le raster correspond
+visuellement à la zone. La logique de crop cœur (nemeton@v0.47.5)
+est correcte.
+
 # nemetonshiny 0.44.0 (2026-05-26)
 
 ### Changed — Plan de validation : 2 sous-onglets FAST / FORDEAD mode-driven

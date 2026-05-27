@@ -319,12 +319,18 @@ mod_validation_sampling_server <- function(id, app_state,
                 as.integer(plan_ll$visit_order[i] %||% NA))
       }, character(1))
 
+      # v0.45.0 — overlay UGF (polygones bleu vif) au-dessus du
+      # raster d'alerte pour le repère spatial. Cohérent avec FAST
+      # alerts et Carte FAST.
+      ugf_4326 <- .ugf_for_overlay(app_state$current_project)
+
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",     group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
-          options    = leaflet::layersControlOptions(collapsed = TRUE)
+          baseGroups    = c("OSM", "Satellite"),
+          overlayGroups = if (!is.null(ugf_4326)) "UGF" else NULL,
+          options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
 
       # Optional : overlay the alert raster underneath the markers.
@@ -339,6 +345,18 @@ mod_validation_sampling_server <- function(id, app_state,
         m <- m |>
           leaflet::addRasterImage(r_show, colors = pal, opacity = 0.55,
                                   method = "ngb")
+      }
+
+      if (!is.null(ugf_4326)) {
+        m <- m |>
+          leaflet::addPolygons(
+            data        = ugf_4326,
+            group       = "UGF",
+            color       = "#1f78b4",
+            weight      = 2,
+            opacity     = 0.9,
+            fillOpacity = 0
+          )
       }
 
       m |>

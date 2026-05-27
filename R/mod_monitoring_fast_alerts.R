@@ -178,30 +178,46 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # noircir / saturer la carte de pixels uniformes.
       r_show <- terra::ifel(r == 0, NA, r)
 
+      # v0.45.0 — overlay UGF (polygones bleu vif) au-dessus du
+      # raster d'alerte pour le repère spatial demandé après les
+      # tests user villards.
+      ugf_4326 <- .ugf_for_overlay(app_state$current_project)
+
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",     group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonAlertRaster", zIndex = 250) |>
         leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
-          options    = leaflet::layersControlOptions(collapsed = TRUE)
+          baseGroups    = c("OSM", "Satellite"),
+          overlayGroups = if (!is.null(ugf_4326)) "UGF" else NULL,
+          options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
+      if (!is.null(ugf_4326)) {
+        m <- m |>
+          leaflet::addPolygons(
+            data        = ugf_4326,
+            group       = "UGF",
+            color       = "#1f78b4",
+            weight      = 2,
+            opacity     = 0.9,
+            fillOpacity = 0
+          )
+      }
 
       if (identical(mode, "count")) {
-        max_val <- tryCatch(
-          as.numeric(terra::global(r_show, "max", na.rm = TRUE)[[1]]),
-          error = function(e) NA_real_
-        )
-        upper <- max(6, max_val, na.rm = TRUE)
-        if (!is.finite(upper)) upper <- 6
-        cols  <- c("#FFD27F", "#FF9933", "#D62728")
-        # colorBin attend length(palette) + 1 bornes ; on encadre les
-        # buckets 1-2 / 3-5 / 6+ avec des seuils au demi pour matcher
-        # les entiers sans collision de bord.
+        # v0.45.0 — classification adaptative par quartiles sur les
+        # valeurs non-nulles. La version précédente (fixed bins
+        # 1-2 / 3-5 / 6+) écrasait tout en rouge dès qu'une scène
+        # avait > 10 alertes, masquant les gradients sur les zones
+        # moyennement touchées. Les quartiles offrent un découpage
+        # toujours lisible quel que soit le max.
+        cls <- .classify_alert_count(r_show)
+        if (length(cls$breaks) < 2L) return(m)
+        cols <- .alert_count_palette(length(cls$labels))
         pal <- leaflet::colorBin(
           palette  = cols,
-          domain   = c(0.5, upper + 0.5),
-          bins     = c(0.5, 2.5, 5.5, upper + 0.5),
+          domain   = range(cls$breaks),
+          bins     = cls$breaks,
           na.color = "transparent"
         )
         m |>
@@ -213,7 +229,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           leaflet::addLegend(
             position = "bottomright",
             colors   = cols,
-            labels   = c("1-2", "3-5", "6+"),
+            labels   = cls$labels,
             title    = i18n$t("monitoring_fast_alerts_legend_count_title"),
             opacity  = 0.85
           )
@@ -266,4 +282,82 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     error = function(e) NA_real_
   )
   is.na(mx) || mx <= 0
+}
+
+
+# v0.45.0 — adaptive quartile classification for the count-mode
+# alert raster. Computes 4 bins on the non-zero values' quartiles
+# (Q0..Q25..Q50..Q75..Q100), rounds breaks to integers, fuses
+# duplicates (collapses to fewer than 4 bins when the distribution
+# is degenerate — e.g. constant value 1, or only two distinct
+# counts). Returns NULL-shaped (length-1 breaks) when the raster
+# has no positive value, so the caller can early-return.
+#
+# Pair with `.alert_count_palette(n)` for the matching color ramp.
+#
+# @param r SpatRaster with NA outside the AOI and zeros masked
+#   upstream.
+# @return list(breaks, labels). Breaks include a leading 0 so the
+#   legend's lower bound matches the no-alert pixels. Labels are
+#   integer ranges or `"M-N"` strings.
+.classify_alert_count <- function(r) {
+  vals <- tryCatch(terra::values(r), error = function(e) NULL)
+  if (is.null(vals)) return(list(breaks = c(0, 1), labels = "1+"))
+  vals <- vals[!is.na(vals) & vals > 0]
+  if (!length(vals)) return(list(breaks = c(0, Inf), labels = character(0)))
+  q <- as.numeric(stats::quantile(vals, probs = c(0, .25, .50, .75, 1.0),
+                                  na.rm = TRUE))
+  q <- unique(as.integer(round(q)))           # collapse duplicates
+  q <- q[q > 0]                                # zero is the lower bound
+  if (!length(q)) return(list(breaks = c(0, 1), labels = "1+"))
+  if (length(q) == 1L) {
+    # Single distinct value (constant raster) — one bucket only.
+    return(list(breaks = c(0, q[1] + 0.5),
+                labels = sprintf("%d", q[1])))
+  }
+  # Build labels for n+1 breakpoints (n bins).
+  # First label : "Qmin" or "Qmin-Q1" depending on whether the
+  # quartiles span a range.
+  labels <- character(0)
+  q_pad  <- c(0, q)
+  for (i in seq_len(length(q_pad) - 1L)) {
+    lo <- q_pad[i] + 1L
+    hi <- q_pad[i + 1L]
+    labels <- c(labels,
+                if (lo == hi) sprintf("%d", lo) else sprintf("%d-%d", lo, hi))
+  }
+  # Top bucket gets a "Q4+" cue when the max quantile is the actual
+  # max (informative for users : "this many alert-days max").
+  if (length(labels)) {
+    labels[length(labels)] <- sprintf("%d+", q_pad[length(q_pad) - 1L] + 1L)
+  }
+  # Bins for colorBin : c(0.5, Q1+.5, Q2+.5, Q3+.5, Q4+.5).
+  bins <- c(0.5, q + 0.5)
+  list(breaks = bins, labels = labels)
+}
+
+
+# Color ramp for the count-mode legend. `n` is the number of bins
+# (length of `.classify_alert_count$labels`). Ramps from pale-orange
+# to deep red ; gracefully degrades to fewer colors when the
+# distribution collapses.
+.alert_count_palette <- function(n) {
+  full <- c("#FFEDA0", "#FED976", "#FEB24C", "#FC4E2A", "#B10026")
+  if (n <= 1L) return(full[length(full)])  # single bucket → deepest red
+  if (n >= length(full)) return(full)
+  # Pick `n` evenly-spaced shades from the 5-color ramp.
+  full[round(seq.int(1L, length(full), length.out = n))]
+}
+
+
+# v0.45.0 — best-effort UGF polygon resolver for the leaflet overlay.
+# Returns the project UGFs reprojected to WGS84, or NULL when the
+# project has no `indicators_sf` (no indicator computation yet) —
+# in which case the map shows just the raster without spatial
+# reference outlines.
+.ugf_for_overlay <- function(project) {
+  if (is.null(project)) return(NULL)
+  geom <- project$indicators_sf
+  if (is.null(geom) || !inherits(geom, "sf") || !nrow(geom)) return(NULL)
+  tryCatch(sf::st_transform(geom, 4326), error = function(e) NULL)
 }

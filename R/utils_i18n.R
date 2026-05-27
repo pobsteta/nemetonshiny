@@ -2080,25 +2080,29 @@ TRANSLATIONS <- list(
   # (nombre de dates en alerte), `rolling` un continu (magnitude).
   # `legend_title` est utilisé pour le mode rolling, `legend_count_title`
   # pour le mode count.
+  # v0.45.0 — libellés revus après tests user villards. "Compte" et
+  # "Magnitude" étaient abstraits ; "Fréquence" / "Intensité" parlent
+  # davantage du sens métier (jours en alerte vs intensité du déficit
+  # NDVI/NBR sur la fenêtre roulante).
   monitoring_fast_alerts_mode_label = list(
-    fr = "Mode raster",
+    fr = "Mode du raster",
     en = "Raster mode"
   ),
   monitoring_fast_alerts_mode_count = list(
-    fr = "Compte",
-    en = "Count"
+    fr = "Fréquence",
+    en = "Frequency"
   ),
   monitoring_fast_alerts_mode_rolling = list(
-    fr = "Magnitude",
-    en = "Magnitude"
+    fr = "Intensité",
+    en = "Intensity"
   ),
   monitoring_fast_alerts_legend_title = list(
-    fr = "Score d'alerte",
-    en = "Alert score"
+    fr = "Intensité du déficit",
+    en = "Deficit intensity"
   ),
   monitoring_fast_alerts_legend_count_title = list(
-    fr = "Nombre d'alertes",
-    en = "Alert count"
+    fr = "Jours en alerte",
+    en = "Alert days"
   ),
   monitoring_fast_alerts_opacity_label = list(
     fr = "Opacité du raster",

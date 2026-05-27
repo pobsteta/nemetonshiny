@@ -347,10 +347,15 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     })
 
     # Index value range is roughly [-1, 1] for both NDVI and NBR.
-    # Use a divergent palette anchored on 0; NA stays transparent.
+    # v0.45.0 — switch from a divergent red→yellow→green ramp to
+    # `plasma` (sequential perceptually-uniform). Le vert "haut" du
+    # divergent se confondait avec le fond OSM (parcelles forestières).
+    # Plasma (violet → magenta → orange → jaune) ne traverse pas le
+    # vert, donc reste contrasté sur l'OSM ; intuition conservée
+    # "valeurs hautes = jaune vif, valeurs basses = violet sombre".
+    # NA reste transparent.
     .pixel_palette <- leaflet::colorNumeric(
-      palette  = c("#D62728", "#FFD27F", "#FFFFCC",
-                   "#A8DDB5", "#2CA02C"),
+      palette  = "plasma",
       domain   = c(-1, 1),
       na.color = "transparent"
     )
