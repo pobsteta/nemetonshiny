@@ -274,11 +274,29 @@ CHM_REQUIRED_INDICATORS <- c(
 
 #' Build the translated "CHM unavailable" compute error message
 #'
-#' @return Character. The message in the current app language.
+#' v0.46.4 — diagnostic plutôt que générique. Le message de base
+#' « CHM indisponible » est suivi d'une explication précise :
+#'   - `reticulate` manquant
+#'   - clé API Theia manquante
+#'   - Theia configuré mais `load_theia_source()` a échoué (cas
+#'     observé avec un setup complet mais une dépendance Python
+#'     non provisionnée correctement par py_require)
+#'
+#' @return Character. The diagnostic message in the current app
+#'   language.
 #' @noRd
 .compute_chm_required_message <- function() {
   lang <- tryCatch(get_app_options()$language, error = function(e) NULL)
-  get_i18n(lang %||% "fr")$t("compute_chm_required")
+  i18n <- get_i18n(lang %||% "fr")
+  base <- i18n$t("compute_chm_required")
+  status <- tryCatch(theia_status(), error = function(e) NULL)
+  if (is.null(status)) return(base)
+  if (isTRUE(status$ready)) {
+    # Pré-requis OK côté config, mais l'appel cœur a quand même
+    # échoué — typique d'un bug load_theia_source côté reticulate.
+    return(paste(base, i18n$t("theia_chm_load_failed")))
+  }
+  paste(base, i18n$t(theia_status_key(status)))
 }
 
 

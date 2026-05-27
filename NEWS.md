@@ -1,3 +1,52 @@
+# nemetonshiny 0.46.4 (2026-05-27)
+
+### Fixed — Theia : drop du probe Python prématuré + diagnostic CHM
+
+Avec une clé API Theia valide configurée en `.Renviron`, les
+indicateurs **P1 / P2 / P3 / E1** échouaient encore avec
+« CHM indisponible » parce que `theia_python_ready()` probait les
+modules Python via `reticulate::py_module_available()`. Cet appel
+initialise l'interpréteur Python **avant** que `nemeton` n'ait pu
+déclarer ses dépendances via `py_require()`, produisant un faux
+négatif systématique et verrouillant l'interpréteur sans les
+paquets requis.
+
+Récupération d'un fix qui dormait sur une branche ancienne
+(`claude/integrate-theia-data-terra-xg1LC` 2026-05-20), jamais
+arrivé sur main car basé sur une version pré spec 011/013/014.
+Réimplémentation à neuf sur main actuelle.
+
+#### Implémentation
+
+- `theia_python_ready()` ne check plus que `reticulate`. Les
+  modules Python (`teledetection`, `pystac_client`) sont
+  provisionnés par `nemeton` via `py_require()` au premier appel
+  à `load_theia_source()`, où une vraie erreur est levée si
+  quelque chose manque.
+- `.compute_chm_required_message()` devient diagnostic. Au lieu
+  du laconique « CHM indisponible », précise désormais :
+  `reticulate` manquant, clé API absente, ou Theia configuré
+  mais `load_theia_source()` a échoué (cas observé avec un
+  setup complet mais `py_require` pas encore actif).
+- `mod_theia_config` : modale Theia plus honnête. La nouvelle
+  clé `theia_python_ok` dit explicitement « reticulate installé,
+  modules Python provisionnés à l'usage » plutôt que de
+  réutiliser `theia_status_ready` qui mentait sur la dispo Python.
+
+#### i18n
+
+3 nouvelles clés (FR + EN) : `theia_python_ok`, `theia_key_ok`,
+`theia_chm_load_failed`.
+
+#### Impact
+
+La chaîne CHM redevient utilisable côté Theia. Depuis v0.45.0
+(fallback lasR depuis NUAGE COPC local), Theia est passée en 3e
+position de la chaîne — ce fix concerne donc surtout les setups
+sans LiDAR HD local qui dépendent de FORMSpoT.
+
+Suite full green : **6567 PASS / 0 FAIL**.
+
 # nemetonshiny 0.46.3 (2026-05-27)
 
 ### Fixed — Carte FAST restait vide à la première visite de l'onglet

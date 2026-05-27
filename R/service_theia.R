@@ -49,24 +49,25 @@ THEIA_INDICATOR_SOURCES <- list(
 #' Check the Python prerequisites for Theia access
 #'
 #' `load_theia_source()` in `year` mode signs STAC asset URLs through
-#' the Python `teledetection` SDK. This requires `reticulate` plus the
-#' `teledetection` and `pystac_client` Python modules.
+#' the Python `teledetection` SDK.
 #'
-#' @return A list with `ok` (logical) and `reason` (character or NULL).
-#'   `reason` is `"reticulate"` when the R package is missing or
-#'   `"python_modules"` when the Python side is incomplete.
+#' The Python modules themselves (`teledetection`, `pystac_client`)
+#' are declared by `nemeton` via `reticulate::py_require()` and
+#' provisioned lazily by reticulate on first use. We deliberately do
+#' NOT probe them with `py_module_available()` here : that call
+#' initialises Python **before** `nemeton` has declared its
+#' requirements, which both gives a false negative ("Theia
+#' indisponible") and locks the interpreter without the needed
+#' packages. The real availability is established when
+#' `download_chm_theia()` actually calls `load_theia_source()`, and
+#' any genuine failure is caught there. v0.46.4 fix.
+#'
+#' @return A list with `ok` (logical) and `reason` (character or
+#'   NULL). `reason` is `"reticulate"` when the R package is missing.
 #' @noRd
 theia_python_ready <- function() {
   if (!requireNamespace("reticulate", quietly = TRUE)) {
     return(list(ok = FALSE, reason = "reticulate"))
-  }
-  mods_ok <- tryCatch(
-    isTRUE(reticulate::py_module_available("teledetection")) &&
-      isTRUE(reticulate::py_module_available("pystac_client")),
-    error = function(e) FALSE
-  )
-  if (!isTRUE(mods_ok)) {
-    return(list(ok = FALSE, reason = "python_modules"))
   }
   list(ok = TRUE, reason = NULL)
 }
