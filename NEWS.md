@@ -1,3 +1,51 @@
+# nemetonshiny 0.46.1 (2026-05-27)
+
+### Fixed — radio « Fréquence / Intensité » reste inline après refresh i18n
+
+L'observer qui rafraîchit les labels de la radio « Mode du raster »
+sur changement de langue appelait `updateRadioButtons()` sans passer
+`inline = TRUE` (default FALSE). À chaque flush, la radio repassait
+en stack vertical alors que l'UI initial était bien horizontal.
+
+Fix : passer explicitement `inline = TRUE` dans le
+`updateRadioButtons`. La radio reste désormais sur une ligne après
+tout changement de langue ou re-render.
+
+### Fixed (via nemeton 0.48.1) — validation cache S2 snap-to-grid
+
+L'ingest Sentinel-2 retéléchargeait systématiquement les bandes
+déjà en cache parce que la validation `[s2_cache] CACHE-STALE
+extent does not cover AOI (tol=40m)` retournait STALE sur des
+fichiers identiques au cache à ±12 bytes de différence (du bruit
+en-tête GeoTIFF). Sur villards (122 scènes, AOI 440 m × 2 km), un
+ingest re-lancé prenait ~6 h au lieu des ~30 s attendus en cache
+warm.
+
+Fix côté cœur dans `nemeton@v0.48.1` (`f9483ee`) — la validation
+de cache snap désormais l'extent du cache et de l'AOI sur la
+grille S2 (10 m pour B04/B08, 20 m pour B12) avant comparaison.
+Un fichier qui couvre exactement l'AOI à 1 pixel près est
+désormais correctement reconnu comme CACHE-HIT.
+
+Côté app, seul le plancher est bumpé : `Imports: nemeton (>= 0.48.1)`.
+Aucun changement de code utilisateur — la correction se propage
+automatiquement à `nemeton::ingest_sentinel2_timeseries()` consommé
+par `run_ingestion_async()`.
+
+### Mesure attendue
+
+| Scénario | Avant 0.48.1 | Après 0.48.1 |
+|---|---|---|
+| Ingest 122 scènes, cold cache | ~6 h | ~30 min |
+| Ingest 122 scènes, warm cache | ~6 h (retéléchargement à tort) | ~30 s |
+| Ré-ouverture projet + 5 nouvelles scènes | ~30 min | ~1 min |
+
+Hors scope (à venir dans des releases ultérieures) : doublon tuiles
+MGRS T31TGM/T31TFM sur AOI à cheval (~2× les téléchargements),
+HTTP keep-alive entre bandes, parallélisme bandes/scènes.
+
+Suite full green : **6561 PASS / 0 FAIL**.
+
 # nemetonshiny 0.46.0 (2026-05-27)
 
 ### Changed — UX polish des cartes Suivi sanitaire (tests user villards)
