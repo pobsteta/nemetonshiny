@@ -1,3 +1,26 @@
+# nemetonshiny 0.46.6 (2026-05-27)
+
+### Fixed — Carte FAST : reprojection UTM → WGS84 manuelle avant addRasterImage
+
+Bug visuel observé sur villards : le raster NDVI/NBR s'affichait
+à la bonne LARGEUR mais à la mauvaise POSITION (décalé ~1 km à
+l'ouest de sa vraie longitude). Les UGFs (reprojetés via
+`sf::st_transform(indicators_sf, 4326)`) étaient au bon endroit,
+mais raster et UGFs ne se chevauchaient pas alors qu'ils
+auraient dû.
+
+Cause racine : `leaflet::addRasterImage(project = TRUE)` (le
+default) délègue la reprojection UTM 31N → WebMercator à leaflet
+en JavaScript via Proj4JS. Cette reprojection peut introduire un
+décalage selon les versions de leaflet/raster/terra, et n'est pas
+aussi précise que `terra::project()` en R natif.
+
+Fix : on reprojette manuellement le raster vers EPSG:4326 (WGS84)
+en amont via `terra::project()`, puis on passe `project = FALSE`
+à `addRasterImage()` pour qu'il prenne le raster tel quel.
+Alignement parfait avec les overlays vecteur qui passent aussi
+par `sf::st_transform` vers WGS84.
+
 # nemetonshiny 0.46.5 (2026-05-27)
 
 ### Fixed — Carte FAST : placettes off par défaut + mosaic multi-tuile MGRS
