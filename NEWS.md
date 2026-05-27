@@ -1,4 +1,15 @@
-# nemetonshiny 0.46.0.9001 (2026-05-27, cycle dev)
+# nemetonshiny 0.46.1 (2026-05-27)
+
+### Fixed — radio « Fréquence / Intensité » reste inline après refresh i18n
+
+L'observer qui rafraîchit les labels de la radio « Mode du raster »
+sur changement de langue appelait `updateRadioButtons()` sans passer
+`inline = TRUE` (default FALSE). À chaque flush, la radio repassait
+en stack vertical alors que l'UI initial était bien horizontal.
+
+Fix : passer explicitement `inline = TRUE` dans le
+`updateRadioButtons`. La radio reste désormais sur une ligne après
+tout changement de langue ou re-render.
 
 ### Fixed (via nemeton 0.48.1) — validation cache S2 snap-to-grid
 

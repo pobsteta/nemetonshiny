@@ -1,7 +1,7 @@
 Package: nemetonshiny
 Type: Package
 Title: Nemeton Shiny Application for Systemic Forest Analysis
-Version: 0.46.0.9001
+Version: 0.46.1
 Authors@R: c(
     person("Pascal", "Obstetar", email = "pascal.obstetar@gmail.com", role = c("aut", "cre"))
   )
