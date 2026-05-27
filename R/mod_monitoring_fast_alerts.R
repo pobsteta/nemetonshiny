@@ -80,6 +80,10 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 
     # Refresh radio labels on language change. Preserves selection by
     # echoing back input$mode (or default "count" before first click).
+    # v0.46.1 — `inline = TRUE` doit être passé explicitement ;
+    # `updateRadioButtons` ne mémorise pas la valeur `inline` du
+    # render initial (default FALSE → re-stack en vertical à chaque
+    # changement de langue).
     shiny::observe({
       i18n <- i18n_r()
       shiny::updateRadioButtons(
@@ -88,7 +92,8 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         choiceNames  = list(i18n$t("monitoring_fast_alerts_mode_count"),
                             i18n$t("monitoring_fast_alerts_mode_rolling")),
         choiceValues = list("count", "rolling"),
-        selected     = input$mode %||% "count"
+        selected     = input$mode %||% "count",
+        inline       = TRUE
       )
     })
 
