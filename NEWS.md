@@ -1,3 +1,56 @@
+# nemetonshiny 0.49.0 (2026-05-28)
+
+### Changed — backend monitoring local : DuckDB → SQLite/WAL
+
+Le backend monitoring local par défaut passe de DuckDB à **SQLite
+en mode WAL** (cœur nemeton@v0.50.0). Un fichier DuckDB est
+mono-process en écriture EXCLUSIF : la session Shiny et le worker
+`future::multisession` d'ingestion (process Rscript séparé) ne
+peuvent pas l'ouvrir en même temps (« File is already open in
+Rscript.exe »). **SQLite/WAL autorise 1 writer + N lecteurs
+concurrents entre processus** — session et worker coexistent
+nativement. C'est la vraie solution au Bug #2 (le câblage
+read-only de v0.48.2 ne faisait qu'atténuer le symptôme).
+
+#### Comportement
+
+- **Nouveaux projets / projets sans base locale** :
+  `.resolve_monitoring_db_url()` émet désormais un chemin
+  `…/data/monitoring.sqlite` (le cœur applique
+  `PRAGMA journal_mode=WAL, busy_timeout=10000, foreign_keys=ON,
+  synchronous=NORMAL`).
+- **Back-compat** : un projet avec un `monitoring.duckdb`
+  préexistant (et pas encore de `.sqlite`) **continue d'utiliser
+  DuckDB** pour ne pas orpheliner ses données — le cœur émet un
+  avertissement de déprécation. Pour migrer vers WAL : supprimer
+  le `.duckdb` et relancer l'ingestion (les données sont
+  re-générables depuis le cache S2 + la DB ; pas de migration
+  automatique).
+- **PostgreSQL** : inchangé (le mode prod reste identique).
+
+#### Implémentation
+
+- `.resolve_monitoring_db_url()` : SQLite par défaut (requiert
+  `RSQLite`, ajouté en Suggests), DuckDB en back-compat (requiert
+  `duckdb`). Forme chemin nu (l'extension pilote la détection du
+  driver cœur) pour éviter le glitch Windows `sqlite:///C:/…`.
+- `monitoring_db_backend()` retourne désormais `"local"` (au lieu
+  de `"duckdb"`) pour tout backend fichier mono-utilisateur.
+  Checks UI mis à jour (`identical(backend, "local")`).
+- Helpers `.is_duckdb_url` / `.duckdb_path_from_url` généralisés en
+  `.is_file_db_url` / `.file_db_path_from_url` (couvrent
+  `.duckdb`, `.sqlite`, `.db`) pour le garde-fou read-only.
+- i18n : mentions « DuckDB » des bandeaux de statut neutralisées en
+  « SQLite » / « mode local ».
+- Plancher `Imports: nemeton (>= 0.50.0)`.
+
+#### Tests
+
+5 nouveaux/MAJ : `.is_file_db_url` / `.file_db_path_from_url`
+(duckdb + sqlite + db), resolver SQLite par défaut, back-compat
+DuckDB, priorité SQLite quand les 2 fichiers coexistent, PG
+inchangé. Suite full green : **6595 PASS / 0 FAIL**.
+
 # nemetonshiny 0.48.2 (2026-05-28)
 
 ### Fixed — DuckDB monitoring : connexions lecteur en read-only (Bug #2)

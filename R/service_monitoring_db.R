@@ -83,11 +83,13 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
     return(NULL)
   }
 
-  # v0.48.2 — reader path : RO connexion, no migration. For DuckDB the
-  # file must already exist (a prior RW path migrated it). Avoids the
-  # exclusive RW lock that blocks the async ingestion worker.
+  # v0.48.2 — reader path : RO connexion, no migration. For a file
+  # backend (SQLite/DuckDB) the file must already exist (a prior RW
+  # path migrated it). For SQLite/WAL the RW lock is non-exclusive so
+  # readers coexist with the worker ; for legacy DuckDB the RO open
+  # still degrades gracefully when the file is locked.
   if (isTRUE(read_only)) {
-    if (.is_duckdb_url(url) && !file.exists(.duckdb_path_from_url(url))) {
+    if (.is_file_db_url(url) && !file.exists(.file_db_path_from_url(url))) {
       .nemeton_env$.last_monitoring_db_error <-
         "Monitoring DB not initialized yet (no file on disk)."
       return(NULL)
@@ -141,16 +143,18 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
 }
 
 
-# v0.48.2 — URL helpers for the read-only DuckDB lifecycle.
-# A DuckDB url is either a `duckdb:` scheme or a bare path ending in
-# `.duckdb` (cf. .resolve_monitoring_db_url which emits the bare form).
-.is_duckdb_url <- function(url) {
-  grepl("^duckdb:", url, ignore.case = TRUE) ||
-    grepl("\\.duckdb$", url, ignore.case = TRUE)
+# v0.48.2 / v0.49.0 — URL helpers for the read-only local lifecycle.
+# A local file backend is a `duckdb:` / `sqlite:` scheme, OR a bare
+# path ending in `.duckdb` / `.sqlite` / `.db` (cf.
+# .resolve_monitoring_db_url which emits the bare form). PostgreSQL
+# URLs (`postgresql://`, `postgres://`) are NOT file backends.
+.is_file_db_url <- function(url) {
+  grepl("^(duckdb|sqlite):", url, ignore.case = TRUE) ||
+    grepl("\\.(duckdb|sqlite|db)$", url, ignore.case = TRUE)
 }
 
-.duckdb_path_from_url <- function(url) {
-  sub("^duckdb:(//)?", "", url, ignore.case = TRUE)
+.file_db_path_from_url <- function(url) {
+  sub("^(duckdb|sqlite):(//)?", "", url, ignore.case = TRUE)
 }
 
 
@@ -190,11 +194,12 @@ last_monitoring_db_error <- function() {
 #' Inspect the configured monitoring DB backend without opening it
 #'
 #' Used by the UI to decide which banner to show ("Postgres ready" vs
-#' "Local DuckDB" vs "Not configured"). Returns one of:
+#' "local single-user" vs "Not configured"). Returns one of:
 #'
 #' * `"postgres"` — a PG URL is resolvable (env vars or NEMETON_DB_URL).
-#' * `"duckdb"`   — fallback to local DuckDB file (project provided,
-#'                  no PG env vars).
+#' * `"local"`    — fallback to a local single-user file (SQLite/WAL by
+#'                  default, or legacy DuckDB). v0.49.0 — was `"duckdb"`
+#'                  before SQLite became the default local backend.
 #' * `"none"`     — nothing configured.
 #'
 #' @param project Optional project list (same semantic as
@@ -203,12 +208,7 @@ last_monitoring_db_error <- function() {
 monitoring_db_backend <- function(project = NULL) {
   url <- .resolve_monitoring_db_url(project)
   if (!nzchar(url)) return("none")
-  # Match the same logic as nemeton:::.detect_driver: a leading
-  # `duckdb:` scheme OR a bare path ending in `.duckdb`.
-  if (grepl("^duckdb:", url, ignore.case = TRUE) ||
-      grepl("\\.duckdb$", url, ignore.case = TRUE)) {
-    return("duckdb")
-  }
+  if (.is_file_db_url(url)) return("local")
   "postgres"
 }
 
@@ -308,64 +308,83 @@ close_monitoring_db_connection <- function(con) {
     if (nzchar(url)) return(url)
   }
 
-  # Single-user fallback (nemeton v0.21.0+): if a project is loaded
-  # and the `duckdb` package is available, drop a monitoring.duckdb
-  # next to samples.gpkg under the project's data directory.
-  # Requires duckdb (Suggests) — we surface a friendly cli_inform
-  # the first time it kicks in so the user understands the mode.
+  # Single-user local fallback. v0.49.0 — SQLite/WAL est le backend
+  # local recommandé (remplace DuckDB). Un fichier DuckDB est
+  # mono-process en écriture EXCLUSIF : la session Shiny et le worker
+  # future d'ingestion ne peuvent pas l'ouvrir simultanément ("File
+  # is already open in Rscript.exe"). SQLite en WAL autorise 1 writer
+  # + N lecteurs concurrents ENTRE PROCESSUS — session et worker
+  # coexistent nativement (cf. nemeton v0.50.0).
   if (is.null(project) || is.null(project$path)) return("")
-  if (!requireNamespace("duckdb", quietly = TRUE)) {
-    if (!isTRUE(.nemeton_env$.duckdb_missing_warned)) {
-      cli::cli_inform(c(
-        "Local DuckDB fallback for monitoring is unavailable.",
-        "i" = "Install with {.code install.packages('duckdb')} or set {.envvar NEMETON_DB_URL}."
-      ))
-      .nemeton_env$.duckdb_missing_warned <- TRUE
-    }
-    return("")
-  }
-  # Sanity-check that the installed nemeton actually knows about
-  # DuckDB. Pak / install_github sometimes serves a stale v0.21.0
-  # tag (or the user upgraded nemetonshiny but not nemeton itself).
-  # The `.detect_driver` helper was introduced in v0.21.0 alongside
-  # the DuckDB backend; its presence is a reliable feature flag.
-  if (!.nemeton_supports_duckdb()) {
-    if (!isTRUE(.nemeton_env$.nemeton_too_old_warned)) {
-      cli::cli_warn(c(
-        "Installed `nemeton` does not support the DuckDB backend.",
-        "i" = "Re-install with {.code pak::pak('pobsteta/nemeton@v0.21.0')} (clear cache if needed)."
-      ))
-      .nemeton_env$.nemeton_too_old_warned <- TRUE
-    }
-    .nemeton_env$.last_monitoring_db_error <-
-      "Installed nemeton is too old (no DuckDB support). Re-install pobsteta/nemeton@v0.21.0."
-    return("")
-  }
+
   data_dir <- file.path(project$path, "data")
   if (!dir.exists(data_dir)) {
     dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
   }
   duckdb_path <- file.path(data_dir, "monitoring.duckdb")
-  if (!isTRUE(.nemeton_env$.duckdb_announced)) {
+  sqlite_path <- file.path(data_dir, "monitoring.sqlite")
+
+  # Back-compat : un projet avec un monitoring.duckdb préexistant (et
+  # pas encore de .sqlite) continue d'utiliser DuckDB pour ne pas
+  # orpheliner ses données. Le cœur émet un avertissement de
+  # déprécation. Pour migrer vers WAL, l'utilisateur supprime le
+  # .duckdb et ré-ingère (les données sont re-générables depuis le
+  # cache S2 + la DB ; pas de migration automatique).
+  if (file.exists(duckdb_path) && !file.exists(sqlite_path)) {
+    if (!requireNamespace("duckdb", quietly = TRUE)) {
+      if (!isTRUE(.nemeton_env$.duckdb_missing_warned)) {
+        cli::cli_inform(c(
+          "Existing local DuckDB base found but {.pkg duckdb} is not installed.",
+          "i" = "Install {.code install.packages('duckdb')}, or delete {.path {duckdb_path}} to switch to SQLite/WAL."
+        ))
+        .nemeton_env$.duckdb_missing_warned <- TRUE
+      }
+      return("")
+    }
+    if (!.nemeton_supports_duckdb()) {
+      .nemeton_env$.last_monitoring_db_error <-
+        "Installed nemeton is too old (no DuckDB support)."
+      return("")
+    }
+    if (!isTRUE(.nemeton_env$.local_db_announced)) {
+      cli::cli_alert_info(
+        "Monitoring uses legacy local DuckDB at {.path {duckdb_path}} (deprecated — delete to switch to SQLite/WAL)."
+      )
+      .nemeton_env$.local_db_announced <- TRUE
+    }
+    # Bare path form (extension drives driver detection) — avoids the
+    # Windows `duckdb:///C:/...` scheme-parse glitch.
+    return(normalizePath(duckdb_path, winslash = "/", mustWork = FALSE))
+  }
+
+  # Default : SQLite/WAL. Requires RSQLite (Suggests, declared by the
+  # nemeton core too). Bare path ending in `.sqlite` — the core's
+  # driver detection recognises the extension, and the bare form
+  # sidesteps the Windows scheme-parse glitch (same rationale as the
+  # legacy DuckDB path above).
+  if (!requireNamespace("RSQLite", quietly = TRUE)) {
+    if (!isTRUE(.nemeton_env$.sqlite_missing_warned)) {
+      cli::cli_inform(c(
+        "Local SQLite monitoring backend is unavailable.",
+        "i" = "Install with {.code install.packages('RSQLite')} or set {.envvar NEMETON_DB_URL}."
+      ))
+      .nemeton_env$.sqlite_missing_warned <- TRUE
+    }
+    return("")
+  }
+  if (!isTRUE(.nemeton_env$.local_db_announced)) {
     if (force_local) {
       cli::cli_alert_info(
-        "Monitoring uses local DuckDB at {.path {duckdb_path}} (NEMETON_DB_LOCAL override)."
+        "Monitoring uses local SQLite (WAL) at {.path {sqlite_path}} (NEMETON_DB_LOCAL override)."
       )
     } else {
       cli::cli_alert_info(
-        "Monitoring uses local DuckDB at {.path {duckdb_path}} (no Postgres configured)."
+        "Monitoring uses local SQLite (WAL) at {.path {sqlite_path}} (no Postgres configured)."
       )
     }
-    .nemeton_env$.duckdb_announced <- TRUE
+    .nemeton_env$.local_db_announced <- TRUE
   }
-  # nemeton::db_connect() accepts both `duckdb:///abs/path` and bare
-  # paths ending in `.duckdb`. We emit the BARE PATH form so Windows
-  # absolute paths (`C:/Users/...`) round-trip correctly. The
-  # 3-slash form (`duckdb:///C:/Users/...`) confuses nemeton's
-  # `.parse_duckdb_url` on Windows: `sub("^duckdb:(?://)?", "", url)`
-  # leaves `/C:/Users/...` (with a leading slash) which DuckDB then
-  # rejects as an invalid path.
-  normalizePath(duckdb_path, winslash = "/", mustWork = FALSE)
+  normalizePath(sqlite_path, winslash = "/", mustWork = FALSE)
 }
 
 
