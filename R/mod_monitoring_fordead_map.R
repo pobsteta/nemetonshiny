@@ -71,7 +71,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (is.null(proj) || is.null(proj$path)) return(NULL)
       cd <- file.path(proj$path, "cache", "layers", "fordead")
       if (!dir.exists(cd)) return(NULL)
-      con <- get_monitoring_db_connection(project = proj)
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       tryCatch(

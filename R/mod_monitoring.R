@@ -590,7 +590,7 @@ mod_monitoring_server <- function(id, app_state) {
       zone <- input$zone_id
       if (!isTRUE(nzchar(zone))) return(NULL)
       proj <- app_state$current_project
-      con <- get_monitoring_db_connection(project = proj)
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       units   <- proj$indicators_sf
       bdforet <- .load_project_bdforet(proj)
@@ -644,7 +644,8 @@ mod_monitoring_server <- function(id, app_state) {
                    c("1-faible", "2-moyenne", "3-forte", "4-sol-nu")
                  else
                    c("3-forte", "4-sol-nu")
-      con <- get_monitoring_db_connection(project = app_state$current_project)
+      con <- get_monitoring_db_connection(project = app_state$current_project,
+                                          read_only = TRUE)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       list_alerts_for_zone(con, as.integer(zone), classes = classes)
     })
@@ -820,7 +821,8 @@ mod_monitoring_server <- function(id, app_state) {
       dr <- ins$date_range
       if (length(dr) != 2L || any(is.na(dr))) return(NULL)
 
-      con <- get_monitoring_db_connection(project = app_state$current_project)
+      con <- get_monitoring_db_connection(project = app_state$current_project,
+                                          read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
@@ -899,7 +901,8 @@ mod_monitoring_server <- function(id, app_state) {
       },
       content = function(file) {
         i18n <- i18n_r()
-        con <- get_monitoring_db_connection(project = app_state$current_project)
+        con <- get_monitoring_db_connection(project = app_state$current_project,
+                                            read_only = TRUE)
         on.exit(close_monitoring_db_connection(con), add = TRUE)
         zone <- input$zone_id
         a <- list_alerts_for_zone(
@@ -956,7 +959,7 @@ mod_monitoring_server <- function(id, app_state) {
     zones <- shiny::reactive({
       zones_refresh()                       # explicit refresh trigger
       proj <- app_state$current_project     # explicit dep on project
-      con <- get_monitoring_db_connection(project = proj)
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       list_monitoring_zones(con)
     })
@@ -1019,7 +1022,8 @@ mod_monitoring_server <- function(id, app_state) {
       has_project <- !is.null(app_state$current_project) &&
                      !is.null(app_state$current_project$id)
       has_db <- {
-        con <- get_monitoring_db_connection(project = app_state$current_project)
+        con <- get_monitoring_db_connection(project = app_state$current_project,
+                                            read_only = TRUE)
         on.exit(close_monitoring_db_connection(con), add = TRUE)
         !is.null(con)
       }
@@ -1053,7 +1057,8 @@ mod_monitoring_server <- function(id, app_state) {
         return(htmltools::tags$small(class = "text-danger d-block",
           i18n$t("monitoring_db_duckdb_missing")))
       }
-      con <- get_monitoring_db_connection(project = app_state$current_project)
+      con <- get_monitoring_db_connection(project = app_state$current_project,
+                                          read_only = TRUE)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       if (is.null(con)) {
         return(htmltools::tags$small(class = "text-danger d-block",
@@ -1197,8 +1202,11 @@ mod_monitoring_server <- function(id, app_state) {
 
       # Probe succeeded — open a sync connection in the main process to
       # count zones for the success banner. Schema is already migrated
-      # so this is a fast handshake (< 100 ms typical).
-      con <- get_monitoring_db_connection(project = project)
+      # so this is a fast handshake (< 100 ms typical). v0.48.2 —
+      # read_only : un simple COUNT, ne doit pas tenir un verrou RW
+      # qui bloquerait le worker d'ingestion.
+      con <- get_monitoring_db_connection(project = project,
+                                          read_only = TRUE)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       if (is.null(con)) {
         err <- last_monitoring_db_error()

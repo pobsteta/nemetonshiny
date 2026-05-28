@@ -378,7 +378,8 @@ mod_home_server <- function(id, app_state) {
       # any project copy / metadata loss scenario. No-op when the
       # metadata is already populated or the DB is not connected.
       project <- tryCatch({
-        con <- get_monitoring_db_connection(project = project)
+        con <- get_monitoring_db_connection(project = project,
+                                            read_only = TRUE)
         on.exit(close_monitoring_db_connection(con), add = TRUE)
         hydrate_monitoring_zone_id(project, con)
       }, error = function(e) {

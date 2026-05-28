@@ -520,7 +520,7 @@ mod_field_ingest_server <- function(id, app_state) {
     shiny::observe({
       shiny::req(input$subtab)
       if (!identical(input$subtab, "health")) return()
-      con <- get_monitoring_db_connection()
+      con <- get_monitoring_db_connection(read_only = TRUE)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       z <- list_monitoring_zones(con)
       choices <- if (nrow(z))

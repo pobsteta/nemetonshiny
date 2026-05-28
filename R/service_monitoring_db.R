@@ -39,12 +39,27 @@ NULL
 #'   `project`. Used by async workers (`run_ingestion_async`,
 #'   `run_fordead_async`) that cannot access `app_state` and instead
 #'   receive the URL from the observer that fires them.
+#' @param read_only Logical. v0.48.2 — when `TRUE`, open the
+#'   connection read-only and SKIP the migration step. DuckDB file
+#'   backends are single-writer : a long-lived read-write handle
+#'   (held by the Shiny session) blocks the async ingestion worker
+#'   from opening the file at all ("File is already open in
+#'   Rscript.exe"). Readers (alerts list, raster rendering, zone
+#'   list, …) must therefore use `read_only = TRUE` so multiple RO
+#'   connections can coexist and the worker can grab a brief RW
+#'   handle when it needs to INSERT. For DuckDB, a RO open requires
+#'   the file to already exist (migration done by a prior RW path) —
+#'   if it doesn't, we degrade to `NULL` (monitoring not initialised
+#'   yet) rather than crash. For PostgreSQL `read_only` is a no-op
+#'   core-side (native concurrency) and migration still proceeds via
+#'   the RW init paths, so passing it is harmless.
 #'
 #' @return A DBIConnection or NULL when no DB is configured / the
 #'   connection failed. On failure, `last_monitoring_db_error()` returns
 #'   the human-readable cause so the UI can surface it.
 #' @noRd
-get_monitoring_db_connection <- function(project = NULL, db_url = NULL) {
+get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
+                                         read_only = FALSE) {
   # Reset the package-level error slot on every attempt so a previous
   # transient failure doesn't get re-displayed once the user has fixed
   # the cause.
@@ -66,6 +81,28 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL) {
     # decided we are not configured. The bandeau will show the
     # diagnostic state (no project / duckdb missing / …).
     return(NULL)
+  }
+
+  # v0.48.2 — reader path : RO connexion, no migration. For DuckDB the
+  # file must already exist (a prior RW path migrated it). Avoids the
+  # exclusive RW lock that blocks the async ingestion worker.
+  if (isTRUE(read_only)) {
+    if (.is_duckdb_url(url) && !file.exists(.duckdb_path_from_url(url))) {
+      .nemeton_env$.last_monitoring_db_error <-
+        "Monitoring DB not initialized yet (no file on disk)."
+      return(NULL)
+    }
+    con <- tryCatch(
+      nemeton::db_connect(url, read_only = TRUE),
+      error = function(e) {
+        msg <- conditionMessage(e)
+        cli::cli_warn("Failed to open monitoring DB (read-only): {msg}")
+        flat <- gsub("\\s+", " ", msg, perl = TRUE)
+        .nemeton_env$.last_monitoring_db_error <- substr(flat, 1L, 240L)
+        NULL
+      }
+    )
+    return(con)
   }
 
   con <- tryCatch(
@@ -101,6 +138,19 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL) {
     return(NULL)
   }
   con
+}
+
+
+# v0.48.2 — URL helpers for the read-only DuckDB lifecycle.
+# A DuckDB url is either a `duckdb:` scheme or a bare path ending in
+# `.duckdb` (cf. .resolve_monitoring_db_url which emits the bare form).
+.is_duckdb_url <- function(url) {
+  grepl("^duckdb:", url, ignore.case = TRUE) ||
+    grepl("\\.duckdb$", url, ignore.case = TRUE)
+}
+
+.duckdb_path_from_url <- function(url) {
+  sub("^duckdb:(//)?", "", url, ignore.case = TRUE)
 }
 
 

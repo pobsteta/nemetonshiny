@@ -127,6 +127,64 @@ test_that("get_monitoring_db_connection swallows nemeton::db_connect errors and 
   )
 })
 
+# ---- v0.48.2 read-only lifecycle (DuckDB single-writer) -------------
+
+test_that(".is_duckdb_url detects duckdb URLs and bare paths", {
+  expect_true(nemetonshiny:::.is_duckdb_url("/x/monitoring.duckdb"))
+  expect_true(nemetonshiny:::.is_duckdb_url("duckdb:///c:/x/m.duckdb"))
+  expect_true(nemetonshiny:::.is_duckdb_url("C:/Users/x/monitoring.duckdb"))
+  expect_false(nemetonshiny:::.is_duckdb_url("postgresql://u:p@h:5432/d"))
+})
+
+test_that(".duckdb_path_from_url strips the scheme", {
+  expect_equal(nemetonshiny:::.duckdb_path_from_url("/x/m.duckdb"),
+               "/x/m.duckdb")
+  expect_equal(nemetonshiny:::.duckdb_path_from_url("duckdb:///x/m.duckdb"),
+               "/x/m.duckdb")
+})
+
+test_that("read_only path opens RO and skips migration (PostgreSQL)", {
+  skip_if_not_installed("nemeton")
+  clear_monitoring_db_envvars()
+  withr::local_envvar(c(NEMETON_DB_URL = "postgresql://u:p@h:5432/d"))
+  seen_ro <- NULL
+  migrated <- FALSE
+  testthat::with_mocked_bindings(
+    db_connect = function(url, read_only = FALSE) {
+      seen_ro <<- read_only
+      structure(list(), class = "fake_con")
+    },
+    db_migrate = function(con) { migrated <<- TRUE; invisible() },
+    .package = "nemeton",
+    {
+      out <- get_monitoring_db_connection(read_only = TRUE)
+      expect_s3_class(out, "fake_con")
+      expect_true(seen_ro)         # read_only forwarded to db_connect
+      expect_false(migrated)       # migration skipped on RO path
+    }
+  )
+})
+
+test_that("read_only path returns NULL when DuckDB file is absent", {
+  skip_if_not_installed("nemeton")
+  clear_monitoring_db_envvars()
+  missing <- file.path(tempfile("nodb-"), "monitoring.duckdb")
+  withr::local_envvar(c(NEMETON_DB_URL = missing))
+  called <- FALSE
+  testthat::with_mocked_bindings(
+    db_connect = function(url, read_only = FALSE) {
+      called <<- TRUE
+      structure(list(), class = "fake_con")
+    },
+    .package = "nemeton",
+    {
+      out <- get_monitoring_db_connection(read_only = TRUE)
+      expect_null(out)             # file absent → graceful NULL
+      expect_false(called)         # never even attempts to connect
+    }
+  )
+})
+
 
 # ---- list_monitoring_zones ------------------------------------------
 

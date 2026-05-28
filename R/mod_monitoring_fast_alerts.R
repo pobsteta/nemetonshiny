@@ -158,7 +158,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (is.null(cd)) return(NULL)
       proj <- app_state$current_project
       if (is.null(proj)) return(NULL)
-      con <- get_monitoring_db_connection(project = proj)
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       mode <- input$mode %||% "count"
