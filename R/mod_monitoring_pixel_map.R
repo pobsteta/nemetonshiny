@@ -610,10 +610,12 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     })
 
     # UGF polygons swap. Outline only (near-transparent fill) so the
-    # raster underneath stays visible. Bright orange border (#FF6B35,
-    # weight 3) — high contrast on both OSM (light bg) and Satellite
-    # (forest greens). cli debug log on each fire so a developer
-    # running from a terminal sees the reactive firing.
+    # raster underneath stays visible. v0.48.0 — bordure bleu vif
+    # (#1f78b4, weight 2) harmonisée avec Alertes FAST et Plan de
+    # validation (était #FF6B35 orange). Contraste correct sur OSM
+    # (fond clair), Satellite (verts forêt) ET le raster plasma /
+    # alerte. cli debug log on each fire so a developer running from
+    # a terminal sees the reactive firing.
     #
     # v0.34.0 — observe ne dépend plus de `current_layer_r()` : le
     # raster vit dans le pane custom `nemetonRaster` (z-index 250),
@@ -637,10 +639,10 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::addPolygons(
           data        = ugf,
           group       = .ugf_overlay_group,
-          color       = "#FF6B35",
-          weight      = 3,
-          opacity     = 1.0,
-          fillColor   = "#FF6B35",
+          color       = "#1f78b4",
+          weight      = 2,
+          opacity     = 0.9,
+          fillColor   = "#1f78b4",
           fillOpacity = 0.05
         )
     })
