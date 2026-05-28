@@ -1,3 +1,26 @@
+# nemetonshiny 0.50.1 (2026-05-28)
+
+### Fixed — le worker de calcul async chargeait un mauvais code (clone source au lieu du package installé)
+
+Le worker `future::multisession` (calcul des indicateurs) déterminait
+le code à charger via `pkgload::pkg_path()` **sans argument** : cette
+fonction remonte depuis `getwd()` et renvoie n'importe quel dossier de
+package trouvé. Conséquence : un utilisateur lançant la version
+**installée** (`library(nemetonshiny)`) depuis un **clone git local**
+(`getwd()` dans le dossier source) faisait charger au worker, via
+`pkgload::load_all()`, **le clone source** — souvent en retard sur la
+version installée. Le worker exécutait donc un code différent (par ex.
+l'ancien chemin de téléchargement LiDAR HD sans le correctif de nom de
+fichier Windows) : le calcul réussissait en synchrone mais **le
+CHM/MNH/MNT échouait silencieusement via l'UI** (worker async).
+
+Désormais le worker ne bascule en mode dev que si nemetonshiny a été
+*réellement* chargé via `pkgload::load_all()` (`is_dev_package()`),
+auquel cas il recharge `find.package("nemetonshiny")` ; sinon il charge
+le **namespace installé** (`loadNamespace("nemetonshiny")`, qui tire
+`nemeton` transitivement) — la même provenance que la session
+principale. La branche prod chargeait par erreur `nemeton` seul.
+
 # nemetonshiny 0.50.0 (2026-05-28)
 
 ### Changed — monitoring local : SQLite/WAL uniquement, retrait définitif de DuckDB

@@ -765,10 +765,26 @@ mod_home_server <- function(id, app_state) {
     # Uses future_promise() to run in a separate R process via future::multisession
     # This prevents blocking the Shiny main loop during computation
     #
-    # The future worker is a fresh R process that doesn't have nemeton loaded.
-    # We detect the package source path here (main process) and load it in the worker.
-    # This works both in dev mode (devtools::load_all) and production (installed pkg).
-    .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
+    # The future worker is a fresh R process that does not have the app
+    # code loaded — we must reproduce, in the worker, the SAME package
+    # the main session is running.
+    #
+    # Provenance must match exactly. We only treat this as a *dev*
+    # checkout when nemetonshiny was genuinely loaded via
+    # `pkgload::load_all()` (`is_dev_package()`), NOT merely because
+    # `getwd()` happens to sit inside a package source tree. The old
+    # `pkgload::pkg_path()` probe returned the source clone whenever the
+    # user launched R from one — so an installed-package user running
+    # from a (possibly stale) git checkout silently made the worker
+    # `load_all()` that checkout, executing different/older code than the
+    # installed version loaded in the main session (e.g. a pre-fix LiDAR
+    # download path → CHM/MNT silently failing only via the worker).
+    .dev_pkg_path <- tryCatch(
+      if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+        find.package("nemetonshiny")
+      else NULL,
+      error = function(e) NULL
+    )
     compute_task <- shiny::ExtendedTask$new(function(project_id, app_opts) {
       # Ensure multisession plan is active before creating the future.
       # Without this, the future runs sequentially in the main process,
@@ -781,17 +797,16 @@ mod_home_server <- function(id, app_state) {
         }
       }
       promises::future_promise({
-        # Load nemeton package in the worker process
-        if (!is.null(.pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
-          # Dev mode: reload from source directory
-          pkgload::load_all(.pkg_path, quiet = TRUE)
+        # Make the app code available in the worker with the SAME
+        # provenance as the main session.
+        if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
+          # Dev mode: reload nemetonshiny (and deps) from source.
+          pkgload::load_all(.dev_pkg_path, quiet = TRUE)
         } else {
-          # Production: attach package so all exports are on the search path.
-          # We use attachNamespace() instead of library() to avoid the
-          # R CMD check note about library() calls in package code.
-          if (!"package:nemeton" %in% search()) {
-            attachNamespace("nemeton")
-          }
+          # Production: load the installed nemetonshiny namespace (pulls
+          # nemeton in transitively). loadNamespace() avoids the R CMD
+          # check note about library() calls in package code.
+          loadNamespace("nemetonshiny")
         }
 
         # Restore app options in the future process
