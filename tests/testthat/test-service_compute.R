@@ -58,6 +58,57 @@ test_that("DATA_SOURCES contains point cloud sources", {
 })
 
 # ==============================================================================
+# extract_tile_names tests (LiDAR HD dalle cache filenames)
+# ==============================================================================
+
+test_that("extract_tile_names derives a clean name from the WMS FILENAME param", {
+  # IGN Géoplateforme delivers MNH dalles via a WMS GetMap request; the
+  # canonical tile name is carried by the FILENAME= query parameter.
+  wms <- paste0(
+    "https://data.geopf.fr/wms-r?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap",
+    "&LAYERS=IGNF_LIDAR-HD_MNH_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93",
+    "&FORMAT=image/geotiff&STYLES=&CRS=EPSG:2154",
+    "&BBOX=931999.75,6592000.25,932999.75,6593000.25",
+    "&WIDTH=2000&HEIGHT=2000",
+    "&FILENAME=LHD_FXX_0932_6593_MNH_O_0M50_LAMB93_IGN69.tif"
+  )
+  nm <- nemetonshiny:::extract_tile_names(wms, ".tif")
+  expect_equal(nm, "LHD_FXX_0932_6593_MNH_O_0M50_LAMB93_IGN69.tif")
+})
+
+test_that("extract_tile_names never yields Windows-illegal characters", {
+  # Regression: basename() on a WMS GetMap URL kept ':' and ',' (from
+  # CRS=EPSG:2154 / BBOX=...), which are illegal in Windows filenames and
+  # made every tile download fail on Windows even though the dalle exists.
+  wms <- paste0(
+    "https://data.geopf.fr/wms-r?FORMAT=image/geotiff&CRS=EPSG:2154",
+    "&BBOX=931999.75,6592000.25,932999.75,6593000.25",
+    "&FILENAME=LHD_FXX_0932_6593_MNH_O_0M50_LAMB93_IGN69.tif"
+  )
+  nm <- nemetonshiny:::extract_tile_names(wms, ".tif")
+  expect_false(grepl("[<>:\"/\\\\|?*]", nm))
+})
+
+test_that("extract_tile_names keeps a clean static basename (COPC point cloud)", {
+  copc <- "https://storage.example.org/ppk-lidar/LHD_FXX_0932_6593.copc.laz"
+  nm <- nemetonshiny:::extract_tile_names(copc, ".copc.laz")
+  expect_equal(nm, "LHD_FXX_0932_6593.copc.laz")
+})
+
+test_that("extract_tile_names falls back to a generated name without extension", {
+  nm <- nemetonshiny:::extract_tile_names("https://example.org/no-name-here", ".tif")
+  expect_match(nm, "\\.tif$")
+})
+
+test_that("extract_tile_names is vectorised over multiple URLs", {
+  urls <- c(
+    "https://data.geopf.fr/wms-r?FORMAT=image/geotiff&FILENAME=A.tif",
+    "https://example.org/tiles/B.tif"
+  )
+  expect_equal(nemetonshiny:::extract_tile_names(urls, ".tif"), c("A.tif", "B.tif"))
+})
+
+# ==============================================================================
 # COMPUTE_STATUS tests
 # ==============================================================================
 
