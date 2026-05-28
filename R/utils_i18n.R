@@ -2148,6 +2148,12 @@ TRANSLATIONS <- list(
     fr = "Opacité du raster",
     en = "Raster opacity"
   ),
+  # v0.48.0 — toggle visibilité du raster d'alerte FAST, symétrique
+  # avec Carte FAST (monitoring_pixel_map_raster_visible).
+  monitoring_fast_alerts_raster_visible = list(
+    fr = "Afficher le raster",
+    en = "Show raster"
+  ),
   monitoring_fast_alerts_threshold_label = list(
     fr = "Masquer en dessous du seuil",
     en = "Hide below threshold"
