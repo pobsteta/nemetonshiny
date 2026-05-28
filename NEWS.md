@@ -1,4 +1,4 @@
-# nemetonshiny 0.47.0 (2026-05-27)
+# nemetonshiny 0.47.0 (2026-05-28)
 
 ### Added — Carte FAST : 3 contrôles UX du raster
 
