@@ -1,3 +1,28 @@
+# nemetonshiny 0.49.1 (2026-05-28)
+
+### Fixed — téléchargement des dalles MNH LiDAR HD (IGN) cassé sous Windows
+
+`extract_tile_names()` dérivait le nom de fichier de cache d'une dalle
+via `basename(url)`. Or l'IGN Géoplateforme ne sert plus les dalles
+MNH/MNT/MNS comme fichiers statiques mais via une requête **WMS GetMap**
+(`…/wms-r?…&FORMAT=image/geotiff&…&FILENAME=LHD_…tif`). `basename()` sur
+cette URL renvoyait un nom truffé de `:` (`CRS=EPSG:2154`) et de `,`
+(`BBOX=…`), **caractères interdits dans un nom de fichier Windows** :
+l'écriture de chaque tuile échouait, l'app concluait « 0 dalle
+téléchargée » → CHM indisponible, **alors que la dalle existe et se
+télécharge parfaitement** (GeoTIFF 2000×2000 float32, 0,5 m, ~16 Mo).
+Sous Linux ces caractères sont légaux, d'où un bug invisible en dev.
+Le nom canonique est désormais lu depuis le paramètre `FILENAME=` de
+l'URL, avec repli sur un basename propre (URLs statiques, ex. nuages
+COPC) puis un nom généré, et neutralisation finale de tout caractère
+illégal Windows. Nouveaux tests de non-régression sur URLs WMS réelles.
+
+### Fixed — lisibilité du bandeau vide « Aucune alerte FAST »
+
+Le corps du bandeau vert d'état vide (onglet Alertes FAST) était en
+`text-muted` (gris sur le vert saturé `#1E7B1E` du thème) → illisible.
+Passé en `text-white`.
+
 # nemetonshiny 0.49.0 (2026-05-28)
 
 ### Changed — backend monitoring local : DuckDB → SQLite/WAL

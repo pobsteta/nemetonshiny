@@ -198,7 +198,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           htmltools::div(
             htmltools::tags$strong(i18n$t("monitoring_fast_alerts_empty_title")),
             htmltools::tags$br(),
-            htmltools::tags$span(class = "text-muted",
+            htmltools::tags$span(class = "text-white",
                                  i18n$t("monitoring_fast_alerts_empty_body"))
           )
         )

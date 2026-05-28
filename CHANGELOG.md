@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.49.1] - 2026-05-28
+
+### Fixed
+
+- **Téléchargement des dalles MNH LiDAR HD (IGN) cassé sous Windows.**
+  `extract_tile_names()` faisait `basename(url)` sur l'URL WMS GetMap de
+  la Géoplateforme (`…/wms-r?…&FILENAME=LHD_…tif`), produisant un nom de
+  cache truffé de `:` (`CRS=EPSG:2154`) et `,` (`BBOX=…`), illégaux sous
+  Windows → 0 dalle écrite → CHM indisponible alors que la dalle existe.
+  Nom canonique lu depuis `FILENAME=`, repli basename propre puis nom
+  généré, nettoyage des caractères illégaux. + 5 tests de non-régression.
+- **Lisibilité du bandeau vide « Aucune alerte FAST »** : corps passé de
+  `text-muted` à `text-white` (gris illisible sur le vert saturé du thème).
+
 ## [0.45.0] - 2026-05-26
 
 ### Added

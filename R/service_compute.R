@@ -2763,24 +2763,59 @@ find_url_column <- function(tiles_sf) {
 
 #' Extract tile filenames from download URLs
 #'
+#' @description
+#' Derives a safe on-disk cache filename for each LiDAR HD tile URL.
+#'
+#' The IGN Géoplateforme delivers MNH/MNT/MNS dalles through a WMS
+#' `GetMap` request (`…/wms-r?…&FORMAT=image/geotiff&…&FILENAME=LHD_…tif`),
+#' not a static file. `basename()` on such a URL returns query-string
+#' junk (`geotiff&…&CRS=EPSG:2154&BBOX=…&FILENAME=…tif`) carrying `:` and
+#' `,`, which are illegal in Windows filenames — so the download write
+#' fails and every tile is reported missing even though the dalle exists.
+#' We therefore prefer the canonical name carried by the `FILENAME=`
+#' query parameter, fall back to a clean basename (static-file URLs, e.g.
+#' raw COPC point clouds), then to a generated name, and finally strip any
+#' character that is illegal on Windows.
+#'
 #' @param urls Character vector of download URLs.
-#' @param file_ext Character. Expected file extension.
-#' @return Character vector of filenames.
+#' @param file_ext Character. Expected file extension (e.g. ".tif").
+#' @return Character vector of safe filenames.
 #' @noRd
 extract_tile_names <- function(urls, file_ext) {
   # Ensure urls is a character vector (WFS GeoJSON parsing may return a list)
   urls <- as.character(urls)
+  ext_rx <- gsub("\\.", "\\\\.", file_ext)
 
-  # Extract filename from URL
-  basenames <- basename(urls)
+  vapply(seq_along(urls), function(i) {
+    u <- urls[i]
+    nm <- NA_character_
 
-  # If basenames don't have the right extension, generate names
-  has_ext <- grepl(gsub("\\.", "\\\\.", file_ext), basenames)
-  for (i in which(!has_ext)) {
-    basenames[i] <- paste0("tile_", i, file_ext)
-  }
+    # 1) Canonical tile name from the WMS GetMap FILENAME= query param.
+    m <- regmatches(u, regexpr("[?&][Ff][Ii][Ll][Ee][Nn][Aa][Mm][Ee]=[^&]+", u))
+    if (length(m) == 1L && nzchar(m)) {
+      nm <- utils::URLdecode(sub("^[?&][^=]+=", "", m))
+    }
 
-  basenames
+    # 2) Clean basename — only when it has no leftover URL separators.
+    if (is.na(nm) || !nzchar(nm)) {
+      bn <- basename(u)
+      if (grepl(ext_rx, bn) && !grepl("[?&=:,]", bn)) {
+        nm <- bn
+      }
+    }
+
+    # 3) Generated fallback.
+    if (is.na(nm) || !nzchar(nm)) {
+      nm <- paste0("tile_", i, file_ext)
+    }
+
+    # Final guard: neutralise characters illegal on Windows / awkward on disk.
+    nm <- gsub("[<>:\"/\\\\|?*&=,]", "_", nm)
+    if (!grepl(ext_rx, nm)) {
+      nm <- paste0(nm, file_ext)
+    }
+    nm
+  }, character(1))
 }
 
 
