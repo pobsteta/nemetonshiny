@@ -2208,6 +2208,16 @@ TRANSLATIONS <- list(
     fr = "Date d'observation",
     en = "Observation date"
   ),
+  # v0.47.0 — contrôles UX du raster Carte FAST :
+  # toggle visibilité + slider opacité 0-1.
+  monitoring_pixel_map_raster_visible = list(
+    fr = "Afficher le raster",
+    en = "Show raster"
+  ),
+  monitoring_pixel_map_raster_opacity = list(
+    fr = "Opacité du raster",
+    en = "Raster opacity"
+  ),
   monitoring_pixel_map_click_hint = list(
     fr = "Clique sur un pixel pour voir sa s\u00e9rie compl\u00e8te (NDVI + NBR). Clique sur une placette pour la s\u00e9rie agr\u00e9g\u00e9e plot.",
     en = "Click a pixel for its full series (NDVI + NBR). Click a plot marker for the placette-aggregated series."
