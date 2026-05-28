@@ -53,6 +53,27 @@ mod_monitoring_fast_alerts_ui <- function(id) {
           selected     = "count"
         ),
         class = "mb-0"
+      ),
+      # v0.48.0 — toggle visibilité + slider opacité du raster
+      # d'alerte, symétrique avec Carte FAST (v0.47.0).
+      htmltools::tagAppendAttributes(
+        shiny::checkboxInput(
+          ns("raster_visible"),
+          label = i18n$t("monitoring_fast_alerts_raster_visible"),
+          value = TRUE
+        ),
+        class = "mb-0"
+      ),
+      htmltools::div(
+        style = "min-width: 180px;",
+        htmltools::tagAppendAttributes(
+          shiny::sliderInput(
+            ns("raster_opacity"),
+            label = i18n$t("monitoring_fast_alerts_opacity_label"),
+            min = 0, max = 1, value = 0.75, step = 0.05
+          ),
+          class = "mb-0"
+        )
       )
     ),
     shiny::uiOutput(ns("panel"))
@@ -235,6 +256,26 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         return(m)
       }
 
+      # v0.48.0 — toggle visibilité du raster. Décoché → on retourne
+      # la carte avec OSM + UGF + fitBounds, sans le raster d'alerte
+      # ni sa légende. Symétrique avec Carte FAST.
+      if (!isTRUE(input$raster_visible %||% TRUE)) {
+        if (!is.null(ugf_4326)) {
+          bb <- tryCatch(sf::st_bbox(ugf_4326), error = function(e) NULL)
+          if (!is.null(bb)) {
+            m <- m |> leaflet::fitBounds(
+              lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+              lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
+            )
+          }
+        }
+        return(m)
+      }
+      # v0.48.0 — opacité pilotée par le slider (default 0.75).
+      raster_opacity <- as.numeric(input$raster_opacity %||% 0.75)
+      if (!is.finite(raster_opacity) || raster_opacity < 0) raster_opacity <- 0
+      if (raster_opacity > 1) raster_opacity <- 1
+
       # Zero = pas d'alerte → transparent. Le cœur retourne 0 (count)
       # ou 0.0 (rolling) hors alerte, qu'on masque ici pour ne pas
       # noircir / saturer la carte de pixels uniformes.
@@ -260,7 +301,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         )
         m |>
           leaflet::addRasterImage(
-            x = r_show, colors = pal, opacity = 0.75,
+            x = r_show, colors = pal, opacity = raster_opacity,
             method  = "ngb",
             options = leaflet::gridOptions(pane = "nemetonAlertRaster")
           ) |>
@@ -286,7 +327,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         )
         m |>
           leaflet::addRasterImage(
-            x = r_show, colors = pal, opacity = 0.75,
+            x = r_show, colors = pal, opacity = raster_opacity,
             options = leaflet::gridOptions(pane = "nemetonAlertRaster")
           ) |>
           leaflet::addLegend(
