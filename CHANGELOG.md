@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.50.1] - 2026-05-28
+
+### Fixed
+
+- **Le worker de calcul async chargeait un mauvais code.** Le worker
+  `future::multisession` résolvait le package via `pkgload::pkg_path()`
+  sans argument (qui remonte depuis `getwd()`), si bien qu'un
+  utilisateur de la version installée lancée depuis un clone git local
+  faisait `load_all()` du clone (souvent périmé) dans le worker →
+  CHM/MNH/MNT échouaient silencieusement via l'UI alors que le calcul
+  synchrone réussissait. Le mode dev n'est désormais retenu que si
+  `is_dev_package("nemetonshiny")` est vrai (via `find.package()`) ;
+  sinon le worker charge le namespace installé
+  (`loadNamespace("nemetonshiny")`). La branche prod chargeait par
+  erreur `nemeton` seul au lieu de `nemetonshiny`.
+
 ## [0.50.0] - 2026-05-28
 
 ### Changed

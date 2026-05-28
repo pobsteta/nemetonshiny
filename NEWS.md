@@ -1,4 +1,4 @@
-# nemetonshiny 0.50.0.9001 (dev)
+# nemetonshiny 0.50.1 (2026-05-28)
 
 ### Fixed — le worker de calcul async chargeait un mauvais code (clone source au lieu du package installé)
 
