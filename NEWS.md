@@ -1,3 +1,28 @@
+# nemetonshiny 0.50.0 (2026-05-28)
+
+### Changed — monitoring local : SQLite/WAL uniquement, retrait définitif de DuckDB
+
+Le backend de suivi sanitaire local ne propose plus que deux options :
+**PostgreSQL/TimescaleDB** (prod, partagé) et **SQLite en mode WAL**
+(local, mono-utilisateur). Le backend DuckDB — déprécié en v0.49.0 puis
+retiré du cœur `nemeton` en v0.51.0 — est **coupé net** côté app :
+
+- `.resolve_monitoring_db_url()` émet **toujours**
+  `sqlite://<projet>/data/monitoring.sqlite` en mode local. La branche
+  de back-compat DuckDB (réutilisation d'un `monitoring.duckdb`
+  préexistant) et le helper `.nemeton_supports_duckdb()` sont supprimés.
+- `duckdb` retiré des `Suggests` ; plancher `Imports: nemeton (>= 0.51.0)`.
+- Mentions DuckDB nettoyées dans `mod_monitoring`, `service_monitoring`,
+  les bandeaux UI et les clés i18n (`monitoring_db_duckdb_missing` →
+  `monitoring_db_local_pkg_missing`).
+- PostgreSQL inchangé.
+
+**Données existantes** : un ancien fichier `monitoring.duckdb` local
+n'est **plus lu** et n'est **pas migré** automatiquement. Le suivi local
+repart sur un `monitoring.sqlite` neuf ; ré-ingérez les séries (elles
+sont régénérables depuis le cache Sentinel-2 + la DB). Supprimer
+l'ancien `monitoring.duckdb` est sans risque.
+
 # nemetonshiny 0.49.1 (2026-05-28)
 
 ### Fixed — téléchargement des dalles MNH LiDAR HD (IGN) cassé sous Windows

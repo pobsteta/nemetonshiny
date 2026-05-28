@@ -9,6 +9,7 @@
 clear_monitoring_db_envvars <- function() {
   withr::local_envvar(c(
     NEMETON_DB_URL          = NA,
+    NEMETON_DB_LOCAL        = NA,
     NEMETON_DB_HOST         = NA,
     NEMETON_DB_PORT         = NA,
     NEMETON_DB_NAME         = NA,
@@ -127,27 +128,26 @@ test_that("get_monitoring_db_connection swallows nemeton::db_connect errors and 
   )
 })
 
-# ---- v0.48.2 read-only lifecycle (DuckDB single-writer) -------------
+# ---- read-only lifecycle (SQLite/WAL 1 writer + N readers) ----------
 
-test_that(".is_file_db_url detects duckdb + sqlite URLs and bare paths", {
-  expect_true(nemetonshiny:::.is_file_db_url("/x/monitoring.duckdb"))
-  expect_true(nemetonshiny:::.is_file_db_url("duckdb:///c:/x/m.duckdb"))
-  expect_true(nemetonshiny:::.is_file_db_url("C:/Users/x/monitoring.duckdb"))
+test_that(".is_file_db_url detects sqlite URLs and bare local paths", {
   expect_true(nemetonshiny:::.is_file_db_url("/x/monitoring.sqlite"))
-  expect_true(nemetonshiny:::.is_file_db_url("sqlite:///c:/x/m.sqlite"))
+  expect_true(nemetonshiny:::.is_file_db_url("sqlite:///x/m.sqlite"))
+  expect_true(nemetonshiny:::.is_file_db_url("sqlite://C:/x/m.sqlite"))
   expect_true(nemetonshiny:::.is_file_db_url("/x/m.db"))
   expect_false(nemetonshiny:::.is_file_db_url("postgresql://u:p@h:5432/d"))
+  # DuckDB is no longer a supported local backend (cut net, v0.50.0).
+  expect_false(nemetonshiny:::.is_file_db_url("/x/monitoring.duckdb"))
+  expect_false(nemetonshiny:::.is_file_db_url("duckdb:///x/m.duckdb"))
 })
 
-test_that(".file_db_path_from_url strips duckdb/sqlite schemes", {
-  expect_equal(nemetonshiny:::.file_db_path_from_url("/x/m.duckdb"),
-               "/x/m.duckdb")
-  expect_equal(nemetonshiny:::.file_db_path_from_url("duckdb:///x/m.duckdb"),
-               "/x/m.duckdb")
-  expect_equal(nemetonshiny:::.file_db_path_from_url("sqlite:///x/m.sqlite"),
-               "/x/m.sqlite")
+test_that(".file_db_path_from_url strips the sqlite scheme", {
   expect_equal(nemetonshiny:::.file_db_path_from_url("/x/m.sqlite"),
                "/x/m.sqlite")
+  expect_equal(nemetonshiny:::.file_db_path_from_url("sqlite:///x/m.sqlite"),
+               "/x/m.sqlite")
+  expect_equal(nemetonshiny:::.file_db_path_from_url("sqlite://C:/x/m.sqlite"),
+               "C:/x/m.sqlite")
 })
 
 test_that("read_only path opens RO and skips migration (PostgreSQL)", {
@@ -172,11 +172,11 @@ test_that("read_only path opens RO and skips migration (PostgreSQL)", {
   )
 })
 
-test_that("read_only path returns NULL when DuckDB file is absent", {
+test_that("read_only path returns NULL when the local SQLite file is absent", {
   skip_if_not_installed("nemeton")
   clear_monitoring_db_envvars()
-  missing <- file.path(tempfile("nodb-"), "monitoring.duckdb")
-  withr::local_envvar(c(NEMETON_DB_URL = missing))
+  missing <- file.path(tempfile("nodb-"), "monitoring.sqlite")
+  withr::local_envvar(c(NEMETON_DB_URL = paste0("sqlite://", missing)))
   called <- FALSE
   testthat::with_mocked_bindings(
     db_connect = function(url, read_only = FALSE) {
@@ -193,36 +193,24 @@ test_that("read_only path returns NULL when DuckDB file is absent", {
 })
 
 
-# ---- v0.49.0 local backend : SQLite/WAL default, DuckDB back-compat -
+# ---- local backend : SQLite/WAL only (DuckDB removed) --------------
 
-test_that(".resolve_monitoring_db_url emits SQLite for a fresh local project", {
+test_that(".resolve_monitoring_db_url emits a sqlite:// URL for a local project", {
   skip_if_not_installed("RSQLite")
   clear_monitoring_db_envvars()
   withr::local_envvar(c(NEMETON_DB_LOCAL = "1"))
   withr::with_tempdir({
     proj <- list(path = getwd())
     url <- nemetonshiny:::.resolve_monitoring_db_url(proj)
-    expect_match(url, "\\.sqlite$")
-    expect_false(grepl("\\.duckdb$", url))
+    expect_match(url, "^sqlite://")
+    expect_match(url, "monitoring\\.sqlite$")
     expect_equal(nemetonshiny:::monitoring_db_backend(proj), "local")
   })
 })
 
-test_that(".resolve_monitoring_db_url keeps DuckDB for a legacy local project", {
-  skip_if_not_installed("duckdb")
-  clear_monitoring_db_envvars()
-  withr::local_envvar(c(NEMETON_DB_LOCAL = "1"))
-  withr::with_tempdir({
-    proj <- list(path = getwd())
-    dir.create("data")
-    # Legacy base exists and no .sqlite yet → back-compat path.
-    file.create(file.path("data", "monitoring.duckdb"))
-    url <- nemetonshiny:::.resolve_monitoring_db_url(proj)
-    expect_match(url, "\\.duckdb$")
-  })
-})
-
-test_that(".resolve_monitoring_db_url prefers SQLite once both files exist", {
+test_that(".resolve_monitoring_db_url ignores a lingering monitoring.duckdb", {
+  # Cut net : even when a legacy DuckDB file is still on disk, the local
+  # backend always resolves to SQLite — no back-compat branch.
   skip_if_not_installed("RSQLite")
   clear_monitoring_db_envvars()
   withr::local_envvar(c(NEMETON_DB_LOCAL = "1"))
@@ -230,9 +218,9 @@ test_that(".resolve_monitoring_db_url prefers SQLite once both files exist", {
     proj <- list(path = getwd())
     dir.create("data")
     file.create(file.path("data", "monitoring.duckdb"))
-    file.create(file.path("data", "monitoring.sqlite"))
     url <- nemetonshiny:::.resolve_monitoring_db_url(proj)
-    expect_match(url, "\\.sqlite$")   # sqlite wins when present
+    expect_match(url, "^sqlite://")
+    expect_match(url, "monitoring\\.sqlite$")
   })
 })
 
@@ -621,7 +609,7 @@ test_that("register_project_as_zone aborts when project has no UGF geometry", {
 
 
 # ============================================================================
-# .resolve_monitoring_db_url — DuckDB local fallback (v0.24.0)
+# .resolve_monitoring_db_url — SQLite/WAL local fallback
 # ============================================================================
 
 test_that(".resolve_monitoring_db_url passes through NEMETON_DB_URL", {
@@ -644,8 +632,8 @@ test_that(".resolve_monitoring_db_url builds PG URL from env parts", {
   expect_match(url, "^postgresql://nemeton:secret@127\\.0\\.0\\.1:5432/nemeton$")
 })
 
-test_that(".resolve_monitoring_db_url returns DuckDB URL when project given and no PG env", {
-  skip_if_not_installed("duckdb")
+test_that(".resolve_monitoring_db_url returns a sqlite:// URL when project given and no PG env", {
+  skip_if_not_installed("RSQLite")
   clear_monitoring_db_envvars()
   withr::with_tempdir({
     project <- list(id = "p1",
@@ -653,21 +641,21 @@ test_that(".resolve_monitoring_db_url returns DuckDB URL when project given and 
     dir.create(project$path, recursive = TRUE)
 
     url <- nemetonshiny:::.resolve_monitoring_db_url(project)
-    expect_match(url, "^duckdb:///")
-    expect_match(url, "monitoring\\.duckdb$")
+    expect_match(url, "^sqlite://")
+    expect_match(url, "monitoring\\.sqlite$")
     # The parent <project>/data/ directory should have been created
-    # as a side effect (so DuckDB can later open the file).
+    # as a side effect (so SQLite can later open the file).
     expect_true(dir.exists(file.path(project$path, "data")))
   })
 })
 
-test_that("NEMETON_DB_LOCAL=1 bypasses PG env vars and uses DuckDB", {
+test_that("NEMETON_DB_LOCAL=1 bypasses PG env vars and uses local SQLite", {
   # Regression: a user with Clever Cloud POSTGRESQL_ADDON_* sitting
   # in ~/.Renviron for production saw the app dial the prod Postgres
-  # (and time out) even when running locally and wanting DuckDB.
+  # (and time out) even when running locally and wanting local mode.
   # NEMETON_DB_LOCAL=1 lets them keep the prod creds in env and
   # force local mode at runtime.
-  skip_if_not_installed("duckdb")
+  skip_if_not_installed("RSQLite")
   clear_monitoring_db_envvars()
   withr::local_envvar(c(
     POSTGRESQL_ADDON_HOST     = "prod.example.com",
@@ -680,7 +668,8 @@ test_that("NEMETON_DB_LOCAL=1 bypasses PG env vars and uses DuckDB", {
     project <- list(id = "p1", path = file.path(getwd(), "p"))
     dir.create(project$path)
     url <- nemetonshiny:::.resolve_monitoring_db_url(project)
-    expect_match(url, "monitoring\\.duckdb$")
+    expect_match(url, "^sqlite://")
+    expect_match(url, "monitoring\\.sqlite$")
     expect_false(grepl("^postgresql:", url))
   })
 })
@@ -716,14 +705,14 @@ test_that("monitoring_db_backend classifies URLs correctly", {
     expect_equal(nemetonshiny:::monitoring_db_backend(NULL), "postgres")
   })
 
-  # DuckDB fallback
-  if (requireNamespace("duckdb", quietly = TRUE)) {
+  # Local SQLite fallback
+  if (requireNamespace("RSQLite", quietly = TRUE)) {
     withr::with_tempdir({
       project <- list(id = "p1", path = file.path(getwd(), "p"))
       dir.create(project$path)
       expect_equal(
         nemetonshiny:::monitoring_db_backend(project),
-        "duckdb"
+        "local"
       )
     })
   }
@@ -732,8 +721,8 @@ test_that("monitoring_db_backend classifies URLs correctly", {
   expect_equal(nemetonshiny:::monitoring_db_backend(NULL), "none")
 })
 
-test_that("get_monitoring_db_connection opens a DuckDB file when no PG env is set", {
-  skip_if_not_installed("duckdb")
+test_that("get_monitoring_db_connection opens a local SQLite file when no PG env is set", {
+  skip_if_not_installed("RSQLite")
   skip_if_not_installed("nemeton")
   clear_monitoring_db_envvars()
   withr::with_tempdir({
@@ -743,26 +732,26 @@ test_that("get_monitoring_db_connection opens a DuckDB file when no PG env is se
     con <- nemetonshiny:::get_monitoring_db_connection(project = project)
     on.exit(nemetonshiny:::close_monitoring_db_connection(con), add = TRUE)
 
-    expect_s4_class(con, "duckdb_connection")
+    expect_s4_class(con, "SQLiteConnection")
     expect_true(DBI::dbIsValid(con))
     expect_true(file.exists(file.path(project$path, "data",
-                                      "monitoring.duckdb")))
+                                      "monitoring.sqlite")))
   })
 })
 
 test_that("get_monitoring_db_connection prefers explicit db_url over project", {
-  skip_if_not_installed("duckdb")
+  skip_if_not_installed("RSQLite")
   skip_if_not_installed("nemeton")
   clear_monitoring_db_envvars()
   withr::with_tempdir({
-    explicit <- file.path(getwd(), "explicit.duckdb")
+    explicit <- file.path(getwd(), "explicit.sqlite")
     # Pass a project too, but db_url should win.
     project  <- list(id = "p1", path = file.path(getwd(), "proj"))
     dir.create(project$path)
 
     con <- nemetonshiny:::get_monitoring_db_connection(
       project = project,
-      db_url  = paste0("duckdb:///", normalizePath(explicit, winslash = "/",
+      db_url  = paste0("sqlite://", normalizePath(explicit, winslash = "/",
                                                   mustWork = FALSE))
     )
     on.exit(nemetonshiny:::close_monitoring_db_connection(con), add = TRUE)
@@ -770,6 +759,6 @@ test_that("get_monitoring_db_connection prefers explicit db_url over project", {
     expect_true(file.exists(explicit))
     # The project-derived path must NOT have been created (db_url won).
     expect_false(file.exists(file.path(project$path, "data",
-                                       "monitoring.duckdb")))
+                                       "monitoring.sqlite")))
   })
 })

@@ -423,8 +423,8 @@ mod_monitoring_server <- function(id, app_state) {
     # Open db_connect + db_migrate in a future worker so the user sees
     # a real "loading" state (spinning gear card) while the schema
     # bootstraps. On warm cache the round-trip is < 100 ms; on a fresh
-    # DuckDB or a slow Postgres it can take a couple of seconds — that
-    # is exactly when a visible state matters most.
+    # SQLite file or a slow Postgres it can take a couple of seconds —
+    # that is exactly when a visible state matters most.
     #
     # The worker only probes reachability: DBI connections are not
     # serializable across processes, so the actual connection used by
@@ -479,8 +479,8 @@ mod_monitoring_server <- function(id, app_state) {
         }
 
         # Migration is itself idempotent (schema_migration table). On
-        # a fresh DuckDB it creates the schema; on an already-migrated
-        # base it's a single SELECT.
+        # a fresh SQLite file it creates the schema; on an already-
+        # migrated base it's a single SELECT.
         mig_ok <- tryCatch({
           nemeton::db_migrate(con)
           TRUE
@@ -505,7 +505,7 @@ mod_monitoring_server <- function(id, app_state) {
       url     <- .resolve_monitoring_db_url(project)
       backend <- monitoring_db_backend(project = project)
       # Skip probe when there is nothing to probe — output$db_status
-      # handles the "no project / duckdb missing" cases synchronously.
+      # handles the "no project / RSQLite missing" cases synchronously.
       if (identical(backend, "none") || !nzchar(url)) return()
       db_probe_task$invoke(db_url = url)
     })
@@ -942,8 +942,8 @@ mod_monitoring_server <- function(id, app_state) {
 
     # Zones reactive: open a fresh connection, list, close. Re-runs on
     # session start, on demand via zones_refresh(), and whenever the
-    # active project changes (each project may have its own DuckDB DB
-    # in local mode, and even in shared Postgres mode we want a fresh
+    # active project changes (each project may have its own local
+    # SQLite DB, and even in shared Postgres mode we want a fresh
     # list in case zones were added externally).
     #
     # v0.36.2 — explicit `proj <-` read to force the dep on
@@ -952,8 +952,8 @@ mod_monitoring_server <- function(id, app_state) {
     # `.resolve_monitoring_db_url()` returns early on the
     # `NEMETON_DB_URL` envvar without ever forcing the promise, so the
     # reactive missed its dep on `current_project` and never re-fetched
-    # on project switch. In DuckDB mode the bug was masked because the
-    # resolver does end up touching `project$path`.
+    # on project switch. In local SQLite mode the bug was masked
+    # because the resolver does end up touching `project$path`.
     zones_refresh <- shiny::reactiveVal(0L)
 
     zones <- shiny::reactive({
@@ -1049,13 +1049,13 @@ mod_monitoring_server <- function(id, app_state) {
         return(htmltools::tags$small(class = "text-danger d-block",
           i18n$t("monitoring_register_no_samples")))
       }
-      # Distinguish "duckdb pkg missing" from "PG configured but
+      # Distinguish "RSQLite pkg missing" from "PG configured but
       # unreachable" so the user gets an actionable hint instead of
       # the generic "non configurée" message.
       backend <- monitoring_db_backend(project = app_state$current_project)
       if (identical(backend, "none")) {
         return(htmltools::tags$small(class = "text-danger d-block",
-          i18n$t("monitoring_db_duckdb_missing")))
+          i18n$t("monitoring_db_local_pkg_missing")))
       }
       con <- get_monitoring_db_connection(project = app_state$current_project,
                                           read_only = TRUE)
@@ -1132,11 +1132,11 @@ mod_monitoring_server <- function(id, app_state) {
     # DB status card — seven states:
     #   0. Async probe still running        → spinning gear card
     #   1. No PG env AND no project         → "open a project" hint (warning)
-    #   2. No PG env, project loaded, duckdb pkg missing → install hint (warning)
+    #   2. No PG env, project loaded, RSQLite pkg missing → install hint (warning)
     #   3. Probe failed (server down, bad URL, migration error, …) → warning + real message
-    #   4. Local DuckDB ready                → info banner with multi-user hint
+    #   4. Local SQLite ready                → info banner with multi-user hint
     #   5. Postgres connected, zero zones    → info
-    #   6. Postgres or DuckDB ready, zones available → success
+    #   6. Postgres or SQLite ready, zones available → success
     #
     # The probe (ExtendedTask) is fired by the observer above whenever
     # the project changes. While it runs, the spinning gear card stays
@@ -1158,14 +1158,14 @@ mod_monitoring_server <- function(id, app_state) {
             body  = i18n$t("monitoring_db_no_project")
           ))
         }
-        # Project loaded, PG env absent, and not classified as duckdb
-        # means duckdb package is missing (otherwise the resolver
-        # would have produced a duckdb://… URL).
+        # Project loaded, PG env absent, and not classified as a local
+        # file backend means RSQLite is missing (otherwise the resolver
+        # would have produced a sqlite://… URL).
         return(.monitoring_status_card(
           icon  = "exclamation-circle",
           class = "border-warning",
           title = i18n$t("monitoring_db_unavailable"),
-          body  = i18n$t("monitoring_db_duckdb_missing")
+          body  = i18n$t("monitoring_db_local_pkg_missing")
         ))
       }
 
@@ -1223,7 +1223,7 @@ mod_monitoring_server <- function(id, app_state) {
         ))
       }
       n <- nrow(zones())
-      # Local DuckDB mode gets its own bandeau so the user sees it is
+      # Local SQLite mode gets its own bandeau so the user sees it is
       # a single-user fallback (not a misconfigured Postgres). Hint
       # mentions how to switch to Postgres for multi-user setups.
       if (identical(backend, "local")) {
@@ -1697,9 +1697,9 @@ mod_monitoring_server <- function(id, app_state) {
         bands         = input$bands,
         max_cloud     = 20,
         # Pre-resolve here (the future worker can't see app_state) and
-        # pass the URL explicitly. The fallback to a local DuckDB file
-        # under <project>/data/monitoring.duckdb is selected when no
-        # PG env var is set — that's the v0.24.0 single-user path.
+        # pass the URL explicitly. The fallback to a local SQLite file
+        # under <project>/data/monitoring.sqlite is selected when no
+        # PG env var is set — that's the single-user path.
         db_url        = .resolve_monitoring_db_url(app_state$current_project),
         progress_path = ppath,
         cache_dir     = cache_dir,
@@ -2633,7 +2633,7 @@ mod_monitoring_server <- function(id, app_state) {
   )
 }
 
-# Persistent "connecting…" / "creating local DuckDB…" card shown while
+# Persistent "connecting…" / "creating local SQLite…" card shown while
 # the async DB probe (ExtendedTask) is running. The spinning gear icon
 # uses the existing `.nmt-spin` CSS keyframe from inst/app/www/css. The
 # card replaces the previous toast-based feedback (which was easy to

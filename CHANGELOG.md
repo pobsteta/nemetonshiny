@@ -10,6 +10,29 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-05-28
+
+### Changed
+
+- **Monitoring local : SQLite/WAL uniquement.** Le backend DuckDB,
+  déprécié en 0.49.0, est retiré définitivement (cœur `nemeton` v0.51.0).
+  `.resolve_monitoring_db_url()` émet toujours
+  `sqlite://<projet>/data/monitoring.sqlite` en local ; branche
+  back-compat DuckDB et `.nemeton_supports_duckdb()` supprimés ;
+  helpers `.is_file_db_url` / `.file_db_path_from_url` restreints à
+  SQLite. PostgreSQL inchangé. Clé i18n `monitoring_db_duckdb_missing`
+  → `monitoring_db_local_pkg_missing`.
+
+### Removed
+
+- `duckdb` retiré des `Suggests` ; plancher `Imports: nemeton (>= 0.51.0)`.
+
+### Migration
+
+- Un ancien `monitoring.duckdb` local n'est plus lu ni migré : le suivi
+  local repart sur un `monitoring.sqlite` neuf. Ré-ingérer les séries
+  (régénérables depuis le cache Sentinel-2 + la DB).
+
 ## [0.49.1] - 2026-05-28
 
 ### Fixed
