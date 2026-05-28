@@ -1971,7 +1971,7 @@ TRANSLATIONS <- list(
     fr = "Pour partager le suivi entre plusieurs utilisateurs, configurez Postgres+TimescaleDB via NEMETON_DB_URL.",
     en = "To share monitoring between multiple users, configure Postgres+TimescaleDB via NEMETON_DB_URL."
   ),
-  monitoring_db_duckdb_missing = list(
+  monitoring_db_local_pkg_missing = list(
     fr = "Le paquet R {.pkg RSQLite} n'est pas install\u00e9, le mode local n'est pas disponible. Installez avec install.packages(\"RSQLite\") ou configurez Postgres.",
     en = "The R {.pkg RSQLite} package is not installed; local mode is unavailable. Run install.packages(\"RSQLite\") or configure Postgres."
   ),

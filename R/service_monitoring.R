@@ -108,7 +108,7 @@ run_ingestion_async <- function() {
       # AND no project — i.e. no DB at all.
       con <- get_monitoring_db_connection(db_url = db_url)
       if (is.null(con)) {
-        stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local DuckDB fallback).")
+        stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local SQLite fallback).")
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
@@ -360,7 +360,7 @@ run_fordead_async <- function() {
 
       con <- get_monitoring_db_connection(db_url = db_url)
       if (is.null(con)) {
-        stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local DuckDB fallback).")
+        stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local SQLite fallback).")
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 

@@ -15,10 +15,10 @@
 #'    a postgresql URL (credentials URL-encoded so passwords with `@`,
 #'    `:`, `/` … don't break the parse).
 #' 3. No PG env vars set AND a `project` is passed → fall back to a
-#'    **local DuckDB file** at `<project$path>/data/monitoring.duckdb`.
-#'    This is the single-user mode introduced in nemeton v0.21.0 ; it
+#'    **local SQLite/WAL file** at
+#'    `<project$path>/data/monitoring.sqlite`. This single-user mode
 #'    avoids requiring a TimescaleDB instance for individual users.
-#'    Requires the `duckdb` R package.
+#'    Requires the `RSQLite` R package.
 #' 4. None of the above — return NULL so the Monitoring tab can show
 #'    a configuration hint instead of crashing.
 #'
@@ -31,28 +31,25 @@ NULL
 #'
 #' @param project Optional. The current project list (typically
 #'   `app_state$current_project`). When provided and no PG env var is
-#'   set, a local DuckDB file is used at
-#'   `<project$path>/data/monitoring.duckdb`. When NULL and no PG env
+#'   set, a local SQLite/WAL file is used at
+#'   `<project$path>/data/monitoring.sqlite`. When NULL and no PG env
 #'   var is set, returns NULL — preserves the pre-0.24.0 behaviour for
 #'   callers that don't have a project in scope.
 #' @param db_url Optional pre-resolved URL. Takes precedence over
 #'   `project`. Used by async workers (`run_ingestion_async`,
 #'   `run_fordead_async`) that cannot access `app_state` and instead
 #'   receive the URL from the observer that fires them.
-#' @param read_only Logical. v0.48.2 — when `TRUE`, open the
-#'   connection read-only and SKIP the migration step. DuckDB file
-#'   backends are single-writer : a long-lived read-write handle
-#'   (held by the Shiny session) blocks the async ingestion worker
-#'   from opening the file at all ("File is already open in
-#'   Rscript.exe"). Readers (alerts list, raster rendering, zone
-#'   list, …) must therefore use `read_only = TRUE` so multiple RO
-#'   connections can coexist and the worker can grab a brief RW
-#'   handle when it needs to INSERT. For DuckDB, a RO open requires
-#'   the file to already exist (migration done by a prior RW path) —
-#'   if it doesn't, we degrade to `NULL` (monitoring not initialised
-#'   yet) rather than crash. For PostgreSQL `read_only` is a no-op
-#'   core-side (native concurrency) and migration still proceeds via
-#'   the RW init paths, so passing it is harmless.
+#' @param read_only Logical. When `TRUE`, open the connection
+#'   read-only and SKIP the migration step. SQLite/WAL allows 1 writer
+#'   + N concurrent readers across processes, so readers (alerts list,
+#'   raster rendering, zone list, …) use `read_only = TRUE` to coexist
+#'   with the async ingestion worker, which grabs a brief RW handle
+#'   when it needs to INSERT. A RO open requires the file to already
+#'   exist (migration done by a prior RW path) — if it doesn't, we
+#'   degrade to `NULL` (monitoring not initialised yet) rather than
+#'   crash. For PostgreSQL `read_only` is a no-op core-side (native
+#'   concurrency) and migration still proceeds via the RW init paths,
+#'   so passing it is harmless.
 #'
 #' @return A DBIConnection or NULL when no DB is configured / the
 #'   connection failed. On failure, `last_monitoring_db_error()` returns
@@ -79,15 +76,13 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
   if (!nzchar(url)) {
     # Empty URL is not an "error" per se — the resolver already
     # decided we are not configured. The bandeau will show the
-    # diagnostic state (no project / duckdb missing / …).
+    # diagnostic state (no project / RSQLite missing / …).
     return(NULL)
   }
 
-  # v0.48.2 — reader path : RO connexion, no migration. For a file
-  # backend (SQLite/DuckDB) the file must already exist (a prior RW
-  # path migrated it). For SQLite/WAL the RW lock is non-exclusive so
-  # readers coexist with the worker ; for legacy DuckDB the RO open
-  # still degrades gracefully when the file is locked.
+  # Reader path : RO connexion, no migration. For the local SQLite
+  # backend the file must already exist (a prior RW path migrated it) ;
+  # the WAL RW lock is non-exclusive so readers coexist with the worker.
   if (isTRUE(read_only)) {
     if (.is_file_db_url(url) && !file.exists(.file_db_path_from_url(url))) {
       .nemeton_env$.last_monitoring_db_error <-
@@ -122,7 +117,7 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
   )
   if (is.null(con)) return(NULL)
 
-  # Migration can also fail (e.g. on a corrupted DuckDB file). Capture
+  # Migration can also fail (e.g. on a corrupted SQLite file). Capture
   # its error too so the user sees something actionable instead of an
   # empty schema + downstream crashes.
   schema_ok <- tryCatch({
@@ -143,18 +138,16 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
 }
 
 
-# v0.48.2 / v0.49.0 — URL helpers for the read-only local lifecycle.
-# A local file backend is a `duckdb:` / `sqlite:` scheme, OR a bare
-# path ending in `.duckdb` / `.sqlite` / `.db` (cf.
-# .resolve_monitoring_db_url which emits the bare form). PostgreSQL
-# URLs (`postgresql://`, `postgres://`) are NOT file backends.
+# URL helpers for the read-only local lifecycle. A local file backend
+# is a `sqlite:` scheme URL, OR a bare path ending in `.sqlite` / `.db`.
+# PostgreSQL URLs (`postgresql://`, `postgres://`) are NOT file backends.
 .is_file_db_url <- function(url) {
-  grepl("^(duckdb|sqlite):", url, ignore.case = TRUE) ||
-    grepl("\\.(duckdb|sqlite|db)$", url, ignore.case = TRUE)
+  grepl("^sqlite:", url, ignore.case = TRUE) ||
+    grepl("\\.(sqlite|db)$", url, ignore.case = TRUE)
 }
 
 .file_db_path_from_url <- function(url) {
-  sub("^(duckdb|sqlite):(//)?", "", url, ignore.case = TRUE)
+  sub("^sqlite:(//)?", "", url, ignore.case = TRUE)
 }
 
 
@@ -171,35 +164,13 @@ last_monitoring_db_error <- function() {
 }
 
 
-# Feature-flag the DuckDB backend: nemeton >= 0.21.0 exposes
-# `.detect_driver` as part of the URL-dispatch rework. Older versions
-# (which only handle Postgres URLs) reject a duckdb:// or bare
-# .duckdb URL with "Invalid DB URL" — which manifested as a silent
-# "Base non configurée" bandeau even though `duckdb` itself was
-# installed correctly.
-.nemeton_supports_duckdb <- function() {
-  if (!requireNamespace("nemeton", quietly = TRUE)) return(FALSE)
-  tryCatch(
-    {
-      # `:::` would also work but is technically a CRAN policy
-      # violation; getFromNamespace is the sanctioned form.
-      utils::getFromNamespace(".detect_driver", "nemeton")
-      TRUE
-    },
-    error = function(e) FALSE
-  )
-}
-
-
 #' Inspect the configured monitoring DB backend without opening it
 #'
 #' Used by the UI to decide which banner to show ("Postgres ready" vs
 #' "local single-user" vs "Not configured"). Returns one of:
 #'
 #' * `"postgres"` — a PG URL is resolvable (env vars or NEMETON_DB_URL).
-#' * `"local"`    — fallback to a local single-user file (SQLite/WAL by
-#'                  default, or legacy DuckDB). v0.49.0 — was `"duckdb"`
-#'                  before SQLite became the default local backend.
+#' * `"local"`    — fallback to a local single-user SQLite/WAL file.
 #' * `"none"`     — nothing configured.
 #'
 #' @param project Optional project list (same semantic as
@@ -223,12 +194,12 @@ monitoring_db_backend <- function(project = NULL) {
 #' Historical note: a previous version of this helper memoized success
 #' in `.nemeton_env$.monitoring_schema_initialized`. That flag was
 #' process-level (shared across ALL connections in the R session),
-#' so opening a *fresh* DuckDB file in the same session — different
+#' so opening a *fresh* local DB file in the same session — different
 #' project, deleted file, or just a different `db_url` — caused the
 #' migration to be silently SKIPPED, leaving the new file without any
-#' table. The bug surfaced as "Catalog Error: Table monitoring_zone
-#' does not exist!" at registration time. Always call `db_migrate()`
-#' now; the per-version check inside it is the right granularity.
+#' table. The bug surfaced as "Table monitoring_zone does not exist!"
+#' at registration time. Always call `db_migrate()` now; the
+#' per-version check inside it is the right granularity.
 #'
 #' @noRd
 .ensure_monitoring_schema <- function(con) {
@@ -285,15 +256,16 @@ close_monitoring_db_connection <- function(con) {
 #'
 #' Resolution order:
 #' 1. If `NEMETON_DB_LOCAL` is truthy (1 / true / yes / on, case
-#'    insensitive), JUMP STRAIGHT to the DuckDB fallback below. Useful
-#'    when developing locally with `POSTGRESQL_ADDON_*` credentials
-#'    sitting in `.Renviron` (Clever Cloud creds dumped by the build
-#'    pipeline) that would otherwise win the cascade and try to dial
-#'    an unreachable Postgres host.
+#'    insensitive), JUMP STRAIGHT to the local SQLite fallback below.
+#'    Useful when developing locally with `POSTGRESQL_ADDON_*`
+#'    credentials sitting in `.Renviron` (Clever Cloud creds dumped by
+#'    the build pipeline) that would otherwise win the cascade and try
+#'    to dial an unreachable Postgres host.
 #' 2. `NEMETON_DB_URL` — passed straight through.
 #' 3. `POSTGRESQL_ADDON_*` / `NEMETON_DB_*` env parts — assembled into
 #'    a postgresql URL.
-#' 4. `project$path` + `duckdb` pkg present → local DuckDB file.
+#' 4. `project$path` + `RSQLite` pkg present → local SQLite/WAL file
+#'    (`sqlite://<project>/data/monitoring.sqlite`).
 #' 5. None of the above — return "".
 #'
 #' @noRd
@@ -308,60 +280,19 @@ close_monitoring_db_connection <- function(con) {
     if (nzchar(url)) return(url)
   }
 
-  # Single-user local fallback. v0.49.0 — SQLite/WAL est le backend
-  # local recommandé (remplace DuckDB). Un fichier DuckDB est
-  # mono-process en écriture EXCLUSIF : la session Shiny et le worker
-  # future d'ingestion ne peuvent pas l'ouvrir simultanément ("File
-  # is already open in Rscript.exe"). SQLite en WAL autorise 1 writer
-  # + N lecteurs concurrents ENTRE PROCESSUS — session et worker
-  # coexistent nativement (cf. nemeton v0.50.0).
+  # Single-user local fallback : SQLite/WAL (cœur nemeton >= 0.51.0).
+  # SQLite en WAL autorise 1 writer + N lecteurs concurrents ENTRE
+  # PROCESSUS — la session Shiny et le worker future d'ingestion
+  # (process Rscript séparé) coexistent nativement sur le même fichier.
   if (is.null(project) || is.null(project$path)) return("")
 
   data_dir <- file.path(project$path, "data")
   if (!dir.exists(data_dir)) {
     dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
   }
-  duckdb_path <- file.path(data_dir, "monitoring.duckdb")
   sqlite_path <- file.path(data_dir, "monitoring.sqlite")
 
-  # Back-compat : un projet avec un monitoring.duckdb préexistant (et
-  # pas encore de .sqlite) continue d'utiliser DuckDB pour ne pas
-  # orpheliner ses données. Le cœur émet un avertissement de
-  # déprécation. Pour migrer vers WAL, l'utilisateur supprime le
-  # .duckdb et ré-ingère (les données sont re-générables depuis le
-  # cache S2 + la DB ; pas de migration automatique).
-  if (file.exists(duckdb_path) && !file.exists(sqlite_path)) {
-    if (!requireNamespace("duckdb", quietly = TRUE)) {
-      if (!isTRUE(.nemeton_env$.duckdb_missing_warned)) {
-        cli::cli_inform(c(
-          "Existing local DuckDB base found but {.pkg duckdb} is not installed.",
-          "i" = "Install {.code install.packages('duckdb')}, or delete {.path {duckdb_path}} to switch to SQLite/WAL."
-        ))
-        .nemeton_env$.duckdb_missing_warned <- TRUE
-      }
-      return("")
-    }
-    if (!.nemeton_supports_duckdb()) {
-      .nemeton_env$.last_monitoring_db_error <-
-        "Installed nemeton is too old (no DuckDB support)."
-      return("")
-    }
-    if (!isTRUE(.nemeton_env$.local_db_announced)) {
-      cli::cli_alert_info(
-        "Monitoring uses legacy local DuckDB at {.path {duckdb_path}} (deprecated — delete to switch to SQLite/WAL)."
-      )
-      .nemeton_env$.local_db_announced <- TRUE
-    }
-    # Bare path form (extension drives driver detection) — avoids the
-    # Windows `duckdb:///C:/...` scheme-parse glitch.
-    return(normalizePath(duckdb_path, winslash = "/", mustWork = FALSE))
-  }
-
-  # Default : SQLite/WAL. Requires RSQLite (Suggests, declared by the
-  # nemeton core too). Bare path ending in `.sqlite` — the core's
-  # driver detection recognises the extension, and the bare form
-  # sidesteps the Windows scheme-parse glitch (same rationale as the
-  # legacy DuckDB path above).
+  # Requires RSQLite (Suggests, declared by the nemeton core too).
   if (!requireNamespace("RSQLite", quietly = TRUE)) {
     if (!isTRUE(.nemeton_env$.sqlite_missing_warned)) {
       cli::cli_inform(c(
@@ -384,7 +315,11 @@ close_monitoring_db_connection <- function(con) {
     }
     .nemeton_env$.local_db_announced <- TRUE
   }
-  normalizePath(sqlite_path, winslash = "/", mustWork = FALSE)
+  # Canonical `sqlite://` + absolute path. `nemeton::db_connect` parses
+  # it via `.parse_sqlite_url` (strips the optional `//`), so Unix
+  # `/home/...` → `sqlite:///home/...` and Windows `C:/...` →
+  # `sqlite://C:/...` both round-trip correctly.
+  paste0("sqlite://", normalizePath(sqlite_path, winslash = "/", mustWork = FALSE))
 }
 
 
