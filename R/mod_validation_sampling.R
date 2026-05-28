@@ -188,7 +188,12 @@ mod_validation_sampling_server <- function(id, app_state,
       if (is.null(proj) || is.null(proj$path)) return(NULL)
       zone_id <- suppressWarnings(as.integer(
         proj$metadata$monitoring_zone_id))
-      if (is.na(zone_id)) return(NULL)
+      # v0.48.1 — guard longueur nulle : un projet sans zone
+      # enregistrée a `monitoring_zone_id == NULL`, donc
+      # `as.integer(NULL)` retourne `integer(0)` et `is.na(integer(0))`
+      # vaut `logical(0)` → `if` plantait « argument de longueur
+      # nulle ». On vérifie length avant is.na.
+      if (length(zone_id) != 1L || is.na(zone_id)) return(NULL)
       th <- thresholds_r()
       dr <- date_range_r()
       if (is.null(th$ndvi) || is.null(th$nbr) ||
