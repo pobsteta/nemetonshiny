@@ -1,3 +1,21 @@
+# nemetonshiny 0.48.1 (2026-05-28)
+
+### Fixed — Plan de validation : crash sur projet sans zone enregistrée
+
+Au lancement sur un nouveau projet (sans `monitoring_zone`),
+l'observer `preview_raster_r` de `mod_validation_sampling` plantait
+avec « Error in if: l'argument est de longueur nulle ».
+
+Cause : `as.integer(proj$metadata$monitoring_zone_id)` retourne
+`integer(0)` quand `monitoring_zone_id` est NULL, et
+`is.na(integer(0))` vaut `logical(0)` → le `if` reçoit un argument
+de longueur nulle. Régression introduite en v0.45.0 (label
+unification), inaperçue jusqu'ici car villards avait une zone
+enregistrée.
+
+Fix : `if (length(zone_id) != 1L || is.na(zone_id)) return(NULL)`
+— vérification de longueur avant `is.na`.
+
 # nemetonshiny 0.48.0 (2026-05-28)
 
 ### Added — Alertes FAST : toggle visibilité + slider opacité du raster
