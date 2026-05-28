@@ -1956,40 +1956,40 @@ TRANSLATIONS <- list(
     en = "Monitoring database not configured."
   ),
   monitoring_db_check_env = list(
-    fr = "Renseignez NEMETON_DB_URL ou les variables NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, ou ouvrez un projet pour utiliser le mode local (DuckDB).",
-    en = "Set NEMETON_DB_URL or the NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD variables, or open a project to use the local mode (DuckDB)."
+    fr = "Renseignez NEMETON_DB_URL ou les variables NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, ou ouvrez un projet pour utiliser le mode local (SQLite).",
+    en = "Set NEMETON_DB_URL or the NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD variables, or open a project to use the local mode (SQLite)."
   ),
   monitoring_db_connected = list(
     fr = "Base de suivi connect\u00e9e \u2014 %d zone(s) disponible(s).",
     en = "Monitoring database connected \u2014 %d zone(s) available."
   ),
   monitoring_db_local = list(
-    fr = "Mode local (DuckDB) \u2014 base de suivi monoposte stock\u00e9e dans le projet.",
-    en = "Local mode (DuckDB) \u2014 single-user monitoring database stored in the project."
+    fr = "Mode local (SQLite) \u2014 base de suivi monoposte stock\u00e9e dans le projet.",
+    en = "Local mode (SQLite) \u2014 single-user monitoring database stored in the project."
   ),
   monitoring_db_local_hint = list(
     fr = "Pour partager le suivi entre plusieurs utilisateurs, configurez Postgres+TimescaleDB via NEMETON_DB_URL.",
     en = "To share monitoring between multiple users, configure Postgres+TimescaleDB via NEMETON_DB_URL."
   ),
   monitoring_db_duckdb_missing = list(
-    fr = "Le paquet R {.pkg duckdb} n'est pas install\u00e9, le mode local n'est pas disponible. Installez avec install.packages(\"duckdb\") ou configurez Postgres.",
-    en = "The R {.pkg duckdb} package is not installed; local mode is unavailable. Run install.packages(\"duckdb\") or configure Postgres."
+    fr = "Le paquet R {.pkg RSQLite} n'est pas install\u00e9, le mode local n'est pas disponible. Installez avec install.packages(\"RSQLite\") ou configurez Postgres.",
+    en = "The R {.pkg RSQLite} package is not installed; local mode is unavailable. Run install.packages(\"RSQLite\") or configure Postgres."
   ),
   monitoring_db_no_project = list(
-    fr = "Aucun projet charg\u00e9. S\u00e9lectionnez ou cr\u00e9ez un projet dans l'onglet S\u00e9lection pour activer le mode local (DuckDB).",
-    en = "No project loaded. Pick or create a project in the Selection tab to enable local mode (DuckDB)."
+    fr = "Aucun projet charg\u00e9. S\u00e9lectionnez ou cr\u00e9ez un projet dans l'onglet S\u00e9lection pour activer le mode local (SQLite).",
+    en = "No project loaded. Pick or create a project in the Selection tab to enable local mode (SQLite)."
   ),
   monitoring_db_connecting = list(
     fr = "Tentative de connexion \u00e0 la base de suivi\u2026",
     en = "Connecting to the monitoring database\u2026"
   ),
   monitoring_db_local_creating = list(
-    fr = "Cr\u00e9ation de la base DuckDB locale dans le projet\u2026",
-    en = "Creating the local DuckDB database in the project\u2026"
+    fr = "Cr\u00e9ation de la base locale (SQLite) dans le projet\u2026",
+    en = "Creating the local SQLite database in the project\u2026"
   ),
   monitoring_db_local_ready = list(
-    fr = "Base locale (DuckDB) pr\u00eate.",
-    en = "Local database (DuckDB) ready."
+    fr = "Base locale (SQLite) pr\u00eate.",
+    en = "Local database (SQLite) ready."
   ),
   monitoring_db_remote_ready = list(
     fr = "Base de suivi distante connect\u00e9e.",

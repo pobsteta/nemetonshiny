@@ -1172,7 +1172,7 @@ mod_monitoring_server <- function(id, app_state) {
       # Probe still running or not yet fired — show the spinning gear.
       st <- db_probe_state()
       if (identical(st$state, "initial") || identical(st$state, "running")) {
-        title <- if (identical(backend, "duckdb"))
+        title <- if (identical(backend, "local"))
                    i18n$t("monitoring_db_local_creating")
                  else
                    i18n$t("monitoring_db_connecting")
@@ -1226,7 +1226,7 @@ mod_monitoring_server <- function(id, app_state) {
       # Local DuckDB mode gets its own bandeau so the user sees it is
       # a single-user fallback (not a misconfigured Postgres). Hint
       # mentions how to switch to Postgres for multi-user setups.
-      if (identical(backend, "duckdb")) {
+      if (identical(backend, "local")) {
         body <- if (n == 0L) {
           paste(i18n$t("monitoring_zone_register_hint"),
                 i18n$t("monitoring_db_local_hint"), sep = " — ")
