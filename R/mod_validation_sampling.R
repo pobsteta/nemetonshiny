@@ -200,7 +200,7 @@ mod_validation_sampling_server <- function(id, app_state,
           length(dr) != 2L || any(is.na(dr))) return(NULL)
       cd <- file.path(proj$path, "cache", "layers", "sentinel2")
       if (!dir.exists(cd)) return(NULL)
-      con <- get_monitoring_db_connection(project = proj)
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       tryCatch(
@@ -316,7 +316,7 @@ mod_validation_sampling_server <- function(id, app_state,
       } else {
         file.path(proj$path, "cache", "layers", "fast")
       }
-      con <- get_monitoring_db_connection(project = proj)
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       tryCatch(

@@ -1,3 +1,52 @@
+# nemetonshiny 0.48.2 (2026-05-28)
+
+### Fixed — DuckDB monitoring : connexions lecteur en read-only (Bug #2)
+
+Clôture côté app du Bug #2 (concurrence DuckDB). Le cœur
+nemeton@v0.49.2 a corrigé la migration (Bug #1, index partiel →
+index complet) et exposé `db_connect(url, read_only = TRUE)`. Il
+restait à câbler le cycle de vie des connexions côté app.
+
+**Problème** : DuckDB fichier est mono-process en écriture. La
+session Shiny ET le worker `future::multisession` (ingestion FAST /
+FORDEAD, process séparé) ouvraient tous le `.duckdb` en read-write
+→ collision « File is already open in Rscript.exe (PID …) ».
+
+**Fix** : `get_monitoring_db_connection()` gagne un paramètre
+`read_only` (défaut FALSE). Quand TRUE :
+- ouvre via `nemeton::db_connect(url, read_only = TRUE)` ;
+- **saute la migration** (un chemin RW l'a déjà faite) ;
+- pour DuckDB, exige que le fichier existe — sinon dégrade
+  proprement en `NULL` (« monitoring pas encore initialisé »)
+  plutôt que de crasher.
+
+Tous les **lecteurs** (rendu alertes, raster FAST/FORDEAD, liste
+zones, validity, obs_pixel, hydratation zone au chargement projet,
+bandeaux de statut, export QGIS) passent en `read_only = TRUE`.
+Plusieurs connexions RO coexistent sans verrou.
+
+Les **écrivains** restent en RW (défaut) et relâchent leur handle
+au plus juste via `on.exit` :
+- `register_project_as_zone` (bouton « Enregistrer comme zone »)
+- `generate_validation_plan` (compute_fast_alert_mask écrit le mask)
+- `ingest_health_validation` (mod_field_ingest)
+- workers d'ingestion (db_url path)
+- async probe (migration RW, `db_disconnect` systématique).
+
+Helpers internes `.is_duckdb_url()` / `.duckdb_path_from_url()`.
+Plancher bumpé `Imports: nemeton (>= 0.49.2)` pour
+`db_connect(read_only=)`.
+
+**Limite connue** : sur DuckDB, pendant qu'un worker tient le
+verrou RW (ingestion longue), les lecteurs RO ne peuvent pas
+ouvrir le fichier — ils dégradent en empty-state sans crash, et
+re-fonctionnent une fois l'ingestion terminée. Pour un usage
+multi-session concurrent, utiliser PostgreSQL (concurrence native).
+
+Tests : 5 nouveaux cas (`.is_duckdb_url`, `.duckdb_path_from_url`,
+chemin RO PG, dégradation NULL si fichier DuckDB absent). Suite
+full green : **6584 PASS / 0 FAIL**.
+
 # nemetonshiny 0.48.1 (2026-05-28)
 
 ### Fixed — Plan de validation : crash sur projet sans zone enregistrée
