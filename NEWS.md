@@ -1,4 +1,4 @@
-# nemetonshiny 0.49.1.9001 (dev)
+# nemetonshiny 0.50.0 (2026-05-28)
 
 ### Changed — monitoring local : SQLite/WAL uniquement, retrait définitif de DuckDB
 
