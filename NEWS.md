@@ -16,6 +16,14 @@ Réutilise la clé i18n `monitoring_fast_alerts_opacity_label`
 (ajoutée en anticipation v0.41.1, enfin consommée). Nouvelle clé
 `monitoring_fast_alerts_raster_visible` (FR + EN).
 
+### Style — Carte FAST : UGFs en bleu harmonisé
+
+Les contours UGF de Carte FAST étaient en orange (`#FF6B35`,
+weight 3) tandis qu'Alertes FAST et Plan de validation les
+dessinent en bleu vif (`#1f78b4`, weight 2). Carte FAST passe au
+même bleu / weight 2 / opacity 0.9 — cohérence visuelle entre les
+trois sous-onglets FAST.
+
 Suite full green : **6573 PASS / 0 FAIL**.
 
 # nemetonshiny 0.47.0 (2026-05-28)
