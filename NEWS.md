@@ -1,4 +1,4 @@
-# nemetonshiny 0.49.0.9001 (dev)
+# nemetonshiny 0.49.1 (2026-05-28)
 
 ### Fixed — téléchargement des dalles MNH LiDAR HD (IGN) cassé sous Windows
 
