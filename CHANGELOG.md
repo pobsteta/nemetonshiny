@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.1] - 2026-05-29
+
+### Fixed
+
+- **Carte FAST pixel : rendu de l'AOI complète (toutes tuiles MGRS).**
+  Le `scenes_df` du stack NDVI/NBR est construit depuis l'inventaire
+  disque du cache Sentinel-2 (toutes scènes peuplées) au lieu de
+  `obs_pixel` (pixels aux placettes seulement) : une AOI à cheval sur
+  deux tuiles MGRS (villards) dont une tuile sans placette s'affiche
+  désormais en entier. Date résolue depuis la base sinon parsée de
+  l'identifiant de scène S2. Limite : si une seule tuile a été ingérée
+  pour une date, l'autre moitié reste absente (sujet d'ingestion).
+
+### Added
+
+- Smoke E2E shinytest2 du sélecteur `control_classes`
+  (`test-validation-control-classes-e2e.R`), skip propre sans chromote.
+
 ## [0.51.0] - 2026-05-29
 
 ### Added

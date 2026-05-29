@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.0.9001 (dev)
+# nemetonshiny 0.51.1 (2026-05-29)
 
 ### Fixed — Carte FAST pixel : rendu de l'AOI complète (toutes tuiles MGRS)
 
