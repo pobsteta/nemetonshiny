@@ -1,3 +1,12 @@
+# nemetonshiny 0.51.3 (2026-05-29)
+
+### Changed — Alertes FAST : alignement des contrôles de l'en-tête
+
+- La case « Afficher le raster » est légèrement abaissée (`top: 2px`)
+  pour s'aligner sur les radios « Fréquence / Intensité » voisines.
+- Le label « Opacité du raster » est désormais **à gauche** du slider
+  (inline) au lieu d'au-dessus.
+
 # nemetonshiny 0.51.2 (2026-05-29)
 
 ### Fixed — régression v0.50.1 : `objet '.pkg_path' introuvable` au chargement des parcelles cadastrales

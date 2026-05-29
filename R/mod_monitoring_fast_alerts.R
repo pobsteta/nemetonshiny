@@ -56,23 +56,33 @@ mod_monitoring_fast_alerts_ui <- function(id) {
       ),
       # v0.48.0 — toggle visibilité + slider opacité du raster
       # d'alerte, symétrique avec Carte FAST (v0.47.0).
+      # `top: 2px` abaisse légèrement la case pour l'aligner sur les
+      # radios « Fréquence / Intensité » voisines (la case rendait un
+      # poil plus haut que le texte des radios).
       htmltools::tagAppendAttributes(
         shiny::checkboxInput(
           ns("raster_visible"),
           label = i18n$t("monitoring_fast_alerts_raster_visible"),
           value = TRUE
         ),
-        class = "mb-0"
+        class = "mb-0",
+        style = "position: relative; top: 2px;"
       ),
+      # Label « Opacité du raster » à GAUCHE du slider (inline) plutôt
+      # qu'au-dessus.
       htmltools::div(
-        style = "min-width: 180px;",
-        htmltools::tagAppendAttributes(
-          shiny::sliderInput(
-            ns("raster_opacity"),
-            label = i18n$t("monitoring_fast_alerts_opacity_label"),
-            min = 0, max = 1, value = 0.75, step = 0.05
-          ),
-          class = "mb-0"
+        class = "d-flex align-items-center gap-2",
+        htmltools::tags$span(i18n$t("monitoring_fast_alerts_opacity_label")),
+        htmltools::div(
+          style = "min-width: 160px;",
+          htmltools::tagAppendAttributes(
+            shiny::sliderInput(
+              ns("raster_opacity"),
+              label = NULL,
+              min = 0, max = 1, value = 0.75, step = 0.05
+            ),
+            class = "mb-0"
+          )
         )
       )
     ),
