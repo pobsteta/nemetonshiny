@@ -1,3 +1,29 @@
+# nemetonshiny 0.51.1 (2026-05-29)
+
+### Fixed — Carte FAST pixel : rendu de l'AOI complète (toutes tuiles MGRS)
+
+La carte pixel construisait son stack NDVI/NBR à partir de `obs_pixel`,
+qui ne contient que les pixels **aux placettes**. Pour une AOI à cheval
+sur deux tuiles MGRS (cas villards : T31TFM + T31TGM), la tuile sans
+placette n'entrait jamais dans le stack → la moitié de la carte restait
+vide alors que les scènes étaient en cache. Le `scenes_df` est désormais
+construit depuis l'**inventaire disque** du cache Sentinel-2 (toutes les
+scènes peuplées), la date étant résolue depuis la base quand la scène a
+des observations placette (faisant foi), sinon parsée depuis l'identifiant
+de scène S2. Combiné au mosaïquage par date (v0.46.5), l'AOI complète
+s'affiche dès lors que les deux tuiles sont en cache.
+
+Limite : si une seule tuile a été ingérée pour une date (téléchargement
+mono-tuile), l'autre moitié reste absente — c'est alors un sujet
+d'ingestion, pas d'affichage.
+
+### Added — smoke E2E (shinytest2) du sélecteur `control_classes`
+
+Test `test-validation-control-classes-e2e.R` : démarre l'app, navigue vers
+Suivi sanitaire → Plan de validation FAST et vérifie que le sélecteur
+`control_classes` est rendu (défaut « 0 »). Skip propre sans
+shinytest2/chromote/Chrome.
+
 # nemetonshiny 0.51.0 (2026-05-29)
 
 ### Added — plan de validation : sélecteur de classes pour les placettes témoins
