@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.3.9001 (dev)
+# nemetonshiny 0.51.4 (2026-05-29)
 
 ### Changed — réamorçage du cache COG restreint à la fenêtre FAST (préserve FORDEAD)
 

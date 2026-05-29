@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.4] - 2026-05-29
+
+### Fixed
+
+- **Réamorçage du cache COG restreint à la fenêtre FAST.** Le cache S2
+  est partagé FAST/FORDEAD ; cocher « Réamorcer le cache COG » faisait un
+  `unlink` de tout le dossier, effaçant aussi les bandes/dates FORDEAD
+  (dont l'apprentissage). Le wipe ne supprime désormais que les scènes
+  dont la date d'acquisition tombe dans la fenêtre de dates FAST ; les
+  scènes hors fenêtre (apprentissage FORDEAD) et non datables sont
+  préservées. Libellé + aide i18n mis à jour.
+
 ## [0.51.3] - 2026-05-29
 
 ### Changed
