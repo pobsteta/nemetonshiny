@@ -31,7 +31,12 @@ run_ingestion_async <- function() {
   # Capture the package source path (when running via devtools::load_all)
   # so the future worker can re-load nemetonshiny — workers don't
   # inherit the parent's loaded namespaces.
-  .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
+  .dev_pkg_path <- tryCatch(
+    if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+      find.package("nemetonshiny")
+    else NULL,
+    error = function(e) NULL
+  )
 
   # Capture diagnostic env vars in the parent so we can replay them
   # inside the worker. `future::multisession` workers are separate
@@ -94,11 +99,11 @@ run_ingestion_async <- function() {
       }
 
       # Re-load nemetonshiny in the worker so we can use the
-      # URL-resolution helper. In dev (load_all), .pkg_path points to
+      # URL-resolution helper. In dev (load_all), .dev_pkg_path points to
       # the source tree; in prod the installed namespace is used.
-      if (!is.null(.pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
-        pkgload::load_all(.pkg_path, quiet = TRUE)
-      } else if (requireNamespace("nemetonshiny", quietly = TRUE)) {
+      if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
+        pkgload::load_all(.dev_pkg_path, quiet = TRUE)
+      } else {
         loadNamespace("nemetonshiny")
       }
 
@@ -335,7 +340,12 @@ run_ingestion_async <- function() {
 #' @return A `shiny::ExtendedTask` object.
 #' @noRd
 run_fordead_async <- function() {
-  .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
+  .dev_pkg_path <- tryCatch(
+    if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+      find.package("nemetonshiny")
+    else NULL,
+    error = function(e) NULL
+  )
   .worker_envvars <- .capture_worker_envvars()
 
   shiny::ExtendedTask$new(function(dates_training, dates_monitoring,
@@ -352,9 +362,9 @@ run_fordead_async <- function() {
     promises::future_promise({
       .apply_worker_envvars(.worker_envvars)
 
-      if (!is.null(.pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
-        pkgload::load_all(.pkg_path, quiet = TRUE)
-      } else if (requireNamespace("nemetonshiny", quietly = TRUE)) {
+      if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
+        pkgload::load_all(.dev_pkg_path, quiet = TRUE)
+      } else {
         loadNamespace("nemetonshiny")
       }
 

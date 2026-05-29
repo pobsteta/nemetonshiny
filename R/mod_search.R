@@ -115,7 +115,16 @@ mod_search_server <- function(id, app_state) {
     # browser stays responsive during the API call.
     # ========================================
 
-    .pkg_path <- tryCatch(pkgload::pkg_path(), error = function(e) NULL)
+    # Worker code provenance : dev source only when nemetonshiny was
+    # genuinely load_all()'d (is_dev_package), else the installed
+    # namespace. Avoids load_all()'ing a stale git clone just because
+    # getwd() sits in one (cf. v0.50.1 worker-bootstrap fix).
+    .dev_pkg_path <- tryCatch(
+      if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+        find.package("nemetonshiny")
+      else NULL,
+      error = function(e) NULL
+    )
 
     # Helper: ensure future plan is parallel in the worker
     ensure_future_plan <- function() {
@@ -126,12 +135,13 @@ mod_search_server <- function(id, app_state) {
       }
     }
 
-    # Helper: load nemeton in the future worker process
+    # Helper: load the app code in the future worker process with the
+    # same provenance as the main session.
     load_nemeton_in_worker <- function() {
-      if (!is.null(.pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
-        pkgload::load_all(.pkg_path, quiet = TRUE)
-      } else if (requireNamespace("nemeton", quietly = TRUE)) {
-        loadNamespace("nemeton")
+      if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
+        pkgload::load_all(.dev_pkg_path, quiet = TRUE)
+      } else {
+        loadNamespace("nemetonshiny")
       }
     }
 

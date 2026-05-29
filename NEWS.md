@@ -1,5 +1,18 @@
 # nemetonshiny 0.51.1.9001 (dev)
 
+### Fixed — régression v0.50.1 : `objet '.pkg_path' introuvable` au chargement des parcelles cadastrales
+
+Le fix worker de v0.50.1 avait renommé la variable `.pkg_path` →
+`.dev_pkg_path` pour `compute_task`, mais d'autres ExtendedTasks
+référençaient toujours `.pkg_path` (désormais indéfini) → l'invocation
+de `parcels_task` (chargement des parcelles d'une commune) échouait avec
+*« objet '.pkg_path' introuvable »*. Le bootstrap worker `is_dev_package`
+est désormais **partagé** par toutes les ExtendedTasks : `parcels_task`
+(mod_home), les tâches de recherche commune (mod_search), et les workers
+d'ingestion / FORDEAD (service_monitoring) chargent tous le **namespace
+installé** (ou la source en vrai mode dev), plus jamais un clone git
+périmé via `pkgload::pkg_path()`.
+
 ### Fixed — chargement de projet : plus de gel entre « Connected to PostgreSQL » et l'affichage des parcelles
 
 À l'ouverture d'un projet récent, `load_project()` lançait `db_sync_project()`
