@@ -1,3 +1,20 @@
+# nemetonshiny 0.51.3.9001 (dev)
+
+### Changed — réamorçage du cache COG restreint à la fenêtre FAST (préserve FORDEAD)
+
+Le cache Sentinel-2 (`<projet>/cache/layers/sentinel2`) est **partagé**
+entre FAST et FORDEAD. Auparavant, cocher « Réamorcer le cache COG »
+avant un run FAST faisait un `unlink` **de tout** le dossier → cela
+effaçait aussi les bandes et dates de FORDEAD (dont la période
+d'apprentissage), forçant un re-téléchargement complet au diagnostic
+suivant.
+
+Désormais le réamorçage ne supprime **que les scènes dont la date
+d'acquisition tombe dans la fenêtre de dates FAST** courante. Les scènes
+hors fenêtre (typiquement l'apprentissage FORDEAD) sont **préservées**.
+Une scène dont la date n'est pas parsable depuis son identifiant S2 est
+conservée par prudence. Le libellé et l'aide de la case sont mis à jour.
+
 # nemetonshiny 0.51.3 (2026-05-29)
 
 ### Changed — Alertes FAST : alignement des contrôles de l'en-tête
