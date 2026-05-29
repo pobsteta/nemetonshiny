@@ -687,13 +687,28 @@ load_project <- function(project_id) {
     cli::cli_warn("UG load / indicators_sf build failed (non-blocking): {e$message}")
   })
 
-  # Sync vers PostGIS si configure et si le projet a des indicateurs
+  # Sync vers PostGIS si configuré et si le projet a des indicateurs.
+  # DÉFÉRÉ via later::later() pour ne PAS bloquer le retour de
+  # load_project() — et donc le rendu des parcelles sur la carte. La
+  # connexion + l'upload PostGIS peuvent prendre plusieurs secondes
+  # (jusqu'à ~20 s sur un hôte injoignable, faute de connect_timeout
+  # côté libpq), ce qui donnait l'impression d'un gel entre « Connected
+  # to PostgreSQL … » et « Affichage des parcelles ». Le sync est un
+  # effet de bord best-effort : aucun consommateur aval n'en dépend, on
+  # peut donc le repousser après le premier flush de la carte.
   if (is_db_configured() && isTRUE(metadata$indicators_computed)) {
-    tryCatch({
-      db_sync_project(project_id)
-    }, error = function(e) {
-      cli::cli_warn("Database sync on load failed (non-blocking): {e$message}")
-    })
+    .deferred_sync <- function() {
+      tryCatch(
+        db_sync_project(project_id),
+        error = function(e) cli::cli_warn(
+          "Deferred DB sync failed (non-blocking): {conditionMessage(e)}")
+      )
+    }
+    if (requireNamespace("later", quietly = TRUE)) {
+      later::later(.deferred_sync, delay = 0.5)
+    } else {
+      .deferred_sync()
+    }
   }
 
   project

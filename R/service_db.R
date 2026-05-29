@@ -132,6 +132,17 @@ db_target_label <- function() {
 #' @return A DBI connection object, or NULL if not configured.
 #'
 #' @noRd
+
+# libpq connect_timeout (seconds) for the PostGIS connection. Default 8 s
+# — long enough for a reachable local/cloud DB, short enough to avoid the
+# ~20 s OS-default TCP block (Windows) when the host is down. libpq
+# enforces a minimum of 2. Overridable via NEMETON_DB_CONNECT_TIMEOUT.
+.resolve_db_connect_timeout <- function() {
+  v <- suppressWarnings(as.integer(
+    Sys.getenv("NEMETON_DB_CONNECT_TIMEOUT", "8")))
+  if (is.na(v) || v < 2L) 8L else v
+}
+
 get_db_connection <- function(check_postgis = TRUE) {
   cfg <- .resolve_db_config()
   if (is.null(cfg)) return(NULL)
@@ -149,7 +160,11 @@ get_db_connection <- function(check_postgis = TRUE) {
       dbname   = cfg$dbname,
       user     = cfg$user,
       password = cfg$password,
-      sslmode  = cfg$sslmode
+      sslmode  = cfg$sslmode,
+      # Fail fast on an unreachable / slow host instead of blocking on
+      # the OS default TCP timeout (~20 s on Windows → perceived freeze).
+      # libpq keyword, in seconds (min 2). Overridable via NEMETON_DB_CONNECT_TIMEOUT.
+      connect_timeout = .resolve_db_connect_timeout()
     )
 
     if (check_postgis) {
