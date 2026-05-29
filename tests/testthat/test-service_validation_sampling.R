@@ -85,8 +85,8 @@ test_that("generate_validation_plan FORDEAD happy path enriches provenance", {
                                          cache_dir) fake_raster,
     create_validation_sampling_plan = function(zone, alert_raster,
                                                n_validation, n_control,
-                                               classes, buffer_m,
-                                               source, seed) {
+                                               classes, control_classes,
+                                               buffer_m, source, seed) {
       .fake_plan(n_val = n_validation, n_ctrl = n_control)
     },
     .package = "nemeton"
@@ -137,8 +137,8 @@ test_that("generate_validation_plan FAST path reuses cached mask when present", 
     },
     create_validation_sampling_plan = function(zone, alert_raster,
                                                n_validation, n_control,
-                                               classes, buffer_m,
-                                               source, seed) {
+                                               classes, control_classes,
+                                               buffer_m, source, seed) {
       .fake_plan(n_val = n_validation, n_ctrl = n_control)
     },
     .package = "nemeton"
@@ -218,6 +218,57 @@ test_that("generate_validation_plan translates nemeton_empty_alert_mask to valid
     ),
     class = "validation_empty_mask"
   )
+})
+
+test_that("generate_validation_plan propagates control_classes to the cœur planner", {
+  proj <- .make_project_with_zone(zone_id = 7L)
+  fordead_dir <- file.path(proj$path, "cache", "layers", "fordead",
+                           "zone_7")
+  dir.create(fordead_dir, recursive = TRUE, showWarnings = FALSE)
+  file.create(file.path(fordead_dir, "dieback_mask_20260520T100000.tif"))
+
+  fake_raster <- terra::rast(nrows = 4, ncols = 4, vals = 0L,
+                             crs = "EPSG:2154",
+                             extent = terra::ext(0, 40, 0, 40))
+  seen_control <- NULL
+
+  testthat::local_mocked_bindings(
+    get_monitoring_zone_aoi = function(con, zone_id) {
+      sf::st_sf(zone_id = zone_id,
+                geometry = sf::st_sfc(
+                  sf::st_polygon(list(rbind(
+                    c(0, 0), c(40, 0), c(40, 40), c(0, 40), c(0, 0)
+                  ))), crs = 2154))
+    }
+  )
+  testthat::local_mocked_bindings(
+    read_fordead_dieback_mask = function(...) fake_raster,
+    create_validation_sampling_plan = function(zone, alert_raster,
+                                               n_validation, n_control,
+                                               classes, control_classes,
+                                               buffer_m, source, seed) {
+      seen_control <<- control_classes
+      .fake_plan(n_val = n_validation, n_ctrl = n_control)
+    },
+    .package = "nemeton"
+  )
+
+  nemetonshiny:::generate_validation_plan(
+    con = "fake-con", project = proj, source = "FORDEAD",
+    n_validation = 2L, n_control = 1L, control_classes = c(3L)
+  )
+  expect_equal(seen_control, 3L)
+})
+
+test_that(".validation_class_distribution flags a raster with no class-0 cell", {
+  # All cells class 4 (villards case) → "0" bucket present but zero.
+  r <- terra::rast(nrows = 4, ncols = 4, vals = 4L, crs = "EPSG:2154",
+                   extent = terra::ext(0, 40, 0, 40))
+  dist <- nemetonshiny:::.validation_class_distribution(r)
+  expect_equal(names(dist), c("0", "1", "2", "3", "4"))
+  expect_equal(unname(dist[["0"]]), 0L)
+  expect_equal(unname(dist[["4"]]), 16L)
+  expect_null(nemetonshiny:::.validation_class_distribution(NULL))
 })
 
 test_that("generate_validation_plan FAST requires compute params when no cache", {

@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.0] - 2026-05-29
+
+### Added
+
+- **Plan de validation : sélecteur `control_classes` pour les placettes
+  témoins.** Le sous-onglet expose l'argument `control_classes` du cœur
+  `nemeton::create_validation_sampling_plan()` : cases 0–4 (défaut 0)
+  distinctes des classes d'alerte, affichage de la distribution du raster
+  d'alerte (aide au choix), auto-relax vers la classe la plus saine
+  présente quand aucune cellule classe 0 n'existe (cas villards), et
+  garde-fou (toast clair) quand 0 témoin est produit. Nouvelles clés
+  i18n FR/EN. Plancher `nemeton (>= 0.51.0)` inchangé.
+
 ## [0.50.1] - 2026-05-28
 
 ### Fixed
