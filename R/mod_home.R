@@ -528,6 +528,22 @@ mod_home_server <- function(id, app_state) {
     # Cadastre Parcels
     # ========================================
 
+    # Provenance of the app code for every future worker spawned by this
+    # module's ExtendedTasks (parcels_task, compute_task). A worker is a
+    # fresh R process : we reproduce the SAME package the main session
+    # runs. Only treat it as a *dev* checkout when nemetonshiny was
+    # genuinely load_all()'d (`is_dev_package()`), NOT merely because
+    # getwd() sits inside a package source tree — otherwise an installed-
+    # package user launched from a (possibly stale) clone would make the
+    # worker load_all() that clone, running different/older code than the
+    # main session (cf. v0.50.1 worker-bootstrap fix).
+    .dev_pkg_path <- tryCatch(
+      if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+        find.package("nemetonshiny")
+      else NULL,
+      error = function(e) NULL
+    )
+
     # ExtendedTask for parcel loading (non-blocking)
     parcels_task <- shiny::ExtendedTask$new(function(commune, commune_geom) {
       if (requireNamespace("future", quietly = TRUE)) {
@@ -536,10 +552,10 @@ mod_home_server <- function(id, app_state) {
         if (!is_parallel) future::plan("multisession")
       }
       promises::future_promise({
-        if (!is.null(.pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
-          pkgload::load_all(.pkg_path, quiet = TRUE)
-        } else if (requireNamespace("nemeton", quietly = TRUE)) {
-          loadNamespace("nemeton")
+        if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
+          pkgload::load_all(.dev_pkg_path, quiet = TRUE)
+        } else {
+          loadNamespace("nemetonshiny")
         }
         get_cadastral_parcels(commune, commune_geom)
       }, seed = TRUE)
@@ -766,25 +782,9 @@ mod_home_server <- function(id, app_state) {
     # This prevents blocking the Shiny main loop during computation
     #
     # The future worker is a fresh R process that does not have the app
-    # code loaded — we must reproduce, in the worker, the SAME package
-    # the main session is running.
-    #
-    # Provenance must match exactly. We only treat this as a *dev*
-    # checkout when nemetonshiny was genuinely loaded via
-    # `pkgload::load_all()` (`is_dev_package()`), NOT merely because
-    # `getwd()` happens to sit inside a package source tree. The old
-    # `pkgload::pkg_path()` probe returned the source clone whenever the
-    # user launched R from one — so an installed-package user running
-    # from a (possibly stale) git checkout silently made the worker
-    # `load_all()` that checkout, executing different/older code than the
-    # installed version loaded in the main session (e.g. a pre-fix LiDAR
-    # download path → CHM/MNT silently failing only via the worker).
-    .dev_pkg_path <- tryCatch(
-      if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
-        find.package("nemetonshiny")
-      else NULL,
-      error = function(e) NULL
-    )
+    # code loaded — it is reloaded with the same provenance as the main
+    # session via the shared `.dev_pkg_path` defined above (Cadastre
+    # Parcels section).
     compute_task <- shiny::ExtendedTask$new(function(project_id, app_opts) {
       # Ensure multisession plan is active before creating the future.
       # Without this, the future runs sequentially in the main process,

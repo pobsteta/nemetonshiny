@@ -1,3 +1,34 @@
+# nemetonshiny 0.51.2 (2026-05-29)
+
+### Fixed — régression v0.50.1 : `objet '.pkg_path' introuvable` au chargement des parcelles cadastrales
+
+Le fix worker de v0.50.1 avait renommé la variable `.pkg_path` →
+`.dev_pkg_path` pour `compute_task`, mais d'autres ExtendedTasks
+référençaient toujours `.pkg_path` (désormais indéfini) → l'invocation
+de `parcels_task` (chargement des parcelles d'une commune) échouait avec
+*« objet '.pkg_path' introuvable »*. Le bootstrap worker `is_dev_package`
+est désormais **partagé** par toutes les ExtendedTasks : `parcels_task`
+(mod_home), les tâches de recherche commune (mod_search), et les workers
+d'ingestion / FORDEAD (service_monitoring) chargent tous le **namespace
+installé** (ou la source en vrai mode dev), plus jamais un clone git
+périmé via `pkgload::pkg_path()`.
+
+### Fixed — chargement de projet : plus de gel entre « Connected to PostgreSQL » et l'affichage des parcelles
+
+À l'ouverture d'un projet récent, `load_project()` lançait `db_sync_project()`
+**en synchrone** avant de rendre la main : la connexion PostGIS (sans
+`connect_timeout` → jusqu'à ~20 s sur un hôte injoignable, timeout TCP
+OS Windows) puis l'upload bloquaient le rendu des parcelles sur la carte,
+d'où l'impression que « rien ne se passe ».
+
+- Le sync PostGIS au chargement est désormais **déféré** (`later::later`,
+  délai 0,5 s) : `load_project()` rend la main immédiatement, la carte
+  affiche les parcelles tout de suite, et la synchronisation se fait en
+  arrière-plan (effet de bord best-effort, aucun consommateur n'en dépend).
+- La connexion PostGIS gagne un **`connect_timeout`** (défaut 8 s, libpq ;
+  surchargeable via `NEMETON_DB_CONNECT_TIMEOUT`) → échec rapide sur un
+  hôte injoignable au lieu du timeout OS (~20 s).
+
 # nemetonshiny 0.51.1 (2026-05-29)
 
 ### Fixed — Carte FAST pixel : rendu de l'AOI complète (toutes tuiles MGRS)

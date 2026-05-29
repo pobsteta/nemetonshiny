@@ -86,3 +86,19 @@ test_that("db_sync_project returns FALSE when not configured", {
     expect_false(suppressWarnings(db_sync_project("fake_project")))
   })
 })
+
+test_that(".resolve_db_connect_timeout defaults to 8 and honours the env override", {
+  withr::with_envvar(c(NEMETON_DB_CONNECT_TIMEOUT = NA), {
+    expect_equal(nemetonshiny:::.resolve_db_connect_timeout(), 8L)
+  })
+  withr::with_envvar(c(NEMETON_DB_CONNECT_TIMEOUT = "3"), {
+    expect_equal(nemetonshiny:::.resolve_db_connect_timeout(), 3L)
+  })
+  # Below the libpq minimum (2) or unparseable → fall back to the default.
+  withr::with_envvar(c(NEMETON_DB_CONNECT_TIMEOUT = "0"), {
+    expect_equal(nemetonshiny:::.resolve_db_connect_timeout(), 8L)
+  })
+  withr::with_envvar(c(NEMETON_DB_CONNECT_TIMEOUT = "abc"), {
+    expect_equal(nemetonshiny:::.resolve_db_connect_timeout(), 8L)
+  })
+})
