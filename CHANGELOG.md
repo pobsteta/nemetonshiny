@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.2] - 2026-05-29
+
+### Fixed
+
+- **Régression v0.50.1 `objet '.pkg_path' introuvable`.** Le renommage
+  `.pkg_path` → `.dev_pkg_path` (fix worker v0.50.1) n'avait été propagé
+  qu'à `compute_task` ; `parcels_task` et les workers `mod_search` /
+  `service_monitoring` référençaient encore `.pkg_path` → échec au
+  chargement des parcelles cadastrales. Bootstrap worker `is_dev_package`
+  désormais unifié sur toutes les ExtendedTasks (namespace installé ou
+  source en vrai mode dev, plus jamais un clone git périmé).
+- **Chargement de projet : plus de gel avant l'affichage des parcelles.**
+  Le sync PostGIS (`db_sync_project`) au chargement est déféré
+  (`later::later`) hors du chemin critique, et `get_db_connection` gagne
+  un `connect_timeout` (défaut 8 s, `NEMETON_DB_CONNECT_TIMEOUT`) pour
+  fail-fast sur un hôte injoignable au lieu du timeout OS (~20 s).
+
 ## [0.51.1] - 2026-05-29
 
 ### Fixed

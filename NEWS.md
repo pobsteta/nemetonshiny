@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.1.9001 (dev)
+# nemetonshiny 0.51.2 (2026-05-29)
 
 ### Fixed — régression v0.50.1 : `objet '.pkg_path' introuvable` au chargement des parcelles cadastrales
 
