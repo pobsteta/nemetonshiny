@@ -31,6 +31,10 @@
 #' @param n_control Integer. Number of control placettes.
 #' @param classes Integer vector — alert classes to retain. Default
 #'   `c(3L, 4L)` matches the G1 guard-rail of spec 008.
+#' @param control_classes Integer vector — classes from which control
+#'   (témoin) plots are drawn. Default `c(0L)` (healthy pixels). Relaxed
+#'   to a higher class by the UI when the alert raster has no class-0
+#'   cell (e.g. every pixel dropped below threshold at least once).
 #' @param buffer_m Numeric. Tampon around alert cells in meters.
 #' @param seed Optional integer. Forwarded to the cœur planner.
 #' @param ndvi_threshold,nbr_threshold,mode,window_days,date_from,date_to
@@ -47,6 +51,7 @@ generate_validation_plan <- function(con, project,
                                      n_validation = 20L,
                                      n_control    = 5L,
                                      classes      = c(3L, 4L),
+                                     control_classes = c(0L),
                                      buffer_m     = 0,
                                      seed         = NULL,
                                      ndvi_threshold = NULL,
@@ -97,6 +102,7 @@ generate_validation_plan <- function(con, project,
       n_validation = as.integer(n_validation),
       n_control    = as.integer(n_control),
       classes      = as.integer(classes),
+      control_classes = as.integer(control_classes),
       buffer_m     = as.numeric(buffer_m),
       source       = source,
       seed         = seed

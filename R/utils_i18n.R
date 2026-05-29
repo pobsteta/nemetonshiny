@@ -2467,6 +2467,28 @@ TRANSLATIONS <- list(
     fr = "Classes d'alerte retenues",
     en = "Retained alert classes"
   ),
+  # Spec control_classes (v0.51.0) — sélection des classes servant à
+  # tirer les placettes témoins + aide au choix (distribution du raster).
+  validation_control_classes_label = list(
+    fr = "Classes consid\u00e9r\u00e9es comme t\u00e9moins",
+    en = "Classes used as controls"
+  ),
+  validation_class_distribution_fmt = list(
+    fr = "Distribution du raster : %s",
+    en = "Raster distribution: %s"
+  ),
+  validation_no_healthy_pixel_hint = list(
+    fr = "Aucun pixel sain (classe 0). Cochez une classe plus haute pour tirer des t\u00e9moins (ex. 3).",
+    en = "No healthy pixel (class 0). Tick a higher class to draw controls (e.g. 3)."
+  ),
+  validation_control_auto_relaxed = list(
+    fr = "Aucun pixel sain \u2014 t\u00e9moins tir\u00e9s en classe %s (la plus saine disponible).",
+    en = "No healthy pixel \u2014 controls drawn from class %s (the healthiest available)."
+  ),
+  validation_no_control_warning = list(
+    fr = "Aucune placette t\u00e9moin g\u00e9n\u00e9r\u00e9e : aucune cellule dans les classes t\u00e9moins choisies.",
+    en = "No control plot generated: no cell in the chosen control classes."
+  ),
   # v0.45.0 — labels unifiés FAST entre Alertes FAST (légende) et
   # Plan de validation FAST (checkboxes). FAST = quartiles du raster
   # d'alerte courant, calculés dynamiquement via .fast_class_labels().

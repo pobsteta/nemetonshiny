@@ -1,3 +1,29 @@
+# nemetonshiny 0.50.1.9001 (dev)
+
+### Added — plan de validation : sélecteur de classes pour les placettes témoins
+
+Le sous-onglet « Plan de validation » expose désormais l'argument
+`control_classes` du cœur `nemeton::create_validation_sampling_plan()`
+(livré cœur v0.49.1, couvert par le plancher `nemeton (>= 0.51.0)`) :
+
+- **Sélecteur `control_classes`** (cases 0–4, défaut 0) sous les classes
+  d'alerte, pour choisir dans quelles classes tirer les placettes
+  **témoins**, distinct des classes d'alerte de validation.
+- **Distribution du raster** affichée sous le sélecteur (`0=… 4=…`) pour
+  guider le choix, avec une note d'aide quand aucun pixel sain (classe 0)
+  n'existe.
+- **Auto-relax** : si le raster d'alerte n'a aucune cellule classe 0
+  (cas villards : les 8471 cellules UGF sont en classe 4, chaque pixel
+  ayant chuté sous seuil au moins une fois), la classe témoin la plus
+  saine disponible est pré-cochée automatiquement, avec notification.
+- **Garde-fou** : si des témoins sont demandés mais qu'aucune cellule ne
+  correspond aux classes témoins, un toast clair est affiché (au lieu du
+  warn console silencieux du cœur).
+
+Nouvelles clés i18n FR/EN : `validation_control_classes_label`,
+`validation_class_distribution_fmt`, `validation_no_healthy_pixel_hint`,
+`validation_control_auto_relaxed`, `validation_no_control_warning`.
+
 # nemetonshiny 0.50.1 (2026-05-28)
 
 ### Fixed — le worker de calcul async chargeait un mauvais code (clone source au lieu du package installé)

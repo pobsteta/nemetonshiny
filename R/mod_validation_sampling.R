@@ -82,6 +82,18 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         selected = c("3", "4"),
         inline = FALSE
       ),
+      # Classes used to draw control (témoin) plots — visually distinct
+      # from the alert `classes` above. Default 0 (healthy pixels) ; the
+      # server auto-relaxes to the lowest present class when the alert
+      # raster has no class-0 cell.
+      shiny::checkboxGroupInput(
+        ns("control_classes"),
+        label   = i18n$t("validation_control_classes_label"),
+        choices = c("0", "1", "2", "3", "4"),
+        selected = "0",
+        inline = TRUE
+      ),
+      shiny::uiOutput(ns("class_distribution")),
       shiny::numericInput(
         ns("buffer_m"),
         label = i18n$t("validation_buffer_label"),
@@ -237,6 +249,80 @@ mod_validation_sampling_server <- function(id, app_state,
       )
     })
 
+    # Classified alert mask (0-4) for the current source/zone, read from
+    # the project cache (no compute — best-effort). This is the raster
+    # whose class values the `classes` / `control_classes` filters act on,
+    # so its distribution drives both the on-screen hint and the
+    # control-class auto-relax. Returns NULL when no cached mask exists.
+    alert_mask_r <- shiny::reactive({
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      zid <- suppressWarnings(as.integer(proj$metadata$monitoring_zone_id))
+      if (length(zid) != 1L || is.na(zid)) return(NULL)
+      src <- current_source()
+      cd <- file.path(proj$path, "cache", "layers",
+                      if (identical(src, "FORDEAD")) "fordead" else "fast")
+      if (!dir.exists(cd)) return(NULL)
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+      if (is.null(con)) return(NULL)
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      tryCatch(
+        if (identical(src, "FORDEAD"))
+          nemeton::read_fordead_dieback_mask(con, zid, cache_dir = cd)
+        else
+          nemeton::read_fast_alert_mask(con, zid, cache_dir = cd),
+        error = function(e) NULL
+      )
+    })
+
+    class_distribution_r <- shiny::reactive({
+      .validation_class_distribution(alert_mask_r())
+    })
+
+    # Distribution hint : "Distribution du raster : 0=0, 1=0, …, 4=8471".
+    # Plus a help note when no healthy (class 0) pixel exists.
+    output$class_distribution <- shiny::renderUI({
+      i18n <- i18n_r()
+      dist <- class_distribution_r()
+      if (is.null(dist)) return(NULL)
+      body <- paste(sprintf("%s=%d", names(dist), dist), collapse = ", ")
+      note <- if (isTRUE((dist[["0"]] %||% 0L) == 0L)) {
+        htmltools::tags$div(
+          class = "text-warning small mt-1",
+          i18n$t("validation_no_healthy_pixel_hint"))
+      } else NULL
+      htmltools::div(
+        class = "small text-muted mt-1 mb-2",
+        htmltools::tags$em(sprintf(
+          i18n$t("validation_class_distribution_fmt"), body)),
+        note
+      )
+    })
+
+    # Auto-relax : when the alert mask has no class-0 cell and the user
+    # has not touched `control_classes` (still the c("0") default), switch
+    # the selection to the lowest present class so control plots can be
+    # drawn at all. Fires once.
+    auto_relax_done <- shiny::reactiveVal(FALSE)
+    shiny::observe({
+      if (isTRUE(auto_relax_done())) return()
+      dist <- class_distribution_r()
+      if (is.null(dist)) return()
+      present <- as.integer(names(dist))[dist > 0L]
+      if (!length(present)) return()
+      cur <- input$control_classes %||% "0"
+      if (!(0L %in% present) && identical(sort(cur), "0")) {
+        relaxed <- as.character(min(present))
+        shiny::updateCheckboxGroupInput(session, "control_classes",
+                                        selected = relaxed)
+        auto_relax_done(TRUE)
+        shiny::showNotification(
+          sprintf(i18n_r()$t("validation_control_auto_relaxed"), relaxed),
+          type = "warning", duration = 6
+        )
+      }
+    })
+
     # The plan reactive : only fires on the Generate button. eventReactive
     # makes input changes invalidate the value silently — the user must
     # re-click Generate to get a fresh plan.
@@ -257,23 +343,26 @@ mod_validation_sampling_server <- function(id, app_state,
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
       classes_int <- as.integer(input$classes %||% c("3", "4"))
+      control_int <- as.integer(input$control_classes %||% "0")
+      n_control_req <- as.integer(input$n_control %||% 5L)
       th <- thresholds_r()
       dr <- date_range_r()
       res <- tryCatch(
         generate_validation_plan(
-          con            = con,
-          project        = proj,
-          source         = current_source(),
-          n_validation   = as.integer(input$n_validation %||% 20L),
-          n_control      = as.integer(input$n_control    %||% 5L),
-          classes        = classes_int,
-          buffer_m       = as.numeric(input$buffer_m %||% 0),
-          seed           = as.integer(input$seed %||% 42L),
-          ndvi_threshold = th$ndvi,
-          nbr_threshold  = th$nbr,
-          window_days    = th$window_days %||% 30L,
-          date_from      = if (length(dr) == 2L) dr[1] else NULL,
-          date_to        = if (length(dr) == 2L) dr[2] else NULL
+          con             = con,
+          project         = proj,
+          source          = current_source(),
+          n_validation    = as.integer(input$n_validation %||% 20L),
+          n_control       = n_control_req,
+          classes         = classes_int,
+          control_classes = control_int,
+          buffer_m        = as.numeric(input$buffer_m %||% 0),
+          seed            = as.integer(input$seed %||% 42L),
+          ndvi_threshold  = th$ndvi,
+          nbr_threshold   = th$nbr,
+          window_days     = th$window_days %||% 30L,
+          date_from       = if (length(dr) == 2L) dr[1] else NULL,
+          date_to         = if (length(dr) == 2L) dr[2] else NULL
         ),
         error = function(e) e
       )
@@ -284,6 +373,20 @@ mod_validation_sampling_server <- function(id, app_state,
         return()
       }
       plan_rv(res)
+
+      # Deliverable 5 — the cœur warns (cli) "No cell matching
+      # control_classes" and returns 0 témoins silently. Surface a clean
+      # UI toast when control plots were requested but none came back.
+      n_temoin <- tryCatch(
+        sum(as.character(res$type) == "Temoin", na.rm = TRUE),
+        error = function(e) 0L
+      )
+      if (n_control_req > 0L && n_temoin == 0L) {
+        shiny::showNotification(
+          i18n_r()$t("validation_no_control_warning"),
+          type = "warning", duration = 8
+        )
+      }
     })
 
     # Invalidate the result silently if the user touches any input
@@ -291,7 +394,7 @@ mod_validation_sampling_server <- function(id, app_state,
     # panel state.
     shiny::observe({
       input$source; input$n_validation; input$n_control;
-      input$classes; input$buffer_m; input$seed
+      input$classes; input$control_classes; input$buffer_m; input$seed
       # Only invalidate if a plan exists already.
       if (!is.null(plan_rv())) {
         plan_rv(NULL)
@@ -299,7 +402,7 @@ mod_validation_sampling_server <- function(id, app_state,
       }
     }) |> shiny::bindEvent(
       input$source, input$n_validation, input$n_control,
-      input$classes, input$buffer_m, input$seed,
+      input$classes, input$control_classes, input$buffer_m, input$seed,
       ignoreInit = TRUE
     )
 
@@ -562,4 +665,22 @@ mod_validation_sampling_server <- function(id, app_state,
 
     invisible(list(plan = plan_rv))
   })
+}
+
+
+# Class frequency (0-4) of an alert mask SpatRaster. Returns a named
+# integer vector ("0".."4") with NA cells dropped, or NULL when the
+# raster is unusable. Used by the distribution hint and the
+# control-class auto-relax.
+.validation_class_distribution <- function(r) {
+  if (is.null(r) || !inherits(r, "SpatRaster") ||
+      terra::ncell(r) == 0L) {
+    return(NULL)
+  }
+  vals <- tryCatch(terra::values(r, mat = FALSE), error = function(e) NULL)
+  if (is.null(vals)) return(NULL)
+  vals <- vals[!is.na(vals)]
+  if (!length(vals)) return(NULL)
+  tab <- table(factor(as.integer(vals), levels = 0:4))
+  stats::setNames(as.integer(tab), names(tab))
 }
