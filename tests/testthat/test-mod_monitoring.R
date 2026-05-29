@@ -1455,3 +1455,40 @@ test_that("obs_pixel_data debounces rapid successive input changes", {
     }
   )
 })
+
+# ---- COG reprime : date-windowed wipe spares FORDEAD scenes ----------
+
+test_that(".s2_scene_date_from_id parses the S2 acquisition date or NA", {
+  expect_equal(
+    nemetonshiny:::.s2_scene_date_from_id("S2B_MSIL2A_20260526T103021_T31TFM"),
+    as.Date("2026-05-26"))
+  expect_equal(
+    nemetonshiny:::.s2_scene_date_from_id("S2A_31TGM_20250610_0_L2A"),
+    as.Date("2025-06-10"))
+  expect_true(is.na(nemetonshiny:::.s2_scene_date_from_id("no_date_here")))
+})
+
+test_that("COG reprime date-window selection spares out-of-window (FORDEAD) scenes", {
+  dir <- withr::local_tempdir()
+  sids <- c(
+    "S2A_MSIL2A_20250610T103021_T31TGM",  # in FAST window
+    "S2A_MSIL2A_20250705T103021_T31TGM",  # in FAST window
+    "S2A_MSIL2A_20240301T103021_T31TGM",  # out of window (FORDEAD training)
+    "scene_without_date"                  # undatable → spared (prudence)
+  )
+  for (s in sids) dir.create(file.path(dir, s))
+
+  d_from <- as.Date("2025-06-01"); d_to <- as.Date("2025-07-31")
+  scene_dirs <- list.dirs(dir, recursive = FALSE, full.names = TRUE)
+  in_window <- vapply(scene_dirs, function(d) {
+    sd <- nemetonshiny:::.s2_scene_date_from_id(basename(d))
+    !is.na(sd) && sd >= d_from && sd <= d_to
+  }, logical(1))
+  victims <- basename(scene_dirs[in_window])
+
+  expect_setequal(victims, c("S2A_MSIL2A_20250610T103021_T31TGM",
+                             "S2A_MSIL2A_20250705T103021_T31TGM"))
+  # The FORDEAD training scene and the undatable one are preserved.
+  expect_false("S2A_MSIL2A_20240301T103021_T31TGM" %in% victims)
+  expect_false("scene_without_date" %in% victims)
+})

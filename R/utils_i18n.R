@@ -1944,12 +1944,12 @@ TRANSLATIONS <- list(
     en = "Fatal error in the ingestion worker"
   ),
   monitoring_reprime_cache_label = list(
-    fr = "R\u00e9amorcer le cache COG (vider et recommencer)",
-    en = "Reset COG cache (wipe and restart)"
+    fr = "R\u00e9amorcer le cache COG (fen\u00eatre de dates)",
+    en = "Reset COG cache (date window)"
   ),
   monitoring_reprime_cache_help = list(
-    fr = "<strong>D\u00e9coch\u00e9</strong> (d\u00e9faut) : nemeton v\u00e9rifie le cache disque et ne t\u00e9l\u00e9charge que les bandes manquantes. INSERTs DB idempotents (<code>ON CONFLICT DO NOTHING</code>).<br><br><strong>Coch\u00e9</strong> : vide d'abord <code>cache_dir</code>, puis re-t\u00e9l\u00e9charge int\u00e9gralement sc\u00e8ne par sc\u00e8ne. \u00c0 utiliser pour r\u00e9cup\u00e9rer d'un cache corrompu.",
-    en = "<strong>Unchecked</strong> (default): nemeton checks the disk cache and only downloads missing bands. DB INSERTs are idempotent (<code>ON CONFLICT DO NOTHING</code>).<br><br><strong>Checked</strong>: wipes <code>cache_dir</code> first, then re-downloads every scene/band from scratch. Use to recover from a corrupted cache."
+    fr = "<strong>D\u00e9coch\u00e9</strong> (d\u00e9faut) : nemeton v\u00e9rifie le cache disque et ne t\u00e9l\u00e9charge que les bandes manquantes. INSERTs DB idempotents (<code>ON CONFLICT DO NOTHING</code>).<br><br><strong>Coch\u00e9</strong> : vide puis re-t\u00e9l\u00e9charge <strong>uniquement</strong> les sc\u00e8nes de la fen\u00eatre de dates FAST. Les sc\u00e8nes hors fen\u00eatre (p\u00e9riode d'apprentissage FORDEAD \u2014 cache S2 partag\u00e9) sont <strong>pr\u00e9serv\u00e9es</strong>.",
+    en = "<strong>Unchecked</strong> (default): nemeton checks the disk cache and only downloads missing bands. DB INSERTs are idempotent (<code>ON CONFLICT DO NOTHING</code>).<br><br><strong>Checked</strong>: wipes then re-downloads <strong>only</strong> the scenes within the FAST date window. Out-of-window scenes (FORDEAD training period \u2014 shared S2 cache) are <strong>preserved</strong>."
   ),
   monitoring_db_unavailable = list(
     fr = "Base de suivi non configur\u00e9e.",

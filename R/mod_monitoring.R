@@ -1663,16 +1663,32 @@ mod_monitoring_server <- function(id, app_state) {
       # The branch below only differs by the wipe step.
       if (isTRUE(input$reprime_cache) && !is.null(cache_dir) &&
           dir.exists(cache_dir)) {
-        entries <- list.files(cache_dir, full.names = TRUE,
-                              include.dirs = TRUE, no.. = TRUE,
-                              all.files = TRUE)
-        if (length(entries)) {
-          tryCatch(
-            unlink(entries, recursive = TRUE, force = TRUE),
-            error = function(e) NULL
-          )
+        # v0.51.4 — réamorçage RESTREINT à la fenêtre de dates FAST. Le
+        # cache S2 est PARTAGÉ avec FORDEAD, dont la période
+        # d'apprentissage déborde souvent la fenêtre FAST : on ne supprime
+        # donc QUE les dossiers de scènes dont la date d'acquisition tombe
+        # dans [dr[1], dr[2]], et on PRÉSERVE celles hors fenêtre (dates
+        # d'apprentissage FORDEAD). Une scène dont la date n'est pas
+        # parsable est conservée (prudence — on ne supprime que ce qu'on
+        # peut dater avec certitude).
+        d_from <- suppressWarnings(as.Date(dr[1]))
+        d_to   <- suppressWarnings(as.Date(dr[2]))
+        scene_dirs <- list.dirs(cache_dir, recursive = FALSE,
+                                full.names = TRUE)
+        if (length(scene_dirs) && !is.na(d_from) && !is.na(d_to)) {
+          in_window <- vapply(scene_dirs, function(d) {
+            sd <- .s2_scene_date_from_id(basename(d))
+            !is.na(sd) && sd >= d_from && sd <= d_to
+          }, logical(1))
+          victims <- scene_dirs[in_window]
+          if (length(victims)) {
+            tryCatch(
+              unlink(victims, recursive = TRUE, force = TRUE),
+              error = function(e) NULL
+            )
+          }
           cli::cli_alert_info(
-            "Cache S2 vidé avant réamorçage ({length(entries)} entrée(s)) : {.path {cache_dir}}"
+            "Cache S2 réamorcé sur la fenêtre FAST [{d_from} — {d_to}] : {length(victims)} scène(s) supprimée(s), {length(scene_dirs) - length(victims)} conservée(s) hors fenêtre (FORDEAD préservé)."
           )
         }
       }
@@ -2311,6 +2327,17 @@ mod_monitoring_server <- function(id, app_state) {
   }
   normalizePath(file.path(data_dir, filename),
                 winslash = "/", mustWork = FALSE)
+}
+
+# Best-effort acquisition date (Date) parsed from a Sentinel-2 scene id
+# (the cache subdir name). S2 product ids embed the datetime as
+# YYYYMMDDTHHMMSS, so the first 8-digit run is the acquisition date.
+# Returns NA when no plausible date token is found. Used by the
+# date-windowed COG reprime to spare FORDEAD's out-of-window scenes.
+.s2_scene_date_from_id <- function(scene_id) {
+  m <- regmatches(scene_id, regexpr("[0-9]{8}", scene_id))
+  if (!length(m) || !nzchar(m)) return(as.Date(NA))
+  as.Date(m, format = "%Y%m%d")
 }
 
 # Resolve the Sentinel-2 band cache directory for the current project.
