@@ -1,4 +1,4 @@
-# nemetonshiny 0.50.1.9001 (dev)
+# nemetonshiny 0.51.0 (2026-05-29)
 
 ### Added — plan de validation : sélecteur de classes pour les placettes témoins
 
