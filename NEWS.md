@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.2.9001 (dev)
+# nemetonshiny 0.51.3 (2026-05-29)
 
 ### Changed — Alertes FAST : alignement des contrôles de l'en-tête
 

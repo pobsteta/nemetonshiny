@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.3] - 2026-05-29
+
+### Changed
+
+- **Alertes FAST — alignement des contrôles d'en-tête.** Case « Afficher
+  le raster » légèrement abaissée (`top: 2px`) pour s'aligner sur les
+  radios Fréquence/Intensité ; label « Opacité du raster » déplacé à
+  gauche du slider (inline) au lieu d'au-dessus.
+
 ## [0.51.2] - 2026-05-29
 
 ### Fixed
