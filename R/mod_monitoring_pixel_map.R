@@ -26,6 +26,25 @@
   isTRUE(as.logical(Sys.getenv("NEMETON_PIXEL_MAP_DEBUG", "FALSE")))
 }
 
+# Scene-id → cache subdir name. Mirror of nemeton's internal
+# `.s2_safe_scene_id()` (kept local to avoid depending on a non-exported
+# cœur helper). `read_s2_band_raster()` re-applies the same transform, so
+# passing the already-safe directory name back as a scene_id is a no-op.
+.pixel_safe_scene_id <- function(x) {
+  gsub("[^A-Za-z0-9._-]", "_", as.character(x))
+}
+
+# Best-effort acquisition date (YYYY-MM-DD) parsed from a Sentinel-2
+# scene id. S2 product ids embed the datetime as YYYYMMDDTHHMMSS, so the
+# first 8-digit run is the acquisition date. Returns NA_character_ when
+# no plausible date token is found.
+.pixel_scene_date_from_id <- function(scene_id) {
+  m <- regmatches(scene_id, regexpr("[0-9]{8}", scene_id))
+  if (!length(m) || !nzchar(m)) return(NA_character_)
+  d <- as.Date(m, format = "%Y%m%d")
+  if (is.na(d)) NA_character_ else as.character(d)
+}
+
 #' Pixel map sub-tab UI
 #'
 #' @param id Module namespace.
@@ -158,13 +177,60 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       cd
     })
 
-    # scenes_df = DISTINCT (scene_id, obs_date) from the per-plot
+    # db_scenes_df = DISTINCT (scene_id, obs_date) from the per-plot
     # obs already fetched by the parent module's obs_pixel_data
-    # reactive. Avoids a second roundtrip to the DB.
-    scenes_df_r <- shiny::reactive({
+    # reactive. Plot-restricted by construction (obs_pixel only stores
+    # pixels AT the placettes), so it covers only the MGRS tile(s) that
+    # contain a plot. Used for the "downloaded but 0 DB obs" diagnostic
+    # and as the authoritative scene_id → obs_date source.
+    db_scenes_df_r <- shiny::reactive({
       df <- obs_pixel_data()
       if (is.null(df) || !nrow(df)) return(NULL)
       out <- unique(df[, c("scene_id", "obs_date"), drop = FALSE])
+      out <- out[order(out$obs_date), , drop = FALSE]
+      rownames(out) <- NULL
+      out
+    })
+
+    # scenes_df = (scene_id, obs_date) for EVERY populated scene
+    # directory on disk — not just the plot-covered scenes above. The
+    # pixel map must render the full AOI raster regardless of where the
+    # validation plots fall: an AOI straddling two MGRS tiles (villards
+    # T31TFM + T31TGM) has a tile with no plot, whose scenes would never
+    # enter the stack if it were driven by `db_scenes_df_r`, leaving half
+    # the map blank. obs_date is taken from the DB when the scene has plot
+    # obs (authoritative), else parsed from the Sentinel-2 scene id.
+    scenes_df_r <- shiny::reactive({
+      refresh_r()  # re-scan after an ingestion
+      cd <- cache_dir_r()
+      if (is.null(cd) || !dir.exists(cd)) return(NULL)
+      dirs <- list.dirs(cd, recursive = FALSE, full.names = FALSE)
+      if (!length(dirs)) return(NULL)
+      populated <- vapply(dirs, function(s) {
+        any(grepl("\\.tif$", list.files(file.path(cd, s))))
+      }, logical(1))
+      dirs <- dirs[populated]
+      if (!length(dirs)) return(NULL)
+      db <- db_scenes_df_r()
+      db_map <- if (!is.null(db) && nrow(db)) {
+        data.frame(safe     = .pixel_safe_scene_id(db$scene_id),
+                   obs_date = as.character(db$obs_date),
+                   stringsAsFactors = FALSE)
+      } else NULL
+      obs_date <- vapply(dirs, function(s) {
+        d <- NA_character_
+        if (!is.null(db_map)) {
+          i <- match(s, db_map$safe)
+          if (!is.na(i)) d <- db_map$obs_date[i]
+        }
+        if (is.na(d)) d <- .pixel_scene_date_from_id(s)
+        d
+      }, character(1))
+      keep <- !is.na(obs_date)
+      if (!any(keep)) return(NULL)
+      out <- data.frame(scene_id = dirs[keep],
+                        obs_date = as.Date(obs_date[keep]),
+                        stringsAsFactors = FALSE)
       out <- out[order(out$obs_date), , drop = FALSE]
       rownames(out) <- NULL
       out
@@ -236,7 +302,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       st <- pixel_stack_r()
       if (is.null(st)) {
         disk_n  <- disk_scenes_count_r()
-        sdf     <- scenes_df_r()
+        sdf     <- db_scenes_df_r()
         err_msg <- last_stack_error()
 
         # Case 1 — no cache directory or empty.
