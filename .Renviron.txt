@@ -27,7 +27,23 @@
 # local sous <projet>/data/monitoring.sqlite (mode mono-utilisateur,
 # WAL → 1 writer + N lecteurs concurrents inter-process).
 #
-# Option A — URL complète (prioritaire) :
+# >>> ORDRE DE RÉSOLUTION (important — piège classique) <<<
+#
+#   1. NEMETON_DB_LOCAL truthy      → force le SQLite local (court-circuit)
+#   2. NEMETON_DB_URL               → URL complète, prioritaire absolu
+#   3. POSTGRESQL_ADDON_*           → convention Clever Cloud, AVANT le générique !
+#   4. NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD  → générique
+#   5. (rien)                       → SQLite local <projet>/data/monitoring.sqlite
+#
+# PIÈGE : si ton .Renviron contient à la fois `POSTGRESQL_ADDON_*` (creds
+# Clever Cloud sauvegardés en dev) et `NEMETON_DB_HOST=127.0.0.1` (postgres
+# local), c'est **Clever qui gagne** → tu peux observer des timeouts
+# inattendus vers `*.clever-cloud.com:50013` même quand tu pensais
+# travailler en local. Solutions :
+#   • soit retirer les `POSTGRESQL_ADDON_*` de ton .Renviron (le plus propre) ;
+#   • soit positionner `NEMETON_DB_LOCAL=1` pour court-circuiter toute la cascade.
+#
+# Option A — URL complète (prioritaire après NEMETON_DB_LOCAL) :
 # NEMETON_DB_URL=postgresql://nemeton:secret@127.0.0.1:5432/nemeton
 
 # Option B — variables séparées :
@@ -37,8 +53,9 @@
 # NEMETON_DB_USER=nemeton
 # NEMETON_DB_PASSWORD=secret
 
-# Option C — Clever Cloud (auto-injecté en prod, à ne décommenter qu'en
-# dev pour rejouer un environnement Clever) :
+# Option C — Clever Cloud (auto-injecté en prod sur Clever ; à ne
+# décommenter en dev QUE pour rejouer un environnement Clever, en
+# sachant qu'elles l'emportent sur l'option B ci-dessus) :
 # POSTGRESQL_ADDON_HOST=bzhpgxpifpsvasgvc0sw-postgresql.services.clever-cloud.com
 # POSTGRESQL_ADDON_PORT=50013
 # POSTGRESQL_ADDON_DB=nemeton
