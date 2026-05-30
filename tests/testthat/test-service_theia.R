@@ -150,3 +150,22 @@ test_that("theia_save_api_key locks the .apikey file down to 0600 (POSIX)", {
   # file.info()$mode returns an octal "octmode" object — compare to 0600.
   expect_equal(as.integer(file.info(apikey_path)$mode), as.integer(as.octmode("0600")))
 })
+
+test_that("theia_clear_api_key removes the file and unsets env vars", {
+  tmp <- withr::local_tempdir()
+  withr::local_envvar(c(HOME = tmp,
+                        TLD_ACCESS_KEY = NA, TLD_SECRET_KEY = NA))
+  # Save then clear — both file and env must be gone.
+  nemetonshiny:::theia_save_api_key("a", "b")
+  expect_true(file.exists(nemetonshiny:::.theia_apikey_path()))
+  expect_true(nzchar(Sys.getenv("TLD_ACCESS_KEY")))
+
+  cleared <- nemetonshiny:::theia_clear_api_key()
+  expect_true(cleared)
+  expect_false(file.exists(nemetonshiny:::.theia_apikey_path()))
+  expect_equal(Sys.getenv("TLD_ACCESS_KEY"), "")
+  expect_equal(Sys.getenv("TLD_SECRET_KEY"), "")
+
+  # Idempotent : a second call has nothing to clear → FALSE.
+  expect_false(nemetonshiny:::theia_clear_api_key())
+})
