@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.6.9001 (dev)
+# nemetonshiny 0.51.7 (2026-05-30)
 
 ### Added — modal de configuration à 2 onglets (Theia + Fournisseur LLM)
 

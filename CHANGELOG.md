@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.7] - 2026-05-30
+
+### Added
+
+- **Modal de configuration à 2 onglets : Theia + Fournisseur LLM.**
+  L'icône engrenage ouvre maintenant une boîte « Clés API externes »
+  avec deux onglets. Theia (inchangé) ; LLM avec selectInput
+  Mistral/Anthropic/OpenAI, status alert avec source (env ou fichier),
+  bouton Save / Modifier / Supprimer. Persistance dans
+  `~/.config/nemetonshiny/llm.json` (chmod 0600) + Sys.setenv pour
+  effet immédiat. Résolution env > fichier (`.Renviron` continue de
+  fonctionner). Nouveau service `R/service_llm.R` + tests dédiés.
+
 ## [0.51.6] - 2026-05-30
 
 ### Security
