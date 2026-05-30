@@ -219,16 +219,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       )
     })
 
+    # v0.51.5 — la carte de base (tuiles + UGF + fitBounds) est rendue
+    # UNE seule fois ; le raster d'alerte est ajouté/mis à jour via
+    # leafletProxy dans l'observe ci-dessous. Avant, chaque déplacement
+    # de slider (seuils, opacité) ou changement de mode déclenchait un
+    # renderLeaflet complet → le zoom utilisateur et le fond sélectionné
+    # (OSM / Satellite) étaient perdus à chaque tick. Symétrique avec
+    # la Carte FAST.
     output$map <- leaflet::renderLeaflet({
-      r <- raster_r()
-      i18n <- i18n_r()
-      mode <- input$mode %||% "count"
-
-      # v0.45.0 — overlay UGF (polygones bleu vif) au-dessus du
-      # raster d'alerte pour le repère spatial demandé après les
-      # tests user villards.
       ugf_4326 <- .ugf_for_overlay(app_state$current_project)
-
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",     group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -248,60 +247,48 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
             opacity     = 0.9,
             fillOpacity = 0
           )
-      }
-
-      # v0.46.3 — zone saine (raster vide) : on garde la carte de base
-      # + l'overlay UGF + fit bounds, sans raster ni légende. Donne le
-      # repère spatial même quand il n'y a rien à signaler.
-      if (is.null(r) || .fast_raster_is_empty(r)) {
-        if (!is.null(ugf_4326)) {
-          bb <- tryCatch(sf::st_bbox(ugf_4326), error = function(e) NULL)
-          if (!is.null(bb)) {
-            m <- m |> leaflet::fitBounds(
-              lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
-              lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
-            )
-          }
+        bb <- tryCatch(sf::st_bbox(ugf_4326), error = function(e) NULL)
+        if (!is.null(bb)) {
+          m <- m |> leaflet::fitBounds(
+            lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+            lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
+          )
         }
-        return(m)
       }
+      m
+    })
 
-      # v0.48.0 — toggle visibilité du raster. Décoché → on retourne
-      # la carte avec OSM + UGF + fitBounds, sans le raster d'alerte
-      # ni sa légende. Symétrique avec Carte FAST.
-      if (!isTRUE(input$raster_visible %||% TRUE)) {
-        if (!is.null(ugf_4326)) {
-          bb <- tryCatch(sf::st_bbox(ugf_4326), error = function(e) NULL)
-          if (!is.null(bb)) {
-            m <- m |> leaflet::fitBounds(
-              lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
-              lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
-            )
-          }
-        }
-        return(m)
-      }
-      # v0.48.0 — opacité pilotée par le slider (default 0.75).
+    # Raster overlay update — fires on raster/mode/visibility/opacity
+    # changes via leafletProxy, preserving user zoom and selected base
+    # layer (OSM vs Satellite). The legend is added with a stable
+    # layerId so we can remove and re-add it without touching the
+    # layers control.
+    .alert_raster_group <- "alert-raster"
+    .alert_legend_id    <- "alert-legend"
+    shiny::observe({
+      i18n    <- i18n_r()
+      r       <- raster_r()
+      mode    <- input$mode %||% "count"
+      visible <- isTRUE(input$raster_visible %||% TRUE)
+
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearGroup(.alert_raster_group) |>
+        leaflet::removeControl(.alert_legend_id)
+
+      if (!visible || is.null(r) || .fast_raster_is_empty(r)) return()
+
       raster_opacity <- as.numeric(input$raster_opacity %||% 0.75)
       if (!is.finite(raster_opacity) || raster_opacity < 0) raster_opacity <- 0
       if (raster_opacity > 1) raster_opacity <- 1
 
-      # Zero = pas d'alerte → transparent. Le cœur retourne 0 (count)
-      # ou 0.0 (rolling) hors alerte, qu'on masque ici pour ne pas
-      # noircir / saturer la carte de pixels uniformes.
+      # Zero = pas d'alerte → transparent.
       r_show <- terra::ifel(r == 0, NA, r)
 
       if (identical(mode, "count")) {
-        # v0.45.0 — classification adaptative par quartiles sur les
-        # valeurs non-nulles. 4 classes préfixées « 1 — … » / « 2 — … »
-        # alignées avec les classes 1-4 du masque catégoriel
-        # FAST utilisé par Plan de validation (label unification —
-        # le module valid récupère ces mêmes labels via
-        # `.fast_class_labels()` pour ses checkboxes).
         unit <- i18n$t("validation_class_unit_days")
         unit_sfx <- if (nzchar(unit)) paste0(" ", unit) else ""
         cls <- .classify_alert_count(r_show, unit = unit_sfx)
-        if (length(cls$breaks) < 2L) return(m)
+        if (length(cls$breaks) < 2L) return()
         cols <- .alert_count_palette(length(cls$labels))
         pal <- leaflet::colorBin(
           palette  = cols,
@@ -309,10 +296,11 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           bins     = cls$breaks,
           na.color = "transparent"
         )
-        m |>
+        proxy |>
           leaflet::addRasterImage(
             x = r_show, colors = pal, opacity = raster_opacity,
             method  = "ngb",
+            group   = .alert_raster_group,
             options = leaflet::gridOptions(pane = "nemetonAlertRaster")
           ) |>
           leaflet::addLegend(
@@ -320,14 +308,13 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
             colors   = cols,
             labels   = cls$labels,
             title    = i18n$t("monitoring_fast_alerts_legend_count_title"),
-            opacity  = 0.85
+            opacity  = 0.85,
+            layerId  = .alert_legend_id
           )
       } else {
-        # Rolling : magnitude continue. Borne supérieure = p95 pour
-        # éviter qu'une queue minoritaire écrase l'échelle visuelle.
         vals <- terra::values(r_show)
         vals <- vals[!is.na(vals) & vals > 0]
-        if (!length(vals)) return(m)
+        if (!length(vals)) return()
         upper <- as.numeric(stats::quantile(vals, 0.95, na.rm = TRUE))
         if (!is.finite(upper) || upper <= 0) upper <- max(vals, na.rm = TRUE)
         pal <- leaflet::colorNumeric(
@@ -335,9 +322,10 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           domain   = c(0, upper),
           na.color = "transparent"
         )
-        m |>
+        proxy |>
           leaflet::addRasterImage(
             x = r_show, colors = pal, opacity = raster_opacity,
+            group   = .alert_raster_group,
             options = leaflet::gridOptions(pane = "nemetonAlertRaster")
           ) |>
           leaflet::addLegend(
@@ -345,7 +333,8 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
             pal      = pal,
             values   = c(0, upper),
             title    = i18n$t("monitoring_fast_alerts_legend_title"),
-            opacity  = 0.85
+            opacity  = 0.85,
+            layerId  = .alert_legend_id
           )
       }
     })

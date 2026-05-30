@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.5] - 2026-05-30
+
+### Fixed
+
+- **Alertes FAST — préserve le zoom et le fond OSM/Satellite.** Le
+  `renderLeaflet` dépendait du raster et des contrôles (mode / opacité /
+  visibilité / seuils) → chaque mouvement de slider ré-initialisait le
+  zoom utilisateur et le fond sélectionné. Pattern aligné sur Carte
+  FAST : la base (tuiles + UGF + fitBounds) est rendue une seule fois,
+  le raster d'alerte et sa légende sont mis à jour via `leafletProxy` +
+  `clearGroup` + `removeControl` (légende `layerId`-bée). Zoom et fond
+  conservés à travers les sliders.
+
 ## [0.51.4] - 2026-05-29
 
 ### Fixed
