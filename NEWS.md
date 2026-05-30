@@ -1,3 +1,29 @@
+# nemetonshiny 0.51.8.9001 (dev)
+
+### Fixed — Alertes FAST : raster invisible + warnings « Some values were outside the color scale »
+
+Le raster d'alerte ne s'affichait plus (modes Fréquence et Intensité) :
+- En mode count, le masque `terra::ifel(r == 0, NA, r)` ne couvrait
+  pas les valeurs négatives résiduelles (bruit numérique en bord de
+  tuile) → `pal()` les déclarait hors domaine `[0.5, max+0.5]` → 4
+  warnings `colors(.)` à la console et raster majoritairement
+  transparent. Masque devient `terra::ifel(is.na(r) | r <= 0, NA, r)`
+  (positif strict).
+- En mode rolling (Intensité), les ~5 % de cellules au-dessus de
+  `p95` étaient hors domaine `[0, p95]` → mêmes warnings. Un
+  `terra::ifel` clamp les valeurs `> upper` à `upper` avant `pal()` :
+  cap visuel p95 conservé (couleur max), zéro hors-domaine côté haut.
+
+### Fixed — Graphique de série pixel : lignes manquantes entre points
+
+Dans le modal « Pixel à (lat, lon) » (Carte FAST → clic), beaucoup de
+points NDVI / NBR apparaissaient isolés, parfois reliés par de longs
+segments qui sautaient des mois. La boucle `for (b in unique(ts$index))`
+ne triait pas le data.frame par `obs_date` avant `plotly::add_trace` →
+plotly reliait les points dans l'ordre des lignes. Sortie de
+`extract_pixel_timeseries()` triée par date avant tracé. La boucle
+voisine du graphique placette agrégée triait déjà — alignement.
+
 # nemetonshiny 0.51.8 (2026-05-30)
 
 ### Fixed — Onglet Fournisseur LLM : le bloc statut + clé suit la sélection

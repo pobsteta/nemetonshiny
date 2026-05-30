@@ -969,6 +969,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       p <- plotly::plot_ly(type = "scatter", mode = "lines+markers")
       for (b in unique(ts$index)) {
         sub <- ts[ts$index == b, , drop = FALSE]
+        # v0.51.9 : tri par date AVANT add_trace. Sans tri, plotly
+        # relie les points dans l'ordre des LIGNES du data.frame ;
+        # si extract_pixel_timeseries() ne renvoie pas la série
+        # ordonnée, on obtient des segments longs qui sautent dans le
+        # temps (et la majorité des points adjacents non reliés) au
+        # lieu d'une courbe continue. La boucle placette voisine
+        # (l.~880) trie déjà, on aligne celle-ci.
+        sub <- sub[order(as.Date(sub$obs_date)), , drop = FALSE]
         col <- .pixel_band_colors[b] %||% "#7F7F7F"
         p <- plotly::add_trace(
           p,

@@ -281,8 +281,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (!is.finite(raster_opacity) || raster_opacity < 0) raster_opacity <- 0
       if (raster_opacity > 1) raster_opacity <- 1
 
-      # Zero = pas d'alerte → transparent.
-      r_show <- terra::ifel(r == 0, NA, r)
+      # Tout ce qui ≤ 0 ou NA = pas d'alerte → transparent. v0.51.9 :
+      # avant on ne masquait QUE r == 0, mais des valeurs négatives
+      # résiduelles (bruit numérique en mode rolling, ou cellules hors
+      # tuile MGRS croppées différemment) passaient à `pal()` qui les
+      # déclarait hors domaine → warning « Some values were outside
+      # the color scale » + cellules NA + raster invisible quand les
+      # valeurs négatives dominaient. Le masque ≤ 0 garantit qu'aucune
+      # cellule traversant la palette n'est hors domaine côté bas.
+      r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
 
       if (identical(mode, "count")) {
         unit <- i18n$t("validation_class_unit_days")
@@ -317,6 +324,11 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         if (!length(vals)) return()
         upper <- as.numeric(stats::quantile(vals, 0.95, na.rm = TRUE))
         if (!is.finite(upper) || upper <= 0) upper <- max(vals, na.rm = TRUE)
+        # v0.51.9 : clamp à `upper` (cap visuel p95) AVANT pal(), pour
+        # éviter le warning « Some values were outside the color scale »
+        # sur les ~5 % de cellules > p95. Le cap reste visible (couleur
+        # max saturée) sans hors-domaine.
+        r_capped <- terra::ifel(r_show > upper, upper, r_show)
         pal <- leaflet::colorNumeric(
           palette  = c("#FFD27F", "#FF9933", "#D62728"),
           domain   = c(0, upper),
@@ -324,7 +336,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         )
         proxy |>
           leaflet::addRasterImage(
-            x = r_show, colors = pal, opacity = raster_opacity,
+            x = r_capped, colors = pal, opacity = raster_opacity,
             group   = .alert_raster_group,
             options = leaflet::gridOptions(pane = "nemetonAlertRaster")
           ) |>
