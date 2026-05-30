@@ -1,3 +1,16 @@
+# nemetonshiny 0.51.4.9001 (dev)
+
+### Fixed — Alertes FAST : préserve le zoom et le fond OSM/Satellite
+
+Sur la carte Alertes FAST, déplacer un slider (seuils NDVI/NBR, opacité)
+ou changer le mode (Fréquence/Intensité) re-déclenchait un
+`renderLeaflet` complet → le zoom utilisateur et le fond sélectionné
+(OSM/Satellite) étaient réinitialisés à chaque tick. Le pattern est
+désormais celui de la Carte FAST : la carte de base (tuiles + UGF +
+fitBounds) est rendue une seule fois, le raster d'alerte et sa légende
+sont mis à jour via `leafletProxy` + `clearGroup`/`removeControl` →
+zoom et fond conservés.
+
 # nemetonshiny 0.51.4 (2026-05-29)
 
 ### Changed — réamorçage du cache COG restreint à la fenêtre FAST (préserve FORDEAD)
