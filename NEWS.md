@@ -1,3 +1,24 @@
+# nemetonshiny 0.51.8 (2026-05-30)
+
+### Fixed — Onglet Fournisseur LLM : le bloc statut + clé suit la sélection
+
+Dans la boîte « Clés API externes » → onglet **Fournisseur LLM**,
+changer le provider dans la liste déroulante ne rafraîchissait pas le
+bandeau de statut ni la section clé en dessous — ils restaient figés
+sur le provider précédent. Le bloc est désormais servi par un
+`uiOutput` réactif à `input$llm_provider`, `llm_edit_mode()` et
+`status_refresh()` → mise à jour fluide sans re-render du modal.
+
+### Added — Onglet Fournisseur LLM : vue d'ensemble multi-fournisseurs
+
+- **Badge `✓` par fournisseur** directement dans la liste déroulante :
+  un coup d'œil sur le dropdown ouvert montre lesquels sont déjà
+  configurés (ex. `Mistral ✓`, `Anthropic`, `OpenAI ✓`).
+- **Ligne résumé** au-dessus du sélecteur :
+  `« 2 / 3 fournisseurs configurés : Mistral, OpenAI »`
+  ou `« Aucun fournisseur configuré. »` quand rien n'est posé. Vue
+  d'ensemble immédiate sans avoir à dérouler la liste.
+
 # nemetonshiny 0.51.7 (2026-05-30)
 
 ### Added — modal de configuration à 2 onglets (Theia + Fournisseur LLM)

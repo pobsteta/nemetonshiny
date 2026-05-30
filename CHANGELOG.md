@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.8] - 2026-05-30
+
+### Fixed
+
+- **Onglet Fournisseur LLM — status panel réactif au provider.** Le
+  bloc statut + clé est désormais un `uiOutput` réactif à
+  `input$llm_provider` (avant il restait figé sur le précédent provider
+  quand on changeait dans la liste).
+
+### Added
+
+- **Onglet Fournisseur LLM — vue d'ensemble multi-providers.** Badge ✓
+  dans la liste déroulante pour chaque provider configuré + ligne
+  résumé au-dessus du sélecteur (« N / 3 fournisseurs configurés : …»).
+
 ## [0.51.7] - 2026-05-30
 
 ### Added
