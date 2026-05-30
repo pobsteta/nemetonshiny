@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.5.9001 (dev)
+# nemetonshiny 0.51.6 (2026-05-30)
 
 ### Security — `~/.config/teledetection/.apikey` est désormais en `0600`
 
