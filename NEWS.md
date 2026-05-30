@@ -1,3 +1,10 @@
+# nemetonshiny 0.51.5.9001 (dev)
+
+### Security — `~/.config/teledetection/.apikey` est désormais en `0600`
+
+La clé Theia / DATA TERRA enregistrée via le modal de configuration
+(`theia_save_api_key()`) est immédiatement protégée par `Sys.chmod(..., "0600")` (lecture/écriture pour le propriétaire uniquement). Auparavant le fichier héritait du `umask` du process, souvent `0644` (world-readable). No-op silencieux sous Windows.
+
 # nemetonshiny 0.51.5 (2026-05-30)
 
 ### Fixed — Alertes FAST : préserve le zoom et le fond OSM/Satellite

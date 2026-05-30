@@ -137,3 +137,16 @@ test_that("download_theia_layers returns empty list when Theia not ready", {
   )
   expect_identical(nemetonshiny:::download_theia_layers(units), list())
 })
+
+test_that("theia_save_api_key locks the .apikey file down to 0600 (POSIX)", {
+  skip_on_os("windows")  # POSIX bits don't map to Windows ACLs
+  tmp <- withr::local_tempdir()
+  withr::local_envvar(c(HOME = tmp,
+                        TLD_ACCESS_KEY = NA, TLD_SECRET_KEY = NA))
+  ok <- nemetonshiny:::theia_save_api_key("access-xyz", "secret-xyz")
+  expect_true(ok)
+  apikey_path <- nemetonshiny:::.theia_apikey_path()
+  expect_true(file.exists(apikey_path))
+  # file.info()$mode returns an octal "octmode" object — compare to 0600.
+  expect_equal(as.integer(file.info(apikey_path)$mode), as.integer(as.octmode("0600")))
+})

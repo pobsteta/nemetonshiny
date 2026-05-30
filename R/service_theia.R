@@ -115,6 +115,11 @@ theia_save_api_key <- function(access_key, secret_key) {
       apikey_path,
       auto_unbox = TRUE
     )
+    # Lock down to owner-only (rw-------). Best-effort : no-op on
+    # Windows (POSIX bits don't map onto Windows ACLs but the file
+    # stays under the user profile so it's not world-readable anyway).
+    tryCatch(Sys.chmod(apikey_path, mode = "0600"),
+             error = function(e) NULL)
     TRUE
   }, error = function(e) {
     cli::cli_warn("Failed to write Theia API key file: {e$message}")
