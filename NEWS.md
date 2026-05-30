@@ -1,3 +1,26 @@
+# nemetonshiny 0.51.7 (2026-05-30)
+
+### Added — modal de configuration à 2 onglets (Theia + Fournisseur LLM)
+
+L'icône engrenage de la barre de navigation ouvre désormais une boîte
+de dialogue **« Clés API externes »** structurée en 2 onglets :
+
+- **Theia / DATA TERRA** : contenu existant (statut Python, clé d'accès
+  + clé secrète, provenance et licences des sources).
+- **Fournisseur LLM** : sélecteur de fournisseur (Mistral / Anthropic /
+  OpenAI), champ clé API, statut configuré / non avec sa source
+  (variable d'env ou fichier local), boutons Modifier / Supprimer
+  lorsqu'une clé est déjà en place — strictement le même UX que Theia.
+
+Nouveau service `R/service_llm.R` (`llm_providers`, `llm_status_all`,
+`llm_save_api_key`, `llm_clear_api_key`). La clé est persistée dans
+`~/.config/nemetonshiny/llm.json` (chmod `0600`, fichier unlinké
+lorsqu'il devient vide) et `Sys.setenv()` est appelé dans la session R
+pour effet immédiat. Résolution **env > fichier** — `.Renviron`
+continue de fonctionner sans rien changer si tu préfères y stocker tes
+clés. Nouvelles clés i18n FR/EN (`api_keys_*`, `llm_*`). Tests dédiés
+`test-service_llm.R` (30 assertions).
+
 # nemetonshiny 0.51.6 (2026-05-30)
 
 ### Security — `~/.config/teledetection/.apikey` est désormais en `0600`

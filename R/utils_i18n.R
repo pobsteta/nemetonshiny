@@ -1277,7 +1277,99 @@ TRANSLATIONS <- list(
   ),
 
   # ============================================================
-  # Theia / DATA TERRA configuration
+  # External API keys configuration (Theia + LLM, tabbed modal)
+  # ============================================================
+  api_keys_config_open = list(
+    fr = "Configuration des clés API externes",
+    en = "External API keys configuration"
+  ),
+  api_keys_config_title = list(
+    fr = "Clés API externes",
+    en = "External API keys"
+  ),
+  api_keys_config_intro = list(
+    fr = "Configurez ici les clés des services externes utilisés par l'application : Theia / DATA TERRA pour le CHM FORMSpoT et un fournisseur LLM (Mistral, Anthropic ou OpenAI) pour les perspectives d'expert.",
+    en = "Configure here the keys for the external services used by the application: Theia / DATA TERRA for the FORMSpoT CHM and an LLM provider (Mistral, Anthropic or OpenAI) for the expert perspectives."
+  ),
+  api_keys_tab_theia = list(
+    fr = "Theia / DATA TERRA",
+    en = "Theia / DATA TERRA"
+  ),
+  api_keys_tab_llm = list(
+    fr = "Fournisseur LLM",
+    en = "LLM provider"
+  ),
+  # LLM tab
+  llm_config_intro = list(
+    fr = "Sélectionnez le fournisseur LLM puis enregistrez sa clé API. Une seule clé par fournisseur ; les autres restent inchangées.",
+    en = "Pick the LLM provider then store its API key. One key per provider; the other ones stay untouched."
+  ),
+  llm_provider_label = list(
+    fr = "Fournisseur",
+    en = "Provider"
+  ),
+  llm_status_label = list(
+    fr = "Clé API LLM",
+    en = "LLM API key"
+  ),
+  llm_status_ok = list(
+    fr = "Configurée pour %s.",
+    en = "Configured for %s."
+  ),
+  llm_status_ko = list(
+    fr = "Aucune clé configurée pour %s.",
+    en = "No key configured for %s."
+  ),
+  llm_status_source_env = list(
+    fr = "Source : variable d'environnement %s.",
+    en = "Source: environment variable %s."
+  ),
+  llm_status_source_file = list(
+    fr = "Source : ~/.config/nemetonshiny/llm.json.",
+    en = "Source: ~/.config/nemetonshiny/llm.json."
+  ),
+  llm_key_label = list(
+    fr = "Clé API",
+    en = "API key"
+  ),
+  llm_key_help = list(
+    fr = "Stockée dans ~/.config/nemetonshiny/llm.json (chmod 0600) et exposée comme variable d'environnement dans la session R en cours.",
+    en = "Stored in ~/.config/nemetonshiny/llm.json (chmod 0600) and exposed as an environment variable in the running R session."
+  ),
+  llm_key_save = list(
+    fr = "Enregistrer la clé",
+    en = "Save key"
+  ),
+  llm_key_saved = list(
+    fr = "Clé LLM enregistrée.",
+    en = "LLM key saved."
+  ),
+  llm_key_save_failed = list(
+    fr = "Échec de l'enregistrement de la clé LLM.",
+    en = "Failed to save the LLM key."
+  ),
+  llm_key_missing = list(
+    fr = "Renseignez une clé API.",
+    en = "Enter an API key."
+  ),
+  llm_key_configured_hint = list(
+    fr = "Clé enregistrée. Tu peux la modifier ou la supprimer.",
+    en = "Key stored. You can edit or delete it."
+  ),
+  llm_key_edit = list(
+    fr = "Modifier la clé",
+    en = "Edit key"
+  ),
+  llm_key_delete = list(
+    fr = "Supprimer la clé",
+    en = "Delete key"
+  ),
+  llm_key_deleted = list(
+    fr = "Clé LLM supprimée.",
+    en = "LLM key deleted."
+  ),
+
+  # Theia / DATA TERRA configuration (legacy keys preserved)
   # ============================================================
   theia_config_open = list(
     fr = "Configuration Theia / DATA TERRA",
