@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.4.9001 (dev)
+# nemetonshiny 0.51.5 (2026-05-30)
 
 ### Fixed — Alertes FAST : préserve le zoom et le fond OSM/Satellite
 
