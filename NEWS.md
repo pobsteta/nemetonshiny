@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.8.9001 (dev)
+# nemetonshiny 0.51.9 (2026-05-30)
 
 ### Fixed — Alertes FAST : raster invisible + warnings « Some values were outside the color scale »
 

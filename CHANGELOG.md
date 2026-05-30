@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.9] - 2026-05-30
+
+### Fixed
+
+- **Alertes FAST — raster d'alerte invisible.** Le masque
+  `terra::ifel(r == 0, NA, r)` ne couvrait pas les valeurs négatives
+  résiduelles, qui sortaient du domaine de `pal()` → 4 warnings
+  `Some values were outside the color scale` et raster majoritairement
+  transparent. Masque ≤ 0 (positif strict) + clamp à `upper` (p95) en
+  mode rolling avant `pal()`.
+- **Graphique pixel timeseries — lignes manquantes / sauts dans le
+  temps.** Boucle `for (b in unique(ts$index))` ne triait pas par
+  `obs_date` avant `plotly::add_trace` → segments reliés dans l'ordre
+  des lignes du data.frame. Sort par date ajouté.
+
 ## [0.51.8] - 2026-05-30
 
 ### Fixed
