@@ -123,7 +123,7 @@
 # ------------------------------------------------------------
 # Sans NEMETON_NTFY_TOPIC, pas de push. Topic recommandé : suffixé d'un
 # identifiant unique pour ne pas être lisible publiquement.
-# NEMETON_NTFY_TOPIC=nemeton-ingest-pascal-x7k2
+# NEMETON_NTFY_TOPIC=nemeton-fast-fordead
 # NEMETON_NTFY_URL=https://ntfy.sh
 # NEMETON_NTFY_TOKEN=tk_xxxxxxxxxxxx     # seulement pour ntfy serveur privé
 
