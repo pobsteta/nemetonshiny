@@ -1,0 +1,180 @@
+# ============================================================
+# .Renviron — variables d'environnement Nemeton
+# Exemple commenté regroupant TOUTES les variables consommées par
+# nemetonshiny (l'app) et nemeton (le cœur). Toutes sont OPTIONNELLES
+# (valeurs par défaut sensées partout) — décommente seulement celles
+# que tu veux surcharger.
+# ============================================================
+#
+# Où placer ce fichier :
+#   • ~/.Renviron               → user-wide (R le charge à chaque démarrage)
+#   • <repo>/.Renviron          → projet (lu si l'on démarre R depuis ce dossier)
+# Format strict : VARIABLE=valeur (pas d'espaces autour du `=`, pas de
+# guillemets sauf si la valeur contient un caractère spécial). Lignes
+# commençant par `#` ignorées. R doit être REDÉMARRÉ après modification.
+#
+# Beaucoup de clés (Theia, LLM) peuvent aussi être configurées via la
+# boîte « Clés API externes » de la navbar (icône engrenage). Dans tous
+# les cas la résolution est : variable d'env > fichier persistant.
+#
+# ============================================================
+
+
+# ------------------------------------------------------------
+# 1) Base de données monitoring (PostgreSQL / TimescaleDB)
+# ------------------------------------------------------------
+# Sans aucune de ces variables, l'app retombe sur un fichier SQLite
+# local sous <projet>/data/monitoring.sqlite (mode mono-utilisateur,
+# WAL → 1 writer + N lecteurs concurrents inter-process).
+#
+# Option A — URL complète (prioritaire) :
+# NEMETON_DB_URL=postgresql://nemeton:secret@127.0.0.1:5432/nemeton
+
+# Option B — variables séparées :
+# NEMETON_DB_HOST=127.0.0.1
+# NEMETON_DB_PORT=5432
+# NEMETON_DB_NAME=nemeton
+# NEMETON_DB_USER=nemeton
+# NEMETON_DB_PASSWORD=secret
+
+# Option C — Clever Cloud (auto-injecté en prod, à ne décommenter qu'en
+# dev pour rejouer un environnement Clever) :
+# POSTGRESQL_ADDON_HOST=bzhpgxpifpsvasgvc0sw-postgresql.services.clever-cloud.com
+# POSTGRESQL_ADDON_PORT=50013
+# POSTGRESQL_ADDON_DB=nemeton
+# POSTGRESQL_ADDON_USER=...
+# POSTGRESQL_ADDON_PASSWORD=...
+
+# Forcer le SQLite local même si une URL ou des credentials PG sont
+# définis (utile en dev : tu gardes ta config prod dans .Renviron mais
+# tu veux travailler hors-ligne). Truthy : 1 / true / yes / on.
+# NEMETON_DB_LOCAL=1
+
+# Timeout de la connexion libpq (secondes ; défaut 8, min 2). Empêche
+# le freeze ~20 s du timeout TCP OS quand l'hôte est injoignable.
+# NEMETON_DB_CONNECT_TIMEOUT=8
+
+# URL alternative pour la suite de tests (ne JAMAIS commiter) :
+# NEMETON_DB_URL_TEST=postgresql://nemeton:test@127.0.0.1:5432/nemeton_test
+
+
+# ------------------------------------------------------------
+# 2) Authentification OAuth2 / OpenID Connect
+# ------------------------------------------------------------
+# Sans ces variables, l'app démarre en mode anonyme. En dev tu peux
+# accorder un rôle à l'utilisateur anonyme (liste séparée par des
+# virgules ; reconnus : admin, gestionnaire, observateur, citoyen).
+# NEMETON_AUTH_DEV_ROLES=admin
+
+# Provider OAuth (typiquement "keycloak" ou "agentconnect")
+# NEMETON_OAUTH_PROVIDER=keycloak
+# NEMETON_OAUTH_ISSUER=https://auth.example.org/realms/nemeton
+# NEMETON_OAUTH_CLIENT_ID=nemetonshiny
+# NEMETON_OAUTH_CLIENT_SECRET=...
+# NEMETON_OAUTH_REDIRECT_URI=http://localhost:8080/oauth/callback
+# NEMETON_OAUTH_SCOPES=openid email profile
+
+# URL de la console Keycloak (pour les helpers de découverte)
+# NEMETON_KEYCLOAK_URL=https://auth.example.org
+
+
+# ------------------------------------------------------------
+# 3) Theia / DATA TERRA (CHM FORMSpoT — débloque Production P1/P2/P3 + E1)
+# ------------------------------------------------------------
+# Clés délivrées par le pôle Theia (https://www.theia-land.fr/). La
+# boîte « Clés API externes » de la navbar (onglet Theia) persiste ces
+# clés dans ~/.config/teledetection/.apikey (chmod 0600).
+# Résolution : variable d'env > fichier .apikey.
+# TLD_ACCESS_KEY=ACCESS_KEY_FROM_THEIA
+# TLD_SECRET_KEY=SECRET_KEY_FROM_THEIA
+
+
+# ------------------------------------------------------------
+# 4) Fournisseur LLM (perspectives d'experts via `ellmer`)
+# ------------------------------------------------------------
+# Une seule des trois clés suffit (selon le provider configuré). La
+# boîte « Clés API externes » de la navbar (onglet Fournisseur LLM)
+# persiste dans ~/.config/nemetonshiny/llm.json (chmod 0600).
+# Résolution : variable d'env > fichier llm.json.
+# MISTRAL_API_KEY=...
+# ANTHROPIC_API_KEY=sk-ant-...
+# OPENAI_API_KEY=sk-...
+
+
+# ------------------------------------------------------------
+# 5) Notifications push (ntfy.sh) — progression ingestion FAST/FORDEAD
+# ------------------------------------------------------------
+# Sans NEMETON_NTFY_TOPIC, pas de push. Topic recommandé : suffixé d'un
+# identifiant unique pour ne pas être lisible publiquement.
+# NEMETON_NTFY_TOPIC=nemeton-ingest-pascal-x7k2
+# NEMETON_NTFY_URL=https://ntfy.sh
+# NEMETON_NTFY_TOKEN=tk_xxxxxxxxxxxx     # seulement pour ntfy serveur privé
+
+
+# ------------------------------------------------------------
+# 6) CHM (Canopy Height Model) — opt-outs
+# ------------------------------------------------------------
+# Désactive TOUT le pipeline CHM (LiDAR HD + lasR + Theia + Open-Canopy).
+# Indicateurs Production (P1/P2/P3) + Énergie (E1) ressortiront NA.
+# Truthy : 1, true, yes, on (sauf "0" qui maintient activé).
+# NEMETONSHINY_DISABLE_CHM=1
+
+# Désactive uniquement le fallback lasR (dérive CHM depuis nuages COPC
+# locaux). Utile si lasR pose problème mais tu gardes Open-Canopy.
+# NEMETONSHINY_DISABLE_CHM_LASR=1
+
+
+# ------------------------------------------------------------
+# 7) Cœur nemeton — ingestion / cache Sentinel-2 (STAC)
+# ------------------------------------------------------------
+# Verbose tracing du cache S2 (FETCH / CACHE-HIT / WRITE / RENAME
+# par bande, par scène). Très chargé en console — n'active que pour
+# du debug. Défaut FALSE/non défini.
+# NEMETON_S2_CACHE_DEBUG=TRUE
+
+# Sauter la validation par checksum des fichiers cachés (raccourcit
+# les CACHE-HIT, au prix de pouvoir servir un fichier corrompu) :
+# NEMETON_S2_CACHE_SKIP_VALIDATION=1
+
+# Nombre de retries sur erreur réseau au téléchargement d'une bande
+# Sentinel-2 (défaut cœur).
+# NEMETON_S2_MAX_TRIES=5
+
+# Nombre de retries sur la recherche STAC :
+# NEMETON_STAC_MAX_TRIES=3
+
+# Taille de page de la pagination STAC (typique 50–500) :
+# NEMETON_STAC_PAGE_SIZE=200
+
+
+# ------------------------------------------------------------
+# 8) Python / reticulate (FORDEAD CRSWIR+harmonique, Theia SDK)
+# ------------------------------------------------------------
+# Chemin du virtualenv / interpréteur Python utilisé par reticulate.
+# Par défaut reticulate gère l'environnement lui-même (provisioning
+# paresseux par `nemeton`).
+# RETICULATE_PYTHON=/home/pascal/.virtualenvs/nemeton/bin/python
+
+# Chemin alternatif de l'environnement FORDEAD (cœur).
+# NEMETON_FORDEAD_ENV=/home/pascal/.virtualenvs/fordead
+
+
+# ------------------------------------------------------------
+# 9) Debug app
+# ------------------------------------------------------------
+# Verbose pour la Carte FAST pixel (Suivi sanitaire).
+# NEMETON_PIXEL_MAP_DEBUG=TRUE
+
+
+# ------------------------------------------------------------
+# 10) Système (rappel, généralement déjà défini par l'OS)
+# ------------------------------------------------------------
+# Langue par défaut, lue par certains helpers pour les messages cli.
+# LANG=fr_FR.UTF-8
+
+# Intégration GRASS (si tu utilises rgrass pour des opérations
+# géo-spatiales avancées) :
+# GRASS_DIR=/usr/lib/grass
+
+# Utilitaire zip (pour packaging / export). Défaut OS.
+# R_ZIPCMD=/usr/bin/zip
