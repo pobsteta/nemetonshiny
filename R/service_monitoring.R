@@ -237,6 +237,20 @@ run_ingestion_async <- function() {
         }
       )
 
+      # Heartbeat 3/3: nemeton::ingest_sentinel2_timeseries a rendu la
+      # main. Si l'événement apparaît dans la console / le progress file
+      # mais que le bouton ne se réactive pas côté UI (et que la
+      # notification de complétion ne sort jamais), le worker est en
+      # train de finaliser sa sortie (typiquement un checkpoint SQLite
+      # sur le fichier WAL après les INSERTs obs_pixel). L'utilisateur
+      # peut cliquer « Annuler » pour force-unlock l'UI sans risque
+      # (le worker continuera son commit en arrière-plan).
+      .ws_emit(progress_cb, list(
+        current  = "s2:ingest_done",
+        n_scenes = as.integer(summary$n_scenes %||% 0L),
+        n_obs    = as.integer(summary$n_obs_inserted %||% 0L)
+      ))
+
       duration_sec <- as.numeric(difftime(Sys.time(), .ws_t0,
                                           units = "secs"))
       .ntfy_send(
@@ -422,6 +436,16 @@ run_fordead_async <- function() {
           stop(e)
         }
       )
+
+      # Heartbeat de fin : nemeton::run_fordead_dieback a rendu la main.
+      # Symétrique au heartbeat `s2:ingest_done` côté FAST (cf. l.~240).
+      # Si cet événement apparaît dans la console mais que le bouton ne
+      # se réactive pas, le worker finalise sa sortie côté SQLite WAL
+      # — l'utilisateur peut force-unlock l'UI via « Annuler ».
+      .ws_emit(progress_cb, list(
+        current           = "fordead:dieback_done",
+        n_alerts_inserted = as.integer(result$n_alerts_inserted %||% 0L)
+      ))
 
       .ntfy_send(
         ntfy,

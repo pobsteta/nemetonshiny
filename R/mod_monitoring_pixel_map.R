@@ -554,6 +554,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           }
         )
       }
+      # v0.51.10 — clamp à [-1, 1] avant pal(). NDVI = (B08-B04)/(B08+B04)
+      # et NBR = (B08-B12)/(B08+B12) sont théoriquement bornés à [-1, 1]
+      # mais quelques cellules peuvent dépasser de ε (1.0001, -1.0001)
+      # à cause du bruit numérique en bord de tuile / pixels d'ombre
+      # → `.pixel_palette` (domain c(-1, 1)) les déclarait hors domaine
+      # → 4 warnings « Some values were outside the color scale » par
+      # re-render. terra::clamp les ramène à la borne (cap visuel).
+      r <- terra::clamp(r, lower = -1, upper = 1, values = TRUE)
       proxy |>
         leaflet::addRasterImage(
           x       = r,
