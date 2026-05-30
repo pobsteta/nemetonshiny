@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.7.9001 (dev)
+# nemetonshiny 0.51.8 (2026-05-30)
 
 ### Fixed — Onglet Fournisseur LLM : le bloc statut + clé suit la sélection
 
