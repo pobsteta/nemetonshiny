@@ -10,6 +10,30 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.6] - 2026-05-30
+
+### Security
+
+- **`~/.config/teledetection/.apikey` désormais en `0600`.** La clé
+  Theia / DATA TERRA enregistrée via `theia_save_api_key()` est
+  immédiatement verrouillée à l'écriture (`Sys.chmod`). Auparavant le
+  fichier héritait du `umask` du process (souvent `0644`). No-op sous
+  Windows.
+
+### Changed
+
+- **Modal Theia — section clé contextuelle.** Quand la clé est déjà
+  configurée, le modal affiche un bandeau « configurée » + boutons
+  « Modifier » / « Supprimer » au lieu d'un formulaire vide qui invitait
+  à l'écrasement. Helper `theia_clear_api_key()` ajouté.
+
+### Fixed
+
+- **Modal Theia — table « Provenance et licence » apparaît.** Le
+  `DT::datatable()` inline dans `modalDialog()` n'initialisait pas son
+  JS htmlwidget → table invisible. Remplacée par une table Bootstrap
+  statique (`htmltools::tags$table`).
+
 ## [0.51.5] - 2026-05-30
 
 ### Fixed

@@ -1354,6 +1354,23 @@ TRANSLATIONS <- list(
     fr = "Renseignez la clé d'accès et la clé secrète.",
     en = "Enter both the access key and the secret key."
   ),
+  # v0.51.6 — sous-section "clé déjà configurée" : Modifier / Supprimer.
+  theia_key_configured_hint = list(
+    fr = "Clé enregistrée dans ~/.config/teledetection/.apikey (chmod 0600). Tu peux la modifier ou la supprimer.",
+    en = "Key stored in ~/.config/teledetection/.apikey (chmod 0600). You can edit or delete it."
+  ),
+  theia_key_edit = list(
+    fr = "Modifier la clé",
+    en = "Edit key"
+  ),
+  theia_key_delete = list(
+    fr = "Supprimer la clé",
+    en = "Delete key"
+  ),
+  theia_key_deleted = list(
+    fr = "Clé API Theia supprimée.",
+    en = "Theia API key deleted."
+  ),
   theia_provenance_title = list(
     fr = "Provenance et licence des sources Theia",
     en = "Theia source provenance and licensing"

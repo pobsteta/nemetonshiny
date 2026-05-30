@@ -115,6 +115,11 @@ theia_save_api_key <- function(access_key, secret_key) {
       apikey_path,
       auto_unbox = TRUE
     )
+    # Lock down to owner-only (rw-------). Best-effort : no-op on
+    # Windows (POSIX bits don't map onto Windows ACLs but the file
+    # stays under the user profile so it's not world-readable anyway).
+    tryCatch(Sys.chmod(apikey_path, mode = "0600"),
+             error = function(e) NULL)
     TRUE
   }, error = function(e) {
     cli::cli_warn("Failed to write Theia API key file: {e$message}")
@@ -122,6 +127,34 @@ theia_save_api_key <- function(access_key, secret_key) {
   })
   Sys.setenv(TLD_ACCESS_KEY = access_key, TLD_SECRET_KEY = secret_key)
   ok
+}
+
+
+#' Clear the persisted Theia API key
+#'
+#' Deletes `~/.config/teledetection/.apikey` if it exists and unsets
+#' the `TLD_ACCESS_KEY` / `TLD_SECRET_KEY` environment variables for the
+#' running session. Used by the configuration modal's "Delete key"
+#' button so the user can revoke the key without dropping to a shell.
+#'
+#' @return Logical. TRUE when at least one source was cleared (file or
+#'   env), FALSE when nothing was set in the first place.
+#' @noRd
+theia_clear_api_key <- function() {
+  cleared <- FALSE
+  apikey_path <- .theia_apikey_path()
+  if (file.exists(apikey_path)) {
+    ok <- tryCatch({ unlink(apikey_path, force = TRUE); TRUE },
+                   error = function(e) FALSE)
+    if (isTRUE(ok)) cleared <- TRUE
+  }
+  if (nzchar(Sys.getenv("TLD_ACCESS_KEY", "")) ||
+      nzchar(Sys.getenv("TLD_SECRET_KEY", ""))) {
+    Sys.unsetenv("TLD_ACCESS_KEY")
+    Sys.unsetenv("TLD_SECRET_KEY")
+    cleared <- TRUE
+  }
+  cleared
 }
 
 

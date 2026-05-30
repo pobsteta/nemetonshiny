@@ -67,8 +67,11 @@ mod_theia_config_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Bumped after a successful key save to refresh the status panel.
+    # Bumped after a successful key save / delete to refresh the modal.
     status_refresh <- shiny::reactiveVal(0)
+    # When TRUE, force the edit form to render even though a key is
+    # already configured (user clicked "Modifier la clé").
+    edit_mode <- shiny::reactiveVal(FALSE)
 
     render_modal <- function() {
       i18n <- get_i18n(app_state$language %||% "fr")
@@ -93,6 +96,88 @@ mod_theia_config_server <- function(id, app_state) {
       provenance <- tryCatch(theia_source_provenance(),
                              error = function(e) NULL)
 
+      # v0.51.6 — section clé contextuelle :
+      #   • clé déjà configurée + pas en mode édition →
+      #     bandeau "configurée" + boutons Modifier / Supprimer
+      #     (plus de formulaire vide invitant à écraser).
+      #   • sinon (jamais configurée OU édition demandée) → formulaire
+      #     access + secret + Enregistrer (+ Annuler en mode édition).
+      key_section <- if (isTRUE(status$key_ok) && !isTRUE(edit_mode())) {
+        htmltools::div(
+          htmltools::tags$p(
+            class = "text-muted small mb-2",
+            i18n$t("theia_key_configured_hint")
+          ),
+          shiny::actionButton(
+            ns("edit_key"), i18n$t("theia_key_edit"),
+            icon  = shiny::icon("pencil"),
+            class = "btn-outline-primary"
+          ),
+          " ",
+          shiny::actionButton(
+            ns("delete_key"), i18n$t("theia_key_delete"),
+            icon  = shiny::icon("trash"),
+            class = "btn-outline-danger"
+          )
+        )
+      } else {
+        htmltools::div(
+          shiny::textInput(
+            ns("access_key"), i18n$t("theia_key_label_access"),
+            width = "100%"
+          ),
+          shiny::passwordInput(
+            ns("secret_key"), i18n$t("theia_key_label_secret"),
+            width = "100%"
+          ),
+          shiny::helpText(i18n$t("theia_key_help")),
+          shiny::actionButton(
+            ns("save_key"), i18n$t("theia_key_save"),
+            icon  = shiny::icon("key"),
+            class = "btn-primary"
+          ),
+          if (isTRUE(edit_mode())) " ",
+          if (isTRUE(edit_mode())) shiny::actionButton(
+            ns("cancel_edit"), i18n$t("cancel"),
+            class = "btn-outline-secondary"
+          )
+        )
+      }
+
+      # v0.51.6 — provenance : table Bootstrap statique (HTML pur). Le
+      # DT::datatable inline dans un modalDialog ne s'initialisait pas
+      # (htmlwidget JS pas câblé hors d'un DTOutput) → table invisible.
+      # On n'a besoin ni de tri ni de pagination (info statique) → une
+      # table HTML simple est strictement meilleure ici.
+      provenance_section <- if (is.null(provenance) || nrow(provenance) == 0) {
+        shiny::p(shiny::em(i18n$t("theia_provenance_empty")))
+      } else {
+        prov <- provenance[, c("name", "provenance", "consumed_by", "license"),
+                           drop = FALSE]
+        headers <- c(
+          i18n$t("theia_col_source"), i18n$t("theia_col_provenance"),
+          i18n$t("theia_col_consumed_by"), i18n$t("theia_col_license")
+        )
+        htmltools::div(
+          class = "table-responsive",
+          htmltools::tags$table(
+            class = "table table-sm table-striped small mb-0",
+            htmltools::tags$thead(
+              htmltools::tags$tr(lapply(headers, htmltools::tags$th))
+            ),
+            htmltools::tags$tbody(
+              lapply(seq_len(nrow(prov)), function(i) {
+                htmltools::tags$tr(
+                  lapply(seq_len(ncol(prov)), function(j) {
+                    htmltools::tags$td(as.character(prov[i, j]))
+                  })
+                )
+              })
+            )
+          )
+        )
+      }
+
       shiny::modalDialog(
         title = i18n$t("theia_config_title"),
         size = "l",
@@ -111,45 +196,11 @@ mod_theia_config_server <- function(id, app_state) {
         ),
 
         shiny::hr(),
-
-        shiny::textInput(
-          ns("access_key"), i18n$t("theia_key_label_access"),
-          width = "100%"
-        ),
-        shiny::passwordInput(
-          ns("secret_key"), i18n$t("theia_key_label_secret"),
-          width = "100%"
-        ),
-        shiny::helpText(i18n$t("theia_key_help")),
-        shiny::actionButton(
-          ns("save_key"), i18n$t("theia_key_save"),
-          icon = shiny::icon("key"),
-          class = "btn-primary"
-        ),
-
+        key_section,
         shiny::hr(),
 
         shiny::h5(i18n$t("theia_provenance_title")),
-        if (is.null(provenance) || nrow(provenance) == 0) {
-          shiny::p(shiny::em(i18n$t("theia_provenance_empty")))
-        } else {
-          # Drop the technical key column, keep the human-readable name.
-          prov <- provenance[, c("name", "provenance", "consumed_by", "license"),
-                             drop = FALSE]
-          names(prov) <- c(
-            i18n$t("theia_col_source"), i18n$t("theia_col_provenance"),
-            i18n$t("theia_col_consumed_by"), i18n$t("theia_col_license")
-          )
-          htmltools::div(
-            class = "table-responsive",
-            DT::datatable(
-              prov,
-              rownames = FALSE,
-              options = list(dom = "t", paging = FALSE, ordering = FALSE),
-              selection = "none"
-            )
-          )
-        }
+        provenance_section
       )
     }
 
@@ -170,6 +221,7 @@ mod_theia_config_server <- function(id, app_state) {
       ok <- theia_save_api_key(access, secret)
       if (isTRUE(ok)) {
         shiny::showNotification(i18n$t("theia_key_saved"), type = "message")
+        edit_mode(FALSE)
         status_refresh(status_refresh() + 1)
         shiny::showModal(render_modal())
       } else {
@@ -177,6 +229,31 @@ mod_theia_config_server <- function(id, app_state) {
           i18n$t("theia_key_save_failed"), type = "error"
         )
       }
+    })
+
+    # « Modifier la clé » → révèle le formulaire (clé déjà configurée).
+    shiny::observeEvent(input$edit_key, {
+      edit_mode(TRUE)
+      shiny::showModal(render_modal())
+    })
+
+    # « Annuler » en mode édition → referme le formulaire sans rien changer.
+    shiny::observeEvent(input$cancel_edit, {
+      edit_mode(FALSE)
+      shiny::showModal(render_modal())
+    })
+
+    # « Supprimer la clé » → unlink du .apikey + Sys.unsetenv des TLD_*,
+    # toast de confirmation, modal re-rendu.
+    shiny::observeEvent(input$delete_key, {
+      i18n <- get_i18n(app_state$language %||% "fr")
+      cleared <- theia_clear_api_key()
+      if (isTRUE(cleared)) {
+        shiny::showNotification(i18n$t("theia_key_deleted"), type = "warning")
+      }
+      edit_mode(FALSE)
+      status_refresh(status_refresh() + 1)
+      shiny::showModal(render_modal())
     })
 
     invisible(NULL)
