@@ -178,77 +178,60 @@ mod_theia_config_server <- function(id, app_state) {
     }
 
     # ----- LLM tab content --------------------------------------------
+    # v0.51.8 — La liste déroulante des providers porte un badge ✓ pour
+    # chacun déjà configuré (badge par fournisseur), une ligne résumé
+    # synthétise « N/3 fournisseurs configurés : Mistral, OpenAI » au-
+    # dessus, et le bloc statut/clé est servi par un uiOutput réactif
+    # à `input$llm_provider` — avant le bloc ne se rafraîchissait pas
+    # quand l'utilisateur changeait de provider dans la liste.
     .render_llm_tab <- function(i18n) {
       providers <- llm_providers()
-      choices   <- stats::setNames(names(providers),
-                                   vapply(providers, `[[`, character(1),
-                                          "label"))
+      st_all <- llm_status_all()
+
+      # Choix de la liste déroulante avec un ✓ sur les providers déjà
+      # configurés (vue d'ensemble dès l'ouverture du dropdown).
+      check <- "✓"
+      choices_labels <- vapply(names(providers), function(p) {
+        if (isTRUE(st_all[[p]]$configured)) {
+          paste0(providers[[p]]$label, " ", check)
+        } else {
+          providers[[p]]$label
+        }
+      }, character(1))
+      choices <- stats::setNames(names(providers), choices_labels)
       sel_provider <- active_provider()
       if (!(sel_provider %in% names(providers))) {
         sel_provider <- names(providers)[1]
       }
-      st_all <- llm_status_all()
-      st <- st_all[[sel_provider]]
-      configured <- isTRUE(st$configured)
 
-      # Status alert summarises configured-or-not plus the source
-      # (env var or local file). Matches the Theia per-prerequisite
-      # alert shape so the modal stays visually coherent.
-      status_label <- i18n$t("llm_status_label")
-      if (configured) {
-        src_msg <- if (isTRUE(st$env_ok))
-          sprintf(i18n$t("llm_status_source_env"), st$env_name)
-        else i18n$t("llm_status_source_file")
-        status_detail <- htmltools::tagList(
-          sprintf(i18n$t("llm_status_ok"), st$label),
-          htmltools::tags$br(),
-          htmltools::tags$small(class = "text-muted", src_msg)
-        )
+      # Ligne résumé : « N/3 fournisseurs configurés : Mistral, OpenAI »
+      # ou « Aucun fournisseur configuré. ».
+      configured_labels <- unname(vapply(names(providers), function(p) {
+        if (isTRUE(st_all[[p]]$configured)) providers[[p]]$label
+        else NA_character_
+      }, character(1)))
+      configured_labels <- configured_labels[!is.na(configured_labels)]
+      summary_line <- if (length(configured_labels)) {
+        sprintf(i18n$t("llm_summary_configured_fmt"),
+                length(configured_labels), length(providers),
+                paste(configured_labels, collapse = ", "))
       } else {
-        status_detail <- sprintf(i18n$t("llm_status_ko"), st$label)
-      }
-
-      key_section <- if (configured && !isTRUE(llm_edit_mode())) {
-        htmltools::div(
-          htmltools::tags$p(class = "text-muted small mb-2",
-                            i18n$t("llm_key_configured_hint")),
-          shiny::actionButton(
-            ns("llm_edit_key"), i18n$t("llm_key_edit"),
-            icon = shiny::icon("pencil"),
-            class = "btn-outline-primary"),
-          " ",
-          shiny::actionButton(
-            ns("llm_delete_key"), i18n$t("llm_key_delete"),
-            icon = shiny::icon("trash"),
-            class = "btn-outline-danger")
-        )
-      } else {
-        htmltools::div(
-          shiny::passwordInput(
-            ns("llm_key"), i18n$t("llm_key_label"),
-            width = "100%"),
-          shiny::helpText(i18n$t("llm_key_help")),
-          shiny::actionButton(
-            ns("llm_save_key"), i18n$t("llm_key_save"),
-            icon = shiny::icon("key"),
-            class = "btn-primary"),
-          if (isTRUE(llm_edit_mode())) " ",
-          if (isTRUE(llm_edit_mode())) shiny::actionButton(
-            ns("llm_cancel_edit"), i18n$t("cancel"),
-            class = "btn-outline-secondary")
-        )
+        i18n$t("llm_summary_none_configured")
       }
 
       htmltools::div(
         class = "pt-3",
         shiny::p(i18n$t("llm_config_intro")),
+        htmltools::tags$p(
+          class = "small text-muted mb-2",
+          bsicons::bs_icon("info-circle"),
+          htmltools::HTML(paste0(" ", summary_line))
+        ),
         shiny::selectInput(
           ns("llm_provider"), i18n$t("llm_provider_label"),
           choices = choices, selected = sel_provider,
           width = "240px"),
-        .theia_status_alert(configured, status_label, status_detail),
-        shiny::hr(),
-        key_section
+        shiny::uiOutput(ns("llm_status_panel"))
       )
     }
 
@@ -332,6 +315,73 @@ mod_theia_config_server <- function(id, app_state) {
       theia_edit_mode(FALSE)
       status_refresh(status_refresh() + 1)
       shiny::showModal(render_modal())
+    })
+
+    # ----- LLM status panel (réactif au changement de provider) ----
+    # Cette sortie alimente l'`uiOutput("llm_status_panel")` placé sous
+    # le `selectInput("llm_provider")` dans `.render_llm_tab()`. Avant,
+    # le bloc statut + clé était figé dans `render_modal()` → changer
+    # de provider dans la liste ne remettait pas le bandeau ni les
+    # boutons à jour. Le renderUI ci-dessous prend une dépendance
+    # explicite sur `input$llm_provider`, `llm_edit_mode()` et
+    # `status_refresh()` → mise à jour fluide sans re-render du modal.
+    output$llm_status_panel <- shiny::renderUI({
+      i18n <- get_i18n(app_state$language %||% "fr")
+      status_refresh()
+      provider <- input$llm_provider %||% active_provider()
+      st_all <- llm_status_all()
+      if (!(provider %in% names(st_all))) provider <- names(st_all)[1]
+      st <- st_all[[provider]]
+      configured <- isTRUE(st$configured)
+
+      status_label <- i18n$t("llm_status_label")
+      status_detail <- if (configured) {
+        src_msg <- if (isTRUE(st$env_ok))
+          sprintf(i18n$t("llm_status_source_env"), st$env_name)
+        else i18n$t("llm_status_source_file")
+        htmltools::tagList(
+          sprintf(i18n$t("llm_status_ok"), st$label),
+          htmltools::tags$br(),
+          htmltools::tags$small(class = "text-muted", src_msg)
+        )
+      } else {
+        sprintf(i18n$t("llm_status_ko"), st$label)
+      }
+
+      key_section <- if (configured && !isTRUE(llm_edit_mode())) {
+        htmltools::div(
+          htmltools::tags$p(class = "text-muted small mb-2",
+                            i18n$t("llm_key_configured_hint")),
+          shiny::actionButton(
+            ns("llm_edit_key"), i18n$t("llm_key_edit"),
+            icon = shiny::icon("pencil"),
+            class = "btn-outline-primary"),
+          " ",
+          shiny::actionButton(
+            ns("llm_delete_key"), i18n$t("llm_key_delete"),
+            icon = shiny::icon("trash"),
+            class = "btn-outline-danger")
+        )
+      } else {
+        htmltools::div(
+          shiny::passwordInput(ns("llm_key"), i18n$t("llm_key_label"),
+                               width = "100%"),
+          shiny::helpText(i18n$t("llm_key_help")),
+          shiny::actionButton(ns("llm_save_key"), i18n$t("llm_key_save"),
+                              icon = shiny::icon("key"),
+                              class = "btn-primary"),
+          if (isTRUE(llm_edit_mode())) " ",
+          if (isTRUE(llm_edit_mode())) shiny::actionButton(
+            ns("llm_cancel_edit"), i18n$t("cancel"),
+            class = "btn-outline-secondary")
+        )
+      }
+
+      htmltools::tagList(
+        .theia_status_alert(configured, status_label, status_detail),
+        shiny::hr(),
+        key_section
+      )
     })
 
     # ----- LLM observers ----------------------------------------------

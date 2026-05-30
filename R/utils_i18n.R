@@ -1312,6 +1312,16 @@ TRANSLATIONS <- list(
     fr = "Clé API LLM",
     en = "LLM API key"
   ),
+  # v0.51.8 — ligne résumé au-dessus du selectInput (vue d'ensemble
+  # « N/3 configurés : Mistral, OpenAI »).
+  llm_summary_configured_fmt = list(
+    fr = "%d / %d fournisseurs configurés : %s.",
+    en = "%d of %d providers configured: %s."
+  ),
+  llm_summary_none_configured = list(
+    fr = "Aucun fournisseur configuré.",
+    en = "No provider configured yet."
+  ),
   llm_status_ok = list(
     fr = "Configurée pour %s.",
     en = "Configured for %s."
