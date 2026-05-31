@@ -1,3 +1,32 @@
+# nemetonshiny 0.52.0.9001 (2026-05-31)
+
+### Fixed — Warning « relation "monitoring_zone" does not exist » au boot (Postgres)
+
+Sur Postgres uniquement, le warning suivant apparaissait au démarrage
+de la session, juste avant les `Applied migration 0001_init / 0002_fordead / 0003_project_uuid` :
+
+```
+Avis : Failed to list monitoring zones: Failed to prepare query :
+ERROR: relation "monitoring_zone" does not exist
+```
+
+Cause : `get_monitoring_db_connection(read_only = TRUE)` sautait
+volontairement l'étape de migration sur le chemin RO (optimisation
+pertinente pour SQLite : la présence du fichier proxy-prouve que le
+schéma est déjà migré). Pour Postgres ce raccourci était faux — la
+base existe toujours, mais le schéma peut très bien ne pas avoir
+encore été appliqué au tout premier reactive tick. Le warning
+disparaissait dès que le premier RW path (sauvegarde projet,
+ingestion FAST…) ouvrait une connexion qui finissait par migrer.
+
+Correctif : sur le RO path, si le backend n'est PAS un fichier
+(SQLite), on appelle aussi `.ensure_monitoring_schema()` —
+idempotent, sub-milliseconde après la 1re fois, et la race au
+démarrage disparaît proprement. SQLite garde son fast-path
+inchangé (existence du fichier = déjà migré).
+
+`R/service_monitoring_db.R`. Cycle dev `0.52.0` → `0.52.0.9001`.
+
 # nemetonshiny 0.52.0 (2026-05-31)
 
 ### Changed — Vrai cancel coopératif FAST/FORDEAD (s'appuie sur `nemeton@v0.53.0`)

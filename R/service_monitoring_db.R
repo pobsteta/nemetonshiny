@@ -80,9 +80,23 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
     return(NULL)
   }
 
-  # Reader path : RO connexion, no migration. For the local SQLite
-  # backend the file must already exist (a prior RW path migrated it) ;
-  # the WAL RW lock is non-exclusive so readers coexist with the worker.
+  # Reader path : RO connexion. Pour SQLite, l'existence du fichier
+  # est un proxy fiable de « schéma déjà migré » (un précédent RW path
+  # a forcément créé le fichier ET appliqué les migrations dans la même
+  # transaction) — on saute la migration pour éviter le coût inutile à
+  # chaque reactive tick, et le WAL RW lock est non-exclusif donc les
+  # readers coexistent avec le worker.
+  #
+  # v0.52.1 — Pour Postgres en revanche, la base existe toujours (elle
+  # est créée par l'admin du cluster), mais le SCHÉMA peut ne pas avoir
+  # encore été migré au tout premier reactive tick d'une session — d'où
+  # le warning « relation "monitoring_zone" does not exist » au boot,
+  # avant que le premier RW path (sauvegarde projet, ingest FAST…)
+  # n'ouvre une connexion qui applique enfin les migrations. On lance
+  # donc `.ensure_monitoring_schema()` également sur le RO path pour
+  # Postgres : c'est idempotent (un simple SELECT sur `schema_migration`
+  # après la 1re fois, sub-milliseconde) et ça élimine la race au
+  # démarrage. Le coût asymptotique reste celui d'un SELECT par tick.
   if (isTRUE(read_only)) {
     if (.is_file_db_url(url) && !file.exists(.file_db_path_from_url(url))) {
       .nemeton_env$.last_monitoring_db_error <-
@@ -99,6 +113,27 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
         NULL
       }
     )
+    if (is.null(con)) return(NULL)
+    # Postgres uniquement : migrer si nécessaire. SQLite a déjà été
+    # migré au moment où le fichier a été créé par un RW path antérieur.
+    if (!.is_file_db_url(url)) {
+      schema_ok <- tryCatch({
+        .ensure_monitoring_schema(con)
+        TRUE
+      }, error = function(e) {
+        msg <- conditionMessage(e)
+        cli::cli_warn("Monitoring schema migration failed (RO path): {msg}")
+        .nemeton_env$.last_monitoring_db_error <-
+          paste0("Migration failed: ",
+                 substr(gsub("\\s+", " ", msg), 1L, 220L))
+        FALSE
+      })
+      if (!isTRUE(schema_ok)) {
+        tryCatch(close_monitoring_db_connection(con),
+                 error = function(e) NULL)
+        return(NULL)
+      }
+    }
     return(con)
   }
 
