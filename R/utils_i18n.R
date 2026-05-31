@@ -1911,6 +1911,18 @@ TRANSLATIONS <- list(
     fr = "Enregistrez une zone via R : nemeton::register_monitoring_zone(con, ...).",
     en = "Register a zone from R: nemeton::register_monitoring_zone(con, ...)."
   ),
+  # v0.52.5 — État « orphelin » : la base contient des zones mais
+  # aucune n'est rattachée au projet chargé. Symptôme typique :
+  # `helper-monitoring.R` côté cœur a wipe + recréé une stub
+  # (incident villards 2026-05-31, cf. brief cœur v0.54.0).
+  monitoring_zone_orphan_title = list(
+    fr = "Zones présentes — mais aucune ne correspond à ce projet",
+    en = "Zones present — but none matches this project"
+  ),
+  monitoring_zone_orphan_body = list(
+    fr = "La base contient %d zone(s), mais aucune n'est rattachée au projet chargé. Symptôme typique d'un wipe par les tests cœur (incident villards 2026-05-31). Clique sur « Enregistrer ce projet comme zone de suivi » dans la barre latérale pour recréer la zone et ses placettes en un clic.",
+    en = "The monitoring DB contains %d zone(s), but none is linked to the loaded project. Typical symptom of a wipe by core tests (villards incident 2026-05-31). Click « Register this project as a monitoring zone » in the sidebar to recreate the zone and its plots in one click."
+  ),
   monitoring_date_range = list(
     fr = "P\u00e9riode d'observation",
     en = "Observation period"
