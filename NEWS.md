@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.9.9001 (dev)
+# nemetonshiny 0.51.10 (2026-05-31)
 
 ### Added — Heartbeat de fin pour les workers FAST et FORDEAD
 
