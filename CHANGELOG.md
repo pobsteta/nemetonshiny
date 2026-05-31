@@ -10,6 +10,29 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.7] - 2026-05-31
+
+### Added
+
+- **Bouton « Enregistrer ce projet comme zone de suivi » INLINE dans le bandeau Suivi sanitaire.**
+  Le bouton sidebar historique tombait systématiquement sous le pli
+  sur les écrans 1080p — l'utilisateur voyait le message « Aucune
+  zone enregistrée » (ou le bandeau orphelin v0.52.5) sans voir
+  l'action. Ce bouton est désormais rendu directement dans le
+  bandeau dans les deux branches concernées : `n == 0` (DB vide)
+  avec un style `btn-primary` bleu, et « zone orpheline » (zones
+  présentes mais aucune pour ce projet, après wipe par les tests
+  cœur) avec un style `btn-warning` jaune cohérent avec le card
+  warning. Le bouton sidebar reste en place.
+
+### Changed
+
+- **Observer `input$register` refactoré en `observe() + bindEvent`.**
+  L'observer historique de la registration écoute désormais à la
+  fois `input$register` (sidebar) ET `input$register_inline`
+  (bandeau) via un même `shiny::bindEvent(..., ignoreInit = TRUE)`
+  — pas de duplication de logique entre les deux call sites.
+
 ## [0.52.6] - 2026-05-31
 
 ### Fixed

@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.6.9001 (2026-05-31)
+# nemetonshiny 0.52.7 (2026-05-31)
 
 ### Added — Bouton « Enregistrer ce projet » INLINE dans le bandeau Suivi sanitaire
 
@@ -33,7 +33,8 @@ input$register_inline)`. Le sidebar bouton historique reste en place
     devient un `observe()` + `bindEvent(input$register,
     input$register_inline, ignoreInit = TRUE)`.
 
-Cycle dev `0.52.6` → `0.52.6.9001`.
+Cycle dev `0.52.6` → `0.52.6.9001` → release stable **`v0.52.7`**
+(PATCH, feat).
 
 # nemetonshiny 0.52.6 (2026-05-31)
 
