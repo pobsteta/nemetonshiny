@@ -466,7 +466,19 @@ mod_synthesis_ui <- function(id) {
               ),
               htmltools::span(
                 class = "text-muted small",
-                style = "white-space: nowrap; padding-top: 0.55rem;",
+                # v0.52.6 — padding-top ajusté de 0.55rem (centre du
+                # bouton 38px) à 1rem. v0.52.3 avait calé le centre
+                # vertical du texte sur le centre du bouton ; mais la
+                # ligne des badges (`NDP / Hauteur LiDAR / Inventaire
+                # ML`) à droite tombe en réalité ~8 px plus bas que le
+                # centre du bouton, parce que le flux de la colonne
+                # droite (`Score global` → `54.8` → `/100 (12
+                # familles)`) ne donne pas exactement la même hauteur
+                # cumulée que les 2 boutons PDF/GeoPackage de la
+                # colonne du milieu. 1rem (≈ 16 px) descend le texte
+                # juste au niveau du centre des badges, ce que voulait
+                # l'utilisateur.
+                style = "white-space: nowrap; padding-top: 1rem;",
                 if (i18n$language == "fr") "Taille image Max 5 Mo, PNG/JPG" else "Max 5 MB, PNG/JPG"
               )
             )
