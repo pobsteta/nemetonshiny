@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.2] - 2026-05-31
+
+### Fixed
+
+- **Onglet Synthèse — alignement de la légende « Taille image Max 5 Mo, PNG/JPG ».**
+  Sortie du flex inline (où elle vivait à droite du bouton « Image de
+  couverture », donc plus haut que la ligne des badges) et placée sur
+  une ligne dédiée centrée sous le fileInput, ce qui l'aligne
+  visuellement avec la ligne `NDP 1 – Observation | Hauteur LiDAR HD
+  | Inventaire ML` de la colonne de droite.
+
 ## [0.52.1] - 2026-05-31
 
 ### Fixed

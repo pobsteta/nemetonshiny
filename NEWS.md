@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.1.9001 (2026-05-31)
+# nemetonshiny 0.52.2 (2026-05-31)
 
 ### Fixed — Onglet « Synthèse » : alignement de la légende « Taille image Max 5 Mo »
 
@@ -14,7 +14,7 @@ l'input qu'elle suit.
 
 `R/app_ui.R` (sortie de la `bslib::layout_columns` "Project summary /
 Download buttons / Global score"). Cycle dev `0.52.1` →
-`0.52.1.9001`.
+`0.52.1.9001` → release stable **`v0.52.2`** (PATCH, fix).
 
 # nemetonshiny 0.52.1 (2026-05-31)
 
