@@ -71,7 +71,20 @@
 # le freeze ~20 s du timeout TCP OS quand l'hôte est injoignable.
 # NEMETON_DB_CONNECT_TIMEOUT=8
 
-# URL alternative pour la suite de tests (ne JAMAIS commiter) :
+# URL pour la suite de tests intégration de `nemeton` (cœur).
+# Contrat à 3 niveaux depuis nemeton@v0.54.0 (incident villards
+# 2026-05-31) — `tests/testthat/helper-monitoring.R` refuse de tourner
+# sauf si :
+#   1. NEMETON_DB_URL_TEST est définie (sinon → testthat::skip)
+#   2. NEMETON_DB_URL_TEST ≠ NEMETON_DB_URL (anti-copier-coller)
+#   3. la DB cible NE contient PAS les tables app `projects` /
+#      `users` / `parcels` (= ce n'est pas une base de production)
+# Override d'urgence : NEMETON_DB_URL_TEST_ALLOW_DESTRUCTIVE=TRUE.
+# Création de la DB test typique :
+#   createdb -U nemeton -h 127.0.0.1 nemeton_test
+#   psql -d nemeton_test -c "CREATE EXTENSION timescaledb; \
+#                            CREATE EXTENSION postgis;"
+# Ne JAMAIS commiter cette ligne avec un vrai mot de passe.
 # NEMETON_DB_URL_TEST=postgresql://nemeton:test@127.0.0.1:5432/nemeton_test
 
 
