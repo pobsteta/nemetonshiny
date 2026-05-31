@@ -1070,7 +1070,12 @@ mod_monitoring_server <- function(id, app_state) {
     # Click handler: validate, register, persist zone_id, refresh
     # dropdown. Idempotent — clicking twice on the same project just
     # re-selects the existing zone (helper checks DB before inserting).
-    shiny::observeEvent(input$register, {
+    # v0.52.7 — Observer câblé sur DEUX inputs : le bouton sidebar
+    # historique (`input$register`) ET le bouton inline ajouté dans le
+    # bandeau (`input$register_inline`). Les deux trigent la même
+    # `register_project_as_zone()` — pas de duplication de logique,
+    # juste un `bindEvent` multi-source.
+    shiny::observe({
       i18n <- i18n_r()
       project <- app_state$current_project
       if (is.null(project) || is.null(project$id)) {
@@ -1127,7 +1132,9 @@ mod_monitoring_server <- function(id, app_state) {
         sprintf(i18n$t(msg_key), result$zone_name, result$n_plots),
         type = "message", duration = 5
       )
-    })
+    }) |>
+      shiny::bindEvent(input$register, input$register_inline,
+                       ignoreInit = TRUE)
 
     # DB status card — seven states:
     #   0. Async probe still running        → spinning gear card
@@ -1242,11 +1249,29 @@ mod_monitoring_server <- function(id, app_state) {
         ))
       }
       if (n == 0L) {
+        # v0.52.7 — Bouton d'action INLINE dans le bandeau. Le bouton
+        # sidebar `input$register` existe déjà, mais il vit sous la
+        # zone "Mode de suivi" et tombe souvent sous le pli sur les
+        # écrans courants → l'utilisateur voit le message mais pas
+        # l'action. On rajoute donc un bouton dans le bandeau lui-même
+        # qui appelle la même logique (via `input$register_inline` ;
+        # observer ci-dessous est un alias de `input$register`).
         return(.monitoring_status_card(
           icon  = "info-circle",
           class = "border-info",
           title = i18n$t("monitoring_zone_none"),
-          body  = i18n$t("monitoring_zone_register_hint")
+          body  = htmltools::tagList(
+            htmltools::tags$div(i18n$t("monitoring_zone_register_hint")),
+            htmltools::tags$div(
+              class = "mt-2",
+              shiny::actionButton(
+                session$ns("register_inline"),
+                label = i18n$t("monitoring_register_btn"),
+                icon  = shiny::icon("plus-circle"),
+                class = "btn-primary btn-sm"
+              )
+            )
+          )
         ))
       }
       # v0.52.5 — Détection de l'état « orphelin » : la DB contient
@@ -1280,11 +1305,26 @@ mod_monitoring_server <- function(id, app_state) {
           error = function(e) NULL
         )
         if (!is.null(zones_pu) && !(project$id %in% zones_pu)) {
+          # v0.52.7 — Même logique que la branche n==0 : bouton
+          # d'action INLINE dans le bandeau orphelin (le bouton
+          # sidebar existant tombe souvent sous le pli).
           return(.monitoring_status_card(
             icon  = "exclamation-triangle-fill",
             class = "border-warning",
             title = i18n$t("monitoring_zone_orphan_title"),
-            body  = sprintf(i18n$t("monitoring_zone_orphan_body"), n)
+            body  = htmltools::tagList(
+              htmltools::tags$div(
+                sprintf(i18n$t("monitoring_zone_orphan_body"), n)),
+              htmltools::tags$div(
+                class = "mt-2",
+                shiny::actionButton(
+                  session$ns("register_inline"),
+                  label = i18n$t("monitoring_register_btn"),
+                  icon  = shiny::icon("plus-circle"),
+                  class = "btn-warning btn-sm"
+                )
+              )
+            )
           ))
         }
       }
