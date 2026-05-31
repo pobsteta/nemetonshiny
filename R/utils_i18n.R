@@ -1935,19 +1935,19 @@ TRANSLATIONS <- list(
     fr = "Lancer le diagnostic FAST",
     en = "Run FAST diagnosis"
   ),
-  # v0.51.11 — libellé recadré pour refléter ce que le bouton fait
-  # vraiment : il force-unlock l'UI (force_unlock_quick / _health) sans
-  # tuer le worker (Shiny ExtendedTask n'a pas d'API d'annulation).
-  # « Annuler / Réinitialiser » suggérait à tort que le diagnostic
-  # était arrêté en base. « Libérer l'interface » est juste, et le
-  # toast détaille la nuance (worker poursuit, INSERTs idempotents).
+  # v0.52.0 — Vrai cancel coopératif (nemeton@v0.53.0+). Le clic écrit
+  # `<projet>/data/{fast,fordead}_cancel.flag`. Le worker poll ce
+  # fichier entre tuiles (FAST) / entre phases reticulate (FORDEAD)
+  # et sort proprement au prochain checkpoint. Le libellé reflète ce
+  # vrai cancel ; le toast explique le mécanisme (tuile/phase courante
+  # finit, puis stop ; INSERT idempotents conservés).
   monitoring_run_cancel_btn = list(
-    fr = "Libérer l'interface",
-    en = "Release the interface"
+    fr = "Annuler le diagnostic",
+    en = "Cancel the diagnostic"
   ),
   monitoring_run_cancel_done = list(
-    fr = "Interface libérée. Vous pouvez relancer dès que le problème est corrigé. Le worker en cours continue en arrière-plan (les INSERT en base sont idempotents).",
-    en = "Interface released. You can relaunch as soon as the issue is fixed. The running worker keeps going in the background (DB INSERTs are idempotent)."
+    fr = "Annulation demandée. Le worker termine la tuile (FAST) / la phase (FORDEAD) en cours puis s'arrête proprement. Les INSERT déjà commités en base sont conservés (ON CONFLICT DO NOTHING — relance sans risque).",
+    en = "Cancellation requested. The worker finishes the current tile (FAST) / phase (FORDEAD) then exits cleanly. Already-committed DB rows are kept (ON CONFLICT DO NOTHING — safe to relaunch)."
   ),
   monitoring_register_btn = list(
     fr = "Enregistrer ce projet comme zone de suivi",

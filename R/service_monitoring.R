@@ -53,7 +53,8 @@ run_ingestion_async <- function() {
                                    cache_dir = NULL,
                                    skip_cached = TRUE,
                                    log_path = NULL,
-                                   lang = "fr") {
+                                   lang = "fr",
+                                   cancel_path = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -201,7 +202,15 @@ run_ingestion_async <- function() {
             max_cloud         = max_cloud,
             skip_cached       = skip_cached,
             cache_dir         = cache_dir,
-            progress_callback = progress_cb
+            progress_callback = progress_cb,
+            # v0.52.0 — cancel coopératif (nemeton@v0.53.0). Le worker
+            # polled `file.exists(cancel_path)` entre chaque tuile ; si
+            # présent → sortie propre avec commit partiel + résumé
+            # `status = "cancelled"`. Le caller (mod_monitoring) écrit
+            # le fichier sur clic « Annuler le diagnostic », et le
+            # supprime avant chaque lancement pour éviter un cancel
+            # fantôme persistant.
+            cancel_path       = cancel_path
           ),
           # Catch every `message()` signaled by nemeton — including
           # `.s2_cache_log()` traces (gated on NEMETON_S2_CACHE_DEBUG)
@@ -367,7 +376,8 @@ run_fordead_async <- function() {
                                    vegetation_index = "CRSWIR",
                                    zone_id = NULL, cache_dir = NULL,
                                    db_url = "", progress_path = NULL,
-                                   lang = "fr") {
+                                   lang = "fr",
+                                   cancel_path = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -423,7 +433,13 @@ run_fordead_async <- function() {
           dates_monitoring  = dates_monitoring,
           threshold_anomaly = threshold_anomaly,
           vegetation_index  = vegetation_index,
-          progress_callback = progress_cb
+          progress_callback = progress_cb,
+          # v0.52.0 — cancel coopératif (nemeton@v0.53.0). Le worker
+          # polled `file.exists(cancel_path)` entre phases reticulate
+          # (training → monitoring → écriture alertes). Granularité
+          # plus grossière que FAST mais cohérente — l'utilisateur
+          # sait qu'il abandonne au prochain checkpoint.
+          cancel_path       = cancel_path
         ),
         error = function(e) {
           .ntfy_send(
