@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.11.9001 (2026-05-31)
+# nemetonshiny 0.52.0 (2026-05-31)
 
 ### Changed — Vrai cancel coopératif FAST/FORDEAD (s'appuie sur `nemeton@v0.53.0`)
 
@@ -29,8 +29,8 @@ partiel. Les INSERT déjà commités sont conservés (idempotents,
 * `DESCRIPTION` : plancher `Imports: nemeton (>= 0.53.0)` (l'app exige
   maintenant `cancel_path` côté cœur).
 
-Cycle dev `0.51.11` → `0.51.11.9001`. La release stable `v0.52.0`
-(MINOR, feat) clôt le chantier.
+Cycle dev `0.51.11` → `0.51.11.9001` → release stable **`v0.52.0`**
+(MINOR, feat).
 
 # nemetonshiny 0.51.11 (2026-05-31)
 
