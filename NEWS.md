@@ -1,3 +1,28 @@
+# nemetonshiny 0.52.2.9001 (2026-05-31)
+
+### Fixed — Onglet « Synthèse » : légende « Taille image Max 5 Mo » remise à DROITE du fileInput, alignée avec les badges
+
+`v0.52.2` avait placé la légende centrée sous le fileInput ; le
+résultat ne correspondait pas à la demande UX, qui était de mettre la
+légende **à droite** du sélecteur « Image de couverture » au **niveau
+horizontal de la ligne des badges** (`NDP 1 – Observation`,
+`Hauteur LiDAR HD`, `Inventaire ML`) de la colonne de droite.
+
+Le piège : `shiny::fileInput` rend bouton + placeholder + barre de
+progression. La barre s'affiche dès qu'on charge une image, ce qui
+augmente la hauteur totale du fileInput. Un `align-items: center` sur
+le flex aurait alors centré la légende sur (bouton + barre), donc
+plus bas que le bouton dès qu'on aurait choisi un fichier — exactement
+le décalage qu'on cherche à supprimer.
+
+Solution : flex avec `align-items: flex-start` (ancre la légende en
+haut du flex = niveau du haut du bouton) et `padding-top: 0.55rem`
+(≈ moitié de la hauteur du bouton, 38px) pour la descendre pile au
+centre du bouton. Le placement reste stable que la barre de
+progression soit affichée ou non.
+
+`R/app_ui.R`. Cycle dev `0.52.2` → `0.52.2.9001`.
+
 # nemetonshiny 0.52.2 (2026-05-31)
 
 ### Fixed — Onglet « Synthèse » : alignement de la légende « Taille image Max 5 Mo »
