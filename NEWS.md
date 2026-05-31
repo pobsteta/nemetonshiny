@@ -1,3 +1,30 @@
+# nemetonshiny 0.51.10 (2026-05-31)
+
+### Added — Heartbeat de fin pour les workers FAST et FORDEAD
+
+Quand le diagnostic FAST atteint « Tuile 122/122 » et que le bouton ne
+se réactive plus, on ne savait pas si `nemeton::ingest_sentinel2_timeseries()`
+avait rendu la main ou s'il était encore en train de finaliser ses
+INSERTs `obs_pixel` / son checkpoint SQLite/WAL. Le worker émet
+désormais un événement final `s2:ingest_done` (resp.
+`fordead:dieback_done`) juste après le retour du cœur. Le
+`progress_callback` pousse l'événement dans le fichier JSON tailé par
+la session principale : si tu le vois mais que la notification de
+complétion n'arrive pas, le bug est dans le hand-off Shiny ExtendedTask
+(et tu peux force-unlock l'UI via le bouton « Annuler » qui reste
+visible) ; si tu ne le vois jamais, c'est nemeton qui est encore au
+travail.
+
+### Fixed — Carte FAST : silence des warnings « Some values were outside the color scale »
+
+NDVI = (B08-B04)/(B08+B04) et NBR = (B08-B12)/(B08+B12) sont
+théoriquement bornés à [-1, 1] mais le bruit numérique sur les bandes
+fait dépasser quelques cellules de ±ε (1.0001, -1.0001) → la palette
+plasma (domaine `c(-1, 1)`) les déclarait hors domaine et émettait 4
+warnings `colors(.)` par re-render. `terra::clamp(r, -1, 1, values = TRUE)`
+ramène ces cellules sur la borne avant `addRasterImage()` — cap visuel
+préservé, plus aucun warning.
+
 # nemetonshiny 0.51.9 (2026-05-30)
 
 ### Fixed — Alertes FAST : raster invisible + warnings « Some values were outside the color scale »

@@ -10,6 +10,25 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.10] - 2026-05-31
+
+### Added
+
+- **Heartbeat de fin pour les workers d'ingestion.** Le worker FAST
+  (resp. FORDEAD) émet désormais un événement `s2:ingest_done` (resp.
+  `fordead:dieback_done`) via `progress_callback` juste après le retour
+  du cœur. Permet de diagnostiquer un bouton resté grisé : si
+  l'événement apparaît, le cœur a rendu la main et le bug est dans le
+  hand-off Shiny ExtendedTask ; sinon nemeton finalise encore.
+
+### Fixed
+
+- **Carte FAST pixel map — silence des warnings `colors(.)`.**
+  `terra::clamp(r, -1, 1, values = TRUE)` avant `addRasterImage()`
+  ramène les ε-overshoots numériques de NDVI / NBR dans le domaine
+  `[-1, 1]` de la palette plasma. Plus aucun warning « Some values
+  were outside the color scale » à chaque re-render.
+
 ## [0.51.9] - 2026-05-30
 
 ### Fixed
