@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.1] - 2026-05-31
+
+### Fixed
+
+- **Warning « relation `monitoring_zone` does not exist » au boot Postgres.**
+  Le chemin RO de `get_monitoring_db_connection()` sautait
+  volontairement les migrations (optimisation correcte pour SQLite :
+  fichier = déjà migré, mais fausse pour Postgres : base toujours là,
+  schéma possiblement vide). Le premier reactive tick au démarrage
+  émettait alors un warning, qui disparaissait dès que le premier RW
+  path migrait la base. Fix : pour Postgres on appelle aussi
+  `.ensure_monitoring_schema()` sur le RO path (idempotent,
+  sub-milliseconde après la 1re fois). SQLite garde son fast-path.
+
 ## [0.52.0] - 2026-05-31
 
 ### Changed
