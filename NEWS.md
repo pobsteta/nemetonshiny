@@ -1,3 +1,40 @@
+# nemetonshiny 0.52.6.9001 (2026-05-31)
+
+### Added — Bouton « Enregistrer ce projet » INLINE dans le bandeau Suivi sanitaire
+
+Le bouton `input$register` (sidebar « Enregistrer ce projet comme zone
+de suivi ») existe déjà depuis longtemps, mais vit sous le bloc « Mode
+de suivi » de la barre latérale et tombe **systématiquement sous le
+pli** sur les écrans 1080p courants. Résultat : l'utilisateur voit le
+message « Aucune zone enregistrée » (ou le bandeau orphelin v0.52.5)
+mais **ne voit pas l'action de récupération**, et le texte du bandeau
+ne mentionne que la voie R (`nemeton::register_monitoring_zone(...)`).
+
+Cette release ajoute le bouton **directement dans le bandeau** dans
+les deux branches concernées :
+
+* **`n == 0`** (DB monitoring vide) : bouton primary bleu sous le
+  texte explicatif.
+* **« zone orpheline »** (zones présentes mais aucune ne correspond
+  au projet — typiquement après un wipe par les tests cœur, cf.
+  v0.52.5) : même bouton, variante `btn-warning` jaune pour rester
+  visuellement cohérent avec le bandeau warning.
+
+Le bouton inline est un alias de `input$register` — pas de
+duplication de logique : l'observer du sidebar a été refactoré pour
+écouter les deux inputs via `shiny::bindEvent(input$register,
+input$register_inline)`. Le sidebar bouton historique reste en place
+(pour les utilisateurs qui ont scrollé ou qui ont un grand écran).
+
+* `R/mod_monitoring.R` :
+  - branches `n == 0` et orphelin de `output$db_status` rendent le
+    bouton inline avec son icône `plus-circle` ;
+  - l'observer historique `observeEvent(input$register, ...)`
+    devient un `observe()` + `bindEvent(input$register,
+    input$register_inline, ignoreInit = TRUE)`.
+
+Cycle dev `0.52.6` → `0.52.6.9001`.
+
 # nemetonshiny 0.52.6 (2026-05-31)
 
 ### Fixed — Onglet « Synthèse » : ajustement fin du padding de la légende « Taille image »
