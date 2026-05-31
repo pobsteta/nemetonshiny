@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.5.9001 (2026-05-31)
+# nemetonshiny 0.52.6 (2026-05-31)
 
 ### Fixed — Onglet « Synthèse » : ajustement fin du padding de la légende « Taille image »
 
@@ -13,7 +13,8 @@ les 2 boutons PDF + GeoPackage de la colonne du milieu.
 `padding-top` passe de `0.55rem` à `1rem` (≈ 16 px) pour descendre le
 texte juste au niveau du centre des badges. `R/app_ui.R`.
 
-Cycle dev `0.52.5` → `0.52.5.9001`.
+Cycle dev `0.52.5` → `0.52.5.9001` → release stable **`v0.52.6`**
+(PATCH, fix).
 
 # nemetonshiny 0.52.5 (2026-05-31)
 

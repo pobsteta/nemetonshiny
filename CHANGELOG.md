@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.6] - 2026-05-31
+
+### Fixed
+
+- **Synthèse — alignement fin de la légende « Taille image Max 5 Mo, PNG/JPG » sur les badges.**
+  `v0.52.3` calait le centre vertical de la légende sur le centre du
+  bouton « Image de couverture » (`padding-top: 0.55rem` ≈ ½ bouton
+  38px). Mais la ligne des badges de la colonne droite (`NDP /
+  Hauteur LiDAR / Inventaire ML`) tombe ~8 px sous le centre du
+  bouton, parce que le flux `Score global → 54.8 → /100 (12 familles)`
+  n'a pas exactement la même hauteur cumulée que les 2 boutons PDF +
+  GeoPackage à gauche. `padding-top` passe à `1rem` (≈ 16 px) pour
+  descendre le texte au niveau du centre des badges.
+
 ## [0.52.5] - 2026-05-31
 
 ### Added
