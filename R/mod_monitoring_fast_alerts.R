@@ -31,62 +31,52 @@
 mod_monitoring_fast_alerts_ui <- function(id) {
   ns <- shiny::NS(id)
   # Initial labels in the default language ; refreshed server-side on
-  # language switch via updateRadioButtons.
+  # language switch via updateRadioButtons / updateCheckboxInput /
+  # updateSliderInput.
   i18n <- get_i18n("fr")
-  htmltools::tagList(
-    htmltools::div(
-      class = "px-3 pt-2 d-flex flex-wrap align-items-center gap-3 small",
-      htmltools::tags$strong(i18n$t("monitoring_fast_alerts_mode_label")),
-      # v0.46.2 — `mb-0` retire le margin-bottom 1rem du form-group
-      # par défaut, qui causait un léger décalage visuel vertical
-      # entre « Mode du raster » et les radios « Fréquence / Intensité »
-      # (align-items-center centre la boîte avec sa marge, pas le
-      # contenu visuel).
-      htmltools::tagAppendAttributes(
-        shiny::radioButtons(
-          ns("mode"),
-          label  = NULL,
-          inline = TRUE,
-          choiceNames  = list(i18n$t("monitoring_fast_alerts_mode_count"),
-                              i18n$t("monitoring_fast_alerts_mode_rolling")),
-          choiceValues = list("count", "rolling"),
-          selected     = "count"
+  # v0.52.8 — Layout migré du flex-wrap horizontal (contrôles au-dessus
+  # de la carte) vers un `bslib::layout_sidebar(position = "right")`
+  # symétrique avec Carte FAST. La carte gagne en lisibilité (zone
+  # rectangulaire complète) et les contrôles vivent dans une sidebar
+  # de largeur fixe à droite, plus cohérente avec l'onglet voisin.
+  # `output$panel` continue de rendre un bandeau optionnel « zone
+  # saine » au-dessus de la carte — il vit désormais dans le slot
+  # principal de `layout_sidebar`.
+  bslib::card(
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
+        width = 250L, position = "right", open = "always",
+        # v0.46.2 — `mb-0` retire le margin-bottom 1rem du form-group
+        # par défaut. Le label est maintenant porté par `label =` (et
+        # non plus par un `<strong>` sibling) puisqu'on est en sidebar
+        # verticale — l'alignement « label - radios » est naturel.
+        htmltools::tagAppendAttributes(
+          shiny::radioButtons(
+            ns("mode"),
+            label  = i18n$t("monitoring_fast_alerts_mode_label"),
+            inline = TRUE,
+            choiceNames  = list(i18n$t("monitoring_fast_alerts_mode_count"),
+                                i18n$t("monitoring_fast_alerts_mode_rolling")),
+            choiceValues = list("count", "rolling"),
+            selected     = "count"
+          ),
+          class = "mb-2"
         ),
-        class = "mb-0"
-      ),
-      # v0.48.0 — toggle visibilité + slider opacité du raster
-      # d'alerte, symétrique avec Carte FAST (v0.47.0).
-      # `top: 2px` abaisse légèrement la case pour l'aligner sur les
-      # radios « Fréquence / Intensité » voisines (la case rendait un
-      # poil plus haut que le texte des radios).
-      htmltools::tagAppendAttributes(
+        # v0.48.0 — toggle visibilité + slider opacité du raster
+        # d'alerte, symétrique avec Carte FAST (v0.47.0).
         shiny::checkboxInput(
           ns("raster_visible"),
           label = i18n$t("monitoring_fast_alerts_raster_visible"),
           value = TRUE
         ),
-        class = "mb-0",
-        style = "position: relative; top: 2px;"
-      ),
-      # Label « Opacité du raster » à GAUCHE du slider (inline) plutôt
-      # qu'au-dessus.
-      htmltools::div(
-        class = "d-flex align-items-center gap-2",
-        htmltools::tags$span(i18n$t("monitoring_fast_alerts_opacity_label")),
-        htmltools::div(
-          style = "min-width: 160px;",
-          htmltools::tagAppendAttributes(
-            shiny::sliderInput(
-              ns("raster_opacity"),
-              label = NULL,
-              min = 0, max = 1, value = 0.75, step = 0.05
-            ),
-            class = "mb-0"
-          )
+        shiny::sliderInput(
+          ns("raster_opacity"),
+          label = i18n$t("monitoring_fast_alerts_opacity_label"),
+          min = 0, max = 1, value = 0.75, step = 0.05
         )
-      )
-    ),
-    shiny::uiOutput(ns("panel"))
+      ),
+      shiny::uiOutput(ns("panel"))
+    )
   )
 }
 
@@ -123,16 +113,28 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # `updateRadioButtons` ne mémorise pas la valeur `inline` du
     # render initial (default FALSE → re-stack en vertical à chaque
     # changement de langue).
+    # v0.52.8 — le label « Mode du raster » est désormais porté par
+    # le contrôle lui-même (sidebar verticale, plus de `<strong>`
+    # sibling), donc il faut le rafraîchir aussi sur changement de
+    # langue. Idem pour le checkbox visibility et le slider opacité.
     shiny::observe({
       i18n <- i18n_r()
       shiny::updateRadioButtons(
         session, "mode",
-        label = NULL,
+        label = i18n$t("monitoring_fast_alerts_mode_label"),
         choiceNames  = list(i18n$t("monitoring_fast_alerts_mode_count"),
                             i18n$t("monitoring_fast_alerts_mode_rolling")),
         choiceValues = list("count", "rolling"),
         selected     = input$mode %||% "count",
         inline       = TRUE
+      )
+      shiny::updateCheckboxInput(
+        session, "raster_visible",
+        label = i18n$t("monitoring_fast_alerts_raster_visible")
+      )
+      shiny::updateSliderInput(
+        session, "raster_opacity",
+        label = i18n$t("monitoring_fast_alerts_opacity_label")
       )
     })
 

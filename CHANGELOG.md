@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.8] - 2026-05-31
+
+### Changed
+
+- **Onglet Alertes FAST — contrôles déplacés à droite de la carte (sidebar).**
+  Avant : Mode du raster (Fréquence/Intensité), Afficher le raster
+  et Opacité occupaient une ligne `flex-wrap` horizontale au-dessus
+  de la carte, mangeant de la hauteur utile et différant
+  visuellement de l'onglet voisin Carte FAST (sidebar droite depuis
+  v0.47.0). Après : `bslib::card` + `bslib::layout_sidebar(position
+  = "right", width = 250L)`, exactement comme Carte FAST. La carte
+  gagne la zone rectangulaire principale, les 3 contrôles vivent
+  dans la sidebar à droite. L'observer de refresh i18n gère
+  désormais aussi le label radio « Mode du raster » (NULL avant),
+  le checkbox et le slider — plus de label figé en FR après un
+  switch en EN.
+
 ## [0.52.7] - 2026-05-31
 
 ### Added

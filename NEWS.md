@@ -1,3 +1,31 @@
+# nemetonshiny 0.52.8 (2026-05-31)
+
+### Changed — Onglet « Alertes FAST » : contrôles déplacés à droite de la carte (sidebar)
+
+Avant : « Mode du raster (Fréquence/Intensité) », « Afficher le
+raster » et « Opacité du raster » occupaient une ligne horizontale
+`flex-wrap` au-dessus de la carte, ce qui :
+* mangeait de la hauteur verticale utile sur la carte
+* différait visuellement de l'onglet voisin **Carte FAST** (déjà en
+  layout sidebar droite depuis v0.47.0)
+* sur les écrans étroits, faisait wrapper les contrôles en deux
+  rangées qui empilaient encore plus haut
+
+Après : `bslib::card` + `bslib::layout_sidebar(position = "right",
+width = 250L, open = "always")` exactement comme Carte FAST. Les
+trois contrôles vivent dans la sidebar à droite, la carte gagne
+toute la zone rectangulaire principale. Les labels passent du
+sibling `<strong>` au `label =` natif du contrôle (alignement
+vertical naturel en sidebar).
+
+L'observer de refresh i18n (`shiny::observe` ↔ langue) gère
+désormais aussi le rafraîchissement du label radio « Mode du raster »
+(il était `label = NULL` avant), du checkbox et du slider — pas de
+texte qui resterait figé en FR après un switch en EN.
+
+`R/mod_monitoring_fast_alerts.R`. Cycle dev `0.52.7` →
+`0.52.7.9001` → release stable **`v0.52.8`** (PATCH, feat).
+
 # nemetonshiny 0.52.7 (2026-05-31)
 
 ### Added — Bouton « Enregistrer ce projet » INLINE dans le bandeau Suivi sanitaire
