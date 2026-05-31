@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.3] - 2026-05-31
+
+### Fixed
+
+- **Onglet Synthèse — légende « Taille image Max 5 Mo, PNG/JPG » repositionnée à droite du fileInput.**
+  `v0.52.2` avait centré la légende sous le fileInput ; la demande
+  UX était de l'avoir à droite du sélecteur « Image de couverture »,
+  au niveau de la ligne des badges. Solution :
+  `align-items: flex-start` (ancre la légende en haut du flex = haut
+  du bouton) + `padding-top: 0.55rem` (≈ moitié de la hauteur du
+  bouton 38px) pour la descendre pile au centre du bouton.
+  L'alignement reste stable que la barre « Upload complete » du
+  fileInput soit affichée ou non.
+
 ## [0.52.2] - 2026-05-31
 
 ### Fixed

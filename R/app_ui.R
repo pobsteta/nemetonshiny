@@ -429,26 +429,44 @@ mod_synthesis_ui <- function(id) {
             ),
             # Cover image upload for PDF
             #
-            # v0.52.2 — La légende « Taille image Max 5 Mo, PNG/JPG »
-            # vit sur une ligne DEDIÉE sous le fileInput (au lieu d'un
-            # flex inline à droite du bouton) : visuellement, elle
-            # s'aligne avec la ligne des badges NDP / Hauteur LiDAR /
-            # Inventaire ML de la colonne de droite, et c'est plus
-            # propre côté UX (la contrainte décrit l'input qu'elle suit).
+            # v0.52.3 — La légende « Taille image Max 5 Mo, PNG/JPG »
+            # est à DROITE du fileInput, alignée verticalement au
+            # NIVEAU DU BOUTON (et donc de la ligne des badges
+            # `NDP / Hauteur LiDAR / Inventaire ML` de la colonne de
+            # droite). Pourquoi `align-items: flex-start` + un
+            # `padding-top` plutôt que `align-items: center` :
+            #   * Le `shiny::fileInput` rend bouton + placeholder +
+            #     barre de progression. La barre de progression
+            #     s'affiche dès qu'un upload est en cours/complet,
+            #     ce qui change la hauteur totale du fileInput.
+            #   * `align-items: center` aurait centré le texte sur la
+            #     hauteur totale (incluant la barre quand visible),
+            #     donc plus bas que le bouton dès qu'on a chargé une
+            #     image — exactement le décalage qu'on essaie de
+            #     supprimer.
+            #   * `flex-start` ancre le texte en haut du flex (donc
+            #     au niveau du haut du bouton), et un `padding-top`
+            #     de ~0.55rem (≈ la moitié de la hauteur du bouton
+            #     38px) le descend pile au centre du bouton.
             htmltools::div(
-              class = "mt-2",
-              shiny::fileInput(
-                ns("cover_image"),
-                label = NULL,
-                accept = c("image/png", "image/jpeg", "image/jpg"),
-                buttonLabel = htmltools::tagList(
-                  shiny::icon("image"),
-                  if (i18n$language == "fr") " Image de couverture" else " Cover image"
-                ),
-                placeholder = if (i18n$language == "fr") "Aucune image" else "No image"
-              ),
+              class = "mt-2 d-flex gap-2",
+              style = "align-items: flex-start;",
               htmltools::div(
-                class = "text-center text-muted small",
+                style = "flex: 1;",
+                shiny::fileInput(
+                  ns("cover_image"),
+                  label = NULL,
+                  accept = c("image/png", "image/jpeg", "image/jpg"),
+                  buttonLabel = htmltools::tagList(
+                    shiny::icon("image"),
+                    if (i18n$language == "fr") " Image de couverture" else " Cover image"
+                  ),
+                  placeholder = if (i18n$language == "fr") "Aucune image" else "No image"
+                )
+              ),
+              htmltools::span(
+                class = "text-muted small",
+                style = "white-space: nowrap; padding-top: 0.55rem;",
                 if (i18n$language == "fr") "Taille image Max 5 Mo, PNG/JPG" else "Max 5 MB, PNG/JPG"
               )
             )
