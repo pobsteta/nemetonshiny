@@ -1935,13 +1935,19 @@ TRANSLATIONS <- list(
     fr = "Lancer le diagnostic FAST",
     en = "Run FAST diagnosis"
   ),
+  # v0.51.11 — libellé recadré pour refléter ce que le bouton fait
+  # vraiment : il force-unlock l'UI (force_unlock_quick / _health) sans
+  # tuer le worker (Shiny ExtendedTask n'a pas d'API d'annulation).
+  # « Annuler / Réinitialiser » suggérait à tort que le diagnostic
+  # était arrêté en base. « Libérer l'interface » est juste, et le
+  # toast détaille la nuance (worker poursuit, INSERTs idempotents).
   monitoring_run_cancel_btn = list(
-    fr = "Annuler / Réinitialiser",
-    en = "Cancel / Reset"
+    fr = "Libérer l'interface",
+    en = "Release the interface"
   ),
   monitoring_run_cancel_done = list(
-    fr = "Bouton réinitialisé. Vous pouvez relancer dès que le problème est corrigé. Note : le worker en cours continue en arrière-plan (les INSERT en base sont idempotents).",
-    en = "Button reset. You can relaunch as soon as the problem is fixed. Note: the running worker continues in the background (DB INSERTs are idempotent)."
+    fr = "Interface libérée. Vous pouvez relancer dès que le problème est corrigé. Le worker en cours continue en arrière-plan (les INSERT en base sont idempotents).",
+    en = "Interface released. You can relaunch as soon as the issue is fixed. The running worker keeps going in the background (DB INSERTs are idempotent)."
   ),
   monitoring_register_btn = list(
     fr = "Enregistrer ce projet comme zone de suivi",

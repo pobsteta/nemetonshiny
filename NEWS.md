@@ -1,3 +1,20 @@
+# nemetonshiny 0.51.10.9001 (dev)
+
+### Changed — Libellé du bouton « Annuler / Réinitialiser » → « Libérer l'interface »
+
+Le bouton qui apparaît pendant un diagnostic FAST/FORDEAD ne **tue pas**
+le worker (Shiny `ExtendedTask` ne propose pas d'API d'annulation) — il
+**force-unlock l'UI** (`force_unlock_quick` / `_health`) pour que
+l'utilisateur reprenne la main sur le bouton « Lancer le diagnostic »
+sans attendre la fin du worker. L'ancien libellé « Annuler / Réinitialiser »
+suggérait à tort que le diagnostic était arrêté en base, ce qui prêtait
+à confusion : nouveau libellé **« Libérer l'interface »** /
+**« Release the interface »**. Le toast de confirmation reformulé en
+miroir (« Interface libérée. Vous pouvez relancer dès que le problème
+est corrigé. Le worker en cours continue en arrière-plan… »). Les deux
+boutons (FAST et FORDEAD) partagent les mêmes clés i18n, un seul
+changement couvre les deux.
+
 # nemetonshiny 0.51.10 (2026-05-31)
 
 ### Added — Heartbeat de fin pour les workers FAST et FORDEAD
