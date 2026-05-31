@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.7.9001 (2026-05-31)
+# nemetonshiny 0.52.8 (2026-05-31)
 
 ### Changed — Onglet « Alertes FAST » : contrôles déplacés à droite de la carte (sidebar)
 
@@ -24,7 +24,7 @@ désormais aussi le rafraîchissement du label radio « Mode du raster »
 texte qui resterait figé en FR après un switch en EN.
 
 `R/mod_monitoring_fast_alerts.R`. Cycle dev `0.52.7` →
-`0.52.7.9001`.
+`0.52.7.9001` → release stable **`v0.52.8`** (PATCH, feat).
 
 # nemetonshiny 0.52.7 (2026-05-31)
 
