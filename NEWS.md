@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.3.9001 (2026-05-31)
+# nemetonshiny 0.52.4 (2026-05-31)
 
 ### Fixed — Pixel/Placette plots : courbes hachées sur les zones de recouvrement partiel MGRS
 
@@ -26,7 +26,8 @@ dans les deux modaux (pixel-click ET marker-click placette). La
 courbe redevient continue à partir des seules observations
 réellement disponibles pour le pixel/la placette.
 
-Cycle dev `0.52.3` → `0.52.3.9001`.
+Cycle dev `0.52.3` → `0.52.3.9001` → release stable **`v0.52.4`**
+(PATCH, fix).
 
 # nemetonshiny 0.52.3 (2026-05-31)
 
