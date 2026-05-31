@@ -1,4 +1,4 @@
-# nemetonshiny 0.51.10.9001 (dev)
+# nemetonshiny 0.51.11 (2026-05-31)
 
 ### Changed — Libellé du bouton « Annuler / Réinitialiser » → « Libérer l'interface »
 
