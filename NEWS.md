@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.4.9001 (2026-05-31)
+# nemetonshiny 0.52.5 (2026-05-31)
 
 ### Added — Bandeau de récupération « zone orpheline » après wipe par les tests cœur
 
@@ -51,7 +51,8 @@ refuse de tourner sauf si `NEMETON_DB_URL_TEST` est défini et
 distinct de `NEMETON_DB_URL`. À traiter dans une session dev
 `/home/pascal/dev/nemeton` ; release cible `nemeton@v0.54.0`.
 
-Cycle dev `0.52.4` → `0.52.4.9001`.
+Cycle dev `0.52.4` → `0.52.4.9001` → release stable **`v0.52.5`**
+(PATCH, feat).
 
 # nemetonshiny 0.52.4 (2026-05-31)
 

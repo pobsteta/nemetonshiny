@@ -10,6 +10,26 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.5] - 2026-05-31
+
+### Added
+
+- **Bandeau « zone orpheline » dans Suivi sanitaire.**
+  Détection app-side de l'état où la DB monitoring contient des zones
+  mais aucune n'est rattachée au projet chargé — symptôme typique
+  d'un wipe par les tests cœur `helper-monitoring.R` qui DROP CASCADE
+  les 7 tables monitoring sans garde-fou (incident villards
+  2026-05-31). Avant ce fix, l'utilisateur voyait un bandeau vert
+  trompeur « N zone(s) connectée(s) » alors qu'aucune ne lui
+  appartenait. Désormais, si `nrow(zones) > 0` mais le `project$id`
+  courant n'est dans aucune `monitoring_zone.project_uuid`, on
+  bascule sur un bandeau jaune `warning` qui guide vers le bouton
+  « Enregistrer ce projet comme zone de suivi » de la barre latérale.
+  Le fix définitif est côté cœur (brief à passer en session
+  `/home/pascal/dev/nemeton` → `nemeton@v0.54.0`).
+- `R/utils_i18n.R` : nouvelles clés `monitoring_zone_orphan_title`
+  et `monitoring_zone_orphan_body` (FR/EN).
+
 ## [0.52.4] - 2026-05-31
 
 ### Fixed
