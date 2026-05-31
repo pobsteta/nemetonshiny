@@ -1,3 +1,21 @@
+# nemetonshiny 0.52.1.9001 (2026-05-31)
+
+### Fixed — Onglet « Synthèse » : alignement de la légende « Taille image Max 5 Mo »
+
+La petite légende sous le sélecteur d'image de couverture
+(« Taille image Max 5 Mo, PNG/JPG ») vivait dans un flex inline à
+droite du bouton « Image de couverture », ce qui la plaçait au niveau
+vertical du bouton et donc légèrement plus haut que la ligne des
+badges (`NDP 1 – Observation`, `Hauteur LiDAR HD`, `Inventaire ML`)
+de la colonne de droite. Elle est désormais placée sur une ligne
+dédiée sous le fileInput, centrée, ce qui l'aligne visuellement avec
+la ligne des badges et clarifie qu'elle décrit la contrainte de
+l'input qu'elle suit.
+
+`R/app_ui.R` (sortie de la `bslib::layout_columns` "Project summary /
+Download buttons / Global score"). Cycle dev `0.52.1` →
+`0.52.1.9001`.
+
 # nemetonshiny 0.52.1 (2026-05-31)
 
 ### Fixed — Warning « relation "monitoring_zone" does not exist » au boot (Postgres)
