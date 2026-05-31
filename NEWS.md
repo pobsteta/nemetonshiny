@@ -1,3 +1,21 @@
+# nemetonshiny 0.52.6 (2026-05-31)
+
+### Fixed — Onglet « Synthèse » : ajustement fin du padding de la légende « Taille image »
+
+`v0.52.3` calait le centre vertical de la légende sur le centre du
+bouton « Image de couverture » via `padding-top: 0.55rem` (≈ 9 px, soit
+~½ de la hauteur du bouton 38 px). En pratique, la ligne des badges
+(`NDP / Hauteur LiDAR / Inventaire ML`) de la colonne droite tombe
+~8 px **sous** le centre du bouton — le flux `Score global` → `54.8` →
+`/100 (12 familles)` n'a pas exactement la même hauteur cumulée que
+les 2 boutons PDF + GeoPackage de la colonne du milieu.
+
+`padding-top` passe de `0.55rem` à `1rem` (≈ 16 px) pour descendre le
+texte juste au niveau du centre des badges. `R/app_ui.R`.
+
+Cycle dev `0.52.5` → `0.52.5.9001` → release stable **`v0.52.6`**
+(PATCH, fix).
+
 # nemetonshiny 0.52.5 (2026-05-31)
 
 ### Added — Bandeau de récupération « zone orpheline » après wipe par les tests cœur
