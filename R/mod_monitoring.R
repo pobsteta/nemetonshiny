@@ -1249,6 +1249,45 @@ mod_monitoring_server <- function(id, app_state) {
           body  = i18n$t("monitoring_zone_register_hint")
         ))
       }
+      # v0.52.5 — Détection de l'état « orphelin » : la DB contient
+      # des zones (n > 0) mais aucune n'est rattachée au projet
+      # chargé. Symptôme typique d'un wipe par les tests cœur
+      # (`helper-monitoring.R` ligne 82-88 DROP CASCADE 7 tables
+      # monitoring sans garde-fou — incident villards 2026-05-31).
+      # Sans cette détection, l'utilisateur voyait le bandeau de
+      # succès vert « N zone(s) connectée(s) » alors qu'aucune ne
+      # lui appartient, le dropdown restait vide, et FAST plantait
+      # plus tard en FK violation « plot_id=2 not in plot ». Avec
+      # ce bandeau jaune-warning, l'utilisateur sait quoi faire :
+      # cliquer sur « Enregistrer ce projet comme zone de suivi »
+      # dans la barre latérale (le bouton existe déjà, on ne
+      # duplique pas l'action — on guide).
+      #
+      # Détection : on lit la colonne `project_uuid` de
+      # `monitoring_zone` (ajoutée par migration 0003) et on vérifie
+      # qu'au moins une zone porte l'id du projet courant. Si
+      # toutes les zones ont `project_uuid IS NULL` (stubs de tests)
+      # ou correspondent à d'AUTRES projets, on bascule sur le
+      # warning. Requête en best-effort : si la colonne n'existe
+      # pas encore (migration 0003 non appliquée), on retombe sur
+      # le banner de succès classique.
+      if (!is.null(project) && !is.null(project$id)) {
+        zones_pu <- tryCatch(
+          DBI::dbGetQuery(
+            con,
+            "SELECT project_uuid FROM monitoring_zone WHERE project_uuid IS NOT NULL"
+          )$project_uuid,
+          error = function(e) NULL
+        )
+        if (!is.null(zones_pu) && !(project$id %in% zones_pu)) {
+          return(.monitoring_status_card(
+            icon  = "exclamation-triangle-fill",
+            class = "border-warning",
+            title = i18n$t("monitoring_zone_orphan_title"),
+            body  = sprintf(i18n$t("monitoring_zone_orphan_body"), n)
+          ))
+        }
+      }
       .monitoring_status_card(
         icon  = "check-circle",
         class = "border-success",

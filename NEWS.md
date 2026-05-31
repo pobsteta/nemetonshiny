@@ -1,3 +1,58 @@
+# nemetonshiny 0.52.4.9001 (2026-05-31)
+
+### Added — Bandeau de récupération « zone orpheline » après wipe par les tests cœur
+
+L'incident **villards 2026-05-31** a montré que `helper-monitoring.R`
+côté cœur `nemeton` (lignes 82-88) DROP CASCADE 7 tables monitoring
+sans aucun garde-fou. Quand `NEMETON_DB_URL` pointe sur une base de
+production, un cycle `devtools::test()` côté cœur détruit les zones
+utilisateur réelles puis les remplace par des stubs de test
+(`name = "Zskip"`, `plot_id = "P01"`, `project_uuid = NULL`).
+
+Sans détection app-side, l'utilisateur voyait :
+1. Bandeau **vert** « N zone(s) connectée(s) » — trompeur, aucune
+   zone n'est rattachée à son projet.
+2. Dropdown « Zone de suivi » vide (`monitoring_zone_id` du projet
+   ne match aucune zone).
+3. Plus tard, `Diagnostic FAST` crashait en violation de FK
+   `obs_pixel.plot_id → plot.id` parce que `plot` ne contient que
+   les stubs de test.
+
+Le module monitoring détecte désormais l'état « orphelin » en lisant
+la colonne `monitoring_zone.project_uuid` (ajoutée par la migration
+`0003_project_uuid`) : si `nrow(zones) > 0` mais aucune zone ne porte
+le `project$id` courant, on bascule sur un bandeau jaune `warning` :
+
+> **Zones présentes — mais aucune ne correspond à ce projet**
+>
+> La base contient N zone(s), mais aucune n'est rattachée au projet
+> chargé. Symptôme typique d'un wipe par les tests cœur (incident
+> villards 2026-05-31). Clique sur « Enregistrer ce projet comme
+> zone de suivi » dans la barre latérale pour recréer la zone et
+> ses placettes en un clic.
+
+Le bouton de récupération existe déjà (`input$register` →
+`register_project_as_zone(con, project)`) — on ne duplique pas
+l'action, on guide vers elle. Requête `project_uuid` en best-effort :
+si la migration `0003` n'est pas encore appliquée (cas extrême), on
+retombe gracieusement sur le banner de succès classique.
+
+* `R/mod_monitoring.R` : nouvelle branche dans `output$db_status`
+  entre le cas « n == 0 » et le cas succès, qui interroge
+  `monitoring_zone WHERE project_uuid IS NOT NULL` et compare au
+  `project$id` courant.
+* `R/utils_i18n.R` : deux nouvelles clés
+  `monitoring_zone_orphan_title` / `monitoring_zone_orphan_body`
+  (FR/EN, encodage UTF-8 littéral conforme aux entrées récentes).
+
+Côté **cœur**, le brief de correction définitive est rédigé : ajouter
+un garde-fou `.guard_test_db()` dans `helper-monitoring.R` qui
+refuse de tourner sauf si `NEMETON_DB_URL_TEST` est défini et
+distinct de `NEMETON_DB_URL`. À traiter dans une session dev
+`/home/pascal/dev/nemeton` ; release cible `nemeton@v0.54.0`.
+
+Cycle dev `0.52.4` → `0.52.4.9001`.
+
 # nemetonshiny 0.52.4 (2026-05-31)
 
 ### Fixed — Pixel/Placette plots : courbes hachées sur les zones de recouvrement partiel MGRS
