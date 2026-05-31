@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.2.9001 (2026-05-31)
+# nemetonshiny 0.52.3 (2026-05-31)
 
 ### Fixed — Onglet « Synthèse » : légende « Taille image Max 5 Mo » remise à DROITE du fileInput, alignée avec les badges
 
@@ -21,7 +21,8 @@ haut du flex = niveau du haut du bouton) et `padding-top: 0.55rem`
 centre du bouton. Le placement reste stable que la barre de
 progression soit affichée ou non.
 
-`R/app_ui.R`. Cycle dev `0.52.2` → `0.52.2.9001`.
+`R/app_ui.R`. Cycle dev `0.52.2` → `0.52.2.9001` → release stable
+**`v0.52.3`** (PATCH, fix).
 
 # nemetonshiny 0.52.2 (2026-05-31)
 
