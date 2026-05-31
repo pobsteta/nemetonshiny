@@ -1555,6 +1555,18 @@ mod_monitoring_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run_cancel, {
       i18n <- i18n_r()
+      # v0.52.0 — Vrai cancel coopératif. On écrit le flag AVANT le
+      # force-unlock UI : le worker poll ce fichier entre chaque tuile
+      # (nemeton@v0.53.0+) et sort proprement à la prochaine itération
+      # avec un résumé `status = "cancelled"` (commit partiel des
+      # tuiles déjà ingérées). Le force-unlock libère l'UI sans
+      # attendre cette sortie.
+      cancel_path <- .resolve_progress_path(
+        app_state$current_project, "fast_cancel.flag")
+      if (!is.null(cancel_path)) {
+        tryCatch(file.create(cancel_path),
+                 error = function(e) NULL)
+      }
       # Force-unlock the button immediately so the user can relaunch.
       force_unlock_quick(TRUE)
       # Wipe every in-flight ingestion toast so the screen stops being
@@ -1586,6 +1598,15 @@ mod_monitoring_server <- function(id, app_state) {
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
       force_unlock_quick(FALSE)
+      # v0.52.0 — Purge un éventuel cancel_path résiduel d'un run
+      # précédent (sinon, le worker abandonne dès la 1re tuile !).
+      # Idempotent : `unlink` sur fichier absent retourne 0 sans erreur.
+      .fast_cancel_flag <- .resolve_progress_path(
+        app_state$current_project, "fast_cancel.flag")
+      if (!is.null(.fast_cancel_flag) && file.exists(.fast_cancel_flag)) {
+        tryCatch(unlink(.fast_cancel_flag, force = TRUE),
+                 error = function(e) NULL)
+      }
       # Cross-lock: refuse to start FAST while a FORDEAD run is in
       # flight (shared Sentinel-2 cache — cf. the run-button observer).
       # An abandoned FORDEAD run (cancel button → force-unlock) does
@@ -1727,7 +1748,12 @@ mod_monitoring_server <- function(id, app_state) {
         # v0.42.1 — forwarded so the worker builds its ntfy push
         # messages in the user's language (the worker has no access
         # to app_state). Symétrique avec fordead_task$invoke.
-        lang          = app_state$language %||% "fr"
+        lang          = app_state$language %||% "fr",
+        # v0.52.0 — chemin du cancel-flag polled par le worker entre
+        # chaque tuile (nemeton@v0.53.0). Le clic « Annuler le
+        # diagnostic » écrit ce fichier ; nemeton renvoie alors un
+        # résumé status="cancelled" + commit partiel.
+        cancel_path   = .fast_cancel_flag
       )
     })
 
@@ -1922,6 +1948,16 @@ mod_monitoring_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run_health_cancel, {
       i18n <- i18n_r()
+      # v0.52.0 — Vrai cancel coopératif. Symétrique au FAST :
+      # écrit le flag AVANT le force-unlock UI. Le worker FORDEAD
+      # poll ce fichier entre phases reticulate (nemeton@v0.53.0+) et
+      # sort proprement au prochain checkpoint.
+      cancel_path <- .resolve_progress_path(
+        app_state$current_project, "fordead_cancel.flag")
+      if (!is.null(cancel_path)) {
+        tryCatch(file.create(cancel_path),
+                 error = function(e) NULL)
+      }
       force_unlock_health(TRUE)
       for (nid in c("fordead_progress", "fordead_error",
                     "fordead_success", "fordead_warns")) {
@@ -1969,6 +2005,16 @@ mod_monitoring_server <- function(id, app_state) {
       }
       fordead_progress_path(ppath)
 
+      # v0.52.0 — Purge un éventuel cancel_path résiduel avant un
+      # nouveau lancement (sinon le worker abandonne dès l'entrée).
+      .fordead_cancel_flag <- .resolve_progress_path(
+        app_state$current_project, "fordead_cancel.flag")
+      if (!is.null(.fordead_cancel_flag) &&
+          file.exists(.fordead_cancel_flag)) {
+        tryCatch(unlink(.fordead_cancel_flag, force = TRUE),
+                 error = function(e) NULL)
+      }
+
       fordead_task$invoke(
         dates_training    = as.character(input$dates_training),
         dates_monitoring  = as.character(input$date_range),
@@ -1980,7 +2026,10 @@ mod_monitoring_server <- function(id, app_state) {
         progress_path     = ppath,
         # Forwarded so the worker builds its ntfy push messages in the
         # user's language (the worker has no access to app_state).
-        lang              = app_state$language %||% "fr"
+        lang              = app_state$language %||% "fr",
+        # v0.52.0 — cancel coopératif (polled entre phases reticulate
+        # par nemeton@v0.53.0+).
+        cancel_path       = .fordead_cancel_flag
       )
       .persist_monitoring_metadata()
       invisible(TRUE)

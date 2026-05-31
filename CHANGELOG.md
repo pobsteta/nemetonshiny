@@ -10,6 +10,38 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-05-31
+
+### Changed
+
+- **Vrai cancel coopératif FAST/FORDEAD (s'appuie sur `nemeton@v0.53.0`).**
+  Le clic « Annuler le diagnostic » écrit désormais
+  `<projet>/data/{fast,fordead}_cancel.flag`, que le worker poll entre
+  tuiles (FAST) / entre phases reticulate (FORDEAD) et qui le fait
+  sortir proprement au prochain checkpoint avec commit partiel. Les
+  INSERT déjà commités sont conservés (`ON CONFLICT DO NOTHING` — relance
+  sans risque).
+- **i18n — « Libérer l'interface » → « Annuler le diagnostic » /
+  « Cancel the diagnostic ».** Le libellé reflète maintenant le vrai
+  cancel coopératif ; le toast `monitoring_run_cancel_done` reformulé
+  pour expliquer le mécanisme (tuile/phase courante finit, puis stop).
+- **`Imports: nemeton (>= 0.53.0)`.** Bump du plancher : l'app exige
+  maintenant `cancel_path` côté cœur (`ingest_sentinel2_timeseries` et
+  `run_fordead_dieback`).
+
+### Added
+
+- `service_monitoring.R` : `run_ingestion_async()` et
+  `run_fordead_async()` exposent un paramètre `cancel_path = NULL`,
+  forwardé au cœur.
+- `mod_monitoring.R` : `input$run` et `.invoke_fordead` purgent un flag
+  résiduel avant chaque lancement (sinon le worker abandonnerait
+  d'emblée) ; `fast_task$invoke()` et `fordead_task$invoke()` passent
+  le chemin du flag ; observers `input$run_cancel` /
+  `input$run_health_cancel` écrivent le flag **avant**
+  `force_unlock_*(TRUE)` (UI libérée immédiatement, worker sort au
+  prochain checkpoint).
+
 ## [0.51.11] - 2026-05-31
 
 ### Changed

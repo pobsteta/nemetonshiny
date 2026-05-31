@@ -1,3 +1,37 @@
+# nemetonshiny 0.52.0 (2026-05-31)
+
+### Changed — Vrai cancel coopératif FAST/FORDEAD (s'appuie sur `nemeton@v0.53.0`)
+
+L'app câble désormais le mécanisme `cancel_path` introduit côté cœur en
+`nemeton@v0.53.0` : un clic sur **« Annuler le diagnostic »** écrit
+`<projet>/data/fast_cancel.flag` (resp. `fordead_cancel.flag`), que le
+worker poll entre tuiles (FAST) / entre phases reticulate (FORDEAD) et
+qui le fait sortir proprement au prochain checkpoint avec commit
+partiel. Les INSERT déjà commités sont conservés (idempotents,
+`ON CONFLICT DO NOTHING`) — la relance est sans risque.
+
+* `R/service_monitoring.R` : `run_ingestion_async()` et
+  `run_fordead_async()` exposent un paramètre `cancel_path = NULL` et
+  le forwardent à `nemeton::ingest_sentinel2_timeseries()` /
+  `run_fordead_dieback()`.
+* `R/mod_monitoring.R` : `input$run` et `.invoke_fordead` purgent le
+  flag résiduel avant chaque lancement (sinon le worker abandonnerait
+  d'emblée), `fast_task$invoke()` / `fordead_task$invoke()` passent le
+  chemin du flag, et les observers `input$run_cancel` /
+  `input$run_health_cancel` écrivent le flag **avant** le
+  `force_unlock_*(TRUE)` (l'UI est libérée immédiatement, le worker
+  sort au prochain checkpoint).
+* `R/utils_i18n.R` : libellé `monitoring_run_cancel_btn` passé de
+  « Libérer l'interface » → **« Annuler le diagnostic »** /
+  **« Cancel the diagnostic »** ; toast `monitoring_run_cancel_done`
+  reformulé pour expliquer le mécanisme (« le worker termine la tuile
+  (FAST) / la phase (FORDEAD) en cours puis s'arrête proprement »).
+* `DESCRIPTION` : plancher `Imports: nemeton (>= 0.53.0)` (l'app exige
+  maintenant `cancel_path` côté cœur).
+
+Cycle dev `0.51.11` → `0.51.11.9001` → release stable **`v0.52.0`**
+(MINOR, feat).
+
 # nemetonshiny 0.51.11 (2026-05-31)
 
 ### Changed — Libellé du bouton « Annuler / Réinitialiser » → « Libérer l'interface »
