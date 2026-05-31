@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.0.9001 (2026-05-31)
+# nemetonshiny 0.52.1 (2026-05-31)
 
 ### Fixed — Warning « relation "monitoring_zone" does not exist » au boot (Postgres)
 
@@ -25,7 +25,8 @@ idempotent, sub-milliseconde après la 1re fois, et la race au
 démarrage disparaît proprement. SQLite garde son fast-path
 inchangé (existence du fichier = déjà migré).
 
-`R/service_monitoring_db.R`. Cycle dev `0.52.0` → `0.52.0.9001`.
+`R/service_monitoring_db.R`. Cycle dev `0.52.0` → `0.52.0.9001` →
+release stable **`v0.52.1`** (PATCH, fix).
 
 # nemetonshiny 0.52.0 (2026-05-31)
 
