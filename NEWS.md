@@ -1,3 +1,33 @@
+# nemetonshiny 0.52.3.9001 (2026-05-31)
+
+### Fixed — Pixel/Placette plots : courbes hachées sur les zones de recouvrement partiel MGRS
+
+Sur la **Carte FAST** (mode pixel modal), un clic sur un pixel à l'EST
+de la zone villards donnait une courbe NDVI/NBR très hachée (lignes
+absentes entre la plupart des points adjacents), alors qu'un clic sur
+un pixel à l'OUEST donnait une courbe parfaitement continue avec les
+mêmes paramètres.
+
+**Cause** : la zone villards est couverte par DEUX tuiles Sentinel-2
+MGRS qui se chevauchent partiellement — `T31TGM` (large, ~1340 m) qui
+couvre toute la zone, et `T31TFM` (étroite, ~440 m) qui ne couvre que
+l'OUEST. Pour un pixel à l'EST :
+* les ~60 scènes `T31TGM` retournent une mesure valide,
+* les ~62 scènes `T31TFM` retournent `value = NA` (pixel hors
+  couverture).
+
+`plotly` casse la ligne à chaque NA → l'utilisateur voyait ~60
+mesures valides perdues entre des trous, alors qu'au moins 60
+observations existent réellement pour ce pixel.
+
+**Correctif** : `R/mod_monitoring_pixel_map.R` filtre désormais les
+lignes `value = NA` après le tri par date et avant `plotly::add_trace`,
+dans les deux modaux (pixel-click ET marker-click placette). La
+courbe redevient continue à partir des seules observations
+réellement disponibles pour le pixel/la placette.
+
+Cycle dev `0.52.3` → `0.52.3.9001`.
+
 # nemetonshiny 0.52.3 (2026-05-31)
 
 ### Fixed — Onglet « Synthèse » : légende « Taille image Max 5 Mo » remise à DROITE du fileInput, alignée avec les badges
