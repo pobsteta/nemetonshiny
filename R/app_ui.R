@@ -428,28 +428,28 @@ mod_synthesis_ui <- function(id) {
               class = "btn-primary btn-lg"
             ),
             # Cover image upload for PDF
+            #
+            # v0.52.2 — La légende « Taille image Max 5 Mo, PNG/JPG »
+            # vit sur une ligne DEDIÉE sous le fileInput (au lieu d'un
+            # flex inline à droite du bouton) : visuellement, elle
+            # s'aligne avec la ligne des badges NDP / Hauteur LiDAR /
+            # Inventaire ML de la colonne de droite, et c'est plus
+            # propre côté UX (la contrainte décrit l'input qu'elle suit).
             htmltools::div(
               class = "mt-2",
-              htmltools::div(
-                class = "d-flex align-items-center gap-2",
-                htmltools::div(
-                  style = "flex: 1;",
-                  shiny::fileInput(
-                    ns("cover_image"),
-                    label = NULL,
-                    accept = c("image/png", "image/jpeg", "image/jpg"),
-                    buttonLabel = htmltools::tagList(
-                      shiny::icon("image"),
-                      if (i18n$language == "fr") " Image de couverture" else " Cover image"
-                    ),
-                    placeholder = if (i18n$language == "fr") "Aucune image" else "No image"
-                  )
+              shiny::fileInput(
+                ns("cover_image"),
+                label = NULL,
+                accept = c("image/png", "image/jpeg", "image/jpg"),
+                buttonLabel = htmltools::tagList(
+                  shiny::icon("image"),
+                  if (i18n$language == "fr") " Image de couverture" else " Cover image"
                 ),
-                htmltools::span(
-                  class = "text-muted small",
-                  style = "white-space: nowrap;",
-                  if (i18n$language == "fr") "Taille image Max 5 Mo, PNG/JPG" else "Max 5 MB, PNG/JPG"
-                )
+                placeholder = if (i18n$language == "fr") "Aucune image" else "No image"
+              ),
+              htmltools::div(
+                class = "text-center text-muted small",
+                if (i18n$language == "fr") "Taille image Max 5 Mo, PNG/JPG" else "Max 5 MB, PNG/JPG"
               )
             )
           ),
