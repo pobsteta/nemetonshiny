@@ -889,6 +889,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       for (b in unique(sub$band)) {
         bsub <- sub[sub$band == b, , drop = FALSE]
         bsub <- bsub[order(bsub$obs_date), , drop = FALSE]
+        # v0.52.4 : drop des NA `value` avant `add_trace` (symétrique
+        # avec la boucle pixel l.~987). Les placettes situées sous une
+        # zone de recouvrement partiel de tuiles MGRS portent des NA
+        # pour les scènes hors couverture — plotly casserait la ligne
+        # à chaque NA et la courbe ressemblerait à une suite de
+        # segments isolés.
+        bsub <- bsub[!is.na(bsub$value), , drop = FALSE]
+        if (!nrow(bsub)) next
         col  <- .pixel_band_colors[b] %||% "#7F7F7F"
         p <- plotly::add_trace(
           p,
@@ -985,6 +993,19 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         # lieu d'une courbe continue. La boucle placette voisine
         # (l.~880) trie déjà, on aligne celle-ci.
         sub <- sub[order(as.Date(sub$obs_date)), , drop = FALSE]
+        # v0.52.4 : drop des NA `value` avant `add_trace`. Sur les
+        # zones couvertes par plusieurs tuiles MGRS qui se recouvrent
+        # partiellement (cas typique villards : T31TGM large 1340m
+        # vs T31TFM étroite 440m), un pixel à l'EST de la zone se
+        # trouve dans T31TGM mais pas dans T31TFM. Les ~60 scènes
+        # T31TFM renvoient alors `value = NA` pour ce pixel, et
+        # plotly casse la ligne à chaque NA → l'utilisateur voit une
+        # courbe en pointillés alors que les ~60 mesures T31TGM sont
+        # parfaitement valides. Filtrer les NA ici reconstitue la
+        # courbe continue à partir des observations vraiment
+        # disponibles pour ce pixel.
+        sub <- sub[!is.na(sub$value), , drop = FALSE]
+        if (!nrow(sub)) next
         col <- .pixel_band_colors[b] %||% "#7F7F7F"
         p <- plotly::add_trace(
           p,

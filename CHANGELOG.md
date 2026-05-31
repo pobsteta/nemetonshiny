@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.4] - 2026-05-31
+
+### Fixed
+
+- **Carte FAST — courbes pixel/placette hachées sur les zones de recouvrement partiel MGRS.**
+  La zone villards est couverte par deux tuiles Sentinel-2 MGRS qui
+  se chevauchent partiellement (T31TGM large couvre toute la zone,
+  T31TFM étroite ne couvre que l'OUEST). Pour un pixel à l'EST, les
+  ~62 scènes T31TFM retournent `value = NA` (pixel hors couverture)
+  et plotly cassait la ligne à chaque NA → les ~60 mesures T31TGM
+  valides apparaissaient comme des points isolés sans lignes. Fix :
+  filtre les NA après tri par date et avant `add_trace` dans les deux
+  modaux (pixel-click et marker-click placette). La courbe redevient
+  continue à partir des seules observations réellement disponibles.
+
 ## [0.52.3] - 2026-05-31
 
 ### Fixed
