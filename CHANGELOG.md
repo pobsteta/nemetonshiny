@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.51.11] - 2026-05-31
+
+### Changed
+
+- **i18n — « Annuler / Réinitialiser » → « Libérer l'interface ».** Le
+  bouton qui apparaît pendant un diagnostic FAST/FORDEAD ne tue pas le
+  worker (Shiny `ExtendedTask` n'a pas d'API d'annulation) — il
+  force-unlock l'UI. Nouveau libellé qui reflète exactement ce que le
+  bouton fait, sans suggérer que le diagnostic est arrêté en base. Toast
+  de confirmation aligné. Les deux boutons (FAST + FORDEAD) partagent
+  les mêmes clés i18n.
+
 ## [0.51.10] - 2026-05-31
 
 ### Added
