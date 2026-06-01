@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.9.9001 (2026-06-01)
+# nemetonshiny 0.52.10 (2026-06-01)
 
 ### Added — Plan d'actions : dblclick sur cellule commentaire ouvre le modal d'édition
 
@@ -33,7 +33,8 @@ priorité / année d'occurrence.
   visuel (curseur main + soulignement pointillé) sur la cellule
   cliquable. Hover : léger fond bleu.
 
-Cycle dev `0.52.9` → `0.52.9.9001`.
+Cycle dev `0.52.9` → `0.52.9.9001` → release stable **`v0.52.10`**
+(PATCH, feat).
 
 # nemetonshiny 0.52.9 (2026-06-01)
 
