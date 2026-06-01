@@ -10,6 +10,30 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.13] - 2026-06-01
+
+### Fixed
+
+- **FAST API mono-index (suite à `nemeton@v0.55.0` spec 017).**
+  Le cœur a simplifié `read_fast_alert_raster()` en mono-index
+  (`threshold_ndvi` + `threshold_nbr` → `index` + `threshold`).
+  L'app continuait à passer les anciens paramètres → `arguments
+  inutilisés` → carte d'alertes vide.
+
+### Added
+
+- **Radio sidebar « Indice FAST » (NDVI / NBR, défaut NDVI).**
+  Pilote l'indice utilisé par `read_fast_alert_raster()`. Les 2
+  sliders thresholds restent en place ; seul celui correspondant à
+  l'indice sélectionné est forwardé au cœur. Pour comparer les 2
+  vues, basculer le radio (recalcul sub-seconde depuis le cache S2).
+
+### Changed
+
+- **`Imports: nemeton (>= 0.55.0)`** — l'app exige maintenant l'API
+  mono-index. Sans ce plancher, un install contre un cœur antérieur
+  casserait au premier `Diagnostic FAST`.
+
 ## [0.52.12] - 2026-06-01
 
 ### Fixed

@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.12.9001 (2026-06-01)
+# nemetonshiny 0.52.13 (2026-06-01)
 
 ### Fixed — API mono-index FAST (suite à `nemeton@v0.55.0` spec 017)
 
@@ -44,7 +44,8 @@ L'app continuait à passer les anciens paramètres `threshold_ndvi` et
 « Indice FAST » entre NDVI et NBR — le raster est recalculé à la
 volée à partir du cache S2 (sub-seconde).
 
-Cycle dev `0.52.12` → `0.52.12.9001`.
+Cycle dev `0.52.12` → `0.52.12.9001` → release stable **`v0.52.13`**
+(PATCH, fix régression API cœur).
 
 # nemetonshiny 0.52.12 (2026-06-01)
 
