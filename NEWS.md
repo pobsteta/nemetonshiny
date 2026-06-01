@@ -1,3 +1,37 @@
+# nemetonshiny 0.52.13.9001 (2026-06-01)
+
+### Changed — Radio « Indice FAST » déplacé du sidebar parent vers le sidebar droit d'Alertes FAST
+
+v0.52.13 avait posé le radio « Indice FAST » dans le sidebar parent
+de Suivi sanitaire (couvrant transversalement Alertes FAST, Carte
+FAST, Plan de validation). UX moins propre que ce que demande
+l'utilisateur : la **Carte FAST a déjà son propre radio `index`**
+dans son sidebar droit (depuis v0.47.0). Pour la symétrie,
+**Alertes FAST a maintenant aussi son radio `index` dans son sidebar
+droit**.
+
+Chaque onglet pilote désormais son indice **indépendamment** : on
+peut être en NDVI sur Alertes FAST et en NBR sur Carte FAST si on
+veut comparer. Recalcul sub-seconde depuis le cache S2 quand on
+bascule.
+
+* `R/mod_monitoring_fast_alerts.R` : nouveau radio `ns("index")` en
+  tête du sidebar droit (avant `mode`). Le call site
+  `read_fast_alert_raster()` lit `input$index` (au lieu de
+  `th$index`). Refresh i18n du label sur switch FR/EN. Le module
+  exporte `index_r` dans son `return(list(...))` pour les
+  consommateurs aval.
+* `R/mod_monitoring.R` : radio `fast_index` retiré du sidebar
+  parent. Les 4 `thresholds_r` purgés du champ `index = ...`.
+  `validation_sampling_fast` lit désormais l'indice via
+  `fast_alerts_ret$index_r()` — sa prévisualisation suit
+  automatiquement le choix utilisateur côté Alertes FAST.
+* `validation_sampling_fordead` garde `index = "NDVI"` en dur (sa
+  source de mask est FORDEAD sur disque, pas FAST — l'`index` n'est
+  pas consommé dans son code path).
+
+Cycle dev `0.52.13` → `0.52.13.9001`.
+
 # nemetonshiny 0.52.13 (2026-06-01)
 
 ### Fixed — API mono-index FAST (suite à `nemeton@v0.55.0` spec 017)

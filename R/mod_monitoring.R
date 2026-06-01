@@ -134,22 +134,13 @@ mod_monitoring_ui <- function(id) {
               # la valeur du slider. NDVI forestier sain est typiquement
               # 0.6-0.8, NBR sain 0.4-0.6, d'où range 0.10-0.80. Défauts
               # cœur : 0.40 / 0.30.
-              # v0.52.13 — `nemeton@v0.55.0` (spec 017) a simplifié
-              # `read_fast_alert_raster()` en mono-index : le raster
-              # d'alerte n'est plus une combinaison NDVI+NBR mais un
-              # seul indice à choisir par l'utilisateur. Ce radio
-              # pilote `thresholds_r$index` qui est consommé par
-              # `mod_monitoring_fast_alerts` et `mod_validation_sampling`.
-              # Les 2 sliders thresholds restent (un par indice) ; seul
-              # celui correspondant à l'indice sélectionné est forwardé
-              # au cœur via le paramètre `threshold`.
-              shiny::radioButtons(
-                ns("fast_index"),
-                label = i18n$t("monitoring_fast_index_label"),
-                choices = c(NDVI = "NDVI", NBR = "NBR"),
-                selected = "NDVI",
-                inline = TRUE
-              ),
+              # v0.52.14 — Le radio « Indice FAST » a été déplacé du
+              # sidebar parent vers le sidebar DROIT de chaque onglet
+              # (Alertes FAST + Carte FAST, symétriques). Chaque onglet
+              # pilote son propre indice indépendamment. Les 2 sliders
+              # de seuil restent ici (un par indice) ; le module
+              # consommateur lit le seuil correspondant à l'indice
+              # sélectionné dans son sidebar.
               shiny::sliderInput(
                 ns("threshold_ndvi"), i18n$t("monitoring_threshold_ndvi"),
                 min = 0.10, max = 0.80, value = 0.40, step = 0.01
@@ -2360,10 +2351,12 @@ mod_monitoring_server <- function(id, app_state) {
       obs_pixel_data = obs_pixel_data,
       mode_input     = shiny::reactive(input$mode),
       refresh_r      = shiny::reactive(fast_reload()),
+      # v0.52.14 — pixel_map a son propre `input$index` (radio dans son
+      # sidebar droit) ; le `thresholds_r` parent ne porte plus
+      # `index` (relicat de v0.52.13).
       thresholds_r   = shiny::reactive(list(
-        index = input$fast_index %||% "NDVI",
-        ndvi  = input$threshold_ndvi,
-        nbr   = input$threshold_nbr
+        ndvi = input$threshold_ndvi,
+        nbr  = input$threshold_nbr
       ))
     )
 
@@ -2380,8 +2373,10 @@ mod_monitoring_server <- function(id, app_state) {
       app_state    = app_state,
       zone_id_r    = shiny::reactive(input$zone_id),
       date_range_r = shiny::reactive(input$date_range),
+      # v0.52.14 — fast_alerts a son propre `input$index` (radio dans
+      # son sidebar droit) ; le `thresholds_r` parent ne porte plus
+      # `index`.
       thresholds_r = shiny::reactive(list(
-        index       = input$fast_index %||% "NDVI",
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
         window_days = input$window_days
@@ -2419,8 +2414,12 @@ mod_monitoring_server <- function(id, app_state) {
       app_state    = app_state,
       zone_id_r    = shiny::reactive(input$zone_id),
       mode_r       = shiny::reactive(input$mode),
+      # v0.52.14 — `index` suit le choix utilisateur côté Alertes FAST
+      # (via le reactive exporté `fast_alerts_ret$index_r`), pour que la
+      # prévisualisation validation_sampling FAST utilise le même
+      # indice que ce que l'utilisateur voit dans l'onglet Alertes FAST.
       thresholds_r = shiny::reactive(list(
-        index       = input$fast_index %||% "NDVI",
+        index       = fast_alerts_ret$index_r() %||% "NDVI",
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
         window_days = input$window_days
@@ -2434,8 +2433,12 @@ mod_monitoring_server <- function(id, app_state) {
       app_state    = app_state,
       zone_id_r    = shiny::reactive(input$zone_id),
       mode_r       = shiny::reactive(input$mode),
+      # v0.52.14 — FORDEAD validation_sampling n'utilise pas
+      # `read_fast_alert_raster` (sa source de mask est FORDEAD sur
+      # disque, pas FAST). On laisse `index = "NDVI"` en valeur par
+      # défaut au cas où le code aval y accède.
       thresholds_r = shiny::reactive(list(
-        index       = input$fast_index %||% "NDVI",
+        index       = "NDVI",
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
         window_days = input$window_days

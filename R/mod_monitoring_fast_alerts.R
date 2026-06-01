@@ -46,6 +46,25 @@ mod_monitoring_fast_alerts_ui <- function(id) {
     bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 250L, position = "right", open = "always",
+        # v0.52.14 — Radio « Indice FAST » dans le sidebar de cet
+        # onglet (symétrique avec Carte FAST qui a son propre
+        # `input$index`). v0.52.13 l'avait posé dans le sidebar
+        # parent ; on le rapatrie ici pour que chaque onglet pilote
+        # son indice indépendamment, comme Carte FAST.
+        # `nemeton::read_fast_alert_raster()` (spec 017 mono-index)
+        # ne consomme qu'un seul indice à la fois — le radio choisit
+        # lequel, et le `threshold` correspondant est lu depuis le
+        # sidebar parent (`thresholds_r$ndvi` ou `thresholds_r$nbr`).
+        htmltools::tagAppendAttributes(
+          shiny::radioButtons(
+            ns("index"),
+            label = i18n$t("monitoring_fast_index_label"),
+            choices = c(NDVI = "NDVI", NBR = "NBR"),
+            selected = "NDVI",
+            inline = TRUE
+          ),
+          class = "mb-2"
+        ),
         # v0.46.2 — `mb-0` retire le margin-bottom 1rem du form-group
         # par défaut. Le label est maintenant porté par `label =` (et
         # non plus par un `<strong>` sibling) puisqu'on est en sidebar
@@ -119,6 +138,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # langue. Idem pour le checkbox visibility et le slider opacité.
     shiny::observe({
       i18n <- i18n_r()
+      # v0.52.14 — rafraîchir aussi le label du radio `index` (label
+      # « Indice FAST » → « FAST index » sur switch FR/EN).
+      shiny::updateRadioButtons(
+        session, "index",
+        label = i18n$t("monitoring_fast_index_label"),
+        choices = c(NDVI = "NDVI", NBR = "NBR"),
+        selected = input$index %||% "NDVI",
+        inline = TRUE
+      )
       shiny::updateRadioButtons(
         session, "mode",
         label = i18n$t("monitoring_fast_alerts_mode_label"),
@@ -174,10 +202,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       mode <- input$mode %||% "count"
-      # v0.52.13 — `nemeton@v0.55.0` (spec 017) : API mono-index.
-      # On choisit threshold selon l'index sélectionné par
-      # l'utilisateur dans le sidebar parent (`th$index`, défaut NDVI).
-      idx <- th$index %||% "NDVI"
+      # v0.52.13 → v0.52.14 — `nemeton@v0.55.0` (spec 017) : API
+      # mono-index. L'indice vient désormais du radio LOCAL de
+      # l'onglet (`input$index`, dans le sidebar droit) — pas du
+      # sidebar parent. Le `threshold` correspondant reste lu depuis
+      # le sidebar parent via `thresholds_r$ndvi` / `$nbr`.
+      idx <- input$index %||% "NDVI"
       thr <- if (identical(idx, "NBR")) th$nbr else th$ndvi
       tryCatch(
         nemeton::read_fast_alert_raster(
@@ -365,7 +395,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # wrapper render the moment the user opens the sub-tab.
     shiny::outputOptions(output, "panel", suspendWhenHidden = FALSE)
 
-    invisible(list(raster = raster_r))
+    # v0.52.14 — `index_r` exporté pour que le module
+    # validation_sampling (qui consomme aussi `read_fast_alert_raster`
+    # pour la prévisualisation) suive l'indice choisi par
+    # l'utilisateur côté Alertes FAST. Sans ce wiring,
+    # validation_sampling serait coincé sur NDVI ou NBR en dur.
+    invisible(list(
+      raster  = raster_r,
+      index_r = shiny::reactive(input$index %||% "NDVI")
+    ))
   })
 }
 
