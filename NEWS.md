@@ -1,3 +1,21 @@
+# nemetonshiny 0.52.11 (2026-06-01)
+
+### Changed — Onglet « Carte FAST » : `card_header` titre supprimé, remplacé par un bandeau inline
+
+Le `bslib::card_header` qui portait le titre « Carte pixel — NDVI /
+NBR à la résolution Sentinel-2 (10 m) » mangeait une rangée entière
+en haut de l'onglet et créait une dissymétrie avec « Alertes FAST »
+voisin (qui n'a pas de header).
+
+Le titre passe désormais en **bandeau `alert-info`** inline au-dessus
+de la carte, padding minimal, symétrique stylistiquement avec le
+bandeau vert « Aucune alerte FAST sur la fenêtre » d'Alertes FAST.
+Gain : ~30-40 px de hauteur récupérée pour la carte, cohérence
+visuelle entre les deux sous-onglets.
+
+`R/mod_monitoring_pixel_map.R`. Cycle dev `0.52.10` →
+`0.52.10.9001` → release stable **`v0.52.11`** (PATCH, feat).
+
 # nemetonshiny 0.52.10 (2026-06-01)
 
 ### Added — Plan d'actions : dblclick sur cellule commentaire ouvre le modal d'édition
