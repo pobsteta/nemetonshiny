@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.13.9001 (2026-06-01)
+# nemetonshiny 0.52.14 (2026-06-01)
 
 ### Changed — Radio « Indice FAST » déplacé du sidebar parent vers le sidebar droit d'Alertes FAST
 
@@ -30,7 +30,8 @@ bascule.
   source de mask est FORDEAD sur disque, pas FAST — l'`index` n'est
   pas consommé dans son code path).
 
-Cycle dev `0.52.13` → `0.52.13.9001`.
+Cycle dev `0.52.13` → `0.52.13.9001` → release stable **`v0.52.14`**
+(PATCH, feat).
 
 # nemetonshiny 0.52.13 (2026-06-01)
 

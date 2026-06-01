@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.14] - 2026-06-01
+
+### Changed
+
+- **Radio « Indice FAST » déplacé du sidebar parent vers le sidebar droit d'Alertes FAST (symétrie avec Carte FAST).**
+  Chaque onglet (Alertes FAST + Carte FAST) pilote désormais son
+  indice indépendamment. `validation_sampling` FAST consomme l'index
+  exporté par Alertes FAST via le retour `fast_alerts_ret$index_r`.
+  Le radio parent posé en v0.52.13 est retiré ; les 4 `thresholds_r`
+  purgés du champ `index = ...` (transmission désormais via le
+  reactive export du sous-module).
+
 ## [0.52.13] - 2026-06-01
 
 ### Fixed
