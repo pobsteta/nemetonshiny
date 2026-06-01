@@ -54,14 +54,14 @@ mod_monitoring_pixel_map_ui <- function(id) {
   ns <- shiny::NS(id)
   i18n <- get_i18n(get_app_options()$language %||% "fr")
 
+  # v0.52.11 — Le `bslib::card_header` (titre « Carte pixel — NDVI /
+  # NBR à la résolution Sentinel-2 (10 m) ») mangeait une rangée
+  # entière en haut de l'onglet et créait une dissymétrie avec
+  # Alertes FAST voisin (qui n'a pas de header). Le titre passe en
+  # bandeau `alert-info` inline au-dessus de la carte (style
+  # symétrique avec le bandeau « Aucune alerte FAST » d'Alertes FAST),
+  # plus discret et cohérent.
   bslib::card(
-    bslib::card_header(
-      htmltools::div(
-        class = "d-flex align-items-center",
-        bsicons::bs_icon("map", class = "me-2"),
-        i18n$t("monitoring_pixel_map_title")
-      )
-    ),
     bslib::layout_sidebar(
       sidebar = bslib::sidebar(
         width = 250L, position = "right", open = "always",
@@ -95,10 +95,20 @@ mod_monitoring_pixel_map_ui <- function(id) {
         ),
         shiny::uiOutput(ns("scene_count_hint"))
       ),
-      htmltools::div(
-        style = "position: relative;",
-        leaflet::leafletOutput(ns("map"), height = "55vh"),
-        shiny::uiOutput(ns("loading_overlay"))
+      htmltools::tagList(
+        # v0.52.11 — bandeau titre inline (remplace le card_header).
+        # Style `alert-info` léger, padding minimal, symétrique avec
+        # la barre verte « Aucune alerte FAST » d'Alertes FAST.
+        htmltools::div(
+          class = "alert alert-info d-flex align-items-center gap-2 py-1 px-2 mb-2 small",
+          bsicons::bs_icon("map", class = "fs-5 flex-shrink-0"),
+          htmltools::tags$span(i18n$t("monitoring_pixel_map_title"))
+        ),
+        htmltools::div(
+          style = "position: relative;",
+          leaflet::leafletOutput(ns("map"), height = "55vh"),
+          shiny::uiOutput(ns("loading_overlay"))
+        )
       )
     )
   )
