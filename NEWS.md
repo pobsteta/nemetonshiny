@@ -1,3 +1,40 @@
+# nemetonshiny 0.52.9.9001 (2026-06-01)
+
+### Added — Plan d'actions : dblclick sur cellule commentaire ouvre le modal d'édition
+
+**Problème** : dans le tableau du Plan d'actions, la colonne
+`commentaire` est étroite et ellipsisée — le texte long est
+illisible. L'édition inline DT était même contre-productive : un
+single-line input dans une cellule étroite tronquait le commentaire
+sans permettre de le voir entièrement.
+
+**Fix** : le commentaire passe désormais EXCLUSIVEMENT par le modal
+d'édition (textarea 6 lignes, multi-ligne, déjà utilisé par le
+double-clic Kanban). Un **dblclick sur la cellule commentaire** du
+tableau ouvre maintenant ce même modal, qui expose en plus statut /
+priorité / année d'occurrence.
+
+* `R/mod_action_plan.R` :
+  - `EDITABLE_COLS` ne contient plus « commentaire » (édition inline
+    désactivée pour cette colonne uniquement, les autres colonnes
+    restent inline-éditables comme avant).
+  - La colonne commentaire reçoit la className DT
+    `action-comment-trigger` via `columnDefs`.
+  - `DT::datatable(callback = ...)` ajoute un handler JS qui écoute
+    `dblclick.dt` sur `td.action-comment-trigger` et émet
+    `input$row_edit_request <- {action_id, _ts}`.
+  - La logique d'ouverture du modal est extraite en helper
+    `.open_action_edit_modal(action_id)` appelée par les 2
+    observers : `input$kanban_edit_request` (existant, dblclick
+    kanban) et `input$row_edit_request` (nouveau, dblclick tableau).
+* `inst/app/www/css/custom.css` : nouvelle règle
+  `table.dataTable td.action-comment-trigger { cursor: pointer;
+  text-decoration: underline dotted; }` qui donne un affordance
+  visuel (curseur main + soulignement pointillé) sur la cellule
+  cliquable. Hover : léger fond bleu.
+
+Cycle dev `0.52.9` → `0.52.9.9001`.
+
 # nemetonshiny 0.52.9 (2026-06-01)
 
 ### Fixed — Onglet « Plan d'actions » : contexte IA non rafraîchi après création des commentaires Synthèse

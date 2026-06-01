@@ -745,3 +745,24 @@ html[data-shiny-busy] .bslib-card::after {
   right: 20px !important;
   left: auto !important;
 }
+
+/* ============================================================
+   Action plan — clickable commentaire cells (v0.52.10)
+   ============================================================
+   Le commentaire est trop long pour la cellule étroite : on l'a
+   retiré de l'édition inline DT (cf. EDITABLE_COLS) et un dblclick
+   sur la cellule ouvre désormais le modal d'édition multi-ligne.
+   Curseur pointer + soulignement pointillé → affordance visuel sans
+   surcharger l'UI. La règle ciblé `td.action-comment-trigger`
+   (className passé via DT columnDefs) pour ne pas toucher les
+   autres colonnes.
+*/
+table.dataTable td.action-comment-trigger {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-color: rgba(0, 0, 0, 0.3);
+  text-underline-offset: 2px;
+}
+table.dataTable td.action-comment-trigger:hover {
+  background-color: rgba(13, 110, 253, 0.08);
+}
