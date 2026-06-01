@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.11.9001 (2026-06-01)
+# nemetonshiny 0.52.12 (2026-06-01)
 
 ### Fixed — Plan d'actions : tableau rendu VIDE (régression v0.52.10)
 
@@ -27,7 +27,8 @@ où :
 final. DT applique son propre wrapper et le pipeline init reprend
 normalement.
 
-`R/mod_action_plan.R`. Cycle dev `0.52.11` → `0.52.11.9001`.
+`R/mod_action_plan.R`. Cycle dev `0.52.11` → `0.52.11.9001` →
+release stable **`v0.52.12`** (PATCH, fix régression urgent).
 
 # nemetonshiny 0.52.11 (2026-06-01)
 
