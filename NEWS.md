@@ -1,3 +1,41 @@
+# nemetonshiny 0.52.9 (2026-06-01)
+
+### Fixed — Onglet « Plan d'actions » : contexte IA non rafraîchi après création des commentaires Synthèse
+
+**Symptôme reproduit** : un utilisateur ouvre **Plan d'actions** sans
+avoir écrit de commentaires dans Synthèse → l'IA refuse de générer le
+plan avec le message `action_plan_generate_no_comments`. Il navigue
+vers **Synthèse**, génère les commentaires via l'IA (ou les saisit
+manuellement), retourne sur Plan d'actions → **même message**, alors
+que les commentaires existent maintenant sur disque.
+
+**Cause** : la `shiny::reactive` `plan_llm_context()` dans
+`mod_action_plan.R` (l.1716) lisait `load_comments(project$id)`
+**une seule fois au montage du module**. Ses dépendances Shiny
+étaient `app_state$current_project`, `ug_ids()` et
+`plan_rv()$horizon_annees` — RIEN qui ne change quand
+`save_comments()` écrit sur disque depuis `mod_synthesis` /
+`mod_family`. Donc le contexte restait figé sur le snapshot vide du
+premier affichage.
+
+**Correctif** : signal de refresh inter-modules via `app_state`.
+
+* `R/app_server.R` : nouveau slot `app_state$comments_refresh = 0L`
+  dans `reactiveValues`, sur le même pattern que le
+  `samples_refresh` existant (mod_sampling → mod_monitoring).
+* `R/mod_synthesis.R` : les 2 call sites de `save_comments()`
+  (observer IA + observer manuel `input$synthesis_comments`)
+  bumpent désormais `app_state$comments_refresh <- ... + 1L`.
+* `R/mod_family.R` : observer manuel `input$analysis_comments`
+  bumpé symétriquement.
+* `R/mod_action_plan.R` : `plan_llm_context()` lit
+  `app_state$comments_refresh` en tête de reactive pour créer la
+  dépendance Shiny — le rechargement `load_comments()` se déclenche
+  désormais à chaque sauvegarde côté Synthèse/Famille.
+
+Cycle dev `0.52.8` → `0.52.8.9001` → release stable **`v0.52.9`**
+(PATCH, fix).
+
 # nemetonshiny 0.52.8 (2026-05-31)
 
 ### Changed — Onglet « Alertes FAST » : contrôles déplacés à droite de la carte (sidebar)

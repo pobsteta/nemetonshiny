@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.9] - 2026-06-01
+
+### Fixed
+
+- **Plan d'actions — contexte IA non rafraîchi après création des commentaires Synthèse.**
+  Le reactive `plan_llm_context()` dans `mod_action_plan.R` ne
+  dépendait d'aucun signal lié à `save_comments()` → il lisait
+  `load_comments()` une seule fois au montage et restait figé sur le
+  snapshot vide. L'utilisateur qui générait les commentaires côté
+  Synthèse APRÈS avoir ouvert Plan d'actions voyait toujours
+  `action_plan_generate_no_comments`. Fix : ajout d'un slot
+  `app_state$comments_refresh = 0L` bumpé par les 3 call sites de
+  `save_comments()` (mod_synthesis IA + manuel, mod_family manuel),
+  et lu en tête de `plan_llm_context()` pour créer la dépendance
+  Shiny. Pattern symétrique avec `samples_refresh` existant
+  (mod_sampling → mod_monitoring).
+
 ## [0.52.8] - 2026-05-31
 
 ### Changed

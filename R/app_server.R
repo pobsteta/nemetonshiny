@@ -48,6 +48,12 @@ app_server <- function(input, output, session) {
     project_status = "none",  # none, draft, downloading, computing, completed
     samples_refresh = 0L,     # bumped by mod_sampling after save_samples()
                               # so mod_monitoring re-checks samples on disk
+    comments_refresh = 0L,    # v0.52.9 — bumped by mod_synthesis /
+                              # mod_family after save_comments() so
+                              # mod_action_plan's plan_llm_context()
+                              # re-reads from disk (sinon le contexte
+                              # IA reste vide après un edit/AI dans
+                              # Synthèse jusqu'au reload projet).
     # Auth carries `authenticated`, `user_name`, `user_email`,
     # `user_roles` (filled by mod_auth_server). Other modules use
     # `can_edit_action_plan(app_state$auth)` to decide permissions.

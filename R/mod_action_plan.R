@@ -1713,7 +1713,17 @@ mod_action_plan_server <- function(id, app_state) {
     # ============================================================
 
     # Build LLM context from project comments + current ug_ids.
+    #
+    # v0.52.9 \u2014 d\u00e9pendance explicite sur `app_state$comments_refresh`,
+    # bump\u00e9 par mod_synthesis / mod_family apr\u00e8s chaque
+    # `save_comments()`. Sans \u00e7a, le reactive lisait `load_comments()`
+    # une seule fois au montage du module et restait sur le snapshot
+    # initial (\u00ab pas de commentaires \u00bb) m\u00eame apr\u00e8s que l'utilisateur
+    # ait g\u00e9n\u00e9r\u00e9 les commentaires via l'IA dans l'onglet Synth\u00e8se
+    # \u2014 l'observer `input$generate_all` continuait \u00e0 refuser le
+    # lancement IA Plan d'actions avec `action_plan_generate_no_comments`.
     plan_llm_context <- shiny::reactive({
+      app_state$comments_refresh  # dep : relire les commentaires
       project <- app_state$current_project
       if (is.null(project) || is.null(project$id)) return(NULL)
       cmt <- tryCatch(load_comments(project$id), error = function(e) NULL)
