@@ -174,17 +174,22 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       mode <- input$mode %||% "count"
+      # v0.52.13 — `nemeton@v0.55.0` (spec 017) : API mono-index.
+      # On choisit threshold selon l'index sélectionné par
+      # l'utilisateur dans le sidebar parent (`th$index`, défaut NDVI).
+      idx <- th$index %||% "NDVI"
+      thr <- if (identical(idx, "NBR")) th$nbr else th$ndvi
       tryCatch(
         nemeton::read_fast_alert_raster(
           con,
-          zone_id        = as.integer(zone),
-          threshold_ndvi = as.numeric(th$ndvi),
-          threshold_nbr  = as.numeric(th$nbr),
-          date_from      = dr[1],
-          date_to        = dr[2],
-          mode           = mode,
-          window_days    = as.integer(th$window_days %||% 30L),
-          cache_dir      = cd
+          zone_id     = as.integer(zone),
+          index       = idx,
+          threshold   = as.numeric(thr),
+          date_from   = dr[1],
+          date_to     = dr[2],
+          mode        = mode,
+          window_days = as.integer(th$window_days %||% 30L),
+          cache_dir   = cd
         ),
         error = function(e) {
           cli::cli_alert_warning(

@@ -215,17 +215,20 @@ mod_validation_sampling_server <- function(id, app_state,
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
+      # v0.52.13 — API mono-index (nemeton@v0.55.0, spec 017).
+      idx <- th$index %||% "NDVI"
+      thr <- if (identical(idx, "NBR")) th$nbr else th$ndvi
       tryCatch(
         nemeton::read_fast_alert_raster(
           con,
-          zone_id        = zone_id,
-          threshold_ndvi = as.numeric(th$ndvi),
-          threshold_nbr  = as.numeric(th$nbr),
-          date_from      = dr[1],
-          date_to        = dr[2],
-          mode           = "count",
-          window_days    = as.integer(th$window_days %||% 30L),
-          cache_dir      = cd
+          zone_id     = zone_id,
+          index       = idx,
+          threshold   = as.numeric(thr),
+          date_from   = dr[1],
+          date_to     = dr[2],
+          mode        = "count",
+          window_days = as.integer(th$window_days %||% 30L),
+          cache_dir   = cd
         ),
         error = function(e) NULL
       )
