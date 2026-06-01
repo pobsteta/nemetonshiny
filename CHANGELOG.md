@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.11] - 2026-06-01
+
+### Changed
+
+- **Carte FAST — `card_header` titre remplacé par un bandeau inline.**
+  Le `bslib::card_header` qui portait le titre « Carte pixel — NDVI /
+  NBR à la résolution Sentinel-2 (10 m) » mangeait une rangée
+  entière et créait une dissymétrie avec Alertes FAST voisin (qui
+  n'a pas de header). Le titre passe désormais en bandeau
+  `alert-info` inline au-dessus de la carte, padding minimal,
+  symétrique stylistiquement avec le bandeau vert « Aucune alerte
+  FAST » d'Alertes FAST. Gain ~30-40 px verticaux + cohérence
+  visuelle entre les 2 sous-onglets.
+
 ## [0.52.10] - 2026-06-01
 
 ### Added

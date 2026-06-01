@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.10.9001 (2026-06-01)
+# nemetonshiny 0.52.11 (2026-06-01)
 
 ### Changed — Onglet « Carte FAST » : `card_header` titre supprimé, remplacé par un bandeau inline
 
@@ -14,7 +14,7 @@ Gain : ~30-40 px de hauteur récupérée pour la carte, cohérence
 visuelle entre les deux sous-onglets.
 
 `R/mod_monitoring_pixel_map.R`. Cycle dev `0.52.10` →
-`0.52.10.9001`.
+`0.52.10.9001` → release stable **`v0.52.11`** (PATCH, feat).
 
 # nemetonshiny 0.52.10 (2026-06-01)
 
