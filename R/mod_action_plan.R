@@ -884,20 +884,28 @@ mod_action_plan_server <- function(id, app_state) {
       # passerelle `row_edit_request`). data[13] est la colonne cachée
       # `id` (DISPLAY_COLS tail). `_ts` force Shiny à émettre l'event
       # même si on dblclick deux fois la même ligne.
+      #
+      # v0.52.12 — IMPORTANT : DT::datatable(callback = ...) attend le
+      # CORPS de la fonction (DT wrap automatiquement avec
+      # `function(table) { ... }`), PAS un wrapper complet. Une v0.52.10
+      # qui passait `function(table) { ... }` créait un double wrapper
+      # → fonction interne jamais invoquée → handler dblclick jamais
+      # installé, ET pas de `return table;` → l'init DataTables cassait
+      # silencieusement → tableau RENDU VIDE alors que data.frame avait
+      # 31 lignes.
       row_edit_input_id <- session$ns("row_edit_request")
       js_dt_callback <- htmlwidgets::JS(sprintf(
-        "function(table) {
-          var inputId = '%s';
-          table.on('dblclick.dt', 'td.action-comment-trigger', function(e) {
-            e.stopPropagation();
-            var rowData = table.row(this).data();
-            if (!rowData || rowData[13] == null) return;
-            Shiny.setInputValue(inputId, {
-              action_id: String(rowData[13]),
-              _ts: Date.now()
-            });
+        "var inputId = '%s';
+        table.on('dblclick.dt', 'td.action-comment-trigger', function(e) {
+          e.stopPropagation();
+          var rowData = table.row(this).data();
+          if (!rowData || rowData[13] == null) return;
+          Shiny.setInputValue(inputId, {
+            action_id: String(rowData[13]),
+            _ts: Date.now()
           });
-        }",
+        });
+        return table;",
         row_edit_input_id
       ))
 

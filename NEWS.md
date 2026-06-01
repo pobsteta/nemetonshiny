@@ -1,3 +1,35 @@
+# nemetonshiny 0.52.12 (2026-06-01)
+
+### Fixed — Plan d'actions : tableau rendu VIDE (régression v0.52.10)
+
+**Symptôme** : sur la vue « Carte + Tableau » du Plan d'actions, le
+tableau ne contient AUCUNE ligne, alors que l'en-tête indique
+correctement « N action(s) après filtres » et que les KPI badges +
+sparkline cumulatif fonctionnent.
+
+**Cause (régression v0.52.10)** : le JS callback ajouté pour le
+dblclick sur la cellule commentaire passait à `DT::datatable(callback
+= ...)` une fonction COMPLÈTE :
+```js
+function(table) { table.on('dblclick.dt', ...); }
+```
+Or `DT::datatable` wrappe **automatiquement** le callback fourni dans
+`function(table) { … }`. Le résultat était une fonction-dans-une-fonction
+où :
+1. Le handler `dblclick` est dans une fonction INTERNE jamais appelée
+   → handler jamais enregistré.
+2. La fonction externe ne fait `return table;` → DataTables casse
+   silencieusement son pipeline d'initialisation → tableau RENDU SANS
+   LIGNES alors que `data.frame` a bien N lignes.
+
+**Fix** : le callback passe désormais juste le **corps** de fonction
+(pas de wrapper `function(table) { ... }`), avec un `return table;`
+final. DT applique son propre wrapper et le pipeline init reprend
+normalement.
+
+`R/mod_action_plan.R`. Cycle dev `0.52.11` → `0.52.11.9001` →
+release stable **`v0.52.12`** (PATCH, fix régression urgent).
+
 # nemetonshiny 0.52.11 (2026-06-01)
 
 ### Changed — Onglet « Carte FAST » : `card_header` titre supprimé, remplacé par un bandeau inline

@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.12] - 2026-06-01
+
+### Fixed
+
+- **Plan d'actions — tableau rendu VIDE (régression v0.52.10).**
+  Le JS callback ajouté en v0.52.10 pour le dblclick sur la cellule
+  commentaire passait à `DT::datatable(callback = …)` une fonction
+  COMPLÈTE (`function(table) { … }`), alors que DT wrappe lui-même
+  le callback dans `function(table) { … }`. Le double-wrapping
+  créait une fonction interne JAMAIS invoquée (handler dblclick
+  perdu) ET pas de `return table;` → DataTables cassait
+  silencieusement son init → tableau rendu sans aucune ligne malgré
+  un data.frame source de N lignes. Fix : le callback est désormais
+  juste le CORPS de fonction (pas de wrapper), avec `return table;`
+  à la fin. DT applique son propre wrapper et le pipeline init
+  reprend normalement.
+
 ## [0.52.11] - 2026-06-01
 
 ### Changed
