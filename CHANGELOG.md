@@ -10,6 +10,26 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.10] - 2026-06-01
+
+### Added
+
+- **Plan d'actions — dblclick sur cellule commentaire ouvre le modal d'édition.**
+  La colonne commentaire est étroite + ellipsisée dans le tableau →
+  long texte illisible. L'édition inline DT (single-line input dans
+  cellule étroite) était même contre-productive. Le commentaire
+  passe désormais EXCLUSIVEMENT par le modal multi-ligne (textarea
+  6 rangs, déjà utilisé par dblclick kanban). Un dblclick sur la
+  cellule commentaire du tableau ouvre maintenant ce même modal,
+  qui expose en plus statut / priorité / année. Affordance visuel
+  via CSS : curseur main + soulignement pointillé sur la cellule.
+
+### Changed
+
+- `EDITABLE_COLS` ne contient plus `commentaire` — l'édition inline
+  DT est désactivée pour cette colonne uniquement. Les autres
+  colonnes restent inline-éditables comme avant.
+
 ## [0.52.9] - 2026-06-01
 
 ### Fixed

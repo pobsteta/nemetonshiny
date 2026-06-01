@@ -808,10 +808,16 @@ mod_action_plan_server <- function(id, app_state) {
     )
     # Cells the user can edit. `annee_realisation` accepts a calendar
     # year and is converted back to an offset before persistence.
+    #
+    # v0.52.10 — `commentaire` retiré de l'édition inline DT : l'input
+    # single-line dans une cellule étroite tronquait le texte sans
+    # permettre de le lire en entier. Le commentaire passe désormais
+    # par le modal d'édition (textarea 6 rangs, multi-ligne) — accessible
+    # via dblclick sur la cellule commentaire (cf. JS callback ci-dessous).
     EDITABLE_COLS <- c(
       "annee_realisation", "type", "intensite", "priorite",
       "statut", "volume_m3", "surface_ha",
-      "nb_tiges", "cout_eur", "revenu_eur", "commentaire"
+      "nb_tiges", "cout_eur", "revenu_eur"
     )
 
     PLAN_BASE_YEAR <- function() as.integer(format(Sys.Date(), "%Y"))
@@ -872,6 +878,29 @@ mod_action_plan_server <- function(id, app_state) {
       hidden_targets <- as.integer(c(13L, 14L, 15L))
       editable_idx <- which(DISPLAY_COLS %in% EDITABLE_COLS) - 1L
 
+      # v0.52.10 — JS callback : dblclick sur la cellule commentaire
+      # (className `action-comment-trigger`, cf. columnDefs) ouvre le
+      # modal d'édition (réutilise `input$kanban_edit_request` via une
+      # passerelle `row_edit_request`). data[13] est la colonne cachée
+      # `id` (DISPLAY_COLS tail). `_ts` force Shiny à émettre l'event
+      # même si on dblclick deux fois la même ligne.
+      row_edit_input_id <- session$ns("row_edit_request")
+      js_dt_callback <- htmlwidgets::JS(sprintf(
+        "function(table) {
+          var inputId = '%s';
+          table.on('dblclick.dt', 'td.action-comment-trigger', function(e) {
+            e.stopPropagation();
+            var rowData = table.row(this).data();
+            if (!rowData || rowData[13] == null) return;
+            Shiny.setInputValue(inputId, {
+              action_id: String(rowData[13]),
+              _ts: Date.now()
+            });
+          });
+        }",
+        row_edit_input_id
+      ))
+
       DT::datatable(
         display,
         colnames = colname_map,
@@ -887,6 +916,7 @@ mod_action_plan_server <- function(id, app_state) {
                          disable = list(columns = setdiff(seq_len(ncol(display)) - 1L,
                                                           editable_idx))),
         extensions = c("FixedColumns"),
+        callback = js_dt_callback,
         options = list(
           # 5 rows per page, paginate the rest. lengthMenu lets the
           # user expand to 10 / 25 / 50 / All if they want a denser
@@ -924,7 +954,14 @@ mod_action_plan_server <- function(id, app_state) {
             # Cap visible-column widths so long commentaire / labels
             # ellipsize instead of wrapping to a second line.
             list(targets = "_all",
-                 className = "dt-truncate")
+                 className = "dt-truncate"),
+            # v0.52.10 — la colonne commentaire (index 12 visible)
+            # est marquée comme « clickable » : dblclick ouvre le
+            # modal d'édition (cf. JS callback du `callback =`).
+            # Curseur pointer + soulignement pointillé donnent un
+            # affordance visuel sans surcharger l'UI.
+            list(targets = 12L,
+                 className = "dt-truncate action-comment-trigger")
           ),
           language = if (identical(app_state$language, "en")) list(
             search = "Search (regex, e.g. eclaircie|plantation):"
@@ -1347,15 +1384,18 @@ mod_action_plan_server <- function(id, app_state) {
       )
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
-    # Double-click on a Kanban card → open an edit modal pre-filled
-    # with the action's current values. Primary use-case: free-form
-    # editing of `commentaire` (cell-edit on the table is single-line
-    # only and lives behind a tab switch). The modal also exposes
-    # statut / priorite / annee for convenience.
-    shiny::observeEvent(input$kanban_edit_request, {
+    # Open the edit modal pre-filled with the action's current values.
+    # Primary use-case : free-form editing of `commentaire`
+    # (cell-edit on the table était single-line et tronquait le texte).
+    # Le modal expose aussi statut / priorité / année / commentaire en
+    # textarea multi-ligne.
+    #
+    # v0.52.10 — Extrait en helper pour être appelé depuis :
+    #   * `input$kanban_edit_request` (dblclick sur carte kanban)
+    #   * `input$row_edit_request`   (dblclick sur cellule
+    #                                  commentaire du tableau DT)
+    .open_action_edit_modal <- function(action_id) {
       if (deny_if_readonly()) return()
-      payload <- input$kanban_edit_request
-      action_id <- payload$action_id
       if (is.null(action_id) || !nzchar(action_id)) return()
       cur_plan <- plan_rv()
       idx <- find_action_index(cur_plan, action_id)
@@ -1416,6 +1456,15 @@ mod_action_plan_server <- function(id, app_state) {
           )
         )
       ))
+    }
+
+    # Observers : dblclick sur carte kanban ET dblclick sur cellule
+    # commentaire du tableau DT déclenchent le même modal.
+    shiny::observeEvent(input$kanban_edit_request, {
+      .open_action_edit_modal(input$kanban_edit_request$action_id)
+    }, ignoreInit = TRUE, ignoreNULL = TRUE)
+    shiny::observeEvent(input$row_edit_request, {
+      .open_action_edit_modal(input$row_edit_request$action_id)
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
 
     shiny::observeEvent(input$kanban_edit_save, {
