@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.8.9001 (2026-06-01)
+# nemetonshiny 0.52.9 (2026-06-01)
 
 ### Fixed — Onglet « Plan d'actions » : contexte IA non rafraîchi après création des commentaires Synthèse
 
@@ -33,7 +33,8 @@ premier affichage.
   dépendance Shiny — le rechargement `load_comments()` se déclenche
   désormais à chaque sauvegarde côté Synthèse/Famille.
 
-Cycle dev `0.52.8` → `0.52.8.9001`.
+Cycle dev `0.52.8` → `0.52.8.9001` → release stable **`v0.52.9`**
+(PATCH, fix).
 
 # nemetonshiny 0.52.8 (2026-05-31)
 
