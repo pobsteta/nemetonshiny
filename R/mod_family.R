@@ -556,6 +556,8 @@ mod_family_server <- function(id, family_code, app_state) {
         save_comments(project_id,
                       synthesis = NULL,
                       families = app_state$family_comments)
+        # v0.52.9 — signaler la modif aux consommateurs (mod_action_plan).
+        app_state$comments_refresh <- (app_state$comments_refresh %||% 0L) + 1L
       }
     }, ignoreInit = TRUE)
 

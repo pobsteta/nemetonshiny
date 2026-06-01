@@ -658,6 +658,11 @@ mod_synthesis_server <- function(id, app_state) {
         save_comments(project_id,
                       synthesis = synthesis_response,
                       families = family_comments_local)
+        # v0.52.9 — signal aux autres modules (mod_action_plan) que le
+        # fichier commentaires a changé. Sans ce bump, le contexte IA
+        # du Plan d'actions reste « pas de commentaires » jusqu'au
+        # prochain reload projet.
+        app_state$comments_refresh <- (app_state$comments_refresh %||% 0L) + 1L
       } else {
         cli::cli_warn("Cannot save comments: project_id is NULL")
       }
@@ -677,6 +682,9 @@ mod_synthesis_server <- function(id, app_state) {
         save_comments(project_id,
                       synthesis = input$synthesis_comments,
                       families = app_state$family_comments)
+        # v0.52.9 — symétrique avec l'observer AI : signaler le
+        # changement aux modules consommateurs.
+        app_state$comments_refresh <- (app_state$comments_refresh %||% 0L) + 1L
       }
     }, ignoreInit = TRUE)
 
