@@ -1,3 +1,51 @@
+# nemetonshiny 0.52.12.9001 (2026-06-01)
+
+### Fixed — API mono-index FAST (suite à `nemeton@v0.55.0` spec 017)
+
+**Symptôme** : warnings en cascade pendant le Diagnostic FAST :
+```
+! read_fast_alert_raster failed: arguments inutilisés
+  (threshold_ndvi = as.numeric(th$ndvi),
+   threshold_nbr = as.numeric(th$nbr))
+```
+La carte d'alertes FAST restait vide après chaque ingestion.
+
+**Cause** : `nemeton@v0.55.0` (spec 017) a **délibérément** simplifié
+`read_fast_alert_raster()` en mono-index — la combinaison historique
+NDVI+NBR a été abandonnée. La nouvelle signature est :
+```r
+read_fast_alert_raster(con, zone_id,
+                       index     = c("NDVI", "NBR"),   # un seul
+                       threshold = NULL,               # un seul
+                       date_from, date_to, mode, ...)
+```
+L'app continuait à passer les anciens paramètres `threshold_ndvi` et
+`threshold_nbr` → `arguments inutilisés`.
+
+**Correctif** :
+* `R/mod_monitoring.R` : nouveau radio sidebar `fast_index` (NDVI /
+  NBR, défaut NDVI) qui pilote l'indice utilisé pour le raster
+  d'alerte. Les 2 sliders `threshold_ndvi` et `threshold_nbr`
+  restent en place ; seul celui correspondant à l'indice sélectionné
+  est forwardé au cœur.
+* `R/mod_monitoring.R` : tous les `thresholds_r` (3 modules
+  consommateurs : `pixel_map`, `fast_alerts`, `validation_sampling`
+  FAST + FORDEAD) gagnent un champ `index = input$fast_index %||%
+  "NDVI"`.
+* `R/mod_monitoring_fast_alerts.R` + `R/mod_validation_sampling.R` :
+  les 2 call sites de `read_fast_alert_raster()` passent désormais
+  `index = th$index, threshold = th$<idx-ndvi-ou-nbr>`. Plus de
+  `threshold_ndvi`/`threshold_nbr`.
+* `R/utils_i18n.R` : nouvelle clé `monitoring_fast_index_label`
+  (« Indice FAST » / « FAST index »).
+* `DESCRIPTION` : plancher `Imports: nemeton (>= 0.55.0)`.
+
+**UX** : pour comparer les 2 indices, l'utilisateur switch le radio
+« Indice FAST » entre NDVI et NBR — le raster est recalculé à la
+volée à partir du cache S2 (sub-seconde).
+
+Cycle dev `0.52.12` → `0.52.12.9001`.
+
 # nemetonshiny 0.52.12 (2026-06-01)
 
 ### Fixed — Plan d'actions : tableau rendu VIDE (régression v0.52.10)
