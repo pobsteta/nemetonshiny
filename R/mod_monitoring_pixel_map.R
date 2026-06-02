@@ -285,9 +285,12 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       st <- pixel_stack_r()
       if (is.null(st)) {
         disk_n  <- disk_scenes_count_r()
-        sdf     <- db_scenes_df_r()
         err_msg <- last_stack_error()
 
+        # v0.53.1 — case 2 « disk has scenes but DB has no observations »
+        # supprimée. Depuis v0.52.16 (refactor obs_pixel), il n'y a
+        # plus de DB obs_pixel à interroger ; le compteur disk est la
+        # seule source de vérité.
         # Case 1 — no cache directory or empty.
         if (is.null(cache_dir_r()) || disk_n == 0L) {
           return(shiny::helpText(
@@ -295,18 +298,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
             i18n$t("monitoring_pixel_map_no_cache")
           ))
         }
-        # Case 2 — disk has scenes but DB has no observations.
-        # SAS tokens expired during crop is the dominant cause for
-        # long ingests (~100+ scenes). Surface scene count so the
-        # user knows downloads actually happened.
-        if (is.null(sdf) || !nrow(sdf)) {
-          return(htmltools::div(
-            class = "small alert alert-warning p-2 mb-0",
-            sprintf(i18n$t("monitoring_pixel_map_cache_no_obs_fmt"),
-                    as.integer(disk_n))
-          ))
-        }
-        # Case 3 — build_index_stack failed (typically extent mismatch).
+        # Case 2 — build_index_stack failed (typically extent mismatch).
         if (!is.null(err_msg)) {
           return(htmltools::div(
             class = "small alert alert-danger p-2 mb-0",

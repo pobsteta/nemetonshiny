@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.53.1] - 2026-06-02
+
+### Fixed
+
+- **`db_scenes_df_r` introuvable dans `output$date_slider_ui`** (résidu
+  refactor v0.52.16). L'exception non gérée fragilisait la session
+  Shiny → bouton « Diagnostic FAST » pouvait rester grisé après la
+  fin du worker + toast persistant. Case 2 du fallback supprimée
+  (dead code depuis le retrait `obs_pixel`).
+- **Toast `monitoring_ingest_success` simplifié** : depuis
+  `nemeton@v0.58.0`, `n_obs_inserted` est toujours 0. Message
+  reformulé en « Diagnostic FAST terminé : N scène(s) en cache. »
+  au lieu du trompeur « N scène(s), 0 observation(s) insérée(s). »
+
 ## [0.53.0] - 2026-06-02
 
 > Première release sous la convention semver stricte (CLAUDE.md

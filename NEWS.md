@@ -1,3 +1,45 @@
+# nemetonshiny 0.53.1 (2026-06-02)
+
+### Fixed — `db_scenes_df_r` introuvable dans `output$date_slider_ui` (résidu refactor v0.52.16)
+
+Le refactor v0.52.16 avait supprimé le reactive `db_scenes_df_r`
+(dépendant de `obs_pixel_data`) dans `mod_monitoring_pixel_map.R`,
+mais avait laissé un appel résiduel dans `output$date_slider_ui`
+(case 2 du fallback : « disk has scenes but DB has no obs »). À chaque
+ouverture de l'onglet Carte FAST sans cache valide, Shiny levait :
+
+```
+Error in db_scenes_df_r: impossible de trouver la fonction "db_scenes_df_r"
+  118: renderUI
+  117: func
+  101: output$monitoring-pixel_map-date_slider_ui
+```
+
+Conséquence en cascade : l'erreur non gérée fragilisait la session
+Shiny, le bouton « Diagnostic FAST » pouvait rester grisé après la
+fin du worker, et le toast « Téléchargement terminé » persistait.
+
+`R/mod_monitoring_pixel_map.R` : case 2 du fallback supprimée
+(devenue dead code depuis le retrait de `obs_pixel`). Le compteur
+disk (`disk_scenes_count_r`) est désormais la seule source de
+vérité pour distinguer « pas de cache » de « cache présent ».
+
+### Changed — Toast `monitoring_ingest_success` simplifié
+
+Depuis `nemeton@v0.58.0` (drop obs_pixel insertion), le compteur
+`n_obs_inserted` est TOUJOURS 0 — le message « Téléchargement
+terminé : X scène(s), **0 observation(s) insérée(s)** » devenait
+trompeur (donnait l'impression d'un bug). Reformulé en
+« Diagnostic FAST terminé : %d scène(s) en cache. » /
+« FAST diagnostic done: %d scene(s) cached. »
+
+`R/utils_i18n.R` (clé `monitoring_ingest_success`) +
+`R/mod_monitoring.R` (l.1808 : suppression de la lecture de
+`n_obs_inserted` du résumé, et du 2e arg `%d` au sprintf).
+
+Cycle dev `0.53.0` → `0.53.0.9001` → release stable **`v0.53.1`**
+(PATCH, fix régression résiduelle + cleanup wording).
+
 # nemetonshiny 0.53.0 (2026-06-02)
 
 > **Première release sous la nouvelle convention semver stricte**
