@@ -1,3 +1,66 @@
+# nemetonshiny 0.53.1.9001 (2026-06-02)
+
+### Added — Pré-calcul inconditionnel des 4 cartes FAST en fin de Diagnostic FAST
+
+**Découplage calcul ↔ affichage** : le clic sur « Diagnostic FAST »
+déclenche désormais le calcul des 4 cartes raster usuelles
+(`NDVI×count`, `NDVI×rolling`, `NBR×count`, `NBR×rolling`)
+**indépendamment de l'état de l'UI** (radio Indice FAST, radio Mode
+du raster, checkbox Afficher le raster). Les coches/radios ne
+pilotent désormais QUE l'affichage des couches Leaflet, jamais le
+calcul.
+
+**Implémentation** : nouveau helper privé
+`.prewarm_fast_alerts()` dans `R/service_monitoring.R`, appelé par
+le worker `run_ingestion_async()` juste après que
+`nemeton::ingest_sentinel2_timeseries()` ait rendu la main. Boucle
+sur les 4 combinaisons `(index, mode)`, chaque appel à
+`nemeton::read_fast_alert_raster()` persiste son résultat dans
+`<projet>/cache/layers/fast_alert/zone_<id>/<hash>.tif` via le cache
+content-addressed D6 (spec 017, nemeton@v0.57.0+).
+
+**Robustesse** :
+* **Inconditionnel** : aucun input UI lu. La fonction reçoit
+  `result_cache_dir` en paramètre depuis le `fast_task$invoke()`.
+* **Cancel coopératif** : check `cancel_path` entre chaque
+  combinaison ; sortie propre avec commit partiel (les COG déjà
+  calculés restent valides en cache D6).
+* **Échec partiel toléré** : tryCatch par combo. Un échec sur NBR
+  (cache S2 incomplet B12) ne casse pas NDVI. Un warning par échec,
+  collecté dans le summary du worker.
+* **Parallel opt-in** : `parallel = TRUE` activé automatiquement si
+  `furrr` est dispo (spec 017 D4 cœur).
+* **Threshold = NULL** (défauts cœur : 0.40 NDVI / 0.30 NBR). Les
+  thresholds custom de l'utilisateur ne sont pas pré-calculés —
+  recalcul à la demande (sub-seconde car cache D6 chaud).
+
+**UX** :
+* Le switch radio Indice (NDVI ↔ NBR) ou Mode (count ↔ rolling) dans
+  le sidebar Alertes FAST est désormais **instantané** (lecture COG
+  depuis disque, sub-seconde).
+* Le toast ingest_success continue d'afficher en fin, mais le worker
+  émet 4 phases de progress supplémentaires
+  (`fast_prewarm:NDVI_count` → `_done`, etc.) que l'observer
+  parent peut surfacer si désiré.
+* Coût : ~5-15 s × 4 = 20-60 s ajoutés en fin de worker (mais
+  invisible UX vs les ~5-15 min d'ingestion COG).
+
+**API ExtendedTask** : la signature du worker `run_ingestion_async()`
+gagne un paramètre `result_cache_dir = NULL`. NULL = pas de
+pré-calcul (no-op). `mod_monitoring.R::fast_task$invoke(...)` le passe
+toujours à `file.path(project$path, "cache", "layers", "fast_alert")`.
+
+**Tests** : 4 nouveaux dans `tests/testthat/test-service_monitoring.R`
+* `calcule les 4 combinaisons (NDVI/NBR × count/rolling)`
+* `continue sur échec partiel (NBR fail → NDVI OK)`
+* `respecte le cancel coopératif`
+* `no-op quand result_cache_dir est NULL/vide`
+
+Suite : `[ FAIL 3 | PASS 364 ]` — fails pré-existants (register
+click), non liés.
+
+Cycle dev `0.53.1` → `0.53.1.9001`.
+
 # nemetonshiny 0.53.1 (2026-06-02)
 
 ### Fixed — `db_scenes_df_r` introuvable dans `output$date_slider_ui` (résidu refactor v0.52.16)
