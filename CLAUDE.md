@@ -290,7 +290,29 @@ Claude doit :
 
 1. Déterminer le type de changement selon Conventional Commits
    (feat: / fix: / BREAKING CHANGE:) → bump semver correspondant
-   (minor / patch / major).
+   (minor / patch / major). **Ne PAS sous-bumper** : appliquer
+   strictement la table ci-dessous (révision 2026-06-02 suite au
+   constat que l'app stagnait sur 0.52.x pendant que le cœur
+   avançait sur 0.55 → 0.60).
+
+   | Type de changement                                              | Bump   |
+   |-----------------------------------------------------------------|--------|
+   | Fix de régression, fix d'un bug existant                        | PATCH  |
+   | Alignement plancher cœur, doc, cleanup commentaires/tests       | PATCH  |
+   | Nouveau toggle / radio / input UI                               | MINOR  |
+   | Nouvelle modale, nouveau bandeau, nouveau bouton inline         | MINOR  |
+   | Refactor structurel d'un module (ex. layout sidebar)            | MINOR  |
+   | Retrait d'une feature UX (ex. modale clic-placette supprimée)   | MINOR  |
+   | Suppression d'une dépendance cœur (couplage `obs_pixel` retiré) | MINOR  |
+   | Nouvelle clé i18n consommée par un nouveau composant            | MINOR  |
+   | Changement d'API publique app (signature fonction exportée)     | MAJOR  |
+   | Retrait d'une fonction exportée                                 | MAJOR  |
+
+   En cas de doute, **bumper plus haut** plutôt que plus bas — c'est
+   plus facile de signaler une release MINOR comme « petite » que de
+   regretter une release PATCH comme insuffisante. Pour grouper
+   plusieurs feat en une seule release : ne pas attendre — chaque
+   feat fonctionnel mérite son MINOR.
 
 2. Mettre à jour le numéro de version dans :
    - DESCRIPTION (champ Version)  [projet R]
