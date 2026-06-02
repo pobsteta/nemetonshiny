@@ -372,49 +372,24 @@ test_that("v0.57.0 — clés i18n fast_alert_class_* + legend title (FR/EN)", {
 })
 
 # ============================================================
-# v0.58.0 — Toggle « Mode rapide » multi-cœur FAST (TODO #4)
+# v0.60.0 — `parallel = TRUE` en dur pour compute_fast_alert_mask
 # ============================================================
+# Le checkbox UI « Mode rapide (multi-cœur) » introduit en v0.58.0
+# (TODO #4) est retiré : le cœur fait déjà un fallback séquentiel
+# silencieux si `furrr` est absent, donc l'opt-in n'apportait pas
+# de garantie supplémentaire à l'utilisateur. Désormais
+# `parallel = TRUE` est passé en dur dans le wiring app.
 
-test_that("v0.58.0 — clé i18n fast_alerts_parallel_label (FR/EN)", {
+test_that("v0.60.0 — clé i18n fast_alerts_parallel_label retirée", {
   i18n_fr <- nemetonshiny:::get_i18n("fr")
-  i18n_en <- nemetonshiny:::get_i18n("en")
-  expect_true(nzchar(i18n_fr$t("fast_alerts_parallel_label")))
-  expect_true(nzchar(i18n_en$t("fast_alerts_parallel_label")))
-  expect_match(i18n_fr$t("fast_alerts_parallel_label"), "Mode rapide")
-  expect_match(i18n_en$t("fast_alerts_parallel_label"), "Fast mode")
-})
-
-test_that("v0.58.0 — input$fast_mode propage parallel à compute_fast_alert_mask", {
-  skip_if_not_installed("nemeton")
-  skip_if_not_installed("shiny")
-  captured_parallel <- NULL
-  testthat::with_mocked_bindings(
-    compute_fast_alert_mask = function(..., parallel = FALSE) {
-      captured_parallel <<- parallel
-      tmp <- tempfile(fileext = ".tif")
-      file.create(tmp)
-      invisible(tmp)
-    },
-    .package = "nemeton",
-    {
-      # On simule le wiring : la fonction utilitaire qui résout le
-      # `use_parallel` à partir de input$fast_mode est inline dans
-      # `raster_r()`. On reproduit ici le pattern pour vérifier la
-      # logique de propagation (TRUE/FALSE/NULL → bool).
-      cases <- list(
-        list(input = TRUE,  expected = TRUE),
-        list(input = FALSE, expected = FALSE),
-        list(input = NULL,  expected = FALSE),
-        list(input = NA,    expected = FALSE)
-      )
-      for (case in cases) {
-        # Mime ligne 232 de mod_monitoring_fast_alerts.R :
-        use_parallel <- isTRUE(case$input %||% FALSE)
-        expect_equal(use_parallel, case$expected,
-                     info = paste("input =", capture.output(print(case$input))))
-      }
-    }
+  # Une clé absente retourne son propre nom + warning (fallback
+  # de l'helper). On vérifie les deux pour signaler une éventuelle
+  # ré-introduction accidentelle de la clé.
+  expect_warning(
+    res <- i18n_fr$t("fast_alerts_parallel_label"),
+    "Translation key not found"
   )
+  expect_identical(res, "fast_alerts_parallel_label")
 })
 
 # ============================================================
