@@ -173,6 +173,131 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
     # unconditionally.
     shiny::outputOptions(output, "panel", suspendWhenHidden = FALSE)
 
+    # v0.59.0 (TODO #3) — diagnostic pixel CRSWIR au clic sur la
+    # carte FORDEAD. Parité fonctionnelle avec la « Carte pixel
+    # FAST » (mod_monitoring_pixel_map.R::observeEvent(input$map_click)).
+    # Le clic extrait via `nemeton::read_fordead_pixel_series()` la
+    # série CRSWIR observée (points) et la prédiction harmonique
+    # (ligne) au pixel cliqué, puis affiche un plotly dans un modal
+    # avec un marqueur vertical sur la date de 1re anomalie
+    # (`attr(., "premiere_detection")`) si présente.
+    shiny::observeEvent(input$map_click, {
+      i18n <- i18n_r()
+      zone <- zone_id_r()
+      if (is.null(zone) || !isTRUE(nzchar(zone))) return()
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return()
+      cd <- file.path(proj$path, "cache", "layers", "fordead")
+      if (!dir.exists(cd)) return()
+      lat <- input$map_click$lat
+      lng <- input$map_click$lng
+      if (is.null(lat) || is.null(lng)) return()
+
+      ts <- tryCatch(
+        nemeton::read_fordead_pixel_series(
+          con       = NULL,  # spec : con reserved, NULL accepté
+          zone_id   = as.integer(zone),
+          xy        = c(lng, lat),
+          crs       = 4326,
+          run_id    = NULL,  # dernier run
+          cache_dir = cd
+        ),
+        error = function(e) {
+          cli::cli_alert_warning(sprintf(
+            "read_fordead_pixel_series failed: %s",
+            conditionMessage(e)))
+          NULL
+        }
+      )
+      if (is.null(ts) || !nrow(ts)) {
+        shiny::showNotification(
+          i18n$t("monitoring_fordead_pixel_no_data"),
+          type = "warning", duration = 4
+        )
+        return()
+      }
+
+      premiere <- attr(ts, "premiere_detection")
+      col_obs  <- "#2C7FB8"  # bleu observé
+      col_pred <- "#D62728"  # rouge prédiction harmonique
+
+      p <- plotly::plot_ly(type = "scatter")
+      p <- plotly::add_trace(
+        p,
+        x      = as.Date(ts$obs_date),
+        y      = as.numeric(ts$crswir_obs),
+        name   = i18n$t("monitoring_fordead_pixel_observed"),
+        mode   = "markers",
+        marker = list(color = col_obs, size = 5),
+        hovertemplate = paste0(
+          "<b>", i18n$t("monitoring_fordead_pixel_observed"), "</b><br>",
+          "%{x|%Y-%m-%d}<br>",
+          "CRSWIR = %{y:.3f}<extra></extra>"
+        )
+      )
+      p <- plotly::add_trace(
+        p,
+        x      = as.Date(ts$obs_date),
+        y      = as.numeric(ts$crswir_pred),
+        name   = i18n$t("monitoring_fordead_pixel_predicted"),
+        mode   = "lines",
+        line   = list(color = col_pred, width = 1.5),
+        hovertemplate = paste0(
+          "<b>", i18n$t("monitoring_fordead_pixel_predicted"), "</b><br>",
+          "%{x|%Y-%m-%d}<br>",
+          "CRSWIR = %{y:.3f}<extra></extra>"
+        )
+      )
+
+      shapes <- list()
+      annotations <- list()
+      if (!is.null(premiere) && length(premiere) == 1L &&
+          inherits(premiere, "Date") && !is.na(premiere)) {
+        # Marqueur vertical sur la date de 1re anomalie détectée.
+        shapes <- list(list(
+          type = "line",
+          xref = "x",   x0 = premiere, x1 = premiere,
+          yref = "paper", y0 = 0, y1 = 1,
+          line = list(color = "#000000", dash = "dash", width = 1.5)
+        ))
+        annotations <- list(list(
+          xref = "x",  x = premiere, xanchor = "left",
+          yref = "paper", y = 1, yanchor = "top",
+          text = sprintf("%s : %s",
+                         i18n$t("monitoring_fordead_pixel_first_anomaly"),
+                         format(premiere, "%Y-%m-%d")),
+          showarrow = FALSE,
+          font = list(color = "#000000", size = 11)
+        ))
+      }
+
+      p <- plotly::layout(
+        p,
+        margin = list(t = 20, b = 40, l = 50, r = 10),
+        xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
+                      type = "date"),
+        yaxis  = list(title = i18n$t("monitoring_fordead_pixel_yaxis")),
+        legend = list(orientation = "h", y = -0.25),
+        shapes = if (length(shapes)) shapes else NULL,
+        annotations = if (length(annotations)) annotations else NULL
+      )
+
+      shiny::showModal(shiny::modalDialog(
+        title = sprintf(
+          i18n$t("monitoring_fordead_pixel_modal_title_fmt"),
+          round(lat, 5), round(lng, 5)
+        ),
+        size  = "l",
+        easyClose = TRUE,
+        plotly::plotlyOutput(session$ns("pixel_ts_plot"),
+                             height = "320px"),
+        footer = shiny::modalButton(i18n$t("close"))
+      ))
+      output$pixel_ts_plot <- plotly::renderPlotly(p)
+    })
+
+    shiny::outputOptions(output, "map", suspendWhenHidden = FALSE)
+
     invisible(list(mask = mask_r))
   })
 }

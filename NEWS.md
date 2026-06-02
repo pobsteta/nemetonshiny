@@ -1,3 +1,55 @@
+# nemetonshiny 0.59.0 (2026-06-02)
+
+### Added — Modal diagnostic pixel CRSWIR FORDEAD (TODO #3)
+
+Chantier #3 du TODO `nemetonshiny`. Au clic gauche sur la carte
+FORDEAD (`mod_monitoring_fordead_map`), un modal interactif s'ouvre
+et affiche, pour le pixel cliqué :
+
+* la **série CRSWIR observée** (points bleus),
+* la **prédiction harmonique** du modèle FORDEAD (ligne rouge),
+* un **marqueur vertical** sur la date de 1re anomalie détectée
+  (`attr(., "premiere_detection")`), si présente.
+
+Parité fonctionnelle avec la « Carte pixel FAST » existante : même
+pattern `observeEvent(input$map_click)` + `showModal` +
+`plotly::plotlyOutput`. Le wiring cœur passe par
+`nemeton::read_fordead_pixel_series(con = NULL, zone_id, xy, crs,
+run_id = NULL, cache_dir)`, fonction shippée dans `nemeton@v0.43.0`
+(spec FORDEAD pixel-series). `con` est réservé pour un futur
+`fordead_run` tracking — `NULL` accepté en l'état.
+
+**Détails techniques** :
+
+* `R/mod_monitoring_fordead_map.R` : nouveau
+  `shiny::observeEvent(input$map_click)` qui résout `cache_dir` à
+  partir du projet actif (`<projet>/cache/layers/fordead`), extrait
+  la série au `xy = c(lng, lat)` clic, puis monte le plotly et l'ouvre
+  dans un `modalDialog(size = "l", easyClose = TRUE)`.
+* `R/utils_i18n.R` : 6 nouvelles clés FR/EN
+  (`monitoring_fordead_pixel_modal_title_fmt`,
+  `monitoring_fordead_pixel_observed`,
+  `monitoring_fordead_pixel_predicted`,
+  `monitoring_fordead_pixel_first_anomaly`,
+  `monitoring_fordead_pixel_yaxis`,
+  `monitoring_fordead_pixel_no_data`).
+  Encodage `\uXXXX` (règle stricte CLAUDE.md §4).
+* 2 nouveaux tests dans `test-service_monitoring.R` : i18n des
+  6 clés (FR + EN) + signature `read_fordead_pixel_series` cohérente
+  avec l'appel app.
+
+**Empty state préservé** : si aucune série n'est disponible pour le
+pixel (hors zone modélisée, run FORDEAD absent, env Python
+indisponible), `read_fordead_pixel_series()` renvoie `NULL` et l'app
+affiche une `shiny::showNotification(type = "warning", duration =
+4)` au lieu d'un modal vide.
+
+**Pas de breaking change** : seul ajout, comportement existant de
+`mask_r` / `output$map` inchangé.
+
+Plancher cœur : `nemeton (>= 0.62.0)` déjà satisfait (la fonction
+shippe depuis `nemeton@v0.43.0`).
+
 # nemetonshiny 0.58.0 (2026-06-02)
 
 ### Added — Toggle « Mode rapide » multi-cœur Alertes FAST (TODO #4)

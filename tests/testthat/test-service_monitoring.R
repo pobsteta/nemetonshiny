@@ -416,3 +416,44 @@ test_that("v0.58.0 — input$fast_mode propage parallel à compute_fast_alert_ma
     }
   )
 })
+
+# ============================================================
+# v0.59.0 — Modal diagnostic pixel CRSWIR FORDEAD (TODO #3)
+# ============================================================
+
+test_that("v0.59.0 — clés i18n FORDEAD pixel modal (FR/EN)", {
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
+  keys <- c(
+    "monitoring_fordead_pixel_modal_title_fmt",
+    "monitoring_fordead_pixel_observed",
+    "monitoring_fordead_pixel_predicted",
+    "monitoring_fordead_pixel_first_anomaly",
+    "monitoring_fordead_pixel_yaxis",
+    "monitoring_fordead_pixel_no_data"
+  )
+  for (k in keys) {
+    expect_true(nzchar(i18n_fr$t(k)), info = paste("FR", k))
+    expect_true(nzchar(i18n_en$t(k)), info = paste("EN", k))
+    expect_false(identical(i18n_fr$t(k), k), info = paste("FR resolved", k))
+    expect_false(identical(i18n_en$t(k), k), info = paste("EN resolved", k))
+  }
+  # sprintf format string is callable
+  expect_match(
+    sprintf(i18n_fr$t("monitoring_fordead_pixel_modal_title_fmt"),
+            46.71, 6.42),
+    "46\\.71000.*6\\.42000"
+  )
+})
+
+test_that("v0.59.0 — signature read_fordead_pixel_series compatible app", {
+  skip_if_not_installed("nemeton")
+  # Sanity check : la fonction cœur consommée par mod_monitoring_fordead_map
+  # expose bien les arguments nommés que l'app passe (con, zone_id, xy,
+  # crs, run_id, cache_dir).
+  expect_true(exists("read_fordead_pixel_series",
+                     envir = asNamespace("nemeton")))
+  f <- get("read_fordead_pixel_series", envir = asNamespace("nemeton"))
+  expected <- c("con", "zone_id", "xy", "crs", "run_id", "cache_dir")
+  expect_true(all(expected %in% names(formals(f))))
+})

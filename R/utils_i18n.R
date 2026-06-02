@@ -2434,6 +2434,35 @@ TRANSLATIONS <- list(
     en = "bare soil"
   ),
 
+  # v0.59.0 (TODO #3) — Modal diagnostic pixel CRSWIR au clic sur la
+  # carte FORDEAD. Affiche la série CRSWIR observée vs la prédiction
+  # harmonique du modèle FORDEAD, avec marqueur vertical sur la
+  # date de 1re anomalie détectée.
+  monitoring_fordead_pixel_modal_title_fmt = list(
+    fr = "Pixel CRSWIR FORDEAD \u2014 %.5f, %.5f",
+    en = "FORDEAD CRSWIR pixel \u2014 %.5f, %.5f"
+  ),
+  monitoring_fordead_pixel_observed = list(
+    fr = "Observ\u00e9",
+    en = "Observed"
+  ),
+  monitoring_fordead_pixel_predicted = list(
+    fr = "Pr\u00e9dit (harmonique)",
+    en = "Predicted (harmonic)"
+  ),
+  monitoring_fordead_pixel_first_anomaly = list(
+    fr = "1re anomalie",
+    en = "First anomaly"
+  ),
+  monitoring_fordead_pixel_yaxis = list(
+    fr = "CRSWIR",
+    en = "CRSWIR"
+  ),
+  monitoring_fordead_pixel_no_data = list(
+    fr = "Aucune s\u00e9rie CRSWIR disponible pour ce pixel (hors zone mod\u00e9lis\u00e9e ou run FORDEAD absent).",
+    en = "No CRSWIR series available for this pixel (outside the modelled extent or FORDEAD run missing)."
+  ),
+
   # ----- Pixel map sub-tab (spec 010) -----
   monitoring_pixel_map_title = list(
     fr = "Carte pixel \u2014 NDVI / NBR \u00e0 la r\u00e9solution Sentinel-2 (10 m)",

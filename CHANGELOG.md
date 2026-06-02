@@ -10,6 +10,29 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.59.0] - 2026-06-02
+
+### Added
+
+- **Modal diagnostic pixel CRSWIR FORDEAD** (TODO #3, `nemeton@v0.43.0+`).
+  Clic gauche sur la carte FORDEAD → modal plotly affichant la série
+  CRSWIR observée (points bleus) + prédiction harmonique (ligne rouge)
+  + marqueur vertical sur la date de 1re anomalie. Parité fonctionnelle
+  avec la Carte pixel FAST existante. Wiring via
+  `nemeton::read_fordead_pixel_series()`.
+- 6 nouvelles clés i18n FR/EN
+  (`monitoring_fordead_pixel_modal_title_fmt`,
+  `monitoring_fordead_pixel_observed`,
+  `monitoring_fordead_pixel_predicted`,
+  `monitoring_fordead_pixel_first_anomaly`,
+  `monitoring_fordead_pixel_yaxis`,
+  `monitoring_fordead_pixel_no_data`).
+
+### Tests
+
+- 2 nouveaux : cohérence i18n des 6 clés (FR + EN) + signature cœur
+  `read_fordead_pixel_series` compatible avec l'appel app.
+
 ## [0.58.0] - 2026-06-02
 
 ### Added
