@@ -2225,6 +2225,14 @@ TRANSLATIONS <- list(
     fr = "Aucune alerte FAST sur la fenêtre",
     en = "No FAST alerts in window"
   ),
+  # v0.53.0 — bandeau d'erreur distinct de « zone saine » : affiché
+  # quand `read_fast_alert_raster()` lève une exception OU renvoie
+  # NULL (typiquement cache S2 incomplet pour l'indice choisi —
+  # courant pour NBR si B12 manque sur beaucoup de scènes).
+  monitoring_fast_alerts_error_title = list(
+    fr = "Raster d'alerte non calculable",
+    en = "Alert raster could not be computed"
+  ),
   monitoring_fast_alerts_empty_body = list(
     fr = "Aucun pixel n'a déclenché d'alerte sur la fenêtre choisie. Élargir la fenêtre, relever le seuil ou changer la zone pour explorer d'autres scénarios.",
     en = "No pixel triggered an alert in the chosen window. Widen the window, raise the threshold, or change zone to explore further."

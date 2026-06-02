@@ -94,7 +94,19 @@ mod_monitoring_fast_alerts_ui <- function(id) {
           min = 0, max = 1, value = 0.75, step = 0.05
         )
       ),
-      shiny::uiOutput(ns("panel"))
+      # v0.53.0 — Le banner « zone saine » et le leafletOutput sont
+      # désormais 2 outputs SÉPARÉS. Avant ce bump, ils vivaient dans
+      # un seul `output$panel` qui dépendait de `raster_r` (pour
+      # décider d'afficher le banner ou non) → à chaque changement
+      # de raster_r (switch index NDVI/NBR, slider seuil, etc.), le
+      # `renderUI` du panel re-render → le `leafletOutput` est
+      # détruit + recréé → la map est ré-initialisée → l'observer
+      # `leafletProxy::addRasterImage` peint dans le vide → user
+      # devait bouger un autre slider pour forcer un repaint. Ce
+      # split rend la map immortelle (renderLeaflet appelé UNE FOIS)
+      # et seul le banner re-render quand raster_r change.
+      shiny::uiOutput(ns("banner")),
+      leaflet::leafletOutput(ns("map"), height = "55vh")
     )
   )
 }
@@ -125,6 +137,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     i18n_r <- shiny::reactive({
       get_i18n(app_state$language %||% "fr")
     })
+
+    # v0.53.0 — capture la dernière cause d'échec du raster (NULL =
+    # OK, sinon chaîne descriptive). Lu par output$banner pour
+    # distinguer « zone saine » (raster calculé, 0 alerte) de
+    # « impossible à calculer » (cache incomplet pour cet indice).
+    last_raster_error <- shiny::reactiveVal(NULL)
 
     # Refresh radio labels on language change. Preserves selection by
     # echoing back input$mode (or default "count" before first click).
@@ -222,7 +240,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       result_cache <- if (!is.null(proj_path) && nzchar(proj_path)) {
         file.path(proj_path, "cache", "layers", "fast_alert")
       } else NULL
-      tryCatch(
+      # v0.53.0 — capture l'erreur dans un reactiveVal partagé pour
+      # que le banner UI puisse afficher la vraie cause au lieu d'un
+      # générique « zone saine » qui camoufle un bug de cache (typique
+      # pour NBR quand la bande B12 est partiellement absente du cache
+      # S2 — distinct du cas où la zone est vraiment saine).
+      out <- tryCatch(
         nemeton::read_fast_alert_raster(
           con,
           zone_id          = as.integer(zone),
@@ -238,23 +261,59 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         ),
         error = function(e) {
           cli::cli_alert_warning(
-            "read_fast_alert_raster failed: {e$message}"
+            "read_fast_alert_raster failed (index={idx}): {e$message}"
           )
+          last_raster_error(paste0(idx, ": ", conditionMessage(e)))
           NULL
         }
       )
+      if (is.null(out)) {
+        # NULL sans exception = pas de scène utilisable (cache vide
+        # pour cet indice, ou date range hors couverture). On garde
+        # cette info pour le banner.
+        last_raster_error(sprintf(
+          "%s : aucun raster d'alerte calculable (cache vide ou hors fenêtre).",
+          idx
+        ))
+      } else {
+        last_raster_error(NULL)
+      }
+      out
     })
 
-    # ----- Panel : map (always rendered) + optional empty-state banner -----
+    # ----- Banner : seul ce slot re-render selon raster_r() ----------
     # v0.46.3 — la carte (OSM + UGFs) est désormais affichée même
     # quand le raster d'alerte est vide. Un bandeau « zone saine »
     # vert s'affiche au-dessus pour donner l'info, mais l'utilisateur
     # conserve le repère spatial (où est la zone, où sont les UGFs).
-    output$panel <- shiny::renderUI({
+    # v0.53.0 — Banner extrait dans son propre uiOutput (était inclus
+    # dans output$panel qui contenait aussi le leafletOutput → à
+    # chaque raster_r change, la map était détruite/recréée et le
+    # `addRasterImage` peignait dans le vide). Maintenant le banner
+    # re-render indépendamment, la map est rendue UNE FOIS.
+    output$banner <- shiny::renderUI({
       i18n <- i18n_r()
       r <- raster_r()
-      banner <- if (is.null(r) || .fast_raster_is_empty(r)) {
-        htmltools::div(
+      err <- last_raster_error()
+      # v0.53.0 — 2 cas distincts au lieu d'un message vert
+      # « zone saine » générique :
+      #   * Erreur réelle (cache S2 incomplet pour cet indice,
+      #     exception cœur) → bandeau JAUNE warning avec la cause.
+      #   * Raster calculé mais 0 cellule en alerte → bandeau VERT
+      #     « zone saine » classique.
+      if (!is.null(err)) {
+        return(htmltools::div(
+          class = "alert alert-warning d-flex align-items-center gap-3 m-2 py-2 small",
+          bsicons::bs_icon("exclamation-triangle-fill", class = "fs-3 flex-shrink-0"),
+          htmltools::div(
+            htmltools::tags$strong(i18n$t("monitoring_fast_alerts_error_title")),
+            htmltools::tags$br(),
+            htmltools::tags$span(err)
+          )
+        ))
+      }
+      if (is.null(r) || .fast_raster_is_empty(r)) {
+        return(htmltools::div(
           class = "alert alert-success d-flex align-items-center gap-3 m-2 py-2 small",
           bsicons::bs_icon("check-circle", class = "fs-3 flex-shrink-0"),
           htmltools::div(
@@ -263,12 +322,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
             htmltools::tags$span(class = "text-white",
                                  i18n$t("monitoring_fast_alerts_empty_body"))
           )
-        )
-      } else NULL
-      htmltools::tagList(
-        banner,
-        leaflet::leafletOutput(session$ns("map"), height = "55vh")
-      )
+        ))
+      }
+      NULL
     })
 
     # v0.51.5 — la carte de base (tuiles + UGF + fitBounds) est rendue
@@ -408,7 +464,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # Shiny's visibility detection unreliable. Force the panel
     # uiOutput to evaluate unconditionally so empty-state / leaflet
     # wrapper render the moment the user opens the sub-tab.
-    shiny::outputOptions(output, "panel", suspendWhenHidden = FALSE)
+    # v0.53.0 — `panel` renommé en `banner` + leafletOutput direct.
+    shiny::outputOptions(output, "banner", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "map",    suspendWhenHidden = FALSE)
 
     # v0.52.14 — `index_r` exporté pour que le module
     # validation_sampling (qui consomme aussi `read_fast_alert_raster`
