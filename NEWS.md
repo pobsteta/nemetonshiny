@@ -1,3 +1,60 @@
+# nemetonshiny 0.52.15 (2026-06-02)
+
+### Fixed — Call site oublié de `compute_fast_alert_mask()` (régression v0.52.13)
+
+v0.52.13 avait migré les 2 call sites de `read_fast_alert_raster()`
+vers l'API mono-index `nemeton@v0.55.0`, mais avait oublié le call
+site de `compute_fast_alert_mask()` dans `service_validation_sampling.R`
+qui passait encore `threshold_ndvi` / `threshold_nbr`. Conséquence :
+un clic sur « Générer le plan de validation FAST » crashait avec
+« arguments inutilisés » dès qu'il fallait recalculer le mask
+discrétisé (fast_alert.tif absent du cache).
+
+`R/service_validation_sampling.R` : `compute_fast_alert_mask()` est
+maintenant appelé avec `index` + `threshold`. La fonction
+`.resolve_alert_raster()` et `generate_validation_plan()` exposent
+un nouveau paramètre `index = NULL` (NULL → fallback "NDVI" côté
+cœur). Le call site UI (`mod_validation_sampling.R`) passe
+`index = th$index` — alimenté par le radio « Indice FAST » de
+l'onglet Alertes FAST via `fast_alerts_ret$index_r` (v0.52.14).
+
+### Added — Cache D6 du raster d'alerte (`nemeton@v0.57.0`)
+
+`nemeton@v0.57.0` ajoute le **cache content-addressed** du
+`SpatRaster` retourné par `read_fast_alert_raster()` et
+`compute_fast_alert_mask()` (paramètres `cache_result = TRUE`,
+`result_cache_dir`). Le COG résultat est persisté sous
+`<project>/cache/layers/fast_alert/zone_<id>/<hash>.tif`. Le hash
+encapsule tous les paramètres (zone, index, threshold, date_from,
+date_to, mode, window_days) — toute modification d'un seul produit
+un hash différent et déclenche un recalcul ; à paramètres identiques,
+la revisite est instantanée (lecture COG depuis disque, sub-seconde).
+
+Pas d'invalidation manuelle à faire — le cache se renouvelle
+automatiquement. La taille typique d'un COG résultat est ~50-200 Ko
+par zone, donc l'empreinte disque reste négligeable même avec
+plusieurs entrées (index × mode × thresholds différents).
+
+* `R/mod_monitoring_fast_alerts.R` : call site Alertes FAST passe
+  `cache_result = TRUE` + `result_cache_dir =
+  <project>/cache/layers/fast_alert`.
+* `R/mod_validation_sampling.R` : prévisualisation FAST passe les
+  mêmes paramètres — un clic sur l'aperçu après changement
+  d'index/seuil est désormais instantané quand le COG résultat est
+  déjà sur disque.
+* `R/service_validation_sampling.R` : `compute_fast_alert_mask()`
+  active aussi le cache D6 (`result_cache_dir = cd`).
+
+### Changed — Plancher `Imports: nemeton (>= 0.57.0)`
+
+L'app consomme désormais les paramètres `cache_result` /
+`result_cache_dir` apparus en v0.57.0 du cœur. Sans ce plancher, un
+install contre un cœur antérieur (< 0.57.0) bouclerait sur
+« argument inutilisé : cache_result ».
+
+Cycle dev `0.52.14` → `0.52.14.9001` → release stable **`v0.52.15`**
+(PATCH, fix régression + activation cache D6 cœur).
+
 # nemetonshiny 0.52.14 (2026-06-01)
 
 ### Changed — Radio « Indice FAST » déplacé du sidebar parent vers le sidebar droit d'Alertes FAST

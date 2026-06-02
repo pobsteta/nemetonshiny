@@ -59,7 +59,10 @@ generate_validation_plan <- function(con, project,
                                      mode           = "count",
                                      window_days    = 30L,
                                      date_from      = NULL,
-                                     date_to        = NULL) {
+                                     date_to        = NULL,
+                                     # v0.52.15 — mono-indice (spec 017 cœur).
+                                     # NULL → "NDVI" (défaut cœur).
+                                     index          = NULL) {
   source <- match.arg(source)
   if (is.null(project) || is.null(project$id)) {
     rlang::abort("No project loaded.", class = "validation_no_project")
@@ -88,7 +91,8 @@ generate_validation_plan <- function(con, project,
     mode           = mode,
     window_days    = window_days,
     date_from      = date_from,
-    date_to        = date_to
+    date_to        = date_to,
+    index          = index
   )
   if (is.null(alert_raster)) {
     rlang::abort("No alert mask available for this zone.",
@@ -160,7 +164,10 @@ generate_validation_plan <- function(con, project,
                                   mode           = "count",
                                   window_days    = 30L,
                                   date_from      = NULL,
-                                  date_to        = NULL) {
+                                  date_to        = NULL,
+                                  # v0.52.15 — index mono-indice (spec 017).
+                                  # NULL → fallback "NDVI" (défaut cœur).
+                                  index          = NULL) {
   if (is.null(project$path) || !nzchar(project$path)) return(NULL)
   if (identical(source, "FORDEAD")) {
     cd <- file.path(project$path, "cache", "layers", "fordead")
@@ -201,18 +208,28 @@ generate_validation_plan <- function(con, project,
     )
     return(NULL)
   }
+  # v0.52.15 — `nemeton@v0.55.0` (spec 017) a unifié l'API mono-index :
+  # `compute_fast_alert_mask()` accepte désormais `index` + `threshold`,
+  # plus `threshold_ndvi`/`threshold_nbr` (call site oublié en v0.52.13).
+  # v0.57.0 ajoute le cache D6 du résultat (`cache_result = TRUE`,
+  # `result_cache_dir`) — on l'active sur `cache/layers/fast` pour
+  # qu'une revisite à paramètres identiques soit instantanée.
+  fast_idx <- toupper(index %||% "NDVI")
+  fast_thr <- if (identical(fast_idx, "NBR")) nbr_threshold else ndvi_threshold
   tryCatch(
     nemeton::compute_fast_alert_mask(
-      con            = con,
-      zone_id        = zone_id,
-      threshold_ndvi = as.numeric(ndvi_threshold),
-      threshold_nbr  = as.numeric(nbr_threshold),
-      date_from      = as.Date(date_from),
-      date_to        = as.Date(date_to),
-      mode           = as.character(mode),
-      window_days    = as.integer(window_days),
-      cache_dir      = s2_cache,
-      mask_cache_dir = cd
+      con              = con,
+      zone_id          = zone_id,
+      index            = fast_idx,
+      threshold        = as.numeric(fast_thr),
+      date_from        = as.Date(date_from),
+      date_to          = as.Date(date_to),
+      mode             = as.character(mode),
+      window_days      = as.integer(window_days),
+      cache_dir        = s2_cache,
+      mask_cache_dir   = cd,
+      cache_result     = TRUE,
+      result_cache_dir = cd
     ),
     error = function(e) {
       cli::cli_alert_warning(

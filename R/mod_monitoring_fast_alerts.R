@@ -209,17 +209,32 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # le sidebar parent via `thresholds_r$ndvi` / `$nbr`.
       idx <- input$index %||% "NDVI"
       thr <- if (identical(idx, "NBR")) th$nbr else th$ndvi
+      # v0.52.15 — `nemeton@v0.57.0` ajoute le cache D6 du raster
+      # résultat : `cache_result = TRUE` + `result_cache_dir` →
+      # le COG calculé est persisté sous
+      # `<project>/cache/layers/fast_alert/zone_<id>/<hash>.tif`.
+      # À la revisite suivante avec les mêmes paramètres (zone, index,
+      # threshold, dates, mode, window_days), le cœur lit le COG depuis
+      # disque (sub-seconde) au lieu de relancer le pipeline. Le hash
+      # change automatiquement quand n'importe quel paramètre bouge,
+      # donc pas d'invalidation manuelle à faire.
+      proj_path <- app_state$current_project$path
+      result_cache <- if (!is.null(proj_path) && nzchar(proj_path)) {
+        file.path(proj_path, "cache", "layers", "fast_alert")
+      } else NULL
       tryCatch(
         nemeton::read_fast_alert_raster(
           con,
-          zone_id     = as.integer(zone),
-          index       = idx,
-          threshold   = as.numeric(thr),
-          date_from   = dr[1],
-          date_to     = dr[2],
-          mode        = mode,
-          window_days = as.integer(th$window_days %||% 30L),
-          cache_dir   = cd
+          zone_id          = as.integer(zone),
+          index            = idx,
+          threshold        = as.numeric(thr),
+          date_from        = dr[1],
+          date_to          = dr[2],
+          mode             = mode,
+          window_days      = as.integer(th$window_days %||% 30L),
+          cache_dir        = cd,
+          cache_result     = TRUE,
+          result_cache_dir = result_cache
         ),
         error = function(e) {
           cli::cli_alert_warning(

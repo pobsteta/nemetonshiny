@@ -216,19 +216,25 @@ mod_validation_sampling_server <- function(id, app_state,
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       # v0.52.13 — API mono-index (nemeton@v0.55.0, spec 017).
+      # v0.52.15 — cache D6 (nemeton@v0.57.0) sur la prévisualisation
+      # FAST : un clic sur l'aperçu après changement de seuil/index est
+      # désormais instantané si le COG résultat est déjà sur disque.
       idx <- th$index %||% "NDVI"
       thr <- if (identical(idx, "NBR")) th$nbr else th$ndvi
+      result_cache <- file.path(proj$path, "cache", "layers", "fast_alert")
       tryCatch(
         nemeton::read_fast_alert_raster(
           con,
-          zone_id     = zone_id,
-          index       = idx,
-          threshold   = as.numeric(thr),
-          date_from   = dr[1],
-          date_to     = dr[2],
-          mode        = "count",
-          window_days = as.integer(th$window_days %||% 30L),
-          cache_dir   = cd
+          zone_id          = zone_id,
+          index            = idx,
+          threshold        = as.numeric(thr),
+          date_from        = dr[1],
+          date_to          = dr[2],
+          mode             = "count",
+          window_days      = as.integer(th$window_days %||% 30L),
+          cache_dir        = cd,
+          cache_result     = TRUE,
+          result_cache_dir = result_cache
         ),
         error = function(e) NULL
       )
@@ -365,7 +371,12 @@ mod_validation_sampling_server <- function(id, app_state,
           nbr_threshold   = th$nbr,
           window_days     = th$window_days %||% 30L,
           date_from       = if (length(dr) == 2L) dr[1] else NULL,
-          date_to         = if (length(dr) == 2L) dr[2] else NULL
+          date_to         = if (length(dr) == 2L) dr[2] else NULL,
+          # v0.52.15 — index mono-indice (spec 017). `th$index` est
+          # alimenté par le retour `index_r` de mod_monitoring_fast_alerts
+          # (cf. v0.52.14) pour le source FAST. Source FORDEAD est
+          # `index`-agnostic mais le param est inoffensif.
+          index           = th$index
         ),
         error = function(e) e
       )
