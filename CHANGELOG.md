@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.61.1] - 2026-06-02
+
+### Added
+
+- **Observabilité RAG** : `cli::cli_inform("RAG: {n} chunk(s)
+  récupéré(s) au-dessus de {min_similarity}")` dans
+  `R/service_rag.R::rag_context()` juste après le retrieve cœur
+  réussi. Item résiduel du brief RAG 2026-06-02 — le reste du
+  câblage (`service_rag.R`, `mod_synthesis.R`, i18n, tests) était
+  livré en v0.56.0.
+
 ## [0.61.0] - 2026-06-02
 
 ### Removed

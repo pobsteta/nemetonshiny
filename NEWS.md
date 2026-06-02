@@ -1,3 +1,31 @@
+# nemetonshiny 0.61.1 (2026-06-02)
+
+### Added — Observabilité RAG (`cli_inform` par perspective)
+
+Ajout d'une ligne de log par appel `rag_context()` réussi, dans
+`R/service_rag.R` juste après le retrieve cœur :
+
+```r
+cli::cli_inform("RAG: {nrow(chunks)} chunk(s) récupéré(s) au-dessus de {min_similarity}")
+```
+
+**Pourquoi** : sans ce log, un corpus muet (0 chunk au-dessus du
+seuil) ressemblait à un cas où `rag_context()` court-circuitait
+avant le retrieve (opt-out, corpus indisponible, situation_text
+vide…). Désormais on distingue :
+
+* **Ligne présente** → le retrieve a réussi, le nombre de chunks
+  est connu, ajuster le seuil ou les filtres si trop bas.
+* **Ligne absente** → court-circuit en amont (corpus, opt-out,
+  query vide).
+
+**Pas de breaking change** : strict ajout d'un log côté
+`cli::cli_inform()`, aucun comportement modifié.
+
+Item résiduel du brief RAG du 2026-06-02 (chantier #2). Le reste du
+câblage (`R/service_rag.R`, `R/mod_synthesis.R`, i18n, tests) était
+déjà livré en v0.56.0.
+
 # nemetonshiny 0.61.0 (2026-06-02)
 
 ### Removed — Simplification des contrôles raster FAST
