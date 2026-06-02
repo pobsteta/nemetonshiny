@@ -1,4 +1,4 @@
-# nemetonshiny 0.56.0.9001 (2026-06-02)
+# nemetonshiny 0.57.0 (2026-06-02)
 
 ### Changed — Alertes FAST : affichage en quartiles 0-4 via `compute_fast_alert_mask()` (spec 017 D2)
 
@@ -68,7 +68,9 @@ les zones d'alerte FAST) est préservée et améliorée. Les utilisateurs
 qui avaient l'habitude du gradient continu trouveront les 5 classes
 plus interprétables.
 
-Cycle dev `0.56.0` → `0.56.0.9001`.
+Cycle dev `0.56.0` → `0.56.0.9001` → release stable **`v0.57.0`**
+(MINOR, refactor structurel affichage + délégation logique métier
+au cœur).
 
 # nemetonshiny 0.56.0 (2026-06-02)
 
