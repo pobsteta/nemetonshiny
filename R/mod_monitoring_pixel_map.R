@@ -119,10 +119,6 @@ mod_monitoring_pixel_map_ui <- function(id) {
 #' @param id Module namespace.
 #' @param app_state Shared `reactiveValues` (carries `language`,
 #'   `current_project`).
-#' @param obs_pixel_data Reactive returning the per-plot obs from
-#'   `nemeton::read_obs_pixel()` (already wired in the parent
-#'   `mod_monitoring_server`). Used to derive `scenes_df`
-#'   (DISTINCT scene_id × obs_date) without a second SQL query.
 #' @param mode_input Reactive returning the current mode
 #'   (`"quick"` / `"health"`). The pixel map only makes sense in
 #'   quick mode (FORDEAD doesn't expose per-pixel raster output).
@@ -139,9 +135,15 @@ mod_monitoring_pixel_map_ui <- function(id) {
 #'   user sees at a glance which dates would have triggered an alert.
 #'   v0.42.0.
 #'
+#' @section v0.52.16 — obs_pixel-free:
+#' Le module ne dépend plus de la table `obs_pixel` (spec 017 cœur +
+#' demande utilisateur). Les marqueurs placettes et leur modale série
+#' agrégée ont été supprimés : FAST est désormais une analyse pure
+#' raster per-pixel, sans contact avec les placettes de calibration
+#' Terrain. Le compteur de scènes dérive directement du cache COG.
+#'
 #' @noRd
 mod_monitoring_pixel_map_server <- function(id, app_state,
-                                            obs_pixel_data,
                                             mode_input,
                                             refresh_r = shiny::reactive(0L),
                                             thresholds_r = shiny::reactive(NULL)) {
@@ -187,29 +189,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       cd
     })
 
-    # db_scenes_df = DISTINCT (scene_id, obs_date) from the per-plot
-    # obs already fetched by the parent module's obs_pixel_data
-    # reactive. Plot-restricted by construction (obs_pixel only stores
-    # pixels AT the placettes), so it covers only the MGRS tile(s) that
-    # contain a plot. Used for the "downloaded but 0 DB obs" diagnostic
-    # and as the authoritative scene_id → obs_date source.
-    db_scenes_df_r <- shiny::reactive({
-      df <- obs_pixel_data()
-      if (is.null(df) || !nrow(df)) return(NULL)
-      out <- unique(df[, c("scene_id", "obs_date"), drop = FALSE])
-      out <- out[order(out$obs_date), , drop = FALSE]
-      rownames(out) <- NULL
-      out
-    })
-
-    # scenes_df = (scene_id, obs_date) for EVERY populated scene
-    # directory on disk — not just the plot-covered scenes above. The
-    # pixel map must render the full AOI raster regardless of where the
-    # validation plots fall: an AOI straddling two MGRS tiles (villards
-    # T31TFM + T31TGM) has a tile with no plot, whose scenes would never
-    # enter the stack if it were driven by `db_scenes_df_r`, leaving half
-    # the map blank. obs_date is taken from the DB when the scene has plot
-    # obs (authoritative), else parsed from the Sentinel-2 scene id.
+    # v0.52.16 — `scenes_df_r` est désormais purement disk-driven : on
+    # liste les sous-dossiers du cache COG, on filtre ceux qui ont au
+    # moins un `.tif`, et on parse la date depuis le scene_id
+    # (`S2A_MSIL2A_20250619T103041_...` → 2025-06-19). Avant v0.52.16 on
+    # croisait avec un `db_scenes_df_r` issu de `obs_pixel_data()` qui
+    # servait de source autoritaire pour `obs_date` — supprimé pour
+    # éliminer toute dépendance à `obs_pixel` (FAST = pure raster
+    # per-pixel, sans contact avec les placettes Terrain).
     scenes_df_r <- shiny::reactive({
       refresh_r()  # re-scan after an ingestion
       cd <- cache_dir_r()
@@ -221,21 +208,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       }, logical(1))
       dirs <- dirs[populated]
       if (!length(dirs)) return(NULL)
-      db <- db_scenes_df_r()
-      db_map <- if (!is.null(db) && nrow(db)) {
-        data.frame(safe     = .pixel_safe_scene_id(db$scene_id),
-                   obs_date = as.character(db$obs_date),
-                   stringsAsFactors = FALSE)
-      } else NULL
-      obs_date <- vapply(dirs, function(s) {
-        d <- NA_character_
-        if (!is.null(db_map)) {
-          i <- match(s, db_map$safe)
-          if (!is.na(i)) d <- db_map$obs_date[i]
-        }
-        if (is.na(d)) d <- .pixel_scene_date_from_id(s)
-        d
-      }, character(1))
+      obs_date <- vapply(dirs, .pixel_scene_date_from_id, character(1))
       keep <- !is.na(obs_date)
       if (!any(keep)) return(NULL)
       out <- data.frame(scene_id = dirs[keep],
@@ -425,7 +398,8 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # only masked by other behaviors in some cases.)
     .ugf_overlay_group       <- "UGF"
     .pixel_overlay_group     <- "NDVI/NBR"
-    .placettes_overlay_group <- "Placettes"
+    # v0.52.16 — `.placettes_overlay_group` retiré (les marqueurs
+    # placettes ont disparu, FAST est pure-raster).
 
     # Static map skeleton: rendered ONCE. Re-rendering the whole map on
     # every date tick would reset the user's base-layer choice
@@ -439,34 +413,24 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # tile satellite ré-ajouté par le LayersControl masquait
     # NDVI/NBR) et EN-DESSOUS des polygones UGF.
     #
-    # v0.36.3 — les CircleMarkers (placettes) sont par défaut des
-    # Path dans `overlayPane` aux côtés des polygones UGF. Selon
-    # l'ordre de re-draw, les polygones pouvaient finir en fin de
-    # `<g>` SVG et masquer les markers (markers invisibles). On les
-    # pousse explicitement dans `markerPane` (z=600) côté observe,
-    # ce qui garantit la visibilité au-dessus des polygones.
+    # v0.52.16 — Le `markerPane` (z=600) et le toggle « Placettes »
+    # du LayersControl ont été retirés : plus aucun marqueur placette
+    # n'est dessiné (FAST = pure raster per-pixel).
     #
     # Z-stack final (du bas vers le haut) :
     #   tilePane         z=200  OSM / Satellite
     #   nemetonRaster    z=250  NDVI / NBR raster (épinglé custom)
     #   overlayPane      z=400  Polygones UGF (défaut Path)
-    #   markerPane       z=600  CircleMarkers placettes (épinglées)
     output$map <- leaflet::renderLeaflet({
       leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
         leaflet::addLayersControl(
-          # v0.46.5 / v0.47.0 — UGF, Placettes ET le raster NDVI/NBR
-          # toggleables via le LayersControl. Par défaut UGF + Raster
-          # visibles, Placettes cachées. Le raster est ajouté à
-          # l'overlay group `NDVI/NBR` ici puis attaché par
-          # addRasterImage(group = .pixel_overlay_group) plus bas.
           baseGroups    = c("OSM", "Satellite"),
-          overlayGroups = c("UGF", "NDVI/NBR", "Placettes"),
+          overlayGroups = c("UGF", "NDVI/NBR"),
           options       = leaflet::layersControlOptions(collapsed = TRUE)
-        ) |>
-        leaflet::hideGroup("Placettes")
+        )
     })
 
     # Index value range is roughly [-1, 1] for both NDVI and NBR.
@@ -673,23 +637,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         }
       }
 
-      # 4. placettes bbox
-      ps <- tryCatch(placettes_sf_r(), error = function(e) NULL)
-      if (!is.null(ps) && nrow(ps)) {
-        bb <- tryCatch(sf::st_bbox(ps), error = function(e) NULL)
-        if (!is.null(bb)) {
-          geom <- tryCatch(sf::st_as_sf(sf::st_as_sfc(bb)),
-                           error = function(e) NULL)
-          if (!is.null(geom) && nrow(geom)) {
-            if (.pixel_map_debug_enabled())
-              cli::cli_alert_info("UGF source: placettes bbox (last-resort fallback).")
-            return(geom)  # already WGS84 via placettes_sf_r
-          }
-        }
-      }
-
+      # v0.52.16 — fallback « placettes bbox » supprimé.
+      # FAST n'a plus accès aux placettes (obs_pixel-free). Les 3
+      # fallbacks restants (indicators_sf, ug_build_sf, raster bbox)
+      # couvrent tous les cas usuels. Quand aucun n'est dispo, on
+      # retourne NULL et le module reste sans overlay UGF — la carte
+      # OSM/Satellite et le raster restent affichés.
       if (.pixel_map_debug_enabled())
-        cli::cli_alert_info("UGF source: NONE — no indicators_sf, no ug_build_sf, no raster, no placettes.")
+        cli::cli_alert_info("UGF source: NONE — no indicators_sf, no ug_build_sf, no raster bbox.")
       NULL
     })
 
@@ -789,176 +744,23 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       }, delay = 0.3)
     })
 
-    # Placettes overlay: load_samples() returns sf POINT (EPSG:2154
-    # by convention). Filter to plot_ids that actually have observations
-    # in the current window so the markers reflect the same scope as the
-    # rest of the sub-tab. NULL when no plan, no project, no obs.
-    placettes_sf_r <- shiny::reactive({
-      proj <- app_state$current_project
-      if (is.null(proj) || is.null(proj$id)) return(NULL)
-      df <- obs_pixel_data()
-      if (is.null(df) || !nrow(df)) return(NULL)
-      plots <- tryCatch(load_samples(proj$id, layer = "plots"),
-                        error = function(e) NULL)
-      if (is.null(plots) || !inherits(plots, "sf") || !nrow(plots)) {
-        return(NULL)
-      }
-      if (!"plot_id" %in% names(plots)) return(NULL)
-      plots <- plots[as.character(plots$plot_id) %in%
-                     unique(as.character(df$plot_id)), , drop = FALSE]
-      if (!nrow(plots)) return(NULL)
-      # Leaflet expects WGS84.
-      if ((sf::st_crs(plots)$epsg %||% 4326L) != 4326L) {
-        plots <- sf::st_transform(plots, 4326)
-      }
-      plots
-    })
-
-    # Markers swap. Same proxy pattern as the raster observe — clears
-    # the overlay group then re-adds. layerId = plot_id so the click
-    # handler downstream can identify which placette was tapped.
-    # Radius bumped to 7 + black border so the markers stay readable
-    # at the wide auto-fit zoom (a few km across).
-    #
-    # v0.34.0 — observe ne dépend plus de `current_layer_r()` : le
-    # raster vit dans `nemetonRaster` (z-index 250). Les markers ne
-    # re-firent que quand `placettes_sf_r()` change (i.e. nouvelle
-    # obs_pixel_data ou nouveau projet).
-    #
-    # v0.36.3 — markers pinned explicitly to `markerPane` (z-index
-    # 600). CircleMarkers are Path layers and by default land in
-    # `overlayPane` (z=400) along with UGF polygons. In some
-    # browsers / leaflet 2.x reflows the polygons ended up at the
-    # END of the SVG `<g>` in overlayPane (DOM order = z-order
-    # within a pane), making them paint OVER the CircleMarkers and
-    # rendering the blue dots invisible. Forcing markers up to
-    # `markerPane` (a separate pane Leaflet defines at z=600 for
-    # L.Marker icons) gives them their own pane above polygons,
-    # guaranteeing visibility regardless of polygon redraw timing.
-    # Clickability preserved (Paths emit `click` to `map_marker_click`
-    # via `layerId`).
-    shiny::observe({
-      proxy <- leaflet::leafletProxy("map") |>
-        leaflet::clearGroup(.placettes_overlay_group)
-      ps <- placettes_sf_r()
-      if (is.null(ps) || !nrow(ps)) {
-        if (.pixel_map_debug_enabled())
-          cli::cli_alert_info("Placettes overlay: placettes_sf_r() is NULL/empty, no markers drawn.")
-        return()
-      }
-      if (.pixel_map_debug_enabled())
-        cli::cli_alert_info("Placettes overlay: drawing {nrow(ps)} marker(s).")
-      proxy |>
-        leaflet::addCircleMarkers(
-          data        = ps,
-          layerId     = ~as.character(plot_id),
-          group       = .placettes_overlay_group,
-          radius      = 7,
-          weight      = 2,
-          color       = "#000000",
-          fillColor   = "#1F77B4",
-          fillOpacity = 0.9,
-          label       = ~as.character(plot_id),
-          options     = leaflet::pathOptions(pane = "markerPane")
-        )
-    })
-
-    # Suppression flag for the pixel-click handler. CircleMarkers are
-    # Leaflet Paths; their click events propagate to the map, so the
-    # marker handler AND the pixel handler both fire on a single
-    # marker tap. Without this, clicking a placette opens the placette
-    # modal AND immediately stacks the pixel modal on top of it. The
-    # marker handler stamps Sys.time() here; the pixel handler bails
-    # if the timestamp is within 500 ms of its own invocation.
-    marker_just_clicked <- shiny::reactiveVal(NULL)
-
-    # Marker click handler: open a modal with the per-placette NDVI/NBR
-    # time series. Reuses obs_pixel_data() — the values are already the
-    # placette mean computed core-side, no re-aggregation needed.
-    shiny::observeEvent(input$map_marker_click, {
-      marker_just_clicked(Sys.time())
-      i18n <- i18n_r()
-      ev <- input$map_marker_click
-      pid <- as.character(ev$id %||% "")
-      if (!nzchar(pid)) return()
-      df <- obs_pixel_data()
-      if (is.null(df) || !nrow(df)) return()
-      sub <- df[as.character(df$plot_id) == pid, , drop = FALSE]
-      # Restrict to NDVI / NBR even if the user picked more bands —
-      # consistent with the pixel-click modal.
-      sub <- sub[as.character(sub$band) %in% c("NDVI", "NBR"), ,
-                 drop = FALSE]
-      if (!nrow(sub)) {
-        shiny::showNotification(
-          i18n$t("monitoring_pixel_map_no_placette_data"),
-          type = "warning", duration = 4
-        )
-        return()
-      }
-      p <- plotly::plot_ly(type = "scatter", mode = "lines+markers")
-      for (b in unique(sub$band)) {
-        bsub <- sub[sub$band == b, , drop = FALSE]
-        bsub <- bsub[order(bsub$obs_date), , drop = FALSE]
-        # v0.52.4 : drop des NA `value` avant `add_trace` (symétrique
-        # avec la boucle pixel l.~987). Les placettes situées sous une
-        # zone de recouvrement partiel de tuiles MGRS portent des NA
-        # pour les scènes hors couverture — plotly casserait la ligne
-        # à chaque NA et la courbe ressemblerait à une suite de
-        # segments isolés.
-        bsub <- bsub[!is.na(bsub$value), , drop = FALSE]
-        if (!nrow(bsub)) next
-        col  <- .pixel_band_colors[b] %||% "#7F7F7F"
-        p <- plotly::add_trace(
-          p,
-          x      = as.Date(bsub$obs_date),
-          y      = as.numeric(bsub$value),
-          name   = b,
-          mode   = "lines+markers",
-          line   = list(color = unname(col), width = 1.5),
-          marker = list(color = unname(col), size = 5),
-          hovertemplate = paste0(
-            "<b>", b, "</b><br>",
-            "%{x|%Y-%m-%d}<br>",
-            b, " = %{y:.3f}<extra></extra>"
-          )
-        )
-      }
-      p <- plotly::layout(
-        p,
-        margin = list(t = 20, b = 40, l = 50, r = 10),
-        xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
-                      type = "date"),
-        yaxis  = list(title = i18n$t("monitoring_timeseries_yaxis"),
-                      range = c(-0.2, 1)),
-        legend = list(orientation = "h", y = -0.25)
-      )
-      shiny::showModal(shiny::modalDialog(
-        title = sprintf(
-          i18n$t("monitoring_pixel_map_placette_modal_title_fmt"),
-          pid
-        ),
-        size      = "l",
-        easyClose = TRUE,
-        plotly::plotlyOutput(session$ns("placette_ts_plot"),
-                             height = "320px"),
-        footer = shiny::modalButton(i18n$t("close"))
-      ))
-      output$placette_ts_plot <- plotly::renderPlotly(p)
-    })
+    # v0.52.16 — Bloc « placettes / marker click » supprimé.
+    # FAST est désormais une analyse pure raster per-pixel (spec 017
+    # cœur + clarification utilisateur 2026-06-02) : aucune interaction
+    # avec les placettes de calibration du projet Terrain. Avant ce
+    # bump, ce module rendait des `CircleMarkers` pour chaque placette
+    # (filtrées via `obs_pixel_data()`) et ouvrait sur clic une modale
+    # « série temporelle agrégée placette » alimentée par la même
+    # source. Tout ce bloc (`placettes_sf_r`, observe addCircleMarkers,
+    # marker_just_clicked, observeEvent input$map_marker_click +
+    # output$placette_ts_plot) est retiré. Seul subsiste le clic-pixel
+    # pur qui passe par `nemeton::extract_pixel_timeseries()` sur le
+    # cache COG, donc obs_pixel-free.
 
     # Click handler: extract the per-pixel time series at the clicked
     # coordinate and pop a modal with NDVI + NBR superimposed.
+    # v0.52.16 — plus de bail anti-marker (les markers ont disparu).
     shiny::observeEvent(input$map_click, {
-      # Bail if a placette marker was just clicked — its click event
-      # propagated up to map_click (CircleMarkers are Leaflet Paths
-      # which bubble clicks by default). Without this guard, tapping a
-      # placette opens the placette modal AND immediately stacks the
-      # pixel modal on top.
-      last_marker <- marker_just_clicked()
-      if (!is.null(last_marker) &&
-          as.numeric(Sys.time() - last_marker, units = "secs") < 0.5) {
-        return()
-      }
       i18n <- i18n_r()
       cd <- cache_dir_r()
       sdf <- scenes_df_r()

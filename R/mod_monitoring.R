@@ -404,19 +404,18 @@ mod_monitoring_server <- function(id, app_state) {
     # re-fetches from the DB.
     alerts_refresh <- shiny::reactiveVal(0L)
 
-    # Bumped after each Sentinel-2 ingestion success so the
-    # obs_pixel_data() reactive (which depends only on UI inputs and
-    # would otherwise stay frozen on cached value) re-queries the DB.
-    # Without this, the per-plot plotly and the Carte pixel sub-tab
-    # don't reflect the rows just inserted by the worker — the user
-    # has to wiggle a control (bands / date range) to force a refetch.
-    obs_refresh <- shiny::reactiveVal(0L)
+    # v0.52.16 — `obs_refresh` reactiveVal supprimé : il servait à
+    # signaler aux consommateurs de `obs_pixel_data()` une nouvelle
+    # ingestion. Comme le reactive est supprimé (FAST = pure raster
+    # per-pixel, plus de lecture de `obs_pixel`), ce compteur n'a plus
+    # de consommateur. `fast_reload` ci-dessous suffit pour signaler
+    # le rafraîchissement aux modules raster qui dépendent du cache
+    # COG (mod_monitoring_pixel_map, mod_monitoring_fast_alerts).
 
-    # v0.42.0 — generic FAST refresh signal. Distinct from `obs_refresh`
-    # which targets `obs_pixel_data()` specifically: this one is wired
-    # into sub-modules whose reactives have no other path back to a
-    # post-ingestion state change. Bumped from the FAST success handler
-    # (see below). Consumed by :
+    # v0.42.0 — generic FAST refresh signal. Wired into sub-modules
+    # whose reactives have no other path back to a post-ingestion
+    # state change. Bumped from the FAST success handler (see below).
+    # Consumed by :
     #   - mod_monitoring_fast_alerts (alerts() / future raster reactive)
     #   - mod_monitoring_pixel_map   (cache_dir_r — dir.exists() is not
     #                                 a reactive dep, so the reactive
@@ -779,81 +778,13 @@ mod_monitoring_server <- function(id, app_state) {
         )
     })
 
-    # ----- Quick-mode obs_pixel reader (E6.b phase 3) ---------------
-    # Reads NDVI/NBR per-plot observations from the obs_pixel
-    # hypertable via nemeton::read_obs_pixel() — the public reader
-    # introduced in nemeton@v0.21.11. Going through the exported API
-    # keeps obs_pixel SQL out of nemetonshiny (CLAUDE.md §1).
-    #
-    # Re-fetched whenever the zone, the bands checkbox, or the date
-    # range changes. Returns NULL when prerequisites are missing
-    # (no zone, health mode, no bands picked) so the downstream
-    # plotly renderer can show a clean empty-state.
-    #
-    # v0.38.4 — debounced trigger. obs_pixel_data depends on 5 inputs
-    # (mode, zone_id, bands, date_range, obs_refresh). On project load
-    # those inputs are restored one after another, each a separate
-    # flush → the read_obs_pixel SQL query re-ran once per input, and
-    # the burst propagated downstream (placettes_sf_r + the marker
-    # overlay observe).
-    #
-    # The fix debounces a *cheap upstream trigger*, NOT obs_pixel_data
-    # itself. shiny::debounce() evaluates its source reactive eagerly
-    # — it only delays the publication of the value to downstream
-    # consumers. Debouncing obs_pixel_data directly would therefore
-    # still re-run the SQL query on every input change. Instead we
-    # bundle the 5 inputs into `obs_pixel_inputs` (a no-cost list
-    # build), debounce that, and make obs_pixel_data depend solely on
-    # the debounced bundle — so the expensive query runs once per
-    # 300 ms burst. The delay is imperceptible; all consumers
-    # (per-plot plotly, map_marker_click handler, placettes_sf_r in
-    # mod_monitoring_pixel_map) read obs_pixel_data transparently.
-    obs_pixel_inputs <- shiny::reactive({
-      list(
-        refresh    = obs_refresh(),  # bumped after each ingestion
-        mode       = input$mode,
-        zone_id    = input$zone_id,
-        bands      = input$bands,
-        date_range = input$date_range
-      )
-    }) |> shiny::debounce(300)
-
-    obs_pixel_data <- shiny::reactive({
-      ins <- obs_pixel_inputs()
-      if (!identical(ins$mode, "quick")) return(NULL)
-      zone <- ins$zone_id
-      if (!isTRUE(nzchar(zone))) return(NULL)
-      bands <- ins$bands
-      if (!length(bands)) return(NULL)
-      dr <- ins$date_range
-      if (length(dr) != 2L || any(is.na(dr))) return(NULL)
-
-      con <- get_monitoring_db_connection(project = app_state$current_project,
-                                          read_only = TRUE)
-      if (is.null(con)) return(NULL)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
-
-      tryCatch(
-        nemeton::read_obs_pixel(
-          con,
-          zone_id   = as.integer(zone),
-          bands     = as.character(bands),
-          date_from = dr[1],
-          date_to   = dr[2]
-        ),
-        error = function(e) {
-          cli::cli_alert_warning(sprintf(
-            "read_obs_pixel failed: %s", conditionMessage(e)))
-          NULL
-        }
-      )
-    })
-
-    # Per-plot plotly removed in v0.31.0: the multi-trace placette
-    # view (quick mode) is replaced by per-marker click on Carte pixel.
-    # The health-mode bar chart that shared this output is dropped
-    # along with it — if users need the alert-class distribution back,
-    # add it to the Alerts sub-tab in a follow-up.
+    # v0.52.16 — Bloc `obs_pixel_inputs` + `obs_pixel_data` supprimé.
+    # FAST est désormais une analyse pure raster per-pixel (spec 017
+    # cœur + clarification utilisateur 2026-06-02), donc `read_obs_pixel`
+    # n'est plus consommé : ni la modale clic-placette (supprimée
+    # dans mod_monitoring_pixel_map), ni le `scenes_df_r` qui dérive
+    # désormais entièrement du cache COG disque, ne reposent plus sur
+    # la table `obs_pixel`.
 
     # ----- QGIS sanitaire panel (T6app.12) --------------------------
     output$qgis_panel <- shiny::renderUI({
@@ -1919,10 +1850,10 @@ mod_monitoring_server <- function(id, app_state) {
         }
         zones_refresh(zones_refresh() + 1L)  # force re-fetch in case
                                              # the ingestion changed state
-        # Tell obs_pixel_data() to re-query the DB so the per-plot
-        # plotly and the Carte pixel sub-tab pick up the newly
-        # inserted rows without the user having to touch a control.
-        obs_refresh(obs_refresh() + 1L)
+        # v0.52.16 — bump `obs_refresh` retiré : `obs_pixel_data()`
+        # n'existe plus, plus rien à invalider. `fast_reload` ci-dessous
+        # suffit pour signaler aux modules raster (Alertes FAST + Carte
+        # FAST) qu'ils doivent re-scanner le cache COG.
         # v0.42.0 — propagate to Alertes FAST + Carte FAST so they pick
         # up the new DB rows / new cache files. Before this bump, the
         # toast "ingestion success" would show but those two tabs
@@ -2333,11 +2264,12 @@ mod_monitoring_server <- function(id, app_state) {
       fordead_last_result(.reconcile_fordead_state(proj, zone_int))
     })
 
-    # Spec 010 — Carte pixel sub-tab. Re-uses the obs_pixel_data
-    # reactive (already wired above for the per-plot plotly) to
-    # derive scenes_df without a second SQL roundtrip. The pixel
-    # map only renders in quick mode (FORDEAD doesn't expose the
-    # raw raster output) — the module checks mode_input internally.
+    # Spec 010 — Carte pixel sub-tab.
+    #
+    # v0.52.16 — paramètre `obs_pixel_data` retiré. Le module dérive
+    # désormais `scenes_df` directement du cache COG disque (parse de
+    # la date depuis le nom de scène Sentinel-2). FAST = pure raster
+    # per-pixel, plus de SQL roundtrip sur `obs_pixel`.
     #
     # v0.42.0 — `refresh_r = fast_reload` allows cache_dir_r() to
     # re-evaluate after an ingestion creates the cache directory
@@ -2348,7 +2280,6 @@ mod_monitoring_server <- function(id, app_state) {
     pixel_map_ret <- mod_monitoring_pixel_map_server(
       "pixel_map",
       app_state      = app_state,
-      obs_pixel_data = obs_pixel_data,
       mode_input     = shiny::reactive(input$mode),
       refresh_r      = shiny::reactive(fast_reload()),
       # v0.52.14 — pixel_map a son propre `input$index` (radio dans son

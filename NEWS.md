@@ -1,3 +1,79 @@
+# nemetonshiny 0.52.16 (2026-06-02)
+
+### Changed — FAST 100 % pure raster per-pixel : suppression complète du couplage `obs_pixel`/placettes
+
+**Contexte** : depuis `nemeton@v0.55.0` (spec 017) le diagnostic FAST
+est conceptuellement une analyse **per-pixel** sur la zone monitoring,
+indépendante des placettes de calibration définies dans l'onglet
+Terrain. La table `obs_pixel` (per-placette × per-scène) restait
+néanmoins consommée par le module Suivi sanitaire pour la modale
+« clic marqueur placette ». Cette release coupe **tout** contact entre
+FAST et les placettes côté app.
+
+**Conséquences UX visibles** :
+
+* ❌ La modale « clic sur un marqueur placette → série temporelle
+  agrégée plot » a été **supprimée**.
+* ❌ Les marqueurs CircleMarkers des placettes ne sont **plus
+  affichés** sur la Carte FAST ni sur Alertes FAST.
+* ❌ Le toggle « Placettes » du LayersControl Leaflet a disparu.
+* ✅ La modale « clic sur un pixel → série temporelle pure » reste —
+  elle utilise `nemeton::extract_pixel_timeseries()` qui lit
+  directement le cache COG, donc `obs_pixel`-free.
+* ✅ Le compteur « N scènes disponibles » dérive désormais directement
+  du cache COG via `list.dirs()`.
+
+**Détails techniques** :
+
+* `R/mod_monitoring.R` :
+  - reactiveVal `obs_refresh` retiré (plus de consommateur)
+  - reactive `obs_pixel_inputs` + `obs_pixel_data` retirés
+  - le param `obs_pixel_data = obs_pixel_data` passé à
+    `mod_monitoring_pixel_map_server()` retiré
+  - le bump `obs_refresh()` après ingestion FAST retiré (`fast_reload`
+    suffit pour signaler aux modules raster qu'ils doivent re-scanner
+    le cache COG).
+* `R/mod_monitoring_pixel_map.R` :
+  - signature server : `obs_pixel_data` retiré de la liste des
+    paramètres
+  - reactive `db_scenes_df_r` retiré ; `scenes_df_r` dérive désormais
+    purement du cache COG disque (date parsée du scene_id Sentinel-2
+    via `.pixel_scene_date_from_id()`)
+  - reactive `placettes_sf_r` retiré
+  - observer `addCircleMarkers` placettes retiré
+  - reactiveVal `marker_just_clicked` retiré
+  - observeEvent `input$map_marker_click` + `output$placette_ts_plot`
+    retirés (modale clic-placette)
+  - fallback `placettes bbox` retiré du resolver `ugf_sf_r()`
+  - LayersControl : overlay « Placettes » retiré (`hideGroup`
+    également)
+* `R/utils_i18n.R` : 2 clés obsolètes retirées
+  (`monitoring_pixel_map_placette_modal_title_fmt`,
+  `monitoring_pixel_map_no_placette_data`)
+* `tests/testthat/test-mod_monitoring.R` : 4 tests obs_pixel
+  supprimés + helper `.skip_if_no_read_obs_pixel`
+* `tests/testthat/test-mod_monitoring_pixel_map.R` : 1 test consolidé
+  (« scenes_df enumerates populated cache dirs, date parsed from
+  scene id »), 3 tests adaptés (param `obs_pixel_data` retiré du
+  setup `args =`)
+* `tests/testthat/test-service_monitoring_db.R` : test `read_only`
+  path corrigé pour refléter le comportement v0.52.1 (Postgres RO
+  migre aussi de manière idempotente).
+
+**Impact suite** : `nemeton::read_obs_pixel()` n'a plus aucun
+consommateur côté app. La table `obs_pixel` continue d'être écrite
+par `nemeton::ingest_sentinel2_timeseries()` (effet de bord cœur),
+mais l'app n'y touche plus. Un **brief cœur** sera fourni
+séparément pour retirer cette insertion + la table elle-même côté
+nemeton (spec 017 suite logique).
+
+Suite tests : `[ FAIL 3 | PASS 6721 ]` — les 3 fails restants sont
+**pré-existants** (`test-mod_monitoring.R:944-946`, test « register
+click »), non liés à ce refactor.
+
+Cycle dev `0.52.15` → `0.52.15.9001` → release stable **`v0.52.16`**
+(PATCH, refactor — suppression couplage obs_pixel).
+
 # nemetonshiny 0.52.15 (2026-06-02)
 
 ### Fixed — Call site oublié de `compute_fast_alert_mask()` (régression v0.52.13)
