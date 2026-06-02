@@ -2028,9 +2028,13 @@ TRANSLATIONS <- list(
     fr = "Une analyse FAST est en cours. Attendez sa fin avant de lancer un diagnostic FORDEAD (cache Sentinel-2 partag\u00e9).",
     en = "A FAST analysis is running. Wait for it to finish before starting a FORDEAD diagnosis (shared Sentinel-2 cache)."
   ),
+  # v0.53.1 \u2014 message simplifi\u00e9 : depuis nemeton@v0.58.0 (drop
+  # obs_pixel insertion) le compteur `n_obs_inserted` est TOUJOURS 0,
+  # donc on l'a retir\u00e9 du toast. Le nombre de sc\u00e8nes (= bandes COG
+  # mises en cache) reste la m\u00e9trique pertinente.
   monitoring_ingest_success = list(
-    fr = "T\u00e9l\u00e9chargement termin\u00e9 : %d sc\u00e8ne(s), %d observation(s) ins\u00e9r\u00e9e(s).",
-    en = "Download finished: %d scene(s), %d observation(s) inserted."
+    fr = "Diagnostic FAST termin\u00e9 : %d sc\u00e8ne(s) en cache.",
+    en = "FAST diagnostic done: %d scene(s) cached."
   ),
   monitoring_ingest_error = list(
     fr = "\u00c9chec du t\u00e9l\u00e9chargement",

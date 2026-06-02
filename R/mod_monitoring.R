@@ -1806,7 +1806,8 @@ mod_monitoring_server <- function(id, app_state) {
         ingest_log_path(NULL)
         ingest_log_offset(0L)
         n_scenes <- as.integer(result$summary$n_scenes %||% 0L)
-        n_obs    <- as.integer(result$summary$n_obs_inserted %||% 0L)
+        # v0.53.1 — `n_obs_inserted` toujours 0 depuis nemeton@v0.58.0
+        # (drop obs_pixel insertion). Plus consommé dans le toast.
         warns    <- result$warnings %||% character(0)
         if (n_scenes == 0L) {
           # 0 scènes peut signifier soit "vraiment rien dans la période"
@@ -1828,7 +1829,7 @@ mod_monitoring_server <- function(id, app_state) {
           )
         } else {
           shiny::showNotification(
-            sprintf(i18n$t("monitoring_ingest_success"), n_scenes, n_obs),
+            sprintf(i18n$t("monitoring_ingest_success"), n_scenes),
             id       = session$ns("ingest_success"),
             type     = "message", duration = 6
           )
