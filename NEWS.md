@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.16.9001 (2026-06-02)
+# nemetonshiny 0.52.17 (2026-06-02)
 
 ### Changed — Alignement avec `nemeton@v0.60.0` (finalisation spec 017)
 
@@ -26,7 +26,8 @@ alignement de documentation et de plancher d'import.
   `read_obs_pixel exported` retirée du skip (la fonction n'existe
   plus en `v0.60.0`).
 
-Cycle dev `0.52.16` → `0.52.16.9001`.
+Cycle dev `0.52.16` → `0.52.16.9001` → release stable **`v0.52.17`**
+(PATCH, chore — alignement plancher).
 
 # nemetonshiny 0.52.16 (2026-06-02)
 
