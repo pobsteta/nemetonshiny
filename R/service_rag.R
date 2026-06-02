@@ -172,6 +172,17 @@ rag_context <- function(app_con, profile_code, family_codes,
   )
   if (is.null(chunks) || !nrow(chunks)) return(empty)
 
+  # v0.61.1 — observabilité : une ligne par perspective dans le log
+  # de l'app. Visible dans la console R (dev) ou la log container
+  # (prod). Aide à diagnostiquer un corpus muet : si on voit
+  # systématiquement « 0 chunk(s) », c'est un problème de filtre /
+  # seuil / embed ; si on ne voit jamais la ligne, c'est que
+  # `rag_context()` a court-circuité avant le retrieve (corpus
+  # indisponible, opt-out, situation_text vide, etc.).
+  cli::cli_inform(
+    "RAG: {nrow(chunks)} chunk(s) récupéré(s) au-dessus de {min_similarity}"
+  )
+
   # Prompt block : ALL chunks numbered [^n] so the LLM can cite
   # them with the same markers `format_citations` uses for the UI
   # block. Title is i18n-aware (FR/EN).
