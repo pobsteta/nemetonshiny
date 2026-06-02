@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.17] - 2026-06-02
+
+### Changed
+
+- **Plancher `Imports: nemeton (>= 0.60.0)`** — alignement avec la
+  finalisation cœur de la spec 017. `nemeton@v0.58.0` (Phase A,
+  drop `obs_pixel` insertion) puis `v0.60.0` (Phase B, retrait de
+  `read_obs_pixel` + migration `0004_drop_obs_pixel`) publiés. App
+  fonctionnellement inchangée — v0.52.16 fonctionne déjà contre
+  ce nouveau cœur sans aucun warning.
+- `tests/testthat/test-monitoring-smoke-e2e.R` : précondition
+  `read_obs_pixel exported` retirée du skip (la fonction n'existe
+  plus en `nemeton@v0.60.0`).
+
 ## [0.52.16] - 2026-06-02
 
 ### Changed
