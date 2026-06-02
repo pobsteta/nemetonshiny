@@ -10,6 +10,25 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.58.0] - 2026-06-02
+
+### Added
+
+- **Toggle « Mode rapide » multi-cœur Alertes FAST** (TODO #4, spec
+  017 D4 `nemeton@v0.57.0+`). Nouvelle case à cocher dans le sidebar
+  droit de l'onglet Alertes FAST. Quand activée, propage `parallel =
+  TRUE` à `nemeton::compute_fast_alert_mask()` qui distribue le
+  calcul par scène sur plusieurs cœurs via `furrr`. **Opt-in**
+  (décoché par défaut) ; résultats identiques au mode séquentiel ;
+  fallback silencieux si `furrr` absent côté cœur.
+- 1 nouvelle clé i18n FR/EN : `fast_alerts_parallel_label`
+  (« Mode rapide (multi-cœur) » / « Fast mode (multi-core) »).
+
+### Tests
+
+- 2 nouveaux : cohérence i18n FR/EN + logique de propagation
+  `input$fast_mode → parallel`.
+
 ## [0.57.0] - 2026-06-02
 
 ### Changed

@@ -1,3 +1,43 @@
+# nemetonshiny 0.58.0 (2026-06-02)
+
+### Added — Toggle « Mode rapide » multi-cœur Alertes FAST (TODO #4)
+
+Chantier #4 du TODO `nemetonshiny`. Nouvelle case à cocher
+**« Mode rapide (multi-cœur) »** dans le sidebar droit de l'onglet
+Alertes FAST. Quand activée, propage `parallel = TRUE` à
+`nemeton::compute_fast_alert_mask()` (spec 017 D4 `nemeton@v0.57.0+`)
+qui distribue le calcul par scène sur plusieurs cœurs via `furrr`.
+
+**Caractéristiques** :
+* **Opt-in** : décoché par défaut. L'utilisateur active explicitement
+  pour les gros diagnostics (zones ≥ 100 ha où le surcoût futurr est
+  amorti).
+* **Fallback silencieux** : si `furrr` n'est pas installé côté cœur,
+  le cœur retombe sur séquentiel sans erreur.
+* **Résultats identiques** au mode séquentiel (spec 017 D4 garantit la
+  reproductibilité).
+* **Gain réel** sur grosse zone : ~×N_cores sur la phase raster.
+  Sur petite zone, l'overhead futurr peut être > au gain — d'où le
+  défaut FALSE.
+
+**Détails techniques** :
+
+* `R/mod_monitoring_fast_alerts.R` :
+  - sidebar : nouveau `shiny::checkboxInput(ns("fast_mode"))` après le
+    slider opacité ;
+  - `raster_r()` : `use_parallel <- isTRUE(input$fast_mode %||% FALSE)`
+    forwardé à `nemeton::compute_fast_alert_mask(..., parallel = use_parallel)` ;
+  - observer i18n refresh : `updateCheckboxInput(session, "fast_mode")`.
+* `R/utils_i18n.R` : nouvelle clé FR/EN `fast_alerts_parallel_label`
+  (« Mode rapide (multi-cœur) » / « Fast mode (multi-core) »).
+* 2 nouveaux tests dans `test-service_monitoring.R` : i18n + logique
+  de propagation `input$fast_mode → parallel`.
+
+**Pas de breaking change** : `parallel = FALSE` par défaut côté cœur,
+case décochée par défaut côté app. Comportement existant inchangé.
+
+Cycle dev `0.57.0` → `0.57.0.9001` → release stable `0.58.0`.
+
 # nemetonshiny 0.57.0 (2026-06-02)
 
 ### Changed — Alertes FAST : affichage en quartiles 0-4 via `compute_fast_alert_mask()` (spec 017 D2)
