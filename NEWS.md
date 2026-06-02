@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.15.9001 (2026-06-02)
+# nemetonshiny 0.52.16 (2026-06-02)
 
 ### Changed — FAST 100 % pure raster per-pixel : suppression complète du couplage `obs_pixel`/placettes
 
@@ -71,7 +71,8 @@ Suite tests : `[ FAIL 3 | PASS 6721 ]` — les 3 fails restants sont
 **pré-existants** (`test-mod_monitoring.R:944-946`, test « register
 click »), non liés à ce refactor.
 
-Cycle dev `0.52.15` → `0.52.15.9001`.
+Cycle dev `0.52.15` → `0.52.15.9001` → release stable **`v0.52.16`**
+(PATCH, refactor — suppression couplage obs_pixel).
 
 # nemetonshiny 0.52.15 (2026-06-02)
 

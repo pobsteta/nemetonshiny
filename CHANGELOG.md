@@ -10,6 +10,33 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.16] - 2026-06-02
+
+### Changed
+
+- **FAST 100 % pure raster per-pixel — suppression du couplage `obs_pixel`/placettes.**
+  Suite à la spec 017 cœur (`nemeton@v0.55.0+`), le module Suivi
+  sanitaire ne lit plus la table `obs_pixel` ni n'affiche les
+  placettes de l'onglet Terrain. La modale « clic marqueur placette »
+  est supprimée ; seule subsiste la modale « clic pixel pur » qui
+  utilise `extract_pixel_timeseries()` (COG cache).
+
+### Removed
+
+- `obs_pixel_data` reactive + `obs_refresh` reactiveVal (mod_monitoring.R)
+- `placettes_sf_r` reactive + observer addCircleMarkers placettes
+  (mod_monitoring_pixel_map.R)
+- `output$placette_ts_plot` + observer `input$map_marker_click`
+- Toggle « Placettes » du LayersControl Leaflet
+- Clés i18n obsolètes : `monitoring_pixel_map_placette_modal_title_fmt`,
+  `monitoring_pixel_map_no_placette_data`
+- 4 tests obs_pixel + helper `.skip_if_no_read_obs_pixel`
+
+### Fixed
+
+- `test-service_monitoring_db.R:170` : test obsolète depuis v0.52.1
+  (Postgres RO migre aussi de manière idempotente) corrigé.
+
 ## [0.52.15] - 2026-06-02
 
 ### Fixed
