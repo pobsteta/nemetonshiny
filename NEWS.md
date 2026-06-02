@@ -1,3 +1,34 @@
+# nemetonshiny 0.59.1 (2026-06-02)
+
+### Fixed — Test `register click` cassé par `bindEvent(ignoreInit = TRUE)`
+
+Le test `test-mod_monitoring.R::"register click invokes
+register_project_as_zone and persists zone_id in app_state"` failait
+sur ses 3 assertions (lignes 944-946) parce que l'observer du
+bouton « Enregistrer la zone » était passé d'un `observeEvent(input$register)`
+direct à un `observe() |> bindEvent(input$register, input$register_inline,
+ignoreInit = TRUE)` lors de l'ajout du bouton inline (commit 3f1059d).
+
+En `testServer`, `session$setInputs(register = 1L)` posé directement
+est traité comme l'état d'init par `bindEvent(ignoreInit = TRUE)` —
+l'observer ne se déclenche pas, `register_project_as_zone` n'est
+jamais appelé, `captured_project` reste `NULL` et les 3 assertions
+cascadent.
+
+**Fix** : matérialiser une transition d'input avant la vraie valeur :
+
+```r
+session$setInputs(register = 0L)  # init
+session$setInputs(register = 1L)  # vrai clic, fire l'observer
+```
+
+Identique au pattern qu'un `actionButton` réel suit (init à 0,
+incrément à chaque clic). Aucun changement de code de prod —
+c'est strictement un fix de fidélité du harness de test.
+
+**Résultat** : `[ FAIL 0 | PASS 6875 ]` sur la suite complète
+(vs `[ FAIL 3 | PASS 6873 ]` avant le fix).
+
 # nemetonshiny 0.59.0 (2026-06-02)
 
 ### Added — Modal diagnostic pixel CRSWIR FORDEAD (TODO #3)

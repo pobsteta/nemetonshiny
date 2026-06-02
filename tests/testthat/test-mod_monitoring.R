@@ -940,6 +940,16 @@ test_that("register click invokes register_project_as_zone and persists zone_id 
               nemetonshiny:::mod_monitoring_server,
               args = list(app_state = state),
               {
+                # v0.59.1 — l'observer `register` est câblé via
+                # `bindEvent(..., ignoreInit = TRUE)` (commit 3f1059d
+                # qui a ajouté le bouton inline). En testServer,
+                # `setInputs(register = 1L)` posé directement est vu
+                # comme l'état d'init et ignoré : l'observer ne fire
+                # pas → `captured_project` reste NULL et les 3
+                # assertions cascadent. Matérialiser une transition
+                # (0L → 1L) émule un vrai clic d'actionButton et
+                # déclenche bindEvent.
+                session$setInputs(register = 0L)
                 session$setInputs(register = 1L)
                 expect_false(is.null(captured_project))
                 expect_equal(captured_project$id, proj$id)
