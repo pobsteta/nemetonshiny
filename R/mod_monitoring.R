@@ -2510,6 +2510,18 @@ mod_monitoring_server <- function(id, app_state) {
   file.path(project_path, "cache", "layers", "fast_alert")
 }
 
+# v0.57.0 — Helper parallèle pour le cache des MASKS d'alerte
+# discrétisés en quartiles 0-4 (spec 017 D1-D2 nemeton@v0.55.0+).
+# `nemeton::compute_fast_alert_mask(..., mask_cache_dir = ...)` persiste
+# un TIF catégoriel 0-4 sous ce chemin. Distinct du cache du raster
+# continu (`.fast_alert_cache_dir()`) car ce sont 2 produits différents :
+#   * continu = score d'intensité du déficit NDVI/NBR (read_fast_alert_raster)
+#   * mask    = classe de sévérité quartilée 0-4 (compute_fast_alert_mask)
+.fast_alert_mask_cache_dir <- function(project_path) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  file.path(project_path, "cache", "layers", "fast_alert_mask")
+}
+
 # Best-effort acquisition date (Date) parsed from a Sentinel-2 scene id
 # (the cache subdir name). S2 product ids embed the datetime as
 # YYYYMMDDTHHMMSS, so the first 8-digit run is the acquisition date.
