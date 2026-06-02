@@ -21,7 +21,8 @@ test_that("mod_monitoring_ui returns valid Shiny UI with expected controls", {
       # Sidebar inputs are namespaced as "<id>-<input>".
       expect_true(grepl("monitoring-zone_id",        html))
       expect_true(grepl("monitoring-date_range",     html))
-      expect_true(grepl("monitoring-bands",          html))
+      # v0.61.0 — input `bands` retiré (NDVI + NBR câblés en dur).
+      expect_false(grepl("monitoring-bands",         html))
       expect_true(grepl("monitoring-threshold_ndvi", html))
       expect_true(grepl("monitoring-threshold_nbr",  html))
       expect_true(grepl("monitoring-window_days",    html))
@@ -212,9 +213,12 @@ test_that("input$run with no zone selected fires a validation notification", {
   )
 })
 
-test_that("input$run with no band selected fires a validation notification", {
+test_that("v0.61.0 — input$run invokes the task with NDVI+NBR hard-wired (no `bands` input)", {
   skip_if_not_installed("shiny")
 
+  # Le checkboxGroupInput `bands` est retiré : NDVI + NBR sont
+  # systématiquement passés au worker FAST. Même sans `setInputs(bands=)`,
+  # le task doit être invoqué avec `bands = c("NDVI", "NBR")`.
   fake_task <- make_fake_fast_task()
 
   testthat::with_mocked_bindings(
@@ -229,11 +233,15 @@ test_that("input$run with no band selected fires a validation notification", {
         {
           session$setInputs(
             zone_id    = "1",
-            bands      = character(0),
+            # Pas de `bands =` ici — l'input n'existe plus dans la
+            # sidebar. Le worker doit quand même recevoir c("NDVI",
+            # "NBR") depuis le câblage en dur.
             date_range = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
             run        = 1L
           )
-          expect_length(fake_task$.calls(), 0L)
+          calls <- fake_task$.calls()
+          expect_length(calls, 1L)
+          expect_equal(calls[[1]]$bands, c("NDVI", "NBR"))
         }
       )
     }

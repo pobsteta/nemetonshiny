@@ -1942,10 +1942,11 @@ TRANSLATIONS <- list(
     fr = "P\u00e9riode d'observation",
     en = "Observation period"
   ),
-  monitoring_bands = list(
-    fr = "Indices spectraux",
-    en = "Spectral indices"
-  ),
+  # v0.61.0 — Clé `monitoring_bands` retirée. NDVI + NBR sont
+  # systématiquement téléchargés lors du Diagnostic FAST (câblage
+  # en dur dans `fast_task$invoke()`), donc le choix utilisateur
+  # n'a plus lieu d'être. Les radios NDVI/NBR des sidebars droits
+  # des onglets pilotent l'AFFICHAGE, pas le téléchargement.
   # v0.52.13 — Label du radio mono-index (spec 017 nemeton@v0.55.0).
   # L'utilisateur choisit l'indice spectral utilisé pour le raster
   # d'alerte FAST (NDVI ou NBR). Le seuil correspondant est piloté
@@ -2020,10 +2021,8 @@ TRANSLATIONS <- list(
     fr = "S\u00e9lectionnez une zone de suivi avant de lancer le t\u00e9l\u00e9chargement.",
     en = "Select a monitoring zone before starting the download."
   ),
-  monitoring_validate_bands = list(
-    fr = "S\u00e9lectionnez au moins un indice spectral (NDVI ou NBR).",
-    en = "Select at least one spectral index (NDVI or NBR)."
-  ),
+  # v0.61.0 \u2014 Cl\u00e9 `monitoring_validate_bands` retir\u00e9e (validation
+  # devenue impossible : NDVI + NBR c\u00e2bl\u00e9s en dur).
   monitoring_validate_dates = list(
     fr = "P\u00e9riode d'observation invalide.",
     en = "Invalid observation period."
@@ -2373,12 +2372,9 @@ TRANSLATIONS <- list(
     fr = "Opacité du raster",
     en = "Raster opacity"
   ),
-  # v0.48.0 — toggle visibilité du raster d'alerte FAST, symétrique
-  # avec Carte FAST (monitoring_pixel_map_raster_visible).
-  monitoring_fast_alerts_raster_visible = list(
-    fr = "Afficher le raster",
-    en = "Show raster"
-  ),
+  # v0.61.0 — Clé `monitoring_fast_alerts_raster_visible` retirée.
+  # Visibilité du raster d'alerte pilotée par le LayersControl
+  # Leaflet (entrée « Alertes » sous « UGF »).
   monitoring_fast_alerts_threshold_label = list(
     fr = "Masquer en dessous du seuil",
     en = "Hide below threshold"
@@ -2468,12 +2464,9 @@ TRANSLATIONS <- list(
     fr = "Date d'observation",
     en = "Observation date"
   ),
-  # v0.47.0 — contrôles UX du raster Carte FAST :
-  # toggle visibilité + slider opacité 0-1.
-  monitoring_pixel_map_raster_visible = list(
-    fr = "Afficher le raster",
-    en = "Show raster"
-  ),
+  # v0.61.0 — Clé `monitoring_pixel_map_raster_visible` retirée.
+  # Visibilité du raster pilotée par le LayersControl Leaflet
+  # (entrée `"NDVI/NBR"`). Seul le slider d'opacité reste.
   monitoring_pixel_map_raster_opacity = list(
     fr = "Opacité du raster",
     en = "Raster opacity"

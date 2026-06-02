@@ -10,6 +10,34 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.61.0] - 2026-06-02
+
+### Removed
+
+- **3 contrôles UI redondants retirés en bundle** :
+  - `checkboxInput("raster_visible")` Alertes FAST (sidebar droit) →
+    visibilité pilotée par LayersControl (entrée « Alertes »).
+  - `checkboxInput("raster_visible")` Carte FAST (sidebar droit) →
+    visibilité pilotée par LayersControl (entrée « NDVI/NBR »).
+  - `checkboxGroupInput("bands")` sidebar parent gauche → NDVI + NBR
+    systématiquement téléchargés (`bands = c("NDVI", "NBR")` câblé
+    en dur dans `fast_task$invoke()`).
+- 4 clés i18n retirées (`monitoring_bands`, `monitoring_validate_bands`,
+  `monitoring_fast_alerts_raster_visible`,
+  `monitoring_pixel_map_raster_visible`).
+
+### Changed
+
+- `addLayersControl` Alertes FAST : `overlayGroups` enrichi de
+  `"Alertes"` (= `.alert_raster_group`) pour que Leaflet pilote la
+  visibilité du raster d'alerte au même titre que « UGF ».
+
+### Tests
+
+- `test-mod_monitoring.R` : test `"input$run with no band selected"`
+  → réécrit en `"input$run invokes the task with NDVI+NBR
+  hard-wired"`. Assertion HTML inversée sur la sidebar.
+
 ## [0.60.0] - 2026-06-02
 
 ### Removed

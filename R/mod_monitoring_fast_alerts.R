@@ -81,13 +81,10 @@ mod_monitoring_fast_alerts_ui <- function(id) {
           ),
           class = "mb-2"
         ),
-        # v0.48.0 — toggle visibilité + slider opacité du raster
-        # d'alerte, symétrique avec Carte FAST (v0.47.0).
-        shiny::checkboxInput(
-          ns("raster_visible"),
-          label = i18n$t("monitoring_fast_alerts_raster_visible"),
-          value = TRUE
-        ),
+        # v0.61.0 — Le checkbox `raster_visible` est retiré. Le toggle
+        # de visibilité du raster d'alerte passe désormais par le
+        # LayersControl Leaflet (entrée « Alertes » sous la couche UGF
+        # dans le contrôle de couches de la carte).
         shiny::sliderInput(
           ns("raster_opacity"),
           label = i18n$t("monitoring_fast_alerts_opacity_label"),
@@ -174,14 +171,13 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         selected     = input$mode %||% "count",
         inline       = TRUE
       )
-      shiny::updateCheckboxInput(
-        session, "raster_visible",
-        label = i18n$t("monitoring_fast_alerts_raster_visible")
-      )
       shiny::updateSliderInput(
         session, "raster_opacity",
         label = i18n$t("monitoring_fast_alerts_opacity_label")
       )
+      # v0.61.0 — Le label du checkbox `raster_visible` n'est plus
+      # rafraîchi car le checkbox a été retiré (visibilité gérée
+      # par le LayersControl Leaflet).
     })
 
     # ----- Cache dir + raster reactive --------------------------------
@@ -357,13 +353,21 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # la Carte FAST.
     output$map <- leaflet::renderLeaflet({
       ugf_4326 <- .ugf_for_overlay(app_state$current_project)
+      # v0.61.0 — Le raster d'alerte apparaît désormais dans le
+      # LayersControl Leaflet (groupe `"Alertes"`, sous « UGF »).
+      # Quand le user décoche, Leaflet masque le group ; l'observer
+      # leafletProxy plus bas ajoute l'image dans `group = "Alertes"`.
+      overlays <- c(
+        if (!is.null(ugf_4326)) "UGF" else NULL,
+        "Alertes"  # = .alert_raster_group (défini dans le server)
+      )
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",     group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonAlertRaster", zIndex = 250) |>
         leaflet::addLayersControl(
           baseGroups    = c("OSM", "Satellite"),
-          overlayGroups = if (!is.null(ugf_4326)) "UGF" else NULL,
+          overlayGroups = overlays,
           options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
       if (!is.null(ugf_4326)) {
@@ -387,24 +391,28 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       m
     })
 
-    # Raster overlay update — fires on raster/mode/visibility/opacity
-    # changes via leafletProxy, preserving user zoom and selected base
+    # Raster overlay update — fires on raster/mode/opacity changes
+    # via leafletProxy, preserving user zoom and selected base
     # layer (OSM vs Satellite). The legend is added with a stable
     # layerId so we can remove and re-add it without touching the
     # layers control.
-    .alert_raster_group <- "alert-raster"
+    #
+    # v0.61.0 — `.alert_raster_group` est utilisé comme libellé
+    # visible dans le LayersControl Leaflet (entrée « Alertes »
+    # sous « UGF »). Le checkbox UI `raster_visible` est retiré :
+    # Leaflet gère seul la visibilité via le contrôle de couches.
+    .alert_raster_group <- "Alertes"
     .alert_legend_id    <- "alert-legend"
     shiny::observe({
       i18n    <- i18n_r()
       r       <- raster_r()
       mode    <- input$mode %||% "count"
-      visible <- isTRUE(input$raster_visible %||% TRUE)
 
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.alert_raster_group) |>
         leaflet::removeControl(.alert_legend_id)
 
-      if (!visible || is.null(r) || .fast_raster_is_empty(r)) return()
+      if (is.null(r) || .fast_raster_is_empty(r)) return()
 
       raster_opacity <- as.numeric(input$raster_opacity %||% 0.75)
       if (!is.finite(raster_opacity) || raster_opacity < 0) raster_opacity <- 0
