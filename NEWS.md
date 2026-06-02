@@ -1,4 +1,11 @@
-# nemetonshiny 0.52.17.9001 (2026-06-02)
+# nemetonshiny 0.53.0 (2026-06-02)
+
+> **Première release sous la nouvelle convention semver stricte**
+> (voir `CLAUDE.md` §Consignes de release étape 1 révisée).
+> Ce bump est MINOR parce qu'il contient un **refactor structurel**
+> (split banner/leafletOutput) et une **nouvelle feature UI**
+> (bandeau diagnostic d'erreur) — auparavant ces changements
+> auraient été regroupés en PATCH par habitude.
 
 ### Fixed — `NEMETON_DB_LOCAL=1` ignoré au chargement projet
 
@@ -44,7 +51,8 @@ Nouveau reactiveVal `last_raster_error` qui capture le message
 côté serveur ; nouvelle clé i18n `monitoring_fast_alerts_error_title`
 (FR/EN).
 
-Cycle dev `0.52.17` → `0.52.17.9001`.
+Cycle dev `0.52.17` → `0.52.17.9001` → release stable **`v0.53.0`**
+(MINOR, première application stricte semver).
 
 # nemetonshiny 0.52.17 (2026-06-02)
 
