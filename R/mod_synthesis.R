@@ -13,6 +13,35 @@
 mod_synthesis_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
 
+    # v0.56.0 — RAG context du dernier `ai_generate` (perspective
+    # sourcée). Stocké en reactiveVal pour que `output$ai_sources`
+    # puisse l'afficher en aval de la génération. NULL tant qu'aucune
+    # perspective n'a été générée dans la session.
+    rag_ctx_synthesis <- shiny::reactiveVal(NULL)
+
+    # v0.56.0 — Bloc « Sources documentaires » affiché sous la
+    # perspective IA quand le RAG a renvoyé ≥ 1 chunk. Le markdown
+    # vient de `nemeton::format_citations()` (titre i18n cœur, FR ou
+    # EN selon `app_state$language`). Badge synthétique « Perspective
+    # appuyée sur N source(s) » au-dessus du markdown pour signaler
+    # explicitement que la réponse est sourcée.
+    output$ai_sources <- shiny::renderUI({
+      ctx <- rag_ctx_synthesis()
+      if (is.null(ctx) || !nzchar(ctx$sources_md %||% "")) return(NULL)
+      i18n <- get_i18n(app_state$language)
+      htmltools::tagList(
+        htmltools::tags$hr(),
+        if (isTRUE(ctx$n_sources > 0L)) {
+          htmltools::tags$p(
+            class = "text-muted small",
+            sprintf(i18n$t("rag_sourced_badge"),
+                    as.integer(ctx$n_sources))
+          )
+        },
+        shiny::markdown(ctx$sources_md)
+      )
+    })
+
     # ================================================================
     # REACTIVE: Project indicators
     # ================================================================
@@ -508,13 +537,59 @@ mod_synthesis_server <- function(id, app_state) {
       )
 
       language <- if (identical(app_state$language, "fr")) "fran\u00e7ais" else "English"
+      rag_lang <- if (identical(app_state$language, "fr")) "fr" else "en"
       prompt <- build_synthesis_prompt(sf_data, language)
       expert <- input$expert_profile %||% "generalist"
       system_prompt <- build_system_prompt(language, expert = expert)
 
+      # v0.56.0 \u2014 R\u00e9cup\u00e9ration RAG (perspective sourc\u00e9e). Le contexte
+      # est calcul\u00e9 AVANT l'appel LLM, inject\u00e9 au d\u00e9but du prompt
+      # avec une consigne de citation, puis stock\u00e9 dans le
+      # reactiveVal pour que `output$ai_sources` affiche le bloc
+      # \u00ab Sources documentaires \u00bb sous la perspective.
+      #
+      # `rag_context()` est non-bloquant : toute erreur (corpus vide,
+      # connexion DB indisponible, cl\u00e9 Mistral absente, etc.) renvoie
+      # un payload vide \u2192 la perspective est g\u00e9n\u00e9r\u00e9e sans sources.
+      app_con <- if (is_db_configured()) get_db_connection() else NULL
+      on.exit({
+        if (!is.null(app_con)) {
+          tryCatch(close_db_connection(app_con), error = function(e) NULL)
+        }
+      }, add = TRUE)
+      situation_text <- build_situation_summary(
+        units       = sf_data,
+        profile_key = expert,
+        lang        = rag_lang
+      )
+      ctx <- rag_context(
+        app_con        = app_con,
+        profile_code   = rag_profile_code(expert),
+        family_codes   = NULL,   # V1 : pas de filtre famille (cf. spec brief \u00a75.2)
+        situation_text = situation_text,
+        lang           = rag_lang
+      )
+      rag_ctx_synthesis(ctx)
+      cite_rule <- if (!nzchar(ctx$prompt_block)) "" else if (rag_lang == "fr") {
+        paste(
+          "Appuie-toi sur les Documents de r\u00e9f\u00e9rence ci-dessus quand ils sont",
+          "pertinents et cite-les avec leurs marqueurs [^n]. N'invente jamais",
+          "de source ni de num\u00e9ro."
+        )
+      } else {
+        paste(
+          "Use the Reference documents above when relevant and cite them with",
+          "their [^n] markers. Never invent a source or a number."
+        )
+      }
+      user_prompt <- paste(
+        Filter(nzchar, c(ctx$prompt_block, cite_rule, prompt)),
+        collapse = "\n\n"
+      )
+
       synthesis_response <- tryCatch({
         chat <- create_llm_chat(system_prompt)
-        resp <- as.character(chat$chat(prompt, echo = FALSE))
+        resp <- as.character(chat$chat(user_prompt, echo = FALSE))
 
         shiny::updateTextAreaInput(session, "synthesis_comments", value = resp)
         shiny::removeNotification(notif_id)
