@@ -1,4 +1,4 @@
-# nemetonshiny 0.53.0.9001 (2026-06-02)
+# nemetonshiny 0.53.1 (2026-06-02)
 
 ### Fixed — `db_scenes_df_r` introuvable dans `output$date_slider_ui` (résidu refactor v0.52.16)
 
@@ -37,7 +37,8 @@ trompeur (donnait l'impression d'un bug). Reformulé en
 `R/mod_monitoring.R` (l.1808 : suppression de la lecture de
 `n_obs_inserted` du résumé, et du 2e arg `%d` au sprintf).
 
-Cycle dev `0.53.0` → `0.53.0.9001`.
+Cycle dev `0.53.0` → `0.53.0.9001` → release stable **`v0.53.1`**
+(PATCH, fix régression résiduelle + cleanup wording).
 
 # nemetonshiny 0.53.0 (2026-06-02)
 
