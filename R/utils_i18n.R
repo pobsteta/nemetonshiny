@@ -2345,6 +2345,30 @@ TRANSLATIONS <- list(
     fr = "Jours en alerte",
     en = "Alert days"
   ),
+  # v0.57.0 — Affichage du mask FAST en quartiles 0-4 (spec 017 D2
+  # nemeton@v0.55.0+). Le mask catégoriel sort de
+  # `nemeton::compute_fast_alert_mask()`. La classe 0 (sain) est
+  # rendue transparente — pas de libellé i18n nécessaire pour elle.
+  fast_alert_legend_title = list(
+    fr = "Sévérité de l'alerte",
+    en = "Alert severity"
+  ),
+  fast_alert_class_1 = list(
+    fr = "1 — Faible",
+    en = "1 — Low"
+  ),
+  fast_alert_class_2 = list(
+    fr = "2 — Modéré",
+    en = "2 — Moderate"
+  ),
+  fast_alert_class_3 = list(
+    fr = "3 — Fort",
+    en = "3 — High"
+  ),
+  fast_alert_class_4 = list(
+    fr = "4 — Sévère",
+    en = "4 — Severe"
+  ),
   monitoring_fast_alerts_opacity_label = list(
     fr = "Opacité du raster",
     en = "Raster opacity"

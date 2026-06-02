@@ -1,3 +1,77 @@
+# nemetonshiny 0.57.0 (2026-06-02)
+
+### Changed — Alertes FAST : affichage en quartiles 0-4 via `compute_fast_alert_mask()` (spec 017 D2)
+
+Chantier #5 du TODO `nemetonshiny`. L'onglet **Alertes FAST**
+affichait jusqu'ici le raster d'alerte **continu** retourné par
+`nemeton::read_fast_alert_raster()`, avec une discrétisation
+ad-hoc côté app (`.classify_alert_count` en mode count, p95 cap +
+gradient en mode rolling). v0.57.0 délègue cette discrétisation au
+cœur via `nemeton::compute_fast_alert_mask()` qui produit un
+**SpatRaster catégoriel 0-4** (spec 017 D1-D2 nemeton@v0.55.0+) :
+
+* `0` = sain (pas d'alerte) → **transparent** (UGFs et OSM/Satellite
+  restent visibles)
+* `1` = Faible → jaune `#fee08b`
+* `2` = Modéré → orange `#fdae61`
+* `3` = Fort → rouge-orangé `#f46d43`
+* `4` = Sévère → rouge foncé `#d73027`
+
+**Pourquoi ce changement** :
+* Cohérence cœur (CLAUDE.md §1) : la discrétisation par quartile est
+  une décision métier qui appartient à `nemeton`, pas à l'app.
+* Unification des modes : les branches `count` et `rolling` partagent
+  désormais la même palette 5 classes. Le `mode` côté cœur change
+  COMMENT les quartiles sont calculés (compte de jours vs intensité
+  rolling), pas COMMENT ils sont affichés.
+* Lisibilité : 5 classes ordinales discrètes sont plus actionnables
+  qu'un gradient continu (l'utilisateur reconnaît immédiatement le
+  niveau de sévérité).
+
+**Détails techniques** :
+
+* `R/mod_monitoring.R` : nouveau helper privé
+  `.fast_alert_mask_cache_dir(project_path)` parallèle à
+  `.fast_alert_cache_dir()`. Pointe vers
+  `<projet>/cache/layers/fast_alert_mask` (distinct du cache du
+  raster continu intermédiaire — 2 produits différents).
+* `R/mod_monitoring_fast_alerts.R::raster_r()` : appelle désormais
+  `nemeton::compute_fast_alert_mask()` au lieu de
+  `read_fast_alert_raster()`. La fonction renvoie invisiblement le
+  path du TIF mask 0-4 persisté ; on le charge avec `terra::rast()`
+  pour passer au reactive en aval. Le `cache_result = TRUE` +
+  `result_cache_dir = .fast_alert_cache_dir(...)` reste actif (cache
+  le raster continu intermédiaire). Le nouveau `mask_cache_dir =
+  .fast_alert_mask_cache_dir(...)` cache le mask 0-4 final.
+* `R/mod_monitoring_fast_alerts.R` (observer raster) : palette
+  unifiée 4 classes `colorBin` avec `bins = c(0.5, 1.5, 2.5, 3.5,
+  4.5)` qui mappe sans ambiguïté chaque valeur entière. La classe
+  0 reste transparente via `terra::ifel(... | r <= 0, NA, r)` (le
+  raster continu était déjà géré ainsi pour les négatifs ; pour le
+  mask discret, ça suffit aussi).
+* `R/utils_i18n.R` : 5 nouvelles clés FR/EN (`fast_alert_legend_title`,
+  `fast_alert_class_1` à `_4`). La classe 0 sain n'a pas de libellé
+  i18n — elle est transparente, le banner « zone saine » prend le
+  relais visuel si tout le raster est en classe 0.
+
+**Test ajoutés** (2) dans `tests/testthat/test-service_monitoring.R` :
+* `.fast_alert_mask_cache_dir()` renvoie le chemin canonique distinct
+* Clés i18n classes 1-4 + titre legend non-vides FR/EN
+
+**Performance** : `compute_fast_alert_mask()` calcule en interne le
+raster continu (qui peut être en cache D6 chaud après le prewarm) ET
+le discrétise. À paramètres identiques, le mask 0-4 est persisté
+dans son propre cache (`mask_cache_dir`) → revisites sub-seconde.
+
+**Non-breaking côté UX** : la fonctionnalité essentielle (visualiser
+les zones d'alerte FAST) est préservée et améliorée. Les utilisateurs
+qui avaient l'habitude du gradient continu trouveront les 5 classes
+plus interprétables.
+
+Cycle dev `0.56.0` → `0.56.0.9001` → release stable **`v0.57.0`**
+(MINOR, refactor structurel affichage + délégation logique métier
+au cœur).
+
 # nemetonshiny 0.56.0 (2026-06-02)
 
 ### Added — Perspectives IA sourcées via RAG (`nemeton@v0.62.0`)

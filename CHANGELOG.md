@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.57.0] - 2026-06-02
+
+### Changed
+
+- **Alertes FAST : affichage en quartiles 0-4** (TODO #5, spec 017
+  D2 `nemeton@v0.55.0+`). Délégation de la discrétisation au cœur
+  via `nemeton::compute_fast_alert_mask()`. Le raster passe de
+  continu (gradient) à catégoriel 0-4 (transparent, jaune, orange,
+  rouge-orangé, rouge foncé). Unification des modes count/rolling
+  sur la même palette. Helper `.fast_alert_mask_cache_dir()` ajouté.
+- 5 nouvelles clés i18n FR/EN (`fast_alert_legend_title`,
+  `fast_alert_class_1` à `_4`).
+
+### Tests
+
+- 2 nouveaux : helper chemin mask + cohérence i18n classes.
+
 ## [0.56.0] - 2026-06-02
 
 ### Added

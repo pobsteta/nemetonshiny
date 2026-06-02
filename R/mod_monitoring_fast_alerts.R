@@ -227,29 +227,33 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # le sidebar parent via `thresholds_r$ndvi` / `$nbr`.
       idx <- input$index %||% "NDVI"
       thr <- if (identical(idx, "NBR")) th$nbr else th$ndvi
-      # v0.52.15 — `nemeton@v0.57.0` ajoute le cache D6 du raster
-      # résultat : `cache_result = TRUE` + `result_cache_dir` →
-      # le COG calculé est persisté sous
-      # `<project>/cache/layers/fast_alert/zone_<id>/<hash>.tif`.
-      # À la revisite suivante avec les mêmes paramètres (zone, index,
-      # threshold, dates, mode, window_days), le cœur lit le COG depuis
-      # disque (sub-seconde) au lieu de relancer le pipeline. Le hash
-      # change automatiquement quand n'importe quel paramètre bouge,
-      # donc pas d'invalidation manuelle à faire.
-      # v0.55.0 — chemin résolu via helper unique partagé avec le
-      # pré-calcul cœur (mod_monitoring.R::fast_task$invoke()) et la
-      # prévisualisation validation_sampling. Cohérence du hash D6.
+      # v0.57.0 — Passage du raster CONTINU au mask catégoriel 0-4
+      # (quartiles, spec 017 D1-D2 nemeton@v0.55.0+). On appelle
+      # désormais `nemeton::compute_fast_alert_mask()` qui produit
+      # un SpatRaster avec valeurs discrètes :
+      #   0 = sain (pas d'alerte)
+      #   1 = faible  (1er quartile au-dessus du seuil)
+      #   2 = modéré  (2e quartile)
+      #   3 = fort    (3e quartile)
+      #   4 = sévère  (4e quartile)
+      # La fonction persiste le TIF résultat sous `mask_cache_dir` et
+      # renvoie son path invisiblement. On le charge ensuite via
+      # `terra::rast()` pour passer au reactive en aval (banner,
+      # leafletProxy::addRasterImage).
+      #
+      # Cache D6 (`result_cache_dir`) reste actif : il cache le raster
+      # continu intermédiaire calculé par `read_fast_alert_raster()`
+      # à l'intérieur de `compute_fast_alert_mask()`. Le mask 0-4
+      # final est persisté sous son propre cache (`mask_cache_dir`).
       result_cache <- .fast_alert_cache_dir(
         app_state$current_project$path
       )
-      # v0.53.0 — capture l'erreur dans un reactiveVal partagé pour
-      # que le banner UI puisse afficher la vraie cause au lieu d'un
-      # générique « zone saine » qui camoufle un bug de cache (typique
-      # pour NBR quand la bande B12 est partiellement absente du cache
-      # S2 — distinct du cas où la zone est vraiment saine).
-      out <- tryCatch(
-        nemeton::read_fast_alert_raster(
-          con,
+      mask_cache <- .fast_alert_mask_cache_dir(
+        app_state$current_project$path
+      )
+      mask_path <- tryCatch(
+        nemeton::compute_fast_alert_mask(
+          con              = con,
           zone_id          = as.integer(zone),
           index            = idx,
           threshold        = as.numeric(thr),
@@ -258,26 +262,36 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           mode             = mode,
           window_days      = as.integer(th$window_days %||% 30L),
           cache_dir        = cd,
+          mask_cache_dir   = mask_cache,
           cache_result     = TRUE,
           result_cache_dir = result_cache
         ),
         error = function(e) {
           cli::cli_alert_warning(
-            "read_fast_alert_raster failed (index={idx}): {e$message}"
+            "compute_fast_alert_mask failed (index={idx}): {e$message}"
           )
           last_raster_error(paste0(idx, ": ", conditionMessage(e)))
           NULL
         }
       )
-      if (is.null(out)) {
-        # NULL sans exception = pas de scène utilisable (cache vide
-        # pour cet indice, ou date range hors couverture). On garde
-        # cette info pour le banner.
+      if (is.null(mask_path) || !nzchar(mask_path)) {
         last_raster_error(sprintf(
           "%s : aucun raster d'alerte calculable (cache vide ou hors fenêtre).",
           idx
         ))
-      } else {
+        return(NULL)
+      }
+      out <- tryCatch(
+        terra::rast(mask_path),
+        error = function(e) {
+          cli::cli_alert_warning(
+            "terra::rast() failed on mask path: {e$message}"
+          )
+          last_raster_error(paste0(idx, ": ", conditionMessage(e)))
+          NULL
+        }
+      )
+      if (!is.null(out)) {
         last_raster_error(NULL)
       }
       out
@@ -391,74 +405,55 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (!is.finite(raster_opacity) || raster_opacity < 0) raster_opacity <- 0
       if (raster_opacity > 1) raster_opacity <- 1
 
-      # Tout ce qui ≤ 0 ou NA = pas d'alerte → transparent. v0.51.9 :
-      # avant on ne masquait QUE r == 0, mais des valeurs négatives
-      # résiduelles (bruit numérique en mode rolling, ou cellules hors
-      # tuile MGRS croppées différemment) passaient à `pal()` qui les
-      # déclarait hors domaine → warning « Some values were outside
-      # the color scale » + cellules NA + raster invisible quand les
-      # valeurs négatives dominaient. Le masque ≤ 0 garantit qu'aucune
-      # cellule traversant la palette n'est hors domaine côté bas.
+      # v0.57.0 — `raster_r()` renvoie désormais un mask catégoriel
+      # 0-4 produit par `nemeton::compute_fast_alert_mask()` (spec
+      # 017 D2). Plus de branchement count/rolling ici : les 2 modes
+      # passent par la même palette discrète. Le `mode` côté cœur
+      # change comment les quartiles sont CALCULÉS (compte de jours
+      # vs intensité rolling), pas comment ils sont AFFICHÉS.
+      #
+      # Mask 0-4 :
+      #   0 = sain    (transparent, on voit OSM/UGF dessous)
+      #   1 = faible  → jaune
+      #   2 = modéré  → orange
+      #   3 = fort    → rouge-orangé
+      #   4 = sévère  → rouge foncé
+      # La classe 0 reste TRANSPARENTE (na.color = transparent +
+      # domain démarrant à 1) — le banner vert « zone saine » prend
+      # le relais visuel quand le raster entier est en classe 0.
       r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
 
-      if (identical(mode, "count")) {
-        unit <- i18n$t("validation_class_unit_days")
-        unit_sfx <- if (nzchar(unit)) paste0(" ", unit) else ""
-        cls <- .classify_alert_count(r_show, unit = unit_sfx)
-        if (length(cls$breaks) < 2L) return()
-        cols <- .alert_count_palette(length(cls$labels))
-        pal <- leaflet::colorBin(
-          palette  = cols,
-          domain   = range(cls$breaks),
-          bins     = cls$breaks,
-          na.color = "transparent"
+      cols <- c("#fee08b", "#fdae61", "#f46d43", "#d73027")
+      labels <- c(
+        i18n$t("fast_alert_class_1"),
+        i18n$t("fast_alert_class_2"),
+        i18n$t("fast_alert_class_3"),
+        i18n$t("fast_alert_class_4")
+      )
+      # `colorBin` avec 4 bornes pour 4 classes (1,2,3,4 inclus à
+      # droite). `bins = c(0.5, 1.5, 2.5, 3.5, 4.5)` mappe chaque
+      # valeur entière à sa classe sans ambiguïté.
+      pal <- leaflet::colorBin(
+        palette  = cols,
+        domain   = c(0.5, 4.5),
+        bins     = c(0.5, 1.5, 2.5, 3.5, 4.5),
+        na.color = "transparent"
+      )
+      proxy |>
+        leaflet::addRasterImage(
+          x       = r_show, colors = pal, opacity = raster_opacity,
+          method  = "ngb",
+          group   = .alert_raster_group,
+          options = leaflet::gridOptions(pane = "nemetonAlertRaster")
+        ) |>
+        leaflet::addLegend(
+          position = "bottomright",
+          colors   = cols,
+          labels   = labels,
+          title    = i18n$t("fast_alert_legend_title"),
+          opacity  = 0.85,
+          layerId  = .alert_legend_id
         )
-        proxy |>
-          leaflet::addRasterImage(
-            x = r_show, colors = pal, opacity = raster_opacity,
-            method  = "ngb",
-            group   = .alert_raster_group,
-            options = leaflet::gridOptions(pane = "nemetonAlertRaster")
-          ) |>
-          leaflet::addLegend(
-            position = "bottomright",
-            colors   = cols,
-            labels   = cls$labels,
-            title    = i18n$t("monitoring_fast_alerts_legend_count_title"),
-            opacity  = 0.85,
-            layerId  = .alert_legend_id
-          )
-      } else {
-        vals <- terra::values(r_show)
-        vals <- vals[!is.na(vals) & vals > 0]
-        if (!length(vals)) return()
-        upper <- as.numeric(stats::quantile(vals, 0.95, na.rm = TRUE))
-        if (!is.finite(upper) || upper <= 0) upper <- max(vals, na.rm = TRUE)
-        # v0.51.9 : clamp à `upper` (cap visuel p95) AVANT pal(), pour
-        # éviter le warning « Some values were outside the color scale »
-        # sur les ~5 % de cellules > p95. Le cap reste visible (couleur
-        # max saturée) sans hors-domaine.
-        r_capped <- terra::ifel(r_show > upper, upper, r_show)
-        pal <- leaflet::colorNumeric(
-          palette  = c("#FFD27F", "#FF9933", "#D62728"),
-          domain   = c(0, upper),
-          na.color = "transparent"
-        )
-        proxy |>
-          leaflet::addRasterImage(
-            x = r_capped, colors = pal, opacity = raster_opacity,
-            group   = .alert_raster_group,
-            options = leaflet::gridOptions(pane = "nemetonAlertRaster")
-          ) |>
-          leaflet::addLegend(
-            position = "bottomright",
-            pal      = pal,
-            values   = c(0, upper),
-            title    = i18n$t("monitoring_fast_alerts_legend_title"),
-            opacity  = 0.85,
-            layerId  = .alert_legend_id
-          )
-      }
     })
 
     # v0.37.1 — see mod_monitoring_fordead_map.R : the navset toggles

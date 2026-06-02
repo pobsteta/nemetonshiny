@@ -335,3 +335,38 @@ test_that("v0.55.0 — mode → libellé i18n : count = Fréquence, rolling = In
                     "NBR", i18n_en$t("fast_mode_intensite"))
   expect_equal(msg_en, "NBR Intensity map ready.")
 })
+
+# ============================================================
+# v0.57.0 — Mask 0-4 (quartiles, spec 017 D2)
+# ============================================================
+
+test_that("v0.57.0 — .fast_alert_mask_cache_dir renvoie le chemin canonique", {
+  expect_equal(
+    nemetonshiny:::.fast_alert_mask_cache_dir("/tmp/proj"),
+    file.path("/tmp/proj", "cache", "layers", "fast_alert_mask")
+  )
+  expect_null(nemetonshiny:::.fast_alert_mask_cache_dir(NULL))
+  expect_null(nemetonshiny:::.fast_alert_mask_cache_dir(""))
+  # Distinct du chemin du raster continu (cache D6).
+  expect_false(identical(
+    nemetonshiny:::.fast_alert_mask_cache_dir("/tmp/proj"),
+    nemetonshiny:::.fast_alert_cache_dir("/tmp/proj")
+  ))
+})
+
+test_that("v0.57.0 — clés i18n fast_alert_class_* + legend title (FR/EN)", {
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
+  # 4 classes 1-4 (la classe 0 sain est transparente, pas de libellé).
+  for (k in 1:4) {
+    key <- sprintf("fast_alert_class_%d", k)
+    expect_true(nzchar(i18n_fr$t(key)), info = paste("FR:", key))
+    expect_true(nzchar(i18n_en$t(key)), info = paste("EN:", key))
+  }
+  # Titre de la légende.
+  expect_true(nzchar(i18n_fr$t("fast_alert_legend_title")))
+  expect_true(nzchar(i18n_en$t("fast_alert_legend_title")))
+  # Cohérence du formatage : "<niveau> — <libellé>"
+  expect_match(i18n_fr$t("fast_alert_class_4"), "4")
+  expect_match(i18n_fr$t("fast_alert_class_1"), "Faible")
+})
