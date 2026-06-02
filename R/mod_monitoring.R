@@ -121,12 +121,13 @@ mod_monitoring_ui <- function(id) {
             # --- Quick-mode parameters (NDVI/NBR) -------------------
             shiny::conditionalPanel(
               condition = sprintf("input['%s'] == 'quick'", ns("mode")),
-              shiny::checkboxGroupInput(
-                ns("bands"), i18n$t("monitoring_bands"),
-                choices  = c(NDVI = "NDVI", NBR = "NBR"),
-                selected = c("NDVI", "NBR"),
-                inline   = TRUE
-              ),
+              # v0.61.0 — Le `checkboxGroupInput("bands")` est retiré.
+              # NDVI et NBR sont systématiquement téléchargés lors du
+              # Diagnostic FAST (les radios NDVI/NBR des sidebars droits
+              # des onglets Alertes FAST + Carte FAST pilotent
+              # l'AFFICHAGE des deux indices, indépendamment du
+              # téléchargement). Le câblage de `bands` est désormais en
+              # dur dans `fast_task$invoke()`.
               # v0.36.1 / v0.42.0 — défauts et range alignés sur la
               # sémantique « seuil absolu » consommée par
               # nemeton::read_fast_alert_raster() (spec 013, nemeton@v0.46.0).
@@ -1715,11 +1716,9 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return()
       }
-      if (length(input$bands) == 0L) {
-        shiny::showNotification(i18n$t("monitoring_validate_bands"),
-                                type = "warning", duration = 4)
-        return()
-      }
+      # v0.61.0 — `bands` est désormais câblé en dur (NDVI + NBR
+      # systématiquement) lors du `fast_task$invoke()` plus bas.
+      # La validation `length(input$bands) == 0L` est retirée.
       dr <- input$date_range
       if (is.null(dr) || length(dr) != 2L || any(is.na(dr))) {
         shiny::showNotification(i18n$t("monitoring_validate_dates"),
@@ -1819,7 +1818,9 @@ mod_monitoring_server <- function(id, app_state) {
         zone_id       = as.integer(input$zone_id),
         start         = as.Date(dr[1]),
         end           = as.Date(dr[2]),
-        bands         = input$bands,
+        # v0.61.0 — `bands` câblé en dur. Cf. commentaire dans la
+        # sidebar (le checkboxGroupInput a été retiré).
+        bands         = c("NDVI", "NBR"),
         max_cloud     = 20,
         # Pre-resolve here (the future worker can't see app_state) and
         # pass the URL explicitly. The fallback to a local SQLite file

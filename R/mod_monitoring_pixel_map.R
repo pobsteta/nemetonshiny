@@ -73,17 +73,10 @@ mod_monitoring_pixel_map_ui <- function(id) {
           inline   = TRUE
         ),
         shiny::uiOutput(ns("date_slider_ui")),
-        # v0.47.0 — 3 contrôles UX du raster :
-        # - Toggle on/off (checkbox)
-        # - Slider opacité 0-1
-        # - Le raster est aussi listé dans le LayersControl Leaflet
-        #   sous "NDVI/NBR" via addLayersControl overlay group
-        #   (cf. addRasterImage(group = ...) plus bas).
-        shiny::checkboxInput(
-          ns("raster_visible"),
-          label = i18n$t("monitoring_pixel_map_raster_visible"),
-          value = TRUE
-        ),
+        # v0.61.0 — Le checkbox `raster_visible` est retiré : le toggle
+        # de visibilité passe désormais entièrement par le LayersControl
+        # Leaflet (entrée `"NDVI/NBR"`, cf. `addRasterImage(group=...)`
+        # et `overlayGroups` plus bas). Le slider d'opacité reste.
         shiny::sliderInput(
           ns("raster_opacity"),
           label = i18n$t("monitoring_pixel_map_raster_opacity"),
@@ -472,11 +465,9 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::clearImages() |>
         leaflet::removeControl("pixel_legend")
       if (is.null(r)) return()
-      # v0.47.0 — toggle global du raster + opacity dynamique. Si le
-      # user décoche `raster_visible`, on n'ajoute pas le raster du
-      # tout (le proxy l'a déjà clearé au-dessus). L'opacité est lue
-      # depuis le slider `raster_opacity`.
-      if (!isTRUE(input$raster_visible %||% TRUE)) return()
+      # v0.61.0 — Le toggle `raster_visible` est retiré. La visibilité
+      # est gérée par le LayersControl Leaflet (entrée `"NDVI/NBR"`).
+      # L'opacité est lue depuis le slider `raster_opacity`.
       opacity <- as.numeric(input$raster_opacity %||% 1.0)
       if (!is.finite(opacity) || opacity < 0) opacity <- 0
       if (opacity > 1) opacity <- 1

@@ -1,3 +1,88 @@
+# nemetonshiny 0.61.0 (2026-06-02)
+
+### Removed — Simplification des contrôles raster FAST
+
+Trois éléments d'UI redondants ou trompeurs sont retirés en bundle :
+
+**1. Checkbox « Afficher le raster » — Alertes FAST**
+
+Le `checkboxInput("raster_visible")` du sidebar droit d'Alertes FAST
+est retiré. La visibilité du raster d'alerte est désormais pilotée
+par le **LayersControl Leaflet** (entrée « Alertes » sous l'entrée
+« UGF »). Quand l'utilisateur décoche « Alertes » dans le contrôle
+de couches, Leaflet masque proprement le group sans repasser par un
+re-render Shiny.
+
+**2. Checkbox « Afficher le raster » — Carte FAST**
+
+Idem pour `mod_monitoring_pixel_map`. Le LayersControl avait déjà
+l'entrée « NDVI/NBR » dans `overlayGroups` depuis v0.47.0 mais le
+checkbox UI était redondant — désormais c'est l'unique mécanisme.
+
+**3. Checkbox group « Indices spectraux » — Sidebar Suivi sanitaire**
+
+Le `checkboxGroupInput("bands")` du sidebar parent gauche (qui
+permettait à l'utilisateur de désélectionner NDVI ou NBR avant
+Diagnostic FAST) est retiré. NDVI et NBR sont systématiquement
+téléchargés (`bands = c("NDVI", "NBR")` câblé en dur dans
+`fast_task$invoke()`).
+
+**Pourquoi** : le couplage entre les bandes téléchargées (sidebar
+parent) et les bandes affichées (radios NDVI/NBR des sidebars droits
+des onglets) était trompeur — un utilisateur pouvait désélectionner
+NDVI pour le téléchargement et ensuite tenter de l'afficher dans
+Carte FAST, sans message d'erreur clair. Désormais les deux indices
+sont toujours téléchargés ; les radios des sidebars droits pilotent
+uniquement l'**affichage**.
+
+### Caractéristiques
+
+* **Pas de breaking change fonctionnel** : tous les calculs FAST
+  continuent à s'effectuer avec NDVI + NBR. La visibilité du raster
+  passe par le contrôle de couches Leaflet (un clic au même endroit).
+* **UI plus claire** : moins de contrôles redondants dans les
+  sidebars. Le mécanisme « tu vois ce qui est coché dans le contrôle
+  de couches » devient l'unique source de vérité pour la visibilité.
+
+### Détails techniques
+
+* `R/mod_monitoring.R` : retrait du `checkboxGroupInput("bands")` +
+  retrait de la validation `if (length(input$bands) == 0L)` +
+  câblage `bands = c("NDVI", "NBR")` en dur dans
+  `fast_task$invoke()`.
+* `R/mod_monitoring_fast_alerts.R` : retrait du
+  `checkboxInput("raster_visible")` + retrait du
+  `updateCheckboxInput(session, "raster_visible")` + ajout de
+  `"Alertes"` (= `.alert_raster_group`) dans `overlayGroups` de
+  `addLayersControl` + suppression de la garde
+  `if (!visible || ...)` dans l'observer leafletProxy.
+* `R/mod_monitoring_pixel_map.R` : retrait du
+  `checkboxInput("raster_visible")` + suppression de la garde
+  `if (!isTRUE(input$raster_visible ...))` dans l'observer
+  leafletProxy.
+* `R/utils_i18n.R` : retrait de 4 clés
+  (`monitoring_bands`, `monitoring_validate_bands`,
+  `monitoring_fast_alerts_raster_visible`,
+  `monitoring_pixel_map_raster_visible`).
+* `tests/testthat/test-mod_monitoring.R` : adaptation des tests
+  (renommage `"no band selected"` → `"NDVI+NBR hard-wired"`,
+  inversion de l'assertion HTML sur la sidebar).
+
+### Réponse à la question collatérale
+
+*« Le radio NDVI/NBR et Intensité/Fréquence change-t-il le raster
+de la carte ni la légende ? »*
+
+* **Raster** : oui, le wiring est correct (`raster_r()` lit
+  `input$index` et `input$mode` → `compute_fast_alert_mask()`
+  ré-appelé). Si visuellement c'est imperceptible, c'est parce que
+  le mask catégoriel 0-4 (spec 017 D2, v0.57.0) répartit en
+  quartiles dynamiques — la distribution peut être très similaire
+  d'un indice/mode à l'autre sur une zone homogène.
+* **Légende** : non, par design. Les 4 labels (Faible / Modéré /
+  Fort / Sévère) sont des classes génériques de sévérité,
+  indépendantes de l'indice et du mode.
+
 # nemetonshiny 0.60.0 (2026-06-02)
 
 ### Removed — Checkbox « Mode rapide (multi-cœur) » Alertes FAST
