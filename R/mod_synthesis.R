@@ -649,11 +649,24 @@ mod_synthesis_server <- function(id, app_state) {
             # free tier in particular throttles bursts of consecutive
             # requests, which is exactly what fill-all does.
             fam_prompt <- build_analysis_prompt(fam_config, fam_ind_data, language)
+            # v0.61.2 — Préfixer le prompt famille par le bloc RAG
+            # déjà récupéré pour la synthèse globale (cf. `ctx` et
+            # `cite_rule` lignes 565-588). On ré-utilise le même
+            # contexte au lieu de relancer un retrieve par famille :
+            #   - 1 seul appel embedding/pgvector (vs 13)
+            #   - cohérence des sources entre synthèse et familles
+            #   - le `cite_rule` rappelle au LLM de citer avec [^n]
+            # `Filter(nzchar)` neutralise proprement le cas où le
+            # ctx est vide (corpus muet, opt-out, échec retrieve).
+            fam_user_prompt <- paste(
+              Filter(nzchar, c(ctx$prompt_block, cite_rule, fam_prompt)),
+              collapse = "\n\n"
+            )
             fam_response <- NULL
             for (attempt in seq_len(2L)) {
               fam_response <- tryCatch({
                 fam_chat <- create_llm_chat(system_prompt)
-                out <- as.character(fam_chat$chat(fam_prompt, echo = FALSE))
+                out <- as.character(fam_chat$chat(fam_user_prompt, echo = FALSE))
                 # Treat empty / whitespace-only responses as a failure
                 # so the retry kicks in — without this, nchar == 0 would
                 # overwrite a previously-good comment with an empty

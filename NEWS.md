@@ -1,3 +1,55 @@
+# nemetonshiny 0.61.2 (2026-06-02)
+
+### Changed — Le RAG s'applique désormais aussi aux 12 commentaires famille
+
+Constat utilisateur post-v0.61.1 : `[ FAIL 0 | PASS 41 ]` côté RAG,
+mais en exécution live, **une seule** ligne `RAG: 3 chunk(s)
+récupéré(s)` apparaissait dans le log alors que **13 perspectives**
+étaient générées (1 synthèse globale + 12 familles).
+
+Cause : `R/mod_synthesis.R` appelait `rag_context()` uniquement pour
+la synthèse globale (lignes 565-588), et la boucle qui génère les 12
+commentaires famille (lignes 616-681) appelait
+`chat$chat(fam_prompt)` sans préfixer le `ctx$prompt_block` ni la
+consigne de citation. Conforme au brief original (« la perspective »
+au singulier) mais sous-exploitait le corpus RAG.
+
+**Fix** : préfixer chaque `fam_prompt` par le `ctx$prompt_block`
+déjà récupéré pour la synthèse (et la consigne `cite_rule`), puis
+passer le tout au LLM. **1 seul appel `retrieve_knowledge()`**
+(donc 1 seule ligne `cli_inform`), **13 prompts enrichis**
+(synthèse + 12 familles) avec le même contexte.
+
+### Avantages
+
+* **Coût** : pas de retrieve supplémentaire (1× embedding Mistral
+  + 1× cosine search pgvector au total). Si la perspective globale
+  est calculée, les 12 familles en bénéficient sans surcoût.
+* **Cohérence** : les marqueurs `[^n]` injectés dans tous les
+  prompts pointent vers les mêmes documents. Le bloc « Sources
+  documentaires » affiché sous la synthèse (`output$ai_sources`)
+  documente toutes les citations potentiellement émises.
+* **Robustesse** : `Filter(nzchar, c(ctx$prompt_block, cite_rule,
+  fam_prompt))` neutralise proprement le cas où le ctx est vide
+  (corpus muet, opt-out, échec retrieve) — le prompt famille
+  retombe sur son comportement v0.61.1 sans RAG.
+
+### Détails techniques
+
+* `R/mod_synthesis.R` ligne 651-664 : insertion d'un
+  `fam_user_prompt <- paste(Filter(nzchar, c(ctx$prompt_block,
+  cite_rule, fam_prompt)), collapse = "\n\n")` avant le
+  `chat$chat()`, et l'argument passé au LLM devient
+  `fam_user_prompt` (vs `fam_prompt` auparavant).
+
+### Pas de breaking change
+
+Le ctx étant lu depuis la même closure (calculé en amont dans le
+même observer), il n'y a pas de race condition. Si le RAG est
+opt-out (`options(nemeton.rag_enabled = FALSE)`), `ctx$prompt_block
+== ""` → `Filter(nzchar)` le retire → prompt famille identique à
+v0.61.1.
+
 # nemetonshiny 0.61.1 (2026-06-02)
 
 ### Added — Observabilité RAG (`cli_inform` par perspective)
