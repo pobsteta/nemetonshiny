@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-06-02
+
+### Removed
+
+- **Checkbox « Mode rapide (multi-cœur) » Alertes FAST** (introduit
+  en v0.58.0 / TODO #4). Désormais `parallel = TRUE` est passé en
+  dur dans `nemeton::compute_fast_alert_mask()`. Le fallback
+  séquentiel silencieux du cœur (si `furrr` absent) reste actif :
+  aucun risque de cassure. L'opt-in faisait peser un choix
+  technique sans bénéfice opérationnel sur l'utilisateur.
+- Clé i18n `fast_alerts_parallel_label` (FR + EN) supprimée.
+
+### Tests
+
+- Retrait des 2 tests v0.58.0 devenus obsolètes (i18n du label +
+  propagation `input$fast_mode → parallel`).
+- Ajout d'un test de non-régression sur l'absence de la clé i18n.
+
 ## [0.59.1] - 2026-06-02
 
 ### Fixed

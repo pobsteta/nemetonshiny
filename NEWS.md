@@ -1,3 +1,44 @@
+# nemetonshiny 0.60.0 (2026-06-02)
+
+### Removed — Checkbox « Mode rapide (multi-cœur) » Alertes FAST
+
+Le toggle UI introduit en v0.58.0 (TODO #4) est retiré. Désormais
+`parallel = TRUE` est passé en dur dans le wiring
+`nemeton::compute_fast_alert_mask()`.
+
+**Pourquoi** : le checkbox n'apportait pas de garantie supplémentaire.
+Le cœur fait déjà un fallback séquentiel silencieux si `furrr` est
+absent, et l'overhead de spawn `furrr` (~0.5-1s) est négligeable
+face à un calcul FAST typique (10-300s). L'opt-in faisait peser un
+choix technique sans bénéfice opérationnel sur l'utilisateur.
+
+**Caractéristiques** :
+
+* Aucun changement de comportement quand `furrr` est installé
+  (équivalent à activer le checkbox).
+* Fallback séquentiel silencieux toujours actif si `furrr` est
+  absent côté cœur.
+* Pas de breaking change fonctionnel — le retrait porte uniquement
+  sur l'UI ; la fonction cœur consommée reste la même.
+
+**Détails techniques** :
+
+* `R/mod_monitoring_fast_alerts.R` :
+  - retrait du `shiny::checkboxInput(ns("fast_mode"))` (sidebar
+    droit) ;
+  - retrait du `updateCheckboxInput(session, "fast_mode")` de
+    l'observer i18n ;
+  - remplacement de `use_parallel <- isTRUE(input$fast_mode %||%
+    FALSE)` par `parallel = TRUE` en dur dans l'appel.
+* `R/utils_i18n.R` : retrait de la clé `fast_alerts_parallel_label`
+  (FR + EN).
+* `tests/testthat/test-service_monitoring.R` :
+  - retrait des 2 tests v0.58.0 devenus obsolètes (test i18n du
+    label + test de propagation `input$fast_mode → parallel`) ;
+  - ajout d'un test de non-régression vérifiant que la clé
+    `fast_alerts_parallel_label` n'est pas ré-introduite
+    accidentellement.
+
 # nemetonshiny 0.59.1 (2026-06-02)
 
 ### Fixed — Test `register click` cassé par `bindEvent(ignoreInit = TRUE)`

@@ -92,19 +92,6 @@ mod_monitoring_fast_alerts_ui <- function(id) {
           ns("raster_opacity"),
           label = i18n$t("monitoring_fast_alerts_opacity_label"),
           min = 0, max = 1, value = 0.75, step = 0.05
-        ),
-        # v0.58.0 — TODO #4 : toggle « Mode rapide » qui active le
-        # calcul multi-cœur dans `nemeton::compute_fast_alert_mask()`
-        # via `parallel = TRUE` (spec 017 D4 nemeton@v0.57.0+).
-        # Nécessite `furrr` installé côté cœur ; si absent, le cœur
-        # retombe silencieusement sur séquentiel. `value = FALSE` par
-        # défaut — l'utilisateur active explicitement pour les gros
-        # diagnostics. Sub-seconde sur petites zones (overhead du
-        # parallel > gain), gain réel sur zones ≥ 100 ha.
-        shiny::checkboxInput(
-          ns("fast_mode"),
-          label = i18n$t("fast_alerts_parallel_label"),
-          value = FALSE
         )
       ),
       # v0.53.0 — Le banner « zone saine » et le leafletOutput sont
@@ -195,11 +182,6 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         session, "raster_opacity",
         label = i18n$t("monitoring_fast_alerts_opacity_label")
       )
-      # v0.58.0 — refresh label du checkbox « Mode rapide » TODO #4.
-      shiny::updateCheckboxInput(
-        session, "fast_mode",
-        label = i18n$t("fast_alerts_parallel_label")
-      )
     })
 
     # ----- Cache dir + raster reactive --------------------------------
@@ -269,10 +251,10 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       mask_cache <- .fast_alert_mask_cache_dir(
         app_state$current_project$path
       )
-      # v0.58.0 — TODO #4 : `parallel` piloté par le checkbox
-      # « Mode rapide » du sidebar. TRUE → calcul par scène
-      # multi-cœur côté cœur (spec 017 D4 nemeton@v0.57.0+).
-      use_parallel <- isTRUE(input$fast_mode %||% FALSE)
+      # v0.60.0 — `parallel = TRUE` en dur (retrait du checkbox UI
+      # introduit en v0.58.0). Le cœur fait un fallback séquentiel
+      # silencieux si `furrr` est absent, donc aucune dégradation.
+      # Spec 017 D4 nemeton@v0.57.0+.
       mask_path <- tryCatch(
         nemeton::compute_fast_alert_mask(
           con              = con,
@@ -287,7 +269,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           mask_cache_dir   = mask_cache,
           cache_result     = TRUE,
           result_cache_dir = result_cache,
-          parallel         = use_parallel
+          parallel         = TRUE
         ),
         error = function(e) {
           cli::cli_alert_warning(

@@ -2345,14 +2345,6 @@ TRANSLATIONS <- list(
     fr = "Jours en alerte",
     en = "Alert days"
   ),
-  # v0.58.0 — TODO #4 : checkbox « Mode rapide » dans le sidebar
-  # Alertes FAST qui active le calcul par scène multi-cœur côté
-  # cœur (spec 017 D4 `nemeton@v0.57.0+`, `parallel = TRUE`).
-  # Requiert `furrr` côté cœur ; fallback séquentiel silencieux sinon.
-  fast_alerts_parallel_label = list(
-    fr = "Mode rapide (multi-cœur)",
-    en = "Fast mode (multi-core)"
-  ),
   # v0.57.0 — Affichage du mask FAST en quartiles 0-4 (spec 017 D2
   # nemeton@v0.55.0+). Le mask catégoriel sort de
   # `nemeton::compute_fast_alert_mask()`. La classe 0 (sain) est
