@@ -1,3 +1,33 @@
+# nemetonshiny 0.52.16.9001 (2026-06-02)
+
+### Changed — Alignement avec `nemeton@v0.60.0` (finalisation spec 017)
+
+Le cœur a publié 2 releases successives qui finalisent la suppression
+du couplage `obs_pixel` :
+
+* **`nemeton@v0.58.0`** (Phase A) — `feat: drop obs_pixel insertion
+  from S2 ingest; pure-raster FAST`. L'ingestion Sentinel-2
+  n'alimente plus la table `obs_pixel` ; la table existe encore
+  côté schéma mais n'est plus écrite.
+* **`nemeton@v0.60.0`** (Phase B) — `feat!: remove deprecated
+  obs_pixel consumers; strip obs_pixel from schema`. La fonction
+  `read_obs_pixel()` est retirée du NAMESPACE exporté, et la
+  migration `0004_drop_obs_pixel` DROP CASCADE la table sur toute
+  base existante. Skip de `v0.59` pour signaler la rupture API.
+
+**Côté app** : aucune adaptation fonctionnelle nécessaire — v0.52.16
+ne consomme déjà plus `obs_pixel`. Cette release est purement un
+alignement de documentation et de plancher d'import.
+
+* `DESCRIPTION` : plancher `Imports: nemeton (>= 0.60.0)` (depuis
+  0.57.0). Garantit qu'un install ne tombe pas sur un cœur antérieur
+  où `obs_pixel` serait encore alimenté en sous-main.
+* `tests/testthat/test-monitoring-smoke-e2e.R` : précondition
+  `read_obs_pixel exported` retirée du skip (la fonction n'existe
+  plus en `v0.60.0`).
+
+Cycle dev `0.52.16` → `0.52.16.9001`.
+
 # nemetonshiny 0.52.16 (2026-06-02)
 
 ### Changed — FAST 100 % pure raster per-pixel : suppression complète du couplage `obs_pixel`/placettes

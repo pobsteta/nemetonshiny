@@ -14,9 +14,10 @@ test_that("monitoring tab boots and the two modes are reachable", {
   skip_if_not_installed("shinytest2")
   skip_if_not_installed("chromote")
   skip_if_not_installed("nemeton")
-  if (!"read_obs_pixel" %in% getNamespaceExports("nemeton")) {
-    skip("nemeton::read_obs_pixel not exported (need >= v0.21.11)")
-  }
+  # v0.52.17 — précondition `read_obs_pixel exported` retirée :
+  # cette fonction a été supprimée du cœur en `nemeton@v0.60.0`
+  # (suite spec 017 / refactor obs_pixel). Le smoke test ne dépend
+  # plus de cette API.
   if (!nzchar(Sys.which("google-chrome")) &&
       !nzchar(Sys.which("chromium")) &&
       !nzchar(Sys.which("chromium-browser")) &&
