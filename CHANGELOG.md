@@ -10,6 +10,49 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.55.0] - 2026-06-02
+
+### Changed
+
+- **Pré-calcul FAST déplacé du helper app vers l'API native cœur**
+  (`nemeton@v0.61.0`, spec 018). v0.54.0 livrait un helper local
+  `.prewarm_fast_alerts()` qui faisait 4 `read_fast_alert_raster()`
+  après l'ingest. Le cœur intègre désormais nativement cette logique
+  via `prewarm_alerts = TRUE` + `prewarm_mask_cache_dir`. Le helper
+  app est SUPPRIMÉ ; les 2 params sont forwardés au cœur depuis le
+  worker.
+- **Helper unique `.fast_alert_cache_dir()`** dans `mod_monitoring.R`.
+  Factorise le chemin canonique `<projet>/cache/layers/fast_alert`
+  utilisé par les 3 call sites (invoke worker + lecture Alertes FAST
+  + prévisualisation validation_sampling). Cohérence cruciale du
+  hash D6.
+- **`Imports: nemeton (>= 0.61.0)`** — garantit la présence de
+  `prewarm_alerts` + `prewarm_mask_cache_dir`.
+
+### Added
+
+- **Toasts localisés pour les events `fast_prewarm:*` du cœur.**
+  L'observer `ingest_progress` reconnaît désormais le préfixe et
+  produit des toasts à partir des clés machine du payload
+  (`ev$index`, `ev$mode`) — jamais en parsant du FR. Mapping :
+  `count` → Fréquence/Frequency, `rolling` → Intensité/Intensity.
+  Événements supportés : `fast_prewarm:<idx>_<mode>` (running),
+  `_done`, `_failed`, `:complete` (silencieux), `:cancelled`.
+- **6 clés i18n FR/EN** : `fast_mode_frequence`, `fast_mode_intensite`,
+  `fast_prewarm_running`, `fast_prewarm_done`, `fast_prewarm_failed`,
+  `fast_prewarm_cancelled`.
+
+### Removed
+
+- Helper `R/service_monitoring.R::.prewarm_fast_alerts()` (redondant
+  avec spec 018 cœur).
+- 4 tests qui mockaient ce helper.
+
+### Tests
+
+- 3 nouveaux dans `test-service_monitoring.R` : helper chemin, sprintf
+  placeholders, mapping mode → i18n.
+
 ## [0.54.0] - 2026-06-02
 
 ### Added

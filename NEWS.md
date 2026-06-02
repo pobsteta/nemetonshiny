@@ -1,4 +1,4 @@
-# nemetonshiny 0.54.0.9001 (2026-06-02)
+# nemetonshiny 0.55.0 (2026-06-02)
 
 ### Changed — Pré-calcul FAST déplacé du helper app vers l'API native cœur (`nemeton@v0.61.0`)
 
@@ -88,7 +88,8 @@ en parsant du texte FR — conforme à la convention i18n CLAUDE.md.
 * `Imports: nemeton (>= 0.61.0)` (depuis 0.60.0). Garantit la
   présence des params `prewarm_alerts` + `prewarm_mask_cache_dir`.
 
-Cycle dev `0.54.0` → `0.54.0.9001`.
+Cycle dev `0.54.0` → `0.54.0.9001` → release stable **`v0.55.0`**
+(MINOR, refactor structurel + delegation spec 018 cœur + toasts feat).
 
 # nemetonshiny 0.54.0 (2026-06-02)
 
