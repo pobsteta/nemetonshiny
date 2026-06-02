@@ -10,6 +10,44 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.53.0] - 2026-06-02
+
+> Première release sous la convention semver stricte (CLAUDE.md
+> §Consignes de release étape 1 révisée 2026-06-02). MINOR bump car
+> refactor structurel + nouvelle feature UI.
+
+### Fixed
+
+- **`NEMETON_DB_LOCAL=1` ignoré au chargement projet.** La variable
+  était lue uniquement par `service_monitoring_db.R` (monitoring DB),
+  pas par `service_db.R` (project DB). `.resolve_db_config()`
+  court-circuite désormais en tête si truthy → projects/parcels/
+  comments/users restent sur disque (mode single-user local).
+- **Carte Alertes FAST : raster invisible avant bump opacité.**
+  Refactor structurel : `output$panel` éclaté en `output$banner`
+  (uiOutput, re-render selon raster_r) + `leafletOutput("map")`
+  direct dans l'UI (rendu UNE FOIS au montage). La map ne se
+  recréait plus à chaque changement d'index/seuil, donc l'observer
+  `leafletProxy::addRasterImage` peint correctement au premier coup.
+
+### Added
+
+- **Bandeau d'erreur diagnostique distinct de « zone saine ».**
+  `output$banner` distingue désormais : VERT « Aucune alerte FAST
+  sur la fenêtre » (raster calculé, 0 alerte) vs JAUNE warning
+  « Raster d'alerte non calculable » + cause (cache S2 incomplet,
+  exception cœur). Cas typique : NBR avec bande B12 partiellement
+  absente du cache. Nouveau reactiveVal `last_raster_error`,
+  nouvelle clé i18n `monitoring_fast_alerts_error_title`.
+
+### Changed
+
+- **Documentation : table de décision semver stricte** ajoutée à
+  `CLAUDE.md` (§Consignes de release étape 1). Toute nouvelle
+  feature UI / refactor structurel / retrait UX bumpe désormais
+  en MINOR ; PATCH réservé aux fix régression purs + alignement
+  plancher cœur + doc.
+
 ## [0.52.17] - 2026-06-02
 
 ### Changed

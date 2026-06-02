@@ -1,3 +1,59 @@
+# nemetonshiny 0.53.0 (2026-06-02)
+
+> **Première release sous la nouvelle convention semver stricte**
+> (voir `CLAUDE.md` §Consignes de release étape 1 révisée).
+> Ce bump est MINOR parce qu'il contient un **refactor structurel**
+> (split banner/leafletOutput) et une **nouvelle feature UI**
+> (bandeau diagnostic d'erreur) — auparavant ces changements
+> auraient été regroupés en PATCH par habitude.
+
+### Fixed — `NEMETON_DB_LOCAL=1` ignoré au chargement projet
+
+`NEMETON_DB_LOCAL=1` était lu uniquement par `service_monitoring_db.R`
+(monitoring DB), pas par `service_db.R` (project DB). Conséquence : un
+clic sur un projet récent affichait quand même
+« Connected to PostgreSQL: nemeton@host:5432 (source: url) » et écrivait
+les `comments` / `parcels` / `projects` dans PostGIS, contredisant le
+mode local attendu.
+
+`R/service_db.R` : `.resolve_db_config()` court-circuite en tête si
+`NEMETON_DB_LOCAL=1` (truthy) → retourne `NULL` → l'app marche en
+mode single-user local, projets sur disque uniquement.
+
+### Fixed — Carte Alertes FAST : raster invisible au premier render (devait bouger le slider opacité)
+
+Le `output$panel` (renderUI) incluait à la fois le banner « zone
+saine » ET le `leafletOutput(map)`. Comme `panel` dépendait de
+`raster_r()`, chaque changement de raster (switch index NDVI/NBR,
+slider seuil, etc.) re-render TOUT le panel → le `leafletOutput`
+était détruit + recréé → la map ré-initialisée → l'observer
+`leafletProxy::addRasterImage` peignait dans le vide. L'utilisateur
+devait bouger un autre slider (opacité) pour forcer un repaint.
+
+Refactor structurel : `output$panel` éclaté en 2 outputs distincts —
+`output$banner` (uiOutput, re-render selon `raster_r`) et
+`leafletOutput("map")` (rendu UNE FOIS au montage). La map est
+désormais immortelle ; seul le banner clignote.
+
+### Added — Bandeau d'erreur distinct de « zone saine » (diagnostic NBR cache incomplet)
+
+`output$banner` distingue désormais 2 cas au lieu d'un message
+générique :
+* **Bandeau VERT** « Aucune alerte FAST sur la fenêtre » — quand le
+  raster est calculé avec 0 cellule en alerte (zone vraiment saine).
+* **Bandeau JAUNE warning** « Raster d'alerte non calculable » +
+  description de la cause — quand `read_fast_alert_raster()` lève
+  une exception OU retourne NULL. Cas typique : cache S2 incomplet
+  pour l'indice choisi (NBR souvent affecté quand la bande B12
+  manque sur beaucoup de scènes).
+
+Nouveau reactiveVal `last_raster_error` qui capture le message
+côté serveur ; nouvelle clé i18n `monitoring_fast_alerts_error_title`
+(FR/EN).
+
+Cycle dev `0.52.17` → `0.52.17.9001` → release stable **`v0.53.0`**
+(MINOR, première application stricte semver).
+
 # nemetonshiny 0.52.17 (2026-06-02)
 
 ### Changed — Alignement avec `nemeton@v0.60.0` (finalisation spec 017)

@@ -47,6 +47,18 @@ NULL
 #'   or NULL when nothing is configured.
 #' @noRd
 .resolve_db_config <- function() {
+  # v0.53.0 — `NEMETON_DB_LOCAL=1` court-circuite la project DB. Avant ce
+  # bump, la variable n'était lue que par `service_monitoring_db.R`
+  # (monitoring DB), donc charger un projet émettait quand même un
+  # « Connected to PostgreSQL: ... (source: url) » qui contredisait
+  # le mode local. Désormais, si `NEMETON_DB_LOCAL=1` (= 1 / true /
+  # yes / on, case-insensitive), `.resolve_db_config()` retourne NULL
+  # → `is_db_configured()` est FALSE → l'app n'écrit ni ne lit la
+  # PostGIS (comments, parcels, projects, users restent sur disque
+  # uniquement, mode single-user local cohérent avec le sens attendu).
+  if (isTRUE(.nemeton_truthy(Sys.getenv("NEMETON_DB_LOCAL", "")))) {
+    return(NULL)
+  }
   url <- Sys.getenv("NEMETON_DB_URL", "")
   if (nzchar(url) && requireNamespace("httr2", quietly = TRUE)) {
     p <- tryCatch(httr2::url_parse(url), error = function(e) NULL)
