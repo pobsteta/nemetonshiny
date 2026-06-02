@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.59.1] - 2026-06-02
+
+### Fixed
+
+- **Test `register click` cassé par `bindEvent(ignoreInit = TRUE)`**
+  (régression test introduite par commit 3f1059d, bouton inline).
+  Matérialiser une transition `0L → 1L` sur `input$register` pour
+  émuler un vrai clic d'`actionButton` et déclencher l'observer.
+  Aucun changement de code de prod. Résultat : `[ FAIL 0 | PASS 6875 ]`
+  sur la suite complète.
+
 ## [0.59.0] - 2026-06-02
 
 ### Added
