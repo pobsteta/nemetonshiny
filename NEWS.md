@@ -1,4 +1,4 @@
-# nemetonshiny 0.53.1.9001 (2026-06-02)
+# nemetonshiny 0.54.0 (2026-06-02)
 
 ### Added — Pré-calcul inconditionnel des 4 cartes FAST en fin de Diagnostic FAST
 
@@ -59,7 +59,8 @@ toujours à `file.path(project$path, "cache", "layers", "fast_alert")`.
 Suite : `[ FAIL 3 | PASS 364 ]` — fails pré-existants (register
 click), non liés.
 
-Cycle dev `0.53.1` → `0.53.1.9001`.
+Cycle dev `0.53.1` → `0.53.1.9001` → release stable **`v0.54.0`**
+(MINOR, feat — découplage calcul/affichage FAST).
 
 # nemetonshiny 0.53.1 (2026-06-02)
 
