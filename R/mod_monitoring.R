@@ -1449,6 +1449,77 @@ mod_monitoring_server <- function(id, app_state) {
         )
         return()
       }
+      # v0.55.0 — Events `fast_prewarm:<index>_<mode>[ _done|_failed]`
+      # émis par le cœur en fin d'ingestion réussie (spec 018
+      # nemeton@v0.61.0). On les transforme en toasts localisés à
+      # partir des CLÉS MACHINE du payload (index / mode), pas en
+      # parsant du texte FR. Mapping mode → libellé i18n :
+      #   "count"   → fast_mode_frequence  (Fréquence / Frequency)
+      #   "rolling" → fast_mode_intensite  (Intensité / Intensity)
+      if (startsWith(current_phase, "fast_prewarm:")) {
+        if (identical(current_phase, "fast_prewarm:complete")) {
+          # Aucune notification pour `complete` — les 4 `_done` ont
+          # déjà couvert le succès. On loggue juste côté console.
+          cli::cli_alert_info("Worker event: fast_prewarm:complete")
+          return()
+        }
+        if (identical(current_phase, "fast_prewarm:cancelled")) {
+          shiny::showNotification(
+            i18n$t("fast_prewarm_cancelled"),
+            id       = session$ns("fast_prewarm_cancelled"),
+            type     = "warning",
+            duration = 5
+          )
+          return()
+        }
+        idx_payload  <- as.character(ev$index %||% "")
+        mode_payload <- as.character(ev$mode  %||% "")
+        if (!nzchar(idx_payload) || !nzchar(mode_payload)) {
+          # Payload malformé (cœur incohérent). On log et ignore.
+          cli::cli_alert_info(
+            "Worker event: {current_phase} (payload incomplet)")
+          return()
+        }
+        mode_label <- if (identical(mode_payload, "count")) {
+          i18n$t("fast_mode_frequence")
+        } else if (identical(mode_payload, "rolling")) {
+          i18n$t("fast_mode_intensite")
+        } else mode_payload
+        if (endsWith(current_phase, "_done")) {
+          shiny::showNotification(
+            sprintf(i18n$t("fast_prewarm_done"), idx_payload, mode_label),
+            id       = session$ns(
+              sprintf("fast_prewarm_done_%s_%s",
+                      idx_payload, mode_payload)),
+            type     = "message",
+            duration = 4
+          )
+        } else if (endsWith(current_phase, "_failed")) {
+          err <- as.character(ev$error_message %||% ev$error %||% "")
+          msg <- sprintf(i18n$t("fast_prewarm_failed"),
+                         idx_payload, mode_label)
+          if (nzchar(err)) msg <- paste0(msg, " — ", err)
+          shiny::showNotification(
+            msg,
+            id       = session$ns(
+              sprintf("fast_prewarm_failed_%s_%s",
+                      idx_payload, mode_payload)),
+            type     = "warning",
+            duration = 6
+          )
+        } else {
+          # phase running (sans suffixe `_done`/`_failed`).
+          shiny::showNotification(
+            sprintf(i18n$t("fast_prewarm_running"),
+                    idx_payload, mode_label),
+            id          = session$ns("fast_prewarm_progress"),
+            type        = "message",
+            duration    = NULL,
+            closeButton = FALSE
+          )
+        }
+        return()
+      }
       # PC SAS token rotation is informational only — we surface it so
       # the user can correlate a brief pause with token rotation
       # instead of suspecting a network issue.
@@ -1771,15 +1842,18 @@ mod_monitoring_server <- function(id, app_state) {
         # diagnostic » écrit ce fichier ; nemeton renvoie alors un
         # résumé status="cancelled" + commit partiel.
         cancel_path   = .fast_cancel_flag,
-        # v0.54.0 — pré-calcul des 4 cartes FAST en fin de worker
-        # (NDVI×count, NDVI×rolling, NBR×count, NBR×rolling). Le COG
-        # résultat de chaque combinaison est persisté sous
-        # `result_cache_dir`. Découpe le calcul de l'affichage : les
-        # coches Alertes FAST ne déclenchent plus AUCUN calcul, elles
-        # sélectionnent juste quel COG cached afficher.
-        result_cache_dir = file.path(
-          app_state$current_project$path,
-          "cache", "layers", "fast_alert"
+        # v0.54.0 → v0.55.0 — Le pré-calcul des 4 cartes FAST est
+        # désormais fait PAR LE CŒUR (spec 018 nemeton@v0.61.0) via
+        # les params natifs `prewarm_alerts` + `prewarm_mask_cache_dir`.
+        # L'app les active systématiquement (feature désirable par
+        # défaut). Le chemin doit être EXACTEMENT le même que celui
+        # utilisé par `mod_monitoring_fast_alerts.R` /
+        # `mod_validation_sampling.R` à la lecture (sinon cache D6
+        # raté car hash calculé/lu à des endroits différents) — d'où
+        # le helper `.fast_alert_cache_dir()` factorisé.
+        prewarm_alerts         = TRUE,
+        prewarm_mask_cache_dir = .fast_alert_cache_dir(
+          app_state$current_project$path
         )
       )
     })
@@ -2422,6 +2496,18 @@ mod_monitoring_server <- function(id, app_state) {
   }
   normalizePath(file.path(data_dir, filename),
                 winslash = "/", mustWork = FALSE)
+}
+
+# v0.55.0 — Helper unique pour le chemin du cache D6 FAST alert
+# (spec 017 + spec 018 nemeton). Utilisé à 3 endroits :
+# (1) `mod_monitoring.R::fast_task$invoke()` pour `prewarm_mask_cache_dir`
+# (2) `mod_monitoring_fast_alerts.R::raster_r()` pour `result_cache_dir`
+# (3) `mod_validation_sampling.R` pour la prévisualisation
+# Il est CRITIQUE que les 3 utilisent le même chemin, sinon le hash D6
+# est calculé/lu à des endroits différents et le cache rate.
+.fast_alert_cache_dir <- function(project_path) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  file.path(project_path, "cache", "layers", "fast_alert")
 }
 
 # Best-effort acquisition date (Date) parsed from a Sentinel-2 scene id

@@ -236,10 +236,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # disque (sub-seconde) au lieu de relancer le pipeline. Le hash
       # change automatiquement quand n'importe quel paramètre bouge,
       # donc pas d'invalidation manuelle à faire.
-      proj_path <- app_state$current_project$path
-      result_cache <- if (!is.null(proj_path) && nzchar(proj_path)) {
-        file.path(proj_path, "cache", "layers", "fast_alert")
-      } else NULL
+      # v0.55.0 — chemin résolu via helper unique partagé avec le
+      # pré-calcul cœur (mod_monitoring.R::fast_task$invoke()) et la
+      # prévisualisation validation_sampling. Cohérence du hash D6.
+      result_cache <- .fast_alert_cache_dir(
+        app_state$current_project$path
+      )
       # v0.53.0 — capture l'erreur dans un reactiveVal partagé pour
       # que le banner UI puisse afficher la vraie cause au lieu d'un
       # générique « zone saine » qui camoufle un bug de cache (typique

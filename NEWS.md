@@ -1,3 +1,95 @@
+# nemetonshiny 0.54.0.9001 (2026-06-02)
+
+### Changed — Pré-calcul FAST déplacé du helper app vers l'API native cœur (`nemeton@v0.61.0`)
+
+`nemeton@v0.61.0` (publié 2026-06-02 14:56 UTC, spec 018) ajoute à
+`ingest_sentinel2_timeseries()` deux paramètres opt-in :
+`prewarm_alerts = FALSE` et `prewarm_mask_cache_dir = NULL`. Quand
+`TRUE`, le cœur enchaîne en fin d'ingestion sur 4
+`read_fast_alert_raster()` (NDVI/NBR × count/rolling) au seuil défaut
+(0.40/0.30) et remplit le cache D6 sous
+`<prewarm_mask_cache_dir>/zone_<id>/`.
+
+L'app v0.54.0 avait livré le **même comportement** via un helper
+local `.prewarm_fast_alerts()` dans `R/service_monitoring.R`. Avec la
+spec 018 cœur, ce helper devient **redondant** : la logique migre
+nativement dans le cœur (même process worker, même `con` /
+`cache_dir` / `cancel_path`, gestion d'erreur partielle, parallel
+opt-in si `furrr`).
+
+**Avantages du déplacement** :
+* **Cohérence** : un seul code path pour le pré-calcul (cœur).
+* **Performance** : pas de re-traversée du worker boundary entre
+  ingestion et pré-calcul (économie ~100-200 ms négligeable).
+* **Maintenance** : les futurs ajustements de la spec 018 (D7…) se
+  feront côté cœur sans bump app.
+* **Tests cœur** : la spec 018 a son propre test suite côté nemeton,
+  l'app n'a plus à dupliquer.
+
+**Côté app** :
+* `service_monitoring.R::run_ingestion_async()` — la signature
+  ExtendedTask perd `result_cache_dir`, gagne `prewarm_alerts` +
+  `prewarm_mask_cache_dir`. Les 2 sont forwardés tels quels à
+  `nemeton::ingest_sentinel2_timeseries()`.
+* `service_monitoring.R` — helper `.prewarm_fast_alerts()` SUPPRIMÉ.
+* `mod_monitoring.R::fast_task$invoke()` — passe désormais
+  `prewarm_alerts = TRUE` (feature désirable par défaut) et
+  `prewarm_mask_cache_dir = .fast_alert_cache_dir(project$path)`.
+* `mod_monitoring.R` — nouveau helper `.fast_alert_cache_dir(project_path)`
+  qui factorise le chemin canonique
+  `<projet>/cache/layers/fast_alert`. Cohérence cruciale du hash D6 :
+  les 3 call sites (invoke côté worker + lecture côté Alertes FAST +
+  prévisualisation validation_sampling) utilisent désormais le même
+  helper.
+* `mod_monitoring_fast_alerts.R` + `mod_validation_sampling.R` —
+  utilisent `.fast_alert_cache_dir()` au lieu de `file.path(...)`
+  inline.
+
+### Added — Toasts localisés pour les events `fast_prewarm:*` du cœur
+
+L'observer `ingest_progress` de `mod_monitoring.R` reconnaît
+désormais le préfixe `fast_prewarm:` émis par le cœur (spec 018).
+Chaque combinaison `(index, mode)` produit jusqu'à 3 events :
+* `fast_prewarm:<idx>_<mode>` — démarré → toast info « Pré-calcul
+  carte NBR Intensité en cours… ».
+* `fast_prewarm:<idx>_<mode>_done` — carte prête → toast vert
+  « Carte NBR Intensité prête. » (4 s).
+* `fast_prewarm:<idx>_<mode>_failed` — échec partiel (B12
+  manquante…) → toast jaune warning « Carte NBR Intensité non
+  calculable. — <error> » (6 s).
+
+Plus 2 events de synthèse :
+* `fast_prewarm:complete` — silencieux (les 4 `_done` ont déjà
+  couvert) ; log console uniquement.
+* `fast_prewarm:cancelled` — toast warning « Pré-calcul des cartes
+  FAST annulé. » (5 s).
+
+**Mapping mode → libellé** : `count` → « Fréquence » / `Frequency`,
+`rolling` → « Intensité » / `Intensity`. Les libellés sont construits
+à partir des CLÉS MACHINE du payload (`ev$index`, `ev$mode`), jamais
+en parsant du texte FR — conforme à la convention i18n CLAUDE.md.
+
+`R/utils_i18n.R` — 6 nouvelles clés (FR/EN) :
+* `fast_mode_frequence`, `fast_mode_intensite`
+* `fast_prewarm_running`, `fast_prewarm_done`, `fast_prewarm_failed`,
+  `fast_prewarm_cancelled`
+
+### Tests
+
+* 4 tests retirés (mockaient le helper `.prewarm_fast_alerts()` qui
+  n'existe plus).
+* 3 nouveaux tests dans `test-service_monitoring.R` :
+  - `.fast_alert_cache_dir()` renvoie le bon chemin canonique
+  - clés i18n `fast_prewarm_*` ont les bons placeholders sprintf
+  - mapping mode → libellé i18n produit le bon toast (FR + EN)
+
+### Changed (plancher)
+
+* `Imports: nemeton (>= 0.61.0)` (depuis 0.60.0). Garantit la
+  présence des params `prewarm_alerts` + `prewarm_mask_cache_dir`.
+
+Cycle dev `0.54.0` → `0.54.0.9001`.
+
 # nemetonshiny 0.54.0 (2026-06-02)
 
 ### Added — Pré-calcul inconditionnel des 4 cartes FAST en fin de Diagnostic FAST

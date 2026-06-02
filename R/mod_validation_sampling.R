@@ -221,7 +221,8 @@ mod_validation_sampling_server <- function(id, app_state,
       # désormais instantané si le COG résultat est déjà sur disque.
       idx <- th$index %||% "NDVI"
       thr <- if (identical(idx, "NBR")) th$nbr else th$ndvi
-      result_cache <- file.path(proj$path, "cache", "layers", "fast_alert")
+      # v0.55.0 — helper unique partagé (cohérence hash D6).
+      result_cache <- .fast_alert_cache_dir(proj$path)
       tryCatch(
         nemeton::read_fast_alert_raster(
           con,
