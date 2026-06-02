@@ -10,6 +10,28 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.54.0] - 2026-06-02
+
+### Added
+
+- **Pré-calcul inconditionnel des 4 cartes FAST en fin de
+  Diagnostic FAST.** Nouveau helper `.prewarm_fast_alerts()` qui
+  enchaîne 4 appels `nemeton::read_fast_alert_raster()` (NDVI×count,
+  NDVI×rolling, NBR×count, NBR×rolling) après l'ingestion COG. Cache
+  D6 content-addressed → revisite UI sub-seconde. Découple calcul ↔
+  affichage : les coches/radios Alertes FAST pilotent désormais QUE
+  l'affichage Leaflet, jamais le calcul.
+- 4 nouveaux tests dans `test-service_monitoring.R` couvrent : les 4
+  combos calculées, l'échec partiel toléré, le cancel coopératif,
+  le no-op si `result_cache_dir` est NULL/vide.
+
+### Changed
+
+- **Signature `run_ingestion_async()` ExtendedTask** : nouveau
+  paramètre `result_cache_dir = NULL`. Forwardé par
+  `mod_monitoring.R` à `file.path(project$path, "cache", "layers",
+  "fast_alert")` à chaque `fast_task$invoke()`.
+
 ## [0.53.1] - 2026-06-02
 
 ### Fixed

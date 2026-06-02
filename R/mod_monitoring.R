@@ -1770,7 +1770,17 @@ mod_monitoring_server <- function(id, app_state) {
         # chaque tuile (nemeton@v0.53.0). Le clic « Annuler le
         # diagnostic » écrit ce fichier ; nemeton renvoie alors un
         # résumé status="cancelled" + commit partiel.
-        cancel_path   = .fast_cancel_flag
+        cancel_path   = .fast_cancel_flag,
+        # v0.54.0 — pré-calcul des 4 cartes FAST en fin de worker
+        # (NDVI×count, NDVI×rolling, NBR×count, NBR×rolling). Le COG
+        # résultat de chaque combinaison est persisté sous
+        # `result_cache_dir`. Découpe le calcul de l'affichage : les
+        # coches Alertes FAST ne déclenchent plus AUCUN calcul, elles
+        # sélectionnent juste quel COG cached afficher.
+        result_cache_dir = file.path(
+          app_state$current_project$path,
+          "cache", "layers", "fast_alert"
+        )
       )
     })
 
