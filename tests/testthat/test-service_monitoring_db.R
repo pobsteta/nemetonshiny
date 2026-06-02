@@ -150,8 +150,13 @@ test_that(".file_db_path_from_url strips the sqlite scheme", {
                "C:/x/m.sqlite")
 })
 
-test_that("read_only path opens RO and skips migration (PostgreSQL)", {
+test_that("read_only path opens RO AND migrates idempotently (PostgreSQL)", {
   skip_if_not_installed("nemeton")
+  # v0.52.1 — sur Postgres on appelle aussi `.ensure_monitoring_schema()`
+  # sur le RO path (idempotent, sub-milliseconde après la 1re fois) pour
+  # éviter le warning « relation monitoring_zone does not exist » au boot
+  # quand le schéma n'a pas encore été migré par un RW path antérieur.
+  # SQLite garde son fast-path (existence du fichier = déjà migré).
   clear_monitoring_db_envvars()
   withr::local_envvar(c(NEMETON_DB_URL = "postgresql://u:p@h:5432/d"))
   seen_ro <- NULL
@@ -167,7 +172,7 @@ test_that("read_only path opens RO and skips migration (PostgreSQL)", {
       out <- get_monitoring_db_connection(read_only = TRUE)
       expect_s3_class(out, "fake_con")
       expect_true(seen_ro)         # read_only forwarded to db_connect
-      expect_false(migrated)       # migration skipped on RO path
+      expect_true(migrated)        # v0.52.1 : Postgres RO migrates too
     }
   )
 })

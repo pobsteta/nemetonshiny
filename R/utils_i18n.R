@@ -2377,14 +2377,10 @@ TRANSLATIONS <- list(
     fr = "Pixel \u00e0 (lat: %.5f, lon: %.5f)",
     en = "Pixel at (lat: %.5f, lon: %.5f)"
   ),
-  monitoring_pixel_map_placette_modal_title_fmt = list(
-    fr = "Placette %s \u2014 s\u00e9rie NDVI / NBR (moyenne plot)",
-    en = "Plot %s \u2014 NDVI / NBR series (plot mean)"
-  ),
-  monitoring_pixel_map_no_placette_data = list(
-    fr = "Pas de donn\u00e9es pour cette placette dans la fen\u00eatre courante.",
-    en = "No data for this plot in the current window."
-  ),
+  # v0.52.16 \u2014 cl\u00e9s i18n `monitoring_pixel_map_placette_modal_title_fmt`
+  # et `monitoring_pixel_map_no_placette_data` retir\u00e9es : la modale
+  # \u00ab clic marqueur placette \u00bb n'existe plus (FAST = pure raster
+  # per-pixel, sans contact avec les placettes Terrain).
   monitoring_pixel_map_no_cache = list(
     fr = "Pas de cache disque disponible. Lance le diagnostic FAST pour peupler le cache COG.",
     en = "No disk cache available. Run a FAST diagnosis to populate the COG cache."

@@ -45,6 +45,7 @@ test_that("pixel_stack does not call build_index_stack in health mode", {
   skip_if_not_installed("shiny")
   .skip_if_no_pixel_map()
 
+  # v0.52.16 — param `obs_pixel_data` retiré du module (FAST pure raster).
   call_count <- 0L
   testthat::with_mocked_bindings(
     build_index_stack = function(...) {
@@ -56,15 +57,8 @@ test_that("pixel_stack does not call build_index_stack in health mode", {
       shiny::testServer(
         nemetonshiny:::mod_monitoring_pixel_map_server,
         args = list(
-          app_state      = shiny::reactiveValues(language = "fr",
-                                                 current_project = NULL),
-          obs_pixel_data = shiny::reactive({
-            data.frame(
-              plot_id = "P01", obs_date = as.Date("2025-06-10"),
-              band = "NDVI", value = 0.7, cloud_pct = 5,
-              source = "fake", scene_id = "S1",
-              stringsAsFactors = FALSE)
-          }),
+          app_state  = shiny::reactiveValues(language = "fr",
+                                             current_project = NULL),
           mode_input = shiny::reactive("health")  # not quick
         ),
         {
@@ -79,23 +73,14 @@ test_that("pixel_stack does not call build_index_stack in health mode", {
 
 # ---- Server: scenes_df derivation from the on-disk cache -------------
 
-test_that("scenes_df enumerates populated cache dirs, dated from DB obs", {
+test_that("scenes_df enumerates populated cache dirs, date parsed from scene id", {
   skip_if_not_installed("shiny")
   .skip_if_no_pixel_map()
 
-  fake_obs <- data.frame(
-    plot_id   = c("P01", "P01", "P02", "P02", "P01"),
-    obs_date  = as.Date(c("2025-06-25", "2025-06-10",
-                          "2025-06-25", "2025-06-10",
-                          "2025-06-25")),
-    band      = c("NDVI", "NDVI", "NDVI", "NDVI", "NBR"),
-    value     = c(0.7, 0.65, 0.72, 0.68, 0.5),
-    cloud_pct = 5,
-    source    = "fake",
-    scene_id  = c("S2", "S1", "S2", "S1", "S2"),
-    stringsAsFactors = FALSE
-  )
-
+  # v0.52.16 — `scenes_df_r` est désormais purement disk-driven : la
+  # date provient toujours du parsing du scene_id (plus de jointure avec
+  # `obs_pixel`). Test simplifié : 2 tuiles MGRS sur la même date, les
+  # 2 doivent apparaître dans scenes_df avec leur date parsée.
   captured <- list()
   testthat::with_mocked_bindings(
     build_index_stack = function(cache_dir, scenes_df, index) {
@@ -108,63 +93,8 @@ test_that("scenes_df enumerates populated cache dirs, dated from DB obs", {
       proj <- list(path = withr::local_tempdir())
       cd   <- file.path(proj$path, "cache", "layers", "sentinel2")
       dir.create(cd, recursive = TRUE)
-      # Two populated scene dirs on disk, both carrying plot obs (date
-      # resolved from the DB).
-      for (s in c("S1", "S2")) {
-        dir.create(file.path(cd, s))
-        file.create(file.path(cd, s, "B08.tif"))
-      }
-      shiny::testServer(
-        nemetonshiny:::mod_monitoring_pixel_map_server,
-        args = list(
-          app_state      = shiny::reactiveValues(language = "fr",
-                                                 current_project = proj),
-          obs_pixel_data = shiny::reactive(fake_obs),
-          mode_input     = shiny::reactive("quick")
-        ),
-        {
-          session$setInputs(index = "NDVI")
-          session$flushReact()
-          # build_index_stack called with a 2-row scenes_df (one per
-          # disk dir), sorted by obs_date, dates joined from the DB.
-          expect_false(is.null(captured$scenes_df))
-          expect_equal(nrow(captured$scenes_df), 2L)
-          expect_equal(captured$scenes_df$scene_id, c("S1", "S2"))
-          expect_equal(captured$scenes_df$obs_date,
-                       as.Date(c("2025-06-10", "2025-06-25")))
-          expect_equal(captured$index, "NDVI")
-        }
-      )
-    }
-  )
-})
-
-test_that("scenes_df includes plot-less cache dirs, date parsed from scene id", {
-  skip_if_not_installed("shiny")
-  .skip_if_no_pixel_map()
-
-  # One plot-covered scene (date from DB) + one cache dir with NO plot
-  # obs whose date is parsed from the S2 scene id. This is the villards
-  # case : the second MGRS tile has no placette but must still render.
-  fake_obs <- data.frame(
-    plot_id = "P01", obs_date = as.Date("2025-06-10"),
-    band = "NDVI", value = 0.7, cloud_pct = 5, source = "fake",
-    scene_id = "S2A_MSIL2A_20250610T103021_T31TGM",
-    stringsAsFactors = FALSE
-  )
-  captured <- list()
-  testthat::with_mocked_bindings(
-    build_index_stack = function(cache_dir, scenes_df, index) {
-      captured$scenes_df <<- scenes_df
-      NULL
-    },
-    .package = "nemeton",
-    {
-      proj <- list(path = withr::local_tempdir())
-      cd   <- file.path(proj$path, "cache", "layers", "sentinel2")
-      dir.create(cd, recursive = TRUE)
-      sids <- c("S2A_MSIL2A_20250610T103021_T31TGM",   # has plot obs
-                "S2A_MSIL2A_20250610T103021_T31TFM")   # plot-less tile
+      sids <- c("S2A_MSIL2A_20250610T103021_T31TGM",
+                "S2A_MSIL2A_20250610T103021_T31TFM")
       for (s in sids) {
         dir.create(file.path(cd, s))
         file.create(file.path(cd, s, "B08.tif"))
@@ -172,20 +102,19 @@ test_that("scenes_df includes plot-less cache dirs, date parsed from scene id", 
       shiny::testServer(
         nemetonshiny:::mod_monitoring_pixel_map_server,
         args = list(
-          app_state      = shiny::reactiveValues(language = "fr",
-                                                 current_project = proj),
-          obs_pixel_data = shiny::reactive(fake_obs),
-          mode_input     = shiny::reactive("quick")
+          app_state  = shiny::reactiveValues(language = "fr",
+                                             current_project = proj),
+          mode_input = shiny::reactive("quick")
         ),
         {
           session$setInputs(index = "NDVI")
           session$flushReact()
           expect_false(is.null(captured$scenes_df))
-          # Both tiles present — the plot-less one dated from its id.
           expect_equal(nrow(captured$scenes_df), 2L)
           expect_setequal(captured$scenes_df$scene_id, sids)
           expect_true(all(captured$scenes_df$obs_date ==
                           as.Date("2025-06-10")))
+          expect_equal(captured$index, "NDVI")
         }
       )
     }
@@ -199,6 +128,7 @@ test_that("cache_dir resolves NULL when no project / no folder", {
   skip_if_not_installed("shiny")
   .skip_if_no_pixel_map()
 
+  # v0.52.16 — param `obs_pixel_data` retiré.
   call_count <- 0L
   testthat::with_mocked_bindings(
     build_index_stack = function(...) {
@@ -210,15 +140,8 @@ test_that("cache_dir resolves NULL when no project / no folder", {
       shiny::testServer(
         nemetonshiny:::mod_monitoring_pixel_map_server,
         args = list(
-          app_state      = shiny::reactiveValues(language = "fr",
-                                                 current_project = NULL),
-          obs_pixel_data = shiny::reactive({
-            data.frame(
-              plot_id = "P01", obs_date = as.Date("2025-06-10"),
-              band = "NDVI", value = 0.7, cloud_pct = 5,
-              source = "fake", scene_id = "S1",
-              stringsAsFactors = FALSE)
-          }),
+          app_state  = shiny::reactiveValues(language = "fr",
+                                             current_project = NULL),
           mode_input = shiny::reactive("quick")
         ),
         {
@@ -239,11 +162,9 @@ test_that("map_click invokes extract_pixel_timeseries with lat/lng", {
   skip_if_not_installed("shiny")
   .skip_if_no_pixel_map()
 
-  fake_obs <- data.frame(
-    plot_id = "P01", obs_date = as.Date("2025-06-10"),
-    band = "NDVI", value = 0.7, cloud_pct = 5, source = "fake",
-    scene_id = "S1", stringsAsFactors = FALSE
-  )
+  # v0.52.16 — param `obs_pixel_data` retiré. Le scene_id sur disque
+  # doit être un vrai nom S2 (sinon `.pixel_scene_date_from_id()`
+  # renvoie NA et scenes_df est vide).
   captured <- list()
   fake_ts <- data.frame(
     obs_date = as.Date(c("2025-06-10", "2025-06-25",
@@ -267,16 +188,15 @@ test_that("map_click invokes extract_pixel_timeseries with lat/lng", {
       proj <- list(path = withr::local_tempdir())
       cd   <- file.path(proj$path, "cache", "layers", "sentinel2")
       dir.create(cd, recursive = TRUE)
-      # Populated scene dir so the disk-based scenes_df is non-empty.
-      dir.create(file.path(cd, "S1"))
-      file.create(file.path(cd, "S1", "B08.tif"))
+      sid <- "S2A_MSIL2A_20250610T103021_T31TGM"
+      dir.create(file.path(cd, sid))
+      file.create(file.path(cd, sid, "B08.tif"))
       shiny::testServer(
         nemetonshiny:::mod_monitoring_pixel_map_server,
         args = list(
-          app_state      = shiny::reactiveValues(language = "fr",
-                                                 current_project = proj),
-          obs_pixel_data = shiny::reactive(fake_obs),
-          mode_input     = shiny::reactive("quick")
+          app_state  = shiny::reactiveValues(language = "fr",
+                                             current_project = proj),
+          mode_input = shiny::reactive("quick")
         ),
         {
           session$setInputs(

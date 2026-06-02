@@ -1058,188 +1058,19 @@ test_that("auto-select pre-selects the zone matching project metadata$monitoring
 })
 
 
-# ---- Server: phase 3 — obs_pixel reactive --------------------------
-# E6.b phase 3 wires the obs_pixel reactive (consumed by the Carte
-# pixel sub-tab and its placette marker overlay) to
-# nemeton::read_obs_pixel(). We can't reach into a `reactive({...})`
-# defined inside moduleServer() from the outside, so the tests below
-# assert the *side effects* we care about: how many times
-# nemeton::read_obs_pixel was called, and with which arguments.
-#
-# The plot_filter selectizeInput refresh assertions that used to live
-# here were dropped in v0.31.0 along with the "Séries par placette"
-# sub-tab — the multi-trace placette view is now reachable spatially
-# via the Carte pixel marker click.
+# ---- v0.52.16 — obs_pixel reactive supprimé ------------------------
+# Les 4 tests qui mockaient `nemeton::read_obs_pixel` pour vérifier le
+# wiring du reactive `obs_pixel_data` ont été retirés : FAST est
+# désormais une analyse pure raster per-pixel (spec 017 cœur), donc
+# `read_obs_pixel` n'est plus appelé. Les tests retirés étaient :
+#   * « obs_pixel reactive does not fire in health mode »
+#   * « obs_pixel reactive forwards filters to read_obs_pixel »
+#   * « obs_pixel reactive returns NULL when zone, bands or dates missing »
+#   * « obs_pixel_data debounces rapid successive input changes »
+# Le helper `.skip_if_no_read_obs_pixel` est également supprimé.
 
-.skip_if_no_read_obs_pixel <- function() {
-  testthat::skip_if_not_installed("nemeton")
-  if (!"read_obs_pixel" %in% getNamespaceExports("nemeton")) {
-    testthat::skip("nemeton::read_obs_pixel not exported (need >= v0.21.11)")
-  }
-}
-
-test_that("obs_pixel reactive does not fire in health mode", {
-  skip_if_not_installed("shiny")
-  .skip_if_no_read_obs_pixel()
-
-  call_count <- 0L
-  testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function(...) "fake-con",
-    list_monitoring_zones         = function(con) data.frame(
-      id = 1L, name = "Z", stringsAsFactors = FALSE),
-    close_monitoring_db_connection = function(con) invisible(TRUE),
-    {
-      testthat::with_mocked_bindings(
-        read_obs_pixel = function(...) {
-          call_count <<- call_count + 1L
-          data.frame(plot_id = character(0), obs_date = as.Date(character(0)),
-                     band = character(0), value = numeric(0),
-                     cloud_pct = numeric(0), source = character(0),
-                     scene_id = character(0))
-        },
-        .package = "nemeton",
-        {
-          shiny::testServer(
-            nemetonshiny:::mod_monitoring_server,
-            args = list(app_state = make_fake_app_state()),
-            {
-              session$setInputs(
-                mode       = "health",
-                zone_id    = "1",
-                bands      = c("NDVI", "NBR"),
-                date_range = c(as.Date("2025-01-01"),
-                               as.Date("2025-12-31"))
-              )
-              session$flushReact()
-              # Health mode short-circuits → reader never invoked.
-              expect_equal(call_count, 0L)
-            }
-          )
-        }
-      )
-    }
-  )
-})
-
-test_that("obs_pixel reactive forwards filters to read_obs_pixel", {
-  skip_if_not_installed("shiny")
-  .skip_if_no_read_obs_pixel()
-
-  fake_obs <- data.frame(
-    plot_id   = c("P01", "P01", "P02", "P02"),
-    obs_date  = as.Date(c("2025-06-10", "2025-06-25",
-                          "2025-06-10", "2025-06-25")),
-    band      = c("NDVI", "NDVI", "NDVI", "NDVI"),
-    value     = c(0.70, 0.65, 0.72, 0.68),
-    cloud_pct = c(5, 8, 5, 8),
-    source    = "fake",
-    scene_id  = c("S1", "S2", "S1", "S2"),
-    stringsAsFactors = FALSE
-  )
-
-  captured <- list()
-
-  testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function(...) "fake-con",
-    list_monitoring_zones         = function(con) data.frame(
-      id = 7L, name = "Z7", stringsAsFactors = FALSE),
-    close_monitoring_db_connection = function(con) invisible(TRUE),
-    {
-      testthat::with_mocked_bindings(
-        read_obs_pixel = function(con, zone_id, plot_ids = NULL,
-                                  bands = NULL,
-                                  date_from = NULL, date_to = NULL) {
-          captured$zone_id   <<- zone_id
-          captured$bands     <<- bands
-          captured$date_from <<- date_from
-          captured$date_to   <<- date_to
-          fake_obs
-        },
-        .package = "nemeton",
-        {
-          shiny::testServer(
-            nemetonshiny:::mod_monitoring_server,
-            args = list(app_state = make_fake_app_state()),
-            {
-              session$setInputs(
-                mode       = "quick",
-                zone_id    = "7",
-                bands      = c("NDVI", "NBR"),
-                date_range = c(as.Date("2025-01-01"),
-                               as.Date("2025-12-31"))
-              )
-              session$flushReact()
-            }
-          )
-        }
-      )
-    }
-  )
-
-  expect_equal(captured$zone_id, 7L)
-  expect_equal(captured$bands, c("NDVI", "NBR"))
-  expect_equal(captured$date_from, as.Date("2025-01-01"))
-  expect_equal(captured$date_to,   as.Date("2025-12-31"))
-})
-
-test_that("obs_pixel reactive returns NULL when zone, bands or dates missing", {
-  skip_if_not_installed("shiny")
-  .skip_if_no_read_obs_pixel()
-
-  call_count <- 0L
-  testthat::with_mocked_bindings(
-    get_monitoring_db_connection  = function(...) "fake-con",
-    list_monitoring_zones         = function(con) data.frame(
-      id = 1L, name = "Z", stringsAsFactors = FALSE),
-    close_monitoring_db_connection = function(con) invisible(TRUE),
-    {
-      testthat::with_mocked_bindings(
-        read_obs_pixel = function(...) {
-          call_count <<- call_count + 1L
-          data.frame()
-        },
-        .package = "nemeton",
-        {
-          shiny::testServer(
-            nemetonshiny:::mod_monitoring_server,
-            args = list(app_state = make_fake_app_state()),
-            {
-              # Quick mode but bands empty → no fire.
-              session$setInputs(
-                mode       = "quick", zone_id = "1",
-                bands      = character(0),
-                date_range = c(as.Date("2025-01-01"),
-                               as.Date("2025-12-31"))
-              )
-              session$flushReact()
-              expect_equal(call_count, 0L)
-
-              # Quick mode but no zone → no fire.
-              session$setInputs(
-                mode       = "quick", zone_id = "",
-                bands      = "NDVI",
-                date_range = c(as.Date("2025-01-01"),
-                               as.Date("2025-12-31"))
-              )
-              session$flushReact()
-              expect_equal(call_count, 0L)
-
-              # Quick mode but invalid date_range → no fire.
-              session$setInputs(
-                mode       = "quick", zone_id = "1",
-                bands      = "NDVI",
-                date_range = c(as.Date(NA), as.Date(NA))
-              )
-              session$flushReact()
-              expect_equal(call_count, 0L)
-            }
-          )
-        }
-      )
-    }
-  )
-})
-
+# v0.52.16 — 3 tests obs_pixel supprimés ici (reactive obs_pixel_data
+# n'existe plus). Voir bloc de commentaires en tête de la section.
 
 # ---- v0.36.4 — .summarize_backend_warnings -------------------------
 
@@ -1397,64 +1228,8 @@ test_that("validity_check_for_zone forwards bdforet to nemeton", {
 })
 
 
-# ---- v0.38.4 — obs_pixel_data debounce ------------------------------
-
-test_that("obs_pixel_data debounces rapid successive input changes", {
-  skip_if_not_installed("shiny")
-
-  # obs_pixel_data depends on 5 inputs; on project load they are
-  # restored one after another, each a separate flush. Without the
-  # debounce the reactive re-ran read_obs_pixel once per flush. With
-  # shiny::debounce(300) a burst of changes collapses to one query.
-  query_count <- 0L
-
-  testthat::with_mocked_bindings(
-    get_monitoring_db_connection   = function(...) "fake-con",
-    list_monitoring_zones          = function(con) fake_zones_df(),
-    close_monitoring_db_connection = function(con) invisible(TRUE),
-    run_ingestion_async            = function() make_fake_fast_task(),
-    run_fordead_async              = function() make_fake_fordead_task(),
-    {
-      testthat::local_mocked_bindings(
-        read_obs_pixel = function(con, zone_id, bands,
-                                  date_from, date_to) {
-          query_count <<- query_count + 1L
-          NULL
-        },
-        .package = "nemeton"
-      )
-      shiny::testServer(
-        nemetonshiny:::mod_monitoring_server,
-        args = list(app_state = make_fake_app_state()),
-        {
-          # Keep the debounced reactive hot with a live observer.
-          shiny::observe({ obs_pixel_data() })
-
-          # Bring all 5 inputs to a valid state, settle the debounce.
-          session$setInputs(
-            mode       = "quick",
-            zone_id    = "1",
-            bands      = "NDVI",
-            date_range = c(as.Date("2025-01-01"), as.Date("2025-12-31"))
-          )
-          session$elapse(400)
-          baseline <- query_count
-          expect_equal(baseline, 1L)
-
-          # Three rapid zone_id changes — all preconditions stay met,
-          # so without the debounce each would issue its own query.
-          session$setInputs(zone_id = "2")
-          session$setInputs(zone_id = "3")
-          session$setInputs(zone_id = "1")
-          session$elapse(400)
-
-          # Debounced: the burst collapsed into a single extra query.
-          expect_equal(query_count, baseline + 1L)
-        }
-      )
-    }
-  )
-})
+# v0.52.16 — test « obs_pixel_data debounces rapid successive input
+# changes » supprimé : le reactive `obs_pixel_data` n'existe plus.
 
 # ---- COG reprime : date-windowed wipe spares FORDEAD scenes ----------
 
