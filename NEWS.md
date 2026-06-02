@@ -1,4 +1,4 @@
-# nemetonshiny 0.55.0.9001 (2026-06-02)
+# nemetonshiny 0.56.0 (2026-06-02)
 
 ### Added — Perspectives IA sourcées via RAG (`nemeton@v0.62.0`)
 
@@ -83,7 +83,8 @@ liés). Plancher : `Imports: nemeton (>= 0.62.0)`.
 clé Mistral absente, le comportement actuel (perspective sans
 sources) est intact.
 
-Cycle dev `0.55.0` → `0.55.0.9001`.
+Cycle dev `0.55.0` → `0.55.0.9001` → release stable **`v0.56.0`**
+(MINOR, feat — RAG sourcé).
 
 # nemetonshiny 0.55.0 (2026-06-02)
 

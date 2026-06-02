@@ -10,6 +10,37 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.56.0] - 2026-06-02
+
+### Added
+
+- **Perspectives IA sourcées via RAG (`nemeton@v0.62.0`).** Avant
+  chaque appel `chat$chat(prompt)` dans `mod_synthesis`, l'app
+  récupère via `nemeton::retrieve_knowledge()` les ~8 passages les
+  plus pertinents (cosinus ≥ 0.55 sur embeddings Mistral) dans le
+  corpus pgvector co-localisé avec la DB monitoring. Les chunks sont
+  injectés en tête du prompt avec une consigne de citation `[^n]`.
+  Sous la perspective générée, bloc « Sources documentaires »
+  formaté par `nemeton::format_citations()` (titre i18n cœur).
+- **Nouveau fichier `R/service_rag.R`** : orchestration mince
+  (`rag_knowledge_con`, `rag_profile_code`, `build_situation_summary`,
+  `rag_context`). Toute la logique métier reste au cœur (règle
+  CLAUDE.md §1, §3).
+- **Dégradation gracieuse** (impératif brief §5.7) : 7 chemins
+  d'erreur testés renvoient un payload vide → perspective générée
+  sans bloc Sources, aucune exception UI. Opt-out manuel possible
+  via `options(nemeton.rag_enabled = FALSE)`.
+- **2 clés i18n FR/EN** (`rag_sourced_badge`, `rag_toggle_label`).
+- **11 nouveaux tests** dans `tests/testthat/test-service_rag.R`
+  (mapping profil, situation summary FR/EN, nominal, dédup
+  document_id, opt-out, erreur retrieve, 0 ligne, situation vide,
+  app_con NULL).
+
+### Changed
+
+- **Plancher `Imports: nemeton (>= 0.62.0)`** (depuis 0.61.0).
+  Garantit la présence de `retrieve_knowledge` + `format_citations`.
+
 ## [0.55.0] - 2026-06-02
 
 ### Changed
