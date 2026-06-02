@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.61.2] - 2026-06-02
+
+### Changed
+
+- **Le RAG s'applique désormais aussi aux 12 commentaires famille.**
+  La boucle `fill_all_comments` de `mod_synthesis.R` (lignes 616-681)
+  ne passait pas le `ctx$prompt_block` aux prompts famille — seule
+  la synthèse globale en bénéficiait. Désormais les 13 perspectives
+  (1 synthèse + 12 familles) sont enrichies avec le **même contexte**
+  (1 seul retrieve total, cohérence des marqueurs `[^n]`). Conséquence
+  observable : le `cli_inform("RAG: ...")` reste émis 1 seule fois
+  par session, mais TOUS les commentaires (synthèse + familles)
+  peuvent désormais citer les documents.
+- Si le ctx RAG est vide (corpus muet, opt-out, échec retrieve),
+  les prompts famille retombent sur leur comportement v0.61.1 sans
+  RAG (`Filter(nzchar)` neutralise proprement le bloc vide).
+
 ## [0.61.1] - 2026-06-02
 
 ### Added
