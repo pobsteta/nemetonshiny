@@ -2293,6 +2293,35 @@ TRANSLATIONS <- list(
     fr = "Intensité",
     en = "Intensity"
   ),
+  # v0.55.0 — Clés utilisées par les toasts `fast_prewarm:*` émis par
+  # le cœur (spec 018 nemeton@v0.61.0) consommés par l'observer
+  # ingest_progress de mod_monitoring.R. Les noms `fast_mode_*` sont
+  # courts car réutilisables hors du contexte « alerts » (Carte FAST
+  # pourrait aussi vouloir afficher le libellé du mode si besoin).
+  fast_mode_frequence = list(
+    fr = "Fréquence",
+    en = "Frequency"
+  ),
+  fast_mode_intensite = list(
+    fr = "Intensité",
+    en = "Intensity"
+  ),
+  fast_prewarm_running = list(
+    fr = "Pré-calcul carte %s %s en cours…",
+    en = "Pre-computing %s %s map…"
+  ),
+  fast_prewarm_done = list(
+    fr = "Carte %s %s prête.",
+    en = "%s %s map ready."
+  ),
+  fast_prewarm_failed = list(
+    fr = "Carte %s %s non calculable.",
+    en = "%s %s map unavailable."
+  ),
+  fast_prewarm_cancelled = list(
+    fr = "Pré-calcul des cartes FAST annulé.",
+    en = "FAST map pre-computation cancelled."
+  ),
   monitoring_fast_alerts_legend_title = list(
     fr = "Intensité du déficit",
     en = "Deficit intensity"

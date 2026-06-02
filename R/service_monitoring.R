@@ -55,16 +55,23 @@ run_ingestion_async <- function() {
                                    log_path = NULL,
                                    lang = "fr",
                                    cancel_path = NULL,
-                                   # v0.54.0 — pré-calcul des 4 cartes
-                                   # FAST (NDVI×count, NDVI×rolling,
-                                   # NBR×count, NBR×rolling) en fin de
-                                   # worker, indépendamment de l'UI.
-                                   # Décourple le calcul de l'affichage
-                                   # (les coches Alertes FAST ne
-                                   # déclenchent plus AUCUN calcul, elles
-                                   # ne font que choisir quel COG D6
-                                   # afficher).
-                                   result_cache_dir = NULL) {
+                                   # v0.55.0 — pré-calcul des 4 cartes
+                                   # FAST déplacé du helper app vers
+                                   # l'API native `nemeton@v0.61.0` :
+                                   # `prewarm_alerts = TRUE` + chemin
+                                   # `prewarm_mask_cache_dir`. Le cœur
+                                   # enchaîne les 4
+                                   # `read_fast_alert_raster()` en fin
+                                   # d'ingestion, dans le même process
+                                   # worker → progress events
+                                   # `fast_prewarm:*` natifs, cancel
+                                   # coopératif géré côté cœur.
+                                   # v0.54.0 (préc.) faisait ce
+                                   # pré-calcul via un helper app
+                                   # `.prewarm_fast_alerts()` retiré
+                                   # ici car redondant avec spec 018.
+                                   prewarm_alerts = TRUE,
+                                   prewarm_mask_cache_dir = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -220,7 +227,16 @@ run_ingestion_async <- function() {
             # le fichier sur clic « Annuler le diagnostic », et le
             # supprime avant chaque lancement pour éviter un cancel
             # fantôme persistant.
-            cancel_path       = cancel_path
+            cancel_path       = cancel_path,
+            # v0.55.0 — pré-calcul natif des 4 cartes FAST (spec 018
+            # nemeton@v0.61.0). Quand `prewarm_alerts = TRUE`, le cœur
+            # enchaîne 4 `read_fast_alert_raster()` (NDVI/NBR × count/
+            # rolling) en fin d'ingestion réussie + remplit le cache
+            # D6 sous `<prewarm_mask_cache_dir>/zone_<id>/`. Le
+            # `progress_callback` émet les events `fast_prewarm:*`
+            # consommés par l'observer parent.
+            prewarm_alerts         = prewarm_alerts,
+            prewarm_mask_cache_dir = prewarm_mask_cache_dir
           ),
           # Catch every `message()` signaled by nemeton — including
           # `.s2_cache_log()` traces (gated on NEMETON_S2_CACHE_DEBUG)
@@ -270,23 +286,15 @@ run_ingestion_async <- function() {
         n_obs    = as.integer(summary$n_obs_inserted %||% 0L)
       ))
 
-      # v0.54.0 — Pré-calcul inconditionnel des 4 cartes FAST via
-      # helper extractable `.prewarm_fast_alerts()` (testable hors
-      # worker via mocks). Détails dans la doc de la fonction.
-      prewarm_warns <- .prewarm_fast_alerts(
-        con              = con,
-        zone_id          = zone_id,
-        date_from        = start,
-        date_to          = end,
-        cache_dir        = cache_dir,
-        result_cache_dir = result_cache_dir,
-        cancel_path      = cancel_path,
-        progress_cb      = progress_cb,
-        ws_log_line      = .ws_log_line
-      )
-      if (length(prewarm_warns)) {
-        warns <- c(warns, prewarm_warns)
-      }
+      # v0.55.0 — Le pré-calcul des 4 cartes FAST est désormais fait
+      # PAR LE CŒUR (spec 018 nemeton@v0.61.0) via les params
+      # `prewarm_alerts = TRUE` et `prewarm_mask_cache_dir = ...`
+      # passés à `ingest_sentinel2_timeseries()` ci-dessus. Le helper
+      # app `.prewarm_fast_alerts()` (livré en v0.54.0) est retiré
+      # ici car il faisait double emploi avec l'API native. Les
+      # progress events `fast_prewarm:*` sont émis par le cœur via
+      # `progress_callback` et capturés par l'observer parent en
+      # `mod_monitoring.R` qui les transforme en toasts localisés.
 
       duration_sec <- as.numeric(difftime(Sys.time(), .ws_t0,
                                           units = "secs"))
@@ -312,110 +320,12 @@ run_ingestion_async <- function() {
 }
 
 
-#' Prewarm the 4 standard FAST alert rasters (D6 cache hit ready)
-#'
-#' Computes `nemeton::read_fast_alert_raster()` for the 4 usual
-#' combinations of (index, mode) — `NDVI×count`, `NDVI×rolling`,
-#' `NBR×count`, `NBR×rolling` — at the cœur default thresholds
-#' (`threshold = NULL` → 0.40 NDVI / 0.30 NBR). Each output COG is
-#' persisted under `<result_cache_dir>/zone_<id>/<hash>.tif` via the
-#' spec 017 D6 content-addressed cache.
-#'
-#' Called from `run_ingestion_async()`'s worker body right after the
-#' main `ingest_sentinel2_timeseries()` returns. Extracted in its own
-#' helper so we can test it without spinning up a `future::multisession`
-#' worker (the body is plain synchronous R — mocks via
-#' `testthat::with_mocked_bindings` apply directly).
-#'
-#' Key design decisions :
-#' * **Inconditionnel** : appelé peu importe l'UI state (radio Indice /
-#'   mode / coches Alertes FAST). Le découplage calcul ↔ affichage est
-#'   le but de v0.54.0.
-#' * **Cancel coopératif** : check `cancel_path` entre chaque combo,
-#'   sortie propre avec commit partiel (les COG déjà calculés restent
-#'   en cache D6, valides).
-#' * **Robustesse** : tryCatch par combo — un échec sur NBR
-#'   (B12 manquante) ne fait pas échouer NDVI. Warning par échec,
-#'   collecté dans le retour.
-#' * **Parallel** : `parallel = TRUE` passé à `read_fast_alert_raster()`
-#'   si `furrr` est dispo (spec 017 D4) — peut diviser le temps par le
-#'   nombre de cœurs sur grosse zone.
-#'
-#' @param con,zone_id,date_from,date_to,cache_dir Standard FAST args.
-#' @param result_cache_dir Where the 4 COG outputs land. If `NULL` or
-#'   empty, no prewarm is done (caller chose not to enable D6).
-#' @param cancel_path File flag polled between combos. `NULL` = no cancel.
-#' @param progress_cb Worker progress emitter (NULL accepted).
-#' @param ws_log_line Worker log line writer (NULL accepted).
-#' @return Character vector of warning messages (empty when all 4 OK).
-#' @noRd
-.prewarm_fast_alerts <- function(con, zone_id, date_from, date_to,
-                                 cache_dir, result_cache_dir,
-                                 cancel_path = NULL,
-                                 progress_cb = NULL,
-                                 ws_log_line = NULL) {
-  warns <- character(0)
-  if (is.null(result_cache_dir) || !nzchar(result_cache_dir)) {
-    return(warns)
-  }
-  if (!dir.exists(result_cache_dir)) {
-    dir.create(result_cache_dir, recursive = TRUE, showWarnings = FALSE)
-  }
-  emit <- function(payload) {
-    if (!is.null(progress_cb)) {
-      tryCatch(progress_cb(payload), error = function(e) invisible(NULL))
-    }
-  }
-  log_line <- function(s) {
-    if (!is.null(ws_log_line)) {
-      tryCatch(ws_log_line(s), error = function(e) invisible(NULL))
-    }
-  }
-  use_parallel <- requireNamespace("furrr", quietly = TRUE)
-  combos <- expand.grid(
-    index = c("NDVI", "NBR"),
-    mode  = c("count", "rolling"),
-    stringsAsFactors = FALSE
-  )
-  for (i in seq_len(nrow(combos))) {
-    if (!is.null(cancel_path) && nzchar(cancel_path) &&
-        file.exists(cancel_path)) {
-      emit(list(current = "fast_prewarm:cancelled", after = i - 1L))
-      break
-    }
-    idx_i  <- combos$index[i]
-    mode_i <- combos$mode[i]
-    phase  <- sprintf("fast_prewarm:%s_%s", idx_i, mode_i)
-    emit(list(current = phase))
-    tryCatch(
-      nemeton::read_fast_alert_raster(
-        con              = con,
-        zone_id          = zone_id,
-        index            = idx_i,
-        threshold        = NULL,
-        date_from        = date_from,
-        date_to          = date_to,
-        mode             = mode_i,
-        window_days      = 30L,
-        cache_dir        = cache_dir,
-        cache_result     = TRUE,
-        result_cache_dir = result_cache_dir,
-        parallel         = use_parallel
-      ),
-      error = function(e) {
-        log_line(sprintf("warning: prewarm %s/%s failed: %s",
-                         idx_i, mode_i, conditionMessage(e)))
-        warns <<- c(warns, sprintf("prewarm %s/%s : %s",
-                                   idx_i, mode_i, conditionMessage(e)))
-        emit(list(current = paste0(phase, "_failed"),
-                  error   = conditionMessage(e)))
-      }
-    )
-    emit(list(current = paste0(phase, "_done")))
-  }
-  emit(list(current = "fast_prewarm:complete"))
-  warns
-}
+# v0.55.0 — helper `.prewarm_fast_alerts()` retiré : la logique est
+# désormais dans le cœur `nemeton::ingest_sentinel2_timeseries()` via
+# les params `prewarm_alerts = TRUE` + `prewarm_mask_cache_dir`
+# (spec 018 v0.61.0). Le worker app passe simplement les 2 params,
+# le cœur enchaîne en interne les 4 `read_fast_alert_raster()` avec
+# le même `con` / `cache_dir` / `cancel_path` qu'il tient déjà.
 
 
 #' Build a worker-side progress writer

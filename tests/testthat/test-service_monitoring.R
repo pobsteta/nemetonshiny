@@ -283,137 +283,55 @@ test_that("v0.42.1 — ntfy_ingest sprintf placeholders are well-formed", {
 })
 
 # ============================================================
-# v0.54.0 — .prewarm_fast_alerts() : 4 cartes inconditionnelles
+# v0.55.0 — pré-calcul natif côté cœur (spec 018 nemeton@v0.61.0)
 # ============================================================
+#
+# Les 4 tests précédents qui mockaient `.prewarm_fast_alerts()` ont
+# été retirés : le helper app est supprimé en v0.55.0 (la logique
+# est désormais dans `nemeton::ingest_sentinel2_timeseries()` via
+# les params `prewarm_alerts` + `prewarm_mask_cache_dir`).
+#
+# Ce qu'on teste côté app maintenant :
+# 1. Le helper `.fast_alert_cache_dir()` renvoie le bon chemin
+#    canonique (cohérence hash D6 entre invoke + lecture).
+# 2. Les clés i18n du toast `fast_prewarm_*` ont les bons
+#    placeholders sprintf.
 
-test_that("v0.54.0 — .prewarm_fast_alerts calcule les 4 combinaisons (NDVI/NBR × count/rolling)", {
-  skip_if_not_installed("nemeton")
-  result_cache <- withr::local_tempdir()
-  cache_s2     <- withr::local_tempdir()
-  captured <- list()
-  testthat::with_mocked_bindings(
-    read_fast_alert_raster = function(con, zone_id, index, threshold,
-                                       date_from, date_to, mode,
-                                       window_days, cache_dir,
-                                       cache_result, result_cache_dir,
-                                       parallel = FALSE) {
-      captured[[length(captured) + 1L]] <<- list(index = index,
-                                                  mode = mode,
-                                                  threshold = threshold,
-                                                  result_cache_dir = result_cache_dir)
-      invisible(NULL)
-    },
-    .package = "nemeton",
-    {
-      warns <- nemetonshiny:::.prewarm_fast_alerts(
-        con              = "fake-con",
-        zone_id          = 1L,
-        date_from        = as.Date("2025-01-01"),
-        date_to          = as.Date("2025-12-31"),
-        cache_dir        = cache_s2,
-        result_cache_dir = result_cache
-      )
-      expect_equal(length(captured), 4L)
-      expect_equal(length(warns), 0L)
-      # Les 4 combinaisons attendues, ordre indifférent.
-      combos <- vapply(captured, function(c) paste(c$index, c$mode, sep = "_"),
-                       character(1))
-      expect_setequal(combos, c("NDVI_count", "NDVI_rolling",
-                                "NBR_count",  "NBR_rolling"))
-      # Threshold = NULL (défaut cœur 0.40/0.30).
-      expect_true(all(vapply(captured, function(c) is.null(c$threshold),
-                             logical(1))))
-      # result_cache_dir bien forwardé.
-      expect_true(all(vapply(captured,
-                             function(c) identical(c$result_cache_dir, result_cache),
-                             logical(1))))
-    }
+test_that("v0.55.0 — .fast_alert_cache_dir renvoie le chemin canonique", {
+  expect_equal(
+    nemetonshiny:::.fast_alert_cache_dir("/tmp/proj"),
+    file.path("/tmp/proj", "cache", "layers", "fast_alert")
   )
+  expect_null(nemetonshiny:::.fast_alert_cache_dir(NULL))
+  expect_null(nemetonshiny:::.fast_alert_cache_dir(""))
 })
 
-test_that("v0.54.0 — .prewarm_fast_alerts continue sur échec partiel (NBR fail → NDVI OK)", {
-  skip_if_not_installed("nemeton")
-  result_cache <- withr::local_tempdir()
-  cache_s2     <- withr::local_tempdir()
-  testthat::with_mocked_bindings(
-    read_fast_alert_raster = function(con, zone_id, index, ...) {
-      if (identical(index, "NBR")) {
-        stop("B12 band missing for many scenes")
-      }
-      invisible(NULL)
-    },
-    .package = "nemeton",
-    {
-      warns <- nemetonshiny:::.prewarm_fast_alerts(
-        con              = "fake-con",
-        zone_id          = 1L,
-        date_from        = as.Date("2025-01-01"),
-        date_to          = as.Date("2025-12-31"),
-        cache_dir        = cache_s2,
-        result_cache_dir = result_cache
-      )
-      # 2 warnings (NBR_count + NBR_rolling), NDVI tous deux OK.
-      expect_equal(length(warns), 2L)
-      expect_true(all(grepl("NBR/", warns)))
-    }
-  )
+test_that("v0.55.0 — clés i18n fast_prewarm_* ont les bons placeholders sprintf", {
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
+  # running / done / failed : 2 placeholders %s (index, mode_label)
+  for (key in c("fast_prewarm_running", "fast_prewarm_done",
+                "fast_prewarm_failed")) {
+    expect_silent(sprintf(i18n_fr$t(key), "NDVI", "Fréquence"))
+    expect_silent(sprintf(i18n_en$t(key), "NDVI", "Frequency"))
+  }
+  # cancelled : pas de placeholder
+  expect_silent(i18n_fr$t("fast_prewarm_cancelled"))
+  expect_silent(i18n_en$t("fast_prewarm_cancelled"))
 })
 
-test_that("v0.54.0 — .prewarm_fast_alerts respecte le cancel coopératif", {
-  skip_if_not_installed("nemeton")
-  result_cache <- withr::local_tempdir()
-  cache_s2     <- withr::local_tempdir()
-  cancel_flag  <- file.path(withr::local_tempdir(), "cancel.flag")
-  # Crée le flag AVANT l'appel — break immédiat.
-  file.create(cancel_flag)
-  call_count <- 0L
-  testthat::with_mocked_bindings(
-    read_fast_alert_raster = function(...) {
-      call_count <<- call_count + 1L
-      invisible(NULL)
-    },
-    .package = "nemeton",
-    {
-      nemetonshiny:::.prewarm_fast_alerts(
-        con              = "fake-con",
-        zone_id          = 1L,
-        date_from        = as.Date("2025-01-01"),
-        date_to          = as.Date("2025-12-31"),
-        cache_dir        = cache_s2,
-        result_cache_dir = result_cache,
-        cancel_path      = cancel_flag
-      )
-      # Aucun appel : cancel flag check AVANT le 1er appel break.
-      expect_equal(call_count, 0L)
-    }
-  )
-})
-
-test_that("v0.54.0 — .prewarm_fast_alerts no-op quand result_cache_dir est NULL/vide", {
-  skip_if_not_installed("nemeton")
-  call_count <- 0L
-  testthat::with_mocked_bindings(
-    read_fast_alert_raster = function(...) {
-      call_count <<- call_count + 1L
-      invisible(NULL)
-    },
-    .package = "nemeton",
-    {
-      # NULL → no-op
-      warns_null <- nemetonshiny:::.prewarm_fast_alerts(
-        con = "x", zone_id = 1L,
-        date_from = as.Date("2025-01-01"), date_to = as.Date("2025-12-31"),
-        cache_dir = "/tmp/s2", result_cache_dir = NULL
-      )
-      expect_equal(length(warns_null), 0L)
-      # "" → no-op
-      warns_empty <- nemetonshiny:::.prewarm_fast_alerts(
-        con = "x", zone_id = 1L,
-        date_from = as.Date("2025-01-01"), date_to = as.Date("2025-12-31"),
-        cache_dir = "/tmp/s2", result_cache_dir = ""
-      )
-      expect_equal(length(warns_empty), 0L)
-      expect_equal(call_count, 0L)
-    }
-  )
+test_that("v0.55.0 — mode → libellé i18n : count = Fréquence, rolling = Intensité", {
+  i18n_fr <- nemetonshiny:::get_i18n("fr")
+  i18n_en <- nemetonshiny:::get_i18n("en")
+  expect_equal(i18n_fr$t("fast_mode_frequence"), "Fréquence")
+  expect_equal(i18n_fr$t("fast_mode_intensite"), "Intensité")
+  expect_equal(i18n_en$t("fast_mode_frequence"), "Frequency")
+  expect_equal(i18n_en$t("fast_mode_intensite"), "Intensity")
+  # Toast assemblé : « Carte NBR Intensité prête. »
+  msg_fr <- sprintf(i18n_fr$t("fast_prewarm_done"),
+                    "NBR", i18n_fr$t("fast_mode_intensite"))
+  expect_equal(msg_fr, "Carte NBR Intensité prête.")
+  msg_en <- sprintf(i18n_en$t("fast_prewarm_done"),
+                    "NBR", i18n_en$t("fast_mode_intensite"))
+  expect_equal(msg_en, "NBR Intensity map ready.")
 })
