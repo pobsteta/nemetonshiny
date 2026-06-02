@@ -1,4 +1,4 @@
-# nemetonshiny 0.52.14.9001 (2026-06-02)
+# nemetonshiny 0.52.15 (2026-06-02)
 
 ### Fixed — Call site oublié de `compute_fast_alert_mask()` (régression v0.52.13)
 
@@ -52,7 +52,8 @@ L'app consomme désormais les paramètres `cache_result` /
 install contre un cœur antérieur (< 0.57.0) bouclerait sur
 « argument inutilisé : cache_result ».
 
-Cycle dev `0.52.14` → `0.52.14.9001`.
+Cycle dev `0.52.14` → `0.52.14.9001` → release stable **`v0.52.15`**
+(PATCH, fix régression + activation cache D6 cœur).
 
 # nemetonshiny 0.52.14 (2026-06-01)
 

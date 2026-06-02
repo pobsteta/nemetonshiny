@@ -10,6 +10,34 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.52.15] - 2026-06-02
+
+### Fixed
+
+- **Call site oublié `compute_fast_alert_mask()` (régression v0.52.13).**
+  v0.52.13 avait migré `read_fast_alert_raster()` vers l'API
+  mono-index `nemeton@v0.55.0` mais avait laissé
+  `compute_fast_alert_mask()` (dans `service_validation_sampling.R`)
+  sur l'ancienne API → crash « arguments inutilisés » sur
+  « Générer le plan de validation FAST ». Fix : appel avec
+  `index` + `threshold`, et nouveau param `index` propagé dans
+  `.resolve_alert_raster()` / `generate_validation_plan()`.
+
+### Added
+
+- **Cache D6 du raster d'alerte (`nemeton@v0.57.0`).**
+  Les 2 call sites de `read_fast_alert_raster()` et le call site de
+  `compute_fast_alert_mask()` passent désormais
+  `cache_result = TRUE` + `result_cache_dir = <project>/cache/layers/fast_alert`.
+  Le COG résultat est persisté avec un hash content-addressed
+  (zone × index × threshold × dates × mode × window_days). Revisite
+  à paramètres identiques → sub-seconde.
+
+### Changed
+
+- **Plancher `Imports: nemeton (>= 0.57.0)`** — pour garantir la
+  présence des params `cache_result` / `result_cache_dir`.
+
 ## [0.52.14] - 2026-06-01
 
 ### Changed
