@@ -1,3 +1,90 @@
+# nemetonshiny 0.55.0.9001 (2026-06-02)
+
+### Added — Perspectives IA sourcées via RAG (`nemeton@v0.62.0`)
+
+**Avant** : les perspectives IA de l'onglet Synthèse étaient
+générées **sans sources** — le LLM produisait du texte plausible mais
+non rattaché à du corpus documentaire vérifiable.
+
+**Maintenant** : avant chaque appel `chat$chat(prompt)`, l'app
+récupère via `nemeton::retrieve_knowledge()` les ~8 passages les
+plus pertinents (similarité cosinus ≥ 0.55 sur embeddings Mistral
+`mistral-embed`) dans le corpus pgvector. Les chunks sont injectés
+en tête du prompt avec une consigne de citation (`[^n]` markers).
+La perspective générée est suivie d'un bloc « Sources
+documentaires » formaté par `nemeton::format_citations()` (titre
+i18n cœur, FR / EN selon `app_state$language`).
+
+**Architecture** (CLAUDE.md §1, §3) : toute la logique métier est
+dans le cœur (`retrieve_knowledge`, `embed_query`, similarité
+pgvector, `format_citations`). L'app ne fait qu'orchestrer.
+
+* `R/service_rag.R` — **nouveau** fichier (orchestration mince) :
+  - `rag_knowledge_con(app_con)` : résout la connexion corpus
+    (priorité `NEMETON_KNOWLEDGE_DB_URL`, sinon réutilise la
+    connexion app — corpus co-localisé en prod).
+  - `rag_profile_code(key)` : map les clés app
+    `profil_<short>` → codes corpus `<short>`.
+  - `build_situation_summary(units, profile_key, lang)` : produit
+    une phrase semantique courte FR / EN pour l'embedding (V1
+    minimaliste — futurs raffinements possibles).
+  - `rag_context(...)` : orchestre la récupération, déduplique
+    par `document_id` pour le bloc Sources, retourne un payload
+    `list(chunks, prompt_block, sources_md, n_sources)`.
+* `R/mod_synthesis.R` :
+  - nouveau `reactiveVal rag_ctx_synthesis` qui stocke le contexte
+    du dernier `ai_generate` ;
+  - `output$ai_sources` qui rend le markdown des citations sous
+    la perspective ;
+  - observer `input$ai_generate` enrichi : appel `rag_context()`
+    avant `build_synthesis_prompt()`, concaténation
+    `prompt_block + cite_rule + base_prompt`, stockage ctx pour
+    affichage UI.
+* `R/app_ui.R` : `uiOutput(ns("ai_sources"))` ajouté sous le
+  `textAreaInput` des commentaires.
+* `R/utils_i18n.R` : 2 nouvelles clés FR/EN
+  (`rag_sourced_badge` : phrase synthétique « Perspective appuyée
+  sur N source(s)… » ; `rag_toggle_label` : réservé pour un futur
+  toggle UI).
+
+**Dégradation gracieuse** (impératif §5.7 du brief) — tous ces cas
+renvoient un contexte vide, la perspective est générée sans bloc
+Sources, **aucune exception UI** :
+- `options(nemeton.rag_enabled = FALSE)` (opt-out manuel)
+- Aucune connexion DB (`app_con = NULL` + pas d'env var
+  `NEMETON_KNOWLEDGE_DB_URL`)
+- Corpus vide / schéma `knowledge_*` absent
+- Clé Mistral `MISTRAL_API_KEY` absente
+- Erreur réseau pendant l'embedding
+- 0 chunk au-dessus du seuil de similarité
+
+**Provider d'embedding fixé à `mistral`** : doit matcher le provider
+d'ingestion du corpus prod (19 docs, 1845 chunks, `mistral-embed`).
+Ne pas changer sans réembedder l'ensemble du corpus.
+
+**Réglages par défaut** : `top_k = 8`, `min_similarity = 0.55`,
+`family_codes = NULL` (cf. brief §5.2 — éviter l'intersection
+exacte sur petit corpus, s'appuyer sur similarité + profil).
+
+**Tests** : 11 nouveaux dans `tests/testthat/test-service_rag.R` :
+- mapping `rag_profile_code` (préfixe / pas de préfixe / NULL /
+  vide / NA)
+- `build_situation_summary` FR/EN non-vide + fallback profil
+- nominal `rag_context` (3 chunks → `[^1]` `[^2]` `[^3]` + bloc
+  sources + dédup par document_id)
+- dégradation : erreur retrieve, 0 ligne, opt-out option, situation
+  vide, app_con NULL sans env var
+- i18n : placeholders sprintf des nouvelles clés
+
+Suite : 2979 pass, 3 fails pré-existants (register click — non
+liés). Plancher : `Imports: nemeton (>= 0.62.0)`.
+
+**Pas de breaking change** : si le corpus n'est pas peuplé ou la
+clé Mistral absente, le comportement actuel (perspective sans
+sources) est intact.
+
+Cycle dev `0.55.0` → `0.55.0.9001`.
+
 # nemetonshiny 0.55.0 (2026-06-02)
 
 ### Changed — Pré-calcul FAST déplacé du helper app vers l'API native cœur (`nemeton@v0.61.0`)

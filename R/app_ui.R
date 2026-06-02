@@ -681,7 +681,14 @@ mod_synthesis_ui <- function(id) {
             placeholder = i18n$t("synthesis_comments_placeholder"),
             rows = 12,
             width = "100%"
-          )
+          ),
+          # v0.56.0 — RAG « perspectives sourcées » : bloc « Sources
+          # documentaires » rendu en dessous du commentaire IA quand
+          # la récupération corpus a renvoyé ≥ 1 chunk. Le format
+          # markdown vient de `nemeton::format_citations()` (titre i18n
+          # géré côté cœur). uiOutput vide quand pas de sources →
+          # zéro impact visuel sur le layout existant.
+          shiny::uiOutput(ns("ai_sources"))
         )
       )
     )

@@ -1031,6 +1031,21 @@ TRANSLATIONS <- list(
     fr = "Cl\u00e9 API non configur\u00e9e. D\u00e9finissez la variable d'environnement {key_var}.",
     en = "API key not configured. Set the {key_var} environment variable."
   ),
+  # v0.56.0 \u2014 RAG \u00ab perspectives IA sourc\u00e9es \u00bb (cf. brief 2026-06-02,
+  # nemeton@v0.62.0). Le titre du bloc \u00ab Sources documentaires \u00bb est
+  # rendu par `nemeton::format_citations(lang=)` c\u00f4t\u00e9 c\u0153ur \u2014 ne pas
+  # le red\u00e9finir ici. `rag_sourced_badge` : phrase au-dessus du
+  # markdown des citations, signale explicitement la nature sourc\u00e9e
+  # de la perspective. `rag_toggle_label` r\u00e9serv\u00e9 pour un futur
+  # checkbox UI (V2 \u2014 V1 n'expose pas de toggle utilisateur).
+  rag_sourced_badge = list(
+    fr = "Perspective appuy\u00e9e sur %d source(s) documentaire(s).",
+    en = "Perspective backed by %d documentary source(s)."
+  ),
+  rag_toggle_label = list(
+    fr = "Inclure les sources documentaires",
+    en = "Include documentary sources"
+  ),
 
   # Expert profiles
   expert_label = list(fr = "Point de vue", en = "Perspective"),
