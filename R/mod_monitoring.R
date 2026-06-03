@@ -1678,13 +1678,16 @@ mod_monitoring_server <- function(id, app_state) {
                  "word-break:break-all;\">%s</span>"),
           htmltools::htmlEscape(scene)
         )
+        # v0.70.2 — `i_val + 1L` : compteur 1-based pour la tuile
+        # en cours (brief console FAST, Partie B). La garde STAC
+        # plus haut (l.1664) reste sur `i_val == 0L` brut.
         htmltools::HTML(sprintf(
           i18n$t("monitoring_ingest_progress_named_fmt"),
-          scene_html, i_val, n_val
+          scene_html, i_val + 1L, n_val
         ))
       } else {
         sprintf(i18n$t("monitoring_ingest_progress_fmt"),
-                i_val, n_val)
+                i_val + 1L, n_val)
       }
       # v0.70.0 — `.log_ingest_event` (mirror Tuile X/N) déménage
       # dans l'observer NDJSON drain (cf. plus haut). Ici on ne
@@ -2779,6 +2782,9 @@ mod_monitoring_server <- function(id, app_state) {
   # No scene_id + 0 completed = we're between the STAC search and the
   # first actual tile. Don't pollute the console with a misleading
   # "Tuile Sentinel-2 (scene_id missing) (0/N)".
+  # NOTE : cette garde teste `i_val == 0L` BRUT (sémantique cœur :
+  # `completed` = scènes terminées AVANT celle-ci). Le décalage 1-based
+  # n'est appliqué qu'à l'affichage de la tuile en cours.
   if (!nzchar(scene) && i_val == 0L) {
     if (n_val > 0L) {
       cli::cli_alert_info("Sentinel-2 STAC search done: {n_val} scene(s) found.")
@@ -2787,6 +2793,15 @@ mod_monitoring_server <- function(id, app_state) {
     }
     return(invisible(NULL))
   }
+  # v0.70.2 — Compteur 1-based pour l'affichage (brief
+  # `BRIEF-nemetonshiny-console-FAST.md`, Partie B). Le cœur émet
+  # `completed = i - 1` (« scènes terminées avant celle-ci »,
+  # convention spec ingest pour calculer une fraction de
+  # progression). Affiché tel quel, ça donnait « Tuile 0/120 » sur
+  # la 1ʳᵉ scène. On affiche désormais `i_val + 1` = numéro de la
+  # tuile EN COURS (1..total). La garde STAC ci-dessus continue à
+  # utiliser `i_val` brut (0).
+  tile_no <- i_val + 1L
   extras <- c(
     if (!is.null(ev$obs_date) && nzchar(as.character(ev$obs_date)))
       paste0(as.character(ev$obs_date)),
@@ -2798,11 +2813,11 @@ mod_monitoring_server <- function(id, app_state) {
   suffix <- if (length(extras)) sprintf(" — %s", paste(extras, collapse = ", ")) else ""
   if (identical(status, "scene_error")) {
     cli::cli_alert_warning(
-      "Tuile Sentinel-2 {scene} ({i_val}/{n_val}) — erreur{suffix}"
+      "Tuile Sentinel-2 {scene} ({tile_no}/{n_val}) — erreur{suffix}"
     )
   } else {
     cli::cli_alert_info(
-      "Tuile Sentinel-2 {scene} ({i_val}/{n_val}){suffix}"
+      "Tuile Sentinel-2 {scene} ({tile_no}/{n_val}){suffix}"
     )
   }
   invisible(NULL)

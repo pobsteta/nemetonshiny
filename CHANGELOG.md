@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.70.2] - 2026-06-03
+
+### Fixed
+
+- **Compteur de tuile 1-based** dans le mirror console et le toast
+  Shiny de l'ingestion S2 (`Tuile (1/120) → (120/120)` au lieu de
+  `(0/120) → (119/120)`). Le cœur émet `completed = i - 1`
+  (fraction de progression) ; l'app applique désormais `+1`
+  uniquement dans le libellé de la tuile en cours. Les gardes STAC
+  (`!nzchar(scene) && i_val == 0L`) restent sur la valeur brute.
+
+### Notes
+
+- Partie A du brief `BRIEF-nemetonshiny-console-FAST.md` (drain
+  NDJSON) confirmée déjà en place depuis v0.70.0. Aucune action
+  additionnelle.
+
 ## [0.70.1] - 2026-06-03
 
 ### Fixed

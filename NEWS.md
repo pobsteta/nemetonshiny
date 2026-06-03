@@ -1,3 +1,66 @@
+# nemetonshiny 0.70.2 (2026-06-03)
+
+### Fixed — Compteur de tuile 1-based (`Tuile (1/120) → (120/120)`)
+
+Hand-off du brief `BRIEF-nemetonshiny-console-FAST.md` (Partie B).
+Aucune modif cœur nécessaire.
+
+**Symptôme** : pendant un Diagnostic FAST, le compteur affichait
+`Tuile Sentinel-2 ... (0/120)` sur la 1ʳᵉ scène et `(119/120)` sur
+la dernière, au lieu de `(1/120)` → `(120/120)`.
+
+**Cause** (pas un bug cœur) : le cœur émet `completed = i - 1`
+dans les events `s2:scene` / `s2:scene_cached` / `s2:scene_skipped`,
+soit « scènes terminées AVANT celle-ci ». Convention volontaire :
+`completed/total` est une **fraction de progression** (0 au
+départ, `total` à la fin via `s2:complete`). L'app affichait
+`completed` brut comme libellé de tuile EN COURS → off-by-one.
+
+**Fix (app uniquement)** : afficher `completed + 1` **uniquement
+dans le libellé** « tuile en cours » (1..total), à 2 endroits :
+
+* `R/mod_monitoring.R::.log_ingest_event` (~l.2810-2818) — mirror
+  console. Calcul d'un `tile_no <- i_val + 1L` après la garde STAC.
+* `R/mod_monitoring.R` observer toast (~l.1681-1687) — toast
+  Shiny. `i_val + 1L` dans les 2 branches
+  (`monitoring_ingest_progress_named_fmt` +
+  `monitoring_ingest_progress_fmt`).
+
+Les **gardes « entre STAC et 1ʳᵉ tuile »** (`!nzchar(scene) &&
+i_val == 0L`) restent sur `i_val` brut — elles dépendent du 0
+pour distinguer l'état « scan STAC en cours » de l'état
+« 1ʳᵉ tuile en téléchargement ». Sans cela, l'affichage de
+« Recherche STAC... » serait sauté.
+
+### Vérification
+
+* `s2:scene` émis au début de chaque scène (`i = 1..total`) →
+  `completed = 0..(total-1)` → `tile_no = 1..total` →
+  `1/120 → 120/120`.
+* `s2:complete` (`completed = total`) n'est pas rendu comme une
+  tuile → pas de `121/120`.
+* Garde STAC inchangée : « Recherche STAC... » affiché tant que
+  `completed == 0` ET pas de `scene_id`.
+
+### Pas de breaking change
+
+Strictement défensif. Le code cœur n'est pas modifié — `completed`
+reste à sa sémantique fraction-of-progress. Seul le libellé
+d'affichage côté app est ajusté.
+
+### Partie A du brief (drain NDJSON) — confirmée en place
+
+La Partie A du brief (logs `Tuile 1→120` ordonnés sans saut ni
+entrelacement via drain NDJSON) avait été **déjà livrée en v0.70.0**.
+Vérification effectuée : `ingest_ndjson_lines` reactivePoll +
+observer drainage sont bien présents dans `mod_monitoring.R:1387+`.
+Aucune action additionnelle requise.
+
+### Tests
+
+* 416 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
 # nemetonshiny 0.70.1 (2026-06-03)
 
 ### Fixed — Toast prewarm FAST persistant + signal explicite de fin du Diagnostic
