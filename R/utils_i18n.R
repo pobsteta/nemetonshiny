@@ -1314,6 +1314,14 @@ TRANSLATIONS <- list(
     fr = "Fournisseur LLM",
     en = "LLM provider"
   ),
+  api_keys_tab_rag = list(
+    fr = "Corpus RAG",
+    en = "RAG corpus"
+  ),
+  api_keys_fullscreen = list(
+    fr = "Plein écran",
+    en = "Fullscreen"
+  ),
   # LLM tab
   llm_config_intro = list(
     fr = "Sélectionnez le fournisseur LLM puis enregistrez sa clé API. Une seule clé par fournisseur ; les autres restent inchangées.",
@@ -3007,9 +3015,8 @@ TRANSLATIONS <- list(
   ),
 
   # ============================================================
-  # RAG / Knowledge corpus admin (spec 009.2 \u2014 onglet E7)
+  # RAG / Knowledge corpus admin (spec 009.2 \u2014 onglet du modal Param\u00e8tres)
   # ============================================================
-  tab_settings = list(fr = "Param\u00e8tres", en = "Settings"),
   rag_tab_title = list(
     fr = "RAG / Corpus de connaissances",
     en = "RAG / Knowledge corpus"

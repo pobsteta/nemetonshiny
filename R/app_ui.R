@@ -169,20 +169,6 @@ app_ui <- function(request) {
         )
       ),
 
-      # === Settings menu (admin tools) ===
-      bslib::nav_menu(
-        title = i18n$t("tab_settings"),
-        icon = bsicons::bs_icon("gear"),
-
-        # RAG / knowledge corpus admin (spec 009.2 — E7)
-        bslib::nav_panel(
-          title = i18n$t("rag_tab_title"),
-          value = "rag_admin",
-          icon = bsicons::bs_icon("book"),
-          mod_rag_admin_ui("rag_admin")
-        )
-      ),
-
       # === Navbar items (right side) ===
       bslib::nav_spacer(),
 

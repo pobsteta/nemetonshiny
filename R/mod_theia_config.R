@@ -76,6 +76,22 @@ mod_theia_config_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    # RAG / knowledge corpus admin (spec 009.2 — E7) lives as a third
+    # tab of this settings modal. Initialise its server once here — the
+    # nested namespace becomes `theia_config-rag_admin-…`, matched by the
+    # `mod_rag_admin_ui(ns("rag_admin"))` inserted in render_modal(). The
+    # worker opens its own DB connection (DBI connections are not
+    # process-shareable), so we only pass the resolved corpus URL.
+    mod_rag_admin_server(
+      "rag_admin",
+      app_state = app_state,
+      con = NULL,
+      con_url = shiny::reactive(
+        Sys.getenv("NEMETON_KNOWLEDGE_DB_URL",
+                   Sys.getenv("NEMETON_DB_URL", ""))
+      )
+    )
+
     # Bumped after a successful save / delete to refresh the modal.
     status_refresh <- shiny::reactiveVal(0)
     # Theia edit form revealed even though a key is already saved.
@@ -240,8 +256,25 @@ mod_theia_config_server <- function(id, app_state) {
       status_refresh()  # take a dependency so the modal reflects saves
 
       shiny::modalDialog(
-        title = i18n$t("api_keys_config_title"),
-        size = "l",
+        # Title bar carries a fullscreen toggle on the right : a tiny
+        # vanilla-JS handler flips Bootstrap 5's `.modal-fullscreen`
+        # class on the closest `.modal-dialog`, so the dialog can expand
+        # edge-to-edge (handy for the wide RAG manifest table) and shrink
+        # back without any server round-trip.
+        title = htmltools::div(
+          class = "d-flex justify-content-between align-items-center w-100",
+          htmltools::span(i18n$t("api_keys_config_title")),
+          htmltools::tags$button(
+            type = "button",
+            class = "btn btn-sm btn-outline-secondary",
+            title = i18n$t("api_keys_fullscreen"),
+            onclick = paste0(
+              "this.closest('.modal-dialog')",
+              ".classList.toggle('modal-fullscreen');"),
+            bsicons::bs_icon("arrows-fullscreen")
+          )
+        ),
+        size = "xl",
         easyClose = TRUE,
         footer = shiny::modalButton(i18n$t("close")),
         shiny::p(i18n$t("api_keys_config_intro")),
@@ -256,7 +289,12 @@ mod_theia_config_server <- function(id, app_state) {
           shiny::tabPanel(
             title = i18n$t("api_keys_tab_llm"),
             value = "tab_llm",
-            .render_llm_tab(i18n))
+            .render_llm_tab(i18n)),
+          shiny::tabPanel(
+            title = i18n$t("api_keys_tab_rag"),
+            value = "tab_rag",
+            htmltools::div(class = "pt-3",
+                           mod_rag_admin_ui(ns("rag_admin"))))
         )
       )
     }

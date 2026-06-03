@@ -294,9 +294,18 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
       )
     })
 
-    # ---- manifest table (render once; mutate via proxy) -------------------
-    proxy <- DT::dataTableProxy("manifest")
+    # ---- manifest table ---------------------------------------------------
+    # The table renders off an explicit `manifest_redraw` trigger rather
+    # than `man()` directly. Why: this module is mounted inside the
+    # settings modal, which is destroyed/re-created when the user closes
+    # and reopens it. Driving the render from a trigger (bumped on every
+    # mutation) keeps the last computed value cached, so Shiny resends the
+    # *current* manifest when the DT output re-subscribes on reopen —
+    # never the stale first snapshot. `man()` stays isolated so an inline
+    # cell edit doesn't redraw mid-typing unless we explicitly ask for it.
+    manifest_redraw <- shiny::reactiveVal(0L)
     output$manifest <- DT::renderDT({
+      manifest_redraw()
       i18n <- shiny::isolate(lang())
       df   <- shiny::isolate(man())
       DT::datatable(
@@ -328,11 +337,14 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
                   paste(allowed, collapse = ", ")),
           type = "error"
         )
-        DT::replaceData(proxy, df, resetPaging = FALSE, rownames = FALSE)
+        # Bad value : leave man() untouched and force a redraw so the
+        # rejected cell reverts to the stored value on the client.
+        manifest_redraw(manifest_redraw() + 1L)
         return()
       }
       df[info$row, col_idx] <- new_val
       man(df)
+      manifest_redraw(manifest_redraw() + 1L)
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$add_row, {
@@ -342,9 +354,8 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
         as.list(stats::setNames(rep("", ncol(df)), names(df))),
         stringsAsFactors = FALSE
       )
-      df2 <- rbind(df, empty)
-      man(df2)
-      DT::replaceData(proxy, df2, resetPaging = FALSE, rownames = FALSE)
+      man(rbind(df, empty))
+      manifest_redraw(manifest_redraw() + 1L)
     })
 
     shiny::observeEvent(input$delete_row, {
@@ -354,9 +365,8 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
                                 type = "warning")
         return()
       }
-      df <- man()[-sel, , drop = FALSE]
-      man(df)
-      DT::replaceData(proxy, df, resetPaging = FALSE, rownames = FALSE)
+      man(man()[-sel, , drop = FALSE])
+      manifest_redraw(manifest_redraw() + 1L)
     })
 
     # ---- validation panel -------------------------------------------------

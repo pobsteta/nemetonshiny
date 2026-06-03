@@ -1,3 +1,32 @@
+# nemetonshiny 0.63.0 (2026-06-03)
+
+### Changed — L'admin RAG passe dans le modal Paramètres (roue dentée)
+
+L'onglet « RAG / Corpus de connaissances » livré en 0.62.0 était un
+onglet de premier niveau de la navbar. Il est désormais **intégré au
+modal de configuration** (icône roue dentée à gauche du sélecteur de
+langue, `mod_theia_config`), en **troisième onglet** à côté de
+« Theia / DATA TERRA » et « Fournisseur LLM ».
+
+* `R/mod_theia_config.R` : initialise `mod_rag_admin_server("rag_admin",
+  …)` une fois (namespace imbriqué `theia_config-rag_admin-…`) et insère
+  `mod_rag_admin_ui()` dans un `tabPanel` « Corpus RAG ».
+* `R/app_ui.R` / `R/app_server.R` : retrait de l'onglet navbar
+  « Paramètres » et du câblage serveur autonome correspondant.
+* Le rendu de la table manifeste passe par un déclencheur `redraw`
+  explicite (au lieu d'un proxy) pour rester correct quand le modal est
+  fermé puis rouvert (resynchronisation sur l'état courant, plus de
+  snapshot périmé).
+
+### Added — Modal Paramètres extensible en plein écran
+
+Bouton bascule (icône `arrows-fullscreen`) dans la barre de titre du
+modal : un handler JS minimal applique la classe Bootstrap 5
+`.modal-fullscreen` sur le `.modal-dialog`, pour étendre la boîte de
+dialogue bord à bord (pratique pour la large table manifeste) et la
+réduire, sans aller-retour serveur. Taille par défaut élargie à `xl`.
+Clés i18n `api_keys_tab_rag`, `api_keys_fullscreen` (FR/EN).
+
 # nemetonshiny 0.62.0 (2026-06-03)
 
 ### Added — Onglet « RAG / Corpus de connaissances » (spec 009.2, E7)

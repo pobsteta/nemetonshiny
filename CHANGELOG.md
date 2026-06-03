@@ -10,6 +10,25 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.63.0] - 2026-06-03
+
+### Changed
+
+- **L'admin RAG passe dans le modal Paramètres** (roue dentée,
+  `mod_theia_config`) en troisième onglet « Corpus RAG », au lieu d'un
+  onglet de premier niveau de la navbar. Namespace imbriqué
+  `theia_config-rag_admin-…`. Retrait de l'onglet navbar « Paramètres »
+  (`app_ui.R`/`app_server.R`).
+- Table manifeste rendue via un déclencheur `redraw` explicite (au lieu
+  d'un proxy `DT`) pour rester cohérente à la réouverture du modal.
+
+### Added
+
+- **Modal Paramètres extensible en plein écran** : bouton bascule
+  (`arrows-fullscreen`) appliquant `.modal-fullscreen` (Bootstrap 5) ;
+  taille par défaut `xl`. Clés i18n `api_keys_tab_rag`,
+  `api_keys_fullscreen`.
+
 ## [0.62.0] - 2026-06-03
 
 ### Added
