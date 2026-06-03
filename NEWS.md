@@ -1,3 +1,57 @@
+# nemetonshiny 0.70.3 (2026-06-03)
+
+### Fixed — Toast d'ingestion FAST initialisé à `(1/N)` (au lieu de sauter à `(2/N)`)
+
+**Symptôme** : depuis v0.70.2 (fix off-by-one), le toast en bas à
+droite affichait souvent **`Tuile (2/120)`** comme **première**
+valeur visible, jamais `(1/120)`.
+
+**Cause** : pas un bug du `+1` v0.70.2 — la sémantique cœur
+`completed = i - 1` est respectée. Le toast lit
+`ingest_progress.json` (réécrit + atomic rename à chaque event,
+polling 500 ms). Le worker pousse `s2:scene completed=0` (scène 1)
+puis très rapidement `s2:scene completed=1` (scène 2) en bien
+moins de 500 ms → le JSON est écrasé entre 2 polls → le 1er event
+capturable par Shiny est souvent `completed=1` → affiché `(2/120)`
+après le `+1`. La scène 1 vit dans le mirror console (drain NDJSON
+v0.70.0) mais pas dans le toast.
+
+**Fix** : ajouter un handler `s2:search_done` qui initialise le
+toast à `Tuile (1/N) — démarrage du téléchargement…` **avant** le
+1er event `s2:scene`. L'utilisateur voit donc `(1/N)` au moins une
+fois ; quand le 1er `s2:scene` capturé arrive (peut être à
+`completed=2` → `(3/N)`), le toast est remplacé par le numéro
+réel. Le saut résiduel reste mais la perception « commence à 2 »
+disparaît.
+
+### Détails techniques
+
+* `R/mod_monitoring.R` (~l.1656) : nouvelle branche
+  `if (identical(current_phase, "s2:search_done"))` qui appelle
+  `showNotification(... ingest_progress)` avec le format
+  `monitoring_ingest_search_done_fmt`, hardcodé à `(1, total)`.
+  Placée AVANT la lecture des champs `i_val` / `n_val` et la
+  garde STAC (qui reste sur `i_val == 0L` brut).
+* `R/utils_i18n.R` : nouvelle clé `monitoring_ingest_search_done_fmt`
+  (FR : « Tuile (%d/%d) — démarrage du téléchargement… » /
+  EN : « Tile (%d/%d) — starting download… »).
+
+### Cas où le toast peut quand même sauter
+
+Si `total = 0` (échec STAC ou aucune scène trouvée), l'initialisation
+est sautée (`if (n_val_init > 0L)`). Comportement de fallback
+identique à v0.70.2.
+
+### Pas de breaking change
+
+Strictement additif. Le drain NDJSON (mirror console) continue à
+afficher `Tuile (1/N) → (N/N)` complet et ordonné — inchangé.
+
+### Tests
+
+* 2498 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
 # nemetonshiny 0.70.2 (2026-06-03)
 
 ### Fixed — Compteur de tuile 1-based (`Tuile (1/120) → (120/120)`)

@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.70.3] - 2026-06-03
+
+### Fixed
+
+- **Toast d'ingestion FAST initialisé à `(1/N)`** : ajout d'un
+  handler `s2:search_done` qui affiche `Tuile (1/N) — démarrage
+  du téléchargement…` avant que le polling 500 ms du JSON
+  dernier-event ne capture sa 1ʳᵉ scène (souvent `(2/N)` à cause
+  de l'écrasement multi-events). L'utilisateur voit désormais
+  `(1/N)` au moins une fois.
+
+### Added
+
+- Clé i18n `monitoring_ingest_search_done_fmt` (FR/EN).
+
 ## [0.70.2] - 2026-06-03
 
 ### Fixed

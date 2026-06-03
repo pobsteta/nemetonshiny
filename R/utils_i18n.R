@@ -2102,6 +2102,14 @@ TRANSLATIONS <- list(
     fr = "Cache DB : %d sc\u00e8nes d\u00e9j\u00e0 ing\u00e9r\u00e9es (skip), %d \u00e0 compl\u00e9ter",
     en = "DB cache: %d scenes already ingested (skip), %d to complete"
   ),
+  # v0.70.3 \u2014 Toast initial \u00e9mis \u00e0 `s2:search_done` (avant le 1er
+  # `s2:scene`). Garantit que `(1/N)` appara\u00eet au moins une fois
+  # m\u00eame si le polling 500 ms rate les 1\u02b3\u1d49\u02e2 sc\u00e8nes. Les 2 `%d`
+  # sont (1, total_scenes).
+  monitoring_ingest_search_done_fmt = list(
+    fr = "Tuile (%d/%d) \u2014 d\u00e9marrage du t\u00e9l\u00e9chargement\u2026",
+    en = "Tile (%d/%d) \u2014 starting download\u2026"
+  ),
   monitoring_ingest_band_failed_fmt = list(
     fr = "\u00c9chec bande %s : %s",
     en = "Band %s failed: %s"
