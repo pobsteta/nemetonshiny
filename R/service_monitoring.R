@@ -341,6 +341,20 @@ run_ingestion_async <- function() {
 #' @noRd
 .build_progress_writer <- function(progress_path) {
   if (is.null(progress_path) || !nzchar(progress_path)) return(NULL)
+  # v0.70.0 — Double transport (brief logs FAST propres) :
+  # * `progress_path` (.json) : DERNIER event, atomic write +
+  #   rename. Sert au toast Shiny coalescé (1 toast actif).
+  # * `ndjson_path` (.ndjson) : journal APPEND-ONLY, une ligne
+  #   par event. Drainé par le mirror console côté lecteur,
+  #   garantit l'ordre et l'absence de saut.
+  # Le path NDJSON est dérivé du JSON (même répertoire, suffixe
+  # `.ndjson` au lieu de `.json`). Si l'extension n'est pas `.json`,
+  # on append `.ndjson` au path complet.
+  ndjson_path <- if (grepl("\\.json$", progress_path)) {
+    sub("\\.json$", ".ndjson", progress_path)
+  } else {
+    paste0(progress_path, ".ndjson")
+  }
   function(event) {
     # suppressWarnings as well as tryCatch: writing under a missing
     # directory emits a "cannot open file" *warning* before the error
@@ -348,13 +362,11 @@ run_ingestion_async <- function() {
     # wraps its read in tryCatch).
     tryCatch(
       suppressWarnings({
+        line <- jsonlite::toJSON(event, auto_unbox = TRUE, null = "null",
+                                 na = "null", POSIXt = "ISO8601")
+        # --- 1. JSON dernier-event (toast Shiny) -------------------
         tmp <- paste0(progress_path, ".tmp")
-        writeLines(
-          jsonlite::toJSON(event, auto_unbox = TRUE, null = "null",
-                           na = "null", POSIXt = "ISO8601"),
-          con = tmp,
-          useBytes = TRUE
-        )
+        writeLines(line, con = tmp, useBytes = TRUE)
         # file.rename is atomic on POSIX, best-effort on Windows where
         # the destination must not exist — fall back to a write+unlink
         # cycle that is good enough for a polling reader.
@@ -363,6 +375,11 @@ run_ingestion_async <- function() {
           file.copy(tmp, progress_path, overwrite = TRUE)
           unlink(tmp)
         }
+        # --- 2. NDJSON append-only (mirror console) ----------------
+        # v0.70.0 — Une ligne par event, séquentielle, jamais écrasée.
+        # `cat(append = TRUE)` ouvre/écrit/ferme atomiquement — pas
+        # de leak de descripteur si le worker meurt.
+        cat(line, "\n", sep = "", file = ndjson_path, append = TRUE)
       }),
       error = function(e) invisible(NULL)
     )

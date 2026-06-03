@@ -1,3 +1,111 @@
+# nemetonshiny 0.70.0 (2026-06-03)
+
+### Fixed — Logs FAST propres : Tuile 1/N → N/N sans saut ni entrelacement
+
+**Symptôme** : pendant un Diagnostic FAST, le mirror console
+affichait des **sauts** dans la numérotation des tuiles
+(`1/120 → 3 → 23 → 51 → 93…`) et un **faux entrelacement** : la
+ligne `⤷ Bande B04 (cache)` correspondait à une autre scène que
+l'en-tête `Tuile Sentinel-2 ...(X/120)` affichée juste au-dessus.
+
+**Cause racine** (hand-off du brief
+`/home/pascal/dev/nemeton/BRIEF-nemetonshiny-logs-FAST-propres.md`,
+vérifié file:ligne) : deux transports de progression coexistaient
+dans `mod_monitoring.R`. Le flux métier (Tuile/Bande FR formaté par
+l'app) passait par le **mauvais** transport.
+
+| Transport | Mécanisme | Complétude |
+|---|---|---|
+| `ingest_progress` (`mod_monitoring.R:1322`) | `reactivePoll 500ms` sur `ingest_progress.json` réécrit (atomic rename) à chaque event | ❌ Lossy — seul le dernier event présent au poll survit |
+| `ingest_log_tick` (`mod_monitoring.R:1346`) | `tail` par offset d'octets sur le `sink()` stdout du worker | ✅ Complet, ordonné — mais véhicule uniquement le cli **anglais** du cœur |
+
+Le worker pousse 4-5 events par scène (1 `s2:scene` + 2-4 `s2:band_cached`)
+en bien moins de 500 ms → la quasi-totalité des events était écrasée
+avant le poll suivant. D'où les sauts ET la désynchro entête / bande
+(lus à des polls différents).
+
+**Fix** (app uniquement, aucune modif cœur) : faire passer le flux
+métier d'un *« dernier event JSON »* à un *« journal NDJSON
+append-only drainé intégralement »*, exactement le pattern déjà
+utilisé par `ingest_log_tick`.
+
+### Double transport, séparation des responsabilités
+
+* **`.json`** (dernier event, réécrit + atomic rename) → pilote le
+  **toast Shiny coalescé** (1 toast actif, remplacement par id).
+  Comportement inchangé.
+* **`.ndjson`** (append-only, une ligne par event, jamais écrasé) →
+  pilote le **mirror console** (`.log_band_event` + `.log_ingest_event`).
+  Drainage par offset d'octets, **garanti complet et ordonné**.
+
+### Détails techniques
+
+* `R/service_monitoring.R::.build_progress_writer` (l.342-380) :
+  - Continue à écrire le `.json` (atomic rename) — toast inchangé.
+  - **En plus**, append une ligne NDJSON dans `<path>.ndjson` à
+    chaque event via `cat(line, "\n", append = TRUE)`.
+  - Path NDJSON dérivé du JSON : `.../ingest_progress.json` →
+    `.../ingest_progress.ndjson`.
+* `R/mod_monitoring.R` :
+  - Nouveau `ingest_ndjson_path` reactive + `ingest_ndjson_offset`
+    reactiveVal + `ingest_ndjson_lines` reactivePoll (300 ms, tail
+    par offset).
+  - Nouveau `shiny::observe` qui itère sur **chaque event** NDJSON
+    et appelle `.log_band_event` / `.log_ingest_event` dans
+    l'ordre du worker.
+  - Observer toast `ingest_progress` (l.1397+) **inchangé pour le
+    toast**, mais **retire les appels** `.log_band_event` et
+    `.log_ingest_event` du chemin JSON (ils sont désormais
+    pilotés par le drain NDJSON).
+  - `.cleanup_progress_file` (l.2611) étendu : supprime aussi
+    `<path>.ndjson` au reset de chaque ingest.
+
+### Garde-fous
+
+* Le toast reste coalescé (1 update par tick) — pas de 600 toasts
+  pour 120 scènes × 4-5 events.
+* Si le worker ne livre pas de `.ndjson` (worker plus ancien ou
+  erreur d'écriture), le mirror console reste silencieux, le
+  toast continue à fonctionner — fallback transparent.
+* Reset propre : `ingest_ndjson_offset` repart à 0 à chaque ingest
+  (le `.ndjson` est supprimé puis recréé par le worker).
+
+### Effet observable
+
+Le mirror console affiche désormais **dans l'ordre** :
+
+```
+ℹ Tuile Sentinel-2 S2B_MSIL2A_... (1/120) — 2025-05-23, 12.4% nuages
+  ⤷ Bande B04 (cache) — scène S2B_MSIL2A_...
+  ⤷ Bande B08 (cache) — scène S2B_MSIL2A_...
+  ⤷ Bande B11 (cache) — scène S2B_MSIL2A_...
+ℹ Tuile Sentinel-2 S2A_MSIL2A_... (2/120) — 2025-05-26, 8.2% nuages
+  ⤷ Bande B04 (téléchargement) — scène S2A_MSIL2A_...
+  ...
+```
+
+au lieu des sauts précédents.
+
+### Pas de breaking change
+
+* Aucune modif cœur (le brief le confirme : le flux d'events
+  cœur EST déjà séquentiel 1→120).
+* Le toast Shiny existant continue de fonctionner identiquement.
+* Si le `.ndjson` n'existe pas (ancien worker), le mirror est
+  vide mais l'app fonctionne.
+
+### Tests
+
+* 416 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
+### Optionnel hors scope
+
+Le brief mentionne aussi un bouton « Afficher (cache) » distinct
+de « Rafraîchir » qui appellerait directement `read_fast_alert_rasters()`
+en relecture pure (pas de STAC, pas de worker). À ouvrir en chantier
+séparé si l'usage le justifie.
+
 # nemetonshiny 0.69.1 (2026-06-03)
 
 ### Changed — Plancher cœur `nemeton (>= 0.65.1)` : prewarm FAST 6 combos (NDMI)

@@ -1378,6 +1378,85 @@ mod_monitoring_server <- function(id, app_state) {
       cat(chunk, file = stderr())
     })
 
+    # ------------------------------------------------------------------
+    # v0.70.0 — Drain NDJSON append-only (brief logs FAST propres).
+    # ------------------------------------------------------------------
+    # Le worker écrit en parallèle 2 fichiers :
+    #   * `<progress_path>.json`    : DERNIER event (replace), pilote le
+    #     toast Shiny coalescé (observer `ingest_progress` plus haut).
+    #   * `<progress_path>.ndjson`  : journal APPEND-ONLY, une ligne par
+    #     event, jamais écrasé. Drainé ici par offset (même pattern que
+    #     `ingest_log_tick`), garantit l'ordre 1→120 sans saut ni
+    #     entrelacement pour le mirror console des `.log_band_event` /
+    #     `.log_ingest_event`.
+    #
+    # Avant v0.70.0, le mirror console reposait uniquement sur le JSON
+    # « dernier event » → tick polling 500 ms, worker émettant 4-5 events
+    # par scène en < 50 ms → la quasi-totalité des events était écrasée
+    # avant le poll suivant. Cause des « sauts » 1/120 → 3 → 23 → 51 et
+    # de la désynchro Tuile / Bande affichées (cf. brief).
+    ingest_ndjson_path   <- shiny::reactive({
+      p <- ingest_progress_path()
+      if (is.null(p) || !nzchar(p)) return(NULL)
+      if (grepl("\\.json$", p)) sub("\\.json$", ".ndjson", p)
+      else paste0(p, ".ndjson")
+    })
+    ingest_ndjson_offset <- shiny::reactiveVal(0L)
+
+    ingest_ndjson_lines <- shiny::reactivePoll(
+      intervalMillis = 300L, session,
+      checkFunc = function() {
+        p <- ingest_ndjson_path()
+        if (is.null(p) || !file.exists(p)) return("0")
+        as.character(file.info(p)$size)
+      },
+      valueFunc = function() {
+        p <- ingest_ndjson_path()
+        if (is.null(p) || !file.exists(p)) return(NULL)
+        sz <- as.numeric(file.info(p)$size)
+        if (is.na(sz) || sz <= 0) return(NULL)
+        off <- as.numeric(ingest_ndjson_offset())
+        if (sz <= off) return(NULL)
+        txt <- tryCatch({
+          con <- file(p, open = "rb")
+          on.exit(close(con), add = TRUE)
+          if (off > 0) seek(con, where = off, origin = "start")
+          raw <- readBin(con, what = "raw", n = sz - off)
+          rawToChar(raw)
+        }, error = function(e) "")
+        ingest_ndjson_offset(as.integer(sz))
+        if (!nzchar(txt)) return(NULL)
+        Filter(nzchar, strsplit(txt, "\n", fixed = TRUE)[[1]])
+      }
+    )
+
+    # Mirror console : itère sur CHAQUE event NDJSON dans l'ordre.
+    # Seule responsabilité = lignes `Tuile X/N` / `⤷ Bande …` —
+    # le toast Shiny reste piloté par le JSON dernier-event.
+    shiny::observe({
+      lines <- ingest_ndjson_lines()
+      if (is.null(lines) || !length(lines)) return()
+      for (ln in lines) {
+        ev <- tryCatch(jsonlite::fromJSON(ln), error = function(e) NULL)
+        if (is.null(ev)) next
+        current_phase <- as.character(ev$current %||% "")
+        # Bandes : mirror systématique (volume principal du flux).
+        if (current_phase %in% c("s2:band_cached", "s2:band_fetched")) {
+          .log_band_event(ev, current_phase)
+          next
+        }
+        # Scènes : Tuile X/N (les events scene_id / completed / total
+        # passent dans .log_ingest_event).
+        if (current_phase %in% c("s2:scene", "s2:scene_cached")) {
+          status <- ev$status %||% "running"
+          i_val  <- as.integer(ev$completed %||% ev$i %||% 0L)
+          n_val  <- as.integer(ev$total     %||% ev$n %||% 0L)
+          scene  <- as.character(ev$scene_id %||% "")
+          .log_ingest_event(ev, status, i_val, n_val, scene)
+        }
+      }
+    })
+
     # Render the persistent progress toast. Each event from the worker
     # replaces the previous one (same notification id) so we don't
     # stack 50 toasts during a long ingestion. The notification body
@@ -1438,11 +1517,12 @@ mod_monitoring_server <- function(id, app_state) {
       }
       # Band-level success events fire sub-second per scene (2-4 bands
       # per scene) — letting them rewrite the toast would make it
-      # flicker and lose the scene-level context. We log them to the
-      # console (one line per band, with cache vs download info) and
-      # keep the toast on the last scene-level state.
+      # flicker and lose the scene-level context.
+      # v0.70.0 — Le mirror console (`.log_band_event`) passe désormais
+      # par le drain NDJSON (cf. observer dédié plus haut), garanti
+      # complet et ordonné. Ici on absorbe l'event sans rien faire
+      # côté toast (le toast reste sur le scene-level state précédent).
       if (current_phase %in% c("s2:band_cached", "s2:band_fetched")) {
-        .log_band_event(ev, current_phase)
         return()
       }
       # Band-level FAILURE bubbles up as a non-persistent warning toast
@@ -1593,7 +1673,9 @@ mod_monitoring_server <- function(id, app_state) {
         sprintf(i18n$t("monitoring_ingest_progress_fmt"),
                 i_val, n_val)
       }
-      .log_ingest_event(ev, status, i_val, n_val, scene)
+      # v0.70.0 — `.log_ingest_event` (mirror Tuile X/N) déménage
+      # dans l'observer NDJSON drain (cf. plus haut). Ici on ne
+      # touche plus qu'au toast Shiny (replacement par id stable).
       shiny::showNotification(
         .monitoring_spinning_msg(msg),
         id          = session$ns("ingest_progress"),
@@ -2608,10 +2690,21 @@ mod_monitoring_server <- function(id, app_state) {
 # if the worker was interrupted mid-write). Errors are swallowed —
 # leaving a stale file behind is harmless because the next invoke
 # clears it before firing.
+#
+# v0.70.0 — Étend aussi au NDJSON append-only (brief logs FAST
+# propres). Le path NDJSON est dérivé du JSON (cf. writer côté
+# `service_monitoring.R::.build_progress_writer`).
 .cleanup_progress_file <- function(path) {
   if (is.null(path)) return(invisible(NULL))
-  tryCatch(unlink(c(path, paste0(path, ".tmp"))),
-           error = function(e) invisible(NULL))
+  ndjson <- if (grepl("\\.json$", path)) {
+    sub("\\.json$", ".ndjson", path)
+  } else {
+    paste0(path, ".ndjson")
+  }
+  tryCatch(
+    unlink(c(path, paste0(path, ".tmp"), ndjson)),
+    error = function(e) invisible(NULL)
+  )
   invisible(NULL)
 }
 
