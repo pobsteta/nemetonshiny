@@ -256,17 +256,20 @@ mod_theia_config_server <- function(id, app_state) {
       status_refresh()  # take a dependency so the modal reflects saves
 
       shiny::modalDialog(
-        # Title bar carries a fullscreen toggle on the right : a tiny
-        # vanilla-JS handler flips Bootstrap 5's `.modal-fullscreen`
-        # class on the closest `.modal-dialog`, so the dialog can expand
-        # edge-to-edge (handy for the wide RAG manifest table) and shrink
-        # back without any server round-trip.
-        title = htmltools::div(
-          class = "d-flex justify-content-between align-items-center w-100",
+        # Title : label + a fullscreen toggle anchored to the TOP-RIGHT
+        # corner. The button is absolutely positioned relative to
+        # `.modal-content` (which is `position: relative` in Bootstrap 5),
+        # so it sits at the right edge regardless of the title width. A
+        # tiny vanilla-JS handler flips BS5's `.modal-fullscreen` class on
+        # the closest `.modal-dialog` — edge-to-edge expand / shrink, no
+        # server round-trip.
+        title = htmltools::tagList(
           htmltools::span(i18n$t("api_keys_config_title")),
           htmltools::tags$button(
             type = "button",
             class = "btn btn-sm btn-outline-secondary",
+            style = paste("position: absolute; top: 0.75rem;",
+                          "right: 0.75rem; z-index: 2;"),
             title = i18n$t("api_keys_fullscreen"),
             onclick = paste0(
               "this.closest('.modal-dialog')",
@@ -290,14 +293,29 @@ mod_theia_config_server <- function(id, app_state) {
             title = i18n$t("api_keys_tab_llm"),
             value = "tab_llm",
             .render_llm_tab(i18n)),
+          # The RAG tab is lazy-rendered (see output$rag_tab_content):
+          # its DT tables must NOT initialise inside a hidden tab —
+          # DataTables (esp. with scrollX) errors on a display:none
+          # container, and that JS failure cascades and prevents sibling
+          # outputs (the LLM status panel) from updating. Mounting the
+          # RAG UI only when its tab is active sidesteps this entirely.
           shiny::tabPanel(
             title = i18n$t("api_keys_tab_rag"),
             value = "tab_rag",
             htmltools::div(class = "pt-3",
-                           mod_rag_admin_ui(ns("rag_admin"))))
+                           shiny::uiOutput(ns("rag_tab_content"))))
         )
       )
     }
+
+    # Mount the RAG admin UI only when its tab is the active one (and the
+    # modal is therefore open on it) — keeps DataTables out of hidden
+    # containers. The server (mod_rag_admin_server) is already running;
+    # its outputs simply bind when this UI appears.
+    output$rag_tab_content <- shiny::renderUI({
+      if (!identical(input$config_tab, "tab_rag")) return(NULL)
+      mod_rag_admin_ui(ns("rag_admin"))
+    })
 
     shiny::observeEvent(input$open, {
       shiny::showModal(render_modal())

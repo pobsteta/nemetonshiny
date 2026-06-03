@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.64.1] - 2026-06-03
+
+### Fixed
+
+- **Modal Paramètres** : l'onglet « Fournisseur LLM » ne réaffichait
+  plus statut + boutons clé après l'ajout de l'onglet RAG (0.63.0).
+  Cause : init DataTables dans un onglet caché. Fix : montage à la
+  demande de l'UI de l'onglet RAG (`output$rag_tab_content`).
+
+### Changed
+
+- Bouton plein écran déplacé en haut-droite du modal (positionnement
+  absolu sur `.modal-content`).
+- Titre/intro du modal mis à jour pour refléter clés API + LLM + corpus
+  RAG (« Paramètres : clés API & corpus RAG »).
+
 ## [0.64.0] - 2026-06-03
 
 ### Changed

@@ -1,3 +1,31 @@
+# nemetonshiny 0.64.1 (2026-06-03)
+
+### Fixed — Modal Paramètres : onglet LLM vidé par l'init DT de l'onglet RAG
+
+Après l'intégration de l'admin RAG dans le modal Paramètres (0.63.0),
+sélectionner un fournisseur dans l'onglet « Fournisseur LLM » ne
+réaffichait plus le bandeau de statut ni les boutons Modifier /
+Supprimer la clé. Cause : les tables `DT` de l'onglet « Corpus RAG »
+s'initialisaient dans un onglet **caché** (`display:none`) dès
+l'ouverture du modal — DataTables (a fortiori avec `scrollX`) échoue
+sur un conteneur masqué, et cette erreur JS en cascade empêchait les
+autres sorties (dont `llm_status_panel`) de se mettre à jour.
+
+**Fix** : l'UI de l'onglet RAG est désormais **montée à la demande**
+(`output$rag_tab_content`, rendue seulement quand `config_tab ==
+"tab_rag"`). Les tables DT s'initialisent dans un conteneur visible —
+plus d'erreur JS, l'onglet LLM refonctionne. Le serveur RAG reste
+initialisé une fois ; ses sorties se lient quand l'UI apparaît.
+
+### Changed
+
+* Bouton plein écran déplacé dans le **coin haut-droit** du modal
+  (positionnement absolu sur `.modal-content`), au lieu d'être collé au
+  titre à gauche.
+* Titre et intro du modal mis à jour pour refléter les trois volets
+  (clés API Theia, fournisseur LLM, corpus RAG) :
+  « Paramètres : clés API & corpus RAG ».
+
 # nemetonshiny 0.64.0 (2026-06-03)
 
 ### Changed — Carte FAST : slider de dates au pas de 5 jours

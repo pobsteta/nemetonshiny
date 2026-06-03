@@ -1299,12 +1299,12 @@ TRANSLATIONS <- list(
     en = "External API keys configuration"
   ),
   api_keys_config_title = list(
-    fr = "Clés API externes",
-    en = "External API keys"
+    fr = "Paramètres : clés API & corpus RAG",
+    en = "Settings: API keys & RAG corpus"
   ),
   api_keys_config_intro = list(
-    fr = "Configurez ici les clés des services externes utilisés par l'application : Theia / DATA TERRA pour le CHM FORMSpoT et un fournisseur LLM (Mistral, Anthropic ou OpenAI) pour les perspectives d'expert.",
-    en = "Configure here the keys for the external services used by the application: Theia / DATA TERRA for the FORMSpoT CHM and an LLM provider (Mistral, Anthropic or OpenAI) for the expert perspectives."
+    fr = "Configurez ici les services externes de l'application : Theia / DATA TERRA pour le CHM FORMSpoT, un fournisseur LLM (Mistral, Anthropic ou OpenAI) pour les perspectives d'expert, et le corpus RAG de connaissances qui source ces perspectives.",
+    en = "Configure here the application's external services: Theia / DATA TERRA for the FORMSpoT CHM, an LLM provider (Mistral, Anthropic or OpenAI) for the expert perspectives, and the RAG knowledge corpus that sources those perspectives."
   ),
   api_keys_tab_theia = list(
     fr = "Theia / DATA TERRA",
