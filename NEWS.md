@@ -1,3 +1,44 @@
+# nemetonshiny 0.67.1 (2026-06-03)
+
+### Fixed — Bug d'oscillation des radios Alertes FAST
+
+**Symptôme** : dans l'onglet Alertes FAST, après un clic sur les
+radios « Indice FAST » (NDMI/NDVI/NBR) ou « Mode du raster »
+(Fréquence/Intensité), l'application se mettait à clignoter en
+continu, alternant toute seule entre les valeurs des radios.
+
+**Cause** : l'observer i18n (rafraîchissement des labels FR/EN à
+chaque switch de langue) lisait `input$index` et `input$mode` pour
+les passer en argument `selected =` de `updateRadioButtons()`.
+`shiny::observe()` capture toutes les dépendances réactives lues
+dans son corps → l'observer devenait dépendant de
+`input$index`/`input$mode`. Au clic sur un radio :
+
+1. `input$index` change → l'observer i18n re-fire ;
+2. `updateRadioButtons(selected = "<nouvelle valeur>")` ré-envoie au client ;
+3. Le client réinterprète le selected → re-fire `input$index` ;
+4. Boucle infinie de cliquetis visibles à l'écran.
+
+**Fix** : `shiny::isolate()` autour des lectures de `input$index`
+et `input$mode` dans l'observer i18n. La sélection courante est
+lue au moment du re-render i18n SANS être traquée comme dépendance
+réactive. Le switch de langue préserve toujours la sélection
+courante, mais le clic radio n'amorce plus de cascade.
+
+**Détails techniques** :
+
+* `R/mod_monitoring_fast_alerts.R::mod_monitoring_fast_alerts_server`
+  observer i18n (l.183-210) :
+  - `cur_index <- shiny::isolate(input$index %||% "NDVI")`
+  - `cur_mode  <- shiny::isolate(input$mode  %||% "count")`
+  - `selected = cur_index` et `selected = cur_mode` dans les
+    `updateRadioButtons()`.
+
+**Pas de breaking change** : strictement défensif. Le comportement
+attendu (clic radio → mise à jour raster + légende sans
+oscillation, switch de langue → labels traduits + sélection
+préservée) est désormais correct.
+
 # nemetonshiny 0.67.0 (2026-06-03)
 
 ### Added — Slider « Seuil minimum NDMI » dans la sidebar Suivi sanitaire

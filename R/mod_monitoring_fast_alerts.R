@@ -182,13 +182,24 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # langue. Idem pour le checkbox visibility et le slider opacité.
     shiny::observe({
       i18n <- i18n_r()
+      # v0.67.1 — Bug d'oscillation : sans `isolate()`, lire
+      # `input$index` et `input$mode` dans cet observer crée une
+      # dépendance reactive → le user clique NDVI → NBR → input$index
+      # change → l'observer re-fire → `updateRadioButtons(selected =
+      # "NBR")` re-broadcast → le client re-bind l'event change →
+      # boucle infinie de cliquetis NDVI ↔ NBR / count ↔ rolling.
+      # L'observer doit dépendre UNIQUEMENT de la langue
+      # (`i18n_r()`). `isolate()` lit la sélection courante au
+      # moment du re-render i18n sans la traquer comme dépendance.
+      cur_index <- shiny::isolate(input$index %||% "NDVI")
+      cur_mode  <- shiny::isolate(input$mode  %||% "count")
       # v0.52.14 — rafraîchir aussi le label du radio `index` (label
       # « Indice FAST » → « FAST index » sur switch FR/EN).
       shiny::updateRadioButtons(
         session, "index",
         label = i18n$t("monitoring_fast_index_label"),
         choices = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR"),
-        selected = input$index %||% "NDVI",
+        selected = cur_index,
         inline = TRUE
       )
       shiny::updateRadioButtons(
@@ -197,7 +208,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         choiceNames  = list(i18n$t("monitoring_fast_alerts_mode_count"),
                             i18n$t("monitoring_fast_alerts_mode_rolling")),
         choiceValues = list("count", "rolling"),
-        selected     = input$mode %||% "count",
+        selected     = cur_mode,
         inline       = TRUE
       )
       shiny::updateSliderInput(

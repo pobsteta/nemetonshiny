@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.67.1] - 2026-06-03
+
+### Fixed
+
+- **Oscillation infinie des radios Alertes FAST** (NDMI/NDVI/NBR et
+  Fréquence/Intensité). L'observer i18n lisait `input$index` et
+  `input$mode` sans `isolate()`, créant une dépendance réactive
+  cyclique au clic. `shiny::isolate()` autour des lectures casse
+  la boucle sans perdre la préservation de sélection sur switch
+  de langue.
+
 ## [0.67.0] - 2026-06-03
 
 ### Added
