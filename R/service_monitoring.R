@@ -298,11 +298,13 @@ run_ingestion_async <- function() {
 
       duration_sec <- as.numeric(difftime(Sys.time(), .ws_t0,
                                           units = "secs"))
+      # v0.70.4 — Le format `monitoring_ntfy_ingest_complete` ne
+      # consomme plus `n_obs_inserted` (toujours 0 depuis
+      # nemeton@v0.58.0). 2 args : `n_scenes` + `duration`.
       .ntfy_send(
         ntfy,
         sprintf(i18n$t("monitoring_ntfy_ingest_complete"),
-                as.integer(summary$n_scenes        %||% 0L),
-                as.integer(summary$n_obs_inserted  %||% 0L),
+                as.integer(summary$n_scenes %||% 0L),
                 .format_duration_human(duration_sec)),
         tags  = "white_check_mark",
         title = "Nemeton FAST"
