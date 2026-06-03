@@ -2730,9 +2730,17 @@ TRANSLATIONS <- list(
     fr = "T\u00e9l\u00e9chargement Sentinel-2 : %d sc\u00e8nes \u00e0 traiter.",
     en = "Sentinel-2 download: %d scenes to process."
   ),
+  # v0.70.4 \u2014 Wording align\u00e9 sur le toast UI
+  # (`monitoring_ingest_success` = \u00ab Diagnostic FAST termin\u00e9 \u00bb).
+  # Retrait du `%d observations` : toujours 0 depuis `nemeton@v0.58.0`
+  # (drop obs_pixel insertion) \u2014 cf. commentaire `mod_monitoring.R:2049`
+  # qui l'avait d\u00e9j\u00e0 retir\u00e9 c\u00f4t\u00e9 toast UI. ntfy l'affichait toujours
+  # \u00e0 0, source de confusion. Les 2 `%d %s` du nouveau format sont
+  # `(n_scenes, duration)` \u2014 l'appelant `service_monitoring.R:303`
+  # doit retirer l'argument `n_obs_inserted` du `sprintf`.
   monitoring_ntfy_ingest_complete = list(
-    fr = "Ingestion FAST termin\u00e9e : %d sc\u00e8nes, %d observations en %s.",
-    en = "FAST ingestion complete: %d scenes, %d observations in %s."
+    fr = "Diagnostic FAST termin\u00e9 : %d sc\u00e8ne(s) en cache (%s).",
+    en = "FAST diagnostic done: %d scene(s) cached (%s)."
   ),
   monitoring_ntfy_ingest_error = list(
     fr = "\u00c9chec de l'ingestion FAST : %s",

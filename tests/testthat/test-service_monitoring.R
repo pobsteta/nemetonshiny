@@ -274,9 +274,11 @@ test_that("v0.42.1 — ntfy_ingest sprintf placeholders are well-formed", {
   expect_silent(sprintf(i18n$t("monitoring_ntfy_ingest_start"), "42"))
   # scenes : %d (count)
   expect_silent(sprintf(i18n$t("monitoring_ntfy_ingest_scenes"), 26L))
-  # complete : %d %d %s (n_scenes, n_obs, duration)
+  # v0.70.4 — complete : %d %s (n_scenes, duration). Le `%d
+  # observations` a été retiré (toujours 0 depuis nemeton@v0.58.0,
+  # mention déjà retirée du toast UI en v0.53.1).
   expect_silent(sprintf(i18n$t("monitoring_ntfy_ingest_complete"),
-                        26L, 5200L, "3 min"))
+                        26L, "3 min"))
   # error : %s (message)
   expect_silent(sprintf(i18n$t("monitoring_ntfy_ingest_error"),
                         "STAC 504"))

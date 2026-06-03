@@ -1,3 +1,70 @@
+# nemetonshiny 0.70.4 (2026-06-03)
+
+### Fixed — Toast `Diagnostic FAST terminé` qui clignote (apparaît / disparaît / réapparaît)
+
+**Symptôme** : à la fin d'un Diagnostic FAST, le toast en bas à
+droite « Diagnostic FAST terminé : 120 scène(s) en cache. »
+apparaissait, disparaissait (après les 6 s de duration), puis
+**réapparaissait** plusieurs fois.
+
+**Cause** : l'observer de fin de worker (l.2020) dépend de
+`fast_task$result()`. Shiny `ExtendedTask$result()` peut, dans
+certains cycles de vie (cascade reactive, transition de status,
+re-évaluation lors d'événements parallèles), **refire plusieurs
+fois pour le MÊME result**. Sans garde, `showNotification(
+"ingest_success", duration = 6)` était ré-appelé à chaque fire →
+le toast disparaissait après 6 s puis ré-apparaissait quand
+l'observer fire suivant survenait.
+
+**Fix** : nouveau `fast_result_consumed <- shiny::reactiveVal(FALSE)`
+qui agit comme garde d'idempotence :
+
+* L'observer toast vérifie au début si le flag est `TRUE` (= déjà
+  traité) → return silencieux.
+* À la 1ʳᵉ exécution, le flag est mis à `TRUE` (via `isolate()`
+  pour éviter d'établir une dépendance reactive).
+* Reset à `FALSE` dans `observeEvent(input$run)` (avant le nouvel
+  `invoke()`) → le prochain Diagnostic FAST sera bien traité.
+
+La garde s'applique aussi au branchement `error` du `tryCatch`
+(même symptôme possible sur le toast `ingest_error`).
+
+### Changed — Cohérence ntfy : alignement wording + retrait du `%d observations`
+
+**Avant v0.70.4** : le push ntfy « ingest complete » affichait
+`"Ingestion FAST terminée : %d scènes, %d observations en %s."`
+avec **`n_obs_inserted` toujours 0 depuis nemeton@v0.58.0** (drop
+obs_pixel insertion). Le toast UI avait déjà retiré cette mention
+en v0.53.1 (commentaire `mod_monitoring.R:2049`), mais ntfy non.
+Wording incohérent (« Ingestion FAST » vs « Diagnostic FAST »).
+
+**Après v0.70.4** :
+
+| Surface | Avant | Après |
+|---|---|---|
+| Toast UI | « Diagnostic FAST terminé : 120 scène(s) en cache. » | inchangé |
+| ntfy push | « Ingestion FAST terminée : 120 scènes, 0 observations en 3 min. » | « Diagnostic FAST terminé : 120 scène(s) en cache (3 min). » |
+
+**Détails techniques** :
+
+* `R/utils_i18n.R::monitoring_ntfy_ingest_complete` : format passe
+  de `%d %d %s` → `%d %s` (retrait du `n_obs`). Wording « Ingestion
+  FAST terminée » → « Diagnostic FAST terminé ».
+* `R/service_monitoring.R::~l.301` : `sprintf(...)` retire
+  l'argument `as.integer(summary$n_obs_inserted %||% 0L)`.
+* `tests/testthat/test-service_monitoring.R::~l.278` : test
+  `sprintf` ajusté pour 2 args (était 3).
+
+### Pas de breaking change
+
+Strictement défensif côté toast. Le push ntfy n'expose plus une
+métrique trompeuse (0 toujours). Surface app + ntfy alignées.
+
+### Tests
+
+* 2760 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
 # nemetonshiny 0.70.3 (2026-06-03)
 
 ### Fixed — Toast d'ingestion FAST initialisé à `(1/N)` (au lieu de sauter à `(2/N)`)

@@ -1308,6 +1308,16 @@ mod_monitoring_server <- function(id, app_state) {
     # first invoke. The reactivePoll below watches this path and the
     # toast observer re-renders the persistent "X/N tuiles..." card.
     ingest_progress_path <- shiny::reactiveVal(NULL)
+    # v0.70.4 — Garde contre le re-traitement du result du worker
+    # FAST. Shiny ExtendedTask$result() peut, dans certains cycles
+    # de vie (cascade reactive, transition status, etc.), refire
+    # plusieurs fois pour le MÊME result. Sans garde, l'observer
+    # de fin de worker (l.~2020) ré-émet le toast
+    # `monitoring_ingest_success` (duration = 6 s) → l'utilisateur
+    # voit le toast apparaître, disparaître après 6 s, ré-apparaître,
+    # plusieurs fois. Le flag est reset à FALSE à chaque
+    # `fast_task$invoke()` (cf. observeEvent input$run).
+    fast_result_consumed <- shiny::reactiveVal(FALSE)
 
     # Path to the worker console log. The worker `sink()`s its stdout
     # and message stream to this file (see service_monitoring.R) so we
@@ -1839,6 +1849,10 @@ mod_monitoring_server <- function(id, app_state) {
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
       force_unlock_quick(FALSE)
+      # v0.70.4 — Reset le flag idempotence : le prochain
+      # `fast_task$result()` doit être traité (toast success /
+      # error émis).
+      fast_result_consumed(FALSE)
       # v0.52.0 — Purge un éventuel cancel_path résiduel d'un run
       # précédent (sinon, le worker abandonne dès la 1re tuile !).
       # Idempotent : `unlink` sur fichier absent retourne 0 sans erreur.
@@ -2023,6 +2037,14 @@ mod_monitoring_server <- function(id, app_state) {
         fast_task$result(),
         error = function(e) {
           if (inherits(e, "shiny.silent.error")) stop(e)
+          # v0.70.4 — Garde idempotence (cf. fast_result_consumed)
+          # appliquée AUSSI au branchement erreur : sans elle, un
+          # re-fire de l'observer post-erreur ré-émet le toast
+          # `ingest_error`.
+          if (isTRUE(shiny::isolate(fast_result_consumed()))) {
+            return(NULL)
+          }
+          fast_result_consumed(TRUE)
           shiny::removeNotification(session$ns("ingest_progress"))
           .cleanup_progress_file(ingest_progress_path())
           ingest_progress_path(NULL)
@@ -2039,6 +2061,16 @@ mod_monitoring_server <- function(id, app_state) {
         }
       )
       if (!is.null(result)) {
+        # v0.70.4 — Garde idempotence : `fast_task$result()` peut
+        # refire plusieurs fois pour le MÊME result (cascade
+        # reactive, transition status, etc.). Sans cette garde, le
+        # toast `monitoring_ingest_success` (duration = 6 s) était
+        # ré-émis plusieurs fois → clignotement visible côté UX.
+        # Le flag est reset à FALSE dans observeEvent(input$run).
+        if (isTRUE(shiny::isolate(fast_result_consumed()))) {
+          return()
+        }
+        fast_result_consumed(TRUE)
         shiny::removeNotification(session$ns("ingest_progress"))
         .cleanup_progress_file(ingest_progress_path())
         ingest_progress_path(NULL)

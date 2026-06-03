@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.70.4] - 2026-06-03
+
+### Fixed
+
+- **Toast `ingest_success` qui clignote** : nouveau
+  `fast_result_consumed` reactiveVal qui garde contre les re-fires
+  multiples de `fast_task$result()`. Reset à `FALSE` dans
+  `observeEvent(input$run)` pour le prochain Diagnostic FAST.
+  S'applique aussi au branchement erreur (toast `ingest_error`).
+
+### Changed
+
+- **Cohérence ntfy ↔ toast UI** : push `monitoring_ntfy_ingest_complete`
+  retire le `%d observations` (toujours 0 depuis nemeton@v0.58.0,
+  déjà retiré du toast UI en v0.53.1) et aligne le wording
+  « Ingestion FAST terminée » → « Diagnostic FAST terminé ».
+  Test `sprintf` ajusté pour 2 args (était 3).
+
 ## [0.70.3] - 2026-06-03
 
 ### Fixed
