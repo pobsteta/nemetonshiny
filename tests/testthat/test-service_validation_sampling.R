@@ -108,7 +108,7 @@ test_that("generate_validation_plan FORDEAD happy path enriches provenance", {
 
 test_that("generate_validation_plan FAST path reuses cached mask when present", {
   proj <- .make_project_with_zone(zone_id = 9L)
-  fast_dir <- file.path(proj$path, "cache", "layers", "fast",
+  fast_dir <- file.path(proj$path, "cache", "layers", "fast_sampling",
                         "zone_9")
   dir.create(fast_dir, recursive = TRUE, showWarnings = FALSE)
   file.create(file.path(fast_dir, "fast_alert_20260524T080000.tif"))

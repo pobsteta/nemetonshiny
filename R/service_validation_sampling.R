@@ -182,8 +182,11 @@ generate_validation_plan <- function(con, project,
       }
     ))
   }
-  # FAST path.
-  cd <- file.path(project$path, "cache", "layers", "fast")
+  # FAST path. v0.69.0 — répertoire renommé `fast/` → `fast_sampling/`
+  # pour clarifier le scope (validation d'échantillonnage), à
+  # distinguer du cache `fast_alert/` et `fast_alert_mask/` du
+  # contexte monitoring.
+  cd <- file.path(project$path, "cache", "layers", "fast_sampling")
   if (!dir.exists(cd)) {
     dir.create(cd, recursive = TRUE, showWarnings = FALSE)
   }
@@ -255,7 +258,7 @@ generate_validation_plan <- function(con, project,
     file.path(project$path, "cache", "layers", "fordead",
               sprintf("zone_%d", zone_id))
   } else {
-    file.path(project$path, "cache", "layers", "fast",
+    file.path(project$path, "cache", "layers", "fast_sampling",
               sprintf("zone_%d", zone_id))
   }
   if (!dir.exists(base)) return(NA_character_)

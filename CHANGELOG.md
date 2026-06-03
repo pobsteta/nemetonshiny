@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.69.0] - 2026-06-03
+
+### Changed
+
+- **Renommage du cache `cache/layers/fast/` → `cache/layers/fast_sampling/`**
+  (validation_sampling). Clarifie le contexte vs `fast_alert/` et
+  `fast_alert_mask/` (monitoring). Pas de migration automatique :
+  l'ancien `fast/` reste orphelin sur projets existants (suppression
+  manuelle recommandée).
+
+### Migration
+
+- Projets existants : `rm -rf <projet>/cache/layers/fast/` pour
+  récupérer l'espace disque. Le nouveau cache `fast_sampling/` sera
+  créé à la prochaine demande de validation_sampling.
+
 ## [0.68.0] - 2026-06-03
 
 ### Changed

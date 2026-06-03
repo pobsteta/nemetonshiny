@@ -1,3 +1,56 @@
+# nemetonshiny 0.69.0 (2026-06-03)
+
+### Changed — Renommage du cache `cache/layers/fast/` → `cache/layers/fast_sampling/`
+
+Le sous-répertoire `cache/layers/fast/` utilisé par le module
+**validation_sampling** (cache des masques 0-4 pour la prévisualisation
+de plan d'échantillonnage) est renommé en
+**`cache/layers/fast_sampling/`**. La sémantique restait ambiguë avec
+les caches voisins du **monitoring** :
+
+| Avant v0.69.0 | Après v0.69.0 | Contexte |
+|---|---|---|
+| `cache/layers/fast/` | `cache/layers/fast_sampling/` | Validation d'échantillonnage (spec 011) |
+| `cache/layers/fast_alert/` | inchangé | Cache D6 raster continu monitoring (spec 017) |
+| `cache/layers/fast_alert_mask/` | inchangé | Mask 0-4 catégoriel monitoring (spec 017 D2) |
+
+**Pourquoi** : trois caches FAST coexistaient, dont un (`fast/`) au
+nom générique sans rapport explicite avec son usage. Le nouveau nom
+`fast_sampling` reflète clairement qu'il appartient au contexte
+validation_sampling, pas au monitoring direct.
+
+### Migration
+
+**Pas de migration automatique** (décision UX consciente). Sur les
+projets existants ayant déjà préchauffé un `cache/layers/fast/`,
+l'ancien répertoire restera orphelin sur disque. Le nouveau code
+créera `cache/layers/fast_sampling/` à la prochaine demande de
+validation_sampling. Suppression manuelle de l'ancien recommandée
+pour récupérer l'espace disque :
+
+```bash
+rm -rf <projet>/cache/layers/fast/
+```
+
+### Détails techniques
+
+* `R/service_validation_sampling.R` lignes 186, 258 : `"fast"` →
+  `"fast_sampling"` dans les 2 `file.path()`.
+* `R/mod_validation_sampling.R` lignes 278, 439 : idem dans les 2
+  branches discriminantes `if (FORDEAD) ... else ...`.
+* `tests/testthat/test-service_validation_sampling.R:111` : test mis
+  à jour pour créer `fast_sampling/zone_9` au lieu de `fast/zone_9`.
+
+### Pas de breaking change fonctionnel
+
+L'API consommée (`nemeton::read_fast_alert_mask`,
+`compute_fast_alert_mask`) est inchangée. Seul le chemin de cache
+côté projet utilisateur change de nom.
+
+### Tests
+
+* 18 pass / 0 fail sur `test-service_validation_sampling.R`.
+
 # nemetonshiny 0.68.0 (2026-06-03)
 
 ### Changed — Plancher cœur bumpé à `nemeton (>= 0.65.0)`
