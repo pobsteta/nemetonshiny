@@ -1,3 +1,70 @@
+# nemetonshiny 0.68.0 (2026-06-03)
+
+### Changed — Plancher cœur bumpé à `nemeton (>= 0.65.0)`
+
+Le brief `nemeton/BRIEF-nemetonshiny-fast-6-cartes.md` documente
+l'API publiée par nemeton v0.65.0 pour le Diagnostic FAST 6 cartes
+(3 indices × 2 modes) :
+
+* Fix régression spec 019 D3 : `.enumerate_cache_scenes()` n'avait
+  **pas** de branche NDMI dans son switch d'index, donc
+  `compute_fast_alert_mask(index = "NDMI", ...)` renvoyait
+  systématiquement `NULL` côté cœur même quand B08 + B11 étaient
+  cachés. **Conséquence côté app** : la radio NDMI (introduite
+  côté UI en v0.66.0) ne produisait jamais de carte tant que le
+  plancher cœur restait à v0.64.0.
+* Nouveau symbole exporté `read_fast_alert_rasters()` (pluriel) :
+  orchestrateur 3 indices × 2 modes = 6 rasters continus en un
+  appel. Pas encore consommé par l'app (le pipeline mono-index
+  `compute_fast_alert_mask()` via les radios reste l'unique entrée
+  d'affichage en v0.68.0).
+
+**Effet utilisateur** : après réinstall (`@*release` tire
+automatiquement la dernière release cœur), sélectionner NDMI dans
+les radios Alertes FAST ou Carte FAST produit désormais une carte
+(au lieu d'une banderole jaune « non calculable »).
+
+### Changed — Message i18n pour le cas « aucune scène cachée »
+
+Le banderole jaune affichée quand `compute_fast_alert_mask()` renvoie
+`NULL` (raster non calculable) contenait un littéral FR :
+
+```
+"%s : aucun raster d'alerte calculable (cache vide ou hors fenêtre)."
+```
+
+→ Remplacé par `sprintf(i18n_r()$t("monitoring_fast_alerts_no_scene"),
+idx)` (règle stricte CLAUDE.md §4). Nouvelle clé i18n FR/EN avec
+wording explicite : « aucune scène cachée ne porte les bandes de
+cet indice dans la fenêtre » — couvre le cas typique où NDMI exige
+B08+B11 et la zone n'a que B08+B04 cachés.
+
+### Détails techniques
+
+* `DESCRIPTION` : `Imports: nemeton (>= 0.64.0)` → `>= 0.65.0`.
+* `R/mod_monitoring_fast_alerts.R::raster_r` (~l.323) : littéral FR
+  remplacé par `sprintf(i18n_r()$t("monitoring_fast_alerts_no_scene"),
+  idx)`.
+* `R/utils_i18n.R` : nouvelle clé `monitoring_fast_alerts_no_scene`
+  (FR/EN).
+
+### Vérification rapide
+
+Sur une zone avec cache S2 incluant B08 + B11 (B11 cachée
+systématiquement en best-effort par
+`ingest_sentinel2_timeseries()` depuis spec 019 D3) :
+
+* radio « NDMI » + mode « count » → carte affichée (avant v0.68.0 :
+  bandeau jaune systématique)
+* les 6 combinaisons indice × mode rendent une carte ou un état
+  vide explicite via la nouvelle clé i18n
+
+### Pas de breaking change
+
+L'API consommée côté app (`compute_fast_alert_mask`) est inchangée.
+Le plancher v0.65.0 est rétro-compatible avec tout le code app
+existant.
+
 # nemetonshiny 0.67.1 (2026-06-03)
 
 ### Fixed — Bug d'oscillation des radios Alertes FAST

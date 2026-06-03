@@ -321,8 +321,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         }
       )
       if (is.null(mask_path) || !nzchar(mask_path)) {
+        # v0.68.0 — Message i18n (brief FAST 6 cartes nemeton@v0.65.0).
+        # Cas typique : aucune scène cachée ne porte les bandes de
+        # l'indice dans la fenêtre (par ex. NDMI demande B08+B11,
+        # une zone sans B11 produira NULL).
         last_raster_error(sprintf(
-          "%s : aucun raster d'alerte calculable (cache vide ou hors fenêtre).",
+          i18n_r()$t("monitoring_fast_alerts_no_scene"),
           idx
         ))
         return(NULL)
