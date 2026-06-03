@@ -83,6 +83,8 @@ test_that("mod_rag_admin_ui renders the expected controls", {
       expect_true(grepl("rag_admin-inventory", html))
       expect_true(grepl("rag_admin-add_row", html))
       expect_true(grepl("rag_admin-delete_doc", html))
+      expect_true(grepl("rag_admin-import_csv", html))
+      expect_true(grepl("rag_admin-export_csv", html))
     }
   )
 })
@@ -220,6 +222,51 @@ test_that("preview runs a dry-run build and stores the report", {
       session$setInputs(preview = 1L)
       expect_equal(nrow(session$returned$report()), 1L)
       expect_identical(session$returned$report()$action[[1]], "planned")
+    }
+  )
+})
+
+test_that("importing a manifest CSV replaces the editable table", {
+  skip_if_not_installed("shiny")
+  skip_if_not(exists("read_knowledge_manifest", where = asNamespace("nemeton"),
+                     inherits = FALSE),
+              "nemeton >= 0.63.0 (knowledge_* API) not installed")
+
+  imported <- data.frame(
+    doc_id = c("x1", "x2", "x3"),
+    title  = c("X1", "X2", "X3"),
+    stringsAsFactors = FALSE
+  )
+
+  testthat::local_mocked_bindings(
+    knowledge_manifest_path  = function(writable = TRUE) tempfile(fileext = ".csv"),
+    # Seed with 2 rows; the uploaded file parses to 3 rows.
+    read_knowledge_manifest  = function(path) {
+      if (grepl("uploaded", path)) imported else .rag_fake_manifest()
+    },
+    knowledge_manifest_vocab = function() list(langs = c("fr", "en")),
+    validate_knowledge_manifest = function(manifest) data.frame(
+      row = integer(0), severity = character(0)),
+    .package = "nemeton"
+  )
+
+  mock_app_state <- shiny::reactiveValues(
+    language = "fr",
+    auth = list(authenticated = TRUE, user_roles = character(0))
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_rag_admin_server,
+    args = list(id = "rag_admin", app_state = mock_app_state,
+                con = NULL, con_url = function() ""),
+    {
+      expect_equal(nrow(session$returned$manifest()), 2L)   # seeded
+      session$setInputs(import_csv = list(
+        name = "uploaded.csv", size = 10L, type = "text/csv",
+        datapath = file.path(tempdir(), "uploaded.csv")
+      ))
+      expect_equal(nrow(session$returned$manifest()), 3L)   # imported
+      expect_identical(session$returned$manifest()$doc_id, c("x1", "x2", "x3"))
     }
   )
 })

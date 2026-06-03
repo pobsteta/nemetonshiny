@@ -3052,6 +3052,17 @@ TRANSLATIONS <- list(
   rag_btn_delete_row = list(fr = "Supprimer la ligne", en = "Delete row"),
   rag_btn_delete = list(fr = "Supprimer le document", en = "Delete document"),
   rag_btn_refresh = list(fr = "Rafra\u00eechir", en = "Refresh"),
+  rag_btn_import_csv = list(fr = "Importer un CSV", en = "Import CSV"),
+  rag_btn_export_csv = list(fr = "Exporter (CSV)", en = "Export (CSV)"),
+  rag_import_csv_placeholder = list(fr = "Aucun fichier", en = "No file"),
+  rag_import_csv_ok = list(
+    fr = "Manifeste import\u00e9 (%d documents). V\u00e9rifiez puis Enregistrer.",
+    en = "Manifest imported (%d documents). Review then Save."
+  ),
+  rag_import_csv_error = list(
+    fr = "Import impossible : %s",
+    en = "Import failed: %s"
+  ),
   rag_opt_include_tbc = list(
     fr = "Inclure les documents \u00e0 confirmer (avertissement licence D5)",
     en = "Include to-confirm documents (D5 licence warning)"

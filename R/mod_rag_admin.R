@@ -126,13 +126,29 @@ mod_rag_admin_ui <- function(id) {
       # ---- Manifest ----------------------------------------------------
       shiny::h5(i18n$t("rag_manifest_section")),
       shiny::div(
-        class = "d-flex gap-2 mb-2",
+        class = "d-flex gap-2 mb-2 flex-wrap align-items-end",
         shiny::actionButton(ns("add_row"), i18n$t("rag_btn_add_row"),
                             icon = shiny::icon("plus"),
                             class = "btn-outline-secondary btn-sm"),
         shiny::actionButton(ns("delete_row"), i18n$t("rag_btn_delete_row"),
                             icon = shiny::icon("trash"),
-                            class = "btn-outline-secondary btn-sm")
+                            class = "btn-outline-secondary btn-sm"),
+        shiny::downloadButton(ns("export_csv"), i18n$t("rag_btn_export_csv"),
+                              icon = shiny::icon("download"),
+                              class = "btn-outline-secondary btn-sm"),
+        # Import a manifest CSV from disk : parsed by
+        # nemeton::read_knowledge_manifest() then loaded into the
+        # editable table (the on-disk CSV is only overwritten on Save).
+        htmltools::div(
+          class = "ms-auto mb-0",
+          style = "max-width: 320px;",
+          shiny::fileInput(
+            ns("import_csv"), label = NULL,
+            accept = c(".csv", "text/csv", "text/comma-separated-values"),
+            buttonLabel = i18n$t("rag_btn_import_csv"),
+            placeholder = i18n$t("rag_import_csv_placeholder")
+          )
+        )
       ),
       DT::DTOutput(ns("manifest")),
 
@@ -368,6 +384,49 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
       man(man()[-sel, , drop = FALSE])
       manifest_redraw(manifest_redraw() + 1L)
     })
+
+    # ---- import / export manifest CSV -------------------------------------
+    # Import : parse the uploaded file with the core reader (no parsing
+    # logic app-side) and load it into the editable table. The on-disk
+    # CSV is NOT touched until the user clicks Save — so an import can be
+    # reviewed / fixed first. Validation reacts immediately via issues().
+    shiny::observeEvent(input$import_csv, {
+      i18n  <- lang()
+      finfo <- input$import_csv
+      if (is.null(finfo) || is.null(finfo$datapath)) return()
+      df <- tryCatch(
+        nemeton::read_knowledge_manifest(finfo$datapath),
+        error = function(e) {
+          shiny::showNotification(
+            sprintf(i18n$t("rag_import_csv_error"), conditionMessage(e)),
+            type = "error")
+          NULL
+        }
+      )
+      if (is.null(df)) return()
+      man(df)
+      manifest_redraw(manifest_redraw() + 1L)
+      shiny::showNotification(
+        sprintf(i18n$t("rag_import_csv_ok"), nrow(df)), type = "message")
+    })
+
+    # Export : write the CURRENT (possibly edited, unsaved) manifest with
+    # the core's deterministic quoting. `validate = FALSE` so an export
+    # is never blocked by outstanding warnings/errors. Falls back to a
+    # plain CSV writer if the core helper is unavailable.
+    output$export_csv <- shiny::downloadHandler(
+      filename = function() "knowledge_manifest.csv",
+      content = function(file) {
+        ok <- tryCatch({
+          nemeton::write_knowledge_manifest(man(), path = file,
+                                            validate = FALSE)
+          TRUE
+        }, error = function(e) FALSE)
+        if (!isTRUE(ok)) {
+          utils::write.csv(man(), file, row.names = FALSE, na = "")
+        }
+      }
+    )
 
     # ---- validation panel -------------------------------------------------
     output$issues <- DT::renderDT({

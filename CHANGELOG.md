@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.65.0] - 2026-06-03
+
+### Added
+
+- **Corpus RAG** : import d'un manifeste CSV depuis le disque
+  (`fileInput`, parsé par `read_knowledge_manifest()`, chargé dans la
+  table éditable sans écraser le CSV tant que non enregistré) et export
+  du manifeste courant (`downloadButton`, `write_knowledge_manifest(
+  validate = FALSE)` avec repli `utils::write.csv`). Clés i18n
+  `rag_btn_import_csv`, `rag_btn_export_csv`, `rag_import_csv_*`.
+
 ## [0.64.1] - 2026-06-03
 
 ### Fixed

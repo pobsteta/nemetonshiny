@@ -1,3 +1,27 @@
+# nemetonshiny 0.65.0 (2026-06-03)
+
+### Added — Corpus RAG : import / export du manifeste (CSV)
+
+L'onglet « Corpus RAG » du modal Paramètres gagne deux contrôles :
+
+* **Importer un CSV** (`fileInput`) : charge un manifeste depuis le
+  disque. Le fichier est parsé par `nemeton::read_knowledge_manifest()`
+  (aucune logique de parsing côté app) et chargé dans la table éditable.
+  Le CSV inscriptible sur disque **n'est pas écrasé** tant que l'on n'a
+  pas cliqué « Enregistrer » — l'import peut donc être relu / corrigé /
+  validé avant persistance. La validation réagit immédiatement.
+* **Exporter (CSV)** (`downloadButton`) : télécharge le manifeste
+  courant (y compris les éditions non enregistrées) avec le *quoting*
+  déterministe du cœur (`write_knowledge_manifest(validate = FALSE)`,
+  jamais bloqué par des avertissements), repli sur `utils::write.csv`
+  si l'helper cœur est indisponible.
+
+Pour mémoire, le corpus **exemple** est déjà amorcé automatiquement au
+1er accès depuis le seed packagé `nemeton` (`knowledge_manifest_path(
+writable = TRUE)`) — l'import sert à charger *son propre* manifeste.
+Clés i18n `rag_btn_import_csv`, `rag_btn_export_csv`,
+`rag_import_csv_placeholder`, `rag_import_csv_ok`, `rag_import_csv_error`.
+
 # nemetonshiny 0.64.1 (2026-06-03)
 
 ### Fixed — Modal Paramètres : onglet LLM vidé par l'init DT de l'onglet RAG
