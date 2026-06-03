@@ -10,6 +10,27 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.62.0] - 2026-06-03
+
+### Added
+
+- **Onglet « RAG / Corpus de connaissances »** (menu Paramètres, spec
+  009.2, E7). Module `R/mod_rag_admin.R` : édition du manifeste corpus
+  (table `DT` éditable, ajout/suppression de lignes, vocabulaire
+  contrôlé), validation en direct (`validate_knowledge_manifest`),
+  enregistrement (`write_knowledge_manifest`), prévisualisation
+  dry-run, import asynchrone (`ExtendedTask` + `future_promise`,
+  connexion ouverte dans le worker, `api_key` explicite, heartbeat de
+  progression), inventaire base (`list_knowledge_documents`) et
+  suppression (`delete_knowledge_document`). Accès réservé aux
+  administrateurs (`can_admin_rag`).
+- ~30 clés i18n FR/EN (`rag_*`, `tab_settings`).
+
+### Changed
+
+- `Imports: nemeton (>= 0.63.0)` — le code consomme l'API
+  manifeste/corpus publiée par la spec 009.2 du cœur.
+
 ## [0.61.2] - 2026-06-02
 
 ### Changed
