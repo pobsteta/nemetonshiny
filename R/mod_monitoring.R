@@ -150,6 +150,15 @@ mod_monitoring_ui <- function(id) {
                 ns("threshold_nbr"), i18n$t("monitoring_threshold_nbr"),
                 min = 0.10, max = 0.80, value = 0.30, step = 0.01
               ),
+              # NDMI (humidité) : seuil minimum sous lequel un pixel est
+              # en alerte (NDMI baisse sous stress hydrique). NDMI sain
+              # est plus bas que NDVI/NBR, d'où un défaut moindre.
+              # Consommé par l'onglet Alertes/Carte FAST quand l'indice
+              # NDMI est sélectionné (nemeton >= 0.64.0).
+              shiny::sliderInput(
+                ns("threshold_ndmi"), i18n$t("monitoring_threshold_ndmi"),
+                min = 0.10, max = 0.80, value = 0.20, step = 0.01
+              ),
               shiny::numericInput(
                 ns("window_days"), i18n$t("monitoring_window_days"),
                 value = 30L, min = 7L, max = 90L, step = 1L
@@ -2376,7 +2385,8 @@ mod_monitoring_server <- function(id, app_state) {
       # `index` (relicat de v0.52.13).
       thresholds_r   = shiny::reactive(list(
         ndvi = input$threshold_ndvi,
-        nbr  = input$threshold_nbr
+        nbr  = input$threshold_nbr,
+        ndmi = input$threshold_ndmi
       ))
     )
 
@@ -2399,6 +2409,7 @@ mod_monitoring_server <- function(id, app_state) {
       thresholds_r = shiny::reactive(list(
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
+        ndmi        = input$threshold_ndmi,
         window_days = input$window_days
       )),
       refresh_r    = shiny::reactive(fast_reload())
@@ -2442,6 +2453,7 @@ mod_monitoring_server <- function(id, app_state) {
         index       = fast_alerts_ret$index_r() %||% "NDVI",
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
+        ndmi        = input$threshold_ndmi,
         window_days = input$window_days
       )),
       date_range_r = shiny::reactive(input$date_range),
@@ -2461,6 +2473,7 @@ mod_monitoring_server <- function(id, app_state) {
         index       = "NDVI",
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
+        ndmi        = input$threshold_ndmi,
         window_days = input$window_days
       )),
       date_range_r = shiny::reactive(input$date_range),

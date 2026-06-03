@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.67.0] - 2026-06-03
+
+### Added
+
+- Slider **« Seuil minimum NDMI »** dans la sidebar Suivi sanitaire
+  (range 0.10–0.80, défaut 0.20). Propagé via `thresholds_r$ndmi` aux
+  consommateurs FAST ; les onglets Alertes FAST / validation lisent
+  `th$ndmi` quand NDMI est l'indice sélectionné (repli NDVI sinon). Clé
+  i18n `monitoring_threshold_ndmi`.
+
 ## [0.66.0] - 2026-06-03
 
 ### Added

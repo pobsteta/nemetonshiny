@@ -1,3 +1,20 @@
+# nemetonshiny 0.67.0 (2026-06-03)
+
+### Added — Slider « Seuil minimum NDMI » dans la sidebar Suivi sanitaire
+
+Complément de v0.66.0 : le panneau de gauche du Suivi sanitaire ne
+proposait des seuils que pour NDVI et NBR ; NDMI réutilisait donc le
+seuil NDVI. Un slider dédié **« Seuil minimum NDMI »** est ajouté sous
+les deux autres (range 0.10–0.80, défaut 0.20 — NDMI sain est plus bas
+que NDVI/NBR).
+
+* Propagé via `thresholds_r$ndmi` aux 4 consommateurs (Carte FAST,
+  Alertes FAST, et les deux plans de validation FAST/FORDEAD).
+* Les onglets Alertes FAST / validation lisent désormais `th$ndmi`
+  quand l'indice NDMI est sélectionné (repli sur le seuil NDVI si
+  absent, par robustesse).
+* Clé i18n `monitoring_threshold_ndmi` (FR/EN).
+
 # nemetonshiny 0.66.0 (2026-06-03)
 
 ### Added — NDMI dans l'UI FAST (humidité / stress hydrique)

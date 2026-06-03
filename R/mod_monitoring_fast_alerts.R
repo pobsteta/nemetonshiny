@@ -251,7 +251,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # sidebar parent. Le `threshold` correspondant reste lu depuis
       # le sidebar parent via `thresholds_r$ndvi` / `$nbr`.
       idx <- input$index %||% "NDVI"
-      thr <- if (identical(idx, "NBR")) th$nbr else th$ndvi
+      # Per-index threshold from the parent sidebar. NDMI uses its own
+      # slider (th$ndmi), falling back to the NDVI threshold if absent.
+      thr <- switch(idx,
+                    NBR  = th$nbr,
+                    NDMI = th$ndmi %||% th$ndvi,
+                    th$ndvi)
       # v0.57.0 — Passage du raster CONTINU au mask catégoriel 0-4
       # (quartiles, spec 017 D1-D2 nemeton@v0.55.0+). On appelle
       # désormais `nemeton::compute_fast_alert_mask()` qui produit
