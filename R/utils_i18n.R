@@ -2725,9 +2725,12 @@ TRANSLATIONS <- list(
   # placeholders. Sent worker-side par run_ingestion_async() : start
   # avant l'appel n\u00e9meton, scenes (one-shot) \u00e0 la premi\u00e8re event
   # s2:scene, complete/error en sortie.
+  # v0.71.1 \u2014 Wording align\u00e9 sur le toast UI et le push complete
+  # (\u00ab Diagnostic FAST termin\u00e9 \u00bb). Coh\u00e9rence end-to-end : d\u00e9marrage
+  # = \u00ab Diagnostic FAST d\u00e9marr\u00e9 \u00bb, fin = \u00ab Diagnostic FAST termin\u00e9 \u00bb.
   monitoring_ntfy_ingest_start = list(
-    fr = "Ingestion FAST d\u00e9marr\u00e9e (zone %s).",
-    en = "FAST ingestion started (zone %s)."
+    fr = "Diagnostic FAST d\u00e9marr\u00e9 (zone %s).",
+    en = "FAST diagnostic started (zone %s)."
   ),
   monitoring_ntfy_ingest_scenes = list(
     fr = "T\u00e9l\u00e9chargement Sentinel-2 : %d sc\u00e8nes \u00e0 traiter.",

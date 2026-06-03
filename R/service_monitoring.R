@@ -440,6 +440,12 @@ run_fordead_async <- function() {
                                    zone_id = NULL, cache_dir = NULL,
                                    db_url = "", progress_path = NULL,
                                    lang = "fr",
+                                   # v0.71.1 — output_dir + keep_output
+                                   # forwardés au cœur. Sans cela, le
+                                   # cœur utilisait `tempfile("fordead_")`
+                                   # (/tmp), supprimé en fin de run.
+                                   output_dir = NULL,
+                                   keep_output = TRUE,
                                    cancel_path = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
@@ -487,6 +493,18 @@ run_fordead_async <- function() {
         title = "Nemeton FORDEAD"
       )
 
+      # v0.71.1 — Si output_dir est NULL (cas legacy ou worker invoqué
+      # sans le param), garder le défaut cœur (tempfile). Sinon,
+      # créer le dossier côté worker (le mkdir côté main session
+      # peut avoir échoué).
+      if (!is.null(output_dir) && nzchar(output_dir)) {
+        if (!dir.exists(output_dir)) {
+          tryCatch(
+            dir.create(output_dir, recursive = TRUE, showWarnings = FALSE),
+            error = function(e) NULL
+          )
+        }
+      }
       result <- tryCatch(
         nemeton::run_fordead_dieback(
           con               = con,
@@ -497,6 +515,15 @@ run_fordead_async <- function() {
           threshold_anomaly = threshold_anomaly,
           vegetation_index  = vegetation_index,
           progress_callback = progress_cb,
+          # v0.71.1 — Forward output_dir + keep_output au cœur
+          # (`nemeton::run_fordead_dieback`). Par défaut le cœur
+          # utilisait `tempfile("fordead_")` → /tmp. Désormais les
+          # outputs intermédiaires (training, masks bruts) vivent
+          # sous `<projet>/cache/layers/fordead/output_zone_<id>` et
+          # sont préservés (`keep_output = TRUE`) — inspectables.
+          # NULL = retombe sur le défaut cœur (back-compat).
+          output_dir        = output_dir,
+          keep_output       = keep_output,
           # v0.52.0 — cancel coopératif (nemeton@v0.53.0). Le worker
           # polled `file.exists(cancel_path)` entre phases reticulate
           # (training → monitoring → écriture alertes). Granularité

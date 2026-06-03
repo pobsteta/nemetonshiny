@@ -10,6 +10,30 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.71.1] - 2026-06-03
+
+### Fixed
+
+- **Toast `fordead_success` qui clignote + bouton FORDEAD perçu grisé** :
+  garde d'idempotence `fordead_result_consumed` reactiveVal
+  (symétrique FAST v0.70.4). Reset à `FALSE` dans
+  `observeEvent(input$run_health)`.
+- **Push ntfy « Ingestion FAST démarrée »** : wording aligné avec
+  le toast UI et le push complete → « Diagnostic FAST démarré ».
+  Cohérence end-to-end.
+
+### Changed
+
+- **FORDEAD output_dir : fin de la pollution `/tmp/`** : le worker
+  passe désormais `output_dir = <projet>/cache/layers/fordead/output_zone_<id>`
+  + `keep_output = TRUE` à `nemeton::run_fordead_dieback()`.
+  Per-zone, écrasé à chaque relance, taille bornée. Outputs
+  préservés (training, masks bruts) → inspection admin possible.
+- Nouveau helper `.resolve_fordead_output_dir(project, zone_id)`.
+- `run_fordead_async()` : signature ExtendedTask étendue avec
+  `output_dir = NULL` + `keep_output = TRUE` (NULL = retombe sur
+  le défaut cœur, back-compat).
+
 ## [0.71.0] - 2026-06-03
 
 ### Added
