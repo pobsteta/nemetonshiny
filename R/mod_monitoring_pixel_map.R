@@ -68,10 +68,13 @@ mod_monitoring_pixel_map_ui <- function(id) {
         shiny::radioButtons(
           ns("index"),
           i18n$t("monitoring_pixel_map_index"),
-          choices  = c(NDVI = "NDVI", NBR = "NBR"),
+          # NDMI listed first (moisture / water-stress), NDVI default.
+          choices  = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR"),
           selected = "NDVI",
           inline   = TRUE
         ),
+        # NDMI hint + B11 re-ingestion note (shown only when NDMI active).
+        shiny::uiOutput(ns("ndmi_note")),
         shiny::uiOutput(ns("date_slider_ui")),
         # v0.61.0 — Le checkbox `raster_visible` est retiré : le toggle
         # de visibilité passe désormais entièrement par le LayersControl
@@ -377,6 +380,12 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       )
     })
 
+    # NDMI hint + B11 re-ingestion note — only when NDMI is selected.
+    output$ndmi_note <- shiny::renderUI({
+      if (!identical(input$index, "NDMI")) return(NULL)
+      .fast_ndmi_note(i18n_r())
+    })
+
     # Internal group labels for clearGroup() bookkeeping in the
     # observes below. NOT listed in addLayersControl(overlayGroups=)
     # anymore (see v0.30.2 fix): when overlayGroups is set in
@@ -546,7 +555,9 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           position = "bottomright",
           pal      = .pixel_palette,
           values   = c(-1, 1),
-          title    = input$index,
+          # NDMI shows its moisture-flavoured label; NDVI/NBR stay bare.
+          title    = if (identical(input$index, "NDMI"))
+            i18n_r()$t("index_ndmi") else input$index,
           opacity  = 0.9
         )
     })
@@ -764,7 +775,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
           cache_dir = cd, scenes_df = sdf,
           xy        = c(lng, lat),
           crs       = 4326,
-          indices   = c("NDVI", "NBR")
+          indices   = c("NDVI", "NBR", "NDMI")
         ),
         error = function(e) {
           cli::cli_alert_warning(sprintf(

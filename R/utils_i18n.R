@@ -2327,6 +2327,18 @@ TRANSLATIONS <- list(
     fr = "Alertes FAST — intensité du déficit %s sur fenêtre roulante, à la résolution Sentinel-2 (10 m)",
     en = "FAST alerts — %s deficit intensity over a rolling window, at Sentinel-2 resolution (10 m)"
   ),
+  index_ndmi = list(
+    fr = "NDMI (humidit\u00e9)",
+    en = "NDMI (moisture)"
+  ),
+  monitoring_fast_ndmi_hint = list(
+    fr = "NDMI : baisse sous stress hydrique.",
+    en = "NDMI: drops under water stress."
+  ),
+  monitoring_fast_ndmi_b11_note = list(
+    fr = "NDMI n\u00e9cessite la bande B11, cach\u00e9e seulement depuis les ingestions \u2265 v0.64.0. Pour une zone d\u00e9j\u00e0 ing\u00e9r\u00e9e, relancez l'ingestion Sentinel-2 (r\u00e9-ingestion compl\u00e8te, sans r\u00e9utiliser le cache) pour activer NDMI \u2014 sinon la carte NDMI reste vide.",
+    en = "NDMI requires band B11, cached only from ingestions \u2265 v0.64.0. For an already-ingested zone, re-run the Sentinel-2 ingestion (full re-ingest, not reusing the cache) to enable NDMI \u2014 otherwise the NDMI map stays empty."
+  ),
   # v0.55.0 — Clés utilisées par les toasts `fast_prewarm:*` émis par
   # le cœur (spec 018 nemeton@v0.61.0) consommés par l'observer
   # ingest_progress de mod_monitoring.R. Les noms `fast_mode_*` sont
@@ -2473,8 +2485,8 @@ TRANSLATIONS <- list(
 
   # ----- Pixel map sub-tab (spec 010) -----
   monitoring_pixel_map_title = list(
-    fr = "Carte pixel \u2014 NDVI / NBR \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
-    en = "Pixel map \u2014 NDVI / NBR at Sentinel-2 native resolution (10 m)"
+    fr = "Carte pixel \u2014 NDVI / NBR / NDMI \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
+    en = "Pixel map \u2014 NDVI / NBR / NDMI at Sentinel-2 native resolution (10 m)"
   ),
   monitoring_pixel_map_index = list(
     fr = "Indice spectral",

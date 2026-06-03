@@ -23,6 +23,27 @@
 # Pas de popup au clic — l'exploration pixel-par-pixel se fait sur
 # l'onglet « Carte FAST » (mod_monitoring_pixel_map).
 
+#' Shared NDMI hint + B11 re-ingestion note for the FAST tabs
+#'
+#' NDMI needs Sentinel-2 band B11, which is only cached from ingestions
+#' run with nemeton >= 0.64.0. For a zone ingested earlier, the NDMI map
+#' is empty (B11-less scenes are skipped) until the S2 series is
+#' re-ingested with `skip_cached = FALSE`. This note surfaces that.
+#'
+#' @param i18n An i18n translator object.
+#' @return An HTML div (or NULL is never returned — callers gate on the
+#'   selected index).
+#' @noRd
+.fast_ndmi_note <- function(i18n) {
+  htmltools::div(
+    class = "small fst-italic mt-1",
+    htmltools::tags$div(class = "text-muted",
+                        i18n$t("monitoring_fast_ndmi_hint")),
+    htmltools::tags$div(class = "text-warning",
+                        i18n$t("monitoring_fast_ndmi_b11_note"))
+  )
+}
+
 #' Alertes FAST sub-tab UI
 #'
 #' @param id Module namespace id.
@@ -59,12 +80,15 @@ mod_monitoring_fast_alerts_ui <- function(id) {
           shiny::radioButtons(
             ns("index"),
             label = i18n$t("monitoring_fast_index_label"),
-            choices = c(NDVI = "NDVI", NBR = "NBR"),
+            # NDMI first (moisture / water-stress), NDVI default.
+            choices = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR"),
             selected = "NDVI",
             inline = TRUE
           ),
           class = "mb-2"
         ),
+        # NDMI hint + B11 re-ingestion note (shown only when NDMI active).
+        shiny::uiOutput(ns("ndmi_note")),
         # v0.46.2 — `mb-0` retire le margin-bottom 1rem du form-group
         # par défaut. Le label est maintenant porté par `label =` (et
         # non plus par un `<strong>` sibling) puisqu'on est en sidebar
@@ -163,7 +187,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       shiny::updateRadioButtons(
         session, "index",
         label = i18n$t("monitoring_fast_index_label"),
-        choices = c(NDVI = "NDVI", NBR = "NBR"),
+        choices = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR"),
         selected = input$index %||% "NDVI",
         inline = TRUE
       )
@@ -330,6 +354,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         bsicons::bs_icon("map", class = "fs-5 flex-shrink-0"),
         htmltools::tags$span(sprintf(i18n$t(key), index))
       )
+    })
+
+    # NDMI hint + B11 re-ingestion note — only when NDMI is selected.
+    output$ndmi_note <- shiny::renderUI({
+      if (!identical(input$index %||% "NDVI", "NDMI")) return(NULL)
+      .fast_ndmi_note(i18n_r())
     })
 
     output$banner <- shiny::renderUI({

@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.66.0] - 2026-06-03
+
+### Added
+
+- **NDMI dans l'UI FAST** : indice d'humidité sélectionnable dans Carte
+  FAST et Alertes FAST (listé en premier, défaut NDVI). Propagation à
+  `build_index_stack()` / `compute_fast_alert_mask()` /
+  `extract_pixel_timeseries()` ; `bands = c("NDVI","NBR","NDMI")` à
+  l'ingestion (cache B11 + prewarm masques NDMI). Note B11 affichée
+  quand NDMI est sélectionné. Clés i18n `index_ndmi`,
+  `monitoring_fast_ndmi_hint`, `monitoring_fast_ndmi_b11_note`.
+
+### Changed
+
+- `Imports: nemeton (>= 0.64.0)` (API NDMI).
+
 ## [0.65.1] - 2026-06-03
 
 ### Fixed

@@ -1,5 +1,32 @@
 # Tests for the FAST alerts module helpers — v0.45.0.
 
+test_that("fast alerts UI exposes NDMI first with NDVI as default", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("bsicons")
+
+  ui <- nemetonshiny:::mod_monitoring_fast_alerts_ui("fa")
+  html <- as.character(ui)
+  expect_true(grepl("fa-index", html))
+  expect_true(grepl("NDMI", html))
+  # NDMI listed first; NDVI is the checked default.
+  expect_lt(regexpr('value="NDMI"', html), regexpr('value="NDVI"', html))
+  expect_match(html, 'value="NDVI"[^>]*checked', perl = TRUE)
+  # The NDMI note placeholder output is present.
+  expect_true(grepl("fa-ndmi_note", html))
+})
+
+test_that(".fast_ndmi_note renders the NDMI hint and the B11 re-ingest note", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  note <- nemetonshiny:::.fast_ndmi_note(i18n)
+  html <- as.character(note)
+  expect_true(grepl("NDMI", html))
+  expect_true(grepl("B11", html))
+  # English variant resolves too.
+  note_en <- nemetonshiny:::.fast_ndmi_note(nemetonshiny:::get_i18n("en"))
+  expect_true(grepl("B11", as.character(note_en)))
+})
+
 test_that(".classify_alert_count returns 4 prefixed bins for a wide distribution", {
   # 100-cell raster (10x10) : 50 zero pixels + values 1..50.
   r <- terra::rast(nrows = 10, ncols = 10,

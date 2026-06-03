@@ -1820,7 +1820,10 @@ mod_monitoring_server <- function(id, app_state) {
         end           = as.Date(dr[2]),
         # v0.61.0 — `bands` câblé en dur. Cf. commentaire dans la
         # sidebar (le checkboxGroupInput a été retiré).
-        bands         = c("NDVI", "NBR"),
+        # NDMI ajouté (nemeton >= 0.64.0) : l'ingestion cache la bande
+        # B11 nécessaire et le cœur pré-chauffe aussi les masques
+        # d'alerte NDMI (combinaisons index × mode de prewarm_alerts).
+        bands         = c("NDVI", "NBR", "NDMI"),
         max_cloud     = 20,
         # Pre-resolve here (the future worker can't see app_state) and
         # pass the URL explicitly. The fallback to a local SQLite file

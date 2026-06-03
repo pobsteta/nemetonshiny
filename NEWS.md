@@ -1,3 +1,31 @@
+# nemetonshiny 0.66.0 (2026-06-03)
+
+### Added — NDMI dans l'UI FAST (humidité / stress hydrique)
+
+NDMI (indice d'humidité, sensible au stress hydrique) est désormais
+sélectionnable dans les deux onglets FAST, en plus de NDVI / NBR.
+Aucune logique métier ajoutée : NDMI est calculé / seuillé /
+classifié 0-4 côté `nemeton` (>= 0.64.0).
+
+* **Sélecteur d'indice** (Carte FAST + Alertes FAST) : NDMI listé en
+  premier, défaut NDVI conservé. La valeur se propage telle quelle à
+  `build_index_stack()` (carte pixel) et `compute_fast_alert_mask()`
+  (alertes) — le seuil pour NDMI reprend celui de NDVI (« baisse sous
+  stress », même sémantique).
+* **Série temporelle pixel** : `extract_pixel_timeseries()` reçoit
+  désormais `indices = c("NDVI","NBR","NDMI")`.
+* **Pré-chauffage / ingestion** : `bands = c("NDVI","NBR","NDMI")`
+  passé à `ingest_sentinel2_timeseries()` → la bande B11 est cachée et
+  les masques d'alerte NDMI sont pré-calculés par le cœur.
+* **Note B11** : un encart (visible quand NDMI est sélectionné) signale
+  que NDMI nécessite la bande B11, cachée seulement depuis les
+  ingestions ≥ v0.64.0 — pour une zone déjà ingérée, il faut relancer
+  l'ingestion Sentinel-2 (sinon la carte NDMI reste vide).
+* Légende carte pixel et titre de couche adaptés (libellé
+  « NDMI (humidité) »). Clés i18n `index_ndmi`,
+  `monitoring_fast_ndmi_hint`, `monitoring_fast_ndmi_b11_note`.
+* `Imports: nemeton (>= 0.64.0)` (API NDMI).
+
 # nemetonshiny 0.65.1 (2026-06-03)
 
 ### Fixed — Clé i18n manquante `db_not_configured`

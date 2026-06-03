@@ -34,6 +34,10 @@ test_that("mod_monitoring_pixel_map_ui returns valid Shiny UI", {
       html <- as.character(ui)
       expect_true(grepl("pmap-map",   html))
       expect_true(grepl("pmap-index", html))
+      # NDMI wired into the index selector, listed FIRST, NDVI default.
+      expect_true(grepl("NDMI", html))
+      expect_lt(regexpr('value="NDMI"', html), regexpr('value="NDVI"', html))
+      expect_match(html, 'value="NDVI"[^>]*checked', perl = TRUE)
     }
   )
 })
