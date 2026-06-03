@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.70.5] - 2026-06-03
+
+### Removed
+
+- **Avertissement NDMI / bande B11 dans les sidebars FAST**
+  (Alertes FAST + Carte FAST). Obsolète depuis le plancher cœur
+  `nemeton (>= 0.65.1)` (v0.69.1 app) qui garantit la mise en
+  cache best-effort de B11 (spec 019 D3). Suppression du helper
+  `.fast_ndmi_note()`, des 2 `uiOutput` côté UI, des 2 `renderUI`
+  côté server, et des 2 clés i18n `monitoring_fast_ndmi_hint` +
+  `monitoring_fast_ndmi_b11_note`. Test
+  `.fast_ndmi_note renders...` retiré.
+
 ## [0.70.4] - 2026-06-03
 
 ### Fixed

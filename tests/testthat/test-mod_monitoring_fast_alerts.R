@@ -12,20 +12,17 @@ test_that("fast alerts UI exposes NDMI first with NDVI as default", {
   # NDMI listed first; NDVI is the checked default.
   expect_lt(regexpr('value="NDMI"', html), regexpr('value="NDVI"', html))
   expect_match(html, 'value="NDVI"[^>]*checked', perl = TRUE)
-  # The NDMI note placeholder output is present.
-  expect_true(grepl("fa-ndmi_note", html))
+  # v0.70.5 — Le placeholder `fa-ndmi_note` a été retiré avec le
+  # helper `.fast_ndmi_note()` (avertissement B11 obsolète depuis
+  # plancher cœur nemeton >= 0.65.1).
+  expect_false(grepl("fa-ndmi_note", html))
 })
 
-test_that(".fast_ndmi_note renders the NDMI hint and the B11 re-ingest note", {
-  i18n <- nemetonshiny:::get_i18n("fr")
-  note <- nemetonshiny:::.fast_ndmi_note(i18n)
-  html <- as.character(note)
-  expect_true(grepl("NDMI", html))
-  expect_true(grepl("B11", html))
-  # English variant resolves too.
-  note_en <- nemetonshiny:::.fast_ndmi_note(nemetonshiny:::get_i18n("en"))
-  expect_true(grepl("B11", as.character(note_en)))
-})
+# v0.70.5 — Test `.fast_ndmi_note` retiré : le helper a été
+# supprimé avec ses 2 clés i18n (`monitoring_fast_ndmi_hint` +
+# `monitoring_fast_ndmi_b11_note`). L'avertissement B11 était
+# obsolète depuis le plancher cœur `nemeton (>= 0.65.1)` qui
+# garantit la mise en cache best-effort de B11 (spec 019 D3).
 
 test_that(".classify_alert_count returns 4 prefixed bins for a wide distribution", {
   # 100-cell raster (10x10) : 50 zero pixels + values 1..50.

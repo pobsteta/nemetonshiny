@@ -2352,14 +2352,17 @@ TRANSLATIONS <- list(
     fr = "NDMI (humidit\u00e9)",
     en = "NDMI (moisture)"
   ),
-  monitoring_fast_ndmi_hint = list(
-    fr = "NDMI : baisse sous stress hydrique.",
-    en = "NDMI: drops under water stress."
-  ),
-  monitoring_fast_ndmi_b11_note = list(
-    fr = "NDMI n\u00e9cessite la bande B11, cach\u00e9e seulement depuis les ingestions \u2265 v0.64.0. Pour une zone d\u00e9j\u00e0 ing\u00e9r\u00e9e, relancez l'ingestion Sentinel-2 (r\u00e9-ingestion compl\u00e8te, sans r\u00e9utiliser le cache) pour activer NDMI \u2014 sinon la carte NDMI reste vide.",
-    en = "NDMI requires band B11, cached only from ingestions \u2265 v0.64.0. For an already-ingested zone, re-run the Sentinel-2 ingestion (full re-ingest, not reusing the cache) to enable NDMI \u2014 otherwise the NDMI map stays empty."
-  ),
+  # v0.70.5 \u2014 Cl\u00e9s `monitoring_fast_ndmi_hint` et
+  # `monitoring_fast_ndmi_b11_note` retir\u00e9es avec le helper
+  # `.fast_ndmi_note()` (mod_monitoring_fast_alerts.R +
+  # mod_monitoring_pixel_map.R). L'avertissement B11 \u00e9tait
+  # obsol\u00e8te depuis le plancher c\u0153ur `nemeton (>= 0.65.1)`
+  # (v0.69.1 app) : B11 cach\u00e9e syst\u00e9matiquement en best-effort
+  # par `ingest_sentinel2_timeseries()` (spec 019 D3), donc le
+  # message \u00ab r\u00e9-ingestion sans cache pour activer NDMI \u00bb ne
+  # s'applique plus aux installations r\u00e9centes. Le hint
+  # descriptif (\u00ab baisse sous stress hydrique \u00bb) est retir\u00e9
+  # avec \u2014 \u00e9pure l'UI des sidebars FAST.
   # v0.55.0 — Clés utilisées par les toasts `fast_prewarm:*` émis par
   # le cœur (spec 018 nemeton@v0.61.0) consommés par l'observer
   # ingest_progress de mod_monitoring.R. Les noms `fast_mode_*` sont
