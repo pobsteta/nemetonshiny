@@ -259,6 +259,20 @@ app_server <- function(input, output, session) {
   # Monitoring module (E6.b phase 1 — Sentinel-2 continuous monitoring)
   mod_monitoring_server("monitoring", app_state)
 
+  # RAG / knowledge corpus admin (spec 009.2 — E7). The module opens its
+  # own main-session corpus connection from `con_url` (resolved from
+  # NEMETON_KNOWLEDGE_DB_URL / NEMETON_DB_URL) and lets the async worker
+  # open its own connection — DBI connections are not process-shareable.
+  mod_rag_admin_server(
+    "rag_admin",
+    app_state = app_state,
+    con = NULL,
+    con_url = shiny::reactive(
+      Sys.getenv("NEMETON_KNOWLEDGE_DB_URL",
+                 Sys.getenv("NEMETON_DB_URL", ""))
+    )
+  )
+
   # ============================================================
   # LAZY LOADING: Family modules initialized on-demand
   # ============================================================

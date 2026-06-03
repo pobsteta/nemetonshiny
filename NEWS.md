@@ -1,3 +1,44 @@
+# nemetonshiny 0.62.0 (2026-06-03)
+
+### Added — Onglet « RAG / Corpus de connaissances » (spec 009.2, E7)
+
+Nouvel onglet d'administration (menu **Paramètres**) qui permet à un
+administrateur de curer le corpus de connaissances alimentant les
+perspectives IA sourcées :
+
+* **Édition du manifeste** (`R/mod_rag_admin.R`) : tableau `DT` éditable
+  cellule par cellule, ajout / suppression de lignes, validation des
+  valeurs de vocabulaire contrôlé (`lang`, `status`, `ingest_strategy`,
+  `doc_type`, `license`) via `nemeton::knowledge_manifest_vocab()`.
+* **Validation en direct** : panneau d'anomalies issu de
+  `nemeton::validate_knowledge_manifest()` (sévérité colorée). Tant
+  qu'il reste des `error`, « Enregistrer » et « Importer » sont
+  désactivés.
+* **Enregistrement** : `nemeton::write_knowledge_manifest()` réécrit la
+  copie projet inscriptible (`knowledge_manifest_path(writable = TRUE)`),
+  refusé en cas d'erreur.
+* **Prévisualisation (dry-run)** : `build_knowledge_corpus(dry_run =
+  TRUE)` sans toucher la base ni l'API.
+* **Import asynchrone** : `shiny::ExtendedTask` + `future_promise`. Le
+  worker ouvre **sa propre** connexion DB (les connexions DBI ne sont
+  pas partageables entre processus), reçoit la clé d'embedding
+  explicitement (résolue en session principale), et écrit l'avancement
+  dans un fichier heartbeat lu par le main process via
+  `invalidateLater`. Barre de progression + bilan coloré sur `action`.
+* **Inventaire base** : `list_knowledge_documents()` + suppression
+  (`delete_knowledge_document()`) de la ligne sélectionnée.
+* Case « inclure les documents à confirmer » (avertissement licence D5)
+  et « reconstruire (fresh) » avec modale de confirmation.
+* Accès réservé aux administrateurs (`can_admin_rag()`), avec repli
+  éditeur en mode anonyme (installs mono-utilisateur).
+
+### Changed
+
+* `Imports: nemeton (>= 0.63.0)` — plancher relevé : le code consomme
+  l'API manifeste/corpus publiée par la spec 009.2 cœur.
+* ~30 nouvelles clés i18n FR/EN (`rag_*`, `tab_settings`) dans
+  `R/utils_i18n.R`.
+
 # nemetonshiny 0.61.2 (2026-06-02)
 
 ### Changed — Le RAG s'applique désormais aussi aux 12 commentaires famille
