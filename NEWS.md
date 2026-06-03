@@ -1,3 +1,54 @@
+# nemetonshiny 0.71.0 (2026-06-03)
+
+### Added — Modal pixel Carte FAST : 3e indice NDMI affiché avec sa propre couleur et sa ligne de seuil
+
+Au clic sur un pixel de la Carte FAST, la modale plotly trace
+désormais **3 courbes** (au lieu de 2) avec **3 couleurs distinctes** et
+**3 lignes de seuil horizontales** alignées :
+
+| Indice | Sémantique | Couleur |
+|---|---|---|
+| NDVI | Vigueur végétation | 🟢 `#2CA02C` (vert) |
+| NBR | Brûlé / cassé | 🔴 `#D62728` (rouge) |
+| **NDMI** | **Humidité / eau** | 🔵 **`#1F77B4` (bleu)** ← nouveau |
+
+**État avant v0.71.0** : `extract_pixel_timeseries()` était déjà
+appelée avec `indices = c("NDVI", "NBR", "NDMI")` côté cœur (l.770)
+et la boucle de rendu itérait bien sur les 3 indices, MAIS :
+
+* `.pixel_band_colors` (l.451) ne contenait que NDVI + NBR → la
+  courbe NDMI tombait sur `%||% "#7F7F7F"` (gris fallback).
+* La section des lignes de seuil horizontales (l.838) ne traitait
+  que `th$ndvi` et `th$nbr` → pas de ligne pour le seuil NDMI.
+
+Conséquence : la 3e courbe était bien tracée mais en gris discret,
+sans le seuil de référence — l'utilisateur ne pouvait pas voir
+visuellement « ce pixel est-il en alerte NDMI ? ».
+
+### Détails techniques
+
+* `R/mod_monitoring_pixel_map.R::.pixel_band_colors` (l.451) :
+  ajout de `NDMI = "#1F77B4"`.
+* `R/mod_monitoring_pixel_map.R` section seuils (l.849+) :
+  - Lecture de `th_ndmi <- suppressWarnings(as.numeric(th$ndmi))`
+    depuis le reactive parent `thresholds_r` (déjà exposé via
+    `mod_monitoring.R:2564, 2587, 2631`).
+  - Nouveau bloc `if (length(th_ndmi) == 1L && !is.na(th_ndmi))`
+    qui ajoute le `shape` (ligne horizontale pointillée bleue)
+    + l'`annotation` (libellé « NDMI = 0.30 » à droite).
+
+### Pas de breaking change
+
+L'extraction des 3 indices, le slider `threshold_ndmi` côté sidebar
+parent (l.159) et le reactive `thresholds_r$ndmi` étaient déjà en
+place depuis nemetonshiny@v0.66.0. La v0.71.0 connecte simplement
+les 2 derniers maillons (couleur + ligne seuil) côté modale.
+
+### Tests
+
+* 2491 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
 # nemetonshiny 0.70.5 (2026-06-03)
 
 ### Removed — Avertissement NDMI / bande B11 (obsolète depuis le plancher `nemeton (>= 0.65.1)`)

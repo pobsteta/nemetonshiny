@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.71.0] - 2026-06-03
+
+### Added
+
+- **Modal pixel Carte FAST : 3e indice NDMI complet** (couleur
+  bleu `#1F77B4` + ligne de seuil horizontale). La courbe NDMI
+  était déjà tracée depuis v0.66.0 (extraction cœur `indices =
+  c("NDVI", "NBR", "NDMI")`) mais tombait sur le gris fallback
+  faute d'entrée dans `.pixel_band_colors`, et son seuil n'avait
+  pas de ligne. Désormais palette complète avec NDVI (vert) /
+  NBR (rouge) / NDMI (bleu).
+
 ## [0.70.5] - 2026-06-03
 
 ### Removed

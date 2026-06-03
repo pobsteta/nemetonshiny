@@ -448,7 +448,18 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # appartient à la même bande que sa courbe ». Centralisation =
     # garantie que toute évolution future palette + seuil reste
     # synchronisée.
-    .pixel_band_colors <- c(NDVI = "#2CA02C", NBR = "#D62728")
+    # v0.71.0 — Ajout de NDMI (3e indice, bleu intuitif pour
+    # l'humidité/eau). `extract_pixel_timeseries` côté cœur
+    # renvoie déjà les 3 indices (cf. appel l.770), mais NDMI
+    # tombait sur `%||% "#7F7F7F"` (gris fallback) faute de
+    # couleur dédiée + son seuil n'était pas tracé. Palette
+    # standard Tableau pour cohérence visuelle :
+    #   NDVI (vigueur)  = vert
+    #   NBR  (brûlé)    = rouge
+    #   NDMI (humidité) = bleu
+    .pixel_band_colors <- c(NDVI = "#2CA02C",
+                            NBR  = "#D62728",
+                            NDMI = "#1F77B4")
 
     # Reactive raster + legend swap. Fires on date / index / project
     # changes; preserves the base-layer selection because the map
@@ -838,8 +849,13 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       if (!is.null(th)) {
         th_ndvi <- suppressWarnings(as.numeric(th$ndvi))
         th_nbr  <- suppressWarnings(as.numeric(th$nbr))
+        # v0.71.0 — Lecture du 3e seuil NDMI depuis le sidebar
+        # parent. `thresholds_r$ndmi` est exposé depuis
+        # mod_monitoring.R:2564 (parité avec ndvi/nbr).
+        th_ndmi <- suppressWarnings(as.numeric(th$ndmi))
         col_ndvi <- unname(.pixel_band_colors[["NDVI"]])
         col_nbr  <- unname(.pixel_band_colors[["NBR"]])
+        col_ndmi <- unname(.pixel_band_colors[["NDMI"]])
         if (length(th_ndvi) == 1L && !is.na(th_ndvi)) {
           shapes <- c(shapes, list(
             list(type = "line",
@@ -870,6 +886,25 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
                                 "NBR", th_nbr),
                  showarrow = FALSE,
                  font = list(color = col_nbr, size = 11))
+          ))
+        }
+        # v0.71.0 — Ligne de seuil NDMI horizontale + annotation.
+        # Même pattern que NDVI/NBR pour cohérence (alignement
+        # couleur courbe / couleur seuil).
+        if (length(th_ndmi) == 1L && !is.na(th_ndmi)) {
+          shapes <- c(shapes, list(
+            list(type = "line",
+                 xref = "paper", x0 = 0, x1 = 1,
+                 yref = "y",     y0 = th_ndmi, y1 = th_ndmi,
+                 line = list(color = col_ndmi, dash = "dash", width = 1))
+          ))
+          annotations <- c(annotations, list(
+            list(xref = "paper", x = 1, xanchor = "right",
+                 yref = "y",     y = th_ndmi, yanchor = "bottom",
+                 text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
+                                "NDMI", th_ndmi),
+                 showarrow = FALSE,
+                 font = list(color = col_ndmi, size = 11))
           ))
         }
       }
