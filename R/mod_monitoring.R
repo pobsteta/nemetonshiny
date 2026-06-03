@@ -1468,8 +1468,9 @@ mod_monitoring_server <- function(id, app_state) {
       #   "rolling" → fast_mode_intensite  (Intensité / Intensity)
       if (startsWith(current_phase, "fast_prewarm:")) {
         if (identical(current_phase, "fast_prewarm:complete")) {
-          # Aucune notification pour `complete` — les 4 `_done` ont
-          # déjà couvert le succès. On loggue juste côté console.
+          # Aucune notification pour `complete` — les 6 `_done` ont
+          # déjà couvert le succès (4 en cœur ≤ v0.65.0, 6 depuis
+          # v0.65.1 avec NDMI). On loggue juste côté console.
           cli::cli_alert_info("Worker event: fast_prewarm:complete")
           return()
         }
