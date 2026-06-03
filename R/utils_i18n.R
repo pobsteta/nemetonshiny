@@ -2381,6 +2381,17 @@ TRANSLATIONS <- list(
     fr = "Pré-calcul des cartes FAST annulé.",
     en = "FAST map pre-computation cancelled."
   ),
+  # v0.70.1 — Toast court (4 s) émis à `fast_prewarm:complete` pour
+  # signaler la fin du Diagnostic FAST côté UX. Le toast running
+  # `fast_prewarm_progress` (persistent) est retiré juste avant.
+  # Sans ce signal, l'utilisateur ne savait pas si l'application
+  # était de nouveau disponible (le bouton « Lancer le diagnostic
+  # FAST » se réactive automatiquement via l'observer status() mais
+  # un signal explicite côté UI rassure).
+  monitoring_fast_diagnostic_complete = list(
+    fr = "Diagnostic FAST terminé — application disponible.",
+    en = "FAST diagnostic complete — application available."
+  ),
   monitoring_fast_alerts_legend_title = list(
     fr = "Intensité du déficit",
     en = "Deficit intensity"

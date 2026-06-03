@@ -1548,9 +1548,22 @@ mod_monitoring_server <- function(id, app_state) {
       #   "rolling" → fast_mode_intensite  (Intensité / Intensity)
       if (startsWith(current_phase, "fast_prewarm:")) {
         if (identical(current_phase, "fast_prewarm:complete")) {
-          # Aucune notification pour `complete` — les 6 `_done` ont
-          # déjà couvert le succès (4 en cœur ≤ v0.65.0, 6 depuis
-          # v0.65.1 avec NDMI). On loggue juste côté console.
+          # v0.70.1 — Bug observé : sans `removeNotification`, le
+          # toast running `fast_prewarm_progress` (id stable,
+          # `duration = NULL`, persistent — cf. branche running plus
+          # bas l.1601) survivait à la fin du worker. Conséquence
+          # UX : « Pré-calcul carte NDMI Intensité en cours… »
+          # restait collé en bas à droite alors que le worker était
+          # terminé. On retire explicitement le toast running ici,
+          # puis on émet un toast court (4 s) confirmant la
+          # disponibilité de l'app.
+          shiny::removeNotification(session$ns("fast_prewarm_progress"))
+          shiny::showNotification(
+            i18n$t("monitoring_fast_diagnostic_complete"),
+            id       = session$ns("fast_prewarm_complete"),
+            type     = "message",
+            duration = 4
+          )
           cli::cli_alert_info("Worker event: fast_prewarm:complete")
           return()
         }
@@ -1715,6 +1728,22 @@ mod_monitoring_server <- function(id, app_state) {
                          !isTRUE(force_unlock_health())
       shiny::updateActionButton(session, "run",
                                 disabled = fast_running || fordead_running)
+    })
+
+    # v0.70.1 — Filet de sécurité du toast `fast_prewarm_progress`
+    # (persistent, `duration = NULL`). Si le cœur n'émet pas
+    # `fast_prewarm:complete` à la fin (cas pathologique : hang
+    # silencieux, exception non capturée côté prewarm, etc.), le
+    # toast restait collé en bas à droite après que le worker s'est
+    # déjà arrêté. Cet observer watch la transition de
+    # `fast_task$status()` hors de "running" et nettoie le toast de
+    # force — y compris si l'utilisateur a force-unlocked via le
+    # bouton « Annuler le diagnostic ».
+    shiny::observe({
+      status <- fast_task$status()
+      if (!identical(status, "running")) {
+        shiny::removeNotification(session$ns("fast_prewarm_progress"))
+      }
     })
 
     # Render the cancel/reset button only while a real task is in

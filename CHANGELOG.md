@@ -10,6 +10,25 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.70.1] - 2026-06-03
+
+### Fixed
+
+- **Toast prewarm FAST persistant** : à `fast_prewarm:complete`,
+  l'observer ne retirait pas le toast `fast_prewarm_progress`
+  (id stable, `duration = NULL`). Conséquence : « Pré-calcul carte
+  NDMI Intensité en cours… » restait collé en bas à droite alors
+  que le worker était terminé. Fix : `removeNotification` explicite
+  + nouveau toast court « Diagnostic FAST terminé — application
+  disponible. » (4 s).
+- **Filet de sécurité status()** : nouvel observer qui retire le
+  toast running dès que `fast_task$status()` quitte `"running"`,
+  couvrant le cas pathologique où le cœur n'émet pas `complete`.
+
+### Added
+
+- Clé i18n `monitoring_fast_diagnostic_complete` (FR/EN).
+
 ## [0.70.0] - 2026-06-03
 
 ### Fixed
