@@ -275,7 +275,7 @@ mod_validation_sampling_server <- function(id, app_state,
       if (length(zid) != 1L || is.na(zid)) return(NULL)
       src <- current_source()
       cd <- file.path(proj$path, "cache", "layers",
-                      if (identical(src, "FORDEAD")) "fordead" else "fast")
+                      if (identical(src, "FORDEAD")) "fordead" else "fast_sampling")
       if (!dir.exists(cd)) return(NULL)
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
@@ -436,7 +436,7 @@ mod_validation_sampling_server <- function(id, app_state,
       cd <- if (identical(src, "FORDEAD")) {
         file.path(proj$path, "cache", "layers", "fordead")
       } else {
-        file.path(proj$path, "cache", "layers", "fast")
+        file.path(proj$path, "cache", "layers", "fast_sampling")
       }
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
