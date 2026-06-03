@@ -1,3 +1,67 @@
+# nemetonshiny 0.69.1 (2026-06-03)
+
+### Changed — Plancher cœur `nemeton (>= 0.65.1)` : prewarm FAST 6 combos (NDMI)
+
+Hand-off du brief
+`/home/pascal/dev/nemeton/BRIEF-nemetonshiny-retour-prewarm-v0.65.1.md`.
+nemeton v0.65.1 publié le 2026-06-03 corrige l'oubli NDMI dans la
+boucle `.prewarm_fast_alerts()` (cf. brief v0.65.0 → v0.65.1
+côté cœur) :
+
+* `expand.grid(index = c("NDVI", "NBR"), ...)` → ajout `"NDMI"` →
+  **6 combos pré-chauffées** au lieu de 4.
+* Garde-fou existant suffisant : une scène sans B11 (bande NDMI)
+  emprunte le chemin de skip best-effort (`tryCatch` +
+  `cli::cli_warn` + event `fast_prewarm:NDMI_<mode>_failed`).
+  Comportement symétrique avec NBR sans B12.
+
+**Effet UX côté app** : après ingestion S2, la 1re sélection NDMI
+dans Alertes FAST ou Carte FAST devient un **hit cache D6
+instantané** au lieu d'un calcul à froid (1-5 s selon zone).
+
+### Audit cache FAST (RAS)
+
+Le brief retour cœur confirme que la disposition des caches FAST
+côté app est cohérente :
+
+* `cache/layers/fast_alert/` (`.fast_alert_cache_dir()`) — cache D6
+  continu monitoring, lu par `compute_fast_alert_mask(result_cache_dir
+  = ...)` ET écrit par le prewarm (`prewarm_mask_cache_dir =
+  .fast_alert_cache_dir()`). **Prewarm bénéficie à l'affichage** —
+  y compris NDMI depuis v0.65.1.
+* `cache/layers/fast_alert_mask/` (`.fast_alert_mask_cache_dir()`)
+  — mask 0-4 catégoriel monitoring.
+* `cache/layers/fast_sampling/` (renommé en v0.69.0, ex-`fast/`) —
+  continu + mask validation_sampling.
+
+Compromis assumé : le prewarm ne réchauffe **pas**
+`fast_sampling/` (dossier distinct) → 1re prévisualisation
+sampling reste à froid. Acceptable car validation_sampling
+est un usage ponctuel d'admin.
+
+### Détails techniques
+
+* `DESCRIPTION` : `Imports: nemeton (>= 0.65.0)` → `(>= 0.65.1)`.
+* `R/mod_monitoring.R::~l.1471` : commentaire « les 4 `_done` »
+  → « les 6 `_done` (4 en cœur ≤ v0.65.0, 6 depuis v0.65.1 avec
+  NDMI) ».
+* Vérifications post-bump :
+  - Feed de progression : chaque toast prewarm a un `id` unique
+    (`fast_prewarm_done_<idx>_<mode>`). 12 events uniques (6 ×
+    `_done` + 6 × *running* éphémères) — pas de rate-limit ni
+    saturation.
+  - i18n NDMI : `idx_payload` ("NDMI") affiché en raw dans
+    `sprintf(i18n$t("fast_prewarm_done"), idx_payload,
+    mode_label)`. Pas de clé NDMI spécifique nécessaire (parité
+    NDVI/NBR).
+
+### Pas de breaking change
+
+L'API consommée côté app (`prewarm_alerts = TRUE`,
+`prewarm_mask_cache_dir = .fast_alert_cache_dir()`) est inchangée.
+Le cœur enchaîne désormais les 6 cartes au lieu de 4 sans aucun
+changement de signature.
+
 # nemetonshiny 0.69.0 (2026-06-03)
 
 ### Changed — Renommage du cache `cache/layers/fast/` → `cache/layers/fast_sampling/`

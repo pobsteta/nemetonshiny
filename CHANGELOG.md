@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.69.1] - 2026-06-03
+
+### Changed
+
+- **Plancher cœur bumpé** : `Imports: nemeton (>= 0.65.0)` →
+  `(>= 0.65.1)`. nemeton v0.65.1 corrige l'oubli NDMI dans
+  `.prewarm_fast_alerts()` (combos passent de 4 à 6 = NDVI +
+  NBR + NDMI × count + rolling). Effet : 1re sélection NDMI dans
+  Alertes/Carte FAST devient instantanée (hit cache D6) au lieu
+  d'un calcul à froid.
+- Commentaire `mod_monitoring.R:~l.1471` mis à jour : « les 4
+  `_done` » → « les 6 `_done` » avec annotation cœur v0.65.0/v0.65.1.
+
+### Audit cache FAST (RAS)
+
+Brief retour cœur confirme la cohérence prewarm ↔ affichage et
+auto-cohérence sampling. Aucun correctif côté app requis.
+
 ## [0.69.0] - 2026-06-03
 
 ### Changed
