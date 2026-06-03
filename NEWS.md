@@ -1,3 +1,99 @@
+# nemetonshiny 0.71.1 (2026-06-03)
+
+### Fixed — Bundle 3 fixes UX FORDEAD + cohérence ntfy
+
+**1. ntfy push « Ingestion FAST démarrée » → « Diagnostic FAST démarré »**
+
+Le push ntfy de démarrage utilisait encore le wording legacy
+« Ingestion FAST ». Alignement avec :
+- Le toast UI : « Diagnostic FAST terminé »
+- Le push ntfy fin : « Diagnostic FAST terminé » (v0.70.4)
+
+Cohérence end-to-end FR + EN.
+
+**2. FORDEAD output_dir : fin de la pollution `/tmp/`**
+
+`nemeton::run_fordead_dieback()` utilisait par défaut
+`tempfile("fordead_")` → outputs intermédiaires (training, masks
+bruts, calibration vectors) écrits dans `/tmp/fordead_XXX/` puis
+supprimés à la fin (`keep_output = FALSE`).
+
+Désormais l'app force :
+
+* `output_dir = <projet>/cache/layers/fordead/output_zone_<id>`
+* `keep_output = TRUE`
+
+**Avantages** :
+
+* Plus de pollution `/tmp/` — les caches /tmp peuvent saturer un
+  homedir en cas de runs répétés (~50-200 Mo par run).
+* Outputs préservés (training data, masks bruts, calibration) →
+  inspection possible côté admin.
+* **Per-zone**, écrasé à chaque relance → taille bornée (pas
+  multipliée par run).
+
+Nouveau helper `R/mod_monitoring.R::.resolve_fordead_output_dir(
+project, zone_id)`. Le worker `run_fordead_async()`
+(`R/service_monitoring.R`) accepte 2 nouveaux params optionnels
+(`output_dir`, `keep_output`) forwardés directement à
+`nemeton::run_fordead_dieback()`. NULL = retombe sur le défaut
+cœur (back-compat).
+
+**3. Toast `Diagnostic terminé : 0 alertes` qui clignote + bouton FORDEAD grisé**
+
+Symptôme observé sur la capture d'écran utilisateur : le toast
+en bas à droite restait collé, et le bouton « Lancer le
+diagnostic FORDEAD » paraissait grisé après un run terminé.
+
+**Cause** : `fordead_task$result()` peut refire plusieurs fois
+(symétrique à `fast_task$result()`, cf. v0.70.4). Sans garde,
+l'observer ré-émet le toast `fordead_success` (duration 8 s) en
+boucle.
+
+**Fix** : nouveau `fordead_result_consumed <- shiny::reactiveVal(FALSE)`
+qui agit comme garde d'idempotence :
+
+* L'observer vérifie au début si le flag est `TRUE` → return
+  silencieux.
+* À la 1ʳᵉ exécution, le flag est mis à `TRUE` via `isolate()`.
+* Reset à `FALSE` dans `observeEvent(input$run_health)` (avant
+  le nouvel `invoke()`).
+
+S'applique aussi au branchement `error` (toast `fordead_error`).
+
+### Détails techniques
+
+* `R/utils_i18n.R::monitoring_ntfy_ingest_start` : wording
+  « Ingestion FAST » → « Diagnostic FAST ».
+* `R/mod_monitoring.R::.resolve_fordead_output_dir()` : nouveau
+  helper.
+* `R/mod_monitoring.R::~l.2308` : `fordead_task$invoke()` passe
+  désormais `output_dir = .resolve_fordead_output_dir(...)` et
+  `keep_output = TRUE`.
+* `R/service_monitoring.R::run_fordead_async()` : nouveaux params
+  `output_dir = NULL` + `keep_output = TRUE` dans la signature
+  de l'ExtendedTask + mkdir best-effort côté worker + forward à
+  `nemeton::run_fordead_dieback()`.
+* `R/mod_monitoring.R::~l.1306` : nouveau `fordead_result_consumed
+  <- shiny::reactiveVal(FALSE)`.
+* `R/mod_monitoring.R::~l.2431` (observer fordead result) : garde
+  d'idempotence dans le tryCatch error ET dans le branchement
+  success (parité v0.70.4).
+* `R/mod_monitoring.R::~l.2371` (observeEvent run_health) : reset
+  `fordead_result_consumed(FALSE)` avant le nouvel invoke.
+
+### Pas de breaking change
+
+* Le ntfy ne change que le wording (sémantique identique).
+* `output_dir` + `keep_output` = NULL → retombe sur le défaut cœur,
+  donc safe pour les workers anciens.
+* Les gardes d'idempotence sont strictement défensives.
+
+### Tests
+
+* 2753 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
 # nemetonshiny 0.71.0 (2026-06-03)
 
 ### Added — Modal pixel Carte FAST : 3e indice NDMI affiché avec sa propre couleur et sa ligne de seuil

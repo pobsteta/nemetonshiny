@@ -1318,6 +1318,14 @@ mod_monitoring_server <- function(id, app_state) {
     # plusieurs fois. Le flag est reset à FALSE à chaque
     # `fast_task$invoke()` (cf. observeEvent input$run).
     fast_result_consumed <- shiny::reactiveVal(FALSE)
+    # v0.71.1 — Parité FORDEAD : même garde d'idempotence pour
+    # `fordead_task$result()`. Symétrique à `fast_result_consumed`
+    # (v0.70.4). Sans cela, le toast `fordead_success` est ré-émis
+    # plusieurs fois (clignote) ET le bouton « Lancer le diagnostic
+    # FORDEAD » peut rester grisé apparemment (l'observer fire en
+    # boucle mais le `removeNotification`/`force_unlock_health` est
+    # correctement ré-appliqué).
+    fordead_result_consumed <- shiny::reactiveVal(FALSE)
 
     # Path to the worker console log. The worker `sink()`s its stdout
     # and message stream to this file (see service_monitoring.R) so we
@@ -2314,6 +2322,14 @@ mod_monitoring_server <- function(id, app_state) {
         cache_dir         = .resolve_s2_cache_dir(app_state$current_project),
         db_url            = .resolve_monitoring_db_url(app_state$current_project),
         progress_path     = ppath,
+        # v0.71.1 — Force l'output FORDEAD dans le cache projet
+        # (sortait par défaut dans /tmp via tempfile("fordead_")).
+        # `keep_output = TRUE` pour préserver les outputs (training,
+        # masks bruts) — inspectables. Le dossier est per-zone et
+        # écrasé à chaque relance, taille bornée.
+        output_dir        = .resolve_fordead_output_dir(
+                              app_state$current_project, input$zone_id),
+        keep_output       = TRUE,
         # Forwarded so the worker builds its ntfy push messages in the
         # user's language (the worker has no access to app_state).
         lang              = app_state$language %||% "fr",
@@ -2357,6 +2373,10 @@ mod_monitoring_server <- function(id, app_state) {
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
       force_unlock_health(FALSE)
+      # v0.71.1 — Reset le flag idempotence (parité FAST v0.70.4).
+      # Le prochain `fordead_task$result()` doit être traité (toast
+      # success / error émis).
+      fordead_result_consumed(FALSE)
       # Cross-lock: refuse to start FORDEAD while a FAST ingestion is
       # in flight (shared Sentinel-2 cache — cf. the run_health button
       # observer). An abandoned FAST run does not block.
@@ -2434,6 +2454,13 @@ mod_monitoring_server <- function(id, app_state) {
         fordead_task$result(),
         error = function(e) {
           if (inherits(e, "shiny.silent.error")) stop(e)
+          # v0.71.1 — Garde d'idempotence (symétrique FAST v0.70.4).
+          # Sans elle, un re-fire de l'observer post-erreur ré-émet
+          # le toast `fordead_error`.
+          if (isTRUE(shiny::isolate(fordead_result_consumed()))) {
+            return(NULL)
+          }
+          fordead_result_consumed(TRUE)
           shiny::removeNotification(session$ns("fordead_progress"))
           .cleanup_progress_file(fordead_progress_path())
           fordead_progress_path(NULL)
@@ -2459,6 +2486,16 @@ mod_monitoring_server <- function(id, app_state) {
         }
       )
       if (!is.null(result)) {
+        # v0.71.1 — Garde d'idempotence : `fordead_task$result()` peut
+        # refire plusieurs fois pour le MÊME result (cascade reactive,
+        # transition status, etc.). Sans cette garde, le toast
+        # `fordead_success` (duration = 8 s) était ré-émis →
+        # clignotement + bouton « Lancer » perçu grisé.
+        # Reset à FALSE dans observeEvent(input$run_health).
+        if (isTRUE(shiny::isolate(fordead_result_consumed()))) {
+          return()
+        }
+        fordead_result_consumed(TRUE)
         shiny::removeNotification(session$ns("fordead_progress"))
         .cleanup_progress_file(fordead_progress_path())
         fordead_progress_path(NULL)
@@ -2750,6 +2787,31 @@ mod_monitoring_server <- function(id, app_state) {
     )
   }
   normalizePath(cache_dir, winslash = "/", mustWork = FALSE)
+}
+
+# v0.71.1 — Helper pour résoudre l'output_dir des runs FORDEAD.
+# Avant ce bump, `nemeton::run_fordead_dieback()` utilisait son
+# défaut `tempfile(\"fordead_\")` → outputs intermédiaires (training,
+# masks bruts, calibration) écrits dans /tmp puis supprimés à la
+# fin (`keep_output = FALSE`). Désormais, on force l'output sous
+# `<projet>/cache/layers/fordead/output_zone_<id>` :
+#   - Plus de pollution /tmp.
+#   - Outputs préservés (`keep_output = TRUE`) → inspection possible.
+#   - **Per-zone**, écrasé à chaque relance → taille bornée
+#     (50-200 Mo par zone, pas multiplié par run).
+.resolve_fordead_output_dir <- function(project, zone_id) {
+  if (is.null(project) || is.null(project$path)) return(NULL)
+  zid <- suppressWarnings(as.integer(zone_id))
+  if (length(zid) != 1L || is.na(zid)) return(NULL)
+  out_dir <- file.path(project$path, "cache", "layers", "fordead",
+                       sprintf("output_zone_%d", zid))
+  if (!dir.exists(out_dir)) {
+    tryCatch(
+      dir.create(out_dir, recursive = TRUE, showWarnings = FALSE),
+      error = function(e) NULL
+    )
+  }
+  normalizePath(out_dir, winslash = "/", mustWork = FALSE)
 }
 
 # Load the project's BD Forêt V2 cache for the G3 validity check
