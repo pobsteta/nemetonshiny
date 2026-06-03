@@ -1031,6 +1031,10 @@ TRANSLATIONS <- list(
     fr = "Cl\u00e9 API non configur\u00e9e. D\u00e9finissez la variable d'environnement {key_var}.",
     en = "API key not configured. Set the {key_var} environment variable."
   ),
+  db_not_configured = list(
+    fr = "Base de donn\u00e9es non configur\u00e9e \u2014 stockage local des projets (parquet).",
+    en = "Database not configured \u2014 projects stored locally (parquet)."
+  ),
   # v0.56.0 \u2014 RAG \u00ab perspectives IA sourc\u00e9es \u00bb (cf. brief 2026-06-02,
   # nemeton@v0.62.0). Le titre du bloc \u00ab Sources documentaires \u00bb est
   # rendu par `nemeton::format_citations(lang=)` c\u00f4t\u00e9 c\u0153ur \u2014 ne pas

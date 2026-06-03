@@ -1,3 +1,15 @@
+# nemetonshiny 0.65.1 (2026-06-03)
+
+### Fixed — Clé i18n manquante `db_not_configured`
+
+Au démarrage, quand aucune base n'est configurée, `app_server.R`
+affichait une notification via `i18n$t("db_not_configured")` — mais la
+clé n'existait pas dans `TRANSLATIONS`, d'où le warning console
+« Translation key not found: db_not_configured » et l'affichage de la
+clé brute au lieu d'un message. Clé ajoutée (FR/EN). Un scan complet
+des appels littéraux `i18n$t("…")` confirme qu'il s'agissait de la
+seule clé manquante.
+
 # nemetonshiny 0.65.0 (2026-06-03)
 
 ### Added — Corpus RAG : import / export du manifeste (CSV)

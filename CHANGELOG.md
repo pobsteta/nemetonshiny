@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.65.1] - 2026-06-03
+
+### Fixed
+
+- Clé i18n manquante `db_not_configured` (consommée par `app_server.R`
+  au démarrage quand aucune base n'est configurée) → warning console et
+  affichage de la clé brute. Clé ajoutée FR/EN.
+
 ## [0.65.0] - 2026-06-03
 
 ### Added
