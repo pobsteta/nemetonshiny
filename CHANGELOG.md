@@ -10,6 +10,38 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.70.0] - 2026-06-03
+
+### Fixed
+
+- **Logs FAST propres** : suppression des sauts (`1/120 → 3 → 23 → 51`)
+  et de la désynchro Tuile/Bande dans le mirror console pendant un
+  Diagnostic FAST. Hand-off du brief
+  `BRIEF-nemetonshiny-logs-FAST-propres.md`. Aucune modif cœur.
+
+### Changed
+
+- **Double transport de progression** : le worker écrit désormais
+  en parallèle un `.json` (dernier event, atomic rename) pour le
+  toast Shiny coalescé ET un `.ndjson` append-only pour le mirror
+  console. Le mirror est désormais drainé par offset d'octets
+  (pattern identique à `ingest_log_tick`), garantissant complétude
+  et ordre.
+- `R/service_monitoring.R::.build_progress_writer` : append NDJSON
+  ajouté au writer JSON existant.
+- `R/mod_monitoring.R` : nouveau drain `ingest_ndjson_lines` +
+  observer dédié. `.log_band_event` et `.log_ingest_event`
+  déplacés du chemin JSON dernier-event vers le chemin NDJSON
+  drain.
+- `R/mod_monitoring.R::.cleanup_progress_file` : étend la
+  suppression au `.ndjson` au reset de chaque ingest.
+
+### Pas de breaking change
+
+L'API publique est inchangée. Le toast Shiny continue à fonctionner.
+Si un worker plus ancien ne livre pas de `.ndjson`, le mirror console
+reste silencieux (fallback transparent).
+
 ## [0.69.1] - 2026-06-03
 
 ### Changed
