@@ -2271,6 +2271,15 @@ TRANSLATIONS <- list(
     fr = "Aucun pixel n'a déclenché d'alerte sur la fenêtre choisie. Élargir la fenêtre, relever le seuil ou changer la zone pour explorer d'autres scénarios.",
     en = "No pixel triggered an alert in the chosen window. Widen the window, raise the threshold, or change zone to explore further."
   ),
+  # v0.68.0 — Message NULL spécifique à « aucune scène cachée ne
+  # porte les bandes de cet indice dans la fenêtre » (brief FAST 6
+  # cartes nemeton@v0.65.0). Cas typique : NDMI demande B08+B11,
+  # une zone sans B11 produit NULL pour NDMI sur cette période.
+  # Le `%s` reçoit le nom de l'indice (NDVI/NBR/NDMI).
+  monitoring_fast_alerts_no_scene = list(
+    fr = "%s : aucune scène cachée ne porte les bandes de cet indice dans la fenêtre (cache S2 vide ou incomplet pour les bandes requises).",
+    en = "%s: no cached scene carries the required bands for this index in the window (S2 cache empty or missing required bands)."
+  ),
   # v0.41.1 — popup_plot renamed to popup_coords : FAST alerts are
   # moving from per-placette markers to a pixel raster (cf. spec
   # validation-sampling). The popup row anchors the user on a *position*

@@ -10,6 +10,26 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.68.0] - 2026-06-03
+
+### Changed
+
+- **Plancher cœur bumpé** : `Imports: nemeton (>= 0.65.0)` (était
+  `>= 0.64.0`). Débloque NDMI côté cœur (fix spec 019 D3 :
+  `.enumerate_cache_scenes()` n'avait pas de branche NDMI →
+  retour NULL systématique). Active aussi le nouvel orchestrateur
+  exporté `read_fast_alert_rasters()` (3 indices × 2 modes = 6
+  rasters en un appel — pas encore consommé par l'app, pipeline
+  mono-index inchangé).
+- Message i18n pour le cas « raster non calculable » : littéral FR
+  inline remplacé par `sprintf(i18n_r()$t("monitoring_fast_alerts_no_scene"),
+  idx)`. Wording explicite (« aucune scène cachée ne porte les
+  bandes de cet indice »). Respecte règle stricte CLAUDE.md §4.
+
+### Added
+
+- Clé i18n `monitoring_fast_alerts_no_scene` (FR/EN).
+
 ## [0.67.1] - 2026-06-03
 
 ### Fixed
