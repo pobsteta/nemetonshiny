@@ -3004,7 +3004,136 @@ TRANSLATIONS <- list(
   r5_tooltip = list(
     fr = "Score 0-100 calcul\u00e9 \u00e0 partir des classes FORDEAD pond\u00e9r\u00e9es par leur fiabilit\u00e9 ONF/DSF (rapport 2024).",
     en = "0-100 score from FORDEAD classes weighted by their ONF/DSF reliability (2024 report)."
-  )
+  ),
+
+  # ============================================================
+  # RAG / Knowledge corpus admin (spec 009.2 \u2014 onglet E7)
+  # ============================================================
+  tab_settings = list(fr = "Param\u00e8tres", en = "Settings"),
+  rag_tab_title = list(
+    fr = "RAG / Corpus de connaissances",
+    en = "RAG / Knowledge corpus"
+  ),
+  rag_manifest_section = list(
+    fr = "Manifeste du corpus",
+    en = "Corpus manifest"
+  ),
+  rag_validation_section = list(
+    fr = "Validation du manifeste",
+    en = "Manifest validation"
+  ),
+  rag_report_section = list(
+    fr = "Bilan de l'import",
+    en = "Import report"
+  ),
+  rag_inventory_section = list(
+    fr = "Inventaire en base",
+    en = "Database inventory"
+  ),
+  rag_btn_save = list(fr = "Enregistrer", en = "Save"),
+  rag_btn_preview = list(fr = "Pr\u00e9visualiser le plan", en = "Preview plan"),
+  rag_btn_import = list(fr = "Importer", en = "Import"),
+  rag_btn_add_row = list(fr = "Ajouter une ligne", en = "Add row"),
+  rag_btn_delete_row = list(fr = "Supprimer la ligne", en = "Delete row"),
+  rag_btn_delete = list(fr = "Supprimer le document", en = "Delete document"),
+  rag_btn_refresh = list(fr = "Rafra\u00eechir", en = "Refresh"),
+  rag_opt_include_tbc = list(
+    fr = "Inclure les documents \u00e0 confirmer (avertissement licence D5)",
+    en = "Include to-confirm documents (D5 licence warning)"
+  ),
+  rag_opt_fresh = list(
+    fr = "Reconstruire le corpus (fresh)",
+    en = "Rebuild corpus (fresh)"
+  ),
+  rag_fresh_confirm_title = list(
+    fr = "Reconstruction compl\u00e8te",
+    en = "Full rebuild"
+  ),
+  rag_fresh_confirm = list(
+    fr = "La reconstruction supprime les embeddings existants avant de r\u00e9-ing\u00e9rer le corpus. Confirmer ?",
+    en = "Rebuilding deletes existing embeddings before re-ingesting the corpus. Confirm?"
+  ),
+  rag_fresh_confirm_yes = list(fr = "Reconstruire", en = "Rebuild"),
+  rag_fresh_confirm_cancel = list(fr = "Annuler", en = "Cancel"),
+  rag_progress = list(fr = "Import en cours", en = "Import running"),
+  rag_progress_idle = list(
+    fr = "Aucun import en cours.",
+    en = "No import running."
+  ),
+  rag_no_api_key = list(
+    fr = "Cl\u00e9 d'embedding Mistral absente (NEMETON_MISTRAL_API_KEY). L'import est d\u00e9sactiv\u00e9.",
+    en = "Mistral embedding key missing (NEMETON_MISTRAL_API_KEY). Import is disabled."
+  ),
+  rag_api_key_console = list(
+    fr = "Obtenir une cl\u00e9 sur la console Mistral",
+    en = "Get a key from the Mistral console"
+  ),
+  rag_no_db = list(
+    fr = "Aucune base de connaissances configur\u00e9e (NEMETON_KNOWLEDGE_DB_URL ou NEMETON_DB_URL).",
+    en = "No knowledge database configured (NEMETON_KNOWLEDGE_DB_URL or NEMETON_DB_URL)."
+  ),
+  rag_no_manifest = list(
+    fr = "Manifeste inscriptible indisponible.",
+    en = "Writable manifest unavailable."
+  ),
+  rag_saved_ok = list(fr = "Manifeste enregistr\u00e9.", en = "Manifest saved."),
+  rag_save_blocked = list(
+    fr = "Enregistrement refus\u00e9 :",
+    en = "Save refused:"
+  ),
+  rag_preview_done = list(
+    fr = "Plan pr\u00e9visualis\u00e9 (dry-run).",
+    en = "Plan previewed (dry-run)."
+  ),
+  rag_import_done = list(fr = "Import termin\u00e9.", en = "Import done."),
+  rag_import_error = list(fr = "Erreur :", en = "Error:"),
+  rag_delete_done = list(fr = "Document supprim\u00e9.", en = "Document deleted."),
+  rag_delete_select_first = list(
+    fr = "S\u00e9lectionnez d'abord une ligne.",
+    en = "Select a row first."
+  ),
+  rag_enum_invalid = list(
+    fr = "%s : valeur invalide. Valeurs admises : %s",
+    en = "%s: invalid value. Allowed values: %s"
+  ),
+  rag_unauthorized = list(
+    fr = "Acc\u00e8s r\u00e9serv\u00e9 aux administrateurs.",
+    en = "Administrator access only."
+  ),
+  rag_inventory_empty = list(
+    fr = "Aucun document en base.",
+    en = "No document in database."
+  ),
+  # Column / field labels (manifest + report + issues)
+  rag_col_doc_id = list(fr = "Identifiant", en = "ID"),
+  rag_col_title = list(fr = "Titre", en = "Title"),
+  rag_col_author = list(fr = "Auteur", en = "Author"),
+  rag_col_publisher = list(fr = "\u00c9diteur", en = "Publisher"),
+  rag_col_pub_date = list(fr = "Date", en = "Date"),
+  rag_col_lang = list(fr = "Langue", en = "Language"),
+  rag_col_doc_type = list(fr = "Type", en = "Type"),
+  rag_col_source_url = list(fr = "URL source", en = "Source URL"),
+  rag_col_license = list(fr = "Licence", en = "Licence"),
+  rag_col_license_commercial_ok = list(
+    fr = "Usage commercial",
+    en = "Commercial use"
+  ),
+  rag_col_family_codes = list(fr = "Familles", en = "Families"),
+  rag_col_profile_codes = list(fr = "Profils", en = "Profiles"),
+  rag_col_ingest_strategy = list(fr = "Strat\u00e9gie", en = "Strategy"),
+  rag_col_local_path = list(fr = "Chemin local", en = "Local path"),
+  rag_col_status = list(fr = "Statut", en = "Status"),
+  rag_col_notes = list(fr = "Notes", en = "Notes"),
+  rag_col_row = list(fr = "Ligne", en = "Row"),
+  rag_col_severity = list(fr = "S\u00e9v\u00e9rit\u00e9", en = "Severity"),
+  rag_col_field = list(fr = "Champ", en = "Field"),
+  rag_col_message = list(fr = "Message", en = "Message"),
+  rag_col_action = list(fr = "Action", en = "Action"),
+  rag_col_reason = list(fr = "Raison", en = "Reason"),
+  rag_col_mode = list(fr = "Mode", en = "Mode"),
+  rag_col_n_chunks = list(fr = "Chunks", en = "Chunks"),
+  rag_col_document_id = list(fr = "ID document", en = "Document ID"),
+  rag_col_duration_sec = list(fr = "Dur\u00e9e (s)", en = "Duration (s)")
 )
 
 
