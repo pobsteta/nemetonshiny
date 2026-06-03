@@ -1,3 +1,29 @@
+# nemetonshiny 0.64.0 (2026-06-03)
+
+### Changed — Carte FAST : slider de dates au pas de 5 jours
+
+Le slider « Date d'observation » de l'onglet Carte FAST
+(`mod_monitoring_pixel_map`) avançait jour par jour (`step = 1`), alors
+que les scènes Sentinel-2 sont au mieux espacées de 5 jours (revisite
+2 satellites sur une même tuile MGRS) : 4 crans « morts » entre deux
+scènes. Le pas passe à **5 jours** (`step = 5`), aligné sur la cadence
+nominale — chaque cran avance d'une scène à la suivante. Le snapping
+sur la scène réelle la plus proche (`current_layer_r`) reste en place,
+donc un décalage ponctuel (nuages, tuile manquante) reste géré sans
+cran à vide.
+
+### Added — Alertes FAST : bandeau bleu résolution + contexte
+
+Ajout d'un bandeau `alert-info` bleu en haut de la carte Alertes FAST
+(`mod_monitoring_fast_alerts`), symétrique de celui de Carte FAST. Il
+rappelle la résolution Sentinel-2 (10 m) et décrit ce qui est peint
+selon le mode et l'indice : « fréquence des dépassements de seuil
+NDVI/NBR » (mode Fréquence) ou « intensité du déficit sur fenêtre
+roulante » (mode Intensité). Rendu en output séparé du `leafletOutput`
+(ne ré-initialise pas la carte) et réactif au mode / à l'indice / à la
+langue. Clés i18n `monitoring_fast_alerts_badge_count` /
+`monitoring_fast_alerts_badge_rolling`.
+
 # nemetonshiny 0.63.0 (2026-06-03)
 
 ### Changed — L'admin RAG passe dans le modal Paramètres (roue dentée)

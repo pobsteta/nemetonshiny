@@ -2315,6 +2315,14 @@ TRANSLATIONS <- list(
     fr = "Intensité",
     en = "Intensity"
   ),
+  monitoring_fast_alerts_badge_count = list(
+    fr = "Alertes FAST — fréquence des dépassements de seuil %s, à la résolution Sentinel-2 (10 m)",
+    en = "FAST alerts — threshold-breach frequency for %s, at Sentinel-2 resolution (10 m)"
+  ),
+  monitoring_fast_alerts_badge_rolling = list(
+    fr = "Alertes FAST — intensité du déficit %s sur fenêtre roulante, à la résolution Sentinel-2 (10 m)",
+    en = "FAST alerts — %s deficit intensity over a rolling window, at Sentinel-2 resolution (10 m)"
+  ),
   # v0.55.0 — Clés utilisées par les toasts `fast_prewarm:*` émis par
   # le cœur (spec 018 nemeton@v0.61.0) consommés par l'observer
   # ingest_progress de mod_monitoring.R. Les noms `fast_mode_*` sont

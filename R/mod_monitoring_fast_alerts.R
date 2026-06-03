@@ -102,6 +102,11 @@ mod_monitoring_fast_alerts_ui <- function(id) {
       # devait bouger un autre slider pour forcer un repaint. Ce
       # split rend la map immortelle (renderLeaflet appelé UNE FOIS)
       # et seul le banner re-render quand raster_r change.
+      # Bandeau `alert-info` bleu symétrique de Carte FAST : rappelle la
+      # résolution Sentinel-2 (10 m) et décrit ce qui est peint selon le
+      # mode (fréquence / intensité) et l'indice. Output SÉPARÉ du
+      # leafletOutput (comme `banner`) → re-render sans détruire la map.
+      shiny::uiOutput(ns("resolution_badge")),
       shiny::uiOutput(ns("banner")),
       leaflet::leafletOutput(ns("map"), height = "55vh")
     )
@@ -308,6 +313,25 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # chaque raster_r change, la map était détruite/recréée et le
     # `addRasterImage` peignait dans le vide). Maintenant le banner
     # re-render indépendamment, la map est rendue UNE FOIS.
+    # Blue resolution / context badge (mirrors Carte FAST). Reacts to
+    # the mode + index so the message stays pertinent to what is drawn.
+    output$resolution_badge <- shiny::renderUI({
+      i18n  <- i18n_r()
+      mode  <- input$mode %||% "count"
+      index <- input$index %||% "NDVI"
+      key <- if (identical(mode, "rolling")) {
+        "monitoring_fast_alerts_badge_rolling"
+      } else {
+        "monitoring_fast_alerts_badge_count"
+      }
+      htmltools::div(
+        class = paste("alert alert-info d-flex align-items-center",
+                      "gap-2 py-1 px-2 mb-2 small"),
+        bsicons::bs_icon("map", class = "fs-5 flex-shrink-0"),
+        htmltools::tags$span(sprintf(i18n$t(key), index))
+      )
+    })
+
     output$banner <- shiny::renderUI({
       i18n <- i18n_r()
       r <- raster_r()

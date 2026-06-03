@@ -308,6 +308,13 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       dates <- as.Date(names(st))
       dates <- dates[!is.na(dates)]
       if (!length(dates)) return(NULL)
+      # Sentinel-2 revisite au mieux tous les 5 jours (2 satellites,
+      # même tuile MGRS) : un pas jour-par-jour faisait défiler 4 crans
+      # « morts » entre deux scènes. Le pas de 5 jours aligne le slider
+      # sur la cadence nominale — chaque cran avance d'une scène à la
+      # suivante. `current_layer_r` continue de snapper sur la scène
+      # réelle la plus proche, donc un éventuel décalage (nuages, tuile
+      # manquante) reste géré sans cran à vide.
       shiny::sliderInput(
         ns("date"),
         i18n$t("monitoring_pixel_map_date"),
@@ -315,7 +322,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         max   = max(dates),
         value = max(dates),
         timeFormat = "%Y-%m-%d",
-        step  = 1L,
+        step  = 5L,
         animate = shiny::animationOptions(interval = 800L,
                                           loop     = FALSE)
       )

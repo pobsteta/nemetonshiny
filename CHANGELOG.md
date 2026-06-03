@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-06-03
+
+### Changed
+
+- **Carte FAST** : le slider de dates avance par pas de **5 jours**
+  (`step = 5`, cadence Sentinel-2) au lieu de jour-par-jour ; le
+  snapping sur la scène réelle la plus proche reste en place.
+
+### Added
+
+- **Alertes FAST** : bandeau `alert-info` bleu en haut de la carte
+  (symétrique de Carte FAST) rappelant la résolution Sentinel-2 (10 m)
+  et décrivant le rendu selon le mode (fréquence / intensité) et
+  l'indice. Clés i18n `monitoring_fast_alerts_badge_count` /
+  `monitoring_fast_alerts_badge_rolling`.
+
 ## [0.63.0] - 2026-06-03
 
 ### Changed
