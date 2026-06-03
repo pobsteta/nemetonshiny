@@ -1,3 +1,67 @@
+# nemetonshiny 0.70.1 (2026-06-03)
+
+### Fixed — Toast prewarm FAST persistant + signal explicite de fin du Diagnostic
+
+**Symptômes observés** : après un Diagnostic FAST terminé,
+
+1. Le toast en bas à droite « Pré-calcul carte NDMI Intensité en
+   cours… » **restait collé** indéfiniment.
+2. Le bouton « Lancer le diagnostic FAST » **ne redevenait pas
+   cliquable**, donnant l'impression d'une UI bloquée.
+3. Aucun signal explicite ne disait à l'utilisateur que
+   l'application était de nouveau disponible.
+
+**Cause** : le toast running `fast_prewarm_progress` (id stable,
+`duration = NULL`, persistent) était créé à chaque phase
+`fast_prewarm:<idx>_<mode>` sans suffixe (l.1601), mais à
+`fast_prewarm:complete` (l.1550) l'observer faisait juste un
+`cli::cli_alert_info` + `return()` **sans `removeNotification`**.
+Le toast vivait donc à vie.
+
+Pour le bouton, l'observer (l.1716) lit `fast_task$status()` et
+désactive le bouton tant que le statut est `"running"`. Si le
+worker termine légitimement, `status()` passe à `"success"` et le
+bouton se réactive automatiquement. Mais si le toast running est
+encore là, c'est que le worker tourne toujours — symptôme cohérent
+mais déroutant.
+
+**Fix (3 changements complémentaires)** :
+
+* **À `fast_prewarm:complete`** : retrait explicite du toast
+  running (`shiny::removeNotification(session$ns(
+  "fast_prewarm_progress"))`) + nouveau toast court (4 s)
+  confirmant la disponibilité de l'app.
+* **Filet de sécurité** : nouvel observer qui watch
+  `fast_task$status()` et retire le toast running dès que le
+  statut quitte `"running"`. Couvre le cas pathologique où le
+  cœur n'émet pas `complete` (hang silencieux, exception non
+  capturée côté prewarm).
+* **Nouvelle clé i18n** `monitoring_fast_diagnostic_complete`
+  (FR : « Diagnostic FAST terminé — application disponible. » /
+  EN : « FAST diagnostic complete — application available. »).
+
+### Comment savoir que l'application est disponible
+
+* **Toast vert court** (4 s) « Diagnostic FAST terminé —
+  application disponible. » émis à la toute fin.
+* **Bouton « Lancer le diagnostic FAST »** redevient cliquable
+  automatiquement (était déjà le cas, mais le toast persistant
+  masquait le signal).
+* **Filet de sécurité** : si le worker s'arrête mais
+  qu'aucun `complete` n'arrive, le toast running disparaît quand
+  même grâce au nouvel observer status().
+
+### Pas de breaking change
+
+Strictement défensif. Le toast vert s'ajoute uniquement à la fin
+réussie ; en cas d'annulation ou d'erreur, les toasts existants
+(`fast_prewarm_cancelled`, `fast_prewarm_failed`) restent intacts.
+
+### Tests
+
+* 2758 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
 # nemetonshiny 0.70.0 (2026-06-03)
 
 ### Fixed — Logs FAST propres : Tuile 1/N → N/N sans saut ni entrelacement
