@@ -73,8 +73,6 @@ mod_monitoring_pixel_map_ui <- function(id) {
           selected = "NDVI",
           inline   = TRUE
         ),
-        # NDMI hint + B11 re-ingestion note (shown only when NDMI active).
-        shiny::uiOutput(ns("ndmi_note")),
         shiny::uiOutput(ns("date_slider_ui")),
         # v0.61.0 — Le checkbox `raster_visible` est retiré : le toggle
         # de visibilité passe désormais entièrement par le LayersControl
@@ -378,12 +376,6 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         sprintf(i18n$t("monitoring_pixel_map_scene_count_fmt"),
                 nrow(sdf))
       )
-    })
-
-    # NDMI hint + B11 re-ingestion note — only when NDMI is selected.
-    output$ndmi_note <- shiny::renderUI({
-      if (!identical(input$index, "NDMI")) return(NULL)
-      .fast_ndmi_note(i18n_r())
     })
 
     # Internal group labels for clearGroup() bookkeeping in the

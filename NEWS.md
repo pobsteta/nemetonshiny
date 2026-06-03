@@ -1,3 +1,62 @@
+# nemetonshiny 0.70.5 (2026-06-03)
+
+### Removed — Avertissement NDMI / bande B11 (obsolète depuis le plancher `nemeton (>= 0.65.1)`)
+
+Le helper `.fast_ndmi_note()` qui affichait au-dessus de la carte
+(quand NDMI était sélectionné dans le radio) :
+
+> *NDMI : baisse sous stress hydrique.*
+>
+> *NDMI nécessite la bande B11, cachée seulement depuis les
+> ingestions ≥ v0.64.0. Pour une zone déjà ingérée, relancez
+> l'ingestion Sentinel-2 (ré-ingestion complète, sans réutiliser
+> le cache) pour activer NDMI — sinon la carte NDMI reste vide.*
+
+est **retiré** des deux sidebars FAST (Alertes FAST + Carte FAST).
+
+**Pourquoi** : le plancher cœur `nemeton (>= 0.65.1)` (v0.69.1
+app) garantit que `ingest_sentinel2_timeseries()` cache **B11
+systématiquement en best-effort** (spec 019 D3). Le message
+« ré-ingestion sans cache pour activer NDMI » ne s'applique plus
+aux installations récentes :
+
+* Toute nouvelle ingestion S2 → B11 cachée → NDMI calculable.
+* Une zone ingérée AVANT v0.64.0 sans B11 → l'app affiche
+  désormais la clé i18n `monitoring_fast_alerts_no_scene`
+  (v0.68.0) : « aucune scène cachée ne porte les bandes de cet
+  indice dans la fenêtre » → message générique propre.
+
+L'avertissement long et alarmiste dans la sidebar était devenu
+bruit visuel — l'utilisateur le voyait à chaque sélection NDMI.
+
+### Détails techniques
+
+* `R/mod_monitoring_fast_alerts.R` : suppression du helper
+  `.fast_ndmi_note()` (l.37-45), du `shiny::uiOutput(ns("ndmi_note"))`
+  dans la sidebar et de `output$ndmi_note <- shiny::renderUI(...)`
+  côté server.
+* `R/mod_monitoring_pixel_map.R` : suppression du
+  `shiny::uiOutput(ns("ndmi_note"))` dans la sidebar et de
+  `output$ndmi_note <- shiny::renderUI(...)` côté server.
+* `R/utils_i18n.R` : suppression des clés
+  `monitoring_fast_ndmi_hint` et `monitoring_fast_ndmi_b11_note`
+  (FR + EN).
+* `tests/testthat/test-mod_monitoring_fast_alerts.R` :
+  - assertion HTML inversée pour la présence du placeholder
+    `fa-ndmi_note` (désormais absent) ;
+  - retrait du test `.fast_ndmi_note renders the NDMI hint and
+    the B11 re-ingest note` devenu obsolète.
+
+### Pas de breaking change fonctionnel
+
+Le calcul NDMI continue à fonctionner inchangé (cœur >= 0.65.1).
+Seul le bandeau d'avertissement disparaît.
+
+### Tests
+
+* 2491 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
 # nemetonshiny 0.70.4 (2026-06-03)
 
 ### Fixed — Toast `Diagnostic FAST terminé` qui clignote (apparaît / disparaît / réapparaît)
