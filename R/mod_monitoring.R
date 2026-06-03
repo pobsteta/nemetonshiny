@@ -1653,6 +1653,34 @@ mod_monitoring_server <- function(id, app_state) {
         )
         return()
       }
+      # v0.70.3 — STAC search complete : initialise le toast à
+      # (1/N) AVANT que le 1er event `s2:scene` ne soit capturé.
+      # Sans ce handler, le polling 500 ms du JSON dernier-event
+      # rate fréquemment la 1ʳᵉ scène (worker pousse `s2:scene
+      # completed=0` puis `s2:scene completed=1` en bien moins
+      # de 500 ms → le JSON est écrasé deux fois entre 2 polls →
+      # le 1er event capturable était souvent `completed=1`,
+      # affiché « (2/N) » après le `+1` de v0.70.2). Désormais
+      # `(1/N) — démarrage…` apparaît dès `s2:search_done` ;
+      # le 1er `s2:scene` capturé remplace le toast par le
+      # numéro réel (qui peut sauter directement à `(3/N)`, mais
+      # l'utilisateur a vu `(1/N)` au moins une fois).
+      if (identical(current_phase, "s2:search_done")) {
+        n_val_init <- as.integer(ev$total %||% ev$n %||% 0L)
+        if (n_val_init > 0L) {
+          shiny::showNotification(
+            .monitoring_spinning_msg(
+              sprintf(i18n$t("monitoring_ingest_search_done_fmt"),
+                      1L, n_val_init)
+            ),
+            id          = session$ns("ingest_progress"),
+            type        = "message",
+            duration    = NULL,
+            closeButton = FALSE
+          )
+        }
+        return()
+      }
       i_val <- as.integer(ev$completed %||% ev$i %||% 0L)
       n_val <- as.integer(ev$total     %||% ev$n %||% 0L)
       scene <- as.character(ev$scene_id %||% "")
