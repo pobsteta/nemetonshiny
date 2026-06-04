@@ -2001,37 +2001,59 @@ TRANSLATIONS <- list(
     fr = "Annulation demandée. Le worker termine la tuile (FAST) / la phase (FORDEAD) en cours puis s'arrête proprement. Les INSERT déjà commités en base sont conservés (ON CONFLICT DO NOTHING — relance sans risque).",
     en = "Cancellation requested. The worker finishes the current tile (FAST) / phase (FORDEAD) then exits cleanly. Already-committed DB rows are kept (ON CONFLICT DO NOTHING — safe to relaunch)."
   ),
+  # v0.73.0 (spec 020) — Wording bouton + messages réorientés
+  # « zones de suivi » (pluriel : 4 strates `_tot/_feu/_res/_mix`).
   monitoring_register_btn = list(
-    fr = "Enregistrer ce projet comme zone de suivi",
-    en = "Register this project as a monitoring zone"
+    fr = "Générer les zones de suivi",
+    en = "Generate monitoring zones"
   ),
   monitoring_register_no_project = list(
-    fr = "Chargez un projet avant d'enregistrer une zone de suivi.",
-    en = "Load a project before registering a monitoring zone."
+    fr = "Chargez un projet avant de générer les zones de suivi.",
+    en = "Load a project before generating monitoring zones."
   ),
   monitoring_register_no_samples = list(
-    fr = "Générez d'abord un plan d'échantillonnage (onglet Échantillonnage).",
-    en = "Generate a sampling plan first (Sampling tab)."
+    fr = "Aucune UGF dans ce projet. Définissez d'abord les UGFs (onglet UGF).",
+    en = "No forestry units in this project. Define UGFs first (UGF tab)."
   ),
   monitoring_register_no_db = list(
-    fr = "Base de suivi non configurée — impossible d'enregistrer la zone.",
-    en = "Monitoring database not configured — cannot register zone."
+    fr = "Base de suivi non configurée — impossible de générer les zones.",
+    en = "Monitoring database not configured — cannot generate zones."
   ),
   monitoring_register_running = list(
-    fr = "Enregistrement de la zone en cours…",
-    en = "Registering zone…"
+    fr = "Génération des zones de suivi en cours (intersections sf)…",
+    en = "Generating monitoring zones (sf intersections)…"
   ),
-  monitoring_register_success = list(
-    fr = "Zone « %s » enregistrée (%d placette(s)).",
-    en = "Zone “%s” registered (%d plot(s))."
-  ),
-  monitoring_register_already = list(
-    fr = "Zone « %s » déjà enregistrée (%d placette(s)) — sélection réactivée.",
-    en = "Zone “%s” already registered (%d plot(s)) — selection restored."
-  ),
+  # v0.73.0 — Anciennes clés `monitoring_register_success` et
+  # `_already` (singulier, n_plots) remplacées par
+  # `zones_build_success_fmt` (cf. plus bas).
   monitoring_register_error = list(
-    fr = "Échec de l'enregistrement",
-    en = "Registration failed"
+    fr = "Échec de la génération des zones",
+    en = "Zone generation failed"
+  ),
+  # v0.73.0 (spec 020) — Clés spécifiques aux 4 strates.
+  zones_build_success_fmt = list(
+    fr = "%d zone(s) de suivi générée(s) : %s.",
+    en = "%d monitoring zone(s) generated: %s."
+  ),
+  zones_bdforet_missing = list(
+    fr = "BD Forêt manquante (`cache/layers/bdforet.gpkg`). Lancez d'abord le calcul du projet (onglet Synthèse) pour la télécharger.",
+    en = "BD Forêt missing (`cache/layers/bdforet.gpkg`). Run the project computation first (Synthesis tab) to download it."
+  ),
+  zone_tot = list(
+    fr = "Toutes essences",
+    en = "All species"
+  ),
+  zone_feu = list(
+    fr = "Feuillus",
+    en = "Deciduous"
+  ),
+  zone_res = list(
+    fr = "Résineux",
+    en = "Coniferous"
+  ),
+  zone_mix = list(
+    fr = "Mixte",
+    en = "Mixed"
   ),
   monitoring_validate_zone = list(
     fr = "S\u00e9lectionnez une zone de suivi avant de lancer le t\u00e9l\u00e9chargement.",

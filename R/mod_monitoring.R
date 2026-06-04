@@ -904,12 +904,37 @@ mod_monitoring_server <- function(id, app_state) {
     # because the resolver does end up touching `project$path`.
     zones_refresh <- shiny::reactiveVal(0L)
 
+    # v0.73.0 (spec 020) — Le sélecteur ne liste plus TOUTES les zones
+    # de la base (`list_monitoring_zones`) mais UNIQUEMENT celles du
+    # projet courant (`nemeton::find_zones_by_project(con,
+    # project_uuid)`). Avant ce bump, charger un projet sans zone
+    # propre faisait retomber le menu sur la 1ʳᵉ zone alphabétique
+    # de la base (ex. « villards ») — l'utilisateur voyait des alertes
+    # d'un AUTRE projet sans s'en rendre compte. Désormais le menu
+    # est vide tant que `build_project_monitoring_zones()` n'a pas
+    # créé les 4 strates `_tot/_feu/_res/_mix` du projet courant.
     zones <- shiny::reactive({
       zones_refresh()                       # explicit refresh trigger
       proj <- app_state$current_project     # explicit dep on project
+      if (is.null(proj) || is.null(proj$id)) {
+        return(data.frame(id = integer(0), name = character(0),
+                          stringsAsFactors = FALSE))
+      }
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
-      list_monitoring_zones(con)
+      if (is.null(con)) {
+        return(data.frame(id = integer(0), name = character(0),
+                          stringsAsFactors = FALSE))
+      }
+      tryCatch(
+        nemeton::find_zones_by_project(con, project_uuid = proj$id),
+        error = function(e) {
+          cli::cli_alert_warning(
+            "find_zones_by_project failed: {e$message}")
+          data.frame(id = integer(0), name = character(0),
+                     stringsAsFactors = FALSE)
+        }
+      )
     })
 
     # Push zones into the selectInput. Empty list → empty choices, the
@@ -934,19 +959,33 @@ mod_monitoring_server <- function(id, app_state) {
                  else character(0)
 
       preferred <- character(0)
-      pmeta_id <- app_state$current_project$metadata$monitoring_zone_id
-      if (!is.null(pmeta_id) && length(pmeta_id) == 1L) {
-        candidate <- as.character(pmeta_id)
-        if (candidate %in% choices) preferred <- candidate
+      # v0.73.0 (spec 020) — Stratégie de sélection par défaut :
+      # 1. La zone `_tot` du projet courant (toujours présente après
+      #    `build_project_monitoring_zones`, contient l'union de
+      #    toutes les UGFs sans filtre essence).
+      # 2. Sinon, le `monitoring_zone_id` mémorisé dans les
+      #    métadonnées du projet (back-compat avant spec 020 où
+      #    une seule zone était créée par projet).
+      # 3. Sinon, vide (selected = "") — le bandeau « générer les
+      #    zones » apparaîtra côté UI.
+      if (nrow(z)) {
+        # Cherche la zone dont le nom se termine par `_tot`
+        # (convention spec 020, indépendante du slug projet).
+        tot_idx <- grep("_tot$", as.character(z$name))
+        if (length(tot_idx) >= 1L) {
+          preferred <- as.character(z$id[tot_idx[1]])
+        }
       }
-      # v0.72.0 — `selected = character(0)` était interprété par
-      # `updateSelectInput` comme « ne pas changer la sélection
-      # côté client » dans certaines combinaisons Shiny/version
-      # navigateur. Conséquence : quand l'utilisateur changeait
-      # de projet récent, la zone de suivi du projet PRÉCÉDENT
-      # restait sélectionnée dans le selectInput (alors que le
-      # nouveau projet n'avait pas de `monitoring_zone_id`).
-      # `selected = ""` force explicitement la non-sélection.
+      if (!length(preferred)) {
+        pmeta_id <- app_state$current_project$metadata$monitoring_zone_id
+        if (!is.null(pmeta_id) && length(pmeta_id) == 1L) {
+          candidate <- as.character(pmeta_id)
+          if (candidate %in% choices) preferred <- candidate
+        }
+      }
+      # v0.72.0 — `selected = ""` force explicitement la
+      # non-sélection (le `character(0)` était interprété comme
+      # « ne pas changer » par certaines combos Shiny).
       selected <- if (length(preferred)) preferred else ""
 
       shiny::updateSelectInput(session, "zone_id",
@@ -1023,14 +1062,28 @@ mod_monitoring_server <- function(id, app_state) {
       NULL
     })
 
-    # Click handler: validate, register, persist zone_id, refresh
-    # dropdown. Idempotent — clicking twice on the same project just
-    # re-selects the existing zone (helper checks DB before inserting).
-    # v0.52.7 — Observer câblé sur DEUX inputs : le bouton sidebar
-    # historique (`input$register`) ET le bouton inline ajouté dans le
-    # bandeau (`input$register_inline`). Les deux trigent la même
-    # `register_project_as_zone()` — pas de duplication de logique,
-    # juste un `bindEvent` multi-source.
+    # v0.73.0 (spec 020) — Click handler refactoré.
+    #
+    # Avant : `register_project_as_zone(con, project)` créait UNE
+    # zone à partir des placettes (`samples.gpkg`). Le sélecteur
+    # multi-projets pouvait alors croiser des zones de plusieurs
+    # projets (bug villards/Mouthe).
+    #
+    # Maintenant : `nemeton::build_project_monitoring_zones()` crée
+    # jusqu'à 4 zones (`_tot/_feu/_res/_mix`) par croisement de
+    # l'union des UGFs avec les strates BD Forêt v2. La fonction
+    # core est en `upsert` (`replace = TRUE` par défaut) → un re-clic
+    # supprime puis recrée les zones du projet (les `zone_id`
+    # changent ; `prune_orphan_zone_caches()` nettoie les anciens
+    # dossiers `cache/layers/*/zone_<old_id>/` orphelins).
+    #
+    # Inputs cœur :
+    #   * `project_name = project$name`         (ex. "Mouthe")
+    #   * `project_uuid = project$id`           (`<ts>_<rand>` = id local)
+    #   * `ugf = ug_build_sf(project)`          (sf des UGFs)
+    #   * `bdforet = sf::st_read(<proj>/cache/layers/bdforet.gpkg)`
+    #     Si absent → message « lancer le calcul du projet d'abord »
+    #     (ne PAS appeler la fonction).
     shiny::observe({
       i18n <- i18n_r()
       project <- app_state$current_project
@@ -1039,9 +1092,26 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return()
       }
-      if (!samples_present()) {
-        shiny::showNotification(i18n$t("monitoring_register_no_samples"),
-                                type = "warning", duration = 5)
+      # Pré-requis BD Forêt : produite au 1er calcul projet via
+      # `download_ign_bdforet`. Sans ce GPKG, le croisement avec les
+      # strates BD Forêt v2 est impossible.
+      bdforet_gpkg <- file.path(project$path, "cache", "layers",
+                                "bdforet.gpkg")
+      if (!file.exists(bdforet_gpkg)) {
+        shiny::showNotification(
+          i18n$t("zones_bdforet_missing"),
+          type = "warning", duration = 8
+        )
+        return()
+      }
+      # Pré-requis UGFs : ug_build_sf renvoie NULL quand le projet
+      # n'a pas d'UGF défini (ex. nouveau projet).
+      ugf_sf <- tryCatch(ug_build_sf(project), error = function(e) NULL)
+      if (is.null(ugf_sf) || nrow(ugf_sf) == 0L) {
+        shiny::showNotification(
+          i18n$t("monitoring_register_no_samples"),
+          type = "warning", duration = 5
+        )
         return()
       }
       con <- get_monitoring_db_connection(project = app_state$current_project)
@@ -1057,8 +1127,30 @@ mod_monitoring_server <- function(id, app_state) {
                               type = "message", duration = 3,
                               id = session$ns("register_running_notif"))
 
+      bdforet_sf <- tryCatch(
+        sf::st_read(bdforet_gpkg, quiet = TRUE),
+        error = function(e) NULL
+      )
+      if (is.null(bdforet_sf)) {
+        register_running(FALSE)
+        shiny::showNotification(
+          sprintf("%s : %s",
+                  i18n$t("monitoring_register_error"),
+                  "BD Forêt GPKG illisible"),
+          type = "error", duration = 8
+        )
+        return()
+      }
+
       result <- tryCatch(
-        register_project_as_zone(con, project),
+        nemeton::build_project_monitoring_zones(
+          con,
+          project_name = project$name,
+          project_uuid = project$id,
+          ugf          = ugf_sf,
+          bdforet      = bdforet_sf
+          # strata=c("tot","feu","res","mix"), replace=TRUE (defaults)
+        ),
         error = function(e) e
       )
       register_running(FALSE)
@@ -1072,21 +1164,40 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
 
-      # Refresh dropdown so the new (or re-found) zone appears, then
-      # update the in-memory project metadata so auto-select picks the
-      # right id on the next reactive flush.
-      project$metadata$monitoring_zone_id <- result$zone_id
-      app_state$current_project <- project
+      # v0.73.0 — Best-effort : purger les caches orphelins
+      # `cache/layers/*/zone_<old_id>/` (les zone_id changent à
+      # chaque upsert, donc les anciens dossiers traînent sinon).
+      tryCatch(
+        nemeton::prune_orphan_zone_caches(
+          con,
+          cache_root = file.path(project$path, "cache", "layers")
+        ),
+        error = function(e) {
+          cli::cli_alert_warning(
+            "prune_orphan_zone_caches failed: {e$message}")
+        }
+      )
+
+      # Mémoriser la zone `_tot` (la plus inclusive) comme zone
+      # par défaut du projet — l'observer du sélecteur s'aligne
+      # déjà sur cette convention via `grep(\"_tot$\", z$name)`.
+      tot_id <- result$tot %||% NA_integer_
+      if (!is.na(tot_id)) {
+        project$metadata$monitoring_zone_id <- tot_id
+        app_state$current_project <- project
+      }
       zones_refresh(zones_refresh() + 1L)
 
-      msg_key <- if (isTRUE(result$was_existing)) {
-        "monitoring_register_already"
-      } else {
-        "monitoring_register_success"
-      }
+      # Récap : strates créées (clés non-NULL du résultat) + strates
+      # vides (clés manquantes, ex. projet 100% feuillu → `res` absent).
+      built_strata <- names(result)[!vapply(
+        result, is.null, logical(1))]
+      n_built <- length(built_strata)
       shiny::showNotification(
-        sprintf(i18n$t(msg_key), result$zone_name, result$n_plots),
-        type = "message", duration = 5
+        sprintf(i18n$t("zones_build_success_fmt"),
+                n_built,
+                paste(built_strata, collapse = ", ")),
+        type = "message", duration = 6
       )
     }) |>
       shiny::bindEvent(input$register, input$register_inline,

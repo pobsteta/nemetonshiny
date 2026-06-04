@@ -10,6 +10,39 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.73.0] - 2026-06-04
+
+### Changed
+
+- **Plancher cœur bumpé** : `Imports: nemeton (>= 0.67.0)`
+  (spec 020). Active les 4 nouvelles fonctions
+  `build_project_monitoring_zones`, `create_monitoring_zone`,
+  `find_zones_by_project`, `prune_orphan_zone_caches`.
+- **Bouton « Enregistrer ce projet comme zone de suivi »**
+  → **« Générer les zones de suivi »**. Crée jusqu'à 4 strates
+  (`_tot/_feu/_res/_mix`) par croisement union UGFs × BD Forêt v2
+  (au lieu d'1 zone à partir des placettes).
+- **Selecteur « Zone de suivi »** : ne liste plus toutes les zones
+  de la DB (`list_monitoring_zones`) mais uniquement celles du
+  projet courant (`nemeton::find_zones_by_project`). Corrige le
+  bug villards/Mouthe (zone d'un autre projet affichée par
+  défaut).
+- **Cleanup post-upsert** automatique : appel à
+  `nemeton::prune_orphan_zone_caches()` après chaque
+  `build_project_monitoring_zones()`.
+
+### Added
+
+- Clés i18n `zones_build_success_fmt`, `zones_bdforet_missing`,
+  `zone_tot`, `zone_feu`, `zone_res`, `zone_mix`.
+
+### Pre-conditions
+
+- Bouton « Générer les zones de suivi » requiert :
+  - BD Forêt produite (`cache/layers/bdforet.gpkg`) — message
+    actionnable si absente.
+  - UGFs définies dans le projet — message actionnable si vide.
+
 ## [0.72.0] - 2026-06-04
 
 ### Added

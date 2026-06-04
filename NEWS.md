@@ -1,3 +1,101 @@
+# nemetonshiny 0.73.0 (2026-06-04)
+
+### Changed — Wiring des zones de suivi (spec 020 — 4 strates par projet)
+
+Hand-off du brief
+`/home/pascal/dev/nemeton/BRIEF-nemetonshiny-zones-spec020.md`.
+nemeton v0.67.0 expose 4 nouvelles fonctions pour gérer **jusqu'à 4
+zones de suivi** par projet (croisement union UGFs × strates BD
+Forêt v2) :
+
+* `build_project_monitoring_zones(con, project_name, project_uuid,
+  ugf, bdforet, ...)` — construit/upsert les 4 strates (`_tot`,
+  `_feu`, `_res`, `_mix`) en une seule fois.
+* `create_monitoring_zone(con, zone_name, zone_polygon,
+  project_uuid)` — insert zone seule.
+* `find_zones_by_project(con, project_uuid)` — liste `(id, name)`
+  des zones du projet courant.
+* `prune_orphan_zone_caches(con, cache_root, ...)` — purge les
+  caches `zone_<old_id>/` orphelins après upsert.
+
+### Bug fixé — Mauvaise zone affichée au changement de projet (villards/Mouthe)
+
+**Symptôme** : charger un projet sans zone propre faisait retomber
+le selecteur sur la **1ʳᵉ zone alphabétique de la base** (ex.
+`villards`), même si l'utilisateur travaillait sur Mouthe.
+L'utilisateur voyait des alertes d'un autre projet sans s'en rendre
+compte.
+
+**Cause** : `zones` reactive appelait `list_monitoring_zones(con)`
+qui retournait **toutes** les zones de la DB, indépendamment du
+projet courant.
+
+**Fix** : `zones` consume désormais
+`nemeton::find_zones_by_project(con, project_uuid = proj$id)`. Le
+selectInput n'affiche que les zones du projet courant. Si vide
+→ pas de zone, le bandeau « générer les zones » apparaît.
+
+### Bouton « Générer les zones de suivi »
+
+Le bouton « Enregistrer ce projet comme zone de suivi » (qui créait
+1 zone à partir des placettes `samples.gpkg`) est **refactoré** :
+
+* **Nouveau wording** : « Générer les zones de suivi » /
+  « Generate monitoring zones ».
+* **Nouvelle action** : appel à
+  `nemeton::build_project_monitoring_zones()` qui crée jusqu'à 4
+  strates (`_tot`, `_feu`, `_res`, `_mix`) par croisement union
+  UGFs × BD Forêt v2.
+* **Pré-requis BD Forêt** : si `cache/layers/bdforet.gpkg` absent,
+  message « lancer d'abord le calcul du projet » (pas d'appel à la
+  fonction). La BD Forêt est produite par `download_ign_bdforet`
+  au 1er calcul projet (onglet Synthèse).
+* **Pré-requis UGFs** : si `ug_build_sf(project)` est vide,
+  message « définir les UGFs d'abord ».
+* **Cleanup post-upsert** : appel automatique à
+  `nemeton::prune_orphan_zone_caches()` après chaque
+  `build_project_monitoring_zones()` — l'upsert
+  (`replace = TRUE` par défaut) ré-assigne de nouveaux `zone_id`,
+  donc les caches `cache/layers/*/zone_<old_id>/` deviennent
+  orphelins. La purge nettoie best-effort.
+* **Auto-sélection `_tot`** : la zone `_tot` (toutes essences) est
+  pré-sélectionnée par défaut après build, via
+  `grep("_tot$", z$name)` dans l'observer du selectInput.
+
+### Détails techniques
+
+* `DESCRIPTION` : `Imports: nemeton (>= 0.65.1)` → `(>= 0.67.0)`.
+* `R/mod_monitoring.R` :
+  - `zones <- shiny::reactive(...)` : `list_monitoring_zones(con)`
+    remplacé par `nemeton::find_zones_by_project(con,
+    project_uuid = proj$id)`.
+  - Stratégie de sélection par défaut révisée : `_tot` >
+    `metadata$monitoring_zone_id` > vide.
+  - Observer du bouton `register` / `register_inline` : appel à
+    `nemeton::build_project_monitoring_zones()` + lecture
+    `cache/layers/bdforet.gpkg` + `ug_build_sf(project)` + cleanup
+    `nemeton::prune_orphan_zone_caches()`.
+* `R/utils_i18n.R` : nouvelles clés `zones_build_success_fmt`,
+  `zones_bdforet_missing`, `zone_tot`, `zone_feu`, `zone_res`,
+  `zone_mix`. Wording bouton `monitoring_register_btn`
+  « Enregistrer... » → « Générer les zones de suivi ».
+* `tests/testthat/test-mod_monitoring.R` : tests des mocks
+  `list_monitoring_zones` adaptés vers
+  `nemeton::find_zones_by_project`. Tests legacy
+  `register_project_as_zone` marqués `skip` (le helper reste
+  exporté pour back-compat, testé dans `test-service_monitoring_db.R`).
+
+### Pas de breaking change fonctionnel
+
+Le helper legacy `nemetonshiny:::register_project_as_zone()` est
+toujours exporté côté `service_monitoring_db.R` (tests
+indépendants conservés). Mais il n'est plus appelé par l'app.
+
+### Tests
+
+* 2763 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
 # nemetonshiny 0.72.0 (2026-06-04)
 
 ### Added — Modal pixel CRSWIR FORDEAD enrichi (5 traces + zone validité)
