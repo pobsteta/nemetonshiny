@@ -10,6 +10,32 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.72.0] - 2026-06-04
+
+### Added
+
+- **Modal pixel CRSWIR FORDEAD enrichi** : 3 nouvelles traces /
+  annotations exploitant les colonnes `seuil_haut`, `anomalie` du
+  dataframe + l'attribut `dans_zone_validite` (déjà retournés par
+  `nemeton::read_fordead_pixel_series()` mais non affichés
+  précédemment). Bande seuil orange pointillée, points anomalie
+  rouges taille 8, annotation hors-validité. Axe Y dynamique
+  selon `vegetation_index`.
+- 3 nouvelles clés i18n
+  (`monitoring_fordead_pixel_threshold`,
+  `monitoring_fordead_pixel_anomaly`,
+  `monitoring_fordead_pixel_outside_validity`).
+
+### Fixed
+
+- **Zone de suivi reste figée au changement de projet récent** :
+  `mod_monitoring.R::~l.942` : `selected = ""` au lieu de
+  `character(0)` (interprété par `updateSelectInput` comme « ne
+  pas changer » dans certaines combos Shiny/navigateur).
+- **Toast `no_data` clic FORDEAD hors zone** : `duration = 8` (au
+  lieu de 4) + wording explicite avec instruction actionnable
+  (« Cliquez DANS la zone d'alerte colorée »).
+
 ## [0.71.1] - 2026-06-03
 
 ### Fixed

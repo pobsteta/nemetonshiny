@@ -210,18 +210,39 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         }
       )
       if (is.null(ts) || !nrow(ts)) {
+        # v0.72.0 — duration ↑ 4 → 8 s + wording plus explicite.
+        # Cas typique : clic hors zone modélisée (extent du bundle
+        # FORDEAD plus petit que l'AOI rendue sur la carte).
         shiny::showNotification(
           i18n$t("monitoring_fordead_pixel_no_data"),
-          type = "warning", duration = 4
+          type = "warning", duration = 8
         )
         return()
       }
 
-      premiere <- attr(ts, "premiere_detection")
-      col_obs  <- "#2C7FB8"  # bleu observé
-      col_pred <- "#D62728"  # rouge prédiction harmonique
+      # v0.72.0 — Enrichissement du modal CRSWIR (consume les 5
+      # colonnes de `nemeton::read_fordead_pixel_series()` au lieu
+      # de juste obs/pred) :
+      #   * Bande `seuil_haut` (`crswir_pred + threshold_anomaly`)
+      #     → ligne pointillée orange : enveloppe de détection.
+      #   * Points en anomalie (`anomalie == TRUE`) surlignés rouge
+      #     vif marker size 8 par-dessus la trace observée.
+      #   * `attr(ts, "premiere_detection")` → marqueur vertical
+      #     (existant depuis v0.59.0).
+      #   * `attr(ts, "dans_zone_validite")` → annotation discrète
+      #     en haut à gauche si FALSE (pixel hors zone de validité
+      #     pour l'essence dominante).
+      premiere      <- attr(ts, "premiere_detection")
+      in_validity   <- attr(ts, "dans_zone_validite")
+      veg_index     <- attr(ts, "vegetation_index") %||% "CRSWIR"
+
+      col_obs     <- "#2C7FB8"  # bleu observé (existant)
+      col_pred    <- "#D62728"  # rouge prédiction harmonique (existant)
+      col_seuil   <- "#FF7F0E"  # orange seuil_haut (nouveau v0.72.0)
+      col_anomaly <- "#9C0E0E"  # rouge foncé points anomalie (nouveau)
 
       p <- plotly::plot_ly(type = "scatter")
+      # 1. Observé (points bleus, mode = markers).
       p <- plotly::add_trace(
         p,
         x      = as.Date(ts$obs_date),
@@ -232,9 +253,10 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         hovertemplate = paste0(
           "<b>", i18n$t("monitoring_fordead_pixel_observed"), "</b><br>",
           "%{x|%Y-%m-%d}<br>",
-          "CRSWIR = %{y:.3f}<extra></extra>"
+          veg_index, " = %{y:.3f}<extra></extra>"
         )
       )
+      # 2. Prédiction harmonique (ligne rouge).
       p <- plotly::add_trace(
         p,
         x      = as.Date(ts$obs_date),
@@ -245,9 +267,51 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         hovertemplate = paste0(
           "<b>", i18n$t("monitoring_fordead_pixel_predicted"), "</b><br>",
           "%{x|%Y-%m-%d}<br>",
-          "CRSWIR = %{y:.3f}<extra></extra>"
+          veg_index, " = %{y:.3f}<extra></extra>"
         )
       )
+      # 3. v0.72.0 — Seuil haut (= crswir_pred + threshold_anomaly).
+      # Ligne orange pointillée. Quand un point observé dépasse ce
+      # seuil, c'est une anomalie candidate.
+      if ("seuil_haut" %in% names(ts)) {
+        p <- plotly::add_trace(
+          p,
+          x      = as.Date(ts$obs_date),
+          y      = as.numeric(ts$seuil_haut),
+          name   = i18n$t("monitoring_fordead_pixel_threshold"),
+          mode   = "lines",
+          line   = list(color = col_seuil, width = 1.2,
+                        dash = "dash"),
+          hovertemplate = paste0(
+            "<b>", i18n$t("monitoring_fordead_pixel_threshold"), "</b><br>",
+            "%{x|%Y-%m-%d}<br>",
+            veg_index, " = %{y:.3f}<extra></extra>"
+          )
+        )
+      }
+      # 4. v0.72.0 — Points en anomalie (rouge foncé, taille 8),
+      # surlignés par-dessus la trace observée. Filtre :
+      # ts$anomalie == TRUE && !is.na(ts$crswir_obs).
+      if ("anomalie" %in% names(ts)) {
+        anom_rows <- which(isTRUE(any(ts$anomalie)) |
+                           (!is.na(ts$anomalie) & ts$anomalie))
+        if (length(anom_rows)) {
+          p <- plotly::add_trace(
+            p,
+            x      = as.Date(ts$obs_date[anom_rows]),
+            y      = as.numeric(ts$crswir_obs[anom_rows]),
+            name   = i18n$t("monitoring_fordead_pixel_anomaly"),
+            mode   = "markers",
+            marker = list(color = col_anomaly, size = 8,
+                          line = list(color = "#FFFFFF", width = 1)),
+            hovertemplate = paste0(
+              "<b>", i18n$t("monitoring_fordead_pixel_anomaly"), "</b><br>",
+              "%{x|%Y-%m-%d}<br>",
+              veg_index, " = %{y:.3f}<extra></extra>"
+            )
+          )
+        }
+      }
 
       shapes <- list()
       annotations <- list()
@@ -270,13 +334,31 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           font = list(color = "#000000", size = 11)
         ))
       }
+      # v0.72.0 — Annotation discrète en haut à gauche si le pixel
+      # est hors zone de validité de l'essence dominante (calibration
+      # FORDEAD non-applicable strictement). Visible quand
+      # `attr(ts, "dans_zone_validite") == FALSE`.
+      if (!is.null(in_validity) && length(in_validity) == 1L &&
+          !is.na(in_validity) && isFALSE(in_validity)) {
+        annotations <- c(annotations, list(list(
+          xref = "paper", x = 0, xanchor = "left",
+          yref = "paper", y = 1, yanchor = "top",
+          text = i18n$t("monitoring_fordead_pixel_outside_validity"),
+          showarrow = FALSE,
+          font = list(color = "#FF7F0E", size = 11),
+          bgcolor = "rgba(255, 255, 220, 0.85)",
+          borderpad = 4
+        )))
+      }
 
       p <- plotly::layout(
         p,
         margin = list(t = 20, b = 40, l = 50, r = 10),
         xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
                       type = "date"),
-        yaxis  = list(title = i18n$t("monitoring_fordead_pixel_yaxis")),
+        yaxis  = list(title = sprintf("%s (%s)",
+                                       i18n$t("monitoring_fordead_pixel_yaxis"),
+                                       veg_index)),
         legend = list(orientation = "h", y = -0.25),
         shapes = if (length(shapes)) shapes else NULL,
         annotations = if (length(annotations)) annotations else NULL

@@ -2510,12 +2510,31 @@ TRANSLATIONS <- list(
     en = "First anomaly"
   ),
   monitoring_fordead_pixel_yaxis = list(
-    fr = "CRSWIR",
-    en = "CRSWIR"
+    fr = "Indice",
+    en = "Index"
   ),
+  # v0.72.0 \u2014 Wording plus explicite : la cause principale du NULL
+  # est un clic hors zone mod\u00e9lis\u00e9e (extent du bundle FORDEAD plus
+  # petit que l'AOI rendue sur la carte). On donne une instruction
+  # actionnable. Duration toast bump\u00e9e \u00e0 8 s c\u00f4t\u00e9 handler.
   monitoring_fordead_pixel_no_data = list(
-    fr = "Aucune s\u00e9rie CRSWIR disponible pour ce pixel (hors zone mod\u00e9lis\u00e9e ou run FORDEAD absent).",
-    en = "No CRSWIR series available for this pixel (outside the modelled extent or FORDEAD run missing)."
+    fr = "Aucune s\u00e9rie CRSWIR disponible pour ce pixel. Cliquez DANS la zone d'alerte color\u00e9e du raster (extent mod\u00e9lis\u00e9 plus petit que l'AOI).",
+    en = "No CRSWIR series available for this pixel. Click WITHIN the coloured alert zone of the raster (modelled extent smaller than the AOI)."
+  ),
+  # v0.72.0 \u2014 Nouvelles courbes/annotations du modal CRSWIR
+  # enrichi (consume `seuil_haut`, `anomalie`, `dans_zone_validite`
+  # du dataframe `nemeton::read_fordead_pixel_series()`).
+  monitoring_fordead_pixel_threshold = list(
+    fr = "Seuil de d\u00e9tection (pr\u00e9dit + \u0394)",
+    en = "Detection threshold (predicted + \u0394)"
+  ),
+  monitoring_fordead_pixel_anomaly = list(
+    fr = "Anomalie d\u00e9tect\u00e9e",
+    en = "Detected anomaly"
+  ),
+  monitoring_fordead_pixel_outside_validity = list(
+    fr = "Pixel hors zone de validit\u00e9 (essence non calibr\u00e9e)",
+    en = "Pixel outside calibration validity (uncalibrated species)"
   ),
 
   # ----- Pixel map sub-tab (spec 010) -----
