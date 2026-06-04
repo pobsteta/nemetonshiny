@@ -939,7 +939,15 @@ mod_monitoring_server <- function(id, app_state) {
         candidate <- as.character(pmeta_id)
         if (candidate %in% choices) preferred <- candidate
       }
-      selected <- if (length(preferred)) preferred else character(0)
+      # v0.72.0 — `selected = character(0)` était interprété par
+      # `updateSelectInput` comme « ne pas changer la sélection
+      # côté client » dans certaines combinaisons Shiny/version
+      # navigateur. Conséquence : quand l'utilisateur changeait
+      # de projet récent, la zone de suivi du projet PRÉCÉDENT
+      # restait sélectionnée dans le selectInput (alors que le
+      # nouveau projet n'avait pas de `monitoring_zone_id`).
+      # `selected = ""` force explicitement la non-sélection.
+      selected <- if (length(preferred)) preferred else ""
 
       shiny::updateSelectInput(session, "zone_id",
                                choices  = choices,

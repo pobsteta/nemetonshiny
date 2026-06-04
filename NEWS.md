@@ -1,3 +1,91 @@
+# nemetonshiny 0.72.0 (2026-06-04)
+
+### Added — Modal pixel CRSWIR FORDEAD enrichi (5 traces + zone validité)
+
+**Avant v0.72.0** : le modal CRSWIR (clic pixel sur la carte FORDEAD)
+n'exploitait que 2 colonnes (`crswir_obs`, `crswir_pred`) sur les 5
+retournées par `nemeton::read_fordead_pixel_series()`. Pas de
+visualisation du seuil de détection, ni des anomalies, ni de
+l'indicateur de validité.
+
+**v0.72.0** : le modal affiche désormais l'intégralité du diagnostic
+FORDEAD :
+
+| Élément | État précédent | État v0.72.0 |
+|---|---|---|
+| Courbe `crswir_obs` (observé) | ✅ points bleus | inchangé |
+| Courbe `crswir_pred` (harmonique) | ✅ ligne rouge | inchangé |
+| **Bande `seuil_haut`** | ❌ absente | 🟧 ligne pointillée orange (= pred + Δ) |
+| **Points en anomalie** | ❌ absents | 🔴 surlignés rouge foncé taille 8 |
+| Marqueur 1ʳᵉ anomalie | ✅ ligne verticale noire | inchangé |
+| **Indicateur `dans_zone_validite`** | ❌ absent | 🏷 annotation discrète si FALSE |
+| Axe Y | « CRSWIR » hardcodé | « Indice (CRSWIR) » dynamique selon `vegetation_index` |
+
+L'utilisateur voit désormais d'un coup d'œil :
+- **Où** est le seuil de détection (bande orange)
+- **Quels** points l'ont franchi (rouges)
+- **Quand** la 1ʳᵉ anomalie a été détectée (ligne verticale)
+- **Si** le pixel est dans la zone de calibration (annotation
+  jaune si hors zone)
+
+### Fixed — Zone de suivi pas mise à jour au changement de projet récent
+
+**Symptôme** : en chargeant un projet récent sans
+`monitoring_zone_id`, le selectInput « Zone de suivi » de Suivi
+sanitaire gardait la zone du projet PRÉCÉDENT sélectionnée.
+
+**Cause** : `mod_monitoring.R:942` utilisait
+`selected = if (length(preferred)) preferred else character(0)`.
+Le `character(0)` est interprété par `updateSelectInput` comme
+« ne pas changer la sélection côté client » dans certaines combos
+Shiny/navigateur — la zone précédente persistait.
+
+**Fix** : `selected = ""` (string vide explicite) force la
+non-sélection cohérente. Le selectInput se vide proprement quand
+le nouveau projet n'a pas de zone de suivi associée.
+
+### Fixed — Toast `no_data` du clic pixel FORDEAD plus durable et explicite
+
+Quand le clic tombe hors de la zone modélisée FORDEAD (extent du
+bundle plus petit que l'AOI affichée), le toast warning passait
+trop vite (`duration = 4`) pour être lu.
+
+* **`duration` : 4 → 8 s**
+* **Wording** : « Aucune série CRSWIR disponible pour ce pixel.
+  Cliquez DANS la zone d'alerte colorée du raster (extent modélisé
+  plus petit que l'AOI). » — instruction actionnable.
+
+### Détails techniques
+
+* `R/mod_monitoring_fordead_map.R::observeEvent(input$map_click)` :
+  - Lecture des nouvelles colonnes `seuil_haut`, `anomalie` du
+    dataframe + des attributs `dans_zone_validite`, `vegetation_index`.
+  - 2 nouvelles traces plotly (`seuil_haut` en ligne pointillée
+    orange, `anomalie==TRUE` en markers rouge foncé taille 8).
+  - Annotation top-left si pixel hors zone de validité.
+  - Axe Y dynamique selon `attr(ts, "vegetation_index")`.
+  - Toast no-data `duration = 8` au lieu de 4.
+* `R/utils_i18n.R` : 3 nouvelles clés
+  (`monitoring_fordead_pixel_threshold`,
+  `monitoring_fordead_pixel_anomaly`,
+  `monitoring_fordead_pixel_outside_validity`) + reformulation
+  de `monitoring_fordead_pixel_no_data` + ajustement de
+  `monitoring_fordead_pixel_yaxis` (« Indice » au lieu de
+  « CRSWIR » hardcodé).
+* `R/mod_monitoring.R::~l.942` : `selected = ""` au lieu de
+  `character(0)`.
+
+### Pas de breaking change
+
+* Le dataframe retourné par le cœur est inchangé (seules les
+  colonnes consommées s'étendent).
+* L'API `nemeton::read_fordead_pixel_series()` n'est pas modifiée.
+
+### Tests
+
+* 2497 pass / 3 fails pré-existants (NDMI bands tests v0.66.0
+  non liés, hors scope).
+
 # nemetonshiny 0.71.1 (2026-06-03)
 
 ### Fixed — Bundle 3 fixes UX FORDEAD + cohérence ntfy
