@@ -1078,7 +1078,9 @@ mod_monitoring_server <- function(id, app_state) {
     # dossiers `cache/layers/*/zone_<old_id>/` orphelins).
     #
     # Inputs cœur :
-    #   * `project_name = project$name`         (ex. "Mouthe")
+    #   * `project_name = project$metadata$name`  (ex. "Mouthe" ;
+    #     le nom vit dans `metadata`, pas au 1er niveau de l'objet
+    #     projet — fallback `project$id` si jamais absent)
     #   * `project_uuid = project$id`           (`<ts>_<rand>` = id local)
     #   * `ugf = ug_build_sf(project)`          (sf des UGFs)
     #   * `bdforet = sf::st_read(<proj>/cache/layers/bdforet.gpkg)`
@@ -1145,7 +1147,7 @@ mod_monitoring_server <- function(id, app_state) {
       result <- tryCatch(
         nemeton::build_project_monitoring_zones(
           con,
-          project_name = project$name,
+          project_name = project$metadata$name %||% project$id,
           project_uuid = project$id,
           ugf          = ugf_sf,
           bdforet      = bdforet_sf
