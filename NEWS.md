@@ -1,3 +1,23 @@
+# nemetonshiny 0.73.1 (2026-06-09)
+
+### Bug fixé — Génération des zones de suivi : `project_name must be a non-empty character scalar`
+
+**Symptôme** : cliquer sur « Générer les zones de suivi » échouait
+immédiatement avec
+`project_name must be a non-empty character scalar` (deux toasts
+d'erreur rouges, aucune zone créée).
+
+**Cause** : le handler passait `project_name = project$name` à
+`nemeton::build_project_monitoring_zones()`. Or l'objet projet
+retourné par `load_project()` a la forme `list(id, path, metadata)`
+— le nom vit dans `project$metadata$name`, **pas** au premier niveau.
+`project$name` valait donc `NULL`, rejeté par le garde-fou cœur.
+
+**Fix** : `project_name = project$metadata$name %||% project$id`
+(fallback sur l'id local si le nom est jamais absent). Commentaire
+de doc du handler corrigé en conséquence. Régression introduite en
+v0.73.0.
+
 # nemetonshiny 0.73.0 (2026-06-04)
 
 ### Changed — Wiring des zones de suivi (spec 020 — 4 strates par projet)

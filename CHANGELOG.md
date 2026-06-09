@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.73.1] - 2026-06-09
+
+### Fixed
+
+- **Génération des zones de suivi** : le bouton « Générer les zones
+  de suivi » échouait avec `project_name must be a non-empty
+  character scalar`. Le handler passait `project$name` (NULL) au lieu
+  de `project$metadata$name` à
+  `nemeton::build_project_monitoring_zones()`. Fallback `project$id`.
+  Régression v0.73.0.
+
 ## [0.73.0] - 2026-06-04
 
 ### Changed
