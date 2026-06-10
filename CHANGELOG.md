@@ -12,6 +12,2716 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.74.1\] - 2026-06-10
+
+### Fixed
+
+- CI rouge depuis v0.73.0 : `lasR` (Suggests, hébergé r-universe) non
+  résolu par `pak` faisait échouer tous les jobs à l’install des
+  dépendances. Ajout de `r-lidar/lasR` à `Remotes:`.
+- 6 tests pré-existants révélés une fois `lasR` résolu (masqués
+  jusque-là par l’échec d’install), tous côté test — code applicatif
+  correct : `mod_rag_admin` testServer (×3 : `ignoreInit` + promesse non
+  forcée), `mod_monitoring`/`mod_monitoring_pixel_map` (×3 : attente
+  NDMI).
+
+### Changed
+
+- Smoke E2E shinytest2 `mod_rag_admin-e2e` quarantiné (`skip()` + FIXME)
+  : jamais exécuté en CI auparavant, cassé (modale/tab-lazy sous
+  headless), à ré-armer avec un environnement navigateur stable.
+
+## \[0.74.0\] - 2026-06-10
+
+### Added
+
+- Persistance de la géométrie de la commune (`data/commune.gpkg`) au
+  save du projet : `save_commune_geometry()` / `load_commune_geometry()`
+  dans `service_project.R`, champ `project$commune_geometry` exposé par
+  `load_project()`, paramètre `commune_geometry` sur `create_project()`,
+  `update_project()` et `mod_project_server()`.
+
+### Changed
+
+- Restore projet instantané : la géométrie commune en cache est
+  réinjectée synchroniquement au chargement, la carte se rend sans
+  attendre la `restore_task` asynchrone (worker `future` + reload
+  `nemeton` + 2 appels `geo.api.gouv.fr`). La tâche async ne sert plus
+  qu’à peupler la liste déroulante des communes. Garde-fou anti
+  double-render (flash blanc) dans son result handler. Les projets
+  legacy sans cache retombent sur l’ancien chemin async.
+
+## \[0.73.1\] - 2026-06-09
+
+### Fixed
+
+- **Génération des zones de suivi** : le bouton « Générer les zones de
+  suivi » échouait avec
+  `project_name must be a non-empty character scalar`. Le handler
+  passait `project$name` (NULL) au lieu de `project$metadata$name` à
+  [`nemeton::build_project_monitoring_zones()`](https://pobsteta.github.io/nemeton/reference/build_project_monitoring_zones.html).
+  Fallback `project$id`. Régression v0.73.0.
+
+## \[0.73.0\] - 2026-06-04
+
+### Changed
+
+- **Plancher cœur bumpé** : `Imports: nemeton (>= 0.67.0)` (spec 020).
+  Active les 4 nouvelles fonctions `build_project_monitoring_zones`,
+  `create_monitoring_zone`, `find_zones_by_project`,
+  `prune_orphan_zone_caches`.
+- **Bouton « Enregistrer ce projet comme zone de suivi »** → **« Générer
+  les zones de suivi »**. Crée jusqu’à 4 strates (`_tot/_feu/_res/_mix`)
+  par croisement union UGFs × BD Forêt v2 (au lieu d’1 zone à partir des
+  placettes).
+- **Selecteur « Zone de suivi »** : ne liste plus toutes les zones de la
+  DB (`list_monitoring_zones`) mais uniquement celles du projet courant
+  ([`nemeton::find_zones_by_project`](https://pobsteta.github.io/nemeton/reference/find_zones_by_project.html)).
+  Corrige le bug villards/Mouthe (zone d’un autre projet affichée par
+  défaut).
+- **Cleanup post-upsert** automatique : appel à
+  [`nemeton::prune_orphan_zone_caches()`](https://pobsteta.github.io/nemeton/reference/prune_orphan_zone_caches.html)
+  après chaque `build_project_monitoring_zones()`.
+
+### Added
+
+- Clés i18n `zones_build_success_fmt`, `zones_bdforet_missing`,
+  `zone_tot`, `zone_feu`, `zone_res`, `zone_mix`.
+
+### Pre-conditions
+
+- Bouton « Générer les zones de suivi » requiert :
+  - BD Forêt produite (`cache/layers/bdforet.gpkg`) — message
+    actionnable si absente.
+  - UGFs définies dans le projet — message actionnable si vide.
+
+## \[0.72.0\] - 2026-06-04
+
+### Added
+
+- **Modal pixel CRSWIR FORDEAD enrichi** : 3 nouvelles traces /
+  annotations exploitant les colonnes `seuil_haut`, `anomalie` du
+  dataframe + l’attribut `dans_zone_validite` (déjà retournés par
+  [`nemeton::read_fordead_pixel_series()`](https://pobsteta.github.io/nemeton/reference/read_fordead_pixel_series.html)
+  mais non affichés précédemment). Bande seuil orange pointillée, points
+  anomalie rouges taille 8, annotation hors-validité. Axe Y dynamique
+  selon `vegetation_index`.
+- 3 nouvelles clés i18n (`monitoring_fordead_pixel_threshold`,
+  `monitoring_fordead_pixel_anomaly`,
+  `monitoring_fordead_pixel_outside_validity`).
+
+### Fixed
+
+- **Zone de suivi reste figée au changement de projet récent** :
+  `mod_monitoring.R::~l.942` : `selected = ""` au lieu de `character(0)`
+  (interprété par `updateSelectInput` comme « ne pas changer » dans
+  certaines combos Shiny/navigateur).
+- **Toast `no_data` clic FORDEAD hors zone** : `duration = 8` (au lieu
+  de 4) + wording explicite avec instruction actionnable (« Cliquez DANS
+  la zone d’alerte colorée »).
+
+## \[0.71.1\] - 2026-06-03
+
+### Fixed
+
+- **Toast `fordead_success` qui clignote + bouton FORDEAD perçu grisé**
+  : garde d’idempotence `fordead_result_consumed` reactiveVal
+  (symétrique FAST v0.70.4). Reset à `FALSE` dans
+  `observeEvent(input$run_health)`.
+- **Push ntfy « Ingestion FAST démarrée »** : wording aligné avec le
+  toast UI et le push complete → « Diagnostic FAST démarré ». Cohérence
+  end-to-end.
+
+### Changed
+
+- **FORDEAD output_dir : fin de la pollution `/tmp/`** : le worker passe
+  désormais
+  `output_dir = <projet>/cache/layers/fordead/output_zone_<id>`
+  - `keep_output = TRUE` à
+    [`nemeton::run_fordead_dieback()`](https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html).
+    Per-zone, écrasé à chaque relance, taille bornée. Outputs préservés
+    (training, masks bruts) → inspection admin possible.
+- Nouveau helper `.resolve_fordead_output_dir(project, zone_id)`.
+- `run_fordead_async()` : signature ExtendedTask étendue avec
+  `output_dir = NULL` + `keep_output = TRUE` (NULL = retombe sur le
+  défaut cœur, back-compat).
+
+## \[0.71.0\] - 2026-06-03
+
+### Added
+
+- **Modal pixel Carte FAST : 3e indice NDMI complet** (couleur bleu
+  `#1F77B4` + ligne de seuil horizontale). La courbe NDMI était déjà
+  tracée depuis v0.66.0 (extraction cœur
+  `indices = c("NDVI", "NBR", "NDMI")`) mais tombait sur le gris
+  fallback faute d’entrée dans `.pixel_band_colors`, et son seuil
+  n’avait pas de ligne. Désormais palette complète avec NDVI (vert) /
+  NBR (rouge) / NDMI (bleu).
+
+## \[0.70.5\] - 2026-06-03
+
+### Removed
+
+- **Avertissement NDMI / bande B11 dans les sidebars FAST** (Alertes
+  FAST + Carte FAST). Obsolète depuis le plancher cœur
+  `nemeton (>= 0.65.1)` (v0.69.1 app) qui garantit la mise en cache
+  best-effort de B11 (spec 019 D3). Suppression du helper
+  `.fast_ndmi_note()`, des 2 `uiOutput` côté UI, des 2 `renderUI` côté
+  server, et des 2 clés i18n `monitoring_fast_ndmi_hint` +
+  `monitoring_fast_ndmi_b11_note`. Test `.fast_ndmi_note renders...`
+  retiré.
+
+## \[0.70.4\] - 2026-06-03
+
+### Fixed
+
+- **Toast `ingest_success` qui clignote** : nouveau
+  `fast_result_consumed` reactiveVal qui garde contre les re-fires
+  multiples de `fast_task$result()`. Reset à `FALSE` dans
+  `observeEvent(input$run)` pour le prochain Diagnostic FAST. S’applique
+  aussi au branchement erreur (toast `ingest_error`).
+
+### Changed
+
+- **Cohérence ntfy ↔︎ toast UI** : push `monitoring_ntfy_ingest_complete`
+  retire le `%d observations` (toujours 0 depuis <nemeton@v0.58.0>, déjà
+  retiré du toast UI en v0.53.1) et aligne le wording « Ingestion FAST
+  terminée » → « Diagnostic FAST terminé ». Test `sprintf` ajusté pour 2
+  args (était 3).
+
+## \[0.70.3\] - 2026-06-03
+
+### Fixed
+
+- **Toast d’ingestion FAST initialisé à `(1/N)`** : ajout d’un handler
+  `s2:search_done` qui affiche
+  `Tuile (1/N) — démarrage du téléchargement…` avant que le polling 500
+  ms du JSON dernier-event ne capture sa 1ʳᵉ scène (souvent `(2/N)` à
+  cause de l’écrasement multi-events). L’utilisateur voit désormais
+  `(1/N)` au moins une fois.
+
+### Added
+
+- Clé i18n `monitoring_ingest_search_done_fmt` (FR/EN).
+
+## \[0.70.2\] - 2026-06-03
+
+### Fixed
+
+- **Compteur de tuile 1-based** dans le mirror console et le toast Shiny
+  de l’ingestion S2 (`Tuile (1/120) → (120/120)` au lieu de
+  `(0/120) → (119/120)`). Le cœur émet `completed = i - 1` (fraction de
+  progression) ; l’app applique désormais `+1` uniquement dans le
+  libellé de la tuile en cours. Les gardes STAC
+  (`!nzchar(scene) && i_val == 0L`) restent sur la valeur brute.
+
+### Notes
+
+- Partie A du brief `BRIEF-nemetonshiny-console-FAST.md` (drain NDJSON)
+  confirmée déjà en place depuis v0.70.0. Aucune action additionnelle.
+
+## \[0.70.1\] - 2026-06-03
+
+### Fixed
+
+- **Toast prewarm FAST persistant** : à `fast_prewarm:complete`,
+  l’observer ne retirait pas le toast `fast_prewarm_progress` (id
+  stable, `duration = NULL`). Conséquence : « Pré-calcul carte NDMI
+  Intensité en cours… » restait collé en bas à droite alors que le
+  worker était terminé. Fix : `removeNotification` explicite
+  - nouveau toast court « Diagnostic FAST terminé — application
+    disponible. » (4 s).
+- **Filet de sécurité status()** : nouvel observer qui retire le toast
+  running dès que `fast_task$status()` quitte `"running"`, couvrant le
+  cas pathologique où le cœur n’émet pas `complete`.
+
+### Added
+
+- Clé i18n `monitoring_fast_diagnostic_complete` (FR/EN).
+
+## \[0.70.0\] - 2026-06-03
+
+### Fixed
+
+- **Logs FAST propres** : suppression des sauts (`1/120 → 3 → 23 → 51`)
+  et de la désynchro Tuile/Bande dans le mirror console pendant un
+  Diagnostic FAST. Hand-off du brief
+  `BRIEF-nemetonshiny-logs-FAST-propres.md`. Aucune modif cœur.
+
+### Changed
+
+- **Double transport de progression** : le worker écrit désormais en
+  parallèle un `.json` (dernier event, atomic rename) pour le toast
+  Shiny coalescé ET un `.ndjson` append-only pour le mirror console. Le
+  mirror est désormais drainé par offset d’octets (pattern identique à
+  `ingest_log_tick`), garantissant complétude et ordre.
+- `R/service_monitoring.R::.build_progress_writer` : append NDJSON
+  ajouté au writer JSON existant.
+- `R/mod_monitoring.R` : nouveau drain `ingest_ndjson_lines` + observer
+  dédié. `.log_band_event` et `.log_ingest_event` déplacés du chemin
+  JSON dernier-event vers le chemin NDJSON drain.
+- `R/mod_monitoring.R::.cleanup_progress_file` : étend la suppression au
+  `.ndjson` au reset de chaque ingest.
+
+### Pas de breaking change
+
+L’API publique est inchangée. Le toast Shiny continue à fonctionner. Si
+un worker plus ancien ne livre pas de `.ndjson`, le mirror console reste
+silencieux (fallback transparent).
+
+## \[0.69.1\] - 2026-06-03
+
+### Changed
+
+- **Plancher cœur bumpé** : `Imports: nemeton (>= 0.65.0)` →
+  `(>= 0.65.1)`. nemeton v0.65.1 corrige l’oubli NDMI dans
+  `.prewarm_fast_alerts()` (combos passent de 4 à 6 = NDVI + NBR + NDMI
+  × count + rolling). Effet : 1re sélection NDMI dans Alertes/Carte FAST
+  devient instantanée (hit cache D6) au lieu d’un calcul à froid.
+- Commentaire `mod_monitoring.R:~l.1471` mis à jour : « les 4 `_done` »
+  → « les 6 `_done` » avec annotation cœur v0.65.0/v0.65.1.
+
+### Audit cache FAST (RAS)
+
+Brief retour cœur confirme la cohérence prewarm ↔︎ affichage et
+auto-cohérence sampling. Aucun correctif côté app requis.
+
+## \[0.69.0\] - 2026-06-03
+
+### Changed
+
+- **Renommage du cache `cache/layers/fast/` →
+  `cache/layers/fast_sampling/`** (validation_sampling). Clarifie le
+  contexte vs `fast_alert/` et `fast_alert_mask/` (monitoring). Pas de
+  migration automatique : l’ancien `fast/` reste orphelin sur projets
+  existants (suppression manuelle recommandée).
+
+### Migration
+
+- Projets existants : `rm -rf <projet>/cache/layers/fast/` pour
+  récupérer l’espace disque. Le nouveau cache `fast_sampling/` sera créé
+  à la prochaine demande de validation_sampling.
+
+## \[0.68.0\] - 2026-06-03
+
+### Changed
+
+- **Plancher cœur bumpé** : `Imports: nemeton (>= 0.65.0)` (était
+  `>= 0.64.0`). Débloque NDMI côté cœur (fix spec 019 D3 :
+  `.enumerate_cache_scenes()` n’avait pas de branche NDMI → retour NULL
+  systématique). Active aussi le nouvel orchestrateur exporté
+  `read_fast_alert_rasters()` (3 indices × 2 modes = 6 rasters en un
+  appel — pas encore consommé par l’app, pipeline mono-index inchangé).
+- Message i18n pour le cas « raster non calculable » : littéral FR
+  inline remplacé par
+  `sprintf(i18n_r()$t("monitoring_fast_alerts_no_scene"), idx)`. Wording
+  explicite (« aucune scène cachée ne porte les bandes de cet indice »).
+  Respecte règle stricte CLAUDE.md §4.
+
+### Added
+
+- Clé i18n `monitoring_fast_alerts_no_scene` (FR/EN).
+
+## \[0.67.1\] - 2026-06-03
+
+### Fixed
+
+- **Oscillation infinie des radios Alertes FAST** (NDMI/NDVI/NBR et
+  Fréquence/Intensité). L’observer i18n lisait `input$index` et
+  `input$mode` sans `isolate()`, créant une dépendance réactive cyclique
+  au clic.
+  [`shiny::isolate()`](https://rdrr.io/pkg/shiny/man/isolate.html)
+  autour des lectures casse la boucle sans perdre la préservation de
+  sélection sur switch de langue.
+
+## \[0.67.0\] - 2026-06-03
+
+### Added
+
+- Slider **« Seuil minimum NDMI »** dans la sidebar Suivi sanitaire
+  (range 0.10–0.80, défaut 0.20). Propagé via `thresholds_r$ndmi` aux
+  consommateurs FAST ; les onglets Alertes FAST / validation lisent
+  `th$ndmi` quand NDMI est l’indice sélectionné (repli NDVI sinon). Clé
+  i18n `monitoring_threshold_ndmi`.
+
+## \[0.66.0\] - 2026-06-03
+
+### Added
+
+- **NDMI dans l’UI FAST** : indice d’humidité sélectionnable dans Carte
+  FAST et Alertes FAST (listé en premier, défaut NDVI). Propagation à
+  `build_index_stack()` / `compute_fast_alert_mask()` /
+  `extract_pixel_timeseries()` ; `bands = c("NDVI","NBR","NDMI")` à
+  l’ingestion (cache B11 + prewarm masques NDMI). Note B11 affichée
+  quand NDMI est sélectionné. Clés i18n `index_ndmi`,
+  `monitoring_fast_ndmi_hint`, `monitoring_fast_ndmi_b11_note`.
+
+### Changed
+
+- `Imports: nemeton (>= 0.64.0)` (API NDMI).
+
+## \[0.65.1\] - 2026-06-03
+
+### Fixed
+
+- Clé i18n manquante `db_not_configured` (consommée par `app_server.R`
+  au démarrage quand aucune base n’est configurée) → warning console et
+  affichage de la clé brute. Clé ajoutée FR/EN.
+
+## \[0.65.0\] - 2026-06-03
+
+### Added
+
+- **Corpus RAG** : import d’un manifeste CSV depuis le disque
+  (`fileInput`, parsé par `read_knowledge_manifest()`, chargé dans la
+  table éditable sans écraser le CSV tant que non enregistré) et export
+  du manifeste courant (`downloadButton`,
+  `write_knowledge_manifest( validate = FALSE)` avec repli
+  [`utils::write.csv`](https://rdrr.io/r/utils/write.table.html)). Clés
+  i18n `rag_btn_import_csv`, `rag_btn_export_csv`, `rag_import_csv_*`.
+
+## \[0.64.1\] - 2026-06-03
+
+### Fixed
+
+- **Modal Paramètres** : l’onglet « Fournisseur LLM » ne réaffichait
+  plus statut + boutons clé après l’ajout de l’onglet RAG (0.63.0).
+  Cause : init DataTables dans un onglet caché. Fix : montage à la
+  demande de l’UI de l’onglet RAG (`output$rag_tab_content`).
+
+### Changed
+
+- Bouton plein écran déplacé en haut-droite du modal (positionnement
+  absolu sur `.modal-content`).
+- Titre/intro du modal mis à jour pour refléter clés API + LLM + corpus
+  RAG (« Paramètres : clés API & corpus RAG »).
+
+## \[0.64.0\] - 2026-06-03
+
+### Changed
+
+- **Carte FAST** : le slider de dates avance par pas de **5 jours**
+  (`step = 5`, cadence Sentinel-2) au lieu de jour-par-jour ; le
+  snapping sur la scène réelle la plus proche reste en place.
+
+### Added
+
+- **Alertes FAST** : bandeau `alert-info` bleu en haut de la carte
+  (symétrique de Carte FAST) rappelant la résolution Sentinel-2 (10 m)
+  et décrivant le rendu selon le mode (fréquence / intensité) et
+  l’indice. Clés i18n `monitoring_fast_alerts_badge_count` /
+  `monitoring_fast_alerts_badge_rolling`.
+
+## \[0.63.0\] - 2026-06-03
+
+### Changed
+
+- **L’admin RAG passe dans le modal Paramètres** (roue dentée,
+  `mod_theia_config`) en troisième onglet « Corpus RAG », au lieu d’un
+  onglet de premier niveau de la navbar. Namespace imbriqué
+  `theia_config-rag_admin-…`. Retrait de l’onglet navbar « Paramètres »
+  (`app_ui.R`/`app_server.R`).
+- Table manifeste rendue via un déclencheur `redraw` explicite (au lieu
+  d’un proxy `DT`) pour rester cohérente à la réouverture du modal.
+
+### Added
+
+- **Modal Paramètres extensible en plein écran** : bouton bascule
+  (`arrows-fullscreen`) appliquant `.modal-fullscreen` (Bootstrap 5) ;
+  taille par défaut `xl`. Clés i18n `api_keys_tab_rag`,
+  `api_keys_fullscreen`.
+
+## \[0.62.0\] - 2026-06-03
+
+### Added
+
+- **Onglet « RAG / Corpus de connaissances »** (menu Paramètres, spec
+  009.2, E7). Module `R/mod_rag_admin.R` : édition du manifeste corpus
+  (table `DT` éditable, ajout/suppression de lignes, vocabulaire
+  contrôlé), validation en direct (`validate_knowledge_manifest`),
+  enregistrement (`write_knowledge_manifest`), prévisualisation dry-run,
+  import asynchrone (`ExtendedTask` + `future_promise`, connexion
+  ouverte dans le worker, `api_key` explicite, heartbeat de
+  progression), inventaire base (`list_knowledge_documents`) et
+  suppression (`delete_knowledge_document`). Accès réservé aux
+  administrateurs (`can_admin_rag`).
+- ~30 clés i18n FR/EN (`rag_*`, `tab_settings`).
+
+### Changed
+
+- `Imports: nemeton (>= 0.63.0)` — le code consomme l’API
+  manifeste/corpus publiée par la spec 009.2 du cœur.
+
+## \[0.61.2\] - 2026-06-02
+
+### Changed
+
+- **Le RAG s’applique désormais aussi aux 12 commentaires famille.** La
+  boucle `fill_all_comments` de `mod_synthesis.R` (lignes 616-681) ne
+  passait pas le `ctx$prompt_block` aux prompts famille — seule la
+  synthèse globale en bénéficiait. Désormais les 13 perspectives (1
+  synthèse + 12 familles) sont enrichies avec le **même contexte** (1
+  seul retrieve total, cohérence des marqueurs `[^n]`). Conséquence
+  observable : le `cli_inform("RAG: ...")` reste émis 1 seule fois par
+  session, mais TOUS les commentaires (synthèse + familles) peuvent
+  désormais citer les documents.
+- Si le ctx RAG est vide (corpus muet, opt-out, échec retrieve), les
+  prompts famille retombent sur leur comportement v0.61.1 sans RAG
+  (`Filter(nzchar)` neutralise proprement le bloc vide).
+
+## \[0.61.1\] - 2026-06-02
+
+### Added
+
+- **Observabilité RAG** :
+  `cli::cli_inform("RAG: {n} chunk(s) récupéré(s) au-dessus de {min_similarity}")`
+  dans `R/service_rag.R::rag_context()` juste après le retrieve cœur
+  réussi. Item résiduel du brief RAG 2026-06-02 — le reste du câblage
+  (`service_rag.R`, `mod_synthesis.R`, i18n, tests) était livré en
+  v0.56.0.
+
+## \[0.61.0\] - 2026-06-02
+
+### Removed
+
+- **3 contrôles UI redondants retirés en bundle** :
+  - `checkboxInput("raster_visible")` Alertes FAST (sidebar droit) →
+    visibilité pilotée par LayersControl (entrée « Alertes »).
+  - `checkboxInput("raster_visible")` Carte FAST (sidebar droit) →
+    visibilité pilotée par LayersControl (entrée « NDVI/NBR »).
+  - `checkboxGroupInput("bands")` sidebar parent gauche → NDVI + NBR
+    systématiquement téléchargés (`bands = c("NDVI", "NBR")` câblé en
+    dur dans `fast_task$invoke()`).
+- 4 clés i18n retirées (`monitoring_bands`, `monitoring_validate_bands`,
+  `monitoring_fast_alerts_raster_visible`,
+  `monitoring_pixel_map_raster_visible`).
+
+### Changed
+
+- `addLayersControl` Alertes FAST : `overlayGroups` enrichi de
+  `"Alertes"` (= `.alert_raster_group`) pour que Leaflet pilote la
+  visibilité du raster d’alerte au même titre que « UGF ».
+
+### Tests
+
+- `test-mod_monitoring.R` : test `"input$run with no band selected"` →
+  réécrit en `"input$run invokes the task with NDVI+NBR hard-wired"`.
+  Assertion HTML inversée sur la sidebar.
+
+## \[0.60.0\] - 2026-06-02
+
+### Removed
+
+- **Checkbox « Mode rapide (multi-cœur) » Alertes FAST** (introduit en
+  v0.58.0 / TODO \#4). Désormais `parallel = TRUE` est passé en dur dans
+  [`nemeton::compute_fast_alert_mask()`](https://pobsteta.github.io/nemeton/reference/compute_fast_alert_mask.html).
+  Le fallback séquentiel silencieux du cœur (si `furrr` absent) reste
+  actif : aucun risque de cassure. L’opt-in faisait peser un choix
+  technique sans bénéfice opérationnel sur l’utilisateur.
+- Clé i18n `fast_alerts_parallel_label` (FR + EN) supprimée.
+
+### Tests
+
+- Retrait des 2 tests v0.58.0 devenus obsolètes (i18n du label +
+  propagation `input$fast_mode → parallel`).
+- Ajout d’un test de non-régression sur l’absence de la clé i18n.
+
+## \[0.59.1\] - 2026-06-02
+
+### Fixed
+
+- **Test `register click` cassé par `bindEvent(ignoreInit = TRUE)`**
+  (régression test introduite par commit 3f1059d, bouton inline).
+  Matérialiser une transition `0L → 1L` sur `input$register` pour émuler
+  un vrai clic d’`actionButton` et déclencher l’observer. Aucun
+  changement de code de prod. Résultat : `[ FAIL 0 | PASS 6875 ]` sur la
+  suite complète.
+
+## \[0.59.0\] - 2026-06-02
+
+### Added
+
+- **Modal diagnostic pixel CRSWIR FORDEAD** (TODO \#3,
+  `nemeton@v0.43.0+`). Clic gauche sur la carte FORDEAD → modal plotly
+  affichant la série CRSWIR observée (points bleus) + prédiction
+  harmonique (ligne rouge)
+  - marqueur vertical sur la date de 1re anomalie. Parité fonctionnelle
+    avec la Carte pixel FAST existante. Wiring via
+    [`nemeton::read_fordead_pixel_series()`](https://pobsteta.github.io/nemeton/reference/read_fordead_pixel_series.html).
+- 6 nouvelles clés i18n FR/EN
+  (`monitoring_fordead_pixel_modal_title_fmt`,
+  `monitoring_fordead_pixel_observed`,
+  `monitoring_fordead_pixel_predicted`,
+  `monitoring_fordead_pixel_first_anomaly`,
+  `monitoring_fordead_pixel_yaxis`, `monitoring_fordead_pixel_no_data`).
+
+### Tests
+
+- 2 nouveaux : cohérence i18n des 6 clés (FR + EN) + signature cœur
+  `read_fordead_pixel_series` compatible avec l’appel app.
+
+## \[0.58.0\] - 2026-06-02
+
+### Added
+
+- **Toggle « Mode rapide » multi-cœur Alertes FAST** (TODO \#4, spec 017
+  D4 `nemeton@v0.57.0+`). Nouvelle case à cocher dans le sidebar droit
+  de l’onglet Alertes FAST. Quand activée, propage `parallel = TRUE` à
+  [`nemeton::compute_fast_alert_mask()`](https://pobsteta.github.io/nemeton/reference/compute_fast_alert_mask.html)
+  qui distribue le calcul par scène sur plusieurs cœurs via `furrr`.
+  **Opt-in** (décoché par défaut) ; résultats identiques au mode
+  séquentiel ; fallback silencieux si `furrr` absent côté cœur.
+- 1 nouvelle clé i18n FR/EN : `fast_alerts_parallel_label` (« Mode
+  rapide (multi-cœur) » / « Fast mode (multi-core) »).
+
+### Tests
+
+- 2 nouveaux : cohérence i18n FR/EN + logique de propagation
+  `input$fast_mode → parallel`.
+
+## \[0.57.0\] - 2026-06-02
+
+### Changed
+
+- **Alertes FAST : affichage en quartiles 0-4** (TODO \#5, spec 017 D2
+  `nemeton@v0.55.0+`). Délégation de la discrétisation au cœur via
+  [`nemeton::compute_fast_alert_mask()`](https://pobsteta.github.io/nemeton/reference/compute_fast_alert_mask.html).
+  Le raster passe de continu (gradient) à catégoriel 0-4 (transparent,
+  jaune, orange, rouge-orangé, rouge foncé). Unification des modes
+  count/rolling sur la même palette. Helper
+  `.fast_alert_mask_cache_dir()` ajouté.
+- 5 nouvelles clés i18n FR/EN (`fast_alert_legend_title`,
+  `fast_alert_class_1` à `_4`).
+
+### Tests
+
+- 2 nouveaux : helper chemin mask + cohérence i18n classes.
+
+## \[0.56.0\] - 2026-06-02
+
+### Added
+
+- **Perspectives IA sourcées via RAG (`nemeton@v0.62.0`).** Avant chaque
+  appel `chat$chat(prompt)` dans `mod_synthesis`, l’app récupère via
+  [`nemeton::retrieve_knowledge()`](https://pobsteta.github.io/nemeton/reference/retrieve_knowledge.html)
+  les ~8 passages les plus pertinents (cosinus ≥ 0.55 sur embeddings
+  Mistral) dans le corpus pgvector co-localisé avec la DB monitoring.
+  Les chunks sont injectés en tête du prompt avec une consigne de
+  citation `[^n]`. Sous la perspective générée, bloc « Sources
+  documentaires » formaté par
+  [`nemeton::format_citations()`](https://pobsteta.github.io/nemeton/reference/format_citations.html)
+  (titre i18n cœur).
+- **Nouveau fichier `R/service_rag.R`** : orchestration mince
+  (`rag_knowledge_con`, `rag_profile_code`, `build_situation_summary`,
+  `rag_context`). Toute la logique métier reste au cœur (règle CLAUDE.md
+  §1, §3).
+- **Dégradation gracieuse** (impératif brief §5.7) : 7 chemins d’erreur
+  testés renvoient un payload vide → perspective générée sans bloc
+  Sources, aucune exception UI. Opt-out manuel possible via
+  `options(nemeton.rag_enabled = FALSE)`.
+- **2 clés i18n FR/EN** (`rag_sourced_badge`, `rag_toggle_label`).
+- **11 nouveaux tests** dans `tests/testthat/test-service_rag.R`
+  (mapping profil, situation summary FR/EN, nominal, dédup document_id,
+  opt-out, erreur retrieve, 0 ligne, situation vide, app_con NULL).
+
+### Changed
+
+- **Plancher `Imports: nemeton (>= 0.62.0)`** (depuis 0.61.0). Garantit
+  la présence de `retrieve_knowledge` + `format_citations`.
+
+## \[0.55.0\] - 2026-06-02
+
+### Changed
+
+- **Pré-calcul FAST déplacé du helper app vers l’API native cœur**
+  (`nemeton@v0.61.0`, spec 018). v0.54.0 livrait un helper local
+  `.prewarm_fast_alerts()` qui faisait 4 `read_fast_alert_raster()`
+  après l’ingest. Le cœur intègre désormais nativement cette logique via
+  `prewarm_alerts = TRUE` + `prewarm_mask_cache_dir`. Le helper app est
+  SUPPRIMÉ ; les 2 params sont forwardés au cœur depuis le worker.
+- **Helper unique `.fast_alert_cache_dir()`** dans `mod_monitoring.R`.
+  Factorise le chemin canonique `<projet>/cache/layers/fast_alert`
+  utilisé par les 3 call sites (invoke worker + lecture Alertes FAST
+  - prévisualisation validation_sampling). Cohérence cruciale du hash
+    D6.
+- **`Imports: nemeton (>= 0.61.0)`** — garantit la présence de
+  `prewarm_alerts` + `prewarm_mask_cache_dir`.
+
+### Added
+
+- **Toasts localisés pour les events `fast_prewarm:*` du cœur.**
+  L’observer `ingest_progress` reconnaît désormais le préfixe et produit
+  des toasts à partir des clés machine du payload (`ev$index`,
+  `ev$mode`) — jamais en parsant du FR. Mapping : `count` →
+  Fréquence/Frequency, `rolling` → Intensité/Intensity. Événements
+  supportés : `fast_prewarm:<idx>_<mode>` (running), `_done`, `_failed`,
+  `:complete` (silencieux), `:cancelled`.
+- **6 clés i18n FR/EN** : `fast_mode_frequence`, `fast_mode_intensite`,
+  `fast_prewarm_running`, `fast_prewarm_done`, `fast_prewarm_failed`,
+  `fast_prewarm_cancelled`.
+
+### Removed
+
+- Helper `R/service_monitoring.R::.prewarm_fast_alerts()` (redondant
+  avec spec 018 cœur).
+- 4 tests qui mockaient ce helper.
+
+### Tests
+
+- 3 nouveaux dans `test-service_monitoring.R` : helper chemin, sprintf
+  placeholders, mapping mode → i18n.
+
+## \[0.54.0\] - 2026-06-02
+
+### Added
+
+- **Pré-calcul inconditionnel des 4 cartes FAST en fin de Diagnostic
+  FAST.** Nouveau helper `.prewarm_fast_alerts()` qui enchaîne 4 appels
+  [`nemeton::read_fast_alert_raster()`](https://pobsteta.github.io/nemeton/reference/read_fast_alert_raster.html)
+  (NDVI×count, NDVI×rolling, NBR×count, NBR×rolling) après l’ingestion
+  COG. Cache D6 content-addressed → revisite UI sub-seconde. Découple
+  calcul ↔︎ affichage : les coches/radios Alertes FAST pilotent désormais
+  QUE l’affichage Leaflet, jamais le calcul.
+- 4 nouveaux tests dans `test-service_monitoring.R` couvrent : les 4
+  combos calculées, l’échec partiel toléré, le cancel coopératif, le
+  no-op si `result_cache_dir` est NULL/vide.
+
+### Changed
+
+- **Signature `run_ingestion_async()` ExtendedTask** : nouveau paramètre
+  `result_cache_dir = NULL`. Forwardé par `mod_monitoring.R` à
+  `file.path(project$path, "cache", "layers", "fast_alert")` à chaque
+  `fast_task$invoke()`.
+
+## \[0.53.1\] - 2026-06-02
+
+### Fixed
+
+- **`db_scenes_df_r` introuvable dans `output$date_slider_ui`** (résidu
+  refactor v0.52.16). L’exception non gérée fragilisait la session Shiny
+  → bouton « Diagnostic FAST » pouvait rester grisé après la fin du
+  worker + toast persistant. Case 2 du fallback supprimée (dead code
+  depuis le retrait `obs_pixel`).
+- **Toast `monitoring_ingest_success` simplifié** : depuis
+  `nemeton@v0.58.0`, `n_obs_inserted` est toujours 0. Message reformulé
+  en « Diagnostic FAST terminé : N scène(s) en cache. » au lieu du
+  trompeur « N scène(s), 0 observation(s) insérée(s). »
+
+## \[0.53.0\] - 2026-06-02
+
+> Première release sous la convention semver stricte (CLAUDE.md
+> §Consignes de release étape 1 révisée 2026-06-02). MINOR bump car
+> refactor structurel + nouvelle feature UI.
+
+### Fixed
+
+- **`NEMETON_DB_LOCAL=1` ignoré au chargement projet.** La variable
+  était lue uniquement par `service_monitoring_db.R` (monitoring DB),
+  pas par `service_db.R` (project DB). `.resolve_db_config()`
+  court-circuite désormais en tête si truthy → projects/parcels/
+  comments/users restent sur disque (mode single-user local).
+- **Carte Alertes FAST : raster invisible avant bump opacité.** Refactor
+  structurel : `output$panel` éclaté en `output$banner` (uiOutput,
+  re-render selon raster_r) + `leafletOutput("map")` direct dans l’UI
+  (rendu UNE FOIS au montage). La map ne se recréait plus à chaque
+  changement d’index/seuil, donc l’observer
+  `leafletProxy::addRasterImage` peint correctement au premier coup.
+
+### Added
+
+- **Bandeau d’erreur diagnostique distinct de « zone saine ».**
+  `output$banner` distingue désormais : VERT « Aucune alerte FAST sur la
+  fenêtre » (raster calculé, 0 alerte) vs JAUNE warning « Raster
+  d’alerte non calculable » + cause (cache S2 incomplet, exception
+  cœur). Cas typique : NBR avec bande B12 partiellement absente du
+  cache. Nouveau reactiveVal `last_raster_error`, nouvelle clé i18n
+  `monitoring_fast_alerts_error_title`.
+
+### Changed
+
+- **Documentation : table de décision semver stricte** ajoutée à
+  `CLAUDE.md` (§Consignes de release étape 1). Toute nouvelle feature UI
+  / refactor structurel / retrait UX bumpe désormais en MINOR ; PATCH
+  réservé aux fix régression purs + alignement plancher cœur + doc.
+
+## \[0.52.17\] - 2026-06-02
+
+### Changed
+
+- **Plancher `Imports: nemeton (>= 0.60.0)`** — alignement avec la
+  finalisation cœur de la spec 017. `nemeton@v0.58.0` (Phase A, drop
+  `obs_pixel` insertion) puis `v0.60.0` (Phase B, retrait de
+  `read_obs_pixel` + migration `0004_drop_obs_pixel`) publiés. App
+  fonctionnellement inchangée — v0.52.16 fonctionne déjà contre ce
+  nouveau cœur sans aucun warning.
+- `tests/testthat/test-monitoring-smoke-e2e.R` : précondition
+  `read_obs_pixel exported` retirée du skip (la fonction n’existe plus
+  en `nemeton@v0.60.0`).
+
+## \[0.52.16\] - 2026-06-02
+
+### Changed
+
+- **FAST 100 % pure raster per-pixel — suppression du couplage
+  `obs_pixel`/placettes.** Suite à la spec 017 cœur
+  (`nemeton@v0.55.0+`), le module Suivi sanitaire ne lit plus la table
+  `obs_pixel` ni n’affiche les placettes de l’onglet Terrain. La modale
+  « clic marqueur placette » est supprimée ; seule subsiste la modale «
+  clic pixel pur » qui utilise `extract_pixel_timeseries()` (COG cache).
+
+### Removed
+
+- `obs_pixel_data` reactive + `obs_refresh` reactiveVal
+  (mod_monitoring.R)
+- `placettes_sf_r` reactive + observer addCircleMarkers placettes
+  (mod_monitoring_pixel_map.R)
+- `output$placette_ts_plot` + observer `input$map_marker_click`
+- Toggle « Placettes » du LayersControl Leaflet
+- Clés i18n obsolètes : `monitoring_pixel_map_placette_modal_title_fmt`,
+  `monitoring_pixel_map_no_placette_data`
+- 4 tests obs_pixel + helper `.skip_if_no_read_obs_pixel`
+
+### Fixed
+
+- `test-service_monitoring_db.R:170` : test obsolète depuis v0.52.1
+  (Postgres RO migre aussi de manière idempotente) corrigé.
+
+## \[0.52.15\] - 2026-06-02
+
+### Fixed
+
+- **Call site oublié `compute_fast_alert_mask()` (régression
+  v0.52.13).** v0.52.13 avait migré `read_fast_alert_raster()` vers
+  l’API mono-index `nemeton@v0.55.0` mais avait laissé
+  `compute_fast_alert_mask()` (dans `service_validation_sampling.R`) sur
+  l’ancienne API → crash « arguments inutilisés » sur « Générer le plan
+  de validation FAST ». Fix : appel avec `index` + `threshold`, et
+  nouveau param `index` propagé dans `.resolve_alert_raster()` /
+  `generate_validation_plan()`.
+
+### Added
+
+- **Cache D6 du raster d’alerte (`nemeton@v0.57.0`).** Les 2 call sites
+  de `read_fast_alert_raster()` et le call site de
+  `compute_fast_alert_mask()` passent désormais `cache_result = TRUE` +
+  `result_cache_dir = <project>/cache/layers/fast_alert`. Le COG
+  résultat est persisté avec un hash content-addressed (zone × index ×
+  threshold × dates × mode × window_days). Revisite à paramètres
+  identiques → sub-seconde.
+
+### Changed
+
+- **Plancher `Imports: nemeton (>= 0.57.0)`** — pour garantir la
+  présence des params `cache_result` / `result_cache_dir`.
+
+## \[0.52.14\] - 2026-06-01
+
+### Changed
+
+- **Radio « Indice FAST » déplacé du sidebar parent vers le sidebar
+  droit d’Alertes FAST (symétrie avec Carte FAST).** Chaque onglet
+  (Alertes FAST + Carte FAST) pilote désormais son indice
+  indépendamment. `validation_sampling` FAST consomme l’index exporté
+  par Alertes FAST via le retour `fast_alerts_ret$index_r`. Le radio
+  parent posé en v0.52.13 est retiré ; les 4 `thresholds_r` purgés du
+  champ `index = ...` (transmission désormais via le reactive export du
+  sous-module).
+
+## \[0.52.13\] - 2026-06-01
+
+### Fixed
+
+- **FAST API mono-index (suite à `nemeton@v0.55.0` spec 017).** Le cœur
+  a simplifié `read_fast_alert_raster()` en mono-index
+  (`threshold_ndvi` + `threshold_nbr` → `index` + `threshold`). L’app
+  continuait à passer les anciens paramètres → `arguments inutilisés` →
+  carte d’alertes vide.
+
+### Added
+
+- **Radio sidebar « Indice FAST » (NDVI / NBR, défaut NDVI).** Pilote
+  l’indice utilisé par `read_fast_alert_raster()`. Les 2 sliders
+  thresholds restent en place ; seul celui correspondant à l’indice
+  sélectionné est forwardé au cœur. Pour comparer les 2 vues, basculer
+  le radio (recalcul sub-seconde depuis le cache S2).
+
+### Changed
+
+- **`Imports: nemeton (>= 0.55.0)`** — l’app exige maintenant l’API
+  mono-index. Sans ce plancher, un install contre un cœur antérieur
+  casserait au premier `Diagnostic FAST`.
+
+## \[0.52.12\] - 2026-06-01
+
+### Fixed
+
+- **Plan d’actions — tableau rendu VIDE (régression v0.52.10).** Le JS
+  callback ajouté en v0.52.10 pour le dblclick sur la cellule
+  commentaire passait à `DT::datatable(callback = …)` une fonction
+  COMPLÈTE (`function(table) { … }`), alors que DT wrappe lui-même le
+  callback dans `function(table) { … }`. Le double-wrapping créait une
+  fonction interne JAMAIS invoquée (handler dblclick perdu) ET pas de
+  `return table;` → DataTables cassait silencieusement son init →
+  tableau rendu sans aucune ligne malgré un data.frame source de N
+  lignes. Fix : le callback est désormais juste le CORPS de fonction
+  (pas de wrapper), avec `return table;` à la fin. DT applique son
+  propre wrapper et le pipeline init reprend normalement.
+
+## \[0.52.11\] - 2026-06-01
+
+### Changed
+
+- **Carte FAST — `card_header` titre remplacé par un bandeau inline.**
+  Le
+  [`bslib::card_header`](https://rstudio.github.io/bslib/reference/card_body.html)
+  qui portait le titre « Carte pixel — NDVI / NBR à la résolution
+  Sentinel-2 (10 m) » mangeait une rangée entière et créait une
+  dissymétrie avec Alertes FAST voisin (qui n’a pas de header). Le titre
+  passe désormais en bandeau `alert-info` inline au-dessus de la carte,
+  padding minimal, symétrique stylistiquement avec le bandeau vert «
+  Aucune alerte FAST » d’Alertes FAST. Gain ~30-40 px verticaux +
+  cohérence visuelle entre les 2 sous-onglets.
+
+## \[0.52.10\] - 2026-06-01
+
+### Added
+
+- **Plan d’actions — dblclick sur cellule commentaire ouvre le modal
+  d’édition.** La colonne commentaire est étroite + ellipsisée dans le
+  tableau → long texte illisible. L’édition inline DT (single-line input
+  dans cellule étroite) était même contre-productive. Le commentaire
+  passe désormais EXCLUSIVEMENT par le modal multi-ligne (textarea 6
+  rangs, déjà utilisé par dblclick kanban). Un dblclick sur la cellule
+  commentaire du tableau ouvre maintenant ce même modal, qui expose en
+  plus statut / priorité / année. Affordance visuel via CSS : curseur
+  main + soulignement pointillé sur la cellule.
+
+### Changed
+
+- `EDITABLE_COLS` ne contient plus `commentaire` — l’édition inline DT
+  est désactivée pour cette colonne uniquement. Les autres colonnes
+  restent inline-éditables comme avant.
+
+## \[0.52.9\] - 2026-06-01
+
+### Fixed
+
+- **Plan d’actions — contexte IA non rafraîchi après création des
+  commentaires Synthèse.** Le reactive `plan_llm_context()` dans
+  `mod_action_plan.R` ne dépendait d’aucun signal lié à
+  `save_comments()` → il lisait `load_comments()` une seule fois au
+  montage et restait figé sur le snapshot vide. L’utilisateur qui
+  générait les commentaires côté Synthèse APRÈS avoir ouvert Plan
+  d’actions voyait toujours `action_plan_generate_no_comments`. Fix :
+  ajout d’un slot `app_state$comments_refresh = 0L` bumpé par les 3 call
+  sites de `save_comments()` (mod_synthesis IA + manuel, mod_family
+  manuel), et lu en tête de `plan_llm_context()` pour créer la
+  dépendance Shiny. Pattern symétrique avec `samples_refresh` existant
+  (mod_sampling → mod_monitoring).
+
+## \[0.52.8\] - 2026-05-31
+
+### Changed
+
+- **Onglet Alertes FAST — contrôles déplacés à droite de la carte
+  (sidebar).** Avant : Mode du raster (Fréquence/Intensité), Afficher le
+  raster et Opacité occupaient une ligne `flex-wrap` horizontale
+  au-dessus de la carte, mangeant de la hauteur utile et différant
+  visuellement de l’onglet voisin Carte FAST (sidebar droite depuis
+  v0.47.0). Après :
+  [`bslib::card`](https://rstudio.github.io/bslib/reference/card.html) +
+  `bslib::layout_sidebar(position = "right", width = 250L)`, exactement
+  comme Carte FAST. La carte gagne la zone rectangulaire principale, les
+  3 contrôles vivent dans la sidebar à droite. L’observer de refresh
+  i18n gère désormais aussi le label radio « Mode du raster » (NULL
+  avant), le checkbox et le slider — plus de label figé en FR après un
+  switch en EN.
+
+## \[0.52.7\] - 2026-05-31
+
+### Added
+
+- **Bouton « Enregistrer ce projet comme zone de suivi » INLINE dans le
+  bandeau Suivi sanitaire.** Le bouton sidebar historique tombait
+  systématiquement sous le pli sur les écrans 1080p — l’utilisateur
+  voyait le message « Aucune zone enregistrée » (ou le bandeau orphelin
+  v0.52.5) sans voir l’action. Ce bouton est désormais rendu directement
+  dans le bandeau dans les deux branches concernées : `n == 0` (DB vide)
+  avec un style `btn-primary` bleu, et « zone orpheline » (zones
+  présentes mais aucune pour ce projet, après wipe par les tests cœur)
+  avec un style `btn-warning` jaune cohérent avec le card warning. Le
+  bouton sidebar reste en place.
+
+### Changed
+
+- **Observer `input$register` refactoré en `observe() + bindEvent`.**
+  L’observer historique de la registration écoute désormais à la fois
+  `input$register` (sidebar) ET `input$register_inline` (bandeau) via un
+  même `shiny::bindEvent(..., ignoreInit = TRUE)` — pas de duplication
+  de logique entre les deux call sites.
+
+## \[0.52.6\] - 2026-05-31
+
+### Fixed
+
+- **Synthèse — alignement fin de la légende « Taille image Max 5 Mo,
+  PNG/JPG » sur les badges.** `v0.52.3` calait le centre vertical de la
+  légende sur le centre du bouton « Image de couverture »
+  (`padding-top: 0.55rem` ≈ ½ bouton 38px). Mais la ligne des badges de
+  la colonne droite (`NDP / Hauteur LiDAR / Inventaire ML`) tombe ~8 px
+  sous le centre du bouton, parce que le flux
+  `Score global → 54.8 → /100 (12 familles)` n’a pas exactement la même
+  hauteur cumulée que les 2 boutons PDF + GeoPackage à gauche.
+  `padding-top` passe à `1rem` (≈ 16 px) pour descendre le texte au
+  niveau du centre des badges.
+
+## \[0.52.5\] - 2026-05-31
+
+### Added
+
+- **Bandeau « zone orpheline » dans Suivi sanitaire.** Détection
+  app-side de l’état où la DB monitoring contient des zones mais aucune
+  n’est rattachée au projet chargé — symptôme typique d’un wipe par les
+  tests cœur `helper-monitoring.R` qui DROP CASCADE les 7 tables
+  monitoring sans garde-fou (incident villards 2026-05-31). Avant ce
+  fix, l’utilisateur voyait un bandeau vert trompeur « N zone(s)
+  connectée(s) » alors qu’aucune ne lui appartenait. Désormais, si
+  `nrow(zones) > 0` mais le `project$id` courant n’est dans aucune
+  `monitoring_zone.project_uuid`, on bascule sur un bandeau jaune
+  `warning` qui guide vers le bouton « Enregistrer ce projet comme zone
+  de suivi » de la barre latérale. Le fix définitif est côté cœur (brief
+  à passer en session `/home/pascal/dev/nemeton` → `nemeton@v0.54.0`).
+- `R/utils_i18n.R` : nouvelles clés `monitoring_zone_orphan_title` et
+  `monitoring_zone_orphan_body` (FR/EN).
+
+## \[0.52.4\] - 2026-05-31
+
+### Fixed
+
+- **Carte FAST — courbes pixel/placette hachées sur les zones de
+  recouvrement partiel MGRS.** La zone villards est couverte par deux
+  tuiles Sentinel-2 MGRS qui se chevauchent partiellement (T31TGM large
+  couvre toute la zone, T31TFM étroite ne couvre que l’OUEST). Pour un
+  pixel à l’EST, les ~62 scènes T31TFM retournent `value = NA` (pixel
+  hors couverture) et plotly cassait la ligne à chaque NA → les ~60
+  mesures T31TGM valides apparaissaient comme des points isolés sans
+  lignes. Fix : filtre les NA après tri par date et avant `add_trace`
+  dans les deux modaux (pixel-click et marker-click placette). La courbe
+  redevient continue à partir des seules observations réellement
+  disponibles.
+
+## \[0.52.3\] - 2026-05-31
+
+### Fixed
+
+- **Onglet Synthèse — légende « Taille image Max 5 Mo, PNG/JPG »
+  repositionnée à droite du fileInput.** `v0.52.2` avait centré la
+  légende sous le fileInput ; la demande UX était de l’avoir à droite du
+  sélecteur « Image de couverture », au niveau de la ligne des badges.
+  Solution : `align-items: flex-start` (ancre la légende en haut du flex
+  = haut du bouton) + `padding-top: 0.55rem` (≈ moitié de la hauteur du
+  bouton 38px) pour la descendre pile au centre du bouton. L’alignement
+  reste stable que la barre « Upload complete » du fileInput soit
+  affichée ou non.
+
+## \[0.52.2\] - 2026-05-31
+
+### Fixed
+
+- **Onglet Synthèse — alignement de la légende « Taille image Max 5 Mo,
+  PNG/JPG ».** Sortie du flex inline (où elle vivait à droite du bouton
+  « Image de couverture », donc plus haut que la ligne des badges) et
+  placée sur une ligne dédiée centrée sous le fileInput, ce qui l’aligne
+  visuellement avec la ligne
+  `NDP 1 – Observation | Hauteur LiDAR HD | Inventaire ML` de la colonne
+  de droite.
+
+## \[0.52.1\] - 2026-05-31
+
+### Fixed
+
+- **Warning « relation `monitoring_zone` does not exist » au boot
+  Postgres.** Le chemin RO de `get_monitoring_db_connection()` sautait
+  volontairement les migrations (optimisation correcte pour SQLite :
+  fichier = déjà migré, mais fausse pour Postgres : base toujours là,
+  schéma possiblement vide). Le premier reactive tick au démarrage
+  émettait alors un warning, qui disparaissait dès que le premier RW
+  path migrait la base. Fix : pour Postgres on appelle aussi
+  `.ensure_monitoring_schema()` sur le RO path (idempotent,
+  sub-milliseconde après la 1re fois). SQLite garde son fast-path.
+
+## \[0.52.0\] - 2026-05-31
+
+### Changed
+
+- **Vrai cancel coopératif FAST/FORDEAD (s’appuie sur
+  `nemeton@v0.53.0`).** Le clic « Annuler le diagnostic » écrit
+  désormais `<projet>/data/{fast,fordead}_cancel.flag`, que le worker
+  poll entre tuiles (FAST) / entre phases reticulate (FORDEAD) et qui le
+  fait sortir proprement au prochain checkpoint avec commit partiel. Les
+  INSERT déjà commités sont conservés (`ON CONFLICT DO NOTHING` —
+  relance sans risque).
+- **i18n — « Libérer l’interface » → « Annuler le diagnostic » / «
+  Cancel the diagnostic ».** Le libellé reflète maintenant le vrai
+  cancel coopératif ; le toast `monitoring_run_cancel_done` reformulé
+  pour expliquer le mécanisme (tuile/phase courante finit, puis stop).
+- **`Imports: nemeton (>= 0.53.0)`.** Bump du plancher : l’app exige
+  maintenant `cancel_path` côté cœur (`ingest_sentinel2_timeseries` et
+  `run_fordead_dieback`).
+
+### Added
+
+- `service_monitoring.R` : `run_ingestion_async()` et
+  `run_fordead_async()` exposent un paramètre `cancel_path = NULL`,
+  forwardé au cœur.
+- `mod_monitoring.R` : `input$run` et `.invoke_fordead` purgent un flag
+  résiduel avant chaque lancement (sinon le worker abandonnerait
+  d’emblée) ; `fast_task$invoke()` et `fordead_task$invoke()` passent le
+  chemin du flag ; observers `input$run_cancel` /
+  `input$run_health_cancel` écrivent le flag **avant**
+  `force_unlock_*(TRUE)` (UI libérée immédiatement, worker sort au
+  prochain checkpoint).
+
+## \[0.51.11\] - 2026-05-31
+
+### Changed
+
+- **i18n — « Annuler / Réinitialiser » → « Libérer l’interface ».** Le
+  bouton qui apparaît pendant un diagnostic FAST/FORDEAD ne tue pas le
+  worker (Shiny `ExtendedTask` n’a pas d’API d’annulation) — il
+  force-unlock l’UI. Nouveau libellé qui reflète exactement ce que le
+  bouton fait, sans suggérer que le diagnostic est arrêté en base. Toast
+  de confirmation aligné. Les deux boutons (FAST + FORDEAD) partagent
+  les mêmes clés i18n.
+
+## \[0.51.10\] - 2026-05-31
+
+### Added
+
+- **Heartbeat de fin pour les workers d’ingestion.** Le worker FAST
+  (resp. FORDEAD) émet désormais un événement `s2:ingest_done` (resp.
+  `fordead:dieback_done`) via `progress_callback` juste après le retour
+  du cœur. Permet de diagnostiquer un bouton resté grisé : si
+  l’événement apparaît, le cœur a rendu la main et le bug est dans le
+  hand-off Shiny ExtendedTask ; sinon nemeton finalise encore.
+
+### Fixed
+
+- **Carte FAST pixel map — silence des warnings `colors(.)`.**
+  `terra::clamp(r, -1, 1, values = TRUE)` avant `addRasterImage()`
+  ramène les ε-overshoots numériques de NDVI / NBR dans le domaine
+  `[-1, 1]` de la palette plasma. Plus aucun warning « Some values were
+  outside the color scale » à chaque re-render.
+
+## \[0.51.9\] - 2026-05-30
+
+### Fixed
+
+- **Alertes FAST — raster d’alerte invisible.** Le masque
+  `terra::ifel(r == 0, NA, r)` ne couvrait pas les valeurs négatives
+  résiduelles, qui sortaient du domaine de `pal()` → 4 warnings
+  `Some values were outside the color scale` et raster majoritairement
+  transparent. Masque ≤ 0 (positif strict) + clamp à `upper` (p95) en
+  mode rolling avant `pal()`.
+- **Graphique pixel timeseries — lignes manquantes / sauts dans le
+  temps.** Boucle `for (b in unique(ts$index))` ne triait pas par
+  `obs_date` avant
+  [`plotly::add_trace`](https://rdrr.io/pkg/plotly/man/add_trace.html) →
+  segments reliés dans l’ordre des lignes du data.frame. Sort par date
+  ajouté.
+
+## \[0.51.8\] - 2026-05-30
+
+### Fixed
+
+- **Onglet Fournisseur LLM — status panel réactif au provider.** Le bloc
+  statut + clé est désormais un `uiOutput` réactif à
+  `input$llm_provider` (avant il restait figé sur le précédent provider
+  quand on changeait dans la liste).
+
+### Added
+
+- **Onglet Fournisseur LLM — vue d’ensemble multi-providers.** Badge ✓
+  dans la liste déroulante pour chaque provider configuré + ligne résumé
+  au-dessus du sélecteur (« N / 3 fournisseurs configurés : …»).
+
+## \[0.51.7\] - 2026-05-30
+
+### Added
+
+- **Modal de configuration à 2 onglets : Theia + Fournisseur LLM.**
+  L’icône engrenage ouvre maintenant une boîte « Clés API externes »
+  avec deux onglets. Theia (inchangé) ; LLM avec selectInput
+  Mistral/Anthropic/OpenAI, status alert avec source (env ou fichier),
+  bouton Save / Modifier / Supprimer. Persistance dans
+  `~/.config/nemetonshiny/llm.json` (chmod 0600) + Sys.setenv pour effet
+  immédiat. Résolution env \> fichier (`.Renviron` continue de
+  fonctionner). Nouveau service `R/service_llm.R` + tests dédiés.
+
+## \[0.51.6\] - 2026-05-30
+
+### Security
+
+- **`~/.config/teledetection/.apikey` désormais en `0600`.** La clé
+  Theia / DATA TERRA enregistrée via `theia_save_api_key()` est
+  immédiatement verrouillée à l’écriture (`Sys.chmod`). Auparavant le
+  fichier héritait du `umask` du process (souvent `0644`). No-op sous
+  Windows.
+
+### Changed
+
+- **Modal Theia — section clé contextuelle.** Quand la clé est déjà
+  configurée, le modal affiche un bandeau « configurée » + boutons «
+  Modifier » / « Supprimer » au lieu d’un formulaire vide qui invitait à
+  l’écrasement. Helper `theia_clear_api_key()` ajouté.
+
+### Fixed
+
+- **Modal Theia — table « Provenance et licence » apparaît.** Le
+  [`DT::datatable()`](https://rdrr.io/pkg/DT/man/datatable.html) inline
+  dans `modalDialog()` n’initialisait pas son JS htmlwidget → table
+  invisible. Remplacée par une table Bootstrap statique
+  (`htmltools::tags$table`).
+
+## \[0.51.5\] - 2026-05-30
+
+### Fixed
+
+- **Alertes FAST — préserve le zoom et le fond OSM/Satellite.** Le
+  `renderLeaflet` dépendait du raster et des contrôles (mode / opacité /
+  visibilité / seuils) → chaque mouvement de slider ré-initialisait le
+  zoom utilisateur et le fond sélectionné. Pattern aligné sur Carte FAST
+  : la base (tuiles + UGF + fitBounds) est rendue une seule fois, le
+  raster d’alerte et sa légende sont mis à jour via `leafletProxy` +
+  `clearGroup` + `removeControl` (légende `layerId`-bée). Zoom et fond
+  conservés à travers les sliders.
+
+## \[0.51.4\] - 2026-05-29
+
+### Fixed
+
+- **Réamorçage du cache COG restreint à la fenêtre FAST.** Le cache S2
+  est partagé FAST/FORDEAD ; cocher « Réamorcer le cache COG » faisait
+  un `unlink` de tout le dossier, effaçant aussi les bandes/dates
+  FORDEAD (dont l’apprentissage). Le wipe ne supprime désormais que les
+  scènes dont la date d’acquisition tombe dans la fenêtre de dates FAST
+  ; les scènes hors fenêtre (apprentissage FORDEAD) et non datables sont
+  préservées. Libellé + aide i18n mis à jour.
+
+## \[0.51.3\] - 2026-05-29
+
+### Changed
+
+- **Alertes FAST — alignement des contrôles d’en-tête.** Case « Afficher
+  le raster » légèrement abaissée (`top: 2px`) pour s’aligner sur les
+  radios Fréquence/Intensité ; label « Opacité du raster » déplacé à
+  gauche du slider (inline) au lieu d’au-dessus.
+
+## \[0.51.2\] - 2026-05-29
+
+### Fixed
+
+- **Régression v0.50.1 `objet '.pkg_path' introuvable`.** Le renommage
+  `.pkg_path` → `.dev_pkg_path` (fix worker v0.50.1) n’avait été propagé
+  qu’à `compute_task` ; `parcels_task` et les workers `mod_search` /
+  `service_monitoring` référençaient encore `.pkg_path` → échec au
+  chargement des parcelles cadastrales. Bootstrap worker
+  `is_dev_package` désormais unifié sur toutes les ExtendedTasks
+  (namespace installé ou source en vrai mode dev, plus jamais un clone
+  git périmé).
+- **Chargement de projet : plus de gel avant l’affichage des
+  parcelles.** Le sync PostGIS (`db_sync_project`) au chargement est
+  déféré
+  ([`later::later`](https://later.r-lib.org/reference/later.html)) hors
+  du chemin critique, et `get_db_connection` gagne un `connect_timeout`
+  (défaut 8 s, `NEMETON_DB_CONNECT_TIMEOUT`) pour fail-fast sur un hôte
+  injoignable au lieu du timeout OS (~20 s).
+
+## \[0.51.1\] - 2026-05-29
+
+### Fixed
+
+- **Carte FAST pixel : rendu de l’AOI complète (toutes tuiles MGRS).**
+  Le `scenes_df` du stack NDVI/NBR est construit depuis l’inventaire
+  disque du cache Sentinel-2 (toutes scènes peuplées) au lieu de
+  `obs_pixel` (pixels aux placettes seulement) : une AOI à cheval sur
+  deux tuiles MGRS (villards) dont une tuile sans placette s’affiche
+  désormais en entier. Date résolue depuis la base sinon parsée de
+  l’identifiant de scène S2. Limite : si une seule tuile a été ingérée
+  pour une date, l’autre moitié reste absente (sujet d’ingestion).
+
+### Added
+
+- Smoke E2E shinytest2 du sélecteur `control_classes`
+  (`test-validation-control-classes-e2e.R`), skip propre sans chromote.
+
+## \[0.51.0\] - 2026-05-29
+
+### Added
+
+- **Plan de validation : sélecteur `control_classes` pour les placettes
+  témoins.** Le sous-onglet expose l’argument `control_classes` du cœur
+  [`nemeton::create_validation_sampling_plan()`](https://pobsteta.github.io/nemeton/reference/create_validation_sampling_plan.html)
+  : cases 0–4 (défaut 0) distinctes des classes d’alerte, affichage de
+  la distribution du raster d’alerte (aide au choix), auto-relax vers la
+  classe la plus saine présente quand aucune cellule classe 0 n’existe
+  (cas villards), et garde-fou (toast clair) quand 0 témoin est produit.
+  Nouvelles clés i18n FR/EN. Plancher `nemeton (>= 0.51.0)` inchangé.
+
+## \[0.50.1\] - 2026-05-28
+
+### Fixed
+
+- **Le worker de calcul async chargeait un mauvais code.** Le worker
+  [`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+  résolvait le package via
+  [`pkgload::pkg_path()`](https://pkgload.r-lib.org/reference/packages.html)
+  sans argument (qui remonte depuis
+  [`getwd()`](https://rdrr.io/r/base/getwd.html)), si bien qu’un
+  utilisateur de la version installée lancée depuis un clone git local
+  faisait `load_all()` du clone (souvent périmé) dans le worker →
+  CHM/MNH/MNT échouaient silencieusement via l’UI alors que le calcul
+  synchrone réussissait. Le mode dev n’est désormais retenu que si
+  `is_dev_package("nemetonshiny")` est vrai (via
+  [`find.package()`](https://rdrr.io/r/base/find.package.html)) ; sinon
+  le worker charge le namespace installé
+  (`loadNamespace("nemetonshiny")`). La branche prod chargeait par
+  erreur `nemeton` seul au lieu de `nemetonshiny`.
+
+## \[0.50.0\] - 2026-05-28
+
+### Changed
+
+- **Monitoring local : SQLite/WAL uniquement.** Le backend DuckDB,
+  déprécié en 0.49.0, est retiré définitivement (cœur `nemeton`
+  v0.51.0). `.resolve_monitoring_db_url()` émet toujours
+  `sqlite://<projet>/data/monitoring.sqlite` en local ; branche
+  back-compat DuckDB et `.nemeton_supports_duckdb()` supprimés ; helpers
+  `.is_file_db_url` / `.file_db_path_from_url` restreints à SQLite.
+  PostgreSQL inchangé. Clé i18n `monitoring_db_duckdb_missing` →
+  `monitoring_db_local_pkg_missing`.
+
+### Removed
+
+- `duckdb` retiré des `Suggests` ; plancher
+  `Imports: nemeton (>= 0.51.0)`.
+
+### Migration
+
+- Un ancien `monitoring.duckdb` local n’est plus lu ni migré : le suivi
+  local repart sur un `monitoring.sqlite` neuf. Ré-ingérer les séries
+  (régénérables depuis le cache Sentinel-2 + la DB).
+
+## \[0.49.1\] - 2026-05-28
+
+### Fixed
+
+- **Téléchargement des dalles MNH LiDAR HD (IGN) cassé sous Windows.**
+  `extract_tile_names()` faisait `basename(url)` sur l’URL WMS GetMap de
+  la Géoplateforme (`…/wms-r?…&FILENAME=LHD_…tif`), produisant un nom de
+  cache truffé de `:` (`CRS=EPSG:2154`) et `,` (`BBOX=…`), illégaux sous
+  Windows → 0 dalle écrite → CHM indisponible alors que la dalle existe.
+  Nom canonique lu depuis `FILENAME=`, repli basename propre puis nom
+  généré, nettoyage des caractères illégaux. + 5 tests de
+  non-régression.
+- **Lisibilité du bandeau vide « Aucune alerte FAST »** : corps passé de
+  `text-muted` à `text-white` (gris illisible sur le vert saturé du
+  thème).
+
+## \[0.45.0\] - 2026-05-26
+
+### Added
+
+- **Fallback `lasR` pour le CHM depuis les nuages LiDAR HD locaux**.
+  Quand les dalles MNH/MNT pré-rasterisées de l’IGN échouent au
+  téléchargement (régulier en 2026 : la couche `NUAGE` COPC reste servie
+  mais `IGNF_MNH-LIDAR-HD:dalle` et `IGNF_MNT-LIDAR-HD:dalle` retombent
+  en 404 par dalle), `nemetonshiny` bascule sur
+  [`nemeton::compute_dtm_chm_from_laz()`](https://pobsteta.github.io/nemeton/reference/compute_dtm_chm_from_laz.html)
+  pour dériver localement le CHM (et le MNT) depuis les `.copc.laz` déjà
+  en cache. Mesure réelle (vs prédiction ML d’Open-Canopy), purement
+  locale (pas de modèle à télécharger, pas de GPU), chaîne d’install
+  légère. Intercalé dans la chaîne d’acquisition CHM entre LiDAR HD MNH
+  (Step 1) et Theia FORMSpoT (Step 1.5). Opt-out via
+  `options(nemetonshiny.chm_lasr_fallback = "off")` ou
+  `NEMETONSHINY_DISABLE_CHM_LASR=1`. Plancher `nemeton (>= 0.48.0)`.
+  `lasR` ajouté en `Suggests:`.
+- **Diagnostic catégorisé des échecs de download IGN LiDAR HD**.
+  `download_ign_lidar_hd()` appelle
+  [`nemeton::probe_ign_lidar_tiles()`](https://pobsteta.github.io/nemeton/reference/probe_ign_lidar_tiles.html)
+  quand 0 tuile a été téléchargée et affiche un résumé par catégorie
+  (`not_found` / `forbidden` / `timeout` / `dns` / `connection` /
+  `server_error`) au lieu du laconique `failed`.
+- 5 nouvelles clés i18n bilingues NMT-compliant
+  (`chm_phase_lasr_fallback`, `chm_fallback_lasr_start`,
+  `chm_fallback_lasr_success`, `chm_fallback_lasr_skip_no_tiles`,
+  `chm_fallback_lasr_skip_no_pkg`).
+- 5 tests unitaires dans `tests/testthat/test-service_compute.R`
+  couvrant les branches opt-out env, opt-out option, lasR manquant,
+  dossier vide, et l’appel mocké à
+  [`nemeton::compute_dtm_chm_from_laz()`](https://pobsteta.github.io/nemeton/reference/compute_dtm_chm_from_laz.html).
+
+## \[0.40.0\] - 2026-05-21
+
+### Added
+
+- **Verrou croisé FAST ↔︎ FORDEAD** : les deux diagnostics partagent le
+  cache de bandes Sentinel-2 du projet ; ils sont désormais mutuellement
+  exclusifs. Le bouton de lancement de l’un est grisé tant que l’autre
+  tourne, un clic forcé affiche une notification explicite, et le verrou
+  respecte le *force-unlock* (run abandonné via « Annuler »).
+
+### Changed
+
+- **`ingest_task` renommé `fast_task`** (variable interne de
+  `mod_monitoring`, helper de test `make_fake_fast_task`, clé du retour
+  de `mod_monitoring_server()`), par symétrie avec `fordead_task`. La
+  fonction service `run_ingestion_async()` conserve son nom.
+
+## \[0.39.1\] - 2026-05-21
+
+### Fixed
+
+- **`db_status` plantait sans projet chargé** :
+  [`bsicons::bs_icon()`](https://rdrr.io/pkg/bsicons/man/bs_icon.html)
+  était appelé avec l’identifiant inexistant `folder-open` →
+  `folder2-open`.
+- **`.build_progress_writer` laissait fuir un avertissement** sur
+  écriture en répertoire absent →
+  [`suppressWarnings()`](https://rdrr.io/r/base/warning.html).
+- **`audit_to_dataframe` ne renvoyait pas un data.frame propre** : la
+  classe `json` de
+  [`jsonlite::toJSON()`](https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html)
+  se propageait à toute la colonne via
+  [`rbind()`](https://rdrr.io/r/base/cbind.html) → dé-classage
+  [`as.character()`](https://rdrr.io/r/base/character.html).
+
+### Changed
+
+- **Réparation des suites de tests `monitoring` et `sampling`** : 20
+  échecs préexistants corrigés (dérive tests↔︎code après évolutions).
+  Mocks à signature trop étroite élargis, isolation des variables
+  d’environnement DB, assertions de comptage de placettes recentrées sur
+  le contrat de l’app plutôt que sur l’arithmétique de stratification
+  GRTS du cœur. Deux tests `db_status` probe-gated marqués `skip()`
+  (sonde DB asynchrone non pilotable par testServer).
+
+## \[0.39.0\] - 2026-05-21
+
+### Added
+
+- **Notifications ntfy pour les runs FORDEAD longs** : canal de push
+  `ntfy` émis côté worker `future` (donc indépendant de la survie de la
+  session Shiny) — message au démarrage, un message par étape FORDEAD
+  (dédupliqué), message de fin (nb d’alertes + durée lisible) et message
+  d’échec. Opt-in via `NEMETON_NTFY_TOPIC` ; serveur et jeton optionnels
+  (`NEMETON_NTFY_URL`, `NEMETON_NTFY_TOKEN`). No-op silencieux si non
+  configuré.
+
+### Fixed
+
+- **Onglets FORDEAD figés après un run hors-session** : « Alertes
+  FORDEAD » et « Carte FORDEAD » ne se rafraîchissaient pas quand un run
+  survivait à sa session Shiny (run long + déconnexion du navigateur).
+  Deux correctifs : (1) ouvrir un sous-onglet FORDEAD force la
+  re-lecture base + masque disque ; (2) `.reconcile_fordead_state()`
+  reconstruit le résultat « succès » depuis le masque persisté au
+  chargement du projet, affichant la carte « Zone saine » datée au lieu
+  du placeholder générique.
+
+### Changed
+
+- Libellé du placeholder « pas de cache » de la Carte FAST : « Lance une
+  ingestion FAST… » → « Lance le diagnostic FAST… ».
+
+## \[0.38.8\] - 2026-05-20
+
+### Changed
+
+- **`Remotes:` suit la dernière release `nemeton`** : passage de
+  `pobsteta/nemeton@v0.41.0` (tag figé) à `pobsteta/nemeton@*release`.
+  La référence `@*release` résout à chaque install le tag de release le
+  plus élevé du cœur — l’app tire toujours la plus haute version
+  `nemeton` publiée, sans bump manuel du pin. Le tag figé forçait
+  l’install de `nemeton 0.41.0` alors que `v0.41.2` était publié.
+  Plancher `Imports: nemeton (>= 0.41.0)` inchangé (minimum strict, pas
+  un suivi). `CLAUDE.md` mis à jour (`DESCRIPTION`, `CLAUDE.md`).
+
+## \[0.38.7\] - 2026-05-20
+
+### Fixed
+
+- **Warnings leaflet « Some values were outside the color scale »**.
+  Deux causes : (1) Carte FORDEAD — `addRasterImage()` rééchantillonnait
+  le masque catégoriel 0-4 en `bilinear` (défaut), créant des valeurs
+  fractionnaires hors des niveaux `colorFactor` ; fix `method = "ngb"`
+  - `colorFactor(levels = 0:4)`. (2) Carte FAST — `colorNumeric` ancré
+    sur `[-1, 1]` recevait des NDVI/NBR/CRSWIR de bord hors domaine ;
+    fix `terra::clamp(r, -1, 1, values = TRUE)` avant `addRasterImage()`
+    (`R/mod_monitoring_fordead_map.R`, `R/mod_monitoring_pixel_map.R`).
+
+## \[0.38.6\] - 2026-05-20
+
+### Fixed
+
+- **Carte FORDEAD ne se rafraîchit pas après un run** : le masque 0-4
+  persisté par `nemeton@v0.41.0` était bien écrit sur disque mais le
+  sous-onglet restait sur son empty-state. Le reactive `mask_r()` de
+  `mod_monitoring_fordead_map` ne dépendait que de `input$zone_id` /
+  `current_project` — rien ne l’invalidait à la fin d’un run. Nouveau
+  paramètre `refresh_r` câblé sur le compteur `alerts_refresh` du parent
+  (bumpé par le handler de résultat FORDEAD) ; `mask_r()` le lit → un
+  run terminé relit le cache et affiche le masque (`R/mod_monitoring.R`,
+  `R/mod_monitoring_fordead_map.R`).
+
+### Tests
+
+- Nouveau `test-mod_monitoring_fordead_map.R` (3 tests : UI,
+  empty-state, refresh).
+
+## \[0.38.5\] - 2026-05-20
+
+### Changed
+
+- **Bump `nemeton` v0.40.0 → v0.41.0** (`DESCRIPTION` : `Imports`
+  floor + `Remotes` tag pin). v0.41.0 ship le writer du masque de
+  dépérissement FORDEAD : `run_fordead_dieback()` persiste le raster
+  catégoriel 0-4 dans
+  `<project>/cache/layers/fordead/zone_<id>/dieback_mask_<ts>.tif`, le
+  chemin lu par `read_fordead_dieback_mask()`. Le sous-onglet « Carte
+  FORDEAD » (`mod_monitoring_fordead_map`, câblé depuis v0.36.0) cesse
+  donc d’être un empty-state permanent et affiche le masque après un run
+  FORDEAD. Aucun changement de code app — pur bump de dépendance ;
+  signatures vérifiées rétrocompatibles.
+
+## \[0.38.4\] - 2026-05-20
+
+### Changed
+
+- **Suivi sanitaire / `obs_pixel_data` debounced** : au chargement de
+  projet, les 5 entrées dont dépend `obs_pixel_data` sont restaurées une
+  à une → 4-5 ré-exécutions avec autant de requêtes SQL `read_obs_pixel`
+  redondantes. Nouveau reactive `obs_pixel_inputs` (assemblage des 5
+  entrées) debouncé 300 ms ; `obs_pixel_data` ne dépend plus que de ce
+  paquet → la requête tourne une fois par rafale.
+  [`shiny::debounce()`](https://rdrr.io/pkg/shiny/man/debounce.html)
+  évaluant sa source de façon eager, c’est bien le *déclencheur* peu
+  coûteux qui est debouncé, pas le reactive coûteux
+  (`R/mod_monitoring.R`).
+- **Logs de debug de la carte pixel gatés** : les 9
+  [`cli::cli_alert_info()`](https://cli.r-lib.org/reference/cli_alert.html)
+  « UGF source / overlay / Placettes overlay » de
+  `R/mod_monitoring_pixel_map.R` passent derrière
+  `NEMETON_PIXEL_MAP_DEBUG` (helper `.pixel_map_debug_enabled()`).
+  Console silencieuse par défaut.
+
+### Tests
+
+- `test-mod_monitoring.R` : test `testServer()` du debounce de
+  `obs_pixel_data` (3 changements rapides de `zone_id` → 1 requête).
+
+## \[0.38.3\] - 2026-05-20
+
+### Fixed
+
+- **Cache LiDAR HD non extent-aware** (`R/service_compute.R`). Deux bugs
+  corrigés dans `download_ign_lidar_hd()` :
+  - **Nuages de points** : le court-circuit global qui renvoyait toutes
+    les dalles `.copc.laz` du cache dès qu’une seule existait (sans
+    comparaison de bbox) est supprimé. La fonction interroge toujours le
+    WFS et s’appuie sur le cache par-dalle de la boucle de
+    téléchargement → recompute même zone = zéro réseau, zone différente
+    = seules les dalles manquantes, jeu incomplet auto-réparé.
+  - **Mosaïques raster (MNH/MNT/MNS)** : `lidar_<product>_mosaic.tif`
+    n’est plus réutilisée sur un simple
+    [`file.exists()`](https://rdrr.io/r/base/files.html). Nouveau helper
+    `.lidar_mosaic_covers_bbox()` qui vérifie que l’emprise du raster en
+    cache couvre la bbox demandée (comparaison en CRS commun) ; sinon la
+    mosaïque est régénérée.
+
+### Tests
+
+- `test-service_compute.R` : test COPC obsolète réécrit + 3 tests
+  ajoutés (recompute même zone, zone différente, régénération
+  mosaïque) + test unitaire de `.lidar_mosaic_covers_bbox()`.
+
+## \[0.38.2\] - 2026-05-20
+
+### Fixed
+
+- **Suivi sanitaire / sous-onglets blancs** : « Carte FORDEAD » (et «
+  Alertes FAST ») s’affichaient totalement vides — pas même
+  l’empty-state. Les `uiOutput`/`renderUI` des modules
+  `mod_monitoring_fordead_map` et `mod_monitoring_fast_alerts` restaient
+  suspendus (`suspendWhenHidden = TRUE` par défaut) parce que le
+  mécanisme
+  [`bslib::nav_show()`](https://rstudio.github.io/bslib/reference/nav_select.html)
+  / `nav_hide()` du navset casse la détection de visibilité par-output
+  de Shiny. Fix : `outputOptions(..., suspendWhenHidden = FALSE)` sur
+  les outputs `panel` / `counters` des deux modules, + `nav_select()`
+  dans l’observer mode-driven pour ré-ancrer l’onglet actif sur un
+  onglet visible au changement de mode (`R/mod_monitoring.R`,
+  `R/mod_monitoring_fordead_map.R`, `R/mod_monitoring_fast_alerts.R`).
+
+## \[0.38.1\] - 2026-05-20
+
+### Fixed
+
+- **Câblage du CHM Theia vers P1/P2/P3/E1** :
+  `compute_single_indicator()` transmet désormais `age_field = "age"` à
+  `indicateur_p2_station()` (mode CHM hauteur/âge), en plus de `chm` et
+  `species_field` déjà câblés. Sans cela, P2 échouait avec
+  `Missing required fields: fertility, climate`.
+- **Échec explicite sans CHM** : nouvelle constante
+  `CHM_REQUIRED_INDICATORS` (P1/P2/P3/E1). En l’absence de modèle de
+  hauteur de canopée, ces indicateurs échouent avec un message i18n
+  clair (`compute_chm_required`) au lieu de l’erreur cryptique du cœur
+  `nemeton`, sans interrompre le reste du calcul.
+
+## \[0.38.0\] - 2026-05-20
+
+### Added
+
+- **Intégration Theia / DATA TERRA (nemeton v0.40.0)** : nouveau service
+  `R/service_theia.R` (détection du pré-requis Python / reticulate et de
+  la clé API Theia, persistance de la clé, chargement du CHM FORMSpoT
+  via
+  [`nemeton::load_theia_source()`](https://pobsteta.github.io/nemeton/reference/load_theia_source.html)
+  avec conversion décimètres → mètres, chargement des rasters
+  secondaires FAPAR / neige / humidité du sol, provenance des sources).
+  Débloque la famille Production (P1/P2/P3) et E1 en NDP 0 à partir de
+  données publiques.
+- **Module de configuration Theia** (`R/mod_theia_config.R`) : entrée
+  navbar (engrenage) ouvrant une modale de saisie de la clé API, statut
+  du pré-requis Python et provenance / licence des sources Theia.
+
+### Changed
+
+- `R/service_compute.R` : nouvelle étape CHM Theia FORMSpoT dans
+  `download_layers_for_parcels()` (utilisée quand le LiDAR HD est
+  absent, avant Open-Canopy) ; `compute_single_indicator()` transmet
+  `species_field`, `fapar`, `snow` et `soil_moisture` aux fonctions
+  `nemeton` qui les acceptent ; enrichissement BD Forêt V2
+  (`species`/`age`) étendu à P1, P3 et E1.
+- `DESCRIPTION` : `Imports: nemeton (>= 0.40.0)`,
+  `Remotes: pobsteta/nemeton@v0.40.0`, `reticulate` en Suggests.
+
+## \[0.37.0\] - 2026-05-19
+
+### Added
+
+- **Suivi sanitaire / G3 espèces — fallback BD Forêt V2** : le reactive
+  `validity` charge désormais `<project>/cache/layers/bdforet.gpkg` via
+  le nouveau helper `.load_project_bdforet()` et le passe à
+  `validity_check_for_zone()`. Quand `units` n’a pas de colonne
+  d’essence (cas par défaut des UGFs de l’app), le cœur
+  (`nemeton@v0.26.0+`) dérive l’essence dominante via
+  `enrich_parcels_bdforet()` et exécute le check espèces — le garde-fou
+  G3 cesse d’être silencieusement désactivé (`R/mod_monitoring.R`,
+  `R/service_monitoring_db.R`).
+- `validity_check_for_zone()` accepte désormais un paramètre
+  `bdforet = NULL` qu’il transmet directement à
+  [`nemeton::check_fordead_validity()`](https://pobsteta.github.io/nemeton/reference/check_fordead_validity.html).
+- 3 tests testthat couvrant le helper et le forwarding cœur
+  (`tests/testthat/test-mod_monitoring.R`).
+
+### Changed
+
+- `DESCRIPTION` : plancher `Imports: nemeton (>= 0.26.0)` (au lieu de
+  0.25.4) — ancre la version qui expose les nouveaux arguments `bdforet`
+  / `layers` de `check_fordead_validity()`.
+
+## \[0.36.8\] - 2026-05-19
+
+### Fixed
+
+- **Suivi sanitaire / résolution FORDEAD** : trois fixes UX à la fin
+  d’un run FORDEAD réussi. (1) Le bouton « Lancer le diagnostic FORDEAD
+  » ne se ré-enable pas systématiquement quand `fordead_task$status()`
+  transite de « running » à « success » ; ajout d’un
+  `updateActionButton(disabled = FALSE)` + reset
+  `force_unlock_health(FALSE)` explicite dans le handler de résultat
+  (success ET error). (2) L’onglet « Alertes FORDEAD » restait muet
+  quand `n_alerts_inserted == 0L` ; nouvelle card « Zone saine » avec
+  durée du run quand `fordead_last_result()$status == "success"` et que
+  `alerts()` est vide. (3) Le snapshot de résultat est désormais
+  conservé en `reactiveVal` (`fordead_last_result`) pour distinguer «
+  pas encore lancé » / « run terminé sans anomalie » / « run terminé en
+  erreur ». (`R/mod_monitoring.R`)
+
+### Added
+
+- 3 nouvelles clés i18n FR/EN pour la card « Zone saine » :
+  `monitoring_fordead_no_alerts_title`, `_body`, `_meta`.
+- `make_fake_fordead_task()` widened pour accepter `result =` /
+  `status =` (préparation des futurs tests, harness actuel ne permet pas
+  un test testServer du nouveau branch d’affichage).
+
+## \[0.36.7\] - 2026-05-18
+
+### Fixed
+
+- **Sampling / câblage MNT-CHM sur `create_sampling_plan()`** : les
+  rasters résolus via `nemeton::resolve_project_*` n’étaient pas passés
+  à `create_sampling_plan()` (manque de `mnt =` / `chm =` au call site),
+  si bien que `<project>/dtm.tif` opencanopy n’était jamais consommé.
+  Pré-check ajouté : DEM absent → toast bloquant
+  `sampling_no_dem_found_fmt` (i18n, avec chemin projet)
+  `id = session$ns("dem_missing")` et arrêt avant l’appel cœur ; CHM
+  absent →
+  [`cli::cli_alert_info`](https://cli.r-lib.org/reference/cli_alert.html)
+  sans toast bloquant (`R/mod_sampling.R`).
+
+### Changed
+
+- Toast informatif `sampling_dem_resolved_fmt` (« MNT : %s », 5 s) qui
+  surface `attr(dem, "nemeton_dem_layer")` (« opencanopy DTM », « LiDAR
+  HD MNT », « IGN BD ALTI »…).
+- 3 clés i18n FR/EN remplaçant les 4 ajoutées en v0.36.6 :
+  `sampling_no_dem_found_fmt`, `sampling_dem_resolved_fmt`,
+  `sampling_chm_missing` (`R/utils_i18n.R`).
+- `DESCRIPTION` : `Imports: nemeton (>= 0.25.4)` (au lieu de `0.21.10`).
+
+### Added
+
+- 2 tests testthat ciblés (`tests/testthat/test-mod_sampling.R`) :
+  câblage `mnt = <SpatRaster> / chm = NULL` vérifié via mock de
+  [`nemeton::create_sampling_plan`](https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html)
+  ; toast `dem_missing` + non-appel cœur vérifié quand
+  `resolve_project_dem` renvoie NULL.
+- Helper `make_fake_dem()` + 4 tests existants enveloppés dans
+  `testthat::local_mocked_bindings(resolve_project_dem = ..., resolve_project_chm = ..., .package = "nemeton")`
+  pour préserver le contrat « generate produit des plots ».
+
+## \[0.36.6\] - 2026-05-18
+
+### Changed
+
+- **Sampling / résolution MNT/CHM déléguée à `nemeton`** : les réactives
+  `chm_raster()` / `mnt_raster()` de `mod_sampling` appellent désormais
+  [`nemeton::resolve_project_chm()`](https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html)
+  et
+  [`nemeton::resolve_project_dem()`](https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html)
+  (nemeton \>= 0.21.10) au lieu de faire leur propre lookup dans
+  `<project>/cache/layers/`. Couvre les noms canoniques `dtm.tif`,
+  `mnh.tif`, `lidar_mnh.tif` en plus des mosaics historiques
+  (`R/mod_sampling.R`).
+
+### Added
+
+- **Pré-check DEM/CHM avant `create_sampling_plan()`** : toast erreur
+  `mnt_missing` quand le DEM est absent (arrête l’appel pour éviter
+  l’abort « Stratification-valid candidate pool (0) is below n_base ») ;
+  warning soft `chm_missing` quand le CHM est absent ; toasts
+  informatifs `mnt_found_fmt` / `chm_found_fmt` exposant la couche
+  résolue via `attr(., "nemeton_dem_layer")` / `nemeton_chm_layer`.
+- 4 clés i18n bilingues FR/EN (`R/utils_i18n.R`).
+
+## \[0.36.5\] - 2026-05-18
+
+### Fixed
+
+- **Sampling / notification d’erreur `create_sampling_plan()`** : les
+  séquences ANSI `cli` (`[38;5;250m`, `[31m`, `[36m`, `[39m`) issues de
+  [`cli::cli_abort()`](https://cli.r-lib.org/reference/cli_abort.html)
+  côté `nemeton` apparaissaient brutes dans le toast Shiny. Le
+  `conditionMessage(e)` est désormais nettoyé via
+  [`cli::ansi_strip()`](https://cli.r-lib.org/reference/ansi_strip.html)
+  avant `showNotification()` (`R/mod_sampling.R`).
+
+## \[0.36.4\] - 2026-05-17
+
+### Fixed
+
+- **Suivi sanitaire / toast d’avertissement backend** : les warnings
+  Sentinel-2 contenant une URL pré-signée Azure (~400 chars de SAS
+  token) transformaient le toast en mur de texte. Nouveau helper interne
+  `.summarize_backend_warnings()` qui remplace les URLs par `<URL>`,
+  normalise les espaces et cap chaque warning à 200 chars
+  (`R/mod_monitoring.R`).
+
+### Added
+
+- 2 tests testthat pour `.summarize_backend_warnings()` (cas réel
+  SAS-token Azure + edge cases NULL / NA / multi-line)
+  (`tests/testthat/test-mod_monitoring.R`).
+
+## \[0.36.3\] - 2026-05-17
+
+### Fixed
+
+- **Suivi sanitaire / Carte FAST** : markers placettes (cercles bleus)
+  invisibles depuis v0.34.0 sur certains navigateurs. Les CircleMarkers
+  vivaient dans `overlayPane` à côté des polygones UGF ; selon l’ordre
+  de re-draw les polygones finissaient en fin de `<g>` SVG et masquaient
+  les markers. Pinned explicitement dans `markerPane` (z=600) via
+  `pathOptions(pane = "markerPane")`, z-stack désormais strictement
+  séparé (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.36.2\] - 2026-05-17
+
+### Fixed
+
+- **Suivi sanitaire / zone monitoring** : la liste des zones et la zone
+  sélectionnée ne se mettaient pas à jour au changement de projet. Deux
+  causes corrigées dans `R/mod_monitoring.R` :
+  - Le reactive `zones` n’avait pas de dépendance effective sur
+    `app_state$current_project` en mode Postgres (le resolver d’URL
+    retournait tôt sans forcer le promise lazy). Lecture explicite via
+    `proj <-` ajoutée.
+  - L’observer qui pousse les zones dans le `selectInput` retombait sur
+    la première zone alphabétique quand le projet n’avait pas de
+    `monitoring_zone_id` — affichant la zone d’un autre projet.
+    Sélection vidée (`character(0)`) à la place ; tous les downstream
+    bailent déjà proprement sur zone vide.
+
+## \[0.36.1\] - 2026-05-17
+
+### Fixed
+
+- **Suivi sanitaire / sidebar FAST** : sliders `threshold_ndvi` et
+  `threshold_nbr` réalignés sur la sémantique « seuil absolu » consommée
+  par `nemeton::list_fast_alerts_for_zone()` depuis v0.36.0. Défauts
+  `0.40 / 0.30` (cœur defaults), range `[0.10, 0.80]` (au lieu de
+  `0.15 / 0.25`, range `[0.05, 0.50]` hérités de la sémantique drop
+  E6.a). Labels i18n recyclés (« Seuil minimum NDVI/NBR »). Empty-state
+  des Alertes FAST : « relever le seuil » au lieu de « baisser le seuil
+  » (`R/mod_monitoring.R`, `R/utils_i18n.R`).
+
+## \[0.36.0\] - 2026-05-17
+
+### Added
+
+- **Suivi sanitaire / Alertes FAST** : module
+  `mod_monitoring_fast_alerts` câblé sur
+  `nemeton::list_fast_alerts_for_zone()`. Carte Leaflet des placettes
+  par sévérité (critical/warning/info), compteurs au-dessus, popups par
+  marker avec valeurs NDVI/NBR + drop. Remplace le placeholder de
+  v0.35.0 (`R/mod_monitoring_fast_alerts.R`).
+- **Suivi sanitaire / Carte FORDEAD** : module
+  `mod_monitoring_fordead_map` câblé sur
+  [`nemeton::read_fordead_dieback_mask()`](https://pobsteta.github.io/nemeton/reference/read_fordead_dieback_mask.html).
+  Raster catégoriel 0..4 affiché dans le pane `nemetonRaster` (z-index
+  250). Empty state cohérent tant que le writer cœur (persist du mask)
+  n’a pas shippé (`R/mod_monitoring_fordead_map.R`).
+- 17 nouvelles clés i18n FR/EN : sévérités FAST (`critical`, `warning`,
+  `info`), compteur total, empty states + popups FAST, titre + classes
+  0..4 FORDEAD, empty state FORDEAD.
+
+### Changed
+
+- `DESCRIPTION` : plancher `Imports: nemeton (>= 0.25.0)` (depuis
+  0.24.1) pour ancrer les deux nouveaux exporteurs consommés.
+- `R/mod_monitoring.R` : les nav_panels `alerts_fast` et
+  `pixel_map_fordead` consomment les UI modules au lieu d’inline
+  placeholders. Server instancie les deux nouveaux modules + retourne
+  leurs reactives.
+
+## \[0.35.1\] - 2026-05-17
+
+### Fixed
+
+- **Terrain / Plan d’échantillonnage** : erreur
+  `le tableau de remplacement a N lignes, le tableau remplacé en a M`
+  remontée en toast quand un CHM et/ou un MNT étaient fournis avec une
+  AOI bordurale. Fix dans `nemeton@v0.24.1` (filtrage des candidats GRTS
+  avant `spsurvey::grts()`), consommé automatiquement via
+  `Remotes: pobsteta/nemeton@main`. Aucun changement de code côté app.
+
+### Changed
+
+- `DESCRIPTION` : plancher `Imports: nemeton (>= 0.24.1)` pour bloquer
+  un downgrade qui réintroduirait le bug sampling.
+
+## \[0.35.0\] - 2026-05-17
+
+### Added
+
+- **Suivi sanitaire** : 4 sous-onglets symétriques FAST / FORDEAD —
+  `Alertes FAST` + `Carte FAST` visibles en mode quick,
+  `Alertes FORDEAD` + `Carte FORDEAD` visibles en mode health.
+  Visibilité pilotée côté server via
+  [`bslib::nav_show()`](https://rstudio.github.io/bslib/reference/nav_select.html)
+  / `nav_hide()` étendus aux 4 valeurs. Les deux placeholders (Alertes
+  FAST, Carte FORDEAD) attendent les exporteurs cœur
+  `list_fast_alerts_for_zone()` et `read_fordead_dieback_mask()`
+  (`R/mod_monitoring.R`, `R/utils_i18n.R`).
+- 4 nouvelles clés i18n FR/EN : `monitoring_subtab_alerts_fast`,
+  `monitoring_subtab_alerts_fordead`,
+  `monitoring_fast_alerts_placeholder_title`,
+  `monitoring_fast_alerts_placeholder_body`.
+
+### Changed
+
+- Sous-onglet `alerts` renommé `alerts_fordead` (même contenu, label «
+  Alertes FORDEAD »). Les `conditionalPanel` internes filtrant sur
+  `input$mode == 'health'` sont supprimés — l’onglet entier est masqué
+  en mode FAST par l’observer mode-driven.
+- Texte du placeholder Carte FORDEAD : référence pointée vers « Alertes
+  FORDEAD » au lieu de « Alertes ».
+
+## \[0.34.0\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte FAST** : cascade de redraws (raster + UGF +
+  placettes) à chaque tick du slider date. Le raster est désormais
+  épinglé dans un pane Leaflet custom `nemetonRaster` (z-index 250),
+  entre `tilePane` (200) et `overlayPane` (400), via `addMapPane()` +
+  `gridOptions(pane = "nemetonRaster")`. Le raster reste **visible** sur
+  Satellite (un essai initial dans `tilePane` le faisait disparaître
+  quand le `LayersControl` ré-ajoutait le tile satellite), tout en
+  restant **sous les polygones et CircleMarkers** (qui restent
+  cliquables sans ré-empilement). Les dépendances fictives
+  `current_layer_r()` des observers UGF / Placettes sont supprimées —
+  ils ne re-firent que quand leur source change vraiment
+  (`R/mod_monitoring_pixel_map.R`).
+
+### Added
+
+- **Suivi sanitaire** : sous-onglets « Carte pixel (FAST) » et « Carte
+  FORDEAD » séparés, visibilité pilotée par `input$mode` via
+  [`bslib::nav_show()`](https://rstudio.github.io/bslib/reference/nav_select.html)
+  / `nav_hide()`. La Carte FORDEAD est un placeholder en attendant que
+  le cœur expose le raster classifié des classes de dépérissement
+  (`R/mod_monitoring.R`, `R/utils_i18n.R`).
+- 4 nouvelles clés i18n FR/EN pour les libellés et le placeholder Carte
+  FORDEAD.
+
+### Changed
+
+- `R/mod_monitoring_pixel_map.R` : valeur du nav_panel renommée
+  `pixel_map` → `pixel_map_fast` (l’observe d’auto-zoom est aligné).
+
+## \[0.33.0\] - 2026-05-16
+
+### Changed
+
+- **BREAKING (dep) — Migration vers `nemeton@v0.24.0`** : la signature
+  de
+  [`nemeton::run_fordead_dieback()`](https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html)
+  a changé au cœur (`aoi` / `scenes_df` / `forest_mask` retirés, `con` /
+  `zone_id` / `cache_dir` requis). Le pipeline passe de 5 à 6 phases
+  avec une nouvelle phase 0 `ingest` qui télécharge les bandes
+  Sentinel-2 manquantes (B02/B05/B8A/B11) par-dessus celles déjà cachées
+  par FAST (B04/B12).
+- `R/service_monitoring.R` : worker `run_fordead_async()` adapté — perd
+  `aoi`, gagne `cache_dir`, ouvre lui-même la connexion DBI.
+- `R/mod_monitoring.R` : helper `.invoke_fordead()` simplifié — plus de
+  `get_monitoring_zone_aoi()` ni de DBI éphémère côté app ; passage
+  direct de `zone_id` et `cache_dir`.
+- `DESCRIPTION` : plancher `Imports: nemeton (>= 0.24.0)`.
+
+### Added
+
+- Clé i18n `monitoring_fordead_phase_ingest` (FR « Téléchargement des
+  bandes manquantes… » / EN « Downloading missing bands… »), consommée
+  automatiquement par le dispatcher générique de phases livré en
+  v0.32.0.
+
+### Removed
+
+- Mocks `get_monitoring_zone_aoi` (3×) et assertion `calls[[1]]$aoi`
+  dans `tests/testthat/test-mod_monitoring.R` — l’AOI n’est plus
+  matérialisée côté app.
+
+## \[0.32.0\] - 2026-05-16
+
+### Added
+
+- **Suivi sanitaire** : toasts de progression FORDEAD en bas à droite.
+  Branche le stream d’événements `fordead:start` / `fordead:phase` /
+  `fordead:phase_done` / `fordead:complete` / `fordead:error` émis par
+  `nemeton@v0.22.5+` sur des
+  [`shiny::showNotification`](https://rdrr.io/pkg/shiny/man/showNotification.html)
+  positionnées en bottom-right via override CSS
+  `#shiny-notification-panel`. Affichage générique (i18n + humanized
+  fallback) : un nouveau nom de phase shippé en `nemeton@v0.23.0`
+  apparaît tel quel sans patch app (`R/mod_monitoring.R`,
+  `R/utils_i18n.R`, `inst/app/www/css/custom.css`,
+  `inst/app/www/css/custom.min.css`).
+- 11 nouvelles clés i18n FR/EN : 4 templates + 7 labels per-phase 1.x +
+  3 labels per-phase 2.x anticipés.
+
+### Changed
+
+- **DESCRIPTION** : `Imports: nemeton (>= 0.22.0)` → `(>= 0.22.5)` pour
+  aligner sur l’API du `progress_callback` consommée par les toasts.
+
+### Tests
+
+- 3 nouveaux tests verrouillent le contrat du dispatcher
+  `.fordead_handle_progress_event` (fordead:phase avec libellé i18n,
+  fordead:start silencieux, fallback humanisé sur phase inconnue) dans
+  `tests/testthat/test-mod_monitoring.R`.
+
+## \[0.31.5\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : raster NDVI/NBR invisible sur fond
+  Satellite (palette conventionnelle confondue avec l’imagerie
+  naturelle, même à 0.85 d’opacité). Opacité bumpée 0.85 → 1.0. Le
+  contexte satellite reste visible autour du bbox du raster ;
+  l’utilisateur peut toggle OSM s’il veut voir les parcelles à
+  l’intérieur de la zone d’analyse (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.31.4\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : les marqueurs placettes n’étaient
+  plus cliquables quand l’observe placettes firait avant l’observe UGF
+  dans le même flush — les polygones interceptaient les clics. Échelle
+  stricte de priorités : raster 100 (fond) → UGF 50 (milieu) → placettes
+  0 (haut, cliquables). Ajout aussi du dummy `current_layer_r()`
+  dependency sur placettes pour qu’ils restent en haut après chaque
+  update du raster (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.31.3\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : auto-zoom au chargement projet n’a
+  vraiment jamais marché parce que la reactive firait AVANT que le
+  widget Leaflet ne soit dans le DOM ; les commandes `leafletProxy`
+  étaient queue puis rejouées sur une carte de taille 0×0, où
+  `fitBounds` est un no-op silencieux. Refactor du pattern d’auto-zoom
+  calqué sur `mod_ug.R:744-794` : observer la navigation `main_nav` +
+  `monitoring-subtab` via `root_session`, délai 300 ms via
+  [`later::later`](https://later.r-lib.org/reference/later.html),
+  `leafletInvalidateSize` puis `fitBounds`
+  (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.31.2\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : le contour UGF orange était bien
+  produit mais peint par-dessus par le raster NDVI/NBR (DOM order de
+  `overlayPane` : dernière couche ajoutée = au-dessus, et le raster fire
+  plus tard que l’UGF parce que `build_index_stack` est lourd). Fix :
+  observe UGF dépend de `current_layer_r()` pour re-fire après chaque
+  raster, et observe raster reçoit `priority = 100L` pour passer en
+  premier dans un flush où les deux sont dirty
+  (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.31.1\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : le contour orange de zone
+  d’analyse n’apparaissait pas pour les projets sans `indicators_sf` ni
+  `ugs.json` (placettes-only). Chaîne de fallback étendue à 4 sources :
+  indicators_sf → ug_build_sf → raster bbox → placettes bbox. cli logs
+  ajoutés pour identifier la source utilisée
+  (`R/mod_monitoring_pixel_map.R`).
+- **Suivi sanitaire / Carte pixel** : le raster NDVI/NBR était invisible
+  sur fond Satellite (palette confondue avec l’imagerie naturelle).
+  Opacité bumpée 0.75 → 0.85 (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.31.0\] - 2026-05-16
+
+### Removed (BREAKING)
+
+- **Suivi sanitaire** : sous-onglet « Séries par placette » retiré. La
+  vue multi-traces NDVI/NBR par placette (mode rapide) est remplacée par
+  le clic sur marqueur placette de la Carte pixel. Le graphique de
+  distribution d’alertes (mode sanitaire) qui partageait le même output
+  disparaît également — à ré-ajouter à l’onglet Alertes si besoin
+  (`R/mod_monitoring.R`, `R/utils_i18n.R`).
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : le contour UGF n’apparaissait pas
+  et l’auto-zoom au chargement projet ne marchait pas pour les projets
+  sans indicateurs calculés. `ugf_sf_r` tombe désormais sur
+  `ug_build_sf(project)` quand `indicators_sf` est NULL — la géométrie
+  UGF est disponible dès que l’utilisateur a défini ses UGFs
+  (`R/mod_monitoring_pixel_map.R`).
+- **Suivi sanitaire / Carte pixel** : cliquer un marqueur placette
+  empilait le modal pixel sur le modal placette à cause de la
+  propagation des clics `CircleMarker` (Leaflet Path) vers `map_click`.
+  Flag horodaté `marker_just_clicked` posé par le handler marker,
+  vérifié par le handler pixel avec un seuil de 500 ms
+  (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.30.2\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : les trois couches d’overlay (UGF,
+  NDVI / NBR, Placettes) n’apparaissaient pas malgré leurs cases cochées
+  dans le contrôle Leaflet. Cause : `overlayGroups` dans
+  `addLayersControl` posait des cases pré-renderLeaflet alors que les
+  couches arrivaient via `leafletProxy` async ; les références de
+  couches restaient indéfinies côté JS. Drop de `overlayGroups`,
+  overlays toujours visibles (`R/mod_monitoring_pixel_map.R`).
+
+### Changed
+
+- Contour UGF : épaisseur 2 → 3, opacité 0.9 → 1.0.
+- Marqueurs placettes : rayon 5 → 7.
+- Logs
+  [`cli::cli_alert_info()`](https://cli.r-lib.org/reference/cli_alert.html)
+  ajoutés sur les reactives UGF, placettes et auto-zoom pour diagnostic
+  terminal.
+
+## \[0.30.1\] - 2026-05-16
+
+### Changed
+
+- **Suivi sanitaire / Mode rapide** : sémantique de la checkbox « Cache
+  COG » inversée. Décoché (défaut) = nemeton vérifie le cache disque et
+  télécharge uniquement les bandes manquantes (DB idempotente via
+  `ON CONFLICT DO NOTHING`). Coché = wipe `<cache_dir>/*` puis
+  re-télécharge intégralement scène par scène (pour récupérer d’un cache
+  corrompu).
+- L’ancien défaut court-circuitait sur la DB et laissait le cache disque
+  vide, ce qui faisait re-télécharger intégralement FORDEAD au premier
+  diagnostic. Le nouveau défaut prépare effectivement le terrain pour
+  FORDEAD (`R/mod_monitoring.R`, `R/utils_i18n.R`).
+
+### Tests
+
+- Nouveau test de régression dans `tests/testthat/test-mod_monitoring.R`
+  qui verrouille l’invariant `skip_cached = FALSE` dans l’appel à
+  `ingest_task$invoke()`, quelle que soit la valeur de
+  `input$reprime_cache`.
+
+## \[0.30.0\] - 2026-05-16
+
+### Added
+
+- **Suivi sanitaire / Carte pixel** : couche UGF (périmètre du projet)
+  affichée en contour orange au-dessus du raster NDVI/NBR. Troisième
+  case à cocher « UGF » dans le contrôle des couches Leaflet, à côté de
+  « NDVI / NBR » et « Placettes ». Visible sur les deux fonds OSM et
+  Satellite (`R/mod_monitoring_pixel_map.R`).
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : auto-zoom au chargement projet
+  retravaillé. Le correctif v0.29.1 (`observeEvent` sur `project$id`)
+  ratait quand `indicators_sf` arrivait après `id` (chargement async) —
+  la carte restait alors sur la vue Leaflet par défaut, donnant
+  l’impression que le raster et les marqueurs étaient invisibles.
+  Passage à `observe()` + `reactiveVal .last_fitted_id` qui couvre tous
+  les ordres de population (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.29.1\] - 2026-05-16
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : la carte ne se centrait pas sur
+  les UGF du projet au chargement — elle restait sur la vue Leaflet par
+  défaut depuis le passage en `renderLeaflet` statique de v0.28.1. Ajout
+  d’un `observeEvent` sur `project$id` qui appelle `fitBounds()` via
+  `leafletProxy()`. Préserve le pan/zoom manuel après le centrage
+  initial (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.29.0\] - 2026-05-16
+
+### Added
+
+- **Suivi sanitaire / Carte pixel** : overlay placettes cliquable. Les
+  placettes du plan d’échantillonnage présentes dans la fenêtre courante
+  apparaissent comme marqueurs cercles sur la carte ; un clic ouvre un
+  modal plotly avec la série NDVI / NBR agrégée placette pour ce
+  `plot_id`. Cohabite avec le clic pixel existant
+  (`R/mod_monitoring_pixel_map.R`, `R/utils_i18n.R`).
+- Contrôle des couches Leaflet enrichi : cases à cocher « NDVI / NBR »
+  et « Placettes » permettent de masquer indépendamment chaque overlay.
+
+## \[0.28.5\] - 2026-05-16
+
+### Changed
+
+- **Deps** : bascule de l’épingle `Remotes` de
+  `pobsteta/nemeton@v0.22.1` vers `pobsteta/nemeton@main`. Les installs
+  GitHub de `nemetonshiny` tirent désormais en continu le dernier commit
+  `main` de `nemeton` — plus besoin de bumper l’épingle après chaque
+  release cœur. Reproductibilité d’install dans le temps perdue
+  (cf. NEWS.md pour les trade-offs) (`DESCRIPTION`).
+- **Docs** : section *Stack technique* de `CLAUDE.md` mise à jour ;
+  ajout d’une nouvelle section *Suivi de `nemeton@main` — implications
+  pour les releases* ; suppression de la section *Épingle Remotes vers
+  nemeton* devenue caduque (`CLAUDE.md`).
+
+## \[0.28.4\] - 2026-05-15
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : la couche NDVI/NBR disparaissait
+  visuellement au basculement OSM↔︎Satellite parce que le `group =` de
+  `addRasterImage()` n’était pas déclaré dans
+  `addLayersControl(overlayGroups=)`. Déclaration explicite de la couche
+  overlay avec un libellé fixe « NDVI / NBR »
+  (`R/mod_monitoring_pixel_map.R`).
+
+### Removed
+
+- Clé i18n orpheline `monitoring_pixel_map_layer` (FR/EN) supprimée —
+  plus référencée depuis le fix ci-dessus (`R/utils_i18n.R`).
+
+## \[0.28.3\] - 2026-05-15
+
+### Changed
+
+- **Deps** : bump de l’épingle `Remotes: pobsteta/nemeton` de `v0.22.0`
+  vers `v0.22.1`. Sans ce bump, l’installation de `nemetonshiny` faisait
+  redescendre `nemeton` à `0.22.0` même si une version plus récente
+  était installée localement (`DESCRIPTION`).
+
+## \[0.28.2\] - 2026-05-15
+
+### Fixed
+
+- **Suivi sanitaire** : après un téléchargement Sentinel-2 réussi, le
+  graphique plotly des placettes et la sous-onglet *Carte pixel* ne se
+  mettaient pas à jour automatiquement — l’utilisateur devait toucher à
+  un contrôle (bandes, dates, zone) pour rafraîchir. Ajout d’un
+  `reactiveVal` `obs_refresh` lu par `obs_pixel_data()` et bumpé en fin
+  d’ingestion. Pattern symétrique à `alerts_refresh` côté FORDEAD
+  (`R/mod_monitoring.R`).
+
+## \[0.28.1\] - 2026-05-15
+
+### Fixed
+
+- **Suivi sanitaire / Carte pixel** : le fond satellite ne tenait pas
+  quand l’utilisateur faisait défiler le slider de date ou changeait
+  d’indice — Leaflet repassait sur OSM à chaque rendu. Le squelette de
+  carte est désormais rendu une seule fois, et le raster + la légende
+  sont mis à jour via `leafletProxy()`. Le choix de fond reste actif
+  (`R/mod_monitoring_pixel_map.R`).
+
+## \[0.26.6\] - 2026-05-13
+
+### Fixed
+
+- `fix(monitoring)`: worker `cli::cli_alert_*` output now actually
+  reaches the parent R console in real time. The v0.26.5
+  [`sink()`](https://rdrr.io/r/base/sink.html)- based approach silently
+  failed for cli messages because cli writes to
+  [`stderr()`](https://rdrr.io/r/base/showConnections.html) directly via
+  `cat(file = stderr())` in non-interactive mode, bypassing
+  `sink(type = "message")` entirely. Replaced by
+  `withCallingHandlers(message =, warning =)` wrapping
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html)
+  — every condition (cli + plain
+  [`message()`](https://rdrr.io/r/base/message.html) +
+  [`warning()`](https://rdrr.io/r/base/warning.html)) is rewritten to
+  the log file with
+  [`writeLines()`](https://rdrr.io/r/base/writeLines.html) +
+  [`flush()`](https://rdrr.io/r/base/connections.html) and the original
+  stderr write is muffled via `invokeRestart`. Includes
+  `[s2_cache HH:MM:SS] …` traces when `NEMETON_S2_CACHE_DEBUG=TRUE`.
+- `fix(db)`:
+  [`db_init_schema()`](https://pobsteta.github.io/nemetonshiny/reference/db_init_schema.md)
+  now suppresses the noisy `NOTICE: ... already exists, skipping` rafale
+  that RPostgres surfaces via
+  [`message()`](https://rdrr.io/r/base/message.html) on each
+  `CREATE ... IF NOT EXISTS`. The schema init loop is wrapped in
+  `suppressMessages({...})`. Warnings and errors continue to propagate.
+
+## \[0.26.5\] - 2026-05-13
+
+### Added
+
+- `feat(monitoring)`: when the **“Re-prime COG cache”** checkbox is
+  ticked, `<project>/cache/layers/sentinel2/` is now wiped via
+  `unlink(recursive = TRUE, force = TRUE)` right before
+  `ingest_task$invoke()`. Without this, even with `skip_cached = FALSE`,
+  nemeton’s `.get_s2_band_raster()` served the `B0X.tif` files already
+  present on disk (CACHE-HIT branch), silently defeating the toggle. The
+  on-disk cache and the DB cache are now both forced. A
+  [`cli::cli_alert_info`](https://cli.r-lib.org/reference/cli_alert.html)
+  reports how many entries were purged.
+- `feat(monitoring)`: worker stdout + message stream
+  [`sink()`](https://rdrr.io/r/base/sink.html)ed to
+  `<project>/data/ingest_console.log`. The parent process tails the file
+  every 500 ms via `reactivePoll`, reads newly-written bytes from a
+  persistent offset and [`cat()`](https://rdrr.io/r/base/cat.html)s them
+  to its own [`stderr()`](https://rdrr.io/r/base/showConnections.html).
+  Effect: every `cli::cli_*`,
+  [`message()`](https://rdrr.io/r/base/message.html),
+  [`cat()`](https://rdrr.io/r/base/cat.html) and `[s2_cache …]` trace
+  from
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html)
+  (including the verbose `NEMETON_S2_CACHE_DEBUG=TRUE` ones) lands in
+  the developer’s R console in real time, bypassing `future`’s built-in
+  stdout capture. Cleanup mirrors the existing `progress.json` channel
+  on success / error paths.
+
+### Changed
+
+- `run_ingestion_async()` (R/service_monitoring.R) gains an optional
+  `log_path` parameter on its `$invoke()` signature. NULL = no console
+  mirror (the legacy silent behaviour).
+
+## \[0.26.4\] - 2026-05-13
+
+### Added
+
+- `feat(monitoring)`: worker instrumentation to diagnose async ingestion
+  hangs. Two heartbeats emitted via `progress_callback` before the
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html)
+  call:
+  - `s2:worker_started` (post load_all + db_connect)
+  - `s2:nemeton_call_starting` (about to enter nemeton)
+- `feat(monitoring)`: wrap the nemeton call in `tryCatch` and emit
+  `s2:fatal_error` (with `error_message` + `error_class`) before
+  re-throwing. Replaces the opaque “MultisessionFuture was interrupted”
+  with the real R error message.
+- `feat(monitoring)`: observer routes the new events. Heartbeats update
+  the persistent progress toast +
+  [`cli::cli_alert_info`](https://cli.r-lib.org/reference/cli_alert.html)
+  mirror; fatal errors trigger
+  [`cli::cli_alert_danger`](https://cli.r-lib.org/reference/cli_alert.html) +
+  `showModal()` with the full message.
+- i18n: `monitoring_ingest_worker_event_fmt`,
+  `monitoring_ingest_fatal_title`.
+
+## \[0.26.3\] - 2026-05-13
+
+### Fixed
+
+- `fix(monitoring)`: propagate `NEMETON_*` environment variables from
+  the Shiny main session to the
+  [`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+  worker. Windows workers are separate `Rscript.exe` processes that
+  don’t inherit env vars set after their spawn — so
+  `Sys.setenv(NEMETON_S2_CACHE_DEBUG = "TRUE")` was silently lost.
+  `run_ingestion_async()` and `run_fordead_async()` now snapshot the
+  relevant `NEMETON_*` vars at invoke time (parent side) and replay them
+  at the top of the `future_promise()` body (worker side).
+
+### Added
+
+- `.capture_worker_envvars()` / `.apply_worker_envvars()` helpers in
+  `R/service_monitoring.R` + 3 tests in
+  `tests/testthat/test-service_monitoring_wiring.R`.
+
+## \[0.26.2\] - 2026-05-13
+
+### Fixed
+
+- `fix(deps)`: bump nemeton pin to `>= 0.21.9`. v0.21.9 fixes a
+  [`terra::writeRaster()`](https://rspatial.github.io/terra/reference/writeRaster.html)
+  call in the S2 cache write path that targeted a `.tif.tmp` path
+  (atomic-write pattern) without an explicit `filetype` argument — terra
+  refused with *“cannot guess file type from filename”*, so every band
+  was fetched + cropped successfully then lost at the write step. UI
+  symptom in v0.26.1: ingestion consumed 4-5 min per scene, reached N/N,
+  but `<project>/cache/layers/sentinel2/` stayed empty.
+
+## \[0.26.1\] - 2026-05-13
+
+### Fixed
+
+- `fix(deps)`: bump nemeton pin to `>= 0.21.8`. v0.21.8 fixes a
+  per-scene S4→double coercion bug introduced in v0.21.4 (cache_dir
+  wiring) that made every Sentinel-2 scene skipped with *“cannot coerce
+  type ‘S4’ to vector of type ‘double’”* on `skip_cached = FALSE` runs.
+  UI symptom in v0.26.0: ticking the “Re-prime COG cache” checkbox
+  triggered the run but neither the DB nor the disk cache filled up
+  because every scene errored out.
+
+## \[0.26.0\] - 2026-05-13
+
+### Added
+
+- `feat(monitoring)`: “Re-prime COG cache” checkbox under the ingestion
+  button (mode quick). When ticked, plumbs `skip_cached = FALSE` through
+  `run_ingestion_async()` to
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html),
+  which forces re-extraction and therefore re-fetches every band,
+  finally populating `<project>/cache/layers/sentinel2/`. Default
+  unchecked — preserves v0.25.0 behavior. INSERTs are
+  `ON CONFLICT DO NOTHING` core-side, the DB is preserved.
+- i18n: `monitoring_reprime_cache_label`,
+  `monitoring_reprime_cache_help`.
+
+### Changed
+
+- `service_monitoring.R::run_ingestion_async()`: new `skip_cached`
+  parameter on the `ExtendedTask` lambda (default `TRUE`), forwarded to
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html).
+
+## \[0.25.0\] - 2026-05-13
+
+### Added
+
+- `feat(monitoring)`: explicit routing for `progress_callback` events
+  emitted by `nemeton@v0.21.4+`:
+  - `s2:cache_lookup` → persistent toast “DB cache: N cached, M to
+    process”
+  - `s2:band_fetch_failed` → 6 s warning toast with `band` +
+    `error_message`
+  - `s2:pc_token_refreshed` → 3 s info toast
+- `feat(monitoring)`: “COG cache active” hint under the ingestion
+  button, showing the absolute path of
+  `<project>/cache/layers/sentinel2/`.
+- `tests/testthat/test-service_monitoring_wiring.R`: smoke test
+  asserting `run_ingestion_async()` forwards `cache_dir` and a non-NULL
+  `progress_callback` to
+  [`nemeton::ingest_sentinel2_timeseries()`](https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html).
+- i18n: `monitoring_ingest_cache_lookup_fmt`,
+  `monitoring_ingest_band_failed_fmt`,
+  `monitoring_ingest_token_refreshed`, `monitoring_cache_active_fmt`.
+
+### Changed
+
+- `chore(deps)`: bump nemeton pin to `>= 0.21.7` to align on the
+  versions that expose a stable `cache_dir` + `progress_callback`
+  signature.
+
+## \[0.24.14\] - 2026-05-13
+
+### Changed
+
+- `chore(deps)`: re-sync nemeton pin to `>= 0.21.5` (was `>= 0.21.3`) to
+  match the version installed locally. No functional impact — removes
+  [`pak::pkg_install`](https://pak.r-lib.org/reference/pkg_install.html)
+  resolution warnings on fresh machines.
+
+## \[0.24.13\] - 2026-05-13
+
+### Fixed
+
+- `fix(monitoring)`: terminal toasts (`ingest_zero`, `ingest_success`,
+  `ingest_warns`, `ingest_error`, `fordead_success`, `fordead_error`)
+  now use explicit `id = session$ns(...)` so repeated clicks replace the
+  previous toast instead of stacking duplicates.
+- `fix(monitoring)`: Sentinel-2 band cache moved from
+  `<project>/data/s2_cache/` to `<project>/cache/layers/sentinel2/` to
+  comply with the NMT cache convention shared with `lidar_mnh/`,
+  `lidar_mnt/`, `lidar_nuage/`, `opencanopy/`, etc.
+
+## \[0.24.12\] - 2026-05-12
+
+### Fixed
+
+- Toast d’erreur **“Échec du téléchargement : argument inutilisé
+  (cache_dir = cache_dir)”** au clic FAST après installation de
+  v0.24.11. La v0.24.11 a livré le code applicatif qui appelle
+  `nemeton::ingest_sentinel2_timeseries(..., cache_dir = ...)` mais le
+  pin nemeton dans `DESCRIPTION` était resté à `v0.21.2` qui ignore cet
+  argument. Correctif : `Imports: nemeton (>= 0.21.3)` +
+  `Remotes: pobsteta/nemeton@v0.21.3`.
+
+## \[0.24.11\] - 2026-05-12
+
+### Added
+
+- Cache local des bandes Sentinel-2 : branche le `cache_dir` introduit
+  par `nemeton@v0.21.3+` sur `ingest_sentinel2_timeseries()`. Les bandes
+  téléchargées sont posées sous `<project>/data/s2_cache/` et
+  réutilisées au prochain run — gain massif sur un re-run après échec
+  STAC ou extension de fenêtre. Helper `.resolve_s2_cache_dir(project)`
+  (NULL si pas de projet → fallback in-memory legacy de nemeton).
+- Abonnement aux events progress `s2:band_cached` / `s2:band_fetched` :
+  chaque bande génère une ligne `cli_alert_info` dédiée dans la console
+  R (`⤷ Bande B04 (cache) — scène S2A_MSIL2A_...`). Pas d’update du
+  toast UI (2-4 bandes par scène à sub-second feraient flickerer l’UI).
+  Helper `.log_band_event()`.
+
+## \[0.24.10\] - 2026-05-12
+
+### Added
+
+- Capture des warnings STAC du worker async via
+  `withCallingHandlers(warning = ...)`. Quand l’ingestion retourne 0
+  scènes, le toast surface maintenant la cause réelle (ex.
+  `STAC backend "pc" failed: HTTP 504 Gateway Timeout`) au lieu d’un
+  `Téléchargement terminé : 0 scène(s)` muet.
+- Phase “Recherche STAC” distincte de la phase “Téléchargement tuile” :
+  avant la première tuile reçue, le toast affiche “Recherche des scènes
+  Sentinel-2 disponibles…” (ou “Préparation du téléchargement : N
+  scène(s) trouvée(s)…” si nemeton a déjà pré-rempli le `total`).
+- 5 nouvelles clés i18n FR/EN : `monitoring_stac_search`,
+  `monitoring_stac_search_with_count_fmt`, `monitoring_ingest_zero_fmt`,
+  `monitoring_ingest_zero_default`, `monitoring_ingest_warns_fmt`.
+
+### Fixed
+
+- Console R inondée de
+  `Database schema up to date (N migrations applied).` à chaque
+  interaction (30-50 lignes par clic). Cause :
+  [`nemeton::db_migrate()`](https://pobsteta.github.io/nemeton/reference/db_migrate.html)
+  émet ce message à chaque connexion ré-ouverte (validity, zones,
+  alerts, probe…). Correctif : `withCallingHandlers(message = ...)`
+  autour de `db_migrate()` qui muffle uniquement les messages contenant
+  “up to date” / “already migrated”. Les “Applied migration X” du
+  premier run et les warnings/erreurs restent visibles.
+- Toast et console affichaient `(scene_id missing) (0/159)` entre la
+  recherche STAC et la première tuile reçue.
+
+### Changed
+
+- Le terme “ingestion” est remplacé par “téléchargement” (FR) /
+  “download” (EN) sur tous les textes utilisateur du contexte Sentinel-2
+  (`monitoring_*`). `field_ingest_*` et `health_validation_*` sont
+  volontairement préservés (uploads de données utilisateur, pas des
+  downloads distants).
+
+## \[0.24.9\] - 2026-05-12
+
+### Added
+
+- Mirroring console des events de progression : chaque tuile Sentinel-2
+  et chaque phase FORDEAD produit une ligne
+  [`cli::cli_alert_info`](https://cli.r-lib.org/reference/cli_alert.html)
+  (ou `cli_alert_warning` sur erreur) côté console R, exactement une
+  fois par event grâce au `reactivePoll`. Format console plus riche que
+  le toast (exploite `obs_date`, `cloud_pct`, `source` du payload
+  nemeton).
+- Roue dentée animée (`bsicons::bs_icon("gear-fill")` + classe
+  `.nmt-spin`) devant chaque message du toast persistant — l’utilisateur
+  voit que la tâche tourne toujours.
+
+### Fixed
+
+- Toast d’ingestion affichait `Tuile Sentinel-2 0/0` pendant tout le run
+  alors que le `scene_id` arrivait. Cause : <nemeton@v0.21.2> émet
+  `{current, completed, total, scene_id, obs_date, cloud_pct, source}`
+  et non `{i, n}`. Lecture défensive des champs avec fallback `i` / `n`
+  au cas où le schéma évoluerait.
+- Reformatage i18n : compteur **entre parenthèses** en fin de message —
+  `Tuile Sentinel-2 <scene_id> (X/N)` et `FORDEAD — phase <nom> (X/N)`.
+
+## \[0.24.8\] - 2026-05-12
+
+### Added
+
+- Progression “X/N tuiles Sentinel-2 téléchargées” pendant l’ingestion
+  FAST, et “FORDEAD — phase : %s (X/N)” pendant le diagnostic santé.
+  Couplé à `nemeton@v0.21.2` qui introduit `progress_callback` sur
+  `ingest_sentinel2_timeseries()` et `run_fordead_dieback()`. Le worker
+  async écrit un `<project>/data/{ingest,fordead}_progress.json`
+  atomique, le main process polle via `reactivePoll(500ms)` et rend un
+  toast persistant remplacé à chaque tick.
+- 4 nouvelles clés i18n FR/EN : `monitoring_ingest_progress_fmt`,
+  `monitoring_ingest_progress_named_fmt`, `monitoring_health_phase_fmt`,
+  `monitoring_health_phase_simple_fmt`.
+
+### Fixed
+
+- Boutons **“Lancer le diagnostic FAST”** et **“Lancer le diagnostic
+  FORDEAD”** muets au clic. Cause : `tagAppendAttributes(disabled = NA)`
+  HTML-disablait les boutons au premier rendu, et la classe
+  `btn-primary` masque visuellement l’état `disabled` Bootstrap — le
+  navigateur refuse le clic alors que l’utilisateur croit le bouton
+  actif. Correctif : suppression du wrapper `disabled = NA`,
+  simplification du `updateActionButton(disabled = is_running)` (greying
+  uniquement pendant la tâche async), garde `is_running` en tête des
+  `observeEvent` pour avaler les double-clics.
+
+### Changed
+
+- `DESCRIPTION`: `Imports: nemeton (>= 0.21.2)`,
+  `Remotes: pobsteta/nemeton@v0.21.2`.
+
+## \[0.24.7\] - 2026-05-12
+
+### Fixed
+
+- Migration de la base DuckDB du Suivi sanitaire : bump de `nemeton`
+  vers `v0.21.1` (DDL portable Postgres/DuckDB via `CREATE SEQUENCE` +
+  `DEFAULT nextval(...)`, remplace
+  `INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY` qui cassait DuckDB
+  avec *“syntax error at or near GENERATED”*).
+- `DESCRIPTION`: `Imports: nemeton (>= 0.21.1)`,
+  `Remotes: pobsteta/nemeton@v0.21.1`.
+
+## \[0.23.5\] - 2026-05-09
+
+### Added
+
+- Plan d’actions chat: two new controls just below the history — **scope
+  radio** (all UGFs / current selection) and **overwrite checkbox**
+  (replace existing actions). Same semantics as the “Generate actions
+  (AI)” modal. When overwrite is on, the apply modal surfaces a warning
+  banner listing the number of targeted UGFs.
+- New i18n keys `action_plan_chat_scope_sel` and
+  `action_plan_chat_apply_overwrite_warn_fmt`.
+
+### Fixed
+
+- Language toggle FR ↔︎ EN in the navbar selector now actually applies.
+  Two combined bugs:
+  - The handler wrote to `nemeton.app_language` but `app_ui` reads
+    `getOption("nemeton.app_options")$language`, so the choice did not
+    survive a page reload. Now persists into the right option key.
+  - The handler showed a toast saying “Reload the page” without actually
+    reloading. Replaced by `session$reload()` so the UI rebuilds
+    automatically. Anti-init guard: if the new value equals
+    `app_state$language`, the observer returns early to avoid an
+    unwanted reload at session start.
+
+### Removed
+
+- Orphaned i18n key `language_changed` (was only used by the dropped
+  manual-reload toast).
+
+## \[0.23.4\] - 2026-05-09
+
+### Changed
+
+- Plan d’actions chat: role labels in the conversation history now go
+  through i18n. The raw LLM keys (“user” / “assistant”) no longer
+  surface in the UI; they render as **“Vous”** / **“Assistant”** (FR) or
+  **“You”** / **“Assistant”** (EN), switching live with the language
+  toggle. The underlying data model still uses the English keys so the
+  prompt builder is unchanged.
+
+### Added
+
+- New i18n keys `action_plan_chat_role_user` and
+  `action_plan_chat_role_assistant`.
+
+## \[0.23.3\] - 2026-05-09
+
+### Added
+
+- Plan d’actions chat: clicking **Send** now displays a persistent
+  **bottom-right toast** with a **spinning gear icon** and the label
+  *“L’IA réfléchit…”* / *“AI is thinking…”*. The toast stays visible
+  until the LLM response arrives or the call fails. Implemented via
+  `shiny::showNotification(duration = NULL, closeButton = FALSE)` paired
+  with an `on.exit(removeNotification(...))` hook so every return path
+  (success, LLM error, parse error) clears the toast.
+- New i18n key `action_plan_chat_thinking`.
+
+## \[0.23.2\] - 2026-05-09
+
+### Added
+
+- Plan d’actions: chat history **auto-scrolls to the bottom** on every
+  update so the latest message is always visible. Implemented via an
+  inline `setTimeout(0)` script appended to each `chat_history_ui`
+  render that sets `el.scrollTop = el.scrollHeight` on the
+  `.chat-history` div (now carrying a stable id).
+
+### Changed
+
+- Plan d’actions: chat panel **moves from a left sidebar to the right
+  sidebar**, sitting below the “Tableau des actions” panel. The nested
+  [`bslib::layout_sidebar`](https://rstudio.github.io/bslib/reference/sidebar.html)
+  introduced in 0.23.1 is replaced by a single right sidebar containing
+  both cards stacked top-to-bottom.
+- Plan d’actions: button label “Générer (IA)” renamed to “Générer les
+  actions (IA)” (FR) / “Generate actions (AI)” (EN) for clarity.
+
+## \[0.23.1\] - 2026-05-09
+
+### Added
+
+- Plan d’actions: **AI chat now lives in a persistent left sidebar**
+  (350 px, collapsible) instead of a modal. The conversation stays
+  visible while the user navigates map / table / Kanban. Layout switches
+  to a nested `layout_sidebar` (left chat / right action panel / main
+  content).
+
+### Changed
+
+- Plan d’actions: “Ouvrir le chat” button removed from the right action
+  panel (made redundant by the persistent sidebar). `input$open_chat`
+  observer (~30 LOC of `showModal`) dropped.
+
+### Fixed
+
+- Plan d’actions map ↔︎ table sync: clicking a parcelle on the **map**
+  now selects every corresponding row in the table. The
+  `input$map_shape_click` handler now also calls
+  [`DT::selectRows()`](https://rdrr.io/pkg/DT/man/proxy.html). The
+  reverse direction (table → map) was already working. No reactive loop:
+  `reactiveVal` dedupes by
+  [`identical()`](https://rdrr.io/r/base/identical.html) so the
+  round-trip stops after one pass.
+
+### Removed
+
+- i18n keys `action_plan_open_chat` and `action_plan_chat_input_label`
+  (orphaned by the chat refactor).
+
+## \[0.23.0\] - 2026-05-09
+
+### Added
+
+- Kanban: double-click on a card opens an **edit modal** pre-filled with
+  statut / priorité / année / commentaire. Primary use-case is editing
+  long commentaires (DT inline cell-edit is single-line). Delegated
+  dblclick listener at the board level with cleanup between renders.
+- Kanban cards: each card now displays the **commentaire** under the
+  type/year/UGF block when non-empty.
+- Kanban columns: cards are **sorted by `annee_realisation`** ascending
+  (NAs last) so each column reads chronologically.
+
+### Changed
+
+- Kanban: **free movement between any columns**. The proposée → validée
+  → planifiée → réalisée → abandonnée DAG no longer gates drag-drop.
+  `update_action_in_plan()` accepts any known status, rejects only
+  unknown strings. `is_valid_status_transition()` and
+  `ACTION_PLAN_TRANSITIONS` stay as informational documentation of the
+  natural workflow.
+- Kanban: per-card **“Déplacer”** dropdown removed (made redundant by
+  free drag-drop). The `kanban_move_*` dispatcher observer (~50 LOC) and
+  the unused `KANBAN_STATUSES` constant are gone too.
+- Action plan table: **action count** moved from bottom-left to
+  bottom-right. DT `dom` switched to a custom flex layout
+  (`<"top"f>rt<"… dt-bottom-row"<"… "lp>i>`) with scoped CSS rules to
+  override the default DT floats.
+- Add action modal: the **UGF dropdown** now shows `ug_label` (sorted)
+  instead of the raw `ug_id`; **Année cible** is now a real calendar
+  year (default `base_year + 1`, range `base_year + 1` …
+  `base_year + horizon`), converted to the internal offset on save.
+
+### Fixed
+
+- Add action modal: previously surfaced the internal offset (1, 2, …)
+  for “Année cible” and the raw `ug_id` for the UGF dropdown, both
+  confusing for end-users.
+
+### Removed
+
+- i18n keys `action_plan_kanban_move` and
+  `action_plan_kanban_drop_invalid_fmt` (orphaned by the Kanban
+  refactor).
+
+## \[0.22.4\] - 2026-05-09
+
+### Changed
+
+- Action plan table: the page-size selector (“Afficher 5/10/25/50/All”)
+  moved **below the table**, next to the info count and pagination. Top
+  of the table now only carries the global search box. DT `dom` switched
+  from `"lfrtip"` to `"frtilp"`.
+- Action plan table: only **UGF + Année** are frozen during horizontal
+  scroll. `DISPLAY_COLS` reordered so hidden columns (`id`, `ug_id`,
+  `annee_cible`) sit at the tail; `fixedColumns.leftColumns` reduced
+  from 5 to 2 to match the count of visible frozen columns (DT’s
+  FixedColumns counts every DOM column, hidden included).
+- Action plan map: leaflet legend titles now translated. `legend_title`
+  literals (`"annee"`, `"type"`, `"priority"`) swapped for
+  `i18n$t("action_plan_col_*")` so the map shows “Année / Type /
+  Priorité” in FR and “Year / Type / Priority” in EN, switching with the
+  language toggle.
+
+### Fixed
+
+- `mod_auth_server()` no longer crashes on startup in anonymous mode
+  when `NEMETON_AUTH_DEV_ROLES` is set. The dev-roles branch
+  interpolated `{auth_state$user_roles}` through
+  [`cli::cli_alert_info()`](https://cli.r-lib.org/reference/cli_alert.html)
+  / glue outside any reactive consumer, which `reactiveValues` rejects.
+  The parsed roles are now captured in a local `parsed_roles` before
+  being assigned to `auth_state$user_roles`; the log message reads the
+  local instead of the reactiveValues. Regression introduced by \#41 in
+  v0.22.3.
+
 ## [0.20.0](https://github.com/pobsteta/nemetonshiny/compare/v0.19.0...v0.20.0) - 2026-04-24
 
 ### Added
