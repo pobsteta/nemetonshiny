@@ -127,7 +127,14 @@ test_that("server exposes manifest, reacts to edits, blocks save on errors", {
       strategies = c("pdf", "url"), doc_types = c("guide"),
       licenses = c("CC-BY-4.0")
     ),
-    validate_knowledge_manifest = function(manifest) issue_state$df,
+    # force(manifest) is essential: the module's `issues` reactive calls
+    # nemeton::validate_knowledge_manifest(man()). R passes man() as a lazy
+    # promise; a mock that never touches `manifest` would leave that promise
+    # unforced, so the reactive never reads man() and never subscribes to it
+    # -> issues() would compute once and stay frozen on later edits. Forcing
+    # the argument reproduces the real function's behaviour (it uses the
+    # manifest) and establishes the man() -> issues() -> has_errors() chain.
+    validate_knowledge_manifest = function(manifest) { force(manifest); issue_state$df },
     write_knowledge_manifest = function(manifest, path = NULL, validate = TRUE) {
       saved$called <- TRUE
       invisible(path)
@@ -148,6 +155,14 @@ test_that("server exposes manifest, reacts to edits, blocks save on errors", {
       # Manifest loaded from the (mocked) writable path.
       expect_equal(nrow(session$returned$manifest()), 2L)
       expect_false(session$returned$has_errors())
+
+      # testServer performs no implicit startup flush, so the FIRST reactive
+      # flush is the one our setInputs triggers. The cell-edit observer uses
+      # observeEvent(..., ignoreInit = TRUE), which would treat that first
+      # flush as its init run and swallow the edit. A real session flushes at
+      # startup before any user edit, consuming the ignoreInit; we reproduce
+      # that here so the assertions below mirror production behaviour.
+      session$flushReact()
 
       # Inline cell edit on the title column (col index 1 -> col=1 with
       # rownames=FALSE means names()[2] == "title").

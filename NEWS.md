@@ -18,6 +18,28 @@ message réel (`Can't find package called lasR`) était masqué par les
 `pak::lockfile_create()` réussit de nouveau (vérifié localement,
 `lasR` présent dans le lockfile). Aucun changement de code applicatif.
 
+### Bug fixé — R-CMD-check rouge : 3 tests `mod_rag_admin` cassés
+
+**Symptôme** : une fois `lasR` résolu, `R-CMD-check` atteignait enfin
+la suite de tests et révélait 3 échecs pré-existants dans
+`test-mod_rag_admin.R` (édition de cellule sans effet, `has_errors()`
+ne réagissant pas), masqués jusque-là par l'échec d'install. Bug
+antérieur (reproduit sur l'ancien `main`), sans lien avec `lasR`.
+
+**Causes (toutes côté test, le code applicatif est correct)** :
+1. **`ignoreInit` mangé** : l'observer `manifest_cell_edit` utilise
+   `observeEvent(..., ignoreInit = TRUE)`. `testServer` ne fait pas de
+   flush de démarrage (contrairement à une vraie session), donc le tout
+   premier `setInputs(cell_edit=…)` était avalé comme run d'init. Fix :
+   `session$flushReact()` initial pour consommer l'`ignoreInit`.
+2. **Promesse non forcée** : le mock
+   `validate_knowledge_manifest = function(manifest) issue_state$df` ne
+   touchait jamais son argument. La reactive `issues` appelle
+   `nemeton::validate_knowledge_manifest(man())` ; l'argument `man()`
+   restait une promesse non évaluée → la reactive ne souscrivait jamais
+   à `man()` → figée au premier calcul. Fix : `force(manifest)` dans le
+   mock (reproduit le comportement de la vraie fonction nemeton).
+
 # nemetonshiny 0.74.0 (2026-06-10)
 
 ### Perf — Restore projet instantané : cache de la géométrie commune
