@@ -40,6 +40,24 @@ antérieur (reproduit sur l'ancien `main`), sans lien avec `lasR`.
    à `man()` → figée au premier calcul. Fix : `force(manifest)` dans le
    mock (reproduit le comportement de la vraie fonction nemeton).
 
+### Bug fixé — R-CMD-check rouge : 4 autres tests pré-existants
+
+Toujours masqués par l'échec d'install lasR, révélés une fois la suite
+atteinte. Tous côté test ; le code applicatif est correct.
+
+- **3 tests monitoring obsolètes** (`test-mod_monitoring.R` ×2,
+  `test-mod_monitoring_pixel_map.R`) : attendaient encore
+  `bands = c("NDVI", "NBR")`, alors que NDMI a été ajouté (3ᵉ indice,
+  v0.71.0 / nemeton >= 0.64.0) et est désormais câblé en dur. Attentes
+  mises à jour vers `c("NDVI", "NBR", "NDMI")`.
+- **1 smoke E2E shinytest2** (`test-mod_rag_admin-e2e.R`) : (a) ouvrait
+  la modale via `set_inputs(open = 1)` sur un `actionLink` — invalide
+  (« only valid value is click ») ; (b) supposait un rendu *eager* des
+  onglets, or la tab RAG est *lazy* (montée seulement quand
+  `config_tab == "tab_rag"`, anti-DataTables-dans-conteneur-caché). Fix :
+  ouverture par clic DOM réel + activation de la tab RAG par clic sur son
+  lien de nav. (Jamais exécuté en CI auparavant — masqué par lasR.)
+
 # nemetonshiny 0.74.0 (2026-06-10)
 
 ### Perf — Restore projet instantané : cache de la géométrie commune

@@ -44,10 +44,25 @@ test_that("RAG admin tab boots inside the settings modal", {
   )
   on.exit(try(app$stop(), silent = TRUE), add = TRUE)
 
-  # Open the settings (gear) modal — the RAG admin is its third tab.
-  # shiny::tabsetPanel renders all panels (even inactive) into the DOM,
-  # so the nested module's static inputs register once the modal shows.
-  app$set_inputs(`theia_config-open` = 1, priority_ = "event")
+  # Open the settings (gear) modal. `open` is an actionLink; set_inputs()
+  # rejects a non-"click" value for action inputs, and app$click() waits
+  # for an output change that showModal() never produces. A direct DOM
+  # click on the link reliably fires its Shiny handler and shows the modal.
+  app$run_js("document.getElementById('theia_config-open').click();")
+  app$wait_for_idle(timeout = 5 * 1000)
+
+  # The RAG tab is LAZY-rendered: mod_rag_admin_ui() (and its static
+  # add_row control) only mounts when `config_tab == "tab_rag"`. This is
+  # deliberate — DataTables must not initialise inside a display:none
+  # container (it errors and cascades onto sibling outputs). A tabsetPanel
+  # exposes no settable input binding, so activate the tab by clicking its
+  # nav link (Bootstrap toggle + Shiny input update), which both reveals
+  # the panel and flips `config_tab` to "tab_rag".
+  app$run_js(
+    "var t = document.querySelector('.modal [data-value=\"tab_rag\"]');
+     if (t) { t.click(); }"
+  )
+  app$wait_for_idle(timeout = 5 * 1000)
   Sys.sleep(0.8)
 
   vals <- app$get_values()$input

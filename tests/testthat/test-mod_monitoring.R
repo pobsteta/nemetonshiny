@@ -232,9 +232,10 @@ test_that("input$run with no zone selected fires a validation notification", {
 test_that("v0.61.0 — input$run invokes the task with NDVI+NBR hard-wired (no `bands` input)", {
   skip_if_not_installed("shiny")
 
-  # Le checkboxGroupInput `bands` est retiré : NDVI + NBR sont
-  # systématiquement passés au worker FAST. Même sans `setInputs(bands=)`,
-  # le task doit être invoqué avec `bands = c("NDVI", "NBR")`.
+  # Le checkboxGroupInput `bands` est retiré : NDVI + NBR + NDMI sont
+  # systématiquement passés au worker FAST (NDMI ajouté v0.71.0, nemeton
+  # >= 0.64.0). Même sans `setInputs(bands=)`, le task doit être invoqué
+  # avec `bands = c("NDVI", "NBR", "NDMI")`.
   fake_task <- make_fake_fast_task()
 
   testthat::with_mocked_bindings(
@@ -251,13 +252,13 @@ test_that("v0.61.0 — input$run invokes the task with NDVI+NBR hard-wired (no `
             zone_id    = "1",
             # Pas de `bands =` ici — l'input n'existe plus dans la
             # sidebar. Le worker doit quand même recevoir c("NDVI",
-            # "NBR") depuis le câblage en dur.
+            # "NBR", "NDMI") depuis le câblage en dur.
             date_range = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
             run        = 1L
           )
           calls <- fake_task$.calls()
           expect_length(calls, 1L)
-          expect_equal(calls[[1]]$bands, c("NDVI", "NBR"))
+          expect_equal(calls[[1]]$bands, c("NDVI", "NBR", "NDMI"))
         }
       )
     }
@@ -290,7 +291,7 @@ test_that("input$run with valid inputs invokes the ingest task", {
           expect_equal(calls[[1]]$zone_id, 1L)
           expect_equal(calls[[1]]$start,   as.Date("2025-06-01"))
           expect_equal(calls[[1]]$end,     as.Date("2025-06-30"))
-          expect_equal(calls[[1]]$bands,   c("NDVI", "NBR"))
+          expect_equal(calls[[1]]$bands,   c("NDVI", "NBR", "NDMI"))
         }
       )
     }
