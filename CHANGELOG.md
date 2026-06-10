@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.74.1] - 2026-06-10
+
+### Fixed
+
+- CI rouge depuis v0.73.0 : `lasR` (Suggests, hébergé r-universe) non
+  résolu par `pak` faisait échouer tous les jobs à l'install des
+  dépendances. Ajout de `r-lidar/lasR` à `Remotes:`.
+- 6 tests pré-existants révélés une fois `lasR` résolu (masqués jusque-là
+  par l'échec d'install), tous côté test — code applicatif correct :
+  `mod_rag_admin` testServer (×3 : `ignoreInit` + promesse non forcée),
+  `mod_monitoring`/`mod_monitoring_pixel_map` (×3 : attente NDMI).
+
+### Changed
+
+- Smoke E2E shinytest2 `mod_rag_admin-e2e` quarantiné (`skip()` + FIXME) :
+  jamais exécuté en CI auparavant, cassé (modale/tab-lazy sous headless),
+  à ré-armer avec un environnement navigateur stable.
+
 ## [0.74.0] - 2026-06-10
 
 ### Added

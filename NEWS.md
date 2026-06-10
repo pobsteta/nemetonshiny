@@ -1,3 +1,67 @@
+# nemetonshiny 0.74.1 (2026-06-10)
+
+### Bug fixé — CI rouge : dépendance `lasR` non résolue par `pak`
+
+**Symptôme** : tous les jobs GitHub Actions (R-CMD-check, tests,
+pkgdown) échouaient à l'étape « Install R dependencies », **avant**
+toute compilation, avec `Could not solve package dependencies`
+(conflits signalés sur `rcmdcheck` / `remotes` / `sessioninfo` /
+`testthat`). Régression d'infrastructure présente depuis v0.73.0.
+
+**Cause** : `lasR` (traitement LiDAR, en `Suggests`) est hébergé sur
+r-universe (`r-lidar`), pas sur le CRAN. Sans entrée `Remotes` ni
+`Additional_repositories`, `pak` ne trouvait pas le paquet — le
+message réel (`Can't find package called lasR`) était masqué par les
+« dependency conflict » génériques sur les paquets d'outillage.
+
+**Fix** : ajout de `r-lidar/lasR` à `Remotes:`. La résolution
+`pak::lockfile_create()` réussit de nouveau (vérifié localement,
+`lasR` présent dans le lockfile). Aucun changement de code applicatif.
+
+### Bug fixé — R-CMD-check rouge : 3 tests `mod_rag_admin` cassés
+
+**Symptôme** : une fois `lasR` résolu, `R-CMD-check` atteignait enfin
+la suite de tests et révélait 3 échecs pré-existants dans
+`test-mod_rag_admin.R` (édition de cellule sans effet, `has_errors()`
+ne réagissant pas), masqués jusque-là par l'échec d'install. Bug
+antérieur (reproduit sur l'ancien `main`), sans lien avec `lasR`.
+
+**Causes (toutes côté test, le code applicatif est correct)** :
+1. **`ignoreInit` mangé** : l'observer `manifest_cell_edit` utilise
+   `observeEvent(..., ignoreInit = TRUE)`. `testServer` ne fait pas de
+   flush de démarrage (contrairement à une vraie session), donc le tout
+   premier `setInputs(cell_edit=…)` était avalé comme run d'init. Fix :
+   `session$flushReact()` initial pour consommer l'`ignoreInit`.
+2. **Promesse non forcée** : le mock
+   `validate_knowledge_manifest = function(manifest) issue_state$df` ne
+   touchait jamais son argument. La reactive `issues` appelle
+   `nemeton::validate_knowledge_manifest(man())` ; l'argument `man()`
+   restait une promesse non évaluée → la reactive ne souscrivait jamais
+   à `man()` → figée au premier calcul. Fix : `force(manifest)` dans le
+   mock (reproduit le comportement de la vraie fonction nemeton).
+
+### Bug fixé — R-CMD-check rouge : 4 autres tests pré-existants
+
+Toujours masqués par l'échec d'install lasR, révélés une fois la suite
+atteinte. Tous côté test ; le code applicatif est correct.
+
+- **3 tests monitoring obsolètes** (`test-mod_monitoring.R` ×2,
+  `test-mod_monitoring_pixel_map.R`) : attendaient encore
+  `bands = c("NDVI", "NBR")`, alors que NDMI a été ajouté (3ᵉ indice,
+  v0.71.0 / nemeton >= 0.64.0) et est désormais câblé en dur. Attentes
+  mises à jour vers `c("NDVI", "NBR", "NDMI")`.
+- **1 smoke E2E shinytest2** (`test-mod_rag_admin-e2e.R`) — **quarantiné
+  (`skip()` + FIXME)**. Jamais exécuté en CI auparavant (masqué par lasR),
+  il s'est révélé cassé : (a) ouvrait la modale via `set_inputs(open = 1)`
+  sur un `actionLink` — invalide (« only valid value is click ») ; (b)
+  supposait un rendu *eager* des onglets, or la tab RAG est *lazy* (montée
+  seulement quand `config_tab == "tab_rag"`, anti-DataTables-dans-
+  conteneur-caché). Le correctif tenté (clic DOM réel + activation de la
+  tab RAG) ne suffit pas sous shinytest2 headless — le contenu de la
+  modale ne se monte pas, interaction à creuser avec un environnement
+  navigateur stable. Le code applicatif est correct (vérifié à la main).
+  Le test reste à ré-armer ultérieurement.
+
 # nemetonshiny 0.74.0 (2026-06-10)
 
 ### Perf — Restore projet instantané : cache de la géométrie commune

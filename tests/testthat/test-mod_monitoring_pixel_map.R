@@ -210,7 +210,8 @@ test_that("map_click invokes extract_pixel_timeseries with lat/lng", {
           session$flushReact()
           expect_equal(captured$xy, c(4.5, 47.5))   # (lng, lat)
           expect_equal(captured$crs, 4326)
-          expect_setequal(captured$indices, c("NDVI", "NBR"))
+          # NDMI ajouté v0.71.0 : extract_pixel_timeseries reçoit 3 indices.
+          expect_setequal(captured$indices, c("NDVI", "NBR", "NDMI"))
         }
       )
     }
