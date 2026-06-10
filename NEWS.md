@@ -1,3 +1,23 @@
+# nemetonshiny 0.74.0.9000 (dev — 2026-06-10)
+
+### Bug fixé — CI rouge : dépendance `lasR` non résolue par `pak`
+
+**Symptôme** : tous les jobs GitHub Actions (R-CMD-check, tests,
+pkgdown) échouaient à l'étape « Install R dependencies », **avant**
+toute compilation, avec `Could not solve package dependencies`
+(conflits signalés sur `rcmdcheck` / `remotes` / `sessioninfo` /
+`testthat`). Régression d'infrastructure présente depuis v0.73.0.
+
+**Cause** : `lasR` (traitement LiDAR, en `Suggests`) est hébergé sur
+r-universe (`r-lidar`), pas sur le CRAN. Sans entrée `Remotes` ni
+`Additional_repositories`, `pak` ne trouvait pas le paquet — le
+message réel (`Can't find package called lasR`) était masqué par les
+« dependency conflict » génériques sur les paquets d'outillage.
+
+**Fix** : ajout de `r-lidar/lasR` à `Remotes:`. La résolution
+`pak::lockfile_create()` réussit de nouveau (vérifié localement,
+`lasR` présent dans le lockfile). Aucun changement de code applicatif.
+
 # nemetonshiny 0.74.0 (2026-06-10)
 
 ### Perf — Restore projet instantané : cache de la géométrie commune

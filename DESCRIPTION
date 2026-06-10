@@ -1,7 +1,7 @@
 Package: nemetonshiny
 Type: Package
 Title: Nemeton Shiny Application for Systemic Forest Analysis
-Version: 0.74.0
+Version: 0.74.0.9000
 Authors@R: c(
     person("Pascal", "Obstetar", email = "pascal.obstetar@gmail.com", role = c("aut", "cre"))
   )
@@ -21,6 +21,6 @@ Suggests: shinyOAuth, RPostgres, RSQLite, DBI, uuid,
     golem, arrow, geoarrow, cicerone, quarto, rappdirs,
     future, happign, lasR, leaflet.extras, curl, jpeg, maptiles, pkgload,
     png, viridisLite, reticulate, shinytest2 (>= 0.3.0)
-Remotes: pobsteta/nemeton@*release
+Remotes: pobsteta/nemeton@*release, r-lidar/lasR
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
