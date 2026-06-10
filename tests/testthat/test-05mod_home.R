@@ -28,7 +28,7 @@ mock_map_server <- function(id, app_state, commune_geometry, parcels) {
   )
 }
 
-mock_project_server <- function(id, app_state, selected_parcels) {
+mock_project_server <- function(id, app_state, selected_parcels, commune_geometry = shiny::reactive(NULL)) {
   list(current_project = shiny::reactive(NULL))
 }
 
@@ -138,7 +138,7 @@ test_that("mod_home_server initializes and returns expected reactive list", {
         selection_count = shiny::reactive(1L)
       )
     },
-    mod_project_server = function(id, app_state, selected_parcels) {
+    mod_project_server = function(id, app_state, selected_parcels, commune_geometry = shiny::reactive(NULL)) {
       list(current_project = shiny::reactive(list(id = "proj_1")))
     },
     mod_progress_server = mock_progress_server,
@@ -180,7 +180,7 @@ test_that("mod_home_server delegates to all child modules", {
       called$map <<- TRUE
       mock_map_server(id, app_state, commune_geometry, parcels)
     },
-    mod_project_server = function(id, app_state, selected_parcels) {
+    mod_project_server = function(id, app_state, selected_parcels, commune_geometry = shiny::reactive(NULL)) {
       called$project <<- TRUE
       mock_project_server(id, app_state, selected_parcels)
     },

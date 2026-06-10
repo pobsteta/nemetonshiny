@@ -1,3 +1,43 @@
+# nemetonshiny 0.73.1.9000 (dev — 2026-06-10)
+
+### Perf — Restore projet instantané : cache de la géométrie commune
+
+**Symptôme** : entre le toast « Projet *X* chargé » et l'affichage des
+parcelles sur la carte, un long délai (plusieurs secondes), pendant
+lequel l'overlay blanc « Affichage des parcelles… » restait visible.
+
+**Cause** : la frontière de la commune n'était **pas** persistée avec
+le projet — seules les parcelles l'étaient. À chaque ouverture,
+`mod_search` la re-téléchargeait via la `restore_task` asynchrone :
+démarrage d'un worker `future::multisession`, rechargement de
+`nemeton` dans ce worker, puis **deux appels réseau séquentiels** à
+`geo.api.gouv.fr` (`req_timeout(15)` + 3 retries chacun). Or
+l'observateur de rendu de `mod_map` attend **à la fois** les parcelles
+**et** la géométrie commune avant de dessiner → la carte restait
+bloquée sur l'overlay jusqu'à la fin de cette chaîne.
+
+**Fix** : la géométrie commune est désormais **persistée sur disque**
+(`data/commune.gpkg`) au save du projet et **réinjectée
+synchroniquement** au chargement, en même temps que les parcelles. La
+carte se rend immédiatement, sans attendre le worker ni le réseau. La
+`restore_task` continue de tourner en arrière-plan, mais uniquement
+pour peupler la liste déroulante des communes — elle ne bloque plus le
+rendu. Les projets *legacy* (sans cache) retombent automatiquement sur
+l'ancien chemin asynchrone.
+
+Détail technique :
+- `service_project.R` : `save_commune_geometry()` /
+  `load_commune_geometry()` (best-effort, GeoPackage, EPSG:4326) ;
+  câblage dans `create_project()`, `update_project()`, `load_project()`
+  (nouveau champ `project$commune_geometry`).
+- `mod_project.R` : nouvelle entrée `commune_geometry` (reactive)
+  persistée au create/update.
+- `mod_home.R` : `app_state$restore_project$geometry` transporte la
+  géométrie en cache jusqu'à `mod_search`.
+- `mod_search.R` : injection synchrone si géométrie en cache
+  (`rv$geometry_injected`), garde-fou anti double-render (flash blanc)
+  dans le result handler de la `restore_task`.
+
 # nemetonshiny 0.73.1 (2026-06-09)
 
 ### Bug fixé — Génération des zones de suivi : `project_name must be a non-empty character scalar`

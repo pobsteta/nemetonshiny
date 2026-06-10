@@ -177,13 +177,16 @@ mod_project_ui <- function(id) {
 #' @param id Character. Module namespace ID.
 #' @param app_state Reactive values. Application state.
 #' @param selected_parcels Reactive. Selected parcels sf object.
+#' @param commune_geometry Reactive. Current commune boundary sf object,
+#'   persisted with the project so it can be restored without a refetch.
 #'
 #' @return List with reactive values:
 #'   - project_created: Reactive that fires when project is created
 #'   - current_project: Reactive with current project info
 #'
 #' @noRd
-mod_project_server <- function(id, app_state, selected_parcels) {
+mod_project_server <- function(id, app_state, selected_parcels,
+                               commune_geometry = shiny::reactive(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -451,6 +454,9 @@ mod_project_server <- function(id, app_state, selected_parcels) {
 
       cli::cli_alert_info("Saving {nrow(parcels)} parcels (class: {paste(class(parcels), collapse=', ')})")
 
+      # Snapshot the current commune boundary (cached for instant restore).
+      commune_geom <- tryCatch(commune_geometry(), error = function(e) NULL)
+
       tryCatch({
         if (is.null(rv$editing_project_id)) {
           # CREATE mode
@@ -459,7 +465,8 @@ mod_project_server <- function(id, app_state, selected_parcels) {
             description = input$description %||% "",
             owner = input$owner %||% "",
             parcels = parcels,
-            groupes_profile = input$groupes_profile %||% NULL
+            groupes_profile = input$groupes_profile %||% NULL,
+            commune_geometry = commune_geom
           )
 
           rv$current_project <- project
@@ -491,7 +498,8 @@ mod_project_server <- function(id, app_state, selected_parcels) {
             description = input$description %||% "",
             owner = input$owner %||% "",
             parcels = parcels,
-            groupes_profile = input$groupes_profile %||% NULL
+            groupes_profile = input$groupes_profile %||% NULL,
+            commune_geometry = commune_geom
           )
 
           rv$current_project <- project

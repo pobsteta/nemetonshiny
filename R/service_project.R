@@ -54,7 +54,7 @@ if (!dir.exists(root)) {
 #'
 #' @noRd
 create_project <- function(name, description = "", owner = "", parcels = NULL,
-                           groupes_profile = NULL) {
+                           groupes_profile = NULL, commune_geometry = NULL) {
   # Validate name
   if (missing(name) || is.null(name) || nchar(trimws(name)) == 0) {
     cli::cli_abort("Project name is required")
@@ -129,6 +129,11 @@ create_project <- function(name, description = "", owner = "", parcels = NULL,
     jsonlite::write_json(metadata, metadata_path, auto_unbox = TRUE, pretty = TRUE)
   }
 
+  # Cache the commune boundary so it restores instantly on load (best-effort)
+  if (!is.null(commune_geometry)) {
+    save_commune_geometry(project_id, commune_geometry)
+  }
+
   cli::cli_alert_success("Project created: {.val {name}}")
 
   list(
@@ -154,7 +159,8 @@ create_project <- function(name, description = "", owner = "", parcels = NULL,
 #'
 #' @noRd
 update_project <- function(project_id, name, description = "", owner = "",
-                           parcels = NULL, groupes_profile = NULL) {
+                           parcels = NULL, groupes_profile = NULL,
+                           commune_geometry = NULL) {
   # Check project exists
   project_path <- get_project_path(project_id)
   if (is.null(project_path)) {
@@ -200,6 +206,11 @@ update_project <- function(project_id, name, description = "", owner = "",
   if (!is.null(parcels) && inherits(parcels, "sf") && nrow(parcels) > 0) {
     save_parcels(project_id, parcels)
     metadata$parcels_count <- nrow(parcels)
+  }
+
+  # Refresh the cached commune boundary (best-effort, instant restore on load)
+  if (!is.null(commune_geometry)) {
+    save_commune_geometry(project_id, commune_geometry)
   }
 
   # Save updated metadata
@@ -359,6 +370,103 @@ load_parcels <- function(project_id) {
 
   cli::cli_alert_success("Loaded {nrow(parcels_sf)} parcels (CRS: {crs_info})")
   parcels_sf
+}
+
+
+#' Save the commune boundary geometry to project
+#'
+#' @description
+#' Persists the commune contour (single MULTIPOLYGON, EPSG:4326) alongside
+#' the parcels so it can be restored instantly on project load — without a
+#' network round-trip to geo.api.gouv.fr nor a background worker. The map's
+#' render observer needs BOTH parcels AND commune geometry; caching the
+#' latter on disk removes it from the critical path of "Projet chargé ->
+#' parcelles affichées".
+#'
+#' @param project_id Character. Project ID.
+#' @param commune_geom sf object. Commune boundary geometry.
+#'
+#' @return Logical. TRUE if saved, FALSE if skipped (invalid/empty input).
+#'
+#' @noRd
+save_commune_geometry <- function(project_id, commune_geom) {
+  if (!inherits(commune_geom, "sf") || nrow(commune_geom) == 0) {
+    return(FALSE)
+  }
+
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  data_dir <- file.path(project_path, "data")
+  dir.create(data_dir, showWarnings = FALSE, recursive = TRUE)
+  gpkg_path <- file.path(data_dir, "commune.gpkg")
+
+  tryCatch({
+    # Ensure a valid CRS before saving (default to WGS84, as served by
+    # geo.api.gouv.fr and expected by Leaflet).
+    if (is.na(sf::st_crs(commune_geom))) {
+      commune_geom <- sf::st_set_crs(commune_geom, 4326)
+    }
+
+    if (file.exists(gpkg_path)) {
+      unlink(gpkg_path)
+    }
+    sf::st_write(commune_geom, gpkg_path, driver = "GPKG", quiet = TRUE)
+    cli::cli_alert_success("Saved commune geometry: {basename(gpkg_path)}")
+    TRUE
+  }, error = function(e) {
+    # Best-effort: a failed commune-geometry save must never block the
+    # project save. The legacy async refetch path remains as fallback.
+    cli::cli_warn("Failed to save commune geometry (non-blocking): {e$message}")
+    FALSE
+  })
+}
+
+
+#' Load the commune boundary geometry from project
+#'
+#' @description
+#' Reads back the commune contour persisted by [save_commune_geometry()].
+#' Returns NULL for legacy projects saved before this cache existed — the
+#' caller then falls back to the async refetch path.
+#'
+#' @param project_id Character. Project ID.
+#'
+#' @return sf object with the commune boundary, or NULL if not found.
+#'
+#' @noRd
+load_commune_geometry <- function(project_id) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path)) {
+    return(NULL)
+  }
+
+  gpkg_path <- file.path(project_path, "data", "commune.gpkg")
+  if (!file.exists(gpkg_path)) {
+    return(NULL)
+  }
+
+  commune_sf <- tryCatch(
+    sf::st_read(gpkg_path, quiet = TRUE),
+    error = function(e) {
+      cli::cli_warn("Failed to load commune geometry: {e$message}")
+      NULL
+    }
+  )
+
+  if (is.null(commune_sf) || !inherits(commune_sf, "sf") ||
+      nrow(commune_sf) == 0) {
+    return(NULL)
+  }
+
+  # Guard against a CRS-less file (older sf writes); Leaflet needs WGS84.
+  if (is.na(sf::st_crs(commune_sf))) {
+    sf::st_crs(commune_sf) <- 4326
+  }
+
+  commune_sf
 }
 
 
@@ -644,6 +752,7 @@ load_project <- function(project_id) {
     path = project_path,
     metadata = metadata,
     parcels = load_parcels(project_id),
+    commune_geometry = load_commune_geometry(project_id),
     indicators = load_indicators(project_id),
     comments = load_comments(project_id)
   )
