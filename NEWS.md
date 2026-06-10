@@ -1,3 +1,22 @@
+# nemetonshiny 0.74.1.9000 (dev — 2026-06-10)
+
+### UX — Notification DB persistante jusqu'à l'apparition de l'overlay carte
+
+À l'ouverture d'un projet synchronisé PostGIS, la notification « Projet
+synchronisé avec la base PostGIS » (bas à droite) passait en `duration = 5`
+et pouvait disparaître **avant** que l'overlay « Affichage des parcelles… »
+n'apparaisse, laissant un trou de feedback.
+
+Elle devient **persistante** (`duration = NULL`, id `db_sync_notif`) et
+`mod_map` la retire dès que l'overlay de chargement prend le relais
+(`show_map_loading`). Filets de sécurité : retrait via `later()` à 12 s et
+sur le chemin « commune invalide », pour ne jamais laisser la notification
+coincée.
+
+- `mod_home.R` : notif `id = "db_sync_notif"`, `duration = NULL`, fallback
+  `later()` + retrait sur le chemin commune invalide.
+- `mod_map.R` : `show_map_loading()` retire `db_sync_notif` (handoff carte).
+
 # nemetonshiny 0.74.1 (2026-06-10)
 
 ### Bug fixé — CI rouge : dépendance `lasR` non résolue par `pak`
