@@ -1,4 +1,4 @@
-# nemetonshiny 0.73.1.9000 (dev — 2026-06-10)
+# nemetonshiny 0.74.0 (2026-06-10)
 
 ### Perf — Restore projet instantané : cache de la géométrie commune
 
