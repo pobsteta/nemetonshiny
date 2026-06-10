@@ -1,4 +1,4 @@
-# nemetonshiny 0.74.0.9000 (dev — 2026-06-10)
+# nemetonshiny 0.74.1 (2026-06-10)
 
 ### Bug fixé — CI rouge : dépendance `lasR` non résolue par `pak`
 
