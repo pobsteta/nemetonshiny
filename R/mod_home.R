@@ -439,11 +439,16 @@ mod_home_server <- function(id, app_state) {
           # → parcels_task) which could get stuck or take several seconds.
           parcels_data(project$parcels)
 
-          # Signal to restore location and parcels
+          # Signal to restore location and parcels. `geometry` carries the
+          # commune boundary cached at save time (NULL for legacy projects):
+          # when present, mod_search injects it synchronously so the map
+          # renders immediately instead of waiting for the async refetch
+          # (worker spawn + nemeton load + 2 calls to geo.api.gouv.fr).
           app_state$restore_project <- list(
             commune_code = commune_code,
             department_code = dept_code,
             parcels = project$parcels,
+            geometry = project$commune_geometry,
             selected_ids = project$parcels$id,  # All saved parcels were selected
             timestamp = Sys.time()  # Force reactivity
           )
@@ -635,7 +640,8 @@ mod_home_server <- function(id, app_state) {
     project_result <- mod_project_server(
       "project",
       app_state = app_state,
-      selected_parcels = map_result$selected_parcels
+      selected_parcels = map_result$selected_parcels,
+      commune_geometry = search_result$commune_geometry
     )
 
     # ========================================

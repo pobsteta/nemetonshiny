@@ -427,6 +427,110 @@ test_that("save_parcels saves sf to gpkg and load_parcels reads it back", {
   })
 })
 
+test_that("save_commune_geometry writes gpkg and load reads it back", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "Commune Geom Test")
+        commune <- create_test_units(crs = 4326, n_features = 1)
+
+        result <- nemetonshiny:::save_commune_geometry(project$id, commune)
+        expect_true(result)
+
+        gpkg_path <- file.path(project$path, "data", "commune.gpkg")
+        expect_true(file.exists(gpkg_path))
+
+        loaded <- nemetonshiny:::load_commune_geometry(project$id)
+        expect_s3_class(loaded, "sf")
+        expect_equal(nrow(loaded), 1)
+      }
+    )
+  })
+})
+
+test_that("save_commune_geometry returns FALSE for invalid/empty input", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "Invalid Geom Test")
+
+        expect_false(nemetonshiny:::save_commune_geometry(project$id, NULL))
+        expect_false(
+          nemetonshiny:::save_commune_geometry(project$id, "not an sf")
+        )
+        empty_sf <- create_test_units(crs = 4326, n_features = 1)[0, ]
+        expect_false(
+          nemetonshiny:::save_commune_geometry(project$id, empty_sf)
+        )
+      }
+    )
+  })
+})
+
+test_that("load_commune_geometry returns NULL for legacy project (no file)", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "Legacy No Geom")
+        expect_null(nemetonshiny:::load_commune_geometry(project$id))
+      }
+    )
+  })
+})
+
+test_that("load_commune_geometry sets WGS84 when CRS is missing", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "Geom NA CRS")
+        commune <- create_test_units(crs = 4326, n_features = 1)
+        sf::st_crs(commune) <- NA
+
+        nemetonshiny:::save_commune_geometry(project$id, commune)
+        loaded <- nemetonshiny:::load_commune_geometry(project$id)
+        expect_s3_class(loaded, "sf")
+        expect_false(is.na(sf::st_crs(loaded)))
+      }
+    )
+  })
+})
+
+test_that("create_project persists commune_geometry and load_project attaches it", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        parcels <- create_test_units(crs = 4326, n_features = 2)
+        commune <- create_test_units(crs = 4326, n_features = 1)
+
+        project <- nemetonshiny:::create_project(
+          name = "With Commune Cache",
+          parcels = parcels,
+          commune_geometry = commune
+        )
+
+        loaded <- nemetonshiny:::load_project(project$id)
+        expect_s3_class(loaded$commune_geometry, "sf")
+        expect_equal(nrow(loaded$commune_geometry), 1)
+      }
+    )
+  })
+})
+
 test_that("save_parcels with NA CRS sets it to WGS84", {
   skip_if_not_installed("sf")
   withr::with_tempdir({

@@ -10,6 +10,26 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.74.0] - 2026-06-10
+
+### Added
+
+- Persistance de la géométrie de la commune (`data/commune.gpkg`) au
+  save du projet : `save_commune_geometry()` / `load_commune_geometry()`
+  dans `service_project.R`, champ `project$commune_geometry` exposé par
+  `load_project()`, paramètre `commune_geometry` sur `create_project()`,
+  `update_project()` et `mod_project_server()`.
+
+### Changed
+
+- Restore projet instantané : la géométrie commune en cache est
+  réinjectée synchroniquement au chargement, la carte se rend sans
+  attendre la `restore_task` asynchrone (worker `future` + reload
+  `nemeton` + 2 appels `geo.api.gouv.fr`). La tâche async ne sert plus
+  qu'à peupler la liste déroulante des communes. Garde-fou anti
+  double-render (flash blanc) dans son result handler. Les projets
+  legacy sans cache retombent sur l'ancien chemin async.
+
 ## [0.73.1] - 2026-06-09
 
 ### Fixed

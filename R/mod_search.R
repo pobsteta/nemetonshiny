@@ -103,6 +103,7 @@ mod_search_server <- function(id, app_state) {
       is_loading = FALSE,
       is_restoring = FALSE,
       restore_gen = 0L,  # Generation counter: incremented on each new restore
+      geometry_injected = FALSE,  # TRUE when restore used the cached geometry
       department_changed = NULL  # Signal when department changes (timestamp)
     )
 
@@ -404,16 +405,33 @@ mod_search_server <- function(id, app_state) {
       rv$restore_gen <- shiny::isolate(rv$restore_gen) + 1L
       gen_snapshot <- rv$restore_gen
 
-      # Clear stale commune geometry from previous commune/project.
-      # Without this, the combined observer in mod_map fires with new
-      # parcels (set by load_project handler) + OLD geometry, rendering
-      # everything prematurely. When restore_task completes and sets the
-      # correct geometry, the combined observer fires AGAIN -- clearGroup
-      # wipes the map (white flash) then re-renders. By nullifying the
-      # geometry here, the combined observer sees NULL geometry on its
-      # first firing and returns early (line 330), avoiding the double-
-      # render entirely.
-      rv$commune_geometry <- NULL
+      # Fast path -- the commune boundary was cached on disk at save time
+      # (project$commune_geometry, threaded through restore$geometry). Set
+      # it SYNCHRONOUSLY here so the combined observer in mod_map sees both
+      # parcels (set by the load_project handler in the same flush) AND the
+      # geometry on its very first firing, and renders immediately -- no
+      # wait for the async restore_task (worker spawn + nemeton load + 2
+      # calls to geo.api.gouv.fr). The task still runs below to populate
+      # the commune dropdown, but it no longer gates the map render.
+      cached_geom <- restore$geometry
+      has_cached_geom <- inherits(cached_geom, "sf") && nrow(cached_geom) > 0
+      if (has_cached_geom) {
+        rv$commune_geometry <- cached_geom
+        rv$selected_commune <- commune_code
+        rv$geometry_injected <- TRUE
+        cli::cli_alert_success("Restore: injected cached commune geometry (gen={gen_snapshot})")
+      } else {
+        # Legacy project (no cached geometry): clear stale geometry from the
+        # previous commune/project. Without this, the combined observer in
+        # mod_map fires with new parcels (set by load_project handler) + OLD
+        # geometry, rendering prematurely. When restore_task completes and
+        # sets the correct geometry, the combined observer fires AGAIN --
+        # clearGroup wipes the map (white flash) then re-renders. Nullifying
+        # the geometry here makes the combined observer see NULL on its first
+        # firing and return early, avoiding the double-render entirely.
+        rv$commune_geometry <- NULL
+        rv$geometry_injected <- FALSE
+      }
 
       cli::cli_alert_info("Restoring location: dept={dept_code}, commune={commune_code} (gen={gen_snapshot})")
 
@@ -531,7 +549,20 @@ mod_search_server <- function(id, app_state) {
       # through input$commune -> commune_task chain. This makes
       # commune_geometry() available immediately for the combined
       # observer in mod_map (together with parcels_data set earlier).
-      if (!is.null(result$geometry)) {
+      if (isTRUE(rv$geometry_injected)) {
+        # Fast path already rendered the map from the cached geometry. The
+        # task result only needed to populate the dropdown / commune_info.
+        # Re-setting rv$commune_geometry to the (identical) refetched
+        # contour would retrigger the combined observer -> clearGroup ->
+        # re-render = white flash. So keep the cached geometry as-is.
+        rv$selected_commune <- commune_code
+        if (!is.null(communes) && nrow(communes) > 0) {
+          info <- communes[communes$code_insee == commune_code, ]
+          if (nrow(info) > 0) {
+            rv$commune_info <- as.list(info[1, ])
+          }
+        }
+      } else if (!is.null(result$geometry)) {
         rv$commune_geometry <- result$geometry
         rv$selected_commune <- commune_code
 
@@ -542,7 +573,8 @@ mod_search_server <- function(id, app_state) {
           }
         }
       } else {
-        # Geometry fetch failed -- clear flags so spinner doesn't spin forever
+        # Geometry fetch failed and no cached geometry was injected -- clear
+        # flags so the spinner doesn't spin forever.
         cli::cli_warn("Restore: commune geometry is NULL for {commune_code}")
         rv$is_restoring <- FALSE
         later::later(function() {
