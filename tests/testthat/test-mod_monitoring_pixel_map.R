@@ -61,7 +61,7 @@ test_that("pixel_stack does not call build_index_stack in health mode", {
       shiny::testServer(
         nemetonshiny:::mod_monitoring_pixel_map_server,
         args = list(
-          app_state  = shiny::reactiveValues(language = "fr",
+          app_state  = shiny::reactiveValues(language = "fr", active_main_tab = "monitoring",
                                              current_project = NULL),
           mode_input = shiny::reactive("health")  # not quick
         ),
@@ -106,7 +106,7 @@ test_that("scenes_df enumerates populated cache dirs, date parsed from scene id"
       shiny::testServer(
         nemetonshiny:::mod_monitoring_pixel_map_server,
         args = list(
-          app_state  = shiny::reactiveValues(language = "fr",
+          app_state  = shiny::reactiveValues(language = "fr", active_main_tab = "monitoring",
                                              current_project = proj),
           mode_input = shiny::reactive("quick")
         ),
@@ -144,7 +144,7 @@ test_that("cache_dir resolves NULL when no project / no folder", {
       shiny::testServer(
         nemetonshiny:::mod_monitoring_pixel_map_server,
         args = list(
-          app_state  = shiny::reactiveValues(language = "fr",
+          app_state  = shiny::reactiveValues(language = "fr", active_main_tab = "monitoring",
                                              current_project = NULL),
           mode_input = shiny::reactive("quick")
         ),
@@ -198,7 +198,7 @@ test_that("map_click invokes extract_pixel_timeseries with lat/lng", {
       shiny::testServer(
         nemetonshiny:::mod_monitoring_pixel_map_server,
         args = list(
-          app_state  = shiny::reactiveValues(language = "fr",
+          app_state  = shiny::reactiveValues(language = "fr", active_main_tab = "monitoring",
                                              current_project = proj),
           mode_input = shiny::reactive("quick")
         ),

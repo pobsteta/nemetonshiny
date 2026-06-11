@@ -1,3 +1,32 @@
+# nemetonshiny 0.75.2 (2026-06-11)
+
+### Perf — Chargement projet : `build_index_stack` ne bloque plus
+
+**Symptôme** : ouvrir un projet depuis l'Accueil prenait plusieurs
+secondes (≈ 17 s à froid, ≈ 4 s à chaud) avant l'affichage des parcelles.
+
+**Cause** (mesurée en instrumentant le handler) : ni `load_project`
+(0.6 s) ni l'hydratation `monitoring_zone_id` (0.1 s) n'étaient en cause.
+Le coût venait de `nemeton::build_index_stack` (scan de centaines de
+scènes Sentinel-2) appelé par la **carte pixel** du Suivi sanitaire.
+Ses outputs sont marqués `suspendWhenHidden = FALSE` (v0.46.3, pour
+s'afficher dès le 1ᵉʳ clic d'onglet sous bslib `nav_show/nav_hide`),
+si bien que la reactive lourde `pixel_stack_r` se recalculait à **chaque
+changement de projet**, y compris depuis l'Accueil, bloquant l'event
+loop (donc le rendu carte).
+
+**Fix** : `pixel_stack_r` est désormais gaté sur l'onglet Suivi
+réellement actif — `shiny::req(identical(app_state$active_main_tab,
+"monitoring"))`. Le scan ne tourne plus qu'à l'ouverture du Suivi (là où
+il est nécessaire). Chargement projet mesuré **~2-3 s** après le fix,
+`build_index_stack` totalement absent du chemin de chargement.
+
+- `app_server.R` : expose `app_state$active_main_tab` (suivi de
+  `input$main_nav`).
+- `mod_monitoring_pixel_map.R` : garde `req(active_main_tab ==
+  "monitoring")` dans `pixel_stack_r`. Monitoring vérifié fonctionnel
+  (la carte pixel se construit bien à l'ouverture du Suivi).
+
 # nemetonshiny 0.75.1 (2026-06-11)
 
 ### Perf — Backfill paresseux du cache de géométrie commune (projets legacy)

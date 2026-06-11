@@ -203,6 +203,16 @@ app_server <- function(input, output, session) {
   # TAB NAVIGATION CONTROL
   # ============================================================
 
+  # Expose the active top-level tab so modules can gate heavy reactives on
+  # their tab being visible. Notamment, mod_monitoring_pixel_map ne doit
+  # PAS lancer `nemeton::build_index_stack` (scan de centaines de scènes
+  # S2, plusieurs secondes à froid) tant que l'utilisateur n'est pas sur
+  # l'onglet Suivi — sinon ce calcul bloque chaque chargement de projet
+  # depuis l'Accueil.
+  shiny::observeEvent(input$main_nav, {
+    app_state$active_main_tab <- input$main_nav
+  }, ignoreNULL = FALSE)
+
   # Redirect to selection tab only if user tries to navigate to
   # restricted tabs (synthesis, families) before project is completed.
   shiny::observeEvent(input$main_nav, {

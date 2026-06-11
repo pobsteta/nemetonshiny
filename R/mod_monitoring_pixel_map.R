@@ -241,6 +241,14 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # scenes_df, index) — re-runs only when one of those changes.
     pixel_stack_r <- shiny::reactive({
       shiny::req(identical(mode_input(), "quick"))
+      # Ne lancer le lourd `build_index_stack` (scan de centaines de scènes
+      # S2, plusieurs secondes à froid) QUE lorsque l'utilisateur est
+      # réellement sur l'onglet Suivi. `date_slider_ui` est marqué
+      # `suspendWhenHidden = FALSE` (v0.46.3, pour que la carte s'affiche au
+      # 1er clic d'onglet) — sans cette garde, l'output calcule cette
+      # reactive à chaque changement de projet, y compris depuis l'Accueil,
+      # bloquant le chargement. `active_main_tab` est exposé par app_server.
+      shiny::req(identical(app_state$active_main_tab, "monitoring"))
       cd <- cache_dir_r()
       sdf <- scenes_df_r()
       if (is.null(cd) || is.null(sdf) || !nrow(sdf)) return(NULL)
