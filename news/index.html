@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.74.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.75.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,21 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.74.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.75.0" id="nemetonshiny-0750-2026-06-11">nemetonshiny 0.75.0 (2026-06-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0750-2026-06-11"></a></h2>
+<div class="section level4">
+<h4 id="ux--notification-db-persistante-jusquà-lapparition-de-loverlay-carte-0-75-0">UX — Notification DB persistante jusqu’à l’apparition de l’overlay carte<a class="anchor" aria-label="anchor" href="#ux--notification-db-persistante-jusqu%C3%A0-lapparition-de-loverlay-carte-0-75-0"></a></h4>
+<p>À l’ouverture d’un projet synchronisé PostGIS, la notification « Projet synchronisé avec la base PostGIS » (bas à droite) passait en <code>duration = 5</code> et pouvait disparaître <strong>avant</strong> que l’overlay « Affichage des parcelles… » n’apparaisse, laissant un trou de feedback.</p>
+<p>Elle devient <strong>persistante</strong> (<code>duration = NULL</code>, id <code>db_sync_notif</code>) et <code>mod_map</code> la retire dès que l’overlay de chargement prend le relais (<code>show_map_loading</code>). Filets de sécurité : retrait via <code>later()</code> à 12 s et sur le chemin « commune invalide », pour ne jamais laisser la notification coincée.</p>
+<ul><li>
+<code>mod_home.R</code> : notif <code>id = "db_sync_notif"</code>, <code>duration = NULL</code>, fallback <code>later()</code> + retrait sur le chemin commune invalide.</li>
+<li>
+<code>mod_map.R</code> : <code>show_map_loading()</code> retire <code>db_sync_notif</code> (handoff carte).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.74.1" id="nemetonshiny-0741-2026-06-10">nemetonshiny 0.74.1 (2026-06-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0741-2026-06-10"></a></h2>
 <div class="section level4">
