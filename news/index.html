@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.75.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.75.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,22 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.75.1/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.75.2" id="nemetonshiny-0752-2026-06-11">nemetonshiny 0.75.2 (2026-06-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0752-2026-06-11"></a></h2>
+<div class="section level4">
+<h4 id="perf--chargement-projet--build_index_stack-ne-bloque-plus-0-75-2">Perf — Chargement projet : <code>build_index_stack</code> ne bloque plus<a class="anchor" aria-label="anchor" href="#perf--chargement-projet--build_index_stack-ne-bloque-plus-0-75-2"></a></h4>
+<p><strong>Symptôme</strong> : ouvrir un projet depuis l’Accueil prenait plusieurs secondes (≈ 17 s à froid, ≈ 4 s à chaud) avant l’affichage des parcelles.</p>
+<p><strong>Cause</strong> (mesurée en instrumentant le handler) : ni <code>load_project</code> (0.6 s) ni l’hydratation <code>monitoring_zone_id</code> (0.1 s) n’étaient en cause. Le coût venait de <code><a href="https://pobsteta.github.io/nemeton/reference/build_index_stack.html" class="external-link">nemeton::build_index_stack</a></code> (scan de centaines de scènes Sentinel-2) appelé par la <strong>carte pixel</strong> du Suivi sanitaire. Ses outputs sont marqués <code>suspendWhenHidden = FALSE</code> (v0.46.3, pour s’afficher dès le 1ᵉʳ clic d’onglet sous bslib <code>nav_show/nav_hide</code>), si bien que la reactive lourde <code>pixel_stack_r</code> se recalculait à <strong>chaque changement de projet</strong>, y compris depuis l’Accueil, bloquant l’event loop (donc le rendu carte).</p>
+<p><strong>Fix</strong> : <code>pixel_stack_r</code> est désormais gaté sur l’onglet Suivi réellement actif — <code>shiny::req(identical(app_state$active_main_tab, "monitoring"))</code>. Le scan ne tourne plus qu’à l’ouverture du Suivi (là où il est nécessaire). Chargement projet mesuré <strong>~2-3 s</strong> après le fix, <code>build_index_stack</code> totalement absent du chemin de chargement.</p>
+<ul><li>
+<code>app_server.R</code> : expose <code>app_state$active_main_tab</code> (suivi de <code>input$main_nav</code>).</li>
+<li>
+<code>mod_monitoring_pixel_map.R</code> : garde <code>req(active_main_tab == "monitoring")</code> dans <code>pixel_stack_r</code>. Monitoring vérifié fonctionnel (la carte pixel se construit bien à l’ouverture du Suivi).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.75.1" id="nemetonshiny-0751-2026-06-11">nemetonshiny 0.75.1 (2026-06-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0751-2026-06-11"></a></h2>
 <div class="section level4">
