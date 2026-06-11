@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.75.1\] - 2026-06-11
+
+### Fixed
+
+- Projets *legacy* (sans `data/commune.gpkg`) : le contour communal
+  était re-téléchargé à chaque ouverture via le chemin async lent.
+  Backfill paresseux dans `mod_search` — le contour récupéré est
+  persisté, le prochain chargement est instantané.
+
+### Added
+
+- `backfill_all_commune_geometries()` : migration one-shot qui réchauffe
+  le cache de géométrie commune de tous les projets legacy en une passe.
+
 ## \[0.75.0\] - 2026-06-11
 
 ### Changed

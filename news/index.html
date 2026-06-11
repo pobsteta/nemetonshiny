@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.75.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.75.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,25 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.75.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.75.1" id="nemetonshiny-0751-2026-06-11">nemetonshiny 0.75.1 (2026-06-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0751-2026-06-11"></a></h2>
+<div class="section level4">
+<h4 id="perf--backfill-paresseux-du-cache-de-géométrie-commune-projets-legacy-0-75-1">Perf — Backfill paresseux du cache de géométrie commune (projets legacy)<a class="anchor" aria-label="anchor" href="#perf--backfill-paresseux-du-cache-de-g%C3%A9om%C3%A9trie-commune-projets-legacy-0-75-1"></a></h4>
+<p>Le cache disque de la frontière communale (<code>data/commune.gpkg</code>, introduit en v0.74.0 pour un restore instantané) n’existait que pour les projets <strong>sauvegardés depuis</strong> v0.74.0. Les projets <strong>legacy</strong> (créés avant) re-téléchargeaient le contour à <strong>chaque</strong> ouverture via le chemin async lent (worker <code>future</code> + rechargement <code>nemeton</code> + 2 appels séquentiels à <code>geo.api.gouv.fr</code>) — d’où un délai de plusieurs secondes avant l’affichage des parcelles.</p>
+<p>Désormais, quand un projet legacy est chargé et que <code>mod_search</code> récupère le contour via ce chemin lent, le résultat est <strong>persisté</strong> dans <code>data/commune.gpkg</code> (best-effort, dans le result handler de la <code>restore_task</code>). Le <strong>prochain</strong> chargement du projet injecte la géométrie <strong>synchroniquement</strong> et rend la carte instantanément. Aucune action utilisateur requise : chaque projet legacy se « réchauffe » tout seul à sa première ouverture après cette version.</p>
+<ul><li>
+<code>mod_search.R</code> : backfill dans le result handler de <code>restore_task</code> (garde <code>is.null(current_project$commune_geometry)</code> pour ne pas réécrire un cache existant ; vérifie que le projet courant correspond).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="migration-proactive--backfill_all_commune_geometries-0-75-1">Migration proactive — <code>backfill_all_commune_geometries()</code>
+<a class="anchor" aria-label="anchor" href="#migration-proactive--backfill_all_commune_geometries-0-75-1"></a></h4>
+<p>Pour ne pas attendre que chaque projet legacy soit ouvert une fois, un helper one-shot réchauffe <strong>tous</strong> les projets d’un coup : pour chaque projet sans cache mais avec des parcelles, il récupère le contour communal (<code>geo.api.gouv.fr</code>) et le persiste. Idempotent (les projets déjà en cache sont ignorés), best-effort par projet, network-bound (un appel API par commune non cachée). Retourne un data.frame <code>id</code> / <code>name</code> / <code>status</code> (<code>backfilled</code> | <code>cached</code> | <code>no_parcels</code> | <code>no_commune_code</code> | <code>fetch_failed</code>).</p>
+<p>À lancer une fois côté utilisateur : <code>Rscript -e 'pkgload::load_all("."); nemetonshiny:::backfill_all_commune_geometries()'</code></p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.75.0" id="nemetonshiny-0750-2026-06-11">nemetonshiny 0.75.0 (2026-06-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0750-2026-06-11"></a></h2>
 <div class="section level4">
