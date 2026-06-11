@@ -387,7 +387,15 @@ mod_home_server <- function(id, app_state) {
         project
       })
 
-      # Notification sync PostGIS au chargement
+      # Notification sync PostGIS au chargement.
+      # Persistante (duration = NULL) avec un id stable : elle reste
+      # affich\u00e9e en bas \u00e0 droite jusqu'\u00e0 ce que la carte prenne le relais
+      # (apparition de l'overlay \u00ab Affichage des parcelles\u2026 \u00bb), moment o\u00f9
+      # mod_map.R la retire via removeNotification("db_sync_notif").
+      # Sans cela, l'ancien duration = 5 pouvait la faire dispara\u00eetre AVANT
+      # que l'overlay n'apparaisse, laissant un trou de feedback. Un filet
+      # de s\u00e9curit\u00e9 later() la retire apr\u00e8s 12 s si l'overlay ne s'affiche
+      # jamais (projet sans parcelles, chemin d'erreur).
       if (is_db_configured() && isTRUE(project$metadata$indicators_computed)) {
         db_target <- db_target_label()
         db_msg <- if (i18n$language == "fr") {
@@ -397,8 +405,15 @@ mod_home_server <- function(id, app_state) {
         }
         shiny::showNotification(
           htmltools::tagList(shiny::icon("database", class = "me-1"), db_msg),
-          type = "message", duration = 5, session = session
+          type = "message", duration = NULL, id = "db_sync_notif",
+          session = session
         )
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(
+            function() shiny::removeNotification("db_sync_notif", session = session),
+            delay = 12
+          )
+        }
       }
 
       # Update app state with loaded project
@@ -454,6 +469,10 @@ mod_home_server <- function(id, app_state) {
           )
         } else {
           cli::cli_warn("Project {project$id}: invalid commune code in parcels")
+          # No restore -> the map overlay never appears, so retire the
+          # persistent DB notification here rather than waiting for the
+          # 12 s safety fallback.
+          shiny::removeNotification("db_sync_notif", session = session)
           session$sendCustomMessage("showMapLoading", list(
             loadingId = ns("map-map_loading_overlay"),
             show = FALSE

@@ -194,6 +194,13 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
     # (avoids renderUI round-trip delay that caused green flash)
     #
     show_map_loading <- function(show, ...) {
+      # The map now owns the bottom-right feedback: retire the persistent
+      # PostGIS-sync notification shown by mod_home (id "db_sync_notif") the
+      # moment the loading overlay takes over. removeNotification is a no-op
+      # when the id is absent (commune search, no DB sync), so this is safe
+      # on every call. Notifications are session-global, hence reachable
+      # across modules by id.
+      shiny::removeNotification("db_sync_notif", session = session)
       session$sendCustomMessage("showMapLoading", list(
         loadingId = ns("map_loading_overlay"),
         show = show

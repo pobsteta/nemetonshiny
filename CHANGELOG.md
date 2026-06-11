@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.75.0] - 2026-06-11
+
+### Changed
+
+- Notification de sync PostGIS persistante jusqu'à l'apparition de
+  l'overlay carte « Affichage des parcelles… » : passe de `duration = 5`
+  à `duration = NULL` (id `db_sync_notif`), retirée par `mod_map` quand
+  l'overlay de chargement prend le relais. Filets de sécurité `later()`
+  à 12 s et sur le chemin commune invalide. Évite le trou de feedback où
+  la notif disparaissait avant le rendu de la carte.
+
 ## [0.74.1] - 2026-06-10
 
 ### Fixed
