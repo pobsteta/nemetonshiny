@@ -1,4 +1,4 @@
-# nemetonshiny 0.74.1.9000 (dev — 2026-06-10)
+# nemetonshiny 0.75.0 (2026-06-11)
 
 ### UX — Notification DB persistante jusqu'à l'apparition de l'overlay carte
 
