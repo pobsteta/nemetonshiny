@@ -1,4 +1,4 @@
-# nemetonshiny 0.75.1.9000 (dev — 2026-06-11)
+# nemetonshiny 0.75.2 (2026-06-11)
 
 ### Perf — Chargement projet : `build_index_stack` ne bloque plus
 

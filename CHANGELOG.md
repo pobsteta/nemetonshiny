@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.75.2] - 2026-06-11
+
+### Fixed
+
+- Chargement projet lent (~17 s à froid) : `nemeton::build_index_stack`
+  (scan de scènes Sentinel-2 de la carte pixel du Suivi) se recalculait à
+  chaque ouverture de projet, même depuis l'Accueil, à cause de
+  `suspendWhenHidden = FALSE`. La reactive `pixel_stack_r` est désormais
+  gatée sur l'onglet Suivi actif (`app_state$active_main_tab`). Chargement
+  ramené à ~2-3 s ; le scan ne tourne plus qu'à l'ouverture du Suivi.
+
 ## [0.75.1] - 2026-06-11
 
 ### Fixed
