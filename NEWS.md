@@ -1,3 +1,41 @@
+# nemetonshiny 0.75.1 (2026-06-11)
+
+### Perf — Backfill paresseux du cache de géométrie commune (projets legacy)
+
+Le cache disque de la frontière communale (`data/commune.gpkg`, introduit
+en v0.74.0 pour un restore instantané) n'existait que pour les projets
+**sauvegardés depuis** v0.74.0. Les projets **legacy** (créés avant)
+re-téléchargeaient le contour à **chaque** ouverture via le chemin async
+lent (worker `future` + rechargement `nemeton` + 2 appels séquentiels à
+`geo.api.gouv.fr`) — d'où un délai de plusieurs secondes avant l'affichage
+des parcelles.
+
+Désormais, quand un projet legacy est chargé et que `mod_search` récupère
+le contour via ce chemin lent, le résultat est **persisté** dans
+`data/commune.gpkg` (best-effort, dans le result handler de la
+`restore_task`). Le **prochain** chargement du projet injecte la géométrie
+**synchroniquement** et rend la carte instantanément. Aucune action
+utilisateur requise : chaque projet legacy se « réchauffe » tout seul à sa
+première ouverture après cette version.
+
+- `mod_search.R` : backfill dans le result handler de `restore_task`
+  (garde `is.null(current_project$commune_geometry)` pour ne pas réécrire
+  un cache existant ; vérifie que le projet courant correspond).
+
+### Migration proactive — `backfill_all_commune_geometries()`
+
+Pour ne pas attendre que chaque projet legacy soit ouvert une fois, un
+helper one-shot réchauffe **tous** les projets d'un coup : pour chaque
+projet sans cache mais avec des parcelles, il récupère le contour communal
+(`geo.api.gouv.fr`) et le persiste. Idempotent (les projets déjà en cache
+sont ignorés), best-effort par projet, network-bound (un appel API par
+commune non cachée). Retourne un data.frame `id` / `name` / `status`
+(`backfilled` | `cached` | `no_parcels` | `no_commune_code` |
+`fetch_failed`).
+
+À lancer une fois côté utilisateur :
+`Rscript -e 'pkgload::load_all("."); nemetonshiny:::backfill_all_commune_geometries()'`
+
 # nemetonshiny 0.75.0 (2026-06-11)
 
 ### UX — Notification DB persistante jusqu'à l'apparition de l'overlay carte

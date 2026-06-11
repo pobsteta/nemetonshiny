@@ -531,6 +531,53 @@ test_that("create_project persists commune_geometry and load_project attaches it
   })
 })
 
+test_that("backfill_all_commune_geometries warms legacy projects only", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        fake_commune <- function() {
+          u <- create_test_units(crs = 4326, n_features = 1)
+          u$nom <- "Lajoux"
+          u
+        }
+
+        # (a) legacy project: parcels with code_insee, no commune cache
+        parcels <- create_test_units(crs = 4326, n_features = 2)
+        parcels$code_insee <- "39300"
+        p_legacy <- nemetonshiny:::create_project(name = "Legacy",
+                                                  parcels = parcels)
+
+        # (b) already-cached project
+        p_cached <- nemetonshiny:::create_project(name = "Cached",
+                                                  parcels = parcels)
+        nemetonshiny:::save_commune_geometry(p_cached$id, fake_commune())
+
+        # (c) project without parcels
+        p_empty <- nemetonshiny:::create_project(name = "Empty")
+
+        with_mocked_bindings(
+          get_commune_geometry = function(code_insee) fake_commune(),
+          {
+            res <- nemetonshiny:::backfill_all_commune_geometries()
+          }
+        )
+
+        expect_s3_class(res, "data.frame")
+        st <- stats::setNames(res$status, res$id)
+        expect_identical(st[[p_legacy$id]], "backfilled")
+        expect_identical(st[[p_cached$id]], "cached")
+        expect_identical(st[[p_empty$id]], "no_parcels")
+
+        # The legacy project now has a usable cache.
+        expect_s3_class(nemetonshiny:::load_commune_geometry(p_legacy$id), "sf")
+      }
+    )
+  })
+})
+
 test_that("save_parcels with NA CRS sets it to WGS84", {
   skip_if_not_installed("sf")
   withr::with_tempdir({

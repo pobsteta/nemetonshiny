@@ -470,6 +470,82 @@ load_commune_geometry <- function(project_id) {
 }
 
 
+#' Backfill the commune-geometry cache for all legacy projects
+#'
+#' @description
+#' One-shot migration. For every project that has parcels but no cached
+#' commune boundary (`data/commune.gpkg`, introduced v0.74.0), fetch the
+#' commune contour from geo.api.gouv.fr and persist it, so subsequent
+#' loads inject it synchronously (instant map) instead of refetching it
+#' asynchronously on every open. Idempotent: projects that already carry a
+#' cache are skipped. Network-bound — one API call per uncached commune.
+#'
+#' @return Invisibly, a data.frame with one row per project (columns
+#'   `id`, `name`, `status`). `status` is one of: `"backfilled"`,
+#'   `"cached"` (already had it), `"no_parcels"`, `"no_commune_code"`,
+#'   `"fetch_failed"`.
+#'
+#' @noRd
+backfill_all_commune_geometries <- function() {
+  root <- get_projects_root()
+  if (is.null(root) || !dir.exists(root)) {
+    cli::cli_warn("Projects root not found")
+    return(invisible(data.frame()))
+  }
+
+  ids <- list.dirs(root, recursive = FALSE, full.names = FALSE)
+  if (length(ids) == 0) {
+    cli::cli_alert_info("No project found under {.path {root}}")
+    return(invisible(data.frame()))
+  }
+
+  rows <- lapply(ids, function(id) {
+    status <- tryCatch({
+      if (!is.null(load_commune_geometry(id))) {
+        "cached"
+      } else {
+        parcels <- load_parcels(id)
+        if (is.null(parcels) || nrow(parcels) == 0 ||
+            !"code_insee" %in% names(parcels)) {
+          "no_parcels"
+        } else {
+          codes <- unique(parcels$code_insee)
+          codes <- codes[!is.na(codes) & nzchar(codes)]
+          if (length(codes) == 0) {
+            "no_commune_code"
+          } else {
+            geom <- get_commune_geometry(codes[1])
+            if (!is.null(geom) && isTRUE(save_commune_geometry(id, geom))) {
+              "backfilled"
+            } else {
+              "fetch_failed"
+            }
+          }
+        }
+      }
+    }, error = function(e) {
+      cli::cli_warn("Backfill failed for {id}: {conditionMessage(e)}")
+      "fetch_failed"
+    })
+
+    meta <- tryCatch(load_project_metadata(id), error = function(e) NULL)
+    data.frame(
+      id = id,
+      name = meta$name %||% NA_character_,
+      status = status,
+      stringsAsFactors = FALSE
+    )
+  })
+
+  out <- do.call(rbind, rows)
+  n_bf <- sum(out$status == "backfilled")
+  n_cached <- sum(out$status == "cached")
+  cli::cli_alert_success(
+    "Backfill termine : {n_bf} projet(s) rechauffe(s), {n_cached} deja en cache, sur {nrow(out)}")
+  invisible(out)
+}
+
+
 #' Save indicators results to project
 #'
 #' @description
