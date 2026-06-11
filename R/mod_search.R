@@ -572,6 +572,27 @@ mod_search_server <- function(id, app_state) {
             rv$commune_info <- as.list(info[1, ])
           }
         }
+
+        # Lazy backfill — on vient de re-télécharger le contour communal
+        # via le chemin async lent (worker + 2 appels geo.api.gouv.fr)
+        # parce que ce projet n'a pas de cache disque (projet legacy,
+        # sauvegardé avant v0.74.0). On persiste le contour maintenant pour
+        # que le PROCHAIN chargement l'injecte synchroniquement et rende la
+        # carte instantanément (cf. mod_search restore fast-path). Best
+        # effort, jamais bloquant. La garde `is.null(...$commune_geometry)`
+        # évite une réécriture quand le cache existe déjà.
+        proj <- shiny::isolate(app_state$current_project)
+        if (!is.null(proj) && is.null(proj$commune_geometry) &&
+            identical(proj$id, shiny::isolate(app_state$project_id))) {
+          tryCatch(
+            if (isTRUE(save_commune_geometry(proj$id, result$geometry))) {
+              cli::cli_alert_success(
+                "Backfill cache geometrie commune pour le projet {proj$id}")
+            },
+            error = function(e) cli::cli_warn(
+              "Backfill geometrie commune ignore : {conditionMessage(e)}")
+          )
+        }
       } else {
         # Geometry fetch failed and no cached geometry was injected -- clear
         # flags so the spinner doesn't spin forever.

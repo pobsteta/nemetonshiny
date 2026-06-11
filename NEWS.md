@@ -1,3 +1,27 @@
+# nemetonshiny 0.75.0.9000 (dev — 2026-06-11)
+
+### Perf — Backfill paresseux du cache de géométrie commune (projets legacy)
+
+Le cache disque de la frontière communale (`data/commune.gpkg`, introduit
+en v0.74.0 pour un restore instantané) n'existait que pour les projets
+**sauvegardés depuis** v0.74.0. Les projets **legacy** (créés avant)
+re-téléchargeaient le contour à **chaque** ouverture via le chemin async
+lent (worker `future` + rechargement `nemeton` + 2 appels séquentiels à
+`geo.api.gouv.fr`) — d'où un délai de plusieurs secondes avant l'affichage
+des parcelles.
+
+Désormais, quand un projet legacy est chargé et que `mod_search` récupère
+le contour via ce chemin lent, le résultat est **persisté** dans
+`data/commune.gpkg` (best-effort, dans le result handler de la
+`restore_task`). Le **prochain** chargement du projet injecte la géométrie
+**synchroniquement** et rend la carte instantanément. Aucune action
+utilisateur requise : chaque projet legacy se « réchauffe » tout seul à sa
+première ouverture après cette version.
+
+- `mod_search.R` : backfill dans le result handler de `restore_task`
+  (garde `is.null(current_project$commune_geometry)` pour ne pas réécrire
+  un cache existant ; vérifie que le projet courant correspond).
+
 # nemetonshiny 0.75.0 (2026-06-11)
 
 ### UX — Notification DB persistante jusqu'à l'apparition de l'overlay carte
