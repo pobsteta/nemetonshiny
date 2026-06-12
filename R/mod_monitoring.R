@@ -248,6 +248,12 @@ mod_monitoring_ui <- function(id) {
       class = "p-2",
       shiny::uiOutput(ns("db_status")),
       shiny::uiOutput(ns("validity_banners")),
+      # v0.77.0 — Bandeau « Surfaces des zones de suivi » : en mode FAST
+      # (quick), rappelle la surface (ha) + la part (%) des 4 strates
+      # projet `_tot/_feu/_res/_mix` au-dessus des sous-onglets. Symétrie
+      # visuelle avec les bandeaux de validité FORDEAD. Masqué en mode
+      # health (FORDEAD) et quand aucune zone n'est encore générée.
+      shiny::uiOutput(ns("fast_zone_surfaces")),
       bslib::navset_card_tab(
         id = ns("subtab"),
         # ---------- FAST mode sub-tabs (visible en mode quick) -------
@@ -992,6 +998,51 @@ mod_monitoring_server <- function(id, app_state) {
                                choices  = choices,
                                selected = selected)
     })
+
+    # ----- FAST zone surfaces banner (v0.77.0) -----------------------
+    # Surface (ha) + part (%) des 4 strates projet `_tot/_feu/_res/_mix`,
+    # affichée au-dessus des sous-onglets FAST. Dépend de `zones()` (les
+    # zones du projet courant) ; calcule l'aire de chaque polygone via
+    # `get_monitoring_zone_aoi()` (EPSG:2154) + `sf::st_area`. NULL hors
+    # mode quick ou quand aucune zone n'existe → le bandeau disparaît.
+    fast_zone_surfaces <- shiny::reactive({
+      if (!identical(input$mode %||% "quick", "quick")) return(NULL)
+      z <- zones()
+      if (is.null(z) || !nrow(z)) return(NULL)
+      proj <- app_state$current_project
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+      if (is.null(con)) return(NULL)
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      .compute_zone_surfaces(con, z)
+    })
+
+    output$fast_zone_surfaces <- shiny::renderUI({
+      df <- fast_zone_surfaces()
+      if (is.null(df) || !nrow(df)) return(NULL)
+      i18n <- i18n_r()
+      # Un segment par strate présente, format « Label : X.X ha (NN %) ».
+      items <- lapply(seq_len(nrow(df)), function(i) {
+        label <- i18n$t(df$label_key[i])
+        txt <- if (identical(df$strata[i], "tot") || is.na(df$pct[i])) {
+          sprintf(i18n$t("monitoring_fast_surf_item_tot"),
+                  label, df$ha[i])
+        } else {
+          sprintf(i18n$t("monitoring_fast_surf_item"),
+                  label, df$ha[i], df$pct[i])
+        }
+        htmltools::tags$span(class = "badge bg-light text-dark border me-2", txt)
+      })
+      htmltools::div(
+        class = paste("alert alert-info d-flex align-items-center",
+                      "flex-wrap gap-2 py-1 px-2 mb-2 small"),
+        bsicons::bs_icon("rulers", class = "fs-5 flex-shrink-0"),
+        htmltools::tags$strong(class = "me-1",
+                               i18n$t("monitoring_fast_surfaces_title")),
+        items
+      )
+    })
+    shiny::outputOptions(output, "fast_zone_surfaces",
+                         suspendWhenHidden = FALSE)
 
     # ----- Register-this-project-as-zone bridge ----------------------
 
@@ -3311,4 +3362,50 @@ mod_monitoring_server <- function(id, app_state) {
       )
     )
   )
+}
+
+
+# v0.77.0 — Surfaces (ha) + part (%) des 4 strates projet `_tot/_feu/
+# _res/_mix` pour le bandeau FAST. Lit le polygone de chaque zone via
+# `get_monitoring_zone_aoi()` (EPSG:2154) et calcule l'aire avec
+# `sf::st_area`. Le pourcentage est relatif à la strate `_tot` (union
+# de toutes les essences, surface de référence du projet).
+#
+# @param con DBIConnection vers la base monitoring.
+# @param zones_df data.frame `(id, name)` des zones du projet courant
+#   (sortie de `nemeton::find_zones_by_project`).
+# @return data.frame `(strata, label_key, ha, pct)` ordonné
+#   tot → feu → res → mix, limité aux strates réellement présentes.
+#   Lignes vides (aire incalculable) écartées. NULL/0-row si rien.
+.compute_zone_surfaces <- function(con, zones_df) {
+  if (is.null(con) || is.null(zones_df) || !nrow(zones_df)) return(NULL)
+  # Mappe le suffixe du nom de zone → (strate, clé i18n du label).
+  strata_map <- list(
+    tot = "zone_tot", feu = "zone_feu",
+    res = "zone_res", mix = "zone_mix"
+  )
+  rows <- lapply(names(strata_map), function(st) {
+    idx <- grep(sprintf("_%s$", st), as.character(zones_df$name))
+    if (!length(idx)) return(NULL)
+    zid <- as.integer(zones_df$id[idx[1]])
+    aoi <- tryCatch(get_monitoring_zone_aoi(con, zid),
+                    error = function(e) NULL)
+    if (is.null(aoi)) return(NULL)
+    ha <- tryCatch(
+      as.numeric(sum(sf::st_area(aoi))) / 1e4,
+      error = function(e) NA_real_
+    )
+    if (!is.finite(ha)) return(NULL)
+    data.frame(strata = st, label_key = strata_map[[st]],
+               ha = ha, pct = NA_real_, stringsAsFactors = FALSE)
+  })
+  rows <- Filter(Negate(is.null), rows)
+  if (!length(rows)) return(NULL)
+  df <- do.call(rbind, rows)
+  # Pourcentage relatif à `_tot` (toutes essences).
+  tot_ha <- df$ha[df$strata == "tot"]
+  if (length(tot_ha) == 1L && is.finite(tot_ha) && tot_ha > 0) {
+    df$pct <- ifelse(df$strata == "tot", NA_real_, df$ha / tot_ha * 100)
+  }
+  df
 }

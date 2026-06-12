@@ -2055,6 +2055,25 @@ TRANSLATIONS <- list(
     fr = "Mixte",
     en = "Mixed"
   ),
+  # v0.77.0 — Bandeau « Surfaces des zones de suivi » (mode FAST) :
+  # rappelle la surface (ha) et la part (%) des 4 strates projet
+  # `_tot/_feu/_res/_mix` au-dessus des sous-onglets FAST.
+  monitoring_fast_surfaces_title = list(
+    fr = "Surfaces des zones de suivi",
+    en = "Monitoring zone surfaces"
+  ),
+  # Format d'un segment : « Feuillus : 12.3 ha (45 %) ». %s = label
+  # strate, %.1f = hectares, %.0f = pourcentage relatif à la strate
+  # `_tot` (toutes essences).
+  monitoring_fast_surf_item = list(
+    fr = "%s : %.1f ha (%.0f %%)",
+    en = "%s: %.1f ha (%.0f%%)"
+  ),
+  # Variante sans pourcentage (strate `_tot`, référence 100 %).
+  monitoring_fast_surf_item_tot = list(
+    fr = "%s : %.1f ha",
+    en = "%s: %.1f ha"
+  ),
   monitoring_validate_zone = list(
     fr = "S\u00e9lectionnez une zone de suivi avant de lancer le t\u00e9l\u00e9chargement.",
     en = "Select a monitoring zone before starting the download."
