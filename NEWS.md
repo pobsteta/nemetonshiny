@@ -1,4 +1,4 @@
-# nemetonshiny 0.77.0.9001 (dev)
+# nemetonshiny 0.77.1 (2026-06-12)
 
 ### UI — Bandeau « Surfaces des zones de suivi » : style carte
 

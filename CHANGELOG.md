@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.77.1] - 2026-06-12
+
+### Changed
+
+- Suivi sanitaire (mode FAST) : le bandeau « Surfaces des zones de suivi »
+  adopte le style carte (bordure info bleue, icône + titre en gras, corps)
+  des bandeaux de validité FORDEAD, au lieu de la barre `alert` compacte.
+
 ## [0.77.0] - 2026-06-12
 
 ### Added
