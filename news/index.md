@@ -1,5 +1,15 @@
 # Changelog
 
+## nemetonshiny 0.77.1 (2026-06-12)
+
+#### UI — Bandeau « Surfaces des zones de suivi » : style carte
+
+Le bandeau des surfaces (mode FAST) adopte le **style carte** des
+bandeaux de validité FORDEAD (« Composition d’essences hors domaine
+validé ») : carte à bordure info bleue, icône + titre en gras, surfaces
+des strates dans le corps. Remplace la barre compacte `alert`
+précédente.
+
 ## nemetonshiny 0.77.0 (2026-06-12)
 
 #### Nouveauté — Suivi sanitaire (FAST) : bandeau « Surfaces des zones de suivi »

@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.77.1\] - 2026-06-12
+
+### Changed
+
+- Suivi sanitaire (mode FAST) : le bandeau « Surfaces des zones de suivi
+  » adopte le style carte (bordure info bleue, icône + titre en gras,
+  corps) des bandeaux de validité FORDEAD, au lieu de la barre `alert`
+  compacte.
+
 ## \[0.77.0\] - 2026-06-12
 
 ### Added
