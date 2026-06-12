@@ -1,3 +1,19 @@
+# nemetonshiny 0.76.0.9001 (dev)
+
+### Nouveauté — Suivi sanitaire (FAST) : bandeau « Surfaces des zones de suivi »
+
+En mode **FAST** (suivi rapide), un bandeau bleu s'affiche au-dessus des
+sous-onglets et rappelle la **surface (ha)** et la **part (%)** des 4
+strates projet `_tot` / `_feu` / `_res` / `_mix`. Le pourcentage est
+relatif à la strate `_tot` (toutes essences, surface de référence). Le
+bandeau est masqué en mode FORDEAD (health) et tant qu'aucune zone n'a
+été générée. Les surfaces sont calculées à partir du polygone de chaque
+zone (`get_monitoring_zone_aoi`, EPSG:2154) via `sf::st_area`.
+
+Nouvelles clés i18n : `monitoring_fast_surfaces_title`,
+`monitoring_fast_surf_item`, `monitoring_fast_surf_item_tot`.
+Helper interne `.compute_zone_surfaces()` + tests dédiés.
+
 # nemetonshiny 0.76.0 (2026-06-12)
 
 ### Amélioration — Légende Alertes FAST : indice rappelé dans le titre
