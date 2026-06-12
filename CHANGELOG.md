@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.76.0] - 2026-06-12
+
+### Changed
+
+- Légende de la carte « Alertes FAST » (Suivi sanitaire) : le titre
+  rappelle désormais l'indice actif (NDMI / NDVI / NBR), ex. « Sévérité
+  de l'alerte (NDVI) ». Mise à jour réactive sur changement du radio
+  « Indice FAST ». Clé i18n `fast_alert_legend_title` paramétrée `%s`.
+
+### Added
+
+- `BRIEF-nemeton-zones-fk-sqlite.md` : hand-off cœur documentant l'échec
+  `FOREIGN KEY constraint failed` au re-build des zones de suivi sur
+  backend SQLite (`build_project_monitoring_zones` upsert, fix attendu
+  côté `nemeton`).
+
 ## [0.75.2] - 2026-06-11
 
 ### Fixed

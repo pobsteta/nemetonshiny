@@ -453,6 +453,11 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       i18n    <- i18n_r()
       r       <- raster_r()
       mode    <- input$mode %||% "count"
+      # v0.76.0 — l'indice courant (NDMI / NDVI / NBR) est injecté dans
+      # le titre de la légende pour rappeler à l'utilisateur quel indice
+      # alimente les classes de sévérité affichées (symétrie avec le
+      # badge de résolution qui mentionne déjà l'indice).
+      index   <- input$index %||% "NDVI"
 
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.alert_raster_group) |>
@@ -509,7 +514,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           position = "bottomright",
           colors   = cols,
           labels   = labels,
-          title    = i18n$t("fast_alert_legend_title"),
+          title    = sprintf(i18n$t("fast_alert_legend_title"), index),
           opacity  = 0.85,
           layerId  = .alert_legend_id
         )

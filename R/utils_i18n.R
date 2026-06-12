@@ -2438,8 +2438,8 @@ TRANSLATIONS <- list(
   # `nemeton::compute_fast_alert_mask()`. La classe 0 (sain) est
   # rendue transparente — pas de libellé i18n nécessaire pour elle.
   fast_alert_legend_title = list(
-    fr = "Sévérité de l'alerte",
-    en = "Alert severity"
+    fr = "Sévérité de l'alerte (%s)",
+    en = "Alert severity (%s)"
   ),
   fast_alert_class_1 = list(
     fr = "1 — Faible",
