@@ -1,4 +1,4 @@
-# nemetonshiny 0.75.2.9001 (dev)
+# nemetonshiny 0.76.0 (2026-06-12)
 
 ### Amélioration — Légende Alertes FAST : indice rappelé dans le titre
 
