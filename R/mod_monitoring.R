@@ -1032,13 +1032,23 @@ mod_monitoring_server <- function(id, app_state) {
         }
         htmltools::tags$span(class = "badge bg-light text-dark border me-2", txt)
       })
-      htmltools::div(
-        class = paste("alert alert-info d-flex align-items-center",
-                      "flex-wrap gap-2 py-1 px-2 mb-2 small"),
-        bsicons::bs_icon("rulers", class = "fs-5 flex-shrink-0"),
-        htmltools::tags$strong(class = "me-1",
-                               i18n$t("monitoring_fast_surfaces_title")),
-        items
+      # v0.77.1 — Bloc en carte (symétrie avec les bandeaux de validité
+      # FORDEAD « Composition d'essences… »), bordure info bleue : icône
+      # + titre en gras, surfaces des strates dans le corps.
+      htmltools::tags$div(
+        class = "card border-info mb-3",
+        htmltools::tags$div(
+          class = "card-body py-2",
+          htmltools::div(
+            class = "d-flex align-items-start",
+            bsicons::bs_icon("rulers", class = "me-2 fs-4 text-info"),
+            htmltools::tags$div(
+              htmltools::tags$strong(i18n$t("monitoring_fast_surfaces_title")),
+              htmltools::tags$div(
+                class = "small d-flex flex-wrap gap-2 mt-1", items)
+            )
+          )
+        )
       )
     })
     shiny::outputOptions(output, "fast_zone_surfaces",
