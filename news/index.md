@@ -1,5 +1,16 @@
 # Changelog
 
+## nemetonshiny 0.76.0 (2026-06-12)
+
+#### Amélioration — Légende Alertes FAST : indice rappelé dans le titre
+
+La légende de la carte « Alertes FAST » (onglet Suivi sanitaire) affiche
+désormais l’indice actif (NDMI / NDVI / NBR) dans son titre, ex. «
+Sévérité de l’alerte (NDVI) ». Le titre se met à jour quand
+l’utilisateur change le radio « Indice FAST », en cohérence avec le
+badge de résolution qui mentionne déjà l’indice. Clé i18n
+`fast_alert_legend_title` paramétrée avec `%s`.
+
 ## nemetonshiny 0.75.2 (2026-06-11)
 
 #### Perf — Chargement projet : `build_index_stack` ne bloque plus
