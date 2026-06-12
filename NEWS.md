@@ -1,4 +1,4 @@
-# nemetonshiny 0.76.0.9001 (dev)
+# nemetonshiny 0.77.0 (2026-06-12)
 
 ### Nouveauté — Suivi sanitaire (FAST) : bandeau « Surfaces des zones de suivi »
 
