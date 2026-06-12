@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.76.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.77.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,9 +29,17 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/v0.76.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.77.0" id="nemetonshiny-0770-2026-06-12">nemetonshiny 0.77.0 (2026-06-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0770-2026-06-12"></a></h2>
+<div class="section level4">
+<h4 id="nouveauté--suivi-sanitaire-fast--bandeau--surfaces-des-zones-de-suivi--0-77-0">Nouveauté — Suivi sanitaire (FAST) : bandeau « Surfaces des zones de suivi »<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9--suivi-sanitaire-fast--bandeau--surfaces-des-zones-de-suivi--0-77-0"></a></h4>
+<p>En mode <strong>FAST</strong> (suivi rapide), un bandeau bleu s’affiche au-dessus des sous-onglets et rappelle la <strong>surface (ha)</strong> et la <strong>part (%)</strong> des 4 strates projet <code>_tot</code> / <code>_feu</code> / <code>_res</code> / <code>_mix</code>. Le pourcentage est relatif à la strate <code>_tot</code> (toutes essences, surface de référence). Le bandeau est masqué en mode FORDEAD (health) et tant qu’aucune zone n’a été générée. Les surfaces sont calculées à partir du polygone de chaque zone (<code>get_monitoring_zone_aoi</code>, EPSG:2154) via <code><a href="https://r-spatial.github.io/sf/reference/geos_measures.html" class="external-link">sf::st_area</a></code>.</p>
+<p>Nouvelles clés i18n : <code>monitoring_fast_surfaces_title</code>, <code>monitoring_fast_surf_item</code>, <code>monitoring_fast_surf_item_tot</code>. Helper interne <code>.compute_zone_surfaces()</code> + tests dédiés.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.76.0" id="nemetonshiny-0760-2026-06-12">nemetonshiny 0.76.0 (2026-06-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0760-2026-06-12"></a></h2>
 <div class="section level4">

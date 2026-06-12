@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.77.0\] - 2026-06-12
+
+### Added
+
+- Suivi sanitaire (mode FAST) : bandeau « Surfaces des zones de suivi »
+  au-dessus des sous-onglets, rappelant la surface (ha) et la part (%)
+  des 4 strates projet `_tot` / `_feu` / `_res` / `_mix` (pourcentage
+  relatif à `_tot`). Surfaces calculées via
+  [`sf::st_area`](https://r-spatial.github.io/sf/reference/geos_measures.html)
+  sur le polygone de chaque zone (`get_monitoring_zone_aoi`, EPSG:2154).
+  Helper interne `.compute_zone_surfaces()` + tests. Clés i18n
+  `monitoring_fast_surfaces_title`, `monitoring_fast_surf_item`,
+  `monitoring_fast_surf_item_tot`.
+
 ## \[0.76.0\] - 2026-06-12
 
 ### Changed
