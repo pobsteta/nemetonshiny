@@ -1,4 +1,4 @@
-# nemetonshiny 0.79.1.9001 (dev) (2026-06-13)
+# nemetonshiny 0.80.0 (2026-06-13)
 
 ### Nouveauté — Bouton « Réinitialiser depuis le corpus du package » (RAG)
 
