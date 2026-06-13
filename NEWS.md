@@ -1,3 +1,23 @@
+# nemetonshiny 0.80.0 (2026-06-13)
+
+### Nouveauté — Bouton « Réinitialiser depuis le corpus du package » (RAG)
+
+L'onglet RAG (`mod_rag_admin`) gagne un bouton **Réinitialiser depuis le
+corpus du package**, à côté de l'import/export du manifeste. La copie
+éditable du manifeste (`knowledge_manifest_path(writable = TRUE)`) est
+créée une fois puis figée, donc elle **dérive de la seed du package** à
+chaque release cœur. Le bouton appelle
+`nemeton::reset_knowledge_manifest(confirm = TRUE)` (cœur ≥ 0.79.0) pour
+la resynchroniser, après une **modale de confirmation** (l'opération
+écrase les modifications locales non exportées), puis recharge l'éditeur
+depuis la copie writable rafraîchie.
+
+Nouvelles clés i18n FR/EN : `rag_reset_corpus`, `rag_reset_corpus_title`,
+`rag_reset_corpus_warn`, `rag_reset_corpus_done`, plus une clé générique
+`confirm` (réutilisable, pendant de `cancel`). Plancher
+`Imports: nemeton (>= 0.79.0)` (consommation de
+`reset_knowledge_manifest`).
+
 # nemetonshiny 0.79.1 (2026-06-13)
 
 ### Fix — Régression v0.78.0 : l'attache différée d'`indicators_sf` plantait
