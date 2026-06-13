@@ -1,4 +1,4 @@
-# nemetonshiny 0.77.1.9001 (dev) (2026-06-13)
+# nemetonshiny 0.78.0 (2026-06-13)
 
 ### Perf — Chargement projet récent : deux blocages synchrones retirés
 
