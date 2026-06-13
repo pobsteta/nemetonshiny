@@ -616,7 +616,7 @@ test_that("load_project observer loads project and updates app_state", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     list_recent_projects = mock_empty_projects,
-    load_project = function(project_id) mock_project,
+    load_project = function(project_id, ...) mock_project,
     mod_search_server = mock_search_server,
     mod_map_server = mock_map_server,
     mod_project_server = mock_project_server,
@@ -672,7 +672,7 @@ test_that("load_project handles DOM-TOM commune codes", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     list_recent_projects = mock_empty_projects,
-    load_project = function(project_id) mock_project,
+    load_project = function(project_id, ...) mock_project,
     mod_search_server = mock_search_server,
     mod_map_server = mock_map_server,
     mod_project_server = mock_project_server,
@@ -705,7 +705,7 @@ test_that("load_project skips already loaded project", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     list_recent_projects = mock_empty_projects,
-    load_project = function(project_id) {
+    load_project = function(project_id, ...) {
       load_called <<- TRUE
       NULL
     },
@@ -758,7 +758,7 @@ test_that("load_project handles parcels with invalid commune code", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     list_recent_projects = mock_empty_projects,
-    load_project = function(project_id) mock_project,
+    load_project = function(project_id, ...) mock_project,
     mod_search_server = mock_search_server,
     mod_map_server = mock_map_server,
     mod_project_server = mock_project_server,
@@ -886,7 +886,7 @@ test_that("recompute handler clears cache and resets status", {
       status_updated <<- status
       TRUE
     },
-    load_project = function(project_id) {
+    load_project = function(project_id, ...) {
       reloaded_project <<- project_id
       mock_project
     },
@@ -1013,7 +1013,7 @@ test_that("cancel computation updates state correctly", {
       status_set <<- status
       TRUE
     },
-    load_project = function(project_id) mock_project,
+    load_project = function(project_id, ...) mock_project,
     mod_search_server = mock_search_server,
     mod_map_server = mock_map_server,
     mod_project_server = mock_project_server,
@@ -1403,7 +1403,7 @@ test_that("load_project with no parcels skips restore", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     list_recent_projects = mock_empty_projects,
-    load_project = function(project_id) mock_project,
+    load_project = function(project_id, ...) mock_project,
     mod_search_server = mock_search_server,
     mod_map_server = mock_map_server,
     mod_project_server = mock_project_server,
@@ -1456,7 +1456,7 @@ test_that("load_project with parcels but no code_insee skips restore", {
   with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     list_recent_projects = mock_empty_projects,
-    load_project = function(project_id) mock_project,
+    load_project = function(project_id, ...) mock_project,
     mod_search_server = mock_search_server,
     mod_map_server = mock_map_server,
     mod_project_server = mock_project_server,

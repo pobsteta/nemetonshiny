@@ -1,3 +1,40 @@
+# nemetonshiny 0.77.1.9001 (dev) (2026-06-13)
+
+### Perf — Chargement projet récent : deux blocages synchrones retirés
+
+Suite à v0.75.2 (`build_index_stack` sorti du chemin), deux opérations
+**synchrones** subsistaient dans le chemin critique de chargement d'un
+projet récent (avant le rendu des parcelles) :
+
+1. **Connexion DB monitoring ouverte à chaque chargement.** L'observer
+   `mod_home` ouvrait systématiquement une connexion
+   `get_monitoring_db_connection()` (TCP connect + migration de schéma)
+   pour hydrater `monitoring_zone_id`, alors que `hydrate_monitoring_zone_id()`
+   est un no-op dès que l'id est déjà dans `metadata.json` (cas commun
+   post-spec 011). Sur un hôte Postgres lent/injoignable, ce round-trip
+   pouvait geler l'UI plusieurs secondes (libpq sans `connect_timeout`).
+   **Fix** : nouveau prédicat `.has_monitoring_zone_id()` partagé ;
+   l'observer **n'ouvre plus** la connexion quand l'id est déjà connu.
+
+2. **`ug_build_sf()` (géométrie UGF) construit en synchrone.** Une boucle
+   `sf::st_union()` par UGF (0,5–3 s pour beaucoup d'UGF) produisait
+   `indicators_sf`, consommé uniquement par les onglets Synthèse /
+   Famille / Échantillonnage / Suivi — **aucun** actif au chargement.
+   **Fix** : extraction de `attach_indicators_sf()` + nouveau paramètre
+   `load_project(build_indicators_sf = TRUE)`. Le chemin de chargement
+   interactif passe `FALSE` et ré-attache `indicators_sf` via `later()`
+   après le premier flush, en ré-assignant `current_project` pour que les
+   reactives (inactives/suspendues) le récupèrent à l'ouverture de l'onglet.
+
+Les autres appelants de `load_project()` conservent le build inline
+(défaut `TRUE`) — comportement inchangé.
+
+**Note (dette cœur)** : un troisième garde-fou — `connect_timeout` sur la
+connexion Postgres pour borner le gel même quand l'hydratation est
+nécessaire — requiert une modification de `nemeton::db_connect()`
+(actuellement `.parse_pg_url()` + `DBI::dbConnect()` sans timeout). À
+traiter dans une session dédiée au cœur.
+
 # nemetonshiny 0.77.1 (2026-06-12)
 
 ### UI — Bandeau « Surfaces des zones de suivi » : style carte

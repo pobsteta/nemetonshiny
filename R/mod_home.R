@@ -367,8 +367,11 @@ mod_home_server <- function(id, app_state) {
         session = session
       )
 
-      # Load the project from disk (sync PostGIS si configure)
-      project <- load_project(project_id)
+      # Load the project from disk (sync PostGIS si configure).
+      # `build_indicators_sf = FALSE` defers the heavy per-UGF
+      # ug_build_sf() geometry build off the critical path — it's
+      # re-attached via later() once the map has rendered (see below).
+      project <- load_project(project_id, build_indicators_sf = FALSE)
       shiny::req(project)
 
       # Spec 011 — hydrate `metadata$monitoring_zone_id` from the
@@ -377,15 +380,24 @@ mod_home_server <- function(id, app_state) {
       # pre-spec-011 zones (registered before this binding existed) and
       # any project copy / metadata loss scenario. No-op when the
       # metadata is already populated or the DB is not connected.
-      project <- tryCatch({
-        con <- get_monitoring_db_connection(project = project,
-                                            read_only = TRUE)
-        on.exit(close_monitoring_db_connection(con), add = TRUE)
-        hydrate_monitoring_zone_id(project, con)
-      }, error = function(e) {
-        cli::cli_warn("monitoring_zone_id hydration skipped: {conditionMessage(e)}")
-        project
-      })
+      #
+      # PERF — only OPEN the (synchronous) monitoring-DB connection when
+      # hydration could actually do something: i.e. the id is missing.
+      # For any project saved after spec 011 the id is already in
+      # metadata.json, so we skip the connect + schema-migration
+      # round-trip that was previously paid on every load and could
+      # freeze the UI for seconds on a slow/unreachable Postgres host.
+      if (!.has_monitoring_zone_id(project)) {
+        project <- tryCatch({
+          con <- get_monitoring_db_connection(project = project,
+                                              read_only = TRUE)
+          on.exit(close_monitoring_db_connection(con), add = TRUE)
+          hydrate_monitoring_zone_id(project, con)
+        }, error = function(e) {
+          cli::cli_warn("monitoring_zone_id hydration skipped: {conditionMessage(e)}")
+          project
+        })
+      }
 
       # Notification sync PostGIS au chargement.
       # Persistante (duration = NULL) avec un id stable : elle reste
@@ -420,6 +432,26 @@ mod_home_server <- function(id, app_state) {
       app_state$current_project <- project
       app_state$project_id <- project$id
       app_state$project_status <- project$metadata$status %||% "draft"
+
+      # PERF — defer the UGF geometry build (ug_build_sf, 0.5–3 s for
+      # many UGFs) until AFTER the parcels have a chance to render. It
+      # produces `indicators_sf`, consumed only by the Synthesis /
+      # Family / Sampling / Monitoring tabs (none active at load time),
+      # so building it inline only delayed the map. We re-attach it on
+      # the next event loop and re-assign current_project so those
+      # (inactive, suspended) reactives pick it up when their tab opens.
+      if (requireNamespace("later", quietly = TRUE)) {
+        .deferred_ind_id <- project$id
+        later::later(function() {
+          # Skip if the user switched to another project meanwhile.
+          if (!identical(app_state$project_id, .deferred_ind_id)) return()
+          proj <- app_state$current_project
+          if (is.null(proj) || !is.null(proj$indicators_sf)) return()
+          app_state$current_project <- attach_indicators_sf(proj)
+        }, delay = 0.1)
+      } else {
+        app_state$current_project <- attach_indicators_sf(project)
+      }
 
       # Extract commune code from parcels if available
       if (!is.null(project$parcels) && nrow(project$parcels) > 0 &&
