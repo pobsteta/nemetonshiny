@@ -2884,6 +2884,22 @@ TRANSLATIONS <- list(
     fr = "Persistance des r\u00e9sultats",
     en = "Persisting results"
   ),
+  monitoring_reconfort_phase_mask = list(
+    fr = "Masque forestier",
+    en = "Forest mask"
+  ),
+  monitoring_reconfort_phase_tiles = list(
+    fr = "Tuiles",
+    en = "Tiles"
+  ),
+  monitoring_reconfort_phase_stage = list(
+    fr = "Pr\u00e9paration",
+    en = "Staging"
+  ),
+  monitoring_reconfort_phase_collect = list(
+    fr = "Collecte des r\u00e9sultats",
+    en = "Collecting results"
+  ),
 
   # ----- ntfy push messages (E6 \u2014 out-of-band FORDEAD progress) ------
   # Sent worker-side by .ntfy_send() so a FORDEAD run that outlives

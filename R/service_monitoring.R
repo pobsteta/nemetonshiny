@@ -567,6 +567,91 @@ run_fordead_async <- function() {
 }
 
 
+#' Async RECONFORT dieback run (spec 021, L6)
+#'
+#' Wraps `nemeton::run_reconfort_dieback()` in a `shiny::ExtendedTask`,
+#' mirroring [run_fordead_async()] with the RECONFORT parameter set.
+#' The run is heavy / opt-in (conda IOTA² + GEODES + OTB/Shark) and
+#' takes minutes to hours, so it runs in a `future` worker that re-loads
+#' `nemetonshiny` and opens a fresh DB connection.
+#'
+#' Inputs passed at `$invoke()` time:
+#' * `zone_id`       — integer, required (AOI lookup + DB INSERT)
+#' * `cache_dir`     — RECONFORT cache (`<project>/cache/layers/reconfort`);
+#'                     the persist phase writes `zone_<id>/run_<run_id>/`
+#' * `s2_year`       — integer Sentinel-2 year
+#' * `db_url`        — pre-resolved DB URL (workers can't reach app_state)
+#' * `progress_path` — JSON file the worker writes to for the parent's
+#'                     reactivePoll to tail (events `reconfort:*`)
+#' * `output_dir`    — working dir for intermediate outputs (NULL = core
+#'                     default tempfile)
+#'
+#' Unlike FORDEAD, `nemeton::run_reconfort_dieback()` has no `cancel_path`
+#' parameter — there is no cooperative cancellation; the UI relies on the
+#' force-unlock escape hatch only.
+#'
+#' On success, `$result()` returns the list produced by the core (carrying
+#' `n_alerts` and run metadata).
+#'
+#' @return A `shiny::ExtendedTask` object.
+#' @noRd
+run_reconfort_async <- function() {
+  .dev_pkg_path <- tryCatch(
+    if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+      find.package("nemetonshiny")
+    else NULL,
+    error = function(e) NULL
+  )
+  .worker_envvars <- .capture_worker_envvars()
+
+  shiny::ExtendedTask$new(function(zone_id = NULL, cache_dir = NULL,
+                                   s2_year = NULL, db_url = "",
+                                   progress_path = NULL, lang = "fr",
+                                   output_dir = NULL) {
+    if (requireNamespace("future", quietly = TRUE)) {
+      plan_classes <- class(future::plan())
+      is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
+      if (!is_parallel) future::plan("multisession")
+    }
+    promises::future_promise({
+      .apply_worker_envvars(.worker_envvars)
+
+      if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
+        pkgload::load_all(.dev_pkg_path, quiet = TRUE)
+      } else {
+        loadNamespace("nemetonshiny")
+      }
+
+      con <- get_monitoring_db_connection(db_url = db_url)
+      if (is.null(con)) {
+        stop("Monitoring DB not configured (set NEMETON_DB_URL, NEMETON_DB_HOST/_PORT/_NAME/_USER/_PASSWORD, or open a project to use the local SQLite fallback).")
+      }
+      on.exit(close_monitoring_db_connection(con), add = TRUE)
+
+      # Pure file writer the parent's reactivePoll tails (atomic .json +
+      # .ndjson). No ntfy variant for RECONFORT (kept minimal).
+      progress_cb <- .build_progress_writer(progress_path)
+
+      if (!is.null(output_dir) && nzchar(output_dir) && !dir.exists(output_dir)) {
+        tryCatch(
+          dir.create(output_dir, recursive = TRUE, showWarnings = FALSE),
+          error = function(e) NULL
+        )
+      }
+
+      nemeton::run_reconfort_dieback(
+        con               = con,
+        zone_id           = zone_id,
+        cache_dir         = cache_dir,
+        s2_year           = s2_year,
+        output_dir        = output_dir,
+        progress_callback = progress_cb
+      )
+    }, seed = TRUE)
+  })
+}
+
+
 #' Resolve the ntfy push configuration from the environment
 #'
 #' ntfy (<https://ntfy.sh>) is the out-of-band notification channel for

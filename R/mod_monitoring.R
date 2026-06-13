@@ -254,7 +254,8 @@ mod_monitoring_ui <- function(id) {
                 ns("run_reconfort"), i18n$t("monitoring_run_reconfort_btn"),
                 icon  = bsicons::bs_icon("activity"),
                 class = "btn-primary w-100"
-              )
+              ),
+              shiny::uiOutput(ns("run_reconfort_cancel_panel"))
             )
           )
         )
@@ -2879,24 +2880,179 @@ mod_monitoring_server <- function(id, app_state) {
       refresh_r = shiny::reactive(reconfort_refresh())
     )
 
-    # spec 021 (L6) — Lancement d'un run RECONFORT.
+    # spec 021 (L6) — Lancement d'un run RECONFORT (ExtendedTask).
     #
-    # Le run cœur `nemeton::run_reconfort_dieback()` est LOURD et opt-in :
-    # il requiert un environnement conda complet (IOTA² + GEODES + OTB/
-    # Shark) absent de la plupart des déploiements. Le pipeline asynchrone
-    # complet (ExtendedTask + polling des phases env/model/ingest/mapprod/
-    # postprocess/persist) n'est pas encore câblé côté app : tant qu'il ne
-    # l'est pas, le bouton signale l'indisponibilité du lancement et
-    # renvoie l'utilisateur vers la consultation des runs déjà produits
-    # (carte + diagnostic pixel restent pleinement fonctionnels — cf.
-    # Limite #1 de la spec 021). Voir le suivi de chantier pour le câblage
-    # de `run_reconfort_async()` (miroir de `run_fordead_async`).
-    shiny::observeEvent(input$run_reconfort, {
+    # Miroir de la machinerie FORDEAD (task + reactivePoll progress +
+    # dispatcher + result observer + force-unlock). Le run cœur
+    # `nemeton::run_reconfort_dieback()` est LOURD/opt-in (conda IOTA² +
+    # GEODES + OTB/Shark) : sur un déploiement sans ce bundle, le worker
+    # échoue et l'erreur est surfacée via le toast d'erreur — la carte et
+    # le diagnostic restent fonctionnels sur les runs déjà produits
+    # (Limite #1 spec 021). Pas de cancel coopératif côté cœur (pas de
+    # `cancel_path`) : seul le force-unlock réarme le bouton.
+    reconfort_task <- run_reconfort_async()
+    reconfort_progress_path <- shiny::reactiveVal(NULL)
+    reconfort_result_consumed <- shiny::reactiveVal(FALSE)
+    force_unlock_reconfort <- shiny::reactiveVal(FALSE)
+
+    reconfort_progress <- shiny::reactivePoll(
+      intervalMillis = 500L, session,
+      checkFunc = function() {
+        p <- reconfort_progress_path()
+        if (is.null(p) || !file.exists(p)) return("0")
+        as.character(file.info(p)$mtime)
+      },
+      valueFunc = function() {
+        p <- reconfort_progress_path()
+        if (is.null(p) || !file.exists(p)) return(NULL)
+        tryCatch(jsonlite::read_json(p, simplifyVector = TRUE),
+                 error = function(e) NULL)
+      }
+    )
+
+    shiny::observe({
+      ev <- reconfort_progress()
+      if (is.null(ev)) return()
+      .reconfort_handle_progress_event(ev, session, i18n_r())
+    })
+
+    # Resolve / create the RECONFORT cache dir for the active project.
+    .reconfort_cache_dir <- function(proj) {
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      cd <- file.path(proj$path, "cache", "layers", "reconfort")
+      if (!dir.exists(cd))
+        tryCatch(dir.create(cd, recursive = TRUE, showWarnings = FALSE),
+                 error = function(e) NULL)
+      cd
+    }
+
+    # Button state : grey out while a RECONFORT run is in flight (and no
+    # force-unlock) OR while a FAST / FORDEAD run holds the shared
+    # Sentinel-2 cache.
+    shiny::observe({
+      reconfort_running <- identical(reconfort_task$status(), "running") &&
+                           !isTRUE(force_unlock_reconfort())
+      fast_running     <- identical(fast_task$status(), "running") &&
+                          !isTRUE(force_unlock_quick())
+      fordead_running  <- identical(fordead_task$status(), "running") &&
+                          !isTRUE(force_unlock_health())
+      shiny::updateActionButton(
+        session, "run_reconfort",
+        disabled = reconfort_running || fast_running || fordead_running)
+    })
+
+    output$run_reconfort_cancel_panel <- shiny::renderUI({
+      ns <- session$ns
       i18n <- i18n_r()
-      shiny::showNotification(
-        i18n$t("monitoring_reconfort_run_unavailable"),
-        type = "warning", duration = 10
+      if (!identical(reconfort_task$status(), "running")) return(NULL)
+      if (isTRUE(force_unlock_reconfort())) return(NULL)
+      shiny::actionButton(
+        ns("run_reconfort_cancel"),
+        i18n$t("monitoring_run_cancel_btn"),
+        icon  = bsicons::bs_icon("x-circle"),
+        class = "btn-outline-secondary btn-sm w-100 mt-1"
       )
+    })
+
+    # Force-unlock : no cooperative cancel in the core, so this only
+    # re-arms the button (the orphaned worker keeps running to completion
+    # in the background).
+    shiny::observeEvent(input$run_reconfort_cancel, {
+      force_unlock_reconfort(TRUE)
+      for (nid in c("reconfort_progress", "reconfort_error",
+                    "reconfort_complete")) {
+        shiny::removeNotification(session$ns(nid))
+      }
+    })
+
+    .invoke_reconfort <- function() {
+      i18n <- i18n_r()
+      if (!isTRUE(nzchar(input$zone_id))) {
+        shiny::showNotification(i18n$t("monitoring_validate_zone"),
+                                type = "warning", duration = 4)
+        return(invisible(FALSE))
+      }
+      proj <- app_state$current_project
+      cd <- .reconfort_cache_dir(proj)
+      if (is.null(cd)) {
+        shiny::showNotification(i18n$t("monitoring_validate_zone"),
+                                type = "warning", duration = 4)
+        return(invisible(FALSE))
+      }
+      reconfort_result_consumed(FALSE)
+      force_unlock_reconfort(FALSE)
+      shiny::showNotification(
+        i18n$t("monitoring_reconfort_starting"),
+        id          = session$ns("reconfort_progress"),
+        type        = "message",
+        duration    = NULL,
+        closeButton = FALSE
+      )
+      ppath <- .resolve_progress_path(proj, "reconfort_progress.json")
+      if (!is.null(ppath) && file.exists(ppath)) {
+        tryCatch(unlink(ppath), error = function(e) NULL)
+      }
+      reconfort_progress_path(ppath)
+
+      zid <- as.integer(input$zone_id)
+      out <- if (!is.null(cd)) file.path(cd, paste0("output_zone_", zid)) else NULL
+      reconfort_task$invoke(
+        zone_id       = zid,
+        cache_dir     = cd,
+        s2_year       = as.integer(input$reconfort_s2_year %||%
+                                     format(Sys.Date(), "%Y")),
+        db_url        = .resolve_monitoring_db_url(proj),
+        progress_path = ppath,
+        lang          = app_state$language %||% "fr",
+        output_dir    = out
+      )
+      invisible(TRUE)
+    }
+
+    shiny::observeEvent(input$run_reconfort, {
+      .invoke_reconfort()
+    })
+
+    # RECONFORT result handler (mirror of the FORDEAD one) : idempotent
+    # toast + reconfort_refresh bump on success, error toast otherwise,
+    # belt-and-suspenders button re-enable.
+    shiny::observe({
+      i18n <- i18n_r()
+      result <- tryCatch(
+        reconfort_task$result(),
+        error = function(e) {
+          if (inherits(e, "shiny.silent.error")) stop(e)
+          if (isTRUE(shiny::isolate(reconfort_result_consumed()))) return(NULL)
+          reconfort_result_consumed(TRUE)
+          shiny::removeNotification(session$ns("reconfort_progress"))
+          .cleanup_progress_file(reconfort_progress_path())
+          reconfort_progress_path(NULL)
+          shiny::showNotification(
+            sprintf("%s : %s", i18n$t("monitoring_reconfort_error"),
+                    conditionMessage(e)),
+            id = session$ns("reconfort_error"), type = "error", duration = 10
+          )
+          shiny::updateActionButton(session, "run_reconfort", disabled = FALSE)
+          force_unlock_reconfort(FALSE)
+          NULL
+        }
+      )
+      if (!is.null(result)) {
+        if (isTRUE(shiny::isolate(reconfort_result_consumed()))) return()
+        reconfort_result_consumed(TRUE)
+        shiny::removeNotification(session$ns("reconfort_progress"))
+        .cleanup_progress_file(reconfort_progress_path())
+        reconfort_progress_path(NULL)
+        shiny::showNotification(
+          sprintf(i18n$t("monitoring_reconfort_success"),
+                  result$n_alerts %||% result$n_alerts_inserted %||% 0L,
+                  result$duration_sec %||% 0),
+          id = session$ns("reconfort_success"), type = "message", duration = 8
+        )
+        reconfort_refresh(reconfort_refresh() + 1L)
+        shiny::updateActionButton(session, "run_reconfort", disabled = FALSE)
+        force_unlock_reconfort(FALSE)
+      }
     })
 
     # v0.43.3 — Plan de validation : 2 instances mode-driven (FAST +
@@ -3341,6 +3497,76 @@ mod_monitoring_server <- function(id, app_state) {
     duration    = NULL,
     closeButton = FALSE
   )
+  invisible(NULL)
+}
+
+# Per-phase label for RECONFORT (mirror of .fordead_phase_label). The
+# core emits phase_name ∈ {env, model, mask, tiles, ingest, stage,
+# mapprod, collect, postprocess, persist} — each has an i18n key
+# `monitoring_reconfort_phase_<name>` ; an unknown name falls back to a
+# Title-Cased version of the raw key.
+.reconfort_phase_label <- function(phase_name, i18n) {
+  if (!nzchar(phase_name)) return("")
+  key <- paste0("monitoring_reconfort_phase_", phase_name)
+  if (i18n$has(key)) return(i18n$t(key))
+  tools::toTitleCase(gsub("_", " ", phase_name, fixed = TRUE))
+}
+
+# Dispatcher for the RECONFORT progress event stream emitted by
+# nemeton::run_reconfort_dieback() (events `reconfort:start|phase|
+# complete|error`). Mirror of .fordead_handle_progress_event ; testable
+# directly with a fake session + i18n. Side effects only.
+.reconfort_handle_progress_event <- function(ev, session, i18n) {
+  current <- as.character(ev$current %||% "")
+
+  if (identical(current, "reconfort:start")) {
+    return(invisible(NULL))  # silent — disabled button is enough
+  }
+
+  if (identical(current, "reconfort:phase")) {
+    phase_name <- as.character(ev$phase_name %||% "")
+    completed  <- as.integer(ev$completed   %||% 0L)
+    total      <- as.integer(ev$total       %||% 0L)
+    label <- .reconfort_phase_label(phase_name, i18n)
+    msg <- i18n$t("monitoring_reconfort_phase_progress",
+                  n = completed + 1L, total = total, label = label)
+    shiny::showNotification(
+      .monitoring_spinning_msg(msg),
+      id          = session$ns("reconfort_progress"),
+      type        = "message",
+      duration    = NULL,
+      closeButton = FALSE
+    )
+    return(invisible(NULL))
+  }
+
+  if (identical(current, "reconfort:complete")) {
+    n_alerts <- as.integer(ev$n_alerts     %||% ev$n_alerts_inserted %||% 0L)
+    duration <- as.numeric(ev$duration_sec %||% 0)
+    shiny::removeNotification(session$ns("reconfort_progress"))
+    shiny::showNotification(
+      i18n$t("monitoring_reconfort_complete",
+             n = n_alerts, sec = round(duration, 1)),
+      id       = session$ns("reconfort_complete"),
+      type     = "message",
+      duration = 8
+    )
+    return(invisible(NULL))
+  }
+
+  if (identical(current, "reconfort:error")) {
+    err_msg <- as.character(ev$error_message %||% ev$message %||% "")
+    shiny::removeNotification(session$ns("reconfort_progress"))
+    shiny::showNotification(
+      sprintf("%s : %s", i18n$t("monitoring_reconfort_error"), err_msg),
+      id          = session$ns("reconfort_error"),
+      type        = "error",
+      duration    = NULL,
+      closeButton = TRUE
+    )
+    return(invisible(NULL))
+  }
+
   invisible(NULL)
 }
 
