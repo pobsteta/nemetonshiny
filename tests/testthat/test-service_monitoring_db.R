@@ -103,7 +103,7 @@ test_that("get_monitoring_db_connection passes NEMETON_DB_URL straight to nemeto
   ))
   captured_url <- NULL
   testthat::with_mocked_bindings(
-    db_connect = function(url) { captured_url <<- url; "fake-con" },
+    db_connect = function(url, read_only = FALSE) { captured_url <<- url; "fake-con" },
     .package = "nemeton",
     {
       out <- get_monitoring_db_connection()
@@ -118,7 +118,7 @@ test_that("get_monitoring_db_connection swallows nemeton::db_connect errors and 
   clear_monitoring_db_envvars()
   withr::local_envvar(c(NEMETON_DB_URL = "postgresql://u:p@h:5432/d"))
   testthat::with_mocked_bindings(
-    db_connect = function(url) stop("connection refused"),
+    db_connect = function(url, read_only = FALSE) stop("connection refused"),
     .package = "nemeton",
     {
       expect_warning(out <- get_monitoring_db_connection(),
@@ -766,4 +766,38 @@ test_that("get_monitoring_db_connection prefers explicit db_url over project", {
     expect_false(file.exists(file.path(project$path, "data",
                                        "monitoring.sqlite")))
   })
+})
+
+# ==============================================================================
+# .nemeton_db_connect — forward-compatible connect_timeout wrapper
+# ==============================================================================
+
+test_that(".nemeton_db_connect forwards connect_timeout when db_connect supports it", {
+  testthat::local_mocked_bindings(
+    db_connect = function(url, read_only = FALSE, connect_timeout = NA_integer_) {
+      list(url = url, read_only = read_only, connect_timeout = connect_timeout)
+    },
+    .package = "nemeton"
+  )
+  res <- nemetonshiny:::.nemeton_db_connect(
+    "postgresql://u:p@h:5432/db", read_only = TRUE, connect_timeout = 2L)
+  expect_equal(res$connect_timeout, 2L)
+  expect_true(res$read_only)
+  expect_equal(res$url, "postgresql://u:p@h:5432/db")
+})
+
+test_that(".nemeton_db_connect omits connect_timeout on older db_connect (no error)", {
+  # Stub WITHOUT connect_timeout — simulates a pre-feature nemeton core.
+  testthat::local_mocked_bindings(
+    db_connect = function(url, read_only = FALSE) {
+      list(url = url, read_only = read_only)
+    },
+    .package = "nemeton"
+  )
+  res <- expect_no_error(
+    nemetonshiny:::.nemeton_db_connect(
+      "sqlite:///tmp/x.sqlite", read_only = FALSE, connect_timeout = 2L))
+  # connect_timeout silently dropped — only the 2 supported args reach it.
+  expect_null(res$connect_timeout)
+  expect_false(res$read_only)
 })

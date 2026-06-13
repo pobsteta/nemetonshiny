@@ -56,7 +56,8 @@ NULL
 #'   the human-readable cause so the UI can surface it.
 #' @noRd
 get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
-                                         read_only = FALSE) {
+                                         read_only = FALSE,
+                                         connect_timeout = 2L) {
   # Reset the package-level error slot on every attempt so a previous
   # transient failure doesn't get re-displayed once the user has fixed
   # the cause.
@@ -104,7 +105,8 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
       return(NULL)
     }
     con <- tryCatch(
-      nemeton::db_connect(url, read_only = TRUE),
+      .nemeton_db_connect(url, read_only = TRUE,
+                          connect_timeout = connect_timeout),
       error = function(e) {
         msg <- conditionMessage(e)
         cli::cli_warn("Failed to open monitoring DB (read-only): {msg}")
@@ -138,7 +140,8 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
   }
 
   con <- tryCatch(
-    nemeton::db_connect(url),
+    .nemeton_db_connect(url, read_only = FALSE,
+                        connect_timeout = connect_timeout),
     error = function(e) {
       msg <- conditionMessage(e)
       cli::cli_warn("Failed to connect to monitoring DB: {msg}")
@@ -183,6 +186,41 @@ get_monitoring_db_connection <- function(project = NULL, db_url = NULL,
 
 .file_db_path_from_url <- function(url) {
   sub("^sqlite:(//)?", "", url, ignore.case = TRUE)
+}
+
+
+#' Forward-compatible wrapper around `nemeton::db_connect()`
+#'
+#' Calls `nemeton::db_connect(url, read_only = …)` and forwards
+#' `connect_timeout` (libpq connect bound, in seconds) ONLY when the
+#' installed `db_connect()` actually exposes that argument.
+#'
+#' Rationale: bounding the Postgres connect phase keeps a slow /
+#' unreachable monitoring host from freezing the UI for the libpq
+#' default (effectively the OS TCP timeout, tens of seconds). The
+#' `connect_timeout` parameter lands in `nemeton::db_connect()` in a
+#' core release > 0.77.x; until the user's installed core carries it,
+#' passing it would raise an "unused argument" error. We therefore
+#' introspect `formals()` and degrade to the plain 2-arg call on older
+#' cores — a strict no-op until the core release ships, after which the
+#' timeout activates automatically (no app bump required, thanks to the
+#' `@*release` remote).
+#'
+#' `fn` is resolved from the `nemeton` namespace so the call and the
+#' `formals()` introspection stay consistent under test mocking.
+#'
+#' @param url Database URL.
+#' @param read_only Logical, forwarded to `db_connect()`.
+#' @param connect_timeout Integer seconds; forwarded only when supported.
+#' @return A DBIConnection (or whatever `db_connect()` returns).
+#' @noRd
+.nemeton_db_connect <- function(url, read_only = FALSE, connect_timeout = 2L) {
+  fn <- get("db_connect", envir = asNamespace("nemeton"))
+  args <- list(url, read_only = read_only)
+  if ("connect_timeout" %in% names(formals(fn))) {
+    args$connect_timeout <- as.integer(connect_timeout)
+  }
+  do.call(fn, args)
 }
 
 
