@@ -12,6 +12,24 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.79.1\] - 2026-06-13
+
+### Fixed
+
+- Régression v0.78.0 : le callback `later()` qui ré-attache
+  `indicators_sf` (build `ug_build_sf` différé) lisait/écrivait
+  `app_state` hors de tout contexte réactif →
+  `Can't access reactive value outside of reactive consumer`, plantant
+  avant l’attache et privant Synthèse/Famille/ Échantillonnage de leur
+  géométrie UGF. Le corps du callback s’exécute désormais dans
+  `shiny::withReactiveDomain(session, shiny::isolate(...))`.
+- Toast « Aucun pixel sain — témoins tirés en classe N » qui fuyait
+  par-dessus la carte de l’Accueil au chargement d’un projet :
+  `alert_mask_r` (`mod_validation_sampling`) est désormais gaté sur
+  l’onglet Santé actif (`active_main_tab == "monitoring"`), supprimant
+  le toast et retirant une connexion DB + une lecture raster du chemin
+  de chargement.
+
 ## \[0.79.0\] - 2026-06-13
 
 ### Added

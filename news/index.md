@@ -1,5 +1,48 @@
 # Changelog
 
+## nemetonshiny 0.79.1 (2026-06-13)
+
+#### Fix — Régression v0.78.0 : l’attache différée d’`indicators_sf` plantait
+
+Le chargement d’un projet récent déclenchait dans la console :
+`Can't access reactive value 'project_id' outside of reactive consumer`.
+
+**Cause** : le callback
+[`later::later()`](https://later.r-lib.org/reference/later.html)
+introduit en v0.78.0 (qui diffère le build `ug_build_sf` →
+`attach_indicators_sf`) lisait/écrivait `app_state$project_id` /
+`app_state$current_project` **hors de tout contexte réactif** — un
+callback `later` ne s’exécute dans aucun consommateur réactif. Le
+callback **plantait avant** d’attacher `indicators_sf`, privant Synthèse
+/ Famille / Échantillonnage de leur géométrie UGF pour tout projet
+ouvert via l’écran récent.
+
+**Fix** : le corps du callback s’exécute désormais dans le domaine
+réactif de la session via
+`shiny::withReactiveDomain(session, shiny::isolate(...))`, rendant
+légales la lecture et l’écriture des valeurs réactives et propageant
+l’invalidation aux reactives (suspendues) en aval. Test de
+non-régression dédié
+([`later::run_now()`](https://later.r-lib.org/reference/run_now.html)
+exécute réellement le callback).
+
+#### Fix — Toast « Aucun pixel sain » qui fuyait au chargement
+
+Le chargement d’un projet pouvait afficher, par-dessus la carte de
+l’Accueil, le toast « Aucun pixel sain — témoins tirés en classe N (la
+plus saine disponible) » issu du module d’échantillonnage de validation
+(contexte Santé). En cause : `alert_mask_r` (`mod_validation_sampling`)
+n’était pas gardé par l’onglet actif — il se ré-évaluait à chaque
+changement de `current_project`, **ouvrant une connexion à la base
+monitoring et lisant un raster d’alerte hors du chemin de chargement**,
+puis l’observateur auto-relax émettait sa notification globalement.
+
+**Fix** : `alert_mask_r` est gaté sur l’onglet Santé actif
+(`shiny::req(identical(app_state$active_main_tab, "monitoring"))`), même
+garde que `pixel_stack_r` (v0.75.2). Supprime le toast intempestif
+**et** retire une connexion DB + une lecture raster du chargement de
+projet.
+
 ## nemetonshiny 0.79.0 (2026-06-13)
 
 #### Perf — `connect_timeout` borné sur la connexion monitoring

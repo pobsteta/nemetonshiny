@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.79.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.79.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.79.1" id="nemetonshiny-0791-2026-06-13">nemetonshiny 0.79.1 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0791-2026-06-13"></a></h2>
+<div class="section level4">
+<h4 id="fix--régression-v0780--lattache-différée-dindicators_sf-plantait-0-79-1">Fix — Régression v0.78.0 : l’attache différée d’<code>indicators_sf</code> plantait<a class="anchor" aria-label="anchor" href="#fix--r%C3%A9gression-v0780--lattache-diff%C3%A9r%C3%A9e-dindicators_sf-plantait-0-79-1"></a></h4>
+<p>Le chargement d’un projet récent déclenchait dans la console : <code>Can't access reactive value 'project_id' outside of reactive consumer</code>.</p>
+<p><strong>Cause</strong> : le callback <code><a href="https://later.r-lib.org/reference/later.html" class="external-link">later::later()</a></code> introduit en v0.78.0 (qui diffère le build <code>ug_build_sf</code> → <code>attach_indicators_sf</code>) lisait/écrivait <code>app_state$project_id</code> / <code>app_state$current_project</code> <strong>hors de tout contexte réactif</strong> — un callback <code>later</code> ne s’exécute dans aucun consommateur réactif. Le callback <strong>plantait avant</strong> d’attacher <code>indicators_sf</code>, privant Synthèse / Famille / Échantillonnage de leur géométrie UGF pour tout projet ouvert via l’écran récent.</p>
+<p><strong>Fix</strong> : le corps du callback s’exécute désormais dans le domaine réactif de la session via <code>shiny::withReactiveDomain(session, shiny::isolate(...))</code>, rendant légales la lecture et l’écriture des valeurs réactives et propageant l’invalidation aux reactives (suspendues) en aval. Test de non-régression dédié (<code><a href="https://later.r-lib.org/reference/run_now.html" class="external-link">later::run_now()</a></code> exécute réellement le callback).</p>
+</div>
+<div class="section level4">
+<h4 id="fix--toast--aucun-pixel-sain--qui-fuyait-au-chargement-0-79-1">Fix — Toast « Aucun pixel sain » qui fuyait au chargement<a class="anchor" aria-label="anchor" href="#fix--toast--aucun-pixel-sain--qui-fuyait-au-chargement-0-79-1"></a></h4>
+<p>Le chargement d’un projet pouvait afficher, par-dessus la carte de l’Accueil, le toast « Aucun pixel sain — témoins tirés en classe N (la plus saine disponible) » issu du module d’échantillonnage de validation (contexte Santé). En cause : <code>alert_mask_r</code> (<code>mod_validation_sampling</code>) n’était pas gardé par l’onglet actif — il se ré-évaluait à chaque changement de <code>current_project</code>, <strong>ouvrant une connexion à la base monitoring et lisant un raster d’alerte hors du chemin de chargement</strong>, puis l’observateur auto-relax émettait sa notification globalement.</p>
+<p><strong>Fix</strong> : <code>alert_mask_r</code> est gaté sur l’onglet Santé actif (<code>shiny::req(identical(app_state$active_main_tab, "monitoring"))</code>), même garde que <code>pixel_stack_r</code> (v0.75.2). Supprime le toast intempestif <strong>et</strong> retire une connexion DB + une lecture raster du chargement de projet.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.79.0" id="nemetonshiny-0790-2026-06-13">nemetonshiny 0.79.0 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0790-2026-06-13"></a></h2>
 <div class="section level4">
