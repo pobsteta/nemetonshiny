@@ -285,6 +285,14 @@ keycloak/                     → Compose dev + realms pour auth locale
 
 # Consignes de release pour ce projet
 
+**Le tag et la release GitHub sont AUTOMATISÉS** par
+`.github/workflows/release.yml` : au push sur `main`, il lit `Version:`
+dans DESCRIPTION et, pour une version stable `X.Y.Z` dont le tag n'existe
+pas, crée le tag annoté + la release (`--generate-notes`). **Ne plus faire
+`git tag` / `git push origin vX.Y.Z` / `gh release create` à la main.** Le
+job CI `version-consistency` (r.yml) garantit en amont
+`DESCRIPTION = NEWS = CITATION` (sauté en cycle dev `.9000+`).
+
 À chaque push qui modifie le code fonctionnel (hors doc pure, hors CI),
 Claude doit :
 
@@ -319,24 +327,21 @@ Claude doit :
    - NEWS.md (ajouter une entrée datée)
    - CITATION.cff si présent
 
-3. Créer un tag git annoté : git tag -a vX.Y.Z -m "Release X.Y.Z"
-
-4. Pousser le tag : git push origin vX.Y.Z
-
-5. Créer la release GitHub via gh :
-   gh release create vX.Y.Z --generate-notes
-
-6. Vérifier que les badges du README pointent vers la bonne version
-   et la dernière release (badges shields.io, R-CMD-check, codecov…).
-
-7. Si le CHANGELOG.md existe, ajouter la section [X.Y.Z] - YYYY-MM-DD
+3. Si le CHANGELOG.md existe, ajouter la section [X.Y.Z] - YYYY-MM-DD
    avec les catégories Added / Changed / Fixed / Removed.
 
-8. Mettre à jour le **`PLAN.md` du repo `nemeton`** (source unique de
+4. Mettre à jour le **`PLAN.md` du repo `nemeton`** (source unique de
    vérité partagée) : cocher la case du sous-chantier livré, ajouter
    une entrée datée au journal qui indique explicitement le commit
    `nemetonshiny@SHA` et le cycle dev. Ne jamais clore un chantier
    dans `PLAN.md` sans qu'une release correspondante ait été poussée.
+
+5. Ouvrir une PR vers `main` et la merger → `release.yml` pose le tag +
+   la release. **Rien d'autre à faire** : le badge version du README est
+   dynamique (`img.shields.io/github/v/release`) et se met à jour seul.
+
+6. **Repasser en cycle dev** : bumper DESCRIPTION en `X.Y.Z.900x`
+   (cf. *Cycle dev vs release stable* ci-dessous).
 
 ## Cycle dev vs release stable
 
@@ -349,9 +354,10 @@ chaque entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 
 ## Règles de cohérence
 
-- La version dans DESCRIPTION, le tag git et la release GitHub doivent
-  être strictement identiques.
-- Ne jamais pousser un tag sans avoir d'abord mis à jour DESCRIPTION et NEWS.md.
+- Pour une version **stable**, DESCRIPTION = tête de NEWS.md = CITATION.cff
+  (vérifié en CI par `version-consistency`). Le tag et la release, posés
+  automatiquement par `release.yml`, en découlent et sont identiques par
+  construction.
 - Vérifier que la page de documentation (pkgdown) est aussi à jour de la version et de ses tags.
 - Toujours demander confirmation avant un bump majeur.
 - Quand un changement implique aussi `nemeton`, faire les deux releases dans l'ordre cœur → app
