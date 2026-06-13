@@ -76,9 +76,10 @@ mod_monitoring_ui <- function(id) {
             shiny::radioButtons(
               ns("mode"), i18n$t("monitoring_mode_label"),
               choices = stats::setNames(
-                c("quick", "health"),
+                c("quick", "health", "reconfort"),
                 c(i18n$t("monitoring_mode_quick"),
-                  i18n$t("monitoring_mode_health"))
+                  i18n$t("monitoring_mode_health"),
+                  i18n$t("monitoring_mode_reconfort"))
               ),
               selected = "quick",
               inline   = FALSE
@@ -233,6 +234,27 @@ mod_monitoring_ui <- function(id) {
                 class = "btn-primary w-100"
               ),
               shiny::uiOutput(ns("run_health_cancel_panel"))
+            ),
+            # ----- RECONFORT params (spec 021, L6) ---------------------
+            # Mode "reconfort" : dépérissement feuillus. Le run lourd
+            # (conda IOTA²/GEODES) est opt-in ; sur un déploiement sans
+            # ce bundle, le bouton signale l'indisponibilité (la carte +
+            # le diagnostic pixel restent utilisables sur les runs déjà
+            # produits — cf. Limite #1 spec 021).
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'reconfort'", ns("mode")),
+              shiny::numericInput(
+                ns("reconfort_s2_year"),
+                i18n$t("monitoring_reconfort_s2_year"),
+                value = as.integer(format(Sys.Date(), "%Y")),
+                min = 2016L, max = as.integer(format(Sys.Date(), "%Y")),
+                step = 1L
+              ),
+              shiny::actionButton(
+                ns("run_reconfort"), i18n$t("monitoring_run_reconfort_btn"),
+                icon  = bsicons::bs_icon("activity"),
+                class = "btn-primary w-100"
+              )
             )
           )
         )
@@ -320,6 +342,16 @@ mod_monitoring_ui <- function(id) {
           icon  = bsicons::bs_icon("tree"),
           mod_monitoring_fordead_map_ui(ns("fordead_map"))
         ),
+        # ----- Sub-tab — Carte RECONFORT (spec 021, L6) --------------
+        # Alertes vectorielles de dépérissement feuillus (RECONFORT) +
+        # diagnostic pixel CRSWIR/CRre au clic. Masqué hors mode
+        # "reconfort" par l'observer mode-driven ci-dessous.
+        bslib::nav_panel(
+          title = i18n$t("monitoring_subtab_pixel_map_reconfort"),
+          value = "pixel_map_reconfort",
+          icon  = bsicons::bs_icon("tree-fill"),
+          mod_monitoring_reconfort_map_ui(ns("reconfort_map"))
+        ),
         # ----- Sub-tabs — Plan de validation (spec 014, v0.43.0) -----
         # v0.43.3 — passe de 1 onglet single avec radio à 2 sous-onglets
         # mode-driven, symétriques avec les couples Alertes/Carte :
@@ -379,19 +411,21 @@ mod_monitoring_server <- function(id, app_state) {
     # côté Plan val.) quand l'onglet est masqué.
     shiny::observe({
       mode <- input$mode
+      # Helper : hide a set of sub-tab targets.
+      .hide <- function(targets) for (t in targets)
+        bslib::nav_hide("subtab", target = t, session = session)
+      .show <- function(targets) for (t in targets)
+        bslib::nav_show("subtab", target = t, session = session)
+
+      fast_tabs     <- c("alerts_fast", "pixel_map_fast",
+                         "validation_sampling_fast")
+      fordead_tabs  <- c("alerts_fordead", "pixel_map_fordead",
+                         "validation_sampling_fordead")
+      reconfort_tabs <- c("pixel_map_reconfort")
+
       if (identical(mode, "quick")) {
-        bslib::nav_show("subtab", target = "alerts_fast",
-                        session = session)
-        bslib::nav_show("subtab", target = "pixel_map_fast",
-                        session = session)
-        bslib::nav_show("subtab", target = "validation_sampling_fast",
-                        session = session)
-        bslib::nav_hide("subtab", target = "alerts_fordead",
-                        session = session)
-        bslib::nav_hide("subtab", target = "pixel_map_fordead",
-                        session = session)
-        bslib::nav_hide("subtab", target = "validation_sampling_fordead",
-                        session = session)
+        .show(fast_tabs)
+        .hide(c(fordead_tabs, reconfort_tabs))
         # v0.37.1 — re-anchor the active tab onto a visible one.
         # Without this, when the user toggles mode the navset keeps
         # its previously-active pane — which may now be hidden —
@@ -399,19 +433,14 @@ mod_monitoring_server <- function(id, app_state) {
         bslib::nav_select("subtab", selected = "alerts_fast",
                           session = session)
       } else if (identical(mode, "health")) {
-        bslib::nav_hide("subtab", target = "alerts_fast",
-                        session = session)
-        bslib::nav_hide("subtab", target = "pixel_map_fast",
-                        session = session)
-        bslib::nav_hide("subtab", target = "validation_sampling_fast",
-                        session = session)
-        bslib::nav_show("subtab", target = "alerts_fordead",
-                        session = session)
-        bslib::nav_show("subtab", target = "pixel_map_fordead",
-                        session = session)
-        bslib::nav_show("subtab", target = "validation_sampling_fordead",
-                        session = session)
+        .hide(c(fast_tabs, reconfort_tabs))
+        .show(fordead_tabs)
         bslib::nav_select("subtab", selected = "alerts_fordead",
+                          session = session)
+      } else if (identical(mode, "reconfort")) {
+        .hide(c(fast_tabs, fordead_tabs))
+        .show(reconfort_tabs)
+        bslib::nav_select("subtab", selected = "pixel_map_reconfort",
                           session = session)
       }
     })
@@ -419,6 +448,12 @@ mod_monitoring_server <- function(id, app_state) {
     # Bumped after each FORDEAD run so the alerts reactive (wired in C5)
     # re-fetches from the DB.
     alerts_refresh <- shiny::reactiveVal(0L)
+
+    # spec 021 (L6) — bumped after a RECONFORT run completes / when the
+    # RECONFORT sub-tab opens, so the reconfort map's alerts reactive
+    # re-fetches from the DB. Independent of `alerts_refresh` (FAST /
+    # FORDEAD) so a FORDEAD run does not needlessly re-query RECONFORT.
+    reconfort_refresh <- shiny::reactiveVal(0L)
 
     # v0.52.16 — `obs_refresh` reactiveVal supprimé : il servait à
     # signaler aux consommateurs de `obs_pixel_data()` une nouvelle
@@ -588,8 +623,10 @@ mod_monitoring_server <- function(id, app_state) {
     # ----- Mode help text -------------------------------------------
     output$mode_help <- shiny::renderUI({
       i18n <- i18n_r()
-      key <- if (identical(input$mode, "health"))
-               "monitoring_mode_health_help" else "monitoring_mode_quick_help"
+      key <- switch(input$mode %||% "quick",
+                    health    = "monitoring_mode_health_help",
+                    reconfort = "monitoring_mode_reconfort_help",
+                    "monitoring_mode_quick_help")
       htmltools::tags$p(class = "text-muted small fst-italic", i18n$t(key))
     })
 
@@ -2728,6 +2765,10 @@ mod_monitoring_server <- function(id, app_state) {
                                      "pixel_map_fordead"))) {
         alerts_refresh(alerts_refresh() + 1L)
       }
+      # spec 021 — same for the RECONFORT map sub-tab.
+      if (isTRUE(input$subtab == "pixel_map_reconfort")) {
+        reconfort_refresh(reconfort_refresh() + 1L)
+      }
     }, ignoreInit = FALSE)
 
     # ----- Piste 2 — reconcile FORDEAD result state from disk --------
@@ -2826,6 +2867,37 @@ mod_monitoring_server <- function(id, app_state) {
       zone_id_r = shiny::reactive(input$zone_id),
       refresh_r = shiny::reactive(alerts_refresh())
     )
+
+    # spec 021 (L6) — Carte RECONFORT : alertes feuillus + diagnostic
+    # pixel CRSWIR/CRre. Lazy comme FORDEAD ; `reconfort_refresh` est
+    # bumpé à la fin d'un run RECONFORT (et à l'ouverture du sous-onglet)
+    # pour ré-invalider la couche d'alertes.
+    reconfort_map_ret <- mod_monitoring_reconfort_map_server(
+      "reconfort_map",
+      app_state = app_state,
+      zone_id_r = shiny::reactive(input$zone_id),
+      refresh_r = shiny::reactive(reconfort_refresh())
+    )
+
+    # spec 021 (L6) — Lancement d'un run RECONFORT.
+    #
+    # Le run cœur `nemeton::run_reconfort_dieback()` est LOURD et opt-in :
+    # il requiert un environnement conda complet (IOTA² + GEODES + OTB/
+    # Shark) absent de la plupart des déploiements. Le pipeline asynchrone
+    # complet (ExtendedTask + polling des phases env/model/ingest/mapprod/
+    # postprocess/persist) n'est pas encore câblé côté app : tant qu'il ne
+    # l'est pas, le bouton signale l'indisponibilité du lancement et
+    # renvoie l'utilisateur vers la consultation des runs déjà produits
+    # (carte + diagnostic pixel restent pleinement fonctionnels — cf.
+    # Limite #1 de la spec 021). Voir le suivi de chantier pour le câblage
+    # de `run_reconfort_async()` (miroir de `run_fordead_async`).
+    shiny::observeEvent(input$run_reconfort, {
+      i18n <- i18n_r()
+      shiny::showNotification(
+        i18n$t("monitoring_reconfort_run_unavailable"),
+        type = "warning", duration = 10
+      )
+    })
 
     # v0.43.3 — Plan de validation : 2 instances mode-driven (FAST +
     # FORDEAD), source figée par instance. Symétrique avec les couples
