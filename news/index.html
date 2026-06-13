@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.77.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.78.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.78.0" id="nemetonshiny-0780-2026-06-13">nemetonshiny 0.78.0 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0780-2026-06-13"></a></h2>
+<div class="section level4">
+<h4 id="perf--chargement-projet-récent--deux-blocages-synchrones-retirés-0-78-0">Perf — Chargement projet récent : deux blocages synchrones retirés<a class="anchor" aria-label="anchor" href="#perf--chargement-projet-r%C3%A9cent--deux-blocages-synchrones-retir%C3%A9s-0-78-0"></a></h4>
+<p>Suite à v0.75.2 (<code>build_index_stack</code> sorti du chemin), deux opérations <strong>synchrones</strong> subsistaient dans le chemin critique de chargement d’un projet récent (avant le rendu des parcelles) :</p>
+<ol style="list-style-type: decimal"><li><p><strong>Connexion DB monitoring ouverte à chaque chargement.</strong> L’observer <code>mod_home</code> ouvrait systématiquement une connexion <code>get_monitoring_db_connection()</code> (TCP connect + migration de schéma) pour hydrater <code>monitoring_zone_id</code>, alors que <code>hydrate_monitoring_zone_id()</code> est un no-op dès que l’id est déjà dans <code>metadata.json</code> (cas commun post-spec 011). Sur un hôte Postgres lent/injoignable, ce round-trip pouvait geler l’UI plusieurs secondes (libpq sans <code>connect_timeout</code>). <strong>Fix</strong> : nouveau prédicat <code>.has_monitoring_zone_id()</code> partagé ; l’observer <strong>n’ouvre plus</strong> la connexion quand l’id est déjà connu.</p></li>
+<li><p><strong><code>ug_build_sf()</code> (géométrie UGF) construit en synchrone.</strong> Une boucle <code><a href="https://r-spatial.github.io/sf/reference/geos_combine.html" class="external-link">sf::st_union()</a></code> par UGF (0,5–3 s pour beaucoup d’UGF) produisait <code>indicators_sf</code>, consommé uniquement par les onglets Synthèse / Famille / Échantillonnage / Suivi — <strong>aucun</strong> actif au chargement. <strong>Fix</strong> : extraction de <code>attach_indicators_sf()</code> + nouveau paramètre <code>load_project(build_indicators_sf = TRUE)</code>. Le chemin de chargement interactif passe <code>FALSE</code> et ré-attache <code>indicators_sf</code> via <code>later()</code> après le premier flush, en ré-assignant <code>current_project</code> pour que les reactives (inactives/suspendues) le récupèrent à l’ouverture de l’onglet.</p></li>
+</ol><p>Les autres appelants de <code>load_project()</code> conservent le build inline (défaut <code>TRUE</code>) — comportement inchangé.</p>
+<p><strong>Note (dette cœur)</strong> : un troisième garde-fou — <code>connect_timeout</code> sur la connexion Postgres pour borner le gel même quand l’hydratation est nécessaire — requiert une modification de <code><a href="https://pobsteta.github.io/nemeton/reference/db_connect.html" class="external-link">nemeton::db_connect()</a></code> (actuellement <code>.parse_pg_url()</code> + <code><a href="https://dbi.r-dbi.org/reference/dbConnect.html" class="external-link">DBI::dbConnect()</a></code> sans timeout). À traiter dans une session dédiée au cœur.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.77.1" id="nemetonshiny-0771-2026-06-12">nemetonshiny 0.77.1 (2026-06-12)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0771-2026-06-12"></a></h2>
 <div class="section level4">
