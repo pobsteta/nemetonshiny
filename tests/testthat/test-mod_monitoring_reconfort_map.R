@@ -170,3 +170,71 @@ test_that("reconfort map click produces a pixel time-series plot", {
     }
   )
 })
+
+# ---- RECONFORT progress dispatcher (.reconfort_handle_progress_event) ----
+
+test_that(".reconfort_handle_progress_event toasts on reconfort:phase", {
+  skip_if_not_installed("shiny")
+  captured <- list()
+  i18n <- nemetonshiny:::get_i18n("fr")
+  fake_session <- list(ns = function(id) paste0("monitoring-", id))
+
+  testthat::with_mocked_bindings(
+    showNotification = function(ui, id = NULL, ...) {
+      captured$ui <<- ui; captured$id <<- id; captured$args <<- list(...)
+      invisible(NULL)
+    },
+    .package = "shiny",
+    {
+      nemetonshiny:::.reconfort_handle_progress_event(
+        ev = list(current = "reconfort:phase", phase_name = "ingest",
+                  completed = 4L, total = 10L),
+        session = fake_session, i18n = i18n
+      )
+    }
+  )
+  expect_false(is.null(captured$ui))
+  rendered <- htmltools::renderTags(captured$ui)$html
+  expect_match(rendered, "Phase 5/10", fixed = TRUE)
+  expect_match(rendered, "Sentinel-2", fixed = TRUE)  # phase label
+  expect_identical(captured$id, "monitoring-reconfort_progress")
+  expect_null(captured$args$duration)
+})
+
+test_that(".reconfort_handle_progress_event is silent on reconfort:start", {
+  skip_if_not_installed("shiny")
+  n <- 0L
+  fake_session <- list(ns = function(id) paste0("monitoring-", id))
+  testthat::with_mocked_bindings(
+    showNotification = function(...) { n <<- n + 1L; invisible(NULL) },
+    .package = "shiny",
+    {
+      nemetonshiny:::.reconfort_handle_progress_event(
+        ev = list(current = "reconfort:start", zone_id = 1L),
+        session = fake_session, i18n = nemetonshiny:::get_i18n("fr")
+      )
+    }
+  )
+  expect_equal(n, 0L)
+})
+
+test_that(".reconfort_handle_progress_event surfaces reconfort:error", {
+  skip_if_not_installed("shiny")
+  captured <- list()
+  fake_session <- list(ns = function(id) paste0("monitoring-", id))
+  testthat::with_mocked_bindings(
+    showNotification = function(ui, id = NULL, ...) {
+      captured$ui <<- ui; captured$args <<- list(...); invisible(NULL)
+    },
+    removeNotification = function(...) invisible(NULL),
+    .package = "shiny",
+    {
+      nemetonshiny:::.reconfort_handle_progress_event(
+        ev = list(current = "reconfort:error", error_message = "conda missing"),
+        session = fake_session, i18n = nemetonshiny:::get_i18n("fr")
+      )
+    }
+  )
+  expect_match(as.character(captured$ui), "conda missing", fixed = TRUE)
+  expect_identical(captured$args$type, "error")
+})
