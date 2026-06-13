@@ -443,11 +443,20 @@ mod_home_server <- function(id, app_state) {
       if (requireNamespace("later", quietly = TRUE)) {
         .deferred_ind_id <- project$id
         later::later(function() {
-          # Skip if the user switched to another project meanwhile.
-          if (!identical(app_state$project_id, .deferred_ind_id)) return()
-          proj <- app_state$current_project
-          if (is.null(proj) || !is.null(proj$indicators_sf)) return()
-          app_state$current_project <- attach_indicators_sf(proj)
+          # A later() callback runs OUTSIDE any reactive consumer, so
+          # reading/writing `app_state` here would raise "Can't access
+          # reactive value outside of reactive consumer". Re-enter the
+          # session's reactive domain and isolate() so the read of
+          # project_id/current_project and the write back are legal and
+          # the downstream (suspended) reactives flush in this session.
+          shiny::withReactiveDomain(session, shiny::isolate({
+            cur <- app_state$current_project
+            # Attach only if still the same project and not already done.
+            if (identical(app_state$project_id, .deferred_ind_id) &&
+                !is.null(cur) && is.null(cur$indicators_sf)) {
+              app_state$current_project <- attach_indicators_sf(cur)
+            }
+          }))
         }, delay = 0.1)
       } else {
         app_state$current_project <- attach_indicators_sf(project)

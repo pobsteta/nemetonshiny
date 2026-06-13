@@ -647,6 +647,66 @@ test_that("load_project observer loads project and updates app_state", {
   )
 })
 
+test_that("recent-project load defers indicators_sf attach via later() without reactive-context error", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("sf")
+  skip_if_not_installed("later")
+
+  mock_parcels <- sf::st_sf(
+    id = "p1",
+    code_insee = "01001",
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(rbind(c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0))))
+    ),
+    crs = 4326
+  )
+  mock_project <- list(
+    id = "deferred_proj",
+    metadata = list(name = "Deferred", status = "draft"),
+    parcels = mock_parcels,
+    indicators = NULL
+  )
+
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    list_recent_projects = mock_empty_projects,
+    load_project = function(project_id, ...) mock_project,
+    # Tag the project so we can assert the deferred attach ran.
+    attach_indicators_sf = function(p) { p$indicators_sf <- "ATTACHED"; p },
+    mod_search_server = mock_search_server,
+    mod_map_server = mock_map_server,
+    mod_project_server = mock_project_server,
+    mod_progress_server = mock_progress_server,
+    read_progress_state = function(project_id) NULL,
+    {
+      as <- make_app_state()
+      shiny::testServer(
+        nemetonshiny:::mod_home_server,
+        args = list(app_state = as),
+        {
+          session$setInputs(load_project = "deferred_proj")
+          session$flushReact()
+
+          # Build is DEFERRED: indicators_sf absent right after load.
+          expect_null(as$current_project$indicators_sf)
+
+          # Let the 0.1 s later() delay elapse, then drain the event loop.
+          # The deferred callback must NOT raise "Can't access reactive
+          # value outside of reactive consumer" (regression guard, v0.79.1)
+          # and must attach indicators_sf onto the live project via the
+          # session's reactive domain.
+          Sys.sleep(0.2)
+          expect_no_error(later::run_now())
+          session$flushReact()
+          expect_equal(as$current_project$indicators_sf, "ATTACHED")
+        }
+      )
+    }
+  )
+})
+
 test_that("load_project handles DOM-TOM commune codes", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")

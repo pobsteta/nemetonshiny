@@ -1,3 +1,24 @@
+# nemetonshiny 0.79.0.9001 (dev) (2026-06-13)
+
+### Fix — Régression v0.78.0 : l'attache différée d'`indicators_sf` plantait
+
+Le chargement d'un projet récent déclenchait dans la console :
+`Can't access reactive value 'project_id' outside of reactive consumer`.
+
+**Cause** : le callback `later::later()` introduit en v0.78.0 (qui diffère
+le build `ug_build_sf` → `attach_indicators_sf`) lisait/écrivait
+`app_state$project_id` / `app_state$current_project` **hors de tout
+contexte réactif** — un callback `later` ne s'exécute dans aucun
+consommateur réactif. Le callback **plantait avant** d'attacher
+`indicators_sf`, privant Synthèse / Famille / Échantillonnage de leur
+géométrie UGF pour tout projet ouvert via l'écran récent.
+
+**Fix** : le corps du callback s'exécute désormais dans le domaine réactif
+de la session via `shiny::withReactiveDomain(session, shiny::isolate(...))`,
+rendant légales la lecture et l'écriture des valeurs réactives et
+propageant l'invalidation aux reactives (suspendues) en aval. Test de
+non-régression dédié (`later::run_now()` exécute réellement le callback).
+
 # nemetonshiny 0.79.0 (2026-06-13)
 
 ### Perf — `connect_timeout` borné sur la connexion monitoring
