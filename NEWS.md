@@ -19,6 +19,22 @@ rendant légales la lecture et l'écriture des valeurs réactives et
 propageant l'invalidation aux reactives (suspendues) en aval. Test de
 non-régression dédié (`later::run_now()` exécute réellement le callback).
 
+### Fix — Toast « Aucun pixel sain » qui fuyait au chargement
+
+Le chargement d'un projet pouvait afficher, par-dessus la carte de
+l'Accueil, le toast « Aucun pixel sain — témoins tirés en classe N (la
+plus saine disponible) » issu du module d'échantillonnage de validation
+(contexte Santé). En cause : `alert_mask_r` (`mod_validation_sampling`)
+n'était pas gardé par l'onglet actif — il se ré-évaluait à chaque
+changement de `current_project`, **ouvrant une connexion à la base
+monitoring et lisant un raster d'alerte hors du chemin de chargement**,
+puis l'observateur auto-relax émettait sa notification globalement.
+
+**Fix** : `alert_mask_r` est gaté sur l'onglet Santé actif
+(`shiny::req(identical(app_state$active_main_tab, "monitoring"))`), même
+garde que `pixel_stack_r` (v0.75.2). Supprime le toast intempestif **et**
+retire une connexion DB + une lecture raster du chargement de projet.
+
 # nemetonshiny 0.79.0 (2026-06-13)
 
 ### Perf — `connect_timeout` borné sur la connexion monitoring

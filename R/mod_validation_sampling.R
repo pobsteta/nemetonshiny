@@ -269,6 +269,15 @@ mod_validation_sampling_server <- function(id, app_state,
     # so its distribution drives both the on-screen hint and the
     # control-class auto-relax. Returns NULL when no cached mask exists.
     alert_mask_r <- shiny::reactive({
+      # PERF/UX — ne toucher la base monitoring + lire le raster d'alerte
+      # QUE lorsque l'onglet Santé est réellement actif. Sinon cette
+      # reactive se ré-évalue à chaque changement de `current_project` (donc
+      # à chaque chargement de projet depuis l'Accueil), ouvrant une
+      # connexion DB + lisant un raster hors du chemin de chargement, et
+      # l'observateur auto-relax ci-dessous fait fuiter son toast « Aucun
+      # pixel sain » par-dessus la carte. Même garde que `pixel_stack_r`
+      # (v0.75.2) : `active_main_tab` est exposé par app_server.
+      shiny::req(identical(app_state$active_main_tab, "monitoring"))
       proj <- app_state$current_project
       if (is.null(proj) || is.null(proj$path)) return(NULL)
       zid <- suppressWarnings(as.integer(proj$metadata$monitoring_zone_id))
