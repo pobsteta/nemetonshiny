@@ -419,6 +419,7 @@ keycloak/                     → Compose dev + realms pour auth locale
 </div>
 <div class="section level1">
 <h1 id="consignes-de-release-pour-ce-projet">Consignes de release pour ce projet<a class="anchor" aria-label="anchor" href="#consignes-de-release-pour-ce-projet"></a></h1>
+<p><strong>Le tag et la release GitHub sont AUTOMATISÉS</strong> par <code>.github/workflows/release.yml</code> : au push sur <code>main</code>, il lit <code>Version:</code> dans DESCRIPTION et, pour une version stable <code>X.Y.Z</code> dont le tag n’existe pas, crée le tag annoté + la release (<code>--generate-notes</code>). <strong>Ne plus faire <code>git tag</code> / <code>git push origin vX.Y.Z</code> / <code>gh release create</code> à la main.</strong> Le job CI <code>version-consistency</code> (r.yml) garantit en amont <code>DESCRIPTION = NEWS = CITATION</code> (sauté en cycle dev <code>.9000+</code>).</p>
 <p>À chaque push qui modifie le code fonctionnel (hors doc pure, hors CI), Claude doit :</p>
 <ol style="list-style-type: decimal"><li>
 <p>Déterminer le type de changement selon Conventional Commits (feat: / fix: / BREAKING CHANGE:) → bump semver correspondant (minor / patch / major). <strong>Ne PAS sous-bumper</strong> : appliquer strictement la table ci-dessous (révision 2026-06-02 suite au constat que l’app stagnait sur 0.52.x pendant que le cœur avançait sur 0.55 → 0.60).</p>
@@ -452,20 +453,17 @@ keycloak/                     → Compose dev + realms pour auth locale
 <li>NEWS.md (ajouter une entrée datée)</li>
 <li>CITATION.cff si présent</li>
 </ul></li>
-<li><p>Créer un tag git annoté : git tag -a vX.Y.Z -m “Release X.Y.Z”</p></li>
-<li><p>Pousser le tag : git push origin vX.Y.Z</p></li>
-<li><p>Créer la release GitHub via gh : gh release create vX.Y.Z –generate-notes</p></li>
-<li><p>Vérifier que les badges du README pointent vers la bonne version et la dernière release (badges shields.io, R-CMD-check, codecov…).</p></li>
 <li><p>Si le CHANGELOG.md existe, ajouter la section [X.Y.Z] - YYYY-MM-DD avec les catégories Added / Changed / Fixed / Removed.</p></li>
 <li><p>Mettre à jour le <strong><code>PLAN.md</code> du repo <code>nemeton</code></strong> (source unique de vérité partagée) : cocher la case du sous-chantier livré, ajouter une entrée datée au journal qui indique explicitement le commit <code>nemetonshiny@SHA</code> et le cycle dev. Ne jamais clore un chantier dans <code>PLAN.md</code> sans qu’une release correspondante ait été poussée.</p></li>
+<li><p>Ouvrir une PR vers <code>main</code> et la merger → <code>release.yml</code> pose le tag + la release. <strong>Rien d’autre à faire</strong> : le badge version du README est dynamique (<code>img.shields.io/github/v/release</code>) et se met à jour seul.</p></li>
+<li><p><strong>Repasser en cycle dev</strong> : bumper DESCRIPTION en <code>X.Y.Z.900x</code> (cf. <em>Cycle dev vs release stable</em> ci-dessous).</p></li>
 </ol><div class="section level2">
 <h2 id="cycle-dev-vs-release-stable">Cycle dev vs release stable<a class="anchor" aria-label="anchor" href="#cycle-dev-vs-release-stable"></a></h2>
 <p>Le repo suit un cycle dev <code>X.Y.Z.9000+</code> qui s’accumule entre les releases stables. Chaque commit fonctionnel pousse le quatrième segment (<code>.9001</code>, <code>.9002</code>, …) sans tag ; quand un chantier est complet (épaississement clos, hardening fini, etc.), on bumpe en <code>vX.Y.Z</code> stable et on crée le tag + release GitHub. Le PLAN.md indique pour chaque entrée le cycle dev concerné (ex. <code>0.21.0.9000</code> → <code>0.21.0.9001</code>).</p>
 </div>
 <div class="section level2">
 <h2 id="règles-de-cohérence">Règles de cohérence<a class="anchor" aria-label="anchor" href="#r%C3%A8gles-de-coh%C3%A9rence"></a></h2>
-<ul><li>La version dans DESCRIPTION, le tag git et la release GitHub doivent être strictement identiques.</li>
-<li>Ne jamais pousser un tag sans avoir d’abord mis à jour DESCRIPTION et NEWS.md.</li>
+<ul><li>Pour une version <strong>stable</strong>, DESCRIPTION = tête de NEWS.md = CITATION.cff (vérifié en CI par <code>version-consistency</code>). Le tag et la release, posés automatiquement par <code>release.yml</code>, en découlent et sont identiques par construction.</li>
 <li>Vérifier que la page de documentation (pkgdown) est aussi à jour de la version et de ses tags.</li>
 <li>Toujours demander confirmation avant un bump majeur.</li>
 <li>Quand un changement implique aussi <code>nemeton</code>, faire les deux releases dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).</li>
