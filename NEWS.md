@@ -1,4 +1,4 @@
-# nemetonshiny 0.79.0.9001 (dev) (2026-06-13)
+# nemetonshiny 0.79.1 (2026-06-13)
 
 ### Fix — Régression v0.78.0 : l'attache différée d'`indicators_sf` plantait
 
