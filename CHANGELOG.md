@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.80.0\] - 2026-06-13
+
+### Added
+
+- Onglet RAG (`mod_rag_admin`) : bouton « Réinitialiser depuis le corpus
+  du package » (près de l’import/export manifeste). Resynchronise la
+  copie éditable du manifeste — créée une fois puis figée, donc dérivant
+  de la seed du package à chaque release cœur — via
+  `nemeton::reset_knowledge_manifest(confirm = TRUE)` (cœur ≥ 0.79.0),
+  après une modale de confirmation, puis recharge l’éditeur depuis la
+  copie rafraîchie. Nouvelles clés i18n FR/EN
+  `rag_reset_corpus{,_title,_warn,_done}`
+  - clé générique `confirm`. Plancher `Imports: nemeton (>= 0.79.0)`.
+
 ## \[0.79.1\] - 2026-06-13
 
 ### Fixed
