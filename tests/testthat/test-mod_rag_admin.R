@@ -285,3 +285,75 @@ test_that("importing a manifest CSV replaces the editable table", {
     }
   )
 })
+
+test_that("reset_corpus confirm resyncs manifest from the package seed", {
+  skip_if_not_installed("shiny")
+  # reset_knowledge_manifest lands in nemeton >= 0.79.0; skip on older cores
+  # (local_mocked_bindings requires the binding to exist in the namespace).
+  skip_if_not(exists("reset_knowledge_manifest", where = asNamespace("nemeton"),
+                     inherits = FALSE),
+              "nemeton >= 0.79.0 (reset_knowledge_manifest) not installed")
+
+  reset_state <- new.env()
+  reset_state$called  <- FALSE
+  reset_state$confirm <- NA
+
+  # A 1-row "seed" returned only AFTER reset fires, so we can assert the
+  # editor reloaded from the refreshed writable copy.
+  seed <- data.frame(
+    doc_id = "seed_doc", title = "Seed", lang = "fr", status = "active",
+    stringsAsFactors = FALSE
+  )
+
+  testthat::local_mocked_bindings(
+    knowledge_manifest_path  = function(writable = TRUE) tempfile(fileext = ".csv"),
+    read_knowledge_manifest  = function(path) {
+      if (isTRUE(reset_state$called)) seed else .rag_fake_manifest()
+    },
+    knowledge_manifest_vocab = function() list(
+      langs = c("fr", "en"), statuses = c("active", "to_confirm"),
+      strategies = c("pdf", "url"), doc_types = c("guide"),
+      licenses = c("CC-BY-4.0")
+    ),
+    validate_knowledge_manifest = function(manifest) {
+      force(manifest)
+      data.frame(row = integer(0), doc_id = character(0),
+                 severity = character(0), field = character(0),
+                 message = character(0), stringsAsFactors = FALSE)
+    },
+    reset_knowledge_manifest = function(confirm = TRUE) {
+      reset_state$called  <- TRUE
+      reset_state$confirm <- confirm
+      invisible(TRUE)
+    },
+    .package = "nemeton"
+  )
+
+  mock_app_state <- shiny::reactiveValues(
+    language = "fr",
+    auth = list(authenticated = TRUE, user_roles = character(0))
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_rag_admin_server,
+    args = list(id = "rag_admin", app_state = mock_app_state,
+                con = NULL, con_url = function() ""),
+    {
+      session$flushReact()
+      # Initial editor: the 2-row fake manifest.
+      expect_equal(nrow(session$returned$manifest()), 2L)
+
+      # Opening the confirm modal must not error and must not reset yet.
+      session$setInputs(reset_corpus = 1L)
+      expect_false(reset_state$called)
+
+      # Confirm -> core reset called with confirm=TRUE, editor reloaded
+      # from the refreshed writable copy (the 1-row seed).
+      session$setInputs(reset_corpus_confirm = 1L)
+      expect_true(reset_state$called)
+      expect_true(reset_state$confirm)
+      expect_equal(nrow(session$returned$manifest()), 1L)
+      expect_identical(session$returned$manifest()$doc_id, "seed_doc")
+    }
+  )
+})

@@ -136,6 +136,13 @@ mod_rag_admin_ui <- function(id) {
         shiny::downloadButton(ns("export_csv"), i18n$t("rag_btn_export_csv"),
                               icon = shiny::icon("download"),
                               class = "btn-outline-secondary btn-sm"),
+        # Resync the writable manifest copy to the package-shipped corpus
+        # seed (nemeton::reset_knowledge_manifest, >= 0.79.0). The writable
+        # copy is created once then frozen, so it drifts from the seed
+        # across core releases — this restores it on demand.
+        shiny::actionButton(ns("reset_corpus"), i18n$t("rag_reset_corpus"),
+                            icon = shiny::icon("rotate-left"),
+                            class = "btn-outline-warning btn-sm"),
         # Import a manifest CSV from disk : parsed by
         # nemeton::read_knowledge_manifest() then loaded into the
         # editable table (the on-disk CSV is only overwritten on Save).
@@ -408,6 +415,39 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
       manifest_redraw(manifest_redraw() + 1L)
       shiny::showNotification(
         sprintf(i18n$t("rag_import_csv_ok"), nrow(df)), type = "message")
+    })
+
+    # Reset : resync the writable manifest copy to the package-shipped
+    # corpus seed. Destructive (discards local edits to the writable CSV),
+    # so it is two-step (confirm modal). On confirm, reload the editor from
+    # the refreshed writable copy and redraw the table.
+    shiny::observeEvent(input$reset_corpus, {
+      i18n <- lang()
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("rag_reset_corpus_title"),
+        i18n$t("rag_reset_corpus_warn"),
+        footer = shiny::tagList(
+          shiny::modalButton(i18n$t("cancel")),
+          shiny::actionButton(ns("reset_corpus_confirm"),
+                              i18n$t("confirm"), class = "btn-warning")
+        )
+      ))
+    })
+
+    shiny::observeEvent(input$reset_corpus_confirm, {
+      i18n <- lang()
+      shiny::removeModal()
+      tryCatch({
+        nemeton::reset_knowledge_manifest(confirm = TRUE)
+        # Reload the editor from the refreshed writable copy.
+        man(nemeton::read_knowledge_manifest(
+          nemeton::knowledge_manifest_path(writable = TRUE)))
+        manifest_redraw(manifest_redraw() + 1L)
+        shiny::showNotification(i18n$t("rag_reset_corpus_done"),
+                                type = "message")
+      }, error = function(e) {
+        shiny::showNotification(conditionMessage(e), type = "error")
+      })
     })
 
     # Export : write the CURRENT (possibly edited, unsaved) manifest with

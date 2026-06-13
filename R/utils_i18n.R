@@ -1190,6 +1190,7 @@ TRANSLATIONS <- list(
     en = "This action cannot be undone. All project data will be lost."
   ),
   cancel = list(fr = "Annuler", en = "Cancel"),
+  confirm = list(fr = "Confirmer", en = "Confirm"),
 
   # ============================================================
   # Progress Messages - Data Sources
@@ -3176,6 +3177,22 @@ TRANSLATIONS <- list(
   rag_btn_refresh = list(fr = "Rafra\u00eechir", en = "Refresh"),
   rag_btn_import_csv = list(fr = "Importer un CSV", en = "Import CSV"),
   rag_btn_export_csv = list(fr = "Exporter (CSV)", en = "Export (CSV)"),
+  rag_reset_corpus = list(
+    fr = "R\u00e9initialiser depuis le corpus du package",
+    en = "Reset from package corpus"
+  ),
+  rag_reset_corpus_title = list(
+    fr = "R\u00e9initialiser le corpus ?",
+    en = "Reset the corpus?"
+  ),
+  rag_reset_corpus_warn = list(
+    fr = "\u00c9crase votre copie \u00e9ditable par le corpus livr\u00e9 avec le package. Vos modifications non export\u00e9es seront perdues.",
+    en = "Overwrites your editable copy with the corpus shipped in the package. Your unexported changes will be lost."
+  ),
+  rag_reset_corpus_done = list(
+    fr = "Corpus r\u00e9initialis\u00e9 depuis le package.",
+    en = "Corpus reset from the package."
+  ),
   rag_import_csv_placeholder = list(fr = "Aucun fichier", en = "No file"),
   rag_import_csv_ok = list(
     fr = "Manifeste import\u00e9 (%d documents). V\u00e9rifiez puis Enregistrer.",
