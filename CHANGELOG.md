@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.79.0] - 2026-06-13
+
+### Added
+
+- `get_monitoring_db_connection()` gagne un paramètre `connect_timeout`
+  (défaut `2L`, secondes) forwardé à `nemeton::db_connect()` via le
+  wrapper rétro-compatible `.nemeton_db_connect()` (introspection des
+  `formals` : transmis seulement si le cœur l'expose). Borne la phase de
+  connexion Postgres pour que le chemin d'hydratation `monitoring_zone_id`
+  ne gèle pas l'UI sur un hôte injoignable. S'appuie sur
+  `nemeton::db_connect(connect_timeout=)` exposé depuis le cœur v0.76.0 ;
+  plancher `Imports` inchangé (consommation opportuniste).
+
 ## [0.78.0] - 2026-06-13
 
 ### Changed

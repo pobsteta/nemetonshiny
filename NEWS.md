@@ -1,6 +1,6 @@
-# nemetonshiny 0.78.0.9001 (dev) (2026-06-13)
+# nemetonshiny 0.79.0 (2026-06-13)
 
-### Perf — `connect_timeout` borné sur la connexion monitoring (rétro-compatible)
+### Perf — `connect_timeout` borné sur la connexion monitoring
 
 Complète le Fix #1 de v0.78.0 : `get_monitoring_db_connection()` gagne un
 paramètre `connect_timeout = 2L` (secondes) forwardé à
@@ -10,13 +10,14 @@ réellement nécessaire (id absent de `metadata.json`) ne gèle pas l'UI
 pendant le timeout TCP par défaut de libpq (plusieurs dizaines de
 secondes sur un hôte injoignable).
 
-**Rétro-compatible** : un wrapper `.nemeton_db_connect()` introspecte
-`formals(nemeton::db_connect)` et ne transmet `connect_timeout` que si le
-cœur installé l'expose. Le paramètre arrive dans `nemeton::db_connect()`
-à une release cœur > 0.77.x ; tant que le cœur installé ne le porte pas,
-le wrapper dégrade à l'appel 2-arguments — **no-op strict** jusqu'à la
-release cœur, après quoi le timeout s'active automatiquement (grâce au
-remote `@*release`, sans bump app).
+Le paramètre `connect_timeout` est exposé par `nemeton::db_connect()`
+**depuis le cœur v0.76.0** (`feat(db)`). L'app le consomme via un wrapper
+`.nemeton_db_connect()` **rétro-compatible** : il introspecte
+`formals(nemeton::db_connect)` et ne transmet l'argument que si le cœur
+installé l'expose, dégradant sinon à l'appel 2-arguments. Le plancher
+`Imports: nemeton (>= 0.67.0)` n'est donc **pas** bumpé — le timeout
+s'active automatiquement dès qu'un cœur ≥ 0.76.0 est chargé (cas par
+défaut via le remote `@*release`), sans l'exiger comme minimum strict.
 
 # nemetonshiny 0.78.0 (2026-06-13)
 
