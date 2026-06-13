@@ -2758,6 +2758,133 @@ TRANSLATIONS <- list(
     en = "FORDEAD failed at {phase}: {msg}"
   ),
 
+  # ----- RECONFORT (L6, spec 021) ---------------------------------------
+  # 3e mode de Suivi sanitaire : deperissement des feuillus via RECONFORT
+  # (CRSWIR + CRre, pas de modele harmonique). Accents en \uXXXX (rule 4).
+  monitoring_mode_reconfort = list(
+    fr = "D\u00e9p\u00e9rissement feuillus (RECONFORT)",
+    en = "Broadleaf dieback (RECONFORT)"
+  ),
+  monitoring_mode_reconfort_help = list(
+    fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Lourd, opt-in (conda IOTA\u00b2/GEODES).",
+    en = "Detect broadleaf dieback (oak, chestnut) using RECONFORT (CRSWIR + CRre). Heavy, opt-in (conda IOTA\u00b2/GEODES)."
+  ),
+  monitoring_subtab_pixel_map_reconfort = list(
+    fr = "Carte RECONFORT",
+    en = "RECONFORT map"
+  ),
+  monitoring_reconfort_outside_validity = list(
+    fr = "Zone hors domaine de calibration RECONFORT \u2014 r\u00e9sultats indicatifs (avertissement, non bloquant).",
+    en = "Zone outside the RECONFORT calibration domain \u2014 results are indicative (advisory, non-blocking)."
+  ),
+  monitoring_reconfort_map_empty_title = list(
+    fr = "Aucune alerte RECONFORT",
+    en = "No RECONFORT alert"
+  ),
+  monitoring_reconfort_map_empty_body = list(
+    fr = "Lancez un diagnostic RECONFORT ou s\u00e9lectionnez une zone disposant d'un run pour afficher les alertes.",
+    en = "Run a RECONFORT diagnosis or pick a zone with an existing run to display alerts."
+  ),
+  monitoring_reconfort_class_2 = list(
+    fr = "D\u00e9p\u00e9rissant",
+    en = "Declining"
+  ),
+  monitoring_reconfort_class_3 = list(
+    fr = "Tr\u00e8s d\u00e9p\u00e9rissant",
+    en = "Severely declining"
+  ),
+  monitoring_reconfort_class_title = list(
+    fr = "Classe de d\u00e9p\u00e9rissement",
+    en = "Dieback class"
+  ),
+  monitoring_reconfort_popup_class = list(fr = "Classe", en = "Class"),
+  monitoring_reconfort_popup_stress = list(
+    fr = "Indice de stress",
+    en = "Stress index"
+  ),
+  monitoring_reconfort_pixel_no_data = list(
+    fr = "Diagnostic pixel indisponible \u00e0 cet emplacement (aucun run RECONFORT, ou pixel hors emprise mod\u00e9lis\u00e9e).",
+    en = "Pixel diagnosis unavailable here (no RECONFORT run, or pixel outside the modelled extent)."
+  ),
+  monitoring_reconfort_crswir = list(
+    fr = "CRSWIR observ\u00e9",
+    en = "Observed CRSWIR"
+  ),
+  monitoring_reconfort_crre = list(
+    fr = "CRre observ\u00e9",
+    en = "Observed CRre"
+  ),
+  monitoring_reconfort_species = list(fr = "Essence", en = "Species"),
+  monitoring_reconfort_model = list(fr = "Mod\u00e8le", en = "Model"),
+  monitoring_reconfort_pixel_yaxis = list(
+    fr = "Indice spectral",
+    en = "Spectral index"
+  ),
+  monitoring_reconfort_pixel_modal_title_fmt = list(
+    fr = "Diagnostic pixel RECONFORT (%.5f, %.5f)",
+    en = "RECONFORT pixel diagnosis (%.5f, %.5f)"
+  ),
+  monitoring_reconfort_s2_year = list(
+    fr = "Ann\u00e9e Sentinel-2",
+    en = "Sentinel-2 year"
+  ),
+  monitoring_run_reconfort_btn = list(
+    fr = "Lancer le diagnostic RECONFORT",
+    en = "Run RECONFORT diagnosis"
+  ),
+  monitoring_reconfort_run_unavailable = list(
+    fr = "Lancement RECONFORT indisponible : environnement conda (IOTA\u00b2/GEODES) requis. La carte et le diagnostic restent accessibles sur les runs d\u00e9j\u00e0 produits.",
+    en = "RECONFORT run unavailable: conda environment (IOTA\u00b2/GEODES) required. The map and pixel diagnosis remain available on existing runs."
+  ),
+  monitoring_reconfort_starting = list(
+    fr = "Diagnostic RECONFORT lanc\u00e9. Dur\u00e9e estim\u00e9e : plusieurs minutes \u00e0 heures.",
+    en = "RECONFORT diagnosis started. Estimated duration: minutes to hours."
+  ),
+  monitoring_reconfort_success = list(
+    fr = "Diagnostic RECONFORT termin\u00e9 : %d alertes ins\u00e9r\u00e9es en %.0f s.",
+    en = "RECONFORT diagnosis completed: %d alerts inserted in %.0f s."
+  ),
+  monitoring_reconfort_error = list(
+    fr = "Erreur lors du diagnostic RECONFORT",
+    en = "RECONFORT diagnosis error"
+  ),
+  monitoring_reconfort_phase_progress = list(
+    fr = "Phase {n}/{total} \u2014 {label}",
+    en = "Phase {n}/{total} \u2014 {label}"
+  ),
+  monitoring_reconfort_phase_done = list(
+    fr = "\u2713 {label}",
+    en = "\u2713 {label}"
+  ),
+  monitoring_reconfort_complete = list(
+    fr = "RECONFORT termin\u00e9 \u00b7 {n} alertes \u00b7 {sec}s",
+    en = "RECONFORT complete \u00b7 {n} alerts \u00b7 {sec}s"
+  ),
+  monitoring_reconfort_phase_env = list(
+    fr = "Pr\u00e9paration de l'environnement",
+    en = "Environment setup"
+  ),
+  monitoring_reconfort_phase_model = list(
+    fr = "Chargement du mod\u00e8le",
+    en = "Model loading"
+  ),
+  monitoring_reconfort_phase_ingest = list(
+    fr = "Ingestion Sentinel-2",
+    en = "Sentinel-2 ingestion"
+  ),
+  monitoring_reconfort_phase_mapprod = list(
+    fr = "Production des cartes",
+    en = "Map production"
+  ),
+  monitoring_reconfort_phase_postprocess = list(
+    fr = "Post-traitement",
+    en = "Post-processing"
+  ),
+  monitoring_reconfort_phase_persist = list(
+    fr = "Persistance des r\u00e9sultats",
+    en = "Persisting results"
+  ),
+
   # ----- ntfy push messages (E6 \u2014 out-of-band FORDEAD progress) ------
   # Sent worker-side by .ntfy_send() so a FORDEAD run that outlives
   # its Shiny session still notifies the user. These strings are
