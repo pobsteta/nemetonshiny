@@ -811,7 +811,66 @@ invalidate_indicators <- function(project_id) {
 #' @return List with project data, or NULL if not found.
 #'
 #' @noRd
-load_project <- function(project_id) {
+#' Build and attach `indicators_sf` to a (migrated) project
+#'
+#' @description
+#' Builds `project$indicators_sf` — one row per UGF with dissolved
+#' geometry + indicator columns joined via `ug_id` — and refreshes the
+#' geometry-free `project$indicators` with the FRESH UGF metadata. Used
+#' by family/synthesis/sampling/monitoring so they can map, score and
+#' aggregate at the UGF level without rejoining parcels.
+#'
+#' IMPORTANT: indicators.parquet captures UGF metadata (label, groupe,
+#' surfaces, cadastral_refs) AT COMPUTE TIME. If the user later renames
+#' / re-groups / splits UGFs, ugs.json gets updated but the parquet
+#' still carries stale metadata. We therefore rebuild BOTH
+#' `project$indicators` and `project$indicators_sf` from the fresh
+#' `ug_sf`, keeping only the indicator VALUES from the parquet. This way
+#' every consumer (mod_family table, mod_synthesis, export, ...) sees
+#' the current UGF labels/groupes without having to re-join manually.
+#'
+#' Split out of [load_project()] so the interactive load path can DEFER
+#' it off the critical rendering path (see the `mod_home` load
+#' observer): `ug_build_sf()` does one `sf::st_union()` per UGF and can
+#' cost 0.5–3 s on projects with many UGFs, none of which is needed to
+#' render parcels on the map. The `tenements`/`ugs` data must already be
+#' present (i.e. call [ensure_project_migrated()] first).
+#'
+#' Non-blocking: any failure is warned and the project is returned
+#' unchanged (without `indicators_sf`).
+#'
+#' @param project A migrated project list.
+#' @return The project, possibly with `indicators_sf` attached and
+#'   `indicators` refreshed.
+#' @noRd
+attach_indicators_sf <- function(project) {
+  tryCatch({
+    if (!is.null(project$indicators) && has_ug_data(project) &&
+        "ug_id" %in% names(project$indicators)) {
+      ug_sf <- ug_build_sf(project)
+      if (!is.null(ug_sf) && nrow(ug_sf) > 0) {
+        # Drop stale UGF metadata columns from indicators before merge
+        dup_cols <- intersect(
+          c("label", "groupe", "surface_m2", "surface_sig_m2",
+            "n_tenements", "cadastral_refs"),
+          names(project$indicators)
+        )
+        ind <- project$indicators[, setdiff(names(project$indicators), dup_cols),
+                                  drop = FALSE]
+        project$indicators_sf <- merge(ug_sf, ind, by = "ug_id", all.x = TRUE)
+        # Refresh the geometry-free indicators with fresh UGF metadata.
+        # Single source of truth so mod_family, mod_synthesis and
+        # service_export stay in sync with the UGF tab.
+        project$indicators <- sf::st_drop_geometry(project$indicators_sf)
+      }
+    }
+  }, error = function(e) {
+    cli::cli_warn("indicators_sf build failed (non-blocking): {e$message}")
+  })
+  project
+}
+
+load_project <- function(project_id, build_indicators_sf = TRUE) {
   project_path <- get_project_path(project_id)
   if (is.null(project_path)) {
     cli::cli_warn("Project not found: {project_id}")
@@ -833,44 +892,22 @@ load_project <- function(project_id) {
     comments = load_comments(project_id)
   )
 
-  # Auto-migrate to v2 (UG support) if needed
-  tryCatch({
-    project <- ensure_project_migrated(project_id, project)
-    # Build indicators_sf: one row per UGF with geometry + indicator
-    # columns joined via ug_id. Used by family/synthesis/export so
-    # they can map, score and aggregate at the UGF level without
-    # rejoining parcels. Requires both UGF data and indicator data.
-    #
-    # IMPORTANT: indicators.parquet captures UGF metadata (label, groupe,
-    # surfaces, cadastral_refs) AT COMPUTE TIME. If the user later renames
-    # / re-groups / splits UGFs, ugs.json gets updated but the parquet
-    # still carries stale metadata. We therefore rebuild BOTH
-    # project$indicators and project$indicators_sf from the fresh ug_sf,
-    # keeping only the indicator VALUES from the parquet. This way every
-    # consumer (mod_family table, mod_synthesis, export, ...) sees the
-    # current UGF labels/groupes without having to re-join manually.
-    if (!is.null(project$indicators) && has_ug_data(project) &&
-        "ug_id" %in% names(project$indicators)) {
-      ug_sf <- ug_build_sf(project)
-      if (!is.null(ug_sf) && nrow(ug_sf) > 0) {
-        # Drop stale UGF metadata columns from indicators before merge
-        dup_cols <- intersect(
-          c("label", "groupe", "surface_m2", "surface_sig_m2",
-            "n_tenements", "cadastral_refs"),
-          names(project$indicators)
-        )
-        ind <- project$indicators[, setdiff(names(project$indicators), dup_cols),
-                                  drop = FALSE]
-        project$indicators_sf <- merge(ug_sf, ind, by = "ug_id", all.x = TRUE)
-        # Refresh the geometry-free indicators with fresh UGF metadata.
-        # Single source of truth so mod_family, mod_synthesis and
-        # service_export stay in sync with the UGF tab.
-        project$indicators <- sf::st_drop_geometry(project$indicators_sf)
-      }
+  # Auto-migrate to v2 (UG support) if needed.
+  project <- tryCatch(
+    ensure_project_migrated(project_id, project),
+    error = function(e) {
+      cli::cli_warn("UG migration failed (non-blocking): {e$message}")
+      project
     }
-  }, error = function(e) {
-    cli::cli_warn("UG load / indicators_sf build failed (non-blocking): {e$message}")
-  })
+  )
+
+  # Build indicators_sf inline by default (keeps every existing caller
+  # and test unchanged). The interactive recent-project load path opts
+  # out (`build_indicators_sf = FALSE`) and attaches it via later() so
+  # the heavy per-UGF st_union() doesn't block the first map render.
+  if (isTRUE(build_indicators_sf)) {
+    project <- attach_indicators_sf(project)
+  }
 
   # Sync vers PostGIS si configuré et si le projet a des indicateurs.
   # DÉFÉRÉ via later::later() pour ne PAS bloquer le retour de
@@ -934,11 +971,35 @@ load_project <- function(project_id) {
 #' @return The project, possibly with `metadata$monitoring_zone_id`
 #'   populated.
 #' @noRd
+#' Does a project already carry a usable `monitoring_zone_id`?
+#'
+#' Single source of truth for the "zone id already known" predicate,
+#' shared by [hydrate_monitoring_zone_id()] (early no-op return) and by
+#' the `mod_home` load observer, which uses it to SKIP opening a
+#' monitoring-DB connection entirely when hydration would be a no-op.
+#'
+#' Opening that connection (a synchronous `nemeton::db_connect()` +
+#' schema-migration SELECT) was paid on EVERY project load — including
+#' the common case where `metadata.json` already carries the id — and
+#' could freeze the UI for seconds on a slow/unreachable Postgres host
+#' (libpq has no `connect_timeout` here). Gating on this predicate
+#' removes the round-trip from the critical load path for any project
+#' saved after spec 011.
+#'
+#' @param project A project list (or NULL).
+#' @return `TRUE` when `metadata$monitoring_zone_id` is a single value
+#'   coercible to a non-NA integer; `FALSE` otherwise.
+#' @noRd
+.has_monitoring_zone_id <- function(project) {
+  if (is.null(project)) return(FALSE)
+  existing <- project$metadata$monitoring_zone_id
+  !is.null(existing) && length(existing) == 1L &&
+    !is.na(suppressWarnings(as.integer(existing)))
+}
+
 hydrate_monitoring_zone_id <- function(project, con) {
   if (is.null(project) || is.null(project$id)) return(project)
-  existing <- project$metadata$monitoring_zone_id
-  if (!is.null(existing) && length(existing) == 1L &&
-      !is.na(suppressWarnings(as.integer(existing)))) {
+  if (.has_monitoring_zone_id(project)) {
     return(project)
   }
   if (is.null(con)) return(project)

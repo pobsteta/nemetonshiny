@@ -1749,3 +1749,63 @@ test_that("get_projects_root uses HOME fallback when project_dir is NULL", {
     )
   })
 })
+
+# ==============================================================================
+# attach_indicators_sf + .has_monitoring_zone_id (deferred-load perf path)
+# ==============================================================================
+
+test_that(".has_monitoring_zone_id detects a usable zone id", {
+  expect_false(nemetonshiny:::.has_monitoring_zone_id(NULL))
+  expect_false(nemetonshiny:::.has_monitoring_zone_id(list(metadata = list())))
+  expect_false(nemetonshiny:::.has_monitoring_zone_id(
+    list(metadata = list(monitoring_zone_id = NA))))
+  expect_false(nemetonshiny:::.has_monitoring_zone_id(
+    list(metadata = list(monitoring_zone_id = c(1L, 2L)))))
+  expect_true(nemetonshiny:::.has_monitoring_zone_id(
+    list(metadata = list(monitoring_zone_id = 5L))))
+  expect_true(nemetonshiny:::.has_monitoring_zone_id(
+    list(metadata = list(monitoring_zone_id = "7"))))
+})
+
+test_that("attach_indicators_sf builds indicators_sf from UG data", {
+  # Minimal in-memory project: 3 parcels -> default UG init (3 UGs).
+  p1 <- sf::st_polygon(list(matrix(c(0,0, 1,0, 1,1, 0,1, 0,0), ncol = 2, byrow = TRUE)))
+  p2 <- sf::st_polygon(list(matrix(c(1,0, 2,0, 2,1, 1,1, 1,0), ncol = 2, byrow = TRUE)))
+  p3 <- sf::st_polygon(list(matrix(c(2,0, 3,0, 3,1, 2,1, 2,0), ncol = 2, byrow = TRUE)))
+  parcels <- sf::st_sf(
+    id = c("p1", "p2", "p3"),
+    geo_parcelle = c("REF001", "REF002", "REF003"),
+    section = c("A", "A", "B"),
+    numero = c("1", "2", "3"),
+    contenance = c(10000, 10000, 10000),
+    geometry = sf::st_sfc(p1, p2, p3, crs = 4326)
+  )
+  projet <- nemetonshiny:::ug_init_default(
+    list(parcels = parcels, metadata = list(id = "test_project")))
+
+  # Indicator values keyed by ug_id, plus a STALE label to be refreshed.
+  projet$indicators <- data.frame(
+    ug_id = projet$ugs$ug_id,
+    label = "stale",
+    B1 = c(0.1, 0.5, 0.9),
+    stringsAsFactors = FALSE
+  )
+
+  out <- nemetonshiny:::attach_indicators_sf(projet)
+
+  expect_true(inherits(out$indicators_sf, "sf"))
+  expect_equal(nrow(out$indicators_sf), nrow(projet$ugs))
+  expect_true(all(c("ug_id", "label", "B1") %in% names(out$indicators_sf)))
+  # Stale label replaced by the fresh UGF label from ug_build_sf().
+  expect_false(any(out$indicators_sf$label == "stale"))
+  # indicators is the geometry-free mirror of indicators_sf.
+  expect_false(inherits(out$indicators, "sf"))
+  expect_equal(nrow(out$indicators), nrow(out$indicators_sf))
+})
+
+test_that("attach_indicators_sf is a no-op without UG/indicator data", {
+  expect_null(nemetonshiny:::attach_indicators_sf(list())$indicators_sf)
+  expect_null(
+    nemetonshiny:::attach_indicators_sf(
+      list(indicators = data.frame(x = 1)))$indicators_sf)
+})

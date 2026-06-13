@@ -10,6 +10,28 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.78.0] - 2026-06-13
+
+### Changed
+
+- Chargement d'un projet récent : `load_project()` gagne un paramètre
+  `build_indicators_sf` (défaut `TRUE`, comportement inchangé pour les
+  appelants existants). Le build géométrique des UGF (`ug_build_sf()`,
+  `st_union()` par UGF) est extrait dans `attach_indicators_sf()` et
+  **différé** via `later()` dans le chemin de chargement interactif —
+  `indicators_sf` (consommé seulement par Synthèse / Famille /
+  Échantillonnage / Suivi) n'est plus construit avant le rendu de la carte.
+
+### Fixed
+
+- Chargement d'un projet récent : la connexion à la base de monitoring
+  n'est plus ouverte à chaque chargement. L'hydratation de
+  `monitoring_zone_id` (`mod_home`) est désormais gardée par le nouveau
+  prédicat `.has_monitoring_zone_id()` — quand l'id est déjà présent dans
+  `metadata.json` (cas commun post-spec 011), le round-trip DB synchrone
+  (connexion TCP + migration de schéma), qui pouvait geler l'UI plusieurs
+  secondes sur un hôte Postgres lent/injoignable, est entièrement évité.
+
 ## [0.77.1] - 2026-06-12
 
 ### Changed
