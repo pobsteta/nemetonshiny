@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.81.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.82.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.82.0" id="nemetonshiny-0820-2026-06-13">nemetonshiny 0.82.0 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0820-2026-06-13"></a></h2>
+<div class="section level4">
+<h4 id="nouveauté--lancement-dun-run-reconfort-spec-l6--suite-0-82-0">Nouveauté — Lancement d’un run RECONFORT (spec 021, L6 — suite)<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9--lancement-dun-run-reconfort-spec-l6--suite-0-82-0"></a></h4>
+<p>Complète le mode RECONFORT (v0.81.0, jusque-là consultation seule) avec le <strong>pipeline de lancement de run</strong>, en miroir de FORDEAD :</p>
+<ul><li>
+<strong><code>run_reconfort_async()</code></strong> (<code>service_monitoring.R</code>) : <code>ExtendedTask</code> + <code>future_promise</code> autour de <code>nemeton::run_reconfort_dieback(con, zone_id, cache_dir, s2_year, progress_callback)</code>. Le worker recharge <code>nemetonshiny</code>, ouvre une connexion DB fraîche et écrit les événements de progression dans un fichier JSON tailé par le parent. cache_dir = <code>&lt;projet&gt;/cache/layers/reconfort</code> (la phase persist y écrit <code>zone_&lt;id&gt;/run_&lt;run_id&gt;/</code>).</li>
+<li>
+<strong>Câblage parent</strong> (<code>mod_monitoring</code>) : bouton « Lancer le diagnostic RECONFORT » → <code>.invoke_reconfort()</code>, <code>reactivePoll</code> de progression → dispatcher <code>.reconfort_handle_progress_event()</code> (events <code>reconfort:start|phase|complete|error</code>, 10 phases env/model/mask/tiles/ ingest/stage/mapprod/collect/postprocess/persist avec libellés i18n + fallback Title-Case), observer de résultat (toast succès/erreur + <code>reconfort_refresh</code> qui réinvalide la carte d’alertes), grisage du bouton (cross-lock avec FAST/FORDEAD sur le cache S2 partagé) et <strong>force-unlock</strong> pour réarmer un run bloqué (pas de cancel coopératif côté cœur).</li>
+<li>Sur un déploiement <strong>sans conda IOTA²/GEODES/OTB</strong>, le worker échoue et l’erreur est surfacée via le toast d’erreur ; la carte et le diagnostic restent fonctionnels sur les runs déjà produits (Limite <a href="https://github.com/pobsteta/nemetonshiny/issues/1" class="external-link">#1</a> spec 021).</li>
+<li>Tests : dispatcher RECONFORT (phase / start silencieux / erreur).</li>
+</ul><p>Reste différé : <strong>QField — stades feuillus DSF (G4)</strong>, qui requiert une extension cœur de <code>get_health_validation_schema()</code> (ajout à demander).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.81.0" id="nemetonshiny-0810-2026-06-13">nemetonshiny 0.81.0 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0810-2026-06-13"></a></h2>
 <div class="section level4">

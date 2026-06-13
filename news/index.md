@@ -1,5 +1,38 @@
 # Changelog
 
+## nemetonshiny 0.82.0 (2026-06-13)
+
+#### Nouveauté — Lancement d’un run RECONFORT (spec 021, L6 — suite)
+
+Complète le mode RECONFORT (v0.81.0, jusque-là consultation seule) avec
+le **pipeline de lancement de run**, en miroir de FORDEAD :
+
+- **`run_reconfort_async()`** (`service_monitoring.R`) :
+  `ExtendedTask` + `future_promise` autour de
+  `nemeton::run_reconfort_dieback(con, zone_id, cache_dir, s2_year, progress_callback)`.
+  Le worker recharge `nemetonshiny`, ouvre une connexion DB fraîche et
+  écrit les événements de progression dans un fichier JSON tailé par le
+  parent. cache_dir = `<projet>/cache/layers/reconfort` (la phase
+  persist y écrit `zone_<id>/run_<run_id>/`).
+- **Câblage parent** (`mod_monitoring`) : bouton « Lancer le diagnostic
+  RECONFORT » → `.invoke_reconfort()`, `reactivePoll` de progression →
+  dispatcher `.reconfort_handle_progress_event()` (events
+  `reconfort:start|phase|complete|error`, 10 phases
+  env/model/mask/tiles/ ingest/stage/mapprod/collect/postprocess/persist
+  avec libellés i18n + fallback Title-Case), observer de résultat (toast
+  succès/erreur + `reconfort_refresh` qui réinvalide la carte
+  d’alertes), grisage du bouton (cross-lock avec FAST/FORDEAD sur le
+  cache S2 partagé) et **force-unlock** pour réarmer un run bloqué (pas
+  de cancel coopératif côté cœur).
+- Sur un déploiement **sans conda IOTA²/GEODES/OTB**, le worker échoue
+  et l’erreur est surfacée via le toast d’erreur ; la carte et le
+  diagnostic restent fonctionnels sur les runs déjà produits (Limite
+  [\#1](https://github.com/pobsteta/nemetonshiny/issues/1) spec 021).
+- Tests : dispatcher RECONFORT (phase / start silencieux / erreur).
+
+Reste différé : **QField — stades feuillus DSF (G4)**, qui requiert une
+extension cœur de `get_health_validation_schema()` (ajout à demander).
+
 ## nemetonshiny 0.81.0 (2026-06-13)
 
 #### Nouveauté — Mode de suivi sanitaire « RECONFORT » (spec 021, L6)
