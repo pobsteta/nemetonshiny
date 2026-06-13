@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.82.0] - 2026-06-13
+
+### Added
+
+- Mode RECONFORT (spec 021, L6) : **lancement d'un run** désormais câblé
+  (complète la consultation livrée en 0.81.0). `run_reconfort_async()`
+  (ExtendedTask + future_promise autour de
+  `nemeton::run_reconfort_dieback`), `.invoke_reconfort()`, reactivePoll
+  de progression + dispatcher `.reconfort_handle_progress_event` (events
+  `reconfort:start|phase|complete|error`, 10 phases avec libellés i18n +
+  fallback Title-Case), observer de résultat (toast + `reconfort_refresh`),
+  grisage du bouton (cross-lock FAST/FORDEAD) et force-unlock. Sans conda
+  IOTA²/GEODES/OTB le run échoue proprement (toast d'erreur) ; carte +
+  diagnostic restent disponibles sur les runs existants. La validation
+  QField des stades feuillus DSF reste un ajout cœur à demander.
+
 ## [0.81.0] - 2026-06-13
 
 ### Added

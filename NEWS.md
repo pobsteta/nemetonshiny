@@ -1,4 +1,4 @@
-# nemetonshiny 0.81.0.9001 (dev) (2026-06-13)
+# nemetonshiny 0.82.0 (2026-06-13)
 
 ### Nouveauté — Lancement d'un run RECONFORT (spec 021, L6 — suite)
 
