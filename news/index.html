@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.78.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.79.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.79.0" id="nemetonshiny-0790-2026-06-13">nemetonshiny 0.79.0 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0790-2026-06-13"></a></h2>
+<div class="section level4">
+<h4 id="perf--connect_timeout-borné-sur-la-connexion-monitoring-0-79-0">Perf — <code>connect_timeout</code> borné sur la connexion monitoring<a class="anchor" aria-label="anchor" href="#perf--connect_timeout-born%C3%A9-sur-la-connexion-monitoring-0-79-0"></a></h4>
+<p>Complète le Fix <a href="https://github.com/pobsteta/nemetonshiny/issues/1" class="external-link">#1</a> de v0.78.0 : <code>get_monitoring_db_connection()</code> gagne un paramètre <code>connect_timeout = 2L</code> (secondes) forwardé à <code><a href="https://pobsteta.github.io/nemeton/reference/db_connect.html" class="external-link">nemeton::db_connect()</a></code> pour <strong>borner la phase de connexion</strong> Postgres — afin que même le chemin où l’hydratation <code>monitoring_zone_id</code> est réellement nécessaire (id absent de <code>metadata.json</code>) ne gèle pas l’UI pendant le timeout TCP par défaut de libpq (plusieurs dizaines de secondes sur un hôte injoignable).</p>
+<p>Le paramètre <code>connect_timeout</code> est exposé par <code><a href="https://pobsteta.github.io/nemeton/reference/db_connect.html" class="external-link">nemeton::db_connect()</a></code> <strong>depuis le cœur v0.76.0</strong> (<code>feat(db)</code>). L’app le consomme via un wrapper <code>.nemeton_db_connect()</code> <strong>rétro-compatible</strong> : il introspecte <code>formals(nemeton::db_connect)</code> et ne transmet l’argument que si le cœur installé l’expose, dégradant sinon à l’appel 2-arguments. Le plancher <code>Imports: nemeton (&gt;= 0.67.0)</code> n’est donc <strong>pas</strong> bumpé — le timeout s’active automatiquement dès qu’un cœur ≥ 0.76.0 est chargé (cas par défaut via le remote <code>@*release</code>), sans l’exiger comme minimum strict.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.78.0" id="nemetonshiny-0780-2026-06-13">nemetonshiny 0.78.0 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0780-2026-06-13"></a></h2>
 <div class="section level4">

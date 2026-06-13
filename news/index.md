@@ -1,5 +1,29 @@
 # Changelog
 
+## nemetonshiny 0.79.0 (2026-06-13)
+
+#### Perf — `connect_timeout` borné sur la connexion monitoring
+
+Complète le Fix [\#1](https://github.com/pobsteta/nemetonshiny/issues/1)
+de v0.78.0 : `get_monitoring_db_connection()` gagne un paramètre
+`connect_timeout = 2L` (secondes) forwardé à
+[`nemeton::db_connect()`](https://pobsteta.github.io/nemeton/reference/db_connect.html)
+pour **borner la phase de connexion** Postgres — afin que même le chemin
+où l’hydratation `monitoring_zone_id` est réellement nécessaire (id
+absent de `metadata.json`) ne gèle pas l’UI pendant le timeout TCP par
+défaut de libpq (plusieurs dizaines de secondes sur un hôte
+injoignable).
+
+Le paramètre `connect_timeout` est exposé par
+[`nemeton::db_connect()`](https://pobsteta.github.io/nemeton/reference/db_connect.html)
+**depuis le cœur v0.76.0** (`feat(db)`). L’app le consomme via un
+wrapper `.nemeton_db_connect()` **rétro-compatible** : il introspecte
+`formals(nemeton::db_connect)` et ne transmet l’argument que si le cœur
+installé l’expose, dégradant sinon à l’appel 2-arguments. Le plancher
+`Imports: nemeton (>= 0.67.0)` n’est donc **pas** bumpé — le timeout
+s’active automatiquement dès qu’un cœur ≥ 0.76.0 est chargé (cas par
+défaut via le remote `@*release`), sans l’exiger comme minimum strict.
+
 ## nemetonshiny 0.78.0 (2026-06-13)
 
 #### Perf — Chargement projet récent : deux blocages synchrones retirés
