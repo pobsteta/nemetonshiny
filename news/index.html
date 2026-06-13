@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.80.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.81.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,25 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.81.0" id="nemetonshiny-0810-2026-06-13">nemetonshiny 0.81.0 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0810-2026-06-13"></a></h2>
+<div class="section level4">
+<h4 id="nouveauté--mode-de-suivi-sanitaire--reconfort--spec-l6-0-81-0">Nouveauté — Mode de suivi sanitaire « RECONFORT » (spec 021, L6)<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9--mode-de-suivi-sanitaire--reconfort--spec-l6-0-81-0"></a></h4>
+<p>Le Suivi sanitaire gagne un <strong>3ᵉ mode</strong> à côté de FAST et FORDEAD : <strong>RECONFORT</strong> (dépérissement des feuillus — chêne, châtaignier — via CRSWIR + CRre). Aucune logique métier côté app : tout passe par le cœur <code>nemeton</code> (≥ 0.80.0, plancher <code>Imports</code> bumpé).</p>
+<p>Livré (consultation) :</p>
+<ul><li>
+<strong>Nouveau module <code>mod_monitoring_reconfort_map</code></strong> : carte Leaflet des alertes de dépérissement feuillus via <code>nemeton::list_alerts(…, classes = RECONFORT_ALERT_CLASSES)</code> (filtre G1 : 2-dépérissant / 3-très-dépérissant), popup <code>confidence_class</code> + <code>stress_index</code>. Bannière de validité <strong>G3 advisory</strong> (<code>check_reconfort_validity</code>) : avertit hors domaine de calibration <strong>sans bloquer</strong>. Clic carte → diagnostic pixel (<code>read_reconfort_pixel_series</code>) en modal plotly à 2 traces (CRSWIR + CRre observés ; pas de prédiction harmonique — RECONFORT n’a pas de modèle).</li>
+<li>
+<strong>3ᵉ option</strong> dans le sélecteur de mode + sous-onglet « Carte RECONFORT » monté à la volée (lazy) et géré par l’observer de visibilité mode-driven.</li>
+<li>
+<strong>i18n FR/EN</strong> : <code>monitoring_mode_reconfort</code>, <code>monitoring_reconfort_*</code> (validité, classes, popup, séries, phases env/model/ingest/mapprod/ postprocess/persist, run). Tout texte via <code>i18n$t()</code> (<code>\uXXXX</code>).</li>
+</ul><p>Différé (signalé) :</p>
+<ul><li>
+<strong>Lancement d’un run RECONFORT</strong> : <code><a href="https://pobsteta.github.io/nemeton/reference/run_reconfort_dieback.html" class="external-link">nemeton::run_reconfort_dieback()</a></code> est lourd/opt-in (conda IOTA²/GEODES/OTB). Le pipeline asynchrone complet (ExtendedTask + polling des phases) n’est pas encore câblé : le bouton « Lancer le diagnostic RECONFORT » signale l’indisponibilité et renvoie vers la consultation des runs déjà produits (Limite <a href="https://github.com/pobsteta/nemetonshiny/issues/1" class="external-link">#1</a> spec 021). La carte et le diagnostic pixel restent pleinement fonctionnels.</li>
+<li>
+<strong>QField — stades feuillus DSF (G4)</strong> : le schéma cœur <code>get_health_validation_schema()</code> n’expose pour l’instant que les stades scolyte/résineux. L’extension feuillus DSF est un ajout <strong>cœur</strong> à demander (l’app réutilisera le workflow QField existant tel quel).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.80.0" id="nemetonshiny-0800-2026-06-13">nemetonshiny 0.80.0 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0800-2026-06-13"></a></h2>
 <div class="section level4">

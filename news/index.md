@@ -1,5 +1,49 @@
 # Changelog
 
+## nemetonshiny 0.81.0 (2026-06-13)
+
+#### Nouveauté — Mode de suivi sanitaire « RECONFORT » (spec 021, L6)
+
+Le Suivi sanitaire gagne un **3ᵉ mode** à côté de FAST et FORDEAD :
+**RECONFORT** (dépérissement des feuillus — chêne, châtaignier — via
+CRSWIR + CRre). Aucune logique métier côté app : tout passe par le cœur
+`nemeton` (≥ 0.80.0, plancher `Imports` bumpé).
+
+Livré (consultation) :
+
+- **Nouveau module `mod_monitoring_reconfort_map`** : carte Leaflet des
+  alertes de dépérissement feuillus via
+  `nemeton::list_alerts(…, classes = RECONFORT_ALERT_CLASSES)` (filtre
+  G1 : 2-dépérissant / 3-très-dépérissant), popup `confidence_class` +
+  `stress_index`. Bannière de validité **G3 advisory**
+  (`check_reconfort_validity`) : avertit hors domaine de calibration
+  **sans bloquer**. Clic carte → diagnostic pixel
+  (`read_reconfort_pixel_series`) en modal plotly à 2 traces (CRSWIR +
+  CRre observés ; pas de prédiction harmonique — RECONFORT n’a pas de
+  modèle).
+- **3ᵉ option** dans le sélecteur de mode + sous-onglet « Carte
+  RECONFORT » monté à la volée (lazy) et géré par l’observer de
+  visibilité mode-driven.
+- **i18n FR/EN** : `monitoring_mode_reconfort`, `monitoring_reconfort_*`
+  (validité, classes, popup, séries, phases env/model/ingest/mapprod/
+  postprocess/persist, run). Tout texte via `i18n$t()` (`\uXXXX`).
+
+Différé (signalé) :
+
+- **Lancement d’un run RECONFORT** :
+  [`nemeton::run_reconfort_dieback()`](https://pobsteta.github.io/nemeton/reference/run_reconfort_dieback.html)
+  est lourd/opt-in (conda IOTA²/GEODES/OTB). Le pipeline asynchrone
+  complet (ExtendedTask + polling des phases) n’est pas encore câblé :
+  le bouton « Lancer le diagnostic RECONFORT » signale l’indisponibilité
+  et renvoie vers la consultation des runs déjà produits (Limite
+  [\#1](https://github.com/pobsteta/nemetonshiny/issues/1) spec 021). La
+  carte et le diagnostic pixel restent pleinement fonctionnels.
+- **QField — stades feuillus DSF (G4)** : le schéma cœur
+  `get_health_validation_schema()` n’expose pour l’instant que les
+  stades scolyte/résineux. L’extension feuillus DSF est un ajout
+  **cœur** à demander (l’app réutilisera le workflow QField existant tel
+  quel).
+
 ## nemetonshiny 0.80.0 (2026-06-13)
 
 #### Nouveauté — Bouton « Réinitialiser depuis le corpus du package » (RAG)
