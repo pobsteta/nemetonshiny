@@ -10,6 +10,28 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.81.0] - 2026-06-13
+
+### Added
+
+- Suivi sanitaire : 3ᵉ mode **RECONFORT** (dépérissement feuillus, spec 021
+  L6) à côté de FAST/FORDEAD. Nouveau module `mod_monitoring_reconfort_map`
+  (carte des alertes via `nemeton::list_alerts(classes =
+  RECONFORT_ALERT_CLASSES)`, popup confidence_class + stress_index ;
+  bannière de validité G3 advisory non bloquante via
+  `check_reconfort_validity` ; clic → diagnostic pixel
+  `read_reconfort_pixel_series` en modal plotly 2 traces CRSWIR/CRre).
+  Sélecteur de mode à 3 valeurs, sous-onglet « Carte RECONFORT » lazy,
+  i18n FR/EN complète. Plancher `Imports: nemeton (>= 0.80.0)`.
+
+### Notes
+
+- Le lancement d'un run RECONFORT (`run_reconfort_dieback`, lourd/opt-in
+  conda) n'est pas encore câblé : le bouton signale l'indisponibilité ; la
+  carte et le diagnostic restent fonctionnels sur les runs existants. La
+  validation QField des stades feuillus DSF requiert une extension cœur de
+  `get_health_validation_schema()`.
+
 ## [0.80.0] - 2026-06-13
 
 ### Added
