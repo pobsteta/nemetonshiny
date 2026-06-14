@@ -1,5 +1,32 @@
 # Changelog
 
+## nemetonshiny 0.84.5 (2026-06-14)
+
+#### Fix — Rapport Quarto : `[^n]` orphelins / dupliqués restaient littéraux
+
+Suite à v0.84.3, certaines refs `[^n]` du commentaire restaient
+imprimées en littéral dans le PDF au lieu de devenir des notes de bas de
+page. Deux causes (observées sur de vraies perspectives) :
+
+- **Refs orphelines** : le LLM cite parfois un numéro **au-delà** des
+  sources disponibles (`[^7]`, `[^8]` alors qu’il n’y a que 4 sources) →
+  aucune définition → Pandoc les laisse littérales.
+- **Refs dupliquées** : une même note est référencée plusieurs fois
+  (corps
+  - résumé « Sources mobilisées ») → Pandoc **ne sait pas** référencer
+    2× une même note → les occurrences suivantes restent littérales.
+
+**Fix** : `.prepare_footnotes()` (remplace
+`.sources_md_to_footnote_defs`) garde la **1re occurrence de chaque ref
+valide** comme vraie note, **retire** les orphelines et les doublons
+(plus de `[^n]` littéral), nettoie les virgules orphelines laissées par
+un résumé « Sources mobilisées : \[^x\], \[^y\] » vidé, et appende les
+définitions `[^n]:` uniquement pour les ids réellement utilisés.
+
+Note : la cause amont (le LLM cite des numéros inexistants) reste une
+question de discipline de citation / cohérence du RAG côté cœur ; ce
+correctif rend l’export robuste quoi qu’il arrive.
+
 ## nemetonshiny 0.84.4 (2026-06-14)
 
 #### Fix — Sources de synthèse : ne plus effacer le contexte RAG in-session

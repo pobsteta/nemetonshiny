@@ -12,6 +12,19 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.84.5\] - 2026-06-14
+
+### Fixed
+
+- Rapport Quarto : des refs `[^n]` restaient imprimées en littéral au
+  lieu de devenir des notes de bas de page — (a) le LLM cite parfois un
+  numéro au-delà des sources existantes (orphelin, sans définition)
+  ; (b) une même note référencée plusieurs fois (Pandoc ne sait pas
+  réutiliser une note). `.prepare_footnotes()` garde la 1re occurrence
+  de chaque ref valide comme vraie note, retire orphelines + doublons,
+  nettoie les virgules orphelines, et appende les définitions `[^n]:`
+  des seuls ids utilisés.
+
 ## \[0.84.4\] - 2026-06-14
 
 ### Fixed

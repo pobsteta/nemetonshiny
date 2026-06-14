@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.84.5" id="nemetonshiny-0845-2026-06-14">nemetonshiny 0.84.5 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0845-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="fix--rapport-quarto--n-orphelins--dupliqués-restaient-littéraux-0-84-5">Fix — Rapport Quarto : <code>[^n]</code> orphelins / dupliqués restaient littéraux<a class="anchor" aria-label="anchor" href="#fix--rapport-quarto--n-orphelins--dupliqu%C3%A9s-restaient-litt%C3%A9raux-0-84-5"></a></h4>
+<p>Suite à v0.84.3, certaines refs <code>[^n]</code> du commentaire restaient imprimées en littéral dans le PDF au lieu de devenir des notes de bas de page. Deux causes (observées sur de vraies perspectives) :</p>
+<ul><li>
+<strong>Refs orphelines</strong> : le LLM cite parfois un numéro <strong>au-delà</strong> des sources disponibles (<code>[^7]</code>, <code>[^8]</code> alors qu’il n’y a que 4 sources) → aucune définition → Pandoc les laisse littérales.</li>
+<li>
+<strong>Refs dupliquées</strong> : une même note est référencée plusieurs fois (corps
+<ul><li>résumé « Sources mobilisées ») → Pandoc <strong>ne sait pas</strong> référencer 2× une même note → les occurrences suivantes restent littérales.</li>
+</ul></li>
+</ul><p><strong>Fix</strong> : <code>.prepare_footnotes()</code> (remplace <code>.sources_md_to_footnote_defs</code>) garde la <strong>1re occurrence de chaque ref valide</strong> comme vraie note, <strong>retire</strong> les orphelines et les doublons (plus de <code>[^n]</code> littéral), nettoie les virgules orphelines laissées par un résumé « Sources mobilisées : [^x], [^y] » vidé, et appende les définitions <code>[^n]:</code> uniquement pour les ids réellement utilisés.</p>
+<p>Note : la cause amont (le LLM cite des numéros inexistants) reste une question de discipline de citation / cohérence du RAG côté cœur ; ce correctif rend l’export robuste quoi qu’il arrive.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.84.4" id="nemetonshiny-0844-2026-06-14">nemetonshiny 0.84.4 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0844-2026-06-14"></a></h2>
 <div class="section level4">
