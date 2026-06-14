@@ -298,29 +298,40 @@ Claude doit :
 
 1. Déterminer le type de changement selon Conventional Commits
    (feat: / fix: / BREAKING CHANGE:) → bump semver correspondant
-   (minor / patch / major). **Ne PAS sous-bumper** : appliquer
-   strictement la table ci-dessous (révision 2026-06-02 suite au
-   constat que l'app stagnait sur 0.52.x pendant que le cœur
-   avançait sur 0.55 → 0.60).
+   (minor / patch / major). **PATCH par défaut** : appliquer la table
+   ci-dessous (révision **2026-06-14** qui INVERSE la révision
+   2026-06-02 — cf. note ci-dessous).
 
    | Type de changement                                              | Bump   |
    |-----------------------------------------------------------------|--------|
    | Fix de régression, fix d'un bug existant                        | PATCH  |
+   | Correctif de perf / réactivité (sans nouvelle UI ni API)        | PATCH  |
    | Alignement plancher cœur, doc, cleanup commentaires/tests       | PATCH  |
-   | Nouveau toggle / radio / input UI                               | MINOR  |
-   | Nouvelle modale, nouveau bandeau, nouveau bouton inline         | MINOR  |
-   | Refactor structurel d'un module (ex. layout sidebar)            | MINOR  |
-   | Retrait d'une feature UX (ex. modale clic-placette supprimée)   | MINOR  |
-   | Suppression d'une dépendance cœur (couplage `obs_pixel` retiré) | MINOR  |
-   | Nouvelle clé i18n consommée par un nouveau composant            | MINOR  |
+   | Nouveau toggle / radio / input UI isolé                         | PATCH  |
+   | Nouvelle modale, nouveau bandeau, nouveau bouton inline         | PATCH  |
+   | Refactor structurel d'un module (ex. layout sidebar)            | PATCH  |
+   | Retrait d'une feature UX isolée                                 | PATCH  |
+   | Nouvelle clé i18n consommée par un nouveau composant            | PATCH  |
+   | **Gros lot cohérent de features** (plusieurs feat regroupés)    | MINOR  |
+   | **Nouveau module / nouvel onglet / nouveau sous-onglet**        | MINOR  |
+   | **Nouveau mode majeur** (ex. RECONFORT) ou épaississement livré | MINOR  |
    | Changement d'API publique app (signature fonction exportée)     | MAJOR  |
    | Retrait d'une fonction exportée                                 | MAJOR  |
 
-   En cas de doute, **bumper plus haut** plutôt que plus bas — c'est
-   plus facile de signaler une release MINOR comme « petite » que de
-   regretter une release PATCH comme insuffisante. Pour grouper
-   plusieurs feat en une seule release : ne pas attendre — chaque
-   feat fonctionnel mérite son MINOR.
+   Règle d'or : **PATCH par défaut** (`0.x.y → 0.x.z`). Le **MINOR
+   (`0.x.0 → 0.y.0`) est réservé** à un lot cohérent de plusieurs
+   features, à un nouveau module / onglet / sous-onglet, à un nouveau
+   mode majeur, ou à la clôture d'un épaississement. En cas de doute
+   entre PATCH et MINOR, **rester en PATCH** ; on regroupe ensuite
+   plusieurs PATCH fonctionnels en un MINOR quand un jalon cohérent est
+   atteint.
+
+   > **Note d'historique** : la révision 2026-06-02 prescrivait
+   > l'inverse (MINOR pour toute UI, « ne pas sous-bumper »), suite au
+   > constat que l'app stagnait sur 0.52.x. La révision 2026-06-14
+   > corrige le sur-bump qui en a résulté (suite app passée de
+   > 0.78 → 0.84 en une session via des MINOR systématiques) et fait du
+   > PATCH le défaut, le MINOR devenant un marqueur de jalon.
 
 2. Mettre à jour le numéro de version dans :
    - DESCRIPTION (champ Version)  [projet R]

@@ -70,6 +70,27 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
   )
 }
 
+#' JS (run in cicerone's `on_highlight_started`) switching the active
+#' `main_nav` tab by clicking its nav link.
+#'
+#' On NE PEUT PAS utiliser le couple `tab`/`tab_id` natif de cicerone :
+#' son JS (cicerone.js) bascule l'onglet via
+#' `Shiny.inputBindings.bindingNames['shiny.bootstrapTabInput'].binding.setValue()`,
+#' incompatible avec le `page_navbar` bslib (Bootstrap 5) — l'appel lève
+#' une exception qui AVORTE tout le tour (il ne se lance plus du tout).
+#' On bascule donc l'onglet côté client en cliquant le lien de nav
+#' (`#main_nav a[data-value="<tab>"]`, marqué `data-bs-toggle="tab"`),
+#' synchrone et compatible BS4/BS5. `on_highlight_started` s'exécute juste
+#' avant le cadrage de l'élément, donc l'onglet est actif au moment du
+#' highlight.
+#' @noRd
+.tour_switch_tab_js <- function(tab) {
+  sprintf(
+    "var __l=document.querySelector('#main_nav a[data-value=\"%s\"]'); if(__l){__l.click();}",
+    tab
+  )
+}
+
 #' Build a cicerone guide object from the step specs
 #'
 #' @param i18n A translator from [get_i18n()].
@@ -83,14 +104,13 @@ build_tour_guide <- function(i18n, max_parcels = 30L) {
   guide <- cicerone::Cicerone$new()
   for (s in steps) {
     # `is_id = TRUE` (cicerone default) → el is treated as an #id.
-    # `tab` + `tab_id` make cicerone activate the `main_nav` panel
-    # before highlighting, so cross-tab steps frame correctly.
+    # Tab switching is done client-side via on_highlight_started (see
+    # .tour_switch_tab_js) — PAS via tab/tab_id (binding cassé sous bslib).
     guide$step(
-      el          = s$el,
-      title       = s$title,
-      description = s$description,
-      tab         = s$tab,
-      tab_id      = "main_nav"
+      el                  = s$el,
+      title               = s$title,
+      description         = s$description,
+      on_highlight_started = .tour_switch_tab_js(s$tab)
     )
   }
   guide
