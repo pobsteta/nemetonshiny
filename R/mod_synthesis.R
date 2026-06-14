@@ -941,7 +941,16 @@ mod_synthesis_server <- function(id, app_state) {
           # doublons (Pandoc ne sait pas référencer 2× une même note), et
           # appende les définitions [^n]: dérivées des sources persistées.
           if (!is.null(comments)) {
-            src_md <- app_state$current_project$comments$synthesis_sources$sources_md
+            # v0.84.9 — utiliser EN PRIORITÉ le contexte RAG de session
+            # (`rag_ctx_synthesis()`), identique à ce qu'affiche le bloc
+            # « Sources documentaires ». La copie in-memory
+            # `current_project$comments$synthesis_sources` n'est PAS
+            # rafraîchie après une génération (seul le disque l'est) :
+            # l'utiliser comme source unique donnait des définitions
+            # périmées (ou absentes) → les `[^n]` restaient littéraux dans
+            # le PDF alors que l'écran montrait les bonnes sources.
+            src_md <- rag_ctx_synthesis()$sources_md %||%
+              app_state$current_project$comments$synthesis_sources$sources_md
             comments <- .prepare_footnotes(comments, src_md %||% "")
           }
 

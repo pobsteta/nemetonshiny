@@ -1,3 +1,23 @@
+# nemetonshiny 0.84.8.9001 (dev) (2026-06-14)
+
+### Fix — Rapport PDF : les `[^n]` restaient littéraux malgré des sources OK
+
+Le bloc « Sources documentaires » affichait bien les bonnes sources
+(numérotation correcte), mais dans le **PDF** les refs `[^1]`..`[^4]`
+s'imprimaient en **littéral** au lieu de devenir des notes de bas de page.
+
+**Cause** : l'export lisait les sources depuis la copie **in-memory**
+`current_project$comments$synthesis_sources`, qui **n'est pas rafraîchie**
+après une génération (seul le `comments.json` sur disque l'est). Sur un
+projet re-généré en session, `.prepare_footnotes()` recevait donc un
+`sources_md` périmé (ou vide) → aucune définition `[^n]:` appendée → refs
+littérales, alors que l'écran (qui lit `rag_ctx_synthesis()`) montrait les
+bonnes sources.
+
+**Fix** : l'export utilise désormais en priorité `rag_ctx_synthesis()`
+(la MÊME source que le bloc affiché), avec repli sur la copie persistée.
+Affichage et PDF sont cohérents.
+
 # nemetonshiny 0.84.8 (2026-06-14)
 
 ### Fix — Profil « Propriétaire » : récupère enfin ses sources RAG
