@@ -12,6 +12,23 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.84.1\] - 2026-06-14
+
+### Fixed
+
+- Tour guidé : couverture étendue à tous les onglets (socle, phase 0+1).
+  Le tour ne couvrait que l’onglet Accueil (6 steps) et était devenu
+  incohérent avec l’interface fortement modifiée. Nouveau
+  `R/service_tour.R` (définition déclarative + builder cicerone) : un
+  seul guide traverse les 6 onglets principaux (Accueil détaillé + 1
+  step clé par onglet, dont le Suivi sanitaire FAST/FORDEAD/RECONFORT)
+  via le support natif `tab`/`tab_id` de cicerone. Chaque step porte un
+  `tab` explicite (cadrage correct quel que soit l’onglet de relance) ;
+  ancre conditionnelle fragile `start_compute` retirée. 5 paires de clés
+  i18n `tour_*` ajoutées. Tests de cohérence des ancres (garde-fou
+  anti-renommage). NB : cadrage visuel cicerone + tab-switching bslib à
+  vérifier en navigateur.
+
 ## \[0.84.0\] - 2026-06-14
 
 ### Changed

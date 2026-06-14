@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.84.1" id="nemetonshiny-0841-2026-06-14">nemetonshiny 0.84.1 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0841-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="refonte--tour-guidé--couverture-de-tous-les-onglets-socle-0-84-1">Refonte — Tour guidé : couverture de tous les onglets (socle)<a class="anchor" aria-label="anchor" href="#refonte--tour-guid%C3%A9--couverture-de-tous-les-onglets-socle-0-84-1"></a></h4>
+<p>Le Tour guidé (cicerone) ne couvrait que <strong>6 steps sur le seul onglet Accueil</strong> (flux de création de projet) et n’avait pas suivi la forte évolution de l’interface. Phase 0+1 de la refonte :</p>
+<ul><li>
+<strong><code>R/service_tour.R</code></strong> (nouveau) : définition <strong>déclarative</strong> des steps (<code>build_tour_steps</code>) + builder du guide (<code>build_tour_guide</code>). Un <strong>seul guide traverse désormais tous les onglets</strong> de <code>main_nav</code> grâce au support natif <code>tab</code>/<code>tab_id</code> de cicerone (&gt;= 1.0.4) — pas d’orchestrateur de chaînage manuel.</li>
+<li>
+<strong>Couverture 6 → 11 steps, 1 → 6 onglets</strong> : Accueil (onboarding détaillé) + 1 step clé par onglet — Synthèse, Plan d’action, Terrain, <strong>Suivi sanitaire</strong> (présente les 3 modes FAST / FORDEAD / RECONFORT), Familles d’indicateurs.</li>
+<li>
+<strong>Robustesse</strong> : chaque step porte un <code>tab</code> explicite, donc le tour se cadre correctement <strong>quel que soit l’onglet d’où il est relancé</strong> (corrige un cadrage cassé au restart). L’ancre conditionnelle fragile <code>start_compute</code> (rendue seulement en statut draft) est retirée au profit d’ancres <code>uiOutput</code> toujours présentes.</li>
+<li>
+<strong>i18n FR/EN</strong> : 5 nouvelles paires de clés <code>tour_*</code> (Synthèse, Plan d’action, Terrain, Suivi, Familles).</li>
+<li>
+<strong>Tests</strong> : structure des steps, résolution i18n (FR + EN), et surtout <strong>cohérence des ancres</strong> — chaque id ciblé doit exister dans l’UI de l’app, garde-fou contre les renommages de modules (la cause des « cadres incohérents »).</li>
+</ul><p>La mécanique (auto-start première visite via localStorage, bouton « relancer le tour ») est inchangée. Granularité « 1 step clé par onglet » volontairement concise ; étapes détaillées par onglet = phase 2.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.84.0" id="nemetonshiny-0840-2026-06-14">nemetonshiny 0.84.0 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0840-2026-06-14"></a></h2>
 <div class="section level4">
