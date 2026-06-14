@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.3.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.4 (2026-06-14)
 
 ### Fix — Sources de synthèse : ne plus effacer le contexte RAG in-session
 

@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.84.4] - 2026-06-14
+
+### Fixed
+
+- Onglet Synthèse : l'observer de restauration des commentaires (v0.84.3)
+  remettait `rag_ctx_synthesis` à NULL à chaque réassignation de
+  `current_project` (dont l'attache différée de `indicators_sf`, même id),
+  pouvant effacer le bloc « Sources documentaires » d'une perspective
+  fraîchement générée. L'observer ne réagit plus qu'au vrai changement
+  d'id de projet (garde `last_loaded_pid`). Rappel : la persistance des
+  sources est forward-looking — re-générer la perspective sur un projet
+  antérieur à v0.84.3 pour obtenir sources + notes Quarto.
+
 ## [0.84.3] - 2026-06-14
 
 ### Changed
