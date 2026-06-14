@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.84.9\] - 2026-06-14
+
+### Fixed
+
+- Rapport PDF : les refs `[^n]` du commentaire de synthèse restaient
+  littérales malgré un bloc « Sources documentaires » correct. L’export
+  lisait les sources depuis la copie in-memory
+  `current_project$comments$synthesis_sources` (non rafraîchie après une
+  génération) → `.prepare_footnotes` recevait un `sources_md`
+  périmé/vide. L’export utilise désormais `rag_ctx_synthesis()` (même
+  source que le bloc affiché), avec repli sur la copie persistée.
+
 ## \[0.84.8\] - 2026-06-14
 
 ### Fixed

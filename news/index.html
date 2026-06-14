@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.84.9" id="nemetonshiny-0849-2026-06-14">nemetonshiny 0.84.9 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0849-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="fix--rapport-pdf--les-n-restaient-littéraux-malgré-des-sources-ok-0-84-9">Fix — Rapport PDF : les <code>[^n]</code> restaient littéraux malgré des sources OK<a class="anchor" aria-label="anchor" href="#fix--rapport-pdf--les-n-restaient-litt%C3%A9raux-malgr%C3%A9-des-sources-ok-0-84-9"></a></h4>
+<p>Le bloc « Sources documentaires » affichait bien les bonnes sources (numérotation correcte), mais dans le <strong>PDF</strong> les refs <code>[^1]</code>..<code>[^4]</code> s’imprimaient en <strong>littéral</strong> au lieu de devenir des notes de bas de page.</p>
+<p><strong>Cause</strong> : l’export lisait les sources depuis la copie <strong>in-memory</strong> <code>current_project$comments$synthesis_sources</code>, qui <strong>n’est pas rafraîchie</strong> après une génération (seul le <code>comments.json</code> sur disque l’est). Sur un projet re-généré en session, <code>.prepare_footnotes()</code> recevait donc un <code>sources_md</code> périmé (ou vide) → aucune définition <code>[^n]:</code> appendée → refs littérales, alors que l’écran (qui lit <code>rag_ctx_synthesis()</code>) montrait les bonnes sources.</p>
+<p><strong>Fix</strong> : l’export utilise désormais en priorité <code>rag_ctx_synthesis()</code> (la MÊME source que le bloc affiché), avec repli sur la copie persistée. Affichage et PDF sont cohérents.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.84.8" id="nemetonshiny-0848-2026-06-14">nemetonshiny 0.84.8 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0848-2026-06-14"></a></h2>
 <div class="section level4">
