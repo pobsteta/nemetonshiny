@@ -1,3 +1,36 @@
+# nemetonshiny 0.84.1 (2026-06-14)
+
+### Refonte — Tour guidé : couverture de tous les onglets (socle)
+
+Le Tour guidé (cicerone) ne couvrait que **6 steps sur le seul onglet
+Accueil** (flux de création de projet) et n'avait pas suivi la forte
+évolution de l'interface. Phase 0+1 de la refonte :
+
+- **`R/service_tour.R`** (nouveau) : définition **déclarative** des steps
+  (`build_tour_steps`) + builder du guide (`build_tour_guide`). Un **seul
+  guide traverse désormais tous les onglets** de `main_nav` grâce au
+  support natif `tab`/`tab_id` de cicerone (>= 1.0.4) — pas
+  d'orchestrateur de chaînage manuel.
+- **Couverture 6 → 11 steps, 1 → 6 onglets** : Accueil (onboarding
+  détaillé) + 1 step clé par onglet — Synthèse, Plan d'action, Terrain,
+  **Suivi sanitaire** (présente les 3 modes FAST / FORDEAD / RECONFORT),
+  Familles d'indicateurs.
+- **Robustesse** : chaque step porte un `tab` explicite, donc le tour se
+  cadre correctement **quel que soit l'onglet d'où il est relancé**
+  (corrige un cadrage cassé au restart). L'ancre conditionnelle fragile
+  `start_compute` (rendue seulement en statut draft) est retirée au profit
+  d'ancres `uiOutput` toujours présentes.
+- **i18n FR/EN** : 5 nouvelles paires de clés `tour_*` (Synthèse, Plan
+  d'action, Terrain, Suivi, Familles).
+- **Tests** : structure des steps, résolution i18n (FR + EN), et surtout
+  **cohérence des ancres** — chaque id ciblé doit exister dans l'UI de
+  l'app, garde-fou contre les renommages de modules (la cause des « cadres
+  incohérents »).
+
+La mécanique (auto-start première visite via localStorage, bouton
+« relancer le tour ») est inchangée. Granularité « 1 step clé par onglet »
+volontairement concise ; étapes détaillées par onglet = phase 2.
+
 # nemetonshiny 0.84.0 (2026-06-14)
 
 ### Perf — Sync PostGIS du projet déplacé hors du thread principal
