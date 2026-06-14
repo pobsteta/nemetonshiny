@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.82.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.83.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,25 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.83.0" id="nemetonshiny-0830-2026-06-14">nemetonshiny 0.83.0 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0830-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="nouveauté--sous-onglet--plan-de-validation-reconfort--spec-l6-g4-0-83-0">Nouveauté — Sous-onglet « Plan de validation RECONFORT » (spec 021, L6 G4)<a class="anchor" aria-label="anchor" href="#nouveaut%C3%A9--sous-onglet--plan-de-validation-reconfort--spec-l6-g4-0-83-0"></a></h4>
+<p>Le mode RECONFORT du Suivi sanitaire gagne son <strong>plan d’échantillonnage de validation terrain</strong>, 3ᵉ couple à côté de FAST et FORDEAD. Réutilisation <strong>1:1</strong> de <code>mod_validation_sampling</code> — aucune logique métier nouvelle (règles CLAUDE.md <a href="https://github.com/pobsteta/nemetonshiny/issues/2" class="external-link">#2</a>/#3), uniquement du câblage. Le cœur <code>nemeton ≥ 0.83.0</code> expose tout le nécessaire ; plancher <code>Imports</code> bumpé.</p>
+<ul><li>
+<strong><code>service_validation_sampling.R</code></strong> : <code>generate_validation_plan()</code> accepte <code>source = "RECONFORT"</code> ; <code>.resolve_alert_raster()</code> lit le masque catégoriel <code>1-sain / 2-déperissant / 3-très-déperissant</code> via <code><a href="https://pobsteta.github.io/nemeton/reference/read_reconfort_alert_mask.html" class="external-link">nemeton::read_reconfort_alert_mask()</a></code> (cache <code>&lt;projet&gt;/cache/layers/reconfort</code>, fichier <code>zone_&lt;id&gt;/reconfort_mask_&lt;run_id&gt;.tif</code>). <strong>Pas de compute à la volée</strong> (contrairement à FAST) : le masque doit préexister (phase persist du run) — sinon <code>validation_no_mask</code>, comme FORDEAD sans run.</li>
+<li>
+<strong><code>mod_validation_sampling.R</code></strong> : UI source-aware pour RECONFORT (classes <code>2/3</code>, témoins <code>1</code>, libellés biologiques feuillus <code>reconfort_class_label_*</code>). L’observer de labels quartile FAST est sauté pour RECONFORT (échelle 1/2/3, labels statiques).</li>
+<li>
+<strong><code>mod_monitoring.R</code></strong> : <code>nav_panel("validation_sampling_reconfort", …)</code> + montage <code>source_fixed = "RECONFORT"</code> + ajout au vecteur <code>reconfort_tabs</code> de l’observer de visibilité mode-driven.</li>
+<li>
+<strong>i18n FR/EN</strong> : <code>validation_sampling_title_reconfort</code>, <code>reconfort_class_label_{1,2,3}</code>. Clés génériques (<code>validation_persisted_toast</code>, <code>validation_export_qgis_btn</code>, …) réutilisées telles quelles.</li>
+<li>
+<strong>Persistance terrain</strong> : aucune modif app — <code>ingest_health_validation</code> route déjà sur la colonne DB <code>alert.alert_type == "reconfort_dieback"</code> (posée par le run cœur) → applique le schéma DEPERIS feuillus.</li>
+<li>Tests : service (<code>source="RECONFORT"</code> : lecture masque, classes 2/3 + témoin 1, <code>validation_no_mask</code> sans run) + <code>testServer</code> du module.</li>
+</ul><p><strong>Spec 021 L6 RECONFORT : entièrement livrée côté app</strong> (carte, diagnostic pixel, run, validation terrain). Réserves cœur héritées (poids de confiance provisoires, arborescence S2 MUSCATE à valider sur run réel) sans impact sur ce sous-onglet (il consomme le masque déjà produit).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.82.0" id="nemetonshiny-0820-2026-06-13">nemetonshiny 0.82.0 (2026-06-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0820-2026-06-13"></a></h2>
 <div class="section level4">

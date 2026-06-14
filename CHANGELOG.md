@@ -12,6 +12,24 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.83.0\] - 2026-06-14
+
+### Added
+
+- Mode RECONFORT (spec 021, L6 G4) : sous-onglet **« Plan de validation
+  RECONFORT »** (3ᵉ couple à côté de FAST/FORDEAD). Réutilisation 1:1 de
+  `mod_validation_sampling` :
+  `generate_validation_plan(source="RECONFORT")` lit le masque
+  catégoriel via
+  [`nemeton::read_reconfort_alert_mask`](https://pobsteta.github.io/nemeton/reference/read_reconfort_alert_mask.html)
+  (cache `layers/reconfort`, pas de compute à la volée →
+  `validation_no_mask` si aucun run persistant) ; UI source-aware
+  (classes 2/3, témoin 1, libellés feuillus `reconfort_class_label_*`) ;
+  câblage nav_panel + montage `source_fixed="RECONFORT"` + observer de
+  visibilité. Persistance terrain inchangée (routage par
+  `alert.alert_type="reconfort_dieback"` à l’ingest). Plancher
+  `Imports: nemeton (>= 0.83.0)`. Clôt L6 RECONFORT côté app.
+
 ## \[0.82.0\] - 2026-06-13
 
 ### Added
