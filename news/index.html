@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.84.2" id="nemetonshiny-0842-2026-06-14">nemetonshiny 0.84.2 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0842-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="fix--le-tour-guidé-ne-se-lançait-plus-régression-v0841-0-84-2">Fix — Le Tour guidé ne se lançait plus (régression v0.84.1)<a class="anchor" aria-label="anchor" href="#fix--le-tour-guid%C3%A9-ne-se-lan%C3%A7ait-plus-r%C3%A9gression-v0841-0-84-2"></a></h4>
+<p>La refonte v0.84.1 ajoutait <code>tab</code>/<code>tab_id</code> à chaque step pour la navigation inter-onglets. Or le JS de cicerone bascule l’onglet via <code>Shiny.inputBindings…['shiny.bootstrapTabInput'].binding.setValue()</code>, <strong>incompatible avec le <code>page_navbar</code> bslib (Bootstrap 5)</strong> : l’appel levait une exception qui <strong>avortait tout le tour</strong> dès le 1ᵉʳ step — le tour ne se lançait plus, ni au démarrage ni via « relancer le tour ».</p>
+<p><strong>Fix</strong> : on n’utilise plus le couple <code>tab</code>/<code>tab_id</code> natif de cicerone. La bascule d’onglet se fait <strong>côté client</strong> dans <code>on_highlight_started</code> en cliquant le lien de nav (<code>#main_nav a[data-value="&lt;tab&gt;"]</code>, marqué <code>data-bs-toggle="tab"</code>), synchrone et compatible BS5. Le tour se relance donc normalement ; la couverture multi-onglets reste en place.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.84.1" id="nemetonshiny-0841-2026-06-14">nemetonshiny 0.84.1 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0841-2026-06-14"></a></h2>
 <div class="section level4">

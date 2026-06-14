@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -422,30 +422,41 @@ keycloak/                     → Compose dev + realms pour auth locale
 <p><strong>Le tag et la release GitHub sont AUTOMATISÉS</strong> par <code>.github/workflows/release.yml</code> : au push sur <code>main</code>, il lit <code>Version:</code> dans DESCRIPTION et, pour une version stable <code>X.Y.Z</code> dont le tag n’existe pas, crée le tag annoté + la release (<code>--generate-notes</code>). <strong>Ne plus faire <code>git tag</code> / <code>git push origin vX.Y.Z</code> / <code>gh release create</code> à la main.</strong> Le job CI <code>version-consistency</code> (r.yml) garantit en amont <code>DESCRIPTION = NEWS = CITATION</code> (sauté en cycle dev <code>.9000+</code>).</p>
 <p>À chaque push qui modifie le code fonctionnel (hors doc pure, hors CI), Claude doit :</p>
 <ol style="list-style-type: decimal"><li>
-<p>Déterminer le type de changement selon Conventional Commits (feat: / fix: / BREAKING CHANGE:) → bump semver correspondant (minor / patch / major). <strong>Ne PAS sous-bumper</strong> : appliquer strictement la table ci-dessous (révision 2026-06-02 suite au constat que l’app stagnait sur 0.52.x pendant que le cœur avançait sur 0.55 → 0.60).</p>
+<p>Déterminer le type de changement selon Conventional Commits (feat: / fix: / BREAKING CHANGE:) → bump semver correspondant (minor / patch / major). <strong>PATCH par défaut</strong> : appliquer la table ci-dessous (révision <strong>2026-06-14</strong> qui INVERSE la révision 2026-06-02 — cf. note ci-dessous).</p>
 <table class="table"><colgroup><col width="89%"><col width="10%"></colgroup><thead><tr><th>Type de changement</th>
 <th>Bump</th>
 </tr></thead><tbody><tr><td>Fix de régression, fix d’un bug existant</td>
 <td>PATCH</td>
+</tr><tr><td>Correctif de perf / réactivité (sans nouvelle UI ni API)</td>
+<td>PATCH</td>
 </tr><tr><td>Alignement plancher cœur, doc, cleanup commentaires/tests</td>
 <td>PATCH</td>
-</tr><tr><td>Nouveau toggle / radio / input UI</td>
-<td>MINOR</td>
+</tr><tr><td>Nouveau toggle / radio / input UI isolé</td>
+<td>PATCH</td>
 </tr><tr><td>Nouvelle modale, nouveau bandeau, nouveau bouton inline</td>
-<td>MINOR</td>
+<td>PATCH</td>
 </tr><tr><td>Refactor structurel d’un module (ex. layout sidebar)</td>
-<td>MINOR</td>
-</tr><tr><td>Retrait d’une feature UX (ex. modale clic-placette supprimée)</td>
-<td>MINOR</td>
-</tr><tr><td>Suppression d’une dépendance cœur (couplage <code>obs_pixel</code> retiré)</td>
-<td>MINOR</td>
+<td>PATCH</td>
+</tr><tr><td>Retrait d’une feature UX isolée</td>
+<td>PATCH</td>
 </tr><tr><td>Nouvelle clé i18n consommée par un nouveau composant</td>
+<td>PATCH</td>
+</tr><tr><td>
+<strong>Gros lot cohérent de features</strong> (plusieurs feat regroupés)</td>
+<td>MINOR</td>
+</tr><tr><td><strong>Nouveau module / nouvel onglet / nouveau sous-onglet</strong></td>
+<td>MINOR</td>
+</tr><tr><td>
+<strong>Nouveau mode majeur</strong> (ex. RECONFORT) ou épaississement livré</td>
 <td>MINOR</td>
 </tr><tr><td>Changement d’API publique app (signature fonction exportée)</td>
 <td>MAJOR</td>
 </tr><tr><td>Retrait d’une fonction exportée</td>
 <td>MAJOR</td>
-</tr></tbody></table><p>En cas de doute, <strong>bumper plus haut</strong> plutôt que plus bas — c’est plus facile de signaler une release MINOR comme « petite » que de regretter une release PATCH comme insuffisante. Pour grouper plusieurs feat en une seule release : ne pas attendre — chaque feat fonctionnel mérite son MINOR.</p>
+</tr></tbody></table><p>Règle d’or : <strong>PATCH par défaut</strong> (<code>0.x.y → 0.x.z</code>). Le <strong>MINOR (<code>0.x.0 → 0.y.0</code>) est réservé</strong> à un lot cohérent de plusieurs features, à un nouveau module / onglet / sous-onglet, à un nouveau mode majeur, ou à la clôture d’un épaississement. En cas de doute entre PATCH et MINOR, <strong>rester en PATCH</strong> ; on regroupe ensuite plusieurs PATCH fonctionnels en un MINOR quand un jalon cohérent est atteint.</p>
+<blockquote>
+<p><strong>Note d’historique</strong> : la révision 2026-06-02 prescrivait l’inverse (MINOR pour toute UI, « ne pas sous-bumper »), suite au constat que l’app stagnait sur 0.52.x. La révision 2026-06-14 corrige le sur-bump qui en a résulté (suite app passée de 0.78 → 0.84 en une session via des MINOR systématiques) et fait du PATCH le défaut, le MINOR devenant un marqueur de jalon.</p>
+</blockquote>
 </li>
 <li>
 <p>Mettre à jour le numéro de version dans :</p>
