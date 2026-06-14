@@ -1,5 +1,32 @@
 # Changelog
 
+## nemetonshiny 0.84.3 (2026-06-14)
+
+#### Synthèse — Sources RAG persistées, réordonnées, et vraies notes Quarto
+
+Trois améliorations liées du bloc « Sources documentaires » de l’onglet
+Synthèse :
+
+- **Sources affichées au rechargement d’un projet.** Le contexte RAG
+  (`sources_md` + `n_sources`) n’était qu’un reactiveVal de session,
+  rempli seulement à la génération d’une perspective : au rechargement,
+  seul le commentaire revenait, pas les sources. Il est désormais
+  **persisté** dans `comments.json`
+  (`save_comments(synthesis_sources=)`) et restauré au chargement → le
+  bloc « Sources documentaires » réapparaît. Une édition manuelle du
+  commentaire conserve les sources.
+- **Ordre + police.** Le bloc affiche maintenant le titre **« Sources
+  documentaires » en premier**, puis « Perspective appuyée sur N
+  source(s) » **dans la même police** (paragraphe normal, plus le petit
+  gris), puis la liste des citations.
+- **Vraies notes de bas de page dans le rapport Quarto.** Le commentaire
+  porte des refs inline `[^n]` mais `format_citations` produit les
+  entrées sans deux-points (`[^1] …`), donc Pandoc imprimait `[^2]` en
+  littéral. À l’export, les **définitions** `[^n]: …` (dérivées des
+  sources persistées via `.sources_md_to_footnote_defs()`) sont
+  appendées au commentaire → Pandoc rend de **vraies notes numérotées**
+  en bas de page.
+
 ## nemetonshiny 0.84.2 (2026-06-14)
 
 #### Fix — Le Tour guidé ne se lançait plus (régression v0.84.1)

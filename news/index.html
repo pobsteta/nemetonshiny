@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,19 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.84.3" id="nemetonshiny-0843-2026-06-14">nemetonshiny 0.84.3 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0843-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="synthèse--sources-rag-persistées-réordonnées-et-vraies-notes-quarto-0-84-3">Synthèse — Sources RAG persistées, réordonnées, et vraies notes Quarto<a class="anchor" aria-label="anchor" href="#synth%C3%A8se--sources-rag-persist%C3%A9es-r%C3%A9ordonn%C3%A9es-et-vraies-notes-quarto-0-84-3"></a></h4>
+<p>Trois améliorations liées du bloc « Sources documentaires » de l’onglet Synthèse :</p>
+<ul><li>
+<strong>Sources affichées au rechargement d’un projet.</strong> Le contexte RAG (<code>sources_md</code> + <code>n_sources</code>) n’était qu’un reactiveVal de session, rempli seulement à la génération d’une perspective : au rechargement, seul le commentaire revenait, pas les sources. Il est désormais <strong>persisté</strong> dans <code>comments.json</code> (<code>save_comments(synthesis_sources=)</code>) et restauré au chargement → le bloc « Sources documentaires » réapparaît. Une édition manuelle du commentaire conserve les sources.</li>
+<li>
+<strong>Ordre + police.</strong> Le bloc affiche maintenant le titre <strong>« Sources documentaires » en premier</strong>, puis « Perspective appuyée sur N source(s) » <strong>dans la même police</strong> (paragraphe normal, plus le petit gris), puis la liste des citations.</li>
+<li>
+<strong>Vraies notes de bas de page dans le rapport Quarto.</strong> Le commentaire porte des refs inline <code>[^n]</code> mais <code>format_citations</code> produit les entrées sans deux-points (<code>[^1] …</code>), donc Pandoc imprimait <code>[^2]</code> en littéral. À l’export, les <strong>définitions</strong> <code>[^n]: …</code> (dérivées des sources persistées via <code>.sources_md_to_footnote_defs()</code>) sont appendées au commentaire → Pandoc rend de <strong>vraies notes numérotées</strong> en bas de page.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.84.2" id="nemetonshiny-0842-2026-06-14">nemetonshiny 0.84.2 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0842-2026-06-14"></a></h2>
 <div class="section level4">
