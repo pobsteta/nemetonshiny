@@ -1,3 +1,20 @@
+# nemetonshiny 0.84.1.9001 (dev) (2026-06-14)
+
+### Fix — Le Tour guidé ne se lançait plus (régression v0.84.1)
+
+La refonte v0.84.1 ajoutait `tab`/`tab_id` à chaque step pour la
+navigation inter-onglets. Or le JS de cicerone bascule l'onglet via
+`Shiny.inputBindings…['shiny.bootstrapTabInput'].binding.setValue()`,
+**incompatible avec le `page_navbar` bslib (Bootstrap 5)** : l'appel
+levait une exception qui **avortait tout le tour** dès le 1ᵉʳ step — le
+tour ne se lançait plus, ni au démarrage ni via « relancer le tour ».
+
+**Fix** : on n'utilise plus le couple `tab`/`tab_id` natif de cicerone.
+La bascule d'onglet se fait **côté client** dans `on_highlight_started`
+en cliquant le lien de nav (`#main_nav a[data-value="<tab>"]`, marqué
+`data-bs-toggle="tab"`), synchrone et compatible BS5. Le tour se relance
+donc normalement ; la couverture multi-onglets reste en place.
+
 # nemetonshiny 0.84.1 (2026-06-14)
 
 ### Refonte — Tour guidé : couverture de tous les onglets (socle)
