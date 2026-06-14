@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.0.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.1 (2026-06-14)
 
 ### Refonte — Tour guidé : couverture de tous les onglets (socle)
 
