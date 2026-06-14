@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.4.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.5 (2026-06-14)
 
 ### Fix — Rapport Quarto : `[^n]` orphelins / dupliqués restaient littéraux
 
