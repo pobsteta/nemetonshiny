@@ -805,8 +805,19 @@ mod_synthesis_server <- function(id, app_state) {
     # ================================================================
     # OBSERVER: Restore comments when project loads
     # ================================================================
+    # v0.85.0 — ne réagir qu'à un VRAI changement de projet (id), pas à
+    # chaque réassignation de `current_project`. L'attache différée de
+    # `indicators_sf` (v0.78.0) ré-assigne `current_project` ~0,1 s après
+    # le chargement, avec le MÊME id : sans ce garde, l'observer remettait
+    # `rag_ctx_synthesis` à NULL et restaurait depuis la copie in-memory
+    # (stale, sans `synthesis_sources` fraîchement généré) → le bloc
+    # « Sources documentaires » pouvait disparaître après une génération.
+    last_loaded_pid <- shiny::reactiveVal(NULL)
     shiny::observeEvent(app_state$current_project, {
       project <- app_state$current_project
+      pid <- project$id %||% NA_character_
+      if (identical(pid, last_loaded_pid())) return()
+      last_loaded_pid(pid)
 
       # Always reset comments first to avoid stale data from previous project
       shiny::updateTextAreaInput(session, "synthesis_comments", value = "")
