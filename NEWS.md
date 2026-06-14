@@ -1,3 +1,27 @@
+# nemetonshiny 0.84.0 (2026-06-14)
+
+### Perf — Sync PostGIS du projet déplacé hors du thread principal
+
+Le chargement d'un projet récent laissait un délai ressenti entre le log
+« Connected to PostgreSQL … » et l'affichage des parcelles sur la carte.
+
+**Cause** : la synchronisation PostGIS best-effort (`db_sync_project` —
+connexion + `sf::st_write()` des parcelles + `dbWriteTable()` des
+indicateurs) tournait dans un callback `later::later(delay = 0.5)`. Or un
+callback `later` s'exécute sur le **thread principal R** : même différé,
+l'upload **gelait l'event loop Shiny** juste après le premier flush de la
+carte, retardant les flushs suivants (retrait de l'overlay, `fitBounds`,
+rendu de la sélection) et figeant l'UI pendant toute la durée du sync.
+
+**Fix** : nouveau `db_sync_project_async()` qui exécute le sync dans un
+worker `future` (process R séparé), **hors du thread principal** — même
+machinerie que les runs FORDEAD/RECONFORT (re-chargement du paquet +
+replay des variables d'environnement DB côté worker, y compris
+`POSTGRESQL_ADDON_*`). `load_project()` l'appelle à la place du `later()`
+synchrone. Le sync reste best-effort (aucun consommateur n'attend son
+résultat) ; dégradation propre vers le `later()` historique si `future` /
+`promises` sont indisponibles. Le dispatch retourne en ~0 ms.
+
 # nemetonshiny 0.83.0 (2026-06-14)
 
 ### Nouveauté — Sous-onglet « Plan de validation RECONFORT » (spec 021, L6 G4)

@@ -918,19 +918,17 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
   # to PostgreSQL … » et « Affichage des parcelles ». Le sync est un
   # effet de bord best-effort : aucun consommateur aval n'en dépend, on
   # peut donc le repousser après le premier flush de la carte.
+  # v0.84.0 — le sync tourne désormais dans un worker `future`
+  # (db_sync_project_async) au lieu d'un callback `later()` qui
+  # s'exécutait sur le thread principal et gelait l'event loop / le
+  # rendu carte après le 1er flush (ressenti « connexion BD → carte
+  # longue »). Best-effort : aucun consommateur aval n'attend le résultat.
   if (is_db_configured() && isTRUE(metadata$indicators_computed)) {
-    .deferred_sync <- function() {
-      tryCatch(
-        db_sync_project(project_id),
-        error = function(e) cli::cli_warn(
-          "Deferred DB sync failed (non-blocking): {conditionMessage(e)}")
-      )
-    }
-    if (requireNamespace("later", quietly = TRUE)) {
-      later::later(.deferred_sync, delay = 0.5)
-    } else {
-      .deferred_sync()
-    }
+    tryCatch(
+      db_sync_project_async(project_id),
+      error = function(e) cli::cli_warn(
+        "Background DB sync dispatch failed (non-blocking): {conditionMessage(e)}")
+    )
   }
 
   project

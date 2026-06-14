@@ -933,6 +933,14 @@ run_reconfort_async <- function() {
     "NEMETON_DB_NAME",
     "NEMETON_DB_USER",
     "NEMETON_DB_PASSWORD",
+    # Clever Cloud addon vars — consumed by the app-DB resolver
+    # (`.resolve_db_config`) for the background project sync worker
+    # (`db_sync_project_async`). Harmless for the monitoring workers.
+    "POSTGRESQL_ADDON_HOST",
+    "POSTGRESQL_ADDON_PORT",
+    "POSTGRESQL_ADDON_DB",
+    "POSTGRESQL_ADDON_USER",
+    "POSTGRESQL_ADDON_PASSWORD",
     # ntfy push channel (E6 — out-of-band FORDEAD progress). The worker
     # outlives the Shiny session on long runs; ntfy is how the user
     # still gets notified. Forwarded so the worker can resolve the

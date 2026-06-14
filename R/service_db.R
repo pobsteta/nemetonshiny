@@ -684,3 +684,78 @@ db_sync_project <- function(project_id, con = NULL) {
 
   db_save_project(con, project_id, meta, parcels, indicators)
 }
+
+
+#' Fire-and-forget background PostGIS sync of a project
+#'
+#' @description
+#' Runs [db_sync_project()] in a `future` worker (separate R process) so
+#' the PostGIS connect + `sf::st_write()` / `dbWriteTable()` upload never
+#' blocks the main R thread — and therefore never freezes the Shiny event
+#' loop / the map render right after a project load.
+#'
+#' Historical note : the sync used to run inside a `later::later(delay =
+#' 0.5)` callback. `later` callbacks execute on the MAIN thread, so the
+#' upload still blocked the event loop after the first map flush — the
+#' user perceived a freeze between the "Connected to PostgreSQL …" log and
+#' the parcels appearing. Moving the whole sync off-thread removes that
+#' stall (the result is a best-effort side effect that no downstream
+#' consumer awaits).
+#'
+#' The worker re-loads `nemetonshiny`, replays the DB env vars (a fresh
+#' process does not inherit `Sys.setenv` from the parent) and opens its
+#' own connection — same machinery as the FORDEAD / RECONFORT run workers.
+#' Degrades to the legacy `later()` deferral when `future` / `promises`
+#' are unavailable.
+#'
+#' @param project_id Character. The project to sync.
+#' @return Invisibly, the promise (or NULL on the fallback path).
+#' @noRd
+db_sync_project_async <- function(project_id) {
+  have_async <- requireNamespace("future", quietly = TRUE) &&
+                requireNamespace("promises", quietly = TRUE)
+
+  if (!have_async) {
+    .deferred <- function() {
+      tryCatch(db_sync_project(project_id),
+               error = function(e) cli::cli_warn(
+                 "Deferred DB sync failed (non-blocking): {conditionMessage(e)}"))
+    }
+    if (requireNamespace("later", quietly = TRUE)) {
+      later::later(.deferred, delay = 0.5)
+    } else {
+      .deferred()
+    }
+    return(invisible(NULL))
+  }
+
+  .dev_pkg_path <- tryCatch(
+    if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+      find.package("nemetonshiny")
+    else NULL,
+    error = function(e) NULL
+  )
+  .worker_envvars <- .capture_worker_envvars()
+
+  plan_classes <- class(future::plan())
+  if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+    future::plan("multisession")
+  }
+
+  p <- promises::future_promise({
+    .apply_worker_envvars(.worker_envvars)
+    if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
+      pkgload::load_all(.dev_pkg_path, quiet = TRUE)
+    } else {
+      loadNamespace("nemetonshiny")
+    }
+    nemetonshiny:::db_sync_project(project_id)
+  }, seed = TRUE)
+
+  # Fire-and-forget : swallow rejections so an unhandled promise error
+  # doesn't surface as a warning. Nothing awaits the result.
+  promises::catch(p, function(e) {
+    cli::cli_warn("Background DB sync failed (non-blocking): {conditionMessage(e)}")
+  })
+  invisible(p)
+}
