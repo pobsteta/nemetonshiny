@@ -1,4 +1,4 @@
-# nemetonshiny 0.82.0.9001 (dev) (2026-06-14)
+# nemetonshiny 0.83.0 (2026-06-14)
 
 ### Nouveauté — Sous-onglet « Plan de validation RECONFORT » (spec 021, L6 G4)
 
