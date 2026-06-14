@@ -1,4 +1,4 @@
-# nemetonshiny 0.83.0.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.0 (2026-06-14)
 
 ### Perf — Sync PostGIS du projet déplacé hors du thread principal
 
