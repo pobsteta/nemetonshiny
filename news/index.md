@@ -1,5 +1,25 @@
 # Changelog
 
+## nemetonshiny 0.84.7 (2026-06-14)
+
+#### Fix — Perspective Synthèse : profil « Planificateur sylvicole » renvoyait du JSON
+
+Sélectionner « Planificateur sylvicole » dans « Générer par IA » (onglet
+Synthèse) produisait un commentaire en **JSON brut** (`json { … }`) au
+lieu d’une perspective en prose.
+
+**Cause** : `planificateur.yml` est un profil **JSON-only interne** («
+Tu produis exclusivement du JSON valide conforme au schéma demandé… »)
+consommé par la génération du **Plan d’action** (qui code en dur
+`build_system_prompt(expert = "planificateur")`). Mais
+`get_expert_choices()` listait **tous** les profils `.yml` → il fuitait
+dans le sélecteur de perspective.
+
+**Fix** : `planificateur` est exclu de `get_expert_choices()`
+(sélecteur), tout en restant dans `get_expert_profiles()` (le Plan
+d’action en a besoin). Les profils de perspective légitimes restent
+proposés.
+
 ## nemetonshiny 0.84.6 (2026-06-14)
 
 #### Fix — RAG : numérotation `[^n]` cohérente prompt ↔︎ sources (cause amont)

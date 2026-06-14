@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.84.7" id="nemetonshiny-0847-2026-06-14">nemetonshiny 0.84.7 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0847-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="fix--perspective-synthèse--profil--planificateur-sylvicole--renvoyait-du-json-0-84-7">Fix — Perspective Synthèse : profil « Planificateur sylvicole » renvoyait du JSON<a class="anchor" aria-label="anchor" href="#fix--perspective-synth%C3%A8se--profil--planificateur-sylvicole--renvoyait-du-json-0-84-7"></a></h4>
+<p>Sélectionner « Planificateur sylvicole » dans « Générer par IA » (onglet Synthèse) produisait un commentaire en <strong>JSON brut</strong> (<code>json { … }</code>) au lieu d’une perspective en prose.</p>
+<p><strong>Cause</strong> : <code>planificateur.yml</code> est un profil <strong>JSON-only interne</strong> (« Tu produis exclusivement du JSON valide conforme au schéma demandé… ») consommé par la génération du <strong>Plan d’action</strong> (qui code en dur <code>build_system_prompt(expert = "planificateur")</code>). Mais <code>get_expert_choices()</code> listait <strong>tous</strong> les profils <code>.yml</code> → il fuitait dans le sélecteur de perspective.</p>
+<p><strong>Fix</strong> : <code>planificateur</code> est exclu de <code>get_expert_choices()</code> (sélecteur), tout en restant dans <code>get_expert_profiles()</code> (le Plan d’action en a besoin). Les profils de perspective légitimes restent proposés.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.84.6" id="nemetonshiny-0846-2026-06-14">nemetonshiny 0.84.6 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0846-2026-06-14"></a></h2>
 <div class="section level4">
