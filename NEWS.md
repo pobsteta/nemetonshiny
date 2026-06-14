@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.6.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.7 (2026-06-14)
 
 ### Fix — Perspective Synthèse : profil « Planificateur sylvicole » renvoyait du JSON
 

@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.84.7] - 2026-06-14
+
+### Fixed
+
+- Perspective Synthèse : le profil interne JSON-only « Planificateur
+  sylvicole » (`planificateur.yml`, utilisé en dur par le Plan d'action)
+  fuitait dans le sélecteur de « Générer par IA » → la génération
+  renvoyait du JSON brut au lieu d'une prose. Il est désormais exclu de
+  `get_expert_choices()` (sélecteur) tout en restant dans
+  `get_expert_profiles()` (le Plan d'action en a besoin).
+
 ## [0.84.6] - 2026-06-14
 
 ### Fixed
