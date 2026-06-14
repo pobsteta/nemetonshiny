@@ -50,16 +50,25 @@ rag_knowledge_con <- function(app_con = NULL) {
 #' If the input doesn't have the `profil_` prefix (already a short
 #' code), it's returned unchanged.
 #'
+#' Quelques clés d'app (noms de fichiers `inst/experts/*.yml`) diffèrent
+#' du code utilisé pour taguer le corpus. Sans alias, le profil ne
+#' récupère AUCUNE référence et les documents tagués restent orphelins.
+#' Cas connu : `owner` (label « Propriétaire ») ↔ corpus
+#' `proprietaire_prive` (4 documents). On corrige le mapping ici.
+#'
 #' @param profile_key Character. App-side profile key (typically
 #'   `profil_<short>`).
 #' @return Character. The corpus-side short code, or `NULL` if input
 #'   is empty/NA.
 #' @noRd
+.RAG_PROFILE_CODE_ALIASES <- c(owner = "proprietaire_prive")
+
 rag_profile_code <- function(profile_key) {
   if (is.null(profile_key) || length(profile_key) == 0L) return(NULL)
   k <- as.character(profile_key)
   if (is.na(k) || !nzchar(k)) return(NULL)
-  sub("^profil_", "", k)
+  k <- sub("^profil_", "", k)
+  if (k %in% names(.RAG_PROFILE_CODE_ALIASES)) .RAG_PROFILE_CODE_ALIASES[[k]] else k
 }
 
 

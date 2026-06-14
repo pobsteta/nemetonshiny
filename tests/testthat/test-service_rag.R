@@ -48,6 +48,16 @@ test_that("rag_profile_code handles NULL/empty input gracefully", {
   expect_null(nemetonshiny:::rag_profile_code(character(0)))
 })
 
+test_that("rag_profile_code mappe l'alias owner -> proprietaire_prive (corpus)", {
+  # `owner` (label « Propriétaire ») est tagué `proprietaire_prive` dans
+  # le corpus → sans alias, le profil ne récupérait aucune référence.
+  expect_equal(nemetonshiny:::rag_profile_code("owner"), "proprietaire_prive")
+  expect_equal(nemetonshiny:::rag_profile_code("profil_owner"), "proprietaire_prive")
+  # Les autres codes restent inchangés (pas d'alias).
+  expect_equal(nemetonshiny:::rag_profile_code("naturaliste"), "naturaliste")
+  expect_equal(nemetonshiny:::rag_profile_code("technicien"), "technicien")
+})
+
 
 # ---- build_situation_summary : phrase courte non-vide --------------------
 
