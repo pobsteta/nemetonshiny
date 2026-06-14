@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.5.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.6 (2026-06-14)
 
 ### Fix — RAG : numérotation `[^n]` cohérente prompt ↔ sources (cause amont)
 
