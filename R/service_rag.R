@@ -183,24 +183,40 @@ rag_context <- function(app_con, profile_code, family_codes,
     "RAG: {nrow(chunks)} chunk(s) récupéré(s) au-dessus de {min_similarity}"
   )
 
-  # Prompt block : ALL chunks numbered [^n] so the LLM can cite
-  # them with the same markers `format_citations` uses for the UI
-  # block. Title is i18n-aware (FR/EN).
-  lines <- vapply(seq_len(nrow(chunks)), function(i) {
-    sprintf("[^%d] %s", i, chunks$text[i])
-  }, character(1))
+  # v0.84.6 — numérotation [^n] cohérente entre le prompt et les sources.
+  #
+  # AVANT : le prompt numérotait TOUS les chunks ([^1]..[^K], K≤top_k=8)
+  # alors que le bloc sources dédupliquait par document ([^1]..[^N], N≤K)
+  # PUIS `format_citations` renumérotait. Le LLM citait donc des numéros
+  # de CHUNK ([^7], [^8]) absents de la liste DÉDUPLIQUÉE des sources →
+  # refs orphelines + numéros pointant sur le mauvais document.
+  #
+  # MAINTENANT : on déduplique par document EN AMONT et on numérote le
+  # prompt PAR DOCUMENT (1..N), avec la MÊME numérotation que
+  # `format_citations(best_per_doc)`. Les chunks d'un même document sont
+  # regroupés sous un seul `[^d]`. Le LLM ne peut donc citer que
+  # `[^1]..[^N]`, tous présents dans les sources et pointant sur le bon
+  # document.
+  #
+  # `best_per_doc` est trié par similarité décroissante (`chunks` l'est),
+  # donc `!duplicated()` garde le meilleur chunk par doc et fixe l'ordre
+  # de numérotation, repris à l'identique par `format_citations`.
+  best_per_doc <- chunks[!duplicated(chunks$document_id), , drop = FALSE]
+  doc_ids      <- best_per_doc$document_id
+
   block_title <- if (identical(lang, "en")) {
     "## Reference documents"
   } else {
     "## Documents de référence"
   }
+  lines <- vapply(seq_along(doc_ids), function(d) {
+    txts <- chunks$text[chunks$document_id == doc_ids[d]]
+    sprintf("[^%d] %s", d, paste(txts, collapse = " […] "))
+  }, character(1))
   prompt_block <- paste0(block_title, "\n", paste(lines, collapse = "\n\n"))
 
-  # Sources block : ONE citation per UNIQUE document (top-k chunks
-  # often come from the same doc → without dedup we'd render the
-  # same citation 3-5 times). The data.frame is sorted by similarity
-  # desc, so `!duplicated()` keeps the BEST chunk per doc.
-  best_per_doc <- chunks[!duplicated(chunks$document_id), , drop = FALSE]
+  # Sources block : une citation par document unique, numérotée [^1]..[^N]
+  # DANS LE MÊME ORDRE que le prompt ci-dessus.
   sources_md <- tryCatch(
     nemeton::format_citations(best_per_doc, format = "markdown",
                               lang = lang),

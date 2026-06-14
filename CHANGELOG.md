@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.84.6] - 2026-06-14
+
+### Fixed
+
+- RAG (`rag_context`) : le bloc « Sources documentaires » ne listait pas
+  toutes les sources citées (cause racine des `[^n]` orphelins). Le prompt
+  numérotait par chunk (`[^1]..[^K]`, K≤8) tandis que les sources
+  dédupliquaient par document (`[^1]..[^N]`, N≤K) → le LLM citait des
+  numéros de chunk absents des sources, parfois sur le mauvais document.
+  Le prompt est désormais numéroté **par document unique**, à l'identique
+  du bloc sources (chunks d'un même doc regroupés sous un `[^d]`). À
+  re-générer pour bénéficier de la correction.
+
 ## [0.84.5] - 2026-06-14
 
 ### Fixed
