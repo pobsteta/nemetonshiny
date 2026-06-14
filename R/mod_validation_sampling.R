@@ -64,35 +64,62 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
       # v0.45.0 — labels initiaux depuis i18n. Source-aware : pour
       # FORDEAD = labels biologiques fixes, pour FAST = labels
       # génériques en attendant que l'observer serveur appelle
-      # updateCheckboxGroupInput avec les quartiles du raster.
-      shiny::checkboxGroupInput(
-        ns("classes"),
-        label   = i18n$t("validation_classes_label"),
-        choices = stats::setNames(
-          c("3", "4", "1", "2"),
-          local({
-            prefix <- if (identical(source, "FORDEAD"))
-              "validation_class_fordead_" else "validation_class_fast_"
-            c(i18n$t(paste0(prefix, "3")),
-              i18n$t(paste0(prefix, "4")),
-              i18n$t(paste0(prefix, "1")),
-              i18n$t(paste0(prefix, "2")))
-          })
-        ),
-        selected = c("3", "4"),
-        inline = FALSE
-      ),
+      # updateCheckboxGroupInput avec les quartiles du raster. spec 021 —
+      # RECONFORT : masque catégoriel 1/2/3 (sain/déperissant/très-
+      # déperissant), alertes c(2,3), témoins c(1).
+      if (identical(source, "RECONFORT")) {
+        shiny::checkboxGroupInput(
+          ns("classes"),
+          label   = i18n$t("validation_classes_label"),
+          choices = stats::setNames(
+            c("2", "3", "1"),
+            c(i18n$t("reconfort_class_label_2"),
+              i18n$t("reconfort_class_label_3"),
+              i18n$t("reconfort_class_label_1"))
+          ),
+          selected = c("2", "3"),
+          inline = FALSE
+        )
+      } else {
+        shiny::checkboxGroupInput(
+          ns("classes"),
+          label   = i18n$t("validation_classes_label"),
+          choices = stats::setNames(
+            c("3", "4", "1", "2"),
+            local({
+              prefix <- if (identical(source, "FORDEAD"))
+                "validation_class_fordead_" else "validation_class_fast_"
+              c(i18n$t(paste0(prefix, "3")),
+                i18n$t(paste0(prefix, "4")),
+                i18n$t(paste0(prefix, "1")),
+                i18n$t(paste0(prefix, "2")))
+            })
+          ),
+          selected = c("3", "4"),
+          inline = FALSE
+        )
+      },
       # Classes used to draw control (témoin) plots — visually distinct
       # from the alert `classes` above. Default 0 (healthy pixels) ; the
       # server auto-relaxes to the lowest present class when the alert
-      # raster has no class-0 cell.
-      shiny::checkboxGroupInput(
-        ns("control_classes"),
-        label   = i18n$t("validation_control_classes_label"),
-        choices = c("0", "1", "2", "3", "4"),
-        selected = "0",
-        inline = TRUE
-      ),
+      # raster has no class-0 cell. RECONFORT : healthy = class 1.
+      if (identical(source, "RECONFORT")) {
+        shiny::checkboxGroupInput(
+          ns("control_classes"),
+          label   = i18n$t("validation_control_classes_label"),
+          choices = c("1", "2", "3"),
+          selected = "1",
+          inline = TRUE
+        )
+      } else {
+        shiny::checkboxGroupInput(
+          ns("control_classes"),
+          label   = i18n$t("validation_control_classes_label"),
+          choices = c("0", "1", "2", "3", "4"),
+          selected = "0",
+          inline = TRUE
+        )
+      },
       shiny::uiOutput(ns("class_distribution")),
       shiny::numericInput(
         ns("buffer_m"),
@@ -248,6 +275,12 @@ mod_validation_sampling_server <- function(id, app_state,
     shiny::observe({
       i18n <- i18n_r()
       src  <- current_source()
+      # spec 021 — RECONFORT a une échelle catégorielle 1/2/3 (≠ 0-4
+      # FORDEAD/FAST) et ses libellés sont fixés statiquement à l'UI.
+      # `.fast_class_labels()` ne connaît que FAST/FORDEAD (match.arg) et
+      # réécrirait les choix sur c("3","4","1","2") — on saute donc cet
+      # observer pour RECONFORT.
+      if (identical(src, "RECONFORT")) return()
       r    <- preview_raster_r()
       labels <- .fast_class_labels(r, source = src,
                                    mode = "count", i18n = i18n)
@@ -284,7 +317,10 @@ mod_validation_sampling_server <- function(id, app_state,
       if (length(zid) != 1L || is.na(zid)) return(NULL)
       src <- current_source()
       cd <- file.path(proj$path, "cache", "layers",
-                      if (identical(src, "FORDEAD")) "fordead" else "fast_sampling")
+                      switch(src,
+                             FORDEAD   = "fordead",
+                             RECONFORT = "reconfort",
+                             "fast_sampling"))
       if (!dir.exists(cd)) return(NULL)
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
@@ -292,6 +328,8 @@ mod_validation_sampling_server <- function(id, app_state,
       tryCatch(
         if (identical(src, "FORDEAD"))
           nemeton::read_fordead_dieback_mask(con, zid, cache_dir = cd)
+        else if (identical(src, "RECONFORT"))
+          nemeton::read_reconfort_alert_mask(con, zid, cache_dir = cd)
         else
           nemeton::read_fast_alert_mask(con, zid, cache_dir = cd),
         error = function(e) NULL
@@ -365,8 +403,14 @@ mod_validation_sampling_server <- function(id, app_state,
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      classes_int <- as.integer(input$classes %||% c("3", "4"))
-      control_int <- as.integer(input$control_classes %||% "0")
+      # spec 021 — RECONFORT : classes catégorielles 1/2/3 (alertes 2/3,
+      # témoin 1) au lieu de l'échelle 0-4 FORDEAD/FAST. Les défauts
+      # ci-dessous ne servent que si la sélection est vidée (input NULL).
+      is_reconfort <- identical(current_source(), "RECONFORT")
+      classes_int <- as.integer(
+        input$classes %||% (if (is_reconfort) c("2", "3") else c("3", "4")))
+      control_int <- as.integer(
+        input$control_classes %||% (if (is_reconfort) "1" else "0"))
       n_control_req <- as.integer(input$n_control %||% 5L)
       th <- thresholds_r()
       dr <- date_range_r()
@@ -442,18 +486,19 @@ mod_validation_sampling_server <- function(id, app_state,
       if (is.null(proj) || is.null(proj$path)) return(NULL)
       zone_id <- as.integer(plan$zone_id[1])
       src <- as.character(plan$source[1])
-      cd <- if (identical(src, "FORDEAD")) {
-        file.path(proj$path, "cache", "layers", "fordead")
-      } else {
-        file.path(proj$path, "cache", "layers", "fast_sampling")
-      }
+      cd <- file.path(proj$path, "cache", "layers",
+                      switch(src,
+                             FORDEAD   = "fordead",
+                             RECONFORT = "reconfort",
+                             "fast_sampling"))
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
       tryCatch(
         if (identical(src, "FORDEAD")) {
-          nemeton::read_fordead_dieback_mask(con, zone_id,
-                                             cache_dir = cd)
+          nemeton::read_fordead_dieback_mask(con, zone_id, cache_dir = cd)
+        } else if (identical(src, "RECONFORT")) {
+          nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd)
         } else {
           nemeton::read_fast_alert_mask(con, zone_id, cache_dir = cd)
         },

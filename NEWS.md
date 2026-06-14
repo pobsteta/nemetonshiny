@@ -1,3 +1,41 @@
+# nemetonshiny 0.83.0 (2026-06-14)
+
+### Nouveauté — Sous-onglet « Plan de validation RECONFORT » (spec 021, L6 G4)
+
+Le mode RECONFORT du Suivi sanitaire gagne son **plan d'échantillonnage de
+validation terrain**, 3ᵉ couple à côté de FAST et FORDEAD. Réutilisation
+**1:1** de `mod_validation_sampling` — aucune logique métier nouvelle
+(règles CLAUDE.md #2/#3), uniquement du câblage. Le cœur `nemeton ≥ 0.83.0`
+expose tout le nécessaire ; plancher `Imports` bumpé.
+
+- **`service_validation_sampling.R`** : `generate_validation_plan()` accepte
+  `source = "RECONFORT"` ; `.resolve_alert_raster()` lit le masque catégoriel
+  `1-sain / 2-déperissant / 3-très-déperissant` via
+  `nemeton::read_reconfort_alert_mask()` (cache `<projet>/cache/layers/reconfort`,
+  fichier `zone_<id>/reconfort_mask_<run_id>.tif`). **Pas de compute à la
+  volée** (contrairement à FAST) : le masque doit préexister (phase persist
+  du run) — sinon `validation_no_mask`, comme FORDEAD sans run.
+- **`mod_validation_sampling.R`** : UI source-aware pour RECONFORT (classes
+  `2/3`, témoins `1`, libellés biologiques feuillus `reconfort_class_label_*`).
+  L'observer de labels quartile FAST est sauté pour RECONFORT (échelle 1/2/3,
+  labels statiques).
+- **`mod_monitoring.R`** : `nav_panel("validation_sampling_reconfort", …)` +
+  montage `source_fixed = "RECONFORT"` + ajout au vecteur `reconfort_tabs` de
+  l'observer de visibilité mode-driven.
+- **i18n FR/EN** : `validation_sampling_title_reconfort`,
+  `reconfort_class_label_{1,2,3}`. Clés génériques (`validation_persisted_toast`,
+  `validation_export_qgis_btn`, …) réutilisées telles quelles.
+- **Persistance terrain** : aucune modif app — `ingest_health_validation`
+  route déjà sur la colonne DB `alert.alert_type == "reconfort_dieback"`
+  (posée par le run cœur) → applique le schéma DEPERIS feuillus.
+- Tests : service (`source="RECONFORT"` : lecture masque, classes 2/3 +
+  témoin 1, `validation_no_mask` sans run) + `testServer` du module.
+
+**Spec 021 L6 RECONFORT : entièrement livrée côté app** (carte, diagnostic
+pixel, run, validation terrain). Réserves cœur héritées (poids de confiance
+provisoires, arborescence S2 MUSCATE à valider sur run réel) sans impact sur
+ce sous-onglet (il consomme le masque déjà produit).
+
 # nemetonshiny 0.82.0 (2026-06-13)
 
 ### Nouveauté — Lancement d'un run RECONFORT (spec 021, L6 — suite)

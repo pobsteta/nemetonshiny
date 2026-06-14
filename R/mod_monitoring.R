@@ -113,7 +113,9 @@ mod_monitoring_ui <- function(id) {
 
             shiny::dateRangeInput(
               ns("date_range"), i18n$t("monitoring_date_range"),
-              start = Sys.Date() - 365L,
+              # Début par défaut : 01/01/2017, début de l'archive
+              # Sentinel-2 exploitable (S2A+S2B opérationnels).
+              start = as.Date("2017-01-01"),
               end   = Sys.Date(),
               language  = lang,
               separator = i18n$t("date_range_separator")
@@ -373,6 +375,15 @@ mod_monitoring_ui <- function(id) {
           icon  = bsicons::bs_icon("compass"),
           mod_validation_sampling_ui(ns("validation_sampling_fordead"),
                                      source = "FORDEAD")
+        ),
+        # spec 021 (L6 G4) — Plan de validation RECONFORT (feuillus).
+        # Masqué hors mode "reconfort" par l'observer de visibilité.
+        bslib::nav_panel(
+          title = i18n$t("validation_sampling_title_reconfort"),
+          value = "validation_sampling_reconfort",
+          icon  = bsicons::bs_icon("compass"),
+          mod_validation_sampling_ui(ns("validation_sampling_reconfort"),
+                                     source = "RECONFORT")
         )
       )
     )
@@ -422,7 +433,7 @@ mod_monitoring_server <- function(id, app_state) {
                          "validation_sampling_fast")
       fordead_tabs  <- c("alerts_fordead", "pixel_map_fordead",
                          "validation_sampling_fordead")
-      reconfort_tabs <- c("pixel_map_reconfort")
+      reconfort_tabs <- c("pixel_map_reconfort", "validation_sampling_reconfort")
 
       if (identical(mode, "quick")) {
         .show(fast_tabs)
@@ -3102,6 +3113,19 @@ mod_monitoring_server <- function(id, app_state) {
       source_fixed = "FORDEAD"
     )
 
+    # spec 021 (L6 G4) — Plan de validation RECONFORT (feuillus). Source
+    # fixe RECONFORT ; thresholds inoffensif (RECONFORT lit son masque
+    # catégoriel sur disque, n'utilise pas les paramètres FAST).
+    validation_sampling_reconfort_ret <- mod_validation_sampling_server(
+      "validation_sampling_reconfort",
+      app_state    = app_state,
+      zone_id_r    = shiny::reactive(input$zone_id),
+      mode_r       = shiny::reactive(input$mode),
+      thresholds_r = shiny::reactive(list(index = "NDVI")),
+      date_range_r = shiny::reactive(input$date_range),
+      source_fixed = "RECONFORT"
+    )
+
     list(
       zones                       = zones,
       fast_task                   = fast_task,
@@ -3111,7 +3135,8 @@ mod_monitoring_server <- function(id, app_state) {
       fast_alerts                 = fast_alerts_ret,
       fordead_map                 = fordead_map_ret,
       validation_sampling_fast    = validation_sampling_fast_ret,
-      validation_sampling_fordead = validation_sampling_fordead_ret
+      validation_sampling_fordead = validation_sampling_fordead_ret,
+      validation_sampling_reconfort = validation_sampling_reconfort_ret
     )
   })
 }

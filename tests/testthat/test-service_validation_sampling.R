@@ -298,3 +298,76 @@ test_that("generate_validation_plan FAST requires compute params when no cache",
     class = "validation_no_mask"
   )
 })
+
+test_that("generate_validation_plan RECONFORT reads the reconfort mask + classes 2/3, control 1", {
+  proj <- .make_project_with_zone(zone_id = 7L)
+  rc_dir <- file.path(proj$path, "cache", "layers", "reconfort", "zone_7")
+  dir.create(rc_dir, recursive = TRUE, showWarnings = FALSE)
+  file.create(file.path(rc_dir, "reconfort_mask_20260601T120000.tif"))
+
+  # Categorical 1/2/3 mask (1=sain, 2=deperissant, 3=tres-deperissant).
+  fake_raster <- terra::rast(nrows = 4, ncols = 4, vals = 2L,
+                             crs = "EPSG:2154",
+                             extent = terra::ext(0, 40, 0, 40))
+  seen <- list()
+
+  testthat::local_mocked_bindings(
+    get_monitoring_zone_aoi = function(con, zone_id) {
+      sf::st_sf(zone_id = zone_id,
+                geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+                  c(0, 0), c(40, 0), c(40, 40), c(0, 40), c(0, 0)
+                ))), crs = 2154))
+    }
+  )
+  read_calls <- 0L
+  testthat::local_mocked_bindings(
+    read_reconfort_alert_mask = function(con, zone_id, run_id = NULL,
+                                         cache_dir = NULL, ...) {
+      read_calls <<- read_calls + 1L
+      fake_raster
+    },
+    create_validation_sampling_plan = function(zone, alert_raster,
+                                               n_validation, n_control,
+                                               classes, control_classes,
+                                               buffer_m, source, seed) {
+      seen$classes <<- classes
+      seen$control <<- control_classes
+      seen$source  <<- source
+      .fake_plan(n_val = n_validation, n_ctrl = n_control)
+    },
+    .package = "nemeton"
+  )
+
+  plan <- nemetonshiny:::generate_validation_plan(
+    con = "fake-con", project = proj, source = "RECONFORT",
+    n_validation = 2L, n_control = 1L,
+    classes = c(2L, 3L), control_classes = c(1L)
+  )
+
+  expect_equal(read_calls, 1L)              # read the persisted mask
+  expect_equal(seen$source, "RECONFORT")    # routed to the RECONFORT planner
+  expect_equal(seen$classes, c(2L, 3L))     # alert classes
+  expect_equal(seen$control, 1L)            # control (témoin) class
+  expect_s3_class(plan, "sf")
+  expect_equal(unique(plan$zone_id), 7L)
+  expect_equal(unique(plan$source_run_id), "20260601T120000")  # reconfort_mask_<TS>
+})
+
+test_that("generate_validation_plan RECONFORT errors as validation_no_mask without a persisted run", {
+  proj <- .make_project_with_zone(zone_id = 7L)
+  # No reconfort cache dir → no on-the-fly compute (unlike FAST) → typed error.
+  testthat::local_mocked_bindings(
+    get_monitoring_zone_aoi = function(con, zone_id) {
+      sf::st_sf(zone_id = zone_id,
+                geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+                  c(0, 0), c(40, 0), c(40, 40), c(0, 40), c(0, 0)
+                ))), crs = 2154))
+    }
+  )
+  expect_error(
+    nemetonshiny:::generate_validation_plan(
+      con = "fake-con", project = proj, source = "RECONFORT"
+    ),
+    class = "validation_no_mask"
+  )
+})

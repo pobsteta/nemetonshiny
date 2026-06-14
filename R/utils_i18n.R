@@ -3064,6 +3064,20 @@ TRANSLATIONS <- list(
     fr = "4 — sol nu",
     en = "4 — bare soil"
   ),
+  # ----- RECONFORT validation (spec 021 G4) -----
+  validation_sampling_title_reconfort = list(
+    fr = "Plan de validation RECONFORT",
+    en = "RECONFORT validation plan"
+  ),
+  reconfort_class_label_1 = list(fr = "1 — sain", en = "1 — healthy"),
+  reconfort_class_label_2 = list(
+    fr = "2 — d\u00e9p\u00e9rissant",
+    en = "2 — declining"
+  ),
+  reconfort_class_label_3 = list(
+    fr = "3 — tr\u00e8s d\u00e9p\u00e9rissant",
+    en = "3 — severely declining"
+  ),
   validation_buffer_label = list(
     fr = "Tampon (m) autour des alertes",
     en = "Buffer (m) around alerts"
