@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.84.8] - 2026-06-14
+
+### Fixed
+
+- RAG : le profil « Propriétaire » (clé app `owner`) ne récupérait aucune
+  référence — le corpus tague ses 4 documents sous `proprietaire_prive`
+  mais `rag_profile_code("owner")` renvoyait `"owner"` (mismatch, docs
+  orphelins). Alias `owner → proprietaire_prive` ajouté ; plus aucun code
+  corpus orphelin.
+
 ## [0.84.7] - 2026-06-14
 
 ### Fixed

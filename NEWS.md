@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.7.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.8 (2026-06-14)
 
 ### Fix — Profil « Propriétaire » : récupère enfin ses sources RAG
 
