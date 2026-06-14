@@ -934,15 +934,15 @@ mod_synthesis_server <- function(id, app_state) {
           if (!is.null(comments) && nchar(trimws(comments)) == 0) {
             comments <- NULL
           }
-          # v0.85.0 — vraies notes de bas de page dans le rapport Quarto :
-          # le commentaire porte des refs inline [^n] mais sans définitions,
-          # Pandoc les imprimait en littéral. On appende les définitions
-          # « [^n]: … » dérivées des sources RAG persistées → Pandoc rend
-          # de vraies notes numérotées.
+          # v0.84.5 — vraies notes de bas de page dans le rapport Quarto.
+          # `.prepare_footnotes()` garde la 1re occurrence de chaque ref
+          # [^n] VALIDE comme note, retire les refs orphelines (numéros
+          # cités par le LLM au-delà des sources existantes) et les
+          # doublons (Pandoc ne sait pas référencer 2× une même note), et
+          # appende les définitions [^n]: dérivées des sources persistées.
           if (!is.null(comments)) {
             src_md <- app_state$current_project$comments$synthesis_sources$sources_md
-            defs <- .sources_md_to_footnote_defs(src_md %||% "")
-            if (nzchar(defs)) comments <- paste0(comments, "\n\n", defs)
+            comments <- .prepare_footnotes(comments, src_md %||% "")
           }
 
           # Get cover image if uploaded
