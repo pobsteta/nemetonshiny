@@ -53,34 +53,56 @@ NULL
   defs <- .parse_source_defs(sources_md)
   if (!length(defs)) return(comment)
 
+  # v0.84.10 — dédup par CONTENU : une même source peut apparaître dans
+  # `sources_md` sous plusieurs ids (corpus ingéré en plusieurs documents,
+  # ou ancienne numérotation par chunk). On veut UNE seule note par source.
+  # Pour chaque texte de citation, on retient un id CANONIQUE (le 1er
+  # rencontré) et on réécrit toutes les refs vers cet id.
+  canon_by_id   <- character(0)   # id source -> id canonique
+  canon_text    <- character(0)   # id canonique -> texte
+  text_to_canon <- character(0)   # texte -> id canonique
+  for (id in names(defs)) {
+    txt <- defs[[id]]
+    if (txt %in% names(text_to_canon)) {
+      canon_by_id[id] <- text_to_canon[[txt]]
+    } else {
+      text_to_canon[[txt]] <- id
+      canon_by_id[id]      <- id
+      canon_text[id]       <- txt
+    }
+  }
+
   pat     <- "\\[\\^[0-9]+\\]"
   markers <- regmatches(comment, gregexpr(pat, comment, perl = TRUE))[[1]]
   if (!length(markers)) return(comment)  # no refs → nothing to do
   pieces  <- strsplit(comment, pat, perl = TRUE)[[1]]
 
-  seen <- character(0)
+  used <- character(0)   # ids canoniques déjà émis comme note
   out  <- if (length(pieces)) pieces[1] else ""
   for (i in seq_along(markers)) {
-    id   <- sub("\\[\\^([0-9]+)\\]", "\\1", markers[i])
-    keep <- (id %in% names(defs)) && !(id %in% seen)
-    tok  <- if (keep) markers[i] else ""   # strip orphans & duplicates
-    if (keep) seen <- c(seen, id)
-    nxt  <- if (i + 1L <= length(pieces)) pieces[i + 1L] else ""
-    out  <- paste0(out, tok, nxt)
+    id    <- sub("\\[\\^([0-9]+)\\]", "\\1", markers[i])
+    canon <- if (id %in% names(canon_by_id)) canon_by_id[[id]] else NA_character_
+    # garder la 1re ref vers chaque source UNIQUE ; retirer orphelines,
+    # doublons d'id ET doublons de SOURCE (même contenu, id différent).
+    keep  <- !is.na(canon) && !(canon %in% used)
+    tok   <- if (keep) sprintf("[^%s]", canon) else ""
+    if (keep) used <- c(used, canon)
+    nxt   <- if (i + 1L <= length(pieces)) pieces[i + 1L] else ""
+    out   <- paste0(out, tok, nxt)
   }
 
-  # Cosmetic — stripping the refs of a « Sources mobilisées : [^x], [^y] »
-  # summary leaves dangling commas ("… : , , ."). Collapse those few
-  # artefacts conservatively (double commas / colon-comma / comma-stop are
-  # near-impossible in legitimate prose).
+  # Cosmetic — stripping refs (orphelines / doublons / d'un résumé
+  # « Sources mobilisées : [^x], [^y] ») laisse des virgules orphelines
+  # ("… : , , ."). On les recolle conservativement.
   out <- gsub("\\s*,(\\s*,)+", ",", out, perl = TRUE)  # runs of commas → one
   out <- gsub(":\\s*,\\s*", ": ", out, perl = TRUE)    # ": ," → ": "
   out <- gsub(",\\s*([.;])", "\\1", out, perl = TRUE)  # ", ." → "."
   out <- gsub(":\\s*([.;])", "\\1", out, perl = TRUE)  # ": ." → "." (empty list)
 
-  if (length(seen)) {
-    used <- seen[order(as.integer(seen))]
-    fn_defs <- vapply(used, function(id) sprintf("[^%s]: %s", id, defs[[id]]),
+  if (length(used)) {
+    u <- unique(used)
+    u <- u[order(as.integer(u))]
+    fn_defs <- vapply(u, function(cid) sprintf("[^%s]: %s", cid, canon_text[[cid]]),
                       character(1))
     out <- paste0(out, "\n\n", paste(fn_defs, collapse = "\n"))
   }

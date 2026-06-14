@@ -1,3 +1,22 @@
+# nemetonshiny 0.84.10 (2026-06-14)
+
+### Fix — Rapport PDF : une seule note par source (dédup par contenu)
+
+Dans le rapport, une même source (ex. « ONF — Manuel d'aménagement »)
+pouvait apparaître **plusieurs fois** en note de bas de page sous des
+numéros différents (notes 10, 11, 12, 14, 17 = le même document), au lieu
+d'une référence unique.
+
+**Cause** : une même source peut être présente dans `sources_md` sous
+plusieurs ids (corpus ingéré en plusieurs documents, ou ancienne
+numérotation par chunk d'une perspective générée avant la dédup v0.84.6).
+
+**Fix** : `.prepare_footnotes()` déduplique désormais **par contenu** —
+pour chaque texte de citation, un id canonique (le 1er rencontré), et
+toutes les refs vers la même source sont réécrites vers cet id. Résultat :
+**une seule note de bas de page par source unique**, quelle que soit la
+provenance (projets anciens inclus, sans re-génération).
+
 # nemetonshiny 0.84.9 (2026-06-14)
 
 ### Fix — Rapport PDF : les `[^n]` restaient littéraux malgré des sources OK

@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.84.10] - 2026-06-14
+
+### Fixed
+
+- Rapport PDF : une même source pouvait apparaître plusieurs fois en note
+  de bas de page sous des numéros différents (ex. ONF = notes 10/11/12/14/17).
+  `.prepare_footnotes()` déduplique désormais par contenu (id canonique par
+  texte de citation) → une seule note par source unique, projets anciens
+  inclus.
+
 ## [0.84.9] - 2026-06-14
 
 ### Fixed
