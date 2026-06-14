@@ -8,6 +8,30 @@
 NULL
 
 
+#' Convert a RAG sources markdown block into Pandoc footnote definitions
+#'
+#' The synthesis perspective carries inline footnote references (`[^1]`,
+#' `[^2]`, …) and `nemeton::format_citations()` produces the matching
+#' source entries as lines `"[^1] author … p. N. <url>"` — note the
+#' MISSING colon, so they are NOT valid Pandoc footnote definitions. This
+#' helper turns each into `"[^1]: author … p. N. <url>"` so that, appended
+#' after the comment, Pandoc resolves the inline refs into REAL footnotes
+#' in the Quarto/PDF report (instead of printing literal `[^2]`).
+#'
+#' @param sources_md Character. The persisted `synthesis_sources$sources_md`.
+#' @return Character — the footnote definitions block, or `""` when no
+#'   `[^n]` entry is found.
+#' @noRd
+.sources_md_to_footnote_defs <- function(sources_md) {
+  if (is.null(sources_md) || !nzchar(sources_md)) return("")
+  lines <- strsplit(as.character(sources_md), "\n", fixed = TRUE)[[1]]
+  fn <- grep("^\\s*\\[\\^[0-9]+\\]\\s", lines, value = TRUE)
+  if (!length(fn)) return("")
+  defs <- sub("^(\\s*\\[\\^[0-9]+\\])\\s+", "\\1: ", fn)
+  paste(defs, collapse = "\n")
+}
+
+
 #' Check if Quarto is installed
 #'
 #' @description

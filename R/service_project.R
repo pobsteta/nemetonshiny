@@ -1035,7 +1035,8 @@ hydrate_monitoring_zone_id <- function(project, con) {
 #' @return Logical. TRUE if successful, FALSE otherwise.
 #'
 #' @noRd
-save_comments <- function(project_id, synthesis = NULL, families = NULL) {
+save_comments <- function(project_id, synthesis = NULL, families = NULL,
+                          synthesis_sources = NULL) {
   project_path <- get_project_path(project_id)
   if (is.null(project_path)) {
     cli::cli_warn("save_comments: project_path is NULL for id={project_id}")
@@ -1057,8 +1058,15 @@ save_comments <- function(project_id, synthesis = NULL, families = NULL) {
   # Build data: use provided values, fall back to existing
   syn <- if (!is.null(synthesis)) synthesis else existing$synthesis
   fam <- if (!is.null(families) && length(families) > 0) families else existing$families
+  # v0.85.0 — RAG context du commentaire de synthèse (sources_md +
+  # n_sources). Persisté pour réafficher le bloc « Sources documentaires »
+  # au rechargement (sinon NULL en session → seul le commentaire revenait)
+  # et fournir les notes de bas de page à l'export Quarto. NULL = conserver
+  # l'existant (édition manuelle du commentaire, qui ne change pas les
+  # sources).
+  src <- if (!is.null(synthesis_sources)) synthesis_sources else existing$synthesis_sources
 
-  data <- list(synthesis = syn, families = fam)
+  data <- list(synthesis = syn, families = fam, synthesis_sources = src)
 
   tryCatch({
     jsonlite::write_json(data, comments_path, auto_unbox = TRUE, pretty = TRUE)

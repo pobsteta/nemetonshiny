@@ -1046,6 +1046,10 @@ TRANSLATIONS <- list(
     fr = "Perspective appuy\u00e9e sur %d source(s) documentaire(s).",
     en = "Perspective backed by %d documentary source(s)."
   ),
+  rag_sources_heading = list(
+    fr = "Sources documentaires",
+    en = "Documentary sources"
+  ),
   rag_toggle_label = list(
     fr = "Inclure les sources documentaires",
     en = "Include documentary sources"
