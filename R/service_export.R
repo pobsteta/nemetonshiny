@@ -8,27 +8,83 @@
 NULL
 
 
-#' Convert a RAG sources markdown block into Pandoc footnote definitions
+#' Extract footnote definitions (id -> text) from a RAG sources markdown
 #'
-#' The synthesis perspective carries inline footnote references (`[^1]`,
-#' `[^2]`, …) and `nemeton::format_citations()` produces the matching
-#' source entries as lines `"[^1] author … p. N. <url>"` — note the
-#' MISSING colon, so they are NOT valid Pandoc footnote definitions. This
-#' helper turns each into `"[^1]: author … p. N. <url>"` so that, appended
-#' after the comment, Pandoc resolves the inline refs into REAL footnotes
-#' in the Quarto/PDF report (instead of printing literal `[^2]`).
-#'
-#' @param sources_md Character. The persisted `synthesis_sources$sources_md`.
-#' @return Character — the footnote definitions block, or `""` when no
-#'   `[^n]` entry is found.
+#' `nemeton::format_citations()` emits source entries as lines
+#' `"[^1] author … p. N. <url>"` (no colon → not a valid Pandoc footnote
+#' definition). Returns a named character vector `id -> text`.
 #' @noRd
-.sources_md_to_footnote_defs <- function(sources_md) {
-  if (is.null(sources_md) || !nzchar(sources_md)) return("")
+.parse_source_defs <- function(sources_md) {
+  if (is.null(sources_md) || !nzchar(sources_md)) return(character(0))
   lines <- strsplit(as.character(sources_md), "\n", fixed = TRUE)[[1]]
   fn <- grep("^\\s*\\[\\^[0-9]+\\]\\s", lines, value = TRUE)
-  if (!length(fn)) return("")
-  defs <- sub("^(\\s*\\[\\^[0-9]+\\])\\s+", "\\1: ", fn)
-  paste(defs, collapse = "\n")
+  if (!length(fn)) return(character(0))
+  ids  <- sub("^\\s*\\[\\^([0-9]+)\\].*$", "\\1", fn)
+  txts <- sub("^\\s*\\[\\^[0-9]+\\]\\s+", "", fn)
+  stats::setNames(txts, ids)
+}
+
+#' Make a synthesis comment's `[^n]` references render as REAL footnotes
+#'
+#' The synthesis perspective carries inline footnote references (`[^1]`,
+#' `[^2]`, …) but the raw text alone gives Pandoc no definitions, so they
+#' print as literal `[^2]`. Two real-world complications (observed on
+#' generated perspectives) must be handled or the literals remain:
+#'
+#'  * **Orphan refs** — the LLM sometimes cites a number BEYOND the
+#'    available sources (e.g. `[^7]` when only 4 sources exist). Such refs
+#'    have no definition → Pandoc keeps them literal.
+#'  * **Duplicate refs** — the same `[^n]` is referenced several times
+#'    (body + a « Sources mobilisées » summary). Pandoc does NOT support
+#'    referencing one footnote twice → 2nd+ occurrences stay literal.
+#'
+#' Strategy: keep the FIRST occurrence of each VALID id (one that has a
+#' definition) as a real footnote, and STRIP every orphan / duplicate
+#' `[^n]` marker (no more literal eyesores). Footnote definitions are
+#' appended for the ids actually used, in numeric order.
+#'
+#' @param comment Character. The synthesis comment (may carry `[^n]`).
+#' @param sources_md Character. The persisted `synthesis_sources$sources_md`.
+#' @return The comment with cleaned refs + appended `[^n]: …` definitions,
+#'   ready for Quarto/Pandoc. Unchanged when there is nothing to resolve.
+#' @noRd
+.prepare_footnotes <- function(comment, sources_md) {
+  if (is.null(comment) || !nzchar(comment)) return(comment)
+  defs <- .parse_source_defs(sources_md)
+  if (!length(defs)) return(comment)
+
+  pat     <- "\\[\\^[0-9]+\\]"
+  markers <- regmatches(comment, gregexpr(pat, comment, perl = TRUE))[[1]]
+  if (!length(markers)) return(comment)  # no refs → nothing to do
+  pieces  <- strsplit(comment, pat, perl = TRUE)[[1]]
+
+  seen <- character(0)
+  out  <- if (length(pieces)) pieces[1] else ""
+  for (i in seq_along(markers)) {
+    id   <- sub("\\[\\^([0-9]+)\\]", "\\1", markers[i])
+    keep <- (id %in% names(defs)) && !(id %in% seen)
+    tok  <- if (keep) markers[i] else ""   # strip orphans & duplicates
+    if (keep) seen <- c(seen, id)
+    nxt  <- if (i + 1L <= length(pieces)) pieces[i + 1L] else ""
+    out  <- paste0(out, tok, nxt)
+  }
+
+  # Cosmetic — stripping the refs of a « Sources mobilisées : [^x], [^y] »
+  # summary leaves dangling commas ("… : , , ."). Collapse those few
+  # artefacts conservatively (double commas / colon-comma / comma-stop are
+  # near-impossible in legitimate prose).
+  out <- gsub("\\s*,(\\s*,)+", ",", out, perl = TRUE)  # runs of commas → one
+  out <- gsub(":\\s*,\\s*", ": ", out, perl = TRUE)    # ": ," → ": "
+  out <- gsub(",\\s*([.;])", "\\1", out, perl = TRUE)  # ", ." → "."
+  out <- gsub(":\\s*([.;])", "\\1", out, perl = TRUE)  # ": ." → "." (empty list)
+
+  if (length(seen)) {
+    used <- seen[order(as.integer(seen))]
+    fn_defs <- vapply(used, function(id) sprintf("[^%s]: %s", id, defs[[id]]),
+                      character(1))
+    out <- paste0(out, "\n\n", paste(fn_defs, collapse = "\n"))
+  }
+  out
 }
 
 

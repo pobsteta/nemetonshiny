@@ -2592,23 +2592,46 @@ test_that("draw_standard_cover_page handles empty string description", {
   grDevices::dev.off()
 })
 
-test_that(".sources_md_to_footnote_defs converts RAG entries to Pandoc footnote defs", {
-  src <- paste(
-    "## Sources documentaires", "",
-    "[^1] Breda N, 2002 — « Impact ». p. 6.", "",
-    "[^2] Badeau V, 2008 — « RENECOFOR ». p. 294. <https://hal.inrae.fr/hal-02813279>",
-    sep = "\n")
-  out <- nemetonshiny:::.sources_md_to_footnote_defs(src)
-  lines <- strsplit(out, "\n", fixed = TRUE)[[1]]
-  expect_length(lines, 2L)
-  expect_true(all(grepl("^\\[\\^[0-9]+\\]: ", lines)))      # colon inserted
-  expect_true(grepl("^\\[\\^1\\]: Breda", lines[1]))
-  expect_true(grepl("hal-02813279", lines[2], fixed = TRUE))
+.fn_src <- paste(
+  "## Sources documentaires", "",
+  "[^1] Breda N, 2002 — « Impact ». p. 6.", "",
+  "[^2] Badeau V, 2008 — « RENECOFOR ». p. 294. <https://hal.inrae.fr/hal-02813279>",
+  "", "[^3] ONF.", "", "[^4] Autre.",
+  sep = "\n")
+
+test_that(".parse_source_defs maps ids to definition text", {
+  d <- nemetonshiny:::.parse_source_defs(.fn_src)
+  expect_equal(sort(names(d)), c("1", "2", "3", "4"))
+  expect_true(grepl("^Breda", d[["1"]]))
+  expect_equal(length(nemetonshiny:::.parse_source_defs("")), 0L)
+  expect_equal(length(nemetonshiny:::.parse_source_defs(NULL)), 0L)
 })
 
-test_that(".sources_md_to_footnote_defs is empty when there is nothing to convert", {
-  expect_identical(nemetonshiny:::.sources_md_to_footnote_defs(""), "")
-  expect_identical(nemetonshiny:::.sources_md_to_footnote_defs(NULL), "")
-  expect_identical(
-    nemetonshiny:::.sources_md_to_footnote_defs("## Sources\n\nrien ici"), "")
+test_that(".prepare_footnotes keeps valid first refs, strips orphans & duplicates", {
+  # [^2],[^4] valid ; [^7],[^8] orphans (only 4 sources) ; [^4] & [^8] repeated.
+  comment <- "Texte A[^2] et B[^4]. Synergie[^7], stockage[^8]. Sources mobilisées : [^4], [^7], [^8], [^8]."
+  out <- nemetonshiny:::.prepare_footnotes(comment, .fn_src)
+  body <- sub("\n\n\\[\\^.*$", "", out)   # part before the appended defs
+
+  # No literal orphan / duplicate refs remain in the body.
+  expect_false(grepl("\\[\\^7\\]", out, perl = TRUE))
+  expect_false(grepl("\\[\\^8\\]", out, perl = TRUE))
+  # First occurrences of valid refs are kept (exactly once each in body).
+  expect_equal(lengths(regmatches(body, gregexpr("\\[\\^2\\]", body)))[1], 1L)
+  expect_equal(lengths(regmatches(body, gregexpr("\\[\\^4\\]", body)))[1], 1L)
+  # Definitions appended only for used ids (2 and 4), with colon.
+  expect_true(grepl("\\[\\^2\\]: Badeau", out))
+  expect_true(grepl("\\[\\^4\\]: Autre", out))
+  expect_false(grepl("\\[\\^1\\]:", out))   # [^1] never referenced
+  expect_false(grepl("\\[\\^3\\]:", out))
+  # Dangling commas from the stripped summary are cleaned up.
+  expect_false(grepl(", ,", out, fixed = TRUE))
+})
+
+test_that(".prepare_footnotes is a no-op without refs or without defs", {
+  expect_identical(nemetonshiny:::.prepare_footnotes("Pas de refs ici.", .fn_src),
+                   "Pas de refs ici.")
+  expect_identical(nemetonshiny:::.prepare_footnotes("Texte [^1].", ""),
+                   "Texte [^1].")
+  expect_identical(nemetonshiny:::.prepare_footnotes("", .fn_src), "")
 })
