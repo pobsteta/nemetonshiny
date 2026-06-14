@@ -1809,3 +1809,42 @@ test_that("attach_indicators_sf is a no-op without UG/indicator data", {
     nemetonshiny:::attach_indicators_sf(
       list(indicators = data.frame(x = 1)))$indicators_sf)
 })
+
+test_that("load_project dispatches the PostGIS sync off-thread (async) when DB configured", {
+  dispatched <- new.env(); dispatched$called <- FALSE; dispatched$sync_called <- FALSE
+  testthat::local_mocked_bindings(
+    get_project_path        = function(id) withr::local_tempdir(),
+    load_project_metadata   = function(id) list(name = "x", indicators_computed = TRUE),
+    load_parcels            = function(id) NULL,
+    load_commune_geometry   = function(id) NULL,
+    load_indicators         = function(id) NULL,
+    load_comments           = function(id) NULL,
+    ensure_project_migrated = function(id, project) project,
+    is_db_configured        = function() TRUE,
+    # The async dispatcher is called instead of the (blocking) synchronous
+    # db_sync_project — that's the v0.84.0 fix.
+    db_sync_project_async   = function(project_id) { dispatched$called <<- TRUE; invisible(NULL) },
+    db_sync_project         = function(project_id, con = NULL) { dispatched$sync_called <<- TRUE; TRUE }
+  )
+  proj <- nemetonshiny:::load_project("fake-id")
+  expect_false(is.null(proj))
+  expect_true(dispatched$called)        # async dispatch happened
+  expect_false(dispatched$sync_called)  # NOT called synchronously on the main thread
+})
+
+test_that("load_project skips the DB sync when DB is not configured", {
+  dispatched <- new.env(); dispatched$called <- FALSE
+  testthat::local_mocked_bindings(
+    get_project_path        = function(id) withr::local_tempdir(),
+    load_project_metadata   = function(id) list(name = "x", indicators_computed = TRUE),
+    load_parcels            = function(id) NULL,
+    load_commune_geometry   = function(id) NULL,
+    load_indicators         = function(id) NULL,
+    load_comments           = function(id) NULL,
+    ensure_project_migrated = function(id, project) project,
+    is_db_configured        = function() FALSE,
+    db_sync_project_async   = function(project_id) { dispatched$called <<- TRUE; invisible(NULL) }
+  )
+  nemetonshiny:::load_project("fake-id")
+  expect_false(dispatched$called)
+})
