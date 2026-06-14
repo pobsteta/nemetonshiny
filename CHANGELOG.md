@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.84.2] - 2026-06-14
+
+### Fixed
+
+- Tour guidé : ne se lançait plus depuis v0.84.1 (ni au démarrage ni via
+  « relancer »). Le couple `tab`/`tab_id` natif de cicerone bascule
+  l'onglet via le binding `shiny.bootstrapTabInput`, incompatible avec le
+  `page_navbar` bslib (Bootstrap 5) — l'exception avortait tout le tour.
+  Bascule d'onglet désormais côté client (clic sur
+  `#main_nav a[data-value=...]`). Couverture multi-onglets conservée.
+- Doc : politique semver de CLAUDE.md inversée — **PATCH par défaut**,
+  MINOR réservé aux gros lots / nouveau module-onglet-mode / épaississement.
+
 ## [0.84.1] - 2026-06-14
 
 ### Fixed

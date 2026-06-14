@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.1.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.2 (2026-06-14)
 
 ### Fix — Le Tour guidé ne se lançait plus (régression v0.84.1)
 
