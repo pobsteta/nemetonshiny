@@ -1,5 +1,27 @@
 # Changelog
 
+## nemetonshiny 0.84.4 (2026-06-14)
+
+#### Fix — Sources de synthèse : ne plus effacer le contexte RAG in-session
+
+Suite à v0.84.3, l’observer « restauration des commentaires au
+chargement projet » remettait `rag_ctx_synthesis` à NULL à **chaque**
+réassignation de `app_state$current_project` — y compris l’attache
+différée de `indicators_sf` (v0.78.0), qui ré-assigne `current_project`
+~0,1 s après le chargement avec le **même id**. Conséquence : le bloc «
+Sources documentaires » pouvait disparaître alors qu’une perspective
+venait d’être générée (sources en session mais pas encore dans la copie
+in-memory).
+
+**Fix** : l’observer ne réagit plus qu’à un **vrai changement d’id de
+projet** (garde `last_loaded_pid`). Les sources fraîchement générées
+restent affichées ; le reset/restore ne se fait qu’en changeant
+réellement de projet.
+
+Rappel : les sources/notes n’apparaissent que pour une perspective
+**générée depuis v0.84.3** (persistance forward-looking) — re-générer la
+perspective sur un projet ancien pour les obtenir.
+
 ## nemetonshiny 0.84.3 (2026-06-14)
 
 #### Synthèse — Sources RAG persistées, réordonnées, et vraies notes Quarto

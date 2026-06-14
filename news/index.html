@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.84.4" id="nemetonshiny-0844-2026-06-14">nemetonshiny 0.84.4 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0844-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="fix--sources-de-synthèse--ne-plus-effacer-le-contexte-rag-in-session-0-84-4">Fix — Sources de synthèse : ne plus effacer le contexte RAG in-session<a class="anchor" aria-label="anchor" href="#fix--sources-de-synth%C3%A8se--ne-plus-effacer-le-contexte-rag-in-session-0-84-4"></a></h4>
+<p>Suite à v0.84.3, l’observer « restauration des commentaires au chargement projet » remettait <code>rag_ctx_synthesis</code> à NULL à <strong>chaque</strong> réassignation de <code>app_state$current_project</code> — y compris l’attache différée de <code>indicators_sf</code> (v0.78.0), qui ré-assigne <code>current_project</code> ~0,1 s après le chargement avec le <strong>même id</strong>. Conséquence : le bloc « Sources documentaires » pouvait disparaître alors qu’une perspective venait d’être générée (sources en session mais pas encore dans la copie in-memory).</p>
+<p><strong>Fix</strong> : l’observer ne réagit plus qu’à un <strong>vrai changement d’id de projet</strong> (garde <code>last_loaded_pid</code>). Les sources fraîchement générées restent affichées ; le reset/restore ne se fait qu’en changeant réellement de projet.</p>
+<p>Rappel : les sources/notes n’apparaissent que pour une perspective <strong>générée depuis v0.84.3</strong> (persistance forward-looking) — re-générer la perspective sur un projet ancien pour les obtenir.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.84.3" id="nemetonshiny-0843-2026-06-14">nemetonshiny 0.84.3 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0843-2026-06-14"></a></h2>
 <div class="section level4">
