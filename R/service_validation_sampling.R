@@ -47,7 +47,7 @@
 #'   provenance columns `zone_id`, `source_run_id`, `generated_at`.
 #' @noRd
 generate_validation_plan <- function(con, project,
-                                     source = c("FORDEAD", "FAST"),
+                                     source = c("FORDEAD", "FAST", "RECONFORT"),
                                      n_validation = 20L,
                                      n_control    = 5L,
                                      classes      = c(3L, 4L),
@@ -182,6 +182,24 @@ generate_validation_plan <- function(con, project,
       }
     ))
   }
+  # RECONFORT path (spec 021 G4). Mirror of FORDEAD : the categorical
+  # 1-sain / 2-deperissant / 3-tres-deperissant mask is read from the
+  # RECONFORT cache. Unlike FAST there is NO on-the-fly compute — the
+  # mask must have been persisted by a RECONFORT run. Absent → NULL,
+  # surfaced as `validation_no_mask` (same UX as FORDEAD without a run).
+  if (identical(source, "RECONFORT")) {
+    cd <- file.path(project$path, "cache", "layers", "reconfort")
+    if (!dir.exists(cd)) return(NULL)
+    return(tryCatch(
+      nemeton::read_reconfort_alert_mask(con, zone_id, cache_dir = cd),
+      error = function(e) {
+        cli::cli_alert_warning(
+          "read_reconfort_alert_mask failed: {e$message}"
+        )
+        NULL
+      }
+    ))
+  }
   # FAST path. v0.69.0 — répertoire renommé `fast/` → `fast_sampling/`
   # pour clarifier le scope (validation d'échantillonnage), à
   # distinguer du cache `fast_alert/` et `fast_alert_mask/` du
@@ -257,6 +275,9 @@ generate_validation_plan <- function(con, project,
   base <- if (identical(source, "FORDEAD")) {
     file.path(project$path, "cache", "layers", "fordead",
               sprintf("zone_%d", zone_id))
+  } else if (identical(source, "RECONFORT")) {
+    file.path(project$path, "cache", "layers", "reconfort",
+              sprintf("zone_%d", zone_id))
   } else {
     file.path(project$path, "cache", "layers", "fast_sampling",
               sprintf("zone_%d", zone_id))
@@ -264,6 +285,8 @@ generate_validation_plan <- function(con, project,
   if (!dir.exists(base)) return(NA_character_)
   pattern <- if (identical(source, "FORDEAD")) {
     "^dieback_mask_(.+)\\.tif$"
+  } else if (identical(source, "RECONFORT")) {
+    "^reconfort_mask_(.+)\\.tif$"
   } else {
     "^fast_alert_(.+)\\.tif$"
   }
