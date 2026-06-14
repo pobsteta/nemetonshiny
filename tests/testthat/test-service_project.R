@@ -1848,3 +1848,31 @@ test_that("load_project skips the DB sync when DB is not configured", {
   nemetonshiny:::load_project("fake-id")
   expect_false(dispatched$called)
 })
+
+test_that("save_comments persists and load_comments restores synthesis_sources", {
+  withr::with_tempdir({
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = getwd()),
+      {
+        proj <- nemetonshiny:::create_project(name = "RAG Sources",
+                                              parcels = NULL)
+        pid <- proj$id
+        nemetonshiny:::save_comments(
+          pid, synthesis = "Texte [^1] et [^2].",
+          synthesis_sources = list(
+            sources_md = "## Sources documentaires\n\n[^1] A. p.1.\n\n[^2] B. p.2.",
+            n_sources  = 2L))
+        loaded <- nemetonshiny:::load_comments(pid)
+        expect_equal(loaded$synthesis, "Texte [^1] et [^2].")
+        expect_equal(as.integer(loaded$synthesis_sources$n_sources), 2L)
+        expect_true(grepl("Sources documentaires",
+                          as.character(loaded$synthesis_sources$sources_md)))
+        # A manual comment edit (synthesis_sources = NULL) keeps the sources.
+        nemetonshiny:::save_comments(pid, synthesis = "Texte edite.")
+        loaded2 <- nemetonshiny:::load_comments(pid)
+        expect_equal(loaded2$synthesis, "Texte edite.")
+        expect_equal(as.integer(loaded2$synthesis_sources$n_sources), 2L)
+      }
+    )
+  })
+})

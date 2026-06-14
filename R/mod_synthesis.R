@@ -29,16 +29,32 @@ mod_synthesis_server <- function(id, app_state) {
       ctx <- rag_ctx_synthesis()
       if (is.null(ctx) || !nzchar(ctx$sources_md %||% "")) return(NULL)
       i18n <- get_i18n(app_state$language)
+
+      # v0.85.0 — `ctx$sources_md` = "## Sources documentaires\n\n[^1] …".
+      # On sépare le TITRE de la LISTE pour rendre, dans cet ordre :
+      #   1. « Sources documentaires » (titre)
+      #   2. « Perspective appuyée sur N source(s) » — MÊME police que le
+      #      titre (paragraphe normal, plus le petit gris `text-muted small`)
+      #   3. la liste des citations
+      md      <- ctx$sources_md
+      lines   <- strsplit(md, "\n", fixed = TRUE)[[1]]
+      h_idx   <- which(grepl("^#{1,3}\\s+", lines))[1]
+      title   <- if (!is.na(h_idx)) sub("^#{1,3}\\s+", "", lines[h_idx])
+                 else i18n$t("rag_sources_heading")
+      body_md <- if (!is.na(h_idx))
+                   paste(lines[seq.int(h_idx + 1L, length(lines))], collapse = "\n")
+                 else md
+
       htmltools::tagList(
         htmltools::tags$hr(),
+        htmltools::tags$h5(title),
         if (isTRUE(ctx$n_sources > 0L)) {
           htmltools::tags$p(
-            class = "text-muted small",
             sprintf(i18n$t("rag_sourced_badge"),
                     as.integer(ctx$n_sources))
           )
         },
-        shiny::markdown(ctx$sources_md)
+        shiny::markdown(body_md)
       )
     })
 
@@ -743,9 +759,19 @@ mod_synthesis_server <- function(id, app_state) {
       has_syn <- !is.null(synthesis_response)
       cli::cli_inform("Saving comments: project_id={project_id}, synthesis={has_syn}, families={n_fam}")
       if (!is.null(project_id)) {
+        # v0.85.0 — persister le contexte RAG (sources_md + n_sources) en
+        # même temps que le commentaire, pour le réafficher au reload et
+        # alimenter les notes de bas de page de l'export Quarto. On passe
+        # toujours les sources de CETTE génération (même vides) pour
+        # rester cohérent avec le commentaire produit.
+        ctx_now <- rag_ctx_synthesis()
         save_comments(project_id,
                       synthesis = synthesis_response,
-                      families = family_comments_local)
+                      families = family_comments_local,
+                      synthesis_sources = list(
+                        sources_md = ctx_now$sources_md %||% "",
+                        n_sources  = as.integer(ctx_now$n_sources %||% 0L)
+                      ))
         # v0.52.9 — signal aux autres modules (mod_action_plan) que le
         # fichier commentaires a changé. Sans ce bump, le contexte IA
         # du Plan d'actions reste « pas de commentaires » jusqu'au
@@ -785,6 +811,10 @@ mod_synthesis_server <- function(id, app_state) {
       # Always reset comments first to avoid stale data from previous project
       shiny::updateTextAreaInput(session, "synthesis_comments", value = "")
       app_state$family_comments <- list()
+      # v0.85.0 — reset puis restaure le contexte RAG (sources) persisté,
+      # pour que le bloc « Sources documentaires » réapparaisse au reload
+      # (et pas seulement après une nouvelle génération en session).
+      rag_ctx_synthesis(NULL)
 
       # Then restore from new project if available
       if (!is.null(project$comments)) {
@@ -795,6 +825,13 @@ mod_synthesis_server <- function(id, app_state) {
         }
         if (is.list(project$comments$families)) {
           app_state$family_comments <- project$comments$families
+        }
+        src <- project$comments$synthesis_sources
+        if (!is.null(src) && nzchar(as.character(src$sources_md %||% ""))) {
+          rag_ctx_synthesis(list(
+            sources_md = as.character(src$sources_md),
+            n_sources  = suppressWarnings(as.integer(src$n_sources %||% 0L))
+          ))
         }
       }
 
@@ -885,6 +922,16 @@ mod_synthesis_server <- function(id, app_state) {
           comments <- input$synthesis_comments
           if (!is.null(comments) && nchar(trimws(comments)) == 0) {
             comments <- NULL
+          }
+          # v0.85.0 — vraies notes de bas de page dans le rapport Quarto :
+          # le commentaire porte des refs inline [^n] mais sans définitions,
+          # Pandoc les imprimait en littéral. On appende les définitions
+          # « [^n]: … » dérivées des sources RAG persistées → Pandoc rend
+          # de vraies notes numérotées.
+          if (!is.null(comments)) {
+            src_md <- app_state$current_project$comments$synthesis_sources$sources_md
+            defs <- .sources_md_to_footnote_defs(src_md %||% "")
+            if (nzchar(defs)) comments <- paste0(comments, "\n\n", defs)
           }
 
           # Get cover image if uploaded

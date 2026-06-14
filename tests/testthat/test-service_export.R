@@ -2591,3 +2591,24 @@ test_that("draw_standard_cover_page handles empty string description", {
 
   grDevices::dev.off()
 })
+
+test_that(".sources_md_to_footnote_defs converts RAG entries to Pandoc footnote defs", {
+  src <- paste(
+    "## Sources documentaires", "",
+    "[^1] Breda N, 2002 — « Impact ». p. 6.", "",
+    "[^2] Badeau V, 2008 — « RENECOFOR ». p. 294. <https://hal.inrae.fr/hal-02813279>",
+    sep = "\n")
+  out <- nemetonshiny:::.sources_md_to_footnote_defs(src)
+  lines <- strsplit(out, "\n", fixed = TRUE)[[1]]
+  expect_length(lines, 2L)
+  expect_true(all(grepl("^\\[\\^[0-9]+\\]: ", lines)))      # colon inserted
+  expect_true(grepl("^\\[\\^1\\]: Breda", lines[1]))
+  expect_true(grepl("hal-02813279", lines[2], fixed = TRUE))
+})
+
+test_that(".sources_md_to_footnote_defs is empty when there is nothing to convert", {
+  expect_identical(nemetonshiny:::.sources_md_to_footnote_defs(""), "")
+  expect_identical(nemetonshiny:::.sources_md_to_footnote_defs(NULL), "")
+  expect_identical(
+    nemetonshiny:::.sources_md_to_footnote_defs("## Sources\n\nrien ici"), "")
+})

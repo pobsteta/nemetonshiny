@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.84.3] - 2026-06-14
+
+### Changed
+
+- Onglet Synthèse, bloc « Sources documentaires » : (1) le contexte RAG
+  (`sources_md` + `n_sources`) est désormais **persisté** dans
+  `comments.json` et restauré au rechargement d'un projet (le bloc sources
+  réapparaît, plus seulement le commentaire) ; (2) **réordonné** — titre
+  « Sources documentaires » en premier, puis « Perspective appuyée sur N
+  source(s) » dans la même police, puis la liste ; (3) export Quarto :
+  les **définitions de notes** `[^n]: …` (dérivées des sources) sont
+  appendées au commentaire → Pandoc rend de **vraies notes de bas de
+  page** au lieu de `[^2]` littéral.
+
 ## [0.84.2] - 2026-06-14
 
 ### Fixed
