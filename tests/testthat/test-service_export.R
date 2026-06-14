@@ -2635,3 +2635,28 @@ test_that(".prepare_footnotes is a no-op without refs or without defs", {
                    "Texte [^1].")
   expect_identical(nemetonshiny:::.prepare_footnotes("", .fn_src), "")
 })
+
+test_that(".prepare_footnotes émet UNE note par source unique (dédup par contenu)", {
+  # La même source (ONF) apparaît sous 3 ids ; Breda sous 2 ids.
+  src <- paste(
+    "## Sources documentaires", "",
+    "[^10] ONF — Manuel.", "",
+    "[^11] ONF — Manuel.", "",
+    "[^12] ONF — Manuel.", "",
+    "[^13] Breda 2002 — Impact.", "",
+    "[^15] Breda 2002 — Impact.", sep = "\n")
+  comment <- "Texte A[^10] et B[^13]. ONF[^11] et[^12], Breda[^15]."
+  out <- nemetonshiny:::.prepare_footnotes(comment, src)
+  defs <- regmatches(out, gregexpr("\\[\\^[0-9]+\\]: [^\n]+", out))[[1]]
+  # Une seule définition par source unique → 2 (ONF + Breda).
+  expect_length(defs, 2L)
+  expect_true(any(grepl("ONF", defs)))
+  expect_true(any(grepl("Breda", defs)))
+  # Les refs vers la même source sont fusionnées vers l'id canonique :
+  # [^10] (ONF) et [^13] (Breda) chacun référencé UNE fois.
+  body <- sub("\n\n\\[\\^.*$", "", out)
+  expect_equal(lengths(regmatches(body, gregexpr("\\[\\^10\\]", body)))[1], 1L)
+  expect_equal(lengths(regmatches(body, gregexpr("\\[\\^13\\]", body)))[1], 1L)
+  # Plus aucune occurrence des ids redondants 11/12/15 dans le corps.
+  expect_false(grepl("\\[\\^11\\]|\\[\\^12\\]|\\[\\^15\\]", body))
+})
