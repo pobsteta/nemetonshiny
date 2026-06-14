@@ -105,8 +105,18 @@ reload_expert_profiles <- function() {
 #' @param lang Character. Language code ("fr" or "en").
 #' @return Named character vector (names = translated labels, values = profile keys).
 #' @noRd
+# Internal-only expert profiles : NOT user-selectable perspectives.
+# `planificateur` is a JSON-only profile (« Tu produis exclusivement du
+# JSON valide… ») consumed by the action-plan generation, which hardcodes
+# `build_system_prompt(expert = "planificateur")` (mod_action_plan). It
+# must stay in `get_expert_profiles()` (the action plan needs it) but be
+# excluded from the perspective dropdown — otherwise selecting it in
+# Synthèse makes « Générer par IA » return raw JSON instead of prose.
+.INTERNAL_EXPERT_KEYS <- c("planificateur")
+
 get_expert_choices <- function(lang = "fr") {
   profiles <- get_expert_profiles()
+  profiles <- profiles[setdiff(names(profiles), .INTERNAL_EXPERT_KEYS)]
   keys <- names(profiles)
   labels <- vapply(profiles, function(p) {
     lbl <- p$label[[lang]]

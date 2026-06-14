@@ -679,3 +679,18 @@ test_that("producer profile mentions timber industry concepts", {
 
 # Reset language to English at end of tests
 nemeton::nemeton_set_language("en")
+
+test_that("get_expert_choices hides the internal JSON-only 'planificateur' profile", {
+  ch <- nemetonshiny:::get_expert_choices("fr")
+  # `planificateur` is a JSON-only profile (action-plan internal) — it must
+  # NOT be offered as a perspective profile (would return raw JSON).
+  expect_false("planificateur" %in% ch)
+  expect_false("planificateur" %in% names(ch))
+  # …but it stays available to build_system_prompt() for the action plan.
+  expect_true("planificateur" %in% names(nemetonshiny:::get_expert_profiles()))
+  expect_true(grepl("JSON",
+    nemetonshiny:::build_system_prompt("français", "planificateur")))
+  # Legitimate perspective profiles remain offered.
+  expect_true("generalist" %in% ch)
+  expect_true("naturaliste" %in% ch)
+})
