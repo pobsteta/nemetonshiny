@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.84.10" id="nemetonshiny-08410-2026-06-14">nemetonshiny 0.84.10 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08410-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="fix--rapport-pdf--une-seule-note-par-source-dédup-par-contenu-0-84-10">Fix — Rapport PDF : une seule note par source (dédup par contenu)<a class="anchor" aria-label="anchor" href="#fix--rapport-pdf--une-seule-note-par-source-d%C3%A9dup-par-contenu-0-84-10"></a></h4>
+<p>Dans le rapport, une même source (ex. « ONF — Manuel d’aménagement ») pouvait apparaître <strong>plusieurs fois</strong> en note de bas de page sous des numéros différents (notes 10, 11, 12, 14, 17 = le même document), au lieu d’une référence unique.</p>
+<p><strong>Cause</strong> : une même source peut être présente dans <code>sources_md</code> sous plusieurs ids (corpus ingéré en plusieurs documents, ou ancienne numérotation par chunk d’une perspective générée avant la dédup v0.84.6).</p>
+<p><strong>Fix</strong> : <code>.prepare_footnotes()</code> déduplique désormais <strong>par contenu</strong> — pour chaque texte de citation, un id canonique (le 1er rencontré), et toutes les refs vers la même source sont réécrites vers cet id. Résultat : <strong>une seule note de bas de page par source unique</strong>, quelle que soit la provenance (projets anciens inclus, sans re-génération).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.84.9" id="nemetonshiny-0849-2026-06-14">nemetonshiny 0.84.9 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0849-2026-06-14"></a></h2>
 <div class="section level4">
