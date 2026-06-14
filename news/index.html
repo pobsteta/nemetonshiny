@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.83.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.84.0" id="nemetonshiny-0840-2026-06-14">nemetonshiny 0.84.0 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0840-2026-06-14"></a></h2>
+<div class="section level4">
+<h4 id="perf--sync-postgis-du-projet-déplacé-hors-du-thread-principal-0-84-0">Perf — Sync PostGIS du projet déplacé hors du thread principal<a class="anchor" aria-label="anchor" href="#perf--sync-postgis-du-projet-d%C3%A9plac%C3%A9-hors-du-thread-principal-0-84-0"></a></h4>
+<p>Le chargement d’un projet récent laissait un délai ressenti entre le log « Connected to PostgreSQL … » et l’affichage des parcelles sur la carte.</p>
+<p><strong>Cause</strong> : la synchronisation PostGIS best-effort (<code>db_sync_project</code> — connexion + <code><a href="https://r-spatial.github.io/sf/reference/st_write.html" class="external-link">sf::st_write()</a></code> des parcelles + <code>dbWriteTable()</code> des indicateurs) tournait dans un callback <code>later::later(delay = 0.5)</code>. Or un callback <code>later</code> s’exécute sur le <strong>thread principal R</strong> : même différé, l’upload <strong>gelait l’event loop Shiny</strong> juste après le premier flush de la carte, retardant les flushs suivants (retrait de l’overlay, <code>fitBounds</code>, rendu de la sélection) et figeant l’UI pendant toute la durée du sync.</p>
+<p><strong>Fix</strong> : nouveau <code>db_sync_project_async()</code> qui exécute le sync dans un worker <code>future</code> (process R séparé), <strong>hors du thread principal</strong> — même machinerie que les runs FORDEAD/RECONFORT (re-chargement du paquet + replay des variables d’environnement DB côté worker, y compris <code>POSTGRESQL_ADDON_*</code>). <code>load_project()</code> l’appelle à la place du <code>later()</code> synchrone. Le sync reste best-effort (aucun consommateur n’attend son résultat) ; dégradation propre vers le <code>later()</code> historique si <code>future</code> / <code>promises</code> sont indisponibles. Le dispatch retourne en ~0 ms.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.83.0" id="nemetonshiny-0830-2026-06-14">nemetonshiny 0.83.0 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0830-2026-06-14"></a></h2>
 <div class="section level4">

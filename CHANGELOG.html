@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.83.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,13 @@
 <p>For a narrative, per-feature description of each release, see <a href="NEWS.html">NEWS.md</a>. This file is the concise, categorised trail.</p>
 <div class="section level2">
 <h2 id="unreleased"><a href="https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD" class="external-link">Unreleased</a><a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
+</div>
+<div class="section level2">
+<h2 id="id_0840---2026-06-14">[0.84.0] - 2026-06-14<a class="anchor" aria-label="anchor" href="#id_0840---2026-06-14"></a></h2>
+<div class="section level3">
+<h3 id="changed">Changed<a class="anchor" aria-label="anchor" href="#changed"></a></h3>
+<ul><li>Chargement d’un projet récent : la synchronisation PostGIS best-effort (<code>db_sync_project</code>) tourne désormais dans un worker <code>future</code> (<code>db_sync_project_async</code>) au lieu d’un callback <code>later()</code>. Le <code>later()</code> s’exécutait sur le thread principal R et gelait l’event loop Shiny / le rendu de la carte pendant l’upload (connexion + <code>st_write</code> parcelles + <code>dbWriteTable</code> indicateurs), d’où le délai ressenti entre « Connected to PostgreSQL » et l’affichage des parcelles. Le sync est maintenant totalement hors du thread principal (dispatch non bloquant ~0 ms), best-effort, avec fallback <code>later()</code> si <code>future</code>/<code>promises</code> absents. Capture des <code>POSTGRESQL_ADDON_*</code> côté worker (Clever Cloud).</li>
+</ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_0830---2026-06-14">[0.83.0] - 2026-06-14<a class="anchor" aria-label="anchor" href="#id_0830---2026-06-14"></a></h2>
@@ -93,7 +100,7 @@
 <div class="section level2">
 <h2 id="id_0780---2026-06-13">[0.78.0] - 2026-06-13<a class="anchor" aria-label="anchor" href="#id_0780---2026-06-13"></a></h2>
 <div class="section level3">
-<h3 id="changed">Changed<a class="anchor" aria-label="anchor" href="#changed"></a></h3>
+<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
 <ul><li>Chargement d’un projet récent : <code>load_project()</code> gagne un paramètre <code>build_indicators_sf</code> (défaut <code>TRUE</code>, comportement inchangé pour les appelants existants). Le build géométrique des UGF (<code>ug_build_sf()</code>, <code>st_union()</code> par UGF) est extrait dans <code>attach_indicators_sf()</code> et <strong>différé</strong> via <code>later()</code> dans le chemin de chargement interactif — <code>indicators_sf</code> (consommé seulement par Synthèse / Famille / Échantillonnage / Suivi) n’est plus construit avant le rendu de la carte.</li>
 </ul></div>
 <div class="section level3">
@@ -104,7 +111,7 @@
 <div class="section level2">
 <h2 id="id_0771---2026-06-12">[0.77.1] - 2026-06-12<a class="anchor" aria-label="anchor" href="#id_0771---2026-06-12"></a></h2>
 <div class="section level3">
-<h3 id="changed-1">Changed<a class="anchor" aria-label="anchor" href="#changed-1"></a></h3>
+<h3 id="changed-2">Changed<a class="anchor" aria-label="anchor" href="#changed-2"></a></h3>
 <ul><li>Suivi sanitaire (mode FAST) : le bandeau « Surfaces des zones de suivi » adopte le style carte (bordure info bleue, icône + titre en gras, corps) des bandeaux de validité FORDEAD, au lieu de la barre <code>alert</code> compacte.</li>
 </ul></div>
 </div>
@@ -118,7 +125,7 @@
 <div class="section level2">
 <h2 id="id_0760---2026-06-12">[0.76.0] - 2026-06-12<a class="anchor" aria-label="anchor" href="#id_0760---2026-06-12"></a></h2>
 <div class="section level3">
-<h3 id="changed-2">Changed<a class="anchor" aria-label="anchor" href="#changed-2"></a></h3>
+<h3 id="changed-3">Changed<a class="anchor" aria-label="anchor" href="#changed-3"></a></h3>
 <ul><li>Légende de la carte « Alertes FAST » (Suivi sanitaire) : le titre rappelle désormais l’indice actif (NDMI / NDVI / NBR), ex. « Sévérité de l’alerte (NDVI) ». Mise à jour réactive sur changement du radio « Indice FAST ». Clé i18n <code>fast_alert_legend_title</code> paramétrée <code>%s</code>.</li>
 </ul></div>
 <div class="section level3">
@@ -149,7 +156,7 @@
 <div class="section level2">
 <h2 id="id_0750---2026-06-11">[0.75.0] - 2026-06-11<a class="anchor" aria-label="anchor" href="#id_0750---2026-06-11"></a></h2>
 <div class="section level3">
-<h3 id="changed-3">Changed<a class="anchor" aria-label="anchor" href="#changed-3"></a></h3>
+<h3 id="changed-4">Changed<a class="anchor" aria-label="anchor" href="#changed-4"></a></h3>
 <ul><li>Notification de sync PostGIS persistante jusqu’à l’apparition de l’overlay carte « Affichage des parcelles… » : passe de <code>duration = 5</code> à <code>duration = NULL</code> (id <code>db_sync_notif</code>), retirée par <code>mod_map</code> quand l’overlay de chargement prend le relais. Filets de sécurité <code>later()</code> à 12 s et sur le chemin commune invalide. Évite le trou de feedback où la notif disparaissait avant le rendu de la carte.</li>
 </ul></div>
 </div>
@@ -161,7 +168,7 @@
 <li>6 tests pré-existants révélés une fois <code>lasR</code> résolu (masqués jusque-là par l’échec d’install), tous côté test — code applicatif correct : <code>mod_rag_admin</code> testServer (×3 : <code>ignoreInit</code> + promesse non forcée), <code>mod_monitoring</code>/<code>mod_monitoring_pixel_map</code> (×3 : attente NDMI).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-4">Changed<a class="anchor" aria-label="anchor" href="#changed-4"></a></h3>
+<h3 id="changed-5">Changed<a class="anchor" aria-label="anchor" href="#changed-5"></a></h3>
 <ul><li>Smoke E2E shinytest2 <code>mod_rag_admin-e2e</code> quarantiné (<code>skip()</code> + FIXME) : jamais exécuté en CI auparavant, cassé (modale/tab-lazy sous headless), à ré-armer avec un environnement navigateur stable.</li>
 </ul></div>
 </div>
@@ -172,7 +179,7 @@
 <ul><li>Persistance de la géométrie de la commune (<code>data/commune.gpkg</code>) au save du projet : <code>save_commune_geometry()</code> / <code>load_commune_geometry()</code> dans <code>service_project.R</code>, champ <code>project$commune_geometry</code> exposé par <code>load_project()</code>, paramètre <code>commune_geometry</code> sur <code>create_project()</code>, <code>update_project()</code> et <code>mod_project_server()</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-5">Changed<a class="anchor" aria-label="anchor" href="#changed-5"></a></h3>
+<h3 id="changed-6">Changed<a class="anchor" aria-label="anchor" href="#changed-6"></a></h3>
 <ul><li>Restore projet instantané : la géométrie commune en cache est réinjectée synchroniquement au chargement, la carte se rend sans attendre la <code>restore_task</code> asynchrone (worker <code>future</code> + reload <code>nemeton</code> + 2 appels <code>geo.api.gouv.fr</code>). La tâche async ne sert plus qu’à peupler la liste déroulante des communes. Garde-fou anti double-render (flash blanc) dans son result handler. Les projets legacy sans cache retombent sur l’ancien chemin async.</li>
 </ul></div>
 </div>
@@ -187,7 +194,7 @@
 <div class="section level2">
 <h2 id="id_0730---2026-06-04">[0.73.0] - 2026-06-04<a class="anchor" aria-label="anchor" href="#id_0730---2026-06-04"></a></h2>
 <div class="section level3">
-<h3 id="changed-6">Changed<a class="anchor" aria-label="anchor" href="#changed-6"></a></h3>
+<h3 id="changed-7">Changed<a class="anchor" aria-label="anchor" href="#changed-7"></a></h3>
 <ul><li>
 <strong>Plancher cœur bumpé</strong> : <code>Imports: nemeton (&gt;= 0.67.0)</code> (spec 020). Active les 4 nouvelles fonctions <code>build_project_monitoring_zones</code>, <code>create_monitoring_zone</code>, <code>find_zones_by_project</code>, <code>prune_orphan_zone_caches</code>.</li>
 <li>
@@ -235,7 +242,7 @@
 <strong>Push ntfy « Ingestion FAST démarrée »</strong> : wording aligné avec le toast UI et le push complete → « Diagnostic FAST démarré ». Cohérence end-to-end.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-7">Changed<a class="anchor" aria-label="anchor" href="#changed-7"></a></h3>
+<h3 id="changed-8">Changed<a class="anchor" aria-label="anchor" href="#changed-8"></a></h3>
 <ul><li>
 <strong>FORDEAD output_dir : fin de la pollution <code>/tmp/</code></strong> : le worker passe désormais <code>output_dir = &lt;projet&gt;/cache/layers/fordead/output_zone_&lt;id&gt;</code>
 <ul><li>
@@ -270,7 +277,7 @@
 <strong>Toast <code>ingest_success</code> qui clignote</strong> : nouveau <code>fast_result_consumed</code> reactiveVal qui garde contre les re-fires multiples de <code>fast_task$result()</code>. Reset à <code>FALSE</code> dans <code>observeEvent(input$run)</code> pour le prochain Diagnostic FAST. S’applique aussi au branchement erreur (toast <code>ingest_error</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-8">Changed<a class="anchor" aria-label="anchor" href="#changed-8"></a></h3>
+<h3 id="changed-9">Changed<a class="anchor" aria-label="anchor" href="#changed-9"></a></h3>
 <ul><li>
 <strong>Cohérence ntfy ↔︎ toast UI</strong> : push <code>monitoring_ntfy_ingest_complete</code> retire le <code>%d observations</code> (toujours 0 depuis <a href="mailto:nemeton@v0.58.0" class="email">nemeton@v0.58.0</a>, déjà retiré du toast UI en v0.53.1) et aligne le wording « Ingestion FAST terminée » → « Diagnostic FAST terminé ». Test <code>sprintf</code> ajusté pour 2 args (était 3).</li>
 </ul></div>
@@ -323,7 +330,7 @@
 <strong>Logs FAST propres</strong> : suppression des sauts (<code>1/120 → 3 → 23 → 51</code>) et de la désynchro Tuile/Bande dans le mirror console pendant un Diagnostic FAST. Hand-off du brief <code>BRIEF-nemetonshiny-logs-FAST-propres.md</code>. Aucune modif cœur.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-9">Changed<a class="anchor" aria-label="anchor" href="#changed-9"></a></h3>
+<h3 id="changed-10">Changed<a class="anchor" aria-label="anchor" href="#changed-10"></a></h3>
 <ul><li>
 <strong>Double transport de progression</strong> : le worker écrit désormais en parallèle un <code>.json</code> (dernier event, atomic rename) pour le toast Shiny coalescé ET un <code>.ndjson</code> append-only pour le mirror console. Le mirror est désormais drainé par offset d’octets (pattern identique à <code>ingest_log_tick</code>), garantissant complétude et ordre.</li>
 <li>
@@ -341,7 +348,7 @@
 <div class="section level2">
 <h2 id="id_0691---2026-06-03">[0.69.1] - 2026-06-03<a class="anchor" aria-label="anchor" href="#id_0691---2026-06-03"></a></h2>
 <div class="section level3">
-<h3 id="changed-10">Changed<a class="anchor" aria-label="anchor" href="#changed-10"></a></h3>
+<h3 id="changed-11">Changed<a class="anchor" aria-label="anchor" href="#changed-11"></a></h3>
 <ul><li>
 <strong>Plancher cœur bumpé</strong> : <code>Imports: nemeton (&gt;= 0.65.0)</code> → <code>(&gt;= 0.65.1)</code>. nemeton v0.65.1 corrige l’oubli NDMI dans <code>.prewarm_fast_alerts()</code> (combos passent de 4 à 6 = NDVI + NBR + NDMI × count + rolling). Effet : 1re sélection NDMI dans Alertes/Carte FAST devient instantanée (hit cache D6) au lieu d’un calcul à froid.</li>
 <li>Commentaire <code>mod_monitoring.R:~l.1471</code> mis à jour : « les 4 <code>_done</code> » → « les 6 <code>_done</code> » avec annotation cœur v0.65.0/v0.65.1.</li>
@@ -354,7 +361,7 @@
 <div class="section level2">
 <h2 id="id_0690---2026-06-03">[0.69.0] - 2026-06-03<a class="anchor" aria-label="anchor" href="#id_0690---2026-06-03"></a></h2>
 <div class="section level3">
-<h3 id="changed-11">Changed<a class="anchor" aria-label="anchor" href="#changed-11"></a></h3>
+<h3 id="changed-12">Changed<a class="anchor" aria-label="anchor" href="#changed-12"></a></h3>
 <ul><li>
 <strong>Renommage du cache <code>cache/layers/fast/</code> → <code>cache/layers/fast_sampling/</code></strong> (validation_sampling). Clarifie le contexte vs <code>fast_alert/</code> et <code>fast_alert_mask/</code> (monitoring). Pas de migration automatique : l’ancien <code>fast/</code> reste orphelin sur projets existants (suppression manuelle recommandée).</li>
 </ul></div>
@@ -366,7 +373,7 @@
 <div class="section level2">
 <h2 id="id_0680---2026-06-03">[0.68.0] - 2026-06-03<a class="anchor" aria-label="anchor" href="#id_0680---2026-06-03"></a></h2>
 <div class="section level3">
-<h3 id="changed-12">Changed<a class="anchor" aria-label="anchor" href="#changed-12"></a></h3>
+<h3 id="changed-13">Changed<a class="anchor" aria-label="anchor" href="#changed-13"></a></h3>
 <ul><li>
 <strong>Plancher cœur bumpé</strong> : <code>Imports: nemeton (&gt;= 0.65.0)</code> (était <code>&gt;= 0.64.0</code>). Débloque NDMI côté cœur (fix spec 019 D3 : <code>.enumerate_cache_scenes()</code> n’avait pas de branche NDMI → retour NULL systématique). Active aussi le nouvel orchestrateur exporté <code>read_fast_alert_rasters()</code> (3 indices × 2 modes = 6 rasters en un appel — pas encore consommé par l’app, pipeline mono-index inchangé).</li>
 <li>Message i18n pour le cas « raster non calculable » : littéral FR inline remplacé par <code>sprintf(i18n_r()$t("monitoring_fast_alerts_no_scene"), idx)</code>. Wording explicite (« aucune scène cachée ne porte les bandes de cet indice »). Respecte règle stricte CLAUDE.md §4.</li>
@@ -399,7 +406,7 @@
 <strong>NDMI dans l’UI FAST</strong> : indice d’humidité sélectionnable dans Carte FAST et Alertes FAST (listé en premier, défaut NDVI). Propagation à <code>build_index_stack()</code> / <code>compute_fast_alert_mask()</code> / <code>extract_pixel_timeseries()</code> ; <code>bands = c("NDVI","NBR","NDMI")</code> à l’ingestion (cache B11 + prewarm masques NDMI). Note B11 affichée quand NDMI est sélectionné. Clés i18n <code>index_ndmi</code>, <code>monitoring_fast_ndmi_hint</code>, <code>monitoring_fast_ndmi_b11_note</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-13">Changed<a class="anchor" aria-label="anchor" href="#changed-13"></a></h3>
+<h3 id="changed-14">Changed<a class="anchor" aria-label="anchor" href="#changed-14"></a></h3>
 <ul><li>
 <code>Imports: nemeton (&gt;= 0.64.0)</code> (API NDMI).</li>
 </ul></div>
@@ -427,7 +434,7 @@
 <strong>Modal Paramètres</strong> : l’onglet « Fournisseur LLM » ne réaffichait plus statut + boutons clé après l’ajout de l’onglet RAG (0.63.0). Cause : init DataTables dans un onglet caché. Fix : montage à la demande de l’UI de l’onglet RAG (<code>output$rag_tab_content</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-14">Changed<a class="anchor" aria-label="anchor" href="#changed-14"></a></h3>
+<h3 id="changed-15">Changed<a class="anchor" aria-label="anchor" href="#changed-15"></a></h3>
 <ul><li>Bouton plein écran déplacé en haut-droite du modal (positionnement absolu sur <code>.modal-content</code>).</li>
 <li>Titre/intro du modal mis à jour pour refléter clés API + LLM + corpus RAG (« Paramètres : clés API &amp; corpus RAG »).</li>
 </ul></div>
@@ -435,7 +442,7 @@
 <div class="section level2">
 <h2 id="id_0640---2026-06-03">[0.64.0] - 2026-06-03<a class="anchor" aria-label="anchor" href="#id_0640---2026-06-03"></a></h2>
 <div class="section level3">
-<h3 id="changed-15">Changed<a class="anchor" aria-label="anchor" href="#changed-15"></a></h3>
+<h3 id="changed-16">Changed<a class="anchor" aria-label="anchor" href="#changed-16"></a></h3>
 <ul><li>
 <strong>Carte FAST</strong> : le slider de dates avance par pas de <strong>5 jours</strong> (<code>step = 5</code>, cadence Sentinel-2) au lieu de jour-par-jour ; le snapping sur la scène réelle la plus proche reste en place.</li>
 </ul></div>
@@ -448,7 +455,7 @@
 <div class="section level2">
 <h2 id="id_0630---2026-06-03">[0.63.0] - 2026-06-03<a class="anchor" aria-label="anchor" href="#id_0630---2026-06-03"></a></h2>
 <div class="section level3">
-<h3 id="changed-16">Changed<a class="anchor" aria-label="anchor" href="#changed-16"></a></h3>
+<h3 id="changed-17">Changed<a class="anchor" aria-label="anchor" href="#changed-17"></a></h3>
 <ul><li>
 <strong>L’admin RAG passe dans le modal Paramètres</strong> (roue dentée, <code>mod_theia_config</code>) en troisième onglet « Corpus RAG », au lieu d’un onglet de premier niveau de la navbar. Namespace imbriqué <code>theia_config-rag_admin-…</code>. Retrait de l’onglet navbar « Paramètres » (<code>app_ui.R</code>/<code>app_server.R</code>).</li>
 <li>Table manifeste rendue via un déclencheur <code>redraw</code> explicite (au lieu d’un proxy <code>DT</code>) pour rester cohérente à la réouverture du modal.</li>
@@ -468,7 +475,7 @@
 <li>~30 clés i18n FR/EN (<code>rag_*</code>, <code>tab_settings</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-17">Changed<a class="anchor" aria-label="anchor" href="#changed-17"></a></h3>
+<h3 id="changed-18">Changed<a class="anchor" aria-label="anchor" href="#changed-18"></a></h3>
 <ul><li>
 <code>Imports: nemeton (&gt;= 0.63.0)</code> — le code consomme l’API manifeste/corpus publiée par la spec 009.2 du cœur.</li>
 </ul></div>
@@ -476,7 +483,7 @@
 <div class="section level2">
 <h2 id="id_0612---2026-06-02">[0.61.2] - 2026-06-02<a class="anchor" aria-label="anchor" href="#id_0612---2026-06-02"></a></h2>
 <div class="section level3">
-<h3 id="changed-18">Changed<a class="anchor" aria-label="anchor" href="#changed-18"></a></h3>
+<h3 id="changed-19">Changed<a class="anchor" aria-label="anchor" href="#changed-19"></a></h3>
 <ul><li>
 <strong>Le RAG s’applique désormais aussi aux 12 commentaires famille.</strong> La boucle <code>fill_all_comments</code> de <code>mod_synthesis.R</code> (lignes 616-681) ne passait pas le <code>ctx$prompt_block</code> aux prompts famille — seule la synthèse globale en bénéficiait. Désormais les 13 perspectives (1 synthèse + 12 familles) sont enrichies avec le <strong>même contexte</strong> (1 seul retrieve total, cohérence des marqueurs <code>[^n]</code>). Conséquence observable : le <code>cli_inform("RAG: ...")</code> reste émis 1 seule fois par session, mais TOUS les commentaires (synthèse + familles) peuvent désormais citer les documents.</li>
 <li>Si le ctx RAG est vide (corpus muet, opt-out, échec retrieve), les prompts famille retombent sur leur comportement v0.61.1 sans RAG (<code>Filter(nzchar)</code> neutralise proprement le bloc vide).</li>
@@ -506,7 +513,7 @@
 <li>4 clés i18n retirées (<code>monitoring_bands</code>, <code>monitoring_validate_bands</code>, <code>monitoring_fast_alerts_raster_visible</code>, <code>monitoring_pixel_map_raster_visible</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-19">Changed<a class="anchor" aria-label="anchor" href="#changed-19"></a></h3>
+<h3 id="changed-20">Changed<a class="anchor" aria-label="anchor" href="#changed-20"></a></h3>
 <ul><li>
 <code>addLayersControl</code> Alertes FAST : <code>overlayGroups</code> enrichi de <code>"Alertes"</code> (= <code>.alert_raster_group</code>) pour que Leaflet pilote la visibilité du raster d’alerte au même titre que « UGF ».</li>
 </ul></div>
@@ -569,7 +576,7 @@
 <div class="section level2">
 <h2 id="id_0570---2026-06-02">[0.57.0] - 2026-06-02<a class="anchor" aria-label="anchor" href="#id_0570---2026-06-02"></a></h2>
 <div class="section level3">
-<h3 id="changed-20">Changed<a class="anchor" aria-label="anchor" href="#changed-20"></a></h3>
+<h3 id="changed-21">Changed<a class="anchor" aria-label="anchor" href="#changed-21"></a></h3>
 <ul><li>
 <strong>Alertes FAST : affichage en quartiles 0-4</strong> (TODO #5, spec 017 D2 <code>nemeton@v0.55.0+</code>). Délégation de la discrétisation au cœur via <code><a href="https://pobsteta.github.io/nemeton/reference/compute_fast_alert_mask.html" class="external-link">nemeton::compute_fast_alert_mask()</a></code>. Le raster passe de continu (gradient) à catégoriel 0-4 (transparent, jaune, orange, rouge-orangé, rouge foncé). Unification des modes count/rolling sur la même palette. Helper <code>.fast_alert_mask_cache_dir()</code> ajouté.</li>
 <li>5 nouvelles clés i18n FR/EN (<code>fast_alert_legend_title</code>, <code>fast_alert_class_1</code> à <code>_4</code>).</li>
@@ -595,7 +602,7 @@
 <strong>11 nouveaux tests</strong> dans <code>tests/testthat/test-service_rag.R</code> (mapping profil, situation summary FR/EN, nominal, dédup document_id, opt-out, erreur retrieve, 0 ligne, situation vide, app_con NULL).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-21">Changed<a class="anchor" aria-label="anchor" href="#changed-21"></a></h3>
+<h3 id="changed-22">Changed<a class="anchor" aria-label="anchor" href="#changed-22"></a></h3>
 <ul><li>
 <strong>Plancher <code>Imports: nemeton (&gt;= 0.62.0)</code></strong> (depuis 0.61.0). Garantit la présence de <code>retrieve_knowledge</code> + <code>format_citations</code>.</li>
 </ul></div>
@@ -603,7 +610,7 @@
 <div class="section level2">
 <h2 id="id_0550---2026-06-02">[0.55.0] - 2026-06-02<a class="anchor" aria-label="anchor" href="#id_0550---2026-06-02"></a></h2>
 <div class="section level3">
-<h3 id="changed-22">Changed<a class="anchor" aria-label="anchor" href="#changed-22"></a></h3>
+<h3 id="changed-23">Changed<a class="anchor" aria-label="anchor" href="#changed-23"></a></h3>
 <ul><li>
 <strong>Pré-calcul FAST déplacé du helper app vers l’API native cœur</strong> (<code>nemeton@v0.61.0</code>, spec 018). v0.54.0 livrait un helper local <code>.prewarm_fast_alerts()</code> qui faisait 4 <code>read_fast_alert_raster()</code> après l’ingest. Le cœur intègre désormais nativement cette logique via <code>prewarm_alerts = TRUE</code> + <code>prewarm_mask_cache_dir</code>. Le helper app est SUPPRIMÉ ; les 2 params sont forwardés au cœur depuis le worker.</li>
 <li>
@@ -639,7 +646,7 @@
 <li>4 nouveaux tests dans <code>test-service_monitoring.R</code> couvrent : les 4 combos calculées, l’échec partiel toléré, le cancel coopératif, le no-op si <code>result_cache_dir</code> est NULL/vide.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-23">Changed<a class="anchor" aria-label="anchor" href="#changed-23"></a></h3>
+<h3 id="changed-24">Changed<a class="anchor" aria-label="anchor" href="#changed-24"></a></h3>
 <ul><li>
 <strong>Signature <code>run_ingestion_async()</code> ExtendedTask</strong> : nouveau paramètre <code>result_cache_dir = NULL</code>. Forwardé par <code>mod_monitoring.R</code> à <code>file.path(project$path, "cache", "layers", "fast_alert")</code> à chaque <code>fast_task$invoke()</code>.</li>
 </ul></div>
@@ -672,7 +679,7 @@
 <strong>Bandeau d’erreur diagnostique distinct de « zone saine ».</strong> <code>output$banner</code> distingue désormais : VERT « Aucune alerte FAST sur la fenêtre » (raster calculé, 0 alerte) vs JAUNE warning « Raster d’alerte non calculable » + cause (cache S2 incomplet, exception cœur). Cas typique : NBR avec bande B12 partiellement absente du cache. Nouveau reactiveVal <code>last_raster_error</code>, nouvelle clé i18n <code>monitoring_fast_alerts_error_title</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-24">Changed<a class="anchor" aria-label="anchor" href="#changed-24"></a></h3>
+<h3 id="changed-25">Changed<a class="anchor" aria-label="anchor" href="#changed-25"></a></h3>
 <ul><li>
 <strong>Documentation : table de décision semver stricte</strong> ajoutée à <code>CLAUDE.md</code> (§Consignes de release étape 1). Toute nouvelle feature UI / refactor structurel / retrait UX bumpe désormais en MINOR ; PATCH réservé aux fix régression purs + alignement plancher cœur + doc.</li>
 </ul></div>
@@ -680,7 +687,7 @@
 <div class="section level2">
 <h2 id="id_05217---2026-06-02">[0.52.17] - 2026-06-02<a class="anchor" aria-label="anchor" href="#id_05217---2026-06-02"></a></h2>
 <div class="section level3">
-<h3 id="changed-25">Changed<a class="anchor" aria-label="anchor" href="#changed-25"></a></h3>
+<h3 id="changed-26">Changed<a class="anchor" aria-label="anchor" href="#changed-26"></a></h3>
 <ul><li>
 <strong>Plancher <code>Imports: nemeton (&gt;= 0.60.0)</code></strong> — alignement avec la finalisation cœur de la spec 017. <code>nemeton@v0.58.0</code> (Phase A, drop <code>obs_pixel</code> insertion) puis <code>v0.60.0</code> (Phase B, retrait de <code>read_obs_pixel</code> + migration <code>0004_drop_obs_pixel</code>) publiés. App fonctionnellement inchangée — v0.52.16 fonctionne déjà contre ce nouveau cœur sans aucun warning.</li>
 <li>
@@ -690,7 +697,7 @@
 <div class="section level2">
 <h2 id="id_05216---2026-06-02">[0.52.16] - 2026-06-02<a class="anchor" aria-label="anchor" href="#id_05216---2026-06-02"></a></h2>
 <div class="section level3">
-<h3 id="changed-26">Changed<a class="anchor" aria-label="anchor" href="#changed-26"></a></h3>
+<h3 id="changed-27">Changed<a class="anchor" aria-label="anchor" href="#changed-27"></a></h3>
 <ul><li>
 <strong>FAST 100 % pure raster per-pixel — suppression du couplage <code>obs_pixel</code>/placettes.</strong> Suite à la spec 017 cœur (<code>nemeton@v0.55.0+</code>), le module Suivi sanitaire ne lit plus la table <code>obs_pixel</code> ni n’affiche les placettes de l’onglet Terrain. La modale « clic marqueur placette » est supprimée ; seule subsiste la modale « clic pixel pur » qui utilise <code>extract_pixel_timeseries()</code> (COG cache).</li>
 </ul></div>
@@ -728,7 +735,7 @@
 <strong>Cache D6 du raster d’alerte (<code>nemeton@v0.57.0</code>).</strong> Les 2 call sites de <code>read_fast_alert_raster()</code> et le call site de <code>compute_fast_alert_mask()</code> passent désormais <code>cache_result = TRUE</code> + <code>result_cache_dir = &lt;project&gt;/cache/layers/fast_alert</code>. Le COG résultat est persisté avec un hash content-addressed (zone × index × threshold × dates × mode × window_days). Revisite à paramètres identiques → sub-seconde.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-27">Changed<a class="anchor" aria-label="anchor" href="#changed-27"></a></h3>
+<h3 id="changed-28">Changed<a class="anchor" aria-label="anchor" href="#changed-28"></a></h3>
 <ul><li>
 <strong>Plancher <code>Imports: nemeton (&gt;= 0.57.0)</code></strong> — pour garantir la présence des params <code>cache_result</code> / <code>result_cache_dir</code>.</li>
 </ul></div>
@@ -736,7 +743,7 @@
 <div class="section level2">
 <h2 id="id_05214---2026-06-01">[0.52.14] - 2026-06-01<a class="anchor" aria-label="anchor" href="#id_05214---2026-06-01"></a></h2>
 <div class="section level3">
-<h3 id="changed-28">Changed<a class="anchor" aria-label="anchor" href="#changed-28"></a></h3>
+<h3 id="changed-29">Changed<a class="anchor" aria-label="anchor" href="#changed-29"></a></h3>
 <ul><li>
 <strong>Radio « Indice FAST » déplacé du sidebar parent vers le sidebar droit d’Alertes FAST (symétrie avec Carte FAST).</strong> Chaque onglet (Alertes FAST + Carte FAST) pilote désormais son indice indépendamment. <code>validation_sampling</code> FAST consomme l’index exporté par Alertes FAST via le retour <code>fast_alerts_ret$index_r</code>. Le radio parent posé en v0.52.13 est retiré ; les 4 <code>thresholds_r</code> purgés du champ <code>index = ...</code> (transmission désormais via le reactive export du sous-module).</li>
 </ul></div>
@@ -754,7 +761,7 @@
 <strong>Radio sidebar « Indice FAST » (NDVI / NBR, défaut NDVI).</strong> Pilote l’indice utilisé par <code>read_fast_alert_raster()</code>. Les 2 sliders thresholds restent en place ; seul celui correspondant à l’indice sélectionné est forwardé au cœur. Pour comparer les 2 vues, basculer le radio (recalcul sub-seconde depuis le cache S2).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-29">Changed<a class="anchor" aria-label="anchor" href="#changed-29"></a></h3>
+<h3 id="changed-30">Changed<a class="anchor" aria-label="anchor" href="#changed-30"></a></h3>
 <ul><li>
 <strong><code>Imports: nemeton (&gt;= 0.55.0)</code></strong> — l’app exige maintenant l’API mono-index. Sans ce plancher, un install contre un cœur antérieur casserait au premier <code>Diagnostic FAST</code>.</li>
 </ul></div>
@@ -770,7 +777,7 @@
 <div class="section level2">
 <h2 id="id_05211---2026-06-01">[0.52.11] - 2026-06-01<a class="anchor" aria-label="anchor" href="#id_05211---2026-06-01"></a></h2>
 <div class="section level3">
-<h3 id="changed-30">Changed<a class="anchor" aria-label="anchor" href="#changed-30"></a></h3>
+<h3 id="changed-31">Changed<a class="anchor" aria-label="anchor" href="#changed-31"></a></h3>
 <ul><li>
 <strong>Carte FAST — <code>card_header</code> titre remplacé par un bandeau inline.</strong> Le <code><a href="https://rstudio.github.io/bslib/reference/card_body.html" class="external-link">bslib::card_header</a></code> qui portait le titre « Carte pixel — NDVI / NBR à la résolution Sentinel-2 (10 m) » mangeait une rangée entière et créait une dissymétrie avec Alertes FAST voisin (qui n’a pas de header). Le titre passe désormais en bandeau <code>alert-info</code> inline au-dessus de la carte, padding minimal, symétrique stylistiquement avec le bandeau vert « Aucune alerte FAST » d’Alertes FAST. Gain ~30-40 px verticaux + cohérence visuelle entre les 2 sous-onglets.</li>
 </ul></div>
@@ -783,7 +790,7 @@
 <strong>Plan d’actions — dblclick sur cellule commentaire ouvre le modal d’édition.</strong> La colonne commentaire est étroite + ellipsisée dans le tableau → long texte illisible. L’édition inline DT (single-line input dans cellule étroite) était même contre-productive. Le commentaire passe désormais EXCLUSIVEMENT par le modal multi-ligne (textarea 6 rangs, déjà utilisé par dblclick kanban). Un dblclick sur la cellule commentaire du tableau ouvre maintenant ce même modal, qui expose en plus statut / priorité / année. Affordance visuel via CSS : curseur main + soulignement pointillé sur la cellule.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-31">Changed<a class="anchor" aria-label="anchor" href="#changed-31"></a></h3>
+<h3 id="changed-32">Changed<a class="anchor" aria-label="anchor" href="#changed-32"></a></h3>
 <ul><li>
 <code>EDITABLE_COLS</code> ne contient plus <code>commentaire</code> — l’édition inline DT est désactivée pour cette colonne uniquement. Les autres colonnes restent inline-éditables comme avant.</li>
 </ul></div>
@@ -799,7 +806,7 @@
 <div class="section level2">
 <h2 id="id_0528---2026-05-31">[0.52.8] - 2026-05-31<a class="anchor" aria-label="anchor" href="#id_0528---2026-05-31"></a></h2>
 <div class="section level3">
-<h3 id="changed-32">Changed<a class="anchor" aria-label="anchor" href="#changed-32"></a></h3>
+<h3 id="changed-33">Changed<a class="anchor" aria-label="anchor" href="#changed-33"></a></h3>
 <ul><li>
 <strong>Onglet Alertes FAST — contrôles déplacés à droite de la carte (sidebar).</strong> Avant : Mode du raster (Fréquence/Intensité), Afficher le raster et Opacité occupaient une ligne <code>flex-wrap</code> horizontale au-dessus de la carte, mangeant de la hauteur utile et différant visuellement de l’onglet voisin Carte FAST (sidebar droite depuis v0.47.0). Après : <code><a href="https://rstudio.github.io/bslib/reference/card.html" class="external-link">bslib::card</a></code> + <code>bslib::layout_sidebar(position = "right", width = 250L)</code>, exactement comme Carte FAST. La carte gagne la zone rectangulaire principale, les 3 contrôles vivent dans la sidebar à droite. L’observer de refresh i18n gère désormais aussi le label radio « Mode du raster » (NULL avant), le checkbox et le slider — plus de label figé en FR après un switch en EN.</li>
 </ul></div>
@@ -812,7 +819,7 @@
 <strong>Bouton « Enregistrer ce projet comme zone de suivi » INLINE dans le bandeau Suivi sanitaire.</strong> Le bouton sidebar historique tombait systématiquement sous le pli sur les écrans 1080p — l’utilisateur voyait le message « Aucune zone enregistrée » (ou le bandeau orphelin v0.52.5) sans voir l’action. Ce bouton est désormais rendu directement dans le bandeau dans les deux branches concernées : <code>n == 0</code> (DB vide) avec un style <code>btn-primary</code> bleu, et « zone orpheline » (zones présentes mais aucune pour ce projet, après wipe par les tests cœur) avec un style <code>btn-warning</code> jaune cohérent avec le card warning. Le bouton sidebar reste en place.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-33">Changed<a class="anchor" aria-label="anchor" href="#changed-33"></a></h3>
+<h3 id="changed-34">Changed<a class="anchor" aria-label="anchor" href="#changed-34"></a></h3>
 <ul><li>
 <strong>Observer <code>input$register</code> refactoré en <code>observe() + bindEvent</code>.</strong> L’observer historique de la registration écoute désormais à la fois <code>input$register</code> (sidebar) ET <code>input$register_inline</code> (bandeau) via un même <code>shiny::bindEvent(..., ignoreInit = TRUE)</code> — pas de duplication de logique entre les deux call sites.</li>
 </ul></div>
@@ -870,7 +877,7 @@
 <div class="section level2">
 <h2 id="id_0520---2026-05-31">[0.52.0] - 2026-05-31<a class="anchor" aria-label="anchor" href="#id_0520---2026-05-31"></a></h2>
 <div class="section level3">
-<h3 id="changed-34">Changed<a class="anchor" aria-label="anchor" href="#changed-34"></a></h3>
+<h3 id="changed-35">Changed<a class="anchor" aria-label="anchor" href="#changed-35"></a></h3>
 <ul><li>
 <strong>Vrai cancel coopératif FAST/FORDEAD (s’appuie sur <code>nemeton@v0.53.0</code>).</strong> Le clic « Annuler le diagnostic » écrit désormais <code>&lt;projet&gt;/data/{fast,fordead}_cancel.flag</code>, que le worker poll entre tuiles (FAST) / entre phases reticulate (FORDEAD) et qui le fait sortir proprement au prochain checkpoint avec commit partiel. Les INSERT déjà commités sont conservés (<code>ON CONFLICT DO NOTHING</code> — relance sans risque).</li>
 <li>
@@ -889,7 +896,7 @@
 <div class="section level2">
 <h2 id="id_05111---2026-05-31">[0.51.11] - 2026-05-31<a class="anchor" aria-label="anchor" href="#id_05111---2026-05-31"></a></h2>
 <div class="section level3">
-<h3 id="changed-35">Changed<a class="anchor" aria-label="anchor" href="#changed-35"></a></h3>
+<h3 id="changed-36">Changed<a class="anchor" aria-label="anchor" href="#changed-36"></a></h3>
 <ul><li>
 <strong>i18n — « Annuler / Réinitialiser » → « Libérer l’interface ».</strong> Le bouton qui apparaît pendant un diagnostic FAST/FORDEAD ne tue pas le worker (Shiny <code>ExtendedTask</code> n’a pas d’API d’annulation) — il force-unlock l’UI. Nouveau libellé qui reflète exactement ce que le bouton fait, sans suggérer que le diagnostic est arrêté en base. Toast de confirmation aligné. Les deux boutons (FAST + FORDEAD) partagent les mêmes clés i18n.</li>
 </ul></div>
@@ -946,7 +953,7 @@
 <strong><code>~/.config/teledetection/.apikey</code> désormais en <code>0600</code>.</strong> La clé Theia / DATA TERRA enregistrée via <code>theia_save_api_key()</code> est immédiatement verrouillée à l’écriture (<code>Sys.chmod</code>). Auparavant le fichier héritait du <code>umask</code> du process (souvent <code>0644</code>). No-op sous Windows.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-36">Changed<a class="anchor" aria-label="anchor" href="#changed-36"></a></h3>
+<h3 id="changed-37">Changed<a class="anchor" aria-label="anchor" href="#changed-37"></a></h3>
 <ul><li>
 <strong>Modal Theia — section clé contextuelle.</strong> Quand la clé est déjà configurée, le modal affiche un bandeau « configurée » + boutons « Modifier » / « Supprimer » au lieu d’un formulaire vide qui invitait à l’écrasement. Helper <code>theia_clear_api_key()</code> ajouté.</li>
 </ul></div>
@@ -975,7 +982,7 @@
 <div class="section level2">
 <h2 id="id_0513---2026-05-29">[0.51.3] - 2026-05-29<a class="anchor" aria-label="anchor" href="#id_0513---2026-05-29"></a></h2>
 <div class="section level3">
-<h3 id="changed-37">Changed<a class="anchor" aria-label="anchor" href="#changed-37"></a></h3>
+<h3 id="changed-38">Changed<a class="anchor" aria-label="anchor" href="#changed-38"></a></h3>
 <ul><li>
 <strong>Alertes FAST — alignement des contrôles d’en-tête.</strong> Case « Afficher le raster » légèrement abaissée (<code>top: 2px</code>) pour s’aligner sur les radios Fréquence/Intensité ; label « Opacité du raster » déplacé à gauche du slider (inline) au lieu d’au-dessus.</li>
 </ul></div>
@@ -1021,7 +1028,7 @@
 <div class="section level2">
 <h2 id="id_0500---2026-05-28">[0.50.0] - 2026-05-28<a class="anchor" aria-label="anchor" href="#id_0500---2026-05-28"></a></h2>
 <div class="section level3">
-<h3 id="changed-38">Changed<a class="anchor" aria-label="anchor" href="#changed-38"></a></h3>
+<h3 id="changed-39">Changed<a class="anchor" aria-label="anchor" href="#changed-39"></a></h3>
 <ul><li>
 <strong>Monitoring local : SQLite/WAL uniquement.</strong> Le backend DuckDB, déprécié en 0.49.0, est retiré définitivement (cœur <code>nemeton</code> v0.51.0). <code>.resolve_monitoring_db_url()</code> émet toujours <code>sqlite://&lt;projet&gt;/data/monitoring.sqlite</code> en local ; branche back-compat DuckDB et <code>.nemeton_supports_duckdb()</code> supprimés ; helpers <code>.is_file_db_url</code> / <code>.file_db_path_from_url</code> restreints à SQLite. PostgreSQL inchangé. Clé i18n <code>monitoring_db_duckdb_missing</code> → <code>monitoring_db_local_pkg_missing</code>.</li>
 </ul></div>
@@ -1065,7 +1072,7 @@
 <strong>Verrou croisé FAST ↔︎ FORDEAD</strong> : les deux diagnostics partagent le cache de bandes Sentinel-2 du projet ; ils sont désormais mutuellement exclusifs. Le bouton de lancement de l’un est grisé tant que l’autre tourne, un clic forcé affiche une notification explicite, et le verrou respecte le <em>force-unlock</em> (run abandonné via « Annuler »).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-39">Changed<a class="anchor" aria-label="anchor" href="#changed-39"></a></h3>
+<h3 id="changed-40">Changed<a class="anchor" aria-label="anchor" href="#changed-40"></a></h3>
 <ul><li>
 <strong><code>ingest_task</code> renommé <code>fast_task</code></strong> (variable interne de <code>mod_monitoring</code>, helper de test <code>make_fake_fast_task</code>, clé du retour de <code>mod_monitoring_server()</code>), par symétrie avec <code>fordead_task</code>. La fonction service <code>run_ingestion_async()</code> conserve son nom.</li>
 </ul></div>
@@ -1082,7 +1089,7 @@
 <strong><code>audit_to_dataframe</code> ne renvoyait pas un data.frame propre</strong> : la classe <code>json</code> de <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code> se propageait à toute la colonne via <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind()</a></code> → dé-classage <code><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character()</a></code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-40">Changed<a class="anchor" aria-label="anchor" href="#changed-40"></a></h3>
+<h3 id="changed-41">Changed<a class="anchor" aria-label="anchor" href="#changed-41"></a></h3>
 <ul><li>
 <strong>Réparation des suites de tests <code>monitoring</code> et <code>sampling</code></strong> : 20 échecs préexistants corrigés (dérive tests↔︎code après évolutions). Mocks à signature trop étroite élargis, isolation des variables d’environnement DB, assertions de comptage de placettes recentrées sur le contrat de l’app plutôt que sur l’arithmétique de stratification GRTS du cœur. Deux tests <code>db_status</code> probe-gated marqués <code>skip()</code> (sonde DB asynchrone non pilotable par testServer).</li>
 </ul></div>
@@ -1100,14 +1107,14 @@
 <strong>Onglets FORDEAD figés après un run hors-session</strong> : « Alertes FORDEAD » et « Carte FORDEAD » ne se rafraîchissaient pas quand un run survivait à sa session Shiny (run long + déconnexion du navigateur). Deux correctifs : (1) ouvrir un sous-onglet FORDEAD force la re-lecture base + masque disque ; (2) <code>.reconcile_fordead_state()</code> reconstruit le résultat « succès » depuis le masque persisté au chargement du projet, affichant la carte « Zone saine » datée au lieu du placeholder générique.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-41">Changed<a class="anchor" aria-label="anchor" href="#changed-41"></a></h3>
+<h3 id="changed-42">Changed<a class="anchor" aria-label="anchor" href="#changed-42"></a></h3>
 <ul><li>Libellé du placeholder « pas de cache » de la Carte FAST : « Lance une ingestion FAST… » → « Lance le diagnostic FAST… ».</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_0388---2026-05-20">[0.38.8] - 2026-05-20<a class="anchor" aria-label="anchor" href="#id_0388---2026-05-20"></a></h2>
 <div class="section level3">
-<h3 id="changed-42">Changed<a class="anchor" aria-label="anchor" href="#changed-42"></a></h3>
+<h3 id="changed-43">Changed<a class="anchor" aria-label="anchor" href="#changed-43"></a></h3>
 <ul><li>
 <strong><code>Remotes:</code> suit la dernière release <code>nemeton</code></strong> : passage de <code>pobsteta/nemeton@v0.41.0</code> (tag figé) à <code>pobsteta/nemeton@*release</code>. La référence <code>@*release</code> résout à chaque install le tag de release le plus élevé du cœur — l’app tire toujours la plus haute version <code>nemeton</code> publiée, sans bump manuel du pin. Le tag figé forçait l’install de <code>nemeton 0.41.0</code> alors que <code>v0.41.2</code> était publié. Plancher <code>Imports: nemeton (&gt;= 0.41.0)</code> inchangé (minimum strict, pas un suivi). <code>CLAUDE.md</code> mis à jour (<code>DESCRIPTION</code>, <code>CLAUDE.md</code>).</li>
 </ul></div>
@@ -1138,7 +1145,7 @@
 <div class="section level2">
 <h2 id="id_0385---2026-05-20">[0.38.5] - 2026-05-20<a class="anchor" aria-label="anchor" href="#id_0385---2026-05-20"></a></h2>
 <div class="section level3">
-<h3 id="changed-43">Changed<a class="anchor" aria-label="anchor" href="#changed-43"></a></h3>
+<h3 id="changed-44">Changed<a class="anchor" aria-label="anchor" href="#changed-44"></a></h3>
 <ul><li>
 <strong>Bump <code>nemeton</code> v0.40.0 → v0.41.0</strong> (<code>DESCRIPTION</code> : <code>Imports</code> floor + <code>Remotes</code> tag pin). v0.41.0 ship le writer du masque de dépérissement FORDEAD : <code>run_fordead_dieback()</code> persiste le raster catégoriel 0-4 dans <code>&lt;project&gt;/cache/layers/fordead/zone_&lt;id&gt;/dieback_mask_&lt;ts&gt;.tif</code>, le chemin lu par <code>read_fordead_dieback_mask()</code>. Le sous-onglet « Carte FORDEAD » (<code>mod_monitoring_fordead_map</code>, câblé depuis v0.36.0) cesse donc d’être un empty-state permanent et affiche le masque après un run FORDEAD. Aucun changement de code app — pur bump de dépendance ; signatures vérifiées rétrocompatibles.</li>
 </ul></div>
@@ -1146,7 +1153,7 @@
 <div class="section level2">
 <h2 id="id_0384---2026-05-20">[0.38.4] - 2026-05-20<a class="anchor" aria-label="anchor" href="#id_0384---2026-05-20"></a></h2>
 <div class="section level3">
-<h3 id="changed-44">Changed<a class="anchor" aria-label="anchor" href="#changed-44"></a></h3>
+<h3 id="changed-45">Changed<a class="anchor" aria-label="anchor" href="#changed-45"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / <code>obs_pixel_data</code> debounced</strong> : au chargement de projet, les 5 entrées dont dépend <code>obs_pixel_data</code> sont restaurées une à une → 4-5 ré-exécutions avec autant de requêtes SQL <code>read_obs_pixel</code> redondantes. Nouveau reactive <code>obs_pixel_inputs</code> (assemblage des 5 entrées) debouncé 300 ms ; <code>obs_pixel_data</code> ne dépend plus que de ce paquet → la requête tourne une fois par rafale. <code><a href="https://rdrr.io/pkg/shiny/man/debounce.html" class="external-link">shiny::debounce()</a></code> évaluant sa source de façon eager, c’est bien le <em>déclencheur</em> peu coûteux qui est debouncé, pas le reactive coûteux (<code>R/mod_monitoring.R</code>).</li>
 <li>
@@ -1204,7 +1211,7 @@
 <strong>Module de configuration Theia</strong> (<code>R/mod_theia_config.R</code>) : entrée navbar (engrenage) ouvrant une modale de saisie de la clé API, statut du pré-requis Python et provenance / licence des sources Theia.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-45">Changed<a class="anchor" aria-label="anchor" href="#changed-45"></a></h3>
+<h3 id="changed-46">Changed<a class="anchor" aria-label="anchor" href="#changed-46"></a></h3>
 <ul><li>
 <code>R/service_compute.R</code> : nouvelle étape CHM Theia FORMSpoT dans <code>download_layers_for_parcels()</code> (utilisée quand le LiDAR HD est absent, avant Open-Canopy) ; <code>compute_single_indicator()</code> transmet <code>species_field</code>, <code>fapar</code>, <code>snow</code> et <code>soil_moisture</code> aux fonctions <code>nemeton</code> qui les acceptent ; enrichissement BD Forêt V2 (<code>species</code>/<code>age</code>) étendu à P1, P3 et E1.</li>
 <li>
@@ -1222,7 +1229,7 @@
 <li>3 tests testthat couvrant le helper et le forwarding cœur (<code>tests/testthat/test-mod_monitoring.R</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-46">Changed<a class="anchor" aria-label="anchor" href="#changed-46"></a></h3>
+<h3 id="changed-47">Changed<a class="anchor" aria-label="anchor" href="#changed-47"></a></h3>
 <ul><li>
 <code>DESCRIPTION</code> : plancher <code>Imports: nemeton (&gt;= 0.26.0)</code> (au lieu de 0.25.4) — ancre la version qui expose les nouveaux arguments <code>bdforet</code> / <code>layers</code> de <code>check_fordead_validity()</code>.</li>
 </ul></div>
@@ -1249,7 +1256,7 @@
 <strong>Sampling / câblage MNT-CHM sur <code>create_sampling_plan()</code></strong> : les rasters résolus via <code>nemeton::resolve_project_*</code> n’étaient pas passés à <code>create_sampling_plan()</code> (manque de <code>mnt =</code> / <code>chm =</code> au call site), si bien que <code>&lt;project&gt;/dtm.tif</code> opencanopy n’était jamais consommé. Pré-check ajouté : DEM absent → toast bloquant <code>sampling_no_dem_found_fmt</code> (i18n, avec chemin projet) <code>id = session$ns("dem_missing")</code> et arrêt avant l’appel cœur ; CHM absent → <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info</a></code> sans toast bloquant (<code>R/mod_sampling.R</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-47">Changed<a class="anchor" aria-label="anchor" href="#changed-47"></a></h3>
+<h3 id="changed-48">Changed<a class="anchor" aria-label="anchor" href="#changed-48"></a></h3>
 <ul><li>Toast informatif <code>sampling_dem_resolved_fmt</code> (« MNT : %s », 5 s) qui surface <code>attr(dem, "nemeton_dem_layer")</code> (« opencanopy DTM », « LiDAR HD MNT », « IGN BD ALTI »…).</li>
 <li>3 clés i18n FR/EN remplaçant les 4 ajoutées en v0.36.6 : <code>sampling_no_dem_found_fmt</code>, <code>sampling_dem_resolved_fmt</code>, <code>sampling_chm_missing</code> (<code>R/utils_i18n.R</code>).</li>
 <li>
@@ -1264,7 +1271,7 @@
 <div class="section level2">
 <h2 id="id_0366---2026-05-18">[0.36.6] - 2026-05-18<a class="anchor" aria-label="anchor" href="#id_0366---2026-05-18"></a></h2>
 <div class="section level3">
-<h3 id="changed-48">Changed<a class="anchor" aria-label="anchor" href="#changed-48"></a></h3>
+<h3 id="changed-49">Changed<a class="anchor" aria-label="anchor" href="#changed-49"></a></h3>
 <ul><li>
 <strong>Sampling / résolution MNT/CHM déléguée à <code>nemeton</code></strong> : les réactives <code>chm_raster()</code> / <code>mnt_raster()</code> de <code>mod_sampling</code> appellent désormais <code><a href="https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html" class="external-link">nemeton::resolve_project_chm()</a></code> et <code><a href="https://pobsteta.github.io/nemeton/reference/resolve_project_layers.html" class="external-link">nemeton::resolve_project_dem()</a></code> (nemeton &gt;= 0.21.10) au lieu de faire leur propre lookup dans <code>&lt;project&gt;/cache/layers/</code>. Couvre les noms canoniques <code>dtm.tif</code>, <code>mnh.tif</code>, <code>lidar_mnh.tif</code> en plus des mosaics historiques (<code>R/mod_sampling.R</code>).</li>
 </ul></div>
@@ -1333,7 +1340,7 @@
 <li>17 nouvelles clés i18n FR/EN : sévérités FAST (<code>critical</code>, <code>warning</code>, <code>info</code>), compteur total, empty states + popups FAST, titre + classes 0..4 FORDEAD, empty state FORDEAD.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-49">Changed<a class="anchor" aria-label="anchor" href="#changed-49"></a></h3>
+<h3 id="changed-50">Changed<a class="anchor" aria-label="anchor" href="#changed-50"></a></h3>
 <ul><li>
 <code>DESCRIPTION</code> : plancher <code>Imports: nemeton (&gt;= 0.25.0)</code> (depuis 0.24.1) pour ancrer les deux nouveaux exporteurs consommés.</li>
 <li>
@@ -1348,7 +1355,7 @@
 <strong>Terrain / Plan d’échantillonnage</strong> : erreur <code>le tableau de remplacement a N lignes, le tableau remplacé en a M</code> remontée en toast quand un CHM et/ou un MNT étaient fournis avec une AOI bordurale. Fix dans <code>nemeton@v0.24.1</code> (filtrage des candidats GRTS avant <code>spsurvey::grts()</code>), consommé automatiquement via <code>Remotes: pobsteta/nemeton@main</code>. Aucun changement de code côté app.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-50">Changed<a class="anchor" aria-label="anchor" href="#changed-50"></a></h3>
+<h3 id="changed-51">Changed<a class="anchor" aria-label="anchor" href="#changed-51"></a></h3>
 <ul><li>
 <code>DESCRIPTION</code> : plancher <code>Imports: nemeton (&gt;= 0.24.1)</code> pour bloquer un downgrade qui réintroduirait le bug sampling.</li>
 </ul></div>
@@ -1362,7 +1369,7 @@
 <li>4 nouvelles clés i18n FR/EN : <code>monitoring_subtab_alerts_fast</code>, <code>monitoring_subtab_alerts_fordead</code>, <code>monitoring_fast_alerts_placeholder_title</code>, <code>monitoring_fast_alerts_placeholder_body</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-51">Changed<a class="anchor" aria-label="anchor" href="#changed-51"></a></h3>
+<h3 id="changed-52">Changed<a class="anchor" aria-label="anchor" href="#changed-52"></a></h3>
 <ul><li>Sous-onglet <code>alerts</code> renommé <code>alerts_fordead</code> (même contenu, label « Alertes FORDEAD »). Les <code>conditionalPanel</code> internes filtrant sur <code>input$mode == 'health'</code> sont supprimés — l’onglet entier est masqué en mode FAST par l’observer mode-driven.</li>
 <li>Texte du placeholder Carte FORDEAD : référence pointée vers « Alertes FORDEAD » au lieu de « Alertes ».</li>
 </ul></div>
@@ -1381,7 +1388,7 @@
 <li>4 nouvelles clés i18n FR/EN pour les libellés et le placeholder Carte FORDEAD.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-52">Changed<a class="anchor" aria-label="anchor" href="#changed-52"></a></h3>
+<h3 id="changed-53">Changed<a class="anchor" aria-label="anchor" href="#changed-53"></a></h3>
 <ul><li>
 <code>R/mod_monitoring_pixel_map.R</code> : valeur du nav_panel renommée <code>pixel_map</code> → <code>pixel_map_fast</code> (l’observe d’auto-zoom est aligné).</li>
 </ul></div>
@@ -1389,7 +1396,7 @@
 <div class="section level2">
 <h2 id="id_0330---2026-05-16">[0.33.0] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0330---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="changed-53">Changed<a class="anchor" aria-label="anchor" href="#changed-53"></a></h3>
+<h3 id="changed-54">Changed<a class="anchor" aria-label="anchor" href="#changed-54"></a></h3>
 <ul><li>
 <strong>BREAKING (dep) — Migration vers <code>nemeton@v0.24.0</code></strong> : la signature de <code><a href="https://pobsteta.github.io/nemeton/reference/run_fordead_dieback.html" class="external-link">nemeton::run_fordead_dieback()</a></code> a changé au cœur (<code>aoi</code> / <code>scenes_df</code> / <code>forest_mask</code> retirés, <code>con</code> / <code>zone_id</code> / <code>cache_dir</code> requis). Le pipeline passe de 5 à 6 phases avec une nouvelle phase 0 <code>ingest</code> qui télécharge les bandes Sentinel-2 manquantes (B02/B05/B8A/B11) par-dessus celles déjà cachées par FAST (B04/B12).</li>
 <li>
@@ -1417,7 +1424,7 @@
 <li>11 nouvelles clés i18n FR/EN : 4 templates + 7 labels per-phase 1.x + 3 labels per-phase 2.x anticipés.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-54">Changed<a class="anchor" aria-label="anchor" href="#changed-54"></a></h3>
+<h3 id="changed-55">Changed<a class="anchor" aria-label="anchor" href="#changed-55"></a></h3>
 <ul><li>
 <strong>DESCRIPTION</strong> : <code>Imports: nemeton (&gt;= 0.22.0)</code> → <code>(&gt;= 0.22.5)</code> pour aligner sur l’API du <code>progress_callback</code> consommée par les toasts.</li>
 </ul></div>
@@ -1491,7 +1498,7 @@
 <strong>Suivi sanitaire / Carte pixel</strong> : les trois couches d’overlay (UGF, NDVI / NBR, Placettes) n’apparaissaient pas malgré leurs cases cochées dans le contrôle Leaflet. Cause : <code>overlayGroups</code> dans <code>addLayersControl</code> posait des cases pré-renderLeaflet alors que les couches arrivaient via <code>leafletProxy</code> async ; les références de couches restaient indéfinies côté JS. Drop de <code>overlayGroups</code>, overlays toujours visibles (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-55">Changed<a class="anchor" aria-label="anchor" href="#changed-55"></a></h3>
+<h3 id="changed-56">Changed<a class="anchor" aria-label="anchor" href="#changed-56"></a></h3>
 <ul><li>Contour UGF : épaisseur 2 → 3, opacité 0.9 → 1.0.</li>
 <li>Marqueurs placettes : rayon 5 → 7.</li>
 <li>Logs <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info()</a></code> ajoutés sur les reactives UGF, placettes et auto-zoom pour diagnostic terminal.</li>
@@ -1500,7 +1507,7 @@
 <div class="section level2">
 <h2 id="id_0301---2026-05-16">[0.30.1] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0301---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="changed-56">Changed<a class="anchor" aria-label="anchor" href="#changed-56"></a></h3>
+<h3 id="changed-57">Changed<a class="anchor" aria-label="anchor" href="#changed-57"></a></h3>
 <ul><li>
 <strong>Suivi sanitaire / Mode rapide</strong> : sémantique de la checkbox « Cache COG » inversée. Décoché (défaut) = nemeton vérifie le cache disque et télécharge uniquement les bandes manquantes (DB idempotente via <code>ON CONFLICT DO NOTHING</code>). Coché = wipe <code>&lt;cache_dir&gt;/*</code> puis re-télécharge intégralement scène par scène (pour récupérer d’un cache corrompu).</li>
 <li>L’ancien défaut court-circuitait sur la DB et laissait le cache disque vide, ce qui faisait re-télécharger intégralement FORDEAD au premier diagnostic. Le nouveau défaut prépare effectivement le terrain pour FORDEAD (<code>R/mod_monitoring.R</code>, <code>R/utils_i18n.R</code>).</li>
@@ -1543,7 +1550,7 @@
 <div class="section level2">
 <h2 id="id_0285---2026-05-16">[0.28.5] - 2026-05-16<a class="anchor" aria-label="anchor" href="#id_0285---2026-05-16"></a></h2>
 <div class="section level3">
-<h3 id="changed-57">Changed<a class="anchor" aria-label="anchor" href="#changed-57"></a></h3>
+<h3 id="changed-58">Changed<a class="anchor" aria-label="anchor" href="#changed-58"></a></h3>
 <ul><li>
 <strong>Deps</strong> : bascule de l’épingle <code>Remotes</code> de <code>pobsteta/nemeton@v0.22.1</code> vers <code>pobsteta/nemeton@main</code>. Les installs GitHub de <code>nemetonshiny</code> tirent désormais en continu le dernier commit <code>main</code> de <code>nemeton</code> — plus besoin de bumper l’épingle après chaque release cœur. Reproductibilité d’install dans le temps perdue (cf. NEWS.md pour les trade-offs) (<code>DESCRIPTION</code>).</li>
 <li>
@@ -1565,7 +1572,7 @@
 <div class="section level2">
 <h2 id="id_0283---2026-05-15">[0.28.3] - 2026-05-15<a class="anchor" aria-label="anchor" href="#id_0283---2026-05-15"></a></h2>
 <div class="section level3">
-<h3 id="changed-58">Changed<a class="anchor" aria-label="anchor" href="#changed-58"></a></h3>
+<h3 id="changed-59">Changed<a class="anchor" aria-label="anchor" href="#changed-59"></a></h3>
 <ul><li>
 <strong>Deps</strong> : bump de l’épingle <code>Remotes: pobsteta/nemeton</code> de <code>v0.22.0</code> vers <code>v0.22.1</code>. Sans ce bump, l’installation de <code>nemetonshiny</code> faisait redescendre <code>nemeton</code> à <code>0.22.0</code> même si une version plus récente était installée localement (<code>DESCRIPTION</code>).</li>
 </ul></div>
@@ -1606,7 +1613,7 @@
 <code>feat(monitoring)</code>: worker stdout + message stream <code><a href="https://rdrr.io/r/base/sink.html" class="external-link">sink()</a></code>ed to <code>&lt;project&gt;/data/ingest_console.log</code>. The parent process tails the file every 500 ms via <code>reactivePoll</code>, reads newly-written bytes from a persistent offset and <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code>s them to its own <code><a href="https://rdrr.io/r/base/showConnections.html" class="external-link">stderr()</a></code>. Effect: every <code>cli::cli_*</code>, <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code>, <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> and <code>[s2_cache …]</code> trace from <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code> (including the verbose <code>NEMETON_S2_CACHE_DEBUG=TRUE</code> ones) lands in the developer’s R console in real time, bypassing <code>future</code>’s built-in stdout capture. Cleanup mirrors the existing <code>progress.json</code> channel on success / error paths.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-59">Changed<a class="anchor" aria-label="anchor" href="#changed-59"></a></h3>
+<h3 id="changed-60">Changed<a class="anchor" aria-label="anchor" href="#changed-60"></a></h3>
 <ul><li>
 <code>run_ingestion_async()</code> (R/service_monitoring.R) gains an optional <code>log_path</code> parameter on its <code>$invoke()</code> signature. NULL = no console mirror (the legacy silent behaviour).</li>
 </ul></div>
@@ -1667,7 +1674,7 @@
 <li>i18n: <code>monitoring_reprime_cache_label</code>, <code>monitoring_reprime_cache_help</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-60">Changed<a class="anchor" aria-label="anchor" href="#changed-60"></a></h3>
+<h3 id="changed-61">Changed<a class="anchor" aria-label="anchor" href="#changed-61"></a></h3>
 <ul><li>
 <code>service_monitoring.R::run_ingestion_async()</code>: new <code>skip_cached</code> parameter on the <code>ExtendedTask</code> lambda (default <code>TRUE</code>), forwarded to <code><a href="https://pobsteta.github.io/nemeton/reference/ingest_sentinel2_timeseries.html" class="external-link">nemeton::ingest_sentinel2_timeseries()</a></code>.</li>
 </ul></div>
@@ -1693,7 +1700,7 @@
 <li>i18n: <code>monitoring_ingest_cache_lookup_fmt</code>, <code>monitoring_ingest_band_failed_fmt</code>, <code>monitoring_ingest_token_refreshed</code>, <code>monitoring_cache_active_fmt</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-61">Changed<a class="anchor" aria-label="anchor" href="#changed-61"></a></h3>
+<h3 id="changed-62">Changed<a class="anchor" aria-label="anchor" href="#changed-62"></a></h3>
 <ul><li>
 <code>chore(deps)</code>: bump nemeton pin to <code>&gt;= 0.21.7</code> to align on the versions that expose a stable <code>cache_dir</code> + <code>progress_callback</code> signature.</li>
 </ul></div>
@@ -1701,7 +1708,7 @@
 <div class="section level2">
 <h2 id="id_02414---2026-05-13">[0.24.14] - 2026-05-13<a class="anchor" aria-label="anchor" href="#id_02414---2026-05-13"></a></h2>
 <div class="section level3">
-<h3 id="changed-62">Changed<a class="anchor" aria-label="anchor" href="#changed-62"></a></h3>
+<h3 id="changed-63">Changed<a class="anchor" aria-label="anchor" href="#changed-63"></a></h3>
 <ul><li>
 <code>chore(deps)</code>: re-sync nemeton pin to <code>&gt;= 0.21.5</code> (was <code>&gt;= 0.21.3</code>) to match the version installed locally. No functional impact — removes <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code> resolution warnings on fresh machines.</li>
 </ul></div>
@@ -1745,7 +1752,7 @@
 <li>Toast et console affichaient <code>(scene_id missing) (0/159)</code> entre la recherche STAC et la première tuile reçue.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-63">Changed<a class="anchor" aria-label="anchor" href="#changed-63"></a></h3>
+<h3 id="changed-64">Changed<a class="anchor" aria-label="anchor" href="#changed-64"></a></h3>
 <ul><li>Le terme “ingestion” est remplacé par “téléchargement” (FR) / “download” (EN) sur tous les textes utilisateur du contexte Sentinel-2 (<code>monitoring_*</code>). <code>field_ingest_*</code> et <code>health_validation_*</code> sont volontairement préservés (uploads de données utilisateur, pas des downloads distants).</li>
 </ul></div>
 </div>
@@ -1774,7 +1781,7 @@
 <ul><li>Boutons <strong>“Lancer le diagnostic FAST”</strong> et <strong>“Lancer le diagnostic FORDEAD”</strong> muets au clic. Cause : <code>tagAppendAttributes(disabled = NA)</code> HTML-disablait les boutons au premier rendu, et la classe <code>btn-primary</code> masque visuellement l’état <code>disabled</code> Bootstrap — le navigateur refuse le clic alors que l’utilisateur croit le bouton actif. Correctif : suppression du wrapper <code>disabled = NA</code>, simplification du <code>updateActionButton(disabled = is_running)</code> (greying uniquement pendant la tâche async), garde <code>is_running</code> en tête des <code>observeEvent</code> pour avaler les double-clics.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-64">Changed<a class="anchor" aria-label="anchor" href="#changed-64"></a></h3>
+<h3 id="changed-65">Changed<a class="anchor" aria-label="anchor" href="#changed-65"></a></h3>
 <ul><li>
 <code>DESCRIPTION</code>: <code>Imports: nemeton (&gt;= 0.21.2)</code>, <code>Remotes: pobsteta/nemeton@v0.21.2</code>.</li>
 </ul></div>
@@ -1810,7 +1817,7 @@
 <div class="section level2">
 <h2 id="id_0234---2026-05-09">[0.23.4] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0234---2026-05-09"></a></h2>
 <div class="section level3">
-<h3 id="changed-65">Changed<a class="anchor" aria-label="anchor" href="#changed-65"></a></h3>
+<h3 id="changed-66">Changed<a class="anchor" aria-label="anchor" href="#changed-66"></a></h3>
 <ul><li>Plan d’actions chat: role labels in the conversation history now go through i18n. The raw LLM keys (“user” / “assistant”) no longer surface in the UI; they render as <strong>“Vous”</strong> / <strong>“Assistant”</strong> (FR) or <strong>“You”</strong> / <strong>“Assistant”</strong> (EN), switching live with the language toggle. The underlying data model still uses the English keys so the prompt builder is unchanged.</li>
 </ul></div>
 <div class="section level3">
@@ -1833,7 +1840,7 @@
 <ul><li>Plan d’actions: chat history <strong>auto-scrolls to the bottom</strong> on every update so the latest message is always visible. Implemented via an inline <code>setTimeout(0)</code> script appended to each <code>chat_history_ui</code> render that sets <code>el.scrollTop = el.scrollHeight</code> on the <code>.chat-history</code> div (now carrying a stable id).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-66">Changed<a class="anchor" aria-label="anchor" href="#changed-66"></a></h3>
+<h3 id="changed-67">Changed<a class="anchor" aria-label="anchor" href="#changed-67"></a></h3>
 <ul><li>Plan d’actions: chat panel <strong>moves from a left sidebar to the right sidebar</strong>, sitting below the “Tableau des actions” panel. The nested <code><a href="https://rstudio.github.io/bslib/reference/sidebar.html" class="external-link">bslib::layout_sidebar</a></code> introduced in 0.23.1 is replaced by a single right sidebar containing both cards stacked top-to-bottom.</li>
 <li>Plan d’actions: button label “Générer (IA)” renamed to “Générer les actions (IA)” (FR) / “Generate actions (AI)” (EN) for clarity.</li>
 </ul></div>
@@ -1845,7 +1852,7 @@
 <ul><li>Plan d’actions: <strong>AI chat now lives in a persistent left sidebar</strong> (350 px, collapsible) instead of a modal. The conversation stays visible while the user navigates map / table / Kanban. Layout switches to a nested <code>layout_sidebar</code> (left chat / right action panel / main content).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-67">Changed<a class="anchor" aria-label="anchor" href="#changed-67"></a></h3>
+<h3 id="changed-68">Changed<a class="anchor" aria-label="anchor" href="#changed-68"></a></h3>
 <ul><li>Plan d’actions: “Ouvrir le chat” button removed from the right action panel (made redundant by the persistent sidebar). <code>input$open_chat</code> observer (~30 LOC of <code>showModal</code>) dropped.</li>
 </ul></div>
 <div class="section level3">
@@ -1866,7 +1873,7 @@
 <li>Kanban columns: cards are <strong>sorted by <code>annee_realisation</code></strong> ascending (NAs last) so each column reads chronologically.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-68">Changed<a class="anchor" aria-label="anchor" href="#changed-68"></a></h3>
+<h3 id="changed-69">Changed<a class="anchor" aria-label="anchor" href="#changed-69"></a></h3>
 <ul><li>Kanban: <strong>free movement between any columns</strong>. The proposée → validée → planifiée → réalisée → abandonnée DAG no longer gates drag-drop. <code>update_action_in_plan()</code> accepts any known status, rejects only unknown strings. <code>is_valid_status_transition()</code> and <code>ACTION_PLAN_TRANSITIONS</code> stay as informational documentation of the natural workflow.</li>
 <li>Kanban: per-card <strong>“Déplacer”</strong> dropdown removed (made redundant by free drag-drop). The <code>kanban_move_*</code> dispatcher observer (~50 LOC) and the unused <code>KANBAN_STATUSES</code> constant are gone too.</li>
 <li>Action plan table: <strong>action count</strong> moved from bottom-left to bottom-right. DT <code>dom</code> switched to a custom flex layout (<code>&lt;"top"f&gt;rt&lt;"… dt-bottom-row"&lt;"… "lp&gt;i&gt;</code>) with scoped CSS rules to override the default DT floats.</li>
@@ -1884,7 +1891,7 @@
 <div class="section level2">
 <h2 id="id_0224---2026-05-09">[0.22.4] - 2026-05-09<a class="anchor" aria-label="anchor" href="#id_0224---2026-05-09"></a></h2>
 <div class="section level3">
-<h3 id="changed-69">Changed<a class="anchor" aria-label="anchor" href="#changed-69"></a></h3>
+<h3 id="changed-70">Changed<a class="anchor" aria-label="anchor" href="#changed-70"></a></h3>
 <ul><li>Action plan table: the page-size selector (“Afficher 5/10/25/50/All”) moved <strong>below the table</strong>, next to the info count and pagination. Top of the table now only carries the global search box. DT <code>dom</code> switched from <code>"lfrtip"</code> to <code>"frtilp"</code>.</li>
 <li>Action plan table: only <strong>UGF + Année</strong> are frozen during horizontal scroll. <code>DISPLAY_COLS</code> reordered so hidden columns (<code>id</code>, <code>ug_id</code>, <code>annee_cible</code>) sit at the tail; <code>fixedColumns.leftColumns</code> reduced from 5 to 2 to match the count of visible frozen columns (DT’s FixedColumns counts every DOM column, hidden included).</li>
 <li>Action plan map: leaflet legend titles now translated. <code>legend_title</code> literals (<code>"annee"</code>, <code>"type"</code>, <code>"priority"</code>) swapped for <code>i18n$t("action_plan_col_*")</code> so the map shows “Année / Type / Priorité” in FR and “Year / Type / Priority” in EN, switching with the language toggle.</li>
@@ -1912,7 +1919,7 @@
 <li>Tooltip on <em>Source du CV</em> radio clarifying that it only picks the CV value, not the draw method.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-70">Changed<a class="anchor" aria-label="anchor" href="#changed-70"></a></h3>
+<h3 id="changed-71">Changed<a class="anchor" aria-label="anchor" href="#changed-71"></a></h3>
 <ul><li>Sampling-method note rewritten to describe candidates on a regular 50 m grid, forest mask filter, then GRTS → LPM2 → random selection.</li>
 <li>Map auto-zoom fixed to the UGF extent instead of BD Forêt’s (which is fetched with a buffer).</li>
 <li>
@@ -1937,7 +1944,7 @@
 <code>URL</code> and <code>BugReports</code> fields in <code>DESCRIPTION</code> so the RStudio Packages pane shows the documentation icon next to the package.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-71">Changed<a class="anchor" aria-label="anchor" href="#changed-71"></a></h3>
+<h3 id="changed-72">Changed<a class="anchor" aria-label="anchor" href="#changed-72"></a></h3>
 <ul><li>README counters synced to the real state (31 indicators, 13 expert profiles, 504 i18n keys).</li>
 <li>
 <code>sampling_tt_region</code> tooltip wording says QGIS, not QField.</li>
@@ -1975,7 +1982,7 @@
 <code>CITATION.cff</code> and <code>CHANGELOG.md</code> — release-metadata files.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="changed-72">Changed<a class="anchor" aria-label="anchor" href="#changed-72"></a></h3>
+<h3 id="changed-73">Changed<a class="anchor" aria-label="anchor" href="#changed-73"></a></h3>
 <ul><li>
 <code>mod_sampling</code> now uses <code><a href="https://pobsteta.github.io/nemeton/reference/create_sampling_plan.html" class="external-link">nemeton::create_sampling_plan()</a></code> (GRTS / LPM2 / random) instead of a plain <code><a href="https://r-spatial.github.io/sf/reference/st_sample.html" class="external-link">sf::st_sample()</a></code>. The generation notification reports the selected method.</li>
 <li>The Export terrain map now draws per-UGF polygons (matching the Import terrain style) instead of a single unioned zone; the unioned zone is still used internally by <code>create_sampling_plan()</code>.</li>

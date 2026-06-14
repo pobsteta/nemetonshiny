@@ -12,6 +12,21 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.84.0\] - 2026-06-14
+
+### Changed
+
+- Chargement d’un projet récent : la synchronisation PostGIS best-effort
+  (`db_sync_project`) tourne désormais dans un worker `future`
+  (`db_sync_project_async`) au lieu d’un callback `later()`. Le
+  `later()` s’exécutait sur le thread principal R et gelait l’event loop
+  Shiny / le rendu de la carte pendant l’upload (connexion + `st_write`
+  parcelles + `dbWriteTable` indicateurs), d’où le délai ressenti entre
+  « Connected to PostgreSQL » et l’affichage des parcelles. Le sync est
+  maintenant totalement hors du thread principal (dispatch non bloquant
+  ~0 ms), best-effort, avec fallback `later()` si `future`/`promises`
+  absents. Capture des `POSTGRESQL_ADDON_*` côté worker (Clever Cloud).
+
 ## \[0.83.0\] - 2026-06-14
 
 ### Added
