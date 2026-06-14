@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.8.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.9 (2026-06-14)
 
 ### Fix — Rapport PDF : les `[^n]` restaient littéraux malgré des sources OK
 
