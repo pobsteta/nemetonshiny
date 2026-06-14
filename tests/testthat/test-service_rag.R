@@ -138,9 +138,53 @@ test_that("rag_context déduplique le bloc Sources par document_id", {
       # format_citations a reçu UNE seule ligne (dédupliquée).
       expect_equal(captured$n_rows, 1L)
       expect_equal(ctx$n_sources, 1L)
-      # Le prompt_block contient bien les 3 chunks (pas de dédup côté
-      # prompt — le LLM peut citer [^1], [^2], [^3] séparément).
-      expect_true(grepl("\\[\\^3\\]", ctx$prompt_block))
+      # v0.84.6 — numérotation par DOCUMENT, cohérente prompt ↔ sources :
+      # 3 chunks d'1 seul document → le prompt les regroupe sous [^1]
+      # (PAS de [^2]/[^3] orphelins que le LLM citerait sans définition).
+      expect_true(grepl("\\[\\^1\\]", ctx$prompt_block))
+      expect_false(grepl("\\[\\^2\\]", ctx$prompt_block))
+      expect_false(grepl("\\[\\^3\\]", ctx$prompt_block))
+    }
+  )
+})
+
+
+# ---- rag_context : numérotation cohérente prompt ↔ sources (v0.84.6) ----
+
+test_that("rag_context numérote prompt et sources à l'identique (par document)", {
+  skip_if_not_installed("nemeton")
+  # 5 chunks issus de 3 documents (A:3, B:1, C:1).
+  chunks <- data.frame(
+    document_id = c("A", "A", "A", "B", "C"),
+    text        = c("a1", "a2", "a3", "b1", "c1"),
+    title       = c("Doc A", "Doc A", "Doc A", "Doc B", "Doc C"),
+    stringsAsFactors = FALSE
+  )
+  testthat::with_mocked_bindings(
+    retrieve_knowledge = function(...) chunks,
+    format_citations = function(retrieved_chunks, ...) {
+      paste0("## Sources
+
+", paste(
+        sprintf("[^%d] %s.", seq_len(nrow(retrieved_chunks)),
+                retrieved_chunks$title), collapse = "
+
+"))
+    },
+    .package = "nemeton",
+    {
+      ctx <- nemetonshiny:::rag_context(
+        app_con = "fake", profile_code = "x", family_codes = NULL,
+        situation_text = "abc")
+      max_num <- function(s) max(as.integer(gsub("\\D", "",
+        regmatches(s, gregexpr("\\[\\^[0-9]+\\]", s))[[1]])))
+      # 3 documents uniques → prompt ET sources s'arrêtent à [^3].
+      expect_equal(ctx$n_sources, 3L)
+      expect_equal(max_num(ctx$prompt_block), 3L)
+      expect_equal(max_num(ctx$sources_md), 3L)
+      # Les 3 chunks du doc A sont regroupés sous [^1] (un seul).
+      expect_equal(lengths(regmatches(ctx$prompt_block,
+        gregexpr("\\[\\^1\\]", ctx$prompt_block)))[1], 1L)
     }
   )
 })

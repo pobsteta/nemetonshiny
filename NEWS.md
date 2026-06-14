@@ -1,3 +1,29 @@
+# nemetonshiny 0.84.5.9001 (dev) (2026-06-14)
+
+### Fix — RAG : numérotation `[^n]` cohérente prompt ↔ sources (cause amont)
+
+Le bloc « Sources documentaires » ne listait pas toutes les sources que le
+LLM citait — **cause racine** des `[^n]` orphelins dans le rapport.
+
+`rag_context()` (`service_rag.R`) numérotait **incohéremment** :
+- le **prompt** présentait au LLM **tous les chunks** `[^1]..[^K]`
+  (jusqu'à `top_k = 8`) ;
+- le bloc **sources** **dédupliquait par document** puis renumérotait
+  `[^1]..[^N]` (N = documents uniques, souvent < K).
+
+Le LLM citait donc des **numéros de chunk** (`[^7]`, `[^8]`) absents de la
+liste dédupliquée des sources, et même les numéros « valides » pouvaient
+pointer sur le mauvais document.
+
+**Fix** : le prompt est désormais numéroté **par document unique**
+(`[^1]..[^N]`), avec la **même numérotation** que le bloc sources
+(`format_citations(best_per_doc)`). Les chunks d'un même document sont
+regroupés sous un seul `[^d]`. Le LLM ne peut donc citer que `[^1]..[^N]`,
+tous présents dans les sources et pointant sur le bon document.
+
+Combiné au sanitiseur d'export v0.84.5, le rendu des notes est correct de
+bout en bout.
+
 # nemetonshiny 0.84.5 (2026-06-14)
 
 ### Fix — Rapport Quarto : `[^n]` orphelins / dupliqués restaient littéraux
