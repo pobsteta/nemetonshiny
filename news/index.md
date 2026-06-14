@@ -1,5 +1,21 @@
 # Changelog
 
+## nemetonshiny 0.84.8 (2026-06-14)
+
+#### Fix — Profil « Propriétaire » : récupère enfin ses sources RAG
+
+Le profil « Propriétaire » (clé app `owner`, fichier `owner.yml`) ne
+récupérait **aucune référence** dans sa perspective : le corpus tague
+ses documents avec le code `proprietaire_prive` (4 documents), mais
+`rag_profile_code("owner")` renvoyait `"owner"` → aucun match dans
+`retrieve_knowledge(profile_codes = …)`, et ces 4 documents restaient
+**orphelins** (jamais servis à aucun profil).
+
+**Fix** : table d’alias `.RAG_PROFILE_CODE_ALIASES`
+(`owner → proprietaire_prive`) dans `rag_profile_code()`. Le profil «
+Propriétaire » voit désormais ses 4 documents corpus, et plus aucun code
+corpus n’est orphelin.
+
 ## nemetonshiny 0.84.7 (2026-06-14)
 
 #### Fix — Perspective Synthèse : profil « Planificateur sylvicole » renvoyait du JSON

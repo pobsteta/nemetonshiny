@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.84.8\] - 2026-06-14
+
+### Fixed
+
+- RAG : le profil « Propriétaire » (clé app `owner`) ne récupérait
+  aucune référence — le corpus tague ses 4 documents sous
+  `proprietaire_prive` mais `rag_profile_code("owner")` renvoyait
+  `"owner"` (mismatch, docs orphelins). Alias
+  `owner → proprietaire_prive` ajouté ; plus aucun code corpus orphelin.
+
 ## \[0.84.7\] - 2026-06-14
 
 ### Fixed
