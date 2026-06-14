@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.2.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.3 (2026-06-14)
 
 ### Synthèse — Sources RAG persistées, réordonnées, et vraies notes Quarto
 
