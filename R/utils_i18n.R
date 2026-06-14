@@ -1142,6 +1142,33 @@ TRANSLATIONS <- list(
     en = "Once parcels are selected and project named, start calculations. They run in the background."
   ),
 
+  # ----- Tour : 1 step clé par onglet (spec tour v2) -----
+  tour_synthesis_title = list(fr = "Synth\u00e8se", en = "Synthesis"),
+  tour_synthesis_desc = list(
+    fr = "Le score global, le radar des 12 familles et la perspective IA par profil expert. G\u00e9n\u00e9rez une analyse adapt\u00e9e \u00e0 votre m\u00e9tier.",
+    en = "The overall score, the 12-family radar and the AI perspective per expert profile. Generate an analysis tailored to your role."
+  ),
+  tour_action_plan_title = list(fr = "Plan d'action", en = "Action plan"),
+  tour_action_plan_desc = list(
+    fr = "\u00c0 partir du diagnostic, l'assistant propose des actions sylvicoles prioris\u00e9es et un \u00e9change conversationnel pour les affiner.",
+    en = "From the diagnosis, the assistant proposes prioritised silvicultural actions and a conversational thread to refine them."
+  ),
+  tour_terrain_title = list(fr = "Terrain", en = "Field"),
+  tour_terrain_desc = list(
+    fr = "Pr\u00e9parez un plan d'\u00e9chantillonnage (GRTS / TSP) export\u00e9 vers QGIS / QField, puis r\u00e9importez les observations terrain.",
+    en = "Prepare a sampling plan (GRTS / TSP) exported to QGIS / QField, then re-import the field observations."
+  ),
+  tour_monitoring_title = list(fr = "Suivi sanitaire", en = "Health monitoring"),
+  tour_monitoring_desc = list(
+    fr = "Trois modes de d\u00e9tection du d\u00e9p\u00e9rissement : FAST (chocs r\u00e9cents), FORDEAD (r\u00e9sineux / scolyte) et RECONFORT (feuillus). Choisissez le mode ici.",
+    en = "Three dieback-detection modes: FAST (recent shocks), FORDEAD (conifers / bark beetle) and RECONFORT (broadleaves). Pick the mode here."
+  ),
+  tour_families_title = list(fr = "Familles d'indicateurs", en = "Indicator families"),
+  tour_families_desc = list(
+    fr = "Chaque famille (Carbone, Biodiversit\u00e9, Eau\u2026) d\u00e9taille ses indicateurs, ses cartes et ses statistiques. Explorez-les depuis ce menu.",
+    en = "Each family (Carbon, Biodiversity, Water\u2026) details its indicators, maps and statistics. Browse them from this menu."
+  ),
+
   # ============================================================
   # ============================================================
   # Errors

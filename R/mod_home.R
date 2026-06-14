@@ -1438,52 +1438,18 @@ mod_home_server <- function(id, app_state) {
         )
       }
 
-      # Function to create and start tour
+      # Function to create and start tour.
+      #
+      # The step definitions live in R/service_tour.R (build_tour_guide) :
+      # a single cicerone guide that spans ALL main_nav tabs (cicerone
+      # activates each step's `tab` before highlighting). The mechanics
+      # below (collapse opening, JS-timed auto-start, restart) stay here.
       do_start_tour <- function() {
-        # Target elements - use element IDs
-        el_search <- ns("search_collapse")
-        el_map <- "home-map-map_card"
-        el_name <- "home-project-name"
-        el_desc <- "home-project-description"
-        el_owner <- "home-project-owner"
-        el_create <- "home-project-create_project"
-
         tryCatch({
-          # Create guide and chain all steps
-          cicerone::Cicerone$
-            new()$
-            step(
-              el = el_search,
-              title = i18n$t("tour_search_title"),
-              description = i18n$t("tour_search_desc")
-            )$
-            step(
-              el = el_map,
-              title = i18n$t("tour_map_title"),
-              description = i18n$t("tour_map_desc", max = get_app_config("max_parcels", 30L))
-            )$
-            step(
-              el = el_name,
-              title = i18n$t("tour_project_title"),
-              description = i18n$t("tour_project_desc")
-            )$
-            step(
-              el = el_desc,
-              title = i18n$t("tour_description_title"),
-              description = i18n$t("tour_description_desc")
-            )$
-            step(
-              el = el_owner,
-              title = i18n$t("tour_owner_title"),
-              description = i18n$t("tour_owner_desc")
-            )$
-            step(
-              el = el_create,
-              title = i18n$t("tour_create_title"),
-              description = i18n$t("tour_create_desc")
-            )$
-            init(session = session)$
-            start()
+          guide <- build_tour_guide(
+            i18n, max_parcels = get_app_config("max_parcels", 30L))
+          if (is.null(guide)) return(invisible(NULL))
+          guide$init(session = session)$start()
         }, error = function(e) {
           warning("[Tour] Could not start: ", e$message)
         })
