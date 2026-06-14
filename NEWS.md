@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.9.9001 (dev) (2026-06-14)
+# nemetonshiny 0.84.10 (2026-06-14)
 
 ### Fix — Rapport PDF : une seule note par source (dédup par contenu)
 
