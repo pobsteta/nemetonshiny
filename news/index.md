@@ -1,5 +1,20 @@
 # Changelog
 
+## nemetonshiny 0.85.11 (2026-06-15)
+
+#### Changed — Alertes FAST : NDRE réservé au mode Tendance
+
+NDRE (red-edge) n’est plus proposé dans les modes **Fréquence** et
+**Intensité** des Alertes FAST : ces modes détectent des chocs court
+terme et n’exposent plus que **NDMI / NDVI / NBR**. NDRE reste
+disponible dans le mode **Tendance** (NDMI / NDRE), où il a du sens pour
+un déclin chronique pluriannuel. Annule l’ajout de NDRE aux modes
+Fréquence/Intensité (v0.85.2).
+
+Note : le slider « Seuil NDRE » du panneau de surveillance n’a plus
+d’effet (le mode Tendance ignore les seuils — Theil-Sen / Mann-Kendall)
+; il pourra être retiré dans un lot ultérieur.
+
 ## nemetonshiny 0.85.10 (2026-06-15)
 
 #### Changed — Synthèse : barre de confiance descendue d’un cran

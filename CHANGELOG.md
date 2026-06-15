@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.11\] - 2026-06-15
+
+### Changed
+
+- Alertes FAST : NDRE réservé au mode Tendance. Les modes Fréquence et
+  Intensité n’exposent plus que NDMI / NDVI / NBR (annule l’ajout de
+  NDRE à ces modes en v0.85.2 ; NDRE reste en Tendance pour le déclin
+  chronique).
+
 ## \[0.85.10\] - 2026-06-15
 
 ### Changed

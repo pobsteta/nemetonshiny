@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.11" id="nemetonshiny-08511-2026-06-15">nemetonshiny 0.85.11 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08511-2026-06-15"></a></h2>
+<div class="section level4">
+<h4 id="changed--alertes-fast--ndre-réservé-au-mode-tendance-0-85-11">Changed — Alertes FAST : NDRE réservé au mode Tendance<a class="anchor" aria-label="anchor" href="#changed--alertes-fast--ndre-r%C3%A9serv%C3%A9-au-mode-tendance-0-85-11"></a></h4>
+<p>NDRE (red-edge) n’est plus proposé dans les modes <strong>Fréquence</strong> et <strong>Intensité</strong> des Alertes FAST : ces modes détectent des chocs court terme et n’exposent plus que <strong>NDMI / NDVI / NBR</strong>. NDRE reste disponible dans le mode <strong>Tendance</strong> (NDMI / NDRE), où il a du sens pour un déclin chronique pluriannuel. Annule l’ajout de NDRE aux modes Fréquence/Intensité (v0.85.2).</p>
+<p>Note : le slider « Seuil NDRE » du panneau de surveillance n’a plus d’effet (le mode Tendance ignore les seuils — Theil-Sen / Mann-Kendall) ; il pourra être retiré dans un lot ultérieur.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.10" id="nemetonshiny-08510-2026-06-15">nemetonshiny 0.85.10 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08510-2026-06-15"></a></h2>
 <div class="section level4">
