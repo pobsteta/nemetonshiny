@@ -422,10 +422,11 @@ mod_synthesis_server <- function(id, app_state) {
             )
           ),
           # Label « Confiance φ » à la taille du libellé « Score global »
-          # (text-muted sans `small`) : abaisse la barre pour l'aligner avec
-          # le texte « Taille image… » de la colonne centrale.
+          # (text-muted sans `small`) + barre descendue (`mt-2`) pour
+          # l'aligner avec le texte « Taille image… » de la colonne centrale.
           ndp_progress_bar(ndp_result$ndp, lang = i18n$language,
-                           label_class = "text-muted")
+                           label_class = "text-muted",
+                           bar_class = "progress mt-2")
         )
       )
     })
