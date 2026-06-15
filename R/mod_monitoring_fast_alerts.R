@@ -393,6 +393,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # introduit en v0.58.0). Le cœur fait un fallback séquentiel
       # silencieux si `furrr` est absent, donc aucune dégradation.
       # Spec 017 D4 nemeton@v0.57.0+.
+      compute_errored <- FALSE
       mask_path <- tryCatch(
         # Args trend-only (months / min_years / alpha) ignorés en
         # count/rolling côté cœur.
@@ -403,19 +404,28 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           cli::cli_alert_warning(
             "compute_fast_alert_mask failed (index={idx}): {e$message}"
           )
-          last_raster_error(paste0(idx, ": ", conditionMessage(e)))
+          # v0.85.14 — surface le VRAI message d'erreur cœur (ex.
+          # « [mosaic] resolution does not match » sur un cache
+          # multi-tuiles MGRS) au lieu du message générique « aucune
+          # scène » ci-dessous, qui le masquait (le 2e setter écrasait
+          # le 1er). On note l'erreur pour ne PAS la réécraser.
+          compute_errored <<- TRUE
+          last_raster_error(sprintf("%s : %s", idx, conditionMessage(e)))
           NULL
         }
       )
       if (is.null(mask_path) || !nzchar(mask_path)) {
         # v0.68.0 — Message i18n (brief FAST 6 cartes nemeton@v0.65.0).
-        # Cas typique : aucune scène cachée ne porte les bandes de
-        # l'indice dans la fenêtre (par ex. NDMI demande B08+B11,
-        # une zone sans B11 produira NULL).
-        last_raster_error(sprintf(
-          i18n_r()$t("monitoring_fast_alerts_no_scene"),
-          idx
-        ))
+        # Cas « aucune scène cachée ne porte les bandes » UNIQUEMENT
+        # quand le cœur a renvoyé NULL SANS lever d'erreur. Si le calcul
+        # a échoué (compute_errored), on conserve le vrai message déjà
+        # posé dans le handler ci-dessus.
+        if (!compute_errored) {
+          last_raster_error(sprintf(
+            i18n_r()$t("monitoring_fast_alerts_no_scene"),
+            idx
+          ))
+        }
         return(NULL)
       }
       out <- tryCatch(
