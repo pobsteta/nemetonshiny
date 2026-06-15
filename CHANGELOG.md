@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.10\] - 2026-06-15
+
+### Changed
+
+- Onglet Synthèse : barre de progression de confiance descendue (`mt-2`)
+  pour s’aligner avec « Taille image Max 5 Mo, PNG/JPG ».
+  `ndp_progress_bar()` gagne un paramètre `bar_class` (défaut inchangé,
+  aucun impact sur mod_field_ingest).
+
 ## \[0.85.9\] - 2026-06-15
 
 ### Changed

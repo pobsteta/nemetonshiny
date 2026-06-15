@@ -1,5 +1,15 @@
 # Changelog
 
+## nemetonshiny 0.85.10 (2026-06-15)
+
+#### Changed — Synthèse : barre de confiance descendue d’un cran
+
+Ajustement fin de v0.85.9 : la barre de progression de confiance est
+descendue (`mt-2`) pour s’aligner précisément avec le texte « Taille
+image Max 5 Mo, PNG/JPG ». `ndp_progress_bar()` reçoit un paramètre
+`bar_class` (défaut inchangé `progress`, aucun impact sur
+mod_field_ingest).
+
 ## nemetonshiny 0.85.9 (2026-06-15)
 
 #### Changed — Synthèse : « Confiance φ » à la taille du « Score global »
