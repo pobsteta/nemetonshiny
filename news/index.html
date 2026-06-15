@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.4" id="nemetonshiny-0854-2026-06-15">nemetonshiny 0.85.4 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0854-2026-06-15"></a></h2>
+<div class="section level4">
+<h4 id="fix--affichage-des-parcelles-sur-la-carte-plus-rapide-0-85-4">Fix — Affichage des parcelles sur la carte plus rapide<a class="anchor" aria-label="anchor" href="#fix--affichage-des-parcelles-sur-la-carte-plus-rapide-0-85-4"></a></h4>
+<p>L’écran restait sur l’overlay « Affichage des parcelles… » (page blanche) pendant plusieurs secondes après la synchro PostGIS, surtout sur les communes à nombreuses parcelles.</p>
+<p><strong>Causes</strong> (rendu serveur bloquant, pendant l’overlay) :</p>
+<ul><li>Les labels de survol étaient construits par un <strong>sous-ensemble sf ligne par ligne</strong> (<code>parcel_data[i, ]</code> dans un <code>sapply</code>) — chaque sous-ensemble traîne la géométrie, coût O(N) sur des centaines/milliers de parcelles.</li>
+<li>Les géométries cadastrales étaient envoyées <strong>non simplifiées</strong> à Leaflet → GeoJSON volumineux, parsing + rendu navigateur lents.</li>
+</ul><p><strong>Fix</strong> :</p>
+<ul><li>Nouvelle fonction <strong>vectorisée</strong> <code>create_parcel_labels()</code> : tous les labels construits en une passe sur la table attributaire (géométrie retirée), sans sous-ensemble par ligne. Robuste aux <code>lieu-dit</code> NA (la version unitaire <code>create_parcel_label()</code> plantait dessus).</li>
+<li>
+<strong>Simplification géométrique pour l’affichage seulement</strong> (<code><a href="https://r-spatial.github.io/sf/reference/geos_unary.html" class="external-link">sf::st_simplify</a></code>, tolérance ~1 m en CRS projeté, <code>preserveTopology</code>), appliquée à la couche dessinée. La géométrie exacte est conservée dans <code>parcels()</code> pour la sélection, le zoom et l’export. Tolérance réglable via l’option app <code>parcel_simplify_tolerance_m</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.3" id="nemetonshiny-0853-2026-06-15">nemetonshiny 0.85.3 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0853-2026-06-15"></a></h2>
 <div class="section level4">
