@@ -162,6 +162,15 @@ mod_monitoring_ui <- function(id) {
                 ns("threshold_ndmi"), i18n$t("monitoring_threshold_ndmi"),
                 min = 0.10, max = 0.80, value = 0.20, step = 0.01
               ),
+              # NDRE (red-edge B05+B8A) : seuil minimum sous lequel un
+              # pixel est en alerte. Consommé par l'onglet Alertes/Carte
+              # FAST quand l'indice NDRE est sélectionné en count/rolling
+              # (les bandes red-edge sont cachées depuis v0.85.0). NDRE
+              # sain est proche de NDMI, d'où un défaut identique.
+              shiny::sliderInput(
+                ns("threshold_ndre"), i18n$t("monitoring_threshold_ndre"),
+                min = 0.10, max = 0.80, value = 0.20, step = 0.01
+              ),
               shiny::numericInput(
                 ns("window_days"), i18n$t("monitoring_window_days"),
                 value = 30L, min = 7L, max = 90L, step = 1L
@@ -2839,7 +2848,8 @@ mod_monitoring_server <- function(id, app_state) {
       thresholds_r   = shiny::reactive(list(
         ndvi = input$threshold_ndvi,
         nbr  = input$threshold_nbr,
-        ndmi = input$threshold_ndmi
+        ndmi = input$threshold_ndmi,
+        ndre = input$threshold_ndre
       ))
     )
 
@@ -2863,6 +2873,7 @@ mod_monitoring_server <- function(id, app_state) {
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
         ndmi        = input$threshold_ndmi,
+        ndre        = input$threshold_ndre,
         window_days = input$window_days
       )),
       refresh_r    = shiny::reactive(fast_reload())
@@ -3093,6 +3104,7 @@ mod_monitoring_server <- function(id, app_state) {
         ndvi        = input$threshold_ndvi,
         nbr         = input$threshold_nbr,
         ndmi        = input$threshold_ndmi,
+        ndre        = input$threshold_ndre,
         window_days = input$window_days
       )),
       date_range_r = shiny::reactive(input$date_range),

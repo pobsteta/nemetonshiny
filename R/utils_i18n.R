@@ -1997,8 +1997,9 @@ TRANSLATIONS <- list(
   # des onglets pilotent l'AFFICHAGE, pas le téléchargement.
   # v0.52.13 — Label du radio mono-index (spec 017 nemeton@v0.55.0).
   # L'utilisateur choisit l'indice spectral utilisé pour le raster
-  # d'alerte FAST (NDVI ou NBR). Le seuil correspondant est piloté
-  # par les sliders monitoring_threshold_{ndvi,nbr}.
+  # d'alerte FAST (NDMI / NDVI / NBR / NDRE en count/rolling). Le seuil
+  # correspondant est piloté par les sliders
+  # monitoring_threshold_{ndvi,nbr,ndmi,ndre}.
   monitoring_fast_index_label = list(
     fr = "Indice FAST",
     en = "FAST index"
@@ -2014,6 +2015,10 @@ TRANSLATIONS <- list(
   monitoring_threshold_ndmi = list(
     fr = "Seuil minimum NDMI",
     en = "Minimum NDMI threshold"
+  ),
+  monitoring_threshold_ndre = list(
+    fr = "Seuil minimum NDRE",
+    en = "Minimum NDRE threshold"
   ),
   monitoring_window_days = list(
     fr = "Fen\u00eatre roulante (jours)",
