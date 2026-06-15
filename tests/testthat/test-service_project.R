@@ -1582,6 +1582,74 @@ test_that("list_recent_projects handles dirs without metadata.json", {
 })
 
 # ==============================================================================
+# list_recent_projects cache (signature + explicit invalidation)
+# ==============================================================================
+
+test_that("list_recent_projects reflects new projects without stale cache", {
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        nemetonshiny:::create_project(name = "First Cache Proj")
+        first <- nemetonshiny:::list_recent_projects()
+        expect_equal(nrow(first), 1)
+
+        # A second project must appear immediately (mutation clears the cache,
+        # and the filesystem signature changes anyway).
+        nemetonshiny:::create_project(name = "Second Cache Proj")
+        second <- nemetonshiny:::list_recent_projects()
+        expect_equal(nrow(second), 2)
+      }
+    )
+  })
+})
+
+test_that("list_recent_projects reflects in-place metadata edits via signature", {
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        project <- nemetonshiny:::create_project(name = "Edit Me")
+        before <- nemetonshiny:::list_recent_projects()
+        expect_equal(before$name[1], "Edit Me")
+
+        # Rewrite metadata.json directly (bypasses mutation helpers); the size
+        # change must be picked up by the cache signature on the next call.
+        meta_path <- file.path(project$path, "metadata.json")
+        metadata <- jsonlite::read_json(meta_path)
+        metadata$name <- "Renamed Directly On Disk"
+        jsonlite::write_json(metadata, meta_path, auto_unbox = TRUE, pretty = TRUE)
+
+        after <- nemetonshiny:::list_recent_projects()
+        expect_equal(after$name[1], "Renamed Directly On Disk")
+      }
+    )
+  })
+})
+
+test_that(".invalidate_recent_projects_cache forces a rescan", {
+  withr::with_tempdir({
+    temp_root <- getwd()
+    with_mocked_bindings(
+      get_app_options = function() list(project_dir = temp_root),
+      {
+        nemetonshiny:::create_project(name = "Invalidate Proj")
+        nemetonshiny:::list_recent_projects()  # populate cache
+
+        # Should not error and should return the canonical schema.
+        nemetonshiny:::.invalidate_recent_projects_cache()
+        rescanned <- nemetonshiny:::list_recent_projects()
+        expect_s3_class(rescanned, "data.frame")
+        expect_equal(nrow(rescanned), 1)
+        expect_true(all(c("id", "name", "is_corrupted") %in% names(rescanned)))
+      }
+    )
+  })
+})
+
+# ==============================================================================
 # load_project_metadata (additional coverage)
 # ==============================================================================
 
