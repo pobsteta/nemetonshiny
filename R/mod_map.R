@@ -143,6 +143,13 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
 
     MAX_PARCELS <- get_app_config("max_parcels", 30L)
 
+    # Display-only geometry simplification tolerance, in metres. Cadastral
+    # parcels carry far more vertices than needed at commune zoom; simplifying
+    # the *displayed* layer slashes the GeoJSON payload sent to the browser
+    # (the dominant cause of the slow "rendering parcels" overlay). The full
+    # resolution geometry is kept in parcels() for selection, zoom and export.
+    PARCEL_SIMPLIFY_TOLERANCE_M <- get_app_config("parcel_simplify_tolerance_m", 1)
+
     # Map styling
     STYLE <- list(
       # Commune boundary
@@ -596,16 +603,33 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
         parcel_data <- parcel_data[polygon_idx, ]
       }
 
-      # Ensure WGS84
+      # Build hover labels once over the attribute table (vectorised), before
+      # any geometry simplification — labels depend only on attributes.
+      labels <- create_parcel_labels(parcel_data)
+
+      # Simplify geometry for display only. When the data is projected (metres),
+      # simplify with a metre tolerance in the source CRS, then transform to
+      # WGS84; this is both cheaper and more meaningful than simplifying in
+      # degrees. WGS84 input is left unsimplified (tolerance would be in
+      # degrees). preserveTopology guards against self-intersections.
       crs_epsg <- tryCatch(sf::st_crs(parcel_data)$epsg, error = function(e) NULL)
-      if (!is.null(crs_epsg) && !is.na(crs_epsg) && crs_epsg != 4326) {
-        parcel_data <- sf::st_transform(parcel_data, 4326)
+      is_wgs84 <- !is.null(crs_epsg) && !is.na(crs_epsg) && crs_epsg == 4326
+
+      if (!is_wgs84 && PARCEL_SIMPLIFY_TOLERANCE_M > 0) {
+        parcel_data <- tryCatch(
+          sf::st_simplify(
+            parcel_data,
+            dTolerance = PARCEL_SIMPLIFY_TOLERANCE_M,
+            preserveTopology = TRUE
+          ),
+          error = function(e) parcel_data
+        )
       }
 
-      # Create labels for hover display
-      labels <- sapply(seq_len(nrow(parcel_data)), function(i) {
-        create_parcel_label(parcel_data[i, ])
-      })
+      # Ensure WGS84 for Leaflet
+      if (!is_wgs84 && !is.null(crs_epsg) && !is.na(crs_epsg)) {
+        parcel_data <- sf::st_transform(parcel_data, 4326)
+      }
 
       leaflet::leafletProxy(ns("map")) |>
         leaflet::clearGroup("parcels") |>

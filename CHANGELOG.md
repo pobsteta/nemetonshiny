@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.4] - 2026-06-15
+
+### Fixed
+
+- Overlay « Affichage des parcelles… » lent (page blanche) après la synchro
+  PostGIS sur les communes à nombreuses parcelles. Labels de survol construits
+  par sous-ensemble sf ligne par ligne (`sapply` + `parcel_data[i, ]`) et
+  géométries envoyées non simplifiées à Leaflet.
+
+### Changed
+
+- Labels de survol des parcelles construits via `create_parcel_labels()`
+  (vectorisé, géométrie retirée) au lieu d'un sous-ensemble par ligne ; robuste
+  aux `lieu-dit` NA.
+- Simplification géométrique pour l'affichage seulement (`sf::st_simplify`,
+  ~1 m, `preserveTopology`), géométrie exacte conservée pour sélection / zoom /
+  export. Tolérance réglable via l'option `parcel_simplify_tolerance_m`.
+
 ## [0.85.3] - 2026-06-15
 
 ### Fixed

@@ -1,3 +1,31 @@
+# nemetonshiny 0.85.4 (2026-06-15)
+
+### Fix — Affichage des parcelles sur la carte plus rapide
+
+L'écran restait sur l'overlay « Affichage des parcelles… » (page blanche)
+pendant plusieurs secondes après la synchro PostGIS, surtout sur les
+communes à nombreuses parcelles.
+
+**Causes** (rendu serveur bloquant, pendant l'overlay) :
+
+- Les labels de survol étaient construits par un **sous-ensemble sf ligne
+  par ligne** (`parcel_data[i, ]` dans un `sapply`) — chaque sous-ensemble
+  traîne la géométrie, coût O(N) sur des centaines/milliers de parcelles.
+- Les géométries cadastrales étaient envoyées **non simplifiées** à
+  Leaflet → GeoJSON volumineux, parsing + rendu navigateur lents.
+
+**Fix** :
+
+- Nouvelle fonction **vectorisée** `create_parcel_labels()` : tous les
+  labels construits en une passe sur la table attributaire (géométrie
+  retirée), sans sous-ensemble par ligne. Robuste aux `lieu-dit` NA (la
+  version unitaire `create_parcel_label()` plantait dessus).
+- **Simplification géométrique pour l'affichage seulement**
+  (`sf::st_simplify`, tolérance ~1 m en CRS projeté, `preserveTopology`),
+  appliquée à la couche dessinée. La géométrie exacte est conservée dans
+  `parcels()` pour la sélection, le zoom et l'export. Tolérance réglable
+  via l'option app `parcel_simplify_tolerance_m`.
+
 # nemetonshiny 0.85.3 (2026-06-15)
 
 ### Fix — Chargement des projets récents plus rapide (IO disque)
