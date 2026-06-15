@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.9] - 2026-06-15
+
+### Changed
+
+- Onglet Synthèse : « Confiance φ » rendu à la même taille que « Score global »
+  (`text-muted` sans `small`), abaissant la barre de confiance pour l'aligner
+  avec « Taille image Max 5 Mo, PNG/JPG ». `ndp_progress_bar()` gagne un
+  paramètre `label_class` (défaut inchangé, aucun impact sur mod_field_ingest).
+
 ## [0.85.8] - 2026-06-15
 
 ### Changed
