@@ -1,5 +1,25 @@
 # Changelog
 
+## nemetonshiny 0.85.2 (2026-06-15)
+
+#### Added — Alertes FAST : indice NDRE en modes Fréquence / Intensité
+
+Le sous-onglet « Alertes FAST » du Suivi sanitaire expose désormais
+**NDRE** (red-edge B05+B8A) comme 4ᵉ indice des modes `count`
+(Fréquence) et `rolling` (Intensité), à côté de NDMI / NDVI / NBR. NDRE
+n’était jusqu’à présent disponible que dans le mode `trend`. Les bandes
+red-edge étant déjà mises en cache à l’ingestion
+(`bands = c("NDVI", "NBR", "NDMI", "NDRE")`, v0.85.0), aucun changement
+cœur n’est requis : `compute_fast_alert_mask()` consomme l’indice choisi
+via le radio local de l’onglet.
+
+- Nouveau slider de seuil **« Seuil minimum NDRE »** dans le sidebar
+  parent (`threshold_ndre`, défaut 0.20, parité avec NDMI), câblé dans
+  les `thresholds_r` d’Alertes FAST et de la prévisualisation du plan de
+  validation (`mod_validation_sampling`).
+- `.fast_index_choices()` count/rolling → `c(NDMI, NDVI, NBR, NDRE)`.
+- Nouvelle clé i18n `monitoring_threshold_ndre` (FR/EN).
+
 ## nemetonshiny 0.85.1 (2026-06-15)
 
 #### Fixed — Tests alignés sur l’ajout de NDRE aux bandes FAST

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.2" id="nemetonshiny-0852-2026-06-15">nemetonshiny 0.85.2 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0852-2026-06-15"></a></h2>
+<div class="section level4">
+<h4 id="added--alertes-fast--indice-ndre-en-modes-fréquence--intensité-0-85-2">Added — Alertes FAST : indice NDRE en modes Fréquence / Intensité<a class="anchor" aria-label="anchor" href="#added--alertes-fast--indice-ndre-en-modes-fr%C3%A9quence--intensit%C3%A9-0-85-2"></a></h4>
+<p>Le sous-onglet « Alertes FAST » du Suivi sanitaire expose désormais <strong>NDRE</strong> (red-edge B05+B8A) comme 4ᵉ indice des modes <code>count</code> (Fréquence) et <code>rolling</code> (Intensité), à côté de NDMI / NDVI / NBR. NDRE n’était jusqu’à présent disponible que dans le mode <code>trend</code>. Les bandes red-edge étant déjà mises en cache à l’ingestion (<code>bands = c("NDVI", "NBR", "NDMI", "NDRE")</code>, v0.85.0), aucun changement cœur n’est requis : <code>compute_fast_alert_mask()</code> consomme l’indice choisi via le radio local de l’onglet.</p>
+<ul><li>Nouveau slider de seuil <strong>« Seuil minimum NDRE »</strong> dans le sidebar parent (<code>threshold_ndre</code>, défaut 0.20, parité avec NDMI), câblé dans les <code>thresholds_r</code> d’Alertes FAST et de la prévisualisation du plan de validation (<code>mod_validation_sampling</code>).</li>
+<li>
+<code>.fast_index_choices()</code> count/rolling → <code>c(NDMI, NDVI, NBR, NDRE)</code>.</li>
+<li>Nouvelle clé i18n <code>monitoring_threshold_ndre</code> (FR/EN).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.1" id="nemetonshiny-0851-2026-06-15">nemetonshiny 0.85.1 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0851-2026-06-15"></a></h2>
 <div class="section level4">

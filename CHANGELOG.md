@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.2\] - 2026-06-15
+
+### Added
+
+- Suivi sanitaire — « Alertes FAST » : indice **NDRE** (red-edge
+  B05+B8A) ajouté aux modes `count` (Fréquence) et `rolling`
+  (Intensité), à côté de NDMI/NDVI/NBR. Nouveau slider de seuil
+  `threshold_ndre` (défaut 0.20), câblé dans les `thresholds_r`
+  d’Alertes FAST et de la prévisualisation du plan de validation.
+  Nouvelle clé i18n `monitoring_threshold_ndre` (FR/EN). Aucun
+  changement cœur (bandes red-edge déjà cachées depuis 0.85.0).
+
 ## \[0.85.1\] - 2026-06-15
 
 ### Fixed
