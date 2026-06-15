@@ -1,3 +1,15 @@
+# nemetonshiny 0.85.12 (2026-06-15)
+
+### Removed — Slider « Seuil NDRE » du panneau de surveillance
+
+Le slider « Seuil minimum NDRE » est retiré : depuis v0.85.11 NDRE est
+réservé au mode Tendance des Alertes FAST, qui ignore les seuils
+(Theil-Sen / Mann-Kendall). Le contrôle n'avait donc plus aucun effet.
+La clé `ndre` est retirée des trois objets `thresholds_r` (Alertes FAST,
+Carte FAST, plan de validation), et la clé i18n `monitoring_threshold_ndre`
+est supprimée. Aucun impact fonctionnel (le mode Tendance n'utilise pas de
+seuil ; les autres indices NDMI/NDVI/NBR conservent leurs sliders).
+
 # nemetonshiny 0.85.11 (2026-06-15)
 
 ### Changed — Alertes FAST : NDRE réservé au mode Tendance

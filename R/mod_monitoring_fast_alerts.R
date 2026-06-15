@@ -316,15 +316,14 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # sidebar parent. Le `threshold` correspondant reste lu depuis
       # le sidebar parent via `thresholds_r$ndvi` / `$nbr`.
       idx <- input$index %||% .fast_index_default(mode)
-      # Per-index threshold from the parent sidebar. NDMI / NDRE use
-      # their own sliders (th$ndmi / th$ndre), falling back to the NDVI
-      # threshold if absent. En mode trend le threshold NDRE est ignoré
-      # côté cœur (Theil-Sen / Mann-Kendall) ; en count/rolling il borne
-      # le déficit red-edge comme les autres indices.
+      # Per-index threshold from the parent sidebar. NDMI uses its own
+      # slider (th$ndmi), falling back to the NDVI threshold if absent.
+      # NDRE n'existe qu'en mode trend, où le threshold est ignoré côté
+      # cœur (Theil-Sen / Mann-Kendall) — on retombe donc sur th$ndmi.
       thr <- switch(idx,
                     NBR  = th$nbr,
                     NDMI = th$ndmi %||% th$ndvi,
-                    NDRE = th$ndre %||% th$ndmi %||% th$ndvi,
+                    NDRE = th$ndmi %||% th$ndvi,
                     th$ndvi)
       # Paramètres trend-only (Theil-Sen + Mann-Kendall, nemeton spec
       # 023). En count/rolling ces valeurs valent les défauts cœur et
