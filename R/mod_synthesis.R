@@ -271,14 +271,17 @@ mod_synthesis_server <- function(id, app_state) {
             ),
             options = list(customClass = "popover-lg"),
             title = NULL
-          )
-        ),
-        htmltools::div(
-          style = paste0(
-            "font-size: 4rem; font-weight: bold; color: ", score_color,
-            "; line-height: 1;"
           ),
-          global
+          # Valeur du score sur la MÊME ligne que « Score global » + info :
+          # remonte tout le bloc d'une ligne pour que la barre de confiance
+          # s'aligne avec le texte « Taille image… » de la colonne centrale.
+          htmltools::tags$span(
+            style = paste0(
+              "font-size: 4rem; font-weight: bold; color: ", score_color,
+              "; line-height: 1;"
+            ),
+            global
+          )
         ),
         shiny::p(
           class = "text-muted mt-1 mb-0",
