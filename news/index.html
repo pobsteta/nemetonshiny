@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.84.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,43 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.0" id="nemetonshiny-0850-2026-06-15">nemetonshiny 0.85.0 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0850-2026-06-15"></a></h2>
+<div class="section level4">
+<h4 id="added--suivi-sanitaire--mode-fast-trend-theil-sen--mann-kendall-0-85-0">Added — Suivi sanitaire : mode FAST <code>trend</code> (Theil-Sen + Mann-Kendall)<a class="anchor" aria-label="anchor" href="#added--suivi-sanitaire--mode-fast-trend-theil-sen--mann-kendall-0-85-0"></a></h4>
+<p>Le diagnostic FAST expose désormais un <strong>3ᵉ mode</strong> dans le sous-onglet « Alertes FAST », à côté de Fréquence (<code>count</code>) et Intensité (<code>rolling</code>) : <strong>Tendance</strong> (<code>trend</code>). Il détecte le <strong>déclin chronique pluriannuel</strong> (dépérissement des feuillus) via la régression Theil-Sen + le test de Mann-Kendall sur un composite saisonnier annuel (nemeton spec 023, cœur ≥ 0.69.0).</p>
+<ul><li>
+<strong>Radio « Mode du raster »</strong> : ajout de l’option <code>trend</code>.</li>
+<li>
+<strong>Indices mode-dépendants</strong> : <code>trend</code> propose NDMI (défaut) et <strong>NDRE</strong> (red-edge) ; <code>count</code>/<code>rolling</code> restent NDMI/NDVI/NBR.</li>
+<li>
+<strong>Paramètres trend en sidebar</strong> (conditionnels) : mois du composite saisonnier, années minimum, seuil de significativité (alpha). <code>threshold</code>/<code>window_days</code> sont masqués (ignorés par le cœur en trend).</li>
+<li>
+<strong>Ingestion</strong> : les bandes red-edge <strong>B05 + B8A</strong> sont désormais mises en cache (ajout de <code>NDRE</code> aux bandes) pour alimenter le mode trend ; le cœur (release prewarm trend) pré-chauffe alors aussi les cartes trend. Sur un cœur antérieur, la carte trend est calculée à la demande (dégradation gracieuse).</li>
+<li>Mapping du toast de pré-calcul <code>fast_prewarm:*_trend</code> → libellé « Tendance ».</li>
+<li>Nouvelles clés i18n (FR/EN) : <code>monitoring_fast_alerts_mode_trend</code>, <code>monitoring_fast_alerts_badge_trend</code>, <code>monitoring_trend_months</code>, <code>monitoring_trend_min_years</code>, <code>monitoring_trend_alpha</code>, <code>validation_class_unit_trend</code>, <code>fast_mode_trend</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--suivi-sanitaire--libellés-des-trois-modes-de-diagnostic-0-85-0">Changed — Suivi sanitaire : libellés des trois modes de diagnostic<a class="anchor" aria-label="anchor" href="#changed--suivi-sanitaire--libell%C3%A9s-des-trois-modes-de-diagnostic-0-85-0"></a></h4>
+<p>Renommage des trois modes du sélecteur « Mode de suivi » pour une nomenclature homogène « Diagnostic <m> (<cible>) » :</cible></m></p>
+<ul><li>« Surveillance rapide (FAST) » → <strong>« Diagnostic FAST (spot/trend) »</strong>
+</li>
+<li>« Diagnostic sanitaire (FORDEAD) » → <strong>« Diagnostic FORDEAD (résineux) »</strong>
+</li>
+<li>« Dépérissement feuillus (RECONFORT) » → <strong>« Diagnostic RECONFORT (feuillus) »</strong>
+</li>
+</ul><p>Clés i18n <code>monitoring_mode_quick</code> / <code>monitoring_mode_health</code> / <code>monitoring_mode_reconfort</code> (FR/EN). Aucun changement de logique : les valeurs internes (<code>quick</code> / <code>health</code> / <code>reconfort</code>) sont inchangées.</p>
+<p>Note : la bascule spot/trend du diagnostic FAST existe déjà — c’est le radio « Mode du raster » (Fréquence = spot / Intensité = trend) dans le sous-onglet « Alertes FAST » ; ses libellés sont conservés.</p>
+</div>
+<div class="section level4">
+<h4 id="added--note-explicite-quand-la-perspective-ia-na-pas-de-sources-0-85-0">Added — Note explicite quand la perspective IA n’a pas de sources<a class="anchor" aria-label="anchor" href="#added--note-explicite-quand-la-perspective-ia-na-pas-de-sources-0-85-0"></a></h4>
+<p>Sous la perspective IA de la synthèse, à l’emplacement habituel du bloc « Sources documentaires », une <strong>note grisée</strong> s’affiche désormais quand la perspective a été générée <strong>sans aucune source</strong> : « Perspective générée sans sources documentaires : le corpus de connaissances est indisponible ou vide… ». Auparavant le bloc disparaissait silencieusement et l’utilisateur ne savait pas si le RAG avait été consulté.</p>
+<p>La note précise les causes typiques (base PostgreSQL/pgvector non configurée, clé d’embedding absente, <strong>base locale SQLite qui ne supporte pas le RAG</strong>). Elle réapparaît aussi au rechargement d’un projet dont la perspective avait été générée sans sources.</p>
+<ul><li>Nouvelle clé i18n <code>rag_no_sources_note</code> (FR/EN) dans <code>utils_i18n.R</code>.</li>
+<li>
+<code>mod_synthesis.R</code> : <code>output$ai_sources</code> rend la note au lieu de <code>NULL</code> quand <code>ctx</code> existe mais <code>sources_md</code> est vide ; la restauration au reload réinjecte le contexte RAG dès qu’une synthèse existe (sources vides incluses).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.84.10" id="nemetonshiny-08410-2026-06-14">nemetonshiny 0.84.10 (2026-06-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08410-2026-06-14"></a></h2>
 <div class="section level4">
