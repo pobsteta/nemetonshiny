@@ -593,6 +593,32 @@ mod_family_server <- function(id, family_code, app_state) {
       shiny::updateTextAreaInput(session, "analysis_comments", value = "")
     }, ignoreInit = TRUE)
 
+    # ================================================================
+    # OUTPUT: « Sources documentaires » de la famille
+    # Affiche, sous le commentaire, les sources documentaires citées
+    # par ce commentaire (mêmes données RAG que la synthèse, persistées
+    # dans `synthesis_sources$sources_md`). Vide quand le commentaire ne
+    # cite aucune source (ex. perspective générée sans RAG).
+    # ================================================================
+    output$ai_sources <- shiny::renderUI({
+      comment <- input$analysis_comments
+      src_md <- app_state$current_project$comments$synthesis_sources$sources_md
+      body_md <- .family_sources_md(comment %||% "", src_md %||% "")
+      if (!nzchar(body_md)) return(NULL)
+
+      i18n <- get_i18n(app_state$language)
+      n <- length(strsplit(body_md, "\n\n", fixed = TRUE)[[1]])
+      htmltools::tagList(
+        htmltools::tags$hr(),
+        htmltools::tags$h5(i18n$t("rag_sources_heading")),
+        htmltools::tags$p(
+          class = "text-muted small",
+          sprintf(i18n$t("rag_sourced_badge"), n)
+        ),
+        shiny::markdown(body_md)
+      )
+    })
+
   })
 }
 

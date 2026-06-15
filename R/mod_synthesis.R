@@ -1003,9 +1003,7 @@ mod_synthesis_server <- function(id, app_state) {
             fam_codes <- names(fam_comments)
             fam_comments <- stats::setNames(
               lapply(fam_codes, function(code) {
-                .prepare_family_footnotes(
-                  fam_comments[[code]], src_md %||% "", code, app_state$language
-                )
+                .prepare_family_footnotes(fam_comments[[code]], src_md %||% "", code)
               }),
               fam_codes
             )

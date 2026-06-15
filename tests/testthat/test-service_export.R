@@ -2662,7 +2662,8 @@ test_that(".prepare_footnotes émet UNE note par source unique (dédup par conte
 })
 
 # ---------------------------------------------------------------------------
-# .prepare_family_footnotes — notes namespacées par famille + bloc Sources
+# .prepare_family_footnotes — notes de bas de page namespacées par famille
+# (sans bloc Sources dans le PDF ; le bloc visible vit dans l'UI)
 # ---------------------------------------------------------------------------
 
 test_that(".prepare_family_footnotes namespaces labels and dedups by content", {
@@ -2675,7 +2676,7 @@ test_that(".prepare_family_footnotes namespaces labels and dedups by content", {
     "[^13] Breda 2002 — Impact.", "",
     "[^15] Breda 2002 — Impact.", sep = "\n")
   comment <- "Biomasse[^10] et NDVI[^13]. ONF répété[^11][^12], Breda[^15]."
-  out <- nemetonshiny:::.prepare_family_footnotes(comment, src, "C", "fr")
+  out <- nemetonshiny:::.prepare_family_footnotes(comment, src, "C")
 
   # Labels namespacés par famille : [^C-1], [^C-2] ; aucun id numérique nu.
   expect_true(grepl("\\[\\^C-1\\]", out))
@@ -2689,41 +2690,69 @@ test_that(".prepare_family_footnotes namespaces labels and dedups by content", {
   expect_true(any(grepl("ONF", defs)))
   expect_true(any(grepl("Breda", defs)))
 
-  # Bloc visible « Sources documentaires » avec liste numérotée des 2 sources.
-  expect_true(grepl("### Sources documentaires", out, fixed = TRUE))
-  expect_true(grepl("1\\. ONF", out))
-  expect_true(grepl("2\\. Breda", out))
+  # Plus de bloc visible « Sources documentaires » dans le PDF (déplacé en UI).
+  expect_false(grepl("### Sources documentaires", out, fixed = TRUE))
+  expect_false(grepl("### Reference sources", out, fixed = TRUE))
 })
 
 test_that(".prepare_family_footnotes keeps first ref, strips orphans/duplicates", {
   comment <- "A[^1] B[^2]. Orphelin[^9]. Répété[^1]. Résumé : [^1], [^2], [^9]."
-  out <- nemetonshiny:::.prepare_family_footnotes(comment, .fn_src, "B", "fr")
+  out <- nemetonshiny:::.prepare_family_footnotes(comment, .fn_src, "B")
   body <- sub("\n\n\\[\\^.*$", "", out)
 
   # [^9] orphelin (4 sources) retiré ; [^1] gardé UNE fois (1re occurrence).
-  expect_false(grepl("\\[\\^B-", body) && grepl("orphan", body))
   expect_equal(lengths(regmatches(body, gregexpr("\\[\\^B-1\\]", body)))[1], 1L)
   expect_equal(lengths(regmatches(body, gregexpr("\\[\\^B-2\\]", body)))[1], 1L)
   # Pas de virgules orphelines laissées par le résumé strippé.
   expect_false(grepl(", ,", out, fixed = TRUE))
 })
 
-test_that(".prepare_family_footnotes uses an English heading for en", {
-  out <- nemetonshiny:::.prepare_family_footnotes("Biomass[^1].", .fn_src, "C", "en")
-  expect_true(grepl("### Reference sources", out, fixed = TRUE))
-  expect_false(grepl("Sources documentaires", out, fixed = TRUE))
-})
-
 test_that(".prepare_family_footnotes is a no-op without refs or without defs", {
   expect_identical(
-    nemetonshiny:::.prepare_family_footnotes("Pas de refs.", .fn_src, "C", "fr"),
+    nemetonshiny:::.prepare_family_footnotes("Pas de refs.", .fn_src, "C"),
     "Pas de refs."
   )
   expect_identical(
-    nemetonshiny:::.prepare_family_footnotes("Texte [^1].", "", "C", "fr"),
+    nemetonshiny:::.prepare_family_footnotes("Texte [^1].", "", "C"),
     "Texte [^1]."
   )
   expect_identical(
-    nemetonshiny:::.prepare_family_footnotes("", .fn_src, "C", "fr"), ""
+    nemetonshiny:::.prepare_family_footnotes("", .fn_src, "C"), ""
+  )
+})
+
+# ---------------------------------------------------------------------------
+# .family_sources_md — bloc « Sources documentaires » par famille (UI)
+# ---------------------------------------------------------------------------
+
+test_that(".family_sources_md lists distinct cited sources in first-citation order", {
+  src <- paste(
+    "## Sources documentaires", "",
+    "[^10] ONF — Manuel.", "",
+    "[^11] ONF — Manuel.", "",
+    "[^13] Breda 2002 — Impact.", sep = "\n")
+  # ONF cité avant Breda ; [^11] est un doublon de contenu d'ONF.
+  comment <- "Biomasse[^10] puis Breda[^13], ONF encore[^11]."
+  md <- nemetonshiny:::.family_sources_md(comment, src)
+
+  entries <- strsplit(md, "\n\n", fixed = TRUE)[[1]]
+  expect_length(entries, 2L)                    # ONF + Breda, dédupliqués
+  expect_match(entries[1], "ONF")               # ordre de 1re citation
+  expect_match(entries[2], "Breda")
+  expect_match(entries[1], "^\\[\\^10\\] ")     # label [^n] conservé
+})
+
+test_that(".family_sources_md skips orphan refs and is empty without citations", {
+  # [^99] orphelin (absent de src) ignoré.
+  expect_identical(
+    nemetonshiny:::.family_sources_md("Texte[^99].", .fn_src), ""
+  )
+  # Aucun marqueur → vide.
+  expect_identical(
+    nemetonshiny:::.family_sources_md("Pas de refs.", .fn_src), ""
+  )
+  # Pas de sources_md → vide.
+  expect_identical(
+    nemetonshiny:::.family_sources_md("Texte[^1].", ""), ""
   )
 })

@@ -110,28 +110,25 @@ NULL
 }
 
 
-#' Resolve a family comment's `[^n]` refs into per-family footnotes + a sources block
+#' Resolve a family comment's `[^n]` refs into per-family page-bottom footnotes
 #'
 #' Companion to [.prepare_footnotes()] for the per-family analysis pages. Same
 #' content deduplication (one note per UNIQUE source, keep the first reference,
-#' strip orphan / duplicate markers), but:
+#' strip orphan / duplicate markers), with footnote labels **namespaced per
+#' family** (`[^C-1]`, `[^C-2]`, …) so they never collide with the synthesis
+#' footnotes — or another family's — in the same Pandoc/LaTeX document (numeric
+#' ids would clash and Pandoc cannot reference one definition twice).
 #'
-#'  * footnote labels are **namespaced per family** (`[^C-1]`, `[^C-2]`, …) so
-#'    they never collide with the synthesis footnotes — or another family's —
-#'    in the same Pandoc/LaTeX document (numeric ids would clash and Pandoc
-#'    cannot reference one definition twice);
-#'  * an explicit, **visible "Sources documentaires" section** listing the
-#'    distinct cited sources is appended under the comment, in first-citation
-#'    order, in addition to the page-bottom footnotes.
+#' Only page-bottom footnotes are emitted; the visible per-family sources list
+#' lives in the app UI (see [.family_sources_md()]), not in the PDF body.
 #'
 #' @param comment Character. The family comment (may carry `[^n]`).
 #' @param sources_md Character. The persisted `synthesis_sources$sources_md`.
 #' @param code Character. Family code (B, C, …) used as the label namespace.
-#' @param language Character. "fr"/"en" for the sources-block heading.
 #' @return The processed comment, ready for Quarto/Pandoc. Unchanged when there
 #'   is nothing to resolve (no comment, no sources, or no markers).
 #' @noRd
-.prepare_family_footnotes <- function(comment, sources_md, code, language = "fr") {
+.prepare_family_footnotes <- function(comment, sources_md, code) {
   if (is.null(comment) || !nzchar(comment)) return(comment)
   defs <- .parse_source_defs(sources_md)
   if (!length(defs)) return(comment)
@@ -181,21 +178,49 @@ NULL
   out <- gsub(":\\s*([.;])", "\\1", out, perl = TRUE)
 
   if (length(used_order)) {
-    # 1) page-bottom footnote definitions (rendered where [^code-k] appears)
+    # page-bottom footnote definitions (rendered where [^code-k] appears)
     fn_defs <- vapply(used_order, function(cid)
       sprintf("[^%s]: %s", label_of[[cid]], canon_text[[cid]]), character(1))
-    # 2) visible "Sources documentaires" recap, in first-citation order
-    heading <- if (identical(language, "en")) "Reference sources" else "Sources documentaires"
-    src_items <- vapply(seq_along(used_order), function(k)
-      sprintf("%d. %s", k, canon_text[[used_order[[k]]]]), character(1))
-
-    out <- paste0(
-      out,
-      "\n\n", paste(fn_defs, collapse = "\n"),
-      "\n\n### ", heading, "\n\n", paste(src_items, collapse = "\n")
-    )
+    out <- paste0(out, "\n\n", paste(fn_defs, collapse = "\n"))
   }
   out
+}
+
+
+#' Distinct documentary sources cited by a family comment (markdown block)
+#'
+#' Builds the per-family « Sources documentaires » list shown in the app UI
+#' under a family's comment. Parses the `[^n]` markers actually cited in the
+#' comment, looks their definitions up in the shared RAG `sources_md`, and
+#' returns them as a markdown block of distinct sources (deduplicated by
+#' content, in first-citation order), each line keeping its original `[^n]`
+#' label so it matches the markers shown in the comment textarea.
+#'
+#' @param comment Character. The family comment (may carry `[^n]`).
+#' @param sources_md Character. The shared `synthesis_sources$sources_md`.
+#' @return Character. A markdown block (entries separated by blank lines), or
+#'   "" when the comment cites no resolvable source.
+#' @noRd
+.family_sources_md <- function(comment, sources_md) {
+  if (is.null(comment) || !nzchar(comment)) return("")
+  defs <- .parse_source_defs(sources_md)
+  if (!length(defs)) return("")
+
+  markers <- regmatches(comment, gregexpr("\\[\\^[0-9]+\\]", comment, perl = TRUE))[[1]]
+  if (!length(markers)) return("")
+  ids <- sub("\\[\\^([0-9]+)\\]", "\\1", markers)
+
+  seen_text <- character(0)
+  out       <- character(0)
+  for (id in ids) {
+    if (!(id %in% names(defs))) next            # orphan ref → skip
+    txt <- defs[[id]]
+    if (txt %in% seen_text) next                # same source already listed
+    seen_text <- c(seen_text, txt)
+    out <- c(out, sprintf("[^%s] %s", id, txt))
+  }
+  if (!length(out)) return("")
+  paste(out, collapse = "\n\n")
 }
 
 

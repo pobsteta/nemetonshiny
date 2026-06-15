@@ -607,3 +607,45 @@ test_that("family colors are valid hex codes", {
     )
   }
 })
+
+# =============================================================================
+# mod_family_server — bloc « Sources documentaires » (output$ai_sources)
+# =============================================================================
+
+test_that("mod_family_server ai_sources lists the cited documentary sources", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+
+  src_md <- paste(
+    "## Sources documentaires", "",
+    "[^1] Bontemps 2006 — Evolution.", "",
+    "[^2] Breda 2002 — Impact.", sep = "\n")
+
+  mock_app_state <- shiny::reactiveValues(
+    current_project = list(
+      comments = list(synthesis_sources = list(sources_md = src_md))
+    ),
+    project_id = NULL,
+    language = "fr"
+  )
+
+  .html <- function(x) {
+    if (is.list(x) && !is.null(x$html)) as.character(x$html) else as.character(x %||% "")
+  }
+
+  shiny::testServer(
+    nemetonshiny:::mod_family_server,
+    args = list(family_code = "C", app_state = mock_app_state),
+    {
+      # Comment citing [^1] only → block shows Bontemps, not Breda.
+      session$setInputs(analysis_comments = "Biomasse[^1] forte.")
+      h <- .html(output$ai_sources)
+      expect_match(h, "Bontemps")
+      expect_false(grepl("Breda", h))
+
+      # Comment without any [^n] → no sources block.
+      session$setInputs(analysis_comments = "Aucune source ici.")
+      expect_false(nzchar(.html(output$ai_sources)))
+    }
+  )
+})

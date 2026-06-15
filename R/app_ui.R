@@ -775,7 +775,11 @@ mod_family_ui <- function(id, family_code) {
             placeholder = i18n$t("analysis_comments_placeholder"),
             rows = 12,
             width = "100%"
-          )
+          ),
+          # Bloc « Sources documentaires » de la famille : liste les sources
+          # documentaires citées dans le commentaire (mêmes données RAG que la
+          # synthèse). uiOutput vide quand le commentaire ne cite aucune source.
+          shiny::uiOutput(ns("ai_sources"))
         )
       )
     ),
