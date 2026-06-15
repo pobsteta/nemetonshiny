@@ -12,6 +12,14 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.7\] - 2026-06-15
+
+### Changed
+
+- Onglet Synthèse, bandeau supérieur : « Score global » + icône d’info +
+  valeur sur une seule ligne ; le bloc remonte d’une ligne et aligne la
+  barre de confiance φ avec le texte « Taille image Max 5 Mo, PNG/JPG ».
+
 ## \[0.85.6\] - 2026-06-15
 
 ### Added
