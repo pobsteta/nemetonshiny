@@ -1,3 +1,14 @@
+# nemetonshiny 0.85.9 (2026-06-15)
+
+### Changed — Synthèse : « Confiance φ » à la taille du « Score global »
+
+Le libellé « Confiance φ : 16.7% » du bandeau Synthèse est rendu à la
+**même taille** que « Score global » (`text-muted` sans `small`), ce qui
+abaisse la barre de confiance pour l'aligner avec le texte « Taille image
+Max 5 Mo, PNG/JPG » de la colonne centrale. `ndp_progress_bar()` reçoit un
+paramètre `label_class` (défaut inchangé `text-muted small`, donc aucun
+impact sur les autres usages — mod_field_ingest).
+
 # nemetonshiny 0.85.8 (2026-06-15)
 
 ### Changed — Synthèse : « / 100 (12 familles) » sur la ligne du score

@@ -58,10 +58,14 @@ ndp_badge <- function(ndp, lang = "fr") {
 #'
 #' @param ndp Integer. NDP level (0-4).
 #' @param lang Character. Language ("fr" or "en"). Default "fr".
+#' @param label_class Character. CSS classes for the confidence label.
+#'   Default "text-muted small" (the historical small grey caption). Pass
+#'   "text-muted" to render the label at body size (e.g. to match a nearby
+#'   "Score global" heading in the synthesis banner).
 #'
 #' @return An htmltools tag object.
 #' @noRd
-ndp_progress_bar <- function(ndp, lang = "fr") {
+ndp_progress_bar <- function(ndp, lang = "fr", label_class = "text-muted small") {
   ndp <- as.integer(ndp)
   level <- nemeton::get_ndp_level(ndp)
   pct <- round(level$confidence * 100, 1)
@@ -74,7 +78,7 @@ ndp_progress_bar <- function(ndp, lang = "fr") {
 
   htmltools::div(
     class = "mt-1",
-    htmltools::tags$small(class = "text-muted", label),
+    htmltools::tags$div(class = label_class, label),
     htmltools::div(
       class = "progress",
       style = "height: 8px;",
