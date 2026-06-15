@@ -1,3 +1,25 @@
+# nemetonshiny 0.85.13 (2026-06-15)
+
+### Changed — Alertes FAST : pré-calcul des deux rasters de Tendance
+
+En mode **Tendance**, les rasters des **deux** indices NDMI **et** NDRE sont
+désormais pré-calculés : le raster affiché reste celui de l'indice
+sélectionné, mais le cache disque de l'autre indice est réchauffé en
+arrière-plan (tâche différée `later`), de sorte que basculer le radio
+NDMI ↔ NDRE soit **instantané** (lecture du cache, plus de recalcul).
+
+- Le pré-calcul n'a lieu qu'en mode Tendance (count/rolling restent
+  mono-indice à la demande).
+- Idempotent : `compute_fast_alert_mask()` persiste un TIF par (indice,
+  paramètres) ; un cache déjà chaud n'est pas recalculé.
+- Le déclencheur est débouncé (800 ms) pour ne pas empiler de calculs
+  lourds pendant le réglage des sliders Tendance.
+- Chaque indice requiert ses bandes dans le cache S2 (NDMI : B8A+B11,
+  NDRE : B05+B8A) ; un indice dont les bandes manquent est simplement
+  ignoré par le pré-calcul (l'autre reste disponible).
+- Nouvelle helper interne `.compute_fast_mask()` (plomberie partagée entre
+  le raster affiché et le pré-calcul, source unique).
+
 # nemetonshiny 0.85.12 (2026-06-15)
 
 ### Removed — Slider « Seuil NDRE » du panneau de surveillance
