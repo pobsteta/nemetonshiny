@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.1] - 2026-06-15
+
+### Fixed
+
+- Tests : `test-mod_monitoring.R` alignait encore `bands` sur
+  `c("NDVI", "NBR", "NDMI")` (échec CI depuis l'ajout de NDRE en 0.85.0).
+  Assertions mises à jour vers `c("NDVI", "NBR", "NDMI", "NDRE")`.
+
 ## [0.85.0] - 2026-06-15
 
 ### Added
