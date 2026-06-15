@@ -272,21 +272,22 @@ mod_synthesis_server <- function(id, app_state) {
             options = list(customClass = "popover-lg"),
             title = NULL
           ),
-          # Valeur du score sur la MÊME ligne que « Score global » + info :
-          # remonte tout le bloc d'une ligne pour que la barre de confiance
-          # s'aligne avec le texte « Taille image… » de la colonne centrale.
+          # Valeur du score sur la MÊME ligne que « Score global » + info,
+          # avec « / 100 (12 familles) » accolé : remonte le bloc de deux
+          # lignes pour aligner la barre de confiance avec le texte
+          # « Taille image… » de la colonne centrale.
           htmltools::tags$span(
             style = paste0(
               "font-size: 4rem; font-weight: bold; color: ", score_color,
               "; line-height: 1;"
             ),
             global
+          ),
+          htmltools::tags$span(
+            class = "text-muted",
+            sprintf("/ 100 (%d %s)", length(family_cols),
+                    if (i18n$language == "fr") "familles" else "families")
           )
-        ),
-        shiny::p(
-          class = "text-muted mt-1 mb-0",
-          sprintf("/ 100 (%d %s)", length(family_cols),
-                  if (i18n$language == "fr") "familles" else "families")
         ),
         # NDP badge + popover info + barre de confiance
         htmltools::div(
