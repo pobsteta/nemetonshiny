@@ -1,3 +1,12 @@
+# nemetonshiny 0.85.8 (2026-06-15)
+
+### Changed — Synthèse : « / 100 (12 familles) » sur la ligne du score
+
+Suite de v0.85.7 : « / 100 (12 familles) » est désormais accolé à la
+valeur du score sur la **même ligne** que « Score global » + l'icône
+d'info. Le bloc gagne une ligne supplémentaire, remontant d'autant la
+barre de confiance φ.
+
 # nemetonshiny 0.85.7 (2026-06-15)
 
 ### Changed — Synthèse : score global sur une seule ligne

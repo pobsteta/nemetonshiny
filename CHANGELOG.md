@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.8] - 2026-06-15
+
+### Changed
+
+- Onglet Synthèse : « / 100 (12 familles) » accolé à la valeur du score sur la
+  même ligne que « Score global » + icône d'info (suite de 0.85.7) ; gagne une
+  ligne, remontant d'autant la barre de confiance φ.
+
 ## [0.85.7] - 2026-06-15
 
 ### Changed
