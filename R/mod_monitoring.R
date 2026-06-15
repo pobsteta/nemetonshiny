@@ -1795,6 +1795,7 @@ mod_monitoring_server <- function(id, app_state) {
       # parsant du texte FR. Mapping mode → libellé i18n :
       #   "count"   → fast_mode_frequence  (Fréquence / Frequency)
       #   "rolling" → fast_mode_intensite  (Intensité / Intensity)
+      #   "trend"   → fast_mode_trend      (Tendance / Trend)
       if (startsWith(current_phase, "fast_prewarm:")) {
         if (identical(current_phase, "fast_prewarm:complete")) {
           # v0.70.1 — Bug observé : sans `removeNotification`, le
@@ -1837,6 +1838,8 @@ mod_monitoring_server <- function(id, app_state) {
           i18n$t("fast_mode_frequence")
         } else if (identical(mode_payload, "rolling")) {
           i18n$t("fast_mode_intensite")
+        } else if (identical(mode_payload, "trend")) {
+          i18n$t("fast_mode_trend")
         } else mode_payload
         if (endsWith(current_phase, "_done")) {
           shiny::showNotification(
@@ -2228,7 +2231,10 @@ mod_monitoring_server <- function(id, app_state) {
         # NDMI ajouté (nemeton >= 0.64.0) : l'ingestion cache la bande
         # B11 nécessaire et le cœur pré-chauffe aussi les masques
         # d'alerte NDMI (combinaisons index × mode de prewarm_alerts).
-        bands         = c("NDVI", "NBR", "NDMI"),
+        # NDRE ajouté : cache les bandes red-edge B05 + B8A nécessaires
+        # au mode FAST `trend` (Theil-Sen + Mann-Kendall, nemeton spec
+        # 023) ; le cœur pré-chauffe alors aussi les cartes trend.
+        bands         = c("NDVI", "NBR", "NDMI", "NDRE"),
         max_cloud     = 20,
         # Pre-resolve here (the future worker can't see app_state) and
         # pass the URL explicitly. The fallback to a local SQLite file

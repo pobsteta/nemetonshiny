@@ -1,3 +1,32 @@
+# nemetonshiny 0.84.10.9002 (dev)
+
+### Added — Suivi sanitaire : mode FAST `trend` (Theil-Sen + Mann-Kendall)
+
+Le diagnostic FAST expose désormais un **3ᵉ mode** dans le sous-onglet
+« Alertes FAST », à côté de Fréquence (`count`) et Intensité (`rolling`) :
+**Tendance** (`trend`). Il détecte le **déclin chronique pluriannuel**
+(dépérissement des feuillus) via la régression Theil-Sen + le test de
+Mann-Kendall sur un composite saisonnier annuel (nemeton spec 023,
+cœur ≥ 0.69.0).
+
+- **Radio « Mode du raster »** : ajout de l'option `trend`.
+- **Indices mode-dépendants** : `trend` propose NDMI (défaut) et **NDRE**
+  (red-edge) ; `count`/`rolling` restent NDMI/NDVI/NBR.
+- **Paramètres trend en sidebar** (conditionnels) : mois du composite
+  saisonnier, années minimum, seuil de significativité (alpha).
+  `threshold`/`window_days` sont masqués (ignorés par le cœur en trend).
+- **Ingestion** : les bandes red-edge **B05 + B8A** sont désormais mises
+  en cache (ajout de `NDRE` aux bandes) pour alimenter le mode trend ;
+  le cœur (release prewarm trend) pré-chauffe alors aussi les cartes
+  trend. Sur un cœur antérieur, la carte trend est calculée à la demande
+  (dégradation gracieuse).
+- Mapping du toast de pré-calcul `fast_prewarm:*_trend` → libellé
+  « Tendance ».
+- Nouvelles clés i18n (FR/EN) : `monitoring_fast_alerts_mode_trend`,
+  `monitoring_fast_alerts_badge_trend`, `monitoring_trend_months`,
+  `monitoring_trend_min_years`, `monitoring_trend_alpha`,
+  `validation_class_unit_trend`, `fast_mode_trend`.
+
 # nemetonshiny 0.84.10.9001 (dev)
 
 ### Changed — Suivi sanitaire : libellés des trois modes de diagnostic

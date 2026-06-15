@@ -2421,6 +2421,10 @@ TRANSLATIONS <- list(
     fr = "Intensit\u00e9",
     en = "Intensity"
   ),
+  monitoring_fast_alerts_mode_trend = list(
+    fr = "Tendance",
+    en = "Trend"
+  ),
   monitoring_fast_alerts_badge_count = list(
     fr = "Alertes FAST \u2014 fr\u00e9quence des d\u00e9passements de seuil %s, \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
     en = "FAST alerts \u2014 threshold-breach frequency for %s, at Sentinel-2 resolution (10 m)"
@@ -2428,6 +2432,23 @@ TRANSLATIONS <- list(
   monitoring_fast_alerts_badge_rolling = list(
     fr = "Alertes FAST \u2014 intensit\u00e9 du d\u00e9ficit %s sur fen\u00eatre roulante, \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
     en = "FAST alerts \u2014 %s deficit intensity over a rolling window, at Sentinel-2 resolution (10 m)"
+  ),
+  monitoring_fast_alerts_badge_trend = list(
+    fr = "Alertes FAST \u2014 tendance pluriannuelle du d\u00e9clin %s (Theil-Sen + Mann-Kendall), \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
+    en = "FAST alerts \u2014 multi-year decline trend for %s (Theil-Sen + Mann-Kendall), at Sentinel-2 resolution (10 m)"
+  ),
+  # Param\u00e8tres du mode FAST trend (sidebar Alertes FAST, nemeton spec 023).
+  monitoring_trend_months = list(
+    fr = "Mois du composite saisonnier",
+    en = "Seasonal composite months"
+  ),
+  monitoring_trend_min_years = list(
+    fr = "Ann\u00e9es minimum",
+    en = "Minimum years"
+  ),
+  monitoring_trend_alpha = list(
+    fr = "Seuil de significativit\u00e9 (alpha)",
+    en = "Significance threshold (alpha)"
   ),
   index_ndmi = list(
     fr = "NDMI (humidit\u00e9)",
@@ -2456,6 +2477,10 @@ TRANSLATIONS <- list(
   fast_mode_intensite = list(
     fr = "Intensit\u00e9",
     en = "Intensity"
+  ),
+  fast_mode_trend = list(
+    fr = "Tendance",
+    en = "Trend"
   ),
   fast_prewarm_running = list(
     fr = "Pr\u00e9-calcul carte %s %s en cours\u2026",
@@ -3065,6 +3090,10 @@ TRANSLATIONS <- list(
   validation_class_unit_deficit = list(
     fr = "",
     en = ""
+  ),
+  validation_class_unit_trend = list(
+    fr = "pente/an",
+    en = "slope/yr"
   ),
   # Fallback FAST quand le raster d'alerte n'est pas encore calcul\u00e9
   # (cache absent, ingestion pas encore lanc\u00e9e, etc.) \u2014 labels
