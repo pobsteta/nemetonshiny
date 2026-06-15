@@ -1,3 +1,25 @@
+# nemetonshiny 0.84.10.9000 (dev)
+
+### Ajout — Note explicite quand la perspective IA n'a pas de sources
+
+Sous la perspective IA de la synthèse, à l'emplacement habituel du bloc
+« Sources documentaires », une **note grisée** s'affiche désormais quand la
+perspective a été générée **sans aucune source** : « Perspective générée
+sans sources documentaires : le corpus de connaissances est indisponible ou
+vide… ». Auparavant le bloc disparaissait silencieusement et l'utilisateur
+ne savait pas si le RAG avait été consulté.
+
+La note précise les causes typiques (base PostgreSQL/pgvector non
+configurée, clé d'embedding absente, **base locale SQLite qui ne supporte
+pas le RAG**). Elle réapparaît aussi au rechargement d'un projet dont la
+perspective avait été générée sans sources.
+
+- Nouvelle clé i18n `rag_no_sources_note` (FR/EN) dans `utils_i18n.R`.
+- `mod_synthesis.R` : `output$ai_sources` rend la note au lieu de `NULL`
+  quand `ctx` existe mais `sources_md` est vide ; la restauration au reload
+  réinjecte le contexte RAG dès qu'une synthèse existe (sources vides
+  incluses).
+
 # nemetonshiny 0.84.10 (2026-06-14)
 
 ### Fix — Rapport PDF : une seule note par source (dédup par contenu)
