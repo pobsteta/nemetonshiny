@@ -1,3 +1,13 @@
+# nemetonshiny 0.85.1 (2026-06-15)
+
+### Fixed — Tests alignés sur l'ajout de NDRE aux bandes FAST
+
+`test-mod_monitoring.R` figeait encore `bands = c("NDVI", "NBR", "NDMI")`
+dans deux assertions du `fast_task$invoke()`, qui échouaient depuis l'ajout
+de `NDRE` (red-edge B05+B8A, mode FAST `trend`, v0.85.0). Assertions mises
+à jour vers `c("NDVI", "NBR", "NDMI", "NDRE")`. Aucun changement de code de
+production — alignement de tests uniquement.
+
 # nemetonshiny 0.85.0 (2026-06-15)
 
 ### Added — Suivi sanitaire : mode FAST `trend` (Theil-Sen + Mann-Kendall)

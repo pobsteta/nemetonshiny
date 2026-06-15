@@ -234,8 +234,9 @@ test_that("v0.61.0 — input$run invokes the task with NDVI+NBR hard-wired (no `
 
   # Le checkboxGroupInput `bands` est retiré : NDVI + NBR + NDMI sont
   # systématiquement passés au worker FAST (NDMI ajouté v0.71.0, nemeton
-  # >= 0.64.0). Même sans `setInputs(bands=)`, le task doit être invoqué
-  # avec `bands = c("NDVI", "NBR", "NDMI")`.
+  # >= 0.64.0 ; NDRE ajouté v0.85.0 pour le mode FAST trend, red-edge
+  # B05+B8A). Même sans `setInputs(bands=)`, le task doit être invoqué
+  # avec `bands = c("NDVI", "NBR", "NDMI", "NDRE")`.
   fake_task <- make_fake_fast_task()
 
   testthat::with_mocked_bindings(
@@ -258,7 +259,7 @@ test_that("v0.61.0 — input$run invokes the task with NDVI+NBR hard-wired (no `
           )
           calls <- fake_task$.calls()
           expect_length(calls, 1L)
-          expect_equal(calls[[1]]$bands, c("NDVI", "NBR", "NDMI"))
+          expect_equal(calls[[1]]$bands, c("NDVI", "NBR", "NDMI", "NDRE"))
         }
       )
     }
@@ -291,7 +292,7 @@ test_that("input$run with valid inputs invokes the ingest task", {
           expect_equal(calls[[1]]$zone_id, 1L)
           expect_equal(calls[[1]]$start,   as.Date("2025-06-01"))
           expect_equal(calls[[1]]$end,     as.Date("2025-06-30"))
-          expect_equal(calls[[1]]$bands,   c("NDVI", "NBR", "NDMI"))
+          expect_equal(calls[[1]]$bands,   c("NDVI", "NBR", "NDMI", "NDRE"))
         }
       )
     }
