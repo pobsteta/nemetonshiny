@@ -963,17 +963,18 @@ mod_synthesis_server <- function(id, app_state) {
           # cités par le LLM au-delà des sources existantes) et les
           # doublons (Pandoc ne sait pas référencer 2× une même note), et
           # appende les définitions [^n]: dérivées des sources persistées.
+          # v0.84.9 — utiliser EN PRIORITÉ le contexte RAG de session
+          # (`rag_ctx_synthesis()`), identique à ce qu'affiche le bloc
+          # « Sources documentaires ». La copie in-memory
+          # `current_project$comments$synthesis_sources` n'est PAS
+          # rafraîchie après une génération (seul le disque l'est) :
+          # l'utiliser comme source unique donnait des définitions
+          # périmées (ou absentes) → les `[^n]` restaient littéraux dans
+          # le PDF alors que l'écran montrait les bonnes sources.
+          # Calculé une seule fois : sert à la synthèse ET aux familles.
+          src_md <- rag_ctx_synthesis()$sources_md %||%
+            app_state$current_project$comments$synthesis_sources$sources_md
           if (!is.null(comments)) {
-            # v0.84.9 — utiliser EN PRIORITÉ le contexte RAG de session
-            # (`rag_ctx_synthesis()`), identique à ce qu'affiche le bloc
-            # « Sources documentaires ». La copie in-memory
-            # `current_project$comments$synthesis_sources` n'est PAS
-            # rafraîchie après une génération (seul le disque l'est) :
-            # l'utiliser comme source unique donnait des définitions
-            # périmées (ou absentes) → les `[^n]` restaient littéraux dans
-            # le PDF alors que l'écran montrait les bonnes sources.
-            src_md <- rag_ctx_synthesis()$sources_md %||%
-              app_state$current_project$comments$synthesis_sources$sources_md
             comments <- .prepare_footnotes(comments, src_md %||% "")
           }
 
@@ -990,6 +991,24 @@ mod_synthesis_server <- function(id, app_state) {
             # Remove NULL entries
             fam_comments <- fam_comments[!vapply(fam_comments, is.null, logical(1))]
             if (length(fam_comments) == 0) fam_comments <- NULL
+          }
+
+          # v0.85.x — mêmes notes de bas de page « une note par source » que
+          # la synthèse, MAIS par famille : labels namespacés [^C-1] (pas de
+          # collision avec la synthèse / les autres familles dans le même PDF)
+          # + bloc « Sources documentaires » récapitulatif sous chaque
+          # commentaire. Corrige la répétition d'une même source sous plusieurs
+          # numéros dans les pages familles.
+          if (!is.null(fam_comments)) {
+            fam_codes <- names(fam_comments)
+            fam_comments <- stats::setNames(
+              lapply(fam_codes, function(code) {
+                .prepare_family_footnotes(
+                  fam_comments[[code]], src_md %||% "", code, app_state$language
+                )
+              }),
+              fam_codes
+            )
           }
 
           # Generate PDF
