@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.6" id="nemetonshiny-0856-2026-06-15">nemetonshiny 0.85.6 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0856-2026-06-15"></a></h2>
+<div class="section level4">
+<h4 id="changed--rapport--pages-familles-notes-de-bas-de-page-uniquement-0-85-6">Changed — Rapport : pages familles, notes de bas de page uniquement<a class="anchor" aria-label="anchor" href="#changed--rapport--pages-familles-notes-de-bas-de-page-uniquement-0-85-6"></a></h4>
+<p>Le bloc « Sources documentaires » ajouté en v0.85.5 dans le <strong>corps</strong> des pages familles du rapport PDF est retiré : on ne conserve que les <strong>notes de bas de page</strong> (dédupliquées, labels namespacés <code>[^C-1]</code>…). La liste des sources reste disponible dans l’application (voir ci-dessous).</p>
+</div>
+<div class="section level4">
+<h4 id="added--bloc--sources-documentaires--sur-chaque-page-famille-ui-0-85-6">Added — Bloc « Sources documentaires » sur chaque page Famille (UI)<a class="anchor" aria-label="anchor" href="#added--bloc--sources-documentaires--sur-chaque-page-famille-ui-0-85-6"></a></h4>
+<p>Chaque page <strong>Famille d’indicateurs</strong> affiche désormais, sous son commentaire, un bloc <strong>« Sources documentaires »</strong> listant les sources citées par ce commentaire — comme la page Synthèse. Les sources sont extraites des marqueurs <code>[^n]</code> du commentaire et résolues via le contexte RAG partagé (<code>synthesis_sources$sources_md</code>), dédupliquées par contenu et présentées dans l’ordre de première citation. Vide quand le commentaire ne cite aucune source. Nouvelle helper <code>.family_sources_md()</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.5" id="nemetonshiny-0855-2026-06-15">nemetonshiny 0.85.5 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0855-2026-06-15"></a></h2>
 <div class="section level4">

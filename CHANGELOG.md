@@ -12,6 +12,23 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.6\] - 2026-06-15
+
+### Added
+
+- Bloc « Sources documentaires » sous le commentaire de chaque page
+  Famille d’indicateurs (UI), comme la page Synthèse : sources citées
+  par le commentaire, extraites de ses marqueurs `[^n]` et résolues via
+  le contexte RAG partagé, dédupliquées par contenu. Nouvelle helper
+  `.family_sources_md()`.
+
+### Changed
+
+- Rapport PDF, pages familles : suppression du bloc « Sources
+  documentaires » du corps (ajouté en 0.85.5) ; seules les notes de bas
+  de page dédupliquées et namespacées (`[^C-1]`…) sont conservées.
+  `.prepare_family_footnotes()` perd son paramètre `language`.
+
 ## \[0.85.5\] - 2026-06-15
 
 ### Fixed

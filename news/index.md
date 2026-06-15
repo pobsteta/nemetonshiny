@@ -1,5 +1,25 @@
 # Changelog
 
+## nemetonshiny 0.85.6 (2026-06-15)
+
+#### Changed — Rapport : pages familles, notes de bas de page uniquement
+
+Le bloc « Sources documentaires » ajouté en v0.85.5 dans le **corps**
+des pages familles du rapport PDF est retiré : on ne conserve que les
+**notes de bas de page** (dédupliquées, labels namespacés `[^C-1]`…). La
+liste des sources reste disponible dans l’application (voir ci-dessous).
+
+#### Added — Bloc « Sources documentaires » sur chaque page Famille (UI)
+
+Chaque page **Famille d’indicateurs** affiche désormais, sous son
+commentaire, un bloc **« Sources documentaires »** listant les sources
+citées par ce commentaire — comme la page Synthèse. Les sources sont
+extraites des marqueurs `[^n]` du commentaire et résolues via le
+contexte RAG partagé (`synthesis_sources$sources_md`), dédupliquées par
+contenu et présentées dans l’ordre de première citation. Vide quand le
+commentaire ne cite aucune source. Nouvelle helper
+`.family_sources_md()`.
+
 ## nemetonshiny 0.85.5 (2026-06-15)
 
 #### Fix — Sources dédupliquées + bloc « Sources documentaires » par famille
