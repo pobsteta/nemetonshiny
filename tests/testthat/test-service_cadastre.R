@@ -411,6 +411,90 @@ test_that("create_parcel_label handles missing section/numero gracefully (shows 
 })
 
 # ==============================================================================
+# Tests for create_parcel_labels (vectorised)
+# ==============================================================================
+
+.make_parcels_sf <- function(df) {
+  geom <- sf::st_sfc(
+    lapply(seq_len(nrow(df)), function(i) {
+      sf::st_polygon(list(rbind(
+        c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0)
+      )))
+    }),
+    crs = 4326
+  )
+  sf::st_sf(df, geometry = geom)
+}
+
+test_that("create_parcel_labels returns one HTML label per row", {
+  parcels <- .make_parcels_sf(data.frame(
+    section = c("AB", "C"),
+    numero = c("0042", "0005"),
+    contenance = c(25000, 10000),
+    nom_com = c(NA, "Les Grands Bois"),
+    stringsAsFactors = FALSE
+  ))
+
+  labels <- nemetonshiny:::create_parcel_labels(parcels)
+
+  expect_type(labels, "character")
+  expect_length(labels, 2)
+  expect_true(grepl("<b>AB 0042</b>", labels[1], fixed = TRUE))
+  expect_true(grepl("<b>2.5 ha</b>", labels[1], fixed = TRUE))
+  expect_true(grepl("Les Grands Bois", labels[2], fixed = TRUE))
+})
+
+test_that("create_parcel_labels matches create_parcel_label row by row", {
+  # nom_com values are all non-NA: the single-row create_parcel_label() errors
+  # on a present-but-NA nom_com (if(NA)); the vectorised version is robust to
+  # it (covered separately below). Section/numero NA still render as "NA" in
+  # both, and the "NA" string lieu-dit is excluded by both.
+  parcels <- .make_parcels_sf(data.frame(
+    section = c("A", "B", NA),
+    numero = c("0001", NA, "0003"),
+    contenance = c(50000, NA, 20000),
+    nom_com = c("Grand Bois", "Bois Joli", "NA"),
+    stringsAsFactors = FALSE
+  ))
+
+  vectorised <- nemetonshiny:::create_parcel_labels(parcels)
+  one_by_one <- vapply(
+    seq_len(nrow(parcels)),
+    function(i) nemetonshiny:::create_parcel_label(parcels[i, ]),
+    character(1)
+  )
+
+  expect_identical(vectorised, one_by_one)
+})
+
+test_that("create_parcel_labels is robust to NA lieu-dit values", {
+  parcels <- .make_parcels_sf(data.frame(
+    section = c("A", "B"),
+    numero = c("0001", "0002"),
+    contenance = c(50000, 10000),
+    nom_com = c(NA, "Bois Joli"),
+    stringsAsFactors = FALSE
+  ))
+
+  labels <- nemetonshiny:::create_parcel_labels(parcels)
+  expect_length(labels, 2)
+  # NA lieu-dit → no lieu-dit span; valid one → present
+  expect_false(grepl("color:#666", labels[1], fixed = TRUE))
+  expect_true(grepl("Bois Joli", labels[2], fixed = TRUE))
+})
+
+test_that("create_parcel_labels handles empty input", {
+  parcels <- .make_parcels_sf(data.frame(
+    section = character(0),
+    numero = character(0),
+    contenance = numeric(0),
+    stringsAsFactors = FALSE
+  ))
+
+  expect_identical(nemetonshiny:::create_parcel_labels(parcels), character(0))
+})
+
+# ==============================================================================
 # Coverage-focused tests for uncovered code paths
 # ==============================================================================
 
