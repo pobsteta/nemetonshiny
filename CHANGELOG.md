@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.12\] - 2026-06-15
+
+### Removed
+
+- Slider « Seuil minimum NDRE » du panneau de surveillance (orphelin
+  depuis 0.85.11 : NDRE est trend-only, et le mode Tendance ignore les
+  seuils). Clé `ndre` retirée des trois `thresholds_r` ; clé i18n
+  `monitoring_threshold_ndre` supprimée. Aucun impact fonctionnel.
+
 ## \[0.85.11\] - 2026-06-15
 
 ### Changed

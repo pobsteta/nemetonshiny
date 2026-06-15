@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.11</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,13 @@
 <p>For a narrative, per-feature description of each release, see <a href="NEWS.html">NEWS.md</a>. This file is the concise, categorised trail.</p>
 <div class="section level2">
 <h2 id="unreleased"><a href="https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD" class="external-link">Unreleased</a><a class="anchor" aria-label="anchor" href="#unreleased"></a></h2>
+</div>
+<div class="section level2">
+<h2 id="id_08512---2026-06-15">[0.85.12] - 2026-06-15<a class="anchor" aria-label="anchor" href="#id_08512---2026-06-15"></a></h2>
+<div class="section level3">
+<h3 id="removed">Removed<a class="anchor" aria-label="anchor" href="#removed"></a></h3>
+<ul><li>Slider « Seuil minimum NDRE » du panneau de surveillance (orphelin depuis 0.85.11 : NDRE est trend-only, et le mode Tendance ignore les seuils). Clé <code>ndre</code> retirée des trois <code>thresholds_r</code> ; clé i18n <code>monitoring_threshold_ndre</code> supprimée. Aucun impact fonctionnel.</li>
+</ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_08511---2026-06-15">[0.85.11] - 2026-06-15<a class="anchor" aria-label="anchor" href="#id_08511---2026-06-15"></a></h2>
@@ -444,7 +451,7 @@
 <div class="section level2">
 <h2 id="id_0705---2026-06-03">[0.70.5] - 2026-06-03<a class="anchor" aria-label="anchor" href="#id_0705---2026-06-03"></a></h2>
 <div class="section level3">
-<h3 id="removed">Removed<a class="anchor" aria-label="anchor" href="#removed"></a></h3>
+<h3 id="removed-1">Removed<a class="anchor" aria-label="anchor" href="#removed-1"></a></h3>
 <ul><li>
 <strong>Avertissement NDMI / bande B11 dans les sidebars FAST</strong> (Alertes FAST + Carte FAST). Obsolète depuis le plancher cœur <code>nemeton (&gt;= 0.65.1)</code> (v0.69.1 app) qui garantit la mise en cache best-effort de B11 (spec 019 D3). Suppression du helper <code>.fast_ndmi_note()</code>, des 2 <code>uiOutput</code> côté UI, des 2 <code>renderUI</code> côté server, et des 2 clés i18n <code>monitoring_fast_ndmi_hint</code> + <code>monitoring_fast_ndmi_b11_note</code>. Test <code>.fast_ndmi_note renders...</code> retiré.</li>
 </ul></div>
@@ -680,7 +687,7 @@
 <div class="section level2">
 <h2 id="id_0610---2026-06-02">[0.61.0] - 2026-06-02<a class="anchor" aria-label="anchor" href="#id_0610---2026-06-02"></a></h2>
 <div class="section level3">
-<h3 id="removed-1">Removed<a class="anchor" aria-label="anchor" href="#removed-1"></a></h3>
+<h3 id="removed-2">Removed<a class="anchor" aria-label="anchor" href="#removed-2"></a></h3>
 <ul><li>
 <strong>3 contrôles UI redondants retirés en bundle</strong> :
 <ul><li>
@@ -706,7 +713,7 @@
 <div class="section level2">
 <h2 id="id_0600---2026-06-02">[0.60.0] - 2026-06-02<a class="anchor" aria-label="anchor" href="#id_0600---2026-06-02"></a></h2>
 <div class="section level3">
-<h3 id="removed-2">Removed<a class="anchor" aria-label="anchor" href="#removed-2"></a></h3>
+<h3 id="removed-3">Removed<a class="anchor" aria-label="anchor" href="#removed-3"></a></h3>
 <ul><li>
 <strong>Checkbox « Mode rapide (multi-cœur) » Alertes FAST</strong> (introduit en v0.58.0 / TODO #4). Désormais <code>parallel = TRUE</code> est passé en dur dans <code><a href="https://pobsteta.github.io/nemeton/reference/compute_fast_alert_mask.html" class="external-link">nemeton::compute_fast_alert_mask()</a></code>. Le fallback séquentiel silencieux du cœur (si <code>furrr</code> absent) reste actif : aucun risque de cassure. L’opt-in faisait peser un choix technique sans bénéfice opérationnel sur l’utilisateur.</li>
 <li>Clé i18n <code>fast_alerts_parallel_label</code> (FR + EN) supprimée.</li>
@@ -808,7 +815,7 @@
 <strong>6 clés i18n FR/EN</strong> : <code>fast_mode_frequence</code>, <code>fast_mode_intensite</code>, <code>fast_prewarm_running</code>, <code>fast_prewarm_done</code>, <code>fast_prewarm_failed</code>, <code>fast_prewarm_cancelled</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-3">Removed<a class="anchor" aria-label="anchor" href="#removed-3"></a></h3>
+<h3 id="removed-4">Removed<a class="anchor" aria-label="anchor" href="#removed-4"></a></h3>
 <ul><li>Helper <code>R/service_monitoring.R::.prewarm_fast_alerts()</code> (redondant avec spec 018 cœur).</li>
 <li>4 tests qui mockaient ce helper.</li>
 </ul></div>
@@ -882,7 +889,7 @@
 <strong>FAST 100 % pure raster per-pixel — suppression du couplage <code>obs_pixel</code>/placettes.</strong> Suite à la spec 017 cœur (<code>nemeton@v0.55.0+</code>), le module Suivi sanitaire ne lit plus la table <code>obs_pixel</code> ni n’affiche les placettes de l’onglet Terrain. La modale « clic marqueur placette » est supprimée ; seule subsiste la modale « clic pixel pur » qui utilise <code>extract_pixel_timeseries()</code> (COG cache).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-4">Removed<a class="anchor" aria-label="anchor" href="#removed-4"></a></h3>
+<h3 id="removed-5">Removed<a class="anchor" aria-label="anchor" href="#removed-5"></a></h3>
 <ul><li>
 <code>obs_pixel_data</code> reactive + <code>obs_refresh</code> reactiveVal (mod_monitoring.R)</li>
 <li>
@@ -1213,7 +1220,7 @@
 <strong>Monitoring local : SQLite/WAL uniquement.</strong> Le backend DuckDB, déprécié en 0.49.0, est retiré définitivement (cœur <code>nemeton</code> v0.51.0). <code>.resolve_monitoring_db_url()</code> émet toujours <code>sqlite://&lt;projet&gt;/data/monitoring.sqlite</code> en local ; branche back-compat DuckDB et <code>.nemeton_supports_duckdb()</code> supprimés ; helpers <code>.is_file_db_url</code> / <code>.file_db_path_from_url</code> restreints à SQLite. PostgreSQL inchangé. Clé i18n <code>monitoring_db_duckdb_missing</code> → <code>monitoring_db_local_pkg_missing</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-5">Removed<a class="anchor" aria-label="anchor" href="#removed-5"></a></h3>
+<h3 id="removed-6">Removed<a class="anchor" aria-label="anchor" href="#removed-6"></a></h3>
 <ul><li>
 <code>duckdb</code> retiré des <code>Suggests</code> ; plancher <code>Imports: nemeton (&gt;= 0.51.0)</code>.</li>
 </ul></div>
@@ -1591,7 +1598,7 @@
 <ul><li>Clé i18n <code>monitoring_fordead_phase_ingest</code> (FR « Téléchargement des bandes manquantes… » / EN « Downloading missing bands… »), consommée automatiquement par le dispatcher générique de phases livré en v0.32.0.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-6">Removed<a class="anchor" aria-label="anchor" href="#removed-6"></a></h3>
+<h3 id="removed-7">Removed<a class="anchor" aria-label="anchor" href="#removed-7"></a></h3>
 <ul><li>Mocks <code>get_monitoring_zone_aoi</code> (3×) et assertion <code>calls[[1]]$aoi</code> dans <code>tests/testthat/test-mod_monitoring.R</code> — l’AOI n’est plus matérialisée côté app.</li>
 </ul></div>
 </div>
@@ -1745,7 +1752,7 @@
 <strong>Suivi sanitaire / Carte pixel</strong> : la couche NDVI/NBR disparaissait visuellement au basculement OSM↔︎Satellite parce que le <code>group =</code> de <code>addRasterImage()</code> n’était pas déclaré dans <code>addLayersControl(overlayGroups=)</code>. Déclaration explicite de la couche overlay avec un libellé fixe « NDVI / NBR » (<code>R/mod_monitoring_pixel_map.R</code>).</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-7">Removed<a class="anchor" aria-label="anchor" href="#removed-7"></a></h3>
+<h3 id="removed-8">Removed<a class="anchor" aria-label="anchor" href="#removed-8"></a></h3>
 <ul><li>Clé i18n orpheline <code>monitoring_pixel_map_layer</code> (FR/EN) supprimée — plus référencée depuis le fix ci-dessus (<code>R/utils_i18n.R</code>).</li>
 </ul></div>
 </div>
@@ -1990,7 +1997,7 @@
 </ul></li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-8">Removed<a class="anchor" aria-label="anchor" href="#removed-8"></a></h3>
+<h3 id="removed-9">Removed<a class="anchor" aria-label="anchor" href="#removed-9"></a></h3>
 <ul><li>Orphaned i18n key <code>language_changed</code> (was only used by the dropped manual-reload toast).</li>
 </ul></div>
 </div>
@@ -2040,7 +2047,7 @@
 <ul><li>Plan d’actions map ↔︎ table sync: clicking a parcelle on the <strong>map</strong> now selects every corresponding row in the table. The <code>input$map_shape_click</code> handler now also calls <code><a href="https://rdrr.io/pkg/DT/man/proxy.html" class="external-link">DT::selectRows()</a></code>. The reverse direction (table → map) was already working. No reactive loop: <code>reactiveVal</code> dedupes by <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> so the round-trip stops after one pass.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-9">Removed<a class="anchor" aria-label="anchor" href="#removed-9"></a></h3>
+<h3 id="removed-10">Removed<a class="anchor" aria-label="anchor" href="#removed-10"></a></h3>
 <ul><li>i18n keys <code>action_plan_open_chat</code> and <code>action_plan_chat_input_label</code> (orphaned by the chat refactor).</li>
 </ul></div>
 </div>
@@ -2064,7 +2071,7 @@
 <ul><li>Add action modal: previously surfaced the internal offset (1, 2, …) for “Année cible” and the raw <code>ug_id</code> for the UGF dropdown, both confusing for end-users.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="removed-10">Removed<a class="anchor" aria-label="anchor" href="#removed-10"></a></h3>
+<h3 id="removed-11">Removed<a class="anchor" aria-label="anchor" href="#removed-11"></a></h3>
 <ul><li>i18n keys <code>action_plan_kanban_move</code> and <code>action_plan_kanban_drop_invalid_fmt</code> (orphaned by the Kanban refactor).</li>
 </ul></div>
 </div>

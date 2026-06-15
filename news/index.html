@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.11</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.12" id="nemetonshiny-08512-2026-06-15">nemetonshiny 0.85.12 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08512-2026-06-15"></a></h2>
+<div class="section level4">
+<h4 id="removed--slider--seuil-ndre--du-panneau-de-surveillance-0-85-12">Removed — Slider « Seuil NDRE » du panneau de surveillance<a class="anchor" aria-label="anchor" href="#removed--slider--seuil-ndre--du-panneau-de-surveillance-0-85-12"></a></h4>
+<p>Le slider « Seuil minimum NDRE » est retiré : depuis v0.85.11 NDRE est réservé au mode Tendance des Alertes FAST, qui ignore les seuils (Theil-Sen / Mann-Kendall). Le contrôle n’avait donc plus aucun effet. La clé <code>ndre</code> est retirée des trois objets <code>thresholds_r</code> (Alertes FAST, Carte FAST, plan de validation), et la clé i18n <code>monitoring_threshold_ndre</code> est supprimée. Aucun impact fonctionnel (le mode Tendance n’utilise pas de seuil ; les autres indices NDMI/NDVI/NBR conservent leurs sliders).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.11" id="nemetonshiny-08511-2026-06-15">nemetonshiny 0.85.11 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08511-2026-06-15"></a></h2>
 <div class="section level4">
