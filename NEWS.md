@@ -1,4 +1,4 @@
-# nemetonshiny 0.84.10.9002 (dev)
+# nemetonshiny 0.85.0 (2026-06-15)
 
 ### Added — Suivi sanitaire : mode FAST `trend` (Theil-Sen + Mann-Kendall)
 
@@ -27,8 +27,6 @@ cœur ≥ 0.69.0).
   `monitoring_trend_min_years`, `monitoring_trend_alpha`,
   `validation_class_unit_trend`, `fast_mode_trend`.
 
-# nemetonshiny 0.84.10.9001 (dev)
-
 ### Changed — Suivi sanitaire : libellés des trois modes de diagnostic
 
 Renommage des trois modes du sélecteur « Mode de suivi » pour une
@@ -46,9 +44,7 @@ Note : la bascule spot/trend du diagnostic FAST existe déjà — c'est le
 radio « Mode du raster » (Fréquence = spot / Intensité = trend) dans le
 sous-onglet « Alertes FAST » ; ses libellés sont conservés.
 
-# nemetonshiny 0.84.10.9000 (dev)
-
-### Ajout — Note explicite quand la perspective IA n'a pas de sources
+### Added — Note explicite quand la perspective IA n'a pas de sources
 
 Sous la perspective IA de la synthèse, à l'emplacement habituel du bloc
 « Sources documentaires », une **note grisée** s'affiche désormais quand la
