@@ -2660,3 +2660,70 @@ test_that(".prepare_footnotes émet UNE note par source unique (dédup par conte
   # Plus aucune occurrence des ids redondants 11/12/15 dans le corps.
   expect_false(grepl("\\[\\^11\\]|\\[\\^12\\]|\\[\\^15\\]", body))
 })
+
+# ---------------------------------------------------------------------------
+# .prepare_family_footnotes — notes namespacées par famille + bloc Sources
+# ---------------------------------------------------------------------------
+
+test_that(".prepare_family_footnotes namespaces labels and dedups by content", {
+  # ONF cité sous 3 ids (10/11/12), Breda sous 2 (13/15).
+  src <- paste(
+    "## Sources documentaires", "",
+    "[^10] ONF — Manuel.", "",
+    "[^11] ONF — Manuel.", "",
+    "[^12] ONF — Manuel.", "",
+    "[^13] Breda 2002 — Impact.", "",
+    "[^15] Breda 2002 — Impact.", sep = "\n")
+  comment <- "Biomasse[^10] et NDVI[^13]. ONF répété[^11][^12], Breda[^15]."
+  out <- nemetonshiny:::.prepare_family_footnotes(comment, src, "C", "fr")
+
+  # Labels namespacés par famille : [^C-1], [^C-2] ; aucun id numérique nu.
+  expect_true(grepl("\\[\\^C-1\\]", out))
+  expect_true(grepl("\\[\\^C-2\\]", out))
+  body <- sub("\n\n\\[\\^.*$", "", out)
+  expect_false(grepl("\\[\\^[0-9]+\\]", body))  # plus de [^10] etc. dans le corps
+
+  # Une seule définition de note par source unique (ONF + Breda) = 2.
+  defs <- regmatches(out, gregexpr("\\[\\^C-[0-9]+\\]: [^\n]+", out))[[1]]
+  expect_length(defs, 2L)
+  expect_true(any(grepl("ONF", defs)))
+  expect_true(any(grepl("Breda", defs)))
+
+  # Bloc visible « Sources documentaires » avec liste numérotée des 2 sources.
+  expect_true(grepl("### Sources documentaires", out, fixed = TRUE))
+  expect_true(grepl("1\\. ONF", out))
+  expect_true(grepl("2\\. Breda", out))
+})
+
+test_that(".prepare_family_footnotes keeps first ref, strips orphans/duplicates", {
+  comment <- "A[^1] B[^2]. Orphelin[^9]. Répété[^1]. Résumé : [^1], [^2], [^9]."
+  out <- nemetonshiny:::.prepare_family_footnotes(comment, .fn_src, "B", "fr")
+  body <- sub("\n\n\\[\\^.*$", "", out)
+
+  # [^9] orphelin (4 sources) retiré ; [^1] gardé UNE fois (1re occurrence).
+  expect_false(grepl("\\[\\^B-", body) && grepl("orphan", body))
+  expect_equal(lengths(regmatches(body, gregexpr("\\[\\^B-1\\]", body)))[1], 1L)
+  expect_equal(lengths(regmatches(body, gregexpr("\\[\\^B-2\\]", body)))[1], 1L)
+  # Pas de virgules orphelines laissées par le résumé strippé.
+  expect_false(grepl(", ,", out, fixed = TRUE))
+})
+
+test_that(".prepare_family_footnotes uses an English heading for en", {
+  out <- nemetonshiny:::.prepare_family_footnotes("Biomass[^1].", .fn_src, "C", "en")
+  expect_true(grepl("### Reference sources", out, fixed = TRUE))
+  expect_false(grepl("Sources documentaires", out, fixed = TRUE))
+})
+
+test_that(".prepare_family_footnotes is a no-op without refs or without defs", {
+  expect_identical(
+    nemetonshiny:::.prepare_family_footnotes("Pas de refs.", .fn_src, "C", "fr"),
+    "Pas de refs."
+  )
+  expect_identical(
+    nemetonshiny:::.prepare_family_footnotes("Texte [^1].", "", "C", "fr"),
+    "Texte [^1]."
+  )
+  expect_identical(
+    nemetonshiny:::.prepare_family_footnotes("", .fn_src, "C", "fr"), ""
+  )
+})

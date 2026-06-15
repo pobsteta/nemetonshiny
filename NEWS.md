@@ -1,3 +1,31 @@
+# nemetonshiny 0.85.5 (2026-06-15)
+
+### Fix — Sources dédupliquées + bloc « Sources documentaires » par famille
+
+Dans le rapport, les **pages d'analyse par famille** d'indicateurs
+répétaient une même source sous plusieurs numéros de notes (ex. famille
+Carbone & Vitalité : Bontemps 2006 = notes 5, 6, 9, 11 ; Breda 2002 =
+notes 7, 8, 10).
+
+**Cause** : la dédup « une note par source » (`.prepare_footnotes()`,
+v0.84.6→v0.84.10) n'était appliquée **qu'à la synthèse**. Les commentaires
+de famille étaient passés bruts au template Quarto, donc chaque chunk RAG
+d'une même source devenait une note distincte.
+
+**Fix** : nouvelle fonction `.prepare_family_footnotes()`, appliquée à
+chaque commentaire de famille avant export :
+
+- **Dédup par contenu** : une seule note de bas de page par source unique,
+  en gardant la première référence (orphelines et doublons retirés), comme
+  pour la synthèse.
+- **Labels namespacés par famille** (`[^C-1]`, `[^C-2]`, …) pour éviter
+  toute collision avec les notes de la synthèse — ou d'une autre famille —
+  dans le même PDF (Pandoc ne sait pas référencer deux fois une note, et
+  des ids numériques se chevaucheraient).
+- **Bloc « Sources documentaires » visible** sous chaque commentaire,
+  listant les sources distinctes citées dans l'ordre de première citation
+  (en plus des notes de bas de page). Bilingue FR/EN.
+
 # nemetonshiny 0.85.3 (2026-06-15)
 
 ### Fix — Chargement des projets récents plus rapide (IO disque)

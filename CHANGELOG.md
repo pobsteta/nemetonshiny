@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.5] - 2026-06-15
+
+### Fixed
+
+- Pages familles du rapport : une même source documentaire se répétait sous
+  plusieurs numéros de notes (la dédup « une note par source » n'était appliquée
+  qu'à la synthèse, pas aux commentaires de famille passés bruts au template).
+
+### Added
+
+- `.prepare_family_footnotes()` : dédup par contenu des notes de chaque famille
+  (une note par source unique), labels namespacés par famille (`[^C-1]`…) pour
+  éviter les collisions avec la synthèse dans le même PDF, et bloc visible
+  « Sources documentaires » sous chaque commentaire listant les sources
+  distinctes citées (bilingue FR/EN).
+
 ## [0.85.3] - 2026-06-15
 
 ### Fixed

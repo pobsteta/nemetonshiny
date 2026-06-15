@@ -110,6 +110,95 @@ NULL
 }
 
 
+#' Resolve a family comment's `[^n]` refs into per-family footnotes + a sources block
+#'
+#' Companion to [.prepare_footnotes()] for the per-family analysis pages. Same
+#' content deduplication (one note per UNIQUE source, keep the first reference,
+#' strip orphan / duplicate markers), but:
+#'
+#'  * footnote labels are **namespaced per family** (`[^C-1]`, `[^C-2]`, …) so
+#'    they never collide with the synthesis footnotes — or another family's —
+#'    in the same Pandoc/LaTeX document (numeric ids would clash and Pandoc
+#'    cannot reference one definition twice);
+#'  * an explicit, **visible "Sources documentaires" section** listing the
+#'    distinct cited sources is appended under the comment, in first-citation
+#'    order, in addition to the page-bottom footnotes.
+#'
+#' @param comment Character. The family comment (may carry `[^n]`).
+#' @param sources_md Character. The persisted `synthesis_sources$sources_md`.
+#' @param code Character. Family code (B, C, …) used as the label namespace.
+#' @param language Character. "fr"/"en" for the sources-block heading.
+#' @return The processed comment, ready for Quarto/Pandoc. Unchanged when there
+#'   is nothing to resolve (no comment, no sources, or no markers).
+#' @noRd
+.prepare_family_footnotes <- function(comment, sources_md, code, language = "fr") {
+  if (is.null(comment) || !nzchar(comment)) return(comment)
+  defs <- .parse_source_defs(sources_md)
+  if (!length(defs)) return(comment)
+
+  # Content dedup: one canonical id per UNIQUE source text (cf. .prepare_footnotes).
+  text_to_canon <- character(0)
+  canon_by_id   <- character(0)
+  canon_text    <- character(0)
+  for (id in names(defs)) {
+    txt <- defs[[id]]
+    if (txt %in% names(text_to_canon)) {
+      canon_by_id[id] <- text_to_canon[[txt]]
+    } else {
+      text_to_canon[[txt]] <- id
+      canon_by_id[id]      <- id
+      canon_text[id]       <- txt
+    }
+  }
+
+  pat     <- "\\[\\^[0-9]+\\]"
+  markers <- regmatches(comment, gregexpr(pat, comment, perl = TRUE))[[1]]
+  if (!length(markers)) return(comment)  # no refs → nothing to do
+  pieces  <- strsplit(comment, pat, perl = TRUE)[[1]]
+
+  used_order <- character(0)   # canonical ids in first-seen order
+  label_of   <- character(0)   # canonical id -> "<code>-<k>"
+  out <- if (length(pieces)) pieces[1] else ""
+  for (i in seq_along(markers)) {
+    id    <- sub("\\[\\^([0-9]+)\\]", "\\1", markers[i])
+    canon <- if (id %in% names(canon_by_id)) canon_by_id[[id]] else NA_character_
+    # keep the FIRST ref to each unique source; strip orphans / duplicates
+    # (Pandoc cannot reference one footnote definition twice).
+    keep  <- !is.na(canon) && !(canon %in% used_order)
+    if (keep) {
+      used_order <- c(used_order, canon)
+      label_of[canon] <- sprintf("%s-%d", code, length(used_order))
+    }
+    tok   <- if (keep) sprintf("[^%s]", label_of[[canon]]) else ""
+    nxt   <- if (i + 1L <= length(pieces)) pieces[i + 1L] else ""
+    out   <- paste0(out, tok, nxt)
+  }
+
+  # Recollapse punctuation left by stripped markers (same as .prepare_footnotes).
+  out <- gsub("\\s*,(\\s*,)+", ",", out, perl = TRUE)
+  out <- gsub(":\\s*,\\s*", ": ", out, perl = TRUE)
+  out <- gsub(",\\s*([.;])", "\\1", out, perl = TRUE)
+  out <- gsub(":\\s*([.;])", "\\1", out, perl = TRUE)
+
+  if (length(used_order)) {
+    # 1) page-bottom footnote definitions (rendered where [^code-k] appears)
+    fn_defs <- vapply(used_order, function(cid)
+      sprintf("[^%s]: %s", label_of[[cid]], canon_text[[cid]]), character(1))
+    # 2) visible "Sources documentaires" recap, in first-citation order
+    heading <- if (identical(language, "en")) "Reference sources" else "Sources documentaires"
+    src_items <- vapply(seq_along(used_order), function(k)
+      sprintf("%d. %s", k, canon_text[[used_order[[k]]]]), character(1))
+
+    out <- paste0(
+      out,
+      "\n\n", paste(fn_defs, collapse = "\n"),
+      "\n\n### ", heading, "\n\n", paste(src_items, collapse = "\n")
+    )
+  }
+  out
+}
+
+
 #' Check if Quarto is installed
 #'
 #' @description
