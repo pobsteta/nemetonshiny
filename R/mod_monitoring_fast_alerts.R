@@ -33,9 +33,10 @@
 
 #' FAST index choices for a given mode (mode-dependent vocabulary)
 #'
-#' count / rolling expose NDMI / NDVI / NBR / NDRE (short-term shocks) ;
-#' trend exposes the red-edge / moisture indices NDMI / NDRE (chronic
-#' decline).
+#' count / rolling expose the short-term shock indices NDMI / NDVI / NBR ;
+#' trend exposes the moisture / red-edge indices NDMI / NDRE (chronic
+#' decline — NDRE only makes sense for a pluriannual decline trend, not for
+#' acute threshold exceedances).
 #'
 #' @param mode "count", "rolling" or "trend".
 #' @return Named character vector for `radioButtons(choices=)`.
@@ -44,7 +45,7 @@
   if (identical(mode, "trend")) {
     c(NDMI = "NDMI", NDRE = "NDRE")
   } else {
-    c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR", NDRE = "NDRE")
+    c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR")
   }
 }
 
@@ -90,10 +91,11 @@ mod_monitoring_fast_alerts_ui <- function(id) {
           shiny::radioButtons(
             ns("index"),
             label = i18n$t("monitoring_fast_index_label"),
-            # NDMI first (moisture / water-stress), NDVI default. NDRE
-            # (red-edge) en dernier — disponible aussi en count/rolling
-            # depuis l'ajout des bandes B05+B8A au cache (v0.85.0).
-            choices = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR", NDRE = "NDRE"),
+            # Choix initiaux du mode count/rolling (défaut "count") : NDMI
+            # (humidité), NDVI (défaut), NBR. NDRE (red-edge) n'est proposé
+            # qu'en mode Tendance (déclin chronique) — l'observer `mode`
+            # bascule le vocabulaire via .fast_index_choices().
+            choices = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR"),
             selected = "NDVI",
             inline = TRUE
           ),

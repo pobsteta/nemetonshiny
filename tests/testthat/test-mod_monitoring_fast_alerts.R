@@ -42,10 +42,13 @@ test_that("fast alerts UI exposes the three modes and trend params", {
 })
 
 test_that(".fast_index_choices is mode-dependent (trend -> NDMI/NDRE)", {
+  # count / rolling : indices de choc court terme (NDRE réservé à trend).
   cr <- nemetonshiny:::.fast_index_choices("count")
-  expect_setequal(unname(cr), c("NDMI", "NDVI", "NBR", "NDRE"))
+  expect_setequal(unname(cr), c("NDMI", "NDVI", "NBR"))
+  expect_false("NDRE" %in% cr)
   rr <- nemetonshiny:::.fast_index_choices("rolling")
-  expect_setequal(unname(rr), c("NDMI", "NDVI", "NBR", "NDRE"))
+  expect_setequal(unname(rr), c("NDMI", "NDVI", "NBR"))
+  expect_false("NDRE" %in% rr)
   tr <- nemetonshiny:::.fast_index_choices("trend")
   expect_setequal(unname(tr), c("NDMI", "NDRE"))
   # Defaults : NDVI for short-term modes, NDMI for trend.
