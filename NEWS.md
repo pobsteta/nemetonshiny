@@ -1,3 +1,22 @@
+# nemetonshiny 0.84.10.9001 (dev)
+
+### Changed — Suivi sanitaire : libellés des trois modes de diagnostic
+
+Renommage des trois modes du sélecteur « Mode de suivi » pour une
+nomenclature homogène « Diagnostic <méthode> (<cible>) » :
+
+- « Surveillance rapide (FAST) » → **« Diagnostic FAST (spot/trend) »**
+- « Diagnostic sanitaire (FORDEAD) » → **« Diagnostic FORDEAD (résineux) »**
+- « Dépérissement feuillus (RECONFORT) » → **« Diagnostic RECONFORT (feuillus) »**
+
+Clés i18n `monitoring_mode_quick` / `monitoring_mode_health` /
+`monitoring_mode_reconfort` (FR/EN). Aucun changement de logique : les
+valeurs internes (`quick` / `health` / `reconfort`) sont inchangées.
+
+Note : la bascule spot/trend du diagnostic FAST existe déjà — c'est le
+radio « Mode du raster » (Fréquence = spot / Intensité = trend) dans le
+sous-onglet « Alertes FAST » ; ses libellés sont conservés.
+
 # nemetonshiny 0.84.10.9000 (dev)
 
 ### Ajout — Note explicite quand la perspective IA n'a pas de sources

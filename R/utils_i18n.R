@@ -2712,12 +2712,12 @@ TRANSLATIONS <- list(
     en = "Monitoring mode"
   ),
   monitoring_mode_quick = list(
-    fr = "Surveillance rapide (FAST)",
-    en = "Quick surveillance (FAST)"
+    fr = "Diagnostic FAST (spot/trend)",
+    en = "FAST diagnosis (spot/trend)"
   ),
   monitoring_mode_health = list(
-    fr = "Diagnostic sanitaire (FORDEAD)",
-    en = "Health diagnosis (FORDEAD)"
+    fr = "Diagnostic FORDEAD (r\u00e9sineux)",
+    en = "FORDEAD diagnosis (conifers)"
   ),
   monitoring_mode_quick_help = list(
     fr = "D\u00e9tection de chocs r\u00e9cents (coupe, chablis, incendie) via NDVI/NBR rolling-window. Quelques secondes.",
@@ -2801,8 +2801,8 @@ TRANSLATIONS <- list(
   # 3e mode de Suivi sanitaire : deperissement des feuillus via RECONFORT
   # (CRSWIR + CRre, pas de modele harmonique). Accents en \uXXXX (rule 4).
   monitoring_mode_reconfort = list(
-    fr = "D\u00e9p\u00e9rissement feuillus (RECONFORT)",
-    en = "Broadleaf dieback (RECONFORT)"
+    fr = "Diagnostic RECONFORT (feuillus)",
+    en = "RECONFORT diagnosis (broadleaves)"
   ),
   monitoring_mode_reconfort_help = list(
     fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Lourd, opt-in (conda IOTA\u00b2/GEODES).",
