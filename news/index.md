@@ -1,5 +1,38 @@
 # Changelog
 
+## nemetonshiny 0.85.3 (2026-06-15)
+
+#### Fix — Chargement des projets récents plus rapide (IO disque)
+
+L’écran d’accueil mettait du temps à afficher la liste des **projets
+récents**, surtout avec beaucoup de projets.
+
+**Cause** : `list_recent_projects()` (appelée de façon **bloquante** au
+rendu de `mod_home`, jusqu’à 50 projets) lisait et parsait
+`metadata.json` **trois fois par projet** — deux fois dans
+`check_project_health()` (dont une relecture redondante) et une fois
+pour les champs affichés. Avec N projets, jusqu’à 3N lectures+parsings
+JSON synchrones figeaient l’UI au démarrage.
+
+**Fix** :
+
+- `check_project_health()` lit `metadata.json` **une seule fois** (la
+  double-lecture interne est supprimée) et accepte un paramètre
+  optionnel `metadata =` pour réutiliser des données déjà parsées —
+  signature publique rétro-compatible.
+- `list_recent_projects()` lit le fichier **une seule fois** par projet
+  et passe le résultat à `check_project_health()` → **3
+  lectures/parsings par projet ramenées à 1**.
+- Ajout d’un **cache mémoire** du listing trié, validé par une signature
+  filesystem bon marché (un
+  [`list.dirs()`](https://rdrr.io/r/base/list.files.html) + un
+  [`file.info()`](https://rdrr.io/r/base/file.info.html) vectorisé sur
+  les `metadata.json` — stat seul, sans lecture ni parsing) avec TTL de
+  secours. Les re-rendus successifs ne rescannent plus le disque tant
+  que rien n’a changé ; toute création / mise à jour / suppression
+  invalide le cache (explicitement et via la signature), donc les
+  changements apparaissent immédiatement.
+
 ## nemetonshiny 0.85.2 (2026-06-15)
 
 #### Added — Alertes FAST : indice NDRE en modes Fréquence / Intensité

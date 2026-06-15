@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.3" id="nemetonshiny-0853-2026-06-15">nemetonshiny 0.85.3 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0853-2026-06-15"></a></h2>
+<div class="section level4">
+<h4 id="fix--chargement-des-projets-récents-plus-rapide-io-disque-0-85-3">Fix — Chargement des projets récents plus rapide (IO disque)<a class="anchor" aria-label="anchor" href="#fix--chargement-des-projets-r%C3%A9cents-plus-rapide-io-disque-0-85-3"></a></h4>
+<p>L’écran d’accueil mettait du temps à afficher la liste des <strong>projets récents</strong>, surtout avec beaucoup de projets.</p>
+<p><strong>Cause</strong> : <code>list_recent_projects()</code> (appelée de façon <strong>bloquante</strong> au rendu de <code>mod_home</code>, jusqu’à 50 projets) lisait et parsait <code>metadata.json</code> <strong>trois fois par projet</strong> — deux fois dans <code>check_project_health()</code> (dont une relecture redondante) et une fois pour les champs affichés. Avec N projets, jusqu’à 3N lectures+parsings JSON synchrones figeaient l’UI au démarrage.</p>
+<p><strong>Fix</strong> :</p>
+<ul><li>
+<code>check_project_health()</code> lit <code>metadata.json</code> <strong>une seule fois</strong> (la double-lecture interne est supprimée) et accepte un paramètre optionnel <code>metadata =</code> pour réutiliser des données déjà parsées — signature publique rétro-compatible.</li>
+<li>
+<code>list_recent_projects()</code> lit le fichier <strong>une seule fois</strong> par projet et passe le résultat à <code>check_project_health()</code> → <strong>3 lectures/parsings par projet ramenées à 1</strong>.</li>
+<li>Ajout d’un <strong>cache mémoire</strong> du listing trié, validé par une signature filesystem bon marché (un <code><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.dirs()</a></code> + un <code><a href="https://rdrr.io/r/base/file.info.html" class="external-link">file.info()</a></code> vectorisé sur les <code>metadata.json</code> — stat seul, sans lecture ni parsing) avec TTL de secours. Les re-rendus successifs ne rescannent plus le disque tant que rien n’a changé ; toute création / mise à jour / suppression invalide le cache (explicitement et via la signature), donc les changements apparaissent immédiatement.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.2" id="nemetonshiny-0852-2026-06-15">nemetonshiny 0.85.2 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0852-2026-06-15"></a></h2>
 <div class="section level4">

@@ -12,6 +12,28 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.3\] - 2026-06-15
+
+### Fixed
+
+- Chargement lent de la liste des projets récents à l’accueil.
+  `metadata.json` était lu/parsé 3× par projet (deux fois dans
+  `check_project_health()`, dont une relecture redondante, + une fois
+  dans `list_recent_projects()`), de façon bloquante au rendu de
+  `mod_home` (jusqu’à 50 projets) → jusqu’à 3N lectures JSON synchrones.
+
+### Changed
+
+- `check_project_health()` lit `metadata.json` une seule fois et accepte
+  un paramètre optionnel `metadata =` (rétro-compatible) ;
+  `list_recent_projects()` lit le fichier une seule fois par projet → 3
+  lectures/parsings ramenés à 1.
+- Cache mémoire du listing trié validé par une signature filesystem bon
+  marché ([`list.dirs()`](https://rdrr.io/r/base/list.files.html) +
+  [`file.info()`](https://rdrr.io/r/base/file.info.html) vectorisé, stat
+  seul) avec TTL de secours, invalidé sur toute création / mise à jour /
+  suppression de projet.
+
 ## \[0.85.2\] - 2026-06-15
 
 ### Added
