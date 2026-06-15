@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.0] - 2026-06-15
+
+### Added
+
+- Suivi sanitaire — mode FAST `trend` (Theil-Sen + Mann-Kendall) dans
+  « Alertes FAST » : déclin chronique pluriannuel des feuillus. Indices
+  mode-dépendants (NDMI/NDRE en trend), paramètres `months`/`min_years`/
+  `alpha` en sidebar conditionnelle, ingestion des bandes red-edge
+  B05+B8A (NDRE), mapping toast `fast_prewarm:*_trend`.
+- Synthèse — note explicite à l'emplacement des sources quand la
+  perspective IA a été générée sans corpus documentaire (RAG indisponible).
+
+### Changed
+
+- Suivi sanitaire — libellés des trois modes de diagnostic harmonisés :
+  « Diagnostic FAST (spot/trend) », « Diagnostic FORDEAD (résineux) »,
+  « Diagnostic RECONFORT (feuillus) ».
+
 ## [0.84.10] - 2026-06-14
 
 ### Fixed

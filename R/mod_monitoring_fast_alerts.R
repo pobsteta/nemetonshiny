@@ -20,8 +20,38 @@
 #                 percentile 95 pour stabiliser l'échelle face à une
 #                 queue extrême minoritaire.
 #
+#   - "trend"   : déclin chronique pluriannuel (dépérissement feuillus).
+#                 Composite saisonnier annuel (months) → Theil-Sen
+#                 (pente) + Mann-Kendall (significativité, alpha) par
+#                 pixel (nemeton spec 023). Indices red-edge / humidité
+#                 (NDMI défaut, NDRE) ; threshold / window_days ignorés ;
+#                 paramètres months / min_years / alpha exposés en sidebar.
+#                 Même sortie 0-4 que count/rolling après discrétisation.
+#
 # Pas de popup au clic — l'exploration pixel-par-pixel se fait sur
 # l'onglet « Carte FAST » (mod_monitoring_pixel_map).
+
+#' FAST index choices for a given mode (mode-dependent vocabulary)
+#'
+#' count / rolling expose NDMI / NDVI / NBR (short-term shocks) ; trend
+#' exposes the red-edge / moisture indices NDMI / NDRE (chronic decline).
+#'
+#' @param mode "count", "rolling" or "trend".
+#' @return Named character vector for `radioButtons(choices=)`.
+#' @noRd
+.fast_index_choices <- function(mode) {
+  if (identical(mode, "trend")) {
+    c(NDMI = "NDMI", NDRE = "NDRE")
+  } else {
+    c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR")
+  }
+}
+
+#' Default FAST index for a given mode
+#' @noRd
+.fast_index_default <- function(mode) {
+  if (identical(mode, "trend")) "NDMI" else "NDVI"
+}
 
 #' Alertes FAST sub-tab UI
 #'
@@ -77,11 +107,30 @@ mod_monitoring_fast_alerts_ui <- function(id) {
             label  = i18n$t("monitoring_fast_alerts_mode_label"),
             inline = TRUE,
             choiceNames  = list(i18n$t("monitoring_fast_alerts_mode_count"),
-                                i18n$t("monitoring_fast_alerts_mode_rolling")),
-            choiceValues = list("count", "rolling"),
+                                i18n$t("monitoring_fast_alerts_mode_rolling"),
+                                i18n$t("monitoring_fast_alerts_mode_trend")),
+            choiceValues = list("count", "rolling", "trend"),
             selected     = "count"
           ),
           class = "mb-2"
+        ),
+        # Paramètres trend-only (Theil-Sen + Mann-Kendall, nemeton
+        # spec 023). Masqués hors mode `trend` ; threshold / window_days
+        # n'ont pas de sens en trend (ignorés côté cœur).
+        shiny::conditionalPanel(
+          condition = sprintf("input['%s'] == 'trend'", ns("mode")),
+          shiny::sliderInput(
+            ns("trend_months"), i18n$t("monitoring_trend_months"),
+            min = 1, max = 12, value = c(6, 9), step = 1
+          ),
+          shiny::numericInput(
+            ns("trend_min_years"), i18n$t("monitoring_trend_min_years"),
+            value = 4, min = 2, max = 20, step = 1
+          ),
+          shiny::numericInput(
+            ns("trend_alpha"), i18n$t("monitoring_trend_alpha"),
+            value = 0.05, min = 0.001, max = 0.2, step = 0.005
+          )
         ),
         # v0.61.0 — Le checkbox `raster_visible` est retiré. Le toggle
         # de visibilité du raster d'alerte passe désormais par le
@@ -169,14 +218,18 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # L'observer doit dépendre UNIQUEMENT de la langue
       # (`i18n_r()`). `isolate()` lit la sélection courante au
       # moment du re-render i18n sans la traquer comme dépendance.
-      cur_index <- shiny::isolate(input$index %||% "NDVI")
       cur_mode  <- shiny::isolate(input$mode  %||% "count")
+      cur_index <- shiny::isolate(input$index %||% .fast_index_default(cur_mode))
       # v0.52.14 — rafraîchir aussi le label du radio `index` (label
       # « Indice FAST » → « FAST index » sur switch FR/EN).
+      # Les choix d'indices dépendent du mode (trend → NDMI/NDRE) ; on
+      # garde la sélection courante si elle reste valide, sinon défaut.
+      idx_choices <- .fast_index_choices(cur_mode)
+      if (!(cur_index %in% idx_choices)) cur_index <- .fast_index_default(cur_mode)
       shiny::updateRadioButtons(
         session, "index",
         label = i18n$t("monitoring_fast_index_label"),
-        choices = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR"),
+        choices = idx_choices,
         selected = cur_index,
         inline = TRUE
       )
@@ -184,8 +237,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         session, "mode",
         label = i18n$t("monitoring_fast_alerts_mode_label"),
         choiceNames  = list(i18n$t("monitoring_fast_alerts_mode_count"),
-                            i18n$t("monitoring_fast_alerts_mode_rolling")),
-        choiceValues = list("count", "rolling"),
+                            i18n$t("monitoring_fast_alerts_mode_rolling"),
+                            i18n$t("monitoring_fast_alerts_mode_trend")),
+        choiceValues = list("count", "rolling", "trend"),
         selected     = cur_mode,
         inline       = TRUE
       )
@@ -197,6 +251,23 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # rafraîchi car le checkbox a été retiré (visibilité gérée
       # par le LayersControl Leaflet).
     })
+
+    # Mode change → adapte le vocabulaire d'indices (trend → NDMI/NDRE ;
+    # count/rolling → NDMI/NDVI/NBR). Préserve l'indice courant s'il
+    # reste valide pour le nouveau mode, sinon retombe sur le défaut.
+    # `ignoreInit = TRUE` : le rendu initial pose déjà les bons choix.
+    shiny::observeEvent(input$mode, {
+      i18n <- i18n_r()
+      mode <- input$mode %||% "count"
+      choices <- .fast_index_choices(mode)
+      cur <- shiny::isolate(input$index %||% .fast_index_default(mode))
+      if (!(cur %in% choices)) cur <- .fast_index_default(mode)
+      shiny::updateRadioButtons(
+        session, "index",
+        label = i18n$t("monitoring_fast_index_label"),
+        choices = choices, selected = cur, inline = TRUE
+      )
+    }, ignoreInit = TRUE)
 
     # ----- Cache dir + raster reactive --------------------------------
     # read_fast_alert_raster() reads from the on-disk Sentinel-2 cache
@@ -239,13 +310,23 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # l'onglet (`input$index`, dans le sidebar droit) — pas du
       # sidebar parent. Le `threshold` correspondant reste lu depuis
       # le sidebar parent via `thresholds_r$ndvi` / `$nbr`.
-      idx <- input$index %||% "NDVI"
+      idx <- input$index %||% .fast_index_default(mode)
       # Per-index threshold from the parent sidebar. NDMI uses its own
       # slider (th$ndmi), falling back to the NDVI threshold if absent.
+      # NDRE (trend-only) has no threshold slider → fallback NDVI value,
+      # ignored by the core in trend mode anyway.
       thr <- switch(idx,
                     NBR  = th$nbr,
                     NDMI = th$ndmi %||% th$ndvi,
                     th$ndvi)
+      # Paramètres trend-only (Theil-Sen + Mann-Kendall, nemeton spec
+      # 023). En count/rolling ces valeurs valent les défauts cœur et
+      # sont ignorées ; en trend elles viennent de la sidebar.
+      is_trend <- identical(mode, "trend")
+      tm <- if (is_trend) input$trend_months %||% c(6L, 9L) else c(6L, 9L)
+      months_v    <- seq.int(as.integer(tm[1]), as.integer(tm[2]))
+      min_years_v <- if (is_trend) as.integer(input$trend_min_years %||% 4L) else 4L
+      alpha_v     <- if (is_trend) as.numeric(input$trend_alpha %||% 0.05) else 0.05
       # v0.57.0 — Passage du raster CONTINU au mask catégoriel 0-4
       # (quartiles, spec 017 D1-D2 nemeton@v0.55.0+). On appelle
       # désormais `nemeton::compute_fast_alert_mask()` qui produit
@@ -284,6 +365,10 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           date_to          = dr[2],
           mode             = mode,
           window_days      = as.integer(th$window_days %||% 30L),
+          # Args trend-only (ignorés en count/rolling côté cœur).
+          months           = months_v,
+          min_years        = min_years_v,
+          alpha            = alpha_v,
           cache_dir        = cd,
           mask_cache_dir   = mask_cache,
           cache_result     = TRUE,
@@ -341,7 +426,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       i18n  <- i18n_r()
       mode  <- input$mode %||% "count"
       index <- input$index %||% "NDVI"
-      key <- if (identical(mode, "rolling")) {
+      key <- if (identical(mode, "trend")) {
+        "monitoring_fast_alerts_badge_trend"
+      } else if (identical(mode, "rolling")) {
         "monitoring_fast_alerts_badge_rolling"
       } else {
         "monitoring_fast_alerts_badge_count"
@@ -628,7 +715,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 # @param i18n L'objet `get_i18n(lang)`.
 # @return named list "1".."4" -> label string.
 .fast_class_labels <- function(r, source = c("FAST", "FORDEAD"),
-                                mode   = c("count", "rolling"),
+                                mode   = c("count", "rolling", "trend"),
                                 i18n) {
   source <- match.arg(source)
   mode   <- match.arg(mode)
@@ -649,6 +736,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     ))
   }
   unit_key <- if (identical(mode, "count")) "validation_class_unit_days"
+              else if (identical(mode, "trend")) "validation_class_unit_trend"
               else                          "validation_class_unit_deficit"
   unit <- i18n$t(unit_key)
   unit_sfx <- if (nzchar(unit)) paste0(" ", unit) else ""

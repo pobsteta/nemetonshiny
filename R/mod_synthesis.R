@@ -27,8 +27,24 @@ mod_synthesis_server <- function(id, app_state) {
     # explicitement que la réponse est sourcée.
     output$ai_sources <- shiny::renderUI({
       ctx <- rag_ctx_synthesis()
-      if (is.null(ctx) || !nzchar(ctx$sources_md %||% "")) return(NULL)
+      if (is.null(ctx)) return(NULL)   # aucune perspective générée → rien
       i18n <- get_i18n(app_state$language)
+
+      # Perspective générée mais corpus muet / indisponible (pas de base
+      # PostgreSQL/pgvector, clé d'embedding absente, base locale SQLite…).
+      # Au lieu de masquer complètement le bloc, on affiche une note
+      # explicative à l'emplacement habituel des sources, pour que
+      # l'utilisateur comprenne pourquoi aucune source n'est citée.
+      if (!nzchar(ctx$sources_md %||% "")) {
+        return(htmltools::tagList(
+          htmltools::tags$hr(),
+          htmltools::tags$p(
+            class = "text-muted small fst-italic",
+            bsicons::bs_icon("info-circle"), " ",
+            i18n$t("rag_no_sources_note")
+          )
+        ))
+      }
 
       # v0.85.0 — `ctx$sources_md` = "## Sources documentaires\n\n[^1] …".
       # On sépare le TITRE de la LISTE pour rendre, dans cet ordre :
@@ -837,10 +853,17 @@ mod_synthesis_server <- function(id, app_state) {
         if (is.list(project$comments$families)) {
           app_state$family_comments <- project$comments$families
         }
+        # Restaurer le contexte RAG dès qu'une perspective a été générée
+        # (synthèse non vide), même sans sources : ainsi le bloc
+        # « Sources documentaires » réapparaît au reload, et la note
+        # explicative « générée sans sources » aussi quand le corpus
+        # était muet/indisponible au moment de la génération.
+        has_synthesis <- !is.null(project$comments$synthesis) &&
+          nchar(project$comments$synthesis) > 0
         src <- project$comments$synthesis_sources
-        if (!is.null(src) && nzchar(as.character(src$sources_md %||% ""))) {
+        if (!is.null(src) && has_synthesis) {
           rag_ctx_synthesis(list(
-            sources_md = as.character(src$sources_md),
+            sources_md = as.character(src$sources_md %||% ""),
             n_sources  = suppressWarnings(as.integer(src$n_sources %||% 0L))
           ))
         }
