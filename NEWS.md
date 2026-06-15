@@ -1,4 +1,4 @@
-# nemetonshiny 0.85.1.9000 (dev) (2026-06-15)
+# nemetonshiny 0.85.2 (2026-06-15)
 
 ### Added — Alertes FAST : indice NDRE en modes Fréquence / Intensité
 

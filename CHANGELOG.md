@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.2] - 2026-06-15
+
 ### Added
 
 - Suivi sanitaire — « Alertes FAST » : indice **NDRE** (red-edge B05+B8A)
