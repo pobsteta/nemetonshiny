@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.7] - 2026-06-15
+
+### Changed
+
+- Onglet Synthèse, bandeau supérieur : « Score global » + icône d'info + valeur
+  sur une seule ligne ; le bloc remonte d'une ligne et aligne la barre de
+  confiance φ avec le texte « Taille image Max 5 Mo, PNG/JPG ».
+
 ## [0.85.6] - 2026-06-15
 
 ### Added

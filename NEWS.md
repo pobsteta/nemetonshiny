@@ -1,3 +1,13 @@
+# nemetonshiny 0.85.7 (2026-06-15)
+
+### Changed — Synthèse : score global sur une seule ligne
+
+Dans le bandeau supérieur de l'onglet Synthèse (colonne de droite), le
+libellé « Score global » + l'icône d'info et la valeur (ex. 55.7) sont
+désormais sur la **même ligne**. Le bloc remonte d'une ligne, ce qui aligne
+la barre de confiance φ au niveau du texte « Taille image Max 5 Mo,
+PNG/JPG » de la colonne centrale.
+
 # nemetonshiny 0.85.6 (2026-06-15)
 
 ### Changed — Rapport : pages familles, notes de bas de page uniquement
