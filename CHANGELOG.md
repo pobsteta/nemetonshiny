@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.10] - 2026-06-15
+
+### Changed
+
+- Onglet Synthèse : barre de progression de confiance descendue (`mt-2`) pour
+  s'aligner avec « Taille image Max 5 Mo, PNG/JPG ». `ndp_progress_bar()` gagne
+  un paramètre `bar_class` (défaut inchangé, aucun impact sur mod_field_ingest).
+
 ## [0.85.9] - 2026-06-15
 
 ### Changed

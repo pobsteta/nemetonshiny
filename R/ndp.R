@@ -62,10 +62,14 @@ ndp_badge <- function(ndp, lang = "fr") {
 #'   Default "text-muted small" (the historical small grey caption). Pass
 #'   "text-muted" to render the label at body size (e.g. to match a nearby
 #'   "Score global" heading in the synthesis banner).
+#' @param bar_class Character. CSS classes for the progress bar container.
+#'   Default "progress". Add a top-margin utility (e.g. "progress mt-2") to
+#'   nudge the bar down so it lines up with a neighbouring element.
 #'
 #' @return An htmltools tag object.
 #' @noRd
-ndp_progress_bar <- function(ndp, lang = "fr", label_class = "text-muted small") {
+ndp_progress_bar <- function(ndp, lang = "fr", label_class = "text-muted small",
+                             bar_class = "progress") {
   ndp <- as.integer(ndp)
   level <- nemeton::get_ndp_level(ndp)
   pct <- round(level$confidence * 100, 1)
@@ -80,7 +84,7 @@ ndp_progress_bar <- function(ndp, lang = "fr", label_class = "text-muted small")
     class = "mt-1",
     htmltools::tags$div(class = label_class, label),
     htmltools::div(
-      class = "progress",
+      class = bar_class,
       style = "height: 8px;",
       htmltools::div(
         class = "progress-bar bg-success",
