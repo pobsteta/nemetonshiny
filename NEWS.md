@@ -1,33 +1,97 @@
-# nemetonshiny 0.84.11 (2026-06-15)
+# nemetonshiny 0.85.2 (2026-06-15)
 
-### Fix — Chargement des projets récents plus rapide (IO disque)
+### Added — Alertes FAST : indice NDRE en modes Fréquence / Intensité
 
-L'écran d'accueil mettait du temps à afficher la liste des **projets
-récents**, surtout avec beaucoup de projets.
+Le sous-onglet « Alertes FAST » du Suivi sanitaire expose désormais
+**NDRE** (red-edge B05+B8A) comme 4ᵉ indice des modes `count` (Fréquence)
+et `rolling` (Intensité), à côté de NDMI / NDVI / NBR. NDRE n'était jusqu'à
+présent disponible que dans le mode `trend`. Les bandes red-edge étant déjà
+mises en cache à l'ingestion (`bands = c("NDVI", "NBR", "NDMI", "NDRE")`,
+v0.85.0), aucun changement cœur n'est requis : `compute_fast_alert_mask()`
+consomme l'indice choisi via le radio local de l'onglet.
 
-**Cause** : `list_recent_projects()` (appelée de façon **bloquante** au
-rendu de `mod_home`, jusqu'à 50 projets) lisait et parsait
-`metadata.json` **trois fois par projet** — deux fois dans
-`check_project_health()` (dont une relecture redondante) et une fois pour
-les champs affichés. Avec N projets, jusqu'à 3N lectures+parsings JSON
-synchrones figeaient l'UI au démarrage.
+- Nouveau slider de seuil **« Seuil minimum NDRE »** dans le sidebar parent
+  (`threshold_ndre`, défaut 0.20, parité avec NDMI), câblé dans les
+  `thresholds_r` d'Alertes FAST et de la prévisualisation du plan de
+  validation (`mod_validation_sampling`).
+- `.fast_index_choices()` count/rolling → `c(NDMI, NDVI, NBR, NDRE)`.
+- Nouvelle clé i18n `monitoring_threshold_ndre` (FR/EN).
 
-**Fix** :
+# nemetonshiny 0.85.1 (2026-06-15)
 
-- `check_project_health()` lit `metadata.json` **une seule fois** (la
-  double-lecture interne est supprimée) et accepte un paramètre optionnel
-  `metadata =` pour réutiliser des données déjà parsées — signature
-  publique rétro-compatible.
-- `list_recent_projects()` lit le fichier **une seule fois** par projet et
-  passe le résultat à `check_project_health()` → **3 lectures/parsings par
-  projet ramenées à 1**.
-- Ajout d'un **cache mémoire** du listing trié, validé par une signature
-  filesystem bon marché (un `list.dirs()` + un `file.info()` vectorisé sur
-  les `metadata.json` — stat seul, sans lecture ni parsing) avec TTL de
-  secours. Les re-rendus successifs ne rescannent plus le disque tant que
-  rien n'a changé ; toute création / mise à jour / suppression invalide le
-  cache (explicitement et via la signature), donc les changements
-  apparaissent immédiatement.
+### Fixed — Tests alignés sur l'ajout de NDRE aux bandes FAST
+
+`test-mod_monitoring.R` figeait encore `bands = c("NDVI", "NBR", "NDMI")`
+dans deux assertions du `fast_task$invoke()`, qui échouaient depuis l'ajout
+de `NDRE` (red-edge B05+B8A, mode FAST `trend`, v0.85.0). Assertions mises
+à jour vers `c("NDVI", "NBR", "NDMI", "NDRE")`. Aucun changement de code de
+production — alignement de tests uniquement.
+
+# nemetonshiny 0.85.0 (2026-06-15)
+
+### Added — Suivi sanitaire : mode FAST `trend` (Theil-Sen + Mann-Kendall)
+
+Le diagnostic FAST expose désormais un **3ᵉ mode** dans le sous-onglet
+« Alertes FAST », à côté de Fréquence (`count`) et Intensité (`rolling`) :
+**Tendance** (`trend`). Il détecte le **déclin chronique pluriannuel**
+(dépérissement des feuillus) via la régression Theil-Sen + le test de
+Mann-Kendall sur un composite saisonnier annuel (nemeton spec 023,
+cœur ≥ 0.69.0).
+
+- **Radio « Mode du raster »** : ajout de l'option `trend`.
+- **Indices mode-dépendants** : `trend` propose NDMI (défaut) et **NDRE**
+  (red-edge) ; `count`/`rolling` restent NDMI/NDVI/NBR.
+- **Paramètres trend en sidebar** (conditionnels) : mois du composite
+  saisonnier, années minimum, seuil de significativité (alpha).
+  `threshold`/`window_days` sont masqués (ignorés par le cœur en trend).
+- **Ingestion** : les bandes red-edge **B05 + B8A** sont désormais mises
+  en cache (ajout de `NDRE` aux bandes) pour alimenter le mode trend ;
+  le cœur (release prewarm trend) pré-chauffe alors aussi les cartes
+  trend. Sur un cœur antérieur, la carte trend est calculée à la demande
+  (dégradation gracieuse).
+- Mapping du toast de pré-calcul `fast_prewarm:*_trend` → libellé
+  « Tendance ».
+- Nouvelles clés i18n (FR/EN) : `monitoring_fast_alerts_mode_trend`,
+  `monitoring_fast_alerts_badge_trend`, `monitoring_trend_months`,
+  `monitoring_trend_min_years`, `monitoring_trend_alpha`,
+  `validation_class_unit_trend`, `fast_mode_trend`.
+
+### Changed — Suivi sanitaire : libellés des trois modes de diagnostic
+
+Renommage des trois modes du sélecteur « Mode de suivi » pour une
+nomenclature homogène « Diagnostic <méthode> (<cible>) » :
+
+- « Surveillance rapide (FAST) » → **« Diagnostic FAST (spot/trend) »**
+- « Diagnostic sanitaire (FORDEAD) » → **« Diagnostic FORDEAD (résineux) »**
+- « Dépérissement feuillus (RECONFORT) » → **« Diagnostic RECONFORT (feuillus) »**
+
+Clés i18n `monitoring_mode_quick` / `monitoring_mode_health` /
+`monitoring_mode_reconfort` (FR/EN). Aucun changement de logique : les
+valeurs internes (`quick` / `health` / `reconfort`) sont inchangées.
+
+Note : la bascule spot/trend du diagnostic FAST existe déjà — c'est le
+radio « Mode du raster » (Fréquence = spot / Intensité = trend) dans le
+sous-onglet « Alertes FAST » ; ses libellés sont conservés.
+
+### Added — Note explicite quand la perspective IA n'a pas de sources
+
+Sous la perspective IA de la synthèse, à l'emplacement habituel du bloc
+« Sources documentaires », une **note grisée** s'affiche désormais quand la
+perspective a été générée **sans aucune source** : « Perspective générée
+sans sources documentaires : le corpus de connaissances est indisponible ou
+vide… ». Auparavant le bloc disparaissait silencieusement et l'utilisateur
+ne savait pas si le RAG avait été consulté.
+
+La note précise les causes typiques (base PostgreSQL/pgvector non
+configurée, clé d'embedding absente, **base locale SQLite qui ne supporte
+pas le RAG**). Elle réapparaît aussi au rechargement d'un projet dont la
+perspective avait été générée sans sources.
+
+- Nouvelle clé i18n `rag_no_sources_note` (FR/EN) dans `utils_i18n.R`.
+- `mod_synthesis.R` : `output$ai_sources` rend la note au lieu de `NULL`
+  quand `ctx` existe mais `sources_md` est vide ; la restauration au reload
+  réinjecte le contexte RAG dès qu'une synthèse existe (sources vides
+  incluses).
 
 # nemetonshiny 0.84.10 (2026-06-14)
 

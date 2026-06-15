@@ -10,24 +10,42 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
-## [0.84.11] - 2026-06-15
+## [0.85.2] - 2026-06-15
+
+### Added
+
+- Suivi sanitaire — « Alertes FAST » : indice **NDRE** (red-edge B05+B8A)
+  ajouté aux modes `count` (Fréquence) et `rolling` (Intensité), à côté de
+  NDMI/NDVI/NBR. Nouveau slider de seuil `threshold_ndre` (défaut 0.20),
+  câblé dans les `thresholds_r` d'Alertes FAST et de la prévisualisation du
+  plan de validation. Nouvelle clé i18n `monitoring_threshold_ndre` (FR/EN).
+  Aucun changement cœur (bandes red-edge déjà cachées depuis 0.85.0).
+
+## [0.85.1] - 2026-06-15
 
 ### Fixed
 
-- Chargement lent de la liste des projets récents à l'accueil. `metadata.json`
-  était lu/parsé 3× par projet (deux fois dans `check_project_health()`, dont
-  une relecture redondante, + une fois dans `list_recent_projects()`), de façon
-  bloquante au rendu de `mod_home` (jusqu'à 50 projets) → jusqu'à 3N lectures
-  JSON synchrones.
+- Tests : `test-mod_monitoring.R` alignait encore `bands` sur
+  `c("NDVI", "NBR", "NDMI")` (échec CI depuis l'ajout de NDRE en 0.85.0).
+  Assertions mises à jour vers `c("NDVI", "NBR", "NDMI", "NDRE")`.
+
+## [0.85.0] - 2026-06-15
+
+### Added
+
+- Suivi sanitaire — mode FAST `trend` (Theil-Sen + Mann-Kendall) dans
+  « Alertes FAST » : déclin chronique pluriannuel des feuillus. Indices
+  mode-dépendants (NDMI/NDRE en trend), paramètres `months`/`min_years`/
+  `alpha` en sidebar conditionnelle, ingestion des bandes red-edge
+  B05+B8A (NDRE), mapping toast `fast_prewarm:*_trend`.
+- Synthèse — note explicite à l'emplacement des sources quand la
+  perspective IA a été générée sans corpus documentaire (RAG indisponible).
 
 ### Changed
 
-- `check_project_health()` lit `metadata.json` une seule fois et accepte un
-  paramètre optionnel `metadata =` (rétro-compatible) ; `list_recent_projects()`
-  lit le fichier une seule fois par projet → 3 lectures/parsings ramenés à 1.
-- Cache mémoire du listing trié validé par une signature filesystem bon marché
-  (`list.dirs()` + `file.info()` vectorisé, stat seul) avec TTL de secours,
-  invalidé sur toute création / mise à jour / suppression de projet.
+- Suivi sanitaire — libellés des trois modes de diagnostic harmonisés :
+  « Diagnostic FAST (spot/trend) », « Diagnostic FORDEAD (résineux) »,
+  « Diagnostic RECONFORT (feuillus) ».
 
 ## [0.84.10] - 2026-06-14
 

@@ -24,6 +24,48 @@ test_that("fast alerts UI exposes NDMI first with NDVI as default", {
 # obsolète depuis le plancher cœur `nemeton (>= 0.65.1)` qui
 # garantit la mise en cache best-effort de B11 (spec 019 D3).
 
+test_that("fast alerts UI exposes the three modes and trend params", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("bsicons")
+
+  ui <- nemetonshiny:::mod_monitoring_fast_alerts_ui("fa")
+  html <- as.character(ui)
+  # Three radio mode values, including the new trend mode.
+  expect_true(grepl('value="count"', html))
+  expect_true(grepl('value="rolling"', html))
+  expect_true(grepl('value="trend"', html))
+  # Trend-only params live in a conditionalPanel (rendered in the DOM).
+  expect_true(grepl("fa-trend_months", html))
+  expect_true(grepl("fa-trend_min_years", html))
+  expect_true(grepl("fa-trend_alpha", html))
+})
+
+test_that(".fast_index_choices is mode-dependent (trend -> NDMI/NDRE)", {
+  cr <- nemetonshiny:::.fast_index_choices("count")
+  expect_setequal(unname(cr), c("NDMI", "NDVI", "NBR", "NDRE"))
+  rr <- nemetonshiny:::.fast_index_choices("rolling")
+  expect_setequal(unname(rr), c("NDMI", "NDVI", "NBR", "NDRE"))
+  tr <- nemetonshiny:::.fast_index_choices("trend")
+  expect_setequal(unname(tr), c("NDMI", "NDRE"))
+  # Defaults : NDVI for short-term modes, NDMI for trend.
+  expect_equal(nemetonshiny:::.fast_index_default("count"), "NDVI")
+  expect_equal(nemetonshiny:::.fast_index_default("rolling"), "NDVI")
+  expect_equal(nemetonshiny:::.fast_index_default("trend"), "NDMI")
+})
+
+test_that(".fast_class_labels accepts trend mode with its own unit", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  r <- terra::rast(nrows = 10, ncols = 10,
+                   vals = c(rep(0, 50), seq.int(1, 50) / 100),
+                   crs = "EPSG:2154", extent = terra::ext(0, 100, 0, 100))
+  out <- nemetonshiny:::.fast_class_labels(r = r, source = "FAST",
+                                            mode = "trend", i18n = i18n)
+  expect_equal(names(out), c("1", "2", "3", "4"))
+  # Trend unit (pente/an) appended to the labels.
+  expect_match(out[["1"]], "pente/an$")
+})
+
 test_that(".classify_alert_count returns 4 prefixed bins for a wide distribution", {
   # 100-cell raster (10x10) : 50 zero pixels + values 1..50.
   r <- terra::rast(nrows = 10, ncols = 10,

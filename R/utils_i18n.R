@@ -1050,6 +1050,10 @@ TRANSLATIONS <- list(
     fr = "Sources documentaires",
     en = "Documentary sources"
   ),
+  rag_no_sources_note = list(
+    fr = "Perspective g\u00e9n\u00e9r\u00e9e sans sources documentaires : le corpus de connaissances est indisponible ou vide (base PostgreSQL/pgvector non configur\u00e9e ou cl\u00e9 d'embedding absente \u2014 le RAG n'est pas disponible sur une base locale SQLite).",
+    en = "Perspective generated without documentary sources: the knowledge corpus is unavailable or empty (no PostgreSQL/pgvector database configured or no embedding key \u2014 the RAG is not available on a local SQLite database)."
+  ),
   rag_toggle_label = list(
     fr = "Inclure les sources documentaires",
     en = "Include documentary sources"
@@ -1993,8 +1997,9 @@ TRANSLATIONS <- list(
   # des onglets pilotent l'AFFICHAGE, pas le téléchargement.
   # v0.52.13 — Label du radio mono-index (spec 017 nemeton@v0.55.0).
   # L'utilisateur choisit l'indice spectral utilisé pour le raster
-  # d'alerte FAST (NDVI ou NBR). Le seuil correspondant est piloté
-  # par les sliders monitoring_threshold_{ndvi,nbr}.
+  # d'alerte FAST (NDMI / NDVI / NBR / NDRE en count/rolling). Le seuil
+  # correspondant est piloté par les sliders
+  # monitoring_threshold_{ndvi,nbr,ndmi,ndre}.
   monitoring_fast_index_label = list(
     fr = "Indice FAST",
     en = "FAST index"
@@ -2010,6 +2015,10 @@ TRANSLATIONS <- list(
   monitoring_threshold_ndmi = list(
     fr = "Seuil minimum NDMI",
     en = "Minimum NDMI threshold"
+  ),
+  monitoring_threshold_ndre = list(
+    fr = "Seuil minimum NDRE",
+    en = "Minimum NDRE threshold"
   ),
   monitoring_window_days = list(
     fr = "Fen\u00eatre roulante (jours)",
@@ -2413,6 +2422,10 @@ TRANSLATIONS <- list(
     fr = "Intensité",
     en = "Intensity"
   ),
+  monitoring_fast_alerts_mode_trend = list(
+    fr = "Tendance",
+    en = "Trend"
+  ),
   monitoring_fast_alerts_badge_count = list(
     fr = "Alertes FAST — fréquence des dépassements de seuil %s, à la résolution Sentinel-2 (10 m)",
     en = "FAST alerts — threshold-breach frequency for %s, at Sentinel-2 resolution (10 m)"
@@ -2420,6 +2433,22 @@ TRANSLATIONS <- list(
   monitoring_fast_alerts_badge_rolling = list(
     fr = "Alertes FAST — intensité du déficit %s sur fenêtre roulante, à la résolution Sentinel-2 (10 m)",
     en = "FAST alerts — %s deficit intensity over a rolling window, at Sentinel-2 resolution (10 m)"
+  ),
+  monitoring_fast_alerts_badge_trend = list(
+    fr = "Alertes FAST \u2014 tendance pluriannuelle du d\u00e9clin %s (Theil-Sen + Mann-Kendall), \u00e0 la r\u00e9solution Sentinel-2 (10 m)",
+    en = "FAST alerts \u2014 multi-year decline trend for %s (Theil-Sen + Mann-Kendall), at Sentinel-2 resolution (10 m)"
+  ),
+  monitoring_trend_months = list(
+    fr = "Mois du composite saisonnier",
+    en = "Seasonal composite months"
+  ),
+  monitoring_trend_min_years = list(
+    fr = "Ann\u00e9es minimum",
+    en = "Minimum years"
+  ),
+  monitoring_trend_alpha = list(
+    fr = "Seuil de significativit\u00e9 (alpha)",
+    en = "Significance threshold (alpha)"
   ),
   index_ndmi = list(
     fr = "NDMI (humidit\u00e9)",
@@ -2448,6 +2477,10 @@ TRANSLATIONS <- list(
   fast_mode_intensite = list(
     fr = "Intensité",
     en = "Intensity"
+  ),
+  fast_mode_trend = list(
+    fr = "Tendance",
+    en = "Trend"
   ),
   fast_prewarm_running = list(
     fr = "Pré-calcul carte %s %s en cours…",
@@ -2704,12 +2737,12 @@ TRANSLATIONS <- list(
     en = "Monitoring mode"
   ),
   monitoring_mode_quick = list(
-    fr = "Surveillance rapide (FAST)",
-    en = "Quick surveillance (FAST)"
+    fr = "Diagnostic FAST (spot/trend)",
+    en = "FAST diagnosis (spot/trend)"
   ),
   monitoring_mode_health = list(
-    fr = "Diagnostic sanitaire (FORDEAD)",
-    en = "Health diagnosis (FORDEAD)"
+    fr = "Diagnostic FORDEAD (r\u00e9sineux)",
+    en = "FORDEAD diagnosis (conifers)"
   ),
   monitoring_mode_quick_help = list(
     fr = "D\u00e9tection de chocs r\u00e9cents (coupe, chablis, incendie) via NDVI/NBR rolling-window. Quelques secondes.",
@@ -2793,8 +2826,8 @@ TRANSLATIONS <- list(
   # 3e mode de Suivi sanitaire : deperissement des feuillus via RECONFORT
   # (CRSWIR + CRre, pas de modele harmonique). Accents en \uXXXX (rule 4).
   monitoring_mode_reconfort = list(
-    fr = "D\u00e9p\u00e9rissement feuillus (RECONFORT)",
-    en = "Broadleaf dieback (RECONFORT)"
+    fr = "Diagnostic RECONFORT (feuillus)",
+    en = "RECONFORT diagnosis (broadleaves)"
   ),
   monitoring_mode_reconfort_help = list(
     fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Lourd, opt-in (conda IOTA\u00b2/GEODES).",
@@ -3057,6 +3090,10 @@ TRANSLATIONS <- list(
   validation_class_unit_deficit = list(
     fr = "",
     en = ""
+  ),
+  validation_class_unit_trend = list(
+    fr = "pente/an",
+    en = "slope/yr"
   ),
   # Fallback FAST quand le raster d'alerte n'est pas encore calculé
   # (cache absent, ingestion pas encore lancée, etc.) — labels
