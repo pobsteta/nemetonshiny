@@ -2016,10 +2016,6 @@ TRANSLATIONS <- list(
     fr = "Seuil minimum NDMI",
     en = "Minimum NDMI threshold"
   ),
-  monitoring_threshold_ndre = list(
-    fr = "Seuil minimum NDRE",
-    en = "Minimum NDRE threshold"
-  ),
   monitoring_window_days = list(
     fr = "Fen\u00eatre roulante (jours)",
     en = "Rolling window (days)"
