@@ -175,3 +175,37 @@ test_that(".ugf_for_overlay returns NULL when indicators_sf is missing", {
   expect_null(nemetonshiny:::.ugf_for_overlay(list()))
   expect_null(nemetonshiny:::.ugf_for_overlay(list(indicators_sf = NULL)))
 })
+
+test_that(".compute_fast_mask forwards index/threshold/mode to the core fn", {
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    compute_fast_alert_mask = function(con, zone_id, index, threshold,
+                                       date_from, date_to, mode, window_days,
+                                       months, min_years, alpha, cache_dir,
+                                       mask_cache_dir, cache_result,
+                                       result_cache_dir, parallel) {
+      captured <<- list(
+        zone_id = zone_id, index = index, threshold = threshold,
+        mode = mode, months = months, min_years = min_years, alpha = alpha,
+        cache_result = cache_result, parallel = parallel
+      )
+      "/tmp/mask_NDRE.tif"
+    },
+    .package = "nemeton"
+  )
+
+  out <- nemetonshiny:::.compute_fast_mask(
+    con = NULL, zone = "42", index = "NDRE", threshold = 0.2,
+    dr = c("2020-06-01", "2024-09-30"), mode = "trend",
+    window_days = 30L, months = 6:9, min_years = 4L, alpha = 0.05,
+    cache_dir = "/cd", mask_cache = "/mc", result_cache = "/rc"
+  )
+
+  expect_equal(out, "/tmp/mask_NDRE.tif")
+  expect_equal(captured$zone_id, 42L)        # coerced to integer
+  expect_equal(captured$index, "NDRE")
+  expect_equal(captured$threshold, 0.2)
+  expect_equal(captured$mode, "trend")
+  expect_true(captured$cache_result)         # always disk-caches
+  expect_true(captured$parallel)
+})

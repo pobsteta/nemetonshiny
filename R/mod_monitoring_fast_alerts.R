@@ -55,6 +55,38 @@
   if (identical(mode, "trend")) "NDMI" else "NDVI"
 }
 
+#' Compute (and disk-cache) one FAST alert mask
+#'
+#' Thin wrapper around `nemeton::compute_fast_alert_mask()` centralising the
+#' argument plumbing shared by the displayed raster (`raster_r`) and the trend
+#' cache pre-warming observer, so the two call sites never drift. Persists a
+#' TIF per (index, parameters) and returns its path (idempotent: a cached
+#' result is reused, no recompute). No error handling here — callers wrap it
+#' so they can route failures to their own UI feedback.
+#' @noRd
+.compute_fast_mask <- function(con, zone, index, threshold, dr, mode,
+                               window_days, months, min_years, alpha,
+                               cache_dir, mask_cache, result_cache) {
+  nemeton::compute_fast_alert_mask(
+    con              = con,
+    zone_id          = as.integer(zone),
+    index            = index,
+    threshold        = as.numeric(threshold),
+    date_from        = dr[1],
+    date_to          = dr[2],
+    mode             = mode,
+    window_days      = as.integer(window_days %||% 30L),
+    months           = months,
+    min_years        = min_years,
+    alpha            = alpha,
+    cache_dir        = cache_dir,
+    mask_cache_dir   = mask_cache,
+    cache_result     = TRUE,
+    result_cache_dir = result_cache,
+    parallel         = TRUE
+  )
+}
+
 #' Alertes FAST sub-tab UI
 #'
 #' @param id Module namespace id.
@@ -362,25 +394,11 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # silencieux si `furrr` est absent, donc aucune dégradation.
       # Spec 017 D4 nemeton@v0.57.0+.
       mask_path <- tryCatch(
-        nemeton::compute_fast_alert_mask(
-          con              = con,
-          zone_id          = as.integer(zone),
-          index            = idx,
-          threshold        = as.numeric(thr),
-          date_from        = dr[1],
-          date_to          = dr[2],
-          mode             = mode,
-          window_days      = as.integer(th$window_days %||% 30L),
-          # Args trend-only (ignorés en count/rolling côté cœur).
-          months           = months_v,
-          min_years        = min_years_v,
-          alpha            = alpha_v,
-          cache_dir        = cd,
-          mask_cache_dir   = mask_cache,
-          cache_result     = TRUE,
-          result_cache_dir = result_cache,
-          parallel         = TRUE
-        ),
+        # Args trend-only (months / min_years / alpha) ignorés en
+        # count/rolling côté cœur.
+        .compute_fast_mask(con, zone, idx, thr, dr, mode,
+                           th$window_days, months_v, min_years_v, alpha_v,
+                           cd, mask_cache, result_cache),
         error = function(e) {
           cli::cli_alert_warning(
             "compute_fast_alert_mask failed (index={idx}): {e$message}"
@@ -415,6 +433,61 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       }
       out
     })
+
+    # ----- Pré-calcul des DEUX rasters de Tendance (NDMI + NDRE) ------
+    # En mode trend, `raster_r` calcule/affiche l'indice sélectionné ;
+    # cet observateur réchauffe en arrière-plan (later) le cache disque
+    # des DEUX indices trend, de sorte que basculer le radio NDMI ↔ NDRE
+    # soit instantané (cache hit). `compute_fast_alert_mask` persiste un
+    # TIF par (index, paramètres) → idempotent (pas de recalcul si déjà
+    # en cache). N'a d'effet qu'en trend : count/rolling restent
+    # mono-index à la demande. Le trigger est débouncé pour ne pas
+    # empiler des calculs lourds pendant le réglage des sliders trend.
+    trend_prewarm_trigger <- shiny::reactive({
+      list(input$mode, zone_id_r(), date_range_r(),
+           input$trend_months, input$trend_min_years, input$trend_alpha,
+           refresh_r())
+    }) |> shiny::debounce(800)
+
+    shiny::observe({
+      if (!identical(input$mode %||% "count", "trend")) return()
+      zone <- zone_id_r()
+      dr   <- date_range_r()
+      th   <- thresholds_r()
+      proj <- app_state$current_project
+      cd   <- cache_dir_r()
+      if (is.null(zone) || !isTRUE(nzchar(zone))) return()
+      if (length(dr) != 2L || any(is.na(dr))) return()
+      if (is.null(th) || is.null(proj) || is.null(cd)) return()
+
+      tm           <- input$trend_months %||% c(6L, 9L)
+      months_v     <- seq.int(as.integer(tm[1]), as.integer(tm[2]))
+      min_years_v  <- as.integer(input$trend_min_years %||% 4L)
+      alpha_v      <- as.numeric(input$trend_alpha %||% 0.05)
+      thr          <- th$ndmi %||% th$ndvi          # ignoré en trend (Theil-Sen)
+      window_v     <- th$window_days %||% 30L
+      result_cache <- .fast_alert_cache_dir(proj$path)
+      mask_cache   <- .fast_alert_mask_cache_dir(proj$path)
+
+      # Différé : laisse `raster_r` afficher l'indice sélectionné d'abord,
+      # puis réchauffe le cache des deux indices hors du cycle de rendu.
+      later::later(function() {
+        for (idx in c("NDMI", "NDRE")) {
+          con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+          if (is.null(con)) next
+          tryCatch(
+            .compute_fast_mask(con, zone, idx, thr, dr, "trend",
+                               window_v, months_v, min_years_v, alpha_v,
+                               cd, mask_cache, result_cache),
+            error = function(e)
+              cli::cli_alert_warning(
+                "trend pre-warm failed (index={idx}): {conditionMessage(e)}"
+              )
+          )
+          close_monitoring_db_connection(con)
+        }
+      }, delay = 0.4)
+    }) |> shiny::bindEvent(trend_prewarm_trigger())
 
     # ----- Banner : seul ce slot re-render selon raster_r() ----------
     # v0.46.3 — la carte (OSM + UGFs) est désormais affichée même
