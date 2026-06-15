@@ -135,6 +135,7 @@ create_project <- function(name, description = "", owner = "", parcels = NULL,
   }
 
   cli::cli_alert_success("Project created: {.val {name}}")
+  .invalidate_recent_projects_cache()
 
   list(
     id = project_id,
@@ -223,6 +224,7 @@ update_project <- function(project_id, name, description = "", owner = "",
   )
 
   cli::cli_alert_success("Project updated: {.val {name}}")
+  .invalidate_recent_projects_cache()
 
   list(
     id = project_id,
@@ -1106,54 +1108,131 @@ load_comments <- function(project_id) {
 }
 
 
-#' List recent projects
+# ---------------------------------------------------------------------------
+# Recent-projects listing cache
+#
+# Scanning metadata.json for every project on each render is costly (one read +
+# JSON parse per project, plus the health-check stats). This caches the fully
+# scanned + sorted listing per root. Cache validity is checked against a cheap
+# filesystem signature — one list.dirs() + one vectorised file.info() over the
+# metadata.json files (stat only, no read/parse) — so the heavy reads are
+# skipped on a re-render whenever nothing changed, while any add / remove /
+# in-place edit invalidates the cache automatically. A short TTL is an extra
+# backstop, and mutations clear the cache explicitly as a fast path. The cache
+# holds the unlimited sorted listing; per-call `limit` is applied on the cached
+# result so callers with different limits (mod_home uses 50, others 10) share it.
+# ---------------------------------------------------------------------------
+
+.recent_projects_cache <- new.env(parent = emptyenv())
+.RECENT_PROJECTS_TTL_SECS <- 10
+
+#' Empty recent-projects data.frame (canonical schema)
+#' @noRd
+.empty_recent_projects_df <- function() {
+  data.frame(
+    id = character(0),
+    name = character(0),
+    description = character(0),
+    owner = character(0),
+    status = character(0),
+    parcels_count = integer(0),
+    created_at = as.POSIXct(character(0)),
+    updated_at = as.POSIXct(character(0)),
+    is_corrupted = logical(0)
+  )
+}
+
+#' Cheap filesystem signature for a projects root
 #'
 #' @description
-#' Lists recent projects sorted by last update date.
+#' Captures the set of project directories and the mtime + size of each
+#' metadata.json. Stat-only (no read/parse); used to detect whether the
+#' cached listing is still valid. Returns NULL when the root is absent.
 #'
-#' @param limit Integer. Maximum number of projects to return (default: 10).
+#' @param root Character. Projects root directory.
 #'
-#' @return data.frame with project info.
+#' @return List signature, or NULL.
 #'
 #' @noRd
-list_recent_projects <- function(limit = 10L) {
-  root <- get_projects_root()
-
+.recent_projects_signature <- function(root) {
   if (!dir.exists(root)) {
-    return(data.frame(
-      id = character(0),
-      name = character(0),
-      description = character(0),
-      owner = character(0),
-      status = character(0),
-      parcels_count = integer(0),
-      created_at = as.POSIXct(character(0)),
-      updated_at = as.POSIXct(character(0)),
-      is_corrupted = logical(0)
-    ))
+    return(NULL)
+  }
+  dirs <- list.dirs(root, full.names = TRUE, recursive = FALSE)
+  if (length(dirs) == 0) {
+    return(list(dirs = character(0), mtime = numeric(0), size = numeric(0)))
+  }
+  info <- file.info(file.path(dirs, "metadata.json"))
+  list(
+    dirs = basename(dirs),
+    mtime = as.numeric(info$mtime),
+    size = as.numeric(info$size)
+  )
+}
+
+#' Invalidate the recent-projects listing cache
+#'
+#' @description
+#' Drops the cached listing so the next call to [list_recent_projects()]
+#' rescans the disk. Called by every project mutation (create / update /
+#' delete) so changes appear immediately.
+#'
+#' @noRd
+.invalidate_recent_projects_cache <- function() {
+  if (exists("entry", envir = .recent_projects_cache, inherits = FALSE)) {
+    rm("entry", envir = .recent_projects_cache)
+  }
+  invisible(NULL)
+}
+
+#' Scan and sort all projects under a root (cached)
+#'
+#' @description
+#' Returns the full, unlimited listing sorted by updated_at (most recent
+#' first). Serves a cached result when the root's filesystem signature is
+#' unchanged and the TTL has not elapsed; otherwise rescans and recaches.
+#'
+#' @param root Character. Projects root directory.
+#'
+#' @return data.frame with project info (no limit applied).
+#'
+#' @noRd
+.scan_recent_projects <- function(root) {
+  sig <- .recent_projects_signature(root)
+
+  # Serve from cache when same root, unchanged signature and within TTL.
+  if (exists("entry", envir = .recent_projects_cache, inherits = FALSE)) {
+    entry <- get("entry", envir = .recent_projects_cache, inherits = FALSE)
+    fresh <- identical(entry$root, root) &&
+      identical(entry$sig, sig) &&
+      as.numeric(Sys.time() - entry$cached_at, units = "secs") < .RECENT_PROJECTS_TTL_SECS
+    if (fresh) {
+      return(entry$data)
+    }
+  }
+
+  cache_result <- function(data) {
+    assign("entry", list(root = root, sig = sig, data = data, cached_at = Sys.time()),
+           envir = .recent_projects_cache)
+    data
+  }
+
+  if (is.null(sig)) {
+    # Root absent — return empty without caching (signature is NULL/unstable).
+    return(.empty_recent_projects_df())
   }
 
   # List project directories
   dirs <- list.dirs(root, full.names = TRUE, recursive = FALSE)
-
   if (length(dirs) == 0) {
-    return(data.frame(
-      id = character(0),
-      name = character(0),
-      description = character(0),
-      owner = character(0),
-      status = character(0),
-      parcels_count = integer(0),
-      created_at = as.POSIXct(character(0)),
-      updated_at = as.POSIXct(character(0)),
-      is_corrupted = logical(0)
-    ))
+    return(cache_result(.empty_recent_projects_df()))
   }
 
-  # Load metadata for each project
+  # Load metadata for each project.
+  # metadata.json is read once per project and reused for the health check
+  # (avoids re-reading the same file two more times — see check_project_health).
   projects <- lapply(dirs, function(dir) {
     project_id <- basename(dir)
-    health <- check_project_health(project_id)
 
     metadata_path <- file.path(dir, "metadata.json")
     if (!file.exists(metadata_path)) {
@@ -1162,6 +1241,7 @@ list_recent_projects <- function(limit = 10L) {
 
     tryCatch({
       metadata <- jsonlite::read_json(metadata_path)
+      health <- check_project_health(project_id, metadata = metadata)
       data.frame(
         id = metadata$id %||% project_id,
         name = metadata$name %||% "Untitled",
@@ -1195,28 +1275,36 @@ list_recent_projects <- function(limit = 10L) {
   projects <- do.call(rbind, Filter(Negate(is.null), projects))
 
   if (is.null(projects) || nrow(projects) == 0) {
-    return(data.frame(
-      id = character(0),
-      name = character(0),
-      description = character(0),
-      owner = character(0),
-      status = character(0),
-      parcels_count = integer(0),
-      created_at = as.POSIXct(character(0)),
-      updated_at = as.POSIXct(character(0)),
-      is_corrupted = logical(0)
-    ))
+    return(cache_result(.empty_recent_projects_df()))
   }
 
   # Sort by updated_at (most recent first)
   projects <- projects[order(projects$updated_at, decreasing = TRUE), ]
+  rownames(projects) <- NULL
+  cache_result(projects)
+}
 
-  # Apply limit
+#' List recent projects
+#'
+#' @description
+#' Lists recent projects sorted by last update date. Backed by a short-lived
+#' in-memory cache (see [.scan_recent_projects()]) so repeated renders don't
+#' rescan the disk; the cache is invalidated on any project mutation.
+#'
+#' @param limit Integer. Maximum number of projects to return (default: 10).
+#'
+#' @return data.frame with project info.
+#'
+#' @noRd
+list_recent_projects <- function(limit = 10L) {
+  root <- get_projects_root()
+  projects <- .scan_recent_projects(root)
+
   if (nrow(projects) > limit) {
-    projects <- projects[1:limit, ]
+    projects <- projects[seq_len(limit), ]
+    rownames(projects) <- NULL
   }
 
-  rownames(projects) <- NULL
   projects
 }
 
@@ -1227,11 +1315,14 @@ list_recent_projects <- function(limit = 10L) {
 #' Checks if a project is valid and not corrupted.
 #'
 #' @param project_id Character. Project ID.
+#' @param metadata List. Already-parsed metadata.json content. When supplied,
+#'   the file is not re-read from disk (used by list_recent_projects to avoid
+#'   redundant IO). Default NULL: read the file when present.
 #'
 #' @return List with valid (logical) and issues (character vector).
 #'
 #' @noRd
-check_project_health <- function(project_id) {
+check_project_health <- function(project_id, metadata = NULL) {
   project_path <- get_project_path(project_id)
 
   issues <- character(0)
@@ -1241,19 +1332,23 @@ check_project_health <- function(project_id) {
     return(list(valid = FALSE, issues = "Project directory not found"))
   }
 
-  # Check metadata
+  # Check metadata — read the file once (unless caller already provided it)
   metadata_path <- file.path(project_path, "metadata.json")
-  if (!file.exists(metadata_path)) {
-    issues <- c(issues, "Missing metadata.json")
-  } else {
-    tryCatch({
-      metadata <- jsonlite::read_json(metadata_path)
-      if (is.null(metadata$name)) {
-        issues <- c(issues, "Metadata missing 'name' field")
+  metadata_present <- file.exists(metadata_path)
+  if (is.null(metadata) && metadata_present) {
+    metadata <- tryCatch(
+      jsonlite::read_json(metadata_path),
+      error = function(e) {
+        issues <<- c(issues, paste("Corrupted metadata:", e$message))
+        NULL
       }
-    }, error = function(e) {
-      issues <<- c(issues, paste("Corrupted metadata:", e$message))
-    })
+    )
+  }
+
+  if (!metadata_present) {
+    issues <- c(issues, "Missing metadata.json")
+  } else if (!is.null(metadata) && is.null(metadata$name)) {
+    issues <- c(issues, "Metadata missing 'name' field")
   }
 
   # Check data directory
@@ -1263,13 +1358,10 @@ check_project_health <- function(project_id) {
   }
 
   # Check parcels file if metadata says parcels exist
-  if (file.exists(metadata_path)) {
-    metadata <- tryCatch(jsonlite::read_json(metadata_path), error = function(e) NULL)
-    if (!is.null(metadata) && !is.null(metadata$parcels_count) && metadata$parcels_count > 0) {
-      parcels_path <- file.path(project_path, "data", "parcels.parquet")
-      if (!file.exists(parcels_path)) {
-        issues <- c(issues, "Missing parcels.parquet but metadata indicates parcels exist")
-      }
+  if (!is.null(metadata) && !is.null(metadata$parcels_count) && metadata$parcels_count > 0) {
+    parcels_path <- file.path(project_path, "data", "parcels.parquet")
+    if (!file.exists(parcels_path)) {
+      issues <- c(issues, "Missing parcels.parquet but metadata indicates parcels exist")
     }
   }
 
@@ -1301,6 +1393,7 @@ delete_project <- function(project_id) {
   tryCatch({
     unlink(project_path, recursive = TRUE)
     cli::cli_alert_success("Project deleted: {project_id}")
+    .invalidate_recent_projects_cache()
     TRUE
   }, error = function(e) {
     cli::cli_abort("Failed to delete project: {e$message}")
@@ -1371,6 +1464,7 @@ update_project_metadata <- function(project_id, updates, project_path = NULL) {
     metadata$updated_at <- Sys.time()
 
     jsonlite::write_json(metadata, metadata_path, auto_unbox = TRUE, pretty = TRUE)
+    .invalidate_recent_projects_cache()
     TRUE
 
   }, error = function(e) {
