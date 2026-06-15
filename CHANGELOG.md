@@ -12,6 +12,17 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.13\] - 2026-06-15
+
+### Changed
+
+- Alertes FAST, mode Tendance : pré-calcul des deux rasters NDMI et
+  NDRE. Le cache disque de l’indice non affiché est réchauffé en
+  arrière-plan (`later`, trigger débouncé 800 ms) → bascule NDMI ↔︎ NDRE
+  instantanée. Idempotent ; un indice dont les bandes S2 manquent est
+  ignoré. Nouvelle helper interne `.compute_fast_mask()` (plomberie
+  partagée raster affiché / pré-calcul).
+
 ## \[0.85.12\] - 2026-06-15
 
 ### Removed

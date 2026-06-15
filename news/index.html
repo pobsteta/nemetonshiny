@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.12</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.13" id="nemetonshiny-08513-2026-06-15">nemetonshiny 0.85.13 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08513-2026-06-15"></a></h2>
+<div class="section level4">
+<h4 id="changed--alertes-fast--pré-calcul-des-deux-rasters-de-tendance-0-85-13">Changed — Alertes FAST : pré-calcul des deux rasters de Tendance<a class="anchor" aria-label="anchor" href="#changed--alertes-fast--pr%C3%A9-calcul-des-deux-rasters-de-tendance-0-85-13"></a></h4>
+<p>En mode <strong>Tendance</strong>, les rasters des <strong>deux</strong> indices NDMI <strong>et</strong> NDRE sont désormais pré-calculés : le raster affiché reste celui de l’indice sélectionné, mais le cache disque de l’autre indice est réchauffé en arrière-plan (tâche différée <code>later</code>), de sorte que basculer le radio NDMI ↔︎ NDRE soit <strong>instantané</strong> (lecture du cache, plus de recalcul).</p>
+<ul><li>Le pré-calcul n’a lieu qu’en mode Tendance (count/rolling restent mono-indice à la demande).</li>
+<li>Idempotent : <code>compute_fast_alert_mask()</code> persiste un TIF par (indice, paramètres) ; un cache déjà chaud n’est pas recalculé.</li>
+<li>Le déclencheur est débouncé (800 ms) pour ne pas empiler de calculs lourds pendant le réglage des sliders Tendance.</li>
+<li>Chaque indice requiert ses bandes dans le cache S2 (NDMI : B8A+B11, NDRE : B05+B8A) ; un indice dont les bandes manquent est simplement ignoré par le pré-calcul (l’autre reste disponible).</li>
+<li>Nouvelle helper interne <code>.compute_fast_mask()</code> (plomberie partagée entre le raster affiché et le pré-calcul, source unique).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.12" id="nemetonshiny-08512-2026-06-15">nemetonshiny 0.85.12 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08512-2026-06-15"></a></h2>
 <div class="section level4">
