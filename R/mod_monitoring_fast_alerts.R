@@ -33,8 +33,9 @@
 
 #' FAST index choices for a given mode (mode-dependent vocabulary)
 #'
-#' count / rolling expose NDMI / NDVI / NBR (short-term shocks) ; trend
-#' exposes the red-edge / moisture indices NDMI / NDRE (chronic decline).
+#' count / rolling expose NDMI / NDVI / NBR / NDRE (short-term shocks) ;
+#' trend exposes the red-edge / moisture indices NDMI / NDRE (chronic
+#' decline).
 #'
 #' @param mode "count", "rolling" or "trend".
 #' @return Named character vector for `radioButtons(choices=)`.
@@ -43,7 +44,7 @@
   if (identical(mode, "trend")) {
     c(NDMI = "NDMI", NDRE = "NDRE")
   } else {
-    c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR")
+    c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR", NDRE = "NDRE")
   }
 }
 
@@ -89,8 +90,10 @@ mod_monitoring_fast_alerts_ui <- function(id) {
           shiny::radioButtons(
             ns("index"),
             label = i18n$t("monitoring_fast_index_label"),
-            # NDMI first (moisture / water-stress), NDVI default.
-            choices = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR"),
+            # NDMI first (moisture / water-stress), NDVI default. NDRE
+            # (red-edge) en dernier — disponible aussi en count/rolling
+            # depuis l'ajout des bandes B05+B8A au cache (v0.85.0).
+            choices = c(NDMI = "NDMI", NDVI = "NDVI", NBR = "NBR", NDRE = "NDRE"),
             selected = "NDVI",
             inline = TRUE
           ),
@@ -311,13 +314,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # sidebar parent. Le `threshold` correspondant reste lu depuis
       # le sidebar parent via `thresholds_r$ndvi` / `$nbr`.
       idx <- input$index %||% .fast_index_default(mode)
-      # Per-index threshold from the parent sidebar. NDMI uses its own
-      # slider (th$ndmi), falling back to the NDVI threshold if absent.
-      # NDRE (trend-only) has no threshold slider → fallback NDVI value,
-      # ignored by the core in trend mode anyway.
+      # Per-index threshold from the parent sidebar. NDMI / NDRE use
+      # their own sliders (th$ndmi / th$ndre), falling back to the NDVI
+      # threshold if absent. En mode trend le threshold NDRE est ignoré
+      # côté cœur (Theil-Sen / Mann-Kendall) ; en count/rolling il borne
+      # le déficit red-edge comme les autres indices.
       thr <- switch(idx,
                     NBR  = th$nbr,
                     NDMI = th$ndmi %||% th$ndvi,
+                    NDRE = th$ndre %||% th$ndmi %||% th$ndvi,
                     th$ndvi)
       # Paramètres trend-only (Theil-Sen + Mann-Kendall, nemeton spec
       # 023). En count/rolling ces valeurs valent les défauts cœur et
