@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.86.1] - 2026-06-16
+
+### Fixed
+
+- Plein écran des graphes plotly (graphe trend par pixel Alertes FAST, graphe
+  Pixel Carte FAST) : le graphe restait à sa taille initiale au lieu de remplir
+  l'écran. Le bouton plein écran émet désormais un `window.resize` après le
+  toggle `.modal-fullscreen` → plotly (`responsive`) se redimensionne.
+
 ## [0.86.0] - 2026-06-16
 
 ### Added
