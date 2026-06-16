@@ -12,6 +12,22 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.87.0\] - 2026-06-16
+
+### Changed
+
+- Plan de validation FAST branché sur le trend (spec 025) :
+  [`nemeton::create_trend_sanitary_plan()`](https://pobsteta.github.io/nemeton/reference/create_trend_sanitary_plan.html)
+  au lieu du masque catégoriel count/rolling. Placettes sanitaires
+  pondérées par \|pente\| continue + témoins sur zones stables. Sidebar
+  FAST refondue (indice, fenêtre pluriannuelle, placettes
+  sanitaires/témoins, graine, avancés) ; retrait des classes d’alerte,
+  classes témoins et tampon. Carte colorée par sévérité continue +
+  popups alert_value. Message dédié « aucun déclin significatif ».
+  FORDEAD/RECONFORT inchangés. Nouveau wrapper service
+  `generate_trend_sanitary_plan()`.
+- Plancher `nemeton (>= 0.88.0)`.
+
 ## \[0.86.2\] - 2026-06-16
 
 ### Changed

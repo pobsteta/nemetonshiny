@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.86.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.87.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.87.0" id="nemetonshiny-0870-2026-06-16">nemetonshiny 0.87.0 (2026-06-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0870-2026-06-16"></a></h2>
+<div class="section level4">
+<h4 id="changed--plan-de-validation-fast-branché-sur-le-trend-spec-0-87-0">Changed — Plan de validation FAST branché sur le trend (spec 025)<a class="anchor" aria-label="anchor" href="#changed--plan-de-validation-fast-branch%C3%A9-sur-le-trend-spec-0-87-0"></a></h4>
+<p>Le sous-onglet <strong>« Plan de validation FAST »</strong> ne s’appuie plus sur le masque catégoriel count/rolling (qui renvoyait souvent « zone saine » car il ne capte pas le dépérissement chronique) mais sur le <strong>trend</strong> (déclin pluriannuel) via <code><a href="https://pobsteta.github.io/nemeton/reference/create_trend_sanitary_plan.html" class="external-link">nemeton::create_trend_sanitary_plan()</a></code> (≥ 0.88.0) : placettes <strong>sanitaires</strong> tirées avec une probabilité ∝ sévérité continue du déclin (|pente| Theil-Sen), + placettes <strong>témoins</strong> sur les zones stables. Option A pure : pondération continue, pas de classes 0-4, pas de TSP.</p>
+<ul><li>
+<strong>Sidebar FAST refondue</strong> : Indice (NDRE/NDMI), Fenêtre d’analyse pluriannuelle, Placettes sanitaires, Placettes témoins, Graine, + « Paramètres avancés » repliable (mois saison, années min, obs min/an, alpha). <strong>Retrait</strong> des contrôles « Classes d’alerte », « Classes témoins » et « Tampon » (sans objet en mode trend).</li>
+<li>
+<strong>Carte</strong> : placettes colorées par sévérité continue (vert → rouge), témoins en gris ; popup <code>plot_id</code> / type / <code>alert_value</code> ; légende sévérité.</li>
+<li>
+<strong>Aucun déclin significatif</strong> → message dédié « rien à valider » (≠ « zone saine »).</li>
+<li>Cohérence : <code>alert_value</code> d’une placette == valeur pré-quartile du raster trend au même pixel (clic carte → graphe trajectoire).</li>
+</ul><p>FORDEAD et RECONFORT conservent leur plan catégoriel (masque + classes + TSP) inchangé. Statistique 100 % cœur ; l’app ne recalcule rien (règle 1). Plancher relevé à <code>nemeton (&gt;= 0.88.0)</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.86.2" id="nemetonshiny-0862-2026-06-16">nemetonshiny 0.86.2 (2026-06-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0862-2026-06-16"></a></h2>
 <div class="section level4">
