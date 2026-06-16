@@ -12,6 +12,26 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.16\] - 2026-06-16
+
+### Added
+
+- Carte FAST : notification « Calcul du graphique pixel en cours… »
+  (bas-droite) affichée immédiatement au clic + garde anti-multi-clics
+  pendant le calcul (déclenché via `session$onFlushed` pour que la notif
+  parte avant le calcul).
+
+### Changed
+
+- Suivi sanitaire : le mode par défaut est toujours « Diagnostic FAST »
+  (`quick`) à l’ouverture ; le `monitoring_mode` persisté n’est plus
+  restauré (les autres réglages le restent).
+- Carte FAST : bouton plein écran du graphique Pixel restylé en bouton
+  d’en-tête haut-droite (toggle `.modal-fullscreen`, pattern modale clés
+  API/RAG) au lieu de l’icône
+  [`bslib::card`](https://rstudio.github.io/bslib/reference/card.html)
+  au survol.
+
 ## \[0.85.15\] - 2026-06-16
 
 ### Added

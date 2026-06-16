@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.15</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.16</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.16" id="nemetonshiny-08516-2026-06-16">nemetonshiny 0.85.16 (2026-06-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08516-2026-06-16"></a></h2>
+<div class="section level4">
+<h4 id="changed--suivi-sanitaire--mode-par-défaut--diagnostic-fast--0-85-16">Changed — Suivi sanitaire : mode par défaut « Diagnostic FAST »<a class="anchor" aria-label="anchor" href="#changed--suivi-sanitaire--mode-par-d%C3%A9faut--diagnostic-fast--0-85-16"></a></h4>
+<p>L’onglet Suivi sanitaire ouvre désormais <strong>toujours</strong> sur le mode <strong>Diagnostic FAST</strong> (<code>quick</code>), quel que soit le dernier mode persisté du projet. Auparavant, le mode de suivi enregistré était restauré à l’ouverture ; la plupart des projets ayant lancé FORDEAD avaient <code>health</code> persisté → ouverture systématique sur FORDEAD, non désirée. Les autres réglages (seuils, indice de végétation, dates FORDEAD) restent restaurés.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--carte-fast--bouton-plein-écran-du-graphique-pixel-restylé-0-85-16">Changed — Carte FAST : bouton plein écran du graphique Pixel restylé<a class="anchor" aria-label="anchor" href="#changed--carte-fast--bouton-plein-%C3%A9cran-du-graphique-pixel-restyl%C3%A9-0-85-16"></a></h4>
+<p>Le bouton « plein écran » du graphique Pixel (modale au clic) adopte le style de la modale « clés API &amp; corpus RAG » : un <strong>bouton ancré en haut à droite de l’en-tête</strong> (icône <code>arrows-fullscreen</code>) qui bascule la classe BS5 <code>.modal-fullscreen</code> (bord à bord), au lieu de l’icône d’expansion <code><a href="https://rstudio.github.io/bslib/reference/card.html" class="external-link">bslib::card</a></code> au survol (v0.85.15). Le plot grandit en plein écran.</p>
+</div>
+<div class="section level4">
+<h4 id="added--carte-fast--message--calcul-en-cours--au-clic-pixel-0-85-16">Added — Carte FAST : message « calcul en cours » au clic Pixel<a class="anchor" aria-label="anchor" href="#added--carte-fast--message--calcul-en-cours--au-clic-pixel-0-85-16"></a></h4>
+<p>Au clic sur la Carte FAST, une notification <strong>« Calcul du graphique pixel en cours… »</strong> s’affiche immédiatement en bas à droite, et un garde ignore les clics suivants tant que le graphique se calcule (évite les clics intempestifs). Le calcul est déclenché après le flush (<code>session$onFlushed</code>) pour que la notification parte au client avant le calcul lourd.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.15" id="nemetonshiny-08515-2026-06-16">nemetonshiny 0.85.15 (2026-06-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08515-2026-06-16"></a></h2>
 <div class="section level4">

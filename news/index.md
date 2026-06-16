@@ -1,5 +1,36 @@
 # Changelog
 
+## nemetonshiny 0.85.16 (2026-06-16)
+
+#### Changed — Suivi sanitaire : mode par défaut « Diagnostic FAST »
+
+L’onglet Suivi sanitaire ouvre désormais **toujours** sur le mode
+**Diagnostic FAST** (`quick`), quel que soit le dernier mode persisté du
+projet. Auparavant, le mode de suivi enregistré était restauré à
+l’ouverture ; la plupart des projets ayant lancé FORDEAD avaient
+`health` persisté → ouverture systématique sur FORDEAD, non désirée. Les
+autres réglages (seuils, indice de végétation, dates FORDEAD) restent
+restaurés.
+
+#### Changed — Carte FAST : bouton plein écran du graphique Pixel restylé
+
+Le bouton « plein écran » du graphique Pixel (modale au clic) adopte le
+style de la modale « clés API & corpus RAG » : un **bouton ancré en haut
+à droite de l’en-tête** (icône `arrows-fullscreen`) qui bascule la
+classe BS5 `.modal-fullscreen` (bord à bord), au lieu de l’icône
+d’expansion
+[`bslib::card`](https://rstudio.github.io/bslib/reference/card.html) au
+survol (v0.85.15). Le plot grandit en plein écran.
+
+#### Added — Carte FAST : message « calcul en cours » au clic Pixel
+
+Au clic sur la Carte FAST, une notification **« Calcul du graphique
+pixel en cours… »** s’affiche immédiatement en bas à droite, et un garde
+ignore les clics suivants tant que le graphique se calcule (évite les
+clics intempestifs). Le calcul est déclenché après le flush
+(`session$onFlushed`) pour que la notification parte au client avant le
+calcul lourd.
+
 ## nemetonshiny 0.85.15 (2026-06-16)
 
 #### Added — Carte FAST : bouton « plein écran » sur le graphique Pixel
