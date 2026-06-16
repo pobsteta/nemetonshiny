@@ -84,15 +84,16 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         shiny::checkboxGroupInput(
           ns("classes"),
           label   = i18n$t("validation_classes_label"),
+          # Ordre décroissant de sévérité : 4, 3, 2, 1.
           choices = stats::setNames(
-            c("3", "4", "1", "2"),
+            c("4", "3", "2", "1"),
             local({
               prefix <- if (identical(source, "FORDEAD"))
                 "validation_class_fordead_" else "validation_class_fast_"
-              c(i18n$t(paste0(prefix, "3")),
-                i18n$t(paste0(prefix, "4")),
-                i18n$t(paste0(prefix, "1")),
-                i18n$t(paste0(prefix, "2")))
+              c(i18n$t(paste0(prefix, "4")),
+                i18n$t(paste0(prefix, "3")),
+                i18n$t(paste0(prefix, "2")),
+                i18n$t(paste0(prefix, "1")))
             })
           ),
           selected = c("3", "4"),
@@ -286,13 +287,13 @@ mod_validation_sampling_server <- function(id, app_state,
       r    <- preview_raster_r()
       labels <- .fast_class_labels(r, source = src,
                                    mode = "count", i18n = i18n)
-      # Order : 3, 4 first (defaults / G1 guard-rail), then 1, 2.
+      # Ordre décroissant de sévérité : 4, 3, 2, 1.
       shiny::updateCheckboxGroupInput(
         session, "classes",
         choices = stats::setNames(
-          c("3", "4", "1", "2"),
-          c(labels[["3"]], labels[["4"]],
-            labels[["1"]], labels[["2"]])
+          c("4", "3", "2", "1"),
+          c(labels[["4"]], labels[["3"]],
+            labels[["2"]], labels[["1"]])
         ),
         selected = input$classes %||% c("3", "4")
       )
