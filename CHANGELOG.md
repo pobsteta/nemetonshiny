@@ -10,6 +10,13 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.85.15] - 2026-06-16
+
+### Added
+
+- Carte FAST : bouton « plein écran » sur le graphique de série temporelle par
+  pixel (plot enrobé dans `bslib::card(full_screen = TRUE)`, plotly `responsive`).
+
 ## [0.85.14] - 2026-06-15
 
 ### Fixed

@@ -1,3 +1,13 @@
+# nemetonshiny 0.85.15 (2026-06-16)
+
+### Added — Carte FAST : bouton « plein écran » sur le graphique Pixel
+
+Le graphique de série temporelle par pixel (modale au clic sur la carte
+pixel) gagne un bouton **plein écran** : le plot est enrobé dans une
+`bslib::card(full_screen = TRUE)` (même affordance que les cartes Leaflet
+de l'app — icône d'expansion au survol, en haut à droite). Le plot remplit
+la carte et se redimensionne en plein écran (`plotly` en mode `responsive`).
+
 # nemetonshiny 0.85.14 (2026-06-15)
 
 ### Fixed — Alertes FAST : message d'erreur réel du raster (au lieu du générique)
