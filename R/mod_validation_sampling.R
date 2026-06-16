@@ -42,15 +42,65 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
       class = "mb-2",
       htmltools::tags$small(class = "text-muted",
                             i18n$t("validation_source_label"), ":"),
-      htmltools::tags$strong(class = "ms-1", as.character(source))
+      htmltools::tags$strong(
+        class = "ms-1",
+        if (identical(source, "FAST")) i18n$t("validation_source_fast_trend")
+        else as.character(source)
+      )
     )
   }
-  bslib::layout_sidebar(
-    sidebar = bslib::sidebar(
-      width = 320,
-      title = i18n$t("validation_sampling_title"),
-
-      radio_ui,
+  is_fast <- identical(source, "FAST")
+  # ----- Paramètres : trend (FAST, spec 025) vs catégoriel (FORDEAD/RECONFORT)
+  param_ui <- if (is_fast) {
+    # Plan sanitaire branché sur le trend (déclin pluriannuel) — pas de
+    # classes/témoins/tampon : la pondération est continue (|pente|).
+    htmltools::tagList(
+      shiny::selectInput(
+        ns("trend_index"), i18n$t("validation_trend_index_label"),
+        choices = c("NDRE" = "NDRE", "NDMI" = "NDMI"), selected = "NDRE"
+      ),
+      shiny::dateRangeInput(
+        ns("trend_win"), i18n$t("validation_trend_window_label"),
+        start = "2017-01-01", end = Sys.Date(),
+        weekstart = 1, separator = " → "
+      ),
+      shiny::numericInput(
+        ns("n_validation"), i18n$t("validation_trend_n_plots_label"),
+        value = 20L, min = 1L, max = 200L, step = 1L
+      ),
+      shiny::numericInput(
+        ns("n_control"), i18n$t("validation_trend_n_control_label"),
+        value = 5L, min = 0L, max = 100L, step = 1L
+      ),
+      shiny::numericInput(
+        ns("seed"), i18n$t("validation_seed_label"),
+        value = 42L, min = 0L, max = 1e6L, step = 1L
+      ),
+      bslib::accordion(
+        open = FALSE,
+        bslib::accordion_panel(
+          i18n$t("validation_trend_advanced_label"),
+          shiny::sliderInput(
+            ns("trend_months"), i18n$t("monitoring_trend_months"),
+            min = 1, max = 12, value = c(6, 9), step = 1
+          ),
+          shiny::numericInput(
+            ns("trend_min_years"), i18n$t("monitoring_trend_min_years"),
+            value = 4, min = 2, max = 20, step = 1
+          ),
+          shiny::numericInput(
+            ns("trend_min_obs"), i18n$t("validation_trend_min_obs_label"),
+            value = 2, min = 1, max = 10, step = 1
+          ),
+          shiny::numericInput(
+            ns("trend_alpha"), i18n$t("monitoring_trend_alpha"),
+            value = 0.05, min = 0.001, max = 0.2, step = 0.005
+          )
+        )
+      )
+    )
+  } else {
+    htmltools::tagList(
       shiny::numericInput(
         ns("n_validation"),
         label = i18n$t("validation_n_validation_label"),
@@ -61,12 +111,8 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         label = i18n$t("validation_n_control_label"),
         value = 5L, min = 0L, max = 100L, step = 1L
       ),
-      # v0.45.0 — labels initiaux depuis i18n. Source-aware : pour
-      # FORDEAD = labels biologiques fixes, pour FAST = labels
-      # génériques en attendant que l'observer serveur appelle
-      # updateCheckboxGroupInput avec les quartiles du raster. spec 021 —
-      # RECONFORT : masque catégoriel 1/2/3 (sain/déperissant/très-
-      # déperissant), alertes c(2,3), témoins c(1).
+      # spec 021 — RECONFORT : masque catégoriel 1/2/3, alertes c(2,3),
+      # témoins c(1). FORDEAD : échelle 0-4.
       if (identical(source, "RECONFORT")) {
         shiny::checkboxGroupInput(
           ns("classes"),
@@ -87,23 +133,15 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
           # Ordre décroissant de sévérité : 4, 3, 2, 1.
           choices = stats::setNames(
             c("4", "3", "2", "1"),
-            local({
-              prefix <- if (identical(source, "FORDEAD"))
-                "validation_class_fordead_" else "validation_class_fast_"
-              c(i18n$t(paste0(prefix, "4")),
-                i18n$t(paste0(prefix, "3")),
-                i18n$t(paste0(prefix, "2")),
-                i18n$t(paste0(prefix, "1")))
-            })
+            c(i18n$t("validation_class_fordead_4"),
+              i18n$t("validation_class_fordead_3"),
+              i18n$t("validation_class_fordead_2"),
+              i18n$t("validation_class_fordead_1"))
           ),
           selected = c("3", "4"),
           inline = FALSE
         )
       },
-      # Classes used to draw control (témoin) plots — visually distinct
-      # from the alert `classes` above. Default 0 (healthy pixels) ; the
-      # server auto-relaxes to the lowest present class when the alert
-      # raster has no class-0 cell. RECONFORT : healthy = class 1.
       if (identical(source, "RECONFORT")) {
         shiny::checkboxGroupInput(
           ns("control_classes"),
@@ -131,10 +169,21 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         ns("seed"),
         label = i18n$t("validation_seed_label"),
         value = 42L, min = 0L, max = 1e6L, step = 1L
-      ),
+      )
+    )
+  }
+
+  bslib::layout_sidebar(
+    sidebar = bslib::sidebar(
+      width = 320,
+      title = i18n$t("validation_sampling_title"),
+
+      radio_ui,
+      param_ui,
       shiny::actionButton(
         ns("generate"),
-        label = i18n$t("validation_generate_btn"),
+        label = if (is_fast) i18n$t("validation_trend_generate_btn")
+                else i18n$t("validation_generate_btn"),
         icon  = shiny::icon("play"),
         class = "btn-primary mt-2"
       ),
@@ -282,8 +331,9 @@ mod_validation_sampling_server <- function(id, app_state,
       # FORDEAD/FAST) et ses libellés sont fixés statiquement à l'UI.
       # `.fast_class_labels()` ne connaît que FAST/FORDEAD (match.arg) et
       # réécrirait les choix sur c("3","4","1","2") — on saute donc cet
-      # observer pour RECONFORT.
-      if (identical(src, "RECONFORT")) return()
+      # observer pour RECONFORT. FAST utilise désormais le trend (spec 025)
+      # sans cases « classes » → on saute aussi.
+      if (identical(src, "RECONFORT") || identical(src, "FAST")) return()
       r    <- preview_raster_r()
       labels <- .fast_class_labels(r, source = src,
                                    mode = "count", i18n = i18n)
@@ -369,6 +419,8 @@ mod_validation_sampling_server <- function(id, app_state,
     # drawn at all. Fires once.
     auto_relax_done <- shiny::reactiveVal(FALSE)
     shiny::observe({
+      # FAST = trend (pas de masque catégoriel ni de cases témoins).
+      if (identical(current_source(), "FAST")) return()
       if (isTRUE(auto_relax_done())) return()
       dist <- class_distribution_r()
       if (is.null(dist)) return()
@@ -405,6 +457,48 @@ mod_validation_sampling_server <- function(id, app_state,
         return()
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
+
+      # ----- FAST = plan sanitaire branché sur le trend (spec 025) -------
+      # Pondération continue par |pente| ; pas de classes/témoins/tampon.
+      if (identical(current_source(), "FAST")) {
+        win <- input$trend_win
+        tm  <- input$trend_months %||% c(6L, 9L)
+        res <- tryCatch(
+          generate_trend_sanitary_plan(
+            con              = con,
+            project          = proj,
+            index            = input$trend_index %||% "NDRE",
+            n_plots          = as.integer(input$n_validation %||% 20L),
+            n_control        = as.integer(input$n_control %||% 5L),
+            date_from        = if (length(win) == 2L) win[1] else NULL,
+            date_to          = if (length(win) == 2L) win[2] else NULL,
+            months           = seq.int(as.integer(tm[1]), as.integer(tm[2])),
+            min_years        = as.integer(input$trend_min_years %||% 4L),
+            min_obs_per_year = as.integer(input$trend_min_obs %||% 2L),
+            alpha            = as.numeric(input$trend_alpha %||% 0.05),
+            seed             = as.integer(input$seed %||% 42L)
+          ),
+          error = function(e) e
+        )
+        if (inherits(res, "error")) {
+          plan_error(list(class = setdiff(class(res),
+                                          c("error", "condition")),
+                          message = conditionMessage(res)))
+          return()
+        }
+        plan_rv(res)
+        n_temoin <- tryCatch(
+          sum(as.character(res$type) == "Temoin", na.rm = TRUE),
+          error = function(e) 0L
+        )
+        if (as.integer(input$n_control %||% 5L) > 0L && n_temoin == 0L) {
+          shiny::showNotification(
+            i18n_r()$t("validation_no_control_warning"),
+            type = "warning", duration = 8
+          )
+        }
+        return()
+      }
 
       # spec 021 — RECONFORT : classes catégorielles 1/2/3 (alertes 2/3,
       # témoin 1) au lieu de l'échelle 0-4 FORDEAD/FAST. Les défauts
@@ -468,8 +562,12 @@ mod_validation_sampling_server <- function(id, app_state,
     # after the plan was generated — the toast hint is rendered in the
     # panel state.
     shiny::observe({
+      # Catégoriel (FORDEAD/RECONFORT) + trend (FAST) : on dépend des deux
+      # jeux d'inputs ; ceux absents dans un mode valent NULL (sans effet).
       input$source; input$n_validation; input$n_control;
       input$classes; input$control_classes; input$buffer_m; input$seed
+      input$trend_index; input$trend_win; input$trend_months
+      input$trend_min_years; input$trend_min_obs; input$trend_alpha
       # Only invalidate if a plan exists already.
       if (!is.null(plan_rv())) {
         plan_rv(NULL)
@@ -478,6 +576,8 @@ mod_validation_sampling_server <- function(id, app_state,
     }) |> shiny::bindEvent(
       input$source, input$n_validation, input$n_control,
       input$classes, input$control_classes, input$buffer_m, input$seed,
+      input$trend_index, input$trend_win, input$trend_months,
+      input$trend_min_years, input$trend_min_obs, input$trend_alpha,
       ignoreInit = TRUE
     )
 
@@ -516,19 +616,25 @@ mod_validation_sampling_server <- function(id, app_state,
       plan <- plan_rv()
 
       if (!is.null(err)) {
-        title_key <- if ("validation_empty_mask" %in% err$class) {
+        # FAST trend : aucun déclin significatif sur la fenêtre → message
+        # dédié (≠ « zone saine » du masque catégoriel count/rolling).
+        empty_trend <- "validation_empty_trend" %in% err$class
+        empty_mask  <- "validation_empty_mask" %in% err$class
+        title_key <- if (empty_trend) {
+          "validation_empty_trend_title"
+        } else if (empty_mask) {
           "validation_empty_mask_title"
-        } else if ("validation_no_mask" %in% err$class) {
-          "validation_no_mask_title"
         } else {
           "validation_no_mask_title"
         }
-        body_key <- if ("validation_empty_mask" %in% err$class) {
+        body_key <- if (empty_trend) {
+          "validation_empty_trend_body"
+        } else if (empty_mask) {
           "validation_empty_mask_body"
         } else {
           "validation_no_mask_body"
         }
-        css <- if ("validation_empty_mask" %in% err$class)
+        css <- if (empty_trend || empty_mask)
           "alert alert-success" else "alert alert-warning"
         return(htmltools::div(
           class = paste("p-4 m-3", css),
@@ -554,24 +660,49 @@ mod_validation_sampling_server <- function(id, app_state,
       i18n <- i18n_r()
 
       plan_ll <- sf::st_transform(plan, 4326)
-      colors <- c(Validation = "#2CA02C", Temoin = "#7F7F7F")
-      types  <- as.character(plan_ll$type)
-      types[!types %in% names(colors)] <- "Validation"
-      fill <- unname(colors[types])
       coords <- sf::st_coordinates(plan_ll)
+      types  <- as.character(plan_ll$type)
+      # FAST trend : plan sanitaire (source "FAST_TREND"), couleur continue
+      # par sévérité (|pente|) ; FORDEAD/RECONFORT : 2 couleurs catégorielles.
+      is_trend <- identical(as.character(plan_ll$source[1] %||% ""),
+                            "FAST_TREND")
 
-      popups <- vapply(seq_len(nrow(plan_ll)), function(i) {
-        sprintf("<strong>%s</strong><br/>%s — class %s<br/>visit_order: %d",
-                htmltools::htmlEscape(as.character(plan_ll$plot_id[i])),
-                htmltools::htmlEscape(types[i]),
-                htmltools::htmlEscape(as.character(
-                  plan_ll$alert_class[i] %||% NA)),
-                as.integer(plan_ll$visit_order[i] %||% NA))
-      }, character(1))
+      sev_pal <- NULL
+      if (is_trend) {
+        av <- suppressWarnings(as.numeric(plan_ll$alert_value))
+        av[is.na(av)] <- 0
+        sev_max <- max(av, 0, na.rm = TRUE)
+        sev_pal <- leaflet::colorNumeric(
+          c("#2CA02C", "#FFD27F", "#FF9933", "#D62728"),
+          domain = c(0, if (sev_max > 0) sev_max else 1)
+        )
+        is_temoin <- types == "Temoin"
+        fill <- ifelse(is_temoin, "#7F7F7F", sev_pal(av))
+        idx_lbl <- as.character(plan_ll$index[1] %||% "NDRE")
+        popups <- vapply(seq_len(nrow(plan_ll)), function(i) {
+          sprintf(
+            "<strong>%s</strong><br/>%s<br/>%s : %s",
+            htmltools::htmlEscape(as.character(plan_ll$plot_id[i])),
+            htmltools::htmlEscape(types[i]),
+            htmltools::htmlEscape(idx_lbl),
+            if (is_temoin[i]) "0" else sprintf("%+.4f /an", av[i])
+          )
+        }, character(1))
+      } else {
+        colors <- c(Validation = "#2CA02C", Temoin = "#7F7F7F")
+        types[!types %in% names(colors)] <- "Validation"
+        fill <- unname(colors[types])
+        popups <- vapply(seq_len(nrow(plan_ll)), function(i) {
+          sprintf("<strong>%s</strong><br/>%s — class %s<br/>visit_order: %d",
+                  htmltools::htmlEscape(as.character(plan_ll$plot_id[i])),
+                  htmltools::htmlEscape(types[i]),
+                  htmltools::htmlEscape(as.character(
+                    plan_ll$alert_class[i] %||% NA)),
+                  as.integer(plan_ll$visit_order[i] %||% NA))
+        }, character(1))
+      }
 
-      # v0.45.0 — overlay UGF (polygones bleu vif) au-dessus du
-      # raster d'alerte pour le repère spatial. Cohérent avec FAST
-      # alerts et Carte FAST.
+      # v0.45.0 — overlay UGF (polygones bleu vif) pour le repère spatial.
       ugf_4326 <- .ugf_for_overlay(app_state$current_project)
 
       m <- leaflet::leaflet() |>
@@ -583,18 +714,21 @@ mod_validation_sampling_server <- function(id, app_state,
           options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
 
-      # Optional : overlay the alert raster underneath the markers.
-      r <- alert_raster_r()
-      if (!is.null(r) && inherits(r, "SpatRaster") &&
-          terra::ncell(r) > 0L) {
-        r_show <- terra::ifel(r == 0, NA, r)
-        cats <- 0:4
-        cols <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
-        pal <- leaflet::colorFactor(cols, levels = cats,
-                                    na.color = "transparent")
-        m <- m |>
-          leaflet::addRasterImage(r_show, colors = pal, opacity = 0.55,
-                                  method = "ngb")
+      # Overlay du masque catégoriel sous les marqueurs — uniquement
+      # FORDEAD/RECONFORT (le plan trend ne repose pas sur un masque 0-4).
+      if (!is_trend) {
+        r <- alert_raster_r()
+        if (!is.null(r) && inherits(r, "SpatRaster") &&
+            terra::ncell(r) > 0L) {
+          r_show <- terra::ifel(r == 0, NA, r)
+          cats <- 0:4
+          cols <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
+          pal <- leaflet::colorFactor(cols, levels = cats,
+                                      na.color = "transparent")
+          m <- m |>
+            leaflet::addRasterImage(r_show, colors = pal, opacity = 0.55,
+                                    method = "ngb")
+        }
       }
 
       if (!is.null(ugf_4326)) {
@@ -609,21 +743,36 @@ mod_validation_sampling_server <- function(id, app_state,
           )
       }
 
-      m |>
+      m <- m |>
         leaflet::addCircleMarkers(
           lng = coords[, "X"], lat = coords[, "Y"],
           radius = 7, weight = 1, color = "#000",
           fillColor = fill, fillOpacity = 0.95,
           popup = popups
-        ) |>
-        leaflet::addLegend(
-          position = "bottomright",
-          colors   = unname(colors),
-          labels   = c(i18n$t("validation_legend_validation"),
-                       i18n$t("validation_legend_temoin")),
-          title    = NULL,
-          opacity  = 0.95
         )
+
+      if (is_trend) {
+        m |>
+          leaflet::addLegend(
+            position = "bottomright", pal = sev_pal, values = av,
+            title = sprintf(i18n$t("validation_trend_legend_title"), idx_lbl),
+            opacity = 0.95
+          ) |>
+          leaflet::addLegend(
+            position = "bottomright", colors = "#7F7F7F",
+            labels = i18n$t("validation_legend_temoin"), opacity = 0.95
+          )
+      } else {
+        m |>
+          leaflet::addLegend(
+            position = "bottomright",
+            colors   = unname(colors),
+            labels   = c(i18n$t("validation_legend_validation"),
+                         i18n$t("validation_legend_temoin")),
+            title    = NULL,
+            opacity  = 0.95
+          )
+      }
     })
 
     output$table_panel <- shiny::renderUI({
@@ -639,8 +788,8 @@ mod_validation_sampling_server <- function(id, app_state,
       if (is.null(plan)) return(NULL)
       df <- sf::st_drop_geometry(plan)
       keep <- intersect(
-        c("plot_id", "type", "alert_class", "visit_order",
-          "source", "source_run_id", "generated_at"),
+        c("plot_id", "type", "alert_value", "index", "alert_class",
+          "visit_order", "source", "source_run_id", "generated_at"),
         names(df)
       )
       DT::datatable(df[, keep, drop = FALSE], rownames = FALSE,

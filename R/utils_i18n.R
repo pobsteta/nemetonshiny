@@ -3226,6 +3226,51 @@ TRANSLATIONS <- list(
     fr = "Zone saine",
     en = "Healthy zone"
   ),
+  # --- Plan de validation FAST branché sur le trend (spec 025) ----------
+  validation_source_fast_trend = list(
+    fr = "FAST trend (NDRE)",
+    en = "FAST trend (NDRE)"
+  ),
+  validation_trend_index_label = list(
+    fr = "Indice",
+    en = "Index"
+  ),
+  validation_trend_window_label = list(
+    fr = "Fenêtre d'analyse",
+    en = "Analysis window"
+  ),
+  validation_trend_n_plots_label = list(
+    fr = "Placettes sanitaires",
+    en = "Sanitary plots"
+  ),
+  validation_trend_n_control_label = list(
+    fr = "Placettes témoins",
+    en = "Control plots"
+  ),
+  validation_trend_advanced_label = list(
+    fr = "Paramètres avancés",
+    en = "Advanced parameters"
+  ),
+  validation_trend_min_obs_label = list(
+    fr = "Observations min. / an",
+    en = "Min. observations / year"
+  ),
+  validation_trend_generate_btn = list(
+    fr = "Générer le plan sanitaire",
+    en = "Generate sanitary plan"
+  ),
+  validation_trend_legend_title = list(
+    fr = "Sévérité du déclin (|pente| %s/an)",
+    en = "Decline severity (|slope| %s/yr)"
+  ),
+  validation_empty_trend_title = list(
+    fr = "Aucun déclin significatif",
+    en = "No significant decline"
+  ),
+  validation_empty_trend_body = list(
+    fr = "Aucun déclin pluriannuel significatif sur la fenêtre d'analyse — rien à valider.",
+    en = "No significant pluriannual decline on the analysis window — nothing to validate."
+  ),
   validation_empty_mask_body = list(
     fr = "Aucune cellule d'alerte dans les classes retenues sur la fen\u00eatre courante \u2014 rien \u00e0 valider.",
     en = "No alert cell in the retained classes on the current window \u2014 nothing to validate."
