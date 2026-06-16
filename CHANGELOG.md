@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.86.2] - 2026-06-16
+
+### Changed
+
+- Plan de validation : cases « Classes d'alerte » affichées en ordre décroissant
+  de sévérité (4, 3, 2, 1) au lieu de 3, 4, 1, 2 (UI + refresh serveur). Sélection
+  par défaut inchangée (3, 4).
+
 ## [0.86.1] - 2026-06-16
 
 ### Fixed
