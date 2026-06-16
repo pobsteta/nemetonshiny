@@ -1,3 +1,31 @@
+# nemetonshiny 0.87.0 (2026-06-16)
+
+### Changed — Plan de validation FAST branché sur le trend (spec 025)
+
+Le sous-onglet **« Plan de validation FAST »** ne s'appuie plus sur le masque
+catégoriel count/rolling (qui renvoyait souvent « zone saine » car il ne
+capte pas le dépérissement chronique) mais sur le **trend** (déclin
+pluriannuel) via `nemeton::create_trend_sanitary_plan()` (≥ 0.88.0) :
+placettes **sanitaires** tirées avec une probabilité ∝ sévérité continue du
+déclin (|pente| Theil-Sen), + placettes **témoins** sur les zones stables.
+Option A pure : pondération continue, pas de classes 0-4, pas de TSP.
+
+- **Sidebar FAST refondue** : Indice (NDRE/NDMI), Fenêtre d'analyse
+  pluriannuelle, Placettes sanitaires, Placettes témoins, Graine, +
+  « Paramètres avancés » repliable (mois saison, années min, obs min/an,
+  alpha). **Retrait** des contrôles « Classes d'alerte », « Classes témoins »
+  et « Tampon » (sans objet en mode trend).
+- **Carte** : placettes colorées par sévérité continue (vert → rouge),
+  témoins en gris ; popup `plot_id` / type / `alert_value` ; légende sévérité.
+- **Aucun déclin significatif** → message dédié « rien à valider » (≠ « zone
+  saine »).
+- Cohérence : `alert_value` d'une placette == valeur pré-quartile du raster
+  trend au même pixel (clic carte → graphe trajectoire).
+
+FORDEAD et RECONFORT conservent leur plan catégoriel (masque + classes + TSP)
+inchangé. Statistique 100 % cœur ; l'app ne recalcule rien (règle 1).
+Plancher relevé à `nemeton (>= 0.88.0)`.
+
 # nemetonshiny 0.86.2 (2026-06-16)
 
 ### Changed — Plan de validation : classes d'alerte en ordre décroissant

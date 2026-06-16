@@ -128,6 +128,76 @@ generate_validation_plan <- function(con, project,
 }
 
 
+#' Generate a FAST trend sanitary sampling plan (spec 025, Option A)
+#'
+#' App-side wrapper around `nemeton::create_trend_sanitary_plan()` for the
+#' « Plan de validation FAST » sub-tab: sanitary plots weighted by the
+#' continuous decline severity (|Theil-Sen slope| of the pluriannual NDRE
+#' trend) + control plots on stable cells. No categorical classes, no buffer,
+#' no TSP — distinct from the count/rolling `generate_validation_plan()` path.
+#'
+#' @return sf POINT (EPSG:2154) with `plot_id`, `type` (Sanitaire/Temoin),
+#'   `alert_value`, `index`, `source` ("FAST_TREND"), `seed`, plus app
+#'   columns `zone_id`, `generated_at`. Raises the typed condition
+#'   `validation_empty_trend` when no significant decline is found.
+#' @noRd
+generate_trend_sanitary_plan <- function(con, project,
+                                         index = "NDRE",
+                                         n_plots = 20L, n_control = 5L,
+                                         date_from = NULL, date_to = NULL,
+                                         months = 6:9, min_years = 4L,
+                                         min_obs_per_year = 2L, alpha = 0.05,
+                                         seed = NULL) {
+  if (is.null(project) || is.null(project$id)) {
+    rlang::abort("No project loaded.", class = "validation_no_project")
+  }
+  zone_id_raw <- project$metadata$monitoring_zone_id
+  if (is.null(zone_id_raw) || !nzchar(as.character(zone_id_raw))) {
+    rlang::abort("Project has no monitoring zone.", class = "validation_no_zone")
+  }
+  zone_id <- suppressWarnings(as.integer(zone_id_raw))
+  if (is.na(zone_id)) {
+    rlang::abort("monitoring_zone_id is not an integer.",
+                 class = "validation_no_zone")
+  }
+  cd <- file.path(project$path, "cache", "layers", "sentinel2")
+  if (!dir.exists(cd)) {
+    rlang::abort("Sentinel-2 cache not found for this project.",
+                 class = "validation_no_mask")
+  }
+
+  plan <- tryCatch(
+    nemeton::create_trend_sanitary_plan(
+      con              = con,
+      zone_id          = zone_id,
+      date_from        = date_from,
+      date_to          = date_to,
+      cache_dir        = cd,
+      index            = index,
+      n_plots          = as.integer(n_plots),
+      n_control        = as.integer(n_control),
+      months           = months,
+      min_years        = as.integer(min_years),
+      min_obs_per_year = as.integer(min_obs_per_year),
+      alpha            = as.numeric(alpha),
+      seed             = seed
+    ),
+    error = function(e) {
+      # Garde-fou cœur : aucun déclin significatif (ou raster trend vide).
+      if (inherits(e, "nemeton_empty_alert_mask")) {
+        rlang::abort("No significant decline on the analysis window.",
+                     class = "validation_empty_trend", parent = e)
+      }
+      stop(e)
+    }
+  )
+
+  plan$zone_id      <- zone_id
+  plan$generated_at <- Sys.time()
+  plan
+}
+
+
 # Derive the zone polygon (EPSG:2154 sf POLYGON) for the validation
 # planner. Tries the on-disk monitoring DB lookup first (mirrors what
 # nemeton uses internally) and falls back to dissolving the project
