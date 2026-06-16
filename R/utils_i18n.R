@@ -2703,6 +2703,54 @@ TRANSLATIONS <- list(
     fr = "Plein \u00e9cran",
     en = "Fullscreen"
   ),
+  # --- Graphe de tendance par pixel (Alertes FAST, mode Tendance) -------
+  yes = list(fr = "oui", en = "yes"),
+  no  = list(fr = "non", en = "no"),
+  fast_trend_pixel_computing = list(
+    fr = "Calcul du graphique de tendance en cours\u2026",
+    en = "Computing the trend chart\u2026"
+  ),
+  fast_trend_pixel_no_data = list(
+    fr = "Aucune donn\u00e9e de tendance pour ce pixel (hors emprise, bandes manquantes ou ann\u00e9es insuffisantes).",
+    en = "No trend data for this pixel (out of bounds, missing bands or not enough years)."
+  ),
+  fast_trend_pixel_title_fmt = list(
+    fr = "Tendance %s \u2014 pixel (%s, %s)",
+    en = "%s trend \u2014 pixel (%s, %s)"
+  ),
+  fast_trend_pixel_xaxis = list(fr = "Ann\u00e9e", en = "Year"),
+  fast_trend_pixel_yaxis = list(
+    fr = "%s composite estival",
+    en = "%s summer composite"
+  ),
+  fast_trend_pixel_theilsen = list(
+    fr = "Tendance Theil-Sen",
+    en = "Theil-Sen trend"
+  ),
+  fast_trend_pixel_slope_fmt = list(
+    fr = "Pente : %s /an",
+    en = "Slope: %s /yr"
+  ),
+  fast_trend_pixel_pvalue_fmt = list(
+    fr = "p (Mann-Kendall) : %s",
+    en = "p (Mann-Kendall): %s"
+  ),
+  fast_trend_pixel_signif_fmt = list(
+    fr = "D\u00e9clin significatif : %s",
+    en = "Significant decline: %s"
+  ),
+  fast_trend_pixel_nyears_fmt = list(
+    fr = "Ann\u00e9es valides : %s",
+    en = "Valid years: %s"
+  ),
+  fast_trend_pixel_severity_fmt = list(
+    fr = "Classe de s\u00e9v\u00e9rit\u00e9 : %s",
+    en = "Severity class: %s"
+  ),
+  fast_trend_pixel_fullscreen = list(
+    fr = "Plein \u00e9cran",
+    en = "Fullscreen"
+  ),
   monitoring_pixel_map_scene_count_fmt = list(
     fr = "%d sc\u00e8nes disponibles dans le cache.",
     en = "%d scenes available in the cache."

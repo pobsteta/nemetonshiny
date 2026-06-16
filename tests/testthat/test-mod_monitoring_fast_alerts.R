@@ -209,3 +209,95 @@ test_that(".compute_fast_mask forwards index/threshold/mode to the core fn", {
   expect_true(captured$cache_result)         # always disk-caches
   expect_true(captured$parallel)
 })
+
+# ---------------------------------------------------------------------------
+# Clic carte (mode trend) → extract_pixel_trend() (graphe trend par pixel)
+# ---------------------------------------------------------------------------
+
+.fast_trend_test_project <- function() {
+  proj <- list(path = withr::local_tempdir(.local_envir = parent.frame()))
+  cd <- file.path(proj$path, "cache", "layers", "sentinel2")
+  dir.create(cd, recursive = TRUE)
+  sid <- "S2A_MSIL2A_20250610T103021_T31TGM"
+  dir.create(file.path(cd, sid))
+  file.create(file.path(cd, sid, "B05.tif"))
+  proj
+}
+
+test_that("trend-mode map click invokes extract_pixel_trend with xy/index", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("plotly")
+
+  captured <- new.env()
+  fake_res <- list(
+    index = "NDRE",
+    composites = data.frame(year = 2019:2024,
+                            value = c(0.55, 0.54, 0.50, 0.45, 0.40, 0.36)),
+    n_years = 6L, theil_sen_slope = -0.03, theil_sen_intercept = 60,
+    mann_kendall_p = 0.02, mann_kendall_tau = -0.7,
+    significant_decline = TRUE, alert_value = 0.03, enough_years = TRUE
+  )
+
+  testthat::with_mocked_bindings(
+    extract_pixel_trend = function(cache_dir, scenes_df, xy, crs = 4326,
+                                   index = "NDRE", ...) {
+      captured$xy    <- xy
+      captured$index <- index
+      captured$crs   <- crs
+      fake_res
+    },
+    .package = "nemeton",
+    {
+      proj <- .fast_trend_test_project()
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_fast_alerts_server,
+        args = list(
+          app_state    = shiny::reactiveValues(language = "fr",
+                                               current_project = proj),
+          zone_id_r    = shiny::reactive(""),  # court-circuite raster_r (pas de DB)
+          date_range_r = shiny::reactive(as.Date(c("2017-01-01", "2025-12-31"))),
+          thresholds_r = shiny::reactive(list(ndvi = 0.6, nbr = 0.5, ndmi = 0.2))
+        ),
+        {
+          session$setInputs(mode = "trend", index = "NDRE",
+                            trend_months = c(6L, 9L), trend_min_years = 4L,
+                            trend_alpha = 0.05,
+                            map_click = list(lat = 46.65, lng = 6.11))
+          session$flushReact()  # onFlushed exécute show_pixel_trend()
+          expect_equal(captured$xy, c(6.11, 46.65))  # (lng, lat)
+          expect_equal(captured$index, "NDRE")
+          expect_equal(captured$crs, 4326)
+        }
+      )
+    }
+  )
+})
+
+test_that("non-trend map click does NOT invoke extract_pixel_trend", {
+  skip_if_not_installed("shiny")
+
+  called <- new.env(); called$n <- 0L
+  testthat::with_mocked_bindings(
+    extract_pixel_trend = function(...) { called$n <- called$n + 1L; NULL },
+    .package = "nemeton",
+    {
+      proj <- .fast_trend_test_project()
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_fast_alerts_server,
+        args = list(
+          app_state    = shiny::reactiveValues(language = "fr",
+                                               current_project = proj),
+          zone_id_r    = shiny::reactive(""),
+          date_range_r = shiny::reactive(as.Date(c("2017-01-01", "2025-12-31"))),
+          thresholds_r = shiny::reactive(list(ndvi = 0.6, nbr = 0.5, ndmi = 0.2))
+        ),
+        {
+          session$setInputs(mode = "count", index = "NDVI",
+                            map_click = list(lat = 46.65, lng = 6.11))
+          session$flushReact()
+          expect_equal(called$n, 0L)  # ignoré hors mode trend
+        }
+      )
+    }
+  )
+})

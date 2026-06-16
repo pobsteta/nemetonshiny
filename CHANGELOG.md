@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.86.0] - 2026-06-16
+
+### Added
+
+- Alertes FAST (mode Tendance) : clic carte → modale « graphe de tendance par
+  pixel » : composites saisonniers annuels (NDRE/NDMI) + droite Theil-Sen
+  (rouge si déclin significatif) + annotations (pente, p Mann-Kendall, déclin
+  significatif, années valides, classe sévérité 0-4 lue au raster) + bouton
+  plein écran + notification « calcul en cours » (via `session$onFlushed`).
+  Statistique 100 % cœur (`nemeton::extract_pixel_trend`, cohérent avec le
+  raster) ; l'app ne recalcule rien.
+
+### Changed
+
+- Plancher `nemeton (>= 0.87.0)` (consommation de `extract_pixel_trend()`).
+
 ## [0.85.16] - 2026-06-16
 
 ### Added
