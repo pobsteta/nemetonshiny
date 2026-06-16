@@ -772,14 +772,16 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # Click handler: extract the per-pixel time series at the clicked
     # coordinate and pop a modal with NDVI + NBR superimposed.
     # v0.52.16 — plus de bail anti-marker (les markers ont disparu).
-    shiny::observeEvent(input$map_click, {
+    # v0.85.16 — flag « calcul en cours » : ignore les clics carte tant
+    # qu'un graphique pixel se calcule (évite les clics intempestifs).
+    pixel_computing <- shiny::reactiveVal(FALSE)
+
+    # Construit + affiche la modale du graphique pixel. Lourd (lit la
+    # valeur du pixel sur N scènes du cache) → appelé en DIFFÉRÉ par
+    # l'observateur de clic ci-dessous, pour que la notification « calcul
+    # en cours » s'affiche d'abord.
+    show_pixel_plot <- function(lat, lng, cd, sdf) {
       i18n <- i18n_r()
-      cd <- cache_dir_r()
-      sdf <- scenes_df_r()
-      if (is.null(cd) || is.null(sdf) || !nrow(sdf)) return()
-      lat <- input$map_click$lat
-      lng <- input$map_click$lng
-      if (is.null(lat) || is.null(lng)) return()
 
       ts <- tryCatch(
         nemeton::extract_pixel_timeseries(
@@ -932,27 +934,75 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       p <- plotly::config(p, responsive = TRUE)
 
       shiny::showModal(shiny::modalDialog(
-        title = sprintf(
-          i18n$t("monitoring_pixel_map_modal_title_fmt"),
-          round(lat, 5), round(lng, 5)
+        # Titre + bouton « plein écran » ancré en HAUT À DROITE (même
+        # pattern que la modale clés API / corpus RAG, mod_theia_config) :
+        # un petit JS bascule la classe BS5 `.modal-fullscreen` sur la
+        # `.modal-dialog` la plus proche — bord à bord, sans aller-retour
+        # serveur. Le plot remplit la zone (height 100% + plotly
+        # `responsive`) et grandit en plein écran via la règle CSS ci-bas.
+        title = htmltools::tagList(
+          htmltools::span(sprintf(
+            i18n$t("monitoring_pixel_map_modal_title_fmt"),
+            round(lat, 5), round(lng, 5)
+          )),
+          htmltools::tags$button(
+            type = "button",
+            class = "btn btn-sm btn-outline-secondary",
+            style = paste("position: absolute; top: 0.75rem;",
+                          "right: 0.75rem; z-index: 2;"),
+            title = i18n$t("monitoring_pixel_map_fullscreen"),
+            onclick = paste0(
+              "this.closest('.modal-dialog')",
+              ".classList.toggle('modal-fullscreen');"),
+            bsicons::bs_icon("arrows-fullscreen")
+          )
         ),
         size  = "l",
         easyClose = TRUE,
-        # `full_screen = TRUE` : bouton « plein écran » (icône d'expansion
-        # bslib, au survol en haut à droite de la carte) — même mécanisme
-        # que les cartes Leaflet de l'app. Le plot remplit la carte
-        # (height 100%) et se redimensionne en plein écran via `responsive`.
-        bslib::card(
-          full_screen = TRUE,
-          height = "340px",
-          bslib::card_body(
-            padding = 0,
-            plotly::plotlyOutput(session$ns("pixel_ts_plot"), height = "100%")
-          )
-        ),
-        footer = shiny::modalButton(i18n$t("close"))
+        footer = shiny::modalButton(i18n$t("close")),
+        htmltools::tags$style(htmltools::HTML(
+          ".modal-fullscreen .pixel-ts-wrap{height:calc(100vh - 140px) !important;}"
+        )),
+        htmltools::div(
+          class = "pixel-ts-wrap",
+          style = "height: 60vh;",
+          plotly::plotlyOutput(session$ns("pixel_ts_plot"), height = "100%")
+        )
       ))
       output$pixel_ts_plot <- plotly::renderPlotly(p)
+      invisible(NULL)
+    }
+
+    shiny::observeEvent(input$map_click, {
+      # Garde anti-multi-clics : on ignore tout nouveau clic tant que le
+      # graphique précédent n'a pas fini de se calculer.
+      if (isTRUE(shiny::isolate(pixel_computing()))) return()
+      lat <- input$map_click$lat
+      lng <- input$map_click$lng
+      if (is.null(lat) || is.null(lng)) return()
+      cd  <- cache_dir_r()
+      sdf <- scenes_df_r()
+      if (is.null(cd) || is.null(sdf) || !nrow(sdf)) return()
+
+      notif_id <- session$ns("pixel_computing")
+      pixel_computing(TRUE)
+      # Message bas-droite « calcul en cours » affiché TOUT DE SUITE.
+      shiny::showNotification(
+        i18n_r()$t("monitoring_pixel_map_computing"),
+        id = notif_id, type = "message", duration = NULL
+      )
+      # Calcul APRÈS le flush courant (`onFlushed`) : la notification part
+      # au client AVANT le calcul lourd (un observateur synchrone ne flush
+      # l'UI qu'à sa sortie), et le flag `pixel_computing` bloque les clics
+      # intempestifs entre-temps. `isolate` car onFlushed s'exécute hors
+      # consommateur réactif.
+      session$onFlushed(function() {
+        on.exit({
+          shiny::removeNotification(notif_id, session = session)
+          shiny::isolate(pixel_computing(FALSE))
+        }, add = TRUE)
+        shiny::isolate(show_pixel_plot(lat, lng, cd, sdf))
+      }, once = TRUE)
     })
 
     # v0.46.3 — force le rendu même quand l'onglet est masqué.

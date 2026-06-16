@@ -858,11 +858,14 @@ test_that("metadata restore updates the mode + threshold from current_project", 
         nemetonshiny:::mod_monitoring_server,
         args = list(app_state = app_state),
         {
-          # The observer dispatches updateRadioButtons / updateSlider
-          # / updateSelect / updateDateRange. We only verify that no
-          # error was raised and the returned list is intact (Shiny
-          # update*Input messages aren't queryable from testServer
-          # without a reactive event handler hooking them).
+          # The restore observer dispatches updateSlider / updateSelect
+          # / updateDateRange for the FORDEAD params. Since v0.85.16 the
+          # `monitoring_mode` is intentionally NOT restored (the tab always
+          # opens on the default "quick" / Diagnostic FAST), even though it
+          # is present in the metadata above. We only verify that no error
+          # was raised and the returned list is intact (Shiny update*Input
+          # messages aren't queryable from testServer without a reactive
+          # event handler hooking them).
           expect_true(is.function(session$returned$validity))
         }
       )

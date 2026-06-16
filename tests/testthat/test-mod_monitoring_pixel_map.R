@@ -208,6 +208,9 @@ test_that("map_click invokes extract_pixel_timeseries with lat/lng", {
             map_click = list(lat = 47.5, lng = 4.5)
           )
           session$flushReact()
+          # v0.85.16 — le calcul du graphique pixel est différé après le
+          # flush (session$onFlushed) pour afficher d'abord la notification
+          # « calcul en cours » ; onFlushed s'exécute pendant flushReact().
           expect_equal(captured$xy, c(4.5, 47.5))   # (lng, lat)
           expect_equal(captured$crs, 4326)
           # NDMI ajouté v0.71.0 : extract_pixel_timeseries reçoit 3 indices.
