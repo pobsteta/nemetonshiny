@@ -1,3 +1,19 @@
+# nemetonshiny 0.85.14 (2026-06-15)
+
+### Fixed — Alertes FAST : message d'erreur réel du raster (au lieu du générique)
+
+Quand le calcul d'un raster d'alerte **échoue** (le cœur lève une erreur),
+le bandeau affichait systématiquement le message générique « aucune scène
+cachée ne porte les bandes de cet indice » — qui **écrasait** la vraie
+erreur (un 2ᵉ setter masquait le 1ᵉʳ). On voyait donc « bandes manquantes »
+même quand les bandes étaient présentes et que l'échec venait d'ailleurs
+(ex. `[mosaic] resolution does not match` sur un cache multi-tuiles MGRS).
+
+Désormais : le message générique « aucune scène » n'est affiché que si le
+cœur renvoie un résultat vide **sans lever d'erreur** ; en cas d'erreur, le
+**vrai message** (`NDRE : [mosaic] resolution does not match`, etc.) est
+conservé et affiché. Diagnostic bien plus utile.
+
 # nemetonshiny 0.85.13 (2026-06-15)
 
 ### Changed — Alertes FAST : pré-calcul des deux rasters de Tendance
