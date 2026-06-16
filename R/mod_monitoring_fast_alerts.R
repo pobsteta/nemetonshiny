@@ -637,9 +637,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
             style = paste("position: absolute; top: 0.75rem;",
                           "right: 0.75rem; z-index: 2;"),
             title = i18n$t("fast_trend_pixel_fullscreen"),
+            # Toggle plein écran + `resize` différé : plotly (responsive)
+            # n'écoute que window.resize ; sans cet événement, le graphe
+            # garde sa taille initiale et ne remplit pas l'écran agrandi.
             onclick = paste0(
-              "this.closest('.modal-dialog')",
-              ".classList.toggle('modal-fullscreen');"),
+              "this.closest('.modal-dialog').classList.toggle('modal-fullscreen');",
+              "setTimeout(function(){window.dispatchEvent(new Event('resize'));},250);"),
             bsicons::bs_icon("arrows-fullscreen")
           )
         ),
