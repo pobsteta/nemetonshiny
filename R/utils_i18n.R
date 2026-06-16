@@ -2695,6 +2695,14 @@ TRANSLATIONS <- list(
     fr = "Aucune donn\u00e9e pour ce pixel (hors emprise ou bandes manquantes).",
     en = "No data for this pixel (out of bounds or missing bands)."
   ),
+  monitoring_pixel_map_computing = list(
+    fr = "Calcul du graphique pixel en cours\u2026",
+    en = "Computing the pixel chart\u2026"
+  ),
+  monitoring_pixel_map_fullscreen = list(
+    fr = "Plein \u00e9cran",
+    en = "Fullscreen"
+  ),
   monitoring_pixel_map_scene_count_fmt = list(
     fr = "%d sc\u00e8nes disponibles dans le cache.",
     en = "%d scenes available in the cache."

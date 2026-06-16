@@ -611,13 +611,18 @@ mod_monitoring_server <- function(id, app_state) {
     # ----- Restore monitoring config from project metadata ----------
     # Fires whenever the user opens a project. Mirrors the persistence
     # in .invoke_fordead() (and mode/threshold changes via the sidebar).
+    #
+    # v0.85.16 — On NE restaure PLUS `monitoring_mode` : l'onglet Suivi
+    # sanitaire ouvre toujours sur le mode par défaut « Diagnostic FAST »
+    # (`quick`, cf. radioButtons `selected = "quick"`), quel que soit le
+    # dernier mode persisté du projet (la plupart des projets ayant lancé
+    # FORDEAD avaient `health` persisté → ouverture systématique sur
+    # FORDEAD, non désirée). L'utilisateur bascule sur FORDEAD à la
+    # demande. Les autres réglages (seuils, indice, dates FORDEAD) restent
+    # restaurés ci-dessous.
     shiny::observe({
       m <- app_state$current_project$metadata
       if (is.null(m)) return()
-      if (!is.null(m$monitoring_mode)) {
-        shiny::updateRadioButtons(session, "mode",
-                                  selected = m$monitoring_mode)
-      }
       if (!is.null(m$monitoring_threshold_anomaly)) {
         shiny::updateSliderInput(session, "threshold_anomaly",
                                  value = as.numeric(m$monitoring_threshold_anomaly))
