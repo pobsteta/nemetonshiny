@@ -927,6 +927,9 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         shapes = if (length(shapes)) shapes else NULL,
         annotations = if (length(annotations)) annotations else NULL
       )
+      # `responsive` : le plot se redimensionne quand son conteneur change
+      # de taille — nécessaire pour le mode plein écran de la carte ci-dessous.
+      p <- plotly::config(p, responsive = TRUE)
 
       shiny::showModal(shiny::modalDialog(
         title = sprintf(
@@ -935,8 +938,18 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         ),
         size  = "l",
         easyClose = TRUE,
-        plotly::plotlyOutput(session$ns("pixel_ts_plot"),
-                             height = "320px"),
+        # `full_screen = TRUE` : bouton « plein écran » (icône d'expansion
+        # bslib, au survol en haut à droite de la carte) — même mécanisme
+        # que les cartes Leaflet de l'app. Le plot remplit la carte
+        # (height 100%) et se redimensionne en plein écran via `responsive`.
+        bslib::card(
+          full_screen = TRUE,
+          height = "340px",
+          bslib::card_body(
+            padding = 0,
+            plotly::plotlyOutput(session$ns("pixel_ts_plot"), height = "100%")
+          )
+        ),
         footer = shiny::modalButton(i18n$t("close"))
       ))
       output$pixel_ts_plot <- plotly::renderPlotly(p)
