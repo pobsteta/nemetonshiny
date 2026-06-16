@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.86.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.86.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.86.1" id="nemetonshiny-0861-2026-06-16">nemetonshiny 0.86.1 (2026-06-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0861-2026-06-16"></a></h2>
+<div class="section level4">
+<h4 id="fix--plein-écran--le-graphe-remplit-désormais-tout-lécran-0-86-1">Fix — Plein écran : le graphe remplit désormais tout l’écran<a class="anchor" aria-label="anchor" href="#fix--plein-%C3%A9cran--le-graphe-remplit-d%C3%A9sormais-tout-l%C3%A9cran-0-86-1"></a></h4>
+<p>En plein écran, le graphe plotly (graphe trend par pixel des Alertes FAST, et graphe Pixel de la Carte FAST) restait à sa taille initiale (~600 px) au lieu de remplir l’écran : basculer la classe CSS <code>.modal-fullscreen</code> ne déclenche pas d’événement <code>resize</code>, et plotly (<code>responsive</code>) n’écoute que <code>window.resize</code>. Le bouton plein écran émet maintenant un <code>window.resize</code> (différé) après le toggle → le graphe se redimensionne pour occuper toute la modale agrandie (largeur + hauteur).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.86.0" id="nemetonshiny-0860-2026-06-16">nemetonshiny 0.86.0 (2026-06-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0860-2026-06-16"></a></h2>
 <div class="section level4">

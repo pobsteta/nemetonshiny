@@ -1,5 +1,17 @@
 # Changelog
 
+## nemetonshiny 0.86.1 (2026-06-16)
+
+#### Fix — Plein écran : le graphe remplit désormais tout l’écran
+
+En plein écran, le graphe plotly (graphe trend par pixel des Alertes
+FAST, et graphe Pixel de la Carte FAST) restait à sa taille initiale
+(~600 px) au lieu de remplir l’écran : basculer la classe CSS
+`.modal-fullscreen` ne déclenche pas d’événement `resize`, et plotly
+(`responsive`) n’écoute que `window.resize`. Le bouton plein écran émet
+maintenant un `window.resize` (différé) après le toggle → le graphe se
+redimensionne pour occuper toute la modale agrandie (largeur + hauteur).
+
 ## nemetonshiny 0.86.0 (2026-06-16)
 
 #### Added — Alertes FAST : graphe de tendance NDRE par pixel au clic
