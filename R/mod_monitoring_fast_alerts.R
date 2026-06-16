@@ -326,6 +326,30 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       cd
     })
 
+    # Inventaire disque des scènes S2 cachées (scene_id + obs_date), requis
+    # par `nemeton::extract_pixel_trend()` au clic. Même logique que la Carte
+    # FAST (mod_monitoring_pixel_map) ; on réutilise le helper package-interne
+    # `.pixel_scene_date_from_id`.
+    scenes_df_r <- shiny::reactive({
+      refresh_r()
+      cd <- cache_dir_r()
+      if (is.null(cd) || !dir.exists(cd)) return(NULL)
+      dirs <- list.dirs(cd, recursive = FALSE, full.names = FALSE)
+      if (!length(dirs)) return(NULL)
+      populated <- vapply(dirs, function(s) {
+        any(grepl("\\.tif$", list.files(file.path(cd, s))))
+      }, logical(1))
+      dirs <- dirs[populated]
+      if (!length(dirs)) return(NULL)
+      obs_date <- vapply(dirs, .pixel_scene_date_from_id, character(1))
+      keep <- !is.na(obs_date)
+      if (!any(keep)) return(NULL)
+      out <- data.frame(scene_id = dirs[keep],
+                        obs_date = as.Date(obs_date[keep]),
+                        stringsAsFactors = FALSE)
+      out[order(out$obs_date), , drop = FALSE]
+    })
+
     raster_r <- shiny::reactive({
       refresh_r()
       zone <- zone_id_r()
@@ -498,6 +522,178 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         }
       }, delay = 0.4)
     }) |> shiny::bindEvent(trend_prewarm_trigger())
+
+    # ===== Clic carte (mode trend) → graphe de tendance par pixel ======
+    # En mode Tendance, un clic sur la carte ouvre une modale montrant,
+    # pour le pixel cliqué, les composites saisonniers annuels de l'indice
+    # + la droite Theil-Sen + la significativité — i.e. POURQUOI ce pixel a
+    # cette couleur. Toute la statistique vient du cœur
+    # (`nemeton::extract_pixel_trend`, garanti cohérent avec le raster) ;
+    # l'app ne recalcule rien (règle 1).
+    pixel_trend_computing <- shiny::reactiveVal(FALSE)
+
+    # Sévérité 0-4 du pixel : lue directement dans le raster mask affiché
+    # (les quartiles sont zone-wide → non recalculables au pixel).
+    .severity_at <- function(rast, lng, lat) {
+      if (is.null(rast)) return(NA_integer_)
+      tryCatch({
+        pt <- sf::st_sf(geometry = sf::st_sfc(sf::st_point(c(lng, lat)),
+                                              crs = 4326))
+        pt <- sf::st_transform(pt, terra::crs(rast))
+        v <- terra::extract(rast, terra::vect(pt))
+        as.integer(v[1, 2])
+      }, error = function(e) NA_integer_)
+    }
+
+    # Construit + affiche la modale du graphe trend. Lourd (lit la valeur du
+    # pixel sur N scènes) → appelé en différé (onFlushed) par l'observateur
+    # de clic, pour afficher d'abord la notification « calcul en cours ».
+    show_pixel_trend <- function(lng, lat, cd, sdf, idx, months_v,
+                                 min_years_v, alpha_v, rast) {
+      i18n <- i18n_r()
+      res <- tryCatch(
+        nemeton::extract_pixel_trend(
+          cache_dir = cd, scenes_df = sdf, xy = c(lng, lat), crs = 4326,
+          index = idx, months = months_v, min_years = min_years_v,
+          alpha = alpha_v
+        ),
+        error = function(e) {
+          cli::cli_alert_warning("extract_pixel_trend failed: {conditionMessage(e)}")
+          NULL
+        }
+      )
+      if (is.null(res) || is.null(res$composites) ||
+          !any(!is.na(res$composites$value))) {
+        shiny::showNotification(
+          i18n$t("fast_trend_pixel_no_data"), type = "warning", duration = 5
+        )
+        return(invisible(NULL))
+      }
+
+      comp   <- res$composites[!is.na(res$composites$value), , drop = FALSE]
+      enough <- isTRUE(res$enough_years)
+      signif <- isTRUE(res$significant_decline)
+      sev    <- .severity_at(rast, lng, lat)
+
+      p <- plotly::plot_ly()
+      p <- plotly::add_trace(
+        p, x = comp$year, y = comp$value, type = "scatter",
+        mode = "lines+markers", name = idx,
+        line = list(color = "#1B6B1B", width = 1.5),
+        marker = list(color = "#1B6B1B", size = 6),
+        hovertemplate = paste0("%{x}<br>", idx, " = %{y:.3f}<extra></extra>")
+      )
+      # Droite Theil-Sen (seulement si assez d'années) — rouge si déclin
+      # significatif, gris sinon.
+      if (enough && !is.na(res$theil_sen_slope)) {
+        line_col <- if (signif) "#C0392B" else "#7F7F7F"
+        yfit <- res$theil_sen_intercept + res$theil_sen_slope * comp$year
+        p <- plotly::add_trace(
+          p, x = comp$year, y = yfit, type = "scatter", mode = "lines",
+          name = i18n$t("fast_trend_pixel_theilsen"),
+          line = list(color = line_col, width = 2, dash = "dash"),
+          hoverinfo = "skip"
+        )
+      }
+      p <- plotly::layout(
+        p,
+        margin = list(t = 20, b = 40, l = 50, r = 10),
+        xaxis  = list(title = i18n$t("fast_trend_pixel_xaxis"), dtick = 1),
+        yaxis  = list(title = sprintf(i18n$t("fast_trend_pixel_yaxis"), idx)),
+        legend = list(orientation = "h", y = -0.25),
+        showlegend = TRUE
+      )
+      p <- plotly::config(p, responsive = TRUE)
+
+      # Bandeau d'annotations sous le titre (pente / p / significativité /
+      # années / classe sévérité).
+      slope_txt <- if (is.na(res$theil_sen_slope)) "–" else
+        sprintf("%+.4f", res$theil_sen_slope)
+      p_txt <- if (is.na(res$mann_kendall_p)) "–" else
+        sprintf("%.3f", res$mann_kendall_p)
+      sev_txt <- if (is.na(sev)) "–" else as.character(sev)
+      info <- htmltools::div(
+        class = "small text-muted mb-2 d-flex flex-wrap gap-3",
+        htmltools::span(sprintf(i18n$t("fast_trend_pixel_slope_fmt"), slope_txt)),
+        htmltools::span(sprintf(i18n$t("fast_trend_pixel_pvalue_fmt"), p_txt)),
+        htmltools::span(
+          class = if (signif) "badge text-bg-danger" else "badge text-bg-secondary",
+          sprintf(i18n$t("fast_trend_pixel_signif_fmt"),
+                  if (signif) i18n$t("yes") else i18n$t("no"))
+        ),
+        htmltools::span(sprintf(i18n$t("fast_trend_pixel_nyears_fmt"), res$n_years)),
+        htmltools::span(sprintf(i18n$t("fast_trend_pixel_severity_fmt"), sev_txt))
+      )
+
+      shiny::showModal(shiny::modalDialog(
+        title = htmltools::tagList(
+          htmltools::span(sprintf(
+            i18n$t("fast_trend_pixel_title_fmt"), idx,
+            round(lat, 5), round(lng, 5)
+          )),
+          htmltools::tags$button(
+            type = "button",
+            class = "btn btn-sm btn-outline-secondary",
+            style = paste("position: absolute; top: 0.75rem;",
+                          "right: 0.75rem; z-index: 2;"),
+            title = i18n$t("fast_trend_pixel_fullscreen"),
+            onclick = paste0(
+              "this.closest('.modal-dialog')",
+              ".classList.toggle('modal-fullscreen');"),
+            bsicons::bs_icon("arrows-fullscreen")
+          )
+        ),
+        size = "l", easyClose = TRUE,
+        footer = shiny::modalButton(i18n$t("close")),
+        info,
+        htmltools::tags$style(htmltools::HTML(
+          ".modal-fullscreen .fast-trend-wrap{height:calc(100vh - 170px) !important;}"
+        )),
+        htmltools::div(
+          class = "fast-trend-wrap", style = "height: 55vh;",
+          plotly::plotlyOutput(session$ns("pixel_trend_plot"), height = "100%")
+        )
+      ))
+      output$pixel_trend_plot <- plotly::renderPlotly(p)
+      invisible(NULL)
+    }
+
+    shiny::observeEvent(input$map_click, {
+      # Uniquement en mode Tendance (les composites/Theil-Sen n'ont de sens
+      # qu'en trend) ; et garde anti-multi-clics pendant le calcul.
+      if (!identical(input$mode %||% "count", "trend")) return()
+      if (isTRUE(shiny::isolate(pixel_trend_computing()))) return()
+      lat <- input$map_click$lat
+      lng <- input$map_click$lng
+      if (is.null(lat) || is.null(lng)) return()
+      cd  <- cache_dir_r()
+      sdf <- scenes_df_r()
+      if (is.null(cd) || is.null(sdf) || !nrow(sdf)) return()
+
+      idx <- input$index %||% .fast_index_default("trend")
+      tm  <- input$trend_months %||% c(6L, 9L)
+      months_v    <- seq.int(as.integer(tm[1]), as.integer(tm[2]))
+      min_years_v <- as.integer(input$trend_min_years %||% 4L)
+      alpha_v     <- as.numeric(input$trend_alpha %||% 0.05)
+      rast <- raster_r()
+
+      notif_id <- session$ns("pixel_trend_computing")
+      pixel_trend_computing(TRUE)
+      shiny::showNotification(
+        i18n_r()$t("fast_trend_pixel_computing"),
+        id = notif_id, type = "message", duration = NULL
+      )
+      # onFlushed : la notif part au client AVANT le calcul lourd (un
+      # observateur synchrone ne flush qu'à sa sortie).
+      session$onFlushed(function() {
+        on.exit({
+          shiny::removeNotification(notif_id, session = session)
+          shiny::isolate(pixel_trend_computing(FALSE))
+        }, add = TRUE)
+        shiny::isolate(show_pixel_trend(lng, lat, cd, sdf, idx, months_v,
+                                        min_years_v, alpha_v, rast))
+      }, once = TRUE)
+    })
 
     # ----- Banner : seul ce slot re-render selon raster_r() ----------
     # v0.46.3 — la carte (OSM + UGFs) est désormais affichée même

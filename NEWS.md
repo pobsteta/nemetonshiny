@@ -1,3 +1,25 @@
+# nemetonshiny 0.86.0 (2026-06-16)
+
+### Added — Alertes FAST : graphe de tendance NDRE par pixel au clic
+
+En mode **Tendance** de l'onglet **Alertes FAST**, un clic sur la carte ouvre
+une modale montrant, pour le pixel cliqué, **pourquoi il a cette couleur** :
+
+- **Composites saisonniers annuels** de l'indice (NDRE par défaut, NDMI
+  possible) — les valeurs exactes utilisées par le cœur — en points.
+- **Droite Theil-Sen** superposée (rouge si déclin significatif, gris sinon),
+  tracée uniquement si assez d'années valides.
+- **Annotations** : pente (indice/an), p-value Mann-Kendall, badge « déclin
+  significatif oui/non », nombre d'années valides, et la **classe de sévérité
+  0-4** (lue directement dans le raster mask affiché — non recalculée).
+- Bouton **plein écran** en en-tête de modale (toggle `.modal-fullscreen`).
+- **Notification « calcul en cours »** immédiate + garde anti-multi-clics
+  (calcul déclenché via `session$onFlushed`).
+
+Toute la statistique vient du cœur `nemeton::extract_pixel_trend()` (≥ 0.87.0),
+garanti cohérent avec le raster (`alert_value` == valeur pré-quartile du pixel) :
+l'app ne recalcule rien (règle 1). Plancher relevé à `nemeton (>= 0.87.0)`.
+
 # nemetonshiny 0.85.16 (2026-06-16)
 
 ### Changed — Suivi sanitaire : mode par défaut « Diagnostic FAST »
