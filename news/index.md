@@ -1,5 +1,15 @@
 # Changelog
 
+## nemetonshiny 0.86.2 (2026-06-16)
+
+#### Changed — Plan de validation : classes d’alerte en ordre décroissant
+
+Dans le plan de validation (Alertes/Carte FAST + FORDEAD), les cases à
+cocher « Classes d’alerte » s’affichent désormais en **ordre décroissant
+de sévérité (4, 3, 2, 1)** au lieu de `3, 4, 1, 2`. Sélection par défaut
+inchangée (3 et 4). Corrigé à la fois dans l’UI et dans le
+rafraîchissement serveur des libellés (`updateCheckboxGroupInput`).
+
 ## nemetonshiny 0.86.1 (2026-06-16)
 
 #### Fix — Plein écran : le graphe remplit désormais tout l’écran
