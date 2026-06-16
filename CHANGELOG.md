@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.85.14\] - 2026-06-15
+
+### Fixed
+
+- Alertes FAST : le bandeau d’erreur affichait toujours le message
+  générique « aucune scène ne porte les bandes » même quand le calcul du
+  raster échouait pour une autre raison (le message générique écrasait
+  la vraie erreur). Le vrai message cœur (ex.
+  `[mosaic] resolution does not match`) est désormais conservé et
+  affiché ; le générique n’apparaît que sur un résultat vide sans
+  erreur.
+
 ## \[0.85.13\] - 2026-06-15
 
 ### Changed

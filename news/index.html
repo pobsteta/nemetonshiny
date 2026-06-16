@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.13</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.14</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.85.14" id="nemetonshiny-08514-2026-06-15">nemetonshiny 0.85.14 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08514-2026-06-15"></a></h2>
+<div class="section level4">
+<h4 id="fixed--alertes-fast--message-derreur-réel-du-raster-au-lieu-du-générique-0-85-14">Fixed — Alertes FAST : message d’erreur réel du raster (au lieu du générique)<a class="anchor" aria-label="anchor" href="#fixed--alertes-fast--message-derreur-r%C3%A9el-du-raster-au-lieu-du-g%C3%A9n%C3%A9rique-0-85-14"></a></h4>
+<p>Quand le calcul d’un raster d’alerte <strong>échoue</strong> (le cœur lève une erreur), le bandeau affichait systématiquement le message générique « aucune scène cachée ne porte les bandes de cet indice » — qui <strong>écrasait</strong> la vraie erreur (un 2ᵉ setter masquait le 1ᵉʳ). On voyait donc « bandes manquantes » même quand les bandes étaient présentes et que l’échec venait d’ailleurs (ex. <code>[mosaic] resolution does not match</code> sur un cache multi-tuiles MGRS).</p>
+<p>Désormais : le message générique « aucune scène » n’est affiché que si le cœur renvoie un résultat vide <strong>sans lever d’erreur</strong> ; en cas d’erreur, le <strong>vrai message</strong> (<code>NDRE : [mosaic] resolution does not match</code>, etc.) est conservé et affiché. Diagnostic bien plus utile.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.13" id="nemetonshiny-08513-2026-06-15">nemetonshiny 0.85.13 (2026-06-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08513-2026-06-15"></a></h2>
 <div class="section level4">
