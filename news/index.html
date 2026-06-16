@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.85.16</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.86.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,23 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.86.0" id="nemetonshiny-0860-2026-06-16">nemetonshiny 0.86.0 (2026-06-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0860-2026-06-16"></a></h2>
+<div class="section level4">
+<h4 id="added--alertes-fast--graphe-de-tendance-ndre-par-pixel-au-clic-0-86-0">Added — Alertes FAST : graphe de tendance NDRE par pixel au clic<a class="anchor" aria-label="anchor" href="#added--alertes-fast--graphe-de-tendance-ndre-par-pixel-au-clic-0-86-0"></a></h4>
+<p>En mode <strong>Tendance</strong> de l’onglet <strong>Alertes FAST</strong>, un clic sur la carte ouvre une modale montrant, pour le pixel cliqué, <strong>pourquoi il a cette couleur</strong> :</p>
+<ul><li>
+<strong>Composites saisonniers annuels</strong> de l’indice (NDRE par défaut, NDMI possible) — les valeurs exactes utilisées par le cœur — en points.</li>
+<li>
+<strong>Droite Theil-Sen</strong> superposée (rouge si déclin significatif, gris sinon), tracée uniquement si assez d’années valides.</li>
+<li>
+<strong>Annotations</strong> : pente (indice/an), p-value Mann-Kendall, badge « déclin significatif oui/non », nombre d’années valides, et la <strong>classe de sévérité 0-4</strong> (lue directement dans le raster mask affiché — non recalculée).</li>
+<li>Bouton <strong>plein écran</strong> en en-tête de modale (toggle <code>.modal-fullscreen</code>).</li>
+<li>
+<strong>Notification « calcul en cours »</strong> immédiate + garde anti-multi-clics (calcul déclenché via <code>session$onFlushed</code>).</li>
+</ul><p>Toute la statistique vient du cœur <code><a href="https://pobsteta.github.io/nemeton/reference/extract_pixel_trend.html" class="external-link">nemeton::extract_pixel_trend()</a></code> (≥ 0.87.0), garanti cohérent avec le raster (<code>alert_value</code> == valeur pré-quartile du pixel) : l’app ne recalcule rien (règle 1). Plancher relevé à <code>nemeton (&gt;= 0.87.0)</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.85.16" id="nemetonshiny-08516-2026-06-16">nemetonshiny 0.85.16 (2026-06-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-08516-2026-06-16"></a></h2>
 <div class="section level4">
