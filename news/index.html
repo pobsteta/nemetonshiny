@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.87.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.88.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.88.0" id="nemetonshiny-0880-2026-06-17">nemetonshiny 0.88.0 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0880-2026-06-17"></a></h2>
+<div class="section level4">
+<h4 id="added--graphe--série-pixel--lissé-spec-0-88-0">Added — Graphe « série pixel » lissé (spec 026)<a class="anchor" aria-label="anchor" href="#added--graphe--s%C3%A9rie-pixel--liss%C3%A9-spec-0-88-0"></a></h4>
+<p>Le graphe de série temporelle par pixel (modale au clic sur la Carte FAST) ne relie plus chaque acquisition par des segments (dents de scie dues au bruit nuageux / acquisitions irrégulières). Désormais, par indice (NDVI/NBR/NDMI) :</p>
+<ul><li>
+<strong>Points bruts estompés</strong> (marqueurs seuls, taille 4, opacité 0,35, sans ligne).</li>
+<li>
+<strong>Courbe lissée</strong> opaque (ligne, épaisseur 2, <code>connectgaps = FALSE</code>), via le helper cœur <code><a href="https://pobsteta.github.io/nemeton/reference/smooth_pixel_series.html" class="external-link">nemeton::smooth_pixel_series()</a></code> (≥ 0.90.0) — médiane glissante par défaut.</li>
+<li>Contrôles dans la modale : <strong>fenêtre de lissage</strong> (15–90 j, défaut 45) + <strong>méthode</strong> (médiane glissante / LOESS) en accordéon repliable. Le graphe se recalcule (cœur) à chaque changement.</li>
+<li>Lignes de seuil (NDVI 0,40 / NBR 0,30 / NDMI 0,20) et plein écran conservés.</li>
+</ul><p>Le lissage est <strong>purement de l’affichage à l’échelle scène</strong> (lisibilité du bruit) — distinct du déclin pluriannuel (mode Tendance / <code>extract_pixel_trend</code>, composites + Theil-Sen). Calcul 100 % cœur ; l’app n’effectue aucun lissage. Plancher relevé à <code>nemeton (&gt;= 0.90.0)</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.87.3" id="nemetonshiny-0873-2026-06-17">nemetonshiny 0.87.3 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0873-2026-06-17"></a></h2>
 <div class="section level4">

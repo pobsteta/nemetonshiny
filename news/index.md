@@ -1,5 +1,31 @@
 # Changelog
 
+## nemetonshiny 0.88.0 (2026-06-17)
+
+#### Added — Graphe « série pixel » lissé (spec 026)
+
+Le graphe de série temporelle par pixel (modale au clic sur la Carte
+FAST) ne relie plus chaque acquisition par des segments (dents de scie
+dues au bruit nuageux / acquisitions irrégulières). Désormais, par
+indice (NDVI/NBR/NDMI) :
+
+- **Points bruts estompés** (marqueurs seuls, taille 4, opacité 0,35,
+  sans ligne).
+- **Courbe lissée** opaque (ligne, épaisseur 2, `connectgaps = FALSE`),
+  via le helper cœur
+  [`nemeton::smooth_pixel_series()`](https://pobsteta.github.io/nemeton/reference/smooth_pixel_series.html)
+  (≥ 0.90.0) — médiane glissante par défaut.
+- Contrôles dans la modale : **fenêtre de lissage** (15–90 j,
+  défaut 45) + **méthode** (médiane glissante / LOESS) en accordéon
+  repliable. Le graphe se recalcule (cœur) à chaque changement.
+- Lignes de seuil (NDVI 0,40 / NBR 0,30 / NDMI 0,20) et plein écran
+  conservés.
+
+Le lissage est **purement de l’affichage à l’échelle scène** (lisibilité
+du bruit) — distinct du déclin pluriannuel (mode Tendance /
+`extract_pixel_trend`, composites + Theil-Sen). Calcul 100 % cœur ;
+l’app n’effectue aucun lissage. Plancher relevé à `nemeton (>= 0.90.0)`.
+
 ## nemetonshiny 0.87.3 (2026-06-17)
 
 #### Added — Plan de validation : message « génération en cours »
