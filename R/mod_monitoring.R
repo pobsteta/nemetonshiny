@@ -3104,6 +3104,9 @@ mod_monitoring_server <- function(id, app_state) {
         window_days = input$window_days
       )),
       date_range_r = shiny::reactive(input$date_range),
+      # Réutilise la définition de tendance d'Alertes FAST (mois / années
+      # min / alpha) — pas de duplication des contrôles dans la sidebar.
+      trend_params_r = fast_alerts_ret$trend_params_r,
       source_fixed = "FAST"
     )
 

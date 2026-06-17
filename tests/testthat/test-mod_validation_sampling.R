@@ -89,10 +89,12 @@ test_that("FAST validation sub-tab calls the trend plan with right params", {
   testthat::local_mocked_bindings(
     get_monitoring_db_connection   = function(...) structure(list(), class = "fakecon"),
     close_monitoring_db_connection = function(con) invisible(TRUE),
-    generate_trend_sanitary_plan = function(con, project, index, n_plots,
-                                            n_control, date_from, date_to,
-                                            months, min_years, min_obs_per_year,
+    generate_trend_sanitary_plan = function(con, project, zone_id = NULL,
+                                            index, n_plots, n_control,
+                                            date_from, date_to, months,
+                                            min_years, min_obs_per_year,
                                             alpha, seed) {
+      seen$zone_id <- zone_id
       seen$index <- index; seen$n_plots <- n_plots
       seen$n_control <- n_control; seen$seed <- seed
       seen$date_from <- date_from; seen$date_to <- date_to
@@ -119,15 +121,15 @@ test_that("FAST validation sub-tab calls the trend plan with right params", {
       session$setInputs(
         trend_index = "NDRE",
         trend_win = c(as.Date("2017-01-01"), as.Date("2025-12-31")),
-        n_validation = 20L, n_control = 5L, seed = 42L,
-        trend_months = c(6L, 9L), trend_min_years = 4L,
-        trend_min_obs = 2L, trend_alpha = 0.05
+        n_validation = 20L, n_control = 5L, seed = 42L
       )
       session$flushReact()
       expect_null(session$returned$plan())
       session$setInputs(generate = 1L)
       session$flushReact()
-      # Cœur appelé avec les bons paramètres trend (pas de classes/buffer).
+      # Cœur appelé avec la zone SÉLECTIONNÉE (zone_id_r = "7"), pas la
+      # metadata — et les bons paramètres trend (pas de classes/buffer).
+      expect_equal(seen$zone_id, 7L)
       expect_equal(seen$index, "NDRE")
       expect_equal(seen$n_plots, 20L)
       expect_equal(seen$n_control, 5L)

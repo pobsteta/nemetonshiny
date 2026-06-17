@@ -911,7 +911,18 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # validation_sampling serait coincé sur NDVI ou NBR en dur.
     invisible(list(
       raster  = raster_r,
-      index_r = shiny::reactive(input$index %||% "NDVI")
+      index_r = shiny::reactive(input$index %||% "NDVI"),
+      # v0.87.x — params trend exportés pour que le « Plan de validation
+      # FAST » réutilise la MÊME définition de tendance que celle affichée
+      # ici (mois saison / années min / alpha), sans dupliquer les contrôles.
+      trend_params_r = shiny::reactive({
+        tm <- input$trend_months %||% c(6L, 9L)
+        list(
+          months    = seq.int(as.integer(tm[1]), as.integer(tm[2])),
+          min_years = as.integer(input$trend_min_years %||% 4L),
+          alpha     = as.numeric(input$trend_alpha %||% 0.05)
+        )
+      })
     ))
   })
 }

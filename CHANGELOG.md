@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.87.1] - 2026-06-17
+
+### Fixed
+
+- Plan de validation : construit sur la zone du sélecteur « Zone de suivi »
+  (`zone_id_r`) au lieu de `metadata$monitoring_zone_id` (qui pouvait pointer sur
+  une zone obsolète / d'un autre projet → placettes hors union UGF). S'applique
+  au trend FAST et au catégoriel FORDEAD/RECONFORT (repli metadata si rien
+  sélectionné).
+
+### Changed
+
+- Plan de validation FAST : paramètres de tendance (mois, années min., obs.
+  min./an, α) retirés de la sidebar et réutilisés depuis Alertes FAST mode
+  Tendance (`trend_params_r`) — une seule source de vérité.
+
 ## [0.87.0] - 2026-06-16
 
 ### Changed

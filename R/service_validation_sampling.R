@@ -48,6 +48,7 @@
 #' @noRd
 generate_validation_plan <- function(con, project,
                                      source = c("FORDEAD", "FAST", "RECONFORT"),
+                                     zone_id = NULL,
                                      n_validation = 20L,
                                      n_control    = 5L,
                                      classes      = c(3L, 4L),
@@ -67,14 +68,14 @@ generate_validation_plan <- function(con, project,
   if (is.null(project) || is.null(project$id)) {
     rlang::abort("No project loaded.", class = "validation_no_project")
   }
-  zone_id_raw <- project$metadata$monitoring_zone_id
-  if (is.null(zone_id_raw) || !nzchar(as.character(zone_id_raw))) {
-    rlang::abort("Project has no monitoring zone.",
-                 class = "validation_no_zone")
+  # Zone d'échantillonnage = sélecteur « Zone de suivi » (`zone_id` passé
+  # par le module) ; repli sur la metadata projet si rien n'est sélectionné.
+  zone_id <- suppressWarnings(as.integer(zone_id))
+  if (length(zone_id) != 1L || is.na(zone_id)) {
+    zone_id <- suppressWarnings(as.integer(project$metadata$monitoring_zone_id))
   }
-  zone_id <- suppressWarnings(as.integer(zone_id_raw))
-  if (is.na(zone_id)) {
-    rlang::abort("monitoring_zone_id is not an integer.",
+  if (length(zone_id) != 1L || is.na(zone_id)) {
+    rlang::abort("No monitoring zone selected.",
                  class = "validation_no_zone")
   }
 
@@ -142,6 +143,7 @@ generate_validation_plan <- function(con, project,
 #'   `validation_empty_trend` when no significant decline is found.
 #' @noRd
 generate_trend_sanitary_plan <- function(con, project,
+                                         zone_id = NULL,
                                          index = "NDRE",
                                          n_plots = 20L, n_control = 5L,
                                          date_from = NULL, date_to = NULL,
@@ -151,14 +153,15 @@ generate_trend_sanitary_plan <- function(con, project,
   if (is.null(project) || is.null(project$id)) {
     rlang::abort("No project loaded.", class = "validation_no_project")
   }
-  zone_id_raw <- project$metadata$monitoring_zone_id
-  if (is.null(zone_id_raw) || !nzchar(as.character(zone_id_raw))) {
-    rlang::abort("Project has no monitoring zone.", class = "validation_no_zone")
+  # La zone d'échantillonnage vient du sélecteur « Zone de suivi »
+  # (`zone_id` passé par le module). Repli sur `metadata$monitoring_zone_id`
+  # uniquement si aucune zone n'est sélectionnée.
+  zone_id <- suppressWarnings(as.integer(zone_id))
+  if (length(zone_id) != 1L || is.na(zone_id)) {
+    zone_id <- suppressWarnings(as.integer(project$metadata$monitoring_zone_id))
   }
-  zone_id <- suppressWarnings(as.integer(zone_id_raw))
-  if (is.na(zone_id)) {
-    rlang::abort("monitoring_zone_id is not an integer.",
-                 class = "validation_no_zone")
+  if (length(zone_id) != 1L || is.na(zone_id)) {
+    rlang::abort("No monitoring zone selected.", class = "validation_no_zone")
   }
   cd <- file.path(project$path, "cache", "layers", "sentinel2")
   if (!dir.exists(cd)) {
