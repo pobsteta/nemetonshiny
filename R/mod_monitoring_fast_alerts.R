@@ -350,7 +350,11 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       out[order(out$obs_date), , drop = FALSE]
     })
 
-    raster_r <- shiny::reactive({
+    # Calcul effectif du mask d'alerte (lourd). Extrait de `raster_r` pour
+    # être appelé en DIFFÉRÉ (onFlushed) par le trigger ci-dessous, afin que
+    # la notification « calcul en cours » s'affiche AVANT le calcul. Lit les
+    # réactifs directement → l'appelant l'enveloppe dans isolate/domaine.
+    compute_fast_raster <- function() {
       refresh_r()
       zone <- zone_id_r()
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
@@ -466,6 +470,44 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         last_raster_error(NULL)
       }
       out
+    }
+
+    # Résultat du mask, alimenté par le trigger déféré ci-dessous. Les
+    # consommateurs (bandeau, peinture carte, clic trend) lisent `raster_r()`
+    # qui retourne cette valeur — sans déclencher le calcul lourd.
+    raster_rv <- shiny::reactiveVal(NULL)
+    raster_r  <- shiny::reactive(raster_rv())
+
+    # v0.88.x — Notification « calcul en cours » + calcul différé : au
+    # changement d'indice / mode / zone / dates / seuils / params trend, on
+    # affiche d'abord un message bas-droite, PUIS on calcule le mask via
+    # onFlushed (un calcul synchrone ne flush l'UI qu'à sa sortie → le
+    # message ne serait pas visible). Évite les clics intempestifs avant
+    # l'affichage de la nouvelle carte.
+    shiny::observe({
+      # Dépendances : recalcul quand l'un de ces réactifs change.
+      refresh_r(); zone_id_r(); date_range_r(); thresholds_r()
+      input$index; input$mode
+      input$trend_months; input$trend_min_years; input$trend_alpha
+      zone <- shiny::isolate(zone_id_r())
+      if (is.null(zone) || !isTRUE(nzchar(zone))) {
+        raster_rv(NULL)
+        return()
+      }
+      notif_id <- session$ns("fast_raster_busy")
+      shiny::showNotification(
+        i18n_r()$t("monitoring_fast_raster_computing"),
+        id = notif_id, type = "message", duration = NULL
+      )
+      session$onFlushed(function() {
+        on.exit(
+          shiny::removeNotification(notif_id, session = session),
+          add = TRUE
+        )
+        shiny::withReactiveDomain(
+          session, shiny::isolate(raster_rv(compute_fast_raster()))
+        )
+      }, once = TRUE)
     })
 
     # ----- Pré-calcul des DEUX rasters de Tendance (NDMI + NDRE) ------

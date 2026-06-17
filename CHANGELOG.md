@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.88.1] - 2026-06-17
+
+### Added
+
+- Alertes FAST : notification « Calcul du raster d'alerte en cours… » (bas-droite)
+  au changement d'indice / mode / zone / dates / seuils / params trend. Le calcul
+  du mask est déféré (`session$onFlushed`) via un `reactiveVal` pour que la notif
+  parte avant le calcul lourd ; consommateurs (bandeau, carte, clic) inchangés.
+
 ## [0.88.0] - 2026-06-17
 
 ### Added
