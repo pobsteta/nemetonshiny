@@ -331,9 +331,11 @@ mod_monitoring_ui <- function(id) {
               value = FALSE
             )
           ),
-          shiny::uiOutput(ns("alerts_panel")),
-          # Health-mode QGIS generator (E6.c.5 — T6app.12, wired in C6)
-          shiny::uiOutput(ns("qgis_panel"))
+          # v0.88.2 — Le générateur QGIS legacy (output$qgis_panel) est
+          # retiré : la génération de placettes de vérification terrain
+          # FORDEAD vit désormais dans le sous-onglet dédié « Plan de
+          # validation FORDEAD » (spec 014, méthodologie complète).
+          shiny::uiOutput(ns("alerts_panel"))
         ),
         # ----- Sub-tab — Carte FORDEAD (wired v0.36.0) ---------------
         # Raster catégoriel 0-4 du dépérissement (sain/faible/moyenne/
@@ -860,96 +862,11 @@ mod_monitoring_server <- function(id, app_state) {
     # la table `obs_pixel`.
 
     # ----- QGIS sanitaire panel (T6app.12) --------------------------
-    output$qgis_panel <- shiny::renderUI({
-      ns <- session$ns
-      i18n <- i18n_r()
-      a <- alerts()
-      bslib::card(
-        bslib::card_header(
-          htmltools::div(
-            class = "d-flex align-items-center",
-            bsicons::bs_icon("clipboard-check", class = "me-2"),
-            i18n$t("monitoring_qgis_btn")
-          )
-        ),
-        bslib::card_body(
-          if (is.null(a) || !nrow(a))
-            htmltools::tags$p(class = "text-muted",
-                              i18n$t("monitoring_qgis_no_alerts"))
-          else htmltools::tagList(
-            shiny::numericInput(
-              ns("qgis_n"),
-              i18n$t("monitoring_qgis_n_label"),
-              value = min(30L, nrow(a)),
-              min = 1L, max = nrow(a), step = 1L
-            ),
-            shiny::radioButtons(
-              ns("qgis_method"),
-              i18n$t("monitoring_qgis_method"),
-              choices  = c(GRTS = "grts", Random = "random"),
-              selected = "grts",
-              inline   = TRUE
-            ),
-            shiny::downloadButton(
-              ns("qgis_download"),
-              i18n$t("monitoring_qgis_btn"),
-              icon  = bsicons::bs_icon("download"),
-              class = "btn-success w-100"
-            )
-          )
-        )
-      )
-    })
-
-    # downloadHandler: build the placette plan + zip a .qgz on disk
-    # then stream it back. generate_health_validation_plots needs the
-    # *pending* alerts (not the leaflet-filtered ones), so we re-fetch
-    # without the include_low / class filtering.
-    output$qgis_download <- shiny::downloadHandler(
-      filename = function() {
-        sprintf("nemeton-health-validation-%s.qgz",
-                format(Sys.time(), "%Y%m%d-%H%M%S"))
-      },
-      content = function(file) {
-        i18n <- i18n_r()
-        con <- get_monitoring_db_connection(project = app_state$current_project,
-                                            read_only = TRUE)
-        on.exit(close_monitoring_db_connection(con), add = TRUE)
-        zone <- input$zone_id
-        a <- list_alerts_for_zone(
-          con, as.integer(zone),
-          classes           = c("1-faible", "2-moyenne",
-                                "3-forte",  "4-sol-nu"),
-          validation_status = "pending"
-        )
-        if (is.null(a) || !nrow(a)) {
-          shiny::showNotification(i18n$t("monitoring_qgis_no_alerts"),
-                                  type = "warning", duration = 6)
-          file.create(file)
-          return(invisible())
-        }
-        plots <- nemeton::generate_health_validation_plots(
-          a,
-          n      = as.integer(input$qgis_n %||% 30L),
-          method = input$qgis_method %||% "grts",
-          crs    = 2154
-        )
-        out_dir <- tempfile("qgis-health-")
-        dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-        qgz <- nemeton::create_qfield_project(
-          plots,
-          output_dir   = out_dir,
-          project_name = "health-validation",
-          region       = "BFC",
-          lang         = app_state$language %||% "fr"
-        )
-        file.copy(qgz, file, overwrite = TRUE)
-        shiny::showNotification(
-          sprintf(i18n$t("monitoring_qgis_generated"), nrow(plots)),
-          type = "message", duration = 6
-        )
-      }
-    )
+    # v0.88.2 — `output$qgis_panel` + `output$qgis_download` (générateur
+    # QGIS legacy E6.c.5 attaché aux Alertes FORDEAD) retirés : doublon avec
+    # le sous-onglet dédié « Plan de validation FORDEAD » (mod_validation_
+    # sampling, spec 014), qui produit le plan + l'export QGIS avec la
+    # méthodologie complète (placettes validation/témoins, classes, tampon).
 
     # Zones reactive: open a fresh connection, list, close. Re-runs on
     # session start, on demand via zones_refresh(), and whenever the
