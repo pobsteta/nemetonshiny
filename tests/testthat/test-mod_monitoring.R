@@ -110,6 +110,54 @@ test_that("mod_monitoring_server zones reactive forwards DB rows", {
   )
 })
 
+test_that("mod_monitoring_server realigns monitoring_zone_id to the _tot zone", {
+  skip_if_not_installed("shiny")
+
+  # Zones du projet courant : la metadata pointe (à tort) sur 1, alors que
+  # la zone `_tot` (union complète) est l'id 5.
+  fake_zones <- data.frame(
+    id   = c(5L, 6L, 7L),
+    name = c("mouthe_tot", "mouthe_res", "mouthe_mix"),
+    stringsAsFactors = FALSE
+  )
+  captured <- new.env()
+
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function(...) "fake-con",
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    update_project_metadata = function(project_id, updates, project_path = NULL) {
+      captured$id      <- project_id
+      captured$updates <- updates
+      TRUE
+    },
+    {
+      testthat::with_mocked_bindings(
+        find_zones_by_project = function(con, project_uuid) fake_zones,
+        .package = "nemeton",
+        {
+          fake_state <- shiny::reactiveValues(
+            language        = "fr",
+            active_main_tab = "monitoring",
+            current_project = list(id = "p", name = "Mouthe",
+                                   metadata = list(monitoring_zone_id = 1L))
+          )
+          shiny::testServer(
+            nemetonshiny:::mod_monitoring_server,
+            args = list(app_state = fake_state),
+            {
+              session$flushReact()
+              # metadata ré-alignée sur la zone _tot (5), en mémoire + persistée.
+              expect_equal(
+                fake_state$current_project$metadata$monitoring_zone_id, 5L)
+              expect_equal(captured$updates$monitoring_zone_id, 5L)
+            }
+          )
+        }
+      )
+    }
+  )
+})
+
 
 # ---- Server: db_status output ---------------------------------------
 
