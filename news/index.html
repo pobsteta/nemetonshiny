@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.87.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.87.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.87.1" id="nemetonshiny-0871-2026-06-17">nemetonshiny 0.87.1 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0871-2026-06-17"></a></h2>
+<div class="section level4">
+<h4 id="fix--plan-de-validation--utilise-la-zone-du-sélecteur--zone-de-suivi--0-87-1">Fix — Plan de validation : utilise la zone du sélecteur « Zone de suivi »<a class="anchor" aria-label="anchor" href="#fix--plan-de-validation--utilise-la-zone-du-s%C3%A9lecteur--zone-de-suivi--0-87-1"></a></h4>
+<p>Le plan de validation était construit sur la zone mémorisée dans la metadata du projet (<code>monitoring_zone_id</code>), qui pouvait pointer sur une zone <strong>obsolète</strong> ou <strong>d’un autre projet</strong> (cas spec 020 : zones par essence <code>_tot</code>/<code>_res</code>/<code>_mix</code>) — d’où des placettes générées <strong>hors de l’union des UGFs</strong> affichée. Désormais le plan (trend FAST <strong>et</strong> catégoriel FORDEAD/RECONFORT) est construit sur la <strong>zone sélectionnée dans le sélecteur « Zone de suivi »</strong> (<code>zone_id_r</code>), avec repli sur la metadata seulement si aucune zone n’est sélectionnée. Par défaut le sélecteur pointe sur la zone <code>_tot</code> = union complète des UGFs.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--plan-de-validation-fast--paramètres-de-tendance-mutualisés-0-87-1">Changed — Plan de validation FAST : paramètres de tendance mutualisés<a class="anchor" aria-label="anchor" href="#changed--plan-de-validation-fast--param%C3%A8tres-de-tendance-mutualis%C3%A9s-0-87-1"></a></h4>
+<p>Les paramètres avancés (mois du composite, années min., obs. min./an, seuil α) sont <strong>retirés de la sidebar</strong> du Plan de validation FAST : ils sont déjà définis dans l’onglet <strong>« Alertes FAST » (mode Tendance)</strong> et désormais <strong>réutilisés</strong> par le plan (<code>trend_params_r</code>). Le plan échantillonne ainsi exactement la tendance affichée dans Alertes FAST — une seule source de vérité. Une note le rappelle sous le sélecteur de graine.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.87.0" id="nemetonshiny-0870-2026-06-16">nemetonshiny 0.87.0 (2026-06-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0870-2026-06-16"></a></h2>
 <div class="section level4">
