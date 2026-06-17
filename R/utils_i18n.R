@@ -3434,26 +3434,9 @@ TRANSLATIONS <- list(
   monitoring_alert_false_positive    = list(fr = "Faux positif",  en = "False positive"),
 
   # ----- QGIS health validation workflow -----
-  monitoring_qgis_btn = list(
-    fr = "G\u00e9n\u00e9rer placettes QGIS (v\u00e9rification terrain)",
-    en = "Generate QGIS plots (field verification)"
-  ),
-  monitoring_qgis_n_label = list(
-    fr = "Nombre de placettes",
-    en = "Number of plots"
-  ),
-  monitoring_qgis_method = list(
-    fr = "M\u00e9thode d'\u00e9chantillonnage",
-    en = "Sampling method"
-  ),
-  monitoring_qgis_no_alerts = list(
-    fr = "Aucune alerte FORDEAD pendante dans cette zone.",
-    en = "No pending FORDEAD alerts in this zone."
-  ),
-  monitoring_qgis_generated = list(
-    fr = "%d placettes g\u00e9n\u00e9r\u00e9es. T\u00e9l\u00e9chargez le projet QGIS.",
-    en = "%d plots generated. Download the QGIS project."
-  ),
+  # v0.88.2 \u2014 cl\u00e9s du g\u00e9n\u00e9rateur QGIS legacy (monitoring_qgis_*) retir\u00e9es
+  # avec le panneau Alertes FORDEAD correspondant (doublon de \u00ab Plan de
+  # validation FORDEAD \u00bb).
 
   # ----- Health validation tab (mod_field_ingest) -----
   health_validation_tab_title = list(
