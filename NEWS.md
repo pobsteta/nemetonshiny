@@ -1,3 +1,26 @@
+# nemetonshiny 0.87.1 (2026-06-17)
+
+### Fix — Plan de validation : utilise la zone du sélecteur « Zone de suivi »
+
+Le plan de validation était construit sur la zone mémorisée dans la
+metadata du projet (`monitoring_zone_id`), qui pouvait pointer sur une zone
+**obsolète** ou **d'un autre projet** (cas spec 020 : zones par essence
+`_tot`/`_res`/`_mix`) — d'où des placettes générées **hors de l'union des
+UGFs** affichée. Désormais le plan (trend FAST **et** catégoriel
+FORDEAD/RECONFORT) est construit sur la **zone sélectionnée dans le
+sélecteur « Zone de suivi »** (`zone_id_r`), avec repli sur la metadata
+seulement si aucune zone n'est sélectionnée. Par défaut le sélecteur
+pointe sur la zone `_tot` = union complète des UGFs.
+
+### Changed — Plan de validation FAST : paramètres de tendance mutualisés
+
+Les paramètres avancés (mois du composite, années min., obs. min./an, seuil
+α) sont **retirés de la sidebar** du Plan de validation FAST : ils sont déjà
+définis dans l'onglet **« Alertes FAST » (mode Tendance)** et désormais
+**réutilisés** par le plan (`trend_params_r`). Le plan échantillonne ainsi
+exactement la tendance affichée dans Alertes FAST — une seule source de
+vérité. Une note le rappelle sous le sélecteur de graine.
+
 # nemetonshiny 0.87.0 (2026-06-16)
 
 ### Changed — Plan de validation FAST branché sur le trend (spec 025)

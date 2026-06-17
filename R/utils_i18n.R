@@ -3251,6 +3251,10 @@ TRANSLATIONS <- list(
     fr = "Paramètres avancés",
     en = "Advanced parameters"
   ),
+  validation_trend_params_note = list(
+    fr = "Mois de saison, années min. et seuil α sont repris de l'onglet « Alertes FAST » (mode Tendance).",
+    en = "Season months, min. years and α threshold are taken from the \"Alertes FAST\" tab (Trend mode)."
+  ),
   validation_trend_min_obs_label = list(
     fr = "Observations min. / an",
     en = "Min. observations / year"

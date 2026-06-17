@@ -76,27 +76,12 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         ns("seed"), i18n$t("validation_seed_label"),
         value = 42L, min = 0L, max = 1e6L, step = 1L
       ),
-      bslib::accordion(
-        open = FALSE,
-        bslib::accordion_panel(
-          i18n$t("validation_trend_advanced_label"),
-          shiny::sliderInput(
-            ns("trend_months"), i18n$t("monitoring_trend_months"),
-            min = 1, max = 12, value = c(6, 9), step = 1
-          ),
-          shiny::numericInput(
-            ns("trend_min_years"), i18n$t("monitoring_trend_min_years"),
-            value = 4, min = 2, max = 20, step = 1
-          ),
-          shiny::numericInput(
-            ns("trend_min_obs"), i18n$t("validation_trend_min_obs_label"),
-            value = 2, min = 1, max = 10, step = 1
-          ),
-          shiny::numericInput(
-            ns("trend_alpha"), i18n$t("monitoring_trend_alpha"),
-            value = 0.05, min = 0.001, max = 0.2, step = 0.005
-          )
-        )
+      # v0.87.x — les paramètres de tendance (mois saison / années min /
+      # alpha) ne sont plus dupliqués ici : ils sont définis dans l'onglet
+      # « Alertes FAST » (mode Tendance) et réutilisés via `trend_params_r`.
+      htmltools::tags$small(
+        class = "text-muted d-block mt-1",
+        i18n$t("validation_trend_params_note")
       )
     )
   } else {
@@ -233,6 +218,7 @@ mod_validation_sampling_server <- function(id, app_state,
                                            mode_r,
                                            thresholds_r,
                                            date_range_r,
+                                           trend_params_r = shiny::reactive(NULL),
                                            source_fixed = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
@@ -458,24 +444,36 @@ mod_validation_sampling_server <- function(id, app_state,
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
+      # Zone d'échantillonnage = zone choisie dans le sélecteur « Zone de
+      # suivi » (`zone_id_r`), PAS la zone mémorisée dans la metadata (qui
+      # peut pointer sur une zone d'un autre projet / une essence obsolète).
+      zid <- suppressWarnings(as.integer(zone_id_r()))
+      if (length(zid) != 1L || is.na(zid)) zid <- NULL
+
       # ----- FAST = plan sanitaire branché sur le trend (spec 025) -------
       # Pondération continue par |pente| ; pas de classes/témoins/tampon.
       if (identical(current_source(), "FAST")) {
         win <- input$trend_win
-        tm  <- input$trend_months %||% c(6L, 9L)
+        # Définition de tendance réutilisée depuis Alertes FAST (mois /
+        # années min / alpha) ; repli sur les défauts cœur si indisponible.
+        tp <- trend_params_r() %||% list()
+        months_v    <- tp$months %||% 6:9
+        min_years_v <- as.integer(tp$min_years %||% 4L)
+        alpha_v     <- as.numeric(tp$alpha %||% 0.05)
         res <- tryCatch(
           generate_trend_sanitary_plan(
             con              = con,
             project          = proj,
+            zone_id          = zid,
             index            = input$trend_index %||% "NDRE",
             n_plots          = as.integer(input$n_validation %||% 20L),
             n_control        = as.integer(input$n_control %||% 5L),
             date_from        = if (length(win) == 2L) win[1] else NULL,
             date_to          = if (length(win) == 2L) win[2] else NULL,
-            months           = seq.int(as.integer(tm[1]), as.integer(tm[2])),
-            min_years        = as.integer(input$trend_min_years %||% 4L),
-            min_obs_per_year = as.integer(input$trend_min_obs %||% 2L),
-            alpha            = as.numeric(input$trend_alpha %||% 0.05),
+            months           = months_v,
+            min_years        = min_years_v,
+            min_obs_per_year = 2L,
+            alpha            = alpha_v,
             seed             = as.integer(input$seed %||% 42L)
           ),
           error = function(e) e
@@ -516,6 +514,7 @@ mod_validation_sampling_server <- function(id, app_state,
           con             = con,
           project         = proj,
           source          = current_source(),
+          zone_id         = zid,
           n_validation    = as.integer(input$n_validation %||% 20L),
           n_control       = n_control_req,
           classes         = classes_int,
@@ -566,8 +565,7 @@ mod_validation_sampling_server <- function(id, app_state,
       # jeux d'inputs ; ceux absents dans un mode valent NULL (sans effet).
       input$source; input$n_validation; input$n_control;
       input$classes; input$control_classes; input$buffer_m; input$seed
-      input$trend_index; input$trend_win; input$trend_months
-      input$trend_min_years; input$trend_min_obs; input$trend_alpha
+      input$trend_index; input$trend_win
       # Only invalidate if a plan exists already.
       if (!is.null(plan_rv())) {
         plan_rv(NULL)
@@ -576,8 +574,7 @@ mod_validation_sampling_server <- function(id, app_state,
     }) |> shiny::bindEvent(
       input$source, input$n_validation, input$n_control,
       input$classes, input$control_classes, input$buffer_m, input$seed,
-      input$trend_index, input$trend_win, input$trend_months,
-      input$trend_min_years, input$trend_min_obs, input$trend_alpha,
+      input$trend_index, input$trend_win,
       ignoreInit = TRUE
     )
 
