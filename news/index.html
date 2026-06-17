@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.88.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.88.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.88.1" id="nemetonshiny-0881-2026-06-17">nemetonshiny 0.88.1 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0881-2026-06-17"></a></h2>
+<div class="section level4">
+<h4 id="added--alertes-fast--message--calcul-du-raster-en-cours--0-88-1">Added — Alertes FAST : message « calcul du raster en cours »<a class="anchor" aria-label="anchor" href="#added--alertes-fast--message--calcul-du-raster-en-cours--0-88-1"></a></h4>
+<p>Au changement d’<strong>indice FAST</strong> (NDMI/NDVI/NBR/NDRE) ou de <strong>mode du raster</strong> (Fréquence/Intensité/Tendance) — ainsi que de zone, dates, seuils ou paramètres trend — une notification <strong>« Calcul du raster d’alerte en cours… »</strong> s’affiche immédiatement en bas à droite, le temps que la nouvelle carte se calcule. Évite les clics intempestifs avant l’affichage.</p>
+<p>Le calcul du mask (<code>compute_fast_alert_mask</code>) est désormais <strong>déféré</strong> (<code>session$onFlushed</code>) et son résultat passe par un <code>reactiveVal</code> : la notification part au client avant le calcul lourd (un calcul synchrone ne flush l’UI qu’à sa sortie). Bandeau, carte et clic-pixel consomment le même résultat (pas de double calcul).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.88.0" id="nemetonshiny-0880-2026-06-17">nemetonshiny 0.88.0 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0880-2026-06-17"></a></h2>
 <div class="section level4">
