@@ -430,8 +430,14 @@ mod_validation_sampling_server <- function(id, app_state,
     # re-click Generate to get a fresh plan.
     plan_rv <- shiny::reactiveVal(NULL)
     plan_error <- shiny::reactiveVal(NULL)
+    # Garde anti-clics : empêche de relancer une génération tant que la
+    # précédente n'est pas terminée (le tirage + lecture raster est lourd).
+    generating <- shiny::reactiveVal(FALSE)
 
-    shiny::observeEvent(input$generate, {
+    # Génération effective du plan. Appelée en différé (onFlushed) par
+    # l'observateur du bouton, pour que la notification « calcul en cours »
+    # s'affiche AVANT le calcul lourd.
+    run_generate <- function() {
       plan_rv(NULL)
       plan_error(NULL)
       proj <- app_state$current_project
@@ -555,6 +561,26 @@ mod_validation_sampling_server <- function(id, app_state,
           type = "warning", duration = 8
         )
       }
+    }
+
+    shiny::observeEvent(input$generate, {
+      if (isTRUE(shiny::isolate(generating()))) return()  # garde anti-clics
+      generating(TRUE)
+      notif_id <- session$ns("plan_generating")
+      # Message bas-droite « génération en cours » affiché TOUT DE SUITE.
+      shiny::showNotification(
+        i18n_r()$t("validation_generating"),
+        id = notif_id, type = "message", duration = NULL
+      )
+      # Calcul après le flush (onFlushed) : la notif part au client avant
+      # le calcul lourd (un observateur synchrone ne flush qu'à sa sortie).
+      session$onFlushed(function() {
+        on.exit({
+          shiny::removeNotification(notif_id, session = session)
+          shiny::isolate(generating(FALSE))
+        }, add = TRUE)
+        shiny::isolate(run_generate())
+      }, once = TRUE)
     })
 
     # Invalidate the result silently if the user touches any input

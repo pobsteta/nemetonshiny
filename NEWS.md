@@ -1,3 +1,15 @@
+# nemetonshiny 0.87.3 (2026-06-17)
+
+### Added — Plan de validation : message « génération en cours »
+
+Au clic sur **« Générer le plan sanitaire »** (et « Générer plan de
+validation » pour FORDEAD/RECONFORT), une notification **« Génération du
+plan en cours… »** s'affiche immédiatement en bas à droite, et un garde
+ignore les clics suivants tant que le plan se calcule (tirage + lecture
+raster). Le calcul est déclenché après le flush (`session$onFlushed`) pour
+que la notification parte au client avant le calcul lourd — même pattern
+que le graphe trajectoire (v0.85.16).
+
 # nemetonshiny 0.87.2 (2026-06-17)
 
 ### Fix — Suivi sanitaire : ré-alignement auto de la zone projet sur `_tot`
