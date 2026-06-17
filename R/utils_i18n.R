@@ -2724,6 +2724,14 @@ TRANSLATIONS <- list(
     fr = "LOESS",
     en = "LOESS"
   ),
+  monitoring_pixel_smooth_harmonic = list(
+    fr = "Harmonique",
+    en = "Harmonic"
+  ),
+  monitoring_pixel_smooth_nharm_label = list(
+    fr = "Harmoniques (cycles annuels)",
+    en = "Harmonics (annual cycles)"
+  ),
   monitoring_pixel_smooth_hover = list(
     fr = "liss\u00e9",
     en = "smoothed"

@@ -858,9 +858,20 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
             shiny::radioButtons(
               ns("smooth_method"), label = NULL, inline = TRUE,
               choiceNames  = list(i18n$t("monitoring_pixel_smooth_rolling"),
-                                  i18n$t("monitoring_pixel_smooth_loess")),
-              choiceValues = list("rolling_median", "loess"),
+                                  i18n$t("monitoring_pixel_smooth_loess"),
+                                  i18n$t("monitoring_pixel_smooth_harmonic")),
+              choiceValues = list("rolling_median", "loess", "harmonic"),
               selected = "rolling_median"
+            ),
+            # n_harmonics visible uniquement quand la methode harmonique
+            # est selectionnee (spec 026, nemeton >= 0.91.0). Ignore par le
+            # coeur pour rolling_median/loess.
+            shiny::conditionalPanel(
+              condition = sprintf("input['%s'] == 'harmonic'", ns("smooth_method")),
+              shiny::sliderInput(
+                ns("n_harmonics"), i18n$t("monitoring_pixel_smooth_nharm_label"),
+                min = 1, max = 3, value = 2, step = 1, width = "100%"
+              )
             )
           )
         ),
@@ -882,8 +893,10 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       i18n <- i18n_r()
       win    <- as.integer(input$smooth_win %||% 45L)
       method <- input$smooth_method %||% "rolling_median"
+      nharm  <- as.integer(input$n_harmonics %||% 2L)
       sm <- tryCatch(
-        nemeton::smooth_pixel_series(ts, window_days = win, method = method),
+        nemeton::smooth_pixel_series(ts, window_days = win, method = method,
+                                     n_harmonics = nharm),
         error = function(e) {
           cli::cli_alert_warning("smooth_pixel_series failed: {conditionMessage(e)}")
           ts$smoothed <- NA_real_

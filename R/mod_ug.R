@@ -575,6 +575,8 @@ mod_ug_server <- function(id, app_state) {
       rv$redraw_counter  # invalidate on redraw trigger
       if (is.null(projet) || !has_ug_data(projet)) return()
 
+      .t_map0 <- Sys.time()  # PERF — chrono rendu carte UGF (cf. NEMETON_PERF_TRACE)
+
       tenements <- projet$tenements
       ugs <- projet$ugs
 
@@ -653,7 +655,22 @@ mod_ug_server <- function(id, app_state) {
 
       # Add UG dissolved boundaries as an overlay
       tryCatch({
-        ug_sf <- ug_build_sf(projet)
+        # PERF — réutiliser la géométrie UGF déjà dissoute par
+        # attach_indicators_sf (projet$indicators_sf) plutôt que de
+        # relancer un ug_build_sf() complet (un st_union() par UGF). Ce
+        # cache porte les mêmes colonnes que ug_build_sf (label, groupe,
+        # n_tenements, surface_m2, géométrie) puisqu'indicators_sf en
+        # dérive par merge. Fallback sur ug_build_sf() tant que l'attache
+        # différée n'a pas encore tourné (1er rendu avant le later()).
+        ug_sf <- if (!is.null(projet$indicators_sf) &&
+                     inherits(projet$indicators_sf, "sf") &&
+                     nrow(projet$indicators_sf) > 0 &&
+                     all(c("label", "groupe", "n_tenements", "surface_m2") %in%
+                         names(projet$indicators_sf))) {
+          .perf_time("ug_sf (cache indicators_sf, mod_ug)", projet$indicators_sf)
+        } else {
+          .perf_time("ug_build_sf (rendu carte mod_ug, fallback)", ug_build_sf(projet))
+        }
         if (!is.null(ug_sf) && nrow(ug_sf) > 0) {
           if (!is.na(sf::st_crs(ug_sf)) && sf::st_crs(ug_sf)$epsg != 4326L) {
             ug_sf <- sf::st_transform(ug_sf, 4326)
@@ -738,6 +755,11 @@ mod_ug_server <- function(id, app_state) {
             title = legend_title,
             opacity = 0.8
           )
+      }
+
+      if (.perf_trace_on()) {
+        .dt_map <- as.numeric(difftime(Sys.time(), .t_map0, units = "secs")) * 1000
+        cli::cli_inform(c("v" = "⏱ [perf] mod_ug rendu carte UGF TOTAL ({nrow(tenements)} tenements): {sprintf('%.0f', .dt_map)} ms"))
       }
     })
 
