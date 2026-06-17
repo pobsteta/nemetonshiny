@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.88.0] - 2026-06-17
+
+### Added
+
+- Graphe « série pixel » (Carte FAST) lissé (spec 026) : points bruts estompés
+  (marqueurs) + courbe lissée par indice via `nemeton::smooth_pixel_series()`
+  (≥ 0.90.0), au lieu des segments bruts en dents de scie. Contrôles dans la
+  modale : fenêtre de lissage (15–90 j, défaut 45) + méthode (médiane glissante
+  / LOESS). Seuils + plein écran conservés. Lissage 100 % cœur.
+
+### Changed
+
+- Plancher `nemeton (>= 0.90.0)`.
+
 ## [0.87.3] - 2026-06-17
 
 ### Added

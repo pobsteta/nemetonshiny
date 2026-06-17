@@ -2703,6 +2703,27 @@ TRANSLATIONS <- list(
     fr = "Plein \u00e9cran",
     en = "Fullscreen"
   ),
+  # --- Lissage d'affichage de la s\u00e9rie pixel (spec 026) -----------------
+  monitoring_pixel_smooth_win_label = list(
+    fr = "Lissage (jours)",
+    en = "Smoothing (days)"
+  ),
+  monitoring_pixel_smooth_method_label = list(
+    fr = "M\u00e9thode de lissage",
+    en = "Smoothing method"
+  ),
+  monitoring_pixel_smooth_rolling = list(
+    fr = "M\u00e9diane glissante",
+    en = "Rolling median"
+  ),
+  monitoring_pixel_smooth_loess = list(
+    fr = "LOESS",
+    en = "LOESS"
+  ),
+  monitoring_pixel_smooth_hover = list(
+    fr = "liss\u00e9",
+    en = "smoothed"
+  ),
   # --- Graphe de tendance par pixel (Alertes FAST, mode Tendance) -------
   yes = list(fr = "oui", en = "yes"),
   no  = list(fr = "non", en = "no"),
