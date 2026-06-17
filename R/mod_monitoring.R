@@ -1056,6 +1056,34 @@ mod_monitoring_server <- function(id, app_state) {
                                selected = selected)
     })
 
+    # v0.87.2 — Ré-aligne `metadata$monitoring_zone_id` du projet courant
+    # sur sa zone `_tot` (union complète des UGFs, convention spec 020).
+    # Corrige les projets dont la metadata pointe encore sur une zone
+    # pré-spec-020 (mono-zone) ou sur une zone d'un autre projet. Mémoire
+    # + persistance disque, une seule fois (garde sur l'égalité). N'opère
+    # que sur l'onglet Suivi sanitaire (où la zone est utilisée).
+    shiny::observe({
+      shiny::req(identical(app_state$active_main_tab, "monitoring"))
+      z <- zones()
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$id) || !nrow(z)) return()
+      tot_idx <- grep("_tot$", as.character(z$name))
+      if (!length(tot_idx)) return()
+      tot_id <- suppressWarnings(as.integer(z$id[tot_idx[1]]))
+      if (is.na(tot_id)) return()
+      cur <- suppressWarnings(as.integer(proj$metadata$monitoring_zone_id))
+      if (length(cur) == 1L && !is.na(cur) && identical(cur, tot_id)) return()
+      proj$metadata$monitoring_zone_id <- tot_id
+      app_state$current_project <- proj
+      tryCatch(
+        update_project_metadata(proj$id, list(monitoring_zone_id = tot_id)),
+        error = function(e) cli::cli_alert_warning(
+          "realign monitoring_zone_id failed: {e$message}")
+      )
+      cli::cli_alert_info(
+        "monitoring_zone_id realigned to _tot zone {tot_id}")
+    })
+
     # ----- FAST zone surfaces banner (v0.77.0) -----------------------
     # Surface (ha) + part (%) des 4 strates projet `_tot/_feu/_res/_mix`,
     # affichée au-dessus des sous-onglets FAST. Dépend de `zones()` (les

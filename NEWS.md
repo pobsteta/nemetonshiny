@@ -1,3 +1,18 @@
+# nemetonshiny 0.87.2 (2026-06-17)
+
+### Fix — Suivi sanitaire : ré-alignement auto de la zone projet sur `_tot`
+
+À l'ouverture de l'onglet Suivi sanitaire, `metadata$monitoring_zone_id`
+du projet courant est désormais **ré-aligné automatiquement** sur sa zone
+`_tot` (union complète des UGFs, convention spec 020) — en mémoire **et**
+persisté sur disque. Corrige les projets dont la metadata pointait encore
+sur une zone pré-spec-020 (mono-zone) ou sur une zone d'un autre projet
+(ex. Mouthe → `villards`). Opère une seule fois (garde sur l'égalité), ne
+touche rien si aucune zone `_tot` n'existe encore (projet sans zones
+générées). Complète le correctif v0.87.1 (le plan utilisait déjà la zone
+sélectionnée ; la metadata est maintenant cohérente pour les autres
+consommateurs).
+
 # nemetonshiny 0.87.1 (2026-06-17)
 
 ### Fix — Plan de validation : utilise la zone du sélecteur « Zone de suivi »
