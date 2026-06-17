@@ -3222,6 +3222,10 @@ TRANSLATIONS <- list(
     fr = "Configurer les param\u00e8tres puis cliquer \u00ab G\u00e9n\u00e9rer plan de validation \u00bb.",
     en = "Configure parameters then click \"Generate validation plan\"."
   ),
+  validation_generating = list(
+    fr = "G\u00e9n\u00e9ration du plan en cours\u2026",
+    en = "Generating the plan\u2026"
+  ),
   validation_empty_mask_title = list(
     fr = "Zone saine",
     en = "Healthy zone"

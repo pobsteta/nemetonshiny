@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.87.3] - 2026-06-17
+
+### Added
+
+- Plan de validation : notification « Génération du plan en cours… » (bas-droite)
+  immédiate au clic « Générer », + garde anti-clics pendant le calcul (déclenché
+  via `session$onFlushed` pour que la notif parte avant le calcul lourd).
+
 ## [0.87.2] - 2026-06-17
 
 ### Fixed
