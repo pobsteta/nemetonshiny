@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.87.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.87.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.87.3" id="nemetonshiny-0873-2026-06-17">nemetonshiny 0.87.3 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0873-2026-06-17"></a></h2>
+<div class="section level4">
+<h4 id="added--plan-de-validation--message--génération-en-cours--0-87-3">Added — Plan de validation : message « génération en cours »<a class="anchor" aria-label="anchor" href="#added--plan-de-validation--message--g%C3%A9n%C3%A9ration-en-cours--0-87-3"></a></h4>
+<p>Au clic sur <strong>« Générer le plan sanitaire »</strong> (et « Générer plan de validation » pour FORDEAD/RECONFORT), une notification <strong>« Génération du plan en cours… »</strong> s’affiche immédiatement en bas à droite, et un garde ignore les clics suivants tant que le plan se calcule (tirage + lecture raster). Le calcul est déclenché après le flush (<code>session$onFlushed</code>) pour que la notification parte au client avant le calcul lourd — même pattern que le graphe trajectoire (v0.85.16).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.87.2" id="nemetonshiny-0872-2026-06-17">nemetonshiny 0.87.2 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0872-2026-06-17"></a></h2>
 <div class="section level4">

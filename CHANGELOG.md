@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.87.3\] - 2026-06-17
+
+### Added
+
+- Plan de validation : notification « Génération du plan en cours… »
+  (bas-droite) immédiate au clic « Générer », + garde anti-clics pendant
+  le calcul (déclenché via `session$onFlushed` pour que la notif parte
+  avant le calcul lourd).
+
 ## \[0.87.2\] - 2026-06-17
 
 ### Fixed
