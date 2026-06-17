@@ -220,3 +220,61 @@ test_that("map_click invokes extract_pixel_timeseries with lat/lng", {
     }
   )
 })
+
+test_that("pixel plot calls smooth_pixel_series with the smoothing window", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("plotly")
+  .skip_if_no_pixel_map()
+
+  fake_ts <- data.frame(
+    obs_date = as.Date(c("2025-06-10", "2025-06-25", "2025-07-10")),
+    index    = rep("NDVI", 3),
+    value    = c(0.7, 0.65, 0.6),
+    stringsAsFactors = FALSE
+  )
+  seen <- new.env()
+  testthat::with_mocked_bindings(
+    build_index_stack        = function(...) NULL,
+    extract_pixel_timeseries = function(...) fake_ts,
+    smooth_pixel_series = function(ts, window_days = 45, method = "rolling_median",
+                                   min_obs = 3L) {
+      seen$window_days <- window_days
+      seen$method      <- method
+      ts$smoothed <- ts$value
+      ts
+    },
+    .package = "nemeton",
+    {
+      proj <- list(path = withr::local_tempdir())
+      cd   <- file.path(proj$path, "cache", "layers", "sentinel2")
+      dir.create(cd, recursive = TRUE)
+      sid <- "S2A_MSIL2A_20250610T103021_T31TGM"
+      dir.create(file.path(cd, sid)); file.create(file.path(cd, sid, "B08.tif"))
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_pixel_map_server,
+        args = list(
+          app_state  = shiny::reactiveValues(language = "fr",
+                                             active_main_tab = "monitoring",
+                                             current_project = proj),
+          mode_input = shiny::reactive("quick")
+        ),
+        {
+          session$setInputs(index = "NDVI", smooth_win = 45L,
+                            smooth_method = "rolling_median",
+                            map_click = list(lat = 47.5, lng = 4.5))
+          session$flushReact()
+          # Forcer le rendu du graphe → appelle smooth_pixel_series.
+          invisible(output$pixel_ts_plot)
+          session$flushReact()
+          expect_equal(seen$window_days, 45L)
+          expect_equal(seen$method, "rolling_median")
+          # Changer la fenêtre ré-appelle le cœur avec la nouvelle valeur.
+          session$setInputs(smooth_win = 75L)
+          invisible(output$pixel_ts_plot)
+          session$flushReact()
+          expect_equal(seen$window_days, 75L)
+        }
+      )
+    }
+  )
+})

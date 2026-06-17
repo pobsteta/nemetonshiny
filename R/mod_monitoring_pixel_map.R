@@ -775,13 +775,17 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # v0.85.16 — flag « calcul en cours » : ignore les clics carte tant
     # qu'un graphique pixel se calcule (évite les clics intempestifs).
     pixel_computing <- shiny::reactiveVal(FALSE)
+    # Série pixel brute du dernier clic (data.frame obs_date/index/value).
+    # Le graphe (lissé) est rendu réactivement par `output$pixel_ts_plot`
+    # ci-dessous, qui re-appelle `nemeton::smooth_pixel_series()` quand la
+    # fenêtre / méthode de lissage change.
+    pixel_ts_rv <- shiny::reactiveVal(NULL)
 
-    # Construit + affiche la modale du graphique pixel. Lourd (lit la
-    # valeur du pixel sur N scènes du cache) → appelé en DIFFÉRÉ par
-    # l'observateur de clic ci-dessous, pour que la notification « calcul
-    # en cours » s'affiche d'abord.
+    # Extrait la série pixel + affiche la modale. Lourd (lit la valeur du
+    # pixel sur N scènes) → appelé en DIFFÉRÉ par l'observateur de clic.
     show_pixel_plot <- function(lat, lng, cd, sdf) {
       i18n <- i18n_r()
+      ns   <- session$ns
 
       ts <- tryCatch(
         nemeton::extract_pixel_timeseries(
@@ -805,133 +809,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         return()
       }
 
-      # Stable per-band colors (centralisé en .pixel_band_colors
-      # depuis v0.45.0 — pair direct avec les lignes de seuil
-      # horizontales pour cohérence visuelle).
-      p <- plotly::plot_ly(type = "scatter", mode = "lines+markers")
-      for (b in unique(ts$index)) {
-        sub <- ts[ts$index == b, , drop = FALSE]
-        # v0.51.9 : tri par date AVANT add_trace. Sans tri, plotly
-        # relie les points dans l'ordre des LIGNES du data.frame ;
-        # si extract_pixel_timeseries() ne renvoie pas la série
-        # ordonnée, on obtient des segments longs qui sautent dans le
-        # temps (et la majorité des points adjacents non reliés) au
-        # lieu d'une courbe continue. La boucle placette voisine
-        # (l.~880) trie déjà, on aligne celle-ci.
-        sub <- sub[order(as.Date(sub$obs_date)), , drop = FALSE]
-        # v0.52.4 : drop des NA `value` avant `add_trace`. Sur les
-        # zones couvertes par plusieurs tuiles MGRS qui se recouvrent
-        # partiellement (cas typique villards : T31TGM large 1340m
-        # vs T31TFM étroite 440m), un pixel à l'EST de la zone se
-        # trouve dans T31TGM mais pas dans T31TFM. Les ~60 scènes
-        # T31TFM renvoient alors `value = NA` pour ce pixel, et
-        # plotly casse la ligne à chaque NA → l'utilisateur voit une
-        # courbe en pointillés alors que les ~60 mesures T31TGM sont
-        # parfaitement valides. Filtrer les NA ici reconstitue la
-        # courbe continue à partir des observations vraiment
-        # disponibles pour ce pixel.
-        sub <- sub[!is.na(sub$value), , drop = FALSE]
-        if (!nrow(sub)) next
-        col <- .pixel_band_colors[b] %||% "#7F7F7F"
-        p <- plotly::add_trace(
-          p,
-          x      = as.Date(sub$obs_date),
-          y      = as.numeric(sub$value),
-          name   = b,
-          mode   = "lines+markers",
-          line   = list(color = unname(col), width = 1.5),
-          marker = list(color = unname(col), size = 5),
-          hovertemplate = paste0(
-            "<b>", b, "</b><br>",
-            "%{x|%Y-%m-%d}<br>",
-            b, " = %{y:.3f}<extra></extra>"
-          )
-        )
-      }
-      # v0.42.0 / v0.45.0 — threshold reference lines, alignées sur la
-      # couleur de la courbe correspondante (au lieu d'orange/rouge
-      # arbitraire). Le dash style + annotation à droite suffit à
-      # différencier la ligne (statique) de la courbe (mesures).
-      # `thresholds_r` est threadé depuis la sidebar parent.
-      th <- thresholds_r()
-      shapes <- list()
-      annotations <- list()
-      if (!is.null(th)) {
-        th_ndvi <- suppressWarnings(as.numeric(th$ndvi))
-        th_nbr  <- suppressWarnings(as.numeric(th$nbr))
-        # v0.71.0 — Lecture du 3e seuil NDMI depuis le sidebar
-        # parent. `thresholds_r$ndmi` est exposé depuis
-        # mod_monitoring.R:2564 (parité avec ndvi/nbr).
-        th_ndmi <- suppressWarnings(as.numeric(th$ndmi))
-        col_ndvi <- unname(.pixel_band_colors[["NDVI"]])
-        col_nbr  <- unname(.pixel_band_colors[["NBR"]])
-        col_ndmi <- unname(.pixel_band_colors[["NDMI"]])
-        if (length(th_ndvi) == 1L && !is.na(th_ndvi)) {
-          shapes <- c(shapes, list(
-            list(type = "line",
-                 xref = "paper", x0 = 0, x1 = 1,
-                 yref = "y",     y0 = th_ndvi, y1 = th_ndvi,
-                 line = list(color = col_ndvi, dash = "dash", width = 1))
-          ))
-          annotations <- c(annotations, list(
-            list(xref = "paper", x = 1, xanchor = "right",
-                 yref = "y",     y = th_ndvi, yanchor = "bottom",
-                 text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
-                                "NDVI", th_ndvi),
-                 showarrow = FALSE,
-                 font = list(color = col_ndvi, size = 11))
-          ))
-        }
-        if (length(th_nbr) == 1L && !is.na(th_nbr)) {
-          shapes <- c(shapes, list(
-            list(type = "line",
-                 xref = "paper", x0 = 0, x1 = 1,
-                 yref = "y",     y0 = th_nbr, y1 = th_nbr,
-                 line = list(color = col_nbr, dash = "dash", width = 1))
-          ))
-          annotations <- c(annotations, list(
-            list(xref = "paper", x = 1, xanchor = "right",
-                 yref = "y",     y = th_nbr, yanchor = "bottom",
-                 text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
-                                "NBR", th_nbr),
-                 showarrow = FALSE,
-                 font = list(color = col_nbr, size = 11))
-          ))
-        }
-        # v0.71.0 — Ligne de seuil NDMI horizontale + annotation.
-        # Même pattern que NDVI/NBR pour cohérence (alignement
-        # couleur courbe / couleur seuil).
-        if (length(th_ndmi) == 1L && !is.na(th_ndmi)) {
-          shapes <- c(shapes, list(
-            list(type = "line",
-                 xref = "paper", x0 = 0, x1 = 1,
-                 yref = "y",     y0 = th_ndmi, y1 = th_ndmi,
-                 line = list(color = col_ndmi, dash = "dash", width = 1))
-          ))
-          annotations <- c(annotations, list(
-            list(xref = "paper", x = 1, xanchor = "right",
-                 yref = "y",     y = th_ndmi, yanchor = "bottom",
-                 text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
-                                "NDMI", th_ndmi),
-                 showarrow = FALSE,
-                 font = list(color = col_ndmi, size = 11))
-          ))
-        }
-      }
-      p <- plotly::layout(
-        p,
-        margin = list(t = 20, b = 40, l = 50, r = 10),
-        xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
-                      type = "date"),
-        yaxis  = list(title = i18n$t("monitoring_timeseries_yaxis"),
-                      range = c(-0.2, 1)),
-        legend = list(orientation = "h", y = -0.25),
-        shapes = if (length(shapes)) shapes else NULL,
-        annotations = if (length(annotations)) annotations else NULL
-      )
-      # `responsive` : le plot se redimensionne quand son conteneur change
-      # de taille — nécessaire pour le mode plein écran de la carte ci-dessous.
-      p <- plotly::config(p, responsive = TRUE)
+      pixel_ts_rv(ts)  # le rendu (lissé) est réactif (output$pixel_ts_plot)
 
       shiny::showModal(shiny::modalDialog(
         # Titre + bouton « plein écran » ancré en HAUT À DROITE (même
@@ -964,17 +842,126 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         easyClose = TRUE,
         footer = shiny::modalButton(i18n$t("close")),
         htmltools::tags$style(htmltools::HTML(
-          ".modal-fullscreen .pixel-ts-wrap{height:calc(100vh - 140px) !important;}"
+          ".modal-fullscreen .pixel-ts-wrap{height:calc(100vh - 200px) !important;}"
         )),
+        # Lissage d'affichage (spec 026) : fenêtre + méthode. Le calcul
+        # reste 100 % cœur (`nemeton::smooth_pixel_series`), réappelé par
+        # `output$pixel_ts_plot` quand ces contrôles changent.
+        shiny::sliderInput(
+          ns("smooth_win"), i18n$t("monitoring_pixel_smooth_win_label"),
+          min = 15, max = 90, value = 45, step = 5, width = "100%"
+        ),
+        bslib::accordion(
+          open = FALSE,
+          bslib::accordion_panel(
+            i18n$t("monitoring_pixel_smooth_method_label"),
+            shiny::radioButtons(
+              ns("smooth_method"), label = NULL, inline = TRUE,
+              choiceNames  = list(i18n$t("monitoring_pixel_smooth_rolling"),
+                                  i18n$t("monitoring_pixel_smooth_loess")),
+              choiceValues = list("rolling_median", "loess"),
+              selected = "rolling_median"
+            )
+          )
+        ),
         htmltools::div(
           class = "pixel-ts-wrap",
-          style = "height: 60vh;",
+          style = "height: 55vh;",
           plotly::plotlyOutput(session$ns("pixel_ts_plot"), height = "100%")
         )
       ))
-      output$pixel_ts_plot <- plotly::renderPlotly(p)
       invisible(NULL)
     }
+
+    # Graphe « série pixel » lissé : points bruts estompés (marqueurs) +
+    # ligne lissée par indice (`nemeton::smooth_pixel_series`, spec 026).
+    # Réactif à la série cliquée + aux contrôles de lissage.
+    output$pixel_ts_plot <- plotly::renderPlotly({
+      ts <- pixel_ts_rv()
+      shiny::req(ts, nrow(ts) > 0L)
+      i18n <- i18n_r()
+      win    <- as.integer(input$smooth_win %||% 45L)
+      method <- input$smooth_method %||% "rolling_median"
+      sm <- tryCatch(
+        nemeton::smooth_pixel_series(ts, window_days = win, method = method),
+        error = function(e) {
+          cli::cli_alert_warning("smooth_pixel_series failed: {conditionMessage(e)}")
+          ts$smoothed <- NA_real_
+          ts
+        }
+      )
+
+      p <- plotly::plot_ly(type = "scatter")
+      for (b in unique(sm$index)) {
+        sub <- sm[sm$index == b, , drop = FALSE]
+        sub <- sub[order(as.Date(sub$obs_date)), , drop = FALSE]
+        col <- unname(.pixel_band_colors[b] %||% "#7F7F7F")
+        # Points bruts estompés (sans entrée de légende, groupés par indice).
+        raw <- sub[!is.na(sub$value), , drop = FALSE]
+        if (nrow(raw)) {
+          p <- plotly::add_trace(
+            p, x = as.Date(raw$obs_date), y = as.numeric(raw$value),
+            type = "scatter", mode = "markers", name = b,
+            legendgroup = b, showlegend = FALSE,
+            marker = list(color = col, size = 4, opacity = 0.35),
+            hovertemplate = paste0(
+              "<b>", b, "</b><br>%{x|%Y-%m-%d}<br>",
+              b, " = %{y:.3f}<extra></extra>")
+          )
+        }
+        # Ligne lissée (entrée de légende = indice). connectgaps = FALSE :
+        # les NA sont de vrais trous (fenêtre trop éparse).
+        p <- plotly::add_trace(
+          p, x = as.Date(sub$obs_date), y = as.numeric(sub$smoothed),
+          type = "scatter", mode = "lines", name = b, legendgroup = b,
+          line = list(color = col, width = 2), connectgaps = FALSE,
+          hovertemplate = paste0(
+            "<b>", b, " (", i18n$t("monitoring_pixel_smooth_hover"), ")</b>",
+            "<br>%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>")
+        )
+      }
+
+      # Lignes de seuil horizontales (NDVI/NBR/NDMI) — inchangé.
+      th <- thresholds_r()
+      shapes <- list()
+      annotations <- list()
+      if (!is.null(th)) {
+        defs <- list(
+          list(v = suppressWarnings(as.numeric(th$ndvi)), lbl = "NDVI",
+               col = unname(.pixel_band_colors[["NDVI"]])),
+          list(v = suppressWarnings(as.numeric(th$nbr)),  lbl = "NBR",
+               col = unname(.pixel_band_colors[["NBR"]])),
+          list(v = suppressWarnings(as.numeric(th$ndmi)), lbl = "NDMI",
+               col = unname(.pixel_band_colors[["NDMI"]]))
+        )
+        for (d in defs) {
+          if (length(d$v) != 1L || is.na(d$v)) next
+          shapes <- c(shapes, list(list(
+            type = "line", xref = "paper", x0 = 0, x1 = 1,
+            yref = "y", y0 = d$v, y1 = d$v,
+            line = list(color = d$col, dash = "dash", width = 1))))
+          annotations <- c(annotations, list(list(
+            xref = "paper", x = 1, xanchor = "right",
+            yref = "y", y = d$v, yanchor = "bottom",
+            text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
+                           d$lbl, d$v),
+            showarrow = FALSE, font = list(color = d$col, size = 11))))
+        }
+      }
+
+      p <- plotly::layout(
+        p,
+        margin = list(t = 20, b = 40, l = 50, r = 10),
+        xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
+                      type = "date"),
+        yaxis  = list(title = i18n$t("monitoring_timeseries_yaxis"),
+                      range = c(-0.2, 1)),
+        legend = list(orientation = "h", y = -0.25),
+        shapes = if (length(shapes)) shapes else NULL,
+        annotations = if (length(annotations)) annotations else NULL
+      )
+      plotly::config(p, responsive = TRUE)
+    })
 
     shiny::observeEvent(input$map_click, {
       # Garde anti-multi-clics : on ignore tout nouveau clic tant que le
