@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.88.2\] - 2026-06-17
+
+### Removed
+
+- Alertes FORDEAD : panneau « Générer placettes QGIS (vérification
+  terrain) » (générateur legacy E6.c.5) retiré — doublon du sous-onglet
+  dédié « Plan de validation FORDEAD » (spec 014). `output$qgis_panel` +
+  `output$qgis_download`
+  - clés i18n `monitoring_qgis_*` orphelines supprimés.
+
 ## \[0.88.1\] - 2026-06-17
 
 ### Added

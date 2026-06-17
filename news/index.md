@@ -1,5 +1,18 @@
 # Changelog
 
+## nemetonshiny 0.88.2 (2026-06-17)
+
+#### Removed — Alertes FORDEAD : générateur QGIS legacy retiré
+
+Le panneau « Générer placettes QGIS (vérification terrain) » de l’onglet
+**Alertes FORDEAD** est supprimé : vestige (E6.c.5) faisant doublon avec
+le sous-onglet dédié **« Plan de validation FORDEAD »** (spec 014), qui
+génère les placettes de vérification terrain avec la méthodologie
+complète (placettes validation + témoins, classes, tampon, graine,
+persistance, export QGIS). `output$qgis_panel` + `output$qgis_download`
+et les clés i18n `monitoring_qgis_*` orphelines sont retirés. Aucune
+perte de fonctionnalité : utiliser « Plan de validation FORDEAD ».
+
 ## nemetonshiny 0.88.1 (2026-06-17)
 
 #### Added — Alertes FAST : message « calcul du raster en cours »
