@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.87.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.87.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.87.2" id="nemetonshiny-0872-2026-06-17">nemetonshiny 0.87.2 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0872-2026-06-17"></a></h2>
+<div class="section level4">
+<h4 id="fix--suivi-sanitaire--ré-alignement-auto-de-la-zone-projet-sur-_tot-0-87-2">Fix — Suivi sanitaire : ré-alignement auto de la zone projet sur <code>_tot</code>
+<a class="anchor" aria-label="anchor" href="#fix--suivi-sanitaire--r%C3%A9-alignement-auto-de-la-zone-projet-sur-_tot-0-87-2"></a></h4>
+<p>À l’ouverture de l’onglet Suivi sanitaire, <code>metadata$monitoring_zone_id</code> du projet courant est désormais <strong>ré-aligné automatiquement</strong> sur sa zone <code>_tot</code> (union complète des UGFs, convention spec 020) — en mémoire <strong>et</strong> persisté sur disque. Corrige les projets dont la metadata pointait encore sur une zone pré-spec-020 (mono-zone) ou sur une zone d’un autre projet (ex. Mouthe → <code>villards</code>). Opère une seule fois (garde sur l’égalité), ne touche rien si aucune zone <code>_tot</code> n’existe encore (projet sans zones générées). Complète le correctif v0.87.1 (le plan utilisait déjà la zone sélectionnée ; la metadata est maintenant cohérente pour les autres consommateurs).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.87.1" id="nemetonshiny-0871-2026-06-17">nemetonshiny 0.87.1 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0871-2026-06-17"></a></h2>
 <div class="section level4">

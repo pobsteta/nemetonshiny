@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.87.2\] - 2026-06-17
+
+### Fixed
+
+- Suivi sanitaire : `metadata$monitoring_zone_id` du projet courant
+  ré-aligné automatiquement sur la zone `_tot` (union UGF, spec 020) à
+  l’ouverture de l’onglet — mémoire + disque, une seule fois. Corrige
+  les projets pointant sur une zone obsolète / d’un autre projet. No-op
+  si pas de zone `_tot`.
+
 ## \[0.87.1\] - 2026-06-17
 
 ### Fixed
