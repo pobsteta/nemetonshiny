@@ -2703,6 +2703,10 @@ TRANSLATIONS <- list(
     fr = "Plein \u00e9cran",
     en = "Fullscreen"
   ),
+  monitoring_fast_raster_computing = list(
+    fr = "Calcul du raster d'alerte en cours\u2026",
+    en = "Computing the alert raster\u2026"
+  ),
   # --- Lissage d'affichage de la s\u00e9rie pixel (spec 026) -----------------
   monitoring_pixel_smooth_win_label = list(
     fr = "Lissage (jours)",

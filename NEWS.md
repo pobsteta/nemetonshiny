@@ -1,3 +1,19 @@
+# nemetonshiny 0.88.1 (2026-06-17)
+
+### Added — Alertes FAST : message « calcul du raster en cours »
+
+Au changement d'**indice FAST** (NDMI/NDVI/NBR/NDRE) ou de **mode du raster**
+(Fréquence/Intensité/Tendance) — ainsi que de zone, dates, seuils ou
+paramètres trend — une notification **« Calcul du raster d'alerte en cours… »**
+s'affiche immédiatement en bas à droite, le temps que la nouvelle carte se
+calcule. Évite les clics intempestifs avant l'affichage.
+
+Le calcul du mask (`compute_fast_alert_mask`) est désormais **déféré**
+(`session$onFlushed`) et son résultat passe par un `reactiveVal` : la
+notification part au client avant le calcul lourd (un calcul synchrone ne
+flush l'UI qu'à sa sortie). Bandeau, carte et clic-pixel consomment le même
+résultat (pas de double calcul).
+
 # nemetonshiny 0.88.0 (2026-06-17)
 
 ### Added — Graphe « série pixel » lissé (spec 026)
