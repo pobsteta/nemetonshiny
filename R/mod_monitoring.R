@@ -717,7 +717,14 @@ mod_monitoring_server <- function(id, app_state) {
       htmltools::tagList(banners)
     })
 
-    # ----- Alerts reactive (FORDEAD) --------------------------------
+    # ----- Alerts reactive (FORDEAD) — LEGACY (Phase A) -------------
+    # Phase A (spec 008 §15, décision D2) — `list_alerts_for_zone` (et le
+    # cœur `list_alerts`) sont legacy : la décision sain/affecté et la
+    # carte des alertes sont désormais pilotées par le RASTER masqué
+    # (`fordead_map_ret$mask`), pas par ce compte d'alertes vectorielles
+    # DB. Cette réactive n'est plus consommée par l'UI (conservée le temps
+    # de la transition de phase ; lazy → jamais évaluée). À retirer dans
+    # une phase ultérieure avec `list_alerts_for_zone`.
     # G1: by default only classes 3-forte + 4-sol-nu. The "include_low"
     # checkbox flips to all classes (1-2 inclusive). Re-fetches whenever
     # the zone, the toggle, or alerts_refresh() change.
@@ -736,124 +743,107 @@ mod_monitoring_server <- function(id, app_state) {
       list_alerts_for_zone(con, as.integer(zone), classes = classes)
     })
 
-    # ----- Alerts leaflet (T6app.11) + zone-saine card (v0.36.5) ----
-    #
-    # Trois états :
-    #   - alerts() retourne au moins une ligne   → carte Leaflet
-    #     (chemin actuel — placettes flaguées par classe)
-    #   - alerts() est vide ET un run FORDEAD a abouti dans la
-    #     session avec status = "success" → card « Zone saine » avec
-    #     la durée du run, pour confirmer à l'utilisateur que
-    #     0 anomalie = forêt saine (pas un run en cours, pas un échec
-    #     silencieux). Cf. bug report 2026-05-19.
-    #   - alerts() est vide ET aucun run dans la session → placeholder
-    #     générique (« Lancer un diagnostic FORDEAD pour cette zone »).
+    # ----- Alerts panel — raster-driven (Phase A, D2) ---------------
     output$alerts_panel <- shiny::renderUI({
       ns <- session$ns
       i18n <- i18n_r()
-      a <- alerts()
-      last <- fordead_last_result()
-      if (!is.null(a) && nrow(a)) {
+      # Phase A (spec 008 §15, ADR-013 A5, décision D2) — décision
+      # sain/affecté PILOTÉE PAR LE RASTER masqué de la Carte FORDEAD
+      # (`fordead_map_ret$mask`), plus par un compte d'alertes DB
+      # (`list_alerts` est legacy en Phase A — `alerts()` ci-dessus n'est
+      # plus consommé). Trois états :
+      #   (a) >= 1 pixel classe >= 1 → carte raster 0-4 (output$alerts_map) ;
+      #   (b) raster présent mais tout classe 0 / NA → carte « zone saine » ;
+      #   (c) aucun masque sur disque → placeholder « lancer un diagnostic ».
+      r <- fordead_map_ret$mask()
+      if (is.null(r)) {
+        return(htmltools::tags$p(class = "text-muted",
+                                 i18n$t("monitoring_alerts_placeholder")))
+      }
+      mx <- .fordead_raster_max(r)
+      if (is.finite(mx) && mx >= 1) {
         return(leaflet::leafletOutput(ns("alerts_map"), height = "55vh"))
       }
-      # Empty alerts list. Differentiate "fresh session, no run yet"
-      # from "run completed with 0 alerts" (zone saine).
+      # État (b) — zone saine. Meta : durée du run en session, sinon date
+      # du masque persistant (réconcilié depuis le disque).
+      last <- fordead_last_result()
+      meta <- ""
       if (!is.null(last) && identical(last$status, "success")) {
         dur <- as.numeric(last$duration_sec %||% NA_real_)
         ts  <- last$mask_timestamp %||% NA_character_
         meta <- if (is.finite(dur)) {
           sprintf(i18n$t("monitoring_fordead_no_alerts_meta"), dur)
-        } else if (isTRUE(last$reconciled) && !is.na(ts) && nzchar(ts)) {
-          # Run reconciled from disk after a session reload — no
-          # in-session duration, show the persisted-mask timestamp.
+        } else if (!is.na(ts) && nzchar(ts)) {
           sprintf(i18n$t("monitoring_fordead_no_alerts_meta_date"), ts)
         } else {
           ""
         }
-        return(bslib::card(
-          class = "border-success mt-2",
-          bslib::card_header(
-            htmltools::div(
-              class = "d-flex align-items-center",
-              bsicons::bs_icon("check-circle-fill",
-                               class = "me-2 text-success fs-4"),
-              htmltools::tags$strong(
-                i18n$t("monitoring_fordead_no_alerts_title")
-              )
-            )
-          ),
-          bslib::card_body(
-            htmltools::tags$p(
-              i18n$t("monitoring_fordead_no_alerts_body")
-            ),
-            if (nzchar(meta))
-              htmltools::tags$p(class = "text-muted small mb-0", meta)
-          )
-        ))
       }
-      htmltools::tags$p(class = "text-muted",
-                        i18n$t("monitoring_alerts_placeholder"))
+      bslib::card(
+        class = "border-success mt-2",
+        bslib::card_header(
+          htmltools::div(
+            class = "d-flex align-items-center",
+            bsicons::bs_icon("check-circle-fill",
+                             class = "me-2 text-success fs-4"),
+            htmltools::tags$strong(
+              i18n$t("monitoring_fordead_no_alerts_title")
+            )
+          )
+        ),
+        bslib::card_body(
+          htmltools::tags$p(
+            i18n$t("monitoring_fordead_no_alerts_body")
+          ),
+          if (nzchar(meta))
+            htmltools::tags$p(class = "text-muted small mb-0", meta)
+        )
+      )
     })
 
+    # Phase A (spec 008 §15, D2) — la carte « Alertes FORDEAD » affiche
+    # désormais le RASTER catégoriel 0-4 masqué par strate (même contenu
+    # et même palette que la Carte FORDEAD), au lieu des marqueurs
+    # vectoriels per-placette (`list_alerts` legacy). Source : le masque
+    # exposé par le sous-module (`fordead_map_ret$mask`).
     output$alerts_map <- leaflet::renderLeaflet({
-      a <- alerts()
-      if (is.null(a) || !nrow(a)) return(NULL)
+      r <- fordead_map_ret$mask()
+      if (is.null(r)) return(NULL)
       i18n <- i18n_r()
 
-      a_ll <- if (sf::st_crs(a)$epsg %||% 4326L != 4326L)
-                sf::st_transform(a, 4326)
-              else a
-
-      colors <- c(
-        "1-faible"  = "#FFD27F",  # pale orange
-        "2-moyenne" = "#FF9933",  # orange
-        "3-forte"   = "#D62728",  # red
-        "4-sol-nu"  = "#222222"   # near-black
-      )
-      cls <- as.character(a_ll$confidence_class)
-      cls[!cls %in% names(colors)] <- "3-forte"
-      fill <- unname(colors[cls])
-
-      popups <- vapply(seq_len(nrow(a_ll)), function(i) {
-        sprintf(
-          "<strong>%s</strong>: %s<br/>%s: %.2f<br/>%s: %s<br/>%s: %s<br/>%s: %s",
-          i18n$t("monitoring_alert_popup_class"),
-          htmltools::htmlEscape(cls[i]),
-          i18n$t("monitoring_alert_popup_stress"),
-          as.numeric(a_ll$stress_index[i] %||% NA_real_),
-          i18n$t("monitoring_alert_popup_date"),
-          as.character(a_ll$trigger_date[i] %||% NA),
-          i18n$t("monitoring_alert_popup_status"),
-          htmltools::htmlEscape(as.character(a_ll$validation_status[i] %||% "")),
-          i18n$t("monitoring_alert_popup_disturbance"),
-          htmltools::htmlEscape(as.character(a_ll$disturbance_type[i] %||% "-"))
-        )
-      }, character(1))
+      cats   <- 0:4
+      colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
+      pal <- leaflet::colorFactor(colors, levels = cats,
+                                  na.color = "transparent")
 
       legend_labels <- c(
-        i18n$t("monitoring_class_1"),
-        i18n$t("monitoring_class_2"),
-        i18n$t("monitoring_class_3"),
-        i18n$t("monitoring_class_4")
+        sprintf("0 - %s", i18n$t("monitoring_fordead_class_0")),
+        sprintf("1 - %s", i18n$t("monitoring_fordead_class_1")),
+        sprintf("2 - %s", i18n$t("monitoring_fordead_class_2")),
+        sprintf("3 - %s", i18n$t("monitoring_fordead_class_3")),
+        sprintf("4 - %s", i18n$t("monitoring_fordead_class_4"))
       )
 
-      leaflet::leaflet(a_ll) |>
+      leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
           options = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
-        leaflet::addCircleMarkers(
-          radius = 6, weight = 1, color = "#000",
-          fillColor = fill, fillOpacity = 0.85,
-          popup = popups
+        leaflet::addRasterImage(
+          x       = r,
+          colors  = pal,
+          opacity = 1.0,
+          method  = "ngb",
+          options = leaflet::gridOptions(pane = "nemetonRaster")
         ) |>
         leaflet::addLegend(
           position = "bottomright",
-          colors   = unname(colors),
+          colors   = colors,
           labels   = legend_labels,
-          title    = i18n$t("monitoring_alert_popup_class"),
+          title    = i18n$t("monitoring_fordead_class_title"),
           opacity  = 0.85
         )
     })
@@ -920,6 +910,24 @@ mod_monitoring_server <- function(id, app_state) {
                      stringsAsFactors = FALSE)
         }
       )
+    })
+
+    # Phase A (spec 008 §15, ADR-013 A5, décision D2) — FORDEAD est
+    # TOUJOURS calculé sur la zone `_tot` (union complète des UGFs),
+    # quelle que soit la strate sélectionnée au menu `zone_id`.
+    # L'affichage par strate n'est plus qu'un masquage du raster `_tot`
+    # (cf. mod_monitoring_fordead_map). Cette résolution centralise l'id
+    # de la zone `_tot` pour le lancement du run, le stamping du résultat
+    # et la réconciliation disque — tous doivent pointer sur la MÊME
+    # zone `_tot` (cache `zone_<id_tot>/`). Renvoie NA s'il n'y a pas de
+    # zone `_tot` (projet sans zones générées) → le garde-fou de
+    # lancement bascule alors sur « validez d'abord une zone ».
+    fordead_zone_id <- shiny::reactive({
+      z <- zones()
+      if (is.null(z) || !nrow(z)) return(NA_integer_)
+      idx <- grep("_tot$", as.character(z$name))
+      if (!length(idx)) return(NA_integer_)
+      suppressWarnings(as.integer(z$id[idx[1]]))
     })
 
     # Push zones into the selectInput. Empty list → empty choices, the
@@ -2550,6 +2558,15 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return(invisible(FALSE))
       }
+      # Phase A (D2) — le run cible la zone `_tot` (union des UGFs),
+      # jamais la strate sélectionnée. Si le projet n'a pas de zone
+      # `_tot`, on garde le garde-fou « validez d'abord une zone ».
+      id_tot <- fordead_zone_id()
+      if (length(id_tot) != 1L || is.na(id_tot)) {
+        shiny::showNotification(i18n$t("monitoring_validate_zone"),
+                                type = "warning", duration = 4)
+        return(invisible(FALSE))
+      }
       shiny::showNotification(
         i18n$t("monitoring_health_starting"),
         id          = session$ns("fordead_progress"),
@@ -2579,7 +2596,8 @@ mod_monitoring_server <- function(id, app_state) {
         dates_monitoring  = as.character(input$date_range),
         threshold_anomaly = as.numeric(input$threshold_anomaly),
         vegetation_index  = input$vegetation_index,
-        zone_id           = as.integer(input$zone_id),
+        # Phase A (D2) — zone `_tot`, pas la strate sélectionnée.
+        zone_id           = id_tot,
         cache_dir         = .resolve_s2_cache_dir(app_state$current_project),
         db_url            = .resolve_monitoring_db_url(app_state$current_project),
         progress_path     = ppath,
@@ -2589,7 +2607,7 @@ mod_monitoring_server <- function(id, app_state) {
         # masks bruts) — inspectables. Le dossier est per-zone et
         # écrasé à chaque relance, taille bornée.
         output_dir        = .resolve_fordead_output_dir(
-                              app_state$current_project, input$zone_id),
+                              app_state$current_project, id_tot),
         keep_output       = TRUE,
         # Forwarded so the worker builds its ntfy push messages in the
         # user's language (the worker has no access to app_state).
@@ -2741,7 +2759,8 @@ mod_monitoring_server <- function(id, app_state) {
           fordead_last_result(list(
             status  = "error",
             message = conditionMessage(e),
-            zone_id = suppressWarnings(as.integer(input$zone_id))
+            # Phase A (D2) — stamp la zone `_tot` réellement calculée.
+            zone_id = suppressWarnings(shiny::isolate(fordead_zone_id()))
           ))
           NULL
         }
@@ -2763,7 +2782,8 @@ mod_monitoring_server <- function(id, app_state) {
         # Stamp the zone so the disk-reconciliation observer can tell
         # this in-session result apart from a synthetic reconciled one
         # and never clobbers it (cf. .reconcile_fordead_state).
-        result$zone_id <- suppressWarnings(as.integer(input$zone_id))
+        # Phase A (D2) — la zone calculée est `_tot`, pas la strate.
+        result$zone_id <- suppressWarnings(shiny::isolate(fordead_zone_id()))
         fordead_last_result(result)
         if (identical(result$status, "error")) {
           shiny::showNotification(
@@ -2773,10 +2793,12 @@ mod_monitoring_server <- function(id, app_state) {
             type     = "error", duration = 10
           )
         } else {
+          # Phase A (D2) — la notif n'annonce plus de décompte d'alertes
+          # (n_alerts_inserted = NA côté cœur ; le verdict sain/affecté
+          # se lit sur le raster masqué de la Carte FORDEAD). Durée seule.
           shiny::showNotification(
-            sprintf(i18n$t("monitoring_health_success"),
-                    result$n_alerts_inserted %||% 0L,
-                    result$duration_sec      %||% 0),
+            sprintf(i18n$t("monitoring_health_success_done"),
+                    result$duration_sec %||% 0),
             id       = session$ns("fordead_success"),
             type     = "message", duration = 8
           )
@@ -2830,7 +2852,11 @@ mod_monitoring_server <- function(id, app_state) {
       if (!identical(input$mode, "health")) return()
       if (!isTRUE(nzchar(zone))) return()
       if (identical(fordead_task$status(), "running")) return()
-      zone_int <- suppressWarnings(as.integer(zone))
+      # Phase A (D2) — réconcilier l'état depuis le masque de la zone
+      # `_tot` réellement calculée (cache `zone_<id_tot>/`), pas la strate
+      # sélectionnée (qui n'a pas de masque propre).
+      zone_int <- fordead_zone_id()
+      if (length(zone_int) != 1L || is.na(zone_int)) return()
       cur <- shiny::isolate(fordead_last_result())
       if (!is.null(cur) && !isTRUE(cur$reconciled) &&
           identical(cur$zone_id, zone_int)) {

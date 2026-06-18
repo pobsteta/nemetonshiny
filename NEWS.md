@@ -1,3 +1,32 @@
+# nemetonshiny 0.90.0 (2026-06-18)
+
+### Changed — Suivi sanitaire FORDEAD : affichage piloté raster + masquage par strate (Phase A)
+
+Réf. spec 008 §15, ADR-013 A5, décision D2. La **placette disparaît** du mode
+santé : FORDEAD est calculé **une seule fois sur la zone `_tot`** (union de
+toutes les UGFs), et l'affichage par strate n'est plus qu'un **masquage** du
+raster `_tot` — aucun recalcul au changement de strate. Plancher
+`Imports: nemeton (>= 0.92.0)`.
+
+- **Calcul forcé sur `_tot`** (`mod_monitoring.R`) — le lancement FORDEAD
+  (`run_fordead_dieback`), le stamping du résultat et la réconciliation
+  disque ciblent désormais la zone `_tot` résolue par convention de nommage
+  (spec 020), quelle que soit la strate sélectionnée au menu. Garde-fou
+  conservé si le projet n'a pas de zone `_tot`.
+- **Masquage à l'affichage par strate** (`mod_monitoring_fordead_map.R`) — le
+  masque lu est toujours celui de `_tot` ; si la strate sélectionnée n'est
+  pas `_tot`, le raster est clippé à l'AOI de la strate (`terra::mask` via
+  `get_monitoring_zone_aoi`, EPSG:2154). Changer de strate ⇒ re-masquage
+  instantané, sans nouveau run.
+- **« Zone saine » décidée sur le raster** — la décision sain/affecté
+  (carte raster / carte « zone saine » / placeholder) se lit désormais sur
+  le raster masqué (classe ≥ 1 = affecté), plus sur un compte d'alertes DB
+  (`list_alerts` legacy en Phase A). La notification de fin de run n'annonce
+  plus de décompte d'alertes (durée seule ; `n_alerts_inserted = NA` côté
+  cœur).
+- **i18n** — retrait du terme « placette » des messages santé FORDEAD
+  (`monitoring_fordead_no_alerts_body`, `monitoring_zone_orphan_body`).
+
 # nemetonshiny 0.89.1 (2026-06-18)
 
 ### Added — Ingestion FAST : sentinelle de run + reprise au relancement
