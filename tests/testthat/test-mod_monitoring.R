@@ -457,7 +457,13 @@ test_that("mod_monitoring_ui exposes the FORDEAD/health-mode controls", {
       html <- as.character(ui)
       expect_true(grepl("monitoring-mode\"",            html))
       expect_true(grepl("monitoring-dates_training",    html))
-      expect_true(grepl("monitoring-vegetation_index",  html))
+      # v0.90.x — l'indice FORDEAD (CRSWIR seul) est passé en radio dans
+      # la sidebar droite des onglets Alertes/Carte FORDEAD ; le slider
+      # d'opacité du raster l'accompagne (parité FAST).
+      expect_true(grepl("monitoring-fordead_index_alerts", html))
+      expect_true(grepl("monitoring-fordead_index_cm",     html))
+      expect_true(grepl("monitoring-alerts_opacity",       html))
+      expect_true(grepl("monitoring-fordead_opacity",      html))
       expect_true(grepl("monitoring-threshold_anomaly", html))
       expect_true(grepl("monitoring-run_health",        html))
       expect_true(grepl("monitoring-validity_banners",  html))

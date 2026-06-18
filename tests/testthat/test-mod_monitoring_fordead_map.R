@@ -299,3 +299,62 @@ test_that("AC.15.5 — aucune clé i18n monitoring_fordead_* ne mentionne « pla
     }
   }
 })
+
+test_that("la carte FORDEAD rend la couche UGF + opacité réglable (parité FAST)", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("terra")
+
+  withr::with_tempdir({
+    proj_path <- getwd()
+    cd <- file.path(proj_path, "cache", "layers", "fordead")
+    dir.create(cd, recursive = TRUE)
+
+    # indicators_sf (UGF) en EPSG:2154 → .ugf_for_overlay() doit le
+    # reprojeter en 4326 et la carte ajoute la couche "UGF".
+    poly <- sf::st_polygon(list(rbind(
+      c(0, 0), c(40, 0), c(40, 40), c(0, 40), c(0, 0))))
+    ind_sf <- sf::st_sf(ug_id = 1L,
+                        geometry = sf::st_sfc(poly, crs = 2154))
+    proj <- list(id = "x", path = proj_path, indicators_sf = ind_sf)
+
+    testthat::with_mocked_bindings(
+      get_monitoring_db_connection   = function(...) "fake-con",
+      close_monitoring_db_connection = function(con) invisible(TRUE),
+      get_monitoring_zone_aoi        = function(con, zone_id) .fm_test_aoi(),
+      {
+        testthat::local_mocked_bindings(
+          find_zones_by_project = function(con, project_uuid) .fm_test_zones(),
+          read_fordead_dieback_mask = function(con, zone_id, run_id = NULL,
+                                               cache_dir = NULL) .fm_test_raster(3),
+          .package = "nemeton"
+        )
+        shiny::testServer(
+          nemetonshiny:::mod_monitoring_fordead_map_server,
+          args = list(
+            app_state = shiny::reactiveValues(language = "fr",
+                                              current_project = proj),
+            zone_id_r = shiny::reactive("10"),
+            opacity_r = shiny::reactive(0.3)
+          ),
+          {
+            session$flushReact()
+            w <- output$map  # widget leaflet rendu (htmlwidget sérialisé)
+            expect_false(is.null(w))
+            calls <- vapply(w$x$calls, function(c) c$method, character(1))
+            # couche UGF (addPolygons) + raster (addRasterImage) présents.
+            expect_true("addPolygons" %in% calls)
+            expect_true("addRasterImage" %in% calls)
+            # opacité du raster = opacity_r() (0.3), pas la valeur en dur.
+            # On scanne les args (positions internes leaflet fragiles).
+            ri <- w$x$calls[[which(calls == "addRasterImage")[1]]]
+            has_op <- any(vapply(ri$args, function(a)
+              is.numeric(a) && length(a) == 1L &&
+                isTRUE(all.equal(as.numeric(a), 0.3)),
+              logical(1)))
+            expect_true(has_op)
+          }
+        )
+      }
+    )
+  })
+})
