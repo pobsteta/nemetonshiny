@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.89.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.90.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.90.0" id="nemetonshiny-0900-2026-06-18">nemetonshiny 0.90.0 (2026-06-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0900-2026-06-18"></a></h2>
+<div class="section level4">
+<h4 id="changed--suivi-sanitaire-fordead--affichage-piloté-raster--masquage-par-strate-phase-a-0-90-0">Changed — Suivi sanitaire FORDEAD : affichage piloté raster + masquage par strate (Phase A)<a class="anchor" aria-label="anchor" href="#changed--suivi-sanitaire-fordead--affichage-pilot%C3%A9-raster--masquage-par-strate-phase-a-0-90-0"></a></h4>
+<p>Réf. spec 008 §15, ADR-013 A5, décision D2. La <strong>placette disparaît</strong> du mode santé : FORDEAD est calculé <strong>une seule fois sur la zone <code>_tot</code></strong> (union de toutes les UGFs), et l’affichage par strate n’est plus qu’un <strong>masquage</strong> du raster <code>_tot</code> — aucun recalcul au changement de strate. Plancher <code>Imports: nemeton (&gt;= 0.92.0)</code>.</p>
+<ul><li>
+<strong>Calcul forcé sur <code>_tot</code></strong> (<code>mod_monitoring.R</code>) — le lancement FORDEAD (<code>run_fordead_dieback</code>), le stamping du résultat et la réconciliation disque ciblent désormais la zone <code>_tot</code> résolue par convention de nommage (spec 020), quelle que soit la strate sélectionnée au menu. Garde-fou conservé si le projet n’a pas de zone <code>_tot</code>.</li>
+<li>
+<strong>Masquage à l’affichage par strate</strong> (<code>mod_monitoring_fordead_map.R</code>) — le masque lu est toujours celui de <code>_tot</code> ; si la strate sélectionnée n’est pas <code>_tot</code>, le raster est clippé à l’AOI de la strate (<code><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">terra::mask</a></code> via <code>get_monitoring_zone_aoi</code>, EPSG:2154). Changer de strate ⇒ re-masquage instantané, sans nouveau run.</li>
+<li>
+<strong>« Zone saine » décidée sur le raster</strong> — la décision sain/affecté (carte raster / carte « zone saine » / placeholder) se lit désormais sur le raster masqué (classe ≥ 1 = affecté), plus sur un compte d’alertes DB (<code>list_alerts</code> legacy en Phase A). La notification de fin de run n’annonce plus de décompte d’alertes (durée seule ; <code>n_alerts_inserted = NA</code> côté cœur).</li>
+<li>
+<strong>i18n</strong> — retrait du terme « placette » des messages santé FORDEAD (<code>monitoring_fordead_no_alerts_body</code>, <code>monitoring_zone_orphan_body</code>).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.89.1" id="nemetonshiny-0891-2026-06-18">nemetonshiny 0.89.1 (2026-06-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0891-2026-06-18"></a></h2>
 <div class="section level4">
