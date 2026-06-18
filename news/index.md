@@ -1,5 +1,40 @@
 # Changelog
 
+## nemetonshiny 0.89.0 (2026-06-17)
+
+#### Added — Carte FAST : 3ᵉ méthode de lissage « Harmonique »
+
+La modale du graphique « série pixel » (Carte FAST) expose désormais une
+**3ᵉ méthode de lissage : Harmonique** (régression de Fourier
+saisonnière), en plus de la médiane glissante et de LOESS. Un curseur
+**« Harmoniques (cycles annuels) »** (1–3, défaut 2) apparaît uniquement
+quand la méthode harmonique est sélectionnée. Les paramètres `method` et
+`n_harmonics` sont transmis à
+[`nemeton::smooth_pixel_series()`](https://pobsteta.github.io/nemeton/reference/smooth_pixel_series.html)
+(spec 026, cœur ≥ 0.91.0). Sur série trop courte (\< 2·K+4 points
+clairs, \< ~9 mois), le garde-fou cœur lève une erreur déjà capturée →
+dégradation propre (courbe lissée absente), les points bruts restent
+affichés. Plancher `Imports: nemeton (>= 0.91.0)`.
+
+#### Changed — Performance : chargement d’un projet récent
+
+Diagnostic + optimisations du chemin « clic projet récent → affichage
+des UGFs » :
+
+- **Pré-chauffage de la pile géo** (`arrow`/`geoarrow`/`sf`) ~1,5 s
+  après le démarrage de l’app, hors du chemin critique : le coût de
+  chargement paresseux des namespaces (surtout `arrow`, ~1,5–2 s) qui
+  frappait le **tout premier** clic de projet d’une session est
+  désormais payé pendant que l’utilisateur parcourt la page d’accueil.
+- **Suppression du `ug_build_sf()` redondant** dans le rendu carte de
+  `mod_ug` : la géométrie UGF dissoute déjà construite par
+  `attach_indicators_sf()` (`project$indicators_sf`) est réutilisée au
+  lieu d’un nouveau `st_union()` par UGF (gain croissant avec le nombre
+  d’UGFs).
+- **Instrumentation chrono** activable par `NEMETON_PERF_TRACE=1`
+  (gated, zéro coût en prod) le long du chemin de chargement pour
+  mesurer chaque étape dans la console.
+
 ## nemetonshiny 0.88.2 (2026-06-17)
 
 #### Removed — Alertes FORDEAD : générateur QGIS legacy retiré
