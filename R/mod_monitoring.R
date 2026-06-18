@@ -202,6 +202,11 @@ mod_monitoring_ui <- function(id) {
                 icon  = bsicons::bs_icon("play-fill"),
                 class = "btn-primary w-100"
               ),
+              # v0.85.2.9000 — Bandeau « ingestion en cours / interrompue »
+              # détecté au (re)chargement depuis la sentinelle disque du
+              # worker (survit à la fermeture de session). Inclut un bouton
+              # « Reprendre » quand le worker est mort en cours de route.
+              shiny::uiOutput(ns("ingest_resume_banner")),
               # "Cancel / reset" button — only visible while the worker
               # is running. Force-unlocks the UI without killing the
               # background future (which Shiny's ExtendedTask cannot
@@ -1492,6 +1497,11 @@ mod_monitoring_server <- function(id, app_state) {
     # first invoke. The reactivePoll below watches this path and the
     # toast observer re-renders the persistent "X/N tuiles..." card.
     ingest_progress_path <- shiny::reactiveVal(NULL)
+    # v0.85.2.9000 — État d'ingestion détecté au (re)chargement depuis
+    # la sentinelle disque écrite par le worker (`ingest_run.json`),
+    # indépendant de toute session. Pilote `output$ingest_resume_banner`.
+    # Voir `.detect_ingest_state()` + l'observer de détection plus bas.
+    ingest_detected <- shiny::reactiveVal(list(state = "none"))
     # v0.70.4 — Garde contre le re-traitement du result du worker
     # FAST. Shiny ExtendedTask$result() peut, dans certains cycles
     # de vie (cascade reactive, transition status, etc.), refire
@@ -2038,6 +2048,68 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
+    # v0.85.2.9000 — Séquence d'invocation FAST factorisée : toast
+    # persistant → reset des fichiers progress/console → invoke du
+    # worker (avec sentinelle de run écrite côté worker). Appelée par
+    # « Lancer » (observeEvent input$run, après validation +
+    # réamorçage éventuel) ET par « Reprendre » (observeEvent
+    # input$ingest_resume, avec les paramètres d'un run interrompu lus
+    # dans la sentinelle). Le réamorçage cache (☑ reprime) reste côté
+    # input$run uniquement (pas de wipe sur une reprise).
+    start_fast_ingest <- function(zone_id_int, d_from, d_to) {
+      i18n <- i18n_r()
+      shiny::showNotification(
+        i18n$t("monitoring_ingest_starting"),
+        id          = session$ns("ingest_progress"),
+        type        = "message",
+        duration    = NULL,
+        closeButton = FALSE
+      )
+      ppath <- .resolve_progress_path(app_state$current_project,
+                                      "ingest_progress.json")
+      if (!is.null(ppath) && file.exists(ppath)) {
+        tryCatch(unlink(ppath), error = function(e) NULL)
+      }
+      ingest_progress_path(ppath)
+
+      cache_dir <- .resolve_s2_cache_dir(app_state$current_project)
+
+      lpath <- .resolve_progress_path(app_state$current_project,
+                                      "ingest_console.log")
+      if (!is.null(lpath)) {
+        tryCatch(writeLines(character(0), lpath, useBytes = TRUE),
+                 error = function(e) NULL)
+      }
+      ingest_log_path(lpath)
+      ingest_log_offset(0L)
+
+      .fast_cancel_flag <- .resolve_progress_path(
+        app_state$current_project, "fast_cancel.flag")
+
+      fast_task$invoke(
+        zone_id       = zone_id_int,
+        start         = d_from,
+        end           = d_to,
+        # NDVI + NBR + NDMI + NDRE (cf. commentaire historique du
+        # premier invoke — bandes câblées en dur).
+        bands         = c("NDVI", "NBR", "NDMI", "NDRE"),
+        max_cloud     = 20,
+        db_url        = .resolve_monitoring_db_url(app_state$current_project),
+        progress_path = ppath,
+        sentinel_path = .resolve_progress_path(app_state$current_project,
+                                               "ingest_run.json"),
+        cache_dir     = cache_dir,
+        skip_cached   = FALSE,
+        log_path      = lpath,
+        lang          = app_state$language %||% "fr",
+        cancel_path   = .fast_cancel_flag,
+        prewarm_alerts         = TRUE,
+        prewarm_mask_cache_dir = .fast_alert_cache_dir(
+          app_state$current_project$path
+        )
+      )
+    }
+
     # Click handler: validate state, build window dates, fire the task.
     shiny::observeEvent(input$run, {
       i18n <- i18n_r()
@@ -2087,143 +2159,142 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
 
-      # Initial persistent toast: replaced as soon as the worker emits
-      # its first progress event (typically <1 s after invoke).
-      shiny::showNotification(
-        i18n$t("monitoring_ingest_starting"),
-        id          = session$ns("ingest_progress"),
-        type        = "message",
-        duration    = NULL,
-        closeButton = FALSE
-      )
-
-      # Resolve where the worker will write progress.json. NULL when no
-      # project is open (PG-only setup) — in that case the progress
-      # bandeau just stays on "Téléchargement en cours...".
-      ppath <- .resolve_progress_path(app_state$current_project,
-                                      "ingest_progress.json")
-      if (!is.null(ppath) && file.exists(ppath)) {
-        tryCatch(unlink(ppath), error = function(e) NULL)
-      }
-      ingest_progress_path(ppath)
-
-      # Sentinel-2 band cache: nemeton@v0.21.3+ accepts `cache_dir` and
-      # reuses already-downloaded bands across runs. Drop it under the
-      # project so it follows the project (and so the user can wipe it
-      # by clearing the project data folder). NULL = no cache (in-memory
-      # only, the legacy behavior).
-      cache_dir <- .resolve_s2_cache_dir(app_state$current_project)
-
-      # `reprime_cache` checkbox semantics (inverted in v0.30.1):
-      #   ☐ default → skip_cached = FALSE always (DB INSERTs are
-      #              ON CONFLICT DO NOTHING, so re-running is safe).
-      #              nemeton checks the disk cache, only fetches
-      #              missing bands. This is what FORDEAD needs —
-      #              the DB-short-circuit default of v0.30.0 and
-      #              before left users with a populated DB but an
-      #              empty disk cache, and FORDEAD had to re-fetch
-      #              everything.
-      #   ☑ checked → wipe <cache_dir>/* then re-download every
-      #              scene + band from scratch. Use to recover from
-      #              a corrupted cache.
-      #
-      # The skip_cached value passed to nemeton::ingest_sentinel2_timeseries
-      # is now FALSE in BOTH branches (see the $invoke call below).
-      # The branch below only differs by the wipe step.
-      if (isTRUE(input$reprime_cache) && !is.null(cache_dir) &&
-          dir.exists(cache_dir)) {
-        # v0.51.4 — réamorçage RESTREINT à la fenêtre de dates FAST. Le
-        # cache S2 est PARTAGÉ avec FORDEAD, dont la période
-        # d'apprentissage déborde souvent la fenêtre FAST : on ne supprime
-        # donc QUE les dossiers de scènes dont la date d'acquisition tombe
-        # dans [dr[1], dr[2]], et on PRÉSERVE celles hors fenêtre (dates
-        # d'apprentissage FORDEAD). Une scène dont la date n'est pas
-        # parsable est conservée (prudence — on ne supprime que ce qu'on
-        # peut dater avec certitude).
-        d_from <- suppressWarnings(as.Date(dr[1]))
-        d_to   <- suppressWarnings(as.Date(dr[2]))
-        scene_dirs <- list.dirs(cache_dir, recursive = FALSE,
-                                full.names = TRUE)
-        if (length(scene_dirs) && !is.na(d_from) && !is.na(d_to)) {
-          in_window <- vapply(scene_dirs, function(d) {
-            sd <- .s2_scene_date_from_id(basename(d))
-            !is.na(sd) && sd >= d_from && sd <= d_to
-          }, logical(1))
-          victims <- scene_dirs[in_window]
-          if (length(victims)) {
-            tryCatch(
-              unlink(victims, recursive = TRUE, force = TRUE),
-              error = function(e) NULL
+      # Réamorçage cache optionnel (☑ reprime_cache) — RESTREINT à la
+      # fenêtre FAST [dr[1], dr[2]] ; les scènes hors fenêtre (période
+      # d'apprentissage FORDEAD, cache S2 partagé) sont préservées.
+      # Doit précéder l'invocation. v0.30.1 : skip_cached reste FALSE
+      # dans tous les cas (INSERTs idempotents) — seule la branche wipe
+      # diffère. v0.85.2.9000 : la séquence toast → invoke a été
+      # factorisée dans `start_fast_ingest()` (réutilisée par Reprendre).
+      if (isTRUE(input$reprime_cache)) {
+        cache_dir <- .resolve_s2_cache_dir(app_state$current_project)
+        if (!is.null(cache_dir) && dir.exists(cache_dir)) {
+          d_from <- suppressWarnings(as.Date(dr[1]))
+          d_to   <- suppressWarnings(as.Date(dr[2]))
+          scene_dirs <- list.dirs(cache_dir, recursive = FALSE,
+                                  full.names = TRUE)
+          if (length(scene_dirs) && !is.na(d_from) && !is.na(d_to)) {
+            in_window <- vapply(scene_dirs, function(d) {
+              sd <- .s2_scene_date_from_id(basename(d))
+              !is.na(sd) && sd >= d_from && sd <= d_to
+            }, logical(1))
+            victims <- scene_dirs[in_window]
+            if (length(victims)) {
+              tryCatch(
+                unlink(victims, recursive = TRUE, force = TRUE),
+                error = function(e) NULL
+              )
+            }
+            cli::cli_alert_info(
+              "Cache S2 réamorcé sur la fenêtre FAST [{d_from} — {d_to}] : {length(victims)} scène(s) supprimée(s), {length(scene_dirs) - length(victims)} conservée(s) hors fenêtre (FORDEAD préservé)."
             )
           }
-          cli::cli_alert_info(
-            "Cache S2 réamorcé sur la fenêtre FAST [{d_from} — {d_to}] : {length(victims)} scène(s) supprimée(s), {length(scene_dirs) - length(victims)} conservée(s) hors fenêtre (FORDEAD préservé)."
-          )
         }
       }
 
-      # Console log channel: truncate the file before invoke and reset
-      # the tail offset so the parent picks the worker stream up from
-      # byte 0. NULL when no project is open — in that case the worker
-      # stays silent (its stdout is still captured by future).
-      lpath <- .resolve_progress_path(app_state$current_project,
-                                      "ingest_console.log")
-      if (!is.null(lpath)) {
-        tryCatch(writeLines(character(0), lpath, useBytes = TRUE),
-                 error = function(e) NULL)
-      }
-      ingest_log_path(lpath)
-      ingest_log_offset(0L)
+      start_fast_ingest(as.integer(input$zone_id),
+                        as.Date(dr[1]), as.Date(dr[2]))
+    })
 
-      fast_task$invoke(
-        zone_id       = as.integer(input$zone_id),
-        start         = as.Date(dr[1]),
-        end           = as.Date(dr[2]),
-        # v0.61.0 — `bands` câblé en dur. Cf. commentaire dans la
-        # sidebar (le checkboxGroupInput a été retiré).
-        # NDMI ajouté (nemeton >= 0.64.0) : l'ingestion cache la bande
-        # B11 nécessaire et le cœur pré-chauffe aussi les masques
-        # d'alerte NDMI (combinaisons index × mode de prewarm_alerts).
-        # NDRE ajouté : cache les bandes red-edge B05 + B8A nécessaires
-        # au mode FAST `trend` (Theil-Sen + Mann-Kendall, nemeton spec
-        # 023) ; le cœur pré-chauffe alors aussi les cartes trend.
-        bands         = c("NDVI", "NBR", "NDMI", "NDRE"),
-        max_cloud     = 20,
-        # Pre-resolve here (the future worker can't see app_state) and
-        # pass the URL explicitly. The fallback to a local SQLite file
-        # under <project>/data/monitoring.sqlite is selected when no
-        # PG env var is set — that's the single-user path.
-        db_url        = .resolve_monitoring_db_url(app_state$current_project),
-        progress_path = ppath,
-        cache_dir     = cache_dir,
-        # v0.30.1: always FALSE — nemeton checks disk cache + DB
-        # INSERTs are idempotent. See the comment block above the
-        # wipe branch for the full semantics.
-        skip_cached   = FALSE,
-        log_path      = lpath,
-        # v0.42.1 — forwarded so the worker builds its ntfy push
-        # messages in the user's language (the worker has no access
-        # to app_state). Symétrique avec fordead_task$invoke.
-        lang          = app_state$language %||% "fr",
-        # v0.52.0 — chemin du cancel-flag polled par le worker entre
-        # chaque tuile (nemeton@v0.53.0). Le clic « Annuler le
-        # diagnostic » écrit ce fichier ; nemeton renvoie alors un
-        # résumé status="cancelled" + commit partiel.
-        cancel_path   = .fast_cancel_flag,
-        # v0.54.0 → v0.55.0 — Le pré-calcul des 4 cartes FAST est
-        # désormais fait PAR LE CŒUR (spec 018 nemeton@v0.61.0) via
-        # les params natifs `prewarm_alerts` + `prewarm_mask_cache_dir`.
-        # L'app les active systématiquement (feature désirable par
-        # défaut). Le chemin doit être EXACTEMENT le même que celui
-        # utilisé par `mod_monitoring_fast_alerts.R` /
-        # `mod_validation_sampling.R` à la lecture (sinon cache D6
-        # raté car hash calculé/lu à des endroits différents) — d'où
-        # le helper `.fast_alert_cache_dir()` factorisé.
-        prewarm_alerts         = TRUE,
-        prewarm_mask_cache_dir = .fast_alert_cache_dir(
-          app_state$current_project$path
-        )
-      )
+    # v0.85.2.9000 — « Reprendre » une ingestion interrompue détectée au
+    # relancement. Lit la sentinelle disque (zone + période du run mort),
+    # ré-invoque le worker via `start_fast_ingest()` ; `skip_cached`
+    # côté cœur saute les tuiles déjà téléchargées → reprise effective.
+    shiny::observeEvent(input$ingest_resume, {
+      i18n <- i18n_r()
+      if (identical(fast_task$status(), "running")) return()
+      sp <- .resolve_progress_path(app_state$current_project,
+                                   "ingest_run.json")
+      sentinel <- .read_ingest_sentinel(sp)
+      zid    <- suppressWarnings(as.integer(sentinel$zone_id %||% NA))
+      d_from <- suppressWarnings(as.Date(as.character(sentinel$date_from %||% NA)))
+      d_to   <- suppressWarnings(as.Date(as.character(sentinel$date_to   %||% NA)))
+      if (is.na(zid) || is.na(d_from) || is.na(d_to)) {
+        shiny::showNotification(i18n$t("monitoring_resume_no_state"),
+                                type = "warning", duration = 5)
+        return()
+      }
+      # Cross-lock FORDEAD (cache S2 partagé) — symétrique input$run.
+      if (identical(fordead_task$status(), "running") &&
+          !isTRUE(force_unlock_health())) {
+        shiny::showNotification(i18n$t("monitoring_busy_fordead"),
+                                type = "warning", duration = 6)
+        return()
+      }
+      force_unlock_quick(FALSE)
+      fast_result_consumed(FALSE)
+      # Purge un cancel-flag résiduel (sinon abandon dès la 1re tuile).
+      cf <- .resolve_progress_path(app_state$current_project,
+                                   "fast_cancel.flag")
+      if (!is.null(cf) && file.exists(cf)) {
+        tryCatch(unlink(cf, force = TRUE), error = function(e) NULL)
+      }
+      ingest_detected(list(state = "session_running"))
+      start_fast_ingest(zid, d_from, d_to)
+    })
+
+    # v0.85.2.9000 — Détection périodique de l'état d'ingestion à partir
+    # de la sentinelle disque. Rafraîchi toutes les 5 s (pour basculer
+    # « en cours » → « interrompue » dès que le worker cesse d'écrire) et
+    # à chaque changement de projet. Quand CETTE session pilote le run
+    # (`fast_task$status() == "running"`), le toast/poll gèrent déjà
+    # l'affichage → état `session_running`, pas de bandeau.
+    ingest_detect_tick <- shiny::reactiveTimer(5000L, session)
+    shiny::observe({
+      ingest_detect_tick()
+      if (identical(fast_task$status(), "running")) {
+        ingest_detected(list(state = "session_running"))
+        return()
+      }
+      ingest_detected(.detect_ingest_state(app_state$current_project))
+    })
+
+    # Bandeau « ingestion en cours / interrompue » + bouton Reprendre.
+    output$ingest_resume_banner <- shiny::renderUI({
+      i18n <- i18n_r()
+      st <- ingest_detected()
+      state <- as.character(st$state %||% "none")
+      if (state == "running") {
+        tiles <- ""
+        if (length(st$tile_tot) == 1L && !is.na(st$tile_tot) &&
+            st$tile_tot > 0L && !is.na(st$tile_cur)) {
+          tiles <- sprintf(" (%d/%d)", as.integer(st$tile_cur),
+                           as.integer(st$tile_tot))
+        }
+        return(htmltools::div(
+          class = "alert alert-info d-flex align-items-center gap-2 py-2 px-2 mt-2 small mb-0",
+          bsicons::bs_icon("hourglass-split", class = "flex-shrink-0"),
+          htmltools::tags$span(
+            sprintf(i18n$t("monitoring_ingest_running_banner"), tiles)
+          )
+        ))
+      }
+      if (state == "interrupted") {
+        tiles <- ""
+        if (length(st$tile_tot) == 1L && !is.na(st$tile_tot) &&
+            st$tile_tot > 0L && !is.na(st$tile_cur)) {
+          tiles <- sprintf(" (%d/%d)", as.integer(st$tile_cur),
+                           as.integer(st$tile_tot))
+        }
+        return(htmltools::div(
+          class = "alert alert-warning py-2 px-2 mt-2 small mb-0",
+          htmltools::div(
+            class = "d-flex align-items-center gap-2 mb-2",
+            bsicons::bs_icon("exclamation-triangle-fill",
+                             class = "flex-shrink-0"),
+            htmltools::tags$span(
+              sprintf(i18n$t("monitoring_ingest_interrupted_banner"), tiles)
+            )
+          ),
+          shiny::actionButton(
+            session$ns("ingest_resume"),
+            i18n$t("monitoring_ingest_resume_btn"),
+            icon  = bsicons::bs_icon("arrow-clockwise"),
+            class = "btn-warning btn-sm w-100"
+          )
+        ))
+      }
+      NULL
     })
 
     # Result handler: re-runs whenever the task transitions to a
@@ -3122,6 +3193,59 @@ mod_monitoring_server <- function(id, app_state) {
   }
   normalizePath(file.path(data_dir, filename),
                 winslash = "/", mustWork = FALSE)
+}
+
+# v0.85.2.9000 — Détecte l'état d'une ingestion FAST à partir des seuls
+# fichiers disque (sentinelle `ingest_run.json` + `ingest_progress.json`),
+# indépendamment de toute session Shiny. Permet à une instance relancée
+# de savoir si un worker tourne encore (déconnexion navigateur) ou s'il
+# est mort en cours de route (process R redémarré).
+#
+# Liveness fondée sur la FRAÎCHEUR (mtime) des fichiers de progression —
+# robuste cross-host/container (contrairement au PID, non vérifiable au
+# travers d'un redémarrage de process). `freshness_sec` : au-delà de ce
+# silence, le worker est réputé mort.
+#
+# Retour : `list(state, ...)` avec `state` ∈
+#   "none"        — pas de sentinelle, ou pas de projet sur disque
+#   "running"     — sentinelle "running" + progress frais (< freshness)
+#   "interrupted" — sentinelle "running" mais progress périmé (worker mort)
+#   "finished"    — sentinelle terminale (done / error / cancelled)
+# Les états "running"/"interrupted" portent aussi `tile_cur`/`tile_tot`
+# (dernier event de progression) et le contenu `sentinel`.
+.detect_ingest_state <- function(project, freshness_sec = 90) {
+  sp <- .resolve_progress_path(project, "ingest_run.json")
+  if (is.null(sp)) return(list(state = "none"))
+  sentinel <- .read_ingest_sentinel(sp)
+  if (is.null(sentinel) || is.null(sentinel$status)) {
+    return(list(state = "none"))
+  }
+  if (!identical(as.character(sentinel$status), "running")) {
+    return(list(state = "finished", sentinel = sentinel))
+  }
+  pp  <- .resolve_progress_path(project, "ingest_progress.json")
+  ndj <- if (!is.null(pp)) sub("\\.json$", ".ndjson", pp) else NULL
+  mtimes <- numeric(0)
+  for (f in c(pp, ndj, sp)) {
+    if (!is.null(f) && file.exists(f)) {
+      mtimes <- c(mtimes, as.numeric(file.info(f)$mtime))
+    }
+  }
+  last <- if (length(mtimes)) max(mtimes) else NA_real_
+  age  <- if (is.finite(last)) as.numeric(Sys.time()) - last else Inf
+  tile_cur <- NA_integer_
+  tile_tot <- NA_integer_
+  if (!is.null(pp) && file.exists(pp)) {
+    prog <- tryCatch(jsonlite::read_json(pp, simplifyVector = TRUE),
+                     error = function(e) NULL)
+    if (!is.null(prog)) {
+      tile_cur <- suppressWarnings(as.integer(prog$completed %||% prog$i %||% NA))
+      tile_tot <- suppressWarnings(as.integer(prog$total     %||% prog$n %||% NA))
+    }
+  }
+  state <- if (is.finite(age) && age < freshness_sec) "running" else "interrupted"
+  list(state = state, sentinel = sentinel, age = age,
+       tile_cur = tile_cur, tile_tot = tile_tot)
 }
 
 # v0.55.0 — Helper unique pour le chemin du cache D6 FAST alert
