@@ -1,5 +1,39 @@
 # Changelog
 
+## nemetonshiny 0.89.1 (2026-06-18)
+
+#### Added — Ingestion FAST : sentinelle de run + reprise au relancement
+
+L’ingestion Sentinel-2 (Suivi sanitaire, mode rapide) tourne déjà dans
+un process worker séparé (`future_promise` / `multisession`), mais le
+suivi était perdu à la fermeture de la session. Le worker écrit
+désormais une **sentinelle de run** sur disque
+(`<projet>/data/ingest_run.json`), indépendante de la session :
+`running` au démarrage, `done` / `error` / `cancelled` à la fin.
+
+Au (re)lancement d’une instance Shiny, l’app lit cette sentinelle
+(`.detect_ingest_state()`, liveness fondée sur la fraîcheur du fichier
+de progression) et affiche dans la sidebar FAST :
+
+- un bandeau **« ingestion en cours en arrière-plan (X/Y) »** quand un
+  worker est encore vivant (typiquement après une déconnexion
+  navigateur) ;
+- un bandeau **« ingestion interrompue (X/Y) »** + bouton **« Reprendre
+  »** quand le worker est mort (process R redémarré). La reprise
+  re-invoque le cœur avec `skip_cached` → les tuiles déjà téléchargées
+  sont sautées.
+
+Détails : - `service_monitoring.R` : helpers `.write_ingest_sentinel()`
+/ `.read_ingest_sentinel()`, paramètre `sentinel_path` de
+l’`ExtendedTask` d’ingestion (écriture worker-side). -
+`mod_monitoring.R` : `.detect_ingest_state()`,
+`output$ingest_resume_banner`, observer de détection (tick 5 s +
+changement de projet), bouton `input$ingest_resume`, séquence
+d’invocation factorisée (`start_fast_ingest()`). - 4 nouvelles clés i18n
+(`monitoring_ingest_running_banner`,
+`monitoring_ingest_interrupted_banner`, `monitoring_ingest_resume_btn`,
+`monitoring_resume_no_state`).
+
 ## nemetonshiny 0.89.0 (2026-06-17)
 
 #### Added — Carte FAST : 3ᵉ méthode de lissage « Harmonique »

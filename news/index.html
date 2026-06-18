@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.89.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.89.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.89.1" id="nemetonshiny-0891-2026-06-18">nemetonshiny 0.89.1 (2026-06-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0891-2026-06-18"></a></h2>
+<div class="section level4">
+<h4 id="added--ingestion-fast--sentinelle-de-run--reprise-au-relancement-0-89-1">Added — Ingestion FAST : sentinelle de run + reprise au relancement<a class="anchor" aria-label="anchor" href="#added--ingestion-fast--sentinelle-de-run--reprise-au-relancement-0-89-1"></a></h4>
+<p>L’ingestion Sentinel-2 (Suivi sanitaire, mode rapide) tourne déjà dans un process worker séparé (<code>future_promise</code> / <code>multisession</code>), mais le suivi était perdu à la fermeture de la session. Le worker écrit désormais une <strong>sentinelle de run</strong> sur disque (<code>&lt;projet&gt;/data/ingest_run.json</code>), indépendante de la session : <code>running</code> au démarrage, <code>done</code> / <code>error</code> / <code>cancelled</code> à la fin.</p>
+<p>Au (re)lancement d’une instance Shiny, l’app lit cette sentinelle (<code>.detect_ingest_state()</code>, liveness fondée sur la fraîcheur du fichier de progression) et affiche dans la sidebar FAST :</p>
+<ul><li>un bandeau <strong>« ingestion en cours en arrière-plan (X/Y) »</strong> quand un worker est encore vivant (typiquement après une déconnexion navigateur) ;</li>
+<li>un bandeau <strong>« ingestion interrompue (X/Y) »</strong> + bouton <strong>« Reprendre »</strong> quand le worker est mort (process R redémarré). La reprise re-invoque le cœur avec <code>skip_cached</code> → les tuiles déjà téléchargées sont sautées.</li>
+</ul><p>Détails : - <code>service_monitoring.R</code> : helpers <code>.write_ingest_sentinel()</code> / <code>.read_ingest_sentinel()</code>, paramètre <code>sentinel_path</code> de l’<code>ExtendedTask</code> d’ingestion (écriture worker-side). - <code>mod_monitoring.R</code> : <code>.detect_ingest_state()</code>, <code>output$ingest_resume_banner</code>, observer de détection (tick 5 s + changement de projet), bouton <code>input$ingest_resume</code>, séquence d’invocation factorisée (<code>start_fast_ingest()</code>). - 4 nouvelles clés i18n (<code>monitoring_ingest_running_banner</code>, <code>monitoring_ingest_interrupted_banner</code>, <code>monitoring_ingest_resume_btn</code>, <code>monitoring_resume_no_state</code>).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.89.0" id="nemetonshiny-0890-2026-06-17">nemetonshiny 0.89.0 (2026-06-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0890-2026-06-17"></a></h2>
 <div class="section level4">

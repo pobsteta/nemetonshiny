@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.89.1\] - 2026-06-18
+
+### Added
+
+- Ingestion FAST — **sentinelle de run** disque écrite côté worker
+  (`<projet>/data/ingest_run.json`, statut
+  running/done/error/cancelled), indépendante de la session. Au
+  relancement, détection (`.detect_ingest_state()`) → bandeau «
+  ingestion en cours » (worker vivant) ou « ingestion interrompue » +
+  bouton **Reprendre** (worker mort, reprise via `skip_cached`). Helpers
+  `.write_ingest_sentinel()` / `.read_ingest_sentinel()`, paramètre
+  `sentinel_path` de l’ExtendedTask, séquence d’invocation factorisée
+  (`start_fast_ingest()`), 4 clés i18n.
+
 ## \[0.88.2\] - 2026-06-17
 
 ### Removed
