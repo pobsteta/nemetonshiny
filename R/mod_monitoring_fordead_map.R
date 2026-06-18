@@ -56,10 +56,14 @@ mod_monitoring_fordead_map_ui <- function(id) {
 #'   sub-tab re-reads the freshly-persisted mask without the user
 #'   having to reload the project or re-pick the zone. Optional —
 #'   defaults to a constant reactive for back-compat / tests.
+#' @param opacity_r Reactive returning the raster opacity (0..1) from the
+#'   tab's right sidebar slider (parité FAST). Optional — defaults to a
+#'   constant 0.75 for back-compat / tests.
 #' @return invisible list with `mask` reactive.
 #' @noRd
 mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
-                                              refresh_r = shiny::reactive(0L)) {
+                                              refresh_r = shiny::reactive(0L),
+                                              opacity_r = shiny::reactive(0.75)) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
@@ -189,6 +193,13 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       r <- mask_r()
       if (is.null(r)) return(NULL)
       i18n <- i18n_r()
+      # Parité FAST : couche UGF (contour) + couche « Alertes » (le
+      # raster) togglables via LayersControl, opacité réglable via le
+      # slider de la sidebar droite (opacity_r).
+      ugf_4326 <- .ugf_for_overlay(app_state$current_project)
+      op <- as.numeric(opacity_r() %||% 0.75)
+      if (!is.finite(op)) op <- 0.75
+      op <- max(0, min(1, op))
 
       # v0.38.7 — `levels` numériques 0:4, alignés sur les valeurs
       # entières du raster catégoriel (le masque FORDEAD stocke
@@ -205,19 +216,21 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         sprintf("3 - %s", i18n$t("monitoring_fordead_class_3")),
         sprintf("4 - %s", i18n$t("monitoring_fordead_class_4"))
       )
+      overlays <- c(if (!is.null(ugf_4326)) "UGF" else NULL, "Alertes")
 
-      leaflet::leaflet() |>
+      m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
         leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
+          baseGroups    = c("OSM", "Satellite"),
+          overlayGroups = overlays,
           options    = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         leaflet::addRasterImage(
           x       = r,
           colors  = pal,
-          opacity = 1.0,
+          opacity = op,
           # v0.38.7 — nearest-neighbour resampling. addRasterImage()
           # reprojects to web-mercator and defaults to method =
           # "bilinear", which interpolates BETWEEN the discrete
@@ -227,6 +240,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           # be treated as NA" once per raster block. "ngb" keeps the
           # integer classes intact.
           method  = "ngb",
+          group   = "Alertes",
           options = leaflet::gridOptions(pane = "nemetonRaster")
         ) |>
         leaflet::addLegend(
@@ -236,6 +250,18 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           title    = i18n$t("monitoring_fordead_class_title"),
           opacity  = 0.85
         )
+      if (!is.null(ugf_4326)) {
+        m <- m |>
+          leaflet::addPolygons(
+            data        = ugf_4326,
+            group       = "UGF",
+            color       = "#1f78b4",
+            weight      = 2,
+            opacity     = 0.9,
+            fillOpacity = 0
+          )
+      }
+      m
     })
 
     # v0.37.1 — force the panel renderUI to evaluate even while the

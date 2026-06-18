@@ -227,12 +227,11 @@ mod_monitoring_ui <- function(id) {
                 language  = lang,
                 separator = i18n$t("date_range_separator")
               ),
-              shiny::selectInput(
-                ns("vegetation_index"),
-                i18n$t("monitoring_vegetation_index"),
-                choices  = c(CRSWIR = "CRSWIR", NDVI = "NDVI", NDWI = "NDWI"),
-                selected = "CRSWIR"
-              ),
+              # v0.90.x — L'indice de végétation FORDEAD est déplacé à
+              # droite des cartes (sidebar des onglets Alertes/Carte
+              # FORDEAD, parité avec Diagnostic FAST). FORDEAD ne modélise
+              # que le CRSWIR côté cœur ; le radio d'affichage n'expose
+              # donc que CRSWIR (NDVI/NDWI retirés car non calculés).
               shiny::sliderInput(
                 ns("threshold_anomaly"),
                 i18n$t("monitoring_threshold_anomaly"),
@@ -322,25 +321,43 @@ mod_monitoring_ui <- function(id) {
           title = i18n$t("monitoring_subtab_alerts_fordead"),
           value = "alerts_fordead",
           icon  = bsicons::bs_icon("exclamation-triangle"),
-          # The "include low confidence classes" toggle used to live
-          # inside card_header next to the title, but its long label
-          # wrapped awkwardly on narrow viewports. Lifted into its own
-          # row so it always sits on a single line above the alerts.
-          # Plus de conditionalPanel mode=='health' depuis v0.35.0 :
-          # tout le sous-onglet est caché en mode quick.
-          htmltools::div(
-            class = "px-3 pt-2",
-            shiny::checkboxInput(
-              ns("include_low"),
-              i18n$t("monitoring_include_low"),
-              value = FALSE
+          # v0.90.x — Parité avec Diagnostic FAST : sidebar droite portant
+          # l'indice FORDEAD (CRSWIR seul) et l'opacité du raster. La
+          # couche UGF et la couche « Alertes » (= le raster) se togglent
+          # via le LayersControl de la carte (cf. output$alerts_map).
+          bslib::card(
+            bslib::layout_sidebar(
+              sidebar = bslib::sidebar(
+                width = 250L, position = "right", open = "always",
+                htmltools::tagAppendAttributes(
+                  shiny::radioButtons(
+                    ns("fordead_index_alerts"),
+                    label    = i18n$t("monitoring_vegetation_index"),
+                    choices  = c(CRSWIR = "CRSWIR"),
+                    selected = "CRSWIR", inline = TRUE
+                  ),
+                  class = "mb-2"
+                ),
+                shiny::sliderInput(
+                  ns("alerts_opacity"),
+                  label = i18n$t("monitoring_fast_alerts_opacity_label"),
+                  min = 0, max = 1, value = 0.75, step = 0.05
+                )
+              ),
+              # The "include low confidence classes" toggle (legacy Phase A
+              # — pilote l'ancienne réactive `alerts()` non consommée ;
+              # conservé le temps de la transition de phase).
+              htmltools::div(
+                class = "px-1 pt-1",
+                shiny::checkboxInput(
+                  ns("include_low"),
+                  i18n$t("monitoring_include_low"),
+                  value = FALSE
+                )
+              ),
+              shiny::uiOutput(ns("alerts_panel"))
             )
-          ),
-          # v0.88.2 — Le générateur QGIS legacy (output$qgis_panel) est
-          # retiré : la génération de placettes de vérification terrain
-          # FORDEAD vit désormais dans le sous-onglet dédié « Plan de
-          # validation FORDEAD » (spec 014, méthodologie complète).
-          shiny::uiOutput(ns("alerts_panel"))
+          )
         ),
         # ----- Sub-tab — Carte FORDEAD (wired v0.36.0) ---------------
         # Raster catégoriel 0-4 du dépérissement (sain/faible/moyenne/
@@ -353,7 +370,32 @@ mod_monitoring_ui <- function(id) {
           title = i18n$t("monitoring_subtab_pixel_map_fordead"),
           value = "pixel_map_fordead",
           icon  = bsicons::bs_icon("tree"),
-          mod_monitoring_fordead_map_ui(ns("fordead_map"))
+          # v0.90.x — Parité FAST : sidebar droite (indice CRSWIR +
+          # opacité du raster). UGF + « Alertes » via le LayersControl.
+          # Le clic-pixel (graphe CRSWIR + seuil + dates de stress) reste
+          # géré par le sous-module.
+          bslib::card(
+            bslib::layout_sidebar(
+              sidebar = bslib::sidebar(
+                width = 250L, position = "right", open = "always",
+                htmltools::tagAppendAttributes(
+                  shiny::radioButtons(
+                    ns("fordead_index_cm"),
+                    label    = i18n$t("monitoring_vegetation_index"),
+                    choices  = c(CRSWIR = "CRSWIR"),
+                    selected = "CRSWIR", inline = TRUE
+                  ),
+                  class = "mb-2"
+                ),
+                shiny::sliderInput(
+                  ns("fordead_opacity"),
+                  label = i18n$t("monitoring_fast_alerts_opacity_label"),
+                  min = 0, max = 1, value = 0.75, step = 0.05
+                )
+              ),
+              mod_monitoring_fordead_map_ui(ns("fordead_map"))
+            )
+          )
         ),
         # ----- Sub-tab — Carte RECONFORT (spec 021, L6) --------------
         # Alertes vectorielles de dépérissement feuillus (RECONFORT) +
@@ -634,10 +676,8 @@ mod_monitoring_server <- function(id, app_state) {
         shiny::updateSliderInput(session, "threshold_anomaly",
                                  value = as.numeric(m$monitoring_threshold_anomaly))
       }
-      if (!is.null(m$monitoring_vegetation_index)) {
-        shiny::updateSelectInput(session, "vegetation_index",
-                                 selected = m$monitoring_vegetation_index)
-      }
+      # v0.90.x — `vegetation_index` n'est plus un input (CRSWIR seul,
+      # affiché en radio à droite des cartes) : plus rien à restaurer.
       if (!is.null(m$monitoring_dates_training)) {
         dt <- as.Date(unlist(m$monitoring_dates_training))
         if (length(dt) == 2L && all(!is.na(dt))) {
@@ -810,6 +850,12 @@ mod_monitoring_server <- function(id, app_state) {
       r <- fordead_map_ret$mask()
       if (is.null(r)) return(NULL)
       i18n <- i18n_r()
+      # Parité FAST : couche UGF (contour) + couche « Alertes » (le
+      # raster) togglables via LayersControl, opacité réglable.
+      ugf_4326 <- .ugf_for_overlay(app_state$current_project)
+      op <- as.numeric(input$alerts_opacity %||% 0.75)
+      if (!is.finite(op)) op <- 0.75
+      op <- max(0, min(1, op))
 
       cats   <- 0:4
       colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
@@ -823,20 +869,23 @@ mod_monitoring_server <- function(id, app_state) {
         sprintf("3 - %s", i18n$t("monitoring_fordead_class_3")),
         sprintf("4 - %s", i18n$t("monitoring_fordead_class_4"))
       )
+      overlays <- c(if (!is.null(ugf_4326)) "UGF" else NULL, "Alertes")
 
-      leaflet::leaflet() |>
+      m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
         leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
+          baseGroups    = c("OSM", "Satellite"),
+          overlayGroups = overlays,
           options = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         leaflet::addRasterImage(
           x       = r,
           colors  = pal,
-          opacity = 1.0,
+          opacity = op,
           method  = "ngb",
+          group   = "Alertes",
           options = leaflet::gridOptions(pane = "nemetonRaster")
         ) |>
         leaflet::addLegend(
@@ -846,6 +895,18 @@ mod_monitoring_server <- function(id, app_state) {
           title    = i18n$t("monitoring_fordead_class_title"),
           opacity  = 0.85
         )
+      if (!is.null(ugf_4326)) {
+        m <- m |>
+          leaflet::addPolygons(
+            data        = ugf_4326,
+            group       = "UGF",
+            color       = "#1f78b4",
+            weight      = 2,
+            opacity     = 0.9,
+            fillOpacity = 0
+          )
+      }
+      m
     })
 
     # v0.52.16 — Bloc `obs_pixel_inputs` + `obs_pixel_data` supprimé.
@@ -2595,7 +2656,9 @@ mod_monitoring_server <- function(id, app_state) {
         dates_training    = as.character(input$dates_training),
         dates_monitoring  = as.character(input$date_range),
         threshold_anomaly = as.numeric(input$threshold_anomaly),
-        vegetation_index  = input$vegetation_index,
+        # v0.90.x — FORDEAD ne modélise que le CRSWIR (NDVI/NDWI non
+        # calculés). L'indice n'est plus un input run mais un affichage.
+        vegetation_index  = "CRSWIR",
         # Phase A (D2) — zone `_tot`, pas la strate sélectionnée.
         zone_id           = id_tot,
         cache_dir         = .resolve_s2_cache_dir(app_state$current_project),
@@ -2631,7 +2694,7 @@ mod_monitoring_server <- function(id, app_state) {
         update_project_metadata(project_id, list(
           monitoring_mode               = input$mode,
           monitoring_threshold_anomaly  = as.numeric(input$threshold_anomaly),
-          monitoring_vegetation_index   = input$vegetation_index,
+          monitoring_vegetation_index   = "CRSWIR",
           monitoring_dates_training     = as.character(input$dates_training),
           monitoring_validity_geo_pct   = v$geo_intersection_pct %||% NA_real_,
           monitoring_validity_species_pct = v$species_resineux_pct %||% NA_real_
@@ -2933,7 +2996,10 @@ mod_monitoring_server <- function(id, app_state) {
       "fordead_map",
       app_state = app_state,
       zone_id_r = shiny::reactive(input$zone_id),
-      refresh_r = shiny::reactive(alerts_refresh())
+      refresh_r = shiny::reactive(alerts_refresh()),
+      # v0.90.x — opacité du raster pilotée par le slider de la sidebar
+      # droite de l'onglet Carte FORDEAD (parité FAST).
+      opacity_r = shiny::reactive(input$fordead_opacity)
     )
 
     # spec 021 (L6) — Carte RECONFORT : alertes feuillus + diagnostic
