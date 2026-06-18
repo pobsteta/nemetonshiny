@@ -1,5 +1,28 @@
 # Changelog
 
+## nemetonshiny 0.90.1 (2026-06-18)
+
+#### Added — Cartes FORDEAD : parité d’affichage avec Diagnostic FAST
+
+Les sous-onglets **Alertes FORDEAD** et **Carte FORDEAD** gagnent une
+**sidebar droite** (comme Diagnostic FAST) et les mêmes contrôles de
+carte :
+
+- **Couche UGF** — contour des unités de gestion
+  (`project$indicators_sf`) en overlay togglable via le LayersControl.
+- **Couche « Alertes »** — le raster catégoriel 0-4 devient un overlay
+  nommé togglable.
+- **Opacité du raster** — slider 0–1 (défaut 0.75) par onglet.
+- **Indice de végétation en radio** — l’indice FORDEAD passe d’une liste
+  déroulante (sidebar gauche) à un **radio à droite des cartes**. Comme
+  FORDEAD ne modélise que le **CRSWIR** côté cœur, les choix **NDVI/NDWI
+  (non calculés) sont retirés** : seul CRSWIR est exposé, et le run
+  utilise CRSWIR.
+
+Le **clic sur un pixel** de la Carte FORDEAD continue d’ouvrir le graphe
+CRSWIR (série observée + prédiction harmonique + seuil d’anomalie +
+dates de stress / 1ʳᵉ détection).
+
 ## nemetonshiny 0.90.0 (2026-06-18)
 
 #### Changed — Suivi sanitaire FORDEAD : affichage piloté raster + masquage par strate (Phase A)

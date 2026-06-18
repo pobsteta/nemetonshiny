@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.90.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.90.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.90.1" id="nemetonshiny-0901-2026-06-18">nemetonshiny 0.90.1 (2026-06-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0901-2026-06-18"></a></h2>
+<div class="section level4">
+<h4 id="added--cartes-fordead--parité-daffichage-avec-diagnostic-fast-0-90-1">Added — Cartes FORDEAD : parité d’affichage avec Diagnostic FAST<a class="anchor" aria-label="anchor" href="#added--cartes-fordead--parit%C3%A9-daffichage-avec-diagnostic-fast-0-90-1"></a></h4>
+<p>Les sous-onglets <strong>Alertes FORDEAD</strong> et <strong>Carte FORDEAD</strong> gagnent une <strong>sidebar droite</strong> (comme Diagnostic FAST) et les mêmes contrôles de carte :</p>
+<ul><li>
+<strong>Couche UGF</strong> — contour des unités de gestion (<code>project$indicators_sf</code>) en overlay togglable via le LayersControl.</li>
+<li>
+<strong>Couche « Alertes »</strong> — le raster catégoriel 0-4 devient un overlay nommé togglable.</li>
+<li>
+<strong>Opacité du raster</strong> — slider 0–1 (défaut 0.75) par onglet.</li>
+<li>
+<strong>Indice de végétation en radio</strong> — l’indice FORDEAD passe d’une liste déroulante (sidebar gauche) à un <strong>radio à droite des cartes</strong>. Comme FORDEAD ne modélise que le <strong>CRSWIR</strong> côté cœur, les choix <strong>NDVI/NDWI (non calculés) sont retirés</strong> : seul CRSWIR est exposé, et le run utilise CRSWIR.</li>
+</ul><p>Le <strong>clic sur un pixel</strong> de la Carte FORDEAD continue d’ouvrir le graphe CRSWIR (série observée + prédiction harmonique + seuil d’anomalie + dates de stress / 1ʳᵉ détection).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.90.0" id="nemetonshiny-0900-2026-06-18">nemetonshiny 0.90.0 (2026-06-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0900-2026-06-18"></a></h2>
 <div class="section level4">
