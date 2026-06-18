@@ -680,27 +680,41 @@ test_that("input$run_health invokes FORDEAD when validity is OK", {
     },
     update_project_metadata        = function(...) TRUE,
     {
-      shiny::testServer(
-        nemetonshiny:::mod_monitoring_server,
-        args = list(app_state = make_fake_app_state()),
+      # Phase A (spec 008 §15, D2) — FORDEAD cible TOUJOURS la zone `_tot`
+      # (résolue via find_zones_by_project), pas la strate sélectionnée.
+      testthat::with_mocked_bindings(
+        find_zones_by_project = function(con, project_uuid) {
+          data.frame(id = c(1L, 2L, 9L),
+                     name = c("Foret", "Massif", "proj_tot"),
+                     stringsAsFactors = FALSE)
+        },
+        .package = "nemeton",
         {
-          session$setInputs(
-            mode              = "health",
-            zone_id           = "1",
-            date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
-            dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
-            vegetation_index  = "CRSWIR",
-            threshold_anomaly = 0.16,
-            run_health        = 1L
+          fake_state <- shiny::reactiveValues(
+            language = "fr",
+            current_project = list(id = "fake-project-id"))
+          shiny::testServer(
+            nemetonshiny:::mod_monitoring_server,
+            args = list(app_state = fake_state),
+            {
+              session$setInputs(
+                mode              = "health",
+                zone_id           = "1",  # strate sélectionnée (ignorée)
+                date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+                dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
+                vegetation_index  = "CRSWIR",
+                threshold_anomaly = 0.16,
+                run_health        = 1L
+              )
+              calls <- fake_task$.calls()
+              expect_length(calls, 1L)
+              expect_equal(calls[[1]]$vegetation_index,  "CRSWIR")
+              expect_equal(calls[[1]]$threshold_anomaly, 0.16)
+              # Phase A : le run cible la zone `_tot` (id 9), pas la strate.
+              expect_equal(calls[[1]]$zone_id,           9L)
+              expect_true("cache_dir" %in% names(calls[[1]]))
+            }
           )
-          calls <- fake_task$.calls()
-          expect_length(calls, 1L)
-          expect_equal(calls[[1]]$vegetation_index,  "CRSWIR")
-          expect_equal(calls[[1]]$threshold_anomaly, 0.16)
-          expect_equal(calls[[1]]$zone_id,           1L)
-          # v0.33.0: cache_dir is now passed; resolves from project path
-          # (NULL here because make_fake_app_state has no current_project).
-          expect_true("cache_dir" %in% names(calls[[1]]))
         }
       )
     }
@@ -725,22 +739,38 @@ test_that("confirm_invalid_run invokes FORDEAD on modal accept (G3 force path)",
     },
     update_project_metadata        = function(...) TRUE,
     {
-      shiny::testServer(
-        nemetonshiny:::mod_monitoring_server,
-        args = list(app_state = make_fake_app_state()),
+      # Phase A (D2) — zone `_tot` résolue via find_zones_by_project.
+      testthat::with_mocked_bindings(
+        find_zones_by_project = function(con, project_uuid) {
+          data.frame(id = c(1L, 2L, 9L),
+                     name = c("Foret", "Massif", "proj_tot"),
+                     stringsAsFactors = FALSE)
+        },
+        .package = "nemeton",
         {
-          session$setInputs(
-            mode              = "health",
-            zone_id           = "1",
-            date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
-            dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
-            vegetation_index  = "CRSWIR",
-            threshold_anomaly = 0.16
+          fake_state <- shiny::reactiveValues(
+            language = "fr",
+            current_project = list(id = "fake-project-id"))
+          shiny::testServer(
+            nemetonshiny:::mod_monitoring_server,
+            args = list(app_state = fake_state),
+            {
+              session$setInputs(
+                mode              = "health",
+                zone_id           = "1",
+                date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+                dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
+                vegetation_index  = "CRSWIR",
+                threshold_anomaly = 0.16
+              )
+              # User confirms via the modal.
+              session$setInputs(confirm_invalid_run = 1L)
+              calls <- fake_task$.calls()
+              expect_length(calls, 1L)
+              # Phase A : le run cible la zone `_tot` (id 9).
+              expect_equal(calls[[1]]$zone_id, 9L)
+            }
           )
-          # User confirms via the modal.
-          session$setInputs(confirm_invalid_run = 1L)
-          calls <- fake_task$.calls()
-          expect_length(calls, 1L)
         }
       )
     }

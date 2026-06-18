@@ -1983,8 +1983,8 @@ TRANSLATIONS <- list(
     en = "Zones present — but none matches this project"
   ),
   monitoring_zone_orphan_body = list(
-    fr = "La base contient %d zone(s), mais aucune n'est rattachée au projet chargé. Symptôme typique d'un wipe par les tests cœur (incident villards 2026-05-31). Clique sur « Enregistrer ce projet comme zone de suivi » dans la barre latérale pour recréer la zone et ses placettes en un clic.",
-    en = "The monitoring DB contains %d zone(s), but none is linked to the loaded project. Typical symptom of a wipe by core tests (villards incident 2026-05-31). Click « Register this project as a monitoring zone » in the sidebar to recreate the zone and its plots in one click."
+    fr = "La base contient %d zone(s), mais aucune n'est rattachée au projet chargé. Symptôme typique d'un wipe par les tests cœur (incident villards 2026-05-31). Clique sur « Enregistrer ce projet comme zone de suivi » dans la barre latérale pour recréer la zone de suivi en un clic.",
+    en = "The monitoring DB contains %d zone(s), but none is linked to the loaded project. Typical symptom of a wipe by core tests (villards incident 2026-05-31). Click « Register this project as a monitoring zone » in the sidebar to recreate the monitoring zone in one click."
   ),
   monitoring_date_range = list(
     fr = "P\u00e9riode d'observation",
@@ -2800,8 +2800,8 @@ TRANSLATIONS <- list(
     en = "Healthy zone \u2014 no anomaly detected"
   ),
   monitoring_fordead_no_alerts_body = list(
-    fr = "Aucune placette ne pr\u00e9sente d'anomalie de d\u00e9p\u00e9rissement sur la p\u00e9riode d'observation. Le pipeline FORDEAD s'est termin\u00e9 avec succ\u00e8s mais n'a remont\u00e9 aucun pixel au-dessus du seuil d'anomalie configur\u00e9.",
-    en = "No plot shows a dieback anomaly over the observation window. The FORDEAD pipeline completed successfully but did not flag any pixel above the configured anomaly threshold."
+    fr = "Aucun pixel ne d\u00e9passe le seuil d'anomalie de d\u00e9p\u00e9rissement sur la p\u00e9riode. Le diagnostic FORDEAD s'est termin\u00e9 sans d\u00e9tecter de zone affect\u00e9e.",
+    en = "No pixel exceeds the dieback anomaly threshold over the period. The FORDEAD diagnosis completed without detecting any affected area."
   ),
   monitoring_fordead_no_alerts_meta = list(
     fr = "Diagnostic termin\u00e9 en %.0f s.",
@@ -2866,6 +2866,15 @@ TRANSLATIONS <- list(
   monitoring_health_success = list(
     fr = "Diagnostic termin\u00e9 : %d alertes ins\u00e9r\u00e9es en %.0f s.",
     en = "Diagnosis completed: %d alerts inserted in %.0f s."
+  ),
+  # Phase A (spec 008 \u00a715, D2) \u2014 le c\u0153ur ne renvoie plus de d\u00e9compte
+  # d'alertes (n_alerts_inserted = NA ; \u00ab zone saine \u00bb se d\u00e9cide sur le
+  # raster, pas sur un compte DB). La notif de fin n'annonce donc plus
+  # \u00ab N alertes \u00bb \u2014 uniquement la dur\u00e9e. Le verdict sain/affect\u00e9 est lu
+  # sur la carte FORDEAD (raster masqu\u00e9 par strate).
+  monitoring_health_success_done = list(
+    fr = "Diagnostic FORDEAD termin\u00e9 en %.0f s.",
+    en = "FORDEAD diagnosis completed in %.0f s."
   ),
   monitoring_health_error = list(
     fr = "Erreur lors du diagnostic FORDEAD",

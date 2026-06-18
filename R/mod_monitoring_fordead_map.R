@@ -20,6 +20,21 @@
 # empty state. The wiring is in place so the panel activates automatically
 # the day the cœur writer ships.
 
+# Max class value of a categorical FORDEAD dieback mask, NA-safe.
+# Returns NA_real_ when the raster is NULL / not a SpatRaster / empty /
+# all-NA. Used (Phase A, décision D2) to decide healthy-vs-affected
+# FROM THE RASTER rather than from a DB alert count :
+#   max >= 1  → au moins un pixel classe >= 1 → zone affectée ;
+#   max < 1 ou NA → tout sain (classe 0) ou tout NA → zone saine.
+.fordead_raster_max <- function(r) {
+  if (is.null(r) || !inherits(r, "SpatRaster")) return(NA_real_)
+  if (terra::ncell(r) == 0L) return(NA_real_)
+  tryCatch(
+    as.numeric(terra::global(r, "max", na.rm = TRUE)[[1]]),
+    error = function(e) NA_real_
+  )
+}
+
 #' Carte FORDEAD sub-tab UI
 #'
 #' @param id Module namespace id.
@@ -74,10 +89,26 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
-      tryCatch(
+
+      # Phase A (spec 008 §15, ADR-013 A5, décision D2) — FORDEAD est
+      # calculé UNE seule fois sur la zone `_tot` (union des UGFs). On lit
+      # donc TOUJOURS le masque de `_tot` ; l'affichage par strate n'est
+      # qu'un masquage spatial du raster `_tot` (aucun recalcul). Résout
+      # l'id `_tot` du projet via find_zones_by_project + convention de
+      # nommage `_tot` (spec 020).
+      id_tot <- tryCatch({
+        zdf <- nemeton::find_zones_by_project(con, project_uuid = proj$id)
+        idx <- grep("_tot$", as.character(zdf$name))
+        if (length(idx)) as.integer(zdf$id[idx[1]]) else NA_integer_
+      }, error = function(e) NA_integer_)
+      # Fallback : pas de zone `_tot` résolue → lire le masque de la zone
+      # sélectionnée telle quelle (back-compat projets pré-spec-020).
+      read_zone <- if (!is.na(id_tot)) id_tot else as.integer(zone)
+
+      r <- tryCatch(
         nemeton::read_fordead_dieback_mask(
           con,
-          zone_id   = as.integer(zone),
+          zone_id   = read_zone,
           run_id    = NULL,  # latest
           cache_dir = cd
         ),
@@ -88,12 +119,39 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           NULL
         }
       )
+      if (is.null(r)) return(NULL)
+
+      # Masquage par strate : si la strate sélectionnée n'est PAS `_tot`,
+      # clipper le raster `_tot` à l'AOI de la strate (les pixels hors
+      # strate passent en NA → transparents dans addRasterImage). C'est
+      # de la présentation pure (clip d'affichage), aucun calcul métier
+      # (règle CLAUDE.md #3). CRS : le masque FORDEAD est en EPSG:2154 et
+      # get_monitoring_zone_aoi rend du 2154 ; on transforme l'AOI au CRS
+      # du raster par sécurité avant terra::mask.
+      sel <- suppressWarnings(as.integer(zone))
+      if (!is.na(id_tot) && !is.na(sel) && !identical(sel, id_tot)) {
+        aoi <- get_monitoring_zone_aoi(con, sel)
+        if (!is.null(aoi)) {
+          r <- tryCatch(
+            terra::mask(r, terra::vect(
+              sf::st_transform(aoi, terra::crs(r)))),
+            error = function(e) {
+              cli::cli_alert_warning(
+                "strata mask failed (zone={sel}): {conditionMessage(e)}")
+              r
+            }
+          )
+        }
+      }
+      r
     })
 
     # ----- Panel : either map or empty state -----------------------------
     output$panel <- shiny::renderUI({
       i18n <- i18n_r()
       r <- mask_r()
+      # État (c) — aucun masque sur disque (run jamais lancé pour ce
+      # projet) → placeholder « lancer un diagnostic ».
       if (is.null(r)) {
         return(htmltools::div(
           class = "p-4 text-center text-muted",
@@ -105,6 +163,25 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
                        i18n$t("monitoring_fordead_map_empty_body"))
         ))
       }
+      # Décision sain/affecté PILOTÉE PAR LE RASTER masqué (Phase A, D2),
+      # pas par un compte d'alertes DB. Classe >= 1 = pixel affecté.
+      mx <- .fordead_raster_max(r)
+      if (!is.finite(mx) || mx < 1) {
+        # État (b) — raster présent mais tout classe 0 / tout NA dans la
+        # strate → carte « zone saine » (vrai négatif).
+        return(bslib::card(
+          class = "border-success mt-2",
+          bslib::card_header(htmltools::div(
+            class = "d-flex align-items-center",
+            bsicons::bs_icon("check-circle-fill",
+                             class = "me-2 text-success fs-4"),
+            htmltools::tags$strong(
+              i18n$t("monitoring_fordead_no_alerts_title")))),
+          bslib::card_body(htmltools::tags$p(
+            i18n$t("monitoring_fordead_no_alerts_body")))
+        ))
+      }
+      # État (a) — au moins un pixel classe >= 1 → carte raster 0-4.
       leaflet::leafletOutput(session$ns("map"), height = "55vh")
     })
 
