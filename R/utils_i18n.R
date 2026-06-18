@@ -2125,6 +2125,26 @@ TRANSLATIONS <- list(
     fr = "T\u00e9l\u00e9chargement Sentinel-2 en cours\u2026 cela peut prendre quelques minutes.",
     en = "Sentinel-2 download running\u2026 this can take a few minutes."
   ),
+  # v0.85.2.9000 \u2014 Reprise d'ingestion : bandeaux affich\u00e9s au
+  # (re)chargement quand une ingestion lanc\u00e9e dans une session
+  # ant\u00e9rieure est encore en cours (worker vivant) ou a \u00e9t\u00e9
+  # interrompue (worker mort). `%s` = suffixe \u00ab (X/Y) \u00bb optionnel.
+  monitoring_ingest_running_banner = list(
+    fr = "Ingestion Sentinel-2 en cours en arri\u00e8re-plan%s\u2026",
+    en = "Sentinel-2 ingestion running in the background%s\u2026"
+  ),
+  monitoring_ingest_interrupted_banner = list(
+    fr = "Une ingestion Sentinel-2 a \u00e9t\u00e9 interrompue%s. Reprendre l\u00e0 o\u00f9 elle s'est arr\u00eat\u00e9e ?",
+    en = "A Sentinel-2 ingestion was interrupted%s. Resume where it left off?"
+  ),
+  monitoring_ingest_resume_btn = list(
+    fr = "Reprendre l'ingestion",
+    en = "Resume ingestion"
+  ),
+  monitoring_resume_no_state = list(
+    fr = "Aucune ingestion \u00e0 reprendre (sentinelle introuvable ou incompl\u00e8te).",
+    en = "No ingestion to resume (sentinel missing or incomplete)."
+  ),
   # Verrou crois\u00e9 FAST <-> FORDEAD : les deux diagnostics partagent le
   # cache de bandes Sentinel-2 du projet, les lancer en parall\u00e8le ferait
   # courir deux workers sur le m\u00eame fichier <bande>.tif.tmp.
