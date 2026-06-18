@@ -55,6 +55,11 @@ run_ingestion_async <- function() {
                                    log_path = NULL,
                                    lang = "fr",
                                    cancel_path = NULL,
+                                   # v0.85.2.9000 — sentinelle de run
+                                   # écrite côté worker (survit à la
+                                   # fermeture de session) ; lue au
+                                   # relancement par .detect_ingest_state().
+                                   sentinel_path = NULL,
                                    # v0.55.0 — pré-calcul des 4 cartes
                                    # FAST déplacé du helper app vers
                                    # l'API native `nemeton@v0.61.0` :
@@ -176,6 +181,19 @@ run_ingestion_async <- function() {
                                  cache_dir = cache_dir,
                                  skip_cached = skip_cached))
 
+      # v0.85.2.9000 — Sentinelle « running » (worker-side, survit à la
+      # fermeture de session). Porte l'identité du run pour que le
+      # bandeau de reprise affiche zone + période au relancement.
+      .write_ingest_sentinel(sentinel_path, "running", list(
+        zone_id    = zone_id,
+        zone_name  = zone_name,
+        date_from  = as.character(start),
+        date_to    = as.character(end),
+        started_at = as.numeric(.ws_t0),
+        pid        = Sys.getpid(),
+        host       = unname(Sys.info()[["nodename"]] %||% "")
+      ))
+
       # If a cache_dir is provided, ensure the directory exists before
       # the worker hands it to nemeton. The worker can't reach `dir.create`
       # if the path's parent doesn't exist yet — happens on a brand-new
@@ -261,6 +279,11 @@ run_ingestion_async <- function() {
             error_message = conditionMessage(e),
             error_class   = paste(class(e), collapse = "/")
           ))
+          # v0.85.2.9000 — sentinelle terminale « error » côté worker.
+          .write_ingest_sentinel(sentinel_path, "error", list(
+            error_message = conditionMessage(e),
+            finished_at   = as.numeric(Sys.time())
+          ))
           .ntfy_send(
             ntfy,
             sprintf(i18n$t("monitoring_ntfy_ingest_error"),
@@ -285,6 +308,20 @@ run_ingestion_async <- function() {
         n_scenes = as.integer(summary$n_scenes %||% 0L),
         n_obs    = as.integer(summary$n_obs_inserted %||% 0L)
       ))
+
+      # v0.85.2.9000 — sentinelle terminale côté worker. `cancelled`
+      # quand le cœur a honoré le cancel coopératif (commit partiel),
+      # `done` sinon. Écrite AVANT le prewarm/finalisation pour que le
+      # relancement ne voie jamais un faux « running » après coup.
+      .write_ingest_sentinel(
+        sentinel_path,
+        if (identical(as.character(summary$status %||% ""), "cancelled"))
+          "cancelled" else "done",
+        list(
+          n_scenes    = as.integer(summary$n_scenes %||% 0L),
+          finished_at = as.numeric(Sys.time())
+        )
+      )
 
       # v0.55.0 — Le pré-calcul des 4 cartes FAST est désormais fait
       # PAR LE CŒUR (spec 018 nemeton@v0.61.0) via les params
@@ -386,6 +423,62 @@ run_ingestion_async <- function() {
       error = function(e) invisible(NULL)
     )
   }
+}
+
+
+#' Write the FAST ingestion run sentinel (worker-side, session-independent)
+#'
+#' v0.85.2.9000 — A small JSON marker the ingestion worker writes at
+#' start (`status = "running"`) and at termination (`"done"` /
+#' `"error"` / `"cancelled"`). Because it is written by the worker
+#' process (not the Shiny session), it survives a browser disconnect /
+#' session end. A freshly-launched Shiny instance reads it (via
+#' [.detect_ingest_state()]) to surface an « ingestion en cours » /
+#' « ingestion interrompue » banner.
+#'
+#' Atomic write (.tmp + rename), fully silent on error — a sentinel
+#' write must never abort the ingestion.
+#'
+#' @param path Sentinel file path (`<project>/data/ingest_run.json`),
+#'   or NULL (no-op, e.g. PG-only setup with no project on disk).
+#' @param status One of `"running"`, `"done"`, `"error"`, `"cancelled"`.
+#' @param extra Named list merged into the payload (zone, dates, …).
+#' @return Invisibly the path (or NULL).
+#' @noRd
+.write_ingest_sentinel <- function(path, status, extra = list()) {
+  if (is.null(path) || !nzchar(path)) return(invisible(NULL))
+  payload <- c(list(status = as.character(status),
+                    updated_at = as.numeric(Sys.time())),
+               extra)
+  tryCatch(
+    suppressWarnings({
+      tmp <- paste0(path, ".tmp")
+      jsonlite::write_json(payload, tmp, auto_unbox = TRUE, null = "null")
+      ok <- file.rename(tmp, path)
+      if (!isTRUE(ok)) {
+        file.copy(tmp, path, overwrite = TRUE)
+        unlink(tmp)
+      }
+    }),
+    error = function(e) invisible(NULL)
+  )
+  invisible(path)
+}
+
+
+#' Read the FAST ingestion run sentinel
+#'
+#' v0.85.2.9000 — Companion reader for [.write_ingest_sentinel()].
+#'
+#' @param path Sentinel file path or NULL.
+#' @return A named list (parsed JSON) or NULL when absent / unreadable.
+#' @noRd
+.read_ingest_sentinel <- function(path) {
+  if (is.null(path) || !nzchar(path) || !file.exists(path)) return(NULL)
+  tryCatch(
+    jsonlite::read_json(path, simplifyVector = TRUE),
+    error = function(e) NULL
+  )
 }
 
 
