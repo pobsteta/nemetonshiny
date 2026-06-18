@@ -349,6 +349,10 @@ mod_home_server <- function(id, app_state) {
       project_id <- input$load_project
       shiny::req(project_id)
 
+      # PERF — horloge du chemin critique « clic projet récent → UGFs ».
+      # Active uniquement si NEMETON_PERF_TRACE est vrai (cf. service_project.R).
+      .t_click0 <- Sys.time()
+
       # Skip if this project is already loaded
       if (!is.null(app_state$project_id) && identical(app_state$project_id, project_id)) {
         return()
@@ -389,10 +393,16 @@ mod_home_server <- function(id, app_state) {
       # freeze the UI for seconds on a slow/unreachable Postgres host.
       if (!.has_monitoring_zone_id(project)) {
         project <- tryCatch({
+          .t_hydr0 <- Sys.time()
           con <- get_monitoring_db_connection(project = project,
                                               read_only = TRUE)
           on.exit(close_monitoring_db_connection(con), add = TRUE)
-          hydrate_monitoring_zone_id(project, con)
+          .res_hydr <- hydrate_monitoring_zone_id(project, con)
+          if (.perf_trace_on()) {
+            .dt <- as.numeric(difftime(Sys.time(), .t_hydr0, units = "secs")) * 1000
+            cli::cli_inform("⏱ [perf] hydrate_monitoring_zone_id (DB): {sprintf('%.0f', .dt)} ms")
+          }
+          .res_hydr
         }, error = function(e) {
           cli::cli_warn("monitoring_zone_id hydration skipped: {conditionMessage(e)}")
           project
@@ -433,6 +443,11 @@ mod_home_server <- function(id, app_state) {
       app_state$project_id <- project$id
       app_state$project_status <- project$metadata$status %||% "draft"
 
+      if (.perf_trace_on()) {
+        .dt_sync <- as.numeric(difftime(Sys.time(), .t_click0, units = "secs")) * 1000
+        cli::cli_inform(c("i" = "⏱ [perf] CLIC → app_state pret (portion synchrone bloquante): {sprintf('%.0f', .dt_sync)} ms"))
+      }
+
       # PERF — defer the UGF geometry build (ug_build_sf, 0.5–3 s for
       # many UGFs) until AFTER the parcels have a chance to render. It
       # produces `indicators_sf`, consumed only by the Synthesis /
@@ -454,7 +469,12 @@ mod_home_server <- function(id, app_state) {
             # Attach only if still the same project and not already done.
             if (identical(app_state$project_id, .deferred_ind_id) &&
                 !is.null(cur) && is.null(cur$indicators_sf)) {
+              .t_att0 <- Sys.time()
               app_state$current_project <- attach_indicators_sf(cur)
+              if (.perf_trace_on()) {
+                .dt_att <- as.numeric(difftime(Sys.time(), .t_att0, units = "secs")) * 1000
+                cli::cli_inform("⏱ [perf] attach_indicators_sf (defere): {sprintf('%.0f', .dt_att)} ms")
+              }
             }
           }))
         }, delay = 0.1)

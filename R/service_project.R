@@ -845,11 +845,89 @@ invalidate_indicators <- function(project_id) {
 #' @return The project, possibly with `indicators_sf` attached and
 #'   `indicators` refreshed.
 #' @noRd
+# PERF — chronomètre léger, ACTIVÉ uniquement si NEMETON_PERF_TRACE est
+# vrai ("1"/"true"/"yes"). En prod la variable est absente : aucun coût,
+# aucune sortie console. Sert à répondre « où ça coince au chargement
+# d'un projet récent ? » — chaque appel logge le temps écoulé en ms via
+# cli (règle 9 : pas de print/cat/message). `expr` est évalué dans le
+# frame appelant (lazy), donc le wrapping ne change pas la sémantique.
+.perf_trace_on <- function() {
+  v <- tolower(Sys.getenv("NEMETON_PERF_TRACE", ""))
+  v %in% c("1", "true", "yes", "on")
+}
+
+.perf_time <- function(label, expr) {
+  if (!.perf_trace_on()) {
+    return(eval.parent(substitute(expr)))
+  }
+  t0 <- Sys.time()
+  res <- eval.parent(substitute(expr))
+  dt_ms <- as.numeric(difftime(Sys.time(), t0, units = "secs")) * 1000
+  cli::cli_inform("⏱ [perf] {label}: {sprintf('%.0f', dt_ms)} ms")
+  res
+}
+
+# PERF — pré-chauffage de la pile géo (arrow + geoarrow + sf). Le tout
+# 1er `arrow::read_parquet()` + `sf::st_as_sf()` d'une session R paie
+# ~1,5–2 s de chargement paresseux de namespaces / génération de code S4.
+# Ce coût frappait jusqu'ici le PREMIER clic « projet récent » (mesuré :
+# load_project à froid ≈ 2 s, dont ~1,6 s de warm-up, vs ~130 ms à chaud).
+# On le déplace hors du chemin critique en l'exécutant une fois, peu après
+# le démarrage de l'app (via later, cf. app_server) : un mini round-trip
+# parquet en mémoire exerce exactement les chemins qui seront ré-empruntés
+# par load_parcels(). Idempotent et best-effort : toute erreur est avalée.
+.geo_stack_warmed <- new.env(parent = emptyenv())
+.geo_stack_warmed$done <- FALSE
+
+warmup_geo_stack <- function() {
+  if (isTRUE(.geo_stack_warmed$done)) {
+    return(invisible(FALSE))
+  }
+  .geo_stack_warmed$done <- TRUE
+  ok <- requireNamespace("arrow", quietly = TRUE) &&
+        requireNamespace("geoarrow", quietly = TRUE) &&
+        requireNamespace("sf", quietly = TRUE)
+  if (!ok) {
+    return(invisible(FALSE))
+  }
+  tryCatch({
+    t0 <- Sys.time()
+    # Deux petits polygones adjacents : exerce st_sf/st_sfc + les
+    # opérations géométriques (st_union/st_area) ET les deux backends IO
+    # réellement empruntés par load_parcels/load_commune_geometry :
+    #   - arrow/geoarrow (parquet) — chemin rapide par défaut,
+    #   - GDAL (st_read GPKG) — dont la 1ère init coûte le plus cher.
+    poly <- function(x) sf::st_polygon(list(rbind(
+      c(x, 0), c(x + 1, 0), c(x + 1, 1), c(x, 1), c(x, 0))))
+    sfobj <- sf::st_sf(
+      id = 1:2,
+      geometry = sf::st_sfc(poly(0), poly(1), crs = 4326)
+    )
+    invisible(sf::st_area(sfobj))
+    invisible(sf::st_union(sfobj))
+    p_pq <- tempfile(fileext = ".parquet")
+    p_gp <- tempfile(fileext = ".gpkg")
+    on.exit(unlink(c(p_pq, p_gp)), add = TRUE)
+    arrow::write_parquet(sfobj, p_pq)
+    invisible(sf::st_as_sf(arrow::read_parquet(p_pq, as_data_frame = FALSE)))
+    suppressWarnings(sf::st_write(sfobj, p_gp, quiet = TRUE,
+                                  delete_dsn = TRUE))
+    invisible(sf::st_read(p_gp, quiet = TRUE))
+    if (.perf_trace_on()) {
+      dt_ms <- as.numeric(difftime(Sys.time(), t0, units = "secs")) * 1000
+      cli::cli_inform("⏱ [perf] warmup_geo_stack: {sprintf('%.0f', dt_ms)} ms")
+    }
+  }, error = function(e) {
+    cli::cli_warn("Geo-stack warm-up skipped (non-blocking): {conditionMessage(e)}")
+  })
+  invisible(TRUE)
+}
+
 attach_indicators_sf <- function(project) {
   tryCatch({
     if (!is.null(project$indicators) && has_ug_data(project) &&
         "ug_id" %in% names(project$indicators)) {
-      ug_sf <- ug_build_sf(project)
+      ug_sf <- .perf_time("ug_build_sf", ug_build_sf(project))
       if (!is.null(ug_sf) && nrow(ug_sf) > 0) {
         # Drop stale UGF metadata columns from indicators before merge
         dup_cols <- intersect(
@@ -873,13 +951,14 @@ attach_indicators_sf <- function(project) {
 }
 
 load_project <- function(project_id, build_indicators_sf = TRUE) {
+  .t_load0 <- Sys.time()
   project_path <- get_project_path(project_id)
   if (is.null(project_path)) {
     cli::cli_warn("Project not found: {project_id}")
     return(NULL)
   }
 
-  metadata <- load_project_metadata(project_id)
+  metadata <- .perf_time("load_project_metadata", load_project_metadata(project_id))
   if (is.null(metadata)) {
     return(NULL)
   }
@@ -888,15 +967,15 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
     id = project_id,
     path = project_path,
     metadata = metadata,
-    parcels = load_parcels(project_id),
-    commune_geometry = load_commune_geometry(project_id),
-    indicators = load_indicators(project_id),
-    comments = load_comments(project_id)
+    parcels = .perf_time("load_parcels", load_parcels(project_id)),
+    commune_geometry = .perf_time("load_commune_geometry", load_commune_geometry(project_id)),
+    indicators = .perf_time("load_indicators", load_indicators(project_id)),
+    comments = .perf_time("load_comments", load_comments(project_id))
   )
 
   # Auto-migrate to v2 (UG support) if needed.
   project <- tryCatch(
-    ensure_project_migrated(project_id, project),
+    .perf_time("ensure_project_migrated", ensure_project_migrated(project_id, project)),
     error = function(e) {
       cli::cli_warn("UG migration failed (non-blocking): {e$message}")
       project
@@ -931,6 +1010,11 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
       error = function(e) cli::cli_warn(
         "Background DB sync dispatch failed (non-blocking): {conditionMessage(e)}")
     )
+  }
+
+  if (.perf_trace_on()) {
+    .dt_ms <- as.numeric(difftime(Sys.time(), .t_load0, units = "secs")) * 1000
+    cli::cli_inform(c("v" = "⏱ [perf] load_project TOTAL ({project_id}): {sprintf('%.0f', .dt_ms)} ms (build_indicators_sf={build_indicators_sf})"))
   }
 
   project

@@ -36,6 +36,16 @@ app_server <- function(input, output, session) {
     }
   }
 
+  # PERF — pré-chauffe la pile géo (arrow/geoarrow/sf) ~1,5 s après le
+  # démarrage, sur le thread principal mais HORS du chemin critique : la
+  # page d'accueil est déjà rendue et l'utilisateur la parcourt. Quand il
+  # clique enfin un projet récent, arrow est déjà chaud, ce qui retire le
+  # ~1,6 s de chargement paresseux qui plombait le tout premier clic.
+  # Idempotent (ne tourne qu'une fois par process R, cf. warmup_geo_stack).
+  if (requireNamespace("later", quietly = TRUE)) {
+    later::later(function() warmup_geo_stack(), delay = 1.5)
+  }
+
   # ============================================================
   # REACTIVE VALUES - Application State
   # ============================================================
