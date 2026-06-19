@@ -1,3 +1,20 @@
+# nemetonshiny 0.90.3 (2026-06-19)
+
+### Fixed — Carte FORDEAD : clic-pixel et opacité inopérants (onglet non-défaut)
+
+La Carte FORDEAD est un sous-onglet non-défaut affiché via `nav_show` /
+`nav_hide` (visibilité pilotée par le mode). Shiny ne détectait pas
+fiablement quand son conteneur Leaflet devenait visible : la carte
+s'initialisait à **taille 0**, si bien que le **clic-pixel** (graphe CRSWIR)
+et la **mise à jour d'opacité** via `leafletProxy` tombaient dans le vide —
+alors que tout fonctionnait sur Alertes FORDEAD (onglet visible au
+démarrage). Corrigé en alignant la Carte FORDEAD sur la Carte FAST :
+
+- `outputOptions(output, "map", suspendWhenHidden = FALSE)` ;
+- observer de navigation qui, à l'ouverture du sous-onglet, force
+  `leafletInvalidateSize` (Leaflet re-détecte ses dimensions) + un
+  `fitBounds` sur l'emprise UGF / raster.
+
 # nemetonshiny 0.90.2 (2026-06-19)
 
 ### Fixed — Cartes FORDEAD : opacité, clic-pixel, nettoyage

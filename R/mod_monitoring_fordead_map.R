@@ -35,6 +35,25 @@
   )
 }
 
+# Bbox (EPSG:4326) pour cadrer la carte FORDEAD : préfère l'emprise des
+# UGF (déjà en 4326), sinon retombe sur l'étendue du raster reprojetée.
+# Renvoie NULL si rien d'exploitable.
+.fordead_view_bbox <- function(ugf_4326, r) {
+  if (!is.null(ugf_4326) && inherits(ugf_4326, "sf") && nrow(ugf_4326)) {
+    return(tryCatch(sf::st_bbox(ugf_4326), error = function(e) NULL))
+  }
+  if (!is.null(r) && inherits(r, "SpatRaster")) {
+    return(tryCatch({
+      e <- terra::ext(r)
+      poly <- sf::st_as_sfc(sf::st_bbox(
+        c(xmin = e[1], xmax = e[2], ymin = e[3], ymax = e[4]),
+        crs = sf::st_crs(terra::crs(r))))
+      sf::st_bbox(sf::st_transform(poly, 4326))
+    }, error = function(e) NULL))
+  }
+  NULL
+}
+
 #' Carte FORDEAD sub-tab UI
 #'
 #' @param id Module namespace id.
@@ -315,6 +334,39 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
     # suspend makes the empty-state / leaflet wrapper render
     # unconditionally.
     shiny::outputOptions(output, "panel", suspendWhenHidden = FALSE)
+    # Même raison pour la carte elle-même : sans ça, le widget leaflet
+    # de ce sous-onglet non-défaut (affiché via nav_show/nav_hide) peut
+    # rester suspendu / s'initialiser à taille 0 → clics et leafletProxy
+    # (opacité) inopérants. Parité avec Carte FAST (mod_monitoring_pixel_map).
+    shiny::outputOptions(output, "map", suspendWhenHidden = FALSE)
+
+    # Carte FORDEAD est un sous-onglet non-défaut : quand l'utilisateur y
+    # navigue, le conteneur leaflet vient seulement de devenir visible.
+    # On force alors `invalidateSize` (Leaflet re-détecte ses dimensions,
+    # sinon clics + proxy opacité tombent dans le vide) + un fitBounds.
+    # Mêmes mécanisme et handler JS que Carte FAST (custom.js).
+    shiny::observe({
+      root_session <- session$userData$root_session
+      if (is.null(root_session)) return()
+      top_nav <- root_session$input$main_nav
+      sub_nav <- root_session$input[["monitoring-subtab"]]
+      if (is.null(top_nav) || top_nav != "monitoring") return()
+      if (is.null(sub_nav) || sub_nav != "pixel_map_fordead") return()
+      bb <- .fordead_view_bbox(
+        shiny::isolate(.ugf_for_overlay(app_state$current_project)),
+        shiny::isolate(mask_r()))
+      later::later(function() {
+        session$sendCustomMessage("leafletInvalidateSize",
+                                  list(id = session$ns("map")))
+        if (!is.null(bb)) {
+          leaflet::leafletProxy("map", session = session) |>
+            leaflet::fitBounds(
+              lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+              lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
+            )
+        }
+      }, delay = 0.3)
+    })
 
     # v0.59.0 (TODO #3) — diagnostic pixel CRSWIR au clic sur la
     # carte FORDEAD. Parité fonctionnelle avec la « Carte pixel
