@@ -125,22 +125,25 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (is.null(proj) || is.null(proj$path)) return(NULL)
       cd <- file.path(proj$path, "cache", "layers", "fordead")
       if (!dir.exists(cd)) return(NULL)
-      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+      con <- .perf_time("fordead mask: db_connect",
+                        get_monitoring_db_connection(project = proj, read_only = TRUE))
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
       # Phase A (D2) — on lit TOUJOURS le masque de `_tot` ; l'affichage
       # par strate n'est qu'un masquage spatial du raster `_tot`.
-      id_tot   <- .fordead_tot_id(con, proj, zone)
+      id_tot   <- .perf_time("fordead mask: resolve _tot (find_zones)",
+                             .fordead_tot_id(con, proj, zone))
       read_zone <- id_tot
 
       r <- tryCatch(
-        nemeton::read_fordead_dieback_mask(
-          con,
-          zone_id   = read_zone,
-          run_id    = NULL,  # latest
-          cache_dir = cd
-        ),
+        .perf_time("fordead mask: read_fordead_dieback_mask (TIF)",
+          nemeton::read_fordead_dieback_mask(
+            con,
+            zone_id   = read_zone,
+            run_id    = NULL,  # latest
+            cache_dir = cd
+          )),
         error = function(e) {
           cli::cli_alert_warning(
             "read_fordead_dieback_mask failed: {e$message}"
@@ -159,11 +162,13 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       # du raster par sécurité avant terra::mask.
       sel <- suppressWarnings(as.integer(zone))
       if (!is.na(id_tot) && !is.na(sel) && !identical(sel, id_tot)) {
-        aoi <- get_monitoring_zone_aoi(con, sel)
+        aoi <- .perf_time("fordead mask: get_zone_aoi",
+                          get_monitoring_zone_aoi(con, sel))
         if (!is.null(aoi)) {
           r <- tryCatch(
-            terra::mask(r, terra::vect(
-              sf::st_transform(aoi, terra::crs(r)))),
+            .perf_time("fordead mask: terra::mask (clip strate)",
+              terra::mask(r, terra::vect(
+                sf::st_transform(aoi, terra::crs(r))))),
             error = function(e) {
               cli::cli_alert_warning(
                 "strata mask failed (zone={sel}): {conditionMessage(e)}")
@@ -238,6 +243,12 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
       pal <- leaflet::colorFactor(colors, levels = cats,
                                   na.color = "transparent")
+      # Parité FAST : la classe 0 (sain) est rendue TRANSPARENTE plutôt
+      # qu'en vert opaque — sinon le « sain » recouvre toute la zone et
+      # noie les quelques pixels d'alerte (classe >= 1). On ne peint donc
+      # que les pixels affectés ; fond de carte + contour UGF restent
+      # visibles dessous. La légende garde la classe 0 (référence).
+      r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
 
       legend_labels <- c(
         sprintf("0 - %s", i18n$t("monitoring_fordead_class_0")),
@@ -258,7 +269,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           options    = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         leaflet::addRasterImage(
-          x       = r,
+          x       = r_show,
           colors  = pal,
           opacity = op,
           # v0.38.7 — nearest-neighbour resampling. addRasterImage()
@@ -311,10 +322,13 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
       pal <- leaflet::colorFactor(colors, levels = cats,
                                   na.color = "transparent")
+      # Classe 0 (sain) transparente : seuls les pixels d'alerte (>= 1)
+      # sont peints (cf. render de base).
+      r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
       leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Alertes") |>
         leaflet::addRasterImage(
-          x       = r,
+          x       = r_show,
           colors  = pal,
           opacity = op,
           method  = "ngb",
