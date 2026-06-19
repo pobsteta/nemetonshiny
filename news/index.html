@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.90.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.90.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.90.4" id="nemetonshiny-0904-2026-06-19">nemetonshiny 0.90.4 (2026-06-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0904-2026-06-19"></a></h2>
+<div class="section level4">
+<h4 id="changed--suivi-sanitaire--bascule-de-mode-beaucoup-plus-rapide-0-90-4">Changed — Suivi sanitaire : bascule de mode beaucoup plus rapide<a class="anchor" aria-label="anchor" href="#changed--suivi-sanitaire--bascule-de-mode-beaucoup-plus-rapide-0-90-4"></a></h4>
+<p>Passer de Diagnostic FAST à FORDEAD (et inversement) prenait plusieurs secondes : à chaque bascule, <strong>plusieurs réactives (zones, validity, masque…) rouvraient CHACUNE leur propre connexion</strong> monitoring — or ouvrir une connexion PostGIS distante coûte ~0,4–1,2 s — et le <strong>check de validité BD Forêt</strong> (~1 s) était recalculé à chaque fois.</p>
+<ul><li>
+<strong>Connexion read-only mise en cache par session</strong> (<code>mon_con()</code>) : réutilisée par <code>zones()</code>, <code>validity()</code>, <code>fast_zone_surfaces()</code> et le sous-module Carte FORDEAD (masque + clic-pixel) au lieu d’un open/close par évaluation. Reconnexion automatique si le serveur a fermé la connexion (timeout) ou au changement de projet ; fermeture en fin de session. Les chemins RW (ingestion, enregistrement de zone) gardent leurs propres connexions.</li>
+<li>
+<strong>Mémoïsation de <code>validity()</code></strong> par (projet, zone) : le check BD Forêt n’est plus relancé sur les allers-retours de mode.</li>
+</ul><p>Mesuré (PostGIS distant) : bascule de mode de ~0,4–2,5 s à <strong>~0,03 s</strong> sur les bascules répétées (la connexion à froid, ~1 s, n’est payée qu’une fois par session). Instrumentation <code>NEMETON_PERF_TRACE</code> conservée.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--alertes-fordead--pixels-sains-affichés-en-vert-opaque-0-90-4">Fixed — Alertes FORDEAD : pixels sains affichés en vert opaque<a class="anchor" aria-label="anchor" href="#fixed--alertes-fordead--pixels-sains-affich%C3%A9s-en-vert-opaque-0-90-4"></a></h4>
+<p>La carte « Alertes FORDEAD » peignait la classe 0 (sain) en vert, recouvrant toute la zone, alors que la « Carte FORDEAD » ne montre que les pixels affectés. La classe 0 est désormais rendue <strong>transparente</strong> sur les deux cartes (on ne peint que les classes 1-4 au-dessus du fond ; la carte « zone saine » prend le relais quand tout est sain). La légende garde la classe 0 en référence.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.90.3" id="nemetonshiny-0903-2026-06-19">nemetonshiny 0.90.3 (2026-06-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0903-2026-06-19"></a></h2>
 <div class="section level4">

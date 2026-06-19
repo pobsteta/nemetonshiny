@@ -1,5 +1,39 @@
 # Changelog
 
+## nemetonshiny 0.90.4 (2026-06-19)
+
+#### Changed — Suivi sanitaire : bascule de mode beaucoup plus rapide
+
+Passer de Diagnostic FAST à FORDEAD (et inversement) prenait plusieurs
+secondes : à chaque bascule, **plusieurs réactives (zones, validity,
+masque…) rouvraient CHACUNE leur propre connexion** monitoring — or
+ouvrir une connexion PostGIS distante coûte ~0,4–1,2 s — et le **check
+de validité BD Forêt** (~1 s) était recalculé à chaque fois.
+
+- **Connexion read-only mise en cache par session** (`mon_con()`) :
+  réutilisée par `zones()`, `validity()`, `fast_zone_surfaces()` et le
+  sous-module Carte FORDEAD (masque + clic-pixel) au lieu d’un
+  open/close par évaluation. Reconnexion automatique si le serveur a
+  fermé la connexion (timeout) ou au changement de projet ; fermeture en
+  fin de session. Les chemins RW (ingestion, enregistrement de zone)
+  gardent leurs propres connexions.
+- **Mémoïsation de `validity()`** par (projet, zone) : le check BD Forêt
+  n’est plus relancé sur les allers-retours de mode.
+
+Mesuré (PostGIS distant) : bascule de mode de ~0,4–2,5 s à **~0,03 s**
+sur les bascules répétées (la connexion à froid, ~1 s, n’est payée
+qu’une fois par session). Instrumentation `NEMETON_PERF_TRACE`
+conservée.
+
+#### Fixed — Alertes FORDEAD : pixels sains affichés en vert opaque
+
+La carte « Alertes FORDEAD » peignait la classe 0 (sain) en vert,
+recouvrant toute la zone, alors que la « Carte FORDEAD » ne montre que
+les pixels affectés. La classe 0 est désormais rendue **transparente**
+sur les deux cartes (on ne peint que les classes 1-4 au-dessus du fond ;
+la carte « zone saine » prend le relais quand tout est sain). La légende
+garde la classe 0 en référence.
+
 ## nemetonshiny 0.90.3 (2026-06-19)
 
 #### Fixed — Carte FORDEAD : clic-pixel et opacité inopérants (onglet non-défaut)
