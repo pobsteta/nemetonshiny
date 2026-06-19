@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.90.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.90.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,16 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.90.3" id="nemetonshiny-0903-2026-06-19">nemetonshiny 0.90.3 (2026-06-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0903-2026-06-19"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-fordead--clic-pixel-et-opacité-inopérants-onglet-non-défaut-0-90-3">Fixed — Carte FORDEAD : clic-pixel et opacité inopérants (onglet non-défaut)<a class="anchor" aria-label="anchor" href="#fixed--carte-fordead--clic-pixel-et-opacit%C3%A9-inop%C3%A9rants-onglet-non-d%C3%A9faut-0-90-3"></a></h4>
+<p>La Carte FORDEAD est un sous-onglet non-défaut affiché via <code>nav_show</code> / <code>nav_hide</code> (visibilité pilotée par le mode). Shiny ne détectait pas fiablement quand son conteneur Leaflet devenait visible : la carte s’initialisait à <strong>taille 0</strong>, si bien que le <strong>clic-pixel</strong> (graphe CRSWIR) et la <strong>mise à jour d’opacité</strong> via <code>leafletProxy</code> tombaient dans le vide — alors que tout fonctionnait sur Alertes FORDEAD (onglet visible au démarrage). Corrigé en alignant la Carte FORDEAD sur la Carte FAST :</p>
+<ul><li>
+<code>outputOptions(output, "map", suspendWhenHidden = FALSE)</code> ;</li>
+<li>observer de navigation qui, à l’ouverture du sous-onglet, force <code>leafletInvalidateSize</code> (Leaflet re-détecte ses dimensions) + un <code>fitBounds</code> sur l’emprise UGF / raster.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.90.2" id="nemetonshiny-0902-2026-06-19">nemetonshiny 0.90.2 (2026-06-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0902-2026-06-19"></a></h2>
 <div class="section level4">
