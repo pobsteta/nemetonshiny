@@ -1,3 +1,24 @@
+# nemetonshiny 0.91.0 (2026-06-19)
+
+### Added — Carte FORDEAD : sélecteur de couche pixel
+
+La Carte FORDEAD gagne un radio **« Couche »** (sidebar droite) permettant
+d'afficher, en plus de la **sévérité 0-4** (défaut), trois couches pixel
+lues via `nemeton::read_fordead_layer()` (cœur ≥ 0.94.0) :
+
+- **Date de 1re détection** (`first_anomaly`) — palette viridis, légende en
+  dates.
+- **Indice d'anomalie** (`anomaly_index`) — sévérité continue, palette
+  YlOrRd.
+- **Zone modélisée** (`modelled_pixels`) — binaire (modélisé / non),
+  palette discrète.
+
+Le masquage par strate (D2) et le réglage d'opacité s'appliquent à toutes
+les couches. Le court-circuit « zone saine » ne vaut que pour la sévérité ;
+les autres couches s'affichent toujours. Si une couche est absente du
+bundle (anciens runs < cœur v0.94.0), un message « couche indisponible »
+remplace la carte (pas de plantage). Plancher `Imports: nemeton (>= 0.94.0)`.
+
 # nemetonshiny 0.90.4 (2026-06-19)
 
 ### Changed — Suivi sanitaire : bascule de mode beaucoup plus rapide

@@ -379,6 +379,24 @@ mod_monitoring_ui <- function(id) {
                   ),
                   class = "mb-2"
                 ),
+                # Sélecteur de couche pixel (Partie B, nemeton >= 0.94.0) :
+                # sévérité 0-4 (défaut) + date 1re détection + indice
+                # d'anomalie + zone modélisée. Lu via read_fordead_layer().
+                htmltools::tagAppendAttributes(
+                  shiny::radioButtons(
+                    ns("fordead_layer"),
+                    label = i18n$t("monitoring_fordead_layer_label"),
+                    choiceNames  = list(
+                      i18n$t("monitoring_fordead_layer_severity"),
+                      i18n$t("monitoring_fordead_layer_first_detection"),
+                      i18n$t("monitoring_fordead_layer_anomaly_index"),
+                      i18n$t("monitoring_fordead_layer_confidence")),
+                    choiceValues = list("severity", "first_anomaly",
+                                        "anomaly_index", "modelled_pixels"),
+                    selected = "severity"
+                  ),
+                  class = "mb-2"
+                ),
                 shiny::sliderInput(
                   ns("fordead_opacity"),
                   label = i18n$t("monitoring_fast_alerts_opacity_label"),
@@ -3057,6 +3075,9 @@ mod_monitoring_server <- function(id, app_state) {
       # v0.90.x — opacité du raster pilotée par le slider de la sidebar
       # droite de l'onglet Carte FORDEAD (parité FAST).
       opacity_r = shiny::reactive(input$fordead_opacity),
+      # Partie B — couche pixel sélectionnée (sévérité / 1re détection /
+      # indice d'anomalie / zone modélisée).
+      layer_r   = shiny::reactive(input$fordead_layer %||% "severity"),
       # perf — réutilise la connexion RO mise en cache du parent (évite
       # de rouvrir une connexion PostGIS ~0,4–1,2 s à chaque lecture de
       # masque / clic-pixel).
