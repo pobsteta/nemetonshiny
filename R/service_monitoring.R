@@ -504,7 +504,8 @@ run_ingestion_async <- function() {
 #' * `dates_training`    — length-2 Date or character (start, end)
 #' * `dates_monitoring`  — length-2 Date or character
 #' * `threshold_anomaly` — numeric, default 0.16 (ONF/DSF 2024)
-#' * `vegetation_index`  — "CRSWIR" / "NDVI" / "NDWI"
+#' * `vegetation_index`  — "CRSWIR" (FORDEAD est mono-indice ; cf.
+#'                         `nemeton::run_fordead_dieback()`)
 #' * `zone_id`           — integer, required for AOI lookup + DB INSERT
 #' * `cache_dir`         — path to the project's Sentinel-2 COG cache
 #'                         (typically `<project>/cache/layers/sentinel2`)
