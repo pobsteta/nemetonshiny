@@ -1,5 +1,30 @@
 # Changelog
 
+## nemetonshiny 0.90.2 (2026-06-19)
+
+#### Fixed — Cartes FORDEAD : opacité, clic-pixel, nettoyage
+
+- **Opacité du raster (zoom + fond préservés)** — déplacer le slider
+  d’opacité dans Alertes FORDEAD / Carte FORDEAD reconstruisait toute la
+  carte (`renderLeaflet`), réinitialisant le zoom et le fond (OSM ↔︎
+  Satellite). L’opacité est désormais appliquée via `leafletProxy` (mise
+  à jour du seul group « Alertes »), comme dans Diagnostic FAST.
+- **Clic-pixel Carte FORDEAD** — le clic lisait la série CRSWIR sur la
+  strate sélectionnée alors que FORDEAD tourne sur la zone `_tot` (Phase
+  1.  : sur une strate ≠ `_tot`, aucun graphe n’apparaissait. Le clic
+      lit désormais la série sur `_tot` (helper de résolution mutualisé
+      avec le masque). Le graphe (CRSWIR observé + prédiction
+      harmonique + seuil d’anomalie + dates de stress) s’affiche de
+      nouveau.
+
+#### Removed — Case « Inclure les classes faible et moyenne » (santé)
+
+Inerte depuis la Phase A (l’affichage est piloté par le raster, toujours
+les 5 classes 0-4) : la case ne pilotait plus que la réactive legacy
+`alerts()` (filtre DB des alertes vectorielles), elle-même sans aucun
+consommateur. Case + bandeau d’avertissement + réactive `alerts()`
+supprimés.
+
 ## nemetonshiny 0.90.1 (2026-06-18)
 
 #### Added — Cartes FORDEAD : parité d’affichage avec Diagnostic FAST
