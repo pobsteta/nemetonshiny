@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.90.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,20 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.0" id="nemetonshiny-0910-2026-06-19">nemetonshiny 0.91.0 (2026-06-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0910-2026-06-19"></a></h2>
+<div class="section level4">
+<h4 id="added--carte-fordead--sélecteur-de-couche-pixel-0-91-0">Added — Carte FORDEAD : sélecteur de couche pixel<a class="anchor" aria-label="anchor" href="#added--carte-fordead--s%C3%A9lecteur-de-couche-pixel-0-91-0"></a></h4>
+<p>La Carte FORDEAD gagne un radio <strong>« Couche »</strong> (sidebar droite) permettant d’afficher, en plus de la <strong>sévérité 0-4</strong> (défaut), trois couches pixel lues via <code><a href="https://pobsteta.github.io/nemeton/reference/read_fordead_layer.html" class="external-link">nemeton::read_fordead_layer()</a></code> (cœur ≥ 0.94.0) :</p>
+<ul><li>
+<strong>Date de 1re détection</strong> (<code>first_anomaly</code>) — palette viridis, légende en dates.</li>
+<li>
+<strong>Indice d’anomalie</strong> (<code>anomaly_index</code>) — sévérité continue, palette YlOrRd.</li>
+<li>
+<strong>Zone modélisée</strong> (<code>modelled_pixels</code>) — binaire (modélisé / non), palette discrète.</li>
+</ul><p>Le masquage par strate (D2) et le réglage d’opacité s’appliquent à toutes les couches. Le court-circuit « zone saine » ne vaut que pour la sévérité ; les autres couches s’affichent toujours. Si une couche est absente du bundle (anciens runs &lt; cœur v0.94.0), un message « couche indisponible » remplace la carte (pas de plantage). Plancher <code>Imports: nemeton (&gt;= 0.94.0)</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.90.4" id="nemetonshiny-0904-2026-06-19">nemetonshiny 0.90.4 (2026-06-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0904-2026-06-19"></a></h2>
 <div class="section level4">
