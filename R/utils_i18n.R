@@ -2590,6 +2590,47 @@ TRANSLATIONS <- list(
     fr = "Classe de dépérissement",
     en = "Dieback class"
   ),
+  # Partie B — sélecteur de couche pixel de la Carte FORDEAD.
+  monitoring_fordead_layer_label = list(
+    fr = "Couche",
+    en = "Layer"
+  ),
+  monitoring_fordead_layer_severity = list(
+    fr = "Sévérité (0-4)",
+    en = "Severity (0-4)"
+  ),
+  monitoring_fordead_layer_first_detection = list(
+    fr = "Date de 1re détection",
+    en = "First detection date"
+  ),
+  monitoring_fordead_layer_anomaly_index = list(
+    fr = "Indice d'anomalie",
+    en = "Anomaly index"
+  ),
+  monitoring_fordead_layer_confidence = list(
+    fr = "Zone modélisée",
+    en = "Modelled area"
+  ),
+  monitoring_fordead_layer_modelled_yes = list(
+    fr = "Modélisé",
+    en = "Modelled"
+  ),
+  monitoring_fordead_layer_modelled_no = list(
+    fr = "Non modélisé",
+    en = "Not modelled"
+  ),
+  monitoring_fordead_layer_legend_date = list(
+    fr = "Date de 1re détection",
+    en = "First detection date"
+  ),
+  monitoring_fordead_layer_legend_index = list(
+    fr = "Indice d'anomalie",
+    en = "Anomaly index"
+  ),
+  monitoring_fordead_layer_unavailable = list(
+    fr = "Couche indisponible pour ce diagnostic (relancer un run FORDEAD récent pour la générer).",
+    en = "Layer unavailable for this run (re-run a recent FORDEAD diagnosis to generate it)."
+  ),
   monitoring_fordead_class_0 = list(
     fr = "sain",
     en = "healthy"

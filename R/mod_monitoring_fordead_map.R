@@ -54,6 +54,81 @@
   NULL
 }
 
+# Partie B — spécification d'affichage par couche pixel FORDEAD.
+# Renvoie pour un raster `r` et une `layer` : le raster à peindre
+# (`r_show`), la palette leaflet, la méthode de rééchantillonnage et la
+# spécification de légende (discrète ou continue). Centralisé pour rester
+# identique entre le render de base et l'observer d'opacité.
+#   severity        → masque 0-4, classe 0 transparente, palette discrète.
+#   first_anomaly   → date (jours depuis 1970), palette viridis, légende dates.
+#   anomaly_index   → sévérité continue, palette YlOrRd.
+#   modelled_pixels → binaire 0/1 (non modélisé / modélisé), palette discrète.
+.fordead_layer_spec <- function(r, layer, i18n) {
+  .num_range <- function(r) {
+    v <- tryCatch(terra::values(r, na.rm = TRUE), error = function(e) numeric(0))
+    if (!length(v) || !is.finite(min(v)) || min(v) == max(v))
+      return(if (length(v)) c(min(v), min(v) + 1) else c(0, 1))
+    range(v)
+  }
+  if (identical(layer, "first_anomaly")) {
+    rng <- .num_range(r)
+    pal <- leaflet::colorNumeric("viridis", domain = rng,
+                                 na.color = "transparent")
+    return(list(
+      r_show = r, pal = pal, method = "bilinear",
+      legend = list(type = "continuous", pal = pal, values = rng,
+                    title = i18n$t("monitoring_fordead_layer_legend_date"),
+                    labFormat = function(type, cuts, p)
+                      format(as.Date(cuts, origin = "1970-01-01"), "%Y-%m-%d"))))
+  }
+  if (identical(layer, "anomaly_index")) {
+    rng <- .num_range(r)
+    pal <- leaflet::colorNumeric("YlOrRd", domain = rng,
+                                 na.color = "transparent")
+    return(list(
+      r_show = r, pal = pal, method = "bilinear",
+      legend = list(type = "continuous", pal = pal, values = rng,
+                    title = i18n$t("monitoring_fordead_layer_legend_index"),
+                    labFormat = NULL)))
+  }
+  if (identical(layer, "modelled_pixels")) {
+    cols <- c("#BBBBBB", "#1f78b4")
+    return(list(
+      r_show = r,
+      pal    = leaflet::colorFactor(cols, levels = 0:1, na.color = "transparent"),
+      method = "ngb",
+      legend = list(type = "discrete", colors = cols,
+                    labels = c(i18n$t("monitoring_fordead_layer_modelled_no"),
+                               i18n$t("monitoring_fordead_layer_modelled_yes")),
+                    title = i18n$t("monitoring_fordead_layer_confidence"))))
+  }
+  # severity (défaut) — classe 0 transparente.
+  cols <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
+  list(
+    r_show = terra::ifel(is.na(r) | r <= 0, NA, r),
+    pal    = leaflet::colorFactor(cols, levels = 0:4, na.color = "transparent"),
+    method = "ngb",
+    legend = list(type = "discrete", colors = cols,
+                  labels = c(sprintf("0 - %s", i18n$t("monitoring_fordead_class_0")),
+                             sprintf("1 - %s", i18n$t("monitoring_fordead_class_1")),
+                             sprintf("2 - %s", i18n$t("monitoring_fordead_class_2")),
+                             sprintf("3 - %s", i18n$t("monitoring_fordead_class_3")),
+                             sprintf("4 - %s", i18n$t("monitoring_fordead_class_4"))),
+                  title = i18n$t("monitoring_fordead_class_title")))
+}
+
+# Ajoute la légende correspondant à la spec (.fordead_layer_spec$legend).
+.fordead_add_legend <- function(map, lg) {
+  if (identical(lg$type, "discrete")) {
+    leaflet::addLegend(map, position = "bottomright", colors = lg$colors,
+                       labels = lg$labels, title = lg$title, opacity = 0.85)
+  } else {
+    leaflet::addLegend(map, position = "bottomright", pal = lg$pal,
+                       values = lg$values, title = lg$title, opacity = 0.85,
+                       labFormat = lg$labFormat %||% leaflet::labelFormat())
+  }
+}
+
 #' Carte FORDEAD sub-tab UI
 #'
 #' @param id Module namespace id.
@@ -84,11 +159,16 @@ mod_monitoring_fordead_map_ui <- function(id) {
 #'   `NULL` (default, tests/back-compat) the module opens and closes its
 #'   own connection. When provided, the connection is reused and NOT
 #'   closed here (the provider owns its lifecycle).
+#' @param layer_r Reactive returning the displayed pixel layer (Partie B) :
+#'   one of `"severity"` (mask 0-4, défaut), `"first_anomaly"`,
+#'   `"anomaly_index"`, `"modelled_pixels"`. Optional — defaults to a
+#'   constant `"severity"` for back-compat / tests.
 #' @return invisible list with `mask` reactive.
 #' @noRd
 mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
                                               refresh_r = shiny::reactive(0L),
                                               opacity_r = shiny::reactive(0.75),
+                                              layer_r   = shiny::reactive("severity"),
                                               con_provider = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
@@ -142,24 +222,30 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (is.null(con)) return(NULL)
       if (own_con) on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      # Phase A (D2) — on lit TOUJOURS le masque de `_tot` ; l'affichage
+      # Phase A (D2) — on lit TOUJOURS sur la zone `_tot` ; l'affichage
       # par strate n'est qu'un masquage spatial du raster `_tot`.
       id_tot   <- .perf_time("fordead mask: resolve _tot (find_zones)",
                              .fordead_tot_id(con, proj, zone))
       read_zone <- id_tot
 
+      # Partie B — lecture branchée sur la couche sélectionnée :
+      #   severity → masque catégoriel 0-4 (read_fordead_dieback_mask) ;
+      #   first_anomaly / anomaly_index / modelled_pixels → couche pixel
+      #   (read_fordead_layer, nemeton >= 0.94.0). NULL si la couche est
+      #   absente du bundle (anciens runs) → empty-state « indisponible ».
+      lyr <- layer_r() %||% "severity"
       r <- tryCatch(
-        .perf_time("fordead mask: read_fordead_dieback_mask (TIF)",
-          nemeton::read_fordead_dieback_mask(
-            con,
-            zone_id   = read_zone,
-            run_id    = NULL,  # latest
-            cache_dir = cd
-          )),
+        .perf_time(sprintf("fordead mask: read layer=%s", lyr),
+          if (identical(lyr, "severity"))
+            nemeton::read_fordead_dieback_mask(
+              con, zone_id = read_zone, run_id = NULL, cache_dir = cd)
+          else
+            nemeton::read_fordead_layer(
+              con, zone_id = read_zone, layer = lyr,
+              run_id = NULL, cache_dir = cd)),
         error = function(e) {
           cli::cli_alert_warning(
-            "read_fordead_dieback_mask failed: {e$message}"
-          )
+            "read FORDEAD layer ({lyr}) failed: {e$message}")
           NULL
         }
       )
@@ -195,10 +281,22 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
     # ----- Panel : either map or empty state -----------------------------
     output$panel <- shiny::renderUI({
       i18n <- i18n_r()
+      lyr  <- layer_r() %||% "severity"
       r <- mask_r()
-      # État (c) — aucun masque sur disque (run jamais lancé pour ce
-      # projet) → placeholder « lancer un diagnostic ».
       if (is.null(r)) {
+        # Couche NON-severity absente du bundle (anciens runs < cœur
+        # v0.94.0) → message dédié « couche indisponible ». Pour severity,
+        # NULL = aucun masque sur disque → placeholder « lancer un
+        # diagnostic » (état c).
+        if (!identical(lyr, "severity")) {
+          return(htmltools::div(
+            class = "p-4 text-center text-muted",
+            bsicons::bs_icon("slash-circle",
+                             class = "fs-1 d-block mx-auto mb-3"),
+            htmltools::p(class = "mb-0",
+                         i18n$t("monitoring_fordead_layer_unavailable"))
+          ))
+        }
         return(htmltools::div(
           class = "p-4 text-center text-muted",
           bsicons::bs_icon("hourglass-split",
@@ -209,25 +307,26 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
                        i18n$t("monitoring_fordead_map_empty_body"))
         ))
       }
-      # Décision sain/affecté PILOTÉE PAR LE RASTER masqué (Phase A, D2),
-      # pas par un compte d'alertes DB. Classe >= 1 = pixel affecté.
-      mx <- .fordead_raster_max(r)
-      if (!is.finite(mx) || mx < 1) {
-        # État (b) — raster présent mais tout classe 0 / tout NA dans la
-        # strate → carte « zone saine » (vrai négatif).
-        return(bslib::card(
-          class = "border-success mt-2",
-          bslib::card_header(htmltools::div(
-            class = "d-flex align-items-center",
-            bsicons::bs_icon("check-circle-fill",
-                             class = "me-2 text-success fs-4"),
-            htmltools::tags$strong(
-              i18n$t("monitoring_fordead_no_alerts_title")))),
-          bslib::card_body(htmltools::tags$p(
-            i18n$t("monitoring_fordead_no_alerts_body")))
-        ))
+      # Le court-circuit « zone saine » ne vaut QUE pour la sévérité
+      # (Phase A, D2 : classe >= 1 = affecté). Les autres couches
+      # (date / indice / zone modélisée) s'affichent toujours.
+      if (identical(lyr, "severity")) {
+        mx <- .fordead_raster_max(r)
+        if (!is.finite(mx) || mx < 1) {
+          # État (b) — tout classe 0 / NA → carte « zone saine ».
+          return(bslib::card(
+            class = "border-success mt-2",
+            bslib::card_header(htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("check-circle-fill",
+                               class = "me-2 text-success fs-4"),
+              htmltools::tags$strong(
+                i18n$t("monitoring_fordead_no_alerts_title")))),
+            bslib::card_body(htmltools::tags$p(
+              i18n$t("monitoring_fordead_no_alerts_body")))
+          ))
+        }
       }
-      # État (a) — au moins un pixel classe >= 1 → carte raster 0-4.
       leaflet::leafletOutput(session$ns("map"), height = "55vh")
     })
 
@@ -248,27 +347,12 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (!is.finite(op)) op <- 0.75
       op <- max(0, min(1, op))
 
-      # v0.38.7 — `levels` numériques 0:4, alignés sur les valeurs
-      # entières du raster catégoriel (le masque FORDEAD stocke
-      # 0=sain, 1=faible, 2=moyenne, 3=forte, 4=sol-nu).
-      cats   <- 0:4
-      colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
-      pal <- leaflet::colorFactor(colors, levels = cats,
-                                  na.color = "transparent")
-      # Parité FAST : la classe 0 (sain) est rendue TRANSPARENTE plutôt
-      # qu'en vert opaque — sinon le « sain » recouvre toute la zone et
-      # noie les quelques pixels d'alerte (classe >= 1). On ne peint donc
-      # que les pixels affectés ; fond de carte + contour UGF restent
-      # visibles dessous. La légende garde la classe 0 (référence).
-      r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
-
-      legend_labels <- c(
-        sprintf("0 - %s", i18n$t("monitoring_fordead_class_0")),
-        sprintf("1 - %s", i18n$t("monitoring_fordead_class_1")),
-        sprintf("2 - %s", i18n$t("monitoring_fordead_class_2")),
-        sprintf("3 - %s", i18n$t("monitoring_fordead_class_3")),
-        sprintf("4 - %s", i18n$t("monitoring_fordead_class_4"))
-      )
+      # Partie B — palette / légende / méthode selon la couche affichée
+      # (.fordead_layer_spec) : severity (0-4, classe 0 transparente),
+      # first_anomaly (dates viridis), anomaly_index (YlOrRd), modelled_
+      # pixels (binaire). `method` = "ngb" (catégoriel) ou "bilinear"
+      # (continu) selon la spec.
+      spec <- .fordead_layer_spec(r, layer_r() %||% "severity", i18n)
       overlays <- c(if (!is.null(ugf_4326)) "UGF" else NULL, "Alertes")
 
       m <- leaflet::leaflet() |>
@@ -281,28 +365,14 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           options    = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         leaflet::addRasterImage(
-          x       = r_show,
-          colors  = pal,
+          x       = spec$r_show,
+          colors  = spec$pal,
           opacity = op,
-          # v0.38.7 — nearest-neighbour resampling. addRasterImage()
-          # reprojects to web-mercator and defaults to method =
-          # "bilinear", which interpolates BETWEEN the discrete
-          # classes of a categorical raster (0.7, 2.3…). Those
-          # fractional values match no colorFactor level → leaflet
-          # logs "Some values were outside the color scale and will
-          # be treated as NA" once per raster block. "ngb" keeps the
-          # integer classes intact.
-          method  = "ngb",
+          method  = spec$method,
           group   = "Alertes",
           options = leaflet::gridOptions(pane = "nemetonRaster")
-        ) |>
-        leaflet::addLegend(
-          position = "bottomright",
-          colors   = colors,
-          labels   = legend_labels,
-          title    = i18n$t("monitoring_fordead_class_title"),
-          opacity  = 0.85
         )
+      m <- .fordead_add_legend(m, spec$legend)
       if (!is.null(ugf_4326)) {
         m <- m |>
           leaflet::addPolygons(
@@ -330,20 +400,18 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       op <- max(0, min(1, op))
       r <- shiny::isolate(mask_r())
       if (is.null(r)) return()
-      cats   <- 0:4
-      colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
-      pal <- leaflet::colorFactor(colors, levels = cats,
-                                  na.color = "transparent")
-      # Classe 0 (sain) transparente : seuls les pixels d'alerte (>= 1)
-      # sont peints (cf. render de base).
-      r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
+      # Partie B — même palette/méthode que le render de base, selon la
+      # couche courante (sinon un changement d'opacité repeindrait avec la
+      # mauvaise palette).
+      spec <- .fordead_layer_spec(r, shiny::isolate(layer_r()) %||% "severity",
+                                  i18n_r())
       leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Alertes") |>
         leaflet::addRasterImage(
-          x       = r_show,
-          colors  = pal,
+          x       = spec$r_show,
+          colors  = spec$pal,
           opacity = op,
-          method  = "ngb",
+          method  = spec$method,
           group   = "Alertes",
           options = leaflet::gridOptions(pane = "nemetonRaster")
         )

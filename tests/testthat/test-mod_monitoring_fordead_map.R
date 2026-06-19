@@ -362,3 +362,127 @@ test_that("la carte FORDEAD rend la couche UGF + opacité réglable (parité FAS
     )
   })
 })
+
+# ---------------------------------------------------------------------------
+# Partie B — sélecteur de couche pixel (nemeton >= 0.94.0)
+# ---------------------------------------------------------------------------
+
+# Raster numérique (1 bande) pour les couches continues / binaires.
+.fm_test_raster_num <- function(val = 1) {
+  skip_if_not_installed("terra")
+  r <- terra::rast(nrows = 4, ncols = 4, xmin = 0, xmax = 40,
+                   ymin = 0, ymax = 40, crs = "EPSG:2154")
+  terra::values(r) <- rep(val, terra::ncell(r))
+  r
+}
+
+test_that("Partie B — chaque couche appelle le bon reader cœur + rend un raster", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("terra")
+
+  layers <- c("severity", "first_anomaly", "anomaly_index", "modelled_pixels")
+  for (lyr in layers) {
+    withr::with_tempdir({
+      proj_path <- getwd()
+      dir.create(file.path(proj_path, "cache", "layers", "fordead"),
+                 recursive = TRUE)
+      seen <- new.env()
+      seen$mask  <- 0L
+      seen$layer <- character(0)
+
+      testthat::with_mocked_bindings(
+        get_monitoring_db_connection   = function(...) "fake-con",
+        close_monitoring_db_connection = function(con) invisible(TRUE),
+        get_monitoring_zone_aoi        = function(con, zone_id) .fm_test_aoi(),
+        {
+          testthat::local_mocked_bindings(
+            find_zones_by_project = function(con, project_uuid) .fm_test_zones(),
+            read_fordead_dieback_mask = function(con, zone_id, run_id = NULL,
+                                                 cache_dir = NULL) {
+              seen$mask <- seen$mask + 1L
+              .fm_test_raster(3)
+            },
+            read_fordead_layer = function(con, zone_id, layer, run_id = NULL,
+                                          cache_dir = NULL,
+                                          apply_zone_mask = TRUE,
+                                          mask_polygon = NULL) {
+              seen$layer <- c(seen$layer, layer)
+              if (identical(layer, "first_anomaly")) .fm_test_raster_num(18000)
+              else if (identical(layer, "anomaly_index")) .fm_test_raster_num(0.42)
+              else .fm_test_raster_num(1)  # modelled_pixels
+            },
+            .package = "nemeton"
+          )
+          shiny::testServer(
+            nemetonshiny:::mod_monitoring_fordead_map_server,
+            args = list(
+              app_state = shiny::reactiveValues(language = "fr",
+                                                current_project = list(id = "x", path = proj_path)),
+              zone_id_r = shiny::reactive("10"),
+              layer_r   = shiny::reactive(lyr)
+            ),
+            {
+              shiny::observe({ mask_r() })
+              session$flushReact()
+              if (identical(lyr, "severity")) {
+                expect_gt(seen$mask, 0L)
+                expect_length(seen$layer, 0L)
+              } else {
+                expect_equal(seen$mask, 0L)
+                expect_true(all(seen$layer == lyr))
+              }
+              # output$map rend un addRasterImage (JSON sérialisé).
+              w <- output$map
+              if (inherits(w, "json") || is.character(w))
+                w <- jsonlite::fromJSON(w, simplifyVector = FALSE)
+              calls <- vapply(w$x$calls, function(c) c$method, character(1))
+              expect_true("addRasterImage" %in% calls)
+            }
+          )
+        }
+      )
+    })
+  }
+})
+
+test_that("Partie B — couche absente (reader NULL) → empty-state « indisponible »", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("terra")
+
+  withr::with_tempdir({
+    proj_path <- getwd()
+    dir.create(file.path(proj_path, "cache", "layers", "fordead"),
+               recursive = TRUE)
+    testthat::with_mocked_bindings(
+      get_monitoring_db_connection   = function(...) "fake-con",
+      close_monitoring_db_connection = function(con) invisible(TRUE),
+      get_monitoring_zone_aoi        = function(con, zone_id) .fm_test_aoi(),
+      {
+        testthat::local_mocked_bindings(
+          find_zones_by_project = function(con, project_uuid) .fm_test_zones(),
+          read_fordead_layer = function(con, zone_id, layer, run_id = NULL,
+                                        cache_dir = NULL, apply_zone_mask = TRUE,
+                                        mask_polygon = NULL) NULL,  # couche absente
+          .package = "nemeton"
+        )
+        shiny::testServer(
+          nemetonshiny:::mod_monitoring_fordead_map_server,
+          args = list(
+            app_state = shiny::reactiveValues(language = "fr",
+                                              current_project = list(id = "x", path = proj_path)),
+            zone_id_r = shiny::reactive("10"),
+            layer_r   = shiny::reactive("anomaly_index")
+          ),
+          {
+            session$flushReact()
+            expect_null(mask_r())
+            html <- paste(as.character(output$panel), collapse = "")
+            i18n <- get_i18n("fr")
+            expect_true(grepl(i18n$t("monitoring_fordead_layer_unavailable"),
+                              html, fixed = TRUE))
+          }
+        )
+      }
+    )
+  })
+})
