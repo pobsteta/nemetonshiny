@@ -78,11 +78,18 @@ mod_monitoring_fordead_map_ui <- function(id) {
 #' @param opacity_r Reactive returning the raster opacity (0..1) from the
 #'   tab's right sidebar slider (parité FAST). Optional — defaults to a
 #'   constant 0.75 for back-compat / tests.
+#' @param con_provider Optional function returning a (cached, read-only)
+#'   monitoring DB connection to reuse instead of opening a new one per
+#'   evaluation (perf — a remote PostGIS connect costs ~0.4–1.2 s). When
+#'   `NULL` (default, tests/back-compat) the module opens and closes its
+#'   own connection. When provided, the connection is reused and NOT
+#'   closed here (the provider owns its lifecycle).
 #' @return invisible list with `mask` reactive.
 #' @noRd
 mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
                                               refresh_r = shiny::reactive(0L),
-                                              opacity_r = shiny::reactive(0.75)) {
+                                              opacity_r = shiny::reactive(0.75),
+                                              con_provider = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
     i18n_r <- shiny::reactive({
@@ -125,10 +132,15 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (is.null(proj) || is.null(proj$path)) return(NULL)
       cd <- file.path(proj$path, "cache", "layers", "fordead")
       if (!dir.exists(cd)) return(NULL)
+      # perf — réutilise la connexion RO du parent si fournie ; sinon
+      # ouvre la sienne (back-compat / tests) et la ferme.
+      own_con <- is.null(con_provider)
       con <- .perf_time("fordead mask: db_connect",
-                        get_monitoring_db_connection(project = proj, read_only = TRUE))
+                        if (own_con)
+                          get_monitoring_db_connection(project = proj, read_only = TRUE)
+                        else con_provider())
       if (is.null(con)) return(NULL)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      if (own_con) on.exit(close_monitoring_db_connection(con), add = TRUE)
 
       # Phase A (D2) — on lit TOUJOURS le masque de `_tot` ; l'affichage
       # par strate n'est qu'un masquage spatial du raster `_tot`.
@@ -407,9 +419,12 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       # pixel cliqué est un pixel du raster `_tot` (masqué à l'affichage).
       # Sans ça, cliquer sur une strate ≠ `_tot` ne renvoyait aucune série
       # (cache sous zone_<id_tot>) → graphe absent.
-      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+      own_con <- is.null(con_provider)
+      con <- if (own_con)
+        get_monitoring_db_connection(project = proj, read_only = TRUE)
+      else con_provider()
       zone_tot <- if (!is.null(con)) {
-        on.exit(close_monitoring_db_connection(con), add = TRUE)
+        if (own_con) on.exit(close_monitoring_db_connection(con), add = TRUE)
         .fordead_tot_id(con, proj, zone)
       } else {
         suppressWarnings(as.integer(zone))
