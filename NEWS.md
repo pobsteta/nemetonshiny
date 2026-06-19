@@ -22,6 +22,15 @@ Mesuré (PostGIS distant) : bascule de mode de ~0,4–2,5 s à **~0,03 s** sur
 les bascules répétées (la connexion à froid, ~1 s, n'est payée qu'une fois
 par session). Instrumentation `NEMETON_PERF_TRACE` conservée.
 
+### Fixed — Alertes FORDEAD : pixels sains affichés en vert opaque
+
+La carte « Alertes FORDEAD » peignait la classe 0 (sain) en vert, recouvrant
+toute la zone, alors que la « Carte FORDEAD » ne montre que les pixels
+affectés. La classe 0 est désormais rendue **transparente** sur les deux
+cartes (on ne peint que les classes 1-4 au-dessus du fond ; la carte « zone
+saine » prend le relais quand tout est sain). La légende garde la classe 0
+en référence.
+
 # nemetonshiny 0.90.3 (2026-06-19)
 
 ### Fixed — Carte FORDEAD : clic-pixel et opacité inopérants (onglet non-défaut)

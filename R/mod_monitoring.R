@@ -888,6 +888,11 @@ mod_monitoring_server <- function(id, app_state) {
       colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
       pal <- leaflet::colorFactor(colors, levels = cats,
                                   na.color = "transparent")
+      # Classe 0 (sain) rendue TRANSPARENTE — on ne peint que les pixels
+      # affectés (>= 1), cohérent avec la Carte FORDEAD et Diagnostic FAST
+      # (sinon le vert « sain » recouvre toute la zone). La légende garde
+      # la classe 0 en référence.
+      r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
 
       legend_labels <- c(
         sprintf("0 - %s", i18n$t("monitoring_fordead_class_0")),
@@ -908,7 +913,7 @@ mod_monitoring_server <- function(id, app_state) {
           options = leaflet::layersControlOptions(collapsed = TRUE)
         ) |>
         leaflet::addRasterImage(
-          x       = r,
+          x       = r_show,
           colors  = pal,
           opacity = op,
           method  = "ngb",
@@ -949,10 +954,13 @@ mod_monitoring_server <- function(id, app_state) {
       colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
       pal <- leaflet::colorFactor(colors, levels = cats,
                                   na.color = "transparent")
+      # Classe 0 (sain) transparente : seuls les pixels d'alerte (>= 1)
+      # sont peints (cohérent avec le render de base + Carte FORDEAD).
+      r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
       leaflet::leafletProxy("alerts_map") |>
         leaflet::clearGroup("Alertes") |>
         leaflet::addRasterImage(
-          x       = r,
+          x       = r_show,
           colors  = pal,
           opacity = op,
           method  = "ngb",
