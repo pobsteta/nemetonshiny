@@ -343,17 +343,9 @@ mod_monitoring_ui <- function(id) {
                   label = i18n$t("monitoring_fast_alerts_opacity_label"),
                   min = 0, max = 1, value = 0.75, step = 0.05
                 )
-              ),
-              # The "include low confidence classes" toggle (legacy Phase A
-              # — pilote l'ancienne réactive `alerts()` non consommée ;
-              # conservé le temps de la transition de phase).
-              htmltools::div(
-                class = "px-1 pt-1",
-                shiny::checkboxInput(
-                  ns("include_low"),
-                  i18n$t("monitoring_include_low"),
-                  value = FALSE
-                )
+                # v0.90.x — Case « inclure classes faible/moyenne » retirée :
+                # inerte depuis la Phase A (affichage raster, toutes classes
+                # 0-4 toujours montrées ; plus de filtre d'alertes DB).
               ),
               shiny::uiOutput(ns("alerts_panel"))
             )
@@ -746,42 +738,19 @@ mod_monitoring_server <- function(id, app_state) {
           body  = sprintf(i18n$t("monitoring_warning_species_body"), pct)
         )
       }
-      if (isTRUE(input$include_low)) {
-        banners[[length(banners) + 1L]] <- .monitoring_validity_banner(
-          icon  = "exclamation-triangle",
-          title = i18n$t("monitoring_warning_low_classes"),
-          body  = NULL
-        )
-      }
+      # v0.90.x — bandeau `include_low` retiré : depuis la Phase A (D2)
+      # l'affichage est piloté par le raster (toujours les 5 classes 0-4),
+      # le filtre de classes d'alertes vectorielles n'existe plus.
       if (!length(banners)) return(NULL)
       htmltools::tagList(banners)
     })
 
-    # ----- Alerts reactive (FORDEAD) — LEGACY (Phase A) -------------
-    # Phase A (spec 008 §15, décision D2) — `list_alerts_for_zone` (et le
-    # cœur `list_alerts`) sont legacy : la décision sain/affecté et la
-    # carte des alertes sont désormais pilotées par le RASTER masqué
-    # (`fordead_map_ret$mask`), pas par ce compte d'alertes vectorielles
-    # DB. Cette réactive n'est plus consommée par l'UI (conservée le temps
-    # de la transition de phase ; lazy → jamais évaluée). À retirer dans
-    # une phase ultérieure avec `list_alerts_for_zone`.
-    # G1: by default only classes 3-forte + 4-sol-nu. The "include_low"
-    # checkbox flips to all classes (1-2 inclusive). Re-fetches whenever
-    # the zone, the toggle, or alerts_refresh() change.
-    alerts <- shiny::reactive({
-      alerts_refresh()
-      zone <- input$zone_id
-      if (!isTRUE(nzchar(zone))) return(NULL)
-      if (!identical(input$mode, "health")) return(NULL)
-      classes <- if (isTRUE(input$include_low))
-                   c("1-faible", "2-moyenne", "3-forte", "4-sol-nu")
-                 else
-                   c("3-forte", "4-sol-nu")
-      con <- get_monitoring_db_connection(project = app_state$current_project,
-                                          read_only = TRUE)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
-      list_alerts_for_zone(con, as.integer(zone), classes = classes)
-    })
+    # v0.90.x — La réactive legacy `alerts()` (filtre DB des alertes
+    # vectorielles via `list_alerts_for_zone`, piloté par `include_low`)
+    # est SUPPRIMÉE : depuis la Phase A (spec 008 §15, D2) l'affichage est
+    # piloté par le raster masqué (`fordead_map_ret$mask`) et plus aucun
+    # consommateur ne l'appelait. La case « inclure classes faible/moyenne »
+    # est retirée de l'UI en conséquence.
 
     # ----- Alerts panel — raster-driven (Phase A, D2) ---------------
     output$alerts_panel <- shiny::renderUI({
@@ -853,7 +822,10 @@ mod_monitoring_server <- function(id, app_state) {
       # Parité FAST : couche UGF (contour) + couche « Alertes » (le
       # raster) togglables via LayersControl, opacité réglable.
       ugf_4326 <- .ugf_for_overlay(app_state$current_project)
-      op <- as.numeric(input$alerts_opacity %||% 0.75)
+      # UX (parité FAST) — opacité lue en isolate() pour qu'un coup de
+      # slider ne re-render PAS la carte (zoom + fond préservés) ; un
+      # observer leafletProxy ci-dessous applique le changement d'opacité.
+      op <- as.numeric(shiny::isolate(input$alerts_opacity) %||% 0.75)
       if (!is.finite(op)) op <- 0.75
       op <- max(0, min(1, op))
 
@@ -907,6 +879,31 @@ mod_monitoring_server <- function(id, app_state) {
           )
       }
       m
+    })
+
+    # Opacité du raster « Alertes FORDEAD » via leafletProxy (parité
+    # FAST) : ne retouche que le group "Alertes" → préserve zoom + fond.
+    # Dépend de input$alerts_opacity ; lit le masque en isolate().
+    shiny::observe({
+      op <- as.numeric(input$alerts_opacity %||% 0.75)
+      if (!is.finite(op)) op <- 0.75
+      op <- max(0, min(1, op))
+      r <- shiny::isolate(fordead_map_ret$mask())
+      if (is.null(r)) return()
+      cats   <- 0:4
+      colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
+      pal <- leaflet::colorFactor(colors, levels = cats,
+                                  na.color = "transparent")
+      leaflet::leafletProxy("alerts_map") |>
+        leaflet::clearGroup("Alertes") |>
+        leaflet::addRasterImage(
+          x       = r,
+          colors  = pal,
+          opacity = op,
+          method  = "ngb",
+          group   = "Alertes",
+          options = leaflet::gridOptions(pane = "nemetonRaster")
+        )
     })
 
     # v0.52.16 — Bloc `obs_pixel_inputs` + `obs_pixel_data` supprimé.

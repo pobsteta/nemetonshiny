@@ -467,7 +467,7 @@ test_that("mod_monitoring_ui exposes the FORDEAD/health-mode controls", {
       expect_true(grepl("monitoring-threshold_anomaly", html))
       expect_true(grepl("monitoring-run_health",        html))
       expect_true(grepl("monitoring-validity_banners",  html))
-      expect_true(grepl("monitoring-include_low",       html))
+      # v0.90.x — case `include_low` retirée (inerte depuis la Phase A).
     }
   )
 })

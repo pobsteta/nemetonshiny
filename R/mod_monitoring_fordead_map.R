@@ -70,6 +70,22 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       get_i18n(app_state$language %||% "fr")
     })
 
+    # Phase A (spec 008 §15, D2) — FORDEAD est calculé sur la zone `_tot`
+    # (union des UGFs). Le masque ET la série pixel vivent donc sous
+    # `cache/layers/fordead/zone_<id_tot>/`. Ce helper résout l'id `_tot`
+    # du projet (find_zones_by_project + convention de nommage `_tot`,
+    # spec 020) ; fallback sur la zone passée (back-compat pré-spec-020).
+    # Utilisé par `mask_r` (lecture masque) ET par le clic-pixel (lecture
+    # série CRSWIR) pour qu'ils pointent sur la MÊME zone que le run.
+    .fordead_tot_id <- function(con, proj, fallback_zone) {
+      id_tot <- tryCatch({
+        zdf <- nemeton::find_zones_by_project(con, project_uuid = proj$id)
+        idx <- grep("_tot$", as.character(zdf$name))
+        if (length(idx)) as.integer(zdf$id[idx[1]]) else NA_integer_
+      }, error = function(e) NA_integer_)
+      if (!is.na(id_tot)) id_tot else suppressWarnings(as.integer(fallback_zone))
+    }
+
     # ----- Core call ------------------------------------------------------
     # cache_dir is resolved from the active project — nemeton@v0.41.0
     # persists the categorical 0-4 mask to
@@ -94,20 +110,10 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      # Phase A (spec 008 §15, ADR-013 A5, décision D2) — FORDEAD est
-      # calculé UNE seule fois sur la zone `_tot` (union des UGFs). On lit
-      # donc TOUJOURS le masque de `_tot` ; l'affichage par strate n'est
-      # qu'un masquage spatial du raster `_tot` (aucun recalcul). Résout
-      # l'id `_tot` du projet via find_zones_by_project + convention de
-      # nommage `_tot` (spec 020).
-      id_tot <- tryCatch({
-        zdf <- nemeton::find_zones_by_project(con, project_uuid = proj$id)
-        idx <- grep("_tot$", as.character(zdf$name))
-        if (length(idx)) as.integer(zdf$id[idx[1]]) else NA_integer_
-      }, error = function(e) NA_integer_)
-      # Fallback : pas de zone `_tot` résolue → lire le masque de la zone
-      # sélectionnée telle quelle (back-compat projets pré-spec-020).
-      read_zone <- if (!is.na(id_tot)) id_tot else as.integer(zone)
+      # Phase A (D2) — on lit TOUJOURS le masque de `_tot` ; l'affichage
+      # par strate n'est qu'un masquage spatial du raster `_tot`.
+      id_tot   <- .fordead_tot_id(con, proj, zone)
+      read_zone <- id_tot
 
       r <- tryCatch(
         nemeton::read_fordead_dieback_mask(
@@ -197,7 +203,12 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       # raster) togglables via LayersControl, opacité réglable via le
       # slider de la sidebar droite (opacity_r).
       ugf_4326 <- .ugf_for_overlay(app_state$current_project)
-      op <- as.numeric(opacity_r() %||% 0.75)
+      # PERF/UX (parité FAST) — l'opacité est lue en isolate() : un coup
+      # de slider ne doit PAS re-render toute la carte (sinon zoom + fond
+      # OSM/Satellite réinitialisés). Le render de base dessine le raster
+      # à l'opacité courante ; l'observer leafletProxy ci-dessous met à
+      # jour l'opacité sans reconstruire la carte.
+      op <- as.numeric(shiny::isolate(opacity_r()) %||% 0.75)
       if (!is.finite(op)) op <- 0.75
       op <- max(0, min(1, op))
 
@@ -264,6 +275,35 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       m
     })
 
+    # Mise à jour de l'OPACITÉ du raster via leafletProxy (parité FAST) :
+    # ne touche que le group "Alertes" → préserve le zoom utilisateur et
+    # le fond (OSM/Satellite). Dépend de opacity_r() ; lit le raster en
+    # isolate() pour ne pas re-déclencher au changement de masque (le
+    # render de base gère, lui, le redraw complet sur changement de
+    # masque). La légende (control) n'est pas dans le group "Alertes",
+    # elle persiste donc intacte.
+    shiny::observe({
+      op <- as.numeric(opacity_r() %||% 0.75)
+      if (!is.finite(op)) op <- 0.75
+      op <- max(0, min(1, op))
+      r <- shiny::isolate(mask_r())
+      if (is.null(r)) return()
+      cats   <- 0:4
+      colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
+      pal <- leaflet::colorFactor(colors, levels = cats,
+                                  na.color = "transparent")
+      leaflet::leafletProxy("map") |>
+        leaflet::clearGroup("Alertes") |>
+        leaflet::addRasterImage(
+          x       = r,
+          colors  = pal,
+          opacity = op,
+          method  = "ngb",
+          group   = "Alertes",
+          options = leaflet::gridOptions(pane = "nemetonRaster")
+        )
+    })
+
     # v0.37.1 — force the panel renderUI to evaluate even while the
     # sub-tab is hidden. The Suivi sanitaire navset toggles its
     # nav_panels with bslib::nav_show() / nav_hide() (mode-driven
@@ -296,10 +336,23 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       lng <- input$map_click$lng
       if (is.null(lat) || is.null(lng)) return()
 
+      # Phase A (D2) — la série pixel doit être lue sur la zone `_tot`
+      # (là où FORDEAD a tourné), pas sur la strate sélectionnée : le
+      # pixel cliqué est un pixel du raster `_tot` (masqué à l'affichage).
+      # Sans ça, cliquer sur une strate ≠ `_tot` ne renvoyait aucune série
+      # (cache sous zone_<id_tot>) → graphe absent.
+      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+      zone_tot <- if (!is.null(con)) {
+        on.exit(close_monitoring_db_connection(con), add = TRUE)
+        .fordead_tot_id(con, proj, zone)
+      } else {
+        suppressWarnings(as.integer(zone))
+      }
+
       ts <- tryCatch(
         nemeton::read_fordead_pixel_series(
           con       = NULL,  # spec : con reserved, NULL accepté
-          zone_id   = as.integer(zone),
+          zone_id   = zone_tot,
           xy        = c(lng, lat),
           crs       = 4326,
           run_id    = NULL,  # dernier run
