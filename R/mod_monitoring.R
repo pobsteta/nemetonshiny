@@ -453,6 +453,47 @@ mod_monitoring_server <- function(id, app_state) {
       get_i18n(app_state$language %||% "fr")
     })
 
+    # ----- Connexion monitoring read-only MISE EN CACHE (perf) -------
+    # Ouvrir une connexion PostGIS distante coûte ~0,4–1,2 s. Les
+    # réactives du mode santé (zones, validity, masque…) en ouvraient
+    # une CHACUNE à chaque évaluation → plusieurs secondes par bascule
+    # de mode. On réutilise donc UNE connexion RO par session,
+    # reconnectée si elle est invalide (timeout serveur) ou si l'URL DB
+    # du projet change (cas SQLite per-projet). Fermée en fin de session.
+    # Le worker FORDEAD / l'ingestion gardent leurs propres connexions RW
+    # (chemins inchangés) — aucun impact de concurrence (R mono-thread,
+    # les réactives ne s'exécutent jamais en parallèle).
+    .mon_con_cache <- local({ con <- NULL; key <- NULL; environment() })
+    mon_con <- function() {
+      proj <- app_state$current_project
+      pid  <- proj$id %||% ""
+      cached <- .mon_con_cache$con
+      # Réutilise la connexion mise en cache si elle concerne le même
+      # projet ET qu'elle est toujours valide (sinon le serveur l'a
+      # peut-être fermée par timeout d'inactivité → on reconnecte).
+      valid <- !is.null(cached) &&
+        identical(.mon_con_cache$key, pid) &&
+        isTRUE(tryCatch(DBI::dbIsValid(cached), error = function(e) FALSE))
+      if (valid) return(cached)
+      if (!is.null(cached)) {
+        tryCatch(close_monitoring_db_connection(cached),
+                 error = function(e) NULL)
+      }
+      # `get_monitoring_db_connection` résout l'URL en interne et renvoie
+      # NULL si la DB n'est pas configurée — on délègue ce choix.
+      newcon <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+      .mon_con_cache$con <- newcon
+      .mon_con_cache$key <- if (!is.null(newcon)) pid else NULL
+      newcon
+    }
+    session$onSessionEnded(function() {
+      if (!is.null(.mon_con_cache$con)) {
+        tryCatch(close_monitoring_db_connection(.mon_con_cache$con),
+                 error = function(e) NULL)
+        .mon_con_cache$con <- NULL
+      }
+    })
+
     # Mode-driven sub-tab visibility (v0.34.0 → v0.35.0). Quatre
     # sous-onglets, deux affichés à la fois selon `input$mode` :
     #
@@ -703,18 +744,32 @@ mod_monitoring_server <- function(id, app_state) {
     # lancé sur une fenêtre où le téléchargement BD Forêt a échoué),
     # `bdforet = NULL` et le comportement v0.25.9 est préservé
     # (warning « species check skipped »).
+    # Mémoïsation du check de validité (BD Forêt + intersection spatiale,
+    # ~1 s) : il ne dépend QUE du projet et de la zone, pas du mode. Sans
+    # cache, chaque bascule de mode (qui change input$mode → invalide la
+    # réactive) relançait le check. On le mémoïse par (projet, zone) →
+    # les bascules de mode aller-retour sont gratuites. Recalcul seulement
+    # si la zone ou le projet change.
+    .validity_cache <- local({ key <- NULL; val <- NULL; environment() })
     validity <- shiny::reactive({
       if (!identical(input$mode, "health")) return(NULL)
       zone <- input$zone_id
       if (!isTRUE(nzchar(zone))) return(NULL)
       proj <- app_state$current_project
-      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      key  <- paste(proj$id %||% "", zone, sep = "|")
+      if (identical(.validity_cache$key, key)) return(.validity_cache$val)
+      con <- .perf_time("monitoring: mon_con(validity)", mon_con())
+      if (is.null(con)) return(NULL)
       units   <- proj$indicators_sf
-      bdforet <- .load_project_bdforet(proj)
-      validity_check_for_zone(con, as.integer(zone),
-                              units   = units,
-                              bdforet = bdforet)
+      bdforet <- .perf_time("monitoring: load_bdforet",
+                            .load_project_bdforet(proj))
+      v <- .perf_time("monitoring: validity_check_for_zone (BD Foret)",
+                      validity_check_for_zone(con, as.integer(zone),
+                                              units   = units,
+                                              bdforet = bdforet))
+      .validity_cache$key <- key
+      .validity_cache$val <- v
+      v
     })
 
     output$validity_banners <- shiny::renderUI({
@@ -953,8 +1008,7 @@ mod_monitoring_server <- function(id, app_state) {
         return(data.frame(id = integer(0), name = character(0),
                           stringsAsFactors = FALSE))
       }
-      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
+      con <- mon_con()  # connexion RO réutilisée (perf)
       if (is.null(con)) {
         return(data.frame(id = integer(0), name = character(0),
                           stringsAsFactors = FALSE))
@@ -1082,10 +1136,8 @@ mod_monitoring_server <- function(id, app_state) {
       if (!identical(input$mode %||% "quick", "quick")) return(NULL)
       z <- zones()
       if (is.null(z) || !nrow(z)) return(NULL)
-      proj <- app_state$current_project
-      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
+      con <- mon_con()  # connexion RO réutilisée (perf)
       if (is.null(con)) return(NULL)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
       .compute_zone_surfaces(con, z)
     })
 
@@ -2996,7 +3048,11 @@ mod_monitoring_server <- function(id, app_state) {
       refresh_r = shiny::reactive(alerts_refresh()),
       # v0.90.x — opacité du raster pilotée par le slider de la sidebar
       # droite de l'onglet Carte FORDEAD (parité FAST).
-      opacity_r = shiny::reactive(input$fordead_opacity)
+      opacity_r = shiny::reactive(input$fordead_opacity),
+      # perf — réutilise la connexion RO mise en cache du parent (évite
+      # de rouvrir une connexion PostGIS ~0,4–1,2 s à chaque lecture de
+      # masque / clic-pixel).
+      con_provider = mon_con
     )
 
     # spec 021 (L6) — Carte RECONFORT : alertes feuillus + diagnostic
