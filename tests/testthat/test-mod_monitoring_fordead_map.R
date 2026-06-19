@@ -340,17 +340,21 @@ test_that("la carte FORDEAD rend la couche UGF + opacité réglable (parité FAS
             session$flushReact()
             w <- output$map  # widget leaflet rendu (htmlwidget sérialisé)
             expect_false(is.null(w))
+            # `output$map` est sérialisé en JSON par testServer (class
+            # "json", une chaîne) → on le parse pour inspecter le widget.
+            if (inherits(w, "json") || is.character(w)) {
+              w <- jsonlite::fromJSON(w, simplifyVector = FALSE)
+            }
             calls <- vapply(w$x$calls, function(c) c$method, character(1))
             # couche UGF (addPolygons) + raster (addRasterImage) présents.
             expect_true("addPolygons" %in% calls)
             expect_true("addRasterImage" %in% calls)
             # opacité du raster = opacity_r() (0.3), pas la valeur en dur.
-            # On scanne les args (positions internes leaflet fragiles).
+            # 0.3 peut être imbriqué dans un arg-liste sérialisé → on
+            # cherche récursivement (positions internes leaflet fragiles).
             ri <- w$x$calls[[which(calls == "addRasterImage")[1]]]
-            has_op <- any(vapply(ri$args, function(a)
-              is.numeric(a) && length(a) == 1L &&
-                isTRUE(all.equal(as.numeric(a), 0.3)),
-              logical(1)))
+            ri_vals <- suppressWarnings(as.numeric(unlist(ri$args)))
+            has_op <- any(abs(ri_vals - 0.3) < 1e-9, na.rm = TRUE)
             expect_true(has_op)
           }
         )
