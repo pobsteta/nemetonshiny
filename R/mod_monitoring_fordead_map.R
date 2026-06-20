@@ -134,14 +134,18 @@
 }
 
 # Ajoute la légende correspondant à la spec (.fordead_layer_spec$legend).
-.fordead_add_legend <- function(map, lg) {
+# `layerId` permet de retirer/re-poser la légende via leafletProxy (le
+# raster est mis à jour par proxy sans re-render de la carte).
+.fordead_add_legend <- function(map, lg, layerId = NULL) {
   if (identical(lg$type, "discrete")) {
     leaflet::addLegend(map, position = "bottomright", colors = lg$colors,
-                       labels = lg$labels, title = lg$title, opacity = 0.85)
+                       labels = lg$labels, title = lg$title, opacity = 0.85,
+                       layerId = layerId)
   } else {
     leaflet::addLegend(map, position = "bottomright", pal = lg$pal,
                        values = lg$values, title = lg$title, opacity = 0.85,
-                       labFormat = lg$labFormat %||% leaflet::labelFormat())
+                       labFormat = lg$labFormat %||% leaflet::labelFormat(),
+                       layerId = layerId)
   }
 }
 
@@ -346,29 +350,21 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       leaflet::leafletOutput(session$ns("map"), height = "55vh")
     })
 
+    # CARTE DE BASE STABLE (parité Carte FAST) : `output$map` ne dépend
+    # QUE du projet courant. Le masque, la couche et l'opacité sont lus en
+    # `isolate()` → le widget leaflet n'est JAMAIS re-rendu quand ils
+    # changent. C'est essentiel : un re-render recrée le widget et fait
+    # perdre le binding `input$map_click` (→ le clic-pixel ne se déclenche
+    # plus) en plus de réinitialiser le zoom et le fond. Les mises à jour
+    # du raster/légende passent par l'observer `leafletProxy` ci-dessous.
     output$map <- leaflet::renderLeaflet({
-      r <- mask_r()
-      if (is.null(r)) return(NULL)
-      i18n <- i18n_r()
-      # Parité FAST : couche UGF (contour) + couche « Alertes » (le
-      # raster) togglables via LayersControl, opacité réglable via le
-      # slider de la sidebar droite (opacity_r).
-      ugf_4326 <- .ugf_for_overlay(app_state$current_project)
-      # PERF/UX (parité FAST) — l'opacité est lue en isolate() : un coup
-      # de slider ne doit PAS re-render toute la carte (sinon zoom + fond
-      # OSM/Satellite réinitialisés). Le render de base dessine le raster
-      # à l'opacité courante ; l'observer leafletProxy ci-dessous met à
-      # jour l'opacité sans reconstruire la carte.
-      op <- as.numeric(shiny::isolate(opacity_r()) %||% 0.75)
+      proj     <- app_state$current_project   # SEUL dep réactif
+      ugf_4326 <- .ugf_for_overlay(proj)
+      r        <- shiny::isolate(mask_r())
+      i18n     <- shiny::isolate(i18n_r())
+      op       <- as.numeric(shiny::isolate(opacity_r()) %||% 0.75)
       if (!is.finite(op)) op <- 0.75
       op <- max(0, min(1, op))
-
-      # Partie B — palette / légende / méthode selon la couche affichée
-      # (.fordead_layer_spec) : severity (0-4, classe 0 transparente),
-      # first_anomaly (dates viridis), anomaly_index (YlOrRd), modelled_
-      # pixels (binaire). `method` = "ngb" (catégoriel) ou "bilinear"
-      # (continu) selon la spec.
-      spec <- .fordead_layer_spec(r, layer_r() %||% "severity", i18n)
       overlays <- c(if (!is.null(ugf_4326)) "UGF" else NULL, "Alertes")
 
       m <- leaflet::leaflet() |>
@@ -379,58 +375,57 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           baseGroups    = c("OSM", "Satellite"),
           overlayGroups = overlays,
           options    = leaflet::layersControlOptions(collapsed = TRUE)
-        ) |>
-        leaflet::addRasterImage(
-          x       = spec$r_show,
-          colors  = spec$pal,
-          opacity = op,
-          method  = spec$method,
-          group   = "Alertes",
-          options = leaflet::gridOptions(pane = "nemetonRaster")
         )
-      m <- .fordead_add_legend(m, spec$legend)
+      # Raster + légende dessinés à l'état courant (isolate) pour être
+      # présents dès l'affichage ; l'observer ci-dessous les met à jour.
+      if (!is.null(r)) {
+        spec <- .fordead_layer_spec(
+          r, shiny::isolate(layer_r()) %||% "severity", i18n)
+        m <- m |>
+          leaflet::addRasterImage(
+            x = spec$r_show, colors = spec$pal, opacity = op,
+            method = spec$method, group = "Alertes",
+            options = leaflet::gridOptions(pane = "nemetonRaster"))
+        m <- .fordead_add_legend(m, spec$legend, layerId = "fordead_legend")
+      }
       if (!is.null(ugf_4326)) {
         m <- m |>
           leaflet::addPolygons(
-            data        = ugf_4326,
-            group       = "UGF",
-            color       = "#1f78b4",
-            weight      = 2,
-            opacity     = 0.9,
-            fillOpacity = 0
-          )
+            data = ugf_4326, group = "UGF", color = "#1f78b4",
+            weight = 2, opacity = 0.9, fillOpacity = 0)
+        bb <- tryCatch(sf::st_bbox(ugf_4326), error = function(e) NULL)
+        if (!is.null(bb)) {
+          m <- m |> leaflet::fitBounds(
+            lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+            lng2 = bb[["xmax"]], lat2 = bb[["ymax"]])
+        }
       }
       m
     })
 
-    # Mise à jour de l'OPACITÉ du raster via leafletProxy (parité FAST) :
-    # ne touche que le group "Alertes" → préserve le zoom utilisateur et
-    # le fond (OSM/Satellite). Dépend de opacity_r() ; lit le raster en
-    # isolate() pour ne pas re-déclencher au changement de masque (le
-    # render de base gère, lui, le redraw complet sur changement de
-    # masque). La légende (control) n'est pas dans le group "Alertes",
-    # elle persiste donc intacte.
+    # Mise à jour RASTER + LÉGENDE via leafletProxy (parité Carte FAST) :
+    # la carte de base n'est jamais re-rendue, donc `input$map_click`, le
+    # zoom et le fond (OSM/Satellite) sont préservés. Dépend de la couche,
+    # du masque, de l'opacité et de la langue → redessine le seul group
+    # "Alertes" + la légende (layerId stable) sans reconstruire la carte.
     shiny::observe({
-      op <- as.numeric(opacity_r() %||% 0.75)
+      r    <- mask_r()
+      lyr  <- layer_r() %||% "severity"
+      i18n <- i18n_r()
+      op   <- as.numeric(opacity_r() %||% 0.75)
       if (!is.finite(op)) op <- 0.75
       op <- max(0, min(1, op))
-      r <- shiny::isolate(mask_r())
-      if (is.null(r)) return()
-      # Partie B — même palette/méthode que le render de base, selon la
-      # couche courante (sinon un changement d'opacité repeindrait avec la
-      # mauvaise palette).
-      spec <- .fordead_layer_spec(r, shiny::isolate(layer_r()) %||% "severity",
-                                  i18n_r())
-      leaflet::leafletProxy("map") |>
+      proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Alertes") |>
+        leaflet::removeControl("fordead_legend")
+      if (is.null(r)) return()
+      spec <- .fordead_layer_spec(r, lyr, i18n)
+      proxy <- proxy |>
         leaflet::addRasterImage(
-          x       = spec$r_show,
-          colors  = spec$pal,
-          opacity = op,
-          method  = spec$method,
-          group   = "Alertes",
-          options = leaflet::gridOptions(pane = "nemetonRaster")
-        )
+          x = spec$r_show, colors = spec$pal, opacity = op,
+          method = spec$method, group = "Alertes",
+          options = leaflet::gridOptions(pane = "nemetonRaster"))
+      .fordead_add_legend(proxy, spec$legend, layerId = "fordead_legend")
     })
 
     # v0.37.1 — force the panel renderUI to evaluate even while the
