@@ -214,3 +214,79 @@ test_that("mod_field_ingest_server attaches field data and bumps project NDP", {
   expect_true("ndp_level" %in% names(captured_updates[[1]]))
   expect_gte(captured_updates[[1]]$ndp_level, 2L)
 })
+
+
+# ---- Validation sanitaire (G4, Phase B.2) ---------------------------
+# Le bouton `hv_run` ré-ingère un GPKG QField terrain et met à jour
+# alert.validation_* via nemeton::ingest_health_validation() (snap sur
+# le centroïde pixel de l'alerte, plus de placette — spec 008 §15.3).
+
+test_that("mod_field_ingest_server hv_run calls ingest_health_validation (pixel)", {
+  skip_if_not_installed("shiny")
+
+  captured <- new.env(parent = emptyenv())
+  captured$zone <- NA_integer_
+  captured$snap <- NA_real_
+  fake_report <- list(n_updated = 2L, n_confirmed = 1L,
+                      n_false_positive = 1L, n_unmatched = 0L,
+                      n_skipped = 0L, details = data.frame())
+
+  with_mocked_bindings(
+    get_monitoring_db_connection   = function(...) "fake-con",
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    {
+      testthat::local_mocked_bindings(
+        ingest_health_validation = function(con, gpkg_path, zone_id,
+                                            snap_distance_m = 50,
+                                            validated_by = NULL) {
+          captured$zone <- as.integer(zone_id)
+          captured$snap <- as.numeric(snap_distance_m)
+          fake_report
+        },
+        .package = "nemeton"
+      )
+      tmp <- tempfile(fileext = ".gpkg"); file.create(tmp)
+      shiny::testServer(
+        nemetonshiny:::mod_field_ingest_server,
+        args = list(app_state = make_fake_app_state()),
+        {
+          session$setInputs(
+            hv_gpkg    = data.frame(name = "hv.gpkg", size = 1L, type = "",
+                                    datapath = tmp, stringsAsFactors = FALSE),
+            hv_zone_id = "5",
+            hv_snap    = 50,
+            hv_run     = 1
+          )
+          # Le rapport est stocké → output$hv_report rend du contenu.
+          expect_false(is.null(output$hv_report))
+        }
+      )
+    }
+  )
+  # ingest_health_validation appelée avec la bonne zone + le bon snap.
+  expect_equal(captured$zone, 5L)
+  expect_equal(captured$snap, 50)
+})
+
+
+test_that("mod_field_ingest_server hv_run warns without a zone (no core call)", {
+  skip_if_not_installed("shiny")
+  called <- new.env(parent = emptyenv()); called$hit <- FALSE
+  testthat::local_mocked_bindings(
+    ingest_health_validation = function(...) { called$hit <- TRUE; NULL },
+    .package = "nemeton")
+  tmp <- tempfile(fileext = ".gpkg"); file.create(tmp)
+  shiny::testServer(
+    nemetonshiny:::mod_field_ingest_server,
+    args = list(app_state = make_fake_app_state()),
+    {
+      session$setInputs(
+        hv_gpkg    = data.frame(name = "hv.gpkg", size = 1L, type = "",
+                                datapath = tmp, stringsAsFactors = FALSE),
+        hv_zone_id = "",          # pas de zone → early-return
+        hv_run     = 1
+      )
+    }
+  )
+  expect_false(called$hit)   # le cœur n'est pas appelé sans zone
+})
