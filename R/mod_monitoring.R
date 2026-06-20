@@ -1217,18 +1217,18 @@ mod_monitoring_server <- function(id, app_state) {
 
     # ----- Register-this-project-as-zone bridge ----------------------
 
-    # Reactive: does the loaded project have a persisted sampling plan
-    # on disk? Reads <project>/data/samples.gpkg directly so this also
-    # works after an app restart. Bumped via `app_state$samples_refresh`
-    # whenever mod_sampling writes a new plan, so the button enables
-    # without forcing a project reload.
-    samples_present <- shiny::reactive({
-      app_state$samples_refresh  # invalidate dependency on sampling save
+    # Reactive: does the loaded project have UGFs defined? Depuis spec
+    # 020, les zones de suivi sont construites par croisement UGF × BD
+    # Forêt v2 (`build_project_monitoring_zones`) — PLUS à partir d'un
+    # plan d'échantillonnage. Le prérequis du bouton « Enregistrer la
+    # zone » est donc « des UGF définies », pas un `samples.gpkg`
+    # (vestige pré-spec-020). Check léger : `project$ugs` (1re garde de
+    # `ug_build_sf`), pas de géométrie reconstruite.
+    ugf_present <- shiny::reactive({
       project <- app_state$current_project
-      if (is.null(project) || is.null(project$id)) return(FALSE)
-      pp <- get_project_path(project$id)
-      if (is.null(pp)) return(FALSE)
-      file.exists(file.path(pp, "data", "samples.gpkg"))
+      if (is.null(project)) return(FALSE)
+      ugs <- project$ugs
+      !is.null(ugs) && nrow(ugs) > 0L
     })
 
     register_running <- shiny::reactiveVal(FALSE)
@@ -1246,14 +1246,14 @@ mod_monitoring_server <- function(id, app_state) {
       }
       shiny::updateActionButton(
         session, "register",
-        disabled = !has_project || !samples_present() ||
+        disabled = !has_project || !ugf_present() ||
                    !has_db || isTRUE(register_running())
       )
     })
 
     # Hint surfaces the first failing gate so the user knows what to
-    # do (load a project / generate a sampling plan / configure the
-    # monitoring DB). Hidden when the button is enabled.
+    # do (load a project / define UGFs / configure the monitoring DB).
+    # Hidden when the button is enabled.
     output$register_hint <- shiny::renderUI({
       i18n <- i18n_r()
       has_project <- !is.null(app_state$current_project) &&
@@ -1262,7 +1262,7 @@ mod_monitoring_server <- function(id, app_state) {
         return(htmltools::tags$small(class = "text-danger d-block",
           i18n$t("monitoring_register_no_project")))
       }
-      if (!samples_present()) {
+      if (!ugf_present()) {
         return(htmltools::tags$small(class = "text-danger d-block",
           i18n$t("monitoring_register_no_samples")))
       }
