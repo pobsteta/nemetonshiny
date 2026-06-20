@@ -1,5 +1,26 @@
 # Changelog
 
+## nemetonshiny 0.91.2 (2026-06-20)
+
+#### Fixed — Carte FORDEAD : clic-pixel inopérant (carte re-rendue)
+
+Le clic sur la Carte FORDEAD ne déclenchait rien (ni message « calcul en
+cours », ni graphe), même au cœur de la zone affectée : `output$map`
+dépendait de `mask_r()` / `layer_r()`, donc le widget leaflet était
+**re-rendu** à chaque changement de couche/masque, ce qui faisait perdre
+le binding `input$map_click`. Aligné sur la Carte FAST : la **carte de
+base est désormais stable** (ne dépend que du projet ; masque/couche/
+opacité lus en `isolate()`), et le raster + la légende sont mis à jour
+via `leafletProxy` (group « Alertes » + légende à `layerId` stable) sans
+reconstruire la carte. Le binding du clic, le zoom et le fond
+(OSM/Satellite) sont ainsi préservés.
+
+#### Changed — Enregistrement de zone conditionné aux UGF
+
+Le bouton « Enregistrer ce projet comme zone de suivi » est désormais
+activé dès que le projet a des **UGF** (et non plus seulement un plan
+d’échantillonnage), cohérent avec la création des zones par UGF.
+
 ## nemetonshiny 0.91.1 (2026-06-19)
 
 #### Added / Changed — Carte FORDEAD : aides couches, légende date, feedback clic

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.2" id="nemetonshiny-0912-2026-06-20">nemetonshiny 0.91.2 (2026-06-20)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0912-2026-06-20"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-fordead--clic-pixel-inopérant-carte-re-rendue-0-91-2">Fixed — Carte FORDEAD : clic-pixel inopérant (carte re-rendue)<a class="anchor" aria-label="anchor" href="#fixed--carte-fordead--clic-pixel-inop%C3%A9rant-carte-re-rendue-0-91-2"></a></h4>
+<p>Le clic sur la Carte FORDEAD ne déclenchait rien (ni message « calcul en cours », ni graphe), même au cœur de la zone affectée : <code>output$map</code> dépendait de <code>mask_r()</code> / <code>layer_r()</code>, donc le widget leaflet était <strong>re-rendu</strong> à chaque changement de couche/masque, ce qui faisait perdre le binding <code>input$map_click</code>. Aligné sur la Carte FAST : la <strong>carte de base est désormais stable</strong> (ne dépend que du projet ; masque/couche/ opacité lus en <code>isolate()</code>), et le raster + la légende sont mis à jour via <code>leafletProxy</code> (group « Alertes » + légende à <code>layerId</code> stable) sans reconstruire la carte. Le binding du clic, le zoom et le fond (OSM/Satellite) sont ainsi préservés.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--enregistrement-de-zone-conditionné-aux-ugf-0-91-2">Changed — Enregistrement de zone conditionné aux UGF<a class="anchor" aria-label="anchor" href="#changed--enregistrement-de-zone-conditionn%C3%A9-aux-ugf-0-91-2"></a></h4>
+<p>Le bouton « Enregistrer ce projet comme zone de suivi » est désormais activé dès que le projet a des <strong>UGF</strong> (et non plus seulement un plan d’échantillonnage), cohérent avec la création des zones par UGF.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.1" id="nemetonshiny-0911-2026-06-19">nemetonshiny 0.91.1 (2026-06-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0911-2026-06-19"></a></h2>
 <div class="section level4">
