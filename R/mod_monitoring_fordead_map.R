@@ -78,8 +78,10 @@
       r_show = r, pal = pal, method = "bilinear",
       legend = list(type = "continuous", pal = pal, values = rng,
                     title = i18n$t("monitoring_fordead_layer_legend_date"),
+                    # Échelle en année seule (%Y) — plus lisible qu'une date
+                    # complète sur une légende continue pluriannuelle.
                     labFormat = function(type, cuts, p)
-                      format(as.Date(cuts, origin = "1970-01-01"), "%Y-%m-%d"))))
+                      format(as.Date(cuts, origin = "1970-01-01"), "%Y"))))
   }
   if (identical(layer, "anomaly_index")) {
     rng <- .num_range(r)
@@ -115,6 +117,20 @@
                              sprintf("3 - %s", i18n$t("monitoring_fordead_class_3")),
                              sprintf("4 - %s", i18n$t("monitoring_fordead_class_4"))),
                   title = i18n$t("monitoring_fordead_class_title")))
+}
+
+# Construit le libellé d'un choix de couche (radio) avec une icône « i »
+# (tooltip bslib) qui explique ce que la couche raster affiche.
+.fordead_layer_choice <- function(label, info) {
+  htmltools::tagList(
+    label,
+    bslib::tooltip(
+      bsicons::bs_icon("info-circle",
+                       class = "ms-1 text-primary",
+                       style = "cursor: help;"),
+      info
+    )
+  )
 }
 
 # Ajoute la légende correspondant à la spec (.fordead_layer_spec$legend).
@@ -482,6 +498,21 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       lng <- input$map_click$lng
       if (is.null(lat) || is.null(lng)) return()
 
+      # Message « calcul en cours » affiché TOUT DE SUITE (parité Carte
+      # FAST). Le calcul lourd (lecture série CRSWIR + tracé plotly) est
+      # déféré via `session$onFlushed` pour que la notification parte au
+      # client AVANT le calcul (un observateur synchrone ne flushe l'UI
+      # qu'à sa sortie). `on.exit` retire la notif quoi qu'il arrive
+      # (succès, « pas de données », erreur).
+      .notif_id <- session$ns("fordead_pixel_loading")
+      shiny::showNotification(
+        i18n$t("monitoring_pixel_map_computing"),
+        id = .notif_id, type = "message", duration = NULL
+      )
+      session$onFlushed(function() {
+        on.exit(shiny::removeNotification(.notif_id, session = session),
+                add = TRUE)
+
       # Phase A (D2) — la série pixel doit être lue sur la zone `_tot`
       # (là où FORDEAD a tourné), pas sur la strate sélectionnée : le
       # pixel cliqué est un pixel du raster `_tot` (masqué à l'affichage).
@@ -681,6 +712,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         footer = shiny::modalButton(i18n$t("close"))
       ))
       output$pixel_ts_plot <- plotly::renderPlotly(p)
+      }, once = TRUE)  # fin session$onFlushed (calcul différé)
     })
 
     shiny::outputOptions(output, "map", suspendWhenHidden = FALSE)

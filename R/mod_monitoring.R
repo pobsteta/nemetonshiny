@@ -382,15 +382,25 @@ mod_monitoring_ui <- function(id) {
                 # Sélecteur de couche pixel (Partie B, nemeton >= 0.94.0) :
                 # sévérité 0-4 (défaut) + date 1re détection + indice
                 # d'anomalie + zone modélisée. Lu via read_fordead_layer().
+                # Chaque choix porte une icône « i » (tooltip) expliquant
+                # ce que la couche affiche (.fordead_layer_choice ci-dessous).
                 htmltools::tagAppendAttributes(
                   shiny::radioButtons(
                     ns("fordead_layer"),
                     label = i18n$t("monitoring_fordead_layer_label"),
                     choiceNames  = list(
-                      i18n$t("monitoring_fordead_layer_severity"),
-                      i18n$t("monitoring_fordead_layer_first_detection"),
-                      i18n$t("monitoring_fordead_layer_anomaly_index"),
-                      i18n$t("monitoring_fordead_layer_confidence")),
+                      .fordead_layer_choice(
+                        i18n$t("monitoring_fordead_layer_severity"),
+                        i18n$t("monitoring_fordead_layer_info_severity")),
+                      .fordead_layer_choice(
+                        i18n$t("monitoring_fordead_layer_first_detection"),
+                        i18n$t("monitoring_fordead_layer_info_first_detection")),
+                      .fordead_layer_choice(
+                        i18n$t("monitoring_fordead_layer_anomaly_index"),
+                        i18n$t("monitoring_fordead_layer_info_anomaly_index")),
+                      .fordead_layer_choice(
+                        i18n$t("monitoring_fordead_layer_confidence"),
+                        i18n$t("monitoring_fordead_layer_info_confidence"))),
                     choiceValues = list("severity", "first_anomaly",
                                         "anomaly_index", "modelled_pixels"),
                     selected = "severity"

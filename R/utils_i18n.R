@@ -2631,6 +2631,23 @@ TRANSLATIONS <- list(
     fr = "Couche indisponible pour ce diagnostic (relancer un run FORDEAD récent pour la générer).",
     en = "Layer unavailable for this run (re-run a recent FORDEAD diagnosis to generate it)."
   ),
+  # Explications (bouton « i ») de chaque couche pixel FORDEAD.
+  monitoring_fordead_layer_info_severity = list(
+    fr = "Classe de dépérissement par pixel (0 = sain, 1 = faible, 2 = moyenne, 3 = forte, 4 = sol nu). Les pixels sains (0) sont transparents : seuls les pixels affectés sont peints.",
+    en = "Per-pixel dieback class (0 = healthy, 1 = low, 2 = moderate, 3 = high, 4 = bare soil). Healthy pixels (0) are transparent: only affected pixels are painted."
+  ),
+  monitoring_fordead_layer_info_first_detection = list(
+    fr = "Date de la 1re anomalie de dépérissement détectée pour chaque pixel (du plus ancien au plus récent). Utile pour repérer la progression dans le temps.",
+    en = "Date of the first detected dieback anomaly for each pixel (oldest to most recent). Useful to track progression over time."
+  ),
+  monitoring_fordead_layer_info_anomaly_index = list(
+    fr = "Intensité continue de l'anomalie au dernier état (dernier indice d'anomalie CRSWIR). Plus la valeur est élevée, plus l'écart au modèle sain est marqué.",
+    en = "Continuous anomaly intensity at the latest state (last CRSWIR anomaly index). Higher values mean a stronger departure from the healthy model."
+  ),
+  monitoring_fordead_layer_info_confidence = list(
+    fr = "Pixels pour lesquels FORDEAD a pu calibrer un modèle exploitable (zone modélisée). Hors de cette zone, le diagnostic n'est pas fiable.",
+    en = "Pixels for which FORDEAD could calibrate a usable model (modelled area). Outside this area the diagnosis is not reliable."
+  ),
   monitoring_fordead_class_0 = list(
     fr = "sain",
     en = "healthy"
