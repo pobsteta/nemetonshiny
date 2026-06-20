@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.1" id="nemetonshiny-0911-2026-06-19">nemetonshiny 0.91.1 (2026-06-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0911-2026-06-19"></a></h2>
+<div class="section level4">
+<h4 id="added--changed--carte-fordead--aides-couches-légende-date-feedback-clic-0-91-1">Added / Changed — Carte FORDEAD : aides couches, légende date, feedback clic<a class="anchor" aria-label="anchor" href="#added--changed--carte-fordead--aides-couches-l%C3%A9gende-date-feedback-clic-0-91-1"></a></h4>
+<ul><li>
+<strong>Bouton « i » par couche</strong> — chaque choix du sélecteur de couche porte une icône d’aide (tooltip) expliquant ce que la couche raster affiche (sévérité, date de 1re détection, indice d’anomalie, zone modélisée).</li>
+<li>
+<strong>Légende « Date de 1re détection » en année</strong> (<code>%Y</code>) au lieu de la date complète — plus lisible sur une échelle continue pluriannuelle.</li>
+<li>
+<strong>Feedback au clic-pixel</strong> — un message « Calcul du graphique pixel en cours… » s’affiche immédiatement au clic sur la Carte FORDEAD (calcul différé via <code>session$onFlushed</code>, parité Carte FAST), retiré à la fin (succès, « pas de données » hors zone modélisée, ou erreur). Le graphe CRSWIR (série observée + prédiction harmonique + seuil + dates de stress) s’affiche pour tout pixel situé dans la zone modélisée FORDEAD.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.0" id="nemetonshiny-0910-2026-06-19">nemetonshiny 0.91.0 (2026-06-19)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0910-2026-06-19"></a></h2>
 <div class="section level4">

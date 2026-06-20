@@ -1,5 +1,23 @@
 # Changelog
 
+## nemetonshiny 0.91.1 (2026-06-19)
+
+#### Added / Changed — Carte FORDEAD : aides couches, légende date, feedback clic
+
+- **Bouton « i » par couche** — chaque choix du sélecteur de couche
+  porte une icône d’aide (tooltip) expliquant ce que la couche raster
+  affiche (sévérité, date de 1re détection, indice d’anomalie, zone
+  modélisée).
+- **Légende « Date de 1re détection » en année** (`%Y`) au lieu de la
+  date complète — plus lisible sur une échelle continue pluriannuelle.
+- **Feedback au clic-pixel** — un message « Calcul du graphique pixel en
+  cours… » s’affiche immédiatement au clic sur la Carte FORDEAD (calcul
+  différé via `session$onFlushed`, parité Carte FAST), retiré à la fin
+  (succès, « pas de données » hors zone modélisée, ou erreur). Le graphe
+  CRSWIR (série observée + prédiction harmonique + seuil + dates de
+  stress) s’affiche pour tout pixel situé dans la zone modélisée
+  FORDEAD.
+
 ## nemetonshiny 0.91.0 (2026-06-19)
 
 #### Added — Carte FORDEAD : sélecteur de couche pixel
