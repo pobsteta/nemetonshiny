@@ -1,3 +1,16 @@
+# nemetonshiny 0.91.3.9001 (dev)
+
+### Fixed — Alertes FAST : bandeau « déclin NBR » en mode Tendance
+
+En mode Tendance, le bandeau au-dessus de la carte affichait « tendance
+pluriannuelle du déclin NBR » alors que NBR n'est pas un indice de tendance
+(seuls NDMI / NDRE le sont). Au passage de count/rolling → trend, le slot
+`resolution_badge` se re-render sur `input$mode` avant que le radio
+`index` n'ait renvoyé NDMI depuis le client, donc `input$index` valait
+encore l'ancien indice (NBR). Le bandeau assainit désormais l'indice
+contre les choix valides du mode (`.fast_index_choices`) et retombe sur le
+défaut (NDMI en trend) si l'indice courant n'est pas valide.
+
 # nemetonshiny 0.91.3 (2026-06-21)
 
 ### Fixed — Synthèse : vide sous la carte « Synthèse du projet »
