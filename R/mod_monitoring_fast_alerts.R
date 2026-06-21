@@ -477,6 +477,11 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # qui retourne cette valeur — sans déclencher le calcul lourd.
     raster_rv <- shiny::reactiveVal(NULL)
     raster_r  <- shiny::reactive(raster_rv())
+    # TRUE pendant qu'un raster d'alerte se calcule (entre l'affichage de
+    # la notif « calcul en cours » et la fin du `onFlushed`). Le bandeau
+    # s'en sert pour afficher « calcul en cours » au lieu d'un faux
+    # « zone saine » tant que le raster n'est pas prêt.
+    computing_rv <- shiny::reactiveVal(FALSE)
 
     # v0.88.x — Notification « calcul en cours » + calcul différé : au
     # changement d'indice / mode / zone / dates / seuils / params trend, on
@@ -499,22 +504,26 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       active_tab <- app_state$active_main_tab
       zone <- shiny::isolate(zone_id_r())
       if (is.null(zone) || !isTRUE(nzchar(zone))) {
+        computing_rv(FALSE)
         raster_rv(NULL)
         return()
       }
       if (!identical(active_tab, "monitoring")) {
         return()
       }
+      # Marque l'état « calcul en cours » AVANT le flush, pour que le
+      # bandeau n'affiche pas « zone saine » sur le raster pas encore prêt.
+      computing_rv(TRUE)
       notif_id <- session$ns("fast_raster_busy")
       shiny::showNotification(
         i18n_r()$t("monitoring_fast_raster_computing"),
         id = notif_id, type = "message", duration = NULL
       )
       session$onFlushed(function() {
-        on.exit(
-          shiny::removeNotification(notif_id, session = session),
-          add = TRUE
-        )
+        on.exit({
+          shiny::removeNotification(notif_id, session = session)
+          computing_rv(FALSE)
+        }, add = TRUE)
         shiny::withReactiveDomain(
           session, shiny::isolate(raster_rv(compute_fast_raster()))
         )
@@ -794,6 +803,18 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 
     output$banner <- shiny::renderUI({
       i18n <- i18n_r()
+      # Tant que le raster se calcule, on affiche un bandeau « calcul en
+      # cours » plutôt que le vert « zone saine » (qui serait incohérent :
+      # le raster pas encore prêt paraît vide). Une fois le calcul terminé,
+      # `computing_rv` repasse à FALSE et la logique erreur/vide/alertes
+      # ci-dessous prend le relais.
+      if (isTRUE(computing_rv())) {
+        return(htmltools::div(
+          class = "alert alert-info d-flex align-items-center gap-3 m-2 py-2 small",
+          shiny::icon("spinner", class = "fa-spin fs-3 flex-shrink-0"),
+          htmltools::tags$span(i18n$t("monitoring_fast_raster_computing"))
+        ))
+      }
       r <- raster_r()
       err <- last_raster_error()
       # v0.53.0 — 2 cas distincts au lieu d'un message vert
