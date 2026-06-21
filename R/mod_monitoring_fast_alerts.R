@@ -755,7 +755,17 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     output$resolution_badge <- shiny::renderUI({
       i18n  <- i18n_r()
       mode  <- input$mode %||% "count"
-      index <- input$index %||% "NDVI"
+      # Assainir l'indice contre les choix valides du mode : au moment
+      # du switch count/rolling -> trend, ce slot se re-render sur
+      # `input$mode` AVANT que `updateRadioButtons` n'ait renvoye NDMI
+      # depuis le client, donc `input$index` vaut encore l'ancien
+      # indice (ex. NBR), invalide en trend. On retombe alors sur le
+      # defaut du mode (NDMI en trend) plutot que d'afficher un libelle
+      # « declin NBR » qui n'existe pas en tendance pluriannuelle.
+      index <- input$index %||% .fast_index_default(mode)
+      if (!(index %in% .fast_index_choices(mode))) {
+        index <- .fast_index_default(mode)
+      }
       key <- if (identical(mode, "trend")) {
         "monitoring_fast_alerts_badge_trend"
       } else if (identical(mode, "rolling")) {
