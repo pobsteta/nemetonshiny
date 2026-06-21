@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.6.9001 (dev)
+# nemetonshiny 0.91.7 (2026-06-21)
 
 ### Fixed — Alertes FAST : faux « zone saine » pendant le calcul du raster
 
