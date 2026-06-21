@@ -2942,8 +2942,8 @@ TRANSLATIONS <- list(
     en = "Run FORDEAD diagnosis"
   ),
   monitoring_health_starting = list(
-    fr = "Diagnostic FORDEAD lanc\u00e9. Dur\u00e9e estim\u00e9e : plusieurs minutes.",
-    en = "FORDEAD diagnosis started. Estimated duration: several minutes."
+    fr = "Diagnostic FORDEAD lanc\u00e9. Premier calcul : plusieurs heures \u00e0 un jour si toutes les dates ne sont pas d\u00e9j\u00e0 t\u00e9l\u00e9charg\u00e9es par le Diagnostic FAST ; nettement plus rapide ensuite.",
+    en = "FORDEAD diagnosis started. First run: several hours to a day if not all dates have already been downloaded by FAST; much faster afterwards."
   ),
   monitoring_health_success = list(
     fr = "Diagnostic termin\u00e9 : %d alertes ins\u00e9r\u00e9es en %.0f s.",
