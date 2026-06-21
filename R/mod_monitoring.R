@@ -113,9 +113,13 @@ mod_monitoring_ui <- function(id) {
 
             shiny::dateRangeInput(
               ns("date_range"), i18n$t("monitoring_date_range"),
-              # Début par défaut : 01/01/2017, début de l'archive
-              # Sentinel-2 exploitable (S2A+S2B opérationnels).
-              start = as.Date("2017-01-01"),
+              # Période d'observation par défaut : 01/01/2019 -> aujourd'hui.
+              # FORDEAD entraîne son modèle harmonique sur la fenêtre
+              # d'entraînement (2017-2018 par défaut, cf. `dates_training`)
+              # puis détecte les anomalies SUR la période d'observation, qui
+              # doit donc démarrer APRÈS l'entraînement. 2019 est aussi un
+              # bon point de départ FAST (S2A+S2B pleinement opérationnels).
+              start = as.Date("2019-01-01"),
               end   = Sys.Date(),
               language  = lang,
               separator = i18n$t("date_range_separator")
@@ -222,8 +226,11 @@ mod_monitoring_ui <- function(id) {
               shiny::dateRangeInput(
                 ns("dates_training"),
                 i18n$t("monitoring_dates_training_label"),
-                start     = as.Date("2016-01-01"),
-                end       = as.Date("2017-12-31"),
+                # Période d'entraînement par défaut : 01/01/2017 ->
+                # 31/12/2018 (baseline « saine » sur 2 ans, précède la
+                # période d'observation FORDEAD qui démarre en 2019).
+                start     = as.Date("2017-01-01"),
+                end       = as.Date("2018-12-31"),
                 language  = lang,
                 separator = i18n$t("date_range_separator")
               ),

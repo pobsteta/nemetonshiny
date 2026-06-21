@@ -1,3 +1,19 @@
+# nemetonshiny 0.91.4.9000 (dev)
+
+### Changed — FORDEAD : périodes par défaut d'observation et d'entraînement
+
+Dans Suivi sanitaire (mode FORDEAD), les fenêtres par défaut sont ajustées
+pour que l'entraînement précède proprement l'observation :
+
+* **Période d'observation** (`date_range`) : `01/01/2019` → aujourd'hui
+  (était `01/01/2017` → aujourd'hui).
+* **Période d'entraînement** (`dates_training`) : `01/01/2017` → `31/12/2018`
+  (était `01/01/2016` → `31/12/2017`).
+
+FORDEAD entraîne son modèle harmonique sur la fenêtre d'entraînement puis
+détecte les anomalies sur la période d'observation ; celle-ci démarre donc
+désormais après l'entraînement.
+
 # nemetonshiny 0.91.4 (2026-06-21)
 
 ### Fixed — Alertes FAST : bandeau « déclin NBR » en mode Tendance
