@@ -401,6 +401,12 @@ mod_synthesis_ui <- function(id) {
 
   bslib::layout_columns(
     col_widths = c(12),
+    # La carte « Synthèse du projet » (1re rangée) ne porte que quelques
+    # lignes : sans contrainte, la grille fillable du nav_panel étire ses
+    # deux rangées à parts égales et laisse un grand vide sous l'en-tête.
+    # On force la 1re rangée à la hauteur de son contenu (auto) et on
+    # laisse la 2e (radar / récap / commentaires) prendre le reste (1fr).
+    row_heights = c("auto", 1),
 
     # Top row: Downloads, summary, and global score
     bslib::card(
