@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.3.9001 (dev)
+# nemetonshiny 0.91.4 (2026-06-21)
 
 ### Fixed — Alertes FAST : bandeau « déclin NBR » en mode Tendance
 
