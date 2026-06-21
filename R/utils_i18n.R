@@ -2908,12 +2908,12 @@ TRANSLATIONS <- list(
     en = "FORDEAD diagnosis (conifers)"
   ),
   monitoring_mode_quick_help = list(
-    fr = "D\u00e9tection de chocs r\u00e9cents (coupe, chablis, incendie) via NDVI/NBR rolling-window. Quelques secondes.",
-    en = "Detect recent shocks (cut, windthrow, fire) using NDVI/NBR rolling-window. Seconds."
+    fr = "D\u00e9tection de chocs r\u00e9cents (coupe, chablis, incendie) via NDMI/NDVI/NBR rolling-window + trend.",
+    en = "Detect recent shocks (cut, windthrow, fire) using NDMI/NDVI/NBR rolling-window + trend."
   ),
   monitoring_mode_health_help = list(
-    fr = "D\u00e9tection de d\u00e9p\u00e9rissement progressif (scolyte, s\u00e9cheresse) via FORDEAD. Plusieurs minutes \u00e0 heures.",
-    en = "Detect progressive dieback (bark beetle, drought) using FORDEAD. Minutes to hours."
+    fr = "D\u00e9tection de d\u00e9p\u00e9rissement progressif (scolyte, s\u00e9cheresse) via FORDEAD.",
+    en = "Detect progressive dieback (bark beetle, drought) using FORDEAD."
   ),
 
   # ----- FORDEAD parameters -----

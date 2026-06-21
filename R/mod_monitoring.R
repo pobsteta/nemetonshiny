@@ -111,22 +111,22 @@ mod_monitoring_ui <- function(id) {
             ),
             shiny::uiOutput(ns("register_hint"), class = "mb-3"),
 
-            shiny::dateRangeInput(
-              ns("date_range"), i18n$t("monitoring_date_range"),
-              # Début par défaut : 01/01/2017, début de l'archive
-              # Sentinel-2 exploitable (S2A+S2B opérationnels). Cette
-              # plage pilote le Diagnostic FAST ; la période d'observation
-              # FORDEAD a son propre input (`dates_observation`, 2019 par
-              # défaut) dans le panneau du mode santé.
-              start = as.Date("2017-01-01"),
-              end   = Sys.Date(),
-              language  = lang,
-              separator = i18n$t("date_range_separator")
-            ),
-
             # --- Quick-mode parameters (NDVI/NBR) -------------------
             shiny::conditionalPanel(
               condition = sprintf("input['%s'] == 'quick'", ns("mode")),
+              # Période d'OBSERVATION FAST — propre au mode quick. Début
+              # par défaut 01/01/2017 (archive Sentinel-2 exploitable,
+              # S2A+S2B opérationnels). FORDEAD et RECONFORT ont leurs
+              # propres périodes d'observation (`dates_observation` /
+              # `reconfort_s2_year`) dans leurs panneaux respectifs — un
+              # seul input « Période d'observation » visible par mode.
+              shiny::dateRangeInput(
+                ns("date_range"), i18n$t("monitoring_date_range"),
+                start = as.Date("2017-01-01"),
+                end   = Sys.Date(),
+                language  = lang,
+                separator = i18n$t("date_range_separator")
+              ),
               # v0.61.0 — Le `checkboxGroupInput("bands")` est retiré.
               # NDVI et NBR sont systématiquement téléchargés lors du
               # Diagnostic FAST (les radios NDVI/NBR des sidebars droits
@@ -3352,7 +3352,9 @@ mod_monitoring_server <- function(id, app_state) {
         ndmi        = input$threshold_ndmi,
         window_days = input$window_days
       )),
-      date_range_r = shiny::reactive(input$date_range),
+      # Le plan de validation FORDEAD doit utiliser la période d'OBSERVATION
+      # FORDEAD (`dates_observation`), pas le `date_range` du Diagnostic FAST.
+      date_range_r = shiny::reactive(input$dates_observation),
       source_fixed = "FORDEAD"
     )
 
@@ -3365,7 +3367,15 @@ mod_monitoring_server <- function(id, app_state) {
       zone_id_r    = shiny::reactive(input$zone_id),
       mode_r       = shiny::reactive(input$mode),
       thresholds_r = shiny::reactive(list(index = "NDVI")),
-      date_range_r = shiny::reactive(input$date_range),
+      # La période d'observation RECONFORT est l'année S2 (`reconfort_s2_year`,
+      # feuillus — un millésime). On la traduit en plage 01/01 -> 31/12 de
+      # cette année pour `generate_validation_plan`, plutôt que le
+      # `date_range` du Diagnostic FAST.
+      date_range_r = shiny::reactive({
+        y <- suppressWarnings(as.integer(input$reconfort_s2_year))
+        if (length(y) != 1L || is.na(y)) return(NULL)
+        c(as.Date(sprintf("%d-01-01", y)), as.Date(sprintf("%d-12-31", y)))
+      }),
       source_fixed = "RECONFORT"
     )
 

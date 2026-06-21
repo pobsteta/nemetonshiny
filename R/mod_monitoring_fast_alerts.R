@@ -489,9 +489,20 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       refresh_r(); zone_id_r(); date_range_r(); thresholds_r()
       input$index; input$mode
       input$trend_months; input$trend_min_years; input$trend_alpha
+      # Dépendance sur l'onglet principal actif : on ne calcule (et ne
+      # notifie) que lorsque « Suivi sanitaire » est ouvert. Au chargement
+      # d'un projet, `zone_id_r()` se remplit (zone monitoring auto-
+      # sélectionnée) alors que l'utilisateur est encore sur « Sélection »
+      # — sans ce garde, le message « Calcul du raster d'alerte… »
+      # s'affichait à tort. Quand l'utilisateur bascule sur l'onglet, ce
+      # réactif change et l'observer recalcule.
+      active_tab <- app_state$active_main_tab
       zone <- shiny::isolate(zone_id_r())
       if (is.null(zone) || !isTRUE(nzchar(zone))) {
         raster_rv(NULL)
+        return()
+      }
+      if (!identical(active_tab, "monitoring")) {
         return()
       }
       notif_id <- session$ns("fast_raster_busy")
