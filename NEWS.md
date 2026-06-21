@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.7.9001 (dev)
+# nemetonshiny 0.91.8 (2026-06-21)
 
 ### Changed — FORDEAD : message de lancement plus réaliste sur la durée
 
