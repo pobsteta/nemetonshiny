@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.4" id="nemetonshiny-0914-2026-06-21">nemetonshiny 0.91.4 (2026-06-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0914-2026-06-21"></a></h2>
+<div class="section level4">
+<h4 id="fixed--alertes-fast--bandeau--déclin-nbr--en-mode-tendance-0-91-4">Fixed — Alertes FAST : bandeau « déclin NBR » en mode Tendance<a class="anchor" aria-label="anchor" href="#fixed--alertes-fast--bandeau--d%C3%A9clin-nbr--en-mode-tendance-0-91-4"></a></h4>
+<p>En mode Tendance, le bandeau au-dessus de la carte affichait « tendance pluriannuelle du déclin NBR » alors que NBR n’est pas un indice de tendance (seuls NDMI / NDRE le sont). Au passage de count/rolling → trend, le slot <code>resolution_badge</code> se re-render sur <code>input$mode</code> avant que le radio <code>index</code> n’ait renvoyé NDMI depuis le client, donc <code>input$index</code> valait encore l’ancien indice (NBR). Le bandeau assainit désormais l’indice contre les choix valides du mode (<code>.fast_index_choices</code>) et retombe sur le défaut (NDMI en trend) si l’indice courant n’est pas valide.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.3" id="nemetonshiny-0913-2026-06-21">nemetonshiny 0.91.3 (2026-06-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0913-2026-06-21"></a></h2>
 <div class="section level4">
