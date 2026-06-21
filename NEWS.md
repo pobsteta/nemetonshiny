@@ -1,3 +1,16 @@
+# nemetonshiny 0.91.6.9001 (dev)
+
+### Fixed — Alertes FAST : faux « zone saine » pendant le calcul du raster
+
+À l'ouverture de l'onglet Suivi sanitaire (ou au changement de zone /
+indice / seuils), le bandeau vert « Aucune alerte FAST sur la fenêtre »
+s'affichait pendant que le raster d'alerte se calculait encore — message
+incohérent puisque des alertes apparaissaient une fois le calcul terminé.
+Un état « calcul en cours » (`computing_rv`) est introduit : tant que le
+raster n'est pas prêt, le bandeau affiche « Calcul du raster d'alerte en
+cours… » (avec spinner) au lieu du vert « zone saine ». La logique
+erreur / zone saine / alertes reprend la main une fois le calcul terminé.
+
 # nemetonshiny 0.91.6 (2026-06-21)
 
 ### Fixed — Suivi sanitaire : une seule période d'observation par diagnostic
