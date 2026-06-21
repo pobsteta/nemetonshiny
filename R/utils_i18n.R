@@ -2925,6 +2925,10 @@ TRANSLATIONS <- list(
     fr = "P\u00e9riode de suivi",
     en = "Monitoring period"
   ),
+  monitoring_dates_observation_label = list(
+    fr = "P\u00e9riode d'observation",
+    en = "Observation period"
+  ),
   monitoring_threshold_anomaly = list(
     fr = "Seuil d'anomalie (CRSWIR)",
     en = "Anomaly threshold (CRSWIR)"

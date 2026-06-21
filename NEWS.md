@@ -1,3 +1,24 @@
+# nemetonshiny 0.91.5 (2026-06-21)
+
+### Changed — FORDEAD : période d'observation dédiée (2019) découplée de FAST
+
+Le mode santé (FORDEAD) a désormais sa **propre période d'observation**,
+distincte du `date_range` qui pilote le Diagnostic FAST :
+
+* Nouvel input **« Période d'observation »** dans le panneau du mode santé,
+  par défaut `01/01/2019` → aujourd'hui. C'est lui qui alimente
+  `dates_monitoring` du run FORDEAD (auparavant le `date_range` partagé).
+* **Période d'entraînement** (`dates_training`) : `01/01/2017` → `31/12/2018`
+  (était `01/01/2016` → `31/12/2017`) — baseline saine qui précède
+  l'observation.
+* Le `date_range` du haut **reste à `01/01/2017` → aujourd'hui** pour le
+  Diagnostic FAST (inchangé).
+
+FORDEAD entraîne son modèle harmonique sur la fenêtre d'entraînement puis
+détecte les anomalies sur la période d'observation, qui démarre désormais
+après l'entraînement. La période d'observation est persistée/restaurée dans
+les métadonnées projet (`monitoring_dates_observation`).
+
 # nemetonshiny 0.91.4 (2026-06-21)
 
 ### Fixed — Alertes FAST : bandeau « déclin NBR » en mode Tendance

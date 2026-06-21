@@ -456,6 +456,7 @@ test_that("mod_monitoring_ui exposes the FORDEAD/health-mode controls", {
       ui <- nemetonshiny:::mod_monitoring_ui("monitoring")
       html <- as.character(ui)
       expect_true(grepl("monitoring-mode\"",            html))
+      expect_true(grepl("monitoring-dates_observation", html))
       expect_true(grepl("monitoring-dates_training",    html))
       # v0.90.x — l'indice FORDEAD (CRSWIR seul) est passé en radio dans
       # la sidebar droite des onglets Alertes/Carte FORDEAD ; le slider
@@ -554,6 +555,7 @@ test_that("input$run_health is refused while a FAST run is in flight", {
             mode              = "health",
             zone_id           = "1",
             date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            dates_observation = c(as.Date("2019-01-01"), as.Date("2025-06-30")),
             dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
             vegetation_index  = "CRSWIR",
             threshold_anomaly = 0.16,
@@ -654,6 +656,7 @@ test_that("input$run_health blocks when overall_valid = FALSE (G3 modal path)", 
             mode              = "health",
             zone_id           = "1",
             date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+            dates_observation = c(as.Date("2019-01-01"), as.Date("2025-06-30")),
             dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
             vegetation_index  = "CRSWIR",
             threshold_anomaly = 0.16,
@@ -707,6 +710,7 @@ test_that("input$run_health invokes FORDEAD when validity is OK", {
                 mode              = "health",
                 zone_id           = "1",  # strate sélectionnée (ignorée)
                 date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+                dates_observation = c(as.Date("2019-01-01"), as.Date("2025-06-30")),
                 dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
                 vegetation_index  = "CRSWIR",
                 threshold_anomaly = 0.16,
@@ -765,6 +769,7 @@ test_that("confirm_invalid_run invokes FORDEAD on modal accept (G3 force path)",
                 mode              = "health",
                 zone_id           = "1",
                 date_range        = c(as.Date("2025-06-01"), as.Date("2025-06-30")),
+                dates_observation = c(as.Date("2019-01-01"), as.Date("2025-06-30")),
                 dates_training    = c(as.Date("2016-01-01"), as.Date("2017-12-31")),
                 vegetation_index  = "CRSWIR",
                 threshold_anomaly = 0.16

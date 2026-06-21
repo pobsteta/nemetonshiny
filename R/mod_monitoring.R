@@ -114,7 +114,10 @@ mod_monitoring_ui <- function(id) {
             shiny::dateRangeInput(
               ns("date_range"), i18n$t("monitoring_date_range"),
               # Début par défaut : 01/01/2017, début de l'archive
-              # Sentinel-2 exploitable (S2A+S2B opérationnels).
+              # Sentinel-2 exploitable (S2A+S2B opérationnels). Cette
+              # plage pilote le Diagnostic FAST ; la période d'observation
+              # FORDEAD a son propre input (`dates_observation`, 2019 par
+              # défaut) dans le panneau du mode santé.
               start = as.Date("2017-01-01"),
               end   = Sys.Date(),
               language  = lang,
@@ -219,11 +222,26 @@ mod_monitoring_ui <- function(id) {
             # --- Health-mode parameters (FORDEAD) -------------------
             shiny::conditionalPanel(
               condition = sprintf("input['%s'] == 'health'", ns("mode")),
+              # Période d'OBSERVATION FORDEAD — propre au mode santé (le
+              # `date_range` du haut pilote, lui, le Diagnostic FAST).
+              # Détection des anomalies SUR cette fenêtre, qui démarre
+              # après la période d'entraînement.
+              shiny::dateRangeInput(
+                ns("dates_observation"),
+                i18n$t("monitoring_dates_observation_label"),
+                start     = as.Date("2019-01-01"),
+                end       = Sys.Date(),
+                language  = lang,
+                separator = i18n$t("date_range_separator")
+              ),
               shiny::dateRangeInput(
                 ns("dates_training"),
                 i18n$t("monitoring_dates_training_label"),
-                start     = as.Date("2016-01-01"),
-                end       = as.Date("2017-12-31"),
+                # Période d'entraînement par défaut : 01/01/2017 ->
+                # 31/12/2018 (baseline « saine » sur 2 ans, précède la
+                # période d'observation FORDEAD qui démarre en 2019).
+                start     = as.Date("2017-01-01"),
+                end       = as.Date("2018-12-31"),
                 language  = lang,
                 separator = i18n$t("date_range_separator")
               ),
@@ -744,6 +762,13 @@ mod_monitoring_server <- function(id, app_state) {
         if (length(dt) == 2L && all(!is.na(dt))) {
           shiny::updateDateRangeInput(session, "dates_training",
                                       start = dt[1], end = dt[2])
+        }
+      }
+      if (!is.null(m$monitoring_dates_observation)) {
+        do <- as.Date(unlist(m$monitoring_dates_observation))
+        if (length(do) == 2L && all(!is.na(do))) {
+          shiny::updateDateRangeInput(session, "dates_observation",
+                                      start = do[1], end = do[2])
         }
       }
     })
@@ -2739,7 +2764,7 @@ mod_monitoring_server <- function(id, app_state) {
 
       fordead_task$invoke(
         dates_training    = as.character(input$dates_training),
-        dates_monitoring  = as.character(input$date_range),
+        dates_monitoring  = as.character(input$dates_observation),
         threshold_anomaly = as.numeric(input$threshold_anomaly),
         # v0.90.x — FORDEAD ne modélise que le CRSWIR (NDVI/NDWI non
         # calculés). L'indice n'est plus un input run mais un affichage.
@@ -2781,6 +2806,7 @@ mod_monitoring_server <- function(id, app_state) {
           monitoring_threshold_anomaly  = as.numeric(input$threshold_anomaly),
           monitoring_vegetation_index   = "CRSWIR",
           monitoring_dates_training     = as.character(input$dates_training),
+          monitoring_dates_observation  = as.character(input$dates_observation),
           monitoring_validity_geo_pct   = v$geo_intersection_pct %||% NA_real_,
           monitoring_validity_species_pct = v$species_resineux_pct %||% NA_real_
         )),
@@ -2823,7 +2849,7 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return()
       }
-      dr <- input$date_range
+      dr <- input$dates_observation
       if (is.null(dr) || length(dr) != 2L || any(is.na(dr))) {
         shiny::showNotification(i18n$t("monitoring_validate_dates"),
                                 type = "warning", duration = 4)
