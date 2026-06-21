@@ -1,5 +1,17 @@
 # Changelog
 
+## nemetonshiny 0.91.3 (2026-06-21)
+
+#### Fixed — Synthèse : vide sous la carte « Synthèse du projet »
+
+La carte « Synthèse du projet » (en-tête de l’onglet Synthèse) laissait
+un grand espace vide sous son contenu. L’`layout_columns` extérieur est
+une grille fillable (dans le `nav_panel`) qui étirait ses deux rangées à
+parts égales sur la hauteur du viewport ; la carte du haut, peu remplie,
+était donc gonflée. Ajout de `row_heights = c("auto", 1)` : la 1re
+rangée prend la hauteur de son contenu, la 2e (radar / récapitulatif /
+commentaires) prend le reste.
+
 ## nemetonshiny 0.91.2 (2026-06-20)
 
 #### Fixed — Carte FORDEAD : clic-pixel inopérant (carte re-rendue)
