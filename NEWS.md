@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.2.9001 (dev)
+# nemetonshiny 0.91.3 (2026-06-21)
 
 ### Fixed — Synthèse : vide sous la carte « Synthèse du projet »
 
