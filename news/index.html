@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,31 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.6" id="nemetonshiny-0916-2026-06-21">nemetonshiny 0.91.6 (2026-06-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0916-2026-06-21"></a></h2>
+<div class="section level4">
+<h4 id="fixed--suivi-sanitaire--une-seule-période-dobservation-par-diagnostic-0-91-6">Fixed — Suivi sanitaire : une seule période d’observation par diagnostic<a class="anchor" aria-label="anchor" href="#fixed--suivi-sanitaire--une-seule-p%C3%A9riode-dobservation-par-diagnostic-0-91-6"></a></h4>
+<p>Le <code>date_range</code> du haut (« Période d’observation » du Diagnostic FAST) était toujours visible et s’affichait donc <strong>en double</strong> avec la période d’observation FORDEAD en mode santé. Désormais chaque diagnostic n’expose que <strong>sa</strong> période d’observation :</p>
+<ul><li>
+<strong>FAST</strong> (mode quick) : <code>date_range</code> déplacé dans le panneau quick — visible uniquement en FAST (défaut <code>01/01/2017</code> → aujourd’hui).</li>
+<li>
+<strong>FORDEAD</strong> (mode health) : <code>dates_observation</code> (défaut <code>01/01/2019</code> → aujourd’hui) + période d’entraînement.</li>
+<li>
+<strong>RECONFORT</strong> (mode reconfort) : millésime S2 (<code>reconfort_s2_year</code>).</li>
+</ul><p>Câblage vérifié et corrigé pour que chaque fonction reçoive la bonne période :</p>
+<ul><li>Plan de validation <strong>FORDEAD</strong> : utilise désormais <code>dates_observation</code> (utilisait à tort le <code>date_range</code> FAST).</li>
+<li>Plan de validation <strong>RECONFORT</strong> : utilise l’année S2 (<code>reconfort_s2_year</code>, traduite en plage <code>01/01</code> → <code>31/12</code>) au lieu du <code>date_range</code> FAST.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--suivi-sanitaire--plus-de-notification--calcul-du-raster--au-chargement-0-91-6">Fixed — Suivi sanitaire : plus de notification « Calcul du raster » au chargement<a class="anchor" aria-label="anchor" href="#fixed--suivi-sanitaire--plus-de-notification--calcul-du-raster--au-chargement-0-91-6"></a></h4>
+<p>Le message « Calcul du raster d’alerte en cours… » s’affichait au chargement d’un projet alors que l’utilisateur était encore sur l’onglet « Sélection » (la zone de suivi auto-sélectionnée déclenchait le calcul du raster FAST en tâche de fond). L’observer est désormais gardé sur l’onglet principal actif (<code>app_state$active_main_tab</code>) : le raster n’est calculé que lorsque l’onglet « Suivi sanitaire » est ouvert.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--suivi-sanitaire--textes-daide-des-modes-mis-à-jour-0-91-6">Changed — Suivi sanitaire : textes d’aide des modes mis à jour<a class="anchor" aria-label="anchor" href="#changed--suivi-sanitaire--textes-daide-des-modes-mis-%C3%A0-jour-0-91-6"></a></h4>
+<ul><li>FAST : « …via NDMI/NDVI/NBR rolling-window + trend. » (était « …via NDVI/NBR rolling-window. Quelques secondes. »).</li>
+<li>FORDEAD : suppression de « Plusieurs minutes à heures ».</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.5" id="nemetonshiny-0915-2026-06-21">nemetonshiny 0.91.5 (2026-06-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0915-2026-06-21"></a></h2>
 <div class="section level4">

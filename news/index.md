@@ -1,5 +1,44 @@
 # Changelog
 
+## nemetonshiny 0.91.6 (2026-06-21)
+
+#### Fixed — Suivi sanitaire : une seule période d’observation par diagnostic
+
+Le `date_range` du haut (« Période d’observation » du Diagnostic FAST)
+était toujours visible et s’affichait donc **en double** avec la période
+d’observation FORDEAD en mode santé. Désormais chaque diagnostic
+n’expose que **sa** période d’observation :
+
+- **FAST** (mode quick) : `date_range` déplacé dans le panneau quick —
+  visible uniquement en FAST (défaut `01/01/2017` → aujourd’hui).
+- **FORDEAD** (mode health) : `dates_observation` (défaut `01/01/2019` →
+  aujourd’hui) + période d’entraînement.
+- **RECONFORT** (mode reconfort) : millésime S2 (`reconfort_s2_year`).
+
+Câblage vérifié et corrigé pour que chaque fonction reçoive la bonne
+période :
+
+- Plan de validation **FORDEAD** : utilise désormais `dates_observation`
+  (utilisait à tort le `date_range` FAST).
+- Plan de validation **RECONFORT** : utilise l’année S2
+  (`reconfort_s2_year`, traduite en plage `01/01` → `31/12`) au lieu du
+  `date_range` FAST.
+
+#### Fixed — Suivi sanitaire : plus de notification « Calcul du raster » au chargement
+
+Le message « Calcul du raster d’alerte en cours… » s’affichait au
+chargement d’un projet alors que l’utilisateur était encore sur l’onglet
+« Sélection » (la zone de suivi auto-sélectionnée déclenchait le calcul
+du raster FAST en tâche de fond). L’observer est désormais gardé sur
+l’onglet principal actif (`app_state$active_main_tab`) : le raster n’est
+calculé que lorsque l’onglet « Suivi sanitaire » est ouvert.
+
+#### Changed — Suivi sanitaire : textes d’aide des modes mis à jour
+
+- FAST : « …via NDMI/NDVI/NBR rolling-window + trend. » (était « …via
+  NDVI/NBR rolling-window. Quelques secondes. »).
+- FORDEAD : suppression de « Plusieurs minutes à heures ».
+
 ## nemetonshiny 0.91.5 (2026-06-21)
 
 #### Changed — FORDEAD : période d’observation dédiée (2019) découplée de FAST
