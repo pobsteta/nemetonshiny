@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.5" id="nemetonshiny-0915-2026-06-21">nemetonshiny 0.91.5 (2026-06-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0915-2026-06-21"></a></h2>
+<div class="section level4">
+<h4 id="changed--fordead--période-dobservation-dédiée-découplée-de-fast-0-91-5">Changed — FORDEAD : période d’observation dédiée (2019) découplée de FAST<a class="anchor" aria-label="anchor" href="#changed--fordead--p%C3%A9riode-dobservation-d%C3%A9di%C3%A9e-d%C3%A9coupl%C3%A9e-de-fast-0-91-5"></a></h4>
+<p>Le mode santé (FORDEAD) a désormais sa <strong>propre période d’observation</strong>, distincte du <code>date_range</code> qui pilote le Diagnostic FAST :</p>
+<ul><li>Nouvel input <strong>« Période d’observation »</strong> dans le panneau du mode santé, par défaut <code>01/01/2019</code> → aujourd’hui. C’est lui qui alimente <code>dates_monitoring</code> du run FORDEAD (auparavant le <code>date_range</code> partagé).</li>
+<li>
+<strong>Période d’entraînement</strong> (<code>dates_training</code>) : <code>01/01/2017</code> → <code>31/12/2018</code> (était <code>01/01/2016</code> → <code>31/12/2017</code>) — baseline saine qui précède l’observation.</li>
+<li>Le <code>date_range</code> du haut <strong>reste à <code>01/01/2017</code> → aujourd’hui</strong> pour le Diagnostic FAST (inchangé).</li>
+</ul><p>FORDEAD entraîne son modèle harmonique sur la fenêtre d’entraînement puis détecte les anomalies sur la période d’observation, qui démarre désormais après l’entraînement. La période d’observation est persistée/restaurée dans les métadonnées projet (<code>monitoring_dates_observation</code>).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.4" id="nemetonshiny-0914-2026-06-21">nemetonshiny 0.91.4 (2026-06-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0914-2026-06-21"></a></h2>
 <div class="section level4">
