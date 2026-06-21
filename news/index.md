@@ -1,5 +1,16 @@
 # Changelog
 
+## nemetonshiny 0.91.8 (2026-06-21)
+
+#### Changed — FORDEAD : message de lancement plus réaliste sur la durée
+
+Le toast au lancement du Diagnostic FORDEAD annonçait « Durée estimée :
+plusieurs minutes », trompeur pour un premier calcul. Il indique
+désormais que le **premier calcul peut prendre plusieurs heures à un
+jour** si toutes les dates ne sont pas déjà téléchargées par le
+Diagnostic FAST, et qu’il est nettement plus rapide ensuite
+(`monitoring_health_starting`).
+
 ## nemetonshiny 0.91.7 (2026-06-21)
 
 #### Fixed — Alertes FAST : faux « zone saine » pendant le calcul du raster
