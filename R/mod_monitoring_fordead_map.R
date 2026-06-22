@@ -156,7 +156,18 @@
 #' @noRd
 mod_monitoring_fordead_map_ui <- function(id) {
   ns <- shiny::NS(id)
-  shiny::uiOutput(ns("panel"))
+  # Le `leafletOutput` est en UI STATIQUE (jamais recréé) — parité avec la
+  # Carte FAST (mod_monitoring_pixel_map). Auparavant il vivait dans
+  # `output$panel` (renderUI) et était recréé à chaque changement de
+  # masque / couche / langue, ce qui détruisait le binding `input$map_click`
+  # (clic-pixel inopérant). Les états « placeholder / zone saine / couche
+  # indisponible » s'affichent désormais via un overlay positionné par-dessus
+  # la carte, sans toucher au widget leaflet.
+  htmltools::div(
+    style = "position: relative;",
+    leaflet::leafletOutput(ns("map"), height = "55vh"),
+    shiny::uiOutput(ns("overlay"))
+  )
 }
 
 #' Carte FORDEAD sub-tab server
@@ -298,8 +309,20 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       r
     })
 
-    # ----- Panel : either map or empty state -----------------------------
-    output$panel <- shiny::renderUI({
+    # ----- Overlay : états placeholder / zone saine / indisponible -------
+    # Rendu PAR-DESSUS la carte (jamais à la place : le `leafletOutput` vit
+    # en UI statique pour préserver le binding `input$map_click`). Retourne
+    # NULL quand un raster affichable est présent → la carte est visible nue.
+    .fordead_overlay <- function(...) {
+      htmltools::div(
+        style = paste(
+          "position: absolute; inset: 0; z-index: 500;",
+          "background: #fff; display: flex; align-items: center;",
+          "justify-content: center;"),
+        htmltools::div(...)
+      )
+    }
+    output$overlay <- shiny::renderUI({
       i18n <- i18n_r()
       lyr  <- layer_r() %||% "severity"
       r <- mask_r()
@@ -309,7 +332,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         # NULL = aucun masque sur disque → placeholder « lancer un
         # diagnostic » (état c).
         if (!identical(lyr, "severity")) {
-          return(htmltools::div(
+          return(.fordead_overlay(
             class = "p-4 text-center text-muted",
             bsicons::bs_icon("slash-circle",
                              class = "fs-1 d-block mx-auto mb-3"),
@@ -317,7 +340,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
                          i18n$t("monitoring_fordead_layer_unavailable"))
           ))
         }
-        return(htmltools::div(
+        return(.fordead_overlay(
           class = "p-4 text-center text-muted",
           bsicons::bs_icon("hourglass-split",
                            class = "fs-1 d-block mx-auto mb-3"),
@@ -334,20 +357,22 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         mx <- .fordead_raster_max(r)
         if (!is.finite(mx) || mx < 1) {
           # État (b) — tout classe 0 / NA → carte « zone saine ».
-          return(bslib::card(
-            class = "border-success mt-2",
-            bslib::card_header(htmltools::div(
-              class = "d-flex align-items-center",
-              bsicons::bs_icon("check-circle-fill",
-                               class = "me-2 text-success fs-4"),
-              htmltools::tags$strong(
-                i18n$t("monitoring_fordead_no_alerts_title")))),
-            bslib::card_body(htmltools::tags$p(
-              i18n$t("monitoring_fordead_no_alerts_body")))
+          return(.fordead_overlay(
+            bslib::card(
+              class = "border-success",
+              bslib::card_header(htmltools::div(
+                class = "d-flex align-items-center",
+                bsicons::bs_icon("check-circle-fill",
+                                 class = "me-2 text-success fs-4"),
+                htmltools::tags$strong(
+                  i18n$t("monitoring_fordead_no_alerts_title")))),
+              bslib::card_body(htmltools::tags$p(
+                i18n$t("monitoring_fordead_no_alerts_body"))))
           ))
         }
       }
-      leaflet::leafletOutput(session$ns("map"), height = "55vh")
+      # Raster affichable → pas d'overlay, la carte est visible.
+      NULL
     })
 
     # CARTE DE BASE STABLE (parité Carte FAST) : `output$map` ne dépend
@@ -428,17 +453,16 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       .fordead_add_legend(proxy, spec$legend, layerId = "fordead_legend")
     })
 
-    # v0.37.1 — force the panel renderUI to evaluate even while the
+    # v0.37.1 — force the overlay renderUI to evaluate even while the
     # sub-tab is hidden. The Suivi sanitaire navset toggles its
     # nav_panels with bslib::nav_show() / nav_hide() (mode-driven
     # visibility). That mechanism leaves Shiny's per-output
-    # visibility detection unreliable : the `uiOutput(ns("panel"))`
+    # visibility detection unreliable : the `uiOutput(ns("overlay"))`
     # stayed suspended (suspendWhenHidden defaults to TRUE) and the
     # empty-state never rendered even after the user clicked the
     # Carte FORDEAD tab — the panel showed up blank. Disabling the
-    # suspend makes the empty-state / leaflet wrapper render
-    # unconditionally.
-    shiny::outputOptions(output, "panel", suspendWhenHidden = FALSE)
+    # suspend makes the empty-state overlay render unconditionally.
+    shiny::outputOptions(output, "overlay", suspendWhenHidden = FALSE)
     # Même raison pour la carte elle-même : sans ça, le widget leaflet
     # de ce sous-onglet non-défaut (affiché via nav_show/nav_hide) peut
     # rester suspendu / s'initialiser à taille 0 → clics et leafletProxy
