@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.8.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.9" id="nemetonshiny-0919-2026-06-22">nemetonshiny 0.91.9 (2026-06-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0919-2026-06-22"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-fordead--clic-pixel-inopérant-leafletoutput-recréé-0-91-9">Fixed — Carte FORDEAD : clic-pixel inopérant (leafletOutput recréé)<a class="anchor" aria-label="anchor" href="#fixed--carte-fordead--clic-pixel-inop%C3%A9rant-leafletoutput-recr%C3%A9%C3%A9-0-91-9"></a></h4>
+<p>Le clic sur la Carte FORDEAD n’affichait ni « Calcul graphique en cours… » ni le graphe pixel. Cause racine : le <code>leafletOutput</code> vivait à l’intérieur de <code>output$panel</code> (un <code>renderUI</code>), recréé à chaque changement de masque / couche / langue — chaque recréation détruisait le binding <code>input$map_click</code>. Le correctif v0.91.2 stabilisait <code>output$map</code> mais pas le conteneur, qui était toujours reconstruit. Aligné sur la Carte FAST : le <code>leafletOutput</code> est désormais en <strong>UI statique</strong> (jamais recréé) et les états placeholder / zone saine / couche indisponible passent par un <strong>overlay séparé</strong> (<code>output$overlay</code>) positionné par-dessus la carte. Le binding du clic est ainsi préservé.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.8" id="nemetonshiny-0918-2026-06-21">nemetonshiny 0.91.8 (2026-06-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0918-2026-06-21"></a></h2>
 <div class="section level4">
