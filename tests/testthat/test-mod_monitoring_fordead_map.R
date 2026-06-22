@@ -4,11 +4,15 @@
 # nemeton@v0.41.0 to <project>/cache/layers/fordead/zone_<id>/ and
 # renders it on a leaflet map; empty-state otherwise.
 
-test_that("mod_monitoring_fordead_map_ui returns a uiOutput tag", {
+test_that("mod_monitoring_fordead_map_ui exposes a static map + overlay", {
   skip_if_not_installed("shiny")
   ui <- nemetonshiny:::mod_monitoring_fordead_map_ui("fm")
   expect_s3_class(ui, "shiny.tag")
-  expect_true(grepl("fm-panel", as.character(ui)))
+  h <- as.character(ui)
+  # Le leafletOutput est en UI statique (jamais recréé → binding map_click
+  # préservé) + un overlay séparé pour les états placeholder/zone saine.
+  expect_true(grepl("fm-map", h))
+  expect_true(grepl("fm-overlay", h))
 })
 
 test_that("mask_r returns NULL when the fordead cache dir is absent", {
@@ -33,7 +37,7 @@ test_that("mask_r returns NULL when the fordead cache dir is absent", {
             session$flushReact()
             expect_null(mask_r())
             # The panel falls back to the empty-state card.
-            html <- paste(as.character(output$panel), collapse = "")
+            html <- paste(as.character(output$overlay), collapse = "")
             expect_true(grepl("hourglass-split", html))
           }
         )
@@ -167,10 +171,12 @@ test_that("AC.15.2 — masque avec pixels classe >=1 → carte raster (zone sans
             r <- mask_r()
             expect_s4_class(r, "SpatRaster")
             expect_gte(nemetonshiny:::.fordead_raster_max(r), 1)
-            html <- paste(as.character(output$panel), collapse = "")
-            # État (a) : carte raster, PAS la carte « zone saine ».
-            expect_true(grepl("-map\"", html) || grepl("leaflet", html))
+            # État (a) : raster affichable → PAS d'overlay (ni zone saine ni
+            # placeholder) ; la carte (output$map) est visible nue.
+            html <- paste(as.character(output$overlay), collapse = "")
             expect_false(grepl("check-circle-fill", html))
+            expect_false(grepl("hourglass-split", html))
+            expect_false(is.null(output$map))
           }
         )
       }
@@ -214,7 +220,7 @@ test_that("AC.15.3 — masque tout classe 0 → carte « zone saine »", {
             r <- mask_r()
             expect_s4_class(r, "SpatRaster")
             expect_lt(nemetonshiny:::.fordead_raster_max(r), 1)
-            html <- paste(as.character(output$panel), collapse = "")
+            html <- paste(as.character(output$overlay), collapse = "")
             # État (b) : carte verte « zone saine ».
             expect_true(grepl("check-circle-fill", html))
           }
@@ -476,7 +482,7 @@ test_that("Partie B — couche absente (reader NULL) → empty-state « indispon
           {
             session$flushReact()
             expect_null(mask_r())
-            html <- paste(as.character(output$panel), collapse = "")
+            html <- paste(as.character(output$overlay), collapse = "")
             i18n <- get_i18n("fr")
             expect_true(grepl(i18n$t("monitoring_fordead_layer_unavailable"),
                               html, fixed = TRUE))

@@ -1,3 +1,18 @@
+# nemetonshiny 0.91.9 (2026-06-22)
+
+### Fixed — Carte FORDEAD : clic-pixel inopérant (leafletOutput recréé)
+
+Le clic sur la Carte FORDEAD n'affichait ni « Calcul graphique en cours… »
+ni le graphe pixel. Cause racine : le `leafletOutput` vivait à l'intérieur
+de `output$panel` (un `renderUI`), recréé à chaque changement de masque /
+couche / langue — chaque recréation détruisait le binding `input$map_click`.
+Le correctif v0.91.2 stabilisait `output$map` mais pas le conteneur, qui
+était toujours reconstruit. Aligné sur la Carte FAST : le `leafletOutput`
+est désormais en **UI statique** (jamais recréé) et les états
+placeholder / zone saine / couche indisponible passent par un **overlay
+séparé** (`output$overlay`) positionné par-dessus la carte. Le binding du
+clic est ainsi préservé.
+
 # nemetonshiny 0.91.8 (2026-06-21)
 
 ### Changed — FORDEAD : message de lancement plus réaliste sur la durée
