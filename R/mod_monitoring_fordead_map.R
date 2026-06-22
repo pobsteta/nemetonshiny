@@ -517,6 +517,18 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       lng <- input$map_click$lng
       if (is.null(lat) || is.null(lng)) return()
 
+      # IMPORTANT : résoudre la connexion ICI (contexte réactif de
+      # l'observeEvent), PAS dans le `onFlushed` ci-dessous. `con_provider`
+      # est `mon_con()` du parent, qui lit `app_state$current_project$id`
+      # pour clé de cache — l'appeler depuis le callback `onFlushed` (hors
+      # contexte réactif) lève « Can't access reactive value
+      # 'current_project' outside of reactive consumer ». On capture donc
+      # `con` (et `own_con`) maintenant, et le callback les réutilise.
+      own_con <- is.null(con_provider)
+      con <- if (own_con)
+        get_monitoring_db_connection(project = proj, read_only = TRUE)
+      else con_provider()
+
       # Message « calcul en cours » affiché TOUT DE SUITE (parité Carte
       # FAST). Le calcul lourd (lecture série CRSWIR + tracé plotly) est
       # déféré via `session$onFlushed` pour que la notification parte au
@@ -531,18 +543,25 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       session$onFlushed(function() {
         on.exit(shiny::removeNotification(.notif_id, session = session),
                 add = TRUE)
+        # Ferme la connexion seulement si on l'a ouverte nous-mêmes (sinon
+        # elle appartient au parent via `con_provider`/`mon_con`).
+        if (own_con && !is.null(con)) {
+          on.exit(close_monitoring_db_connection(con), add = TRUE)
+        }
 
+      # `onFlushed` s'exécute HORS consommateur réactif : on enveloppe tout
+      # le calcul dans `shiny::isolate()` (parité exacte avec la Carte FAST,
+      # mod_monitoring_pixel_map.R). Toutes les valeurs réactives (con, proj,
+      # zone, cd, lat, lng, i18n) ont déjà été capturées plus haut en
+      # contexte réactif ; l'isolate est une ceinture-bretelles contre tout
+      # accès réactif résiduel.
+      shiny::isolate({
       # Phase A (D2) — la série pixel doit être lue sur la zone `_tot`
       # (là où FORDEAD a tourné), pas sur la strate sélectionnée : le
       # pixel cliqué est un pixel du raster `_tot` (masqué à l'affichage).
       # Sans ça, cliquer sur une strate ≠ `_tot` ne renvoyait aucune série
       # (cache sous zone_<id_tot>) → graphe absent.
-      own_con <- is.null(con_provider)
-      con <- if (own_con)
-        get_monitoring_db_connection(project = proj, read_only = TRUE)
-      else con_provider()
       zone_tot <- if (!is.null(con)) {
-        if (own_con) on.exit(close_monitoring_db_connection(con), add = TRUE)
         .fordead_tot_id(con, proj, zone)
       } else {
         suppressWarnings(as.integer(zone))
@@ -731,7 +750,8 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         footer = shiny::modalButton(i18n$t("close"))
       ))
       output$pixel_ts_plot <- plotly::renderPlotly(p)
-      }, once = TRUE)  # fin session$onFlushed (calcul différé)
+      })  # fin shiny::isolate (calcul différé hors contexte réactif)
+      }, once = TRUE)  # fin session$onFlushed
     })
 
     shiny::outputOptions(output, "map", suspendWhenHidden = FALSE)
