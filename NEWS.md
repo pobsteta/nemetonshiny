@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.8.9001 (dev)
+# nemetonshiny 0.91.9 (2026-06-22)
 
 ### Fixed — Carte FORDEAD : clic-pixel inopérant (leafletOutput recréé)
 
