@@ -1,5 +1,16 @@
 # Changelog
 
+## nemetonshiny 0.91.11 (2026-06-23)
+
+#### Added — Carte FORDEAD : bouton plein écran sur le graphique pixel
+
+Le modal du diagnostic pixel CRSWIR de la Carte FORDEAD dispose
+désormais d’un bouton « plein écran » en haut à droite (parité avec la
+Carte FAST) : il bascule la classe BS5 `.modal-fullscreen` et
+redimensionne le graphe plotly (`responsive = TRUE`). Le graphe est
+enveloppé dans un `div.pixel-ts-wrap` qui occupe `calc(100vh - 200px)`
+en plein écran.
+
 ## nemetonshiny 0.91.10 (2026-06-23)
 
 #### Fixed — Carte FORDEAD : erreur « reactive value outside of reactive consumer » au clic
