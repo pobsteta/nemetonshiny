@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.10.9001 (dev)
+# nemetonshiny 0.91.11 (2026-06-23)
 
 ### Added — Carte FORDEAD : bouton plein écran sur le graphique pixel
 
