@@ -1,3 +1,18 @@
+# nemetonshiny 0.91.10 (2026-06-23)
+
+### Fixed — Carte FORDEAD : erreur « reactive value outside of reactive consumer » au clic
+
+Au clic sur la Carte FORDEAD, le diagnostic pixel plantait avec
+« Can't access reactive value 'current_project' outside of reactive
+consumer ». Le callback `session$onFlushed` (qui s'exécute hors
+consommateur réactif) appelait `con_provider()` (= `mon_con()` du parent),
+qui lit `app_state$current_project$id` pour clé de cache. Aligné exactement
+sur le pattern de la Carte FAST (`mod_monitoring_pixel_map`) : toutes les
+valeurs réactives (connexion, projet, zone, dossier cache, lat/lng) sont
+désormais **résolues avant** le `onFlushed` (en contexte réactif), et le
+corps différé est enveloppé dans `shiny::isolate()`. Le message « Calcul
+graphique en cours… » et le graphe pixel CRSWIR s'affichent au clic.
+
 # nemetonshiny 0.91.9 (2026-06-22)
 
 ### Fixed — Carte FORDEAD : clic-pixel inopérant (leafletOutput recréé)
