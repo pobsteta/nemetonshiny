@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.9.9001 (dev)
+# nemetonshiny 0.91.10 (2026-06-23)
 
 ### Fixed — Carte FORDEAD : erreur « reactive value outside of reactive consumer » au clic
 
