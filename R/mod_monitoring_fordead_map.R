@@ -739,17 +739,48 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       )
 
       shiny::showModal(shiny::modalDialog(
-        title = sprintf(
-          i18n$t("monitoring_fordead_pixel_modal_title_fmt"),
-          round(lat, 5), round(lng, 5)
+        # Titre + bouton « plein écran » ancré en HAUT À DROITE (parité
+        # exacte avec la Carte FAST, mod_monitoring_pixel_map) : un petit JS
+        # bascule la classe BS5 `.modal-fullscreen` sur la `.modal-dialog`
+        # la plus proche — bord à bord, sans aller-retour serveur. Le plot
+        # remplit la zone (height 100% + plotly `responsive`) et grandit en
+        # plein écran via la règle CSS ci-dessous.
+        title = htmltools::tagList(
+          htmltools::span(sprintf(
+            i18n$t("monitoring_fordead_pixel_modal_title_fmt"),
+            round(lat, 5), round(lng, 5)
+          )),
+          htmltools::tags$button(
+            type = "button",
+            class = "btn btn-sm btn-outline-secondary",
+            style = paste("position: absolute; top: 0.75rem;",
+                          "right: 0.75rem; z-index: 2;"),
+            title = i18n$t("monitoring_pixel_map_fullscreen"),
+            # Toggle plein écran + `resize` différé : plotly (responsive)
+            # n'écoute que window.resize ; sans cet événement, le graphe
+            # garde sa taille initiale et ne remplit pas l'écran agrandi.
+            onclick = paste0(
+              "this.closest('.modal-dialog').classList.toggle('modal-fullscreen');",
+              "setTimeout(function(){window.dispatchEvent(new Event('resize'));},250);"),
+            bsicons::bs_icon("arrows-fullscreen")
+          )
         ),
         size  = "l",
         easyClose = TRUE,
-        plotly::plotlyOutput(session$ns("pixel_ts_plot"),
-                             height = "320px"),
-        footer = shiny::modalButton(i18n$t("close"))
+        footer = shiny::modalButton(i18n$t("close")),
+        htmltools::tags$style(htmltools::HTML(
+          ".modal-fullscreen .pixel-ts-wrap{height:calc(100vh - 200px) !important;}"
+        )),
+        htmltools::div(
+          class = "pixel-ts-wrap",
+          style = "height: 320px;",
+          plotly::plotlyOutput(session$ns("pixel_ts_plot"), height = "100%")
+        )
       ))
-      output$pixel_ts_plot <- plotly::renderPlotly(p)
+      # `responsive = TRUE` pour que le graphe se redimensionne quand le
+      # modal passe en plein écran (le bouton dispatch un event `resize`).
+      output$pixel_ts_plot <- plotly::renderPlotly(
+        plotly::config(p, responsive = TRUE))
       })  # fin shiny::isolate (calcul différé hors contexte réactif)
       }, once = TRUE)  # fin session$onFlushed
     })
