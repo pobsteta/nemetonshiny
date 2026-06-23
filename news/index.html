@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.9.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.10" id="nemetonshiny-09110-2026-06-23">nemetonshiny 0.91.10 (2026-06-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09110-2026-06-23"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-fordead--erreur--reactive-value-outside-of-reactive-consumer--au-clic-0-91-10">Fixed — Carte FORDEAD : erreur « reactive value outside of reactive consumer » au clic<a class="anchor" aria-label="anchor" href="#fixed--carte-fordead--erreur--reactive-value-outside-of-reactive-consumer--au-clic-0-91-10"></a></h4>
+<p>Au clic sur la Carte FORDEAD, le diagnostic pixel plantait avec « Can’t access reactive value ‘current_project’ outside of reactive consumer ». Le callback <code>session$onFlushed</code> (qui s’exécute hors consommateur réactif) appelait <code>con_provider()</code> (= <code>mon_con()</code> du parent), qui lit <code>app_state$current_project$id</code> pour clé de cache. Aligné exactement sur le pattern de la Carte FAST (<code>mod_monitoring_pixel_map</code>) : toutes les valeurs réactives (connexion, projet, zone, dossier cache, lat/lng) sont désormais <strong>résolues avant</strong> le <code>onFlushed</code> (en contexte réactif), et le corps différé est enveloppé dans <code><a href="https://rdrr.io/pkg/shiny/man/isolate.html" class="external-link">shiny::isolate()</a></code>. Le message « Calcul graphique en cours… » et le graphe pixel CRSWIR s’affichent au clic.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.9" id="nemetonshiny-0919-2026-06-22">nemetonshiny 0.91.9 (2026-06-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0919-2026-06-22"></a></h2>
 <div class="section level4">
