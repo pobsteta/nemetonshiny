@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.12.9001 (dev)
+# nemetonshiny 0.91.13 (2026-06-24)
 
 ### Changed — RECONFORT : messages de durée alignés sur la chaîne AOI-scoped
 
