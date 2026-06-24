@@ -1,3 +1,21 @@
+# nemetonshiny 0.91.12.9001 (dev)
+
+### Changed — RECONFORT : messages de durée alignés sur la chaîne AOI-scoped
+
+Côté cœur, `run_reconfort_dieback()` est désormais AOI-scoped (crop + reproj
++ masque OSO à la zone) et tourne en ~quelques minutes au lieu de plusieurs
+heures. Les messages app sont mis à jour en conséquence :
+
+* Aide du mode RECONFORT : « Quelques minutes, opt-in » (était « Lourd,
+  opt-in »).
+* Toast de lancement : « Durée estimée : quelques minutes » (était
+  « plusieurs minutes à heures »).
+
+Aucun autre changement app : `run_reconfort_async()` / `.invoke_reconfort()`
+sont rétrocompatibles (la signature cœur garde des défauts), et la carte
+RECONFORT affiche déjà les clusters d'alertes (`nemeton::list_alerts(…,
+classes = RECONFORT_ALERT_CLASSES)`, centroïdes colorés par classe).
+
 # nemetonshiny 0.91.12 (2026-06-24)
 
 ### Changed — Carte FORDEAD : graphique pixel au rendu canonique FORDEAD (4 catégories)

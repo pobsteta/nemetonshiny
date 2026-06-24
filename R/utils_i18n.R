@@ -3020,8 +3020,8 @@ TRANSLATIONS <- list(
     en = "RECONFORT diagnosis (broadleaves)"
   ),
   monitoring_mode_reconfort_help = list(
-    fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Lourd, opt-in (conda IOTA\u00b2/GEODES).",
-    en = "Detect broadleaf dieback (oak, chestnut) using RECONFORT (CRSWIR + CRre). Heavy, opt-in (conda IOTA\u00b2/GEODES)."
+    fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Quelques minutes, opt-in (conda IOTA\u00b2/GEODES).",
+    en = "Detect broadleaf dieback (oak, chestnut) using RECONFORT (CRSWIR + CRre). A few minutes, opt-in (conda IOTA\u00b2/GEODES)."
   ),
   monitoring_subtab_pixel_map_reconfort = list(
     fr = "Carte RECONFORT",
@@ -3091,8 +3091,8 @@ TRANSLATIONS <- list(
     en = "RECONFORT run unavailable: conda environment (IOTA\u00b2/GEODES) required. The map and pixel diagnosis remain available on existing runs."
   ),
   monitoring_reconfort_starting = list(
-    fr = "Diagnostic RECONFORT lanc\u00e9. Dur\u00e9e estim\u00e9e : plusieurs minutes \u00e0 heures.",
-    en = "RECONFORT diagnosis started. Estimated duration: minutes to hours."
+    fr = "Diagnostic RECONFORT lanc\u00e9. Dur\u00e9e estim\u00e9e : quelques minutes.",
+    en = "RECONFORT diagnosis started. Estimated duration: a few minutes."
   ),
   monitoring_reconfort_success = list(
     fr = "Diagnostic RECONFORT termin\u00e9 : %d alertes ins\u00e9r\u00e9es en %.0f s.",
