@@ -1,5 +1,29 @@
 # Changelog
 
+## nemetonshiny 0.91.12 (2026-06-24)
+
+#### Changed — Carte FORDEAD : graphique pixel au rendu canonique FORDEAD (4 catégories)
+
+Le graphique pixel CRSWIR adopte le rendu canonique de FORDEAD avec
+quatre catégories de points (marqueurs « × »), au lieu d’un simple «
+observé / anomalie » :
+
+- **Entraînement** (bleu) — points dans la fenêtre d’entraînement du run
+  (lue dans les métadonnées projet `monitoring_dates_training`).
+- **Sain** (vert) — points de suivi sous le seuil de détection.
+- **Anomalie** (orange) — points au-dessus du seuil, **avant** la date
+  de confirmation du dépérissement.
+- **Anomalie confirmée** (rouge) — points de suivi à partir de la 1re
+  détection (`premiere_detection`), le pixel étant entré en état
+  dépérissement.
+
+La prédiction harmonique (ligne pleine) et le seuil de détection (ligne
+pointillée) sont désormais en bleu. Ceci **corrige** au passage le bug
+où **tous** les points apparaissaient en rouge : le filtre d’anomalie
+contenait un terme scalaire `isTRUE(any(ts$anomalie))` recyclé sur tout
+le vecteur. Trois nouvelles clés i18n
+(`monitoring_fordead_pixel_training`, `_healthy`, `_confirmed`).
+
 ## nemetonshiny 0.91.11 (2026-06-23)
 
 #### Added — Carte FORDEAD : bouton plein écran sur le graphique pixel

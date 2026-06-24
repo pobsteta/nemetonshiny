@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,22 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.12" id="nemetonshiny-09112-2026-06-24">nemetonshiny 0.91.12 (2026-06-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09112-2026-06-24"></a></h2>
+<div class="section level4">
+<h4 id="changed--carte-fordead--graphique-pixel-au-rendu-canonique-fordead-catégories-0-91-12">Changed — Carte FORDEAD : graphique pixel au rendu canonique FORDEAD (4 catégories)<a class="anchor" aria-label="anchor" href="#changed--carte-fordead--graphique-pixel-au-rendu-canonique-fordead-cat%C3%A9gories-0-91-12"></a></h4>
+<p>Le graphique pixel CRSWIR adopte le rendu canonique de FORDEAD avec quatre catégories de points (marqueurs « × »), au lieu d’un simple « observé / anomalie » :</p>
+<ul><li>
+<strong>Entraînement</strong> (bleu) — points dans la fenêtre d’entraînement du run (lue dans les métadonnées projet <code>monitoring_dates_training</code>).</li>
+<li>
+<strong>Sain</strong> (vert) — points de suivi sous le seuil de détection.</li>
+<li>
+<strong>Anomalie</strong> (orange) — points au-dessus du seuil, <strong>avant</strong> la date de confirmation du dépérissement.</li>
+<li>
+<strong>Anomalie confirmée</strong> (rouge) — points de suivi à partir de la 1re détection (<code>premiere_detection</code>), le pixel étant entré en état dépérissement.</li>
+</ul><p>La prédiction harmonique (ligne pleine) et le seuil de détection (ligne pointillée) sont désormais en bleu. Ceci <strong>corrige</strong> au passage le bug où <strong>tous</strong> les points apparaissaient en rouge : le filtre d’anomalie contenait un terme scalaire <code>isTRUE(any(ts$anomalie))</code> recyclé sur tout le vecteur. Trois nouvelles clés i18n (<code>monitoring_fordead_pixel_training</code>, <code>_healthy</code>, <code>_confirmed</code>).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.11" id="nemetonshiny-09111-2026-06-23">nemetonshiny 0.91.11 (2026-06-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09111-2026-06-23"></a></h2>
 <div class="section level4">
