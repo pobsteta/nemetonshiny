@@ -667,8 +667,13 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       # surlignés par-dessus la trace observée. Filtre :
       # ts$anomalie == TRUE && !is.na(ts$crswir_obs).
       if ("anomalie" %in% names(ts)) {
-        anom_rows <- which(isTRUE(any(ts$anomalie)) |
-                           (!is.na(ts$anomalie) & ts$anomalie))
+        # Filtre PAR LIGNE : seuls les points réellement en anomalie
+        # (`anomalie == TRUE`) sont surlignés. L'ancienne expression
+        # incluait `isTRUE(any(ts$anomalie)) | ...` : ce terme scalaire,
+        # vrai dès qu'UN point était en anomalie, était recyclé sur tout
+        # le vecteur → TOUS les points passaient en rouge (y compris ceux
+        # sous le seuil de détection). Bug corrigé.
+        anom_rows <- which(!is.na(ts$anomalie) & ts$anomalie)
         if (length(anom_rows)) {
           p <- plotly::add_trace(
             p,

@@ -1,3 +1,17 @@
+# nemetonshiny 0.91.11.9001 (dev)
+
+### Fixed — Carte FORDEAD : tous les points marqués « en anomalie » sur le graphique pixel
+
+Sur le graphique pixel CRSWIR, **tous** les points observés s'affichaient en
+rouge (anomalie détectée), y compris ceux situés sous le seuil de détection
+(entre la prédiction et `prédit + Δ`). Le filtre de surlignage contenait un
+terme scalaire `isTRUE(any(ts$anomalie))` combiné en OU au filtre par ligne :
+dès qu'un seul point était en anomalie, ce terme — recyclé sur tout le
+vecteur — faisait passer **toutes** les lignes en rouge. Le filtre est
+désormais strictement par ligne (`!is.na(ts$anomalie) & ts$anomalie`) : seuls
+les points réellement au-dessus du seuil sont surlignés, les autres restent
+bleus (« Observé »).
+
 # nemetonshiny 0.91.11 (2026-06-23)
 
 ### Added — Carte FORDEAD : bouton plein écran sur le graphique pixel
