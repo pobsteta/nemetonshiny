@@ -1,16 +1,26 @@
 # nemetonshiny 0.91.11.9001 (dev)
 
-### Fixed — Carte FORDEAD : tous les points marqués « en anomalie » sur le graphique pixel
+### Changed — Carte FORDEAD : graphique pixel au rendu canonique FORDEAD (4 catégories)
 
-Sur le graphique pixel CRSWIR, **tous** les points observés s'affichaient en
-rouge (anomalie détectée), y compris ceux situés sous le seuil de détection
-(entre la prédiction et `prédit + Δ`). Le filtre de surlignage contenait un
-terme scalaire `isTRUE(any(ts$anomalie))` combiné en OU au filtre par ligne :
-dès qu'un seul point était en anomalie, ce terme — recyclé sur tout le
-vecteur — faisait passer **toutes** les lignes en rouge. Le filtre est
-désormais strictement par ligne (`!is.na(ts$anomalie) & ts$anomalie`) : seuls
-les points réellement au-dessus du seuil sont surlignés, les autres restent
-bleus (« Observé »).
+Le graphique pixel CRSWIR adopte le rendu canonique de FORDEAD avec quatre
+catégories de points (marqueurs « × »), au lieu d'un simple « observé /
+anomalie » :
+
+* **Entraînement** (bleu) — points dans la fenêtre d'entraînement du run
+  (lue dans les métadonnées projet `monitoring_dates_training`).
+* **Sain** (vert) — points de suivi sous le seuil de détection.
+* **Anomalie** (orange) — points au-dessus du seuil, **avant** la date de
+  confirmation du dépérissement.
+* **Anomalie confirmée** (rouge) — points de suivi à partir de la 1re
+  détection (`premiere_detection`), le pixel étant entré en état
+  dépérissement.
+
+La prédiction harmonique (ligne pleine) et le seuil de détection (ligne
+pointillée) sont désormais en bleu. Ceci **corrige** au passage le bug où
+**tous** les points apparaissaient en rouge : le filtre d'anomalie
+contenait un terme scalaire `isTRUE(any(ts$anomalie))` recyclé sur tout le
+vecteur. Trois nouvelles clés i18n (`monitoring_fordead_pixel_training`,
+`_healthy`, `_confirmed`).
 
 # nemetonshiny 0.91.11 (2026-06-23)
 
