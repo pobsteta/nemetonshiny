@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.12.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,16 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.13" id="nemetonshiny-09113-2026-06-24">nemetonshiny 0.91.13 (2026-06-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09113-2026-06-24"></a></h2>
+<div class="section level4">
+<h4 id="changed--reconfort--messages-de-durée-alignés-sur-la-chaîne-aoi-scoped-0-91-13">Changed — RECONFORT : messages de durée alignés sur la chaîne AOI-scoped<a class="anchor" aria-label="anchor" href="#changed--reconfort--messages-de-dur%C3%A9e-align%C3%A9s-sur-la-cha%C3%AEne-aoi-scoped-0-91-13"></a></h4>
+<p>Côté cœur, <code>run_reconfort_dieback()</code> est désormais AOI-scoped (crop + reproj + masque OSO à la zone) et tourne en ~quelques minutes au lieu de plusieurs heures. Les messages app sont mis à jour en conséquence :</p>
+<ul><li>Aide du mode RECONFORT : « Quelques minutes, opt-in » (était « Lourd, opt-in »).</li>
+<li>Toast de lancement : « Durée estimée : quelques minutes » (était « plusieurs minutes à heures »).</li>
+</ul><p>Aucun autre changement app : <code>run_reconfort_async()</code> / <code>.invoke_reconfort()</code> sont rétrocompatibles (la signature cœur garde des défauts), et la carte RECONFORT affiche déjà les clusters d’alertes (<code>nemeton::list_alerts(…, classes = RECONFORT_ALERT_CLASSES)</code>, centroïdes colorés par classe).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.12" id="nemetonshiny-09112-2026-06-24">nemetonshiny 0.91.12 (2026-06-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09112-2026-06-24"></a></h2>
 <div class="section level4">
