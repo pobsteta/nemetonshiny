@@ -610,82 +610,80 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       in_validity   <- attr(ts, "dans_zone_validite")
       veg_index     <- attr(ts, "vegetation_index") %||% "CRSWIR"
 
-      col_obs     <- "#2C7FB8"  # bleu observé (existant)
-      col_pred    <- "#D62728"  # rouge prédiction harmonique (existant)
-      col_seuil   <- "#FF7F0E"  # orange seuil_haut (nouveau v0.72.0)
-      col_anomaly <- "#9C0E0E"  # rouge foncé points anomalie (nouveau)
+      # Couleurs du rendu canonique FORDEAD (cf. plot FORDEAD natif) :
+      # prédiction + seuil en bleu (ligne pleine / pointillée), points
+      # catégorisés training / healthy / anomaly / confirmed.
+      col_pred      <- "#1F4EA8"  # bleu prédiction harmonique (ligne pleine)
+      col_limit     <- "#1F4EA8"  # bleu seuil (ligne pointillée)
+      col_training  <- "#1F77B4"  # bleu × points d'entraînement
+      col_healthy   <- "#2CA02C"  # vert × points sains
+      col_anomaly   <- "#FF7F0E"  # orange × anomalie (avant confirmation)
+      col_confirmed <- "#D62728"  # rouge × anomalie confirmée (dépérissement)
+
+      obs_date <- as.Date(ts$obs_date)
+      obs_val  <- as.numeric(ts$crswir_obs)
+      has_obs  <- !is.na(obs_val)
+      anom     <- if ("anomalie" %in% names(ts))
+        (!is.na(ts$anomalie) & ts$anomalie) else rep(FALSE, length(obs_val))
+
+      # Fenêtre d'entraînement du run (persistée dans les métadonnées
+      # projet au lancement du diagnostic). Sert à colorer les points
+      # d'entraînement (bleu) distinctement des points de suivi.
+      train_dates <- tryCatch(
+        as.Date(unlist(proj$metadata$monitoring_dates_training)),
+        error = function(e) NULL)
+      has_train_win <- length(train_dates) == 2L && all(!is.na(train_dates))
+      is_train <- has_obs & has_train_win &
+        obs_date >= train_dates[1] & obs_date <= train_dates[2]
+
+      # Confirmation du dépérissement : tout point de SUIVI à partir de la
+      # date de 1re détection (`premiere_detection`) est « confirmé »
+      # (le pixel est entré en état dépérissement) ; avant cette date, un
+      # point au-dessus du seuil est une « anomalie » (orange) et un point
+      # sous le seuil est « sain » (vert).
+      has_premiere <- !is.null(premiere) && length(premiere) == 1L &&
+        inherits(premiere, "Date") && !is.na(premiere)
+      is_confirmed <- has_obs & !is_train & has_premiere & obs_date >= premiere
+      is_anomaly   <- has_obs & !is_train & !is_confirmed & anom
+      is_healthy   <- has_obs & !is_train & !is_confirmed & !anom
 
       p <- plotly::plot_ly(type = "scatter")
-      # 1. Observé (points bleus, mode = markers).
+      # 1. Prédiction harmonique (ligne bleue pleine).
       p <- plotly::add_trace(
-        p,
-        x      = as.Date(ts$obs_date),
-        y      = as.numeric(ts$crswir_obs),
-        name   = i18n$t("monitoring_fordead_pixel_observed"),
-        mode   = "markers",
-        marker = list(color = col_obs, size = 5),
-        hovertemplate = paste0(
-          "<b>", i18n$t("monitoring_fordead_pixel_observed"), "</b><br>",
-          "%{x|%Y-%m-%d}<br>",
-          veg_index, " = %{y:.3f}<extra></extra>"
-        )
-      )
-      # 2. Prédiction harmonique (ligne rouge).
-      p <- plotly::add_trace(
-        p,
-        x      = as.Date(ts$obs_date),
-        y      = as.numeric(ts$crswir_pred),
-        name   = i18n$t("monitoring_fordead_pixel_predicted"),
-        mode   = "lines",
-        line   = list(color = col_pred, width = 1.5),
+        p, x = obs_date, y = as.numeric(ts$crswir_pred),
+        name = i18n$t("monitoring_fordead_pixel_predicted"),
+        mode = "lines", line = list(color = col_pred, width = 1.8),
         hovertemplate = paste0(
           "<b>", i18n$t("monitoring_fordead_pixel_predicted"), "</b><br>",
-          "%{x|%Y-%m-%d}<br>",
-          veg_index, " = %{y:.3f}<extra></extra>"
-        )
-      )
-      # 3. v0.72.0 — Seuil haut (= crswir_pred + threshold_anomaly).
-      # Ligne orange pointillée. Quand un point observé dépasse ce
-      # seuil, c'est une anomalie candidate.
+          "%{x|%Y-%m-%d}<br>", veg_index, " = %{y:.3f}<extra></extra>"))
+      # 2. Seuil de détection (= prédit + Δ) — ligne bleue pointillée.
       if ("seuil_haut" %in% names(ts)) {
         p <- plotly::add_trace(
-          p,
-          x      = as.Date(ts$obs_date),
-          y      = as.numeric(ts$seuil_haut),
-          name   = i18n$t("monitoring_fordead_pixel_threshold"),
-          mode   = "lines",
-          line   = list(color = col_seuil, width = 1.2,
-                        dash = "dash"),
+          p, x = obs_date, y = as.numeric(ts$seuil_haut),
+          name = i18n$t("monitoring_fordead_pixel_threshold"),
+          mode = "lines", line = list(color = col_limit, width = 1.4,
+                                       dash = "dash"),
           hovertemplate = paste0(
             "<b>", i18n$t("monitoring_fordead_pixel_threshold"), "</b><br>",
-            "%{x|%Y-%m-%d}<br>",
-            veg_index, " = %{y:.3f}<extra></extra>"
-          )
-        )
+            "%{x|%Y-%m-%d}<br>", veg_index, " = %{y:.3f}<extra></extra>"))
       }
-      # 4. v0.72.0 — Points en anomalie (rouge foncé, taille 8),
-      # surlignés par-dessus la trace observée. Filtre :
-      # ts$anomalie == TRUE && !is.na(ts$crswir_obs).
-      if ("anomalie" %in% names(ts)) {
-        anom_rows <- which(isTRUE(any(ts$anomalie)) |
-                           (!is.na(ts$anomalie) & ts$anomalie))
-        if (length(anom_rows)) {
-          p <- plotly::add_trace(
-            p,
-            x      = as.Date(ts$obs_date[anom_rows]),
-            y      = as.numeric(ts$crswir_obs[anom_rows]),
-            name   = i18n$t("monitoring_fordead_pixel_anomaly"),
-            mode   = "markers",
-            marker = list(color = col_anomaly, size = 8,
-                          line = list(color = "#FFFFFF", width = 1)),
-            hovertemplate = paste0(
-              "<b>", i18n$t("monitoring_fordead_pixel_anomaly"), "</b><br>",
-              "%{x|%Y-%m-%d}<br>",
-              veg_index, " = %{y:.3f}<extra></extra>"
-            )
-          )
-        }
+      # 3-6. Points catégorisés (marqueurs « × »), tracés du moins au plus
+      # critique pour que les confirmés ressortent au-dessus.
+      .add_cat <- function(p, sel, key, color) {
+        rows <- which(sel)
+        if (!length(rows)) return(p)
+        plotly::add_trace(
+          p, x = obs_date[rows], y = obs_val[rows],
+          name = i18n$t(key), mode = "markers",
+          marker = list(color = color, size = 7, symbol = "x"),
+          hovertemplate = paste0(
+            "<b>", i18n$t(key), "</b><br>",
+            "%{x|%Y-%m-%d}<br>", veg_index, " = %{y:.3f}<extra></extra>"))
       }
+      p <- .add_cat(p, is_train,     "monitoring_fordead_pixel_training",  col_training)
+      p <- .add_cat(p, is_healthy,   "monitoring_fordead_pixel_healthy",   col_healthy)
+      p <- .add_cat(p, is_anomaly,   "monitoring_fordead_pixel_anomaly",   col_anomaly)
+      p <- .add_cat(p, is_confirmed, "monitoring_fordead_pixel_confirmed", col_confirmed)
 
       shapes <- list()
       annotations <- list()

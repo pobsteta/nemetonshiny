@@ -2712,6 +2712,20 @@ TRANSLATIONS <- list(
     fr = "Anomalie d\u00e9tect\u00e9e",
     en = "Detected anomaly"
   ),
+  # Cat\u00e9gories de points du graphique pixel FORDEAD (rendu canonique
+  # FORDEAD : training / healthy / anomaly / confirmed anomaly).
+  monitoring_fordead_pixel_training = list(
+    fr = "Entra\u00eenement",
+    en = "Training"
+  ),
+  monitoring_fordead_pixel_healthy = list(
+    fr = "Sain",
+    en = "Healthy"
+  ),
+  monitoring_fordead_pixel_confirmed = list(
+    fr = "Anomalie confirm\u00e9e",
+    en = "Confirmed anomaly"
+  ),
   monitoring_fordead_pixel_outside_validity = list(
     fr = "Pixel hors zone de validit\u00e9 (essence non calibr\u00e9e)",
     en = "Pixel outside calibration validity (uncalibrated species)"
