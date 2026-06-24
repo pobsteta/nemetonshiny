@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.11.9001 (dev)
+# nemetonshiny 0.91.12 (2026-06-24)
 
 ### Changed — Carte FORDEAD : graphique pixel au rendu canonique FORDEAD (4 catégories)
 
