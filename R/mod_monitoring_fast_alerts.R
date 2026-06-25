@@ -834,7 +834,16 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           )
         ))
       }
-      if (is.null(r) || .fast_raster_is_empty(r)) {
+      # IMPORTANT : ne montrer le vert « zone saine » QUE pour un raster
+      # réellement calculé et vide. `raster_rv` NULL = pas encore calculé
+      # (ex. au tout début, ou tant que l'onglet n'a pas été ouvert : ce
+      # bandeau a `suspendWhenHidden = FALSE` donc il se rend même caché).
+      # Sans ce distinguo, à l'ouverture de l'onglet on voyait le vert
+      # périmé EN MÊME TEMPS que la notif « calcul en cours » — incohérent.
+      if (is.null(r)) {
+        return(NULL)
+      }
+      if (.fast_raster_is_empty(r)) {
         return(htmltools::div(
           class = "alert alert-success d-flex align-items-center gap-3 m-2 py-2 small",
           bsicons::bs_icon("check-circle", class = "fs-3 flex-shrink-0"),

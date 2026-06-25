@@ -1,3 +1,17 @@
+# nemetonshiny 0.91.13.9001 (dev)
+
+### Fixed — Alertes FAST : vert « zone saine » + « calcul en cours » simultanés à l'ouverture
+
+À l'ouverture de l'onglet Suivi sanitaire, on voyait en même temps le
+bandeau vert « Aucune alerte FAST » **et** la notification « Calcul du
+raster d'alerte en cours… » — incohérent. Cause : le bandeau
+(`suspendWhenHidden = FALSE`) traitait `raster_rv` NULL (raster **pas encore
+calculé**) comme un raster vide → vert affiché prématurément (y compris
+pendant qu'on était encore sur un autre onglet). Désormais le vert
+« zone saine » n'apparaît que pour un raster **réellement calculé et vide** ;
+tant que rien n'est calculé, le bandeau reste vide et la notification (ou le
+bandeau « calcul en cours ») prend le relais.
+
 # nemetonshiny 0.91.13 (2026-06-24)
 
 ### Changed — RECONFORT : messages de durée alignés sur la chaîne AOI-scoped
