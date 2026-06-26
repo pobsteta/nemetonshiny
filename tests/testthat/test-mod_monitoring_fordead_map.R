@@ -492,3 +492,71 @@ test_that("Partie B — couche absente (reader NULL) → empty-state « indispon
     )
   })
 })
+
+test_that("date_domain_r + display_r filtrent la sévérité par date de 1re détection", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("terra")
+
+  withr::with_tempdir({
+    proj_path <- getwd()
+    dir.create(file.path(proj_path, "cache", "layers", "fordead"),
+               recursive = TRUE)
+
+    # severity : classe 3 dans la dernière cellule ; first_anomaly : date de
+    # détection (jours depuis 1970) dans cette même cellule, NA ailleurs.
+    sev <- .fm_test_raster(3)
+    det_date <- as.Date("2022-06-01")
+    fa <- .fm_test_raster(0)
+    vv <- rep(NA_real_, terra::ncell(fa))
+    vv[terra::ncell(fa)] <- as.numeric(det_date)
+    terra::values(fa) <- vv
+
+    testthat::with_mocked_bindings(
+      get_monitoring_db_connection   = function(...) "fake-con",
+      close_monitoring_db_connection = function(con) invisible(TRUE),
+      get_monitoring_zone_aoi        = function(con, zone_id) .fm_test_aoi(),
+      {
+        testthat::local_mocked_bindings(
+          find_zones_by_project = function(con, project_uuid) .fm_test_zones(),
+          read_fordead_dieback_mask = function(con, zone_id, run_id = NULL,
+                                               cache_dir = NULL) sev,
+          read_fordead_layer = function(con, zone_id, layer, run_id = NULL,
+                                        cache_dir = NULL, ...) {
+            if (identical(layer, "first_anomaly")) fa else NULL
+          },
+          .package = "nemeton"
+        )
+        sel_date <- shiny::reactiveVal(NULL)
+        shiny::testServer(
+          nemetonshiny:::mod_monitoring_fordead_map_server,
+          args = list(
+            app_state = shiny::reactiveValues(
+              language = "fr",
+              current_project = list(id = "x", path = proj_path)),
+            zone_id_r = shiny::reactive("10"),
+            layer_r   = shiny::reactive("severity"),
+            date_r    = sel_date
+          ),
+          {
+            session$flushReact()
+            # Domaine = date de détection unique.
+            dom <- date_domain_r()
+            expect_equal(as.Date(dom), c(det_date, det_date))
+
+            # Sans date → sévérité complète (classe 3 visible).
+            expect_gte(nemetonshiny:::.fordead_raster_max(display_r()), 3)
+
+            # Date AVANT la détection → cellule masquée (plus de classe >=1).
+            sel_date(as.Date("2021-01-01")); session$flushReact()
+            mx_before <- nemetonshiny:::.fordead_raster_max(display_r())
+            expect_true(!is.finite(mx_before) || mx_before < 1)
+
+            # Date APRÈS la détection → classe 3 de nouveau visible.
+            sel_date(as.Date("2023-01-01")); session$flushReact()
+            expect_gte(nemetonshiny:::.fordead_raster_max(display_r()), 3)
+          }
+        )
+      }
+    )
+  })
+})

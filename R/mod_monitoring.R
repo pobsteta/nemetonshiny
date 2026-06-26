@@ -425,6 +425,15 @@ mod_monitoring_ui <- function(id) {
                   ),
                   class = "mb-2"
                 ),
+                # Slider temporel cumulatif (couche sévérité uniquement) :
+                # affiche les pixels détectés jusqu'à la date choisie
+                # (progression du dépérissement). Domaine rendu côté serveur
+                # à partir de la couche « date de 1re détection » du run.
+                shiny::conditionalPanel(
+                  condition = sprintf("input['%s'] == 'severity'",
+                                      ns("fordead_layer")),
+                  shiny::uiOutput(ns("fordead_date_slider"))
+                ),
                 shiny::sliderInput(
                   ns("fordead_opacity"),
                   label = i18n$t("monitoring_fast_alerts_opacity_label"),
@@ -3114,11 +3123,30 @@ mod_monitoring_server <- function(id, app_state) {
       # Partie B — couche pixel sélectionnée (sévérité / 1re détection /
       # indice d'anomalie / zone modélisée).
       layer_r   = shiny::reactive(input$fordead_layer %||% "severity"),
+      # Slider temporel cumulatif (couche sévérité) : la date choisie filtre
+      # l'affichage aux pixels détectés jusqu'à cette date.
+      date_r    = shiny::reactive(input$fordead_date),
       # perf — réutilise la connexion RO mise en cache du parent (évite
       # de rouvrir une connexion PostGIS ~0,4–1,2 s à chaque lecture de
       # masque / clic-pixel).
       con_provider = mon_con
     )
+
+    # Slider de date de la Carte FORDEAD : domaine = étendue des dates de
+    # 1re détection du run (exposé par le sous-module). Défaut = borne max
+    # (affiche toute la sévérité). Rendu nul si la couche n'est pas dans le
+    # bundle (anciens runs) → pas de slider.
+    output$fordead_date_slider <- shiny::renderUI({
+      i18n <- i18n_r()
+      dom  <- fordead_map_ret$date_domain()
+      if (is.null(dom) || length(dom) != 2L || any(is.na(dom))) return(NULL)
+      shiny::sliderInput(
+        ns("fordead_date"),
+        label = i18n$t("monitoring_fordead_date_label"),
+        min = dom[1], max = dom[2], value = dom[2],
+        timeFormat = "%Y-%m-%d", width = "100%"
+      )
+    })
 
     # spec 021 (L6) — Carte RECONFORT : alertes feuillus + diagnostic
     # pixel CRSWIR/CRre. Lazy comme FORDEAD ; `reconfort_refresh` est

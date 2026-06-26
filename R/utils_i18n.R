@@ -2595,6 +2595,10 @@ TRANSLATIONS <- list(
     fr = "Couche",
     en = "Layer"
   ),
+  monitoring_fordead_date_label = list(
+    fr = "Détecté jusqu'au",
+    en = "Detected up to"
+  ),
   monitoring_fordead_layer_severity = list(
     fr = "Sévérité (0-4)",
     en = "Severity (0-4)"
@@ -3179,6 +3183,29 @@ TRANSLATIONS <- list(
   monitoring_ntfy_fordead_error = list(
     fr = "\u00c9chec du diagnostic FORDEAD : %s",
     en = "FORDEAD diagnosis failed: %s"
+  ),
+
+  # ntfy push messages for RECONFORT (spec 021) \u2014 sym\u00e9trique avec
+  # FORDEAD ci-dessus. M\u00eame opt-in via NEMETON_NTFY_TOPIC ; sprintf
+  # placeholders (i18n$t() rendu brut puis sprintf). \u00c9mis worker-side
+  # par run_reconfort_async() : start avant l'appel n\u00e9meton, phase \u00e0
+  # chaque nouvelle \u00e9tape (de-dup via .build_reconfort_progress_callback),
+  # complete/error en sortie.
+  monitoring_ntfy_reconfort_start = list(
+    fr = "Diagnostic RECONFORT d\u00e9marr\u00e9 (zone %s).",
+    en = "RECONFORT diagnosis started (zone %s)."
+  ),
+  monitoring_ntfy_reconfort_phase = list(
+    fr = "\u00c9tape en cours : %s",
+    en = "Current step: %s"
+  ),
+  monitoring_ntfy_reconfort_complete = list(
+    fr = "Diagnostic RECONFORT termin\u00e9 : %d alerte(s) en %s.",
+    en = "RECONFORT diagnosis complete: %d alert(s) in %s."
+  ),
+  monitoring_ntfy_reconfort_error = list(
+    fr = "\u00c9chec du diagnostic RECONFORT : %s",
+    en = "RECONFORT diagnosis failed: %s"
   ),
 
   # v0.42.1 \u2014 ntfy push messages for FAST ingestion (sym\u00e9trique avec

@@ -1,3 +1,19 @@
+# nemetonshiny 0.91.15 (2026-06-26)
+
+### Added — Carte FORDEAD : slider temporel cumulatif (couche sévérité)
+
+La Carte FORDEAD dispose désormais d'un sélecteur de date (couche sévérité),
+analogue conceptuel au slider de date de la Carte FAST. À la date choisie,
+seuls les pixels dont la **1ère détection** est antérieure ou égale sont
+affichés → on voit la **progression du dépérissement** dans le temps. Le
+domaine du slider (étendue des dates de détection) et le filtrage sont
+dérivés de la couche « date de 1ère détection » du run
+(`nemeton::read_fordead_layer("first_anomaly")`) ; aucun nouveau produit
+cœur requis. Le slider n'apparaît que pour la couche sévérité ; les autres
+couches (résumés non temporels) ne sont pas filtrées. Mise à jour du raster
+via `leafletProxy` (pas de re-render, zoom/fond/clic-pixel préservés).
+Nouvelle clé i18n `monitoring_fordead_date_label`.
+
 # nemetonshiny 0.91.14 (2026-06-26)
 
 ### Changed — RECONFORT : sous-onglet renommé « Alertes RECONFORT »

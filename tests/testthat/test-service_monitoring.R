@@ -224,6 +224,29 @@ test_that(".build_fordead_progress_callback tolerates a NULL progress path", {
   expect_silent(cb(list(current = "fordead:complete")))
 })
 
+test_that(".build_reconfort_progress_callback writes the JSON progress file", {
+  withr::with_tempdir({
+    ppath <- file.path(getwd(), "reconfort_progress.json")
+    cb <- nemetonshiny:::.build_reconfort_progress_callback(
+      ppath, NULL, get_i18n("fr"))
+    expect_true(is.function(cb))
+    cb(list(current = "reconfort:phase", phase_name = "mapprod",
+            completed = 6L, total = 10L))
+    expect_true(file.exists(ppath))
+    ev <- jsonlite::fromJSON(readLines(ppath, warn = FALSE))
+    expect_equal(ev$current, "reconfort:phase")
+    expect_equal(ev$phase_name, "mapprod")
+  })
+})
+
+test_that(".build_reconfort_progress_callback tolerates a NULL progress path", {
+  cb <- nemetonshiny:::.build_reconfort_progress_callback(
+    NULL, NULL, get_i18n("fr"))
+  # ntfy = NULL → phase push is a silent no-op
+  expect_silent(cb(list(current = "reconfort:phase", phase_name = "ingest")))
+  expect_silent(cb(list(current = "reconfort:complete")))
+})
+
 
 # ---- FAST ingestion progress callback (v0.42.1) ----------------------
 
