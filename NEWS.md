@@ -1,5 +1,13 @@
 # nemetonshiny 0.91.13.9001 (dev)
 
+### Changed — RECONFORT : sous-onglet renommé « Alertes RECONFORT »
+
+Le sous-onglet « Carte RECONFORT » est renommé **« Alertes RECONFORT »**
+pour la symétrie d'UI avec « Alertes FAST » et « Alertes FORDEAD ». Il
+affichait déjà les clusters d'alertes vectorielles (centroïdes colorés par
+classe 2/3) + le diagnostic pixel CRSWIR/CRre au clic ; seul le libellé
+change (nom de clé i18n conservé, legacy).
+
 ### Fixed — Alertes FAST : vert « zone saine » + « calcul en cours » simultanés à l'ouverture
 
 À l'ouverture de l'onglet Suivi sanitaire, on voyait en même temps le
