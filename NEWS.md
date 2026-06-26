@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.14.9001 (dev)
+# nemetonshiny 0.91.15 (2026-06-26)
 
 ### Added — Carte FORDEAD : slider temporel cumulatif (couche sévérité)
 
