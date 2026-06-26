@@ -722,9 +722,25 @@ run_reconfort_async <- function() {
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
-      # Pure file writer the parent's reactivePoll tails (atomic .json +
-      # .ndjson). No ntfy variant for RECONFORT (kept minimal).
-      progress_cb <- .build_progress_writer(progress_path)
+      # ntfy push channel — resolved worker-side (env vars replayed
+      # above). NULL when NEMETON_NTFY_TOPIC is unset → every
+      # `.ntfy_send()` below is a silent no-op. Symétrique avec FORDEAD.
+      ntfy      <- .ntfy_config()
+      i18n      <- get_i18n(lang %||% "fr")
+      zone_name <- .resolve_zone_name(con, zone_id)
+
+      # Composite progress callback: the file writer the parent's
+      # reactivePoll tails, PLUS a worker-side ntfy push on each new
+      # RECONFORT phase (de-duplicated, one per phase name).
+      progress_cb <- .build_reconfort_progress_callback(progress_path,
+                                                        ntfy, i18n)
+
+      .ntfy_send(
+        ntfy,
+        sprintf(i18n$t("monitoring_ntfy_reconfort_start"), zone_name),
+        tags  = "deciduous_tree",
+        title = "Nemeton RECONFORT"
+      )
 
       if (!is.null(output_dir) && nzchar(output_dir) && !dir.exists(output_dir)) {
         tryCatch(
@@ -733,14 +749,36 @@ run_reconfort_async <- function() {
         )
       }
 
-      nemeton::run_reconfort_dieback(
-        con               = con,
-        zone_id           = zone_id,
-        cache_dir         = cache_dir,
-        s2_year           = s2_year,
-        output_dir        = output_dir,
-        progress_callback = progress_cb
+      result <- tryCatch(
+        nemeton::run_reconfort_dieback(
+          con               = con,
+          zone_id           = zone_id,
+          cache_dir         = cache_dir,
+          s2_year           = s2_year,
+          output_dir        = output_dir,
+          progress_callback = progress_cb
+        ),
+        error = function(e) {
+          .ntfy_send(
+            ntfy,
+            sprintf(i18n$t("monitoring_ntfy_reconfort_error"),
+                    conditionMessage(e)),
+            priority = "high", tags = "rotating_light",
+            title    = "Nemeton RECONFORT"
+          )
+          stop(e)
+        }
       )
+
+      .ntfy_send(
+        ntfy,
+        sprintf(i18n$t("monitoring_ntfy_reconfort_complete"),
+                as.integer(result$n_alerts %||% 0L),
+                .format_duration_human(result$elapsed_sec %||% NA_real_)),
+        tags  = "white_check_mark",
+        title = "Nemeton RECONFORT"
+      )
+      result
     }, seed = TRUE)
   })
 }
@@ -902,6 +940,47 @@ run_reconfort_async <- function() {
                   .fordead_phase_label(phase_name, i18n)),
           priority = "low", tags = "hourglass_flowing_sand",
           title    = "Nemeton FORDEAD"
+        )
+      }
+    }
+    invisible(NULL)
+  }
+}
+
+
+#' Composite progress callback for RECONFORT (file writer + ntfy phase push)
+#'
+#' Mirror of [.build_fordead_progress_callback()] for the RECONFORT event
+#' stream (`current = "reconfort:phase"` with `phase_name`). Writes the
+#' progress file the parent's reactivePoll tails AND pushes one ntfy
+#' message per distinct phase (de-duplicated via `last_phase`, so a
+#' 10-phase run yields 10 notifications, not hundreds). `ntfy` may be
+#' `NULL` (then every `.ntfy_send()` is a silent no-op).
+#'
+#' @param progress_path JSON file the worker writes to.
+#' @param ntfy ntfy config from [.ntfy_config()], or `NULL`.
+#' @param i18n An i18n object from [get_i18n()].
+#' @return A function of one `event` list.
+#' @noRd
+.build_reconfort_progress_callback <- function(progress_path, ntfy, i18n) {
+  file_cb <- .build_progress_writer(progress_path)
+  state   <- new.env(parent = emptyenv())
+  state$last_phase <- ""
+  function(event) {
+    if (!is.null(file_cb)) {
+      tryCatch(file_cb(event), error = function(e) invisible(NULL))
+    }
+    current <- as.character(event$current %||% "")
+    if (identical(current, "reconfort:phase")) {
+      phase_name <- as.character(event$phase_name %||% "")
+      if (nzchar(phase_name) && !identical(phase_name, state$last_phase)) {
+        state$last_phase <- phase_name
+        .ntfy_send(
+          ntfy,
+          sprintf(i18n$t("monitoring_ntfy_reconfort_phase"),
+                  .reconfort_phase_label(phase_name, i18n)),
+          priority = "low", tags = "hourglass_flowing_sand",
+          title    = "Nemeton RECONFORT"
         )
       }
     }
