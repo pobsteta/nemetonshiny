@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.13.9001 (dev)
+# nemetonshiny 0.91.14 (2026-06-26)
 
 ### Changed — RECONFORT : sous-onglet renommé « Alertes RECONFORT »
 
