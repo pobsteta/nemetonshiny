@@ -2595,6 +2595,10 @@ TRANSLATIONS <- list(
     fr = "Couche",
     en = "Layer"
   ),
+  monitoring_fordead_date_label = list(
+    fr = "Détecté jusqu'au",
+    en = "Detected up to"
+  ),
   monitoring_fordead_layer_severity = list(
     fr = "Sévérité (0-4)",
     en = "Severity (0-4)"

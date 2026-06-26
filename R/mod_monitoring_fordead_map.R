@@ -200,6 +200,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
                                               refresh_r = shiny::reactive(0L),
                                               opacity_r = shiny::reactive(0.75),
                                               layer_r   = shiny::reactive("severity"),
+                                              date_r    = shiny::reactive(NULL),
                                               con_provider = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
 
@@ -309,6 +310,68 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       r
     })
 
+    # Couche « date de 1re anomalie » (jours depuis 1970) lue UNE fois par
+    # zone (déps zone/refresh, PAS la date ni la couche affichée). Sert (a)
+    # au domaine du slider temporel, (b) au filtrage cumulatif de la
+    # sévérité. NULL si le bundle ne contient pas la couche (anciens runs).
+    first_anomaly_r <- shiny::reactive({
+      refresh_r()
+      zone <- zone_id_r()
+      if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      cd <- file.path(proj$path, "cache", "layers", "fordead")
+      if (!dir.exists(cd)) return(NULL)
+      own_con <- is.null(con_provider)
+      con <- if (own_con)
+        get_monitoring_db_connection(project = proj, read_only = TRUE)
+      else con_provider()
+      if (is.null(con)) return(NULL)
+      if (own_con) on.exit(close_monitoring_db_connection(con), add = TRUE)
+      id_tot <- .fordead_tot_id(con, proj, zone)
+      tryCatch(
+        nemeton::read_fordead_layer(con, zone_id = id_tot,
+                                    layer = "first_anomaly",
+                                    run_id = NULL, cache_dir = cd),
+        error = function(e) NULL)
+    })
+
+    # Domaine temporel du slider : étendue des dates de 1re détection.
+    date_domain_r <- shiny::reactive({
+      fa <- first_anomaly_r()
+      if (is.null(fa)) return(NULL)
+      rng <- suppressWarnings(range(terra::values(fa, mat = FALSE),
+                                    na.rm = TRUE))
+      if (length(rng) != 2L || any(!is.finite(rng))) return(NULL)
+      as.Date(rng, origin = "1970-01-01")
+    })
+
+    # Raster effectivement DESSINÉ sur la Carte FORDEAD. Pour la couche
+    # sévérité, filtrage cumulatif par la date du slider : seuls les pixels
+    # dont la 1re détection <= date choisie restent visibles (progression
+    # du dépérissement dans le temps — parité conceptuelle avec le slider
+    # de date de la Carte FAST). Les autres couches (résumés non temporels)
+    # ne sont pas filtrées.
+    display_r <- shiny::reactive({
+      r <- mask_r()
+      if (is.null(r)) return(NULL)
+      if (!identical(layer_r() %||% "severity", "severity")) return(r)
+      sel_date <- date_r()
+      # Pas de date sélectionnée (slider absent / non encore rendu) → on
+      # affiche la sévérité complète SANS lire `first_anomaly` (évite une
+      # lecture disque inutile).
+      if (is.null(sel_date)) return(r)
+      fa <- first_anomaly_r()
+      if (is.null(fa)) return(r)
+      tnum <- suppressWarnings(as.numeric(as.Date(sel_date)))
+      if (!is.finite(tnum)) return(r)
+      dom <- date_domain_r()
+      # Slider au maximum → aucun filtrage (affiche tout).
+      if (!is.null(dom) && tnum >= as.numeric(dom[2])) return(r)
+      tryCatch(terra::ifel(is.na(fa) | fa > tnum, NA, r),
+               error = function(e) r)
+    })
+
     # ----- Overlay : états placeholder / zone saine / indisponible -------
     # Rendu PAR-DESSUS la carte (jamais à la place : le `leafletOutput` vit
     # en UI statique pour préserver le binding `input$map_click`). Retourne
@@ -385,7 +448,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
     output$map <- leaflet::renderLeaflet({
       proj     <- app_state$current_project   # SEUL dep réactif
       ugf_4326 <- .ugf_for_overlay(proj)
-      r        <- shiny::isolate(mask_r())
+      r        <- shiny::isolate(display_r())  # raster filtré par la date
       i18n     <- shiny::isolate(i18n_r())
       op       <- as.numeric(shiny::isolate(opacity_r()) %||% 0.75)
       if (!is.finite(op)) op <- 0.75
@@ -433,8 +496,10 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
     # zoom et le fond (OSM/Satellite) sont préservés. Dépend de la couche,
     # du masque, de l'opacité et de la langue → redessine le seul group
     # "Alertes" + la légende (layerId stable) sans reconstruire la carte.
+    # `display_r()` (et non `mask_r()`) → le déplacement du slider de date
+    # redessine le raster filtré via leafletProxy, sans re-render complet.
     shiny::observe({
-      r    <- mask_r()
+      r    <- display_r()
       lyr  <- layer_r() %||% "severity"
       i18n <- i18n_r()
       op   <- as.numeric(opacity_r() %||% 0.75)
@@ -785,6 +850,6 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
 
     shiny::outputOptions(output, "map", suspendWhenHidden = FALSE)
 
-    invisible(list(mask = mask_r))
+    invisible(list(mask = mask_r, date_domain = date_domain_r))
   })
 }
