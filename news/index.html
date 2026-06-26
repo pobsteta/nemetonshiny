@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.14.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.15" id="nemetonshiny-09115-2026-06-26">nemetonshiny 0.91.15 (2026-06-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09115-2026-06-26"></a></h2>
+<div class="section level4">
+<h4 id="added--carte-fordead--slider-temporel-cumulatif-couche-sévérité-0-91-15">Added — Carte FORDEAD : slider temporel cumulatif (couche sévérité)<a class="anchor" aria-label="anchor" href="#added--carte-fordead--slider-temporel-cumulatif-couche-s%C3%A9v%C3%A9rit%C3%A9-0-91-15"></a></h4>
+<p>La Carte FORDEAD dispose désormais d’un sélecteur de date (couche sévérité), analogue conceptuel au slider de date de la Carte FAST. À la date choisie, seuls les pixels dont la <strong>1ère détection</strong> est antérieure ou égale sont affichés → on voit la <strong>progression du dépérissement</strong> dans le temps. Le domaine du slider (étendue des dates de détection) et le filtrage sont dérivés de la couche « date de 1ère détection » du run (<code>nemeton::read_fordead_layer("first_anomaly")</code>) ; aucun nouveau produit cœur requis. Le slider n’apparaît que pour la couche sévérité ; les autres couches (résumés non temporels) ne sont pas filtrées. Mise à jour du raster via <code>leafletProxy</code> (pas de re-render, zoom/fond/clic-pixel préservés). Nouvelle clé i18n <code>monitoring_fordead_date_label</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.14" id="nemetonshiny-09114-2026-06-26">nemetonshiny 0.91.14 (2026-06-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09114-2026-06-26"></a></h2>
 <div class="section level4">
