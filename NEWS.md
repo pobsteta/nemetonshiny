@@ -14,6 +14,15 @@ couches (résumés non temporels) ne sont pas filtrées. Mise à jour du raster
 via `leafletProxy` (pas de re-render, zoom/fond/clic-pixel préservés).
 Nouvelle clé i18n `monitoring_fordead_date_label`.
 
+### Added — RECONFORT : notifications ntfy (miroir de FORDEAD)
+
+`run_reconfort_async()` pousse désormais des notifications ntfy comme
+FORDEAD : start (zone) / phase (1 notif dédupliquée par étape) / error /
+complete (n_alertes + durée), via un nouveau
+`.build_reconfort_progress_callback()`. Opt-in identique (no-op si
+`NEMETON_NTFY_TOPIC` absent). 4 clés i18n
+`monitoring_ntfy_reconfort_{start,phase,complete,error}`.
+
 # nemetonshiny 0.91.14 (2026-06-26)
 
 ### Changed — RECONFORT : sous-onglet renommé « Alertes RECONFORT »
