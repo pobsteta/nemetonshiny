@@ -1,5 +1,27 @@
 # Changelog
 
+## nemetonshiny 0.91.14 (2026-06-26)
+
+#### Changed — RECONFORT : sous-onglet renommé « Alertes RECONFORT »
+
+Le sous-onglet « Carte RECONFORT » est renommé **« Alertes RECONFORT »**
+pour la symétrie d’UI avec « Alertes FAST » et « Alertes FORDEAD ». Il
+affichait déjà les clusters d’alertes vectorielles (centroïdes colorés
+par classe 2/3) + le diagnostic pixel CRSWIR/CRre au clic ; seul le
+libellé change (nom de clé i18n conservé, legacy).
+
+#### Fixed — Alertes FAST : vert « zone saine » + « calcul en cours » simultanés à l’ouverture
+
+À l’ouverture de l’onglet Suivi sanitaire, on voyait en même temps le
+bandeau vert « Aucune alerte FAST » **et** la notification « Calcul du
+raster d’alerte en cours… » — incohérent. Cause : le bandeau
+(`suspendWhenHidden = FALSE`) traitait `raster_rv` NULL (raster **pas
+encore calculé**) comme un raster vide → vert affiché prématurément (y
+compris pendant qu’on était encore sur un autre onglet). Désormais le
+vert « zone saine » n’apparaît que pour un raster **réellement calculé
+et vide** ; tant que rien n’est calculé, le bandeau reste vide et la
+notification (ou le bandeau « calcul en cours ») prend le relais.
+
 ## nemetonshiny 0.91.13 (2026-06-24)
 
 #### Changed — RECONFORT : messages de durée alignés sur la chaîne AOI-scoped
@@ -7433,8 +7455,7 @@ référencée nulle part.
 
 #### chore(deps) — bump épingle nemeton à v0.22.1
 
-L’installation de `nemetonshiny`
-([`remotes::install_github`](https://remotes.r-lib.org/reference/install_github.html),
+L’installation de `nemetonshiny` (`remotes::install_github`,
 [`pak::pkg_install`](https://pak.r-lib.org/reference/pkg_install.html),
 `devtools::install`) faisait **redescendre** `nemeton` à la version
 `0.22.0`, même quand une version plus récente était déjà installée

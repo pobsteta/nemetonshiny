@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.13.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.14</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.14" id="nemetonshiny-09114-2026-06-26">nemetonshiny 0.91.14 (2026-06-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09114-2026-06-26"></a></h2>
+<div class="section level4">
+<h4 id="changed--reconfort--sous-onglet-renommé--alertes-reconfort--0-91-14">Changed — RECONFORT : sous-onglet renommé « Alertes RECONFORT »<a class="anchor" aria-label="anchor" href="#changed--reconfort--sous-onglet-renomm%C3%A9--alertes-reconfort--0-91-14"></a></h4>
+<p>Le sous-onglet « Carte RECONFORT » est renommé <strong>« Alertes RECONFORT »</strong> pour la symétrie d’UI avec « Alertes FAST » et « Alertes FORDEAD ». Il affichait déjà les clusters d’alertes vectorielles (centroïdes colorés par classe 2/3) + le diagnostic pixel CRSWIR/CRre au clic ; seul le libellé change (nom de clé i18n conservé, legacy).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--alertes-fast--vert--zone-saine----calcul-en-cours--simultanés-à-louverture-0-91-14">Fixed — Alertes FAST : vert « zone saine » + « calcul en cours » simultanés à l’ouverture<a class="anchor" aria-label="anchor" href="#fixed--alertes-fast--vert--zone-saine----calcul-en-cours--simultan%C3%A9s-%C3%A0-louverture-0-91-14"></a></h4>
+<p>À l’ouverture de l’onglet Suivi sanitaire, on voyait en même temps le bandeau vert « Aucune alerte FAST » <strong>et</strong> la notification « Calcul du raster d’alerte en cours… » — incohérent. Cause : le bandeau (<code>suspendWhenHidden = FALSE</code>) traitait <code>raster_rv</code> NULL (raster <strong>pas encore calculé</strong>) comme un raster vide → vert affiché prématurément (y compris pendant qu’on était encore sur un autre onglet). Désormais le vert « zone saine » n’apparaît que pour un raster <strong>réellement calculé et vide</strong> ; tant que rien n’est calculé, le bandeau reste vide et la notification (ou le bandeau « calcul en cours ») prend le relais.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.13" id="nemetonshiny-09113-2026-06-24">nemetonshiny 0.91.13 (2026-06-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09113-2026-06-24"></a></h2>
 <div class="section level4">
@@ -3728,7 +3739,7 @@ le tableau remplacé en a 337</code></pre>
 <h2 class="pkg-version" data-toc-text="0.28.3" id="nemetonshiny-0283-2026-05-15">nemetonshiny 0.28.3 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0283-2026-05-15"></a></h2>
 <div class="section level4">
 <h4 id="choredeps--bump-épingle-nemeton-à-v0221-0-28-3">chore(deps) — bump épingle nemeton à v0.22.1<a class="anchor" aria-label="anchor" href="#choredeps--bump-%C3%A9pingle-nemeton-%C3%A0-v0221-0-28-3"></a></h4>
-<p>L’installation de <code>nemetonshiny</code> (<code><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">remotes::install_github</a></code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) faisait <strong>redescendre</strong> <code>nemeton</code> à la version <code>0.22.0</code>, même quand une version plus récente était déjà installée localement.</p>
+<p>L’installation de <code>nemetonshiny</code> (<code>remotes::install_github</code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) faisait <strong>redescendre</strong> <code>nemeton</code> à la version <code>0.22.0</code>, même quand une version plus récente était déjà installée localement.</p>
 <p>Cause : le champ <code>Remotes: pobsteta/nemeton@v0.22.0</code> du <code>DESCRIPTION</code> épingle nemeton à exactement ce tag. L’épingle prime sur la borne souple <code>Imports: nemeton (&gt;= 0.22.0)</code>, donc le résolveur de dépendances downgrade systématiquement.</p>
 <p>Correctif : bump de l’épingle vers <code>pobsteta/nemeton@v0.22.1</code> (dernier tag stable côté cœur). Aucun changement de code. Réflexe à adopter pour chaque release <code>nemeton</code> : bumper l’épingle ici dans la foulée (ordre cœur → app de CLAUDE.md).</p>
 </div>
