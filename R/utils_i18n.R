@@ -3023,9 +3023,12 @@ TRANSLATIONS <- list(
     fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Quelques minutes, opt-in (conda IOTA\u00b2/GEODES).",
     en = "Detect broadleaf dieback (oak, chestnut) using RECONFORT (CRSWIR + CRre). A few minutes, opt-in (conda IOTA\u00b2/GEODES)."
   ),
+  # Libellé relabellisé « Alertes RECONFORT » (l'onglet affiche les
+  # clusters d'alertes vectorielles + clic-pixel ; nom de clé conservé,
+  # legacy). Symétrie avec « Alertes FAST » / « Alertes FORDEAD ».
   monitoring_subtab_pixel_map_reconfort = list(
-    fr = "Carte RECONFORT",
-    en = "RECONFORT map"
+    fr = "Alertes RECONFORT",
+    en = "RECONFORT alerts"
   ),
   monitoring_reconfort_outside_validity = list(
     fr = "Zone hors domaine de calibration RECONFORT \u2014 r\u00e9sultats indicatifs (avertissement, non bloquant).",
