@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.16.9001 (dev)
+# nemetonshiny 0.91.17 (2026-06-27)
 
 ### Added — Carte FORDEAD : bouton de défilement automatique du slider de date
 
