@@ -1,5 +1,19 @@
 # Changelog
 
+## nemetonshiny 0.91.17 (2026-06-27)
+
+#### Added — Carte FORDEAD : bouton de défilement automatique du slider de date
+
+- Le slider temporel de la Carte FORDEAD porte désormais le bouton
+  play/pause natif de défilement automatique (parité avec la Carte FAST)
+  : pas de 5 jours aligné sur la cadence Sentinel-2, lecture en boucle
+  simple. Chaque cran filtre les pixels par date (`display_r`), donnant
+  l’animation cumulative de la progression du dépérissement.
+- Le slider (avec son bouton de défilement) s’affiche et applique le
+  filtrage cumulatif non seulement pour la couche « sévérité » mais
+  aussi pour la couche « Date de 1ère détection » (`first_anomaly`) :
+  les pixels apparaissent dans l’ordre chronologique de leur détection.
+
 ## nemetonshiny 0.91.16 (2026-06-27)
 
 #### Fixed — Carte FORDEAD : `Error: impossible de trouver la fonction "ns"`
