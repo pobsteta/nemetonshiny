@@ -518,6 +518,11 @@ test_that("app_server passes app_state to modules", {
   skip_if_not_installed("future")
 
   received_app_state <- NULL
+  # On capture l'état réactif PENDANT que la session testServer est vivante :
+  # `received_app_state$language` lu après la sortie du bloc lèverait un
+  # `destroyedReactiveError` (la session du module est détruite à la fin de
+  # `testServer`). On fige donc les valeurs dans le bloc, puis on assert dehors.
+  captured <- NULL
 
   with_mocked_bindings(
     get_app_options = function() list(language = "en", project_dir = tempdir()),
@@ -539,13 +544,17 @@ test_that("app_server passes app_state to modules", {
     {
       shiny::testServer(nemetonshiny:::app_server, {
         session$flushReact()
+        captured <<- list(
+          is_rv    = shiny::is.reactivevalues(received_app_state),
+          language = shiny::isolate(received_app_state$language)
+        )
       })
     }
   )
 
-  expect_true(shiny::is.reactivevalues(received_app_state))
+  expect_true(captured$is_rv)
   # Verify the language was passed correctly from options
-  expect_equal(shiny::isolate(received_app_state$language), "en")
+  expect_equal(captured$language, "en")
 })
 
 # ============================================================
