@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.15.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.16</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,28 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.91.16" id="nemetonshiny-09116-2026-06-27">nemetonshiny 0.91.16 (2026-06-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09116-2026-06-27"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-fordead--error-impossible-de-trouver-la-fonction-ns-0-91-16">Fixed — Carte FORDEAD : <code>Error: impossible de trouver la fonction "ns"</code>
+<a class="anchor" aria-label="anchor" href="#fixed--carte-fordead--error-impossible-de-trouver-la-fonction-ns-0-91-16"></a></h4>
+<p>Le slider temporel de la Carte FORDEAD (v0.91.15) plantait avec <code>Error: impossible de trouver la fonction "ns"</code> dès qu’un run exposait la couche <code>first_anomaly</code> (domaine de dates valide) : le <code>renderUI</code> de <code>output$fordead_date_slider</code> appelait <code>ns(...)</code> sans <code>ns &lt;- session$ns</code> local (contrairement aux autres outputs du module). Ajout de la définition manquante.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--carte-fast--texte-daide-pixel--suppression-du-bandeau-bleu-redondant-0-91-16">Changed — Carte FAST : texte d’aide pixel + suppression du bandeau bleu redondant<a class="anchor" aria-label="anchor" href="#changed--carte-fast--texte-daide-pixel--suppression-du-bandeau-bleu-redondant-0-91-16"></a></h4>
+<ul><li>Le texte d’aide du pixel map indiquait <code>(NDVI + NBR)</code> et mentionnait un clic « sur une placette » qui n’existe plus → corrigé en <code>(NDMI + NDVI + NBR)</code> et phrase placette retirée (<code>monitoring_pixel_map_click_hint</code>).</li>
+<li>Le bandeau bleu in-panel « Calcul du raster d’alerte en cours… » sous <em>Alertes FAST</em> faisait doublon avec la notification bas-droite unique (ci-dessous). Pendant le calcul, le bandeau ne rend plus rien (il continue d’empêcher l’affichage prématuré du vert « zone saine ») ; le retour visuel est porté uniquement par la notification agrégée.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--suivi-sanitaire--indicateur--calcul-en-cours--unique-à-larrivée-0-91-16">Changed — Suivi sanitaire : indicateur « calcul en cours » unique à l’arrivée<a class="anchor" aria-label="anchor" href="#changed--suivi-sanitaire--indicateur--calcul-en-cours--unique-%C3%A0-larriv%C3%A9e-0-91-16"></a></h4>
+<p>À l’ouverture de l’onglet <strong>Suivi sanitaire</strong>, une notification bas-droite <strong>« Calcul en cours… »</strong> s’affiche désormais immédiatement et reste visible tant qu’un des deux calculs lourds tourne — supprimant la fenêtre où l’UI était figée sans aucun retour visuel (et où l’on pouvait cliquer dans le vide). Les deux calculs concernés :</p>
+<ul><li>
+<strong>raster d’alerte FAST</strong> (<code>mod_monitoring_fast_alerts</code>) ;</li>
+<li>
+<strong><code><a href="https://pobsteta.github.io/nemeton/reference/build_index_stack.html" class="external-link">nemeton::build_index_stack</a></code></strong> du pixel map (<code>mod_monitoring_pixel_map</code>), qui était jusqu’ici synchrone et bloquait R plusieurs secondes à froid sans feedback. Il est désormais <strong>différé</strong> (<code>onFlushed</code>) et stocké dans un <code>reactiveVal</code>, ce qui rend son drapeau <code>loading</code> observable d’un cycle à l’autre (overlay carte + indicateur agrégé).</li>
+</ul><p>L’indicateur est <strong>centralisé</strong> dans <code>mod_monitoring</code> (un seul <code>id</code>, donc une seule notif, retirée dès que tout est calculé), à partir des états <code>computing</code> / <code>loading</code> exportés par les deux sous-modules. La notification bas-droite <em>inline</em> de <code>mod_monitoring_fast_alerts</code> est retirée au profit de cet agrégateur (cf. <em>Carte FAST</em> ci-dessus pour le bandeau in-panel). Nouvelle clé i18n <code>monitoring_computing</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.15" id="nemetonshiny-09115-2026-06-26">nemetonshiny 0.91.15 (2026-06-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09115-2026-06-26"></a></h2>
 <div class="section level4">

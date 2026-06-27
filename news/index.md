@@ -1,5 +1,51 @@
 # Changelog
 
+## nemetonshiny 0.91.16 (2026-06-27)
+
+#### Fixed — Carte FORDEAD : `Error: impossible de trouver la fonction "ns"`
+
+Le slider temporel de la Carte FORDEAD (v0.91.15) plantait avec
+`Error: impossible de trouver la fonction "ns"` dès qu’un run exposait
+la couche `first_anomaly` (domaine de dates valide) : le `renderUI` de
+`output$fordead_date_slider` appelait `ns(...)` sans `ns <- session$ns`
+local (contrairement aux autres outputs du module). Ajout de la
+définition manquante.
+
+#### Changed — Carte FAST : texte d’aide pixel + suppression du bandeau bleu redondant
+
+- Le texte d’aide du pixel map indiquait `(NDVI + NBR)` et mentionnait
+  un clic « sur une placette » qui n’existe plus → corrigé en
+  `(NDMI + NDVI + NBR)` et phrase placette retirée
+  (`monitoring_pixel_map_click_hint`).
+- Le bandeau bleu in-panel « Calcul du raster d’alerte en cours… » sous
+  *Alertes FAST* faisait doublon avec la notification bas-droite unique
+  (ci-dessous). Pendant le calcul, le bandeau ne rend plus rien (il
+  continue d’empêcher l’affichage prématuré du vert « zone saine ») ; le
+  retour visuel est porté uniquement par la notification agrégée.
+
+#### Changed — Suivi sanitaire : indicateur « calcul en cours » unique à l’arrivée
+
+À l’ouverture de l’onglet **Suivi sanitaire**, une notification
+bas-droite **« Calcul en cours… »** s’affiche désormais immédiatement et
+reste visible tant qu’un des deux calculs lourds tourne — supprimant la
+fenêtre où l’UI était figée sans aucun retour visuel (et où l’on pouvait
+cliquer dans le vide). Les deux calculs concernés :
+
+- **raster d’alerte FAST** (`mod_monitoring_fast_alerts`) ;
+- **[`nemeton::build_index_stack`](https://pobsteta.github.io/nemeton/reference/build_index_stack.html)**
+  du pixel map (`mod_monitoring_pixel_map`), qui était jusqu’ici
+  synchrone et bloquait R plusieurs secondes à froid sans feedback. Il
+  est désormais **différé** (`onFlushed`) et stocké dans un
+  `reactiveVal`, ce qui rend son drapeau `loading` observable d’un cycle
+  à l’autre (overlay carte + indicateur agrégé).
+
+L’indicateur est **centralisé** dans `mod_monitoring` (un seul `id`,
+donc une seule notif, retirée dès que tout est calculé), à partir des
+états `computing` / `loading` exportés par les deux sous-modules. La
+notification bas-droite *inline* de `mod_monitoring_fast_alerts` est
+retirée au profit de cet agrégateur (cf. *Carte FAST* ci-dessus pour le
+bandeau in-panel). Nouvelle clé i18n `monitoring_computing`.
+
 ## nemetonshiny 0.91.15 (2026-06-26)
 
 #### Added — Carte FORDEAD : slider temporel cumulatif (couche sévérité)

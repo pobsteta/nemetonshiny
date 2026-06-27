@@ -12,6 +12,26 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.91.16\] - 2026-06-27
+
+### Changed
+
+- Suivi sanitaire — indicateur unique « Calcul en cours… » (notification
+  bas-droite) affiché dès l’arrivée sur l’onglet et maintenu tant qu’un
+  calcul lourd tourne (raster d’alerte FAST + `build_index_stack` du
+  pixel map). `build_index_stack` rendu différé (`onFlushed`) pour
+  rendre son drapeau `loading` observable ; agrégation centralisée dans
+  `mod_monitoring`. Nouvelle clé i18n `monitoring_computing`.
+- Carte FAST — texte d’aide pixel corrigé en `(NDMI + NDVI + NBR)` et
+  phrase « placette » obsolète retirée ; bandeau bleu in-panel « calcul
+  en cours » supprimé (doublon avec la notification unique).
+
+### Fixed
+
+- Carte FORDEAD — `Error: impossible de trouver la fonction "ns"` du
+  slider temporel (`renderUI` `fordead_date_slider` sans
+  `ns <- session$ns` local).
+
 ## \[0.89.1\] - 2026-06-18
 
 ### Added
