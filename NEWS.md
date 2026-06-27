@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.15.9002 (dev)
+# nemetonshiny 0.91.16 (2026-06-27)
 
 ### Fixed — Carte FORDEAD : `Error: impossible de trouver la fonction "ns"`
 
@@ -40,7 +40,7 @@ L'indicateur est **centralisé** dans `mod_monitoring` (un seul `id`, donc
 une seule notif, retirée dès que tout est calculé), à partir des états
 `computing` / `loading` exportés par les deux sous-modules. La notification
 bas-droite *inline* de `mod_monitoring_fast_alerts` est retirée au profit de
-cet agrégateur (le bandeau in-panel « calcul en cours » est conservé).
+cet agrégateur (cf. *Carte FAST* ci-dessus pour le bandeau in-panel).
 Nouvelle clé i18n `monitoring_computing`.
 
 # nemetonshiny 0.91.15 (2026-06-26)
