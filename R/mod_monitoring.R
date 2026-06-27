@@ -3101,6 +3101,30 @@ mod_monitoring_server <- function(id, app_state) {
       refresh_r    = shiny::reactive(fast_reload())
     )
 
+    # v0.91.x — indicateur UNIQUE « calcul en cours » à l'arrivée sur
+    # l'onglet Suivi sanitaire. Les DEUX calculs lourds du Suivi sont
+    # différés (onFlushed) et exposent leur état :
+    #   * raster d'alerte FAST   → fast_alerts_ret$computing()
+    #   * build_index_stack pixel → pixel_map_ret$loading()
+    # Tant que l'un tourne ET que l'onglet Suivi est actif, on affiche une
+    # notification bas-droite ; sinon, à froid, l'utilisateur arrivait sur
+    # une UI figée sans aucun retour visuel et pouvait cliquer dans le vide.
+    # Un seul `id` → une seule notif, retirée dès que tout est calculé.
+    shiny::observe({
+      on_tab <- identical(app_state$active_main_tab, "monitoring")
+      busy   <- isTRUE(fast_alerts_ret$computing()) ||
+                isTRUE(pixel_map_ret$loading())
+      notif_id <- session$ns("monitoring_busy")
+      if (on_tab && busy) {
+        shiny::showNotification(
+          i18n_r()$t("monitoring_computing"),
+          id = notif_id, type = "message", duration = NULL
+        )
+      } else {
+        shiny::removeNotification(notif_id, session = session)
+      }
+    })
+
     # v0.36.0 — Carte FORDEAD sub-tab. nemeton@v0.41.0 ships the mask
     # persist hook, so a completed FORDEAD run drops the categorical
     # 0-4 raster into <project>/cache/layers/fordead/ and the module
@@ -3137,6 +3161,7 @@ mod_monitoring_server <- function(id, app_state) {
     # (affiche toute la sévérité). Rendu nul si la couche n'est pas dans le
     # bundle (anciens runs) → pas de slider.
     output$fordead_date_slider <- shiny::renderUI({
+      ns   <- session$ns
       i18n <- i18n_r()
       dom  <- fordead_map_ret$date_domain()
       if (is.null(dom) || length(dom) != 2L || any(is.na(dom))) return(NULL)

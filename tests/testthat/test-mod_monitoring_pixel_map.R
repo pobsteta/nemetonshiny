@@ -126,6 +126,50 @@ test_that("scenes_df enumerates populated cache dirs, date parsed from scene id"
 })
 
 
+# ---- Server: deferred stack exposes a `loading` flag (v0.91.x) -------
+
+test_that("returned list exposes a loading reactive, FALSE once the stack settled", {
+  skip_if_not_installed("shiny")
+  .skip_if_no_pixel_map()
+
+  # v0.91.x — `build_index_stack` est différé (onFlushed) et l'état est
+  # exposé via `loading` pour l'indicateur agrégé de mod_monitoring. Après
+  # un flush complet (le calcul différé s'exécute et se termine), `loading`
+  # doit être retombé à FALSE et le stack présent.
+  testthat::with_mocked_bindings(
+    build_index_stack = function(cache_dir, scenes_df, index) "STACK_OK",
+    .package = "nemeton",
+    {
+      proj <- list(path = withr::local_tempdir())
+      cd   <- file.path(proj$path, "cache", "layers", "sentinel2")
+      dir.create(cd, recursive = TRUE)
+      sid  <- "S2A_MSIL2A_20250610T103021_T31TGM"
+      dir.create(file.path(cd, sid))
+      file.create(file.path(cd, sid, "B08.tif"))
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_pixel_map_server,
+        args = list(
+          app_state  = shiny::reactiveValues(language = "fr",
+                                             active_main_tab = "monitoring",
+                                             current_project = proj),
+          mode_input = shiny::reactive("quick")
+        ),
+        {
+          session$setInputs(index = "NDVI")
+          session$flushReact()
+          ret <- session$getReturned()
+          expect_true("loading" %in% names(ret))
+          expect_true(is.function(ret$loading))
+          # Calcul différé terminé → plus de « en cours », stack disponible.
+          expect_false(ret$loading())
+          expect_equal(ret$pixel_stack(), "STACK_OK")
+        }
+      )
+    }
+  )
+})
+
+
 # ---- Server: cache_dir resolution ------------------------------------
 
 test_that("cache_dir resolves NULL when no project / no folder", {

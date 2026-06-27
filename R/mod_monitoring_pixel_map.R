@@ -237,35 +237,57 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     last_stack_error <- shiny::reactiveVal(NULL)
 
     # Build the multi-temporal index stack. Heavy compute (reads N
-    # GeoTIFFs from disk + arithmetic), debounced on (cache_dir,
-    # scenes_df, index) — re-runs only when one of those changes.
-    pixel_stack_r <- shiny::reactive({
-      shiny::req(identical(mode_input(), "quick"))
-      # Ne lancer le lourd `build_index_stack` (scan de centaines de scènes
-      # S2, plusieurs secondes à froid) QUE lorsque l'utilisateur est
-      # réellement sur l'onglet Suivi. `date_slider_ui` est marqué
-      # `suspendWhenHidden = FALSE` (v0.46.3, pour que la carte s'affiche au
-      # 1er clic d'onglet) — sans cette garde, l'output calcule cette
-      # reactive à chaque changement de projet, y compris depuis l'Accueil,
-      # bloquant le chargement. `active_main_tab` est exposé par app_server.
-      shiny::req(identical(app_state$active_main_tab, "monitoring"))
-      cd <- cache_dir_r()
-      sdf <- scenes_df_r()
-      if (is.null(cd) || is.null(sdf) || !nrow(sdf)) return(NULL)
+    # GeoTIFFs from disk + arithmetic), re-runs only when one of
+    # (cache_dir, scenes_df, index) changes.
+    #
+    # v0.91.x — le calcul est DIFFÉRÉ via `onFlushed` et stocké dans
+    # `stack_rv` : `build_index_stack` est synchrone et bloque R plusieurs
+    # secondes à froid. En le repoussant après le flush, le flag `loading`
+    # (passé à TRUE AVANT le flush) reste observable d'un cycle à l'autre —
+    # l'overlay « calcul en cours » sur la carte ET l'indicateur agrégé
+    # centralisé dans `mod_monitoring` peuvent donc s'afficher avant que le
+    # scan ne gèle l'UI (sinon `loading` repassait à FALSE dans le même
+    # flush et rien n'était jamais peint). `pixel_stack_r` reste l'interface
+    # publique : un simple lecteur de `stack_rv`.
+    stack_rv      <- shiny::reactiveVal(NULL)
+    pixel_stack_r <- shiny::reactive(stack_rv())
+
+    shiny::observe({
+      # Dépendances : recalcul quand l'un de ces réactifs change.
+      mode_input(); cache_dir_r(); scenes_df_r(); input$index
+      # Ne lancer le lourd `build_index_stack` QUE en mode rapide et
+      # lorsque l'utilisateur est réellement sur l'onglet Suivi (cf.
+      # `date_slider_ui` `suspendWhenHidden = FALSE`, v0.46.3) — sinon le
+      # scan se déclenchait à chaque chargement de projet, y compris depuis
+      # l'Accueil. `active_main_tab` est exposé par app_server.
+      if (!identical(mode_input(), "quick")) return()
+      if (!identical(app_state$active_main_tab, "monitoring")) return()
+      cd  <- shiny::isolate(cache_dir_r())
+      sdf <- shiny::isolate(scenes_df_r())
+      idx <- shiny::isolate(input$index)
+      if (is.null(cd) || is.null(sdf) || !nrow(sdf)) {
+        loading(FALSE)
+        stack_rv(NULL)
+        return()
+      }
+      # Flag AVANT le flush pour que l'overlay / l'indicateur s'affichent ;
+      # le calcul lourd part dans `onFlushed` (après envoi de l'UI).
       loading(TRUE)
-      on.exit(loading(FALSE), add = TRUE)
-      out <- tryCatch(
-        nemeton::build_index_stack(cd, sdf, index = input$index),
-        error = function(e) {
-          msg <- conditionMessage(e)
-          cli::cli_alert_warning(sprintf(
-            "build_index_stack failed: %s", msg))
-          last_stack_error(msg)
-          NULL
-        }
-      )
-      if (!is.null(out)) last_stack_error(NULL)  # clear on success
-      out
+      session$onFlushed(function() {
+        on.exit(loading(FALSE), add = TRUE)
+        out <- tryCatch(
+          nemeton::build_index_stack(cd, sdf, index = idx),
+          error = function(e) {
+            msg <- conditionMessage(e)
+            cli::cli_alert_warning(sprintf(
+              "build_index_stack failed: %s", msg))
+            last_stack_error(msg)
+            NULL
+          }
+        )
+        if (!is.null(out)) last_stack_error(NULL)  # clear on success
+        shiny::withReactiveDomain(session, shiny::isolate(stack_rv(out)))
+      }, once = TRUE)
     })
 
     # Date slider built dynamically from the layer names of the
@@ -284,6 +306,11 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     output$date_slider_ui <- shiny::renderUI({
       ns <- session$ns
       i18n <- i18n_r()
+      # v0.91.x — pendant que le stack se calcule (différé), ne pas afficher
+      # le faux message « pas de cache » : `stack_rv` est encore NULL alors
+      # que le scan tourne. L'overlay carte + l'indicateur bas-droite
+      # couvrent ce laps. On rend un blanc le temps du calcul.
+      if (isTRUE(loading())) return(NULL)
       st <- pixel_stack_r()
       if (is.null(st)) {
         disk_n  <- disk_scenes_count_r()
@@ -1024,7 +1051,10 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     invisible(list(
       pixel_stack    = pixel_stack_r,
       scenes_df      = scenes_df_r,
-      cache_dir      = cache_dir_r
+      cache_dir      = cache_dir_r,
+      # v0.91.x — état « build_index_stack en cours » pour l'indicateur
+      # agrégé centralisé dans `mod_monitoring`.
+      loading        = shiny::reactive(isTRUE(loading()))
     ))
   })
 }
