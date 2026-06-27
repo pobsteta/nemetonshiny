@@ -425,13 +425,16 @@ mod_monitoring_ui <- function(id) {
                   ),
                   class = "mb-2"
                 ),
-                # Slider temporel cumulatif (couche sévérité uniquement) :
-                # affiche les pixels détectés jusqu'à la date choisie
-                # (progression du dépérissement). Domaine rendu côté serveur
-                # à partir de la couche « date de 1re détection » du run.
+                # Slider temporel cumulatif (couches « sévérité » et « date
+                # de 1re détection ») : affiche les pixels détectés jusqu'à
+                # la date choisie (progression du dépérissement). Bouton de
+                # défilement automatique natif (parité Carte FAST). Domaine
+                # rendu côté serveur à partir de la couche « date de 1re
+                # détection » du run.
                 shiny::conditionalPanel(
-                  condition = sprintf("input['%s'] == 'severity'",
-                                      ns("fordead_layer")),
+                  condition = sprintf(
+                    "input['%s'] == 'severity' || input['%s'] == 'first_anomaly'",
+                    ns("fordead_layer"), ns("fordead_layer")),
                   shiny::uiOutput(ns("fordead_date_slider"))
                 ),
                 shiny::sliderInput(
@@ -3169,7 +3172,14 @@ mod_monitoring_server <- function(id, app_state) {
         ns("fordead_date"),
         label = i18n$t("monitoring_fordead_date_label"),
         min = dom[1], max = dom[2], value = dom[2],
-        timeFormat = "%Y-%m-%d", width = "100%"
+        timeFormat = "%Y-%m-%d", width = "100%",
+        # Parité Carte FAST : bouton de défilement automatique sous le
+        # slider (play/pause natif). Pas de 5 jours aligné sur la cadence
+        # Sentinel-2 ; `display_r()` filtre les pixels par date à chaque
+        # cran (progression cumulative du dépérissement dans le temps).
+        step  = 5L,
+        animate = shiny::animationOptions(interval = 800L,
+                                          loop     = FALSE)
       )
     })
 

@@ -346,16 +346,17 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       as.Date(rng, origin = "1970-01-01")
     })
 
-    # Raster effectivement DESSINÉ sur la Carte FORDEAD. Pour la couche
-    # sévérité, filtrage cumulatif par la date du slider : seuls les pixels
-    # dont la 1re détection <= date choisie restent visibles (progression
-    # du dépérissement dans le temps — parité conceptuelle avec le slider
-    # de date de la Carte FAST). Les autres couches (résumés non temporels)
-    # ne sont pas filtrées.
+    # Raster effectivement DESSINÉ sur la Carte FORDEAD. Pour les couches
+    # « sévérité » ET « date de 1re détection », filtrage cumulatif par la
+    # date du slider : seuls les pixels dont la 1re détection <= date choisie
+    # restent visibles (progression du dépérissement dans le temps — parité
+    # conceptuelle avec le slider de date de la Carte FAST). Les autres
+    # couches (résumés non temporels) ne sont pas filtrées.
     display_r <- shiny::reactive({
       r <- mask_r()
       if (is.null(r)) return(NULL)
-      if (!identical(layer_r() %||% "severity", "severity")) return(r)
+      lyr <- layer_r() %||% "severity"
+      if (!lyr %in% c("severity", "first_anomaly")) return(r)
       sel_date <- date_r()
       # Pas de date sélectionnée (slider absent / non encore rendu) → on
       # affiche la sévérité complète SANS lire `first_anomaly` (évite une
