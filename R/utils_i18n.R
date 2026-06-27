@@ -2756,8 +2756,8 @@ TRANSLATIONS <- list(
     en = "Raster opacity"
   ),
   monitoring_pixel_map_click_hint = list(
-    fr = "Clique sur un pixel pour voir sa s\u00e9rie compl\u00e8te (NDVI + NBR). Clique sur une placette pour la s\u00e9rie agr\u00e9g\u00e9e plot.",
-    en = "Click a pixel for its full series (NDVI + NBR). Click a plot marker for the placette-aggregated series."
+    fr = "Clique sur un pixel pour voir sa s\u00e9rie compl\u00e8te (NDMI + NDVI + NBR).",
+    en = "Click a pixel for its full series (NDMI + NDVI + NBR)."
   ),
   monitoring_pixel_map_modal_title_fmt = list(
     fr = "Pixel \u00e0 (lat: %.5f, lon: %.5f)",
@@ -2802,6 +2802,14 @@ TRANSLATIONS <- list(
   monitoring_fast_raster_computing = list(
     fr = "Calcul du raster d'alerte en cours\u2026",
     en = "Computing the alert raster\u2026"
+  ),
+  # Indicateur unique bas-droite affiche des l'arrivee sur l'onglet Suivi
+  # sanitaire, maintenu tant qu'un calcul lourd tourne (raster d'alerte FAST
+  # ou build_index_stack du pixel map). Evite la fenetre sans feedback ou
+  # l'utilisateur pouvait cliquer dans le vide pendant le scan a froid.
+  monitoring_computing = list(
+    fr = "Calcul en cours\u2026",
+    en = "Computing\u2026"
   ),
   # --- Lissage d'affichage de la s\u00e9rie pixel (spec 026) -----------------
   monitoring_pixel_smooth_win_label = list(

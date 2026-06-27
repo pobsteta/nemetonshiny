@@ -513,17 +513,14 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       }
       # Marque l'état « calcul en cours » AVANT le flush, pour que le
       # bandeau n'affiche pas « zone saine » sur le raster pas encore prêt.
+      # v0.91.x — la notification bas-droite n'est plus émise ici : elle est
+      # centralisée dans `mod_monitoring` (un seul indicateur agrégé pour les
+      # DEUX calculs lourds du Suivi), piloté par `computing_rv` exporté en
+      # retour. On conserve uniquement le set/clear de `computing_rv` (bandeau
+      # in-panel + agrégateur parent) et le calcul différé.
       computing_rv(TRUE)
-      notif_id <- session$ns("fast_raster_busy")
-      shiny::showNotification(
-        i18n_r()$t("monitoring_fast_raster_computing"),
-        id = notif_id, type = "message", duration = NULL
-      )
       session$onFlushed(function() {
-        on.exit({
-          shiny::removeNotification(notif_id, session = session)
-          computing_rv(FALSE)
-        }, add = TRUE)
+        on.exit(computing_rv(FALSE), add = TRUE)
         shiny::withReactiveDomain(
           session, shiny::isolate(raster_rv(compute_fast_raster()))
         )
@@ -803,17 +800,15 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
 
     output$banner <- shiny::renderUI({
       i18n <- i18n_r()
-      # Tant que le raster se calcule, on affiche un bandeau « calcul en
-      # cours » plutôt que le vert « zone saine » (qui serait incohérent :
-      # le raster pas encore prêt paraît vide). Une fois le calcul terminé,
-      # `computing_rv` repasse à FALSE et la logique erreur/vide/alertes
-      # ci-dessous prend le relais.
+      # Tant que le raster se calcule, on NE rend RIEN ici (au lieu du vert
+      # « zone saine » qui serait incohérent : le raster pas encore prêt
+      # paraît vide). Le retour visuel « calcul en cours » est porté par la
+      # notification bas-droite unique de `mod_monitoring` — un bandeau bleu
+      # in-panel ferait doublon. Une fois le calcul terminé, `computing_rv`
+      # repasse à FALSE et la logique erreur/vide/alertes ci-dessous prend
+      # le relais.
       if (isTRUE(computing_rv())) {
-        return(htmltools::div(
-          class = "alert alert-info d-flex align-items-center gap-3 m-2 py-2 small",
-          shiny::icon("spinner", class = "fa-spin fs-3 flex-shrink-0"),
-          htmltools::tags$span(i18n$t("monitoring_fast_raster_computing"))
-        ))
+        return(NULL)
       }
       r <- raster_r()
       err <- last_raster_error()
@@ -1004,6 +999,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # validation_sampling serait coincé sur NDVI ou NBR en dur.
     invisible(list(
       raster  = raster_r,
+      # v0.91.x — état « calcul du raster d'alerte en cours » exposé pour
+      # l'indicateur agrégé centralisé dans `mod_monitoring`.
+      computing = shiny::reactive(isTRUE(computing_rv())),
       index_r = shiny::reactive(input$index %||% "NDVI"),
       # v0.87.x — params trend exportés pour que le « Plan de validation
       # FAST » réutilise la MÊME définition de tendance que celle affichée
