@@ -1,3 +1,15 @@
+# nemetonshiny 0.91.17.9001 (dev)
+
+### Fixed — R CMD check : test `app_server` lisant un réactif après destruction de session
+
+`test-app_server.R` (« app_server passes app_state to modules ») lisait
+`received_app_state$language` APRÈS la sortie du bloc `testServer`, alors que
+la session du module est déjà détruite → `destroyedReactiveError` (« Can't
+access reactive `app_state`; its module session has been destroyed »). Cet
+ERROR rendait le job `R-CMD-check` rouge à chaque release (le job `tests`,
+lui, passait). La lecture du réactif est désormais figée DANS le bloc
+`testServer` (session vivante) puis assertée à l'extérieur.
+
 # nemetonshiny 0.91.17 (2026-06-27)
 
 ### Added — Carte FORDEAD : bouton de défilement automatique du slider de date
