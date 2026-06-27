@@ -1,4 +1,4 @@
-# nemetonshiny 0.91.17.9001 (dev)
+# nemetonshiny 0.91.18 (2026-06-27)
 
 ### Fixed — R CMD check : test `app_server` lisant un réactif après destruction de session
 
