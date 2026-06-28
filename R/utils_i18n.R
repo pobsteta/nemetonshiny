@@ -3125,6 +3125,34 @@ TRANSLATIONS <- list(
     fr = "\u2713 {label}",
     en = "\u2713 {label}"
   ),
+  monitoring_reconfort_ingest_listed = list(
+    fr = "Ingestion S2 \u00b7 {total} sc\u00e8ne(s) \u00e0 traiter",
+    en = "S2 ingestion \u00b7 {total} scene(s) to process"
+  ),
+  monitoring_reconfort_ingest_item = list(
+    fr = "Sc\u00e8ne {n}/{total} \u2014 {detail}",
+    en = "Scene {n}/{total} \u2014 {detail}"
+  ),
+  monitoring_reconfort_step_download = list(
+    fr = "t\u00e9l\u00e9chargement",
+    en = "downloading"
+  ),
+  monitoring_reconfort_step_crop = list(
+    fr = "extraction + recadrage AOI",
+    en = "extracting + cropping to AOI"
+  ),
+  monitoring_reconfort_step_done = list(
+    fr = "recadr\u00e9e",
+    en = "cropped"
+  ),
+  monitoring_reconfort_step_cached = list(
+    fr = "d\u00e9j\u00e0 en cache",
+    en = "already cached"
+  ),
+  monitoring_reconfort_step_failed = list(
+    fr = "\u00e9chec, ignor\u00e9e",
+    en = "failed, skipped"
+  ),
   monitoring_reconfort_complete = list(
     fr = "RECONFORT termin\u00e9 \u00b7 {n} alertes \u00b7 {sec}s",
     en = "RECONFORT complete \u00b7 {n} alerts \u00b7 {sec}s"
