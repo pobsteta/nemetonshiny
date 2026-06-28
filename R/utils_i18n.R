@@ -3106,8 +3106,8 @@ TRANSLATIONS <- list(
     en = "RECONFORT run unavailable: conda environment (IOTA\u00b2/GEODES) required. The map and pixel diagnosis remain available on existing runs."
   ),
   monitoring_reconfort_starting = list(
-    fr = "Diagnostic RECONFORT lanc\u00e9. Dur\u00e9e estim\u00e9e : quelques minutes.",
-    en = "RECONFORT diagnosis started. Estimated duration: a few minutes."
+    fr = "Diagnostic RECONFORT lanc\u00e9. Premier calcul \u00e0 froid : plusieurs heures ; nettement plus rapide ensuite.",
+    en = "RECONFORT diagnosis started. First cold run: several hours; much faster afterwards."
   ),
   monitoring_reconfort_success = list(
     fr = "Diagnostic RECONFORT termin\u00e9 : %d alertes ins\u00e9r\u00e9es en %.0f s.",
