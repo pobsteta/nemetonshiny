@@ -6,6 +6,11 @@
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
+# renderUI outputs are list(html=, deps=) ; a NULL output (e.g. an absent
+# overlay/banner) must coerce to "" so grepl() returns a length-1 FALSE
+# rather than logical(0) (which would break expect_false()).
+.html_of <- function(x) as.character(x$html %||% x %||% "")
+
 .reconfort_fake_alerts <- function(n = 2L) {
   sf::st_sf(
     id               = seq_len(n),
@@ -65,13 +70,15 @@ test_that("reconfort map shows the empty state when there are no alerts", {
     {
       session$flushReact()
       expect_equal(nrow(session$returned$alerts()), 0L)
-      html <- as.character(output$panel$html %||% output$panel)
       i18n <- get_i18n("fr")
+      overlay <- .html_of(output$overlay)
+      banner  <- .html_of(output$banner)
+      # Empty-state overlay shown when there is neither a run nor alerts.
       expect_true(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
-                        html, fixed = TRUE))
+                        overlay, fixed = TRUE))
       # No validity banner when geo_valid is TRUE.
       expect_false(grepl(i18n$t("monitoring_reconfort_outside_validity"),
-                         html, fixed = TRUE))
+                         banner, fixed = TRUE))
     }
   )
 })
@@ -107,13 +114,14 @@ test_that("reconfort map renders the G3 advisory banner when geo invalid", {
                 zone_id_r = shiny::reactive("1")),
     {
       session$flushReact()
-      html <- as.character(output$panel$html %||% output$panel)
       i18n <- get_i18n("fr")
-      # Advisory banner present, and the map (not the empty state) shown.
+      banner  <- .html_of(output$banner)
+      overlay <- .html_of(output$overlay)
+      # Advisory banner present, and NO empty-state overlay (alerts exist).
       expect_true(grepl(i18n$t("monitoring_reconfort_outside_validity"),
-                        html, fixed = TRUE))
+                        banner, fixed = TRUE))
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
-                         html, fixed = TRUE))
+                         overlay, fixed = TRUE))
     }
   )
 })
@@ -208,15 +216,31 @@ test_that("manifest drives layer toggles + opacity slider", {
   rdir <- withr::local_tempdir()
   fake_result <- .reconfort_fake_result(rdir)
 
-  # No DB needed : alerts_r / validity_r short-circuit on a NULL connection.
+  # EPSG:2154 AOI covering the fake rasters → exercises the strata-clip
+  # path (terra::mask) in .add_raster. Also used as the project UGF
+  # (indicators_sf) so the UGF overlay + framing run.
+  aoi_2154 <- sf::st_sf(
+    id = 1L,
+    geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(900000, 6500000), c(900080, 6500000), c(900080, 6500080),
+      c(900000, 6500080), c(900000, 6500000)))), crs = 2154)
+  )
+
   testthat::local_mocked_bindings(
-    get_monitoring_db_connection = function(...) NULL,
-    close_monitoring_db_connection = function(con) invisible(TRUE)
+    get_monitoring_db_connection = function(...) structure(list(), class = "fakecon"),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    get_monitoring_zone_aoi = function(con, zone_id) aoi_2154
+  )
+  testthat::local_mocked_bindings(
+    list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(0L),
+    check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
+    .package = "nemeton"
   )
 
   app_state <- shiny::reactiveValues(
     language = "fr",
-    current_project = list(id = "p", path = withr::local_tempdir())
+    current_project = list(id = "p", path = withr::local_tempdir(),
+                           indicators_sf = aoi_2154)
   )
 
   shiny::testServer(
@@ -227,18 +251,19 @@ test_that("manifest drives layer toggles + opacity slider", {
     {
       session$flushReact()
       i18n <- get_i18n("fr")
-      html <- as.character(output$panel$html %||% output$panel)
+      controls <- .html_of(output$controls)
+      overlay  <- .html_of(output$overlay)
 
-      # Controls present : layer checkbox group + opacity slider.
-      expect_true(grepl(i18n$t("reconfort_couches"), html, fixed = TRUE))
-      expect_true(grepl(i18n$t("reconfort_opacite"), html, fixed = TRUE))
+      # Controls (right sidebar) : layer checkbox group + opacity slider.
+      expect_true(grepl(i18n$t("reconfort_couches"), controls, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_opacite"), controls, fixed = TRUE))
       # The three manifest raster labels appear as checkbox choices.
-      expect_true(grepl(i18n$t("reconfort_couche_score"),   html, fixed = TRUE))
-      expect_true(grepl(i18n$t("reconfort_couche_classes"), html, fixed = TRUE))
-      expect_true(grepl(i18n$t("reconfort_couche_proba"),   html, fixed = TRUE))
-      # Empty-state must NOT show when layers are available.
+      expect_true(grepl(i18n$t("reconfort_couche_score"),   controls, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_couche_classes"), controls, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_couche_proba"),   controls, fixed = TRUE))
+      # Empty-state overlay must NOT show when layers are available.
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
-                         html, fixed = TRUE))
+                         overlay, fixed = TRUE))
 
       # Base leaflet map rendered (rasters read from disk).
       expect_false(is.null(output$map))
@@ -283,11 +308,12 @@ test_that("no in-memory result falls back to the DB-only alerts view", {
     {
       session$flushReact()
       i18n <- get_i18n("fr")
-      html <- as.character(output$panel$html %||% output$panel)
+      controls <- .html_of(output$controls)
+      overlay  <- .html_of(output$overlay)
       # Legacy mode : NO layer toggles, map shown from DB alerts.
-      expect_false(grepl(i18n$t("reconfort_couches"), html, fixed = TRUE))
+      expect_false(grepl(i18n$t("reconfort_couches"), controls, fixed = TRUE))
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
-                         html, fixed = TRUE))
+                         overlay, fixed = TRUE))
       expect_equal(nrow(session$returned$alerts()), 2L)
     }
   )

@@ -2,23 +2,35 @@
 # sanitaire (spec 021, L6). Miroir de mod_monitoring_fordead_map.R, adapté
 # au pipeline RECONFORT (dépérissement feuillus, méthode RECONFORT/DSF).
 #
+# Mise en page (parité FORDEAD / FAST) : `bslib::layout_sidebar` avec une
+# sidebar DROITE portant les contrôles (cases à cocher des couches + curseur
+# d'opacité des rasters) et, à gauche, la carte Leaflet STATIQUE surmontée
+# d'un overlay d'état (empty-state). La carte est en UI statique pour
+# préserver le binding `input$map_click` (clic → diagnostic pixel).
+#
 # Deux sources, deux modes d'affichage :
 #
 #   * MODE MANIFESTE (post-run, en session) — quand le parent fournit le
 #     `result` de `nemeton::run_reconfort_dieback()` via `result_r`, le
 #     module appelle `nemeton::reconfort_layer_manifest(result,
 #     include_range = TRUE)` et expose les COUCHES du run : rasters (score,
-#     classes de santé, probabilité) + vecteur (alertes), pilotés par des
-#     cases à cocher + un curseur d'opacité agissant sur les rasters. AUCUNE
-#     sémantique métier ici : ids, palettes, domaines, sens (reverse) et
-#     visibilité par défaut viennent tous du manifeste (CLAUDE.md §2-4).
+#     classes de santé, probabilité) + vecteur (alertes). AUCUNE sémantique
+#     métier ici : ids, palettes, domaines, sens (reverse) et visibilité par
+#     défaut viennent tous du manifeste (CLAUDE.md §2-4).
 #   * MODE DB (legacy / projet rechargé) — sans `result` en mémoire, le
 #     module retombe sur l'affichage vectoriel des alertes lues en base via
 #     `nemeton::list_alerts(con, zone_id, classes = RECONFORT_ALERT_CLASSES)`.
 #
-# Dans les deux modes : bannière de validité G3 (advisory, non bloquante)
-# `nemeton::check_reconfort_validity(zone_aoi)`, et clic carte → diagnostic
-# pixel `read_reconfort_pixel_series()` → modal plotly (CRSWIR + CRre).
+# Couche UGF (parité FORDEAD / FAST) : les Unités de Gestion Forestière du
+# projet (`project$indicators_sf`) sont dessinées en overlay toggleable via
+# le LayersControl natif de leaflet.
+#
+# Clip à la zone de suivi : les résultats (rasters) sont masqués à l'AOI de
+# la zone sélectionnée dans la liste déroulante (`zone_id_r`) — strates
+# `_tot` / `_res` / `_feu` / `_mix` — exactement comme FORDEAD masque le
+# raster `_tot` par strate. Présentation pure (clip d'affichage), aucun
+# calcul métier (CLAUDE.md §3). Les alertes vectorielles sont déjà filtrées
+# par zone côté `nemeton::list_alerts(zone_id = ...)`.
 #
 # cache_dir RECONFORT : <project>/cache/layers/reconfort (la phase persist
 # du run y écrit zone_<id>/run_<run_id>/ ; même répertoire passé à
@@ -48,7 +60,23 @@
 #' @noRd
 mod_monitoring_reconfort_map_ui <- function(id) {
   ns <- shiny::NS(id)
-  shiny::uiOutput(ns("panel"))
+  bslib::card(
+    bslib::layout_sidebar(
+      # Sidebar DROITE — contrôles (cases à cocher des couches + opacité),
+      # rendus côté serveur car pilotés par le manifeste (choix dynamiques).
+      sidebar = bslib::sidebar(
+        width = 250L, position = "right", open = "always",
+        shiny::uiOutput(ns("controls"))
+      ),
+      # Carte STATIQUE + bannière validité + overlay empty-state.
+      htmltools::div(
+        style = "position: relative;",
+        shiny::uiOutput(ns("banner")),
+        leaflet::leafletOutput(ns("map"), height = "55vh"),
+        shiny::uiOutput(ns("overlay"))
+      )
+    )
+  )
 }
 
 #' Carte RECONFORT sub-tab server
@@ -109,10 +137,11 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       rm
     })
 
-    # ----- Alerts layer (sf) --------------------------------------------
+    # ----- Alerts layer (sf, DB) ----------------------------------------
     # `nemeton::list_alerts()` returns an sf data.frame (CRS 4326) of the
-    # plots carrying a RECONFORT alert, restricted to the G1 classes. The
-    # reactive reads refresh_r() so a completed run re-invalidates it.
+    # plots carrying a RECONFORT alert, restricted to the G1 classes AND to
+    # the selected zone. The reactive reads refresh_r() so a completed run
+    # re-invalidates it.
     alerts_r <- shiny::reactive({
       refresh_r()
       zone <- zone_id_r()
@@ -135,11 +164,12 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       )
     })
 
-    # ----- Validity (G3, advisory) --------------------------------------
-    # `check_reconfort_validity()` is advisory (`advisory = TRUE`) : it
-    # warns when the zone sits outside the calibration domain but never
-    # blocks. Returns NULL when the AOI cannot be resolved.
-    validity_r <- shiny::reactive({
+    # ----- Selected-zone AOI (for raster clipping) ----------------------
+    # `get_monitoring_zone_aoi()` returns the polygon (EPSG:2154) of the
+    # zone picked in the dropdown (`_tot` / `_res` / `_feu` / `_mix`). The
+    # result rasters are clipped to it before display (parity FORDEAD). NULL
+    # when unresolved → no clip (full raster shown).
+    aoi_r <- shiny::reactive({
       zone <- zone_id_r()
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
       proj <- app_state$current_project
@@ -147,8 +177,21 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
-      aoi <- tryCatch(get_monitoring_zone_aoi(con, as.integer(zone)),
-                      error = function(e) NULL)
+      tryCatch(get_monitoring_zone_aoi(con, as.integer(zone)),
+               error = function(e) NULL)
+    })
+
+    # ----- UGF overlay (parité FORDEAD / FAST) --------------------------
+    ugf_r <- shiny::reactive({
+      .ugf_for_overlay(app_state$current_project)
+    })
+
+    # ----- Validity (G3, advisory) --------------------------------------
+    # `check_reconfort_validity()` is advisory (`advisory = TRUE`) : it
+    # warns when the zone sits outside the calibration domain but never
+    # blocks. Returns NULL when the AOI cannot be resolved.
+    validity_r <- shiny::reactive({
+      aoi <- aoi_r()
       if (is.null(aoi)) return(NULL)
       tryCatch(
         nemeton::check_reconfort_validity(aoi),
@@ -162,64 +205,62 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # Default-visible layer ids from the manifest (checkbox initial state).
     .default_selected <- function(m) {
       if (is.null(m)) return(character())
-      as.character(m$id[isTRUE(m$default_visible) | m$default_visible %in% TRUE])
+      as.character(m$id[m$default_visible %in% TRUE])
     }
 
-    # ----- Panel : validity banner + controls + (map | empty state) -----
-    output$panel <- shiny::renderUI({
+    # ----- Sidebar controls (manifest-driven, dynamic choices) ----------
+    output$controls <- shiny::renderUI({
       i18n <- i18n_r()
-
-      # G3 advisory banner — shown above the map when the zone is outside
-      # the geographic calibration domain. Non-blocking (alert-warning).
-      v <- validity_r()
-      banner <- NULL
-      if (!is.null(v) && isFALSE(v$geo_valid)) {
-        banner <- htmltools::div(
-          class = "alert alert-warning d-flex align-items-center gap-2 mb-2",
-          role = "alert",
-          bsicons::bs_icon("exclamation-triangle-fill"),
-          htmltools::span(i18n$t("monitoring_reconfort_outside_validity"))
-        )
+      m <- manifest_r()
+      if (is.null(m)) {
+        # MODE DB legacy / aucun run en mémoire — pas de toggles ; rappel.
+        return(htmltools::p(
+          class = "text-muted small mb-0",
+          i18n$t("monitoring_reconfort_map_empty_body")
+        ))
       }
+      choices  <- stats::setNames(
+        as.character(m$id),
+        vapply(m$label_key, function(k) i18n$t(k), character(1))
+      )
+      selected <- .default_selected(m)
+      has_raster <- any(m$type == "raster")
+      htmltools::tagList(
+        shiny::checkboxGroupInput(
+          session$ns("layers"), i18n$t("reconfort_couches"),
+          choices = choices, selected = selected
+        ),
+        if (has_raster) shiny::sliderInput(
+          session$ns("opacity"), i18n$t("reconfort_opacite"),
+          min = 0, max = 1, value = 0.8, step = 0.05
+        )
+      )
+    })
 
+    # ----- Validity banner (G3 advisory) --------------------------------
+    output$banner <- shiny::renderUI({
+      v <- validity_r()
+      if (is.null(v) || !isFALSE(v$geo_valid)) return(NULL)
+      i18n <- i18n_r()
+      htmltools::div(
+        class = "alert alert-warning d-flex align-items-center gap-2 mb-2",
+        role = "alert",
+        bsicons::bs_icon("exclamation-triangle-fill"),
+        htmltools::span(i18n$t("monitoring_reconfort_outside_validity"))
+      )
+    })
+
+    # ----- Empty-state overlay (no layers AND no alerts) ----------------
+    output$overlay <- shiny::renderUI({
+      i18n <- i18n_r()
       m <- manifest_r()
       a <- alerts_r()
-      has_layers <- !is.null(m)
-      has_alerts <- !is.null(a) && nrow(a) > 0L
-
-      body <- if (has_layers) {
-        # MODE MANIFESTE — toggles (libellés via i18n du label_key cœur) +
-        # curseur d'opacité (rasters uniquement) + carte.
-        choices  <- stats::setNames(
-          as.character(m$id),
-          vapply(m$label_key, function(k) i18n$t(k), character(1))
-        )
-        selected <- .default_selected(m)
-        has_raster <- any(m$type == "raster")
-        controls <- htmltools::div(
-          class = "d-flex flex-wrap align-items-end gap-3 mb-2",
-          htmltools::div(
-            shiny::checkboxGroupInput(
-              session$ns("layers"), i18n$t("reconfort_couches"),
-              choices = choices, selected = selected, inline = TRUE
-            )
-          ),
-          if (has_raster) htmltools::div(
-            style = "min-width: 220px;",
-            shiny::sliderInput(
-              session$ns("opacity"), i18n$t("reconfort_opacite"),
-              min = 0, max = 1, value = 0.8, step = 0.05
-            )
-          )
-        )
-        htmltools::tagList(
-          controls,
-          leaflet::leafletOutput(session$ns("map"), height = "55vh")
-        )
-      } else if (has_alerts) {
-        # MODE DB legacy — alertes vectorielles seules.
-        leaflet::leafletOutput(session$ns("map"), height = "55vh")
-      } else {
+      if (!is.null(m) || (!is.null(a) && nrow(a) > 0L)) return(NULL)
+      htmltools::div(
+        style = paste(
+          "position: absolute; inset: 0; z-index: 500;",
+          "background: #fff; display: flex; align-items: center;",
+          "justify-content: center;"),
         htmltools::div(
           class = "p-4 text-center text-muted",
           bsicons::bs_icon("hourglass-split",
@@ -229,15 +270,13 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           htmltools::p(class = "mb-0",
                        i18n$t("monitoring_reconfort_map_empty_body"))
         )
-      }
-
-      htmltools::tagList(banner, body)
+      )
     })
 
     # ----- Alert markers helper (shared by base render + proxy) ----------
-    # Draws the RECONFORT alert plots as circle markers + class legend on a
-    # leaflet map or proxy. Centroids for stable markers (the pixel
-    # diagnostic itself runs on the raw map-click coordinate).
+    # Draws the RECONFORT alert plots as circle markers + class legend.
+    # Centroids for stable markers (the pixel diagnostic itself runs on the
+    # raw map-click coordinate, not on a marker).
     .add_alerts <- function(map, a, i18n, opacity = 0.85) {
       if (is.null(a) || nrow(a) == 0L) return(map)
       pts <- tryCatch(
@@ -296,13 +335,22 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     }
 
     # ----- Raster layer helper (shared by base render + proxy) -----------
-    # Draws one manifest raster row (continuous or categorical) + its legend
-    # at the requested opacity. Palettes / domain / reverse come from the
-    # manifest — no business semantics here.
-    .add_raster <- function(map, row, opacity, i18n) {
+    # Draws one manifest raster row (continuous or categorical) clipped to
+    # the selected-zone `aoi` + its legend, at the requested opacity.
+    # Palettes / domain / reverse come from the manifest — no business
+    # semantics here.
+    .add_raster <- function(map, row, opacity, i18n, aoi = NULL) {
       r <- tryCatch(terra::rast(row$path), error = function(e) NULL)
       if (is.null(r)) return(map)
       if (terra::nlyr(r) > 1L) r <- r[[1L]]
+
+      # Clip d'affichage à la zone de suivi sélectionnée (présentation pure).
+      if (!is.null(aoi)) {
+        r <- tryCatch(
+          terra::mask(r, terra::vect(sf::st_transform(aoi, terra::crs(r)))),
+          error = function(e) r
+        )
+      }
 
       if (isTRUE(row$categorical)) {
         cols <- .RECONFORT_CLASSIF_COLORS
@@ -353,8 +401,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     }
 
     # Currently selected layer ids (checkbox in manifest mode, else "alerts"
-    # when DB alerts exist). Reactive so both the base render and the proxy
-    # observer agree.
+    # when DB alerts exist).
     selected_ids_r <- shiny::reactive({
       m <- manifest_r()
       if (!is.null(m)) {
@@ -372,63 +419,78 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       max(0, min(1, op))
     })
 
-    # ----- Base map (rendered once per zone / result, not per toggle) ----
+    # ----- Base map (stable widget — parity FORDEAD) --------------------
+    # Depends ONLY on the current project (re-render on project change, not
+    # on zone / layer / opacity). A re-render recreates the widget and would
+    # otherwise drop the `input$map_click` binding + reset zoom. Tiles +
+    # panes + LayersControl (UGF overlay) + framing only ; the data layers
+    # (rasters / alerts) are drawn by the observer below via leafletProxy.
     output$map <- leaflet::renderLeaflet({
-      m <- manifest_r()
-      a <- alerts_r()
-      if (is.null(m) && (is.null(a) || nrow(a) == 0L)) return(NULL)
-      i18n <- i18n_r()
-      op   <- shiny::isolate(opacity_r())
-      sel  <- shiny::isolate(selected_ids_r())
-      rm   <- shiny::isolate(raster_manifest_r())
+      proj <- app_state$current_project          # SEUL dep réactif
+      i18n <- shiny::isolate(i18n_r())
+      ugf  <- shiny::isolate(ugf_r())
 
+      overlays <- if (!is.null(ugf)) "UGF" else NULL
       map <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",     group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
         leaflet::addLayersControl(
-          baseGroups = c("OSM", "Satellite"),
-          options    = leaflet::layersControlOptions(collapsed = TRUE)
+          baseGroups    = c("OSM", "Satellite"),
+          overlayGroups = overlays,
+          options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
 
-      # Initial layers (isolate) so the map is correct on first paint; the
-      # observer below keeps them in sync with the checkboxes / slider.
-      if (!is.null(rm)) {
-        for (k in seq_len(nrow(rm))) {
-          if (rm$id[k] %in% sel) map <- .add_raster(map, rm[k, ], op, i18n)
-        }
+      if (!is.null(ugf)) {
+        map <- leaflet::addPolygons(
+          map, data = ugf, group = "UGF", color = "#1f78b4",
+          weight = 2, opacity = 0.9, fillOpacity = 0
+        )
       }
-      if ("alerts" %in% sel) map <- .add_alerts(map, a, i18n)
 
-      # Frame on the alerts (or AOI fallback handled by leaflet auto).
-      if (!is.null(a) && nrow(a) > 0L) {
-        bb <- tryCatch(sf::st_bbox(sf::st_transform(a, 4326)),
-                       error = function(e) NULL)
-        if (!is.null(bb)) {
-          map <- leaflet::fitBounds(
-            map, lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
-            lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
-          )
-        }
+      # Framing : UGF en priorité, sinon AOI de la zone, sinon alertes.
+      bb <- NULL
+      if (!is.null(ugf)) {
+        bb <- tryCatch(sf::st_bbox(ugf), error = function(e) NULL)
+      }
+      if (is.null(bb)) {
+        aoi <- shiny::isolate(aoi_r())
+        if (!is.null(aoi))
+          bb <- tryCatch(sf::st_bbox(sf::st_transform(aoi, 4326)),
+                         error = function(e) NULL)
+      }
+      if (is.null(bb)) {
+        a <- shiny::isolate(alerts_r())
+        if (!is.null(a) && nrow(a) > 0L)
+          bb <- tryCatch(sf::st_bbox(sf::st_transform(a, 4326)),
+                         error = function(e) NULL)
+      }
+      if (!is.null(bb)) {
+        map <- leaflet::fitBounds(
+          map, lng1 = bb[["xmin"]], lat1 = bb[["ymin"]],
+          lng2 = bb[["xmax"]], lat2 = bb[["ymax"]]
+        )
       }
       map
     })
 
-    # ----- Toggle / opacity → leafletProxy (re-render léger) -------------
-    # addRasterImage has no dynamic opacity setter, so a slider move
-    # re-draws the checked rasters at the new opacity via leafletProxy
-    # (base map, zoom, base layer preserved). Mirror of the FORDEAD map.
+    # ----- Data layers → leafletProxy (toggles + opacity, re-render léger)
+    # addRasterImage has no dynamic opacity setter, so a slider move (or a
+    # checkbox toggle, a zone change → new AOI clip, a completed run → new
+    # manifest) re-draws the checked layers via leafletProxy. The base map,
+    # zoom, base layer and UGF overlay are preserved. Mirror of FORDEAD.
     shiny::observe({
       m    <- manifest_r()
       a    <- alerts_r()
-      if (is.null(m) && (is.null(a) || nrow(a) == 0L)) return()
       sel  <- selected_ids_r()
       op   <- opacity_r()
       i18n <- i18n_r()
       rm   <- raster_manifest_r()
+      aoi  <- aoi_r()
 
       proxy <- leaflet::leafletProxy("map")
-      # Clear every known group + its legend, then re-add the selected ones.
+      # Clear every known data group + its legend (NOT the UGF overlay),
+      # then re-add the selected ones.
       known <- character()
       if (!is.null(rm)) known <- as.character(rm$id)
       known <- c(known, "alerts")
@@ -439,18 +501,21 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       }
       if (!is.null(rm)) {
         for (k in seq_len(nrow(rm))) {
-          if (rm$id[k] %in% sel) proxy <- .add_raster(proxy, rm[k, ], op, i18n)
+          if (rm$id[k] %in% sel) proxy <- .add_raster(proxy, rm[k, ], op, i18n, aoi)
         }
       }
       if ("alerts" %in% sel) proxy <- .add_alerts(proxy, a, i18n)
       proxy
     })
 
-    # Force the panel to render even while the sub-tab is hidden (the
-    # Suivi navset toggles nav_panels via nav_show/nav_hide, which leaves
-    # Shiny's per-output visibility detection unreliable). Same rationale
-    # as the FORDEAD / FAST map modules.
-    shiny::outputOptions(output, "panel", suspendWhenHidden = FALSE)
+    # Force the controls / map / overlay to render even while the sub-tab is
+    # hidden (the Suivi navset toggles nav_panels via nav_show/nav_hide,
+    # which leaves Shiny's per-output visibility detection unreliable). Same
+    # rationale as the FORDEAD / FAST map modules.
+    shiny::outputOptions(output, "controls", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "map",      suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "overlay",  suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "banner",   suspendWhenHidden = FALSE)
 
     # ----- Pixel diagnostic on map click --------------------------------
     # Mirror of the FORDEAD pixel click, adapted to RECONFORT : the series
@@ -560,8 +625,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       ))
       output$pixel_ts_plot <- plotly::renderPlotly(p)
     })
-
-    shiny::outputOptions(output, "map", suspendWhenHidden = FALSE)
 
     invisible(list(alerts = alerts_r))
   })

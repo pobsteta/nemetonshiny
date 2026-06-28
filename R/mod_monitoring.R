@@ -3004,12 +3004,15 @@ mod_monitoring_server <- function(id, app_state) {
     # DB-only alerts view).
     reconfort_result <- shiny::reactiveVal(NULL)
 
-    # Drop the in-memory result when the active zone changes : its rasters
-    # belong to the previous zone's run and must not bleed onto another zone
-    # (the map sub-module then reverts to the DB-only alerts view).
-    shiny::observeEvent(input$zone_id, {
+    # Drop the in-memory result when the PROJECT changes (not the zone) :
+    # the rasters belong to the previous project's run. Across strates of
+    # the SAME project the result is kept and merely clipped to the selected
+    # zone AOI in the map sub-module (parity with FORDEAD's `_tot` → strate
+    # masking). `observeEvent` de-dups on the id value, so metadata-only
+    # updates that keep the same id do not clear the result.
+    shiny::observeEvent(app_state$current_project$id, {
       reconfort_result(NULL)
-    }, ignoreInit = TRUE)
+    }, ignoreNULL = FALSE, ignoreInit = TRUE)
 
     reconfort_map_ret <- mod_monitoring_reconfort_map_server(
       "reconfort_map",
