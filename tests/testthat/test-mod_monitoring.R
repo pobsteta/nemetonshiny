@@ -459,11 +459,11 @@ test_that("mod_monitoring_ui exposes the FORDEAD/health-mode controls", {
       expect_true(grepl("monitoring-dates_observation", html))
       expect_true(grepl("monitoring-dates_training",    html))
       # v0.90.x — l'indice FORDEAD (CRSWIR seul) est passé en radio dans
-      # la sidebar droite des onglets Alertes/Carte FORDEAD ; le slider
-      # d'opacité du raster l'accompagne (parité FAST).
-      expect_true(grepl("monitoring-fordead_index_alerts", html))
+      # la sidebar droite de la Carte FORDEAD ; le slider d'opacité du
+      # raster l'accompagne (parité FAST).
+      # v0.92.x — sous-onglet « Alertes FORDEAD » supprimé (doublon de la
+      # Carte FORDEAD) : `fordead_index_alerts` / `alerts_opacity` retirés.
       expect_true(grepl("monitoring-fordead_index_cm",     html))
-      expect_true(grepl("monitoring-alerts_opacity",       html))
       expect_true(grepl("monitoring-fordead_opacity",      html))
       expect_true(grepl("monitoring-threshold_anomaly", html))
       expect_true(grepl("monitoring-run_health",        html))
@@ -1203,16 +1203,16 @@ test_that(".summarize_backend_warnings handles edge cases", {
 
 # ---- v0.36.5 — FORDEAD result handler + Zone saine card ------------
 #
-# The Zone-saine rendering path (output$alerts_panel branching on
-# fordead_last_result()$status) is intentionally NOT covered by a
-# testServer-based test here. The mod_monitoring_server reactive
-# graph involves multiple reactivePoll timers (fordead_progress,
-# ingest_progress, ingest_log_tick) plus the pixel-map ExtendedTask
-# composition that wedges testServer on this particular setup. The
-# existing tests in the file already document the same harness issue
-# (some only run a slice of the server before flushing). Keep manual
-# QA for the Zone-saine card and document the expected behaviour in
-# NEWS.md / state matrix.
+# v0.92.x — Le sous-onglet « Alertes FORDEAD » (et son output$alerts_panel)
+# a été supprimé (doublon de la Carte FORDEAD). Le verdict « Zone saine »
+# vit désormais dans l'overlay de `mod_monitoring_fordead_map`
+# (output$overlay). Ce rendu n'est intentionnellement PAS couvert par un
+# test testServer ici : le graphe réactif de mod_monitoring_server combine
+# plusieurs reactivePoll (fordead_progress, ingest_progress, ingest_log_tick)
+# et la composition ExtendedTask de la pixel-map qui bloquent testServer sur
+# ce setup. Les tests existants documentent déjà la même limite du harness
+# (certains n'exécutent qu'une tranche du serveur avant flush). QA manuelle
+# pour la card Zone saine + comportement documenté dans NEWS.md.
 #
 # Helper widening (make_fake_fordead_task accepts `result =` and
 # `status =`) is still useful for future tests that don't trigger the

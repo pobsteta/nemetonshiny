@@ -2338,10 +2338,6 @@ TRANSLATIONS <- list(
     fr = "Alertes FAST",
     en = "FAST alerts"
   ),
-  monitoring_subtab_alerts_fordead = list(
-    fr = "Alertes FORDEAD",
-    en = "FORDEAD alerts"
-  ),
   # v0.36.0 — Alertes FAST module (nemeton::list_fast_alerts_for_zone)
   # Severity buckets : critical (ratio < 0.5), warning ([0.5, 1)),
   # info ([1, 1.1) — corridor d'avertissement).
@@ -2892,13 +2888,12 @@ TRANSLATIONS <- list(
     fr = "%d sc\u00e8nes disponibles dans le cache.",
     en = "%d scenes available in the cache."
   ),
-  monitoring_alerts_placeholder = list(
-    fr = "La carte des alertes appara\u00eetra apr\u00e8s le premier t\u00e9l\u00e9chargement.",
-    en = "The alerts map will appear after the first download."
-  ),
-  # v0.36.5 \u2014 card \u00ab Zone saine \u00bb dans Alertes FORDEAD quand un run
-  # se termine avec n_alerts_inserted = 0. \u00c9vite que l'utilisateur
-  # confonde \u00ab pas encore lanc\u00e9 \u00bb / \u00ab run en cours \u00bb / \u00ab 0 anomalie \u00bb.
+  # v0.36.5 \u2014 card \u00ab Zone saine \u00bb (Carte FORDEAD, overlay) quand un run
+  # se termine sans pixel affect\u00e9. \u00c9vite que l'utilisateur confonde
+  # \u00ab pas encore lanc\u00e9 \u00bb / \u00ab run en cours \u00bb / \u00ab 0 anomalie \u00bb.
+  # v0.92.x \u2014 `monitoring_alerts_placeholder` + les variantes meta de la
+  # card sont retir\u00e9es avec le sous-onglet \u00ab Alertes FORDEAD \u00bb (doublon
+  # de la Carte FORDEAD). L'overlay du sous-module n'affiche que titre+body.
   monitoring_fordead_no_alerts_title = list(
     fr = "Zone saine \u2014 aucune anomalie d\u00e9tect\u00e9e",
     en = "Healthy zone \u2014 no anomaly detected"
@@ -2906,18 +2901,6 @@ TRANSLATIONS <- list(
   monitoring_fordead_no_alerts_body = list(
     fr = "Aucun pixel ne d\u00e9passe le seuil d'anomalie de d\u00e9p\u00e9rissement sur la p\u00e9riode. Le diagnostic FORDEAD s'est termin\u00e9 sans d\u00e9tecter de zone affect\u00e9e.",
     en = "No pixel exceeds the dieback anomaly threshold over the period. The FORDEAD diagnosis completed without detecting any affected area."
-  ),
-  monitoring_fordead_no_alerts_meta = list(
-    fr = "Diagnostic termin\u00e9 en %.0f s.",
-    en = "Diagnosis completed in %.0f s."
-  ),
-  # Meta line when the "Zone saine" card is rebuilt from disk after a
-  # session reload (run completed out-of-session) \u2014 no in-session
-  # duration is available, so the persisted-mask timestamp is shown
-  # instead. Cf. .reconcile_fordead_state() in service_monitoring.R.
-  monitoring_fordead_no_alerts_meta_date = list(
-    fr = "Dernier diagnostic FORDEAD : %s.",
-    en = "Last FORDEAD diagnosis: %s."
   ),
 
   # ----- Mode toggle (rapide / sanitaire) -----
@@ -3096,6 +3079,32 @@ TRANSLATIONS <- list(
   monitoring_reconfort_s2_year = list(
     fr = "Ann\u00e9e Sentinel-2",
     en = "Sentinel-2 year"
+  ),
+  # ----- RECONFORT couches carte (toggles + opacit\u00e9) -----
+  # Libell\u00e9s \u00e9mis par le manifeste c\u0153ur (reconfort_layer_manifest$label_key).
+  reconfort_couches = list(
+    fr = "Couches",
+    en = "Layers"
+  ),
+  reconfort_opacite = list(
+    fr = "Opacit\u00e9 du raster",
+    en = "Raster opacity"
+  ),
+  reconfort_couche_score = list(
+    fr = "Score de d\u00e9p\u00e9rissement",
+    en = "Dieback score"
+  ),
+  reconfort_couche_classes = list(
+    fr = "Classes de sant\u00e9",
+    en = "Health classes"
+  ),
+  reconfort_couche_proba = list(
+    fr = "Probabilit\u00e9",
+    en = "Probability"
+  ),
+  reconfort_couche_alertes = list(
+    fr = "Alertes",
+    en = "Alerts"
   ),
   monitoring_run_reconfort_btn = list(
     fr = "Lancer le diagnostic RECONFORT",

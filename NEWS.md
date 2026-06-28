@@ -1,3 +1,45 @@
+# nemetonshiny 0.92.1.9001 (dev)
+
+### Added — Carte RECONFORT : couches sélectionnables + opacité
+
+Le sous-onglet « Alertes RECONFORT » du Suivi sanitaire affiche désormais,
+au choix (cases à cocher), les **couches d'un run RECONFORT** — rasters
+*Score de dépérissement* / *Classes de santé* / *Probabilité* + vecteur
+*Alertes* — avec un **curseur d'opacité** agissant sur les rasters
+(re-render léger via `leafletProxy`, parité avec la carte FORDEAD).
+
+Zéro sémantique métier dans le module (CLAUDE.md §2-4) : la liste des
+couches, les palettes, les domaines de rampe, le sens (reverse) et la
+visibilité par défaut proviennent tous du **manifeste cœur**
+`nemeton::reconfort_layer_manifest(result, include_range = TRUE)`
+(nemeton ≥ 0.97.0). Le module bascule selon la source :
+
+* **mode manifeste** (post-run, en session) — `result` de
+  `run_reconfort_dieback()` threadé du parent (`reconfort_result`) au
+  sous-module via `result_r`, réinitialisé au changement de zone et au
+  lancement d'un nouveau run ;
+* **mode DB legacy** (projet rechargé) — repli sur les alertes
+  vectorielles lues en base (`nemeton::list_alerts`), comportement
+  inchangé.
+
+Nouvelles clés i18n FR/EN : `reconfort_couches`, `reconfort_opacite`,
+`reconfort_couche_score`, `reconfort_couche_classes`,
+`reconfort_couche_proba`, `reconfort_couche_alertes` (libellés émis par
+le `label_key` du manifeste). Légende du raster de classification
+réutilisant `reconfort_class_label_1/2/3`.
+
+Cycle dev `0.92.1` → `0.92.1.9001` → release stable cible `v0.92.2`.
+
+### Removed — Suivi sanitaire : sous-onglet « Alertes FORDEAD » (doublon)
+
+Le sous-onglet « Alertes FORDEAD » faisait doublon avec la « Carte
+FORDEAD » : même couche raster, même sidebar (indice CRSWIR + opacité). Il
+est supprimé, ainsi que ses entrées dédiées (`fordead_index_alerts`,
+`alerts_opacity`, `output$alerts_panel`, `monitoring_alerts_placeholder` et
+les variantes meta de la card). Le verdict « Zone saine » (run terminé sans
+pixel affecté) vit désormais uniquement dans l'overlay de
+`mod_monitoring_fordead_map`. Tests parent ajustés en conséquence.
+
 # nemetonshiny 0.92.1 (2026-06-28)
 
 ### Changed — RECONFORT : message de lancement réaliste (durée à froid)
