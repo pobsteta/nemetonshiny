@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.91.18.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.92.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.92.0" id="nemetonshiny-0920-2026-06-28">nemetonshiny 0.92.0 (2026-06-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0920-2026-06-28"></a></h2>
+<div class="section level4">
+<h4 id="added--reconfort--progression-par-scène-de-lingestion-s2-0-92-0">Added — RECONFORT : progression par scène de l’ingestion S2<a class="anchor" aria-label="anchor" href="#added--reconfort--progression-par-sc%C3%A8ne-de-lingestion-s2-0-92-0"></a></h4>
+<p>Le bandeau de progression du run RECONFORT n’affichait que la phase globale <code>ingestion</code> pendant des heures (download S2 ~4 min/scène, limité par GEODES). <code>.reconfort_handle_progress_event()</code> rend désormais les nouveaux événements émis par <code>nemeton (&gt;= 0.96.0)</code> :</p>
+<ul><li>
+<code>reconfort:ingest_listed</code> → « Ingestion S2 · N scène(s) à traiter » ;</li>
+<li>
+<code>reconfort:ingest_item</code> → « Scène X/N — téléchargement / extraction + recadrage AOI / recadrée / déjà en cache / échec » (+ date de la scène),</li>
+</ul><p>à la manière du suivi FORDEAD et de l’ingestion FAST. Nouvelles clés i18n FR/EN (<code>monitoring_reconfort_ingest_*</code>, <code>monitoring_reconfort_step_*</code>). Plancher relevé à <code>nemeton (&gt;= 0.96.0)</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.91.18" id="nemetonshiny-09118-2026-06-27">nemetonshiny 0.91.18 (2026-06-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09118-2026-06-27"></a></h2>
 <div class="section level4">
