@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.92.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.92.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.92.3" id="nemetonshiny-0923-2026-06-28">nemetonshiny 0.92.3 (2026-06-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0923-2026-06-28"></a></h2>
+<div class="section level4">
+<h4 id="changed--carte-reconfort--sidebar-droite-ugf-clip-à-la-strate-0-92-3">Changed — Carte RECONFORT : sidebar droite, UGF, clip à la strate<a class="anchor" aria-label="anchor" href="#changed--carte-reconfort--sidebar-droite-ugf-clip-%C3%A0-la-strate-0-92-3"></a></h4>
+<p>Suite du chantier couches RECONFORT, alignement complet sur les cartes FORDEAD / FAST :</p>
+<ul><li>
+<strong>Contrôles en sidebar droite</strong> — les cases à cocher des couches et le curseur d’opacité passent dans une <code><a href="https://rstudio.github.io/bslib/reference/sidebar.html" class="external-link">bslib::layout_sidebar</a></code> (sidebar droite, <code>open = "always"</code>), parité visuelle avec la Carte FORDEAD. La carte Leaflet devient <strong>statique</strong> (overlay d’état par-dessus) pour préserver le binding <code>input$map_click</code> (clic → diagnostic pixel).</li>
+<li>
+<strong>Couche UGF</strong> — les Unités de Gestion Forestière du projet (<code>project$indicators_sf</code>) sont dessinées en overlay toggleable via le LayersControl natif (helper partagé <code>.ugf_for_overlay</code>, comme FORDEAD / FAST).</li>
+<li>
+<strong>Résultats clippés à la zone de suivi sélectionnée</strong> — les rasters sont masqués (<code><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">terra::mask</a></code>) à l’AOI de la strate choisie dans la liste déroulante (<code>fordead_tot</code> / <code>_res</code> / <code>_feu</code> / <code>_mix</code>), exactement comme FORDEAD masque le raster <code>_tot</code> par strate. Présentation pure, aucun calcul métier (CLAUDE.md §3). Les alertes vectorielles sont déjà filtrées par zone côté <code>nemeton::list_alerts(zone_id = ...)</code>.</li>
+</ul><p>Le <code>result</code> en mémoire n’est plus purgé au changement de zone (mais au changement de <strong>projet</strong>) : on conserve le run et on se contente de le clipper à la strate sélectionnée.</p>
+<p>Cycle dev <code>0.92.2</code> → <code>0.92.2.9001</code> → release stable <code>v0.92.3</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.92.2" id="nemetonshiny-0922-2026-06-28">nemetonshiny 0.92.2 (2026-06-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0922-2026-06-28"></a></h2>
 <div class="section level4">
