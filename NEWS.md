@@ -1,4 +1,4 @@
-# nemetonshiny 0.92.2.9001 (dev)
+# nemetonshiny 0.92.3 (2026-06-28)
 
 ### Changed — Carte RECONFORT : sidebar droite, UGF, clip à la strate
 
@@ -25,7 +25,7 @@ Le `result` en mémoire n'est plus purgé au changement de zone (mais au
 changement de **projet**) : on conserve le run et on se contente de le
 clipper à la strate sélectionnée.
 
-Cycle dev `0.92.2` → `0.92.2.9001` → release stable cible `v0.92.3`.
+Cycle dev `0.92.2` → `0.92.2.9001` → release stable `v0.92.3`.
 
 # nemetonshiny 0.92.2 (2026-06-28)
 
