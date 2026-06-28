@@ -329,46 +329,17 @@ mod_monitoring_ui <- function(id) {
           mod_monitoring_pixel_map_ui(ns("pixel_map"))
         ),
         # ---------- FORDEAD mode sub-tabs (visible en mode health) ---
-        # ----- Sub-tab — Alertes FORDEAD (FORDEAD map + QGIS) --------
-        # Anciennement « Alertes » avant v0.35.0. Renommé pour
-        # symétrie avec Alertes FAST et Carte FORDEAD. La logique
-        # reactive (alerts(), output$alerts_panel, output$alerts_map,
-        # output$qgis_panel) reste identique — seul le label et la
-        # value du nav_panel changent.
-        bslib::nav_panel(
-          title = i18n$t("monitoring_subtab_alerts_fordead"),
-          value = "alerts_fordead",
-          icon  = bsicons::bs_icon("exclamation-triangle"),
-          # v0.90.x — Parité avec Diagnostic FAST : sidebar droite portant
-          # l'indice FORDEAD (CRSWIR seul) et l'opacité du raster. La
-          # couche UGF et la couche « Alertes » (= le raster) se togglent
-          # via le LayersControl de la carte (cf. output$alerts_map).
-          bslib::card(
-            bslib::layout_sidebar(
-              sidebar = bslib::sidebar(
-                width = 250L, position = "right", open = "always",
-                htmltools::tagAppendAttributes(
-                  shiny::radioButtons(
-                    ns("fordead_index_alerts"),
-                    label    = i18n$t("monitoring_vegetation_index"),
-                    choices  = c(CRSWIR = "CRSWIR"),
-                    selected = "CRSWIR", inline = TRUE
-                  ),
-                  class = "mb-2"
-                ),
-                shiny::sliderInput(
-                  ns("alerts_opacity"),
-                  label = i18n$t("monitoring_fast_alerts_opacity_label"),
-                  min = 0, max = 1, value = 0.75, step = 0.05
-                )
-                # v0.90.x — Case « inclure classes faible/moyenne » retirée :
-                # inerte depuis la Phase A (affichage raster, toutes classes
-                # 0-4 toujours montrées ; plus de filtre d'alertes DB).
-              ),
-              shiny::uiOutput(ns("alerts_panel"))
-            )
-          )
-        ),
+        # v0.92.x — Sous-onglet « Alertes FORDEAD » SUPPRIMÉ : il était
+        # devenu un strict doublon de « Carte FORDEAD ». Depuis v0.88.2
+        # (export QGIS déplacé vers « Plan de validation FORDEAD ») et
+        # v0.90.x (passage raster-driven), il lisait le MÊME raster de
+        # sévérité 0-4 (`fordead_map_ret$mask()`), même palette, que la
+        # couche « sévérité » de la Carte FORDEAD — laquelle offre en plus
+        # les couches date/anomalie/zone modélisée, le slider temporel et
+        # le clic-pixel. La carte « zone saine » (état b) est, elle aussi,
+        # déjà rendue par l'overlay de la Carte FORDEAD. Contrairement au
+        # couple FAST (Alertes = produit dérivé seuils/tendance, Carte =
+        # indice brut), les deux onglets FORDEAD montraient la même donnée.
         # ----- Sub-tab — Carte FORDEAD (wired v0.36.0) ---------------
         # Raster catégoriel 0-4 du dépérissement (sain/faible/moyenne/
         # forte/sol-nu) lu via `nemeton::read_fordead_dieback_mask()`
@@ -574,7 +545,7 @@ mod_monitoring_server <- function(id, app_state) {
 
       fast_tabs     <- c("alerts_fast", "pixel_map_fast",
                          "validation_sampling_fast")
-      fordead_tabs  <- c("alerts_fordead", "pixel_map_fordead",
+      fordead_tabs  <- c("pixel_map_fordead",
                          "validation_sampling_fordead")
       reconfort_tabs <- c("pixel_map_reconfort", "validation_sampling_reconfort")
 
@@ -590,7 +561,7 @@ mod_monitoring_server <- function(id, app_state) {
       } else if (identical(mode, "health")) {
         .hide(c(fast_tabs, reconfort_tabs))
         .show(fordead_tabs)
-        bslib::nav_select("subtab", selected = "alerts_fordead",
+        bslib::nav_select("subtab", selected = "pixel_map_fordead",
                           session = session)
       } else if (identical(mode, "reconfort")) {
         .hide(c(fast_tabs, fordead_tabs))
@@ -866,173 +837,14 @@ mod_monitoring_server <- function(id, app_state) {
     })
 
     # v0.90.x — La réactive legacy `alerts()` (filtre DB des alertes
-    # vectorielles via `list_alerts_for_zone`, piloté par `include_low`)
-    # est SUPPRIMÉE : depuis la Phase A (spec 008 §15, D2) l'affichage est
-    # piloté par le raster masqué (`fordead_map_ret$mask`) et plus aucun
-    # consommateur ne l'appelait. La case « inclure classes faible/moyenne »
-    # est retirée de l'UI en conséquence.
-
-    # ----- Alerts panel — raster-driven (Phase A, D2) ---------------
-    output$alerts_panel <- shiny::renderUI({
-      ns <- session$ns
-      i18n <- i18n_r()
-      # Phase A (spec 008 §15, ADR-013 A5, décision D2) — décision
-      # sain/affecté PILOTÉE PAR LE RASTER masqué de la Carte FORDEAD
-      # (`fordead_map_ret$mask`), plus par un compte d'alertes DB
-      # (`list_alerts` est legacy en Phase A — `alerts()` ci-dessus n'est
-      # plus consommé). Trois états :
-      #   (a) >= 1 pixel classe >= 1 → carte raster 0-4 (output$alerts_map) ;
-      #   (b) raster présent mais tout classe 0 / NA → carte « zone saine » ;
-      #   (c) aucun masque sur disque → placeholder « lancer un diagnostic ».
-      r <- fordead_map_ret$mask()
-      if (is.null(r)) {
-        return(htmltools::tags$p(class = "text-muted",
-                                 i18n$t("monitoring_alerts_placeholder")))
-      }
-      mx <- .fordead_raster_max(r)
-      if (is.finite(mx) && mx >= 1) {
-        return(leaflet::leafletOutput(ns("alerts_map"), height = "55vh"))
-      }
-      # État (b) — zone saine. Meta : durée du run en session, sinon date
-      # du masque persistant (réconcilié depuis le disque).
-      last <- fordead_last_result()
-      meta <- ""
-      if (!is.null(last) && identical(last$status, "success")) {
-        dur <- as.numeric(last$duration_sec %||% NA_real_)
-        ts  <- last$mask_timestamp %||% NA_character_
-        meta <- if (is.finite(dur)) {
-          sprintf(i18n$t("monitoring_fordead_no_alerts_meta"), dur)
-        } else if (!is.na(ts) && nzchar(ts)) {
-          sprintf(i18n$t("monitoring_fordead_no_alerts_meta_date"), ts)
-        } else {
-          ""
-        }
-      }
-      bslib::card(
-        class = "border-success mt-2",
-        bslib::card_header(
-          htmltools::div(
-            class = "d-flex align-items-center",
-            bsicons::bs_icon("check-circle-fill",
-                             class = "me-2 text-success fs-4"),
-            htmltools::tags$strong(
-              i18n$t("monitoring_fordead_no_alerts_title")
-            )
-          )
-        ),
-        bslib::card_body(
-          htmltools::tags$p(
-            i18n$t("monitoring_fordead_no_alerts_body")
-          ),
-          if (nzchar(meta))
-            htmltools::tags$p(class = "text-muted small mb-0", meta)
-        )
-      )
-    })
-
-    # Phase A (spec 008 §15, D2) — la carte « Alertes FORDEAD » affiche
-    # désormais le RASTER catégoriel 0-4 masqué par strate (même contenu
-    # et même palette que la Carte FORDEAD), au lieu des marqueurs
-    # vectoriels per-placette (`list_alerts` legacy). Source : le masque
-    # exposé par le sous-module (`fordead_map_ret$mask`).
-    output$alerts_map <- leaflet::renderLeaflet({
-      r <- fordead_map_ret$mask()
-      if (is.null(r)) return(NULL)
-      i18n <- i18n_r()
-      # Parité FAST : couche UGF (contour) + couche « Alertes » (le
-      # raster) togglables via LayersControl, opacité réglable.
-      ugf_4326 <- .ugf_for_overlay(app_state$current_project)
-      # UX (parité FAST) — opacité lue en isolate() pour qu'un coup de
-      # slider ne re-render PAS la carte (zoom + fond préservés) ; un
-      # observer leafletProxy ci-dessous applique le changement d'opacité.
-      op <- as.numeric(shiny::isolate(input$alerts_opacity) %||% 0.75)
-      if (!is.finite(op)) op <- 0.75
-      op <- max(0, min(1, op))
-
-      cats   <- 0:4
-      colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
-      pal <- leaflet::colorFactor(colors, levels = cats,
-                                  na.color = "transparent")
-      # Classe 0 (sain) rendue TRANSPARENTE — on ne peint que les pixels
-      # affectés (>= 1), cohérent avec la Carte FORDEAD et Diagnostic FAST
-      # (sinon le vert « sain » recouvre toute la zone). La légende garde
-      # la classe 0 en référence.
-      r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
-
-      legend_labels <- c(
-        sprintf("0 - %s", i18n$t("monitoring_fordead_class_0")),
-        sprintf("1 - %s", i18n$t("monitoring_fordead_class_1")),
-        sprintf("2 - %s", i18n$t("monitoring_fordead_class_2")),
-        sprintf("3 - %s", i18n$t("monitoring_fordead_class_3")),
-        sprintf("4 - %s", i18n$t("monitoring_fordead_class_4"))
-      )
-      overlays <- c(if (!is.null(ugf_4326)) "UGF" else NULL, "Alertes")
-
-      m <- leaflet::leaflet() |>
-        leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
-        leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
-        leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
-        leaflet::addLayersControl(
-          baseGroups    = c("OSM", "Satellite"),
-          overlayGroups = overlays,
-          options = leaflet::layersControlOptions(collapsed = TRUE)
-        ) |>
-        leaflet::addRasterImage(
-          x       = r_show,
-          colors  = pal,
-          opacity = op,
-          method  = "ngb",
-          group   = "Alertes",
-          options = leaflet::gridOptions(pane = "nemetonRaster")
-        ) |>
-        leaflet::addLegend(
-          position = "bottomright",
-          colors   = colors,
-          labels   = legend_labels,
-          title    = i18n$t("monitoring_fordead_class_title"),
-          opacity  = 0.85
-        )
-      if (!is.null(ugf_4326)) {
-        m <- m |>
-          leaflet::addPolygons(
-            data        = ugf_4326,
-            group       = "UGF",
-            color       = "#1f78b4",
-            weight      = 2,
-            opacity     = 0.9,
-            fillOpacity = 0
-          )
-      }
-      m
-    })
-
-    # Opacité du raster « Alertes FORDEAD » via leafletProxy (parité
-    # FAST) : ne retouche que le group "Alertes" → préserve zoom + fond.
-    # Dépend de input$alerts_opacity ; lit le masque en isolate().
-    shiny::observe({
-      op <- as.numeric(input$alerts_opacity %||% 0.75)
-      if (!is.finite(op)) op <- 0.75
-      op <- max(0, min(1, op))
-      r <- shiny::isolate(fordead_map_ret$mask())
-      if (is.null(r)) return()
-      cats   <- 0:4
-      colors <- c("#2CA02C", "#FFD27F", "#FF9933", "#D62728", "#222222")
-      pal <- leaflet::colorFactor(colors, levels = cats,
-                                  na.color = "transparent")
-      # Classe 0 (sain) transparente : seuls les pixels d'alerte (>= 1)
-      # sont peints (cohérent avec le render de base + Carte FORDEAD).
-      r_show <- terra::ifel(is.na(r) | r <= 0, NA, r)
-      leaflet::leafletProxy("alerts_map") |>
-        leaflet::clearGroup("Alertes") |>
-        leaflet::addRasterImage(
-          x       = r_show,
-          colors  = pal,
-          opacity = op,
-          method  = "ngb",
-          group   = "Alertes",
-          options = leaflet::gridOptions(pane = "nemetonRaster")
-        )
-    })
+    # vectorielles via `list_alerts_for_zone`) avait déjà été supprimée
+    # (Phase A : affichage raster-driven via `fordead_map_ret$mask`).
+    # v0.92.x — Les outputs `alerts_panel` / `alerts_map` + l'observer
+    # d'opacité associés au sous-onglet « Alertes FORDEAD » sont retirés
+    # avec le sous-onglet lui-même : doublon strict de la Carte FORDEAD
+    # (même raster de sévérité, même carte « zone saine » via l'overlay
+    # du sous-module). La logique de verdict sain/affecté + état placeholder
+    # vit désormais entièrement dans `mod_monitoring_fordead_map`.
 
     # v0.52.16 — Bloc `obs_pixel_inputs` + `obs_pixel_data` supprimé.
     # FAST est désormais une analyse pure raster per-pixel (spec 017
@@ -3006,13 +2818,11 @@ mod_monitoring_server <- function(id, app_state) {
     # outlives its Shiny session (long run + browser disconnect): the
     # `future` worker still finishes, persists the dieback mask and
     # inserts alerts, but the orphaned `$result()` is never delivered.
-    # Bumping `alerts_refresh` whenever the user opens "Alertes
-    # FORDEAD" or "Carte FORDEAD" makes both `alerts()` and the Carte
-    # FORDEAD `mask_r` re-query the DB / re-read the mask, so a
+    # Bumping `alerts_refresh` whenever the user opens "Carte FORDEAD"
+    # makes the Carte FORDEAD `mask_r` re-read the mask, so a
     # completed-but-undelivered run surfaces on the next tab visit.
     shiny::observeEvent(input$subtab, {
-      if (isTRUE(input$subtab %in% c("alerts_fordead",
-                                     "pixel_map_fordead"))) {
+      if (isTRUE(input$subtab == "pixel_map_fordead")) {
         alerts_refresh(alerts_refresh() + 1L)
       }
       # spec 021 — same for the RECONFORT map sub-tab.
@@ -3187,11 +2997,26 @@ mod_monitoring_server <- function(id, app_state) {
     # pixel CRSWIR/CRre. Lazy comme FORDEAD ; `reconfort_refresh` est
     # bumpé à la fin d'un run RECONFORT (et à l'ouverture du sous-onglet)
     # pour ré-invalider la couche d'alertes.
+    # In-memory result of the last RECONFORT run this session — carries
+    # `$rasters` (EPSG:2154 paths on disk). Fed to the map sub-module so it
+    # can render the layered display via `nemeton::reconfort_layer_manifest()`.
+    # NULL until a run completes (the sub-module then falls back to the
+    # DB-only alerts view).
+    reconfort_result <- shiny::reactiveVal(NULL)
+
+    # Drop the in-memory result when the active zone changes : its rasters
+    # belong to the previous zone's run and must not bleed onto another zone
+    # (the map sub-module then reverts to the DB-only alerts view).
+    shiny::observeEvent(input$zone_id, {
+      reconfort_result(NULL)
+    }, ignoreInit = TRUE)
+
     reconfort_map_ret <- mod_monitoring_reconfort_map_server(
       "reconfort_map",
       app_state = app_state,
       zone_id_r = shiny::reactive(input$zone_id),
-      refresh_r = shiny::reactive(reconfort_refresh())
+      refresh_r = shiny::reactive(reconfort_refresh()),
+      result_r  = shiny::reactive(reconfort_result())
     )
 
     # spec 021 (L6) — Lancement d'un run RECONFORT (ExtendedTask).
@@ -3294,6 +3119,7 @@ mod_monitoring_server <- function(id, app_state) {
         return(invisible(FALSE))
       }
       reconfort_result_consumed(FALSE)
+      reconfort_result(NULL)   # clear the previous run's layered display
       force_unlock_reconfort(FALSE)
       shiny::showNotification(
         i18n$t("monitoring_reconfort_starting"),
@@ -3364,6 +3190,9 @@ mod_monitoring_server <- function(id, app_state) {
           id = session$ns("reconfort_success"), type = "message", duration = 8
         )
         reconfort_refresh(reconfort_refresh() + 1L)
+        # Hand the fresh result (with `$rasters`) to the map sub-module so
+        # the layered display (score / classes / proba + opacity) lights up.
+        reconfort_result(result)
         shiny::updateActionButton(session, "run_reconfort", disabled = FALSE)
         force_unlock_reconfort(FALSE)
       }

@@ -171,6 +171,128 @@ test_that("reconfort map click produces a pixel time-series plot", {
   )
 })
 
+# ---- Manifest-driven layered display (toggles + opacity) -----------------
+
+# Builds three small EPSG:2154 rasters on disk + a synthetic run `result`
+# matching the contract of nemeton::run_reconfort_dieback() ($rasters).
+.reconfort_fake_result <- function(dir) {
+  base <- terra::rast(nrows = 8, ncols = 8,
+                      xmin = 900000, xmax = 900080,
+                      ymin = 6500000, ymax = 6500080,
+                      crs = "EPSG:2154")
+  score <- base; terra::values(score) <- seq(1, 100, length.out = 64)
+  classif <- base; terra::values(classif) <- rep(1:3, length.out = 64)
+  prob <- base; terra::values(prob) <- seq(0, 1000, length.out = 64)
+  sp <- file.path(dir, "score.tif")
+  cp <- file.path(dir, "classif.tif")
+  pp <- file.path(dir, "prob.tif")
+  terra::writeRaster(score,   sp, overwrite = TRUE)
+  terra::writeRaster(classif, cp, overwrite = TRUE)
+  terra::writeRaster(prob,    pp, overwrite = TRUE)
+  list(
+    status   = "ok",
+    zone_id  = 1L,
+    rasters  = list(continuous_score = sp, classif = cp, probability = pp),
+    n_alerts = 0L
+  )
+}
+
+test_that("manifest drives layer toggles + opacity slider", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("terra")
+  skip_if_not_installed("leaflet")
+  skip_if_not(exists("reconfort_layer_manifest",
+                     where = asNamespace("nemeton"), inherits = FALSE),
+              "nemeton reconfort_layer_manifest() not installed")
+
+  rdir <- withr::local_tempdir()
+  fake_result <- .reconfort_fake_result(rdir)
+
+  # No DB needed : alerts_r / validity_r short-circuit on a NULL connection.
+  testthat::local_mocked_bindings(
+    get_monitoring_db_connection = function(...) NULL,
+    close_monitoring_db_connection = function(con) invisible(TRUE)
+  )
+
+  app_state <- shiny::reactiveValues(
+    language = "fr",
+    current_project = list(id = "p", path = withr::local_tempdir())
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_monitoring_reconfort_map_server,
+    args = list(id = "rc", app_state = app_state,
+                zone_id_r = shiny::reactive("1"),
+                result_r  = shiny::reactive(fake_result)),
+    {
+      session$flushReact()
+      i18n <- get_i18n("fr")
+      html <- as.character(output$panel$html %||% output$panel)
+
+      # Controls present : layer checkbox group + opacity slider.
+      expect_true(grepl(i18n$t("reconfort_couches"), html, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_opacite"), html, fixed = TRUE))
+      # The three manifest raster labels appear as checkbox choices.
+      expect_true(grepl(i18n$t("reconfort_couche_score"),   html, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_couche_classes"), html, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_couche_proba"),   html, fixed = TRUE))
+      # Empty-state must NOT show when layers are available.
+      expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
+                         html, fixed = TRUE))
+
+      # Base leaflet map rendered (rasters read from disk).
+      expect_false(is.null(output$map))
+
+      # Toggling layers + moving the opacity slider re-renders without error.
+      session$setInputs(layers = c("score", "probability"), opacity = 0.4)
+      expect_no_error(session$flushReact())
+      session$setInputs(layers = "classification", opacity = 0.9)
+      expect_no_error(session$flushReact())
+    }
+  )
+})
+
+test_that("no in-memory result falls back to the DB-only alerts view", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+  skip_if_not(exists("reconfort_layer_manifest",
+                     where = asNamespace("nemeton"), inherits = FALSE),
+              "nemeton reconfort_layer_manifest() not installed")
+
+  testthat::local_mocked_bindings(
+    get_monitoring_db_connection = function(...) structure(list(), class = "fakecon"),
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    get_monitoring_zone_aoi = function(con, zone_id) .reconfort_fake_aoi()
+  )
+  testthat::local_mocked_bindings(
+    list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(2L),
+    check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
+    .package = "nemeton"
+  )
+
+  app_state <- shiny::reactiveValues(
+    language = "fr",
+    current_project = list(id = "p", path = withr::local_tempdir())
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_monitoring_reconfort_map_server,
+    args = list(id = "rc", app_state = app_state,
+                zone_id_r = shiny::reactive("1"),
+                result_r  = shiny::reactive(NULL)),
+    {
+      session$flushReact()
+      i18n <- get_i18n("fr")
+      html <- as.character(output$panel$html %||% output$panel)
+      # Legacy mode : NO layer toggles, map shown from DB alerts.
+      expect_false(grepl(i18n$t("reconfort_couches"), html, fixed = TRUE))
+      expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
+                         html, fixed = TRUE))
+      expect_equal(nrow(session$returned$alerts()), 2L)
+    }
+  )
+})
+
 # ---- RECONFORT progress dispatcher (.reconfort_handle_progress_event) ----
 
 test_that(".reconfort_handle_progress_event toasts on reconfort:phase", {
