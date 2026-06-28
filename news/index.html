@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.92.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.92.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.92.2" id="nemetonshiny-0922-2026-06-28">nemetonshiny 0.92.2 (2026-06-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0922-2026-06-28"></a></h2>
+<div class="section level4">
+<h4 id="added--carte-reconfort--couches-sélectionnables--opacité-0-92-2">Added — Carte RECONFORT : couches sélectionnables + opacité<a class="anchor" aria-label="anchor" href="#added--carte-reconfort--couches-s%C3%A9lectionnables--opacit%C3%A9-0-92-2"></a></h4>
+<p>Le sous-onglet « Alertes RECONFORT » du Suivi sanitaire affiche désormais, au choix (cases à cocher), les <strong>couches d’un run RECONFORT</strong> — rasters <em>Score de dépérissement</em> / <em>Classes de santé</em> / <em>Probabilité</em> + vecteur <em>Alertes</em> — avec un <strong>curseur d’opacité</strong> agissant sur les rasters (re-render léger via <code>leafletProxy</code>, parité avec la carte FORDEAD).</p>
+<p>Zéro sémantique métier dans le module (CLAUDE.md §2-4) : la liste des couches, les palettes, les domaines de rampe, le sens (reverse) et la visibilité par défaut proviennent tous du <strong>manifeste cœur</strong> <code>nemeton::reconfort_layer_manifest(result, include_range = TRUE)</code> (nemeton ≥ 0.97.0). Le module bascule selon la source :</p>
+<ul><li>
+<strong>mode manifeste</strong> (post-run, en session) — <code>result</code> de <code>run_reconfort_dieback()</code> threadé du parent (<code>reconfort_result</code>) au sous-module via <code>result_r</code>, réinitialisé au changement de zone et au lancement d’un nouveau run ;</li>
+<li>
+<strong>mode DB legacy</strong> (projet rechargé) — repli sur les alertes vectorielles lues en base (<code><a href="https://pobsteta.github.io/nemeton/reference/list_alerts.html" class="external-link">nemeton::list_alerts</a></code>), comportement inchangé.</li>
+</ul><p>Nouvelles clés i18n FR/EN : <code>reconfort_couches</code>, <code>reconfort_opacite</code>, <code>reconfort_couche_score</code>, <code>reconfort_couche_classes</code>, <code>reconfort_couche_proba</code>, <code>reconfort_couche_alertes</code> (libellés émis par le <code>label_key</code> du manifeste). Légende du raster de classification réutilisant <code>reconfort_class_label_1/2/3</code>.</p>
+<p>Cycle dev <code>0.92.1</code> → <code>0.92.1.9001</code> → release stable <code>v0.92.2</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="removed--suivi-sanitaire--sous-onglet--alertes-fordead--doublon-0-92-2">Removed — Suivi sanitaire : sous-onglet « Alertes FORDEAD » (doublon)<a class="anchor" aria-label="anchor" href="#removed--suivi-sanitaire--sous-onglet--alertes-fordead--doublon-0-92-2"></a></h4>
+<p>Le sous-onglet « Alertes FORDEAD » faisait doublon avec la « Carte FORDEAD » : même couche raster, même sidebar (indice CRSWIR + opacité). Il est supprimé, ainsi que ses entrées dédiées (<code>fordead_index_alerts</code>, <code>alerts_opacity</code>, <code>output$alerts_panel</code>, <code>monitoring_alerts_placeholder</code> et les variantes meta de la card). Le verdict « Zone saine » (run terminé sans pixel affecté) vit désormais uniquement dans l’overlay de <code>mod_monitoring_fordead_map</code>. Tests parent ajustés en conséquence.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.92.1" id="nemetonshiny-0921-2026-06-28">nemetonshiny 0.92.1 (2026-06-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0921-2026-06-28"></a></h2>
 <div class="section level4">
