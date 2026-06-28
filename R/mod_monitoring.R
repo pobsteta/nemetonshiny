@@ -3934,6 +3934,47 @@ mod_monitoring_server <- function(id, app_state) {
     return(invisible(NULL))
   }
 
+  if (identical(current, "reconfort:ingest_listed")) {
+    total <- as.integer(ev$total %||% 0L)
+    shiny::showNotification(
+      .monitoring_spinning_msg(
+        i18n$t("monitoring_reconfort_ingest_listed", total = total)),
+      id          = session$ns("reconfort_progress"),
+      type        = "message",
+      duration    = NULL,
+      closeButton = FALSE
+    )
+    return(invisible(NULL))
+  }
+
+  if (identical(current, "reconfort:ingest_item")) {
+    n     <- as.integer(ev$completed %||% 0L)
+    total <- as.integer(ev$total     %||% 0L)
+    step  <- as.character(ev$step %||% "")
+    date  <- as.character(ev$item_date %||% "")
+    step_key <- switch(step,
+      download = "monitoring_reconfort_step_download",
+      crop     = "monitoring_reconfort_step_crop",
+      done     = "monitoring_reconfort_step_done",
+      cached   = "monitoring_reconfort_step_cached",
+      failed   = "monitoring_reconfort_step_failed",
+      NULL)
+    step_lbl <- if (is.null(step_key)) step else i18n$t(step_key)
+    detail <- if (nzchar(date) && !identical(date, "NA")) {
+      paste0(step_lbl, " · ", date)
+    } else step_lbl
+    shiny::showNotification(
+      .monitoring_spinning_msg(
+        i18n$t("monitoring_reconfort_ingest_item",
+               n = n, total = total, detail = detail)),
+      id          = session$ns("reconfort_progress"),
+      type        = "message",
+      duration    = NULL,
+      closeButton = FALSE
+    )
+    return(invisible(NULL))
+  }
+
   if (identical(current, "reconfort:complete")) {
     n_alerts <- as.integer(ev$n_alerts     %||% ev$n_alerts_inserted %||% 0L)
     duration <- as.numeric(ev$duration_sec %||% 0)

@@ -1,3 +1,20 @@
+# nemetonshiny 0.92.0 (2026-06-28)
+
+### Added — RECONFORT : progression par scène de l'ingestion S2
+
+Le bandeau de progression du run RECONFORT n'affichait que la phase globale
+`ingestion` pendant des heures (download S2 ~4 min/scène, limité par GEODES).
+`.reconfort_handle_progress_event()` rend désormais les nouveaux événements
+émis par `nemeton (>= 0.96.0)` :
+
+- `reconfort:ingest_listed` → « Ingestion S2 · N scène(s) à traiter » ;
+- `reconfort:ingest_item` → « Scène X/N — téléchargement / extraction +
+  recadrage AOI / recadrée / déjà en cache / échec » (+ date de la scène),
+
+à la manière du suivi FORDEAD et de l'ingestion FAST. Nouvelles clés i18n
+FR/EN (`monitoring_reconfort_ingest_*`, `monitoring_reconfort_step_*`). Plancher
+relevé à `nemeton (>= 0.96.0)`.
+
 # nemetonshiny 0.91.18 (2026-06-27)
 
 ### Fixed — R CMD check : test `app_server` lisant un réactif après destruction de session
