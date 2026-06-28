@@ -1,3 +1,32 @@
+# nemetonshiny 0.92.3 (2026-06-28)
+
+### Changed — Carte RECONFORT : sidebar droite, UGF, clip à la strate
+
+Suite du chantier couches RECONFORT, alignement complet sur les cartes
+FORDEAD / FAST :
+
+* **Contrôles en sidebar droite** — les cases à cocher des couches et le
+  curseur d'opacité passent dans une `bslib::layout_sidebar` (sidebar
+  droite, `open = "always"`), parité visuelle avec la Carte FORDEAD. La
+  carte Leaflet devient **statique** (overlay d'état par-dessus) pour
+  préserver le binding `input$map_click` (clic → diagnostic pixel).
+* **Couche UGF** — les Unités de Gestion Forestière du projet
+  (`project$indicators_sf`) sont dessinées en overlay toggleable via le
+  LayersControl natif (helper partagé `.ugf_for_overlay`, comme FORDEAD /
+  FAST).
+* **Résultats clippés à la zone de suivi sélectionnée** — les rasters sont
+  masqués (`terra::mask`) à l'AOI de la strate choisie dans la liste
+  déroulante (`fordead_tot` / `_res` / `_feu` / `_mix`), exactement comme
+  FORDEAD masque le raster `_tot` par strate. Présentation pure, aucun
+  calcul métier (CLAUDE.md §3). Les alertes vectorielles sont déjà
+  filtrées par zone côté `nemeton::list_alerts(zone_id = ...)`.
+
+Le `result` en mémoire n'est plus purgé au changement de zone (mais au
+changement de **projet**) : on conserve le run et on se contente de le
+clipper à la strate sélectionnée.
+
+Cycle dev `0.92.2` → `0.92.2.9001` → release stable `v0.92.3`.
+
 # nemetonshiny 0.92.2 (2026-06-28)
 
 ### Added — Carte RECONFORT : couches sélectionnables + opacité
