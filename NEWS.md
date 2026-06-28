@@ -1,4 +1,4 @@
-# nemetonshiny 0.92.1.9001 (dev)
+# nemetonshiny 0.92.2 (2026-06-28)
 
 ### Added — Carte RECONFORT : couches sélectionnables + opacité
 
@@ -28,7 +28,7 @@ Nouvelles clés i18n FR/EN : `reconfort_couches`, `reconfort_opacite`,
 le `label_key` du manifeste). Légende du raster de classification
 réutilisant `reconfort_class_label_1/2/3`.
 
-Cycle dev `0.92.1` → `0.92.1.9001` → release stable cible `v0.92.2`.
+Cycle dev `0.92.1` → `0.92.1.9001` → release stable `v0.92.2`.
 
 ### Removed — Suivi sanitaire : sous-onglet « Alertes FORDEAD » (doublon)
 
