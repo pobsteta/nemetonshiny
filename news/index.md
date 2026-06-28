@@ -1,5 +1,15 @@
 # Changelog
 
+## nemetonshiny 0.92.1 (2026-06-28)
+
+#### Changed — RECONFORT : message de lancement réaliste (durée à froid)
+
+Le toast de lancement du diagnostic RECONFORT annonçait « Durée estimée
+: quelques minutes », trompeur pour un premier calcul à froid qui dure
+en réalité plusieurs heures. Message aligné sur le style du diagnostic
+FORDEAD : « Premier calcul à froid : plusieurs heures ; nettement plus
+rapide ensuite. » (clé `monitoring_reconfort_starting`, FR/EN).
+
 ## nemetonshiny 0.92.0 (2026-06-28)
 
 #### Added — RECONFORT : progression par scène de l’ingestion S2
