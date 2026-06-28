@@ -1,4 +1,4 @@
-# nemetonshiny 0.92.0.9000 (dev)
+# nemetonshiny 0.92.1 (2026-06-28)
 
 ### Changed — RECONFORT : message de lancement réaliste (durée à froid)
 
