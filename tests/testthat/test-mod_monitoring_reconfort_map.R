@@ -212,19 +212,29 @@ test_that("manifest drives layer toggles + opacity slider", {
   skip_if_not(exists("reconfort_layer_manifest",
                      where = asNamespace("nemeton"), inherits = FALSE),
               "nemeton reconfort_layer_manifest() not installed")
+  skip_if_not(exists("read_reconfort_layer",
+                     where = asNamespace("nemeton"), inherits = FALSE),
+              "nemeton >= 0.98.0 (read_reconfort_layer) not installed")
 
   rdir <- withr::local_tempdir()
   fake_result <- .reconfort_fake_result(rdir)
 
-  # EPSG:2154 AOI covering the fake rasters → exercises the strata-clip
-  # path (terra::mask) in .add_raster. Also used as the project UGF
-  # (indicators_sf) so the UGF overlay + framing run.
+  # EPSG:2154 AOI covering the fake rasters → passed as `mask_polygon` to
+  # the core reader. Also used as the project UGF (indicators_sf) so the
+  # UGF overlay + framing run.
   aoi_2154 <- sf::st_sf(
     id = 1L,
     geometry = sf::st_sfc(sf::st_polygon(list(rbind(
       c(900000, 6500000), c(900080, 6500000), c(900080, 6500080),
       c(900000, 6500080), c(900000, 6500000)))), crs = 2154)
   )
+
+  # Recorder : the module must delegate read + UGF mask to the core reader
+  # (no terra::mask of its own). Capture each call's layer id + whether a
+  # mask_polygon was supplied.
+  rl_calls <- new.env()
+  rl_calls$ids  <- character()
+  rl_calls$mask <- logical()
 
   testthat::local_mocked_bindings(
     get_monitoring_db_connection = function(...) structure(list(), class = "fakecon"),
@@ -234,6 +244,12 @@ test_that("manifest drives layer toggles + opacity slider", {
   testthat::local_mocked_bindings(
     list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(0L),
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
+    read_reconfort_layer = function(layer, con = NULL, zone_id = NULL,
+                                    apply_zone_mask = TRUE, mask_polygon = NULL) {
+      rl_calls$ids  <- c(rl_calls$ids,  as.character(layer$id))
+      rl_calls$mask <- c(rl_calls$mask, !is.null(mask_polygon))
+      terra::rast(layer$path)
+    },
     .package = "nemeton"
   )
 
@@ -265,8 +281,15 @@ test_that("manifest drives layer toggles + opacity slider", {
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
                          overlay, fixed = TRUE))
 
-      # Base leaflet map rendered (rasters read from disk).
+      # Base leaflet map rendered.
       expect_false(is.null(output$map))
+
+      # Read + UGF mask delegated to the core reader for every raster layer,
+      # each with a mask_polygon (the selected-zone AOI). No terra::mask in
+      # the module.
+      expect_true(all(c("score", "classification", "probability") %in%
+                        rl_calls$ids))
+      expect_true(length(rl_calls$mask) > 0L && all(rl_calls$mask))
 
       # Toggling layers + moving the opacity slider re-renders without error.
       session$setInputs(layers = c("score", "probability"), opacity = 0.4)
