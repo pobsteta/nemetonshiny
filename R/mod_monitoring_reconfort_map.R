@@ -335,22 +335,15 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     }
 
     # ----- Raster layer helper (shared by base render + proxy) -----------
-    # Draws one manifest raster row (continuous or categorical) clipped to
-    # the selected-zone `aoi` + its legend, at the requested opacity.
+    # Draws one manifest raster row (continuous or categorical) + its legend
+    # at the requested opacity. `r` is the SpatRaster ALREADY read and masked
+    # to the UGF zone by the core reader (`masked_rasters_r`) — the module
+    # carries no spatial masking of its own (spec 021 L7, CLAUDE.md §1-3).
     # Palettes / domain / reverse come from the manifest — no business
     # semantics here.
-    .add_raster <- function(map, row, opacity, i18n, aoi = NULL) {
-      r <- tryCatch(terra::rast(row$path), error = function(e) NULL)
+    .add_raster <- function(map, r, row, opacity, i18n) {
       if (is.null(r)) return(map)
       if (terra::nlyr(r) > 1L) r <- r[[1L]]
-
-      # Clip d'affichage à la zone de suivi sélectionnée (présentation pure).
-      if (!is.null(aoi)) {
-        r <- tryCatch(
-          terra::mask(r, terra::vect(sf::st_transform(aoi, terra::crs(r)))),
-          error = function(e) r
-        )
-      }
 
       if (isTRUE(row$categorical)) {
         cols <- .RECONFORT_CLASSIF_COLORS
@@ -419,6 +412,43 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       max(0, min(1, op))
     })
 
+    # ----- Masked rasters (READ + UGF MASK delegated to the core) -------
+    # `nemeton::read_reconfort_layer(layer = row, mask_polygon = aoi)`
+    # returns a SpatRaster already masked to the selected monitoring-zone
+    # polygon (spec 021 L7) : the module no longer performs ANY spatial
+    # masking (no terra::mask) — strict parity with FAST / FORDEAD readers
+    # (CLAUDE.md §1-3). Cached on manifest / zone (`aoi_r`), NOT on opacity :
+    # a slider move only re-adds the cached rasters at the new opacity
+    # (parity FORDEAD — the mask lives in a reactive, opacity is a render
+    # param). `aoi` is the mask polygon ; passing it avoids a per-tick DB
+    # round-trip (the reader would otherwise resolve it from con + zone_id).
+    # Returns a named list id → SpatRaster for every `type == "raster"` row
+    # (the `vector` alert row is never passed to the reader — it rejects it).
+    masked_rasters_r <- shiny::reactive({
+      rm <- raster_manifest_r()
+      if (is.null(rm)) return(NULL)
+      aoi <- aoi_r()
+      out <- list()
+      for (k in seq_len(nrow(rm))) {
+        row <- rm[k, ]
+        r <- tryCatch(
+          nemeton::read_reconfort_layer(
+            layer           = row,
+            mask_polygon    = aoi,
+            apply_zone_mask = TRUE
+          ),
+          error = function(e) {
+            cli::cli_alert_warning(
+              "read_reconfort_layer ({row$id}) failed: {conditionMessage(e)}")
+            NULL
+          }
+        )
+        if (!is.null(r)) out[[as.character(row$id)]] <- r
+      }
+      if (!length(out)) return(NULL)
+      out
+    })
+
     # ----- Base map (stable widget — parity FORDEAD) --------------------
     # Depends ONLY on the current project (re-render on project change, not
     # on zone / layer / opacity). A re-render recreates the widget and would
@@ -480,13 +510,13 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # manifest) re-draws the checked layers via leafletProxy. The base map,
     # zoom, base layer and UGF overlay are preserved. Mirror of FORDEAD.
     shiny::observe({
-      m    <- manifest_r()
-      a    <- alerts_r()
-      sel  <- selected_ids_r()
-      op   <- opacity_r()
-      i18n <- i18n_r()
-      rm   <- raster_manifest_r()
-      aoi  <- aoi_r()
+      m       <- manifest_r()
+      a       <- alerts_r()
+      sel     <- selected_ids_r()
+      op      <- opacity_r()
+      i18n    <- i18n_r()
+      rm      <- raster_manifest_r()
+      rasters <- masked_rasters_r()
 
       proxy <- leaflet::leafletProxy("map")
       # Clear every known data group + its legend (NOT the UGF overlay),
@@ -499,9 +529,12 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           leaflet::clearGroup(g) |>
           leaflet::removeControl(paste0("legend_", g))
       }
-      if (!is.null(rm)) {
+      if (!is.null(rm) && !is.null(rasters)) {
         for (k in seq_len(nrow(rm))) {
-          if (rm$id[k] %in% sel) proxy <- .add_raster(proxy, rm[k, ], op, i18n, aoi)
+          id <- as.character(rm$id[k])
+          if (id %in% sel && !is.null(rasters[[id]])) {
+            proxy <- .add_raster(proxy, rasters[[id]], rm[k, ], op, i18n)
+          }
         }
       }
       if ("alerts" %in% sel) proxy <- .add_alerts(proxy, a, i18n)

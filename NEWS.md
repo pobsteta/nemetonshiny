@@ -1,3 +1,35 @@
+# nemetonshiny 0.92.3.9001 (dev)
+
+### Changed — Carte RECONFORT : masquage UGF rapatrié dans le cœur
+
+L'opération spatiale `terra::mask` introduite en v0.92.3 (clip des rasters à
+la zone de suivi) **quitte la présentation** : elle est désormais déléguée
+au reader cœur `nemeton::read_reconfort_layer()` (nemeton ≥ 0.98.0). Le
+module `mod_monitoring_reconfort_map` ne porte **plus aucune op spatiale de
+masquage** — respect strict des règles §1-3 (aucune sémantique spatiale dans
+`mod_*`) et parité avec les readers FAST / FORDEAD (état cible spec 016 +
+spec 021 L7).
+
+* Lecture + masquage UGF en un seul appel :
+  `read_reconfort_layer(layer = row, mask_polygon = aoi, apply_zone_mask =
+  TRUE)` → SpatRaster déjà masqué à l'AOI de la zone sélectionnée
+  (`_tot` / `_res` / `_feu` / `_mix`). Le polygone (concern UI) est choisi
+  par l'app, le masque (concern métier) appliqué par le cœur.
+* Rasters masqués mis en cache dans un reactive (`masked_rasters_r`), clé
+  manifeste / zone et **non l'opacité** : un mouvement du curseur ne relit
+  ni ne remasque (parité FORDEAD — l'opacité n'est qu'un paramètre de
+  rendu). Seules les lignes `type == "raster"` du manifeste sont passées au
+  reader (il rejette la ligne `vector` des alertes).
+
+Inchangé : manifeste (`reconfort_layer_manifest`), cases à cocher + curseur
+d'opacité, couche UGF overlay (vecteur toggleable, ce n'est pas du
+masquage), vecteur alertes (`result$alerts_sf` / DB), clic-pixel CRSWIR/CRre.
+
+Plancher relevé à `Imports: nemeton (>= 0.98.0)`.
+
+Cycle dev `0.92.3` → `0.92.3.9001` → release stable cible `v0.93.0` (minor :
+consomme la nouvelle API cœur, retire le masque local).
+
 # nemetonshiny 0.92.3 (2026-06-28)
 
 ### Changed — Carte RECONFORT : sidebar droite, UGF, clip à la strate
