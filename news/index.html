@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.92.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.93.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.93.0" id="nemetonshiny-0930-2026-06-29">nemetonshiny 0.93.0 (2026-06-29)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0930-2026-06-29"></a></h2>
+<div class="section level4">
+<h4 id="changed--carte-reconfort--masquage-ugf-rapatrié-dans-le-cœur-0-93-0">Changed — Carte RECONFORT : masquage UGF rapatrié dans le cœur<a class="anchor" aria-label="anchor" href="#changed--carte-reconfort--masquage-ugf-rapatri%C3%A9-dans-le-c%C5%93ur-0-93-0"></a></h4>
+<p>L’opération spatiale <code><a href="https://rspatial.github.io/terra/reference/mask.html" class="external-link">terra::mask</a></code> introduite en v0.92.3 (clip des rasters à la zone de suivi) <strong>quitte la présentation</strong> : elle est désormais déléguée au reader cœur <code><a href="https://pobsteta.github.io/nemeton/reference/read_reconfort_layer.html" class="external-link">nemeton::read_reconfort_layer()</a></code> (nemeton ≥ 0.98.0). Le module <code>mod_monitoring_reconfort_map</code> ne porte <strong>plus aucune op spatiale de masquage</strong> — respect strict des règles §1-3 (aucune sémantique spatiale dans <code>mod_*</code>) et parité avec les readers FAST / FORDEAD (état cible spec 016 + spec 021 L7).</p>
+<ul><li>Lecture + masquage UGF en un seul appel : <code>read_reconfort_layer(layer = row, mask_polygon = aoi, apply_zone_mask = TRUE)</code> → SpatRaster déjà masqué à l’AOI de la zone sélectionnée (<code>_tot</code> / <code>_res</code> / <code>_feu</code> / <code>_mix</code>). Le polygone (concern UI) est choisi par l’app, le masque (concern métier) appliqué par le cœur.</li>
+<li>Rasters masqués mis en cache dans un reactive (<code>masked_rasters_r</code>), clé manifeste / zone et <strong>non l’opacité</strong> : un mouvement du curseur ne relit ni ne remasque (parité FORDEAD — l’opacité n’est qu’un paramètre de rendu). Seules les lignes <code>type == "raster"</code> du manifeste sont passées au reader (il rejette la ligne <code>vector</code> des alertes).</li>
+</ul><p>Inchangé : manifeste (<code>reconfort_layer_manifest</code>), cases à cocher + curseur d’opacité, couche UGF overlay (vecteur toggleable, ce n’est pas du masquage), vecteur alertes (<code>result$alerts_sf</code> / DB), clic-pixel CRSWIR/CRre.</p>
+<p>Plancher relevé à <code>Imports: nemeton (&gt;= 0.98.0)</code>.</p>
+<p>Cycle dev <code>0.92.3</code> → <code>0.92.3.9001</code> → release stable <code>v0.93.0</code> (minor : consomme la nouvelle API cœur, retire le masque local).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.92.3" id="nemetonshiny-0923-2026-06-28">nemetonshiny 0.92.3 (2026-06-28)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0923-2026-06-28"></a></h2>
 <div class="section level4">
