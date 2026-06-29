@@ -1,4 +1,4 @@
-# nemetonshiny 0.92.3.9001 (dev)
+# nemetonshiny 0.93.0 (2026-06-29)
 
 ### Changed — Carte RECONFORT : masquage UGF rapatrié dans le cœur
 
@@ -27,7 +27,7 @@ masquage), vecteur alertes (`result$alerts_sf` / DB), clic-pixel CRSWIR/CRre.
 
 Plancher relevé à `Imports: nemeton (>= 0.98.0)`.
 
-Cycle dev `0.92.3` → `0.92.3.9001` → release stable cible `v0.93.0` (minor :
+Cycle dev `0.92.3` → `0.92.3.9001` → release stable `v0.93.0` (minor :
 consomme la nouvelle API cœur, retire le masque local).
 
 # nemetonshiny 0.92.3 (2026-06-28)
