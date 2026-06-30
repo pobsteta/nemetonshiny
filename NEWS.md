@@ -1,3 +1,15 @@
+# nemetonshiny 0.94.4.9001 (dev)
+
+### Changed — Alertes FORDEAD : rampe bleu→rouge pour « Date de 1ère détection »
+
+La couche *Date de 1ère détection* (first_anomaly) passait par la palette
+`viridis`. Elle utilise désormais `RdYlBu` **inversé** : les détections les
+plus **anciennes** sont en **bleu**, les plus **récentes** en **rouge** —
+lecture immédiate de la progression temporelle du dépérissement. Légende
+(années) inchangée.
+
+Cycle dev `0.94.4` → `0.94.4.9001` → release stable cible `v0.94.5`.
+
 # nemetonshiny 0.94.4 (2026-06-30)
 
 ### Fixed — Alertes RECONFORT : rasters affichés après rechargement de projet
