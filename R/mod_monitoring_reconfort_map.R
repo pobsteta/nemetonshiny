@@ -53,6 +53,22 @@
   "3" = "#D62728"   # rouge   (très dépérissant)
 )
 
+#' Libellé d'une couche (case à cocher) avec une icône « i » (tooltip bslib)
+#' qui explique ce que la couche affiche. Parité avec
+#' `.fordead_layer_choice()` de la Carte FORDEAD.
+#' @noRd
+.reconfort_layer_choice <- function(label, info) {
+  htmltools::tagList(
+    label,
+    bslib::tooltip(
+      bsicons::bs_icon("info-circle",
+                       class = "ms-1 text-primary",
+                       style = "cursor: help;"),
+      info
+    )
+  )
+}
+
 #' Carte RECONFORT sub-tab UI
 #'
 #' @param id Module namespace id.
@@ -113,15 +129,40 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
 
     # ----- Layer manifest (cœur) ----------------------------------------
     # Le contrat stable : le module ne lit JAMAIS result$rasters en dur, il
-    # délègue au cœur la liste des couches + palettes/domaines/sens. NULL
-    # quand aucun run n'est disponible en mémoire (mode DB legacy).
+    # délègue au cœur la liste des couches + palettes/domaines/sens.
+    #
+    # Deux sources, schéma identique (interchangeable) :
+    #   1. `result` EN MÉMOIRE d'un run de la session → reconfort_layer_manifest() ;
+    #   2. sinon (projet rechargé, plus de result) → DÉCOUVERTE CACHE via
+    #      reconfort_cache_manifest(cache_dir, zone_id) (nemeton >= 0.100.0) :
+    #      le run persisté est lu depuis le disque, parité FORDEAD — les
+    #      rasters réapparaissent après rechargement, pas seulement après un
+    #      run frais.
+    # NULL quand ni run mémoire ni run caché ne sont disponibles.
     manifest_r <- shiny::reactive({
       res <- result_r()
-      if (is.null(res)) return(NULL)
+      if (!is.null(res)) {
+        m <- tryCatch(
+          nemeton::reconfort_layer_manifest(res, include_range = TRUE),
+          error = function(e) {
+            cli::cli_alert_warning("reconfort_layer_manifest failed: {e$message}")
+            NULL
+          }
+        )
+        if (!is.null(m) && nrow(m)) return(m)
+      }
+      # Fallback cache (parité FORDEAD).
+      zone <- zone_id_r()
+      proj <- app_state$current_project
+      if (is.null(zone) || !isTRUE(nzchar(zone)) ||
+          is.null(proj) || is.null(proj$path)) return(NULL)
+      cd <- .reconfort_cache_dir(proj)
+      if (is.na(cd) || !dir.exists(cd)) return(NULL)
       m <- tryCatch(
-        nemeton::reconfort_layer_manifest(res, include_range = TRUE),
+        nemeton::reconfort_cache_manifest(cd, zone_id = as.integer(zone),
+                                          include_range = TRUE),
         error = function(e) {
-          cli::cli_alert_warning("reconfort_layer_manifest failed: {e$message}")
+          cli::cli_alert_warning("reconfort_cache_manifest failed: {e$message}")
           NULL
         }
       )
@@ -220,33 +261,58 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       )
     })
 
-    # Default-visible layer ids from the manifest (checkbox initial state).
-    .default_selected <- function(m) {
-      if (is.null(m)) return(character())
-      as.character(m$id[m$default_visible %in% TRUE])
-    }
+    # All toggleable layers = the manifest's RASTER rows (run result OR
+    # cache) + a synthetic "alerts" row whenever DB alerts exist for the
+    # zone. Alerts are a DB layer, independent of the raster manifest (the
+    # cache manifest carries no `alerts` row), so they must stay toggleable
+    # even in cache mode — otherwise switching from legacy (alerts shown) to
+    # cache (manifest present) would silently drop the alerts toggle.
+    available_layers_r <- shiny::reactive({
+      rm <- raster_manifest_r()
+      rows <- if (is.null(rm)) NULL else data.frame(
+        id              = as.character(rm$id),
+        label_key       = as.character(rm$label_key),
+        default_visible = rm$default_visible %in% TRUE,
+        stringsAsFactors = FALSE
+      )
+      a <- alerts_r()
+      if (!is.null(a) && nrow(a) > 0L &&
+          (is.null(rows) || !("alerts" %in% rows$id))) {
+        rows <- rbind(rows, data.frame(
+          id = "alerts", label_key = "reconfort_couche_alertes",
+          default_visible = TRUE, stringsAsFactors = FALSE))
+      }
+      if (is.null(rows) || !nrow(rows)) return(NULL)
+      rows
+    })
 
     # ----- Sidebar controls (manifest-driven, dynamic choices) ----------
     output$controls <- shiny::renderUI({
       i18n <- i18n_r()
-      m <- manifest_r()
-      if (is.null(m)) {
-        # MODE DB legacy / aucun run en mémoire — pas de toggles ; rappel.
+      lay <- available_layers_r()
+      if (is.null(lay)) {
+        # Ni raster (run mémoire ou cache) ni alerte — pas de toggles ; rappel.
         return(htmltools::p(
           class = "text-muted small mb-0",
           i18n$t("monitoring_reconfort_map_empty_body")
         ))
       }
-      choices  <- stats::setNames(
-        as.character(m$id),
-        vapply(m$label_key, function(k) i18n$t(k), character(1))
-      )
-      selected <- .default_selected(m)
-      has_raster <- any(m$type == "raster")
+      # Chaque couche porte une icône « i » (tooltip) décrivant ce qu'elle
+      # affiche — parité FORDEAD. La clé d'info = `<label_key>_info`.
+      choice_names <- lapply(seq_len(nrow(lay)), function(k) {
+        .reconfort_layer_choice(
+          i18n$t(lay$label_key[k]),
+          i18n$t(paste0(lay$label_key[k], "_info"))
+        )
+      })
+      selected <- lay$id[lay$default_visible]
+      has_raster <- !is.null(raster_manifest_r())
       htmltools::tagList(
         shiny::checkboxGroupInput(
           session$ns("layers"), i18n$t("reconfort_couches"),
-          choices = choices, selected = selected
+          choiceNames = choice_names,
+          choiceValues = as.character(lay$id),
+          selected = selected
         ),
         if (has_raster) shiny::sliderInput(
           session$ns("opacity"), i18n$t("reconfort_opacite"),
@@ -268,12 +334,10 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       )
     })
 
-    # ----- Empty-state overlay (no layers AND no alerts) ----------------
+    # ----- Empty-state overlay (no raster layer AND no alerts) ----------
     output$overlay <- shiny::renderUI({
       i18n <- i18n_r()
-      m <- manifest_r()
-      a <- alerts_r()
-      if (!is.null(m) || (!is.null(a) && nrow(a) > 0L)) return(NULL)
+      if (!is.null(available_layers_r())) return(NULL)
       htmltools::div(
         style = paste(
           "position: absolute; inset: 0; z-index: 500;",
@@ -368,7 +432,11 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         lv   <- as.integer(names(cols))
         pal  <- leaflet::colorFactor(unname(cols), levels = lv,
                                      na.color = "transparent")
-        r_show <- terra::ifel(is.na(r) | r < 1, NA, r)
+        # Classe 1 (1-sain) rendue TRANSPARENTE — n'afficher que les pixels
+        # affectés (2-deperissant / 3-tres-deperissant), parité avec la
+        # sévérité FORDEAD qui rend la classe 0 (sain) transparente. La
+        # classe 1 reste dans la légende (couleur de référence).
+        r_show <- terra::ifel(is.na(r) | r <= 1, NA, r)
         map <- leaflet::addRasterImage(
           map, x = r_show, colors = pal, opacity = opacity,
           method = "ngb", project = TRUE, group = row$id,
@@ -383,27 +451,40 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           opacity = opacity, layerId = paste0("legend_", row$id)
         )
       } else {
-        dom <- c(row$vmin, row$vmax)
-        if (!all(is.finite(dom)) || dom[1L] == dom[2L]) {
-          mm <- tryCatch(as.numeric(terra::minmax(r)),
-                         error = function(e) NULL)
-          if (!is.null(mm) && all(is.finite(mm)) && mm[1L] != mm[2L]) {
-            dom <- c(mm[1L], mm[2L])
-          } else {
-            dom <- c(0, 1)
-          }
-        }
         palname <- if (!is.na(row$palette)) row$palette else "viridis"
-        pal <- leaflet::colorNumeric(palname, domain = dom,
-                                     reverse = isTRUE(row$reverse),
-                                     na.color = "transparent")
+        # Échelle de couleur PAR QUANTILES (parité avec la carte FAST),
+        # calculée sur les valeurs réelles du raster affiché : une
+        # distribution continue concentrée (score / probabilité) utilise
+        # alors toute la palette uniformément, au lieu d'une rampe linéaire
+        # min/max qui délave les valeurs groupées. Le vmin/vmax générique
+        # du manifeste (score 1-100, proba 0-1000) n'est PAS utilisé.
+        # Repli sur une rampe linéaire réelle si la distribution est trop
+        # dégénérée pour des bornes de quantiles.
+        vals <- tryCatch(terra::values(r, na.rm = TRUE, mat = FALSE),
+                         error = function(e) numeric(0))
+        vals <- vals[is.finite(vals)]
+        qbreaks <- if (length(vals)) unique(as.numeric(stats::quantile(
+          vals, probs = seq(0, 1, length.out = 6L), na.rm = TRUE))) else numeric(0)
+        if (length(qbreaks) >= 3L) {
+          pal <- leaflet::colorBin(palname, domain = range(vals),
+                                   bins = qbreaks, reverse = isTRUE(row$reverse),
+                                   na.color = "transparent")
+          legend_vals <- range(vals)
+        } else {
+          dom <- if (length(vals)) range(vals) else c(0, 1)
+          if (dom[1L] == dom[2L]) dom <- dom + c(0, 1)
+          pal <- leaflet::colorNumeric(palname, domain = dom,
+                                       reverse = isTRUE(row$reverse),
+                                       na.color = "transparent")
+          legend_vals <- dom
+        }
         map <- leaflet::addRasterImage(
           map, x = r, colors = pal, opacity = opacity,
           method = "bilinear", project = TRUE, group = row$id,
           options = leaflet::gridOptions(pane = "nemetonRaster")
         )
         map <- leaflet::addLegend(
-          map, position = "bottomright", pal = pal, values = dom,
+          map, position = "bottomright", pal = pal, values = legend_vals,
           title = i18n$t(row$label_key), opacity = opacity,
           layerId = paste0("legend_", row$id)
         )
@@ -411,17 +492,14 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       map
     }
 
-    # Currently selected layer ids (checkbox in manifest mode, else "alerts"
-    # when DB alerts exist).
+    # Currently selected layer ids : the checkbox state, defaulting to the
+    # default-visible layers (rasters + alerts) until the user interacts.
     selected_ids_r <- shiny::reactive({
-      m <- manifest_r()
-      if (!is.null(m)) {
-        sel <- input$layers
-        if (is.null(sel)) sel <- .default_selected(m)
-        return(as.character(sel))
-      }
-      a <- alerts_r()
-      if (!is.null(a) && nrow(a) > 0L) "alerts" else character()
+      lay <- available_layers_r()
+      if (is.null(lay)) return(character())
+      sel <- input$layers
+      if (is.null(sel)) sel <- lay$id[lay$default_visible]
+      as.character(sel)
     })
 
     opacity_r <- shiny::reactive({

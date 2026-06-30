@@ -281,6 +281,9 @@ test_that("manifest drives layer toggles + opacity slider", {
       expect_true(grepl(i18n$t("reconfort_couche_score"),   controls, fixed = TRUE))
       expect_true(grepl(i18n$t("reconfort_couche_classes"), controls, fixed = TRUE))
       expect_true(grepl(i18n$t("reconfort_couche_proba"),   controls, fixed = TRUE))
+      # Each layer carries an info "i" tooltip (parity FORDEAD).
+      expect_true(grepl("info-circle", controls, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_couche_score_info"), controls, fixed = TRUE))
       # Empty-state overlay must NOT show when layers are available.
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
                          overlay, fixed = TRUE))
@@ -350,13 +353,85 @@ test_that("no in-memory result falls back to the DB-only alerts view", {
       i18n <- get_i18n("fr")
       controls <- .html_of(output$controls)
       overlay  <- .html_of(output$overlay)
-      # Legacy mode : NO layer toggles, map shown from DB alerts.
-      expect_false(grepl(i18n$t("reconfort_couches"), controls, fixed = TRUE))
+      # DB-only alerts (no run in memory, no cached run) : the Alerts layer
+      # stays toggleable, but there are NO raster toggles and NO opacity
+      # slider (alerts are a vector DB layer).
+      expect_true(grepl(i18n$t("reconfort_couches"), controls, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_couche_alertes"), controls, fixed = TRUE))
+      expect_false(grepl(i18n$t("reconfort_couche_score"), controls, fixed = TRUE))
+      expect_false(grepl(i18n$t("reconfort_opacite"), controls, fixed = TRUE))
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
                          overlay, fixed = TRUE))
       expect_equal(nrow(session$returned$alerts()), 2L)
       # Alerts clipped to the zone polygon by the core helper.
       expect_true(length(faz_calls$mask) > 0L && all(faz_calls$mask))
+    }
+  )
+})
+
+test_that("cache fallback shows persisted rasters after a project reload", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("terra")
+  skip_if_not(exists("reconfort_cache_manifest",
+                     where = asNamespace("nemeton"), inherits = FALSE),
+              "nemeton >= 0.100.0 (reconfort_cache_manifest) not installed")
+
+  # Project with a REAL reconfort cache dir (the module guards on
+  # dir.exists) + a fake classification tif referenced by the manifest.
+  pp <- withr::local_tempdir()
+  cd <- file.path(pp, "cache", "layers", "reconfort", "zone_1")
+  dir.create(cd, recursive = TRUE, showWarnings = FALSE)
+  base <- terra::rast(nrows = 6, ncols = 6, xmin = 900000, xmax = 900060,
+                      ymin = 6500000, ymax = 6500060, crs = "EPSG:2154")
+  terra::values(base) <- rep(1:3, length.out = 36)
+  tif <- file.path(cd, "reconfort_mask_20260629T055540.tif")
+  terra::writeRaster(base, tif, overwrite = TRUE)
+
+  cache_manifest <- data.frame(
+    id = "classification", label_key = "reconfort_couche_classes",
+    type = "raster", role = "classification", path = tif, categorical = TRUE,
+    palette = NA_character_, reverse = FALSE, vmin = NA_real_, vmax = NA_real_,
+    default_visible = TRUE, default_opacity = 0.8, n_features = NA_integer_,
+    stringsAsFactors = FALSE
+  )
+
+  caz <- new.env(); caz$called <- FALSE
+
+  testthat::local_mocked_bindings(
+    get_monitoring_db_connection = function(...) NULL,
+    close_monitoring_db_connection = function(con) invisible(TRUE)
+  )
+  testthat::local_mocked_bindings(
+    reconfort_cache_manifest = function(cache_dir, zone_id, run_id = NULL,
+                                        include_range = FALSE) {
+      caz$called <- TRUE
+      cache_manifest
+    },
+    read_reconfort_layer = function(layer, con = NULL, zone_id = NULL,
+                                    apply_zone_mask = TRUE, mask_polygon = NULL) {
+      terra::rast(layer$path)
+    },
+    .package = "nemeton"
+  )
+
+  app_state <- shiny::reactiveValues(
+    language = "fr", current_project = list(id = "p", path = pp))
+
+  shiny::testServer(
+    nemetonshiny:::mod_monitoring_reconfort_map_server,
+    args = list(id = "rc", app_state = app_state,
+                zone_id_r = shiny::reactive("1"),
+                result_r  = shiny::reactive(NULL)),  # no in-memory run
+    {
+      session$flushReact()
+      i18n <- get_i18n("fr")
+      controls <- .html_of(output$controls)
+      # The persisted run was discovered from the cache (no result in memory)
+      # → raster toggle + opacity slider present, just like FORDEAD.
+      expect_true(caz$called)
+      expect_true(grepl(i18n$t("reconfort_couche_classes"), controls, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_opacite"), controls, fixed = TRUE))
+      expect_false(is.null(output$map))
     }
   )
 })

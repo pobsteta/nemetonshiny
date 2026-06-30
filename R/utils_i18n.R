@@ -2329,8 +2329,8 @@ TRANSLATIONS <- list(
     en = "FAST map"
   ),
   monitoring_subtab_pixel_map_fordead = list(
-    fr = "Carte FORDEAD",
-    en = "FORDEAD map"
+    fr = "Alertes FORDEAD",
+    en = "FORDEAD alerts"
   ),
   # v0.35.0 — sous-onglets Alertes séparés par mode, symétriques aux
   # cartes : Alertes FAST (pixels au-dessus du seuil NDVI/NBR
@@ -3107,6 +3107,23 @@ TRANSLATIONS <- list(
   reconfort_couche_alertes = list(
     fr = "Alertes",
     en = "Alerts"
+  ),
+  # Info-bulles « i » par couche (parite FORDEAD).
+  reconfort_couche_score_info = list(
+    fr = "Score continu de d\u00e9p\u00e9rissement issu du mod\u00e8le RECONFORT. Plus la valeur est \u00e9lev\u00e9e, plus le d\u00e9p\u00e9rissement est s\u00e9v\u00e8re. \u00c9chelle de couleur par quantiles (pleine intensit\u00e9).",
+    en = "Continuous dieback score from the RECONFORT model. Higher means more severe dieback. Quantile colour scale (full contrast)."
+  ),
+  reconfort_couche_classes_info = list(
+    fr = "Classification en classes de sant\u00e9 (1-sain transparent, 2-d\u00e9p\u00e9rissant, 3-tr\u00e8s d\u00e9p\u00e9rissant). Seuls les pixels affect\u00e9s sont peints.",
+    en = "Health-class classification (1-healthy transparent, 2-declining, 3-severely declining). Only affected pixels are painted."
+  ),
+  reconfort_couche_proba_info = list(
+    fr = "Probabilit\u00e9 / confiance de la classification du mod\u00e8le. \u00c9chelle de couleur par quantiles.",
+    en = "Model classification probability / confidence. Quantile colour scale."
+  ),
+  reconfort_couche_alertes_info = list(
+    fr = "Placettes en alerte (classes 2-d\u00e9p\u00e9rissant / 3-tr\u00e8s d\u00e9p\u00e9rissant), filtr\u00e9es \u00e0 la zone de suivi. Clic sur la carte : diagnostic pixel CRSWIR / CRre.",
+    en = "Alert plots (classes 2-declining / 3-severely declining), clipped to the monitoring zone. Click the map for the CRSWIR / CRre pixel diagnosis."
   ),
   monitoring_run_reconfort_btn = list(
     fr = "Lancer le diagnostic RECONFORT",

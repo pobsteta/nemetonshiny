@@ -1,3 +1,55 @@
+# nemetonshiny 0.94.4 (2026-06-30)
+
+### Fixed — Alertes RECONFORT : rasters affichés après rechargement de projet
+
+La carte « Alertes RECONFORT » n'affichait ses rasters (classification / score
+/ probabilité) qu'à partir du `result` **en mémoire** d'un run de la session
+courante. Après un **rechargement de projet**, `result` était perdu → plus de
+toggles, plus de slider d'opacité, plus de raster — seules les alertes (DB)
+restaient. FORDEAD, lui, lit ses couches depuis le **cache** et les réaffiche
+après rechargement.
+
+Parité atteinte : `manifest_r` retombe désormais sur
+`nemeton::reconfort_cache_manifest(cache_dir, zone_id)` (nemeton ≥ 0.100.1 —
+0.100.1 lit le dossier IOTA² `final/` et expose les 3 rasters score /
+classification / probability) quand aucun `result` n'est en mémoire — le run
+persisté est découvert sur disque, schéma **interchangeable** avec
+`reconfort_layer_manifest(result)`.
+Toute la machinerie existante (toggles, opacité, masque UGF au read via
+`read_reconfort_layer`, clip alertes, clic-pixel) est réutilisée telle quelle.
+
+Les couches affichables sont désormais unifiées via `available_layers_r` :
+rasters du manifeste (run mémoire OU cache) **+** couche *Alertes* (DB)
+toujours toggleable, même en mode cache (le manifeste cache ne porte pas de
+ligne `alerts`). Sans aucune couche ni alerte → état vide.
+
+Raffinements de rendu :
+
+* **Rasters continus (score / probabilité) en échelle par QUANTILES** —
+  `leaflet::colorBin` sur les bornes de quantiles calculées des valeurs
+  réelles du raster (5 classes), parité avec la carte FAST. Une distribution
+  concentrée utilise alors toute la palette uniformément, au lieu d'une rampe
+  linéaire min/max (et le `vmin/vmax` générique du manifeste — score `1-100`,
+  proba `0-1000` — n'est plus utilisé). Repli linéaire si distribution
+  dégénérée.
+* **Classe 1-sain transparente** dans la couche classification — seuls les
+  pixels affectés (2-deperissant / 3-tres-deperissant) sont peints, comme
+  FORDEAD rend sa classe 0 (sain) transparente. La classe 1 reste en légende.
+* **Info-bulles « i » par couche** — chaque case à cocher (rasters + alertes)
+  porte une icône `info-circle` (tooltip) décrivant la couche, parité avec la
+  Carte FORDEAD (helper `.reconfort_layer_choice`, clés i18n
+  `reconfort_couche_*_info`).
+
+### Changed — Suivi sanitaire : « Carte FORDEAD » renommé « Alertes FORDEAD »
+
+Cohérence des libellés de sous-onglets entre les deux pipelines : « Carte
+FORDEAD » devient « Alertes FORDEAD » (parallèle à « Alertes RECONFORT »).
+Clé `monitoring_subtab_pixel_map_fordead`, FR/EN.
+
+Plancher relevé à `Imports: nemeton (>= 0.100.1)`.
+
+Cycle dev `0.94.3` → `0.94.3.9001` → release stable `v0.94.4`.
+
 # nemetonshiny 0.94.3 (2026-06-30)
 
 ### Fixed — Famille Risques & Résilience : R5 dépérissement affiché
