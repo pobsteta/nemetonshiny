@@ -425,7 +425,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # v0.28.4 attempt at overlayGroups; that fix never really worked,
     # only masked by other behaviors in some cases.)
     .ugf_overlay_group       <- "UGF"
-    .pixel_overlay_group     <- "NDVI/NBR"
+    .pixel_overlay_group     <- "Indice"  # libellé overlay (ex-« NDVI/NBR »)
     # v0.52.16 — `.placettes_overlay_group` retiré (les marqueurs
     # placettes ont disparu, FAST est pure-raster).
 
@@ -456,7 +456,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
         leaflet::addMapPane("nemetonRaster", zIndex = 250) |>
         leaflet::addLayersControl(
           baseGroups    = c("OSM", "Satellite"),
-          overlayGroups = c("UGF", "NDVI/NBR"),
+          overlayGroups = c(.ugf_overlay_group, .pixel_overlay_group),
           options       = leaflet::layersControlOptions(collapsed = TRUE)
         )
     })
@@ -515,6 +515,9 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
     # quand leur source change).
     shiny::observe({
       r <- current_layer_r()
+      # Groupes overlay cochés côté client (leaflet `input$<id>_groups`) —
+      # lus pour respecter la décoche du group « Indice ».
+      shown <- input$map_groups
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearImages() |>
         leaflet::removeControl("pixel_legend")
@@ -573,7 +576,7 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       # → 4 warnings « Some values were outside the color scale » par
       # re-render. terra::clamp les ramène à la borne (cap visuel).
       r <- terra::clamp(r, lower = -1, upper = 1, values = TRUE)
-      proxy |>
+      proxy <- proxy |>
         leaflet::addRasterImage(
           x       = r,
           colors  = .pixel_palette,
@@ -598,6 +601,11 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
             i18n_r()$t("index_ndmi") else input$index,
           opacity  = 0.9
         )
+      # Respecter la décoche : masquer le group « Indice » s'il n'est pas
+      # coché, après l'avoir re-dessiné via proxy.
+      if (!is.null(shown) && !(.pixel_overlay_group %in% shown)) {
+        leaflet::hideGroup(proxy, .pixel_overlay_group)
+      }
     })
 
     # UGF / study-area overlay: outline drawn over the raster to give

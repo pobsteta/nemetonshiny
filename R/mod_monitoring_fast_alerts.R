@@ -921,6 +921,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       # alimente les classes de sévérité affichées (symétrie avec le
       # badge de résolution qui mentionne déjà l'indice).
       index   <- input$index %||% "NDVI"
+      # Groupes overlay cochés côté client (leaflet `input$<id>_groups`),
+      # lus pour respecter la décoche du group raster.
+      shown   <- input$map_groups
 
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.alert_raster_group) |>
@@ -966,7 +969,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
         bins     = c(0.5, 1.5, 2.5, 3.5, 4.5),
         na.color = "transparent"
       )
-      proxy |>
+      proxy <- proxy |>
         leaflet::addRasterImage(
           x       = r_show, colors = pal, opacity = raster_opacity,
           method  = "ngb",
@@ -981,6 +984,11 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
           opacity  = 0.85,
           layerId  = .alert_legend_id
         )
+      # Respecter la décoche : si le group raster n'est pas coché, le masquer
+      # après l'avoir re-dessiné via proxy.
+      if (!is.null(shown) && !(.alert_raster_group %in% shown)) {
+        leaflet::hideGroup(proxy, .alert_raster_group)
+      }
     })
 
     # v0.37.1 — see mod_monitoring_fordead_map.R : the navset toggles
