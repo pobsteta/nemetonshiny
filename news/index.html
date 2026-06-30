@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.3" id="nemetonshiny-0943-2026-06-30">nemetonshiny 0.94.3 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0943-2026-06-30"></a></h2>
+<div class="section level4">
+<h4 id="fixed--famille-risques--résilience--r5-dépérissement-affiché-0-94-3">Fixed — Famille Risques &amp; Résilience : R5 dépérissement affiché<a class="anchor" aria-label="anchor" href="#fixed--famille-risques--r%C3%A9silience--r5-d%C3%A9p%C3%A9rissement-affich%C3%A9-0-94-3"></a></h4>
+<p>L’indicateur <strong>R5 dépérissement</strong> (32e indicateur, conditionnel) était calculé et injecté dans le radar de la Synthèse, mais <strong>n’apparaissait pas</strong> dans la page famille <em>Risques &amp; Résilience</em> (R1-R4 seulement) : la page lisait <code>project$indicators_sf</code> brut, sans la colonne <code>indicateur_r5_deperissement</code> (injectée en direct, non persistée). La config <code>INDICATOR_FAMILIES$R</code> listait pourtant déjà R5, et le libellé (<code>indicator_R5</code> → « Dépérissement ») + le tooltip existaient.</p>
+<p><code>mod_family</code> enrichit désormais ses données via le même helper que le radar (<code>add_r5_to_indicators</code>), au sein d’un réactif partagé <code>enriched_sf</code> dont dérivent <code>indicators_data()</code> (carte/tableau) et <code>indicators_sf()</code>. L’enrichis- sement n’est fait <strong>que pour la famille R</strong> (les 11 autres évitent le coût DB + spatial). Best-effort : sans zone de suivi liée / sans alerte, la famille R reste R1-R4. Repli préservé sur <code>project$indicators</code> quand il est lui-même un sf (geoarrow).</p>
+<p>Cycle dev <code>0.94.2</code> → <code>0.94.2.9001</code> → release stable <code>v0.94.3</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.2" id="nemetonshiny-0942-2026-06-30">nemetonshiny 0.94.2 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0942-2026-06-30"></a></h2>
 <div class="section level4">

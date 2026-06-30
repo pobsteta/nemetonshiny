@@ -1,5 +1,28 @@
 # Changelog
 
+## nemetonshiny 0.94.3 (2026-06-30)
+
+#### Fixed — Famille Risques & Résilience : R5 dépérissement affiché
+
+L’indicateur **R5 dépérissement** (32e indicateur, conditionnel) était
+calculé et injecté dans le radar de la Synthèse, mais **n’apparaissait
+pas** dans la page famille *Risques & Résilience* (R1-R4 seulement) : la
+page lisait `project$indicators_sf` brut, sans la colonne
+`indicateur_r5_deperissement` (injectée en direct, non persistée). La
+config `INDICATOR_FAMILIES$R` listait pourtant déjà R5, et le libellé
+(`indicator_R5` → « Dépérissement ») + le tooltip existaient.
+
+`mod_family` enrichit désormais ses données via le même helper que le
+radar (`add_r5_to_indicators`), au sein d’un réactif partagé
+`enriched_sf` dont dérivent `indicators_data()` (carte/tableau) et
+`indicators_sf()`. L’enrichis- sement n’est fait **que pour la famille
+R** (les 11 autres évitent le coût DB + spatial). Best-effort : sans
+zone de suivi liée / sans alerte, la famille R reste R1-R4. Repli
+préservé sur `project$indicators` quand il est lui-même un sf
+(geoarrow).
+
+Cycle dev `0.94.2` → `0.94.2.9001` → release stable `v0.94.3`.
+
 ## nemetonshiny 0.94.2 (2026-06-30)
 
 #### Fixed — Chargement de projet : « Calcul en cours » fantôme (resume périmé)
