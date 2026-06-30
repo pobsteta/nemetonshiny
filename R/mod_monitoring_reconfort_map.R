@@ -410,7 +410,11 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         lv   <- as.integer(names(cols))
         pal  <- leaflet::colorFactor(unname(cols), levels = lv,
                                      na.color = "transparent")
-        r_show <- terra::ifel(is.na(r) | r < 1, NA, r)
+        # Classe 1 (1-sain) rendue TRANSPARENTE — n'afficher que les pixels
+        # affectés (2-deperissant / 3-tres-deperissant), parité avec la
+        # sévérité FORDEAD qui rend la classe 0 (sain) transparente. La
+        # classe 1 reste dans la légende (couleur de référence).
+        r_show <- terra::ifel(is.na(r) | r <= 1, NA, r)
         map <- leaflet::addRasterImage(
           map, x = r_show, colors = pal, opacity = opacity,
           method = "ngb", project = TRUE, group = row$id,
@@ -425,15 +429,19 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           opacity = opacity, layerId = paste0("legend_", row$id)
         )
       } else {
-        dom <- c(row$vmin, row$vmax)
-        if (!all(is.finite(dom)) || dom[1L] == dom[2L]) {
-          mm <- tryCatch(as.numeric(terra::minmax(r)),
-                         error = function(e) NULL)
-          if (!is.null(mm) && all(is.finite(mm)) && mm[1L] != mm[2L]) {
-            dom <- c(mm[1L], mm[2L])
-          } else {
-            dom <- c(0, 1)
-          }
+        # Domaine de la rampe calculé sur les valeurs RÉELLES du raster
+        # affiché (terra::global, qui fonctionne même sans stats min/max
+        # précalculées — contrairement à terra::minmax). Le vmin/vmax du
+        # manifeste est une échelle générique (score 1-100, proba 0-1000)
+        # qui délaverait une plage réelle étroite. Repli sur le domaine du
+        # manifeste, puis sur une rampe unité.
+        dom <- tryCatch({
+          mm <- terra::global(r, c("min", "max"), na.rm = TRUE)
+          c(mm[["min"]][1L], mm[["max"]][1L])
+        }, error = function(e) NULL)
+        if (is.null(dom) || !all(is.finite(dom)) || dom[1L] == dom[2L]) {
+          dm <- c(row$vmin, row$vmax)
+          dom <- if (all(is.finite(dm)) && dm[1L] != dm[2L]) dm else c(0, 1)
         }
         palname <- if (!is.na(row$palette)) row$palette else "viridis"
         pal <- leaflet::colorNumeric(palname, domain = dom,
