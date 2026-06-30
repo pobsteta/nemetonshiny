@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.5.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.6.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,9 +33,20 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.94.5.9001" id="nemetonshiny-09459001-dev">nemetonshiny 0.94.5.9001 (dev)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09459001-dev"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.94.6" id="nemetonshiny-0946-2026-06-30">nemetonshiny 0.94.6 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0946-2026-06-30"></a></h2>
 <div class="section level4">
-<h4 id="fixed--open-canopy-chm--isolation-reticulate-débloque-les-indicateurs-production-0-94-5-9001">Fixed — Open-Canopy CHM : isolation reticulate (débloque les indicateurs Production)<a class="anchor" aria-label="anchor" href="#fixed--open-canopy-chm--isolation-reticulate-d%C3%A9bloque-les-indicateurs-production-0-94-5-9001"></a></h4>
+<h4 id="changed--ux-boutons--convention-normative--fusion-des-deux-verts-0-94-6">Changed — UX boutons : convention normative + fusion des deux verts<a class="anchor" aria-label="anchor" href="#changed--ux-boutons--convention-normative--fusion-des-deux-verts-0-94-6"></a></h4>
+<ul><li>
+<strong>Convention de couleurs de boutons documentée</strong> dans <code>CLAUDE.md</code> (section <em>Conventions de code</em>) : 🟢 vert = action principale / CTA ; 🟤 brun = action secondaire / fermeture ; ⚪ blanc (<code>outline</code>) = action tertiaire / auxiliaire ; 🟡 warning = prudence ; 🔴 danger = destructif. Toujours une classe explicite (pas de brun par défaut accidentel).</li>
+<li>
+<strong><code>primary</code> et <code>success</code> fusionnés</strong> sur un seul vert <code>#1B6B1B</code> (avant deux verts quasi identiques <code>#1B6B1B</code> / <code>#1E7B1E</code> pour deux rôles) — thème (<code>utils_theme.R</code>) + <code>custom.css</code> + <code>custom.min.css</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--sélection---réessayer--sans-retour-visuel-0-94-6">Fixed — Sélection : « Réessayer » sans retour visuel<a class="anchor" aria-label="anchor" href="#fixed--s%C3%A9lection---r%C3%A9essayer--sans-retour-visuel-0-94-6"></a></h4>
+<p>Cliquer « Réessayer » (recompute) lançait un vidage de cache + rechargement projet <strong>synchrones</strong> sans aucun retour : le clic paraissait sans effet et l’utilisateur re-cliquait partout. Le bouton est désormais <strong>désactivé</strong> et un <strong>toast</strong> « Réinitialisation des calculs en cours… » s’affiche <strong>immédiatement</strong> (travail lourd différé d’un flush via <code>onFlushed</code> pour que le retour s’affiche avant le blocage), remplacé en fin d’opération par la confirmation (<code>retry_toast</code>, jusqu’ici définie mais jamais affichée). Nouvelle clé i18n <code>retry_in_progress</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--open-canopy-chm--isolation-reticulate-débloque-les-indicateurs-production-0-94-6">Fixed — Open-Canopy CHM : isolation reticulate (débloque les indicateurs Production)<a class="anchor" aria-label="anchor" href="#fixed--open-canopy-chm--isolation-reticulate-d%C3%A9bloque-les-indicateurs-production-0-94-6"></a></h4>
 <p>Les indicateurs <strong>Production (P1/P2/P3)</strong> et <strong>Bois-énergie (E1)</strong> échouaient (« Modèle de hauteur de canopée indisponible ») parce que le CHM Open-Canopy ne pouvait pas être produit : <code>opencanopy::pipeline_aoi_to_chm</code> passe par <strong>reticulate</strong>, qui ne lie qu’<strong>un seul Python par session R</strong>. reticulate était déjà lié à un Python uv éphémère (<code>~/.cache/uv/...</code>) → impossible de basculer sur l’env conda <code>open_canopy</code> → CHM absent → P1/P2/P3/E1 en échec.</p>
 <p><code>download_chm_opencanopy()</code> exécute désormais <code>pipeline_aoi_to_chm</code> dans un <strong>sous-processus R isolé</strong> (<code>callr</code>) avec <code>RETICULATE_PYTHON</code> épinglé sur <code>open_canopy</code> (résolu via <code>options(nemetonshiny.opencanopy_python=)</code> / <code>OPENCANOPY_PYTHON</code> / <code>reticulate::conda_python("open_canopy")</code> / chemins conda usuels) et <code>R_ENVIRON_USER=""</code> (un <code>~/.Renviron</code> ne peut pas écraser le pin). Le sous-processus part d’un reticulate vierge → il se lie toujours au bon env, <strong>quel que soit</strong> le binding parent. <strong>Open-Canopy et FORDEAD (env distinct) cohabitent.</strong> Repli in-process si <code>callr</code> ou l’env est introuvable. <code>callr</code> en <code>Suggests</code>. 3 tests (<code>test-opencanopy-python.R</code>).</p>
 </div>

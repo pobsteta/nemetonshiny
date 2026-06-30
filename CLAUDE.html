@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.5.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.6.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -322,6 +322,44 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.</code></pre
 <li>Les modules <strong>n’appellent jamais directement</strong> une fonction métier de calcul d’indicateur — ils passent par <code>R/service_*.R</code>.</li>
 <li>Pas de <code>observe()</code> orphelin : utiliser <code>observeEvent()</code> ou <code>bindEvent()</code> pour scoper le déclenchement.</li>
 <li>Sortir l’i18n du module sous forme de reactive (<code>i18n_r()</code>) si la langue peut changer pendant la session.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="couleurs-de-boutons-ux--règle-normative">Couleurs de boutons (UX) — règle normative<a class="anchor" aria-label="anchor" href="#couleurs-de-boutons-ux--r%C3%A8gle-normative"></a></h3>
+<p>Le thème (<code>R/utils_theme.R</code> + <code>inst/app/www/css/custom.css</code>) définit une palette <strong>sémantique Bootstrap</strong>. La couleur de fond d’un bouton encode son <strong>niveau d’action</strong> — appliquer cette hiérarchie, ne jamais choisir un fond pour des raisons esthétiques :</p>
+<table class="table"><colgroup><col width="11%"><col width="21%"><col width="32%"><col width="34%"></colgroup><thead><tr><th>Fond</th>
+<th>Classe(s)</th>
+<th>Niveau d’action</th>
+<th>Quand l’utiliser</th>
+</tr></thead><tbody><tr><td>🟢 <strong>Vert</strong>
+</td>
+<td>
+<code>btn-primary</code> (= <code>btn-success</code>, même vert <code>#1B6B1B</code>)</td>
+<td><strong>Action principale / CTA</strong></td>
+<td>L’action positive forte d’une vue (Lancer, Générer, Créer, Valider, Sauvegarder). <strong>Une seule par vue</strong> idéalement.</td>
+</tr><tr><td>🟤 <strong>Brun</strong>
+</td>
+<td>
+<code>btn-secondary</code> / <code>modalButton</code> (défaut)</td>
+<td><strong>Action secondaire / fermeture</strong></td>
+<td>Fermer, Annuler, Retour, action neutre.</td>
+</tr><tr><td>⚪ <strong>Blanc</strong>
+</td>
+<td><code>btn-outline-*</code></td>
+<td><strong>Action tertiaire / auxiliaire</strong></td>
+<td>Emphase faible ; la <em>bordure</em> porte l’intention (<code>outline-secondary</code> neutre, <code>outline-primary</code> positif léger, <code>outline-danger</code> prudence). Icônes inline (plein écran, options).</td>
+</tr><tr><td>🟡 Goldenrod</td>
+<td><code>btn-warning</code></td>
+<td><strong>Prudence</strong></td>
+<td>Action à conséquence réversible mais notable.</td>
+</tr><tr><td>🔴 Crimson</td>
+<td><code>btn-danger</code></td>
+<td><strong>Destructif</strong></td>
+<td>Supprimer, réinitialiser des données.</td>
+</tr></tbody></table><ul><li>
+<strong>Toujours une classe explicite</strong> : un <code>actionButton</code>/<code>modalButton</code> sans classe retombe sur le défaut (brun) — ne pas créer de brun <em>par accident</em>, expliciter l’intention (<code>btn-primary</code> / <code>btn-secondary</code> / <code>btn-outline-*</code>).</li>
+<li>
+<strong><code>primary</code> et <code>success</code> partagent le même vert</strong> (<code>#1B6B1B</code>, fusionnés pour lever l’ambiguïté des deux verts). Préférer <code>btn-primary</code> pour un CTA.</li>
+<li>Toute <strong>action longue déclenchée par un bouton</strong> doit donner un <strong>retour immédiat</strong> (toast <code>showNotification</code> + désactivation du bouton le temps de l’opération) — cf. règle stricte #9 et le pattern <code>recompute</code>/<code>run_*</code>.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="services-service_r">Services (<code>service_*.R</code>)<a class="anchor" aria-label="anchor" href="#services-service_r"></a></h3>
