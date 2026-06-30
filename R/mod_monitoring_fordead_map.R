@@ -72,7 +72,10 @@
   }
   if (identical(layer, "first_anomaly")) {
     rng <- .num_range(r)
-    pal <- leaflet::colorNumeric("viridis", domain = rng,
+    # Rampe bleu → rouge des dates : `RdYlBu` inversé mappe les valeurs
+    # basses (détections ANCIENNES) sur le bleu et les valeurs hautes
+    # (détections RÉCENTES) sur le rouge.
+    pal <- leaflet::colorNumeric("RdYlBu", domain = rng, reverse = TRUE,
                                  na.color = "transparent")
     return(list(
       r_show = r, pal = pal, method = "bilinear",

@@ -305,10 +305,13 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           i18n$t(paste0(lay$label_key[k], "_info"))
         )
       })
-      selected <- lay$id[lay$default_visible]
+      # Couches EXCLUSIVES (une seule à la fois) : radioButtons, parité
+      # FORDEAD. Défaut = première couche `default_visible` (sinon la 1re).
+      dv <- as.character(lay$id[lay$default_visible])
+      selected <- if (length(dv)) dv[1L] else as.character(lay$id[1L])
       has_raster <- !is.null(raster_manifest_r())
       htmltools::tagList(
-        shiny::checkboxGroupInput(
+        shiny::radioButtons(
           session$ns("layers"), i18n$t("reconfort_couches"),
           choiceNames = choice_names,
           choiceValues = as.character(lay$id),
@@ -492,13 +495,18 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       map
     }
 
-    # Currently selected layer ids : the checkbox state, defaulting to the
-    # default-visible layers (rasters + alerts) until the user interacts.
+    # Currently selected layer id(s) : the radio state (a single id since
+    # layers are EXCLUSIVE), defaulting to the first default-visible layer
+    # until the user interacts. Kept as a vector so the drawing observer
+    # (which iterates `id %in% sel`) stays unchanged.
     selected_ids_r <- shiny::reactive({
       lay <- available_layers_r()
       if (is.null(lay)) return(character())
       sel <- input$layers
-      if (is.null(sel)) sel <- lay$id[lay$default_visible]
+      if (is.null(sel)) {
+        dv  <- as.character(lay$id[lay$default_visible])
+        sel <- if (length(dv)) dv[1L] else as.character(lay$id[1L])
+      }
       as.character(sel)
     })
 
@@ -731,6 +739,32 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           "%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>"
         )
       )
+      # Délimitation des 2 années Sentinel-2 du modèle : bandes de fond
+      # alternées (1 par année calendaire couverte) + libellé de l'année en
+      # haut. La série RF RECONFORT s'appuie sur une fenêtre de 2 ans ; ce
+      # repère situe la dynamique CRSWIR/CRre dans chaque année.
+      dts  <- as.Date(s$obs_date)
+      yrs  <- sort(unique(as.integer(format(dts, "%Y"))))
+      yrs  <- yrs[!is.na(yrs)]
+      year_shapes <- list()
+      year_annos  <- list()
+      for (i in seq_along(yrs)) {
+        y <- yrs[i]
+        if (i %% 2L == 0L) {
+          year_shapes[[length(year_shapes) + 1L]] <- list(
+            type = "rect", xref = "x", yref = "paper",
+            x0 = sprintf("%d-01-01", y), x1 = sprintf("%d-12-31", y),
+            y0 = 0, y1 = 1, fillcolor = "rgba(60,60,60,0.06)",
+            line = list(width = 0), layer = "below"
+          )
+        }
+        year_annos[[length(year_annos) + 1L]] <- list(
+          x = sprintf("%d-07-01", y), y = 1, xref = "x", yref = "paper",
+          yanchor = "bottom", text = as.character(y), showarrow = FALSE,
+          font = list(size = 10, color = "#999999")
+        )
+      }
+
       p <- plotly::layout(
         p,
         margin = list(t = 30, b = 40, l = 50, r = 10),
@@ -739,20 +773,47 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
                       type = "date"),
         yaxis  = list(title = i18n$t("monitoring_reconfort_pixel_yaxis")),
-        legend = list(orientation = "h", y = -0.25)
+        legend = list(orientation = "h", y = -0.25),
+        shapes = year_shapes,
+        annotations = year_annos
       )
 
+      # Modale : bouton « plein écran » (haut-droite) + « Fermer », parité
+      # exacte avec la Carte FORDEAD. Le bouton bascule la classe BS5
+      # `.modal-fullscreen` ; le plot remplit la zone (height 100% + plotly
+      # `responsive`) et grandit en plein écran via la règle CSS.
       shiny::showModal(shiny::modalDialog(
-        title = sprintf(
-          i18n$t("monitoring_reconfort_pixel_modal_title_fmt"),
-          round(lat, 5), round(lng, 5)
+        title = htmltools::tagList(
+          htmltools::span(sprintf(
+            i18n$t("monitoring_reconfort_pixel_modal_title_fmt"),
+            round(lat, 5), round(lng, 5)
+          )),
+          htmltools::tags$button(
+            type = "button",
+            class = "btn btn-sm btn-outline-secondary",
+            style = paste("position: absolute; top: 0.75rem;",
+                          "right: 0.75rem; z-index: 2;"),
+            title = i18n$t("monitoring_pixel_map_fullscreen"),
+            onclick = paste0(
+              "this.closest('.modal-dialog').classList.toggle('modal-fullscreen');",
+              "setTimeout(function(){window.dispatchEvent(new Event('resize'));},250);"),
+            bsicons::bs_icon("arrows-fullscreen")
+          )
         ),
         size  = "l",
         easyClose = TRUE,
-        plotly::plotlyOutput(session$ns("pixel_ts_plot"), height = "320px"),
-        footer = shiny::modalButton(i18n$t("close"))
+        footer = shiny::modalButton(i18n$t("close")),
+        htmltools::tags$style(htmltools::HTML(
+          ".modal-fullscreen .pixel-ts-wrap{height:calc(100vh - 200px) !important;}"
+        )),
+        htmltools::div(
+          class = "pixel-ts-wrap",
+          style = "height: 320px;",
+          plotly::plotlyOutput(session$ns("pixel_ts_plot"), height = "100%")
+        )
       ))
-      output$pixel_ts_plot <- plotly::renderPlotly(p)
+      output$pixel_ts_plot <- plotly::renderPlotly(
+        plotly::config(p, responsive = TRUE))
     })
 
     invisible(list(alerts = alerts_r))

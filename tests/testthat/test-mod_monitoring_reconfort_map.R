@@ -274,9 +274,11 @@ test_that("manifest drives layer toggles + opacity slider", {
       controls <- .html_of(output$controls)
       overlay  <- .html_of(output$overlay)
 
-      # Controls (right sidebar) : layer checkbox group + opacity slider.
+      # Controls (right sidebar) : EXCLUSIVE layers (radio) + opacity slider.
       expect_true(grepl(i18n$t("reconfort_couches"), controls, fixed = TRUE))
       expect_true(grepl(i18n$t("reconfort_opacite"), controls, fixed = TRUE))
+      expect_true(grepl("type=\"radio\"", controls, fixed = TRUE))   # exclusive
+      expect_false(grepl("type=\"checkbox\"", controls, fixed = TRUE))
       # The three manifest raster labels appear as checkbox choices.
       expect_true(grepl(i18n$t("reconfort_couche_score"),   controls, fixed = TRUE))
       expect_true(grepl(i18n$t("reconfort_couche_classes"), controls, fixed = TRUE))
