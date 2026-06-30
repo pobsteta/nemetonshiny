@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.3.9001 (dev)
+# nemetonshiny 0.94.4 (2026-06-30)
 
 ### Fixed — Alertes RECONFORT : rasters affichés après rechargement de projet
 
@@ -48,7 +48,7 @@ Clé `monitoring_subtab_pixel_map_fordead`, FR/EN.
 
 Plancher relevé à `Imports: nemeton (>= 0.100.1)`.
 
-Cycle dev `0.94.3` → `0.94.3.9001` → release stable cible `v0.94.4`.
+Cycle dev `0.94.3` → `0.94.3.9001` → release stable `v0.94.4`.
 
 # nemetonshiny 0.94.3 (2026-06-30)
 
