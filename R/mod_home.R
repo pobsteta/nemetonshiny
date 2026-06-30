@@ -933,8 +933,20 @@ mod_home_server <- function(id, app_state) {
       # Check if there's an ongoing computation for this project
       progress_state <- read_progress_state(project$id)
 
+      # Only RESUME tracking for a computation that is genuinely still
+      # running. A live `future` worker rewrites progress_state.json every
+      # ~2 s, so a fresh file means a real in-flight run (e.g. the browser
+      # reconnected to a still-computing app). A STALE file means the app
+      # was restarted while a computation was interrupted — the worker is
+      # gone but the file still says "downloading"/"computing". Resuming
+      # then showed a phantom "Calcul en cours" stuck at 0 % forever. Skip
+      # it (the user re-launches the compute manually if needed).
+      RESUME_MAX_AGE_SEC <- 120
+      is_fresh <- progress_state_age_sec(project$id) < RESUME_MAX_AGE_SEC
+
       if (!is.null(progress_state) &&
-          progress_state$status %in% c("downloading", "computing")) {
+          progress_state$status %in% c("downloading", "computing") &&
+          isTRUE(is_fresh)) {
 
         cli::cli_alert_info("Resuming progress tracking for project {project$id}")
 

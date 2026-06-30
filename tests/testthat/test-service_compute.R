@@ -246,6 +246,48 @@ test_that("init_compute_state handles resume with existing progress", {
 })
 
 # ==============================================================================
+# progress_state_age_sec tests (resume-only-if-fresh guard)
+# ==============================================================================
+
+test_that("progress_state_age_sec returns Inf when path or file is missing", {
+  with_mocked_bindings(
+    get_project_path = function(id) NULL,
+    expect_identical(nemetonshiny:::progress_state_age_sec("x"), Inf)
+  )
+  pp <- withr::local_tempdir()  # exists but no data/progress_state.json
+  with_mocked_bindings(
+    get_project_path = function(id) pp,
+    expect_identical(nemetonshiny:::progress_state_age_sec("x"), Inf)
+  )
+})
+
+test_that("progress_state_age_sec is small for a freshly written file", {
+  pp <- withr::local_tempdir()
+  dir.create(file.path(pp, "data"), recursive = TRUE, showWarnings = FALSE)
+  writeLines("{}", file.path(pp, "data", "progress_state.json"))
+  with_mocked_bindings(
+    get_project_path = function(id) pp,
+    {
+      age <- nemetonshiny:::progress_state_age_sec("x")
+      expect_true(is.finite(age))
+      expect_lt(age, 10)
+    }
+  )
+})
+
+test_that("progress_state_age_sec detects a stale (old) progress file", {
+  pp <- withr::local_tempdir()
+  dir.create(file.path(pp, "data"), recursive = TRUE, showWarnings = FALSE)
+  f <- file.path(pp, "data", "progress_state.json")
+  writeLines("{}", f)
+  Sys.setFileTime(f, Sys.time() - 3600)  # 1 h ago → worker is dead
+  with_mocked_bindings(
+    get_project_path = function(id) pp,
+    expect_gt(nemetonshiny:::progress_state_age_sec("x"), 120)
+  )
+})
+
+# ==============================================================================
 # normalize_indicator tests
 # ==============================================================================
 
