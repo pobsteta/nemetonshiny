@@ -1,5 +1,34 @@
 # Changelog
 
+## nemetonshiny 0.94.0 (2026-06-30)
+
+#### Added — R5 dépérissement branché dans le radar de synthèse
+
+L’indicateur **R5** (32ᵉ, conditionnel) de la famille **R — Risques &
+Résilience** apparaît désormais sur le radar et dans l’indice général
+quand la zone de suivi liée au projet porte des alertes de
+dépérissement.
+
+- **Config** : `app_config.R` étend la famille R à 5 indicateurs (R1…R5)
+  — `indicateur_r5_deperissement`, libellés + tooltips FR/EN. Clé i18n
+  `indicator_R5` + label d’axe radar.
+- **Calcul live** (`R/service_r5.R::add_r5_to_indicators()`) : injecté
+  dans `mod_synthesis` juste avant `create_family_index`. Charge les
+  alertes de la zone
+  ([`nemeton::list_alerts`](https://pobsteta.github.io/nemeton/reference/list_alerts.html)),
+  les sépare par `alert_type`, et appelle
+  [`nemeton::indicateur_r5_deperissement()`](https://pobsteta.github.io/nemeton/reference/indicateur_r5_deperissement.html).
+  **Aucune sémantique métier côté app** : le score et l’inversion de
+  sens vivent dans le cœur (`normalize_indicator`, `nemeton` ≥ 0.99.1).
+- **Routage par essence** : les UGF ne portant pas de colonne d’essence,
+  chaque UGF est routée par le **type d’alerte qui l’intersecte**
+  (RECONFORT → feuillus, FORDEAD → résineux). Best-effort : sans zone
+  liée / sans alerte, la famille R reste R1-R4 (R5 absent, pas
+  d’erreur). Une UGF sans alerte intersectante → R5 = NA.
+- Plancher relevé à `Imports: nemeton (>= 0.99.1)`.
+- Tests : `test-service_r5.R` (8) ; comptes d’indicateurs ajustés 31 →
+  32.
+
 ## nemetonshiny 0.93.1 (2026-06-30)
 
 #### Fixed — Carte RECONFORT : alertes clippées à l’UGF

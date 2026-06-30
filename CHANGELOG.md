@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.94.0\] - 2026-06-30
+
+### Added
+
+- R5 dépérissement branché dans le radar de synthèse (`app_config.R`
+  famille R → 5 indicateurs ; `R/service_r5.R::add_r5_to_indicators()`
+  injecté dans `mod_synthesis` avant `create_family_index`). Alertes
+  chargées via
+  [`nemeton::list_alerts`](https://pobsteta.github.io/nemeton/reference/list_alerts.html),
+  routage par essence via intersection d’alertes (RECONFORT→feuillus /
+  FORDEAD→résineux). Sens et score dans le cœur (`nemeton ≥ 0.99.1`).
+  Best-effort (sans zone/alerte → famille R = R1-R4). 8 tests
+  (`test-service_r5.R`).
+
 ## \[0.91.16\] - 2026-06-27
 
 ### Changed

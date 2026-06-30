@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.93.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,21 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.0" id="nemetonshiny-0940-2026-06-30">nemetonshiny 0.94.0 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0940-2026-06-30"></a></h2>
+<div class="section level4">
+<h4 id="added--r5-dépérissement-branché-dans-le-radar-de-synthèse-0-94-0">Added — R5 dépérissement branché dans le radar de synthèse<a class="anchor" aria-label="anchor" href="#added--r5-d%C3%A9p%C3%A9rissement-branch%C3%A9-dans-le-radar-de-synth%C3%A8se-0-94-0"></a></h4>
+<p>L’indicateur <strong>R5</strong> (32ᵉ, conditionnel) de la famille <strong>R — Risques &amp; Résilience</strong> apparaît désormais sur le radar et dans l’indice général quand la zone de suivi liée au projet porte des alertes de dépérissement.</p>
+<ul><li>
+<strong>Config</strong> : <code>app_config.R</code> étend la famille R à 5 indicateurs (R1…R5) — <code>indicateur_r5_deperissement</code>, libellés + tooltips FR/EN. Clé i18n <code>indicator_R5</code> + label d’axe radar.</li>
+<li>
+<strong>Calcul live</strong> (<code>R/service_r5.R::add_r5_to_indicators()</code>) : injecté dans <code>mod_synthesis</code> juste avant <code>create_family_index</code>. Charge les alertes de la zone (<code><a href="https://pobsteta.github.io/nemeton/reference/list_alerts.html" class="external-link">nemeton::list_alerts</a></code>), les sépare par <code>alert_type</code>, et appelle <code><a href="https://pobsteta.github.io/nemeton/reference/indicateur_r5_deperissement.html" class="external-link">nemeton::indicateur_r5_deperissement()</a></code>. <strong>Aucune sémantique métier côté app</strong> : le score et l’inversion de sens vivent dans le cœur (<code>normalize_indicator</code>, <code>nemeton</code> ≥ 0.99.1).</li>
+<li>
+<strong>Routage par essence</strong> : les UGF ne portant pas de colonne d’essence, chaque UGF est routée par le <strong>type d’alerte qui l’intersecte</strong> (RECONFORT → feuillus, FORDEAD → résineux). Best-effort : sans zone liée / sans alerte, la famille R reste R1-R4 (R5 absent, pas d’erreur). Une UGF sans alerte intersectante → R5 = NA.</li>
+<li>Plancher relevé à <code>Imports: nemeton (&gt;= 0.99.1)</code>.</li>
+<li>Tests : <code>test-service_r5.R</code> (8) ; comptes d’indicateurs ajustés 31 → 32.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.93.1" id="nemetonshiny-0931-2026-06-30">nemetonshiny 0.93.1 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0931-2026-06-30"></a></h2>
 <div class="section level4">
