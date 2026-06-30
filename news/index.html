@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.6.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,9 +33,23 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.94.6.9001" id="nemetonshiny-09469001-dev">nemetonshiny 0.94.6.9001 (dev)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09469001-dev"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.94.7" id="nemetonshiny-0947-2026-06-30">nemetonshiny 0.94.7 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0947-2026-06-30"></a></h2>
 <div class="section level4">
-<h4 id="fixed--open-canopy-isolé--restaure-les-messages-de-progression-dans-lapp-0-94-6-9001">Fixed — Open-Canopy isolé : restaure les messages de progression dans l’app<a class="anchor" aria-label="anchor" href="#fixed--open-canopy-isol%C3%A9--restaure-les-messages-de-progression-dans-lapp-0-94-6-9001"></a></h4>
+<h4 id="fixed--cartes-suivi-sanitaire--ugf-réapparue-décoche-overlay-effective--indice--0-94-7">Fixed — Cartes Suivi sanitaire : UGF réapparue, décoche overlay effective, « Indice »<a class="anchor" aria-label="anchor" href="#fixed--cartes-suivi-sanitaire--ugf-r%C3%A9apparue-d%C3%A9coche-overlay-effective--indice--0-94-7"></a></h4>
+<p>Trois corrections sur les cartes Leaflet du Suivi sanitaire :</p>
+<ul><li>
+<strong>Couche UGF restaurée (Alertes FORDEAD + RECONFORT)</strong> — l’overlay UGF pouvait disparaître : il n’était dessiné qu’au <em>render de base</em> et conditionné à <code>indicators_sf</code>, or l’attache de <code>indicators_sf</code> est différée au chargement → si le render précédait l’attache, l’UGF manquait définitivement. « UGF » est désormais <strong>toujours</strong> dans le contrôle, et les polygones sont (re)dessinés par un <strong>observer réactif <code>leafletProxy</code></strong> dès que <code>indicators_sf</code> est disponible (parité avec la Carte pixel FAST).</li>
+<li>
+<strong>Décoche d’overlay enfin effective (FAST « Indice », Alertes FAST/FORDEAD)</strong> — décocher une couche raster dans le LayersControl ne la masquait pas : les observers <code>leafletProxy</code> la re-dessinaient en ignorant l’état du contrôle. Ils lisent désormais <code>input$&lt;id&gt;_groups</code> (groupes cochés côté client) et appellent <code>hideGroup()</code> après re-dessin si la couche est décochée.</li>
+<li>
+<strong>« NDVI/NBR » renommé « Indice »</strong> dans le contrôle de couches de la Carte pixel FAST.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed---réessayer---toast-vraiment-immédiat-later-au-lieu-de-onflushed-0-94-7">Fixed — « Réessayer » : toast vraiment immédiat (later au lieu de onFlushed)<a class="anchor" aria-label="anchor" href="#fixed---r%C3%A9essayer---toast-vraiment-imm%C3%A9diat-later-au-lieu-de-onflushed-0-94-7"></a></h4>
+<p>Le toast « Réinitialisation en cours… » ajouté en v0.94.6 n’apparaissait toujours pas immédiatement : <code>session$onFlushed</code> s’exécute dans le <strong>même tick</strong> de la boucle d’événements, donc le travail synchrone (vidage cache + reload) bloquait <strong>httpuv</strong> <em>avant</em> la transmission du toast au navigateur. Le travail lourd est désormais différé via <strong><code>later::later(delay)</code></strong> : la boucle reprend la main (toast + bouton désactivé transmis), puis le travail s’exécute au tick suivant (ré-entrée du domaine réactif + garde <code>session$isClosed()</code>).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--open-canopy-isolé--restaure-les-messages-de-progression-dans-lapp-0-94-7">Fixed — Open-Canopy isolé : restaure les messages de progression dans l’app<a class="anchor" aria-label="anchor" href="#fixed--open-canopy-isol%C3%A9--restaure-les-messages-de-progression-dans-lapp-0-94-7"></a></h4>
 <p>Depuis l’isolation du CHM Open-Canopy en sous-processus (callr), les messages de calcul (ÉTAPE 1/5…5/5, tuiles, inférence) ne remontaient plus <strong>en bas à droite</strong> de l’app — ils partaient sur la console du worker. Un callback R ne traverse pas la frontière du process.</p>
 <p><code>download_chm_opencanopy()</code> re-streame désormais la progression : le sous-processus émet les <strong>événements <code>progress_callback</code> d’opencanopy en lignes JSON taguées</strong> (<code>__CHM_EV__{...}</code>) sur stdout ; le parent les <strong>re-parse et les rejoue</strong> via le <code>progress_callback</code> de l’app (<code>r_bg</code> + boucle <code>poll_io</code>/ <code>read_output_lines</code>, helper <code>.chm_forward_line</code>). Les messages structurés (<code>chm_phase:</code> / <code>chm_tile:</code> / <code>chm_inference_tile:</code>) reviennent donc dans le panneau de l’app, tout en gardant l’isolation reticulate (env <code>open_canopy</code>). Le reste de la sortie est miroité sur la console. 3 tests (<code>test-opencanopy-python.R</code>).</p>
 </div>
