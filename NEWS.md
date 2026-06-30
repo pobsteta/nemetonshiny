@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.0.9001 (dev)
+# nemetonshiny 0.94.1 (2026-06-30)
 
 ### Fixed — Chargement de projet : crash « module session has been destroyed »
 
@@ -19,7 +19,7 @@ toute lecture réactive, et sortent silencieusement si la session est morte
 (la boucle non-réactive n'était sinon arrêtée par rien). Bug pré-existant,
 révélé par les projets à calcul reprenable (« Resuming progress tracking »).
 
-Cycle dev `0.94.0` → `0.94.0.9001` → release stable cible `v0.94.1`.
+Cycle dev `0.94.0` → `0.94.0.9001` → release stable `v0.94.1`.
 
 # nemetonshiny 0.94.0 (2026-06-30)
 
