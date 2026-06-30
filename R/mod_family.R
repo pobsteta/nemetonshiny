@@ -19,22 +19,47 @@ mod_family_server <- function(id, family_code, app_state) {
     # ================================================================
     # REACTIVE: Extract family indicator columns from project
     # ================================================================
-    indicators_data <- shiny::reactive({
+    # R5 dépérissement (32e indicateur, CONDITIONNEL) : injecté en direct
+    # depuis les alertes de la zone de suivi liée, à l'identique du radar
+    # (mod_synthesis). Best-effort — sans zone / sans alerte, l'sf est rendu
+    # inchangé et la famille R reste R1-R4. N'enrichit QUE la famille R
+    # (les 11 autres n'ont pas de R5 → on évite le coût DB + spatial).
+    # `project$indicators == st_drop_geometry(project$indicators_sf)`
+    # (cf. attach_indicators_sf), donc les deux réactifs ci-dessous dérivent
+    # de cette même source enrichie : la colonne R5 apparaît côté config
+    # (déjà listée dans INDICATOR_FAMILIES$R) ET côté données.
+    enriched_sf <- shiny::reactive({
       project <- app_state$current_project
-      if (is.null(project) || is.null(project$indicators)) return(NULL)
-
-      df <- project$indicators
-
-      # Drop geometry if sf
-      if (inherits(df, "sf")) {
-        df <- tryCatch(sf::st_drop_geometry(df),
-                       error = function(e) {
-                         geo_col <- attr(df, "sf_column") %||% "geometry"
-                         result <- df[, setdiff(names(df), geo_col), drop = FALSE]
-                         class(result) <- "data.frame"
-                         result
-                       })
+      if (is.null(project)) return(NULL)
+      base_sf <- project$indicators_sf
+      # Fallback: some projects only carry `indicators` and it is itself an
+      # sf (geoarrow). Use it so the family page keeps working without a
+      # separate `indicators_sf` (parity with the previous behaviour).
+      if (is.null(base_sf) || !inherits(base_sf, "sf")) {
+        if (inherits(project$indicators, "sf")) base_sf <- project$indicators
       }
+      if (is.null(base_sf) || !inherits(base_sf, "sf") || nrow(base_sf) == 0L) {
+        return(NULL)
+      }
+      if (identical(toupper(family_code), "R")) {
+        add_r5_to_indicators(base_sf, project)
+      } else {
+        base_sf
+      }
+    })
+
+    indicators_data <- shiny::reactive({
+      sf_enriched <- enriched_sf()
+      if (is.null(sf_enriched)) return(NULL)
+
+      df <- tryCatch(sf::st_drop_geometry(sf_enriched),
+                     error = function(e) {
+                       geo_col <- attr(sf_enriched, "sf_column") %||% "geometry"
+                       result <- sf_enriched[, setdiff(names(sf_enriched), geo_col),
+                                             drop = FALSE]
+                       class(result) <- "data.frame"
+                       result
+                     })
 
       all_cols <- names(df)
 
@@ -70,11 +95,9 @@ mod_family_server <- function(id, family_code, app_state) {
       ind_data <- indicators_data()
       if (is.null(ind_data)) return(NULL)
 
-      project <- app_state$current_project
-      if (is.null(project$indicators_sf) ||
-          !inherits(project$indicators_sf, "sf")) return(NULL)
+      sf_all <- enriched_sf()
+      if (is.null(sf_all) || !inherits(sf_all, "sf")) return(NULL)
 
-      sf_all <- project$indicators_sf
       matched <- setdiff(names(ind_data),
                          c("ug_id", "label", "groupe", "cadastral_refs",
                            "surface_m2", "surface_sig_m2", "n_tenements"))
