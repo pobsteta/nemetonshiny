@@ -458,6 +458,14 @@ mod_home_server <- function(id, app_state) {
       if (requireNamespace("later", quietly = TRUE)) {
         .deferred_ind_id <- project$id
         later::later(function() {
+          # The session may have been destroyed before this deferred
+          # callback fires — typically a project load that triggers a
+          # restore via `session$reload()`. Reading/writing `app_state`
+          # then throws "Can't access reactive ...; module session has been
+          # destroyed", even inside withReactiveDomain(). Bail out FIRST.
+          if (isTRUE(tryCatch(session$isClosed(), error = function(e) TRUE))) {
+            return()
+          }
           # A later() callback runs OUTSIDE any reactive consumer, so
           # reading/writing `app_state` here would raise "Can't access
           # reactive value outside of reactive consumer". Re-enter the
@@ -1146,6 +1154,20 @@ mod_home_server <- function(id, app_state) {
       poll_last_key <<- ""
 
       poll_fn <- function() {
+        # The session may have been destroyed while this non-reactive
+        # later::later loop was still scheduled — most commonly because a
+        # project load triggers a restore via `session$reload()`, which
+        # tears down the current session out from under the poll loop. Any
+        # reactive read on a dead session (incl. the `computing_project_id()`
+        # guard just below, and the `app_state$*` writes in the terminal
+        # branches) throws "Can't access reactive ...; module session has
+        # been destroyed". Nothing else stops this loop, so bail out FIRST,
+        # before touching any reactive. `isClosed()` is wrapped defensively
+        # (a destroyed session proxy can itself error).
+        if (isTRUE(tryCatch(session$isClosed(), error = function(e) TRUE))) {
+          return()
+        }
+
         # Check if still computing (isolate — we're outside reactive context)
         current_id <- shiny::isolate(computing_project_id())
         if (is.null(current_id) || current_id != project_id) return()
