@@ -1,3 +1,30 @@
+# nemetonshiny 0.94.3.9001 (dev)
+
+### Fixed — Alertes RECONFORT : rasters affichés après rechargement de projet
+
+La carte « Alertes RECONFORT » n'affichait ses rasters (classification / score
+/ probabilité) qu'à partir du `result` **en mémoire** d'un run de la session
+courante. Après un **rechargement de projet**, `result` était perdu → plus de
+toggles, plus de slider d'opacité, plus de raster — seules les alertes (DB)
+restaient. FORDEAD, lui, lit ses couches depuis le **cache** et les réaffiche
+après rechargement.
+
+Parité atteinte : `manifest_r` retombe désormais sur
+`nemeton::reconfort_cache_manifest(cache_dir, zone_id)` (nemeton ≥ 0.100.0)
+quand aucun `result` n'est en mémoire — le run persisté est découvert sur
+disque, schéma **interchangeable** avec `reconfort_layer_manifest(result)`.
+Toute la machinerie existante (toggles, opacité, masque UGF au read via
+`read_reconfort_layer`, clip alertes, clic-pixel) est réutilisée telle quelle.
+
+Les couches affichables sont désormais unifiées via `available_layers_r` :
+rasters du manifeste (run mémoire OU cache) **+** couche *Alertes* (DB)
+toujours toggleable, même en mode cache (le manifeste cache ne porte pas de
+ligne `alerts`). Sans aucune couche ni alerte → état vide.
+
+Plancher relevé à `Imports: nemeton (>= 0.100.0)`.
+
+Cycle dev `0.94.3` → `0.94.3.9001` → release stable cible `v0.94.4`.
+
 # nemetonshiny 0.94.3 (2026-06-30)
 
 ### Fixed — Famille Risques & Résilience : R5 dépérissement affiché

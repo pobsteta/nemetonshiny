@@ -113,15 +113,40 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
 
     # ----- Layer manifest (cœur) ----------------------------------------
     # Le contrat stable : le module ne lit JAMAIS result$rasters en dur, il
-    # délègue au cœur la liste des couches + palettes/domaines/sens. NULL
-    # quand aucun run n'est disponible en mémoire (mode DB legacy).
+    # délègue au cœur la liste des couches + palettes/domaines/sens.
+    #
+    # Deux sources, schéma identique (interchangeable) :
+    #   1. `result` EN MÉMOIRE d'un run de la session → reconfort_layer_manifest() ;
+    #   2. sinon (projet rechargé, plus de result) → DÉCOUVERTE CACHE via
+    #      reconfort_cache_manifest(cache_dir, zone_id) (nemeton >= 0.100.0) :
+    #      le run persisté est lu depuis le disque, parité FORDEAD — les
+    #      rasters réapparaissent après rechargement, pas seulement après un
+    #      run frais.
+    # NULL quand ni run mémoire ni run caché ne sont disponibles.
     manifest_r <- shiny::reactive({
       res <- result_r()
-      if (is.null(res)) return(NULL)
+      if (!is.null(res)) {
+        m <- tryCatch(
+          nemeton::reconfort_layer_manifest(res, include_range = TRUE),
+          error = function(e) {
+            cli::cli_alert_warning("reconfort_layer_manifest failed: {e$message}")
+            NULL
+          }
+        )
+        if (!is.null(m) && nrow(m)) return(m)
+      }
+      # Fallback cache (parité FORDEAD).
+      zone <- zone_id_r()
+      proj <- app_state$current_project
+      if (is.null(zone) || !isTRUE(nzchar(zone)) ||
+          is.null(proj) || is.null(proj$path)) return(NULL)
+      cd <- .reconfort_cache_dir(proj)
+      if (is.na(cd) || !dir.exists(cd)) return(NULL)
       m <- tryCatch(
-        nemeton::reconfort_layer_manifest(res, include_range = TRUE),
+        nemeton::reconfort_cache_manifest(cd, zone_id = as.integer(zone),
+                                          include_range = TRUE),
         error = function(e) {
-          cli::cli_alert_warning("reconfort_layer_manifest failed: {e$message}")
+          cli::cli_alert_warning("reconfort_cache_manifest failed: {e$message}")
           NULL
         }
       )
@@ -220,29 +245,48 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       )
     })
 
-    # Default-visible layer ids from the manifest (checkbox initial state).
-    .default_selected <- function(m) {
-      if (is.null(m)) return(character())
-      as.character(m$id[m$default_visible %in% TRUE])
-    }
+    # All toggleable layers = the manifest's RASTER rows (run result OR
+    # cache) + a synthetic "alerts" row whenever DB alerts exist for the
+    # zone. Alerts are a DB layer, independent of the raster manifest (the
+    # cache manifest carries no `alerts` row), so they must stay toggleable
+    # even in cache mode — otherwise switching from legacy (alerts shown) to
+    # cache (manifest present) would silently drop the alerts toggle.
+    available_layers_r <- shiny::reactive({
+      rm <- raster_manifest_r()
+      rows <- if (is.null(rm)) NULL else data.frame(
+        id              = as.character(rm$id),
+        label_key       = as.character(rm$label_key),
+        default_visible = rm$default_visible %in% TRUE,
+        stringsAsFactors = FALSE
+      )
+      a <- alerts_r()
+      if (!is.null(a) && nrow(a) > 0L &&
+          (is.null(rows) || !("alerts" %in% rows$id))) {
+        rows <- rbind(rows, data.frame(
+          id = "alerts", label_key = "reconfort_couche_alertes",
+          default_visible = TRUE, stringsAsFactors = FALSE))
+      }
+      if (is.null(rows) || !nrow(rows)) return(NULL)
+      rows
+    })
 
     # ----- Sidebar controls (manifest-driven, dynamic choices) ----------
     output$controls <- shiny::renderUI({
       i18n <- i18n_r()
-      m <- manifest_r()
-      if (is.null(m)) {
-        # MODE DB legacy / aucun run en mémoire — pas de toggles ; rappel.
+      lay <- available_layers_r()
+      if (is.null(lay)) {
+        # Ni raster (run mémoire ou cache) ni alerte — pas de toggles ; rappel.
         return(htmltools::p(
           class = "text-muted small mb-0",
           i18n$t("monitoring_reconfort_map_empty_body")
         ))
       }
       choices  <- stats::setNames(
-        as.character(m$id),
-        vapply(m$label_key, function(k) i18n$t(k), character(1))
+        as.character(lay$id),
+        vapply(lay$label_key, function(k) i18n$t(k), character(1))
       )
-      selected <- .default_selected(m)
-      has_raster <- any(m$type == "raster")
+      selected <- lay$id[lay$default_visible]
+      has_raster <- !is.null(raster_manifest_r())
       htmltools::tagList(
         shiny::checkboxGroupInput(
           session$ns("layers"), i18n$t("reconfort_couches"),
@@ -268,12 +312,10 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       )
     })
 
-    # ----- Empty-state overlay (no layers AND no alerts) ----------------
+    # ----- Empty-state overlay (no raster layer AND no alerts) ----------
     output$overlay <- shiny::renderUI({
       i18n <- i18n_r()
-      m <- manifest_r()
-      a <- alerts_r()
-      if (!is.null(m) || (!is.null(a) && nrow(a) > 0L)) return(NULL)
+      if (!is.null(available_layers_r())) return(NULL)
       htmltools::div(
         style = paste(
           "position: absolute; inset: 0; z-index: 500;",
@@ -411,17 +453,14 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       map
     }
 
-    # Currently selected layer ids (checkbox in manifest mode, else "alerts"
-    # when DB alerts exist).
+    # Currently selected layer ids : the checkbox state, defaulting to the
+    # default-visible layers (rasters + alerts) until the user interacts.
     selected_ids_r <- shiny::reactive({
-      m <- manifest_r()
-      if (!is.null(m)) {
-        sel <- input$layers
-        if (is.null(sel)) sel <- .default_selected(m)
-        return(as.character(sel))
-      }
-      a <- alerts_r()
-      if (!is.null(a) && nrow(a) > 0L) "alerts" else character()
+      lay <- available_layers_r()
+      if (is.null(lay)) return(character())
+      sel <- input$layers
+      if (is.null(sel)) sel <- lay$id[lay$default_visible]
+      as.character(sel)
     })
 
     opacity_r <- shiny::reactive({
