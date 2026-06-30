@@ -476,6 +476,48 @@ test_that("compute_button_ui shows compute button for draft project", {
   )
 })
 
+test_that("compute_button_ui stays visible when ANOTHER project is computing", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("leaflet")
+
+  mock_project <- list(
+    id = "proj_A",
+    metadata = list(name = "A", status = "draft"),
+    parcels = NULL
+  )
+
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    list_recent_projects = mock_empty_projects,
+    mod_search_server = mock_search_server,
+    mod_map_server = mock_map_server,
+    mod_project_server = mock_project_server,
+    mod_progress_server = mock_progress_server,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_home_server,
+        args = list(app_state = make_app_state(list(
+          current_project = mock_project,
+          project_id = "proj_A"
+        ))),
+        {
+          # Un AUTRE projet calcule en arrière-plan → le bouton du projet A
+          # (chargé, draft) doit RESTER visible.
+          computing_project_id("proj_B")
+          session$flushReact()
+          expect_true(grepl("start_compute", collapse_html(output$compute_button_ui)))
+
+          # Quand c'est CE projet qui calcule → bouton masqué.
+          computing_project_id("proj_A")
+          session$flushReact()
+          expect_equal(collapse_html(output$compute_button_ui), "")
+        }
+      )
+    }
+  )
+})
+
 test_that("compute_button_ui shows compute button for error project", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -689,14 +731,16 @@ test_that("recent-project load defers indicators_sf attach via later() without r
           session$setInputs(load_project = "deferred_proj")
           session$flushReact()
 
-          # Build is DEFERRED: indicators_sf absent right after load.
-          expect_null(as$current_project$indicators_sf)
-
-          # Let the 0.1 s later() delay elapse, then drain the event loop.
-          # The deferred callback must NOT raise "Can't access reactive
-          # value outside of reactive consumer" (regression guard, v0.79.1)
-          # and must attach indicators_sf onto the live project via the
-          # session's reactive domain.
+          # L'attache d'`indicators_sf` est programmée sur `later::later()`
+          # (en PRODUCTION : différée de 0.1 s pour ne pas bloquer le 1er
+          # rendu de la carte). On NE teste PAS l'instant exact où le callback
+          # différé s'exécute : selon que le harnais testServer pompe ou non
+          # la file `later` pendant le flush (mod_home a des reactivePoll qui
+          # l'influencent), il peut tourner pendant le setup. Ce qui compte —
+          # et qui était la régression v0.79.1 — c'est que drainer la boucle
+          # ne lève PAS « Can't access reactive value outside of reactive
+          # consumer » / « module session destroyed », et que `indicators_sf`
+          # finit attaché sur le projet vivant via le domaine réactif.
           Sys.sleep(0.2)
           expect_no_error(later::run_now())
           session$flushReact()

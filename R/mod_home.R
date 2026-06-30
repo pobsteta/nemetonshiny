@@ -740,8 +740,12 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(project)) return(NULL)
 
-      # Hide button while computation is running
-      if (!is.null(computing_project_id())) return(NULL)
+      # Hide the button only while THIS project's computation is running —
+      # PAS quand un AUTRE projet calcule en arrière-plan. `computing_project_id()`
+      # est un id unique (un seul calcul à la fois) : sans le test d'égalité,
+      # lancer un calcul sur le projet B masquait le bouton du projet A
+      # rechargé (bouton « calcul » disparu).
+      if (identical(computing_project_id(), project$id)) return(NULL)
 
       # Check project status
       status <- project$metadata$status %||% "draft"
