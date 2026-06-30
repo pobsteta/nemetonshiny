@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.7.9001 (dev)
+# nemetonshiny 0.94.8 (2026-06-30)
 
 ### Fixed — Sélection : bouton « Lancer les calculs » masqué à tort
 
