@@ -1,4 +1,4 @@
-# nemetonshiny 0.93.0.9001 (dev)
+# nemetonshiny 0.93.1 (2026-06-30)
 
 ### Fixed — Carte RECONFORT : alertes clippées à l'UGF
 
@@ -16,7 +16,7 @@ déjà ouverte par `alerts_r` est réutilisée).
 
 Plancher relevé à `Imports: nemeton (>= 0.99.0)`.
 
-Cycle dev `0.93.0` → `0.93.0.9001` → release stable cible `v0.93.1`.
+Cycle dev `0.93.0` → `0.93.0.9001` → release stable `v0.93.1`.
 
 # nemetonshiny 0.93.0 (2026-06-29)
 
