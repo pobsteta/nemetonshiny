@@ -1507,12 +1507,33 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
   NA_character_
 }
 
+# Forward one line of subprocess output. Open-Canopy's structured progress
+# events are emitted by the child as tagged JSON lines (`__CHM_EV__{...}`);
+# parse them back and replay them through the app `progress_callback` so the
+# Carte / bottom-right messages keep working across the process boundary.
+# Everything else is mirrored to the console.
+.chm_forward_line <- function(line, progress_callback) {
+  if (!is.character(line) || !nzchar(line)) return(invisible())
+  if (startsWith(line, "__CHM_EV__")) {
+    if (is.function(progress_callback)) {
+      ev <- tryCatch(jsonlite::fromJSON(sub("^__CHM_EV__", "", line)),
+                     error = function(e) NULL)
+      if (!is.null(ev)) tryCatch(progress_callback(ev), error = function(e) NULL)
+    }
+  } else {
+    cat(line, "\n", sep = "")
+  }
+  invisible()
+}
+
 # Run opencanopy::pipeline_aoi_to_chm() in an isolated R subprocess with
 # RETICULATE_PYTHON pinned to the Open-Canopy env, writing the CHM to
 # `chm_path`. The subprocess gets a fresh, unbound reticulate, so it always
 # binds to open_canopy regardless of what the parent session already bound
 # (uv ephemeral env, FORDEAD virtualenv, Theia, …). R_ENVIRON_USER="" so a
-# RETICULATE_PYTHON in ~/.Renviron cannot override the pin. Falls back to
+# RETICULATE_PYTHON in ~/.Renviron cannot override the pin. The child streams
+# opencanopy's progress events as tagged JSON lines, which the parent replays
+# through `progress_callback` (the app bottom-right messages). Falls back to
 # in-process when callr or the env Python is unavailable.
 .run_opencanopy_chm <- function(aoi_path, oc_dir, chm_path, progress_callback) {
   py <- .resolve_opencanopy_python()
@@ -1520,18 +1541,33 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
     cli::cli_alert_info(
       "Running opencanopy::pipeline_aoi_to_chm in an isolated R session \\
        (RETICULATE_PYTHON = {py})...")
-    callr::r(
+    px <- callr::r_bg(
       func = function(aoi_path, output_dir, chm_path) {
-        pipe <- opencanopy::pipeline_aoi_to_chm(aoi_path = aoi_path,
-                                                output_dir = output_dir)
+        pa <- list(aoi_path = aoi_path, output_dir = output_dir)
+        if ("progress_callback" %in%
+            names(formals(opencanopy::pipeline_aoi_to_chm))) {
+          pa$progress_callback <- function(ev) {
+            cat("__CHM_EV__",
+                jsonlite::toJSON(ev, auto_unbox = TRUE, null = "null"),
+                "\n", sep = "")
+          }
+        }
+        pipe <- do.call(opencanopy::pipeline_aoi_to_chm, pa)
         terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
         invisible(TRUE)
       },
       args = list(aoi_path = aoi_path, output_dir = oc_dir, chm_path = chm_path),
       env  = c(callr::rcmd_safe_env(),
                RETICULATE_PYTHON = py, R_ENVIRON_USER = ""),
-      show = TRUE, spinner = FALSE
+      stdout = "|", stderr = "2>&1", supervise = TRUE
     )
+    repeat {
+      px$poll_io(250)
+      for (ln in px$read_output_lines()) .chm_forward_line(ln, progress_callback)
+      if (!px$is_alive()) break
+    }
+    for (ln in px$read_output_lines()) .chm_forward_line(ln, progress_callback)
+    px$get_result()  # rethrows the child error, if any
     return(invisible(TRUE))
   }
   if (is.na(py)) {
