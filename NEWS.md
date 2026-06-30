@@ -1,3 +1,27 @@
+# nemetonshiny 0.94.5.9002 (dev)
+
+### Changed — UX boutons : convention normative + fusion des deux verts
+
+* **Convention de couleurs de boutons documentée** dans `CLAUDE.md` (section
+  *Conventions de code*) : 🟢 vert = action principale / CTA ; 🟤 brun =
+  action secondaire / fermeture ; ⚪ blanc (`outline`) = action tertiaire /
+  auxiliaire ; 🟡 warning = prudence ; 🔴 danger = destructif. Toujours une
+  classe explicite (pas de brun par défaut accidentel).
+* **`primary` et `success` fusionnés** sur un seul vert `#1B6B1B` (avant deux
+  verts quasi identiques `#1B6B1B` / `#1E7B1E` pour deux rôles) — thème
+  (`utils_theme.R`) + `custom.css` + `custom.min.css`.
+
+### Fixed — Sélection : « Réessayer » sans retour visuel
+
+Cliquer « Réessayer » (recompute) lançait un vidage de cache + rechargement
+projet **synchrones** sans aucun retour : le clic paraissait sans effet et
+l'utilisateur re-cliquait partout. Le bouton est désormais **désactivé** et un
+**toast** « Réinitialisation des calculs en cours… » s'affiche **immédiatement**
+(travail lourd différé d'un flush via `onFlushed` pour que le retour s'affiche
+avant le blocage), remplacé en fin d'opération par la confirmation
+(`retry_toast`, jusqu'ici définie mais jamais affichée). Nouvelle clé i18n
+`retry_in_progress`.
+
 # nemetonshiny 0.94.5.9001 (dev)
 
 ### Fixed — Open-Canopy CHM : isolation reticulate (débloque les indicateurs Production)

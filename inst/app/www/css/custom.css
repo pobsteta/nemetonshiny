@@ -17,7 +17,7 @@ html, body {
   --nemeton-primary-dark: #145214;
   --nemeton-primary-light: #2E8B2E;
   --nemeton-secondary: #6B3710;
-  --nemeton-success: #1E7B1E;
+  --nemeton-success: #1B6B1B; /* fusionné avec primary : un seul vert */
   --nemeton-info: #2B5B8B;
   --nemeton-warning: #9B7510;
   --nemeton-danger: #B01030;

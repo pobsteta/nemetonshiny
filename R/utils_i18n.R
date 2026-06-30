@@ -546,6 +546,10 @@ TRANSLATIONS <- list(
     fr = "Projet r\u00e9initialis\u00e9 \u2014 pr\u00eat \u00e0 relancer le calcul.",
     en = "Project reset \u2014 ready to recompute."
   ),
+  retry_in_progress = list(
+    fr = "R\u00e9initialisation des calculs en cours\u2026",
+    en = "Resetting computation\u2026"
+  ),
   view_results = list(fr = "Voir les r\u00e9sultats", en = "View results"),
   resuming_computation = list(
     fr = "Reprise du calcul - %d indicateur(s) d\u00e9j\u00e0 calcul\u00e9(s)",

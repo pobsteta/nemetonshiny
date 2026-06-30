@@ -23,7 +23,7 @@ NULL
 #' \itemize{
 #'   \item Primary: Forest Green (#1B6B1B)
 #'   \item Secondary: Saddle Brown (#6B3710)
-#'   \item Success: Lime Green (#1E7B1E)
+#'   \item Success: Forest Green (#1B6B1B) — merged with Primary (single green)
 #'   \item Info: Steel Blue (#2B5B8B)
 #'   \item Warning: Goldenrod (#9B7510)
 #'   \item Danger: Crimson (#B01030)
@@ -43,7 +43,7 @@ nemeton_theme <- function() {
     # All colors tested with WebAIM contrast checker
     primary = "#1B6B1B",
     secondary = "#6B3710",
-    success = "#1E7B1E",
+    success = "#1B6B1B",  # fusionné avec primary : un seul vert (UX boutons)
     info = "#2B5B8B",
     warning = "#9B7510",
     danger = "#B01030",

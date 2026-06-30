@@ -197,6 +197,30 @@ Rscript -e 'pkgload::load_all("."); cat(nemetonshiny:::export_translations_json(
 - Pas de `observe()` orphelin : utiliser `observeEvent()` ou `bindEvent()` pour scoper le déclenchement.
 - Sortir l'i18n du module sous forme de reactive (`i18n_r()`) si la langue peut changer pendant la session.
 
+### Couleurs de boutons (UX) — règle normative
+
+Le thème (`R/utils_theme.R` + `inst/app/www/css/custom.css`) définit une
+palette **sémantique Bootstrap**. La couleur de fond d'un bouton encode son
+**niveau d'action** — appliquer cette hiérarchie, ne jamais choisir un fond
+pour des raisons esthétiques :
+
+| Fond | Classe(s) | Niveau d'action | Quand l'utiliser |
+|------|-----------|-----------------|------------------|
+| 🟢 **Vert** | `btn-primary` (= `btn-success`, même vert `#1B6B1B`) | **Action principale / CTA** | L'action positive forte d'une vue (Lancer, Générer, Créer, Valider, Sauvegarder). **Une seule par vue** idéalement. |
+| 🟤 **Brun** | `btn-secondary` / `modalButton` (défaut) | **Action secondaire / fermeture** | Fermer, Annuler, Retour, action neutre. |
+| ⚪ **Blanc** | `btn-outline-*` | **Action tertiaire / auxiliaire** | Emphase faible ; la *bordure* porte l'intention (`outline-secondary` neutre, `outline-primary` positif léger, `outline-danger` prudence). Icônes inline (plein écran, options). |
+| 🟡 Goldenrod | `btn-warning` | **Prudence** | Action à conséquence réversible mais notable. |
+| 🔴 Crimson | `btn-danger` | **Destructif** | Supprimer, réinitialiser des données. |
+
+- **Toujours une classe explicite** : un `actionButton`/`modalButton` sans
+  classe retombe sur le défaut (brun) — ne pas créer de brun *par accident*,
+  expliciter l'intention (`btn-primary` / `btn-secondary` / `btn-outline-*`).
+- **`primary` et `success` partagent le même vert** (`#1B6B1B`, fusionnés
+  pour lever l'ambiguïté des deux verts). Préférer `btn-primary` pour un CTA.
+- Toute **action longue déclenchée par un bouton** doit donner un **retour
+  immédiat** (toast `showNotification` + désactivation du bouton le temps de
+  l'opération) — cf. règle stricte #9 et le pattern `recompute`/`run_*`.
+
 ### Services (`service_*.R`)
 
 - Logique applicative non-Shiny : appel des fonctions `nemeton::*`, accès DB, IO disque, cache.
