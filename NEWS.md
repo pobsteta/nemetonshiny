@@ -23,16 +23,28 @@ rasters du manifeste (run mémoire OU cache) **+** couche *Alertes* (DB)
 toujours toggleable, même en mode cache (le manifeste cache ne porte pas de
 ligne `alerts`). Sans aucune couche ni alerte → état vide.
 
-Deux raffinements de rendu (parité FORDEAD) :
+Raffinements de rendu :
 
-* **Rasters continus (score / probabilité) en pleine intensité** — le
-  domaine de la rampe est calculé sur les valeurs réelles du raster affiché
-  (`terra::global`) au lieu du `vmin/vmax` générique du manifeste (score
-  `1-100`, proba `0-1000`) qui délavait une plage réelle étroite (ex. score
-  `24-56`).
+* **Rasters continus (score / probabilité) en échelle par QUANTILES** —
+  `leaflet::colorBin` sur les bornes de quantiles calculées des valeurs
+  réelles du raster (5 classes), parité avec la carte FAST. Une distribution
+  concentrée utilise alors toute la palette uniformément, au lieu d'une rampe
+  linéaire min/max (et le `vmin/vmax` générique du manifeste — score `1-100`,
+  proba `0-1000` — n'est plus utilisé). Repli linéaire si distribution
+  dégénérée.
 * **Classe 1-sain transparente** dans la couche classification — seuls les
   pixels affectés (2-deperissant / 3-tres-deperissant) sont peints, comme
   FORDEAD rend sa classe 0 (sain) transparente. La classe 1 reste en légende.
+* **Info-bulles « i » par couche** — chaque case à cocher (rasters + alertes)
+  porte une icône `info-circle` (tooltip) décrivant la couche, parité avec la
+  Carte FORDEAD (helper `.reconfort_layer_choice`, clés i18n
+  `reconfort_couche_*_info`).
+
+### Changed — Suivi sanitaire : « Carte FORDEAD » renommé « Alertes FORDEAD »
+
+Cohérence des libellés de sous-onglets entre les deux pipelines : « Carte
+FORDEAD » devient « Alertes FORDEAD » (parallèle à « Alertes RECONFORT »).
+Clé `monitoring_subtab_pixel_map_fordead`, FR/EN.
 
 Plancher relevé à `Imports: nemeton (>= 0.100.1)`.
 

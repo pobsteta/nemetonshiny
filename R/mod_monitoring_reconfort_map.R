@@ -53,6 +53,22 @@
   "3" = "#D62728"   # rouge   (très dépérissant)
 )
 
+#' Libellé d'une couche (case à cocher) avec une icône « i » (tooltip bslib)
+#' qui explique ce que la couche affiche. Parité avec
+#' `.fordead_layer_choice()` de la Carte FORDEAD.
+#' @noRd
+.reconfort_layer_choice <- function(label, info) {
+  htmltools::tagList(
+    label,
+    bslib::tooltip(
+      bsicons::bs_icon("info-circle",
+                       class = "ms-1 text-primary",
+                       style = "cursor: help;"),
+      info
+    )
+  )
+}
+
 #' Carte RECONFORT sub-tab UI
 #'
 #' @param id Module namespace id.
@@ -281,16 +297,22 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           i18n$t("monitoring_reconfort_map_empty_body")
         ))
       }
-      choices  <- stats::setNames(
-        as.character(lay$id),
-        vapply(lay$label_key, function(k) i18n$t(k), character(1))
-      )
+      # Chaque couche porte une icône « i » (tooltip) décrivant ce qu'elle
+      # affiche — parité FORDEAD. La clé d'info = `<label_key>_info`.
+      choice_names <- lapply(seq_len(nrow(lay)), function(k) {
+        .reconfort_layer_choice(
+          i18n$t(lay$label_key[k]),
+          i18n$t(paste0(lay$label_key[k], "_info"))
+        )
+      })
       selected <- lay$id[lay$default_visible]
       has_raster <- !is.null(raster_manifest_r())
       htmltools::tagList(
         shiny::checkboxGroupInput(
           session$ns("layers"), i18n$t("reconfort_couches"),
-          choices = choices, selected = selected
+          choiceNames = choice_names,
+          choiceValues = as.character(lay$id),
+          selected = selected
         ),
         if (has_raster) shiny::sliderInput(
           session$ns("opacity"), i18n$t("reconfort_opacite"),
@@ -429,31 +451,40 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           opacity = opacity, layerId = paste0("legend_", row$id)
         )
       } else {
-        # Domaine de la rampe calculé sur les valeurs RÉELLES du raster
-        # affiché (terra::global, qui fonctionne même sans stats min/max
-        # précalculées — contrairement à terra::minmax). Le vmin/vmax du
-        # manifeste est une échelle générique (score 1-100, proba 0-1000)
-        # qui délaverait une plage réelle étroite. Repli sur le domaine du
-        # manifeste, puis sur une rampe unité.
-        dom <- tryCatch({
-          mm <- terra::global(r, c("min", "max"), na.rm = TRUE)
-          c(mm[["min"]][1L], mm[["max"]][1L])
-        }, error = function(e) NULL)
-        if (is.null(dom) || !all(is.finite(dom)) || dom[1L] == dom[2L]) {
-          dm <- c(row$vmin, row$vmax)
-          dom <- if (all(is.finite(dm)) && dm[1L] != dm[2L]) dm else c(0, 1)
-        }
         palname <- if (!is.na(row$palette)) row$palette else "viridis"
-        pal <- leaflet::colorNumeric(palname, domain = dom,
-                                     reverse = isTRUE(row$reverse),
-                                     na.color = "transparent")
+        # Échelle de couleur PAR QUANTILES (parité avec la carte FAST),
+        # calculée sur les valeurs réelles du raster affiché : une
+        # distribution continue concentrée (score / probabilité) utilise
+        # alors toute la palette uniformément, au lieu d'une rampe linéaire
+        # min/max qui délave les valeurs groupées. Le vmin/vmax générique
+        # du manifeste (score 1-100, proba 0-1000) n'est PAS utilisé.
+        # Repli sur une rampe linéaire réelle si la distribution est trop
+        # dégénérée pour des bornes de quantiles.
+        vals <- tryCatch(terra::values(r, na.rm = TRUE, mat = FALSE),
+                         error = function(e) numeric(0))
+        vals <- vals[is.finite(vals)]
+        qbreaks <- if (length(vals)) unique(as.numeric(stats::quantile(
+          vals, probs = seq(0, 1, length.out = 6L), na.rm = TRUE))) else numeric(0)
+        if (length(qbreaks) >= 3L) {
+          pal <- leaflet::colorBin(palname, domain = range(vals),
+                                   bins = qbreaks, reverse = isTRUE(row$reverse),
+                                   na.color = "transparent")
+          legend_vals <- range(vals)
+        } else {
+          dom <- if (length(vals)) range(vals) else c(0, 1)
+          if (dom[1L] == dom[2L]) dom <- dom + c(0, 1)
+          pal <- leaflet::colorNumeric(palname, domain = dom,
+                                       reverse = isTRUE(row$reverse),
+                                       na.color = "transparent")
+          legend_vals <- dom
+        }
         map <- leaflet::addRasterImage(
           map, x = r, colors = pal, opacity = opacity,
           method = "bilinear", project = TRUE, group = row$id,
           options = leaflet::gridOptions(pane = "nemetonRaster")
         )
         map <- leaflet::addLegend(
-          map, position = "bottomright", pal = pal, values = dom,
+          map, position = "bottomright", pal = pal, values = legend_vals,
           title = i18n$t(row$label_key), opacity = opacity,
           layerId = paste0("legend_", row$id)
         )

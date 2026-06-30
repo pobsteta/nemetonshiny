@@ -281,6 +281,9 @@ test_that("manifest drives layer toggles + opacity slider", {
       expect_true(grepl(i18n$t("reconfort_couche_score"),   controls, fixed = TRUE))
       expect_true(grepl(i18n$t("reconfort_couche_classes"), controls, fixed = TRUE))
       expect_true(grepl(i18n$t("reconfort_couche_proba"),   controls, fixed = TRUE))
+      # Each layer carries an info "i" tooltip (parity FORDEAD).
+      expect_true(grepl("info-circle", controls, fixed = TRUE))
+      expect_true(grepl(i18n$t("reconfort_couche_score_info"), controls, fixed = TRUE))
       # Empty-state overlay must NOT show when layers are available.
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
                          overlay, fixed = TRUE))
