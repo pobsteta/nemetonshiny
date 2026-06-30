@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.2.9001 (dev)
+# nemetonshiny 0.94.3 (2026-06-30)
 
 ### Fixed — Famille Risques & Résilience : R5 dépérissement affiché
 
@@ -18,7 +18,7 @@ DB + spatial). Best-effort : sans zone de suivi liée / sans alerte, la famille
 R reste R1-R4. Repli préservé sur `project$indicators` quand il est lui-même
 un sf (geoarrow).
 
-Cycle dev `0.94.2` → `0.94.2.9001` → release stable cible `v0.94.3`.
+Cycle dev `0.94.2` → `0.94.2.9001` → release stable `v0.94.3`.
 
 # nemetonshiny 0.94.2 (2026-06-30)
 
