@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.7.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.8" id="nemetonshiny-0948-2026-06-30">nemetonshiny 0.94.8 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0948-2026-06-30"></a></h2>
+<div class="section level4">
+<h4 id="fixed--sélection--bouton--lancer-les-calculs--masqué-à-tort-0-94-8">Fixed — Sélection : bouton « Lancer les calculs » masqué à tort<a class="anchor" aria-label="anchor" href="#fixed--s%C3%A9lection--bouton--lancer-les-calculs--masqu%C3%A9-%C3%A0-tort-0-94-8"></a></h4>
+<p>Le bouton de calcul disparaissait du projet chargé dès qu’<strong>un autre</strong> projet calculait en arrière-plan : la condition de masquage testait <code>computing_project_id()</code> non-NULL (un seul calcul à la fois) sans vérifier que c’était bien le projet <strong>courant</strong>. Elle teste désormais l’égalité avec <code>project$id</code> — lancer un calcul sur le projet B ne masque plus le bouton du projet A rechargé.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--test-defers-indicators_sf--assertion-fragile-retirée-0-94-8">Fixed — Test <code>defers indicators_sf</code> : assertion fragile retirée<a class="anchor" aria-label="anchor" href="#fixed--test-defers-indicators_sf--assertion-fragile-retir%C3%A9e-0-94-8"></a></h4>
+<p>Le test <code>test-05mod_home.R::"recent-project load defers indicators_sf attach"</code> échouait sur <code>main</code> : son <code>expect_null</code> supposait que le callback <code><a href="https://later.r-lib.org/reference/later.html" class="external-link">later::later</a></code> de l’attache n’avait pas encore tourné après le flush, or selon que le harnais <code>testServer</code> pompe ou non la file <code>later</code> (mod_home a des <code>reactivePoll</code> qui l’influencent) il peut s’exécuter pendant le setup. L’assertion de timing fragile est retirée ; les garanties réelles (pas d’erreur « reactive outside consumer » — régression v0.79.1 — et <code>indicators_sf</code> attaché) restent testées.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.7" id="nemetonshiny-0947-2026-06-30">nemetonshiny 0.94.7 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0947-2026-06-30"></a></h2>
 <div class="section level4">
