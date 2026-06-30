@@ -1256,6 +1256,9 @@ test_that("resume progress tracking when loading computing project", {
         indicators_failed = 0
       )
     },
+    # Genuinely-running computation → fresh progress file (a live worker
+    # rewrites it every ~2 s). The resume guard only triggers when fresh.
+    progress_state_age_sec = function(project_id) 1,
     mod_search_server = mock_search_server,
     mod_map_server = mock_map_server,
     mod_project_server = mock_project_server,
@@ -1285,6 +1288,59 @@ test_that("resume progress tracking when loading computing project", {
           # early when run_now(0) drains the queue at end of file, preventing an
           # infinite loop under R CMD check batch-mode test execution.
           computing_project_id(NULL)
+        }
+      )
+    }
+  )
+})
+
+test_that("resume is SKIPPED for a stale computing project (dead worker)", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("leaflet")
+
+  send_update_called <- FALSE
+  reset_called <- FALSE
+
+  mock_project <- list(
+    id = "proj_stale",
+    metadata = list(name = "Stale", status = "computing"),
+    parcels = NULL
+  )
+
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    list_recent_projects = mock_empty_projects,
+    # progress_state.json still says "computing" but the file is stale: the
+    # app was restarted while the run was interrupted, the worker is gone.
+    read_progress_state = function(project_id) {
+      list(project_id = project_id, status = "computing",
+           progress = 5, progress_max = 12)
+    },
+    progress_state_age_sec = function(project_id) 3600,  # 1 h old → dead
+    mod_search_server = mock_search_server,
+    mod_map_server = mock_map_server,
+    mod_project_server = mock_project_server,
+    mod_progress_server = function(id, compute_state, app_state) {
+      list(
+        reset_tracking = function() { reset_called <<- TRUE },
+        send_running_update = function(state) { send_update_called <<- TRUE }
+      )
+    },
+    {
+      as <- make_app_state()
+      shiny::testServer(
+        nemetonshiny:::mod_home_server,
+        args = list(app_state = as),
+        {
+          as$current_project <- list(id = "dummy")
+          session$flushReact()
+          as$current_project <- mock_project
+          session$flushReact()
+
+          # No phantom "Calcul en cours" : the stale state must NOT resume.
+          expect_false(reset_called)
+          expect_false(send_update_called)
         }
       )
     }

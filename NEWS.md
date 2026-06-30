@@ -1,3 +1,26 @@
+# nemetonshiny 0.94.1.9001 (dev)
+
+### Fixed — Chargement de projet : « Calcul en cours » fantôme (resume périmé)
+
+Charger un projet dont le dernier calcul avait été interrompu (fichier
+`progress_state.json` figé sur `status = "downloading"`/`"computing"`)
+ré-affichait une carte « Calcul en cours… » **bloquée à 0 %** : la reprise
+de suivi (`mod_home`, `observeEvent(current_project)`) relançait le polling
+alors qu'**aucun worker `future` ne tournait** (process d'origine mort après
+un redémarrage de l'app).
+
+La reprise ne se déclenche désormais **que si le calcul tourne réellement** :
+un worker vivant réécrit `progress_state.json` toutes les ~2 s, donc un
+fichier **frais** (< 120 s) signe un run en vol (reconnexion navigateur),
+tandis qu'un fichier **périmé** signe un worker mort → reprise ignorée (plus
+de fantôme ; l'utilisateur relance le calcul explicitement au besoin).
+
+Nouveau helper `progress_state_age_sec(project_id)` (service_compute) : âge
+du fichier de progression via son `mtime` (`Inf` si absent). Cliquer un
+projet récent ne lance jamais de calcul — seul le bouton de calcul le fait.
+
+Cycle dev `0.94.1` → `0.94.1.9001` → release stable cible `v0.94.2`.
+
 # nemetonshiny 0.94.1 (2026-06-30)
 
 ### Fixed — Chargement de projet : crash « module session has been destroyed »

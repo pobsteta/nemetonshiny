@@ -3628,6 +3628,31 @@ read_progress_state <- function(project_id) {
 }
 
 
+#' Age (seconds) of a project's progress-state file
+#'
+#' @description
+#' Returns how long ago `progress_state.json` was last written, used to tell a
+#' genuinely-running computation (a live worker rewrites the file every ~2 s)
+#' from a stale one left behind when the app was restarted while a computation
+#' was interrupted (the original `future` worker is gone but the file still
+#' says `downloading`/`computing`). A large age means the worker is dead.
+#'
+#' @param project_id Character. Project ID.
+#'
+#' @return Numeric seconds since the file's last modification, or `Inf` when
+#'   the project path or the progress file cannot be resolved.
+#' @noRd
+progress_state_age_sec <- function(project_id) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path)) return(Inf)
+  progress_file <- file.path(project_path, "data", "progress_state.json")
+  if (!file.exists(progress_file)) return(Inf)
+  mtime <- tryCatch(file.info(progress_file)$mtime, error = function(e) NA)
+  if (length(mtime) != 1L || is.na(mtime)) return(Inf)
+  as.numeric(difftime(Sys.time(), mtime, units = "secs"))
+}
+
+
 #' Clear computation cache for a project
 #'
 #' @description
