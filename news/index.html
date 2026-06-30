@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.93.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.93.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.93.1" id="nemetonshiny-0931-2026-06-30">nemetonshiny 0.93.1 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0931-2026-06-30"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-reconfort--alertes-clippées-à-lugf-0-93-1">Fixed — Carte RECONFORT : alertes clippées à l’UGF<a class="anchor" aria-label="anchor" href="#fixed--carte-reconfort--alertes-clipp%C3%A9es-%C3%A0-lugf-0-93-1"></a></h4>
+<p>Les points de la couche <strong>Alertes</strong> débordaient le périmètre UGF : les alertes sont persistées sur l’emprise feuillus OSO (≫ UGF) et <code>list_alerts</code> ne filtrait que par <code>zone_id</code>, sans prédicat spatial. Elles sont désormais clippées <strong>au read</strong> au polygone de la zone sélectionnée par le helper cœur <code>nemeton::filter_alerts_to_zone(alerts, con, zone_id, apply_zone_mask = TRUE)</code> (nemeton ≥ 0.99.0) — pendant vecteur du masque raster <code>read_reconfort_layer</code> (spec 016 / 021 L7), partagé par les 3 pipelines RECONFORT / FORDEAD / FAST. La table d’alertes n’est pas modifiée (« mask at read, not write ») ; aucun prédicat spatial dans <code>mod_*</code> (CLAUDE.md §1-3) : le polygone est résolu côté cœur depuis <code>con + zone_id</code> (la connexion RO déjà ouverte par <code>alerts_r</code> est réutilisée).</p>
+<p>Plancher relevé à <code>Imports: nemeton (&gt;= 0.99.0)</code>.</p>
+<p>Cycle dev <code>0.93.0</code> → <code>0.93.0.9001</code> → release stable <code>v0.93.1</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.93.0" id="nemetonshiny-0930-2026-06-29">nemetonshiny 0.93.0 (2026-06-29)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0930-2026-06-29"></a></h2>
 <div class="section level4">

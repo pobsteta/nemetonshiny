@@ -1,5 +1,27 @@
 # Changelog
 
+## nemetonshiny 0.93.1 (2026-06-30)
+
+#### Fixed — Carte RECONFORT : alertes clippées à l’UGF
+
+Les points de la couche **Alertes** débordaient le périmètre UGF : les
+alertes sont persistées sur l’emprise feuillus OSO (≫ UGF) et
+`list_alerts` ne filtrait que par `zone_id`, sans prédicat spatial.
+Elles sont désormais clippées **au read** au polygone de la zone
+sélectionnée par le helper cœur
+`nemeton::filter_alerts_to_zone(alerts, con, zone_id, apply_zone_mask = TRUE)`
+(nemeton ≥ 0.99.0) — pendant vecteur du masque raster
+`read_reconfort_layer` (spec 016 / 021 L7), partagé par les 3 pipelines
+RECONFORT / FORDEAD / FAST. La table d’alertes n’est pas modifiée («
+mask at read, not write ») ; aucun prédicat spatial dans `mod_*`
+(CLAUDE.md §1-3) : le polygone est résolu côté cœur depuis
+`con + zone_id` (la connexion RO déjà ouverte par `alerts_r` est
+réutilisée).
+
+Plancher relevé à `Imports: nemeton (>= 0.99.0)`.
+
+Cycle dev `0.93.0` → `0.93.0.9001` → release stable `v0.93.1`.
+
 ## nemetonshiny 0.93.0 (2026-06-29)
 
 #### Changed — Carte RECONFORT : masquage UGF rapatrié dans le cœur
