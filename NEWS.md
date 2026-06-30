@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.5.9002 (dev)
+# nemetonshiny 0.94.6 (2026-06-30)
 
 ### Changed — UX boutons : convention normative + fusion des deux verts
 
@@ -21,8 +21,6 @@ l'utilisateur re-cliquait partout. Le bouton est désormais **désactivé** et u
 avant le blocage), remplacé en fin d'opération par la confirmation
 (`retry_toast`, jusqu'ici définie mais jamais affichée). Nouvelle clé i18n
 `retry_in_progress`.
-
-# nemetonshiny 0.94.5.9001 (dev)
 
 ### Fixed — Open-Canopy CHM : isolation reticulate (débloque les indicateurs Production)
 
