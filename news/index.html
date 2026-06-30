@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,28 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.4" id="nemetonshiny-0944-2026-06-30">nemetonshiny 0.94.4 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0944-2026-06-30"></a></h2>
+<div class="section level4">
+<h4 id="fixed--alertes-reconfort--rasters-affichés-après-rechargement-de-projet-0-94-4">Fixed — Alertes RECONFORT : rasters affichés après rechargement de projet<a class="anchor" aria-label="anchor" href="#fixed--alertes-reconfort--rasters-affich%C3%A9s-apr%C3%A8s-rechargement-de-projet-0-94-4"></a></h4>
+<p>La carte « Alertes RECONFORT » n’affichait ses rasters (classification / score / probabilité) qu’à partir du <code>result</code> <strong>en mémoire</strong> d’un run de la session courante. Après un <strong>rechargement de projet</strong>, <code>result</code> était perdu → plus de toggles, plus de slider d’opacité, plus de raster — seules les alertes (DB) restaient. FORDEAD, lui, lit ses couches depuis le <strong>cache</strong> et les réaffiche après rechargement.</p>
+<p>Parité atteinte : <code>manifest_r</code> retombe désormais sur <code>nemeton::reconfort_cache_manifest(cache_dir, zone_id)</code> (nemeton ≥ 0.100.1 — 0.100.1 lit le dossier IOTA² <code>final/</code> et expose les 3 rasters score / classification / probability) quand aucun <code>result</code> n’est en mémoire — le run persisté est découvert sur disque, schéma <strong>interchangeable</strong> avec <code>reconfort_layer_manifest(result)</code>. Toute la machinerie existante (toggles, opacité, masque UGF au read via <code>read_reconfort_layer</code>, clip alertes, clic-pixel) est réutilisée telle quelle.</p>
+<p>Les couches affichables sont désormais unifiées via <code>available_layers_r</code> : rasters du manifeste (run mémoire OU cache) <strong>+</strong> couche <em>Alertes</em> (DB) toujours toggleable, même en mode cache (le manifeste cache ne porte pas de ligne <code>alerts</code>). Sans aucune couche ni alerte → état vide.</p>
+<p>Raffinements de rendu :</p>
+<ul><li>
+<strong>Rasters continus (score / probabilité) en échelle par QUANTILES</strong> — <code><a href="https://rstudio.github.io/leaflet/reference/colorNumeric.html" class="external-link">leaflet::colorBin</a></code> sur les bornes de quantiles calculées des valeurs réelles du raster (5 classes), parité avec la carte FAST. Une distribution concentrée utilise alors toute la palette uniformément, au lieu d’une rampe linéaire min/max (et le <code>vmin/vmax</code> générique du manifeste — score <code>1-100</code>, proba <code>0-1000</code> — n’est plus utilisé). Repli linéaire si distribution dégénérée.</li>
+<li>
+<strong>Classe 1-sain transparente</strong> dans la couche classification — seuls les pixels affectés (2-deperissant / 3-tres-deperissant) sont peints, comme FORDEAD rend sa classe 0 (sain) transparente. La classe 1 reste en légende.</li>
+<li>
+<strong>Info-bulles « i » par couche</strong> — chaque case à cocher (rasters + alertes) porte une icône <code>info-circle</code> (tooltip) décrivant la couche, parité avec la Carte FORDEAD (helper <code>.reconfort_layer_choice</code>, clés i18n <code>reconfort_couche_*_info</code>).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--suivi-sanitaire---carte-fordead--renommé--alertes-fordead--0-94-4">Changed — Suivi sanitaire : « Carte FORDEAD » renommé « Alertes FORDEAD »<a class="anchor" aria-label="anchor" href="#changed--suivi-sanitaire---carte-fordead--renomm%C3%A9--alertes-fordead--0-94-4"></a></h4>
+<p>Cohérence des libellés de sous-onglets entre les deux pipelines : « Carte FORDEAD » devient « Alertes FORDEAD » (parallèle à « Alertes RECONFORT »). Clé <code>monitoring_subtab_pixel_map_fordead</code>, FR/EN.</p>
+<p>Plancher relevé à <code>Imports: nemeton (&gt;= 0.100.1)</code>.</p>
+<p>Cycle dev <code>0.94.3</code> → <code>0.94.3.9001</code> → release stable <code>v0.94.4</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.3" id="nemetonshiny-0943-2026-06-30">nemetonshiny 0.94.3 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0943-2026-06-30"></a></h2>
 <div class="section level4">
