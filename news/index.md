@@ -1,5 +1,24 @@
 # Changelog
 
+## nemetonshiny 0.94.6.9001 (dev)
+
+#### Fixed — Open-Canopy isolé : restaure les messages de progression dans l’app
+
+Depuis l’isolation du CHM Open-Canopy en sous-processus (callr), les
+messages de calcul (ÉTAPE 1/5…5/5, tuiles, inférence) ne remontaient
+plus **en bas à droite** de l’app — ils partaient sur la console du
+worker. Un callback R ne traverse pas la frontière du process.
+
+`download_chm_opencanopy()` re-streame désormais la progression : le
+sous-processus émet les **événements `progress_callback` d’opencanopy en
+lignes JSON taguées** (`__CHM_EV__{...}`) sur stdout ; le parent les
+**re-parse et les rejoue** via le `progress_callback` de l’app (`r_bg` +
+boucle `poll_io`/ `read_output_lines`, helper `.chm_forward_line`). Les
+messages structurés (`chm_phase:` / `chm_tile:` / `chm_inference_tile:`)
+reviennent donc dans le panneau de l’app, tout en gardant l’isolation
+reticulate (env `open_canopy`). Le reste de la sortie est miroité sur la
+console. 3 tests (`test-opencanopy-python.R`).
+
 ## nemetonshiny 0.94.6 (2026-06-30)
 
 #### Changed — UX boutons : convention normative + fusion des deux verts

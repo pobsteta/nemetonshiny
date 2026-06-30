@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.6.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.6.9001" id="nemetonshiny-09469001-dev">nemetonshiny 0.94.6.9001 (dev)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09469001-dev"></a></h2>
+<div class="section level4">
+<h4 id="fixed--open-canopy-isolé--restaure-les-messages-de-progression-dans-lapp-0-94-6-9001">Fixed — Open-Canopy isolé : restaure les messages de progression dans l’app<a class="anchor" aria-label="anchor" href="#fixed--open-canopy-isol%C3%A9--restaure-les-messages-de-progression-dans-lapp-0-94-6-9001"></a></h4>
+<p>Depuis l’isolation du CHM Open-Canopy en sous-processus (callr), les messages de calcul (ÉTAPE 1/5…5/5, tuiles, inférence) ne remontaient plus <strong>en bas à droite</strong> de l’app — ils partaient sur la console du worker. Un callback R ne traverse pas la frontière du process.</p>
+<p><code>download_chm_opencanopy()</code> re-streame désormais la progression : le sous-processus émet les <strong>événements <code>progress_callback</code> d’opencanopy en lignes JSON taguées</strong> (<code>__CHM_EV__{...}</code>) sur stdout ; le parent les <strong>re-parse et les rejoue</strong> via le <code>progress_callback</code> de l’app (<code>r_bg</code> + boucle <code>poll_io</code>/ <code>read_output_lines</code>, helper <code>.chm_forward_line</code>). Les messages structurés (<code>chm_phase:</code> / <code>chm_tile:</code> / <code>chm_inference_tile:</code>) reviennent donc dans le panneau de l’app, tout en gardant l’isolation reticulate (env <code>open_canopy</code>). Le reste de la sortie est miroité sur la console. 3 tests (<code>test-opencanopy-python.R</code>).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.6" id="nemetonshiny-0946-2026-06-30">nemetonshiny 0.94.6 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0946-2026-06-30"></a></h2>
 <div class="section level4">
