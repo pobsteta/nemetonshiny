@@ -457,7 +457,11 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       op       <- as.numeric(shiny::isolate(opacity_r()) %||% 0.75)
       if (!is.finite(op)) op <- 0.75
       op <- max(0, min(1, op))
-      overlays <- c(if (!is.null(ugf_4326)) "UGF" else NULL, "Alertes")
+      # « UGF » TOUJOURS dans le contrôle (parité Carte pixel FAST) : son
+      # tracé est (re)dessiné par l'observer réactif plus bas dès que
+      # `indicators_sf` est disponible (l'attache est différée au chargement,
+      # donc l'UGF pouvait manquer si le render de base précédait l'attache).
+      overlays <- c("UGF", "Alertes")
 
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
@@ -509,6 +513,10 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       op   <- as.numeric(opacity_r() %||% 0.75)
       if (!is.finite(op)) op <- 0.75
       op <- max(0, min(1, op))
+      # Groupes overlay actuellement COCHÉS côté client (leaflet renvoie
+      # `input$<id>_groups`). Lu ici pour respecter la décoche : sans ça,
+      # re-dessiner le raster via proxy le ré-affichait même décoché.
+      shown <- input$map_groups
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Alertes") |>
         leaflet::removeControl("fordead_legend")
@@ -519,7 +527,25 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           x = spec$r_show, colors = spec$pal, opacity = op,
           method = spec$method, group = "Alertes",
           options = leaflet::gridOptions(pane = "nemetonRaster"))
-      .fordead_add_legend(proxy, spec$legend, layerId = "fordead_legend")
+      proxy <- .fordead_add_legend(proxy, spec$legend, layerId = "fordead_legend")
+      # Respecter la décoche utilisateur : si « Alertes » n'est pas coché,
+      # masquer le group après l'avoir re-dessiné.
+      if (!is.null(shown) && !("Alertes" %in% shown)) {
+        leaflet::hideGroup(proxy, "Alertes")
+      }
+    })
+
+    # UGF overlay via leafletProxy (réactif sur le projet) : (re)dessine les
+    # polygones UGF dès que `indicators_sf` est attaché — corrige la
+    # disparition de l'UGF quand le render de base précédait l'attache
+    # différée. Parité avec la Carte pixel FAST.
+    shiny::observe({
+      ugf <- .ugf_for_overlay(app_state$current_project)
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("UGF")
+      if (is.null(ugf) || !nrow(ugf)) return()
+      leaflet::addPolygons(
+        proxy, data = ugf, group = "UGF", color = "#1f78b4",
+        weight = 2, opacity = 0.9, fillOpacity = 0)
     })
 
     # v0.37.1 — force the overlay renderUI to evaluate even while the

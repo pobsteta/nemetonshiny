@@ -965,6 +965,14 @@ test_that("recompute handler clears cache and resets status", {
           session$setInputs(recompute = 1L)
           session$flushReact()
 
+          # The heavy work (cache clear + reload) is now DEFERRED via
+          # later::later(delay) so the "resetting" toast is transmitted to
+          # the client BEFORE the synchronous blocking work. Drain the event
+          # loop to run it.
+          Sys.sleep(0.3)
+          expect_no_error(later::run_now())
+          session$flushReact()
+
           expect_true(cache_cleared)
           expect_equal(status_updated, "draft")
           expect_equal(reloaded_project, "proj_recompute")

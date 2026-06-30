@@ -564,7 +564,11 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       i18n <- shiny::isolate(i18n_r())
       ugf  <- shiny::isolate(ugf_r())
 
-      overlays <- if (!is.null(ugf)) "UGF" else NULL
+      # « UGF » TOUJOURS dans le contrôle (parité Carte pixel FAST) : ses
+      # polygones sont (re)dessinés par l'observer réactif plus bas dès que
+      # `indicators_sf` est disponible (attache différée au chargement → l'UGF
+      # pouvait manquer si le render de base précédait l'attache).
+      overlays <- "UGF"
       map <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",     group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -643,6 +647,19 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       }
       if ("alerts" %in% sel) proxy <- .add_alerts(proxy, a, i18n)
       proxy
+    })
+
+    # UGF overlay via leafletProxy (réactif sur le projet) : (re)dessine les
+    # polygones UGF dès que `indicators_sf` est attaché — corrige la
+    # disparition de l'UGF quand le render de base précédait l'attache
+    # différée. Parité avec la Carte pixel FAST / FORDEAD.
+    shiny::observe({
+      ugf <- ugf_r()
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("UGF")
+      if (is.null(ugf) || !nrow(ugf)) return()
+      leaflet::addPolygons(
+        proxy, data = ugf, group = "UGF", color = "#1f78b4",
+        weight = 2, opacity = 0.9, fillOpacity = 0)
     })
 
     # Force the controls / map / overlay to render even while the sub-tab is

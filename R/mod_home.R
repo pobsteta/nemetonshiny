@@ -1331,11 +1331,8 @@ mod_home_server <- function(id, app_state) {
       i18n <- get_i18n(app_state$language %||% "fr")
 
       # RETOUR IMMÉDIAT : le vidage du cache + le rechargement projet sont
-      # synchrones et bloquants (quelques secondes). Sans feedback, le clic
-      # paraît sans effet et l'utilisateur re-clique partout. On désactive
-      # le bouton + affiche un toast TOUT DE SUITE, puis on diffère le
-      # travail lourd d'un flush (`onFlushed`) pour que le toast et l'état
-      # désactivé soient rendus côté client AVANT le blocage.
+      # synchrones et bloquants (quelques secondes). On désactive le bouton +
+      # affiche un toast TOUT DE SUITE, puis on diffère le travail lourd.
       shiny::updateActionButton(session, "recompute", disabled = TRUE)
       shiny::showNotification(
         i18n$t("retry_in_progress"),
@@ -1343,37 +1340,47 @@ mod_home_server <- function(id, app_state) {
         type = "message", duration = NULL, closeButton = FALSE
       )
 
-      session$onFlushed(function() {
+      # Le travail lourd est différé via `later::later` (et NON `onFlushed`) :
+      # onFlushed s'exécute dans le MÊME tick de la boucle d'événements, donc
+      # le travail synchrone bloque httpuv AVANT qu'il ait transmis le toast
+      # au navigateur → toast non immédiat. `later::later(delay>0)` rend la
+      # main à la boucle (le toast + l'état désactivé partent), puis exécute
+      # le travail au tick suivant. On ré-entre le domaine réactif de la
+      # session (écriture de `app_state`) + garde `isClosed()` (la session a
+      # pu être détruite entre-temps). Repli synchrone si `later` absent.
+      .recompute_work <- function() {
         # Clear indicator cache to force full recomputation
         clear_computation_cache(project$id)
-
-        # Reset status to allow recomputation. The UI will re-render the
-        # compute_button_ui with the CHM selector + the Start button, and
-        # the user clicks Start to actually launch the run. Single entry
-        # point for compute_task == input$start_compute.
+        # Reset status to allow recomputation. The UI re-renders the
+        # compute_button_ui with the Start button ; single entry point for
+        # compute_task == input$start_compute.
         update_project_status(project$id, "draft")
         app_state$current_project <- load_project(project$id)
-
         progress_result$reset_tracking()
         computing_project_id(NULL)
-
         session$sendCustomMessage("setComputingMode", list(active = FALSE))
         session$sendCustomMessage("hideElement", list(
-          id = ns("progress-progress_card_wrapper")
-        ))
+          id = ns("progress-progress_card_wrapper")))
         session$sendCustomMessage("hideElement", list(
-          id = ns("progress-complete_card_wrapper")
-        ))
+          id = ns("progress-complete_card_wrapper")))
         session$sendCustomMessage("hideElement", list(
-          id = ns("progress-error_card_wrapper")
-        ))
-
+          id = ns("progress-error_card_wrapper")))
         # Remplace le toast « en cours » par la confirmation.
         shiny::removeNotification(session$ns("recompute_toast"))
         shiny::showNotification(
-          i18n$t("retry_toast"), type = "message", duration = 5
-        )
-      }, once = TRUE)
+          i18n$t("retry_toast"), type = "message", duration = 5)
+      }
+
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(function() {
+          if (isTRUE(tryCatch(session$isClosed(), error = function(e) TRUE))) {
+            return()
+          }
+          shiny::withReactiveDomain(session, .recompute_work())
+        }, delay = 0.2)
+      } else {
+        .recompute_work()
+      }
     })
 
     # View results handler

@@ -1,4 +1,33 @@
-# nemetonshiny 0.94.6.9001 (dev)
+# nemetonshiny 0.94.7 (2026-06-30)
+
+### Fixed — Cartes Suivi sanitaire : UGF réapparue, décoche overlay effective, « Indice »
+
+Trois corrections sur les cartes Leaflet du Suivi sanitaire :
+
+* **Couche UGF restaurée (Alertes FORDEAD + RECONFORT)** — l'overlay UGF
+  pouvait disparaître : il n'était dessiné qu'au *render de base* et
+  conditionné à `indicators_sf`, or l'attache de `indicators_sf` est différée
+  au chargement → si le render précédait l'attache, l'UGF manquait
+  définitivement. « UGF » est désormais **toujours** dans le contrôle, et les
+  polygones sont (re)dessinés par un **observer réactif `leafletProxy`** dès
+  que `indicators_sf` est disponible (parité avec la Carte pixel FAST).
+* **Décoche d'overlay enfin effective (FAST « Indice », Alertes FAST/FORDEAD)**
+  — décocher une couche raster dans le LayersControl ne la masquait pas : les
+  observers `leafletProxy` la re-dessinaient en ignorant l'état du contrôle.
+  Ils lisent désormais `input$<id>_groups` (groupes cochés côté client) et
+  appellent `hideGroup()` après re-dessin si la couche est décochée.
+* **« NDVI/NBR » renommé « Indice »** dans le contrôle de couches de la Carte
+  pixel FAST.
+
+### Fixed — « Réessayer » : toast vraiment immédiat (later au lieu de onFlushed)
+
+Le toast « Réinitialisation en cours… » ajouté en v0.94.6 n'apparaissait
+toujours pas immédiatement : `session$onFlushed` s'exécute dans le **même tick**
+de la boucle d'événements, donc le travail synchrone (vidage cache + reload)
+bloquait **httpuv** *avant* la transmission du toast au navigateur. Le travail
+lourd est désormais différé via **`later::later(delay)`** : la boucle reprend la
+main (toast + bouton désactivé transmis), puis le travail s'exécute au tick
+suivant (ré-entrée du domaine réactif + garde `session$isClosed()`).
 
 ### Fixed — Open-Canopy isolé : restaure les messages de progression dans l'app
 
