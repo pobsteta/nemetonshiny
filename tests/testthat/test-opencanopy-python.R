@@ -20,3 +20,31 @@ test_that(".resolve_opencanopy_python ignores a non-existent override", {
   expect_false(
     identical(nemetonshiny:::.resolve_opencanopy_python(), "/no/such/python"))
 })
+
+
+# --- subprocess progress forwarding (.chm_forward_line) --------------------
+
+test_that(".chm_forward_line replays tagged CHM events to the callback", {
+  seen <- NULL
+  cb <- function(ev) seen <<- ev
+  nemetonshiny:::.chm_forward_line(
+    '__CHM_EV__{"type":"tile","prefix":"ortho","idx":2,"n_tiles":5}', cb)
+  expect_identical(seen$type, "tile")
+  expect_identical(seen$idx, 2L)
+  expect_identical(seen$n_tiles, 5L)
+})
+
+test_that(".chm_forward_line ignores plain lines (no callback)", {
+  called <- FALSE
+  cb <- function(ev) called <<- TRUE
+  nemetonshiny:::.chm_forward_line(">>> ÉTAPE 3/5 : Configuration Python", cb)
+  nemetonshiny:::.chm_forward_line("", cb)
+  expect_false(called)
+})
+
+test_that(".chm_forward_line tolerates malformed event JSON", {
+  called <- FALSE
+  cb <- function(ev) called <<- TRUE
+  expect_silent(nemetonshiny:::.chm_forward_line("__CHM_EV__{not json", cb))
+  expect_false(called)
+})
