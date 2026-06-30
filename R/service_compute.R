@@ -1487,6 +1487,70 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
 }
 
 
+# Resolve the Python interpreter of the Open-Canopy conda env. Open-Canopy
+# runs through reticulate, which binds ONE Python per R session; pinning
+# its env and running it in an isolated subprocess (see below) lets it
+# coexist with the FORDEAD reticulate workload (a different env) in the
+# same app session. Order: explicit option / env var, reticulate's conda
+# resolver, then the usual conda/mamba install roots.
+.resolve_opencanopy_python <- function() {
+  cand <- getOption("nemetonshiny.opencanopy_python",
+                    Sys.getenv("OPENCANOPY_PYTHON", ""))
+  if (nzchar(cand) && file.exists(cand)) return(cand)
+  env <- getOption("nemetonshiny.opencanopy_condaenv", "open_canopy")
+  p <- tryCatch(reticulate::conda_python(env), error = function(e) NA_character_)
+  if (length(p) == 1L && !is.na(p) && file.exists(p)) return(p)
+  for (root in c("miniforge3", "mambaforge", "miniconda3", "anaconda3")) {
+    fp <- file.path(path.expand("~"), root, "envs", env, "bin", "python")
+    if (file.exists(fp)) return(fp)
+  }
+  NA_character_
+}
+
+# Run opencanopy::pipeline_aoi_to_chm() in an isolated R subprocess with
+# RETICULATE_PYTHON pinned to the Open-Canopy env, writing the CHM to
+# `chm_path`. The subprocess gets a fresh, unbound reticulate, so it always
+# binds to open_canopy regardless of what the parent session already bound
+# (uv ephemeral env, FORDEAD virtualenv, Theia, …). R_ENVIRON_USER="" so a
+# RETICULATE_PYTHON in ~/.Renviron cannot override the pin. Falls back to
+# in-process when callr or the env Python is unavailable.
+.run_opencanopy_chm <- function(aoi_path, oc_dir, chm_path, progress_callback) {
+  py <- .resolve_opencanopy_python()
+  if (!is.na(py) && requireNamespace("callr", quietly = TRUE)) {
+    cli::cli_alert_info(
+      "Running opencanopy::pipeline_aoi_to_chm in an isolated R session \\
+       (RETICULATE_PYTHON = {py})...")
+    callr::r(
+      func = function(aoi_path, output_dir, chm_path) {
+        pipe <- opencanopy::pipeline_aoi_to_chm(aoi_path = aoi_path,
+                                                output_dir = output_dir)
+        terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
+        invisible(TRUE)
+      },
+      args = list(aoi_path = aoi_path, output_dir = oc_dir, chm_path = chm_path),
+      env  = c(callr::rcmd_safe_env(),
+               RETICULATE_PYTHON = py, R_ENVIRON_USER = ""),
+      show = TRUE, spinner = FALSE
+    )
+    return(invisible(TRUE))
+  }
+  if (is.na(py)) {
+    cli::cli_alert_warning(
+      "Open-Canopy Python env not found; running in-process (may fail if \\
+       reticulate is already bound elsewhere). Set \\
+       options(nemetonshiny.opencanopy_python=) or OPENCANOPY_PYTHON.")
+  }
+  cli::cli_alert_info("Running opencanopy::pipeline_aoi_to_chm (may take several minutes)...")
+  pipe_args <- list(aoi_path = aoi_path, output_dir = oc_dir)
+  if ("progress_callback" %in% names(formals(opencanopy::pipeline_aoi_to_chm))) {
+    pipe_args$progress_callback <- progress_callback
+  }
+  pipe <- do.call(opencanopy::pipeline_aoi_to_chm, pipe_args)
+  terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
+  invisible(TRUE)
+}
+
+
 download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
                                     progress_callback = NULL) {
   if (!requireNamespace("opencanopy", quietly = TRUE)) {
@@ -1497,7 +1561,6 @@ download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
 
   chm_path <- file.path(oc_dir, "chm_1_5m.tif")
   if (!file.exists(chm_path)) {
-    cli::cli_alert_info("Running opencanopy::pipeline_aoi_to_chm (may take several minutes)...")
     aoi_path <- file.path(oc_dir, "aoi.gpkg")
     parcels_l93 <- sf::st_transform(parcels, 2154)
     aoi_bbox <- sf::st_as_sfc(sf::st_bbox(sf::st_buffer(parcels_l93, 50)))
@@ -1505,16 +1568,9 @@ download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
       sf::st_sf(id = 1L, geometry = aoi_bbox),
       aoi_path, delete_dsn = TRUE, quiet = TRUE
     )
-    # Forward per-tile progress only if opencanopy is new enough to
-    # accept it — older installs silently ignored a callback arg
-    # but some revisions errored on unused args.
-    pipe_args <- list(aoi_path = aoi_path, output_dir = oc_dir)
-    if ("progress_callback" %in%
-        names(formals(opencanopy::pipeline_aoi_to_chm))) {
-      pipe_args$progress_callback <- progress_callback
-    }
-    pipe <- do.call(opencanopy::pipeline_aoi_to_chm, pipe_args)
-    terra::writeRaster(pipe$chm_1_5m, chm_path, overwrite = TRUE)
+    # Isolated subprocess (pinned RETICULATE_PYTHON) so Open-Canopy and
+    # FORDEAD reticulate envs can coexist in the same app session.
+    .run_opencanopy_chm(aoi_path, oc_dir, chm_path, progress_callback)
   }
 
   chm <- terra::rast(chm_path)
