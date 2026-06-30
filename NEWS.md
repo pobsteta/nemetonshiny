@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.4.9002 (dev)
+# nemetonshiny 0.94.5 (2026-06-30)
 
 ### Changed — Alertes RECONFORT : couches exclusives + modale pixel enrichie
 
@@ -24,7 +24,7 @@ plus **anciennes** sont en **bleu**, les plus **récentes** en **rouge** —
 lecture immédiate de la progression temporelle du dépérissement. Légende
 (années) inchangée.
 
-Cycle dev `0.94.4` → `0.94.4.9002` → release stable cible `v0.94.5`.
+Cycle dev `0.94.4` → `0.94.4.9002` → release stable `v0.94.5`.
 
 # nemetonshiny 0.94.4 (2026-06-30)
 
