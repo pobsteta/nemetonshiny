@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.5.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.5.9001" id="nemetonshiny-09459001-dev">nemetonshiny 0.94.5.9001 (dev)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09459001-dev"></a></h2>
+<div class="section level4">
+<h4 id="fixed--open-canopy-chm--isolation-reticulate-débloque-les-indicateurs-production-0-94-5-9001">Fixed — Open-Canopy CHM : isolation reticulate (débloque les indicateurs Production)<a class="anchor" aria-label="anchor" href="#fixed--open-canopy-chm--isolation-reticulate-d%C3%A9bloque-les-indicateurs-production-0-94-5-9001"></a></h4>
+<p>Les indicateurs <strong>Production (P1/P2/P3)</strong> et <strong>Bois-énergie (E1)</strong> échouaient (« Modèle de hauteur de canopée indisponible ») parce que le CHM Open-Canopy ne pouvait pas être produit : <code>opencanopy::pipeline_aoi_to_chm</code> passe par <strong>reticulate</strong>, qui ne lie qu’<strong>un seul Python par session R</strong>. reticulate était déjà lié à un Python uv éphémère (<code>~/.cache/uv/...</code>) → impossible de basculer sur l’env conda <code>open_canopy</code> → CHM absent → P1/P2/P3/E1 en échec.</p>
+<p><code>download_chm_opencanopy()</code> exécute désormais <code>pipeline_aoi_to_chm</code> dans un <strong>sous-processus R isolé</strong> (<code>callr</code>) avec <code>RETICULATE_PYTHON</code> épinglé sur <code>open_canopy</code> (résolu via <code>options(nemetonshiny.opencanopy_python=)</code> / <code>OPENCANOPY_PYTHON</code> / <code>reticulate::conda_python("open_canopy")</code> / chemins conda usuels) et <code>R_ENVIRON_USER=""</code> (un <code>~/.Renviron</code> ne peut pas écraser le pin). Le sous-processus part d’un reticulate vierge → il se lie toujours au bon env, <strong>quel que soit</strong> le binding parent. <strong>Open-Canopy et FORDEAD (env distinct) cohabitent.</strong> Repli in-process si <code>callr</code> ou l’env est introuvable. <code>callr</code> en <code>Suggests</code>. 3 tests (<code>test-opencanopy-python.R</code>).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.5" id="nemetonshiny-0945-2026-06-30">nemetonshiny 0.94.5 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0945-2026-06-30"></a></h2>
 <div class="section level4">
