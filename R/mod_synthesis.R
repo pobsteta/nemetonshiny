@@ -111,6 +111,11 @@ mod_synthesis_server <- function(id, app_state) {
         return(NULL)
       }
 
+      # R5 dépérissement (32e indicateur, conditionnel) : injecté en direct
+      # depuis les alertes de la zone de suivi liée. Best-effort — sans zone
+      # / sans alerte, base_sf est inchangé et la famille R reste R1-R4.
+      base_sf <- add_r5_to_indicators(base_sf, project)
+
       tryCatch(
         create_family_index(base_sf, method = "mean", na.rm = TRUE),
         error = function(e) {

@@ -272,13 +272,14 @@ INDICATOR_FAMILIES <- list(
     name_en = "Risks & Resilience",
     icon = "exclamation-triangle-fill",
     color = "#DC143C",
-    indicators = c("R1", "R2", "R3", "R4"),
-    column_names = c("indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse", "indicateur_r4_abroutissement"),
+    indicators = c("R1", "R2", "R3", "R4", "R5"),
+    column_names = c("indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse", "indicateur_r4_abroutissement", "indicateur_r5_deperissement"),
     indicator_labels = list(
       R1 = list(fr = "Risque incendie", en = "Fire Risk"),
       R2 = list(fr = "Risque temp\u00eate", en = "Storm Risk"),
       R3 = list(fr = "Risque s\u00e9cheresse", en = "Drought Risk"),
-      R4 = list(fr = "Risque abroutissement", en = "Browsing Risk")
+      R4 = list(fr = "Risque abroutissement", en = "Browsing Risk"),
+      R5 = list(fr = "D\u00e9p\u00e9rissement", en = "Dieback")
     ),
     indicator_tooltips = list(
       R1 = list(
@@ -296,6 +297,10 @@ INDICATOR_FAMILIES <- list(
       R4 = list(
         fr = "Pression de la faune sauvage (cervid\u00e9s) sur la r\u00e9g\u00e9n\u00e9ration foresti\u00e8re. Bas\u00e9 sur les donn\u00e9es cyn\u00e9g\u00e9tiques. Score \u00e9lev\u00e9 = faible pression.",
         en = "Wildlife pressure (deer) on forest regeneration. Based on hunting data. High score = low pressure."
+      ),
+      R5 = list(
+        fr = "D\u00e9p\u00e9rissement d\u00e9tect\u00e9 par FORDEAD (r\u00e9sineux) ou RECONFORT (feuillus), pond\u00e9r\u00e9 par la fiabilit\u00e9 ONF/DSF 2024. NA hors zone de validit\u00e9 ou sans alerte. Score \u00e9lev\u00e9 = faible d\u00e9p\u00e9rissement.",
+        en = "Dieback detected by FORDEAD (conifers) or RECONFORT (broadleaves), weighted by ONF/DSF 2024 reliability. NA outside the validity zone or without alerts. High score = low dieback."
       )
     )
   ),
