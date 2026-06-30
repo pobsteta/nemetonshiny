@@ -1,5 +1,33 @@
 # Changelog
 
+## nemetonshiny 0.94.1 (2026-06-30)
+
+#### Fixed — Chargement de projet : crash « module session has been destroyed »
+
+Charger un projet déclenche une restauration via `session$reload()`, qui
+détruit puis recrée la session. Deux callbacks
+[`later::later`](https://later.r-lib.org/reference/later.html) de
+`mod_home` (hors cycle de vie de session) restaient programmés et
+lisaient `app_state` après la destruction →
+`Can't access reactive ...; its module session has been destroyed`,
+terminant la session :
+
+- le **polling de progression** du calcul (`poll_fn`, « Calcul en cours…
+  ») — son garde-fou existant `isolate(computing_project_id())` était
+  lui-même une lecture réactive, donc plantait avant de pouvoir protéger
+  ;
+- le **defer de `attach_indicators_sf`** (construction de
+  `indicators_sf` à chaque chargement) via
+  `withReactiveDomain(session, isolate(...))`.
+
+Les deux callbacks testent désormais `session$isClosed()` **en
+premier**, avant toute lecture réactive, et sortent silencieusement si
+la session est morte (la boucle non-réactive n’était sinon arrêtée par
+rien). Bug pré-existant, révélé par les projets à calcul reprenable («
+Resuming progress tracking »).
+
+Cycle dev `0.94.0` → `0.94.0.9001` → release stable `v0.94.1`.
+
 ## nemetonshiny 0.94.0 (2026-06-30)
 
 #### Added — R5 dépérissement branché dans le radar de synthèse
