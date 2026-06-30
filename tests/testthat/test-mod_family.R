@@ -405,6 +405,88 @@ test_that("mod_family_server processes project with indicators", {
   )
 })
 
+test_that("family R injects the live R5 dieback indicator", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  geom <- sf::st_sfc(
+    sf::st_polygon(list(matrix(c(0,0,1,0,1,1,0,1,0,0), ncol = 2, byrow = TRUE))),
+    sf::st_polygon(list(matrix(c(1,0,2,0,2,1,1,1,1,0), ncol = 2, byrow = TRUE))),
+    crs = 2154
+  )
+  ind_sf <- sf::st_sf(
+    ug_id = c("p1", "p2"),
+    indicateur_r1_feu_norm = c(0.4, 0.6),
+    geometry = geom
+  )
+  mock_project <- list(
+    indicators = sf::st_drop_geometry(ind_sf),
+    indicators_sf = ind_sf
+  )
+  app_state <- shiny::reactiveValues(current_project = mock_project,
+                                     language = "fr", family_comments = list())
+
+  # The core helper add_r5_to_indicators is mocked to append the live R5
+  # column (the real one reads the monitoring DB). The family page must then
+  # surface it alongside R1-R4.
+  testthat::local_mocked_bindings(
+    add_r5_to_indicators = function(base_sf, project) {
+      base_sf$indicateur_r5_deperissement <- c(20, 80)
+      base_sf
+    }
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_family_server,
+    args = list(family_code = "R", app_state = app_state),
+    {
+      data <- indicators_data()
+      expect_false(is.null(data))
+      expect_true("indicateur_r5_deperissement" %in% names(data))
+
+      sf_data <- indicators_sf()
+      expect_true("indicateur_r5_deperissement" %in% names(sf_data))
+    }
+  )
+})
+
+test_that("non-R families do not trigger the R5 (DB) enrichment", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("sf")
+
+  geom <- sf::st_sfc(
+    sf::st_polygon(list(matrix(c(0,0,1,0,1,1,0,1,0,0), ncol = 2, byrow = TRUE))),
+    crs = 2154
+  )
+  ind_sf <- sf::st_sf(
+    ug_id = "p1",
+    indicateur_c1_biomasse_norm = 0.5,
+    geometry = geom
+  )
+  mock_project <- list(
+    indicators = sf::st_drop_geometry(ind_sf),
+    indicators_sf = ind_sf
+  )
+  app_state <- shiny::reactiveValues(current_project = mock_project,
+                                     language = "fr", family_comments = list())
+
+  r5_called <- FALSE
+  testthat::local_mocked_bindings(
+    add_r5_to_indicators = function(base_sf, project) { r5_called <<- TRUE; base_sf }
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_family_server,
+    args = list(family_code = "C", app_state = app_state),
+    {
+      invisible(indicators_data())
+      invisible(indicators_sf())
+      # Family C must never pay the R5 monitoring-DB cost.
+      expect_false(r5_called)
+    }
+  )
+})
+
 test_that("mod_family_server returns NULL for family with no indicators", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
