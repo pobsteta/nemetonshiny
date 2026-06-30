@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.1.9001 (dev)
+# nemetonshiny 0.94.2 (2026-06-30)
 
 ### Fixed — Chargement de projet : « Calcul en cours » fantôme (resume périmé)
 
@@ -19,7 +19,7 @@ Nouveau helper `progress_state_age_sec(project_id)` (service_compute) : âge
 du fichier de progression via son `mtime` (`Inf` si absent). Cliquer un
 projet récent ne lance jamais de calcul — seul le bouton de calcul le fait.
 
-Cycle dev `0.94.1` → `0.94.1.9001` → release stable cible `v0.94.2`.
+Cycle dev `0.94.1` → `0.94.1.9001` → release stable `v0.94.2`.
 
 # nemetonshiny 0.94.1 (2026-06-30)
 
