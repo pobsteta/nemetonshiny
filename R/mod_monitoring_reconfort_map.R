@@ -142,6 +142,13 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # plots carrying a RECONFORT alert, restricted to the G1 classes AND to
     # the selected zone. The reactive reads refresh_r() so a completed run
     # re-invalidates it.
+    #
+    # The persisted alerts span the OSO broadleaf extent (≫ UGF), so they
+    # are clipped at READ time to the selected-zone polygon by the core
+    # helper `nemeton::filter_alerts_to_zone()` — the vector counterpart of
+    # the raster mask (spec 016 / 021 L7). No spatial predicate in the
+    # module (CLAUDE.md §1-3) : the core resolves the polygon from
+    # `con + zone_id` (the already-open RO connection is reused).
     alerts_r <- shiny::reactive({
       refresh_r()
       zone <- zone_id_r()
@@ -151,7 +158,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       if (is.null(con)) return(NULL)
       on.exit(close_monitoring_db_connection(con), add = TRUE)
-      tryCatch(
+      a <- tryCatch(
         nemeton::list_alerts(
           con,
           zone_id = as.integer(zone),
@@ -160,6 +167,17 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         error = function(e) {
           cli::cli_alert_warning("list_alerts (reconfort) failed: {e$message}")
           NULL
+        }
+      )
+      if (is.null(a)) return(NULL)
+      tryCatch(
+        nemeton::filter_alerts_to_zone(
+          a, con = con, zone_id = as.integer(zone), apply_zone_mask = TRUE
+        ),
+        error = function(e) {
+          cli::cli_alert_warning(
+            "filter_alerts_to_zone (reconfort) failed: {e$message}")
+          a
         }
       )
     })

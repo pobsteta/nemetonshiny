@@ -52,6 +52,7 @@ test_that("reconfort map shows the empty state when there are no alerts", {
   )
   testthat::local_mocked_bindings(
     list_alerts = function(con, zone_id, classes = NULL, ...) empty,
+    filter_alerts_to_zone = function(alerts, ...) alerts,
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE,
                                                        species_valid = TRUE,
                                                        advisory = TRUE),
@@ -97,6 +98,7 @@ test_that("reconfort map renders the G3 advisory banner when geo invalid", {
   )
   testthat::local_mocked_bindings(
     list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(2L),
+    filter_alerts_to_zone = function(alerts, ...) alerts,
     check_reconfort_validity = function(aoi, ...) list(geo_valid = FALSE,
                                                        species_valid = TRUE,
                                                        advisory = TRUE),
@@ -154,6 +156,7 @@ test_that("reconfort map click produces a pixel time-series plot", {
   )
   testthat::local_mocked_bindings(
     list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(1L),
+    filter_alerts_to_zone = function(alerts, ...) alerts,
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
     read_reconfort_pixel_series = function(con, zone_id, xy, crs = 4326,
                                            run_id = NULL, cache_dir) series,
@@ -243,6 +246,7 @@ test_that("manifest drives layer toggles + opacity slider", {
   )
   testthat::local_mocked_bindings(
     list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(0L),
+    filter_alerts_to_zone = function(alerts, ...) alerts,
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
     read_reconfort_layer = function(layer, con = NULL, zone_id = NULL,
                                     apply_zone_mask = TRUE, mask_polygon = NULL) {
@@ -307,6 +311,14 @@ test_that("no in-memory result falls back to the DB-only alerts view", {
                      where = asNamespace("nemeton"), inherits = FALSE),
               "nemeton reconfort_layer_manifest() not installed")
 
+  skip_if_not(exists("filter_alerts_to_zone",
+                     where = asNamespace("nemeton"), inherits = FALSE),
+              "nemeton >= 0.99.0 (filter_alerts_to_zone) not installed")
+
+  # Recorder : the alerts layer must be clipped to the zone polygon by the
+  # core helper at read time (no spatial predicate in the module).
+  faz_calls <- new.env(); faz_calls$mask <- logical()
+
   testthat::local_mocked_bindings(
     get_monitoring_db_connection = function(...) structure(list(), class = "fakecon"),
     close_monitoring_db_connection = function(con) invisible(TRUE),
@@ -314,6 +326,11 @@ test_that("no in-memory result falls back to the DB-only alerts view", {
   )
   testthat::local_mocked_bindings(
     list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(2L),
+    filter_alerts_to_zone = function(alerts, con = NULL, zone_id = NULL,
+                                     apply_zone_mask = TRUE, mask_polygon = NULL) {
+      faz_calls$mask <- c(faz_calls$mask, isTRUE(apply_zone_mask))
+      alerts
+    },
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
     .package = "nemeton"
   )
@@ -338,6 +355,8 @@ test_that("no in-memory result falls back to the DB-only alerts view", {
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
                          overlay, fixed = TRUE))
       expect_equal(nrow(session$returned$alerts()), 2L)
+      # Alerts clipped to the zone polygon by the core helper.
+      expect_true(length(faz_calls$mask) > 0L && all(faz_calls$mask))
     }
   )
 })
