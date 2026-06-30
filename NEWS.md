@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.6.9003 (dev)
+# nemetonshiny 0.94.7 (2026-06-30)
 
 ### Fixed — Cartes Suivi sanitaire : UGF réapparue, décoche overlay effective, « Indice »
 
@@ -28,8 +28,6 @@ bloquait **httpuv** *avant* la transmission du toast au navigateur. Le travail
 lourd est désormais différé via **`later::later(delay)`** : la boucle reprend la
 main (toast + bouton désactivé transmis), puis le travail s'exécute au tick
 suivant (ré-entrée du domaine réactif + garde `session$isClosed()`).
-
-# nemetonshiny 0.94.6.9001 (dev)
 
 ### Fixed — Open-Canopy isolé : restaure les messages de progression dans l'app
 
