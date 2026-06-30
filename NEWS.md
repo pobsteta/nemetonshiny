@@ -1,3 +1,23 @@
+# nemetonshiny 0.94.8 (2026-06-30)
+
+### Fixed — Sélection : bouton « Lancer les calculs » masqué à tort
+
+Le bouton de calcul disparaissait du projet chargé dès qu'**un autre** projet
+calculait en arrière-plan : la condition de masquage testait `computing_project_id()`
+non-NULL (un seul calcul à la fois) sans vérifier que c'était bien le projet
+**courant**. Elle teste désormais l'égalité avec `project$id` — lancer un calcul
+sur le projet B ne masque plus le bouton du projet A rechargé.
+
+### Fixed — Test `defers indicators_sf` : assertion fragile retirée
+
+Le test `test-05mod_home.R::"recent-project load defers indicators_sf attach"`
+échouait sur `main` : son `expect_null` supposait que le callback `later::later`
+de l'attache n'avait pas encore tourné après le flush, or selon que le harnais
+`testServer` pompe ou non la file `later` (mod_home a des `reactivePoll` qui
+l'influencent) il peut s'exécuter pendant le setup. L'assertion de timing
+fragile est retirée ; les garanties réelles (pas d'erreur « reactive outside
+consumer » — régression v0.79.1 — et `indicators_sf` attaché) restent testées.
+
 # nemetonshiny 0.94.7 (2026-06-30)
 
 ### Fixed — Cartes Suivi sanitaire : UGF réapparue, décoche overlay effective, « Indice »
