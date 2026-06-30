@@ -1,3 +1,24 @@
+# nemetonshiny 0.94.5.9001 (dev)
+
+### Fixed — Open-Canopy CHM : isolation reticulate (débloque les indicateurs Production)
+
+Les indicateurs **Production (P1/P2/P3)** et **Bois-énergie (E1)** échouaient
+(« Modèle de hauteur de canopée indisponible ») parce que le CHM Open-Canopy ne
+pouvait pas être produit : `opencanopy::pipeline_aoi_to_chm` passe par
+**reticulate**, qui ne lie qu'**un seul Python par session R**. reticulate était
+déjà lié à un Python uv éphémère (`~/.cache/uv/...`) → impossible de basculer sur
+l'env conda `open_canopy` → CHM absent → P1/P2/P3/E1 en échec.
+
+`download_chm_opencanopy()` exécute désormais `pipeline_aoi_to_chm` dans un
+**sous-processus R isolé** (`callr`) avec `RETICULATE_PYTHON` épinglé sur
+`open_canopy` (résolu via `options(nemetonshiny.opencanopy_python=)` /
+`OPENCANOPY_PYTHON` / `reticulate::conda_python("open_canopy")` / chemins conda
+usuels) et `R_ENVIRON_USER=""` (un `~/.Renviron` ne peut pas écraser le pin). Le
+sous-processus part d'un reticulate vierge → il se lie toujours au bon env, **quel
+que soit** le binding parent. **Open-Canopy et FORDEAD (env distinct) cohabitent.**
+Repli in-process si `callr` ou l'env est introuvable. `callr` en `Suggests`. 3
+tests (`test-opencanopy-python.R`).
+
 # nemetonshiny 0.94.5 (2026-06-30)
 
 ### Changed — Alertes RECONFORT : couches exclusives + modale pixel enrichie
