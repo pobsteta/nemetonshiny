@@ -1,5 +1,36 @@
 # Changelog
 
+## nemetonshiny 0.94.5 (2026-06-30)
+
+#### Changed — Alertes RECONFORT : couches exclusives + modale pixel enrichie
+
+- **Couches exclusives** — les couches de la carte passent de cases à
+  cocher (multi) à des boutons radio (une seule à la fois), parité avec
+  la Carte FORDEAD. Le slider d’opacité agit sur la couche raster
+  sélectionnée.
+- **Modale diagnostic pixel : plein écran + fermer** — ajout du bouton «
+  plein écran » (haut-droite, bascule `.modal-fullscreen` BS5, plot
+  responsive) en plus de « Fermer », parité exacte avec la Carte
+  FORDEAD.
+- **Délimitation des 2 années Sentinel-2** sur le graphe CRSWIR / CRre —
+  bandes de fond alternées par année calendaire + libellé de l’année,
+  pour situer la dynamique dans la fenêtre 2 ans du modèle.
+
+Note : RECONFORT est un classifieur Random Forest — il n’existe pas de
+seuil de détection par indicateur (contrairement au modèle harmonique
+FORDEAD), donc le graphe garde les deux séries observées CRSWIR / CRre
+sans courbe de seuil.
+
+#### Changed — Alertes FORDEAD : rampe bleu→rouge pour « Date de 1ère détection »
+
+La couche *Date de 1ère détection* (first_anomaly) passait par la
+palette `viridis`. Elle utilise désormais `RdYlBu` **inversé** : les
+détections les plus **anciennes** sont en **bleu**, les plus
+**récentes** en **rouge** — lecture immédiate de la progression
+temporelle du dépérissement. Légende (années) inchangée.
+
+Cycle dev `0.94.4` → `0.94.4.9002` → release stable `v0.94.5`.
+
 ## nemetonshiny 0.94.4 (2026-06-30)
 
 #### Fixed — Alertes RECONFORT : rasters affichés après rechargement de projet

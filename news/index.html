@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.5" id="nemetonshiny-0945-2026-06-30">nemetonshiny 0.94.5 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0945-2026-06-30"></a></h2>
+<div class="section level4">
+<h4 id="changed--alertes-reconfort--couches-exclusives--modale-pixel-enrichie-0-94-5">Changed — Alertes RECONFORT : couches exclusives + modale pixel enrichie<a class="anchor" aria-label="anchor" href="#changed--alertes-reconfort--couches-exclusives--modale-pixel-enrichie-0-94-5"></a></h4>
+<ul><li>
+<strong>Couches exclusives</strong> — les couches de la carte passent de cases à cocher (multi) à des boutons radio (une seule à la fois), parité avec la Carte FORDEAD. Le slider d’opacité agit sur la couche raster sélectionnée.</li>
+<li>
+<strong>Modale diagnostic pixel : plein écran + fermer</strong> — ajout du bouton « plein écran » (haut-droite, bascule <code>.modal-fullscreen</code> BS5, plot responsive) en plus de « Fermer », parité exacte avec la Carte FORDEAD.</li>
+<li>
+<strong>Délimitation des 2 années Sentinel-2</strong> sur le graphe CRSWIR / CRre — bandes de fond alternées par année calendaire + libellé de l’année, pour situer la dynamique dans la fenêtre 2 ans du modèle.</li>
+</ul><p>Note : RECONFORT est un classifieur Random Forest — il n’existe pas de seuil de détection par indicateur (contrairement au modèle harmonique FORDEAD), donc le graphe garde les deux séries observées CRSWIR / CRre sans courbe de seuil.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--alertes-fordead--rampe-bleurouge-pour--date-deère-détection--0-94-5">Changed — Alertes FORDEAD : rampe bleu→rouge pour « Date de 1ère détection »<a class="anchor" aria-label="anchor" href="#changed--alertes-fordead--rampe-bleurouge-pour--date-de%C3%A8re-d%C3%A9tection--0-94-5"></a></h4>
+<p>La couche <em>Date de 1ère détection</em> (first_anomaly) passait par la palette <code>viridis</code>. Elle utilise désormais <code>RdYlBu</code> <strong>inversé</strong> : les détections les plus <strong>anciennes</strong> sont en <strong>bleu</strong>, les plus <strong>récentes</strong> en <strong>rouge</strong> — lecture immédiate de la progression temporelle du dépérissement. Légende (années) inchangée.</p>
+<p>Cycle dev <code>0.94.4</code> → <code>0.94.4.9002</code> → release stable <code>v0.94.5</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.4" id="nemetonshiny-0944-2026-06-30">nemetonshiny 0.94.4 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0944-2026-06-30"></a></h2>
 <div class="section level4">
