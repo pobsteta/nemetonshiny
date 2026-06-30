@@ -1328,30 +1328,52 @@ mod_home_server <- function(id, app_state) {
     shiny::observeEvent(input$recompute, {
       project <- app_state$current_project
       shiny::req(project)
+      i18n <- get_i18n(app_state$language %||% "fr")
 
-      # Clear indicator cache to force full recomputation
-      clear_computation_cache(project$id)
+      # RETOUR IMMÉDIAT : le vidage du cache + le rechargement projet sont
+      # synchrones et bloquants (quelques secondes). Sans feedback, le clic
+      # paraît sans effet et l'utilisateur re-clique partout. On désactive
+      # le bouton + affiche un toast TOUT DE SUITE, puis on diffère le
+      # travail lourd d'un flush (`onFlushed`) pour que le toast et l'état
+      # désactivé soient rendus côté client AVANT le blocage.
+      shiny::updateActionButton(session, "recompute", disabled = TRUE)
+      shiny::showNotification(
+        i18n$t("retry_in_progress"),
+        id = session$ns("recompute_toast"),
+        type = "message", duration = NULL, closeButton = FALSE
+      )
 
-      # Reset status to allow recomputation. The UI will re-render
-      # the compute_button_ui with the CHM selector + the Start
-      # button, and the user clicks Start to actually launch the
-      # run. Single entry point for compute_task == input\$start_compute.
-      update_project_status(project$id, "draft")
-      app_state$current_project <- load_project(project$id)
+      session$onFlushed(function() {
+        # Clear indicator cache to force full recomputation
+        clear_computation_cache(project$id)
 
-      progress_result$reset_tracking()
-      computing_project_id(NULL)
+        # Reset status to allow recomputation. The UI will re-render the
+        # compute_button_ui with the CHM selector + the Start button, and
+        # the user clicks Start to actually launch the run. Single entry
+        # point for compute_task == input$start_compute.
+        update_project_status(project$id, "draft")
+        app_state$current_project <- load_project(project$id)
 
-      session$sendCustomMessage("setComputingMode", list(active = FALSE))
-      session$sendCustomMessage("hideElement", list(
-        id = ns("progress-progress_card_wrapper")
-      ))
-      session$sendCustomMessage("hideElement", list(
-        id = ns("progress-complete_card_wrapper")
-      ))
-      session$sendCustomMessage("hideElement", list(
-        id = ns("progress-error_card_wrapper")
-      ))
+        progress_result$reset_tracking()
+        computing_project_id(NULL)
+
+        session$sendCustomMessage("setComputingMode", list(active = FALSE))
+        session$sendCustomMessage("hideElement", list(
+          id = ns("progress-progress_card_wrapper")
+        ))
+        session$sendCustomMessage("hideElement", list(
+          id = ns("progress-complete_card_wrapper")
+        ))
+        session$sendCustomMessage("hideElement", list(
+          id = ns("progress-error_card_wrapper")
+        ))
+
+        # Remplace le toast « en cours » par la confirmation.
+        shiny::removeNotification(session$ns("recompute_toast"))
+        shiny::showNotification(
+          i18n$t("retry_toast"), type = "message", duration = 5
+        )
+      }, once = TRUE)
     })
 
     # View results handler
