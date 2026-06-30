@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,16 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.2" id="nemetonshiny-0942-2026-06-30">nemetonshiny 0.94.2 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0942-2026-06-30"></a></h2>
+<div class="section level4">
+<h4 id="fixed--chargement-de-projet---calcul-en-cours--fantôme-resume-périmé-0-94-2">Fixed — Chargement de projet : « Calcul en cours » fantôme (resume périmé)<a class="anchor" aria-label="anchor" href="#fixed--chargement-de-projet---calcul-en-cours--fant%C3%B4me-resume-p%C3%A9rim%C3%A9-0-94-2"></a></h4>
+<p>Charger un projet dont le dernier calcul avait été interrompu (fichier <code>progress_state.json</code> figé sur <code>status = "downloading"</code>/<code>"computing"</code>) ré-affichait une carte « Calcul en cours… » <strong>bloquée à 0 %</strong> : la reprise de suivi (<code>mod_home</code>, <code>observeEvent(current_project)</code>) relançait le polling alors qu’<strong>aucun worker <code>future</code> ne tournait</strong> (process d’origine mort après un redémarrage de l’app).</p>
+<p>La reprise ne se déclenche désormais <strong>que si le calcul tourne réellement</strong> : un worker vivant réécrit <code>progress_state.json</code> toutes les ~2 s, donc un fichier <strong>frais</strong> (&lt; 120 s) signe un run en vol (reconnexion navigateur), tandis qu’un fichier <strong>périmé</strong> signe un worker mort → reprise ignorée (plus de fantôme ; l’utilisateur relance le calcul explicitement au besoin).</p>
+<p>Nouveau helper <code>progress_state_age_sec(project_id)</code> (service_compute) : âge du fichier de progression via son <code>mtime</code> (<code>Inf</code> si absent). Cliquer un projet récent ne lance jamais de calcul — seul le bouton de calcul le fait.</p>
+<p>Cycle dev <code>0.94.1</code> → <code>0.94.1.9001</code> → release stable <code>v0.94.2</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.1" id="nemetonshiny-0941-2026-06-30">nemetonshiny 0.94.1 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0941-2026-06-30"></a></h2>
 <div class="section level4">
