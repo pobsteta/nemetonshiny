@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.96.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.96.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.96.3" id="nemetonshiny-0963-2026-07-01">nemetonshiny 0.96.3 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0963-2026-07-01"></a></h2>
+<div class="section level4">
+<h4 id="changed--liste-commune--mise-à-jour-bien-plus-rapide-sélection-projet-récent-0-96-3">Changed — Liste Commune : mise à jour bien plus rapide (sélection projet récent)<a class="anchor" aria-label="anchor" href="#changed--liste-commune--mise-%C3%A0-jour-bien-plus-rapide-s%C3%A9lection-projet-r%C3%A9cent-0-96-3"></a></h4>
+<p>Au clic sur un projet récent, la liste déroulante Commune mettait « un temps fou » à se mettre à jour. Trois causes cumulées, toutes corrigées : - <strong>Cache département→communes</strong> (<code>R/service_communes.R</code>) : <code>get_communes_in_department()</code> re-téléchargeait tout le département depuis geo.api.gouv.fr à <strong>chaque</strong> restauration (~0,55 s réseau). La liste d’un département étant stable en session, elle est désormais <strong>mémoïsée</strong> (les erreurs/vides ne sont pas cachés). Bénéficie aussi au changement de département et au diagnostic. - <strong>Construction vectorisée</strong> du data.frame des communes (fin du <code>do.call(rbind, lapply(...))</code> en O(n²) — ~0,3 s pour ~560 communes → négligeable). - <strong><code>server = TRUE</code></strong> sur le <code>selectizeInput</code> Commune (<code>R/mod_search.R</code>) : les jusqu’à 1000 options ne sont plus toutes sérialisées + rendues côté navigateur (filtrage <strong>serveur</strong>), ce qui supprime le gel visible de la liste sur les gros départements.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--sous-onglet-familles--cartes-indicateurs-sur-une-seule-ligne-0-96-3">Changed — Sous-onglet familles : cartes indicateurs sur une seule ligne<a class="anchor" aria-label="anchor" href="#changed--sous-onglet-familles--cartes-indicateurs-sur-une-seule-ligne-0-96-3"></a></h4>
+<p>Dans le sous-onglet de détail d’une famille, les cartes des indicateurs passaient par un grid Bootstrap 12 colonnes (<code>col-3</code> pour n ≥ 4). Le grid ne répartissant pas 5 cartes également (12/5 non entier), la famille <strong>Risques &amp; Résilience</strong> avec R5 activé (5 indicateurs) débordait sur 2 lignes (4 + 1). La disposition passe à un <strong>flexbox à largeurs égales sans retour à la ligne</strong> (<code>flex: 1 1 0</code> + <code>flex-nowrap</code>), qui aligne n’importe quel nombre d’indicateurs (1 à 5) sur <strong>une seule ligne</strong>, cartes de largeur égale.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.96.2" id="nemetonshiny-0962-2026-07-01">nemetonshiny 0.96.2 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0962-2026-07-01"></a></h2>
 <div class="section level4">

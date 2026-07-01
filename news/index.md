@@ -1,5 +1,35 @@
 # Changelog
 
+## nemetonshiny 0.96.3 (2026-07-01)
+
+#### Changed — Liste Commune : mise à jour bien plus rapide (sélection projet récent)
+
+Au clic sur un projet récent, la liste déroulante Commune mettait « un
+temps fou » à se mettre à jour. Trois causes cumulées, toutes corrigées
+: - **Cache département→communes** (`R/service_communes.R`) :
+`get_communes_in_department()` re-téléchargeait tout le département
+depuis geo.api.gouv.fr à **chaque** restauration (~0,55 s réseau). La
+liste d’un département étant stable en session, elle est désormais
+**mémoïsée** (les erreurs/vides ne sont pas cachés). Bénéficie aussi au
+changement de département et au diagnostic. - **Construction
+vectorisée** du data.frame des communes (fin du
+`do.call(rbind, lapply(...))` en O(n²) — ~0,3 s pour ~560 communes →
+négligeable). - **`server = TRUE`** sur le `selectizeInput` Commune
+(`R/mod_search.R`) : les jusqu’à 1000 options ne sont plus toutes
+sérialisées + rendues côté navigateur (filtrage **serveur**), ce qui
+supprime le gel visible de la liste sur les gros départements.
+
+#### Changed — Sous-onglet familles : cartes indicateurs sur une seule ligne
+
+Dans le sous-onglet de détail d’une famille, les cartes des indicateurs
+passaient par un grid Bootstrap 12 colonnes (`col-3` pour n ≥ 4). Le
+grid ne répartissant pas 5 cartes également (12/5 non entier), la
+famille **Risques & Résilience** avec R5 activé (5 indicateurs)
+débordait sur 2 lignes (4 + 1). La disposition passe à un **flexbox à
+largeurs égales sans retour à la ligne** (`flex: 1 1 0` +
+`flex-nowrap`), qui aligne n’importe quel nombre d’indicateurs (1 à 5)
+sur **une seule ligne**, cartes de largeur égale.
+
 ## nemetonshiny 0.96.2 (2026-07-01)
 
 #### Changed — extraction de la valeur d’indicateur déléguée au cœur (anti-dérive)
