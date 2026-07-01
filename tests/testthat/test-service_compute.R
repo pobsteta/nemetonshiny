@@ -5359,3 +5359,24 @@ test_that("download_chm_lasr_from_copc forwards to nemeton::compute_dtm_chm_from
   expect_true(inherits(out$mnt, "SpatRaster"))
   expect_equal(out$source, "lasr")
 })
+
+test_that("compute_single_indicator delegates value extraction to nemeton (v0.108.0)", {
+  skip_if_not_installed("sf")
+  parcels <- sf::st_sf(
+    geo_id = 1:2,
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(rbind(c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0)))),
+      sf::st_polygon(list(rbind(c(1, 0), c(2, 0), c(2, 1), c(1, 1), c(1, 0)))),
+      crs = 4326))
+
+  # Stub indicator: returns the units with a short-code value column. The
+  # extraction must resolve "ZZ" via nemeton::extract_indicator_value(),
+  # not any hand-kept map (removed in this refactor).
+  assign("indicateur_zz_test",
+         function(units, ...) { units$ZZ <- c(11, 22); units },
+         envir = globalenv())
+  on.exit(rm("indicateur_zz_test", envir = globalenv()), add = TRUE)
+
+  val <- compute_single_indicator("indicateur_zz_test", parcels, layers = list())
+  expect_equal(val, c(11, 22))
+})

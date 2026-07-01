@@ -3445,56 +3445,14 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     # Call function with appropriate arguments
     result <- do.call(func, args)
 
-    # Extract the indicator value from result
-    # Some functions return the units sf with the indicator added as a column
+    # Extract the indicator value from result. The naming convention
+    # (family short code P1/R1/… -> value column) lives in ONE place,
+    # nemeton::extract_indicator_value(), shared with the core dispatcher
+    # so the two can never drift (nemeton >= 0.108.0). `exclude` passes the
+    # pre-existing parcel columns so a freshly added value column wins.
     if (inherits(result, "sf") || inherits(result, "data.frame")) {
-      # Map indicator names to the column names used by each function
-      col_map <- c(
-        "indicateur_b1_protection" = "B1",
-        "indicateur_b2_structure" = "B2",
-        "indicateur_b3_connectivite" = "B3",
-        "indicateur_a1_couverture" = "A1",
-        "indicateur_a2_qualite_air" = "A2",
-        "indicateur_r1_feu" = "R1",
-        "indicateur_r2_tempete" = "R2",
-        "indicateur_r3_secheresse" = "R3",
-        "indicateur_r4_abroutissement" = "R4",
-        "indicateur_n1_distance" = "N1",
-        "indicateur_n2_continuite" = "N2",
-        "indicateur_n3_naturalite" = "N3",
-        "indicateur_s1_routes" = "S1",
-        "indicateur_s2_bati" = "S2",
-        "indicateur_s3_population" = "S3",
-        "indicateur_e1_bois_energie" = "E1",
-        "indicateur_e2_evitement" = "E2"
-      )
-
-      # Try mapped column name first
-      if (indicator %in% names(col_map)) {
-        mapped_col <- col_map[[indicator]]
-        if (mapped_col %in% names(result)) {
-          return(result[[mapped_col]])
-        }
-      }
-
-      # Chercher la colonne indicateur par nom NMT
-      indicator_col <- intersect(
-        c(indicator, toupper(indicator)),
-        names(result)
-      )
-      if (length(indicator_col) > 0) {
-        return(result[[indicator_col[1]]])
-      }
-      # Try common column patterns (B1, C1, etc.)
-      pattern_cols <- grep("^[A-Z][0-9](_norm)?$", names(result), value = TRUE)
-      # Exclude columns that existed before computation (from parcels)
-      new_cols <- setdiff(pattern_cols, names(parcels))
-      if (length(new_cols) > 0) {
-        return(result[[new_cols[1]]])
-      }
-      if (length(pattern_cols) > 0) {
-        return(result[[pattern_cols[1]]])
-      }
+      return(nemeton::extract_indicator_value(
+        result, indicator, exclude = names(parcels)))
     }
 
     # If result is a vector, return it directly

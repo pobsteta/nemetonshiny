@@ -1,3 +1,17 @@
+# nemetonshiny 0.96.2 (2026-07-01)
+
+### Changed — extraction de la valeur d'indicateur déléguée au cœur (anti-dérive)
+
+`compute_single_indicator()` construisait sa propre correspondance
+« indicateur → colonne de sortie » (un `col_map` de 17 entrées tenu à la main),
+duplication de la convention déjà portée par `nemeton::compute_indicator()` —
+deux implémentations vouées à diverger. Le `col_map` est supprimé au profit d'un
+appel unique à **`nemeton::extract_indicator_value(result, indicator,
+exclude = names(parcels))`** : la convention de nommage vit désormais dans **une
+seule** source de vérité (le cœur). Dépendance relevée à `nemeton (>= 0.108.0)`.
+Aucun changement fonctionnel visible ; test de délégation dans
+`test-service_compute.R`.
+
 # nemetonshiny 0.96.1 (2026-07-01)
 
 ### Added — Export PNG de la planche pixel dépérissement (RECONFORT)
