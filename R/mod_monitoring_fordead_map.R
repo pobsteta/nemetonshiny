@@ -798,7 +798,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
                          i18n$t("monitoring_fordead_pixel_first_anomaly"),
                          format(premiere, "%Y-%m-%d")),
           showarrow = FALSE,
-          font = list(color = "#000000", size = 11)
+          font = list(color = "#000000", size = 15)
         ))
       }
       # v0.72.0 — Annotation discrète en haut à gauche si le pixel
@@ -812,7 +812,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
           yref = "paper", y = 1, yanchor = "top",
           text = i18n$t("monitoring_fordead_pixel_outside_validity"),
           showarrow = FALSE,
-          font = list(color = "#FF7F0E", size = 11),
+          font = list(color = "#FF7F0E", size = 15),
           bgcolor = "rgba(255, 255, 220, 0.85)",
           borderpad = 4
         )))
@@ -820,6 +820,10 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
 
       p <- plotly::layout(
         p,
+        # Police globale agrandie : axes, ticks, légende et hover héritent de
+        # cette taille, lisibles en plein écran (spec UX). Les annotations
+        # in-plot (1re anomalie, hors zone de validité) fixent leur taille.
+        font   = list(size = 16),
         margin = list(t = 20, b = 40, l = 50, r = 10),
         xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
                       type = "date"),

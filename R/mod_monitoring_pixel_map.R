@@ -993,12 +993,16 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
             yref = "y", y = d$v, yanchor = "bottom",
             text = sprintf(i18n$t("monitoring_pixel_plot_threshold_fmt"),
                            d$lbl, d$v),
-            showarrow = FALSE, font = list(color = d$col, size = 11))))
+            showarrow = FALSE, font = list(color = d$col, size = 15))))
         }
       }
 
       p <- plotly::layout(
         p,
+        # Police globale agrandie : axes, ticks, légende et hover héritent de
+        # cette taille, lisibles en plein écran (spec UX). Les annotations
+        # in-plot fixent leur propre taille juste au-dessus / au-dessous.
+        font   = list(size = 16),
         margin = list(t = 20, b = 40, l = 50, r = 10),
         xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
                       type = "date"),

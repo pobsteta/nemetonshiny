@@ -656,6 +656,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       }
       p <- plotly::layout(
         p,
+        # Police globale agrandie : axes, ticks, légende et hover héritent de
+        # cette taille, lisibles en plein écran (spec UX).
+        font   = list(size = 16),
         margin = list(t = 20, b = 40, l = 50, r = 10),
         xaxis  = list(title = i18n$t("fast_trend_pixel_xaxis"), dtick = 1),
         yaxis  = list(title = sprintf(i18n$t("fast_trend_pixel_yaxis"), idx)),

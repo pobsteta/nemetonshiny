@@ -778,15 +778,19 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         year_annos[[length(year_annos) + 1L]] <- list(
           x = sprintf("%d-07-01", y), y = 1, xref = "x", yref = "paper",
           yanchor = "bottom", text = as.character(y), showarrow = FALSE,
-          font = list(size = 10, color = "#999999")
+          font = list(size = 14, color = "#999999")
         )
       }
 
       p <- plotly::layout(
         p,
+        # Police globale agrandie : axes, ticks, légende et hover héritent de
+        # cette taille, lisibles en plein écran (spec UX). Le sous-titre et
+        # les libellés d'année fixent leur propre taille.
+        font   = list(size = 16),
         margin = list(t = 30, b = 40, l = 50, r = 10),
         title  = if (!is.null(subtitle))
-          list(text = subtitle, font = list(size = 12), x = 0) else NULL,
+          list(text = subtitle, font = list(size = 16), x = 0) else NULL,
         xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
                       type = "date"),
         yaxis  = list(title = i18n$t("monitoring_reconfort_pixel_yaxis")),

@@ -1,3 +1,15 @@
+# nemetonshiny 0.94.8.9002 (dev)
+
+### Changed — Police agrandie dans les graphiques pixel FAST/FORDEAD/RECONFORT
+
+En plein écran, les libellés d'axes, ticks, légende et surtout les annotations
+in-plot (seuils NDVI/NBR/NDMI, date de 1re anomalie FORDEAD, hors zone de
+validité, libellés d'année RECONFORT) étaient difficiles à lire. Une police
+globale `size = 16` est posée sur chaque `plotly::layout()` (axes/ticks/légende/
+hover héritent), et les annotations in-plot passent de 10-12 à 14-15 px. Concerne
+les quatre graphiques pixel au clic : FAST (série NDVI/NBR/NDMI), FAST Tendance
+(Theil-Sen), FORDEAD (CRSWIR + harmonique) et RECONFORT (CRSWIR/CRre).
+
 # nemetonshiny 0.94.8.9001 (dev)
 
 ### Fixed — Barre de progression qui recule pendant la phase CHM
