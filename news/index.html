@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.0.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,10 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<div class="section level4">
+<h4 id="changed--planche-pixel-reconfort--essence--lonlat-dans-le-titre-development-version">Changed — Planche pixel RECONFORT : essence + lon/lat dans le titre<a class="anchor" aria-label="anchor" href="#changed--planche-pixel-reconfort--essence--lonlat-dans-le-titre-development-version"></a></h4>
+<p>Le titre de la planche pixel (<code>plot_pixel_dieback()</code>) reprend désormais l’<strong>essence</strong> du pixel (« Pixel de <essence> — … », comme la maquette) et affiche en 2ᵉ ligne la <strong>latitude/longitude</strong> du pixel cliqué (+ le modèle) — parité avec le graphique FORDEAD. L’essence, le modèle et les coordonnées proviennent des métadonnées du pixel (<code>attr(series, "species")</code> / <code>"v_model"</code> et le clic carte), passés en options par <code>mod_monitoring_reconfort_map</code> au rendu <strong>et</strong> à l’export PNG (le titre voyage donc dans l’image exportée). Repli générique (« Pixel — … ») quand une métadonnée manque. 4 clés i18n FR/EN.</essence></p>
+</div>
 <div class="section level4">
 <h4 id="changed--planche-pixel-reconfort-alignée-sur-la-maquette-de-référence-development-version">Changed — Planche pixel RECONFORT alignée sur la maquette de référence<a class="anchor" aria-label="anchor" href="#changed--planche-pixel-reconfort-align%C3%A9e-sur-la-maquette-de-r%C3%A9f%C3%A9rence-development-version"></a></h4>
 <p><code>plot_pixel_dieback()</code> (<code>R/fct_plot_pixel_dieback.R</code>) restylée pour coller à la maquette fournie : - Trajectoires estivales distinguées par <strong>couleur dédiée</strong> : <strong>rouge</strong> pour le creux CRswir, <strong>violet</strong> pour le pic CRre (points, lignes pointillées et libellés de valeurs assortis) — au lieu du brun commun. - <strong>Légende interne</strong> au panneau haut (« CRswir (lissage léger) », « CRre (lissage léger) » + les deux trajectoires). - <strong>Axes fléchés</strong> : « CRswir (↑ = plus d’eau) » (bleu) / « CRre (↑ = plus de chlorophylle) » (vert). - Cycles repliés B/C : <strong>bande estivale orange</strong> + annotations « creux estival qui s’enfonce » / « pic plus faible = sénescence précoce ». - Espace d’état D : centroïdes reliés en <strong>pointillés</strong>, annotation « dérive vers eau ET chloro. basses », et <strong>barre de couleur des années horizontale</strong> en bas de planche. - 5 nouvelles clés i18n FR/EN + 6 mises à jour (libellés exacts de la maquette).</p>

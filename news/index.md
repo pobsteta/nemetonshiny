@@ -2,6 +2,18 @@
 
 ## nemetonshiny (development version)
 
+#### Changed — Planche pixel RECONFORT : essence + lon/lat dans le titre
+
+Le titre de la planche pixel (`plot_pixel_dieback()`) reprend désormais
+l’**essence** du pixel (« Pixel de — … », comme la maquette) et affiche
+en 2ᵉ ligne la **latitude/longitude** du pixel cliqué (+ le modèle) —
+parité avec le graphique FORDEAD. L’essence, le modèle et les
+coordonnées proviennent des métadonnées du pixel
+(`attr(series, "species")` / `"v_model"` et le clic carte), passés en
+options par `mod_monitoring_reconfort_map` au rendu **et** à l’export
+PNG (le titre voyage donc dans l’image exportée). Repli générique («
+Pixel — … ») quand une métadonnée manque. 4 clés i18n FR/EN.
+
 #### Changed — Planche pixel RECONFORT alignée sur la maquette de référence
 
 `plot_pixel_dieback()` (`R/fct_plot_pixel_dieback.R`) restylée pour
