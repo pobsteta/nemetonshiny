@@ -1,6 +1,30 @@
-# nemetonshiny 0.95.0 (2026-07-01)
+# nemetonshiny 0.96.0 (2026-07-01)
 
-### Added — Year-picker RECONFORT borné sur la dernière saison Sentinel-2 complète
+### Added — Planche pixel dépérissement 4 panneaux (RECONFORT, Partie B)
+
+Le diagnostic pixel RECONFORT (clic sur la carte) affichait un plotly simple à
+2 traces mono-axe. Il devient une **planche 4 panneaux** rendue par une fonction
+de tracé **pure** (`R/fct_plot_pixel_dieback.R::plot_pixel_dieback()`), alimentée
+par `nemeton::prepare_pixel_dieback_series()` — **aucun calcul dans l'app**
+(règles 1-3) : toutes les séries lissées, creux/pics estivaux, centroïdes et
+lacunes viennent du cœur. Panneaux : (A) double axe Y **natif** CRswir/CRre
+(plus de recadrage manuel) avec points bruts optionnels, bandes estivales,
+ombrage des lacunes d'interpolation et trajectoires creux/pic distinguées par
+tiret + symbole (redondance non-couleur) ; (B/C) cycles annuels repliés
+(jour de l'année), une ligne par année, palette **cividis** ; (D) espace d'état
+CRswir × CRre coloré par année (une seule colorbar) avec la trajectoire des
+centroïdes. Contrôles dans la modale : lissage `none`/`light` (passé au cœur ;
+lissage fort volontairement absent) et points bruts. Accessibilité WCAG :
+**table `DT` équivalente** en repli et `aria-label` sur le widget. Modale
+agrandie (~760 px). 12 clés i18n FR/EN ajoutées. Plancher
+`Imports: nemeton (>= 0.106.0)`.
+
+Différé (hors périmètre testable ici) : export PNG statique via `kaleido` +
+inclusion au rapport Quarto — la planche est un diagnostic **interactif par
+pixel** sans section de rapport naturelle, et `kaleido` requiert un runtime
+Python absent de l'environnement de test.
+
+# nemetonshiny 0.95.0 (2026-07-01)
 
 Le sélecteur d'année Sentinel-2 (mode RECONFORT) proposait/acceptait l'année en
 cours, dont la saison n'est pas terminée — un run lancé dessus travaillait sur

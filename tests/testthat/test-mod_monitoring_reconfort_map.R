@@ -130,13 +130,37 @@ test_that("reconfort map exposes geo-invalid validity (parent renders the banner
   )
 })
 
-test_that("reconfort map click produces a pixel time-series plot", {
+# `prepared` factice minimal (structure Partie A) pour mocker le cœur dans le
+# test du module : plot_pixel_dieback est testée à part (test-fct_plot_...).
+.reconfort_fake_prepared <- function() {
+  d  <- as.Date("2023-01-01") + seq(0, 500, 20)
+  yr <- as.integer(format(d, "%Y")); dy <- as.integer(format(d, "%j"))
+  list(
+    grid_swir = data.frame(date = d, val = 0.4, year = yr, doy = dy),
+    grid_re   = data.frame(date = d, val = 0.6, year = yr, doy = dy),
+    obs_swir  = data.frame(date = d, val = 0.4, year = yr, doy = dy),
+    obs_re    = data.frame(date = d, val = 0.6, year = yr, doy = dy),
+    trough_swir = data.frame(year = 2023L, date = d[8], val = 0.35),
+    peak_re     = data.frame(year = 2023L, date = d[8], val = 0.65),
+    state     = data.frame(date = d[6:10], year = 2023L,
+                           val_sw = 0.4, val_re = 0.6),
+    centroids = data.frame(year = 2023L, val_sw = 0.4, val_re = 0.6),
+    gaps      = data.frame(from = as.Date(character(0)),
+                           to   = as.Date(character(0)))
+  )
+}
+
+test_that("reconfort map click produces the 4-panel pixel dieback plate + DT table", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("sf")
   skip_if_not_installed("plotly")
+  skip_if_not_installed("DT")
   skip_if_not(exists("read_reconfort_pixel_series",
                      where = asNamespace("nemeton"), inherits = FALSE),
               "nemeton >= 0.80.0 (read_reconfort_pixel_series) not installed")
+  skip_if_not(exists("prepare_pixel_dieback_series",
+                     where = asNamespace("nemeton"), inherits = FALSE),
+              "nemeton >= 0.106.0 (prepare_pixel_dieback_series) not installed")
 
   proj_dir <- withr::local_tempdir()
   dir.create(file.path(proj_dir, "cache", "layers", "reconfort"),
@@ -151,6 +175,8 @@ test_that("reconfort map click produces a pixel time-series plot", {
   attr(series, "species") <- "CHE"
   attr(series, "v_model") <- "v3"
 
+  smooth_seen <- new.env(parent = emptyenv()); smooth_seen$vals <- character(0)
+
   testthat::local_mocked_bindings(
     get_monitoring_db_connection = function(...) structure(list(), class = "fakecon"),
     close_monitoring_db_connection = function(con) invisible(TRUE),
@@ -162,6 +188,12 @@ test_that("reconfort map click produces a pixel time-series plot", {
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
     read_reconfort_pixel_series = function(con, zone_id, xy, crs = 4326,
                                            run_id = NULL, cache_dir) series,
+    # Le module délègue TOUT le dérivé au cœur : on mocke prepare_* pour
+    # rester déterministe et vérifier que le `smooth` du toggle est propagé.
+    prepare_pixel_dieback_series = function(df, smooth = "light", ...) {
+      smooth_seen$vals <- c(smooth_seen$vals, smooth)
+      .reconfort_fake_prepared()
+    },
     .package = "nemeton"
   )
 
@@ -177,9 +209,17 @@ test_that("reconfort map click produces a pixel time-series plot", {
     {
       session$flushReact()
       session$setInputs(map_click = list(lat = 47.05, lng = 5.05))
-      # The click handler showModal()s a plotly bound to pixel_ts_plot.
+      expect_no_error(session$flushReact())
+      # La planche (plotly) et la table DT équivalente doivent rendre.
+      expect_false(is.null(output$pixel_ts_plot))
+      expect_false(is.null(output$pixel_ts_table))
+      # Défaut : lissage "light" propagé au cœur.
+      expect_true("light" %in% smooth_seen$vals)
+      # Toggle lissage/points → re-render sans erreur, `smooth` propagé.
+      session$setInputs(pixel_smooth = "none", pixel_points = FALSE)
       expect_no_error(session$flushReact())
       expect_false(is.null(output$pixel_ts_plot))
+      expect_true("none" %in% smooth_seen$vals)
     }
   )
 })
