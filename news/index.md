@@ -1,5 +1,42 @@
 # Changelog
 
+## nemetonshiny (development version)
+
+#### Added — Diversité spectrale B4 / L3 (affichage, spec 028)
+
+Câblage d’affichage des deux nouveaux indicateurs de diversité spectrale
+(biodivMapR, `nemeton >= 0.110.0`) : - **B4** (famille Biodiversité) —
+diversité spectrale α (Shannon). - **L3** (famille Paysage) —
+hétérogénéité spectrale β (turnover Bray-Curtis), distincte de L2
+(fragmentation structurale).
+
+Détail : - `list_available_indicators()` liste désormais B4 et L3 (31 →
+33). - Config famille (`app_config.R`), labels de progression
+(`mod_progress.R`) et libellés i18n (`utils_i18n.R`) FR/EN complétés —
+la vue famille et le radar les affichent automatiquement
+(config-driven), avec le caveat « proxy à valider terrain ». - Injection
+générique de l’objet de diversité (`layers$spectral`) dans le dispatch,
+sur le modèle de `fapar`/`snow` — sans court-circuit.
+
+**Limitation connue** : l’assemblage du cube réflectance Sentinel-2
+(spec 028 P2/P3) n’est pas encore branché dans le service de calcul
+standard (NDP 0, sans cache de bandes S2). En attendant, B4/L3 se
+calculent en **NA** proprement (fonctions cœur rétrocompatibles) : ils
+apparaissent dans l’UI mais grisés. Suite : acquisition S2 +
+`compute_spectral_diversity()` puis recalibrage des bornes (spec 028
+P6).
+
+#### Changed — Dépendance & licence
+
+- **`nemeton (>= 0.110.0)`** (indicateurs B4/L3 + primitive
+  `compute_spectral_diversity()`).
+- **Relicence EUPL v1.2 → GPL-3** : l’app importe désormais du GPL-3
+  (nemeton → biodivMapR). EUPL Art. 5 autorise cette relicence. Voir
+  ADR-006.
+- CI : `github::cran/dissUtils` + `jbferet/spinR` ajoutés aux
+  `extra-packages` (deps transitives non-CRAN de biodivMapR, tirées via
+  nemeton).
+
 ## nemetonshiny 0.96.3 (2026-07-01)
 
 #### Changed — Liste Commune : mise à jour bien plus rapide (sélection projet récent)

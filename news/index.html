@@ -33,6 +33,23 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<div class="section level4">
+<h4 id="added--diversité-spectrale-b4--l3-affichage-spec-development-version">Added — Diversité spectrale B4 / L3 (affichage, spec 028)<a class="anchor" aria-label="anchor" href="#added--diversit%C3%A9-spectrale-b4--l3-affichage-spec-development-version"></a></h4>
+<p>Câblage d’affichage des deux nouveaux indicateurs de diversité spectrale (biodivMapR, <code>nemeton &gt;= 0.110.0</code>) : - <strong>B4</strong> (famille Biodiversité) — diversité spectrale α (Shannon). - <strong>L3</strong> (famille Paysage) — hétérogénéité spectrale β (turnover Bray-Curtis), distincte de L2 (fragmentation structurale).</p>
+<p>Détail : - <code>list_available_indicators()</code> liste désormais B4 et L3 (31 → 33). - Config famille (<code>app_config.R</code>), labels de progression (<code>mod_progress.R</code>) et libellés i18n (<code>utils_i18n.R</code>) FR/EN complétés — la vue famille et le radar les affichent automatiquement (config-driven), avec le caveat « proxy à valider terrain ». - Injection générique de l’objet de diversité (<code>layers$spectral</code>) dans le dispatch, sur le modèle de <code>fapar</code>/<code>snow</code> — sans court-circuit.</p>
+<p><strong>Limitation connue</strong> : l’assemblage du cube réflectance Sentinel-2 (spec 028 P2/P3) n’est pas encore branché dans le service de calcul standard (NDP 0, sans cache de bandes S2). En attendant, B4/L3 se calculent en <strong>NA</strong> proprement (fonctions cœur rétrocompatibles) : ils apparaissent dans l’UI mais grisés. Suite : acquisition S2 + <code>compute_spectral_diversity()</code> puis recalibrage des bornes (spec 028 P6).</p>
+</div>
+<div class="section level4">
+<h4 id="changed--dépendance--licence-development-version">Changed — Dépendance &amp; licence<a class="anchor" aria-label="anchor" href="#changed--d%C3%A9pendance--licence-development-version"></a></h4>
+<ul><li>
+<strong><code>nemeton (&gt;= 0.110.0)</code></strong> (indicateurs B4/L3 + primitive <code>compute_spectral_diversity()</code>).</li>
+<li>
+<strong>Relicence EUPL v1.2 → GPL-3</strong> : l’app importe désormais du GPL-3 (nemeton → biodivMapR). EUPL Art. 5 autorise cette relicence. Voir ADR-006.</li>
+<li>CI : <code>github::cran/dissUtils</code> + <code>jbferet/spinR</code> ajoutés aux <code>extra-packages</code> (deps transitives non-CRAN de biodivMapR, tirées via nemeton).</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.96.3" id="nemetonshiny-0963-2026-07-01">nemetonshiny 0.96.3 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0963-2026-07-01"></a></h2>
 <div class="section level4">
 <h4 id="changed--liste-commune--mise-à-jour-bien-plus-rapide-sélection-projet-récent-0-96-3">Changed — Liste Commune : mise à jour bien plus rapide (sélection projet récent)<a class="anchor" aria-label="anchor" href="#changed--liste-commune--mise-%C3%A0-jour-bien-plus-rapide-s%C3%A9lection-projet-r%C3%A9cent-0-96-3"></a></h4>
