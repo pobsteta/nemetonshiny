@@ -755,7 +755,9 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         plotly::config(
           plot_pixel_dieback(
             prepared,
-            opts = list(show_points = isTRUE(input$pixel_points %||% TRUE)),
+            opts = list(show_points = isTRUE(input$pixel_points %||% TRUE),
+                        species = species, v_model = v_model,
+                        lat = lat, lng = lng),
             i18n = i18n_r()
           ),
           responsive = TRUE
@@ -787,7 +789,8 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           fig <- plot_pixel_dieback(
             prepared,
             opts = list(show_points = isTRUE(
-              shiny::isolate(input$pixel_points) %||% TRUE)),
+              shiny::isolate(input$pixel_points) %||% TRUE),
+              species = species, v_model = v_model, lat = lat, lng = lng),
             i18n = i18n_r()
           )
           if (!isTRUE(save_plotly_png(fig, file))) {
