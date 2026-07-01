@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.96.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.96.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.96.2" id="nemetonshiny-0962-2026-07-01">nemetonshiny 0.96.2 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0962-2026-07-01"></a></h2>
+<div class="section level4">
+<h4 id="changed--extraction-de-la-valeur-dindicateur-déléguée-au-cœur-anti-dérive-0-96-2">Changed — extraction de la valeur d’indicateur déléguée au cœur (anti-dérive)<a class="anchor" aria-label="anchor" href="#changed--extraction-de-la-valeur-dindicateur-d%C3%A9l%C3%A9gu%C3%A9e-au-c%C5%93ur-anti-d%C3%A9rive-0-96-2"></a></h4>
+<p><code>compute_single_indicator()</code> construisait sa propre correspondance « indicateur → colonne de sortie » (un <code>col_map</code> de 17 entrées tenu à la main), duplication de la convention déjà portée par <code>nemeton::compute_indicator()</code> — deux implémentations vouées à diverger. Le <code>col_map</code> est supprimé au profit d’un appel unique à <strong><code>nemeton::extract_indicator_value(result, indicator, exclude = names(parcels))</code></strong> : la convention de nommage vit désormais dans <strong>une seule</strong> source de vérité (le cœur). Dépendance relevée à <code>nemeton (&gt;= 0.108.0)</code>. Aucun changement fonctionnel visible ; test de délégation dans <code>test-service_compute.R</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.96.1" id="nemetonshiny-0961-2026-07-01">nemetonshiny 0.96.1 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0961-2026-07-01"></a></h2>
 <div class="section level4">
