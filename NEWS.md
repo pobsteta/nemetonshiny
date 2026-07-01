@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.9.9001 (dev)
+# nemetonshiny 0.94.10 (2026-07-01)
 
 ### Changed — Seuil FAST débouncé (moins de recalculs de raster)
 
