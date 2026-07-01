@@ -86,6 +86,8 @@ jobs:
           extra-packages: |
             any::rcmdcheck
             any::remotes
+            github::cran/dissUtils
+            jbferet/spinR
           needs: check
 
       - name: Check package
@@ -130,6 +132,8 @@ jobs:
           extra-packages: |
             any::testthat
             any::remotes
+            github::cran/dissUtils
+            jbferet/spinR
           needs: check
 
       - name: Run tests
@@ -173,6 +177,8 @@ jobs:
           extra-packages: |
             any::covr
             any::remotes
+            github::cran/dissUtils
+            jbferet/spinR
           needs: coverage
 
       - name: Compute coverage
