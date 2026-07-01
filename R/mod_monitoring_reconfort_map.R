@@ -771,6 +771,34 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         DT::datatable(tbl, rownames = FALSE,
                       options = list(pageLength = 8L, dom = "tip"))
       })
+      # Export PNG statique de la planche COURANTE (reconstruite avec les
+      # réglages actifs). Rendu par un moteur d'image statique (kaleido, sinon
+      # webshot2) via le helper pur `save_plotly_png()`. Le bouton n'est
+      # affiché QUE si un moteur est présent (voir `.export_ok` ci-dessous) ;
+      # ce handler garde néanmoins un repli (PNG-note) si le rendu échoue à
+      # l'exécution, pour ne pas laisser le download se bloquer.
+      output$pixel_ts_png <- shiny::downloadHandler(
+        filename = function()
+          sprintf("pixel_dieback_%.5f_%.5f.png", lat, lng),
+        content = function(file) {
+          prepared <- nemeton::prepare_pixel_dieback_series(
+            s, smooth = shiny::isolate(input$pixel_smooth) %||% "light"
+          )
+          fig <- plot_pixel_dieback(
+            prepared,
+            opts = list(show_points = isTRUE(
+              shiny::isolate(input$pixel_points) %||% TRUE)),
+            i18n = i18n_r()
+          )
+          if (!isTRUE(save_plotly_png(fig, file))) {
+            grDevices::png(file, width = 640L, height = 120L)
+            on.exit(grDevices::dev.off(), add = TRUE)
+            graphics::par(mar = c(0, 0, 0, 0)); graphics::plot.new()
+            graphics::text(0.5, 0.5, i18n_r()$t("pixel_export_failed"))
+          }
+        }
+      )
+      .export_ok <- !is.na(.pixel_export_engine())
 
       # Modale plein écran (parité FORDEAD). Contrôles lissage/points en tête,
       # sous-titre espèce/modèle conservé, planche agrandie (~760 px) + table
@@ -813,6 +841,12 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           ),
           shiny::checkboxInput(
             session$ns("pixel_points"), i18n$t("pixel_points_label"), TRUE
+          ),
+          # Export PNG : affiché seulement si un moteur d'image statique est
+          # disponible (kaleido / webshot2). Sinon masqué (pas de bouton mort).
+          if (.export_ok) shiny::downloadButton(
+            session$ns("pixel_ts_png"), i18n$t("pixel_export_png"),
+            class = "btn btn-sm btn-outline-secondary", icon = shiny::icon("download")
           )
         ),
         if (!is.null(subtitle))

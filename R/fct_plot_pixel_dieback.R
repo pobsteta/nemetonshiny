@@ -250,3 +250,57 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   )
   fig
 }
+
+#' Static-image export engine available for a plotly figure, or NA
+#'
+#' Prefers `kaleido` (via reticulate, already a dependency — no browser, no
+#' server) then falls back to `webshot2` (headless Chrome). Returns NA when
+#' neither is installed so callers can hide the export affordance.
+#' @return `"kaleido"`, `"webshot2"`, or `NA_character_`.
+#' @noRd
+.pixel_export_engine <- function() {
+  if (requireNamespace("reticulate", quietly = TRUE) &&
+      isTRUE(tryCatch(reticulate::py_module_available("kaleido"),
+                      error = function(e) FALSE))) {
+    return("kaleido")
+  }
+  if (requireNamespace("webshot2", quietly = TRUE)) return("webshot2")
+  NA_character_
+}
+
+#' Export a plotly figure to a static PNG (kaleido, webshot2 fallback)
+#'
+#' Pure IO helper — reusable by any static-export path (download button,
+#' future Quarto report section). No plotting logic here: it renders an
+#' already-built plotly figure. Degrades gracefully: returns FALSE (and warns)
+#' when no export engine is available or the render fails.
+#'
+#' @param fig A `plotly` figure (e.g. from [plot_pixel_dieback()]).
+#' @param path Output PNG path.
+#' @param width,height Pixel dimensions.
+#' @return `TRUE` on success (file written), `FALSE` otherwise.
+#' @noRd
+save_plotly_png <- function(fig, path, width = 1600L, height = 1000L) {
+  engine <- .pixel_export_engine()
+  if (is.na(engine)) {
+    cli::cli_warn("No static-image engine (kaleido/webshot2) for PNG export.")
+    return(FALSE)
+  }
+  ok <- tryCatch({
+    if (identical(engine, "kaleido")) {
+      plotly::save_image(fig, file = path, width = width, height = height)
+    } else {
+      tmp_html <- tempfile(fileext = ".html")
+      on.exit(unlink(tmp_html), add = TRUE)
+      htmlwidgets::saveWidget(plotly::as_widget(fig), tmp_html,
+                              selfcontained = TRUE)
+      webshot2::webshot(tmp_html, file = path,
+                        vwidth = width, vheight = height)
+    }
+    TRUE
+  }, error = function(e) {
+    cli::cli_warn("Pixel dieback PNG export failed ({engine}): {conditionMessage(e)}")
+    FALSE
+  })
+  isTRUE(ok) && file.exists(path)
+}
