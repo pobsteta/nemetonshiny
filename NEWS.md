@@ -1,3 +1,16 @@
+# nemetonshiny 0.94.8.9003 (dev)
+
+### Fixed — Carte RECONFORT : notification « Calcul du graphique en cours… » manquante
+
+Au clic-pixel sur la Carte RECONFORT, aucun message bas-droite ne s'affichait et
+l'UI se figeait silencieusement pendant la lecture de la série CRSWIR/CRre. Le
+handler faisait tout de façon **synchrone**, contrairement aux Cartes FAST et
+FORDEAD qui affichent immédiatement la notification `monitoring_pixel_map_computing`
+puis diffèrent le calcul via `session$onFlushed`. RECONFORT adopte désormais ce
+même motif (notification immédiate + calcul déféré + `on.exit` de nettoyage),
+pour une parité complète des trois cartes pixel (règle stricte #9 : retour
+immédiat sur action longue).
+
 # nemetonshiny 0.94.8.9002 (dev)
 
 ### Changed — Police agrandie dans les graphiques pixel FAST/FORDEAD/RECONFORT

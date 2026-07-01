@@ -692,6 +692,25 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       lng <- input$map_click$lng
       if (is.null(lat) || is.null(lng)) return()
 
+      # Message « calcul en cours » affiché TOUT DE SUITE (parité Cartes
+      # FAST / FORDEAD). La lecture de la série CRSWIR/CRre + le tracé plotly
+      # sont déférés via `session$onFlushed` pour que la notification parte au
+      # client AVANT le calcul (un observateur synchrone ne flushe l'UI qu'à
+      # sa sortie). `on.exit` retire la notif quoi qu'il arrive (succès, « pas
+      # de données », erreur).
+      .notif_id <- session$ns("reconfort_pixel_loading")
+      shiny::showNotification(
+        i18n$t("monitoring_pixel_map_computing"),
+        id = .notif_id, type = "message", duration = NULL
+      )
+      session$onFlushed(function() {
+        on.exit(shiny::removeNotification(.notif_id, session = session),
+                add = TRUE)
+      # `onFlushed` s'exécute HORS consommateur réactif : on enveloppe tout le
+      # calcul dans `shiny::isolate()` (parité Cartes FAST / FORDEAD). Les
+      # valeurs réactives (zone, proj, cd, lat, lng, i18n) ont déjà été
+      # capturées plus haut en contexte réactif.
+      shiny::isolate({
       s <- tryCatch(
         nemeton::read_reconfort_pixel_series(
           con       = NULL,   # spec : con réservé, NULL accepté
@@ -835,6 +854,8 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       ))
       output$pixel_ts_plot <- plotly::renderPlotly(
         plotly::config(p, responsive = TRUE))
+      })  # fin shiny::isolate (calcul différé hors contexte réactif)
+      }, once = TRUE)  # fin session$onFlushed
     })
 
     invisible(list(alerts = alerts_r))
