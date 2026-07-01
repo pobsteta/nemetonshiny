@@ -1,3 +1,19 @@
+# nemetonshiny 0.94.8.9001 (dev)
+
+### Fixed — Barre de progression qui recule pendant la phase CHM
+
+Pendant le calcul des indicateurs, la barre montait jusqu'à ~32 % (chargement
+du CHM FormSpot) puis **redescendait à ~27 %** au passage sur l'inférence
+Open-Canopy / le calcul. Cause : le callback de téléchargement écrivait dans
+`state$progress` le **compteur brut de sources (0→13)** alors que la phase de
+téléchargement ne réserve que **10 unités** de `progress_max` ; le compteur
+débordait son budget, puis la phase de calcul remettait `progress` à 10. La
+progression du téléchargement est désormais **normalisée** dans sa bande
+`[0, 10]` (ratio `completed/total`) et rendue **monotone** (jamais de recul),
+ce qui supprime aussi le risque de retour à 0 % via l'étape LiDAR HD
+(`download_chm_lidar_hd` émettait `completed = 0`). Le calcul lui-même n'était
+pas affecté — bug purement d'affichage.
+
 # nemetonshiny 0.94.8 (2026-06-30)
 
 ### Fixed — Sélection : bouton « Lancer les calculs » masqué à tort
