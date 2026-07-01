@@ -45,6 +45,30 @@ test_that("plot_pixel_dieback returns a plotly object that builds without error"
   expect_true(any(y_over))
 })
 
+test_that("plot_pixel_dieback matches the reference styling", {
+  skip_if_not_installed("plotly")
+  skip_if_not_installed("viridisLite")
+
+  built <- plotly::plotly_build(
+    nemetonshiny:::plot_pixel_dieback(fake_prepared(), i18n = get_i18n("fr")))
+
+  # Trajectoires : rouge pour le creux CRswir, violet pour le pic CRre.
+  line_cols <- unlist(lapply(built$x$data, function(d) d$line$color))
+  expect_true("#D62728" %in% line_cols)  # creux (rouge)
+  expect_true("#7E3F9E" %in% line_cols)  # pic (violet)
+
+  # Colorbar des années en orientation horizontale (bas de planche).
+  cb_h <- vapply(built$x$data, function(d)
+    identical(d$marker$colorbar$orientation, "h"), logical(1))
+  expect_true(any(cb_h))
+
+  # Annotations : 3 titres de panneaux + 3 annotations pédagogiques = 6.
+  expect_equal(length(built$x$layout$annotations), 6L)
+
+  # Bandes estivales : une par année (panneau A) + une par cycle replié (B, C).
+  expect_gte(length(built$x$layout$shapes), 3L)
+})
+
 test_that("plot_pixel_dieback honours show_points = FALSE (fewer traces)", {
   skip_if_not_installed("plotly")
 

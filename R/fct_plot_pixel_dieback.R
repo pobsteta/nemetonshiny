@@ -34,10 +34,13 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   summer      <- opts$summer %||% c(152L, 273L)
 
   # Colours: CRswir / CRre fixed hues on panel A; cividis ramp for the
-  # per-year traces (folded cycles + state space).
-  col_swir <- "#2C7FB8"  # bleu
-  col_re   <- "#2CA02C"  # vert
-  col_tr   <- "#B15928"  # trajectoires creux/pic (brun, distinct des 2 indices)
+  # per-year traces (folded cycles + state space). Les deux trajectoires ont
+  # une couleur DÉDIÉE (rouge = creux CRswir, violet = pic CRre) — cf. image
+  # de référence — chacune reprise sur ses points, sa ligne et ses libellés.
+  col_swir <- "#1F77B4"  # bleu (CRswir)
+  col_re   <- "#2CA02C"  # vert (CRre)
+  col_trough <- "#D62728"  # rouge — trajectoire du creux estival CRswir
+  col_peak   <- "#7E3F9E"  # violet — trajectoire du pic estival CRre
 
   .df <- function(x) if (is.data.frame(x)) x else NULL
   grid_swir <- .df(prepared$grid_swir); grid_re <- .df(prepared$grid_re)
@@ -107,41 +110,45 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   if (!is.null(grid_swir) && nrow(grid_swir)) {
     pA <- plotly::add_lines(
       pA, data = grid_swir, x = ~date, y = ~val, yaxis = "y",
-      name = tr("monitoring_reconfort_crswir"), legendgroup = "swir",
-      line = list(color = col_swir, width = 2),
+      name = tr("pixel_legend_crswir"), legendgroup = "swir",
+      line = list(color = col_swir, width = 2.2),
       hovertemplate = paste0("CRswir<br>%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>")
     )
   }
-  if (!is.null(grid_re) && nrow(grid_re)) {
-    pA <- plotly::add_lines(
-      pA, data = grid_re, x = ~date, y = ~val, yaxis = "y2",
-      name = tr("monitoring_reconfort_crre"), legendgroup = "re",
-      line = list(color = col_re, width = 2),
-      hovertemplate = paste0("CRre<br>%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>")
-    )
-  }
-  # Trajectoire creux estival CRswir (dash + cercle + label) — axe y.
+  # Trajectoire creux estival CRswir (rouge, pointillés, cercles, labels rouges
+  # sous les points) — axe y.
   if (!is.null(trough) && nrow(trough)) {
     pA <- plotly::add_trace(
       pA, data = trough, x = ~date, y = ~val, yaxis = "y",
       type = "scatter", mode = "lines+markers+text",
       name = tr("pixel_trough_swir"),
-      text = ~sprintf("%.2f", val), textposition = "top center",
-      line = list(color = col_tr, width = 1.5, dash = "dash"),
-      marker = list(color = col_tr, size = 9, symbol = "circle"),
+      text = ~sprintf("%.2f", val), textposition = "bottom center",
+      textfont = list(color = col_trough, size = 11),
+      line = list(color = col_trough, width = 1.5, dash = "dash"),
+      marker = list(color = col_trough, size = 8, symbol = "circle"),
       hovertemplate = paste0("<b>", tr("pixel_trough_swir"),
                              "</b><br>%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>")
     )
   }
-  # Trajectoire pic estival CRre (dashdot + triangle) — axe y2.
+  if (!is.null(grid_re) && nrow(grid_re)) {
+    pA <- plotly::add_lines(
+      pA, data = grid_re, x = ~date, y = ~val, yaxis = "y2",
+      name = tr("pixel_legend_crre"), legendgroup = "re",
+      line = list(color = col_re, width = 2.2),
+      hovertemplate = paste0("CRre<br>%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>")
+    )
+  }
+  # Trajectoire pic estival CRre (violet, pointillés, cercles, labels violets
+  # au-dessus des points) — axe y2.
   if (!is.null(peak) && nrow(peak)) {
     pA <- plotly::add_trace(
       pA, data = peak, x = ~date, y = ~val, yaxis = "y2",
       type = "scatter", mode = "lines+markers+text",
       name = tr("pixel_peak_re"),
-      text = ~sprintf("%.2f", val), textposition = "bottom center",
-      line = list(color = col_tr, width = 1.5, dash = "dashdot"),
-      marker = list(color = col_tr, size = 9, symbol = "triangle-up"),
+      text = ~sprintf("%.2f", val), textposition = "top center",
+      textfont = list(color = col_peak, size = 11),
+      line = list(color = col_peak, width = 1.5, dash = "dash"),
+      marker = list(color = col_peak, size = 8, symbol = "circle"),
       hovertemplate = paste0("<b>", tr("pixel_peak_re"),
                              "</b><br>%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>")
     )
@@ -149,17 +156,31 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   pA <- plotly::layout(
     pA,
     shapes = shapes,
-    xaxis  = list(title = tr("monitoring_timeseries_xaxis"), type = "date"),
-    yaxis  = list(title = tr("monitoring_reconfort_crswir")),
-    yaxis2 = list(title = tr("monitoring_reconfort_crre"),
+    xaxis  = list(title = "", type = "date"),
+    yaxis  = list(title = list(text = tr("pixel_axis_crswir"),
+                               font = list(color = col_swir)),
+                  tickfont = list(color = col_swir)),
+    yaxis2 = list(title = list(text = tr("pixel_axis_crre"),
+                               font = list(color = col_re)),
+                  tickfont = list(color = col_re),
                   overlaying = "y", side = "right", showgrid = FALSE),
-    legend = list(orientation = "h", y = -0.2)
+    legend = list(x = 0.02, y = 0.60, xanchor = "left", yanchor = "top",
+                  bgcolor = "rgba(255,255,255,0.7)",
+                  bordercolor = "rgba(0,0,0,0.15)", borderwidth = 1,
+                  font = list(size = 11))
   )
 
   # ---------------------------------------------------------------
   # Panneaux B & C — cycles annuels repliés (x = doy), 1 ligne/année.
   # ---------------------------------------------------------------
-  folded <- function(grid, y_title) {
+  # Bande estivale (orange) commune aux cycles repliés (x = doy).
+  summer_band <- list(
+    type = "rect", xref = "x", yref = "paper",
+    x0 = as.integer(summer[1]), x1 = as.integer(summer[2]),
+    y0 = 0, y1 = 1, fillcolor = "rgba(255, 214, 102, 0.20)",
+    line = list(width = 0), layer = "below"
+  )
+  folded <- function(grid, y_title, annot) {
     p <- plotly::plot_ly()
     if (!is.null(grid) && nrow(grid)) {
       for (y in yrs) {
@@ -177,12 +198,26 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
     }
     plotly::layout(
       p,
+      shapes = list(summer_band),
+      annotations = list(annot),
       xaxis = list(title = tr("pixel_doy_axis")),
       yaxis = list(title = y_title)
     )
   }
-  pB <- folded(grid_swir, tr("monitoring_reconfort_crswir"))
-  pC <- folded(grid_re,   tr("monitoring_reconfort_crre"))
+  # Annotations « pédagogiques » ancrées en coordonnées données (doy, valeur).
+  annot_trough <- list(
+    x = 235, y = 0.72, xref = "x", yref = "y", showarrow = TRUE,
+    ax = 20, ay = -30, arrowhead = 2, arrowsize = 1, arrowwidth = 1,
+    arrowcolor = "#888888", text = tr("pixel_annot_trough"),
+    font = list(size = 10, color = "#666666"), align = "left"
+  )
+  annot_peak <- list(
+    x = 300, y = 0.72, xref = "x", yref = "y", showarrow = FALSE,
+    text = tr("pixel_annot_peak"),
+    font = list(size = 10, color = "#666666"), align = "left"
+  )
+  pB <- folded(grid_swir, "CRswir", annot_trough)
+  pC <- folded(grid_re,   "CRre",   annot_peak)
 
   # ---------------------------------------------------------------
   # Panneau D — espace d'état CRswir x CRre, couleur = année (1 seule colorbar).
@@ -192,31 +227,43 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
     pD <- plotly::add_markers(
       pD, data = state, x = ~val_sw, y = ~val_re,
       color = ~year, colors = viridisLite::cividis(256),
-      marker = list(size = 6, colorbar = list(title = tr("pixel_year"))),
+      marker = list(size = 6, colorbar = list(
+        title = list(text = tr("pixel_year")),
+        orientation = "h", x = 0.5, xanchor = "center",
+        y = -0.14, yanchor = "top", len = 0.42, thickness = 12,
+        tickvals = if (length(yrs)) yrs else NULL,
+        ticktext = if (length(yrs)) as.character(yrs) else NULL
+      )),
       showlegend = FALSE,
       hovertemplate = paste0("%{marker.color}<br>CRswir %{x:.3f}",
                              "<br>CRre %{y:.3f}<extra></extra>")
     )
   }
+  # Trajectoire des centroïdes annuels (losanges reliés en pointillés).
   if (!is.null(centroids) && nrow(centroids)) {
     cc <- centroids[order(centroids$year), , drop = FALSE]
     pD <- plotly::add_trace(
       pD, data = cc, x = ~val_sw, y = ~val_re,
-      type = "scatter", mode = "lines+markers+text",
+      type = "scatter", mode = "lines+markers",
       name = tr("pixel_centroids"),
-      text = ~as.character(year), textposition = "top center",
-      line = list(color = "#333333", width = 1.5),
+      line = list(color = "#333333", width = 1.5, dash = "dash"),
       marker = list(color = "#333333", size = 10, symbol = "diamond"),
       showlegend = FALSE,
       hovertemplate = paste0("<b>", tr("pixel_centroids"),
                              " %{text}</b><br>CRswir %{x:.3f}",
-                             "<br>CRre %{y:.3f}<extra></extra>")
+                             "<br>CRre %{y:.3f}<extra></extra>"),
+      text = ~as.character(year)
     )
   }
   pD <- plotly::layout(
     pD,
-    xaxis = list(title = tr("monitoring_reconfort_crswir")),
-    yaxis = list(title = tr("monitoring_reconfort_crre"))
+    annotations = list(list(
+      x = 0.85, y = 0.72, xref = "x", yref = "y", showarrow = FALSE,
+      text = tr("pixel_annot_drift"),
+      font = list(size = 10, color = "#666666"), align = "left"
+    )),
+    xaxis = list(title = tr("pixel_axis_crswir_water")),
+    yaxis = list(title = tr("pixel_axis_crre_chloro"))
   )
 
   # ---------------------------------------------------------------
@@ -241,7 +288,7 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
     paper_bgcolor = "rgba(0,0,0,0)",
     plot_bgcolor  = "rgba(0,0,0,0)",
     font = list(size = 13),
-    margin = list(t = 60, b = 40, l = 55, r = 20),
+    margin = list(t = 60, b = 95, l = 55, r = 20),
     annotations = list(
       panel_title(0.14, 0.40, "pixel_cycles_swir"),
       panel_title(0.5,  0.40, "pixel_cycles_re"),
