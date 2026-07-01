@@ -1,3 +1,15 @@
+# nemetonshiny 0.96.2.9001 (dev)
+
+### Changed — Sous-onglet familles : cartes indicateurs sur une seule ligne
+
+Dans le sous-onglet de détail d'une famille, les cartes des indicateurs
+passaient par un grid Bootstrap 12 colonnes (`col-3` pour n ≥ 4). Le grid ne
+répartissant pas 5 cartes également (12/5 non entier), la famille **Risques &
+Résilience** avec R5 activé (5 indicateurs) débordait sur 2 lignes (4 + 1). La
+disposition passe à un **flexbox à largeurs égales sans retour à la ligne**
+(`flex: 1 1 0` + `flex-nowrap`), qui aligne n'importe quel nombre d'indicateurs
+(1 à 5) sur **une seule ligne**, cartes de largeur égale.
+
 # nemetonshiny 0.96.2 (2026-07-01)
 
 ### Changed — extraction de la valeur d'indicateur déléguée au cœur (anti-dérive)
