@@ -1,4 +1,4 @@
-# nemetonshiny 0.96.0.9001 (dev)
+# nemetonshiny 0.96.1 (2026-07-01)
 
 ### Added — Export PNG de la planche pixel dépérissement (RECONFORT)
 
