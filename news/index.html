@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.96.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.96.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.96.1" id="nemetonshiny-0961-2026-07-01">nemetonshiny 0.96.1 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0961-2026-07-01"></a></h2>
+<div class="section level4">
+<h4 id="added--export-png-de-la-planche-pixel-dépérissement-reconfort-0-96-1">Added — Export PNG de la planche pixel dépérissement (RECONFORT)<a class="anchor" aria-label="anchor" href="#added--export-png-de-la-planche-pixel-d%C3%A9p%C3%A9rissement-reconfort-0-96-1"></a></h4>
+<p>La modale du diagnostic pixel expose désormais un bouton <strong>« Exporter PNG »</strong> qui enregistre la planche 4 panneaux COURANTE (avec les réglages lissage/points actifs) en image statique. Rendu par un helper pur réutilisable <code>save_plotly_png()</code> (<code>R/fct_plot_pixel_dieback.R</code>) qui détecte le moteur disponible : <code>kaleido</code> en priorité (via <code>reticulate</code>, pas de serveur), sinon <code>webshot2</code> (Chrome headless, ajouté en <code>Suggests</code>). Le bouton n’apparaît que si un moteur est présent (<code>.pixel_export_engine()</code>), et le handler garde un repli (image-note) si le rendu échoue à l’exécution. 2 clés i18n FR/EN ajoutées.</p>
+<p>Note : l’inclusion au <strong>rapport Quarto de synthèse</strong> n’est pas branchée — ce rapport est projet-global tandis que la planche est un diagnostic par pixel ; une section « pixel représentatif » nécessiterait une sélection métier (à porter côté <code>nemeton</code>, pas dans l’app). Le helper <code>save_plotly_png()</code> est prêt à être réutilisé le jour où cette section sera spécifiée.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.96.0" id="nemetonshiny-0960-2026-07-01">nemetonshiny 0.96.0 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0960-2026-07-01"></a></h2>
 <div class="section level4">

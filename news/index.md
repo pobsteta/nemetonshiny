@@ -1,5 +1,26 @@
 # Changelog
 
+## nemetonshiny 0.96.1 (2026-07-01)
+
+#### Added — Export PNG de la planche pixel dépérissement (RECONFORT)
+
+La modale du diagnostic pixel expose désormais un bouton **« Exporter
+PNG »** qui enregistre la planche 4 panneaux COURANTE (avec les réglages
+lissage/points actifs) en image statique. Rendu par un helper pur
+réutilisable `save_plotly_png()` (`R/fct_plot_pixel_dieback.R`) qui
+détecte le moteur disponible : `kaleido` en priorité (via `reticulate`,
+pas de serveur), sinon `webshot2` (Chrome headless, ajouté en
+`Suggests`). Le bouton n’apparaît que si un moteur est présent
+(`.pixel_export_engine()`), et le handler garde un repli (image-note) si
+le rendu échoue à l’exécution. 2 clés i18n FR/EN ajoutées.
+
+Note : l’inclusion au **rapport Quarto de synthèse** n’est pas branchée
+— ce rapport est projet-global tandis que la planche est un diagnostic
+par pixel ; une section « pixel représentatif » nécessiterait une
+sélection métier (à porter côté `nemeton`, pas dans l’app). Le helper
+`save_plotly_png()` est prêt à être réutilisé le jour où cette section
+sera spécifiée.
+
 ## nemetonshiny 0.96.0 (2026-07-01)
 
 #### Added — Planche pixel dépérissement 4 panneaux (RECONFORT, Partie B)
