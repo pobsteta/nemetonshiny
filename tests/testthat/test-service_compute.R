@@ -5391,13 +5391,16 @@ test_that("compute_single_indicator delegates value extraction to nemeton (v0.10
       crs = 4326))
 
   # Stub indicator: returns the units with a short-code value column. The
-  # extraction must resolve "ZZ" via nemeton::extract_indicator_value(),
-  # not any hand-kept map (removed in this refactor).
-  assign("indicateur_zz_test",
-         function(units, ...) { units$ZZ <- c(11, 22); units },
+  # extraction must resolve "Z1" via nemeton::extract_indicator_value(),
+  # not any hand-kept map (removed in this refactor). The code is an
+  # in-contract family short code (letter + digit, like B4/P1/R5); the
+  # extractor derives it from the indicator name, so no real indicator is
+  # needed to prove the delegation.
+  assign("indicateur_z1_test",
+         function(units, ...) { units$Z1 <- c(11, 22); units },
          envir = globalenv())
-  on.exit(rm("indicateur_zz_test", envir = globalenv()), add = TRUE)
+  on.exit(rm("indicateur_z1_test", envir = globalenv()), add = TRUE)
 
-  val <- compute_single_indicator("indicateur_zz_test", parcels, layers = list())
+  val <- compute_single_indicator("indicateur_z1_test", parcels, layers = list())
   expect_equal(val, c(11, 22))
 })
