@@ -525,6 +525,7 @@ TRANSLATIONS <- list(
   task_complete = list(fr = "Traitement termin\u00e9", en = "Processing complete"),
   task_error = list(fr = "Erreur de traitement", en = "Processing error"),
   task_resuming = list(fr = "Reprise des calculs...", en = "Resuming calculations..."),
+  task_spectral_diversity = list(fr = "Diversit\u00e9 spectrale (B4/L3) : analyse biodivMapR sur Sentinel-2...", en = "Spectral diversity (B4/L3): biodivMapR analysis on Sentinel-2..."),
   elapsed_time = list(fr = "Temps \u00e9coul\u00e9", en = "Elapsed time"),
   errors_title = list(fr = "Erreurs rencontr\u00e9es :", en = "Errors encountered:"),
   computation_summary = list(
@@ -925,6 +926,7 @@ TRANSLATIONS <- list(
   indicator_B1 = list(fr = "Protection biodiversit\u00e9", en = "Biodiversity Protection"),
   indicator_B2 = list(fr = "Diversit\u00e9 structurale", en = "Structural Diversity"),
   indicator_B3 = list(fr = "Connectivit\u00e9 \u00e9cologique", en = "Ecological Connectivity"),
+  indicator_B4 = list(fr = "Diversit\u00e9 spectrale (\u03b1)", en = "Spectral Diversity (\u03b1)"),
   indicator_W1 = list(fr = "R\u00e9seau hydrographique", en = "Water Network"),
   indicator_W2 = list(fr = "Zones humides", en = "Wetlands"),
   indicator_W3 = list(fr = "Indice topographique d'humidit\u00e9", en = "Topographic Wetness Index"),
@@ -934,6 +936,7 @@ TRANSLATIONS <- list(
   indicator_F2 = list(fr = "Risque d'\u00e9rosion", en = "Erosion Risk"),
   indicator_L1 = list(fr = "Sylvosph\u00e8re (effet lisi\u00e8re)", en = "Sylvosphere (Edge Effect)"),
   indicator_L2 = list(fr = "Fragmentation paysag\u00e8re", en = "Landscape Fragmentation"),
+  indicator_L3 = list(fr = "H\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale (\u03b2)", en = "Spectral Heterogeneity (\u03b2)"),
   indicator_T1 = list(fr = "Anciennet\u00e9 foresti\u00e8re", en = "Forest Age"),
   indicator_T2 = list(fr = "Taux de changement", en = "Change Rate"),
   indicator_R1 = list(fr = "Risque incendie", en = "Fire Risk"),
@@ -4040,6 +4043,11 @@ translate_task_message <- function(task, i18n) {
   # Handle download_complete
   if (task == "download_complete") {
     return(i18n$t("download_complete"))
+  }
+
+  # Spectral diversity (B4/L3) — biodivMapR run, spec 028
+  if (task == "spectral_diversity") {
+    return(i18n$t("task_spectral_diversity"))
   }
 
   # OSO raster download progress "download_oso_progress:42"

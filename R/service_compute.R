@@ -274,6 +274,232 @@ CHM_REQUIRED_INDICATORS <- c(
 )
 
 
+#' Indicators that need a Sentinel-2 spectral-diversity object (biodivMapR)
+#'
+#' @description
+#' B4 (alpha / Shannon) and L3 (beta / Bray-Curtis) both derive from the
+#' SAME biodivMapR primitive run over a Sentinel-2 reflectance cube
+#' (nemeton >= 0.110.0, spec 028). The cube is not part of the standard
+#' download, so the compute pipeline assembles it ONCE
+#' (`build_spectral_diversity()`), runs
+#' `nemeton::compute_spectral_diversity()` a single time and shares the
+#' result with both indicators via `layers$spectral`. When the object
+#' cannot be built (no Sentinel-2 cache, failure), both indicators fall
+#' back to NA — same graceful degradation as the CHM-derived ones.
+#'
+#' @noRd
+SPECTRAL_INDICATORS <- c(
+  "indicateur_b4_div_spectrale",
+  "indicateur_l3_het_spectrale"
+)
+
+
+#' Sentinel-2 bands available in the app's COG cache
+#'
+#' @description
+#' The FAST / RECONFORT ingestion stages exactly these six bands in
+#' `<project>/cache/layers/sentinel2/<scene>/<band>.tif`, and
+#' `nemeton::read_s2_band_raster()` only reads this set. biodivMapR runs
+#' its PCA / k-means on whatever bands are present, so six is plenty for
+#' spectral-species mapping (the 10-band list in the spec is aspirational
+#' — the cache never holds B02/B03/B06/B07 in NDP 0).
+#'
+#' @noRd
+SPECTRAL_S2_BANDS <- c("B04", "B05", "B08", "B8A", "B11", "B12")
+
+
+#' Inventory the Sentinel-2 COG cache from disk
+#'
+#' @description
+#' Mirrors the disk-driven scan used by the monitoring pixel map: one
+#' populated subdirectory per scene, with the acquisition date parsed
+#' from the scene id. Returns `NULL` when the cache is missing or empty.
+#'
+#' @param cache_dir Character. `<project>/cache/layers/sentinel2`.
+#'
+#' @return data.frame(scene_id, obs_date) ordered by date, or NULL.
+#' @noRd
+.scan_s2_cache_scenes <- function(cache_dir) {
+  if (is.null(cache_dir) || !dir.exists(cache_dir)) return(NULL)
+  dirs <- list.dirs(cache_dir, recursive = FALSE, full.names = FALSE)
+  if (!length(dirs)) return(NULL)
+  populated <- vapply(dirs, function(s) {
+    any(grepl("\\.tif$", list.files(file.path(cache_dir, s))))
+  }, logical(1))
+  dirs <- dirs[populated]
+  if (!length(dirs)) return(NULL)
+  obs_date <- vapply(dirs, .pixel_scene_date_from_id, character(1))
+  keep <- !is.na(obs_date)
+  if (!any(keep)) return(NULL)
+  out <- data.frame(
+    scene_id = dirs[keep],
+    obs_date = as.Date(obs_date[keep]),
+    stringsAsFactors = FALSE
+  )
+  out[order(out$obs_date), , drop = FALSE]
+}
+
+
+#' Pick the summer scene best suited for spectral diversity
+#'
+#' @description
+#' biodivMapR wants a single low-cloud summer acquisition (spec 028 P2).
+#' We have no per-scene cloud metric on disk, so we approximate: keep
+#' scenes whose day-of-year falls in the growing season (Jun 1 - Sep 30,
+#' DOY 152-273) and return the one closest to mid-August (DOY 227, peak
+#' canopy). Falls back to the overall closest-to-midsummer scene when no
+#' scene lands inside the window.
+#'
+#' @param scenes_df data.frame(scene_id, obs_date).
+#'
+#' @return A single scene_id, or NULL when `scenes_df` is empty.
+#' @noRd
+.pick_summer_s2_scene <- function(scenes_df) {
+  if (is.null(scenes_df) || nrow(scenes_df) == 0L) return(NULL)
+  doy <- as.integer(format(scenes_df$obs_date, "%j"))
+  in_summer <- !is.na(doy) & doy >= 152L & doy <= 273L
+  cand <- if (any(in_summer)) which(in_summer) else seq_len(nrow(scenes_df))
+  # closest to mid-August (peak canopy)
+  best <- cand[which.min(abs(doy[cand] - 227L))]
+  scenes_df$scene_id[best]
+}
+
+
+#' Assemble a multi-band Sentinel-2 reflectance cube for one scene
+#'
+#' @description
+#' Reads each available band of a single scene through the core reader
+#' `nemeton::read_s2_band_raster()`, resamples them onto a common grid
+#' (S2 bands mix 10 m and 20 m native resolution, so a naive stack would
+#' fail with "extents do not match"), stacks them and crops to the area
+#' of interest. Returns `NULL` when fewer than two bands are readable
+#' (spectral diversity is undefined with a single band).
+#'
+#' @param cache_dir Character. Sentinel-2 cache directory.
+#' @param scene_id Character. Scene to read.
+#' @param aoi sf/sfc. Area of interest to crop to (any CRS). Optional.
+#' @param bands Character. Bands to attempt (defaults to the cached set).
+#'
+#' @return A terra SpatRaster (one layer per band) or NULL.
+#' @noRd
+build_reflectance_stack <- function(cache_dir, scene_id, aoi = NULL,
+                                    bands = SPECTRAL_S2_BANDS) {
+  if (!requireNamespace("terra", quietly = TRUE)) return(NULL)
+  band_rasters <- list()
+  for (b in bands) {
+    r <- tryCatch(
+      nemeton::read_s2_band_raster(cache_dir, scene_id, b),
+      error = function(e) NULL
+    )
+    if (!is.null(r)) band_rasters[[b]] <- r
+  }
+  if (length(band_rasters) < 2L) return(NULL)
+
+  # Align onto the first band's grid (10 m B04 first → 20 m bands are
+  # resampled up), otherwise terra::rast() rejects the heterogeneous set.
+  ref <- band_rasters[[1]]
+  aligned <- lapply(band_rasters, function(r) {
+    if (isTRUE(terra::compareGeom(r, ref, stopOnError = FALSE))) {
+      r
+    } else {
+      tryCatch(terra::resample(r, ref), error = function(e) NULL)
+    }
+  })
+  aligned <- aligned[!vapply(aligned, is.null, logical(1))]
+  if (length(aligned) < 2L) return(NULL)
+
+  cube <- tryCatch(terra::rast(aligned), error = function(e) NULL)
+  if (is.null(cube)) return(NULL)
+  names(cube) <- names(aligned)
+
+  if (!is.null(aoi)) {
+    aoi_v <- tryCatch(
+      terra::vect(sf::st_transform(sf::st_geometry(aoi), terra::crs(cube))),
+      error = function(e) NULL
+    )
+    if (!is.null(aoi_v)) {
+      cube <- tryCatch(terra::crop(cube, aoi_v), error = function(e) cube)
+    }
+  }
+  cube
+}
+
+
+#' Build the shared spectral-diversity object for B4 / L3
+#'
+#' @description
+#' The single entry point wired into the compute pipeline (spec 028
+#' P2/P3). Best-effort and never fatal: any failure (no Sentinel-2 cache,
+#' no summer scene, unreadable bands, biodivMapR error) returns `NULL`,
+#' leaving B4/L3 at NA. Runs inside the compute ExtendedTask worker, so
+#' the biodivMapR PCA + k-means (notable CPU cost) does not block the UI;
+#' the CPU budget is exposed through `getOption("nemeton.biodivmapr_cpu")`.
+#'
+#' @param parcels sf. Compute units (UGF); double as the forest mask
+#'   (rasterised onto the cube grid) and the crop AOI.
+#' @param project_path Character. Project directory (locates the S2 cache).
+#' @param nb_cpu Integer. Worker count for biodivMapR.
+#'
+#' @return The `nemeton::compute_spectral_diversity()` result, or NULL.
+#' @noRd
+build_spectral_diversity <- function(parcels, project_path,
+                                     nb_cpu = getOption("nemeton.biodivmapr_cpu", 1L)) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  cache_dir <- file.path(project_path, "cache", "layers", "sentinel2")
+  if (!dir.exists(cache_dir)) {
+    cli::cli_alert_info(
+      "Spectral diversity (B4/L3): no Sentinel-2 cache at {.path {cache_dir}} \\
+       — indicators will be NA. Run a health-monitoring ingestion first.")
+    return(NULL)
+  }
+
+  tryCatch({
+    scenes_df <- .scan_s2_cache_scenes(cache_dir)
+    scene_id <- .pick_summer_s2_scene(scenes_df)
+    if (is.null(scene_id)) {
+      cli::cli_alert_info(
+        "Spectral diversity (B4/L3): no usable Sentinel-2 scene in cache.")
+      return(NULL)
+    }
+
+    aoi <- sf::st_buffer(sf::st_transform(parcels, 2154), 50)
+    cube <- build_reflectance_stack(cache_dir, scene_id, aoi = aoi)
+    if (is.null(cube)) {
+      cli::cli_alert_info(
+        "Spectral diversity (B4/L3): could not assemble a reflectance cube \\
+         for scene {scene_id}.")
+      return(NULL)
+    }
+
+    # Forest/UGF mask rasterised onto the cube grid (1 inside, NA outside)
+    # so biodivMapR's PCA is not polluted by non-forest pixels.
+    mask <- tryCatch({
+      units_v <- terra::vect(sf::st_transform(sf::st_geometry(parcels),
+                                              terra::crs(cube)))
+      terra::rasterize(units_v, cube[[1]])
+    }, error = function(e) NULL)
+
+    output_dir <- tempfile("biodivmapr_")
+    on.exit(unlink(output_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+    cli::cli_alert_info(
+      "Spectral diversity (B4/L3): running biodivMapR on scene {scene_id} \\
+       ({terra::nlyr(cube)} bands, nb_cpu={nb_cpu})…")
+    nemeton::compute_spectral_diversity(
+      reflectance = cube,
+      mask = mask,
+      window_size = 10L,
+      nb_cpu = nb_cpu,
+      output_dir = output_dir
+    )
+  }, error = function(e) {
+    cli::cli_warn(
+      "Spectral diversity (B4/L3) failed — indicators set to NA: {conditionMessage(e)}")
+    NULL
+  })
+}
+
+
 #' Build the translated "CHM unavailable" compute error message
 #'
 #' v0.46.4 — diagnostic plutôt que générique. Le message de base
@@ -598,14 +824,32 @@ start_computation <- function(project_id,
     state$current_task <- "compute_start"
     report_progress(state)
 
+    effective_indicators <- if (length(indicators) == 1 && indicators == "all") {
+      list_available_indicators()
+    } else {
+      indicators
+    }
+
+    # Spectral diversity (B4 alpha / L3 beta) — biodivMapR, spec 028.
+    # Assemble the Sentinel-2 reflectance cube and run
+    # compute_spectral_diversity ONCE here (in the compute worker), then
+    # share the object with both indicators through `layers$spectral`
+    # (name-resolved into `spectral =` by compute_single_indicator). Gated
+    # on B4/L3 being requested; NULL (→ NA) when there is no S2 cache or
+    # on any failure. Long op → immediate progress feedback (rule #9).
+    if (length(intersect(SPECTRAL_INDICATORS, effective_indicators)) > 0) {
+      state$current_task <- "spectral_diversity"
+      report_progress(state)
+      layers$spectral <- build_spectral_diversity(
+        parcels = compute_unit,
+        project_path = project_path
+      )
+    }
+
     results <- compute_all_indicators(
       parcels = compute_unit,
       layers = layers,
-      indicators = if (length(indicators) == 1 && indicators == "all") {
-        list_available_indicators()
-      } else {
-        indicators
-      },
+      indicators = effective_indicators,
       progress_callback = function(ind_progress) {
         # Use <<- to persist state changes in enclosing scope so that
         # post-loop code (error handler, final status) sees accurate values.
