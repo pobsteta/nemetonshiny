@@ -479,18 +479,32 @@ build_spectral_diversity <- function(parcels, project_path,
       terra::rasterize(units_v, cube[[1]])
     }, error = function(e) NULL)
 
-    output_dir <- tempfile("biodivmapr_")
-    on.exit(unlink(output_dir, recursive = TRUE, force = TRUE), add = TRUE)
+    # Persist biodivMapR outputs under the project cache (like the
+    # reconfort / fordead layers) instead of a tempfile. Two reasons:
+    #   1. correctness — compute_spectral_diversity() returns *lazy*
+    #      file-backed SpatRasters pointing into this directory; B4/L3
+    #      read them later during aggregation. A tempfile dir unlinked on
+    #      return left dangling pointers → "[readStart] file does not
+    #      exist: …/shannon_sd.tiff" (spec 028). A persistent path (same
+    #      filesystem, survives the future::multisession worker) stays
+    #      readable.
+    #   2. reuse — biodivMapR's PCA + k-means is expensive; keeping the
+    #      α/β rasters on disk lets a re-run reuse them
+    #      (compute_spectral_diversity() skips the run when they exist).
+    # Keyed by scene id; invalidated by the project's compute-cache clear.
+    spectral_dir <- file.path(project_path, "cache", "layers",
+                              "spectral", scene_id)
+    dir.create(spectral_dir, recursive = TRUE, showWarnings = FALSE)
 
     cli::cli_alert_info(
       "Spectral diversity (B4/L3): running biodivMapR on scene {scene_id} \\
-       ({terra::nlyr(cube)} bands, nb_cpu={nb_cpu})…")
+       ({terra::nlyr(cube)} bands, nb_cpu={nb_cpu}) → cache {.path {spectral_dir}}")
     nemeton::compute_spectral_diversity(
       reflectance = cube,
       mask = mask,
       window_size = 10L,
       nb_cpu = nb_cpu,
-      output_dir = output_dir
+      output_dir = spectral_dir
     )
   }, error = function(e) {
     cli::cli_warn(
