@@ -1,3 +1,15 @@
+# nemetonshiny 0.94.10 (2026-07-01)
+
+### Changed — Seuil FAST débouncé (moins de recalculs de raster)
+
+Le slider de seuil (NDVI/NBR/NDMI) de l'onglet « Alertes FAST » relançait un
+calcul de raster complet **à chaque cran** pendant le glissement : côté cœur,
+le nom du cache encode le seuil (`thr%.2f`), donc chaque valeur intermédiaire est
+une clé de cache distincte, non cachée. Les seuils consommés par le calcul sont
+désormais **débouncés (400 ms)** (`thresholds_deb`) : seule la valeur finale
+déclenche le calcul. L'indice, le mode, la zone et les dates restent à réaction
+immédiate.
+
 # nemetonshiny 0.94.9 (2026-07-01)
 
 ### Fixed — Barre de progression qui recule pendant la phase CHM

@@ -234,6 +234,16 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # « impossible à calculer » (cache incomplet pour cet indice).
     last_raster_error <- shiny::reactiveVal(NULL)
 
+    # v0.94.x — Seuils débouncés (400 ms) pour le CALCUL du raster. Chaque
+    # valeur intermédiaire du slider de seuil produit une clé de cache
+    # distincte côté cœur (`compute_fast_alert_mask` : le nom encode
+    # `thr%.2f`) → un recalcul complet non caché par cran. En débounçant, on
+    # ne calcule que la valeur finale (le glissement n'empile plus de calculs
+    # lourds). L'indice / le mode / la zone / les dates restent NON débouncés
+    # (réaction immédiate). Consommé par l'observer de calcul, `compute_fast_
+    # raster()` et le pré-chauffage trend.
+    thresholds_deb <- shiny::debounce(thresholds_r, 400)
+
     # Refresh radio labels on language change. Preserves selection by
     # echoing back input$mode (or default "count" before first click).
     # v0.46.1 — `inline = TRUE` doit être passé explicitement ;
@@ -360,7 +370,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
       dr <- date_range_r()
       if (length(dr) != 2L || any(is.na(dr))) return(NULL)
-      th <- thresholds_r()
+      th <- thresholds_deb()
       if (is.null(th) || is.null(th$ndvi) || is.null(th$nbr)) return(NULL)
       cd <- cache_dir_r()
       if (is.null(cd)) return(NULL)
@@ -490,8 +500,10 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # message ne serait pas visible). Évite les clics intempestifs avant
     # l'affichage de la nouvelle carte.
     shiny::observe({
-      # Dépendances : recalcul quand l'un de ces réactifs change.
-      refresh_r(); zone_id_r(); date_range_r(); thresholds_r()
+      # Dépendances : recalcul quand l'un de ces réactifs change. Les seuils
+      # sont pris DÉBOUNCÉS (thresholds_deb) : glisser le slider ne relance
+      # plus un calcul lourd à chaque cran, seulement après 400 ms de repos.
+      refresh_r(); zone_id_r(); date_range_r(); thresholds_deb()
       input$index; input$mode
       input$trend_months; input$trend_min_years; input$trend_alpha
       # Dépendance sur l'onglet principal actif : on ne calcule (et ne
@@ -546,7 +558,7 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       if (!identical(input$mode %||% "count", "trend")) return()
       zone <- zone_id_r()
       dr   <- date_range_r()
-      th   <- thresholds_r()
+      th   <- thresholds_deb()
       proj <- app_state$current_project
       cd   <- cache_dir_r()
       if (is.null(zone) || !isTRUE(nzchar(zone))) return()
