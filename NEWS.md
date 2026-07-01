@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.97.0 (2026-07-01)
 
 ### Added — Diversité spectrale B4 / L3 (affichage, spec 028)
 
