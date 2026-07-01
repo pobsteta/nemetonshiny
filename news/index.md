@@ -1,5 +1,59 @@
 # Changelog
 
+## nemetonshiny 0.94.9 (2026-07-01)
+
+#### Fixed — Barre de progression qui recule pendant la phase CHM
+
+Pendant le calcul des indicateurs, la barre montait jusqu’à ~32 %
+(chargement du CHM FormSpot) puis **redescendait à ~27 %** au passage
+sur l’inférence Open-Canopy / le calcul. Cause : le callback de
+téléchargement écrivait dans `state$progress` le **compteur brut de
+sources (0→13)** alors que la phase de téléchargement ne réserve que
+**10 unités** de `progress_max` ; le compteur débordait son budget, puis
+la phase de calcul remettait `progress` à 10. La progression du
+téléchargement est désormais **normalisée** dans sa bande `[0, 10]`
+(ratio `completed/total`) et rendue **monotone** (jamais de recul), ce
+qui supprime aussi le risque de retour à 0 % via l’étape LiDAR HD
+(`download_chm_lidar_hd` émettait `completed = 0`). Le calcul lui-même
+n’était pas affecté — bug purement d’affichage.
+
+#### Fixed — Carte RECONFORT : notification « Calcul du graphique en cours… » manquante
+
+Au clic-pixel sur la Carte RECONFORT, aucun message bas-droite ne
+s’affichait et l’UI se figeait silencieusement pendant la lecture de la
+série CRSWIR/CRre. Le handler faisait tout de façon **synchrone**,
+contrairement aux Cartes FAST et FORDEAD qui affichent immédiatement la
+notification `monitoring_pixel_map_computing` puis diffèrent le calcul
+via `session$onFlushed`. RECONFORT adopte désormais ce même motif
+(notification immédiate + calcul déféré + `on.exit` de nettoyage), pour
+une parité complète des trois cartes pixel (règle stricte
+[\#9](https://github.com/pobsteta/nemetonshiny/issues/9) : retour
+immédiat sur action longue).
+
+#### Changed — Police agrandie dans les graphiques pixel FAST/FORDEAD/RECONFORT
+
+En plein écran, les libellés d’axes, ticks, légende et surtout les
+annotations in-plot (seuils NDVI/NBR/NDMI, date de 1re anomalie FORDEAD,
+hors zone de validité, libellés d’année RECONFORT) étaient difficiles à
+lire. Une police globale `size = 16` est posée sur chaque
+`plotly::layout()` (axes/ticks/légende/ hover héritent), et les
+annotations in-plot passent de 10-12 à 14-15 px. Concerne les quatre
+graphiques pixel au clic : FAST (série NDVI/NBR/NDMI), FAST Tendance
+(Theil-Sen), FORDEAD (CRSWIR + harmonique) et RECONFORT (CRSWIR/CRre).
+
+#### Changed — Bandeau RECONFORT « hors domaine de calibration » remonté sous « Base de suivi connectée »
+
+Le bandeau d’avertissement RECONFORT (zone hors domaine de calibration,
+non bloquant) était rendu *dans* l’onglet « Alertes RECONFORT »,
+au-dessus de la carte. Il est désormais rendu au niveau parent, juste
+sous « Base de suivi connectée » et au-dessus des sous-onglets — même
+emplacement et même style (`.monitoring_validity_banner`, carte à
+bordure warning) que les bandeaux de validité FORDEAD, pour une parité
+visuelle complète. Le sous-module carte expose `validity` ; le parent
+(`mod_monitoring::output$reconfort_validity_banner`) en tire le bandeau,
+visible uniquement en mode RECONFORT et hors domaine. Deux clés i18n
+ajoutées (titre + corps).
+
 ## nemetonshiny 0.94.8 (2026-06-30)
 
 #### Fixed — Sélection : bouton « Lancer les calculs » masqué à tort

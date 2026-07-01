@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.8.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,25 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.9" id="nemetonshiny-0949-2026-07-01">nemetonshiny 0.94.9 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0949-2026-07-01"></a></h2>
+<div class="section level4">
+<h4 id="fixed--barre-de-progression-qui-recule-pendant-la-phase-chm-0-94-9">Fixed — Barre de progression qui recule pendant la phase CHM<a class="anchor" aria-label="anchor" href="#fixed--barre-de-progression-qui-recule-pendant-la-phase-chm-0-94-9"></a></h4>
+<p>Pendant le calcul des indicateurs, la barre montait jusqu’à ~32 % (chargement du CHM FormSpot) puis <strong>redescendait à ~27 %</strong> au passage sur l’inférence Open-Canopy / le calcul. Cause : le callback de téléchargement écrivait dans <code>state$progress</code> le <strong>compteur brut de sources (0→13)</strong> alors que la phase de téléchargement ne réserve que <strong>10 unités</strong> de <code>progress_max</code> ; le compteur débordait son budget, puis la phase de calcul remettait <code>progress</code> à 10. La progression du téléchargement est désormais <strong>normalisée</strong> dans sa bande <code>[0, 10]</code> (ratio <code>completed/total</code>) et rendue <strong>monotone</strong> (jamais de recul), ce qui supprime aussi le risque de retour à 0 % via l’étape LiDAR HD (<code>download_chm_lidar_hd</code> émettait <code>completed = 0</code>). Le calcul lui-même n’était pas affecté — bug purement d’affichage.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--carte-reconfort--notification--calcul-du-graphique-en-cours--manquante-0-94-9">Fixed — Carte RECONFORT : notification « Calcul du graphique en cours… » manquante<a class="anchor" aria-label="anchor" href="#fixed--carte-reconfort--notification--calcul-du-graphique-en-cours--manquante-0-94-9"></a></h4>
+<p>Au clic-pixel sur la Carte RECONFORT, aucun message bas-droite ne s’affichait et l’UI se figeait silencieusement pendant la lecture de la série CRSWIR/CRre. Le handler faisait tout de façon <strong>synchrone</strong>, contrairement aux Cartes FAST et FORDEAD qui affichent immédiatement la notification <code>monitoring_pixel_map_computing</code> puis diffèrent le calcul via <code>session$onFlushed</code>. RECONFORT adopte désormais ce même motif (notification immédiate + calcul déféré + <code>on.exit</code> de nettoyage), pour une parité complète des trois cartes pixel (règle stricte <a href="https://github.com/pobsteta/nemetonshiny/issues/9" class="external-link">#9</a> : retour immédiat sur action longue).</p>
+</div>
+<div class="section level4">
+<h4 id="changed--police-agrandie-dans-les-graphiques-pixel-fastfordeadreconfort-0-94-9">Changed — Police agrandie dans les graphiques pixel FAST/FORDEAD/RECONFORT<a class="anchor" aria-label="anchor" href="#changed--police-agrandie-dans-les-graphiques-pixel-fastfordeadreconfort-0-94-9"></a></h4>
+<p>En plein écran, les libellés d’axes, ticks, légende et surtout les annotations in-plot (seuils NDVI/NBR/NDMI, date de 1re anomalie FORDEAD, hors zone de validité, libellés d’année RECONFORT) étaient difficiles à lire. Une police globale <code>size = 16</code> est posée sur chaque <code>plotly::layout()</code> (axes/ticks/légende/ hover héritent), et les annotations in-plot passent de 10-12 à 14-15 px. Concerne les quatre graphiques pixel au clic : FAST (série NDVI/NBR/NDMI), FAST Tendance (Theil-Sen), FORDEAD (CRSWIR + harmonique) et RECONFORT (CRSWIR/CRre).</p>
+</div>
+<div class="section level4">
+<h4 id="changed--bandeau-reconfort--hors-domaine-de-calibration--remonté-sous--base-de-suivi-connectée--0-94-9">Changed — Bandeau RECONFORT « hors domaine de calibration » remonté sous « Base de suivi connectée »<a class="anchor" aria-label="anchor" href="#changed--bandeau-reconfort--hors-domaine-de-calibration--remont%C3%A9-sous--base-de-suivi-connect%C3%A9e--0-94-9"></a></h4>
+<p>Le bandeau d’avertissement RECONFORT (zone hors domaine de calibration, non bloquant) était rendu <em>dans</em> l’onglet « Alertes RECONFORT », au-dessus de la carte. Il est désormais rendu au niveau parent, juste sous « Base de suivi connectée » et au-dessus des sous-onglets — même emplacement et même style (<code>.monitoring_validity_banner</code>, carte à bordure warning) que les bandeaux de validité FORDEAD, pour une parité visuelle complète. Le sous-module carte expose <code>validity</code> ; le parent (<code>mod_monitoring::output$reconfort_validity_banner</code>) en tire le bandeau, visible uniquement en mode RECONFORT et hors domaine. Deux clés i18n ajoutées (titre + corps).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.8" id="nemetonshiny-0948-2026-06-30">nemetonshiny 0.94.8 (2026-06-30)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0948-2026-06-30"></a></h2>
 <div class="section level4">
