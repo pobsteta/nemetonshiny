@@ -124,12 +124,13 @@ INDICATOR_FAMILIES <- list(
     name_en = "Biodiversity",
     icon = "bug-fill",
     color = "#9932CC",
-    indicators = c("B1", "B2", "B3"),
-    column_names = c("indicateur_b1_protection", "indicateur_b2_structure", "indicateur_b3_connectivite"),
+    indicators = c("B1", "B2", "B3", "B4"),
+    column_names = c("indicateur_b1_protection", "indicateur_b2_structure", "indicateur_b3_connectivite", "indicateur_b4_div_spectrale"),
     indicator_labels = list(
       B1 = list(fr = "Protection biodiversit\u00e9", en = "Biodiversity Protection"),
       B2 = list(fr = "Diversit\u00e9 structurale", en = "Structural Diversity"),
-      B3 = list(fr = "Connectivit\u00e9 \u00e9cologique", en = "Ecological Connectivity")
+      B3 = list(fr = "Connectivit\u00e9 \u00e9cologique", en = "Ecological Connectivity"),
+      B4 = list(fr = "Diversit\u00e9 spectrale (\u03b1)", en = "Spectral Diversity (\u03b1)")
     ),
     indicator_tooltips = list(
       B1 = list(
@@ -143,6 +144,10 @@ INDICATOR_FAMILIES <- list(
       B3 = list(
         fr = "Capacit\u00e9 de la parcelle \u00e0 servir de corridor \u00e9cologique. Mesure la continuit\u00e9 foresti\u00e8re et la proximit\u00e9 d'autres habitats naturels.",
         en = "Parcel's capacity to serve as an ecological corridor. Measures forest continuity and proximity to other natural habitats."
+      ),
+      B4 = list(
+        fr = "Diversit\u00e9 spectrale \u03b1 (Shannon) issue de biodivMapR sur imagerie Sentinel-2 : h\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 des \u00ab esp\u00e8ces spectrales \u00bb au sein de la parcelle. Proxy de biodiversit\u00e9 \u00e0 valider par relev\u00e9s terrain.",
+        en = "Spectral \u03b1-diversity (Shannon) from biodivMapR on Sentinel-2 imagery: heterogeneity of 'spectral species' within the parcel. Biodiversity proxy, to be validated with field surveys."
       )
     )
   ),
@@ -226,11 +231,12 @@ INDICATOR_FAMILIES <- list(
     name_en = "Landscape",
     icon = "image-fill",
     color = "#32CD32",
-    indicators = c("L1", "L2"),
-    column_names = c("indicateur_l2_fragmentation", "indicateur_l1_sylvosphere"),
+    indicators = c("L1", "L2", "L3"),
+    column_names = c("indicateur_l2_fragmentation", "indicateur_l1_sylvosphere", "indicateur_l3_het_spectrale"),
     indicator_labels = list(
       L1 = list(fr = "Sylvosph\u00e8re (effet lisi\u00e8re)", en = "Sylvosphere (Edge Effect)"),
-      L2 = list(fr = "Fragmentation paysag\u00e8re", en = "Landscape Fragmentation")
+      L2 = list(fr = "Fragmentation paysag\u00e8re", en = "Landscape Fragmentation"),
+      L3 = list(fr = "H\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale (\u03b2)", en = "Spectral Heterogeneity (\u03b2)")
     ),
     indicator_tooltips = list(
       L1 = list(
@@ -240,6 +246,10 @@ INDICATOR_FAMILIES <- list(
       L2 = list(
         fr = "Niveau de fragmentation du paysage forestier environnant. Bas\u00e9 sur la taille et la connectivit\u00e9 des massifs forestiers proches.",
         en = "Fragmentation level of surrounding forest landscape. Based on size and connectivity of nearby forest patches."
+      ),
+      L3 = list(
+        fr = "H\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale \u03b2 (turnover Bray-Curtis) issue de biodivMapR sur Sentinel-2 : variation de composition des \u00ab esp\u00e8ces spectrales \u00bb entre fen\u00eatres, proxy de diversit\u00e9 paysag\u00e8re. Distinct de L2 (fragmentation structurale). \u00c0 valider terrain.",
+        en = "Spectral \u03b2-heterogeneity (Bray-Curtis turnover) from biodivMapR on Sentinel-2: compositional turnover of 'spectral species' between windows, a landscape-diversity proxy. Distinct from L2 (structural fragmentation). To be validated in the field."
       )
     )
   ),

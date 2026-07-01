@@ -5,6 +5,27 @@
 # DATA_SOURCES configuration tests
 # ==============================================================================
 
+test_that("list_available_indicators includes spectral diversity B4/L3 (spec 028)", {
+  inds <- list_available_indicators()
+  expect_true("indicateur_b4_div_spectrale" %in% inds)
+  expect_true("indicateur_l3_het_spectrale" %in% inds)
+  # 31 legacy indicators + B4 + L3
+  expect_equal(length(inds), 33L)
+})
+
+test_that("B4/L3 are wired into the B and L family config (display)", {
+  b <- get_family_config("B")
+  expect_true("B4" %in% b$indicators)
+  expect_true("indicateur_b4_div_spectrale" %in% b$column_names)
+  expect_false(is.null(b$indicator_labels$B4))
+  expect_false(is.null(b$indicator_tooltips$B4))
+  l <- get_family_config("L")
+  expect_true("L3" %in% l$indicators)
+  expect_true("indicateur_l3_het_spectrale" %in% l$column_names)
+  expect_false(is.null(l$indicator_labels$L3))
+  expect_false(is.null(l$indicator_tooltips$L3))
+})
+
 test_that("DATA_SOURCES contains required raster sources", {
   ds <- nemetonshiny:::DATA_SOURCES
 

@@ -225,6 +225,7 @@ list_available_indicators <- function() {
     "indicateur_c1_biomasse", "indicateur_c2_ndvi",
     # Biodiversity (B)
     "indicateur_b1_protection", "indicateur_b2_structure", "indicateur_b3_connectivite",
+    "indicateur_b4_div_spectrale",
     # Water (W)
     "indicateur_w1_reseau", "indicateur_w2_zones_humides", "indicateur_w3_humidite",
     # Air (A)
@@ -233,6 +234,7 @@ list_available_indicators <- function() {
     "indicateur_f1_fertilite", "indicateur_f2_erosion",
     # Landscape (L)
     "indicateur_l2_fragmentation", "indicateur_l1_sylvosphere",
+    "indicateur_l3_het_spectrale",
     # Temporal (T)
     "indicateur_t1_anciennete", "indicateur_t2_changement",
     # Risk (R)
@@ -3430,6 +3432,19 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     if ("soil_moisture" %in% func_args) {
       sm <- resolve_raster_layer(layers, "soil_moisture")
       if (!is.null(sm)) args$soil_moisture <- sm
+    }
+
+    # Spectral diversity (biodivMapR) forwarded to B4 (alpha / Shannon)
+    # and L3 (beta / Bray-Curtis) — nemeton >= 0.110.0, spec 028. The
+    # object is produced ONCE per run by compute_spectral_diversity()
+    # over a Sentinel-2 reflectance cube and staged in `layers$spectral`
+    # (see build_spectral_diversity()). Same name-resolved injection as
+    # `fapar`/`snow`: when absent, B4/L3 fall back to NA (both nemeton
+    # functions accept `spectral = NULL`). Assembling the S2 reflectance
+    # cube is a follow-up (spec 028 P2/P3); until then `layers$spectral`
+    # is NULL and the two indicators surface as not-yet-available.
+    if ("spectral" %in% func_args && !is.null(layers$spectral)) {
+      args$spectral <- layers$spectral
     }
 
     # F1 soil fertility: opt into the absolute SoilGrids CEC path
