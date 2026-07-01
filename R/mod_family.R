@@ -145,13 +145,17 @@ mod_family_server <- function(id, family_code, app_state) {
         ))
       }
 
-      # Build one col per indicator using plain Bootstrap grid
-      col_class <- if (n == 1) "col-12" else if (n == 2) "col-6" else if (n >= 4) "col-3" else "col-4"
-
+      # Toutes les cartes indicateurs de la famille sur UNE seule ligne :
+      # flexbox à largeurs égales (`flex: 1 1 0`) + `flex-nowrap`. Le grid
+      # Bootstrap 12 colonnes ne répartit pas 5 cartes également (12/5 non
+      # entier) : avec R5, la famille Risques & Résilience (5 indicateurs)
+      # débordait sur 2 lignes (4 + 1). Le flex gère n'importe quel n (1..5)
+      # sur une ligne, cartes de largeur égale. `min-width: 0` laisse la carte
+      # Leaflet rétrécir sous la largeur de son contenu (sinon overflow).
       map_cols <- lapply(seq_len(n), function(i) {
         map_id <- paste0("map", i)
         htmltools::div(
-          class = col_class,
+          style = "flex: 1 1 0; min-width: 0;",
           htmltools::div(
             class = "family-map-wrapper",
             leaflet::leafletOutput(ns(map_id), height = "400px")
@@ -160,7 +164,7 @@ mod_family_server <- function(id, family_code, app_state) {
       })
 
       htmltools::div(
-        class = "row mb-3",
+        class = "d-flex flex-nowrap gap-2 mb-3",
         map_cols
       )
     })
