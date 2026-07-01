@@ -1,4 +1,4 @@
-# nemetonshiny 0.94.10.9001 (dev)
+# nemetonshiny 0.95.0 (2026-07-01)
 
 ### Added — Year-picker RECONFORT borné sur la dernière saison Sentinel-2 complète
 
