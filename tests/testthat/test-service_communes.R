@@ -719,6 +719,7 @@ test_that("get_communes_in_department handles empty API response", {
 
 test_that("get_communes_in_department handles network errors", {
   skip_if_not_installed("httr2")
+  nemetonshiny:::.reset_communes_dept_cache()
 
   local_mocked_bindings(
     req_perform = function(...) {
@@ -739,6 +740,7 @@ test_that("get_communes_in_department handles network errors", {
 
 test_that("get_communes_in_department handles timeout errors", {
   skip_if_not_installed("httr2")
+  nemetonshiny:::.reset_communes_dept_cache()
 
   local_mocked_bindings(
     req_perform = function(...) {
@@ -758,6 +760,7 @@ test_that("get_communes_in_department handles timeout errors", {
 
 test_that("get_communes_in_department handles curl errors", {
   skip_if_not_installed("httr2")
+  nemetonshiny:::.reset_communes_dept_cache()
 
   local_mocked_bindings(
     req_perform = function(...) {
@@ -776,6 +779,7 @@ test_that("get_communes_in_department handles curl errors", {
 
 test_that("get_communes_in_department handles non-network errors", {
   skip_if_not_installed("httr2")
+  nemetonshiny:::.reset_communes_dept_cache()
 
   local_mocked_bindings(
     req_perform = function(...) {
@@ -791,6 +795,34 @@ test_that("get_communes_in_department handles non-network errors", {
 
   expect_equal(nrow(result), 0)
   expect_equal(attr(result, "error"), "other")
+})
+
+test_that("get_communes_in_department caches per department (no refetch)", {
+  skip_if_not_installed("httr2")
+  nemetonshiny:::.reset_communes_dept_cache()
+
+  calls <- 0L
+  local_mocked_bindings(
+    req_perform = function(...) {
+      calls <<- calls + 1L
+      structure(list(), class = "httr2_response")
+    },
+    resp_body_json = function(...) list(
+      list(code = "01001", nom = "Bourg", codesPostaux = list("01000"))
+    ),
+    .package = "httr2"
+  )
+
+  r1 <- nemetonshiny:::get_communes_in_department("01")
+  r2 <- nemetonshiny:::get_communes_in_department("01")  # cache hit
+  expect_equal(nrow(r1), 1L)
+  expect_identical(r1, r2)
+  expect_equal(calls, 1L)  # un seul appel réseau malgré 2 demandes
+
+  # reset → refetch
+  nemetonshiny:::.reset_communes_dept_cache()
+  nemetonshiny:::get_communes_in_department("01")
+  expect_equal(calls, 2L)
 })
 
 # ==============================================================================
