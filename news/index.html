@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.10.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.95.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.95.0" id="nemetonshiny-0950-2026-07-01">nemetonshiny 0.95.0 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0950-2026-07-01"></a></h2>
+<div class="section level4">
+<h4 id="added--year-picker-reconfort-borné-sur-la-dernière-saison-sentinel-complète-0-95-0">Added — Year-picker RECONFORT borné sur la dernière saison Sentinel-2 complète<a class="anchor" aria-label="anchor" href="#added--year-picker-reconfort-born%C3%A9-sur-la-derni%C3%A8re-saison-sentinel-compl%C3%A8te-0-95-0"></a></h4>
+<p>Le sélecteur d’année Sentinel-2 (mode RECONFORT) proposait/acceptait l’année en cours, dont la saison n’est pas terminée — un run lancé dessus travaillait sur des données incomplètes. Les bornes sont désormais <strong>calculées par le cœur</strong> (règle 1 : zéro logique métier dans l’app) via <code>nemeton::reconfort_year_bounds("v3")</code> (dernière saison CLOSE selon l’<code>edate</code> du modèle) : <code>value</code>/<code>max</code>/<code>default</code> = dernière année complète, <code>min</code> = première année S2 exploitable. Un <strong>garde-fou serveur</strong> dans <code>.invoke_reconfort()</code> (<code><a href="https://pobsteta.github.io/nemeton/reference/reconfort_year_bounds.html" class="external-link">nemeton::reconfort_year_bounds</a></code>) refuse toute saisie clavier hors bornes avec un toast d’avertissement (<code>monitoring_reconfort_year_incomplete</code>, FR/EN) sans lancer le run. Plancher <code>Imports: nemeton (&gt;= 0.104.0)</code>. Dépend aussi de <code>nemeton@0.105.0</code> (clé de cache FAST sur la couverture S2 réelle), tirée automatiquement via <code>@*release</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.10" id="nemetonshiny-09410-2026-07-01">nemetonshiny 0.94.10 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09410-2026-07-01"></a></h2>
 <div class="section level4">
