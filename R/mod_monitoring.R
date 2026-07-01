@@ -1096,6 +1096,18 @@ mod_monitoring_server <- function(id, app_state) {
       !is.null(ugs) && nrow(ugs) > 0L
     })
 
+    # Reactive: la BD Forêt v2 du projet est-elle en cache ? Les zones de
+    # suivi sont un croisement UGF × BD Forêt v2 : le GPKG
+    # `<projet>/cache/layers/bdforet.gpkg` est produit par
+    # `download_ign_bdforet()` AU PREMIER CALCUL du projet (onglet Synthèse).
+    # Sans lui, `build_project_monitoring_zones()` ne peut pas croiser les
+    # strates — prérequis au même titre que « UGF définies ».
+    bdforet_present <- shiny::reactive({
+      project <- app_state$current_project
+      if (is.null(project) || is.null(project$path)) return(FALSE)
+      file.exists(file.path(project$path, "cache", "layers", "bdforet.gpkg"))
+    })
+
     register_running <- shiny::reactiveVal(FALSE)
 
     # Button state: enabled iff project is loaded, samples exist on
@@ -1111,7 +1123,7 @@ mod_monitoring_server <- function(id, app_state) {
       }
       shiny::updateActionButton(
         session, "register",
-        disabled = !has_project || !ugf_present() ||
+        disabled = !has_project || !ugf_present() || !bdforet_present() ||
                    !has_db || isTRUE(register_running())
       )
     })
@@ -1126,6 +1138,10 @@ mod_monitoring_server <- function(id, app_state) {
       if (!has_project) {
         return(htmltools::tags$small(class = "text-danger d-block",
           i18n$t("monitoring_register_no_project")))
+      }
+      if (!bdforet_present()) {
+        return(htmltools::tags$small(class = "text-danger d-block",
+          i18n$t("zones_bdforet_missing")))
       }
       if (!ugf_present()) {
         return(htmltools::tags$small(class = "text-danger d-block",
