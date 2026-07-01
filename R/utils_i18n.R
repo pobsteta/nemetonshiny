@@ -3039,6 +3039,10 @@ TRANSLATIONS <- list(
     fr = "Zone hors domaine de calibration RECONFORT",
     en = "Area outside the RECONFORT calibration domain"
   ),
+  monitoring_reconfort_year_incomplete = list(
+    fr = "Année Sentinel-2 incomplète : la saison n'est pas terminée. Choisissez au plus la dernière année complète.",
+    en = "Incomplete Sentinel-2 year: the season is not over yet. Pick at most the latest complete year."
+  ),
   monitoring_reconfort_outside_validity_body = list(
     fr = "R\u00e9sultats indicatifs (avertissement, non bloquant).",
     en = "Results are indicative (advisory, non-blocking)."

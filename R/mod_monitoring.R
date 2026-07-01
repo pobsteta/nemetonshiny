@@ -270,13 +270,23 @@ mod_monitoring_ui <- function(id) {
             # produits — cf. Limite #1 spec 021).
             shiny::conditionalPanel(
               condition = sprintf("input['%s'] == 'reconfort'", ns("mode")),
-              shiny::numericInput(
-                ns("reconfort_s2_year"),
-                i18n$t("monitoring_reconfort_s2_year"),
-                value = as.integer(format(Sys.Date(), "%Y")),
-                min = 2016L, max = as.integer(format(Sys.Date(), "%Y")),
-                step = 1L
-              ),
+              # Bornes du sélecteur d'année Sentinel-2 déléguées au cœur
+              # (règle 1 : zéro logique métier ici). `reconfort_year_bounds()`
+              # calcule la dernière saison S2 CLOSE selon l'`edate` du modèle
+              # (défaut "v3", fin de fenêtre ~29 oct) : on n'offre donc jamais
+              # une année dont la saison n'est pas terminée. `default`/`max` =
+              # dernière année complète, `min` = première année S2 exploitable.
+              local({
+                .rc <- nemeton::reconfort_year_bounds("v3")
+                shiny::numericInput(
+                  ns("reconfort_s2_year"),
+                  i18n$t("monitoring_reconfort_s2_year"),
+                  value = .rc$default,
+                  min   = .rc$min,
+                  max   = .rc$max,
+                  step  = 1L
+                )
+              }),
               shiny::actionButton(
                 ns("run_reconfort"), i18n$t("monitoring_run_reconfort_btn"),
                 icon  = bsicons::bs_icon("activity"),
@@ -3147,6 +3157,18 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return(invisible(FALSE))
       }
+      # Garde-fou serveur : le numericInput borne min/max mais le champ reste
+      # saisissable au clavier. On refuse une année hors [min, dernière saison
+      # close] — bornes calculées par le cœur (règle 1). Évite de lancer un run
+      # lourd sur une saison Sentinel-2 non terminée.
+      .rc     <- nemeton::reconfort_year_bounds("v3")
+      s2_year <- suppressWarnings(as.integer(input$reconfort_s2_year))
+      if (is.na(s2_year) || s2_year < .rc$min || s2_year > .rc$max) {
+        shiny::showNotification(
+          i18n$t("monitoring_reconfort_year_incomplete"),
+          type = "warning", duration = 6)
+        return(invisible(FALSE))
+      }
       reconfort_result_consumed(FALSE)
       reconfort_result(NULL)   # clear the previous run's layered display
       force_unlock_reconfort(FALSE)
@@ -3168,8 +3190,7 @@ mod_monitoring_server <- function(id, app_state) {
       reconfort_task$invoke(
         zone_id       = zid,
         cache_dir     = cd,
-        s2_year       = as.integer(input$reconfort_s2_year %||%
-                                     format(Sys.Date(), "%Y")),
+        s2_year       = s2_year,
         db_url        = .resolve_monitoring_db_url(proj),
         progress_path = ppath,
         lang          = app_state$language %||% "fr",

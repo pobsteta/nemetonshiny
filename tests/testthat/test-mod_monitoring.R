@@ -1352,3 +1352,92 @@ test_that("COG reprime date-window selection spares out-of-window (FORDEAD) scen
   expect_false("S2A_MSIL2A_20240301T103021_T31TGM" %in% victims)
   expect_false("scene_without_date" %in% victims)
 })
+
+# ---- RECONFORT year-picker guard (borne saison S2 complète) ---------
+# `.invoke_reconfort()` refuse une année Sentinel-2 hors bornes cœur
+# (`nemeton::reconfort_year_bounds`) : le numericInput borne min/max mais
+# le champ reste saisissable. Bornes mockées (min=2016, max=2025) pour
+# rendre les tests indépendants de la date du jour.
+
+test_that("input$run_reconfort refuses an incomplete (future) Sentinel-2 year", {
+  skip_if_not_installed("shiny")
+
+  fake_reconfort <- make_fake_fast_task()
+  tmp <- withr::local_tempdir()
+  app_state <- shiny::reactiveValues(
+    language = "fr",
+    current_project = list(id = "p", path = tmp)
+  )
+
+  testthat::local_mocked_bindings(
+    reconfort_year_bounds = function(v_model = "v3", ...)
+      list(min = 2016L, max = 2025L, default = 2025L),
+    .package = "nemeton"
+  )
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function(...) NULL,
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    run_ingestion_async            = function() make_fake_fast_task(),
+    run_fordead_async              = function() make_fake_fordead_task(),
+    run_reconfort_async            = function() fake_reconfort,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = app_state),
+        {
+          session$setInputs(
+            zone_id           = "1",
+            reconfort_s2_year = 2026L,  # > max (2025) → saison non close
+            run_reconfort     = 1L
+          )
+          # Année incomplète → le run lourd ne doit PAS être invoqué.
+          expect_length(fake_reconfort$.calls(), 0L)
+        }
+      )
+    }
+  )
+})
+
+test_that("input$run_reconfort invokes the task for a complete Sentinel-2 year", {
+  skip_if_not_installed("shiny")
+
+  fake_reconfort <- make_fake_fast_task()
+  tmp <- withr::local_tempdir()
+  app_state <- shiny::reactiveValues(
+    language = "fr",
+    current_project = list(id = "p", path = tmp)
+  )
+
+  testthat::local_mocked_bindings(
+    reconfort_year_bounds = function(v_model = "v3", ...)
+      list(min = 2016L, max = 2025L, default = 2025L),
+    .package = "nemeton"
+  )
+  testthat::with_mocked_bindings(
+    get_monitoring_db_connection   = function(...) NULL,
+    close_monitoring_db_connection = function(con) invisible(TRUE),
+    list_monitoring_zones          = function(con) fake_zones_df(),
+    run_ingestion_async            = function() make_fake_fast_task(),
+    run_fordead_async              = function() make_fake_fordead_task(),
+    run_reconfort_async            = function() fake_reconfort,
+    .resolve_monitoring_db_url     = function(...) "postgres://fake",
+    .resolve_progress_path         = function(...) NULL,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_monitoring_server,
+        args = list(app_state = app_state),
+        {
+          session$setInputs(
+            zone_id           = "1",
+            reconfort_s2_year = 2025L,  # == max → saison close, valide
+            run_reconfort     = 1L
+          )
+          calls <- fake_reconfort$.calls()
+          expect_length(calls, 1L)
+          expect_equal(calls[[1]]$s2_year, 2025L)
+        }
+      )
+    }
+  )
+})

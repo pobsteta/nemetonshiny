@@ -1,3 +1,20 @@
+# nemetonshiny 0.95.0 (2026-07-01)
+
+### Added — Year-picker RECONFORT borné sur la dernière saison Sentinel-2 complète
+
+Le sélecteur d'année Sentinel-2 (mode RECONFORT) proposait/acceptait l'année en
+cours, dont la saison n'est pas terminée — un run lancé dessus travaillait sur
+des données incomplètes. Les bornes sont désormais **calculées par le cœur**
+(règle 1 : zéro logique métier dans l'app) via
+`nemeton::reconfort_year_bounds("v3")` (dernière saison CLOSE selon l'`edate` du
+modèle) : `value`/`max`/`default` = dernière année complète, `min` = première
+année S2 exploitable. Un **garde-fou serveur** dans `.invoke_reconfort()`
+(`nemeton::reconfort_year_bounds`) refuse toute saisie clavier hors bornes avec un
+toast d'avertissement (`monitoring_reconfort_year_incomplete`, FR/EN) sans lancer
+le run. Plancher `Imports: nemeton (>= 0.104.0)`. Dépend aussi de
+`nemeton@0.105.0` (clé de cache FAST sur la couverture S2 réelle), tirée
+automatiquement via `@*release`.
+
 # nemetonshiny 0.94.10 (2026-07-01)
 
 ### Changed — Seuil FAST débouncé (moins de recalculs de raster)
