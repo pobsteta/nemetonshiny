@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.9.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.94.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.94.10" id="nemetonshiny-09410-2026-07-01">nemetonshiny 0.94.10 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-09410-2026-07-01"></a></h2>
+<div class="section level4">
+<h4 id="changed--seuil-fast-débouncé-moins-de-recalculs-de-raster-0-94-10">Changed — Seuil FAST débouncé (moins de recalculs de raster)<a class="anchor" aria-label="anchor" href="#changed--seuil-fast-d%C3%A9bounc%C3%A9-moins-de-recalculs-de-raster-0-94-10"></a></h4>
+<p>Le slider de seuil (NDVI/NBR/NDMI) de l’onglet « Alertes FAST » relançait un calcul de raster complet <strong>à chaque cran</strong> pendant le glissement : côté cœur, le nom du cache encode le seuil (<code>thr%.2f</code>), donc chaque valeur intermédiaire est une clé de cache distincte, non cachée. Les seuils consommés par le calcul sont désormais <strong>débouncés (400 ms)</strong> (<code>thresholds_deb</code>) : seule la valeur finale déclenche le calcul. L’indice, le mode, la zone et les dates restent à réaction immédiate.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.94.9" id="nemetonshiny-0949-2026-07-01">nemetonshiny 0.94.9 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0949-2026-07-01"></a></h2>
 <div class="section level4">
