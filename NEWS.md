@@ -1,3 +1,17 @@
+# nemetonshiny 0.94.8.9004 (dev)
+
+### Changed — Bandeau RECONFORT « hors domaine de calibration » remonté sous « Base de suivi connectée »
+
+Le bandeau d'avertissement RECONFORT (zone hors domaine de calibration,
+non bloquant) était rendu *dans* l'onglet « Alertes RECONFORT », au-dessus de la
+carte. Il est désormais rendu au niveau parent, juste sous « Base de suivi
+connectée » et au-dessus des sous-onglets — même emplacement et même style
+(`.monitoring_validity_banner`, carte à bordure warning) que les bandeaux de
+validité FORDEAD, pour une parité visuelle complète. Le sous-module carte expose
+`validity` ; le parent (`mod_monitoring::output$reconfort_validity_banner`) en
+tire le bandeau, visible uniquement en mode RECONFORT et hors domaine. Deux clés
+i18n ajoutées (titre + corps).
+
 # nemetonshiny 0.94.8.9003 (dev)
 
 ### Fixed — Carte RECONFORT : notification « Calcul du graphique en cours… » manquante

@@ -298,6 +298,12 @@ mod_monitoring_ui <- function(id) {
       class = "p-2",
       shiny::uiOutput(ns("db_status")),
       shiny::uiOutput(ns("validity_banners")),
+      # v0.94.x — Bandeau RECONFORT « hors domaine de calibration » remonté
+      # ici (mode reconfort), juste sous « Base de suivi connectée » et
+      # au-dessus des sous-onglets : même emplacement et même style que les
+      # bandeaux de validité FORDEAD (`validity_banners`). Rendu à partir du
+      # `validity` exposé par mod_monitoring_reconfort_map.
+      shiny::uiOutput(ns("reconfort_validity_banner")),
       # v0.77.0 — Bandeau « Surfaces des zones de suivi » : en mode FAST
       # (quick), rappelle la surface (ha) + la part (%) des 4 strates
       # projet `_tot/_feu/_res/_mix` au-dessus des sous-onglets. Symétrie
@@ -3021,6 +3027,26 @@ mod_monitoring_server <- function(id, app_state) {
       refresh_r = shiny::reactive(reconfort_refresh()),
       result_r  = shiny::reactive(reconfort_result())
     )
+
+    # Bandeau RECONFORT « hors domaine de calibration » rendu au niveau parent
+    # (UI : output$reconfort_validity_banner, juste sous « Base de suivi
+    # connectée »), même emplacement/style que les bandeaux FORDEAD. Visible
+    # uniquement en mode reconfort et quand la zone est hors domaine
+    # (`geo_valid == FALSE`, advisory non bloquant). `validity` provient du
+    # sous-module carte, qui appelle `nemeton::check_reconfort_validity()`.
+    output$reconfort_validity_banner <- shiny::renderUI({
+      if (!identical(input$mode, "reconfort")) return(NULL)
+      v <- reconfort_map_ret$validity()
+      if (is.null(v) || !isFALSE(v$geo_valid)) return(NULL)
+      i18n <- i18n_r()
+      .monitoring_validity_banner(
+        icon  = "geo-alt",
+        title = i18n$t("monitoring_reconfort_outside_validity_title"),
+        body  = i18n$t("monitoring_reconfort_outside_validity_body")
+      )
+    })
+    shiny::outputOptions(output, "reconfort_validity_banner",
+                         suspendWhenHidden = FALSE)
 
     # spec 021 (L6) — Lancement d'un run RECONFORT (ExtendedTask).
     #

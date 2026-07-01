@@ -84,10 +84,14 @@ mod_monitoring_reconfort_map_ui <- function(id) {
         width = 250L, position = "right", open = "always",
         shiny::uiOutput(ns("controls"))
       ),
-      # Carte STATIQUE + bannière validité + overlay empty-state.
+      # Carte STATIQUE + overlay empty-state. Le bandeau « hors domaine de
+      # calibration » est désormais rendu au niveau PARENT (mod_monitoring,
+      # output$reconfort_validity_banner), juste sous « Base de suivi
+      # connectée » et au-dessus des sous-onglets — parité de placement et de
+      # style avec le bandeau FORDEAD. Le module expose `validity` (voir le
+      # `invisible(list(...))` de retour) que le parent consomme.
       htmltools::div(
         style = "position: relative;",
-        shiny::uiOutput(ns("banner")),
         leaflet::leafletOutput(ns("map"), height = "55vh"),
         shiny::uiOutput(ns("overlay"))
       )
@@ -325,17 +329,11 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     })
 
     # ----- Validity banner (G3 advisory) --------------------------------
-    output$banner <- shiny::renderUI({
-      v <- validity_r()
-      if (is.null(v) || !isFALSE(v$geo_valid)) return(NULL)
-      i18n <- i18n_r()
-      htmltools::div(
-        class = "alert alert-warning d-flex align-items-center gap-2 mb-2",
-        role = "alert",
-        bsicons::bs_icon("exclamation-triangle-fill"),
-        htmltools::span(i18n$t("monitoring_reconfort_outside_validity"))
-      )
-    })
+    # v0.94.x — Le rendu du bandeau « hors domaine de calibration » a été
+    # déplacé au niveau PARENT (mod_monitoring::output$reconfort_validity_banner)
+    # pour être affiché sous « Base de suivi connectée », au même emplacement
+    # et dans le même style (`.monitoring_validity_banner`) que le bandeau
+    # FORDEAD. Le module se contente d'exposer `validity_r` dans son retour.
 
     # ----- Empty-state overlay (no raster layer AND no alerts) ----------
     output$overlay <- shiny::renderUI({
@@ -669,7 +667,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     shiny::outputOptions(output, "controls", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "map",      suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "overlay",  suspendWhenHidden = FALSE)
-    shiny::outputOptions(output, "banner",   suspendWhenHidden = FALSE)
 
     # ----- Pixel diagnostic on map click --------------------------------
     # Mirror of the FORDEAD pixel click, adapted to RECONFORT : the series
@@ -858,6 +855,9 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       }, once = TRUE)  # fin session$onFlushed
     })
 
-    invisible(list(alerts = alerts_r))
+    # `validity` : exposé pour que le PARENT (mod_monitoring) rende le bandeau
+    # « hors domaine de calibration » sous « Base de suivi connectée », au même
+    # emplacement/style que FORDEAD (parité). NULL si l'AOI est irrésolue.
+    invisible(list(alerts = alerts_r, validity = validity_r))
   })
 }
