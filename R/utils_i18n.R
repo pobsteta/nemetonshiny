@@ -3035,6 +3035,14 @@ TRANSLATIONS <- list(
     fr = "Zone hors domaine de calibration RECONFORT \u2014 r\u00e9sultats indicatifs (avertissement, non bloquant).",
     en = "Zone outside the RECONFORT calibration domain \u2014 results are indicative (advisory, non-blocking)."
   ),
+  monitoring_reconfort_outside_validity_title = list(
+    fr = "Zone hors domaine de calibration RECONFORT",
+    en = "Area outside the RECONFORT calibration domain"
+  ),
+  monitoring_reconfort_outside_validity_body = list(
+    fr = "R\u00e9sultats indicatifs (avertissement, non bloquant).",
+    en = "Results are indicative (advisory, non-blocking)."
+  ),
   monitoring_reconfort_map_empty_title = list(
     fr = "Aucune alerte RECONFORT",
     en = "No RECONFORT alert"

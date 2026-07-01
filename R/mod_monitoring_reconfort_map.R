@@ -84,10 +84,14 @@ mod_monitoring_reconfort_map_ui <- function(id) {
         width = 250L, position = "right", open = "always",
         shiny::uiOutput(ns("controls"))
       ),
-      # Carte STATIQUE + bannière validité + overlay empty-state.
+      # Carte STATIQUE + overlay empty-state. Le bandeau « hors domaine de
+      # calibration » est désormais rendu au niveau PARENT (mod_monitoring,
+      # output$reconfort_validity_banner), juste sous « Base de suivi
+      # connectée » et au-dessus des sous-onglets — parité de placement et de
+      # style avec le bandeau FORDEAD. Le module expose `validity` (voir le
+      # `invisible(list(...))` de retour) que le parent consomme.
       htmltools::div(
         style = "position: relative;",
-        shiny::uiOutput(ns("banner")),
         leaflet::leafletOutput(ns("map"), height = "55vh"),
         shiny::uiOutput(ns("overlay"))
       )
@@ -325,17 +329,11 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     })
 
     # ----- Validity banner (G3 advisory) --------------------------------
-    output$banner <- shiny::renderUI({
-      v <- validity_r()
-      if (is.null(v) || !isFALSE(v$geo_valid)) return(NULL)
-      i18n <- i18n_r()
-      htmltools::div(
-        class = "alert alert-warning d-flex align-items-center gap-2 mb-2",
-        role = "alert",
-        bsicons::bs_icon("exclamation-triangle-fill"),
-        htmltools::span(i18n$t("monitoring_reconfort_outside_validity"))
-      )
-    })
+    # v0.94.x — Le rendu du bandeau « hors domaine de calibration » a été
+    # déplacé au niveau PARENT (mod_monitoring::output$reconfort_validity_banner)
+    # pour être affiché sous « Base de suivi connectée », au même emplacement
+    # et dans le même style (`.monitoring_validity_banner`) que le bandeau
+    # FORDEAD. Le module se contente d'exposer `validity_r` dans son retour.
 
     # ----- Empty-state overlay (no raster layer AND no alerts) ----------
     output$overlay <- shiny::renderUI({
@@ -669,7 +667,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     shiny::outputOptions(output, "controls", suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "map",      suspendWhenHidden = FALSE)
     shiny::outputOptions(output, "overlay",  suspendWhenHidden = FALSE)
-    shiny::outputOptions(output, "banner",   suspendWhenHidden = FALSE)
 
     # ----- Pixel diagnostic on map click --------------------------------
     # Mirror of the FORDEAD pixel click, adapted to RECONFORT : the series
@@ -692,6 +689,25 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       lng <- input$map_click$lng
       if (is.null(lat) || is.null(lng)) return()
 
+      # Message « calcul en cours » affiché TOUT DE SUITE (parité Cartes
+      # FAST / FORDEAD). La lecture de la série CRSWIR/CRre + le tracé plotly
+      # sont déférés via `session$onFlushed` pour que la notification parte au
+      # client AVANT le calcul (un observateur synchrone ne flushe l'UI qu'à
+      # sa sortie). `on.exit` retire la notif quoi qu'il arrive (succès, « pas
+      # de données », erreur).
+      .notif_id <- session$ns("reconfort_pixel_loading")
+      shiny::showNotification(
+        i18n$t("monitoring_pixel_map_computing"),
+        id = .notif_id, type = "message", duration = NULL
+      )
+      session$onFlushed(function() {
+        on.exit(shiny::removeNotification(.notif_id, session = session),
+                add = TRUE)
+      # `onFlushed` s'exécute HORS consommateur réactif : on enveloppe tout le
+      # calcul dans `shiny::isolate()` (parité Cartes FAST / FORDEAD). Les
+      # valeurs réactives (zone, proj, cd, lat, lng, i18n) ont déjà été
+      # capturées plus haut en contexte réactif.
+      shiny::isolate({
       s <- tryCatch(
         nemeton::read_reconfort_pixel_series(
           con       = NULL,   # spec : con réservé, NULL accepté
@@ -778,15 +794,19 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         year_annos[[length(year_annos) + 1L]] <- list(
           x = sprintf("%d-07-01", y), y = 1, xref = "x", yref = "paper",
           yanchor = "bottom", text = as.character(y), showarrow = FALSE,
-          font = list(size = 10, color = "#999999")
+          font = list(size = 14, color = "#999999")
         )
       }
 
       p <- plotly::layout(
         p,
+        # Police globale agrandie : axes, ticks, légende et hover héritent de
+        # cette taille, lisibles en plein écran (spec UX). Le sous-titre et
+        # les libellés d'année fixent leur propre taille.
+        font   = list(size = 16),
         margin = list(t = 30, b = 40, l = 50, r = 10),
         title  = if (!is.null(subtitle))
-          list(text = subtitle, font = list(size = 12), x = 0) else NULL,
+          list(text = subtitle, font = list(size = 16), x = 0) else NULL,
         xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
                       type = "date"),
         yaxis  = list(title = i18n$t("monitoring_reconfort_pixel_yaxis")),
@@ -831,8 +851,13 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       ))
       output$pixel_ts_plot <- plotly::renderPlotly(
         plotly::config(p, responsive = TRUE))
+      })  # fin shiny::isolate (calcul différé hors contexte réactif)
+      }, once = TRUE)  # fin session$onFlushed
     })
 
-    invisible(list(alerts = alerts_r))
+    # `validity` : exposé pour que le PARENT (mod_monitoring) rende le bandeau
+    # « hors domaine de calibration » sous « Base de suivi connectée », au même
+    # emplacement/style que FORDEAD (parité). NULL si l'AOI est irrésolue.
+    invisible(list(alerts = alerts_r, validity = validity_r))
   })
 }

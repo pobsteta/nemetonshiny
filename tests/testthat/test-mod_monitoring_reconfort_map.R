@@ -73,18 +73,19 @@ test_that("reconfort map shows the empty state when there are no alerts", {
       expect_equal(nrow(session$returned$alerts()), 0L)
       i18n <- get_i18n("fr")
       overlay <- .html_of(output$overlay)
-      banner  <- .html_of(output$banner)
       # Empty-state overlay shown when there is neither a run nor alerts.
       expect_true(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
                         overlay, fixed = TRUE))
-      # No validity banner when geo_valid is TRUE.
-      expect_false(grepl(i18n$t("monitoring_reconfort_outside_validity"),
-                         banner, fixed = TRUE))
+      # v0.94.x — le bandeau « hors domaine » est rendu au PARENT
+      # (mod_monitoring::output$reconfort_validity_banner) ; le module se
+      # contente d'exposer `validity`. geo_valid TRUE => pas de bandeau.
+      v <- session$returned$validity()
+      expect_true(isTRUE(v$geo_valid))
     }
   )
 })
 
-test_that("reconfort map renders the G3 advisory banner when geo invalid", {
+test_that("reconfort map exposes geo-invalid validity (parent renders the banner)", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("sf")
   skip_if_not(exists("check_reconfort_validity", where = asNamespace("nemeton"),
@@ -117,11 +118,12 @@ test_that("reconfort map renders the G3 advisory banner when geo invalid", {
     {
       session$flushReact()
       i18n <- get_i18n("fr")
-      banner  <- .html_of(output$banner)
       overlay <- .html_of(output$overlay)
-      # Advisory banner present, and NO empty-state overlay (alerts exist).
-      expect_true(grepl(i18n$t("monitoring_reconfort_outside_validity"),
-                        banner, fixed = TRUE))
+      # v0.94.x — bandeau « hors domaine » rendu au PARENT ; on vérifie que le
+      # module expose bien geo_valid == FALSE (le parent en tire le bandeau).
+      v <- session$returned$validity()
+      expect_true(isFALSE(v$geo_valid))
+      # NO empty-state overlay (alerts exist).
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
                          overlay, fixed = TRUE))
     }

@@ -516,8 +516,20 @@ start_computation <- function(project_id,
         # Plain <- would create a local copy that reverts to the original
         # state$progress (0) whenever layer_progress$completed is NULL
         # (e.g. download_oso progress callbacks), resetting the progress bar.
-        if (!is.null(layer_progress$completed)) {
-          state$progress <<- layer_progress$completed
+        #
+        # The download phase reserves the [0, 10] band of progress_max
+        # (= length(indicators) + 10). We must NORMALISE completed/total
+        # into that band: writing the raw source counter (0..13 sources)
+        # overshot the 10-unit budget (bar climbed to ~32%) and the compute
+        # phase then reset state$progress to 10 (~24%), making the bar jump
+        # backward. We also clamp and keep it monotonic so a sub-callback
+        # reporting completed=0/total=1 (e.g. download_chm_lidar_hd start)
+        # cannot drag the bar back to zero.
+        if (!is.null(layer_progress$completed) &&
+            !is.null(layer_progress$total) &&
+            layer_progress$total > 0) {
+          frac <- max(0, min(1, layer_progress$completed / layer_progress$total))
+          state$progress <<- max(state$progress %||% 0, frac * 10)
         }
         state$current_task <<- layer_progress$current
         report_progress(state)
