@@ -17,12 +17,39 @@ Détail :
 - Injection générique de l'objet de diversité (`layers$spectral`) dans le
   dispatch, sur le modèle de `fapar`/`snow` — sans court-circuit.
 
-**Limitation connue** : l'assemblage du cube réflectance Sentinel-2 (spec 028
-P2/P3) n'est pas encore branché dans le service de calcul standard (NDP 0, sans
-cache de bandes S2). En attendant, B4/L3 se calculent en **NA** proprement
-(fonctions cœur rétrocompatibles) : ils apparaissent dans l'UI mais grisés.
-Suite : acquisition S2 + `compute_spectral_diversity()` puis recalibrage des
-bornes (spec 028 P6).
+### Added — Calcul B4 / L3 : cube réflectance S2 + biodivMapR (spec 028 P2/P3)
+
+Le service de calcul assemble désormais le **cube réflectance Sentinel-2** et
+lance la primitive **une seule fois** pour les deux indicateurs (`layers$spectral`
+partagé) :
+- `build_spectral_diversity()` (dans le worker du calcul) : repère le cache S2
+  `<projet>/cache/layers/sentinel2`, choisit une **scène estivale** (DOY 152–273,
+  au plus proche de mi-août), assemble un cube multi-bandes via le lecteur cœur
+  `nemeton::read_s2_band_raster()` (6 bandes B04/B05/B08/B8A/B11/B12, resamplées
+  sur une grille commune 10 m), rasterise le **masque UGF/forêt**, puis appelle
+  `nemeton::compute_spectral_diversity(reflectance, mask, window_size = 10,
+  nb_cpu = getOption("nemeton.biodivmapr_cpu", 1))`. Aucune logique métier dans
+  l'app (règle 1) : tout le dérivé vient du cœur.
+- **Dégradation propre** : pas de cache S2, pas de scène estivale, bandes
+  illisibles ou erreur biodivMapR ⇒ `layers$spectral = NULL` ⇒ B4/L3 en **NA**
+  (jamais fatal, un run n'échoue pas à cause d'eux). Feedback immédiat pendant
+  l'analyse (toast « Diversité spectrale… », règle 9).
+- **Pré-requis données** : B4/L3 produisent des valeurs réelles dès qu'un cache
+  S2 existe (issu d'une ingestion de suivi sanitaire FAST/RECONFORT) ; sinon ils
+  restent grisés.
+
+Suite (spec 028 P6) : après le premier run réel, remonter les plages effectives
+de B4 (Shannon) et β pour recalibrer les bornes de normalisation côté cœur.
+
+### Fixed — Complétion affichage B4 / L3
+
+- Clés i18n **code court** `indicator_B4` / `indicator_L3` ajoutées FR/EN
+  (« Diversité spectrale (α) » / « Hétérogénéité spectrale (β) ») — le radar et
+  les libellés courts les résolvent désormais (elles manquaient au lot
+  d'affichage initial).
+- Assertions de comptage d'indicateurs mises à jour : `list_available_indicators`
+  = 33, `get_all_indicator_codes` = 34, `get_column_family_map` = 68,
+  `init_compute_state` = 33 (B4 + L3, en plus de R5).
 
 ### Changed — Dépendance & licence
 
