@@ -3043,6 +3043,34 @@ TRANSLATIONS <- list(
     fr = "Année Sentinel-2 incomplète : la saison n'est pas terminée. Choisissez au plus la dernière année complète.",
     en = "Incomplete Sentinel-2 year: the season is not over yet. Pick at most the latest complete year."
   ),
+  # --- Planche pixel dépérissement 4 panneaux (Partie B) ---
+  pixel_planche_title = list(
+    fr = "Suivi pluriannuel du pixel — CRswir & CRre",
+    en = "Multi-year pixel monitoring — CRswir & CRre"
+  ),
+  pixel_smooth_label = list(fr = "Lissage", en = "Smoothing"),
+  pixel_points_label = list(fr = "Observations brutes",
+                            en = "Raw observations"),
+  pixel_trough_swir = list(fr = "Creux estival CRswir",
+                           en = "Summer CRswir trough"),
+  pixel_peak_re = list(fr = "Pic estival CRre", en = "Summer CRre peak"),
+  pixel_centroids = list(fr = "Centroïdes annuels", en = "Annual centroids"),
+  pixel_doy_axis = list(fr = "Jour de l'année", en = "Day of year"),
+  pixel_cycles_swir = list(fr = "CRswir : cycles annuels",
+                           en = "CRswir: annual cycles"),
+  pixel_cycles_re = list(fr = "CRre : cycles annuels",
+                         en = "CRre: annual cycles"),
+  pixel_state_space = list(fr = "Espace CRswir × CRre",
+                           en = "CRswir × CRre space"),
+  pixel_year = list(fr = "Année", en = "Year"),
+  pixel_smooth_none = list(fr = "Aucun", en = "None"),
+  pixel_smooth_light = list(fr = "Léger", en = "Light"),
+  pixel_table_label = list(fr = "Table des données (série pixel)",
+                           en = "Data table (pixel series)"),
+  pixel_plot_alt = list(
+    fr = "Planche 4 panneaux du suivi pluriannuel du pixel : séries CRswir/CRre à double axe, cycles annuels repliés et espace d'état.",
+    en = "4-panel plate of multi-year pixel monitoring: dual-axis CRswir/CRre series, folded annual cycles and state space."
+  ),
   monitoring_reconfort_outside_validity_body = list(
     fr = "R\u00e9sultats indicatifs (avertissement, non bloquant).",
     en = "Results are indicative (advisory, non-blocking)."

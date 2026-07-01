@@ -742,83 +742,39 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       subtitle <- if (length(subtitle_bits))
         paste(subtitle_bits, collapse = " — ") else NULL
 
-      col_crswir <- "#2C7FB8"  # bleu
-      col_crre   <- "#2CA02C"  # vert
-
-      p <- plotly::plot_ly(type = "scatter")
-      p <- plotly::add_trace(
-        p,
-        x      = as.Date(s$obs_date),
-        y      = as.numeric(s$crswir_obs),
-        name   = i18n$t("monitoring_reconfort_crswir"),
-        mode   = "lines+markers",
-        line   = list(color = col_crswir, width = 1.5),
-        marker = list(color = col_crswir, size = 4),
-        hovertemplate = paste0(
-          "<b>", i18n$t("monitoring_reconfort_crswir"), "</b><br>",
-          "%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>"
+      # Planche 4 panneaux (Partie B) : TOUT le dérivé vient du cœur
+      # (`nemeton::prepare_pixel_dieback_series()`), le tracé pur est délégué
+      # à `plot_pixel_dieback()` (règles 1-3 : zéro calcul dans l'app). Le
+      # rendu est réactif aux contrôles `pixel_smooth` / `pixel_points` de la
+      # modale : basculer le lissage / les points brutes re-render la planche
+      # sans nouveau clic (le `s` du pixel cliqué est capturé par la closure).
+      output$pixel_ts_plot <- plotly::renderPlotly({
+        prepared <- nemeton::prepare_pixel_dieback_series(
+          s, smooth = input$pixel_smooth %||% "light"
         )
-      )
-      p <- plotly::add_trace(
-        p,
-        x      = as.Date(s$obs_date),
-        y      = as.numeric(s$crre_obs),
-        name   = i18n$t("monitoring_reconfort_crre"),
-        mode   = "lines+markers",
-        line   = list(color = col_crre, width = 1.5),
-        marker = list(color = col_crre, size = 4),
-        hovertemplate = paste0(
-          "<b>", i18n$t("monitoring_reconfort_crre"), "</b><br>",
-          "%{x|%Y-%m-%d}<br>%{y:.3f}<extra></extra>"
+        plotly::config(
+          plot_pixel_dieback(
+            prepared,
+            opts = list(show_points = isTRUE(input$pixel_points %||% TRUE)),
+            i18n = i18n_r()
+          ),
+          responsive = TRUE
         )
-      )
-      # Délimitation des 2 années Sentinel-2 du modèle : bandes de fond
-      # alternées (1 par année calendaire couverte) + libellé de l'année en
-      # haut. La série RF RECONFORT s'appuie sur une fenêtre de 2 ans ; ce
-      # repère situe la dynamique CRSWIR/CRre dans chaque année.
-      dts  <- as.Date(s$obs_date)
-      yrs  <- sort(unique(as.integer(format(dts, "%Y"))))
-      yrs  <- yrs[!is.na(yrs)]
-      year_shapes <- list()
-      year_annos  <- list()
-      for (i in seq_along(yrs)) {
-        y <- yrs[i]
-        if (i %% 2L == 0L) {
-          year_shapes[[length(year_shapes) + 1L]] <- list(
-            type = "rect", xref = "x", yref = "paper",
-            x0 = sprintf("%d-01-01", y), x1 = sprintf("%d-12-31", y),
-            y0 = 0, y1 = 1, fillcolor = "rgba(60,60,60,0.06)",
-            line = list(width = 0), layer = "below"
-          )
-        }
-        year_annos[[length(year_annos) + 1L]] <- list(
-          x = sprintf("%d-07-01", y), y = 1, xref = "x", yref = "paper",
-          yanchor = "bottom", text = as.character(y), showarrow = FALSE,
-          font = list(size = 14, color = "#999999")
+      })
+      # Repli non-graphique (WCAG 2.1 AA) : la série brute du pixel en table DT.
+      output$pixel_ts_table <- DT::renderDT({
+        tbl <- data.frame(
+          date   = as.Date(s$obs_date),
+          CRswir = round(as.numeric(s$crswir_obs), 4L),
+          CRre   = round(as.numeric(s$crre_obs), 4L)
         )
-      }
+        DT::datatable(tbl, rownames = FALSE,
+                      options = list(pageLength = 8L, dom = "tip"))
+      })
 
-      p <- plotly::layout(
-        p,
-        # Police globale agrandie : axes, ticks, légende et hover héritent de
-        # cette taille, lisibles en plein écran (spec UX). Le sous-titre et
-        # les libellés d'année fixent leur propre taille.
-        font   = list(size = 16),
-        margin = list(t = 30, b = 40, l = 50, r = 10),
-        title  = if (!is.null(subtitle))
-          list(text = subtitle, font = list(size = 16), x = 0) else NULL,
-        xaxis  = list(title = i18n$t("monitoring_timeseries_xaxis"),
-                      type = "date"),
-        yaxis  = list(title = i18n$t("monitoring_reconfort_pixel_yaxis")),
-        legend = list(orientation = "h", y = -0.25),
-        shapes = year_shapes,
-        annotations = year_annos
-      )
-
-      # Modale : bouton « plein écran » (haut-droite) + « Fermer », parité
-      # exacte avec la Carte FORDEAD. Le bouton bascule la classe BS5
-      # `.modal-fullscreen` ; le plot remplit la zone (height 100% + plotly
-      # `responsive`) et grandit en plein écran via la règle CSS.
+      # Modale plein écran (parité FORDEAD). Contrôles lissage/points en tête,
+      # sous-titre espèce/modèle conservé, planche agrandie (~760 px) + table
+      # DT équivalente en repli accessible.
       shiny::showModal(shiny::modalDialog(
         title = htmltools::tagList(
           htmltools::span(sprintf(
@@ -837,20 +793,42 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
             bsicons::bs_icon("arrows-fullscreen")
           )
         ),
-        size  = "l",
+        size  = "xl",
         easyClose = TRUE,
         footer = shiny::modalButton(i18n$t("close")),
         htmltools::tags$style(htmltools::HTML(
-          ".modal-fullscreen .pixel-ts-wrap{height:calc(100vh - 200px) !important;}"
+          ".modal-fullscreen .pixel-ts-wrap{height:calc(100vh - 220px) !important;}"
         )),
+        # Contrôles d'affichage (aucun impact métier : smooth passé au cœur,
+        # points = simple toggle de traces). Lissage fort volontairement absent
+        # (le cœur n'offre que none/light).
         htmltools::div(
-          class = "pixel-ts-wrap",
-          style = "height: 320px;",
+          class = "d-flex flex-wrap gap-3 align-items-center mb-2",
+          shiny::radioButtons(
+            session$ns("pixel_smooth"), i18n$t("pixel_smooth_label"),
+            choiceNames  = list(i18n$t("pixel_smooth_none"),
+                                i18n$t("pixel_smooth_light")),
+            choiceValues = list("none", "light"),
+            selected = "light", inline = TRUE
+          ),
+          shiny::checkboxInput(
+            session$ns("pixel_points"), i18n$t("pixel_points_label"), TRUE
+          )
+        ),
+        if (!is.null(subtitle))
+          htmltools::div(class = "small text-muted mb-2", subtitle),
+        htmltools::div(
+          class = "pixel-ts-wrap", role = "img",
+          `aria-label` = i18n$t("pixel_plot_alt"),
+          style = "height: 760px;",
           plotly::plotlyOutput(session$ns("pixel_ts_plot"), height = "100%")
+        ),
+        htmltools::tags$details(
+          class = "mt-2",
+          htmltools::tags$summary(i18n$t("pixel_table_label")),
+          DT::DTOutput(session$ns("pixel_ts_table"))
         )
       ))
-      output$pixel_ts_plot <- plotly::renderPlotly(
-        plotly::config(p, responsive = TRUE))
       })  # fin shiny::isolate (calcul différé hors contexte réactif)
       }, once = TRUE)  # fin session$onFlushed
     })
