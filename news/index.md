@@ -1,5 +1,24 @@
 # Changelog
 
+## nemetonshiny (development version)
+
+#### Changed — Planche pixel RECONFORT alignée sur la maquette de référence
+
+`plot_pixel_dieback()` (`R/fct_plot_pixel_dieback.R`) restylée pour
+coller à la maquette fournie : - Trajectoires estivales distinguées par
+**couleur dédiée** : **rouge** pour le creux CRswir, **violet** pour le
+pic CRre (points, lignes pointillées et libellés de valeurs assortis) —
+au lieu du brun commun. - **Légende interne** au panneau haut (« CRswir
+(lissage léger) », « CRre (lissage léger) » + les deux trajectoires). -
+**Axes fléchés** : « CRswir (↑ = plus d’eau) » (bleu) / « CRre (↑ = plus
+de chlorophylle) » (vert). - Cycles repliés B/C : **bande estivale
+orange** + annotations « creux estival qui s’enfonce » / « pic plus
+faible = sénescence précoce ». - Espace d’état D : centroïdes reliés en
+**pointillés**, annotation « dérive vers eau ET chloro. basses », et
+**barre de couleur des années horizontale** en bas de planche. - 5
+nouvelles clés i18n FR/EN + 6 mises à jour (libellés exacts de la
+maquette).
+
 ## nemetonshiny 0.97.0 (2026-07-01)
 
 #### Added — Diversité spectrale B4 / L3 (affichage, spec 028)
