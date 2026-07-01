@@ -3050,6 +3050,10 @@ TRANSLATIONS <- list(
   ),
   # --- Planche pixel dépérissement 4 panneaux (Partie B) ---
   pixel_planche_title = list(fr = "Pixel \u2014 s\u00e9ries pluriannuelles des deux indices (fond orange = \u00e9t\u00e9)", en = "Pixel \u2014 multi-year series of both indices (orange band = summer)"),
+  pixel_title_of_species = list(fr = "Pixel de %s", en = "%s pixel"),
+  pixel_title_bare = list(fr = "Pixel", en = "Pixel"),
+  pixel_title_suffix = list(fr = " \u2014 s\u00e9ries pluriannuelles des deux indices (fond orange = \u00e9t\u00e9)", en = " \u2014 multi-year series of both indices (orange band = summer)"),
+  pixel_title_coords_fmt = list(fr = "lat : %.5f, lon : %.5f", en = "lat: %.5f, lon: %.5f"),
   pixel_smooth_label = list(fr = "Lissage", en = "Smoothing"),
   pixel_points_label = list(fr = "Observations brutes",
                             en = "Raw observations"),

@@ -33,6 +33,34 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   show_points <- isTRUE(opts$show_points %||% TRUE)
   summer      <- opts$summer %||% c(152L, 273L)
 
+  # Métadonnées du pixel (titre) : essence + lon/lat + modèle. Fournies par le
+  # module au clic (attr(series, "species") / "v_model" + coordonnées du clic
+  # carte) ; toutes facultatives. Le titre reprend la maquette (« Pixel de
+  # <essence> — … ») et ajoute une 2ᵉ ligne lat/lon (parité graphique FORDEAD).
+  .ok1 <- function(x) !is.null(x) && length(x) == 1L && !is.na(x)
+  .sp  <- if (.ok1(opts$species) && nzchar(as.character(opts$species)))
+    as.character(opts$species) else NULL
+  .vm  <- if (.ok1(opts$v_model) && nzchar(as.character(opts$v_model)))
+    as.character(opts$v_model) else NULL
+  .lat <- if (.ok1(opts$lat) && is.numeric(opts$lat)) opts$lat else NULL
+  .lng <- if (.ok1(opts$lng) && is.numeric(opts$lng)) opts$lng else NULL
+
+  title_main <- paste0(
+    if (!is.null(.sp)) sprintf(tr("pixel_title_of_species"), .sp)
+    else tr("pixel_title_bare"),
+    tr("pixel_title_suffix")
+  )
+  sub_bits <- c(
+    if (!is.null(.lat) && !is.null(.lng))
+      sprintf(tr("pixel_title_coords_fmt"), .lat, .lng),
+    if (!is.null(.vm))
+      sprintf("%s : %s", tr("monitoring_reconfort_model"), .vm)
+  )
+  title_txt <- if (length(sub_bits))
+    paste0(title_main, "<br><span style='font-size:11px;color:#666'>",
+           paste(sub_bits, collapse = " — "), "</span>")
+  else title_main
+
   # Colours: CRswir / CRre fixed hues on panel A; cividis ramp for the
   # per-year traces (folded cycles + state space). Les deux trajectoires ont
   # une couleur DÉDIÉE (rouge = creux CRswir, violet = pic CRre) — cf. image
@@ -283,12 +311,12 @@ plot_pixel_dieback <- function(prepared, opts = list(), i18n = NULL) {
   )
   fig <- plotly::layout(
     fig,
-    title = list(text = tr("pixel_planche_title"), x = 0.02, y = 0.99,
+    title = list(text = title_txt, x = 0.02, y = 0.98,
                  font = list(size = 15)),
     paper_bgcolor = "rgba(0,0,0,0)",
     plot_bgcolor  = "rgba(0,0,0,0)",
     font = list(size = 13),
-    margin = list(t = 60, b = 95, l = 55, r = 20),
+    margin = list(t = 78, b = 95, l = 55, r = 20),
     annotations = list(
       panel_title(0.14, 0.40, "pixel_cycles_swir"),
       panel_title(0.5,  0.40, "pixel_cycles_re"),
