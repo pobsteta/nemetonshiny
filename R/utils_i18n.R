@@ -3071,6 +3071,11 @@ TRANSLATIONS <- list(
     fr = "Planche 4 panneaux du suivi pluriannuel du pixel : séries CRswir/CRre à double axe, cycles annuels repliés et espace d'état.",
     en = "4-panel plate of multi-year pixel monitoring: dual-axis CRswir/CRre series, folded annual cycles and state space."
   ),
+  pixel_export_png = list(fr = "Exporter PNG", en = "Export PNG"),
+  pixel_export_failed = list(
+    fr = "Export PNG indisponible (moteur kaleido/webshot2 absent).",
+    en = "PNG export unavailable (kaleido/webshot2 engine missing)."
+  ),
   monitoring_reconfort_outside_validity_body = list(
     fr = "R\u00e9sultats indicatifs (avertissement, non bloquant).",
     en = "Results are indicative (advisory, non-blocking)."
