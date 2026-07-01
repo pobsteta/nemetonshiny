@@ -220,7 +220,7 @@ mod_search_server <- function(id, app_state) {
           session,
           "commune",
           choices = character(0),
-          server = FALSE
+          server = TRUE
         )
         return()
       }
@@ -266,7 +266,7 @@ mod_search_server <- function(id, app_state) {
       if (is.null(communes)) {
         shiny::updateSelectizeInput(
           session, "commune",
-          choices = character(0), selected = "", server = FALSE
+          choices = character(0), selected = "", server = TRUE
         )
         rv$is_loading <- FALSE
         return()
@@ -290,18 +290,18 @@ mod_search_server <- function(id, app_state) {
         }
         shiny::updateSelectizeInput(
           session, "commune",
-          choices = character(0), selected = "", server = FALSE
+          choices = character(0), selected = "", server = TRUE
         )
       } else if (!is.null(communes) && nrow(communes) > 0) {
         choices <- format_communes_for_selectize(communes)
         shiny::updateSelectizeInput(
           session, "commune",
-          choices = choices, selected = "", server = FALSE
+          choices = choices, selected = "", server = TRUE
         )
       } else {
         shiny::updateSelectizeInput(
           session, "commune",
-          choices = character(0), selected = "", server = FALSE
+          choices = character(0), selected = "", server = TRUE
         )
       }
 
@@ -614,7 +614,7 @@ mod_search_server <- function(id, app_state) {
           "commune",
           choices = choices,
           selected = commune_code,
-          server = FALSE
+          server = TRUE
         )
 
         cli::cli_alert_success("Location restored successfully")

@@ -8,6 +8,23 @@
 #' @keywords internal
 NULL
 
+# Session-level cache : department_code -> communes data.frame. La liste des
+# communes d'un département est stable pendant une session ; ce cache évite de
+# retaper geo.api.gouv.fr à CHAQUE restauration de projet / changement de
+# département (chemin critique de mise à jour de la liste Commune). Les erreurs
+# et résultats vides ne sont PAS mis en cache (une panne réseau transitoire
+# peut ainsi se rétablir au prochain essai).
+.communes_dept_cache <- new.env(parent = emptyenv())
+
+# Vide le cache départements->communes. Interne : utilisé par les tests pour
+# isoler chaque cas (le cache étant global au process, un cas de succès
+# empoisonnerait sinon les cas d'erreur qui réutilisent le même code dept).
+.reset_communes_dept_cache <- function() {
+  rm(list = ls(envir = .communes_dept_cache, all.names = TRUE),
+     envir = .communes_dept_cache)
+  invisible(NULL)
+}
+
 
 #' Get list of French departments
 #'
@@ -470,6 +487,10 @@ get_communes_in_department <- function(department_code) {
     return(empty_result)
   }
 
+  # Cache hit : liste déjà téléchargée pour ce département dans la session.
+  cached <- .communes_dept_cache[[department_code]]
+  if (!is.null(cached)) return(cached)
+
   result <- tryCatch({
     if (!requireNamespace("httr2", quietly = TRUE)) {
       cli::cli_abort("Package 'httr2' is required")
@@ -493,23 +514,28 @@ get_communes_in_department <- function(department_code) {
       return(empty_result)
     }
 
-    communes_df <- do.call(rbind, lapply(data, function(commune) {
-      codes_postaux <- if (length(commune$codesPostaux) > 0) {
-        paste(commune$codesPostaux, collapse = ", ")
-      } else {
-        ""
-      }
-      data.frame(
-        code_insee = commune$code,
-        nom = commune$nom,
-        code_postal = codes_postaux,
-        label = sprintf("%s (%s)", commune$nom, commune$code),
-        stringsAsFactors = FALSE
-      )
-    }))
+    # Construction VECTORISÉE (au lieu d'un rbind ligne par ligne O(n²) qui
+    # coûtait ~0,3 s sur un département moyen ~560 communes) : on extrait
+    # chaque champ en une passe via vapply puis on assemble un seul data.frame.
+    code_insee <- vapply(data, function(c) c$code %||% NA_character_, character(1))
+    nom        <- vapply(data, function(c) c$nom  %||% NA_character_, character(1))
+    code_postal <- vapply(data, function(c) {
+      cp <- c$codesPostaux
+      if (length(cp) > 0) paste(unlist(cp), collapse = ", ") else ""
+    }, character(1))
+    communes_df <- data.frame(
+      code_insee  = code_insee,
+      nom         = nom,
+      code_postal = code_postal,
+      label       = sprintf("%s (%s)", nom, code_insee),
+      stringsAsFactors = FALSE
+    )
 
     # Sort by name
-    communes_df[order(communes_df$nom), ]
+    communes_df <- communes_df[order(communes_df$nom), ]
+    # Cache le résultat valide (non vide) pour ce département.
+    .communes_dept_cache[[department_code]] <- communes_df
+    communes_df
 
   }, error = function(e) {
     # Detect network/connection errors
