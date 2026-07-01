@@ -285,12 +285,12 @@ test_that("get_family_config is case-insensitive", {
 # Tests for get_all_indicator_codes()
 # ==============================================================================
 
-test_that("get_all_indicator_codes returns all 32 indicators", {
+test_that("get_all_indicator_codes returns all 34 indicators", {
   codes <- nemetonshiny:::get_all_indicator_codes()
 
   expect_type(codes, "character")
-  # 31 + R5 dépérissement (conditionnel, famille R) = 32
-  expect_length(codes, 32)
+  # 31 base + B4 + L3 (diversité spectrale, spec 028) + R5 (dépérissement) = 34
+  expect_length(codes, 34)
 })
 
 test_that("get_all_indicator_codes contains expected indicators", {
@@ -389,8 +389,8 @@ test_that("get_column_family_map maps short indicator codes to family codes", {
 test_that("get_column_family_map contains both long and short forms", {
   map <- nemetonshiny:::get_column_family_map()
 
-  # Should have 32 column names + 32 indicator codes = 64 entries (incl. R5)
-  expect_equal(length(map), 64)
+  # Should have 34 column names + 34 indicator codes = 68 entries (incl. B4/L3, R5)
+  expect_equal(length(map), 68)
 })
 
 test_that("get_column_family_map values are valid family codes", {
