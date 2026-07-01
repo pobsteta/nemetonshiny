@@ -12,6 +12,28 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.97.0\] - 2026-07-01
+
+### Added
+
+- Diversité spectrale **B4** (α / Shannon, famille Biodiversité) et
+  **L3** (β / turnover Bray-Curtis, famille Paysage) via biodivMapR sur
+  Sentinel-2 (spec 028) : affichage (config famille, radar, i18n FR/EN,
+  progression) **et** calcul — `build_spectral_diversity()` assemble le
+  cube réflectance S2 (6 bandes, resample 10 m, masque UGF) et appelle
+  [`nemeton::compute_spectral_diversity()`](https://pobsteta.github.io/nemeton/reference/compute_spectral_diversity.html)
+  **une seule fois**, partagé par B4/L3 via `layers$spectral`.
+  Dégradation propre en NA sans cache Sentinel-2. Plancher
+  `nemeton (>= 0.110.0)`.
+
+### Changed
+
+- **Relicence EUPL v1.2 → GPL-3** : l’app importe désormais du GPL-3
+  (nemeton → biodivMapR) ; EUPL Art. 5 autorise cette relicence ; amende
+  ADR-006. `LICENSE`, `DESCRIPTION` et `CITATION.cff` alignés.
+- CI : `github::cran/dissUtils` + `jbferet/spinR` ajoutés aux
+  `extra-packages` (dépendances transitives non-CRAN de biodivMapR).
+
 ## \[0.94.0\] - 2026-06-30
 
 ### Added

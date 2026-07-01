@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.96.3.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,24 +33,24 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.97.0" id="nemetonshiny-0970-2026-07-01">nemetonshiny 0.97.0 (2026-07-01)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0970-2026-07-01"></a></h2>
 <div class="section level4">
-<h4 id="added--diversité-spectrale-b4--l3-affichage-spec-development-version">Added — Diversité spectrale B4 / L3 (affichage, spec 028)<a class="anchor" aria-label="anchor" href="#added--diversit%C3%A9-spectrale-b4--l3-affichage-spec-development-version"></a></h4>
+<h4 id="added--diversité-spectrale-b4--l3-affichage-spec-0-97-0">Added — Diversité spectrale B4 / L3 (affichage, spec 028)<a class="anchor" aria-label="anchor" href="#added--diversit%C3%A9-spectrale-b4--l3-affichage-spec-0-97-0"></a></h4>
 <p>Câblage d’affichage des deux nouveaux indicateurs de diversité spectrale (biodivMapR, <code>nemeton &gt;= 0.110.0</code>) : - <strong>B4</strong> (famille Biodiversité) — diversité spectrale α (Shannon). - <strong>L3</strong> (famille Paysage) — hétérogénéité spectrale β (turnover Bray-Curtis), distincte de L2 (fragmentation structurale).</p>
 <p>Détail : - <code>list_available_indicators()</code> liste désormais B4 et L3 (31 → 33). - Config famille (<code>app_config.R</code>), labels de progression (<code>mod_progress.R</code>) et libellés i18n (<code>utils_i18n.R</code>) FR/EN complétés — la vue famille et le radar les affichent automatiquement (config-driven), avec le caveat « proxy à valider terrain ». - Injection générique de l’objet de diversité (<code>layers$spectral</code>) dans le dispatch, sur le modèle de <code>fapar</code>/<code>snow</code> — sans court-circuit.</p>
 </div>
 <div class="section level4">
-<h4 id="added--calcul-b4--l3--cube-réflectance-s2--biodivmapr-spec-p2p3-development-version">Added — Calcul B4 / L3 : cube réflectance S2 + biodivMapR (spec 028 P2/P3)<a class="anchor" aria-label="anchor" href="#added--calcul-b4--l3--cube-r%C3%A9flectance-s2--biodivmapr-spec-p2p3-development-version"></a></h4>
+<h4 id="added--calcul-b4--l3--cube-réflectance-s2--biodivmapr-spec-p2p3-0-97-0">Added — Calcul B4 / L3 : cube réflectance S2 + biodivMapR (spec 028 P2/P3)<a class="anchor" aria-label="anchor" href="#added--calcul-b4--l3--cube-r%C3%A9flectance-s2--biodivmapr-spec-p2p3-0-97-0"></a></h4>
 <p>Le service de calcul assemble désormais le <strong>cube réflectance Sentinel-2</strong> et lance la primitive <strong>une seule fois</strong> pour les deux indicateurs (<code>layers$spectral</code> partagé) : - <code>build_spectral_diversity()</code> (dans le worker du calcul) : repère le cache S2 <code>&lt;projet&gt;/cache/layers/sentinel2</code>, choisit une <strong>scène estivale</strong> (DOY 152–273, au plus proche de mi-août), assemble un cube multi-bandes via le lecteur cœur <code><a href="https://pobsteta.github.io/nemeton/reference/read_s2_band_raster.html" class="external-link">nemeton::read_s2_band_raster()</a></code> (6 bandes B04/B05/B08/B8A/B11/B12, resamplées sur une grille commune 10 m), rasterise le <strong>masque UGF/forêt</strong>, puis appelle <code>nemeton::compute_spectral_diversity(reflectance, mask, window_size = 10,   nb_cpu = getOption("nemeton.biodivmapr_cpu", 1))</code>. Aucune logique métier dans l’app (règle 1) : tout le dérivé vient du cœur. - <strong>Dégradation propre</strong> : pas de cache S2, pas de scène estivale, bandes illisibles ou erreur biodivMapR ⇒ <code>layers$spectral = NULL</code> ⇒ B4/L3 en <strong>NA</strong> (jamais fatal, un run n’échoue pas à cause d’eux). Feedback immédiat pendant l’analyse (toast « Diversité spectrale… », règle 9). - <strong>Pré-requis données</strong> : B4/L3 produisent des valeurs réelles dès qu’un cache S2 existe (issu d’une ingestion de suivi sanitaire FAST/RECONFORT) ; sinon ils restent grisés.</p>
 <p>Suite (spec 028 P6) : après le premier run réel, remonter les plages effectives de B4 (Shannon) et β pour recalibrer les bornes de normalisation côté cœur.</p>
 </div>
 <div class="section level4">
-<h4 id="fixed--complétion-affichage-b4--l3-development-version">Fixed — Complétion affichage B4 / L3<a class="anchor" aria-label="anchor" href="#fixed--compl%C3%A9tion-affichage-b4--l3-development-version"></a></h4>
+<h4 id="fixed--complétion-affichage-b4--l3-0-97-0">Fixed — Complétion affichage B4 / L3<a class="anchor" aria-label="anchor" href="#fixed--compl%C3%A9tion-affichage-b4--l3-0-97-0"></a></h4>
 <ul><li>Clés i18n <strong>code court</strong> <code>indicator_B4</code> / <code>indicator_L3</code> ajoutées FR/EN (« Diversité spectrale (α) » / « Hétérogénéité spectrale (β) ») — le radar et les libellés courts les résolvent désormais (elles manquaient au lot d’affichage initial).</li>
 <li>Assertions de comptage d’indicateurs mises à jour : <code>list_available_indicators</code> = 33, <code>get_all_indicator_codes</code> = 34, <code>get_column_family_map</code> = 68, <code>init_compute_state</code> = 33 (B4 + L3, en plus de R5).</li>
 </ul></div>
 <div class="section level4">
-<h4 id="changed--dépendance--licence-development-version">Changed — Dépendance &amp; licence<a class="anchor" aria-label="anchor" href="#changed--d%C3%A9pendance--licence-development-version"></a></h4>
+<h4 id="changed--dépendance--licence-0-97-0">Changed — Dépendance &amp; licence<a class="anchor" aria-label="anchor" href="#changed--d%C3%A9pendance--licence-0-97-0"></a></h4>
 <ul><li>
 <strong><code>nemeton (&gt;= 0.110.0)</code></strong> (indicateurs B4/L3 + primitive <code>compute_spectral_diversity()</code>).</li>
 <li>
