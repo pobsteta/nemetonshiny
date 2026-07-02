@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.7.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.97.8" id="nemetonshiny-0978-2026-07-02">nemetonshiny 0.97.8 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0978-2026-07-02"></a></h2>
+<div class="section level4">
+<h4 id="fixed--alignement-suite-de-tests--libellé-i18n-de-laxe-radar-t3-0-97-8">Fixed — Alignement suite de tests + libellé i18n de l’axe radar T3<a class="anchor" aria-label="anchor" href="#fixed--alignement-suite-de-tests--libell%C3%A9-i18n-de-laxe-radar-t3-0-97-8"></a></h4>
+<p>Correctif de cohérence suite à l’ajout de T3 (coupes rases, spec 030) à la famille T : les assertions dérivées de <code>INDICATOR_FAMILIES</code> / <code>list_available_indicators()</code> sont réalignées (comptages d’indicateurs 33→34 / 34→35, <code>get_column_family_map</code> 68→70) et la clé i18n <code>indicator_T3</code> (« Coupes rases » / « Clear-cuts ») est ajoutée — requise pour le libellé de l’axe radar T3 (le test i18n <code>mod_synthesis</code> exige une clé <code>indicator_&lt;code&gt;</code> par code de famille). Aucun changement fonctionnel ; répare la CI de 0.97.7. Suite complète revérifiée en local (équivalent <code>test_local</code>).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.97.7" id="nemetonshiny-0977-2026-07-02">nemetonshiny 0.97.7 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0977-2026-07-02"></a></h2>
 <div class="section level4">
