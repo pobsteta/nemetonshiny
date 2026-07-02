@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.97.3 (2026-07-02)
 
 ### Changed — Liste « Commune » remplie instantanément au chargement d'un projet
 
