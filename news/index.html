@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.97.2" id="nemetonshiny-0972-2026-07-02">nemetonshiny 0.97.2 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0972-2026-07-02"></a></h2>
+<div class="section level4">
+<h4 id="fixed--bouton-de-calcul-rétabli-pour-un-projet-figé-en--computing--0-97-2">Fixed — Bouton de calcul rétabli pour un projet figé en « computing »<a class="anchor" aria-label="anchor" href="#fixed--bouton-de-calcul-r%C3%A9tabli-pour-un-projet-fig%C3%A9-en--computing--0-97-2"></a></h4>
+<p>Un projet dont le calcul des indices a été <strong>interrompu</strong> (redémarrage ou crash de l’app entre l’écriture du statut <code>computing</code> et celle de <code>completed</code>/<code>error</code>) restait figé en <code>status = "computing"</code> sur disque. Au rechargement, aucun worker ne tourne : l’observateur de reprise décline (fichier de progression périmé &gt; 120 s) et <code>computing_project_id()</code> vaut <code>NULL</code>, donc le garde « calcul en cours dans cette session » ne masque pas le bouton — pourtant <code>compute_button_ui</code> ne gérait que <code>draft</code>/<code>error</code> et <code>completed</code>, si bien que <code>computing</code> tombait dans la branche <code>NULL</code> : <strong>le bouton de calcul disparaissait sans moyen de relancer</strong> (cf. projet RECONFORT bloqué). Désormais les statuts transitoires périmés (<code>computing</code>, <code>downloading</code>, <code>pending</code>) qui franchissent le garde live sont traités comme relançables et réaffichent le bouton « Calculer ».</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.97.1" id="nemetonshiny-0971-2026-07-02">nemetonshiny 0.97.1 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0971-2026-07-02"></a></h2>
 <div class="section level4">

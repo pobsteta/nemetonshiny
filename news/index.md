@@ -1,5 +1,23 @@
 # Changelog
 
+## nemetonshiny 0.97.2 (2026-07-02)
+
+#### Fixed — Bouton de calcul rétabli pour un projet figé en « computing »
+
+Un projet dont le calcul des indices a été **interrompu** (redémarrage
+ou crash de l’app entre l’écriture du statut `computing` et celle de
+`completed`/`error`) restait figé en `status = "computing"` sur disque.
+Au rechargement, aucun worker ne tourne : l’observateur de reprise
+décline (fichier de progression périmé \> 120 s) et
+`computing_project_id()` vaut `NULL`, donc le garde « calcul en cours
+dans cette session » ne masque pas le bouton — pourtant
+`compute_button_ui` ne gérait que `draft`/`error` et `completed`, si
+bien que `computing` tombait dans la branche `NULL` : **le bouton de
+calcul disparaissait sans moyen de relancer** (cf. projet RECONFORT
+bloqué). Désormais les statuts transitoires périmés (`computing`,
+`downloading`, `pending`) qui franchissent le garde live sont traités
+comme relançables et réaffichent le bouton « Calculer ».
+
 ## nemetonshiny 0.97.1 (2026-07-02)
 
 #### Fixed — Suivi sanitaire : prérequis BD Forêt surfacé avant le clic
