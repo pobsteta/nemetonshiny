@@ -1,4 +1,17 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.97.1 (2026-07-02)
+
+### Fixed — Suivi sanitaire : prérequis BD Forêt surfacé avant le clic
+
+Créer une zone de suivi croise UGF × BD Forêt v2 ; le GPKG
+`<projet>/cache/layers/bdforet.gpkg` est produit par le **calcul du projet**
+(onglet Synthèse, `download_ign_bdforet`). Ce prérequis n'était signalé qu'en
+notification transitoire **au clic** de « Enregistrer la zone » — le bouton
+paraissait pourtant actif. Il est désormais traité comme les autres gardes :
+- le bouton « Enregistrer la zone » est **désactivé** tant que
+  `bdforet.gpkg` est absent ;
+- le **message d'aide proactif** sous le bouton indique alors « BD Forêt
+  manquante… Lancez d'abord le calcul du projet (onglet Synthèse) », avec la
+  même précédence que le handler (projet → BD Forêt → UGF → base de suivi).
 
 ### Changed — Planche pixel RECONFORT : essence + lon/lat dans le titre
 
