@@ -1,3 +1,18 @@
+# nemetonshiny (development version)
+
+### Fixed — Tour guidé : bascule d'onglet réparée (erreur JS cicerone)
+
+La bascule d'onglet du tour guidé (`on_highlight_started`, `R/service_tour.R`)
+était **cassée silencieusement** : cicerone 1.0.4 injecte ce callback brut dans
+`new Function("return " + js)()` (cicerone.js:101), or on lui passait une chaîne
+commençant par `var …` → `return var …` → `SyntaxError: Unexpected token 'var'`.
+La compilation des steps échouait (driver.js : « There are no steps defined to
+iterate »), donc le tour ne pouvait plus changer d'onglet. Le JS est désormais
+une **expression de fonction** (`function(){…}`), valide une fois préfixée de
+`return`. Corrige aussi les deux erreurs JS client observées au boot (visibles
+notamment dans les logs du smoke E2E, tour auto-démarré sur session neuve).
+Test de régression ajouté (format `function(){…}`, chaîne équilibrée).
+
 # nemetonshiny 0.97.4 (2026-07-02)
 
 ### Fixed — Smoke E2E `mod_rag_admin` ré-armé (spec 009.2 / E7)

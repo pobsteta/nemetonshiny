@@ -68,3 +68,20 @@ test_that("build_tour_guide returns a cicerone guide when available", {
   g <- nemetonshiny:::build_tour_guide(nemetonshiny:::get_i18n("fr"), 30L)
   expect_s3_class(g, "Cicerone")
 })
+
+test_that(".tour_switch_tab_js is a JS function expression (cicerone new Function)", {
+  # Regression : cicerone 1.0.4 injecte on_highlight_started brut dans
+  # `new Function("return " + js)()`. Le JS DOIT donc etre une expression de
+  # fonction (`function(){...}`) ; une chaine commencant par `var` produit
+  # `return var ...` -> SyntaxError, cassant les steps du tour (« no steps to
+  # iterate ») et la bascule d'onglet.
+  js <- nemetonshiny:::.tour_switch_tab_js("synthesis")
+  expect_match(js, "^function\\(\\)\\{", perl = TRUE)
+  expect_false(grepl("^\\s*var", js))
+  # cible le bon onglet
+  expect_match(js, 'data-value=\"synthesis\"', fixed = TRUE)
+  # la chaine, prefixee de "return " (ce que fait cicerone.js), doit parser
+  # comme du JS valide -> on verifie au moins qu'elle est bien equilibree.
+  expect_equal(lengths(regmatches(js, gregexpr("{", js, fixed = TRUE))),
+               lengths(regmatches(js, gregexpr("}", js, fixed = TRUE))))
+})

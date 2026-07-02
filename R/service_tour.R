@@ -83,10 +83,19 @@ build_tour_steps <- function(i18n, max_parcels = 30L) {
 #' synchrone et compatible BS4/BS5. `on_highlight_started` s'exécute juste
 #' avant le cadrage de l'élément, donc l'onglet est actif au moment du
 #' highlight.
+#'
+#' IMPORTANT — le retour doit être une **expression de fonction**
+#' (`function(){...}`), pas un bloc d'instructions : cicerone (1.0.4) passe
+#' `on_highlight_started` brut dans `new Function("return " + js)()`
+#' (cicerone.js:101). Une chaîne commençant par `var` produit
+#' `return var …` → `SyntaxError: Unexpected token 'var'`, ce qui casse la
+#' compilation des steps (driver.js se retrouve « no steps to iterate ») et
+#' donc la bascule d'onglet du tour. L'envelopper en `function(){…}` la rend
+#' valide : `new Function("return function(){…}")()` renvoie la fonction.
 #' @noRd
 .tour_switch_tab_js <- function(tab) {
   sprintf(
-    "var __l=document.querySelector('#main_nav a[data-value=\"%s\"]'); if(__l){__l.click();}",
+    "function(){var __l=document.querySelector('#main_nav a[data-value=\"%s\"]'); if(__l){__l.click();}}",
     tab
   )
 }
