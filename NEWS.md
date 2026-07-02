@@ -25,6 +25,42 @@ la source.
   `clear_project_foret_ancienne()` (copie de la source dans le projet + config
   sous `metadata$foret_ancienne`).
 - 14 clés i18n FR/EN.
+# nemetonshiny 0.97.5 (2026-07-02)
+
+### Fixed — Tour guidé : bascule d'onglet réparée (erreur JS cicerone)
+
+La bascule d'onglet du tour guidé (`on_highlight_started`, `R/service_tour.R`)
+était **cassée silencieusement** : cicerone 1.0.4 injecte ce callback brut dans
+`new Function("return " + js)()` (cicerone.js:101), or on lui passait une chaîne
+commençant par `var …` → `return var …` → `SyntaxError: Unexpected token 'var'`.
+La compilation des steps échouait (driver.js : « There are no steps defined to
+iterate »), donc le tour ne pouvait plus changer d'onglet. Le JS est désormais
+une **expression de fonction** (`function(){…}`), valide une fois préfixée de
+`return`. Corrige aussi les deux erreurs JS client observées au boot (visibles
+notamment dans les logs du smoke E2E, tour auto-démarré sur session neuve).
+Test de régression ajouté (format `function(){…}`, chaîne équilibrée).
+
+# nemetonshiny 0.97.4 (2026-07-02)
+
+### Fixed — Smoke E2E `mod_rag_admin` ré-armé (spec 009.2 / E7)
+
+Le smoke test `test-mod_rag_admin-e2e.R`, quarantiné depuis v0.74.1
+(`skip("FIXME…")`), est **ré-armé et vert**. Deux corrections de test (le code
+applicatif était correct) :
+- **Ouverture de la modale** : le gear rend un `nav-link role="tab"` ; un clic
+  DOM et `app$click()` sont avalés par le comportement d'onglet Bootstrap et ne
+  déclenchent jamais `input$open`. On pilote l'input d'action avec la valeur
+  `"click"` (`app$set_inputs(..., allow_no_input_binding_ = TRUE)`), seul
+  déclencheur fiable pour un `actionLink` sous shinytest2.
+- **Stabilisation** : `wait_for_idle()` lève « session unstable » à cause d'une
+  erreur JS *cicerone* (tour guidé, « no steps to iterate ») sans rapport ; on
+  la tolère (`try()`) et on attend l'apparition du DOM via `wait_for_js()`
+  (modale puis bouton `add_row`). La tab RAG lazy monte alors correctement.
+
+Pré-requis : un **Chrome non-snap** (`google-chrome` .deb) — le chromium *snap*
+fait wedger `Page.navigate` sous `AppDriver`. Le boot reste gardé
+(`tryCatch → skip()`) pour ne jamais transformer une flakiness navigateur en
+échec.
 
 # nemetonshiny 0.97.3 (2026-07-02)
 

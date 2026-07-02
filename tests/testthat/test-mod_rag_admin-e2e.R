@@ -9,28 +9,22 @@
 # Skipped on machines without shinytest2 / chromote / Chrome.
 
 test_that("RAG admin tab boots inside the settings modal", {
-  # FIXME (quarantiné en 0.74.1) — ce smoke test n'a JAMAIS tourné en CI
-  # (l'échec d'install lasR, présent depuis v0.73.0, masquait toute la
-  # suite). Une fois lasR résolu, il s'est révélé cassé sur deux plans :
-  #   1. ouvrait la modale via `set_inputs("theia_config-open" = 1)` — un
-  #      actionLink n'accepte que la valeur "click" ;
-  #   2. supposait un rendu eager des onglets, or la tab RAG est lazy
-  #      (mod_rag_admin_ui montée seulement quand config_tab == "tab_rag",
-  #      pour éviter une init DataTables dans un conteneur display:none).
-  # Le correctif (clic DOM réel sur le gear + clic sur le lien de nav de la
-  # tab RAG) ne suffit pas sous shinytest2 headless : le contenu de la
-  # modale (config_tab, inputs rag_admin) ne se monte pas — interaction
-  # modale/tabset-lazy à creuser avec un environnement navigateur stable
-  # (le sandbox de dev a un chromote instable). Le code applicatif est
-  # correct (vérifié à la main). À ré-armer en retirant ce skip().
-  skip("FIXME: E2E modale/tab-lazy à réparer avec un chromote stable (cf. NEWS 0.74.1)")
   skip_on_cran()
+  # Never run under covr: a shinytest2 AppDriver boots the app in a SEPARATE
+  # process, so it contributes nothing to coverage, and running it under covr's
+  # instrumentation (with the runner's pre-installed Chrome) fails the coverage
+  # job. covr sets R_COVR=true during its run.
+  skip_if(identical(Sys.getenv("R_COVR"), "true"), "E2E not run under covr")
   skip_if_not_installed("shinytest2")
   skip_if_not_installed("chromote")
   skip_if_not_installed("nemeton")
   skip_if_not(exists("knowledge_manifest_path", where = asNamespace("nemeton"),
                      inherits = FALSE),
               "nemeton >= 0.63.0 (knowledge_* API) not installed")
+  # A NON-snap Chrome is required: the chromium snap wedges on Page.navigate
+  # under AppDriver (confined sandbox), whereas a google-chrome .deb boots the
+  # app reliably. The boot is wrapped in tryCatch -> skip() below so a flaky
+  # navigate never turns into a false failure.
   if (!nzchar(Sys.which("google-chrome")) &&
       !nzchar(Sys.which("chromium")) &&
       !nzchar(Sys.which("chromium-browser")) &&
@@ -47,8 +41,8 @@ test_that("RAG admin tab boots inside the settings modal", {
     shinytest2::AppDriver$new(
       app_object,
       name         = "rag-admin-smoke",
-      load_timeout = 30 * 1000,
-      timeout      = 10 * 1000,
+      load_timeout = 40 * 1000,
+      timeout      = 15 * 1000,
       variant      = NULL,
       view         = FALSE,
       options      = list(nemeton.app_options = list(language = "fr"))
@@ -59,26 +53,45 @@ test_that("RAG admin tab boots inside the settings modal", {
   )
   on.exit(try(app$stop(), silent = TRUE), add = TRUE)
 
-  # Open the settings (gear) modal. `open` is an actionLink; set_inputs()
-  # rejects a non-"click" value for action inputs, and app$click() waits
-  # for an output change that showModal() never produces. A direct DOM
-  # click on the link reliably fires its Shiny handler and shows the modal.
-  app$run_js("document.getElementById('theia_config-open').click();")
-  app$wait_for_idle(timeout = 5 * 1000)
+  # Open the settings (gear) modal. The gear renders as a navbar nav-link
+  # (role="tab"): a native DOM .click() and app$click() are swallowed by
+  # Bootstrap's tab handling and never fire input$open. Driving the action
+  # input with the value "click" is the reliable trigger for an actionLink
+  # under shinytest2 (a numeric value is rejected).
+  #
+  # KEEP the default wait_/timeout_ (do NOT set wait_ = FALSE or shorten
+  # timeout_): showModal() changes no output value, so shinytest2 pumps the
+  # message loop for the full timeout while waiting — and that pumping is what
+  # lets the server process input$open and push the modal to the client. It
+  # prints a benign "Server did not update any output values" note (WARN 0);
+  # with wait_ = FALSE or a short timeout_ the loop isn't pumped enough and the
+  # modal never appears (verified: both fail).
+  app$set_inputs(`theia_config-open` = "click", allow_no_input_binding_ = TRUE)
 
-  # The RAG tab is LAZY-rendered: mod_rag_admin_ui() (and its static
-  # add_row control) only mounts when `config_tab == "tab_rag"`. This is
-  # deliberate — DataTables must not initialise inside a display:none
-  # container (it errors and cascades onto sibling outputs). A tabsetPanel
-  # exposes no settable input binding, so activate the tab by clicking its
-  # nav link (Bootstrap toggle + Shiny input update), which both reveals
-  # the panel and flips `config_tab` to "tab_rag".
+  # NOTE: wait_for_idle() throws here ("session unstable") because of an
+  # UNRELATED cicerone (guided-tour) client-side JS error emitted on the same
+  # flush ("There are no steps defined to iterate"). It is harmless for this
+  # smoke test, so tolerate it and wait for the modal DOM instead.
+  try(app$wait_for_idle(timeout = 6 * 1000), silent = TRUE)
+  app$wait_for_js("!!document.querySelector('.modal.show')", timeout = 8 * 1000)
+
+  # The RAG tab is LAZY-rendered: mod_rag_admin_ui() (and its static add_row
+  # control) only mounts when config_tab == "tab_rag". This is deliberate —
+  # DataTables must not initialise inside a display:none container. A
+  # tabsetPanel exposes no settable input binding, so activate the tab by
+  # clicking its nav link, which reveals the panel and flips config_tab.
   app$run_js(
     "var t = document.querySelector('.modal [data-value=\"tab_rag\"]');
      if (t) { t.click(); }"
   )
-  app$wait_for_idle(timeout = 5 * 1000)
-  Sys.sleep(0.8)
+  try(app$wait_for_idle(timeout = 6 * 1000), silent = TRUE)
+  # The add_row control is a static actionButton in the nested namespace; once
+  # the lazy tab mounts, its DOM node exists. Wait on it rather than a fixed
+  # sleep so the assertion is not racy.
+  app$wait_for_js(
+    "!!document.getElementById('theia_config-rag_admin-add_row')",
+    timeout = 8 * 1000
+  )
 
   vals <- app$get_values()$input
   # Add-row is a static (non-renderUI) control under the nested namespace
