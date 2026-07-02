@@ -1,3 +1,18 @@
+# nemetonshiny 0.97.3 (2026-07-02)
+
+### Changed — Liste « Commune » remplie instantanément au chargement d'un projet
+
+Au chargement d'un projet, la liste déroulante « Commune » restait vide
+plusieurs secondes : son remplissage attendait `restore_task` (spawn d'un worker
+`future` + `load_all(nemeton)` + appel `geo.api.gouv.fr` pour **toute** la liste
+du département). Or le contour communal mis en cache au moment de la sauvegarde
+porte déjà le **nom** de la commune (colonne `nom`). On peuple donc désormais le
+dropdown **immédiatement** avec la seule commune restaurée (libellé correct
+affiché tout de suite) ; `restore_task` remplace ensuite ce choix unique par la
+liste complète du département en arrière-plan (pour changer de commune), en
+conservant la sélection. Projets *legacy* sans contour caché : comportement
+inchangé (chemin async).
+
 # nemetonshiny 0.97.2 (2026-07-02)
 
 ### Fixed — Bouton de calcul rétabli pour un projet figé en « computing »
