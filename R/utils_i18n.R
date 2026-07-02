@@ -396,6 +396,52 @@ TRANSLATIONS <- list(
     fr = "D\u00e9termine les libell\u00e9s et codes de la liste d\u00e9roulante 'groupe/zone' des UGF (ONF, CRPF, OFB, autre).",
     en = "Defines the labels and codes of the UGF 'group/zone' dropdown (ONF, CRPF, OFB, other)."
   ),
+  # For\u00eat ancienne -> N2 continuit\u00e9 (spec 031)
+  foret_ancienne_section = list(
+    fr = "For\u00eat ancienne (continuit\u00e9 N2)",
+    en = "Ancient forest (N2 continuity)"
+  ),
+  foret_ancienne_source = list(
+    fr = "Source historique (raster class\u00e9 ou vecteur)",
+    en = "Historical source (classified raster or vector)"
+  ),
+  foret_ancienne_forest_class = list(
+    fr = "Classe(s) = for\u00eat (raster)",
+    en = "Forest class(es) (raster)"
+  ),
+  foret_ancienne_threshold = list(
+    fr = "Seuil (valeur \u2265)",
+    en = "Threshold (value \u2265)"
+  ),
+  foret_ancienne_min_area = list(
+    fr = "Surface minimale (m\u00b2)",
+    en = "Minimum area (m\u00b2)"
+  ),
+  foret_ancienne_mode_class = list(fr = "Par classe(s)", en = "By class(es)"),
+  foret_ancienne_mode_threshold = list(fr = "Par seuil", en = "By threshold"),
+  foret_ancienne_hint = list(
+    fr = "Cartes de Cassini, d'\u00e9tat-major, ou couche IGN for\u00eat ancienne. Corona-4B non couvert en France.",
+    en = "Cassini maps, \u00e9tat-major maps, or the IGN ancient-forest layer. Corona-4B has no France coverage."
+  ),
+  foret_ancienne_save = list(fr = "Enregistrer la source", en = "Save source"),
+  foret_ancienne_clear = list(fr = "Retirer la source", en = "Remove source"),
+  foret_ancienne_saved = list(
+    fr = "Source for\u00eat ancienne enregistr\u00e9e",
+    en = "Ancient-forest source saved"
+  ),
+  foret_ancienne_cleared = list(
+    fr = "Source for\u00eat ancienne retir\u00e9e",
+    en = "Ancient-forest source removed"
+  ),
+  foret_ancienne_none = list(
+    fr = "Aucune source \u2014 N2 sur la couverture actuelle",
+    en = "No source \u2014 N2 on current cover"
+  ),
+  foret_ancienne_current = list(fr = "Source actuelle", en = "Current source"),
+  foret_ancienne_need_project = list(
+    fr = "Cr\u00e9ez d'abord le projet pour ajouter une source for\u00eat ancienne.",
+    en = "Create the project first to add an ancient-forest source."
+  ),
   project_date = list(fr = "Date de cr\u00e9ation", en = "Creation date"),
   project_path_label = list(fr = "R\u00e9pertoire de sauvegarde", en = "Storage directory"),
   created_at = list(fr = "Cr\u00e9\u00e9 le", en = "Created on"),

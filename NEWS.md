@@ -1,3 +1,30 @@
+# nemetonshiny 0.97.6 (2026-07-02)
+
+### Added — Forêt ancienne → continuité N2 (spec 031)
+
+L'utilisateur peut désormais fournir une **source historique de forêt ancienne**
+(raster classé — Cassini / état-major scanné — ou vecteur digitalisé — couche
+IGN forêt ancienne) pour un score de **continuité N2 réel**, au lieu du défaut
+50 / de la seule couverture actuelle. Toute la logique métier reste dans le cœur
+(`nemeton >= 0.113.0`, `build_foret_ancienne_mask()`), l'app ne fait que câbler
+la source.
+
+- **UI** (`mod_project`) : bloc optionnel « Forêt ancienne (continuité N2) » —
+  upload raster (`.tif`/`.tiff`) ou vecteur (`.gpkg`/`.shp`/`.geojson`), paramètres
+  adaptés au type détecté (raster → `forest_class` multi-sélection via
+  `terra::unique()` **ou** `threshold` ; commun → `min_area_m2`), aide i18n
+  rappelant les sources acceptées et que **Corona-4B** n'est pas utilisable en
+  France. Enregistrement/retrait de la source par projet.
+- **Calcul** (`service_compute`) : si une source est fournie **et** que N2 est
+  demandé, `build_foret_ancienne_layer()` construit le masque via le cœur, le met
+  en cache sous `<projet>/cache/layers/foret_ancienne/` (clé = hash source +
+  params) et le stage dans `layers$vectors$foret_ancienne`, injecté dans
+  `indicateur_n2_continuite(foret_ancienne = )`. **Sans source : N2 inchangé
+  (aucune régression).**
+- **Persistance** (`service_project`) : `set_project_foret_ancienne()` /
+  `clear_project_foret_ancienne()` (copie de la source dans le projet + config
+  sous `metadata$foret_ancienne`).
+- 14 clés i18n FR/EN.
 # nemetonshiny 0.97.5 (2026-07-02)
 
 ### Fixed — Tour guidé : bascule d'onglet réparée (erreur JS cicerone)

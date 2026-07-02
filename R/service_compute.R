@@ -844,6 +844,24 @@ start_computation <- function(project_id,
       indicators
     }
 
+    # Forêt ancienne → N2 continuité (spec 031). If the user supplied a
+    # historical source (metadata$foret_ancienne) AND N2 is being computed,
+    # build the ancient-forest mask once (cached) and stage it into
+    # layers$vectors$foret_ancienne, where compute_single_indicator resolves
+    # it into indicateur_n2_continuite(foret_ancienne = ). No source → N2 keeps
+    # its current behaviour (no regression). Business logic lives in the core
+    # (nemeton::build_foret_ancienne_mask) — the app only wires the source in.
+    fa_cfg <- projet_for_ug$metadata$foret_ancienne
+    if (!is.null(fa_cfg) && "indicateur_n2_continuite" %in% effective_indicators) {
+      state$current_task <- "foret_ancienne"
+      report_progress(state)
+      fa_layer <- build_foret_ancienne_layer(
+        fa_cfg, project_path,
+        crs = sf::st_crs(compute_unit)$epsg %||% 2154
+      )
+      if (!is.null(fa_layer)) layers$vectors$foret_ancienne <- fa_layer
+    }
+
     # Spectral diversity (B4 alpha / L3 beta) — biodivMapR, spec 028.
     # Assemble the Sentinel-2 reflectance cube and run
     # compute_spectral_diversity ONCE here (in the compute worker), then
@@ -943,6 +961,108 @@ start_computation <- function(project_id,
       error = e$message
     )
   })
+}
+
+
+#' Build the forêt ancienne (ancient-forest) continuity layer for N2
+#'
+#' @description
+#' Spec 031. Reads the user-provided **historical** source (a classified
+#' raster — Cassini/état-major scan — or a digitised vector — IGN forêt
+#' ancienne), converts it to an sf mask via
+#' \code{nemeton::build_foret_ancienne_mask()} (all business logic stays in the
+#' core), and caches the result under
+#' \code{<project>/cache/layers/foret_ancienne/<key>.gpkg} so the
+#' polygonisation is not repeated on every run. The cache key hashes the source
+#' signature (path/size/mtime) and the parameters.
+#'
+#' @param fa_cfg List from \code{metadata$foret_ancienne}: \code{path} (source
+#'   file, relative to the project dir or absolute), \code{forest_class}
+#'   (integer class value(s) = forest, raster only), \code{threshold} (numeric,
+#'   alternative to forest_class), \code{min_area_m2} (drop specks).
+#' @param project_path Character. Project directory.
+#' @param crs Target CRS (EPSG) for the mask; defaults to Lambert-93 (2154).
+#'
+#' @return An sf with \code{foret_ancienne = TRUE} (possibly 0 rows), or
+#'   \code{NULL} when no source is configured or the build fails — N2 then
+#'   keeps its bdforet-only / default behaviour (no regression).
+#'
+#' @noRd
+build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154) {
+  if (is.null(fa_cfg) || is.null(fa_cfg$path) || !nzchar(fa_cfg$path)) return(NULL)
+
+  src_path <- if (startsWith(fa_cfg$path, "/")) {
+    fa_cfg$path
+  } else {
+    file.path(project_path, fa_cfg$path)
+  }
+  if (!file.exists(src_path)) {
+    cli::cli_warn("Forêt ancienne : source introuvable ({src_path})")
+    return(NULL)
+  }
+
+  min_area     <- as.numeric(fa_cfg$min_area_m2 %||% 0)
+  forest_class <- fa_cfg$forest_class
+  threshold    <- fa_cfg$threshold
+
+  # Cache key : source signature + params. Reused across runs so the
+  # (possibly heavy) polygonisation happens once per (source, params).
+  fi  <- file.info(src_path)
+  key <- substr(rlang::hash(list(
+    normalizePath(src_path, mustWork = FALSE), fi$size, as.numeric(fi$mtime),
+    forest_class, threshold, min_area, crs
+  )), 1, 16)
+  cache_dir  <- file.path(project_path, "cache", "layers", "foret_ancienne")
+  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+  cache_gpkg <- file.path(cache_dir, paste0(key, ".gpkg"))
+
+  if (file.exists(cache_gpkg)) {
+    fa <- tryCatch(sf::st_read(cache_gpkg, quiet = TRUE), error = function(e) NULL)
+    if (!is.null(fa)) {
+      cli::cli_alert_info(
+        "Forêt ancienne : masque lu depuis le cache ({nrow(fa)} polygone{?s})")
+      return(fa)
+    }
+  }
+
+  # Load the source : raster (.tif/.tiff) or vector (.gpkg/.shp/.geojson).
+  ext <- tolower(tools::file_ext(src_path))
+  source_obj <- tryCatch(
+    if (ext %in% c("tif", "tiff")) terra::rast(src_path) else sf::st_read(src_path, quiet = TRUE),
+    error = function(e) {
+      cli::cli_warn("Forêt ancienne : lecture de la source échouée : {conditionMessage(e)}")
+      NULL
+    }
+  )
+  if (is.null(source_obj)) return(NULL)
+
+  fa <- tryCatch(
+    nemeton::build_foret_ancienne_mask(
+      source       = source_obj,
+      forest_class = if (length(forest_class)) as.integer(forest_class) else NULL,
+      threshold    = if (!is.null(threshold) && nzchar(as.character(threshold))) as.numeric(threshold) else NULL,
+      min_area_m2  = min_area,
+      crs          = crs
+    ),
+    error = function(e) {
+      cli::cli_warn("Forêt ancienne : build_foret_ancienne_mask a échoué : {conditionMessage(e)}")
+      NULL
+    }
+  )
+  if (is.null(fa)) return(NULL)
+
+  if (nrow(fa) == 0) {
+    cli::cli_alert_info("Forêt ancienne : aucune zone détectée dans la source")
+    return(fa)  # 0-row sf ; indicateur_n2_continuite handles an empty mask
+  }
+
+  tryCatch(
+    sf::st_write(fa, cache_gpkg, quiet = TRUE, delete_dsn = TRUE),
+    error = function(e) cli::cli_warn("Forêt ancienne : cache non écrit : {conditionMessage(e)}")
+  )
+  cli::cli_alert_success(
+    "Forêt ancienne : masque construit ({nrow(fa)} polygone{?s})")
+  fa
 }
 
 
@@ -3634,6 +3754,15 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     if ("bdforet" %in% func_args) {
       bd <- resolve_vector_layer(layers, "bdforet")
       if (!is.null(bd)) args$bdforet <- bd
+    }
+    # Forêt ancienne (spec 031) → N2 continuité. The sf mask is built once
+    # up-front in start_computation() from the user-provided historical source
+    # (build_foret_ancienne_layer) and staged in layers$vectors$foret_ancienne.
+    # When absent, indicateur_n2_continuite falls back to its bdforet-only /
+    # default behaviour — no regression.
+    if ("foret_ancienne" %in% func_args) {
+      fa <- resolve_vector_layer(layers, "foret_ancienne")
+      if (!is.null(fa)) args$foret_ancienne <- fa
     }
 
     # Canopy Height Model. Routed to every nemeton indicator that
