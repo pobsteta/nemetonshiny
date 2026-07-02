@@ -546,17 +546,18 @@ test_that("init_compute_state handles resume with existing progress", {
 # Additional progress and compute state tests (full indicator list)
 # ==============================================================================
 
-test_that("list_available_indicators returns 33 indicators", {
+test_that("list_available_indicators returns 34 indicators", {
   indicators <- nemetonshiny:::list_available_indicators()
-  # 31 base + B4 + L3 (diversité spectrale, spec 028)
-  expect_length(indicators, 33)
+  # 31 base + B4 + L3 (diversité spectrale, spec 028) + T3 (coupes rases, spec 030)
+  expect_length(indicators, 34)
   expect_true("indicateur_c1_biomasse" %in% indicators)
   expect_true("indicateur_n3_naturalite" %in% indicators)
   expect_true("indicateur_b4_div_spectrale" %in% indicators)
   expect_true("indicateur_l3_het_spectrale" %in% indicators)
+  expect_true("indicateur_t3_coupes_rases" %in% indicators)
 })
 
-test_that("init_compute_state returns correct structure with all 33 indicators", {
+test_that("init_compute_state returns correct structure with all 34 indicators", {
   with_mocked_bindings(
     get_computation_progress = function(project_id) list(computed_indicators = character(0), last_saved_at = NULL),
     {
@@ -565,11 +566,11 @@ test_that("init_compute_state returns correct structure with all 33 indicators",
       expect_equal(state$status, "pending")
       expect_equal(state$phase, "init")
       expect_equal(state$progress, 0)
-      expect_equal(state$indicators_total, 33)
+      expect_equal(state$indicators_total, 34)
       expect_equal(state$indicators_completed, 0)
       expect_equal(state$indicators_failed, 0L)
       expect_type(state$indicators_status, "character")
-      expect_equal(length(state$indicators_status), 33)
+      expect_equal(length(state$indicators_status), 34)
       expect_true(all(state$indicators_status == "pending"))
     }
   )
