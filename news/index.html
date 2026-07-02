@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.5.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.97.5" id="nemetonshiny-0975-2026-07-02">nemetonshiny 0.97.5 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0975-2026-07-02"></a></h2>
+<div class="section level4">
+<h4 id="fixed--tour-guidé--bascule-donglet-réparée-erreur-js-cicerone-0-97-5">Fixed — Tour guidé : bascule d’onglet réparée (erreur JS cicerone)<a class="anchor" aria-label="anchor" href="#fixed--tour-guid%C3%A9--bascule-donglet-r%C3%A9par%C3%A9e-erreur-js-cicerone-0-97-5"></a></h4>
+<p>La bascule d’onglet du tour guidé (<code>on_highlight_started</code>, <code>R/service_tour.R</code>) était <strong>cassée silencieusement</strong> : cicerone 1.0.4 injecte ce callback brut dans <code>new Function("return " + js)()</code> (cicerone.js:101), or on lui passait une chaîne commençant par <code>var …</code> → <code>return var …</code> → <code>SyntaxError: Unexpected token 'var'</code>. La compilation des steps échouait (driver.js : « There are no steps defined to iterate »), donc le tour ne pouvait plus changer d’onglet. Le JS est désormais une <strong>expression de fonction</strong> (<code>function(){…}</code>), valide une fois préfixée de <code>return</code>. Corrige aussi les deux erreurs JS client observées au boot (visibles notamment dans les logs du smoke E2E, tour auto-démarré sur session neuve). Test de régression ajouté (format <code>function(){…}</code>, chaîne équilibrée).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.97.4" id="nemetonshiny-0974-2026-07-02">nemetonshiny 0.97.4 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0974-2026-07-02"></a></h2>
 <div class="section level4">
