@@ -427,6 +427,60 @@ test_that("restore sets is_restoring flag, clears geometry, and invokes restore_
   )
 })
 
+test_that("restore with cached geometry selects commune synchronously (immediate dropdown)", {
+  skip_if_not_installed("shiny")
+
+  # Regression : au chargement d'un projet dont le contour communal est en
+  # cache, la commune selectionnee doit etre disponible IMMEDIATEMENT (geometrie
+  # injectee + selected_commune pose synchronement + dropdown peuple avec ce
+  # seul choix), sans attendre restore_task (async, spawn worker + appel API)
+  # qui ne resout jamais sous testServer. Avant, le dropdown restait vide
+  # plusieurs secondes.
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    get_departments = function() c("01 - Ain" = "01", "75 - Paris" = "75"),
+    get_communes_in_department = function(dept) mock_communes_df(dept),
+    get_commune_geometry = function(code) mock_commune_geometry(code),
+    format_communes_for_selectize = function(df) {
+      if (is.null(df) || nrow(df) == 0) return(character(0))
+      stats::setNames(df$code_insee, df$label)
+    },
+    {
+      mock_app_state <- shiny::reactiveValues(
+        language = "fr",
+        restore_project = NULL,
+        restore_in_progress = FALSE
+      )
+
+      shiny::testServer(
+        nemetonshiny:::mod_search_server,
+        args = list(app_state = mock_app_state),
+        {
+          result <- session$getReturned()
+
+          # Amorce le cycle reactif : sans un premier flush declenche par un
+          # input, l'observeEvent sur app_state (reactiveValues externe) ne
+          # s'invalide pas au tout premier flushReact() sous testServer.
+          session$setInputs(departement = "")
+
+          # Restore AVEC contour cache (fast path)
+          mock_app_state$restore_project <- list(
+            department_code = "01",
+            commune_code = "01001",
+            geometry = mock_commune_geometry("01001")
+          )
+          session$flushReact()
+
+          # Geometrie injectee synchronement (pas NULL) et commune selectionnee
+          # tout de suite -- restore_task async n'a pas eu besoin de resoudre.
+          expect_false(is.null(result$commune_geometry()))
+          expect_equal(result$selected_commune(), "01001")
+        }
+      )
+    }
+  )
+})
+
 test_that("restore ignores NULL commune_code", {
   skip_if_not_installed("shiny")
 

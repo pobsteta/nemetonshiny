@@ -420,6 +420,26 @@ mod_search_server <- function(id, app_state) {
         rv$selected_commune <- commune_code
         rv$geometry_injected <- TRUE
         cli::cli_alert_success("Restore: injected cached commune geometry (gen={gen_snapshot})")
+
+        # Peuple le dropdown IMMEDIATEMENT avec la seule commune restauree,
+        # sans attendre restore_task (spawn worker + load nemeton + appel API
+        # geo.api.gouv.fr pour toute la liste du departement -- plusieurs
+        # secondes). Le contour cache porte deja le nom de la commune (colonne
+        # `nom`, propriete GeoJSON), donc on affiche le bon libelle tout de
+        # suite ; restore_task remplacera ce choix unique par la liste complete
+        # du departement en arriere-plan (pour changer de commune), en
+        # conservant la selection. Sans ca, le dropdown restait vide/en
+        # chargement plusieurs secondes au chargement d'un projet.
+        commune_label <- tryCatch({
+          nm <- if ("nom" %in% names(cached_geom)) cached_geom[["nom"]][1] else NA
+          if (is.null(nm) || is.na(nm) || !nzchar(nm)) commune_code else as.character(nm)
+        }, error = function(e) commune_code)
+        shiny::updateSelectizeInput(
+          session, "commune",
+          choices  = stats::setNames(commune_code, commune_label),
+          selected = commune_code,
+          server   = TRUE
+        )
       } else {
         # Legacy project (no cached geometry): clear stale geometry from the
         # previous commune/project. Without this, the combined observer in
