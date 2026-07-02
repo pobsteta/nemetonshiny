@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,9 +33,21 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.97.5" id="nemetonshiny-0975-2026-07-02">nemetonshiny 0.97.5 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0975-2026-07-02"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.97.6" id="nemetonshiny-0976-2026-07-02">nemetonshiny 0.97.6 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0976-2026-07-02"></a></h2>
 <div class="section level4">
-<h4 id="fixed--tour-guidé--bascule-donglet-réparée-erreur-js-cicerone-0-97-5">Fixed — Tour guidé : bascule d’onglet réparée (erreur JS cicerone)<a class="anchor" aria-label="anchor" href="#fixed--tour-guid%C3%A9--bascule-donglet-r%C3%A9par%C3%A9e-erreur-js-cicerone-0-97-5"></a></h4>
+<h4 id="added--forêt-ancienne--continuité-n2-spec-0-97-6">Added — Forêt ancienne → continuité N2 (spec 031)<a class="anchor" aria-label="anchor" href="#added--for%C3%AAt-ancienne--continuit%C3%A9-n2-spec-0-97-6"></a></h4>
+<p>L’utilisateur peut désormais fournir une <strong>source historique de forêt ancienne</strong> (raster classé — Cassini / état-major scanné — ou vecteur digitalisé — couche IGN forêt ancienne) pour un score de <strong>continuité N2 réel</strong>, au lieu du défaut 50 / de la seule couverture actuelle. Toute la logique métier reste dans le cœur (<code>nemeton &gt;= 0.113.0</code>, <code>build_foret_ancienne_mask()</code>), l’app ne fait que câbler la source.</p>
+<ul><li>
+<strong>UI</strong> (<code>mod_project</code>) : bloc optionnel « Forêt ancienne (continuité N2) » — upload raster (<code>.tif</code>/<code>.tiff</code>) ou vecteur (<code>.gpkg</code>/<code>.shp</code>/<code>.geojson</code>), paramètres adaptés au type détecté (raster → <code>forest_class</code> multi-sélection via <code><a href="https://rspatial.github.io/terra/reference/unique.html" class="external-link">terra::unique()</a></code> <strong>ou</strong> <code>threshold</code> ; commun → <code>min_area_m2</code>), aide i18n rappelant les sources acceptées et que <strong>Corona-4B</strong> n’est pas utilisable en France. Enregistrement/retrait de la source par projet.</li>
+<li>
+<strong>Calcul</strong> (<code>service_compute</code>) : si une source est fournie <strong>et</strong> que N2 est demandé, <code>build_foret_ancienne_layer()</code> construit le masque via le cœur, le met en cache sous <code>&lt;projet&gt;/cache/layers/foret_ancienne/</code> (clé = hash source + params) et le stage dans <code>layers$vectors$foret_ancienne</code>, injecté dans <code>indicateur_n2_continuite(foret_ancienne = )</code>. <strong>Sans source : N2 inchangé (aucune régression).</strong>
+</li>
+<li>
+<strong>Persistance</strong> (<code>service_project</code>) : <code>set_project_foret_ancienne()</code> / <code>clear_project_foret_ancienne()</code> (copie de la source dans le projet + config sous <code>metadata$foret_ancienne</code>).</li>
+<li>14 clés i18n FR/EN. # nemetonshiny 0.97.5 (2026-07-02)</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--tour-guidé--bascule-donglet-réparée-erreur-js-cicerone-0-97-6">Fixed — Tour guidé : bascule d’onglet réparée (erreur JS cicerone)<a class="anchor" aria-label="anchor" href="#fixed--tour-guid%C3%A9--bascule-donglet-r%C3%A9par%C3%A9e-erreur-js-cicerone-0-97-6"></a></h4>
 <p>La bascule d’onglet du tour guidé (<code>on_highlight_started</code>, <code>R/service_tour.R</code>) était <strong>cassée silencieusement</strong> : cicerone 1.0.4 injecte ce callback brut dans <code>new Function("return " + js)()</code> (cicerone.js:101), or on lui passait une chaîne commençant par <code>var …</code> → <code>return var …</code> → <code>SyntaxError: Unexpected token 'var'</code>. La compilation des steps échouait (driver.js : « There are no steps defined to iterate »), donc le tour ne pouvait plus changer d’onglet. Le JS est désormais une <strong>expression de fonction</strong> (<code>function(){…}</code>), valide une fois préfixée de <code>return</code>. Corrige aussi les deux erreurs JS client observées au boot (visibles notamment dans les logs du smoke E2E, tour auto-démarré sur session neuve). Test de régression ajouté (format <code>function(){…}</code>, chaîne équilibrée).</p>
 </div>
 </div>
