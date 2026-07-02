@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.7.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,27 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.97.7" id="nemetonshiny-0977-2026-07-02">nemetonshiny 0.97.7 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0977-2026-07-02"></a></h2>
+<div class="section level4">
+<h4 id="fixed--chargement-dun-projet-récent--plus-de-bascule--nouveau-projet--sur-la-commune-0-97-7">Fixed — Chargement d’un projet récent : plus de bascule « nouveau projet » sur la Commune<a class="anchor" aria-label="anchor" href="#fixed--chargement-dun-projet-r%C3%A9cent--plus-de-bascule--nouveau-projet--sur-la-commune-0-97-7"></a></h4>
+<p>Au chargement d’un projet récent, l’app pouvait basculer comme si on démarrait un nouveau projet dès que le menu « Commune » se mettait à jour : toutes les parcelles cadastrales de la commune s’affichaient et les parcelles du projet disparaissaient. Cause : le selectize « Commune » émet un <code>input$commune=""</code> transitoire pendant que ses choix sont repeuplés (restauration), et ce blip n’était gardé que par <code>rv$is_restoring</code> (mod_search) tandis que la réinitialisation du projet (mod_home) était gardée par <code>app_state$restore_in_progress</code> — deux drapeaux relâchés à des instants différents (<code>delay=1</code> vs <code>delay=0</code>), d’où une fenêtre de course qui effaçait le projet puis rechargeait le cadastre communal. Les deux observers <code>selected_commune</code> de <code>mod_home</code> utilisent désormais une garde <strong>fondée sur l’intention</strong> (indépendante du timing) : la commune du projet chargé est dérivée de ses parcelles, et un blip <code>""</code> ou une re-sélection de la commune du projet ne réinitialise plus rien ; seule une bascule vers une <strong>autre</strong> commune démolit le projet en cours. Test de régression ajouté.</p>
+</div>
+<div class="section level4">
+<h4 id="added--radar-t3--coupes-rases--sufosat-spec-0-97-7">Added — Radar T3 « Coupes rases » (SUFOSAT, spec 030)<a class="anchor" aria-label="anchor" href="#added--radar-t3--coupes-rases--sufosat-spec-0-97-7"></a></h4>
+<p>L’indicateur <strong>T3</strong> (<code><a href="https://pobsteta.github.io/nemeton/reference/indicateur_t3_coupes_rases.html" class="external-link">nemeton::indicateur_t3_coupes_rases</a></code>) est câblé sur le radar de la famille <strong>T</strong> (à côté de T1/T2), alimenté par le produit national <strong>SUFOSAT</strong> (détection de coupes rases par radar Sentinel-1, CNES/CESBIO) récupéré depuis Theia. Toute la logique métier — y compris l’<strong>inversion</strong> de T3 (haut = beaucoup de coupe = mauvais) — reste dans le cœur ; l’app ne câble que la source et ne ré-inverse jamais.</p>
+<ul><li>
+<strong>UI</strong> (<code>mod_project</code>) : bloc optionnel « Coupes rases (SUFOSAT) » — pas d’upload, un simple toggle + <code>window_years</code> (1-8, défaut 5) et <code>min_proba</code> (0.5-1.0, défaut 0.9). <strong>Gaté sur Theia configuré</strong> (identifiants S3) : message d’invite sinon.</li>
+<li>
+<strong>Calcul</strong> (<code>service_compute</code>) : <code>build_sufosat_layer()</code> récupère les deux assets SUFOSAT (dates + proba) via <code>theia_configure_s3()</code> / <code>load_theia_source()</code>, les met en cache sous <code>&lt;projet&gt;/cache/layers/sufosat/</code> (clé = bbox AOI) et les injecte dans <code>indicateur_t3_coupes_rases(sufosat_dates=, sufosat_proba=, window_years=, min_proba=)</code>. T3 est ajouté à <code>list_available_indicators()</code> (comme N2) ; <strong>sans source activée : T3 = NA, famille T inchangée (T1/T2), aucune requête Theia.</strong>
+</li>
+<li>
+<strong>Radar</strong> (<code>app_config</code>) : T3 rattaché à la famille T (libellé + tooltip FR/EN) — l’axe T passe de 2 à 3 sous-indicateurs quand la source est active.</li>
+<li>
+<strong>Persistance</strong> (<code>service_project</code>) : <code>set_project_sufosat()</code> (<code>metadata$sufosat</code>, purge du cache au désactivage).</li>
+<li>10 clés i18n FR/EN. Tests : build+cache+reuse, garde-fous, injection + propagation des paramètres, persistance (25 assertions).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.97.6" id="nemetonshiny-0976-2026-07-02">nemetonshiny 0.97.6 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0976-2026-07-02"></a></h2>
 <div class="section level4">
