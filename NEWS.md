@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.97.5 (2026-07-02)
 
 ### Fixed — Tour guidé : bascule d'onglet réparée (erreur JS cicerone)
 
