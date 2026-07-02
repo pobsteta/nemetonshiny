@@ -1565,6 +1565,71 @@ test_that("commune change during restore does NOT reset project state", {
   )
 })
 
+test_that("re-selecting the loaded project's own commune does NOT reset it", {
+  # Regression — bug "restore flips to new project": once the flags cleared,
+  # a late/spurious selected_commune event carrying the project's OWN commune
+  # (dropdown re-populated during restore) used to wipe the project and load
+  # the full commune cadastre. The intent-based guard must keep it.
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("leaflet")
+
+  commune_val <- shiny::reactiveVal(NULL)
+
+  # Project whose parcels live in commune 01234 (drives loaded_project_commune).
+  mock_project <- list(
+    id = "proj_own",
+    metadata = list(name = "Own commune", status = "completed"),
+    parcels = data.frame(code_insee = "01234", id = "p1",
+                         stringsAsFactors = FALSE)
+  )
+
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    list_recent_projects = mock_empty_projects,
+    mod_search_server = function(id, app_state) {
+      list(
+        selected_commune = commune_val,
+        commune_geometry = shiny::reactive(NULL)
+      )
+    },
+    mod_map_server = mock_map_server,
+    mod_project_server = mock_project_server,
+    mod_progress_server = mock_progress_server,
+    {
+      as <- make_app_state(list(
+        current_project = mock_project,
+        project_id = "proj_own",
+        restore_in_progress = FALSE  # flags already cleared
+      ))
+
+      shiny::testServer(
+        nemetonshiny:::mod_home_server,
+        args = list(app_state = as),
+        {
+          # Re-selection of the project's OWN commune — must be a no-op.
+          commune_val("01234")
+          session$flushReact()
+          expect_equal(as$project_id, "proj_own")
+          expect_false(is.null(as$current_project))
+
+          # A transient blank "" blip — must not tear the project down either.
+          commune_val("")
+          session$flushReact()
+          expect_equal(as$project_id, "proj_own")
+          expect_false(is.null(as$current_project))
+
+          # A genuine switch to a DIFFERENT commune DOES reset.
+          commune_val("05678")
+          session$flushReact()
+          expect_null(as$current_project)
+          expect_null(as$project_id)
+        }
+      )
+    }
+  )
+})
+
 # =============================================================================
 # Server: load_project with no parcels
 # =============================================================================

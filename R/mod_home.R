@@ -661,12 +661,20 @@ mod_home_server <- function(id, app_state) {
     shiny::observeEvent(search_result$selected_commune(), {
       commune <- search_result$selected_commune()
       if (is.null(commune) || commune == "") {
+        # A transient "" blip (selectize emits it while its choices are
+        # swapped during restore) must NOT drop a loaded project's parcels.
+        if (!is.null(app_state$current_project)) return()
         parcels_data(NULL)
         return()
       }
 
       # During project restore, parcels are set directly — skip API call
       if (isTRUE(app_state$restore_in_progress)) return()
+
+      # Re-selecting the loaded project's OWN commune (restore re-populates the
+      # dropdown with the full department list, re-emitting the same value)
+      # must not replace its parcels with the full commune cadastre.
+      if (identical(commune, loaded_project_commune())) return()
 
       commune_geom <- search_result$commune_geometry()
       shiny::req(commune_geom)
@@ -839,6 +847,22 @@ mod_home_server <- function(id, app_state) {
     # ========================================
 
     # Helper to clear all project/computation state
+    # Commune INSEE code of the currently-loaded project, derived from its
+    # parcels (single source of truth — correct for both restored and freshly
+    # created projects, no separate state to keep in sync). Used by the
+    # selected_commune observers to distinguish a genuine commune switch from
+    # a restore artifact (blank "" blip / re-selection of the same commune).
+    loaded_project_commune <- function() {
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$parcels) ||
+          !"code_insee" %in% names(proj$parcels)) {
+        return(NULL)
+      }
+      cc <- unique(proj$parcels$code_insee)
+      cc <- cc[!is.na(cc) & nzchar(cc)]
+      if (length(cc)) as.character(cc[1]) else NULL
+    }
+
     reset_project_state <- function() {
       # Clear current project
       app_state$current_project <- NULL
@@ -882,6 +906,13 @@ mod_home_server <- function(id, app_state) {
     # dropdown is actually updated).
     shiny::observeEvent(search_result$selected_commune(), {
       if (isTRUE(app_state$restore_in_progress)) return()
+      commune <- search_result$selected_commune()
+      # Only a genuine switch to a DIFFERENT commune tears down the current
+      # project. Ignore a blank "" blip and a re-selection of the project's
+      # own commune — both occur during restore, independently of the
+      # (racy) restore flags — so the loaded project is never wiped.
+      if (is.null(commune) || !nzchar(commune)) return()
+      if (identical(commune, loaded_project_commune())) return()
       reset_project_state()
     }, ignoreInit = TRUE)
 

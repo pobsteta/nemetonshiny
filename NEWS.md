@@ -1,5 +1,23 @@
 # nemetonshiny (development version)
 
+### Fixed — Chargement d'un projet récent : plus de bascule « nouveau projet » sur la Commune
+
+Au chargement d'un projet récent, l'app pouvait basculer comme si on démarrait
+un nouveau projet dès que le menu « Commune » se mettait à jour : toutes les
+parcelles cadastrales de la commune s'affichaient et les parcelles du projet
+disparaissaient. Cause : le selectize « Commune » émet un `input$commune=""`
+transitoire pendant que ses choix sont repeuplés (restauration), et ce blip
+n'était gardé que par `rv$is_restoring` (mod_search) tandis que la
+réinitialisation du projet (mod_home) était gardée par
+`app_state$restore_in_progress` — deux drapeaux relâchés à des instants
+différents (`delay=1` vs `delay=0`), d'où une fenêtre de course qui effaçait le
+projet puis rechargeait le cadastre communal. Les deux observers
+`selected_commune` de `mod_home` utilisent désormais une garde **fondée sur
+l'intention** (indépendante du timing) : la commune du projet chargé est
+dérivée de ses parcelles, et un blip `""` ou une re-sélection de la commune du
+projet ne réinitialise plus rien ; seule une bascule vers une **autre** commune
+démolit le projet en cours. Test de régression ajouté.
+
 ### Added — Radar T3 « Coupes rases » (SUFOSAT, spec 030)
 
 L'indicateur **T3** (`nemeton::indicateur_t3_coupes_rases`) est câblé sur le
