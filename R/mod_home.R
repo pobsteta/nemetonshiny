@@ -766,8 +766,18 @@ mod_home_server <- function(id, app_state) {
         )
       )
 
-      # Show button only for draft status (not yet computed).
-      if (status %in% c("draft", "error")) {
+      # Show the start button for draft/error AND for a STALE transient
+      # status. "computing"/"downloading"/"pending" persisted on disk mean a
+      # run that was interrupted (app restart/crash between the "computing"
+      # write in service_compute and the "completed"/"error" write): the
+      # worker is gone, the resume observer already declined to reconnect
+      # (stale progress file > 120 s), and computing_project_id() is NULL so
+      # the live-computation guard above did NOT fire. Without treating these
+      # as restartable, the compute button vanished for such projects (they
+      # fell through to `else NULL`) with no way to relaunch — cf. Reconfort
+      # bloqué en "computing". A genuinely live run is already short-circuited
+      # at the identical(computing_project_id(), project$id) guard above.
+      if (status %in% c("draft", "error", "computing", "downloading", "pending")) {
         htmltools::div(
           chm_status,
           htmltools::div(

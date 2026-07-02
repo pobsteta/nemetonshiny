@@ -518,6 +518,48 @@ test_that("compute_button_ui stays visible when ANOTHER project is computing", {
   )
 })
 
+test_that("compute_button_ui shows compute button for a STALE computing project", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("leaflet")
+
+  # Regression : un projet dont le calcul a ete interrompu (crash/redemarrage)
+  # reste fige en status="computing" sur disque. Aucun calcul ne tourne dans
+  # la session (computing_project_id() == NULL) donc le garde live ne masque
+  # pas le bouton -- il DOIT s'afficher pour permettre la relance, au lieu de
+  # disparaitre (cf. projet Reconfort bloque sans bouton de calcul).
+  mock_project <- list(
+    id = "proj_stale",
+    metadata = list(name = "Stale", status = "computing"),
+    parcels = NULL
+  )
+
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    list_recent_projects = mock_empty_projects,
+    mod_search_server = mock_search_server,
+    mod_map_server = mock_map_server,
+    mod_project_server = mock_project_server,
+    mod_progress_server = mock_progress_server,
+    {
+      shiny::testServer(
+        nemetonshiny:::mod_home_server,
+        args = list(app_state = make_app_state(list(
+          current_project = mock_project,
+          project_id = "proj_stale"
+        ))),
+        {
+          # Aucun calcul vivant pour ce projet dans la session.
+          expect_null(computing_project_id())
+          html_str <- collapse_html(output$compute_button_ui)
+          expect_true(grepl("start_compute", html_str))
+          expect_true(grepl("btn-primary", html_str))
+        }
+      )
+    }
+  )
+})
+
 test_that("compute_button_ui shows compute button for error project", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -593,40 +635,11 @@ test_that("compute_button_ui shows view results for completed project", {
   )
 })
 
-test_that("compute_button_ui returns NULL for computing status", {
-  skip_if_not_installed("shiny")
-  skip_if_not_installed("bslib")
-  skip_if_not_installed("leaflet")
-
-  mock_project <- list(
-    id = "proj_running",
-    metadata = list(name = "Running", status = "computing"),
-    parcels = NULL
-  )
-
-  with_mocked_bindings(
-    get_app_options = function() list(language = "fr"),
-    list_recent_projects = mock_empty_projects,
-    mod_search_server = mock_search_server,
-    mod_map_server = mock_map_server,
-    mod_project_server = mock_project_server,
-    mod_progress_server = mock_progress_server,
-    {
-      shiny::testServer(
-        nemetonshiny:::mod_home_server,
-        args = list(app_state = make_app_state(list(
-          current_project = mock_project,
-          project_id = "proj_running"
-        ))),
-        {
-          html <- output$compute_button_ui
-          # computing is not in c("draft","error") nor "completed" -> NULL
-          expect_true(html == "" || is.null(html) || nchar(html) == 0)
-        }
-      )
-    }
-  )
-})
+# Note : un projet fige en status="computing" (calcul interrompu) affiche
+# desormais le bouton de relance -- couvert par le test "STALE computing
+# project" plus haut. Le garde live (computing_project_id == project$id)
+# masque le bouton uniquement pendant un calcul reellement en cours dans la
+# session -- couvert par "stays visible when ANOTHER project is computing".
 
 # =============================================================================
 # Server: load_project observer
