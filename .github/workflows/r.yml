@@ -117,6 +117,16 @@ jobs:
           r-version: 'release'
           use-public-rspm: true
 
+      # Non-snap Chrome for the shinytest2 E2E smoke (mod_rag_admin) : the
+      # chromium snap wedges on Page.navigate under AppDriver, a real
+      # google-chrome boots the app reliably. If Chrome is missing / fails to
+      # boot, the E2E test skips (tryCatch -> skip in the test) — never fails CI.
+      - name: Setup Chrome
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -132,11 +142,16 @@ jobs:
           extra-packages: |
             any::testthat
             any::remotes
+            any::shinytest2
             github::cran/dissUtils
             jbferet/spinR
           needs: check
 
       - name: Run tests
+        env:
+          # chromote resolves the browser from CHROMOTE_CHROME first; point it
+          # at the Chrome that setup-chrome just installed.
+          CHROMOTE_CHROME: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
           testthat::test_package("nemetonshiny", reporter = "summary")
         shell: Rscript {0}
