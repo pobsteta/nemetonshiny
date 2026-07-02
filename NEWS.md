@@ -1,3 +1,16 @@
+# nemetonshiny 0.97.8 (2026-07-02)
+
+### Fixed — Alignement suite de tests + libellé i18n de l'axe radar T3
+
+Correctif de cohérence suite à l'ajout de T3 (coupes rases, spec 030) à la
+famille T : les assertions dérivées de `INDICATOR_FAMILIES` /
+`list_available_indicators()` sont réalignées (comptages d'indicateurs 33→34 /
+34→35, `get_column_family_map` 68→70) et la clé i18n `indicator_T3` (« Coupes
+rases » / « Clear-cuts ») est ajoutée — requise pour le libellé de l'axe radar
+T3 (le test i18n `mod_synthesis` exige une clé `indicator_<code>` par code de
+famille). Aucun changement fonctionnel ; répare la CI de 0.97.7. Suite complète
+revérifiée en local (équivalent `test_local`).
+
 # nemetonshiny 0.97.7 (2026-07-02)
 
 ### Fixed — Chargement d'un projet récent : plus de bascule « nouveau projet » sur la Commune
