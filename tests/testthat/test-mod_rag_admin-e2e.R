@@ -10,6 +10,11 @@
 
 test_that("RAG admin tab boots inside the settings modal", {
   skip_on_cran()
+  # Never run under covr: a shinytest2 AppDriver boots the app in a SEPARATE
+  # process, so it contributes nothing to coverage, and running it under covr's
+  # instrumentation (with the runner's pre-installed Chrome) fails the coverage
+  # job. covr sets R_COVR=true during its run.
+  skip_if(identical(Sys.getenv("R_COVR"), "true"), "E2E not run under covr")
   skip_if_not_installed("shinytest2")
   skip_if_not_installed("chromote")
   skip_if_not_installed("nemeton")
