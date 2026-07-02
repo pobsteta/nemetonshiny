@@ -1,3 +1,25 @@
+# nemetonshiny (development version)
+
+### Fixed — Smoke E2E `mod_rag_admin` ré-armé (spec 009.2 / E7)
+
+Le smoke test `test-mod_rag_admin-e2e.R`, quarantiné depuis v0.74.1
+(`skip("FIXME…")`), est **ré-armé et vert**. Deux corrections de test (le code
+applicatif était correct) :
+- **Ouverture de la modale** : le gear rend un `nav-link role="tab"` ; un clic
+  DOM et `app$click()` sont avalés par le comportement d'onglet Bootstrap et ne
+  déclenchent jamais `input$open`. On pilote l'input d'action avec la valeur
+  `"click"` (`app$set_inputs(..., allow_no_input_binding_ = TRUE)`), seul
+  déclencheur fiable pour un `actionLink` sous shinytest2.
+- **Stabilisation** : `wait_for_idle()` lève « session unstable » à cause d'une
+  erreur JS *cicerone* (tour guidé, « no steps to iterate ») sans rapport ; on
+  la tolère (`try()`) et on attend l'apparition du DOM via `wait_for_js()`
+  (modale puis bouton `add_row`). La tab RAG lazy monte alors correctement.
+
+Pré-requis : un **Chrome non-snap** (`google-chrome` .deb) — le chromium *snap*
+fait wedger `Page.navigate` sous `AppDriver`. Le boot reste gardé
+(`tryCatch → skip()`) pour ne jamais transformer une flakiness navigateur en
+échec.
+
 # nemetonshiny 0.97.3 (2026-07-02)
 
 ### Changed — Liste « Commune » remplie instantanément au chargement d'un projet
