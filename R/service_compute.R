@@ -237,6 +237,7 @@ list_available_indicators <- function() {
     "indicateur_l3_het_spectrale",
     # Temporal (T)
     "indicateur_t1_anciennete", "indicateur_t2_changement",
+    "indicateur_t3_coupes_rases",
     # Risk (R)
     "indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse", "indicateur_r4_abroutissement",
     # Social (S)
@@ -862,6 +863,30 @@ start_computation <- function(project_id,
       if (!is.null(fa_layer)) layers$vectors$foret_ancienne <- fa_layer
     }
 
+    # Coupes rases → T3 (spec 030). SUFOSAT is an opt-in national source: T3
+    # is always in list_available_indicators() (like N2), but the Theia fetch
+    # only happens when the user enabled it in the project. When disabled — or
+    # if Theia is not configured / the fetch fails — layers$sufosat stays NULL
+    # and indicateur_t3_coupes_rases returns NA per unit, so the T family keeps
+    # T1/T2 with no Theia request (no regression). T3 is inverted in the core
+    # (normalize_indicator, like R5) — the app never re-inverts. window_years /
+    # min_proba are the user's UI parameters, forwarded to the indicator.
+    sufosat_cfg <- projet_for_ug$metadata$sufosat
+    if (isTRUE(sufosat_cfg$enabled) &&
+        "indicateur_t3_coupes_rases" %in% effective_indicators) {
+      state$current_task <- "sufosat"
+      report_progress(state)
+      sufosat_layer <- build_sufosat_layer(
+        sufosat_cfg, project_path, aoi = compute_unit,
+        crs = sf::st_crs(compute_unit)$epsg %||% 2154
+      )
+      if (!is.null(sufosat_layer)) {
+        sufosat_layer$window_years <- sufosat_cfg$window_years %||% 5
+        sufosat_layer$min_proba    <- sufosat_cfg$min_proba %||% 0.9
+        layers$sufosat <- sufosat_layer
+      }
+    }
+
     # Spectral diversity (B4 alpha / L3 beta) — biodivMapR, spec 028.
     # Assemble the Sentinel-2 reflectance cube and run
     # compute_spectral_diversity ONCE here (in the compute worker), then
@@ -1063,6 +1088,99 @@ build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154) {
   cli::cli_alert_success(
     "Forêt ancienne : masque construit ({nrow(fa)} polygone{?s})")
   fa
+}
+
+
+#' Build (and cache) the SUFOSAT clear-cut rasters for T3
+#'
+#' @description
+#' Fetches the two national SUFOSAT assets (clear-cut detection \code{dates}
+#' and \code{proba}) from Theia for the project AOI, crops them, and caches the
+#' result under \code{<project>/cache/layers/sufosat/}. All business logic (the
+#' T3 score, and its inversion) stays in the core
+#' (\code{nemeton::indicateur_t3_coupes_rases} + \code{normalize_indicator});
+#' this helper only acquires and forwards the input rasters — mirroring
+#' \code{build_foret_ancienne_layer()}.
+#'
+#' SUFOSAT is a single national coverage (2018-present) read by bounding box,
+#' so the cache key is the AOI bbox only — the \code{window_years} /
+#' \code{min_proba} parameters are applied later in the indicator, not baked
+#' into the rasters.
+#'
+#' @param cfg List from \code{metadata$sufosat}. Only \code{enabled} is read by
+#'   the caller; the acquisition itself needs no other field.
+#' @param project_path Character. Project root (for the cache directory).
+#' @param aoi An sf of the compute units (area of interest).
+#' @param crs EPSG code the AOI is expressed in (default 2154).
+#'
+#' @return A list \code{list(dates = <SpatRaster>, proba = <SpatRaster>)}, or
+#'   \code{NULL} when Theia is not configured or the fetch fails (T3 then stays
+#'   NA — no regression).
+#' @noRd
+build_sufosat_layer <- function(cfg, project_path, aoi, crs = 2154) {
+  if (is.null(aoi) || !inherits(aoi, "sf") || nrow(aoi) == 0) return(NULL)
+
+  aoi_2154 <- tryCatch(sf::st_transform(aoi, 2154), error = function(e) NULL)
+  if (is.null(aoi_2154)) return(NULL)
+
+  # Cache key : AOI bbox only (the rasters are the raw national coverage
+  # cropped to the AOI ; window/proba are applied downstream in the indicator).
+  bb  <- as.numeric(sf::st_bbox(aoi_2154))
+  key <- substr(rlang::hash(list(round(bb, 0))), 1, 16)
+  cache_dir <- file.path(project_path, "cache", "layers", "sufosat")
+  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+  dates_tif <- file.path(cache_dir, paste0("dates_", key, ".tif"))
+  proba_tif <- file.path(cache_dir, paste0("proba_", key, ".tif"))
+
+  if (file.exists(dates_tif) && file.exists(proba_tif)) {
+    out <- tryCatch(
+      list(dates = terra::rast(dates_tif), proba = terra::rast(proba_tif)),
+      error = function(e) NULL)
+    if (!is.null(out)) {
+      cli::cli_alert_info("Coupes rases : rasters SUFOSAT lus depuis le cache")
+      return(out)
+    }
+  }
+
+  # Acquire from Theia — needs S3 credentials configured once.
+  ok <- tryCatch({ nemeton::theia_configure_s3(); TRUE }, error = function(e) {
+    cli::cli_warn("Coupes rases : theia_configure_s3 a échoué : {conditionMessage(e)}")
+    FALSE
+  })
+  if (!ok) return(NULL)
+
+  fetched <- tryCatch({
+    list(
+      dates = nemeton::load_theia_source("sufosat", aoi_2154, asset = "dates"),
+      proba = nemeton::load_theia_source("sufosat", aoi_2154, asset = "proba")
+    )
+  }, error = function(e) {
+    cli::cli_warn("Coupes rases : load_theia_source a échoué : {conditionMessage(e)}")
+    NULL
+  })
+  if (is.null(fetched) || is.null(fetched$dates) || is.null(fetched$proba)) {
+    return(NULL)
+  }
+
+  # Crop to the AOI (safety — load already reads by bbox) then cache.
+  aoi_vect <- tryCatch(terra::vect(aoi_2154), error = function(e) NULL)
+  crop_to_aoi <- function(r) {
+    if (is.null(aoi_vect)) return(r)
+    tryCatch(terra::crop(r, terra::project(aoi_vect, terra::crs(r))),
+             error = function(e) r)
+  }
+  dates <- crop_to_aoi(fetched$dates)
+  proba <- crop_to_aoi(fetched$proba)
+
+  tryCatch({
+    terra::writeRaster(dates, dates_tif, overwrite = TRUE)
+    terra::writeRaster(proba, proba_tif, overwrite = TRUE)
+  }, error = function(e) {
+    cli::cli_warn("Coupes rases : cache non écrit : {conditionMessage(e)}")
+  })
+
+  cli::cli_alert_success("Coupes rases : rasters SUFOSAT acquis (dates + proba)")
+  list(dates = dates, proba = proba)
 }
 
 
@@ -3763,6 +3881,24 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     if ("foret_ancienne" %in% func_args) {
       fa <- resolve_vector_layer(layers, "foret_ancienne")
       if (!is.null(fa)) args$foret_ancienne <- fa
+    }
+    # Coupes rases (spec 030) → T3. The two SUFOSAT rasters (dates + proba)
+    # and the user's window_years / min_proba are staged in layers$sufosat by
+    # start_computation() when the source is enabled. Absent (source disabled
+    # or Theia fetch failed) → sufosat_dates stays NULL and
+    # indicateur_t3_coupes_rases returns NA per unit — no regression, no
+    # re-inversion (the core inverts T3 in normalize_indicator).
+    if ("sufosat_dates" %in% func_args && !is.null(layers$sufosat)) {
+      args$sufosat_dates <- layers$sufosat$dates
+    }
+    if ("sufosat_proba" %in% func_args && !is.null(layers$sufosat)) {
+      args$sufosat_proba <- layers$sufosat$proba
+    }
+    if ("window_years" %in% func_args && !is.null(layers$sufosat$window_years)) {
+      args$window_years <- layers$sufosat$window_years
+    }
+    if ("min_proba" %in% func_args && !is.null(layers$sufosat$min_proba)) {
+      args$min_proba <- layers$sufosat$min_proba
     }
 
     # Canopy Height Model. Routed to every nemeton indicator that

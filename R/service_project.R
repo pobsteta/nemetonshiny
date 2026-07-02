@@ -1642,6 +1642,53 @@ clear_project_foret_ancienne <- function(project_id) {
 }
 
 
+#' Persist the SUFOSAT (clear-cut → T3) source config on a project
+#'
+#' @description
+#' Spec 030. Records the opt-in national SUFOSAT source and its parameters
+#' under \code{metadata$sufosat}. There is no file to upload (the rasters are
+#' fetched from Theia at compute time by \code{build_sufosat_layer()}); this
+#' only stores the toggle + \code{window_years} / \code{min_proba}. When
+#' disabling, the cached SUFOSAT rasters are dropped so a later re-enable
+#' re-fetches a fresh coverage.
+#'
+#' @param project_id Character.
+#' @param enabled Logical. Whether T3 (SUFOSAT) is active for this project.
+#' @param window_years Integer. Recency window (default 5).
+#' @param min_proba Numeric. Detection probability threshold (default 0.9).
+#'
+#' @return TRUE on success.
+#' @noRd
+set_project_sufosat <- function(project_id, enabled,
+                                window_years = 5, min_proba = 0.9) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  enabled <- isTRUE(enabled)
+  cfg <- list(
+    enabled      = enabled,
+    window_years = as.integer(window_years %||% 5),
+    min_proba    = as.numeric(min_proba %||% 0.9),
+    set_at       = format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+  )
+
+  # Drop the cached rasters when disabling (fresh fetch on re-enable).
+  if (!enabled) {
+    cache_dir <- file.path(project_path, "cache", "layers", "sufosat")
+    if (dir.exists(cache_dir)) unlink(cache_dir, recursive = TRUE)
+  }
+
+  update_project_metadata(project_id, list(sufosat = cfg),
+                          project_path = project_path)
+  cli::cli_alert_success(
+    "Coupes rases (SUFOSAT) : {if (enabled) 'activé' else 'désactivé'} \\
+     (window={cfg$window_years}, min_proba={cfg$min_proba})")
+  TRUE
+}
+
+
 #' Load project metadata
 #'
 #' @description
