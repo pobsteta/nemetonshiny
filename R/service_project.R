@@ -1557,6 +1557,91 @@ update_project_metadata <- function(project_id, updates, project_path = NULL) {
 }
 
 
+#' Persist a forêt ancienne (ancient-forest) historical source on a project
+#'
+#' @description
+#' Spec 031. Copies the user-uploaded historical source (classified raster or
+#' digitised vector) into the project's \code{data/} directory and records its
+#' path + conversion parameters under \code{metadata$foret_ancienne}. Consumed
+#' at compute time by \code{build_foret_ancienne_layer()} →
+#' \code{nemeton::build_foret_ancienne_mask()} → \code{indicateur_n2_continuite()}.
+#'
+#' @param project_id Character.
+#' @param source_path Character. Path to the uploaded (temp) file.
+#' @param source_name Character. Original file name (used for the extension /
+#'   raster-vs-vector detection).
+#' @param forest_class Optional integer vector — raster class value(s) = forest.
+#' @param threshold Optional numeric — raster: value >= threshold = forest
+#'   (alternative to \code{forest_class}).
+#' @param min_area_m2 Numeric. Drop specks smaller than this (default 0).
+#'
+#' @return TRUE on success.
+#' @noRd
+set_project_foret_ancienne <- function(project_id, source_path, source_name,
+                                       forest_class = NULL, threshold = NULL,
+                                       min_area_m2 = 0) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+  if (is.null(source_path) || !file.exists(source_path)) {
+    cli::cli_abort("Forêt ancienne source file not found")
+  }
+
+  data_dir <- file.path(project_path, "data")
+  if (!dir.exists(data_dir)) dir.create(data_dir, recursive = TRUE)
+
+  ext  <- tolower(tools::file_ext(source_name %||% source_path))
+  kind <- if (ext %in% c("tif", "tiff")) "raster" else "vector"
+
+  # Replace any prior source (possibly a different extension) so no stale file
+  # lingers, then copy the upload in under a stable name.
+  old <- list.files(data_dir, pattern = "^foret_ancienne_source\\.",
+                    full.names = TRUE)
+  if (length(old)) file.remove(old[file.exists(old)])
+  dest_rel <- file.path("data", paste0("foret_ancienne_source.", ext))
+  file.copy(source_path, file.path(project_path, dest_rel), overwrite = TRUE)
+
+  cfg <- list(
+    path         = dest_rel,
+    kind         = kind,
+    forest_class = if (length(forest_class)) as.integer(forest_class) else NULL,
+    threshold    = if (!is.null(threshold) && nzchar(as.character(threshold))) as.numeric(threshold) else NULL,
+    min_area_m2  = as.numeric(min_area_m2 %||% 0),
+    source_name  = source_name,
+    set_at       = format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+  )
+  update_project_metadata(project_id, list(foret_ancienne = cfg),
+                          project_path = project_path)
+  cli::cli_alert_success(
+    "Forêt ancienne : source enregistrée ({kind}, {source_name})")
+  TRUE
+}
+
+
+#' Remove the forêt ancienne source (and its cache) from a project
+#'
+#' @param project_id Character.
+#' @return TRUE if a project directory was found.
+#' @noRd
+clear_project_foret_ancienne <- function(project_id) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) return(FALSE)
+
+  old <- list.files(file.path(project_path, "data"),
+                    pattern = "^foret_ancienne_source\\.", full.names = TRUE)
+  if (length(old)) file.remove(old[file.exists(old)])
+
+  cache_dir <- file.path(project_path, "cache", "layers", "foret_ancienne")
+  if (dir.exists(cache_dir)) unlink(cache_dir, recursive = TRUE)
+
+  # Assigning NULL removes the key from the metadata list.
+  update_project_metadata(project_id, list(foret_ancienne = NULL),
+                          project_path = project_path)
+  TRUE
+}
+
+
 #' Load project metadata
 #'
 #' @description
