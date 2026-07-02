@@ -127,6 +127,11 @@ mod_project_ui <- function(id) {
           # detected file type and to whether a project exists yet.
           shiny::uiOutput(ns("foret_ancienne_block")),
 
+          # Optional "Clear-cuts (SUFOSAT)" block — opt-in national Theia
+          # source feeding the T3 indicator (spec 030). No upload: a toggle +
+          # two parameters, gated on Theia credentials being configured.
+          shiny::uiOutput(ns("sufosat_block")),
+
           # Creation date (auto)
           htmltools::div(
             class = "mb-3",
@@ -392,6 +397,92 @@ mod_project_server <- function(id, app_state, selected_parcels,
       clear_project_foret_ancienne(pid)
       .fa_refresh_project(pid)
       shiny::showNotification(i18n$t("foret_ancienne_cleared"), type = "message")
+    })
+
+    # ========================================
+    # Coupes rases → T3 (SUFOSAT, spec 030)
+    # ========================================
+
+    # Opt-in national source (no upload) : a toggle + window_years / min_proba,
+    # gated on Theia credentials. Writes metadata$sufosat ; the T3 axis then
+    # appears on the T family radar (inversion handled in the core).
+    output$sufosat_block <- shiny::renderUI({
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("sufosat_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("sufosat_hint"))
+
+      pid <- rv$editing_project_id
+      if (is.null(pid)) {
+        return(htmltools::div(
+          class = "mb-3", header,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("foret_ancienne_need_project"))))
+      }
+
+      # T3 needs the SUFOSAT rasters from Theia — gate on S3 credentials.
+      theia_ok <- isTRUE(tryCatch(theia_api_key_configured(),
+                                  error = function(e) FALSE))
+      if (!theia_ok) {
+        return(htmltools::div(
+          class = "mb-3 p-2 border rounded", header, hint,
+          htmltools::div(
+            class = "small text-warning fst-italic",
+            bsicons::bs_icon("exclamation-triangle", class = "me-1"),
+            i18n$t("sufosat_need_theia"))))
+      }
+
+      proj    <- rv$current_project %||% app_state$current_project
+      sc      <- proj$metadata$sufosat
+      enabled <- isTRUE(sc$enabled)
+      status  <- if (enabled) {
+        htmltools::div(
+          class = "small mb-2",
+          bsicons::bs_icon("check-circle-fill", class = "text-success me-1"),
+          i18n$t("sufosat_active"))
+      } else {
+        htmltools::div(class = "small text-muted mb-2 fst-italic",
+                       i18n$t("sufosat_none"))
+      }
+
+      htmltools::div(
+        class = "mb-3 p-2 border rounded",
+        header, hint, status,
+        shiny::checkboxInput(ns("sufosat_enabled"), i18n$t("sufosat_enable"),
+                             value = enabled),
+        shiny::sliderInput(
+          ns("sufosat_window"), i18n$t("sufosat_window"),
+          min = 1, max = 8, value = sc$window_years %||% 5, step = 1,
+          width = "100%"),
+        shiny::sliderInput(
+          ns("sufosat_min_proba"), i18n$t("sufosat_min_proba"),
+          min = 0.5, max = 1.0, value = sc$min_proba %||% 0.9, step = 0.05,
+          width = "100%"),
+        shiny::actionButton(
+          ns("sufosat_save"), i18n$t("sufosat_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
+      )
+    })
+
+    shiny::observeEvent(input$sufosat_save, {
+      pid <- rv$editing_project_id
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("foret_ancienne_need_project"),
+                                type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_sufosat(
+          pid,
+          enabled      = isTRUE(input$sufosat_enabled),
+          window_years = input$sufosat_window %||% 5,
+          min_proba    = input$sufosat_min_proba %||% 0.9)
+        .fa_refresh_project(pid)
+        shiny::showNotification(i18n$t("sufosat_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
     })
 
     # ========================================
