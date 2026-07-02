@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.97.4 (2026-07-02)
 
 ### Fixed — Smoke E2E `mod_rag_admin` ré-armé (spec 009.2 / E7)
 
