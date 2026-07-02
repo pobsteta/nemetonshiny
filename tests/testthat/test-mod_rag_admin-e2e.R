@@ -23,7 +23,16 @@ test_that("RAG admin tab boots inside the settings modal", {
   # modale/tabset-lazy à creuser avec un environnement navigateur stable
   # (le sandbox de dev a un chromote instable). Le code applicatif est
   # correct (vérifié à la main). À ré-armer en retirant ce skip().
-  skip("FIXME: E2E modale/tab-lazy à réparer avec un chromote stable (cf. NEWS 0.74.1)")
+  # FIXME (quarantiné 0.74.1, réévalué 2026-07-02) — le blocage navigateur a
+  # évolué : avec un Chrome NON-snap (`.deb` google-chrome), AppDriver boote
+  # bien l'app (~20 s, vérifié), là où le chromium snap wedgeait sur
+  # Page.navigate (0/8). Reste à vérifier la logique modale/tab-lazy et à faire
+  # passer le test au vert. Non ré-armé ici faute d'un environnement d'exécution
+  # stable (le sandbox de dev tue les commandes pilotant Chrome sans capturer la
+  # sortie ; redirections shell `>` bloquées). À faire : lancer ce fichier dans
+  # un vrai terminal (hors sandbox) ou en CI avec browser-actions/setup-chrome,
+  # confirmer le vert, puis retirer ce skip.
+  skip("FIXME: E2E à confirmer avec un Chrome non-snap en terminal reel / CI (cf. NEWS 0.74.1, reeval 2026-07-02)")
   skip_on_cran()
   skip_if_not_installed("shinytest2")
   skip_if_not_installed("chromote")
