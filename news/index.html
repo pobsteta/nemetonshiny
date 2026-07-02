@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,13 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.97.3" id="nemetonshiny-0973-2026-07-02">nemetonshiny 0.97.3 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0973-2026-07-02"></a></h2>
+<div class="section level4">
+<h4 id="changed--liste--commune--remplie-instantanément-au-chargement-dun-projet-0-97-3">Changed — Liste « Commune » remplie instantanément au chargement d’un projet<a class="anchor" aria-label="anchor" href="#changed--liste--commune--remplie-instantan%C3%A9ment-au-chargement-dun-projet-0-97-3"></a></h4>
+<p>Au chargement d’un projet, la liste déroulante « Commune » restait vide plusieurs secondes : son remplissage attendait <code>restore_task</code> (spawn d’un worker <code>future</code> + <code>load_all(nemeton)</code> + appel <code>geo.api.gouv.fr</code> pour <strong>toute</strong> la liste du département). Or le contour communal mis en cache au moment de la sauvegarde porte déjà le <strong>nom</strong> de la commune (colonne <code>nom</code>). On peuple donc désormais le dropdown <strong>immédiatement</strong> avec la seule commune restaurée (libellé correct affiché tout de suite) ; <code>restore_task</code> remplace ensuite ce choix unique par la liste complète du département en arrière-plan (pour changer de commune), en conservant la sélection. Projets <em>legacy</em> sans contour caché : comportement inchangé (chemin async).</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.97.2" id="nemetonshiny-0972-2026-07-02">nemetonshiny 0.97.2 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0972-2026-07-02"></a></h2>
 <div class="section level4">
