@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.97.6 (2026-07-02)
 
 ### Added — Forêt ancienne → continuité N2 (spec 031)
 
