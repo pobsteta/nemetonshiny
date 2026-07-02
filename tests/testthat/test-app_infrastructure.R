@@ -130,8 +130,8 @@ test_that("get_family_config returns valid config or NULL", {
 test_that("get_all_indicator_codes returns 34 indicators", {
   codes <- nemetonshiny:::get_all_indicator_codes()
   expect_type(codes, "character")
-  # 31 base + B4 + L3 (spectral diversity, spec 028) + R5 (dépérissement) = 34
-  expect_length(codes, 34)
+  # 31 base + B4 + L3 (spec 028) + R5 (dépérissement) + T3 (coupes rases, spec 030) = 35
+  expect_length(codes, 35)
 
   # Check some known indicators
   expect_true("C1" %in% codes)
