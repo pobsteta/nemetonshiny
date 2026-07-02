@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.97.7 (2026-07-02)
 
 ### Fixed — Chargement d'un projet récent : plus de bascule « nouveau projet » sur la Commune
 
