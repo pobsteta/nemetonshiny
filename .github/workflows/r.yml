@@ -153,7 +153,13 @@ jobs:
           # at the Chrome that setup-chrome just installed.
           CHROMOTE_CHROME: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
-          testthat::test_package("nemetonshiny", reporter = "summary")
+          # test_local() runs the suite from source (tests/testthat). We do NOT
+          # use test_package(): it looks for tests INSIDE the installed package,
+          # which are absent without R CMD INSTALL --install-tests, so it
+          # silently found "No installed testthat tests" and ran nothing. With
+          # test_local the whole suite — including the shinytest2 E2E smoke —
+          # actually runs. stop_on_failure = TRUE fails the job on any failure.
+          testthat::test_local(reporter = "summary", stop_on_failure = TRUE)
         shell: Rscript {0}
 
   # ============================================================
