@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.97.2 (2026-07-02)
 
 ### Fixed — Bouton de calcul rétabli pour un projet figé en « computing »
 
