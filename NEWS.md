@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.97.1 (2026-07-02)
 
 ### Fixed — Suivi sanitaire : prérequis BD Forêt surfacé avant le clic
 
