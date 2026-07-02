@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.97.4" id="nemetonshiny-0974-2026-07-02">nemetonshiny 0.97.4 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0974-2026-07-02"></a></h2>
+<div class="section level4">
+<h4 id="fixed--smoke-e2e-mod_rag_admin-ré-armé-spec--e7-0-97-4">Fixed — Smoke E2E <code>mod_rag_admin</code> ré-armé (spec 009.2 / E7)<a class="anchor" aria-label="anchor" href="#fixed--smoke-e2e-mod_rag_admin-r%C3%A9-arm%C3%A9-spec--e7-0-97-4"></a></h4>
+<p>Le smoke test <code>test-mod_rag_admin-e2e.R</code>, quarantiné depuis v0.74.1 (<code>skip("FIXME…")</code>), est <strong>ré-armé et vert</strong>. Deux corrections de test (le code applicatif était correct) : - <strong>Ouverture de la modale</strong> : le gear rend un <code>nav-link role="tab"</code> ; un clic DOM et <code>app$click()</code> sont avalés par le comportement d’onglet Bootstrap et ne déclenchent jamais <code>input$open</code>. On pilote l’input d’action avec la valeur <code>"click"</code> (<code>app$set_inputs(..., allow_no_input_binding_ = TRUE)</code>), seul déclencheur fiable pour un <code>actionLink</code> sous shinytest2. - <strong>Stabilisation</strong> : <code>wait_for_idle()</code> lève « session unstable » à cause d’une erreur JS <em>cicerone</em> (tour guidé, « no steps to iterate ») sans rapport ; on la tolère (<code><a href="https://rdrr.io/r/base/try.html" class="external-link">try()</a></code>) et on attend l’apparition du DOM via <code>wait_for_js()</code> (modale puis bouton <code>add_row</code>). La tab RAG lazy monte alors correctement.</p>
+<p>Pré-requis : un <strong>Chrome non-snap</strong> (<code>google-chrome</code> .deb) — le chromium <em>snap</em> fait wedger <code>Page.navigate</code> sous <code>AppDriver</code>. Le boot reste gardé (<code>tryCatch → skip()</code>) pour ne jamais transformer une flakiness navigateur en échec.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.97.3" id="nemetonshiny-0973-2026-07-02">nemetonshiny 0.97.3 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0973-2026-07-02"></a></h2>
 <div class="section level4">
