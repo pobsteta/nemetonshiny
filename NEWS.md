@@ -1,3 +1,33 @@
+# nemetonshiny (development version)
+
+### Added — Radar T3 « Coupes rases » (SUFOSAT, spec 030)
+
+L'indicateur **T3** (`nemeton::indicateur_t3_coupes_rases`) est câblé sur le
+radar de la famille **T** (à côté de T1/T2), alimenté par le produit national
+**SUFOSAT** (détection de coupes rases par radar Sentinel-1, CNES/CESBIO)
+récupéré depuis Theia. Toute la logique métier — y compris l'**inversion** de
+T3 (haut = beaucoup de coupe = mauvais) — reste dans le cœur ; l'app ne câble
+que la source et ne ré-inverse jamais.
+
+- **UI** (`mod_project`) : bloc optionnel « Coupes rases (SUFOSAT) » — pas
+  d'upload, un simple toggle + `window_years` (1-8, défaut 5) et `min_proba`
+  (0.5-1.0, défaut 0.9). **Gaté sur Theia configuré** (identifiants S3) :
+  message d'invite sinon.
+- **Calcul** (`service_compute`) : `build_sufosat_layer()` récupère les deux
+  assets SUFOSAT (dates + proba) via `theia_configure_s3()` /
+  `load_theia_source()`, les met en cache sous
+  `<projet>/cache/layers/sufosat/` (clé = bbox AOI) et les injecte dans
+  `indicateur_t3_coupes_rases(sufosat_dates=, sufosat_proba=, window_years=,
+  min_proba=)`. T3 est ajouté à `list_available_indicators()` (comme N2) ;
+  **sans source activée : T3 = NA, famille T inchangée (T1/T2), aucune requête
+  Theia.**
+- **Radar** (`app_config`) : T3 rattaché à la famille T (libellé + tooltip
+  FR/EN) — l'axe T passe de 2 à 3 sous-indicateurs quand la source est active.
+- **Persistance** (`service_project`) : `set_project_sufosat()`
+  (`metadata$sufosat`, purge du cache au désactivage).
+- 10 clés i18n FR/EN. Tests : build+cache+reuse, garde-fous, injection +
+  propagation des paramètres, persistance (25 assertions).
+
 # nemetonshiny 0.97.6 (2026-07-02)
 
 ### Added — Forêt ancienne → continuité N2 (spec 031)
