@@ -9,8 +9,9 @@ test_that("list_available_indicators includes spectral diversity B4/L3 (spec 028
   inds <- list_available_indicators()
   expect_true("indicateur_b4_div_spectrale" %in% inds)
   expect_true("indicateur_l3_het_spectrale" %in% inds)
-  # 31 legacy indicators + B4 + L3
-  expect_equal(length(inds), 33L)
+  expect_true("indicateur_t3_coupes_rases" %in% inds)  # SUFOSAT, spec 030
+  # 31 legacy indicators + B4 + L3 + T3
+  expect_equal(length(inds), 34L)
 })
 
 test_that("B4/L3 are wired into the B and L family config (display)", {

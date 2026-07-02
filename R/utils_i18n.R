@@ -442,6 +442,37 @@ TRANSLATIONS <- list(
     fr = "Cr\u00e9ez d'abord le projet pour ajouter une source for\u00eat ancienne.",
     en = "Create the project first to add an ancient-forest source."
   ),
+  sufosat_section = list(fr = "Coupes rases (SUFOSAT)", en = "Clear-cuts (SUFOSAT)"),
+  sufosat_enable = list(
+    fr = "Activer la d\u00e9tection des coupes rases (T3)",
+    en = "Enable clear-cut detection (T3)"
+  ),
+  sufosat_window = list(
+    fr = "Fen\u00eatre de r\u00e9cence (ann\u00e9es)",
+    en = "Recency window (years)"
+  ),
+  sufosat_min_proba = list(fr = "Seuil de probabilit\u00e9", en = "Probability threshold"),
+  sufosat_hint = list(
+    fr = "D\u00e9tection nationale des coupes rases par radar Sentinel-1 (CNES/CESBIO). Indicateur invers\u00e9 : plus de coupe = score plus bas.",
+    en = "National clear-cut detection from Sentinel-1 radar (CNES/CESBIO). Inverted indicator: more cutting = lower score."
+  ),
+  sufosat_save = list(fr = "Enregistrer", en = "Save"),
+  sufosat_saved = list(
+    fr = "Coupes rases : pr\u00e9f\u00e9rence enregistr\u00e9e",
+    en = "Clear-cuts: preference saved"
+  ),
+  sufosat_need_theia = list(
+    fr = "Configurez vos identifiants Theia (cl\u00e9s API) pour activer cette source.",
+    en = "Configure your Theia credentials (API keys) to enable this source."
+  ),
+  sufosat_active = list(
+    fr = "Activ\u00e9 \u2014 T3 sur le radar de la famille T",
+    en = "Enabled \u2014 T3 on the T family radar"
+  ),
+  sufosat_none = list(
+    fr = "Non activ\u00e9 \u2014 famille T sur T1/T2",
+    en = "Not enabled \u2014 T family on T1/T2"
+  ),
   project_date = list(fr = "Date de cr\u00e9ation", en = "Creation date"),
   project_path_label = list(fr = "R\u00e9pertoire de sauvegarde", en = "Storage directory"),
   created_at = list(fr = "Cr\u00e9\u00e9 le", en = "Created on"),
