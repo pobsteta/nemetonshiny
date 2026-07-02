@@ -1016,6 +1016,7 @@ TRANSLATIONS <- list(
   indicator_L3 = list(fr = "H\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale (\u03b2)", en = "Spectral Heterogeneity (\u03b2)"),
   indicator_T1 = list(fr = "Anciennet\u00e9 foresti\u00e8re", en = "Forest Age"),
   indicator_T2 = list(fr = "Taux de changement", en = "Change Rate"),
+  indicator_T3 = list(fr = "Coupes rases", en = "Clear-cuts"),
   indicator_R1 = list(fr = "Risque incendie", en = "Fire Risk"),
   indicator_R2 = list(fr = "Risque temp\u00eate", en = "Storm Risk"),
   indicator_R3 = list(fr = "Risque s\u00e9cheresse", en = "Drought Risk"),
