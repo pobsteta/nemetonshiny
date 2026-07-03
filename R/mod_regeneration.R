@@ -83,6 +83,15 @@ mod_regeneration_ui <- function(id) {
       shiny::actionButton(ns("run"), i18n$t("regen_run"),
         class = "btn-primary w-100", icon = bsicons::bs_icon("play-fill")),
 
+      # --- Couche affichée sur la carte (parité radio « Indice FAST ») ----
+      htmltools::tags$hr(class = "my-2"),
+      shiny::radioButtons(ns("map_layer"), i18n$t("regen_map_layer"),
+        choices = stats::setNames(
+          c("indice_priorite_regen", "sensibilite", "njstress", "d_tmax"),
+          c(i18n$t("regen_map_priorite"), i18n$t("regen_map_sensibilite"),
+            i18n$t("regen_map_njstress"), i18n$t("regen_map_dtmax"))),
+        selected = "indice_priorite_regen"),
+
       # --- Export / persistance (sous le bouton Lancer) ------------------
       htmltools::tags$hr(class = "my-2"),
       htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_results_section")),
@@ -97,24 +106,9 @@ mod_regeneration_ui <- function(id) {
     bslib::navset_card_tab(
       bslib::nav_panel(
         i18n$t("regen_tab_map"),
-        # Sélecteur de couche : menu rétractable superposé dans la carte.
-        htmltools::div(
-          style = "position: relative;",
-          leaflet::leafletOutput(ns("map"), height = "70vh"),
-          htmltools::tags$details(
-            class = "position-absolute bg-white rounded shadow-sm p-2",
-            style = "top: 12px; right: 12px; z-index: 1000; max-width: 240px;",
-            open = NA,
-            htmltools::tags$summary(class = "small fw-semibold",
-              style = "cursor: pointer;", i18n$t("regen_map_layer")),
-            shiny::radioButtons(ns("map_layer"), NULL,
-              choices = stats::setNames(
-                c("indice_priorite_regen", "sensibilite", "njstress", "d_tmax"),
-                c(i18n$t("regen_map_priorite"), i18n$t("regen_map_sensibilite"),
-                  i18n$t("regen_map_njstress"), i18n$t("regen_map_dtmax"))),
-              selected = "indice_priorite_regen")
-          )
-        )
+        # Contrôle de couches natif (OSM/Satellite/UGF) dans la carte — parité
+        # cartes FORDEAD/FAST ; la couche affichée se choisit dans la sidebar.
+        leaflet::leafletOutput(ns("map"), height = "70vh")
       ),
       bslib::nav_panel(i18n$t("regen_map_context"),
         leaflet::leafletOutput(ns("context_map"), height = "70vh")),
@@ -143,16 +137,26 @@ mod_regeneration_server <- function(id, app_state) {
       running = FALSE, eobs = NULL
     )
 
-    # UGF units of the current project (EPSG:2154).
+    # UGF units of the current project (EPSG:2154), with the same geometry
+    # fallback chain as mod_monitoring_pixel_map : indicators_sf → UGF →
+    # parcelles. Sans ce repli, un projet Reconfort/monitoring qui n'a pas
+    # (encore) calculé les 31 indicateurs n'a pas d'indicators_sf, et l'onglet
+    # tombait sur le message trompeur « besoin d'un projet ».
     units_sf <- shiny::reactive({
       project <- app_state$current_project
-      if (is.null(project) || is.null(project$indicators_sf) ||
-          !inherits(project$indicators_sf, "sf") ||
-          nrow(project$indicators_sf) == 0L) {
-        return(NULL)
-      }
-      tryCatch(sf::st_transform(project$indicators_sf, 2154),
-               error = function(e) project$indicators_sf)
+      if (is.null(project)) return(NULL)
+      to_2154 <- function(x) tryCatch(sf::st_transform(x, 2154), error = function(e) x)
+
+      sfx <- project$indicators_sf
+      if (inherits(sfx, "sf") && nrow(sfx) > 0L) return(to_2154(sfx))
+
+      ugf <- tryCatch(if (has_ug_data(project)) ug_build_sf(project) else NULL,
+                      error = function(e) NULL)
+      if (inherits(ugf, "sf") && nrow(ugf) > 0L) return(to_2154(ugf))
+
+      parc <- project$parcels
+      if (inherits(parc, "sf") && nrow(parc) > 0L) return(to_2154(parc))
+      NULL
     })
 
     # Populate the optional target-species selector from the core tolerance
@@ -269,31 +273,53 @@ mod_regeneration_server <- function(id, app_state) {
       )
     })
 
-    # Column selected for the choropleth (guarded against absence).
-    .map_col <- shiny::reactive({
-      res <- rv$result
-      col <- input$map_layer %||% "indice_priorite_regen"
-      if (is.null(res) || !col %in% names(res)) return(NULL)
-      col
+    # Base map — STABLE widget (parité cartes FORDEAD/FAST) : fonds OSM/Satellite
+    # + contrôle de couches natif (boîtier coin haut-droit). Ne dépend que du
+    # cadrage ; les polygones colorés (groupe « UGF ») sont (re)dessinés par
+    # l'observer leafletProxy ci-dessous selon la couche choisie dans la sidebar.
+    output$map <- leaflet::renderLeaflet({
+      units <- units_sf()
+      m <- leaflet::leaflet() |>
+        leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
+        leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        leaflet::addLayersControl(
+          baseGroups    = c("OSM", "Satellite"),
+          overlayGroups = "UGF",
+          options       = leaflet::layersControlOptions(collapsed = TRUE))
+      if (!is.null(units)) {
+        bb <- tryCatch(as.numeric(sf::st_bbox(sf::st_transform(units, 4326))),
+                       error = function(e) NULL)
+        if (!is.null(bb) && all(is.finite(bb))) {
+          m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
+        }
+      }
+      m
     })
 
-    output$map <- leaflet::renderLeaflet({
+    # Data layer via proxy — swap the choropleth + legend without recreating the
+    # widget (préserve le LayersControl et le zoom). Réagit au résultat et au
+    # radio « Couche affichée » de la sidebar.
+    shiny::observe({
       res <- rv$result
-      shiny::req(res)
-      col <- .map_col()
-      m <- leaflet::leaflet() |> leaflet::addTiles()
-      if (is.null(col)) return(m)
+      col <- input$map_layer %||% "indice_priorite_regen"
+      proxy <- leaflet::leafletProxy("map")
+      leaflet::clearGroup(proxy, "UGF")
+      leaflet::removeControl(proxy, "regen_legend")
+      if (is.null(res) || !col %in% names(res)) return()
+
       vals <- suppressWarnings(as.numeric(res[[col]]))
       geo <- tryCatch(sf::st_transform(res, 4326), error = function(e) res)
       if (all(is.na(vals))) {
-        return(m |> leaflet::addPolygons(data = geo, weight = 1,
-          color = "#888", fillOpacity = 0.2))
+        leaflet::addPolygons(proxy, data = geo, group = "UGF", weight = 1,
+          color = "#888", fillOpacity = 0.2)
+        return()
       }
       pal <- leaflet::colorNumeric("RdYlGn", domain = vals, na.color = "#cccccc")
-      m |>
-        leaflet::addPolygons(data = geo, weight = 1, color = "#333",
+      proxy |>
+        leaflet::addPolygons(data = geo, group = "UGF", weight = 1, color = "#333",
           fillColor = pal(vals), fillOpacity = 0.75) |>
         leaflet::addLegend(pal = pal, values = vals, position = "bottomright",
+          layerId = "regen_legend",
           title = i18n$t(paste0("regen_map_",
             switch(col, indice_priorite_regen = "priorite", sensibilite = "sensibilite",
                    njstress = "njstress", d_tmax = "dtmax", "priorite"))))

@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.98.3] - 2026-07-03
+
+### Fixed
+
+- reGénération : `units_sf()` retombe sur la géométrie UGF puis parcelles quand
+  `indicators_sf` est absent (projets Reconfort/monitoring sans calcul des 31
+  indicateurs), corrigeant le message trompeur « besoin d'un projet » et le
+  bouton « Auto (E-OBS) ».
+
+### Changed
+
+- reGénération : carte au style FORDEAD/FAST — contrôle de couches natif Leaflet
+  (OSM/Satellite + overlay UGF) dans la carte, radio « Couche affichée » dans la
+  sidebar, mise à jour par `leafletProxy` ; suppression de l'overlay `<details>`.
+
 ## [0.98.2] - 2026-07-03
 
 ### Added
