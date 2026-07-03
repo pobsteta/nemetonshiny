@@ -279,6 +279,8 @@ app_server <- function(input, output, session) {
   # Monitoring module (E6.b phase 1 — Sentinel-2 continuous monitoring)
   mod_monitoring_server("monitoring", app_state)
 
+  mod_regeneration_server("regeneration", app_state)
+
   # Note: the RAG / knowledge corpus admin (spec 009.2 — E7) now lives
   # INSIDE the settings (gear) modal, wired by mod_theia_config_server —
   # it is no longer a top-level navbar tab.

@@ -694,3 +694,25 @@ test_that("get_expert_choices hides the internal JSON-only 'planificateur' profi
   expect_true("generalist" %in% ch)
   expect_true("naturaliste" %in% ch)
 })
+
+test_that("adaptation_climat profile is loaded with a regeneration-focused prompt (spec 027 L5)", {
+  profiles <- nemetonshiny:::get_expert_profiles()
+  expect_true("adaptation_climat" %in% names(profiles))
+
+  ap <- profiles[["adaptation_climat"]]
+  expect_equal(ap$label$fr, "Adaptation climatique")
+  expect_equal(ap$label$en, "Climate adaptation")
+
+  # Le prompt cible les indicateurs reGénération et les familles A/R/W/C.
+  fr <- ap$prompt$fr
+  expect_match(fr, "njstress")
+  expect_match(fr, "régénération", ignore.case = TRUE)
+  expect_match(fr, "biodiversité")  # flag des conflits B/N
+  en <- ap$prompt$en
+  expect_match(en, "njstress")
+  expect_match(en, "regeneration", ignore.case = TRUE)
+
+  # Sélectionnable comme n'importe quel profil (system prompt non vide).
+  sp <- nemetonshiny:::build_system_prompt("français", "adaptation_climat")
+  expect_true(nchar(sp) > 0)
+})

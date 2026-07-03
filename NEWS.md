@@ -1,3 +1,51 @@
+# nemetonshiny 0.98.0
+
+### Added — reGénération : nouvel onglet de vulnérabilité climatique (spec 027 — L4/L5/L6 livrés, 2026-07-03)
+
+Premier jalon de l'onglet **reGénération** (lecture de vulnérabilité climatique,
+spec 027). Nécessite `nemeton (>= 0.118.0)`.
+
+- **Radar** (`app_config`) : sous-indicateurs microclimat câblés dans les
+  familles A/W/R — **A3** (T°max sous couvert), **A4** (tamponnement thermique),
+  **W4** (VPD), **R6** (sensibilité microclimatique) — libellés + tooltips FR/EN.
+  Sans run reGénération, colonnes absentes → familles inchangées (aucune
+  régression).
+- **Service** (`service_regeneration`) : `run_regeneration()` orchestre la
+  séquence cœur (détection années → sensibilité microclimf → bilan hydrique
+  BILJOU → sous-indicateurs A3/A4/W4/R6 → R3 enrichi → indice de priorité) via
+  le chemin `precomputed`, avec mode « bilan hydrique seul » et **dégradation
+  propre** (erreur moteur → warning actionnable, pas de crash). Aucune
+  ré-inversion côté app.
+- **UI** (`mod_regeneration`) : nouvel onglet « reGénération » — panneau de
+  configuration (années moyenne/canicule + auto E-OBS, peuplement, sol, forçage
+  SAFRAN/ERA5, résolution, essence cible optionnelle, buffer), run avec retour
+  immédiat et dégradation propre, puis résultats en onglets : **carte** Leaflet
+  commutable (indice de priorité / sensibilité / jours de stress / ΔT°max),
+  **carte de contexte E-OBS**, **tableau** trié par rang (filtre couverture),
+  **fiche parcelle**, **radar** A/W/R (via `create_family_index` + `nemeton_radar`).
+- **i18n** : section reGénération FR/EN (~55 clés) + `indicator_A3/A4/W4/R6`.
+- Plancher `Imports: nemeton (>= 0.118.0)`.
+- **LLM (L5)** : nouveau profil expert **« Adaptation climatique »**
+  (`inst/experts/adaptation_climat.yml`, FR/EN) — priorise A/R/W/C, exploite
+  `njstress`/`istress`/`sensibilite`/`indice_priorite_regen`, recommande des
+  itinéraires de régénération (essences tolérantes, densité, îlots, calendrier)
+  et flague les conflits avec la biodiversité (B/N). Auto-chargé et sélectionnable
+  dans `mod_synthesis` (liste de profils dynamique).
+
+- **Persistance & export (L6)** :
+  - Persistance **versionnée** en base : `db_save_regeneration()` écrit chaque
+    run dans `nemeton.regeneration_states` (JSONB par UG, versions archivées pour
+    le suivi dans le temps, §6A) + migration `inst/sql/migration_004_regeneration.sql`.
+  - Export **GeoPackage** des colonnes §7 : `export_regeneration_geopackage()`.
+  - `mod_regeneration` : bouton de téléchargement GPKG + enregistrement en base
+    (si configurée) avec retour de version.
+  - Data-prep de la **section Quarto** reGénération : `regeneration_report_summary()`
+    (top-N trié par rang de sensibilité, prêt pour `knitr::kable`).
+  - 5 clés i18n L6.
+
+> L4 + L5 + L6 (cœur) livrés. Reste : insertion de la section reGénération dans
+> le template Quarto PDF + vérification de rendu (à faire en local avec Quarto).
+
 # nemetonshiny 0.97.8 (2026-07-02)
 
 ### Fixed — Alignement suite de tests + libellé i18n de l'axe radar T3

@@ -871,6 +871,66 @@ export_geopackage <- function(family_scores, output_file, layer_name = "nemeton_
 }
 
 
+#' Export a reGénération result to GeoPackage (spec 027 L6)
+#'
+#' @description
+#' Writes the per-UGF climate-vulnerability result to a GeoPackage, keeping the
+#' spec 027 §7 column contract (whichever columns are present) plus any UG
+#' identifier. No business logic — a plain spatial export of `run_regeneration`
+#' output.
+#'
+#' @param regen_units sf. Enriched UGF from `run_regeneration()`.
+#' @param output_file Character. Path to the output `.gpkg`.
+#' @param layer_name Character. Layer name (default `"regeneration"`).
+#'
+#' @return Character. Path to the created file.
+#' @noRd
+export_regeneration_geopackage <- function(regen_units, output_file,
+                                           layer_name = "regeneration") {
+  if (!inherits(regen_units, "sf")) {
+    stop("regen_units must be an sf object", call. = FALSE)
+  }
+  id_cols <- intersect(c("ug_id", "id", "code_insee"), names(regen_units))
+  keep <- unique(c(id_cols, intersect(REGEN_OUTPUT_COLUMNS, names(regen_units))))
+  out <- if (length(keep)) regen_units[, keep] else regen_units
+  sf::st_write(out, output_file, layer = layer_name, driver = "GPKG",
+               delete_dsn = TRUE, quiet = TRUE)
+  output_file
+}
+
+
+#' Build the reGénération summary table for the Quarto report (spec 027 L6)
+#'
+#' @description
+#' Prepares the data behind the PDF report's "reGénération" section: the most
+#' sensitive UGF ranked by \code{rang_sensibilite} (fallback: descending
+#' priority index), with the key spec 027 §7 fields. Returns a plain data.frame
+#' ready for \code{knitr::kable()} in the `.qmd` — no rendering here, so it is
+#' testable without Quarto. Returns \code{NULL} when there is nothing to report.
+#'
+#' @param regen_units sf/data.frame. Output of \code{run_regeneration()}.
+#' @param top_n Integer. Maximum rows to keep (default 10).
+#'
+#' @return A data.frame, or NULL.
+#' @noRd
+regeneration_report_summary <- function(regen_units, top_n = 10L) {
+  if (is.null(regen_units) || nrow(regen_units) == 0L) return(NULL)
+  df <- if (inherits(regen_units, "sf")) sf::st_drop_geometry(regen_units) else as.data.frame(regen_units)
+
+  cols <- intersect(c("ug_id", "rang_sensibilite", "indice_priorite_regen",
+    "sensibilite", "njstress", "rew_min", "d_tmax", "couverture_pct"), names(df))
+  if (length(cols) == 0L) return(NULL)
+  df <- df[, cols, drop = FALSE]
+
+  if ("rang_sensibilite" %in% cols) {
+    df <- df[order(df$rang_sensibilite, na.last = TRUE), , drop = FALSE]
+  } else if ("indice_priorite_regen" %in% cols) {
+    df <- df[order(-df$indice_priorite_regen, na.last = TRUE), , drop = FALSE]
+  }
+  utils::head(df, top_n)
+}
+
+
 #' Clean text for PDF output
 #'
 #' @description
