@@ -235,6 +235,8 @@ mod_regeneration_server <- function(id, app_state) {
         rv$result <- res$units
         rv$years <- res$years
         rv$warnings <- res$warnings %||% character(0)
+        # Publier le résultat pour l'export PDF (section reGénération de mod_synthesis).
+        app_state$regeneration_result <- res$units
         nw <- length(rv$warnings)
         if (nw > 0L) {
           shiny::showNotification(sprintf(i18n$t("regen_run_done_warn"), nw),

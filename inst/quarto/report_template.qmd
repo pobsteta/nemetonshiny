@@ -551,6 +551,23 @@ if (isTRUE(report_data$has_ugs) && !is.null(report_data$ug_composition) &&
 }
 ```
 
+```{r regeneration-section, results='asis'}
+#| label: regeneration-section
+# reGénération section (spec 027 L6) — only when a run is available
+if (!is.null(report_data$regeneration)) {
+  reg <- report_data$regeneration
+  cat("\\newpage\n")
+  cat("# ", escape_latex(reg$title), "\n\n", sep = "")
+  cat(escape_latex(reg$intro), "\n\n", sep = "")
+
+  tbl <- reg$table
+  cat("\\begingroup\\setlength{\\LTleft}{\\fill}\\setlength{\\LTright}{\\fill}\n")
+  cat(knitr::kable(tbl, format = "latex", booktabs = TRUE, longtable = TRUE,
+                   row.names = FALSE, escape = TRUE), "\n")
+  cat("\\endgroup\n\n")
+}
+```
+
 \vfill
 
 *`r tr("generated_by")` v`r packageVersion("nemeton")` - `r Sys.Date()`*

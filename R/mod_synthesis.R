@@ -1032,7 +1032,8 @@ mod_synthesis_server <- function(id, app_state) {
             synthesis_comments = comments,
             family_comments = fam_comments,
             cover_image = cover_img,
-            use_quarto = TRUE
+            use_quarto = TRUE,
+            regen_units = app_state$regeneration_result
           )
 
           # Also save a copy in the project's exports/ directory

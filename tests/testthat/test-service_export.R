@@ -2756,3 +2756,36 @@ test_that(".family_sources_md skips orphan refs and is empty without citations",
     nemetonshiny:::.family_sources_md("Texte[^1].", ""), ""
   )
 })
+
+test_that("prepare_report_data attaches a reGénération block when regen_units given (spec 027 L6)", {
+  skip_if_not_installed("sf")
+
+  project <- list(metadata = list(name = "P", description = "", owner = "O",
+                                  created_at = "2026-01-01"))
+  family_scores <- sf::st_sf(
+    id = 1:2,
+    famille_carbone = c(60, 70), famille_biodiversite = c(55, 60),
+    famille_eau = c(40, 45), famille_air = c(50, 55), famille_sol = c(45, 50),
+    famille_paysage = c(35, 40), famille_temporel = c(70, 75),
+    famille_risque = c(30, 35), famille_social = c(25, 30),
+    famille_production = c(65, 70), famille_energie = c(55, 60),
+    famille_naturalite = c(80, 85),
+    geometry = sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)), crs = 2154))
+
+  regen <- sf::st_sf(
+    ug_id = c("a", "b"), rang_sensibilite = c(1, 2),
+    indice_priorite_regen = c(80.4, 60.1), sensibilite = c(70, 50),
+    njstress = c(20, 10), couverture_pct = c(90, 80),
+    geometry = sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)), crs = 2154))
+
+  res <- nemetonshiny:::prepare_report_data(project, family_scores, "fr", NULL, NULL,
+                                            regen_units = regen)
+  expect_type(res$regeneration, "list")
+  expect_true(all(c("title", "intro", "table") %in% names(res$regeneration)))
+  expect_s3_class(res$regeneration$table, "data.frame")
+  expect_equal(nrow(res$regeneration$table), 2L)
+
+  # Sans regen_units → pas de section.
+  res0 <- nemetonshiny:::prepare_report_data(project, family_scores, "fr", NULL)
+  expect_null(res0$regeneration)
+})
