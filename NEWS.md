@@ -16,10 +16,18 @@ spec 027). Nécessite `nemeton (>= 0.118.0)`.
   le chemin `precomputed`, avec mode « bilan hydrique seul » et **dégradation
   propre** (erreur moteur → warning actionnable, pas de crash). Aucune
   ré-inversion côté app.
-- **i18n** : section reGénération FR/EN (~50 clés) + `indicator_A3/A4/W4/R6`.
+- **UI** (`mod_regeneration`) : nouvel onglet « reGénération » — panneau de
+  configuration (années moyenne/canicule + auto E-OBS, peuplement, sol, forçage
+  SAFRAN/ERA5, résolution, essence cible optionnelle, buffer), run avec retour
+  immédiat et dégradation propre, puis résultats en onglets : **carte** Leaflet
+  commutable (indice de priorité / sensibilité / jours de stress / ΔT°max),
+  **carte de contexte E-OBS**, **tableau** trié par rang (filtre couverture),
+  **fiche parcelle**, **radar** A/W/R (via `create_family_index` + `nemeton_radar`).
+- **i18n** : section reGénération FR/EN (~55 clés) + `indicator_A3/A4/W4/R6`.
 - Plancher `Imports: nemeton (>= 0.118.0)`.
 
-> UI (`mod_regeneration`), profil LLM (L5) et persistance/export (L6) suivent.
+> L4 UI livré. Profil LLM adaptation (L5) et persistance PostGIS + export
+> Quarto/GPKG (L6) suivent.
 
 # nemetonshiny 0.97.8 (2026-07-02)
 

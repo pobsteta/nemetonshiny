@@ -4035,6 +4035,8 @@ TRANSLATIONS <- list(
     en = "Missing engine or data: %s. Provide precomputed outputs or install the engine."
   ),
   regen_results_section = list(fr = "R\u00e9sultats", en = "Results"),
+  regen_tab_map = list(fr = "Carte", en = "Map"),
+  regen_select_ug = list(fr = "S\u00e9lectionnez une UG dans le tableau.", en = "Select a unit in the table."),
   regen_map_layer = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
   regen_map_priorite = list(fr = "Indice de priorit\u00e9", en = "Priority index"),
   regen_map_sensibilite = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity"),

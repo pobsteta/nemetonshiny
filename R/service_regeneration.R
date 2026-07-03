@@ -168,3 +168,51 @@ regeneration_context_eobs <- function(ugf, precomputed = NULL, buffer_m = 25000)
 regeneration_species_choices <- function() {
   tryCatch(nemeton::regeneration_tolerances(), error = function(e) NULL)
 }
+
+#' Load precomputed engine outputs from a project cache
+#'
+#' @description
+#' Looks under \code{<project>/cache/regeneration/} for engine outputs produced
+#' offline (microclimf sensitivity, biljou water balance, PAI raster, summer
+#' micro rasters, E-OBS). Returns a named list with whatever is present — an
+#' empty list when nothing is cached, in which case \code{run_regeneration()}
+#' degrades gracefully (engine errors surfaced as actionable warnings). This is
+#' the app's forward hook: drop real engine outputs here and the run picks them
+#' up without code change.
+#'
+#' @param project_path Character. Project root, or NULL.
+#' @return A named list (possibly empty) of precomputed inputs.
+#' @noRd
+load_regeneration_precomputed <- function(project_path) {
+  if (is.null(project_path)) return(list())
+  dir <- file.path(project_path, "cache", "regeneration")
+  if (!dir.exists(dir)) return(list())
+
+  read_vec <- function(name) {
+    gpkg <- file.path(dir, paste0(name, ".gpkg"))
+    if (file.exists(gpkg)) {
+      return(tryCatch(sf::st_read(gpkg, quiet = TRUE), error = function(e) NULL))
+    }
+    NULL
+  }
+  read_ras <- function(name) {
+    tif <- file.path(dir, paste0(name, ".tif"))
+    if (file.exists(tif)) {
+      return(tryCatch(terra::rast(tif), error = function(e) NULL))
+    }
+    NULL
+  }
+
+  pc <- list(
+    sensibilite    = read_vec("sensibilite"),
+    biljou         = read_vec("biljou"),
+    micro          = read_ras("micro"),
+    micro_moyenne  = read_ras("micro_moyenne"),
+    micro_canicule = read_ras("micro_canicule"),
+    dem            = read_ras("dem"),
+    eobs_tx        = read_ras("eobs_tx"),
+    eobs_rr        = read_ras("eobs_rr")
+  )
+  # Drop absent entries so the run's `%||% list()` / is.null checks are clean.
+  pc[!vapply(pc, is.null, logical(1))]
+}

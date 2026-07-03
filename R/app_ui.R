@@ -102,6 +102,13 @@ app_ui <- function(request) {
         mod_monitoring_ui("monitoring")
       ),
 
+      bslib::nav_panel(
+        title = i18n$t("regen_tab_title"),
+        value = "regeneration",
+        icon = bsicons::bs_icon("thermometer-sun"),
+        mod_regeneration_ui("regeneration")
+      ),
+
       # === Tabs 5-16: Indicator Families ===
       bslib::nav_menu(
         title = i18n$t("tab_families"),
