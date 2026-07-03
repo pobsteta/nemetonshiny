@@ -1,6 +1,6 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.98.2
 
-### Added — reGénération : section PDF Quarto (spec 027 L6, finalisation)
+### Added — reGénération : section PDF Quarto (spec 027 L6, finalisation, 2026-07-03)
 
 - Le rapport PDF (`report_template.qmd`) inclut désormais une section
   **« reGénération — vulnérabilité climatique »** : tableau des UG les plus
