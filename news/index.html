@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,28 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.98.1" id="nemetonshiny-0981">nemetonshiny 0.98.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-0981"></a></h2>
+<div class="section level4">
+<h4 id="changed--regénération--durcissement-ux-de-longlet-spec-0-98-1">Changed — reGénération : durcissement UX de l’onglet (spec 027, 2026-07-03)<a class="anchor" aria-label="anchor" href="#changed--reg%C3%A9n%C3%A9ration--durcissement-ux-de-longlet-spec-0-98-1"></a></h4>
+<ul><li>
+<strong>Warnings</strong> moteurs nettoyés des codes ANSI <code>cli</code> avant rendu HTML (<code>.regen_step</code> / détection années) — plus de <code>\033[…m</code> dans le bandeau.</li>
+<li>
+<strong>Retour au lancement</strong> : <code>withProgress</code> (overlay immédiat, empêche les reclics pendant le run) + toast final visible (succès / « N avertissement(s) »).</li>
+<li>
+<strong>Auto (E-OBS)</strong> : tooltip explicatif + message de confirmation en bas à droite (années détectées, ou avertissement si indisponible).</li>
+<li>
+<strong>Années de référence</strong> pré-remplies par défaut (2018 / 2022), affinables par Auto.</li>
+<li>
+<strong>Essence cible</strong> : correction du peuplement du sélecteur (colonnes <code>code</code>/<code>label</code> de la table de tolérances — auparavant vide). Tooltip précisant que le pré-remplissage depuis BD Forêt v2 nécessite un mapping TFV→essence côté cœur.</li>
+<li>
+<strong>LAI max</strong> : tooltip (auto depuis le PAI LiDAR HD si vide).</li>
+<li>
+<strong>Boutons Export GPKG / Enregistrer l’état</strong> déplacés dans la sidebar, sous « Lancer l’analyse ».</li>
+<li>
+<strong>Sélecteur de couche</strong> déplacé dans un <strong>menu rétractable superposé dans la carte</strong> (haut-droite), au lieu d’une barre au-dessus.</li>
+<li>
+<strong>Onglet « Radar des 12 familles » retiré</strong> de reGénération (réservé à Synthèse).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.98.0" id="nemetonshiny-0980">nemetonshiny 0.98.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-0980"></a></h2>

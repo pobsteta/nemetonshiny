@@ -1,6 +1,30 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.98.1
+
+#### Changed — reGénération : durcissement UX de l’onglet (spec 027, 2026-07-03)
+
+- **Warnings** moteurs nettoyés des codes ANSI `cli` avant rendu HTML
+  (`.regen_step` / détection années) — plus de `\033[…m` dans le
+  bandeau.
+- **Retour au lancement** : `withProgress` (overlay immédiat, empêche
+  les reclics pendant le run) + toast final visible (succès / « N
+  avertissement(s) »).
+- **Auto (E-OBS)** : tooltip explicatif + message de confirmation en bas
+  à droite (années détectées, ou avertissement si indisponible).
+- **Années de référence** pré-remplies par défaut (2018 / 2022),
+  affinables par Auto.
+- **Essence cible** : correction du peuplement du sélecteur (colonnes
+  `code`/`label` de la table de tolérances — auparavant vide). Tooltip
+  précisant que le pré-remplissage depuis BD Forêt v2 nécessite un
+  mapping TFV→essence côté cœur.
+- **LAI max** : tooltip (auto depuis le PAI LiDAR HD si vide).
+- **Boutons Export GPKG / Enregistrer l’état** déplacés dans la sidebar,
+  sous « Lancer l’analyse ».
+- **Sélecteur de couche** déplacé dans un **menu rétractable superposé
+  dans la carte** (haut-droite), au lieu d’une barre au-dessus.
+- **Onglet « Radar des 12 familles » retiré** de reGénération (réservé à
+  Synthèse).
 
 ## nemetonshiny 0.98.0
 
