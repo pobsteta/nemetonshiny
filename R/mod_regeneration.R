@@ -13,6 +13,13 @@ mod_regeneration_ui <- function(id) {
   opts <- get_app_options()
   i18n <- get_i18n(opts$language %||% "fr")
 
+  # Label + info tooltip (même pattern que mod_sampling / mod_synthesis).
+  label_tt <- function(label, tooltip) {
+    htmltools::tagList(label, " ",
+      bslib::tooltip(bsicons::bs_icon("info-circle", class = "text-muted ms-1"),
+                     tooltip, placement = "right"))
+  }
+
   bslib::layout_sidebar(
     fillable = TRUE,
     sidebar = bslib::sidebar(
@@ -24,12 +31,14 @@ mod_regeneration_ui <- function(id) {
       htmltools::tags$strong(i18n$t("regen_years_section")),
       shiny::fluidRow(
         shiny::column(6, shiny::numericInput(ns("year_moyenne"),
-          i18n$t("regen_year_moyenne"), value = NA, min = 1990, max = 2100, step = 1)),
+          i18n$t("regen_year_moyenne"), value = 2018, min = 1990, max = 2100, step = 1)),
         shiny::column(6, shiny::numericInput(ns("year_canicule"),
-          i18n$t("regen_year_canicule"), value = NA, min = 1990, max = 2100, step = 1))
+          i18n$t("regen_year_canicule"), value = 2022, min = 1990, max = 2100, step = 1))
       ),
-      shiny::actionButton(ns("auto_years"), i18n$t("regen_year_auto"),
-        class = "btn-outline-secondary btn-sm mb-2", icon = bsicons::bs_icon("magic")),
+      bslib::tooltip(
+        shiny::actionButton(ns("auto_years"), i18n$t("regen_year_auto"),
+          class = "btn-outline-secondary btn-sm mb-2", icon = bsicons::bs_icon("magic")),
+        i18n$t("regen_year_auto_tip"), placement = "right"),
       shiny::uiOutput(ns("eobs_index_display")),
 
       # --- Peuplement ----------------------------------------------------
@@ -44,7 +53,8 @@ mod_regeneration_ui <- function(id) {
         shiny::column(6, shiny::numericInput(ns("leaf_fall"),
           i18n$t("regen_leaf_fall"), value = 300, min = 200, max = 366))
       ),
-      shiny::numericInput(ns("lai_max"), i18n$t("regen_lai_max"),
+      shiny::numericInput(ns("lai_max"), label_tt(i18n$t("regen_lai_max"),
+          i18n$t("regen_lai_tip")),
         value = NA, min = 0, max = 12, step = 0.1),
       htmltools::tags$small(class = "text-muted d-block mb-2", i18n$t("regen_lai_auto")),
 
@@ -62,7 +72,8 @@ mod_regeneration_ui <- function(id) {
         choices = stats::setNames(c("2", "5"),
           c(i18n$t("regen_res_2m"), i18n$t("regen_res_5m"))),
         selected = "2", inline = TRUE),
-      shiny::selectInput(ns("species"), i18n$t("regen_species_target"),
+      shiny::selectInput(ns("species"), label_tt(i18n$t("regen_species_target"),
+          i18n$t("regen_species_tip")),
         choices = stats::setNames("", i18n$t("regen_species_generic"))),
       shiny::numericInput(ns("buffer_km"), i18n$t("regen_buffer"),
         value = 25, min = 5, max = 100, step = 5),
@@ -70,37 +81,49 @@ mod_regeneration_ui <- function(id) {
       shiny::checkboxInput(ns("hydric_only"), i18n$t("regen_run_hydric_only"),
         value = FALSE),
       shiny::actionButton(ns("run"), i18n$t("regen_run"),
-        class = "btn-primary w-100", icon = bsicons::bs_icon("play-fill"))
+        class = "btn-primary w-100", icon = bsicons::bs_icon("play-fill")),
+
+      # --- Export / persistance (sous le bouton Lancer) ------------------
+      htmltools::tags$hr(class = "my-2"),
+      htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_results_section")),
+      shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_export_gpkg"),
+        class = "btn-outline-primary btn-sm w-100 mb-2"),
+      shiny::actionButton(ns("persist_db"), i18n$t("regen_persist_db"),
+        class = "btn-outline-secondary btn-sm w-100", icon = bsicons::bs_icon("database"))
     ),
 
     # --- Résultats -------------------------------------------------------
     shiny::uiOutput(ns("status")),
-    htmltools::div(class = "d-flex gap-2 mb-2",
-      shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_export_gpkg"),
-        class = "btn-outline-primary btn-sm"),
-      shiny::actionButton(ns("persist_db"), i18n$t("regen_persist_db"),
-        class = "btn-outline-secondary btn-sm", icon = bsicons::bs_icon("database"))
-    ),
     bslib::navset_card_tab(
       bslib::nav_panel(
         i18n$t("regen_tab_map"),
-        shiny::radioButtons(ns("map_layer"), i18n$t("regen_map_layer"),
-          choices = stats::setNames(
-            c("indice_priorite_regen", "sensibilite", "njstress", "d_tmax"),
-            c(i18n$t("regen_map_priorite"), i18n$t("regen_map_sensibilite"),
-              i18n$t("regen_map_njstress"), i18n$t("regen_map_dtmax"))),
-          selected = "indice_priorite_regen", inline = TRUE),
-        leaflet::leafletOutput(ns("map"), height = "62vh")
+        # Sélecteur de couche : menu rétractable superposé dans la carte.
+        htmltools::div(
+          style = "position: relative;",
+          leaflet::leafletOutput(ns("map"), height = "70vh"),
+          htmltools::tags$details(
+            class = "position-absolute bg-white rounded shadow-sm p-2",
+            style = "top: 12px; right: 12px; z-index: 1000; max-width: 240px;",
+            open = NA,
+            htmltools::tags$summary(class = "small fw-semibold",
+              style = "cursor: pointer;", i18n$t("regen_map_layer")),
+            shiny::radioButtons(ns("map_layer"), NULL,
+              choices = stats::setNames(
+                c("indice_priorite_regen", "sensibilite", "njstress", "d_tmax"),
+                c(i18n$t("regen_map_priorite"), i18n$t("regen_map_sensibilite"),
+                  i18n$t("regen_map_njstress"), i18n$t("regen_map_dtmax"))),
+              selected = "indice_priorite_regen")
+          )
+        )
       ),
       bslib::nav_panel(i18n$t("regen_map_context"),
-        leaflet::leafletOutput(ns("context_map"), height = "66vh")),
+        leaflet::leafletOutput(ns("context_map"), height = "70vh")),
       bslib::nav_panel(i18n$t("regen_table_section"),
         shiny::checkboxInput(ns("filter_coverage"), i18n$t("regen_filter_coverage"),
           value = TRUE),
         DT::dataTableOutput(ns("table"))),
       bslib::nav_panel(i18n$t("regen_parcel_sheet"),
-        shiny::uiOutput(ns("parcel_sheet"))),
-      bslib::nav_panel(i18n$t("radar_title"), shiny::plotOutput(ns("radar"), height = "60vh"))
+        shiny::uiOutput(ns("parcel_sheet")))
     )
   )
 }
@@ -132,17 +155,18 @@ mod_regeneration_server <- function(id, app_state) {
                error = function(e) project$indicators_sf)
     })
 
-    # Populate the optional target-species selector from the core table.
+    # Populate the optional target-species selector from the core tolerance
+    # table (code = value parametrisable, label = libellé affiché).
     shiny::observe({
       tol <- regeneration_species_choices()
       generic <- stats::setNames("", i18n$t("regen_species_generic"))
-      if (!is.null(tol) && is.data.frame(tol) && "essence" %in% names(tol)) {
-        sp <- stats::setNames(tol$essence, tol$essence)
+      if (!is.null(tol) && is.data.frame(tol) && all(c("code", "label") %in% names(tol))) {
+        sp <- stats::setNames(tol$code, tol$label)
         shiny::updateSelectInput(session, "species", choices = c(generic, sp))
       }
     })
 
-    # Auto-detect the average / heatwave years from E-OBS.
+    # Auto-detect the average / heatwave years from E-OBS for this AOI.
     shiny::observeEvent(input$auto_years, {
       units <- units_sf()
       if (is.null(units)) {
@@ -152,10 +176,15 @@ mod_regeneration_server <- function(id, app_state) {
       yrs <- tryCatch(
         nemeton::microclimate_detect_years(aoi = units, year_window = 10),
         error = function(e) NULL)
-      if (!is.null(yrs)) {
+      if (!is.null(yrs) && !is.null(yrs$year_moyenne)) {
         shiny::updateNumericInput(session, "year_moyenne", value = yrs$year_moyenne)
         shiny::updateNumericInput(session, "year_canicule", value = yrs$year_canicule)
         rv$eobs <- yrs
+        shiny::showNotification(
+          sprintf(i18n$t("regen_auto_done"), yrs$year_moyenne, yrs$year_canicule),
+          type = "message", duration = 6)
+      } else {
+        shiny::showNotification(i18n$t("regen_auto_none"), type = "warning", duration = 6)
       }
     })
 
@@ -174,11 +203,7 @@ mod_regeneration_server <- function(id, app_state) {
         return()
       }
       rv$running <- TRUE
-      shiny::showNotification(i18n$t("regen_running"), type = "message",
-                              id = ns("run_toast"), duration = NULL)
-
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
-      precomputed <- load_regeneration_precomputed(project_path)
       # NA/NULL numeric inputs → NULL (let the core auto-detect / default).
       na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
       cfg <- list(
@@ -190,21 +215,33 @@ mod_regeneration_server <- function(id, app_state) {
         hydric_only = isTRUE(input$hydric_only)
       )
 
-      res <- tryCatch(
-        run_regeneration(units, cfg = cfg, precomputed = precomputed),
-        error = function(e) {
-          shiny::showNotification(
-            sprintf("%s: %s", i18n$t("error"), conditionMessage(e)), type = "error")
-          NULL
-        }
-      )
-      shiny::removeNotification(ns("run_toast"))
+      # withProgress affiche un overlay immédiat (retour visible avant le calcul
+      # synchrone) et empêche les reclics pendant le run.
+      res <- shiny::withProgress(message = i18n$t("regen_running"), value = 0.2, {
+        precomputed <- load_regeneration_precomputed(project_path)
+        shiny::incProgress(0.3)
+        out <- tryCatch(
+          run_regeneration(units, cfg = cfg, precomputed = precomputed),
+          error = function(e) {
+            shiny::showNotification(
+              sprintf("%s: %s", i18n$t("error"), conditionMessage(e)), type = "error")
+            NULL
+          })
+        shiny::incProgress(0.5)
+        out
+      })
       rv$running <- FALSE
       if (!is.null(res)) {
         rv$result <- res$units
         rv$years <- res$years
         rv$warnings <- res$warnings %||% character(0)
-        shiny::showNotification(i18n$t("regen_run_done"), type = "message")
+        nw <- length(rv$warnings)
+        if (nw > 0L) {
+          shiny::showNotification(sprintf(i18n$t("regen_run_done_warn"), nw),
+                                  type = "warning", duration = 8)
+        } else {
+          shiny::showNotification(i18n$t("regen_run_done"), type = "message", duration = 5)
+        }
       }
     })
 
@@ -314,21 +351,6 @@ mod_regeneration_server <- function(id, app_state) {
               rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
               couverture_pct = "couverture", f)))),
           htmltools::tags$td(format(row[[f]], digits = 3)))))
-    })
-
-    output$radar <- shiny::renderPlot({
-      res <- rv$result
-      shiny::req(res)
-      fam <- tryCatch(create_family_index(res, method = "mean", na.rm = TRUE),
-                      error = function(e) NULL)
-      shiny::req(fam)
-      family_cols <- grep("^famille_", names(fam), value = TRUE)
-      shiny::req(length(family_cols) > 0)
-      means <- as.data.frame(lapply(fam[family_cols], function(x)
-        mean(suppressWarnings(as.numeric(x)), na.rm = TRUE)))
-      means_sf <- sf::st_as_sf(means, geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 2154))
-      nemeton_radar(means_sf, mode = "family", normalize = FALSE,
-                    title = i18n$t("regen_tab_title"))
     })
 
     # --- Export GPKG (§7) -------------------------------------------------

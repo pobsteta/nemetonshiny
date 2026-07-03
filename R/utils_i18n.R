@@ -4025,6 +4025,12 @@ TRANSLATIONS <- list(
   regen_run_hydric_only = list(fr = "Bilan hydrique seul (rapide)", en = "Water balance only (fast)"),
   regen_running = list(fr = "Analyse reG\u00e9n\u00e9ration en cours\u2026", en = "reGeneration analysis running\u2026"),
   regen_run_done = list(fr = "Analyse reG\u00e9n\u00e9ration termin\u00e9e", en = "reGeneration analysis complete"),
+  regen_run_done_warn = list(fr = "Analyse termin\u00e9e avec %d avertissement(s) \u2014 voir le bandeau.", en = "Analysis complete with %d warning(s) \u2014 see the banner."),
+  regen_year_auto_tip = list(fr = "D\u00e9tecte l'ann\u00e9e moyenne et l'ann\u00e9e caniculaire repr\u00e9sentatives \u00e0 partir des donn\u00e9es climatiques E-OBS sur la zone du projet, et pr\u00e9-remplit les deux champs.", en = "Detects the representative average and heatwave years from E-OBS climate data over the project area, and fills both fields."),
+  regen_auto_done = list(fr = "Ann\u00e9es E-OBS d\u00e9tect\u00e9es : moyenne %s / caniculaire %s.", en = "E-OBS years detected: average %s / heatwave %s."),
+  regen_auto_none = list(fr = "D\u00e9tection E-OBS indisponible \u2014 saisir les ann\u00e9es manuellement.", en = "E-OBS detection unavailable \u2014 enter the years manually."),
+  regen_lai_tip = list(fr = "Laisser vide : le LAI max est estim\u00e9 automatiquement depuis le PAI du nuage LiDAR HD. Renseigner une valeur pour forcer.", en = "Leave empty: max LAI is auto-estimated from the HD LiDAR point-cloud PAI. Set a value to override."),
+  regen_species_tip = list(fr = "Essences param\u00e9trables par le mod\u00e8le (table de tol\u00e9rances du c\u0153ur). Le pr\u00e9-remplissage depuis BD For\u00eat v2 n\u00e9cessite un mapping TFV\u2192essence c\u00f4t\u00e9 nemeton (\u00e0 venir).", en = "Species the model can parametrise (core tolerance table). Pre-filling from BD For\u00eat v2 requires a TFV\u2192species mapping in nemeton (upcoming)."),
   regen_resume_cache = list(fr = "Reprise depuis le cache", en = "Resumed from cache"),
   regen_need_project = list(
     fr = "Chargez un projet avec des UGF pour lancer l'analyse reG\u00e9n\u00e9ration.",
