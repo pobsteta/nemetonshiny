@@ -157,12 +157,14 @@ INDICATOR_FAMILIES <- list(
     name_en = "Water",
     icon = "droplet-fill",
     color = "#1E90FF",
-    indicators = c("W1", "W2", "W3"),
-    column_names = c("indicateur_w1_reseau", "indicateur_w2_zones_humides", "indicateur_w3_humidite"),
+    indicators = c("W1", "W2", "W3", "W4"),
+    column_names = c("indicateur_w1_reseau", "indicateur_w2_zones_humides", "indicateur_w3_humidite",
+                     "indicateur_w4_vpd"),
     indicator_labels = list(
       W1 = list(fr = "R\u00e9seau hydrographique", en = "Water Network"),
       W2 = list(fr = "Zones humides", en = "Wetlands"),
-      W3 = list(fr = "Indice topographique d'humidit\u00e9", en = "Topographic Wetness Index")
+      W3 = list(fr = "Indice topographique d'humidit\u00e9", en = "Topographic Wetness Index"),
+      W4 = list(fr = "D\u00e9ficit de pression (VPD)", en = "Vapour Pressure Deficit")
     ),
     indicator_tooltips = list(
       W1 = list(
@@ -176,6 +178,10 @@ INDICATOR_FAMILIES <- list(
       W3 = list(
         fr = "Indice topographique d'humidit\u00e9 (TWI). Pr\u00e9dit l'accumulation d'eau selon la topographie. Valeurs \u00e9lev\u00e9es = zones potentiellement humides.",
         en = "Topographic Wetness Index (TWI). Predicts water accumulation based on topography. High values = potentially wet areas."
+      ),
+      W4 = list(
+        fr = "D\u00e9ficit de pression de vapeur estival sous couvert (demande \u00e9vaporative). Score \u00e9lev\u00e9 = faible stress atmosph\u00e9rique sous canop\u00e9e.",
+        en = "Summer sub-canopy vapour pressure deficit (evaporative demand). High score = low atmospheric stress beneath canopy."
       )
     )
   ),
@@ -185,11 +191,14 @@ INDICATOR_FAMILIES <- list(
     name_en = "Air & Microclimate",
     icon = "wind",
     color = "#87CEEB",
-    indicators = c("A1", "A2"),
-    column_names = c("indicateur_a1_couverture", "indicateur_a2_qualite_air"),
+    indicators = c("A1", "A2", "A3", "A4"),
+    column_names = c("indicateur_a1_couverture", "indicateur_a2_qualite_air",
+                     "indicateur_a3_microclimat", "indicateur_a4_tamponnement"),
     indicator_labels = list(
       A1 = list(fr = "Tampon forestier", en = "Forest Buffer"),
-      A2 = list(fr = "Qualit\u00e9 de l'air", en = "Air Quality")
+      A2 = list(fr = "Qualit\u00e9 de l'air", en = "Air Quality"),
+      A3 = list(fr = "Microclimat (T\u00b0max)", en = "Microclimate (T\u00b0max)"),
+      A4 = list(fr = "Tamponnement thermique", en = "Thermal buffering")
     ),
     indicator_tooltips = list(
       A1 = list(
@@ -199,6 +208,14 @@ INDICATOR_FAMILIES <- list(
       A2 = list(
         fr = "Indice de qualit\u00e9 de l'air bas\u00e9 sur l'\u00e9loignement des sources de pollution et la densit\u00e9 foresti\u00e8re environnante.",
         en = "Air quality index based on distance from pollution sources and surrounding forest density."
+      ),
+      A3 = list(
+        fr = "Temp\u00e9rature maximale de l'air sous couvert forestier en \u00e9t\u00e9 (microclimf). Score \u00e9lev\u00e9 = couvert tamponnant, air frais sous canop\u00e9e.",
+        en = "Summer maximum sub-canopy air temperature (microclimf). High score = buffering canopy, cool air beneath."
+      ),
+      A4 = list(
+        fr = "Capacit\u00e9 du couvert \u00e0 tamponner les extr\u00eames thermiques (\u00e9cart int\u00e9rieur/ext\u00e9rieur). Score \u00e9lev\u00e9 = fort tamponnement.",
+        en = "Canopy capacity to buffer thermal extremes (inside/outside gap). High score = strong buffering."
       )
     )
   ),
@@ -288,14 +305,16 @@ INDICATOR_FAMILIES <- list(
     name_en = "Risks & Resilience",
     icon = "exclamation-triangle-fill",
     color = "#DC143C",
-    indicators = c("R1", "R2", "R3", "R4", "R5"),
-    column_names = c("indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse", "indicateur_r4_abroutissement", "indicateur_r5_deperissement"),
+    indicators = c("R1", "R2", "R3", "R4", "R5", "R6"),
+    column_names = c("indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse", "indicateur_r4_abroutissement", "indicateur_r5_deperissement",
+                     "indicateur_r6_sensibilite"),
     indicator_labels = list(
       R1 = list(fr = "Risque incendie", en = "Fire Risk"),
       R2 = list(fr = "Risque temp\u00eate", en = "Storm Risk"),
       R3 = list(fr = "Risque s\u00e9cheresse", en = "Drought Risk"),
       R4 = list(fr = "Risque abroutissement", en = "Browsing Risk"),
-      R5 = list(fr = "D\u00e9p\u00e9rissement", en = "Dieback")
+      R5 = list(fr = "D\u00e9p\u00e9rissement", en = "Dieback"),
+      R6 = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity")
     ),
     indicator_tooltips = list(
       R1 = list(
@@ -317,6 +336,10 @@ INDICATOR_FAMILIES <- list(
       R5 = list(
         fr = "D\u00e9p\u00e9rissement d\u00e9tect\u00e9 par FORDEAD (r\u00e9sineux) ou RECONFORT (feuillus), pond\u00e9r\u00e9 par la fiabilit\u00e9 ONF/DSF 2024. NA hors zone de validit\u00e9 ou sans alerte. Score \u00e9lev\u00e9 = faible d\u00e9p\u00e9rissement.",
         en = "Dieback detected by FORDEAD (conifers) or RECONFORT (broadleaves), weighted by ONF/DSF 2024 reliability. NA outside the validity zone or without alerts. High score = low dieback."
+      ),
+      R6 = list(
+        fr = "Sensibilit\u00e9 du microclimat \u00e0 la canicule (\u00e9cart ann\u00e9e moyenne / caniculaire, microclimf). Score \u00e9lev\u00e9 = microclimat robuste, peu sensible aux extr\u00eames.",
+        en = "Microclimate sensitivity to heatwaves (average vs heatwave year gap, microclimf). High score = robust microclimate, low sensitivity to extremes."
       )
     )
   ),

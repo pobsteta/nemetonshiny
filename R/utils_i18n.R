@@ -1007,8 +1007,11 @@ TRANSLATIONS <- list(
   indicator_W1 = list(fr = "R\u00e9seau hydrographique", en = "Water Network"),
   indicator_W2 = list(fr = "Zones humides", en = "Wetlands"),
   indicator_W3 = list(fr = "Indice topographique d'humidit\u00e9", en = "Topographic Wetness Index"),
+  indicator_W4 = list(fr = "D\u00e9ficit de pression (VPD)", en = "Vapour Pressure Deficit"),
   indicator_A1 = list(fr = "Tampon forestier", en = "Forest Buffer"),
   indicator_A2 = list(fr = "Qualit\u00e9 de l'air", en = "Air Quality"),
+  indicator_A3 = list(fr = "Microclimat (T\u00b0max)", en = "Microclimate (T\u00b0max)"),
+  indicator_A4 = list(fr = "Tamponnement thermique", en = "Thermal buffering"),
   indicator_F1 = list(fr = "Fertilit\u00e9 des sols", en = "Soil Fertility"),
   indicator_F2 = list(fr = "Risque d'\u00e9rosion", en = "Erosion Risk"),
   indicator_L1 = list(fr = "Sylvosph\u00e8re (effet lisi\u00e8re)", en = "Sylvosphere (Edge Effect)"),
@@ -1022,6 +1025,7 @@ TRANSLATIONS <- list(
   indicator_R3 = list(fr = "Risque s\u00e9cheresse", en = "Drought Risk"),
   indicator_R4 = list(fr = "Risque abroutissement", en = "Browsing Risk"),
   indicator_R5 = list(fr = "Dépérissement", en = "Dieback"),
+  indicator_R6 = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity"),
   indicator_S1 = list(fr = "Densit\u00e9 de sentiers", en = "Trail Density"),
   indicator_S2 = list(fr = "Accessibilit\u00e9", en = "Accessibility"),
   indicator_S3 = list(fr = "Proximit\u00e9 population", en = "Population Proximity"),
@@ -3981,7 +3985,90 @@ TRANSLATIONS <- list(
   rag_col_mode = list(fr = "Mode", en = "Mode"),
   rag_col_n_chunks = list(fr = "Chunks", en = "Chunks"),
   rag_col_document_id = list(fr = "ID document", en = "Document ID"),
-  rag_col_duration_sec = list(fr = "Dur\u00e9e (s)", en = "Duration (s)")
+  rag_col_duration_sec = list(fr = "Dur\u00e9e (s)", en = "Duration (s)"),
+
+  # ============================================================
+  # reG\u00e9n\u00e9ration \u2014 vuln\u00e9rabilit\u00e9 climatique (spec 027, L4)
+  # ============================================================
+  regen_tab_title = list(fr = "reG\u00e9n\u00e9ration", en = "reGeneration"),
+  regen_intro = list(
+    fr = "Lecture de vuln\u00e9rabilit\u00e9 climatique (exposition microclimatique \u00d7 stress hydrique du sol) pour prioriser les interventions de r\u00e9g\u00e9n\u00e9ration.",
+    en = "Climate-vulnerability read (microclimatic exposure \u00d7 soil water stress) to prioritise regeneration interventions."
+  ),
+  regen_config_section = list(fr = "Configuration", en = "Configuration"),
+  regen_years_section = list(fr = "Ann\u00e9es de r\u00e9f\u00e9rence", en = "Reference years"),
+  regen_year_moyenne = list(fr = "Ann\u00e9e moyenne", en = "Average year"),
+  regen_year_canicule = list(fr = "Ann\u00e9e caniculaire", en = "Heatwave year"),
+  regen_year_auto = list(fr = "Auto (E-OBS)", en = "Auto (E-OBS)"),
+  regen_eobs_index = list(fr = "Indice E-OBS", en = "E-OBS index"),
+  regen_stand_section = list(fr = "Peuplement", en = "Stand"),
+  regen_forest_type = list(fr = "Type de peuplement", en = "Stand type"),
+  regen_forest_feuillu = list(fr = "Feuillu", en = "Broadleaf"),
+  regen_forest_resineux = list(fr = "R\u00e9sineux", en = "Conifer"),
+  regen_budburst = list(fr = "D\u00e9bourrement (jour julien)", en = "Budburst (day of year)"),
+  regen_leaf_fall = list(fr = "Chute des feuilles (jour julien)", en = "Leaf fall (day of year)"),
+  regen_lai_max = list(fr = "LAI max", en = "Max LAI"),
+  regen_lai_auto = list(fr = "Auto (PAI / LiDAR HD)", en = "Auto (PAI / LiDAR HD)"),
+  regen_soil_section = list(fr = "Sol", en = "Soil"),
+  regen_ewm = list(fr = "Eau extractible (mm)", en = "Extractable water (mm)"),
+  regen_roots = list(fr = "Fractions racinaires", en = "Root fractions"),
+  regen_forcing = list(fr = "For\u00e7age m\u00e9t\u00e9o", en = "Weather forcing"),
+  regen_forcing_safran = list(fr = "SAFRAN (d\u00e9faut)", en = "SAFRAN (default)"),
+  regen_forcing_era5 = list(fr = "ERA5-Land", en = "ERA5-Land"),
+  regen_resolution = list(fr = "R\u00e9solution microclimat", en = "Microclimate resolution"),
+  regen_res_2m = list(fr = "2 m (d\u00e9faut)", en = "2 m (default)"),
+  regen_res_5m = list(fr = "5 m", en = "5 m"),
+  regen_species_target = list(fr = "Essence cible (option)", en = "Target species (optional)"),
+  regen_species_generic = list(fr = "G\u00e9n\u00e9rique (d\u00e9faut)", en = "Generic (default)"),
+  regen_buffer = list(fr = "Buffer contexte r\u00e9gional (km)", en = "Regional context buffer (km)"),
+  regen_run = list(fr = "Lancer l'analyse", en = "Run analysis"),
+  regen_run_hydric_only = list(fr = "Bilan hydrique seul (rapide)", en = "Water balance only (fast)"),
+  regen_running = list(fr = "Analyse reG\u00e9n\u00e9ration en cours\u2026", en = "reGeneration analysis running\u2026"),
+  regen_run_done = list(fr = "Analyse reG\u00e9n\u00e9ration termin\u00e9e", en = "reGeneration analysis complete"),
+  regen_resume_cache = list(fr = "Reprise depuis le cache", en = "Resumed from cache"),
+  regen_need_project = list(
+    fr = "Chargez un projet avec des UGF pour lancer l'analyse reG\u00e9n\u00e9ration.",
+    en = "Load a project with UGF units to run the reGeneration analysis."
+  ),
+  regen_engine_missing = list(
+    fr = "Moteur ou donn\u00e9e manquant : %s. Fournissez des sorties pr\u00e9calcul\u00e9es ou installez le moteur.",
+    en = "Missing engine or data: %s. Provide precomputed outputs or install the engine."
+  ),
+  regen_results_section = list(fr = "R\u00e9sultats", en = "Results"),
+  regen_map_layer = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
+  regen_map_priorite = list(fr = "Indice de priorit\u00e9", en = "Priority index"),
+  regen_map_sensibilite = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity"),
+  regen_map_njstress = list(fr = "Jours de stress hydrique", en = "Water-stress days"),
+  regen_map_dtmax = list(fr = "\u0394T\u00b0max sous couvert", en = "Sub-canopy \u0394T\u00b0max"),
+  regen_map_bivariate = list(fr = "\u0394T\u00b0max \u00d7 \u0394VPD (parcellaire)", en = "\u0394T\u00b0max \u00d7 \u0394VPD (per unit)"),
+  regen_map_context = list(fr = "Contexte r\u00e9gional (E-OBS)", en = "Regional context (E-OBS)"),
+  regen_table_section = list(fr = "Tableau des UGF", en = "UGF table"),
+  regen_filter_coverage = list(fr = "Masquer les UG mal couvertes", en = "Hide poorly covered units"),
+  regen_parcel_sheet = list(fr = "Fiche parcelle", en = "Unit sheet"),
+  regen_rew_chronicle = list(fr = "Chronique REW (r\u00e9serve en eau)", en = "REW chronicle (water reserve)"),
+  regen_col_priorite = list(fr = "Priorit\u00e9", en = "Priority"),
+  regen_col_indice = list(fr = "Indice priorit\u00e9", en = "Priority index"),
+  regen_col_sensibilite = list(fr = "Sensibilit\u00e9", en = "Sensitivity"),
+  regen_col_rang = list(fr = "Rang", en = "Rank"),
+  regen_col_njstress = list(fr = "Jours stress", en = "Stress days"),
+  regen_col_istress = list(fr = "Intensit\u00e9 stress", en = "Stress intensity"),
+  regen_col_deb_stress = list(fr = "D\u00e9but stress", en = "Stress onset"),
+  regen_col_rew_min = list(fr = "REW min", en = "Min REW"),
+  regen_col_dtmax = list(fr = "\u0394T\u00b0max", en = "\u0394T\u00b0max"),
+  regen_col_dvpd = list(fr = "\u0394VPD", en = "\u0394VPD"),
+  regen_col_couverture = list(fr = "Couverture (%)", en = "Coverage (%)"),
+  regen_ndp_model = list(
+    fr = "Indices mod\u00e9lis\u00e9s (mod\u00e8le m\u00e9caniste, non mesur\u00e9s terrain) : fiables en classement relatif, prudents en valeur absolue.",
+    en = "Modelled indices (mechanistic model, not field-measured): reliable for relative ranking, cautious in absolute value."
+  ),
+  regen_biljou_warn = list(
+    fr = "Bilan hydrique BILJOU : r\u00e9impl\u00e9mentation non cautionn\u00e9e par l'INRAE.",
+    en = "BILJOU water balance: reimplementation not endorsed by INRAE."
+  ),
+  regen_coverage_warn = list(
+    fr = "%d UG \u00e0 couverture faible exclues par d\u00e9faut.",
+    en = "%d low-coverage units excluded by default."
+  )
 )
 
 

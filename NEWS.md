@@ -1,3 +1,26 @@
+# nemetonshiny (development version)
+
+### Added — reGénération : socle radar microclimat + service d'orchestration (spec 027, L4 — en cours)
+
+Premier jalon de l'onglet **reGénération** (lecture de vulnérabilité climatique,
+spec 027). Nécessite `nemeton (>= 0.118.0)`.
+
+- **Radar** (`app_config`) : sous-indicateurs microclimat câblés dans les
+  familles A/W/R — **A3** (T°max sous couvert), **A4** (tamponnement thermique),
+  **W4** (VPD), **R6** (sensibilité microclimatique) — libellés + tooltips FR/EN.
+  Sans run reGénération, colonnes absentes → familles inchangées (aucune
+  régression).
+- **Service** (`service_regeneration`) : `run_regeneration()` orchestre la
+  séquence cœur (détection années → sensibilité microclimf → bilan hydrique
+  BILJOU → sous-indicateurs A3/A4/W4/R6 → R3 enrichi → indice de priorité) via
+  le chemin `precomputed`, avec mode « bilan hydrique seul » et **dégradation
+  propre** (erreur moteur → warning actionnable, pas de crash). Aucune
+  ré-inversion côté app.
+- **i18n** : section reGénération FR/EN (~50 clés) + `indicator_A3/A4/W4/R6`.
+- Plancher `Imports: nemeton (>= 0.118.0)`.
+
+> UI (`mod_regeneration`), profil LLM (L5) et persistance/export (L6) suivent.
+
 # nemetonshiny 0.97.8 (2026-07-02)
 
 ### Fixed — Alignement suite de tests + libellé i18n de l'axe radar T3
