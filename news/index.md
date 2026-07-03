@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.98.2
 
 #### Added — reGénération : section PDF Quarto (spec 027 L6, finalisation, 2026-07-03)
