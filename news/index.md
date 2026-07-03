@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.98.4
 
 #### Changed — Forêt ancienne (N2) : auto-fetch IGN, fin de l’upload manuel (spec 031, 2026-07-03)
