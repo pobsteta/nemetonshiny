@@ -1,6 +1,6 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.98.3
 
-### Changed / Fixed — reGénération : carte et projets Reconfort (spec 027)
+### Changed / Fixed — reGénération : carte et projets Reconfort (spec 027, 2026-07-03)
 
 - **Carte** : le sélecteur de couche adopte le style des cartes FORDEAD/FAST —
   **contrôle de couches natif Leaflet dans la carte** (fonds OSM/Satellite +
