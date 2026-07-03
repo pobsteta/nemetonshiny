@@ -1,5 +1,18 @@
 # nemetonshiny (development version)
 
+### Added — reGénération : section PDF Quarto (spec 027 L6, finalisation)
+
+- Le rapport PDF (`report_template.qmd`) inclut désormais une section
+  **« reGénération — vulnérabilité climatique »** : tableau des UG les plus
+  sensibles (rang, indice de priorité, sensibilité, jours de stress, réserve
+  en eau, ΔT°max, couverture), rendu via `knitr::kable`/LaTeX. La section
+  n'apparaît que si une analyse reGénération est disponible.
+- `generate_report_pdf()` / `prepare_report_data()` acceptent un `regen_units`
+  optionnel (additif, rétrocompatible) ; `mod_regeneration` publie son résultat
+  sur `app_state$regeneration_result`, transmis par l'export PDF de `mod_synthesis`.
+- Rendu vérifié end-to-end (lualatex). Data-prep déjà couvert par
+  `regeneration_report_summary()`.
+
 # nemetonshiny 0.98.1
 
 ### Changed — reGénération : durcissement UX de l'onglet (spec 027, 2026-07-03)

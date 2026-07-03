@@ -4031,6 +4031,8 @@ TRANSLATIONS <- list(
   regen_auto_none = list(fr = "D\u00e9tection E-OBS indisponible \u2014 saisir les ann\u00e9es manuellement.", en = "E-OBS detection unavailable \u2014 enter the years manually."),
   regen_lai_tip = list(fr = "Laisser vide : le LAI max est estim\u00e9 automatiquement depuis le PAI du nuage LiDAR HD. Renseigner une valeur pour forcer.", en = "Leave empty: max LAI is auto-estimated from the HD LiDAR point-cloud PAI. Set a value to override."),
   regen_species_tip = list(fr = "Essences param\u00e9trables par le mod\u00e8le (table de tol\u00e9rances du c\u0153ur). Le pr\u00e9-remplissage depuis BD For\u00eat v2 n\u00e9cessite un mapping TFV\u2192essence c\u00f4t\u00e9 nemeton (\u00e0 venir).", en = "Species the model can parametrise (core tolerance table). Pre-filling from BD For\u00eat v2 requires a TFV\u2192species mapping in nemeton (upcoming)."),
+  regen_report_section = list(fr = "reG\u00e9n\u00e9ration \u2014 vuln\u00e9rabilit\u00e9 climatique", en = "reGeneration \u2014 climate vulnerability"),
+  regen_report_intro = list(fr = "Unit\u00e9s de gestion les plus sensibles au stress climatique (exposition microclimatique \u00d7 stress hydrique), class\u00e9es par rang de sensibilit\u00e9. Indices mod\u00e9lis\u00e9s : prudents en valeur absolue, fiables en classement relatif.", en = "Management units most sensitive to climate stress (microclimatic exposure by water stress), ranked by sensitivity. Modelled indices: cautious in absolute value, reliable in relative ranking."),
   regen_resume_cache = list(fr = "Reprise depuis le cache", en = "Resumed from cache"),
   regen_need_project = list(
     fr = "Chargez un projet avec des UGF pour lancer l'analyse reG\u00e9n\u00e9ration.",

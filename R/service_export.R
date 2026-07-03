@@ -288,7 +288,8 @@ generate_pdf_report <- function(project,
                                 language = "fr",
                                 synthesis_comments = NULL,
                                 family_comments = NULL,
-                                cover_image = NULL) {
+                                cover_image = NULL,
+                                regen_units = NULL) {
   # Check Quarto installation
   if (!ensure_quarto_installed()) {
     stop("Quarto is required for PDF report generation but is not available.",
@@ -330,7 +331,8 @@ generate_pdf_report <- function(project,
 
   # Prepare data for the report
   report_data <- prepare_report_data(project, family_scores, language,
-                                     synthesis_comments, family_comments)
+                                     synthesis_comments, family_comments,
+                                     regen_units = regen_units)
 
   # Save data as RDS for the template to load
   data_file <- file.path(temp_dir, "report_data.rds")
@@ -398,7 +400,8 @@ generate_pdf_report <- function(project,
 #' @noRd
 prepare_report_data <- function(project, family_scores, language,
                                 synthesis_comments = NULL,
-                                family_comments = NULL) {
+                                family_comments = NULL,
+                                regen_units = NULL) {
   i18n <- get_i18n(language)
 
   # Drop geometry for data processing
@@ -608,6 +611,9 @@ prepare_report_data <- function(project, family_scores, language,
     # Comments (markdown)
     synthesis_comments = synthesis_comments,
     family_comments = family_comments,
+
+    # reGénération section (spec 027 L6) — NULL when no run is available
+    regeneration = .build_regeneration_report_block(regen_units, i18n, language),
 
     # Language
     language = language,
@@ -928,6 +934,48 @@ regeneration_report_summary <- function(regen_units, top_n = 10L) {
     df <- df[order(-df$indice_priorite_regen, na.last = TRUE), , drop = FALSE]
   }
   utils::head(df, top_n)
+}
+
+
+#' Build the reGénération block for the PDF report data (spec 027 L6)
+#'
+#' @description
+#' Turns the reGénération run into a ready-to-render block for the Quarto
+#' template: a title, a short intro and a data.frame with translated headers
+#' (numbers rounded). Returns \code{NULL} when no run is available, so the
+#' template section is simply skipped.
+#'
+#' @param regen_units sf/data.frame or NULL.
+#' @param i18n An i18n object from \code{get_i18n()}.
+#' @param language Character.
+#' @return A list(title, intro, table) or NULL.
+#' @noRd
+.build_regeneration_report_block <- function(regen_units, i18n, language) {
+  summ <- regeneration_report_summary(regen_units)
+  if (is.null(summ) || nrow(summ) == 0L) return(NULL)
+
+  # Round numeric columns for a clean table.
+  num <- vapply(summ, is.numeric, logical(1))
+  summ[num] <- lapply(summ[num], function(x) round(x, 2))
+
+  hdr <- c(
+    ug_id                 = if (language == "fr") "UG" else "Unit",
+    rang_sensibilite      = i18n$t("regen_col_rang"),
+    indice_priorite_regen = i18n$t("regen_col_indice"),
+    sensibilite           = i18n$t("regen_col_sensibilite"),
+    njstress              = i18n$t("regen_col_njstress"),
+    rew_min               = i18n$t("regen_col_rew_min"),
+    d_tmax                = i18n$t("regen_col_dtmax"),
+    couverture_pct        = i18n$t("regen_col_couverture")
+  )
+  nm <- names(summ)
+  names(summ) <- ifelse(nm %in% names(hdr), hdr[nm], nm)
+
+  list(
+    title = i18n$t("regen_report_section"),
+    intro = i18n$t("regen_report_intro"),
+    table = summ
+  )
 }
 
 
@@ -2276,6 +2324,8 @@ add_parcel_labels <- function(data, id_col = "id") {
 #' @param family_comments Named list. Optional comments per family (keyed by family code, supports markdown).
 #' @param cover_image Character. Optional path to cover image for first page.
 #' @param use_quarto Logical. Whether to try Quarto first. Default TRUE.
+#' @param regen_units sf. Optional reGénération run output; when provided, a
+#'   "reGénération" section is appended to the Quarto report (spec 027 L6).
 #'
 #' @return Character. Path to generated PDF.
 #' @export
@@ -2286,12 +2336,14 @@ generate_report_pdf <- function(project,
                                 synthesis_comments = NULL,
                                 family_comments = NULL,
                                 cover_image = NULL,
-                                use_quarto = TRUE) {
+                                use_quarto = TRUE,
+                                regen_units = NULL) {
   if (use_quarto && is_quarto_installed()) {
     cli::cli_inform("Generating PDF with Quarto...")
     result <- tryCatch(
       generate_pdf_report(project, family_scores, output_file, language,
-                          synthesis_comments, family_comments, cover_image),
+                          synthesis_comments, family_comments, cover_image,
+                          regen_units = regen_units),
       error = function(e) {
         message("Quarto report failed, falling back to simple PDF: ", conditionMessage(e))
         NULL
