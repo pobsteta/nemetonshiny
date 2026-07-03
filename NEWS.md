@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.98.0
 
 ### Added — reGénération : nouvel onglet de vulnérabilité climatique (spec 027 — L4/L5/L6 livrés, 2026-07-03)
