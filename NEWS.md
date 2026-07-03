@@ -1,5 +1,22 @@
 # nemetonshiny (development version)
 
+### Changed / Fixed — reGénération : carte et projets Reconfort (spec 027)
+
+- **Carte** : le sélecteur de couche adopte le style des cartes FORDEAD/FAST —
+  **contrôle de couches natif Leaflet dans la carte** (fonds OSM/Satellite +
+  couche « UGF », coin haut-droit, rétractable) ; le radio « Couche affichée »
+  passe **dans la sidebar** (parité « Indice FAST »). Le choroplèthe et la
+  légende sont mis à jour par `leafletProxy` (zoom conservé). Suppression de
+  l'overlay `<details>`.
+- **Fix** : `units_sf()` retombe désormais sur la géométrie **UGF puis parcelles**
+  quand `indicators_sf` est absent (projet **Reconfort/monitoring** sans calcul
+  des 31 indicateurs). Auparavant l'onglet affichait le message trompeur
+  « besoin d'un projet » alors qu'un projet était chargé, et « Auto (E-OBS) »
+  semblait ne rien faire.
+  > Rappel : l'auto-détection E-OBS elle-même dépend d'une extraction estivale
+  > côté cœur `nemeton` (`microclimate_detect_years`, « not wired yet », spec 027
+  > L2) — d'où les années pré-remplies par défaut (2018/2022) comme chemin nominal.
+
 # nemetonshiny 0.98.2
 
 ### Added — reGénération : section PDF Quarto (spec 027 L6, finalisation, 2026-07-03)
