@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,14 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.98.3" id="nemetonshiny-0983">nemetonshiny 0.98.3<a class="anchor" aria-label="anchor" href="#nemetonshiny-0983"></a></h2>
+<div class="section level4">
+<h4 id="changed--fixed--regénération--carte-et-projets-reconfort-spec-0-98-3">Changed / Fixed — reGénération : carte et projets Reconfort (spec 027, 2026-07-03)<a class="anchor" aria-label="anchor" href="#changed--fixed--reg%C3%A9n%C3%A9ration--carte-et-projets-reconfort-spec-0-98-3"></a></h4>
+<ul><li>
+<strong>Carte</strong> : le sélecteur de couche adopte le style des cartes FORDEAD/FAST — <strong>contrôle de couches natif Leaflet dans la carte</strong> (fonds OSM/Satellite + couche « UGF », coin haut-droit, rétractable) ; le radio « Couche affichée » passe <strong>dans la sidebar</strong> (parité « Indice FAST »). Le choroplèthe et la légende sont mis à jour par <code>leafletProxy</code> (zoom conservé). Suppression de l’overlay <code>&lt;details&gt;</code>.</li>
+<li>
+<strong>Fix</strong> : <code>units_sf()</code> retombe désormais sur la géométrie <strong>UGF puis parcelles</strong> quand <code>indicators_sf</code> est absent (projet <strong>Reconfort/monitoring</strong> sans calcul des 31 indicateurs). Auparavant l’onglet affichait le message trompeur « besoin d’un projet » alors qu’un projet était chargé, et « Auto (E-OBS) » semblait ne rien faire. &gt; Rappel : l’auto-détection E-OBS elle-même dépend d’une extraction estivale &gt; côté cœur <code>nemeton</code> (<code>microclimate_detect_years</code>, « not wired yet », spec 027 &gt; L2) — d’où les années pré-remplies par défaut (2018/2022) comme chemin nominal.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.98.2" id="nemetonshiny-0982">nemetonshiny 0.98.2<a class="anchor" aria-label="anchor" href="#nemetonshiny-0982"></a></h2>
