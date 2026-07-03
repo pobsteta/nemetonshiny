@@ -1,6 +1,29 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.98.4
+
+#### Changed — Forêt ancienne (N2) : auto-fetch IGN, fin de l’upload manuel (spec 031, 2026-07-03)
+
+- **Suppression du bloc d’upload « Forêt ancienne »** de la sidebar «
+  Sélection » (onglet Sélection). Plus rien à configurer.
+- **Récupération automatique** au calcul de la couche **IGN « BD Forêts
+  anciennes »** (nationale, millésime 2025, Licence Ouverte / Etalab
+  2.0) pour l’emprise du projet, injectée dans
+  `indicateur_n2_continuite()`. L’acquisition (téléchargement
+  départemental + filtre `Nature = forêt ancienne`) est déléguée au cœur
+  `nemeton::load_foret_ancienne_source()` (résolu dynamiquement) ; l’app
+  orchestre et cache sous `<projet>/cache/layers/foret_ancienne/`.
+- **Dégradation propre** : tant que le cœur n’expose pas l’acquisition,
+  N2 reste calculé sur la couverture forestière **actuelle** (aucune
+  régression). Se câble automatiquement dès la release cœur, sans
+  intervention (`@*release`).
+
+#### Changed — reGénération : sélecteur de couche en sidebar droite (spec 027)
+
+- Sous-onglet « Carte » : le radio « Couche affichée » passe dans une
+  **sidebar droite dédiée** accolée à la carte (parité panneau droit des
+  cartes FAST), au lieu de la sidebar de configuration à gauche. Les
+  fonds OSM/Satellite/UGF restent dans le contrôle natif Leaflet.
 
 ## nemetonshiny 0.98.3
 

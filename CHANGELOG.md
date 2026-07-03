@@ -12,6 +12,19 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.98.4\] - 2026-07-03
+
+### Changed
+
+- Forêt ancienne (N2) : suppression du bloc d’upload manuel ;
+  récupération automatique de la couche IGN « BD Forêts anciennes »
+  (Etalab 2.0, nationale) au calcul, via
+  `nemeton::load_foret_ancienne_source()` (résolu dynamiquement,
+  dégradation propre → N2 sur couverture actuelle tant que le cœur ne
+  l’exporte pas). Spec 031.
+- reGénération : radio « Couche affichée » déplacé dans une sidebar
+  droite du sous-onglet Carte.
+
 ## \[0.98.3\] - 2026-07-03
 
 ### Fixed
