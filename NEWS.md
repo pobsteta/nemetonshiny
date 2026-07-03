@@ -32,7 +32,19 @@ spec 027). Nécessite `nemeton (>= 0.118.0)`.
   et flague les conflits avec la biodiversité (B/N). Auto-chargé et sélectionnable
   dans `mod_synthesis` (liste de profils dynamique).
 
-> L4 + L5 livrés. Persistance PostGIS + export Quarto/GPKG (L6) suivent.
+- **Persistance & export (L6)** :
+  - Persistance **versionnée** en base : `db_save_regeneration()` écrit chaque
+    run dans `nemeton.regeneration_states` (JSONB par UG, versions archivées pour
+    le suivi dans le temps, §6A) + migration `inst/sql/migration_004_regeneration.sql`.
+  - Export **GeoPackage** des colonnes §7 : `export_regeneration_geopackage()`.
+  - `mod_regeneration` : bouton de téléchargement GPKG + enregistrement en base
+    (si configurée) avec retour de version.
+  - Data-prep de la **section Quarto** reGénération : `regeneration_report_summary()`
+    (top-N trié par rang de sensibilité, prêt pour `knitr::kable`).
+  - 5 clés i18n L6.
+
+> L4 + L5 + L6 (cœur) livrés. Reste : insertion de la section reGénération dans
+> le template Quarto PDF + vérification de rendu (à faire en local avec Quarto).
 
 # nemetonshiny 0.97.8 (2026-07-02)
 

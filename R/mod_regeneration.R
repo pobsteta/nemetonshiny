@@ -75,6 +75,12 @@ mod_regeneration_ui <- function(id) {
 
     # --- Résultats -------------------------------------------------------
     shiny::uiOutput(ns("status")),
+    htmltools::div(class = "d-flex gap-2 mb-2",
+      shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_export_gpkg"),
+        class = "btn-outline-primary btn-sm"),
+      shiny::actionButton(ns("persist_db"), i18n$t("regen_persist_db"),
+        class = "btn-outline-secondary btn-sm", icon = bsicons::bs_icon("database"))
+    ),
     bslib::navset_card_tab(
       bslib::nav_panel(
         i18n$t("regen_tab_map"),
@@ -323,6 +329,45 @@ mod_regeneration_server <- function(id, app_state) {
       means_sf <- sf::st_as_sf(means, geometry = sf::st_sfc(sf::st_point(c(0, 0)), crs = 2154))
       nemeton_radar(means_sf, mode = "family", normalize = FALSE,
                     title = i18n$t("regen_tab_title"))
+    })
+
+    # --- Export GPKG (§7) -------------------------------------------------
+    output$export_gpkg <- shiny::downloadHandler(
+      filename = function() "regeneration.gpkg",
+      content = function(file) {
+        res <- rv$result
+        if (is.null(res)) {
+          shiny::showNotification(i18n$t("regen_export_empty"), type = "warning")
+          return(invisible(NULL))
+        }
+        export_regeneration_geopackage(res, file)
+      }
+    )
+
+    # --- Persistance versionnée en base (§6A) -----------------------------
+    shiny::observeEvent(input$persist_db, {
+      res <- rv$result
+      if (is.null(res)) {
+        shiny::showNotification(i18n$t("regen_export_empty"), type = "warning")
+        return()
+      }
+      if (!is_db_configured()) {
+        shiny::showNotification(i18n$t("regen_db_unavailable"), type = "warning")
+        return()
+      }
+      pid <- tryCatch(app_state$current_project$id, error = function(e) NULL)
+      ver <- tryCatch({
+        con <- get_db_connection()
+        on.exit(close_db_connection(con), add = TRUE)
+        db_save_regeneration(con, pid, res)
+      }, error = function(e) {
+        shiny::showNotification(
+          sprintf("%s: %s", i18n$t("error"), conditionMessage(e)), type = "error")
+        NULL
+      })
+      if (!is.null(ver)) {
+        shiny::showNotification(sprintf(i18n$t("regen_persisted"), ver), type = "message")
+      }
     })
 
     list(result = shiny::reactive(rv$result))

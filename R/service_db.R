@@ -527,6 +527,55 @@ db_save_indicators <- function(con, project_id, indicators) {
 }
 
 
+#' Persist a versioned reGénération climate state (spec 027 §7, L6)
+#'
+#' @description
+#' Appends a new **version** of the per-UGF climate-vulnerability state to
+#' \code{nemeton.regeneration_states} (archival — earlier versions are kept,
+#' enabling change tracking over time, spec 027 §6A). The §7 columns present on
+#' \code{units} are stored per UG as a JSONB payload, so the table schema is
+#' stable regardless of which engines ran. Idempotent table creation.
+#'
+#' @param con DBI connection (PostGIS).
+#' @param project_id Character. Local project ID.
+#' @param units sf/data.frame. Enriched UGF from \code{run_regeneration()}.
+#'
+#' @return The integer version number written (invisibly).
+#' @noRd
+db_save_regeneration <- function(con, project_id, units) {
+  df <- if (inherits(units, "sf")) sf::st_drop_geometry(units) else as.data.frame(units)
+
+  DBI::dbExecute(con, "
+    CREATE TABLE IF NOT EXISTS nemeton.regeneration_states (
+      id           BIGSERIAL PRIMARY KEY,
+      project_id   TEXT NOT NULL,
+      version      INTEGER NOT NULL,
+      generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      ug_id        TEXT,
+      payload      JSONB NOT NULL
+    );")
+
+  # Next version for this project (never overwrite prior states).
+  ver <- tryCatch(DBI::dbGetQuery(con,
+    "SELECT COALESCE(MAX(version), 0) + 1 AS v FROM nemeton.regeneration_states WHERE project_id = $1",
+    params = list(project_id))$v, error = function(e) 1L)
+  if (length(ver) == 0 || is.na(ver)) ver <- 1L
+  ver <- as.integer(ver)
+
+  cols <- intersect(REGEN_OUTPUT_COLUMNS, names(df))
+  ug <- if ("ug_id" %in% names(df)) as.character(df$ug_id) else as.character(seq_len(nrow(df)))
+  for (i in seq_len(nrow(df))) {
+    payload <- jsonlite::toJSON(as.list(df[i, cols, drop = FALSE]),
+                                auto_unbox = TRUE, na = "null")
+    DBI::dbExecute(con,
+      "INSERT INTO nemeton.regeneration_states (project_id, version, ug_id, payload)
+       VALUES ($1, $2, $3, $4::jsonb)",
+      params = list(project_id, ver, ug[i], as.character(payload)))
+  }
+  invisible(ver)
+}
+
+
 # ============================================================
 # Load Operations
 # ============================================================
