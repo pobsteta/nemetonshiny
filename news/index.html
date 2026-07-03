@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.97.8.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,31 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.98.0" id="nemetonshiny-0980">nemetonshiny 0.98.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-0980"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--nouvel-onglet-de-vulnérabilité-climatique-spec--l4l5l6-livrés-0-98-0">Added — reGénération : nouvel onglet de vulnérabilité climatique (spec 027 — L4/L5/L6 livrés, 2026-07-03)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--nouvel-onglet-de-vuln%C3%A9rabilit%C3%A9-climatique-spec--l4l5l6-livr%C3%A9s-0-98-0"></a></h4>
+<p>Premier jalon de l’onglet <strong>reGénération</strong> (lecture de vulnérabilité climatique, spec 027). Nécessite <code>nemeton (&gt;= 0.118.0)</code>.</p>
+<ul><li><p><strong>Radar</strong> (<code>app_config</code>) : sous-indicateurs microclimat câblés dans les familles A/W/R — <strong>A3</strong> (T°max sous couvert), <strong>A4</strong> (tamponnement thermique), <strong>W4</strong> (VPD), <strong>R6</strong> (sensibilité microclimatique) — libellés + tooltips FR/EN. Sans run reGénération, colonnes absentes → familles inchangées (aucune régression).</p></li>
+<li><p><strong>Service</strong> (<code>service_regeneration</code>) : <code>run_regeneration()</code> orchestre la séquence cœur (détection années → sensibilité microclimf → bilan hydrique BILJOU → sous-indicateurs A3/A4/W4/R6 → R3 enrichi → indice de priorité) via le chemin <code>precomputed</code>, avec mode « bilan hydrique seul » et <strong>dégradation propre</strong> (erreur moteur → warning actionnable, pas de crash). Aucune ré-inversion côté app.</p></li>
+<li><p><strong>UI</strong> (<code>mod_regeneration</code>) : nouvel onglet « reGénération » — panneau de configuration (années moyenne/canicule + auto E-OBS, peuplement, sol, forçage SAFRAN/ERA5, résolution, essence cible optionnelle, buffer), run avec retour immédiat et dégradation propre, puis résultats en onglets : <strong>carte</strong> Leaflet commutable (indice de priorité / sensibilité / jours de stress / ΔT°max), <strong>carte de contexte E-OBS</strong>, <strong>tableau</strong> trié par rang (filtre couverture), <strong>fiche parcelle</strong>, <strong>radar</strong> A/W/R (via <code>create_family_index</code> + <code>nemeton_radar</code>).</p></li>
+<li><p><strong>i18n</strong> : section reGénération FR/EN (~55 clés) + <code>indicator_A3/A4/W4/R6</code>.</p></li>
+<li><p>Plancher <code>Imports: nemeton (&gt;= 0.118.0)</code>.</p></li>
+<li><p><strong>LLM (L5)</strong> : nouveau profil expert <strong>« Adaptation climatique »</strong> (<code>inst/experts/adaptation_climat.yml</code>, FR/EN) — priorise A/R/W/C, exploite <code>njstress</code>/<code>istress</code>/<code>sensibilite</code>/<code>indice_priorite_regen</code>, recommande des itinéraires de régénération (essences tolérantes, densité, îlots, calendrier) et flague les conflits avec la biodiversité (B/N). Auto-chargé et sélectionnable dans <code>mod_synthesis</code> (liste de profils dynamique).</p></li>
+<li>
+<p><strong>Persistance &amp; export (L6)</strong> :</p>
+<ul><li>Persistance <strong>versionnée</strong> en base : <code>db_save_regeneration()</code> écrit chaque run dans <code>nemeton.regeneration_states</code> (JSONB par UG, versions archivées pour le suivi dans le temps, §6A) + migration <code>inst/sql/migration_004_regeneration.sql</code>.</li>
+<li>Export <strong>GeoPackage</strong> des colonnes §7 : <code>export_regeneration_geopackage()</code>.</li>
+<li>
+<code>mod_regeneration</code> : bouton de téléchargement GPKG + enregistrement en base (si configurée) avec retour de version.</li>
+<li>Data-prep de la <strong>section Quarto</strong> reGénération : <code>regeneration_report_summary()</code> (top-N trié par rang de sensibilité, prêt pour <code><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">knitr::kable</a></code>).</li>
+<li>5 clés i18n L6.</li>
+</ul></li>
+</ul><blockquote>
+<p>L4 + L5 + L6 (cœur) livrés. Reste : insertion de la section reGénération dans le template Quarto PDF + vérification de rendu (à faire en local avec Quarto).</p>
+</blockquote>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.97.8" id="nemetonshiny-0978-2026-07-02">nemetonshiny 0.97.8 (2026-07-02)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0978-2026-07-02"></a></h2>
 <div class="section level4">
