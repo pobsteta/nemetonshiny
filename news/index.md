@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.98.1
 
 #### Changed — reGénération : durcissement UX de l’onglet (spec 027, 2026-07-03)
