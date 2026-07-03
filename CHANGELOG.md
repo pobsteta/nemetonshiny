@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.98.2\] - 2026-07-03
+
+### Added
+
+- reGénération : le rapport PDF Quarto inclut une section « reGénération
+  — vulnérabilité climatique » (tableau des UG les plus sensibles),
+  rendue quand une analyse est disponible.
+  [`generate_report_pdf()`](https://pobsteta.github.io/nemetonshiny/reference/generate_report_pdf.md)
+  / `prepare_report_data()` acceptent un `regen_units` optionnel
+  (additif) ; `mod_regeneration` publie son résultat sur
+  `app_state$regeneration_result`, transmis par `mod_synthesis`.
+
 ## \[0.98.1\] - 2026-07-03
 
 ### Fixed

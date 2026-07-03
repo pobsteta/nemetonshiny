@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,14 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.98.2" id="nemetonshiny-0982">nemetonshiny 0.98.2<a class="anchor" aria-label="anchor" href="#nemetonshiny-0982"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--section-pdf-quarto-spec-l6-finalisation-0-98-2">Added — reGénération : section PDF Quarto (spec 027 L6, finalisation, 2026-07-03)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--section-pdf-quarto-spec-l6-finalisation-0-98-2"></a></h4>
+<ul><li>Le rapport PDF (<code>report_template.qmd</code>) inclut désormais une section <strong>« reGénération — vulnérabilité climatique »</strong> : tableau des UG les plus sensibles (rang, indice de priorité, sensibilité, jours de stress, réserve en eau, ΔT°max, couverture), rendu via <code><a href="https://rdrr.io/pkg/knitr/man/kable.html" class="external-link">knitr::kable</a></code>/LaTeX. La section n’apparaît que si une analyse reGénération est disponible.</li>
+<li>
+<code><a href="../reference/generate_report_pdf.html">generate_report_pdf()</a></code> / <code>prepare_report_data()</code> acceptent un <code>regen_units</code> optionnel (additif, rétrocompatible) ; <code>mod_regeneration</code> publie son résultat sur <code>app_state$regeneration_result</code>, transmis par l’export PDF de <code>mod_synthesis</code>.</li>
+<li>Rendu vérifié end-to-end (lualatex). Data-prep déjà couvert par <code>regeneration_report_summary()</code>.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.98.1" id="nemetonshiny-0981">nemetonshiny 0.98.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-0981"></a></h2>
