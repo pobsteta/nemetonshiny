@@ -10,6 +10,30 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.98.0] - 2026-07-03
+
+### Added
+
+- **reGénération** : nouvel onglet de lecture de vulnérabilité climatique
+  (exposition microclimatique × stress hydrique du sol) pour prioriser les
+  interventions de régénération (spec 027, lots L4/L5/L6).
+  - Radar : sous-indicateurs microclimat A3/A4/W4/R6 câblés dans les familles A/W/R.
+  - Module `mod_regeneration` : panneau de configuration, run avec dégradation
+    propre, cartes Leaflet commutables, carte de contexte E-OBS, tableau trié,
+    fiche parcelle, radar A/W/R.
+  - Service `run_regeneration()` (orchestration cœur via chemin `precomputed`)
+    et loader `load_regeneration_precomputed()`.
+  - Profil LLM « Adaptation climatique » (`inst/experts/adaptation_climat.yml`).
+  - Persistance versionnée en base (`db_save_regeneration`,
+    `nemeton.regeneration_states`, migration 004), export GeoPackage
+    (`export_regeneration_geopackage`) et data-prep de section Quarto
+    (`regeneration_report_summary`).
+  - ~60 clés i18n FR/EN.
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.118.0)`.
+
 ## [0.97.0] - 2026-07-01
 
 ### Added

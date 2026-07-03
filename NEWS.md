@@ -1,6 +1,6 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.98.0
 
-### Added — reGénération : socle radar microclimat + service d'orchestration (spec 027, L4 — en cours)
+### Added — reGénération : nouvel onglet de vulnérabilité climatique (spec 027 — L4/L5/L6 livrés, 2026-07-03)
 
 Premier jalon de l'onglet **reGénération** (lecture de vulnérabilité climatique,
 spec 027). Nécessite `nemeton (>= 0.118.0)`.
