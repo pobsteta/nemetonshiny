@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.98.3
 
 #### Changed / Fixed — reGénération : carte et projets Reconfort (spec 027, 2026-07-03)
