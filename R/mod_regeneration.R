@@ -83,15 +83,6 @@ mod_regeneration_ui <- function(id) {
       shiny::actionButton(ns("run"), i18n$t("regen_run"),
         class = "btn-primary w-100", icon = bsicons::bs_icon("play-fill")),
 
-      # --- Couche affichée sur la carte (parité radio « Indice FAST ») ----
-      htmltools::tags$hr(class = "my-2"),
-      shiny::radioButtons(ns("map_layer"), i18n$t("regen_map_layer"),
-        choices = stats::setNames(
-          c("indice_priorite_regen", "sensibilite", "njstress", "d_tmax"),
-          c(i18n$t("regen_map_priorite"), i18n$t("regen_map_sensibilite"),
-            i18n$t("regen_map_njstress"), i18n$t("regen_map_dtmax"))),
-        selected = "indice_priorite_regen"),
-
       # --- Export / persistance (sous le bouton Lancer) ------------------
       htmltools::tags$hr(class = "my-2"),
       htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_results_section")),
@@ -106,9 +97,23 @@ mod_regeneration_ui <- function(id) {
     bslib::navset_card_tab(
       bslib::nav_panel(
         i18n$t("regen_tab_map"),
-        # Contrôle de couches natif (OSM/Satellite/UGF) dans la carte — parité
-        # cartes FORDEAD/FAST ; la couche affichée se choisit dans la sidebar.
-        leaflet::leafletOutput(ns("map"), height = "70vh")
+        # Carte + sidebar DROITE dédiée (parité panneau droit des cartes FAST) :
+        # le radio « Couche affichée » vit à droite de la carte ; les fonds
+        # OSM/Satellite/UGF restent dans le contrôle natif Leaflet (coin carte).
+        bslib::layout_sidebar(
+          fillable = TRUE,
+          sidebar = bslib::sidebar(
+            position = "right", open = TRUE, width = 260,
+            htmltools::tags$strong(i18n$t("regen_map_layer")),
+            shiny::radioButtons(ns("map_layer"), NULL,
+              choices = stats::setNames(
+                c("indice_priorite_regen", "sensibilite", "njstress", "d_tmax"),
+                c(i18n$t("regen_map_priorite"), i18n$t("regen_map_sensibilite"),
+                  i18n$t("regen_map_njstress"), i18n$t("regen_map_dtmax"))),
+              selected = "indice_priorite_regen")
+          ),
+          leaflet::leafletOutput(ns("map"), height = "70vh")
+        )
       ),
       bslib::nav_panel(i18n$t("regen_map_context"),
         leaflet::leafletOutput(ns("context_map"), height = "70vh")),

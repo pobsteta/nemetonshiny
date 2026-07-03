@@ -1,5 +1,12 @@
 # nemetonshiny (development version)
 
+### Changed — reGénération : sélecteur de couche en sidebar droite (spec 027)
+
+- Sous-onglet « Carte » : le radio « Couche affichée » passe dans une **sidebar
+  droite dédiée** accolée à la carte (parité panneau droit des cartes FAST), au
+  lieu de la sidebar de configuration à gauche. Les fonds OSM/Satellite/UGF
+  restent dans le contrôle natif Leaflet.
+
 # nemetonshiny 0.98.3
 
 ### Changed / Fixed — reGénération : carte et projets Reconfort (spec 027, 2026-07-03)
