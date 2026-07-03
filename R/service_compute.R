@@ -852,13 +852,16 @@ start_computation <- function(project_id,
     # it into indicateur_n2_continuite(foret_ancienne = ). No source → N2 keeps
     # its current behaviour (no regression). Business logic lives in the core
     # (nemeton::build_foret_ancienne_mask) — the app only wires the source in.
-    fa_cfg <- projet_for_ug$metadata$foret_ancienne
-    if (!is.null(fa_cfg) && "indicateur_n2_continuite" %in% effective_indicators) {
+    # Auto-fetch national IGN BD Forêts anciennes for the AOI (or use a legacy
+    # per-project source if one is still stored in metadata). No source / no
+    # acquisition → N2 keeps its bdforet-only behaviour (no regression).
+    if ("indicateur_n2_continuite" %in% effective_indicators) {
       state$current_task <- "foret_ancienne"
       report_progress(state)
       fa_layer <- build_foret_ancienne_layer(
-        fa_cfg, project_path,
-        crs = sf::st_crs(compute_unit)$epsg %||% 2154
+        projet_for_ug$metadata$foret_ancienne, project_path,
+        crs = sf::st_crs(compute_unit)$epsg %||% 2154,
+        aoi = compute_unit
       )
       if (!is.null(fa_layer)) layers$vectors$foret_ancienne <- fa_layer
     }
@@ -1013,8 +1016,66 @@ start_computation <- function(project_id,
 #'   keeps its bdforet-only / default behaviour (no regression).
 #'
 #' @noRd
-build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154) {
-  if (is.null(fa_cfg) || is.null(fa_cfg$path) || !nzchar(fa_cfg$path)) return(NULL)
+#' Auto-fetch the national IGN BD Forêts anciennes for an AOI (spec 031)
+#'
+#' @description
+#' Delegates acquisition to the core \code{nemeton::load_foret_ancienne_source()}
+#' (fetch of the departmental IGN « BD Forêts anciennes » GeoPackage, filter on
+#' the \code{Nature = forêt ancienne} class, clip to the AOI) and caches the
+#' resulting mask under \code{<project>/cache/layers/foret_ancienne/}. Resolved
+#' dynamically so the app builds/checks cleanly before the core exports it;
+#' returns \code{NULL} (→ N2 on current coverage, no regression) when the core
+#' function is absent or the fetch fails.
+#'
+#' @noRd
+.fetch_foret_ancienne_auto <- function(aoi, project_path, crs = 2154) {
+  cache_dir <- file.path(project_path, "cache", "layers", "foret_ancienne")
+  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+  key <- substr(rlang::hash(list("ign_auto",
+    tryCatch(as.numeric(sf::st_bbox(aoi)), error = function(e) NULL), crs)), 1, 16)
+  cache_gpkg <- file.path(cache_dir, paste0("ign_", key, ".gpkg"))
+
+  if (file.exists(cache_gpkg)) {
+    fa <- tryCatch(sf::st_read(cache_gpkg, quiet = TRUE), error = function(e) NULL)
+    if (!is.null(fa)) {
+      cli::cli_alert_info(
+        "Forêt ancienne : masque IGN lu depuis le cache ({nrow(fa)} polygone{?s})")
+      return(fa)
+    }
+  }
+
+  loader <- tryCatch(getExportedValue("nemeton", "load_foret_ancienne_source"),
+                     error = function(e) NULL)
+  if (is.null(loader)) {
+    cli::cli_alert_info(paste(
+      "Forêt ancienne : acquisition IGN indisponible",
+      "(nemeton::load_foret_ancienne_source absent) — N2 sur couverture actuelle"))
+    return(NULL)
+  }
+
+  fa <- tryCatch(loader(aoi = aoi, crs = crs), error = function(e) {
+    cli::cli_warn("Forêt ancienne : acquisition IGN échouée : {conditionMessage(e)}")
+    NULL
+  })
+  if (is.null(fa) || !inherits(fa, "sf")) return(NULL)
+
+  tryCatch(sf::st_write(fa, cache_gpkg, quiet = TRUE, delete_dsn = TRUE),
+           error = function(e) cli::cli_warn("Forêt ancienne : cache non écrit"))
+  cli::cli_alert_success(
+    "Forêt ancienne : masque IGN récupéré ({nrow(fa)} polygone{?s})")
+  fa
+}
+
+build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154, aoi = NULL) {
+  # No user-provided historical source → auto-fetch the national IGN
+  # « BD Forêts anciennes » (Etalab 2.0) for the AOI. All acquisition + the
+  # `Nature = forêt ancienne` filter live in the core; the app only orchestrates
+  # and caches. Dynamic lookup avoids an R CMD check note while the core symbol
+  # is not yet exported — graceful NULL until it is (N2 on current coverage).
+  if (is.null(fa_cfg) || is.null(fa_cfg$path) || !nzchar(fa_cfg$path)) {
+    if (is.null(aoi)) return(NULL)
+    return(.fetch_foret_ancienne_auto(aoi, project_path, crs))
+  }
 
   src_path <- if (startsWith(fa_cfg$path, "/")) {
     fa_cfg$path
