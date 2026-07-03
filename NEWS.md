@@ -25,9 +25,14 @@ spec 027). Nécessite `nemeton (>= 0.118.0)`.
   **fiche parcelle**, **radar** A/W/R (via `create_family_index` + `nemeton_radar`).
 - **i18n** : section reGénération FR/EN (~55 clés) + `indicator_A3/A4/W4/R6`.
 - Plancher `Imports: nemeton (>= 0.118.0)`.
+- **LLM (L5)** : nouveau profil expert **« Adaptation climatique »**
+  (`inst/experts/adaptation_climat.yml`, FR/EN) — priorise A/R/W/C, exploite
+  `njstress`/`istress`/`sensibilite`/`indice_priorite_regen`, recommande des
+  itinéraires de régénération (essences tolérantes, densité, îlots, calendrier)
+  et flague les conflits avec la biodiversité (B/N). Auto-chargé et sélectionnable
+  dans `mod_synthesis` (liste de profils dynamique).
 
-> L4 UI livré. Profil LLM adaptation (L5) et persistance PostGIS + export
-> Quarto/GPKG (L6) suivent.
+> L4 + L5 livrés. Persistance PostGIS + export Quarto/GPKG (L6) suivent.
 
 # nemetonshiny 0.97.8 (2026-07-02)
 
