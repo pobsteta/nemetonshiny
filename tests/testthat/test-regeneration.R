@@ -121,3 +121,18 @@ test_that("REGEN_OUTPUT_COLUMNS covers the §7 contract", {
                     "rew_min", "couverture_pct", "priorite",
                     "indicateur_a3_microclimat", "indicateur_r6_sensibilite") %in% cols))
 })
+
+test_that(".regen_step strips ANSI escapes and keeps units on engine error", {
+  skip_if_not_installed("sf")
+  u <- sf::st_sf(ug_id = 1:2,
+    geometry = sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)), crs = 2154))
+  env <- new.env(); env$warnings <- character(0)
+
+  out <- nemetonshiny:::.regen_step(
+    function() stop("\033[38;5;252mmicroclimf\033[39m not wired"), u, env, "regen_sensibilite")
+
+  expect_identical(out, u)                              # dégradation propre
+  expect_length(env$warnings, 1L)
+  expect_false(grepl("\033", env$warnings, fixed = TRUE))  # plus d'ANSI
+  expect_match(env$warnings, "microclimf not wired")
+})

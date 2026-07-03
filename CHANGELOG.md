@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.98.1] - 2026-07-03
+
+### Fixed
+
+- reGénération : warnings moteurs nettoyés des codes ANSI `cli` avant rendu HTML.
+- reGénération : sélecteur « Essence cible » désormais peuplé (colonnes
+  `code`/`label` de la table de tolérances, auparavant lues comme `essence`).
+
+### Changed
+
+- reGénération : retour au lancement (`withProgress` + toast final), feedback
+  et tooltip du bouton Auto (E-OBS), années de référence pré-remplies (2018/2022),
+  tooltip LAI max, boutons Export/Enregistrer déplacés dans la sidebar, sélecteur
+  de couche en menu rétractable superposé dans la carte, retrait de l'onglet
+  « Radar des 12 familles » (réservé à Synthèse).
+
 ## [0.98.0] - 2026-07-03
 
 ### Added

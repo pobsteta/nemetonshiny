@@ -41,9 +41,13 @@ REGEN_OUTPUT_COLUMNS <- c(
 #' returns `units` unchanged (the missing columns stay absent → NA downstream,
 #' no crash). Engine-missing errors from the core are already actionable.
 #' @noRd
+# Core engine messages are formatted with cli and carry ANSI colour escapes;
+# strip them so they render cleanly in the HTML status panel.
+.strip_ansi <- function(x) gsub("\033\\[[0-9;]*m", "", x)
+
 .regen_step <- function(fn, units, env, label) {
   out <- tryCatch(fn(), error = function(e) {
-    env$warnings <- c(env$warnings, sprintf("%s: %s", label, conditionMessage(e)))
+    env$warnings <- c(env$warnings, .strip_ansi(sprintf("%s: %s", label, conditionMessage(e))))
     NULL
   })
   if (is.null(out) || !inherits(out, "sf")) units else out
@@ -92,7 +96,7 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
       nemeton::microclimate_detect_years(
         eobs = pc$eobs, aoi = units, year_window = cfg$year_window %||% 10),
       error = function(e) {
-        env$warnings <- c(env$warnings, sprintf("detect_years: %s", conditionMessage(e)))
+        env$warnings <- c(env$warnings, .strip_ansi(sprintf("detect_years: %s", conditionMessage(e))))
         list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
       }
     )
