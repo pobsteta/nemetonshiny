@@ -1,6 +1,6 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.98.1
 
-### Changed — reGénération : durcissement UX de l'onglet (spec 027)
+### Changed — reGénération : durcissement UX de l'onglet (spec 027, 2026-07-03)
 
 - **Warnings** moteurs nettoyés des codes ANSI `cli` avant rendu HTML
   (`.regen_step` / détection années) — plus de `\033[…m` dans le bandeau.
