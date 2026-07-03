@@ -122,10 +122,10 @@ mod_project_ui <- function(id) {
             )
           ),
 
-          # Forêt ancienne → N2 continuité (spec 031). Optional per-project
-          # historical source; rendered server-side so params adapt to the
-          # detected file type and to whether a project exists yet.
-          shiny::uiOutput(ns("foret_ancienne_block")),
+          # Forêt ancienne → N2 continuité (spec 031) : plus de bloc d'upload.
+          # La couche IGN « BD Forêts anciennes » (nationale, Etalab 2.0) est
+          # récupérée automatiquement au calcul (voir build_foret_ancienne_layer
+          # → nemeton::load_foret_ancienne_source). Rien à configurer.
 
           # Optional "Clear-cuts (SUFOSAT)" block — opt-in national Theia
           # source feeding the T3 indicator (spec 030). No upload: a toggle +
@@ -245,109 +245,8 @@ mod_project_server <- function(id, app_state, selected_parcels,
       length(errors) == 0
     }
 
-    # ========================================
-    # Forêt ancienne → N2 continuité (spec 031)
-    # ========================================
 
-    # Class values present in an uploaded classified raster (for the
-    # forest_class multi-select). Cheap terra::unique on the source raster.
-    fa_raster_classes <- shiny::reactive({
-      f <- input$fa_file
-      shiny::req(f)
-      if (!tolower(tools::file_ext(f$name)) %in% c("tif", "tiff")) return(NULL)
-      tryCatch({
-        u <- terra::unique(terra::rast(f$datapath))[[1]]
-        sort(u[!is.na(u)])
-      }, error = function(e) NULL)
-    })
-
-    # Parameters block — adapts to the detected source type.
-    output$fa_params <- shiny::renderUI({
-      min_area <- shiny::numericInput(
-        ns("fa_min_area"), i18n$t("foret_ancienne_min_area"),
-        value = 5000, min = 0, step = 500, width = "100%")
-
-      f <- input$fa_file
-      if (is.null(f)) return(htmltools::div(min_area))
-
-      if (tolower(tools::file_ext(f$name)) %in% c("tif", "tiff")) {
-        htmltools::div(
-          shiny::radioButtons(
-            ns("fa_mode"), NULL,
-            choices = stats::setNames(
-              c("class", "threshold"),
-              c(i18n$t("foret_ancienne_mode_class"),
-                i18n$t("foret_ancienne_mode_threshold"))),
-            selected = "class", inline = TRUE),
-          shiny::uiOutput(ns("fa_class_or_threshold")),
-          min_area
-        )
-      } else {
-        htmltools::div(min_area)
-      }
-    })
-
-    output$fa_class_or_threshold <- shiny::renderUI({
-      if (identical(input$fa_mode %||% "class", "threshold")) {
-        shiny::numericInput(
-          ns("fa_threshold"), i18n$t("foret_ancienne_threshold"),
-          value = 1, width = "100%")
-      } else {
-        shiny::selectizeInput(
-          ns("fa_forest_class"), i18n$t("foret_ancienne_forest_class"),
-          choices = fa_raster_classes(), multiple = TRUE, width = "100%")
-      }
-    })
-
-    # The optional block itself (header + current source + upload + actions).
-    output$foret_ancienne_block <- shiny::renderUI({
-      header <- htmltools::tags$label(
-        class = "form-label fw-semibold", i18n$t("foret_ancienne_section"))
-      hint <- htmltools::tags$small(
-        class = "text-muted d-block mb-2", i18n$t("foret_ancienne_hint"))
-
-      pid <- rv$editing_project_id
-      if (is.null(pid)) {
-        return(htmltools::div(
-          class = "mb-3", header,
-          htmltools::div(class = "text-muted small fst-italic",
-                         i18n$t("foret_ancienne_need_project"))))
-      }
-
-      proj <- rv$current_project %||% app_state$current_project
-      fa <- proj$metadata$foret_ancienne
-      current <- if (!is.null(fa) && !is.null(fa$source_name)) {
-        htmltools::div(
-          class = "small mb-2",
-          bsicons::bs_icon("check-circle-fill", class = "text-success me-1"),
-          sprintf("%s : %s", i18n$t("foret_ancienne_current"), fa$source_name))
-      } else {
-        htmltools::div(class = "small text-muted mb-2 fst-italic",
-                       i18n$t("foret_ancienne_none"))
-      }
-
-      htmltools::div(
-        class = "mb-3 p-2 border rounded",
-        header, hint, current,
-        shiny::fileInput(
-          ns("fa_file"), i18n$t("foret_ancienne_source"),
-          accept = c(".tif", ".tiff", ".gpkg", ".shp", ".geojson"),
-          width = "100%"),
-        shiny::uiOutput(ns("fa_params")),
-        htmltools::div(
-          class = "d-flex gap-2",
-          shiny::actionButton(
-            ns("fa_save"), i18n$t("foret_ancienne_save"),
-            class = "btn-primary btn-sm", icon = bsicons::bs_icon("save")),
-          if (!is.null(fa)) shiny::actionButton(
-            ns("fa_clear"), i18n$t("foret_ancienne_clear"),
-            class = "btn-outline-danger btn-sm",
-            icon = bsicons::bs_icon("trash"))
-        )
-      )
-    })
-
-    # Refresh the loaded project metadata after a foret ancienne change.
+    # Refresh the loaded project metadata after a source/config change.
     .fa_refresh_project <- function(pid) {
       refreshed <- tryCatch(load_project(pid), error = function(e) NULL)
       if (!is.null(refreshed)) {
@@ -355,49 +254,6 @@ mod_project_server <- function(id, app_state, selected_parcels,
         app_state$current_project <- refreshed
       }
     }
-
-    shiny::observeEvent(input$fa_save, {
-      pid <- rv$editing_project_id
-      if (is.null(pid)) {
-        shiny::showNotification(i18n$t("foret_ancienne_need_project"),
-                                type = "warning")
-        return()
-      }
-      f <- input$fa_file
-      if (is.null(f)) {
-        shiny::showNotification(i18n$t("foret_ancienne_source"),
-                                type = "warning")
-        return()
-      }
-      is_raster <- tolower(tools::file_ext(f$name)) %in% c("tif", "tiff")
-      fc <- NULL; th <- NULL
-      if (is_raster) {
-        if (identical(input$fa_mode %||% "class", "threshold")) {
-          th <- input$fa_threshold
-        } else {
-          fc <- input$fa_forest_class
-        }
-      }
-      tryCatch({
-        set_project_foret_ancienne(
-          pid, f$datapath, f$name,
-          forest_class = fc, threshold = th,
-          min_area_m2 = input$fa_min_area %||% 0)
-        .fa_refresh_project(pid)
-        shiny::showNotification(i18n$t("foret_ancienne_saved"), type = "message")
-      }, error = function(e) {
-        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
-                                type = "error")
-      })
-    })
-
-    shiny::observeEvent(input$fa_clear, {
-      pid <- rv$editing_project_id
-      shiny::req(pid)
-      clear_project_foret_ancienne(pid)
-      .fa_refresh_project(pid)
-      shiny::showNotification(i18n$t("foret_ancienne_cleared"), type = "message")
-    })
 
     # ========================================
     # Coupes rases → T3 (SUFOSAT, spec 030)
