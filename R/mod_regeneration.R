@@ -292,8 +292,12 @@ mod_regeneration_server <- function(id, app_state) {
           overlayGroups = "UGF",
           options       = leaflet::layersControlOptions(collapsed = TRUE))
       if (!is.null(units)) {
-        bb <- tryCatch(as.numeric(sf::st_bbox(sf::st_transform(units, 4326))),
-                       error = function(e) NULL)
+        # Contour UGF de base, visible immédiatement (avant toute analyse).
+        # L'observer proxy le remplace par le choroplèthe dès qu'un résultat existe.
+        geo <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
+        m <- leaflet::addPolygons(m, data = geo, group = "UGF", weight = 1,
+          color = "#1B6B1B", fillColor = "#1B6B1B", fillOpacity = 0.10)
+        bb <- tryCatch(as.numeric(sf::st_bbox(geo)), error = function(e) NULL)
         if (!is.null(bb) && all(is.finite(bb))) {
           m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
         }
@@ -306,11 +310,21 @@ mod_regeneration_server <- function(id, app_state) {
     # radio « Couche affichée » de la sidebar.
     shiny::observe({
       res <- rv$result
+      units <- units_sf()
       col <- input$map_layer %||% "indice_priorite_regen"
       proxy <- leaflet::leafletProxy("map")
       leaflet::clearGroup(proxy, "UGF")
       leaflet::removeControl(proxy, "regen_legend")
-      if (is.null(res) || !col %in% names(res)) return()
+      # Pas (encore) de résultat exploitable → garder le contour UGF de base
+      # visible plutôt qu'une carte vide.
+      if (is.null(res) || !col %in% names(res)) {
+        if (!is.null(units)) {
+          geo <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
+          leaflet::addPolygons(proxy, data = geo, group = "UGF", weight = 1,
+            color = "#1B6B1B", fillColor = "#1B6B1B", fillOpacity = 0.10)
+        }
+        return()
+      }
 
       vals <- suppressWarnings(as.numeric(res[[col]]))
       geo <- tryCatch(sf::st_transform(res, 4326), error = function(e) res)
