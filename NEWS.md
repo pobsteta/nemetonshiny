@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.98.6
 
 ### Fixed — reGénération : contour UGF visible sur la carte avant analyse (spec 027)
