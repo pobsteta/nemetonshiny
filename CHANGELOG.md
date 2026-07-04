@@ -12,6 +12,19 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.98.5\] - 2026-07-04
+
+### Changed
+
+- Plancher cœur `Imports: nemeton (>= 0.129.2)` (microclimf validé sur
+  LiDAR réel, séquences d’échappement corrigées côté cœur).
+- reGénération : garde des moteurs (option A) — `run_regeneration()`
+  n’appelle plus microclimf ni BILJOU sans sortie précalculée, et émet
+  un message i18n propre au lieu de l’erreur cœur brute. Run réel des
+  moteurs = opt-in (option B).
+- reGénération : sidebar « Couche affichée » de l’onglet Carte non
+  rétractable.
+
 ## \[0.98.4\] - 2026-07-03
 
 ### Changed
@@ -19,9 +32,9 @@ the concise, categorised trail.
 - Forêt ancienne (N2) : suppression du bloc d’upload manuel ;
   récupération automatique de la couche IGN « BD Forêts anciennes »
   (Etalab 2.0, nationale) au calcul, via
-  `nemeton::load_foret_ancienne_source()` (résolu dynamiquement,
-  dégradation propre → N2 sur couverture actuelle tant que le cœur ne
-  l’exporte pas). Spec 031.
+  [`nemeton::load_foret_ancienne_source()`](https://pobsteta.github.io/nemeton/reference/load_foret_ancienne_source.html)
+  (résolu dynamiquement, dégradation propre → N2 sur couverture actuelle
+  tant que le cœur ne l’exporte pas). Spec 031.
 - reGénération : radio « Couche affichée » déplacé dans une sidebar
   droite du sous-onglet Carte.
 

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,16 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.98.5" id="nemetonshiny-0985">nemetonshiny 0.98.5<a class="anchor" aria-label="anchor" href="#nemetonshiny-0985"></a></h2>
+<div class="section level4">
+<h4 id="changed--regénération--plancher-cœur--garde-moteurs-spec-0-98-5">Changed — reGénération : plancher cœur 0.129.2 + garde moteurs (spec 027)<a class="anchor" aria-label="anchor" href="#changed--reg%C3%A9n%C3%A9ration--plancher-c%C5%93ur--garde-moteurs-spec-0-98-5"></a></h4>
+<ul><li>
+<strong>Plancher <code>Imports: nemeton (&gt;= 0.129.2)</code></strong> : le moteur microclimf tourne désormais réellement côté cœur (bugs API corrigés en 0.129.1) et le charabia de séquences d’échappement disparaît (0.129.2).</li>
+<li>
+<strong>Garde des moteurs reGénération (option A)</strong> : <code>run_regeneration()</code> n’appelle plus microclimf (sensibilité) ni BILJOU (bilan hydrique) quand aucune sortie précalculée n’est fournie — il émet un <strong>message i18n propre et actionnable</strong> au lieu de l’erreur cœur brute. Le run réel des moteurs (entrées LiDAR / météo-sol) reste un opt-in (option B, à venir).</li>
+<li>
+<strong>UI</strong> : sidebar « Couche affichée » de l’onglet Carte reGénération rendue non rétractable (<code>open = "always"</code>).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.98.4" id="nemetonshiny-0984">nemetonshiny 0.98.4<a class="anchor" aria-label="anchor" href="#nemetonshiny-0984"></a></h2>
@@ -42,7 +51,7 @@
 <ul><li>
 <strong>Suppression du bloc d’upload « Forêt ancienne »</strong> de la sidebar « Sélection » (onglet Sélection). Plus rien à configurer.</li>
 <li>
-<strong>Récupération automatique</strong> au calcul de la couche <strong>IGN « BD Forêts anciennes »</strong> (nationale, millésime 2025, Licence Ouverte / Etalab 2.0) pour l’emprise du projet, injectée dans <code>indicateur_n2_continuite()</code>. L’acquisition (téléchargement départemental + filtre <code>Nature = forêt ancienne</code>) est déléguée au cœur <code>nemeton::load_foret_ancienne_source()</code> (résolu dynamiquement) ; l’app orchestre et cache sous <code>&lt;projet&gt;/cache/layers/foret_ancienne/</code>.</li>
+<strong>Récupération automatique</strong> au calcul de la couche <strong>IGN « BD Forêts anciennes »</strong> (nationale, millésime 2025, Licence Ouverte / Etalab 2.0) pour l’emprise du projet, injectée dans <code>indicateur_n2_continuite()</code>. L’acquisition (téléchargement départemental + filtre <code>Nature = forêt ancienne</code>) est déléguée au cœur <code><a href="https://pobsteta.github.io/nemeton/reference/load_foret_ancienne_source.html" class="external-link">nemeton::load_foret_ancienne_source()</a></code> (résolu dynamiquement) ; l’app orchestre et cache sous <code>&lt;projet&gt;/cache/layers/foret_ancienne/</code>.</li>
 <li>
 <strong>Dégradation propre</strong> : tant que le cœur n’expose pas l’acquisition, N2 reste calculé sur la couverture forestière <strong>actuelle</strong> (aucune régression). Se câble automatiquement dès la release cœur, sans intervention (<code>@*release</code>).</li>
 </ul></div>
