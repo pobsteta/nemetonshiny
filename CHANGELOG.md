@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.98.5] - 2026-07-04
+
+### Changed
+
+- Plancher cœur `Imports: nemeton (>= 0.129.2)` (microclimf validé sur LiDAR
+  réel, séquences d'échappement corrigées côté cœur).
+- reGénération : garde des moteurs (option A) — `run_regeneration()` n'appelle
+  plus microclimf ni BILJOU sans sortie précalculée, et émet un message i18n
+  propre au lieu de l'erreur cœur brute. Run réel des moteurs = opt-in (option B).
+- reGénération : sidebar « Couche affichée » de l'onglet Carte non rétractable.
+
 ## [0.98.4] - 2026-07-03
 
 ### Changed
