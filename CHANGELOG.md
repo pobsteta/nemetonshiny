@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.98.6] - 2026-07-04
+
+### Fixed
+
+- reGénération, onglet Carte : le contour des UGF est désormais visible dès
+  l'ouverture (avant toute analyse), et non plus seulement après le calcul du
+  choroplèthe.
+
 ## [0.98.5] - 2026-07-04
 
 ### Changed
