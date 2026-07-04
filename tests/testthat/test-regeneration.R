@@ -52,7 +52,8 @@ test_that("run_regeneration sequences core calls and attaches columns", {
   units <- .regen_units(3)
   out <- nemetonshiny:::run_regeneration(
     units, cfg = list(forest_type = "feuillu"),
-    precomputed = list(micro = "MICRO", micro_moyenne = "M", micro_canicule = "C"))
+    precomputed = list(sensibilite = "S", biljou = "B",
+                       micro = "MICRO", micro_moyenne = "M", micro_canicule = "C"))
 
   # Séquence complète appelée dans l'ordre attendu
   expect_equal(calls, c("years", "sensibilite", "biljou", "a3", "a4", "w4", "r6", "r3", "priorite"))
@@ -82,7 +83,7 @@ test_that("hydric_only skips microclimf sensibilite and micro sub-indicators", {
 
   out <- nemetonshiny:::run_regeneration(
     .regen_units(2), cfg = list(hydric_only = TRUE),
-    precomputed = list(micro = "MICRO"))
+    precomputed = list(biljou = "B", micro = "MICRO"))
 
   expect_false("sensibilite" %in% calls)  # microclimf sauté
   expect_false("a3" %in% calls)           # sous-indicateurs micro sautés
@@ -102,13 +103,42 @@ test_that("run_regeneration degrades gracefully when an engine errors", {
     .package = "nemeton"
   )
 
-  out <- nemetonshiny:::run_regeneration(.regen_units(2), cfg = list())
+  # precomputed fourni → les moteurs SONT appelés ; le mock sensibilite lève.
+  out <- nemetonshiny:::run_regeneration(
+    .regen_units(2), cfg = list(),
+    precomputed = list(sensibilite = "S", biljou = "B"))
 
   # Pas de crash : l'erreur moteur est capturée en warning actionnable
   expect_true(any(grepl("microclimf", out$warnings)))
   expect_false("sensibilite" %in% names(out$units))  # colonne absente (dégradation)
   expect_true("njstress" %in% names(out$units))       # les autres étapes tournent
   expect_equal(unique(out$units$indice_priorite_regen), 30)
+})
+
+test_that("run_regeneration guards engines when no precomputed is supplied (option A)", {
+  skip_if_not_installed("sf")
+
+  called <- character(0)
+  testthat::local_mocked_bindings(
+    microclimate_detect_years = function(...) list(year_moyenne = 2018, year_canicule = 2022),
+    regen_sensibilite    = function(units, ...) { called <<- c(called, "sensibilite"); units },
+    regen_bilan_hydrique = function(units, ...) { called <<- c(called, "biljou"); units },
+    indicateur_r3_secheresse = function(units, ...) units,
+    indice_priorite_regen = function(units, ...) { units$indice_priorite_regen <- 20; units },
+    .package = "nemeton"
+  )
+
+  # cfg avec années fournies → detect_years non appelé ; aucun precomputed.
+  out <- nemetonshiny:::run_regeneration(
+    .regen_units(2), cfg = list(year_moyenne = 2018, year_canicule = 2022))
+
+  # Moteurs NON appelés (garde), messages i18n propres au lieu d'erreurs brutes.
+  expect_false("sensibilite" %in% called)
+  expect_false("biljou" %in% called)
+  expect_length(out$warnings, 2L)
+  expect_false(any(grepl("\033|Error|stop", out$warnings)))  # messages propres
+  # Le pipeline se termine quand même (indice de priorité calculé).
+  expect_equal(unique(out$units$indice_priorite_regen), 20)
 })
 
 test_that("run_regeneration validates its input", {

@@ -103,7 +103,7 @@ mod_regeneration_ui <- function(id) {
         bslib::layout_sidebar(
           fillable = TRUE,
           sidebar = bslib::sidebar(
-            position = "right", open = TRUE, width = 260,
+            position = "right", open = "always", width = 260,
             htmltools::tags$strong(i18n$t("regen_map_layer")),
             shiny::radioButtons(ns("map_layer"), NULL,
               choices = stats::setNames(
