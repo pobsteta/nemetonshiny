@@ -12,6 +12,14 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.98.6\] - 2026-07-04
+
+### Fixed
+
+- reGénération, onglet Carte : le contour des UGF est désormais visible
+  dès l’ouverture (avant toute analyse), et non plus seulement après le
+  calcul du choroplèthe.
+
 ## \[0.98.5\] - 2026-07-04
 
 ### Changed
