@@ -1,5 +1,12 @@
 # nemetonshiny (development version)
 
+### Fixed — reGénération : contour UGF visible sur la carte avant analyse (spec 027)
+
+- Onglet Carte de reGénération : les UGF n'apparaissaient **qu'après** un calcul
+  (le choroplèthe n'était dessiné que depuis le résultat). Le **contour UGF de
+  base** est désormais tracé dès l'ouverture (depuis l'emprise du projet) et
+  conservé tant qu'aucune couche exploitable n'est disponible.
+
 # nemetonshiny 0.98.5
 
 ### Changed — reGénération : plancher cœur 0.129.2 + garde moteurs (spec 027)
