@@ -1,4 +1,17 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.98.5
+
+### Changed — reGénération : plancher cœur 0.129.2 + garde moteurs (spec 027)
+
+- **Plancher `Imports: nemeton (>= 0.129.2)`** : le moteur microclimf tourne
+  désormais réellement côté cœur (bugs API corrigés en 0.129.1) et le charabia
+  de séquences d'échappement disparaît (0.129.2).
+- **Garde des moteurs reGénération (option A)** : `run_regeneration()` n'appelle
+  plus microclimf (sensibilité) ni BILJOU (bilan hydrique) quand aucune sortie
+  précalculée n'est fournie — il émet un **message i18n propre et actionnable**
+  au lieu de l'erreur cœur brute. Le run réel des moteurs (entrées LiDAR /
+  météo-sol) reste un opt-in (option B, à venir).
+- **UI** : sidebar « Couche affichée » de l'onglet Carte reGénération rendue non
+  rétractable (`open = "always"`).
 
 # nemetonshiny 0.98.4
 

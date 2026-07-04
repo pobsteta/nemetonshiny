@@ -86,6 +86,7 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
     if (is.function(progress)) progress(list(message = message, frac = frac))
   }
   hydric_only <- isTRUE(cfg$hydric_only)
+  i18n <- get_i18n(get_app_options()$language %||% "fr")
 
   # 1. Reference years (average / heatwave) — user override or E-OBS detection.
   report("regen_detect_years", 0.05)
@@ -103,20 +104,32 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
   }
 
   # 2. Microclimatic sensitivity (microclimf) — skipped in water-balance-only.
+  #    Option A (garde) : n'appeler le moteur que si une sortie microclimf est
+  #    fournie via le cache (`precomputed`). Sinon message i18n propre plutôt
+  #    que l'erreur cœur brute. Le run réel du moteur (LiDAR) = option B opt-in.
   if (!hydric_only) {
     report("regen_sensibilite", 0.20)
-    units <- .regen_step(function() nemeton::regen_sensibilite(
-      units, precomputed = pc$sensibilite,
-      annees_moy = years$year_moyenne, annees_canic = years$year_canicule),
-      units, env, "regen_sensibilite")
+    if (!is.null(pc$sensibilite)) {
+      units <- .regen_step(function() nemeton::regen_sensibilite(
+        units, precomputed = pc$sensibilite,
+        annees_moy = years$year_moyenne, annees_canic = years$year_canicule),
+        units, env, "regen_sensibilite")
+    } else {
+      env$warnings <- c(env$warnings, i18n$t("regen_guard_sensibilite"))
+    }
   }
 
-  # 3. Soil water balance (biljouR, SAFRAN forcing).
+  # 3. Soil water balance (biljouR, SAFRAN forcing). Même garde : sans sortie
+  #    BILJOU précalculée, on saute proprement (option B = entrées météo/sol).
   report("regen_bilan_hydrique", 0.40)
-  units <- .regen_step(function() nemeton::regen_bilan_hydrique(
-    units, precomputed = pc$biljou, lai_max = cfg$lai_max,
-    forest_type = cfg$forest_type %||% "feuillu"),
-    units, env, "regen_bilan_hydrique")
+  if (!is.null(pc$biljou)) {
+    units <- .regen_step(function() nemeton::regen_bilan_hydrique(
+      units, precomputed = pc$biljou, lai_max = cfg$lai_max,
+      forest_type = cfg$forest_type %||% "feuillu"),
+      units, env, "regen_bilan_hydrique")
+  } else {
+    env$warnings <- c(env$warnings, i18n$t("regen_guard_hydrique"))
+  }
 
   # 4. Microclimate sub-indicators feeding the A/W/R radar (need micro rasters).
   if (!hydric_only && !is.null(pc$micro)) {
