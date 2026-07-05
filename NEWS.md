@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.100.2
 
 ### Fixed — reGénération : bouton « Auto (E-OBS) » fonctionnel (spec 027 L2 / 034)
