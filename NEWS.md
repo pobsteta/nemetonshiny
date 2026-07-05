@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.99.0
 
 ### Added — reGénération : moteur microclimf réel (option B, spec 027 L1)
