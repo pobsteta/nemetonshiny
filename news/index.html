@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,15 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.100.0" id="nemetonshiny-01000">nemetonshiny 0.100.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01000"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--bilan-hydrique-biljou-réel-option-b-spec-l2-0-100-0">Added — reGénération : bilan hydrique BILJOU réel (option B, spec 027 L2)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--bilan-hydrique-biljou-r%C3%A9el-option-b-spec-l2-0-100-0"></a></h4>
+<ul><li>Le <strong>moteur réel</strong> (opt-in) lance désormais <strong>aussi le bilan hydrique BILJOU</strong> (<code><a href="https://pobsteta.github.io/nemeton/reference/load_biljou_forcing.html" class="external-link">nemeton::load_biljou_forcing</a></code> + <code>build_biljou_soil</code> + <code>regen_bilan_hydrique</code>), en plus de microclimf, dans le même worker <code>future</code>. Sortie mise en cache (<code>biljou.gpkg</code>) et consommée en fast-path par le run normal. Plancher cœur relevé à <strong><code>nemeton (&gt;= 0.132.0)</code></strong>.</li>
+<li>
+<strong>SAFRAN sans clé Copernicus</strong> : le forçage <code>SAFRAN</code> (défaut) débloque le bilan hydrique <strong>sans identifiants CDS</strong> ; <code>ecmwfr::wf_set_key</code> n’est requis que pour le forçage <code>ERA5</code>. Le statut du moteur affiche la disponibilité de chaque moteur (microclimf / BILJOU) selon les prérequis réunis.</li>
+<li>
+<strong>Dégradation propre</strong> : hors couverture forçage/sol → garde <code>regen_guard_biljou</code> (message i18n) sans erreur brute ; chaque moteur échoue indépendamment.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.99.0" id="nemetonshiny-0990">nemetonshiny 0.99.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-0990"></a></h2>

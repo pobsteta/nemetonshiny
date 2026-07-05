@@ -12,6 +12,19 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.0\] - 2026-07-05
+
+### Added
+
+- reGénération : **bilan hydrique BILJOU réel** (option B, spec 027 L2)
+  — le moteur réel opt-in lance aussi
+  [`nemeton::load_biljou_forcing`](https://pobsteta.github.io/nemeton/reference/load_biljou_forcing.html) +
+  `build_biljou_soil` + `regen_bilan_hydrique` (async, même worker que
+  microclimf), sortie mise en cache (`biljou.gpkg`) consommée en
+  fast-path. Forçage **SAFRAN** (défaut) sans clé Copernicus ; **ERA5**
+  requiert les identifiants CDS. Statut par moteur en sidebar, garde
+  `regen_guard_biljou`. Plancher cœur relevé à `nemeton (>= 0.132.0)`.
+
 ## \[0.99.0\] - 2026-07-05
 
 ### Added
