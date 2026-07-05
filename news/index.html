@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,12 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.100.3" id="nemetonshiny-01003">nemetonshiny 0.100.3<a class="anchor" aria-label="anchor" href="#nemetonshiny-01003"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--pré-remplissage--essence-cible--depuis-bd-forêt-v2-0-100-3">Added — reGénération : pré-remplissage « Essence cible » depuis BD Forêt v2<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--pr%C3%A9-remplissage--essence-cible--depuis-bd-for%C3%AAt-v2-0-100-3"></a></h4>
+<ul><li>Le sélecteur « Essence cible » est désormais <strong>pré-rempli</strong> via <code><a href="https://pobsteta.github.io/nemeton/reference/regen_species_choices.html" class="external-link">nemeton::regen_species_choices()</a></code> : les <strong>essences présentes sur la zone</strong> (mapping TFV BD Forêt v2 → classe d’essence, cœur) sont listées <strong>en tête</strong> (groupe « Présentes sur la zone »), suivies des essences d’adaptation. Le sélecteur réagit à l’AOI du projet. Dégradation propre : sans colonne TFV, la liste complète des essences FRM est affichée (au lieu d’un sélecteur vide).</li>
+<li>L’info-bulle est mise à jour (le mapping TFV→essence est livré côté cœur, plus « à venir »).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.2" id="nemetonshiny-01002">nemetonshiny 0.100.2<a class="anchor" aria-label="anchor" href="#nemetonshiny-01002"></a></h2>
