@@ -180,3 +180,34 @@ test_that("run_regeneration_engine validates its input", {
     nemetonshiny:::run_regeneration_engine(data.frame(x = 1), tempdir()),
     "must be an sf")
 })
+
+test_that("run_regeneration_detect_years builds eobs then detects the years", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); seen <- new.env()
+    testthat::local_mocked_bindings(
+      load_eobs_source = function(aoi, var = "tx", cache_dir = NULL, ...) {
+        seen$var <- var; seen$cache <- cache_dir; "EOBS_RASTER" },
+      microclimate_detect_years = function(eobs = NULL, aoi = NULL, year_window = NULL, ...) {
+        seen$eobs <- eobs; list(year_moyenne = 2018, year_canicule = 2022) },
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_detect_years(.engine_units(1), p)
+
+    expect_equal(out$year_moyenne, 2018)
+    expect_equal(out$year_canicule, 2022)
+    expect_equal(seen$eobs, "EOBS_RASTER")   # eobs construit puis passé à detect_years
+    expect_equal(seen$var, "tx")
+    expect_true(grepl("eobs$", seen$cache))  # cache disque dédié
+  })
+})
+
+test_that("run_regeneration_detect_years returns NULL when E-OBS is unavailable", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(load_eobs_source = function(...) NULL, .package = "nemeton")
+  expect_null(nemetonshiny:::run_regeneration_detect_years(.engine_units(1), tempdir()))
+})
+
+test_that("run_regeneration_detect_years returns NULL on non-sf input", {
+  expect_null(nemetonshiny:::run_regeneration_detect_years(data.frame(x = 1), tempdir()))
+})
