@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.3
 
 ### Added — reGénération : pré-remplissage « Essence cible » depuis BD Forêt v2
 
@@ -10,6 +10,8 @@
   liste complète des essences FRM est affichée (au lieu d'un sélecteur vide).
 - L'info-bulle est mise à jour (le mapping TFV→essence est livré côté cœur, plus
   « à venir »).
+
+# nemetonshiny 0.100.2
 
 ### Fixed — reGénération : bouton « Auto (E-OBS) » fonctionnel (spec 027 L2 / 034)
 
