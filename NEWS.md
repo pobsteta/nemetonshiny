@@ -1,5 +1,19 @@
 # nemetonshiny (development version)
 
+### Added — reGénération : bilan hydrique BILJOU réel (option B, spec 027 L2)
+
+- Le **moteur réel** (opt-in) lance désormais **aussi le bilan hydrique BILJOU**
+  (`nemeton::load_biljou_forcing` + `build_biljou_soil` +
+  `regen_bilan_hydrique`), en plus de microclimf, dans le même worker `future`.
+  Sortie mise en cache (`biljou.gpkg`) et consommée en fast-path par le run
+  normal. Plancher cœur relevé à **`nemeton (>= 0.132.0)`**.
+- **SAFRAN sans clé Copernicus** : le forçage `SAFRAN` (défaut) débloque le
+  bilan hydrique **sans identifiants CDS** ; `ecmwfr::wf_set_key` n'est requis
+  que pour le forçage `ERA5`. Le statut du moteur affiche la disponibilité de
+  chaque moteur (microclimf / BILJOU) selon les prérequis réunis.
+- **Dégradation propre** : hors couverture forçage/sol → garde `regen_guard_biljou`
+  (message i18n) sans erreur brute ; chaque moteur échoue indépendamment.
+
 # nemetonshiny 0.99.0
 
 ### Added — reGénération : moteur microclimf réel (option B, spec 027 L1)
