@@ -233,3 +233,131 @@ load_regeneration_precomputed <- function(project_path) {
   # Drop absent entries so the run's `%||% list()` / is.null checks are clean.
   pc[!vapply(pc, is.null, logical(1))]
 }
+
+# ============================================================================
+# Moteur microclimf réel (option B, spec 027 L1) — opt-in, coûteux, async.
+#
+# Le chemin *moteur* de `nemeton::regen_sensibilite` (portage du prototype
+# validé sur données réelles) construit la grille LiDAR-HD, télécharge
+# ERA5-Land (mcera5/ecmwfr → identifiants CDS) et lance microclimf par année.
+# On le câble en réutilisant la grille LiDAR HD déjà produite par le pipeline
+# d'indices (`<project>/cache/layers/lidar_mnt` + `lidar_mnh`), en passant des
+# RÉPERTOIRES de tuiles (chemins sérialisables pour un worker `future`) et en
+# ne renvoyant qu'un `sf`. La sortie est écrite comme entrée `precomputed`
+# (`sensibilite.gpkg`) pour que le run normal la consomme en fast-path.
+#
+# BILJOU reste sur la garde option A tant que l'acquisition météo/sol n'est pas
+# exposée par le cœur (brief cœur dédié).
+# ============================================================================
+
+#' Locate the project's LiDAR-HD DTM/CHM tile grid (spec 027 L1)
+#'
+#' The index-computation pipeline caches per-tile DTM (`lidar_mnt`) and canopy
+#' height (`lidar_mnh`) GeoTIFFs under `<project>/cache/layers/` whenever a run
+#' resolves the CHM from LiDAR HD (source `lidar_hd`/`lasr`). The microclimf
+#' engine consumes those two directories directly (VRT-mosaicked by the core).
+#'
+#' @return `list(mnt_dir=, mnh_dir=)` when both directories hold at least one
+#'   `.tif`, otherwise `NULL`.
+#' @noRd
+resolve_regen_lidar_grid <- function(project_path) {
+  if (is.null(project_path)) return(NULL)
+  base <- file.path(project_path, "cache", "layers")
+  mnt_dir <- file.path(base, "lidar_mnt")
+  mnh_dir <- file.path(base, "lidar_mnh")
+  has_tif <- function(d) dir.exists(d) &&
+    length(list.files(d, pattern = "\\.tif$", ignore.case = TRUE)) > 0L
+  if (has_tif(mnt_dir) && has_tif(mnh_dir)) {
+    return(list(mnt_dir = mnt_dir, mnh_dir = mnh_dir))
+  }
+  NULL
+}
+
+#' Whether CDS/ERA5 credentials are configured for the microclimf engine
+#'
+#' The engine path downloads ERA5-Land through `mcera5`/`ecmwfr`, which needs a
+#' Copernicus CDS key. Credentials are considered ready when `ecmwfr` is
+#' installed and a key is resolvable — from the environment (`CDSAPI_KEY` /
+#' `ECMWFR_CDS_KEY`) or from the user's `ecmwfr` keyring. No secret is stored in
+#' the repo (rule #8): the deployment injects the key and calls
+#' `ecmwfr::wf_set_key()` at startup.
+#' @noRd
+regen_cds_credentials_ready <- function() {
+  if (!requireNamespace("ecmwfr", quietly = TRUE)) return(FALSE)
+  env_key <- Sys.getenv("CDSAPI_KEY", unset = Sys.getenv("ECMWFR_CDS_KEY", unset = ""))
+  if (nzchar(env_key)) return(TRUE)
+  key <- tryCatch(ecmwfr::wf_get_key(), error = function(e) "")
+  isTRUE(nzchar(key %||% ""))
+}
+
+#' Prerequisites for the real microclimf engine run (spec 027 L1)
+#'
+#' @param project_path Project directory (holds the LiDAR HD tile cache).
+#' @return `list(ok=logical, reason=<i18n key or NULL>, grid=<list or NULL>)`.
+#'   The first failing check sets `reason`; UI surfaces it as a clean message.
+#' @noRd
+regen_engine_prereqs <- function(project_path) {
+  exports <- tryCatch(getNamespaceExports("nemeton"), error = function(e) character(0))
+  if (!"regen_sensibilite" %in% exports) {
+    return(list(ok = FALSE, reason = "regen_engine_prereq_core", grid = NULL))
+  }
+  grid <- resolve_regen_lidar_grid(project_path)
+  if (is.null(grid)) {
+    return(list(ok = FALSE, reason = "regen_engine_prereq_lidar", grid = NULL))
+  }
+  if (!regen_cds_credentials_ready()) {
+    return(list(ok = FALSE, reason = "regen_engine_prereq_cds", grid = grid))
+  }
+  list(ok = TRUE, reason = NULL, grid = grid)
+}
+
+#' Run the real microclimf engine for a project and persist its output
+#'
+#' @description
+#' Heavy, opt-in path (LiDAR HD + ERA5 + microclimf, minutes→hours). Designed to
+#' run inside a `future` worker: every input is serialisable (an `sf`, directory
+#' paths, a config list); no in-memory raster crosses the worker boundary. On
+#' success the per-UGF sensitivity `sf` is written to the project's regeneration
+#' cache (`sensibilite.gpkg`) so the normal `run_regeneration()` fast-path picks
+#' it up on the next analysis.
+#'
+#' @param units An `sf` of the UGF (EPSG:2154 expected).
+#' @param project_path Project directory (LiDAR grid + cache location).
+#' @param cfg Run parameters; `year_moyenne` / `year_canicule` drive the
+#'   average-vs-heatwave summers.
+#' @return The enriched `sf` (regen_sensibilite output). Stops on engine error.
+#' @noRd
+run_regeneration_engine <- function(units, project_path, cfg = list()) {
+  if (!inherits(units, "sf")) {
+    stop("run_regeneration_engine: `units` must be an sf object", call. = FALSE)
+  }
+  grid <- resolve_regen_lidar_grid(project_path)
+  if (is.null(grid)) {
+    stop("run_regeneration_engine: LiDAR HD grid not found under project cache",
+         call. = FALSE)
+  }
+  cache_dir <- file.path(project_path, "cache", "regeneration", "microclimf")
+  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+
+  res <- nemeton::regen_sensibilite(
+    units,
+    mnt          = grid$mnt_dir,
+    mnh          = grid$mnh_dir,
+    annees_moy   = cfg$year_moyenne,
+    annees_canic = cfg$year_canicule,
+    cache_dir    = cache_dir
+  )
+  if (!inherits(res, "sf")) {
+    stop("run_regeneration_engine: engine returned no sf", call. = FALSE)
+  }
+
+  # Persist as the precomputed fast-path input for subsequent runs.
+  out_dir <- file.path(project_path, "cache", "regeneration")
+  if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+  tryCatch(
+    sf::st_write(res, file.path(out_dir, "sensibilite.gpkg"),
+                 quiet = TRUE, delete_dsn = TRUE),
+    error = function(e) cli::cli_warn(
+      "regen engine: sensibilite cache not written: {e$message}"))
+  res
+}
