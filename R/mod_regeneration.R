@@ -89,7 +89,19 @@ mod_regeneration_ui <- function(id) {
       shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_export_gpkg"),
         class = "btn-outline-primary btn-sm w-100 mb-2"),
       shiny::actionButton(ns("persist_db"), i18n$t("regen_persist_db"),
-        class = "btn-outline-secondary btn-sm w-100", icon = bsicons::bs_icon("database"))
+        class = "btn-outline-secondary btn-sm w-100", icon = bsicons::bs_icon("database")),
+
+      # --- Moteur microclimf réel (option B, opt-in, coûteux) -------------
+      # Lance le vrai run microclimf (LiDAR HD + ERA5) via nemeton, en async.
+      # Désactivé tant que les prérequis (grille LiDAR HD + identifiants CDS)
+      # ne sont pas réunis ; le statut est affiché sous le bouton.
+      htmltools::tags$hr(class = "my-2"),
+      htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_engine_section")),
+      bslib::tooltip(
+        shiny::actionButton(ns("run_engine"), i18n$t("regen_engine_run"),
+          class = "btn-outline-primary btn-sm w-100", icon = bsicons::bs_icon("cpu")),
+        i18n$t("regen_engine_tip"), placement = "right"),
+      shiny::uiOutput(ns("engine_status"))
     ),
 
     # --- Résultats -------------------------------------------------------
@@ -253,6 +265,114 @@ mod_regeneration_server <- function(id, app_state) {
         } else {
           shiny::showNotification(i18n$t("regen_run_done"), type = "message", duration = 5)
         }
+      }
+    })
+
+    # --- Moteur microclimf réel (option B, async) -------------------------
+    # Provenance identique à la session principale pour recharger le namespace
+    # dans le worker future (cf. mod_home compute_task). Le run est lourd
+    # (LiDAR HD + ERA5 + microclimf) : il tourne dans un process séparé, ne
+    # renvoie qu'un sf, et la sortie est cachée (sensibilite.gpkg) pour être
+    # consommée en fast-path par run_regeneration au run suivant.
+    .dev_pkg_path <- tryCatch(
+      if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+        find.package("nemetonshiny") else NULL,
+      error = function(e) NULL)
+
+    engine_task <- shiny::ExtendedTask$new(
+      function(units, project_path, cfg, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            future::plan("multisession")
+          }
+        }
+        promises::future_promise({
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          fn <- getFromNamespace("run_regeneration_engine", "nemetonshiny")
+          fn(units, project_path, cfg)
+        }, seed = TRUE)
+      })
+
+    shiny::observeEvent(input$run_engine, {
+      units <- units_sf()
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(units) || is.null(project_path)) {
+        shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
+        return()
+      }
+      pre <- regen_engine_prereqs(project_path)
+      if (!isTRUE(pre$ok)) {
+        shiny::showNotification(i18n$t(pre$reason), type = "warning", duration = 8)
+        return()
+      }
+      na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
+      cfg <- list(
+        year_moyenne = na_null(input$year_moyenne),
+        year_canicule = na_null(input$year_canicule),
+        forest_type = input$forest_type %||% "feuillu"
+      )
+      rv$engine_running <- TRUE
+      shiny::showNotification(i18n$t("regen_engine_running"), type = "message", duration = 6)
+      engine_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
+    })
+
+    shiny::observeEvent(engine_task$status(), {
+      st <- engine_task$status()
+      if (identical(st, "success")) {
+        rv$engine_running <- FALSE
+        # Le worker a écrit sensibilite.gpkg : recharger le precomputed et
+        # relancer l'analyse normale (fast-path) pour rafraîchir carte/table.
+        project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+        units <- units_sf()
+        if (!is.null(units) && !is.null(project_path)) {
+          precomputed <- load_regeneration_precomputed(project_path)
+          na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
+          cfg <- list(
+            year_moyenne = na_null(input$year_moyenne),
+            year_canicule = na_null(input$year_canicule),
+            forest_type = input$forest_type %||% "feuillu",
+            lai_max = na_null(input$lai_max),
+            species = if (nzchar(input$species %||% "")) input$species else NULL,
+            hydric_only = isTRUE(input$hydric_only))
+          res <- tryCatch(run_regeneration(units, cfg = cfg, precomputed = precomputed),
+                          error = function(e) NULL)
+          if (!is.null(res)) {
+            rv$result <- res$units
+            rv$years <- res$years
+            rv$warnings <- res$warnings %||% character(0)
+            app_state$regeneration_result <- res$units
+          }
+        }
+        shiny::showNotification(i18n$t("regen_engine_done"), type = "message", duration = 6)
+      } else if (identical(st, "error")) {
+        rv$engine_running <- FALSE
+        err <- tryCatch(engine_task$result(), error = function(e) conditionMessage(e))
+        shiny::showNotification(
+          sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),
+          type = "error", duration = 10)
+      }
+    })
+
+    output$engine_status <- shiny::renderUI({
+      if (isTRUE(rv$engine_running)) {
+        return(htmltools::div(class = "small text-info mt-1",
+          bsicons::bs_icon("hourglass-split", class = "me-1"), i18n$t("regen_engine_running")))
+      }
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(project_path)) return(NULL)
+      pre <- regen_engine_prereqs(project_path)
+      if (isTRUE(pre$ok)) {
+        htmltools::div(class = "small text-success mt-1",
+          bsicons::bs_icon("check-circle", class = "me-1"), i18n$t("regen_engine_ready"))
+      } else {
+        htmltools::div(class = "small text-muted mt-1",
+          bsicons::bs_icon("info-circle", class = "me-1"), i18n$t(pre$reason))
       }
     })
 
