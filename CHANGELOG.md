@@ -10,6 +10,18 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.0] - 2026-07-05
+
+### Added
+
+- reGénération : **bilan hydrique BILJOU réel** (option B, spec 027 L2) — le
+  moteur réel opt-in lance aussi `nemeton::load_biljou_forcing` +
+  `build_biljou_soil` + `regen_bilan_hydrique` (async, même worker que
+  microclimf), sortie mise en cache (`biljou.gpkg`) consommée en fast-path.
+  Forçage **SAFRAN** (défaut) sans clé Copernicus ; **ERA5** requiert les
+  identifiants CDS. Statut par moteur en sidebar, garde `regen_guard_biljou`.
+  Plancher cœur relevé à `nemeton (>= 0.132.0)`.
+
 ## [0.99.0] - 2026-07-05
 
 ### Added
