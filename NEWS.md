@@ -1,4 +1,15 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.3
+
+### Added — reGénération : pré-remplissage « Essence cible » depuis BD Forêt v2
+
+- Le sélecteur « Essence cible » est désormais **pré-rempli** via
+  `nemeton::regen_species_choices()` : les **essences présentes sur la zone**
+  (mapping TFV BD Forêt v2 → classe d'essence, cœur) sont listées **en tête**
+  (groupe « Présentes sur la zone »), suivies des essences d'adaptation. Le
+  sélecteur réagit à l'AOI du projet. Dégradation propre : sans colonne TFV, la
+  liste complète des essences FRM est affichée (au lieu d'un sélecteur vide).
+- L'info-bulle est mise à jour (le mapping TFV→essence est livré côté cœur, plus
+  « à venir »).
 
 # nemetonshiny 0.100.2
 

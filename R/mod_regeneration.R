@@ -181,15 +181,32 @@ mod_regeneration_server <- function(id, app_state) {
       NULL
     })
 
-    # Populate the optional target-species selector from the core tolerance
-    # table (code = value parametrisable, label = libellé affiché).
+    # Populate the optional target-species selector from the core
+    # (nemeton::regen_species_choices). Réactif à l'AOI : les essences présentes
+    # sur les parcelles (BD Forêt v2 → classe via map_tfv_to_species_class) sont
+    # listées en tête (groupe « présentes »), puis les essences d'adaptation.
     shiny::observe({
-      tol <- regeneration_species_choices()
-      generic <- stats::setNames("", i18n$t("regen_species_generic"))
-      if (!is.null(tol) && is.data.frame(tol) && all(c("code", "label") %in% names(tol))) {
-        sp <- stats::setNames(tol$code, tol$label)
-        shiny::updateSelectInput(session, "species", choices = c(generic, sp))
+      units <- tryCatch(units_sf(), error = function(e) NULL)
+      df <- regeneration_species_choices(units = units, lang = i18n$language)
+      generic_lbl <- i18n$t("regen_species_generic")
+      if (is.null(df) || !is.data.frame(df) || !all(c("code", "label") %in% names(df))) {
+        shiny::updateSelectInput(session, "species",
+          choices = stats::setNames("", generic_lbl))
+        return()
       }
+      named <- function(sub) stats::setNames(sub$code, sub$label)
+      choices <- list()
+      choices[[generic_lbl]] <- ""   # option générique (toutes essences) en tête
+      if ("groupe" %in% names(df)) {
+        present <- df[df$groupe == "present", , drop = FALSE]
+        others  <- df[df$groupe != "present", , drop = FALSE]
+        if (nrow(present)) choices[[i18n$t("regen_species_group_present")]] <- named(present)
+        if (nrow(others))  choices[[i18n$t("regen_species_group_adaptation")]] <- named(others)
+      } else {
+        choices[[i18n$t("regen_species_group_adaptation")]] <- named(df)
+      }
+      shiny::updateSelectInput(session, "species", choices = choices,
+                               selected = shiny::isolate(input$species) %||% "")
     })
 
     # Auto-detect the average / heatwave years from E-OBS for this AOI.

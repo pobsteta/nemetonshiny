@@ -178,11 +178,35 @@ regeneration_context_eobs <- function(ugf, precomputed = NULL, buffer_m = 25000)
   )
 }
 
-#' Species tolerance table for the optional target-species selector
+#' Target-species option list for the reGénération selector
 #'
-#' @return A data.frame from `nemeton::regeneration_tolerances()`, or NULL.
+#' @description
+#' Delegates to `nemeton::regen_species_choices()` (the core owns the TFV →
+#' species-class mapping and the FRM/atlas tables). When `units` carry a BD Forêt
+#' v2 TFV column (auto-detected among common names) the species actually present
+#' on the parcels are flagged (`present = TRUE`, `groupe = "present"`) and listed
+#' first. Falls back to the raw tolerance table if the core function is
+#' unavailable, and to `NULL` on total failure.
+#'
+#' @param units Optional `sf`/data.frame of UGF for presence flagging.
+#' @param lang UI language ("fr"/"en").
+#' @return A data.frame with at least `code`, `label`, `present`, `groupe`, or
+#'   `NULL`.
 #' @noRd
-regeneration_species_choices <- function() {
+regeneration_species_choices <- function(units = NULL, lang = "fr") {
+  # Auto-détection d'une colonne TFV BD Forêt v2 (présence), sinon NULL.
+  tfv_col <- NULL
+  if (inherits(units, c("sf", "data.frame"))) {
+    cand <- c("tfv_code", "code_tfv", "CODE_TFV", "tfv", "TFV", "CODE_TFV11", "codetfv")
+    hit <- intersect(cand, names(units))
+    if (length(hit)) tfv_col <- hit[[1]]
+  }
+  out <- tryCatch(
+    nemeton::regen_species_choices(units = units, tfv_col = tfv_col,
+                                   level = "species", lang = lang),
+    error = function(e) NULL)
+  if (is.data.frame(out) && nrow(out) > 0L) return(out)
+  # Repli : table de tolérances brute (comportement historique).
   tryCatch(nemeton::regeneration_tolerances(), error = function(e) NULL)
 }
 

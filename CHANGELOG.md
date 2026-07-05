@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.3] - 2026-07-05
+
+### Added
+
+- reGénération : le sélecteur « Essence cible » est pré-rempli via
+  `nemeton::regen_species_choices()` — les essences présentes sur l'AOI
+  (mapping TFV BD Forêt v2 → classe d'essence, cœur) sont listées en tête,
+  suivies des essences d'adaptation. Réactif à l'AOI ; dégradation propre sur
+  la liste FRM complète sans colonne TFV.
+
 ## [0.100.2] - 2026-07-05
 
 ### Fixed
