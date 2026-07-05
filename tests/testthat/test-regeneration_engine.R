@@ -64,6 +64,14 @@ test_that("regen_cds_credentials_ready is TRUE with an env key (ecmwfr present)"
   })
 })
 
+test_that("regen_cds_credentials_ready detects the ecmwfr_<user> env pattern", {
+  skip_if_not_installed("ecmwfr")
+  withr::with_envvar(
+    c(CDSAPI_KEY = "", ECMWFR_CDS_KEY = "", ecmwfr_testuser = "ca1d-key"), {
+      expect_true(nemetonshiny:::regen_cds_credentials_ready())
+    })
+})
+
 test_that("regen_engine_prereqs: SAFRAN needs no CDS, ERA5/microclimf do", {
   skip_if_not_installed("sf")
   withr::with_tempdir({

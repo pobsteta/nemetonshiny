@@ -83,6 +83,11 @@ mod_regeneration_ui <- function(id) {
       shiny::actionButton(ns("run"), i18n$t("regen_run"),
         class = "btn-primary w-100", icon = bsicons::bs_icon("play-fill")),
 
+      # Provenance de la donnée canopée effectivement utilisée (spec 033 D5) :
+      # LiDAR HD (PAI structural) ou repli satellite S2/PROSAIL (NDP 0). Lu
+      # depuis nemeton::detect_ndp() ; ne s'affiche que si une canopée est utilisée.
+      shiny::uiOutput(ns("canopy_provenance")),
+
       # --- Export / persistance (sous le bouton Lancer) ------------------
       htmltools::tags$hr(class = "my-2"),
       htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_results_section")),
@@ -256,6 +261,8 @@ mod_regeneration_server <- function(id, app_state) {
         rv$result <- res$units
         rv$years <- res$years
         rv$warnings <- res$warnings %||% character(0)
+        # Provenance canopée lue sur le résultat (repli satellite / LiDAR HD).
+        rv$canopy_source <- regen_canopy_provenance(res$units)
         # Publier le résultat pour l'export PDF (section reGénération de mod_synthesis).
         app_state$regeneration_result <- res$units
         nw <- length(rv$warnings)
@@ -358,6 +365,9 @@ mod_regeneration_server <- function(id, app_state) {
             app_state$regeneration_result <- res$units
           }
         }
+        # Provenance rapportée par le moteur (fiable : survit au cache gpkg qui
+        # perdrait l'attribut lai_source lu par detect_ndp).
+        rv$canopy_source <- eng$canopy %||% NA_character_
         eng_warns <- eng$warnings %||% character(0)
         if (length(eng_warns)) {
           shiny::showNotification(
@@ -399,6 +409,26 @@ mod_regeneration_server <- function(id, app_state) {
       htmltools::div(class = "mt-1",
         line(pre$microclimf, "regen_engine_ready_micro", "regen_engine_status_micro"),
         line(pre$biljou, "regen_engine_ready_biljou", "regen_engine_status_biljou_era5"))
+    })
+
+    # Badge de provenance canopée (spec 033 D5). Priorité à la source rapportée
+    # par le moteur (rv$canopy_source) ; sinon lecture de detect_ndp() sur le
+    # résultat. Rien affiché tant qu'aucune canopée n'est utilisée.
+    output$canopy_provenance <- shiny::renderUI({
+      src <- rv$canopy_source
+      if (is.null(src) || is.na(src)) {
+        src <- if (!is.null(rv$result)) regen_canopy_provenance(rv$result) else NA_character_
+      }
+      if (is.na(src)) return(NULL)
+      if (identical(src, "satellite")) {
+        bslib::tooltip(
+          htmltools::tags$span(class = "badge text-bg-warning mt-2 d-inline-block",
+            bsicons::bs_icon("badge-sd", class = "me-1"), i18n$t("regen_canopee_satellite")),
+          i18n$t("regen_canopee_satellite_info"), placement = "right")
+      } else {
+        htmltools::tags$span(class = "badge text-bg-success mt-2 d-inline-block",
+          bsicons::bs_icon("badge-hd", class = "me-1"), i18n$t("regen_canopee_lidar"))
+      }
     })
 
     output$status <- shiny::renderUI({
