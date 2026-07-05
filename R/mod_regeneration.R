@@ -306,7 +306,8 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
-      pre <- regen_engine_prereqs(project_path)
+      forcing <- input$forcing %||% "safran"
+      pre <- regen_engine_prereqs(project_path, forcing)
       if (!isTRUE(pre$ok)) {
         shiny::showNotification(i18n$t(pre$reason), type = "warning", duration = 8)
         return()
@@ -315,7 +316,12 @@ mod_regeneration_server <- function(id, app_state) {
       cfg <- list(
         year_moyenne = na_null(input$year_moyenne),
         year_canicule = na_null(input$year_canicule),
-        forest_type = input$forest_type %||% "feuillu"
+        forest_type = input$forest_type %||% "feuillu",
+        forcing = forcing,
+        ewm = na_null(input$ewm),
+        lai_max = na_null(input$lai_max),
+        budburst = na_null(input$budburst),
+        leaf_fall = na_null(input$leaf_fall)
       )
       rv$engine_running <- TRUE
       shiny::showNotification(i18n$t("regen_engine_running"), type = "message", duration = 6)
@@ -326,8 +332,11 @@ mod_regeneration_server <- function(id, app_state) {
       st <- engine_task$status()
       if (identical(st, "success")) {
         rv$engine_running <- FALSE
-        # Le worker a écrit sensibilite.gpkg : recharger le precomputed et
-        # relancer l'analyse normale (fast-path) pour rafraîchir carte/table.
+        # Le worker a écrit sensibilite.gpkg / biljou.gpkg : recharger le
+        # precomputed et relancer l'analyse normale (fast-path) pour rafraîchir
+        # carte/table. Les avertissements spécifiques du moteur (échec réel
+        # microclimf/BILJOU) sont remontés en toast.
+        eng <- tryCatch(engine_task$result(), error = function(e) NULL)
         project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
         units <- units_sf()
         if (!is.null(units) && !is.null(project_path)) {
@@ -349,6 +358,12 @@ mod_regeneration_server <- function(id, app_state) {
             app_state$regeneration_result <- res$units
           }
         }
+        eng_warns <- eng$warnings %||% character(0)
+        if (length(eng_warns)) {
+          shiny::showNotification(
+            htmltools::tags$span(paste(eng_warns, collapse = " — ")),
+            type = "warning", duration = 10)
+        }
         shiny::showNotification(i18n$t("regen_engine_done"), type = "message", duration = 6)
       } else if (identical(st, "error")) {
         rv$engine_running <- FALSE
@@ -366,14 +381,24 @@ mod_regeneration_server <- function(id, app_state) {
       }
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(project_path)) return(NULL)
-      pre <- regen_engine_prereqs(project_path)
-      if (isTRUE(pre$ok)) {
-        htmltools::div(class = "small text-success mt-1",
-          bsicons::bs_icon("check-circle", class = "me-1"), i18n$t("regen_engine_ready"))
-      } else {
-        htmltools::div(class = "small text-muted mt-1",
-          bsicons::bs_icon("info-circle", class = "me-1"), i18n$t(pre$reason))
+      pre <- regen_engine_prereqs(project_path, input$forcing %||% "safran")
+      if (isTRUE(pre$reason == "regen_engine_prereq_core")) {
+        return(htmltools::div(class = "small text-muted mt-1",
+          bsicons::bs_icon("info-circle", class = "me-1"), i18n$t("regen_engine_prereq_core")))
       }
+      # Une ligne par moteur : prêt (vert) ou prérequis manquant (gris).
+      line <- function(ready, ok_key, ko_key) {
+        if (isTRUE(ready)) {
+          htmltools::div(class = "small text-success",
+            bsicons::bs_icon("check-circle", class = "me-1"), i18n$t(ok_key))
+        } else {
+          htmltools::div(class = "small text-muted",
+            bsicons::bs_icon("dash-circle", class = "me-1"), i18n$t(ko_key))
+        }
+      }
+      htmltools::div(class = "mt-1",
+        line(pre$microclimf, "regen_engine_ready_micro", "regen_engine_status_micro"),
+        line(pre$biljou, "regen_engine_ready_biljou", "regen_engine_status_biljou_era5"))
     })
 
     output$status <- shiny::renderUI({

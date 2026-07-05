@@ -296,19 +296,27 @@ regen_cds_credentials_ready <- function() {
 #' @return `list(ok=logical, reason=<i18n key or NULL>, grid=<list or NULL>)`.
 #'   The first failing check sets `reason`; UI surfaces it as a clean message.
 #' @noRd
-regen_engine_prereqs <- function(project_path) {
+regen_engine_prereqs <- function(project_path, forcing = "safran") {
   exports <- tryCatch(getNamespaceExports("nemeton"), error = function(e) character(0))
-  if (!"regen_sensibilite" %in% exports) {
-    return(list(ok = FALSE, reason = "regen_engine_prereq_core", grid = NULL))
+  needed <- c("regen_sensibilite", "regen_bilan_hydrique",
+              "load_biljou_forcing", "build_biljou_soil")
+  if (!all(needed %in% exports)) {
+    return(list(ok = FALSE, reason = "regen_engine_prereq_core",
+                grid = NULL, microclimf = FALSE, biljou = FALSE))
   }
   grid <- resolve_regen_lidar_grid(project_path)
-  if (is.null(grid)) {
-    return(list(ok = FALSE, reason = "regen_engine_prereq_lidar", grid = NULL))
-  }
-  if (!regen_cds_credentials_ready()) {
-    return(list(ok = FALSE, reason = "regen_engine_prereq_cds", grid = grid))
-  }
-  list(ok = TRUE, reason = NULL, grid = grid)
+  cds  <- regen_cds_credentials_ready()
+  # microclimf : toujours LiDAR HD + ERA5 (clé CDS). BILJOU : SAFRAN sans clé,
+  # ERA5 avec clé (même que microclimf). Le moteur est lançable dès qu'AU MOINS
+  # un des deux est prêt (SAFRAN débloque le bilan hydrique sans Copernicus).
+  micro_ok  <- !is.null(grid) && cds
+  biljou_ok <- !identical(forcing, "era5") || cds
+  ok <- micro_ok || biljou_ok
+  reason <- if (ok) NULL
+            else if (identical(forcing, "era5")) "regen_engine_prereq_cds"
+            else "regen_engine_prereq_lidar"
+  list(ok = ok, reason = reason, grid = grid,
+       microclimf = micro_ok, biljou = biljou_ok)
 }
 
 #' Run the real microclimf engine for a project and persist its output
@@ -331,33 +339,65 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   if (!inherits(units, "sf")) {
     stop("run_regeneration_engine: `units` must be an sf object", call. = FALSE)
   }
-  grid <- resolve_regen_lidar_grid(project_path)
-  if (is.null(grid)) {
-    stop("run_regeneration_engine: LiDAR HD grid not found under project cache",
-         call. = FALSE)
-  }
-  cache_dir <- file.path(project_path, "cache", "regeneration", "microclimf")
-  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
-
-  res <- nemeton::regen_sensibilite(
-    units,
-    mnt          = grid$mnt_dir,
-    mnh          = grid$mnh_dir,
-    annees_moy   = cfg$year_moyenne,
-    annees_canic = cfg$year_canicule,
-    cache_dir    = cache_dir
-  )
-  if (!inherits(res, "sf")) {
-    stop("run_regeneration_engine: engine returned no sf", call. = FALSE)
-  }
-
-  # Persist as the precomputed fast-path input for subsequent runs.
+  i18n <- get_i18n(get_app_options()$language %||% "fr")
   out_dir <- file.path(project_path, "cache", "regeneration")
   if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-  tryCatch(
-    sf::st_write(res, file.path(out_dir, "sensibilite.gpkg"),
-                 quiet = TRUE, delete_dsn = TRUE),
-    error = function(e) cli::cli_warn(
-      "regen engine: sensibilite cache not written: {e$message}"))
-  res
+  warnings <- character(0)
+  cached   <- character(0)
+  res <- units
+  years <- c(cfg$year_moyenne, cfg$year_canicule)  # c() drops NULLs
+  years <- if (length(years)) years else NULL
+
+  # --- microclimf (LiDAR HD + ERA5) : grille LiDAR HD + clé CDS requises. ---
+  grid <- resolve_regen_lidar_grid(project_path)
+  if (!is.null(grid) && regen_cds_credentials_ready()) {
+    micro_cache <- file.path(out_dir, "microclimf")
+    if (!dir.exists(micro_cache)) dir.create(micro_cache, recursive = TRUE)
+    sens <- tryCatch(
+      nemeton::regen_sensibilite(res, mnt = grid$mnt_dir, mnh = grid$mnh_dir,
+        annees_moy = cfg$year_moyenne, annees_canic = cfg$year_canicule,
+        cache_dir = micro_cache),
+      error = function(e) {
+        warnings <<- c(warnings, .strip_ansi(sprintf("microclimf: %s", conditionMessage(e))))
+        NULL
+      })
+    if (inherits(sens, "sf")) {
+      res <- sens
+      tryCatch(sf::st_write(res, file.path(out_dir, "sensibilite.gpkg"),
+                            quiet = TRUE, delete_dsn = TRUE),
+               error = function(e) cli::cli_warn("regen engine: sensibilite cache not written"))
+      cached <- c(cached, "sensibilite")
+    }
+  }
+
+  # --- BILJOU (SAFRAN par défaut, sans clé ; ERA5 => clé CDS). ---
+  forcing <- cfg$forcing %||% "safran"
+  if (identical(forcing, "era5") && !regen_cds_credentials_ready()) {
+    warnings <- c(warnings, i18n$t("regen_engine_prereq_cds"))
+  } else {
+    biljou_cache <- file.path(out_dir, "biljou")
+    if (!dir.exists(biljou_cache)) dir.create(biljou_cache, recursive = TRUE)
+    bil <- tryCatch({
+      meteo <- nemeton::load_biljou_forcing(res, years = years, source = forcing,
+                                            cache_dir = biljou_cache)
+      sol   <- nemeton::build_biljou_soil(res, ewm = cfg$ewm)
+      nemeton::regen_bilan_hydrique(res, meteo = meteo, sol = sol,
+        lai_max = cfg$lai_max, forest_type = cfg$forest_type %||% "feuillu",
+        years = years, budburst = cfg$budburst, leaf_fall = cfg$leaf_fall)
+    }, error = function(e) {
+      warnings <<- c(warnings, .strip_ansi(sprintf("BILJOU: %s", conditionMessage(e))))
+      NULL
+    })
+    if (inherits(bil, "sf")) {
+      res <- bil
+      tryCatch(sf::st_write(res, file.path(out_dir, "biljou.gpkg"),
+                            quiet = TRUE, delete_dsn = TRUE),
+               error = function(e) cli::cli_warn("regen engine: biljou cache not written"))
+      cached <- c(cached, "biljou")
+    } else {
+      warnings <- c(warnings, i18n$t("regen_guard_biljou"))
+    }
+  }
+
+  list(units = res, warnings = warnings, cached = cached)
 }
