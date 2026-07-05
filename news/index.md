@@ -1,6 +1,28 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.99.0
+
+#### Added — reGénération : moteur microclimf réel (option B, spec 027 L1)
+
+- Nouveau **run microclimf réel** (LiDAR HD + forçage ERA5-Land) via le
+  chemin moteur de
+  [`nemeton::regen_sensibilite`](https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html),
+  opt-in depuis la sidebar reGénération (« Moteur microclimf réel »).
+  Exécution **asynchrone** (worker `future`) : le run lourd
+  (minutes→heures) ne bloque pas l’application ; la sortie est mise en
+  cache (`sensibilite.gpkg`) et consommée en fast-path par le run
+  normal.
+- **Prérequis gardés** : le moteur n’est lançable que si la **grille
+  LiDAR HD** du projet existe (`<projet>/cache/layers/lidar_mnt` +
+  `lidar_mnh`, produite au calcul des indices avec source CHM LiDAR HD)
+  et que les **identifiants Copernicus CDS** sont configurés
+  (`ecmwfr::wf_set_key`) — sinon un message i18n propre indique le
+  prérequis manquant. Aucun secret dans le repo (règle
+  [\#8](https://github.com/pobsteta/nemetonshiny/issues/8)).
+- **BILJOU (bilan hydrique) reste sur la garde option A** :
+  l’acquisition météo/sol doit vivre dans le cœur (`load_biljou_forcing`
+  / `build_biljou_soil`, brief cœur fourni) avant d’activer son run
+  réel.
 
 ## nemetonshiny 0.98.6
 

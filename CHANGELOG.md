@@ -12,6 +12,24 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.99.0\] - 2026-07-05
+
+### Added
+
+- reGénération : **moteur microclimf réel** (option B, spec 027 L1) —
+  run asynchrone du chemin moteur
+  [`nemeton::regen_sensibilite`](https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html)
+  (structure LiDAR HD + forçage ERA5-Land), opt-in depuis la sidebar,
+  avec garde-fous de prérequis (grille LiDAR HD du projet + identifiants
+  Copernicus CDS) et mise en cache de la sortie (`sensibilite.gpkg`)
+  consommée en fast-path par le run normal.
+
+### Changed
+
+- BILJOU (bilan hydrique) reste sur la garde option A tant que
+  l’acquisition météo/sol n’est pas exposée par le cœur
+  (`load_biljou_forcing` / `build_biljou_soil` — brief cœur fourni).
+
 ## \[0.98.6\] - 2026-07-04
 
 ### Fixed

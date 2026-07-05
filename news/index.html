@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.98.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.99.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,15 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.99.0" id="nemetonshiny-0990">nemetonshiny 0.99.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-0990"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--moteur-microclimf-réel-option-b-spec-l1-0-99-0">Added — reGénération : moteur microclimf réel (option B, spec 027 L1)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--moteur-microclimf-r%C3%A9el-option-b-spec-l1-0-99-0"></a></h4>
+<ul><li>Nouveau <strong>run microclimf réel</strong> (LiDAR HD + forçage ERA5-Land) via le chemin moteur de <code><a href="https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html" class="external-link">nemeton::regen_sensibilite</a></code>, opt-in depuis la sidebar reGénération (« Moteur microclimf réel »). Exécution <strong>asynchrone</strong> (worker <code>future</code>) : le run lourd (minutes→heures) ne bloque pas l’application ; la sortie est mise en cache (<code>sensibilite.gpkg</code>) et consommée en fast-path par le run normal.</li>
+<li>
+<strong>Prérequis gardés</strong> : le moteur n’est lançable que si la <strong>grille LiDAR HD</strong> du projet existe (<code>&lt;projet&gt;/cache/layers/lidar_mnt</code> + <code>lidar_mnh</code>, produite au calcul des indices avec source CHM LiDAR HD) et que les <strong>identifiants Copernicus CDS</strong> sont configurés (<code>ecmwfr::wf_set_key</code>) — sinon un message i18n propre indique le prérequis manquant. Aucun secret dans le repo (règle <a href="https://github.com/pobsteta/nemetonshiny/issues/8" class="external-link">#8</a>).</li>
+<li>
+<strong>BILJOU (bilan hydrique) reste sur la garde option A</strong> : l’acquisition météo/sol doit vivre dans le cœur (<code>load_biljou_forcing</code> / <code>build_biljou_soil</code>, brief cœur fourni) avant d’activer son run réel.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.98.6" id="nemetonshiny-0986">nemetonshiny 0.98.6<a class="anchor" aria-label="anchor" href="#nemetonshiny-0986"></a></h2>
