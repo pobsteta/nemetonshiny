@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,16 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.100.1" id="nemetonshiny-01001">nemetonshiny 0.100.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-01001"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--provenance-canopée--repli-satellite-ndp-spec-d5-0-100-1">Added — reGénération : provenance canopée + repli satellite NDP 0 (spec 033 D5)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--provenance-canop%C3%A9e--repli-satellite-ndp-spec-d5-0-100-1"></a></h4>
+<ul><li>
+<strong>Badge de provenance canopée</strong> dans l’onglet reGénération : « Canopée : LiDAR HD » (mesure structurale, PAI) ou « Canopée : satellite (repli) » (LAI Sentinel-2/PROSAIL, NDP 0) avec info-bulle d’avertissement (proxy dégradé, LAI ≠ PAI). La provenance est <strong>lue</strong> depuis <code>nemeton::detect_ndp()$augmented</code> — aucune décision de source côté app (règle <a href="https://github.com/pobsteta/nemetonshiny/issues/1" class="external-link">#1</a>).</li>
+<li>
+<strong>Repli NDP 0</strong> : en l’absence de grille LiDAR HD, le moteur BILJOU utilise le <strong>LAI Sentinel-2/PROSAIL</strong> (<code><a href="https://pobsteta.github.io/nemeton/reference/lai_sentinel2.html" class="external-link">nemeton::lai_sentinel2</a></code>) agrégé par UGF comme <code>lai_max</code>, mis en cache (<code>lai_prosail.tif</code>). Dégradation propre : sans scène / sans PROSAIL → pas de badge satellite, comportement inchangé.</li>
+<li>
+<strong>Détection CDS durcie</strong> : <code>regen_cds_credentials_ready()</code> reconnaît désormais aussi le motif de stockage <code>ecmwfr_&lt;user&gt;</code> (clé posée dans <code>.Renviron</code>), en plus de <code>CDSAPI_KEY</code>/<code>ECMWFR_CDS_KEY</code> et du keyring <code>ecmwfr</code>.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.0" id="nemetonshiny-01000">nemetonshiny 0.100.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01000"></a></h2>

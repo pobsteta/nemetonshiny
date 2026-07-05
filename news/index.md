@@ -1,6 +1,26 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.100.1
+
+#### Added — reGénération : provenance canopée + repli satellite NDP 0 (spec 033 D5)
+
+- **Badge de provenance canopée** dans l’onglet reGénération : « Canopée
+  : LiDAR HD » (mesure structurale, PAI) ou « Canopée : satellite
+  (repli) » (LAI Sentinel-2/PROSAIL, NDP 0) avec info-bulle
+  d’avertissement (proxy dégradé, LAI ≠ PAI). La provenance est **lue**
+  depuis `nemeton::detect_ndp()$augmented` — aucune décision de source
+  côté app (règle
+  [\#1](https://github.com/pobsteta/nemetonshiny/issues/1)).
+- **Repli NDP 0** : en l’absence de grille LiDAR HD, le moteur BILJOU
+  utilise le **LAI Sentinel-2/PROSAIL**
+  ([`nemeton::lai_sentinel2`](https://pobsteta.github.io/nemeton/reference/lai_sentinel2.html))
+  agrégé par UGF comme `lai_max`, mis en cache (`lai_prosail.tif`).
+  Dégradation propre : sans scène / sans PROSAIL → pas de badge
+  satellite, comportement inchangé.
+- **Détection CDS durcie** : `regen_cds_credentials_ready()` reconnaît
+  désormais aussi le motif de stockage `ecmwfr_<user>` (clé posée dans
+  `.Renviron`), en plus de `CDSAPI_KEY`/`ECMWFR_CDS_KEY` et du keyring
+  `ecmwfr`.
 
 ## nemetonshiny 0.100.0
 

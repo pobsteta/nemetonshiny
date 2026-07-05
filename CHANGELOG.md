@@ -12,6 +12,23 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.1\] - 2026-07-05
+
+### Added
+
+- reGénération : **provenance canopée** (spec 033 D5) — badge « LiDAR HD
+  » / « satellite (repli) » lu depuis `nemeton::detect_ndp()$augmented`,
+  et **repli NDP 0** LAI Sentinel-2/PROSAIL
+  ([`nemeton::lai_sentinel2`](https://pobsteta.github.io/nemeton/reference/lai_sentinel2.html))
+  agrégé par UGF pour BILJOU en l’absence de LiDAR HD (cache
+  `lai_prosail.tif`).
+
+### Changed
+
+- `regen_cds_credentials_ready()` reconnaît le motif `ecmwfr_<user>`
+  (clé CDS posée dans `.Renviron`), en plus de
+  `CDSAPI_KEY`/`ECMWFR_CDS_KEY` et du keyring.
+
 ## \[0.100.0\] - 2026-07-05
 
 ### Added
