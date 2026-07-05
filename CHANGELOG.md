@@ -12,6 +12,17 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.2\] - 2026-07-05
+
+### Fixed
+
+- reGénération : le bouton « Auto (E-OBS) » est fonctionnel — l’app
+  acquiert la série E-OBS via
+  [`nemeton::load_eobs_source()`](https://pobsteta.github.io/nemeton/reference/load_eobs_source.html)
+  (async, cache disque) avant d’appeler `microclimate_detect_years()`,
+  au lieu d’afficher systématiquement « Détection E-OBS indisponible ».
+  Plancher cœur relevé à `nemeton (>= 0.134.0)`.
+
 ## \[0.100.1\] - 2026-07-05
 
 ### Added

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,14 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.100.2" id="nemetonshiny-01002">nemetonshiny 0.100.2<a class="anchor" aria-label="anchor" href="#nemetonshiny-01002"></a></h2>
+<div class="section level4">
+<h4 id="fixed--regénération--bouton--auto-e-obs--fonctionnel-spec-l2--0-100-2">Fixed — reGénération : bouton « Auto (E-OBS) » fonctionnel (spec 027 L2 / 034)<a class="anchor" aria-label="anchor" href="#fixed--reg%C3%A9n%C3%A9ration--bouton--auto-e-obs--fonctionnel-spec-l2--0-100-2"></a></h4>
+<ul><li>Le bouton « Auto (E-OBS) » affichait systématiquement « Détection E-OBS indisponible » : l’app ne passait que l’AOI à <code>microclimate_detect_years()</code>, qui exige une série E-OBS. Elle <strong>acquiert désormais la série</strong> via <code><a href="https://pobsteta.github.io/nemeton/reference/load_eobs_source.html" class="external-link">nemeton::load_eobs_source()</a></code> (E-OBS ECA&amp;D/Copernicus, même clé CDS qu’ERA5, mise en cache) avant de détecter les années moyenne/caniculaire.</li>
+<li>
+<strong>Exécution asynchrone</strong> (worker <code>future</code>) : le téléchargement E-OBS (CDS, potentiellement en file) ne bloque plus l’application ; un indicateur « en cours » s’affiche et les champs Année se remplissent au retour. Dégradation propre en NULL (pas de clé / hors couverture / CI) → saisie manuelle inchangée.</li>
+<li>Plancher cœur relevé à <code>nemeton (&gt;= 0.134.0)</code> (<code>load_eobs_source</code>).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.1" id="nemetonshiny-01001">nemetonshiny 0.100.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-01001"></a></h2>
