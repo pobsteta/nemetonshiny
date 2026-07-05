@@ -145,6 +145,35 @@ test_that("run_regeneration validates its input", {
   expect_error(nemetonshiny:::run_regeneration(data.frame(x = 1)), "must be an sf")
 })
 
+test_that("regeneration_species_choices delegates to core and auto-detects TFV", {
+  skip_if_not_installed("sf")
+  seen <- new.env()
+  testthat::local_mocked_bindings(
+    regen_species_choices = function(units = NULL, tfv_col = NULL, level = NULL, lang = NULL, ...) {
+      seen$tfv_col <- tfv_col; seen$lang <- lang
+      data.frame(code = c("a", "b"), label = c("A", "B"),
+                 present = c(TRUE, FALSE), groupe = c("present", "adaptation"))
+    }, .package = "nemeton")
+
+  u <- sf::st_sf(tfv_code = c("FF1", "FF2"),
+                 geometry = sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)), crs = 2154))
+  out <- nemetonshiny:::regeneration_species_choices(units = u, lang = "en")
+
+  expect_s3_class(out, "data.frame")
+  expect_true(all(c("present", "groupe") %in% names(out)))
+  expect_equal(seen$tfv_col, "tfv_code")   # colonne TFV BD Forêt v2 auto-détectée
+  expect_equal(seen$lang, "en")
+})
+
+test_that("regeneration_species_choices falls back to tolerances when core yields none", {
+  testthat::local_mocked_bindings(
+    regen_species_choices = function(...) NULL,
+    regeneration_tolerances = function() data.frame(code = "x", label = "X"),
+    .package = "nemeton")
+  out <- nemetonshiny:::regeneration_species_choices()
+  expect_true(is.data.frame(out) && all(c("code", "label") %in% names(out)))
+})
+
 test_that("REGEN_OUTPUT_COLUMNS covers the §7 contract", {
   cols <- nemetonshiny:::REGEN_OUTPUT_COLUMNS
   expect_true(all(c("indice_priorite_regen", "sensibilite", "njstress", "istress",

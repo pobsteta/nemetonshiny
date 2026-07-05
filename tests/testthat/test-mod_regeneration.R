@@ -38,7 +38,7 @@ test_that("run enriches UGF via the service and exposes the result", {
   testthat::local_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     load_regeneration_precomputed = function(pp) list(),
-    regeneration_species_choices = function() NULL,
+    regeneration_species_choices = function(...) NULL,
     run_regeneration = function(u, cfg = list(), precomputed = NULL, progress = NULL) {
       called$cfg <- cfg
       u$indice_priorite_regen <- 70
@@ -81,7 +81,7 @@ test_that("run without a loaded project is a guarded no-op", {
   ran <- new.env(); ran$hit <- FALSE
   testthat::local_mocked_bindings(
     get_app_options = function() list(language = "fr"),
-    regeneration_species_choices = function() NULL,
+    regeneration_species_choices = function(...) NULL,
     run_regeneration = function(...) { ran$hit <- TRUE; NULL },
     .package = "nemetonshiny"
   )
