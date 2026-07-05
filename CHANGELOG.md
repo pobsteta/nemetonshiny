@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.2] - 2026-07-05
+
+### Fixed
+
+- reGénération : le bouton « Auto (E-OBS) » est fonctionnel — l'app acquiert la
+  série E-OBS via `nemeton::load_eobs_source()` (async, cache disque) avant
+  d'appeler `microclimate_detect_years()`, au lieu d'afficher systématiquement
+  « Détection E-OBS indisponible ». Plancher cœur relevé à `nemeton (>= 0.134.0)`.
+
 ## [0.100.1] - 2026-07-05
 
 ### Added

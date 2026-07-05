@@ -453,6 +453,41 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   list(units = res, warnings = warnings, cached = cached, canopy = canopy)
 }
 
+#' Detect reference years from E-OBS for an AOI (spec 027 L2 / 034)
+#'
+#' @description
+#' Builds the per-year summer E-OBS field for the units' footprint via the core
+#' \code{nemeton::load_eobs_source()} (best-effort CDS download, same key as
+#' ERA5; cached on disk), then derives the average / heatwave reference years
+#' with \code{nemeton::microclimate_detect_years()}. Heavy (E-OBS acquisition)
+#' and network-bound: run it in a \code{future} worker (serialisable inputs:
+#' an \code{sf} + a path). Returns \code{NULL} on any failure (no key, no scene,
+#' CI) so the UI falls back to manual year entry.
+#'
+#' @param units An \code{sf} of the UGF footprint.
+#' @param project_path Project directory (E-OBS cache location).
+#' @param year_window Integer window for the detection (default 10).
+#' @return \code{list(year_moyenne=, year_canicule=)} or \code{NULL}.
+#' @noRd
+run_regeneration_detect_years <- function(units, project_path, year_window = 10) {
+  if (!inherits(units, "sf")) return(NULL)
+  cache_dir <- NULL
+  if (!is.null(project_path)) {
+    cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
+    if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+  }
+  eobs <- tryCatch(
+    nemeton::load_eobs_source(aoi = units, var = "tx", cache_dir = cache_dir),
+    error = function(e) NULL)
+  if (is.null(eobs)) return(NULL)
+  yrs <- tryCatch(
+    nemeton::microclimate_detect_years(eobs = eobs, aoi = units,
+                                       year_window = year_window),
+    error = function(e) NULL)
+  if (is.null(yrs) || is.null(yrs$year_moyenne)) return(NULL)
+  list(year_moyenne = yrs$year_moyenne, year_canicule = yrs$year_canicule)
+}
+
 #' Satellite LAI fallback (Sentinel-2 / PROSAIL) for reGénération (spec 033 D5)
 #'
 #' Delegates the LAI inversion to \code{nemeton::lai_sentinel2()} (the core owns

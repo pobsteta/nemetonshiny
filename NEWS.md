@@ -1,4 +1,17 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.2
+
+### Fixed — reGénération : bouton « Auto (E-OBS) » fonctionnel (spec 027 L2 / 034)
+
+- Le bouton « Auto (E-OBS) » affichait systématiquement « Détection E-OBS
+  indisponible » : l'app ne passait que l'AOI à `microclimate_detect_years()`,
+  qui exige une série E-OBS. Elle **acquiert désormais la série** via
+  `nemeton::load_eobs_source()` (E-OBS ECA&D/Copernicus, même clé CDS qu'ERA5,
+  mise en cache) avant de détecter les années moyenne/caniculaire.
+- **Exécution asynchrone** (worker `future`) : le téléchargement E-OBS (CDS,
+  potentiellement en file) ne bloque plus l'application ; un indicateur « en
+  cours » s'affiche et les champs Année se remplissent au retour. Dégradation
+  propre en NULL (pas de clé / hors couverture / CI) → saisie manuelle inchangée.
+- Plancher cœur relevé à `nemeton (>= 0.134.0)` (`load_eobs_source`).
 
 # nemetonshiny 0.100.1
 

@@ -193,28 +193,46 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # Auto-detect the average / heatwave years from E-OBS for this AOI.
+    # Async : l'acquisition E-OBS (CDS) est déléguée à un worker future (cf.
+    # eobs_task) ; le résultat met à jour les deux champs Année.
     shiny::observeEvent(input$auto_years, {
       units <- units_sf()
       if (is.null(units)) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
-      yrs <- tryCatch(
-        nemeton::microclimate_detect_years(aoi = units, year_window = 10),
-        error = function(e) NULL)
-      if (!is.null(yrs) && !is.null(yrs$year_moyenne)) {
-        shiny::updateNumericInput(session, "year_moyenne", value = yrs$year_moyenne)
-        shiny::updateNumericInput(session, "year_canicule", value = yrs$year_canicule)
-        rv$eobs <- yrs
-        shiny::showNotification(
-          sprintf(i18n$t("regen_auto_done"), yrs$year_moyenne, yrs$year_canicule),
-          type = "message", duration = 6)
-      } else {
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      rv$eobs_running <- TRUE
+      shiny::showNotification(i18n$t("regen_auto_running"), type = "message", duration = 6)
+      eobs_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
+    })
+
+    shiny::observeEvent(eobs_task$status(), {
+      st <- eobs_task$status()
+      if (identical(st, "success")) {
+        rv$eobs_running <- FALSE
+        yrs <- tryCatch(eobs_task$result(), error = function(e) NULL)
+        if (!is.null(yrs) && !is.null(yrs$year_moyenne)) {
+          shiny::updateNumericInput(session, "year_moyenne", value = yrs$year_moyenne)
+          shiny::updateNumericInput(session, "year_canicule", value = yrs$year_canicule)
+          rv$eobs <- yrs
+          shiny::showNotification(
+            sprintf(i18n$t("regen_auto_done"), yrs$year_moyenne, yrs$year_canicule),
+            type = "message", duration = 6)
+        } else {
+          shiny::showNotification(i18n$t("regen_auto_none"), type = "warning", duration = 6)
+        }
+      } else if (identical(st, "error")) {
+        rv$eobs_running <- FALSE
         shiny::showNotification(i18n$t("regen_auto_none"), type = "warning", duration = 6)
       }
     })
 
     output$eobs_index_display <- shiny::renderUI({
+      if (isTRUE(rv$eobs_running)) {
+        return(htmltools::tags$small(class = "text-info d-block mb-2",
+          bsicons::bs_icon("hourglass-split", class = "me-1"), i18n$t("regen_auto_running")))
+      }
       if (is.null(rv$eobs)) return(NULL)
       htmltools::tags$small(class = "text-muted d-block mb-2",
         sprintf("%s : %s / %s", i18n$t("regen_eobs_index"),
@@ -303,6 +321,28 @@ mod_regeneration_server <- function(id, app_state) {
           options(nemeton.app_options = app_opts)
           fn <- getFromNamespace("run_regeneration_engine", "nemetonshiny")
           fn(units, project_path, cfg)
+        }, seed = TRUE)
+      })
+
+    # Auto E-OBS async : l'acquisition E-OBS (CDS, même clé qu'ERA5) peut être
+    # lente / mise en file → worker future, ne renvoie que la paire d'années.
+    eobs_task <- shiny::ExtendedTask$new(
+      function(units, project_path, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            future::plan("multisession")
+          }
+        }
+        promises::future_promise({
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          fn <- getFromNamespace("run_regeneration_detect_years", "nemetonshiny")
+          fn(units, project_path)
         }, seed = TRUE)
       })
 
