@@ -145,6 +145,41 @@ test_that("run_regeneration validates its input", {
   expect_error(nemetonshiny:::run_regeneration(data.frame(x = 1)), "must be an sf")
 })
 
+test_that("run_regeneration_detect_years passes an explicit E-OBS years window", {
+  skip_if_not_installed("sf")
+  # Régression : sans `years`, le cœur (.eobs_cds_fetch) sort en NULL avant tout
+  # téléchargement → bouton « Auto (E-OBS) » affichait « indisponible ».
+  seen <- new.env()
+  testthat::local_mocked_bindings(
+    load_eobs_source = function(aoi = NULL, var = NULL, years = NULL,
+                                cache_dir = NULL, ...) {
+      seen$years <- years; "fake-eobs"
+    },
+    microclimate_detect_years = function(eobs = NULL, aoi = NULL,
+                                         year_window = NULL, ...) {
+      list(year_moyenne = 2018, year_canicule = 2022)
+    },
+    .package = "nemeton")
+
+  out <- nemetonshiny:::run_regeneration_detect_years(
+    .regen_units(), project_path = NULL, year_window = 10)
+
+  expect_equal(out, list(year_moyenne = 2018, year_canicule = 2022))
+  expect_true(is.numeric(seen$years) && length(seen$years) >= 7L)  # fenêtre non vide
+  expect_true(min(seen$years) >= 2011L)                            # un seul bloc CDS
+  expect_equal(max(seen$years),
+               as.integer(format(Sys.Date(), "%Y")) - 2L)         # latence E-OBS
+})
+
+test_that("run_regeneration_detect_years returns NULL when E-OBS is unavailable", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    load_eobs_source = function(...) NULL,   # pas de clé / hors couverture / CI
+    .package = "nemeton")
+  expect_null(nemetonshiny:::run_regeneration_detect_years(
+    .regen_units(), project_path = NULL))
+})
+
 test_that("regeneration_species_choices delegates to core and auto-detects TFV", {
   skip_if_not_installed("sf")
   seen <- new.env()

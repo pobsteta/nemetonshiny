@@ -1,4 +1,17 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.5
+
+### Fixed — reGénération : bouton « Auto (E-OBS) » ne téléchargeait rien
+
+- Le bouton « Auto (E-OBS) » affichait « Détection E-OBS indisponible » **sans
+  déclencher de téléchargement** : l'app appelait `nemeton::load_eobs_source()`
+  **sans plage d'années**, or le cœur (`.eobs_cds_fetch`) sort en `NULL` avant
+  toute requête CDS quand `years` et `period` sont absents. `run_regeneration_detect_years()`
+  passe désormais une **fenêtre d'années explicite** (se terminant à
+  `année_courante - 2` pour la latence de publication E-OBS, bornée à 2011 pour
+  tenir dans un seul bloc de période CDS) — la requête CDS est bien soumise
+  (validé : `period=2011_2024`, `version=30.0e` acceptée par le serveur).
+- Les échecs d'acquisition sont désormais tracés (`cli::cli_warn`) au lieu d'être
+  avalés silencieusement, ce qui rendait le diagnostic impossible.
 
 # nemetonshiny 0.100.4
 

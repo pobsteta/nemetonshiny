@@ -488,6 +488,13 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
 #' an \code{sf} + a path). Returns \code{NULL} on any failure (no key, no scene,
 #' CI) so the UI falls back to manual year entry.
 #'
+#' An explicit \code{years} window is passed to \code{load_eobs_source()}: the
+#' core CDS fetch bails out to \code{NULL} \emph{before downloading} when both
+#' \code{years} and \code{period} are \code{NULL}. The window ends at
+#' \code{current year - 2} (E-OBS publication lag; the core pins version 30.0e,
+#' last full year 2024) and is clamped to start no earlier than 2011 so it fits
+#' a single CDS period block (one download).
+#'
 #' @param units An \code{sf} of the UGF footprint.
 #' @param project_path Project directory (E-OBS cache location).
 #' @param year_window Integer window for the detection (default 10).
@@ -500,14 +507,32 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
     cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
     if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
   }
+  # E-OBS/CDS exige une plage d'années explicite : sans `years`, le cœur
+  # (`.eobs_cds_fetch`) sort en NULL AVANT tout téléchargement (le bouton
+  # affichait alors « indisponible » sans rien télécharger). On demande une
+  # fenêtre récente se terminant à `année_courante - 2` (latence de publication
+  # E-OBS ; le cœur pin la version 30.0e dont la dernière année pleine est
+  # 2024). `start` est borné à 2011 pour rester dans un seul bloc de période CDS
+  # (2011-2100) et ne déclencher qu'un téléchargement.
+  end_year   <- as.integer(format(Sys.Date(), "%Y")) - 2L
+  win        <- max(as.integer(year_window %||% 10L) + 2L, 7L)
+  start_year <- max(2011L, end_year - win + 1L)
+  years      <- seq.int(start_year, end_year)
   eobs <- tryCatch(
-    nemeton::load_eobs_source(aoi = units, var = "tx", cache_dir = cache_dir),
-    error = function(e) NULL)
+    nemeton::load_eobs_source(aoi = units, var = "tx", years = years,
+                              cache_dir = cache_dir),
+    error = function(e) {
+      cli::cli_warn("regen detect_years: load_eobs_source failed: {conditionMessage(e)}")
+      NULL
+    })
   if (is.null(eobs)) return(NULL)
   yrs <- tryCatch(
     nemeton::microclimate_detect_years(eobs = eobs, aoi = units,
                                        year_window = year_window),
-    error = function(e) NULL)
+    error = function(e) {
+      cli::cli_warn("regen detect_years: microclimate_detect_years failed: {conditionMessage(e)}")
+      NULL
+    })
   if (is.null(yrs) || is.null(yrs$year_moyenne)) return(NULL)
   list(year_moyenne = yrs$year_moyenne, year_canicule = yrs$year_canicule)
 }
