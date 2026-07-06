@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.5] - 2026-07-06
+
+### Fixed
+
+- reGénération : le bouton « Auto (E-OBS) » ne téléchargeait rien et affichait
+  « indisponible » — `run_regeneration_detect_years()` appelait
+  `nemeton::load_eobs_source()` sans plage d'années, or le cœur sort en `NULL`
+  avant toute requête CDS quand `years`/`period` sont absents. Une fenêtre
+  d'années explicite est désormais passée (fin = année-2, début borné à 2011) ;
+  les échecs d'acquisition sont tracés au lieu d'être avalés.
+
 ## [0.100.4] - 2026-07-06
 
 ### Added
