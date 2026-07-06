@@ -3580,6 +3580,31 @@ TRANSLATIONS <- list(
     fr = "Graine al\u00e9atoire",
     en = "Random seed"
   ),
+  # --- Pond\u00e9ration continue du tirage (spec 014, FORDEAD/RECONFORT) -------
+  validation_weighting_label = list(
+    fr = "Pond\u00e9ration du tirage",
+    en = "Draw weighting"
+  ),
+  validation_weighting_continuous = list(
+    fr = "Par s\u00e9v\u00e9rit\u00e9 (continu)",
+    en = "By severity (continuous)"
+  ),
+  validation_weighting_uniform = list(
+    fr = "Par classe (uniforme)",
+    en = "By class (uniform)"
+  ),
+  validation_alert_weight_col = list(
+    fr = "S\u00e9v\u00e9rit\u00e9",
+    en = "Severity"
+  ),
+  validation_weight_mismatch_title = list(
+    fr = "Couche de s\u00e9v\u00e9rit\u00e9 inexploitable",
+    en = "Severity layer unusable"
+  ),
+  validation_weight_mismatch_msg = list(
+    fr = "Couche de s\u00e9v\u00e9rit\u00e9 non g\u00e9or\u00e9f\u00e9renc\u00e9e : tirage impossible.",
+    en = "Severity layer not georeferenced: cannot draw."
+  ),
   validation_generate_btn = list(
     fr = "G\u00e9n\u00e9rer plan de validation",
     en = "Generate validation plan"

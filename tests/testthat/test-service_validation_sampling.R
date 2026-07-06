@@ -86,7 +86,7 @@ test_that("generate_validation_plan FORDEAD happy path enriches provenance", {
     create_validation_sampling_plan = function(zone, alert_raster,
                                                n_validation, n_control,
                                                classes, control_classes,
-                                               buffer_m, source, seed) {
+                                               buffer_m, source, weighting = "uniform", weight_raster = NULL, seed) {
       .fake_plan(n_val = n_validation, n_ctrl = n_control)
     },
     .package = "nemeton"
@@ -138,7 +138,7 @@ test_that("generate_validation_plan FAST path reuses cached mask when present", 
     create_validation_sampling_plan = function(zone, alert_raster,
                                                n_validation, n_control,
                                                classes, control_classes,
-                                               buffer_m, source, seed) {
+                                               buffer_m, source, weighting = "uniform", weight_raster = NULL, seed) {
       .fake_plan(n_val = n_validation, n_ctrl = n_control)
     },
     .package = "nemeton"
@@ -246,7 +246,7 @@ test_that("generate_validation_plan propagates control_classes to the cœur plan
     create_validation_sampling_plan = function(zone, alert_raster,
                                                n_validation, n_control,
                                                classes, control_classes,
-                                               buffer_m, source, seed) {
+                                               buffer_m, source, weighting = "uniform", weight_raster = NULL, seed) {
       seen_control <<- control_classes
       .fake_plan(n_val = n_validation, n_ctrl = n_control)
     },
@@ -329,7 +329,7 @@ test_that("generate_validation_plan RECONFORT reads the reconfort mask + classes
     create_validation_sampling_plan = function(zone, alert_raster,
                                                n_validation, n_control,
                                                classes, control_classes,
-                                               buffer_m, source, seed) {
+                                               buffer_m, source, weighting = "uniform", weight_raster = NULL, seed) {
       seen$classes <<- classes
       seen$control <<- control_classes
       seen$source  <<- source
@@ -370,4 +370,197 @@ test_that("generate_validation_plan RECONFORT errors as validation_no_mask witho
     ),
     class = "validation_no_mask"
   )
+})
+
+
+# --- spec 014 : pondération continue (FORDEAD / RECONFORT) ----------------
+
+# Helper : zone AOI mock partagé par les tests continus.
+.mock_zone_aoi <- function() {
+  testthat::local_mocked_bindings(
+    get_monitoring_zone_aoi = function(con, zone_id) {
+      sf::st_sf(zone_id = zone_id,
+                geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+                  c(0, 0), c(40, 0), c(40, 40), c(0, 40), c(0, 0)
+                ))), crs = 2154))
+    },
+    .env = parent.frame()
+  )
+}
+
+test_that("FORDEAD continuous weighting resolves anomaly_index and forwards it", {
+  proj <- .make_project_with_zone(zone_id = 7L)
+  fordead_dir <- file.path(proj$path, "cache", "layers", "fordead", "zone_7")
+  dir.create(fordead_dir, recursive = TRUE, showWarnings = FALSE)
+  file.create(file.path(fordead_dir, "dieback_mask_20260520T100000.tif"))
+
+  alert_r <- terra::rast(nrows = 4, ncols = 4, vals = c(rep(3L, 8), rep(0L, 8)),
+                         crs = "EPSG:2154", extent = terra::ext(0, 40, 0, 40))
+  sev_r   <- terra::rast(nrows = 4, ncols = 4, vals = seq_len(16),
+                         crs = "EPSG:2154", extent = terra::ext(0, 40, 0, 40))
+  seen <- new.env()
+  .mock_zone_aoi()
+  testthat::local_mocked_bindings(
+    read_fordead_dieback_mask = function(con, zone_id, run_id = NULL,
+                                         cache_dir) alert_r,
+    read_fordead_layer = function(con, zone_id, layer, run_id = NULL,
+                                  cache_dir = NULL, ...) {
+      seen$layer <- layer; seen$zone_id <- zone_id; sev_r
+    },
+    find_zones_by_project = function(con, project_uuid) {
+      data.frame(id = c(41L, 42L), name = c("proj_res", "proj_tot"))
+    },
+    create_validation_sampling_plan = function(zone, alert_raster, n_validation,
+                                               n_control, classes, control_classes,
+                                               buffer_m, source,
+                                               weighting = "uniform",
+                                               weight_raster = NULL, seed) {
+      seen$weighting <- weighting
+      seen$has_weight <- inherits(weight_raster, "SpatRaster")
+      p <- .fake_plan(n_val = n_validation, n_ctrl = n_control)
+      p$alert_weight <- as.numeric(seq_len(nrow(p)))   # colonne mode continu
+      p
+    },
+    .package = "nemeton"
+  )
+
+  plan <- nemetonshiny:::generate_validation_plan(
+    con = "fake-con", project = proj, source = "FORDEAD",
+    n_validation = 2L, n_control = 1L, weighting = "continuous"
+  )
+
+  expect_equal(seen$layer, "anomaly_index")     # couche continue lue
+  expect_equal(seen$zone_id, 42L)               # id _tot résolu
+  expect_equal(seen$weighting, "continuous")    # transmis au cœur
+  expect_true(seen$has_weight)                  # weight_raster non-NULL
+  expect_true("alert_weight" %in% names(plan))  # colonne exposée
+})
+
+test_that("FORDEAD continuous falls back to uniform when anomaly_index is absent", {
+  proj <- .make_project_with_zone(zone_id = 7L)
+  fordead_dir <- file.path(proj$path, "cache", "layers", "fordead", "zone_7")
+  dir.create(fordead_dir, recursive = TRUE, showWarnings = FALSE)
+  file.create(file.path(fordead_dir, "dieback_mask_20260520T100000.tif"))
+
+  alert_r <- terra::rast(nrows = 4, ncols = 4, vals = c(rep(3L, 8), rep(0L, 8)),
+                         crs = "EPSG:2154", extent = terra::ext(0, 40, 0, 40))
+  seen <- new.env()
+  .mock_zone_aoi()
+  testthat::local_mocked_bindings(
+    read_fordead_dieback_mask = function(con, zone_id, run_id = NULL,
+                                         cache_dir) alert_r,
+    read_fordead_layer = function(con, zone_id, layer, run_id = NULL,
+                                  cache_dir = NULL, ...) NULL,  # ancien run : pas de couche
+    find_zones_by_project = function(con, project_uuid) {
+      data.frame(id = 42L, name = "proj_tot")
+    },
+    create_validation_sampling_plan = function(zone, alert_raster, n_validation,
+                                               n_control, classes, control_classes,
+                                               buffer_m, source,
+                                               weighting = "uniform",
+                                               weight_raster = NULL, seed) {
+      seen$weighting <- weighting
+      seen$weight_null <- is.null(weight_raster)
+      .fake_plan(n_val = n_validation, n_ctrl = n_control)  # pas d'alert_weight
+    },
+    .package = "nemeton"
+  )
+
+  plan <- nemetonshiny:::generate_validation_plan(
+    con = "fake-con", project = proj, source = "FORDEAD",
+    n_validation = 2L, n_control = 1L, weighting = "continuous"
+  )
+
+  expect_equal(seen$weighting, "uniform")        # repli app
+  expect_true(seen$weight_null)                  # aucun raster transmis
+  expect_false("alert_weight" %in% names(plan))  # colonne absente en uniforme
+})
+
+test_that("continuous weighting maps the core mismatch to validation_weight_mismatch", {
+  proj <- .make_project_with_zone(zone_id = 7L)
+  fordead_dir <- file.path(proj$path, "cache", "layers", "fordead", "zone_7")
+  dir.create(fordead_dir, recursive = TRUE, showWarnings = FALSE)
+  file.create(file.path(fordead_dir, "dieback_mask_20260520T100000.tif"))
+
+  alert_r <- terra::rast(nrows = 4, ncols = 4, vals = 3L,
+                         crs = "EPSG:2154", extent = terra::ext(0, 40, 0, 40))
+  sev_r   <- terra::rast(nrows = 4, ncols = 4, vals = seq_len(16),
+                         crs = "EPSG:2154", extent = terra::ext(0, 40, 0, 40))
+  .mock_zone_aoi()
+  testthat::local_mocked_bindings(
+    read_fordead_dieback_mask = function(con, zone_id, run_id = NULL,
+                                         cache_dir) alert_r,
+    read_fordead_layer = function(con, zone_id, layer, run_id = NULL,
+                                  cache_dir = NULL, ...) sev_r,
+    find_zones_by_project = function(con, project_uuid) {
+      data.frame(id = 42L, name = "proj_tot")
+    },
+    create_validation_sampling_plan = function(zone, alert_raster, n_validation,
+                                               n_control, classes, control_classes,
+                                               buffer_m, source,
+                                               weighting = "uniform",
+                                               weight_raster = NULL, seed) {
+      rlang::abort("no CRS", class = "validation_weight_raster_mismatch")
+    },
+    .package = "nemeton"
+  )
+
+  expect_error(
+    nemetonshiny:::generate_validation_plan(
+      con = "fake-con", project = proj, source = "FORDEAD",
+      n_validation = 2L, n_control = 1L, weighting = "continuous"
+    ),
+    class = "validation_weight_mismatch"
+  )
+})
+
+test_that("RECONFORT continuous weighting resolves the score layer from the cache manifest", {
+  proj <- .make_project_with_zone(zone_id = 7L)
+  reconfort_dir <- file.path(proj$path, "cache", "layers", "reconfort", "zone_7")
+  dir.create(reconfort_dir, recursive = TRUE, showWarnings = FALSE)
+  file.create(file.path(reconfort_dir, "reconfort_mask_20260601T120000.tif"))
+
+  alert_r <- terra::rast(nrows = 4, ncols = 4, vals = c(rep(2L, 8), rep(1L, 8)),
+                         crs = "EPSG:2154", extent = terra::ext(0, 40, 0, 40))
+  sev_r   <- terra::rast(nrows = 4, ncols = 4, vals = seq_len(16),
+                         crs = "EPSG:2154", extent = terra::ext(0, 40, 0, 40))
+  seen <- new.env()
+  .mock_zone_aoi()
+  testthat::local_mocked_bindings(
+    read_reconfort_alert_mask = function(con, zone_id, run_id = NULL,
+                                         cache_dir) alert_r,
+    reconfort_cache_manifest = function(cache_dir, zone_id, run_id = NULL,
+                                        include_range = FALSE) {
+      data.frame(id = c("score", "classification"),
+                 type = c("raster", "raster"),
+                 stringsAsFactors = FALSE)
+    },
+    read_reconfort_layer = function(layer, con = NULL, zone_id = NULL,
+                                    apply_zone_mask = TRUE, mask_polygon = NULL) {
+      seen$layer_id <- layer$id; sev_r
+    },
+    create_validation_sampling_plan = function(zone, alert_raster, n_validation,
+                                               n_control, classes, control_classes,
+                                               buffer_m, source,
+                                               weighting = "uniform",
+                                               weight_raster = NULL, seed) {
+      seen$weighting <- weighting
+      seen$has_weight <- inherits(weight_raster, "SpatRaster")
+      p <- .fake_plan(n_val = n_validation, n_ctrl = n_control)
+      p$alert_weight <- as.numeric(seq_len(nrow(p)))
+      p
+    },
+    .package = "nemeton"
+  )
+
+  plan <- nemetonshiny:::generate_validation_plan(
+    con = "fake-con", project = proj, source = "RECONFORT",
+    zone_id = 7L, n_validation = 2L, n_control = 1L,
+    classes = c(2L, 3L), control_classes = c(1L), weighting = "continuous"
+  )
+
+  expect_equal(seen$layer_id, "score")          # couche continue (pas classification)
+  expect_equal(seen$weighting, "continuous")
+  expect_true(seen$has_weight)
+  expect_true("alert_weight" %in% names(plan))
 })
