@@ -1,5 +1,17 @@
 # nemetonshiny (development version)
 
+### Fixed — reGénération : R3 sécheresse utilise enfin le DEM terrain
+
+- R3 affichait toujours « R3: no DEM; drought stress from BILJOU metrics alone »
+  et ignorait la modulation topographique (pente / exposition / TWI) : le loader
+  ne lisait le DEM que depuis `<projet>/cache/regeneration/dem.tif`, un fichier
+  **jamais produit** par l'app. Il réutilise désormais le **DEM terrain déjà
+  acquis par le pipeline principal** — LiDAR HD **MNT** 1 m (`lidar_mnt_mosaic.tif`,
+  NDP-1) en priorité, BD ALTI 25 m en repli — cherché à la racine du projet **et**
+  sous `cache/layers/`.
+- Rappel : `lidar_mnh_mosaic.tif` est un **modèle de hauteur de canopée (MNH)**,
+  pas un DEM terrain (MNT) — il n'est volontairement pas utilisé pour R3.
+
 # nemetonshiny 0.100.5
 
 ### Fixed — reGénération : bouton « Auto (E-OBS) » ne téléchargeait rien

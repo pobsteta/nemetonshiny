@@ -209,6 +209,69 @@ test_that("regeneration_species_choices falls back to tolerances when core yield
   expect_true(is.data.frame(out) && all(c("code", "label") %in% names(out)))
 })
 
+.write_tiny_tif <- function(path, val = 100) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  r <- terra::rast(nrows = 4, ncols = 4, vals = val, crs = "EPSG:2154",
+                   extent = terra::ext(0, 40, 0, 40))
+  terra::writeRaster(r, path, overwrite = TRUE)
+  path
+}
+
+test_that(".resolve_regen_dem finds the LiDAR MNT mosaic at the project root", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    proj <- getwd()
+    # MNH (canopée) NE doit PAS être pris pour un DEM ; MNT (terrain) oui.
+    .write_tiny_tif(file.path(proj, "lidar_mnh_mosaic.tif"), val = 15)
+    .write_tiny_tif(file.path(proj, "lidar_mnt_mosaic.tif"), val = 250)
+    dem <- nemetonshiny:::.resolve_regen_dem(proj)
+    expect_s4_class(dem, "SpatRaster")
+    expect_equal(unname(terra::minmax(dem)[1, 1]), 250)   # le MNT, pas le MNH
+  })
+})
+
+test_that(".resolve_regen_dem prefers the explicit regeneration override", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    proj <- getwd()
+    .write_tiny_tif(file.path(proj, "lidar_mnt_mosaic.tif"), val = 250)
+    .write_tiny_tif(file.path(proj, "cache", "regeneration", "dem.tif"), val = 111)
+    dem <- nemetonshiny:::.resolve_regen_dem(proj)
+    expect_equal(unname(terra::minmax(dem)[1, 1]), 111)   # override prioritaire
+  })
+})
+
+test_that(".resolve_regen_dem falls back to BD ALTI under cache/layers", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    proj <- getwd()
+    .write_tiny_tif(file.path(proj, "cache", "layers", "dem.tif"), val = 88)
+    dem <- nemetonshiny:::.resolve_regen_dem(proj)
+    expect_equal(unname(terra::minmax(dem)[1, 1]), 88)
+  })
+})
+
+test_that(".resolve_regen_dem returns NULL when no terrain DEM is present", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    proj <- getwd()
+    # Seul un MNH (canopée) présent → pas de DEM terrain.
+    .write_tiny_tif(file.path(proj, "lidar_mnh_mosaic.tif"), val = 12)
+    expect_null(nemetonshiny:::.resolve_regen_dem(proj))
+  })
+})
+
+test_that("load_regeneration_precomputed exposes the DEM even without a regen cache", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    proj <- getwd()
+    .write_tiny_tif(file.path(proj, "lidar_mnt_mosaic.tif"), val = 200)
+    pc <- nemetonshiny:::load_regeneration_precomputed(proj)
+    expect_true(!is.null(pc$dem))
+    expect_s4_class(pc$dem, "SpatRaster")
+  })
+})
+
 test_that("REGEN_OUTPUT_COLUMNS covers the §7 contract", {
   cols <- nemetonshiny:::REGEN_OUTPUT_COLUMNS
   expect_true(all(c("indice_priorite_regen", "sensibilite", "njstress", "istress",
