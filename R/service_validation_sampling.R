@@ -36,6 +36,11 @@
 #'   to a higher class by the UI when the alert raster has no class-0
 #'   cell (e.g. every pixel dropped below threshold at least once).
 #' @param buffer_m Numeric. Tampon around alert cells in meters.
+#' @param weighting One of `"uniform"` (default, weight = alert class — the
+#'   historical behaviour) or `"continuous"` (weight proportional to a
+#'   continuous severity raster — FORDEAD `anomaly_index` / RECONFORT `score`,
+#'   parity with the FAST trend plan). Only honoured for FORDEAD / RECONFORT;
+#'   degrades cleanly to `"uniform"` when the severity layer is unavailable.
 #' @param seed Optional integer. Forwarded to the cœur planner.
 #' @param ndvi_threshold,nbr_threshold,mode,window_days,date_from,date_to
 #'   FAST mask parameters. Required (non-NULL) when `source == "FAST"`
@@ -45,6 +50,8 @@
 #'   `plot_id`, `type` (Validation / Temoin), `alert_class`,
 #'   `visit_order`, `source`, `classes`, `seed`, plus the app
 #'   provenance columns `zone_id`, `source_run_id`, `generated_at`.
+#'   In `weighting = "continuous"` mode the core adds an `alert_weight`
+#'   column (raw severity at the drawn point).
 #' @noRd
 generate_validation_plan <- function(con, project,
                                      source = c("FORDEAD", "FAST", "RECONFORT"),
@@ -54,6 +61,10 @@ generate_validation_plan <- function(con, project,
                                      classes      = c(3L, 4L),
                                      control_classes = c(0L),
                                      buffer_m     = 0,
+                                     # spec 014 — pondération du tirage : "uniform"
+                                     # (poids = classe, historique) ou "continuous"
+                                     # (poids ∝ raster de sévérité continu, parité FAST).
+                                     weighting    = c("uniform", "continuous"),
                                      seed         = NULL,
                                      ndvi_threshold = NULL,
                                      nbr_threshold  = NULL,
@@ -65,6 +76,7 @@ generate_validation_plan <- function(con, project,
                                      # NULL → "NDVI" (défaut cœur).
                                      index          = NULL) {
   source <- match.arg(source)
+  weighting <- match.arg(weighting)
   if (is.null(project) || is.null(project$id)) {
     rlang::abort("No project loaded.", class = "validation_no_project")
   }
@@ -100,6 +112,20 @@ generate_validation_plan <- function(con, project,
                  class = "validation_no_mask")
   }
 
+  # Pondération continue (spec 014) : résoudre le raster de sévérité continu
+  # (FORDEAD anomaly_index / RECONFORT score). Repli propre décidé PAR L'APP
+  # (plus permissif que le garde-fou cœur) : couche absente → tirage uniforme.
+  weight_raster <- NULL
+  if (identical(weighting, "continuous") &&
+      source %in% c("FORDEAD", "RECONFORT")) {
+    weight_raster <- .resolve_weight_raster(project, con, zone_id, source)
+    if (is.null(weight_raster)) {
+      cli::cli_alert_info(
+        "No continuous severity layer for {source}; falling back to uniform weighting.")
+      weighting <- "uniform"
+    }
+  }
+
   plan <- tryCatch(
     nemeton::create_validation_sampling_plan(
       zone         = zone,
@@ -110,12 +136,19 @@ generate_validation_plan <- function(con, project,
       control_classes = as.integer(control_classes),
       buffer_m     = as.numeric(buffer_m),
       source       = source,
+      weighting    = weighting,
+      weight_raster = weight_raster,
       seed         = seed
     ),
     error = function(e) {
       if (inherits(e, "nemeton_empty_alert_mask")) {
         rlang::abort("No alert cell in the chosen classes.",
                      class = "validation_empty_mask",
+                     parent = e)
+      }
+      if (inherits(e, "validation_weight_raster_mismatch")) {
+        rlang::abort("Severity raster not georeferenced / not alignable.",
+                     class = "validation_weight_mismatch",
                      parent = e)
       }
       stop(e)
@@ -335,6 +368,78 @@ generate_trend_sanitary_plan <- function(con, project,
     nemeton::read_fast_alert_mask(con, zone_id, cache_dir = cd),
     error = function(e) NULL
   )
+}
+
+
+# Resolve the FORDEAD `_tot` zone id (union of UGF strata, spec 020) : the
+# continuous `anomaly_index` pixel layer lives under
+# `cache/layers/fordead/zone_<id_tot>/`, like the FORDEAD map viewer. Falls back
+# to the passed zone_id (back-compat pre-spec-020). Mirror of the module-local
+# `.fordead_tot_id` in `mod_monitoring_fordead_map.R`.
+.fordead_tot_zone_id <- function(con, project, fallback_zone) {
+  id_tot <- tryCatch({
+    zdf <- nemeton::find_zones_by_project(con, project_uuid = project$id)
+    idx <- grep("_tot$", as.character(zdf$name))
+    if (length(idx)) as.integer(zdf$id[idx[1]]) else NA_integer_
+  }, error = function(e) NA_integer_)
+  if (!is.na(id_tot)) id_tot else suppressWarnings(as.integer(fallback_zone))
+}
+
+
+# Resolve the CONTINUOUS severity raster used to weight the validation draw
+# (`weighting = "continuous"`), the analogue of the FAST |slope| trend raster.
+# - FORDEAD : `anomaly_index` pixel layer, read on the `_tot` stratum (the core
+#   re-aligns it onto the categorical dieback mask grid).
+# - RECONFORT : the continuous `score` raster, resolved from the on-disk cache
+#   manifest (parity with the reloaded-project path of the RECONFORT map viewer
+#   — no in-memory run result required).
+# Returns NULL when the severity layer is unavailable (older run predating the
+# layer) — the caller then degrades cleanly to uniform weighting.
+.resolve_weight_raster <- function(project, con, zone_id, source) {
+  if (is.null(project$path) || !nzchar(project$path)) return(NULL)
+
+  if (identical(source, "FORDEAD")) {
+    cd <- file.path(project$path, "cache", "layers", "fordead")
+    if (!dir.exists(cd)) return(NULL)
+    id_tot <- .fordead_tot_zone_id(con, project, zone_id)
+    return(tryCatch(
+      nemeton::read_fordead_layer(con, zone_id = id_tot,
+                                  layer = "anomaly_index", cache_dir = cd),
+      error = function(e) {
+        cli::cli_alert_warning("read_fordead_layer (anomaly_index) failed: {e$message}")
+        NULL
+      }
+    ))
+  }
+
+  if (identical(source, "RECONFORT")) {
+    cd <- file.path(project$path, "cache", "layers", "reconfort")
+    if (!dir.exists(cd)) return(NULL)
+    man <- tryCatch(
+      nemeton::reconfort_cache_manifest(cd, zone_id = as.integer(zone_id),
+                                        include_range = TRUE),
+      error = function(e) {
+        cli::cli_alert_warning("reconfort_cache_manifest failed: {e$message}")
+        NULL
+      }
+    )
+    if (is.null(man) || !nrow(man)) return(NULL)
+    # Couche continue = `score` (le catégoriel 1/2/3 = `classification` sert
+    # d'alert_raster). Ne pas confondre.
+    row <- man[man$id == "score" & man$type == "raster", , drop = FALSE]
+    if (!nrow(row)) return(NULL)
+    aoi <- .resolve_validation_zone(project, con, zone_id)
+    return(tryCatch(
+      nemeton::read_reconfort_layer(layer = row, mask_polygon = aoi,
+                                    apply_zone_mask = TRUE),
+      error = function(e) {
+        cli::cli_alert_warning("read_reconfort_layer (score) failed: {e$message}")
+        NULL
+      }
+    ))
+  }
+
+  NULL   # FAST : chemin trend séparé (generate_trend_sanitary_plan).
 }
 
 

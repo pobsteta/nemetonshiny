@@ -96,6 +96,20 @@ mod_validation_sampling_ui <- function(id, source = NULL) {
         label = i18n$t("validation_n_control_label"),
         value = 5L, min = 0L, max = 100L, step = 1L
       ),
+      # spec 014 — pondération du tirage. Continu (∝ sévérité par pixel :
+      # FORDEAD anomaly_index / RECONFORT score) = défaut, parité FAST ; les
+      # classes ci-dessous restent le masque d'éligibilité. Uniforme = poids
+      # par classe (historique).
+      shiny::radioButtons(
+        ns("weighting"),
+        label = i18n$t("validation_weighting_label"),
+        choices = stats::setNames(
+          c("continuous", "uniform"),
+          c(i18n$t("validation_weighting_continuous"),
+            i18n$t("validation_weighting_uniform"))
+        ),
+        selected = "continuous"
+      ),
       # spec 021 — RECONFORT : masque catégoriel 1/2/3, alertes c(2,3),
       # témoins c(1). FORDEAD : échelle 0-4.
       if (identical(source, "RECONFORT")) {
@@ -526,6 +540,10 @@ mod_validation_sampling_server <- function(id, app_state,
           classes         = classes_int,
           control_classes = control_int,
           buffer_m        = as.numeric(input$buffer_m %||% 0),
+          # spec 014 — pondération continue (FORDEAD/RECONFORT). NULL sur FAST
+          # (chemin trend séparé) → "uniform". Le service replie proprement en
+          # uniforme si la couche de sévérité est absente.
+          weighting       = input$weighting %||% "uniform",
           seed            = as.integer(input$seed %||% 42L),
           ndvi_threshold  = th$ndvi,
           nbr_threshold   = th$nbr,
@@ -643,10 +661,15 @@ mod_validation_sampling_server <- function(id, app_state,
         # dédié (≠ « zone saine » du masque catégoriel count/rolling).
         empty_trend <- "validation_empty_trend" %in% err$class
         empty_mask  <- "validation_empty_mask" %in% err$class
+        # spec 014 — raster de sévérité non géoréférencé / non alignable
+        # (pondération continue) : message dédié, ≠ « pas de masque ».
+        weight_mismatch <- "validation_weight_mismatch" %in% err$class
         title_key <- if (empty_trend) {
           "validation_empty_trend_title"
         } else if (empty_mask) {
           "validation_empty_mask_title"
+        } else if (weight_mismatch) {
+          "validation_weight_mismatch_title"
         } else {
           "validation_no_mask_title"
         }
@@ -654,6 +677,8 @@ mod_validation_sampling_server <- function(id, app_state,
           "validation_empty_trend_body"
         } else if (empty_mask) {
           "validation_empty_mask_body"
+        } else if (weight_mismatch) {
+          "validation_weight_mismatch_msg"
         } else {
           "validation_no_mask_body"
         }
@@ -715,13 +740,25 @@ mod_validation_sampling_server <- function(id, app_state,
         colors <- c(Validation = "#2CA02C", Temoin = "#7F7F7F")
         types[!types %in% names(colors)] <- "Validation"
         fill <- unname(colors[types])
+        # spec 014 — pondération continue : le plan porte `alert_weight`
+        # (sévérité brute au point tiré). Ajouté à l'infobulle quand présent.
+        has_weight <- "alert_weight" %in% names(plan_ll)
+        wt <- if (has_weight)
+          suppressWarnings(as.numeric(plan_ll$alert_weight)) else NULL
+        sev_lbl <- i18n$t("validation_alert_weight_col")
         popups <- vapply(seq_len(nrow(plan_ll)), function(i) {
-          sprintf("<strong>%s</strong><br/>%s — class %s<br/>visit_order: %d",
-                  htmltools::htmlEscape(as.character(plan_ll$plot_id[i])),
-                  htmltools::htmlEscape(types[i]),
-                  htmltools::htmlEscape(as.character(
-                    plan_ll$alert_class[i] %||% NA)),
-                  as.integer(plan_ll$visit_order[i] %||% NA))
+          base <- sprintf(
+            "<strong>%s</strong><br/>%s — class %s<br/>visit_order: %d",
+            htmltools::htmlEscape(as.character(plan_ll$plot_id[i])),
+            htmltools::htmlEscape(types[i]),
+            htmltools::htmlEscape(as.character(
+              plan_ll$alert_class[i] %||% NA)),
+            as.integer(plan_ll$visit_order[i] %||% NA))
+          if (has_weight && is.finite(wt[i])) {
+            base <- sprintf("%s<br/>%s : %.3g", base,
+                            htmltools::htmlEscape(sev_lbl), wt[i])
+          }
+          base
         }, character(1))
       }
 
@@ -810,9 +847,12 @@ mod_validation_sampling_server <- function(id, app_state,
       plan <- plan_rv()
       if (is.null(plan)) return(NULL)
       df <- sf::st_drop_geometry(plan)
+      # `alert_weight` (spec 014, mode continu) inséré après `alert_value` ;
+      # absent en mode uniforme et sur FAST catégoriel (intersect le retire).
       keep <- intersect(
-        c("plot_id", "type", "alert_value", "index", "alert_class",
-          "visit_order", "source", "source_run_id", "generated_at"),
+        c("plot_id", "type", "alert_value", "alert_weight", "index",
+          "alert_class", "visit_order", "source", "source_run_id",
+          "generated_at"),
         names(df)
       )
       DT::datatable(df[, keep, drop = FALSE], rownames = FALSE,
