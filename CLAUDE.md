@@ -31,6 +31,11 @@ platform_nemeton       → Documentation plateforme, ADR, glossaire.
 
 **Règle de dépendance** : les flèches vont **toujours** vers `nemeton`. `nemetonshiny` importe `nemeton` (120+ fonctions exportées, commit `720a433`) ; jamais l'inverse.
 
+## Briefs d'intégration (repo cœur)
+Les instructions d'intégration app sont livrées comme briefs dans le repo frère
+`nemeton` : `/home/pascal/dev/nemeton/specs/**/brief-nemetonshiny*.md`. Les lire
+avant d'implémenter une fonctionnalité issue du cœur. Lecture seule sur `nemeton`.
+
 ## Les 12 familles d'indicateurs
 
 | Code | Famille | Indicateurs |
