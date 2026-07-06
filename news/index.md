@@ -1,6 +1,24 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.100.4
+
+#### Added — Validation : tirage pondéré continu FORDEAD/RECONFORT (spec 014)
+
+- Les onglets **FORDEAD** et **RECONFORT** du plan de validation offrent
+  désormais la même pondération **continue** que l’onglet FAST : les
+  placettes sont tirées avec une probabilité d’inclusion **∝ la sévérité
+  continue par pixel** (FORDEAD `anomaly_index`, RECONFORT `score`), au
+  lieu du seul poids par classe. Un sélecteur « Pondération du tirage »
+  (continu / uniforme, défaut **continu**) apparaît ; les classes
+  restent le **masque d’éligibilité**. La colonne `alert_weight`
+  (sévérité au point tiré) est exposée dans la table et l’infobulle
+  carte. Normalisation et équilibre GRTS restent côté cœur.
+- Repli propre décidé par l’app : si un ancien run ne porte pas la
+  couche de sévérité, le tirage retombe en **uniforme** (info, pas
+  d’erreur). Un raster de sévérité non géoréférencé est signalé
+  (`validation_weight_mismatch`).
+- Plancher cœur relevé à `nemeton (>= 0.140.0)`
+  (`create_validation_sampling_plan(weighting, weight_raster)`).
 
 ## nemetonshiny 0.100.3
 

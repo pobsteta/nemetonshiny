@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.4\] - 2026-07-06
+
+### Added
+
+- Validation : les onglets FORDEAD et RECONFORT du plan de validation
+  offrent le tirage pondéré **continu** (parité FAST) — probabilité
+  d’inclusion ∝ sévérité continue par pixel (FORDEAD `anomaly_index`,
+  RECONFORT `score`), sélecteur « Pondération du tirage » (continu par
+  défaut), colonne `alert_weight` en table et infobulle. Repli propre en
+  uniforme si la couche de sévérité est absente. Plancher cœur relevé à
+  `nemeton (>= 0.140.0)`.
+
 ## \[0.100.3\] - 2026-07-05
 
 ### Added
