@@ -4057,6 +4057,8 @@ TRANSLATIONS <- list(
   regen_engine_run = list(fr = "Lancer le moteur r\u00e9el", en = "Run the real engine"),
   regen_engine_tip = list(fr = "Lance le vrai mod\u00e8le microclimf (structure LiDAR HD + for\u00e7age ERA5-Land) pour calculer la sensibilit\u00e9 microclimatique. Co\u00fbteux (minutes \u00e0 heures) : s'ex\u00e9cute en arri\u00e8re-plan sans bloquer l'application.", en = "Runs the real microclimf model (LiDAR HD structure + ERA5-Land forcing) to compute microclimatic sensitivity. Expensive (minutes to hours): runs in the background without blocking the app."),
   regen_engine_running = list(fr = "Moteur microclimf en cours (LiDAR HD + ERA5) \u2014 cela peut prendre plusieurs minutes\u2026", en = "microclimf engine running (LiDAR HD + ERA5) \u2014 this can take several minutes\u2026"),
+  regen_engine_running_short = list(fr = "Moteur en cours\u2026", en = "Engine running\u2026"),
+  regen_auto_running_short = list(fr = "D\u00e9tection E-OBS\u2026", en = "E-OBS detection\u2026"),
   regen_engine_done = list(fr = "Moteur microclimf termin\u00e9 \u2014 sensibilit\u00e9 mise \u00e0 jour et mise en cache.", en = "microclimf engine finished \u2014 sensitivity updated and cached."),
   regen_engine_ready = list(fr = "Pr\u00e9requis r\u00e9unis (grille LiDAR HD + identifiants CDS).", en = "Prerequisites met (LiDAR HD grid + CDS credentials)."),
   regen_engine_prereq_core = list(fr = "Moteur indisponible : nemeton::regen_sensibilite absent (mettez \u00e0 jour le c\u0153ur).", en = "Engine unavailable: nemeton::regen_sensibilite missing (update the core)."),

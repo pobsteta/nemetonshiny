@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.7] - 2026-07-06
+
+### Changed
+
+- reGénération : les boutons « Lancer le moteur réel » et « Auto (E-OBS) »
+  deviennent des `bslib::input_task_button` (désactivation + spinner pendant la
+  tâche, anti-run-concurrent), avec notification persistante bas-droite et chrono
+  MM:SS sous chaque bouton.
+- Hygiène CRS à la source : LiDAR HD stampé EPSG:2154 (mosaïque / cache /
+  couverture, conditionnel si autorité absente), WMS NDP 0 (DEM BD ALTI + IRC)
+  réassigné EPSG:4326 — supprime « No DEM available » et « CRS do not match ».
+- Theia : retrait de l'appel déprécié `theia_configure_s3()` (signature interne
+  via gateway STAC, R pur) ; commentaires reticulate périmés mis à jour.
+
 ## [0.100.6] - 2026-07-06
 
 ### Fixed

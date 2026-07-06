@@ -5,6 +5,15 @@
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
+test_that(".fmt_elapsed formats the async button chrono", {
+  expect_identical(nemetonshiny:::.fmt_elapsed(NULL), "")
+  # MM:SS sous une heure ; H:MM:SS au-delà. Bornes de secondes tolérantes
+  # (Sys.time() avance entre les deux appels).
+  expect_match(nemetonshiny:::.fmt_elapsed(Sys.time() - 65), "^01:0[45]$")
+  expect_match(nemetonshiny:::.fmt_elapsed(Sys.time() - 3725), "^1:02:0[45]$")
+  expect_match(nemetonshiny:::.fmt_elapsed(Sys.time() - 5), "^00:0[456]$")
+})
+
 .regen_mod_units <- function(n = 3) {
   polys <- lapply(seq_len(n), function(i) {
     x0 <- i * 10

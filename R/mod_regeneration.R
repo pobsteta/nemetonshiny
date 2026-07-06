@@ -5,6 +5,19 @@
 # Pattern golem : mod_regeneration_ui(id) + mod_regeneration_server(id, app_state).
 # Aucune logique métier ici — tout passe par service_regeneration (→ nemeton).
 
+# Durée écoulée depuis `start` en "MM:SS" (ou "H:MM:SS" au-delà d'une heure).
+# Sert au chrono des boutons async (moteur réel / Auto E-OBS). "" si NULL.
+.fmt_elapsed <- function(start) {
+  if (is.null(start)) return("")
+  s <- as.integer(difftime(Sys.time(), start, units = "secs"))
+  if (s < 0L) s <- 0L
+  if (s >= 3600L) {
+    sprintf("%d:%02d:%02d", s %/% 3600L, (s %% 3600L) %/% 60L, s %% 60L)
+  } else {
+    sprintf("%02d:%02d", s %/% 60L, s %% 60L)
+  }
+}
+
 #' reGénération tab UI
 #' @param id Module id.
 #' @noRd
@@ -36,9 +49,12 @@ mod_regeneration_ui <- function(id) {
           i18n$t("regen_year_canicule"), value = 2022, min = 1990, max = 2100, step = 1))
       ),
       bslib::tooltip(
-        shiny::actionButton(ns("auto_years"), i18n$t("regen_year_auto"),
-          class = "btn-outline-secondary btn-sm mb-2", icon = bsicons::bs_icon("magic")),
+        bslib::input_task_button(ns("auto_years"), i18n$t("regen_year_auto"),
+          icon = bsicons::bs_icon("magic"),
+          label_busy = i18n$t("regen_auto_running_short"),
+          type = "outline-secondary", class = "btn-sm mb-2"),
         i18n$t("regen_year_auto_tip"), placement = "right"),
+      shiny::uiOutput(ns("eobs_status")),
       shiny::uiOutput(ns("eobs_index_display")),
 
       # --- Peuplement ----------------------------------------------------
@@ -103,8 +119,10 @@ mod_regeneration_ui <- function(id) {
       htmltools::tags$hr(class = "my-2"),
       htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_engine_section")),
       bslib::tooltip(
-        shiny::actionButton(ns("run_engine"), i18n$t("regen_engine_run"),
-          class = "btn-outline-primary btn-sm w-100", icon = bsicons::bs_icon("cpu")),
+        bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
+          icon = bsicons::bs_icon("cpu"),
+          label_busy = i18n$t("regen_engine_running_short"),
+          type = "outline-primary", class = "btn-sm w-100"),
         i18n$t("regen_engine_tip"), placement = "right"),
       shiny::uiOutput(ns("engine_status"))
     ),
@@ -156,7 +174,11 @@ mod_regeneration_server <- function(id, app_state) {
 
     rv <- shiny::reactiveValues(
       result = NULL, years = NULL, warnings = character(0),
-      running = FALSE, eobs = NULL
+      running = FALSE, eobs = NULL,
+      # Chrono des boutons async (spec 027 feedback) : instant de départ, remis
+      # à NULL à la fin de la tâche. NULL = pas de run en cours.
+      engine_running = FALSE, eobs_running = FALSE,
+      engine_start = NULL, eobs_start = NULL
     )
 
     # UGF units of the current project (EPSG:2154), with the same geometry
@@ -215,12 +237,19 @@ mod_regeneration_server <- function(id, app_state) {
     shiny::observeEvent(input$auto_years, {
       units <- units_sf()
       if (is.null(units)) {
+        # Le bouton passe « busy » dès le clic : le remettre prêt sur ce retour
+        # anticipé, sinon il reste grisé.
+        bslib::update_task_button("auto_years", state = "ready")
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       rv$eobs_running <- TRUE
-      shiny::showNotification(i18n$t("regen_auto_running"), type = "message", duration = 6)
+      rv$eobs_start <- Sys.time()
+      # Notif persistante en bas à droite (retirée en fin de tâche) — le run
+      # E-OBS (CDS) peut durer plusieurs minutes.
+      shiny::showNotification(i18n$t("regen_auto_running"), type = "message",
+                              duration = NULL, id = session$ns("eobs_notif"))
       eobs_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
     })
 
@@ -228,6 +257,8 @@ mod_regeneration_server <- function(id, app_state) {
       st <- eobs_task$status()
       if (identical(st, "success")) {
         rv$eobs_running <- FALSE
+        rv$eobs_start <- NULL
+        shiny::removeNotification(session$ns("eobs_notif"))
         yrs <- tryCatch(eobs_task$result(), error = function(e) NULL)
         if (!is.null(yrs) && !is.null(yrs$year_moyenne)) {
           shiny::updateNumericInput(session, "year_moyenne", value = yrs$year_moyenne)
@@ -241,15 +272,27 @@ mod_regeneration_server <- function(id, app_state) {
         }
       } else if (identical(st, "error")) {
         rv$eobs_running <- FALSE
+        rv$eobs_start <- NULL
+        shiny::removeNotification(session$ns("eobs_notif"))
         shiny::showNotification(i18n$t("regen_auto_none"), type = "warning", duration = 6)
       }
     })
 
+    # Statut/chrono sous le bouton Auto (E-OBS) — tick chaque seconde tant que
+    # la détection tourne (spec 027 feedback). Le sablier « en cours » vit
+    # désormais ici (retiré de eobs_index_display pour ne pas doubler).
+    output$eobs_status <- shiny::renderUI({
+      if (!isTRUE(rv$eobs_running)) return(NULL)
+      shiny::invalidateLater(1000)
+      htmltools::div(class = "small text-info mt-1",
+        bsicons::bs_icon("hourglass-split", class = "me-1"),
+        i18n$t("regen_auto_running_short"),
+        htmltools::tags$span(class = "ms-1 font-monospace",
+                             .fmt_elapsed(rv$eobs_start)))
+    })
+
     output$eobs_index_display <- shiny::renderUI({
-      if (isTRUE(rv$eobs_running)) {
-        return(htmltools::tags$small(class = "text-info d-block mb-2",
-          bsicons::bs_icon("hourglass-split", class = "me-1"), i18n$t("regen_auto_running")))
-      }
+      if (isTRUE(rv$eobs_running)) return(NULL)   # chrono affiché par eobs_status
       if (is.null(rv$eobs)) return(NULL)
       htmltools::tags$small(class = "text-muted d-block mb-2",
         sprintf("%s : %s / %s", i18n$t("regen_eobs_index"),
@@ -363,16 +406,25 @@ mod_regeneration_server <- function(id, app_state) {
         }, seed = TRUE)
       })
 
+    # Lier chaque input_task_button à sa tâche : bslib désactive le bouton +
+    # affiche le spinner tant que la tâche tourne, puis le réactive (succès OU
+    # erreur). Empêche les runs concurrents (réécriture sensibilite/biljou.gpkg).
+    # `bind_task_button()` prend l'id local au module (sans ns()).
+    bslib::bind_task_button(engine_task, "run_engine")
+    bslib::bind_task_button(eobs_task, "auto_years")
+
     shiny::observeEvent(input$run_engine, {
       units <- units_sf()
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(units) || is.null(project_path)) {
+        bslib::update_task_button("run_engine", state = "ready")
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
       forcing <- input$forcing %||% "safran"
       pre <- regen_engine_prereqs(project_path, forcing)
       if (!isTRUE(pre$ok)) {
+        bslib::update_task_button("run_engine", state = "ready")
         shiny::showNotification(i18n$t(pre$reason), type = "warning", duration = 8)
         return()
       }
@@ -388,7 +440,11 @@ mod_regeneration_server <- function(id, app_state) {
         leaf_fall = na_null(input$leaf_fall)
       )
       rv$engine_running <- TRUE
-      shiny::showNotification(i18n$t("regen_engine_running"), type = "message", duration = 6)
+      rv$engine_start <- Sys.time()
+      # Notif persistante bas-droite (retirée en fin de tâche) — le moteur réel
+      # (LiDAR HD + ERA5 + microclimf) peut durer plusieurs minutes.
+      shiny::showNotification(i18n$t("regen_engine_running"), type = "message",
+                              duration = NULL, id = session$ns("engine_notif"))
       engine_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
     })
 
@@ -396,6 +452,8 @@ mod_regeneration_server <- function(id, app_state) {
       st <- engine_task$status()
       if (identical(st, "success")) {
         rv$engine_running <- FALSE
+        rv$engine_start <- NULL
+        shiny::removeNotification(session$ns("engine_notif"))
         # Le worker a écrit sensibilite.gpkg / biljou.gpkg : recharger le
         # precomputed et relancer l'analyse normale (fast-path) pour rafraîchir
         # carte/table. Les avertissements spécifiques du moteur (échec réel
@@ -434,6 +492,8 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("regen_engine_done"), type = "message", duration = 6)
       } else if (identical(st, "error")) {
         rv$engine_running <- FALSE
+        rv$engine_start <- NULL
+        shiny::removeNotification(session$ns("engine_notif"))
         err <- tryCatch(engine_task$result(), error = function(e) conditionMessage(e))
         shiny::showNotification(
           sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),
@@ -443,8 +503,12 @@ mod_regeneration_server <- function(id, app_state) {
 
     output$engine_status <- shiny::renderUI({
       if (isTRUE(rv$engine_running)) {
+        shiny::invalidateLater(1000)   # chrono re-rendu chaque seconde
         return(htmltools::div(class = "small text-info mt-1",
-          bsicons::bs_icon("hourglass-split", class = "me-1"), i18n$t("regen_engine_running")))
+          bsicons::bs_icon("hourglass-split", class = "me-1"),
+          i18n$t("regen_engine_running_short"),
+          htmltools::tags$span(class = "ms-1 font-monospace",
+                               .fmt_elapsed(rv$engine_start))))
       }
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(project_path)) return(NULL)

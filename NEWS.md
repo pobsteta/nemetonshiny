@@ -1,4 +1,29 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.7
+
+### Changed — Nettoyages à la source : CRS des couches + Theia
+
+- **CRS LiDAR HD → EPSG:2154 à la source** : les GeoTIFF LiDAR HD IGN au WKT
+  dégénéré (sans autorité) sont stampés 2154 à la mosaïque, au retour de cache et
+  dans le contrôle de couverture — supprime les « No DEM available » et les
+  re-téléchargements. Stamp **conditionnel** (uniquement si `describe$code` est
+  `NA`) : jamais de tamponnage aveugle.
+- **CRS WMS NDP 0 → EPSG:4326 à la source** : le DEM BD ALTI et l'IRC servis par
+  le WMS IGN (datum « unknown ») se voient réassigner l'autorité 4326 demandée ;
+  le NDVI dérivé en hérite — plus de « CRS do not match » sur C2/R1/R2/R3/W3.
+- **Theia** : retrait de l'appel déprécié `nemeton::theia_configure_s3()` (le
+  cœur signe en interne via la gateway STAC, R pur) ; commentaires `reticulate`
+  périmés mis à jour. `reticulate` reste requis ailleurs (FORDEAD/RECONFORT).
+
+### Changed — reGénération : feedback des boutons async (moteur réel & Auto E-OBS)
+
+- Les boutons **« Lancer le moteur réel »** et **« Auto (E-OBS) »** deviennent des
+  `bslib::input_task_button` : ils se **désactivent + affichent un spinner**
+  pendant la tâche (plus de run concurrent qui corromprait
+  `sensibilite.gpkg` / `biljou.gpkg`) et se réactivent à la fin (succès ou erreur).
+- Une **notification persistante** en bas à droite reste affichée pendant tout le
+  run (retirée à la fin), au lieu de disparaître après 6 s.
+- Un **chrono MM:SS** (H:MM:SS au-delà d'une heure) ticke chaque seconde sous
+  chaque bouton tant que la tâche tourne.
 
 # nemetonshiny 0.100.6
 
