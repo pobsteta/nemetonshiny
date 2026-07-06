@@ -1,5 +1,19 @@
 # nemetonshiny (development version)
 
+### Changed — Nettoyages à la source : CRS des couches + Theia
+
+- **CRS LiDAR HD → EPSG:2154 à la source** : les GeoTIFF LiDAR HD IGN au WKT
+  dégénéré (sans autorité) sont stampés 2154 à la mosaïque, au retour de cache et
+  dans le contrôle de couverture — supprime les « No DEM available » et les
+  re-téléchargements. Stamp **conditionnel** (uniquement si `describe$code` est
+  `NA`) : jamais de tamponnage aveugle.
+- **CRS WMS NDP 0 → EPSG:4326 à la source** : le DEM BD ALTI et l'IRC servis par
+  le WMS IGN (datum « unknown ») se voient réassigner l'autorité 4326 demandée ;
+  le NDVI dérivé en hérite — plus de « CRS do not match » sur C2/R1/R2/R3/W3.
+- **Theia** : retrait de l'appel déprécié `nemeton::theia_configure_s3()` (le
+  cœur signe en interne via la gateway STAC, R pur) ; commentaires `reticulate`
+  périmés mis à jour. `reticulate` reste requis ailleurs (FORDEAD/RECONFORT).
+
 ### Changed — reGénération : feedback des boutons async (moteur réel & Auto E-OBS)
 
 - Les boutons **« Lancer le moteur réel »** et **« Auto (E-OBS) »** deviennent des

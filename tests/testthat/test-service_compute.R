@@ -5405,3 +5405,49 @@ test_that("compute_single_indicator delegates value extraction to nemeton (v0.10
   val <- compute_single_indicator("indicateur_z1_test", parcels, layers = list())
   expect_equal(val, c(11, 22))
 })
+
+
+# --- Hygiène CRS à la source (spec 027 cleanups) ---------------------------
+
+# Géométrie Lambert-93 SANS autorité EPSG → reproduit le WKT LiDAR HD dégénéré
+# (describe$code = NA) que corrige le stamp 2154. Une chaîne proj4 survit au
+# write/read GeoTIFF en gardant code = NA (un CRS vide, lui, redevient CRS84).
+.l93_no_authority <- paste(
+  "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000",
+  "+y_0=6600000 +ellps=GRS80 +units=m +no_defs")
+
+test_that("mosaic_lidar_tiles stamps EPSG:2154 only when the authority is missing", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    # (a) tuile au CRS dégénéré (Lambert-93 sans code) -> stampée 2154.
+    r_bad <- terra::rast(nrows = 4, ncols = 4, vals = 1,
+                         extent = terra::ext(300000, 340000, 6700000, 6740000))
+    terra::crs(r_bad) <- .l93_no_authority
+    terra::writeRaster(r_bad, "bad.tif", overwrite = TRUE)
+    out <- nemetonshiny:::mosaic_lidar_tiles("bad.tif", "mos_bad.tif")
+    expect_equal(terra::crs(out, describe = TRUE)$code, "2154")
+
+    # (b) tuile déjà géoréférencée (4326) -> NON réécrite en 2154 (jamais de
+    #     tamponnage aveugle, cf. garde-fou du brief).
+    r_ok <- terra::rast(nrows = 4, ncols = 4, vals = 1, crs = "EPSG:4326",
+                        extent = terra::ext(0, 1, 0, 1))
+    terra::writeRaster(r_ok, "ok.tif", overwrite = TRUE)
+    out2 <- nemetonshiny:::mosaic_lidar_tiles("ok.tif", "mos_ok.tif")
+    expect_equal(terra::crs(out2, describe = TRUE)$code, "4326")
+  })
+})
+
+test_that(".lidar_mosaic_covers_bbox tolerates a degenerate LiDAR CRS (2154 stamp)", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    r <- terra::rast(nrows = 4, ncols = 4, vals = 1,
+                     extent = terra::ext(300000, 340000, 6700000, 6740000))
+    terra::crs(r) <- .l93_no_authority             # WKT LiDAR HD dégénéré
+    terra::writeRaster(r, "mnt.tif", overwrite = TRUE)
+    # bbox WGS84 au centre de l'emprise L93 (320000, 6720000) → ~(-2.048, 47.471).
+    bbox <- c(-2.06, 47.46, -2.04, 47.48)
+    # Sans le stamp 2154, le st_transform échouerait -> FALSE (rejet à tort).
+    res <- nemetonshiny:::.lidar_mosaic_covers_bbox("mnt.tif", bbox)
+    expect_true(isTRUE(res))
+  })
+})

@@ -6,9 +6,12 @@
 #' service only *loads* and *forwards* rasters to the nemeton
 #' indicator functions; it never computes business logic itself.
 #'
-#' The Theia STAC API is reached through the Python `teledetection`
-#' SDK (via reticulate), which signs asset URLs that nemeton then
-#' reads with /vsicurl/. Access requires a registered API key.
+#' The Theia STAC API is queried by `nemeton`, which signs asset URLs
+#' internally through its STAC gateway (`signing.stac.teledetection.fr`,
+#' pure R) and reads them with /vsicurl/. Access requires a registered
+#' API key (`TLD_*` env vars). Python/reticulate is no longer used for
+#' THEIA URL signing (it remains required by other core paths —
+#' FORDEAD / RECONFORT).
 #'
 #' @name service_theia
 #' @keywords internal
@@ -48,19 +51,18 @@ THEIA_INDICATOR_SOURCES <- list(
 
 #' Check the Python prerequisites for Theia access
 #'
-#' `load_theia_source()` in `year` mode signs STAC asset URLs through
-#' the Python `teledetection` SDK.
-#'
-#' The Python modules themselves (`teledetection`, `pystac_client`)
-#' are declared by `nemeton` via `reticulate::py_require()` and
-#' provisioned lazily by reticulate on first use. We deliberately do
-#' NOT probe them with `py_module_available()` here : that call
-#' initialises Python **before** `nemeton` has declared its
-#' requirements, which both gives a false negative ("Theia
-#' indisponible") and locks the interpreter without the needed
-#' packages. The real availability is established when
-#' `download_chm_theia()` actually calls `load_theia_source()`, and
-#' any genuine failure is caught there. v0.46.4 fix.
+#' `load_theia_source()` signs STAC asset URLs via the core's STAC
+#' gateway (pure R) — no Python needed for THEIA signing itself. This
+#' guard remains because other core paths provisioned alongside THEIA
+#' (`teledetection`, `pystac_client`) are declared by `nemeton` via
+#' `reticulate::py_require()`. We deliberately do NOT probe them with
+#' `py_module_available()` here : that call initialises Python
+#' **before** `nemeton` has declared its requirements, which both
+#' gives a false negative ("Theia indisponible") and locks the
+#' interpreter without the needed packages. The real availability is
+#' established when `download_chm_theia()` actually calls
+#' `load_theia_source()`, and any genuine failure is caught there.
+#' v0.46.4 fix.
 #'
 #' @return A list with `ok` (logical) and `reason` (character or
 #'   NULL). `reason` is `"reticulate"` when the R package is missing.

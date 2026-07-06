@@ -536,7 +536,7 @@ build_spectral_diversity <- function(parcels, project_path,
   if (is.null(status)) return(base)
   if (isTRUE(status$ready)) {
     # Pré-requis OK côté config, mais l'appel cœur a quand même
-    # échoué — typique d'un bug load_theia_source côté reticulate.
+    # échoué (acquisition/signature via la gateway STAC, R pur).
     return(paste(base, i18n$t("theia_chm_load_failed")))
   }
   paste(base, i18n$t(theia_status_key(status)))
@@ -1203,12 +1203,15 @@ build_sufosat_layer <- function(cfg, project_path, aoi, crs = 2154) {
     }
   }
 
-  # Acquire from Theia — needs S3 credentials configured once.
-  ok <- tryCatch({ nemeton::theia_configure_s3(); TRUE }, error = function(e) {
-    cli::cli_warn("Coupes rases : theia_configure_s3 a échoué : {conditionMessage(e)}")
-    FALSE
-  })
-  if (!ok) return(NULL)
+  # Acquire from Theia — needs S3 credentials (TLD_* env vars) configured once.
+  # Le cœur signe désormais les URLs en interne via la gateway
+  # signing.stac.teledetection.fr (R pur) : `theia_configure_s3()` est déprécié
+  # (n'active rien, avertit) et a été retiré. Seul le garde amont sur les clés
+  # reste utile.
+  if (!theia_api_key_configured()) {
+    cli::cli_warn("Coupes rases : clés Theia (TLD_ACCESS_KEY / TLD_SECRET_KEY) absentes.")
+    return(NULL)
+  }
 
   fetched <- tryCatch({
     list(
@@ -2890,6 +2893,11 @@ download_ign_dem <- function(bbox, cache_file) {
     if (file.exists(temp_file) && file.size(temp_file) > 1000) {
       # Re-write through terra to fix malformed GeoTIFF tags from WMS
       rast <- suppressWarnings(terra::rast(temp_file))
+      # Le WMS IGN sert un datum ambigu (GEOGCRS["unknown"], describe$code NA)
+      # alors que la requête demande CRS=EPSG:4326 et que les coordonnées SONT en
+      # 4326 (couche sœur forest_cover.tif = 4326). On réassigne l'autorité
+      # demandée si elle manque, sinon les indicateurs voient « CRS do not match ».
+      if (is.na(terra::crs(rast, describe = TRUE)$code)) terra::crs(rast) <- "EPSG:4326"
       terra::writeRaster(rast, cache_file, overwrite = TRUE)
       unlink(temp_file)
 
@@ -3013,6 +3021,11 @@ download_ign_irc_ndvi <- function(bbox, cache_file) {
       irc <- terra::rast(irc_cache_file)
     }
 
+    # WMS IGN : datum ambigu (GEOGCRS["unknown"], describe$code NA) alors que la
+    # requête est en EPSG:4326. On réassigne l'autorité si absente ; le NDVI
+    # dérivé (ndvi.tif) en hérite → pas de garde supplémentaire aval.
+    if (is.na(terra::crs(irc, describe = TRUE)$code)) terra::crs(irc) <- "EPSG:4326"
+
     # Check we have at least 3 bands
     if (terra::nlyr(irc) < 3) {
       cli::cli_warn("IRC image has insufficient bands ({terra::nlyr(irc)})")
@@ -3112,6 +3125,11 @@ create_synthetic_ndvi <- function(bbox, cache_file) {
 .lidar_mosaic_covers_bbox <- function(mosaic_path, bbox) {
   out <- tryCatch({
     r <- terra::rast(mosaic_path)
+    # LiDAR HD IGN = EPSG:2154 par définition mais le WKT est parfois dégénéré
+    # (DATUM["unnamed"], describe$code = NA) → le st_transform ci-dessous
+    # échouerait et rejetterait à tort la mosaïque (→ re-téléchargements). On ne
+    # stampe QUE si l'autorité est absente.
+    if (is.na(terra::crs(r, describe = TRUE)$code)) terra::crs(r) <- "EPSG:2154"
     req_poly <- sf::st_as_sfc(sf::st_bbox(
       c(xmin = bbox[1], ymin = bbox[2], xmax = bbox[3], ymax = bbox[4]),
       crs = sf::st_crs(4326)
@@ -3204,7 +3222,11 @@ download_ign_lidar_hd <- function(bbox,
   if (product != "nuage" && file.exists(mosaic_cache)) {
     if (.lidar_mosaic_covers_bbox(mosaic_cache, bbox)) {
       cli::cli_alert_success("Using cached LiDAR {toupper(product)} mosaic")
-      return(terra::rast(mosaic_cache))
+      r <- terra::rast(mosaic_cache)
+      # Réassigne l'autorité 2154 si le WKT cache est dégénéré (describe$code NA),
+      # sinon les indicateurs terrain aval verraient un CRS « sans code ».
+      if (is.na(terra::crs(r, describe = TRUE)$code)) terra::crs(r) <- "EPSG:2154"
+      return(r)
     }
     cli::cli_alert_info(
       "Cached LiDAR {toupper(product)} mosaic does not cover the requested area — regenerating"
@@ -3529,9 +3551,16 @@ download_lidar_tile <- function(url, dest_file) {
 #' @noRd
 mosaic_lidar_tiles <- function(tile_files, output_file) {
   tryCatch({
+    # LiDAR HD IGN est en EPSG:2154 par définition ; on stampe l'autorité si le
+    # WKT source est dégénéré (describe$code NA) pour ne pas propager un CRS
+    # « sans code » dans le cache mosaïque (spec 027, hygiène CRS à la source).
+    .stamp_2154 <- function(r) {
+      if (is.na(terra::crs(r, describe = TRUE)$code)) terra::crs(r) <- "EPSG:2154"
+      r
+    }
     if (length(tile_files) == 1) {
       # Single tile - just copy/load
-      rast <- terra::rast(tile_files[1])
+      rast <- .stamp_2154(terra::rast(tile_files[1]))
       terra::writeRaster(rast, output_file, overwrite = TRUE)
       return(terra::rast(output_file))
     }
@@ -3554,6 +3583,7 @@ mosaic_lidar_tiles <- function(tile_files, output_file) {
       rast <- terra::mosaic(src, fun = "mean")
     }
 
+    rast <- .stamp_2154(rast)
     terra::writeRaster(rast, output_file, overwrite = TRUE)
     cli::cli_alert_success("Created LiDAR mosaic ({length(tile_files)} tiles)")
     terra::rast(output_file)
