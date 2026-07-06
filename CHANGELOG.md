@@ -12,6 +12,24 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.7\] - 2026-07-06
+
+### Changed
+
+- reGénération : les boutons « Lancer le moteur réel » et « Auto (E-OBS)
+  » deviennent des
+  [`bslib::input_task_button`](https://rstudio.github.io/bslib/reference/input_task_button.html)
+  (désactivation + spinner pendant la tâche, anti-run-concurrent), avec
+  notification persistante bas-droite et chrono MM:SS sous chaque
+  bouton.
+- Hygiène CRS à la source : LiDAR HD stampé EPSG:2154 (mosaïque / cache
+  / couverture, conditionnel si autorité absente), WMS NDP 0 (DEM BD
+  ALTI + IRC) réassigné EPSG:4326 — supprime « No DEM available » et «
+  CRS do not match ».
+- Theia : retrait de l’appel déprécié `theia_configure_s3()` (signature
+  interne via gateway STAC, R pur) ; commentaires reticulate périmés mis
+  à jour.
+
 ## \[0.100.6\] - 2026-07-06
 
 ### Fixed
