@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.7
 
 ### Changed — Nettoyages à la source : CRS des couches + Theia
 
