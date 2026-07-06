@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,12 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.100.6" id="nemetonshiny-01006">nemetonshiny 0.100.6<a class="anchor" aria-label="anchor" href="#nemetonshiny-01006"></a></h2>
+<div class="section level4">
+<h4 id="fixed--regénération--r3-sécheresse-utilise-enfin-le-dem-terrain-0-100-6">Fixed — reGénération : R3 sécheresse utilise enfin le DEM terrain<a class="anchor" aria-label="anchor" href="#fixed--reg%C3%A9n%C3%A9ration--r3-s%C3%A9cheresse-utilise-enfin-le-dem-terrain-0-100-6"></a></h4>
+<ul><li>R3 affichait toujours « R3: no DEM; drought stress from BILJOU metrics alone » et ignorait la modulation topographique (pente / exposition / TWI) : le loader ne lisait le DEM que depuis <code>&lt;projet&gt;/cache/regeneration/dem.tif</code>, un fichier <strong>jamais produit</strong> par l’app. Il réutilise désormais le <strong>DEM terrain déjà acquis par le pipeline principal</strong> — LiDAR HD <strong>MNT</strong> 1 m (<code>lidar_mnt_mosaic.tif</code>, NDP-1) en priorité, BD ALTI 25 m en repli — cherché à la racine du projet <strong>et</strong> sous <code>cache/layers/</code>.</li>
+<li>Rappel : <code>lidar_mnh_mosaic.tif</code> est un <strong>modèle de hauteur de canopée (MNH)</strong>, pas un DEM terrain (MNT) — il n’est volontairement pas utilisé pour R3.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.5" id="nemetonshiny-01005">nemetonshiny 0.100.5<a class="anchor" aria-label="anchor" href="#nemetonshiny-01005"></a></h2>
