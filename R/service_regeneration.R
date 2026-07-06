@@ -221,13 +221,57 @@ regeneration_species_choices <- function(units = NULL, lang = "fr") {
 #' the app's forward hook: drop real engine outputs here and the run picks them
 #' up without code change.
 #'
+#' The R3 terrain \code{dem} slot is resolved separately via
+#' \code{.resolve_regen_dem()} — it reuses the LiDAR MNT / BD ALTI terrain model
+#' already fetched by the main compute pipeline (project root or
+#' \code{cache/layers/}), so R3 gets topographic drought modulation without a
+#' dedicated \code{cache/regeneration/dem.tif}.
+#'
 #' @param project_path Character. Project root, or NULL.
 #' @return A named list (possibly empty) of precomputed inputs.
 #' @noRd
+# Resolve the terrain DEM (MNT — elevation in meters) feeding R3's topographic
+# drought modulation (slope / aspect / TWI). NOT the canopy height model
+# (`lidar_mnh_mosaic.tif` = MNH), which is a different layer. Mirrors the main
+# compute pipeline (service_compute.R): LiDAR HD MNT (1 m, NDP-1) is preferred,
+# BD ALTI (25 m) is the fallback. Both the project root (where the LiDAR mosaics
+# are surfaced) and the canonical `cache/layers/` dir are searched so the DEM is
+# found regardless of layout. Returns a SpatRaster or NULL.
+.resolve_regen_dem <- function(project_path) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  layers <- file.path(project_path, "cache", "layers")
+  candidates <- c(
+    # explicit reGénération override (highest priority, back-compat)
+    file.path(project_path, "cache", "regeneration", "dem.tif"),
+    # LiDAR HD MNT 1 m mosaic (NDP-1) — root then canonical cache
+    file.path(project_path, "lidar_mnt_mosaic.tif"),
+    file.path(layers, "lidar_mnt_mosaic.tif"),
+    file.path(layers, "lidar_mnt.tif"),
+    # BD ALTI 25 m fallback
+    file.path(layers, "dem.tif")
+  )
+  for (path in candidates) {
+    if (file.exists(path)) {
+      r <- tryCatch(terra::rast(path), error = function(e) NULL)
+      if (!is.null(r)) {
+        cli::cli_alert_info("regen R3: using terrain DEM {.path {basename(path)}}")
+        return(r)
+      }
+    }
+  }
+  NULL
+}
+
 load_regeneration_precomputed <- function(project_path) {
   if (is.null(project_path)) return(list())
   dir <- file.path(project_path, "cache", "regeneration")
-  if (!dir.exists(dir)) return(list())
+  # Le DEM terrain (R3) est résolu hors de `cache/regeneration` (LiDAR MNT /
+  # BD ALTI du pipeline principal) : il doit être disponible même sans dossier
+  # de précalcul reGénération dédié.
+  dem <- .resolve_regen_dem(project_path)
+  if (!dir.exists(dir)) {
+    return(if (is.null(dem)) list() else list(dem = dem))
+  }
 
   read_vec <- function(name) {
     gpkg <- file.path(dir, paste0(name, ".gpkg"))
@@ -250,7 +294,7 @@ load_regeneration_precomputed <- function(project_path) {
     micro          = read_ras("micro"),
     micro_moyenne  = read_ras("micro_moyenne"),
     micro_canicule = read_ras("micro_canicule"),
-    dem            = read_ras("dem"),
+    dem            = dem,
     eobs_tx        = read_ras("eobs_tx"),
     eobs_rr        = read_ras("eobs_rr")
   )
