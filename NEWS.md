@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+### Changed — reGénération : feedback des boutons async (moteur réel & Auto E-OBS)
+
+- Les boutons **« Lancer le moteur réel »** et **« Auto (E-OBS) »** deviennent des
+  `bslib::input_task_button` : ils se **désactivent + affichent un spinner**
+  pendant la tâche (plus de run concurrent qui corromprait
+  `sensibilite.gpkg` / `biljou.gpkg`) et se réactivent à la fin (succès ou erreur).
+- Une **notification persistante** en bas à droite reste affichée pendant tout le
+  run (retirée à la fin), au lieu de disparaître après 6 s.
+- Un **chrono MM:SS** (H:MM:SS au-delà d'une heure) ticke chaque seconde sous
+  chaque bouton tant que la tâche tourne.
+
 # nemetonshiny 0.100.6
 
 ### Fixed — reGénération : R3 sécheresse utilise enfin le DEM terrain
