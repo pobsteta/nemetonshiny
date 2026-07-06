@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.6] - 2026-07-06
+
+### Fixed
+
+- reGénération : R3 sécheresse réutilise le DEM terrain déjà acquis par le
+  pipeline principal (LiDAR HD MNT 1 m `lidar_mnt_mosaic.tif` prioritaire, BD
+  ALTI 25 m en repli, cherché à la racine du projet et sous `cache/layers/`) au
+  lieu d'un `cache/regeneration/dem.tif` jamais produit — R3 dégradait toujours
+  en « BILJOU seul ». Le MNH (hauteur de canopée) n'est pas confondu avec le MNT.
+
 ## [0.100.5] - 2026-07-06
 
 ### Fixed

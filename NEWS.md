@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.6
 
 ### Fixed — reGénération : R3 sécheresse utilise enfin le DEM terrain
 
