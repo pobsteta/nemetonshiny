@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.9
 
 ### Added — reGénération : notifications ntfy du moteur réel (au fur et à mesure)
 
