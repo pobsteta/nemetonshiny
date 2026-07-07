@@ -21,6 +21,10 @@
     dd <- file.path(base, d); dir.create(dd, recursive = TRUE, showWarnings = FALSE)
     file.create(file.path(dd, "t.tif"))
   }
+  # Nuage LiDAR HD : structure de végétation → canopy = "lidar" (spec 033).
+  nd <- file.path(base, "lidar_nuage")
+  dir.create(nd, recursive = TRUE, showWarnings = FALSE)
+  file.create(file.path(nd, "t.copc.laz"))
 }
 
 test_that("regen_canopy_provenance reads detect_ndp augmentation flags", {
