@@ -1,5 +1,15 @@
 # nemetonshiny (development version)
 
+### Changed — Plancher cœur relevé à `nemeton (>= 0.143.0)` : moteur d'exposition plus rapide
+
+- Bénéficie des optimisations `nemeton@0.143.0` du moteur d'exposition
+  reGénération, **sans changement de code applicatif** (le cœur les applique en
+  interne) : (1) `pai_depuis_nuage()` clippe la lecture LiDAR (`lasR`, filtre
+  `-keep_xy`) à l'emprise de travail — sur nuage COPC, seule l'AOI est lue,
+  dérivation PAI bien plus rapide sur grand massif ; (2) forçage ERA5 dégroupé
+  (1 requête/an au lieu de 12) avec retry/back-off — nettement moins de throttle
+  CDS. Le warning `regen_engine_era5_interrupted` reste comme filet de sécurité.
+
 # nemetonshiny 0.100.9
 
 ### Added — reGénération : notifications ntfy du moteur réel (au fur et à mesure)
