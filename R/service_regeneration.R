@@ -350,20 +350,28 @@ regen_canopy_provenance <- function(units) {
 #' The index-computation pipeline caches per-tile DTM (`lidar_mnt`) and canopy
 #' height (`lidar_mnh`) GeoTIFFs under `<project>/cache/layers/` whenever a run
 #' resolves the CHM from LiDAR HD (source `lidar_hd`/`lasr`). The microclimf
-#' engine consumes those two directories directly (VRT-mosaicked by the core).
+#' engine consumes those two directories directly (VRT-mosaicked by the core),
+#' plus the LiDAR HD point cloud (`lidar_nuage`, `.las/.laz/.copc.laz`) from
+#' which the core derives the PAI (vegetation structure) via `pai_depuis_nuage()`.
 #'
-#' @return `list(mnt_dir=, mnh_dir=)` when both directories hold at least one
-#'   `.tif`, otherwise `NULL`.
+#' @return `list(mnt_dir=, mnh_dir=, las_dir=)` when both DTM/CHM directories
+#'   hold at least one `.tif` (`las_dir` is `NULL` when no point-cloud tile is
+#'   present), otherwise `NULL`.
 #' @noRd
 resolve_regen_lidar_grid <- function(project_path) {
   if (is.null(project_path)) return(NULL)
   base <- file.path(project_path, "cache", "layers")
   mnt_dir <- file.path(base, "lidar_mnt")
   mnh_dir <- file.path(base, "lidar_mnh")
+  las_dir <- file.path(base, "lidar_nuage")
   has_tif <- function(d) dir.exists(d) &&
     length(list.files(d, pattern = "\\.tif$", ignore.case = TRUE)) > 0L
+  # `.copc.laz` se termine par `.laz` → capturé par le motif ci-dessous.
+  has_las <- function(d) dir.exists(d) &&
+    length(list.files(d, pattern = "\\.(las|laz)$", ignore.case = TRUE)) > 0L
   if (has_tif(mnt_dir) && has_tif(mnh_dir)) {
-    return(list(mnt_dir = mnt_dir, mnh_dir = mnh_dir))
+    return(list(mnt_dir = mnt_dir, mnh_dir = mnh_dir,
+                las_dir = if (has_las(las_dir)) las_dir else NULL))
   }
   NULL
 }
@@ -450,25 +458,59 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   years <- if (length(years)) years else NULL
 
   # --- microclimf (LiDAR HD + ERA5) : grille LiDAR HD + clé CDS requises. ---
+  # Le cœur EXIGE la structure de végétation (PAI). On la fournit via `las`
+  # (dossier nuage LiDAR HD → PAI dérivé par pai_depuis_nuage, prioritaire) ou,
+  # à défaut, `pai` (repli LAI Sentinel-2/PROSAIL déjà caché par le bloc BILJOU).
+  # Sans structure, regen_sensibilite() abandonne AVANT tout ERA5 → on l'explicite
+  # au lieu de laisser un dossier micro_cache vide (fausse impression de run).
   grid <- resolve_regen_lidar_grid(project_path)
-  if (!is.null(grid)) canopy <- "lidar"   # structure LiDAR HD disponible
   if (!is.null(grid) && regen_cds_credentials_ready()) {
-    micro_cache <- file.path(out_dir, "microclimf")
-    if (!dir.exists(micro_cache)) dir.create(micro_cache, recursive = TRUE)
-    sens <- tryCatch(
-      nemeton::regen_sensibilite(res, mnt = grid$mnt_dir, mnh = grid$mnh_dir,
-        annees_moy = cfg$year_moyenne, annees_canic = cfg$year_canicule,
-        cache_dir = micro_cache),
-      error = function(e) {
-        warnings <<- c(warnings, .strip_ansi(sprintf("microclimf: %s", conditionMessage(e))))
-        NULL
-      })
-    if (inherits(sens, "sf")) {
-      res <- sens
-      tryCatch(sf::st_write(res, file.path(out_dir, "sensibilite.gpkg"),
-                            quiet = TRUE, delete_dsn = TRUE),
-               error = function(e) cli::cli_warn("regen engine: sensibilite cache not written"))
-      cached <- c(cached, "sensibilite")
+    veg_args <- list()
+    if (!is.null(grid$las_dir)) {
+      veg_args$las <- grid$las_dir            # PAI dérivé du nuage (spec 033, LiDAR HD)
+      canopy <- "lidar"
+    } else {
+      lai_r <- .regen_lai_fallback(res, out_dir, cfg)   # SpatRaster LAI S2/PROSAIL, caché
+      if (!is.null(lai_r)) { veg_args$pai <- lai_r; canopy <- "satellite" }
+    }
+
+    if (length(veg_args)) {
+      # micro_cache créé UNIQUEMENT quand on va réellement lancer le moteur. Les
+      # era5_*.nc y persistent → un re-lancement reprend depuis le cache ; ne pas
+      # le vider entre deux tentatives (throttle CDS, cf. warning dédié).
+      micro_cache <- file.path(out_dir, "microclimf")
+      if (!dir.exists(micro_cache)) dir.create(micro_cache, recursive = TRUE)
+      sens <- tryCatch(
+        do.call(nemeton::regen_sensibilite, c(list(res,
+          mnt = grid$mnt_dir, mnh = grid$mnh_dir,
+          annees_moy = cfg$year_moyenne, annees_canic = cfg$year_canicule,
+          cache_dir = micro_cache), veg_args)),
+        error = function(e) {
+          msg <- conditionMessage(e)
+          # Throttle/coupure CDS pendant l'acquisition ERA5 (~12 req/an) : la
+          # structure est OK, c'est réseau → warning « relancez pour reprendre ».
+          if (grepl("era5|mcera5|curl|rate.?limit|throttl|timeout|too many|429",
+                    msg, ignore.case = TRUE)) {
+            warnings <<- c(warnings, i18n$t("regen_engine_era5_interrupted"))
+          } else {
+            warnings <<- c(warnings, .strip_ansi(sprintf("microclimf: %s", msg)))
+          }
+          NULL
+        })
+      if (inherits(sens, "sf")) {
+        res <- sens
+        tryCatch(sf::st_write(res, file.path(out_dir, "sensibilite.gpkg"),
+                              quiet = TRUE, delete_dsn = TRUE),
+                 error = function(e) cli::cli_warn("regen engine: sensibilite cache not written"))
+        cached <- c(cached, "sensibilite")
+      } else if (dir.exists(micro_cache) &&
+                 length(list.files(micro_cache)) == 0L) {
+        # Échec sans aucun fichier caché : retirer le dossier vide (ne pas laisser
+        # croire qu'un run a eu lieu). Les era5_*.nc déjà rapatriés sont préservés.
+        unlink(micro_cache, recursive = TRUE)
+      }
+    } else {
+      warnings <- c(warnings, i18n$t("regen_engine_no_vegetation_structure"))
     }
   }
 

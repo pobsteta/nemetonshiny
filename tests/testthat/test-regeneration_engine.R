@@ -18,12 +18,19 @@
 }
 
 # Crée <project>/cache/layers/{lidar_mnt,lidar_mnh} avec une tuile .tif factice.
-.make_lidar_grid <- function(project_path) {
+# `with_nuage = TRUE` ajoute aussi lidar_nuage/*.laz (structure de végétation
+# LiDAR HD → `las` passé au cœur ; sinon repli LAI Sentinel-2/PROSAIL).
+.make_lidar_grid <- function(project_path, with_nuage = TRUE) {
   base <- file.path(project_path, "cache", "layers")
   for (d in c("lidar_mnt", "lidar_mnh")) {
     dd <- file.path(base, d)
     dir.create(dd, recursive = TRUE, showWarnings = FALSE)
     file.create(file.path(dd, "tile_0000.tif"))
+  }
+  if (isTRUE(with_nuage)) {
+    dd <- file.path(base, "lidar_nuage")
+    dir.create(dd, recursive = TRUE, showWarnings = FALSE)
+    file.create(file.path(dd, "tile_0000.copc.laz"))
   }
   invisible(project_path)
 }
@@ -39,11 +46,18 @@ test_that("resolve_regen_lidar_grid finds the grid only when both dirs hold .tif
     file.create(file.path(p, "cache", "layers", "lidar_mnt", "a.tif"))
     expect_null(nemetonshiny:::resolve_regen_lidar_grid(p))       # mnh manquant
 
-    .make_lidar_grid(p)
+    # Grille sans nuage : mnt+mnh résolus, las_dir NULL.
+    .make_lidar_grid(p, with_nuage = FALSE)
     g <- nemetonshiny:::resolve_regen_lidar_grid(p)
     expect_type(g, "list")
-    expect_true(all(c("mnt_dir", "mnh_dir") %in% names(g)))
+    expect_true(all(c("mnt_dir", "mnh_dir", "las_dir") %in% names(g)))
     expect_true(dir.exists(g$mnt_dir) && dir.exists(g$mnh_dir))
+    expect_null(g$las_dir)                                # pas de nuage
+
+    # Ajout d'une dalle nuage (.copc.laz) → las_dir résolu.
+    .make_lidar_grid(p, with_nuage = TRUE)
+    g2 <- nemetonshiny:::resolve_regen_lidar_grid(p)
+    expect_true(grepl("lidar_nuage$", g2$las_dir))
   })
 })
 
@@ -107,8 +121,9 @@ test_that("run_regeneration_engine runs both engines and caches their outputs", 
     seen <- new.env()
     testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
     testthat::local_mocked_bindings(
-      regen_sensibilite = function(units, mnt = NULL, mnh = NULL, ...) {
-        seen$mnt <- mnt; seen$mnh <- mnh; units$sensibilite <- 55; units },
+      regen_sensibilite = function(units, mnt = NULL, mnh = NULL, las = NULL, ...) {
+        seen$mnt <- mnt; seen$mnh <- mnh; seen$las <- las
+        units$sensibilite <- 55; units },
       load_biljou_forcing = function(aoi, years, source = NULL, ...) {
         seen$src <- source; data.frame(year = years %||% 2018) },
       build_biljou_soil = function(units = NULL, ewm = 150, ...) {
@@ -125,10 +140,12 @@ test_that("run_regeneration_engine runs both engines and caches their outputs", 
     expect_setequal(out$cached, c("sensibilite", "biljou"))
     expect_true(file.exists(file.path(p, "cache", "regeneration", "sensibilite.gpkg")))
     expect_true(file.exists(file.path(p, "cache", "regeneration", "biljou.gpkg")))
-    # Entrées bien routées : SAFRAN, ewm UI, répertoires LiDAR.
+    # Entrées bien routées : SAFRAN, ewm UI, répertoires LiDAR + nuage (`las`).
     expect_equal(seen$src, "safran")
     expect_equal(seen$ewm, 140)
     expect_true(grepl("lidar_mnt$", seen$mnt))
+    expect_true(grepl("lidar_nuage$", seen$las))   # structure de végétation passée
+    expect_equal(out$canopy, "lidar")
     # Sortie consommable en fast-path.
     pc <- nemetonshiny:::load_regeneration_precomputed(p)
     expect_true(!is.null(pc$sensibilite))
@@ -172,6 +189,91 @@ test_that("run_regeneration_engine skips ERA5 BILJOU without CDS credentials", {
     expect_false(called$biljou)                          # BILJOU ERA5 non lancé
     expect_false("biljou" %in% out$cached)
     expect_true(length(out$warnings) >= 1L)
+  })
+})
+
+# --- Structure de végétation microclimf (brief microclimf-vegetation) --------
+
+test_that("microclimf uses the S2/PROSAIL PAI fallback when no LiDAR point cloud", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = FALSE)   # mnt+mnh mais PAS de nuage
+    seen <- new.env()
+    fake_pai <- terra::rast(nrows = 2, ncols = 2, vals = 1, crs = "EPSG:2154")
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .regen_lai_fallback = function(units, out_dir, cfg) fake_pai,   # repli S2 dispo
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, mnt = NULL, mnh = NULL,
+                                   las = NULL, pai = NULL, ...) {
+        seen$las <- las; seen$pai_ok <- inherits(pai, "SpatRaster")
+        units$sensibilite <- 42; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_null(seen$las)                     # pas de nuage → pas de las
+    expect_true(seen$pai_ok)                  # repli PAI transmis
+    expect_equal(out$canopy, "satellite")     # provenance repli S2
+    expect_true("sensibilite" %in% out$cached)
+  })
+})
+
+test_that("microclimf warns (no vegetation structure) when neither las nor pai is available", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = FALSE)
+    called <- new.env(); called$sens <- FALSE
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .regen_lai_fallback = function(units, out_dir, cfg) NULL,   # ni nuage ni S2
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(...) { called$sens <- TRUE; stop("ne doit pas être appelé") },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    i18n <- nemetonshiny:::get_i18n("fr")
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_false(called$sens)                                     # moteur non lancé
+    expect_false("sensibilite" %in% out$cached)
+    expect_true(i18n$t("regen_engine_no_vegetation_structure") %in% out$warnings)
+    # micro_cache vide retiré (pas de fausse impression de run).
+    expect_false(dir.exists(file.path(p, "cache", "regeneration", "microclimf")))
+  })
+})
+
+test_that("microclimf surfaces a dedicated warning on ERA5 throttling", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = TRUE)    # nuage présent → structure OK
+    testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) stop("mcera5: curl_fetch_memory rate limit (429)"),
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    i18n <- nemetonshiny:::get_i18n("fr")
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_true(i18n$t("regen_engine_era5_interrupted") %in% out$warnings)
+    expect_false(any(grepl("^microclimf:", out$warnings)))        # pas le message générique
+    expect_false("sensibilite" %in% out$cached)
   })
 })
 
