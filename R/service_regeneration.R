@@ -457,6 +457,34 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   years <- c(cfg$year_moyenne, cfg$year_canicule)  # c() drops NULLs
   years <- if (length(years)) years else NULL
 
+  # --- Notifications ntfy (opt-in strict, comme FAST/FORDEAD/RECONFORT). -----
+  # Ce corps EST le worker future ; les vars d'env se propagent → .ntfy_config()
+  # fonctionne côté worker. NULL si NEMETON_NTFY_TOPIC absent → tous les envois
+  # deviennent des no-op. `title` = ASCII (en-têtes ntfy non UTF-8 safe).
+  ntfy  <- .ntfy_config()
+  tags0 <- c(default = "evergreen_tree", ok = "white_check_mark",
+             skip = "fast_forward", warn = "warning", done = "checkered_flag")
+  # Callback fin (nemeton >= 0.142.0) : mappe les événements cœur → push ntfy.
+  # NULL quand ntfy est off → aucun surcoût (progress_callback = NULL par défaut).
+  on_prog <- if (is.null(ntfy)) NULL else function(p) {
+    msg <- tryCatch(switch(p$current %||% "",
+      "regen_expo:era5" = sprintf(i18n$t("regen_ntfy_era5"),
+        as.integer(p$year), as.character(p$category),
+        as.integer(p$i), as.integer(p$n)),
+      "regen_expo:microclimf" = sprintf(i18n$t("regen_ntfy_micro_cat"),
+        as.character(p$category)),
+      "regen_biljou:start" = sprintf(i18n$t("regen_ntfy_biljou_pts"),
+        as.integer(p$n)),
+      NULL), error = function(e) NULL)
+    if (!is.null(msg) && length(msg) == 1L && nzchar(msg)) {
+      .ntfy_send(ntfy, msg, title = "Nemeton Regen",
+                 priority = "low", tags = tags0[["default"]])
+    }
+    invisible()
+  }
+  .ntfy_send(ntfy, i18n$t("regen_ntfy_start"), title = "Nemeton Regen",
+             tags = tags0[["default"]])
+
   # --- microclimf (LiDAR HD + ERA5) : grille LiDAR HD + clé CDS requises. ---
   # Le cœur EXIGE la structure de végétation (PAI). On la fournit via `las`
   # (dossier nuage LiDAR HD → PAI dérivé par pai_depuis_nuage, prioritaire) ou,
@@ -480,11 +508,14 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       # le vider entre deux tentatives (throttle CDS, cf. warning dédié).
       micro_cache <- file.path(out_dir, "microclimf")
       if (!dir.exists(micro_cache)) dir.create(micro_cache, recursive = TRUE)
+      # Push début (c'est la phase ERA5 + microclimf, la plus longue).
+      .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_start"), title = "Nemeton Regen",
+                 tags = tags0[["default"]])
       sens <- tryCatch(
         do.call(nemeton::regen_sensibilite, c(list(res,
           mnt = grid$mnt_dir, mnh = grid$mnh_dir,
           annees_moy = cfg$year_moyenne, annees_canic = cfg$year_canicule,
-          cache_dir = micro_cache), veg_args)),
+          cache_dir = micro_cache, progress_callback = on_prog), veg_args)),
         error = function(e) {
           msg <- conditionMessage(e)
           # Throttle/coupure CDS pendant l'acquisition ERA5 (~12 req/an) : la
@@ -503,14 +534,22 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
                               quiet = TRUE, delete_dsn = TRUE),
                  error = function(e) cli::cli_warn("regen engine: sensibilite cache not written"))
         cached <- c(cached, "sensibilite")
-      } else if (dir.exists(micro_cache) &&
-                 length(list.files(micro_cache)) == 0L) {
-        # Échec sans aucun fichier caché : retirer le dossier vide (ne pas laisser
-        # croire qu'un run a eu lieu). Les era5_*.nc déjà rapatriés sont préservés.
-        unlink(micro_cache, recursive = TRUE)
+        .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_done"), title = "Nemeton Regen",
+                   tags = tags0[["ok"]])
+      } else {
+        if (dir.exists(micro_cache) && length(list.files(micro_cache)) == 0L) {
+          # Échec sans aucun fichier caché : retirer le dossier vide (ne pas
+          # laisser croire qu'un run a eu lieu). Les era5_*.nc déjà rapatriés
+          # (throttle CDS) sont préservés → reprise au re-lancement.
+          unlink(micro_cache, recursive = TRUE)
+        }
+        .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_skip"), title = "Nemeton Regen",
+                   priority = "low", tags = tags0[["skip"]])
       }
     } else {
       warnings <- c(warnings, i18n$t("regen_engine_no_vegetation_structure"))
+      .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_skip"), title = "Nemeton Regen",
+                 priority = "low", tags = tags0[["skip"]])
     }
   }
 
@@ -537,13 +576,16 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       }
     }
 
+    .ntfy_send(ntfy, i18n$t("regen_ntfy_biljou_start"), title = "Nemeton Regen",
+               tags = tags0[["default"]])
     bil <- tryCatch({
       meteo <- nemeton::load_biljou_forcing(res, years = years, source = forcing,
                                             cache_dir = biljou_cache)
       sol   <- nemeton::build_biljou_soil(res, ewm = cfg$ewm)
       nemeton::regen_bilan_hydrique(res, meteo = meteo, sol = sol,
         lai_max = lai_max, forest_type = cfg$forest_type %||% "feuillu",
-        years = years, budburst = cfg$budburst, leaf_fall = cfg$leaf_fall)
+        years = years, budburst = cfg$budburst, leaf_fall = cfg$leaf_fall,
+        progress_callback = on_prog)
     }, error = function(e) {
       warnings <<- c(warnings, .strip_ansi(sprintf("BILJOU: %s", conditionMessage(e))))
       NULL
@@ -555,9 +597,25 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
                             quiet = TRUE, delete_dsn = TRUE),
                error = function(e) cli::cli_warn("regen engine: biljou cache not written"))
       cached <- c(cached, "biljou")
+      .ntfy_send(ntfy, i18n$t("regen_ntfy_biljou_done"), title = "Nemeton Regen",
+                 tags = tags0[["ok"]])
     } else {
       warnings <- c(warnings, i18n$t("regen_guard_biljou"))
     }
+  }
+
+  # --- Résumé de fin (jalon global). ---
+  done_msg <- if (length(cached)) {
+    sprintf(i18n$t("regen_ntfy_done"), paste(cached, collapse = ", "))
+  } else {
+    i18n$t("regen_ntfy_done_empty")
+  }
+  .ntfy_send(ntfy, done_msg, title = "Nemeton Regen",
+             priority = if (length(cached)) "default" else "low",
+             tags = if (length(cached)) tags0[["done"]] else tags0[["warn"]])
+  if (length(warnings)) {
+    .ntfy_send(ntfy, paste(warnings, collapse = " — "), title = "Nemeton Regen",
+               priority = "low", tags = tags0[["warn"]])
   }
 
   list(units = res, warnings = warnings, cached = cached, canopy = canopy)

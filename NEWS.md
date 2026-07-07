@@ -1,4 +1,18 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.9
+
+### Added — reGénération : notifications ntfy du moteur réel (au fur et à mesure)
+
+- Le moteur « Lancer le moteur réel » (long : microclimf + ERA5 + BILJOU, worker
+  `future`) pousse désormais des **notifications ntfy** aux jalons — comme
+  FAST/FORDEAD/RECONFORT : `start` → `micro_start` → `micro_done`/`skip` →
+  `biljou_start` → `biljou_done` → résumé (`cached`) + warnings.
+- **Granularité fine** (cœur ≥ 0.142.0, `progress_callback`) : un push par année
+  ERA5 (`ERA5 %d (%s) [i/n]`), par été microclimf, et au démarrage BILJOU
+  (`%d points`).
+- **Opt-in strict** : sans `NEMETON_NTFY_TOPIC`, aucun envoi, zéro surcoût
+  (callback non passé au cœur). Titre ntfy ASCII (`Nemeton Regen`) ; body accentué.
+- Plancher cœur relevé à `nemeton (>= 0.142.0)` (`progress_callback` sur
+  `regen_sensibilite()` / `regen_bilan_hydrique()`).
 
 # nemetonshiny 0.100.8
 

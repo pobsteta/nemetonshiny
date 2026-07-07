@@ -283,6 +283,118 @@ test_that("run_regeneration_engine validates its input", {
     "must be an sf")
 })
 
+# --- Notifications ntfy du moteur (brief engine-ntfy) ------------------------
+
+test_that("engine pushes ntfy milestones in order when opted in", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = TRUE)
+    rec <- new.env(); rec$msgs <- character(0); seen <- new.env()
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() list(url = "http://x", topic = "t", token = ""),
+      .ntfy_send = function(cfg, message, priority = "default", tags = NULL,
+                            title = "Nemeton") {
+        rec$msgs <- c(rec$msgs, as.character(message)); invisible(TRUE) },
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ..., progress_callback = NULL) {
+        seen$micro_cb <- progress_callback; units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ..., progress_callback = NULL) {
+        seen$biljou_cb <- progress_callback; units$njstress <- 1; units },
+      .package = "nemeton")
+
+    i18n <- nemetonshiny:::get_i18n("fr")
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    # Séquence attendue des jalons (le résumé porte la liste `cached`).
+    expect_equal(rec$msgs, c(
+      i18n$t("regen_ntfy_start"),
+      i18n$t("regen_ntfy_micro_start"),
+      i18n$t("regen_ntfy_micro_done"),
+      i18n$t("regen_ntfy_biljou_start"),
+      i18n$t("regen_ntfy_biljou_done"),
+      sprintf(i18n$t("regen_ntfy_done"), "sensibilite, biljou")))
+    # Callback fin transmis aux deux moteurs (opt-in on).
+    expect_true(is.function(seen$micro_cb))
+    expect_true(is.function(seen$biljou_cb))
+    expect_setequal(out$cached, c("sensibilite", "biljou"))
+  })
+})
+
+test_that("engine passes no progress_callback when ntfy is off (opt-in)", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = TRUE)
+    seen <- new.env()
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() NULL,                 # NEMETON_NTFY_TOPIC absent
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ..., progress_callback = NULL) {
+        seen$micro_cb <- progress_callback; seen$has <- "progress_callback" %in% names(list(...)) || TRUE
+        units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ..., progress_callback = NULL) {
+        seen$biljou_cb <- progress_callback; units$njstress <- 1; units },
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_null(seen$micro_cb)                        # aucun surcoût callback
+    expect_null(seen$biljou_cb)
+    expect_setequal(out$cached, c("sensibilite", "biljou"))
+  })
+})
+
+test_that("engine ntfy on_prog maps core events to messages", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = TRUE)
+    rec <- new.env(); rec$msgs <- character(0)
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() list(url = "http://x", topic = "t", token = ""),
+      .ntfy_send = function(cfg, message, ...) {
+        rec$msgs <- c(rec$msgs, as.character(message)); invisible(TRUE) },
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      # Le moteur émet des événements fins via le callback reçu.
+      regen_sensibilite = function(units, ..., progress_callback = NULL) {
+        if (is.function(progress_callback)) {
+          progress_callback(list(current = "regen_expo:microclimf", category = "moyen"))
+          progress_callback(list(current = "regen_expo:era5", year = 2018,
+                                 category = "moyen", i = 3, n = 12))
+        }
+        units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ..., progress_callback = NULL) {
+        if (is.function(progress_callback)) {
+          progress_callback(list(current = "regen_biljou:start", n = 30))
+        }
+        units$njstress <- 1; units },
+      .package = "nemeton")
+
+    i18n <- nemetonshiny:::get_i18n("fr")
+    nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_true(sprintf(i18n$t("regen_ntfy_micro_cat"), "moyen") %in% rec$msgs)
+    expect_true(sprintf(i18n$t("regen_ntfy_era5"), 2018L, "moyen", 3L, 12L) %in% rec$msgs)
+    expect_true(sprintf(i18n$t("regen_ntfy_biljou_pts"), 30L) %in% rec$msgs)
+  })
+})
+
 test_that("run_regeneration_detect_years builds eobs then detects the years", {
   skip_if_not_installed("sf")
   withr::with_tempdir({
