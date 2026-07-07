@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.10
 
 ### Changed — Plancher cœur relevé à `nemeton (>= 0.143.0)` : moteur d'exposition plus rapide
 

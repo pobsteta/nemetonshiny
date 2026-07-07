@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.10] - 2026-07-07
+
 ### Changed
 
 - Plancher cœur relevé à `nemeton (>= 0.143.0)` : l'app bénéficie, sans changement
