@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.7.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,20 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.100.8" id="nemetonshiny-01008">nemetonshiny 0.100.8<a class="anchor" aria-label="anchor" href="#nemetonshiny-01008"></a></h2>
+<div class="section level4">
+<h4 id="fixed--regénération--le-moteur-microclimf-produit-enfin-sa-sortie-0-100-8">Fixed — reGénération : le moteur microclimf produit enfin sa sortie<a class="anchor" aria-label="anchor" href="#fixed--reg%C3%A9n%C3%A9ration--le-moteur-microclimf-produit-enfin-sa-sortie-0-100-8"></a></h4>
+<ul><li>« Lancer le moteur réel » ne produisait <strong>jamais</strong> <code>sensibilite.gpkg</code> (<code>cache/regeneration/microclimf/</code> vide, bandeau « non calculée ») : l’app appelait <code><a href="https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html" class="external-link">nemeton::regen_sensibilite()</a></code> <strong>sans structure de végétation</strong> (<code>las</code>/<code>pai</code>), or le cœur l’exige et abandonnait avant tout ERA5 (abort avalé en warning). L’app fournit désormais cette structure :
+<ul><li>
+<strong>nuage LiDAR HD</strong> prioritaire — <code>resolve_regen_lidar_grid()</code> résout aussi <code>cache/layers/lidar_nuage</code> (<code>.las/.laz/.copc.laz</code>) → passé en <code>las</code> (le cœur en dérive le PAI) ;</li>
+<li>
+<strong>repli LAI Sentinel-2/PROSAIL</strong> sinon — <code>pai</code> réutilise le raster déjà caché par BILJOU ;</li>
+<li>
+<strong>aucune source</strong> → warning i18n dédié <code>regen_engine_no_vegetation_structure</code>.</li>
+</ul></li>
+<li>Le dossier <code>microclimf/</code> n’est créé que si le moteur est réellement lancé, et retiré s’il reste vide après échec (plus de fausse impression de run). Les <code>era5_*.nc</code> cachés <strong>persistent</strong> → un re-lancement reprend depuis le cache.</li>
+<li>Throttle CDS pendant l’acquisition ERA5 (~12 requêtes/an) : warning distinct <code>regen_engine_era5_interrupted</code> (« relancez pour reprendre »).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.7" id="nemetonshiny-01007">nemetonshiny 0.100.7<a class="anchor" aria-label="anchor" href="#nemetonshiny-01007"></a></h2>

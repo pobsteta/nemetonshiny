@@ -1,6 +1,30 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.100.8
+
+#### Fixed — reGénération : le moteur microclimf produit enfin sa sortie
+
+- « Lancer le moteur réel » ne produisait **jamais** `sensibilite.gpkg`
+  (`cache/regeneration/microclimf/` vide, bandeau « non calculée ») :
+  l’app appelait
+  [`nemeton::regen_sensibilite()`](https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html)
+  **sans structure de végétation** (`las`/`pai`), or le cœur l’exige et
+  abandonnait avant tout ERA5 (abort avalé en warning). L’app fournit
+  désormais cette structure :
+  - **nuage LiDAR HD** prioritaire — `resolve_regen_lidar_grid()` résout
+    aussi `cache/layers/lidar_nuage` (`.las/.laz/.copc.laz`) → passé en
+    `las` (le cœur en dérive le PAI) ;
+  - **repli LAI Sentinel-2/PROSAIL** sinon — `pai` réutilise le raster
+    déjà caché par BILJOU ;
+  - **aucune source** → warning i18n dédié
+    `regen_engine_no_vegetation_structure`.
+- Le dossier `microclimf/` n’est créé que si le moteur est réellement
+  lancé, et retiré s’il reste vide après échec (plus de fausse
+  impression de run). Les `era5_*.nc` cachés **persistent** → un
+  re-lancement reprend depuis le cache.
+- Throttle CDS pendant l’acquisition ERA5 (~12 requêtes/an) : warning
+  distinct `regen_engine_era5_interrupted` (« relancez pour reprendre
+  »).
 
 ## nemetonshiny 0.100.7
 

@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.8\] - 2026-07-07
+
+### Fixed
+
+- reGénération : le moteur microclimf (« Lancer le moteur réel »)
+  produit enfin `sensibilite.gpkg`. L’app passe désormais la structure
+  de végétation exigée par
+  [`nemeton::regen_sensibilite()`](https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html)
+  : `las` (nuage LiDAR HD `cache/layers/lidar_nuage`, provenance « lidar
+  ») en priorité, sinon repli `pai` LAI Sentinel-2/PROSAIL (provenance «
+  satellite »), sinon warning dédié. `microclimf/` n’est créé que si le
+  moteur tourne (era5\_\*.nc persistés → reprise) ; throttle CDS ERA5
+  signalé par un warning distinct.
+
 ## \[0.100.7\] - 2026-07-06
 
 ### Changed
