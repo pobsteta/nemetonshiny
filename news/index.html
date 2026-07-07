@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.9.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,11 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.100.10" id="nemetonshiny-010010">nemetonshiny 0.100.10<a class="anchor" aria-label="anchor" href="#nemetonshiny-010010"></a></h2>
+<div class="section level4">
+<h4 id="changed--plancher-cœur-relevé-à-nemeton---moteur-dexposition-plus-rapide-0-100-10">Changed — Plancher cœur relevé à <code>nemeton (&gt;= 0.143.0)</code> : moteur d’exposition plus rapide<a class="anchor" aria-label="anchor" href="#changed--plancher-c%C5%93ur-relev%C3%A9-%C3%A0-nemeton---moteur-dexposition-plus-rapide-0-100-10"></a></h4>
+<ul><li>Bénéficie des optimisations <code>nemeton@0.143.0</code> du moteur d’exposition reGénération, <strong>sans changement de code applicatif</strong> (le cœur les applique en interne) : (1) <code>pai_depuis_nuage()</code> clippe la lecture LiDAR (<code>lasR</code>, filtre <code>-keep_xy</code>) à l’emprise de travail — sur nuage COPC, seule l’AOI est lue, dérivation PAI bien plus rapide sur grand massif ; (2) forçage ERA5 dégroupé (1 requête/an au lieu de 12) avec retry/back-off — nettement moins de throttle CDS. Le warning <code>regen_engine_era5_interrupted</code> reste comme filet de sécurité.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.9" id="nemetonshiny-01009">nemetonshiny 0.100.9<a class="anchor" aria-label="anchor" href="#nemetonshiny-01009"></a></h2>

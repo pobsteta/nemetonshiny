@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.10\] - 2026-07-07
+
+### Changed
+
+- Plancher cœur relevé à `nemeton (>= 0.143.0)` : l’app bénéficie, sans
+  changement de code, des optimisations du moteur d’exposition
+  reGénération — lecture LiDAR clippée à l’AOI (`pai_depuis_nuage()` /
+  `lasR -keep_xy`) et forçage ERA5 dégroupé (1 requête/an +
+  retry/back-off, moins de throttle CDS).
+
 ## \[0.100.9\] - 2026-07-07
 
 ### Added
