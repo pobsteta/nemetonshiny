@@ -12,6 +12,17 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.9\] - 2026-07-07
+
+### Added
+
+- reGénération : le moteur « Lancer le moteur réel » pousse des
+  notifications ntfy au fur et à mesure (jalons
+  start/microclimf/BILJOU/résumé + granularité fine par année ERA5 via
+  `progress_callback`, cœur ≥ 0.142.0). Opt-in strict
+  (`NEMETON_NTFY_TOPIC`) : sans configuration, aucun envoi ni surcoût.
+  Plancher cœur relevé à `nemeton (>= 0.142.0)`.
+
 ## \[0.100.8\] - 2026-07-07
 
 ### Fixed
