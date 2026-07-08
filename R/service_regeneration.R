@@ -547,11 +547,18 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       # Push début (c'est la phase ERA5 + microclimf, la plus longue).
       .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_start"), title = "Nemeton Regen",
                  tags = tags0[["default"]])
+      # Cache PAI persistant (spec 027, brief pai-cache ; nemeton >= 0.146.2).
+      # Branche LiDAR seulement : le cœur relit cache/regeneration/pai.tif si la
+      # géométrie s'aligne (phase PAI éclair, ~38 min économisées/run), sinon
+      # recalcule depuis le nuage COPC + réécrit (auto-invalidation sur AOI/res).
+      # Ignoré côté repli satellite (`pai` déjà fourni) → ne le poser que si las.
+      pai_arg <- if (!is.null(grid$las_dir))
+        list(pai_cache = file.path(out_dir, "pai.tif")) else list()
       sens <- tryCatch(
         do.call(nemeton::regen_sensibilite, c(list(res,
           mnt = grid$mnt_dir, mnh = grid$mnh_dir,
           annees_moy = cfg$year_moyenne, annees_canic = cfg$year_canicule,
-          cache_dir = micro_cache, progress_callback = on_prog), veg_args)),
+          cache_dir = micro_cache, progress_callback = on_prog), pai_arg, veg_args)),
         error = function(e) {
           msg <- conditionMessage(e)
           # Throttle/coupure CDS pendant l'acquisition ERA5 (~12 req/an) : la

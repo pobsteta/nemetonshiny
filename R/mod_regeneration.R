@@ -55,8 +55,10 @@
   switch(st$phase %||% "",
     "grille"     = i18n$t("regen_phase_grille"),
     "pai"        = sprintf(i18n$t("regen_phase_pai"),
-                           i18n$t(if (identical(st$source, "lidar"))
-                                    "regen_phase_pai_lidar" else "regen_phase_pai_raster")),
+                           i18n$t(switch(st$source %||% "",
+                             "cache" = "regen_phase_pai_cache",   # hit disque : phase éclair
+                             "lidar" = "regen_phase_pai_lidar",   # dérivé du nuage COPC : long
+                             "regen_phase_pai_raster"))),         # repli satellite S2/PROSAIL
     "microclimf_moyenne"  = .regen_micro_lbl(i18n, "regen_phase_micro_moy", st),
     "microclimf_canicule" = .regen_micro_lbl(i18n, "regen_phase_micro_can", st),
     "exposition" = i18n$t("regen_phase_exposition"),
@@ -88,6 +90,20 @@ mod_regeneration_ui <- function(id) {
       id = ns("sidebar"), width = 360, open = TRUE,
 
       htmltools::tags$p(class = "text-muted small", i18n$t("regen_intro")),
+
+      # --- Moteur microclimf réel (opt-in, coûteux) — placé en tête -------
+      # Lance le vrai run microclimf (LiDAR HD + ERA5) via nemeton, en async.
+      # Désactivé tant que les prérequis (grille LiDAR HD + identifiants CDS)
+      # ne sont pas réunis ; le statut est affiché sous le bouton.
+      htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_engine_section")),
+      bslib::tooltip(
+        bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
+          icon = bsicons::bs_icon("cpu"),
+          label_busy = i18n$t("regen_engine_running_short"),
+          type = "outline-primary", class = "btn-sm w-100"),
+        i18n$t("regen_engine_tip"), placement = "right"),
+      shiny::uiOutput(ns("engine_status")),
+      htmltools::tags$hr(class = "my-2"),
 
       # --- Années de référence -------------------------------------------
       htmltools::tags$strong(i18n$t("regen_years_section")),
@@ -159,21 +175,7 @@ mod_regeneration_ui <- function(id) {
       shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_export_gpkg"),
         class = "btn-outline-primary btn-sm w-100 mb-2"),
       shiny::actionButton(ns("persist_db"), i18n$t("regen_persist_db"),
-        class = "btn-outline-secondary btn-sm w-100", icon = bsicons::bs_icon("database")),
-
-      # --- Moteur microclimf réel (option B, opt-in, coûteux) -------------
-      # Lance le vrai run microclimf (LiDAR HD + ERA5) via nemeton, en async.
-      # Désactivé tant que les prérequis (grille LiDAR HD + identifiants CDS)
-      # ne sont pas réunis ; le statut est affiché sous le bouton.
-      htmltools::tags$hr(class = "my-2"),
-      htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_engine_section")),
-      bslib::tooltip(
-        bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
-          icon = bsicons::bs_icon("cpu"),
-          label_busy = i18n$t("regen_engine_running_short"),
-          type = "outline-primary", class = "btn-sm w-100"),
-        i18n$t("regen_engine_tip"), placement = "right"),
-      shiny::uiOutput(ns("engine_status"))
+        class = "btn-outline-secondary btn-sm w-100", icon = bsicons::bs_icon("database"))
     ),
 
     # --- Résultats -------------------------------------------------------
@@ -462,6 +464,19 @@ mod_regeneration_server <- function(id, app_state) {
     bslib::bind_task_button(engine_task, "run_engine")
     bslib::bind_task_button(eobs_task, "auto_years")
 
+    # Invalidation manuelle du cache PAI (§3 brief pai-cache) : supprime
+    # cache/regeneration/pai.tif → le prochain run recalcule la structure de
+    # végétation depuis le nuage LiDAR. Sans effet si le fichier n'existe pas.
+    shiny::observeEvent(input$recompute_pai, {
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(project_path)) return()
+      f <- file.path(project_path, "cache", "regeneration", "pai.tif")
+      if (file.exists(f)) {
+        unlink(f)
+        shiny::showNotification(i18n$t("regen_pai_cache_cleared"), type = "message")
+      }
+    })
+
     shiny::observeEvent(input$run_engine, {
       units <- units_sf()
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
@@ -619,8 +634,18 @@ mod_regeneration_server <- function(id, app_state) {
             bsicons::bs_icon("badge-sd", class = "me-1"), i18n$t("regen_canopee_satellite")),
           i18n$t("regen_canopee_satellite_info"), placement = "right")
       } else {
-        htmltools::tags$span(class = "badge text-bg-success mt-2 d-inline-block",
-          bsicons::bs_icon("badge-hd", class = "me-1"), i18n$t("regen_canopee_lidar"))
+        # Canopée LiDAR HD : le PAI structural a été dérivé du nuage et mis en
+        # cache (cache/regeneration/pai.tif). On expose ici l'invalidation manuelle
+        # du cache — pertinente seulement dans ce cas (le repli satellite n'écrit
+        # pas de pai.tif). Le lien n'apparaît donc qu'après un run LiDAR réussi.
+        htmltools::tagList(
+          htmltools::tags$span(class = "badge text-bg-success mt-2 d-inline-block",
+            bsicons::bs_icon("badge-hd", class = "me-1"), i18n$t("regen_canopee_lidar")),
+          bslib::tooltip(
+            shiny::actionLink(ns("recompute_pai"), i18n$t("regen_pai_recompute"),
+              icon = bsicons::bs_icon("arrow-repeat"), class = "small d-block mt-1"),
+            i18n$t("regen_pai_recompute_tip"), placement = "right")
+        )
       }
     })
 

@@ -70,9 +70,12 @@ test_that(".regen_phase_label renders the 6 phases + terminal states (FR)", {
   lbl <- function(st) nemetonshiny:::.regen_phase_label(i18n, st)
 
   expect_equal(lbl(list(phase = "grille")), i18n$t("regen_phase_grille"))
-  # PAI : source lidar vs satellite injectée dans le libellé
+  # PAI : source lidar / satellite / cache injectée dans le libellé
   expect_match(lbl(list(phase = "pai", source = "lidar")), "LiDAR")
   expect_match(lbl(list(phase = "pai", source = "raster")), "satellite")
+  # hit cache disque (nemeton >= 0.146.2) → « PAI (cache) », phase éclair
+  expect_match(lbl(list(phase = "pai", source = "cache")),
+               i18n$t("regen_phase_pai_cache"), fixed = TRUE)
   # microclimf avec year/i/n → suffixe « year (i/n) »
   expect_match(lbl(list(phase = "microclimf_moyenne", year = 2019, i = 2, n = 5)),
                "2019 (2/5)", fixed = TRUE)

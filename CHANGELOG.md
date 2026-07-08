@@ -10,6 +10,26 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.14] - 2026-07-08
+
+### Added
+
+- reGénération : cache disque persistant du PAI LiDAR — `pai_cache =
+  cache/regeneration/pai.tif` passé à `nemeton::regen_sensibilite()` (branche
+  LiDAR). Relecture si géométrie alignée (phase « PAI (cache) » éclair), sinon
+  recalcul + réécriture (auto-invalidation AOI/res). ~38 min économisées/run.
+- Lien « Recalculer le PAI » sous le badge canopée LiDAR HD (invalidation manuelle
+  du cache, cas nuage remplacé à emprise constante).
+
+### Changed
+
+- reGénération : section « Moteur microclimf réel » remontée en tête du sidebar
+  gauche (sous l'intro, avant « Années de référence »).
+- Retrait de la mention « (option B) » du libellé moteur (jargon interne
+  spec 027, sans sens utilisateur).
+- Plancher cœur relevé à `nemeton (>= 0.146.2)` (moteur d'exposition de bout en
+  bout sous microclimf 2.0.0 ; `pai_cache` disponible depuis 0.145.0).
+
 ## [0.100.13] - 2026-07-08
 
 ### Fixed

@@ -406,6 +406,37 @@ test_that("engine writes microclimf_skipped with a reason when microclimf is ski
   })
 })
 
+test_that("engine passes persistent pai_cache on the LiDAR branch", {
+  # brief pai-cache : sur la branche LiDAR (grille + nuage), regen_sensibilite
+  # reçoit pai_cache = <project>/cache/regeneration/pai.tif (relecture/écriture
+  # du PAI par le cœur → phase éclair au 2e run). Jamais posé côté repli satellite.
+  skip_if_not_installed("sf")
+  withr::local_options(nemeton.app_options = list(language = "fr"))
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = TRUE)   # nuage présent → branche LiDAR
+    seen <- new.env()
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() NULL,
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ..., pai_cache = NULL) {
+        seen$pai_cache <- pai_cache
+        units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_equal(seen$pai_cache,
+                 file.path(p, "cache", "regeneration", "pai.tif"))
+  })
+})
+
 test_that("engine ntfy on_prog maps core events to messages", {
   skip_if_not_installed("sf")
   withr::local_options(nemeton.app_options = list(language = "fr"))
