@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.10.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,17 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.100.11" id="nemetonshiny-010011">nemetonshiny 0.100.11<a class="anchor" aria-label="anchor" href="#nemetonshiny-010011"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--message-de-phase-en-cours-du-moteur-notif-bas-droite-0-100-11">Added — reGénération : message de phase en cours du moteur (notif bas-droite)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--message-de-phase-en-cours-du-moteur-notif-bas-droite-0-100-11"></a></h4>
+<ul><li>Le <strong>moteur réel</strong> affiche désormais <strong>en bas à droite</strong> la <strong>phase en cours</strong> (grille → PAI → microclimat étés moyens <code>year (i/n)</code> → canicule → exposition → BILJOU) au lieu d’une notif indéterminée figée plusieurs minutes. Chrono qui ticke, libellé rafraîchi chaque seconde.</li>
+<li>
+<strong>Canal fichier + poll</strong> (spec 027, brief engine-phase-status ; lève la réserve du §5 du brief engine-feedback) : le worker <code>future</code> écrit la phase courante dans <code>cache/regeneration/engine_status.json</code> (écriture atomique tmp+rename), la session principale le poll (<code>invalidateLater(1000)</code>) et rend la phase dans la notif persistante <code>engine_notif</code> (même id → remplacement en place). Indépendant de ntfy : le canal in-app fonctionne sans <code>NEMETON_NTFY_TOPIC</code>.</li>
+<li>
+<strong>Phase sautée = information de premier plan</strong> : sur un projet type RECONFORT (pas de clé CDS ou structure de végétation manquante), microclimf ne démarre pas → la notif affiche « Exposition microclimf ignorée : {raison} » puis passe à BILJOU (SAFRAN), au lieu de rester bloquée sur une phase antérieure.</li>
+<li>11 clés i18n FR/EN <code>regen_phase_*</code> ; nettoyage du fichier d’état à l’invoke (phase fantôme d’un run précédent) et en fin de tâche (success/error).</li>
+<li>Plancher cœur relevé à <code>nemeton (&gt;= 0.144.0)</code> : active la phase <strong>PAI</strong> (<code>regen_expo:pai</code>, <code>source = lidar|satellite</code>) « Structure de végétation (PAI LiDAR/satellite)… » entre la grille et le microclimat. Les 6 phases sont donc toutes rendues.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.10" id="nemetonshiny-010010">nemetonshiny 0.100.10<a class="anchor" aria-label="anchor" href="#nemetonshiny-010010"></a></h2>
@@ -5639,7 +5649,7 @@ Cohérent avec les libellés <code>download_pdf</code> (rapport Synthèse) et <c
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>
