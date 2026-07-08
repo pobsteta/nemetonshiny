@@ -1,4 +1,27 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.11
+
+### Added — reGénération : message de phase en cours du moteur (notif bas-droite)
+
+- Le **moteur réel** affiche désormais **en bas à droite** la **phase en cours**
+  (grille → PAI → microclimat étés moyens `year (i/n)` → canicule → exposition →
+  BILJOU) au lieu d'une notif indéterminée figée plusieurs minutes. Chrono qui
+  ticke, libellé rafraîchi chaque seconde.
+- **Canal fichier + poll** (spec 027, brief engine-phase-status ; lève la réserve
+  du §5 du brief engine-feedback) : le worker `future` écrit la phase courante
+  dans `cache/regeneration/engine_status.json` (écriture atomique tmp+rename), la
+  session principale le poll (`invalidateLater(1000)`) et rend la phase dans la
+  notif persistante `engine_notif` (même id → remplacement en place). Indépendant
+  de ntfy : le canal in-app fonctionne sans `NEMETON_NTFY_TOPIC`.
+- **Phase sautée = information de premier plan** : sur un projet type RECONFORT
+  (pas de clé CDS ou structure de végétation manquante), microclimf ne démarre
+  pas → la notif affiche « Exposition microclimf ignorée : {raison} » puis passe
+  à BILJOU (SAFRAN), au lieu de rester bloquée sur une phase antérieure.
+- 11 clés i18n FR/EN `regen_phase_*` ; nettoyage du fichier d'état à l'invoke
+  (phase fantôme d'un run précédent) et en fin de tâche (success/error).
+- Plancher cœur relevé à `nemeton (>= 0.144.0)` : active la phase **PAI**
+  (`regen_expo:pai`, `source = lidar|satellite`) « Structure de végétation
+  (PAI LiDAR/satellite)… » entre la grille et le microclimat. Les 6 phases sont
+  donc toutes rendues.
 
 # nemetonshiny 0.100.10
 

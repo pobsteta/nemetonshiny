@@ -10,6 +10,29 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.11] - 2026-07-08
+
+### Added
+
+- reGénération — message de **phase en cours** du moteur réel affiché en bas à
+  droite (grille → PAI → microclimat étés moyens `year (i/n)` → canicule →
+  exposition → BILJOU), avec chrono, au lieu d'une notif indéterminée figée.
+- Canal fichier `cache/regeneration/engine_status.json` (écriture atomique
+  tmp+rename côté worker `future`) + poll `invalidateLater(1000)` côté module
+  rafraîchissant la notif persistante `engine_notif` (spec 027, brief
+  engine-phase-status ; lève la réserve §5 du brief engine-feedback).
+- Phase sautée en premier plan : `microclimf_skipped` + raison (clé CDS absente
+  ou structure de végétation manquante) pour le cas RECONFORT, sans blocage.
+- 11 clés i18n FR/EN `regen_phase_*` ; nouveau `test-regeneration_phase_status.R`.
+
+### Changed
+
+- `on_prog` (callback de progression cœur) désormais toujours passé à
+  `regen_sensibilite()` / `regen_bilan_hydrique()` — il alimente le canal in-app
+  indépendamment de ntfy (le push ntfy reste opt-in strict).
+- Plancher cœur relevé à `nemeton (>= 0.144.0)` : active la phase PAI
+  (`regen_expo:pai`, `source = lidar|satellite`), 6ᵉ et dernière phase rendue.
+
 ## [0.100.10] - 2026-07-07
 
 ### Changed
