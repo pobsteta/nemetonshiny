@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.100.14
+
 ### Changed — reGénération : moteur microclimf en tête du sidebar, jargon retiré
 
 - La section « Moteur microclimf réel » est remontée **en tête du sidebar gauche**

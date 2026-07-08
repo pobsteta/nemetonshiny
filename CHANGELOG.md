@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.14] - 2026-07-08
+
+### Changed
+
+- reGénération : section « Moteur microclimf réel » remontée en tête du sidebar
+  gauche (sous l'intro, avant « Années de référence »).
+- Retrait de la mention « (option B) » du libellé moteur (jargon interne
+  spec 027, sans sens utilisateur).
+
 ## [0.100.13] - 2026-07-08
 
 ### Fixed
