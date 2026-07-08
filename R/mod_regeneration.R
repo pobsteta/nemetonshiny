@@ -89,6 +89,20 @@ mod_regeneration_ui <- function(id) {
 
       htmltools::tags$p(class = "text-muted small", i18n$t("regen_intro")),
 
+      # --- Moteur microclimf réel (opt-in, coûteux) — placé en tête -------
+      # Lance le vrai run microclimf (LiDAR HD + ERA5) via nemeton, en async.
+      # Désactivé tant que les prérequis (grille LiDAR HD + identifiants CDS)
+      # ne sont pas réunis ; le statut est affiché sous le bouton.
+      htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_engine_section")),
+      bslib::tooltip(
+        bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
+          icon = bsicons::bs_icon("cpu"),
+          label_busy = i18n$t("regen_engine_running_short"),
+          type = "outline-primary", class = "btn-sm w-100"),
+        i18n$t("regen_engine_tip"), placement = "right"),
+      shiny::uiOutput(ns("engine_status")),
+      htmltools::tags$hr(class = "my-2"),
+
       # --- Années de référence -------------------------------------------
       htmltools::tags$strong(i18n$t("regen_years_section")),
       shiny::fluidRow(
@@ -159,21 +173,7 @@ mod_regeneration_ui <- function(id) {
       shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_export_gpkg"),
         class = "btn-outline-primary btn-sm w-100 mb-2"),
       shiny::actionButton(ns("persist_db"), i18n$t("regen_persist_db"),
-        class = "btn-outline-secondary btn-sm w-100", icon = bsicons::bs_icon("database")),
-
-      # --- Moteur microclimf réel (option B, opt-in, coûteux) -------------
-      # Lance le vrai run microclimf (LiDAR HD + ERA5) via nemeton, en async.
-      # Désactivé tant que les prérequis (grille LiDAR HD + identifiants CDS)
-      # ne sont pas réunis ; le statut est affiché sous le bouton.
-      htmltools::tags$hr(class = "my-2"),
-      htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_engine_section")),
-      bslib::tooltip(
-        bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
-          icon = bsicons::bs_icon("cpu"),
-          label_busy = i18n$t("regen_engine_running_short"),
-          type = "outline-primary", class = "btn-sm w-100"),
-        i18n$t("regen_engine_tip"), placement = "right"),
-      shiny::uiOutput(ns("engine_status"))
+        class = "btn-outline-secondary btn-sm w-100", icon = bsicons::bs_icon("database"))
     ),
 
     # --- Résultats -------------------------------------------------------

@@ -1,5 +1,14 @@
 # nemetonshiny (development version)
 
+### Changed — reGénération : moteur microclimf en tête du sidebar, jargon retiré
+
+- La section « Moteur microclimf réel » est remontée **en tête du sidebar gauche**
+  (juste sous l'intro, avant « Années de référence ») — c'est l'action longue
+  principale de la vue, elle n'a plus à être cherchée en bas.
+- Suppression de la mention « **(option B)** » dans le libellé : c'était du jargon
+  interne de la spec 027 (option A = chemin rapide sur rasters précalculés,
+  option B = run réel du moteur), sans signification pour l'utilisateur.
+
 # nemetonshiny 0.100.13
 
 ### Fixed — R-CMD-check vert : test SUFOSAT hermétique
