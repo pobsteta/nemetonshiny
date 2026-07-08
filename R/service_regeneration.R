@@ -427,6 +427,20 @@ regen_engine_prereqs <- function(project_path, forcing = "safran") {
        microclimf = micro_ok, biljou = biljou_ok)
 }
 
+# Atomically write the current engine phase to `engine_status.json` in the
+# regeneration cache (worker-side channel polled by the module, spec 027 /
+# brief engine-phase-status). tmp+rename so the poll never reads a truncated
+# JSON. Never fatal: a failed status write must not abort the engine.
+.regen_write_phase <- function(out_dir, phase, extra = list()) {
+  tryCatch({
+    payload <- c(list(phase = phase, ts = as.integer(Sys.time())), extra)
+    tmp <- file.path(out_dir, ".engine_status.json.tmp")
+    fin <- file.path(out_dir, "engine_status.json")
+    writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"), tmp)
+    file.rename(tmp, fin)   # rename atomique -> pas de lecture partielle côté poll
+  }, error = function(e) invisible(NULL))
+}
+
 #' Run the real microclimf engine for a project and persist its output
 #'
 #' @description
@@ -450,6 +464,8 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   i18n <- get_i18n(get_app_options()$language %||% "fr")
   out_dir <- file.path(project_path, "cache", "regeneration")
   if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+  # Phase initiale : préparation de la grille LiDAR HD (avant tout emit cœur).
+  .regen_write_phase(out_dir, "grille")
   warnings <- character(0)
   cached   <- character(0)
   canopy   <- NA_character_       # provenance canopée effective (spec 033 D5)
@@ -464,21 +480,41 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   ntfy  <- .ntfy_config()
   tags0 <- c(default = "evergreen_tree", ok = "white_check_mark",
              skip = "fast_forward", warn = "warning", done = "checkered_flag")
-  # Callback fin (nemeton >= 0.142.0) : mappe les événements cœur → push ntfy.
-  # NULL quand ntfy est off → aucun surcoût (progress_callback = NULL par défaut).
-  on_prog <- if (is.null(ntfy)) NULL else function(p) {
-    msg <- tryCatch(switch(p$current %||% "",
-      "regen_expo:era5" = sprintf(i18n$t("regen_ntfy_era5"),
-        as.integer(p$year), as.character(p$category),
-        as.integer(p$i), as.integer(p$n)),
-      "regen_expo:microclimf" = sprintf(i18n$t("regen_ntfy_micro_cat"),
-        as.character(p$category)),
-      "regen_biljou:start" = sprintf(i18n$t("regen_ntfy_biljou_pts"),
-        as.integer(p$n)),
-      NULL), error = function(e) NULL)
-    if (!is.null(msg) && length(msg) == 1L && nzchar(msg)) {
-      .ntfy_send(ntfy, msg, title = "Nemeton Regen",
-                 priority = "low", tags = tags0[["default"]])
+  # Callback fin (nemeton >= 0.142.0 ; `regen_expo:pai` dès 0.144.0) : mappe les
+  # événements cœur vers (a) le fichier d'état in-app engine_status.json — TOUJOURS,
+  # même sans ntfy, car c'est le canal de la notif bas-droite (brief engine-phase-
+  # status §2) — et (b) le push ntfy existant (opt-in strict). Toujours défini
+  # désormais : le coût est une écriture fichier atomique par phase (négligeable).
+  on_prog <- function(p) {
+    cur <- p$current %||% ""
+    # (a) fichier d'état pour la notif in-app (indépendant de ntfy).
+    switch(cur,
+      "regen_expo:pai" =
+        .regen_write_phase(out_dir, "pai", list(source = p$source %||% NA)),
+      "regen_expo:microclimf" =
+        .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne")),
+      "regen_expo:era5" =
+        .regen_write_phase(out_dir, paste0("microclimf_", p$category %||% "moyenne"),
+                           list(year = p$year, i = p$i, n = p$n)),
+      "regen_expo:complete" = .regen_write_phase(out_dir, "exposition"),
+      "regen_biljou:start"  = .regen_write_phase(out_dir, "biljou", list(n = p$n)),
+      "regen_biljou:complete" = .regen_write_phase(out_dir, "biljou"),
+      NULL)
+    # (b) push ntfy existant (inchangé) — no-op si NEMETON_NTFY_TOPIC absent.
+    if (!is.null(ntfy)) {
+      msg <- tryCatch(switch(cur,
+        "regen_expo:era5" = sprintf(i18n$t("regen_ntfy_era5"),
+          as.integer(p$year), as.character(p$category),
+          as.integer(p$i), as.integer(p$n)),
+        "regen_expo:microclimf" = sprintf(i18n$t("regen_ntfy_micro_cat"),
+          as.character(p$category)),
+        "regen_biljou:start" = sprintf(i18n$t("regen_ntfy_biljou_pts"),
+          as.integer(p$n)),
+        NULL), error = function(e) NULL)
+      if (!is.null(msg) && length(msg) == 1L && nzchar(msg)) {
+        .ntfy_send(ntfy, msg, title = "Nemeton Regen",
+                   priority = "low", tags = tags0[["default"]])
+      }
     }
     invisible()
   }
@@ -548,9 +584,20 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       }
     } else {
       warnings <- c(warnings, i18n$t("regen_engine_no_vegetation_structure"))
+      # Phase sautée = information de premier plan : structure de végétation absente.
+      .regen_write_phase(out_dir, "microclimf_skipped",
+                         list(reason = i18n$t("regen_phase_skip_reason_structure")))
       .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_skip"), title = "Nemeton Regen",
                  priority = "low", tags = tags0[["skip"]])
     }
+  } else {
+    # Bloc microclimf entièrement sauté (cas RECONFORT) : pas de clé CDS au run,
+    # ou pas de grille LiDAR HD. pai_depuis_nuage() n'est jamais appelé, aucun
+    # microclimf/ créé, sensibilite.gpkg reste absent → afficher la raison plutôt
+    # que rester bloqué sur `grille` (BILJOU en SAFRAN peut, lui, réussir).
+    reason <- if (!regen_cds_credentials_ready())
+      i18n$t("regen_phase_skip_reason_cds") else i18n$t("regen_phase_skip_reason_structure")
+    .regen_write_phase(out_dir, "microclimf_skipped", list(reason = reason))
   }
 
   # --- BILJOU (SAFRAN par défaut, sans clé ; ERA5 => clé CDS). ---
@@ -617,6 +664,10 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     .ntfy_send(ntfy, paste(warnings, collapse = " — "), title = "Nemeton Regen",
                priority = "low", tags = tags0[["warn"]])
   }
+
+  # Phase terminale : le module lit `done` → retire la notif, puis supprime le
+  # fichier (§3.3). Le worker ne le supprime PAS ici (course avec le poll).
+  .regen_write_phase(out_dir, "done")
 
   list(units = res, warnings = warnings, cached = cached, canopy = canopy)
 }

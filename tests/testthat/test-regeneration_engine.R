@@ -326,7 +326,10 @@ test_that("engine pushes ntfy milestones in order when opted in", {
   })
 })
 
-test_that("engine passes no progress_callback when ntfy is off (opt-in)", {
+test_that("engine still passes a progress_callback with ntfy off (in-app phase channel)", {
+  # Depuis le brief engine-phase-status : on_prog est TOUJOURS défini, même sans
+  # ntfy, car il alimente engine_status.json (canal de la notif in-app). Sans
+  # ntfy il n'émet aucun push réseau, mais écrit bien le fichier de phase.
   skip_if_not_installed("sf")
   withr::with_tempdir({
     p <- getwd()
@@ -338,7 +341,10 @@ test_that("engine passes no progress_callback when ntfy is off (opt-in)", {
       .package = "nemetonshiny")
     testthat::local_mocked_bindings(
       regen_sensibilite = function(units, ..., progress_callback = NULL) {
-        seen$micro_cb <- progress_callback; seen$has <- "progress_callback" %in% names(list(...)) || TRUE
+        seen$micro_cb <- progress_callback
+        # Simule un emit cœur → le callback doit écrire la phase sans jamais throw.
+        if (is.function(progress_callback))
+          progress_callback(list(current = "regen_expo:complete"))
         units$sensibilite <- 1; units },
       load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
       build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
@@ -349,9 +355,45 @@ test_that("engine passes no progress_callback when ntfy is off (opt-in)", {
     out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
       cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
 
-    expect_null(seen$micro_cb)                        # aucun surcoût callback
-    expect_null(seen$biljou_cb)
+    # Callback désormais toujours fourni au cœur (canal de phase in-app).
+    expect_true(is.function(seen$micro_cb))
+    expect_true(is.function(seen$biljou_cb))
+    # Fin de worker : le fichier d'état existe et porte la phase terminale `done`.
+    st <- jsonlite::fromJSON(file.path(p, "cache", "regeneration", "engine_status.json"))
+    expect_equal(st$phase, "done")
     expect_setequal(out$cached, c("sensibilite", "biljou"))
+  })
+})
+
+test_that("engine writes microclimf_skipped with a reason when microclimf is skipped", {
+  # Cas RECONFORT : pas de clé CDS → bloc microclimf entièrement sauté, mais
+  # BILJOU (SAFRAN) réussit. Le fichier d'état doit porter microclimf_skipped
+  # (raison CDS) puis la phase terminale done — jamais bloqué sur `grille`.
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd()
+    .make_lidar_grid(p, with_nuage = TRUE)
+    seen <- new.env(); seen$phases <- character(0)
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() FALSE,   # pas de clé CDS
+      .ntfy_config = function() NULL,
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ..., progress_callback = NULL) {
+        # Capture la phase d'état juste après le saut microclimf, avant `done`.
+        st <- jsonlite::fromJSON(file.path(p, "cache", "regeneration", "engine_status.json"))
+        seen$mid <- st
+        units$njstress <- 1; units },
+      .package = "nemeton")
+
+    nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(forcing = "safran"))
+
+    expect_equal(seen$mid$phase, "microclimf_skipped")
+    expect_equal(seen$mid$reason,
+                 get_i18n("fr")$t("regen_phase_skip_reason_cds"))
   })
 })
 

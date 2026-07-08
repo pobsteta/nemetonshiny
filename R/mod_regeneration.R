@@ -18,6 +18,55 @@
   }
 }
 
+# --- Phase en cours du moteur reGénération (canal fichier, spec 027) ---------
+# Le worker future écrit sa phase dans cache/regeneration/engine_status.json ;
+# la session principale le poll (invalidateLater 1000) et rend la phase dans la
+# notif bas-droite. Cf. brief engine-phase-status.
+
+# Lit engine_status.json ; NULL si absent/illisible/périmé (> 2 min sans MAJ).
+.regen_read_phase <- function(project_path) {
+  if (is.null(project_path)) return(NULL)
+  f <- file.path(project_path, "cache", "regeneration", "engine_status.json")
+  if (!file.exists(f)) return(NULL)
+  st <- tryCatch(jsonlite::fromJSON(f), error = function(e) NULL)
+  if (is.null(st) || is.null(st$phase)) return(NULL)
+  if (!is.null(st$ts) && as.integer(Sys.time()) - st$ts > 120L) return(NULL)
+  st
+}
+
+# « base {year} ({i}/{n}) » seulement si l'événement era5 a fourni l'année.
+.regen_micro_lbl <- function(i18n, key, st) {
+  base <- i18n$t(key)
+  if (!is.null(st$year) && !is.null(st$i) && !is.null(st$n))
+    sprintf("%s %s (%d/%d)", base, st$year, as.integer(st$i), as.integer(st$n))
+  else base
+}
+
+# Supprime engine_status.json en fin de tâche (success/error). Le worker écrit
+# `done` mais ne supprime PAS (course avec le poll) : c'est le module qui nettoie.
+.regen_cleanup_status <- function(app_state) {
+  project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+  if (!is.null(project_path))
+    unlink(file.path(project_path, "cache", "regeneration", "engine_status.json"))
+}
+
+# Libellé i18n d'une phase (voir modèle 6 phases + états terminaux du brief).
+.regen_phase_label <- function(i18n, st) {
+  switch(st$phase %||% "",
+    "grille"     = i18n$t("regen_phase_grille"),
+    "pai"        = sprintf(i18n$t("regen_phase_pai"),
+                           i18n$t(if (identical(st$source, "lidar"))
+                                    "regen_phase_pai_lidar" else "regen_phase_pai_raster")),
+    "microclimf_moyenne"  = .regen_micro_lbl(i18n, "regen_phase_micro_moy", st),
+    "microclimf_canicule" = .regen_micro_lbl(i18n, "regen_phase_micro_can", st),
+    "exposition" = i18n$t("regen_phase_exposition"),
+    "biljou"     = i18n$t("regen_phase_biljou"),
+    "microclimf_skipped" = sprintf(i18n$t("regen_phase_micro_skip"),
+                                   st$reason %||% ""),
+    "done"       = "",
+    "")
+}
+
 #' reGénération tab UI
 #' @param id Module id.
 #' @noRd
@@ -439,13 +488,34 @@ mod_regeneration_server <- function(id, app_state) {
         budburst = na_null(input$budburst),
         leaf_fall = na_null(input$leaf_fall)
       )
+      # Supprimer un engine_status.json périmé d'un run précédent : sans ça, le
+      # poll afficherait une phase fantôme du run antérieur au démarrage.
+      unlink(file.path(project_path, "cache", "regeneration", "engine_status.json"))
       rv$engine_running <- TRUE
       rv$engine_start <- Sys.time()
       # Notif persistante bas-droite (retirée en fin de tâche) — le moteur réel
-      # (LiDAR HD + ERA5 + microclimf) peut durer plusieurs minutes.
+      # (LiDAR HD + ERA5 + microclimf) peut durer plusieurs minutes. Le libellé
+      # est ensuite rafraîchi phase par phase par l'observe de poll ci-dessous.
       shiny::showNotification(i18n$t("regen_engine_running"), type = "message",
                               duration = NULL, id = session$ns("engine_notif"))
       engine_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
+    })
+
+    # Poll (1 s) du fichier d'état écrit par le worker : rafraîchit la notif
+    # persistante bas-droite (même id → Shiny remplace le contenu en place) avec
+    # le libellé de la phase en cours + chrono. Cf. brief engine-phase-status §3.3.
+    shiny::observe({
+      if (!isTRUE(rv$engine_running)) return()
+      shiny::invalidateLater(1000)
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      st  <- .regen_read_phase(project_path)
+      lbl <- if (is.null(st)) i18n$t("regen_engine_running") else .regen_phase_label(i18n, st)
+      if (!nzchar(lbl)) lbl <- i18n$t("regen_engine_running")   # done / illisible
+      shiny::showNotification(
+        htmltools::span(
+          bsicons::bs_icon("hourglass-split", class = "me-1"), lbl, " — ",
+          htmltools::tags$span(class = "font-monospace", .fmt_elapsed(rv$engine_start))),
+        id = session$ns("engine_notif"), type = "message", duration = NULL)
     })
 
     shiny::observeEvent(engine_task$status(), {
@@ -454,6 +524,7 @@ mod_regeneration_server <- function(id, app_state) {
         rv$engine_running <- FALSE
         rv$engine_start <- NULL
         shiny::removeNotification(session$ns("engine_notif"))
+        .regen_cleanup_status(app_state)
         # Le worker a écrit sensibilite.gpkg / biljou.gpkg : recharger le
         # precomputed et relancer l'analyse normale (fast-path) pour rafraîchir
         # carte/table. Les avertissements spécifiques du moteur (échec réel
@@ -494,6 +565,7 @@ mod_regeneration_server <- function(id, app_state) {
         rv$engine_running <- FALSE
         rv$engine_start <- NULL
         shiny::removeNotification(session$ns("engine_notif"))
+        .regen_cleanup_status(app_state)
         err <- tryCatch(engine_task$result(), error = function(e) conditionMessage(e))
         shiny::showNotification(
           sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),

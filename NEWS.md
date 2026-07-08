@@ -1,5 +1,27 @@
 # nemetonshiny (development version)
 
+### Added — reGénération : message de phase en cours du moteur (notif bas-droite)
+
+- Le **moteur réel** affiche désormais **en bas à droite** la **phase en cours**
+  (grille → PAI → microclimat étés moyens `year (i/n)` → canicule → exposition →
+  BILJOU) au lieu d'une notif indéterminée figée plusieurs minutes. Chrono qui
+  ticke, libellé rafraîchi chaque seconde.
+- **Canal fichier + poll** (spec 027, brief engine-phase-status ; lève la réserve
+  du §5 du brief engine-feedback) : le worker `future` écrit la phase courante
+  dans `cache/regeneration/engine_status.json` (écriture atomique tmp+rename), la
+  session principale le poll (`invalidateLater(1000)`) et rend la phase dans la
+  notif persistante `engine_notif` (même id → remplacement en place). Indépendant
+  de ntfy : le canal in-app fonctionne sans `NEMETON_NTFY_TOPIC`.
+- **Phase sautée = information de premier plan** : sur un projet type RECONFORT
+  (pas de clé CDS ou structure de végétation manquante), microclimf ne démarre
+  pas → la notif affiche « Exposition microclimf ignorée : {raison} » puis passe
+  à BILJOU (SAFRAN), au lieu de rester bloquée sur une phase antérieure.
+- 11 clés i18n FR/EN `regen_phase_*` ; nettoyage du fichier d'état à l'invoke
+  (phase fantôme d'un run précédent) et en fin de tâche (success/error).
+- La phase **PAI** (`regen_expo:pai`, `source = lidar|satellite`) nécessite
+  `nemeton (>= 0.144.0)` ; les 5 autres phases fonctionnent dès le cœur 0.142.0.
+  Le plancher `Imports:` sera relevé à 0.144.0 une fois la release cœur publiée.
+
 # nemetonshiny 0.100.10
 
 ### Changed — Plancher cœur relevé à `nemeton (>= 0.143.0)` : moteur d'exposition plus rapide
