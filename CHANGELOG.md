@@ -30,6 +30,8 @@ For a narrative, per-feature description of each release, see
 - `on_prog` (callback de progression cœur) désormais toujours passé à
   `regen_sensibilite()` / `regen_bilan_hydrique()` — il alimente le canal in-app
   indépendamment de ntfy (le push ntfy reste opt-in strict).
+- Plancher cœur relevé à `nemeton (>= 0.144.0)` : active la phase PAI
+  (`regen_expo:pai`, `source = lidar|satellite`), 6ᵉ et dernière phase rendue.
 
 ## [0.100.10] - 2026-07-07
 

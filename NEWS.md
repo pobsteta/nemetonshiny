@@ -18,9 +18,10 @@
   à BILJOU (SAFRAN), au lieu de rester bloquée sur une phase antérieure.
 - 11 clés i18n FR/EN `regen_phase_*` ; nettoyage du fichier d'état à l'invoke
   (phase fantôme d'un run précédent) et en fin de tâche (success/error).
-- La phase **PAI** (`regen_expo:pai`, `source = lidar|satellite`) nécessite
-  `nemeton (>= 0.144.0)` ; les 5 autres phases fonctionnent dès le cœur 0.142.0.
-  Le plancher `Imports:` sera relevé à 0.144.0 une fois la release cœur publiée.
+- Plancher cœur relevé à `nemeton (>= 0.144.0)` : active la phase **PAI**
+  (`regen_expo:pai`, `source = lidar|satellite`) « Structure de végétation
+  (PAI LiDAR/satellite)… » entre la grille et le microclimat. Les 6 phases sont
+  donc toutes rendues.
 
 # nemetonshiny 0.100.10
 
