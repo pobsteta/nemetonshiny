@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.13] - 2026-07-08
+
+### Fixed
+
+- Test SUFOSAT (`test-sufosat-t3.R`) rendu hermétique : fournit des clés Theia
+  factices (`withr::local_envvar`) pour franchir le garde
+  `theia_api_key_configured()` de `build_sufosat_layer()`, qui retournait `NULL`
+  en CI (aucune clé `TLD_*`) avant d'atteindre l'I/O mockée. Aucun réseau. Fait
+  passer R-CMD-check de FAIL 7 à **FAIL 0** — suite entièrement verte en CI.
+
 ## [0.100.12] - 2026-07-08
 
 ### Fixed
