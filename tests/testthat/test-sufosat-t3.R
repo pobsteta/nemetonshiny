@@ -31,6 +31,12 @@ test_that("build_sufosat_layer fetches via Theia, caches, and reuses cache", {
   skip_if_not_installed("sf")
   skip_if_not_installed("terra")
 
+  # Le test mocke toute l'I/O Theia (load_theia_source), mais build_sufosat_layer
+  # garde en amont sur theia_api_key_configured() (clés TLD_*). Sans clés (cas CI),
+  # il retourne NULL avant d'atteindre les mocks. On fournit des clés factices pour
+  # franchir le garde : le test reste hermétique (aucun réseau, tout est mocké).
+  withr::local_envvar(c(TLD_ACCESS_KEY = "test-key", TLD_SECRET_KEY = "test-secret"))
+
   proj <- withr::local_tempdir()
   aoi  <- .sufosat_aoi()
 
