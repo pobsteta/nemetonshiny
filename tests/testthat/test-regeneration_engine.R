@@ -227,6 +227,9 @@ test_that("microclimf uses the S2/PROSAIL PAI fallback when no LiDAR point cloud
 
 test_that("microclimf warns (no vegetation structure) when neither las nor pai is available", {
   skip_if_not_installed("sf")
+  # Langue figée (le moteur résout i18n via get_app_options()) : robustesse à
+  # l'ordre des tests, une suite antérieure pouvant laisser la locale en "en".
+  withr::local_options(nemeton.app_options = list(language = "fr"))
   withr::with_tempdir({
     p <- getwd()
     .make_lidar_grid(p, with_nuage = FALSE)
@@ -256,6 +259,7 @@ test_that("microclimf warns (no vegetation structure) when neither las nor pai i
 
 test_that("microclimf surfaces a dedicated warning on ERA5 throttling", {
   skip_if_not_installed("sf")
+  withr::local_options(nemeton.app_options = list(language = "fr"))
   withr::with_tempdir({
     p <- getwd()
     .make_lidar_grid(p, with_nuage = TRUE)    # nuage présent → structure OK
@@ -287,6 +291,7 @@ test_that("run_regeneration_engine validates its input", {
 
 test_that("engine pushes ntfy milestones in order when opted in", {
   skip_if_not_installed("sf")
+  withr::local_options(nemeton.app_options = list(language = "fr"))
   withr::with_tempdir({
     p <- getwd()
     .make_lidar_grid(p, with_nuage = TRUE)
@@ -370,6 +375,10 @@ test_that("engine writes microclimf_skipped with a reason when microclimf is ski
   # BILJOU (SAFRAN) réussit. Le fichier d'état doit porter microclimf_skipped
   # (raison CDS) puis la phase terminale done — jamais bloqué sur `grille`.
   skip_if_not_installed("sf")
+  # Langue figée : le moteur résout i18n via get_app_options()$language ; on la
+  # force en local pour ne pas dépendre d'une pollution d'ordre de tests (une
+  # suite antérieure peut laisser nemeton.app_options en "en").
+  withr::local_options(nemeton.app_options = list(language = "fr"))
   withr::with_tempdir({
     p <- getwd()
     .make_lidar_grid(p, with_nuage = TRUE)
@@ -399,6 +408,7 @@ test_that("engine writes microclimf_skipped with a reason when microclimf is ski
 
 test_that("engine ntfy on_prog maps core events to messages", {
   skip_if_not_installed("sf")
+  withr::local_options(nemeton.app_options = list(language = "fr"))
   withr::with_tempdir({
     p <- getwd()
     .make_lidar_grid(p, with_nuage = TRUE)
