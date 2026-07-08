@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.13.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.14</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,22 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.100.14" id="nemetonshiny-010014">nemetonshiny 0.100.14<a class="anchor" aria-label="anchor" href="#nemetonshiny-010014"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--cache-disque-du-pai-lidar-min-économiséesrun-0-100-14">Added — reGénération : cache disque du PAI LiDAR (~38 min économisées/run)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--cache-disque-du-pai-lidar-min-%C3%A9conomis%C3%A9esrun-0-100-14"></a></h4>
+<ul><li>La phase <strong>PAI</strong> (<code>pai_depuis_nuage()</code> sur le nuage COPC) tient &gt;30 min sur un gros AOI et était <strong>recalculée à chaque run</strong> (ancien PAI en <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile()</a></code>). Elle ne dépend pourtant que du nuage + de la grille : invariante pour un projet/AOI. L’app passe désormais <code>pai_cache = cache/regeneration/pai.tif</code> à <code><a href="https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html" class="external-link">nemeton::regen_sensibilite()</a></code> (branche LiDAR) : le cœur <strong>relit</strong> le PAI si la géométrie s’aligne (phase éclair, <code>source = "cache"</code>), sinon le calcule + l’écrit (auto-invalidation sur changement d’AOI/résolution — jamais de PAI périmé).</li>
+<li>Notif bas-droite : la phase affiche <strong>« PAI (cache) »</strong> sur un hit disque (au lieu de « PAI (LiDAR) », phase longue) — nouvelle clé <code>regen_phase_pai_cache</code>.</li>
+<li>
+<strong>Lien « Recalculer le PAI »</strong> sous le badge « Canopée : LiDAR HD » (n’apparaît qu’après un run LiDAR réussi, quand le cache existe) : supprime <code>pai.tif</code> pour le cas d’un nuage remplacé à emprise constante (géométrie inchangée → le cœur ne réinvalide pas seul).</li>
+<li>Plancher cœur relevé à <code>nemeton (&gt;= 0.146.2)</code> : version où le moteur d’exposition tourne de bout en bout sous microclimf 2.0.0 (chaîne de correctifs 2026-07-08) — <code>sensibilite.gpkg</code> réellement produit. (<code>pai_cache</code> existe depuis 0.145.0.)</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--regénération--moteur-microclimf-en-tête-du-sidebar-jargon-retiré-0-100-14">Changed — reGénération : moteur microclimf en tête du sidebar, jargon retiré<a class="anchor" aria-label="anchor" href="#changed--reg%C3%A9n%C3%A9ration--moteur-microclimf-en-t%C3%AAte-du-sidebar-jargon-retir%C3%A9-0-100-14"></a></h4>
+<ul><li>La section « Moteur microclimf réel » est remontée <strong>en tête du sidebar gauche</strong> (juste sous l’intro, avant « Années de référence ») — c’est l’action longue principale de la vue, elle n’a plus à être cherchée en bas.</li>
+<li>Suppression de la mention « <strong>(option B)</strong> » dans le libellé : c’était du jargon interne de la spec 027 (option A = chemin rapide sur rasters précalculés, option B = run réel du moteur), sans signification pour l’utilisateur.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.13" id="nemetonshiny-010013">nemetonshiny 0.100.13<a class="anchor" aria-label="anchor" href="#nemetonshiny-010013"></a></h2>

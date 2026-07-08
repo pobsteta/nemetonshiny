@@ -2,6 +2,44 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.100.14
+
+#### Added — reGénération : cache disque du PAI LiDAR (~38 min économisées/run)
+
+- La phase **PAI** (`pai_depuis_nuage()` sur le nuage COPC) tient \>30
+  min sur un gros AOI et était **recalculée à chaque run** (ancien PAI
+  en [`tempfile()`](https://rdrr.io/r/base/tempfile.html)). Elle ne
+  dépend pourtant que du nuage + de la grille : invariante pour un
+  projet/AOI. L’app passe désormais
+  `pai_cache = cache/regeneration/pai.tif` à
+  [`nemeton::regen_sensibilite()`](https://pobsteta.github.io/nemeton/reference/regen_sensibilite.html)
+  (branche LiDAR) : le cœur **relit** le PAI si la géométrie s’aligne
+  (phase éclair, `source = "cache"`), sinon le calcule + l’écrit
+  (auto-invalidation sur changement d’AOI/résolution — jamais de PAI
+  périmé).
+- Notif bas-droite : la phase affiche **« PAI (cache) »** sur un hit
+  disque (au lieu de « PAI (LiDAR) », phase longue) — nouvelle clé
+  `regen_phase_pai_cache`.
+- **Lien « Recalculer le PAI »** sous le badge « Canopée : LiDAR HD »
+  (n’apparaît qu’après un run LiDAR réussi, quand le cache existe) :
+  supprime `pai.tif` pour le cas d’un nuage remplacé à emprise constante
+  (géométrie inchangée → le cœur ne réinvalide pas seul).
+- Plancher cœur relevé à `nemeton (>= 0.146.2)` : version où le moteur
+  d’exposition tourne de bout en bout sous microclimf 2.0.0 (chaîne de
+  correctifs 2026-07-08) — `sensibilite.gpkg` réellement produit.
+  (`pai_cache` existe depuis 0.145.0.)
+
+#### Changed — reGénération : moteur microclimf en tête du sidebar, jargon retiré
+
+- La section « Moteur microclimf réel » est remontée **en tête du
+  sidebar gauche** (juste sous l’intro, avant « Années de référence ») —
+  c’est l’action longue principale de la vue, elle n’a plus à être
+  cherchée en bas.
+- Suppression de la mention « **(option B)** » dans le libellé : c’était
+  du jargon interne de la spec 027 (option A = chemin rapide sur rasters
+  précalculés, option B = run réel du moteur), sans signification pour
+  l’utilisateur.
+
 ## nemetonshiny 0.100.13
 
 #### Fixed — R-CMD-check vert : test SUFOSAT hermétique
