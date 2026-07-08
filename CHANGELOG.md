@@ -12,6 +12,17 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.12\] - 2026-07-08
+
+### Fixed
+
+- Tests moteur reGénération (`test-regeneration_engine.R`) rendus
+  robustes à la locale : chaque test force la langue app en FR
+  ([`withr::local_options`](https://withr.r-lib.org/reference/with_options.html))
+  pour ne plus dépendre de l’ordre d’exécution (une suite antérieure
+  pouvait laisser `nemeton.app_options` en `"en"`), supprimant 6 faux
+  négatifs en CI. Aucun changement de code produit.
+
 ## \[0.100.11\] - 2026-07-08
 
 ### Added

@@ -2,6 +2,23 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.100.12
+
+#### Fixed — Tests moteur reGénération : robustesse à la locale
+
+- `test-regeneration_engine.R` comparait la sortie i18n du moteur
+  (résolue via `get_app_options()$language`) à des chaînes **FR codées
+  en dur**. Selon l’ordre d’exécution, une suite antérieure pouvait
+  laisser `nemeton.app_options` en `"en"` → le moteur émettait des
+  warnings/ntfy EN et 6 tests échouaient (faux négatif, sans lien avec
+  le code produit). Chaque test force désormais la langue FR localement
+  ([`withr::local_options`](https://withr.r-lib.org/reference/with_options.html)),
+  les rendant déterministes.
+- Vérifié **FAIL 0 / PASS 73** sous locale EN forcée. Aucun changement
+  de code produit. (Le R-CMD-check global reste bloqué par
+  `test-sufosat-t3.R`, tests Theia réseau-dépendants hors sandbox CI —
+  chantier distinct.)
+
 ## nemetonshiny 0.100.11
 
 #### Added — reGénération : message de phase en cours du moteur (notif bas-droite)

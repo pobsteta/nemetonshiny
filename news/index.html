@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.100.12" id="nemetonshiny-010012">nemetonshiny 0.100.12<a class="anchor" aria-label="anchor" href="#nemetonshiny-010012"></a></h2>
+<div class="section level4">
+<h4 id="fixed--tests-moteur-regénération--robustesse-à-la-locale-0-100-12">Fixed — Tests moteur reGénération : robustesse à la locale<a class="anchor" aria-label="anchor" href="#fixed--tests-moteur-reg%C3%A9n%C3%A9ration--robustesse-%C3%A0-la-locale-0-100-12"></a></h4>
+<ul><li>
+<code>test-regeneration_engine.R</code> comparait la sortie i18n du moteur (résolue via <code>get_app_options()$language</code>) à des chaînes <strong>FR codées en dur</strong>. Selon l’ordre d’exécution, une suite antérieure pouvait laisser <code>nemeton.app_options</code> en <code>"en"</code> → le moteur émettait des warnings/ntfy EN et 6 tests échouaient (faux négatif, sans lien avec le code produit). Chaque test force désormais la langue FR localement (<code><a href="https://withr.r-lib.org/reference/with_options.html" class="external-link">withr::local_options</a></code>), les rendant déterministes.</li>
+<li>Vérifié <strong>FAIL 0 / PASS 73</strong> sous locale EN forcée. Aucun changement de code produit. (Le R-CMD-check global reste bloqué par <code>test-sufosat-t3.R</code>, tests Theia réseau-dépendants hors sandbox CI — chantier distinct.)</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.11" id="nemetonshiny-010011">nemetonshiny 0.100.11<a class="anchor" aria-label="anchor" href="#nemetonshiny-010011"></a></h2>
