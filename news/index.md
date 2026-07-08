@@ -2,6 +2,23 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.100.13
+
+#### Fixed — R-CMD-check vert : test SUFOSAT hermétique
+
+- `test-sufosat-t3.R` (« build_sufosat_layer fetches via Theia, caches…
+  ») échouait en CI sur 7 assertions : `build_sufosat_layer()` garde en
+  amont sur `theia_api_key_configured()` (clés
+  `TLD_ACCESS_KEY`/`TLD_SECRET_KEY` ou fichier `.apikey`) et retourne
+  `NULL` **avant** d’atteindre l’I/O mockée quand aucune clé n’est
+  configurée. Sans clés (CI), le moteur ne partait pas — faux négatif,
+  jamais un vrai appel réseau (`load_theia_source` est mocké).
+- Le test fournit désormais des clés Theia **factices**
+  ([`withr::local_envvar`](https://withr.r-lib.org/reference/with_envvar.html))
+  pour franchir le garde ; il reste 100 % hermétique (toute l’I/O Theia
+  mockée, cache en tempdir, aucun réseau). **R-CMD-check passe de FAIL 7
+  à FAIL 0** (PASS 8899) — la suite est enfin entièrement verte en CI.
+
 ## nemetonshiny 0.100.12
 
 #### Fixed — Tests moteur reGénération : robustesse à la locale

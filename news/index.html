@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.12.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.100.13" id="nemetonshiny-010013">nemetonshiny 0.100.13<a class="anchor" aria-label="anchor" href="#nemetonshiny-010013"></a></h2>
+<div class="section level4">
+<h4 id="fixed--r-cmd-check-vert--test-sufosat-hermétique-0-100-13">Fixed — R-CMD-check vert : test SUFOSAT hermétique<a class="anchor" aria-label="anchor" href="#fixed--r-cmd-check-vert--test-sufosat-herm%C3%A9tique-0-100-13"></a></h4>
+<ul><li>
+<code>test-sufosat-t3.R</code> (« build_sufosat_layer fetches via Theia, caches… ») échouait en CI sur 7 assertions : <code>build_sufosat_layer()</code> garde en amont sur <code>theia_api_key_configured()</code> (clés <code>TLD_ACCESS_KEY</code>/<code>TLD_SECRET_KEY</code> ou fichier <code>.apikey</code>) et retourne <code>NULL</code> <strong>avant</strong> d’atteindre l’I/O mockée quand aucune clé n’est configurée. Sans clés (CI), le moteur ne partait pas — faux négatif, jamais un vrai appel réseau (<code>load_theia_source</code> est mocké).</li>
+<li>Le test fournit désormais des clés Theia <strong>factices</strong> (<code><a href="https://withr.r-lib.org/reference/with_envvar.html" class="external-link">withr::local_envvar</a></code>) pour franchir le garde ; il reste 100 % hermétique (toute l’I/O Theia mockée, cache en tempdir, aucun réseau). <strong>R-CMD-check passe de FAIL 7 à FAIL 0</strong> (PASS 8899) — la suite est enfin entièrement verte en CI.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.12" id="nemetonshiny-010012">nemetonshiny 0.100.12<a class="anchor" aria-label="anchor" href="#nemetonshiny-010012"></a></h2>
