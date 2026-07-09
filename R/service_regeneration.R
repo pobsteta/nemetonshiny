@@ -462,6 +462,11 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     stop("run_regeneration_engine: `units` must be an sf object", call. = FALSE)
   }
   i18n <- get_i18n(get_app_options()$language %||% "fr")
+  # Nom de projet pour l'en-tête ntfy (lu depuis metadata.json ; repli sur le
+  # nom de dossier). Purement cosmétique — jamais fatal.
+  .regen_project_name <- tryCatch(
+    jsonlite::read_json(file.path(project_path, "metadata.json"))$name,
+    error = function(e) NULL) %||% basename(project_path)
   out_dir <- file.path(project_path, "cache", "regeneration")
   if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
   # Phase initiale : préparation de la grille LiDAR HD (avant tout emit cœur).
@@ -512,13 +517,13 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
           as.integer(p$n)),
         NULL), error = function(e) NULL)
       if (!is.null(msg) && length(msg) == 1L && nzchar(msg)) {
-        .ntfy_send(ntfy, msg, title = "Nemeton Regen",
+        .ntfy_send(ntfy, msg, title = .ntfy_title("Regen", .regen_project_name),
                    priority = "low", tags = tags0[["default"]])
       }
     }
     invisible()
   }
-  .ntfy_send(ntfy, i18n$t("regen_ntfy_start"), title = "Nemeton Regen",
+  .ntfy_send(ntfy, i18n$t("regen_ntfy_start"), title = .ntfy_title("Regen", .regen_project_name),
              tags = tags0[["default"]])
 
   # --- microclimf (LiDAR HD + ERA5) : grille LiDAR HD + clé CDS requises. ---
@@ -545,7 +550,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       micro_cache <- file.path(out_dir, "microclimf")
       if (!dir.exists(micro_cache)) dir.create(micro_cache, recursive = TRUE)
       # Push début (c'est la phase ERA5 + microclimf, la plus longue).
-      .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_start"), title = "Nemeton Regen",
+      .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_start"), title = .ntfy_title("Regen", .regen_project_name),
                  tags = tags0[["default"]])
       # Cache PAI persistant (spec 027, brief pai-cache ; nemeton >= 0.146.2).
       # Branche LiDAR seulement : le cœur relit cache/regeneration/pai.tif si la
@@ -577,7 +582,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
                               quiet = TRUE, delete_dsn = TRUE),
                  error = function(e) cli::cli_warn("regen engine: sensibilite cache not written"))
         cached <- c(cached, "sensibilite")
-        .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_done"), title = "Nemeton Regen",
+        .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_done"), title = .ntfy_title("Regen", .regen_project_name),
                    tags = tags0[["ok"]])
       } else {
         if (dir.exists(micro_cache) && length(list.files(micro_cache)) == 0L) {
@@ -586,7 +591,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
           # (throttle CDS) sont préservés → reprise au re-lancement.
           unlink(micro_cache, recursive = TRUE)
         }
-        .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_skip"), title = "Nemeton Regen",
+        .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_skip"), title = .ntfy_title("Regen", .regen_project_name),
                    priority = "low", tags = tags0[["skip"]])
       }
     } else {
@@ -594,7 +599,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       # Phase sautée = information de premier plan : structure de végétation absente.
       .regen_write_phase(out_dir, "microclimf_skipped",
                          list(reason = i18n$t("regen_phase_skip_reason_structure")))
-      .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_skip"), title = "Nemeton Regen",
+      .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_skip"), title = .ntfy_title("Regen", .regen_project_name),
                  priority = "low", tags = tags0[["skip"]])
     }
   } else {
@@ -630,7 +635,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       }
     }
 
-    .ntfy_send(ntfy, i18n$t("regen_ntfy_biljou_start"), title = "Nemeton Regen",
+    .ntfy_send(ntfy, i18n$t("regen_ntfy_biljou_start"), title = .ntfy_title("Regen", .regen_project_name),
                tags = tags0[["default"]])
     bil <- tryCatch({
       meteo <- nemeton::load_biljou_forcing(res, years = years, source = forcing,
@@ -651,7 +656,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
                             quiet = TRUE, delete_dsn = TRUE),
                error = function(e) cli::cli_warn("regen engine: biljou cache not written"))
       cached <- c(cached, "biljou")
-      .ntfy_send(ntfy, i18n$t("regen_ntfy_biljou_done"), title = "Nemeton Regen",
+      .ntfy_send(ntfy, i18n$t("regen_ntfy_biljou_done"), title = .ntfy_title("Regen", .regen_project_name),
                  tags = tags0[["ok"]])
     } else {
       warnings <- c(warnings, i18n$t("regen_guard_biljou"))
@@ -664,11 +669,11 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   } else {
     i18n$t("regen_ntfy_done_empty")
   }
-  .ntfy_send(ntfy, done_msg, title = "Nemeton Regen",
+  .ntfy_send(ntfy, done_msg, title = .ntfy_title("Regen", .regen_project_name),
              priority = if (length(cached)) "default" else "low",
              tags = if (length(cached)) tags0[["done"]] else tags0[["warn"]])
   if (length(warnings)) {
-    .ntfy_send(ntfy, paste(warnings, collapse = " — "), title = "Nemeton Regen",
+    .ntfy_send(ntfy, paste(warnings, collapse = " — "), title = .ntfy_title("Regen", .regen_project_name),
                priority = "low", tags = tags0[["warn"]])
   }
 

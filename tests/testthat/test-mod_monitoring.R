@@ -859,6 +859,78 @@ test_that(".fordead_handle_progress_event toasts on fordead:phase (v0.32.0)", {
   expect_null(captured$args$duration)
 })
 
+test_that(".fordead_handle_progress_event threads start+on_msg into the chrono", {
+  skip_if_not_installed("shiny")
+
+  captured <- list()
+  recorded <- "sentinel"   # what on_msg received (the running label, then NULL)
+  on_msg   <- function(x) recorded <<- x
+  i18n <- nemetonshiny:::get_i18n("fr")
+  fake_session <- list(ns = function(id) paste0("monitoring-", id))
+
+  testthat::with_mocked_bindings(
+    showNotification = function(ui, id = NULL, ...) {
+      captured$ui <<- ui; captured$id <<- id; invisible(NULL)
+    },
+    removeNotification = function(...) invisible(NULL),
+    .package = "shiny",
+    {
+      # Running phase, 65 s elapsed → chrono "01:05" présent, on_msg alimenté.
+      nemetonshiny:::.fordead_handle_progress_event(
+        ev = list(current = "fordead:phase", phase_name = "vegetation_index",
+                  completed = 0L, total = 7L),
+        session = fake_session, i18n = i18n,
+        start = Sys.time() - 65, on_msg = on_msg)
+      rendered <- htmltools::renderTags(captured$ui)$html
+      expect_match(rendered, "font-monospace", fixed = TRUE)  # chrono
+      expect_match(rendered, "01:05", fixed = TRUE)
+      expect_false(identical(recorded, "sentinel"))            # label enregistré
+
+      # Terminal event → on_msg(NULL) stoppe le ticker.
+      nemetonshiny:::.fordead_handle_progress_event(
+        ev = list(current = "fordead:complete", n_alerts_inserted = 0L,
+                  duration_sec = 12),
+        session = fake_session, i18n = i18n,
+        start = Sys.time() - 90, on_msg = on_msg)
+      expect_null(recorded)
+    }
+  )
+})
+
+test_that(".reconfort_handle_progress_event threads start+on_msg into the chrono", {
+  skip_if_not_installed("shiny")
+
+  captured <- list()
+  recorded <- "sentinel"
+  on_msg   <- function(x) recorded <<- x
+  i18n <- nemetonshiny:::get_i18n("fr")
+  fake_session <- list(ns = function(id) paste0("monitoring-", id))
+
+  testthat::with_mocked_bindings(
+    showNotification = function(ui, id = NULL, ...) {
+      captured$ui <<- ui; invisible(NULL)
+    },
+    removeNotification = function(...) invisible(NULL),
+    .package = "shiny",
+    {
+      nemetonshiny:::.reconfort_handle_progress_event(
+        ev = list(current = "reconfort:phase", phase_name = "model",
+                  completed = 1L, total = 5L),
+        session = fake_session, i18n = i18n,
+        start = Sys.time() - 3661, on_msg = on_msg)
+      rendered <- htmltools::renderTags(captured$ui)$html
+      expect_match(rendered, "1:01:01", fixed = TRUE)   # H:MM:SS au-delà d'1 h
+      expect_false(identical(recorded, "sentinel"))
+
+      nemetonshiny:::.reconfort_handle_progress_event(
+        ev = list(current = "reconfort:complete", n_alerts = 0L,
+                  duration_sec = 5),
+        session = fake_session, i18n = i18n, on_msg = on_msg)
+      expect_null(recorded)
+    }
+  )
+})
+
 test_that(".fordead_handle_progress_event is silent on fordead:start (v0.32.0)", {
   skip_if_not_installed("shiny")
 
