@@ -473,6 +473,37 @@ TRANSLATIONS <- list(
     fr = "Non activ\u00e9 \u2014 famille T sur T1/T2",
     en = "Not enabled \u2014 T family on T1/T2"
   ),
+  # Rafra\u00eechissement urbain \u2192 A5 (LST Theia/Thermocity, spec 032)
+  lst_section = list(fr = "Rafra\u00eechissement urbain (LST)", en = "Urban cooling (LST)"),
+  lst_enable = list(
+    fr = "Activer le rafra\u00eechissement urbain (A5)",
+    en = "Enable urban cooling (A5)"
+  ),
+  lst_buffer = list(
+    fr = "Rayon de l'anneau de r\u00e9f\u00e9rence (m)",
+    en = "Reference-ring radius (m)"
+  ),
+  lst_hint = list(
+    fr = "Fra\u00eecheur de surface (LST, Theia/Thermocity) de l'arbre en ville vs son environnement. Disponible en zone urbaine / m\u00e9tropole uniquement (hors couverture, l'indicateur reste vide). Sens direct : plus frais = meilleur.",
+    en = "Surface coolness (LST, Theia/Thermocity) of the urban tree vs its surroundings. Available in urban / metropolitan areas only (outside coverage, the indicator stays empty). Direct sense: cooler = better."
+  ),
+  lst_save = list(fr = "Enregistrer", en = "Save"),
+  lst_saved = list(
+    fr = "Rafra\u00eechissement urbain : pr\u00e9f\u00e9rence enregistr\u00e9e",
+    en = "Urban cooling: preference saved"
+  ),
+  lst_need_theia = list(
+    fr = "Configurez vos identifiants Theia (cl\u00e9s API) pour activer cette source.",
+    en = "Configure your Theia credentials (API keys) to enable this source."
+  ),
+  lst_active = list(
+    fr = "Activ\u00e9 \u2014 A5 sur le radar de la famille A",
+    en = "Enabled \u2014 A5 on the A family radar"
+  ),
+  lst_none = list(
+    fr = "Non activ\u00e9 \u2014 famille A sur A1-A4",
+    en = "Not enabled \u2014 A family on A1-A4"
+  ),
   project_date = list(fr = "Date de cr\u00e9ation", en = "Creation date"),
   project_path_label = list(fr = "R\u00e9pertoire de sauvegarde", en = "Storage directory"),
   created_at = list(fr = "Cr\u00e9\u00e9 le", en = "Created on"),

@@ -1,4 +1,23 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.15
+
+### Added — Radar A5 « Rafraîchissement urbain » (LST Theia, spec 032)
+
+- Nouvel indicateur **A5** (`indicateur_a5_rafraichissement`) câblé sur la famille
+  **A** du radar (à côté de A1-A4), alimenté par la **température de surface (LST)**
+  Theia/Thermocity. **Sens direct** (haut = plus frais que l'entour = bon) : aucune
+  inversion côté app, la normalisation positive se fait au cœur.
+- **Acquisition + cache** : `build_lst_layer()` (miroir SUFOSAT) fetch `theia_lst`
+  et cache sous `cache/layers/lst/` ; branche dispatcher injecte `lst` + `buffer_m`
+  (rayon de l'anneau de référence) dans l'indicateur.
+- **Opt-in strict** : toggle « Rafraîchissement urbain (LST) » dans l'onglet projet
+  (`set_project_lst_urbain()` → `metadata$lst_urbain`), gaté sur les identifiants
+  Theia. A5 n'entre dans le set calculé que si activé (`list_available_indicators()`
+  gaté) — sans activation, **famille A inchangée (A1-A4)**, aucune requête Theia.
+- **Couverture urbaine uniquement** (Thermocity = quelques métropoles) : sur un
+  projet rural, A5 = NA proprement (pas de 5ᵉ axe vide), sans régression. Tooltip
+  i18n explicite.
+- Plancher cœur déjà satisfait (`nemeton (>= 0.146.2)` ≥ 0.114.0 requis par A5).
+  Dernier brief app de la série specs 027-034 : tous livrés.
 
 # nemetonshiny 0.100.14
 
