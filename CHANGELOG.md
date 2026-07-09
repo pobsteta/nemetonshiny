@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.18] - 2026-07-09
+
 ### Changed
 
 - Sidebar reGénération : bloc « Années de référence » (années +
