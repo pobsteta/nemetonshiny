@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.15</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.16</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.100.16" id="nemetonshiny-010016">nemetonshiny 0.100.16<a class="anchor" aria-label="anchor" href="#nemetonshiny-010016"></a></h2>
+<div class="section level4">
+<h4 id="changed--notif-bas-droite-unifiée-cadre--engrenage-animé--chrono--projet-dans-lentête-ntfy-0-100-16">Changed — notif bas-droite unifiée (cadre + engrenage animé + chrono) + projet dans l’entête ntfy<a class="anchor" aria-label="anchor" href="#changed--notif-bas-droite-unifi%C3%A9e-cadre--engrenage-anim%C3%A9--chrono--projet-dans-lent%C3%AAte-ntfy-0-100-16"></a></h4>
+<ul><li>Les notifications persistantes « en cours » des moteurs <strong>FAST / FORDEAD / RECONFORT</strong> (<code>mod_monitoring</code>) et <strong>reGénération</strong> (<code>mod_regeneration</code>) partagent désormais <strong>le même cadre, la même police et le même picto</strong> — un <strong>engrenage qui tourne</strong> (<code>gear-fill</code> animé via la classe CSS <code>nmt-spin</code>) — plus un <strong>chronomètre monospace « — MM:SS » qui défile</strong> (H:MM:SS au-delà d’une heure). Rendu centralisé dans le nouveau <code>R/utils_notif.R</code> (<code>.running_notif_content()</code>, <code>.fmt_elapsed()</code>) ; chaque module garde son cycle de vie (id / removeNotification) et son tick (<code>invalidateLater(1000)</code>).</li>
+<li>Le <strong>chrono défile désormais aussi sur FAST / FORDEAD / RECONFORT</strong> (avant : seul reGénération l’avait). Chaque moteur mémorise son instant de lancement (<code>*_run_start</code>) et son dernier libellé (<code>*_run_msg</code>) ; un <code>observe</code> dédié re-rend la notif chaque seconde entre deux events de progression — utile quand une phase reticulate (fit harmonique FORDEAD) reste plusieurs minutes sans event. Les handlers <code>.fordead_handle_progress_event</code> / <code>.reconfort_handle_progress_event</code> reçoivent <code>start</code> + <code>on_msg</code> et coupent le ticker (<code>on_msg(NULL)</code>) sur <code>complete</code>/<code>error</code> (pas de notif « fantôme »).</li>
+<li>
+<code>.monitoring_spinning_msg()</code> devient un mince wrapper sur le helper partagé — fin de la divergence historique entre les deux familles de moteurs (l’un avait l’engrenage animé, l’autre non).</li>
+<li>
+<strong>Messages ntfy</strong> : le <strong>nom du projet</strong> est ajouté à l’entête (<code>Title</code>) de chaque push — <code>Nemeton FAST - &lt;projet&gt;</code>, <code>Nemeton Regen - &lt;projet&gt;</code>, etc. via le helper <code>.ntfy_title(engine, project)</code> (translittération ASCII stricte de l’entête HTTP : accents → ASCII, jamais de caractère non imprimable). Nom de zone résolu côté monitoring (<code>.resolve_zone_name</code>), nom de projet côté reGénération (<code>.regen_project_name</code>, lu depuis <code>metadata.json</code>).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.15" id="nemetonshiny-010015">nemetonshiny 0.100.15<a class="anchor" aria-label="anchor" href="#nemetonshiny-010015"></a></h2>
 <div class="section level4">

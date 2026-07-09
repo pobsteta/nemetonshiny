@@ -1,5 +1,41 @@
 # Changelog
 
+## nemetonshiny 0.100.16
+
+#### Changed — notif bas-droite unifiée (cadre + engrenage animé + chrono) + projet dans l’entête ntfy
+
+- Les notifications persistantes « en cours » des moteurs **FAST /
+  FORDEAD / RECONFORT** (`mod_monitoring`) et **reGénération**
+  (`mod_regeneration`) partagent désormais **le même cadre, la même
+  police et le même picto** — un **engrenage qui tourne** (`gear-fill`
+  animé via la classe CSS `nmt-spin`) — plus un **chronomètre monospace
+  « — MM:SS » qui défile** (H:MM:SS au-delà d’une heure). Rendu
+  centralisé dans le nouveau `R/utils_notif.R`
+  (`.running_notif_content()`, `.fmt_elapsed()`) ; chaque module garde
+  son cycle de vie (id / removeNotification) et son tick
+  (`invalidateLater(1000)`).
+- Le **chrono défile désormais aussi sur FAST / FORDEAD / RECONFORT**
+  (avant : seul reGénération l’avait). Chaque moteur mémorise son
+  instant de lancement (`*_run_start`) et son dernier libellé
+  (`*_run_msg`) ; un `observe` dédié re-rend la notif chaque seconde
+  entre deux events de progression — utile quand une phase reticulate
+  (fit harmonique FORDEAD) reste plusieurs minutes sans event. Les
+  handlers `.fordead_handle_progress_event` /
+  `.reconfort_handle_progress_event` reçoivent `start` + `on_msg` et
+  coupent le ticker (`on_msg(NULL)`) sur `complete`/`error` (pas de
+  notif « fantôme »).
+- `.monitoring_spinning_msg()` devient un mince wrapper sur le helper
+  partagé — fin de la divergence historique entre les deux familles de
+  moteurs (l’un avait l’engrenage animé, l’autre non).
+- **Messages ntfy** : le **nom du projet** est ajouté à l’entête
+  (`Title`) de chaque push — `Nemeton FAST - <projet>`,
+  `Nemeton Regen - <projet>`, etc. via le helper
+  `.ntfy_title(engine, project)` (translittération ASCII stricte de
+  l’entête HTTP : accents → ASCII, jamais de caractère non imprimable).
+  Nom de zone résolu côté monitoring (`.resolve_zone_name`), nom de
+  projet côté reGénération (`.regen_project_name`, lu depuis
+  `metadata.json`).
+
 ## nemetonshiny 0.100.15
 
 #### Added — Radar A5 « Rafraîchissement urbain » (LST Theia, spec 032)

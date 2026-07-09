@@ -12,6 +12,21 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.16\] - 2026-07-09
+
+### Changed
+
+- Notif bas-droite « en cours » unifiée entre FAST/FORDEAD/RECONFORT et
+  reGénération : cadre, police et picto communs (engrenage animé
+  `nmt-spin`) + chronomètre monospace « — MM:SS » qui défile (tick 1 s)
+  désormais sur les quatre moteurs. Rendu centralisé dans
+  `R/utils_notif.R` (`.running_notif_content` / `.fmt_elapsed`) ;
+  `.monitoring_spinning_msg` devient un wrapper. Handlers
+  FORDEAD/RECONFORT dotés de `start` + `on_msg`.
+- Messages ntfy : nom du projet ajouté à l’entête (`Title`) —
+  `Nemeton <MOTEUR> - <projet>` via `.ntfy_title()` (translittération
+  ASCII stricte).
+
 ## \[0.100.15\] - 2026-07-09
 
 ### Added
