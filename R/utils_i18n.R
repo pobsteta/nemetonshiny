@@ -4184,8 +4184,8 @@ TRANSLATIONS <- list(
     en = "Difference in maximum sub-canopy temperature (0.5 m above ground) between heatwave and average summers, in \u00b0C (microclimf model, LiDAR HD structure). High value = canopy poorly protecting seedlings during heatwaves."
   ),
   regen_map_legend_scale = list(
-    fr = "L\u00e9gende (en bas \u00e0 droite de la carte) : d\u00e9grad\u00e9 continu born\u00e9 aux valeurs minimale et maximale des unit\u00e9s affich\u00e9es \u2014 les couleurs sont donc relatives au projet, pas absolues.",
-    en = "Legend (bottom-right of the map): continuous ramp bounded by the minimum and maximum of the displayed units \u2014 colours are therefore relative to the project, not absolute."
+    fr = "L\u00e9gende (en bas \u00e0 droite de la carte) : rouge = valeur \u00e9lev\u00e9e, donc situation critique ; vert = situation favorable. Le d\u00e9grad\u00e9 est born\u00e9 aux valeurs minimale et maximale des unit\u00e9s affich\u00e9es \u2014 les couleurs sont relatives au projet, pas absolues.",
+    en = "Legend (bottom-right of the map): red = high value, hence a critical situation; green = favourable. The ramp is bounded by the minimum and maximum of the displayed units \u2014 colours are relative to the project, not absolute."
   ),
   regen_table_section = list(fr = "Tableau des UGF", en = "UGF table"),
   regen_filter_coverage = list(fr = "Masquer les UG mal couvertes", en = "Hide poorly covered units"),

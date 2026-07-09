@@ -736,7 +736,12 @@ mod_regeneration_server <- function(id, app_state) {
           color = "#888", fillOpacity = 0.2)
         return()
       }
-      pal <- leaflet::colorNumeric("RdYlGn", domain = vals, na.color = "#cccccc")
+      # reverse = TRUE : pour les 4 couches, une valeur HAUTE est toujours
+      # défavorable (plus vulnérable, plus de jours de stress, canopée moins
+      # tamponnante). Sans inversion, RdYlGn peindrait les UG les plus critiques
+      # en vert. Rouge = critique, vert = favorable.
+      pal <- leaflet::colorNumeric("RdYlGn", domain = vals, na.color = "#cccccc",
+                                   reverse = TRUE)
       proxy |>
         leaflet::addPolygons(data = geo, group = "UGF", weight = 1, color = "#333",
           fillColor = pal(vals), fillOpacity = 0.75) |>
