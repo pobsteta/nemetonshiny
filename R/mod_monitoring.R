@@ -1532,6 +1532,12 @@ mod_monitoring_server <- function(id, app_state) {
     # first invoke. The reactivePoll below watches this path and the
     # toast observer re-renders the persistent "X/N tuiles..." card.
     ingest_progress_path <- shiny::reactiveVal(NULL)
+    # Chrono unifié FAST (cf. R/utils_notif.R) : `fast_run_start` = instant
+    # de lancement (NULL hors run) ; `fast_run_msg` = dernier libellé « en
+    # cours ». Un observe dédié (plus bas) re-rend la notif chaque seconde
+    # pour que le « — MM:SS » défile entre deux events de progression.
+    fast_run_start <- shiny::reactiveVal(NULL)
+    fast_run_msg   <- shiny::reactiveVal(NULL)
     # v0.85.2.9000 — État d'ingestion détecté au (re)chargement depuis
     # la sentinelle disque écrite par le worker (`ingest_run.json`),
     # indépendant de toute session. Pilote `output$ingest_resume_banner`.
@@ -1734,11 +1740,11 @@ mod_monitoring_server <- function(id, app_state) {
       if (current_phase %in% c("s2:worker_started",
                                "s2:nemeton_call_starting")) {
         cli::cli_alert_info("Worker event: {current_phase}")
+        m <- sprintf(i18n$t("monitoring_ingest_worker_event_fmt"),
+                     current_phase)
+        fast_run_msg(m)
         shiny::showNotification(
-          .monitoring_spinning_msg(
-            sprintf(i18n$t("monitoring_ingest_worker_event_fmt"),
-                    current_phase)
-          ),
+          .monitoring_spinning_msg(m, fast_run_start()),
           id          = session$ns("ingest_progress"),
           type        = "message",
           duration    = NULL,
@@ -1891,11 +1897,11 @@ mod_monitoring_server <- function(id, app_state) {
       if (identical(current_phase, "s2:cache_lookup")) {
         n_cached     <- as.integer(ev$n_cached     %||% 0L)
         n_to_process <- as.integer(ev$n_to_process %||% ev$n_remaining %||% 0L)
+        m <- sprintf(i18n$t("monitoring_ingest_cache_lookup_fmt"),
+                     n_cached, n_to_process)
+        fast_run_msg(m)
         shiny::showNotification(
-          .monitoring_spinning_msg(
-            sprintf(i18n$t("monitoring_ingest_cache_lookup_fmt"),
-                    n_cached, n_to_process)
-          ),
+          .monitoring_spinning_msg(m, fast_run_start()),
           id          = session$ns("ingest_progress"),
           type        = "message",
           duration    = NULL,
@@ -1918,11 +1924,11 @@ mod_monitoring_server <- function(id, app_state) {
       if (identical(current_phase, "s2:search_done")) {
         n_val_init <- as.integer(ev$total %||% ev$n %||% 0L)
         if (n_val_init > 0L) {
+          m <- sprintf(i18n$t("monitoring_ingest_search_done_fmt"),
+                       1L, n_val_init)
+          fast_run_msg(m)
           shiny::showNotification(
-            .monitoring_spinning_msg(
-              sprintf(i18n$t("monitoring_ingest_search_done_fmt"),
-                      1L, n_val_init)
-            ),
+            .monitoring_spinning_msg(m, fast_run_start()),
             id          = session$ns("ingest_progress"),
             type        = "message",
             duration    = NULL,
@@ -1970,10 +1976,30 @@ mod_monitoring_server <- function(id, app_state) {
       # v0.70.0 — `.log_ingest_event` (mirror Tuile X/N) déménage
       # dans l'observer NDJSON drain (cf. plus haut). Ici on ne
       # touche plus qu'au toast Shiny (replacement par id stable).
+      fast_run_msg(msg)
       shiny::showNotification(
-        .monitoring_spinning_msg(msg),
+        .monitoring_spinning_msg(msg, fast_run_start()),
         id          = session$ns("ingest_progress"),
         type        = if (identical(status, "scene_error")) "warning" else "message",
+        duration    = NULL,
+        closeButton = FALSE
+      )
+    })
+
+    # Chrono qui défile (FAST) : re-rend la notif « en cours » chaque
+    # seconde entre deux events de progression (téléchargement d'une scène
+    # peut durer > 1 s). Même id `ingest_progress` → Shiny remplace le
+    # contenu en place ; s'arrête dès que le run se termine (`fast_run_start`
+    # remis à NULL par les handlers de fin, qui suppriment aussi la notif).
+    shiny::observe({
+      st  <- fast_run_start()
+      msg <- fast_run_msg()
+      if (is.null(st) || is.null(msg)) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .monitoring_spinning_msg(msg, st),
+        id          = session$ns("ingest_progress"),
+        type        = "message",
         duration    = NULL,
         closeButton = FALSE
       )
@@ -2070,6 +2096,7 @@ mod_monitoring_server <- function(id, app_state) {
       }
       # Cleanup local progress + log files so the next run starts on a
       # blank slate (poll observers will treat NULL as "no run").
+      fast_run_start(NULL); fast_run_msg(NULL)   # stoppe le chrono
       .cleanup_progress_file(ingest_progress_path())
       ingest_progress_path(NULL)
       .cleanup_progress_file(ingest_log_path())
@@ -2100,6 +2127,9 @@ mod_monitoring_server <- function(id, app_state) {
         duration    = NULL,
         closeButton = FALSE
       )
+      # Amorce le chrono unifié (bas-droite) — le tick 1 s prend le relais.
+      fast_run_start(Sys.time())
+      fast_run_msg(i18n$t("monitoring_ingest_starting"))
       ppath <- .resolve_progress_path(app_state$current_project,
                                       "ingest_progress.json")
       if (!is.null(ppath) && file.exists(ppath)) {
@@ -2350,6 +2380,7 @@ mod_monitoring_server <- function(id, app_state) {
           }
           fast_result_consumed(TRUE)
           shiny::removeNotification(session$ns("ingest_progress"))
+          fast_run_start(NULL); fast_run_msg(NULL)   # stoppe le chrono
           .cleanup_progress_file(ingest_progress_path())
           ingest_progress_path(NULL)
           .cleanup_progress_file(ingest_log_path())
@@ -2376,6 +2407,7 @@ mod_monitoring_server <- function(id, app_state) {
         }
         fast_result_consumed(TRUE)
         shiny::removeNotification(session$ns("ingest_progress"))
+        fast_run_start(NULL); fast_run_msg(NULL)   # stoppe le chrono
         .cleanup_progress_file(ingest_progress_path())
         ingest_progress_path(NULL)
         .cleanup_progress_file(ingest_log_path())
@@ -2456,6 +2488,11 @@ mod_monitoring_server <- function(id, app_state) {
     # events (training / forest mask / dieback / export) — the toast
     # surfaces whichever phase the worker is currently on.
     fordead_progress_path <- shiny::reactiveVal(NULL)
+    # Chrono unifié FORDEAD (cf. R/utils_notif.R) — mêmes sémantiques que
+    # `fast_run_start`/`fast_run_msg`. Un run FORDEAD reste souvent plusieurs
+    # minutes sur une phase reticulate : le tick 1 s garde le « — MM:SS » vivant.
+    fordead_run_start <- shiny::reactiveVal(NULL)
+    fordead_run_msg   <- shiny::reactiveVal(NULL)
 
     fordead_progress <- shiny::reactivePoll(
       intervalMillis = 500L, session,
@@ -2500,7 +2537,27 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::observe({
       ev <- fordead_progress()
       if (is.null(ev)) return()
-      .fordead_handle_progress_event(ev, session, i18n_r())
+      .fordead_handle_progress_event(ev, session, i18n_r(),
+                                     start = fordead_run_start(),
+                                     on_msg = fordead_run_msg)
+    })
+
+    # Chrono qui défile (FORDEAD) : cf. l'observe FAST équivalent. Une phase
+    # reticulate (fit harmonique) peut durer plusieurs minutes sans event ;
+    # le tick 1 s garde le « — MM:SS » vivant. Le handler remet `on_msg` à
+    # NULL sur complete/error pour empêcher la notif de « ressusciter » ici.
+    shiny::observe({
+      st  <- fordead_run_start()
+      msg <- fordead_run_msg()
+      if (is.null(st) || is.null(msg)) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .monitoring_spinning_msg(msg, st),
+        id          = session$ns("fordead_progress"),
+        type        = "message",
+        duration    = NULL,
+        closeButton = FALSE
+      )
     })
 
     # User-side override that force-unlocks the run_health button —
@@ -2557,6 +2614,7 @@ mod_monitoring_server <- function(id, app_state) {
                     "fordead_success", "fordead_warns")) {
         shiny::removeNotification(session$ns(nid))
       }
+      fordead_run_start(NULL); fordead_run_msg(NULL)   # stoppe le chrono
       .cleanup_progress_file(fordead_progress_path())
       fordead_progress_path(NULL)
       shiny::showNotification(
@@ -2601,6 +2659,9 @@ mod_monitoring_server <- function(id, app_state) {
         duration    = NULL,
         closeButton = FALSE
       )
+      # Amorce le chrono unifié (bas-droite) — le tick 1 s prend le relais.
+      fordead_run_start(Sys.time())
+      fordead_run_msg(i18n$t("monitoring_health_starting"))
       ppath <- .resolve_progress_path(app_state$current_project,
                                       "fordead_progress.json")
       if (!is.null(ppath) && file.exists(ppath)) {
@@ -2771,6 +2832,7 @@ mod_monitoring_server <- function(id, app_state) {
           }
           fordead_result_consumed(TRUE)
           shiny::removeNotification(session$ns("fordead_progress"))
+          fordead_run_start(NULL); fordead_run_msg(NULL)   # stoppe le chrono
           .cleanup_progress_file(fordead_progress_path())
           fordead_progress_path(NULL)
           shiny::showNotification(
@@ -2807,6 +2869,7 @@ mod_monitoring_server <- function(id, app_state) {
         }
         fordead_result_consumed(TRUE)
         shiny::removeNotification(session$ns("fordead_progress"))
+        fordead_run_start(NULL); fordead_run_msg(NULL)   # stoppe le chrono
         .cleanup_progress_file(fordead_progress_path())
         fordead_progress_path(NULL)
         # Stamp the zone so the disk-reconciliation observer can tell
@@ -3086,6 +3149,9 @@ mod_monitoring_server <- function(id, app_state) {
     # `cancel_path`) : seul le force-unlock réarme le bouton.
     reconfort_task <- run_reconfort_async()
     reconfort_progress_path <- shiny::reactiveVal(NULL)
+    # Chrono unifié RECONFORT (cf. R/utils_notif.R) — idem FAST/FORDEAD.
+    reconfort_run_start <- shiny::reactiveVal(NULL)
+    reconfort_run_msg   <- shiny::reactiveVal(NULL)
     reconfort_result_consumed <- shiny::reactiveVal(FALSE)
     force_unlock_reconfort <- shiny::reactiveVal(FALSE)
 
@@ -3107,7 +3173,24 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::observe({
       ev <- reconfort_progress()
       if (is.null(ev)) return()
-      .reconfort_handle_progress_event(ev, session, i18n_r())
+      .reconfort_handle_progress_event(ev, session, i18n_r(),
+                                       start = reconfort_run_start(),
+                                       on_msg = reconfort_run_msg)
+    })
+
+    # Chrono qui défile (RECONFORT) : cf. les observe FAST/FORDEAD.
+    shiny::observe({
+      st  <- reconfort_run_start()
+      msg <- reconfort_run_msg()
+      if (is.null(st) || is.null(msg)) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .monitoring_spinning_msg(msg, st),
+        id          = session$ns("reconfort_progress"),
+        type        = "message",
+        duration    = NULL,
+        closeButton = FALSE
+      )
     })
 
     # Resolve / create the RECONFORT cache dir for the active project.
@@ -3157,6 +3240,7 @@ mod_monitoring_server <- function(id, app_state) {
                     "reconfort_complete")) {
         shiny::removeNotification(session$ns(nid))
       }
+      reconfort_run_start(NULL); reconfort_run_msg(NULL)   # stoppe le chrono
     })
 
     .invoke_reconfort <- function() {
@@ -3195,6 +3279,9 @@ mod_monitoring_server <- function(id, app_state) {
         duration    = NULL,
         closeButton = FALSE
       )
+      # Amorce le chrono unifié (bas-droite) — le tick 1 s prend le relais.
+      reconfort_run_start(Sys.time())
+      reconfort_run_msg(i18n$t("monitoring_reconfort_starting"))
       ppath <- .resolve_progress_path(proj, "reconfort_progress.json")
       if (!is.null(ppath) && file.exists(ppath)) {
         tryCatch(unlink(ppath), error = function(e) NULL)
@@ -3231,6 +3318,7 @@ mod_monitoring_server <- function(id, app_state) {
           if (isTRUE(shiny::isolate(reconfort_result_consumed()))) return(NULL)
           reconfort_result_consumed(TRUE)
           shiny::removeNotification(session$ns("reconfort_progress"))
+          reconfort_run_start(NULL); reconfort_run_msg(NULL)   # stoppe le chrono
           .cleanup_progress_file(reconfort_progress_path())
           reconfort_progress_path(NULL)
           shiny::showNotification(
@@ -3247,6 +3335,7 @@ mod_monitoring_server <- function(id, app_state) {
         if (isTRUE(shiny::isolate(reconfort_result_consumed()))) return()
         reconfort_result_consumed(TRUE)
         shiny::removeNotification(session$ns("reconfort_progress"))
+        reconfort_run_start(NULL); reconfort_run_msg(NULL)   # stoppe le chrono
         .cleanup_progress_file(reconfort_progress_path())
         reconfort_progress_path(NULL)
         shiny::showNotification(
@@ -3689,10 +3778,16 @@ mod_monitoring_server <- function(id, app_state) {
 # `session` : the moduleServer session (used for ns() + side-effect
 #             notifications). Tests pass a stub list(ns = identity).
 # `i18n`    : the get_i18n() translator.
+# `start`   : run start time (POSIXct) for the unified ticking chrono, or
+#             NULL to render without a chrono (tests / legacy callers).
+# `on_msg`  : optional setter (a reactiveVal) recording the current running
+#             label so the per-second ticker can re-render it ; set to NULL
+#             on terminal events (complete/error) so the ticker stops.
 #
 # Side effects only (showNotification / removeNotification). Returns
 # invisible NULL.
-.fordead_handle_progress_event <- function(ev, session, i18n) {
+.fordead_handle_progress_event <- function(ev, session, i18n,
+                                           start = NULL, on_msg = NULL) {
   current <- as.character(ev$current %||% "")
 
   if (identical(current, "fordead:start")) {
@@ -3708,8 +3803,9 @@ mod_monitoring_server <- function(id, app_state) {
     msg <- i18n$t("monitoring_fordead_phase_progress",
                   n = completed + 1L, total = total, label = label)
     .log_fordead_event(ev, "running", completed, total, phase_name)
+    if (is.function(on_msg)) on_msg(msg)
     shiny::showNotification(
-      .monitoring_spinning_msg(msg),
+      .monitoring_spinning_msg(msg, start),
       id          = session$ns("fordead_progress"),
       type        = "message",
       duration    = NULL,
@@ -3736,6 +3832,7 @@ mod_monitoring_server <- function(id, app_state) {
     duration <- as.numeric(ev$duration_sec     %||% 0)
     msg <- i18n$t("monitoring_fordead_complete",
                   n = n_alerts, sec = round(duration, 1))
+    if (is.function(on_msg)) on_msg(NULL)   # stoppe le ticker chrono
     shiny::removeNotification(session$ns("fordead_progress"))
     shiny::showNotification(
       msg,
@@ -3751,6 +3848,7 @@ mod_monitoring_server <- function(id, app_state) {
     err_msg    <- as.character(ev$error_message %||% "")
     msg <- i18n$t("monitoring_fordead_error",
                   phase = phase_name, msg = err_msg)
+    if (is.function(on_msg)) on_msg(NULL)   # stoppe le ticker chrono
     shiny::removeNotification(session$ns("fordead_progress"))
     shiny::showNotification(
       msg,
@@ -3779,8 +3877,9 @@ mod_monitoring_server <- function(id, app_state) {
     sprintf(i18n$t("monitoring_health_phase_simple_fmt"), phase)
   }
   .log_fordead_event(ev, status, i_val, n_val, phase)
+  if (is.function(on_msg)) on_msg(msg)
   shiny::showNotification(
-    .monitoring_spinning_msg(msg),
+    .monitoring_spinning_msg(msg, start),
     id          = session$ns("fordead_progress"),
     type        = if (identical(status, "phase_error")) "warning" else "message",
     duration    = NULL,
@@ -3804,8 +3903,10 @@ mod_monitoring_server <- function(id, app_state) {
 # Dispatcher for the RECONFORT progress event stream emitted by
 # nemeton::run_reconfort_dieback() (events `reconfort:start|phase|
 # complete|error`). Mirror of .fordead_handle_progress_event ; testable
-# directly with a fake session + i18n. Side effects only.
-.reconfort_handle_progress_event <- function(ev, session, i18n) {
+# directly with a fake session + i18n. Side effects only. `start` / `on_msg`
+# alimentent le chrono unifié (cf. .fordead_handle_progress_event).
+.reconfort_handle_progress_event <- function(ev, session, i18n,
+                                              start = NULL, on_msg = NULL) {
   current <- as.character(ev$current %||% "")
 
   if (identical(current, "reconfort:start")) {
@@ -3819,8 +3920,9 @@ mod_monitoring_server <- function(id, app_state) {
     label <- .reconfort_phase_label(phase_name, i18n)
     msg <- i18n$t("monitoring_reconfort_phase_progress",
                   n = completed + 1L, total = total, label = label)
+    if (is.function(on_msg)) on_msg(msg)
     shiny::showNotification(
-      .monitoring_spinning_msg(msg),
+      .monitoring_spinning_msg(msg, start),
       id          = session$ns("reconfort_progress"),
       type        = "message",
       duration    = NULL,
@@ -3831,9 +3933,10 @@ mod_monitoring_server <- function(id, app_state) {
 
   if (identical(current, "reconfort:ingest_listed")) {
     total <- as.integer(ev$total %||% 0L)
+    msg <- i18n$t("monitoring_reconfort_ingest_listed", total = total)
+    if (is.function(on_msg)) on_msg(msg)
     shiny::showNotification(
-      .monitoring_spinning_msg(
-        i18n$t("monitoring_reconfort_ingest_listed", total = total)),
+      .monitoring_spinning_msg(msg, start),
       id          = session$ns("reconfort_progress"),
       type        = "message",
       duration    = NULL,
@@ -3858,10 +3961,11 @@ mod_monitoring_server <- function(id, app_state) {
     detail <- if (nzchar(date) && !identical(date, "NA")) {
       paste0(step_lbl, " · ", date)
     } else step_lbl
+    msg <- i18n$t("monitoring_reconfort_ingest_item",
+                  n = n, total = total, detail = detail)
+    if (is.function(on_msg)) on_msg(msg)
     shiny::showNotification(
-      .monitoring_spinning_msg(
-        i18n$t("monitoring_reconfort_ingest_item",
-               n = n, total = total, detail = detail)),
+      .monitoring_spinning_msg(msg, start),
       id          = session$ns("reconfort_progress"),
       type        = "message",
       duration    = NULL,
@@ -3873,6 +3977,7 @@ mod_monitoring_server <- function(id, app_state) {
   if (identical(current, "reconfort:complete")) {
     n_alerts <- as.integer(ev$n_alerts     %||% ev$n_alerts_inserted %||% 0L)
     duration <- as.numeric(ev$duration_sec %||% 0)
+    if (is.function(on_msg)) on_msg(NULL)   # stoppe le ticker chrono
     shiny::removeNotification(session$ns("reconfort_progress"))
     shiny::showNotification(
       i18n$t("monitoring_reconfort_complete",
@@ -3886,6 +3991,7 @@ mod_monitoring_server <- function(id, app_state) {
 
   if (identical(current, "reconfort:error")) {
     err_msg <- as.character(ev$error_message %||% ev$message %||% "")
+    if (is.function(on_msg)) on_msg(NULL)   # stoppe le ticker chrono
     shiny::removeNotification(session$ns("reconfort_progress"))
     shiny::showNotification(
       sprintf("%s : %s", i18n$t("monitoring_reconfort_error"), err_msg),

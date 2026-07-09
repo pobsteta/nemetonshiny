@@ -10,6 +10,14 @@
   d'une heure). Rendu centralisé dans le nouveau `R/utils_notif.R`
   (`.running_notif_content()`, `.fmt_elapsed()`) ; chaque module garde son cycle
   de vie (id / removeNotification) et son tick (`invalidateLater(1000)`).
+- Le **chrono défile désormais aussi sur FAST / FORDEAD / RECONFORT** (avant :
+  seul reGénération l'avait). Chaque moteur mémorise son instant de lancement
+  (`*_run_start`) et son dernier libellé (`*_run_msg`) ; un `observe` dédié
+  re-rend la notif chaque seconde entre deux events de progression — utile
+  quand une phase reticulate (fit harmonique FORDEAD) reste plusieurs minutes
+  sans event. Les handlers `.fordead_handle_progress_event` /
+  `.reconfort_handle_progress_event` reçoivent `start` + `on_msg` et coupent le
+  ticker (`on_msg(NULL)`) sur `complete`/`error` (pas de notif « fantôme »).
 - `.monitoring_spinning_msg()` devient un mince wrapper sur le helper partagé —
   fin de la divergence historique entre les deux familles de moteurs (l'un avait
   l'engrenage animé, l'autre non).
