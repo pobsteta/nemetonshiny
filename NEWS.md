@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.100.16
 
 ### Changed — notif bas-droite unifiée (cadre + engrenage animé + chrono) + projet dans l'entête ntfy
