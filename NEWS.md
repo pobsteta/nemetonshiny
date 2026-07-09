@@ -1,4 +1,12 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.18
+
+### Changed — reGénération : bloc « Années de référence » au-dessus du moteur
+
+- Dans le sidebar reGénération, le bloc **« Années de référence »** (année
+  moyenne / caniculaire + bouton **Auto (E-OBS)** + ligne indice E-OBS) est
+  déplacé **au-dessus** de la section **« Moteur microclimf réel »**. L'ordre
+  suit le flux logique : l'utilisateur choisit d'abord les millésimes de
+  référence, puis lance le moteur qui les consomme.
 
 # nemetonshiny 0.100.17
 
