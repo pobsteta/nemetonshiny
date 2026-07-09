@@ -12,6 +12,13 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.18\] - 2026-07-09
+
+### Changed
+
+- Sidebar reGénération : bloc « Années de référence » (années + bouton
+  Auto E-OBS + indice) déplacé au-dessus de « Moteur microclimf réel ».
+
 ## \[0.100.17\] - 2026-07-09
 
 ### Fixed
