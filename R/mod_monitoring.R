@@ -2168,6 +2168,10 @@ mod_monitoring_server <- function(id, app_state) {
         log_path      = lpath,
         lang          = app_state$language %||% "fr",
         cancel_path   = .fast_cancel_flag,
+        # Nom de projet (à jour) pour l'en-tête ntfy — évite le nom de zone
+        # DB périmé quand le projet a été renommé (cf. run_ingestion_async).
+        project_name  = app_state$current_project$metadata$name %||%
+                        app_state$current_project$name,
         prewarm_alerts         = TRUE,
         prewarm_mask_cache_dir = .fast_alert_cache_dir(
           app_state$current_project$path
@@ -2702,6 +2706,9 @@ mod_monitoring_server <- function(id, app_state) {
         # Forwarded so the worker builds its ntfy push messages in the
         # user's language (the worker has no access to app_state).
         lang              = app_state$language %||% "fr",
+        # Nom de projet (à jour) pour l'en-tête ntfy — cf. FAST.
+        project_name      = app_state$current_project$metadata$name %||%
+                            app_state$current_project$name,
         # v0.52.0 — cancel coopératif (polled entre phases reticulate
         # par nemeton@v0.53.0+).
         cancel_path       = .fordead_cancel_flag
@@ -3297,7 +3304,9 @@ mod_monitoring_server <- function(id, app_state) {
         db_url        = .resolve_monitoring_db_url(proj),
         progress_path = ppath,
         lang          = app_state$language %||% "fr",
-        output_dir    = out
+        output_dir    = out,
+        # Nom de projet (à jour) pour l'en-tête ntfy — cf. FAST.
+        project_name  = proj$metadata$name %||% proj$name
       )
       invisible(TRUE)
     }
