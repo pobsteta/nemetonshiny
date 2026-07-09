@@ -4167,6 +4167,26 @@ TRANSLATIONS <- list(
   regen_map_dtmax = list(fr = "\u0394T\u00b0max sous couvert", en = "Sub-canopy \u0394T\u00b0max"),
   regen_map_bivariate = list(fr = "\u0394T\u00b0max \u00d7 \u0394VPD (parcellaire)", en = "\u0394T\u00b0max \u00d7 \u0394VPD (per unit)"),
   regen_map_context = list(fr = "Contexte r\u00e9gional (E-OBS)", en = "Regional context (E-OBS)"),
+  regen_map_priorite_info = list(
+    fr = "Indice composite 0\u2013100 croisant l'exposition microclimatique (microclimf) et le stress hydrique du sol (BILJOU). Valeur \u00e9lev\u00e9e = unit\u00e9 la plus vuln\u00e9rable, \u00e0 accompagner en priorit\u00e9 pour la r\u00e9g\u00e9n\u00e9ration.",
+    en = "Composite 0\u2013100 index crossing microclimatic exposure (microclimf) with soil water stress (BILJOU). High value = most vulnerable unit, to prioritise for regeneration."
+  ),
+  regen_map_sensibilite_info = list(
+    fr = "Somme des \u00e9carts normalis\u00e9s (z-scores) de \u0394T\u00b0max et \u0394VPD entre \u00e9t\u00e9s caniculaires et \u00e9t\u00e9s moyens. Score relatif sans unit\u00e9, centr\u00e9 sur la moyenne des unit\u00e9s du projet : positif = couvert qui tamponne mal la canicule. Sert au rang de sensibilit\u00e9.",
+    en = "Sum of the normalised deviations (z-scores) of \u0394T\u00b0max and \u0394VPD between heatwave and average summers. Unitless relative score, centred on the project's unit mean: positive = canopy buffering the heatwave poorly. Drives the sensitivity rank."
+  ),
+  regen_map_njstress_info = list(
+    fr = "Nombre moyen de jours d'\u00e9t\u00e9 o\u00f9 la r\u00e9serve en eau du sol (REW) passe sous le seuil de stress, mod\u00e8le BILJOU forc\u00e9 par SAFRAN (ou ERA5-Land). Valeur \u00e9lev\u00e9e = s\u00e9cheresse \u00e9daphique prolong\u00e9e.",
+    en = "Mean number of summer days when soil relative extractable water (REW) drops below the stress threshold, BILJOU model forced by SAFRAN (or ERA5-Land). High value = prolonged soil drought."
+  ),
+  regen_map_dtmax_info = list(
+    fr = "\u00c9cart de temp\u00e9rature maximale sous couvert (\u00e0 0,5 m du sol) entre les \u00e9t\u00e9s caniculaires et les \u00e9t\u00e9s moyens, en \u00b0C (mod\u00e8le microclimf, structure LiDAR HD). Valeur \u00e9lev\u00e9e = la canop\u00e9e prot\u00e8ge mal les semis pendant la canicule.",
+    en = "Difference in maximum sub-canopy temperature (0.5 m above ground) between heatwave and average summers, in \u00b0C (microclimf model, LiDAR HD structure). High value = canopy poorly protecting seedlings during heatwaves."
+  ),
+  regen_map_legend_scale = list(
+    fr = "L\u00e9gende (en bas \u00e0 droite de la carte) : rouge = valeur \u00e9lev\u00e9e, donc situation critique ; vert = situation favorable. Le d\u00e9grad\u00e9 est born\u00e9 aux valeurs minimale et maximale des unit\u00e9s affich\u00e9es \u2014 les couleurs sont relatives au projet, pas absolues.",
+    en = "Legend (bottom-right of the map): red = high value, hence a critical situation; green = favourable. The ramp is bounded by the minimum and maximum of the displayed units \u2014 colours are relative to the project, not absolute."
+  ),
   regen_table_section = list(fr = "Tableau des UGF", en = "UGF table"),
   regen_filter_coverage = list(fr = "Masquer les UG mal couvertes", en = "Hide poorly covered units"),
   regen_parcel_sheet = list(fr = "Fiche parcelle", en = "Unit sheet"),
