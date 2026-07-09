@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.16] - 2026-07-09
+
 ### Changed
 
 - Notif bas-droite « en cours » unifiée entre FAST/FORDEAD/RECONFORT et
@@ -20,6 +22,17 @@ For a narrative, per-feature description of each release, see
   devient un wrapper. Handlers FORDEAD/RECONFORT dotés de `start` + `on_msg`.
 - Messages ntfy : nom du projet ajouté à l'entête (`Title`) — `Nemeton
   <MOTEUR> - <projet>` via `.ntfy_title()` (translittération ASCII stricte).
+
+## [0.100.15] - 2026-07-09
+
+### Added
+
+- Indicateur radar **A5 « Rafraîchissement urbain »**
+  (`indicateur_a5_rafraichissement`, spec 032) sur la famille A, alimenté par
+  la température de surface (LST) Theia/Thermocity. Opt-in strict via le toggle
+  projet (`set_project_lst_urbain()`), gaté sur les identifiants Theia ;
+  `build_lst_layer()` fetch + cache `cache/layers/lst/`. Famille A inchangée
+  (A1-A4) sans activation ; A5 = NA proprement hors couverture urbaine.
 
 ## [0.100.14] - 2026-07-08
 

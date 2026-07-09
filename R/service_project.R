@@ -1689,6 +1689,50 @@ set_project_sufosat <- function(project_id, enabled,
 }
 
 
+#' Persist the urban-cooling (LST → A5) source config on a project
+#'
+#' @description
+#' Spec 032. Records the opt-in Theia LST (Thermocity) source under
+#' \code{metadata$lst_urbain}, mirroring \code{set_project_sufosat()}. No file to
+#' upload — the LST raster is fetched from Theia at compute time by
+#' \code{build_lst_layer()}; this only stores the toggle + \code{buffer_m} (the
+#' reference-ring radius). When disabling, the cached LST raster is dropped so a
+#' later re-enable re-fetches a fresh coverage.
+#'
+#' @param project_id Character.
+#' @param enabled Logical. Whether A5 (urban cooling / LST) is active.
+#' @param buffer_m Numeric. Reference-ring radius in metres (default 500).
+#'
+#' @return TRUE on success.
+#' @noRd
+set_project_lst_urbain <- function(project_id, enabled, buffer_m = 500) {
+  project_path <- get_project_path(project_id)
+  if (is.null(project_path) || !dir.exists(project_path)) {
+    cli::cli_abort("Project not found: {project_id}")
+  }
+
+  enabled <- isTRUE(enabled)
+  cfg <- list(
+    enabled  = enabled,
+    buffer_m = as.numeric(buffer_m %||% 500),
+    set_at   = format(Sys.time(), "%Y-%m-%dT%H:%M:%S")
+  )
+
+  # Drop the cached LST raster when disabling (fresh fetch on re-enable).
+  if (!enabled) {
+    cache_dir <- file.path(project_path, "cache", "layers", "lst")
+    if (dir.exists(cache_dir)) unlink(cache_dir, recursive = TRUE)
+  }
+
+  update_project_metadata(project_id, list(lst_urbain = cfg),
+                          project_path = project_path)
+  cli::cli_alert_success(
+    "Rafraîchissement urbain (LST) : {if (enabled) 'activé' else 'désactivé'} \\
+     (buffer={cfg$buffer_m}m)")
+  TRUE
+}
+
+
 #' Load project metadata
 #'
 #' @description

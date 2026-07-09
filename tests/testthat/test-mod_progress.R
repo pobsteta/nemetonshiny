@@ -494,7 +494,7 @@ test_that("init_compute_state creates valid state structure", {
 
   with_mocked_bindings(
     get_computation_progress = function(project_id) list(computed_indicators = character(0)),
-    list_available_indicators = function() c("indicateur_c1_biomasse", "indicateur_c2_ndvi", "indicateur_w1_reseau"),
+    list_available_indicators = function(metadata = NULL) c("indicateur_c1_biomasse", "indicateur_c2_ndvi", "indicateur_w1_reseau"),
     {
       state <- nemetonshiny:::init_compute_state("test_project", "all")
 
@@ -526,7 +526,7 @@ test_that("init_compute_state handles resume with existing progress", {
     get_computation_progress = function(project_id) {
       list(computed_indicators = c("indicateur_c1_biomasse", "indicateur_c2_ndvi"))
     },
-    list_available_indicators = function() {
+    list_available_indicators = function(metadata = NULL) {
       c("indicateur_c1_biomasse", "indicateur_c2_ndvi", "indicateur_w1_reseau")
     },
     {
