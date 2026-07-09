@@ -3925,19 +3925,11 @@ mod_monitoring_server <- function(id, app_state) {
 # happening. The `.nmt-spin` CSS keyframe is defined in
 # `inst/app/www/css/custom.css` and is also re-used by the DB probe
 # loading card (see `.monitoring_loading_card`).
-.monitoring_spinning_msg <- function(text) {
-  htmltools::tagList(
-    htmltools::tags$span(
-      class      = "nmt-spin me-2 text-secondary",
-      style      = "display:inline-block;vertical-align:middle;",
-      `aria-hidden` = "true",
-      bsicons::bs_icon("gear-fill")
-    ),
-    htmltools::tags$span(
-      style = "vertical-align:middle;",
-      text
-    )
-  )
+.monitoring_spinning_msg <- function(text, start = NULL) {
+  # Cadre unifié (engrenage qui tourne + police + chrono monospace optionnel),
+  # partagé avec le moteur reGénération — cf. R/utils_notif.R. `start` (POSIXct) :
+  # si fourni, ajoute le chronomètre « — MM:SS » qui défile.
+  .running_notif_content(text, start = start)
 }
 
 # Persistent "connecting…" / "creating local SQLite…" card shown while

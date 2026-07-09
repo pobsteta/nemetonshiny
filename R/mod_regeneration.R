@@ -5,18 +5,8 @@
 # Pattern golem : mod_regeneration_ui(id) + mod_regeneration_server(id, app_state).
 # Aucune logique métier ici — tout passe par service_regeneration (→ nemeton).
 
-# Durée écoulée depuis `start` en "MM:SS" (ou "H:MM:SS" au-delà d'une heure).
-# Sert au chrono des boutons async (moteur réel / Auto E-OBS). "" si NULL.
-.fmt_elapsed <- function(start) {
-  if (is.null(start)) return("")
-  s <- as.integer(difftime(Sys.time(), start, units = "secs"))
-  if (s < 0L) s <- 0L
-  if (s >= 3600L) {
-    sprintf("%d:%02d:%02d", s %/% 3600L, (s %% 3600L) %/% 60L, s %% 60L)
-  } else {
-    sprintf("%02d:%02d", s %/% 60L, s %% 60L)
-  }
-}
+# `.fmt_elapsed()` (chrono MM:SS des boutons/notifs async) est désormais partagé
+# dans R/utils_notif.R avec le rendu unifié `.running_notif_content()`.
 
 # --- Phase en cours du moteur reGénération (canal fichier, spec 027) ---------
 # Le worker future écrit sa phase dans cache/regeneration/engine_status.json ;
@@ -527,9 +517,7 @@ mod_regeneration_server <- function(id, app_state) {
       lbl <- if (is.null(st)) i18n$t("regen_engine_running") else .regen_phase_label(i18n, st)
       if (!nzchar(lbl)) lbl <- i18n$t("regen_engine_running")   # done / illisible
       shiny::showNotification(
-        htmltools::span(
-          bsicons::bs_icon("hourglass-split", class = "me-1"), lbl, " — ",
-          htmltools::tags$span(class = "font-monospace", .fmt_elapsed(rv$engine_start))),
+        .running_notif_content(lbl, rv$engine_start),
         id = session$ns("engine_notif"), type = "message", duration = NULL)
     })
 

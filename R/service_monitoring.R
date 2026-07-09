@@ -170,7 +170,7 @@ run_ingestion_async <- function() {
         sprintf(i18n$t("monitoring_ntfy_ingest_start"),
                 zone_name),
         tags  = "satellite",
-        title = "Nemeton FAST"
+        title = .ntfy_title("FAST", zone_name)
       )
 
       # Heartbeat 1/3: worker reached the start of its body. Useful
@@ -344,7 +344,7 @@ run_ingestion_async <- function() {
                 as.integer(summary$n_scenes %||% 0L),
                 .format_duration_human(duration_sec)),
         tags  = "white_check_mark",
-        title = "Nemeton FAST"
+        title = .ntfy_title("FAST", zone_name)
       )
 
       list(
@@ -584,7 +584,7 @@ run_fordead_async <- function() {
         sprintf(i18n$t("monitoring_ntfy_fordead_start"),
                 zone_name),
         tags  = "evergreen_tree",
-        title = "Nemeton FORDEAD"
+        title = .ntfy_title("FORDEAD", zone_name)
       )
 
       # v0.71.1 — Si output_dir est NULL (cas legacy ou worker invoqué
@@ -653,7 +653,7 @@ run_fordead_async <- function() {
                 as.integer(result$n_alerts_inserted %||% 0L),
                 .format_duration_human(result$duration_sec %||% NA_real_)),
         tags  = "white_check_mark",
-        title = "Nemeton FORDEAD"
+        title = .ntfy_title("FORDEAD", zone_name)
       )
       result
     }, seed = TRUE)
@@ -739,7 +739,7 @@ run_reconfort_async <- function() {
         ntfy,
         sprintf(i18n$t("monitoring_ntfy_reconfort_start"), zone_name),
         tags  = "deciduous_tree",
-        title = "Nemeton RECONFORT"
+        title = .ntfy_title("RECONFORT", zone_name)
       )
 
       if (!is.null(output_dir) && nzchar(output_dir) && !dir.exists(output_dir)) {
@@ -776,7 +776,7 @@ run_reconfort_async <- function() {
                 as.integer(result$n_alerts %||% 0L),
                 .format_duration_human(result$elapsed_sec %||% NA_real_)),
         tags  = "white_check_mark",
-        title = "Nemeton RECONFORT"
+        title = .ntfy_title("RECONFORT", zone_name)
       )
       result
     }, seed = TRUE)
@@ -839,6 +839,20 @@ run_reconfort_async <- function() {
 #'   hard-coded here).
 #' @return `TRUE` on a sent request, `FALSE` otherwise (invisibly).
 #' @noRd
+# Titre ntfy « Nemeton <moteur> — <projet> », ASCII-safe (les en-têtes HTTP ntfy
+# ne sont pas UTF-8 safe → translittération + strip des caractères non-ASCII).
+# `project` peut être NULL/"" (retombe sur le titre moteur seul). Partagé par
+# FAST/FORDEAD/RECONFORT (service_monitoring) et reGénération (service_regeneration).
+.ntfy_title <- function(engine, project = NULL) {
+  base <- paste0("Nemeton ", engine)
+  if (is.null(project) || !nzchar(as.character(project))) return(base)
+  ascii <- tryCatch(iconv(as.character(project), to = "ASCII//TRANSLIT"),
+                    error = function(e) NA_character_)
+  if (is.na(ascii)) ascii <- gsub("[^A-Za-z0-9 ._-]", "", as.character(project))
+  ascii <- trimws(gsub("[^A-Za-z0-9 ._-]", "", ascii))
+  if (nzchar(ascii)) paste0(base, " - ", ascii) else base
+}
+
 .ntfy_send <- function(cfg, message, priority = "default",
                        tags = NULL, title = "Nemeton") {
   if (is.null(cfg)) return(invisible(FALSE))

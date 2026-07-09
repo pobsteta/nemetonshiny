@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+### Changed
+
+- Notif bas-droite « en cours » unifiée entre FAST/FORDEAD/RECONFORT et
+  reGénération : cadre, police et picto communs (engrenage animé `nmt-spin`) +
+  chronomètre monospace « — MM:SS » qui défile. Rendu centralisé dans
+  `R/utils_notif.R` (`.running_notif_content` / `.fmt_elapsed`) ;
+  `.monitoring_spinning_msg` devient un wrapper.
+- Messages ntfy : nom du projet ajouté à l'entête (`Title`) — `Nemeton
+  <MOTEUR> - <projet>` via `.ntfy_title()` (translittération ASCII stricte).
+
 ## [0.100.14] - 2026-07-08
 
 ### Added
