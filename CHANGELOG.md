@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.17\] - 2026-07-09
+
+### Fixed
+
+- Push ntfy monitoring (FAST/FORDEAD/RECONFORT) : l’entête et le corps
+  du message utilisent le **vrai nom de projet à jour** (résolu côté
+  session) au lieu du nom de zone en base, qui pouvait être périmé
+  (`file4ec…` au lieu de « Reconfort » après renommage). Nouveau
+  paramètre worker `project_name` (repli DB si NULL).
+
 ## \[0.100.16\] - 2026-07-09
 
 ### Changed

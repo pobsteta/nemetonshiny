@@ -2,6 +2,21 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.100.17
+
+#### Fixed — ntfy monitoring : vrai nom de projet dans l’entête (au lieu du nom de zone DB périmé)
+
+- Les push ntfy des moteurs **FAST / FORDEAD / RECONFORT** affichaient
+  le **nom de zone lu en base** (`monitoring_zone.name`), qui pouvait
+  être **périmé** —
+  16. ex. `file4ec…` (nom temporaire de la 1ʳᵉ inscription) au lieu du
+      vrai nom de projet « Reconfort » après un renommage. Le worker
+      reçoit désormais le **nom de projet à jour** résolu côté session
+      (`app_state$current_project`) et le préfère au nom de zone DB
+      (`project_name %||% .resolve_zone_name()`). Répercuté sur l’entête
+      **et** le corps du message. Repli DB conservé pour les tests /
+      appels legacy (paramètre `project_name = NULL`).
+
 ## nemetonshiny 0.100.16
 
 #### Changed — notif bas-droite unifiée (cadre + engrenage animé + chrono) + projet dans l’entête ntfy

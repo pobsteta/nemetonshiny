@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.16.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.17.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.100.17" id="nemetonshiny-010017">nemetonshiny 0.100.17<a class="anchor" aria-label="anchor" href="#nemetonshiny-010017"></a></h2>
+<div class="section level4">
+<h4 id="fixed--ntfy-monitoring--vrai-nom-de-projet-dans-lentête-au-lieu-du-nom-de-zone-db-périmé-0-100-17">Fixed — ntfy monitoring : vrai nom de projet dans l’entête (au lieu du nom de zone DB périmé)<a class="anchor" aria-label="anchor" href="#fixed--ntfy-monitoring--vrai-nom-de-projet-dans-lent%C3%AAte-au-lieu-du-nom-de-zone-db-p%C3%A9rim%C3%A9-0-100-17"></a></h4>
+<ul><li>Les push ntfy des moteurs <strong>FAST / FORDEAD / RECONFORT</strong> affichaient le <strong>nom de zone lu en base</strong> (<code>monitoring_zone.name</code>), qui pouvait être <strong>périmé</strong> —
+<ol start="16" style="list-style-type: lower-alpha"><li>ex. <code>file4ec…</code> (nom temporaire de la 1ʳᵉ inscription) au lieu du vrai nom de projet « Reconfort » après un renommage. Le worker reçoit désormais le <strong>nom de projet à jour</strong> résolu côté session (<code>app_state$current_project</code>) et le préfère au nom de zone DB (<code>project_name %||% .resolve_zone_name()</code>). Répercuté sur l’entête <strong>et</strong> le corps du message. Repli DB conservé pour les tests / appels legacy (paramètre <code>project_name = NULL</code>).</li>
+</ol></li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.16" id="nemetonshiny-010016">nemetonshiny 0.100.16<a class="anchor" aria-label="anchor" href="#nemetonshiny-010016"></a></h2>
