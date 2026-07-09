@@ -76,7 +76,13 @@ run_ingestion_async <- function() {
                                    # `.prewarm_fast_alerts()` retiré
                                    # ici car redondant avec spec 018.
                                    prewarm_alerts = TRUE,
-                                   prewarm_mask_cache_dir = NULL) {
+                                   prewarm_mask_cache_dir = NULL,
+                                   # Nom d'affichage (projet) résolu côté
+                                   # parent depuis app_state — toujours à jour,
+                                   # contrairement au nom de zone en DB qui peut
+                                   # être périmé (projet renommé). NULL → repli
+                                   # sur .resolve_zone_name (tests / legacy).
+                                   project_name = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -147,11 +153,12 @@ run_ingestion_async <- function() {
       ntfy <- .ntfy_config()
       i18n <- get_i18n(lang %||% "fr")
 
-      # v0.43.2 — resolve the zone *name* once (DB hit) so the start
-      # push reads « (zone villards) » instead of « (zone 1) ». Silent
-      # fallback to the integer id on any error — the resolver is
-      # cosmetic and MUST never abort a long-running ingestion.
-      zone_name <- .resolve_zone_name(con, zone_id)
+      # v0.43.2 — resolve the display name once so the start push reads
+      # « (zone villards) » instead of « (zone 1) ». Priorité au nom de
+      # projet passé par le parent (à jour) ; repli DB si absent. Silent
+      # fallback to the integer id on any error — le résolveur est
+      # cosmétique et NE DOIT JAMAIS abort une ingestion longue.
+      zone_name <- project_name %||% .resolve_zone_name(con, zone_id)
 
       # Composite progress callback: the file writer the parent's
       # reactivePoll tails PLUS a worker-side ntfy push when the
@@ -540,7 +547,10 @@ run_fordead_async <- function() {
                                    # (/tmp), supprimé en fin de run.
                                    output_dir = NULL,
                                    keep_output = TRUE,
-                                   cancel_path = NULL) {
+                                   cancel_path = NULL,
+                                   # Nom d'affichage (projet) résolu côté parent
+                                   # — cf. run_ingestion_async. NULL → repli DB.
+                                   project_name = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -567,9 +577,9 @@ run_fordead_async <- function() {
       ntfy  <- .ntfy_config()
       i18n  <- get_i18n(lang %||% "fr")
 
-      # v0.43.2 — resolve the zone *name* once for the start push,
-      # symétrique avec FAST (cf. run_ingestion_async).
-      zone_name <- .resolve_zone_name(con, zone_id)
+      # v0.43.2 — resolve the display name once for the start push,
+      # symétrique avec FAST : priorité au nom de projet (parent), repli DB.
+      zone_name <- project_name %||% .resolve_zone_name(con, zone_id)
 
       # Composite progress callback: the file writer the parent's
       # reactivePoll tails, PLUS a worker-side ntfy push on each new
@@ -701,7 +711,10 @@ run_reconfort_async <- function() {
   shiny::ExtendedTask$new(function(zone_id = NULL, cache_dir = NULL,
                                    s2_year = NULL, db_url = "",
                                    progress_path = NULL, lang = "fr",
-                                   output_dir = NULL) {
+                                   output_dir = NULL,
+                                   # Nom d'affichage (projet) résolu côté parent
+                                   # — cf. run_ingestion_async. NULL → repli DB.
+                                   project_name = NULL) {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
@@ -727,7 +740,8 @@ run_reconfort_async <- function() {
       # `.ntfy_send()` below is a silent no-op. Symétrique avec FORDEAD.
       ntfy      <- .ntfy_config()
       i18n      <- get_i18n(lang %||% "fr")
-      zone_name <- .resolve_zone_name(con, zone_id)
+      # Priorité au nom de projet (parent, à jour), repli DB — cf. FAST.
+      zone_name <- project_name %||% .resolve_zone_name(con, zone_id)
 
       # Composite progress callback: the file writer the parent's
       # reactivePoll tails, PLUS a worker-side ntfy push on each new
