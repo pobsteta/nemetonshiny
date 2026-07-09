@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.17
 
 ### Fixed — ntfy monitoring : vrai nom de projet dans l'entête (au lieu du nom de zone DB périmé)
 

@@ -10,6 +10,8 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.100.17] - 2026-07-09
+
 ### Fixed
 
 - Push ntfy monitoring (FAST/FORDEAD/RECONFORT) : l'entête et le corps du
