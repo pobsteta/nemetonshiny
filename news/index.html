@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.14.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,18 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.100.15" id="nemetonshiny-010015">nemetonshiny 0.100.15<a class="anchor" aria-label="anchor" href="#nemetonshiny-010015"></a></h2>
+<div class="section level4">
+<h4 id="added--radar-a5--rafraîchissement-urbain--lst-theia-spec-0-100-15">Added — Radar A5 « Rafraîchissement urbain » (LST Theia, spec 032)<a class="anchor" aria-label="anchor" href="#added--radar-a5--rafra%C3%AEchissement-urbain--lst-theia-spec-0-100-15"></a></h4>
+<ul><li>Nouvel indicateur <strong>A5</strong> (<code>indicateur_a5_rafraichissement</code>) câblé sur la famille <strong>A</strong> du radar (à côté de A1-A4), alimenté par la <strong>température de surface (LST)</strong> Theia/Thermocity. <strong>Sens direct</strong> (haut = plus frais que l’entour = bon) : aucune inversion côté app, la normalisation positive se fait au cœur.</li>
+<li>
+<strong>Acquisition + cache</strong> : <code>build_lst_layer()</code> (miroir SUFOSAT) fetch <code>theia_lst</code> et cache sous <code>cache/layers/lst/</code> ; branche dispatcher injecte <code>lst</code> + <code>buffer_m</code> (rayon de l’anneau de référence) dans l’indicateur.</li>
+<li>
+<strong>Opt-in strict</strong> : toggle « Rafraîchissement urbain (LST) » dans l’onglet projet (<code>set_project_lst_urbain()</code> → <code>metadata$lst_urbain</code>), gaté sur les identifiants Theia. A5 n’entre dans le set calculé que si activé (<code>list_available_indicators()</code> gaté) — sans activation, <strong>famille A inchangée (A1-A4)</strong>, aucune requête Theia.</li>
+<li>
+<strong>Couverture urbaine uniquement</strong> (Thermocity = quelques métropoles) : sur un projet rural, A5 = NA proprement (pas de 5ᵉ axe vide), sans régression. Tooltip i18n explicite.</li>
+<li>Plancher cœur déjà satisfait (<code>nemeton (&gt;= 0.146.2)</code> ≥ 0.114.0 requis par A5). Dernier brief app de la série specs 027-034 : tous livrés.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.14" id="nemetonshiny-010014">nemetonshiny 0.100.14<a class="anchor" aria-label="anchor" href="#nemetonshiny-010014"></a></h2>
