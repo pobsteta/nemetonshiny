@@ -74,6 +74,19 @@ mod_regeneration_ui <- function(id) {
                      tooltip, placement = "right"))
   }
 
+  # Variante pour les entrées du radio « Couche affichée » : le tooltip décrit la
+  # variable puis rappelle la lecture de l'échelle de couleurs, commune aux 4
+  # couches (dégradé continu borné aux min/max des UG affichées).
+  layer_tt <- function(label, tooltip) {
+    htmltools::tagList(label, " ",
+      bslib::tooltip(bsicons::bs_icon("info-circle", class = "text-muted ms-1"),
+                     htmltools::tagList(
+                       htmltools::tags$div(tooltip),
+                       htmltools::tags$div(class = "mt-1 fst-italic",
+                                           i18n$t("regen_map_legend_scale"))),
+                     placement = "left"))
+  }
+
   bslib::layout_sidebar(
     fillable = TRUE,
     sidebar = bslib::sidebar(
@@ -185,11 +198,16 @@ mod_regeneration_ui <- function(id) {
           sidebar = bslib::sidebar(
             position = "right", open = "always", width = 260,
             htmltools::tags$strong(i18n$t("regen_map_layer")),
+            # Chaque couche porte un « i » qui explique la variable cartographiée
+            # et comment lire sa légende. Tooltip à gauche : le sidebar est collé
+            # au bord droit de la fenêtre.
             shiny::radioButtons(ns("map_layer"), NULL,
-              choices = stats::setNames(
-                c("indice_priorite_regen", "sensibilite", "njstress", "d_tmax"),
-                c(i18n$t("regen_map_priorite"), i18n$t("regen_map_sensibilite"),
-                  i18n$t("regen_map_njstress"), i18n$t("regen_map_dtmax"))),
+              choiceValues = c("indice_priorite_regen", "sensibilite", "njstress", "d_tmax"),
+              choiceNames = list(
+                layer_tt(i18n$t("regen_map_priorite"), i18n$t("regen_map_priorite_info")),
+                layer_tt(i18n$t("regen_map_sensibilite"), i18n$t("regen_map_sensibilite_info")),
+                layer_tt(i18n$t("regen_map_njstress"), i18n$t("regen_map_njstress_info")),
+                layer_tt(i18n$t("regen_map_dtmax"), i18n$t("regen_map_dtmax_info"))),
               selected = "indice_priorite_regen")
           ),
           leaflet::leafletOutput(ns("map"), height = "70vh")

@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+### Added — reGénération : infobulles « i » sur les couches de la carte
+
+- Chacune des 4 entrées du radio **« Couche affichée »** (carte reGénération)
+  porte désormais un **« i » d'information** qui explique la variable
+  cartographiée — définition, unité, sens de lecture (valeur élevée = quoi) et
+  moteur d'origine (microclimf / BILJOU) — puis rappelle que la **légende** est
+  un dégradé continu **borné aux min/max des UG affichées** : les couleurs sont
+  relatives au projet, jamais absolues. 5 clés i18n FR/EN
+  (`regen_map_*_info`, `regen_map_legend_scale`), tooltip placé à gauche
+  (le sidebar est collé au bord droit).
+
 # nemetonshiny 0.100.18
 
 ### Changed — reGénération : bloc « Années de référence » au-dessus du moteur
