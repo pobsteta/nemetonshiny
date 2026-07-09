@@ -81,21 +81,10 @@ mod_regeneration_ui <- function(id) {
 
       htmltools::tags$p(class = "text-muted small", i18n$t("regen_intro")),
 
-      # --- Moteur microclimf réel (opt-in, coûteux) — placé en tête -------
-      # Lance le vrai run microclimf (LiDAR HD + ERA5) via nemeton, en async.
-      # Désactivé tant que les prérequis (grille LiDAR HD + identifiants CDS)
-      # ne sont pas réunis ; le statut est affiché sous le bouton.
-      htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_engine_section")),
-      bslib::tooltip(
-        bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
-          icon = bsicons::bs_icon("cpu"),
-          label_busy = i18n$t("regen_engine_running_short"),
-          type = "outline-primary", class = "btn-sm w-100"),
-        i18n$t("regen_engine_tip"), placement = "right"),
-      shiny::uiOutput(ns("engine_status")),
-      htmltools::tags$hr(class = "my-2"),
-
-      # --- Années de référence -------------------------------------------
+      # --- Années de référence — placées en tête -------------------------
+      # Le bloc année moyenne / caniculaire + le bouton Auto (E-OBS) + l'indice
+      # E-OBS précèdent le moteur : l'utilisateur choisit d'abord les millésimes
+      # de référence, puis lance le moteur microclimf qui les consomme.
       htmltools::tags$strong(i18n$t("regen_years_section")),
       shiny::fluidRow(
         shiny::column(6, shiny::numericInput(ns("year_moyenne"),
@@ -111,6 +100,21 @@ mod_regeneration_ui <- function(id) {
         i18n$t("regen_year_auto_tip"), placement = "right"),
       shiny::uiOutput(ns("eobs_status")),
       shiny::uiOutput(ns("eobs_index_display")),
+      htmltools::tags$hr(class = "my-2"),
+
+      # --- Moteur microclimf réel (opt-in, coûteux) ----------------------
+      # Lance le vrai run microclimf (LiDAR HD + ERA5) via nemeton, en async.
+      # Désactivé tant que les prérequis (grille LiDAR HD + identifiants CDS)
+      # ne sont pas réunis ; le statut est affiché sous le bouton.
+      htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_engine_section")),
+      bslib::tooltip(
+        bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
+          icon = bsicons::bs_icon("cpu"),
+          label_busy = i18n$t("regen_engine_running_short"),
+          type = "outline-primary", class = "btn-sm w-100"),
+        i18n$t("regen_engine_tip"), placement = "right"),
+      shiny::uiOutput(ns("engine_status")),
+      htmltools::tags$hr(class = "my-2"),
 
       # --- Peuplement ----------------------------------------------------
       htmltools::tags$strong(i18n$t("regen_stand_section")),
