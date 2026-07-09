@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.100.15
 
 ### Added — Radar A5 « Rafraîchissement urbain » (LST Theia, spec 032)
 
