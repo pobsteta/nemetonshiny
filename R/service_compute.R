@@ -166,9 +166,11 @@ COMPUTE_STATUS <- list(
 #'
 #' @noRd
 init_compute_state <- function(project_id, indicators = "all") {
-  # Get full indicator list if "all"
+  # Get full indicator list if "all" (metadata-gated : A5 LST inclus seulement
+  # si la source urbaine est activée sur le projet, cf. list_available_indicators).
   if (length(indicators) == 1 && indicators == "all") {
-    indicators <- list_available_indicators()
+    meta <- tryCatch(load_project_metadata(project_id), error = function(e) NULL)
+    indicators <- list_available_indicators(meta)
   }
   # Ensure indicators is always a character vector (not a list)
   indicators <- as.character(unlist(indicators))
@@ -219,8 +221,8 @@ init_compute_state <- function(project_id, indicators = "all") {
 #' @return Character vector of indicator names.
 #'
 #' @noRd
-list_available_indicators <- function() {
-  c(
+list_available_indicators <- function(metadata = NULL) {
+  base <- c(
     # Carbon (C)
     "indicateur_c1_biomasse", "indicateur_c2_ndvi",
     # Biodiversity (B)
@@ -249,6 +251,14 @@ list_available_indicators <- function() {
     # Naturalness (N)
     "indicateur_n1_distance", "indicateur_n2_continuite", "indicateur_n3_naturalite"
   )
+  # A5 rafraîchissement urbain (LST Thermocity, spec 032) : opt-in strict —
+  # ajouté au set SEULEMENT si la source LST est activée sur le projet. Sans
+  # activation, la famille A reste A1-A4 (indicateur orienté arbre en ville,
+  # hors-sujet/NA en rural — pas de 5ᵉ axe vide, aucune requête Theia).
+  if (isTRUE(metadata$lst_urbain$enabled)) {
+    base <- c(base, "indicateur_a5_rafraichissement")
+  }
+  base
 }
 
 
@@ -840,7 +850,7 @@ start_computation <- function(project_id,
     report_progress(state)
 
     effective_indicators <- if (length(indicators) == 1 && indicators == "all") {
-      list_available_indicators()
+      list_available_indicators(projet_for_ug$metadata)
     } else {
       indicators
     }
@@ -887,6 +897,27 @@ start_computation <- function(project_id,
         sufosat_layer$window_years <- sufosat_cfg$window_years %||% 5
         sufosat_layer$min_proba    <- sufosat_cfg$min_proba %||% 0.9
         layers$sufosat <- sufosat_layer
+      }
+    }
+
+    # Rafraîchissement urbain → A5 (LST Theia, spec 032). Source opt-in, gatée
+    # sur metadata$lst_urbain$enabled : hors activation — ou hors couverture
+    # urbaine Thermocity / Theia non configuré — layers$rasters$lst reste NULL et
+    # indicateur_a5_rafraichissement renvoie NA par unité (famille A garde
+    # A1-A4, aucune requête Theia, no regression). A5 est à SENS DIRECT (haut =
+    # plus frais) : normalisation positive au cœur, l'app ne fait aucune inversion.
+    lst_cfg <- projet_for_ug$metadata$lst_urbain
+    if (isTRUE(lst_cfg$enabled) &&
+        "indicateur_a5_rafraichissement" %in% effective_indicators) {
+      state$current_task <- "lst_urbain"
+      report_progress(state)
+      lst_r <- build_lst_layer(
+        lst_cfg, project_path, aoi = compute_unit,
+        crs = sf::st_crs(compute_unit)$epsg %||% 2154
+      )
+      if (!is.null(lst_r)) {
+        layers$rasters$lst <- lst_r
+        layers$lst_buffer_m <- lst_cfg$buffer_m %||% 500
       }
     }
 
@@ -1245,6 +1276,84 @@ build_sufosat_layer <- function(cfg, project_path, aoi, crs = 2154) {
 
   cli::cli_alert_success("Coupes rases : rasters SUFOSAT acquis (dates + proba)")
   list(dates = dates, proba = proba)
+}
+
+#' Acquire + cache the Theia LST raster for A5 urban cooling (spec 032)
+#'
+#' @description
+#' Fetches the Theia surface-temperature (LST, Thermocity) raster for the AOI and
+#' caches it under \code{<project>/cache/layers/lst/}, mirroring
+#' \code{build_sufosat_layer()} / \code{build_foret_ancienne_layer()}. All the
+#' business logic (the A5 score, the local-ring reference, the direct-sense
+#' normalisation) stays in the core
+#' (\code{nemeton::indicateur_a5_rafraichissement} + \code{create_family_index});
+#' this helper only acquires and forwards the LST raster.
+#'
+#' LST is kelvin (float32, nodata \code{-32768} filtered by the core). Thermocity
+#' covers a few metropolitan areas only — on a rural project the fetch returns
+#' \code{NULL} and A5 stays NA (no regression). The cache key is the AOI bbox
+#' (the raw coverage read by bounding box; \code{buffer_m} is applied downstream
+#' in the indicator, not baked into the raster).
+#'
+#' @param cfg List from \code{metadata$lst_urbain}. Only \code{enabled} is read by
+#'   the caller; the acquisition itself needs no other field.
+#' @param project_path Character. Project root (for the cache directory).
+#' @param aoi An sf of the compute units (area of interest).
+#' @param crs EPSG code the AOI is expressed in (default 2154).
+#'
+#' @return A \code{SpatRaster} (LST, kelvin), or \code{NULL} when Theia is not
+#'   configured or the fetch fails / the AOI is outside urban coverage.
+#' @noRd
+build_lst_layer <- function(cfg, project_path, aoi, crs = 2154) {
+  if (is.null(aoi) || !inherits(aoi, "sf") || nrow(aoi) == 0) return(NULL)
+
+  aoi_2154 <- tryCatch(sf::st_transform(aoi, 2154), error = function(e) NULL)
+  if (is.null(aoi_2154)) return(NULL)
+
+  # Cache key : AOI bbox only (raw LST coverage cropped to the AOI ; buffer_m is
+  # applied downstream in indicateur_a5_rafraichissement, not in the raster).
+  bb  <- as.numeric(sf::st_bbox(aoi_2154))
+  key <- substr(rlang::hash(list(round(bb, 0))), 1, 16)
+  cache_dir <- file.path(project_path, "cache", "layers", "lst")
+  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+  lst_tif <- file.path(cache_dir, paste0("lst_", key, ".tif"))
+
+  if (file.exists(lst_tif)) {
+    out <- tryCatch(terra::rast(lst_tif), error = function(e) NULL)
+    if (!is.null(out)) {
+      cli::cli_alert_info("Rafraîchissement urbain : LST lue depuis le cache")
+      return(out)
+    }
+  }
+
+  # Acquire from Theia — needs S3 credentials (TLD_* env vars) configured once.
+  # Garde amont sur les clés (même contrat que SUFOSAT).
+  if (!theia_api_key_configured()) {
+    cli::cli_warn("Rafraîchissement urbain : clés Theia (TLD_ACCESS_KEY / TLD_SECRET_KEY) absentes.")
+    return(NULL)
+  }
+
+  lst <- tryCatch(
+    nemeton::load_theia_source("theia_lst", aoi_2154, asset = "LST"),
+    error = function(e) {
+      cli::cli_warn("Rafraîchissement urbain : load_theia_source a échoué : {conditionMessage(e)}")
+      NULL
+    })
+  # Hors couverture urbaine (Thermocity = quelques métropoles) → NULL, A5 = NA.
+  if (is.null(lst)) return(NULL)
+
+  # Crop to the AOI (safety — load already reads by bbox) then cache.
+  aoi_vect <- tryCatch(terra::vect(aoi_2154), error = function(e) NULL)
+  if (!is.null(aoi_vect)) {
+    lst <- tryCatch(terra::crop(lst, terra::project(aoi_vect, terra::crs(lst))),
+                    error = function(e) lst)
+  }
+  tryCatch(terra::writeRaster(lst, lst_tif, overwrite = TRUE),
+           error = function(e) cli::cli_warn(
+             "Rafraîchissement urbain : cache non écrit : {conditionMessage(e)}"))
+
+  cli::cli_alert_success("Rafraîchissement urbain : LST acquise (Theia Thermocity)")
+  lst
 }
 
 
@@ -3992,6 +4101,20 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       args$min_proba <- layers$sufosat$min_proba
     }
 
+    # Rafraîchissement urbain (spec 032) → A5. La LST Theia est stagée dans
+    # layers$rasters$lst par start_computation() quand la source est activée.
+    # Absente (source désactivée, Theia non configuré, ou projet hors couverture
+    # urbaine) → lst reste NULL et indicateur_a5_rafraichissement renvoie NA par
+    # unité. A5 est à sens direct : aucune inversion côté app. buffer_m (rayon de
+    # l'anneau de référence) est propagé s'il a été saisi ; sinon défaut cœur.
+    if ("lst" %in% func_args) {
+      lst <- resolve_raster_layer(layers, "lst")
+      if (!is.null(lst)) args$lst <- lst
+    }
+    if ("buffer_m" %in% func_args && !is.null(layers$lst_buffer_m)) {
+      args$buffer_m <- layers$lst_buffer_m
+    }
+
     # Canopy Height Model. Routed to every nemeton indicator that
     # accepts a `chm` argument: P1 volume, P2 site index, P3 timber
     # quality, E1 wood energy, C1 biomass, B2 structure. The raster is
@@ -4156,7 +4279,11 @@ save_indicators_incremental <- function(project_id, results, indicator) {
       last_saved_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
       computed_indicators = names(results)[
         vapply(names(results), function(col) {
-          col %in% list_available_indicators() && !all(is.na(results[[col]]))
+          # A5 LST reconnu inconditionnellement ici (le garde !all(is.na) suffit :
+          # un A5 rural est tout-NA → non compté), évite un load metadata par save.
+          (col %in% list_available_indicators() ||
+             col == "indicateur_a5_rafraichissement") &&
+            !all(is.na(results[[col]]))
         }, logical(1))
       ]
     )

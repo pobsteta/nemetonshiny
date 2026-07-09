@@ -132,6 +132,11 @@ mod_project_ui <- function(id) {
           # two parameters, gated on Theia credentials being configured.
           shiny::uiOutput(ns("sufosat_block")),
 
+          # Optional "Urban cooling (LST)" block — opt-in Theia Thermocity
+          # source feeding the A5 indicator (spec 032). No upload: a toggle +
+          # buffer_m, gated on Theia credentials. Urban coverage only.
+          shiny::uiOutput(ns("lst_block")),
+
           # Creation date (auto)
           htmltools::div(
             class = "mb-3",
@@ -335,6 +340,87 @@ mod_project_server <- function(id, app_state, selected_parcels,
           min_proba    = input$sufosat_min_proba %||% 0.9)
         .fa_refresh_project(pid)
         shiny::showNotification(i18n$t("sufosat_saved"), type = "message")
+      }, error = function(e) {
+        shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
+                                type = "error")
+      })
+    })
+
+    # ========================================
+    # Rafraîchissement urbain → A5 (LST, spec 032)
+    # ========================================
+
+    # Opt-in Theia source (no upload) : a toggle + buffer_m, gated on Theia
+    # credentials. Writes metadata$lst_urbain ; A5 (direct sense, no inversion)
+    # then appears on the A family radar — URBAN coverage only (NA in rural).
+    output$lst_block <- shiny::renderUI({
+      header <- htmltools::tags$label(
+        class = "form-label fw-semibold", i18n$t("lst_section"))
+      hint <- htmltools::tags$small(
+        class = "text-muted d-block mb-2", i18n$t("lst_hint"))
+
+      pid <- rv$editing_project_id
+      if (is.null(pid)) {
+        return(htmltools::div(
+          class = "mb-3", header,
+          htmltools::div(class = "text-muted small fst-italic",
+                         i18n$t("foret_ancienne_need_project"))))
+      }
+
+      # A5 needs the LST raster from Theia — gate on S3 credentials.
+      theia_ok <- isTRUE(tryCatch(theia_api_key_configured(),
+                                  error = function(e) FALSE))
+      if (!theia_ok) {
+        return(htmltools::div(
+          class = "mb-3 p-2 border rounded", header, hint,
+          htmltools::div(
+            class = "small text-warning fst-italic",
+            bsicons::bs_icon("exclamation-triangle", class = "me-1"),
+            i18n$t("lst_need_theia"))))
+      }
+
+      proj    <- rv$current_project %||% app_state$current_project
+      lc      <- proj$metadata$lst_urbain
+      enabled <- isTRUE(lc$enabled)
+      status  <- if (enabled) {
+        htmltools::div(
+          class = "small mb-2",
+          bsicons::bs_icon("check-circle-fill", class = "text-success me-1"),
+          i18n$t("lst_active"))
+      } else {
+        htmltools::div(class = "small text-muted mb-2 fst-italic",
+                       i18n$t("lst_none"))
+      }
+
+      htmltools::div(
+        class = "mb-3 p-2 border rounded",
+        header, hint, status,
+        shiny::checkboxInput(ns("lst_enabled"), i18n$t("lst_enable"),
+                             value = enabled),
+        shiny::sliderInput(
+          ns("lst_buffer"), i18n$t("lst_buffer"),
+          min = 100, max = 2000, value = lc$buffer_m %||% 500, step = 100,
+          width = "100%"),
+        shiny::actionButton(
+          ns("lst_save"), i18n$t("lst_save"),
+          class = "btn-primary btn-sm", icon = bsicons::bs_icon("save"))
+      )
+    })
+
+    shiny::observeEvent(input$lst_save, {
+      pid <- rv$editing_project_id
+      if (is.null(pid)) {
+        shiny::showNotification(i18n$t("foret_ancienne_need_project"),
+                                type = "warning")
+        return()
+      }
+      tryCatch({
+        set_project_lst_urbain(
+          pid,
+          enabled  = isTRUE(input$lst_enabled),
+          buffer_m = input$lst_buffer %||% 500)
+        .fa_refresh_project(pid)
+        shiny::showNotification(i18n$t("lst_saved"), type = "message")
       }, error = function(e) {
         shiny::showNotification(paste(i18n$t("error"), conditionMessage(e)),
                                 type = "error")
