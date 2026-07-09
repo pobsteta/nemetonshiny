@@ -12,6 +12,20 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.100.19\] - 2026-07-09
+
+### Added
+
+- reGénération : infobulle « i » sur chacune des 4 couches du radio «
+  Couche affichée » (définition, unité, sens de lecture, moteur
+  d’origine) + rappel de lecture de la légende. 5 clés i18n FR/EN.
+
+### Fixed
+
+- reGénération : palette de la carte inversée (`reverse = TRUE`) — rouge
+  = valeur élevée / situation critique, vert = situation favorable.
+  Auparavant les UG les plus vulnérables ressortaient en vert.
+
 ## \[0.100.18\] - 2026-07-09
 
 ### Changed
