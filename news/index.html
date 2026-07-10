@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,17 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.101.3" id="nemetonshiny-01013">nemetonshiny 0.101.3<a class="anchor" aria-label="anchor" href="#nemetonshiny-01013"></a></h2>
+<div class="section level4">
+<h4 id="fixed--regénération--louverture-dun-projet-gelait-lapplication-s-0-101-3">Fixed — reGénération : l’ouverture d’un projet gelait l’application (~190 s)<a class="anchor" aria-label="anchor" href="#fixed--reg%C3%A9n%C3%A9ration--louverture-dun-projet-gelait-lapplication-s-0-101-3"></a></h4>
+<ul><li>
+<strong>Régression introduite en v0.101.0 (spec 035 B2).</strong> L’observateur de restauration appelait <code>run_regeneration()</code> <strong>de façon synchrone</strong> à chaque ouverture de projet. Shiny étant mono-thread, toute la session était bloquée le temps de l’appel — l’onglet <strong>Sélection</strong> ne s’affichait qu’ensuite. Mesuré sur un projet réel de 30 UGF : <strong>190 s</strong>, dont <strong>132 s</strong> dans <code>indicateur_r3_secheresse(dem = )</code>, qui re-dérive la topographie (pente, exposition, TWI) depuis la mosaïque MNT LiDAR à chaque appel.</li>
+<li>Le brief B2 affirmait que « le coût du rechargement est nul, aucun moteur n’est relancé ». C’est exact de microclimf, biljouR et lasR — et faux de R3, qui n’est pas un moteur au sens du brief mais coûte plus cher qu’eux tous.</li>
+<li>Nouvelle fonction <code>restore_regeneration()</code> : la restauration <strong>rattache</strong> les colonnes déjà en cache (exposition microclimatique, bilan hydrique) puis recalcule l’indice de priorité, une arithmétique par ligne. Ni R3, ni les sous-indicateurs A3/A4/W4/R6 — ces colonnes du radar appartiennent à une vraie analyse, et aucun critère d’acceptation de B2 (carte, indice, table) n’en a besoin. <strong>190 s → 0,41 s</strong> sur le même projet.</li>
+<li>Tests : un test de service fait échouer volontairement R3, A3, A4, W4, R6 et <code>microclimate_detect_years()</code> pour garantir qu’aucun n’est atteint ; un test de module garantit que <code>run_regeneration()</code> n’est jamais appelé à l’ouverture.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.101.2" id="nemetonshiny-01012">nemetonshiny 0.101.2<a class="anchor" aria-label="anchor" href="#nemetonshiny-01012"></a></h2>

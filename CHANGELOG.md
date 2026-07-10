@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.101.3\] - 2026-07-10
+
+### Fixed
+
+- reGénération : l’ouverture d’un projet gelait toute l’application
+  (~190 s sur un projet de 30 UGF). Régression de v0.101.0 (spec 035 B2)
+  : l’observateur de restauration appelait `run_regeneration()` de façon
+  synchrone, dont l’étape `indicateur_r3_secheresse(dem = )` re-dérive
+  la topographie depuis la mosaïque MNT LiDAR (132 s). Nouvelle fonction
+  `restore_regeneration()` qui rattache les colonnes déjà cachées et
+  recalcule l’indice de priorité : 190 s → 0,41 s.
+
 ## \[0.101.2\] - 2026-07-10
 
 ### Added

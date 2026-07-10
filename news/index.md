@@ -2,6 +2,34 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.101.3
+
+#### Fixed — reGénération : l’ouverture d’un projet gelait l’application (~190 s)
+
+- **Régression introduite en v0.101.0 (spec 035 B2).** L’observateur de
+  restauration appelait `run_regeneration()` **de façon synchrone** à
+  chaque ouverture de projet. Shiny étant mono-thread, toute la session
+  était bloquée le temps de l’appel — l’onglet **Sélection** ne
+  s’affichait qu’ensuite. Mesuré sur un projet réel de 30 UGF : **190
+  s**, dont **132 s** dans `indicateur_r3_secheresse(dem = )`, qui
+  re-dérive la topographie (pente, exposition, TWI) depuis la mosaïque
+  MNT LiDAR à chaque appel.
+- Le brief B2 affirmait que « le coût du rechargement est nul, aucun
+  moteur n’est relancé ». C’est exact de microclimf, biljouR et lasR —
+  et faux de R3, qui n’est pas un moteur au sens du brief mais coûte
+  plus cher qu’eux tous.
+- Nouvelle fonction `restore_regeneration()` : la restauration
+  **rattache** les colonnes déjà en cache (exposition microclimatique,
+  bilan hydrique) puis recalcule l’indice de priorité, une arithmétique
+  par ligne. Ni R3, ni les sous-indicateurs A3/A4/W4/R6 — ces colonnes
+  du radar appartiennent à une vraie analyse, et aucun critère
+  d’acceptation de B2 (carte, indice, table) n’en a besoin. **190 s →
+  0,41 s** sur le même projet.
+- Tests : un test de service fait échouer volontairement R3, A3, A4, W4,
+  R6 et `microclimate_detect_years()` pour garantir qu’aucun n’est
+  atteint ; un test de module garantit que `run_regeneration()` n’est
+  jamais appelé à l’ouverture.
+
 ## nemetonshiny 0.101.2
 
 #### Added — reGénération : lisibilité des overrides (spec 035 B4)
