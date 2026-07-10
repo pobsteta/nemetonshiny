@@ -180,15 +180,100 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
 #' context map (spec 027 §2.6). Returns an sf of points with trend + bivariate
 #' class columns, or NULL on failure (map simply not shown).
 #' @noRd
-regeneration_context_eobs <- function(ugf, precomputed = NULL, buffer_m = 25000) {
+#' Locate a cached E-OBS NetCDF for a project, without ever downloading
+#'
+#' `load_eobs_source()` caches the CDS archive as
+#' `<project>/cache/regeneration/eobs/eobs_<cds-var>-<period>-v…-….nc`. Reading it
+#' back through `nc =` bypasses CDS entirely — no network, no key. Returning
+#' `NULL` when the file is absent is what keeps a tab render from silently firing
+#' an ~800 MB download.
+#'
+#' @param project_path Project root, or `NULL`.
+#' @param var `"tx"` (maximum temperature) or `"rr"` (precipitation).
+#' @return An existing `.nc` path, or `NULL`.
+#' @noRd
+regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr")) {
+  var <- match.arg(var)
+  if (is.null(project_path)) return(NULL)
+  dir <- file.path(project_path, "cache", "regeneration", "eobs")
+  if (!dir.exists(dir)) return(NULL)
+  # Le nom encode la variable CDS, tirets à la place des soulignés
+  # (cf. `.eobs_cache_file()` côté cœur).
+  pat <- switch(var,
+    tx = "^eobs_maximum-temperature.*\\.nc$",
+    rr = "^eobs_precipitation-amount.*\\.nc$")
+  f <- list.files(dir, pattern = pat, full.names = TRUE)
+  if (!length(f)) return(NULL)
+  f[[1]]
+}
+
+#' Per-year summer E-OBS raster read from the project's cached NetCDF
+#' @noRd
+.regen_eobs_from_cache <- function(ugf, project_path, var) {
+  nc <- regen_eobs_cached_nc(project_path, var)
+  if (is.null(nc)) return(NULL)
+  tryCatch(nemeton::load_eobs_source(aoi = ugf, var = var, nc = nc),
+           error = function(e) NULL)
+}
+
+#' Availability of the regional-context inputs (spec 027 §2.6)
+#'
+#' `tendances_estivales_eobs()` is bivariate: it needs **both** the summer maximum
+#' temperature (`tx`) and the precipitation (`rr`) series. Only `tx` is fetched by
+#' the « Auto (E-OBS) » button, so `rr` is normally missing — which is why the
+#' context map rendered empty, silently.
+#'
+#' @return `list(tx = , rr = )` of logicals.
+#' @noRd
+regen_context_availability <- function(project_path) {
+  list(tx = !is.null(regen_eobs_cached_nc(project_path, "tx")),
+       rr = !is.null(regen_eobs_cached_nc(project_path, "rr")))
+}
+
+regeneration_context_eobs <- function(ugf, precomputed = NULL, buffer_m = 25000,
+                                      project_path = NULL) {
   if (!inherits(ugf, "sf")) return(NULL)
   pc <- precomputed %||% list()
+  # `pc$eobs_tx` / `pc$eobs_rr` proviennent de `eobs_{tx,rr}.tif` — des fichiers
+  # qu'AUCUN code n'écrit. Sans repli sur le `.nc` réellement caché par
+  # `load_eobs_source()`, le cœur recevait toujours NULL et abandonnait : la carte
+  # de contexte était vide depuis toujours.
+  tx <- pc$eobs_tx %||% .regen_eobs_from_cache(ugf, project_path, "tx")
+  rr <- pc$eobs_rr %||% .regen_eobs_from_cache(ugf, project_path, "rr")
+  # Le cœur EXIGE les deux séries. Sortir tôt plutôt que de le laisser lever :
+  # le module distingue ainsi « donnée manquante » (message + bouton) de « erreur ».
+  if (is.null(pc$context) && (is.null(tx) || is.null(rr))) return(NULL)
   tryCatch(
     nemeton::tendances_estivales_eobs(
-      aoi = ugf, tx = pc$eobs_tx, rr = pc$eobs_rr,
+      aoi = ugf, tx = tx, rr = rr,
       buffer_m = buffer_m, precomputed = pc$context),
     error = function(e) NULL
   )
+}
+
+#' Download the E-OBS precipitation series into the project cache (opt-in)
+#'
+#' Heavy (~800 MB from the Copernicus CDS) and network-bound: never called from a
+#' render, only from an explicit user action, inside a `future` worker.
+#' Idempotent — `load_eobs_source()` returns the cached file on a second call.
+#'
+#' @return `TRUE` when the `.nc` is present afterwards.
+#' @noRd
+regen_fetch_eobs_rr <- function(ugf, project_path, year_window = 10L) {
+  if (!inherits(ugf, "sf") || is.null(project_path)) return(FALSE)
+  cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
+  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+  # Même fenêtre que la détection d'années : le cœur en dérive la période CDS,
+  # donc le nom de fichier — indispensable pour que le cache soit retrouvé ensuite.
+  end_year   <- as.integer(format(Sys.Date(), "%Y")) - 2L
+  win        <- max(as.integer(year_window %||% 10L) + 2L, 7L)
+  start_year <- max(2011L, end_year - win + 1L)
+  tryCatch(
+    nemeton::load_eobs_source(aoi = ugf, var = "rr",
+                              years = seq.int(start_year, end_year),
+                              cache_dir = cache_dir),
+    error = function(e) NULL)
+  !is.null(regen_eobs_cached_nc(project_path, "rr"))
 }
 
 #' Target-species option list for the reGénération selector

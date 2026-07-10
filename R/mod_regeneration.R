@@ -304,6 +304,10 @@ mod_regeneration_ui <- function(id) {
         )
       ),
       bslib::nav_panel(i18n$t("regen_map_context"),
+        # La carte est bivariée : le cœur exige les DEUX séries E-OBS (tx + rr).
+        # Seule `tx` est rapatriée par « Auto (E-OBS) », d'où une carte vide et
+        # muette jusqu'ici. Le bandeau dit ce qui manque et propose de l'acquérir.
+        shiny::uiOutput(ns("context_status")),
         leaflet::leafletOutput(ns("context_map"), height = "70vh")),
       bslib::nav_panel(i18n$t("regen_table_section"),
         shiny::checkboxInput(ns("filter_coverage"), i18n$t("regen_filter_coverage"),
@@ -332,6 +336,8 @@ mod_regeneration_server <- function(id, app_state) {
       # Valeurs dérivées par le moteur (spec 035 B4.a) : rendent visible la
       # spatialisation du lai_max et de la réserve utile.
       lai_max = NULL, ewm = NULL, ewm_source = NA_character_,
+      # Incrémenté après acquisition de la série `rr` : re-rend la carte contexte.
+      context_refresh = 0L,
       # Chrono des boutons async (spec 027 feedback) : instant de départ, remis
       # à NULL à la fin de la tâche. NULL = pas de run en cours.
       engine_running = FALSE, eobs_running = FALSE,
@@ -607,12 +613,65 @@ mod_regeneration_server <- function(id, app_state) {
         }, seed = TRUE)
       })
 
+    # Acquisition opt-in de la série précipitations E-OBS (~800 Mo, CDS). Jamais
+    # déclenchée par un rendu : uniquement sur clic explicite, dans un worker.
+    eobs_rr_task <- shiny::ExtendedTask$new(
+      function(units, project_path, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            future::plan("multisession")
+          }
+        }
+        promises::future_promise({
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          fn <- getFromNamespace("regen_fetch_eobs_rr", "nemetonshiny")
+          fn(units, project_path)
+        }, seed = TRUE)
+      })
+
     # Lier chaque input_task_button à sa tâche : bslib désactive le bouton +
     # affiche le spinner tant que la tâche tourne, puis le réactive (succès OU
     # erreur). Empêche les runs concurrents (réécriture sensibilite/biljou.gpkg).
     # `bind_task_button()` prend l'id local au module (sans ns()).
     bslib::bind_task_button(engine_task, "run_engine")
     bslib::bind_task_button(eobs_task, "auto_years")
+    bslib::bind_task_button(eobs_rr_task, "fetch_eobs_rr")
+
+    shiny::observeEvent(input$fetch_eobs_rr, {
+      units <- units_sf()
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(units) || is.null(project_path)) {
+        bslib::update_task_button("fetch_eobs_rr", state = "ready")
+        shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
+        return()
+      }
+      shiny::showNotification(i18n$t("regen_eobs_rr_running"), type = "message", duration = 8)
+      eobs_rr_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
+    })
+
+    shiny::observeEvent(eobs_rr_task$status(), {
+      st <- eobs_rr_task$status()
+      if (identical(st, "success")) {
+        ok <- tryCatch(eobs_rr_task$result(), error = function(e) FALSE)
+        if (isTRUE(ok)) {
+          rv$context_refresh <- (rv$context_refresh %||% 0L) + 1L   # re-rend la carte
+          shiny::showNotification(i18n$t("regen_eobs_rr_done"), type = "message", duration = 6)
+        } else {
+          shiny::showNotification(i18n$t("regen_eobs_rr_failed"), type = "warning", duration = 10)
+        }
+      } else if (identical(st, "error")) {
+        err <- tryCatch(eobs_rr_task$result(), error = function(e) conditionMessage(e))
+        shiny::showNotification(
+          sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),
+          type = "error", duration = 10)
+      }
+    })
 
     # Invalidation manuelle du cache PAI (§3 brief pai-cache) : supprime
     # cache/regeneration/pai.tif → le prochain run recalcule la structure de
@@ -989,13 +1048,37 @@ mod_regeneration_server <- function(id, app_state) {
                    njstress = "njstress", d_tmax = "dtmax", "priorite"))))
     })
 
+    # Pourquoi la carte de contexte est vide, et quoi faire. Sans ce bandeau,
+    # l'onglet affichait un fond de carte nu, sans la moindre explication.
+    output$context_status <- shiny::renderUI({
+      rv$context_refresh
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(project_path)) return(NULL)
+      av <- regen_context_availability(project_path)
+      if (isTRUE(av$tx) && isTRUE(av$rr)) return(NULL)   # tout est là : pas de bandeau
+
+      # `tx` absent => l'utilisateur n'a jamais lancé « Auto (E-OBS) ».
+      msg <- if (!isTRUE(av$tx)) i18n$t("regen_context_need_tx") else i18n$t("regen_context_need_rr")
+      htmltools::div(class = "alert alert-warning py-2 small d-flex align-items-center",
+        bsicons::bs_icon("exclamation-triangle-fill", class = "me-2"),
+        htmltools::div(class = "flex-grow-1", msg),
+        if (isTRUE(av$tx))
+          bslib::input_task_button(ns("fetch_eobs_rr"), i18n$t("regen_eobs_rr_fetch"),
+            icon = bsicons::bs_icon("cloud-download"),
+            label_busy = i18n$t("regen_eobs_rr_running_short"),
+            type = "outline-primary", class = "btn-sm ms-2")
+      )
+    })
+
     output$context_map <- leaflet::renderLeaflet({
       units <- units_sf()
       shiny::req(units)
+      rv$context_refresh                       # re-rend après acquisition de `rr`
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       cells <- regeneration_context_eobs(
-        units, precomputed = load_regeneration_precomputed(
-          tryCatch(app_state$current_project$path, error = function(e) NULL)),
-        buffer_m = (input$buffer_km %||% 25) * 1000)
+        units, precomputed = load_regeneration_precomputed(project_path),
+        buffer_m = (input$buffer_km %||% 25) * 1000,
+        project_path = project_path)
       m <- leaflet::leaflet() |> leaflet::addTiles()
       if (is.null(cells) || !inherits(cells, "sf") || nrow(cells) == 0) return(m)
       geo <- tryCatch(sf::st_transform(cells, 4326), error = function(e) cells)
