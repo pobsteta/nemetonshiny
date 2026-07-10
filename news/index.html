@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,25 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.101.2" id="nemetonshiny-01012">nemetonshiny 0.101.2<a class="anchor" aria-label="anchor" href="#nemetonshiny-01012"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--lisibilité-des-overrides-spec-b4-0-101-2">Added — reGénération : lisibilité des overrides (spec 035 B4)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--lisibilit%C3%A9-des-overrides-spec-b4-0-101-2"></a></h4>
+<ul><li>
+<strong>Ce que le moteur a réellement utilisé est désormais affiché.</strong> B1 a rendu le <code>lai_max</code> et la réserve utile variables par UGF, mais rien à l’écran ne le distinguait d’un scalaire : le vecteur était passé à <code>regen_bilan_hydrique()</code> puis oublié. <code>run_regeneration_engine()</code> remonte maintenant <code>lai_max</code>, <code>ewm</code> et <code>ewm_source</code> ; la sidebar affiche la <strong>médiane et l’étendue sur les UGF</strong> (« LAI dérivé : 4,1 [2,8 – 6,3] sur 30 UGF »).</li>
+<li>
+<strong>Le repli SoilGrids n’est plus silencieux.</strong> <code>build_biljou_soil(source = "soilgrids")</code> dégrade vers un sol uniforme quand <code>files.isric.org</code> est injoignable, et le <code>cli_warn</code> qui l’annonce meurt sur le <code>stderr</code> du worker <code>multisession</code>. La provenance effective du sol est déduite de sa forme (liste de <code>biljou_soil</code> par UGF vs objet unique) : le repli devient un <strong>avertissement dans l’onglet</strong>, une <strong>entrée dans le journal du moteur</strong>, et une mention explicite sous le badge. Un <code>ewm</code> saisi reste un choix délibéré (<code>uniform</code>), pas un repli.</li>
+<li>
+<strong>Section « Paramètres experts » repliée</strong> (<code><a href="https://rstudio.github.io/bslib/reference/accordion.html" class="external-link">bslib::accordion</a></code>) regroupant <code>lai_max</code>, <code>ewm</code> et <code>rooting_depth_cm</code>. Isolés dans la sidebar, ces champs invitaient au remplissage réflexe : saisir <code>lai_max</code> annule le bénéfice d’un PAI calculé en 57 minutes, sans aucun signal. Une seule phrase porte la sémantique commune (vide = dérivé, rempli = forcé) et un badge <strong>« forcé »</strong> s’affiche à la place de la statistique dérivée quand l’utilisateur court-circuite la donnée.</li>
+<li>Nouvelles clés i18n FR/EN : <code>regen_expert_section</code>, <code>regen_expert_hint</code>, <code>regen_override_badge</code>, <code>regen_lai_derived_stats</code>, <code>regen_ewm_derived_stats</code>, <code>regen_ewm_fallback_uniform</code>. Clés devenues orphelines retirées (<code>regen_soil_section</code>, <code>regen_lai_auto</code>).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed-0-101-2">Fixed<a class="anchor" aria-label="anchor" href="#fixed-0-101-2"></a></h4>
+<ul><li>
+<code>run_regeneration_engine()</code> : le bloc d’un <code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch()</a></code> est évalué dans le frame de l’appelant, pas dans une fonction — un <code>&lt;&lt;-</code> y aurait écrit dans l’environnement du package au lieu de la variable locale. Un test de non-régression vérifie qu’aucune liaison ne fuit dans le namespace.</li>
+<li>La lecture de la provenance du sol (<code>.regen_soil_ewm()</code>) est purement informative et ne peut plus faire échouer le bilan hydrique : toute forme inattendue de <code>sol</code> donne <code>source = NA</code> au lieu de lever.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.101.1" id="nemetonshiny-01011">nemetonshiny 0.101.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-01011"></a></h2>
