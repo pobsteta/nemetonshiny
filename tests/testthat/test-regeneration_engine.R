@@ -508,3 +508,146 @@ test_that("run_regeneration_detect_years returns NULL when E-OBS is unavailable"
 test_that("run_regeneration_detect_years returns NULL on non-sf input", {
   expect_null(nemetonshiny:::run_regeneration_detect_years(data.frame(x = 1), tempdir()))
 })
+
+# --- spec 035 B1 : bilan hydrique spatialisé --------------------------------
+# Le PAI structural (cache/regeneration/pai.tif) doit alimenter le `lai_max` de
+# BILJOU, et le sol doit venir de SoilGrids par UGF quand l'utilisateur n'a pas
+# forcé d'`ewm`. Avant spec 035, le PAI n'était consommé que par microclimf et
+# BILJOU tournait sur un sol uniforme + un lai_max scalaire → njstress constant.
+
+.stub_pai_cache <- function(project_path) {
+  d <- file.path(project_path, "cache", "regeneration")
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  file.create(file.path(d, "pai.tif"))
+  invisible(file.path(d, "pai.tif"))
+}
+
+test_that("BILJOU consumes the cached LiDAR PAI as per-unit lai_max", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p); .stub_pai_cache(p)
+    seen <- new.env()
+    testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      lai_max_depuis_pai = function(units, pai, ...) {
+        seen$pai <- pai; seq_len(nrow(units)) + 3 },
+      regen_bilan_hydrique = function(units, ..., lai_max = NULL) {
+        seen$lai_max <- lai_max; units$njstress <- 12; units },
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(3), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    # Le cœur reçoit un vecteur d'une valeur par UGF (il le convertit en liste
+    # nommée par id) — jamais un scalaire.
+    expect_equal(seen$lai_max, c(4, 5, 6))
+    expect_equal(seen$pai, file.path(p, "cache", "regeneration", "pai.tif"))
+    expect_equal(out$lai_source, "pai_lidar")
+    expect_equal(out$canopy, "lidar")
+    expect_equal(attr(out$units, "lai_source"), "pai_lidar")
+  })
+})
+
+test_that("an explicit lai_max overrides the cached PAI", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p); .stub_pai_cache(p)
+    seen <- new.env()
+    testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      lai_max_depuis_pai = function(units, pai, ...) stop("must not be called"),
+      regen_bilan_hydrique = function(units, ..., lai_max = NULL) {
+        seen$lai_max <- lai_max; units },
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran",
+                 lai_max = 6.2))
+
+    expect_equal(seen$lai_max, 6.2)
+    expect_true(is.na(out$lai_source))
+  })
+})
+
+test_that("soil comes from SoilGrids unless ewm is forced (backward compat)", {
+  skip_if_not_installed("sf")
+  seen <- new.env()
+  mock_soil <- function(units = NULL, ewm = 150, source = "uniform",
+                        rooting_depth_cm = 100, progress_callback = NULL, ...) {
+    seen$source <- source; seen$ewm <- ewm; seen$depth <- rooting_depth_cm
+    seen$cb <- !is.null(progress_callback)
+    list(ewm = ewm)
+  }
+  run <- function(cfg) {
+    withr::with_tempdir({
+      p <- getwd(); .make_lidar_grid(p)
+      testthat::local_mocked_bindings(regen_cds_credentials_ready = function() TRUE)
+      testthat::local_mocked_bindings(
+        regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+        load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+        build_biljou_soil = mock_soil,
+        regen_bilan_hydrique = function(units, ...) units,
+        .package = "nemeton")
+      nemetonshiny:::run_regeneration_engine(.engine_units(2), p, cfg = cfg)
+    })
+  }
+
+  # ewm absent → SoilGrids par UGF, profondeur transmise, callback de phase câblé.
+  run(list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran",
+           rooting_depth_cm = 80))
+  expect_equal(seen$source, "soilgrids")
+  expect_equal(seen$depth, 80)
+  expect_true(seen$cb)
+
+  # ewm saisi → sol uniforme, comportement v0.146.x à l'identique.
+  run(list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran", ewm = 150))
+  expect_equal(seen$source, "uniform")
+  expect_equal(seen$ewm, 150)
+})
+
+test_that("engine maps SoilGrids progress events to the ewm phase", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p)
+    status <- file.path(p, "cache", "regeneration", "engine_status.json")
+    seen <- new.env()
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() NULL,
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, progress_callback = NULL, ...) {
+        progress_callback(list(current = "ewm:layer", i = 2, n = 6))
+        # Capturer l'état AU VOL (les phases `biljou` puis `done` l'écrasent),
+        # mais NE RIEN asserter ici : le moteur enveloppe cet appel dans un
+        # tryCatch(error=) qui avalerait l'échec d'expectation — test vacant.
+        seen$st <- jsonlite::fromJSON(status)
+        list(ewm = 150)
+      },
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_equal(seen$st$phase, "ewm")
+    expect_equal(seen$st$i, 2)
+    expect_equal(seen$st$n, 6)
+  })
+})
+
+test_that(".regen_lai_per_unit delegates the plateau to the core (not a mean)", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    lai_max_depuis_pai = function(units, pai, ...) rep(7, nrow(units)),
+    .package = "nemeton")
+  expect_equal(nemetonshiny:::.regen_lai_per_unit(.engine_units(2), "raster"), c(7, 7))
+})

@@ -93,14 +93,27 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
   years <- if (!is.null(cfg$year_moyenne) && !is.null(cfg$year_canicule)) {
     list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
   } else {
-    tryCatch(
-      nemeton::microclimate_detect_years(
-        eobs = pc$eobs, aoi = units, year_window = cfg$year_window %||% 10),
-      error = function(e) {
-        env$warnings <- c(env$warnings, .strip_ansi(sprintf("detect_years: %s", conditionMessage(e))))
-        list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
-      }
-    )
+    # `load_regeneration_precomputed()` expose la série estivale sous `eobs_tx`
+    # (Tmax JJA, une couche par année) et JAMAIS sous `eobs` — or c'est exactement
+    # le contrat attendu par le cœur. Lire `pc$eobs` seul revenait à toujours lui
+    # passer NULL, donc à échouer systématiquement dès que l'utilisateur n'avait
+    # pas fixé les deux années.
+    eobs <- pc$eobs %||% pc$eobs_tx
+    if (is.null(eobs)) {
+      # Sans série E-OBS, microclimate_detect_years() abandonne d'emblée. Ne pas
+      # l'appeler : l'avertissement « detect_years: … » ne renseignait sur rien
+      # d'autre que l'absence de donnée, déjà visible côté UI.
+      list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
+    } else {
+      tryCatch(
+        nemeton::microclimate_detect_years(
+          eobs = eobs, aoi = units, year_window = cfg$year_window %||% 10),
+        error = function(e) {
+          env$warnings <- c(env$warnings, .strip_ansi(sprintf("detect_years: %s", conditionMessage(e))))
+          list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
+        }
+      )
+    }
   }
 
   # 2. Microclimatic sensitivity (microclimf) — skipped in water-balance-only.
@@ -474,6 +487,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   warnings <- character(0)
   cached   <- character(0)
   canopy   <- NA_character_       # provenance canopée effective (spec 033 D5)
+  lai_source <- NA_character_     # provenance du lai_max de BILJOU (spec 035 B1)
   res <- units
   years <- c(cfg$year_moyenne, cfg$year_canicule)  # c() drops NULLs
   years <- if (length(years)) years else NULL
@@ -504,6 +518,11 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       "regen_expo:complete" = .regen_write_phase(out_dir, "exposition"),
       "regen_biljou:start"  = .regen_write_phase(out_dir, "biljou", list(n = p$n)),
       "regen_biljou:complete" = .regen_write_phase(out_dir, "biljou"),
+      # Réserve utile SoilGrids (spec 035 B1.e) : un événement par horizon de
+      # profondeur, puis complete/unavailable. `unavailable` n'est pas une erreur
+      # (le cœur retombe sur un sol uniforme) → on n'affiche pas de phase dédiée.
+      "ewm:layer"    = .regen_write_phase(out_dir, "ewm", list(i = p$i, n = p$n)),
+      "ewm:complete" = .regen_write_phase(out_dir, "ewm"),
       NULL)
     # (b) push ntfy existant (inchangé) — no-op si NEMETON_NTFY_TOPIC absent.
     if (!is.null(ntfy)) {
@@ -620,27 +639,55 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     biljou_cache <- file.path(out_dir, "biljou")
     if (!dir.exists(biljou_cache)) dir.create(biljou_cache, recursive = TRUE)
 
-    # lai_max : valeur UI si fournie ; sinon, en l'absence de LiDAR HD, repli
-    # NDP 0 sur le LAI Sentinel-2/PROSAIL agrégé par UGF (proxy dégradé). Le
-    # cœur calcule le LAI ; l'app orchestre l'agrégation et pose la provenance.
+    # lai_max : valeur UI si fournie ; sinon priorité au PAI structural LiDAR HD
+    # déjà dérivé du nuage et caché par microclimf (pai.tif). Il décrit la même
+    # canopée que celle du bilan hydrique et ne coûte pas une seconde de plus —
+    # avant spec 035 il n'était consommé que par microclimf, et BILJOU retombait
+    # sur le défaut cœur par type de peuplement (5 / 4,5). Repli NDP 0 inchangé :
+    # LAI Sentinel-2/PROSAIL, seulement en l'absence de grille LiDAR HD.
+    # Dans les deux cas le cœur dérive le PLATEAU de LAI (percentile haut, pixels
+    # non-canopée exclus) — une moyenne zonale le sous-estimerait (spec 035 D5).
     lai_max <- cfg$lai_max
-    if (is.null(lai_max) && is.null(grid)) {
-      lai_r <- .regen_lai_fallback(res, out_dir, cfg)
-      if (!is.null(lai_r)) {
-        lai_max <- tryCatch(.regen_lai_per_unit(res, lai_r), error = function(e) NULL)
+    if (is.null(lai_max)) {
+      pai_tif <- file.path(out_dir, "pai.tif")   # même chemin que le cache PAI
+      if (file.exists(pai_tif)) {
+        lai_max <- tryCatch(nemeton::lai_max_depuis_pai(res, pai_tif),
+                            error = function(e) NULL)
         if (!is.null(lai_max)) {
-          canopy <- "satellite"
-          attr(res, "lai_source") <- "prosail_s2"
+          canopy <- "lidar"
+          lai_source <- "pai_lidar"
+        }
+      }
+      if (is.null(lai_max) && is.null(grid)) {
+        lai_r <- .regen_lai_fallback(res, out_dir, cfg)
+        if (!is.null(lai_r)) {
+          lai_max <- tryCatch(.regen_lai_per_unit(res, lai_r), error = function(e) NULL)
+          if (!is.null(lai_max)) {
+            canopy <- "satellite"
+            lai_source <- "prosail_s2"
+          }
         }
       }
     }
+    if (!is.na(lai_source)) attr(res, "lai_source") <- lai_source
 
     .ntfy_send(ntfy, i18n$t("regen_ntfy_biljou_start"), title = .ntfy_title("Regen", .regen_project_name),
                tags = tags0[["default"]])
     bil <- tryCatch({
       meteo <- nemeton::load_biljou_forcing(res, years = years, source = forcing,
                                             cache_dir = biljou_cache)
-      sol   <- nemeton::build_biljou_soil(res, ewm = cfg$ewm)
+      # Sol : SoilGrids 250 m par défaut (réserve utile dérivée par UGF via la
+      # fonction de pédotransfert Saxton & Rawls, spec 035 D3) → liste nommée par
+      # id d'UGF, consommée telle quelle par le cœur. Dégrade proprement en sol
+      # uniforme si files.isric.org est injoignable. Un `ewm` saisi dans la
+      # sidebar force l'ancien comportement uniforme (rétrocompatibilité).
+      sol <- if (is.null(cfg$ewm)) {
+        nemeton::build_biljou_soil(res, source = "soilgrids",
+                                   rooting_depth_cm = cfg$rooting_depth_cm %||% 100,
+                                   progress_callback = on_prog)
+      } else {
+        nemeton::build_biljou_soil(res, ewm = cfg$ewm)
+      }
       nemeton::regen_bilan_hydrique(res, meteo = meteo, sol = sol,
         lai_max = lai_max, forest_type = cfg$forest_type %||% "feuillu",
         years = years, budburst = cfg$budburst, leaf_fall = cfg$leaf_fall,
@@ -650,7 +697,9 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       NULL
     })
     if (inherits(bil, "sf")) {
-      if (identical(canopy, "satellite")) attr(bil, "lai_source") <- "prosail_s2"
+      # `bil` est un nouvel objet : reposer l'attribut, sinon detect_ndp() perd la
+      # provenance du LAI (badge canopée).
+      if (!is.na(lai_source)) attr(bil, "lai_source") <- lai_source
       res <- bil
       tryCatch(sf::st_write(res, file.path(out_dir, "biljou.gpkg"),
                             quiet = TRUE, delete_dsn = TRUE),
@@ -681,7 +730,8 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   # fichier (§3.3). Le worker ne le supprime PAS ici (course avec le poll).
   .regen_write_phase(out_dir, "done")
 
-  list(units = res, warnings = warnings, cached = cached, canopy = canopy)
+  list(units = res, warnings = warnings, cached = cached, canopy = canopy,
+       lai_source = lai_source)
 }
 
 #' Detect reference years from E-OBS for an AOI (spec 027 L2 / 034)
@@ -768,10 +818,14 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
   r
 }
 
-#' Aggregate a LAI raster to a per-unit maximum-LAI vector
+#' Aggregate a LAI/PAI raster to a per-unit maximum-LAI vector (spec 035 D5)
+#'
+#' Delegates to the core: a zonal *mean* underestimates `lai_max`, which
+#' `biljouR::biljou_lai()` reads as the phenology *plateau* — the more so as the
+#' unit holds canopy gaps. The core takes a high percentile (P90) after dropping
+#' non-canopy pixels. Accepts a `SpatRaster` or a path, hence serves both the
+#' LiDAR-HD PAI and the Sentinel-2 LAI branches.
 #' @noRd
 .regen_lai_per_unit <- function(units, lai_r) {
-  v <- terra::vect(sf::st_transform(units, terra::crs(lai_r)))
-  ex <- terra::extract(lai_r, v, fun = mean, na.rm = TRUE, ID = FALSE)
-  as.numeric(ex[[1]])
+  nemeton::lai_max_depuis_pai(units, lai_r)
 }

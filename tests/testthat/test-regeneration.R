@@ -50,9 +50,11 @@ test_that("run_regeneration sequences core calls and attaches columns", {
   )
 
   units <- .regen_units(3)
+  # `eobs_tx` = la série estivale cachée : sans elle, detect_years est (à raison)
+  # sauté — cf. le test dédié plus bas.
   out <- nemetonshiny:::run_regeneration(
     units, cfg = list(forest_type = "feuillu"),
-    precomputed = list(sensibilite = "S", biljou = "B",
+    precomputed = list(sensibilite = "S", biljou = "B", eobs_tx = "TX",
                        micro = "MICRO", micro_moyenne = "M", micro_canicule = "C"))
 
   # Séquence complète appelée dans l'ordre attendu
@@ -83,7 +85,7 @@ test_that("hydric_only skips microclimf sensibilite and micro sub-indicators", {
 
   out <- nemetonshiny:::run_regeneration(
     .regen_units(2), cfg = list(hydric_only = TRUE),
-    precomputed = list(biljou = "B", micro = "MICRO"))
+    precomputed = list(biljou = "B", micro = "MICRO", eobs_tx = "TX"))
 
   expect_false("sensibilite" %in% calls)  # microclimf sauté
   expect_false("a3" %in% calls)           # sous-indicateurs micro sautés
@@ -292,4 +294,72 @@ test_that(".regen_step strips ANSI escapes and keeps units on engine error", {
   expect_length(env$warnings, 1L)
   expect_false(grepl("\033", env$warnings, fixed = TRUE))  # plus d'ANSI
   expect_match(env$warnings, "microclimf not wired")
+})
+
+# --- Détection des années de référence : `eobs_tx` est la série E-OBS ---------
+# `load_regeneration_precomputed()` peuple `eobs_tx` / `eobs_rr`, jamais `eobs`.
+# Lire `pc$eobs` seul passait donc TOUJOURS NULL au cœur, qui abandonne aussitôt :
+# la détection d'années échouait systématiquement dès que l'utilisateur n'avait
+# pas fixé les deux années à la main.
+
+test_that("run_regeneration feeds the cached eobs_tx series to detect_years", {
+  skip_if_not_installed("sf")
+
+  seen <- new.env()
+  testthat::local_mocked_bindings(
+    microclimate_detect_years = function(eobs = NULL, aoi = NULL, ...) {
+      seen$eobs <- eobs; list(year_moyenne = 2019, year_canicule = 2022)
+    },
+    regen_bilan_hydrique = function(units, ...) { units$njstress <- 5; units },
+    indicateur_r3_secheresse = function(units, ...) units,
+    indice_priorite_regen = function(units, ...) { units$indice_priorite_regen <- 1; units },
+    .package = "nemeton")
+
+  out <- nemetonshiny:::run_regeneration(
+    .regen_units(2), cfg = list(hydric_only = TRUE),
+    precomputed = list(biljou = "B", eobs_tx = "EOBS_TX_RASTER"))
+
+  expect_equal(seen$eobs, "EOBS_TX_RASTER")   # et non NULL
+  expect_equal(out$years$year_moyenne, 2019)
+  expect_length(out$warnings, 0)
+})
+
+test_that("an explicit pc$eobs still wins over eobs_tx", {
+  skip_if_not_installed("sf")
+
+  seen <- new.env()
+  testthat::local_mocked_bindings(
+    microclimate_detect_years = function(eobs = NULL, ...) {
+      seen$eobs <- eobs; list(year_moyenne = 2018, year_canicule = 2022)
+    },
+    regen_bilan_hydrique = function(units, ...) units,
+    indicateur_r3_secheresse = function(units, ...) units,
+    indice_priorite_regen = function(units, ...) units,
+    .package = "nemeton")
+
+  nemetonshiny:::run_regeneration(
+    .regen_units(1), cfg = list(hydric_only = TRUE),
+    precomputed = list(biljou = "B", eobs = "EXPLICIT", eobs_tx = "TX"))
+
+  expect_equal(seen$eobs, "EXPLICIT")
+})
+
+test_that("no E-OBS series: detect_years is skipped, not failed", {
+  skip_if_not_installed("sf")
+
+  ran <- new.env(); ran$hit <- FALSE
+  testthat::local_mocked_bindings(
+    microclimate_detect_years = function(...) { ran$hit <- TRUE; stop("needs an E-OBS summer series") },
+    regen_bilan_hydrique = function(units, ...) units,
+    indicateur_r3_secheresse = function(units, ...) units,
+    indice_priorite_regen = function(units, ...) units,
+    .package = "nemeton")
+
+  out <- nemetonshiny:::run_regeneration(
+    .regen_units(1), cfg = list(hydric_only = TRUE),
+    precomputed = list(biljou = "B"))
+
+  expect_false(ran$hit)                 # appel inutile évité
+  expect_length(out$warnings, 0)        # plus d'avertissement « detect_years: … »
+  expect_null(out$years$year_moyenne)
 })

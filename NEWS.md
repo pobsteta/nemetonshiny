@@ -1,5 +1,80 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.101.0
+
+### Added — reGénération : bilan hydrique réellement spatialisé (spec 035 B1)
+
+- **Le PAI LiDAR alimente enfin BILJOU.** Le PAI structural dérivé du nuage
+  (57 min de calcul sur un run réel, caché dans `cache/regeneration/pai.tif`)
+  n'était consommé que par microclimf : le bilan hydrique, lui, retombait sur le
+  défaut cœur par type de peuplement (5 pour du feuillu, 4,5 pour du résineux).
+  Le garde-fou `is.null(grid)` sautait le calcul du `lai_max` précisément quand
+  le LiDAR HD était présent. Désormais `nemeton::lai_max_depuis_pai()` dérive un
+  `lai_max` **par UGF** depuis le PAI caché ; le repli satellite S2/PROSAIL est
+  inchangé et ne sert plus qu'en l'absence de grille LiDAR.
+- **Le plateau, pas la moyenne.** `.regen_lai_per_unit()` prenait une moyenne
+  zonale, alors que `biljouR::biljou_lai()` lit `lai_max` comme le **plateau** de
+  la phénologie — la moyenne le sous-estime, d'autant plus que l'UGF contient des
+  trouées. L'agrégation passe au cœur (percentile haut, pixels non-canopée
+  exclus).
+- **Sol dérivé de SoilGrids par UGF.** `build_biljou_soil(source = "soilgrids")`
+  dérive la réserve utile de chaque UGF depuis SoilGrids 250 m (pédotransfert
+  Saxton & Rawls) au lieu d'un sol uniforme sur tout le massif. Dégrade proprement
+  en sol uniforme si `files.isric.org` est injoignable.
+- **UI** : « Eau extractible (mm) » devient un **override optionnel** — vidé
+  (défaut), il déclenche SoilGrids ; renseigné, il force l'ancien comportement
+  uniforme. Nouveau champ « Profondeur d'enracinement (cm) » (défaut 100). Le
+  badge « Canopée : LiDAR HD » signale quand le `lai_max` du bilan hydrique vient
+  du PAI. Nouvelle phase moteur « Réserve utile (SoilGrids) (i/n) » sur le canal
+  `engine_status.json`.
+
+Ensemble, ces trois corrections lèvent la cause du symptôme observé sur le projet
+réel `20260701_204501_ltcp` : `njstress` et `deb_stress` **identiques sur les 30
+UGF**, `istress` et `rew_min` ne prenant que 2 valeurs (les 2 mailles SAFRAN de
+8 km). BILJOU n'a aucun terme spatial : toute la variabilité vient du sol et du
+LAI qu'on lui passe.
+
+### Added — reGénération : restauration à l'ouverture d'un projet (spec 035 B2)
+
+- Rouvrir un projet déjà analysé affichait les **contours d'UGF nus** — pas de
+  choroplèthe, pas d'indice de priorité, pas de table — jusqu'à un clic sur
+  « Lancer l'analyse ». `rv$result` n'était écrit que par ce bouton ou par la fin
+  du moteur ; aucun observateur n'écoutait `app_state$current_project`. Un
+  observateur relit désormais le cache disque à l'ouverture. Ce n'est **pas un
+  recalcul** : `run_regeneration()` consomme les sorties `precomputed` en
+  fast-path (rattachement de colonnes) — ni microclimf, ni biljouR, ni lasR ne
+  démarrent.
+- Restauration **seulement si une sortie de moteur existe** (`biljou.gpkg` ou
+  `sensibilite.gpkg`) : un projet sans cache reste vierge, sans avertissement
+  trompeur. Les années de référence sont fournies au service pour ne pas
+  déclencher `microclimate_detect_years()` à l'ouverture.
+- Purge du résultat précédent en changeant de projet (sinon le choroplèthe de
+  l'ancien projet restait à l'écran), et alimentation de
+  `app_state$regeneration_result`, que `mod_synthesis` consomme pour la
+  perspective IA — la synthèse d'un projet rouvert ignorait silencieusement la
+  reGénération.
+
+### Fixed — reGénération : la détection des années de référence ne marchait jamais
+
+- `run_regeneration()` passait `precomputed$eobs` à
+  `nemeton::microclimate_detect_years()`, alors que
+  `load_regeneration_precomputed()` peuple `eobs_tx` / `eobs_rr` et **jamais**
+  `eobs`. Le cœur recevait donc toujours `NULL` et abandonnait aussitôt
+  (« needs an E-OBS summer series ») : **la détection automatique des années
+  échouait systématiquement** dès que l'utilisateur n'avait pas saisi les deux
+  années à la main, avec un avertissement `detect_years: …` en prime. La série
+  cachée `eobs_tx` (Tmax JJA, une couche par année) est exactement le contrat
+  attendu par le cœur : elle lui est désormais transmise (`pc$eobs %||%
+  pc$eobs_tx`).
+- En l'absence totale de série E-OBS, l'appel est **sauté** au lieu d'être tenté
+  puis rattrapé : il ne pouvait qu'échouer, et son avertissement ne renseignait
+  que sur une absence de donnée déjà visible à l'écran.
+
+### Changed
+
+- Plancher cœur relevé : `Imports: nemeton (>= 0.147.0)` (`lai_max_depuis_pai()`,
+  `build_biljou_soil(source =)`, `ewm_depuis_soilgrids()`).
+
 # nemetonshiny 0.100.19
 
 ### Added — reGénération : infobulles « i » sur les couches de la carte
