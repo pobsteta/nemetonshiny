@@ -49,6 +49,10 @@ app_ui <- function(request) {
       fillable = TRUE,
       navbar_options = bslib::navbar_options(bg = "#1B6B1B"),
 
+      # Bandeau lecture seule (verrou projet) — sous la navbar, au-dessus des
+      # onglets, visible partout tant qu'un projet est ouvert en lecture seule.
+      header = shiny::uiOutput("lock_banner"),
+
       # === Tab 1: Selection (includes cadastral map, tenement map, UG table) ===
       bslib::nav_panel(
         title = i18n$t("tab_selection"),

@@ -1,5 +1,32 @@
 # nemetonshiny (development version)
 
+### Added — verrou d'édition de projet (serveur multi-utilisateurs)
+
+- L'application est désormais destinée à tourner sur un serveur avec droits
+  CRUD partagés. Pour éviter que deux utilisateurs modifient le même projet en
+  même temps, un **verrou d'édition** est posé à l'ouverture d'un projet :
+  le premier utilisateur édite, les suivants l'ouvrent en **lecture seule**.
+- La logique de verrou vit dans le cœur `nemeton (>= 0.148.0)`
+  (`project_lock_acquire` / `heartbeat` / `release` / `status`, table
+  `nemeton.project_lock`, TTL 120 s volé par péremption). Côté app,
+  `R/service_lock.R` n'est qu'une **enveloppe** : une connexion courte par appel,
+  aucune logique métier (règle #1). Le verrou est tenu par un **heartbeat**
+  (toutes les 45 s), pas par la connexion — il survit au va-et-vient des
+  connexions DB de l'app.
+- `app_server` pilote le cycle de vie à partir d'un **point de branchement
+  unique** (`app_state$project_id`) : acquisition à l'ouverture, relâche du
+  projet précédent, heartbeat périodique, relâche à la fin de session
+  (`onSessionEnded`, hors contexte réactif — `pid`/`hid` capturés par
+  `isolate`). L'identité stable est l'**email OAuth** : un utilisateur anonyme
+  (sans email) n'obtient jamais de verrou et travaille en lecture seule.
+- Un **bandeau** en tête signale l'état lecture seule (tenu par un autre
+  utilisateur, ou anonyme). Dans le module reGénération — implémentation de
+  référence du garde — chaque action mutante (lancer l'analyse, moteur E-OBS,
+  recalcul PAI, enregistrement DB) est court-circuitée par `deny_if_readonly()`
+  avec un toast d'avertissement. i18n FR/EN (6 nouvelles clés `lock_*`).
+- Plancher `Imports: nemeton (>= 0.148.0)`. La table de verrou est créée par
+  `nemeton::db_migrate()`, appelé (idempotent) à l'initialisation du schéma.
+
 # nemetonshiny 0.101.4
 
 ### Fixed — reGénération : la carte « Contexte régional (E-OBS) » était toujours vide

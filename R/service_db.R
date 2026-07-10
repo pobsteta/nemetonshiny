@@ -214,6 +214,13 @@ get_db_connection <- function(check_postgis = TRUE) {
     cli::cli_warn("App schema initialization failed: {conditionMessage(e)}")
     FALSE
   })
+  # Migrations du cœur sur la base plateforme : crée les tables détenues par
+  # `nemeton` (dont `project_lock`, migration 0008, requise par le verrou projet).
+  # Idempotent : un simple SELECT sur `schema_migration` après la 1re application.
+  # Jamais fatal — l'app doit démarrer même si la migration échoue (verrou alors
+  # indisponible → tout passe en éditable côté connexion nulle / lecture seule).
+  tryCatch(nemeton::db_migrate(con), error = function(e)
+    cli::cli_warn("Core schema migration failed: {conditionMessage(e)}"))
   if (isTRUE(ok)) .nemeton_env$.app_schema_initialized <- TRUE
   invisible(ok)
 }

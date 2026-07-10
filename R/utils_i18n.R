@@ -4046,6 +4046,31 @@ TRANSLATIONS <- list(
   # ============================================================
   # reG\u00e9n\u00e9ration \u2014 vuln\u00e9rabilit\u00e9 climatique (spec 027, L4)
   # ============================================================
+  # --- Verrou de projet (serveur multi-utilisateurs) ---
+  lock_readonly_notice = list(
+    fr = "Projet ouvert en \u00e9dition par %s \u2014 vous \u00eates en lecture seule.",
+    en = "Project open for editing by %s \u2014 you are read-only."
+  ),
+  lock_readonly_banner = list(
+    fr = "Projet ouvert en \u00e9dition par %s \u2014 lecture seule.",
+    en = "Project open for editing by %s \u2014 read-only."
+  ),
+  lock_anonymous_banner = list(
+    fr = "Connectez-vous pour \u00e9diter ce projet \u2014 lecture seule.",
+    en = "Sign in to edit this project \u2014 read-only."
+  ),
+  lock_stolen_notice = list(
+    fr = "Le verrou pr\u00e9c\u00e9dent avait expir\u00e9 ; vous \u00e9ditez ce projet.",
+    en = "The previous lock had expired; you are now editing this project."
+  ),
+  lock_lost_notice = list(
+    fr = "Verrou perdu \u2014 passage en lecture seule.",
+    en = "Lock lost \u2014 switching to read-only."
+  ),
+  lock_readonly_action = list(
+    fr = "Action indisponible : projet en lecture seule.",
+    en = "Action unavailable: project is read-only."
+  ),
   regen_tab_title = list(fr = "reG\u00e9n\u00e9ration", en = "reGeneration"),
   regen_intro = list(
     fr = "Lecture de vuln\u00e9rabilit\u00e9 climatique (exposition microclimatique \u00d7 stress hydrique du sol) pour prioriser les interventions de r\u00e9g\u00e9n\u00e9ration.",

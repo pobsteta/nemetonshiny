@@ -106,6 +106,42 @@ test_that("run without a loaded project is a guarded no-op", {
   )
 })
 
+# --- spec verrou : lecture seule (projet tenu par un autre / anonyme) --------
+# En lecture seule (`app_state$readonly = TRUE`), toute action mutante du module
+# est court-circuitée par `deny_if_readonly()` AVANT d'atteindre le service.
+
+test_that("a read-only project gates the run action before the service", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+
+  units <- .regen_mod_units(3)
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  # readonly = TRUE : le projet est ouvert mais tenu par un autre utilisateur.
+  as <- shiny::reactiveValues(current_project = proj, readonly = TRUE)
+
+  ran <- new.env(); ran$hit <- FALSE
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    run_regeneration = function(...) { ran$hit <- TRUE; NULL },
+    .package = "nemetonshiny"
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(
+        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+        hydric_only = FALSE, forest_type = "feuillu",
+        year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
+      session$setInputs(run = 1)
+      expect_false(ran$hit)        # service jamais appelé en lecture seule
+      expect_null(rv$result)
+    }
+  )
+})
+
 # --- spec 035 B2 : restauration à l'ouverture d'un projet --------------------
 # Rouvrir un projet déjà analysé doit réafficher choroplèthe + table SANS clic,
 # en relisant le cache disque. La restauration passe par `restore_regeneration()`
