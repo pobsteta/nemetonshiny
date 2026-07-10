@@ -454,6 +454,36 @@ regen_engine_prereqs <- function(project_path, forcing = "safran") {
   }, error = function(e) invisible(NULL))
 }
 
+# Journal d'exécution du moteur, en AJOUT (une ligne JSON par entrée) dans
+# `engine.log` (spec 035 B3.a). Le moteur tourne dans un processus `future`
+# distinct : ses cli_warn/message partent sur le stdout du worker, que
+# `multisession` ne relaie pas. Seul le POST ntfy en sortait — d'où des erreurs
+# invisibles dans l'app et dans la console. Le disque, lui, traverse la frontière
+# de processus ET survit à la mort du worker (OOM) : c'est le seul post-mortem.
+#
+# Fichier distinct de `engine_status.json`, que `.regen_write_phase()` ÉCRASE à
+# chaque phase et qui ne peut donc pas accumuler.
+#
+# `cat(file=)` écrit dans un fichier, pas sur la console : la règle #9
+# (pas de print/cat de prod) vise la sortie console. Jamais fatal.
+.regen_log <- function(out_dir, level, source, message) {
+  # `cat(file=)` sur un répertoire absent émet un WARNING avant de lever : sans
+  # le handler `warning`, un journal « jamais fatal » polluait quand même la sortie.
+  tryCatch({
+    line <- jsonlite::toJSON(
+      list(ts = as.integer(Sys.time()), level = level,
+           source = source, message = .strip_ansi(as.character(message))),
+      auto_unbox = TRUE)
+    cat(line, "\n", sep = "", file = file.path(out_dir, "engine.log"), append = TRUE)
+  }, error = function(e) invisible(NULL), warning = function(w) invisible(NULL))
+}
+
+# Tronque le journal au DÉBUT d'un run. Il doit survivre à la fin du run (le
+# post-mortem se lit après coup) — `.regen_cleanup_status()` n'y touche pas.
+.regen_log_reset <- function(out_dir) {
+  tryCatch(unlink(file.path(out_dir, "engine.log")), error = function(e) invisible(NULL))
+}
+
 #' Run the real microclimf engine for a project and persist its output
 #'
 #' @description
@@ -542,8 +572,20 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     }
     invisible()
   }
-  .ntfy_send(ntfy, i18n$t("regen_ntfy_start"), title = .ntfy_title("Regen", .regen_project_name),
-             tags = tags0[["default"]])
+  # Journal d'exécution : tronqué ici, jamais en fin de run (B3.a).
+  .regen_log_reset(out_dir)
+  .regen_log(out_dir, "info", "engine", i18n$t("regen_ntfy_start"))
+
+  # B3.d — ne pas avaler l'échec de ntfy. `.ntfy_send()` renvoie FALSE en cas
+  # d'échec (et quand `cfg` est NULL, c'est-à-dire opt-out : rien à signaler).
+  # Perdre silencieusement le canal de notification est précisément ce qui rendait
+  # ce type de panne indiagnosticable.
+  ntfy_ok <- .ntfy_send(ntfy, i18n$t("regen_ntfy_start"),
+                        title = .ntfy_title("Regen", .regen_project_name),
+                        tags = tags0[["default"]])
+  if (!is.null(ntfy) && !isTRUE(ntfy_ok)) {
+    .regen_log(out_dir, "warning", "ntfy", i18n$t("regen_log_ntfy_failed"))
+  }
 
   # --- microclimf (LiDAR HD + ERA5) : grille LiDAR HD + clé CDS requises. ---
   # Le cœur EXIGE la structure de végétation (PAI). On la fournit via `las`
@@ -590,8 +632,10 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
           if (grepl("era5|mcera5|curl|rate.?limit|throttl|timeout|too many|429",
                     msg, ignore.case = TRUE)) {
             warnings <<- c(warnings, i18n$t("regen_engine_era5_interrupted"))
+            .regen_log(out_dir, "warning", "microclimf", i18n$t("regen_engine_era5_interrupted"))
           } else {
             warnings <<- c(warnings, .strip_ansi(sprintf("microclimf: %s", msg)))
+            .regen_log(out_dir, "error", "microclimf", msg)
           }
           NULL
         })
@@ -601,6 +645,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
                               quiet = TRUE, delete_dsn = TRUE),
                  error = function(e) cli::cli_warn("regen engine: sensibilite cache not written"))
         cached <- c(cached, "sensibilite")
+        .regen_log(out_dir, "info", "microclimf", i18n$t("regen_ntfy_micro_done"))
         .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_done"), title = .ntfy_title("Regen", .regen_project_name),
                    tags = tags0[["ok"]])
       } else {
@@ -615,6 +660,8 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       }
     } else {
       warnings <- c(warnings, i18n$t("regen_engine_no_vegetation_structure"))
+      .regen_log(out_dir, "warning", "microclimf",
+                 i18n$t("regen_engine_no_vegetation_structure"))
       # Phase sautée = information de premier plan : structure de végétation absente.
       .regen_write_phase(out_dir, "microclimf_skipped",
                          list(reason = i18n$t("regen_phase_skip_reason_structure")))
@@ -635,6 +682,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   forcing <- cfg$forcing %||% "safran"
   if (identical(forcing, "era5") && !regen_cds_credentials_ready()) {
     warnings <- c(warnings, i18n$t("regen_engine_prereq_cds"))
+    .regen_log(out_dir, "warning", "biljou", i18n$t("regen_engine_prereq_cds"))
   } else {
     biljou_cache <- file.path(out_dir, "biljou")
     if (!dir.exists(biljou_cache)) dir.create(biljou_cache, recursive = TRUE)
@@ -694,6 +742,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
         progress_callback = on_prog)
     }, error = function(e) {
       warnings <<- c(warnings, .strip_ansi(sprintf("BILJOU: %s", conditionMessage(e))))
+      .regen_log(out_dir, "error", "biljou", conditionMessage(e))
       NULL
     })
     if (inherits(bil, "sf")) {
@@ -705,10 +754,12 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
                             quiet = TRUE, delete_dsn = TRUE),
                error = function(e) cli::cli_warn("regen engine: biljou cache not written"))
       cached <- c(cached, "biljou")
+      .regen_log(out_dir, "info", "biljou", i18n$t("regen_ntfy_biljou_done"))
       .ntfy_send(ntfy, i18n$t("regen_ntfy_biljou_done"), title = .ntfy_title("Regen", .regen_project_name),
                  tags = tags0[["ok"]])
     } else {
       warnings <- c(warnings, i18n$t("regen_guard_biljou"))
+      .regen_log(out_dir, "warning", "biljou", i18n$t("regen_guard_biljou"))
     }
   }
 
@@ -718,6 +769,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   } else {
     i18n$t("regen_ntfy_done_empty")
   }
+  .regen_log(out_dir, "info", "engine", done_msg)
   .ntfy_send(ntfy, done_msg, title = .ntfy_title("Regen", .regen_project_name),
              priority = if (length(cached)) "default" else "low",
              tags = if (length(cached)) tags0[["done"]] else tags0[["warn"]])

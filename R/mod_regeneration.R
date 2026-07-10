@@ -40,8 +40,56 @@
   else base
 }
 
+# Lit engine.log (JSONL, écrit en ajout par le worker — spec 035 B3.b). Renvoie
+# un data.frame (ts, level, source, message), vide si absent/illisible. Contrairement
+# à engine_status.json, ce fichier SURVIT à la mort du worker (OOM) : c'est le seul
+# moyen de récupérer les diagnostics quand engine_task$result() est inaccessible.
+.regen_read_log <- function(project_path) {
+  empty <- data.frame(ts = integer(0), level = character(0),
+                      source = character(0), message = character(0),
+                      stringsAsFactors = FALSE)
+  if (is.null(project_path)) return(empty)
+  f <- file.path(project_path, "cache", "regeneration", "engine.log")
+  if (!file.exists(f)) return(empty)
+  lines <- tryCatch(readLines(f, warn = FALSE), error = function(e) character(0))
+  lines <- lines[nzchar(trimws(lines))]
+  if (!length(lines)) return(empty)
+  rows <- lapply(lines, function(l) tryCatch(jsonlite::fromJSON(l), error = function(e) NULL))
+  rows <- Filter(Negate(is.null), rows)
+  if (!length(rows)) return(empty)
+  do.call(rbind, lapply(rows, function(r) data.frame(
+    ts = as.integer(r$ts %||% NA_integer_),
+    level = as.character(r$level %||% "info"),
+    source = as.character(r$source %||% ""),
+    message = as.character(r$message %||% ""),
+    stringsAsFactors = FALSE)))
+}
+
+# Relaie le journal du worker vers la console du processus PRINCIPAL (B3.c) —
+# les cli_warn du worker `multisession` n'y arrivent jamais d'eux-mêmes.
+.regen_relay_log <- function(log) {
+  if (!is.data.frame(log) || !nrow(log)) return(invisible(NULL))
+  for (i in seq_len(nrow(log))) {
+    msg <- sprintf("[%s] %s", log$source[i], log$message[i])
+    switch(log$level[i],
+      "error"   = cli::cli_alert_danger(msg),
+      "warning" = cli::cli_alert_warning(msg),
+      invisible(NULL))   # `info` : jalons, pas de bruit console
+  }
+  invisible(NULL)
+}
+
+# Entrées actionnables du journal (erreurs + avertissements), formatées « source: message ».
+.regen_log_issues <- function(log) {
+  if (!is.data.frame(log) || !nrow(log)) return(character(0))
+  sel <- log$level %in% c("error", "warning")
+  if (!any(sel)) return(character(0))
+  unique(sprintf("%s: %s", log$source[sel], log$message[sel]))
+}
+
 # Supprime engine_status.json en fin de tâche (success/error). Le worker écrit
 # `done` mais ne supprime PAS (course avec le poll) : c'est le module qui nettoie.
+# NE TOUCHE PAS à engine.log : il doit survivre au run pour le post-mortem (B3.a).
 .regen_cleanup_status <- function(app_state) {
   project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
   if (!is.null(project_path))
@@ -137,6 +185,9 @@ mod_regeneration_ui <- function(id) {
           type = "outline-primary", class = "btn-sm w-100"),
         i18n$t("regen_engine_tip"), placement = "right"),
       shiny::uiOutput(ns("engine_status")),
+      # Journal du moteur (spec 035 B3.e) : replié par défaut, alimenté par
+      # engine.log. Seul support durable des diagnostics du worker.
+      shiny::uiOutput(ns("engine_log")),
       htmltools::tags$hr(class = "my-2"),
 
       # --- Peuplement ----------------------------------------------------
@@ -254,6 +305,7 @@ mod_regeneration_server <- function(id, app_state) {
     rv <- shiny::reactiveValues(
       result = NULL, years = NULL, warnings = character(0),
       running = FALSE, eobs = NULL, lai_source = NA_character_,
+      engine_log = NULL,
       # Chrono des boutons async (spec 027 feedback) : instant de départ, remis
       # à NULL à la fin de la tâche. NULL = pas de run en cours.
       engine_running = FALSE, eobs_running = FALSE,
@@ -628,6 +680,7 @@ mod_regeneration_server <- function(id, app_state) {
         eng <- tryCatch(engine_task$result(), error = function(e) NULL)
         project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
         units <- units_sf()
+        res <- NULL   # peut rester NULL : le bloc de rechargement est conditionnel
         if (!is.null(units) && !is.null(project_path)) {
           precomputed <- load_regeneration_precomputed(project_path)
           na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
@@ -643,7 +696,6 @@ mod_regeneration_server <- function(id, app_state) {
           if (!is.null(res)) {
             rv$result <- res$units
             rv$years <- res$years
-            rv$warnings <- res$warnings %||% character(0)
             app_state$regeneration_result <- res$units
           }
         }
@@ -651,7 +703,16 @@ mod_regeneration_server <- function(id, app_state) {
         # perdrait l'attribut lai_source lu par detect_ndp).
         rv$canopy_source <- eng$canopy %||% NA_character_
         rv$lai_source <- eng$lai_source %||% NA_character_
+
+        # B3.b — CUMULER, ne pas écraser. `res$warnings` sont ceux du re-run
+        # fast-path (un ensemble sans rapport) ; les écrire seuls effaçait les
+        # diagnostics du moteur, qui ne survivaient alors que dans un toast de 10 s.
         eng_warns <- eng$warnings %||% character(0)
+        log <- .regen_read_log(project_path)
+        rv$engine_log <- log
+        .regen_relay_log(log)                            # B3.c — console du process principal
+        rv$warnings <- unique(c(res$warnings %||% character(0), eng_warns))
+
         if (length(eng_warns)) {
           shiny::showNotification(
             htmltools::tags$span(paste(eng_warns, collapse = " — ")),
@@ -663,9 +724,21 @@ mod_regeneration_server <- function(id, app_state) {
         rv$engine_start <- NULL
         shiny::removeNotification(session$ns("engine_notif"))
         .regen_cleanup_status(app_state)
+        project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
         err <- tryCatch(engine_task$result(), error = function(e) conditionMessage(e))
+
+        # B3.b — le worker est mort (OOM, kill) : `engine_task$result()` lève et
+        # `eng` n'existe pas. Les avertissements accumulés avant la mort ne sont
+        # récupérables que par le journal disque.
+        log <- .regen_read_log(project_path)
+        rv$engine_log <- log
+        .regen_relay_log(log)
+        err_txt <- .strip_ansi(as.character(err))
+        cli::cli_alert_danger("regen engine: {err_txt}")
+        rv$warnings <- unique(c(.regen_log_issues(log), err_txt))
+
         shiny::showNotification(
-          sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),
+          sprintf("%s: %s", i18n$t("error"), err_txt),
           type = "error", duration = 10)
       }
     })
@@ -738,20 +811,47 @@ mod_regeneration_server <- function(id, app_state) {
       }
     })
 
+    # Journal du moteur (B3.e) : `<details>` replié, horodatage + niveau + source.
+    # Rendu dès qu'une entrée existe — y compris après un worker mort, où c'est
+    # la seule trace des diagnostics.
+    output$engine_log <- shiny::renderUI({
+      log <- rv$engine_log
+      if (!is.data.frame(log) || !nrow(log)) return(NULL)
+      icon_of <- function(lvl) switch(lvl,
+        "error" = bsicons::bs_icon("x-circle-fill", class = "text-danger me-1"),
+        "warning" = bsicons::bs_icon("exclamation-triangle-fill", class = "text-warning me-1"),
+        bsicons::bs_icon("info-circle", class = "text-muted me-1"))
+      htmltools::tags$details(class = "small mt-1",
+        htmltools::tags$summary(class = "text-muted",
+          sprintf("%s (%d)", i18n$t("regen_engine_log"), nrow(log))),
+        htmltools::tags$ul(class = "list-unstyled mb-0 mt-1",
+          lapply(seq_len(nrow(log)), function(i) htmltools::tags$li(
+            icon_of(log$level[i]),
+            htmltools::tags$span(class = "font-monospace text-muted me-1",
+              format(as.POSIXct(log$ts[i], origin = "1970-01-01"), "%H:%M:%S")),
+            htmltools::tags$strong(class = "me-1", log$source[i]),
+            log$message[i]))))
+    })
+
     output$status <- shiny::renderUI({
       if (isTRUE(rv$running)) {
         return(htmltools::div(class = "alert alert-info py-2",
           bsicons::bs_icon("hourglass-split", class = "me-1"), i18n$t("regen_running")))
-      }
-      if (is.null(rv$result)) {
-        return(htmltools::div(class = "text-muted small fst-italic mb-2",
-                              i18n$t("regen_need_project")))
       }
       warns <- if (length(rv$warnings)) {
         htmltools::div(class = "alert alert-warning py-2 small",
           bsicons::bs_icon("exclamation-triangle", class = "me-1"),
           htmltools::tags$ul(class = "mb-0",
             lapply(rv$warnings, function(w) htmltools::tags$li(w))))
+      }
+      # Sans résultat, on affiche quand même les avertissements : un moteur qui
+      # meurt (OOM) ne produit AUCUN résultat, et c'est précisément là qu'il faut
+      # voir pourquoi. Auparavant le `return()` précoce les masquait.
+      if (is.null(rv$result)) {
+        return(htmltools::div(
+          htmltools::div(class = "text-muted small fst-italic mb-2",
+                         i18n$t("regen_need_project")),
+          warns))
       }
       htmltools::div(
         htmltools::div(class = "alert alert-secondary py-2 small mb-2",

@@ -1,5 +1,45 @@
 # nemetonshiny (development version)
 
+### Added — reGénération : observabilité du moteur (spec 035 B3)
+
+- **Les erreurs du moteur n'atteignaient que ntfy.** `run_regeneration_engine()`
+  s'exécute dans un worker `future` (`multisession`) : ses `cli::cli_warn()`,
+  `message()` et `cat()` partent sur le `stdout` du processus fils, que R ne
+  relaie pas vers la console principale. Le seul canal qui traversait la frontière
+  de processus en temps réel était le POST HTTP de `.ntfy_send()` — d'où des
+  erreurs visibles dans le téléphone et nulle part ailleurs.
+- **Journal disque en ajout seul** : nouveau `cache/regeneration/engine.log`
+  (une ligne JSON par entrée, via `.regen_log()`). Il traverse la frontière de
+  processus **par le disque** et **survit à la mort du worker** (OOM, `kill`) —
+  c'est le seul post-mortem disponible. Distinct de `engine_status.json`, que
+  `.regen_write_phase()` écrase à chaque phase et qui ne peut donc pas accumuler.
+  Tronqué au **début** de chaque run, jamais à la fin ;
+  `.regen_cleanup_status()` n'y touche pas.
+- **Les diagnostics du moteur ne sont plus perdus.** En succès, `rv$warnings`
+  était **écrasé** par les avertissements du re-run fast-path — un ensemble sans
+  rapport — et ceux du moteur ne survivaient que dans un toast de 10 s. Ils sont
+  désormais **cumulés**. En erreur (worker mort), `engine_task$result()` lève et
+  `eng` n'existe jamais : les avertissements accumulés avant la mort sont relus
+  depuis `engine.log`.
+- **Relais console** (`.regen_relay_log()`) : chaque entrée `error` / `warning`
+  du journal est rejouée en `cli::cli_alert_danger()` / `cli_alert_warning()`
+  dans le **processus principal**, dans les deux branches. Les jalons `info`
+  restent muets.
+- **L'échec de ntfy n'est plus avalé.** `.ntfy_send()` renvoie `FALSE` sans rien
+  dire ; si le premier envoi d'un run échoue alors que `NEMETON_NTFY_TOPIC` est
+  défini, une entrée `warning` est journalisée. Perdre silencieusement le seul
+  canal de notification est ce qui rendait ce type de panne indiagnosticable.
+- **UI** : bloc repliable « Journal du moteur » sous le badge d'état (horodatage,
+  niveau, source), et le panneau d'avertissements s'affiche désormais **même sans
+  résultat** — un moteur qui meurt n'en produit aucun, et c'est précisément là
+  qu'il faut voir pourquoi. Clés i18n `regen_engine_log`, `regen_log_ntfy_failed`.
+
+### Fixed
+
+- `.regen_log()` : `cat(file =)` sur un répertoire absent émet un **warning**
+  avant de lever, que `tryCatch(error =)` ne capture pas — un journal « jamais
+  fatal » polluait quand même la sortie. Handler `warning` ajouté.
+
 # nemetonshiny 0.101.0
 
 ### Added — reGénération : bilan hydrique réellement spatialisé (spec 035 B1)

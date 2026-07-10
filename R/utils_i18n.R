@@ -4135,6 +4135,11 @@ TRANSLATIONS <- list(
   regen_phase_micro_can = list(fr = "Microclimat \u2014 \u00e9t\u00e9s canicule", en = "Microclimate \u2014 heatwave summers"),
   regen_phase_exposition = list(fr = "Agr\u00e9gation de l'exposition\u2026", en = "Aggregating exposure\u2026"),
   regen_phase_ewm = list(fr = "R\u00e9serve utile (SoilGrids)", en = "Extractable water (SoilGrids)"),
+  regen_engine_log = list(fr = "Journal du moteur", en = "Engine log"),
+  regen_log_ntfy_failed = list(
+    fr = "Notification ntfy non envoy\u00e9e (canal indisponible) \u2014 les diagnostics restent dans ce journal.",
+    en = "ntfy notification not sent (channel unavailable) \u2014 diagnostics remain in this log."
+  ),
   regen_phase_biljou = list(fr = "Bilan hydrique du sol (BILJOU)\u2026", en = "Soil water balance (BILJOU)\u2026"),
   regen_phase_micro_skip = list(fr = "Exposition microclimf ignor\u00e9e : %s", en = "microclimf exposure skipped: %s"),
   regen_phase_skip_reason_cds = list(fr = "cl\u00e9 CDS/ERA5 absente", en = "no CDS/ERA5 key"),
