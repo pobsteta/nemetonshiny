@@ -24,6 +24,14 @@
   st
 }
 
+# « base ({i}/{n}) » seulement si l'événement a fourni l'avancement.
+.regen_step_lbl <- function(i18n, key, st) {
+  base <- i18n$t(key)
+  if (!is.null(st$i) && !is.null(st$n))
+    sprintf("%s (%d/%d)", base, as.integer(st$i), as.integer(st$n))
+  else base
+}
+
 # « base {year} ({i}/{n}) » seulement si l'événement era5 a fourni l'année.
 .regen_micro_lbl <- function(i18n, key, st) {
   base <- i18n$t(key)
@@ -52,6 +60,8 @@
     "microclimf_moyenne"  = .regen_micro_lbl(i18n, "regen_phase_micro_moy", st),
     "microclimf_canicule" = .regen_micro_lbl(i18n, "regen_phase_micro_can", st),
     "exposition" = i18n$t("regen_phase_exposition"),
+    # Réserve utile SoilGrids : « (i/n) » compte les horizons de profondeur.
+    "ewm"        = .regen_step_lbl(i18n, "regen_phase_ewm", st),
     "biljou"     = i18n$t("regen_phase_biljou"),
     "microclimf_skipped" = sprintf(i18n$t("regen_phase_micro_skip"),
                                    st$reason %||% ""),
@@ -147,9 +157,15 @@ mod_regeneration_ui <- function(id) {
       htmltools::tags$small(class = "text-muted d-block mb-2", i18n$t("regen_lai_auto")),
 
       # --- Sol -----------------------------------------------------------
+      # `ewm` vidé (défaut) => réserve utile dérivée par UGF depuis SoilGrids
+      # 250 m ; une valeur saisie force un sol uniforme sur tout le massif.
       htmltools::tags$strong(i18n$t("regen_soil_section")),
-      shiny::numericInput(ns("ewm"), i18n$t("regen_ewm"),
-        value = 150, min = 10, max = 400, step = 5),
+      shiny::numericInput(ns("ewm"), label_tt(i18n$t("regen_ewm"),
+          i18n$t("regen_ewm_hint")),
+        value = NA, min = 10, max = 400, step = 5),
+      shiny::numericInput(ns("rooting_depth_cm"),
+        label_tt(i18n$t("regen_rooting_depth"), i18n$t("regen_rooting_depth_hint")),
+        value = 100, min = 20, max = 200, step = 10),
 
       # --- Forçage / résolution / essence / buffer -----------------------
       shiny::radioButtons(ns("forcing"), i18n$t("regen_forcing"),
@@ -237,7 +253,7 @@ mod_regeneration_server <- function(id, app_state) {
 
     rv <- shiny::reactiveValues(
       result = NULL, years = NULL, warnings = character(0),
-      running = FALSE, eobs = NULL,
+      running = FALSE, eobs = NULL, lai_source = NA_character_,
       # Chrono des boutons async (spec 027 feedback) : instant de départ, remis
       # à NULL à la fin de la tâche. NULL = pas de run en cours.
       engine_running = FALSE, eobs_running = FALSE,
@@ -265,6 +281,59 @@ mod_regeneration_server <- function(id, app_state) {
       if (inherits(parc, "sf") && nrow(parc) > 0L) return(to_2154(parc))
       NULL
     })
+
+    # --- Restauration à l'ouverture d'un projet (spec 035 B2) ----------------
+    # Sans ça, rouvrir un projet déjà analysé affichait les contours d'UGF nus :
+    # `rv$result` n'était écrit que par « Lancer l'analyse » ou par la fin du
+    # moteur. Ici on RELIT le cache disque — `run_regeneration()` consomme les
+    # sorties `precomputed` en fast-path (simple rattachement de colonnes) : ni
+    # microclimf, ni biljouR, ni lasR ne démarrent.
+    #
+    # Déclenché sur (projet, unités) : le projet est posé avant les géométries,
+    # donc un observateur sur le seul `current_project` verrait `units_sf()` NULL
+    # et n'aurait aucune occasion de réessayer.
+    shiny::observeEvent(list(app_state$current_project, units_sf()), {
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(project_path)) return()
+
+      # Purger d'abord : sans ça, passer d'un projet analysé à un projet vierge
+      # laisserait le choroplèthe du précédent à l'écran.
+      rv$result <- NULL
+      rv$lai_source <- NA_character_
+      app_state$regeneration_result <- NULL
+
+      pc <- load_regeneration_precomputed(project_path)
+      # Ne restaurer que si une sortie de MOTEUR existe : `dem` / `eobs_*` seuls
+      # ne produisent aucun indice, et un run à vide empilerait les avertissements
+      # regen_guard_hydrique / regen_guard_sensibilite dès l'ouverture.
+      if (is.null(pc$biljou) && is.null(pc$sensibilite)) return()
+
+      units <- units_sf()
+      if (is.null(units)) return()
+
+      # Fournir les années : sinon run_regeneration() appelle
+      # microclimate_detect_years(), qui abandonne quand `eobs` est NULL (ce qu'il
+      # est toujours ici) et empile un avertissement trompeur à l'ouverture.
+      na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
+      cfg <- list(
+        year_moyenne  = na_null(input$year_moyenne),
+        year_canicule = na_null(input$year_canicule),
+        forest_type   = input$forest_type %||% "feuillu",
+        lai_max       = na_null(input$lai_max)
+      )
+      res <- tryCatch(run_regeneration(units, cfg = cfg, precomputed = pc),
+                      error = function(e) NULL)
+      if (is.null(res)) return()
+      rv$result <- res$units
+      rv$years <- res$years
+      # Restaurer n'est pas analyser : ne pas remonter les avertissements d'un run
+      # qu'on n'a pas lancé.
+      rv$warnings <- character(0)
+      rv$canopy_source <- regen_canopy_provenance(res$units)
+      # mod_synthesis lit app_state$regeneration_result pour la perspective IA :
+      # sans cette ligne, la synthèse d'un projet rouvert ignore la reGénération.
+      app_state$regeneration_result <- res$units
+    }, ignoreNULL = TRUE, ignoreInit = FALSE)
 
     # Populate the optional target-species selector from the core
     # (nemeton::regen_species_choices). Réactif à l'AOI : les essences présentes
@@ -510,7 +579,9 @@ mod_regeneration_server <- function(id, app_state) {
         year_canicule = na_null(input$year_canicule),
         forest_type = input$forest_type %||% "feuillu",
         forcing = forcing,
+        # ewm NULL => SoilGrids par UGF ; valeur saisie => sol uniforme forcé.
         ewm = na_null(input$ewm),
+        rooting_depth_cm = na_null(input$rooting_depth_cm),
         lai_max = na_null(input$lai_max),
         budburst = na_null(input$budburst),
         leaf_fall = na_null(input$leaf_fall)
@@ -579,6 +650,7 @@ mod_regeneration_server <- function(id, app_state) {
         # Provenance rapportée par le moteur (fiable : survit au cache gpkg qui
         # perdrait l'attribut lai_source lu par detect_ndp).
         rv$canopy_source <- eng$canopy %||% NA_character_
+        rv$lai_source <- eng$lai_source %||% NA_character_
         eng_warns <- eng$warnings %||% character(0)
         if (length(eng_warns)) {
           shiny::showNotification(
@@ -651,6 +723,13 @@ mod_regeneration_server <- function(id, app_state) {
         htmltools::tagList(
           htmltools::tags$span(class = "badge text-bg-success mt-2 d-inline-block",
             bsicons::bs_icon("badge-hd", class = "me-1"), i18n$t("regen_canopee_lidar")),
+          # Le PAI structural alimente aussi le lai_max de BILJOU (spec 035 B1.a) :
+          # le dire, sinon rien ne distingue ce run de l'ancien, où le bilan
+          # hydrique retombait sur le défaut cœur par type de peuplement.
+          if (identical(rv$lai_source, "pai_lidar"))
+            htmltools::tags$small(class = "text-muted d-block mt-1",
+              bsicons::bs_icon("droplet-half", class = "me-1"),
+              i18n$t("regen_canopy_pai_lidar")),
           bslib::tooltip(
             shiny::actionLink(ns("recompute_pai"), i18n$t("regen_pai_recompute"),
               icon = bsicons::bs_icon("arrow-repeat"), class = "small d-block mt-1"),

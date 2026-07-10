@@ -4067,6 +4067,19 @@ TRANSLATIONS <- list(
   regen_lai_auto = list(fr = "Auto (PAI / LiDAR HD)", en = "Auto (PAI / LiDAR HD)"),
   regen_soil_section = list(fr = "Sol", en = "Soil"),
   regen_ewm = list(fr = "Eau extractible (mm)", en = "Extractable water (mm)"),
+  regen_ewm_hint = list(
+    fr = "Laisser vide pour dériver la réserve utile par UGF depuis SoilGrids (250 m). Saisir une valeur force un sol uniforme sur tout le massif.",
+    en = "Leave empty to derive per-unit extractable water from SoilGrids (250 m). Entering a value forces a uniform soil across the whole area."
+  ),
+  regen_rooting_depth = list(fr = "Profondeur d'enracinement (cm)", en = "Rooting depth (cm)"),
+  regen_rooting_depth_hint = list(
+    fr = "Profondeur sur laquelle SoilGrids intègre la réserve utile. Sans effet si l'eau extractible est saisie à la main.",
+    en = "Depth over which SoilGrids integrates extractable water. No effect when extractable water is entered manually."
+  ),
+  regen_canopy_pai_lidar = list(
+    fr = "LAI max du bilan hydrique dérivé du PAI LiDAR",
+    en = "Water-balance max LAI derived from the LiDAR PAI"
+  ),
   regen_roots = list(fr = "Fractions racinaires", en = "Root fractions"),
   regen_forcing = list(fr = "For\u00e7age m\u00e9t\u00e9o", en = "Weather forcing"),
   regen_forcing_safran = list(fr = "SAFRAN (d\u00e9faut)", en = "SAFRAN (default)"),
@@ -4121,6 +4134,7 @@ TRANSLATIONS <- list(
   regen_phase_micro_moy = list(fr = "Microclimat \u2014 \u00e9t\u00e9s moyens", en = "Microclimate \u2014 average summers"),
   regen_phase_micro_can = list(fr = "Microclimat \u2014 \u00e9t\u00e9s canicule", en = "Microclimate \u2014 heatwave summers"),
   regen_phase_exposition = list(fr = "Agr\u00e9gation de l'exposition\u2026", en = "Aggregating exposure\u2026"),
+  regen_phase_ewm = list(fr = "R\u00e9serve utile (SoilGrids)", en = "Extractable water (SoilGrids)"),
   regen_phase_biljou = list(fr = "Bilan hydrique du sol (BILJOU)\u2026", en = "Soil water balance (BILJOU)\u2026"),
   regen_phase_micro_skip = list(fr = "Exposition microclimf ignor\u00e9e : %s", en = "microclimf exposure skipped: %s"),
   regen_phase_skip_reason_cds = list(fr = "cl\u00e9 CDS/ERA5 absente", en = "no CDS/ERA5 key"),
