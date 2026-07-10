@@ -10,6 +10,28 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.101.2] - 2026-07-10
+
+### Added
+
+- reGénération (spec 035 B4) : le moteur remonte le `lai_max` et la réserve utile
+  qu'il a réellement utilisés ; la sidebar affiche médiane et étendue par UGF.
+- Le repli silencieux de SoilGrids vers un sol uniforme devient un avertissement,
+  une entrée du journal du moteur et une mention explicite dans l'UI.
+- Section « Paramètres experts » repliée (`lai_max`, `ewm`, `rooting_depth_cm`),
+  avec badge « forcé » à la place de la statistique dérivée.
+
+### Fixed
+
+- `run_regeneration_engine()` : `<<-` dans le bloc d'un `tryCatch()` (évalué dans
+  le frame de l'appelant) aurait écrit dans l'environnement du package.
+- `.regen_soil_ewm()` : la lecture de la provenance du sol ne peut plus faire
+  échouer le bilan hydrique sur une forme inattendue.
+
+### Removed
+
+- Clés i18n orphelines `regen_soil_section`, `regen_lai_auto`.
+
 ## [0.101.1] - 2026-07-10
 
 ### Added

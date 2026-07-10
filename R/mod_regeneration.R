@@ -79,6 +79,16 @@
   invisible(NULL)
 }
 
+# Médiane + étendue d'un vecteur dérivé par UGF (spec 035 B4.a). NULL si le
+# vecteur est scalaire ou absent : il n'y a alors rien de spatialisé à montrer.
+.regen_derived_stats <- function(x, digits = 1) {
+  x <- suppressWarnings(as.numeric(x))
+  x <- x[is.finite(x)]
+  if (length(x) < 2L) return(NULL)
+  fmt <- function(v) format(round(v, digits), trim = TRUE, nsmall = digits)
+  list(median = fmt(stats::median(x)), min = fmt(min(x)), max = fmt(max(x)), n = length(x))
+}
+
 # Entrées actionnables du journal (erreurs + avertissements), formatées « source: message ».
 .regen_log_issues <- function(log) {
   if (!is.data.frame(log) || !nrow(log)) return(character(0))
@@ -202,21 +212,31 @@ mod_regeneration_ui <- function(id) {
         shiny::column(6, shiny::numericInput(ns("leaf_fall"),
           i18n$t("regen_leaf_fall"), value = 300, min = 200, max = 366))
       ),
-      shiny::numericInput(ns("lai_max"), label_tt(i18n$t("regen_lai_max"),
-          i18n$t("regen_lai_tip")),
-        value = NA, min = 0, max = 12, step = 0.1),
-      htmltools::tags$small(class = "text-muted d-block mb-2", i18n$t("regen_lai_auto")),
-
-      # --- Sol -----------------------------------------------------------
-      # `ewm` vidé (défaut) => réserve utile dérivée par UGF depuis SoilGrids
-      # 250 m ; une valeur saisie force un sol uniforme sur tout le massif.
-      htmltools::tags$strong(i18n$t("regen_soil_section")),
-      shiny::numericInput(ns("ewm"), label_tt(i18n$t("regen_ewm"),
-          i18n$t("regen_ewm_hint")),
-        value = NA, min = 10, max = 400, step = 5),
-      shiny::numericInput(ns("rooting_depth_cm"),
-        label_tt(i18n$t("regen_rooting_depth"), i18n$t("regen_rooting_depth_hint")),
-        value = 100, min = 20, max = 200, step = 10),
+      # --- Paramètres experts (spec 035 B4.b) ----------------------------
+      # `lai_max` et `ewm` partagent la même sémantique : vide = dérivé de la
+      # donnée (PAI LiDAR / SoilGrids), rempli = forcé. Isolés dans la sidebar,
+      # ils invitaient au remplissage réflexe — saisir `lai_max` annule le
+      # bénéfice d'un PAI calculé en 57 min, sans aucun signal. Repliés par défaut,
+      # avec une seule phrase portant la sémantique commune.
+      # `rooting_depth_cm` n'est pas un override : c'est la profondeur sur laquelle
+      # SoilGrids intègre la réserve utile. Il vit ici parce qu'il n'a de sens que
+      # pour qui touche à ces réglages, mais il garde une valeur par défaut.
+      bslib::accordion(
+        open = FALSE, class = "mb-2",
+        bslib::accordion_panel(
+          title = i18n$t("regen_expert_section"), icon = bsicons::bs_icon("sliders"),
+          htmltools::tags$p(class = "text-muted small", i18n$t("regen_expert_hint")),
+          shiny::numericInput(ns("lai_max"), label_tt(i18n$t("regen_lai_max"),
+              i18n$t("regen_lai_tip")),
+            value = NA, min = 0, max = 12, step = 0.1),
+          shiny::numericInput(ns("ewm"), label_tt(i18n$t("regen_ewm"),
+              i18n$t("regen_ewm_hint")),
+            value = NA, min = 10, max = 400, step = 5),
+          shiny::numericInput(ns("rooting_depth_cm"),
+            label_tt(i18n$t("regen_rooting_depth"), i18n$t("regen_rooting_depth_hint")),
+            value = 100, min = 20, max = 200, step = 10)
+        )
+      ),
 
       # --- Forçage / résolution / essence / buffer -----------------------
       shiny::radioButtons(ns("forcing"), i18n$t("regen_forcing"),
@@ -242,6 +262,9 @@ mod_regeneration_ui <- function(id) {
       # LiDAR HD (PAI structural) ou repli satellite S2/PROSAIL (NDP 0). Lu
       # depuis nemeton::detect_ndp() ; ne s'affiche que si une canopée est utilisée.
       shiny::uiOutput(ns("canopy_provenance")),
+      # Valeurs réellement utilisées par le moteur (spec 035 B4.a) : médiane +
+      # étendue du lai_max et de la réserve utile par UGF, ou badge « forcé ».
+      shiny::uiOutput(ns("derived_stats")),
 
       # --- Export / persistance (sous le bouton Lancer) ------------------
       htmltools::tags$hr(class = "my-2"),
@@ -306,6 +329,9 @@ mod_regeneration_server <- function(id, app_state) {
       result = NULL, years = NULL, warnings = character(0),
       running = FALSE, eobs = NULL, lai_source = NA_character_,
       engine_log = NULL,
+      # Valeurs dérivées par le moteur (spec 035 B4.a) : rendent visible la
+      # spatialisation du lai_max et de la réserve utile.
+      lai_max = NULL, ewm = NULL, ewm_source = NA_character_,
       # Chrono des boutons async (spec 027 feedback) : instant de départ, remis
       # à NULL à la fin de la tâche. NULL = pas de run en cours.
       engine_running = FALSE, eobs_running = FALSE,
@@ -703,6 +729,9 @@ mod_regeneration_server <- function(id, app_state) {
         # perdrait l'attribut lai_source lu par detect_ndp).
         rv$canopy_source <- eng$canopy %||% NA_character_
         rv$lai_source <- eng$lai_source %||% NA_character_
+        rv$lai_max <- eng$lai_max
+        rv$ewm <- eng$ewm
+        rv$ewm_source <- eng$ewm_source %||% NA_character_
 
         # B3.b — CUMULER, ne pas écraser. `res$warnings` sont ceux du re-run
         # fast-path (un ensemble sans rapport) ; les écrire seuls effaçait les
@@ -809,6 +838,44 @@ mod_regeneration_server <- function(id, app_state) {
             i18n$t("regen_pai_recompute_tip"), placement = "right")
         )
       }
+    })
+
+    # Valeurs dérivées (spec 035 B4.a) : ce que le moteur a RÉELLEMENT utilisé.
+    # Sans ça, rien à l'écran ne distingue un lai_max par UGF d'un scalaire, et le
+    # repli SoilGrids → sol uniforme reste invisible.
+    output$derived_stats <- shiny::renderUI({
+      na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
+      forced_badge <- htmltools::tags$span(
+        class = "badge text-bg-warning ms-1", i18n$t("regen_override_badge"))
+      line <- function(icon, body) htmltools::tags$div(
+        class = "small text-muted mt-1", bsicons::bs_icon(icon, class = "me-1"), body)
+
+      lai <- if (!is.null(na_null(input$lai_max))) {
+        line("sliders", htmltools::tagList(i18n$t("regen_lai_max"), forced_badge))
+      } else {
+        st <- .regen_derived_stats(rv$lai_max)
+        if (!is.null(st))
+          line("bounding-box", sprintf(i18n$t("regen_lai_derived_stats"),
+                                       st$median, st$min, st$max, st$n))
+      }
+
+      ewm <- if (!is.null(na_null(input$ewm))) {
+        line("sliders", htmltools::tagList(i18n$t("regen_ewm"), forced_badge))
+      } else if (identical(rv$ewm_source, "soilgrids_fallback")) {
+        # Le seul endroit où le repli silencieux devient visible sans lire le journal.
+        htmltools::tags$div(class = "small text-warning mt-1",
+          bsicons::bs_icon("exclamation-triangle-fill", class = "me-1"),
+          sprintf(i18n$t("regen_ewm_fallback_uniform"),
+                  format(round(as.numeric(rv$ewm)[1], 0), trim = TRUE)))
+      } else {
+        st <- .regen_derived_stats(rv$ewm, digits = 0)
+        if (!is.null(st))
+          line("layers", sprintf(i18n$t("regen_ewm_derived_stats"),
+                                 st$median, st$min, st$max, st$n))
+      }
+
+      if (is.null(lai) && is.null(ewm)) return(NULL)
+      htmltools::tagList(lai, ewm)
     })
 
     # Journal du moteur (B3.e) : `<details>` replié, horodatage + niveau + source.

@@ -1,5 +1,44 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.101.2
+
+### Added — reGénération : lisibilité des overrides (spec 035 B4)
+
+- **Ce que le moteur a réellement utilisé est désormais affiché.** B1 a rendu le
+  `lai_max` et la réserve utile variables par UGF, mais rien à l'écran ne le
+  distinguait d'un scalaire : le vecteur était passé à `regen_bilan_hydrique()`
+  puis oublié. `run_regeneration_engine()` remonte maintenant `lai_max`, `ewm` et
+  `ewm_source` ; la sidebar affiche la **médiane et l'étendue sur les UGF**
+  (« LAI dérivé : 4,1 [2,8 – 6,3] sur 30 UGF »).
+- **Le repli SoilGrids n'est plus silencieux.** `build_biljou_soil(source =
+  "soilgrids")` dégrade vers un sol uniforme quand `files.isric.org` est
+  injoignable, et le `cli_warn` qui l'annonce meurt sur le `stderr` du worker
+  `multisession`. La provenance effective du sol est déduite de sa forme (liste de
+  `biljou_soil` par UGF vs objet unique) : le repli devient un **avertissement
+  dans l'onglet**, une **entrée dans le journal du moteur**, et une mention
+  explicite sous le badge. Un `ewm` saisi reste un choix délibéré (`uniform`), pas
+  un repli.
+- **Section « Paramètres experts » repliée** (`bslib::accordion`) regroupant
+  `lai_max`, `ewm` et `rooting_depth_cm`. Isolés dans la sidebar, ces champs
+  invitaient au remplissage réflexe : saisir `lai_max` annule le bénéfice d'un PAI
+  calculé en 57 minutes, sans aucun signal. Une seule phrase porte la sémantique
+  commune (vide = dérivé, rempli = forcé) et un badge **« forcé »** s'affiche à la
+  place de la statistique dérivée quand l'utilisateur court-circuite la donnée.
+- Nouvelles clés i18n FR/EN : `regen_expert_section`, `regen_expert_hint`,
+  `regen_override_badge`, `regen_lai_derived_stats`, `regen_ewm_derived_stats`,
+  `regen_ewm_fallback_uniform`. Clés devenues orphelines retirées
+  (`regen_soil_section`, `regen_lai_auto`).
+
+### Fixed
+
+- `run_regeneration_engine()` : le bloc d'un `tryCatch()` est évalué dans le frame
+  de l'appelant, pas dans une fonction — un `<<-` y aurait écrit dans
+  l'environnement du package au lieu de la variable locale. Un test de
+  non-régression vérifie qu'aucune liaison ne fuit dans le namespace.
+- La lecture de la provenance du sol (`.regen_soil_ewm()`) est purement
+  informative et ne peut plus faire échouer le bilan hydrique : toute forme
+  inattendue de `sol` donne `source = NA` au lieu de lever.
+
 # nemetonshiny 0.101.1
 
 ### Added — reGénération : observabilité du moteur (spec 035 B3)
