@@ -93,14 +93,27 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
   years <- if (!is.null(cfg$year_moyenne) && !is.null(cfg$year_canicule)) {
     list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
   } else {
-    tryCatch(
-      nemeton::microclimate_detect_years(
-        eobs = pc$eobs, aoi = units, year_window = cfg$year_window %||% 10),
-      error = function(e) {
-        env$warnings <- c(env$warnings, .strip_ansi(sprintf("detect_years: %s", conditionMessage(e))))
-        list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
-      }
-    )
+    # `load_regeneration_precomputed()` expose la série estivale sous `eobs_tx`
+    # (Tmax JJA, une couche par année) et JAMAIS sous `eobs` — or c'est exactement
+    # le contrat attendu par le cœur. Lire `pc$eobs` seul revenait à toujours lui
+    # passer NULL, donc à échouer systématiquement dès que l'utilisateur n'avait
+    # pas fixé les deux années.
+    eobs <- pc$eobs %||% pc$eobs_tx
+    if (is.null(eobs)) {
+      # Sans série E-OBS, microclimate_detect_years() abandonne d'emblée. Ne pas
+      # l'appeler : l'avertissement « detect_years: … » ne renseignait sur rien
+      # d'autre que l'absence de donnée, déjà visible côté UI.
+      list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
+    } else {
+      tryCatch(
+        nemeton::microclimate_detect_years(
+          eobs = eobs, aoi = units, year_window = cfg$year_window %||% 10),
+        error = function(e) {
+          env$warnings <- c(env$warnings, .strip_ansi(sprintf("detect_years: %s", conditionMessage(e))))
+          list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
+        }
+      )
+    }
   }
 
   # 2. Microclimatic sensitivity (microclimf) — skipped in water-balance-only.

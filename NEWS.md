@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.101.0
+
 ### Added — reGénération : bilan hydrique réellement spatialisé (spec 035 B1)
 
 - **Le PAI LiDAR alimente enfin BILJOU.** Le PAI structural dérivé du nuage
@@ -51,6 +53,22 @@ LAI qu'on lui passe.
   `app_state$regeneration_result`, que `mod_synthesis` consomme pour la
   perspective IA — la synthèse d'un projet rouvert ignorait silencieusement la
   reGénération.
+
+### Fixed — reGénération : la détection des années de référence ne marchait jamais
+
+- `run_regeneration()` passait `precomputed$eobs` à
+  `nemeton::microclimate_detect_years()`, alors que
+  `load_regeneration_precomputed()` peuple `eobs_tx` / `eobs_rr` et **jamais**
+  `eobs`. Le cœur recevait donc toujours `NULL` et abandonnait aussitôt
+  (« needs an E-OBS summer series ») : **la détection automatique des années
+  échouait systématiquement** dès que l'utilisateur n'avait pas saisi les deux
+  années à la main, avec un avertissement `detect_years: …` en prime. La série
+  cachée `eobs_tx` (Tmax JJA, une couche par année) est exactement le contrat
+  attendu par le cœur : elle lui est désormais transmise (`pc$eobs %||%
+  pc$eobs_tx`).
+- En l'absence totale de série E-OBS, l'appel est **sauté** au lieu d'être tenté
+  puis rattrapé : il ne pouvait qu'échouer, et son avertissement ne renseignait
+  que sur une absence de donnée déjà visible à l'écran.
 
 ### Changed
 
