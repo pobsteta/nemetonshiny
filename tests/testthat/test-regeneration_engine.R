@@ -651,3 +651,164 @@ test_that(".regen_lai_per_unit delegates the plateau to the core (not a mean)", 
     .package = "nemeton")
   expect_equal(nemetonshiny:::.regen_lai_per_unit(.engine_units(2), "raster"), c(7, 7))
 })
+
+# --- spec 035 B3 : observabilité du moteur -----------------------------------
+# Le moteur tourne dans un worker `future` : ses cli_warn/message n'atteignent ni
+# la console principale ni l'UI. Seul le POST ntfy en sortait. `engine.log`
+# (JSONL, en ajout) traverse la frontière de processus par le disque et survit à
+# la mort du worker (OOM) — seul post-mortem disponible.
+
+test_that(".regen_log appends JSONL entries and strips ANSI", {
+  withr::with_tempdir({
+    d <- getwd()
+    nemetonshiny:::.regen_log(d, "info", "engine", "demarrage")
+    nemetonshiny:::.regen_log(d, "error", "biljou", "\033[31mSAFRAN KO\033[0m")
+
+    lines <- readLines(file.path(d, "engine.log"))
+    expect_length(lines, 2L)                      # AJOUT, pas écrasement
+    e2 <- jsonlite::fromJSON(lines[2])
+    expect_equal(e2$level, "error")
+    expect_equal(e2$source, "biljou")
+    expect_equal(e2$message, "SAFRAN KO")         # séquences ANSI retirées
+    expect_true(is.numeric(e2$ts))
+  })
+})
+
+test_that(".regen_log never throws on an unwritable directory", {
+  expect_silent(nemetonshiny:::.regen_log("/nonexistent/dir", "error", "x", "y"))
+})
+
+test_that(".regen_log_reset truncates the log", {
+  withr::with_tempdir({
+    d <- getwd()
+    nemetonshiny:::.regen_log(d, "info", "engine", "a")
+    nemetonshiny:::.regen_log_reset(d)
+    expect_false(file.exists(file.path(d, "engine.log")))
+  })
+})
+
+test_that("engine truncates the log at start and records BILJOU errors", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p)
+    out_dir <- file.path(p, "cache", "regeneration")
+    dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+    # Entrée d'un run précédent : elle doit disparaître.
+    nemetonshiny:::.regen_log(out_dir, "info", "engine", "RUN_PRECEDENT")
+
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() NULL,
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) stop("SAFRAN indisponible"),
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    log <- nemetonshiny:::.regen_read_log(p)
+    expect_false(any(grepl("RUN_PRECEDENT", log$message)))   # tronqué au départ
+    expect_true(any(log$level == "error" & log$source == "biljou"))
+    expect_true(any(grepl("SAFRAN indisponible", log$message)))
+    # Le journal double le canal : `warnings` reste alimenté comme avant.
+    expect_true(any(grepl("BILJOU", out$warnings)))
+    # Le journal SURVIT à la fin du run (post-mortem).
+    expect_true(file.exists(file.path(out_dir, "engine.log")))
+  })
+})
+
+test_that("engine logs a warning when ntfy is configured but unreachable", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p)
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() list(url = "http://x", topic = "t", token = ""),
+      .ntfy_send = function(cfg, message, ...) invisible(FALSE),   # canal tombé
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    log <- nemetonshiny:::.regen_read_log(p)
+    expect_true(any(log$source == "ntfy" & log$level == "warning"))
+  })
+})
+
+test_that("engine logs nothing actionable on a clean run", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p)
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE,
+      .ntfy_config = function() NULL,
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) list(ewm = 150),
+      regen_bilan_hydrique = function(units, ...) { units$njstress <- 3; units },
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    log <- nemetonshiny:::.regen_read_log(p)
+    expect_true(nrow(log) > 0L)                                  # jalons `info`
+    expect_equal(nemetonshiny:::.regen_log_issues(log), character(0))
+    expect_length(out$warnings, 0L)
+  })
+})
+
+test_that(".regen_read_log degrades to an empty frame, never throws", {
+  expect_equal(nrow(nemetonshiny:::.regen_read_log(NULL)), 0L)
+  expect_equal(nrow(nemetonshiny:::.regen_read_log(tempfile())), 0L)
+  withr::with_tempdir({
+    p <- getwd()
+    dir.create(file.path(p, "cache", "regeneration"), recursive = TRUE)
+    writeLines(c("{pas du json", "", '{"ts":1,"level":"error","source":"s","message":"m"}'),
+               file.path(p, "cache", "regeneration", "engine.log"))
+    log <- nemetonshiny:::.regen_read_log(p)
+    expect_equal(nrow(log), 1L)          # ligne corrompue ignorée, pas d'abandon
+    expect_equal(log$message, "m")
+  })
+})
+
+test_that(".regen_relay_log relays errors/warnings, stays silent on info", {
+  log <- data.frame(ts = 1L, level = "info", source = "engine", message = "jalon",
+                    stringsAsFactors = FALSE)
+  expect_silent(nemetonshiny:::.regen_relay_log(log))
+  expect_silent(nemetonshiny:::.regen_relay_log(data.frame()))
+
+  bad <- data.frame(ts = c(1L, 2L), level = c("warning", "error"),
+                    source = c("ntfy", "biljou"), message = c("w", "e"),
+                    stringsAsFactors = FALSE)
+  expect_message(nemetonshiny:::.regen_relay_log(bad), "biljou")
+})
+
+test_that(".regen_cleanup_status removes the status file but spares engine.log", {
+  skip_if_not_installed("shiny")
+  withr::with_tempdir({
+    p <- getwd()
+    d <- file.path(p, "cache", "regeneration")
+    dir.create(d, recursive = TRUE)
+    nemetonshiny:::.regen_write_phase(d, "biljou")
+    nemetonshiny:::.regen_log(d, "error", "biljou", "post-mortem")
+
+    as <- shiny::reactiveValues(current_project = list(path = p))
+    shiny::isolate(nemetonshiny:::.regen_cleanup_status(as))
+
+    expect_false(file.exists(file.path(d, "engine_status.json")))
+    expect_true(file.exists(file.path(d, "engine.log")))   # post-mortem préservé
+  })
+})

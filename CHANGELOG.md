@@ -10,6 +10,25 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.101.1] - 2026-07-10
+
+### Added
+
+- reGénération (spec 035 B3) : observabilité du moteur. Journal disque en ajout
+  seul (`cache/regeneration/engine.log`, JSONL) qui traverse la frontière du
+  worker `future` et survit à sa mort (OOM) ; relais des entrées `error` /
+  `warning` vers la console du processus principal ; cumul des avertissements du
+  moteur au lieu de leur écrasement par le re-run fast-path ; relecture du
+  journal dans la branche `error`, seul moyen quand `engine_task$result()` est
+  inaccessible ; échec de `.ntfy_send()` journalisé au lieu d'être avalé.
+- UI : bloc repliable « Journal du moteur » ; le panneau d'avertissements
+  s'affiche désormais même sans résultat.
+
+### Fixed
+
+- `.regen_log()` : `cat(file =)` sur un répertoire absent émet un warning avant
+  de lever, non capturé par `tryCatch(error =)`.
+
 ## [0.101.0] - 2026-07-10
 
 ### Added
