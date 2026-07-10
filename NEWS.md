@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.101.3
+
 ### Fixed — reGénération : l'ouverture d'un projet gelait l'application (~190 s)
 
 - **Régression introduite en v0.101.0 (spec 035 B2).** L'observateur de
