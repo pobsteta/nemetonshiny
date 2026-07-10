@@ -4205,6 +4205,31 @@ TRANSLATIONS <- list(
   regen_map_dtmax = list(fr = "\u0394T\u00b0max sous couvert", en = "Sub-canopy \u0394T\u00b0max"),
   regen_map_bivariate = list(fr = "\u0394T\u00b0max \u00d7 \u0394VPD (parcellaire)", en = "\u0394T\u00b0max \u00d7 \u0394VPD (per unit)"),
   regen_map_context = list(fr = "Contexte r\u00e9gional (E-OBS)", en = "Regional context (E-OBS)"),
+  regen_context_need_tx = list(
+    fr = "Contexte r\u00e9gional indisponible : la s\u00e9rie E-OBS de temp\u00e9ratures maximales n'est pas t\u00e9l\u00e9charg\u00e9e. Lancez \u00ab Auto (E-OBS) \u00bb dans le panneau Ann\u00e9es de r\u00e9f\u00e9rence.",
+    en = "Regional context unavailable: the E-OBS maximum-temperature series is not downloaded. Run \u201cAuto (E-OBS)\u201d in the Reference years panel."
+  ),
+  regen_context_need_rr = list(
+    fr = "Contexte r\u00e9gional indisponible : cette carte croise temp\u00e9ratures et pr\u00e9cipitations, et la s\u00e9rie E-OBS de pr\u00e9cipitations n'est pas t\u00e9l\u00e9charg\u00e9e.",
+    en = "Regional context unavailable: this map crosses temperature with precipitation, and the E-OBS precipitation series is not downloaded."
+  ),
+  regen_eobs_rr_fetch = list(
+    fr = "T\u00e9l\u00e9charger les pr\u00e9cipitations (~800 Mo)",
+    en = "Download precipitation (~800 MB)"
+  ),
+  regen_eobs_rr_running = list(
+    fr = "T\u00e9l\u00e9chargement de la s\u00e9rie E-OBS de pr\u00e9cipitations (Copernicus CDS) \u2014 plusieurs minutes, en arri\u00e8re-plan.",
+    en = "Downloading the E-OBS precipitation series (Copernicus CDS) \u2014 several minutes, in the background."
+  ),
+  regen_eobs_rr_running_short = list(fr = "T\u00e9l\u00e9chargement\u2026", en = "Downloading\u2026"),
+  regen_eobs_rr_done = list(
+    fr = "S\u00e9rie de pr\u00e9cipitations t\u00e9l\u00e9charg\u00e9e \u2014 carte de contexte r\u00e9gional disponible.",
+    en = "Precipitation series downloaded \u2014 regional context map available."
+  ),
+  regen_eobs_rr_failed = list(
+    fr = "T\u00e9l\u00e9chargement des pr\u00e9cipitations impossible (identifiants CDS ou r\u00e9seau).",
+    en = "Precipitation download failed (CDS credentials or network)."
+  ),
   regen_map_priorite_info = list(
     fr = "Indice composite 0\u2013100 croisant l'exposition microclimatique (microclimf) et le stress hydrique du sol (BILJOU). Valeur \u00e9lev\u00e9e = unit\u00e9 la plus vuln\u00e9rable, \u00e0 accompagner en priorit\u00e9 pour la r\u00e9g\u00e9n\u00e9ration.",
     en = "Composite 0\u2013100 index crossing microclimatic exposure (microclimf) with soil water stress (BILJOU). High value = most vulnerable unit, to prioritise for regeneration."
