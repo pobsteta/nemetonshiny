@@ -12,6 +12,32 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.101.0\] - 2026-07-10
+
+### Added
+
+- reGénération (spec 035 B1) : bilan hydrique spatialisé — le PAI LiDAR
+  caché alimente le `lai_max` par UGF de BILJOU, agrégé en plateau (P90)
+  et non en moyenne ; réserve utile dérivée par UGF depuis SoilGrids 250
+  m (Saxton & Rawls). UI : « Eau extractible » devient un override
+  optionnel, nouveau champ « Profondeur d’enracinement », phase moteur «
+  Réserve utile (SoilGrids) ».
+- reGénération (spec 035 B2) : restauration du choroplèthe, de l’indice
+  de priorité et de la table à l’ouverture d’un projet déjà analysé, par
+  relecture du cache disque en fast-path (aucun moteur ne démarre).
+  Alimente `app_state$regeneration_result` (perspective IA).
+
+### Fixed
+
+- reGénération : `run_regeneration()` passait `precomputed$eobs`
+  (toujours `NULL`) à `microclimate_detect_years()` au lieu de la série
+  cachée `eobs_tx` — la détection automatique des années échouait
+  systématiquement.
+
+### Changed
+
+- Plancher cœur relevé à `nemeton (>= 0.147.0)`.
+
 ## \[0.100.19\] - 2026-07-09
 
 ### Added

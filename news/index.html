@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.100.19.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,37 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.101.0" id="nemetonshiny-01010">nemetonshiny 0.101.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01010"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--bilan-hydrique-réellement-spatialisé-spec-b1-0-101-0">Added — reGénération : bilan hydrique réellement spatialisé (spec 035 B1)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--bilan-hydrique-r%C3%A9ellement-spatialis%C3%A9-spec-b1-0-101-0"></a></h4>
+<ul><li>
+<strong>Le PAI LiDAR alimente enfin BILJOU.</strong> Le PAI structural dérivé du nuage (57 min de calcul sur un run réel, caché dans <code>cache/regeneration/pai.tif</code>) n’était consommé que par microclimf : le bilan hydrique, lui, retombait sur le défaut cœur par type de peuplement (5 pour du feuillu, 4,5 pour du résineux). Le garde-fou <code>is.null(grid)</code> sautait le calcul du <code>lai_max</code> précisément quand le LiDAR HD était présent. Désormais <code><a href="https://pobsteta.github.io/nemeton/reference/lai_max_depuis_pai.html" class="external-link">nemeton::lai_max_depuis_pai()</a></code> dérive un <code>lai_max</code> <strong>par UGF</strong> depuis le PAI caché ; le repli satellite S2/PROSAIL est inchangé et ne sert plus qu’en l’absence de grille LiDAR.</li>
+<li>
+<strong>Le plateau, pas la moyenne.</strong> <code>.regen_lai_per_unit()</code> prenait une moyenne zonale, alors que <code>biljouR::biljou_lai()</code> lit <code>lai_max</code> comme le <strong>plateau</strong> de la phénologie — la moyenne le sous-estime, d’autant plus que l’UGF contient des trouées. L’agrégation passe au cœur (percentile haut, pixels non-canopée exclus).</li>
+<li>
+<strong>Sol dérivé de SoilGrids par UGF.</strong> <code>build_biljou_soil(source = "soilgrids")</code> dérive la réserve utile de chaque UGF depuis SoilGrids 250 m (pédotransfert Saxton &amp; Rawls) au lieu d’un sol uniforme sur tout le massif. Dégrade proprement en sol uniforme si <code>files.isric.org</code> est injoignable.</li>
+<li>
+<strong>UI</strong> : « Eau extractible (mm) » devient un <strong>override optionnel</strong> — vidé (défaut), il déclenche SoilGrids ; renseigné, il force l’ancien comportement uniforme. Nouveau champ « Profondeur d’enracinement (cm) » (défaut 100). Le badge « Canopée : LiDAR HD » signale quand le <code>lai_max</code> du bilan hydrique vient du PAI. Nouvelle phase moteur « Réserve utile (SoilGrids) (i/n) » sur le canal <code>engine_status.json</code>.</li>
+</ul><p>Ensemble, ces trois corrections lèvent la cause du symptôme observé sur le projet réel <code>20260701_204501_ltcp</code> : <code>njstress</code> et <code>deb_stress</code> <strong>identiques sur les 30 UGF</strong>, <code>istress</code> et <code>rew_min</code> ne prenant que 2 valeurs (les 2 mailles SAFRAN de 8 km). BILJOU n’a aucun terme spatial : toute la variabilité vient du sol et du LAI qu’on lui passe.</p>
+</div>
+<div class="section level4">
+<h4 id="added--regénération--restauration-à-louverture-dun-projet-spec-b2-0-101-0">Added — reGénération : restauration à l’ouverture d’un projet (spec 035 B2)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--restauration-%C3%A0-louverture-dun-projet-spec-b2-0-101-0"></a></h4>
+<ul><li>Rouvrir un projet déjà analysé affichait les <strong>contours d’UGF nus</strong> — pas de choroplèthe, pas d’indice de priorité, pas de table — jusqu’à un clic sur « Lancer l’analyse ». <code>rv$result</code> n’était écrit que par ce bouton ou par la fin du moteur ; aucun observateur n’écoutait <code>app_state$current_project</code>. Un observateur relit désormais le cache disque à l’ouverture. Ce n’est <strong>pas un recalcul</strong> : <code>run_regeneration()</code> consomme les sorties <code>precomputed</code> en fast-path (rattachement de colonnes) — ni microclimf, ni biljouR, ni lasR ne démarrent.</li>
+<li>Restauration <strong>seulement si une sortie de moteur existe</strong> (<code>biljou.gpkg</code> ou <code>sensibilite.gpkg</code>) : un projet sans cache reste vierge, sans avertissement trompeur. Les années de référence sont fournies au service pour ne pas déclencher <code>microclimate_detect_years()</code> à l’ouverture.</li>
+<li>Purge du résultat précédent en changeant de projet (sinon le choroplèthe de l’ancien projet restait à l’écran), et alimentation de <code>app_state$regeneration_result</code>, que <code>mod_synthesis</code> consomme pour la perspective IA — la synthèse d’un projet rouvert ignorait silencieusement la reGénération.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--regénération--la-détection-des-années-de-référence-ne-marchait-jamais-0-101-0">Fixed — reGénération : la détection des années de référence ne marchait jamais<a class="anchor" aria-label="anchor" href="#fixed--reg%C3%A9n%C3%A9ration--la-d%C3%A9tection-des-ann%C3%A9es-de-r%C3%A9f%C3%A9rence-ne-marchait-jamais-0-101-0"></a></h4>
+<ul><li>
+<code>run_regeneration()</code> passait <code>precomputed$eobs</code> à <code><a href="https://pobsteta.github.io/nemeton/reference/microclimate_detect_years.html" class="external-link">nemeton::microclimate_detect_years()</a></code>, alors que <code>load_regeneration_precomputed()</code> peuple <code>eobs_tx</code> / <code>eobs_rr</code> et <strong>jamais</strong> <code>eobs</code>. Le cœur recevait donc toujours <code>NULL</code> et abandonnait aussitôt (« needs an E-OBS summer series ») : <strong>la détection automatique des années échouait systématiquement</strong> dès que l’utilisateur n’avait pas saisi les deux années à la main, avec un avertissement <code>detect_years: …</code> en prime. La série cachée <code>eobs_tx</code> (Tmax JJA, une couche par année) est exactement le contrat attendu par le cœur : elle lui est désormais transmise (<code>pc$eobs %||% pc$eobs_tx</code>).</li>
+<li>En l’absence totale de série E-OBS, l’appel est <strong>sauté</strong> au lieu d’être tenté puis rattrapé : il ne pouvait qu’échouer, et son avertissement ne renseignait que sur une absence de donnée déjà visible à l’écran.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed-0-101-0">Changed<a class="anchor" aria-label="anchor" href="#changed-0-101-0"></a></h4>
+<ul><li>Plancher cœur relevé : <code>Imports: nemeton (&gt;= 0.147.0)</code> (<code>lai_max_depuis_pai()</code>, <code>build_biljou_soil(source =)</code>, <code>ewm_depuis_soilgrids()</code>).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.100.19" id="nemetonshiny-010019">nemetonshiny 0.100.19<a class="anchor" aria-label="anchor" href="#nemetonshiny-010019"></a></h2>
