@@ -363,3 +363,70 @@ test_that("no E-OBS series: detect_years is skipped, not failed", {
   expect_length(out$warnings, 0)        # plus d'avertissement « detect_years: … »
   expect_null(out$years$year_moyenne)
 })
+
+# --- restore_regeneration : rattacher, jamais recalculer ----------------------
+# Chemin d'ouverture de projet. `run_regeneration()` y était appelé jusqu'à
+# v0.101.2 : son étape R3 (`indicateur_r3_secheresse(dem = )`) re-dérive la
+# topographie depuis la mosaïque MNT LiDAR — 132 s mesurées sur 30 UGF — et gelait
+# la session Shiny (mono-thread) à chaque clic sur un projet récent.
+
+test_that("restore_regeneration attaches cached columns without touching the DEM", {
+  skip_if_not_installed("sf")
+
+  called <- character(0)
+  testthat::local_mocked_bindings(
+    regen_sensibilite = function(units, precomputed = NULL, ...) {
+      called <<- c(called, "sensibilite"); units$sensibilite <- 60; units },
+    regen_bilan_hydrique = function(units, precomputed = NULL, ...) {
+      called <<- c(called, "biljou"); units$njstress <- 12; units },
+    indice_priorite_regen = function(units, ...) {
+      called <<- c(called, "priorite"); units$indice_priorite_regen <- 70; units },
+    # Les étapes coûteuses ne doivent JAMAIS être atteintes.
+    indicateur_r3_secheresse = function(units, ...) stop("R3 must not run on restore"),
+    indicateur_a3_microclimat = function(units, ...) stop("A3 must not run on restore"),
+    indicateur_a4_tamponnement = function(units, ...) stop("A4 must not run on restore"),
+    indicateur_w4_vpd = function(units, ...) stop("W4 must not run on restore"),
+    indicateur_r6_sensibilite = function(units, ...) stop("R6 must not run on restore"),
+    microclimate_detect_years = function(...) stop("detect_years must not run on restore"),
+    .package = "nemeton")
+
+  out <- nemetonshiny:::restore_regeneration(
+    .regen_units(3),
+    precomputed = list(sensibilite = "S", biljou = "B", dem = "DEM", micro = "MICRO"))
+
+  expect_equal(called, c("sensibilite", "biljou", "priorite"))
+  expect_true(all(c("sensibilite", "njstress", "indice_priorite_regen") %in% names(out$units)))
+  expect_equal(out$warnings, character(0))   # restaurer n'est pas analyser
+})
+
+test_that("restore_regeneration restores from biljou alone (no sensibilite cache)", {
+  skip_if_not_installed("sf")
+  testthat::local_mocked_bindings(
+    regen_sensibilite = function(units, ...) stop("no sensibilite cache -> must be skipped"),
+    regen_bilan_hydrique = function(units, ...) { units$njstress <- 5; units },
+    indice_priorite_regen = function(units, ...) { units$indice_priorite_regen <- 30; units },
+    .package = "nemeton")
+
+  out <- nemetonshiny:::restore_regeneration(.regen_units(2), precomputed = list(biljou = "B"))
+  expect_true("indice_priorite_regen" %in% names(out$units))
+})
+
+test_that("restore_regeneration returns NULL when there is nothing to restore", {
+  skip_if_not_installed("sf")
+  u <- .regen_units(2)
+  expect_null(nemetonshiny:::restore_regeneration(u, precomputed = list()))
+  expect_null(nemetonshiny:::restore_regeneration(u, precomputed = list(dem = "DEM")))
+  expect_null(nemetonshiny:::restore_regeneration(u, precomputed = list(eobs_tx = "TX")))
+  expect_null(nemetonshiny:::restore_regeneration(data.frame(x = 1), precomputed = list(biljou = "B")))
+})
+
+test_that("restore_regeneration returns NULL when the priority index cannot be built", {
+  skip_if_not_installed("sf")
+  # Le cœur échoue → pas d'indice → ni choroplèthe ni table : ne rien afficher
+  # plutôt qu'une carte vide.
+  testthat::local_mocked_bindings(
+    regen_bilan_hydrique = function(units, ...) units,
+    indice_priorite_regen = function(units, ...) stop("boom"),
+    .package = "nemeton")
+  expect_null(nemetonshiny:::restore_regeneration(.regen_units(2), precomputed = list(biljou = "B")))
+})

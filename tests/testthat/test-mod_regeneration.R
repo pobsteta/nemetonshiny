@@ -108,7 +108,10 @@ test_that("run without a loaded project is a guarded no-op", {
 
 # --- spec 035 B2 : restauration à l'ouverture d'un projet --------------------
 # Rouvrir un projet déjà analysé doit réafficher choroplèthe + table SANS clic,
-# en relisant le cache disque (fast-path : aucun moteur ne démarre).
+# en relisant le cache disque. La restauration passe par `restore_regeneration()`
+# et JAMAIS par `run_regeneration()` : l'étape R3 de ce dernier re-dérive la
+# topographie depuis le MNT LiDAR (132 s mesurées sur 30 UGF) et gelait la session
+# Shiny, mono-thread, à chaque ouverture de projet.
 
 .regen_restored <- function(u) {
   u$indice_priorite_regen <- 42
@@ -124,17 +127,17 @@ test_that("opening a project with a cached biljou restores the result", {
   proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
   as <- shiny::reactiveValues(current_project = proj)
 
-  called <- new.env(); called$cfg <- NULL; called$pc <- NULL
+  called <- new.env(); called$pc <- NULL; called$heavy <- FALSE
   testthat::local_mocked_bindings(
     get_app_options = function() list(language = "fr"),
     regeneration_species_choices = function(...) NULL,
     load_regeneration_precomputed = function(pp) list(biljou = "BILJOU_SF"),
-    run_regeneration = function(u, cfg = list(), precomputed = NULL, ...) {
-      called$cfg <- cfg; called$pc <- precomputed
-      list(units = .regen_restored(u),
-           years = list(year_moyenne = 2018, year_canicule = 2022),
-           warnings = c("ne doit pas remonter"))
+    restore_regeneration = function(u, precomputed = NULL, ...) {
+      called$pc <- precomputed
+      list(units = .regen_restored(u), warnings = character(0))
     },
+    # Garantie de performance : l'analyse complète ne doit PAS être déclenchée.
+    run_regeneration = function(...) { called$heavy <- TRUE; NULL },
     .package = "nemetonshiny"
   )
 
@@ -150,11 +153,10 @@ test_that("opening a project with a cached biljou restores the result", {
       # Restauré sans aucun clic sur « Lancer l'analyse ».
       expect_false(is.null(rv$result))
       expect_equal(unique(rv$result$indice_priorite_regen), 42)
-      # Le cache disque est bien passé en `precomputed` (fast-path, pas de moteur).
+      # Le cache disque est bien passé en `precomputed`.
       expect_equal(called$pc$biljou, "BILJOU_SF")
-      # Les années sont fournies : pas d'appel à microclimate_detect_years().
-      expect_equal(called$cfg$year_moyenne, 2018)
-      expect_equal(called$cfg$year_canicule, 2022)
+      # Aucune analyse complète (donc aucun recalcul de topographie).
+      expect_false(called$heavy)
       # Restaurer n'est pas analyser : aucun avertissement remonté.
       expect_equal(rv$warnings, character(0))
       # mod_synthesis consomme ceci pour la perspective IA.
@@ -176,6 +178,7 @@ test_that("opening a project without a regeneration cache runs nothing", {
     regeneration_species_choices = function(...) NULL,
     # `dem` / `eobs_*` seuls : pas de sortie de moteur → ne rien restaurer.
     load_regeneration_precomputed = function(pp) list(dem = "DEM", eobs_tx = "TX"),
+    restore_regeneration = function(...) { ran$hit <- TRUE; NULL },
     run_regeneration = function(...) { ran$hit <- TRUE; NULL },
     .package = "nemetonshiny"
   )
@@ -186,7 +189,7 @@ test_that("opening a project without a regeneration cache runs nothing", {
     {
       session$setInputs(forest_type = "feuillu", year_moyenne = NA,
                         year_canicule = NA, lai_max = NA, species = "")
-      expect_false(ran$hit)          # aucun run_regeneration à vide
+      expect_false(ran$hit)          # aucune restauration ni analyse à vide
       expect_null(rv$result)
       expect_equal(rv$warnings, character(0))
     }
@@ -208,8 +211,8 @@ test_that("switching to a project without cache clears the previous choropleth",
     load_regeneration_precomputed = function(pp) {
       if (identical(pp, analysed$path)) list(biljou = "B") else list()
     },
-    run_regeneration = function(u, ...) {
-      list(units = .regen_restored(u), years = NULL, warnings = character(0))
+    restore_regeneration = function(u, ...) {
+      list(units = .regen_restored(u), warnings = character(0))
     },
     .package = "nemetonshiny"
   )

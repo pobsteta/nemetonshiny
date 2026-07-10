@@ -363,9 +363,13 @@ mod_regeneration_server <- function(id, app_state) {
     # --- Restauration à l'ouverture d'un projet (spec 035 B2) ----------------
     # Sans ça, rouvrir un projet déjà analysé affichait les contours d'UGF nus :
     # `rv$result` n'était écrit que par « Lancer l'analyse » ou par la fin du
-    # moteur. Ici on RELIT le cache disque — `run_regeneration()` consomme les
-    # sorties `precomputed` en fast-path (simple rattachement de colonnes) : ni
-    # microclimf, ni biljouR, ni lasR ne démarrent.
+    # moteur. Ici on RELIT le cache disque via `restore_regeneration()`.
+    #
+    # NE PAS appeler `run_regeneration()` ici. Son étape R3
+    # (`indicateur_r3_secheresse(dem = )`) re-dérive la topographie depuis la
+    # mosaïque MNT LiDAR : 132 s mesurées sur un projet de 30 UGF, contre 0,3 s
+    # pour tout le reste. Shiny étant mono-thread, cet appel synchrone gelait
+    # TOUTE la session à l'ouverture — y compris l'onglet Sélection.
     #
     # Déclenché sur (projet, unités) : le projet est posé avant les géométries,
     # donc un observateur sur le seul `current_project` verrait `units_sf()` NULL
@@ -382,30 +386,17 @@ mod_regeneration_server <- function(id, app_state) {
 
       pc <- load_regeneration_precomputed(project_path)
       # Ne restaurer que si une sortie de MOTEUR existe : `dem` / `eobs_*` seuls
-      # ne produisent aucun indice, et un run à vide empilerait les avertissements
-      # regen_guard_hydrique / regen_guard_sensibilite dès l'ouverture.
+      # ne produisent aucun indice, et une restauration à vide n'affiche rien.
       if (is.null(pc$biljou) && is.null(pc$sensibilite)) return()
 
       units <- units_sf()
       if (is.null(units)) return()
 
-      # Fournir les années : sinon run_regeneration() appelle
-      # microclimate_detect_years(), qui abandonne quand `eobs` est NULL (ce qu'il
-      # est toujours ici) et empile un avertissement trompeur à l'ouverture.
-      na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
-      cfg <- list(
-        year_moyenne  = na_null(input$year_moyenne),
-        year_canicule = na_null(input$year_canicule),
-        forest_type   = input$forest_type %||% "feuillu",
-        lai_max       = na_null(input$lai_max)
-      )
-      res <- tryCatch(run_regeneration(units, cfg = cfg, precomputed = pc),
+      res <- tryCatch(restore_regeneration(units, precomputed = pc),
                       error = function(e) NULL)
       if (is.null(res)) return()
       rv$result <- res$units
-      rv$years <- res$years
-      # Restaurer n'est pas analyser : ne pas remonter les avertissements d'un run
-      # qu'on n'a pas lancé.
+      # Restaurer n'est pas analyser : ni avertissements, ni années détectées.
       rv$warnings <- character(0)
       rv$canopy_source <- regen_canopy_provenance(res$units)
       # mod_synthesis lit app_state$regeneration_result pour la perspective IA :

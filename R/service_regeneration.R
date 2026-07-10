@@ -836,6 +836,54 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
        ewm_source = ewm_source)
 }
 
+#' Re-attach a cached reGénération result, without recomputing anything
+#'
+#' @description
+#' Restoration path for opening a project (spec 035 B2). Attaches only what the
+#' disk cache already holds — microclimate exposure and soil water balance, both
+#' via their `precomputed` fast-path — then recomputes the priority index, which
+#' is a pure per-row arithmetic over those columns.
+#'
+#' Deliberately does **not** run `indicateur_r3_secheresse()` nor the A3/A4/W4/R6
+#' micro sub-indicators. `indicateur_r3_secheresse(dem = )` re-derives terrain
+#' (slope / aspect / TWI) from the LiDAR DTM mosaic on every call: measured at
+#' **132 s** on a 30-unit project, against 0.3 s for everything else. That cost is
+#' acceptable once, inside an explicit analysis; it is not acceptable on every
+#' project open, where it froze the whole (single-threaded) Shiny session.
+#'
+#' Those radar columns belong to a real analysis, not to a restoration: the map,
+#' the priority index and the table — B2's acceptance criteria — need none of them.
+#'
+#' @param units An sf of the project UGF.
+#' @param precomputed The `load_regeneration_precomputed()` list.
+#' @return A list with `units` (enriched sf) and `warnings` (always empty:
+#'   restoring is not analysing), or `NULL` when nothing can be restored.
+#' @noRd
+restore_regeneration <- function(units, precomputed = NULL) {
+  if (!inherits(units, "sf")) return(NULL)
+  pc <- precomputed %||% list()
+  if (is.null(pc$sensibilite) && is.null(pc$biljou)) return(NULL)
+
+  env <- new.env(parent = emptyenv())
+  env$warnings <- character(0)
+
+  if (!is.null(pc$sensibilite)) {
+    units <- .regen_step(function() nemeton::regen_sensibilite(
+      units, precomputed = pc$sensibilite), units, env, "regen_sensibilite")
+  }
+  if (!is.null(pc$biljou)) {
+    units <- .regen_step(function() nemeton::regen_bilan_hydrique(
+      units, precomputed = pc$biljou), units, env, "regen_bilan_hydrique")
+  }
+  units <- .regen_step(function() nemeton::indice_priorite_regen(units),
+                       units, env, "indice_priorite_regen")
+
+  # Sans indice, il n'y a ni choroplèthe ni table : ne rien restaurer plutôt que
+  # d'afficher une carte vide.
+  if (!"indice_priorite_regen" %in% names(units)) return(NULL)
+  list(units = units, warnings = character(0))
+}
+
 #' Detect reference years from E-OBS for an AOI (spec 027 L2 / 034)
 #'
 #' @description
