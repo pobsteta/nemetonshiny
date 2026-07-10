@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,29 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.101.1" id="nemetonshiny-01011">nemetonshiny 0.101.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-01011"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--observabilité-du-moteur-spec-b3-0-101-1">Added — reGénération : observabilité du moteur (spec 035 B3)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--observabilit%C3%A9-du-moteur-spec-b3-0-101-1"></a></h4>
+<ul><li>
+<strong>Les erreurs du moteur n’atteignaient que ntfy.</strong> <code>run_regeneration_engine()</code> s’exécute dans un worker <code>future</code> (<code>multisession</code>) : ses <code><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli::cli_warn()</a></code>, <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> et <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> partent sur le <code>stdout</code> du processus fils, que R ne relaie pas vers la console principale. Le seul canal qui traversait la frontière de processus en temps réel était le POST HTTP de <code>.ntfy_send()</code> — d’où des erreurs visibles dans le téléphone et nulle part ailleurs.</li>
+<li>
+<strong>Journal disque en ajout seul</strong> : nouveau <code>cache/regeneration/engine.log</code> (une ligne JSON par entrée, via <code>.regen_log()</code>). Il traverse la frontière de processus <strong>par le disque</strong> et <strong>survit à la mort du worker</strong> (OOM, <code>kill</code>) — c’est le seul post-mortem disponible. Distinct de <code>engine_status.json</code>, que <code>.regen_write_phase()</code> écrase à chaque phase et qui ne peut donc pas accumuler. Tronqué au <strong>début</strong> de chaque run, jamais à la fin ; <code>.regen_cleanup_status()</code> n’y touche pas.</li>
+<li>
+<strong>Les diagnostics du moteur ne sont plus perdus.</strong> En succès, <code>rv$warnings</code> était <strong>écrasé</strong> par les avertissements du re-run fast-path — un ensemble sans rapport — et ceux du moteur ne survivaient que dans un toast de 10 s. Ils sont désormais <strong>cumulés</strong>. En erreur (worker mort), <code>engine_task$result()</code> lève et <code>eng</code> n’existe jamais : les avertissements accumulés avant la mort sont relus depuis <code>engine.log</code>.</li>
+<li>
+<strong>Relais console</strong> (<code>.regen_relay_log()</code>) : chaque entrée <code>error</code> / <code>warning</code> du journal est rejouée en <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_danger()</a></code> / <code>cli_alert_warning()</code> dans le <strong>processus principal</strong>, dans les deux branches. Les jalons <code>info</code> restent muets.</li>
+<li>
+<strong>L’échec de ntfy n’est plus avalé.</strong> <code>.ntfy_send()</code> renvoie <code>FALSE</code> sans rien dire ; si le premier envoi d’un run échoue alors que <code>NEMETON_NTFY_TOPIC</code> est défini, une entrée <code>warning</code> est journalisée. Perdre silencieusement le seul canal de notification est ce qui rendait ce type de panne indiagnosticable.</li>
+<li>
+<strong>UI</strong> : bloc repliable « Journal du moteur » sous le badge d’état (horodatage, niveau, source), et le panneau d’avertissements s’affiche désormais <strong>même sans résultat</strong> — un moteur qui meurt n’en produit aucun, et c’est précisément là qu’il faut voir pourquoi. Clés i18n <code>regen_engine_log</code>, <code>regen_log_ntfy_failed</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed-0-101-1">Fixed<a class="anchor" aria-label="anchor" href="#fixed-0-101-1"></a></h4>
+<ul><li>
+<code>.regen_log()</code> : <code>cat(file =)</code> sur un répertoire absent émet un <strong>warning</strong> avant de lever, que <code>tryCatch(error =)</code> ne capture pas — un journal « jamais fatal » polluait quand même la sortie. Handler <code>warning</code> ajouté.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.101.0" id="nemetonshiny-01010">nemetonshiny 0.101.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01010"></a></h2>
