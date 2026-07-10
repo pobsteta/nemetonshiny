@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.101.1
+
 ### Added — reGénération : observabilité du moteur (spec 035 B3)
 
 - **Les erreurs du moteur n'atteignaient que ntfy.** `run_regeneration_engine()`
