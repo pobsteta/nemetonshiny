@@ -4064,8 +4064,6 @@ TRANSLATIONS <- list(
   regen_budburst = list(fr = "D\u00e9bourrement (jour julien)", en = "Budburst (day of year)"),
   regen_leaf_fall = list(fr = "Chute des feuilles (jour julien)", en = "Leaf fall (day of year)"),
   regen_lai_max = list(fr = "LAI max", en = "Max LAI"),
-  regen_lai_auto = list(fr = "Auto (PAI / LiDAR HD)", en = "Auto (PAI / LiDAR HD)"),
-  regen_soil_section = list(fr = "Sol", en = "Soil"),
   regen_ewm = list(fr = "Eau extractible (mm)", en = "Extractable water (mm)"),
   regen_ewm_hint = list(
     fr = "Laisser vide pour dériver la réserve utile par UGF depuis SoilGrids (250 m). Saisir une valeur force un sol uniforme sur tout le massif.",
@@ -4136,6 +4134,27 @@ TRANSLATIONS <- list(
   regen_phase_exposition = list(fr = "Agr\u00e9gation de l'exposition\u2026", en = "Aggregating exposure\u2026"),
   regen_phase_ewm = list(fr = "R\u00e9serve utile (SoilGrids)", en = "Extractable water (SoilGrids)"),
   regen_engine_log = list(fr = "Journal du moteur", en = "Engine log"),
+  regen_expert_section = list(
+    fr = "Paramètres experts (dérivés automatiquement si vides)",
+    en = "Expert parameters (auto-derived when empty)"
+  ),
+  regen_expert_hint = list(
+    fr = "Laisser vide : la valeur est dérivée de la donnée (PAI LiDAR, SoilGrids). Renseigner un champ force la valeur sur toutes les UGF et court-circuite la dérivation.",
+    en = "Leave empty: the value is derived from the data (LiDAR PAI, SoilGrids). Filling a field forces the value on every unit and bypasses the derivation."
+  ),
+  regen_override_badge = list(fr = "forcé", en = "forced"),
+  regen_lai_derived_stats = list(
+    fr = "LAI dérivé : %s [%s – %s] sur %d UGF",
+    en = "Derived LAI: %s [%s – %s] across %d units"
+  ),
+  regen_ewm_derived_stats = list(
+    fr = "Réserve utile dérivée (SoilGrids) : %s [%s – %s] mm sur %d UGF",
+    en = "Derived extractable water (SoilGrids): %s [%s – %s] mm across %d units"
+  ),
+  regen_ewm_fallback_uniform = list(
+    fr = "SoilGrids injoignable : repli sur un sol uniforme (%s mm) — le bilan hydrique n'est plus spatialisé par le sol.",
+    en = "SoilGrids unreachable: falling back to a uniform soil (%s mm) — the water balance is no longer spatialised by soil."
+  ),
   regen_log_ntfy_failed = list(
     fr = "Notification ntfy non envoy\u00e9e (canal indisponible) \u2014 les diagnostics restent dans ce journal.",
     en = "ntfy notification not sent (channel unavailable) \u2014 diagnostics remain in this log."

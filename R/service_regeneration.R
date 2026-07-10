@@ -478,6 +478,29 @@ regen_engine_prereqs <- function(project_path, forcing = "safran") {
   }, error = function(e) invisible(NULL), warning = function(w) invisible(NULL))
 }
 
+# Réserve utile effective et provenance du sol rendu par `build_biljou_soil()`
+# (spec 035 B4.a). Une LISTE de `biljou_soil` de longueur `n` = une réserve utile
+# par UGF (SoilGrids). Un objet `biljou_soil` unique = sol uniforme : voulu si
+# l'utilisateur a saisi `ewm`, sinon repli SILENCIEUX de SoilGrids (files.isric.org
+# injoignable ; le `cli_warn` du cœur meurt sur le stderr du worker).
+#
+# Purement informatif : toute forme inattendue rend `source = NA` plutôt que de
+# lever — cette lecture ne doit jamais faire échouer le bilan hydrique.
+.regen_soil_ewm <- function(sol, n, forced = FALSE) {
+  none <- list(values = NULL, source = NA_character_)
+  tryCatch({
+    if (inherits(sol, "biljou_soil")) {
+      return(list(values = as.numeric(sol$ewm %||% NA_real_),
+                  source = if (forced) "uniform" else "soilgrids_fallback"))
+    }
+    per_unit <- is.list(sol) && length(sol) == n &&
+      all(vapply(sol, inherits, logical(1), "biljou_soil"))
+    if (!per_unit) return(none)
+    list(values = vapply(sol, function(s) as.numeric(s$ewm %||% NA_real_), numeric(1)),
+         source = "soilgrids")
+  }, error = function(e) none)
+}
+
 # Tronque le journal au DÉBUT d'un run. Il doit survivre à la fin du run (le
 # post-mortem se lit après coup) — `.regen_cleanup_status()` n'y touche pas.
 .regen_log_reset <- function(out_dir) {
@@ -518,6 +541,11 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   cached   <- character(0)
   canopy   <- NA_character_       # provenance canopée effective (spec 033 D5)
   lai_source <- NA_character_     # provenance du lai_max de BILJOU (spec 035 B1)
+  ewm_values <- NULL              # réserve utile effective, par UGF (spec 035 B4)
+  ewm_source <- NA_character_     # "soilgrids" | "soilgrids_fallback" | "uniform"
+  # Initialisé ici (et pas seulement dans la branche BILJOU) : la valeur de retour
+  # le lit même quand cette branche est sautée (ERA5 sans clé CDS).
+  lai_max <- cfg$lai_max
   res <- units
   years <- c(cfg$year_moyenne, cfg$year_canicule)  # c() drops NULLs
   years <- if (length(years)) years else NULL
@@ -736,6 +764,15 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       } else {
         nemeton::build_biljou_soil(res, ewm = cfg$ewm)
       }
+      # Provenance EFFECTIVE du sol (spec 035 B4.a) — purement informatif : ne doit
+      # JAMAIS faire échouer le bilan hydrique (cf. `.regen_soil_ewm`).
+      # `<-` et non `<<-` : le bloc d'un tryCatch() est évalué dans le frame de
+      # l'appelant (contrairement aux handlers error=/warning=, qui sont des
+      # fonctions et exigent `<<-`). Un `<<-` ici écrirait dans l'environnement
+      # du package.
+      ewm_info   <- .regen_soil_ewm(sol, nrow(res), forced = !is.null(cfg$ewm))
+      ewm_values <- ewm_info$values
+      ewm_source <- ewm_info$source
       nemeton::regen_bilan_hydrique(res, meteo = meteo, sol = sol,
         lai_max = lai_max, forest_type = cfg$forest_type %||% "feuillu",
         years = years, budburst = cfg$budburst, leaf_fall = cfg$leaf_fall,
@@ -745,6 +782,15 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       .regen_log(out_dir, "error", "biljou", conditionMessage(e))
       NULL
     })
+
+    # Repli SoilGrids → sol uniforme : jusqu'ici totalement silencieux. Le bilan
+    # hydrique n'est alors plus spatialisé par le sol ; l'utilisateur doit le savoir.
+    if (identical(ewm_source, "soilgrids_fallback")) {
+      msg <- sprintf(i18n$t("regen_ewm_fallback_uniform"),
+                     format(round(ewm_values[1], 0), trim = TRUE))
+      warnings <- c(warnings, msg)
+      .regen_log(out_dir, "warning", "soilgrids", msg)
+    }
     if (inherits(bil, "sf")) {
       # `bil` est un nouvel objet : reposer l'attribut, sinon detect_ndp() perd la
       # provenance du LAI (badge canopée).
@@ -782,8 +828,12 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
   # fichier (§3.3). Le worker ne le supprime PAS ici (course avec le poll).
   .regen_write_phase(out_dir, "done")
 
+  # `lai_max` / `ewm_values` remontent pour l'affichage des valeurs dérivées
+  # (spec 035 B4.a) : sans eux, rien à l'écran ne distingue un lai_max par UGF
+  # d'un scalaire, et la spatialisation reste invisible.
   list(units = res, warnings = warnings, cached = cached, canopy = canopy,
-       lai_source = lai_source)
+       lai_source = lai_source, lai_max = lai_max, ewm = ewm_values,
+       ewm_source = ewm_source)
 }
 
 #' Detect reference years from E-OBS for an AOI (spec 027 L2 / 034)

@@ -812,3 +812,156 @@ test_that(".regen_cleanup_status removes the status file but spares engine.log",
     expect_true(file.exists(file.path(d, "engine.log")))   # post-mortem préservé
   })
 })
+
+# --- spec 035 B4 : lisibilité des overrides ----------------------------------
+# Le moteur doit remonter ce qu'il a RÉELLEMENT utilisé (lai_max par UGF, réserve
+# utile par UGF) : sans ça rien ne distingue à l'écran une valeur spatialisée d'un
+# scalaire, et le repli SoilGrids → sol uniforme reste invisible.
+
+.fake_soil <- function(ewm) structure(list(ewm = ewm), class = "biljou_soil")
+
+test_that("engine returns the per-unit lai_max and ewm it actually used", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p); .stub_pai_cache(p)
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE, .ntfy_config = function() NULL,
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      lai_max_depuis_pai = function(units, pai, ...) c(2.8, 4.1, 6.3),
+      # SoilGrids joignable → liste nommée par id d'UGF.
+      build_biljou_soil = function(units = NULL, source = "uniform", ...) {
+        stats::setNames(lapply(c(90, 137, 210), .fake_soil), as.character(1:3))
+      },
+      regen_bilan_hydrique = function(units, ...) { units$njstress <- 1; units },
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(3), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_equal(out$lai_max, c(2.8, 4.1, 6.3))
+    expect_equal(unname(out$ewm), c(90, 137, 210))
+    expect_equal(out$ewm_source, "soilgrids")
+    expect_length(out$warnings, 0L)
+  })
+})
+
+test_that("a silent SoilGrids fallback becomes a warning and a log entry", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p)
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE, .ntfy_config = function() NULL,
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      # files.isric.org injoignable : le cœur retombe sur UN objet biljou_soil.
+      build_biljou_soil = function(units = NULL, ...) .fake_soil(150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(3), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    expect_equal(out$ewm_source, "soilgrids_fallback")
+    expect_true(any(grepl("SoilGrids", out$warnings)))
+    log <- nemetonshiny:::.regen_read_log(p)
+    expect_true(any(log$source == "soilgrids" & log$level == "warning"))
+  })
+})
+
+test_that("a forced ewm is reported as uniform, with no fallback warning", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p)
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE, .ntfy_config = function() NULL,
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ewm = 150, ...) .fake_soil(ewm),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    out <- nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran",
+                 ewm = 150))
+
+    expect_equal(out$ewm_source, "uniform")   # choix explicite, pas un repli
+    expect_false(any(grepl("SoilGrids", out$warnings)))
+  })
+})
+
+test_that("engine does not leak assignments outside its frame (tryCatch scope)", {
+  # `<<-` dans le BLOC d'un tryCatch() (évalué dans le frame appelant) écrirait
+  # dans l'environnement du package, pas dans la fonction. Garde-fou de régression.
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    p <- getwd(); .make_lidar_grid(p)
+    testthat::local_mocked_bindings(
+      regen_cds_credentials_ready = function() TRUE, .ntfy_config = function() NULL,
+      .package = "nemetonshiny")
+    testthat::local_mocked_bindings(
+      regen_sensibilite = function(units, ...) { units$sensibilite <- 1; units },
+      load_biljou_forcing = function(aoi, years, ...) data.frame(year = 2018),
+      build_biljou_soil = function(units = NULL, ...) .fake_soil(150),
+      regen_bilan_hydrique = function(units, ...) units,
+      .package = "nemeton")
+
+    nemetonshiny:::run_regeneration_engine(.engine_units(2), p,
+      cfg = list(year_moyenne = 2018, year_canicule = 2022, forcing = "safran"))
+
+    ns <- asNamespace("nemetonshiny")
+    expect_false(exists("ewm_values", envir = ns, inherits = FALSE))
+    expect_false(exists("ewm_source", envir = ns, inherits = FALSE))
+  })
+})
+
+test_that(".regen_derived_stats summarises a per-unit vector, NULL on a scalar", {
+  st <- nemetonshiny:::.regen_derived_stats(c(2.8, 4.0, 4.2, 6.3))
+  expect_equal(st$median, "4.1")
+  expect_equal(st$min, "2.8")
+  expect_equal(st$max, "6.3")
+  expect_equal(st$n, 4L)
+
+  expect_equal(nemetonshiny:::.regen_derived_stats(c(90, 137, 210), digits = 0)$median, "137")
+
+  expect_null(nemetonshiny:::.regen_derived_stats(5))          # scalaire : rien à montrer
+  expect_null(nemetonshiny:::.regen_derived_stats(NULL))
+  expect_null(nemetonshiny:::.regen_derived_stats(c(NA, NA)))
+  expect_null(nemetonshiny:::.regen_derived_stats(c(3, NA)))    # une seule valeur finie
+})
+
+test_that(".regen_soil_ewm reads the soil shape without ever throwing", {
+  # Liste de biljou_soil de longueur n → réserve utile par UGF (SoilGrids).
+  sg <- nemetonshiny:::.regen_soil_ewm(
+    stats::setNames(lapply(c(90, 137), .fake_soil), c("1", "2")), n = 2)
+  expect_equal(unname(sg$values), c(90, 137))
+  expect_equal(sg$source, "soilgrids")
+
+  # Objet unique sans override → repli silencieux de SoilGrids.
+  fb <- nemetonshiny:::.regen_soil_ewm(.fake_soil(150), n = 3, forced = FALSE)
+  expect_equal(fb$source, "soilgrids_fallback")
+  expect_equal(fb$values, 150)
+
+  # Objet unique avec override → choix explicite de l'utilisateur.
+  expect_equal(nemetonshiny:::.regen_soil_ewm(.fake_soil(150), n = 3, forced = TRUE)$source,
+               "uniform")
+
+  # Formes inattendues : `source` NA, jamais d'erreur. Une lecture purement
+  # informative ne doit pas faire tomber le bilan hydrique (régression réelle :
+  # `list(ewm = 150)` faisait lever `$` sur un atomique).
+  for (weird in list(list(ewm = 150), NULL, 42, list(), list("a", "b"))) {
+    got <- expect_no_error(nemetonshiny:::.regen_soil_ewm(weird, n = 2))
+    expect_true(is.na(got$source))
+    expect_null(got$values)
+  }
+
+  # Longueur qui ne correspond pas au nombre d'UGF → refus (pas d'indexation fausse).
+  mismatched <- lapply(c(90, 137), .fake_soil)
+  expect_true(is.na(nemetonshiny:::.regen_soil_ewm(mismatched, n = 5)$source))
+})
