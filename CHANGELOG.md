@@ -12,6 +12,19 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.101.4\] - 2026-07-10
+
+### Fixed
+
+- reGénération : la carte « Contexte régional (E-OBS) » était toujours
+  vide. `load_regeneration_precomputed()` lisait `eobs_{tx,rr}.tif`
+  (jamais écrits) au lieu du NetCDF caché sous
+  `cache/regeneration/eobs/`, et la carte bivariée exige `tx` **et**
+  `rr` alors que seule `tx` est rapatriée. Lecture des `.nc` cachés via
+  `load_eobs_source(nc = )` (aucun CDS au rendu), bandeau explicatif et
+  bouton opt-in pour télécharger la série de précipitations (~800 Mo) en
+  tâche de fond.
+
 ## \[0.101.3\] - 2026-07-10
 
 ### Fixed

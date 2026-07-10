@@ -2,6 +2,35 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.101.4
+
+#### Fixed — reGénération : la carte « Contexte régional (E-OBS) » était toujours vide
+
+- La carte de contexte n’a **jamais** pu s’afficher. Deux causes
+  cumulées. D’abord, `load_regeneration_precomputed()` cherche
+  `eobs_tx.tif` / `eobs_rr.tif`, des fichiers **qu’aucun code n’écrit**
+  : la vraie donnée est un NetCDF déposé par « Auto (E-OBS) » sous
+  `cache/regeneration/eobs/`. Même famille que le bug `pc$eobs` corrigé
+  en v0.101.0 — la clé lue n’est pas celle qui est écrite. Ensuite,
+  [`nemeton::tendances_estivales_eobs()`](https://pobsteta.github.io/nemeton/reference/tendances_estivales_eobs.html)
+  est **bivariée** : elle exige la série des températures maximales
+  (`tx`) **et** celle des précipitations (`rr`), or « Auto (E-OBS) » ne
+  rapatrie que `tx`. Le cœur levait, `tryCatch` renvoyait `NULL`, la
+  carte s’affichait nue, sans explication.
+- `regeneration_context_eobs()` lit désormais les NetCDF réellement
+  cachés via `nemeton::load_eobs_source(nc = )` — lecture disque,
+  **jamais** de requête CDS au rendu d’un onglet. Un bandeau indique ce
+  qui manque et propose, quand seule `rr` fait défaut, un **bouton
+  opt-in** « Télécharger les précipitations (~800 Mo) » lancé en tâche
+  de fond (`ExtendedTask`). La carte se re-rend seule à la fin du
+  téléchargement.
+- Nouveaux helpers `regen_eobs_cached_nc()`,
+  `regen_context_availability()`, `regen_fetch_eobs_rr()`. Clés i18n
+  `regen_context_need_tx`, `regen_context_need_rr`,
+  `regen_eobs_rr_fetch`, `regen_eobs_rr_running`,
+  `regen_eobs_rr_running_short`, `regen_eobs_rr_done`,
+  `regen_eobs_rr_failed`.
+
 ## nemetonshiny 0.101.3
 
 #### Fixed — reGénération : l’ouverture d’un projet gelait l’application (~190 s)

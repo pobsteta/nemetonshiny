@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,16 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.101.4" id="nemetonshiny-01014">nemetonshiny 0.101.4<a class="anchor" aria-label="anchor" href="#nemetonshiny-01014"></a></h2>
+<div class="section level4">
+<h4 id="fixed--regénération--la-carte--contexte-régional-e-obs--était-toujours-vide-0-101-4">Fixed — reGénération : la carte « Contexte régional (E-OBS) » était toujours vide<a class="anchor" aria-label="anchor" href="#fixed--reg%C3%A9n%C3%A9ration--la-carte--contexte-r%C3%A9gional-e-obs--%C3%A9tait-toujours-vide-0-101-4"></a></h4>
+<ul><li>La carte de contexte n’a <strong>jamais</strong> pu s’afficher. Deux causes cumulées. D’abord, <code>load_regeneration_precomputed()</code> cherche <code>eobs_tx.tif</code> / <code>eobs_rr.tif</code>, des fichiers <strong>qu’aucun code n’écrit</strong> : la vraie donnée est un NetCDF déposé par « Auto (E-OBS) » sous <code>cache/regeneration/eobs/</code>. Même famille que le bug <code>pc$eobs</code> corrigé en v0.101.0 — la clé lue n’est pas celle qui est écrite. Ensuite, <code><a href="https://pobsteta.github.io/nemeton/reference/tendances_estivales_eobs.html" class="external-link">nemeton::tendances_estivales_eobs()</a></code> est <strong>bivariée</strong> : elle exige la série des températures maximales (<code>tx</code>) <strong>et</strong> celle des précipitations (<code>rr</code>), or « Auto (E-OBS) » ne rapatrie que <code>tx</code>. Le cœur levait, <code>tryCatch</code> renvoyait <code>NULL</code>, la carte s’affichait nue, sans explication.</li>
+<li>
+<code>regeneration_context_eobs()</code> lit désormais les NetCDF réellement cachés via <code>nemeton::load_eobs_source(nc = )</code> — lecture disque, <strong>jamais</strong> de requête CDS au rendu d’un onglet. Un bandeau indique ce qui manque et propose, quand seule <code>rr</code> fait défaut, un <strong>bouton opt-in</strong> « Télécharger les précipitations (~800 Mo) » lancé en tâche de fond (<code>ExtendedTask</code>). La carte se re-rend seule à la fin du téléchargement.</li>
+<li>Nouveaux helpers <code>regen_eobs_cached_nc()</code>, <code>regen_context_availability()</code>, <code>regen_fetch_eobs_rr()</code>. Clés i18n <code>regen_context_need_tx</code>, <code>regen_context_need_rr</code>, <code>regen_eobs_rr_fetch</code>, <code>regen_eobs_rr_running</code>, <code>regen_eobs_rr_running_short</code>, <code>regen_eobs_rr_done</code>, <code>regen_eobs_rr_failed</code>.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.101.3" id="nemetonshiny-01013">nemetonshiny 0.101.3<a class="anchor" aria-label="anchor" href="#nemetonshiny-01013"></a></h2>
