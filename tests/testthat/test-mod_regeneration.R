@@ -215,7 +215,9 @@ test_that("opening a project with a cached biljou restores the result", {
 
   units <- .regen_mod_units(3)
   proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
-  as <- shiny::reactiveValues(current_project = proj)
+  # La restauration est différée à l'entrée dans l'onglet reGénération : simuler
+  # l'onglet actif, sinon l'observateur B ne se déclenche pas.
+  as <- shiny::reactiveValues(current_project = proj, active_main_tab = "regeneration")
 
   called <- new.env(); called$pc <- NULL; called$heavy <- FALSE
   testthat::local_mocked_bindings(
@@ -264,7 +266,9 @@ test_that("opening a project without a regeneration cache runs nothing", {
 
   units <- .regen_mod_units(2)
   proj <- list(id = "p2", path = withr::local_tempdir(), indicators_sf = units)
-  as <- shiny::reactiveValues(current_project = proj)
+  # Onglet reGénération actif : on teste vraiment la branche « pas de cache »,
+  # pas seulement le fait d'être hors onglet.
+  as <- shiny::reactiveValues(current_project = proj, active_main_tab = "regeneration")
 
   ran <- new.env(); ran$hit <- FALSE
   testthat::local_mocked_bindings(
@@ -283,6 +287,7 @@ test_that("opening a project without a regeneration cache runs nothing", {
     {
       session$setInputs(forest_type = "feuillu", year_moyenne = NA,
                         year_canicule = NA, lai_max = NA, species = "")
+      later::run_now()
       expect_false(ran$hit)          # aucune restauration ni analyse à vide
       expect_null(rv$result)
       expect_equal(rv$warnings, character(0))
@@ -297,7 +302,8 @@ test_that("switching to a project without cache clears the previous choropleth",
                    indicators_sf = .regen_mod_units(3))
   virgin   <- list(id = "p2", path = withr::local_tempdir(),
                    indicators_sf = .regen_mod_units(2))
-  as <- shiny::reactiveValues(current_project = analysed)
+  as <- shiny::reactiveValues(current_project = analysed,
+                              active_main_tab = "regeneration")
 
   testthat::local_mocked_bindings(
     get_app_options = function() list(language = "fr"),
@@ -317,10 +323,12 @@ test_that("switching to a project without cache clears the previous choropleth",
     {
       session$setInputs(forest_type = "feuillu", year_moyenne = 2018,
                         year_canicule = 2022, lai_max = NA, species = "")
+      later::run_now()                      # restauration différée (later)
       expect_equal(nrow(rv$result), 3)      # projet analysé : restauré
 
       as$current_project <- virgin
       session$flushReact()
+      later::run_now()
       expect_null(rv$result)                # projet vierge : choroplèthe purgé
       expect_null(as$regeneration_result)
     }
