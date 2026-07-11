@@ -328,7 +328,10 @@ mod_regeneration_ui <- function(id) {
             position = "right", open = "always", width = 260,
             htmltools::tags$strong(i18n$t("regen_buffer")),
             shiny::numericInput(ns("buffer_km"), NULL,
-              value = 25, min = 5, max = 100, step = 5)
+              value = 25, min = 5, max = 100, step = 5),
+            htmltools::tags$strong(i18n$t("regen_context_opacity")),
+            shiny::sliderInput(ns("context_opacity"), NULL,
+              min = 0, max = 1, value = 0.8, step = 0.05, ticks = FALSE)
           ),
           shiny::uiOutput(ns("context_status")),
           leaflet::leafletOutput(ns("context_map"), height = "70vh")
@@ -370,7 +373,15 @@ mod_regeneration_server <- function(id, app_state) {
       # Chrono des boutons async (spec 027 feedback) : instant de départ, remis
       # à NULL à la fin de la tâche. NULL = pas de run en cours.
       engine_running = FALSE, eobs_running = FALSE,
-      engine_start = NULL, eobs_start = NULL
+      engine_start = NULL, eobs_start = NULL,
+      # Chrono du téléchargement des précipitations E-OBS (~800 Mo) : notif
+      # persistante « engrenage + MM:SS » tant que la tâche tourne.
+      eobs_rr_running = FALSE, eobs_rr_start = NULL,
+      # Restauration différée à l'entrée dans l'onglet reGénération (et non à
+      # l'ouverture du projet) : un changement de projet/UGF pose ce drapeau ;
+      # l'observer de restauration ne le consomme (toast + relecture cache) que
+      # lorsque l'onglet reGénération est actif.
+      regen_needs_restore = FALSE
     )
 
     # UGF units of the current project (EPSG:2154), with the same geometry
@@ -409,29 +420,44 @@ mod_regeneration_server <- function(id, app_state) {
     # Déclenché sur (projet, unités) : le projet est posé avant les géométries,
     # donc un observateur sur le seul `current_project` verrait `units_sf()` NULL
     # et n'aurait aucune occasion de réessayer.
+    # (A) Observateur DONNÉES — tout onglet. Un changement de projet (ou d'UGF)
+    # purge le résultat précédent (sinon le choroplèthe d'un projet resterait à
+    # l'écran, et mod_synthesis lirait une reGénération périmée) et pose le
+    # drapeau « à restaurer ». AUCUN toast, AUCUNE relecture ici : la
+    # restauration est différée à l'entrée dans l'onglet reGénération (obs. B).
     shiny::observeEvent(list(app_state$current_project, units_sf()), {
-      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
-      if (is.null(project_path)) return()
-
-      # Purger d'abord : sans ça, passer d'un projet analysé à un projet vierge
-      # laisserait le choroplèthe du précédent à l'écran.
       rv$result <- NULL
       rv$lai_source <- NA_character_
       app_state$regeneration_result <- NULL
+      rv$regen_needs_restore <- TRUE
+    }, ignoreNULL = FALSE)
+
+    # (B) Observateur RESTAURATION — uniquement quand l'onglet reGénération est
+    # actif. C'est ici — et pas à l'ouverture du projet — que le toast « en bas »
+    # s'affiche et que le cache disque est relu. Déclenché par l'activation de
+    # l'onglet OU par un nouveau drapeau (changement de projet/UGF pendant qu'on
+    # est déjà sur l'onglet). Le drapeau est consommé (une seule tentative) pour
+    # ne pas re-toaster à chaque aller-retour d'onglet.
+    shiny::observeEvent(list(app_state$active_main_tab, rv$regen_needs_restore), {
+      if (!identical(app_state$active_main_tab, "regeneration")) return()
+      if (!isTRUE(rv$regen_needs_restore)) return()
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(project_path)) return()
+      units <- units_sf()
+      if (is.null(units)) return()
+
+      rv$regen_needs_restore <- FALSE   # consommer : une seule tentative
 
       pc <- load_regeneration_precomputed(project_path)
       # Ne restaurer que si une sortie de MOTEUR existe : `dem` / `eobs_*` seuls
       # ne produisent aucun indice, et une restauration à vide n'affiche rien.
       if (is.null(pc$biljou) && is.null(pc$sensibilite)) return()
 
-      units <- units_sf()
-      if (is.null(units)) return()
-
       # Retour visuel « en bas » (parité Suivi sanitaire) : la restauration +
-      # le rendu des cartes prennent un temps perceptible à l'ouverture d'un
-      # projet récent. On peint le toast MAINTENANT, puis on diffère le travail
-      # synchrone d'un tick (`later`) pour qu'il s'affiche AVANT le calcul —
-      # sinon show + remove tomberaient dans le même flush Shiny (invisibles).
+      # le rendu des cartes prennent un temps perceptible. On peint le toast
+      # MAINTENANT, puis on diffère le travail synchrone d'un tick (`later`) pour
+      # qu'il s'affiche AVANT le calcul — sinon show + remove tomberaient dans le
+      # même flush Shiny (invisibles).
       nid <- session$ns("regen_restore_notif")
       shiny::showNotification(i18n$t("regen_restore_loading"), id = nid,
                               duration = NULL, type = "message")
@@ -450,7 +476,7 @@ mod_regeneration_server <- function(id, app_state) {
         }
         try(shiny::removeNotification(nid, session = session), silent = TRUE)
       }, delay = 0.05)
-    }, ignoreNULL = TRUE, ignoreInit = FALSE)
+    }, ignoreNULL = FALSE)
 
     # Populate the optional target-species selector from the core
     # (nemeton::regen_species_choices). Réactif à l'AOI : les essences présentes
@@ -713,12 +739,35 @@ mod_regeneration_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
         return()
       }
-      shiny::showNotification(i18n$t("regen_eobs_rr_running"), type = "message", duration = 8)
+      # Notif persistante « engrenage qui tourne + chrono MM:SS » (cadre unifié
+      # partagé avec les moteurs) : le téléchargement (~800 Mo, CDS) dure
+      # plusieurs minutes. Retirée en fin de tâche par l'observer de statut.
+      rv$eobs_rr_running <- TRUE
+      rv$eobs_rr_start <- Sys.time()
+      shiny::showNotification(
+        .running_notif_content(i18n$t("regen_eobs_rr_running"), rv$eobs_rr_start),
+        id = session$ns("eobs_rr_notif"), type = "message", duration = NULL)
       eobs_rr_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
+    })
+
+    # Tick 1 s : rafraîchit le chrono de la notif de téléchargement `rr` (même id
+    # → Shiny remplace le contenu en place) tant que la tâche tourne.
+    shiny::observe({
+      if (!isTRUE(rv$eobs_rr_running)) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .running_notif_content(i18n$t("regen_eobs_rr_running"),
+                               shiny::isolate(rv$eobs_rr_start)),
+        id = session$ns("eobs_rr_notif"), type = "message", duration = NULL)
     })
 
     shiny::observeEvent(eobs_rr_task$status(), {
       st <- eobs_rr_task$status()
+      if (identical(st, "success") || identical(st, "error")) {
+        rv$eobs_rr_running <- FALSE
+        rv$eobs_rr_start <- NULL
+        shiny::removeNotification(session$ns("eobs_rr_notif"))
+      }
       if (identical(st, "success")) {
         ok <- tryCatch(eobs_rr_task$result(), error = function(e) FALSE)
         if (isTRUE(ok)) {
@@ -1137,22 +1186,52 @@ mod_regeneration_server <- function(id, app_state) {
       )
     })
 
+    # Fond STABLE (parité cartes principales) : OSM/Satellite + contrôle de
+    # couches + emprise UGF en BLEU. Ne dépend que du cadrage (units) : le buffer,
+    # le refresh `rr` et l'opacité NE réinitialisent PLUS le zoom — ils passent
+    # par le proxy ci-dessous. La couche E-OBS est un semis de POINTS (centres de
+    # mailles E-OBS ~11 km, classe bivariée température × précipitation), pas un
+    # raster : l'opacité règle donc l'opacité de ces points.
     output$context_map <- leaflet::renderLeaflet({
       units <- units_sf()
       shiny::req(units)
-      rv$context_refresh                       # re-rend après acquisition de `rr`
+      geo <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
+      m <- leaflet::leaflet() |>
+        leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
+        leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        leaflet::addPolygons(data = geo, group = "UGF", weight = 1.5,
+          color = "#1f6feb", fillColor = "#1f6feb", fillOpacity = 0.10) |>
+        leaflet::addLayersControl(
+          baseGroups    = c("OSM", "Satellite"),
+          overlayGroups = c("UGF", "E-OBS"),
+          options       = leaflet::layersControlOptions(collapsed = TRUE))
+      bb <- tryCatch(as.numeric(sf::st_bbox(geo)), error = function(e) NULL)
+      if (!is.null(bb) && all(is.finite(bb))) {
+        m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
+      }
+      m
+    })
+
+    # Semis E-OBS via proxy : réagit au buffer, au refresh (acquisition `rr`) et
+    # au curseur d'opacité, sans reconstruire le fond ni perdre le zoom.
+    shiny::observe({
+      units <- units_sf()
+      shiny::req(units)
+      rv$context_refresh
+      op <- input$context_opacity %||% 0.8
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       cells <- regeneration_context_eobs(
         units, precomputed = load_regeneration_precomputed(project_path),
         buffer_m = (input$buffer_km %||% 25) * 1000,
         project_path = project_path)
-      m <- leaflet::leaflet() |> leaflet::addTiles()
-      if (is.null(cells) || !inherits(cells, "sf") || nrow(cells) == 0) return(m)
+      proxy <- leaflet::leafletProxy("context_map") |> leaflet::clearGroup("E-OBS")
+      if (is.null(cells) || !inherits(cells, "sf") || nrow(cells) == 0) return()
       geo <- tryCatch(sf::st_transform(cells, 4326), error = function(e) cells)
       cls <- if ("classe_bivariee" %in% names(cells)) as.numeric(cells$classe_bivariee) else rep(5, nrow(cells))
       pal <- leaflet::colorNumeric("viridis", domain = c(1, 9), na.color = "#ccc")
-      m |> leaflet::addCircleMarkers(data = geo, radius = 4, stroke = FALSE,
-        fillColor = pal(cls), fillOpacity = 0.8)
+      proxy |> leaflet::addCircleMarkers(data = geo, group = "E-OBS", radius = 7,
+        stroke = TRUE, weight = 1, color = "#333",
+        fillColor = pal(cls), fillOpacity = op)
     })
 
     output$table <- DT::renderDataTable({

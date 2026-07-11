@@ -1,5 +1,29 @@
 # nemetonshiny (development version)
 
+### Fixed — reGénération : le toast de chargement ne s'affiche qu'en onglet reGénération
+
+- Le toast « Chargement des cartes reGénération… » apparaissait dès l'ouverture
+  d'un projet récent, même depuis l'onglet Sélection. La restauration (relecture
+  du cache + toast) est désormais **différée à l'activation de l'onglet
+  reGénération** : un changement de projet/UGF purge le résultat précédent (tout
+  onglet, pour ne pas laisser un choroplèthe périmé) et pose un drapeau, que
+  l'observateur ne consomme que lorsque l'onglet reGénération est actif.
+
+### Changed — reGénération : téléchargement des précipitations avec chrono
+
+- Le téléchargement de la série E-OBS de précipitations (~800 Mo, plusieurs
+  minutes) affiche désormais une notification persistante « engrenage qui tourne
+  + chronomètre MM:SS » (cadre unifié partagé avec les moteurs), retirée en fin
+  de tâche — au lieu d'un simple message fugace.
+
+### Changed — reGénération : carte « Contexte régional (E-OBS) » enrichie
+
+- La carte de contexte gagne le choix de fond **OSM / Satellite** (contrôle de
+  couches), l'**emprise des UGF en bleu**, et un **curseur d'opacité** pour le
+  semis E-OBS. Le semis (centres de mailles E-OBS ~11 km, classe bivariée
+  température × précipitation — un semis de POINTS, pas un raster) passe par un
+  proxy Leaflet : changer le buffer ou l'opacité ne réinitialise plus le zoom.
+
 # nemetonshiny 0.102.5
 
 ### Changed — reGénération : « Buffer contexte régional » en sidebar droite

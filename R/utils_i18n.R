@@ -4124,6 +4124,7 @@ TRANSLATIONS <- list(
   regen_run_hydric_only = list(fr = "Bilan hydrique seul (rapide)", en = "Water balance only (fast)"),
   regen_running = list(fr = "Analyse reG\u00e9n\u00e9ration en cours\u2026", en = "reGeneration analysis running\u2026"),
   regen_restore_loading = list(fr = "Chargement des cartes reG\u00e9n\u00e9ration\u2026", en = "Loading reGeneration maps\u2026"),
+  regen_context_opacity = list(fr = "Opacit\u00e9 E-OBS", en = "E-OBS opacity"),
   regen_run_done = list(fr = "Analyse reG\u00e9n\u00e9ration termin\u00e9e", en = "reGeneration analysis complete"),
   regen_run_done_warn = list(fr = "Analyse termin\u00e9e avec %d avertissement(s) \u2014 voir le bandeau.", en = "Analysis complete with %d warning(s) \u2014 see the banner."),
   regen_guard_sensibilite = list(fr = "Sensibilit\u00e9 microclimatique non calcul\u00e9e : fournissez une sortie microclimf via le cache du projet (precomputed), ou activez le moteur (entr\u00e9es LiDAR).", en = "Microclimatic sensitivity not computed: provide a microclimf output via the project cache (precomputed), or enable the engine (LiDAR inputs)."),
