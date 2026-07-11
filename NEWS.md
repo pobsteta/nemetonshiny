@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.102.5
+
 ### Changed — reGénération : « Buffer contexte régional » en sidebar droite
 
 - Le champ « Buffer contexte régional » (rayon, 25 km par défaut) passe dans une
