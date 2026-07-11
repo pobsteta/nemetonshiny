@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.102.3
+
 ### Added — reGénération : indicateur de chargement à l'ouverture d'un projet
 
 - À l'ouverture d'un projet récent déjà analysé, la restauration des cartes
