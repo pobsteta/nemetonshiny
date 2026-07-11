@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.103.0
+
 ### Fixed — reGénération : le toast de chargement ne s'affiche qu'en onglet reGénération
 
 - Le toast « Chargement des cartes reGénération… » apparaissait dès l'ouverture
