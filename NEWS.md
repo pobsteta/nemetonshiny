@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.102.4
+
 ### Fixed — commune : plus de flicker « … → Sélectionner une commune → … »
 
 - À l'ouverture d'un projet, la commune restaurée (ex. « Loury ») disparaissait
