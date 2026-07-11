@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.102.2
+
 ### Changed — reGénération : champ « Type de peuplement » clarifié
 
 - Un tooltip « i » explique que le choix Feuillu/Résineux fixe la **phénologie**
