@@ -92,6 +92,25 @@ test_that("project_is_readonly reads the single readonly flag defensively", {
   expect_false(project_is_readonly(list(readonly = NA)))
 })
 
+test_that("deny_if_readonly gates and warns only when read-only", {
+  # Single guard every module puts atop a mutating observeEvent. Mock the toast
+  # (no reactive domain here) and i18n so we assert the gate, not the wording.
+  shown <- new.env(); shown$n <- 0L
+  testthat::local_mocked_bindings(
+    get_i18n = function(lang) list(t = function(k) k), .package = "nemetonshiny")
+  testthat::local_mocked_bindings(
+    showNotification = function(...) { shown$n <- shown$n + 1L; invisible() },
+    .package = "shiny")
+
+  # Editable -> no gate, no toast.
+  expect_false(deny_if_readonly(list(readonly = FALSE)))
+  expect_identical(shown$n, 0L)
+
+  # Read-only -> gate (TRUE) and exactly one toast; i18n resolved from language.
+  expect_true(deny_if_readonly(list(readonly = TRUE, language = "fr")))
+  expect_identical(shown$n, 1L)
+})
+
 # --- 3. Real lifecycle against a live Postgres ------------------------------
 
 test_that("full lock lifecycle behaves against a live database", {

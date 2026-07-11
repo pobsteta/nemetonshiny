@@ -10,6 +10,29 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.102.0] - 2026-07-11
+
+### Added
+
+- Verrou d'édition de projet pour le déploiement serveur multi-utilisateurs :
+  le premier utilisateur qui ouvre un projet l'édite, les suivants l'ouvrent en
+  lecture seule. Enveloppe app `R/service_lock.R` sur l'API cœur
+  `nemeton (>= 0.148.0)` (`project_lock_acquire`/`heartbeat`/`release`/`status`,
+  table `nemeton.project_lock`, TTL 120 s). Cycle de vie piloté par `app_server`
+  sur `app_state$project_id` (acquisition, heartbeat 45 s, relâche à la fermeture
+  et en fin de session). Identité = email OAuth ; anonyme = lecture seule.
+- Bandeau lecture seule global et garde partagé `deny_if_readonly(app_state)` sur
+  toutes les actions mutantes : reGénération, projet (SUFOSAT/LST, suppression),
+  calcul des indicateurs, ingestion terrain + validation sanitaire,
+  échantillonnage, édition des UGF (16 actions), plan d'action (fusionné avec la
+  permission de rôle existante). 6 clés i18n FR/EN `lock_*`.
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.148.0)`.
+- `nemeton::db_migrate()` (idempotent) appelé à l'initialisation du schéma pour
+  créer la table de verrou sur la base plateforme.
+
 ## [0.101.4] - 2026-07-10
 
 ### Fixed

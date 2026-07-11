@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.102.0
+
 ### Added — verrou d'édition de projet (serveur multi-utilisateurs)
 
 - L'application est désormais destinée à tourner sur un serveur avec droits
@@ -20,10 +22,18 @@
   `isolate`). L'identité stable est l'**email OAuth** : un utilisateur anonyme
   (sans email) n'obtient jamais de verrou et travaille en lecture seule.
 - Un **bandeau** en tête signale l'état lecture seule (tenu par un autre
-  utilisateur, ou anonyme). Dans le module reGénération — implémentation de
-  référence du garde — chaque action mutante (lancer l'analyse, moteur E-OBS,
-  recalcul PAI, enregistrement DB) est court-circuitée par `deny_if_readonly()`
-  avec un toast d'avertissement. i18n FR/EN (6 nouvelles clés `lock_*`).
+  utilisateur, ou anonyme). **Toutes** les actions mutantes de l'app sont
+  court-circuitées par le garde partagé `deny_if_readonly(app_state)` (toast
+  d'avertissement) : reGénération (analyse, moteur E-OBS, recalcul PAI,
+  enregistrement DB), projet (sauvegarde SUFOSAT/LST, suppression), calcul des
+  indicateurs (`mod_home` : lancer/recalculer), ingestion terrain et validation
+  sanitaire (`mod_field_ingest`), échantillonnage (`mod_sampling`,
+  `mod_validation_sampling`), et l'édition des UGF (`mod_ug` : créer, déplacer,
+  fusionner, découper, renommer, grouper, importer, annuler — 16 actions). Le
+  plan d'action (`mod_action_plan`) combine désormais sa permission de rôle
+  existante **et** le verrou projet dans le même garde. Les actions de lecture
+  (navigation, sélection carte, aperçus, analyse CV) restent libres. i18n FR/EN
+  (6 nouvelles clés `lock_*`).
 - Plancher `Imports: nemeton (>= 0.148.0)`. La table de verrou est créée par
   `nemeton::db_migrate()`, appelé (idempotent) à l'initialisation du schéma.
 

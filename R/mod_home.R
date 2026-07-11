@@ -1023,6 +1023,7 @@ mod_home_server <- function(id, app_state) {
 
     # Start computation handler - show confirmation modal (T088)
     shiny::observeEvent(input$start_compute, {
+      if (deny_if_readonly(app_state)) return()
       project <- app_state$current_project
       shiny::req(project)
 
@@ -1073,6 +1074,7 @@ mod_home_server <- function(id, app_state) {
 
     # Confirmed computation handler
     shiny::observeEvent(input$confirm_compute, {
+      if (deny_if_readonly(app_state)) return()
       shiny::removeModal()
 
       project <- app_state$current_project
@@ -1371,6 +1373,7 @@ mod_home_server <- function(id, app_state) {
 
     # Recompute handler
     shiny::observeEvent(input$recompute, {
+      if (deny_if_readonly(app_state)) return()
       project <- app_state$current_project
       shiny::req(project)
       i18n <- get_i18n(app_state$language %||% "fr")

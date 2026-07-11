@@ -329,15 +329,10 @@ mod_regeneration_server <- function(id, app_state) {
     ns <- session$ns
     i18n <- get_i18n(get_app_options()$language %||% "fr")
 
-    # Verrou projet (serveur multi-utilisateurs) : refuse toute action mutante
-    # quand le projet est ouvert en lecture seule (verrou d'autrui, ou anonyme).
-    # Retourne TRUE quand l'action doit être annulée. Patron aligné sur
-    # mod_action_plan::deny_if_readonly().
-    deny_if_readonly <- function() {
-      if (!project_is_readonly(app_state)) return(FALSE)
-      shiny::showNotification(i18n$t("lock_readonly_action"), type = "warning", duration = 5)
-      TRUE
-    }
+    # Verrou projet (serveur multi-utilisateurs) : chaque action mutante est
+    # gardée par `deny_if_readonly(app_state, i18n)` (helper partagé, R/service_lock.R)
+    # qui refuse l'action et prévient l'utilisateur quand le projet est ouvert en
+    # lecture seule (verrou d'autrui, ou anonyme).
 
     rv <- shiny::reactiveValues(
       result = NULL, years = NULL, warnings = character(0),
@@ -518,7 +513,7 @@ mod_regeneration_server <- function(id, app_state) {
 
     # --- Run --------------------------------------------------------------
     shiny::observeEvent(input$run, {
-      if (deny_if_readonly()) return()
+      if (deny_if_readonly(app_state, i18n)) return()
       units <- units_sf()
       if (is.null(units)) {
         shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
@@ -655,7 +650,7 @@ mod_regeneration_server <- function(id, app_state) {
     bslib::bind_task_button(eobs_rr_task, "fetch_eobs_rr")
 
     shiny::observeEvent(input$fetch_eobs_rr, {
-      if (deny_if_readonly()) {
+      if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("fetch_eobs_rr", state = "ready")
         return()
       }
@@ -692,7 +687,7 @@ mod_regeneration_server <- function(id, app_state) {
     # cache/regeneration/pai.tif → le prochain run recalcule la structure de
     # végétation depuis le nuage LiDAR. Sans effet si le fichier n'existe pas.
     shiny::observeEvent(input$recompute_pai, {
-      if (deny_if_readonly()) return()
+      if (deny_if_readonly(app_state, i18n)) return()
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(project_path)) return()
       f <- file.path(project_path, "cache", "regeneration", "pai.tif")
@@ -703,7 +698,7 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$run_engine, {
-      if (deny_if_readonly()) {
+      if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("run_engine", state = "ready")
         return()
       }
@@ -1163,7 +1158,7 @@ mod_regeneration_server <- function(id, app_state) {
 
     # --- Persistance versionnée en base (§6A) -----------------------------
     shiny::observeEvent(input$persist_db, {
-      if (deny_if_readonly()) return()
+      if (deny_if_readonly(app_state, i18n)) return()
       res <- rv$result
       if (is.null(res)) {
         shiny::showNotification(i18n$t("regen_export_empty"), type = "warning")

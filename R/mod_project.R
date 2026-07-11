@@ -326,6 +326,7 @@ mod_project_server <- function(id, app_state, selected_parcels,
     })
 
     shiny::observeEvent(input$sufosat_save, {
+      if (deny_if_readonly(app_state)) return()
       pid <- rv$editing_project_id
       if (is.null(pid)) {
         shiny::showNotification(i18n$t("foret_ancienne_need_project"),
@@ -408,6 +409,7 @@ mod_project_server <- function(id, app_state, selected_parcels,
     })
 
     shiny::observeEvent(input$lst_save, {
+      if (deny_if_readonly(app_state)) return()
       pid <- rv$editing_project_id
       if (is.null(pid)) {
         shiny::showNotification(i18n$t("foret_ancienne_need_project"),
@@ -728,6 +730,7 @@ mod_project_server <- function(id, app_state, selected_parcels,
     # ========================================
 
     shiny::observeEvent(input$delete_project, {
+      if (deny_if_readonly(app_state)) return()
       shiny::showModal(shiny::modalDialog(
         title = htmltools::div(
           class = "text-danger",
@@ -748,6 +751,7 @@ mod_project_server <- function(id, app_state, selected_parcels,
     })
 
     shiny::observeEvent(input$confirm_delete_project, {
+      if (deny_if_readonly(app_state)) return()
       shiny::removeModal()
 
       tryCatch({

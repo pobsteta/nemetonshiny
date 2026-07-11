@@ -622,6 +622,7 @@ mod_sampling_server <- function(id, app_state) {
 
     # --- Generate plots on click -------------------------------------
     shiny::observeEvent(input$generate, {
+      if (deny_if_readonly(app_state)) return()
       i18n <- get_i18n(app_state$language %||% "fr")
       zone <- zone_etude()
 

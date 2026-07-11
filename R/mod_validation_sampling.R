@@ -582,6 +582,7 @@ mod_validation_sampling_server <- function(id, app_state,
     }
 
     shiny::observeEvent(input$generate, {
+      if (deny_if_readonly(app_state)) return()
       if (isTRUE(shiny::isolate(generating()))) return()  # garde anti-clics
       generating(TRUE)
       notif_id <- session$ns("plan_generating")
@@ -871,6 +872,7 @@ mod_validation_sampling_server <- function(id, app_state,
     })
 
     shiny::observeEvent(input$persist, {
+      if (deny_if_readonly(app_state)) return()
       i18n <- i18n_r()
       plan <- plan_rv()
       proj <- app_state$current_project

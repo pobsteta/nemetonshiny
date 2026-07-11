@@ -62,3 +62,21 @@ lock_status <- function(pid) {
 project_is_readonly <- function(app_state) {
   isTRUE(tryCatch(app_state$readonly, error = function(e) FALSE))
 }
+
+#' Gate a mutating action when the project is read-only
+#'
+#' The single guard every module puts at the top of a mutating `observeEvent`:
+#' `if (deny_if_readonly(app_state, i18n)) return()`. When read-only it warns the
+#' user via a toast and returns `TRUE` (caller must bail); otherwise `FALSE`.
+#' `i18n` is optional — when omitted it is resolved from `app_state$language`, so
+#' modules without an i18n object in scope can still call it.
+#' @noRd
+deny_if_readonly <- function(app_state, i18n = NULL) {
+  if (!project_is_readonly(app_state)) return(FALSE)
+  if (is.null(i18n)) {
+    lang <- tryCatch(app_state$language, error = function(e) "fr") %||% "fr"
+    i18n <- get_i18n(lang)
+  }
+  shiny::showNotification(i18n$t("lock_readonly_action"), type = "warning", duration = 5)
+  TRUE
+}

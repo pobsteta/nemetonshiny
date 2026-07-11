@@ -403,12 +403,17 @@ mod_action_plan_server <- function(id, app_state) {
     })
 
     # Helper: deny + toast if the user is read-only. Returns TRUE
-    # when the action should be cancelled (i.e. user can't edit).
+    # when the action should be cancelled. Two orthogonal reasons:
+    #  - the user's ROLE cannot edit action plans (`can_edit()`), or
+    #  - the PROJECT is opened read-only because its edit lock is held
+    #    by another user (or the user is anonymous) — see R/service_lock.R.
     deny_if_readonly <- function() {
-      if (isTRUE(can_edit())) return(FALSE)
+      locked <- project_is_readonly(app_state)
+      if (isTRUE(can_edit()) && !locked) return(FALSE)
       i18n <- get_i18n(app_state$language)
-      shiny::showNotification(i18n$t("action_plan_readonly_locked"),
-                              type = "warning", duration = 5)
+      msg <- if (locked) i18n$t("lock_readonly_action")
+             else i18n$t("action_plan_readonly_locked")
+      shiny::showNotification(msg, type = "warning", duration = 5)
       TRUE
     }
 
