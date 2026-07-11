@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.102.5\] - 2026-07-11
+
+### Changed
+
+- reGénération : le champ « Buffer contexte régional » (rayon, 25 km par
+  défaut) passe dans une sidebar droite dédiée de la carte « Contexte
+  régional (E-OBS) », en parité avec la sidebar « Couche affichée » de
+  la carte principale.
+
 ## \[0.102.4\] - 2026-07-11
 
 ### Fixed
