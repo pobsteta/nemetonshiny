@@ -255,6 +255,7 @@ mod_field_ingest_server <- function(id, app_state) {
 
     # --- Attach on click -----------------------------------------------
     shiny::observeEvent(input$attach, {
+      if (deny_if_readonly(app_state)) return()
       i18n <- get_i18n(app_state$language %||% "fr")
       project <- app_state$current_project
       if (is.null(project)) {
@@ -532,6 +533,7 @@ mod_field_ingest_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$hv_run, {
+      if (deny_if_readonly(app_state)) return()
       i18n_local <- get_i18n(app_state$language %||% "fr")
       up <- input$hv_gpkg
       if (is.null(up)) {

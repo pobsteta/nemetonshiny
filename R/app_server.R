@@ -67,7 +67,15 @@ app_server <- function(input, output, session) {
     # Auth carries `authenticated`, `user_name`, `user_email`,
     # `user_roles` (filled by mod_auth_server). Other modules use
     # `can_edit_action_plan(app_state$auth)` to decide permissions.
-    auth = auth_state
+    auth = auth_state,
+    # Project edit lock (serveur multi-utilisateurs) — driven by the lifecycle
+    # observers below. `readonly` is the single flag modules read via
+    # `project_is_readonly(app_state)`; `lock_info` carries the current holder
+    # (for the banner) when someone else holds it.
+    readonly = FALSE,
+    lock_held_pid = NULL,
+    lock_holder_id = NULL,
+    lock_info = NULL
   )
 
   # Selection state
@@ -318,11 +326,114 @@ app_server <- function(input, output, session) {
 
 
   # ============================================================
+  # VERROU DE PROJET (serveur multi-utilisateurs)
+  # ============================================================
+  # Un projet ouvert est verrouillé en édition sur un seul utilisateur ; les
+  # autres l'ouvrent en lecture seule. Cycle de vie centralisé ici : c'est le seul
+  # endroit qui voit à la fois `app_state$project_id` (posé à toutes les entrées
+  # d'ouverture, mod_home.R:443) et `app_state$auth`.
+
+  # 1. Acquisition — un seul point de branchement couvre toutes les ouvertures.
+  shiny::observeEvent(app_state$project_id, {
+    pid <- app_state$project_id
+
+    # Relâcher le verrou du projet PRÉCÉDENT (changement / fermeture de projet).
+    prev <- shiny::isolate(app_state$lock_held_pid)
+    if (!is.null(prev) && !identical(prev, pid)) {
+      hid <- shiny::isolate(app_state$lock_holder_id)
+      if (!is.null(hid)) try(lock_release(prev, hid), silent = TRUE)
+      app_state$lock_held_pid <- NULL
+      app_state$lock_holder_id <- NULL
+    }
+    if (is.null(pid)) { app_state$readonly <- FALSE; app_state$lock_info <- NULL; return() }
+
+    # Identité stable = email OAuth. En mode anonyme, mod_auth pose
+    # `authenticated = TRUE` mais laisse `user_email = NULL` : filtrer sur l'email,
+    # jamais sur `authenticated`. Pas d'email => lecture seule, aucun verrou créé.
+    email <- shiny::isolate(app_state$auth$user_email)
+    if (is.null(email) || !nzchar(email)) {
+      app_state$readonly <- TRUE
+      app_state$lock_info <- NULL
+      return()
+    }
+
+    res <- tryCatch(lock_acquire(pid, email, shiny::isolate(app_state$auth$user_name)),
+                    error = function(e) NULL)
+    i18n <- get_i18n(shiny::isolate(app_state$language))
+    if (isTRUE(res$ok) || is.null(res)) {
+      # `is.null(res)` = pas de DB (dev local) → éditable, pas de verrou.
+      app_state$readonly <- FALSE
+      app_state$lock_held_pid <- if (is.null(res)) NULL else pid
+      app_state$lock_holder_id <- if (is.null(res)) NULL else email
+      app_state$lock_info <- NULL
+      if (isTRUE(res$stolen)) {
+        shiny::showNotification(i18n$t("lock_stolen_notice"), type = "warning", duration = 8)
+      }
+    } else {
+      # Tenu, frais, par un autre → lecture seule + bandeau.
+      app_state$readonly <- TRUE
+      app_state$lock_held_pid <- NULL
+      app_state$lock_holder_id <- NULL
+      app_state$lock_info <- res
+      shiny::showNotification(
+        sprintf(i18n$t("lock_readonly_notice"), res$holder_label %||% res$holder_id),
+        type = "message", duration = 8)
+    }
+  }, ignoreNULL = FALSE)
+
+  # 2. Heartbeat — tant qu'on tient le verrou, rafraîchir toutes les 45 s
+  #    (TTL cœur 120 s → tolère 2 heartbeats manqués).
+  shiny::observe({
+    pid <- app_state$lock_held_pid
+    if (is.null(pid)) return()
+    shiny::invalidateLater(45000, session)
+    hid <- shiny::isolate(app_state$lock_holder_id)
+    ok <- tryCatch(lock_heartbeat(pid, hid), error = function(e) FALSE)
+    if (!isTRUE(ok)) {
+      # Verrou perdu (volé après péremption). Tenter de le reprendre, sinon
+      # basculer en lecture seule.
+      res <- tryCatch(lock_acquire(pid, hid, shiny::isolate(app_state$auth$user_name)),
+                      error = function(e) list(ok = FALSE))
+      if (!isTRUE(res$ok)) {
+        app_state$readonly <- TRUE
+        app_state$lock_held_pid <- NULL
+        app_state$lock_info <- res
+        i18n <- get_i18n(shiny::isolate(app_state$language))
+        shiny::showNotification(i18n$t("lock_lost_notice"), type = "warning", duration = NULL)
+      }
+    }
+  })
+
+  # 3. Bandeau lecture seule — verrou d'autrui, ou mode anonyme.
+  output$lock_banner <- shiny::renderUI({
+    if (!isTRUE(app_state$readonly)) return(NULL)
+    if (is.null(app_state$project_id)) return(NULL)   # pas de projet ouvert
+    i18n <- get_i18n(app_state$language)
+    info <- app_state$lock_info
+    msg <- if (!is.null(info) && !is.null(info$holder_id)) {
+      # Tenu par un autre utilisateur.
+      sprintf(i18n$t("lock_readonly_banner"), info$holder_label %||% info$holder_id)
+    } else {
+      # Lecture seule par anonymat (aucun verrou d'autrui).
+      i18n$t("lock_anonymous_banner")
+    }
+    htmltools::div(
+      class = "alert alert-warning mb-0 rounded-0 py-2 px-3 d-flex align-items-center",
+      bsicons::bs_icon("lock-fill", class = "me-2"),
+      htmltools::span(msg)
+    )
+  })
+
+  # ============================================================
   # SESSION CLEANUP
   # ============================================================
 
   session$onSessionEnded(function() {
-    # Cleanup any background jobs if needed
+    # `onSessionEnded` s'exécute HORS contexte réactif : capturer par isolate.
+    # Best-effort — si l'onglet est tué, le TTL de 120 s reprend la main.
+    pid <- shiny::isolate(app_state$lock_held_pid)
+    hid <- shiny::isolate(app_state$lock_holder_id)
+    if (!is.null(pid) && !is.null(hid)) try(lock_release(pid, hid), silent = TRUE)
     cli::cli_alert_info("nemetonApp session ended")
   })
 

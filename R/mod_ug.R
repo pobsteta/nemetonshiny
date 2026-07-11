@@ -1075,6 +1075,7 @@ mod_ug_server <- function(id, app_state) {
 
     # Confirm POLYGON split (auto-split all tenements crossed by polygon)
     shiny::observeEvent(input$confirm_draw_split, {
+      if (deny_if_readonly(app_state)) return()
       shiny::removeModal()
 
       geojson <- rv$drawn_geojson
@@ -1114,6 +1115,7 @@ mod_ug_server <- function(id, app_state) {
 
     # Confirm LINE split (auto-split all tenements crossed by the line)
     shiny::observeEvent(input$confirm_line_split, {
+      if (deny_if_readonly(app_state)) return()
       shiny::removeModal()
 
       geojson <- rv$drawn_geojson
@@ -1206,6 +1208,7 @@ mod_ug_server <- function(id, app_state) {
     # ACTION: Create UG from map-selected tenements
     # ================================================================
     shiny::observeEvent(input$btn_create_from_map, {
+      if (deny_if_readonly(app_state)) return()
       sel_ids <- rv$selected_tenement_ids
       if (length(sel_ids) == 0) {
         shiny::showNotification(
@@ -1245,6 +1248,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$confirm_create_from_map, {
+      if (deny_if_readonly(app_state)) return()
       shiny::removeModal()
 
       sel_ids <- rv$selected_tenement_ids
@@ -1283,6 +1287,7 @@ mod_ug_server <- function(id, app_state) {
     # ACTION: Move selected tenements to an existing UG
     # ================================================================
     shiny::observeEvent(input$btn_move_to_ug, {
+      if (deny_if_readonly(app_state)) return()
       sel_ids <- rv$selected_tenement_ids
       if (length(sel_ids) == 0) {
         shiny::showNotification(
@@ -1342,6 +1347,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$confirm_move_to_ug, {
+      if (deny_if_readonly(app_state)) return()
       shiny::removeModal()
 
       sel_ids <- rv$selected_tenement_ids
@@ -1552,6 +1558,7 @@ mod_ug_server <- function(id, app_state) {
     # ACTION: Merge UGs (from table selection)
     # ================================================================
     shiny::observeEvent(input$btn_merge, {
+      if (deny_if_readonly(app_state)) return()
       sel <- input$ug_table_rows_selected
       listing <- ug_listing()
 
@@ -1588,6 +1595,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$confirm_merge, {
+      if (deny_if_readonly(app_state)) return()
       shiny::removeModal()
 
       sel <- input$ug_table_rows_selected
@@ -1621,6 +1629,7 @@ mod_ug_server <- function(id, app_state) {
     # ACTION: Split UG (restore 1 UG per tenement)
     # ================================================================
     shiny::observeEvent(input$btn_split, {
+      if (deny_if_readonly(app_state)) return()
       sel <- input$ug_table_rows_selected
       listing <- ug_listing()
 
@@ -1661,6 +1670,7 @@ mod_ug_server <- function(id, app_state) {
     # ACTION: Rename UG
     # ================================================================
     shiny::observeEvent(input$btn_rename, {
+      if (deny_if_readonly(app_state)) return()
       sel <- input$ug_table_rows_selected
       listing <- ug_listing()
 
@@ -1688,6 +1698,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$confirm_rename, {
+      if (deny_if_readonly(app_state)) return()
       shiny::removeModal()
 
       sel <- input$ug_table_rows_selected
@@ -1721,6 +1732,7 @@ mod_ug_server <- function(id, app_state) {
     # ACTION: Set groupe d'amenagement
     # ================================================================
     shiny::observeEvent(input$btn_set_groupe, {
+      if (deny_if_readonly(app_state)) return()
       sel <- input$ug_table_rows_selected
       listing <- ug_listing()
       groupe <- input$sel_groupe
@@ -1804,6 +1816,7 @@ mod_ug_server <- function(id, app_state) {
     # ACTION: Import split (GeoJSON/Shapefile)
     # ================================================================
     shiny::observeEvent(input$btn_import_split, {
+      if (deny_if_readonly(app_state)) return()
       projet <- rv$projet_ug
       if (is.null(projet) || !has_ug_data(projet)) {
         shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
@@ -1836,6 +1849,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$confirm_import_split, {
+      if (deny_if_readonly(app_state)) return()
       file_info <- input$split_file
 
       if (is.null(file_info)) {
@@ -1979,6 +1993,7 @@ mod_ug_server <- function(id, app_state) {
     # ACTION: Undo split (restore single tenement per parcel)
     # ================================================================
     shiny::observeEvent(input$btn_undo_split, {
+      if (deny_if_readonly(app_state)) return()
       projet <- rv$projet_ug
       if (is.null(projet) || !has_ug_data(projet)) {
         shiny::showNotification(i18n()$t("ug_no_data"), type = "warning")
@@ -2028,6 +2043,7 @@ mod_ug_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$confirm_undo_split, {
+      if (deny_if_readonly(app_state)) return()
       shiny::removeModal()
       parcelle_id <- input$undo_split_parcelle
       if (is.null(parcelle_id)) return()
