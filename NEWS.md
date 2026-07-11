@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.102.1
+
 ### Fixed — mode admin/dev local passait à tort en lecture seule
 
 - Le verrou v0.102.0 forçait la lecture seule dès que `user_email` était vide.
