@@ -12,6 +12,17 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.102.4\] - 2026-07-11
+
+### Fixed
+
+- Commune : à l’ouverture d’un projet, la commune restaurée ne disparaît
+  plus brièvement au profit du placeholder « Sélectionner une commune »
+  entre les deux mises à jour du dropdown (commune seule immédiate →
+  liste complète du département). Le flux de restauration passe en mode
+  local (`server = FALSE`, options inline), qui préserve la sélection
+  affichée ; le changement de département reste en mode serveur.
+
 ## \[0.102.3\] - 2026-07-11
 
 ### Added

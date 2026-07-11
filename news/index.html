@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.102.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.102.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.102.4" id="nemetonshiny-01024">nemetonshiny 0.102.4<a class="anchor" aria-label="anchor" href="#nemetonshiny-01024"></a></h2>
+<div class="section level4">
+<h4 id="fixed--commune--plus-de-flicker----sélectionner-une-commune----0-102-4">Fixed — commune : plus de flicker « … → Sélectionner une commune → … »<a class="anchor" aria-label="anchor" href="#fixed--commune--plus-de-flicker----s%C3%A9lectionner-une-commune----0-102-4"></a></h4>
+<ul><li>À l’ouverture d’un projet, la commune restaurée (ex. « Loury ») disparaissait brièvement au profit du placeholder « Sélectionner une commune » avant de réapparaître. La liste est peuplée en deux temps (commune seule immédiate, puis liste complète du département) : la 2e mise à jour, en mode serveur, rechargeait les options en AJAX et selectize vidait l’affichage le temps du chargement. Le flux de restauration passe désormais en mode local (<code>server = FALSE</code>, options inline) : la sélection reste affichée en continu entre les deux mises à jour. Le flux normal de changement de département reste en mode serveur.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.102.3" id="nemetonshiny-01023">nemetonshiny 0.102.3<a class="anchor" aria-label="anchor" href="#nemetonshiny-01023"></a></h2>
