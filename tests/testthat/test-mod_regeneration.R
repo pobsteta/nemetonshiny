@@ -110,6 +110,60 @@ test_that("run without a loaded project is a guarded no-op", {
 # En lecture seule (`app_state$readonly = TRUE`), toute action mutante du module
 # est court-circuitée par `deny_if_readonly()` AVANT d'atteindre le service.
 
+test_that("changing the target species live-re-prioritises without a full run", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+
+  units <- .regen_mod_units(3)
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj)
+
+  repriced <- new.env(); repriced$species <- "unset"; repriced$n <- 0L
+  runs <- new.env(); runs$n <- 0L
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    run_regeneration = function(u, cfg = list(), precomputed = NULL, progress = NULL) {
+      runs$n <- runs$n + 1L
+      u$indice_priorite_regen <- 50
+      list(units = u, years = list(), warnings = character(0))
+    },
+    regen_reprioritize = function(units, species) {
+      repriced$n <- repriced$n + 1L; repriced$species <- species
+      units$indice_priorite_regen <- 77
+      units
+    },
+    .package = "nemetonshiny"
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(
+        map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+        hydric_only = FALSE, forest_type = "feuillu",
+        year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
+      # Sans résultat, changer l'essence ne déclenche aucune re-priorisation.
+      session$setInputs(species = "quercus_robur")
+      expect_equal(repriced$n, 0L)
+
+      # Un run produit un résultat (indice = 50).
+      session$setInputs(run = 1)
+      expect_equal(runs$n, 1L)
+      expect_equal(unique(rv$result$indice_priorite_regen), 50)
+
+      # Changer l'essence re-priorise EN PLACE (indice = 77) sans nouveau run.
+      session$setInputs(species = "fagus_sylvatica")
+      expect_equal(repriced$n, 1L)
+      expect_identical(repriced$species, "fagus_sylvatica")
+      expect_equal(runs$n, 1L)                       # aucun run complet relancé
+      expect_equal(unique(rv$result$indice_priorite_regen), 77)
+      expect_equal(unique(as$regeneration_result$indice_priorite_regen), 77)
+    }
+  )
+})
+
 test_that("a read-only project gates the run action before the service", {
   skip_if_not_installed("shiny"); skip_if_not_installed("sf")
 

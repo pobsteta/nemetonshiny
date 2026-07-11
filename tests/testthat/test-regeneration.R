@@ -534,3 +534,38 @@ test_that("an explicit precomputed context still short-circuits the cache", {
       precomputed = list(context = "PRE"), project_path = NULL),
     "PRE")
 })
+
+# --- regen_reprioritize : mise à jour live de l'essence cible ----------------
+
+test_that("regen_reprioritize delegates to the core priority index with species", {
+  seen <- new.env(); seen$species <- "unset"
+  testthat::local_mocked_bindings(
+    indice_priorite_regen = function(units, species = NULL, ...) {
+      seen$species <- species
+      units$indice_priorite_regen <- if (is.null(species)) 10 else 99
+      units
+    }, .package = "nemeton")
+
+  u <- .regen_units(2)
+  # Essence renseignée -> transmise telle quelle au cœur.
+  out <- nemetonshiny:::regen_reprioritize(u, "quercus_robur")
+  expect_identical(seen$species, "quercus_robur")
+  expect_equal(unique(out$indice_priorite_regen), 99)
+
+  # Essence vide/NULL -> index générique (species = NULL).
+  seen$species <- "unset"
+  out0 <- nemetonshiny:::regen_reprioritize(u, "")
+  expect_null(seen$species)
+  expect_equal(unique(out0$indice_priorite_regen), 10)
+})
+
+test_that("regen_reprioritize is defensive: never blanks the map on failure", {
+  testthat::local_mocked_bindings(
+    indice_priorite_regen = function(units, species = NULL, ...) stop("boom"),
+    .package = "nemeton")
+  u <- .regen_units(1)
+  # Un cœur qui lève -> résultat d'entrée renvoyé inchangé, pas d'erreur.
+  expect_identical(nemetonshiny:::regen_reprioritize(u, "x"), u)
+  # NULL en entrée -> NULL (rien à re-prioriser).
+  expect_null(nemetonshiny:::regen_reprioritize(NULL, "x"))
+})
