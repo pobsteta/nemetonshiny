@@ -4088,6 +4088,9 @@ TRANSLATIONS <- list(
   regen_eobs_index = list(fr = "Indice E-OBS", en = "E-OBS index"),
   regen_stand_section = list(fr = "Peuplement", en = "Stand"),
   regen_forest_type = list(fr = "Type de peuplement", en = "Stand type"),
+  regen_forest_type_tip = list(
+    fr = "Phénologie du peuplement dans le bilan hydrique du sol (BILJOU). Un feuillu caduc (interception/transpiration saisonnières) et un résineux sempervirent (toute l'année) donnent des jours de stress hydrique différents, donc une sensibilité et une priorité différentes. Agit en amont : nécessite de relancer l'analyse (contrairement à l'essence cible, live).",
+    en = "Stand phenology in the soil water balance (BILJOU). A deciduous broadleaf (seasonal interception/transpiration) and an evergreen conifer (year-round) yield different water-stress days, hence different sensitivity and priority. Applied upstream: requires re-running the analysis (unlike the target species, which is live)."),
   regen_forest_feuillu = list(fr = "Feuillu", en = "Broadleaf"),
   regen_forest_resineux = list(fr = "R\u00e9sineux", en = "Conifer"),
   regen_budburst = list(fr = "D\u00e9bourrement (jour julien)", en = "Budburst (day of year)"),

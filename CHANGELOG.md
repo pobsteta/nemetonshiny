@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.102.2] - 2026-07-11
+
+### Changed
+
+- reGénération : tooltip « i » sur le champ « Type de peuplement »
+  (Feuillu/Résineux) expliquant qu'il fixe la phénologie du bilan hydrique
+  BILJOU et agit en amont (relance requise), contrairement à l'essence cible
+  (live). Les champs « Débourrement » et « Chute des feuilles » n'apparaissent
+  plus que lorsque « Feuillu » est coché.
+
 ## [0.102.1] - 2026-07-11
 
 ### Fixed
