@@ -434,11 +434,18 @@ mod_search_server <- function(id, app_state) {
           nm <- if ("nom" %in% names(cached_geom)) cached_geom[["nom"]][1] else NA
           if (is.null(nm) || is.na(nm) || !nzchar(nm)) commune_code else as.character(nm)
         }, error = function(e) commune_code)
+        # `server = FALSE` (options inline) pour tout le flux de RESTAURATION :
+        # la 2e mise à jour ci-dessous (liste complète du département) remplace
+        # ces choix. En mode serveur, ce remplacement recharge les options en
+        # AJAX et selectize vide brièvement l'affichage (« Sélectionner une
+        # commune ») avant de réappliquer la sélection — le fameux flicker
+        # Loury → placeholder → Loury. En mode local, les options arrivent
+        # inline et la sélection reste affichée en continu.
         shiny::updateSelectizeInput(
           session, "commune",
           choices  = stats::setNames(commune_code, commune_label),
           selected = commune_code,
-          server   = TRUE
+          server   = FALSE
         )
       } else {
         # Legacy project (no cached geometry): clear stale geometry from the
@@ -628,13 +635,18 @@ mod_search_server <- function(id, app_state) {
         choices <- format_communes_for_selectize(communes)
         cli::cli_alert_info("Updating commune dropdown with {nrow(communes)} choices")
 
-        # Update dropdown (for display only -- geometry already set above)
+        # Remplacement par la liste complète du département (pour changer de
+        # commune). `server = FALSE` (options inline) : selectize met les options
+        # à jour EN PLACE et garde la commune restaurée affichée sans le flicker
+        # « Loury → Sélectionner une commune → Loury » qu'imposait le rechargement
+        # AJAX du mode serveur. La liste tient largement côté client (≤ quelques
+        # centaines de communes / département, `maxOptions = 500`).
         shiny::updateSelectizeInput(
           session,
           "commune",
           choices = choices,
           selected = commune_code,
-          server = TRUE
+          server = FALSE
         )
 
         cli::cli_alert_success("Location restored successfully")
