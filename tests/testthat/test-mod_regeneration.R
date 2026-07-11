@@ -240,6 +240,10 @@ test_that("opening a project with a cached biljou restores the result", {
         forest_type = "feuillu", year_moyenne = 2018, year_canicule = 2022,
         lai_max = NA, species = "")
 
+      # La restauration est différée d'un tick (`later`) pour peindre d'abord le
+      # toast « Chargement des cartes… » : avancer la boucle avant d'asserter.
+      later::run_now()
+
       # Restauré sans aucun clic sur « Lancer l'analyse ».
       expect_false(is.null(rv$result))
       expect_equal(unique(rv$result$indice_priorite_regen), 42)
