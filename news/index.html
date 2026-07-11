@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.102.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.103.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,23 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.103.0" id="nemetonshiny-01030">nemetonshiny 0.103.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01030"></a></h2>
+<div class="section level4">
+<h4 id="fixed--regénération--le-toast-de-chargement-ne-saffiche-quen-onglet-regénération-0-103-0">Fixed — reGénération : le toast de chargement ne s’affiche qu’en onglet reGénération<a class="anchor" aria-label="anchor" href="#fixed--reg%C3%A9n%C3%A9ration--le-toast-de-chargement-ne-saffiche-quen-onglet-reg%C3%A9n%C3%A9ration-0-103-0"></a></h4>
+<ul><li>Le toast « Chargement des cartes reGénération… » apparaissait dès l’ouverture d’un projet récent, même depuis l’onglet Sélection. La restauration (relecture du cache + toast) est désormais <strong>différée à l’activation de l’onglet reGénération</strong> : un changement de projet/UGF purge le résultat précédent (tout onglet, pour ne pas laisser un choroplèthe périmé) et pose un drapeau, que l’observateur ne consomme que lorsque l’onglet reGénération est actif.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--regénération--téléchargement-des-précipitations-avec-chrono-0-103-0">Changed — reGénération : téléchargement des précipitations avec chrono<a class="anchor" aria-label="anchor" href="#changed--reg%C3%A9n%C3%A9ration--t%C3%A9l%C3%A9chargement-des-pr%C3%A9cipitations-avec-chrono-0-103-0"></a></h4>
+<ul><li>Le téléchargement de la série E-OBS de précipitations (~800 Mo, plusieurs minutes) affiche désormais une notification persistante « engrenage qui tourne
+<ul><li>chronomètre MM:SS » (cadre unifié partagé avec les moteurs), retirée en fin de tâche — au lieu d’un simple message fugace.</li>
+</ul></li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--regénération--carte--contexte-régional-e-obs--enrichie-0-103-0">Changed — reGénération : carte « Contexte régional (E-OBS) » enrichie<a class="anchor" aria-label="anchor" href="#changed--reg%C3%A9n%C3%A9ration--carte--contexte-r%C3%A9gional-e-obs--enrichie-0-103-0"></a></h4>
+<ul><li>La carte de contexte gagne le choix de fond <strong>OSM / Satellite</strong> (contrôle de couches), l’<strong>emprise des UGF en bleu</strong>, et un <strong>curseur d’opacité</strong> pour le semis E-OBS. Le semis (centres de mailles E-OBS ~11 km, classe bivariée température × précipitation — un semis de POINTS, pas un raster) passe par un proxy Leaflet : changer le buffer ou l’opacité ne réinitialise plus le zoom.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.102.5" id="nemetonshiny-01025">nemetonshiny 0.102.5<a class="anchor" aria-label="anchor" href="#nemetonshiny-01025"></a></h2>

@@ -12,6 +12,26 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.103.0\] - 2026-07-11
+
+### Fixed
+
+- reGénération : le toast « Chargement des cartes… » ne s’affiche plus
+  dès l’ouverture d’un projet (même hors onglet), mais à l’activation de
+  l’onglet reGénération. Le changement de projet/UGF purge le résultat
+  précédent quel que soit l’onglet ; la restauration + le toast sont
+  différés à l’entrée dans l’onglet.
+
+### Changed
+
+- reGénération : le téléchargement des précipitations E-OBS (~800 Mo)
+  affiche une notification persistante « engrenage + chronomètre MM:SS
+  », retirée en fin de tâche.
+- reGénération : la carte « Contexte régional (E-OBS) » gagne le choix
+  de fond OSM/Satellite, l’emprise des UGF en bleu et un curseur
+  d’opacité du semis E-OBS (points, pas un raster), le tout via proxy
+  Leaflet (buffer et opacité ne réinitialisent plus le zoom).
+
 ## \[0.102.5\] - 2026-07-11
 
 ### Changed
