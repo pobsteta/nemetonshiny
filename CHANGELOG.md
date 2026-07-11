@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.102.3] - 2026-07-11
+
+### Added
+
+- reGénération : toast « Chargement des cartes reGénération… » (bas d'écran) à
+  l'ouverture d'un projet récent déjà analysé, pendant la restauration des
+  cartes, retiré une fois prêtes. Restauration différée d'un tick (`later`) pour
+  que le toast se peigne avant le travail synchrone.
+
 ## [0.102.2] - 2026-07-11
 
 ### Changed

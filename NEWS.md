@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.102.3
+
+### Added — reGénération : indicateur de chargement à l'ouverture d'un projet
+
+- À l'ouverture d'un projet récent déjà analysé, la restauration des cartes
+  reGénération (relecture du cache + rendu Leaflet) prenait un temps perceptible
+  sans aucun retour visuel. Un toast « Chargement des cartes reGénération… »
+  (bas de l'écran, parité Suivi sanitaire) s'affiche désormais pendant la
+  restauration, retiré une fois les cartes prêtes. La restauration est différée
+  d'un tick (`later`) pour que le toast se peigne avant le travail synchrone.
+
 # nemetonshiny 0.102.2
 
 ### Changed — reGénération : champ « Type de peuplement » clarifié

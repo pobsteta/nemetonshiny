@@ -420,16 +420,29 @@ mod_regeneration_server <- function(id, app_state) {
       units <- units_sf()
       if (is.null(units)) return()
 
-      res <- tryCatch(restore_regeneration(units, precomputed = pc),
-                      error = function(e) NULL)
-      if (is.null(res)) return()
-      rv$result <- res$units
-      # Restaurer n'est pas analyser : ni avertissements, ni années détectées.
-      rv$warnings <- character(0)
-      rv$canopy_source <- regen_canopy_provenance(res$units)
-      # mod_synthesis lit app_state$regeneration_result pour la perspective IA :
-      # sans cette ligne, la synthèse d'un projet rouvert ignore la reGénération.
-      app_state$regeneration_result <- res$units
+      # Retour visuel « en bas » (parité Suivi sanitaire) : la restauration +
+      # le rendu des cartes prennent un temps perceptible à l'ouverture d'un
+      # projet récent. On peint le toast MAINTENANT, puis on diffère le travail
+      # synchrone d'un tick (`later`) pour qu'il s'affiche AVANT le calcul —
+      # sinon show + remove tomberaient dans le même flush Shiny (invisibles).
+      nid <- session$ns("regen_restore_notif")
+      shiny::showNotification(i18n$t("regen_restore_loading"), id = nid,
+                              duration = NULL, type = "message")
+      later::later(function() {
+        res <- tryCatch(restore_regeneration(units, precomputed = pc),
+                        error = function(e) NULL)
+        if (!is.null(res)) {
+          rv$result <- res$units
+          # Restaurer n'est pas analyser : ni avertissements, ni années détectées.
+          rv$warnings <- character(0)
+          rv$canopy_source <- regen_canopy_provenance(res$units)
+          # mod_synthesis lit app_state$regeneration_result pour la perspective
+          # IA : sans cette ligne, la synthèse d'un projet rouvert ignore la
+          # reGénération.
+          app_state$regeneration_result <- res$units
+        }
+        try(shiny::removeNotification(nid, session = session), silent = TRUE)
+      }, delay = 0.05)
     }, ignoreNULL = TRUE, ignoreInit = FALSE)
 
     # Populate the optional target-species selector from the core
