@@ -1,5 +1,12 @@
 # nemetonshiny (development version)
 
+### Changed — reGénération : « Buffer contexte régional » en sidebar droite
+
+- Le champ « Buffer contexte régional » (rayon, 25 km par défaut) passe dans une
+  sidebar droite dédiée de la carte « Contexte régional (E-OBS) », en parité avec
+  la sidebar « Couche affichée » de la carte principale — au lieu d'un champ
+  posé au-dessus de la carte.
+
 # nemetonshiny 0.102.4
 
 ### Fixed — commune : plus de flicker « … → Sélectionner une commune → … »

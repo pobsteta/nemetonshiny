@@ -319,13 +319,20 @@ mod_regeneration_ui <- function(id) {
         # La carte est bivariée : le cœur exige les DEUX séries E-OBS (tx + rr).
         # Seule `tx` est rapatriée par « Auto (E-OBS) », d'où une carte vide et
         # muette jusqu'ici. Le bandeau dit ce qui manque et propose de l'acquérir.
-        shiny::uiOutput(ns("context_status")),
-        # Rayon du contexte régional : ne concerne que cette carte, d'où sa place
-        # ici plutôt que dans la sidebar de configuration du moteur.
-        htmltools::div(class = "mb-2", style = "max-width: 260px;",
-          shiny::numericInput(ns("buffer_km"), i18n$t("regen_buffer"),
-            value = 25, min = 5, max = 100, step = 5)),
-        leaflet::leafletOutput(ns("context_map"), height = "70vh")),
+        # Sidebar DROITE dédiée (parité carte principale) : le rayon du contexte
+        # régional ne concerne que cette carte, d'où sa place ici et non dans la
+        # sidebar de configuration du moteur.
+        bslib::layout_sidebar(
+          fillable = TRUE,
+          sidebar = bslib::sidebar(
+            position = "right", open = "always", width = 260,
+            htmltools::tags$strong(i18n$t("regen_buffer")),
+            shiny::numericInput(ns("buffer_km"), NULL,
+              value = 25, min = 5, max = 100, step = 5)
+          ),
+          shiny::uiOutput(ns("context_status")),
+          leaflet::leafletOutput(ns("context_map"), height = "70vh")
+        )),
       bslib::nav_panel(i18n$t("regen_table_section"),
         shiny::checkboxInput(ns("filter_coverage"), i18n$t("regen_filter_coverage"),
           value = TRUE),
