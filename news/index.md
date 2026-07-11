@@ -2,6 +2,36 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.102.1
+
+#### Fixed — mode admin/dev local passait à tort en lecture seule
+
+- Le verrou v0.102.0 forçait la lecture seule dès que `user_email` était
+  vide. Or en mode admin/dev local (sans fournisseur OAuth), `mod_auth`
+  laisse `user_email = NULL` tout en donnant des rôles via
+  `NEMETON_AUTH_DEV_ROLES` : l’app se retrouvait bloquée en lecture
+  seule alors qu’elle devait être éditable. La lecture seule dépend
+  désormais du **rôle** (`can_edit_action_plan()` : rôle `lecteur` ou
+  non authentifié → lecture seule ; anonyme-sans-rôle / `editeur` /
+  `admin` → éditeur), jamais de la présence d’un email. Le verrou
+  multi-utilisateurs ne s’engage qu’avec une identité stable (email
+  OAuth) ; sans email — mono-utilisateur / dev — l’app est éditable sans
+  poser de verrou en base. Nouveau bandeau `lock_role_banner` pour le
+  cas rôle lecteur (distinct du « Connectez-vous » réservé au
+  non-authentifié).
+
+#### Changed — reGénération : « Essence cible » met à jour la carte en direct
+
+- L’essence cible n’alimente que la dernière étape du calcul (indice de
+  priorité). Changer l’essence re-priorise désormais la choroplèthe **en
+  direct** (`regen_reprioritize()` →
+  [`nemeton::indice_priorite_regen()`](https://pobsteta.github.io/nemeton/reference/indice_priorite_regen.html)),
+  sans relancer l’analyse complète (donc sans re-dériver la topographie
+  LiDAR de R3). Le sélecteur « Essence cible » est déplacé dans la
+  carte, sous « Couche affichée ». Le « Buffer contexte régional » est
+  déplacé dans l’onglet carte « Contexte régional (E-OBS) », la seule
+  vue qu’il concerne.
+
 ## nemetonshiny 0.102.0
 
 #### Added — verrou d’édition de projet (serveur multi-utilisateurs)

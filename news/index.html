@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.102.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.102.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,17 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.102.1" id="nemetonshiny-01021">nemetonshiny 0.102.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-01021"></a></h2>
+<div class="section level4">
+<h4 id="fixed--mode-admindev-local-passait-à-tort-en-lecture-seule-0-102-1">Fixed — mode admin/dev local passait à tort en lecture seule<a class="anchor" aria-label="anchor" href="#fixed--mode-admindev-local-passait-%C3%A0-tort-en-lecture-seule-0-102-1"></a></h4>
+<ul><li>Le verrou v0.102.0 forçait la lecture seule dès que <code>user_email</code> était vide. Or en mode admin/dev local (sans fournisseur OAuth), <code>mod_auth</code> laisse <code>user_email = NULL</code> tout en donnant des rôles via <code>NEMETON_AUTH_DEV_ROLES</code> : l’app se retrouvait bloquée en lecture seule alors qu’elle devait être éditable. La lecture seule dépend désormais du <strong>rôle</strong> (<code>can_edit_action_plan()</code> : rôle <code>lecteur</code> ou non authentifié → lecture seule ; anonyme-sans-rôle / <code>editeur</code> / <code>admin</code> → éditeur), jamais de la présence d’un email. Le verrou multi-utilisateurs ne s’engage qu’avec une identité stable (email OAuth) ; sans email — mono-utilisateur / dev — l’app est éditable sans poser de verrou en base. Nouveau bandeau <code>lock_role_banner</code> pour le cas rôle lecteur (distinct du « Connectez-vous » réservé au non-authentifié).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--regénération---essence-cible--met-à-jour-la-carte-en-direct-0-102-1">Changed — reGénération : « Essence cible » met à jour la carte en direct<a class="anchor" aria-label="anchor" href="#changed--reg%C3%A9n%C3%A9ration---essence-cible--met-%C3%A0-jour-la-carte-en-direct-0-102-1"></a></h4>
+<ul><li>L’essence cible n’alimente que la dernière étape du calcul (indice de priorité). Changer l’essence re-priorise désormais la choroplèthe <strong>en direct</strong> (<code>regen_reprioritize()</code> → <code><a href="https://pobsteta.github.io/nemeton/reference/indice_priorite_regen.html" class="external-link">nemeton::indice_priorite_regen()</a></code>), sans relancer l’analyse complète (donc sans re-dériver la topographie LiDAR de R3). Le sélecteur « Essence cible » est déplacé dans la carte, sous « Couche affichée ». Le « Buffer contexte régional » est déplacé dans l’onglet carte « Contexte régional (E-OBS) », la seule vue qu’il concerne.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.102.0" id="nemetonshiny-01020">nemetonshiny 0.102.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01020"></a></h2>

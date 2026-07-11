@@ -12,6 +12,28 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.102.1\] - 2026-07-11
+
+### Fixed
+
+- Le verrou d’édition v0.102.0 forçait la lecture seule dès que l’email
+  OAuth était absent, bloquant à tort le mode admin/dev local (sans
+  fournisseur d’identité, `user_email` est NULL alors que les rôles
+  viennent de `NEMETON_AUTH_DEV_ROLES`). La lecture seule dépend
+  désormais du **rôle** (`can_edit_action_plan()`), jamais de l’email ;
+  le verrou multi-utilisateurs ne s’engage qu’avec une identité stable
+  (email OAuth). Bandeau dédié pour le rôle lecteur, distinct du message
+  « Connectez-vous » réservé au non authentifié.
+
+### Changed
+
+- reGénération : le choix « Essence cible » met à jour la choroplèthe
+  **en direct** (`regen_reprioritize()` →
+  [`nemeton::indice_priorite_regen()`](https://pobsteta.github.io/nemeton/reference/indice_priorite_regen.html)),
+  sans relancer l’analyse complète. Le sélecteur « Essence cible » est
+  déplacé dans la carte (sous « Couche affichée ») et le « Buffer
+  contexte régional » dans l’onglet carte « Contexte régional (E-OBS) ».
+
 ## \[0.102.0\] - 2026-07-11
 
 ### Added
