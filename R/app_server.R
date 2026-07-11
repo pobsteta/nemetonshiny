@@ -75,7 +75,10 @@ app_server <- function(input, output, session) {
     readonly = FALSE,
     lock_held_pid = NULL,
     lock_holder_id = NULL,
-    lock_info = NULL
+    lock_info = NULL,
+    # Motif de la lecture seule pour le bandeau : "anonymous" (serveur OAuth,
+    # pas encore loggué), "role" (rôle lecteur), "held" (verrou d'autrui).
+    lock_reason = NULL
   )
 
   # Selection state
@@ -347,18 +350,37 @@ app_server <- function(input, output, session) {
     }
     if (is.null(pid)) { app_state$readonly <- FALSE; app_state$lock_info <- NULL; return() }
 
-    # Identité stable = email OAuth. En mode anonyme, mod_auth pose
-    # `authenticated = TRUE` mais laisse `user_email = NULL` : filtrer sur l'email,
-    # jamais sur `authenticated`. Pas d'email => lecture seule, aucun verrou créé.
-    email <- shiny::isolate(app_state$auth$user_email)
-    if (is.null(email) || !nzchar(email)) {
+    # La lecture seule dépend du RÔLE, jamais de la présence d'un email.
+    # `can_edit_action_plan()` est la convention de permission de l'app :
+    #   - non authentifié (serveur OAuth, pas encore loggué) → lecture seule
+    #   - rôle `lecteur` seul → lecture seule
+    #   - anonyme sans rôle (mono-utilisateur / dev / admin local), `editeur`,
+    #     `admin`, `proprietaire`… → éditeur.
+    auth  <- shiny::isolate(app_state$auth)
+    email <- tryCatch(auth[["user_email"]], error = function(e) NULL)
+    name  <- tryCatch(auth[["user_name"]],  error = function(e) NULL)
+    if (!isTRUE(can_edit_action_plan(auth))) {
       app_state$readonly <- TRUE
       app_state$lock_info <- NULL
+      app_state$lock_reason <- if (isTRUE(tryCatch(auth[["authenticated"]],
+                                                   error = function(e) FALSE)))
+        "role" else "anonymous"
       return()
     }
 
-    res <- tryCatch(lock_acquire(pid, email, shiny::isolate(app_state$auth$user_name)),
-                    error = function(e) NULL)
+    # Le verrou multi-utilisateurs n'a de sens qu'avec une identité STABLE
+    # (email OAuth). Sans email — mono-utilisateur / dev / admin local / pas de
+    # fournisseur d'identité — l'app est éditable, aucun verrou n'est posé en base.
+    if (is.null(email) || !nzchar(email)) {
+      app_state$readonly <- FALSE
+      app_state$lock_held_pid <- NULL
+      app_state$lock_holder_id <- NULL
+      app_state$lock_info <- NULL
+      app_state$lock_reason <- NULL
+      return()
+    }
+
+    res <- tryCatch(lock_acquire(pid, email, name), error = function(e) NULL)
     i18n <- get_i18n(shiny::isolate(app_state$language))
     if (isTRUE(res$ok) || is.null(res)) {
       # `is.null(res)` = pas de DB (dev local) → éditable, pas de verrou.
@@ -366,6 +388,7 @@ app_server <- function(input, output, session) {
       app_state$lock_held_pid <- if (is.null(res)) NULL else pid
       app_state$lock_holder_id <- if (is.null(res)) NULL else email
       app_state$lock_info <- NULL
+      app_state$lock_reason <- NULL
       if (isTRUE(res$stolen)) {
         shiny::showNotification(i18n$t("lock_stolen_notice"), type = "warning", duration = 8)
       }
@@ -375,6 +398,7 @@ app_server <- function(input, output, session) {
       app_state$lock_held_pid <- NULL
       app_state$lock_holder_id <- NULL
       app_state$lock_info <- res
+      app_state$lock_reason <- "held"
       shiny::showNotification(
         sprintf(i18n$t("lock_readonly_notice"), res$holder_label %||% res$holder_id),
         type = "message", duration = 8)
@@ -398,23 +422,28 @@ app_server <- function(input, output, session) {
         app_state$readonly <- TRUE
         app_state$lock_held_pid <- NULL
         app_state$lock_info <- res
+        app_state$lock_reason <- "held"
         i18n <- get_i18n(shiny::isolate(app_state$language))
         shiny::showNotification(i18n$t("lock_lost_notice"), type = "warning", duration = NULL)
       }
     }
   })
 
-  # 3. Bandeau lecture seule — verrou d'autrui, ou mode anonyme.
+  # 3. Bandeau lecture seule — verrou d'autrui, rôle lecteur, ou non authentifié.
   output$lock_banner <- shiny::renderUI({
     if (!isTRUE(app_state$readonly)) return(NULL)
     if (is.null(app_state$project_id)) return(NULL)   # pas de projet ouvert
     i18n <- get_i18n(app_state$language)
     info <- app_state$lock_info
-    msg <- if (!is.null(info) && !is.null(info$holder_id)) {
+    reason <- app_state$lock_reason
+    msg <- if (identical(reason, "held") && !is.null(info) && !is.null(info$holder_id)) {
       # Tenu par un autre utilisateur.
       sprintf(i18n$t("lock_readonly_banner"), info$holder_label %||% info$holder_id)
+    } else if (identical(reason, "role")) {
+      # Authentifié mais rôle lecteur.
+      i18n$t("lock_role_banner")
     } else {
-      # Lecture seule par anonymat (aucun verrou d'autrui).
+      # Non authentifié (serveur OAuth, pas encore loggué).
       i18n$t("lock_anonymous_banner")
     }
     htmltools::div(

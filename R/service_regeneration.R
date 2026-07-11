@@ -174,6 +174,30 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
   list(units = units, years = years, warnings = env$warnings)
 }
 
+#' Re-rank the priority index for a new target species — cheap, live
+#'
+#' The target species (`Essence cible`) only feeds the LAST step of
+#' `run_regeneration()` — `nemeton::indice_priorite_regen()` — which re-derives
+#' `indice_priorite_regen` / `rang_sensibilite` from columns already present in an
+#' analysed result (`sensibilite`, `regen_hydrique`, …). Re-running the whole
+#' analysis just to change the species would needlessly replay the upstream steps
+#' (incl. R3, which re-derives topography from the LiDAR DTM). This wrapper
+#' re-prioritises an existing result in place, so the choropleth can update live
+#' when the user picks another species — no engine, no heavy recompute.
+#'
+#' @param units An analysed `sf` (output of `run_regeneration()$units`).
+#' @param species Target-species key, or `NULL`/`""` for the generic index.
+#' @return `units` with the priority columns recomputed, or the input unchanged
+#'   on failure (defensive: a bad species must never blank the map).
+#' @noRd
+regen_reprioritize <- function(units, species = NULL) {
+  if (is.null(units)) return(units)
+  sp <- if (is.null(species) || !nzchar(species)) NULL else species
+  tryCatch(
+    nemeton::indice_priorite_regen(units, species = sp),
+    error = function(e) units)
+}
+
 #' Regional summer-trend context (E-OBS) for the UGF footprint (branche A)
 #'
 #' Thin wrapper over `nemeton::tendances_estivales_eobs()` for the bivariate

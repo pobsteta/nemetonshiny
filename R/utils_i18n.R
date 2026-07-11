@@ -4059,6 +4059,10 @@ TRANSLATIONS <- list(
     fr = "Connectez-vous pour \u00e9diter ce projet \u2014 lecture seule.",
     en = "Sign in to edit this project \u2014 read-only."
   ),
+  lock_role_banner = list(
+    fr = "Votre r\u00f4le est en lecture seule pour ce projet.",
+    en = "Your role is read-only for this project."
+  ),
   lock_stolen_notice = list(
     fr = "Le verrou pr\u00e9c\u00e9dent avait expir\u00e9 ; vous \u00e9ditez ce projet.",
     en = "The previous lock had expired; you are now editing this project."

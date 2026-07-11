@@ -238,7 +238,10 @@ mod_regeneration_ui <- function(id) {
         )
       ),
 
-      # --- Forçage / résolution / essence / buffer -----------------------
+      # --- Forçage / résolution -----------------------------------------
+      # L'« Essence cible » vit désormais à droite de la carte (sous « Couche
+      # affichée ») car elle met à jour la choroplèthe en direct ; le « Buffer
+      # contexte régional » vit dans l'onglet carte « Contexte régional (E-OBS) ».
       shiny::radioButtons(ns("forcing"), i18n$t("regen_forcing"),
         choices = stats::setNames(c("safran", "era5"),
           c(i18n$t("regen_forcing_safran"), i18n$t("regen_forcing_era5"))),
@@ -247,11 +250,6 @@ mod_regeneration_ui <- function(id) {
         choices = stats::setNames(c("2", "5"),
           c(i18n$t("regen_res_2m"), i18n$t("regen_res_5m"))),
         selected = "2", inline = TRUE),
-      shiny::selectInput(ns("species"), label_tt(i18n$t("regen_species_target"),
-          i18n$t("regen_species_tip")),
-        choices = stats::setNames("", i18n$t("regen_species_generic"))),
-      shiny::numericInput(ns("buffer_km"), i18n$t("regen_buffer"),
-        value = 25, min = 5, max = 100, step = 5),
 
       shiny::checkboxInput(ns("hydric_only"), i18n$t("regen_run_hydric_only"),
         value = FALSE),
@@ -298,7 +296,14 @@ mod_regeneration_ui <- function(id) {
                 layer_tt(i18n$t("regen_map_sensibilite"), i18n$t("regen_map_sensibilite_info")),
                 layer_tt(i18n$t("regen_map_njstress"), i18n$t("regen_map_njstress_info")),
                 layer_tt(i18n$t("regen_map_dtmax"), i18n$t("regen_map_dtmax_info"))),
-              selected = "indice_priorite_regen")
+              selected = "indice_priorite_regen"),
+            # Essence cible : re-priorise la choroplèthe en direct (sans relancer
+            # l'analyse). Placée sous le sélecteur de couche car son effet est
+            # immédiat sur la carte « Indice de priorité ».
+            htmltools::tags$hr(class = "my-2"),
+            shiny::selectInput(ns("species"), label_tt(i18n$t("regen_species_target"),
+                i18n$t("regen_species_tip")),
+              choices = stats::setNames("", i18n$t("regen_species_generic")))
           ),
           leaflet::leafletOutput(ns("map"), height = "70vh")
         )
@@ -308,6 +313,11 @@ mod_regeneration_ui <- function(id) {
         # Seule `tx` est rapatriée par « Auto (E-OBS) », d'où une carte vide et
         # muette jusqu'ici. Le bandeau dit ce qui manque et propose de l'acquérir.
         shiny::uiOutput(ns("context_status")),
+        # Rayon du contexte régional : ne concerne que cette carte, d'où sa place
+        # ici plutôt que dans la sidebar de configuration du moteur.
+        htmltools::div(class = "mb-2", style = "max-width: 260px;",
+          shiny::numericInput(ns("buffer_km"), i18n$t("regen_buffer"),
+            value = 25, min = 5, max = 100, step = 5)),
         leaflet::leafletOutput(ns("context_map"), height = "70vh")),
       bslib::nav_panel(i18n$t("regen_table_section"),
         shiny::checkboxInput(ns("filter_coverage"), i18n$t("regen_filter_coverage"),
@@ -565,6 +575,21 @@ mod_regeneration_server <- function(id, app_state) {
         }
       }
     })
+
+    # --- Essence cible : mise à jour LIVE de la choroplèthe ----------------
+    # L'essence n'alimente que la dernière étape (indice de priorité). Sur un
+    # résultat déjà analysé, on re-priorise en place — sans rejouer l'analyse
+    # complète (donc sans R3/topographie LiDAR) — pour que la carte reflète
+    # aussitôt l'essence choisie. `ignoreInit` : ne pas réagir au peuplement du
+    # sélecteur. On s'efface pendant un run / le moteur (qui appliquent déjà
+    # l'essence eux-mêmes).
+    shiny::observeEvent(input$species, {
+      if (is.null(rv$result)) return()
+      if (isTRUE(rv$running) || isTRUE(rv$engine_running)) return()
+      updated <- regen_reprioritize(rv$result, input$species)
+      rv$result <- updated
+      app_state$regeneration_result <- updated
+    }, ignoreInit = TRUE)
 
     # --- Moteur microclimf réel (option B, async) -------------------------
     # Provenance identique à la session principale pour recharger le namespace
