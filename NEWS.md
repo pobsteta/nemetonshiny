@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+### Fixed — commune : plus de flicker « … → Sélectionner une commune → … »
+
+- À l'ouverture d'un projet, la commune restaurée (ex. « Loury ») disparaissait
+  brièvement au profit du placeholder « Sélectionner une commune » avant de
+  réapparaître. La liste est peuplée en deux temps (commune seule immédiate, puis
+  liste complète du département) : la 2e mise à jour, en mode serveur, rechargeait
+  les options en AJAX et selectize vidait l'affichage le temps du chargement. Le
+  flux de restauration passe désormais en mode local (`server = FALSE`, options
+  inline) : la sélection reste affichée en continu entre les deux mises à jour. Le
+  flux normal de changement de département reste en mode serveur.
+
 # nemetonshiny 0.102.3
 
 ### Added — reGénération : indicateur de chargement à l'ouverture d'un projet
