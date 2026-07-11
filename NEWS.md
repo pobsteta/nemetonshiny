@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+### Changed — reGénération : champ « Type de peuplement » clarifié
+
+- Un tooltip « i » explique que le choix Feuillu/Résineux fixe la **phénologie**
+  du bilan hydrique du sol (BILJOU) — interception/transpiration saisonnières du
+  feuillu caduc vs permanentes du résineux sempervirent — donc les jours de
+  stress, la sensibilité et la priorité, et qu'il agit en amont (relance
+  nécessaire), contrairement à l'essence cible (live).
+- Les champs **Débourrement** et **Chute des feuilles** (phénologie des feuillus
+  caducs) n'apparaissent plus que lorsque « Feuillu » est coché ; un résineux
+  sempervirent n'a pas de cycle foliaire saisonnier.
+
 # nemetonshiny 0.102.1
 
 ### Fixed — mode admin/dev local passait à tort en lecture seule

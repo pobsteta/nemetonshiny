@@ -202,15 +202,22 @@ mod_regeneration_ui <- function(id) {
 
       # --- Peuplement ----------------------------------------------------
       htmltools::tags$strong(i18n$t("regen_stand_section")),
-      shiny::radioButtons(ns("forest_type"), i18n$t("regen_forest_type"),
+      shiny::radioButtons(ns("forest_type"),
+        label_tt(i18n$t("regen_forest_type"), i18n$t("regen_forest_type_tip")),
         choices = stats::setNames(c("feuillu", "resineux"),
           c(i18n$t("regen_forest_feuillu"), i18n$t("regen_forest_resineux"))),
         selected = "feuillu", inline = TRUE),
-      shiny::fluidRow(
-        shiny::column(6, shiny::numericInput(ns("budburst"),
-          i18n$t("regen_budburst"), value = 105, min = 1, max = 200)),
-        shiny::column(6, shiny::numericInput(ns("leaf_fall"),
-          i18n$t("regen_leaf_fall"), value = 300, min = 200, max = 366))
+      # Débourrement / chute des feuilles = phénologie des feuillus caducs. Un
+      # résineux sempervirent n'a pas de cycle foliaire saisonnier (BILJOU mode
+      # coniferous, LAI permanent) : on masque ces deux champs hors « Feuillu ».
+      shiny::conditionalPanel(
+        condition = "input.forest_type == 'feuillu'", ns = ns,
+        shiny::fluidRow(
+          shiny::column(6, shiny::numericInput(ns("budburst"),
+            i18n$t("regen_budburst"), value = 105, min = 1, max = 200)),
+          shiny::column(6, shiny::numericInput(ns("leaf_fall"),
+            i18n$t("regen_leaf_fall"), value = 300, min = 200, max = 366))
+        )
       ),
       # --- Paramètres experts (spec 035 B4.b) ----------------------------
       # `lai_max` et `ewm` partagent la même sémantique : vide = dérivé de la
