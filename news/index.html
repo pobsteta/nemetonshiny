@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.101.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.102.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,18 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.102.0" id="nemetonshiny-01020">nemetonshiny 0.102.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01020"></a></h2>
+<div class="section level4">
+<h4 id="added--verrou-dédition-de-projet-serveur-multi-utilisateurs-0-102-0">Added — verrou d’édition de projet (serveur multi-utilisateurs)<a class="anchor" aria-label="anchor" href="#added--verrou-d%C3%A9dition-de-projet-serveur-multi-utilisateurs-0-102-0"></a></h4>
+<ul><li>L’application est désormais destinée à tourner sur un serveur avec droits CRUD partagés. Pour éviter que deux utilisateurs modifient le même projet en même temps, un <strong>verrou d’édition</strong> est posé à l’ouverture d’un projet : le premier utilisateur édite, les suivants l’ouvrent en <strong>lecture seule</strong>.</li>
+<li>La logique de verrou vit dans le cœur <code>nemeton (&gt;= 0.148.0)</code> (<code>project_lock_acquire</code> / <code>heartbeat</code> / <code>release</code> / <code>status</code>, table <code>nemeton.project_lock</code>, TTL 120 s volé par péremption). Côté app, <code>R/service_lock.R</code> n’est qu’une <strong>enveloppe</strong> : une connexion courte par appel, aucune logique métier (règle <a href="https://github.com/pobsteta/nemetonshiny/issues/1" class="external-link">#1</a>). Le verrou est tenu par un <strong>heartbeat</strong> (toutes les 45 s), pas par la connexion — il survit au va-et-vient des connexions DB de l’app.</li>
+<li>
+<code>app_server</code> pilote le cycle de vie à partir d’un <strong>point de branchement unique</strong> (<code>app_state$project_id</code>) : acquisition à l’ouverture, relâche du projet précédent, heartbeat périodique, relâche à la fin de session (<code>onSessionEnded</code>, hors contexte réactif — <code>pid</code>/<code>hid</code> capturés par <code>isolate</code>). L’identité stable est l’<strong>email OAuth</strong> : un utilisateur anonyme (sans email) n’obtient jamais de verrou et travaille en lecture seule.</li>
+<li>Un <strong>bandeau</strong> en tête signale l’état lecture seule (tenu par un autre utilisateur, ou anonyme). <strong>Toutes</strong> les actions mutantes de l’app sont court-circuitées par le garde partagé <code>deny_if_readonly(app_state)</code> (toast d’avertissement) : reGénération (analyse, moteur E-OBS, recalcul PAI, enregistrement DB), projet (sauvegarde SUFOSAT/LST, suppression), calcul des indicateurs (<code>mod_home</code> : lancer/recalculer), ingestion terrain et validation sanitaire (<code>mod_field_ingest</code>), échantillonnage (<code>mod_sampling</code>, <code>mod_validation_sampling</code>), et l’édition des UGF (<code>mod_ug</code> : créer, déplacer, fusionner, découper, renommer, grouper, importer, annuler — 16 actions). Le plan d’action (<code>mod_action_plan</code>) combine désormais sa permission de rôle existante <strong>et</strong> le verrou projet dans le même garde. Les actions de lecture (navigation, sélection carte, aperçus, analyse CV) restent libres. i18n FR/EN (6 nouvelles clés <code>lock_*</code>).</li>
+<li>Plancher <code>Imports: nemeton (&gt;= 0.148.0)</code>. La table de verrou est créée par <code><a href="https://pobsteta.github.io/nemeton/reference/db_migrate.html" class="external-link">nemeton::db_migrate()</a></code>, appelé (idempotent) à l’initialisation du schéma.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.101.4" id="nemetonshiny-01014">nemetonshiny 0.101.4<a class="anchor" aria-label="anchor" href="#nemetonshiny-01014"></a></h2>
