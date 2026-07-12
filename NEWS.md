@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.105.0
+
 ### Added — reGénération : contexte régional E-OBS en RASTER (downscalé)
 
 - La carte « Contexte régional (E-OBS) » affiche désormais un **raster continu**
