@@ -344,16 +344,28 @@ mod_regeneration_ui <- function(id) {
         )
       ),
       bslib::nav_panel(i18n$t("regen_map_context"),
-        # La carte est bivariée : le cœur exige les DEUX séries E-OBS (tx + rr).
-        # Seule `tx` est rapatriée par « Auto (E-OBS) », d'où une carte vide et
-        # muette jusqu'ici. Le bandeau dit ce qui manque et propose de l'acquérir.
-        # Sidebar DROITE dédiée (parité carte principale) : le rayon du contexte
-        # régional ne concerne que cette carte, d'où sa place ici et non dans la
-        # sidebar de configuration du moteur.
+        # Contexte régional en RASTER downscalé (eobs_downscale, cœur >= 0.153.0),
+        # 3 vues : tendance T°max (tx), tendance précipitations (rr), et croisement
+        # BIVARIÉ (classes 1-9). La sidebar droite porte le sélecteur de vue, le
+        # rayon (buffer) et l'opacité — tout ce qui ne concerne que cette carte.
         bslib::layout_sidebar(
           fillable = TRUE,
           sidebar = bslib::sidebar(
             position = "right", open = "always", width = 260,
+            htmltools::tags$strong(i18n$t("regen_context_view")),
+            shiny::radioButtons(ns("context_view"), NULL,
+              choiceValues = c("tx", "rr", "bivariate"),
+              choiceNames  = c(i18n$t("regen_context_view_tx"),
+                               i18n$t("regen_context_view_rr"),
+                               i18n$t("regen_context_view_bivariate")),
+              selected = "tx"),
+            # Téléchargement de la série précipitations (~800 Mo) : requis pour les
+            # vues rr / bivariée. Le flux existe déjà (eobs_rr_task).
+            bslib::input_task_button(ns("fetch_eobs_rr"), i18n$t("regen_eobs_rr_fetch"),
+              icon = bsicons::bs_icon("cloud-download"),
+              label_busy = i18n$t("regen_eobs_rr_running_short"),
+              type = "outline-secondary", class = "btn-sm w-100 mb-2"),
+            htmltools::tags$hr(class = "my-2"),
             htmltools::tags$strong(i18n$t("regen_buffer")),
             shiny::numericInput(ns("buffer_km"), NULL,
               value = 25, min = 5, max = 100, step = 5),
@@ -411,6 +423,7 @@ mod_regeneration_server <- function(id, app_state) {
       # value_label) ; chrono du calcul async (WMS IGN + krigeage, ~4 s).
       context_raster = NULL, context_meta = NULL,
       context_running = FALSE, context_start = NULL,
+      context_loaded_view = NULL,   # vue actuellement chargée : tx / rr / bivariate
       # Restauration différée à l'entrée dans l'onglet reGénération (et non à
       # l'ouverture du projet) : un changement de projet/UGF pose ce drapeau ;
       # l'observer de restauration ne le consomme (toast + relecture cache) que
@@ -467,6 +480,7 @@ mod_regeneration_server <- function(id, app_state) {
       # Raster de contexte : périmé au changement de projet/UGF → recalcul lazy.
       rv$context_raster <- NULL
       rv$context_meta <- NULL
+      rv$context_loaded_view <- NULL
     }, ignoreNULL = FALSE)
 
     # (B) Observateur RESTAURATION — uniquement quand l'onglet reGénération est
@@ -782,7 +796,7 @@ mod_regeneration_server <- function(id, app_state) {
     # future, sortie cachée (.tif + meta.json). Renvoie le CHEMIN du raster (le
     # pointeur SpatRaster ne traverse pas la frontière future) + le meta.
     context_task <- shiny::ExtendedTask$new(
-      function(units, project_path, buffer_m, dev_path, app_opts) {
+      function(units, project_path, view, buffer_m, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
@@ -797,7 +811,7 @@ mod_regeneration_server <- function(id, app_state) {
           }
           options(nemeton.app_options = app_opts)
           fn <- getFromNamespace("run_regeneration_context_raster", "nemetonshiny")
-          fn(units, project_path, buffer_m = buffer_m, statistic = "trend")
+          fn(units, project_path, view = view, buffer_m = buffer_m)
         }, seed = TRUE)
       })
 
@@ -940,26 +954,38 @@ mod_regeneration_server <- function(id, app_state) {
     # Calcul lazy quand l'onglet reGénération est actif et que la série tx est là.
     # Fast-path cache (.tif + meta.json) → rendu instantané ; sinon worker async
     # (~4 s WMS + krigeage). Une seule tentative par projet (rv$context_raster).
-    shiny::observeEvent(list(app_state$active_main_tab, rv$context_refresh, units_sf()), {
+    # Déclenché aussi par le SÉLECTEUR de vue (tx / rr / bivariate) : chaque vue a
+    # son propre raster + cache. Cache-first, sinon worker async. Bandeau
+    # need_tx / need_rr si une série requise manque.
+    shiny::observeEvent(
+      list(app_state$active_main_tab, rv$context_refresh, units_sf(), input$context_view), {
       if (!identical(app_state$active_main_tab, "regeneration")) return()
-      if (!is.null(rv$context_raster) || isTRUE(rv$context_running)) return()
+      if (isTRUE(rv$context_running)) return()
+      view <- input$context_view %||% "tx"
+      # Déjà chargé pour CETTE vue → ne rien refaire.
+      if (identical(rv$context_loaded_view, view) &&
+          (!is.null(rv$context_raster) ||
+           (!is.null(rv$context_meta) && !identical(rv$context_meta$status, "ok")))) return()
       units <- units_sf(); if (is.null(units)) return()
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(project_path)) return()
-      if (!isTRUE(regen_context_availability(project_path)$tx)) return()  # tx absent → bandeau
 
-      cached <- regeneration_context_cached(project_path, "trend")
-      if (!is.null(cached)) {                    # fast-path : déjà calculé
-        rv$context_raster <- cached$raster
-        rv$context_meta <- cached$meta
-        return()
+      av <- regen_context_availability(project_path)
+      set_state <- function(rast, meta) {
+        rv$context_raster <- rast; rv$context_meta <- meta; rv$context_loaded_view <- view
       }
-      rv$context_running <- TRUE
-      rv$context_start <- Sys.time()
+      if (view %in% c("tx", "bivariate") && !isTRUE(av$tx)) return(set_state(NULL, list(status = "need_tx")))
+      if (view %in% c("rr", "bivariate") && !isTRUE(av$rr)) return(set_state(NULL, list(status = "need_rr")))
+
+      cached <- regeneration_context_cached(project_path, view)
+      if (!is.null(cached)) return(set_state(cached$raster, cached$meta))
+
+      rv$context_raster <- NULL; rv$context_loaded_view <- view
+      rv$context_running <- TRUE; rv$context_start <- Sys.time()
       shiny::showNotification(
         .running_notif_content(i18n$t("regen_context_computing"), rv$context_start),
         id = session$ns("context_notif"), type = "message", duration = NULL)
-      context_task$invoke(units, project_path, (input$buffer_km %||% 25) * 1000,
+      context_task$invoke(units, project_path, view, (input$buffer_km %||% 25) * 1000,
                           .dev_pkg_path, get_app_options())
     }, ignoreNULL = FALSE)
 
@@ -1380,52 +1406,81 @@ mod_regeneration_server <- function(id, app_state) {
       rv$context_refresh
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(project_path)) return(NULL)
-      if (!isTRUE(regen_context_availability(project_path)$tx)) {
-        return(htmltools::div(class = "alert alert-warning py-2 small d-flex align-items-center",
-          bsicons::bs_icon("exclamation-triangle-fill", class = "me-2"),
-          htmltools::div(class = "flex-grow-1", i18n$t("regen_context_need_tx"))))
-      }
       if (isTRUE(rv$context_running)) return(NULL)         # chrono en bas-droite
-      meta <- rv$context_meta
-      if (is.null(meta) || identical(meta$status, "ok")) return(NULL)
-      # Dégradé : mapper meta$reason (clé i18n) ; repli générique sinon.
-      reason <- meta$reason %||% "eobs_downscale_too_few_cells"
-      msg <- if (i18n$has(reason)) i18n$t(reason) else i18n$t("eobs_downscale_too_few_cells")
-      htmltools::div(class = "alert alert-warning py-2 small d-flex align-items-center",
+      warn <- function(msg) htmltools::div(
+        class = "alert alert-warning py-2 small d-flex align-items-center",
         bsicons::bs_icon("exclamation-triangle-fill", class = "me-2"),
         htmltools::div(class = "flex-grow-1", msg))
+      meta   <- rv$context_meta %||% list()
+      status <- meta$status
+      # Série requise manquante (poussée par l'observer de déclenchement).
+      if (identical(status, "need_tx")) return(warn(i18n$t("regen_context_need_tx")))
+      if (identical(status, "need_rr")) return(warn(i18n$t("regen_context_need_rr")))
+      if (identical(status, "ok")) {
+        # OK : note de fiabilité basse (rr / bivarié), en info discrète.
+        if (identical(meta$reliability, "low")) {
+          return(htmltools::div(class = "alert alert-info py-2 small d-flex align-items-center",
+            bsicons::bs_icon("info-circle", class = "me-2"),
+            htmltools::div(class = "flex-grow-1", i18n$t("regen_context_reliability_low"))))
+        }
+        return(NULL)
+      }
+      if (is.null(status)) return(NULL)                    # pas encore évalué
+      # Dégradé : mapper meta$reason (clé i18n) ; repli générique sinon.
+      reason <- meta$reason %||% "eobs_downscale_too_few_cells"
+      warn(if (i18n$has(reason)) i18n$t(reason) else i18n$t("eobs_downscale_too_few_cells"))
     })
 
-    # Spécification du raster de contexte (palette + bornes + titre légende) —
-    # partagée entre le rendu de base et l'observer proxy. `sense = "hot_
-    # unfavorable"` → chaud = rouge (reverse sur RdYlBu), règle rouge = critique.
-    .context_raster_spec <- function(rast, meta) {
-      if (!inherits(rast, "SpatRaster") || !identical(meta$status, "ok")) return(NULL)
-      p  <- meta$palette
-      lo <- p$low %||% suppressWarnings(min(terra::values(rast), na.rm = TRUE))
-      hi <- p$high %||% suppressWarnings(max(terra::values(rast), na.rm = TRUE))
-      if (!is.finite(lo) || !is.finite(hi) || lo == hi) return(NULL)
-      list(
-        pal   = leaflet::colorNumeric("RdYlBu", domain = c(lo, hi),
-                                      reverse = TRUE, na.color = "transparent"),
-        lo = lo, hi = hi,
-        title = meta$value_label %||% i18n$t("regen_context_value_tx_trend"))
+    # Ajoute le raster de contexte + sa légende à une carte/proxy leaflet, selon
+    # la vue : univariée tx/rr (colorNumeric, sens de palette piloté par
+    # meta$palette$sense — hot_unfavorable=haut rouge, dry_unfavorable=bas rouge)
+    # ou bivariée (colorFactor 1-9 + légende 2D 3×3). Partagé rendu/proxy.
+    .context_add_layer <- function(m, rast, meta, op) {
+      if (!inherits(rast, "SpatRaster") || !identical(meta$status, "ok")) return(m)
+      pal <- meta$palette %||% list()
+      opts <- leaflet::gridOptions(pane = "contexteRaster")
+      if (!is.null(pal$colors)) {
+        # Bivarié : classes 1-9 → colorFactor + légende bivariée 2D.
+        classes <- pal$classes %||% seq_along(pal$colors)
+        cmap <- leaflet::colorFactor(pal$colors, domain = classes, na.color = "transparent")
+        leg <- as.character(bivariate_legend_html(
+          palette = stats::setNames(pal$colors, classes),
+          axis_x  = i18n$t("regen_context_axis_rr"),
+          axis_y  = i18n$t("regen_context_axis_tx"),
+          title   = meta$value_label %||% i18n$t("regen_context_bivariate")))
+        m |>
+          leaflet::addRasterImage(rast, colors = cmap, opacity = op, project = TRUE,
+            group = "Contexte E-OBS", options = opts) |>
+          leaflet::addControl(html = leg, position = "bottomright", layerId = "context_legend")
+      } else {
+        # Univarié : colorNumeric, sens piloté par meta$palette$sense.
+        lo <- pal$low; hi <- pal$high
+        if (is.null(lo) || is.null(hi)) {
+          vv <- suppressWarnings(range(terra::values(rast), na.rm = TRUE)); lo <- vv[1]; hi <- vv[2]
+        }
+        if (!is.finite(lo) || !is.finite(hi) || lo == hi) return(m)
+        rev <- !identical(pal$sense, "dry_unfavorable")   # dry_unfavorable → bas = rouge
+        cn <- leaflet::colorNumeric("RdYlBu", domain = c(lo, hi), reverse = rev,
+                                    na.color = "transparent")
+        m |>
+          leaflet::addRasterImage(rast, colors = cn, opacity = op, project = TRUE,
+            group = "Contexte E-OBS", options = opts) |>
+          leaflet::addLegend(pal = cn, values = c(lo, hi), position = "bottomright",
+            title = meta$value_label %||% i18n$t("regen_context_value_tx_trend"),
+            layerId = "context_legend")
+      }
     }
 
     # Carte de contexte — patron FAST/FORDEAD : fond STABLE (jamais re-rendu) +
-    # `leafletProxy` pour le raster/l'opacité/la légende. Le rendu de base lit le
-    # raster et l'opacité en `isolate` (présents dès l'affichage) ; l'observer
-    # ci-dessous les met à jour SANS reconstruire la carte → le zoom et le fond
-    # OSM/Satellite sont préservés au déplacement du curseur d'opacité, et le
-    # raster ne disparaît plus au changement de fond. Le raster (E-OBS downscalé,
-    # cœur >= 0.152.0) va dans un map-pane dédié SOUS l'emprise UGF.
+    # `leafletProxy` pour le raster/l'opacité/la légende. Rendu de base lit raster
+    # + opacité en `isolate` → zoom + fond OSM/Satellite préservés au slider et au
+    # changement de fond ; l'observer proxy met à jour sans reconstruire. Raster
+    # dans un map-pane dédié SOUS l'emprise UGF.
     output$context_map <- leaflet::renderLeaflet({
       units <- units_sf()
       shiny::req(units)
       geo_ugf <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
-      op   <- max(0, min(1, as.numeric(shiny::isolate(input$context_opacity) %||% 0.8)))
-      spec <- .context_raster_spec(shiny::isolate(rv$context_raster),
-                                   shiny::isolate(rv$context_meta))
+      op <- max(0, min(1, as.numeric(shiny::isolate(input$context_opacity) %||% 0.8)))
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -1434,14 +1489,8 @@ mod_regeneration_server <- function(id, app_state) {
           baseGroups    = c("OSM", "Satellite"),
           overlayGroups = c("Contexte E-OBS", "UGF"),
           options       = leaflet::layersControlOptions(collapsed = TRUE))
-      if (!is.null(spec)) {
-        m <- m |>
-          leaflet::addRasterImage(shiny::isolate(rv$context_raster),
-            colors = spec$pal, opacity = op, project = TRUE, group = "Contexte E-OBS",
-            options = leaflet::gridOptions(pane = "contexteRaster")) |>
-          leaflet::addLegend(pal = spec$pal, values = c(spec$lo, spec$hi),
-            position = "bottomright", title = spec$title, layerId = "context_legend")
-      }
+      m <- .context_add_layer(m, shiny::isolate(rv$context_raster),
+                              shiny::isolate(rv$context_meta) %||% list(), op)
       m <- leaflet::addPolygons(m, data = geo_ugf, group = "UGF", weight = 1.5,
         color = "#1f6feb", fillColor = "#1f6feb", fillOpacity = 0.05)
       bb <- tryCatch(as.numeric(sf::st_bbox(geo_ugf)), error = function(e) NULL)
@@ -1451,26 +1500,18 @@ mod_regeneration_server <- function(id, app_state) {
       m
     })
 
-    # Mise à jour RASTER + LÉGENDE via leafletProxy (parité FAST/FORDEAD) : réagit
-    # au raster (calcul async), à son meta et au curseur d'opacité, en redessinant
-    # le seul group « Contexte E-OBS » + la légende (layerId stable) — sans
-    # re-render, donc zoom + fond préservés. Respecte la décoche du group.
+    # Mise à jour RASTER + LÉGENDE via leafletProxy : réagit au raster (calcul
+    # async / changement de vue), au meta et au curseur d'opacité — sans
+    # re-render (zoom + fond préservés). Respecte la décoche du group.
     shiny::observe({
       rast <- rv$context_raster
-      meta <- rv$context_meta
+      meta <- rv$context_meta %||% list()
       op   <- max(0, min(1, as.numeric(input$context_opacity %||% 0.8)))
       shown <- input$context_map_groups
       proxy <- leaflet::leafletProxy("context_map") |>
         leaflet::clearGroup("Contexte E-OBS") |>
         leaflet::removeControl("context_legend")
-      spec <- .context_raster_spec(rast, meta)
-      if (is.null(spec)) return()
-      proxy <- proxy |>
-        leaflet::addRasterImage(rast, colors = spec$pal, opacity = op,
-          project = TRUE, group = "Contexte E-OBS",
-          options = leaflet::gridOptions(pane = "contexteRaster")) |>
-        leaflet::addLegend(pal = spec$pal, values = c(spec$lo, spec$hi),
-          position = "bottomright", title = spec$title, layerId = "context_legend")
+      proxy <- .context_add_layer(proxy, rast, meta, op)
       if (!is.null(shown) && !("Contexte E-OBS" %in% shown)) {
         leaflet::hideGroup(proxy, "Contexte E-OBS")
       }

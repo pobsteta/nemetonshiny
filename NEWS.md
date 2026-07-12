@@ -1,5 +1,23 @@
 # nemetonshiny (development version)
 
+### Added — Contexte régional E-OBS : 3 vues (T°max / précip / BIVARIÉE)
+
+- La carte « Contexte régional (E-OBS) » gagne un **sélecteur de vue** (sidebar
+  droite) : tendance **T°max** (`var="tx"`), tendance **précipitations**
+  (`var="rr"`), et **carte bivariée** T°max × précipitations (classes 1-9), toutes
+  en raster downscalé via le cœur `nemeton (>= 0.153.0)` (`eobs_downscale` +
+  `eobs_downscale_bivariate`, `dem = NULL` auto-source WMS IGN).
+- **Palette pilotée par le cœur** : univarié via `colorNumeric` selon
+  `meta$palette$sense` (`hot_unfavorable` → chaud = rouge ; `dry_unfavorable` →
+  sec = rouge) ; bivarié via `colorFactor` (9 couleurs/libellés du cœur) + une
+  **légende bivariée 2D (grille 3×3)** rendue par l'app (aucun classement
+  côté app — il vient du cœur). Chaud + sec = coin critique rouge.
+- Chaque vue a son **cache** (`context_{tx,rr,bivariate}.tif` + meta.json) et son
+  calcul **async** (notif chrono). Le **bouton de téléchargement des
+  précipitations** (~800 Mo) est ré-exposé (requis pour rr/bivariée). Bandeau
+  `need_tx` / `need_rr` et note de **fiabilité basse** pour rr/bivariée
+  (downscaling pluie bruité). Plancher `Imports: nemeton (>= 0.153.0)`.
+
 # nemetonshiny 0.105.1
 
 ### Fixed — Contexte régional : zoom perdu au slider d'opacité + raster qui disparaît au changement de fond
