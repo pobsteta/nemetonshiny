@@ -200,6 +200,29 @@ mod_regeneration_ui <- function(id) {
       shiny::uiOutput(ns("engine_log")),
       htmltools::tags$hr(class = "my-2"),
 
+      # --- Moteur « risque de gel tardif » (R7, meteoland) ---------------
+      # Opt-in, coûteux (interpolation Tmin journalière SAFRAN→MNT) → worker +
+      # cache. Grisé si meteoland (Suggests) est absent, avec explication.
+      htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_frost_section")),
+      if (regen_meteoland_available()) {
+        bslib::tooltip(
+          bslib::input_task_button(ns("run_frost"), i18n$t("regen_frost_run"),
+            icon = bsicons::bs_icon("snow"),
+            label_busy = i18n$t("regen_frost_running_short"),
+            type = "outline-primary", class = "btn-sm w-100"),
+          i18n$t("regen_frost_tip"), placement = "right")
+      } else {
+        htmltools::tagList(
+          htmltools::tagAppendAttributes(
+            bslib::input_task_button(ns("run_frost"), i18n$t("regen_frost_run"),
+              icon = bsicons::bs_icon("snow"),
+              type = "outline-secondary", class = "btn-sm w-100"),
+            disabled = NA),
+          htmltools::tags$small(class = "text-muted d-block mt-1",
+            i18n$t("regen_frost_unavailable")))
+      },
+      htmltools::tags$hr(class = "my-2"),
+
       # --- Peuplement ----------------------------------------------------
       htmltools::tags$strong(i18n$t("regen_stand_section")),
       shiny::radioButtons(ns("forest_type"),
@@ -297,12 +320,14 @@ mod_regeneration_ui <- function(id) {
             # et comment lire sa légende. Tooltip à gauche : le sidebar est collé
             # au bord droit de la fenêtre.
             shiny::radioButtons(ns("map_layer"), NULL,
-              choiceValues = c("indice_priorite_regen", "sensibilite", "njstress", "d_tmax"),
+              choiceValues = c("indice_priorite_regen", "sensibilite", "njstress",
+                               "d_tmax", "r7_gel_days"),
               choiceNames = list(
                 layer_tt(i18n$t("regen_map_priorite"), i18n$t("regen_map_priorite_info")),
                 layer_tt(i18n$t("regen_map_sensibilite"), i18n$t("regen_map_sensibilite_info")),
                 layer_tt(i18n$t("regen_map_njstress"), i18n$t("regen_map_njstress_info")),
-                layer_tt(i18n$t("regen_map_dtmax"), i18n$t("regen_map_dtmax_info"))),
+                layer_tt(i18n$t("regen_map_dtmax"), i18n$t("regen_map_dtmax_info")),
+                layer_tt(i18n$t("regen_map_gel"), i18n$t("regen_map_gel_info"))),
               selected = "indice_priorite_regen"),
             # Essence cible : re-priorise la choroplèthe en direct (sans relancer
             # l'analyse). Placée sous le sélecteur de couche car son effet est
@@ -377,6 +402,8 @@ mod_regeneration_server <- function(id, app_state) {
       # Chrono du téléchargement des précipitations E-OBS (~800 Mo) : notif
       # persistante « engrenage + MM:SS » tant que la tâche tourne.
       eobs_rr_running = FALSE, eobs_rr_start = NULL,
+      # Chrono du moteur « risque de gel tardif » (R7, meteoland).
+      frost_running = FALSE, frost_start = NULL,
       # Restauration différée à l'entrée dans l'onglet reGénération (et non à
       # l'ouverture du projet) : un changement de projet/UGF pose ce drapeau ;
       # l'observer de restauration ne le consomme (toast + relecture cache) que
@@ -719,6 +746,28 @@ mod_regeneration_server <- function(id, app_state) {
         }, seed = TRUE)
       })
 
+    # Moteur « risque de gel tardif » (R7, meteoland). Opt-in, worker future,
+    # sortie cachée (tmin_*.tif) : interpolation Tmin journalière → indicateur R7.
+    frost_task <- shiny::ExtendedTask$new(
+      function(units, project_path, cfg, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            future::plan("multisession")
+          }
+        }
+        promises::future_promise({
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          fn <- getFromNamespace("run_regeneration_frost", "nemetonshiny")
+          fn(units, project_path, cfg)
+        }, seed = TRUE)
+      })
+
     # Lier chaque input_task_button à sa tâche : bslib désactive le bouton +
     # affiche le spinner tant que la tâche tourne, puis le réactive (succès OU
     # erreur). Empêche les runs concurrents (réécriture sensibilite/biljou.gpkg).
@@ -726,6 +775,7 @@ mod_regeneration_server <- function(id, app_state) {
     bslib::bind_task_button(engine_task, "run_engine")
     bslib::bind_task_button(eobs_task, "auto_years")
     bslib::bind_task_button(eobs_rr_task, "fetch_eobs_rr")
+    bslib::bind_task_button(frost_task, "run_frost")
 
     shiny::observeEvent(input$fetch_eobs_rr, {
       if (deny_if_readonly(app_state, i18n)) {
@@ -778,6 +828,75 @@ mod_regeneration_server <- function(id, app_state) {
         }
       } else if (identical(st, "error")) {
         err <- tryCatch(eobs_rr_task$result(), error = function(e) conditionMessage(e))
+        shiny::showNotification(
+          sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),
+          type = "error", duration = 10)
+      }
+    })
+
+    # --- Moteur « risque de gel tardif » (R7, meteoland) ------------------
+    shiny::observeEvent(input$run_frost, {
+      if (deny_if_readonly(app_state, i18n)) {
+        bslib::update_task_button("run_frost", state = "ready")
+        return()
+      }
+      units <- rv$result %||% units_sf()   # enrichir le résultat courant si présent
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(units) || is.null(project_path)) {
+        bslib::update_task_button("run_frost", state = "ready")
+        shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
+        return()
+      }
+      if (!regen_meteoland_available()) {
+        bslib::update_task_button("run_frost", state = "ready")
+        shiny::showNotification(i18n$t("regen_frost_unavailable"), type = "warning", duration = 8)
+        return()
+      }
+      na_null <- function(x) if (is.null(x) || (length(x) == 1 && is.na(x))) NULL else x
+      cfg <- list(
+        year_moyenne = na_null(input$year_moyenne),
+        year_canicule = na_null(input$year_canicule),
+        buffer_m = (input$buffer_km %||% 25) * 1000)
+      rv$frost_running <- TRUE
+      rv$frost_start <- Sys.time()
+      shiny::showNotification(
+        .running_notif_content(i18n$t("regen_frost_running"), rv$frost_start),
+        id = session$ns("frost_notif"), type = "message", duration = NULL)
+      frost_task$invoke(units, project_path, cfg, .dev_pkg_path, get_app_options())
+    })
+
+    # Tick 1 s : chrono de la notif « interpolation gel ».
+    shiny::observe({
+      if (!isTRUE(rv$frost_running)) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .running_notif_content(i18n$t("regen_frost_running"),
+                               shiny::isolate(rv$frost_start)),
+        id = session$ns("frost_notif"), type = "message", duration = NULL)
+    })
+
+    shiny::observeEvent(frost_task$status(), {
+      st <- frost_task$status()
+      if (identical(st, "success") || identical(st, "error")) {
+        rv$frost_running <- FALSE
+        rv$frost_start <- NULL
+        shiny::removeNotification(session$ns("frost_notif"))
+      }
+      if (identical(st, "success")) {
+        res <- tryCatch(frost_task$result(), error = function(e) NULL)
+        if (!is.null(res) && !is.null(res$units)) {
+          rv$result <- res$units
+          app_state$regeneration_result <- res$units
+          if (identical(res$r7_status, "calculated")) {
+            shiny::showNotification(i18n$t("regen_frost_done"), type = "message", duration = 6)
+          } else {
+            # Tmin indisponible (meteoland/SAFRAN KO, < N stations) : R7 skip,
+            # jamais un crash — l'utilisateur sait pourquoi le radar n'a pas R7.
+            shiny::showNotification(i18n$t("regen_frost_skipped"), type = "warning", duration = 10)
+          }
+        }
+      } else if (identical(st, "error")) {
+        err <- tryCatch(frost_task$result(), error = function(e) conditionMessage(e))
         shiny::showNotification(
           sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),
           type = "error", duration = 10)
@@ -1161,7 +1280,8 @@ mod_regeneration_server <- function(id, app_state) {
           layerId = "regen_legend",
           title = i18n$t(paste0("regen_map_",
             switch(col, indice_priorite_regen = "priorite", sensibilite = "sensibilite",
-                   njstress = "njstress", d_tmax = "dtmax", "priorite"))))
+                   njstress = "njstress", d_tmax = "dtmax", r7_gel_days = "gel",
+                   "priorite"))))
     })
 
     # Pourquoi la carte de contexte est vide, et quoi faire. Sans ce bandeau,

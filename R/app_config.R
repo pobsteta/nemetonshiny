@@ -305,16 +305,17 @@ INDICATOR_FAMILIES <- list(
     name_en = "Risks & Resilience",
     icon = "exclamation-triangle-fill",
     color = "#DC143C",
-    indicators = c("R1", "R2", "R3", "R4", "R5", "R6"),
+    indicators = c("R1", "R2", "R3", "R4", "R5", "R6", "R7"),
     column_names = c("indicateur_r1_feu", "indicateur_r2_tempete", "indicateur_r3_secheresse", "indicateur_r4_abroutissement", "indicateur_r5_deperissement",
-                     "indicateur_r6_sensibilite"),
+                     "indicateur_r6_sensibilite", "indicateur_r7_gel"),
     indicator_labels = list(
       R1 = list(fr = "Risque incendie", en = "Fire Risk"),
       R2 = list(fr = "Risque temp\u00eate", en = "Storm Risk"),
       R3 = list(fr = "Risque s\u00e9cheresse", en = "Drought Risk"),
       R4 = list(fr = "Risque abroutissement", en = "Browsing Risk"),
       R5 = list(fr = "D\u00e9p\u00e9rissement", en = "Dieback"),
-      R6 = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity")
+      R6 = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity"),
+      R7 = list(fr = "Risque de gel tardif", en = "Late-frost risk")
     ),
     indicator_tooltips = list(
       R1 = list(
@@ -340,6 +341,10 @@ INDICATOR_FAMILIES <- list(
       R6 = list(
         fr = "Sensibilit\u00e9 du microclimat \u00e0 la canicule (\u00e9cart ann\u00e9e moyenne / caniculaire, microclimf). Score \u00e9lev\u00e9 = microclimat robuste, peu sensible aux extr\u00eames.",
         en = "Microclimate sensitivity to heatwaves (average vs heatwave year gap, microclimf). High score = robust microclimate, low sensitivity to extremes."
+      ),
+      R7 = list(
+        fr = "Risque de gel tardif apr\u00e8s d\u00e9bourrement (gel\u00e9es post-d\u00e9bourrement, Tmin meteoland/SAFRAN \u2192 MNT). Contexte r\u00e9gional NDP 1. Score \u00e9lev\u00e9 = FAIBLE risque de gel.",
+        en = "Late-frost risk after budburst (post-budburst frosts, Tmin meteoland/SAFRAN \u2192 DEM). Regional NDP-1 context. High score = LOW frost risk."
       )
     )
   ),

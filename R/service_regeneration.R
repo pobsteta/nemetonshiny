@@ -945,6 +945,89 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
        ewm_source = ewm_source)
 }
 
+#' Is the meteoland engine available (Suggests) ?
+#'
+#' `meteoland_daily_grid()` and the frost engine degrade to `NULL` without it —
+#' the UI greys the frost option out and explains why. Kept app-side so the
+#' module can test availability without loading the (heavy) namespace.
+#' @noRd
+regen_meteoland_available <- function() {
+  requireNamespace("meteoland", quietly = TRUE)
+}
+
+# Clé de cache du stack Tmin : emprise UGF (bbox arrondie) + années + fenêtre doy.
+# Deux runs sur la même emprise/années/fenêtre réutilisent le .tif (patron pai.tif).
+.regen_frost_cache_key <- function(units, years, doy) {
+  bb <- tryCatch(round(as.numeric(sf::st_bbox(units))), error = function(e) c(0, 0, 0, 0))
+  paste0(paste(bb, collapse = "_"),
+         "__y", paste(sort(unique(years)), collapse = "-"),
+         "__doy", paste(doy, collapse = "-"))
+}
+
+#' Frost-risk engine (R7) — meteoland Tmin grid then indicateur_r7_gel (worker)
+#'
+#' Opt-in, cached, run in a background worker. Interpolates the daily minimum
+#' temperature over the late-frost spring window via
+#' `nemeton::meteoland_daily_grid()` (SAFRAN pseudo-stations -> MNT), caches the
+#' stack under `cache/regeneration/meteoland/tmin_<key>.tif` (reloaded with
+#' `terra::rast()`), then enriches `units` with R7 through
+#' `nemeton::indicateur_r7_gel()`.
+#'
+#' Degrades gracefully to `tmin = NULL` (`r7_status = "skipped_no_tmin"`, R7 = NA,
+#' absent from the radar) when meteoland is unavailable, the DEM/years are
+#' missing, or the grid cannot be produced — it NEVER errors and never blocks.
+#'
+#' @param units Analysed or bare UGF `sf` (EPSG:2154).
+#' @param project_path Project root (for DEM resolution + cache).
+#' @param cfg List: `year_moyenne`, `year_canicule` (reference years), optional
+#'   `doy_range`, `buffer_m`.
+#' @return `list(units, r7_status, tmin_available)`.
+#' @noRd
+run_regeneration_frost <- function(units, project_path, cfg = list()) {
+  if (!inherits(units, "sf")) {
+    stop("run_regeneration_frost: `units` must be an sf object", call. = FALSE)
+  }
+  years <- c(cfg$year_moyenne, cfg$year_canicule)      # c() drops NULLs
+  years <- if (length(years)) unique(years) else NULL
+  doy   <- cfg$doy_range %||% c(60L, 180L)
+
+  tmin <- NULL
+  if (regen_meteoland_available() && !is.null(project_path) && !is.null(years)) {
+    dem <- .resolve_regen_dem(project_path)
+    if (!is.null(dem)) {
+      cache_dir <- file.path(project_path, "cache", "regeneration", "meteoland")
+      if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+      cache_tif <- file.path(cache_dir,
+        paste0("tmin_", .regen_frost_cache_key(units, years, doy), ".tif"))
+      tmin <- if (file.exists(cache_tif)) {
+        tryCatch(terra::rast(cache_tif), error = function(e) NULL)
+      } else {
+        g <- tryCatch(nemeton::meteoland_daily_grid(
+          aoi = units, dem = dem, years = years,
+          variable = "MinTemperature", doy_range = doy,
+          buffer_m = cfg$buffer_m %||% 25000, calibrate = FALSE),
+          error = function(e) NULL)
+        if (!is.null(g)) {
+          tryCatch(terra::writeRaster(g, cache_tif, overwrite = TRUE),
+                   error = function(e) NULL)
+        }
+        g
+      }
+    }
+  }
+
+  # tmin NULL (meteoland absent / grille impossible) => R7 = NA, jamais d'erreur.
+  units <- tryCatch(
+    nemeton::indicateur_r7_gel(units, tmin = tmin),
+    error = function(e) {
+      units$R7 <- NA_real_
+      units$r7_status <- "skipped_no_tmin"
+      units
+    })
+  status <- if ("r7_status" %in% names(units)) as.character(units$r7_status[1]) else NA_character_
+  list(units = units, r7_status = status, tmin_available = !is.null(tmin))
+}
+
 #' Re-attach a cached reGénération result, without recomputing anything
 #'
 #' @description

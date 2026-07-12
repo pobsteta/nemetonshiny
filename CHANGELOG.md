@@ -10,6 +10,28 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.104.0] - 2026-07-12
+
+### Added
+
+- reGénération : indicateur **R7 « risque de gel tardif »** + moteur meteoland
+  (cœur `nemeton (>= 0.151.0)`). `meteoland_daily_grid()` interpole la Tmin
+  journalière (SAFRAN → MNT) sur la fenêtre de débourrement, `indicateur_r7_gel()`
+  compte les gelées tardives. Moteur opt-in (bouton grisé si `meteoland` absent),
+  worker de fond, sortie cachée (`tmin_*.tif`), repli gracieux (R7 skip, jamais de
+  crash), notification « engrenage + chrono » dédiée. Couche carte « Gelées
+  tardives (R7) » (rouge = critique). R7 dans `INDICATOR_FAMILIES$R` (sens normal,
+  NA-safe). `meteoland` ajouté en Suggests.
+
+### Fixed
+
+- Tests : `setup-ntfy.R` neutralise `NEMETON_NTFY_TOPIC` pour toute la suite — les
+  tests moteur n'envoient plus de push ntfy réel titré « fileXXXX ».
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.151.0)`.
+
 ## [0.103.0] - 2026-07-11
 
 ### Fixed

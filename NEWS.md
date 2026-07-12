@@ -1,5 +1,36 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.104.0
+
+### Added — reGénération : risque de gel tardif (R7, moteur meteoland)
+
+- Nouvel indicateur **R7 « risque de gel tardif »** (famille Risques & Résilience),
+  câblé côté cœur `nemeton (>= 0.151.0)` : `meteoland_daily_grid()` interpole la
+  température minimale journalière (SAFRAN → MNT) sur la fenêtre de débourrement,
+  puis `indicateur_r7_gel()` compte les gelées post-débourrement. R7 suit le sens
+  normal (haut = FAIBLE risque), NA-safe (absent du radar sans calcul), sans le
+  routage d'inversion propre à R5.
+- **Moteur opt-in** dans l'onglet reGénération : bouton « Risque de gel
+  (meteoland) » (grisé si `meteoland`, en Suggests, est absent — avec message
+  explicatif). Exécution en worker de fond, sortie **cachée**
+  (`cache/regeneration/meteoland/tmin_*.tif`), repli gracieux → R7 absent sans
+  jamais planter. Notification persistante « engrenage + chrono » dédiée
+  (« interpolation gel »), distincte de biljou/microclimf.
+- **Carte** : nouvelle couche « Gelées tardives (R7) » dans « Couche affichée »
+  (rouge = beaucoup de gelées = critique). Libellé/tooltip R7 (FR/EN) + famille R
+  étendue à 7 indicateurs (`INDICATOR_FAMILIES`).
+- Rappel d'échelle (UI/tooltips) : R7/meteoland = **contexte régional NDP 1**
+  (gradient topographique), PAS l'effet tampon sous couvert — ce dernier reste le
+  domaine de `microclimate_run()` (microclimf + LiDAR HD, NDP 2+).
+- Plancher `Imports: nemeton (>= 0.151.0)` ; `meteoland` ajouté en Suggests.
+
+### Fixed — tests : plus de push ntfy réel titré « fileXXXX »
+
+- Un `setup-ntfy.R` neutralise `NEMETON_NTFY_TOPIC` pour toute la suite : les
+  tests exécutant un moteur n'envoient plus de vraie notification ntfy (titrée
+  avec le basename du répertoire temporaire faute de metadata.json). Les tests
+  qui valident ntfy posent leur propre topic dans un bloc local.
+
 # nemetonshiny 0.103.0
 
 ### Fixed — reGénération : le toast de chargement ne s'affiche qu'en onglet reGénération
