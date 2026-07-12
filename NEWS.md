@@ -1,5 +1,18 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.105.1
+
+### Fixed — Contexte régional : zoom perdu au slider d'opacité + raster qui disparaît au changement de fond
+
+- La carte « Contexte régional (E-OBS) » lisait l'opacité directement dans son
+  rendu : bouger le curseur reconstruisait la carte (zoom réinitialisé), et le
+  raster, dessiné dans le rendu, disparaissait au changement de fond
+  OSM/Satellite. Passage au patron FAST/FORDEAD : fond STABLE (rendu de base
+  lisant raster + opacité en `isolate`, jamais re-rendu) + `leafletProxy` qui
+  met à jour le raster/la légende sur changement d'opacité ou d'analyse. Zoom et
+  fond préservés ; le raster survit au changement de fond (map-pane dédié,
+  respect de la décoche du groupe).
+
 # nemetonshiny 0.105.0
 
 ### Added — reGénération : contexte régional E-OBS en RASTER (downscalé)
