@@ -1,5 +1,19 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.104.1
+
+### Changed — perf : pré-chauffage des workers future au démarrage
+
+- Le tout premier `future` d'une session charge le namespace `nemetonshiny` +
+  ses dépendances (sf/terra/leaflet…) **dans le process worker** : ~5–6 s
+  mesurées. Ce coût frappait la première tâche asynchrone — typiquement le
+  `db_sync_project_async()` déclenché à l'ouverture du premier projet, ou le
+  premier calcul / moteur. Un `warmup_async_workers()` charge désormais le
+  namespace dans les workers **en arrière-plan**, 0,3 s après le démarrage (dans
+  des process séparés, sans compétition avec le rendu de la page) : la première
+  tâche async ne paie plus ce délai. Best-effort, idempotent, no-op sous un plan
+  séquentiel. Complète le `warmup_geo_stack()` existant (thread principal).
+
 # nemetonshiny 0.104.0
 
 ### Added — reGénération : risque de gel tardif (R7, moteur meteoland)

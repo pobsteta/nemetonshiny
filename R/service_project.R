@@ -923,6 +923,55 @@ warmup_geo_stack <- function() {
   invisible(TRUE)
 }
 
+# PERF — pré-chauffage des WORKERS future (pas seulement du thread principal).
+# Le tout 1er `future_promise` d'une session charge le namespace nemetonshiny +
+# ses deps (sf/terra/leaflet…) DANS le process worker : ~5–6 s mesurées. Ce coût
+# frappait la 1re tâche async — typiquement le `db_sync_project_async()` déclenché
+# à l'ouverture du 1er projet, ou le 1er calcul / moteur. On le déplace hors du
+# chemin critique en chargeant le namespace dans les workers en arrière-plan, peu
+# après le démarrage (fire-and-forget, cf. app_server). Best-effort, idempotent,
+# et NO-OP si le plan est séquentiel (sinon future_promise tournerait sur le
+# thread principal et bloquerait — exactement ce qu'on veut éviter).
+.async_workers_warmed <- new.env(parent = emptyenv())
+.async_workers_warmed$done <- FALSE
+
+warmup_async_workers <- function() {
+  if (isTRUE(.async_workers_warmed$done)) {
+    return(invisible(FALSE))
+  }
+  .async_workers_warmed$done <- TRUE
+  ok <- requireNamespace("future", quietly = TRUE) &&
+        requireNamespace("promises", quietly = TRUE)
+  if (!ok) {
+    return(invisible(FALSE))
+  }
+  plan_classes <- class(tryCatch(future::plan(), error = function(e) NULL))
+  if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+    return(invisible(FALSE))   # plan séquentiel : aucun worker à chauffer.
+  }
+  dev_path <- tryCatch(
+    if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
+      find.package("nemetonshiny") else NULL,
+    error = function(e) NULL)
+  # Chauffer jusqu'à 4 workers concurremment : couvre les tâches courantes
+  # (sync, calcul, moteur) sans saturer la machine au démarrage.
+  n <- tryCatch(as.integer(future::nbrOfWorkers()), error = function(e) 1L)
+  n <- max(1L, min(n, 4L))
+  for (i in seq_len(n)) {
+    tryCatch(
+      promises::future_promise({
+        if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+          pkgload::load_all(dev_path, quiet = TRUE)
+        } else {
+          loadNamespace("nemetonshiny")
+        }
+        TRUE
+      }, seed = TRUE, globals = list(dev_path = dev_path)),
+      error = function(e) NULL)
+  }
+  invisible(TRUE)
+}
+
 attach_indicators_sf <- function(project) {
   tryCatch({
     if (!is.null(project$indicators) && has_ug_data(project) &&

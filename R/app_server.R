@@ -44,6 +44,12 @@ app_server <- function(input, output, session) {
   # Idempotent (ne tourne qu'une fois par process R, cf. warmup_geo_stack).
   if (requireNamespace("later", quietly = TRUE)) {
     later::later(function() warmup_geo_stack(), delay = 1.5)
+    # Pré-chauffe aussi les WORKERS future (chargement du namespace nemetonshiny
+    # dans les process worker, ~5–6 s au tout 1er future) : sans ça, ce coût
+    # frappe la 1re tâche async — souvent le db_sync du 1er projet ouvert, ou le
+    # 1er calcul/moteur. Dans des process séparés → aucune compétition avec le
+    # rendu principal, donc déclenché tôt (0,3 s) pour être chaud avant le clic.
+    later::later(function() warmup_async_workers(), delay = 0.3)
   }
 
   # ============================================================
