@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.104.2
+
 ### Fixed — reGénération : carte « Contexte régional (E-OBS) » vide malgré les données
 
 - La carte de contexte restait vide même quand les deux séries E-OBS (tx + rr)
