@@ -1396,39 +1396,51 @@ mod_regeneration_server <- function(id, app_state) {
         htmltools::div(class = "flex-grow-1", msg))
     })
 
-    # Fonds OSM/Satellite + contrôle de couches + emprise UGF (bleu) + RASTER de
-    # contexte régional (E-OBS downscalé par eobs_downscale, cœur >= 0.152.0). Le
-    # raster (Tmax estivale, tendance) remplace l'ancien semis de points bivarié :
-    # une vraie surface continue, dont l'opacité est enfin celle d'un raster. Le
-    # raster est calculé en async et déposé dans rv$context_raster ; le fitBounds
-    # vise l'emprise UGF (stable) — buffer/opacité ne déplacent pas la vue.
+    # Spécification du raster de contexte (palette + bornes + titre légende) —
+    # partagée entre le rendu de base et l'observer proxy. `sense = "hot_
+    # unfavorable"` → chaud = rouge (reverse sur RdYlBu), règle rouge = critique.
+    .context_raster_spec <- function(rast, meta) {
+      if (!inherits(rast, "SpatRaster") || !identical(meta$status, "ok")) return(NULL)
+      p  <- meta$palette
+      lo <- p$low %||% suppressWarnings(min(terra::values(rast), na.rm = TRUE))
+      hi <- p$high %||% suppressWarnings(max(terra::values(rast), na.rm = TRUE))
+      if (!is.finite(lo) || !is.finite(hi) || lo == hi) return(NULL)
+      list(
+        pal   = leaflet::colorNumeric("RdYlBu", domain = c(lo, hi),
+                                      reverse = TRUE, na.color = "transparent"),
+        lo = lo, hi = hi,
+        title = meta$value_label %||% i18n$t("regen_context_value_tx_trend"))
+    }
+
+    # Carte de contexte — patron FAST/FORDEAD : fond STABLE (jamais re-rendu) +
+    # `leafletProxy` pour le raster/l'opacité/la légende. Le rendu de base lit le
+    # raster et l'opacité en `isolate` (présents dès l'affichage) ; l'observer
+    # ci-dessous les met à jour SANS reconstruire la carte → le zoom et le fond
+    # OSM/Satellite sont préservés au déplacement du curseur d'opacité, et le
+    # raster ne disparaît plus au changement de fond. Le raster (E-OBS downscalé,
+    # cœur >= 0.152.0) va dans un map-pane dédié SOUS l'emprise UGF.
     output$context_map <- leaflet::renderLeaflet({
       units <- units_sf()
       shiny::req(units)
-      op <- input$context_opacity %||% 0.8
       geo_ugf <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
+      op   <- max(0, min(1, as.numeric(shiny::isolate(input$context_opacity) %||% 0.8)))
+      spec <- .context_raster_spec(shiny::isolate(rv$context_raster),
+                                   shiny::isolate(rv$context_meta))
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        leaflet::addMapPane("contexteRaster", zIndex = 250) |>
         leaflet::addLayersControl(
           baseGroups    = c("OSM", "Satellite"),
           overlayGroups = c("Contexte E-OBS", "UGF"),
           options       = leaflet::layersControlOptions(collapsed = TRUE))
-      # Raster SOUS l'emprise UGF pour que les parcelles restent lisibles.
-      rast <- rv$context_raster
-      meta <- rv$context_meta
-      if (inherits(rast, "SpatRaster") && identical(meta$status, "ok")) {
-        p <- meta$palette
-        lo <- p$low %||% suppressWarnings(min(terra::values(rast), na.rm = TRUE))
-        hi <- p$high %||% suppressWarnings(max(terra::values(rast), na.rm = TRUE))
-        # sense = "hot_unfavorable" → chaud = rouge (reverse sur RdYlBu), règle app.
-        pal <- leaflet::colorNumeric("RdYlBu", domain = c(lo, hi),
-                                     reverse = TRUE, na.color = "transparent")
+      if (!is.null(spec)) {
         m <- m |>
-          leaflet::addRasterImage(rast, colors = pal, opacity = op,
-                                  group = "Contexte E-OBS", project = TRUE) |>
-          leaflet::addLegend(pal = pal, values = c(lo, hi), position = "bottomright",
-            title = meta$value_label %||% i18n$t("regen_context_value_tx_trend"))
+          leaflet::addRasterImage(shiny::isolate(rv$context_raster),
+            colors = spec$pal, opacity = op, project = TRUE, group = "Contexte E-OBS",
+            options = leaflet::gridOptions(pane = "contexteRaster")) |>
+          leaflet::addLegend(pal = spec$pal, values = c(spec$lo, spec$hi),
+            position = "bottomright", title = spec$title, layerId = "context_legend")
       }
       m <- leaflet::addPolygons(m, data = geo_ugf, group = "UGF", weight = 1.5,
         color = "#1f6feb", fillColor = "#1f6feb", fillOpacity = 0.05)
@@ -1437,6 +1449,31 @@ mod_regeneration_server <- function(id, app_state) {
         m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
       }
       m
+    })
+
+    # Mise à jour RASTER + LÉGENDE via leafletProxy (parité FAST/FORDEAD) : réagit
+    # au raster (calcul async), à son meta et au curseur d'opacité, en redessinant
+    # le seul group « Contexte E-OBS » + la légende (layerId stable) — sans
+    # re-render, donc zoom + fond préservés. Respecte la décoche du group.
+    shiny::observe({
+      rast <- rv$context_raster
+      meta <- rv$context_meta
+      op   <- max(0, min(1, as.numeric(input$context_opacity %||% 0.8)))
+      shown <- input$context_map_groups
+      proxy <- leaflet::leafletProxy("context_map") |>
+        leaflet::clearGroup("Contexte E-OBS") |>
+        leaflet::removeControl("context_legend")
+      spec <- .context_raster_spec(rast, meta)
+      if (is.null(spec)) return()
+      proxy <- proxy |>
+        leaflet::addRasterImage(rast, colors = spec$pal, opacity = op,
+          project = TRUE, group = "Contexte E-OBS",
+          options = leaflet::gridOptions(pane = "contexteRaster")) |>
+        leaflet::addLegend(pal = spec$pal, values = c(spec$lo, spec$hi),
+          position = "bottomright", title = spec$title, layerId = "context_legend")
+      if (!is.null(shown) && !("Contexte E-OBS" %in% shown)) {
+        leaflet::hideGroup(proxy, "Contexte E-OBS")
+      }
     })
 
     output$table <- DT::renderDataTable({
