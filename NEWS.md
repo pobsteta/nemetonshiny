@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.1
+
 ### Changed — Contexte régional : tooltip « i » sur chaque vue
 
 - Le sélecteur de vue de la carte « Contexte régional (E-OBS) » (Tendance T°max /

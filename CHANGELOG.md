@@ -10,6 +10,13 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.106.1] - 2026-07-12
+
+### Changed
+
+- reGénération : le sélecteur de vue de la carte « Contexte régional (E-OBS) »
+  porte un tooltip « i » par vue (variable, unité, lecture de palette, fiabilité).
+
 ## [0.106.0] - 2026-07-12
 
 ### Added
