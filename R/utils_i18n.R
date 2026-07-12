@@ -4290,6 +4290,18 @@ TRANSLATIONS <- list(
   regen_context_computing = list(
     fr = "Calcul du contexte r\u00e9gional (E-OBS)\u2026", en = "Computing regional context (E-OBS)\u2026"
   ),
+  # S\u00e9lecteur 3 vues du contexte r\u00e9gional (raster).
+  regen_context_view = list(fr = "Contexte affich\u00e9", en = "Displayed context"),
+  regen_context_view_tx = list(fr = "Tendance T\u00b0max", en = "Max-T trend"),
+  regen_context_view_rr = list(fr = "Tendance pr\u00e9cipitations", en = "Precipitation trend"),
+  regen_context_view_bivariate = list(fr = "Bivari\u00e9e (T\u00b0max \u00d7 pr\u00e9cip)", en = "Bivariate (max-T \u00d7 precip)"),
+  regen_context_axis_tx = list(fr = "T\u00b0max", en = "Max-T"),
+  regen_context_axis_rr = list(fr = "Pr\u00e9cipitations", en = "Precipitation"),
+  regen_context_bivariate = list(fr = "Contexte bivari\u00e9", en = "Bivariate context"),
+  regen_context_reliability_low = list(
+    fr = "Fiabilit\u00e9 faible : downscaling des pr\u00e9cipitations (relation orographique bruit\u00e9e) \u2014 contexte r\u00e9gional uniquement.",
+    en = "Low reliability: precipitation downscaling (noisy orographic relationship) \u2014 regional context only."
+  ),
   regen_eobs_rr_fetch = list(
     fr = "T\u00e9l\u00e9charger les pr\u00e9cipitations (~800 Mo)",
     en = "Download precipitation (~800 MB)"

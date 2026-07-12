@@ -275,67 +275,79 @@ regeneration_context_eobs <- function(ugf, precomputed = NULL, buffer_m = 25000,
   )
 }
 
-# Chemins du cache du raster de contexte régional (SpatRaster + sidecar meta).
-.regen_context_raster_paths <- function(project_path, statistic = "trend") {
-  dir <- file.path(project_path, "cache", "regeneration", "eobs")
-  list(
-    tif  = file.path(dir, paste0("context_tx_", statistic, ".tif")),
-    meta = file.path(dir, paste0("context_tx_", statistic, ".meta.json")),
-    dir  = dir)
+# Chemins du cache du raster de contexte régional (SpatRaster + sidecar meta),
+# par VUE : "tx" (tendance T°max), "rr" (tendance précip), "bivariate" (croisement).
+.regen_context_raster_paths <- function(project_path, view = "tx") {
+  view <- match.arg(view, c("tx", "rr", "bivariate"))
+  dir  <- file.path(project_path, "cache", "regeneration", "eobs")
+  base <- file.path(dir, paste0("context_", view))
+  list(tif = paste0(base, ".tif"), meta = paste0(base, ".meta.json"), dir = dir)
 }
 
-#' Downscaled E-OBS regional context raster (worker) — spec 027, brief eobs-context-dem
+# Charge une série E-OBS sur l'AOI bufferisée, ou NULL.
+.regen_load_eobs_buffered <- function(units, project_path, var, buffer_m) {
+  nc <- regen_eobs_cached_nc(project_path, var)
+  if (is.null(nc)) return(NULL)
+  tryCatch(
+    nemeton::load_eobs_source(aoi = sf::st_buffer(units, buffer_m), var = var, nc = nc),
+    error = function(e) NULL)
+}
+
+#' Downscaled E-OBS regional context raster (worker) — 3 vues, spec 027
 #'
-#' Turns the coarse E-OBS Tmax series into a fine `SpatRaster` over the regional
-#' context via `nemeton::eobs_downscale(dem = NULL)` (cœur >= 0.152.0), which
-#' auto-sources a coarse context elevation over the buffer (WMS IGN) — the
-#' project DEM (parcelle-scale) is NOT passed. Runs in a background worker: the
-#' `SpatRaster` pointer can't cross the `future` boundary, so the raster is
-#' written to the cache `.tif` (via `cache_path`) and its `meta` to a sidecar
-#' JSON; the caller reads them back with `regeneration_context_cached()`.
+#' Produit un `SpatRaster` fin de contexte régional via le cœur (>= 0.153.0) qui
+#' auto-source une élévation grossière sur le buffer (`dem = NULL`, WMS IGN) — le
+#' MNT parcellaire n'est PAS passé :
+#'   * `view = "tx"`        -> `eobs_downscale(var="tx")`  (tendance T°max, °C/déc)
+#'   * `view = "rr"`        -> `eobs_downscale(var="rr")`  (tendance précip, mm/déc)
+#'   * `view = "bivariate"` -> `eobs_downscale_bivariate(tx, rr)` (classes 1-9)
 #'
-#' @return `list(cache_path, meta)` — `cache_path` is `NA` when no raster.
+#' Worker `future` : le pointeur SpatRaster ne traverse pas la frontière, donc le
+#' raster est écrit via `cache_path` et son `meta` en sidecar JSON ; le lecteur
+#' `regeneration_context_cached()` les relit. Renvoie `need_tx`/`need_rr` si une
+#' série requise manque, sans jamais lever.
+#'
+#' @return `list(cache_path, meta)` — `cache_path` = `NA` sans raster.
 #' @noRd
 run_regeneration_context_raster <- function(units, project_path,
-                                            buffer_m = 25000, statistic = "trend") {
+                                            view = "tx", buffer_m = 25000) {
   if (!inherits(units, "sf")) {
     stop("run_regeneration_context_raster: `units` must be sf", call. = FALSE)
   }
-  paths <- .regen_context_raster_paths(project_path, statistic)
-  nc <- regen_eobs_cached_nc(project_path, "tx")
-  if (is.null(nc)) return(list(cache_path = NA_character_, meta = list(status = "need_tx")))
-  tx <- tryCatch(
-    nemeton::load_eobs_source(aoi = sf::st_buffer(units, buffer_m), var = "tx", nc = nc),
-    error = function(e) NULL)
-  if (is.null(tx)) return(list(cache_path = NA_character_, meta = list(status = "need_tx")))
+  view  <- match.arg(view, c("tx", "rr", "bivariate"))
+  paths <- .regen_context_raster_paths(project_path, view)
   if (!dir.exists(paths$dir)) dir.create(paths$dir, recursive = TRUE)
 
+  need <- function(reason) list(cache_path = NA_character_, meta = list(status = reason))
+  tx <- if (view %in% c("tx", "bivariate")) .regen_load_eobs_buffered(units, project_path, "tx", buffer_m)
+  rr <- if (view %in% c("rr", "bivariate")) .regen_load_eobs_buffered(units, project_path, "rr", buffer_m)
+  if (view %in% c("tx", "bivariate") && is.null(tx)) return(need("need_tx"))
+  if (view %in% c("rr", "bivariate") && is.null(rr)) return(need("need_rr"))
+
   res <- tryCatch(
-    nemeton::eobs_downscale(
-      var = "tx", eobs = tx, dem = NULL, aoi = units,
-      engine = "ked", statistic = statistic, buffer_m = buffer_m,
-      cache_path = paths$tif),
+    switch(view,
+      tx = nemeton::eobs_downscale(var = "tx", eobs = tx, dem = NULL, aoi = units,
+             engine = "ked", statistic = "trend", buffer_m = buffer_m, cache_path = paths$tif),
+      rr = nemeton::eobs_downscale(var = "rr", eobs = rr, dem = NULL, aoi = units,
+             engine = "ked", statistic = "trend", buffer_m = buffer_m, cache_path = paths$tif),
+      bivariate = nemeton::eobs_downscale_bivariate(tx = tx, rr = rr, dem = NULL,
+             aoi = units, buffer_m = buffer_m, cache_path = paths$tif)),
     error = function(e) list(raster = NULL,
       meta = list(status = "insufficient_data", reason = "eobs_downscale_no_dem")))
 
   meta <- res$meta %||% list(status = "insufficient_data")
   ok <- identical(meta$status, "ok") && !is.null(res$raster) && file.exists(paths$tif)
-  # Persister meta (le .tif seul ne porte ni status/palette/value_label) pour
-  # rendre + rechauffer instantanément à la réouverture, sans re-kriger.
   tryCatch(jsonlite::write_json(meta, paths$meta, auto_unbox = TRUE, null = "null"),
            error = function(e) NULL)
   list(cache_path = if (ok) paths$tif else NA_character_, meta = meta)
 }
 
-#' Read the cached regional-context raster + meta, without recomputing
-#'
-#' Fast path (`terra::rast()` + JSON): the heavy `eobs_downscale()` (~4 s, WMS +
-#' kriging) only runs once per project. Returns `NULL` when the cache is absent.
+#' Read the cached regional-context raster + meta for a view, without recomputing
 #' @return `list(raster, meta)` or `NULL`.
 #' @noRd
-regeneration_context_cached <- function(project_path, statistic = "trend") {
+regeneration_context_cached <- function(project_path, view = "tx") {
   if (is.null(project_path)) return(NULL)
-  paths <- .regen_context_raster_paths(project_path, statistic)
+  paths <- .regen_context_raster_paths(project_path, view)
   if (!file.exists(paths$tif) || !file.exists(paths$meta)) return(NULL)
   r <- tryCatch(terra::rast(paths$tif), error = function(e) NULL)
   if (is.null(r)) return(NULL)
