@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.105.1\] - 2026-07-12
+
+### Fixed
+
+- Carte « Contexte régional (E-OBS) » : le zoom et le fond OSM/Satellite
+  sont préservés au déplacement du curseur d’opacité, et le raster ne
+  disparaît plus au changement de fond. Passage au patron FAST/FORDEAD
+  (rendu de base stable en `isolate` + `leafletProxy` pour le raster/la
+  légende).
+
 ## \[0.105.0\] - 2026-07-12
 
 ### Added

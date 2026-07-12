@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.105.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.105.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.105.1" id="nemetonshiny-01051">nemetonshiny 0.105.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-01051"></a></h2>
+<div class="section level4">
+<h4 id="fixed--contexte-régional--zoom-perdu-au-slider-dopacité--raster-qui-disparaît-au-changement-de-fond-0-105-1">Fixed — Contexte régional : zoom perdu au slider d’opacité + raster qui disparaît au changement de fond<a class="anchor" aria-label="anchor" href="#fixed--contexte-r%C3%A9gional--zoom-perdu-au-slider-dopacit%C3%A9--raster-qui-dispara%C3%AEt-au-changement-de-fond-0-105-1"></a></h4>
+<ul><li>La carte « Contexte régional (E-OBS) » lisait l’opacité directement dans son rendu : bouger le curseur reconstruisait la carte (zoom réinitialisé), et le raster, dessiné dans le rendu, disparaissait au changement de fond OSM/Satellite. Passage au patron FAST/FORDEAD : fond STABLE (rendu de base lisant raster + opacité en <code>isolate</code>, jamais re-rendu) + <code>leafletProxy</code> qui met à jour le raster/la légende sur changement d’opacité ou d’analyse. Zoom et fond préservés ; le raster survit au changement de fond (map-pane dédié, respect de la décoche du groupe).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.105.0" id="nemetonshiny-01050">nemetonshiny 0.105.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01050"></a></h2>
