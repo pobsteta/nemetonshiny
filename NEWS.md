@@ -1,5 +1,12 @@
 # nemetonshiny (development version)
 
+### Changed — Contexte régional : tooltip « i » sur chaque vue
+
+- Le sélecteur de vue de la carte « Contexte régional (E-OBS) » (Tendance T°max /
+  Tendance précipitations / Bivariée) porte un « i » d'information par vue,
+  expliquant la variable, l'unité, la lecture de la palette (rouge = défavorable)
+  et la fiabilité (basse pour les précipitations/bivariée).
+
 # nemetonshiny 0.106.0
 
 ### Added — Contexte régional E-OBS : 3 vues (T°max / précip / BIVARIÉE)

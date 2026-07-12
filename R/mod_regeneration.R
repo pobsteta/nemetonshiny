@@ -355,9 +355,11 @@ mod_regeneration_ui <- function(id) {
             htmltools::tags$strong(i18n$t("regen_context_view")),
             shiny::radioButtons(ns("context_view"), NULL,
               choiceValues = c("tx", "rr", "bivariate"),
-              choiceNames  = c(i18n$t("regen_context_view_tx"),
-                               i18n$t("regen_context_view_rr"),
-                               i18n$t("regen_context_view_bivariate")),
+              # Chaque vue porte un « i » expliquant la variable et la lecture.
+              choiceNames  = list(
+                layer_tt(i18n$t("regen_context_view_tx"), i18n$t("regen_context_view_tx_info")),
+                layer_tt(i18n$t("regen_context_view_rr"), i18n$t("regen_context_view_rr_info")),
+                layer_tt(i18n$t("regen_context_view_bivariate"), i18n$t("regen_context_view_bivariate_info"))),
               selected = "tx"),
             # Téléchargement de la série précipitations (~800 Mo) : requis pour les
             # vues rr / bivariée. Le flux existe déjà (eobs_rr_task).
