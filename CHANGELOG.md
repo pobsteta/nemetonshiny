@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.104.1] - 2026-07-12
+
+### Changed
+
+- Perf : `warmup_async_workers()` pré-charge le namespace dans les workers future
+  en arrière-plan au démarrage (0,3 s), retirant les ~5-6 s de chargement du
+  namespace dans le worker payées jusqu'ici par la première tâche async (sync DB
+  du premier projet ouvert, premier calcul / moteur). Best-effort, idempotent,
+  no-op sous plan séquentiel.
+
 ## [0.104.0] - 2026-07-12
 
 ### Added

@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.104.1
+
 ### Changed — perf : pré-chauffage des workers future au démarrage
 
 - Le tout premier `future` d'une session charge le namespace `nemetonshiny` +
