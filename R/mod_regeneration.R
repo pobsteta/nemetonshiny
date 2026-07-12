@@ -180,7 +180,6 @@ mod_regeneration_ui <- function(id) {
           type = "outline-secondary", class = "btn-sm mb-2"),
         i18n$t("regen_year_auto_tip"), placement = "right"),
       shiny::uiOutput(ns("eobs_status")),
-      shiny::uiOutput(ns("eobs_index_display")),
       htmltools::tags$hr(class = "my-2"),
 
       # --- Moteur microclimf réel (opt-in, coûteux) ----------------------
@@ -617,14 +616,6 @@ mod_regeneration_server <- function(id, app_state) {
         i18n$t("regen_auto_running_short"),
         htmltools::tags$span(class = "ms-1 font-monospace",
                              .fmt_elapsed(rv$eobs_start)))
-    })
-
-    output$eobs_index_display <- shiny::renderUI({
-      if (isTRUE(rv$eobs_running)) return(NULL)   # chrono affiché par eobs_status
-      if (is.null(rv$eobs)) return(NULL)
-      htmltools::tags$small(class = "text-muted d-block mb-2",
-        sprintf("%s : %s / %s", i18n$t("regen_eobs_index"),
-                rv$eobs$year_moyenne %||% "?", rv$eobs$year_canicule %||% "?"))
     })
 
     # --- Run --------------------------------------------------------------
