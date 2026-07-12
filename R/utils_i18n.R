@@ -1057,6 +1057,7 @@ TRANSLATIONS <- list(
   indicator_R4 = list(fr = "Risque abroutissement", en = "Browsing Risk"),
   indicator_R5 = list(fr = "Dépérissement", en = "Dieback"),
   indicator_R6 = list(fr = "Sensibilit\u00e9 microclimatique", en = "Microclimatic sensitivity"),
+  indicator_R7 = list(fr = "Risque de gel tardif", en = "Late-frost risk"),
   indicator_S1 = list(fr = "Densit\u00e9 de sentiers", en = "Trail Density"),
   indicator_S2 = list(fr = "Accessibilit\u00e9", en = "Accessibility"),
   indicator_S3 = list(fr = "Proximit\u00e9 population", en = "Population Proximity"),
@@ -4125,6 +4126,25 @@ TRANSLATIONS <- list(
   regen_running = list(fr = "Analyse reG\u00e9n\u00e9ration en cours\u2026", en = "reGeneration analysis running\u2026"),
   regen_restore_loading = list(fr = "Chargement des cartes reG\u00e9n\u00e9ration\u2026", en = "Loading reGeneration maps\u2026"),
   regen_context_opacity = list(fr = "Opacit\u00e9 E-OBS", en = "E-OBS opacity"),
+  # Moteur \u00ab risque de gel tardif \u00bb (R7) \u2014 meteoland Tmin -> indicateur_r7_gel.
+  regen_frost_section = list(fr = "Risque de gel tardif (R7)", en = "Late-frost risk (R7)"),
+  regen_frost_run = list(fr = "Risque de gel (meteoland)", en = "Frost risk (meteoland)"),
+  regen_frost_tip = list(
+    fr = "Interpole la temp\u00e9rature minimale journali\u00e8re (SAFRAN \u2192 MNT, via meteoland) sur la fen\u00eatre de d\u00e9bourrement, puis compte les gel\u00e9es tardives (indicateur R7). Contexte r\u00e9gional NDP 1 \u2014 gradient topographique, PAS l'effet tampon sous couvert (microclimf). Opt-in, co\u00fbteux, r\u00e9sultat cach\u00e9.",
+    en = "Interpolates daily minimum temperature (SAFRAN \u2192 DEM, via meteoland) over the budburst window, then counts late frosts (indicator R7). Regional NDP-1 context \u2014 topographic gradient, NOT the below-canopy buffering (microclimf). Opt-in, costly, result cached."),
+  regen_frost_running_short = list(fr = "Gel\u2026", en = "Frost\u2026"),
+  regen_frost_running = list(fr = "Interpolation gel (meteoland)\u2026", en = "Frost interpolation (meteoland)\u2026"),
+  regen_frost_done = list(fr = "Risque de gel calcul\u00e9 (R7).", en = "Frost risk computed (R7)."),
+  regen_frost_skipped = list(
+    fr = "Risque de gel non calcul\u00e9 : Tmin indisponible (meteoland/SAFRAN). R7 absent du radar.",
+    en = "Frost risk not computed: Tmin unavailable (meteoland/SAFRAN). R7 absent from the radar."),
+  regen_frost_unavailable = list(
+    fr = "meteoland n'est pas install\u00e9 : le risque de gel (R7) est indisponible.",
+    en = "meteoland is not installed: frost risk (R7) is unavailable."),
+  regen_map_gel = list(fr = "Gel\u00e9es tardives (R7)", en = "Late frosts (R7)"),
+  regen_map_gel_info = list(
+    fr = "Nombre moyen de gel\u00e9es tardives par an apr\u00e8s d\u00e9bourrement (indicateur R7). Rouge = beaucoup de gel\u00e9es = critique.",
+    en = "Mean number of late frosts per year after budburst (indicator R7). Red = many frosts = critical."),
   regen_run_done = list(fr = "Analyse reG\u00e9n\u00e9ration termin\u00e9e", en = "reGeneration analysis complete"),
   regen_run_done_warn = list(fr = "Analyse termin\u00e9e avec %d avertissement(s) \u2014 voir le bandeau.", en = "Analysis complete with %d warning(s) \u2014 see the banner."),
   regen_guard_sensibilite = list(fr = "Sensibilit\u00e9 microclimatique non calcul\u00e9e : fournissez une sortie microclimf via le cache du projet (precomputed), ou activez le moteur (entr\u00e9es LiDAR).", en = "Microclimatic sensitivity not computed: provide a microclimf output via the project cache (precomputed), or enable the engine (LiDAR inputs)."),
