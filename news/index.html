@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.104.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.104.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.104.1" id="nemetonshiny-01041">nemetonshiny 0.104.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-01041"></a></h2>
+<div class="section level4">
+<h4 id="changed--perf--pré-chauffage-des-workers-future-au-démarrage-0-104-1">Changed — perf : pré-chauffage des workers future au démarrage<a class="anchor" aria-label="anchor" href="#changed--perf--pr%C3%A9-chauffage-des-workers-future-au-d%C3%A9marrage-0-104-1"></a></h4>
+<ul><li>Le tout premier <code>future</code> d’une session charge le namespace <code>nemetonshiny</code> + ses dépendances (sf/terra/leaflet…) <strong>dans le process worker</strong> : ~5–6 s mesurées. Ce coût frappait la première tâche asynchrone — typiquement le <code>db_sync_project_async()</code> déclenché à l’ouverture du premier projet, ou le premier calcul / moteur. Un <code>warmup_async_workers()</code> charge désormais le namespace dans les workers <strong>en arrière-plan</strong>, 0,3 s après le démarrage (dans des process séparés, sans compétition avec le rendu de la page) : la première tâche async ne paie plus ce délai. Best-effort, idempotent, no-op sous un plan séquentiel. Complète le <code>warmup_geo_stack()</code> existant (thread principal).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.104.0" id="nemetonshiny-01040">nemetonshiny 0.104.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01040"></a></h2>
