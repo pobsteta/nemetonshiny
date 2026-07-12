@@ -10,6 +10,13 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.106.2] - 2026-07-12
+
+### Changed
+
+- reGénération : retrait de la ligne « Indice E-OBS : année/année » (redondante
+  avec les champs Années) sous le bouton « Auto (E-OBS) ».
+
 ## [0.106.1] - 2026-07-12
 
 ### Changed
