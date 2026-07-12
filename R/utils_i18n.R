@@ -4295,6 +4295,15 @@ TRANSLATIONS <- list(
   regen_context_view_tx = list(fr = "Tendance T\u00b0max", en = "Max-T trend"),
   regen_context_view_rr = list(fr = "Tendance pr\u00e9cipitations", en = "Precipitation trend"),
   regen_context_view_bivariate = list(fr = "Bivari\u00e9e (T\u00b0max \u00d7 pr\u00e9cip)", en = "Bivariate (max-T \u00d7 precip)"),
+  regen_context_view_tx_info = list(
+    fr = "Tendance des temp\u00e9ratures maximales estivales (\u00b0C/d\u00e9cennie) downscal\u00e9e sur le contexte r\u00e9gional. Rouge = r\u00e9chauffement plus fort.",
+    en = "Downscaled summer maximum-temperature trend (\u00b0C/decade) over the regional context. Red = stronger warming."),
+  regen_context_view_rr_info = list(
+    fr = "Tendance des pr\u00e9cipitations estivales (mm/d\u00e9cennie) downscal\u00e9e. Rouge = ass\u00e8chement (baisse). Fiabilit\u00e9 faible (relation pluie/relief bruit\u00e9e).",
+    en = "Downscaled summer precipitation trend (mm/decade). Red = drying (decrease). Low reliability (noisy rain/terrain relationship)."),
+  regen_context_view_bivariate_info = list(
+    fr = "Croisement des deux tendances (T\u00b0max \u00d7 pr\u00e9cipitations) en 9 classes. Coin chaud & plus sec = rouge = le plus d\u00e9favorable. L\u00e9gende 2D en bas.",
+    en = "Cross of both trends (max-T \u00d7 precipitation) in 9 classes. Hot & drier corner = red = most unfavourable. 2D legend at the bottom."),
   regen_context_axis_tx = list(fr = "T\u00b0max", en = "Max-T"),
   regen_context_axis_rr = list(fr = "Pr\u00e9cipitations", en = "Precipitation"),
   regen_context_bivariate = list(fr = "Contexte bivari\u00e9", en = "Bivariate context"),
