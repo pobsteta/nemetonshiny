@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.104.0
+
 ### Added — reGénération : risque de gel tardif (R7, moteur meteoland)
 
 - Nouvel indicateur **R7 « risque de gel tardif »** (famille Risques & Résilience),
