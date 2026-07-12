@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.105.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,16 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.106.0" id="nemetonshiny-01060">nemetonshiny 0.106.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01060"></a></h2>
+<div class="section level4">
+<h4 id="added--contexte-régional-e-obs--vues-tmax--précip--bivariée-0-106-0">Added — Contexte régional E-OBS : 3 vues (T°max / précip / BIVARIÉE)<a class="anchor" aria-label="anchor" href="#added--contexte-r%C3%A9gional-e-obs--vues-tmax--pr%C3%A9cip--bivari%C3%A9e-0-106-0"></a></h4>
+<ul><li>La carte « Contexte régional (E-OBS) » gagne un <strong>sélecteur de vue</strong> (sidebar droite) : tendance <strong>T°max</strong> (<code>var="tx"</code>), tendance <strong>précipitations</strong> (<code>var="rr"</code>), et <strong>carte bivariée</strong> T°max × précipitations (classes 1-9), toutes en raster downscalé via le cœur <code>nemeton (&gt;= 0.153.0)</code> (<code>eobs_downscale</code> + <code>eobs_downscale_bivariate</code>, <code>dem = NULL</code> auto-source WMS IGN).</li>
+<li>
+<strong>Palette pilotée par le cœur</strong> : univarié via <code>colorNumeric</code> selon <code>meta$palette$sense</code> (<code>hot_unfavorable</code> → chaud = rouge ; <code>dry_unfavorable</code> → sec = rouge) ; bivarié via <code>colorFactor</code> (9 couleurs/libellés du cœur) + une <strong>légende bivariée 2D (grille 3×3)</strong> rendue par l’app (aucun classement côté app — il vient du cœur). Chaud + sec = coin critique rouge.</li>
+<li>Chaque vue a son <strong>cache</strong> (<code>context_{tx,rr,bivariate}.tif</code> + meta.json) et son calcul <strong>async</strong> (notif chrono). Le <strong>bouton de téléchargement des précipitations</strong> (~800 Mo) est ré-exposé (requis pour rr/bivariée). Bandeau <code>need_tx</code> / <code>need_rr</code> et note de <strong>fiabilité basse</strong> pour rr/bivariée (downscaling pluie bruité). Plancher <code>Imports: nemeton (&gt;= 0.153.0)</code>.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.105.1" id="nemetonshiny-01051">nemetonshiny 0.105.1<a class="anchor" aria-label="anchor" href="#nemetonshiny-01051"></a></h2>

@@ -12,6 +12,25 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.106.0\] - 2026-07-12
+
+### Added
+
+- reGénération : la carte « Contexte régional (E-OBS) » gagne un
+  sélecteur de 3 vues raster — tendance T°max (`var="tx"`), tendance
+  précipitations (`var="rr"`) et carte **bivariée** T°max ×
+  précipitations (classes 1-9), via le cœur `nemeton (>= 0.153.0)`
+  (`eobs_downscale` + `eobs_downscale_bivariate`, `dem = NULL`). Palette
+  pilotée par le cœur (univarié `colorNumeric` selon
+  `meta$palette$sense` ; bivarié `colorFactor` + légende 2D 3×3). Cache
+  par vue, calcul async, bouton de téléchargement des précipitations
+  ré-exposé, bandeau `need_tx`/`need_rr` + note de fiabilité basse
+  (rr/bivariée).
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.153.0)`.
+
 ## \[0.105.1\] - 2026-07-12
 
 ### Fixed
