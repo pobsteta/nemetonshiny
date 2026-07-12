@@ -4267,6 +4267,29 @@ TRANSLATIONS <- list(
     fr = "Contexte r\u00e9gional indisponible : cette carte croise temp\u00e9ratures et pr\u00e9cipitations, et la s\u00e9rie E-OBS de pr\u00e9cipitations n'est pas t\u00e9l\u00e9charg\u00e9e.",
     en = "Regional context unavailable: this map crosses temperature with precipitation, and the E-OBS precipitation series is not downloaded."
   ),
+  # Statuts de d\u00e9gradation d'eobs_downscale (meta$reason) \u2014 carte contexte raster.
+  eobs_downscale_no_dem = list(
+    fr = "\u00c9l\u00e9vation de contexte indisponible (service IGN injoignable). R\u00e9essayez plus tard.",
+    en = "Context elevation unavailable (IGN service unreachable). Try again later."
+  ),
+  eobs_downscale_dem_too_small = list(
+    fr = "MNT de contexte indisponible pour cette zone.",
+    en = "Context DEM unavailable for this area."
+  ),
+  eobs_downscale_too_few_cells = list(
+    fr = "Zone trop petite pour un contexte r\u00e9gional E-OBS : \u00e9largissez le rayon.",
+    en = "Area too small for an E-OBS regional context: widen the radius."
+  ),
+  eobs_downscale_rr_out_of_scope = list(
+    fr = "Contexte \u00ab pr\u00e9cipitations \u00bb non disponible (version 1).",
+    en = "Precipitation context not available (version 1)."
+  ),
+  regen_context_value_tx_trend = list(
+    fr = "Tendance T\u00b0max estivale (\u00b0C/d\u00e9cennie)", en = "Summer max-T trend (\u00b0C/decade)"
+  ),
+  regen_context_computing = list(
+    fr = "Calcul du contexte r\u00e9gional (E-OBS)\u2026", en = "Computing regional context (E-OBS)\u2026"
+  ),
   regen_eobs_rr_fetch = list(
     fr = "T\u00e9l\u00e9charger les pr\u00e9cipitations (~800 Mo)",
     en = "Download precipitation (~800 MB)"
