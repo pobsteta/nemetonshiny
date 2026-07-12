@@ -275,6 +275,75 @@ regeneration_context_eobs <- function(ugf, precomputed = NULL, buffer_m = 25000,
   )
 }
 
+# Chemins du cache du raster de contexte régional (SpatRaster + sidecar meta).
+.regen_context_raster_paths <- function(project_path, statistic = "trend") {
+  dir <- file.path(project_path, "cache", "regeneration", "eobs")
+  list(
+    tif  = file.path(dir, paste0("context_tx_", statistic, ".tif")),
+    meta = file.path(dir, paste0("context_tx_", statistic, ".meta.json")),
+    dir  = dir)
+}
+
+#' Downscaled E-OBS regional context raster (worker) — spec 027, brief eobs-context-dem
+#'
+#' Turns the coarse E-OBS Tmax series into a fine `SpatRaster` over the regional
+#' context via `nemeton::eobs_downscale(dem = NULL)` (cœur >= 0.152.0), which
+#' auto-sources a coarse context elevation over the buffer (WMS IGN) — the
+#' project DEM (parcelle-scale) is NOT passed. Runs in a background worker: the
+#' `SpatRaster` pointer can't cross the `future` boundary, so the raster is
+#' written to the cache `.tif` (via `cache_path`) and its `meta` to a sidecar
+#' JSON; the caller reads them back with `regeneration_context_cached()`.
+#'
+#' @return `list(cache_path, meta)` — `cache_path` is `NA` when no raster.
+#' @noRd
+run_regeneration_context_raster <- function(units, project_path,
+                                            buffer_m = 25000, statistic = "trend") {
+  if (!inherits(units, "sf")) {
+    stop("run_regeneration_context_raster: `units` must be sf", call. = FALSE)
+  }
+  paths <- .regen_context_raster_paths(project_path, statistic)
+  nc <- regen_eobs_cached_nc(project_path, "tx")
+  if (is.null(nc)) return(list(cache_path = NA_character_, meta = list(status = "need_tx")))
+  tx <- tryCatch(
+    nemeton::load_eobs_source(aoi = sf::st_buffer(units, buffer_m), var = "tx", nc = nc),
+    error = function(e) NULL)
+  if (is.null(tx)) return(list(cache_path = NA_character_, meta = list(status = "need_tx")))
+  if (!dir.exists(paths$dir)) dir.create(paths$dir, recursive = TRUE)
+
+  res <- tryCatch(
+    nemeton::eobs_downscale(
+      var = "tx", eobs = tx, dem = NULL, aoi = units,
+      engine = "ked", statistic = statistic, buffer_m = buffer_m,
+      cache_path = paths$tif),
+    error = function(e) list(raster = NULL,
+      meta = list(status = "insufficient_data", reason = "eobs_downscale_no_dem")))
+
+  meta <- res$meta %||% list(status = "insufficient_data")
+  ok <- identical(meta$status, "ok") && !is.null(res$raster) && file.exists(paths$tif)
+  # Persister meta (le .tif seul ne porte ni status/palette/value_label) pour
+  # rendre + rechauffer instantanément à la réouverture, sans re-kriger.
+  tryCatch(jsonlite::write_json(meta, paths$meta, auto_unbox = TRUE, null = "null"),
+           error = function(e) NULL)
+  list(cache_path = if (ok) paths$tif else NA_character_, meta = meta)
+}
+
+#' Read the cached regional-context raster + meta, without recomputing
+#'
+#' Fast path (`terra::rast()` + JSON): the heavy `eobs_downscale()` (~4 s, WMS +
+#' kriging) only runs once per project. Returns `NULL` when the cache is absent.
+#' @return `list(raster, meta)` or `NULL`.
+#' @noRd
+regeneration_context_cached <- function(project_path, statistic = "trend") {
+  if (is.null(project_path)) return(NULL)
+  paths <- .regen_context_raster_paths(project_path, statistic)
+  if (!file.exists(paths$tif) || !file.exists(paths$meta)) return(NULL)
+  r <- tryCatch(terra::rast(paths$tif), error = function(e) NULL)
+  if (is.null(r)) return(NULL)
+  meta <- tryCatch(jsonlite::read_json(paths$meta, simplifyVector = TRUE),
+                   error = function(e) list(status = "ok"))
+  list(raster = r, meta = meta)
+}
+
 #' Download the E-OBS precipitation series into the project cache (opt-in)
 #'
 #' Heavy (~800 MB from the Copernicus CDS) and network-bound: never called from a

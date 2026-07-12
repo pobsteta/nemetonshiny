@@ -1,5 +1,23 @@
 # nemetonshiny (development version)
 
+### Added — reGénération : contexte régional E-OBS en RASTER (downscalé)
+
+- La carte « Contexte régional (E-OBS) » affiche désormais un **raster continu**
+  (tendance de la T°max estivale) au lieu d'un semis de points bivarié. Le raster
+  vient de `nemeton::eobs_downscale(dem = NULL)` (cœur >= 0.152.0) : le cœur
+  auto-source une élévation grossière sur le buffer (WMS IGN) et krige les mailles
+  E-OBS avec — le MNT parcellaire (trop petit) n'est plus passé. Résultat validé
+  en réel : `n_points` 1 → 27–33, `status = "ok"`.
+- Calcul en **worker async** (~4–18 s selon le réseau, WMS + krigeage), avec
+  notification « engrenage + chrono » et **cache disque** (`.tif` + `meta.json`) :
+  relecture instantanée (~0,01 s) aux visites/réouvertures suivantes. Le
+  **curseur d'opacité** pilote enfin un vrai raster ; légende + palette issues de
+  `meta` (chaud = rouge, `sense = "hot_unfavorable"`).
+- Le contexte raster n'a besoin que de la série **tx** (plus de bivarié tx×rr) :
+  le bandeau se réduit à « lancer Auto (E-OBS) » quand tx manque, et mappe
+  `meta$reason` (4 clés i18n) pour les cas dégradés. Plancher
+  `Imports: nemeton (>= 0.152.0)`.
+
 # nemetonshiny 0.104.2
 
 ### Fixed — reGénération : carte « Contexte régional (E-OBS) » vide malgré les données
