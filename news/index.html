@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.103.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.104.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,23 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.104.0" id="nemetonshiny-01040">nemetonshiny 0.104.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01040"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--risque-de-gel-tardif-r7-moteur-meteoland-0-104-0">Added — reGénération : risque de gel tardif (R7, moteur meteoland)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--risque-de-gel-tardif-r7-moteur-meteoland-0-104-0"></a></h4>
+<ul><li>Nouvel indicateur <strong>R7 « risque de gel tardif »</strong> (famille Risques &amp; Résilience), câblé côté cœur <code>nemeton (&gt;= 0.151.0)</code> : <code>meteoland_daily_grid()</code> interpole la température minimale journalière (SAFRAN → MNT) sur la fenêtre de débourrement, puis <code>indicateur_r7_gel()</code> compte les gelées post-débourrement. R7 suit le sens normal (haut = FAIBLE risque), NA-safe (absent du radar sans calcul), sans le routage d’inversion propre à R5.</li>
+<li>
+<strong>Moteur opt-in</strong> dans l’onglet reGénération : bouton « Risque de gel (meteoland) » (grisé si <code>meteoland</code>, en Suggests, est absent — avec message explicatif). Exécution en worker de fond, sortie <strong>cachée</strong> (<code>cache/regeneration/meteoland/tmin_*.tif</code>), repli gracieux → R7 absent sans jamais planter. Notification persistante « engrenage + chrono » dédiée (« interpolation gel »), distincte de biljou/microclimf.</li>
+<li>
+<strong>Carte</strong> : nouvelle couche « Gelées tardives (R7) » dans « Couche affichée » (rouge = beaucoup de gelées = critique). Libellé/tooltip R7 (FR/EN) + famille R étendue à 7 indicateurs (<code>INDICATOR_FAMILIES</code>).</li>
+<li>Rappel d’échelle (UI/tooltips) : R7/meteoland = <strong>contexte régional NDP 1</strong> (gradient topographique), PAS l’effet tampon sous couvert — ce dernier reste le domaine de <code>microclimate_run()</code> (microclimf + LiDAR HD, NDP 2+).</li>
+<li>Plancher <code>Imports: nemeton (&gt;= 0.151.0)</code> ; <code>meteoland</code> ajouté en Suggests.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--tests--plus-de-push-ntfy-réel-titré--filexxxx--0-104-0">Fixed — tests : plus de push ntfy réel titré « fileXXXX »<a class="anchor" aria-label="anchor" href="#fixed--tests--plus-de-push-ntfy-r%C3%A9el-titr%C3%A9--filexxxx--0-104-0"></a></h4>
+<ul><li>Un <code>setup-ntfy.R</code> neutralise <code>NEMETON_NTFY_TOPIC</code> pour toute la suite : les tests exécutant un moteur n’envoient plus de vraie notification ntfy (titrée avec le basename du répertoire temporaire faute de metadata.json). Les tests qui valident ntfy posent leur propre topic dans un bloc local.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.103.0" id="nemetonshiny-01030">nemetonshiny 0.103.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01030"></a></h2>
