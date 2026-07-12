@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.105.1
+
 ### Fixed — Contexte régional : zoom perdu au slider d'opacité + raster qui disparaît au changement de fond
 
 - La carte « Contexte régional (E-OBS) » lisait l'opacité directement dans son
