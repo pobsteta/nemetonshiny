@@ -12,6 +12,24 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.105.0\] - 2026-07-12
+
+### Added
+
+- reGénération : la carte « Contexte régional (E-OBS) » affiche un
+  raster continu (tendance T°max estivale) via
+  `nemeton::eobs_downscale(dem = NULL)` (cœur \>= 0.152.0, auto-source
+  d’une élévation grossière sur le buffer via WMS IGN) au lieu d’un
+  semis de points bivarié. Calcul async (worker, notif chrono) + cache
+  disque (`.tif` + `meta.json`, relecture ~0,01 s). Le curseur d’opacité
+  pilote un vrai raster ; légende/palette depuis `meta` (chaud = rouge).
+  Le contexte n’a besoin que de la série tx ; bandeau mappant
+  `meta$reason` (4 clés i18n).
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.152.0)`.
+
 ## \[0.104.2\] - 2026-07-12
 
 ### Fixed

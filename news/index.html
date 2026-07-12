@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.104.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.105.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.105.0" id="nemetonshiny-01050">nemetonshiny 0.105.0<a class="anchor" aria-label="anchor" href="#nemetonshiny-01050"></a></h2>
+<div class="section level4">
+<h4 id="added--regénération--contexte-régional-e-obs-en-raster-downscalé-0-105-0">Added — reGénération : contexte régional E-OBS en RASTER (downscalé)<a class="anchor" aria-label="anchor" href="#added--reg%C3%A9n%C3%A9ration--contexte-r%C3%A9gional-e-obs-en-raster-downscal%C3%A9-0-105-0"></a></h4>
+<ul><li>La carte « Contexte régional (E-OBS) » affiche désormais un <strong>raster continu</strong> (tendance de la T°max estivale) au lieu d’un semis de points bivarié. Le raster vient de <code>nemeton::eobs_downscale(dem = NULL)</code> (cœur &gt;= 0.152.0) : le cœur auto-source une élévation grossière sur le buffer (WMS IGN) et krige les mailles E-OBS avec — le MNT parcellaire (trop petit) n’est plus passé. Résultat validé en réel : <code>n_points</code> 1 → 27–33, <code>status = "ok"</code>.</li>
+<li>Calcul en <strong>worker async</strong> (~4–18 s selon le réseau, WMS + krigeage), avec notification « engrenage + chrono » et <strong>cache disque</strong> (<code>.tif</code> + <code>meta.json</code>) : relecture instantanée (~0,01 s) aux visites/réouvertures suivantes. Le <strong>curseur d’opacité</strong> pilote enfin un vrai raster ; légende + palette issues de <code>meta</code> (chaud = rouge, <code>sense = "hot_unfavorable"</code>).</li>
+<li>Le contexte raster n’a besoin que de la série <strong>tx</strong> (plus de bivarié tx×rr) : le bandeau se réduit à « lancer Auto (E-OBS) » quand tx manque, et mappe <code>meta$reason</code> (4 clés i18n) pour les cas dégradés. Plancher <code>Imports: nemeton (&gt;= 0.152.0)</code>.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.104.2" id="nemetonshiny-01042">nemetonshiny 0.104.2<a class="anchor" aria-label="anchor" href="#nemetonshiny-01042"></a></h2>
