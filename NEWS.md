@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.0
+
 ### Added — Contexte régional E-OBS : 3 vues (T°max / précip / BIVARIÉE)
 
 - La carte « Contexte régional (E-OBS) » gagne un **sélecteur de vue** (sidebar
