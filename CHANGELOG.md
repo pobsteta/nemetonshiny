@@ -12,6 +12,13 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.106.2\] - 2026-07-12
+
+### Changed
+
+- reGénération : retrait de la ligne « Indice E-OBS : année/année »
+  (redondante avec les champs Années) sous le bouton « Auto (E-OBS) ».
+
 ## \[0.106.1\] - 2026-07-12
 
 ### Changed

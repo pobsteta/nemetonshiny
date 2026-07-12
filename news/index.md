@@ -2,6 +2,14 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.106.2
+
+#### Changed — reGénération : ligne « Indice E-OBS » redondante retirée
+
+- La ligne « Indice E-OBS : année / année » sous le bouton « Auto
+  (E-OBS) » doublait les champs Années déjà renseignés au-dessus :
+  supprimée.
+
 ## nemetonshiny 0.106.1
 
 #### Changed — Contexte régional : tooltip « i » sur chaque vue
