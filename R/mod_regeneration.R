@@ -330,12 +330,15 @@ mod_regeneration_ui <- function(id) {
                 layer_tt(i18n$t("regen_map_gel"), i18n$t("regen_map_gel_info"))),
               selected = "indice_priorite_regen"),
             # Essence cible : re-priorise la choroplèthe en direct (sans relancer
-            # l'analyse). Placée sous le sélecteur de couche car son effet est
-            # immédiat sur la carte « Indice de priorité ».
-            htmltools::tags$hr(class = "my-2"),
-            shiny::selectInput(ns("species"), label_tt(i18n$t("regen_species_target"),
-                i18n$t("regen_species_tip")),
-              choices = stats::setNames("", i18n$t("regen_species_generic")))
+            # l'analyse). N'affecte QUE la couche « Indice de priorité » — donc
+            # masquée pour les autres couches (conditionalPanel), où elle n'aurait
+            # aucun effet visible.
+            shiny::conditionalPanel(
+              condition = "input.map_layer == 'indice_priorite_regen'", ns = ns,
+              htmltools::tags$hr(class = "my-2"),
+              shiny::selectInput(ns("species"), label_tt(i18n$t("regen_species_target"),
+                  i18n$t("regen_species_tip")),
+                choices = stats::setNames("", i18n$t("regen_species_generic"))))
           ),
           leaflet::leafletOutput(ns("map"), height = "70vh")
         )
@@ -1306,52 +1309,47 @@ mod_regeneration_server <- function(id, app_state) {
       )
     })
 
-    # Fond STABLE (parité cartes principales) : OSM/Satellite + contrôle de
-    # couches + emprise UGF en BLEU. Ne dépend que du cadrage (units) : le buffer,
-    # le refresh `rr` et l'opacité NE réinitialisent PLUS le zoom — ils passent
-    # par le proxy ci-dessous. La couche E-OBS est un semis de POINTS (centres de
-    # mailles E-OBS ~11 km, classe bivariée température × précipitation), pas un
-    # raster : l'opacité règle donc l'opacité de ces points.
+    # Fonds OSM/Satellite + contrôle de couches + emprise UGF (bleu) + semis
+    # E-OBS. Le semis (centres de mailles E-OBS ~11 km, classe bivariée
+    # température × précipitation — des POINTS, pas un raster ; l'opacité règle
+    # celle des points) est dessiné DANS ce rendu, et non via un proxy séparé :
+    # un observer proxy ne se redéclenchait pas à l'activation de l'onglet (ses
+    # dépendances stables), laissant la carte vide alors que les deux séries
+    # E-OBS étaient bien en cache. Le fitBounds vise l'emprise UGF (stable), donc
+    # un changement de buffer/opacité ne déplace pas la vue.
     output$context_map <- leaflet::renderLeaflet({
       units <- units_sf()
       shiny::req(units)
-      geo <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
+      rv$context_refresh                       # re-rend après acquisition de `rr`
+      op <- input$context_opacity %||% 0.8
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      geo_ugf <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
-        leaflet::addPolygons(data = geo, group = "UGF", weight = 1.5,
+        leaflet::addPolygons(data = geo_ugf, group = "UGF", weight = 1.5,
           color = "#1f6feb", fillColor = "#1f6feb", fillOpacity = 0.10) |>
         leaflet::addLayersControl(
           baseGroups    = c("OSM", "Satellite"),
           overlayGroups = c("UGF", "E-OBS"),
           options       = leaflet::layersControlOptions(collapsed = TRUE))
-      bb <- tryCatch(as.numeric(sf::st_bbox(geo)), error = function(e) NULL)
+      bb <- tryCatch(as.numeric(sf::st_bbox(geo_ugf)), error = function(e) NULL)
       if (!is.null(bb) && all(is.finite(bb))) {
         m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
       }
-      m
-    })
-
-    # Semis E-OBS via proxy : réagit au buffer, au refresh (acquisition `rr`) et
-    # au curseur d'opacité, sans reconstruire le fond ni perdre le zoom.
-    shiny::observe({
-      units <- units_sf()
-      shiny::req(units)
-      rv$context_refresh
-      op <- input$context_opacity %||% 0.8
-      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       cells <- regeneration_context_eobs(
         units, precomputed = load_regeneration_precomputed(project_path),
         buffer_m = (input$buffer_km %||% 25) * 1000,
         project_path = project_path)
-      proxy <- leaflet::leafletProxy("context_map") |> leaflet::clearGroup("E-OBS")
-      if (is.null(cells) || !inherits(cells, "sf") || nrow(cells) == 0) return()
-      geo <- tryCatch(sf::st_transform(cells, 4326), error = function(e) cells)
-      cls <- if ("classe_bivariee" %in% names(cells)) as.numeric(cells$classe_bivariee) else rep(5, nrow(cells))
-      pal <- leaflet::colorNumeric("viridis", domain = c(1, 9), na.color = "#ccc")
-      proxy |> leaflet::addCircleMarkers(data = geo, group = "E-OBS", radius = 7,
-        stroke = TRUE, weight = 1, color = "#333",
-        fillColor = pal(cls), fillOpacity = op)
+      if (inherits(cells, "sf") && nrow(cells) > 0) {
+        geo <- tryCatch(sf::st_transform(cells, 4326), error = function(e) cells)
+        cls <- if ("classe_bivariee" %in% names(cells)) as.numeric(cells$classe_bivariee) else rep(5, nrow(cells))
+        pal <- leaflet::colorNumeric("viridis", domain = c(1, 9), na.color = "#ccc")
+        m <- leaflet::addCircleMarkers(m, data = geo, group = "E-OBS", radius = 7,
+          stroke = TRUE, weight = 1, color = "#333",
+          fillColor = pal(cls), fillOpacity = op)
+      }
+      m
     })
 
     output$table <- DT::renderDataTable({

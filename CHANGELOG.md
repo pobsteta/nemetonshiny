@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.104.2] - 2026-07-12
+
+### Fixed
+
+- reGénération : la carte « Contexte régional (E-OBS) » restait vide malgré les
+  deux séries E-OBS en cache (régression v0.103.0 : semis ajouté par un observer
+  proxy qui ne se redéclenchait pas à l'ouverture de l'onglet). Le semis est
+  redessiné dans le rendu de la carte.
+
+### Changed
+
+- reGénération : le sélecteur « Essence cible » est masqué quand une couche autre
+  que « Indice de priorité » est affichée (il n'agit que sur celle-ci).
+
 ## [0.104.1] - 2026-07-12
 
 ### Changed

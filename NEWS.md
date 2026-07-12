@@ -1,5 +1,22 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.104.2
+
+### Fixed — reGénération : carte « Contexte régional (E-OBS) » vide malgré les données
+
+- La carte de contexte restait vide même quand les deux séries E-OBS (tx + rr)
+  étaient bien en cache. Régression du refactor v0.103.0 : le semis E-OBS était
+  ajouté par un observer proxy séparé, qui ne se redéclenchait pas à l'activation
+  de l'onglet (dépendances stables) — les points n'étaient donc jamais dessinés.
+  Le semis est de nouveau dessiné dans le rendu de la carte ; le fitBounds vise
+  l'emprise UGF (stable), donc changer le buffer/l'opacité ne déplace pas la vue.
+
+### Changed — reGénération : « Essence cible » masquée hors couche « Indice de priorité »
+
+- Le sélecteur « Essence cible » n'affecte QUE la couche « Indice de priorité »
+  (la re-priorisation live) — il est désormais masqué (`conditionalPanel`) quand
+  une autre couche est affichée, où il n'aurait aucun effet visible.
+
 # nemetonshiny 0.104.1
 
 ### Changed — perf : pré-chauffage des workers future au démarrage
