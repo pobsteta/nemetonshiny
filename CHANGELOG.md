@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.106.3] - 2026-07-13
+
+### Removed
+
+- reGénération : `regeneration_context_eobs()` et `.regen_eobs_from_cache()`,
+  sans appelant depuis le passage du contexte régional au raster E-OBS
+  downscalé (v0.105.0), ainsi que leurs 3 tests.
+
+### Changed
+
+- reGénération : commentaires du contexte régional remis en cohérence — `tx`
+  seule suffit à la tendance T°max ; `rr` n'est requise que pour les vues
+  précipitations et bivariée.
+
 ## [0.106.2] - 2026-07-12
 
 ### Changed
