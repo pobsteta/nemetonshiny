@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,12 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.106.3" id="nemetonshiny-01063">nemetonshiny 0.106.3<a class="anchor" aria-label="anchor" href="#nemetonshiny-01063"></a></h2>
+<div class="section level4">
+<h4 id="removed--regénération--contexte-régional-vectoriel-code-mort-0-106-3">Removed — reGénération : contexte régional vectoriel (code mort)<a class="anchor" aria-label="anchor" href="#removed--reg%C3%A9n%C3%A9ration--contexte-r%C3%A9gional-vectoriel-code-mort-0-106-3"></a></h4>
+<ul><li>
+<code>regeneration_context_eobs()</code> et <code>.regen_eobs_from_cache()</code> sont supprimées : le contexte régional passe par le raster downscalé E-OBS depuis la v0.105.0, plus aucun appelant n’existait. Leurs 3 tests partent avec elles, et les commentaires qui décrivaient encore l’ancien couplage <code>tx</code> + <code>rr</code> obligatoire sont remis en cohérence (chaque vue a ses besoins : <code>tx</code> seule pour la tendance T°max, <code>tx</code> + <code>rr</code> pour les précipitations et la bivariée).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.2" id="nemetonshiny-01062">nemetonshiny 0.106.2<a class="anchor" aria-label="anchor" href="#nemetonshiny-01062"></a></h2>
