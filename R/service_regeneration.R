@@ -198,12 +198,6 @@ regen_reprioritize <- function(units, species = NULL) {
     error = function(e) units)
 }
 
-#' Regional summer-trend context (E-OBS) for the UGF footprint (branche A)
-#'
-#' Thin wrapper over `nemeton::tendances_estivales_eobs()` for the bivariate
-#' context map (spec 027 §2.6). Returns an sf of points with trend + bivariate
-#' class columns, or NULL on failure (map simply not shown).
-#' @noRd
 #' Locate a cached E-OBS NetCDF for a project, without ever downloading
 #'
 #' `load_eobs_source()` caches the CDS archive as
@@ -231,48 +225,19 @@ regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr")) {
   f[[1]]
 }
 
-#' Per-year summer E-OBS raster read from the project's cached NetCDF
-#' @noRd
-.regen_eobs_from_cache <- function(ugf, project_path, var) {
-  nc <- regen_eobs_cached_nc(project_path, var)
-  if (is.null(nc)) return(NULL)
-  tryCatch(nemeton::load_eobs_source(aoi = ugf, var = var, nc = nc),
-           error = function(e) NULL)
-}
-
-#' Availability of the regional-context inputs (spec 027 §2.6)
+#' Availability of the regional-context series (spec 027 §2.6)
 #'
-#' `tendances_estivales_eobs()` is bivariate: it needs **both** the summer maximum
-#' temperature (`tx`) and the precipitation (`rr`) series. Only `tx` is fetched by
-#' the « Auto (E-OBS) » button, so `rr` is normally missing — which is why the
-#' context map rendered empty, silently.
+#' Chaque vue de la carte de contexte a ses besoins : `tx` seule pour la tendance
+#' T°max, `rr` en plus pour la tendance précipitations et la bivariée. Le bouton
+#' « Auto (E-OBS) » ne rapatrie que `tx` ; `rr` a son propre bouton (~800 Mo).
+#' Le module s'appuie sur ce couple pour afficher `need_tx` / `need_rr` plutôt que
+#' de laisser un calcul échouer.
 #'
 #' @return `list(tx = , rr = )` of logicals.
 #' @noRd
 regen_context_availability <- function(project_path) {
   list(tx = !is.null(regen_eobs_cached_nc(project_path, "tx")),
        rr = !is.null(regen_eobs_cached_nc(project_path, "rr")))
-}
-
-regeneration_context_eobs <- function(ugf, precomputed = NULL, buffer_m = 25000,
-                                      project_path = NULL) {
-  if (!inherits(ugf, "sf")) return(NULL)
-  pc <- precomputed %||% list()
-  # `pc$eobs_tx` / `pc$eobs_rr` proviennent de `eobs_{tx,rr}.tif` — des fichiers
-  # qu'AUCUN code n'écrit. Sans repli sur le `.nc` réellement caché par
-  # `load_eobs_source()`, le cœur recevait toujours NULL et abandonnait : la carte
-  # de contexte était vide depuis toujours.
-  tx <- pc$eobs_tx %||% .regen_eobs_from_cache(ugf, project_path, "tx")
-  rr <- pc$eobs_rr %||% .regen_eobs_from_cache(ugf, project_path, "rr")
-  # Le cœur EXIGE les deux séries. Sortir tôt plutôt que de le laisser lever :
-  # le module distingue ainsi « donnée manquante » (message + bouton) de « erreur ».
-  if (is.null(pc$context) && (is.null(tx) || is.null(rr))) return(NULL)
-  tryCatch(
-    nemeton::tendances_estivales_eobs(
-      aoi = ugf, tx = tx, rr = rr,
-      buffer_m = buffer_m, precomputed = pc$context),
-    error = function(e) NULL
-  )
 }
 
 # Chemins du cache du raster de contexte régional (SpatRaster + sidecar meta),
