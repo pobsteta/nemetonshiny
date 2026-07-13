@@ -361,7 +361,7 @@ mod_regeneration_ui <- function(id) {
                 layer_tt(i18n$t("regen_context_view_bivariate"), i18n$t("regen_context_view_bivariate_info"))),
               selected = "tx"),
             # Téléchargement de la série précipitations (~800 Mo) : requis pour les
-            # vues rr / bivariée. Le flux existe déjà (eobs_rr_task).
+            # vues rr / bivariée.
             bslib::input_task_button(ns("fetch_eobs_rr"), i18n$t("regen_eobs_rr_fetch"),
               icon = bsicons::bs_icon("cloud-download"),
               label_busy = i18n$t("regen_eobs_rr_running_short"),
@@ -1391,10 +1391,11 @@ mod_regeneration_server <- function(id, app_state) {
                    "priorite"))))
     })
 
-    # Bandeau du contexte régional (raster). Le raster tx-trend n'a besoin que de
-    # la série `tx` (plus de `rr`/bivarié). Trois cas : tx absent → lancer « Auto
-    # (E-OBS) » ; calcul en cours → rien (la notif chrono suffit) ; dégradé →
-    # message issu de `meta$reason`. Statut « ok » → pas de bandeau.
+    # Bandeau du contexte régional (raster). La série requise dépend de la vue :
+    # `tx` seule pour la tendance T°max, `tx` + `rr` pour les précipitations et la
+    # bivariée. Quatre cas : série absente → bandeau `need_tx` / `need_rr` ; calcul
+    # en cours → rien (la notif chrono suffit) ; dégradé → message issu de
+    # `meta$reason`. Statut « ok » → pas de bandeau (hors note de fiabilité basse).
     output$context_status <- shiny::renderUI({
       rv$context_refresh
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)

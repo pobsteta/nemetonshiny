@@ -1,4 +1,13 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.106.3
+
+### Removed — reGénération : contexte régional vectoriel (code mort)
+
+- `regeneration_context_eobs()` et `.regen_eobs_from_cache()` sont supprimées :
+  le contexte régional passe par le raster downscalé E-OBS depuis la v0.105.0,
+  plus aucun appelant n'existait. Leurs 3 tests partent avec elles, et les
+  commentaires qui décrivaient encore l'ancien couplage `tx` + `rr` obligatoire
+  sont remis en cohérence (chaque vue a ses besoins : `tx` seule pour la
+  tendance T°max, `tx` + `rr` pour les précipitations et la bivariée).
 
 # nemetonshiny 0.106.2
 

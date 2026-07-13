@@ -474,67 +474,6 @@ test_that("regen_context_availability reports each series separately", {
   })
 })
 
-test_that("regeneration_context_eobs never downloads when a series is missing", {
-  skip_if_not_installed("sf")
-  withr::with_tempdir({
-    p <- getwd()
-    .stub_eobs_nc(p, "tx")     # tx seul : le cœur ne peut pas produire la carte
-    hit <- new.env(); hit$core <- FALSE; hit$fetch <- FALSE
-    testthat::local_mocked_bindings(
-      # Un `nc =` explicite ne touche pas au réseau ; un appel SANS `nc` le ferait.
-      load_eobs_source = function(aoi = NULL, var = NULL, nc = NULL, ...) {
-        if (is.null(nc)) hit$fetch <- TRUE
-        "RASTER"
-      },
-      tendances_estivales_eobs = function(...) { hit$core <- TRUE; "SF" },
-      .package = "nemeton")
-
-    out <- nemetonshiny:::regeneration_context_eobs(.regen_units(2), precomputed = list(),
-                                                    project_path = p)
-    expect_null(out)              # sortie propre : le module affiche le bandeau
-    expect_false(hit$core)        # le cœur n'est pas appelé pour lever
-    expect_false(hit$fetch)       # et RIEN n'est téléchargé
-  })
-})
-
-test_that("regeneration_context_eobs builds the map once both series are cached", {
-  skip_if_not_installed("sf")
-  withr::with_tempdir({
-    p <- getwd()
-    .stub_eobs_nc(p, "tx"); .stub_eobs_nc(p, "rr")
-    seen <- new.env(); seen$nc_always <- TRUE
-    testthat::local_mocked_bindings(
-      load_eobs_source = function(aoi = NULL, var = NULL, nc = NULL, ...) {
-        # NE PAS asserter ici : l'appel est enveloppé dans un tryCatch(error=) qui
-        # avalerait l'échec d'expectation (test vacant). Enregistrer, asserter après.
-        if (is.null(nc)) seen$nc_always <- FALSE
-        paste0("RASTER_", var)
-      },
-      tendances_estivales_eobs = function(aoi, tx = NULL, rr = NULL, ...) {
-        seen$tx <- tx; seen$rr <- rr; "SF_CELLS"
-      },
-      .package = "nemeton")
-
-    out <- nemetonshiny:::regeneration_context_eobs(.regen_units(2), precomputed = list(),
-                                                    project_path = p)
-    expect_equal(out, "SF_CELLS")
-    expect_equal(seen$tx, "RASTER_tx")
-    expect_equal(seen$rr, "RASTER_rr")
-    expect_true(seen$nc_always)   # toujours lu depuis le cache disque, jamais du CDS
-  })
-})
-
-test_that("an explicit precomputed context still short-circuits the cache", {
-  skip_if_not_installed("sf")
-  testthat::local_mocked_bindings(
-    tendances_estivales_eobs = function(aoi, precomputed = NULL, ...) precomputed,
-    .package = "nemeton")
-  expect_equal(
-    nemetonshiny:::regeneration_context_eobs(.regen_units(1),
-      precomputed = list(context = "PRE"), project_path = NULL),
-    "PRE")
-})
-
 # --- regen_reprioritize : mise à jour live de l'essence cible ----------------
 
 test_that("regen_reprioritize delegates to the core priority index with species", {
