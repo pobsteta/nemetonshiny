@@ -199,15 +199,41 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       .ugf_for_overlay(app_state$current_project)
     })
 
+    # ----- BD Forêt v2 du projet (repli composition d'essences) ----------
+    # `<project>/cache/layers/bdforet.gpkg`, écrit pendant le calcul projet
+    # (même source que l'overlay de l'onglet Échantillonnage). Lue telle
+    # quelle et passée AU CŒUR : aucun traitement métier ici (CLAUDE.md §1).
+    # NULL quand le cache est absent.
+    bdforet_r <- shiny::reactive({
+      proj <- app_state$current_project
+      if (is.null(proj) || is.null(proj$path)) return(NULL)
+      gpkg <- file.path(proj$path, "cache", "layers", "bdforet.gpkg")
+      if (!file.exists(gpkg)) return(NULL)
+      bd <- tryCatch(sf::st_read(gpkg, quiet = TRUE), error = function(e) NULL)
+      if (is.null(bd) || !nrow(bd)) return(NULL)
+      bd
+    })
+
     # ----- Validity (G3, advisory) --------------------------------------
     # `check_reconfort_validity()` is advisory (`advisory = TRUE`) : it
     # warns when the zone sits outside the calibration domain but never
     # blocks. Returns NULL when the AOI cannot be resolved.
+    #
+    # v0.106.4 — `units` (les UGF du projet) et `bdforet` sont désormais
+    # PASSÉS au cœur. Sans eux, le cœur ne peut pas évaluer la composition
+    # d'essences : `species_valid` restait NA en toutes circonstances, et le
+    # bandeau « composition hors domaine validé » ne pouvait donc JAMAIS
+    # s'afficher. Le cœur lit la colonne essence des UGF et, à défaut,
+    # retombe sur la BD Forêt (`enrich_parcels_bdforet()`).
     validity_r <- shiny::reactive({
       aoi <- aoi_r()
       if (is.null(aoi)) return(NULL)
+      proj  <- app_state$current_project
+      units <- proj$indicators_sf
+      if (!inherits(units, "sf") || !nrow(units)) units <- NULL
       tryCatch(
-        nemeton::check_reconfort_validity(aoi),
+        nemeton::check_reconfort_validity(aoi, units = units,
+                                          bdforet = bdforet_r()),
         error = function(e) {
           cli::cli_alert_warning("check_reconfort_validity failed: {e$message}")
           NULL
@@ -313,20 +339,24 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
                                      na.color = "transparent")
         # Classe 1 (1-sain) rendue TRANSPARENTE — n'afficher que les pixels
         # affectés (2-deperissant / 3-tres-deperissant), parité avec la
-        # sévérité FORDEAD qui rend la classe 0 (sain) transparente. La
-        # classe 1 reste dans la légende (couleur de référence).
+        # sévérité FORDEAD qui rend la classe 0 (sain) transparente. Le fond
+        # de carte reste ainsi visible sous la forêt saine.
         r_show <- terra::ifel(is.na(r) | r <= 1, NA, r)
         map <- leaflet::addRasterImage(
           map, x = r_show, colors = pal, opacity = opacity,
           method = "ngb", project = TRUE, group = row$id,
           options = leaflet::gridOptions(pane = "nemetonRaster")
         )
-        labels <- c(i18n$t("reconfort_class_label_1"),
-                    i18n$t("reconfort_class_label_2"),
-                    i18n$t("reconfort_class_label_3"))
+        # v0.106.4 — La légende ne liste QUE les classes réellement peintes
+        # (2 et 3). Elle affichait auparavant un carré vert « 1-sain » que la
+        # carte ne dessine jamais (classe masquée juste au-dessus) : la légende
+        # promettait une couleur absente de la carte.
+        painted <- names(cols) %in% c("2", "3")
         map <- leaflet::addLegend(
-          map, position = "bottomright", colors = unname(cols),
-          labels = labels, title = i18n$t("reconfort_couche_classes"),
+          map, position = "bottomright", colors = unname(cols[painted]),
+          labels = c(i18n$t("reconfort_class_label_2"),
+                     i18n$t("reconfort_class_label_3")),
+          title = i18n$t("reconfort_couche_classes"),
           opacity = opacity, layerId = paste0("legend_", row$id)
         )
       } else {
