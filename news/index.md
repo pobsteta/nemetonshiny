@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.106.6 (2026-07-14)
 
 #### Fixed — FORDEAD tourne désormais dans un process plafonné (spec 008)
