@@ -1,5 +1,19 @@
 # nemetonshiny (development version)
 
+### Added — Roue dentée + chrono sous les trois boutons « Lancer… »
+
+Le retour visuel sous le bouton n'existait que pour RECONFORT. FAST et FORDEAD
+sont alignés : les trois modes affichent désormais, **à l'endroit même où
+l'utilisateur a cliqué**, la roue dentée qui tourne, l'étape en cours et le
+chronomètre MM:SS — le même contenu que le toast (`.running_notif_content`,
+partagé avec le moteur reGénération), qui reste affiché par ailleurs.
+
+Un run peut durer des heures : le toast en haut à droite peut être fermé ou
+manqué, et l'utilisateur se retrouvait alors sans aucun signe de vie. Le
+rendu s'efface tout seul à la fin du run (même source que le toast : les
+handlers de fin remettent `*_run_start` à `NULL`). RECONFORT passe du sablier à
+la roue dentée pour que les trois soient strictement identiques.
+
 ### Fixed — Suivi sanitaire : deux textes qui mentaient
 
 - **« Quelques minutes »** dans l'aide du mode RECONFORT : c'était faux. Un run
