@@ -1,5 +1,18 @@
 # nemetonshiny (development version)
 
+### Fixed — Suivi sanitaire : deux textes qui mentaient
+
+- **« Quelques minutes »** dans l'aide du mode RECONFORT : c'était faux. Un run
+  peut durer des **heures, voire des jours** — l'emprise et le nombre de dates
+  Sentinel-2 gouvernent tout. La promesse de durée est retirée : le chronomètre
+  sous le bouton dit la vérité pendant le run, une estimation figée dans l'aide
+  ne peut que se tromper. (La mention `opt-in (conda IOTA²/GEODES)` part avec la
+  phrase ; à re-formuler ailleurs si l'information doit rester visible.)
+- **« sur les placettes enregistrées »** dans le sous-titre du Suivi continu
+  Sentinel-2 : dernier vestige textuel des placettes dans le suivi sanitaire,
+  devenu 100 % raster (FAST, FORDEAD, puis RECONFORT en v0.106.4). Remplacé par
+  « sur la zone de suivi ».
+
 # nemetonshiny 0.106.5
 
 ### Fixed — `NEMETON_SCRATCH_DIR` n'atteignait pas le worker (cœur >= 0.156.0)
