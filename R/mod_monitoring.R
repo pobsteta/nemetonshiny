@@ -209,6 +209,8 @@ mod_monitoring_ui <- function(id) {
               # détecté au (re)chargement depuis la sentinelle disque du
               # worker (survit à la fermeture de session). Inclut un bouton
               # « Reprendre » quand le worker est mort en cours de route.
+              # v0.106.6 — Roue dentee + chrono SOUS le bouton (parite RECONFORT).
+              shiny::uiOutput(ns("run_status")),
               shiny::uiOutput(ns("ingest_resume_banner")),
               # "Cancel / reset" button — only visible while the worker
               # is running. Force-unlocks the UI without killing the
@@ -260,6 +262,8 @@ mod_monitoring_ui <- function(id) {
                 icon  = bsicons::bs_icon("activity"),
                 class = "btn-primary w-100"
               ),
+              # v0.106.6 — Roue dentee + chrono SOUS le bouton (parite RECONFORT).
+              shiny::uiOutput(ns("run_health_status")),
               shiny::uiOutput(ns("run_health_cancel_panel"))
             ),
             # ----- RECONFORT params (spec 021, L6) ---------------------
@@ -3233,27 +3237,42 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # Chrono SOUS le bouton « Lancer le diagnostic RECONFORT » (parité avec le
-    # bouton Auto (E-OBS) du moteur reGénération). Même source que le toast
-    # (`reconfort_run_start`), mais rendu à l'endroit où l'utilisateur a
-    # cliqué : un run dure ~15 min et le toast peut être fermé ou manqué.
-    # Disparaît dès que le run se termine (les handlers remettent
-    # `reconfort_run_start` à NULL).
-    output$run_reconfort_status <- shiny::renderUI({
-      st <- reconfort_run_start()
-      if (is.null(st)) return(NULL)
-      shiny::invalidateLater(1000)
-      i18n <- i18n_r()
-      htmltools::div(
-        class = "small text-info mt-1 text-center",
-        bsicons::bs_icon("hourglass-split", class = "me-1"),
-        reconfort_run_msg() %||% i18n$t("monitoring_reconfort_starting"),
-        htmltools::tags$span(class = "ms-1 font-monospace",
-                             .fmt_elapsed(st))
-      )
-    })
-    shiny::outputOptions(output, "run_reconfort_status",
-                         suspendWhenHidden = FALSE)
+    # Chrono SOUS le bouton « Lancer… », pour les TROIS modes (v0.106.6 — FAST et
+    # FORDEAD alignés sur RECONFORT). Même contenu que le toast — la roue dentée
+    # qui tourne + l'étape en cours + le chrono MM:SS (`.running_notif_content`,
+    # partagé avec le moteur reGénération) — mais rendu à l'endroit où
+    # l'utilisateur a cliqué : un run peut durer des heures, et le toast peut
+    # être fermé ou manqué. Le toast reste, les deux se complètent.
+    #
+    # Même source que le toast (`*_run_start` / `*_run_msg`), donc l'affichage
+    # disparaît tout seul quand le run se termine : les handlers de fin
+    # remettent `*_run_start` à NULL.
+    .run_status_output <- function(start_rv, msg_rv, starting_key) {
+      shiny::renderUI({
+        st <- start_rv()
+        if (is.null(st)) return(NULL)
+        shiny::invalidateLater(1000)   # fait défiler le chrono
+        i18n <- i18n_r()
+        htmltools::div(
+          class = "small text-info mt-1 text-center",
+          .running_notif_content(msg_rv() %||% i18n$t(starting_key), st)
+        )
+      })
+    }
+
+    output$run_status <- .run_status_output(
+      fast_run_start, fast_run_msg, "monitoring_ingest_starting")
+    output$run_health_status <- .run_status_output(
+      fordead_run_start, fordead_run_msg, "monitoring_health_starting")
+    output$run_reconfort_status <- .run_status_output(
+      reconfort_run_start, reconfort_run_msg, "monitoring_reconfort_starting")
+
+    # suspendWhenHidden = FALSE : les sous-onglets sont masqués par nav_hide(),
+    # le chrono doit continuer de tourner même si l'onglet n'est pas au premier
+    # plan.
+    for (.o in c("run_status", "run_health_status", "run_reconfort_status")) {
+      shiny::outputOptions(output, .o, suspendWhenHidden = FALSE)
+    }
 
     # Resolve / create the RECONFORT cache dir for the active project.
     .reconfort_cache_dir <- function(proj) {

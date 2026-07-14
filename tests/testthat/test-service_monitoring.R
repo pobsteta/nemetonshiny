@@ -224,6 +224,45 @@ test_that(".build_fordead_progress_callback tolerates a NULL progress path", {
   expect_silent(cb(list(current = "fordead:complete")))
 })
 
+test_that(".build_fordead_ntfy_callback ne touche pas au fichier de progression", {
+  # Sous isolation memoire (nemeton::run_memory_capped), c'est l'ENFANT
+  # qui ecrit les fichiers ; le parent ne rejoue que la partie ntfy.
+  # Si elle ecrivait aussi, chaque event serait duplique.
+  withr::with_tempdir({
+    ppath <- file.path(getwd(), "fordead_progress.json")
+    cb <- nemetonshiny:::.build_fordead_ntfy_callback(NULL, get_i18n("fr"))
+    expect_true(is.function(cb))
+    expect_silent(cb(list(current = "fordead:phase", phase_name = "fit")))
+    expect_false(file.exists(ppath))
+    expect_length(list.files(getwd()), 0L)
+  })
+})
+
+test_that(".capped_memory_max mappe l'env var sur l'argument coeur", {
+  withr::with_envvar(c(NEMETON_MEMORY_MAX = ""), {
+    expect_null(nemetonshiny:::.capped_memory_max())
+  })
+  withr::with_envvar(c(NEMETON_MEMORY_MAX = "16G"), {
+    expect_identical(nemetonshiny:::.capped_memory_max(), "16G")
+  })
+  withr::with_envvar(c(NEMETON_MEMORY_MAX = "none"), {
+    expect_identical(nemetonshiny:::.capped_memory_max(), FALSE)
+  })
+  withr::with_envvar(c(NEMETON_MEMORY_MAX = "OFF"), {
+    expect_identical(nemetonshiny:::.capped_memory_max(), FALSE)
+  })
+})
+
+test_that(".capture_worker_envvars transmet NEMETON_MEMORY_MAX au worker", {
+  # Le plafond est lu DANS le worker (c'est lui qui lance l'enfant) et
+  # les workers sont pre-chauffes : sans ce transfert, la variable serait
+  # ignoree en silence.
+  withr::with_envvar(c(NEMETON_MEMORY_MAX = "16G"), {
+    vars <- nemetonshiny:::.capture_worker_envvars()
+    expect_identical(unname(vars[["NEMETON_MEMORY_MAX"]]), "16G")
+  })
+})
+
 test_that(".build_reconfort_progress_callback writes the JSON progress file", {
   withr::with_tempdir({
     ppath <- file.path(getwd(), "reconfort_progress.json")

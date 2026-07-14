@@ -1561,3 +1561,42 @@ test_that("les messages de fin de run affichent une duree lisible", {
   done <- sprintf(i18n$t("monitoring_health_success_done"), format_elapsed(7243))
   expect_true(grepl("2 h 00 min 43 s", done, fixed = TRUE))
 })
+
+# --- v0.106.6 — roue dentee + chrono sous les 3 boutons « Lancer… » ---------
+
+test_that("les 3 modes affichent roue dentee + etape + chrono sous le bouton", {
+  skip_if_not_installed("shiny")
+  app_state <- shiny::reactiveValues(language = "fr", current_project = NULL)
+
+  shiny::testServer(nemetonshiny:::mod_monitoring_server,
+                    args = list(id = "m", app_state = app_state), {
+    i18n <- get_i18n("fr")
+    trio <- list(
+      list(out = "run_status",           start = fast_run_start,
+           msg = fast_run_msg,           key = "monitoring_ingest_starting"),
+      list(out = "run_health_status",    start = fordead_run_start,
+           msg = fordead_run_msg,        key = "monitoring_health_starting"),
+      list(out = "run_reconfort_status", start = reconfort_run_start,
+           msg = reconfort_run_msg,      key = "monitoring_reconfort_starting")
+    )
+    for (t in trio) {
+      # Aucun run en cours -> rien sous le bouton.
+      expect_null(output[[t$out]])
+
+      # Run lance -> roue dentee (.nmt-spin + gear-fill), etape, chrono.
+      t$start(Sys.time() - 75)          # 75 s => "01:15"
+      t$msg(i18n$t(t$key))
+      session$flushReact()
+      html <- as.character(output[[t$out]]$html)
+      expect_true(grepl("nmt-spin", html, fixed = TRUE))
+      expect_true(grepl("font-monospace", html, fixed = TRUE))
+      expect_true(grepl("01:15", html, fixed = TRUE))
+      expect_true(grepl(i18n$t(t$key), html, fixed = TRUE))
+
+      # Run termine (les handlers remettent start a NULL) -> l'affichage part.
+      t$start(NULL)
+      session$flushReact()
+      expect_null(output[[t$out]])
+    }
+  })
+})

@@ -2083,9 +2083,11 @@ TRANSLATIONS <- list(
     fr = "Suivi continu Sentinel-2",
     en = "Continuous Sentinel-2 monitoring"
   ),
+  # v0.106.6 — « sur les placettes enregistrees » retire : le suivi sanitaire est
+  # 100 % raster (FAST, FORDEAD puis RECONFORT), il n'y a plus de placettes.
   monitoring_subtitle = list(
-    fr = "D\u00e9tection des baisses NDVI / NBR sur les placettes enregistr\u00e9es.",
-    en = "Detect NDVI / NBR drops on the registered plots."
+    fr = "D\u00e9tection des baisses NDVI / NBR sur la zone de suivi.",
+    en = "Detect NDVI / NBR drops over the monitoring zone."
   ),
   monitoring_zone_label = list(
     fr = "Zone de suivi",
@@ -3155,13 +3157,19 @@ TRANSLATIONS <- list(
     fr = "Diagnostic RECONFORT (feuillus)",
     en = "RECONFORT diagnosis (broadleaves)"
   ),
+  # v0.106.6 — « Quelques minutes » retire : c'etait FAUX. Un run RECONFORT peut
+  # durer des heures, voire des jours (l'emprise et le nombre de dates S2
+  # gouvernent tout). Ne plus annoncer AUCUNE duree : le chrono sous le bouton
+  # dit la verite pendant le run, une promesse figee dans l'aide ne peut que
+  # mentir. La dependance conda (opt-in) RESTE : sans ce bundle, le run echoue —
+  # c'est une condition d'execution, pas une estimation.
   monitoring_mode_reconfort_help = list(
-    fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Quelques minutes, opt-in (conda IOTA\u00b2/GEODES).",
-    en = "Detect broadleaf dieback (oak, chestnut) using RECONFORT (CRSWIR + CRre). A few minutes, opt-in (conda IOTA\u00b2/GEODES)."
+    fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Opt-in : n\u00e9cessite le bundle conda IOTA\u00b2/GEODES.",
+    en = "Detect broadleaf dieback (oak, chestnut) using RECONFORT (CRSWIR + CRre). Opt-in: requires the conda IOTA\u00b2/GEODES bundle."
   ),
-  # Libellé relabellisé « Alertes RECONFORT » (l'onglet affiche les
-  # clusters d'alertes vectorielles + clic-pixel ; nom de clé conservé,
-  # legacy). Symétrie avec « Alertes FAST » / « Alertes FORDEAD ».
+  # « Carte RECONFORT » : l'onglet affiche les RASTERS du run (score, classes de
+  # sante, probabilite) + le clic-pixel. La couche vectorielle d'alertes a ete
+  # supprimee en v0.106.4 (nom de cle conserve, legacy).
   monitoring_subtab_pixel_map_reconfort = list(
     fr = "Alertes RECONFORT",
     en = "RECONFORT alerts"
