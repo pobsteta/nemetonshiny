@@ -708,6 +708,8 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
+          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
@@ -730,6 +732,8 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
+          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
@@ -752,6 +756,8 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
+          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
@@ -774,6 +780,8 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
+          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
@@ -797,6 +805,8 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
+          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {

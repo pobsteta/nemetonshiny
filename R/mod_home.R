@@ -645,6 +645,8 @@ mod_home_server <- function(id, app_state) {
         if (!is_parallel) future::plan("multisession")
       }
       promises::future_promise({
+        # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
+        on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
         if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
           pkgload::load_all(.dev_pkg_path, quiet = TRUE)
         } else {
@@ -936,6 +938,8 @@ mod_home_server <- function(id, app_state) {
         }
       }
       promises::future_promise({
+        # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
+        on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
         # Make the app code available in the worker with the SAME
         # provenance as the main session.
         if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {

@@ -457,3 +457,48 @@ test_that("v0.59.0 — signature read_fordead_pixel_series compatible app", {
   expected <- c("con", "zone_id", "xy", "crs", "run_id", "cache_dir")
   expect_true(all(expected %in% names(formals(f))))
 })
+
+# --- spec 008 §4 — rendre la memoire d'un worker persistant ------------------
+
+test_that(".release_worker_memory vide la frame SANS abimer la valeur de retour", {
+  # Le piege : on.exit() tourne pendant que la frame vit encore. Si le helper
+  # cassait la valeur deja calculee, la tache renverrait n'importe quoi.
+  f <- function() {
+    on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+    gros <- runif(1e5)
+    autre <- list(a = 1, b = "x")
+    list(n = length(gros), tag = autre$b)   # valeur calculee AVANT le on.exit
+  }
+  expect_identical(f(), list(n = 100000L, tag = "x"))
+})
+
+test_that(".release_worker_memory supprime bien les liaisons de la frame ciblee", {
+  env <- new.env(parent = emptyenv())
+  assign("gros", runif(1e5), envir = env)
+  assign(".cache", 1L, envir = env)          # all.names = TRUE => les points aussi
+  expect_length(ls(env, all.names = TRUE), 2L)
+
+  nemetonshiny:::.release_worker_memory(env)
+  expect_length(ls(env, all.names = TRUE), 0L)
+})
+
+test_that(".release_worker_memory ne leve jamais (un worker ne doit pas mourir du nettoyage)", {
+  expect_silent(nemetonshiny:::.release_worker_memory(emptyenv()))
+  expect_null(nemetonshiny:::.release_worker_memory(baseenv()))
+})
+
+test_that("NEMETON_SCRATCH_DIR atteint le worker (le run tourne LA-BAS)", {
+  # Les workers sont pre-chauffes au demarrage : ils figent leur environnement.
+  # Une variable posee ensuite ne les atteint QUE si elle est capturee ici.
+  # Sans ca, nemeton::scratch_dir() retomberait sur tempdir() dans le worker —
+  # parfois un tmpfs (= RAM), ce qui annulerait le streaming sur disque.
+  withr::with_envvar(c(NEMETON_SCRATCH_DIR = "/data/scratch"), {
+    captured <- nemetonshiny:::.capture_worker_envvars()
+    expect_identical(unname(captured[["NEMETON_SCRATCH_DIR"]]), "/data/scratch")
+  })
+  # Non definie => absente du snapshot (pas de "" qui ecraserait le defaut coeur).
+  withr::with_envvar(c(NEMETON_SCRATCH_DIR = NA), {
+    captured <- nemetonshiny:::.capture_worker_envvars()
+    expect_false("NEMETON_SCRATCH_DIR" %in% names(captured))
+  })
+})

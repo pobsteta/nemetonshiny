@@ -310,18 +310,20 @@ test_that("manifest drives layer toggles + opacity slider", {
       # Base leaflet map rendered.
       expect_false(is.null(output$map))
 
-      # Read + UGF mask delegated to the core reader for every raster layer,
-      # each with a mask_polygon (the selected-zone AOI). No terra::mask in
-      # the module.
-      expect_true(all(c("score", "classification", "probability") %in%
-                        rl_calls$ids))
+      # Read + UGF mask delegated to the core reader, avec un mask_polygon
+      # (l'AOI de la zone). Pas de terra::mask dans le module.
       expect_true(length(rl_calls$mask) > 0L && all(rl_calls$mask))
+      # spec 008 §4 — SEULE la couche affichée est lue. Les couches sont
+      # exclusives : lire les trois matérialisait deux rasters pour rien.
+      expect_true("score" %in% rl_calls$ids)            # défaut du manifeste
+      expect_false("probability" %in% rl_calls$ids)
+      expect_false("classification" %in% rl_calls$ids)
 
-      # Toggling layers + moving the opacity slider re-renders without error.
-      session$setInputs(layers = c("score", "probability"), opacity = 0.4)
-      expect_no_error(session$flushReact())
+      # Changer de couche la lit à son tour (et elle seule).
       session$setInputs(layers = "classification", opacity = 0.9)
       expect_no_error(session$flushReact())
+      expect_true("classification" %in% rl_calls$ids)
+      expect_false("probability" %in% rl_calls$ids)   # jamais sélectionnée
     }
   )
 })
