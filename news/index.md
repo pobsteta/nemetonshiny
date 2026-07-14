@@ -1,6 +1,93 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.106.4
+
+#### Fixed — Suivi sanitaire : les deux bandeaux de validité RECONFORT
+
+- Le bandeau « **Composition d’essences hors domaine validé** »
+  n’existait pas côté RECONFORT (FORDEAD en a deux). Pire : il n’aurait
+  **jamais** pu s’afficher, car le module appelait
+  `nemeton::check_reconfort_validity(aoi)` sans lui passer `units` ni
+  `bdforet` — `species_valid` restait donc `NA` en toutes circonstances.
+  Les UGF du projet et la BD Forêt en cache
+  (`cache/layers/bdforet.gpkg`) sont désormais transmises au cœur, et le
+  parent rend les **deux** bandeaux (géo + essences), parité stricte
+  avec FORDEAD.
+- **Légende « Classes de santé »** : elle affichait un carré vert «
+  1-sain » que la carte ne dessine jamais (la classe 1 est
+  volontairement transparente pour laisser voir le fond de carte). La
+  légende ne liste plus que les classes réellement peintes
+  (2-dépérissant, 3-très dépérissant).
+- État vide de la carte RECONFORT : ne parle plus d’« alertes » mais
+  d’absence de **run** (la carte est 100 % raster depuis le retrait de
+  la couche Alertes).
+
+#### Added — Chronomètre sous le bouton « Lancer le diagnostic RECONFORT »
+
+- Le chrono existait, mais uniquement dans le toast en haut à droite. Un
+  run RECONFORT dure ~15 min : l’utilisateur qui ferme ou rate le toast
+  n’avait plus aucun retour à l’endroit même où il a cliqué. Chrono
+  ajouté **sous le bouton** (parité avec le moteur reGénération) ; le
+  toast reste, il porte l’étape en cours.
+
+#### Fixed — spec 008 : un OOM se lit comme un OOM, et les durées sont lisibles
+
+Implémentation du brief
+`nemeton/specs/008-suivi-sanitaire/brief-nemetonshiny.md` (§3 et §5 ; §4
+« pression mémoire de l’app » et §6 sont hors périmètre).
+
+- **§3 — Échec mémoire.** Un diagnostic tué par le plafond mémoire du
+  cœur sort en SIGKILL (`exit 137`). Le message brut (« RECONFORT map
+  production failed for zone 3 (exit 137) ») ne disait rien à
+  l’utilisateur : il est remplacé par une consigne actionnable (fermer
+  d’autres applications, réduire l’emprise). Appliqué aux trois chemins
+  d’erreur (RECONFORT + les deux de FORDEAD).
+- **§5 — Durées.** Quatre messages de fin de run affichaient des
+  **secondes brutes** : le run RECONFORT validé (819 s) annonçait «
+  terminé en 819 s », un FORDEAD de deux heures aurait dit « 7243 s ».
+  Ils passent désormais par `format_elapsed()` — « **13 min 39 s** », «
+  **2 h 00 min 43 s** ». Les champs de données (`duration_sec`,
+  `run_meta.json`) restent en secondes brutes.
+- ⚠️ Le brief préconise `nemeton::format_duration()` (cœur **0.155.0**),
+  mais la dernière release publiée est **0.154.1** : on utilise le
+  formateur app existant, que le brief qualifie lui-même de correct. La
+  consolidation vers le cœur (une seule source de vérité) reste à faire
+  quand 0.155.0 sera publiée.
+
+#### Removed — Suivi sanitaire : la notion de « placette » disparaît de RECONFORT
+
+- **Couche « Alertes » de la carte RECONFORT supprimée.** C’était le
+  dernier vestige des marqueurs « placettes » dans le suivi sanitaire :
+  FAST (v0.52.16) et FORDEAD (Phase A, décision D2) étaient déjà passés
+  en pur raster. Elle dupliquait de surcroît le signal de la couche «
+  Classes de santé ». La carte RECONFORT est désormais **100 % raster**
+  (score / classes / probabilité).
+- La table `alerts` de la base de suivi **reste écrite par le cœur et
+  lue par `service_r5.R`** (indicateur R5) : seul l’affichage
+  cartographique disparaît. Les placettes du **Plan de validation**
+  (`data/samples.gpkg`, couche `validation_plots`) sont désormais les
+  seules à persister dans l’application.
+- `list_alerts_for_zone()` (service_monitoring_db) supprimée : plus
+  aucun appelant depuis le retrait des marqueurs.
+- Bouton « Exporter PNG » de la modale pixel RECONFORT retiré, avec ses
+  helpers `save_plotly_png()` / `.pixel_export_engine()`. La planche
+  reste exportable par la barre d’outils native de plotly.
+
+#### Changed — Vocabulaire des couches : « Alertes » → « Raster »
+
+- Les groupes Leaflet nommés `"Alertes"` portaient en réalité un
+  **raster** (masque de dépérissement FORDEAD, pixels au-dessus du seuil
+  FAST) : renommés `"Raster"`, un nom qui dit ce que la couche contient.
+- Sous-onglet « Alertes FORDEAD » renommé **« Carte FORDEAD »** — il
+  rend la carte raster (le sous-onglet vectoriel homonyme avait été
+  supprimé en v0.92.x), parité avec « Carte FAST » et « Carte RECONFORT
+  ».
+- Graphique pixel RECONFORT : contrôles « Lissage » + « Observations
+  brutes » sur **une seule ligne** ; annotations pédagogiques (« creux
+  estival qui s’enfonce », « pic plus faible = sénescence précoce »,
+  dérive) passées de **10 à 14 px** et de `#666` à `#333` — elles
+  étaient illisibles en plein écran, où plotly agrandit la planche mais
+  garde une police fixe en px.
 
 ## nemetonshiny 0.106.3
 

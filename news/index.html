@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,42 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.106.4" id="nemetonshiny-01064">nemetonshiny 0.106.4<a class="anchor" aria-label="anchor" href="#nemetonshiny-01064"></a></h2>
+<div class="section level4">
+<h4 id="fixed--suivi-sanitaire--les-deux-bandeaux-de-validité-reconfort-0-106-4">Fixed — Suivi sanitaire : les deux bandeaux de validité RECONFORT<a class="anchor" aria-label="anchor" href="#fixed--suivi-sanitaire--les-deux-bandeaux-de-validit%C3%A9-reconfort-0-106-4"></a></h4>
+<ul><li>Le bandeau « <strong>Composition d’essences hors domaine validé</strong> » n’existait pas côté RECONFORT (FORDEAD en a deux). Pire : il n’aurait <strong>jamais</strong> pu s’afficher, car le module appelait <code>nemeton::check_reconfort_validity(aoi)</code> sans lui passer <code>units</code> ni <code>bdforet</code> — <code>species_valid</code> restait donc <code>NA</code> en toutes circonstances. Les UGF du projet et la BD Forêt en cache (<code>cache/layers/bdforet.gpkg</code>) sont désormais transmises au cœur, et le parent rend les <strong>deux</strong> bandeaux (géo + essences), parité stricte avec FORDEAD.</li>
+<li>
+<strong>Légende « Classes de santé »</strong> : elle affichait un carré vert « 1-sain » que la carte ne dessine jamais (la classe 1 est volontairement transparente pour laisser voir le fond de carte). La légende ne liste plus que les classes réellement peintes (2-dépérissant, 3-très dépérissant).</li>
+<li>État vide de la carte RECONFORT : ne parle plus d’« alertes » mais d’absence de <strong>run</strong> (la carte est 100 % raster depuis le retrait de la couche Alertes).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--chronomètre-sous-le-bouton--lancer-le-diagnostic-reconfort--0-106-4">Added — Chronomètre sous le bouton « Lancer le diagnostic RECONFORT »<a class="anchor" aria-label="anchor" href="#added--chronom%C3%A8tre-sous-le-bouton--lancer-le-diagnostic-reconfort--0-106-4"></a></h4>
+<ul><li>Le chrono existait, mais uniquement dans le toast en haut à droite. Un run RECONFORT dure ~15 min : l’utilisateur qui ferme ou rate le toast n’avait plus aucun retour à l’endroit même où il a cliqué. Chrono ajouté <strong>sous le bouton</strong> (parité avec le moteur reGénération) ; le toast reste, il porte l’étape en cours.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--spec--un-oom-se-lit-comme-un-oom-et-les-durées-sont-lisibles-0-106-4">Fixed — spec 008 : un OOM se lit comme un OOM, et les durées sont lisibles<a class="anchor" aria-label="anchor" href="#fixed--spec--un-oom-se-lit-comme-un-oom-et-les-dur%C3%A9es-sont-lisibles-0-106-4"></a></h4>
+<p>Implémentation du brief <code>nemeton/specs/008-suivi-sanitaire/brief-nemetonshiny.md</code> (§3 et §5 ; §4 « pression mémoire de l’app » et §6 sont hors périmètre).</p>
+<ul><li>
+<strong>§3 — Échec mémoire.</strong> Un diagnostic tué par le plafond mémoire du cœur sort en SIGKILL (<code>exit 137</code>). Le message brut (« RECONFORT map production failed for zone 3 (exit 137) ») ne disait rien à l’utilisateur : il est remplacé par une consigne actionnable (fermer d’autres applications, réduire l’emprise). Appliqué aux trois chemins d’erreur (RECONFORT + les deux de FORDEAD).</li>
+<li>
+<strong>§5 — Durées.</strong> Quatre messages de fin de run affichaient des <strong>secondes brutes</strong> : le run RECONFORT validé (819 s) annonçait « terminé en 819 s », un FORDEAD de deux heures aurait dit « 7243 s ». Ils passent désormais par <code>format_elapsed()</code> — « <strong>13 min 39 s</strong> », « <strong>2 h 00 min 43 s</strong> ». Les champs de données (<code>duration_sec</code>, <code>run_meta.json</code>) restent en secondes brutes.</li>
+<li>⚠️ Le brief préconise <code>nemeton::format_duration()</code> (cœur <strong>0.155.0</strong>), mais la dernière release publiée est <strong>0.154.1</strong> : on utilise le formateur app existant, que le brief qualifie lui-même de correct. La consolidation vers le cœur (une seule source de vérité) reste à faire quand 0.155.0 sera publiée.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="removed--suivi-sanitaire--la-notion-de--placette--disparaît-de-reconfort-0-106-4">Removed — Suivi sanitaire : la notion de « placette » disparaît de RECONFORT<a class="anchor" aria-label="anchor" href="#removed--suivi-sanitaire--la-notion-de--placette--dispara%C3%AEt-de-reconfort-0-106-4"></a></h4>
+<ul><li>
+<strong>Couche « Alertes » de la carte RECONFORT supprimée.</strong> C’était le dernier vestige des marqueurs « placettes » dans le suivi sanitaire : FAST (v0.52.16) et FORDEAD (Phase A, décision D2) étaient déjà passés en pur raster. Elle dupliquait de surcroît le signal de la couche « Classes de santé ». La carte RECONFORT est désormais <strong>100 % raster</strong> (score / classes / probabilité).</li>
+<li>La table <code>alerts</code> de la base de suivi <strong>reste écrite par le cœur et lue par <code>service_r5.R</code></strong> (indicateur R5) : seul l’affichage cartographique disparaît. Les placettes du <strong>Plan de validation</strong> (<code>data/samples.gpkg</code>, couche <code>validation_plots</code>) sont désormais les seules à persister dans l’application.</li>
+<li>
+<code>list_alerts_for_zone()</code> (service_monitoring_db) supprimée : plus aucun appelant depuis le retrait des marqueurs.</li>
+<li>Bouton « Exporter PNG » de la modale pixel RECONFORT retiré, avec ses helpers <code>save_plotly_png()</code> / <code>.pixel_export_engine()</code>. La planche reste exportable par la barre d’outils native de plotly.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--vocabulaire-des-couches---alertes----raster--0-106-4">Changed — Vocabulaire des couches : « Alertes » → « Raster »<a class="anchor" aria-label="anchor" href="#changed--vocabulaire-des-couches---alertes----raster--0-106-4"></a></h4>
+<ul><li>Les groupes Leaflet nommés <code>"Alertes"</code> portaient en réalité un <strong>raster</strong> (masque de dépérissement FORDEAD, pixels au-dessus du seuil FAST) : renommés <code>"Raster"</code>, un nom qui dit ce que la couche contient.</li>
+<li>Sous-onglet « Alertes FORDEAD » renommé <strong>« Carte FORDEAD »</strong> — il rend la carte raster (le sous-onglet vectoriel homonyme avait été supprimé en v0.92.x), parité avec « Carte FAST » et « Carte RECONFORT ».</li>
+<li>Graphique pixel RECONFORT : contrôles « Lissage » + « Observations brutes » sur <strong>une seule ligne</strong> ; annotations pédagogiques (« creux estival qui s’enfonce », « pic plus faible = sénescence précoce », dérive) passées de <strong>10 à 14 px</strong> et de <code>#666</code> à <code>#333</code> — elles étaient illisibles en plein écran, où plotly agrandit la planche mais garde une police fixe en px.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.3" id="nemetonshiny-01063">nemetonshiny 0.106.3<a class="anchor" aria-label="anchor" href="#nemetonshiny-01063"></a></h2>

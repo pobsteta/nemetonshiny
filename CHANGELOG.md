@@ -12,6 +12,41 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.106.4\] - 2026-07-14
+
+### Removed
+
+- Suivi sanitaire : couche « Alertes » vectorielle de la carte RECONFORT
+  (marqueurs « placettes ») — RECONFORT s’aligne sur FAST et FORDEAD,
+  100 % raster. `list_alerts_for_zone()` supprimée (plus aucun
+  appelant). Bouton « Exporter PNG » de la modale pixel + helpers
+  `save_plotly_png()` / `.pixel_export_engine()`.
+
+### Changed
+
+- Groupes Leaflet `"Alertes"` (qui portaient un raster) renommés
+  `"Raster"` ; sous-onglet « Alertes FORDEAD » → « Carte FORDEAD ».
+- Graphique pixel RECONFORT : contrôles sur une seule ligne ;
+  annotations pédagogiques 10 → 14 px et `#666` → `#333` (illisibles en
+  plein écran).
+- Les 4 messages de fin de run formatent leur durée (819 s → « 13 min 39
+  s »).
+
+### Added
+
+- Bandeau « Composition d’essences hors domaine validé » côté RECONFORT
+  (parité FORDEAD), alimenté par les UGF + la BD Forêt du projet.
+- Chronomètre sous le bouton « Lancer le diagnostic RECONFORT ».
+- Message dédié quand un diagnostic est tué par dépassement mémoire
+  (`exit 137`), au lieu du message brut du sous-processus.
+
+### Fixed
+
+- Légende « Classes de santé » : ne montre plus un vert « 1-sain » que
+  la carte ne dessine jamais.
+- `check_reconfort_validity()` reçoit enfin `units` et `bdforet` :
+  `species_valid` restait `NA` en toutes circonstances.
+
 ## \[0.106.3\] - 2026-07-13
 
 ### Removed
