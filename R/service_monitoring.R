@@ -575,6 +575,16 @@ run_fordead_async <- function() {
       }
       on.exit(close_monitoring_db_connection(con), add = TRUE)
 
+      # URL passée à l'enfant plafonné, qui ouvre SA propre connexion
+      # (une DBIConnection ne franchit pas une frontière de process).
+      # Le parent la résout normalement ; repli sur les variables
+      # d'environnement si l'appelant ne l'a pas fournie.
+      child_db_url <- if (nzchar(db_url %||% "")) {
+        db_url
+      } else {
+        .resolve_monitoring_db_url(NULL)
+      }
+
       # ntfy push channel — resolved worker-side (env vars replayed
       # above). NULL when NEMETON_NTFY_TOPIC is unset → every
       # `.ntfy_send()` call below is a silent no-op.
@@ -590,8 +600,17 @@ run_fordead_async <- function() {
       # FORDEAD phase. Phase pushes are de-duplicated (one per phase
       # name, not per progress tick) so a 6-phase run yields 6
       # notifications, not hundreds.
+      #
+      # v0.106.5.9003 — le run lui-même tourne dans un process ENFANT
+      # plafonné (`nemeton::run_memory_capped()`), et c'est cet enfant
+      # qui écrit les fichiers de progression. Le composite n'est donc
+      # plus passé au cœur : il ne sert plus qu'aux heartbeats émis par
+      # le worker lui-même (`.ws_emit()` ci-dessous), qui doivent bien
+      # atterrir dans le fichier. Au cœur, on ne rejoue que `ntfy_cb`
+      # (sinon chaque événement serait écrit deux fois).
       progress_cb <- .build_fordead_progress_callback(progress_path,
                                                       ntfy, i18n)
+      ntfy_cb     <- .build_fordead_ntfy_callback(ntfy, i18n)
 
       .ntfy_send(
         ntfy,
@@ -613,31 +632,55 @@ run_fordead_async <- function() {
           )
         }
       }
+      # v0.106.5.9003 (spec 008) — FORDEAD tourne dans un process R
+      # ENFANT plafonné en mémoire (`nemeton::run_memory_capped()`,
+      # cœur >= 0.157.0), pas dans le worker `future`. Raison : le
+      # Python de FORDEAD vit dans l'interpréteur EMBARQUÉ de
+      # reticulate, donc sa mémoire est celle du worker, donc celle du
+      # scope systemd de l'app — et `systemd-oomd` ne tue pas le
+      # processus fautif mais le SCOPE entier (app + session R
+      # emportées, 2026-07-13 / 2026-07-14). Le cœur pose un cgroup
+      # `MemoryMax=` + `MemorySwapMax=0` sur l'enfant : un run qui
+      # déborde meurt SEUL, avec une erreur attrapable (le tryCatch
+      # ci-dessous, inchangé).
+      #
+      # Frontière de process → deux arguments ne traversent pas et sont
+      # reconstruits côté enfant :
+      #   * `con`               → `db_url` (l'enfant ouvre sa connexion) ;
+      #   * `progress_callback` → `progress_path` (l'enfant écrit les
+      #     fichiers .json/.ndjson, le parent les tail et rejoue chaque
+      #     événement dans `ntfy_cb` → les push ntfy sont préservés).
+      # `cancel_path` est inchangé : l'enfant poll le même fichier.
       result <- tryCatch(
-        nemeton::run_fordead_dieback(
-          con               = con,
-          zone_id           = zone_id,
-          cache_dir         = cache_dir,
-          dates_training    = dates_training,
-          dates_monitoring  = dates_monitoring,
-          threshold_anomaly = threshold_anomaly,
-          vegetation_index  = vegetation_index,
-          progress_callback = progress_cb,
-          # v0.71.1 — Forward output_dir + keep_output au cœur
-          # (`nemeton::run_fordead_dieback`). Par défaut le cœur
-          # utilisait `tempfile("fordead_")` → /tmp. Désormais les
-          # outputs intermédiaires (training, masks bruts) vivent
-          # sous `<projet>/cache/layers/fordead/output_zone_<id>` et
-          # sont préservés (`keep_output = TRUE`) — inspectables.
-          # NULL = retombe sur le défaut cœur (back-compat).
-          output_dir        = output_dir,
-          keep_output       = keep_output,
-          # v0.52.0 — cancel coopératif (nemeton@v0.53.0). Le worker
-          # polled `file.exists(cancel_path)` entre phases reticulate
-          # (training → monitoring → écriture alertes). Granularité
-          # plus grossière que FAST mais cohérente — l'utilisateur
-          # sait qu'il abandonne au prochain checkpoint.
-          cancel_path       = cancel_path
+        nemeton::run_memory_capped(
+          "run_fordead_dieback",
+          args = list(
+            zone_id           = zone_id,
+            cache_dir         = cache_dir,
+            dates_training    = dates_training,
+            dates_monitoring  = dates_monitoring,
+            threshold_anomaly = threshold_anomaly,
+            vegetation_index  = vegetation_index,
+            # v0.71.1 — Forward output_dir + keep_output au cœur
+            # (`nemeton::run_fordead_dieback`). Par défaut le cœur
+            # utilisait `tempfile("fordead_")` → /tmp. Désormais les
+            # outputs intermédiaires (training, masks bruts) vivent
+            # sous `<projet>/cache/layers/fordead/output_zone_<id>` et
+            # sont préservés (`keep_output = TRUE`) — inspectables.
+            # NULL = retombe sur le défaut cœur (back-compat).
+            output_dir        = output_dir,
+            keep_output       = keep_output,
+            # v0.52.0 — cancel coopératif (nemeton@v0.53.0). L'enfant
+            # polle `file.exists(cancel_path)` entre phases reticulate
+            # (training → monitoring → écriture alertes). Granularité
+            # plus grossière que FAST mais cohérente — l'utilisateur
+            # sait qu'il abandonne au prochain checkpoint.
+            cancel_path       = cancel_path
+          ),
+          db_url            = child_db_url,
+          progress_path     = progress_path,
+          progress_callback = ntfy_cb,
+          memory_max        = .capped_memory_max()
         ),
         error = function(e) {
           .ntfy_send(
@@ -957,12 +1000,40 @@ run_reconfort_async <- function() {
 
 .build_fordead_progress_callback <- function(progress_path, ntfy, i18n) {
   file_cb <- .build_progress_writer(progress_path)
-  state   <- new.env(parent = emptyenv())
-  state$last_phase <- ""
+  ntfy_cb <- .build_fordead_ntfy_callback(ntfy, i18n)
   function(event) {
     if (!is.null(file_cb)) {
       tryCatch(file_cb(event), error = function(e) invisible(NULL))
     }
+    ntfy_cb(event)
+    invisible(NULL)
+  }
+}
+
+
+#' ntfy-only FORDEAD phase callback (no file write)
+#'
+#' v0.106.5.9003 (spec 008, brief `brief-nemetonshiny-fordead-capped`)
+#' — La moitié « push » de [.build_fordead_progress_callback()], isolée
+#' pour l'exécution plafonnée en process enfant
+#' (`nemeton::run_memory_capped()`). Sous isolation, **l'enfant écrit
+#' déjà** les fichiers `.json` / `.ndjson` de progression au format de
+#' [.build_progress_writer()] ; rejouer le callback composite dans le
+#' parent dupliquerait chaque événement (lignes NDJSON en double,
+#' console en double). Le parent ne rejoue donc que le push ntfy.
+#'
+#' La dédup par phase (une notification par phase, pas par tick) vit
+#' dans l'état `last_phase` de la closure — état côté parent, donc
+#' préservé même si l'enfant meurt et redémarre.
+#'
+#' @param ntfy `.ntfy_config()` output (or `NULL` → no-op).
+#' @param i18n A `get_i18n()` translator.
+#' @return A callback `function(event)`.
+#' @noRd
+.build_fordead_ntfy_callback <- function(ntfy, i18n) {
+  state <- new.env(parent = emptyenv())
+  state$last_phase <- ""
+  function(event) {
     current <- as.character(event$current %||% "")
     if (identical(current, "fordead:phase")) {
       phase_name <- as.character(event$phase_name %||% "")
@@ -979,6 +1050,30 @@ run_reconfort_async <- function() {
     }
     invisible(NULL)
   }
+}
+
+
+#' Memory ceiling for the capped FORDEAD child process
+#'
+#' v0.106.5.9003 (spec 008) — Resolves `NEMETON_MEMORY_MAX` into the
+#' `memory_max` argument of `nemeton::run_memory_capped()`:
+#'
+#' * unset / empty  → `NULL` : the core default (70 % of RAM).
+#' * `"none"` / `"off"` / `"false"` / `"0"` → `FALSE` : no ceiling at
+#'   all (escape hatch when a legitimate run gets killed).
+#' * anything else  → passed through verbatim (`"16G"`, `"21474836480"`,
+#'   … — the core validates and hands it to `systemd-run`).
+#'
+#' Read worker-side (the worker is what spawns the child), hence the
+#' env var is forwarded by [.capture_worker_envvars()].
+#'
+#' @return `NULL`, `FALSE`, or a length-1 character.
+#' @noRd
+.capped_memory_max <- function() {
+  raw <- trimws(Sys.getenv("NEMETON_MEMORY_MAX", ""))
+  if (!nzchar(raw)) return(NULL)
+  if (tolower(raw) %in% c("none", "off", "false", "no", "0")) return(FALSE)
+  raw
 }
 
 
@@ -1159,7 +1254,12 @@ run_reconfort_async <- function() {
     # moment-la. Sans ce transfert, un NEMETON_SCRATCH_DIR pose ensuite serait
     # ignore en silence et le coeur retomberait sur tempdir() — qui est parfois
     # un tmpfs, c'est-a-dire de la RAM, ce qui annulerait tout le benefice.
-    "NEMETON_SCRATCH_DIR"
+    "NEMETON_SCRATCH_DIR",
+    # plafond memoire du process enfant FORDEAD (nemeton >= 0.157.0).
+    # Lu par `.capped_memory_max()` DANS le worker (c'est lui qui lance
+    # l'enfant), donc a transferer comme NEMETON_SCRATCH_DIR : les
+    # workers sont pre-chauffes et figent leur environnement.
+    "NEMETON_MEMORY_MAX"
   )
   vals <- vapply(keys, function(k) Sys.getenv(k, unset = ""), character(1))
   vals[nzchar(vals)]

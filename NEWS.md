@@ -1,5 +1,36 @@
 # nemetonshiny (development version)
 
+### Fixed — FORDEAD tourne désormais dans un process plafonné (spec 008)
+
+Un run FORDEAD qui débordait en mémoire emportait **toute la session** : sous
+pression, `systemd-oomd` ne tue pas le processus fautif mais le *scope* entier
+— le 2026-07-14, RStudio et l'app sont partis à l'OOM en plein FORDEAD.
+RECONFORT était épargné (son Python est un sous-processus `conda run`, déjà
+placé dans un cgroup plafonné par le cœur) ; FORDEAD non, car son Python vit
+dans l'interpréteur **embarqué** de reticulate — sa mémoire *est* celle du
+worker `future`, donc celle du scope de l'app. Il n'y avait rien à plafonner
+in-process.
+
+Le run est donc déporté dans un **process R enfant plafonné** via
+`nemeton::run_memory_capped()` (cœur ≥ 0.157.0, `MemoryMax=` +
+`MemorySwapMax=0`). Un run qui déborde meurt **seul**, avec une erreur
+attrapable qui remonte dans le toast d'erreur habituel. Le worker `future`
+reste en place (il garde l'UI réactive) ; l'enfant vit dedans.
+
+Ce qui ne change pas pour l'utilisateur : le `reactivePoll` de progression
+(mêmes fichiers `.json` / `.ndjson`, même format), l'annulation coopérative
+(l'enfant polle le même `cancel_path`) et les push ntfy par phase. Ces derniers
+demandaient un soin particulier : sous isolation, **l'enfant écrit déjà** le
+fichier de progression, donc le parent ne rejoue que la partie ntfy du callback
+(nouveau `.build_fordead_ntfy_callback()`) — rejouer le composite aurait
+dédoublé chaque événement.
+
+Nouveau réglage optionnel `NEMETON_MEMORY_MAX` : vide → défaut cœur (70 % de la
+RAM) ; `"16G"` pour laisser de l'air à RStudio sur une machine à 32 Go ;
+`none` / `off` pour retirer le plafond si un run légitime se fait tuer.
+
+Plancher cœur : `nemeton (>= 0.157.0)`.
+
 ### Added — Roue dentée + chrono sous les trois boutons « Lancer… »
 
 Le retour visuel sous le bouton n'existait que pour RECONFORT. FAST et FORDEAD
