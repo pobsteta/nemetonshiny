@@ -89,6 +89,8 @@ run_ingestion_async <- function() {
       if (!is_parallel) future::plan("multisession")
     }
     promises::future_promise({
+      # spec 008 §4 — rendre la memoire au systeme : le worker est PERSISTANT.
+      on.exit(.release_worker_memory(), add = TRUE)
       # Replay diagnostic env vars captured in the parent so the
       # worker sees the same NEMETON_S2_CACHE_DEBUG / NEMETON_*
       # values as the user set in the main session.
@@ -558,6 +560,8 @@ run_fordead_async <- function() {
     }
     promises::future_promise({
       .apply_worker_envvars(.worker_envvars)
+      # spec 008 §4 — rendre la memoire au systeme : le worker est PERSISTANT.
+      on.exit(.release_worker_memory(), add = TRUE)
 
       if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
         pkgload::load_all(.dev_pkg_path, quiet = TRUE)
@@ -722,6 +726,8 @@ run_reconfort_async <- function() {
     }
     promises::future_promise({
       .apply_worker_envvars(.worker_envvars)
+      # spec 008 §4 — rendre la memoire au systeme : le worker est PERSISTANT.
+      on.exit(.release_worker_memory(), add = TRUE)
 
       if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
         pkgload::load_all(.dev_pkg_path, quiet = TRUE)
@@ -1017,27 +1023,22 @@ run_reconfort_async <- function() {
 }
 
 
-#' Human-readable duration string
+#' Human-readable duration string (granularité minute)
 #'
 #' Formats a number of seconds as `"45 s"` / `"12 min"` / `"13 h 47 min"`.
 #' Returns `"?"` for `NULL` / non-finite input.
+#'
+#' v0.106.5 (spec 008 §5, consolidation) — mince adaptateur sur
+#' `nemeton::format_duration(with_seconds = FALSE)` (cœur >= 0.155.0).
+#' L'implémentation locale est retirée : une seule source de vérité pour le
+#' format des durées (règle #2). Cf. `format_elapsed()` pour la granularité
+#' seconde.
 #'
 #' @param sec Number of seconds.
 #' @return A length-1 character.
 #' @noRd
 .format_duration_human <- function(sec) {
-  if (is.null(sec)) return("?")
-  sec <- suppressWarnings(as.numeric(sec)[1])
-  if (length(sec) != 1L || !is.finite(sec)) return("?")
-  if (sec < 60) return(sprintf("%d s", as.integer(round(sec))))
-  total_min <- floor(sec / 60)
-  hours <- total_min %/% 60
-  mins  <- total_min %% 60
-  if (hours > 0) {
-    sprintf("%d h %02d min", hours, mins)
-  } else {
-    sprintf("%d min", mins)
-  }
+  nemeton::format_duration(sec, with_seconds = FALSE)
 }
 
 
@@ -1167,6 +1168,38 @@ run_reconfort_async <- function() {
 .apply_worker_envvars <- function(envvars) {
   if (is.null(envvars) || length(envvars) == 0L) return(invisible(NULL))
   do.call(Sys.setenv, as.list(envvars))
+  invisible(NULL)
+}
+
+
+#' Rendre au systeme la memoire d'une tache worker terminee (spec 008 §4)
+#'
+#' Les workers `future::multisession` sont des processus R **persistants** : ils
+#' survivent a la tache et gardent tout ce qu'ils ont alloue. Un run lourd fait
+#' gonfler un worker a plusieurs Go ; sans nettoyage il **reste** a ce niveau
+#' jusqu'a la fin de la session, et 8 workers dans cet etat suffisent a mettre
+#' la session sous le seuil de pression de `systemd-oomd` (incident 2026-07-13).
+#'
+#' Appele en `on.exit()` a la fin du corps du worker. Les DEUX etapes comptent,
+#' et dans cet ordre :
+#'   1. `rm(list = ls(envir = env), envir = env)` — `on.exit` s'execute pendant
+#'      que la frame du worker est ENCORE VIVANTE : les gros objets y sont
+#'      toujours lies, un `gc()` seul ne peut donc rien liberer. Mesure : `gc()`
+#'      seul ne fait tomber le worker que de 6,4 Go a 1,6 Go.
+#'   2. `gc(full = TRUE)` — une fois les liens coupes, R rend les pages a l'OS.
+#'      Mesure : le worker retombe a ~210 Mo (son niveau a vide).
+#'
+#' La valeur de retour de la tache est deja calculee quand `on.exit` tourne :
+#' la vider n'y touche pas (couvert par test).
+#'
+#' @param env Frame a vider. Par defaut celle de l'appelant (le corps du worker).
+#' @return `invisible(NULL)`.
+#' @noRd
+.release_worker_memory <- function(env = parent.frame()) {
+  tryCatch({
+    rm(list = ls(envir = env, all.names = TRUE), envir = env)
+    gc(full = TRUE)
+  }, error = function(e) invisible(NULL))
   invisible(NULL)
 }
 

@@ -11,21 +11,23 @@ NULL
 
 #' Format a duration in seconds as a short human string
 #'
-#' Always rounds to the nearest second. Examples:
+#' Examples:
 #'   format_elapsed(23)   -> "23 s"
 #'   format_elapsed(83)   -> "1 min 23 s"
 #'   format_elapsed(3725) -> "1 h 02 min 05 s"
+#'   format_elapsed(NA)   -> "?"
+#'
+#' v0.106.5 (spec 008 §5, consolidation) — mince adaptateur sur
+#' `nemeton::format_duration()` (cœur >= 0.155.0). L'implémentation locale,
+#' dupliquée du cœur, est retirée : une seule source de vérité pour le format
+#' des durées (règle #2 — l'app consomme, le cœur décide). Comportement
+#' identique, cas limites inclus (NULL / NA / négatif / non-numérique -> "?").
 #'
 #' @param secs Numeric. Elapsed duration in seconds.
 #' @return Character scalar.
 #' @noRd
 format_elapsed <- function(secs) {
-  if (!is.numeric(secs) || is.na(secs) || secs < 0) return("?")
-  s <- round(secs)
-  if (s < 60)    return(sprintf("%d s", s))
-  if (s < 3600)  return(sprintf("%d min %02d s", s %/% 60, s %% 60))
-  sprintf("%d h %02d min %02d s",
-          s %/% 3600, (s %% 3600) %/% 60, s %% 60)
+  nemeton::format_duration(secs, with_seconds = TRUE)
 }
 
 

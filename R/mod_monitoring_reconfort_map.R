@@ -438,6 +438,15 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       rm <- raster_manifest_r()
       if (is.null(rm)) return(NULL)
       aoi <- aoi_r()
+      # spec 008 §4 — Ne lire QUE la couche affichée. Les couches sont
+      # EXCLUSIVES (radioButtons) : lire les trois pour n'en peindre qu'une
+      # masquait et matérialisait deux rasters pleins pour rien, que le cache du
+      # `reactive()` gardait ensuite vivants dans la session. Le masquage côté
+      # cœur renvoie de l'in-memory : le coût est réel, pas théorique.
+      sel <- selected_ids_r()
+      keep <- as.character(rm$id) %in% sel
+      if (!any(keep)) return(NULL)
+      rm <- rm[keep, , drop = FALSE]
       out <- list()
       for (k in seq_len(nrow(rm))) {
         row <- rm[k, ]

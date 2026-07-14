@@ -1,5 +1,41 @@
 # nemetonshiny (development version)
 
+### Changed — spec 008 §4 : rendre au système la mémoire des workers persistants
+
+Audit mémoire de l'app (le cœur a traité sa part en `nemeton` 0.155.0 : plafond
+cgroup du sous-processus IOTA2, `filename=` sur ses appels terra, et
+`terraOptions(memfrac = 0.25)` posé dans son `.onLoad` — **l'app ne duplique donc
+pas ce réglage**, elle le consomme).
+
+Ce qui restait à l'app, et que le cœur ne peut pas voir : les workers
+`future::multisession` sont des processus R **persistants**. Un run lourd les
+fait gonfler à plusieurs Go, et **ils y restent** jusqu'à la fin de la session.
+Mesuré ici : un worker passe de 207 Mo à **6 409 Mo** après un calcul raster, et
+n'en redescend jamais. Huit workers dans cet état suffisent à mettre la session
+sous le seuil de pression de `systemd-oomd` (incident du 2026-07-13).
+
+- Nouveau `.release_worker_memory()`, appelé en `on.exit()` à la fin des **10
+  corps de workers** (FAST, FORDEAD, RECONFORT, les 5 moteurs reGénération,
+  calcul projet). Il fait `rm(list = ls())` **puis** `gc(full = TRUE)` — les deux
+  comptent, et dans cet ordre : `on.exit` s'exécute pendant que la frame du
+  worker est encore vivante, donc un `gc()` seul ne libère presque rien (mesuré :
+  6,4 Go → 1,6 Go). Avec le `rm()` d'abord, le worker retombe à **~210 Mo**, son
+  niveau à vide.
+- Carte RECONFORT : `masked_rasters_r` ne lit plus que la couche **affichée**.
+  Les couches sont exclusives (`radioButtons`) : lire les trois masquait et
+  matérialisait deux rasters pleins pour rien, que le cache du `reactive()`
+  gardait ensuite vivants dans la session.
+- Les 8 workers `future` sont conservés (décision produit : le `gc()` de fin de
+  tâche fait disparaître le résidu, seul le socle de 1,9 Go subsiste).
+
+### Changed — spec 008 §5 : une seule source de vérité pour les durées
+
+`nemeton::format_duration()` (cœur 0.155.0) devient la source unique.
+`format_elapsed()` et `.format_duration_human()` sont réduits à de minces
+adaptateurs (règle #2 : l'app consomme, le cœur décide). Comportement vérifié
+identique sur tous les cas limites (`NULL` / `NA` / négatif / non-numérique →
+« ? »). Plancher relevé : `Imports: nemeton (>= 0.155.0)`.
+
 # nemetonshiny 0.106.4
 
 ### Fixed — Suivi sanitaire : les deux bandeaux de validité RECONFORT
