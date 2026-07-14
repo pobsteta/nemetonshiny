@@ -486,3 +486,19 @@ test_that(".release_worker_memory ne leve jamais (un worker ne doit pas mourir d
   expect_silent(nemetonshiny:::.release_worker_memory(emptyenv()))
   expect_null(nemetonshiny:::.release_worker_memory(baseenv()))
 })
+
+test_that("NEMETON_SCRATCH_DIR atteint le worker (le run tourne LA-BAS)", {
+  # Les workers sont pre-chauffes au demarrage : ils figent leur environnement.
+  # Une variable posee ensuite ne les atteint QUE si elle est capturee ici.
+  # Sans ca, nemeton::scratch_dir() retomberait sur tempdir() dans le worker —
+  # parfois un tmpfs (= RAM), ce qui annulerait le streaming sur disque.
+  withr::with_envvar(c(NEMETON_SCRATCH_DIR = "/data/scratch"), {
+    captured <- nemetonshiny:::.capture_worker_envvars()
+    expect_identical(unname(captured[["NEMETON_SCRATCH_DIR"]]), "/data/scratch")
+  })
+  # Non definie => absente du snapshot (pas de "" qui ecraserait le defaut coeur).
+  withr::with_envvar(c(NEMETON_SCRATCH_DIR = NA), {
+    captured <- nemetonshiny:::.capture_worker_envvars()
+    expect_false("NEMETON_SCRATCH_DIR" %in% names(captured))
+  })
+})

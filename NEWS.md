@@ -1,4 +1,18 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.106.5
+
+### Fixed — `NEMETON_SCRATCH_DIR` n'atteignait pas le worker (cœur >= 0.156.0)
+
+`nemeton::scratch_dir()` (0.156.0) décide où atterrissent les intermédiaires
+volumineux des pipelines longs — de ~800 Mo à la dizaine de Go. Mais le run
+s'exécute **dans le worker**, et les workers sont **pré-chauffés au démarrage de
+la session** : ils figent alors leur environnement. `NEMETON_SCRATCH_DIR`
+n'étant pas dans la liste des variables transmises, un réglage posé ensuite
+n'aurait jamais atteint le process qui calcule, et le cœur serait retombé sur
+`tempdir()` **en silence** — parfois un tmpfs, c'est-à-dire de la RAM, ce qui
+annulerait tout le bénéfice du streaming sur disque. La variable est désormais
+capturée et rejouée côté worker (test de non-régression).
+
+Plancher relevé : `Imports: nemeton (>= 0.156.0)`.
 
 ### Changed — spec 008 §4 : rendre au système la mémoire des workers persistants
 

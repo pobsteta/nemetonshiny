@@ -1149,7 +1149,17 @@ run_reconfort_async <- function() {
     # topic / server / token without reaching app_state.
     "NEMETON_NTFY_URL",
     "NEMETON_NTFY_TOPIC",
-    "NEMETON_NTFY_TOKEN"
+    "NEMETON_NTFY_TOKEN",
+    # scratch dir des intermediaires volumineux (nemeton >= 0.156.0). Les
+    # pipelines longs y streament leurs stacks au lieu de les tenir en RAM :
+    # ~800 Mo pour une petite AOI, de l'ordre de la dizaine de Go a l'echelle
+    # d'un departement. Le run tourne DANS le worker, donc c'est le worker qui
+    # doit voir la variable — et les workers sont PRE-CHAUFFES au demarrage de
+    # la session (warmup_async_workers) : ils figent leur environnement a ce
+    # moment-la. Sans ce transfert, un NEMETON_SCRATCH_DIR pose ensuite serait
+    # ignore en silence et le coeur retomberait sur tempdir() — qui est parfois
+    # un tmpfs, c'est-a-dire de la RAM, ce qui annulerait tout le benefice.
+    "NEMETON_SCRATCH_DIR"
   )
   vals <- vapply(keys, function(k) Sys.getenv(k, unset = ""), character(1))
   vals[nzchar(vals)]
