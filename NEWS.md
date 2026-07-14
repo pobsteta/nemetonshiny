@@ -6,8 +6,9 @@
   peut durer des **heures, voire des jours** — l'emprise et le nombre de dates
   Sentinel-2 gouvernent tout. La promesse de durée est retirée : le chronomètre
   sous le bouton dit la vérité pendant le run, une estimation figée dans l'aide
-  ne peut que se tromper. (La mention `opt-in (conda IOTA²/GEODES)` part avec la
-  phrase ; à re-formuler ailleurs si l'information doit rester visible.)
+  ne peut que se tromper. La dépendance **conda IOTA²/GEODES est conservée**,
+  reformulée en « Opt-in : nécessite le bundle conda IOTA²/GEODES » — c'est une
+  condition d'exécution (sans elle le run échoue), pas une estimation.
 - **« sur les placettes enregistrées »** dans le sous-titre du Suivi continu
   Sentinel-2 : dernier vestige textuel des placettes dans le suivi sanitaire,
   devenu 100 % raster (FAST, FORDEAD, puis RECONFORT en v0.106.4). Remplacé par

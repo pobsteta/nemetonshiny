@@ -3157,13 +3157,15 @@ TRANSLATIONS <- list(
     fr = "Diagnostic RECONFORT (feuillus)",
     en = "RECONFORT diagnosis (broadleaves)"
   ),
-  # v0.106.6 — « Quelques minutes » retire : c'etait FAUX. Un run RECONFORT
-  # peut durer des heures, voire des jours (l'emprise et le nombre de dates
-  # S2 gouvernent tout). Ne plus annoncer de duree : le chrono sous le bouton
-  # dit la verite pendant le run, une promesse dans l'aide ne peut que mentir.
+  # v0.106.6 — « Quelques minutes » retire : c'etait FAUX. Un run RECONFORT peut
+  # durer des heures, voire des jours (l'emprise et le nombre de dates S2
+  # gouvernent tout). Ne plus annoncer AUCUNE duree : le chrono sous le bouton
+  # dit la verite pendant le run, une promesse figee dans l'aide ne peut que
+  # mentir. La dependance conda (opt-in) RESTE : sans ce bundle, le run echoue —
+  # c'est une condition d'execution, pas une estimation.
   monitoring_mode_reconfort_help = list(
-    fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre).",
-    en = "Detect broadleaf dieback (oak, chestnut) using RECONFORT (CRSWIR + CRre)."
+    fr = "D\u00e9tection du d\u00e9p\u00e9rissement des feuillus (ch\u00eane, ch\u00e2taignier) via RECONFORT (CRSWIR + CRre). Opt-in : n\u00e9cessite le bundle conda IOTA\u00b2/GEODES.",
+    en = "Detect broadleaf dieback (oak, chestnut) using RECONFORT (CRSWIR + CRre). Opt-in: requires the conda IOTA\u00b2/GEODES bundle."
   ),
   # « Carte RECONFORT » : l'onglet affiche les RASTERS du run (score, classes de
   # sante, probabilite) + le clic-pixel. La couche vectorielle d'alertes a ete
