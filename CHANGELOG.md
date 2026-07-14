@@ -12,6 +12,41 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.106.5\] - 2026-07-14
+
+### Fixed
+
+- `NEMETON_SCRATCH_DIR` n’était pas transmis aux workers : le run
+  s’exécutant dans un worker pré-chauffé (environnement figé au
+  démarrage), le réglage était ignoré en silence et le cœur retombait
+  sur [`tempdir()`](https://rdrr.io/r/base/tempfile.html).
+
+### Changed
+
+- spec 008 §4 — Les workers
+  [`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+  sont des processus R persistants : un run lourd les faisait passer de
+  207 Mo à 6 409 Mo sans jamais redescendre. `.release_worker_memory()`
+  (`rm(list = ls())` **puis** `gc(full = TRUE)`) est appelé en
+  [`on.exit()`](https://rdrr.io/r/base/on.exit.html) sur les 10 corps de
+  workers : le worker retombe à ~210 Mo. Un
+  [`gc()`](https://rdrr.io/r/base/gc.html) seul ne suffit pas —
+  `on.exit` s’exécute alors que la frame du worker vit encore.
+- Carte RECONFORT : `masked_rasters_r` ne lit plus que la couche
+  affichée (les couches sont exclusives ; lire les trois matérialisait
+  deux rasters pour rien).
+- spec 008 §5 —
+  [`nemeton::format_duration()`](https://pobsteta.github.io/nemeton/reference/format_duration.html)
+  devient la source unique des durées ; `format_elapsed()` et
+  `.format_duration_human()` sont réduits à des adaptateurs.
+- Plancher relevé : `Imports: nemeton (>= 0.156.0)`.
+
+### Notes
+
+- Aucun `terraOptions()` côté app : le cœur 0.155.0 pose
+  `memfrac = 0.25` dans son `.onLoad` (vérifié actif dans la session, en
+  dev et dans les workers).
+
 ## \[0.106.4\] - 2026-07-14
 
 ### Removed

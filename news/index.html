@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,24 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.106.5" id="nemetonshiny-01065">nemetonshiny 0.106.5<a class="anchor" aria-label="anchor" href="#nemetonshiny-01065"></a></h2>
+<div class="section level4">
+<h4 id="fixed--nemeton_scratch_dir-natteignait-pas-le-worker-cœur--0-106-5">Fixed — <code>NEMETON_SCRATCH_DIR</code> n’atteignait pas le worker (cœur &gt;= 0.156.0)<a class="anchor" aria-label="anchor" href="#fixed--nemeton_scratch_dir-natteignait-pas-le-worker-c%C5%93ur--0-106-5"></a></h4>
+<p><code><a href="https://pobsteta.github.io/nemeton/reference/scratch_dir.html" class="external-link">nemeton::scratch_dir()</a></code> (0.156.0) décide où atterrissent les intermédiaires volumineux des pipelines longs — de ~800 Mo à la dizaine de Go. Mais le run s’exécute <strong>dans le worker</strong>, et les workers sont <strong>pré-chauffés au démarrage de la session</strong> : ils figent alors leur environnement. <code>NEMETON_SCRATCH_DIR</code> n’étant pas dans la liste des variables transmises, un réglage posé ensuite n’aurait jamais atteint le process qui calcule, et le cœur serait retombé sur <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code> <strong>en silence</strong> — parfois un tmpfs, c’est-à-dire de la RAM, ce qui annulerait tout le bénéfice du streaming sur disque. La variable est désormais capturée et rejouée côté worker (test de non-régression).</p>
+<p>Plancher relevé : <code>Imports: nemeton (&gt;= 0.156.0)</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--spec--rendre-au-système-la-mémoire-des-workers-persistants-0-106-5">Changed — spec 008 §4 : rendre au système la mémoire des workers persistants<a class="anchor" aria-label="anchor" href="#changed--spec--rendre-au-syst%C3%A8me-la-m%C3%A9moire-des-workers-persistants-0-106-5"></a></h4>
+<p>Audit mémoire de l’app (le cœur a traité sa part en <code>nemeton</code> 0.155.0 : plafond cgroup du sous-processus IOTA2, <code>filename=</code> sur ses appels terra, et <code>terraOptions(memfrac = 0.25)</code> posé dans son <code>.onLoad</code> — <strong>l’app ne duplique donc pas ce réglage</strong>, elle le consomme).</p>
+<p>Ce qui restait à l’app, et que le cœur ne peut pas voir : les workers <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> sont des processus R <strong>persistants</strong>. Un run lourd les fait gonfler à plusieurs Go, et <strong>ils y restent</strong> jusqu’à la fin de la session. Mesuré ici : un worker passe de 207 Mo à <strong>6 409 Mo</strong> après un calcul raster, et n’en redescend jamais. Huit workers dans cet état suffisent à mettre la session sous le seuil de pression de <code>systemd-oomd</code> (incident du 2026-07-13).</p>
+<ul><li>Nouveau <code>.release_worker_memory()</code>, appelé en <code><a href="https://rdrr.io/r/base/on.exit.html" class="external-link">on.exit()</a></code> à la fin des <strong>10 corps de workers</strong> (FAST, FORDEAD, RECONFORT, les 5 moteurs reGénération, calcul projet). Il fait <code>rm(list = ls())</code> <strong>puis</strong> <code>gc(full = TRUE)</code> — les deux comptent, et dans cet ordre : <code>on.exit</code> s’exécute pendant que la frame du worker est encore vivante, donc un <code><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc()</a></code> seul ne libère presque rien (mesuré : 6,4 Go → 1,6 Go). Avec le <code><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm()</a></code> d’abord, le worker retombe à <strong>~210 Mo</strong>, son niveau à vide.</li>
+<li>Carte RECONFORT : <code>masked_rasters_r</code> ne lit plus que la couche <strong>affichée</strong>. Les couches sont exclusives (<code>radioButtons</code>) : lire les trois masquait et matérialisait deux rasters pleins pour rien, que le cache du <code>reactive()</code> gardait ensuite vivants dans la session.</li>
+<li>Les 8 workers <code>future</code> sont conservés (décision produit : le <code><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc()</a></code> de fin de tâche fait disparaître le résidu, seul le socle de 1,9 Go subsiste).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--spec--une-seule-source-de-vérité-pour-les-durées-0-106-5">Changed — spec 008 §5 : une seule source de vérité pour les durées<a class="anchor" aria-label="anchor" href="#changed--spec--une-seule-source-de-v%C3%A9rit%C3%A9-pour-les-dur%C3%A9es-0-106-5"></a></h4>
+<p><code><a href="https://pobsteta.github.io/nemeton/reference/format_duration.html" class="external-link">nemeton::format_duration()</a></code> (cœur 0.155.0) devient la source unique. <code>format_elapsed()</code> et <code>.format_duration_human()</code> sont réduits à de minces adaptateurs (règle <a href="https://github.com/pobsteta/nemetonshiny/issues/2" class="external-link">#2</a> : l’app consomme, le cœur décide). Comportement vérifié identique sur tous les cas limites (<code>NULL</code> / <code>NA</code> / négatif / non-numérique → « ? »). Plancher relevé : <code>Imports: nemeton (&gt;= 0.155.0)</code>.</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.4" id="nemetonshiny-01064">nemetonshiny 0.106.4<a class="anchor" aria-label="anchor" href="#nemetonshiny-01064"></a></h2>
@@ -55,7 +72,7 @@
 <strong>§3 — Échec mémoire.</strong> Un diagnostic tué par le plafond mémoire du cœur sort en SIGKILL (<code>exit 137</code>). Le message brut (« RECONFORT map production failed for zone 3 (exit 137) ») ne disait rien à l’utilisateur : il est remplacé par une consigne actionnable (fermer d’autres applications, réduire l’emprise). Appliqué aux trois chemins d’erreur (RECONFORT + les deux de FORDEAD).</li>
 <li>
 <strong>§5 — Durées.</strong> Quatre messages de fin de run affichaient des <strong>secondes brutes</strong> : le run RECONFORT validé (819 s) annonçait « terminé en 819 s », un FORDEAD de deux heures aurait dit « 7243 s ». Ils passent désormais par <code>format_elapsed()</code> — « <strong>13 min 39 s</strong> », « <strong>2 h 00 min 43 s</strong> ». Les champs de données (<code>duration_sec</code>, <code>run_meta.json</code>) restent en secondes brutes.</li>
-<li>⚠️ Le brief préconise <code>nemeton::format_duration()</code> (cœur <strong>0.155.0</strong>), mais la dernière release publiée est <strong>0.154.1</strong> : on utilise le formateur app existant, que le brief qualifie lui-même de correct. La consolidation vers le cœur (une seule source de vérité) reste à faire quand 0.155.0 sera publiée.</li>
+<li>⚠️ Le brief préconise <code><a href="https://pobsteta.github.io/nemeton/reference/format_duration.html" class="external-link">nemeton::format_duration()</a></code> (cœur <strong>0.155.0</strong>), mais la dernière release publiée est <strong>0.154.1</strong> : on utilise le formateur app existant, que le brief qualifie lui-même de correct. La consolidation vers le cœur (une seule source de vérité) reste à faire quand 0.155.0 sera publiée.</li>
 </ul></div>
 <div class="section level4">
 <h4 id="removed--suivi-sanitaire--la-notion-de--placette--disparaît-de-reconfort-0-106-4">Removed — Suivi sanitaire : la notion de « placette » disparaît de RECONFORT<a class="anchor" aria-label="anchor" href="#removed--suivi-sanitaire--la-notion-de--placette--dispara%C3%AEt-de-reconfort-0-106-4"></a></h4>

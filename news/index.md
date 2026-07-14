@@ -1,6 +1,67 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.106.5
+
+#### Fixed — `NEMETON_SCRATCH_DIR` n’atteignait pas le worker (cœur \>= 0.156.0)
+
+[`nemeton::scratch_dir()`](https://pobsteta.github.io/nemeton/reference/scratch_dir.html)
+(0.156.0) décide où atterrissent les intermédiaires volumineux des
+pipelines longs — de ~800 Mo à la dizaine de Go. Mais le run s’exécute
+**dans le worker**, et les workers sont **pré-chauffés au démarrage de
+la session** : ils figent alors leur environnement.
+`NEMETON_SCRATCH_DIR` n’étant pas dans la liste des variables
+transmises, un réglage posé ensuite n’aurait jamais atteint le process
+qui calcule, et le cœur serait retombé sur
+[`tempdir()`](https://rdrr.io/r/base/tempfile.html) **en silence** —
+parfois un tmpfs, c’est-à-dire de la RAM, ce qui annulerait tout le
+bénéfice du streaming sur disque. La variable est désormais capturée et
+rejouée côté worker (test de non-régression).
+
+Plancher relevé : `Imports: nemeton (>= 0.156.0)`.
+
+#### Changed — spec 008 §4 : rendre au système la mémoire des workers persistants
+
+Audit mémoire de l’app (le cœur a traité sa part en `nemeton` 0.155.0 :
+plafond cgroup du sous-processus IOTA2, `filename=` sur ses appels
+terra, et `terraOptions(memfrac = 0.25)` posé dans son `.onLoad` —
+**l’app ne duplique donc pas ce réglage**, elle le consomme).
+
+Ce qui restait à l’app, et que le cœur ne peut pas voir : les workers
+[`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+sont des processus R **persistants**. Un run lourd les fait gonfler à
+plusieurs Go, et **ils y restent** jusqu’à la fin de la session. Mesuré
+ici : un worker passe de 207 Mo à **6 409 Mo** après un calcul raster,
+et n’en redescend jamais. Huit workers dans cet état suffisent à mettre
+la session sous le seuil de pression de `systemd-oomd` (incident du
+2026-07-13).
+
+- Nouveau `.release_worker_memory()`, appelé en
+  [`on.exit()`](https://rdrr.io/r/base/on.exit.html) à la fin des **10
+  corps de workers** (FAST, FORDEAD, RECONFORT, les 5 moteurs
+  reGénération, calcul projet). Il fait `rm(list = ls())` **puis**
+  `gc(full = TRUE)` — les deux comptent, et dans cet ordre : `on.exit`
+  s’exécute pendant que la frame du worker est encore vivante, donc un
+  [`gc()`](https://rdrr.io/r/base/gc.html) seul ne libère presque rien
+  (mesuré : 6,4 Go → 1,6 Go). Avec le
+  [`rm()`](https://rdrr.io/r/base/rm.html) d’abord, le worker retombe à
+  **~210 Mo**, son niveau à vide.
+- Carte RECONFORT : `masked_rasters_r` ne lit plus que la couche
+  **affichée**. Les couches sont exclusives (`radioButtons`) : lire les
+  trois masquait et matérialisait deux rasters pleins pour rien, que le
+  cache du `reactive()` gardait ensuite vivants dans la session.
+- Les 8 workers `future` sont conservés (décision produit : le
+  [`gc()`](https://rdrr.io/r/base/gc.html) de fin de tâche fait
+  disparaître le résidu, seul le socle de 1,9 Go subsiste).
+
+#### Changed — spec 008 §5 : une seule source de vérité pour les durées
+
+[`nemeton::format_duration()`](https://pobsteta.github.io/nemeton/reference/format_duration.html)
+(cœur 0.155.0) devient la source unique. `format_elapsed()` et
+`.format_duration_human()` sont réduits à de minces adaptateurs (règle
+[\#2](https://github.com/pobsteta/nemetonshiny/issues/2) : l’app
+consomme, le cœur décide). Comportement vérifié identique sur tous les
+cas limites (`NULL` / `NA` / négatif / non-numérique → « ? »). Plancher
+relevé : `Imports: nemeton (>= 0.155.0)`.
 
 ## nemetonshiny 0.106.4
 
@@ -50,11 +111,12 @@ Implémentation du brief
   Ils passent désormais par `format_elapsed()` — « **13 min 39 s** », «
   **2 h 00 min 43 s** ». Les champs de données (`duration_sec`,
   `run_meta.json`) restent en secondes brutes.
-- ⚠️ Le brief préconise `nemeton::format_duration()` (cœur **0.155.0**),
-  mais la dernière release publiée est **0.154.1** : on utilise le
-  formateur app existant, que le brief qualifie lui-même de correct. La
-  consolidation vers le cœur (une seule source de vérité) reste à faire
-  quand 0.155.0 sera publiée.
+- ⚠️ Le brief préconise
+  [`nemeton::format_duration()`](https://pobsteta.github.io/nemeton/reference/format_duration.html)
+  (cœur **0.155.0**), mais la dernière release publiée est **0.154.1** :
+  on utilise le formateur app existant, que le brief qualifie lui-même
+  de correct. La consolidation vers le cœur (une seule source de vérité)
+  reste à faire quand 0.155.0 sera publiée.
 
 #### Removed — Suivi sanitaire : la notion de « placette » disparaît de RECONFORT
 
