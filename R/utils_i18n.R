@@ -2451,9 +2451,12 @@ TRANSLATIONS <- list(
     fr = "Carte FAST",
     en = "FAST map"
   ),
+  # v0.106.4 — ex-« Alertes FORDEAD » : ce sous-onglet rend la CARTE raster
+  # (le sous-onglet vectoriel homonyme a été supprimé en v0.92.x). Renomm\u00e9
+  # « Carte FORDEAD » pour la parit\u00e9 avec « Carte FAST » / « Carte RECONFORT ».
   monitoring_subtab_pixel_map_fordead = list(
-    fr = "Alertes FORDEAD",
-    en = "FORDEAD alerts"
+    fr = "Carte FORDEAD",
+    en = "FORDEAD map"
   ),
   # v0.35.0 — sous-onglets Alertes séparés par mode, symétriques aux
   # cartes : Alertes FAST (pixels au-dessus du seuil NDVI/NBR
@@ -3196,11 +3199,6 @@ TRANSLATIONS <- list(
     fr = "Planche 4 panneaux du suivi pluriannuel du pixel : séries CRswir/CRre à double axe, cycles annuels repliés et espace d'état.",
     en = "4-panel plate of multi-year pixel monitoring: dual-axis CRswir/CRre series, folded annual cycles and state space."
   ),
-  pixel_export_png = list(fr = "Exporter PNG", en = "Export PNG"),
-  pixel_export_failed = list(
-    fr = "Export PNG indisponible (moteur kaleido/webshot2 absent).",
-    en = "PNG export unavailable (kaleido/webshot2 engine missing)."
-  ),
   monitoring_reconfort_outside_validity_body = list(
     fr = "R\u00e9sultats indicatifs (avertissement, non bloquant).",
     en = "Results are indicative (advisory, non-blocking)."
@@ -3212,23 +3210,6 @@ TRANSLATIONS <- list(
   monitoring_reconfort_map_empty_body = list(
     fr = "Lancez un diagnostic RECONFORT ou s\u00e9lectionnez une zone disposant d'un run pour afficher les alertes.",
     en = "Run a RECONFORT diagnosis or pick a zone with an existing run to display alerts."
-  ),
-  monitoring_reconfort_class_2 = list(
-    fr = "D\u00e9p\u00e9rissant",
-    en = "Declining"
-  ),
-  monitoring_reconfort_class_3 = list(
-    fr = "Tr\u00e8s d\u00e9p\u00e9rissant",
-    en = "Severely declining"
-  ),
-  monitoring_reconfort_class_title = list(
-    fr = "Classe de d\u00e9p\u00e9rissement",
-    en = "Dieback class"
-  ),
-  monitoring_reconfort_popup_class = list(fr = "Classe", en = "Class"),
-  monitoring_reconfort_popup_stress = list(
-    fr = "Indice de stress",
-    en = "Stress index"
   ),
   monitoring_reconfort_pixel_no_data = list(
     fr = "Diagnostic pixel indisponible \u00e0 cet emplacement (aucun run RECONFORT, ou pixel hors emprise mod\u00e9lis\u00e9e).",
@@ -3278,10 +3259,6 @@ TRANSLATIONS <- list(
     fr = "Probabilit\u00e9",
     en = "Probability"
   ),
-  reconfort_couche_alertes = list(
-    fr = "Alertes",
-    en = "Alerts"
-  ),
   # Info-bulles « i » par couche (parite FORDEAD).
   reconfort_couche_score_info = list(
     fr = "Score continu de d\u00e9p\u00e9rissement issu du mod\u00e8le RECONFORT. Plus la valeur est \u00e9lev\u00e9e, plus le d\u00e9p\u00e9rissement est s\u00e9v\u00e8re. \u00c9chelle de couleur par quantiles (pleine intensit\u00e9).",
@@ -3294,10 +3271,6 @@ TRANSLATIONS <- list(
   reconfort_couche_proba_info = list(
     fr = "Probabilit\u00e9 / confiance de la classification du mod\u00e8le. \u00c9chelle de couleur par quantiles.",
     en = "Model classification probability / confidence. Quantile colour scale."
-  ),
-  reconfort_couche_alertes_info = list(
-    fr = "Placettes en alerte (classes 2-d\u00e9p\u00e9rissant / 3-tr\u00e8s d\u00e9p\u00e9rissant), filtr\u00e9es \u00e0 la zone de suivi. Clic sur la carte : diagnostic pixel CRSWIR / CRre.",
-    en = "Alert plots (classes 2-declining / 3-severely declining), clipped to the monitoring zone. Click the map for the CRSWIR / CRre pixel diagnosis."
   ),
   monitoring_run_reconfort_btn = list(
     fr = "Lancer le diagnostic RECONFORT",

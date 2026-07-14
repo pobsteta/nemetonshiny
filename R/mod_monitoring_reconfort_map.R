@@ -1,25 +1,28 @@
-# mod_monitoring_reconfort_map.R — Sous-onglet "Alertes RECONFORT" du Suivi
+# mod_monitoring_reconfort_map.R — Sous-onglet "Carte RECONFORT" du Suivi
 # sanitaire (spec 021, L6). Miroir de mod_monitoring_fordead_map.R, adapté
 # au pipeline RECONFORT (dépérissement feuillus, méthode RECONFORT/DSF).
 #
 # Mise en page (parité FORDEAD / FAST) : `bslib::layout_sidebar` avec une
-# sidebar DROITE portant les contrôles (cases à cocher des couches + curseur
+# sidebar DROITE portant les contrôles (choix de la couche + curseur
 # d'opacité des rasters) et, à gauche, la carte Leaflet STATIQUE surmontée
 # d'un overlay d'état (empty-state). La carte est en UI statique pour
 # préserver le binding `input$map_click` (clic → diagnostic pixel).
 #
-# Deux sources, deux modes d'affichage :
+# AFFICHAGE 100 % RASTER (parité FAST / FORDEAD) — le module expose les
+# couches du manifeste : score, classes de santé, probabilité. AUCUNE
+# sémantique métier ici : ids, palettes, domaines, sens (reverse) et
+# visibilité par défaut viennent tous du manifeste (CLAUDE.md §2-4). Le
+# manifeste vient soit du `result` en mémoire d'un run de la session
+# (`reconfort_layer_manifest()`), soit du cache disque d'un run persisté
+# (`reconfort_cache_manifest()`, parité FORDEAD) — schéma identique.
 #
-#   * MODE MANIFESTE (post-run, en session) — quand le parent fournit le
-#     `result` de `nemeton::run_reconfort_dieback()` via `result_r`, le
-#     module appelle `nemeton::reconfort_layer_manifest(result,
-#     include_range = TRUE)` et expose les COUCHES du run : rasters (score,
-#     classes de santé, probabilité) + vecteur (alertes). AUCUNE sémantique
-#     métier ici : ids, palettes, domaines, sens (reverse) et visibilité par
-#     défaut viennent tous du manifeste (CLAUDE.md §2-4).
-#   * MODE DB (legacy / projet rechargé) — sans `result` en mémoire, le
-#     module retombe sur l'affichage vectoriel des alertes lues en base via
-#     `nemeton::list_alerts(con, zone_id, classes = RECONFORT_ALERT_CLASSES)`.
+# v0.106.4 — La couche VECTORIELLE « Alertes » (marqueurs lus en base via
+# `nemeton::list_alerts()`) est SUPPRIMÉE. Elle était le dernier vestige de
+# la notion de « placette » dans le suivi sanitaire, alors que FAST
+# (a18f3ab2) et FORDEAD (Phase A, décision D2) sont passés en pur raster ;
+# elle dupliquait de surcroît le signal de la couche « Classes de santé ».
+# La table `alerts` de la base de suivi reste écrite par le cœur et lue par
+# `service_r5.R` (indicateur R5) — seul l'affichage cartographique disparaît.
 #
 # Couche UGF (parité FORDEAD / FAST) : les Unités de Gestion Forestière du
 # projet (`project$indicators_sf`) sont dessinées en overlay toggleable via
@@ -29,19 +32,11 @@
 # la zone sélectionnée dans la liste déroulante (`zone_id_r`) — strates
 # `_tot` / `_res` / `_feu` / `_mix` — exactement comme FORDEAD masque le
 # raster `_tot` par strate. Présentation pure (clip d'affichage), aucun
-# calcul métier (CLAUDE.md §3). Les alertes vectorielles sont déjà filtrées
-# par zone côté `nemeton::list_alerts(zone_id = ...)`.
+# calcul métier (CLAUDE.md §3).
 #
 # cache_dir RECONFORT : <project>/cache/layers/reconfort (la phase persist
 # du run y écrit zone_<id>/run_<run_id>/ ; même répertoire passé à
 # read_reconfort_pixel_series()).
-
-#' Couleurs des classes d'alerte RECONFORT (parité avec la légende FORDEAD).
-#' @noRd
-.RECONFORT_CLASS_COLORS <- c(
-  "2-deperissant"      = "#FF9933",  # orange  (dépérissant)
-  "3-tres-deperissant" = "#D62728"   # rouge   (très dépérissant)
-)
 
 #' Couleurs des classes du raster de classification RECONFORT (codes 1-2-3).
 #' 1-sain (vert), 2-deperissant (orange), 3-tres-deperissant (rouge). Mappé
@@ -106,15 +101,14 @@ mod_monitoring_reconfort_map_ui <- function(id) {
 #'   `current_project`.
 #' @param zone_id_r Reactive returning the active monitoring zone id.
 #' @param refresh_r Reactive bumped whenever a RECONFORT run completes (the
-#'   parent's refresh counter). Read by `alerts_r` so the sub-tab re-reads
-#'   the freshly-persisted alerts without a project reload. Optional —
-#'   defaults to a constant reactive for back-compat / tests.
+#'   parent's refresh counter). Read by `manifest_r` so a completed run
+#'   re-discovers the freshly-persisted raster cache without a project
+#'   reload. Optional — defaults to a constant reactive for back-compat.
 #' @param result_r Reactive returning the in-memory `result` list of the last
 #'   `nemeton::run_reconfort_dieback()` of this session (carries `$rasters`),
-#'   or `NULL`. When non-NULL, the module switches to the manifest-driven
-#'   layered display (raster toggles + opacity). Optional — defaults to a
-#'   constant `NULL` reactive (legacy DB-only behaviour, back-compat / tests).
-#' @return invisible list with `alerts` reactive.
+#'   or `NULL`. When NULL, the module falls back to the cached run discovered
+#'   on disk. Optional — defaults to a constant `NULL` reactive.
+#' @return invisible list with a `validity` reactive.
 #' @noRd
 mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
                                                 refresh_r = shiny::reactive(0L),
@@ -144,6 +138,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     #      run frais.
     # NULL quand ni run mémoire ni run caché ne sont disponibles.
     manifest_r <- shiny::reactive({
+      refresh_r()   # un run terminé → re-découverte du cache disque
       res <- result_r()
       if (!is.null(res)) {
         m <- tryCatch(
@@ -180,51 +175,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       rm <- m[m$type == "raster", , drop = FALSE]
       if (!nrow(rm)) return(NULL)
       rm
-    })
-
-    # ----- Alerts layer (sf, DB) ----------------------------------------
-    # `nemeton::list_alerts()` returns an sf data.frame (CRS 4326) of the
-    # plots carrying a RECONFORT alert, restricted to the G1 classes AND to
-    # the selected zone. The reactive reads refresh_r() so a completed run
-    # re-invalidates it.
-    #
-    # The persisted alerts span the OSO broadleaf extent (≫ UGF), so they
-    # are clipped at READ time to the selected-zone polygon by the core
-    # helper `nemeton::filter_alerts_to_zone()` — the vector counterpart of
-    # the raster mask (spec 016 / 021 L7). No spatial predicate in the
-    # module (CLAUDE.md §1-3) : the core resolves the polygon from
-    # `con + zone_id` (the already-open RO connection is reused).
-    alerts_r <- shiny::reactive({
-      refresh_r()
-      zone <- zone_id_r()
-      if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
-      proj <- app_state$current_project
-      if (is.null(proj) || is.null(proj$path)) return(NULL)
-      con <- get_monitoring_db_connection(project = proj, read_only = TRUE)
-      if (is.null(con)) return(NULL)
-      on.exit(close_monitoring_db_connection(con), add = TRUE)
-      a <- tryCatch(
-        nemeton::list_alerts(
-          con,
-          zone_id = as.integer(zone),
-          classes = nemeton::RECONFORT_ALERT_CLASSES
-        ),
-        error = function(e) {
-          cli::cli_alert_warning("list_alerts (reconfort) failed: {e$message}")
-          NULL
-        }
-      )
-      if (is.null(a)) return(NULL)
-      tryCatch(
-        nemeton::filter_alerts_to_zone(
-          a, con = con, zone_id = as.integer(zone), apply_zone_mask = TRUE
-        ),
-        error = function(e) {
-          cli::cli_alert_warning(
-            "filter_alerts_to_zone (reconfort) failed: {e$message}")
-          a
-        }
-      )
     })
 
     # ----- Selected-zone AOI (for raster clipping) ----------------------
@@ -265,29 +215,17 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       )
     })
 
-    # All toggleable layers = the manifest's RASTER rows (run result OR
-    # cache) + a synthetic "alerts" row whenever DB alerts exist for the
-    # zone. Alerts are a DB layer, independent of the raster manifest (the
-    # cache manifest carries no `alerts` row), so they must stay toggleable
-    # even in cache mode — otherwise switching from legacy (alerts shown) to
-    # cache (manifest present) would silently drop the alerts toggle.
+    # Toggleable layers = the manifest's RASTER rows (run result OR cache).
+    # NULL when no run is available → empty state (parity FAST / FORDEAD).
     available_layers_r <- shiny::reactive({
       rm <- raster_manifest_r()
-      rows <- if (is.null(rm)) NULL else data.frame(
+      if (is.null(rm) || !nrow(rm)) return(NULL)
+      data.frame(
         id              = as.character(rm$id),
         label_key       = as.character(rm$label_key),
         default_visible = rm$default_visible %in% TRUE,
         stringsAsFactors = FALSE
       )
-      a <- alerts_r()
-      if (!is.null(a) && nrow(a) > 0L &&
-          (is.null(rows) || !("alerts" %in% rows$id))) {
-        rows <- rbind(rows, data.frame(
-          id = "alerts", label_key = "reconfort_couche_alertes",
-          default_visible = TRUE, stringsAsFactors = FALSE))
-      }
-      if (is.null(rows) || !nrow(rows)) return(NULL)
-      rows
     })
 
     # ----- Sidebar controls (manifest-driven, dynamic choices) ----------
@@ -295,7 +233,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       i18n <- i18n_r()
       lay <- available_layers_r()
       if (is.null(lay)) {
-        # Ni raster (run mémoire ou cache) ni alerte — pas de toggles ; rappel.
+        # Ni run en mémoire ni run caché — pas de toggles ; rappel.
         return(htmltools::p(
           class = "text-muted small mb-0",
           i18n$t("monitoring_reconfort_map_empty_body")
@@ -313,7 +251,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       # FORDEAD. Défaut = première couche `default_visible` (sinon la 1re).
       dv <- as.character(lay$id[lay$default_visible])
       selected <- if (length(dv)) dv[1L] else as.character(lay$id[1L])
-      has_raster <- !is.null(raster_manifest_r())
       htmltools::tagList(
         shiny::radioButtons(
           session$ns("layers"), i18n$t("reconfort_couches"),
@@ -321,7 +258,9 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           choiceValues = as.character(lay$id),
           selected = selected
         ),
-        if (has_raster) shiny::sliderInput(
+        # Toutes les couches sont des rasters → le curseur d'opacité
+        # s'applique toujours.
+        shiny::sliderInput(
           session$ns("opacity"), i18n$t("reconfort_opacite"),
           min = 0, max = 1, value = 0.8, step = 0.05
         )
@@ -335,7 +274,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # et dans le même style (`.monitoring_validity_banner`) que le bandeau
     # FORDEAD. Le module se contente d'exposer `validity_r` dans son retour.
 
-    # ----- Empty-state overlay (no raster layer AND no alerts) ----------
+    # ----- Empty-state overlay (no raster layer at all) -----------------
     output$overlay <- shiny::renderUI({
       i18n <- i18n_r()
       if (!is.null(available_layers_r())) return(NULL)
@@ -355,67 +294,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         )
       )
     })
-
-    # ----- Alert markers helper (shared by base render + proxy) ----------
-    # Draws the RECONFORT alert plots as circle markers + class legend.
-    # Centroids for stable markers (the pixel diagnostic itself runs on the
-    # raw map-click coordinate, not on a marker).
-    .add_alerts <- function(map, a, i18n, opacity = 0.85) {
-      if (is.null(a) || nrow(a) == 0L) return(map)
-      pts <- tryCatch(
-        suppressWarnings(sf::st_centroid(sf::st_geometry(a))),
-        error = function(e) NULL
-      )
-      if (is.null(pts)) return(map)
-      coords <- sf::st_coordinates(pts)
-
-      cls    <- as.character(a$confidence_class)
-      stress <- suppressWarnings(as.numeric(a$stress_index))
-      colors <- unname(.RECONFORT_CLASS_COLORS)
-      cats   <- names(.RECONFORT_CLASS_COLORS)
-      pal <- leaflet::colorFactor(colors, levels = cats, na.color = "#888888")
-
-      class_label <- function(code) {
-        switch(code,
-               "2-deperissant"      = i18n$t("monitoring_reconfort_class_2"),
-               "3-tres-deperissant" = i18n$t("monitoring_reconfort_class_3"),
-               code)
-      }
-      popups <- vapply(seq_len(nrow(coords)), function(i) {
-        sprintf(
-          "<b>%s</b>: %s<br/><b>%s</b>: %s",
-          i18n$t("monitoring_reconfort_popup_class"),
-          htmltools::htmlEscape(class_label(cls[i])),
-          i18n$t("monitoring_reconfort_popup_stress"),
-          if (is.na(stress[i])) "—" else format(round(stress[i], 3))
-        )
-      }, character(1))
-
-      legend_labels <- c(
-        sprintf("2 - %s", i18n$t("monitoring_reconfort_class_2")),
-        sprintf("3 - %s", i18n$t("monitoring_reconfort_class_3"))
-      )
-
-      map |>
-        leaflet::addCircleMarkers(
-          lng = coords[, 1], lat = coords[, 2],
-          radius      = 6,
-          color       = "#333333",
-          weight      = 1,
-          fillColor   = pal(cls),
-          fillOpacity = opacity,
-          group       = "alerts",
-          popup       = popups
-        ) |>
-        leaflet::addLegend(
-          position = "bottomright",
-          colors   = colors,
-          labels   = legend_labels,
-          title    = i18n$t("monitoring_reconfort_class_title"),
-          opacity  = 0.85,
-          layerId  = "legend_alerts"
-        )
-    }
 
     # ----- Raster layer helper (shared by base render + proxy) -----------
     # Draws one manifest raster row (continuous or categorical) + its legend
@@ -556,7 +434,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # on zone / layer / opacity). A re-render recreates the widget and would
     # otherwise drop the `input$map_click` binding + reset zoom. Tiles +
     # panes + LayersControl (UGF overlay) + framing only ; the data layers
-    # (rasters / alerts) are drawn by the observer below via leafletProxy.
+    # (rasters) are drawn by the observer below via leafletProxy.
     output$map <- leaflet::renderLeaflet({
       proj <- app_state$current_project          # SEUL dep réactif
       i18n <- shiny::isolate(i18n_r())
@@ -584,7 +462,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         )
       }
 
-      # Framing : UGF en priorité, sinon AOI de la zone, sinon alertes.
+      # Framing : UGF en priorité, sinon AOI de la zone de suivi.
       bb <- NULL
       if (!is.null(ugf)) {
         bb <- tryCatch(sf::st_bbox(ugf), error = function(e) NULL)
@@ -593,12 +471,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         aoi <- shiny::isolate(aoi_r())
         if (!is.null(aoi))
           bb <- tryCatch(sf::st_bbox(sf::st_transform(aoi, 4326)),
-                         error = function(e) NULL)
-      }
-      if (is.null(bb)) {
-        a <- shiny::isolate(alerts_r())
-        if (!is.null(a) && nrow(a) > 0L)
-          bb <- tryCatch(sf::st_bbox(sf::st_transform(a, 4326)),
                          error = function(e) NULL)
       }
       if (!is.null(bb)) {
@@ -616,8 +488,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # manifest) re-draws the checked layers via leafletProxy. The base map,
     # zoom, base layer and UGF overlay are preserved. Mirror of FORDEAD.
     shiny::observe({
-      m       <- manifest_r()
-      a       <- alerts_r()
       sel     <- selected_ids_r()
       op      <- opacity_r()
       i18n    <- i18n_r()
@@ -625,15 +495,14 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       rasters <- masked_rasters_r()
 
       proxy <- leaflet::leafletProxy("map")
-      # Clear every known data group + its legend (NOT the UGF overlay),
-      # then re-add the selected ones.
-      known <- character()
-      if (!is.null(rm)) known <- as.character(rm$id)
-      known <- c(known, "alerts")
-      for (g in known) {
-        proxy <- proxy |>
-          leaflet::clearGroup(g) |>
-          leaflet::removeControl(paste0("legend_", g))
+      # Clear every known raster group + its legend (NOT the UGF overlay),
+      # then re-add the selected one.
+      if (!is.null(rm)) {
+        for (g in as.character(rm$id)) {
+          proxy <- proxy |>
+            leaflet::clearGroup(g) |>
+            leaflet::removeControl(paste0("legend_", g))
+        }
       }
       if (!is.null(rm) && !is.null(rasters)) {
         for (k in seq_len(nrow(rm))) {
@@ -643,7 +512,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           }
         }
       }
-      if ("alerts" %in% sel) proxy <- .add_alerts(proxy, a, i18n)
       proxy
     })
 
@@ -773,35 +641,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         DT::datatable(tbl, rownames = FALSE,
                       options = list(pageLength = 8L, dom = "tip"))
       })
-      # Export PNG statique de la planche COURANTE (reconstruite avec les
-      # réglages actifs). Rendu par un moteur d'image statique (kaleido, sinon
-      # webshot2) via le helper pur `save_plotly_png()`. Le bouton n'est
-      # affiché QUE si un moteur est présent (voir `.export_ok` ci-dessous) ;
-      # ce handler garde néanmoins un repli (PNG-note) si le rendu échoue à
-      # l'exécution, pour ne pas laisser le download se bloquer.
-      output$pixel_ts_png <- shiny::downloadHandler(
-        filename = function()
-          sprintf("pixel_dieback_%.5f_%.5f.png", lat, lng),
-        content = function(file) {
-          prepared <- nemeton::prepare_pixel_dieback_series(
-            s, smooth = shiny::isolate(input$pixel_smooth) %||% "light"
-          )
-          fig <- plot_pixel_dieback(
-            prepared,
-            opts = list(show_points = isTRUE(
-              shiny::isolate(input$pixel_points) %||% TRUE),
-              species = species, v_model = v_model, lat = lat, lng = lng),
-            i18n = i18n_r()
-          )
-          if (!isTRUE(save_plotly_png(fig, file))) {
-            grDevices::png(file, width = 640L, height = 120L)
-            on.exit(grDevices::dev.off(), add = TRUE)
-            graphics::par(mar = c(0, 0, 0, 0)); graphics::plot.new()
-            graphics::text(0.5, 0.5, i18n_r()$t("pixel_export_failed"))
-          }
-        }
-      )
-      .export_ok <- !is.na(.pixel_export_engine())
 
       # Modale plein écran (parité FORDEAD). Contrôles lissage/points en tête,
       # sous-titre espèce/modèle conservé, planche agrandie (~760 px) + table
@@ -833,8 +672,23 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         # Contrôles d'affichage (aucun impact métier : smooth passé au cœur,
         # points = simple toggle de traces). Lissage fort volontairement absent
         # (le cœur n'offre que none/light).
+        #
+        # v0.106.4 — TOUT SUR UNE SEULE LIGNE : « Lissage : Aucun / Léger »
+        # + « Observations brutes ». Shiny rend chaque input dans un
+        # form-group bloc (label AU-DESSUS des options, marge basse), d'où les
+        # deux lignes précédentes. Le CSS `.pixel-ctl` ci-dessous remet le
+        # label du groupe radio en ligne avec ses options et annule les marges.
+        htmltools::tags$style(htmltools::HTML(paste0(
+          ".pixel-ctl .shiny-input-container,.pixel-ctl .form-group",
+          "{margin-bottom:0 !important;}",
+          ".pixel-ctl .control-label",
+          "{display:inline-block;margin:0 .5rem 0 0;}",
+          ".pixel-ctl .shiny-options-group",
+          "{display:inline-flex;gap:.75rem;vertical-align:middle;}",
+          ".pixel-ctl .checkbox,.pixel-ctl .form-check{margin:0;}"
+        ))),
         htmltools::div(
-          class = "d-flex flex-wrap gap-3 align-items-center mb-2",
+          class = "pixel-ctl d-flex align-items-center gap-3 mb-2",
           shiny::radioButtons(
             session$ns("pixel_smooth"), i18n$t("pixel_smooth_label"),
             choiceNames  = list(i18n$t("pixel_smooth_none"),
@@ -844,12 +698,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           ),
           shiny::checkboxInput(
             session$ns("pixel_points"), i18n$t("pixel_points_label"), TRUE
-          ),
-          # Export PNG : affiché seulement si un moteur d'image statique est
-          # disponible (kaleido / webshot2). Sinon masqué (pas de bouton mort).
-          if (.export_ok) shiny::downloadButton(
-            session$ns("pixel_ts_png"), i18n$t("pixel_export_png"),
-            class = "btn btn-sm btn-outline-secondary", icon = shiny::icon("download")
           )
         ),
         if (!is.null(subtitle))
@@ -873,6 +721,6 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # `validity` : exposé pour que le PARENT (mod_monitoring) rende le bandeau
     # « hors domaine de calibration » sous « Base de suivi connectée », au même
     # emplacement/style que FORDEAD (parité). NULL si l'AOI est irrésolue.
-    invisible(list(alerts = alerts_r, validity = validity_r))
+    invisible(list(validity = validity_r))
   })
 }

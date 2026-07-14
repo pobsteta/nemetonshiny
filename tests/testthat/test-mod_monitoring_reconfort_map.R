@@ -1,8 +1,12 @@
 # Tests for mod_monitoring_reconfort_map.R (spec 021, L6).
 #
-# The module wires nemeton::list_alerts / check_reconfort_validity /
+# The module wires nemeton::check_reconfort_validity / read_reconfort_layer /
 # read_reconfort_pixel_series + the app's get_monitoring_db_connection /
 # get_monitoring_zone_aoi. All are mocked — no DB, no real run.
+#
+# v0.106.4 — the vector "Alertes" layer (nemeton::list_alerts markers) is
+# GONE : RECONFORT is 100 % raster, like FAST and FORDEAD. The last test of
+# this file guards that regression.
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
@@ -10,20 +14,6 @@
 # overlay/banner) must coerce to "" so grepl() returns a length-1 FALSE
 # rather than logical(0) (which would break expect_false()).
 .html_of <- function(x) as.character(x$html %||% x %||% "")
-
-.reconfort_fake_alerts <- function(n = 2L) {
-  sf::st_sf(
-    id               = seq_len(n),
-    confidence_class = rep(c("2-deperissant", "3-tres-deperissant"),
-                           length.out = n),
-    stress_index     = seq_len(n) / 10,
-    geometry = sf::st_sfc(
-      lapply(seq_len(n), function(i)
-        sf::st_point(c(5 + i / 100, 47 + i / 100))),
-      crs = 4326
-    )
-  )
-}
 
 .reconfort_fake_aoi <- function() {
   sf::st_sf(
@@ -36,14 +26,12 @@
   )
 }
 
-test_that("reconfort map shows the empty state when there are no alerts", {
+test_that("reconfort map shows the empty state when there is no run", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("sf")
-  skip_if_not(exists("list_alerts", where = asNamespace("nemeton"),
+  skip_if_not(exists("check_reconfort_validity", where = asNamespace("nemeton"),
                      inherits = FALSE),
               "nemeton RECONFORT API not installed")
-
-  empty <- .reconfort_fake_alerts(0L)
 
   testthat::local_mocked_bindings(
     get_monitoring_db_connection = function(...) structure(list(), class = "fakecon"),
@@ -51,8 +39,6 @@ test_that("reconfort map shows the empty state when there are no alerts", {
     get_monitoring_zone_aoi = function(con, zone_id) .reconfort_fake_aoi()
   )
   testthat::local_mocked_bindings(
-    list_alerts = function(con, zone_id, classes = NULL, ...) empty,
-    filter_alerts_to_zone = function(alerts, ...) alerts,
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE,
                                                        species_valid = TRUE,
                                                        advisory = TRUE),
@@ -70,10 +56,9 @@ test_that("reconfort map shows the empty state when there are no alerts", {
                 zone_id_r = shiny::reactive("1")),
     {
       session$flushReact()
-      expect_equal(nrow(session$returned$alerts()), 0L)
       i18n <- get_i18n("fr")
       overlay <- .html_of(output$overlay)
-      # Empty-state overlay shown when there is neither a run nor alerts.
+      # Empty-state overlay shown when no run (in memory or cached) exists.
       expect_true(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
                         overlay, fixed = TRUE))
       # v0.94.x — le bandeau « hors domaine » est rendu au PARENT
@@ -98,8 +83,6 @@ test_that("reconfort map exposes geo-invalid validity (parent renders the banner
     get_monitoring_zone_aoi = function(con, zone_id) .reconfort_fake_aoi()
   )
   testthat::local_mocked_bindings(
-    list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(2L),
-    filter_alerts_to_zone = function(alerts, ...) alerts,
     check_reconfort_validity = function(aoi, ...) list(geo_valid = FALSE,
                                                        species_valid = TRUE,
                                                        advisory = TRUE),
@@ -117,15 +100,11 @@ test_that("reconfort map exposes geo-invalid validity (parent renders the banner
                 zone_id_r = shiny::reactive("1")),
     {
       session$flushReact()
-      i18n <- get_i18n("fr")
-      overlay <- .html_of(output$overlay)
       # v0.94.x — bandeau « hors domaine » rendu au PARENT ; on vérifie que le
       # module expose bien geo_valid == FALSE (le parent en tire le bandeau).
+      # La validité est exposée même sans run : elle ne dépend que de l'AOI.
       v <- session$returned$validity()
       expect_true(isFALSE(v$geo_valid))
-      # NO empty-state overlay (alerts exist).
-      expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
-                         overlay, fixed = TRUE))
     }
   )
 })
@@ -183,8 +162,6 @@ test_that("reconfort map click produces the 4-panel pixel dieback plate + DT tab
     get_monitoring_zone_aoi = function(con, zone_id) .reconfort_fake_aoi()
   )
   testthat::local_mocked_bindings(
-    list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(1L),
-    filter_alerts_to_zone = function(alerts, ...) alerts,
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
     read_reconfort_pixel_series = function(con, zone_id, xy, crs = 4326,
                                            run_id = NULL, cache_dir) series,
@@ -287,8 +264,6 @@ test_that("manifest drives layer toggles + opacity slider", {
     get_monitoring_zone_aoi = function(con, zone_id) aoi_2154
   )
   testthat::local_mocked_bindings(
-    list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(0L),
-    filter_alerts_to_zone = function(alerts, ...) alerts,
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
     read_reconfort_layer = function(layer, con = NULL, zone_id = NULL,
                                     apply_zone_mask = TRUE, mask_polygon = NULL) {
@@ -351,20 +326,21 @@ test_that("manifest drives layer toggles + opacity slider", {
   )
 })
 
-test_that("no in-memory result falls back to the DB-only alerts view", {
+test_that("no run at all : empty state, no layer toggles, NO alerts layer", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("sf")
-  skip_if_not(exists("reconfort_layer_manifest",
+  skip_if_not(exists("check_reconfort_validity",
                      where = asNamespace("nemeton"), inherits = FALSE),
-              "nemeton reconfort_layer_manifest() not installed")
+              "nemeton RECONFORT API not installed")
 
-  skip_if_not(exists("filter_alerts_to_zone",
-                     where = asNamespace("nemeton"), inherits = FALSE),
-              "nemeton >= 0.99.0 (filter_alerts_to_zone) not installed")
-
-  # Recorder : the alerts layer must be clipped to the zone polygon by the
-  # core helper at read time (no spatial predicate in the module).
-  faz_calls <- new.env(); faz_calls$mask <- logical()
+  # Garde-fou de non-régression (v0.106.4) : sans run (ni en mémoire, ni en
+  # cache) la carte n'a RIEN à montrer. Avant ce bump, elle retombait sur une
+  # couche vectorielle « Alertes » lue en base (marqueurs « placettes ») —
+  # supprimée pour aligner RECONFORT sur FAST / FORDEAD (100 % raster).
+  #
+  # `list_alerts` est volontairement mocké pour LEVER : si le module la
+  # rappelait, le test échouerait au lieu de passer silencieusement.
+  called <- new.env(parent = emptyenv()); called$list_alerts <- FALSE
 
   testthat::local_mocked_bindings(
     get_monitoring_db_connection = function(...) structure(list(), class = "fakecon"),
@@ -372,11 +348,12 @@ test_that("no in-memory result falls back to the DB-only alerts view", {
     get_monitoring_zone_aoi = function(con, zone_id) .reconfort_fake_aoi()
   )
   testthat::local_mocked_bindings(
-    list_alerts = function(con, zone_id, classes = NULL, ...) .reconfort_fake_alerts(2L),
-    filter_alerts_to_zone = function(alerts, con = NULL, zone_id = NULL,
-                                     apply_zone_mask = TRUE, mask_polygon = NULL) {
-      faz_calls$mask <- c(faz_calls$mask, isTRUE(apply_zone_mask))
-      alerts
+    list_alerts = function(...) {
+      # NE PAS asserter ici : l'appel serait enveloppé dans un tryCatch(error=)
+      # côté module, qui avalerait l'échec d'expectation (test vacant).
+      # Enregistrer, asserter après le testServer.
+      called$list_alerts <- TRUE
+      NULL
     },
     check_reconfort_validity = function(aoi, ...) list(geo_valid = TRUE, advisory = TRUE),
     .package = "nemeton"
@@ -397,20 +374,24 @@ test_that("no in-memory result falls back to the DB-only alerts view", {
       i18n <- get_i18n("fr")
       controls <- .html_of(output$controls)
       overlay  <- .html_of(output$overlay)
-      # DB-only alerts (no run in memory, no cached run) : the Alerts layer
-      # stays toggleable, but there are NO raster toggles and NO opacity
-      # slider (alerts are a vector DB layer).
-      expect_true(grepl(i18n$t("reconfort_couches"), controls, fixed = TRUE))
-      expect_true(grepl(i18n$t("reconfort_couche_alertes"), controls, fixed = TRUE))
-      expect_false(grepl(i18n$t("reconfort_couche_score"), controls, fixed = TRUE))
+
+      # Empty-state : aucun run → aucune couche.
+      expect_true(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
+                        overlay, fixed = TRUE))
+      expect_true(grepl(i18n$t("monitoring_reconfort_map_empty_body"),
+                        controls, fixed = TRUE))
+      expect_false(grepl(i18n$t("reconfort_couches"), controls, fixed = TRUE))
       expect_false(grepl(i18n$t("reconfort_opacite"), controls, fixed = TRUE))
-      expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
-                         overlay, fixed = TRUE))
-      expect_equal(nrow(session$returned$alerts()), 2L)
-      # Alerts clipped to the zone polygon by the core helper.
-      expect_true(length(faz_calls$mask) > 0L && all(faz_calls$mask))
+
+      # Le module n'expose plus de réactive `alerts`.
+      expect_null(session$returned$alerts)
+      expect_false(is.null(session$returned$validity))
     }
   )
+
+  # La couche vectorielle est bien morte : le module n'interroge plus la table
+  # `alerts` de la base de suivi (celle-ci reste lue par service_r5.R).
+  expect_false(called$list_alerts)
 })
 
 test_that("cache fallback shows persisted rasters after a project reload", {

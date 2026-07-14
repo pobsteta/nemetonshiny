@@ -368,7 +368,7 @@ mod_monitoring_ui <- function(id) {
           value = "pixel_map_fordead",
           icon  = bsicons::bs_icon("tree"),
           # v0.90.x — Parité FAST : sidebar droite (indice CRSWIR +
-          # opacité du raster). UGF + « Alertes » via le LayersControl.
+          # opacité du raster). UGF + « Raster » via le LayersControl.
           # Le clic-pixel (graphe CRSWIR + seuil + dates de stress) reste
           # géré par le sous-module.
           bslib::card(
@@ -435,9 +435,12 @@ mod_monitoring_ui <- function(id) {
           )
         ),
         # ----- Sub-tab — Carte RECONFORT (spec 021, L6) --------------
-        # Alertes vectorielles de dépérissement feuillus (RECONFORT) +
-        # diagnostic pixel CRSWIR/CRre au clic. Masqué hors mode
-        # "reconfort" par l'observer mode-driven ci-dessous.
+        # Rasters de dépérissement feuillus (score / classes de santé /
+        # probabilité) + diagnostic pixel CRSWIR/CRre au clic. Masqué hors
+        # mode "reconfort" par l'observer mode-driven ci-dessous.
+        # v0.106.4 — la couche vectorielle « Alertes » (marqueurs placettes
+        # lus en base) a été supprimée : parité 100 % raster avec FAST et
+        # FORDEAD.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_pixel_map_reconfort"),
           value = "pixel_map_reconfort",
@@ -549,8 +552,8 @@ mod_monitoring_server <- function(id, app_state) {
     # de validation). Pattern uniforme `bslib::nav_show()` / `nav_hide()`
     # plutôt qu'un conditionalPanel interne, parce qu'on veut aussi
     # éviter de déclencher les reactives lourdes (build_index_stack
-    # côté FAST, list_alerts_for_zone côté FORDEAD, generate_validation_plan
-    # côté Plan val.) quand l'onglet est masqué.
+    # côté FAST, lecture du masque raster côté FORDEAD,
+    # generate_validation_plan côté Plan val.) quand l'onglet est masqué.
     shiny::observe({
       mode <- input$mode
       # Helper : hide a set of sub-tab targets.
@@ -853,8 +856,10 @@ mod_monitoring_server <- function(id, app_state) {
     })
 
     # v0.90.x — La réactive legacy `alerts()` (filtre DB des alertes
-    # vectorielles via `list_alerts_for_zone`) avait déjà été supprimée
-    # (Phase A : affichage raster-driven via `fordead_map_ret$mask`).
+    # vectorielles) avait déjà été supprimée (Phase A : affichage
+    # raster-driven via `fordead_map_ret$mask`). Son helper
+    # `list_alerts_for_zone()` est supprimé à son tour en v0.106.4,
+    # RECONFORT étant passé lui aussi en 100 % raster.
     # v0.92.x — Les outputs `alerts_panel` / `alerts_map` + l'observer
     # d'opacité associés au sous-onglet « Alertes FORDEAD » sont retirés
     # avec le sous-onglet lui-même : doublon strict de la Carte FORDEAD

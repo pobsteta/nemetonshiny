@@ -101,21 +101,3 @@ test_that("plot_pixel_dieback works without an i18n translator (raw keys)", {
   expect_s3_class(g, "plotly")
 })
 
-test_that(".pixel_export_engine returns kaleido/webshot2/NA without error", {
-  eng <- nemetonshiny:::.pixel_export_engine()
-  expect_length(eng, 1L)
-  expect_true(is.na(eng) || eng %in% c("kaleido", "webshot2"))
-})
-
-test_that("save_plotly_png degrades gracefully when no engine is available", {
-  skip_if_not_installed("plotly")
-  # Force l'absence de moteur pour un test déterministe (l'env CI n'a ni
-  # kaleido ni webshot2, mais on ne veut pas dépendre de ça).
-  testthat::local_mocked_bindings(.pixel_export_engine = function() NA_character_)
-  g <- nemetonshiny:::plot_pixel_dieback(fake_prepared())
-  out <- withr::local_tempfile(fileext = ".png")
-  res <- NULL
-  expect_warning(res <- nemetonshiny:::save_plotly_png(g, out))
-  expect_false(res)
-  expect_false(file.exists(out))
-})

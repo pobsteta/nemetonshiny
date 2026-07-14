@@ -1,5 +1,36 @@
 # nemetonshiny (development version)
 
+### Removed — Suivi sanitaire : la notion de « placette » disparaît de RECONFORT
+
+- **Couche « Alertes » de la carte RECONFORT supprimée.** C'était le dernier
+  vestige des marqueurs « placettes » dans le suivi sanitaire : FAST (v0.52.16)
+  et FORDEAD (Phase A, décision D2) étaient déjà passés en pur raster. Elle
+  dupliquait de surcroît le signal de la couche « Classes de santé ». La carte
+  RECONFORT est désormais **100 % raster** (score / classes / probabilité).
+- La table `alerts` de la base de suivi **reste écrite par le cœur et lue par
+  `service_r5.R`** (indicateur R5) : seul l'affichage cartographique disparaît.
+  Les placettes du **Plan de validation** (`data/samples.gpkg`, couche
+  `validation_plots`) sont désormais les seules à persister dans l'application.
+- `list_alerts_for_zone()` (service_monitoring_db) supprimée : plus aucun
+  appelant depuis le retrait des marqueurs.
+- Bouton « Exporter PNG » de la modale pixel RECONFORT retiré, avec ses helpers
+  `save_plotly_png()` / `.pixel_export_engine()`. La planche reste exportable
+  par la barre d'outils native de plotly.
+
+### Changed — Vocabulaire des couches : « Alertes » → « Raster »
+
+- Les groupes Leaflet nommés `"Alertes"` portaient en réalité un **raster**
+  (masque de dépérissement FORDEAD, pixels au-dessus du seuil FAST) : renommés
+  `"Raster"`, un nom qui dit ce que la couche contient.
+- Sous-onglet « Alertes FORDEAD » renommé **« Carte FORDEAD »** — il rend la
+  carte raster (le sous-onglet vectoriel homonyme avait été supprimé en
+  v0.92.x), parité avec « Carte FAST » et « Carte RECONFORT ».
+- Graphique pixel RECONFORT : contrôles « Lissage » + « Observations brutes »
+  sur **une seule ligne** ; annotations pédagogiques (« creux estival qui
+  s'enfonce », « pic plus faible = sénescence précoce », dérive) passées de
+  **10 à 14 px** et de `#666` à `#333` — elles étaient illisibles en plein
+  écran, où plotly agrandit la planche mais garde une police fixe en px.
+
 # nemetonshiny 0.106.3
 
 ### Removed — reGénération : contexte régional vectoriel (code mort)
