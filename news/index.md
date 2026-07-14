@@ -1,6 +1,71 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.106.6 (2026-07-14)
+
+#### Fixed — FORDEAD tourne désormais dans un process plafonné (spec 008)
+
+Un run FORDEAD qui débordait en mémoire emportait **toute la session** :
+sous pression, `systemd-oomd` ne tue pas le processus fautif mais le
+*scope* entier — le 2026-07-14, RStudio et l’app sont partis à l’OOM en
+plein FORDEAD. RECONFORT était épargné (son Python est un sous-processus
+`conda run`, déjà placé dans un cgroup plafonné par le cœur) ; FORDEAD
+non, car son Python vit dans l’interpréteur **embarqué** de reticulate —
+sa mémoire *est* celle du worker `future`, donc celle du scope de l’app.
+Il n’y avait rien à plafonner in-process.
+
+Le run est donc déporté dans un **process R enfant plafonné** via
+[`nemeton::run_memory_capped()`](https://pobsteta.github.io/nemeton/reference/run_memory_capped.html)
+(cœur ≥ 0.157.0, `MemoryMax=` + `MemorySwapMax=0`). Un run qui déborde
+meurt **seul**, avec une erreur attrapable qui remonte dans le toast
+d’erreur habituel. Le worker `future` reste en place (il garde l’UI
+réactive) ; l’enfant vit dedans.
+
+Ce qui ne change pas pour l’utilisateur : le `reactivePoll` de
+progression (mêmes fichiers `.json` / `.ndjson`, même format),
+l’annulation coopérative (l’enfant polle le même `cancel_path`) et les
+push ntfy par phase. Ces derniers demandaient un soin particulier : sous
+isolation, **l’enfant écrit déjà** le fichier de progression, donc le
+parent ne rejoue que la partie ntfy du callback (nouveau
+`.build_fordead_ntfy_callback()`) — rejouer le composite aurait dédoublé
+chaque événement.
+
+Nouveau réglage optionnel `NEMETON_MEMORY_MAX` : vide → défaut cœur (70
+% de la RAM) ; `"16G"` pour laisser de l’air à RStudio sur une machine à
+32 Go ; `none` / `off` pour retirer le plafond si un run légitime se
+fait tuer.
+
+Plancher cœur : `nemeton (>= 0.157.0)`.
+
+#### Added — Roue dentée + chrono sous les trois boutons « Lancer… »
+
+Le retour visuel sous le bouton n’existait que pour RECONFORT. FAST et
+FORDEAD sont alignés : les trois modes affichent désormais, **à
+l’endroit même où l’utilisateur a cliqué**, la roue dentée qui tourne,
+l’étape en cours et le chronomètre MM:SS — le même contenu que le toast
+(`.running_notif_content`, partagé avec le moteur reGénération), qui
+reste affiché par ailleurs.
+
+Un run peut durer des heures : le toast en haut à droite peut être fermé
+ou manqué, et l’utilisateur se retrouvait alors sans aucun signe de vie.
+Le rendu s’efface tout seul à la fin du run (même source que le toast :
+les handlers de fin remettent `*_run_start` à `NULL`). RECONFORT passe
+du sablier à la roue dentée pour que les trois soient strictement
+identiques.
+
+#### Fixed — Suivi sanitaire : deux textes qui mentaient
+
+- **« Quelques minutes »** dans l’aide du mode RECONFORT : c’était faux.
+  Un run peut durer des **heures, voire des jours** — l’emprise et le
+  nombre de dates Sentinel-2 gouvernent tout. La promesse de durée est
+  retirée : le chronomètre sous le bouton dit la vérité pendant le run,
+  une estimation figée dans l’aide ne peut que se tromper. La dépendance
+  **conda IOTA²/GEODES est conservée**, reformulée en « Opt-in :
+  nécessite le bundle conda IOTA²/GEODES » — c’est une condition
+  d’exécution (sans elle le run échoue), pas une estimation.
+- **« sur les placettes enregistrées »** dans le sous-titre du Suivi
+  continu Sentinel-2 : dernier vestige textuel des placettes dans le
+  suivi sanitaire, devenu 100 % raster (FAST, FORDEAD, puis RECONFORT en
+  v0.106.4). Remplacé par « sur la zone de suivi ».
 
 ## nemetonshiny 0.106.5
 

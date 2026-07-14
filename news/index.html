@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,27 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.106.6" id="nemetonshiny-01066-2026-07-14">nemetonshiny 0.106.6 (2026-07-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01066-2026-07-14"></a></h2>
+<div class="section level4">
+<h4 id="fixed--fordead-tourne-désormais-dans-un-process-plafonné-spec-0-106-6">Fixed — FORDEAD tourne désormais dans un process plafonné (spec 008)<a class="anchor" aria-label="anchor" href="#fixed--fordead-tourne-d%C3%A9sormais-dans-un-process-plafonn%C3%A9-spec-0-106-6"></a></h4>
+<p>Un run FORDEAD qui débordait en mémoire emportait <strong>toute la session</strong> : sous pression, <code>systemd-oomd</code> ne tue pas le processus fautif mais le <em>scope</em> entier — le 2026-07-14, RStudio et l’app sont partis à l’OOM en plein FORDEAD. RECONFORT était épargné (son Python est un sous-processus <code>conda run</code>, déjà placé dans un cgroup plafonné par le cœur) ; FORDEAD non, car son Python vit dans l’interpréteur <strong>embarqué</strong> de reticulate — sa mémoire <em>est</em> celle du worker <code>future</code>, donc celle du scope de l’app. Il n’y avait rien à plafonner in-process.</p>
+<p>Le run est donc déporté dans un <strong>process R enfant plafonné</strong> via <code><a href="https://pobsteta.github.io/nemeton/reference/run_memory_capped.html" class="external-link">nemeton::run_memory_capped()</a></code> (cœur ≥ 0.157.0, <code>MemoryMax=</code> + <code>MemorySwapMax=0</code>). Un run qui déborde meurt <strong>seul</strong>, avec une erreur attrapable qui remonte dans le toast d’erreur habituel. Le worker <code>future</code> reste en place (il garde l’UI réactive) ; l’enfant vit dedans.</p>
+<p>Ce qui ne change pas pour l’utilisateur : le <code>reactivePoll</code> de progression (mêmes fichiers <code>.json</code> / <code>.ndjson</code>, même format), l’annulation coopérative (l’enfant polle le même <code>cancel_path</code>) et les push ntfy par phase. Ces derniers demandaient un soin particulier : sous isolation, <strong>l’enfant écrit déjà</strong> le fichier de progression, donc le parent ne rejoue que la partie ntfy du callback (nouveau <code>.build_fordead_ntfy_callback()</code>) — rejouer le composite aurait dédoublé chaque événement.</p>
+<p>Nouveau réglage optionnel <code>NEMETON_MEMORY_MAX</code> : vide → défaut cœur (70 % de la RAM) ; <code>"16G"</code> pour laisser de l’air à RStudio sur une machine à 32 Go ; <code>none</code> / <code>off</code> pour retirer le plafond si un run légitime se fait tuer.</p>
+<p>Plancher cœur : <code>nemeton (&gt;= 0.157.0)</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="added--roue-dentée--chrono-sous-les-trois-boutons--lancer--0-106-6">Added — Roue dentée + chrono sous les trois boutons « Lancer… »<a class="anchor" aria-label="anchor" href="#added--roue-dent%C3%A9e--chrono-sous-les-trois-boutons--lancer--0-106-6"></a></h4>
+<p>Le retour visuel sous le bouton n’existait que pour RECONFORT. FAST et FORDEAD sont alignés : les trois modes affichent désormais, <strong>à l’endroit même où l’utilisateur a cliqué</strong>, la roue dentée qui tourne, l’étape en cours et le chronomètre MM:SS — le même contenu que le toast (<code>.running_notif_content</code>, partagé avec le moteur reGénération), qui reste affiché par ailleurs.</p>
+<p>Un run peut durer des heures : le toast en haut à droite peut être fermé ou manqué, et l’utilisateur se retrouvait alors sans aucun signe de vie. Le rendu s’efface tout seul à la fin du run (même source que le toast : les handlers de fin remettent <code>*_run_start</code> à <code>NULL</code>). RECONFORT passe du sablier à la roue dentée pour que les trois soient strictement identiques.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--suivi-sanitaire--deux-textes-qui-mentaient-0-106-6">Fixed — Suivi sanitaire : deux textes qui mentaient<a class="anchor" aria-label="anchor" href="#fixed--suivi-sanitaire--deux-textes-qui-mentaient-0-106-6"></a></h4>
+<ul><li>
+<strong>« Quelques minutes »</strong> dans l’aide du mode RECONFORT : c’était faux. Un run peut durer des <strong>heures, voire des jours</strong> — l’emprise et le nombre de dates Sentinel-2 gouvernent tout. La promesse de durée est retirée : le chronomètre sous le bouton dit la vérité pendant le run, une estimation figée dans l’aide ne peut que se tromper. La dépendance <strong>conda IOTA²/GEODES est conservée</strong>, reformulée en « Opt-in : nécessite le bundle conda IOTA²/GEODES » — c’est une condition d’exécution (sans elle le run échoue), pas une estimation.</li>
+<li>
+<strong>« sur les placettes enregistrées »</strong> dans le sous-titre du Suivi continu Sentinel-2 : dernier vestige textuel des placettes dans le suivi sanitaire, devenu 100 % raster (FAST, FORDEAD, puis RECONFORT en v0.106.4). Remplacé par « sur la zone de suivi ».</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.5" id="nemetonshiny-01065">nemetonshiny 0.106.5<a class="anchor" aria-label="anchor" href="#nemetonshiny-01065"></a></h2>
