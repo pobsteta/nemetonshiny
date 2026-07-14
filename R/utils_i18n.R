@@ -2451,9 +2451,12 @@ TRANSLATIONS <- list(
     fr = "Carte FAST",
     en = "FAST map"
   ),
+  # v0.106.4 — ex-« Alertes FORDEAD » : ce sous-onglet rend la CARTE raster
+  # (le sous-onglet vectoriel homonyme a été supprimé en v0.92.x). Renomm\u00e9
+  # « Carte FORDEAD » pour la parit\u00e9 avec « Carte FAST » / « Carte RECONFORT ».
   monitoring_subtab_pixel_map_fordead = list(
-    fr = "Alertes FORDEAD",
-    en = "FORDEAD alerts"
+    fr = "Carte FORDEAD",
+    en = "FORDEAD map"
   ),
   # v0.35.0 — sous-onglets Alertes séparés par mode, symétriques aux
   # cartes : Alertes FAST (pixels au-dessus du seuil NDVI/NBR
@@ -3088,9 +3091,22 @@ TRANSLATIONS <- list(
   # raster, pas sur un compte DB). La notif de fin n'annonce donc plus
   # \u00ab N alertes \u00bb \u2014 uniquement la dur\u00e9e. Le verdict sain/affect\u00e9 est lu
   # sur la carte FORDEAD (raster masqu\u00e9 par strate).
+  # spec 008 §5 — La durée est FORMATÉE par l'appelant (format_elapsed) avant
+  # d'arriver ici : « 13 min 39 s », plus « 819 s ». D'où %s et non %.0f.
   monitoring_health_success_done = list(
-    fr = "Diagnostic FORDEAD termin\u00e9 en %.0f s.",
-    en = "FORDEAD diagnosis completed in %.0f s."
+    fr = "Diagnostic FORDEAD termin\u00e9 en %s.",
+    en = "FORDEAD diagnosis completed in %s."
+  ),
+  # spec 008 §3 — Un job tué par le plafond mémoire (cgroup MemoryMax posé par
+  # le cœur) sort en SIGKILL → exit 137. Le message brut (« … failed for zone 3
+  # (exit 137) ») ne dit rien à l'utilisateur : on lui substitue une consigne.
+  monitoring_error_oom = list(
+    fr = "Le calcul a d\u00e9pass\u00e9 la m\u00e9moire disponible et a \u00e9t\u00e9 arr\u00eat\u00e9. Fermez les autres applications, ou r\u00e9duisez l'emprise de la zone, puis relancez.",
+    en = "The computation ran out of memory and was stopped. Close other applications, or reduce the zone extent, then run again."
+  ),
+  monitoring_error_oom_short = list(
+    fr = "M\u00e9moire insuffisante",
+    en = "Out of memory"
   ),
   monitoring_health_error = list(
     fr = "Erreur lors du diagnostic FORDEAD",
@@ -3124,8 +3140,8 @@ TRANSLATIONS <- list(
     en = "\u2713 {label}"
   ),
   monitoring_fordead_complete = list(
-    fr = "FORDEAD termin\u00e9 \u00b7 {n} alertes \u00b7 {sec}s",
-    en = "FORDEAD complete \u00b7 {n} alerts \u00b7 {sec}s"
+    fr = "FORDEAD termin\u00e9 \u00b7 {n} alertes \u00b7 {duree}",
+    en = "FORDEAD complete \u00b7 {n} alerts \u00b7 {duree}"
   ),
   monitoring_fordead_error = list(
     fr = "FORDEAD \u00e9chec en {phase} : {msg}",
@@ -3157,6 +3173,17 @@ TRANSLATIONS <- list(
   monitoring_reconfort_outside_validity_title = list(
     fr = "Zone hors domaine de calibration RECONFORT",
     en = "Area outside the RECONFORT calibration domain"
+  ),
+  # v0.106.4 — Bandeau « composition d'essences » RECONFORT, symétrique du
+  # bandeau FORDEAD (monitoring_warning_species_*). RECONFORT est calibré sur
+  # les FEUILLUS : chêne, châtaignier, pin sylvestre.
+  monitoring_reconfort_species_title = list(
+    fr = "Composition d'essences hors domaine valid\u00e9",
+    en = "Species composition outside validated domain"
+  ),
+  monitoring_reconfort_species_body = list(
+    fr = "Seulement %.0f %% de ch\u00eane + ch\u00e2taignier + pin sylvestre selon BD For\u00eat v2. RECONFORT n'est calibr\u00e9 que sur ces essences.",
+    en = "Only %.0f%% of oak + chestnut + Scots pine according to BD For\u00eat v2. RECONFORT is only calibrated on these species."
   ),
   monitoring_reconfort_year_incomplete = list(
     fr = "Année Sentinel-2 incomplète : la saison n'est pas terminée. Choisissez au plus la dernière année complète.",
@@ -3196,39 +3223,19 @@ TRANSLATIONS <- list(
     fr = "Planche 4 panneaux du suivi pluriannuel du pixel : séries CRswir/CRre à double axe, cycles annuels repliés et espace d'état.",
     en = "4-panel plate of multi-year pixel monitoring: dual-axis CRswir/CRre series, folded annual cycles and state space."
   ),
-  pixel_export_png = list(fr = "Exporter PNG", en = "Export PNG"),
-  pixel_export_failed = list(
-    fr = "Export PNG indisponible (moteur kaleido/webshot2 absent).",
-    en = "PNG export unavailable (kaleido/webshot2 engine missing)."
-  ),
   monitoring_reconfort_outside_validity_body = list(
     fr = "R\u00e9sultats indicatifs (avertissement, non bloquant).",
     en = "Results are indicative (advisory, non-blocking)."
   ),
+  # v0.106.4 — la carte est 100 % raster : l'état vide ne parle plus d'« alertes »
+  # mais de l'absence de RUN (rien à afficher tant qu'aucun diagnostic n'a tourné).
   monitoring_reconfort_map_empty_title = list(
-    fr = "Aucune alerte RECONFORT",
-    en = "No RECONFORT alert"
+    fr = "Aucun run RECONFORT",
+    en = "No RECONFORT run"
   ),
   monitoring_reconfort_map_empty_body = list(
-    fr = "Lancez un diagnostic RECONFORT ou s\u00e9lectionnez une zone disposant d'un run pour afficher les alertes.",
-    en = "Run a RECONFORT diagnosis or pick a zone with an existing run to display alerts."
-  ),
-  monitoring_reconfort_class_2 = list(
-    fr = "D\u00e9p\u00e9rissant",
-    en = "Declining"
-  ),
-  monitoring_reconfort_class_3 = list(
-    fr = "Tr\u00e8s d\u00e9p\u00e9rissant",
-    en = "Severely declining"
-  ),
-  monitoring_reconfort_class_title = list(
-    fr = "Classe de d\u00e9p\u00e9rissement",
-    en = "Dieback class"
-  ),
-  monitoring_reconfort_popup_class = list(fr = "Classe", en = "Class"),
-  monitoring_reconfort_popup_stress = list(
-    fr = "Indice de stress",
-    en = "Stress index"
+    fr = "Lancez un diagnostic RECONFORT ou s\u00e9lectionnez une zone disposant d'un run pour afficher les cartes (score, classes de sant\u00e9, probabilit\u00e9).",
+    en = "Run a RECONFORT diagnosis or pick a zone with an existing run to display the maps (score, health classes, probability)."
   ),
   monitoring_reconfort_pixel_no_data = list(
     fr = "Diagnostic pixel indisponible \u00e0 cet emplacement (aucun run RECONFORT, ou pixel hors emprise mod\u00e9lis\u00e9e).",
@@ -3278,10 +3285,6 @@ TRANSLATIONS <- list(
     fr = "Probabilit\u00e9",
     en = "Probability"
   ),
-  reconfort_couche_alertes = list(
-    fr = "Alertes",
-    en = "Alerts"
-  ),
   # Info-bulles « i » par couche (parite FORDEAD).
   reconfort_couche_score_info = list(
     fr = "Score continu de d\u00e9p\u00e9rissement issu du mod\u00e8le RECONFORT. Plus la valeur est \u00e9lev\u00e9e, plus le d\u00e9p\u00e9rissement est s\u00e9v\u00e8re. \u00c9chelle de couleur par quantiles (pleine intensit\u00e9).",
@@ -3294,10 +3297,6 @@ TRANSLATIONS <- list(
   reconfort_couche_proba_info = list(
     fr = "Probabilit\u00e9 / confiance de la classification du mod\u00e8le. \u00c9chelle de couleur par quantiles.",
     en = "Model classification probability / confidence. Quantile colour scale."
-  ),
-  reconfort_couche_alertes_info = list(
-    fr = "Placettes en alerte (classes 2-d\u00e9p\u00e9rissant / 3-tr\u00e8s d\u00e9p\u00e9rissant), filtr\u00e9es \u00e0 la zone de suivi. Clic sur la carte : diagnostic pixel CRSWIR / CRre.",
-    en = "Alert plots (classes 2-declining / 3-severely declining), clipped to the monitoring zone. Click the map for the CRSWIR / CRre pixel diagnosis."
   ),
   monitoring_run_reconfort_btn = list(
     fr = "Lancer le diagnostic RECONFORT",
@@ -3312,8 +3311,8 @@ TRANSLATIONS <- list(
     en = "RECONFORT diagnosis started. First cold run: several hours; much faster afterwards."
   ),
   monitoring_reconfort_success = list(
-    fr = "Diagnostic RECONFORT termin\u00e9 : %d alertes ins\u00e9r\u00e9es en %.0f s.",
-    en = "RECONFORT diagnosis completed: %d alerts inserted in %.0f s."
+    fr = "Diagnostic RECONFORT termin\u00e9 : %d alertes ins\u00e9r\u00e9es en %s.",
+    en = "RECONFORT diagnosis completed: %d alerts inserted in %s."
   ),
   monitoring_reconfort_error = list(
     fr = "Erreur lors du diagnostic RECONFORT",
@@ -3356,8 +3355,8 @@ TRANSLATIONS <- list(
     en = "failed, skipped"
   ),
   monitoring_reconfort_complete = list(
-    fr = "RECONFORT termin\u00e9 \u00b7 {n} alertes \u00b7 {sec}s",
-    en = "RECONFORT complete \u00b7 {n} alerts \u00b7 {sec}s"
+    fr = "RECONFORT termin\u00e9 \u00b7 {n} alertes \u00b7 {duree}",
+    en = "RECONFORT complete \u00b7 {n} alerts \u00b7 {duree}"
   ),
   monitoring_reconfort_phase_env = list(
     fr = "Pr\u00e9paration de l'environnement",

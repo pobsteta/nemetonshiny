@@ -1513,3 +1513,51 @@ test_that("input$run_reconfort invokes the task for a complete Sentinel-2 year",
     }
   )
 })
+
+# --- spec 008 §3 — un OOM doit se lire comme un OOM, pas comme « exit 137 » --
+
+test_that(".monitoring_is_oom reconnait SIGKILL (exit 137 / killed)", {
+  expect_true(nemetonshiny:::.monitoring_is_oom(
+    "RECONFORT map production failed for zone 3 (exit 137)"))
+  expect_true(nemetonshiny:::.monitoring_is_oom("Process was Killed"))
+  expect_true(nemetonshiny:::.monitoring_is_oom("killed"))
+  # Ni un autre code de sortie, ni un mot qui contient « killed ».
+  expect_false(nemetonshiny:::.monitoring_is_oom("failed (exit 1)"))
+  expect_false(nemetonshiny:::.monitoring_is_oom("exit 13"))
+  expect_false(nemetonshiny:::.monitoring_is_oom("skilled worker"))
+  expect_false(nemetonshiny:::.monitoring_is_oom(""))
+  expect_false(nemetonshiny:::.monitoring_is_oom(NULL))
+})
+
+test_that(".monitoring_run_error_msg substitue la consigne memoire, sinon le brut", {
+  i18n <- get_i18n("fr")
+  oom <- nemetonshiny:::.monitoring_run_error_msg(
+    "RECONFORT map production failed for zone 3 (exit 137)", i18n,
+    "monitoring_reconfort_error")
+  expect_true(grepl(i18n$t("monitoring_error_oom_short"), oom, fixed = TRUE))
+  expect_true(grepl(i18n$t("monitoring_error_oom"), oom, fixed = TRUE))
+  # Le message brut (illisible) ne doit PAS fuiter dans la notif.
+  expect_false(grepl("exit 137", oom, fixed = TRUE))
+
+  other <- nemetonshiny:::.monitoring_run_error_msg(
+    "conda env missing", i18n, "monitoring_reconfort_error")
+  expect_true(grepl("conda env missing", other, fixed = TRUE))
+  expect_true(grepl(i18n$t("monitoring_reconfort_error"), other, fixed = TRUE))
+})
+
+# --- spec 008 §5 — heures/minutes d'abord, jamais des secondes brutes -------
+
+test_that("les messages de fin de run affichent une duree lisible", {
+  i18n <- get_i18n("fr")
+  # Le run RECONFORT validé du brief : 819 s => « 13 min 39 s », pas « 819 s ».
+  expect_equal(format_elapsed(819), "13 min 39 s")
+  expect_equal(format_elapsed(7243), "2 h 00 min 43 s")
+  expect_equal(format_elapsed(42), "42 s")
+
+  msg <- sprintf(i18n$t("monitoring_reconfort_success"), 12L, format_elapsed(819))
+  expect_true(grepl("13 min 39 s", msg, fixed = TRUE))
+  expect_false(grepl("819", msg, fixed = TRUE))
+
+  done <- sprintf(i18n$t("monitoring_health_success_done"), format_elapsed(7243))
+  expect_true(grepl("2 h 00 min 43 s", done, fixed = TRUE))
+})

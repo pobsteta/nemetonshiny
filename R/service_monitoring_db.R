@@ -680,39 +680,9 @@ validity_check_for_zone <- function(con, zone_id, units = NULL,
 }
 
 
-#' List alerts for a monitoring zone with disturbance classification
-#'
-#' Wraps `nemeton::list_alerts()` and applies `classify_disturbance()` so
-#' the returned sf carries a `disturbance_type` column. G1 default
-#' (classes 3-forte + 4-sol-nu only) is enforced upstream by
-#' `nemeton::list_alerts()`.
-#'
-#' @param con A DBIConnection or NULL.
-#' @param zone_id Integer.
-#' @param classes Character vector of `confidence_class` values to keep.
-#'   Default G1: `c("3-forte", "4-sol-nu")`.
-#' @param validation_status Optional filter, e.g. `"pending"`.
-#' @param period Optional length-2 Date for trigger_date filtering.
-#' @return An sf POINT EPSG:4326, ready for leaflet, or an empty sf on
-#'   error.
-#' @noRd
-list_alerts_for_zone <- function(con, zone_id,
-                                 classes = c("3-forte", "4-sol-nu"),
-                                 validation_status = NULL,
-                                 period = NULL) {
-  empty <- sf::st_sf(data.frame(),
-                     geometry = sf::st_sfc(crs = 4326))
-  if (is.null(con) || is.null(zone_id)) return(empty)
-  if (!requireNamespace("nemeton", quietly = TRUE)) return(empty)
-  tryCatch({
-    a <- nemeton::list_alerts(con, zone_id,
-                              classes           = classes,
-                              validation_status = validation_status,
-                              period            = period)
-    if (!nrow(a)) return(a)
-    nemeton::classify_disturbance(a, window_days = 30L)
-  }, error = function(e) {
-    cli::cli_warn("Failed to list alerts for zone {.val {zone_id}}: {conditionMessage(e)}")
-    empty
-  })
-}
+# v0.106.4 — `list_alerts_for_zone()` supprimée : son seul consommateur était
+# l'affichage vectoriel des alertes (marqueurs « placettes ») des cartes de
+# suivi sanitaire, retiré de FAST (a18f3ab2), FORDEAD (Phase A, D2) puis
+# RECONFORT. La lecture de la table `alerts` subsiste là où elle a un sens
+# métier : `service_r5.R` (indicateur R5) appelle `nemeton::list_alerts()`
+# directement.

@@ -461,7 +461,12 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       # tracé est (re)dessiné par l'observer réactif plus bas dès que
       # `indicators_sf` est disponible (l'attache est différée au chargement,
       # donc l'UGF pouvait manquer si le render de base précédait l'attache).
-      overlays <- c("UGF", "Alertes")
+      # Le groupe porte le RASTER de dépérissement (severity / confidence /
+      # date…) : nommé « Raster » — v0.106.4, ex-« Alertes », un nom hérité
+      # de l'époque où la couche portait des marqueurs placettes. Littéral
+      # neutre FR/EN (comme « UGF », « Indice ») : un group id Leaflet doit
+      # rester stable au changement de langue.
+      overlays <- c("UGF", "Raster")
 
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",   group = "OSM") |>
@@ -480,7 +485,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
         m <- m |>
           leaflet::addRasterImage(
             x = spec$r_show, colors = spec$pal, opacity = op,
-            method = spec$method, group = "Alertes",
+            method = spec$method, group = "Raster",
             options = leaflet::gridOptions(pane = "nemetonRaster"))
         m <- .fordead_add_legend(m, spec$legend, layerId = "fordead_legend")
       }
@@ -503,7 +508,7 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
     # la carte de base n'est jamais re-rendue, donc `input$map_click`, le
     # zoom et le fond (OSM/Satellite) sont préservés. Dépend de la couche,
     # du masque, de l'opacité et de la langue → redessine le seul group
-    # "Alertes" + la légende (layerId stable) sans reconstruire la carte.
+    # "Raster" + la légende (layerId stable) sans reconstruire la carte.
     # `display_r()` (et non `mask_r()`) → le déplacement du slider de date
     # redessine le raster filtré via leafletProxy, sans re-render complet.
     shiny::observe({
@@ -518,20 +523,20 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       # re-dessiner le raster via proxy le ré-affichait même décoché.
       shown <- input$map_groups
       proxy <- leaflet::leafletProxy("map") |>
-        leaflet::clearGroup("Alertes") |>
+        leaflet::clearGroup("Raster") |>
         leaflet::removeControl("fordead_legend")
       if (is.null(r)) return()
       spec <- .fordead_layer_spec(r, lyr, i18n)
       proxy <- proxy |>
         leaflet::addRasterImage(
           x = spec$r_show, colors = spec$pal, opacity = op,
-          method = spec$method, group = "Alertes",
+          method = spec$method, group = "Raster",
           options = leaflet::gridOptions(pane = "nemetonRaster"))
       proxy <- .fordead_add_legend(proxy, spec$legend, layerId = "fordead_legend")
-      # Respecter la décoche utilisateur : si « Alertes » n'est pas coché,
+      # Respecter la décoche utilisateur : si « Raster » n'est pas coché,
       # masquer le group après l'avoir re-dessiné.
-      if (!is.null(shown) && !("Alertes" %in% shown)) {
-        leaflet::hideGroup(proxy, "Alertes")
+      if (!is.null(shown) && !("Raster" %in% shown)) {
+        leaflet::hideGroup(proxy, "Raster")
       }
     })
 

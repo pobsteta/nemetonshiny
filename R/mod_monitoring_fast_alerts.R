@@ -878,12 +878,12 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     output$map <- leaflet::renderLeaflet({
       ugf_4326 <- .ugf_for_overlay(app_state$current_project)
       # v0.61.0 — Le raster d'alerte apparaît désormais dans le
-      # LayersControl Leaflet (groupe `"Alertes"`, sous « UGF »).
+      # LayersControl Leaflet (groupe `"Raster"`, sous « UGF »).
       # Quand le user décoche, Leaflet masque le group ; l'observer
-      # leafletProxy plus bas ajoute l'image dans `group = "Alertes"`.
+      # leafletProxy plus bas ajoute l'image dans `group = "Raster"`.
       overlays <- c(
         if (!is.null(ugf_4326)) "UGF" else NULL,
-        "Alertes"  # = .alert_raster_group (défini dans le server)
+        "Raster"  # = .alert_raster_group (défini dans le server)
       )
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",     group = "OSM") |>
@@ -925,7 +925,9 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
     # visible dans le LayersControl Leaflet (entrée « Alertes »
     # sous « UGF »). Le checkbox UI `raster_visible` est retiré :
     # Leaflet gère seul la visibilité via le contrôle de couches.
-    .alert_raster_group <- "Alertes"
+    # v0.106.4 — ex-« Alertes » : le groupe porte un RASTER (pixels au-dessus
+    # du seuil), pas des marqueurs. Littéral neutre FR/EN, comme « UGF ».
+    .alert_raster_group <- "Raster"
     .alert_legend_id    <- "alert-legend"
     shiny::observe({
       i18n    <- i18n_r()

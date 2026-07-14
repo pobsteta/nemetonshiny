@@ -292,6 +292,12 @@ mod_monitoring_ui <- function(id) {
                 icon  = bsicons::bs_icon("activity"),
                 class = "btn-primary w-100"
               ),
+              # v0.106.4 — Chrono SOUS le bouton (parité moteur reGénération).
+              # Le chrono existait déjà, mais uniquement dans le toast en haut
+              # à droite : un run RECONFORT dure ~15 min, l'utilisateur qui
+              # ferme ou rate le toast n'avait plus aucun retour à l'endroit
+              # même où il a cliqué. Le toast reste (il porte l'étape en cours).
+              shiny::uiOutput(ns("run_reconfort_status")),
               shiny::uiOutput(ns("run_reconfort_cancel_panel"))
             )
           )
@@ -368,7 +374,7 @@ mod_monitoring_ui <- function(id) {
           value = "pixel_map_fordead",
           icon  = bsicons::bs_icon("tree"),
           # v0.90.x — Parité FAST : sidebar droite (indice CRSWIR +
-          # opacité du raster). UGF + « Alertes » via le LayersControl.
+          # opacité du raster). UGF + « Raster » via le LayersControl.
           # Le clic-pixel (graphe CRSWIR + seuil + dates de stress) reste
           # géré par le sous-module.
           bslib::card(
@@ -435,9 +441,12 @@ mod_monitoring_ui <- function(id) {
           )
         ),
         # ----- Sub-tab — Carte RECONFORT (spec 021, L6) --------------
-        # Alertes vectorielles de dépérissement feuillus (RECONFORT) +
-        # diagnostic pixel CRSWIR/CRre au clic. Masqué hors mode
-        # "reconfort" par l'observer mode-driven ci-dessous.
+        # Rasters de dépérissement feuillus (score / classes de santé /
+        # probabilité) + diagnostic pixel CRSWIR/CRre au clic. Masqué hors
+        # mode "reconfort" par l'observer mode-driven ci-dessous.
+        # v0.106.4 — la couche vectorielle « Alertes » (marqueurs placettes
+        # lus en base) a été supprimée : parité 100 % raster avec FAST et
+        # FORDEAD.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_pixel_map_reconfort"),
           value = "pixel_map_reconfort",
@@ -549,8 +558,8 @@ mod_monitoring_server <- function(id, app_state) {
     # de validation). Pattern uniforme `bslib::nav_show()` / `nav_hide()`
     # plutôt qu'un conditionalPanel interne, parce qu'on veut aussi
     # éviter de déclencher les reactives lourdes (build_index_stack
-    # côté FAST, list_alerts_for_zone côté FORDEAD, generate_validation_plan
-    # côté Plan val.) quand l'onglet est masqué.
+    # côté FAST, lecture du masque raster côté FORDEAD,
+    # generate_validation_plan côté Plan val.) quand l'onglet est masqué.
     shiny::observe({
       mode <- input$mode
       # Helper : hide a set of sub-tab targets.
@@ -853,8 +862,10 @@ mod_monitoring_server <- function(id, app_state) {
     })
 
     # v0.90.x — La réactive legacy `alerts()` (filtre DB des alertes
-    # vectorielles via `list_alerts_for_zone`) avait déjà été supprimée
-    # (Phase A : affichage raster-driven via `fordead_map_ret$mask`).
+    # vectorielles) avait déjà été supprimée (Phase A : affichage
+    # raster-driven via `fordead_map_ret$mask`). Son helper
+    # `list_alerts_for_zone()` est supprimé à son tour en v0.106.4,
+    # RECONFORT étant passé lui aussi en 100 % raster.
     # v0.92.x — Les outputs `alerts_panel` / `alerts_map` + l'observer
     # d'opacité associés au sous-onglet « Alertes FORDEAD » sont retirés
     # avec le sous-onglet lui-même : doublon strict de la Carte FORDEAD
@@ -2843,8 +2854,7 @@ mod_monitoring_server <- function(id, app_state) {
           .cleanup_progress_file(fordead_progress_path())
           fordead_progress_path(NULL)
           shiny::showNotification(
-            sprintf("%s : %s", i18n$t("monitoring_health_error"),
-                    e$message),
+            .monitoring_run_error_msg(e$message, i18n, "monitoring_health_error"),
             id       = session$ns("fordead_error"),
             type     = "error", duration = 10
           )
@@ -2887,8 +2897,8 @@ mod_monitoring_server <- function(id, app_state) {
         fordead_last_result(result)
         if (identical(result$status, "error")) {
           shiny::showNotification(
-            sprintf("%s : %s", i18n$t("monitoring_health_error"),
-                    result$message %||% ""),
+            .monitoring_run_error_msg(result$message, i18n,
+                                      "monitoring_health_error"),
             id       = session$ns("fordead_error"),
             type     = "error", duration = 10
           )
@@ -2898,7 +2908,7 @@ mod_monitoring_server <- function(id, app_state) {
           # se lit sur le raster masqué de la Carte FORDEAD). Durée seule.
           shiny::showNotification(
             sprintf(i18n$t("monitoring_health_success_done"),
-                    result$duration_sec %||% 0),
+                    format_elapsed(result$duration_sec %||% 0)),
             id       = session$ns("fordead_success"),
             type     = "message", duration = 8
           )
@@ -3124,22 +3134,45 @@ mod_monitoring_server <- function(id, app_state) {
       result_r  = shiny::reactive(reconfort_result())
     )
 
-    # Bandeau RECONFORT « hors domaine de calibration » rendu au niveau parent
-    # (UI : output$reconfort_validity_banner, juste sous « Base de suivi
-    # connectée »), même emplacement/style que les bandeaux FORDEAD. Visible
-    # uniquement en mode reconfort et quand la zone est hors domaine
-    # (`geo_valid == FALSE`, advisory non bloquant). `validity` provient du
-    # sous-module carte, qui appelle `nemeton::check_reconfort_validity()`.
+    # Bandeaux RECONFORT rendus au niveau parent (UI :
+    # output$reconfort_validity_banner, juste sous « Base de suivi connectée »),
+    # même emplacement/style que les bandeaux FORDEAD. Visibles uniquement en
+    # mode reconfort. `validity` provient du sous-module carte, qui appelle
+    # `nemeton::check_reconfort_validity()` — advisory, jamais bloquant.
+    #
+    # v0.106.4 — DEUX bandeaux, parité stricte avec FORDEAD (`validity_banners`) :
+    #   1. zone hors domaine géographique (`geo_valid == FALSE`) ;
+    #   2. composition d'essences hors domaine (`species_valid == FALSE`) — ce
+    #      second bandeau n'existait pas. Il ne pouvait de toute façon pas
+    #      s'afficher tant que le sous-module ne passait ni `units` ni `bdforet`
+    #      au cœur (`species_valid` restait NA) : les deux manques se
+    #      masquaient l'un l'autre.
     output$reconfort_validity_banner <- shiny::renderUI({
       if (!identical(input$mode, "reconfort")) return(NULL)
       v <- reconfort_map_ret$validity()
-      if (is.null(v) || !isFALSE(v$geo_valid)) return(NULL)
+      if (is.null(v)) return(NULL)
       i18n <- i18n_r()
-      .monitoring_validity_banner(
-        icon  = "geo-alt",
-        title = i18n$t("monitoring_reconfort_outside_validity_title"),
-        body  = i18n$t("monitoring_reconfort_outside_validity_body")
-      )
+      banners <- list()
+      if (isFALSE(v$geo_valid)) {
+        banners[[length(banners) + 1L]] <- .monitoring_validity_banner(
+          icon  = "geo-alt",
+          title = i18n$t("monitoring_reconfort_outside_validity_title"),
+          body  = i18n$t("monitoring_reconfort_outside_validity_body")
+        )
+      }
+      # `species_valid` vaut NA quand la composition est indéterminable (ni
+      # colonne essence sur les UGF, ni BD Forêt en cache) : dans ce cas on
+      # n'affiche RIEN — on n'a rien à reprocher à la zone.
+      if (isFALSE(v$species_valid)) {
+        pct <- (v$species_target_pct %||% 0) * 100
+        banners[[length(banners) + 1L]] <- .monitoring_validity_banner(
+          icon  = "tree",
+          title = i18n$t("monitoring_reconfort_species_title"),
+          body  = sprintf(i18n$t("monitoring_reconfort_species_body"), pct)
+        )
+      }
+      if (!length(banners)) return(NULL)
+      htmltools::tagList(banners)
     })
     shiny::outputOptions(output, "reconfort_validity_banner",
                          suspendWhenHidden = FALSE)
@@ -3199,6 +3232,28 @@ mod_monitoring_server <- function(id, app_state) {
         closeButton = FALSE
       )
     })
+
+    # Chrono SOUS le bouton « Lancer le diagnostic RECONFORT » (parité avec le
+    # bouton Auto (E-OBS) du moteur reGénération). Même source que le toast
+    # (`reconfort_run_start`), mais rendu à l'endroit où l'utilisateur a
+    # cliqué : un run dure ~15 min et le toast peut être fermé ou manqué.
+    # Disparaît dès que le run se termine (les handlers remettent
+    # `reconfort_run_start` à NULL).
+    output$run_reconfort_status <- shiny::renderUI({
+      st <- reconfort_run_start()
+      if (is.null(st)) return(NULL)
+      shiny::invalidateLater(1000)
+      i18n <- i18n_r()
+      htmltools::div(
+        class = "small text-info mt-1 text-center",
+        bsicons::bs_icon("hourglass-split", class = "me-1"),
+        reconfort_run_msg() %||% i18n$t("monitoring_reconfort_starting"),
+        htmltools::tags$span(class = "ms-1 font-monospace",
+                             .fmt_elapsed(st))
+      )
+    })
+    shiny::outputOptions(output, "run_reconfort_status",
+                         suspendWhenHidden = FALSE)
 
     # Resolve / create the RECONFORT cache dir for the active project.
     .reconfort_cache_dir <- function(proj) {
@@ -3331,8 +3386,8 @@ mod_monitoring_server <- function(id, app_state) {
           .cleanup_progress_file(reconfort_progress_path())
           reconfort_progress_path(NULL)
           shiny::showNotification(
-            sprintf("%s : %s", i18n$t("monitoring_reconfort_error"),
-                    conditionMessage(e)),
+            .monitoring_run_error_msg(conditionMessage(e), i18n,
+                                      "monitoring_reconfort_error"),
             id = session$ns("reconfort_error"), type = "error", duration = 10
           )
           shiny::updateActionButton(session, "run_reconfort", disabled = FALSE)
@@ -3350,7 +3405,7 @@ mod_monitoring_server <- function(id, app_state) {
         shiny::showNotification(
           sprintf(i18n$t("monitoring_reconfort_success"),
                   result$n_alerts %||% result$n_alerts_inserted %||% 0L,
-                  result$duration_sec %||% 0),
+                  format_elapsed(result$duration_sec %||% 0)),
           id = session$ns("reconfort_success"), type = "message", duration = 8
         )
         reconfort_refresh(reconfort_refresh() + 1L)
@@ -3840,7 +3895,7 @@ mod_monitoring_server <- function(id, app_state) {
     n_alerts <- as.integer(ev$n_alerts_inserted %||% 0L)
     duration <- as.numeric(ev$duration_sec     %||% 0)
     msg <- i18n$t("monitoring_fordead_complete",
-                  n = n_alerts, sec = round(duration, 1))
+                  n = n_alerts, duree = format_elapsed(duration))
     if (is.function(on_msg)) on_msg(NULL)   # stoppe le ticker chrono
     shiny::removeNotification(session$ns("fordead_progress"))
     shiny::showNotification(
@@ -3990,7 +4045,7 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::removeNotification(session$ns("reconfort_progress"))
     shiny::showNotification(
       i18n$t("monitoring_reconfort_complete",
-             n = n_alerts, sec = round(duration, 1)),
+             n = n_alerts, duree = format_elapsed(duration)),
       id       = session$ns("reconfort_complete"),
       type     = "message",
       duration = 8
@@ -4040,6 +4095,28 @@ mod_monitoring_server <- function(id, app_state) {
 # happening. The `.nmt-spin` CSS keyframe is defined in
 # `inst/app/www/css/custom.css` and is also re-used by the DB probe
 # loading card (see `.monitoring_loading_card`).
+# spec 008 §3 — Un diagnostic (RECONFORT / FORDEAD) qui dépasse le plafond
+# mémoire est tué par SIGKILL dans son cgroup : le cœur remonte alors une erreur
+# R ordinaire dont le message porte « exit 137 » (128 + 9) ou « killed ». Brut,
+# ce message ne dit RIEN à l'utilisateur (« RECONFORT map production failed for
+# zone 3 (exit 137) ») : on lui substitue une consigne actionnable. Tout autre
+# échec garde son message d'origine, préfixé du titre du mode.
+.monitoring_is_oom <- function(msg) {
+  msg <- as.character(msg %||% "")
+  if (!nzchar(msg)) return(FALSE)
+  grepl("exit 137|\\bkilled\\b", msg, ignore.case = TRUE)
+}
+
+.monitoring_run_error_msg <- function(msg, i18n, title_key) {
+  msg <- as.character(msg %||% "")
+  if (.monitoring_is_oom(msg)) {
+    sprintf("%s : %s", i18n$t("monitoring_error_oom_short"),
+            i18n$t("monitoring_error_oom"))
+  } else {
+    sprintf("%s : %s", i18n$t(title_key), msg)
+  }
+}
+
 .monitoring_spinning_msg <- function(text, start = NULL) {
   # Cadre unifié (engrenage qui tourne + police + chrono monospace optionnel),
   # partagé avec le moteur reGénération — cf. R/utils_notif.R. `start` (POSIXct) :
