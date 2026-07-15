@@ -2,6 +2,18 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.106.9 (2026-07-15)
+
+#### Added — bilan persistant sous le bouton « Risque de gel (meteoland) »
+
+En fin de calcul du risque de gel tardif (R7), un message reste affiché
+sous le bouton, alors qu’auparavant seul un toast de 6 s apparaissait.
+Le cas le plus utile : **« Calcul terminé : aucun jour de gel tardif
+détecté »** (message vert) — un run réussi sans gélée tardive semblait
+sinon n’avoir rien produit. Quand du gel est détecté, le message donne
+la médiane et l’étendue des jours de gel par UGF ; si R7 n’a pu être
+calculé (Tmin indisponible), le motif reste affiché.
+
 ## nemetonshiny 0.106.8 (2026-07-15)
 
 #### Changed — grisage instantané des boutons de calcul (reGénération)
