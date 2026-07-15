@@ -106,6 +106,42 @@
     unlink(file.path(project_path, "cache", "regeneration", "engine_status.json"))
 }
 
+# Exécute le moteur reGénération sous PLAFOND mémoire (cgroup systemd) quand le
+# cœur le permet, sinon repli sur l'appel direct dans ce worker (brief 035
+# regen-capped). Appelé DANS le worker `future` (nemeton + nemetonshiny chargés).
+#
+# Anti-OOM : le moteur microclimf+BILJOU tournait dans un worker multisession NU,
+# dans le scope de l'app — un pic mémoire postérieur au run faisait tuer RStudio
+# par systemd-oomd (incident 2026-07-15). `nemeton::run_memory_capped()` isole le
+# heavy dans un enfant sous cgroup plafonné (comme FORDEAD, spec 008).
+#
+# Garde de CAPACITÉ : la version généralisée de run_memory_capped (arguments
+# `package=`/`options=`, nemeton >= 0.158.0) sait lancer une fonction INTERNE
+# d'un autre package (`run_regeneration_engine` n'est pas exporté). Tant que le
+# cœur installé ne l'expose pas, on retombe proprement sur le chemin nu — l'app
+# ne casse pas sur un cœur antérieur. Flag `nemetonshiny.regen_capped` (TRUE par
+# défaut) : le passer FALSE force le repli (utile en dev quand la lib installée
+# est en retard sur la source pkgload, cf. caveat §1 du brief).
+.regen_run_engine_capped <- function(units, project_path, cfg, app_opts) {
+  options(nemeton.app_options = app_opts)
+  fn <- getFromNamespace("run_regeneration_engine", "nemetonshiny")
+  # Même référence pour le test de capacité ET l'appel (cohérence + mockable).
+  rmc <- if (requireNamespace("nemeton", quietly = TRUE)) nemeton::run_memory_capped else NULL
+  capped_ok <- isTRUE(getOption("nemetonshiny.regen_capped", TRUE)) &&
+    !is.null(rmc) &&
+    all(c("package", "options") %in% names(formals(rmc)))
+  if (!capped_ok) return(fn(units, project_path, cfg))   # repli : appel direct
+  rmc(
+    fun     = "run_regeneration_engine",
+    package = "nemetonshiny",
+    args    = list(units = units, project_path = project_path, cfg = cfg),
+    options = list(nemeton.app_options = app_opts),
+    # memory_max = NULL → défaut cœur (70 % RAM) ; MemorySwapMax=0 déjà géré côté
+    # cœur. Le progress reste le canal disque (engine_status.json/engine.log),
+    # poll 1 s inchangé : pas de progress_callback nécessaire.
+    quiet   = FALSE)
+}
+
 # Libellé i18n d'une phase (voir modèle 6 phases + états terminaux du brief).
 .regen_phase_label <- function(i18n, st) {
   switch(st$phase %||% "",
@@ -745,16 +781,16 @@ mod_regeneration_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
-          # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
+          # spec 008 §4 — le worker (superviseur) est PERSISTANT : lui rendre sa
+          # mémoire. Avec le chemin capé, le heavy vit dans un ENFANT cgroup ; ce
+          # worker ne fait que bloquer dessus (peu de RAM).
           on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
             loadNamespace("nemetonshiny")
           }
-          options(nemeton.app_options = app_opts)
-          fn <- getFromNamespace("run_regeneration_engine", "nemetonshiny")
-          fn(units, project_path, cfg)
+          nemetonshiny:::.regen_run_engine_capped(units, project_path, cfg, app_opts)
         }, seed = TRUE)
       })
 
