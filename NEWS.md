@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.15 (2026-07-15)
+
 ### Changed — légende bivariée : bornes d'axes = plage réellement observée
 
 Les min/max des axes de la légende bivariée affichent désormais la plage
