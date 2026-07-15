@@ -334,3 +334,61 @@ test_that("switching to a project without cache clears the previous choropleth",
     }
   )
 })
+
+# --- Brief 035 verrou-boutons : exclusion mutuelle des calculs ----------------
+# Pendant qu'un calcul lourd tourne (busy() TRUE), tout autre déclencheur est un
+# no-op serveur : la tâche visée ne démarre pas et un avertissement est émis. Le
+# grisage client (update_task_button / updateActionButton) n'est que cosmétique ;
+# la garde serveur `deny_if_busy()` est la protection robuste testée ici.
+#
+# Plutôt qu'invoquer un vrai `future` lent (non déterministe, worker réel), on
+# rebinde le réactif local `busy` dans l'environnement partagé du serveur — celui
+# que `deny_if_busy()` interroge — pour simuler « un calcul est déjà en cours ».
+
+test_that("a trigger is a guarded no-op while another computation runs", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+
+  units <- .regen_mod_units(2)
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj, readonly = FALSE)
+
+  notes <- new.env(); notes$n <- 0L
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    regeneration_species_choices = function(...) NULL,
+    load_regeneration_precomputed = function(pp) list(),
+    # Sans ce mock, run_frost retournerait tôt (meteoland absent) et le test
+    # serait vacant : on veut que SEULE la garde busy bloque l'invocation.
+    regen_meteoland_available = function() TRUE,
+    .package = "nemetonshiny"
+  )
+  testthat::local_mocked_bindings(
+    showNotification = function(ui, ...) { notes$n <- notes$n + 1L; "nid" },
+    .package = "shiny"
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(forest_type = "feuillu", year_moyenne = NA,
+                        year_canicule = NA, buffer_km = 25, species = "")
+
+      # Baseline : la tâche gel n'a pas encore démarré.
+      expect_identical(frost_task$status(), "initial")
+
+      # Simuler un calcul déjà en cours : muter le binding `busy` DANS
+      # l'environnement du serveur (testServer évalue cette expression dans un
+      # env ENFANT ; un simple `busy <-` créerait un shadow local que
+      # `deny_if_busy()` ne verrait pas).
+      environment(deny_if_busy)$busy <- function() TRUE
+      notes$n <- 0L
+      session$setInputs(run_frost = 1)
+
+      # frost_task JAMAIS invoquée (sans la garde, meteoland dispo + projet valide
+      # l'auraient lancée) et l'avertissement « déjà en cours » a été émis.
+      expect_identical(frost_task$status(), "initial")
+      expect_gte(notes$n, 1L)
+    }
+  )
+})

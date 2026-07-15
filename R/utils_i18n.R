@@ -4162,6 +4162,13 @@ TRANSLATIONS <- list(
   regen_engine_running = list(fr = "Moteur microclimf en cours (LiDAR HD + ERA5) \u2014 cela peut prendre plusieurs minutes\u2026", en = "microclimf engine running (LiDAR HD + ERA5) \u2014 this can take several minutes\u2026"),
   regen_engine_running_short = list(fr = "Moteur en cours\u2026", en = "Engine running\u2026"),
   regen_auto_running_short = list(fr = "D\u00e9tection E-OBS\u2026", en = "E-OBS detection\u2026"),
+  # Verrou d'exclusion mutuelle des calculs (brief 035 verrou-boutons). Libell\u00e9
+  # \u00ab occup\u00e9 \u00bb g\u00e9n\u00e9rique : un task button gris\u00e9 par ricochet affiche SON label_busy,
+  # donc il doit \u00eatre vrai quel que soit le calcul actif.
+  regen_busy_generic = list(fr = "Calcul en cours\u2026", en = "Computing\u2026"),
+  regen_busy_already = list(
+    fr = "Un calcul est d\u00e9j\u00e0 en cours \u2014 attendez qu'il se termine.",
+    en = "A computation is already running \u2014 wait for it to finish."),
   regen_engine_done = list(fr = "Moteur microclimf termin\u00e9 \u2014 sensibilit\u00e9 mise \u00e0 jour et mise en cache.", en = "microclimf engine finished \u2014 sensitivity updated and cached."),
   regen_engine_ready = list(fr = "Pr\u00e9requis r\u00e9unis (grille LiDAR HD + identifiants CDS).", en = "Prerequisites met (LiDAR HD grid + CDS credentials)."),
   regen_engine_prereq_core = list(fr = "Moteur indisponible : nemeton::regen_sensibilite absent (mettez \u00e0 jour le c\u0153ur).", en = "Engine unavailable: nemeton::regen_sensibilite missing (update the core)."),
