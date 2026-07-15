@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.12.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.13.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.106.13" id="nemetonshiny-010613-2026-07-15">nemetonshiny 0.106.13 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010613-2026-07-15"></a></h2>
+<div class="section level4">
+<h4 id="fixed--la-couche-gel-r7-survit-à-un-recalcul-dans-la-même-session-brief-0-106-13">Fixed — la couche gel R7 survit à un recalcul dans la même session (brief 035 §8)<a class="anchor" aria-label="anchor" href="#fixed--la-couche-gel-r7-survit-%C3%A0-un-recalcul-dans-la-m%C3%AAme-session-brief-0-106-13"></a></h4>
+<p>Après un R7 calculé (« Risque de gel »), relancer « Lancer l’analyse » ou le « Moteur » vidait la couche « Gelées tardives » : les deux handlers écrasaient <code>rv$result</code> avec un résultat sans R7 (ces recalculs n’ont pas de Tmin en entrée). Les colonnes R7 (<code>r7_gel_days</code> / <code>r7_status</code> / <code>R7</code>) sont désormais reportées du résultat précédent par <code>ug_id</code> (<code>.regen_attach_r7</code>, réutilisé de la persistance inter-sessions) — R7 n’est jamais recalculé (il reste opt-in), seulement conservé.</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.12" id="nemetonshiny-010612-2026-07-15">nemetonshiny 0.106.12 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010612-2026-07-15"></a></h2>

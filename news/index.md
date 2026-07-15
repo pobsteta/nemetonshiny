@@ -2,6 +2,18 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.106.13 (2026-07-15)
+
+#### Fixed — la couche gel R7 survit à un recalcul dans la même session (brief 035 §8)
+
+Après un R7 calculé (« Risque de gel »), relancer « Lancer l’analyse »
+ou le « Moteur » vidait la couche « Gelées tardives » : les deux
+handlers écrasaient `rv$result` avec un résultat sans R7 (ces recalculs
+n’ont pas de Tmin en entrée). Les colonnes R7 (`r7_gel_days` /
+`r7_status` / `R7`) sont désormais reportées du résultat précédent par
+`ug_id` (`.regen_attach_r7`, réutilisé de la persistance inter-sessions)
+— R7 n’est jamais recalculé (il reste opt-in), seulement conservé.
+
 ## nemetonshiny 0.106.12 (2026-07-15)
 
 #### Fixed — légende bivariée « Contexte régional (E-OBS) » en 5×5 (25 classes)
