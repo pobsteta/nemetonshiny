@@ -2,6 +2,17 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.106.14 (2026-07-15)
+
+#### Added — légende bivariée E-OBS : bornes des axes + lignes 0 en pointillé
+
+La légende bivariée « Contexte régional (E-OBS) » annote désormais les
+extrêmes min/max de chaque axe (seuils T°max et précipitations,
+`meta$breaks`) et trace la **ligne « pas de changement » (0)** de chaque
+variable en **pointillé blanc** (position fournie par le cœur,
+`meta$palette$zero`) — comme les cartes bivariées de l’inventaire
+forestier IGN. Pur affichage, aucune modification du classement.
+
 ## nemetonshiny 0.106.13 (2026-07-15)
 
 #### Fixed — la couche gel R7 survit à un recalcul dans la même session (brief 035 §8)
