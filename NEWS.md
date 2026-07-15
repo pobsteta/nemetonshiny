@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.11 (2026-07-15)
+
 ### Fixed — la couche « Gelées tardives » (R7) persiste entre deux sessions
 
 À la réouverture d'un projet, la carte « Gelées tardives » retombait sur le
