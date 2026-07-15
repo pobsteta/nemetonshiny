@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.10.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,17 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.106.11" id="nemetonshiny-010611-2026-07-15">nemetonshiny 0.106.11 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010611-2026-07-15"></a></h2>
+<div class="section level4">
+<h4 id="fixed--la-couche--gelées-tardives--r7-persiste-entre-deux-sessions-0-106-11">Fixed — la couche « Gelées tardives » (R7) persiste entre deux sessions<a class="anchor" aria-label="anchor" href="#fixed--la-couche--gel%C3%A9es-tardives--r7-persiste-entre-deux-sessions-0-106-11"></a></h4>
+<p>À la réouverture d’un projet, la carte « Gelées tardives » retombait sur le contour d’UGF nu : <code>restore_regeneration()</code> ne ré-attachait que l’exposition microclimatique et le bilan hydrique, jamais R7 (calculé seulement en mémoire par un run « Risque de gel »). <code>run_regeneration_frost()</code> persiste désormais son résultat par UGF dans <code>cache/regeneration/r7.gpkg</code> ; <code>load_regeneration_precomputed()</code> le relit et <code>restore_regeneration()</code> ré-attache les colonnes R7 par <code>ug_id</code> (jointure pure, aucun recalcul), comme les autres couches.</p>
+</div>
+<div class="section level4">
+<h4 id="added--infobulle--i--sur-le-radio--forçage-météo--regénération-0-106-11">Added — infobulle « i » sur le radio « Forçage météo » (reGénération)<a class="anchor" aria-label="anchor" href="#added--infobulle--i--sur-le-radio--for%C3%A7age-m%C3%A9t%C3%A9o--reg%C3%A9n%C3%A9ration-0-106-11"></a></h4>
+<p>Le radio Forçage (SAFRAN / ERA5-Land) était le seul de la sidebar sans aide. Une infobulle explique la différence de précision : SAFRAN (réanalyse Météo-France, France seule, ETP fournie, sans clé) vs ERA5-Land (réanalyse globale, ETP recalculée, clé CDS). Brief 035 §7.</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.10" id="nemetonshiny-010610-2026-07-15">nemetonshiny 0.106.10 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010610-2026-07-15"></a></h2>
