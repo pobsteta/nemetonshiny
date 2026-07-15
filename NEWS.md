@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.10 (2026-07-15)
+
 ### Changed — moteur reGénération plafonné en mémoire (anti-OOM, brief 035)
 
 Le moteur microclimf+BILJOU tournait dans un worker `future::multisession` **nu**,
