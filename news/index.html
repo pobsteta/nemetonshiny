@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.9.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,14 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.106.10" id="nemetonshiny-010610-2026-07-15">nemetonshiny 0.106.10 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010610-2026-07-15"></a></h2>
+<div class="section level4">
+<h4 id="changed--moteur-regénération-plafonné-en-mémoire-anti-oom-brief-0-106-10">Changed — moteur reGénération plafonné en mémoire (anti-OOM, brief 035)<a class="anchor" aria-label="anchor" href="#changed--moteur-reg%C3%A9n%C3%A9ration-plafonn%C3%A9-en-m%C3%A9moire-anti-oom-brief-0-106-10"></a></h4>
+<p>Le moteur microclimf+BILJOU tournait dans un worker <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> <strong>nu</strong>, dans le scope de l’app : un pic mémoire postérieur au run pouvait faire tuer RStudio par <code>systemd-oomd</code> (incident 2026-07-15, projet Reconfort). Le worker délègue désormais l’exécution à <code><a href="https://pobsteta.github.io/nemeton/reference/run_memory_capped.html" class="external-link">nemeton::run_memory_capped()</a></code>, qui isole le calcul lourd dans un <strong>enfant sous cgroup plafonné</strong> (même mécanisme que FORDEAD, spec 008). L’async UI et le suivi de progression (canal disque, poll 1 s) sont inchangés.</p>
+<p><strong>Garde de capacité</strong> : le chemin plafonné ne s’active que si le <code>nemeton</code> installé expose la version généralisée de <code>run_memory_capped()</code> (arguments <code>package=</code>/<code>options=</code>, requiert le prérequis cœur du brief, ≥ 0.158.0). Tant que ce n’est pas le cas, repli propre sur le chemin actuel — l’app ne casse pas sur un cœur antérieur, et le plafonnement s’active automatiquement dès que le cœur le fournit. Flag <code>nemetonshiny.regen_capped</code> (TRUE par défaut ; FALSE force le repli, utile en dev quand la lib installée est en retard).</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.9" id="nemetonshiny-01069-2026-07-15">nemetonshiny 0.106.9 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01069-2026-07-15"></a></h2>

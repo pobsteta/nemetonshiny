@@ -2,6 +2,29 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.106.10 (2026-07-15)
+
+#### Changed — moteur reGénération plafonné en mémoire (anti-OOM, brief 035)
+
+Le moteur microclimf+BILJOU tournait dans un worker
+[`future::multisession`](https://future.futureverse.org/reference/multisession.html)
+**nu**, dans le scope de l’app : un pic mémoire postérieur au run
+pouvait faire tuer RStudio par `systemd-oomd` (incident 2026-07-15,
+projet Reconfort). Le worker délègue désormais l’exécution à
+[`nemeton::run_memory_capped()`](https://pobsteta.github.io/nemeton/reference/run_memory_capped.html),
+qui isole le calcul lourd dans un **enfant sous cgroup plafonné** (même
+mécanisme que FORDEAD, spec 008). L’async UI et le suivi de progression
+(canal disque, poll 1 s) sont inchangés.
+
+**Garde de capacité** : le chemin plafonné ne s’active que si le
+`nemeton` installé expose la version généralisée de
+`run_memory_capped()` (arguments `package=`/`options=`, requiert le
+prérequis cœur du brief, ≥ 0.158.0). Tant que ce n’est pas le cas, repli
+propre sur le chemin actuel — l’app ne casse pas sur un cœur antérieur,
+et le plafonnement s’active automatiquement dès que le cœur le fournit.
+Flag `nemetonshiny.regen_capped` (TRUE par défaut ; FALSE force le
+repli, utile en dev quand la lib installée est en retard).
+
 ## nemetonshiny 0.106.9 (2026-07-15)
 
 #### Added — bilan persistant sous le bouton « Risque de gel (meteoland) »
