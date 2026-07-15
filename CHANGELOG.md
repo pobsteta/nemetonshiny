@@ -502,7 +502,7 @@ the concise, categorised trail.
 
 - Test SUFOSAT (`test-sufosat-t3.R`) rendu hermétique : fournit des clés
   Theia factices
-  ([`withr::local_envvar`](https://withr.r-lib.org/reference/with_envvar.html))
+  ([`withr::local_envvar`](https://rdrr.io/pkg/withr/man/with_envvar.html))
   pour franchir le garde `theia_api_key_configured()` de
   `build_sufosat_layer()`, qui retournait `NULL` en CI (aucune clé
   `TLD_*`) avant d’atteindre l’I/O mockée. Aucun réseau. Fait passer
@@ -514,7 +514,7 @@ the concise, categorised trail.
 
 - Tests moteur reGénération (`test-regeneration_engine.R`) rendus
   robustes à la locale : chaque test force la langue app en FR
-  ([`withr::local_options`](https://withr.r-lib.org/reference/with_options.html))
+  ([`withr::local_options`](https://rdrr.io/pkg/withr/man/with_options.html))
   pour ne plus dépendre de l’ordre d’exécution (une suite antérieure
   pouvait laisser `nemeton.app_options` en `"en"`), supprimant 6 faux
   négatifs en CI. Aucun changement de code produit.

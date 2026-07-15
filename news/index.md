@@ -1097,7 +1097,7 @@ toute la variabilité vient du sol et du LAI qu’on lui passe.
   configurée. Sans clés (CI), le moteur ne partait pas — faux négatif,
   jamais un vrai appel réseau (`load_theia_source` est mocké).
 - Le test fournit désormais des clés Theia **factices**
-  ([`withr::local_envvar`](https://withr.r-lib.org/reference/with_envvar.html))
+  ([`withr::local_envvar`](https://rdrr.io/pkg/withr/man/with_envvar.html))
   pour franchir le garde ; il reste 100 % hermétique (toute l’I/O Theia
   mockée, cache en tempdir, aucun réseau). **R-CMD-check passe de FAIL 7
   à FAIL 0** (PASS 8899) — la suite est enfin entièrement verte en CI.
@@ -1112,7 +1112,7 @@ toute la variabilité vient du sol et du LAI qu’on lui passe.
   laisser `nemeton.app_options` en `"en"` → le moteur émettait des
   warnings/ntfy EN et 6 tests échouaient (faux négatif, sans lien avec
   le code produit). Chaque test force désormais la langue FR localement
-  ([`withr::local_options`](https://withr.r-lib.org/reference/with_options.html)),
+  ([`withr::local_options`](https://rdrr.io/pkg/withr/man/with_options.html)),
   les rendant déterministes.
 - Vérifié **FAIL 0 / PASS 73** sous locale EN forcée. Aucun changement
   de code produit. (Le R-CMD-check global reste bloqué par

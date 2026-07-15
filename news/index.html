@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.16</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.16.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -520,7 +520,7 @@
 <h4 id="fixed--r-cmd-check-vert--test-sufosat-hermétique-0-100-13">Fixed — R-CMD-check vert : test SUFOSAT hermétique<a class="anchor" aria-label="anchor" href="#fixed--r-cmd-check-vert--test-sufosat-herm%C3%A9tique-0-100-13"></a></h4>
 <ul><li>
 <code>test-sufosat-t3.R</code> (« build_sufosat_layer fetches via Theia, caches… ») échouait en CI sur 7 assertions : <code>build_sufosat_layer()</code> garde en amont sur <code>theia_api_key_configured()</code> (clés <code>TLD_ACCESS_KEY</code>/<code>TLD_SECRET_KEY</code> ou fichier <code>.apikey</code>) et retourne <code>NULL</code> <strong>avant</strong> d’atteindre l’I/O mockée quand aucune clé n’est configurée. Sans clés (CI), le moteur ne partait pas — faux négatif, jamais un vrai appel réseau (<code>load_theia_source</code> est mocké).</li>
-<li>Le test fournit désormais des clés Theia <strong>factices</strong> (<code><a href="https://withr.r-lib.org/reference/with_envvar.html" class="external-link">withr::local_envvar</a></code>) pour franchir le garde ; il reste 100 % hermétique (toute l’I/O Theia mockée, cache en tempdir, aucun réseau). <strong>R-CMD-check passe de FAIL 7 à FAIL 0</strong> (PASS 8899) — la suite est enfin entièrement verte en CI.</li>
+<li>Le test fournit désormais des clés Theia <strong>factices</strong> (<code><a href="https://rdrr.io/pkg/withr/man/with_envvar.html" class="external-link">withr::local_envvar</a></code>) pour franchir le garde ; il reste 100 % hermétique (toute l’I/O Theia mockée, cache en tempdir, aucun réseau). <strong>R-CMD-check passe de FAIL 7 à FAIL 0</strong> (PASS 8899) — la suite est enfin entièrement verte en CI.</li>
 </ul></div>
 </div>
     <div class="section level2">
@@ -528,7 +528,7 @@
 <div class="section level4">
 <h4 id="fixed--tests-moteur-regénération--robustesse-à-la-locale-0-100-12">Fixed — Tests moteur reGénération : robustesse à la locale<a class="anchor" aria-label="anchor" href="#fixed--tests-moteur-reg%C3%A9n%C3%A9ration--robustesse-%C3%A0-la-locale-0-100-12"></a></h4>
 <ul><li>
-<code>test-regeneration_engine.R</code> comparait la sortie i18n du moteur (résolue via <code>get_app_options()$language</code>) à des chaînes <strong>FR codées en dur</strong>. Selon l’ordre d’exécution, une suite antérieure pouvait laisser <code>nemeton.app_options</code> en <code>"en"</code> → le moteur émettait des warnings/ntfy EN et 6 tests échouaient (faux négatif, sans lien avec le code produit). Chaque test force désormais la langue FR localement (<code><a href="https://withr.r-lib.org/reference/with_options.html" class="external-link">withr::local_options</a></code>), les rendant déterministes.</li>
+<code>test-regeneration_engine.R</code> comparait la sortie i18n du moteur (résolue via <code>get_app_options()$language</code>) à des chaînes <strong>FR codées en dur</strong>. Selon l’ordre d’exécution, une suite antérieure pouvait laisser <code>nemeton.app_options</code> en <code>"en"</code> → le moteur émettait des warnings/ntfy EN et 6 tests échouaient (faux négatif, sans lien avec le code produit). Chaque test force désormais la langue FR localement (<code><a href="https://rdrr.io/pkg/withr/man/with_options.html" class="external-link">withr::local_options</a></code>), les rendant déterministes.</li>
 <li>Vérifié <strong>FAIL 0 / PASS 73</strong> sous locale EN forcée. Aucun changement de code produit. (Le R-CMD-check global reste bloqué par <code>test-sufosat-t3.R</code>, tests Theia réseau-dépendants hors sandbox CI — chantier distinct.)</li>
 </ul></div>
 </div>

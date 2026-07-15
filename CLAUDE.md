@@ -370,7 +370,7 @@ un fond pour des raisons esthétiques :
 
 - `withr::with_envvar(c(...))` pour neutraliser les vars d’env DB /
   OAuth dans les tests.
-- [`withr::with_tempdir()`](https://withr.r-lib.org/reference/with_tempfile.html)
+- [`withr::with_tempdir()`](https://rdrr.io/pkg/withr/man/with_tempfile.html)
   pour les fichiers temporaires (sauvegardes projet, exports).
 - Fixtures projet : `tests/testthat/fixtures/`.
 

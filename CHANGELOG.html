@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.16</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.16.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -357,14 +357,14 @@
 <h2 id="id_010013---2026-07-08">[0.100.13] - 2026-07-08<a class="anchor" aria-label="anchor" href="#id_010013---2026-07-08"></a></h2>
 <div class="section level3">
 <h3 id="fixed-15">Fixed<a class="anchor" aria-label="anchor" href="#fixed-15"></a></h3>
-<ul><li>Test SUFOSAT (<code>test-sufosat-t3.R</code>) rendu hermétique : fournit des clés Theia factices (<code><a href="https://withr.r-lib.org/reference/with_envvar.html" class="external-link">withr::local_envvar</a></code>) pour franchir le garde <code>theia_api_key_configured()</code> de <code>build_sufosat_layer()</code>, qui retournait <code>NULL</code> en CI (aucune clé <code>TLD_*</code>) avant d’atteindre l’I/O mockée. Aucun réseau. Fait passer R-CMD-check de FAIL 7 à <strong>FAIL 0</strong> — suite entièrement verte en CI.</li>
+<ul><li>Test SUFOSAT (<code>test-sufosat-t3.R</code>) rendu hermétique : fournit des clés Theia factices (<code><a href="https://rdrr.io/pkg/withr/man/with_envvar.html" class="external-link">withr::local_envvar</a></code>) pour franchir le garde <code>theia_api_key_configured()</code> de <code>build_sufosat_layer()</code>, qui retournait <code>NULL</code> en CI (aucune clé <code>TLD_*</code>) avant d’atteindre l’I/O mockée. Aucun réseau. Fait passer R-CMD-check de FAIL 7 à <strong>FAIL 0</strong> — suite entièrement verte en CI.</li>
 </ul></div>
 </div>
 <div class="section level2">
 <h2 id="id_010012---2026-07-08">[0.100.12] - 2026-07-08<a class="anchor" aria-label="anchor" href="#id_010012---2026-07-08"></a></h2>
 <div class="section level3">
 <h3 id="fixed-16">Fixed<a class="anchor" aria-label="anchor" href="#fixed-16"></a></h3>
-<ul><li>Tests moteur reGénération (<code>test-regeneration_engine.R</code>) rendus robustes à la locale : chaque test force la langue app en FR (<code><a href="https://withr.r-lib.org/reference/with_options.html" class="external-link">withr::local_options</a></code>) pour ne plus dépendre de l’ordre d’exécution (une suite antérieure pouvait laisser <code>nemeton.app_options</code> en <code>"en"</code>), supprimant 6 faux négatifs en CI. Aucun changement de code produit.</li>
+<ul><li>Tests moteur reGénération (<code>test-regeneration_engine.R</code>) rendus robustes à la locale : chaque test force la langue app en FR (<code><a href="https://rdrr.io/pkg/withr/man/with_options.html" class="external-link">withr::local_options</a></code>) pour ne plus dépendre de l’ordre d’exécution (une suite antérieure pouvait laisser <code>nemeton.app_options</code> en <code>"en"</code>), supprimant 6 faux négatifs en CI. Aucun changement de code produit.</li>
 </ul></div>
 </div>
 <div class="section level2">
