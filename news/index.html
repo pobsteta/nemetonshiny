@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.14.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.106.15" id="nemetonshiny-010615-2026-07-15">nemetonshiny 0.106.15 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010615-2026-07-15"></a></h2>
+<div class="section level4">
+<h4 id="changed--légende-bivariée--bornes-daxes--plage-réellement-observée-0-106-15">Changed — légende bivariée : bornes d’axes = plage réellement observée<a class="anchor" aria-label="anchor" href="#changed--l%C3%A9gende-bivari%C3%A9e--bornes-daxes--plage-r%C3%A9ellement-observ%C3%A9e-0-106-15"></a></h4>
+<p>Les min/max des axes de la légende bivariée affichent désormais la plage <strong>réellement observée</strong> sur la zone (quantiles des rasters T°max / précipitations downscalés, <code>meta$tx</code>/<code>meta$rr</code>) au lieu des seuils fixes de classification. Le minimum est repoussé un peu avant 0 quand toutes les tendances sont du même signe, pour que la <strong>ligne 0 en pointillé blanc reste visible</strong> ; sa position est recalculée sur cette plage observée. Repli sur les seuils cœur si la plage observée est absente (vieux cache).</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.14" id="nemetonshiny-010614-2026-07-15">nemetonshiny 0.106.14 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010614-2026-07-15"></a></h2>

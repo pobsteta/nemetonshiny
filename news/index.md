@@ -2,6 +2,19 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.106.15 (2026-07-15)
+
+#### Changed — légende bivariée : bornes d’axes = plage réellement observée
+
+Les min/max des axes de la légende bivariée affichent désormais la plage
+**réellement observée** sur la zone (quantiles des rasters T°max /
+précipitations downscalés, `meta$tx`/`meta$rr`) au lieu des seuils fixes
+de classification. Le minimum est repoussé un peu avant 0 quand toutes
+les tendances sont du même signe, pour que la **ligne 0 en pointillé
+blanc reste visible** ; sa position est recalculée sur cette plage
+observée. Repli sur les seuils cœur si la plage observée est absente
+(vieux cache).
+
 ## nemetonshiny 0.106.14 (2026-07-15)
 
 #### Added — légende bivariée E-OBS : bornes des axes + lignes 0 en pointillé
