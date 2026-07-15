@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.8 (2026-07-15)
+
 ### Changed — grisage instantané des boutons de calcul (reGénération)
 
 Le verrou d'exclusion des calculs grisait les autres boutons seulement après un
