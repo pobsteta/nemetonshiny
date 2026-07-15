@@ -43,11 +43,20 @@ bivariate_palette_default <- function() {
 #'   length when `NULL`.
 #' @return An `htmltools` tag.
 #' @noRd
+#' @param zero Optional `list(tmax=, precip=)` — fractional position (in `[0,1]`,
+#'   mesured from the LOW end) of the no-change (0) line on each axis, from core
+#'   `meta$palette$zero`. Drawn as a white dashed line across the grid.
+#' @param x_range,y_range Optional numeric of the horizontal (precip) / vertical
+#'   (temperature) axis values, e.g. core `meta$breaks$precip` / `meta$breaks$tmax`.
+#'   Their min/max annotate the axis ends.
 bivariate_legend_html <- function(palette = NULL,
                                   axis_x = "Précipitations",
                                   axis_y = "T°max",
                                   title = NULL,
-                                  ncol = NULL) {
+                                  ncol = NULL,
+                                  zero = NULL,
+                                  x_range = NULL,
+                                  y_range = NULL) {
   pal <- palette %||% bivariate_palette_default()
   # N = côté de la grille. Priorité au `ncol` fourni par le cœur ; sinon racine
   # carrée du nombre de couleurs (25 -> 5, 9 -> 3). Repli 3 si indéterminable.
@@ -56,6 +65,7 @@ bivariate_legend_html <- function(palette = NULL,
   if (length(n) != 1L || is.na(n) || n < 1L) n <- 3L
   # Cellules plus petites au-delà de 3×3 pour garder une légende compacte.
   px <- if (n > 3L) 16L else 20L
+  W <- n * px; H <- n * px
   cell <- function(cls) {
     col <- pal[[as.character(cls)]] %||% "#cccccc"
     htmltools::tags$div(
@@ -72,6 +82,53 @@ bivariate_legend_html <- function(palette = NULL,
       lapply(seq_len(n), function(rr) cell((rt - 1L) * n + rr)))
   })
 
+  # Format court des valeurs d'axe (3 chiffres significatifs).
+  fmtv <- function(v) { v <- suppressWarnings(as.numeric(v)); v <- v[is.finite(v)]
+    if (!length(v)) "" else format(signif(v, 3), trim = TRUE) }
+  frac <- function(z, k) { if (is.null(z)) return(NA_real_)
+    v <- suppressWarnings(as.numeric(z[[k]])); if (length(v) != 1L) NA_real_ else v }
+
+  # Lignes « zéro » (pas de changement) en pointillé blanc, position fractionnaire
+  # fournie par le cœur (meta$palette$zero), mesurée depuis l'extrémité BASSE :
+  # rr croît vers la droite (gauche = bas), tx croît vers le haut (bas = bas).
+  zp <- frac(zero, "precip"); zt <- frac(zero, "tmax")
+  overlay <- list()
+  if (is.finite(zp)) overlay <- c(overlay, list(htmltools::tags$div(
+    style = sprintf(paste0("position:absolute;top:0;height:%dpx;left:%.1fpx;",
+      "border-left:1.5px dashed #fff;pointer-events:none;"), H, zp * W))))
+  if (is.finite(zt)) overlay <- c(overlay, list(htmltools::tags$div(
+    style = sprintf(paste0("position:absolute;left:0;width:%dpx;bottom:%.1fpx;",
+      "border-top:1.5px dashed #fff;pointer-events:none;"), W, zt * H))))
+
+  grid_box <- htmltools::tags$div(
+    style = sprintf("position:relative;width:%dpx;height:%dpx;", W, H),
+    htmltools::tags$div(style = "display:flex;flex-direction:column;", grid_rows),
+    overlay)
+
+  # Axe Y (température) : max en haut / label pivoté / min en bas, hauteur = grille.
+  has_y <- any(is.finite(suppressWarnings(as.numeric(y_range))))
+  y_col <- htmltools::tags$div(
+    style = sprintf(paste0("display:flex;flex-direction:column;height:%dpx;",
+      "align-items:flex-end;margin-right:3px;font-size:9px;%s"),
+      H, if (has_y) "justify-content:space-between;" else "justify-content:center;"),
+    if (has_y) htmltools::tags$div(fmtv(max(as.numeric(y_range), na.rm = TRUE))),
+    htmltools::tags$div(
+      style = paste0("writing-mode:vertical-rl;transform:rotate(180deg);",
+                     "white-space:nowrap;font-size:11px;"),
+      paste0("↑ ", axis_y)),
+    if (has_y) htmltools::tags$div(fmtv(min(as.numeric(y_range), na.rm = TRUE))))
+
+  # Axe X (précipitations) sous la grille (largeur = grille) : min / label / max.
+  has_x <- any(is.finite(suppressWarnings(as.numeric(x_range))))
+  x_row <- htmltools::tags$div(
+    style = sprintf(paste0("display:flex;align-items:center;width:%dpx;margin-top:3px;",
+      "font-size:9px;%s"), W,
+      if (has_x) "justify-content:space-between;" else "justify-content:center;"),
+    if (has_x) htmltools::tags$span(fmtv(min(as.numeric(x_range), na.rm = TRUE))),
+    htmltools::tags$span(style = "font-size:11px;white-space:nowrap;",
+                         paste0(axis_x, " →")),
+    if (has_x) htmltools::tags$span(fmtv(max(as.numeric(x_range), na.rm = TRUE))))
+
   htmltools::tags$div(
     class = "nmt-bivariate-legend",
     style = paste0("background:rgba(255,255,255,.85);padding:6px 8px;",
@@ -80,17 +137,8 @@ bivariate_legend_html <- function(palette = NULL,
     if (!is.null(title)) htmltools::tags$div(
       style = "font-weight:600;margin-bottom:4px;", title),
     htmltools::tags$div(
-      style = "display:flex;align-items:center;",
-      # Axe Y (température) : flèche verticale + label pivoté.
+      style = "display:flex;align-items:stretch;",
+      y_col,
       htmltools::tags$div(
-        style = paste0("writing-mode:vertical-rl;transform:rotate(180deg);",
-                       "text-align:center;margin-right:3px;white-space:nowrap;"),
-        paste0("↑ ", axis_y)),
-      htmltools::tags$div(
-        style = "display:flex;flex-direction:column;", grid_rows)),
-    # Axe X (précipitations) sous la grille.
-    htmltools::tags$div(
-      style = "text-align:center;margin-top:3px;margin-left:18px;white-space:nowrap;",
-      paste0(axis_x, " →"))
-  )
+        style = "display:flex;flex-direction:column;", grid_box, x_row)))
 }

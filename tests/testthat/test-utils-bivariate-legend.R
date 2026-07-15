@@ -44,3 +44,29 @@ test_that("bivariate_legend_html déduit N de la longueur de palette sans ncol",
   html <- as.character(nemetonshiny:::bivariate_legend_html(palette = pal))  # ncol NULL
   expect_equal(lengths(regmatches(html, gregexpr("width:16px;height:16px", html)))[1], 25L)
 })
+
+test_that("bivariate_legend_html trace les lignes 0 (pointillé blanc) + min/max des axes", {
+  skip_if_not_installed("htmltools")
+  pal <- setNames(sprintf("#%06x", seq_len(25) * 0x0A0A0AL), as.character(1:25))
+  html <- as.character(nemetonshiny:::bivariate_legend_html(
+    palette = pal, ncol = 5,
+    zero = list(tmax = 0.2, precip = 0.6),   # fractions du cœur
+    x_range = c(-80, -40, 0, 40),            # seuils précip
+    y_range = c(0, 0.4, 0.8, 1.2)))          # seuils T°max
+  # Deux lignes 0 en pointillé blanc.
+  expect_equal(lengths(regmatches(html, gregexpr("dashed #fff", html)))[1], 2L)
+  # rr=0 (vertical) à 0.6 × 80px = 48px ; tx=0 (horizontal) à 0.2 × 80px = 16px.
+  expect_match(html, "left:48.0px", fixed = TRUE)
+  expect_match(html, "bottom:16.0px", fixed = TRUE)
+  # Min/max des deux axes présents.
+  expect_match(html, ">-80<"); expect_match(html, ">40<")
+  expect_match(html, ">0<");   expect_match(html, ">1.2<")
+})
+
+test_that("bivariate_legend_html reste propre sans zero/ranges (repli)", {
+  skip_if_not_installed("htmltools")
+  # Sans zero ni ranges : aucune ligne 0, aucune borne — comme avant.
+  html <- as.character(nemetonshiny:::bivariate_legend_html(title = "X"))
+  expect_false(grepl("dashed #fff", html))
+  expect_equal(lengths(regmatches(html, gregexpr("width:20px;height:20px", html)))[1], 9L)
+})
