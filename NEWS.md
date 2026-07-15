@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.9 (2026-07-15)
+
 ### Added — bilan persistant sous le bouton « Risque de gel (meteoland) »
 
 En fin de calcul du risque de gel tardif (R7), un message reste affiché sous le
