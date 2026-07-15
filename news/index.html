@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.7.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.106.8" id="nemetonshiny-01068-2026-07-15">nemetonshiny 0.106.8 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01068-2026-07-15"></a></h2>
+<div class="section level4">
+<h4 id="changed--grisage-instantané-des-boutons-de-calcul-regénération-0-106-8">Changed — grisage instantané des boutons de calcul (reGénération)<a class="anchor" aria-label="anchor" href="#changed--grisage-instantan%C3%A9-des-boutons-de-calcul-reg%C3%A9n%C3%A9ration-0-106-8"></a></h4>
+<p>Le verrou d’exclusion des calculs grisait les autres boutons seulement après un aller-retour serveur : pendant cette fenêtre, ils paraissaient encore cliquables (sans risque — la garde serveur <code>deny_if_busy()</code> bloquait déjà tout second run). Le grisage est désormais <strong>instantané côté client</strong> : un clic sur n’importe quel bouton de calcul (<code>.regen-calc-btn</code>) désactive tous les autres sans attendre le serveur (JS délégué, sans dépendance <code>shinyjs</code>). Le serveur reste l’autorité — un compteur <code>click_tick</code> force l’observer de verrou à ré-activer les boutons dès que le calcul se termine <strong>ou</strong> qu’un clic n’a finalement rien lancé (pas de projet, prérequis manquants…). Le bouton « gel » n’est plus ré-activé à tort quand meteoland est absent.</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.7" id="nemetonshiny-01067-2026-07-15">nemetonshiny 0.106.7 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01067-2026-07-15"></a></h2>

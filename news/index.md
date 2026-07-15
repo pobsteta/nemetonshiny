@@ -2,6 +2,22 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.106.8 (2026-07-15)
+
+#### Changed — grisage instantané des boutons de calcul (reGénération)
+
+Le verrou d’exclusion des calculs grisait les autres boutons seulement
+après un aller-retour serveur : pendant cette fenêtre, ils paraissaient
+encore cliquables (sans risque — la garde serveur `deny_if_busy()`
+bloquait déjà tout second run). Le grisage est désormais **instantané
+côté client** : un clic sur n’importe quel bouton de calcul
+(`.regen-calc-btn`) désactive tous les autres sans attendre le serveur
+(JS délégué, sans dépendance `shinyjs`). Le serveur reste l’autorité —
+un compteur `click_tick` force l’observer de verrou à ré-activer les
+boutons dès que le calcul se termine **ou** qu’un clic n’a finalement
+rien lancé (pas de projet, prérequis manquants…). Le bouton « gel »
+n’est plus ré-activé à tort quand meteoland est absent.
+
 ## nemetonshiny 0.106.7 (2026-07-15)
 
 #### Fixed — verrou d’exclusion mutuelle des calculs (onglet reGénération)
