@@ -328,7 +328,8 @@ mod_regeneration_ui <- function(id) {
       # L'« Essence cible » vit désormais à droite de la carte (sous « Couche
       # affichée ») car elle met à jour la choroplèthe en direct ; le « Buffer
       # contexte régional » vit dans l'onglet carte « Contexte régional (E-OBS) ».
-      shiny::radioButtons(ns("forcing"), i18n$t("regen_forcing"),
+      shiny::radioButtons(ns("forcing"),
+        label_tt(i18n$t("regen_forcing"), i18n$t("regen_forcing_tip")),
         choices = stats::setNames(c("safran", "era5"),
           c(i18n$t("regen_forcing_safran"), i18n$t("regen_forcing_era5"))),
         selected = "safran", inline = TRUE),

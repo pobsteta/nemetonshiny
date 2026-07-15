@@ -4122,6 +4122,24 @@ TRANSLATIONS <- list(
   regen_forcing = list(fr = "For\u00e7age m\u00e9t\u00e9o", en = "Weather forcing"),
   regen_forcing_safran = list(fr = "SAFRAN (d\u00e9faut)", en = "SAFRAN (default)"),
   regen_forcing_era5 = list(fr = "ERA5-Land", en = "ERA5-Land"),
+  # Infobulle \u00ab i \u00bb du radio For\u00e7age (brief 035 \u00a77) : contenu v\u00e9rifi\u00e9 contre
+  # nemeton::load_biljou_forcing (SAFRAN = OGC API-EDR G\u00e9oSAS, France seule, ETP
+  # fournie, sans cl\u00e9 ; ERA5-Land = mcera5 global, ETP Penman recalcul\u00e9e, cl\u00e9 CDS).
+  regen_forcing_tip = list(
+    fr = paste0(
+      "SAFRAN (d\u00e9faut) : r\u00e9analyse M\u00e9t\u00e9o-France assimilant le r\u00e9seau ",
+      "d'observation fran\u00e7ais, journali\u00e8re, ETP officielle fournie, sans cl\u00e9. ",
+      "France uniquement \u2014 le plus pr\u00e9cis en m\u00e9tropole, y compris en montagne. ",
+      "ERA5-Land : r\u00e9analyse globale ECMWF, non recal\u00e9e sur les stations ",
+      "fran\u00e7aises, ETP reconstruite, cl\u00e9 CDS requise. \u00c0 r\u00e9server aux zones hors ",
+      "France ou si SAFRAN est indisponible."),
+    en = paste0(
+      "SAFRAN (default): M\u00e9t\u00e9o-France reanalysis assimilating the French ",
+      "observation network, daily, official PET provided, no key. France only \u2014 ",
+      "most accurate in mainland France, including mountains. ",
+      "ERA5-Land: global ECMWF reanalysis, not bias-corrected to French ",
+      "stations, PET recomputed, CDS key required. Use only outside France or ",
+      "when SAFRAN is unavailable.")),
   regen_resolution = list(fr = "R\u00e9solution microclimat", en = "Microclimate resolution"),
   regen_res_2m = list(fr = "2 m (d\u00e9faut)", en = "2 m (default)"),
   regen_res_5m = list(fr = "5 m", en = "5 m"),
