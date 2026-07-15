@@ -464,7 +464,9 @@ load_regeneration_precomputed <- function(project_path) {
     micro_canicule = read_ras("micro_canicule"),
     dem            = dem,
     eobs_tx        = read_ras("eobs_tx"),
-    eobs_rr        = read_ras("eobs_rr")
+    eobs_rr        = read_ras("eobs_rr"),
+    # Résultat R7 (gelées tardives) par UGF, écrit par run_regeneration_frost.
+    r7             = read_vec("r7")
   )
   # Drop absent entries so the run's `%||% list()` / is.null checks are clean.
   pc[!vapply(pc, is.null, logical(1))]
@@ -1071,6 +1073,24 @@ run_regeneration_frost <- function(units, project_path, cfg = list()) {
       units
     })
   status <- if ("r7_status" %in% names(units)) as.character(units$r7_status[1]) else NA_character_
+
+  # Persister le résultat R7 par UGF pour la restauration à la réouverture du
+  # projet (symétrique de biljou.gpkg / sensibilite.gpkg). Sans ça, la couche
+  # « Gelées tardives » disparaissait entre deux sessions : restore_regeneration()
+  # ne ré-attachait que l'exposition et le bilan hydrique. On n'écrit QUE si R7 a
+  # réellement été calculé (au moins une valeur finie) — un skip (tout NA) n'a
+  # rien à restaurer.
+  finite_r7 <- "r7_gel_days" %in% names(units) &&
+    any(is.finite(suppressWarnings(as.numeric(units$r7_gel_days))))
+  if (!is.null(project_path) && finite_r7) {
+    out_dir <- file.path(project_path, "cache", "regeneration")
+    if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+    tryCatch(
+      sf::st_write(units, file.path(out_dir, "r7.gpkg"),
+                   delete_dsn = TRUE, quiet = TRUE),
+      error = function(e) NULL)
+  }
+
   list(units = units, r7_status = status, tmin_available = !is.null(tmin))
 }
 
@@ -1119,7 +1139,33 @@ restore_regeneration <- function(units, precomputed = NULL) {
   # Sans indice, il n'y a ni choroplèthe ni table : ne rien restaurer plutôt que
   # d'afficher une carte vide.
   if (!"indice_priorite_regen" %in% names(units)) return(NULL)
+
+  # Ré-attacher R7 (gelées tardives) si un run gel a été persisté (r7.gpkg) :
+  # jointure pure par UGF, aucun recalcul. Restaure la couche « Gelées tardives »
+  # à l'ouverture, comme l'exposition et le bilan hydrique.
+  if (!is.null(pc$r7)) units <- .regen_attach_r7(units, pc$r7)
+
   list(units = units, warnings = character(0))
+}
+
+# Ré-attache les colonnes R7 (R7 / r7_gel_days / r7_status) d'un `r7.gpkg` restauré
+# sur les UGF courants. Jointure par `ug_id` si disponible des deux côtés ; repli
+# sur l'ordre des lignes si les effectifs coïncident. Ne clobbere jamais une
+# colonne déjà présente hors R7.
+.regen_attach_r7 <- function(units, r7_sf) {
+  if (!inherits(units, "sf") || !inherits(r7_sf, "sf")) return(units)
+  cols <- intersect(c("R7", "r7_gel_days", "r7_status"), names(r7_sf))
+  if (!length(cols)) return(units)
+  src <- sf::st_drop_geometry(r7_sf)
+  idx <- if ("ug_id" %in% names(units) && "ug_id" %in% names(src)) {
+    match(units$ug_id, src$ug_id)
+  } else if (nrow(src) == nrow(units)) {
+    seq_len(nrow(units))            # repli : même ordre (mêmes UGF projet)
+  } else {
+    return(units)                   # incohérent : ne rien attacher
+  }
+  for (col in cols) units[[col]] <- src[[col]][idx]
+  units
 }
 
 #' Detect reference years from E-OBS for an AOI (spec 027 L2 / 034)

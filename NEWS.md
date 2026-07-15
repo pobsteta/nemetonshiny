@@ -1,5 +1,22 @@
 # nemetonshiny (development version)
 
+### Fixed — la couche « Gelées tardives » (R7) persiste entre deux sessions
+
+À la réouverture d'un projet, la carte « Gelées tardives » retombait sur le
+contour d'UGF nu : `restore_regeneration()` ne ré-attachait que l'exposition
+microclimatique et le bilan hydrique, jamais R7 (calculé seulement en mémoire par
+un run « Risque de gel »). `run_regeneration_frost()` persiste désormais son
+résultat par UGF dans `cache/regeneration/r7.gpkg` ; `load_regeneration_precomputed()`
+le relit et `restore_regeneration()` ré-attache les colonnes R7 par `ug_id`
+(jointure pure, aucun recalcul), comme les autres couches.
+
+### Added — infobulle « i » sur le radio « Forçage météo » (reGénération)
+
+Le radio Forçage (SAFRAN / ERA5-Land) était le seul de la sidebar sans aide. Une
+infobulle explique la différence de précision : SAFRAN (réanalyse Météo-France,
+France seule, ETP fournie, sans clé) vs ERA5-Land (réanalyse globale, ETP
+recalculée, clé CDS). Brief 035 §7.
+
 # nemetonshiny 0.106.10 (2026-07-15)
 
 ### Changed — moteur reGénération plafonné en mémoire (anti-OOM, brief 035)
