@@ -965,3 +965,76 @@ test_that(".regen_soil_ewm reads the soil shape without ever throwing", {
   mismatched <- lapply(c(90, 137), .fake_soil)
   expect_true(is.na(nemetonshiny:::.regen_soil_ewm(mismatched, n = 5)$source))
 })
+
+# --- Plafond mémoire du moteur reGénération (brief 035 regen-capped) ----------
+# `.regen_run_engine_capped()` route vers le chemin capé (nemeton::run_memory_capped
+# généralisé, package=/options=) quand le cœur l'expose, sinon repli sur l'appel
+# direct dans le worker — sans casser sur un cœur antérieur.
+
+test_that(".regen_run_engine_capped uses the capped path when the core supports it", {
+  seen <- new.env(); seen$capped <- NULL; seen$direct <- 0L
+  testthat::local_mocked_bindings(
+    run_regeneration_engine = function(units, project_path, cfg) {
+      seen$direct <- seen$direct + 1L; list(canopy = "lidar", direct = TRUE)
+    },
+    .package = "nemetonshiny")
+  # Stub « cœur généralisé » : formals incluent package/options.
+  testthat::local_mocked_bindings(
+    run_memory_capped = function(fun, args = list(), package = "nemeton",
+                                 options = NULL, quiet = FALSE, ...) {
+      seen$capped <- list(fun = fun, package = package, args = args, options = options)
+      list(canopy = "lidar", capped = TRUE)
+    },
+    .package = "nemeton")
+
+  out <- nemetonshiny:::.regen_run_engine_capped(
+    units = "U", project_path = "/tmp/p", cfg = list(a = 1), app_opts = list(language = "fr"))
+
+  expect_true(isTRUE(out$capped))                       # chemin capé emprunté
+  expect_equal(seen$direct, 0L)                         # pas d'appel direct
+  expect_equal(seen$capped$fun, "run_regeneration_engine")
+  expect_equal(seen$capped$package, "nemetonshiny")
+  expect_equal(seen$capped$args$project_path, "/tmp/p")
+  expect_equal(seen$capped$options$nemeton.app_options$language, "fr")
+})
+
+test_that(".regen_run_engine_capped falls back to the direct path (flag off)", {
+  seen <- new.env(); seen$direct <- 0L; seen$capped <- 0L
+  testthat::local_mocked_bindings(
+    run_regeneration_engine = function(units, project_path, cfg) {
+      seen$direct <- seen$direct + 1L; list(direct = TRUE)
+    },
+    .package = "nemetonshiny")
+  testthat::local_mocked_bindings(
+    run_memory_capped = function(fun, args = list(), package = "nemeton",
+                                 options = NULL, quiet = FALSE, ...) {
+      seen$capped <- seen$capped + 1L; list(capped = TRUE)
+    },
+    .package = "nemeton")
+
+  withr::local_options(nemetonshiny.regen_capped = FALSE)
+  out <- nemetonshiny:::.regen_run_engine_capped("U", "/tmp/p", list(), list())
+  expect_true(isTRUE(out$direct))
+  expect_equal(seen$capped, 0L)                         # jamais le chemin capé
+  expect_equal(seen$direct, 1L)
+})
+
+test_that(".regen_run_engine_capped falls back when the core lacks package=/options=", {
+  seen <- new.env(); seen$direct <- 0L; seen$capped <- 0L
+  testthat::local_mocked_bindings(
+    run_regeneration_engine = function(units, project_path, cfg) {
+      seen$direct <- seen$direct + 1L; list(direct = TRUE)
+    },
+    .package = "nemetonshiny")
+  # Stub « ancien cœur » : SIGNATURE sans package/options → capacité absente.
+  testthat::local_mocked_bindings(
+    run_memory_capped = function(fun, args = list(), quiet = FALSE, ...) {
+      seen$capped <- seen$capped + 1L; list(capped = TRUE)
+    },
+    .package = "nemeton")
+
+  out <- nemetonshiny:::.regen_run_engine_capped("U", "/tmp/p", list(), list())
+  expect_true(isTRUE(out$direct))                       # repli sur l'appel direct
+  expect_equal(seen$capped, 0L)
+  expect_equal(seen$direct, 1L)
+})
