@@ -430,3 +430,50 @@ test_that("every calc-button click bumps click_tick (server re-sync)", {
     }
   )
 })
+
+# --- Bilan persistant sous le bouton « Risque de gel » -----------------------
+# En fin de calcul gel, un message reste affiché sous le bouton — surtout le cas
+# « aucun jour de gel tardif », qui sinon donnait l'impression d'un run sans effet.
+
+test_that("frost_status renders the persistent end-of-run summary", {
+  skip_if_not_installed("shiny")
+
+  as <- shiny::reactiveValues(current_project = NULL)
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    regeneration_species_choices = function(...) NULL,
+    .package = "nemetonshiny"
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      # uiOutput → testServer renvoie list(html=, deps=) ; extraire le HTML.
+      frost_html <- function() {
+        v <- output$frost_status
+        if (is.list(v)) as.character(v$html %||% "") else as.character(v %||% "")
+      }
+      session$setInputs(species = "")
+      # Aucun calcul lancé → aucun bilan.
+      expect_identical(frost_html(), "")
+
+      # Aucun gel détecté : message vert « rassurant ».
+      rv$frost_summary <- list(status = "none")
+      session$flushReact()
+      expect_match(frost_html(), "aucun jour de gel", ignore.case = TRUE)
+
+      # Gel détecté : médiane + étendue.
+      rv$frost_summary <- list(status = "detected",
+        stats = list(median = "2.0", min = "0.0", max = "5.0", n = 3L))
+      session$flushReact()
+      expect_match(frost_html(), "Gel tardif")
+      expect_match(frost_html(), "2.0")
+
+      # Pendant un run, pas de bilan (la notif bas-droite suffit).
+      rv$frost_running <- TRUE
+      session$flushReact()
+      expect_identical(frost_html(), "")
+    }
+  )
+})

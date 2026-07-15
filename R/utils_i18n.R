@@ -4148,6 +4148,15 @@ TRANSLATIONS <- list(
   regen_frost_unavailable = list(
     fr = "meteoland n'est pas install\u00e9 : le risque de gel (R7) est indisponible.",
     en = "meteoland is not installed: frost risk (R7) is unavailable."),
+  # Message persistant sous le bouton gel, en fin de calcul (retour UX). Le cas
+  # \u00ab aucun gel \u00bb est le plus important : sans lui, un calcul r\u00e9ussi sans g\u00e9l\u00e9e
+  # tardive semblait n'avoir rien produit.
+  regen_frost_none_detected = list(
+    fr = "Calcul termin\u00e9 : aucun jour de gel tardif d\u00e9tect\u00e9 apr\u00e8s d\u00e9bourrement.",
+    en = "Done: no late-frost day detected after budburst."),
+  regen_frost_detected_stats = list(
+    fr = "Gel tardif : m\u00e9diane %s j/an (min %s / max %s) sur %s UGF.",
+    en = "Late frost: median %s d/yr (min %s / max %s) across %s units."),
   regen_map_gel = list(fr = "Gel\u00e9es tardives (R7)", en = "Late frosts (R7)"),
   regen_map_gel_info = list(
     fr = "Nombre moyen de gel\u00e9es tardives par an apr\u00e8s d\u00e9bourrement (indicateur R7). Rouge = beaucoup de gel\u00e9es = critique.",
