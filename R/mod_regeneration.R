@@ -1620,14 +1620,16 @@ mod_regeneration_server <- function(id, app_state) {
       pal <- meta$palette %||% list()
       opts <- leaflet::gridOptions(pane = "contexteRaster")
       if (!is.null(pal$colors)) {
-        # Bivarié : classes 1-9 → colorFactor + légende bivariée 2D.
+        # Bivarié : classes 1..N*N → colorFactor + légende bivariée 2D N×N. Le
+        # cœur livre 25 classes (5×5, `ncol = 5`) ; la légende suit `pal$ncol`.
         classes <- pal$classes %||% seq_along(pal$colors)
         cmap <- leaflet::colorFactor(pal$colors, domain = classes, na.color = "transparent")
         leg <- as.character(bivariate_legend_html(
           palette = stats::setNames(pal$colors, classes),
           axis_x  = i18n$t("regen_context_axis_rr"),
           axis_y  = i18n$t("regen_context_axis_tx"),
-          title   = meta$value_label %||% i18n$t("regen_context_bivariate")))
+          title   = meta$value_label %||% i18n$t("regen_context_bivariate"),
+          ncol    = pal$ncol))
         m |>
           leaflet::addRasterImage(rast, colors = cmap, opacity = op, project = TRUE,
             group = "Contexte E-OBS", options = opts) |>

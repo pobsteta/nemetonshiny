@@ -1,16 +1,15 @@
-# Légende bivariée 2D (matrice 3×3) — pure visualisation.
+# Légende bivariée 2D (matrice N×N) — pure visualisation.
 #
-# Squelette prêt à câbler sur la carte « Contexte régional (E-OBS) » dès que le
-# cœur livrera un raster de classe bivariée (`classe_bivariee` 1..9, terciles
-# T°max × terciles précipitations) + `meta$palette_matrix` / `meta$axis_*`.
-# AUCUN classement ici (règle 1) : le classement/les bornes viennent du cœur ;
-# l'app ne fait que dessiner la grille et coder l'axe.
+# Câblée sur la carte « Contexte régional (E-OBS) ». Le cœur
+# `nemeton::eobs_downscale_bivariate()` livre le raster `classe_bivariee`
+# (1..N*N) + `meta$palette` (`colors`, `classes`, `ncol`). Il classe en 5 par axe
+# (25 classes, `ncol = 5`), comme l'IF IGN. AUCUN classement ici (règle 1) : le
+# classement/les bornes viennent du cœur ; l'app ne fait que dessiner la grille.
 #
-# Convention d'indexation (alignée sur `classe_bivariee` 1..9 du cœur) :
-#   classe = (rang_tx - 1) * 3 + rang_rr, rang ∈ {1,2,3} (1 = bas tercile).
+# Convention d'indexation (alignée sur `classe_bivariee` du cœur, N = ncol) :
+#   classe = (rang_tx - 1) * N + rang_rr, rang ∈ {1..N} (1 = classe basse).
 #   -> colonnes = précipitations (rr) croissantes vers la DROITE,
 #      lignes    = température (tx) croissante vers le HAUT.
-#   Coin critique « chaud + sec » = tx haut (3) × rr bas (1) = classe 7.
 
 # Palette bivariée par défaut (repli tant que `meta$palette_matrix` est absent).
 # Schéma « chaud+sec = rouge foncé » (critique), « frais+humide = bleu-vert ».
@@ -26,36 +25,51 @@ bivariate_palette_default <- function() {
   )
 }
 
-#' Bivariate 2D legend (3×3 grid) as an htmltools tag
+#' Bivariate 2D legend (N×N grid) as an htmltools tag
 #'
-#' Pure viz: renders a 3×3 colour matrix with two axis labels/arrows. Designed to
-#' sit in a Leaflet `addControl()` or an overlay `div` on the context map.
+#' Pure viz: renders an N×N colour matrix with two axis labels/arrows. Designed to
+#' sit in a Leaflet `addControl()` or an overlay `div` on the context map. The
+#' grid side N follows the core palette: `nemeton::eobs_downscale_bivariate()`
+#' returns 5 classes per axis (25 classes, `meta$palette$ncol = 5`). Pass that
+#' `ncol`; otherwise N is inferred from the palette length (sqrt), falling back to
+#' 3×3 for the built-in default.
 #'
-#' @param palette Named character(9) of hex colours indexed by class `"1".."9"`
-#'   (core `meta$palette_matrix`), or `NULL` for the built-in default.
+#' @param palette Named character of hex colours indexed by class `"1".."N*N"`
+#'   (core `meta$palette$colors`), or `NULL` for the built-in 3×3 default.
 #' @param axis_x Label of the horizontal axis (precipitations, low->high right).
 #' @param axis_y Label of the vertical axis (temperature, low->high up).
 #' @param title Optional legend title.
+#' @param ncol Grid side N (core `meta$palette$ncol`); inferred from the palette
+#'   length when `NULL`.
 #' @return An `htmltools` tag.
 #' @noRd
 bivariate_legend_html <- function(palette = NULL,
                                   axis_x = "Précipitations",
                                   axis_y = "T°max",
-                                  title = NULL) {
+                                  title = NULL,
+                                  ncol = NULL) {
   pal <- palette %||% bivariate_palette_default()
+  # N = côté de la grille. Priorité au `ncol` fourni par le cœur ; sinon racine
+  # carrée du nombre de couleurs (25 -> 5, 9 -> 3). Repli 3 si indéterminable.
+  n <- ncol %||% round(sqrt(length(pal)))
+  n <- as.integer(n)
+  if (length(n) != 1L || is.na(n) || n < 1L) n <- 3L
+  # Cellules plus petites au-delà de 3×3 pour garder une légende compacte.
+  px <- if (n > 3L) 16L else 20L
   cell <- function(cls) {
     col <- pal[[as.character(cls)]] %||% "#cccccc"
     htmltools::tags$div(
       style = sprintf(
-        "width:20px;height:20px;background:%s;border:1px solid rgba(0,0,0,.15);", col),
+        "width:%dpx;height:%dpx;background:%s;border:1px solid rgba(0,0,0,.15);",
+        px, px, col),
       title = paste0("classe ", cls))
   }
-  # Lignes de haut (tx fort) en bas (tx faible) ; colonnes rr croissantes à droite.
-  # Ordre d'affichage : ligne du haut = tx=3 (chaud), du bas = tx=1 (frais).
-  grid_rows <- lapply(c(3L, 2L, 1L), function(rt) {
+  # Lignes tx de haut (fort) en bas (faible) ; colonnes rr croissantes à droite.
+  # class = (rang_tx - 1) * n + rang_rr, aligné sur `classe_bivariee` du cœur.
+  grid_rows <- lapply(rev(seq_len(n)), function(rt) {
     htmltools::tags$div(
       style = "display:flex;",
-      lapply(c(1L, 2L, 3L), function(rr) cell((rt - 1L) * 3L + rr)))
+      lapply(seq_len(n), function(rr) cell((rt - 1L) * n + rr)))
   })
 
   htmltools::tags$div(

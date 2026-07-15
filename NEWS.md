@@ -1,5 +1,14 @@
 # nemetonshiny (development version)
 
+### Fixed — légende bivariée « Contexte régional (E-OBS) » en 5×5 (25 classes)
+
+La carte bivariée (T°max × précipitations) affichait déjà 25 classes — le cœur
+`eobs_downscale_bivariate()` classe en **5 par axe** (comme l'inventaire forestier
+IGN) — mais la **légende** restait figée en 3×3 (9 cases), incohérente avec le
+raster. `bivariate_legend_html()` dessine désormais une grille **N×N** pilotée par
+`meta$palette$ncol` (5), avec repli sur la racine carrée du nombre de couleurs
+puis 3×3 par défaut. Pur affichage, aucun changement de classement (cœur).
+
 # nemetonshiny 0.106.11 (2026-07-15)
 
 ### Fixed — la couche « Gelées tardives » (R7) persiste entre deux sessions
