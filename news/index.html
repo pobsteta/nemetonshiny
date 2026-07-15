@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,21 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.106.7" id="nemetonshiny-01067-2026-07-15">nemetonshiny 0.106.7 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01067-2026-07-15"></a></h2>
+<div class="section level4">
+<h4 id="fixed--verrou-dexclusion-mutuelle-des-calculs-onglet-regénération-0-106-7">Fixed — verrou d’exclusion mutuelle des calculs (onglet reGénération)<a class="anchor" aria-label="anchor" href="#fixed--verrou-dexclusion-mutuelle-des-calculs-onglet-reg%C3%A9n%C3%A9ration-0-106-7"></a></h4>
+<p>Pendant qu’un calcul lourd tournait (moteur microclimf/BILJOU, détection E-OBS, téléchargement précipitations, gel R7), les autres boutons de l’onglet reGénération restaient cliquables : <code><a href="https://rstudio.github.io/bslib/reference/bind_task_button.html" class="external-link">bslib::bind_task_button()</a></code> ne grise que le bouton <strong>propriétaire</strong> de la tâche. Un second clic lançait un worker <code>future</code> concurrent (mêmes rasters, même RAM, même <code>cache/regeneration/</code>), avec deux risques — confusion (l’app semble gelée) et corruption de <code>engine_status.json</code> écrit par deux tâches à la fois.</p>
+<ul><li>Réactif <code>busy()</code> : vrai dès qu’une tâche <strong>utilisateur</strong> tourne (<code>engine</code>, <code>eobs</code>, <code>eobs_rr</code>, <code>frost</code> ; <code>context_task</code> auto-déclenché exclu).</li>
+<li>Grisage client de tous les boutons de calcul quand <code>busy()</code> est vrai (<code>update_task_button</code> pour les task buttons — leur binding ignore <code>disabled</code>, <code>updateActionButton</code> pour les boutons classiques).</li>
+<li>Garde serveur <code>deny_if_busy()</code> en tête de chaque déclencheur (backstop robuste du grisage, contournable par double-clic / race websocket).</li>
+<li>Libellé « occupé » générique (<code>regen_busy_generic</code>) sur les 4 task buttons : un bouton grisé par ricochet n’affiche plus le libellé mensonger d’une autre tâche.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--confirmation-e-obs-persistante-sous-le-bouton--auto-e-obs--0-106-7">Fixed — confirmation E-OBS persistante sous le bouton « Auto (E-OBS) »<a class="anchor" aria-label="anchor" href="#fixed--confirmation-e-obs-persistante-sous-le-bouton--auto-e-obs--0-106-7"></a></h4>
+<p>Les années détectées (<code>regen_auto_done</code>) n’apparaissaient qu’en toast de 6 s. Elles restent désormais affichées sous le bouton une fois la détection terminée.</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.6" id="nemetonshiny-01066-2026-07-14">nemetonshiny 0.106.6 (2026-07-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01066-2026-07-14"></a></h2>
