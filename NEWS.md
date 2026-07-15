@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.12 (2026-07-15)
+
 ### Fixed — légende bivariée « Contexte régional (E-OBS) » en 5×5 (25 classes)
 
 La carte bivariée (T°max × précipitations) affichait déjà 25 classes — le cœur
