@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.16 (2026-07-15)
+
 ### Changed — légende bivariée : titre sur deux lignes
 
 Le couple de variables entre parenthèses (« T°max estivale × précipitations »)
