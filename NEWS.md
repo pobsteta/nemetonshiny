@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.13 (2026-07-15)
+
 ### Fixed — la couche gel R7 survit à un recalcul dans la même session (brief 035 §8)
 
 Après un R7 calculé (« Risque de gel »), relancer « Lancer l'analyse » ou le
