@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.7 (2026-07-15)
+
 ### Fixed — verrou d'exclusion mutuelle des calculs (onglet reGénération)
 
 Pendant qu'un calcul lourd tournait (moteur microclimf/BILJOU, détection E-OBS,
