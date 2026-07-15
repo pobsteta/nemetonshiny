@@ -1638,7 +1638,12 @@ mod_regeneration_server <- function(id, app_state) {
           axis_x  = i18n$t("regen_context_axis_rr"),
           axis_y  = i18n$t("regen_context_axis_tx"),
           title   = meta$value_label %||% i18n$t("regen_context_bivariate"),
-          ncol    = pal$ncol))
+          ncol    = pal$ncol,
+          # Lignes 0 (pas de changement) + bornes min/max des axes, du cœur :
+          # zero = position fractionnaire, breaks = seuils T°max / précip.
+          zero    = pal$zero,
+          x_range = meta$breaks$precip,
+          y_range = meta$breaks$tmax))
         m |>
           leaflet::addRasterImage(rast, colors = cmap, opacity = op, project = TRUE,
             group = "Contexte E-OBS", options = opts) |>
