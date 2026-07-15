@@ -2,6 +2,17 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.106.16 (2026-07-15)
+
+#### Changed — légende bivariée : titre sur deux lignes
+
+Le couple de variables entre parenthèses (« T°max estivale ×
+précipitations ») passe désormais sur une **seconde ligne en
+sous-titre** (petite fonte régulière) sous le titre principal « Tendance
+bivariée », pour une légende plus lisible. Le découpage se fait sur la
+dernière parenthèse du libellé cœur (`meta$value_label`) ; repli sur le
+titre seul si aucune parenthèse.
+
 ## nemetonshiny 0.106.15 (2026-07-15)
 
 #### Changed — légende bivariée : bornes d’axes = plage réellement observée
