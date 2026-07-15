@@ -477,3 +477,48 @@ test_that("frost_status renders the persistent end-of-run summary", {
     }
   )
 })
+
+# --- Brief 035 §8 : R7 (gel) survit à un recalcul dans la même session --------
+# run_regeneration()/le moteur ne produisent pas r7_gel_days (pas de tmin) et
+# écrasaient rv$result, vidant la couche « Gelées tardives » calculée avant. Le
+# report par ug_id (.regen_attach_r7) doit préserver R7 tout en rafraîchissant
+# les colonnes d'analyse.
+
+test_that("R7 (gel) survives a re-analysis via input$run", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  units <- .regen_mod_units(3)                       # ug_id 1,2,3
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj)
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    run_regeneration = function(u, cfg = list(), precomputed = NULL, ...) {
+      u$indice_priorite_regen <- 55                  # analyse rafraîchie, PAS de R7
+      list(units = u, years = list(), warnings = character(0))
+    },
+    .package = "nemetonshiny")
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+        hydric_only = FALSE, forest_type = "feuillu", year_moyenne = NA,
+        year_canicule = NA, lai_max = NA, species = "")
+      # Simuler un R7 déjà calculé sur le résultat courant (avant le re-run).
+      prior <- units
+      prior$r7_gel_days <- c(1, 2, 3); prior$r7_status <- "calculated"
+      rv$result <- prior
+
+      session$setInputs(run = 1)
+
+      # R7 conservé (aligné par ug_id) ET analyse bien rafraîchie.
+      expect_true("r7_gel_days" %in% names(rv$result))
+      expect_equal(rv$result$r7_gel_days, c(1, 2, 3))
+      expect_equal(unique(rv$result$indice_priorite_regen), 55)
+      # Publié aussi pour mod_synthesis.
+      expect_equal(as$regeneration_result$r7_gel_days, c(1, 2, 3))
+    }
+  )
+})
