@@ -176,7 +176,7 @@ mod_regeneration_ui <- function(id) {
       bslib::tooltip(
         bslib::input_task_button(ns("auto_years"), i18n$t("regen_year_auto"),
           icon = bsicons::bs_icon("magic"),
-          label_busy = i18n$t("regen_auto_running_short"),
+          label_busy = i18n$t("regen_busy_generic"),
           type = "outline-secondary", class = "btn-sm mb-2"),
         i18n$t("regen_year_auto_tip"), placement = "right"),
       shiny::uiOutput(ns("eobs_status")),
@@ -190,7 +190,7 @@ mod_regeneration_ui <- function(id) {
       bslib::tooltip(
         bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
           icon = bsicons::bs_icon("cpu"),
-          label_busy = i18n$t("regen_engine_running_short"),
+          label_busy = i18n$t("regen_busy_generic"),
           type = "outline-primary", class = "btn-sm w-100"),
         i18n$t("regen_engine_tip"), placement = "right"),
       shiny::uiOutput(ns("engine_status")),
@@ -207,7 +207,7 @@ mod_regeneration_ui <- function(id) {
         bslib::tooltip(
           bslib::input_task_button(ns("run_frost"), i18n$t("regen_frost_run"),
             icon = bsicons::bs_icon("snow"),
-            label_busy = i18n$t("regen_frost_running_short"),
+            label_busy = i18n$t("regen_busy_generic"),
             type = "outline-primary", class = "btn-sm w-100"),
           i18n$t("regen_frost_tip"), placement = "right")
       } else {
@@ -364,7 +364,7 @@ mod_regeneration_ui <- function(id) {
             # vues rr / bivariée.
             bslib::input_task_button(ns("fetch_eobs_rr"), i18n$t("regen_eobs_rr_fetch"),
               icon = bsicons::bs_icon("cloud-download"),
-              label_busy = i18n$t("regen_eobs_rr_running_short"),
+              label_busy = i18n$t("regen_busy_generic"),
               type = "outline-secondary", class = "btn-sm w-100 mb-2"),
             htmltools::tags$hr(class = "my-2"),
             htmltools::tags$strong(i18n$t("regen_buffer")),
@@ -562,6 +562,7 @@ mod_regeneration_server <- function(id, app_state) {
     # Async : l'acquisition E-OBS (CDS) est déléguée à un worker future (cf.
     # eobs_task) ; le résultat met à jour les deux champs Année.
     shiny::observeEvent(input$auto_years, {
+      if (deny_if_busy()) return()
       units <- units_sf()
       if (is.null(units)) {
         # Le bouton passe « busy » dès le clic : le remettre prêt sur ce retour
@@ -609,17 +610,26 @@ mod_regeneration_server <- function(id, app_state) {
     # la détection tourne (spec 027 feedback). Le sablier « en cours » vit
     # désormais ici (retiré de eobs_index_display pour ne pas doubler).
     output$eobs_status <- shiny::renderUI({
-      if (!isTRUE(rv$eobs_running)) return(NULL)
-      shiny::invalidateLater(1000)
-      htmltools::div(class = "small text-info mt-1",
-        bsicons::bs_icon("hourglass-split", class = "me-1"),
-        i18n$t("regen_auto_running_short"),
-        htmltools::tags$span(class = "ms-1 font-monospace",
-                             .fmt_elapsed(rv$eobs_start)))
+      if (isTRUE(rv$eobs_running)) {
+        shiny::invalidateLater(1000)
+        return(htmltools::div(class = "small text-info mt-1",
+          bsicons::bs_icon("hourglass-split", class = "me-1"),
+          i18n$t("regen_auto_running_short"),
+          htmltools::tags$span(class = "ms-1 font-monospace",
+                               .fmt_elapsed(rv$eobs_start))))
+      }
+      # Détection terminée : confirmation persistante sous le bouton (le toast
+      # regen_auto_done ne dure que 6 s). Rappelle les millésimes retenus.
+      if (is.null(rv$eobs)) return(NULL)
+      htmltools::div(class = "small text-success mt-1",
+        bsicons::bs_icon("check-circle", class = "me-1"),
+        sprintf(i18n$t("regen_auto_done"),
+                rv$eobs$year_moyenne %||% "?", rv$eobs$year_canicule %||% "?"))
     })
 
     # --- Run --------------------------------------------------------------
     shiny::observeEvent(input$run, {
+      if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) return()
       units <- units_sf()
       if (is.null(units)) {
@@ -827,7 +837,47 @@ mod_regeneration_server <- function(id, app_state) {
     bslib::bind_task_button(eobs_rr_task, "fetch_eobs_rr")
     bslib::bind_task_button(frost_task, "run_frost")
 
+    # --- Verrou d'exclusion mutuelle des calculs (brief 035 verrou-boutons) ---
+    # Chaque task button ne connaît que SA tâche (bind_task_button) : rien
+    # n'empêche de lancer un 2e calcul lourd pendant qu'un 1er tourne (workers
+    # future concurrents sur les mêmes rasters/RAM/cache/regeneration). `busy()`
+    # est vrai dès qu'une tâche UTILISATEUR tourne. `context_task` est EXCLU : il
+    # est auto-déclenché par un changement de vue/buffer et griserait la sidebar
+    # de façon erratique sans que l'utilisateur ait rien lancé.
+    busy <- shiny::reactive({
+      any(vapply(
+        list(engine_task, eobs_task, eobs_rr_task, frost_task),
+        function(t) identical(t$status(), "running"),
+        logical(1)))
+    })
+
+    # Grisage client : task buttons via update_task_button (le binding bslib
+    # ignore la clé `disabled`), actionButton classiques via updateActionButton.
+    TASK_BTNS   <- c("run_engine", "auto_years", "fetch_eobs_rr", "run_frost")
+    ACTION_BTNS <- c("run", "recompute_pai", "persist_db")
+    shiny::observe({
+      locked <- isTRUE(busy())
+      for (btn in TASK_BTNS) {
+        bslib::update_task_button(btn, state = if (locked) "busy" else "ready")
+      }
+      for (btn in ACTION_BTNS) {
+        shiny::updateActionButton(session, btn, disabled = locked)
+      }
+    })
+
+    # Garde serveur (la partie robuste) : le grisage client est contournable
+    # (double-clic rapide, race websocket, page rechargée avec un état périmé).
+    # En tête de chaque observeEvent de déclencheur. Ne remet PAS le task button
+    # « ready » : le laisser grisé est cohérent avec le verrou ; l'observer
+    # ci-dessus le réactive quand busy() repasse FALSE (fin de la tâche active).
+    deny_if_busy <- function() {
+      if (!isTRUE(busy())) return(FALSE)
+      shiny::showNotification(i18n$t("regen_busy_already"), type = "warning", duration = 5)
+      TRUE
+    }
+
     shiny::observeEvent(input$fetch_eobs_rr, {
+      if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("fetch_eobs_rr", state = "ready")
         return()
@@ -886,6 +936,7 @@ mod_regeneration_server <- function(id, app_state) {
 
     # --- Moteur « risque de gel tardif » (R7, meteoland) ------------------
     shiny::observeEvent(input$run_frost, {
+      if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("run_frost", state = "ready")
         return()
@@ -1024,6 +1075,7 @@ mod_regeneration_server <- function(id, app_state) {
     # cache/regeneration/pai.tif → le prochain run recalcule la structure de
     # végétation depuis le nuage LiDAR. Sans effet si le fichier n'existe pas.
     shiny::observeEvent(input$recompute_pai, {
+      if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) return()
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       if (is.null(project_path)) return()
@@ -1035,6 +1087,7 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     shiny::observeEvent(input$run_engine, {
+      if (deny_if_busy()) return()
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("run_engine", state = "ready")
         return()

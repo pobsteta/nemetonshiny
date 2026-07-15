@@ -1,5 +1,31 @@
 # nemetonshiny (development version)
 
+### Fixed — verrou d'exclusion mutuelle des calculs (onglet reGénération)
+
+Pendant qu'un calcul lourd tournait (moteur microclimf/BILJOU, détection E-OBS,
+téléchargement précipitations, gel R7), les autres boutons de l'onglet
+reGénération restaient cliquables : `bslib::bind_task_button()` ne grise que le
+bouton **propriétaire** de la tâche. Un second clic lançait un worker `future`
+concurrent (mêmes rasters, même RAM, même `cache/regeneration/`), avec deux
+risques — confusion (l'app semble gelée) et corruption de
+`engine_status.json` écrit par deux tâches à la fois.
+
+- Réactif `busy()` : vrai dès qu'une tâche **utilisateur** tourne (`engine`,
+  `eobs`, `eobs_rr`, `frost` ; `context_task` auto-déclenché exclu).
+- Grisage client de tous les boutons de calcul quand `busy()` est vrai
+  (`update_task_button` pour les task buttons — leur binding ignore `disabled`,
+  `updateActionButton` pour les boutons classiques).
+- Garde serveur `deny_if_busy()` en tête de chaque déclencheur (backstop robuste
+  du grisage, contournable par double-clic / race websocket).
+- Libellé « occupé » générique (`regen_busy_generic`) sur les 4 task buttons :
+  un bouton grisé par ricochet n'affiche plus le libellé mensonger d'une autre
+  tâche.
+
+### Fixed — confirmation E-OBS persistante sous le bouton « Auto (E-OBS) »
+
+Les années détectées (`regen_auto_done`) n'apparaissaient qu'en toast de 6 s.
+Elles restent désormais affichées sous le bouton une fois la détection terminée.
+
 # nemetonshiny 0.106.6 (2026-07-14)
 
 ### Fixed — FORDEAD tourne désormais dans un process plafonné (spec 008)
