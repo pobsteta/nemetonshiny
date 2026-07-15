@@ -544,3 +544,17 @@ test_that(".regen_biv_axis uses observed range and keeps 0 in view", {
   expect_equal(fb$range, c(0, 0.4, 0.8, 1.2))
   expect_equal(fb$zero, 0.2)
 })
+
+test_that(".regen_biv_title splits the parenthetical into a subtitle", {
+  r <- nemetonshiny:::.regen_biv_title("Tendance bivariée (T°max estivale × précipitations)")
+  expect_equal(r$title, "Tendance bivariée")
+  expect_equal(r$subtitle, "(T°max estivale × précipitations)")
+
+  # Sans parenthèse : titre seul, pas de sous-titre.
+  r2 <- nemetonshiny:::.regen_biv_title("Contexte bivarié")
+  expect_equal(r2$title, "Contexte bivarié")
+  expect_null(r2$subtitle)
+
+  # Libellé vide / NULL : titre vide, pas de sous-titre.
+  expect_null(nemetonshiny:::.regen_biv_title(NULL)$subtitle)
+})
