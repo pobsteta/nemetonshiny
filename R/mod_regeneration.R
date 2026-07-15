@@ -237,6 +237,10 @@ mod_regeneration_ui <- function(id) {
           htmltools::tags$small(class = "text-muted d-block mt-1",
             i18n$t("regen_frost_unavailable")))
       },
+      # Bilan persistant du dernier calcul gel (retour UX) : surtout le cas
+      # « aucun jour de gel tardif », sinon un run réussi sans gel semble n'avoir
+      # rien produit. Alimenté par l'observer de fin de frost_task.
+      shiny::uiOutput(ns("frost_status")),
       htmltools::tags$hr(class = "my-2"),
 
       # --- Peuplement ----------------------------------------------------
@@ -440,6 +444,9 @@ mod_regeneration_server <- function(id, app_state) {
       eobs_rr_running = FALSE, eobs_rr_start = NULL,
       # Chrono du moteur « risque de gel tardif » (R7, meteoland).
       frost_running = FALSE, frost_start = NULL,
+      # Bilan persistant du dernier calcul gel (status none/detected/skipped/error
+      # + stats) affiché sous le bouton « Risque de gel » — retour UX.
+      frost_summary = NULL,
       # Raster de contexte régional (E-OBS downscalé) + son meta (status, palette,
       # value_label) ; chrono du calcul async (WMS IGN + krigeage, ~4 s).
       context_raster = NULL, context_meta = NULL,
@@ -1030,19 +1037,57 @@ mod_regeneration_server <- function(id, app_state) {
           rv$result <- res$units
           app_state$regeneration_result <- res$units
           if (identical(res$r7_status, "calculated")) {
+            # Bilan persistant sous le bouton (retour UX) : médiane/étendue des
+            # jours de gel tardif par UGF, ou « aucun gel détecté » si tout est nul.
+            vals <- suppressWarnings(as.numeric(res$units$r7_gel_days))
+            vals <- vals[is.finite(vals)]
+            rv$frost_summary <- if (length(vals) && max(vals) > 0) {
+              f <- function(v) format(round(v, 1), trim = TRUE, nsmall = 1)
+              list(status = "detected", stats = list(
+                median = f(stats::median(vals)), min = f(min(vals)),
+                max = f(max(vals)), n = length(vals)))
+            } else {
+              list(status = "none")
+            }
             shiny::showNotification(i18n$t("regen_frost_done"), type = "message", duration = 6)
           } else {
             # Tmin indisponible (meteoland/SAFRAN KO, < N stations) : R7 skip,
             # jamais un crash — l'utilisateur sait pourquoi le radar n'a pas R7.
+            rv$frost_summary <- list(status = "skipped")
             shiny::showNotification(i18n$t("regen_frost_skipped"), type = "warning", duration = 10)
           }
         }
       } else if (identical(st, "error")) {
+        rv$frost_summary <- list(status = "error")
         err <- tryCatch(frost_task$result(), error = function(e) conditionMessage(e))
         shiny::showNotification(
           sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),
           type = "error", duration = 10)
       }
+    })
+
+    # Bilan persistant du dernier calcul gel, sous le bouton « Risque de gel »
+    # (retour UX). Le cas « aucun gel » est le plus important — un run réussi
+    # sans gélée tardive semblait sinon n'avoir rien produit. Rien tant qu'aucun
+    # calcul n'a été lancé, ni pendant le run (la notif bas-droite suffit).
+    output$frost_status <- shiny::renderUI({
+      if (isTRUE(rv$frost_running)) return(NULL)
+      s <- rv$frost_summary
+      if (is.null(s)) return(NULL)
+      line <- function(cls, icon, body) htmltools::div(
+        class = sprintf("small %s mt-1", cls),
+        bsicons::bs_icon(icon, class = "me-1"), body)
+      switch(s$status %||% "",
+        "none" = line("text-success", "check-circle", i18n$t("regen_frost_none_detected")),
+        "detected" = {
+          st <- s$stats
+          if (is.null(st)) return(NULL)
+          line("text-warning", "thermometer-snow",
+               sprintf(i18n$t("regen_frost_detected_stats"),
+                       st$median, st$min, st$max, st$n))
+        },
+        "skipped" = line("text-muted", "dash-circle", i18n$t("regen_frost_skipped")),
+        NULL)
     })
 
     # --- Contexte régional (raster E-OBS downscalé) ----------------------
