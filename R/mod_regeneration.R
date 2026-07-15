@@ -162,6 +162,23 @@ mod_regeneration_ui <- function(id) {
 
       htmltools::tags$p(class = "text-muted small", i18n$t("regen_intro")),
 
+      # Verrou instantané côté client (brief 035 verrou-boutons, retour UX) :
+      # dès qu'un bouton `.regen-calc-btn` est cliqué, TOUS passent `disabled`
+      # sans attendre l'aller-retour serveur — supprime la fenêtre où les autres
+      # boutons paraissent encore cliquables. Le serveur reste l'autorité :
+      # l'observer de verrou ré-active (ou maintient grisé) selon l'état réel.
+      # `setTimeout(0)` : laisser l'événement de clic courant enregistrer son
+      # input Shiny AVANT de désactiver. Idempotent (garde `__regenCalcLock`).
+      htmltools::tags$script(htmltools::HTML(paste0(
+        "(function(){",
+        "if(window.__regenCalcLock)return;window.__regenCalcLock=true;",
+        "document.addEventListener('click',function(e){",
+        "var h=e.target.closest('.regen-calc-btn');",
+        "if(!h||h.disabled)return;",
+        "setTimeout(function(){",
+        "document.querySelectorAll('.regen-calc-btn').forEach(function(b){b.disabled=true;});",
+        "},0);},false);})();"))),
+
       # --- Années de référence — placées en tête -------------------------
       # Le bloc année moyenne / caniculaire + le bouton Auto (E-OBS) + l'indice
       # E-OBS précèdent le moteur : l'utilisateur choisit d'abord les millésimes
@@ -177,7 +194,7 @@ mod_regeneration_ui <- function(id) {
         bslib::input_task_button(ns("auto_years"), i18n$t("regen_year_auto"),
           icon = bsicons::bs_icon("magic"),
           label_busy = i18n$t("regen_busy_generic"),
-          type = "outline-secondary", class = "btn-sm mb-2"),
+          type = "outline-secondary", class = "btn-sm mb-2 regen-calc-btn"),
         i18n$t("regen_year_auto_tip"), placement = "right"),
       shiny::uiOutput(ns("eobs_status")),
       htmltools::tags$hr(class = "my-2"),
@@ -191,7 +208,7 @@ mod_regeneration_ui <- function(id) {
         bslib::input_task_button(ns("run_engine"), i18n$t("regen_engine_run"),
           icon = bsicons::bs_icon("cpu"),
           label_busy = i18n$t("regen_busy_generic"),
-          type = "outline-primary", class = "btn-sm w-100"),
+          type = "outline-primary", class = "btn-sm w-100 regen-calc-btn"),
         i18n$t("regen_engine_tip"), placement = "right"),
       shiny::uiOutput(ns("engine_status")),
       # Journal du moteur (spec 035 B3.e) : replié par défaut, alimenté par
@@ -208,7 +225,7 @@ mod_regeneration_ui <- function(id) {
           bslib::input_task_button(ns("run_frost"), i18n$t("regen_frost_run"),
             icon = bsicons::bs_icon("snow"),
             label_busy = i18n$t("regen_busy_generic"),
-            type = "outline-primary", class = "btn-sm w-100"),
+            type = "outline-primary", class = "btn-sm w-100 regen-calc-btn"),
           i18n$t("regen_frost_tip"), placement = "right")
       } else {
         htmltools::tagList(
@@ -283,7 +300,7 @@ mod_regeneration_ui <- function(id) {
       shiny::checkboxInput(ns("hydric_only"), i18n$t("regen_run_hydric_only"),
         value = FALSE),
       shiny::actionButton(ns("run"), i18n$t("regen_run"),
-        class = "btn-primary w-100", icon = bsicons::bs_icon("play-fill")),
+        class = "btn-primary w-100 regen-calc-btn", icon = bsicons::bs_icon("play-fill")),
 
       # Provenance de la donnée canopée effectivement utilisée (spec 033 D5) :
       # LiDAR HD (PAI structural) ou repli satellite S2/PROSAIL (NDP 0). Lu
@@ -299,7 +316,7 @@ mod_regeneration_ui <- function(id) {
       shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_export_gpkg"),
         class = "btn-outline-primary btn-sm w-100 mb-2"),
       shiny::actionButton(ns("persist_db"), i18n$t("regen_persist_db"),
-        class = "btn-outline-secondary btn-sm w-100", icon = bsicons::bs_icon("database"))
+        class = "btn-outline-secondary btn-sm w-100 regen-calc-btn", icon = bsicons::bs_icon("database"))
     ),
 
     # --- Résultats -------------------------------------------------------
@@ -365,7 +382,7 @@ mod_regeneration_ui <- function(id) {
             bslib::input_task_button(ns("fetch_eobs_rr"), i18n$t("regen_eobs_rr_fetch"),
               icon = bsicons::bs_icon("cloud-download"),
               label_busy = i18n$t("regen_busy_generic"),
-              type = "outline-secondary", class = "btn-sm w-100 mb-2"),
+              type = "outline-secondary", class = "btn-sm w-100 mb-2 regen-calc-btn"),
             htmltools::tags$hr(class = "my-2"),
             htmltools::tags$strong(i18n$t("regen_buffer")),
             shiny::numericInput(ns("buffer_km"), NULL,
@@ -411,6 +428,9 @@ mod_regeneration_server <- function(id, app_state) {
       lai_max = NULL, ewm = NULL, ewm_source = NA_character_,
       # Incrémenté après acquisition de la série `rr` : re-rend la carte contexte.
       context_refresh = 0L,
+      # Incrémenté à chaque clic sur un bouton de calcul : force l'observer de
+      # verrou à re-synchroniser l'état des boutons (verrou instantané côté client).
+      click_tick = 0L,
       # Chrono des boutons async (spec 027 feedback) : instant de départ, remis
       # à NULL à la fin de la tâche. NULL = pas de run en cours.
       engine_running = FALSE, eobs_running = FALSE,
@@ -855,15 +875,36 @@ mod_regeneration_server <- function(id, app_state) {
     # ignore la clé `disabled`), actionButton classiques via updateActionButton.
     TASK_BTNS   <- c("run_engine", "auto_years", "fetch_eobs_rr", "run_frost")
     ACTION_BTNS <- c("run", "recompute_pai", "persist_db")
+    # meteoland absent → run_frost est rendu désactivé : ne jamais le repasser
+    # « ready » (sinon l'observer l'activerait alors qu'il ne doit pas l'être).
+    frost_ok <- regen_meteoland_available()
+
+    # Grisage instantané côté client (JS délégué, cf. UI) : au clic, TOUS les
+    # boutons de calcul passent `disabled` sans attendre l'aller-retour serveur.
+    # Cet observer est la source d'autorité qui RÉ-active — dès que le verrou
+    # retombe. Il dépend de `rv$click_tick` pour se ré-exécuter APRÈS chaque clic,
+    # y compris un clic qui n'a rien lancé (pas de projet, prérequis KO,
+    # lecture seule…) : sans ça, le grisage client resterait collé.
     shiny::observe({
-      locked <- isTRUE(busy())
+      rv$click_tick                                   # dépendance : re-sync post-clic
+      locked <- isTRUE(busy()) || isTRUE(rv$running)
       for (btn in TASK_BTNS) {
+        if (identical(btn, "run_frost") && !frost_ok) next
         bslib::update_task_button(btn, state = if (locked) "busy" else "ready")
       }
       for (btn in ACTION_BTNS) {
         shiny::updateActionButton(session, btn, disabled = locked)
       }
     })
+
+    # Bump du compteur au moindre clic sur un bouton de calcul : force l'observer
+    # ci-dessus à recalculer l'état d'autorité (re-active ce que le JS a grisé si
+    # le clic n'a finalement lancé aucun calcul).
+    shiny::observeEvent(
+      list(input$run_engine, input$run_frost, input$auto_years,
+           input$fetch_eobs_rr, input$run, input$recompute_pai, input$persist_db), {
+        rv$click_tick <- (rv$click_tick %||% 0L) + 1L
+      }, ignoreInit = TRUE)
 
     # Garde serveur (la partie robuste) : le grisage client est contournable
     # (double-clic rapide, race websocket, page rechargée avec un état périmé).

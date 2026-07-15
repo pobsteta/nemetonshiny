@@ -392,3 +392,41 @@ test_that("a trigger is a guarded no-op while another computation runs", {
     }
   )
 })
+
+# --- Verrou instantané côté client : re-synchronisation serveur --------------
+# Le grisage JS est instantané mais aveugle : si un clic ne lance finalement rien
+# (pas de projet, prérequis KO…), le serveur DOIT ré-activer les boutons. Le
+# compteur `rv$click_tick`, bumpé à chaque clic de bouton de calcul, force
+# l'observer de verrou à recalculer l'état d'autorité. On vérifie ici que tout
+# clic de bouton de calcul l'incrémente (donc déclenche la re-synchronisation).
+
+test_that("every calc-button click bumps click_tick (server re-sync)", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+
+  # Pas de projet chargé : chaque clic avorte tôt — c'est précisément le cas où
+  # la re-synchronisation doit remettre les boutons cliquables.
+  as <- shiny::reactiveValues(current_project = NULL)
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    regeneration_species_choices = function(...) NULL,
+    .package = "nemetonshiny"
+  )
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      # Flush de préchauffage : consomme l'init paresseux de l'observeEvent
+      # (ignoreInit=TRUE) — en production, c'est le flush de démarrage de session
+      # qui joue ce rôle, donc aucun bump au démarrage.
+      session$setInputs(species = "")
+      expect_equal(rv$click_tick, 0L)
+      session$setInputs(run = 1)
+      expect_equal(rv$click_tick, 1L)          # clic « Lancer l'analyse »
+      session$setInputs(auto_years = 1)
+      expect_equal(rv$click_tick, 2L)          # clic « Auto (E-OBS) »
+      session$setInputs(run_engine = 1)
+      expect_equal(rv$click_tick, 3L)          # clic « Lancer le moteur »
+    }
+  )
+})
