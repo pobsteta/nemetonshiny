@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.106.14 (2026-07-15)
+
 ### Added — légende bivariée E-OBS : bornes des axes + lignes 0 en pointillé
 
 La légende bivariée « Contexte régional (E-OBS) » annote désormais les extrêmes
