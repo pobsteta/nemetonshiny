@@ -26,3 +26,21 @@ test_that("bivariate_legend_html accepte une palette du cœur (meta$palette_matr
   # La couleur de la classe 7 (coin chaud+sec) doit être celle fournie.
   expect_match(html, core_pal[["7"]], fixed = TRUE)
 })
+
+test_that("bivariate_legend_html dessine une grille 5×5 (25 cases) via ncol", {
+  skip_if_not_installed("htmltools")
+  # Le cœur eobs_downscale_bivariate livre 25 classes + ncol = 5 (comme l'IF IGN).
+  pal <- setNames(sprintf("#%06x", seq_len(25) * 0x0A0A0AL), as.character(1:25))
+  html <- as.character(nemetonshiny:::bivariate_legend_html(palette = pal, ncol = 5))
+  # 25 cases (cellules réduites à 16px au-delà de 3×3).
+  expect_equal(lengths(regmatches(html, gregexpr("width:16px;height:16px", html)))[1], 25L)
+  # La classe 25 (coin) doit apparaître.
+  expect_match(html, pal[["25"]], fixed = TRUE)
+})
+
+test_that("bivariate_legend_html déduit N de la longueur de palette sans ncol", {
+  skip_if_not_installed("htmltools")
+  pal <- setNames(sprintf("#%06x", seq_len(25) * 0x0A0A0AL), as.character(1:25))
+  html <- as.character(nemetonshiny:::bivariate_legend_html(palette = pal))  # ncol NULL
+  expect_equal(lengths(regmatches(html, gregexpr("width:16px;height:16px", html)))[1], 25L)
+})
