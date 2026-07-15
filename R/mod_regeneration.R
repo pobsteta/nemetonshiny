@@ -163,6 +163,20 @@
   list(range = break_vec, zero = core_zero)             # repli seuils fixes
 }
 
+# Découpe le libellé de la légende bivariée en deux lignes : la partie AVANT la
+# première parenthèse (titre principal) + le contenu de la parenthèse finale
+# (sous-titre, le couple de variables « T°max estivale × précipitations »).
+# Sans parenthèse : titre seul, sous-titre NULL (compat cache/label ancien).
+# Renvoie `list(title = ..., subtitle = ...|NULL)`.
+.regen_biv_title <- function(raw) {
+  raw <- trimws(as.character(raw %||% ""))
+  m <- regmatches(raw, regexec("^(.*?)\\s*\\(([^()]*)\\)\\s*$", raw))[[1]]
+  if (length(m) == 3L && nzchar(trimws(m[2])) && nzchar(trimws(m[3]))) {
+    return(list(title = trimws(m[2]), subtitle = paste0("(", trimws(m[3]), ")")))
+  }
+  list(title = raw, subtitle = NULL)
+}
+
 # Libellé i18n d'une phase (voir modèle 6 phases + états terminaux du brief).
 .regen_phase_label <- function(i18n, st) {
   switch(st$phase %||% "",
@@ -1659,12 +1673,17 @@ mod_regeneration_server <- function(id, app_state) {
         zcore <- pal$zero %||% list()
         ys <- .regen_biv_axis(meta$tx, meta$breaks$tmax,   suppressWarnings(as.numeric(zcore[["tmax"]])))
         xs <- .regen_biv_axis(meta$rr, meta$breaks$precip, suppressWarnings(as.numeric(zcore[["precip"]])))
+        # Titre en deux lignes : « Tendance bivariée » + le couple de variables
+        # entre parenthèses (T°max estivale × précipitations) en sous-titre.
+        raw_title <- meta$value_label %||% i18n$t("regen_context_bivariate")
+        biv_title <- .regen_biv_title(raw_title)
         leg <- as.character(bivariate_legend_html(
-          palette = stats::setNames(pal$colors, classes),
-          axis_x  = i18n$t("regen_context_axis_rr"),
-          axis_y  = i18n$t("regen_context_axis_tx"),
-          title   = meta$value_label %||% i18n$t("regen_context_bivariate"),
-          ncol    = pal$ncol,
+          palette  = stats::setNames(pal$colors, classes),
+          axis_x   = i18n$t("regen_context_axis_rr"),
+          axis_y   = i18n$t("regen_context_axis_tx"),
+          title    = biv_title$title,
+          subtitle = biv_title$subtitle,
+          ncol     = pal$ncol,
           zero    = list(tmax = ys$zero, precip = xs$zero),
           x_range = xs$range,
           y_range = ys$range))

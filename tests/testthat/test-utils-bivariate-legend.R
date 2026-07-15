@@ -63,6 +63,19 @@ test_that("bivariate_legend_html trace les lignes 0 (pointillé blanc) + min/max
   expect_match(html, ">0<");   expect_match(html, ">1.2<")
 })
 
+test_that("bivariate_legend_html rend un sous-titre sous le titre", {
+  skip_if_not_installed("htmltools")
+  pal <- setNames(sprintf("#%06x", seq_len(25) * 0x0A0A0AL), as.character(1:25))
+  html <- as.character(nemetonshiny:::bivariate_legend_html(
+    palette = pal, ncol = 5,
+    title = "Tendance bivariée",
+    subtitle = "(T°max estivale × précipitations)"))
+  expect_match(html, "Tendance bivariée", fixed = TRUE)
+  expect_match(html, "(T°max estivale × précipitations)", fixed = TRUE)
+  # Le sous-titre est en petite fonte régulière.
+  expect_match(html, "font-size:9px;font-weight:400", fixed = TRUE)
+})
+
 test_that("bivariate_legend_html reste propre sans zero/ranges (repli)", {
   skip_if_not_installed("htmltools")
   # Sans zero ni ranges : aucune ligne 0, aucune borne — comme avant.

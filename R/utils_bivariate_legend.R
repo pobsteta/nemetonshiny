@@ -38,7 +38,9 @@ bivariate_palette_default <- function() {
 #'   (core `meta$palette$colors`), or `NULL` for the built-in 3×3 default.
 #' @param axis_x Label of the horizontal axis (precipitations, low->high right).
 #' @param axis_y Label of the vertical axis (temperature, low->high up).
-#' @param title Optional legend title.
+#' @param title Optional legend title (main line, bold).
+#' @param subtitle Optional secondary line under the title (smaller, regular),
+#'   e.g. the parenthetical variable pair "(T°max estivale × précipitations)".
 #' @param ncol Grid side N (core `meta$palette$ncol`); inferred from the palette
 #'   length when `NULL`.
 #' @return An `htmltools` tag.
@@ -53,6 +55,7 @@ bivariate_legend_html <- function(palette = NULL,
                                   axis_x = "Précipitations",
                                   axis_y = "T°max",
                                   title = NULL,
+                                  subtitle = NULL,
                                   ncol = NULL,
                                   zero = NULL,
                                   x_range = NULL,
@@ -135,7 +138,10 @@ bivariate_legend_html <- function(palette = NULL,
                    "border-radius:4px;font-size:11px;line-height:1;",
                    "box-shadow:0 1px 4px rgba(0,0,0,.3);"),
     if (!is.null(title)) htmltools::tags$div(
-      style = "font-weight:600;margin-bottom:4px;", title),
+      style = if (is.null(subtitle)) "font-weight:600;margin-bottom:4px;" else "font-weight:600;",
+      title),
+    if (!is.null(subtitle)) htmltools::tags$div(
+      style = "font-size:9px;font-weight:400;color:#333;margin-bottom:4px;", subtitle),
     htmltools::tags$div(
       style = "display:flex;align-items:stretch;",
       y_col,
