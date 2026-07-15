@@ -522,3 +522,25 @@ test_that("R7 (gel) survives a re-analysis via input$run", {
     }
   )
 })
+
+# --- Légende bivariée : plage observée + 0 garanti visible --------------------
+test_that(".regen_biv_axis uses observed range and keeps 0 in view", {
+  # Tendances toutes positives (T°max) : le min est repoussé un peu avant 0 pour
+  # que la ligne pointillée du 0 reste visible.
+  ys <- nemetonshiny:::.regen_biv_axis(
+    list(palette = list(low = 0.3, high = 1.1)), c(0, 0.4, 0.8, 1.2), 0.2)
+  expect_lt(ys$range[1], 0)                 # min repoussé sous 0
+  expect_equal(ys$range[2], 1.1)            # max = observé
+  expect_true(ys$zero > 0 && ys$zero < 1)   # 0 dans la grille
+
+  # Plage qui encadre déjà 0 (précipitations) : bornes = observé.
+  xs <- nemetonshiny:::.regen_biv_axis(
+    list(palette = list(low = -50, high = 40)), c(-80, -40, 0, 40), 0.6)
+  expect_equal(xs$range, c(-50, 40))
+  expect_equal(round(xs$zero, 3), 0.556)
+
+  # Repli sur les seuils cœur si la plage observée manque.
+  fb <- nemetonshiny:::.regen_biv_axis(list(palette = list()), c(0, 0.4, 0.8, 1.2), 0.2)
+  expect_equal(fb$range, c(0, 0.4, 0.8, 1.2))
+  expect_equal(fb$zero, 0.2)
+})

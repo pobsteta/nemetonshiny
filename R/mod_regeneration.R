@@ -142,6 +142,27 @@
     quiet   = FALSE)
 }
 
+# Plage d'un axe de la légende bivariée (Contexte régional E-OBS). Utilise la
+# plage RÉELLEMENT observée sur la zone — quantiles du raster downscalé exposés
+# par le cœur dans la sous-méta `sub$palette$low/high` — plutôt que les seuils
+# fixes de classification. Garantit que 0 (et sa ligne pointillée blanche) reste
+# DANS la plage, avec une marge de 10 %, même si toutes les tendances sont du
+# même signe. La position fractionnaire du 0 est alors recalculée sur cette plage.
+# Repli sur les seuils cœur (`break_vec`) + la position 0 cœur (`core_zero`) quand
+# la plage observée est absente (vieux cache, sous-méta manquante).
+# Renvoie `list(range = c(lo, hi), zero = frac_0_dans_range)`.
+.regen_biv_axis <- function(sub, break_vec, core_zero) {
+  lo <- suppressWarnings(as.numeric(sub$palette$low))
+  hi <- suppressWarnings(as.numeric(sub$palette$high))
+  if (length(lo) == 1L && length(hi) == 1L && is.finite(lo) && is.finite(hi)) {
+    if (hi < lo) { t <- lo; lo <- hi; hi <- t }
+    pad <- 0.1 * max(hi - lo, abs(lo), abs(hi), 1e-6)   # marge visibilité du 0
+    lo <- min(lo, -pad); hi <- max(hi, pad)             # 0 strictement dans [lo, hi]
+    return(list(range = c(lo, hi), zero = (0 - lo) / (hi - lo)))
+  }
+  list(range = break_vec, zero = core_zero)             # repli seuils fixes
+}
+
 # Libellé i18n d'une phase (voir modèle 6 phases + états terminaux du brief).
 .regen_phase_label <- function(i18n, st) {
   switch(st$phase %||% "",
@@ -1633,17 +1654,20 @@ mod_regeneration_server <- function(id, app_state) {
         # cœur livre 25 classes (5×5, `ncol = 5`) ; la légende suit `pal$ncol`.
         classes <- pal$classes %||% seq_along(pal$colors)
         cmap <- leaflet::colorFactor(pal$colors, domain = classes, na.color = "transparent")
+        # Axes annotés par la plage RÉELLEMENT observée sur la zone (quantiles des
+        # rasters downscalés) via `.regen_biv_axis`, avec 0 garanti dans la plage.
+        zcore <- pal$zero %||% list()
+        ys <- .regen_biv_axis(meta$tx, meta$breaks$tmax,   suppressWarnings(as.numeric(zcore[["tmax"]])))
+        xs <- .regen_biv_axis(meta$rr, meta$breaks$precip, suppressWarnings(as.numeric(zcore[["precip"]])))
         leg <- as.character(bivariate_legend_html(
           palette = stats::setNames(pal$colors, classes),
           axis_x  = i18n$t("regen_context_axis_rr"),
           axis_y  = i18n$t("regen_context_axis_tx"),
           title   = meta$value_label %||% i18n$t("regen_context_bivariate"),
           ncol    = pal$ncol,
-          # Lignes 0 (pas de changement) + bornes min/max des axes, du cœur :
-          # zero = position fractionnaire, breaks = seuils T°max / précip.
-          zero    = pal$zero,
-          x_range = meta$breaks$precip,
-          y_range = meta$breaks$tmax))
+          zero    = list(tmax = ys$zero, precip = xs$zero),
+          x_range = xs$range,
+          y_range = ys$range))
         m |>
           leaflet::addRasterImage(rast, colors = cmap, opacity = op, project = TRUE,
             group = "Contexte E-OBS", options = opts) |>
