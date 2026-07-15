@@ -558,3 +558,77 @@ test_that(".regen_biv_title splits the parenthetical into a subtitle", {
   # Libellé vide / NULL : titre vide, pas de sous-titre.
   expect_null(nemetonshiny:::.regen_biv_title(NULL)$subtitle)
 })
+
+# --- spec 036 : clic sur la maille E-OBS -> panneau de 4 graphes -------------
+
+test_that("un clic sur la carte de contexte extrait série + climatologie et ouvre la modale", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+
+  units <- .regen_mod_units(3)
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj)
+
+  seen <- new.env(); seen$series <- 0L; seen$clim <- 0L; seen$clim_vars <- character(0)
+  # Accesseurs cœur mockés : l'app ne fait que clic -> point -> tracé.
+  testthat::local_mocked_bindings(
+    eobs_summer_series = function(stack, point) {
+      seen$series <- seen$series + 1L
+      data.frame(year = 2011:2020, value = seq(24, 29, length.out = 10))
+    },
+    eobs_trend_fit = function(series) list(slope_decade = 1.2, intercept = -400,
+      r2 = 0.8, p_value = 0.01, n = 10),
+    eobs_monthly_climatology = function(daily, point, var, years = NULL) {
+      seen$clim <- seen$clim + 1L; seen$clim_vars <- c(seen$clim_vars, var)
+      data.frame(month = 1:12, value = rep(50, 12))
+    },
+    .package = "nemeton")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    # Stack estival non-NULL -> la série est extraite.
+    .regen_load_eobs_buffered = function(units, project_path, var, buffer_m) "STACK",
+    # tg + rr présents dans le cache -> climatologie température (tg) + précip.
+    regen_eobs_cached_nc = function(project_path, var = c("tx", "rr", "tg")) {
+      var <- match.arg(var); paste0("/fake/", var, ".nc")
+    },
+    .package = "nemetonshiny")
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(context_view = "tx", buffer_km = 25)
+      session$setInputs(context_map_click = list(lng = 6.1, lat = 47.2))
+
+      cs <- rv$click_series
+      expect_false(is.null(cs))
+      expect_length(cs$entries, 1L)                 # vue tx -> une variable
+      expect_equal(cs$entries[[1]]$var, "tx")
+      expect_true(seen$series >= 1L)                # eobs_summer_series appelé
+      expect_true(seen$clim >= 1L)                  # eobs_monthly_climatology appelé
+      expect_true(isTRUE(cs$temp_is_tg))            # tg dispo -> température réelle
+      expect_true("tg" %in% seen$clim_vars)         # climatologie température = tg
+      # Forcer l'évaluation des 4 rendus = vérifier qu'ils ne plantent pas.
+      expect_false(is.null(output$ctx_g1)); expect_false(is.null(output$ctx_g2))
+      expect_false(is.null(output$ctx_g3)); expect_false(is.null(output$ctx_g4))
+    }
+  )
+})
+
+test_that("un clic sans projet chargé est un no-op gardé (pas de crash)", {
+  skip_if_not_installed("shiny")
+  as <- shiny::reactiveValues(current_project = NULL)
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    regeneration_species_choices = function(...) NULL,
+    .package = "nemetonshiny")
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(context_map_click = list(lng = 6.1, lat = 47.2))
+      expect_null(rv$click_series)
+    }
+  )
+})

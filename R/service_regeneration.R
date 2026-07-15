@@ -207,10 +207,11 @@ regen_reprioritize <- function(units, species = NULL) {
 #' an ~800 MB download.
 #'
 #' @param project_path Project root, or `NULL`.
-#' @param var `"tx"` (maximum temperature) or `"rr"` (precipitation).
+#' @param var `"tx"` (maximum temperature), `"rr"` (precipitation) or `"tg"`
+#'   (mean temperature, required by the ombrothermic diagram — spec 036 §3).
 #' @return An existing `.nc` path, or `NULL`.
 #' @noRd
-regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr")) {
+regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr", "tg")) {
   var <- match.arg(var)
   if (is.null(project_path)) return(NULL)
   dir <- file.path(project_path, "cache", "regeneration", "eobs")
@@ -219,7 +220,8 @@ regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr")) {
   # (cf. `.eobs_cache_file()` côté cœur).
   pat <- switch(var,
     tx = "^eobs_maximum-temperature.*\\.nc$",
-    rr = "^eobs_precipitation-amount.*\\.nc$")
+    rr = "^eobs_precipitation-amount.*\\.nc$",
+    tg = "^eobs_mean-temperature.*\\.nc$")
   f <- list.files(dir, pattern = pat, full.names = TRUE)
   if (!length(f)) return(NULL)
   f[[1]]
@@ -344,6 +346,34 @@ regen_fetch_eobs_rr <- function(ugf, project_path, year_window = 10L) {
                               cache_dir = cache_dir),
     error = function(e) NULL)
   !is.null(regen_eobs_cached_nc(project_path, "rr"))
+}
+
+#' Download the E-OBS mean-temperature (`tg`) series into the project cache (opt-in)
+#'
+#' Required by the ombrothermic (Gaussen-Bagnouls) diagram — spec 036 §3 — which
+#' needs the *mean* temperature, whereas only `tx`/`rr` are cached by default.
+#' Modelled exactly on [regen_fetch_eobs_rr()] : heavy (~800 MB from the Copernicus
+#' CDS), network-bound, so never called from a render — only from an explicit user
+#' action inside a `future` worker. `load_eobs_source()` maps `tg ->
+#' mean_temperature` (same CDS key family as `tx`/`rr`) and is idempotent.
+#'
+#' @return `TRUE` when the `tg` `.nc` is present afterwards.
+#' @noRd
+regen_fetch_eobs_tg <- function(ugf, project_path, year_window = 10L) {
+  if (!inherits(ugf, "sf") || is.null(project_path)) return(FALSE)
+  cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
+  if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
+  # Même fenêtre / dérivation de période que `rr` : indispensable pour que le nom
+  # de fichier soit reconstruit à l'identique et le cache retrouvé ensuite.
+  end_year   <- as.integer(format(Sys.Date(), "%Y")) - 2L
+  win        <- max(as.integer(year_window %||% 10L) + 2L, 7L)
+  start_year <- max(2011L, end_year - win + 1L)
+  tryCatch(
+    nemeton::load_eobs_source(aoi = ugf, var = "tg",
+                              years = seq.int(start_year, end_year),
+                              cache_dir = cache_dir),
+    error = function(e) NULL)
+  !is.null(regen_eobs_cached_nc(project_path, "tg"))
 }
 
 #' Target-species option list for the reGénération selector

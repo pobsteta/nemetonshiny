@@ -4369,6 +4369,62 @@ TRANSLATIONS <- list(
     fr = "T\u00e9l\u00e9chargement des pr\u00e9cipitations impossible (identifiants CDS ou r\u00e9seau).",
     en = "Precipitation download failed (CDS credentials or network)."
   ),
+  # --- Graphiques au clic sur la maille E-OBS (spec 036) -------------------
+  regen_ctx_cell_title = list(
+    fr = "Maille E-OBS \u2014 %.4f, %.4f", en = "E-OBS cell \u2014 %.4f, %.4f"
+  ),
+  regen_ctx_series = list(fr = "S\u00e9rie + tendance", en = "Series + trend"),
+  regen_ctx_anomaly = list(fr = "Anomalies", en = "Anomalies"),
+  regen_ctx_distrib = list(fr = "Distribution r\u00e9gionale", en = "Regional distribution"),
+  regen_ctx_ombro = list(fr = "Ombrothermique", en = "Ombrothermic"),
+  regen_ctx_trend = list(fr = "Tendance", en = "Trend"),
+  regen_ctx_year = list(fr = "Ann\u00e9e", en = "Year"),
+  regen_ctx_count = list(fr = "Effectif", en = "Count"),
+  regen_ctx_this_cell = list(fr = "Maille cliqu\u00e9e", en = "Clicked cell"),
+  regen_ctx_series_tx = list(fr = "T\u00b0max estivale (\u00b0C)", en = "Summer max-T (\u00b0C)"),
+  regen_ctx_series_rr = list(fr = "Pr\u00e9cipitations estivales (mm)", en = "Summer precipitation (mm)"),
+  regen_ctx_unit_tx = list(fr = "\u00b0C/d\u00e9c", en = "\u00b0C/dec"),
+  regen_ctx_unit_rr = list(fr = "mm/d\u00e9c", en = "mm/dec"),
+  regen_ctx_axis_temp = list(fr = "Temp\u00e9rature (\u00b0C)", en = "Temperature (\u00b0C)"),
+  regen_ctx_axis_precip = list(fr = "Pr\u00e9cipitations (mm)", en = "Precipitation (mm)"),
+  regen_ctx_dry_months = list(fr = "Mois secs (Gaussen)", en = "Dry months (Gaussen)"),
+  regen_ctx_demartonne = list(fr = "Indice de De Martonne", en = "De Martonne index"),
+  regen_ctx_ombro_tg = list(
+    fr = "Diagramme ombrothermique \u2014 T\u00b0 moyenne (tg)",
+    en = "Ombrothermic diagram \u2014 mean temperature (tg)"
+  ),
+  regen_ctx_ombro_proxy_tx = list(
+    fr = "Diagramme ombrothermique \u2014 bas\u00e9 sur T\u00b0max (tg indisponible) \u2014 saison s\u00e8che major\u00e9e",
+    en = "Ombrothermic diagram \u2014 based on max-T (tg unavailable) \u2014 dry season overstated"
+  ),
+  regen_ctx_out_of_coverage = list(
+    fr = "Maille hors couverture E-OBS (s\u00e9rie vide \u00e0 ce point).",
+    en = "Cell outside E-OBS coverage (empty series at this point)."
+  ),
+  regen_ctx_distrib_na = list(
+    fr = "Distribution indisponible pour cette vue (s\u00e9lectionner T\u00b0max ou pr\u00e9cipitations).",
+    en = "Distribution unavailable for this view (select max-T or precipitation)."
+  ),
+  regen_ctx_ombro_need_temp = list(
+    fr = "Diagramme ombrothermique indisponible : acqu\u00e9rir la temp\u00e9rature E-OBS.",
+    en = "Ombrothermic diagram unavailable: acquire the E-OBS temperature series."
+  ),
+  regen_fetch_tg = list(
+    fr = "T\u00e9l\u00e9charger la T\u00b0 moyenne (Gaussen, ~800 Mo)",
+    en = "Download mean temperature (Gaussen, ~800 MB)"
+  ),
+  regen_fetch_tg_running = list(
+    fr = "T\u00e9l\u00e9chargement de la s\u00e9rie E-OBS de temp\u00e9rature moyenne (Copernicus CDS) \u2014 plusieurs minutes, en arri\u00e8re-plan.",
+    en = "Downloading the E-OBS mean-temperature series (Copernicus CDS) \u2014 several minutes, in the background."
+  ),
+  regen_fetch_tg_done = list(
+    fr = "S\u00e9rie de temp\u00e9rature moyenne t\u00e9l\u00e9charg\u00e9e \u2014 diagramme ombrothermique disponible.",
+    en = "Mean-temperature series downloaded \u2014 ombrothermic diagram available."
+  ),
+  regen_fetch_tg_failed = list(
+    fr = "T\u00e9l\u00e9chargement de la temp\u00e9rature moyenne impossible (identifiants CDS ou r\u00e9seau).",
+    en = "Mean-temperature download failed (CDS credentials or network)."
+  ),
   regen_map_priorite_info = list(
     fr = "Indice composite 0\u2013100 croisant l'exposition microclimatique (microclimf) et le stress hydrique du sol (BILJOU). Valeur \u00e9lev\u00e9e = unit\u00e9 la plus vuln\u00e9rable, \u00e0 accompagner en priorit\u00e9 pour la r\u00e9g\u00e9n\u00e9ration.",
     en = "Composite 0\u2013100 index crossing microclimatic exposure (microclimf) with soil water stress (BILJOU). High value = most vulnerable unit, to prioritise for regeneration."
