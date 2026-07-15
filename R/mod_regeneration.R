@@ -730,13 +730,18 @@ mod_regeneration_server <- function(id, app_state) {
       })
       rv$running <- FALSE
       if (!is.null(res)) {
-        rv$result <- res$units
+        # Reporter R7 (gel) du résultat précédent (brief 035 §8) : run_regeneration()
+        # ne produit pas r7_gel_days (pas de tmin en entrée) et écrasait sèchement
+        # rv$result, vidant la couche gel dès qu'on relançait l'analyse après R7.
+        # `.regen_attach_r7` réattache par ug_id (no-op si aucun R7 antérieur).
+        carried <- .regen_attach_r7(res$units, shiny::isolate(rv$result))
+        rv$result <- carried
         rv$years <- res$years
         rv$warnings <- res$warnings %||% character(0)
         # Provenance canopée lue sur le résultat (repli satellite / LiDAR HD).
         rv$canopy_source <- regen_canopy_provenance(res$units)
         # Publier le résultat pour l'export PDF (section reGénération de mod_synthesis).
-        app_state$regeneration_result <- res$units
+        app_state$regeneration_result <- carried
         nw <- length(rv$warnings)
         if (nw > 0L) {
           shiny::showNotification(sprintf(i18n$t("regen_run_done_warn"), nw),
@@ -1298,9 +1303,13 @@ mod_regeneration_server <- function(id, app_state) {
           res <- tryCatch(run_regeneration(units, cfg = cfg, precomputed = precomputed),
                           error = function(e) NULL)
           if (!is.null(res)) {
-            rv$result <- res$units
+            # Reporter R7 (gel) du résultat précédent (brief 035 §8) : le re-run
+            # fast-path post-moteur n'a pas de tmin → sans report, il vidait la
+            # couche gel calculée avant le moteur.
+            carried <- .regen_attach_r7(res$units, shiny::isolate(rv$result))
+            rv$result <- carried
             rv$years <- res$years
-            app_state$regeneration_result <- res$units
+            app_state$regeneration_result <- carried
           }
         }
         # Provenance rapportée par le moteur (fiable : survit au cache gpkg qui
