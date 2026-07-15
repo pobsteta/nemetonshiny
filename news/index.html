@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.106.12" id="nemetonshiny-010612-2026-07-15">nemetonshiny 0.106.12 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010612-2026-07-15"></a></h2>
+<div class="section level4">
+<h4 id="fixed--légende-bivariée--contexte-régional-e-obs--en-classes-0-106-12">Fixed — légende bivariée « Contexte régional (E-OBS) » en 5×5 (25 classes)<a class="anchor" aria-label="anchor" href="#fixed--l%C3%A9gende-bivari%C3%A9e--contexte-r%C3%A9gional-e-obs--en-classes-0-106-12"></a></h4>
+<p>La carte bivariée (T°max × précipitations) affichait déjà 25 classes — le cœur <code>eobs_downscale_bivariate()</code> classe en <strong>5 par axe</strong> (comme l’inventaire forestier IGN) — mais la <strong>légende</strong> restait figée en 3×3 (9 cases), incohérente avec le raster. <code>bivariate_legend_html()</code> dessine désormais une grille <strong>N×N</strong> pilotée par <code>meta$palette$ncol</code> (5), avec repli sur la racine carrée du nombre de couleurs puis 3×3 par défaut. Pur affichage, aucun changement de classement (cœur).</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.11" id="nemetonshiny-010611-2026-07-15">nemetonshiny 0.106.11 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010611-2026-07-15"></a></h2>
