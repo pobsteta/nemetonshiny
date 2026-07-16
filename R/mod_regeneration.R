@@ -493,18 +493,27 @@ mod_regeneration_ui <- function(id) {
       # étendue du lai_max et de la réserve utile par UGF, ou badge « forcé ».
       shiny::uiOutput(ns("derived_stats")),
 
-      # --- Export / persistance (sous le bouton Lancer) ------------------
+      # --- Exports (mêmes 3 boutons que le Plan d'actions) ---------------
       htmltools::tags$hr(class = "my-2"),
       htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_results_section")),
-      shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_export_gpkg"),
-        class = "btn-outline-primary btn-sm w-100 mb-2"),
+      shiny::actionButton(ns("export_terrain"), i18n$t("regen_export_terrain"),
+        icon = shiny::icon("crosshairs"),
+        class = "btn-outline-success btn-sm w-100 mb-2"),
       htmltools::tagAppendAttributes(
-        shiny::downloadButton(ns("export_pdf"), i18n$t("regen_export_pdf"),
+        shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_download_gpkg"),
+          icon = shiny::icon("database"),
+          class = "btn-outline-success btn-sm w-100 mb-2"),
+        onclick = sprintf("nemetonShowDownloadToast(%s);",
+          jsonlite::toJSON(i18n$t("regen_export_gpkg_busy"), auto_unbox = TRUE))),
+      htmltools::tagAppendAttributes(
+        shiny::downloadButton(ns("export_pdf"), i18n$t("regen_download_pdf"),
           icon = shiny::icon("file-pdf"),
-          class = "btn-outline-primary btn-sm w-100 mb-2"),
+          class = "btn-outline-success btn-sm w-100 mb-2"),
         onclick = sprintf("nemetonShowDownloadToast(%s);",
           jsonlite::toJSON(i18n$t("regen_export_pdf_busy"), auto_unbox = TRUE))),
-      shiny::actionButton(ns("persist_db"), i18n$t("regen_persist_db"),
+      # Persistance versionnée en base : distincte des exports locaux ci-dessus.
+      htmltools::tags$hr(class = "my-2"),
+      shiny::actionButton(ns("persist_db"), i18n$t("save_to_db_button"),
         class = "btn-outline-secondary btn-sm w-100 regen-calc-btn", icon = bsicons::bs_icon("database"))
     ),
 
@@ -2606,6 +2615,56 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     # --- Export GPKG (§7) -------------------------------------------------
+    # --- Envoyer vers Terrain : centro\u00efdes des UGF (s\u00e9lection ou toutes) vers la
+    # couche \u00ab regeneration \u00bb du samples.gpkg (parit\u00e9 Plan d'actions). Rafra\u00eechit
+    # mod_sampling via app_state$samples_refresh.
+    shiny::observeEvent(input$export_terrain, {
+      if (deny_if_readonly(app_state, i18n)) return()
+      project <- app_state$current_project
+      res <- rv$result
+      if (is.null(project) || is.null(res) || !inherits(res, "sf") || nrow(res) == 0L) {
+        shiny::showNotification(i18n$t("regen_export_terrain_empty"), type = "warning")
+        return()
+      }
+      ids <- as.character(res$ug_id)
+      sel <- selected_ug_rv()
+      keep <- if (length(sel) > 0L) which(ids %in% sel) else seq_along(ids)
+      if (length(keep) == 0L) {
+        shiny::showNotification(i18n$t("regen_export_terrain_empty"), type = "warning")
+        return()
+      }
+      sub <- res[keep, , drop = FALSE]
+      centroids <- tryCatch(
+        suppressWarnings(sf::st_centroid(sf::st_geometry(sub))),
+        error = function(e) NULL)
+      if (is.null(centroids)) {
+        shiny::showNotification(i18n$t("regen_export_terrain_failed"), type = "error")
+        return()
+      }
+      dropped <- sf::st_drop_geometry(sub)
+      num_col <- function(nm) if (nm %in% names(dropped)) as.numeric(dropped[[nm]]) else rep(NA_real_, nrow(sub))
+      df <- data.frame(
+        plot_id = paste0("regen_", as.character(sub$ug_id)),
+        ug_id = as.character(sub$ug_id),
+        indice_priorite = num_col("indice_priorite_regen"),
+        sensibilite = num_col("sensibilite"),
+        rang = num_col("rang_sensibilite"),
+        stringsAsFactors = FALSE)
+      sf_pts <- sf::st_sf(df, geometry = centroids)
+      ok <- tryCatch(save_samples(project$id, sf_pts, layer = "regeneration"),
+        error = function(e) FALSE)
+      if (isTRUE(ok)) {
+        app_state$samples_refresh <- (app_state$samples_refresh %||% 0L) + 1L
+        shiny::showNotification(
+          sprintf(i18n$t("regen_export_terrain_ok_fmt"), nrow(sf_pts)),
+          type = "message", duration = 6)
+      } else {
+        shiny::showNotification(i18n$t("regen_export_terrain_failed"),
+          type = "error", duration = 6)
+      }
+    })
+
+
     output$export_gpkg <- shiny::downloadHandler(
       filename = function() "regeneration.gpkg",
       content = function(file) {

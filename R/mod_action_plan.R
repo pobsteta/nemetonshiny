@@ -133,6 +133,15 @@ mod_action_plan_ui <- function(id) {
             jsonlite::toJSON(i18n$t("action_plan_export_running_pdf"),
                              auto_unbox = TRUE)
           )
+        ),
+        # Persistance versionnée en base (multi-utilisateurs) : distincte des
+        # exports locaux ci-dessus, miroir du bouton reGénération.
+        htmltools::tags$hr(class = "my-2"),
+        shiny::actionButton(
+          ns("save_db"),
+          label = i18n$t("save_to_db_button"),
+          icon = shiny::icon("database"),
+          class = "btn-sm btn-outline-secondary w-100"
         )
       )
     )
@@ -1762,6 +1771,39 @@ mod_action_plan_server <- function(id, app_state) {
         }
       }
     )
+
+    # --- Persistance versionnée en base (multi-utilisateurs) --------------
+    # Miroir du bouton reGénération : instantané JSONB versionné du plan dans
+    # nemeton.action_plan_states. Le plan reste par ailleurs auto-sauvegardé sur
+    # disque (action_plan.json) ; ce bouton ajoute l'historique serveur partagé.
+    shiny::observeEvent(input$save_db, {
+      if (deny_if_readonly()) return()
+      i18n <- get_i18n(app_state$language)
+      plan <- plan_rv()
+      project <- app_state$current_project
+      if (is.null(project) || is.null(plan) || length(plan$actions) == 0L) {
+        shiny::showNotification(i18n$t("action_plan_persist_empty"), type = "warning")
+        return()
+      }
+      if (!is_db_configured()) {
+        shiny::showNotification(i18n$t("action_plan_db_unavailable"), type = "warning")
+        return()
+      }
+      pid <- tryCatch(project$id, error = function(e) NULL)
+      ver <- tryCatch({
+        con <- get_db_connection()
+        on.exit(close_db_connection(con), add = TRUE)
+        db_save_action_plan(con, pid, plan)
+      }, error = function(e) {
+        shiny::showNotification(
+          sprintf("%s: %s", i18n$t("error"), conditionMessage(e)), type = "error")
+        NULL
+      })
+      if (!is.null(ver)) {
+        shiny::showNotification(sprintf(i18n$t("action_plan_persisted_fmt"), ver),
+                                type = "message")
+      }
+    })
 
     # ============================================================
     # S11 - When mod_field_ingest reports a successful import, flip

@@ -1123,3 +1123,58 @@ test_that("archive reGénération : projet sans chemin -> pas d'archive, pas d'e
   expect_false(nemetonshiny:::.archive_regeneration_pdf(rendered,
     list(path = file.path(tempdir(), "nope-regen-xyz"), metadata = list(name = "X"))))
 })
+
+# ---------------------------------------------------------------------------
+# Envoyer vers Terrain : centroïdes UGF -> couche "regeneration" de samples.gpkg
+# ---------------------------------------------------------------------------
+
+test_that("export_terrain : envoie les centroïdes des UGF sélectionnées", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(id = "p", path = withr::local_tempdir()))
+  saved <- new.env()
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    deny_if_readonly = function(...) FALSE,
+    save_samples = function(project_id, plots, layer = "plots") {
+      saved$plots <- plots; saved$layer <- layer; TRUE
+    },
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(regen_ai_scope = "all")   # flush init
+    rv$result <- .regen_mod_units(3)
+    selected_ug_rv(c("1", "2"))
+    session$setInputs(export_terrain = 1)
+    expect_equal(saved$layer, "regeneration")
+    expect_true(inherits(saved$plots, "sf"))
+    expect_equal(nrow(saved$plots), 2L)                       # 2 UGF sélectionnées
+    expect_true(all(c("plot_id", "ug_id", "indice_priorite") %in% names(saved$plots)))
+    expect_true(all(as.character(sf::st_geometry_type(saved$plots)) == "POINT"))
+    expect_true(as.integer(as$samples_refresh) >= 1L)         # signal mod_sampling
+  })
+})
+
+test_that("export_terrain : sans sélection -> toutes les UGF ; sans résultat -> garde", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(id = "p", path = withr::local_tempdir()))
+  saved <- new.env(); saved$n <- 0L
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    deny_if_readonly = function(...) FALSE,
+    save_samples = function(project_id, plots, layer = "plots") {
+      saved$plots <- plots; saved$n <- saved$n + 1L; TRUE
+    },
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(regen_ai_scope = "all")
+    # Sans résultat : aucun envoi.
+    rv$result <- NULL
+    selected_ug_rv(character())
+    session$setInputs(export_terrain = 1)
+    expect_equal(saved$n, 0L)
+    # Avec résultat, sans sélection : toutes les UGF.
+    rv$result <- .regen_mod_units(3)
+    session$setInputs(export_terrain = 2)
+    expect_equal(saved$n, 1L)
+    expect_equal(nrow(saved$plots), 3L)
+  })
+})
