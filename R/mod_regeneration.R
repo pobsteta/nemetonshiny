@@ -471,7 +471,14 @@ mod_regeneration_ui <- function(id) {
               value = 25, min = 5, max = 100, step = 5),
             htmltools::tags$strong(i18n$t("regen_context_opacity")),
             shiny::sliderInput(ns("context_opacity"), NULL,
-              min = 0, max = 1, value = 0.8, step = 0.05, ticks = FALSE)
+              min = 0, max = 1, value = 0.8, step = 0.05, ticks = FALSE),
+            # Purge le cache raster (.tif + meta) des 3 vues et relance le calcul
+            # de la vue courante : à utiliser quand un raster caché est périmé
+            # (ancienne version cœur, bornes/classement changés).
+            htmltools::tags$hr(class = "my-2"),
+            shiny::actionButton(ns("recompute_context"), i18n$t("regen_context_recompute"),
+              icon = bsicons::bs_icon("arrow-repeat"),
+              class = "btn-outline-warning btn-sm w-100")
           ),
           shiny::uiOutput(ns("context_status")),
           leaflet::leafletOutput(ns("context_map"), height = "70vh")
@@ -1292,6 +1299,28 @@ mod_regeneration_server <- function(id, app_state) {
                           .dev_pkg_path, get_app_options())
     }, ignoreNULL = FALSE)
 
+    # Recalcul forcé du contexte : purge le cache disque (.tif + meta) des 3 vues
+    # — sinon l'observer lazy relit un raster périmé — puis re-déclenche le calcul
+    # de la vue courante. Les autres vues se recalculeront à leur prochaine
+    # sélection (cache absent). Indispensable après un changement cœur (classement
+    # bivarié, bornes) qui rend un raster caché incorrect.
+    shiny::observeEvent(input$recompute_context, {
+      if (deny_if_busy()) return()
+      if (deny_if_readonly(app_state, i18n)) return()
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(project_path)) {
+        shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
+        return()
+      }
+      for (v in c("tx", "rr", "bivariate")) {
+        p <- .regen_context_raster_paths(project_path, v)
+        unlink(c(p$tif, p$meta))
+      }
+      rv$context_raster <- NULL; rv$context_meta <- NULL; rv$context_loaded_view <- NULL
+      rv$context_refresh <- (rv$context_refresh %||% 0L) + 1L   # re-déclenche l'observer lazy
+      shiny::showNotification(i18n$t("regen_context_recomputing"), type = "message", duration = 4)
+    })
+
     # Tick 1 s : chrono de la notif « contexte régional ».
     shiny::observe({
       if (!isTRUE(rv$context_running)) return()
@@ -1874,6 +1903,24 @@ mod_regeneration_server <- function(id, app_state) {
         sense = if (var == "tx") "hot_red" else "dry_red")
     }
 
+    # Entrée de distribution pour une variable : lit le raster de pente caché
+    # (`context_<var>.tif`) + extrait la pente au point cliqué. Renvoie NULL si le
+    # raster de pente n'a pas (encore) été calculé pour cette variable.
+    .ctx_distrib_entry <- function(var, ev, project_path) {
+      cached <- regeneration_context_cached(project_path, var)
+      rast <- cached$raster
+      if (!inherits(rast, "SpatRaster")) return(NULL)
+      vals <- tryCatch(as.numeric(terra::values(rast)), error = function(e) NULL)
+      pv <- tryCatch({
+        v <- terra::vect(cbind(ev$lng, ev$lat), crs = "EPSG:4326")
+        v <- terra::project(v, terra::crs(rast))
+        as.numeric(terra::extract(rast, v)[1, 2])
+      }, error = function(e) NA_real_)
+      list(values = vals, point = pv,
+        label = i18n$t(if (var == "tx") "regen_ctx_series_tx" else "regen_ctx_series_rr"),
+        unit  = i18n$t(if (var == "tx") "regen_ctx_unit_tx" else "regen_ctx_unit_rr"))
+    }
+
     shiny::observeEvent(input$context_map_click, {
       ev <- input$context_map_click
       shiny::req(ev$lng, ev$lat)
@@ -1893,22 +1940,13 @@ mod_regeneration_server <- function(id, app_state) {
       entries <- Filter(Negate(is.null),
         lapply(vars, function(v) .ctx_series_entry(units, project_path, v, pt, buf)))
 
-      # Graphe 3 : distribution des pentes du buffer (raster de contexte affiché,
-      # déjà en mémoire) + pente de la maille. Univarié seulement (la bivariée
-      # porte des classes 1-25, pas une pente).
-      distrib <- NULL
-      rast <- rv$context_raster
-      if (view %in% c("tx", "rr") && inherits(rast, "SpatRaster")) {
-        vals <- tryCatch(as.numeric(terra::values(rast)), error = function(e) NULL)
-        pv <- tryCatch({
-          v <- terra::vect(cbind(ev$lng, ev$lat), crs = "EPSG:4326")
-          v <- terra::project(v, terra::crs(rast))
-          as.numeric(terra::extract(rast, v)[1, 2])
-        }, error = function(e) NA_real_)
-        distrib <- list(values = vals, point = pv,
-          label = i18n$t(if (view == "tx") "regen_ctx_series_tx" else "regen_ctx_series_rr"),
-          unit  = i18n$t(if (view == "tx") "regen_ctx_unit_tx" else "regen_ctx_unit_rr"))
-      }
+      # Graphe 3 : distribution des pentes du buffer + pente de la maille. Une
+      # entrée par variable de la vue (bivariée → tx ET rr, comme les graphes
+      # 1-2). Le raster de pente est relu depuis le cache `context_<var>.tif`
+      # (celui de la vue courante est identique à l'affiché) — la bivariée porte
+      # des classes 1-25, donc on lit les rasters univariés sous-jacents.
+      distrib_entries <- Filter(Negate(is.null),
+        lapply(vars, function(v) .ctx_distrib_entry(v, ev, project_path)))
 
       # Graphe 4 : climatologie mensuelle. tg si acquise (honnête), sinon repli tx.
       nc_tg <- regen_eobs_cached_nc(project_path, "tg")
@@ -1920,19 +1958,22 @@ mod_regeneration_server <- function(id, app_state) {
       clim_rr <- if (!is.null(nc_rr)) tryCatch(nemeton::eobs_monthly_climatology(
         nc_rr, pt, var = "rr"), error = function(e) NULL)
 
-      rv$click_series <- list(view = view, entries = entries, distrib = distrib,
+      rv$click_series <- list(view = view, entries = entries, distrib = distrib_entries,
         clim_t = clim_t, clim_rr = clim_rr, temp_is_tg = temp_is_tg,
         has_temp = !is.null(nc_t))
 
+      # navset_card + full_screen = TRUE : bouton plein écran sur le panneau,
+      # cohérent avec FAST/FORDEAD et mod_action_plan.
       shiny::showModal(shiny::modalDialog(
         title = sprintf(i18n$t("regen_ctx_cell_title"), ev$lat, ev$lng),
-        size = "l", easyClose = TRUE,
+        size = "xl", easyClose = TRUE,
         footer = shiny::modalButton(i18n$t("close")),
-        shiny::tabsetPanel(
-          shiny::tabPanel(i18n$t("regen_ctx_series"),  plotly::plotlyOutput(ns("ctx_g1"), height = "360px")),
-          shiny::tabPanel(i18n$t("regen_ctx_anomaly"), plotly::plotlyOutput(ns("ctx_g2"), height = "360px")),
-          shiny::tabPanel(i18n$t("regen_ctx_distrib"), plotly::plotlyOutput(ns("ctx_g3"), height = "360px")),
-          shiny::tabPanel(i18n$t("regen_ctx_ombro"),   plotly::plotlyOutput(ns("ctx_g4"), height = "360px")))))
+        bslib::navset_card_underline(
+          full_screen = TRUE,
+          bslib::nav_panel(i18n$t("regen_ctx_series"),  plotly::plotlyOutput(ns("ctx_g1"), height = "420px")),
+          bslib::nav_panel(i18n$t("regen_ctx_anomaly"), plotly::plotlyOutput(ns("ctx_g2"), height = "420px")),
+          bslib::nav_panel(i18n$t("regen_ctx_distrib"), plotly::plotlyOutput(ns("ctx_g3"), height = "420px")),
+          bslib::nav_panel(i18n$t("regen_ctx_ombro"),   plotly::plotlyOutput(ns("ctx_g4"), height = "420px")))))
     })
 
     # Graphe 1 — série(s) + tendance(s). Bivariée → deux panneaux côte à côte.
@@ -1953,12 +1994,15 @@ mod_regeneration_server <- function(id, app_state) {
       if (length(plots) == 1L) plots[[1]] else plotly::subplot(plots, nrows = 1L, titleX = TRUE, titleY = TRUE, margin = 0.06)
     })
 
-    # Graphe 3 — distribution régionale des pentes + maille cliquée.
+    # Graphe 3 — distribution régionale des pentes + maille cliquée. Bivariée →
+    # deux panneaux (tx et rr) côte à côte.
     output$ctx_g3 <- plotly::renderPlotly({
       cs <- rv$click_series
       d <- cs$distrib
-      if (is.null(d)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_distrib_na")))
-      .regen_ctx_distrib_plot(d$values, d$point, d$label, d$unit, i18n)
+      if (is.null(d) || !length(d)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_distrib_na")))
+      plots <- lapply(d, function(e)
+        .regen_ctx_distrib_plot(e$values, e$point, e$label, e$unit, i18n))
+      if (length(plots) == 1L) plots[[1]] else plotly::subplot(plots, nrows = 1L, titleX = TRUE, titleY = TRUE, margin = 0.06)
     })
 
     # Graphe 4 — diagramme ombrothermique (Gaussen). Sans température acquise :

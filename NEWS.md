@@ -1,5 +1,20 @@
 # nemetonshiny (development version)
 
+### Added — recalcul du contexte, plein écran et distribution bivariée (spec 036)
+
+Trois améliorations du contexte régional E-OBS de l'onglet reGénération :
+
+- **Recalculer le contexte** : nouveau bouton dans la sidebar qui **purge le
+  cache raster (.tif + meta) des 3 vues** (tx / rr / bivariée) et relance le
+  calcul de la vue courante. Indispensable quand un raster caché est périmé
+  (ancienne version cœur, classement/bornes bivariés modifiés) — sinon
+  l'observer relisait indéfiniment le raster obsolète.
+- **Bouton plein écran** sur le panneau de graphiques au clic : la modale passe
+  en `navset_card` avec `full_screen = TRUE`, cohérent avec FAST/FORDEAD.
+- **Distribution en vue bivariée** : le 3ᵉ graphique (distribution régionale)
+  s'affiche désormais aussi en vue bivariée, avec **les deux variables** (tx ET
+  rr) côte à côte — les 4 graphiques sont peuplés quelle que soit la vue.
+
 # nemetonshiny 0.107.1 (2026-07-16)
 
 ### Added — percentile régional dans le graphe de distribution (spec 036 §5.3)
