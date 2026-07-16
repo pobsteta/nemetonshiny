@@ -1,3 +1,6 @@
+# nemetonshiny (development version)
+
+
 # nemetonshiny 0.107.22 (2026-07-16)
 
 ### Added — reGénération : cartes UGF dans le PDF (comme le Plan d'actions)
