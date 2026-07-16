@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.107.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.107.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.107.5" id="nemetonshiny-01075-2026-07-16">nemetonshiny 0.107.5 (2026-07-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01075-2026-07-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--bouton-plein-écran-du-panneau-de-graphes-e-obs-0-107-5">Fixed — bouton plein écran du panneau de graphes E-OBS<a class="anchor" aria-label="anchor" href="#fixed--bouton-plein-%C3%A9cran-du-panneau-de-graphes-e-obs-0-107-5"></a></h4>
+<p>Le panneau de graphiques au clic sur la maille E-OBS ne montrait pas de bouton plein écran fonctionnel (le <code>full_screen</code> de <code>navset_card</code> de bslib ne rend pas de bouton visible dans une modale). Remplacé par le <strong>patron exact FAST/FORDEAD</strong> (<code>mod_monitoring_pixel_map</code>) : un bouton <code>arrows-fullscreen</code> ancré en haut à droite du titre qui bascule la classe Bootstrap <code>.modal-fullscreen</code> et déclenche un <code>resize</code> (plotly responsive). Wrapper flex + règle CSS pour que le graphe occupe tout l’écran en plein écran.</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.107.4" id="nemetonshiny-01074-2026-07-16">nemetonshiny 0.107.4 (2026-07-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01074-2026-07-16"></a></h2>

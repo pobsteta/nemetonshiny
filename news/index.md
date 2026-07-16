@@ -2,6 +2,19 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.107.5 (2026-07-16)
+
+#### Fixed — bouton plein écran du panneau de graphes E-OBS
+
+Le panneau de graphiques au clic sur la maille E-OBS ne montrait pas de
+bouton plein écran fonctionnel (le `full_screen` de `navset_card` de
+bslib ne rend pas de bouton visible dans une modale). Remplacé par le
+**patron exact FAST/FORDEAD** (`mod_monitoring_pixel_map`) : un bouton
+`arrows-fullscreen` ancré en haut à droite du titre qui bascule la
+classe Bootstrap `.modal-fullscreen` et déclenche un `resize` (plotly
+responsive). Wrapper flex + règle CSS pour que le graphe occupe tout
+l’écran en plein écran.
+
 ## nemetonshiny 0.107.4 (2026-07-16)
 
 #### Fixed — trous du raster bivarié + ascenseur de la légende (suite)
