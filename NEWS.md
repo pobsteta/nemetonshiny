@@ -1,5 +1,17 @@
 # nemetonshiny (development version)
 
+### Fixed — ombrothermique : mois d'été repliés + entête illisible
+
+- **Mois manquants (bug majeur)** : l'axe des x utilisait les lettres de mois
+  `J F M A M J J A S O N D`, qui comportent des doublons (mai/mars, juin/juil/
+  janv, avr/août). L'axe **catégoriel** de plotly fusionnait les mois homonymes →
+  **8 barres au lieu de 12**, la saison estivale (le cœur de l'analyse de saison
+  sèche) repliée. L'axe est désormais **numérique 1-12** (positions uniques), les
+  lettres n'étant plus que des graduations.
+- **Entête illisible en plein écran** : le titre (`layout(title=)`) et le récap
+  (mois secs / De Martonne) se chevauchaient. Fusionnés en une **annotation deux
+  lignes** centrée, avec marge haute suffisante.
+
 # nemetonshiny 0.107.7 (2026-07-16)
 
 ### Fixed — diagramme ombrothermique : barres de précipitation tronquées

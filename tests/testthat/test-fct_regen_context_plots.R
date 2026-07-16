@@ -98,4 +98,8 @@ test_that(".regen_ctx_ombro_plot rend un plotly, titre honnête tg vs tx", {
   expect_equal(r2, 2 * ry)                              # couplage P = 2T
   expect_gte(max(r2), max(clim_rr$value))               # aucune barre tronquée
   expect_gte(max(ry), max(clim_t$value))                # courbe T non tronquée
+  # Les 12 mois doivent être présents : x NUMÉRIQUE 1-12 (un axe catégoriel à
+  # lettres fusionnerait les mois homonymes -> saison estivale repliée).
+  for (tr in b$x$data) expect_length(tr$x, 12L)
+  expect_equal(unlist(b$x$layout$xaxis$tickvals), 1:12)
 })
