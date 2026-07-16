@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.107.0 (2026-07-16)
+
 ### Added — graphiques au clic sur la maille E-OBS (spec 036)
 
 La carte « Contexte régional (E-OBS) » de l'onglet reGénération n'affichait
