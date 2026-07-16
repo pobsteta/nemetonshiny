@@ -1059,5 +1059,55 @@ test_that("synthesis handles family_comments in app_state", {
   )
 })
 
+test_that("ai_family_indicators enrichit R5/R6/R7 par ug_id sur project$indicators", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    # R5 (monitoring) et R6/R7 (reGénération) injectés dans l'sf enrichi.
+    add_r5_to_indicators = function(base_sf, project) {
+      base_sf$indicateur_r5_deperissement <- c(40, 60); base_sf
+    },
+    add_regen_r_indicators = function(base_sf, project) {
+      base_sf$indicateur_r6_sensibilite <- c(1.2, -0.3)
+      base_sf$indicateur_r7_gel <- c(93.75, 50); base_sf
+    },
+    {
+      geom <- sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)))
+      # project$indicators : R1-R4 (+ _norm) sans R5/R6/R7 ; ug_id p1/p2.
+      indicators <- data.frame(
+        ug_id = c("p1", "p2"),
+        indicateur_r1_feu_norm = c(70, 80),
+        stringsAsFactors = FALSE)
+      indicators_sf <- sf::st_sf(
+        ug_id = c("p1", "p2"),
+        indicateur_r1_feu_norm = c(70, 80),
+        geometry = geom)
+
+      as <- shiny::reactiveValues(
+        current_project = list(
+          metadata = list(name = "T"),
+          indicators = indicators,
+          indicators_sf = indicators_sf),
+        language = "fr", family_comments = NULL)
+
+      shiny::testServer(
+        nemetonshiny:::mod_synthesis_server,
+        args = list(app_state = as),
+        {
+          enr <- ai_family_indicators()
+          # R1-R4 (_norm) préservé, R5/R6/R7 ajoutés, jointure ug_id respectée.
+          expect_true(all(c("indicateur_r1_feu_norm", "indicateur_r5_deperissement",
+            "indicateur_r6_sensibilite", "indicateur_r7_gel") %in% names(enr)))
+          expect_equal(enr$indicateur_r5_deperissement, c(40, 60))
+          expect_equal(enr$indicateur_r6_sensibilite, c(1.2, -0.3))
+          expect_equal(enr$indicateur_r7_gel, c(93.75, 50))
+          expect_equal(enr$indicateur_r1_feu_norm, c(70, 80))
+        }
+      )
+    }
+  )
+})
+
 # Drain async callbacks to prevent testServer session accumulation
 later::run_now(0)

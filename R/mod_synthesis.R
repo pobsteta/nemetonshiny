@@ -98,6 +98,39 @@ mod_synthesis_server <- function(id, app_state) {
     })
 
     # ================================================================
+    # REACTIVE: Indicateurs pour l'analyse IA par famille
+    # ================================================================
+    # `project$indicators` (R1-R4 + colonnes `_norm`) ENRICHI des indicateurs
+    # injectés au rendu : R5 (dépérissement, monitoring) et R6/R7 (sensibilité /
+    # gel, reGénération). Sans cet enrichissement, « Générer par IA » ne
+    # transmettait au LLM que R1-R4 pour la famille R, alors que la vue Familles
+    # et le décompte du récap affichent R5/R6/R7 (incohérence). Jointure par
+    # `ug_id` ; on n'écrase jamais une colonne `_norm` déjà présente.
+    ai_family_indicators <- shiny::reactive({
+      base <- project_indicators()
+      if (is.null(base)) return(NULL)
+      project <- app_state$current_project
+      sf <- tryCatch(project$indicators_sf, error = function(e) NULL)
+      if (!inherits(sf, "sf")) return(base)
+      enr <- tryCatch(
+        add_regen_r_indicators(add_r5_to_indicators(sf, project), project),
+        error = function(e) sf)
+      enr_df <- tryCatch(sf::st_drop_geometry(enr), error = function(e) NULL)
+      if (is.null(enr_df)) return(base)
+      extra <- intersect(
+        c("indicateur_r5_deperissement", "indicateur_r6_sensibilite",
+          "indicateur_r7_gel"),
+        setdiff(names(enr_df), names(base)))
+      if (length(extra) == 0L || !"ug_id" %in% names(base) ||
+          !"ug_id" %in% names(enr_df)) {
+        return(base)
+      }
+      idx <- match(as.character(base$ug_id), as.character(enr_df$ug_id))
+      for (col in extra) base[[col]] <- enr_df[[col]][idx]
+      base
+    })
+
+    # ================================================================
     # REACTIVE: Build sf with family scores (one row per UGF)
     # ================================================================
     family_scores <- shiny::reactive({
@@ -674,7 +707,7 @@ mod_synthesis_server <- function(id, app_state) {
       failed_families <- character(0)
       skipped_families <- character(0)
       if (isTRUE(input$fill_all_comments)) {
-        all_indicators <- project_indicators()
+        all_indicators <- ai_family_indicators()
         if (!is.null(all_indicators)) {
           family_codes <- get_family_codes()
 
