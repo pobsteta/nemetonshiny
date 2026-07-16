@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.14 (2026-07-16)
 
 ### Changed — reGénération : essences présentes (BDforêt v2) en gras dans le sélecteur
 
