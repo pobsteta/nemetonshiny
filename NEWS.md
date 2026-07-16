@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.107.1 (2026-07-16)
+
 ### Added — percentile régional dans le graphe de distribution (spec 036 §5.3)
 
 Le 3ᵉ graphique du panneau au clic (distribution régionale des pentes) annote
