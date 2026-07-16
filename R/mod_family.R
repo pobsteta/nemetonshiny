@@ -42,7 +42,10 @@ mod_family_server <- function(id, family_code, app_state) {
         return(NULL)
       }
       if (identical(toupper(family_code), "R")) {
-        add_r5_to_indicators(base_sf, project)
+        # R5 (dépérissement, alertes suivi) + R6/R7 (sensibilité / gel, résultat
+        # reGénération persisté) : injectés pour être affichés et comptés à côté
+        # de R1-R4 dès qu'ils sont accessibles. Best-effort chacun.
+        add_regen_r_indicators(add_r5_to_indicators(base_sf, project), project)
       } else {
         base_sf
       }

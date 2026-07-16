@@ -274,6 +274,41 @@ test_that("load_regeneration_precomputed exposes the DEM even without a regen ca
   })
 })
 
+test_that("add_regen_r_indicators injecte R6/R7 depuis le cache reGénération", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    proj <- getwd()
+    dir <- file.path(proj, "cache", "regeneration")
+    dir.create(dir, recursive = TRUE)
+    units <- .regen_units(2)
+    # Persistances reGénération : sensibilite (R6) + r7 (R7), clés par ug_id.
+    sf::st_write(cbind(units, sensibilite = c(-1.2, 3.4)),
+                 file.path(dir, "sensibilite.gpkg"), quiet = TRUE)
+    sf::st_write(cbind(units, R7 = c(80, 80)),
+                 file.path(dir, "r7.gpkg"), quiet = TRUE)
+
+    base <- units  # ug_id + geometry
+    enr <- nemetonshiny:::add_regen_r_indicators(base, list(path = proj))
+    expect_true(all(c("indicateur_r6_sensibilite", "indicateur_r7_gel") %in% names(enr)))
+    expect_equal(enr$indicateur_r6_sensibilite, c(-1.2, 3.4))
+    expect_equal(enr$indicateur_r7_gel, c(80, 80))
+  })
+})
+
+test_that("add_regen_r_indicators est un no-op sans cache reGénération / sans ug_id", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    proj <- getwd()
+    base <- .regen_units(2)
+    # Pas de cache -> base inchangée.
+    expect_false("indicateur_r6_sensibilite" %in%
+      names(nemetonshiny:::add_regen_r_indicators(base, list(path = proj))))
+    # Pas de ug_id -> inchangé.
+    no_id <- base; no_id$ug_id <- NULL
+    expect_identical(nemetonshiny:::add_regen_r_indicators(no_id, list(path = proj)), no_id)
+  })
+})
+
 test_that("REGEN_OUTPUT_COLUMNS covers the §7 contract", {
   cols <- nemetonshiny:::REGEN_OUTPUT_COLUMNS
   expect_true(all(c("indice_priorite_regen", "sensibilite", "njstress", "istress",

@@ -1,5 +1,19 @@
 # nemetonshiny (development version)
 
+### Fixed — famille R : R6/R7 comptés et affichés dès qu'ils sont accessibles
+
+Le tableau récapitulatif indiquait 7 indicateurs pour la famille R (taille de la
+config `INDICATOR_FAMILIES$R`, R1-R7) alors que la vue Familles n'en affichait que
+5 : R6 (`sensibilite`) et R7 (`R7`) sont produits par le moteur reGénération et
+persistés sous des noms ≠ config, absents de `indicators_sf`. Ils sont désormais
+**injectés** (comme R5) depuis le résultat reGénération (`add_regen_r_indicators`)
+sous leurs noms canoniques -> affichés à côté de R1-R5 dans l'onglet Familles. Le
+décompte « Nb indicateurs » du récap compte désormais les indicateurs réellement
+**accessibles** pour le projet (cohérent avec la vue Familles), non la taille
+théorique. Affichage/décompte uniquement : R6/R7 étant bruts (z-score / score),
+ils ne sont pas injectés dans le score de famille (normalisation = cœur).
+
+
 # nemetonshiny 0.107.8 (2026-07-16)
 
 ### Fixed — ombrothermique : mois d'été repliés + entête illisible
