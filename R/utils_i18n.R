@@ -4501,6 +4501,11 @@ TRANSLATIONS <- list(
   regen_ai_need_selection = list(fr = "Port\u00e9e \u00ab S\u00e9lection courante \u00bb : s\u00e9lectionne au moins une UGF sur la carte ou le tableau.", en = "Scope \"Current selection\": select at least one UGF on the map or table."),
   regen_ai_need_ranking = list(fr = "Lancez d'abord l'analyse reG\u00e9n\u00e9ration (un classement d'essences est requis).", en = "Run the regeneration analysis first (a species ranking is required)."),
   regen_ai_advice_empty = list(fr = "Le conseil IA s'affichera ici apr\u00e8s g\u00e9n\u00e9ration.", en = "The AI advice will appear here after generation."),
+  regen_comment_label = list(fr = "Commentaire", en = "Comment"),
+  regen_comment_placeholder = list(fr = "Notes de r\u00e9g\u00e9n\u00e9ration, pr\u00e9conisations, conseil IA ins\u00e9r\u00e9\u2026", en = "Regeneration notes, recommendations, inserted AI advice\u2026"),
+  regen_comment_insert_ai = list(fr = "Ins\u00e9rer le conseil IA dans les UGF s\u00e9lectionn\u00e9es", en = "Insert AI advice into selected UGFs"),
+  regen_comment_no_advice = list(fr = "G\u00e9n\u00e9rez d'abord un conseil IA (panneau \u00ab Affiner \u00bb).", en = "Generate an AI advice first (Refine panel)."),
+  regen_comment_inserted_fmt = list(fr = "Conseil IA ins\u00e9r\u00e9 dans %d UGF.", en = "AI advice inserted into %d UGF(s)."),
   regen_ndp_model = list(
     fr = "Indices mod\u00e9lis\u00e9s (mod\u00e8le m\u00e9caniste, non mesur\u00e9s terrain) : fiables en classement relatif, prudents en valeur absolue.",
     en = "Modelled indices (mechanistic model, not field-measured): reliable for relative ranking, cautious in absolute value."
