@@ -2875,3 +2875,24 @@ test_that("generate_regeneration_pdf produit un PDF (si Quarto installé)", {
     output_file = out, language = "fr")
   expect_true(is.null(res) || file.exists(out))
 })
+
+test_that(".build_regeneration_pdf_data : cartes passées par UGF, NA sinon", {
+  skip_if_not_installed("sf")
+  units <- .regen_pdf_units()
+  fake_png <- withr::local_tempfile(fileext = ".png"); writeLines("x", fake_png)
+  data <- nemetonshiny:::.build_regeneration_pdf_data(
+    project = list(id = "p"), units = units, ranking = .regen_pdf_ranking(),
+    comments = list(), language = "fr", maps = list(U1 = fake_png))
+  expect_equal(data$ugfs[[1]]$map_png, fake_png)   # U1 : carte fournie
+  expect_true(is.na(data$ugfs[[2]]$map_png))        # U2 : aucune carte -> NA
+
+  # Sans argument maps : map_png par défaut NA (rétro-compatible).
+  d0 <- nemetonshiny:::.build_regeneration_pdf_data(
+    project = list(id = "p"), units = units, ranking = NULL)
+  expect_true(is.na(d0$ugfs[[1]]$map_png))
+})
+
+test_that(".render_ug_satellite_png : NA si géométrie non-sf, best-effort", {
+  skip_if_not_installed("sf")
+  expect_true(is.na(nemetonshiny:::.render_ug_satellite_png(42, tempfile(fileext = ".png"))))
+})

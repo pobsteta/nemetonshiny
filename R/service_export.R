@@ -2364,6 +2364,76 @@ generate_report_pdf <- function(project,
 # ===========================================================================
 # Action plan exports (S13)
 # ===========================================================================
+#' Render a per-UGF satellite (Esri.WorldImagery) PNG for a PDF report
+#'
+#' Shared by the action-plan and reGénération PDF exports so both show the same
+#' basemap. Best-effort: returns NA when the geometry is not sf, tiles are
+#' unavailable (no maptiles / network error) or the produced PNG is unusably
+#' small (a 0-byte PNG passed to \includegraphics crashes xelatex). Falls back
+#' to a tile-less geometry plot when tiles cannot be fetched.
+#'
+#' @param geom An sf/sfc geometry (typically one UGF row).
+#' @param out_path Destination PNG path.
+#' @return `out_path` on success, `NA_character_` otherwise.
+#' @noRd
+.render_ug_satellite_png <- function(geom, out_path) {
+  if (!inherits(geom, "sf") && !inherits(geom, "sfc")) return(NA_character_)
+  has_maptiles <- requireNamespace("maptiles", quietly = TRUE)
+  result <- tryCatch({
+    g_wgs84 <- sf::st_transform(geom, 4326)
+    bbox <- sf::st_bbox(g_wgs84)
+    extent_size <- max(bbox[["xmax"]] - bbox[["xmin"]],
+                       bbox[["ymax"]] - bbox[["ymin"]])
+    auto_zoom <- if (is.finite(extent_size) && extent_size > 0) {
+      min(17L, max(13L, round(17 - log2(extent_size * 100))))
+    } else {
+      15L
+    }
+    tiles <- if (has_maptiles) {
+      tryCatch(
+        maptiles::get_tiles(g_wgs84, provider = "Esri.WorldImagery",
+                            zoom = auto_zoom, crop = TRUE,
+                            cachedir = tempdir()),
+        error = function(e) {
+          cli::cli_alert_info(
+            "UGF map: satellite tiles unavailable, drawing geometry only ({conditionMessage(e)})"
+          )
+          NULL
+        }
+      )
+    } else {
+      cli::cli_alert_info("UGF map: `maptiles` not installed, drawing geometry only")
+      NULL
+    }
+    grDevices::png(out_path, width = 800, height = 600, res = 150)
+    graphics::par(mar = c(0.5, 0.5, 0.5, 0.5))
+    if (!is.null(tiles)) {
+      g_proj <- sf::st_transform(geom, sf::st_crs(tiles))
+      maptiles::plot_tiles(tiles)
+      plot(sf::st_geometry(g_proj),
+           col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
+           border = "#1f77b4", lwd = 2.5, add = TRUE)
+    } else {
+      plot(sf::st_geometry(g_wgs84),
+           col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
+           border = "#1f77b4", lwd = 2.5, axes = FALSE, main = "")
+    }
+    grDevices::dev.off()
+    out_path
+  }, error = function(e) {
+    if (length(grDevices::dev.list())) {
+      tryCatch(grDevices::dev.off(), error = function(e2) NULL)
+    }
+    cli::cli_warn("UGF map render failed: {conditionMessage(e)}")
+    NA_character_
+  })
+  if (is.na(result) || !file.exists(result) || file.size(result) < 100L) {
+    return(NA_character_)
+  }
+  result
+}
+
+
 
 #' Generate the per-UGF Action Plan PDF
 #'
@@ -2410,92 +2480,10 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
   temp_dir <- tempfile("nemeton_actions_")
   dir.create(temp_dir, recursive = TRUE)
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
-  has_sf       <- inherits(ug_sf, "sf")
-  has_maptiles <- requireNamespace("maptiles", quietly = TRUE)
-  # Satellite imagery (Esri.WorldImagery) as basemap for the
-  # action-plan PDF — the user wants to see the actual canopy /
-  # terrain behind each parcel rather than the topographic shading
-  # used by the synthesis report. Provider is free, no API key
-  # required. Zoom / PNG size / fallback logic mirror the recipe
-  # from generate_family_maps() that compiles reliably in
-  # production.
-  render_ug_map <- function(geom, out_path) {
-    if (!has_sf) return(NA_character_)
-    result <- tryCatch({
-      g_wgs84 <- sf::st_transform(geom, 4326)
-      bbox <- sf::st_bbox(g_wgs84)
-      extent_size <- max(bbox[["xmax"]] - bbox[["xmin"]],
-                         bbox[["ymax"]] - bbox[["ymin"]])
-      auto_zoom <- if (is.finite(extent_size) && extent_size > 0) {
-        min(17L, max(13L, round(17 - log2(extent_size * 100))))
-      } else {
-        15L
-      }
-
-      tiles <- if (has_maptiles) {
-        tryCatch(
-          maptiles::get_tiles(g_wgs84, provider = "Esri.WorldImagery",
-                              zoom = auto_zoom, crop = TRUE,
-                              cachedir = tempdir()),
-          error = function(e) {
-            cli::cli_alert_info(
-              "UGF map: satellite tiles unavailable, drawing geometry only ({conditionMessage(e)})"
-            )
-            NULL
-          }
-        )
-      } else {
-        cli::cli_alert_info(
-          "UGF map: `maptiles` not installed, drawing geometry only"
-        )
-        NULL
-      }
-
-      # Same dimensions as the family maps used by the synthesis
-      # report (which compile cleanly downstream). The device is
-      # closed explicitly before the post-tryCatch size check so a
-      # 0-byte PNG can't slip through to \includegraphics.
-      grDevices::png(out_path, width = 800, height = 600, res = 150)
-      graphics::par(mar = c(0.5, 0.5, 0.5, 0.5))
-
-      if (!is.null(tiles)) {
-        g_proj <- sf::st_transform(geom, sf::st_crs(tiles))
-        maptiles::plot_tiles(tiles)
-        plot(sf::st_geometry(g_proj),
-             col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
-             border = "#1f77b4", lwd = 2.5, add = TRUE)
-      } else {
-        # Tile-less fallback: minimal `plot.sf` call. Args like
-        # bg / xlim / ylim are not uniformly supported across sf
-        # versions and can produce an invalid PNG that crashes
-        # xelatex downstream. plot.sf auto-fits the geometry bbox.
-        plot(sf::st_geometry(g_wgs84),
-             col = grDevices::adjustcolor("#1f77b4", alpha.f = 0.25),
-             border = "#1f77b4", lwd = 2.5,
-             axes = FALSE, main = "")
-      }
-      grDevices::dev.off()
-      out_path
-    }, error = function(e) {
-      # If the PNG device is still open at the time of the error,
-      # close it so the partial file is not held by R.
-      if (length(grDevices::dev.list())) {
-        tryCatch(grDevices::dev.off(), error = function(e2) NULL)
-      }
-      cli::cli_warn("UGF map render failed: {conditionMessage(e)}")
-      NA_character_
-    })
-    # Final sanity check on the produced file. A 0/near-zero byte
-    # PNG passed downstream to \includegraphics will crash xelatex
-    # and bring the whole Quarto export down (1 KB output PDF that
-    # won't open). Treat an unreadably small file as missing so
-    # the template skips the figure entirely.
-    if (is.na(result) || !file.exists(result) ||
-        file.size(result) < 100L) {
-      return(NA_character_)
-    }
-    result
-  }
+  # Carte satellite (Esri.WorldImagery) par UGF, pré-rendue en R : le qmd reste
+  # simple et toute erreur réseau/maptiles dégrade en NA (figure ignorée).
+  # Helper partagé avec l'export reGénération pour une parité stricte.
+  render_ug_map <- .render_ug_satellite_png
 
   # Surfaces in hectares (best-effort)
   surfaces <- if (!is.null(ug_sf$surface_sig_m2)) {
@@ -2636,11 +2624,14 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
 #' @param comments Named list `ug_id -> comment`.
 #' @param language "fr" or "en".
 #' @param filter_ug_ids Optional character vector to restrict the export.
+#' @param maps Named list `ug_id -> PNG path` for the per-UGF satellite map
+#'   (pre-rendered by the caller). Missing / NA entries are skipped by the
+#'   template. Kept out of this pure builder so it stays unit-testable.
 #' @return List with project_name, n_ugfs, generated_on, ugfs (per-UGF blocks).
 #' @noRd
 .build_regeneration_pdf_data <- function(project, units, ranking = NULL,
                                          comments = list(), language = "fr",
-                                         filter_ug_ids = NULL) {
+                                         filter_ug_ids = NULL, maps = list()) {
   i18n <- get_i18n(language)
   df <- if (inherits(units, "sf")) sf::st_drop_geometry(units) else units
   project_name <- tryCatch(project$metadata$name, error = function(e) NULL) %||%
@@ -2716,8 +2707,10 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
       }
     }
 
+    map_png <- maps[[id]] %||% NA_character_
     list(id = id, label = label, conditions = conditions, species = species,
-         comment = as.character(comments[[id]] %||% ""))
+         comment = as.character(comments[[id]] %||% ""),
+         map_png = if (is.null(map_png)) NA_character_ else map_png)
   })
 
   list(project_name = as.character(project_name), n_ugfs = length(ugfs),
@@ -2748,8 +2741,6 @@ generate_regeneration_pdf <- function(project, units, comments = list(),
   }
   ranking <- tryCatch(regeneration_species_ranking(units, top_n = top_n),
                       error = function(e) NULL)
-  data <- .build_regeneration_pdf_data(project, units, ranking, comments,
-                                       language, filter_ug_ids)
 
   template_path <- system.file("quarto", "regeneration_template.qmd",
                                package = "nemetonshiny")
@@ -2760,6 +2751,25 @@ generate_regeneration_pdf <- function(project, units, comments = list(),
   temp_dir <- tempfile("nemeton_regen_")
   dir.create(temp_dir, recursive = TRUE)
   on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  # Cartes satellite par UGF (helper partagé avec le Plan d'actions). Pré-rendues
+  # ici pour garder le builder pur ; NA -> figure ignorée par le template.
+  maps <- list()
+  if (inherits(units, "sf")) {
+    geom <- sf::st_geometry(units)
+    ids <- as.character(units$ug_id)
+    keep <- if (is.null(filter_ug_ids)) seq_along(ids) else
+      which(ids %in% as.character(filter_ug_ids))
+    for (i in keep) {
+      if (isTRUE(sf::st_is_empty(geom[i]))) next
+      png_path <- .render_ug_satellite_png(
+        units[i, ], file.path(temp_dir, paste0("ug_", gsub("[^A-Za-z0-9]", "_", ids[i]), "_map.png")))
+      if (!is.na(png_path)) maps[[ids[i]]] <- png_path
+    }
+  }
+
+  data <- .build_regeneration_pdf_data(project, units, ranking, comments,
+                                       language, filter_ug_ids, maps = maps)
   qmd <- file.path(temp_dir, "regeneration.qmd")
   file.copy(template_path, qmd)
   data_file <- file.path(temp_dir, "regeneration_data.rds")
