@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.107.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.107.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.107.6" id="nemetonshiny-01076-2026-07-16">nemetonshiny 0.107.6 (2026-07-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01076-2026-07-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--titre-par-panneau-dans-le-panneau-de-graphes-e-obs-0-107-6">Fixed — titre par panneau dans le panneau de graphes E-OBS<a class="anchor" aria-label="anchor" href="#fixed--titre-par-panneau-dans-le-panneau-de-graphes-e-obs-0-107-6"></a></h4>
+<p>En vue bivariée, les deux panneaux côte à côte (T°max à gauche, précipitations à droite) ne montraient qu’<strong>un seul titre global</strong> (« Précipitations estivales (mm) »), car <code><a href="https://rdrr.io/pkg/plotly/man/subplot.html" class="external-link">plotly::subplot()</a></code> ne conserve que le dernier <code>layout(title=)</code>. Le titre de chaque graphe est désormais rendu comme <strong>annotation</strong> (haut-centre), que <code>subplot()</code> remappe sur le domaine de chaque panneau → <strong>un titre complet par graphe</strong> (« T°max estivale (°C) » à gauche, « Précipitations estivales (mm) » à droite). Sans effet sur les vues univariées (titre unique inchangé).</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.107.5" id="nemetonshiny-01075-2026-07-16">nemetonshiny 0.107.5 (2026-07-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01075-2026-07-16"></a></h2>

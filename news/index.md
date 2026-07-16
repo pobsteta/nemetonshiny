@@ -2,6 +2,21 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.107.6 (2026-07-16)
+
+#### Fixed — titre par panneau dans le panneau de graphes E-OBS
+
+En vue bivariée, les deux panneaux côte à côte (T°max à gauche,
+précipitations à droite) ne montraient qu’**un seul titre global** («
+Précipitations estivales (mm) »), car
+[`plotly::subplot()`](https://rdrr.io/pkg/plotly/man/subplot.html) ne
+conserve que le dernier `layout(title=)`. Le titre de chaque graphe est
+désormais rendu comme **annotation** (haut-centre), que `subplot()`
+remappe sur le domaine de chaque panneau → **un titre complet par
+graphe** (« T°max estivale (°C) » à gauche, « Précipitations estivales
+(mm) » à droite). Sans effet sur les vues univariées (titre unique
+inchangé).
+
 ## nemetonshiny 0.107.5 (2026-07-16)
 
 #### Fixed — bouton plein écran du panneau de graphes E-OBS
