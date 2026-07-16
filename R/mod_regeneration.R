@@ -1990,18 +1990,36 @@ mod_regeneration_server <- function(id, app_state) {
           distrib = distrib_entries, clim_t = clim_t, clim_rr = clim_rr,
           temp_is_tg = temp_is_tg, has_temp = !is.null(nc_t)))
 
-        # navset_card + full_screen = TRUE : bouton plein écran sur le panneau,
-        # cohérent avec FAST/FORDEAD et mod_action_plan.
+        # Bouton « plein écran » ancré en HAUT À DROITE du titre (même patron que
+        # FAST/FORDEAD, mod_monitoring_pixel_map) : un JS bascule la classe BS5
+        # `.modal-fullscreen` sur la `.modal-dialog` + dispatch `resize` (plotly
+        # responsive n'écoute que window.resize). Le wrapper flex + la règle CSS
+        # `.modal-fullscreen` font grandir le graphe à la taille de l'écran.
         shiny::showModal(shiny::modalDialog(
-          title = sprintf(i18n$t("regen_ctx_cell_title"), ev$lat, ev$lng),
+          title = htmltools::tagList(
+            htmltools::span(sprintf(i18n$t("regen_ctx_cell_title"), ev$lat, ev$lng)),
+            htmltools::tags$button(type = "button",
+              class = "btn btn-sm btn-outline-secondary",
+              style = "position:absolute;top:0.75rem;right:0.75rem;z-index:2;",
+              title = i18n$t("regen_ctx_fullscreen"),
+              onclick = paste0(
+                "this.closest('.modal-dialog').classList.toggle('modal-fullscreen');",
+                "setTimeout(function(){window.dispatchEvent(new Event('resize'));},250);"),
+              bsicons::bs_icon("arrows-fullscreen"))),
           size = "xl", easyClose = TRUE,
           footer = shiny::modalButton(i18n$t("close")),
-          bslib::navset_card_underline(
-            full_screen = TRUE,
-            bslib::nav_panel(i18n$t("regen_ctx_series"),  plotly::plotlyOutput(ns("ctx_g1"), height = "420px")),
-            bslib::nav_panel(i18n$t("regen_ctx_anomaly"), plotly::plotlyOutput(ns("ctx_g2"), height = "420px")),
-            bslib::nav_panel(i18n$t("regen_ctx_distrib"), plotly::plotlyOutput(ns("ctx_g3"), height = "420px")),
-            bslib::nav_panel(i18n$t("regen_ctx_ombro"),   plotly::plotlyOutput(ns("ctx_g4"), height = "420px")))))
+          htmltools::tags$style(htmltools::HTML(paste0(
+            ".regen-ctx-wrap{height:440px;display:flex;flex-direction:column;}",
+            ".regen-ctx-wrap>.tabbable{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;}",
+            ".regen-ctx-wrap .tab-content{flex:1 1 auto;min-height:0;}",
+            ".regen-ctx-wrap .tab-pane.active{height:100%;}",
+            ".modal-fullscreen .regen-ctx-wrap{height:calc(100vh - 170px)!important;}"))),
+          htmltools::div(class = "regen-ctx-wrap",
+            shiny::tabsetPanel(
+              shiny::tabPanel(i18n$t("regen_ctx_series"),  plotly::plotlyOutput(ns("ctx_g1"), height = "100%")),
+              shiny::tabPanel(i18n$t("regen_ctx_anomaly"), plotly::plotlyOutput(ns("ctx_g2"), height = "100%")),
+              shiny::tabPanel(i18n$t("regen_ctx_distrib"), plotly::plotlyOutput(ns("ctx_g3"), height = "100%")),
+              shiny::tabPanel(i18n$t("regen_ctx_ombro"),   plotly::plotlyOutput(ns("ctx_g4"), height = "100%"))))))
       }, once = TRUE)
     })
 
