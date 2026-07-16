@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.10 (2026-07-16)
 
 ### Changed — reGénération : Carte + Tableau réunis (pattern « Plan d'actions »)
 
