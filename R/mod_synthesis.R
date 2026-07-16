@@ -149,6 +149,12 @@ mod_synthesis_server <- function(id, app_state) {
       # / sans alerte, base_sf est inchangé et la famille R reste R1-R4.
       base_sf <- add_r5_to_indicators(base_sf, project)
 
+      # R6 (sensibilité 0-100) + R7 (gel) issus de reGénération. Normalisés 0-100
+      # par le cœur (>= 0.161.0), ils entrent désormais dans le score de famille R
+      # via create_family_index (la famille R passe de R1-R5 à R1-R7). Best-effort :
+      # sans cache reGénération, base_sf est inchangé.
+      base_sf <- add_regen_r_indicators(base_sf, project)
+
       tryCatch(
         create_family_index(base_sf, method = "mean", na.rm = TRUE),
         error = function(e) {

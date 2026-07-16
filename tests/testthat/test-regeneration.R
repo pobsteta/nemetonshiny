@@ -281,8 +281,10 @@ test_that("add_regen_r_indicators injecte R6/R7 depuis le cache reGénération",
     dir <- file.path(proj, "cache", "regeneration")
     dir.create(dir, recursive = TRUE)
     units <- .regen_units(2)
-    # Persistances reGénération : sensibilite (R6) + r7 (R7), clés par ug_id.
-    sf::st_write(cbind(units, sensibilite = c(-1.2, 3.4)),
+    # Persistances reGénération : sensibilite (R6, 0-100 `sensibilite_score` +
+    # z-score `sensibilite`) + r7 (R7), clés par ug_id.
+    sf::st_write(cbind(units, sensibilite = c(-1.2, 3.4),
+                       sensibilite_score = c(72, 41)),
                  file.path(dir, "sensibilite.gpkg"), quiet = TRUE)
     sf::st_write(cbind(units, R7 = c(80, 80)),
                  file.path(dir, "r7.gpkg"), quiet = TRUE)
@@ -290,8 +292,24 @@ test_that("add_regen_r_indicators injecte R6/R7 depuis le cache reGénération",
     base <- units  # ug_id + geometry
     enr <- nemetonshiny:::add_regen_r_indicators(base, list(path = proj))
     expect_true(all(c("indicateur_r6_sensibilite", "indicateur_r7_gel") %in% names(enr)))
-    expect_equal(enr$indicateur_r6_sensibilite, c(-1.2, 3.4))
+    # R6 : la valeur NORMALISÉE 0-100 (sensibilite_score) est préférée au z-score.
+    expect_equal(enr$indicateur_r6_sensibilite, c(72, 41))
     expect_equal(enr$indicateur_r7_gel, c(80, 80))
+  })
+})
+
+test_that("add_regen_r_indicators : repli sur le z-score si sensibilite_score absent", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    proj <- getwd()
+    dir <- file.path(proj, "cache", "regeneration")
+    dir.create(dir, recursive = TRUE)
+    units <- .regen_units(2)
+    # Cache antérieur (cœur < 0.161.0) : uniquement le z-score `sensibilite`.
+    sf::st_write(cbind(units, sensibilite = c(-1.2, 3.4)),
+                 file.path(dir, "sensibilite.gpkg"), quiet = TRUE)
+    enr <- nemetonshiny:::add_regen_r_indicators(units, list(path = proj))
+    expect_equal(enr$indicateur_r6_sensibilite, c(-1.2, 3.4))
   })
 })
 
