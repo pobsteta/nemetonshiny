@@ -1,5 +1,14 @@
 # nemetonshiny (development version)
 
+### Changed — migration SQL versionnée pour `action_plan_states`
+
+La table `nemeton.action_plan_states` (persistance versionnée du Plan d'actions,
+créée à la volée par `db_save_action_plan`) est désormais aussi déclarée dans une
+**migration SQL versionnée** `inst/sql/migration_005_action_plan.sql`, en miroir
+de `migration_004_regeneration.sql` — pour un déploiement propre côté DBA. Test
+garde-fou vérifiant que les deux migrations `*_states` restent alignées sur le
+DDL runtime.
+
 
 # nemetonshiny 0.108.0 (2026-07-16)
 
