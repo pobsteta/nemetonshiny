@@ -468,7 +468,7 @@ mod_regeneration_ui <- function(id) {
                         i18n$t("regen_filter_coverage"), value = TRUE)),
                     shiny::actionButton(ns("clear_selection"),
                       i18n$t("regen_clear_selection"),
-                      icon = bsicons::bs_icon("x-circle"),
+                      icon = shiny::icon("eraser"),
                       class = "btn-outline-secondary btn-sm")))),
               bslib::card_body(
                 class = "overflow-auto",
