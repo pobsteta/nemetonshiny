@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.107.2 (2026-07-16)
+
 ### Added — recalcul du contexte, plein écran et distribution bivariée (spec 036)
 
 Trois améliorations du contexte régional E-OBS de l'onglet reGénération :
