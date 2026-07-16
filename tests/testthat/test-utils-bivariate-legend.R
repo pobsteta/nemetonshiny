@@ -32,8 +32,8 @@ test_that("bivariate_legend_html dessine une grille 5×5 (25 cases) via ncol", {
   # Le cœur eobs_downscale_bivariate livre 25 classes + ncol = 5 (comme l'IF IGN).
   pal <- setNames(sprintf("#%06x", seq_len(25) * 0x0A0A0AL), as.character(1:25))
   html <- as.character(nemetonshiny:::bivariate_legend_html(palette = pal, ncol = 5))
-  # 25 cases (cellules réduites à 16px au-delà de 3×3).
-  expect_equal(lengths(regmatches(html, gregexpr("width:16px;height:16px", html)))[1], 25L)
+  # 25 cases (cellules 22px au-delà de 3×3, lisibles sans ascenseur).
+  expect_equal(lengths(regmatches(html, gregexpr("width:22px;height:22px", html)))[1], 25L)
   # La classe 25 (coin) doit apparaître.
   expect_match(html, pal[["25"]], fixed = TRUE)
 })
@@ -42,7 +42,7 @@ test_that("bivariate_legend_html déduit N de la longueur de palette sans ncol",
   skip_if_not_installed("htmltools")
   pal <- setNames(sprintf("#%06x", seq_len(25) * 0x0A0A0AL), as.character(1:25))
   html <- as.character(nemetonshiny:::bivariate_legend_html(palette = pal))  # ncol NULL
-  expect_equal(lengths(regmatches(html, gregexpr("width:16px;height:16px", html)))[1], 25L)
+  expect_equal(lengths(regmatches(html, gregexpr("width:22px;height:22px", html)))[1], 25L)
 })
 
 test_that("bivariate_legend_html trace les lignes 0 (pointillé blanc) + min/max des axes", {
@@ -55,9 +55,10 @@ test_that("bivariate_legend_html trace les lignes 0 (pointillé blanc) + min/max
     y_range = c(0, 0.4, 0.8, 1.2)))          # seuils T°max
   # Deux lignes 0 en pointillé blanc.
   expect_equal(lengths(regmatches(html, gregexpr("dashed #fff", html)))[1], 2L)
-  # rr=0 (vertical) à 0.6 × 80px = 48px ; tx=0 (horizontal) à 0.2 × 80px = 16px.
-  expect_match(html, "left:48.0px", fixed = TRUE)
-  expect_match(html, "bottom:16.0px", fixed = TRUE)
+  # Grille 5×5 à 22px -> W=H=110px. rr=0 (vertical) à 0.6 × 110 = 66px ;
+  # tx=0 (horizontal) à 0.2 × 110 = 22px.
+  expect_match(html, "left:66.0px", fixed = TRUE)
+  expect_match(html, "bottom:22.0px", fixed = TRUE)
   # Min/max des deux axes présents.
   expect_match(html, ">-80<"); expect_match(html, ">40<")
   expect_match(html, ">0<");   expect_match(html, ">1.2<")

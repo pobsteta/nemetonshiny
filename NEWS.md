@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+### Fixed — légende bivariée sans ascenseur + notif « calcul en cours » au clic
+
+- **Légende bivariée** : la grille 5×5 + axes dépassait le plafond de 150 px du
+  contrôle leaflet (`.info.legend`), provoquant **deux ascenseurs**. La légende
+  reçoit désormais une classe dédiée (`nmt-bivariate-control`) sans plafond ni
+  overflow, et ses cases sont agrandies (16 → 22 px) pour rester lisibles.
+- **Message « Calcul du graphique en cours… »** au clic sur la maille E-OBS
+  (parité FAST/FORDEAD) : notification affichée immédiatement, extraction
+  différée après le flush (`onFlushed`), et **garde anti-multi-clics** qui
+  ignore les clics tant que le graphique précédent n'a pas fini de se calculer.
+
 # nemetonshiny 0.107.2 (2026-07-16)
 
 ### Added — recalcul du contexte, plein écran et distribution bivariée (spec 036)

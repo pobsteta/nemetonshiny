@@ -302,6 +302,15 @@ html, body {
   font-size: 0.8em;
 }
 
+/* Légende bivariée (contexte E-OBS) : grille 5×5 + axes trop haute pour le
+   plafond de 150px -> deux ascenseurs. On retire le plafond et l'overflow pour
+   cette légende, qui a sa propre taille bornée par construction. */
+.leaflet-control.info.legend.nmt-bivariate-control {
+  max-height: none;
+  overflow: visible;
+  width: auto;
+}
+
 .leaflet-control-zoom a {
   min-width: var(--min-touch-target);
   min-height: var(--min-touch-target);

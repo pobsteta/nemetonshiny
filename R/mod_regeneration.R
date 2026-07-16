@@ -1805,7 +1805,8 @@ mod_regeneration_server <- function(id, app_state) {
         m |>
           leaflet::addRasterImage(rast, colors = cmap, opacity = op, project = TRUE,
             group = "Contexte E-OBS", options = opts) |>
-          leaflet::addControl(html = leg, position = "bottomright", layerId = "context_legend")
+          leaflet::addControl(html = leg, position = "bottomright", layerId = "context_legend",
+            className = "info legend nmt-bivariate-control")
       } else {
         # Univarié : colorNumeric, sens piloté par meta$palette$sense.
         lo <- pal$low; hi <- pal$high
@@ -1921,7 +1922,12 @@ mod_regeneration_server <- function(id, app_state) {
         unit  = i18n$t(if (var == "tx") "regen_ctx_unit_tx" else "regen_ctx_unit_rr"))
     }
 
+    # Garde anti-multi-clics (parité FAST/FORDEAD) : ignore tout nouveau clic tant
+    # que le graphique précédent n'a pas fini de se calculer.
+    ctx_computing <- shiny::reactiveVal(FALSE)
+
     shiny::observeEvent(input$context_map_click, {
+      if (isTRUE(shiny::isolate(ctx_computing()))) return()
       ev <- input$context_map_click
       shiny::req(ev$lng, ev$lat)
       units <- units_sf()
@@ -1934,46 +1940,61 @@ mod_regeneration_server <- function(id, app_state) {
       buf  <- (input$buffer_km %||% 25) * 1000
       view <- rv$context_loaded_view %||% input$context_view %||% "tx"
 
-      # Graphes 1-2 : série(s) + tendance(s). Vue tx/rr → variable de la vue ;
-      # bivariée → les DEUX (le sens du croisement).
-      vars <- switch(view, tx = "tx", rr = "rr", bivariate = c("tx", "rr"), "tx")
-      entries <- Filter(Negate(is.null),
-        lapply(vars, function(v) .ctx_series_entry(units, project_path, v, pt, buf)))
+      notif_id <- session$ns("ctx_computing")
+      ctx_computing(TRUE)
+      # Message « Calcul du graphique en cours… » affiché TOUT DE SUITE.
+      shiny::showNotification(i18n$t("regen_ctx_computing"),
+        id = notif_id, type = "message", duration = NULL)
 
-      # Graphe 3 : distribution des pentes du buffer + pente de la maille. Une
-      # entrée par variable de la vue (bivariée → tx ET rr, comme les graphes
-      # 1-2). Le raster de pente est relu depuis le cache `context_<var>.tif`
-      # (celui de la vue courante est identique à l'affiché) — la bivariée porte
-      # des classes 1-25, donc on lit les rasters univariés sous-jacents.
-      distrib_entries <- Filter(Negate(is.null),
-        lapply(vars, function(v) .ctx_distrib_entry(v, ev, project_path)))
+      # Calcul APRÈS le flush courant (`onFlushed`) : la notification part au
+      # client AVANT l'extraction synchrone (série/climatologie, quelques
+      # secondes) ; le flag `ctx_computing` bloque les clics entre-temps.
+      session$onFlushed(function() {
+        on.exit({
+          shiny::removeNotification(notif_id, session = session)
+          shiny::isolate(ctx_computing(FALSE))
+        }, add = TRUE)
 
-      # Graphe 4 : climatologie mensuelle. tg si acquise (honnête), sinon repli tx.
-      nc_tg <- regen_eobs_cached_nc(project_path, "tg")
-      nc_t  <- nc_tg %||% regen_eobs_cached_nc(project_path, "tx")
-      temp_is_tg <- !is.null(nc_tg)
-      nc_rr <- regen_eobs_cached_nc(project_path, "rr")
-      clim_t  <- if (!is.null(nc_t)) tryCatch(nemeton::eobs_monthly_climatology(
-        nc_t, pt, var = if (temp_is_tg) "tg" else "tx"), error = function(e) NULL)
-      clim_rr <- if (!is.null(nc_rr)) tryCatch(nemeton::eobs_monthly_climatology(
-        nc_rr, pt, var = "rr"), error = function(e) NULL)
+        # Graphes 1-2 : série(s) + tendance(s). Vue tx/rr → variable de la vue ;
+        # bivariée → les DEUX (le sens du croisement).
+        vars <- switch(view, tx = "tx", rr = "rr", bivariate = c("tx", "rr"), "tx")
+        entries <- Filter(Negate(is.null),
+          lapply(vars, function(v) .ctx_series_entry(units, project_path, v, pt, buf)))
 
-      rv$click_series <- list(view = view, entries = entries, distrib = distrib_entries,
-        clim_t = clim_t, clim_rr = clim_rr, temp_is_tg = temp_is_tg,
-        has_temp = !is.null(nc_t))
+        # Graphe 3 : distribution des pentes du buffer + pente de la maille. Une
+        # entrée par variable de la vue (bivariée → tx ET rr). Le raster de pente
+        # est relu depuis le cache `context_<var>.tif` (la bivariée porte des
+        # classes 1-25, donc on lit les rasters univariés sous-jacents).
+        distrib_entries <- Filter(Negate(is.null),
+          lapply(vars, function(v) .ctx_distrib_entry(v, ev, project_path)))
 
-      # navset_card + full_screen = TRUE : bouton plein écran sur le panneau,
-      # cohérent avec FAST/FORDEAD et mod_action_plan.
-      shiny::showModal(shiny::modalDialog(
-        title = sprintf(i18n$t("regen_ctx_cell_title"), ev$lat, ev$lng),
-        size = "xl", easyClose = TRUE,
-        footer = shiny::modalButton(i18n$t("close")),
-        bslib::navset_card_underline(
-          full_screen = TRUE,
-          bslib::nav_panel(i18n$t("regen_ctx_series"),  plotly::plotlyOutput(ns("ctx_g1"), height = "420px")),
-          bslib::nav_panel(i18n$t("regen_ctx_anomaly"), plotly::plotlyOutput(ns("ctx_g2"), height = "420px")),
-          bslib::nav_panel(i18n$t("regen_ctx_distrib"), plotly::plotlyOutput(ns("ctx_g3"), height = "420px")),
-          bslib::nav_panel(i18n$t("regen_ctx_ombro"),   plotly::plotlyOutput(ns("ctx_g4"), height = "420px")))))
+        # Graphe 4 : climatologie mensuelle. tg si acquise (honnête), sinon repli tx.
+        nc_tg <- regen_eobs_cached_nc(project_path, "tg")
+        nc_t  <- nc_tg %||% regen_eobs_cached_nc(project_path, "tx")
+        temp_is_tg <- !is.null(nc_tg)
+        nc_rr <- regen_eobs_cached_nc(project_path, "rr")
+        clim_t  <- if (!is.null(nc_t)) tryCatch(nemeton::eobs_monthly_climatology(
+          nc_t, pt, var = if (temp_is_tg) "tg" else "tx"), error = function(e) NULL)
+        clim_rr <- if (!is.null(nc_rr)) tryCatch(nemeton::eobs_monthly_climatology(
+          nc_rr, pt, var = "rr"), error = function(e) NULL)
+
+        shiny::isolate(rv$click_series <- list(view = view, entries = entries,
+          distrib = distrib_entries, clim_t = clim_t, clim_rr = clim_rr,
+          temp_is_tg = temp_is_tg, has_temp = !is.null(nc_t)))
+
+        # navset_card + full_screen = TRUE : bouton plein écran sur le panneau,
+        # cohérent avec FAST/FORDEAD et mod_action_plan.
+        shiny::showModal(shiny::modalDialog(
+          title = sprintf(i18n$t("regen_ctx_cell_title"), ev$lat, ev$lng),
+          size = "xl", easyClose = TRUE,
+          footer = shiny::modalButton(i18n$t("close")),
+          bslib::navset_card_underline(
+            full_screen = TRUE,
+            bslib::nav_panel(i18n$t("regen_ctx_series"),  plotly::plotlyOutput(ns("ctx_g1"), height = "420px")),
+            bslib::nav_panel(i18n$t("regen_ctx_anomaly"), plotly::plotlyOutput(ns("ctx_g2"), height = "420px")),
+            bslib::nav_panel(i18n$t("regen_ctx_distrib"), plotly::plotlyOutput(ns("ctx_g3"), height = "420px")),
+            bslib::nav_panel(i18n$t("regen_ctx_ombro"),   plotly::plotlyOutput(ns("ctx_g4"), height = "420px")))))
+      }, once = TRUE)
     })
 
     # Graphe 1 — série(s) + tendance(s). Bivariée → deux panneaux côte à côte.
