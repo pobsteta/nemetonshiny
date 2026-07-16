@@ -2,6 +2,26 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.107.4 (2026-07-16)
+
+#### Fixed — trous du raster bivarié + ascenseur de la légende (suite)
+
+- **Trous dans le raster bivarié** : `addRasterImage(project = TRUE)`
+  reprojetait par défaut en **bilinéaire**, interpolant les codes de
+  classe entiers 1-25 en valeurs décimales (3.4, 7.2…) qui ne
+  correspondent à aucune classe de la palette → pixels transparents (les
+  « trous »). Correctif : `method = "ngb"` (plus proche voisin,
+  obligatoire pour un raster catégoriel) + coercition explicite du
+  raster en entier
+  ([`terra::round`](https://rspatial.github.io/terra/reference/math-generics.html))
+  comme garde-fou.
+- **Ascenseur de la légende** : la légende bivariée n’utilise plus la
+  classe `info legend` (dont le CSS impose
+  `max-height:150px; overflow:auto`) mais une classe propre
+  `nmt-bivariate-control`. Le plafond ne peut donc plus s’appliquer —
+  correctif robuste au cache navigateur (l’ancienne règle ne cible plus
+  l’élément), contrairement à la surcharge de la v0.107.3.
+
 ## nemetonshiny 0.107.3 (2026-07-16)
 
 #### Fixed — légende bivariée sans ascenseur + notif « calcul en cours » au clic

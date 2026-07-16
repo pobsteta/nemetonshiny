@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.107.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.107.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,16 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.107.4" id="nemetonshiny-01074-2026-07-16">nemetonshiny 0.107.4 (2026-07-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01074-2026-07-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--trous-du-raster-bivarié--ascenseur-de-la-légende-suite-0-107-4">Fixed — trous du raster bivarié + ascenseur de la légende (suite)<a class="anchor" aria-label="anchor" href="#fixed--trous-du-raster-bivari%C3%A9--ascenseur-de-la-l%C3%A9gende-suite-0-107-4"></a></h4>
+<ul><li>
+<strong>Trous dans le raster bivarié</strong> : <code>addRasterImage(project = TRUE)</code> reprojetait par défaut en <strong>bilinéaire</strong>, interpolant les codes de classe entiers 1-25 en valeurs décimales (3.4, 7.2…) qui ne correspondent à aucune classe de la palette → pixels transparents (les « trous »). Correctif : <code>method = "ngb"</code> (plus proche voisin, obligatoire pour un raster catégoriel) + coercition explicite du raster en entier (<code><a href="https://rspatial.github.io/terra/reference/math-generics.html" class="external-link">terra::round</a></code>) comme garde-fou.</li>
+<li>
+<strong>Ascenseur de la légende</strong> : la légende bivariée n’utilise plus la classe <code>info legend</code> (dont le CSS impose <code>max-height:150px; overflow:auto</code>) mais une classe propre <code>nmt-bivariate-control</code>. Le plafond ne peut donc plus s’appliquer — correctif robuste au cache navigateur (l’ancienne règle ne cible plus l’élément), contrairement à la surcharge de la v0.107.3.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.107.3" id="nemetonshiny-01073-2026-07-16">nemetonshiny 0.107.3 (2026-07-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01073-2026-07-16"></a></h2>
