@@ -44,6 +44,11 @@ test_that(".regen_ctx_anomaly_plot et distrib rendent un plotly", {
     "plotly")
   # < 5 valeurs finies -> repli distribution indisponible.
   expect_s3_class(nemetonshiny:::.regen_ctx_distrib_plot(c(1, NA, 2), 1, "T", "x", i18n), "plotly")
+  # Percentile régional (spec 036 §5.3) : point au-dessus de 8 valeurs sur 10 -> P80.
+  p <- nemetonshiny:::.regen_ctx_distrib_plot(1:10, 8, "T", "°C/déc", i18n)
+  ann <- vapply(p$x$layoutAttrs, function(a)
+    paste(unlist(lapply(a$annotations, `[[`, "text")), collapse = " "), character(1))
+  expect_true(any(grepl("80", ann)))
 })
 
 test_that(".regen_ctx_ombro_plot rend un plotly, titre honnête tg vs tx", {

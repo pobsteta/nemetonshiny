@@ -4381,6 +4381,9 @@ TRANSLATIONS <- list(
   regen_ctx_year = list(fr = "Ann\u00e9e", en = "Year"),
   regen_ctx_count = list(fr = "Effectif", en = "Count"),
   regen_ctx_this_cell = list(fr = "Maille cliqu\u00e9e", en = "Clicked cell"),
+  regen_ctx_percentile = list(
+    fr = "Percentile r\u00e9gional : %d %%", en = "Regional percentile: %d %%"
+  ),
   regen_ctx_series_tx = list(fr = "T\u00b0max estivale (\u00b0C)", en = "Summer max-T (\u00b0C)"),
   regen_ctx_series_rr = list(fr = "Pr\u00e9cipitations estivales (mm)", en = "Summer precipitation (mm)"),
   regen_ctx_unit_tx = list(fr = "\u00b0C/d\u00e9c", en = "\u00b0C/dec"),

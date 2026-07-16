@@ -1,5 +1,13 @@
 # nemetonshiny (development version)
 
+### Added — percentile régional dans le graphe de distribution (spec 036 §5.3)
+
+Le 3ᵉ graphique du panneau au clic (distribution régionale des pentes) annote
+désormais le **percentile régional** de la maille cliquée (« P{xx} du massif »),
+répondant à la question décisionnelle de la spec : ce point est-il chaud/sec
+localement ou dans la moyenne du buffer ? Aucun appel cœur (dérivé des valeurs
+déjà en mémoire).
+
 # nemetonshiny 0.107.0 (2026-07-16)
 
 ### Added — graphiques au clic sur la maille E-OBS (spec 036)
