@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.16 (2026-07-16)
 
 ### Added — reGénération : top-3 essences recommandées par UGF (spec 039, P1)
 
