@@ -1,3 +1,23 @@
+# nemetonshiny 0.107.10 (2026-07-16)
+
+### Changed — reGénération : Carte + Tableau réunis (pattern « Plan d'actions »)
+
+Le sous-onglet **Carte** de reGénération adopte la présentation du Plan d'actions :
+la **carte** et le **Tableau des UGF** sont désormais côte à côte dans un unique
+onglet « Carte + Tableau », les **fiches parcelles** regroupées en dessous. Les
+sous-onglets séparés « Tableau des UGF » et « Fiche parcelle » disparaissent ;
+il ne reste que deux onglets (« Carte + Tableau » et « Contexte régional… »).
+
+La **sélection est croisée et multiple** : un clic sur une UGF de la carte la
+surligne en bleu, sélectionne la ligne correspondante du tableau et affiche sa
+fiche ; réciproquement, sélectionner des lignes surligne les UGF sur la carte.
+Un bouton **« Effacer la sélection »** vide les deux vues. Un `reactiveVal`
+unique (`selected_ug_rv`) sert de source de vérité (dédoublonnage par
+`identical()` -> pas de boucle dans l'aller-retour carte <-> tableau), et une
+`reactive` unique (`regen_table_df`) garantit que lignes, mapping clic et fiches
+partagent le même ordre après le filtre couverture.
+
+
 # nemetonshiny 0.107.9 (2026-07-16)
 
 ### Fixed — famille R : R6/R7 comptés et affichés dès qu'ils sont accessibles

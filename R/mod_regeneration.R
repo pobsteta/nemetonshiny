@@ -399,40 +399,79 @@ mod_regeneration_ui <- function(id) {
     shiny::uiOutput(ns("status")),
     bslib::navset_card_tab(
       bslib::nav_panel(
-        i18n$t("regen_tab_map"),
-        # Carte + sidebar DROITE dédiée (parité panneau droit des cartes FAST) :
-        # le radio « Couche affichée » vit à droite de la carte ; les fonds
-        # OSM/Satellite/UGF restent dans le contrôle natif Leaflet (coin carte).
-        bslib::layout_sidebar(
-          fillable = TRUE,
-          sidebar = bslib::sidebar(
-            position = "right", open = "always", width = 260,
-            htmltools::tags$strong(i18n$t("regen_map_layer")),
-            # Chaque couche porte un « i » qui explique la variable cartographiée
-            # et comment lire sa légende. Tooltip à gauche : le sidebar est collé
-            # au bord droit de la fenêtre.
-            shiny::radioButtons(ns("map_layer"), NULL,
-              choiceValues = c("indice_priorite_regen", "sensibilite", "njstress",
-                               "d_tmax", "r7_gel_days"),
-              choiceNames = list(
-                layer_tt(i18n$t("regen_map_priorite"), i18n$t("regen_map_priorite_info")),
-                layer_tt(i18n$t("regen_map_sensibilite"), i18n$t("regen_map_sensibilite_info")),
-                layer_tt(i18n$t("regen_map_njstress"), i18n$t("regen_map_njstress_info")),
-                layer_tt(i18n$t("regen_map_dtmax"), i18n$t("regen_map_dtmax_info")),
-                layer_tt(i18n$t("regen_map_gel"), i18n$t("regen_map_gel_info"))),
-              selected = "indice_priorite_regen"),
-            # Essence cible : re-priorise la choroplèthe en direct (sans relancer
-            # l'analyse). N'affecte QUE la couche « Indice de priorité » — donc
-            # masquée pour les autres couches (conditionalPanel), où elle n'aurait
-            # aucun effet visible.
-            shiny::conditionalPanel(
-              condition = "input.map_layer == 'indice_priorite_regen'", ns = ns,
-              htmltools::tags$hr(class = "my-2"),
-              shiny::selectInput(ns("species"), label_tt(i18n$t("regen_species_target"),
-                  i18n$t("regen_species_tip")),
-                choices = stats::setNames("", i18n$t("regen_species_generic"))))
+        i18n$t("regen_map_table_view"),
+        # Pattern « Plan d'actions » : Carte + Tableau des UGF côte à côte, fiches
+        # parcelles regroupées EN DESSOUS (pleine largeur). Un clic carte sélectionne
+        # l'UGF (surlignage bleu + ligne de table), la table pilote la carte en retour
+        # (sélection croisée bidirectionnelle, multi-sélection).
+        bslib::layout_columns(
+          col_widths = c(6, 6, 12), fillable = FALSE,
+          # --- Carte (colonne gauche) ------------------------------------------
+          # Sidebar DROITE dédiée : le radio « Couche affichée » vit à droite de la
+          # carte ; les fonds OSM/Satellite/UGF restent dans le contrôle natif
+          # Leaflet (coin carte).
+          bslib::card(
+            full_screen = TRUE,
+            bslib::card_header(i18n$t("regen_map_card_title")),
+            bslib::card_body(
+              class = "p-0",
+              bslib::layout_sidebar(
+                fillable = TRUE,
+                sidebar = bslib::sidebar(
+                  position = "right", open = "always", width = 240,
+                  htmltools::tags$strong(i18n$t("regen_map_layer")),
+                  # Chaque couche porte un « i » qui explique la variable
+                  # cartographiée et comment lire sa légende.
+                  shiny::radioButtons(ns("map_layer"), NULL,
+                    choiceValues = c("indice_priorite_regen", "sensibilite", "njstress",
+                                     "d_tmax", "r7_gel_days"),
+                    choiceNames = list(
+                      layer_tt(i18n$t("regen_map_priorite"), i18n$t("regen_map_priorite_info")),
+                      layer_tt(i18n$t("regen_map_sensibilite"), i18n$t("regen_map_sensibilite_info")),
+                      layer_tt(i18n$t("regen_map_njstress"), i18n$t("regen_map_njstress_info")),
+                      layer_tt(i18n$t("regen_map_dtmax"), i18n$t("regen_map_dtmax_info")),
+                      layer_tt(i18n$t("regen_map_gel"), i18n$t("regen_map_gel_info"))),
+                    selected = "indice_priorite_regen"),
+                  # Essence cible : re-priorise la choroplèthe en direct (sans
+                  # relancer l'analyse). N'affecte QUE la couche « Indice de
+                  # priorité » — masquée pour les autres couches (conditionalPanel).
+                  shiny::conditionalPanel(
+                    condition = "input.map_layer == 'indice_priorite_regen'", ns = ns,
+                    htmltools::tags$hr(class = "my-2"),
+                    shiny::selectInput(ns("species"), label_tt(i18n$t("regen_species_target"),
+                        i18n$t("regen_species_tip")),
+                      choices = stats::setNames("", i18n$t("regen_species_generic"))))
+                ),
+                leaflet::leafletOutput(ns("map"), height = "70vh")
+              )
+            )
           ),
-          leaflet::leafletOutput(ns("map"), height = "70vh")
+          # --- Tableau des UGF (colonne droite) --------------------------------
+          bslib::card(
+            full_screen = TRUE,
+            bslib::card_header(
+              htmltools::div(
+                class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
+                htmltools::tags$span(i18n$t("regen_table_card_title")),
+                htmltools::div(
+                  class = "d-flex align-items-center gap-3",
+                  htmltools::div(
+                    class = "mb-0",
+                    shiny::checkboxInput(ns("filter_coverage"),
+                      i18n$t("regen_filter_coverage"), value = TRUE)),
+                  shiny::actionButton(ns("clear_selection"),
+                    i18n$t("regen_clear_selection"),
+                    icon = bsicons::bs_icon("x-circle"),
+                    class = "btn-outline-secondary btn-sm")))),
+            bslib::card_body(
+              DT::dataTableOutput(ns("table")))
+          ),
+          # --- Fiches parcelles sélectionnées (pleine largeur, dessous) ---------
+          bslib::card(
+            bslib::card_header(i18n$t("regen_selected_sheets")),
+            bslib::card_body(
+              shiny::uiOutput(ns("parcel_sheet")))
+          )
         )
       ),
       bslib::nav_panel(i18n$t("regen_map_context"),
@@ -482,13 +521,7 @@ mod_regeneration_ui <- function(id) {
           ),
           shiny::uiOutput(ns("context_status")),
           leaflet::leafletOutput(ns("context_map"), height = "70vh")
-        )),
-      bslib::nav_panel(i18n$t("regen_table_section"),
-        shiny::checkboxInput(ns("filter_coverage"), i18n$t("regen_filter_coverage"),
-          value = TRUE),
-        DT::dataTableOutput(ns("table"))),
-      bslib::nav_panel(i18n$t("regen_parcel_sheet"),
-        shiny::uiOutput(ns("parcel_sheet")))
+        ))
     )
   )
 }
@@ -1682,6 +1715,7 @@ mod_regeneration_server <- function(id, app_state) {
         # L'observer proxy le remplace par le choroplèthe dès qu'un résultat existe.
         geo <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
         m <- leaflet::addPolygons(m, data = geo, group = "UGF", weight = 1,
+          layerId = if ("ug_id" %in% names(geo)) geo$ug_id else NULL,
           color = "#1B6B1B", fillColor = "#1B6B1B", fillOpacity = 0.10)
         bb <- tryCatch(as.numeric(sf::st_bbox(geo)), error = function(e) NULL)
         if (!is.null(bb) && all(is.finite(bb))) {
@@ -1707,6 +1741,7 @@ mod_regeneration_server <- function(id, app_state) {
         if (!is.null(units)) {
           geo <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
           leaflet::addPolygons(proxy, data = geo, group = "UGF", weight = 1,
+            layerId = if ("ug_id" %in% names(geo)) geo$ug_id else NULL,
             color = "#1B6B1B", fillColor = "#1B6B1B", fillOpacity = 0.10)
         }
         return()
@@ -1716,6 +1751,7 @@ mod_regeneration_server <- function(id, app_state) {
       geo <- tryCatch(sf::st_transform(res, 4326), error = function(e) res)
       if (all(is.na(vals))) {
         leaflet::addPolygons(proxy, data = geo, group = "UGF", weight = 1,
+          layerId = if ("ug_id" %in% names(geo)) geo$ug_id else NULL,
           color = "#888", fillOpacity = 0.2)
         return()
       }
@@ -1727,6 +1763,7 @@ mod_regeneration_server <- function(id, app_state) {
                                    reverse = TRUE)
       proxy |>
         leaflet::addPolygons(data = geo, group = "UGF", weight = 1, color = "#333",
+          layerId = if ("ug_id" %in% names(geo)) geo$ug_id else NULL,
           fillColor = pal(vals), fillOpacity = 0.75) |>
         leaflet::addLegend(pal = pal, values = vals, position = "bottomright",
           layerId = "regen_legend",
@@ -1734,6 +1771,81 @@ mod_regeneration_server <- function(id, app_state) {
             switch(col, indice_priorite_regen = "priorite", sensibilite = "sensibilite",
                    njstress = "njstress", d_tmax = "dtmax", r7_gel_days = "gel",
                    "priorite"))))
+    })
+
+    # --- Sélection croisée carte <-> tableau (pattern « Plan d'actions ») -----
+    # `selected_ug_rv` (vecteur d'ug_id) est l'UNIQUE source de vérité de la
+    # sélection. Un clic carte et une sélection de lignes la mettent à jour ;
+    # l'overlay bleu et la/les fiche(s) parcelle en découlent. `reactiveVal`
+    # dédoublonne par identical(), donc le round-trip (carte -> rv -> table ->
+    # retour) ne boucle pas.
+    selected_ug_rv <- shiny::reactiveVal(character())
+
+    # Source UNIQUE du tableau : mêmes lignes et même ordre pour le rendu DT, le
+    # mapping clic->ligne et la/les fiche(s) parcelle. Le filtre couverture agit
+    # ici -> les index de lignes DT restent cohérents avec les fiches.
+    regen_table_df <- shiny::reactive({
+      res <- rv$result
+      shiny::req(res)
+      df <- sf::st_drop_geometry(res)
+      cols <- intersect(c("ug_id", "priorite", "indice_priorite_regen", "sensibilite",
+        "rang_sensibilite", "njstress", "istress", "deb_stress", "rew_min",
+        "d_tmax", "d_vpd", "couverture_pct"), names(df))
+      df <- df[, cols, drop = FALSE]
+      if (isTRUE(input$filter_coverage) && "couverture_pct" %in% names(df)) {
+        keep <- is.na(df$couverture_pct) | df$couverture_pct >= 50
+        df <- df[keep, , drop = FALSE]
+      }
+      df
+    })
+
+    # Clic carte -> toggle l'UGF dans la sélection + surligne la/les ligne(s)
+    # correspondante(s) du tableau (DT::selectRows). L'overlay bleu et les fiches
+    # suivent via `selected_ug_rv`.
+    shiny::observeEvent(input$map_shape_click, {
+      click <- input$map_shape_click
+      if (is.null(click$id)) return()
+      uid <- as.character(click$id)
+      cur <- selected_ug_rv()
+      cur <- if (uid %in% cur) setdiff(cur, uid) else c(cur, uid)
+      selected_ug_rv(cur)
+      df <- regen_table_df()
+      if (is.null(df) || nrow(df) == 0L) return()
+      rows <- which(as.character(df$ug_id) %in% cur)
+      DT::selectRows(DT::dataTableProxy("table"),
+        if (length(rows) > 0L) rows else NULL)
+    })
+
+    # Sélection de lignes -> met à jour la source de vérité (sens tableau ->
+    # carte). ignoreNULL = FALSE pour capter aussi la désélection totale.
+    shiny::observeEvent(input$table_rows_selected, {
+      df <- regen_table_df()
+      sel <- input$table_rows_selected
+      ugs <- if (is.null(sel) || is.null(df)) character() else as.character(df$ug_id[sel])
+      selected_ug_rv(ugs)
+    }, ignoreNULL = FALSE)
+
+    # Bouton « Effacer la sélection » : vide la sélection carte + table.
+    shiny::observeEvent(input$clear_selection, {
+      selected_ug_rv(character())
+      DT::selectRows(DT::dataTableProxy("table"), NULL)
+    })
+
+    # Overlay bleu des UGF sélectionnées (groupe « Selection » distinct du groupe
+    # « UGF » choroplèthe -> ne le recouvre pas, se met à jour seul).
+    shiny::observe({
+      units <- units_sf()
+      sel <- selected_ug_rv()
+      proxy <- leaflet::leafletProxy("map")
+      leaflet::clearGroup(proxy, "Selection")
+      if (is.null(units) || length(sel) == 0L) return()
+      geo <- tryCatch(sf::st_transform(units, 4326), error = function(e) units)
+      if (!"ug_id" %in% names(geo)) return()
+      sub <- geo[as.character(geo$ug_id) %in% sel, , drop = FALSE]
+      if (nrow(sub) == 0L) return()
+      leaflet::addPolygons(proxy, data = sub, group = "Selection",
+        layerId = paste0("sel_", sub$ug_id),
+        color = "#1f6feb", weight = 4, fill = FALSE, opacity = 0.95)
     })
 
     # Bandeau du contexte régional (raster). La série requise dépend de la vue :
@@ -2061,43 +2173,48 @@ mod_regeneration_server <- function(id, app_state) {
     })
 
     output$table <- DT::renderDataTable({
-      res <- rv$result
-      shiny::req(res)
-      df <- sf::st_drop_geometry(res)
-      cols <- intersect(c("ug_id", "priorite", "indice_priorite_regen", "sensibilite",
-        "rang_sensibilite", "njstress", "istress", "deb_stress", "rew_min",
-        "d_tmax", "d_vpd", "couverture_pct"), names(df))
-      df <- df[, cols, drop = FALSE]
-      if (isTRUE(input$filter_coverage) && "couverture_pct" %in% names(df)) {
-        keep <- is.na(df$couverture_pct) | df$couverture_pct >= 50
-        df <- df[keep, , drop = FALSE]
-      }
+      df <- regen_table_df()
       order_col <- if ("rang_sensibilite" %in% names(df)) "rang_sensibilite" else NULL
-      DT::datatable(df, rownames = FALSE, selection = "single",
+      DT::datatable(df, rownames = FALSE,
+        selection = list(mode = "multiple", target = "row"),
         options = list(pageLength = 15, scrollX = TRUE,
           order = if (!is.null(order_col)) list(list(which(names(df) == order_col) - 1, "asc")) else list()))
     })
 
+    # Fiche(s) parcelle : une par UGF sélectionnée (multi-sélection). Les lignes
+    # viennent de la MÊME `regen_table_df()` que le tableau, l'ordre suit la
+    # sélection courante (`selected_ug_rv`, alimentée carte + table).
     output$parcel_sheet <- shiny::renderUI({
-      res <- rv$result
-      if (is.null(res)) return(htmltools::div(class = "text-muted fst-italic",
-                                              i18n$t("regen_need_project")))
-      sel <- input$table_rows_selected
-      if (is.null(sel) || length(sel) == 0) {
+      df <- tryCatch(regen_table_df(), error = function(e) NULL)
+      if (is.null(df)) return(htmltools::div(class = "text-muted fst-italic",
+                                             i18n$t("regen_need_project")))
+      sel <- selected_ug_rv()
+      if (length(sel) == 0L) {
         return(htmltools::div(class = "text-muted fst-italic", i18n$t("regen_select_ug")))
       }
-      df <- sf::st_drop_geometry(res)
-      row <- df[sel[1], , drop = FALSE]
-      fields <- intersect(c("indice_priorite_regen", "sensibilite", "njstress",
-        "istress", "deb_stress", "rew_min", "d_tmax", "d_vpd", "couverture_pct"), names(row))
-      htmltools::tags$table(class = "table table-sm",
-        lapply(fields, function(f) htmltools::tags$tr(
-          htmltools::tags$th(i18n$t(paste0("regen_col_",
-            switch(f, indice_priorite_regen = "indice", sensibilite = "sensibilite",
-              njstress = "njstress", istress = "istress", deb_stress = "deb_stress",
-              rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
-              couverture_pct = "couverture", f)))),
-          htmltools::tags$td(format(row[[f]], digits = 3)))))
+      fields <- c("indice_priorite_regen", "sensibilite", "njstress",
+        "istress", "deb_stress", "rew_min", "d_tmax", "d_vpd", "couverture_pct")
+      one_sheet <- function(row) {
+        fs <- intersect(fields, names(row))
+        htmltools::tags$table(class = "table table-sm mb-3",
+          htmltools::tags$caption(class = "fw-bold text-body",
+            sprintf("%s %s", i18n$t("regen_table_card_title"),
+              if ("ug_id" %in% names(row)) as.character(row$ug_id) else "")),
+          lapply(fs, function(f) htmltools::tags$tr(
+            htmltools::tags$th(i18n$t(paste0("regen_col_",
+              switch(f, indice_priorite_regen = "indice", sensibilite = "sensibilite",
+                njstress = "njstress", istress = "istress", deb_stress = "deb_stress",
+                rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
+                couverture_pct = "couverture", f)))),
+            htmltools::tags$td(format(row[[f]], digits = 3)))))
+      }
+      rows <- which(as.character(df$ug_id) %in% sel)
+      if (length(rows) == 0L) {
+        return(htmltools::div(class = "text-muted fst-italic", i18n$t("regen_select_ug")))
+      }
+      htmltools::div(class = "row",
+        lapply(rows, function(i) htmltools::div(class = "col-md-6",
+          one_sheet(df[i, , drop = FALSE]))))
     })
 
     # --- Export GPKG (§7) -------------------------------------------------

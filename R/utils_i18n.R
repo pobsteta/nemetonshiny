@@ -106,7 +106,7 @@ TRANSLATIONS <- list(
     en = "No action in the plan yet."
   ),
   action_plan_clear_selection = list(
-    fr = "Effacer la sélection",
+    fr = "Effacer la s\u00e9lection",
     en = "Clear selection"
   ),
 
@@ -4462,6 +4462,11 @@ TRANSLATIONS <- list(
   regen_table_section = list(fr = "Tableau des UGF", en = "UGF table"),
   regen_filter_coverage = list(fr = "Masquer les UG mal couvertes", en = "Hide poorly covered units"),
   regen_parcel_sheet = list(fr = "Fiche parcelle", en = "Unit sheet"),
+  regen_map_table_view = list(fr = "Carte + Tableau", en = "Map + Table"),
+  regen_map_card_title = list(fr = "Carte", en = "Map"),
+  regen_table_card_title = list(fr = "UGF", en = "UGF"),
+  regen_selected_sheets = list(fr = "Fiches parcelles s\u00e9lectionn\u00e9es", en = "Selected unit sheets"),
+  regen_clear_selection = list(fr = "Effacer la s\u00e9lection", en = "Clear selection"),
   regen_rew_chronicle = list(fr = "Chronique REW (r\u00e9serve en eau)", en = "REW chronicle (water reserve)"),
   regen_col_priorite = list(fr = "Priorit\u00e9", en = "Priority"),
   regen_col_indice = list(fr = "Indice priorit\u00e9", en = "Priority index"),
