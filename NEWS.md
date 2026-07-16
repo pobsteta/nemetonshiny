@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.107.6 (2026-07-16)
+
 ### Fixed — titre par panneau dans le panneau de graphes E-OBS
 
 En vue bivariée, les deux panneaux côte à côte (T°max à gauche, précipitations à
