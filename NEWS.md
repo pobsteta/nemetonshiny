@@ -1,5 +1,12 @@
 # nemetonshiny (development version)
 
+### Changed — Plan d'actions : un seul bouton « Effacer la sélection »
+
+Le bouton « Effacer la sélection » redondant de la section *Sélection* du sidebar
+(Tableau des actions) est retiré ; l'effacement de la sélection se fait désormais
+uniquement via le bouton situé au-dessus du graphique des coûts (`clear_map_selection_top`),
+au plus près de la carte et du tableau.
+
 
 # nemetonshiny 0.107.17 (2026-07-16)
 

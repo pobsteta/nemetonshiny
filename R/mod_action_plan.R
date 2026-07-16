@@ -72,12 +72,6 @@ mod_action_plan_ui <- function(id) {
         htmltools::tags$h6(class = "mt-1",
                            i18n$t("action_plan_section_selection")),
         shiny::actionButton(
-          ns("clear_map_selection"),
-          label = i18n$t("action_plan_clear_selection"),
-          icon = shiny::icon("eraser"),
-          class = "btn-sm btn-outline-secondary w-100 mb-2"
-        ),
-        shiny::actionButton(
           ns("show_history"),
           label = i18n$t("action_plan_show_history"),
           icon = shiny::icon("clock-rotate-left"),
@@ -517,12 +511,8 @@ mod_action_plan_server <- function(id, app_state) {
     # Selected UGFs (clicks on map; sync'd with row selection downstream)
     selected_ug_rv <- shiny::reactiveVal(character())
 
-    shiny::observeEvent(input$clear_map_selection, {
-      selected_ug_rv(character())
-      DT::selectRows(DT::dataTableProxy("action_table"), NULL)
-    })
-
-    # Même action depuis le bouton de l'entête du tableau (Carte + Tableau).
+    # Effacer la sélection depuis le bouton de l'entête du tableau (au-dessus
+    # du graphique des coûts) — unique point d'effacement de la sélection.
     shiny::observeEvent(input$clear_map_selection_top, {
       selected_ug_rv(character())
       DT::selectRows(DT::dataTableProxy("action_table"), NULL)
