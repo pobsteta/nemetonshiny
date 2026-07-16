@@ -2,6 +2,20 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.107.7 (2026-07-16)
+
+#### Fixed — diagramme ombrothermique : barres de précipitation tronquées
+
+L’axe de température (gauche) était calculé à partir de la seule
+température, et l’axe précipitation (droite) en dérivait par couplage
+`P = 2T`. Dès que la précipitation mensuelle dépassait `2×Tmax` — la
+plupart des mois — les **barres de précipitation débordaient et étaient
+tronquées** au plafond, rendant le diagramme faux (« mur » de barres).
+L’axe de température contient désormais à la fois `max(T)` **et**
+`max(P)/2`, de sorte que l’axe précipitation (2× l’axe température)
+contient toujours `max(P)` : barres bleues complètes + courbe rouge
+par-dessus, couplage de Gaussen `P = 2T` conservé.
+
 ## nemetonshiny 0.107.6 (2026-07-16)
 
 #### Fixed — titre par panneau dans le panneau de graphes E-OBS
