@@ -7,6 +7,15 @@ Le bouton « Effacer la sélection » redondant de la section *Sélection* du si
 uniquement via le bouton situé au-dessus du graphique des coûts (`clear_map_selection_top`),
 au plus près de la carte et du tableau.
 
+### Fixed — reGénération : courbe de température devant les barres (ombrothermique)
+
+Dans le diagramme ombrothermique du Contexte régional, la courbe de température
+était masquée par les barres de précipitation. Cause : plotly rend l'axe superposé
+(`overlaying`) toujours au-dessus de l'axe de base, indépendamment de l'ordre des
+traces. Les axes porteurs sont inversés — barres précip sur l'axe de base, courbe
+de température sur l'axe superposé — la courbe passe désormais devant les barres,
+températures à gauche (rouge) et précipitations à droite (bleu) inchangées.
+
 ### Fixed — reGénération : boîte de recherche du tableau en français
 
 Le tableau « Carte + Tableau » localise désormais les libellés DT (boîte de
