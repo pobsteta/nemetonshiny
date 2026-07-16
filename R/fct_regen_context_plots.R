@@ -51,12 +51,25 @@
 # Graphe 1 — série estivale + droite de tendance. La pente AFFICHÉE est
 # `fit$slope_decade` (= la couleur de la maille), jamais un `lm` ré-estimé.
 # `unit` : suffixe d'annotation de pente ("°C/déc" ou "mm/déc").
+# Titre d'un graphe rendu comme ANNOTATION `paper` (haut-centre) plutôt que comme
+# `layout(title=)`. Raison : `plotly::subplot()` ne conserve qu'UN titre global
+# (le dernier), écrasant les autres ; il remappe en revanche les annotations
+# `paper` sur le domaine de chaque panneau. Un titre-annotation donne donc un
+# titre PAR panneau (bivariée : tx à gauche, rr à droite) tout en restant correct
+# pour un graphe unique.
+.regen_ctx_title_ann <- function(title) {
+  list(text = title, x = 0.5, y = 1.0, xref = "paper", yref = "paper",
+    xanchor = "center", yanchor = "bottom", showarrow = FALSE,
+    font = list(size = 13))
+}
+
 .regen_ctx_series_plot <- function(ser, fit, title, unit, i18n) {
   if (!.regen_ctx_series_ok(ser)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_out_of_coverage")))
   yr <- suppressWarnings(as.numeric(ser$year)); val <- suppressWarnings(as.numeric(ser$value))
   p <- plotly::plot_ly()
   p <- plotly::add_markers(p, x = yr, y = val, name = title,
     marker = list(size = 8, color = "#1f6feb"))
+  anns <- list(.regen_ctx_title_ann(title))
   # Droite de tendance depuis le cœur : y = intercept + year * slope_decade/10.
   if (is.list(fit) && all(c("slope_decade", "intercept") %in% names(fit)) &&
       is.finite(fit$slope_decade) && is.finite(fit$intercept)) {
@@ -66,13 +79,13 @@
     ann <- sprintf("%s %s%s", format(signif(fit$slope_decade, 3), trim = TRUE), unit,
       if (is.finite(fit$r2 %||% NA)) sprintf("  |  R²=%.2f", fit$r2) else "")
     if (is.finite(fit$p_value %||% NA)) ann <- sprintf("%s  |  p=%.3g", ann, fit$p_value)
-    p <- plotly::layout(p, annotations = list(list(text = ann, showarrow = FALSE,
+    anns <- c(anns, list(list(text = ann, showarrow = FALSE,
       xref = "paper", yref = "paper", x = 0.02, y = 0.98, xanchor = "left",
       bgcolor = "rgba(255,255,255,.7)", font = list(size = 12))))
   }
-  plotly::layout(p, title = list(text = title, font = list(size = 13)),
+  plotly::layout(p, annotations = anns,
     xaxis = list(title = i18n$t("regen_ctx_year")), yaxis = list(title = unit),
-    showlegend = FALSE, margin = list(t = 34))
+    showlegend = FALSE, margin = list(t = 40))
 }
 
 # Graphe 2 — anomalies annuelles (valeur - moyenne), colorées +/-. `sense` pilote
@@ -88,10 +101,10 @@
   plotly::layout(
     plotly::add_bars(plotly::plot_ly(), x = yr, y = anom,
       marker = list(color = cols)),
-    title = list(text = title, font = list(size = 13)),
+    annotations = list(.regen_ctx_title_ann(title)),
     xaxis = list(title = i18n$t("regen_ctx_year")),
     yaxis = list(title = i18n$t("regen_ctx_anomaly")),
-    showlegend = FALSE, margin = list(t = 34))
+    showlegend = FALSE, margin = list(t = 40))
 }
 
 # Graphe 3 — distribution des pentes du buffer (valeurs du raster de contexte
@@ -100,12 +113,13 @@
 .regen_ctx_distrib_plot <- function(values, point_value, title, unit, i18n) {
   v <- suppressWarnings(as.numeric(values)); v <- v[is.finite(v)]
   if (length(v) < 5L) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_distrib_na")))
+  anns <- list(.regen_ctx_title_ann(title))
   p <- plotly::layout(
     plotly::add_histogram(plotly::plot_ly(), x = v, nbinsx = 30,
       marker = list(color = "#9ecae1", line = list(color = "#6baed6", width = 0.5))),
-    title = list(text = title, font = list(size = 13)),
+    annotations = anns,
     xaxis = list(title = unit), yaxis = list(title = i18n$t("regen_ctx_count")),
-    bargap = 0.02, showlegend = FALSE, margin = list(t = 34))
+    bargap = 0.02, showlegend = FALSE, margin = list(t = 40))
   pv <- suppressWarnings(as.numeric(point_value))
   if (length(pv) == 1L && is.finite(pv)) {
     # Percentile régional du point (spec 036 §5.3) : « ce point est au P{xx} du
@@ -114,13 +128,13 @@
     p <- plotly::layout(p,
       shapes = list(list(type = "line", x0 = pv, x1 = pv, y0 = 0, y1 = 1,
         yref = "paper", line = list(color = "#d62728", width = 2, dash = "dash"))),
-      annotations = list(
+      annotations = c(anns, list(
         list(text = i18n$t("regen_ctx_this_cell"), x = pv, y = 1, yref = "paper",
           showarrow = FALSE, xanchor = "left", yanchor = "top",
           font = list(color = "#d62728", size = 11)),
         list(text = sprintf(i18n$t("regen_ctx_percentile"), pct), xref = "paper",
           yref = "paper", x = 0.98, y = 0.98, xanchor = "right", showarrow = FALSE,
-          bgcolor = "rgba(255,255,255,.7)", font = list(size = 12))))
+          bgcolor = "rgba(255,255,255,.7)", font = list(size = 12)))))
   }
   p
 }

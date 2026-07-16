@@ -2,6 +2,8 @@
 # Pure viz : on vérifie les stats ombrothermiques (numériques) et que chaque
 # constructeur renvoie un objet plotly, y compris en repli NA-safe.
 
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
 i18n <- nemetonshiny:::get_i18n("fr")
 
 test_that(".regen_ctx_ombro_stats calcule mois secs (P<2T) + De Martonne", {
@@ -32,6 +34,28 @@ test_that(".regen_ctx_series_plot rend un plotly, repli si série NA", {
   pe <- nemetonshiny:::.regen_ctx_series_plot(
     data.frame(year = 2011:2013, value = c(NA, NA, NA)), NULL, "T", "x", i18n)
   expect_s3_class(pe, "plotly")
+})
+
+test_that("chaque panneau porte son titre en annotation (pas un titre global écrasé)", {
+  skip_if_not_installed("plotly")
+  ser1 <- data.frame(year = 2011:2020, value = seq(24, 29, length.out = 10))
+  ser2 <- data.frame(year = 2011:2020, value = seq(200, 120, length.out = 10))
+  p1 <- nemetonshiny:::.regen_ctx_series_plot(ser1, nemeton::eobs_trend_fit(ser1),
+    "T°max estivale", "°C/déc", nemetonshiny:::get_i18n("fr"))
+  p2 <- nemetonshiny:::.regen_ctx_series_plot(ser2, nemeton::eobs_trend_fit(ser2),
+    "Précipitations estivales", "mm/déc", nemetonshiny:::get_i18n("fr"))
+  # Titre porté par une annotation (pas layout$title) -> survit au subplot.
+  b1 <- plotly::plotly_build(p1)
+  has_title_ann <- any(vapply(b1$x$layout$annotations,
+    function(a) grepl("T°max estivale", a$text %||% ""), logical(1)))
+  expect_true(has_title_ann)
+  # Bivariée : subplot conserve LES DEUX titres, remappés sur chaque panneau.
+  sp <- plotly::subplot(list(p1, p2), nrows = 1, margin = 0.06)
+  b <- plotly::plotly_build(sp)
+  titles <- Filter(function(a) grepl("estivale", a$text %||% ""), b$x$layout$annotations)
+  expect_length(titles, 2L)
+  xs <- sort(vapply(titles, function(a) a$x, numeric(1)))
+  expect_lt(xs[1], 0.4); expect_gt(xs[2], 0.6)   # un titre par panneau (gauche/droite)
 })
 
 test_that(".regen_ctx_anomaly_plot et distrib rendent un plotly", {
