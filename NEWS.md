@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.108.1 (2026-07-16)
 
 ### Changed — migration SQL versionnée pour `action_plan_states`
 
