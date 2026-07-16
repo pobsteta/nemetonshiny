@@ -1,3 +1,6 @@
+# nemetonshiny (development version)
+
+
 # nemetonshiny 0.108.2 (2026-07-16)
 
 ### Changed — reGénération : exports dans le sidebar droit + retour immédiat des boutons d'action
