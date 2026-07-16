@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.18 (2026-07-16)
 
 ### Changed — Plan d'actions : un seul bouton « Effacer la sélection »
 
