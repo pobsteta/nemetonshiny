@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.107.8 (2026-07-16)
+
 ### Fixed — ombrothermique : mois d'été repliés + entête illisible
 
 - **Mois manquants (bug majeur)** : l'axe des x utilisait les lettres de mois
