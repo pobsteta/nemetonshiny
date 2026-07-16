@@ -4383,6 +4383,7 @@ TRANSLATIONS <- list(
   regen_ctx_computing = list(
     fr = "Calcul du graphique en cours\u2026", en = "Computing the chart\u2026"
   ),
+  regen_ctx_fullscreen = list(fr = "Plein \u00e9cran", en = "Full screen"),
   regen_ctx_series = list(fr = "S\u00e9rie + tendance", en = "Series + trend"),
   regen_ctx_anomaly = list(fr = "Anomalies", en = "Anomalies"),
   regen_ctx_distrib = list(fr = "Distribution r\u00e9gionale", en = "Regional distribution"),
