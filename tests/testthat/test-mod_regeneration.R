@@ -722,3 +722,135 @@ test_that("recompute_context purge le cache des 3 vues et re-déclenche le calcu
     }
   )
 })
+
+# ---------------------------------------------------------------------------
+# Sélection croisée carte <-> tableau (pattern « Plan d'actions »)
+# ---------------------------------------------------------------------------
+# Mocks INLINE dans chaque test : local_mocked_bindings est scopé au frame
+# appelant, donc un helper qui les pose les défait à son retour (le vrai moteur
+# tournerait). run_regeneration mocké -> rv$result à 3 UGF (ug_id 1..3).
+
+.regen_run_mock <- function(u, cfg = list(), precomputed = NULL, progress = NULL) {
+  u$indice_priorite_regen <- 70
+  u$sensibilite <- 60
+  u$couverture_pct <- 80
+  u$rang_sensibilite <- seq_len(nrow(u))
+  list(units = u, years = list(), warnings = character(0))
+}
+
+.regen_sel_inputs <- function(session) {
+  session$setInputs(
+    map_layer = "indice_priorite_regen", filter_coverage = TRUE,
+    hydric_only = FALSE, forest_type = "feuillu",
+    year_moyenne = NA, year_canicule = NA, lai_max = NA, species = "")
+  session$setInputs(run = 1)
+}
+
+test_that("un clic carte bascule la sélection (toggle) et pilote les lignes", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf"); skip_if_not_installed("DT")
+
+  units <- .regen_mod_units(3)
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj)
+
+  picked <- new.env(); picked$rows <- "unset"
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    run_regeneration = .regen_run_mock, .package = "nemetonshiny")
+  testthat::local_mocked_bindings(
+    dataTableProxy = function(...) structure(list(), class = "dataTableProxy"),
+    selectRows = function(proxy, rows, ...) { picked$rows <- rows; invisible(proxy) },
+    .package = "DT")
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      .regen_sel_inputs(session)
+      expect_false(is.null(rv$result))
+
+      # Clic sur l'UGF 2 -> sélectionnée, ligne 2 surlignée dans le tableau.
+      session$setInputs(map_shape_click = list(id = "2"))
+      expect_identical(selected_ug_rv(), "2")
+      expect_equal(picked$rows, 2L)
+
+      # Clic sur l'UGF 3 -> sélection multiple {2,3}, lignes {2,3}.
+      session$setInputs(map_shape_click = list(id = "3"))
+      expect_setequal(selected_ug_rv(), c("2", "3"))
+      expect_setequal(picked$rows, c(2L, 3L))
+
+      # Re-clic sur 2 -> retiré (toggle), reste {3}.
+      session$setInputs(map_shape_click = list(id = "2"))
+      expect_identical(selected_ug_rv(), "3")
+      expect_equal(picked$rows, 3L)
+    }
+  )
+})
+
+test_that("la sélection de lignes alimente la source de vérité (sens table -> carte)", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf"); skip_if_not_installed("DT")
+
+  units <- .regen_mod_units(3)
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj)
+
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    run_regeneration = .regen_run_mock, .package = "nemetonshiny")
+  testthat::local_mocked_bindings(
+    dataTableProxy = function(...) structure(list(), class = "dataTableProxy"),
+    selectRows = function(proxy, rows, ...) invisible(proxy), .package = "DT")
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      .regen_sel_inputs(session)
+
+      # Sélection des lignes 1 et 3 -> ug_id "1" et "3".
+      session$setInputs(table_rows_selected = c(1L, 3L))
+      expect_setequal(selected_ug_rv(), c("1", "3"))
+
+      # Désélection totale -> vide (ignoreNULL = FALSE).
+      session$setInputs(table_rows_selected = NULL)
+      expect_length(selected_ug_rv(), 0L)
+    }
+  )
+})
+
+test_that("« Effacer la sélection » vide carte + tableau", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf"); skip_if_not_installed("DT")
+
+  units <- .regen_mod_units(3)
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj)
+
+  cleared <- new.env(); cleared$rows <- "unset"
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    run_regeneration = .regen_run_mock, .package = "nemetonshiny")
+  testthat::local_mocked_bindings(
+    dataTableProxy = function(...) structure(list(), class = "dataTableProxy"),
+    selectRows = function(proxy, rows, ...) { cleared$rows <- rows; invisible(proxy) },
+    .package = "DT")
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      .regen_sel_inputs(session)
+      session$setInputs(map_shape_click = list(id = "2"))
+      expect_length(selected_ug_rv(), 1L)
+
+      session$setInputs(clear_selection = 1)
+      expect_length(selected_ug_rv(), 0L)
+      expect_null(cleared$rows)      # DT::selectRows(proxy, NULL) -> tout désélectionné
+    }
+  )
+})
