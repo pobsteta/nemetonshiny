@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.13 (2026-07-16)
 
 ### Fixed — Synthèse « Générer par IA » : R5/R6/R7 transmis au LLM
 
