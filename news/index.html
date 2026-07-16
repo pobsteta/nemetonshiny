@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.106.16.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.107.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,22 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.107.0" id="nemetonshiny-01070-2026-07-16">nemetonshiny 0.107.0 (2026-07-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01070-2026-07-16"></a></h2>
+<div class="section level4">
+<h4 id="added--graphiques-au-clic-sur-la-maille-e-obs-spec-0-107-0">Added — graphiques au clic sur la maille E-OBS (spec 036)<a class="anchor" aria-label="anchor" href="#added--graphiques-au-clic-sur-la-maille-e-obs-spec-0-107-0"></a></h4>
+<p>La carte « Contexte régional (E-OBS) » de l’onglet reGénération n’affichait qu’une couleur par maille (la pente estivale). Un <strong>clic</strong> ouvre désormais un panneau de <strong>4 graphiques</strong> rendant la donnée sous la couleur, à la maille cliquée (résolution E-OBS native ~11 km — honnêteté spatiale) :</p>
+<ol style="list-style-type: decimal"><li>
+<strong>Série + tendance</strong> estivale, la pente affichée étant exactement <code>nemeton::eobs_trend_fit()$slope_decade</code> (= la couleur de la maille) ;</li>
+<li>
+<strong>Anomalies</strong> annuelles (chaud/sec en rouge), révélant les étés porteurs ;</li>
+<li>
+<strong>Distribution régionale</strong> des pentes du buffer + trait à la maille cliquée ;</li>
+<li>
+<strong>Diagramme ombrothermique</strong> (Gaussen-Bagnouls) : précip/température à axes couplés <code>P = 2T</code>, mois secs ombrés, indice de De Martonne.</li>
+</ol><p>Toute la donnée vient de trois accesseurs cœur (<code>eobs_summer_series</code>, <code>eobs_monthly_climatology</code>, <code>eobs_trend_fit</code>, nemeton ≥ 0.160.0) — aucun calcul métier côté app. Nouveau bouton opt-in <strong>« Télécharger la T° moyenne (Gaussen) »</strong> (<code>tg</code>, ~800 Mo) requis par le diagramme ombrothermique honnête (sinon repli sur T°max explicitement étiqueté « saison sèche majorée »). Plancher <code>Imports: nemeton (&gt;= 0.160.0)</code>.</p>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.106.16" id="nemetonshiny-010616-2026-07-15">nemetonshiny 0.106.16 (2026-07-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-010616-2026-07-15"></a></h2>
@@ -520,7 +536,7 @@
 <h4 id="fixed--r-cmd-check-vert--test-sufosat-hermétique-0-100-13">Fixed — R-CMD-check vert : test SUFOSAT hermétique<a class="anchor" aria-label="anchor" href="#fixed--r-cmd-check-vert--test-sufosat-herm%C3%A9tique-0-100-13"></a></h4>
 <ul><li>
 <code>test-sufosat-t3.R</code> (« build_sufosat_layer fetches via Theia, caches… ») échouait en CI sur 7 assertions : <code>build_sufosat_layer()</code> garde en amont sur <code>theia_api_key_configured()</code> (clés <code>TLD_ACCESS_KEY</code>/<code>TLD_SECRET_KEY</code> ou fichier <code>.apikey</code>) et retourne <code>NULL</code> <strong>avant</strong> d’atteindre l’I/O mockée quand aucune clé n’est configurée. Sans clés (CI), le moteur ne partait pas — faux négatif, jamais un vrai appel réseau (<code>load_theia_source</code> est mocké).</li>
-<li>Le test fournit désormais des clés Theia <strong>factices</strong> (<code><a href="https://rdrr.io/pkg/withr/man/with_envvar.html" class="external-link">withr::local_envvar</a></code>) pour franchir le garde ; il reste 100 % hermétique (toute l’I/O Theia mockée, cache en tempdir, aucun réseau). <strong>R-CMD-check passe de FAIL 7 à FAIL 0</strong> (PASS 8899) — la suite est enfin entièrement verte en CI.</li>
+<li>Le test fournit désormais des clés Theia <strong>factices</strong> (<code><a href="https://withr.r-lib.org/reference/with_envvar.html" class="external-link">withr::local_envvar</a></code>) pour franchir le garde ; il reste 100 % hermétique (toute l’I/O Theia mockée, cache en tempdir, aucun réseau). <strong>R-CMD-check passe de FAIL 7 à FAIL 0</strong> (PASS 8899) — la suite est enfin entièrement verte en CI.</li>
 </ul></div>
 </div>
     <div class="section level2">
@@ -528,7 +544,7 @@
 <div class="section level4">
 <h4 id="fixed--tests-moteur-regénération--robustesse-à-la-locale-0-100-12">Fixed — Tests moteur reGénération : robustesse à la locale<a class="anchor" aria-label="anchor" href="#fixed--tests-moteur-reg%C3%A9n%C3%A9ration--robustesse-%C3%A0-la-locale-0-100-12"></a></h4>
 <ul><li>
-<code>test-regeneration_engine.R</code> comparait la sortie i18n du moteur (résolue via <code>get_app_options()$language</code>) à des chaînes <strong>FR codées en dur</strong>. Selon l’ordre d’exécution, une suite antérieure pouvait laisser <code>nemeton.app_options</code> en <code>"en"</code> → le moteur émettait des warnings/ntfy EN et 6 tests échouaient (faux négatif, sans lien avec le code produit). Chaque test force désormais la langue FR localement (<code><a href="https://rdrr.io/pkg/withr/man/with_options.html" class="external-link">withr::local_options</a></code>), les rendant déterministes.</li>
+<code>test-regeneration_engine.R</code> comparait la sortie i18n du moteur (résolue via <code>get_app_options()$language</code>) à des chaînes <strong>FR codées en dur</strong>. Selon l’ordre d’exécution, une suite antérieure pouvait laisser <code>nemeton.app_options</code> en <code>"en"</code> → le moteur émettait des warnings/ntfy EN et 6 tests échouaient (faux négatif, sans lien avec le code produit). Chaque test force désormais la langue FR localement (<code><a href="https://withr.r-lib.org/reference/with_options.html" class="external-link">withr::local_options</a></code>), les rendant déterministes.</li>
 <li>Vérifié <strong>FAIL 0 / PASS 73</strong> sous locale EN forcée. Aucun changement de code produit. (Le R-CMD-check global reste bloqué par <code>test-sufosat-t3.R</code>, tests Theia réseau-dépendants hors sandbox CI — chantier distinct.)</li>
 </ul></div>
 </div>
