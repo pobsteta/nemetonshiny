@@ -1081,3 +1081,45 @@ test_that("insertion conseil IA : sans sélection -> aucun commentaire écrit", 
     expect_length(regen_comments_rv(), 0L)
   })
 })
+
+# ---------------------------------------------------------------------------
+# Export PDF reGénération : archivage dans exports/ (parité Plan d'actions)
+# La logique d'archivage vit dans .archive_regeneration_pdf, appelé sur le SEUL
+# chemin succès de output$export_pdf (downloadHandler non invocable en testServer).
+# ---------------------------------------------------------------------------
+
+test_that("le PDF rendu est archivé sous exports/<slug>_regeneration.pdf", {
+  pdir <- withr::local_tempdir()
+  rendered <- tempfile(fileext = ".pdf")
+  writeLines("%PDF-1.4 fake", rendered)
+  project <- list(path = pdir, metadata = list(name = "Forêt de Test"))
+
+  res <- nemetonshiny:::.archive_regeneration_pdf(rendered, project)
+  expect_true(res)
+  archived <- file.path(pdir, "exports", "For_t_de_Test_regeneration.pdf")
+  expect_true(file.exists(archived))
+  expect_match(readLines(archived, n = 1), "PDF")
+})
+
+test_that("exports/ créé au besoin ; l'archive reGénération écrase la précédente", {
+  pdir <- withr::local_tempdir()
+  project <- list(path = pdir, metadata = list(name = "Projet"))
+  expect_false(dir.exists(file.path(pdir, "exports")))
+
+  r1 <- tempfile(fileext = ".pdf"); writeLines("v1", r1)
+  nemetonshiny:::.archive_regeneration_pdf(r1, project)
+  archived <- file.path(pdir, "exports", "Projet_regeneration.pdf")
+  expect_identical(readLines(archived, n = 1), "v1")
+
+  r2 <- tempfile(fileext = ".pdf"); writeLines("v2", r2)
+  nemetonshiny:::.archive_regeneration_pdf(r2, project)
+  expect_identical(readLines(archived, n = 1), "v2")
+})
+
+test_that("archive reGénération : projet sans chemin -> pas d'archive, pas d'erreur", {
+  rendered <- tempfile(fileext = ".pdf"); writeLines("%PDF fake", rendered)
+  expect_false(nemetonshiny:::.archive_regeneration_pdf(rendered,
+    list(path = NULL, metadata = list(name = "X"))))
+  expect_false(nemetonshiny:::.archive_regeneration_pdf(rendered,
+    list(path = file.path(tempdir(), "nope-regen-xyz"), metadata = list(name = "X"))))
+})
