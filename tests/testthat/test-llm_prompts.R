@@ -716,3 +716,34 @@ test_that("adaptation_climat profile is loaded with a regeneration-focused promp
   sp <- nemetonshiny:::build_system_prompt("français", "adaptation_climat")
   expect_true(nchar(sp) > 0)
 })
+
+test_that("build_regen_advice_prompt résume top-3 + station et cadre le LLM", {
+  rk <- data.frame(
+    ug_id = c("U1", "U1", "U1", "U2"), rank = c(1, 2, 3, 1),
+    label = c("Pin d'Alep", "Chêne vert", "Cèdre", "Sapin"),
+    suitability = c(97, 94, 88, 70),
+    limiting_factor = c("secheresse", "gel", "chaleur", "ombre"),
+    confidence = "eleve", stringsAsFactors = FALSE)
+  st <- data.frame(ug_id = c("U1", "U2"), njstress = c(30, 10),
+                   rew_min = c(0.1, 0.4), d_tmax = c(3, 2), r7_gel_days = c(6, 1))
+
+  fr <- nemetonshiny:::build_regen_advice_prompt(rk, st, "français")
+  expect_match(fr, "UGF U1", fixed = TRUE)
+  expect_match(fr, "Chêne vert", fixed = TRUE)          # essence classée
+  expect_match(fr, "97/100", fixed = TRUE)                   # score d'adéquation
+  expect_match(fr, "jours stress=30", fixed = TRUE)          # condition de station
+  # Garde-fou : interdit de recommander hors classement.
+  expect_match(fr, "absente des classements", fixed = TRUE)
+
+  en <- nemetonshiny:::build_regen_advice_prompt(rk, st, "English")
+  expect_match(en, "management units", fixed = TRUE)
+  expect_match(en, "absent from the rankings", fixed = TRUE)
+
+  # Troncature au-delà de 20 UGF (prompt borné).
+  big_ids <- paste0("U", seq_len(25))
+  rk_big <- data.frame(ug_id = big_ids, rank = 1L, label = "X",
+    suitability = 80, limiting_factor = "gel", confidence = "eleve",
+    stringsAsFactors = FALSE)
+  expect_match(nemetonshiny:::build_regen_advice_prompt(rk_big, data.frame(ug_id = big_ids),
+    "français"), "20 premières UGF", fixed = TRUE)
+})

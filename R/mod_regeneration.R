@@ -468,6 +468,44 @@ mod_regeneration_ui <- function(id) {
         # dans la colonne droite, Tableau des UGF (moitié haute) + Fiches parcelles
         # (moitié basse) empilés. Un clic carte sélectionne l'UGF (surlignage + ligne
         # de table), la table pilote la carte en retour (croisé, multi-sélection).
+        # Sidebar DROITE : panneau IA repliable « Affiner la reGénération avec l'IA »
+        # (pattern « Affiner » du Plan d'actions) — conseil narratif (P2) en surcouche
+        # du classement déterministe top-3 (P1).
+        bslib::layout_sidebar(
+          fillable = FALSE,
+          sidebar = bslib::sidebar(
+            position = "right", open = "open", width = 340,
+            htmltools::tags$div(
+              class = "card",
+              htmltools::tags$div(
+                class = "card-header bg-success text-white py-2",
+                style = "cursor: pointer;",
+                `data-bs-toggle` = "collapse",
+                `data-bs-target` = paste0("#", ns("regen_ai_collapse")),
+                `aria-expanded` = "true",
+                `aria-controls` = ns("regen_ai_collapse"),
+                htmltools::div(
+                  class = "d-flex align-items-center justify-content-between",
+                  htmltools::div(class = "d-flex align-items-center",
+                    bsicons::bs_icon("robot", class = "me-2"),
+                    i18n$t("regen_ai_panel_title")),
+                  bsicons::bs_icon("chevron-down", class = "collapse-icon"))),
+              htmltools::tags$div(
+                id = ns("regen_ai_collapse"), class = "collapse show",
+                htmltools::tags$div(
+                  class = "card-body",
+                  htmltools::tags$p(class = "small text-muted",
+                    i18n$t("regen_ai_panel_help")),
+                  shiny::selectInput(ns("expert_profile"),
+                    i18n$t("regen_ai_expert"),
+                    choices = get_expert_choices(i18n$language),
+                    selected = "generalist"),
+                  shiny::actionButton(ns("regen_ai_generate"),
+                    i18n$t("regen_ai_generate"),
+                    icon = shiny::icon("robot"),
+                    class = "btn-primary btn-sm w-100 mb-2"),
+                  shiny::uiOutput(ns("regen_ai_advice")))))
+          ),
         bslib::layout_columns(
           col_widths = c(6, 6), fillable = FALSE,
           # --- Carte (colonne gauche) ------------------------------------------
@@ -553,6 +591,7 @@ mod_regeneration_ui <- function(id) {
                 shiny::uiOutput(ns("parcel_sheet")))
             )
           )
+        )
         )
       ),
       bslib::nav_panel(i18n$t("regen_map_context"),
@@ -1870,6 +1909,70 @@ mod_regeneration_server <- function(id, app_state) {
       res <- rv$result
       if (is.null(res)) return(NULL)
       regeneration_species_ranking(res, top_n = 3L)
+    })
+
+    # --- Conseil de régénération par IA (spec 039, P2) -----------------------
+    # Surcouche narrative du classement déterministe : le LLM ne CLASSE pas, il
+    # met en prose le top-3 + les conditions de station, selon le profil expert.
+    # Restreint aux UGF sélectionnées (sinon toutes, borné à 20 dans le prompt).
+    regen_ai_text <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(input$regen_ai_generate, {
+      provider <- get_app_config("llm_provider", "anthropic")
+      key_var <- get_llm_api_key_var(provider)
+      if (!is.null(key_var) && nchar(Sys.getenv(key_var)) == 0) {
+        shiny::showNotification(
+          gsub("\\{key_var\\}", key_var, i18n$t("ai_no_api_key")),
+          type = "warning", duration = 8)
+        return()
+      }
+      ranking <- species_ranking()
+      res <- rv$result
+      if (is.null(ranking) || is.null(res)) {
+        shiny::showNotification(i18n$t("regen_ai_need_ranking"), type = "warning")
+        return()
+      }
+      sel <- selected_ug_rv()
+      if (length(sel) > 0L) {
+        ranking <- ranking[as.character(ranking$ug_id) %in% sel, , drop = FALSE]
+      }
+      if (nrow(ranking) == 0L) {
+        shiny::showNotification(i18n$t("regen_ai_need_ranking"), type = "warning")
+        return()
+      }
+      language <- if (identical(i18n$language, "fr")) "fran\u00e7ais" else "English"
+      expert <- input$expert_profile %||% "generalist"
+      shiny::updateActionButton(session, "regen_ai_generate",
+        label = i18n$t("ai_generating"),
+        icon = shiny::icon("spinner", class = "fa-spin"))
+      notif_id <- shiny::showNotification(
+        htmltools::div(shiny::icon("spinner", class = "fa-spin me-2"),
+                       i18n$t("ai_generating")),
+        type = "message", duration = NULL)
+      tryCatch({
+        system_prompt <- build_system_prompt(language, expert = expert)
+        prompt <- build_regen_advice_prompt(ranking, res, language)
+        chat <- create_llm_chat(system_prompt)
+        resp <- as.character(chat$chat(prompt, echo = FALSE))
+        regen_ai_text(resp)
+        shiny::removeNotification(notif_id)
+      }, error = function(e) {
+        shiny::removeNotification(notif_id)
+        shiny::showNotification(
+          paste(i18n$t("ai_error"), ":", strip_ansi(conditionMessage(e))),
+          type = "error", duration = 8)
+      })
+      shiny::updateActionButton(session, "regen_ai_generate",
+        label = i18n$t("regen_ai_generate"), icon = shiny::icon("robot"))
+    })
+
+    output$regen_ai_advice <- shiny::renderUI({
+      txt <- regen_ai_text()
+      if (is.null(txt) || !nzchar(txt)) {
+        return(htmltools::div(class = "text-muted small fst-italic",
+          i18n$t("regen_ai_advice_empty")))
+      }
+      htmltools::div(class = "regen-ai-advice small", shiny::markdown(txt))
     })
 
     # Source UNIQUE du tableau : mêmes lignes et même ordre pour le rendu DT, le

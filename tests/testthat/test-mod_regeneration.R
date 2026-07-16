@@ -914,3 +914,72 @@ test_that(".regen_species_ranking_ui rend le top-N d'une UGF, traduit facteur/co
   expect_null(nemetonshiny:::.regen_species_ranking_ui(NULL, "U1", i18n))
   expect_null(nemetonshiny:::.regen_species_ranking_ui(data.frame(x = 1), "U1", i18n))
 })
+
+# ---------------------------------------------------------------------------
+# Conseil de régénération par IA (spec 039, P2)
+# ---------------------------------------------------------------------------
+# NB : `session$setInputs()` d'amorçage AVANT de poser rv$result — l'observateur
+# de reset données (observeEvent(list(current_project, units_sf()))) fait son
+# fire d'init au premier flush (réactifs paresseux en testServer) et remettrait
+# rv$result à NULL. À l'init réel de l'app, rv$result est déjà NULL (inoffensif).
+
+.regen_ai_ranking <- function() data.frame(
+  ug_id = "1", rank = 1L, label = "Pin", suitability = 90,
+  limiting_factor = "gel", confidence = "eleve", stringsAsFactors = FALSE)
+
+test_that("conseil IA : clé API absente -> aucun appel LLM, pas de texte", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
+  chat_calls <- new.env(); chat_calls$n <- 0L
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    get_app_config = function(...) "anthropic",
+    get_llm_api_key_var = function(provider) "NMT_FAKE_UNSET_KEY",
+    regeneration_species_ranking = function(units, ...) .regen_ai_ranking(),
+    create_llm_chat = function(sp) { chat_calls$n <- chat_calls$n + 1L; list(chat = function(...) "x") },
+    .package = "nemetonshiny")
+  withr::local_envvar(c(NMT_FAKE_UNSET_KEY = ""))
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(expert_profile = "generalist")
+    rv$result <- .regen_mod_units(2)
+    session$setInputs(regen_ai_generate = 1)
+    expect_null(regen_ai_text())
+    expect_equal(chat_calls$n, 0L)
+  })
+})
+
+test_that("conseil IA : sans classement (pas de résultat) -> garde, pas de texte", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    get_app_config = function(...) "anthropic",
+    get_llm_api_key_var = function(provider) NULL,
+    create_llm_chat = function(sp) list(chat = function(...) "x"),
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(expert_profile = "generalist")
+    rv$result <- NULL
+    session$setInputs(regen_ai_generate = 1)
+    expect_null(regen_ai_text())
+  })
+})
+
+test_that("conseil IA : chemin succès -> texte du LLM stocké", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    get_app_config = function(...) "anthropic",
+    get_llm_api_key_var = function(provider) NULL,
+    regeneration_species_ranking = function(units, ...) .regen_ai_ranking(),
+    build_system_prompt = function(...) "sys",
+    create_llm_chat = function(sp) list(chat = function(prompt, echo = FALSE) "Conseil de test IA"),
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(expert_profile = "generalist")
+    rv$result <- .regen_mod_units(2)
+    session$setInputs(regen_ai_generate = 1)
+    expect_equal(regen_ai_text(), "Conseil de test IA")
+  })
+})

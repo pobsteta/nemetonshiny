@@ -4489,6 +4489,12 @@ TRANSLATIONS <- list(
   regen_conf_eleve = list(fr = "confiance \u00e9lev\u00e9e", en = "high confidence"),
   regen_conf_moyen = list(fr = "confiance moyenne", en = "medium confidence"),
   regen_conf_faible = list(fr = "confiance faible", en = "low confidence"),
+  regen_ai_panel_title = list(fr = "Affiner la reG\u00e9n\u00e9ration avec l'IA", en = "Refine regeneration with AI"),
+  regen_ai_panel_help = list(fr = "Conseil narratif bas\u00e9 sur le classement top-3 des essences et les conditions de station, selon le profil expert choisi.", en = "Narrative advice from the top-3 species ranking and site conditions, tuned to the selected expert profile."),
+  regen_ai_expert = list(fr = "Profil expert", en = "Expert profile"),
+  regen_ai_generate = list(fr = "G\u00e9n\u00e9rer le conseil IA", en = "Generate AI advice"),
+  regen_ai_need_ranking = list(fr = "Lancez d'abord l'analyse reG\u00e9n\u00e9ration (un classement d'essences est requis).", en = "Run the regeneration analysis first (a species ranking is required)."),
+  regen_ai_advice_empty = list(fr = "Le conseil IA s'affichera ici apr\u00e8s g\u00e9n\u00e9ration.", en = "The AI advice will appear here after generation."),
   regen_ndp_model = list(
     fr = "Indices mod\u00e9lis\u00e9s (mod\u00e8le m\u00e9caniste, non mesur\u00e9s terrain) : fiables en classement relatif, prudents en valeur absolue.",
     en = "Modelled indices (mechanistic model, not field-measured): reliable for relative ranking, cautious in absolute value."

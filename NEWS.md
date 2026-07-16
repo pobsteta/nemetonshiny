@@ -1,3 +1,19 @@
+# nemetonshiny (development version)
+
+### Added — reGénération : conseil de régénération par IA (spec 039, P2)
+
+Second volet de la recommandation d'essences (approche hybride). La vue Carte +
+Tableau gagne une **sidebar droite repliable « Affiner la reGénération avec l'IA »**
+(pattern « Affiner » du Plan d'actions) : sélection du **profil expert**, bouton
+**« Générer le conseil IA »**, et affichage d'un conseil narratif. Le LLM ne
+**classe pas** les essences (le classement reste déterministe, P1) — il met en prose
+le **top-3 + les conditions de station** de chaque UGF, selon le profil expert, avec
+un garde-fou interdisant de recommander une essence hors classement. Restreint aux
+UGF sélectionnées (sinon toutes, borné à 20). Nouveau prompt `build_regen_advice_prompt`,
+observateur gardé (clé API, présence d'un classement). Réutilise la plomberie ellmer
+(`create_llm_chat`, `build_system_prompt`, profils experts).
+
+
 # nemetonshiny 0.107.16 (2026-07-16)
 
 ### Added — reGénération : top-3 essences recommandées par UGF (spec 039, P1)
