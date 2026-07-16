@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.12 (2026-07-16)
 
 ### Changed — reGénération Carte + Tableau : disposition et cohérence de sélection
 
