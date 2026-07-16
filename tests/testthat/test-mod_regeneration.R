@@ -854,3 +854,16 @@ test_that("« Effacer la sélection » vide carte + tableau", {
     }
   )
 })
+
+test_that(".species_bold_render met en gras l'optgroup des essences présentes", {
+  js <- nemetonshiny:::.species_bold_render("Essences présentes (BDforêt v2)")
+  # Marqueur = libellé d'optgroup ; met <strong> quand item.optgroup == ce libellé.
+  expect_match(js, 'item.optgroup === "Essences présentes (BDforêt v2)"', fixed = TRUE)
+  expect_match(js, "<strong>", fixed = TRUE)
+  # Rend option ET item (dropdown + valeur sélectionnée).
+  expect_match(js, "option:", fixed = TRUE)
+  expect_match(js, "item:", fixed = TRUE)
+  # Guillemets d'un libellé échappés (pas de JS cassé).
+  js2 <- nemetonshiny:::.species_bold_render('a"b')
+  expect_match(js2, '\\"', fixed = TRUE)
+})

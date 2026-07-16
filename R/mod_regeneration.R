@@ -198,6 +198,25 @@
     "")
 }
 
+#' Selectize render bolding species present on the AOI (BDforêt v2)
+#'
+#' Returns the JS `render` object (as a string, wrap in `I()`) for the target
+#' species selectize: any option whose optgroup equals the "present" group label
+#' is shown in bold, both in the dropdown and once selected. Lets the user see at
+#' a glance where the present species (BDforêt v2) end and the adaptation ones
+#' begin. `present_label` is the localized optgroup title used as the marker.
+#' @noRd
+.species_bold_render <- function(present_label) {
+  lbl <- gsub("\\", "\\\\", present_label, fixed = TRUE)
+  lbl <- gsub('"', '\\"', lbl, fixed = TRUE)
+  fn <- paste0(
+    "function(item, escape){",
+    "var b = item.optgroup === \"", lbl, "\";",
+    "var l = escape(item.label);",
+    "return '<div>' + (b ? '<strong>' + l + '</strong>' : l) + '</div>';}")
+  paste0("{option: ", fn, ", item: ", fn, "}")
+}
+
 #' reGénération tab UI
 #' @param id Module id.
 #' @noRd
@@ -438,9 +457,15 @@ mod_regeneration_ui <- function(id) {
                   shiny::conditionalPanel(
                     condition = "input.map_layer == 'indice_priorite_regen'", ns = ns,
                     htmltools::tags$hr(class = "my-2"),
-                    shiny::selectInput(ns("species"), label_tt(i18n$t("regen_species_target"),
+                    # Les essences PRÉSENTES sur les UGF (BDforêt v2, optgroup en
+                    # tête) sont affichées EN GRAS pour distinguer d'emblée la
+                    # frontière avec les essences d'adaptation. Le render selectize
+                    # met en gras toute option dont l'optgroup == libellé « présentes ».
+                    shiny::selectizeInput(ns("species"), label_tt(i18n$t("regen_species_target"),
                         i18n$t("regen_species_tip")),
-                      choices = stats::setNames("", i18n$t("regen_species_generic"))))
+                      choices = stats::setNames("", i18n$t("regen_species_generic")),
+                      options = list(render = I(.species_bold_render(
+                        i18n$t("regen_species_group_present"))))))
                 ),
                 leaflet::leafletOutput(ns("map"), height = "70vh")
               )
@@ -699,7 +724,7 @@ mod_regeneration_server <- function(id, app_state) {
       df <- regeneration_species_choices(units = units, lang = i18n$language)
       generic_lbl <- i18n$t("regen_species_generic")
       if (is.null(df) || !is.data.frame(df) || !all(c("code", "label") %in% names(df))) {
-        shiny::updateSelectInput(session, "species",
+        shiny::updateSelectizeInput(session, "species",
           choices = stats::setNames("", generic_lbl))
         return()
       }
@@ -714,8 +739,8 @@ mod_regeneration_server <- function(id, app_state) {
       } else {
         choices[[i18n$t("regen_species_group_adaptation")]] <- named(df)
       }
-      shiny::updateSelectInput(session, "species", choices = choices,
-                               selected = shiny::isolate(input$species) %||% "")
+      shiny::updateSelectizeInput(session, "species", choices = choices,
+                                  selected = shiny::isolate(input$species) %||% "")
     })
 
     # Auto-detect the average / heatwave years from E-OBS for this AOI.
