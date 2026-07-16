@@ -135,3 +135,27 @@ test_that("db_save_action_plan : version 1 sur historique vide", {
     .package = "DBI")
   expect_equal(nemetonshiny:::db_save_action_plan(con, "p1", plan), 1L)
 })
+
+# ---------------------------------------------------------------------------
+# Migrations SQL versionnées des tables *_states (parité avec le DDL runtime)
+# ---------------------------------------------------------------------------
+
+test_that("les migrations SQL déclarent les tables *_states persistées par l'app", {
+  regen <- system.file("sql", "migration_004_regeneration.sql", package = "nemetonshiny")
+  plan  <- system.file("sql", "migration_005_action_plan.sql", package = "nemetonshiny")
+  expect_true(nzchar(regen) && file.exists(regen))
+  expect_true(nzchar(plan) && file.exists(plan))
+
+  regen_sql <- paste(readLines(regen, warn = FALSE), collapse = "\n")
+  plan_sql  <- paste(readLines(plan,  warn = FALSE), collapse = "\n")
+
+  # Tables créées par db_save_regeneration / db_save_action_plan à la volée :
+  # la migration versionnée doit déclarer les mêmes tables + colonne payload JSONB.
+  expect_match(regen_sql, "CREATE TABLE IF NOT EXISTS nemeton.regeneration_states", fixed = TRUE)
+  expect_match(regen_sql, "payload      JSONB", fixed = TRUE)
+  expect_match(plan_sql, "CREATE TABLE IF NOT EXISTS nemeton.action_plan_states", fixed = TRUE)
+  # Colonnes propres au plan d'actions.
+  for (col in c("horizon", "action_id", "payload")) expect_match(plan_sql, col, fixed = TRUE)
+  # Index de requête (project_id, version).
+  expect_match(plan_sql, "idx_action_plan_states_project", fixed = TRUE)
+})
