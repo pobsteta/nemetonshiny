@@ -927,7 +927,7 @@ test_that(".regen_species_ranking_ui rend le top-N d'une UGF, traduit facteur/co
   ug_id = "1", rank = 1L, label = "Pin", suitability = 90,
   limiting_factor = "gel", confidence = "eleve", stringsAsFactors = FALSE)
 
-test_that("conseil IA : clé API absente -> aucun appel LLM, pas de texte", {
+test_that("conseil IA : clé API absente -> aucun appel LLM, historique vide", {
   skip_if_not_installed("shiny"); skip_if_not_installed("sf")
   as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
   chat_calls <- new.env(); chat_calls$n <- 0L
@@ -940,15 +940,15 @@ test_that("conseil IA : clé API absente -> aucun appel LLM, pas de texte", {
     .package = "nemetonshiny")
   withr::local_envvar(c(NMT_FAKE_UNSET_KEY = ""))
   shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
-    session$setInputs(expert_profile = "generalist")
+    session$setInputs(regen_ai_scope = "all", regen_ai_replace = TRUE)
     rv$result <- .regen_mod_units(2)
-    session$setInputs(regen_ai_generate = 1)
-    expect_null(regen_ai_text())
+    session$setInputs(regen_ai_send = 1)
+    expect_length(regen_ai_hist(), 0L)
     expect_equal(chat_calls$n, 0L)
   })
 })
 
-test_that("conseil IA : sans classement (pas de résultat) -> garde, pas de texte", {
+test_that("conseil IA : sans classement (pas de résultat) -> garde, historique vide", {
   skip_if_not_installed("shiny"); skip_if_not_installed("sf")
   as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
   testthat::local_mocked_bindings(
@@ -958,14 +958,35 @@ test_that("conseil IA : sans classement (pas de résultat) -> garde, pas de text
     create_llm_chat = function(sp) list(chat = function(...) "x"),
     .package = "nemetonshiny")
   shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
-    session$setInputs(expert_profile = "generalist")
+    session$setInputs(regen_ai_scope = "all", regen_ai_replace = TRUE)
     rv$result <- NULL
-    session$setInputs(regen_ai_generate = 1)
-    expect_null(regen_ai_text())
+    session$setInputs(regen_ai_send = 1)
+    expect_length(regen_ai_hist(), 0L)
   })
 })
 
-test_that("conseil IA : chemin succès -> texte du LLM stocké", {
+test_that("conseil IA : portée sélection sans UGF sélectionnée -> garde", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
+  chat_calls <- new.env(); chat_calls$n <- 0L
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    get_app_config = function(...) "anthropic",
+    get_llm_api_key_var = function(provider) NULL,
+    regeneration_species_ranking = function(units, ...) .regen_ai_ranking(),
+    build_system_prompt = function(...) "sys",
+    create_llm_chat = function(sp) { chat_calls$n <- chat_calls$n + 1L; list(chat = function(...) "x") },
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(regen_ai_scope = "selected", regen_ai_replace = TRUE)
+    rv$result <- .regen_mod_units(2)
+    session$setInputs(regen_ai_send = 1)
+    expect_length(regen_ai_hist(), 0L)
+    expect_equal(chat_calls$n, 0L)
+  })
+})
+
+test_that("conseil IA : chemin succès -> bloc {q,a} stocké dans l'historique", {
   skip_if_not_installed("shiny"); skip_if_not_installed("sf")
   as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
   testthat::local_mocked_bindings(
@@ -977,9 +998,35 @@ test_that("conseil IA : chemin succès -> texte du LLM stocké", {
     create_llm_chat = function(sp) list(chat = function(prompt, echo = FALSE) "Conseil de test IA"),
     .package = "nemetonshiny")
   shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
-    session$setInputs(expert_profile = "generalist")
+    session$setInputs(regen_ai_scope = "all", regen_ai_replace = TRUE)
     rv$result <- .regen_mod_units(2)
-    session$setInputs(regen_ai_generate = 1)
-    expect_equal(regen_ai_text(), "Conseil de test IA")
+    session$setInputs(regen_ai_input = "Et sur sol calcaire ?")
+    session$setInputs(regen_ai_send = 1)
+    h <- regen_ai_hist()
+    expect_length(h, 1L)
+    expect_equal(h[[1]]$a, "Conseil de test IA")
+    expect_equal(h[[1]]$q, "Et sur sol calcaire ?")
+  })
+})
+
+test_that("conseil IA : case décochée -> les conseils s'ajoutent ; Effacer vide", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    get_app_config = function(...) "anthropic",
+    get_llm_api_key_var = function(provider) NULL,
+    regeneration_species_ranking = function(units, ...) .regen_ai_ranking(),
+    build_system_prompt = function(...) "sys",
+    create_llm_chat = function(sp) list(chat = function(prompt, echo = FALSE) "Conseil"),
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(regen_ai_scope = "all", regen_ai_replace = FALSE)
+    rv$result <- .regen_mod_units(2)
+    session$setInputs(regen_ai_send = 1)
+    session$setInputs(regen_ai_send = 2)
+    expect_length(regen_ai_hist(), 2L)
+    session$setInputs(regen_ai_clear = 1)
+    expect_length(regen_ai_hist(), 0L)
   })
 })

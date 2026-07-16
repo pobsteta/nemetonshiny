@@ -1,4 +1,26 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.19 (2026-07-16)
+
+### Added — reGénération : panneau « Affiner » aligné sur le Plan d'actions
+
+Le panneau « Affiner la reGénération avec l'IA » reçoit les mêmes possibilités que
+« Affiner le plan avec l'IA » : une **zone de texte** libre (consigne / question),
+un sélecteur de **Portée** (*Toutes les UGF du projet* / *Sélection courante*), une
+case **« Remplacer le conseil précédent »** (décochée, les conseils s'empilent façon
+historique) et un **exemple** en placeholder, avec les boutons *Effacer* / *Envoyer*.
+Le profil expert n'est plus sélectionnable : comme le Plan d'actions fige
+`planificateur`, la reGénération fige un nouveau profil dédié **`regeneration`**
+(`inst/experts/regeneration.yml`), conseiller narratif qui met en prose le
+classement d'essences déterministe sans jamais recommander une essence hors
+classement. La consigne libre est injectée en priorité dans le prompt
+(`build_regen_advice_prompt(question=)`). Profil interne, exclu du sélecteur de
+perspectives IA.
+
+### Changed — reGénération : sidebar IA sans flèche de repli
+
+La sidebar droite « Affiner la reGénération avec l'IA » passe en `open = "always"` :
+la flèche de repli de la sidebar bslib est retirée, alignant le comportement sur
+la sidebar de l'onglet Plan d'actions. L'accordéon interne de la carte « Affiner »
+(chevron dans l'entête) est conservé.
 
 
 # nemetonshiny 0.107.18 (2026-07-16)
