@@ -2370,21 +2370,19 @@ mod_regeneration_server <- function(id, app_state) {
     output$table <- DT::renderDataTable({
       df <- regen_table_df()
       order_col <- if ("rang_sensibilite" %in% names(df)) "rang_sensibilite" else NULL
-      # Entêtes de colonnes traduites (i18n) plutôt que les noms techniques bruts
-      # (ug_id, indice_priorite_regen, couverture_pct...). Repli sur le nom brut
-      # pour toute colonne sans clé dédiée.
-      col_key <- c(ug_id = "ugid", priorite = "priorite",
-        indice_priorite_regen = "indice", sensibilite = "sensibilite",
-        rang_sensibilite = "rang", njstress = "njstress", istress = "istress",
-        deb_stress = "deb_stress", rew_min = "rew_min", d_tmax = "dtmax",
-        d_vpd = "dvpd", couverture_pct = "couverture")
-      col_labels <- vapply(names(df), function(n) {
-        k <- col_key[[n]]
-        if (is.null(k)) n else i18n$t(paste0("regen_col_", k))
-      }, character(1))
-      DT::datatable(df, rownames = FALSE, colnames = col_labels,
+      DT::datatable(df, rownames = FALSE,
         selection = list(mode = "multiple", target = "row"),
         options = list(pageLength = 15, scrollX = TRUE,
+          # Localisation des libellés DT (boîte de recherche, pagination...)
+          language = if (identical(i18n$language, "fr")) {
+            list(
+              search = "Rechercher :",
+              info = "_TOTAL_ UGF",
+              lengthMenu = "Afficher _MENU_ UGF"
+            )
+          } else {
+            list()
+          },
           order = if (!is.null(order_col)) list(list(which(names(df) == order_col) - 1, "asc")) else list()))
     })
 

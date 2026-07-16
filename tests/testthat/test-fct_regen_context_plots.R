@@ -91,13 +91,15 @@ test_that(".regen_ctx_ombro_plot rend un plotly, titre honnête tg vs tx", {
 
   # Barres précip + courbe température ; l'axe précip contient max(P) SANS
   # débordement (l'axe = max(T, P/2)*2) et respecte le couplage de Gaussen P=2T.
+  # yaxis = axe de BASE = précipitations ; yaxis2 = axe SUPERPOSÉ = températures
+  # (la courbe T doit passer DEVANT les barres, d'où le portage sur l'axe superposé).
   b <- plotly::plotly_build(p_tg)
   types <- vapply(b$x$data, function(tr) tr$type, character(1))
   expect_true("bar" %in% types && "scatter" %in% types)
-  ry <- unlist(b$x$layout$yaxis$range); r2 <- unlist(b$x$layout$yaxis2$range)
-  expect_equal(r2, 2 * ry)                              # couplage P = 2T
-  expect_gte(max(r2), max(clim_rr$value))               # aucune barre tronquée
-  expect_gte(max(ry), max(clim_t$value))                # courbe T non tronquée
+  r_precip <- unlist(b$x$layout$yaxis$range); r_temp <- unlist(b$x$layout$yaxis2$range)
+  expect_equal(r_precip, 2 * r_temp)                     # couplage P = 2T
+  expect_gte(max(r_precip), max(clim_rr$value))          # aucune barre tronquée
+  expect_gte(max(r_temp), max(clim_t$value))             # courbe T non tronquée
   # Les 12 mois doivent être présents : x NUMÉRIQUE 1-12 (un axe catégoriel à
   # lettres fusionnerait les mois homonymes -> saison estivale repliée).
   for (tr in b$x$data) expect_length(tr$x, 12L)
