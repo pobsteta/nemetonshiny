@@ -459,6 +459,12 @@ mod_regeneration_ui <- function(id) {
               icon = bsicons::bs_icon("cloud-download"),
               label_busy = i18n$t("regen_busy_generic"),
               type = "outline-secondary", class = "btn-sm w-100 mb-2 regen-calc-btn"),
+            # Température moyenne (tg) : requise par le diagramme ombrothermique
+            # (Gaussen) du panneau au clic. Opt-in, même coût (~800 Mo) que rr.
+            bslib::input_task_button(ns("fetch_eobs_tg"), i18n$t("regen_fetch_tg"),
+              icon = bsicons::bs_icon("thermometer-half"),
+              label_busy = i18n$t("regen_busy_generic"),
+              type = "outline-secondary", class = "btn-sm w-100 mb-2 regen-calc-btn"),
             htmltools::tags$hr(class = "my-2"),
             htmltools::tags$strong(i18n$t("regen_buffer")),
             shiny::numericInput(ns("buffer_km"), NULL,
@@ -514,6 +520,10 @@ mod_regeneration_server <- function(id, app_state) {
       # Chrono du téléchargement des précipitations E-OBS (~800 Mo) : notif
       # persistante « engrenage + MM:SS » tant que la tâche tourne.
       eobs_rr_running = FALSE, eobs_rr_start = NULL,
+      # Idem pour la T° moyenne (tg) — requise par le diagramme ombrothermique.
+      eobs_tg_running = FALSE, eobs_tg_start = NULL,
+      # Série au dernier point cliqué sur la carte de contexte (4 graphes E-OBS).
+      click_series = NULL,
       # Chrono du moteur « risque de gel tardif » (R7, meteoland).
       frost_running = FALSE, frost_start = NULL,
       # Bilan persistant du dernier calcul gel (status none/detected/skipped/error
@@ -883,6 +893,29 @@ mod_regeneration_server <- function(id, app_state) {
         }, seed = TRUE)
       })
 
+    # Acquisition de la T° moyenne (tg) pour le diagramme ombrothermique — même
+    # patron que rr (opt-in, worker future, ~800 Mo, cache .nc).
+    eobs_tg_task <- shiny::ExtendedTask$new(
+      function(units, project_path, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            future::plan("multisession")
+          }
+        }
+        promises::future_promise({
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          fn <- getFromNamespace("regen_fetch_eobs_tg", "nemetonshiny")
+          fn(units, project_path)
+        }, seed = TRUE)
+      })
+
     # Moteur « risque de gel tardif » (R7, meteoland). Opt-in, worker future,
     # sortie cachée (tmin_*.tif) : interpolation Tmin journalière → indicateur R7.
     frost_task <- shiny::ExtendedTask$new(
@@ -939,6 +972,7 @@ mod_regeneration_server <- function(id, app_state) {
     bslib::bind_task_button(engine_task, "run_engine")
     bslib::bind_task_button(eobs_task, "auto_years")
     bslib::bind_task_button(eobs_rr_task, "fetch_eobs_rr")
+    bslib::bind_task_button(eobs_tg_task, "fetch_eobs_tg")
     bslib::bind_task_button(frost_task, "run_frost")
 
     # --- Verrou d'exclusion mutuelle des calculs (brief 035 verrou-boutons) ---
@@ -950,14 +984,14 @@ mod_regeneration_server <- function(id, app_state) {
     # de façon erratique sans que l'utilisateur ait rien lancé.
     busy <- shiny::reactive({
       any(vapply(
-        list(engine_task, eobs_task, eobs_rr_task, frost_task),
+        list(engine_task, eobs_task, eobs_rr_task, eobs_tg_task, frost_task),
         function(t) identical(t$status(), "running"),
         logical(1)))
     })
 
     # Grisage client : task buttons via update_task_button (le binding bslib
     # ignore la clé `disabled`), actionButton classiques via updateActionButton.
-    TASK_BTNS   <- c("run_engine", "auto_years", "fetch_eobs_rr", "run_frost")
+    TASK_BTNS   <- c("run_engine", "auto_years", "fetch_eobs_rr", "fetch_eobs_tg", "run_frost")
     ACTION_BTNS <- c("run", "recompute_pai", "persist_db")
     # meteoland absent → run_frost est rendu désactivé : ne jamais le repasser
     # « ready » (sinon l'observer l'activerait alors qu'il ne doit pas l'être).
@@ -986,7 +1020,8 @@ mod_regeneration_server <- function(id, app_state) {
     # le clic n'a finalement lancé aucun calcul).
     shiny::observeEvent(
       list(input$run_engine, input$run_frost, input$auto_years,
-           input$fetch_eobs_rr, input$run, input$recompute_pai, input$persist_db), {
+           input$fetch_eobs_rr, input$fetch_eobs_tg, input$run,
+           input$recompute_pai, input$persist_db), {
         rv$click_tick <- (rv$click_tick %||% 0L) + 1L
       }, ignoreInit = TRUE)
 
@@ -1053,6 +1088,57 @@ mod_regeneration_server <- function(id, app_state) {
         }
       } else if (identical(st, "error")) {
         err <- tryCatch(eobs_rr_task$result(), error = function(e) conditionMessage(e))
+        shiny::showNotification(
+          sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),
+          type = "error", duration = 10)
+      }
+    })
+
+    # --- Acquisition T° moyenne (tg) pour le diagramme ombrothermique --------
+    shiny::observeEvent(input$fetch_eobs_tg, {
+      if (deny_if_busy()) return()
+      if (deny_if_readonly(app_state, i18n)) {
+        bslib::update_task_button("fetch_eobs_tg", state = "ready")
+        return()
+      }
+      units <- units_sf()
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(units) || is.null(project_path)) {
+        bslib::update_task_button("fetch_eobs_tg", state = "ready")
+        shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
+        return()
+      }
+      rv$eobs_tg_running <- TRUE
+      rv$eobs_tg_start <- Sys.time()
+      shiny::showNotification(
+        .running_notif_content(i18n$t("regen_fetch_tg_running"), rv$eobs_tg_start),
+        id = session$ns("eobs_tg_notif"), type = "message", duration = NULL)
+      eobs_tg_task$invoke(units, project_path, .dev_pkg_path, get_app_options())
+    })
+
+    shiny::observe({
+      if (!isTRUE(rv$eobs_tg_running)) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .running_notif_content(i18n$t("regen_fetch_tg_running"),
+                               shiny::isolate(rv$eobs_tg_start)),
+        id = session$ns("eobs_tg_notif"), type = "message", duration = NULL)
+    })
+
+    shiny::observeEvent(eobs_tg_task$status(), {
+      st <- eobs_tg_task$status()
+      if (identical(st, "success") || identical(st, "error")) {
+        rv$eobs_tg_running <- FALSE
+        rv$eobs_tg_start <- NULL
+        shiny::removeNotification(session$ns("eobs_tg_notif"))
+      }
+      if (identical(st, "success")) {
+        ok <- tryCatch(eobs_tg_task$result(), error = function(e) FALSE)
+        shiny::showNotification(
+          i18n$t(if (isTRUE(ok)) "regen_fetch_tg_done" else "regen_fetch_tg_failed"),
+          type = if (isTRUE(ok)) "message" else "warning", duration = if (isTRUE(ok)) 6 else 10)
+      } else if (identical(st, "error")) {
+        err <- tryCatch(eobs_tg_task$result(), error = function(e) conditionMessage(e))
         shiny::showNotification(
           sprintf("%s: %s", i18n$t("error"), .strip_ansi(as.character(err))),
           type = "error", duration = 10)
@@ -1754,6 +1840,133 @@ mod_regeneration_server <- function(id, app_state) {
       if (!is.null(shown) && !("Contexte E-OBS" %in% shown)) {
         leaflet::hideGroup(proxy, "Contexte E-OBS")
       }
+    })
+
+    # --- Graphiques au clic sur la maille E-OBS (spec 036) -------------------
+    # Le clic leaflet (input$context_map_click, lng/lat 4326) ouvre un panneau de
+    # 4 graphes rendant la donnée SOUS la couleur, à la maille cliquée. Toute la
+    # donnée vient des accesseurs cœur (eobs_summer_series / eobs_trend_fit /
+    # eobs_monthly_climatology) ; l'app ne fait que clic → point → tracé.
+    #
+    # Cache de session des stacks estivaux (une couche/an, résolution E-OBS
+    # native ~11 km — cf. §7 honnêteté spatiale) : le 1er clic lit le .nc caché,
+    # les suivants sont instantanés. Clé = projet + buffer + variable.
+    summer_stacks <- new.env(parent = emptyenv())
+    .load_summer_stack <- function(units, project_path, var, buffer_m) {
+      key <- paste(project_path %||% "-", buffer_m, var, sep = "|")
+      if (!is.null(summer_stacks[[key]])) return(summer_stacks[[key]]$stk)
+      stk <- .regen_load_eobs_buffered(units, project_path, var, buffer_m)
+      summer_stacks[[key]] <- list(stk = stk)   # mémoïse même NULL (évite de re-tenter)
+      stk
+    }
+
+    # Extrait la série estivale au point + son ajustement de tendance pour une
+    # variable ; renvoie NULL si le stack est absent. `pt` = c(lng, lat) en 4326.
+    .ctx_series_entry <- function(units, project_path, var, pt, buffer_m) {
+      stk <- .load_summer_stack(units, project_path, var, buffer_m)
+      if (is.null(stk)) return(NULL)
+      ser <- tryCatch(nemeton::eobs_summer_series(stk, pt), error = function(e) NULL)
+      if (is.null(ser)) return(NULL)
+      fit <- tryCatch(nemeton::eobs_trend_fit(ser), error = function(e) NULL)
+      list(var = var, ser = ser, fit = fit,
+        label = i18n$t(if (var == "tx") "regen_ctx_series_tx" else "regen_ctx_series_rr"),
+        unit  = i18n$t(if (var == "tx") "regen_ctx_unit_tx" else "regen_ctx_unit_rr"),
+        sense = if (var == "tx") "hot_red" else "dry_red")
+    }
+
+    shiny::observeEvent(input$context_map_click, {
+      ev <- input$context_map_click
+      shiny::req(ev$lng, ev$lat)
+      units <- units_sf()
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(units) || is.null(project_path)) {
+        shiny::showNotification(i18n$t("regen_need_project"), type = "warning")
+        return()
+      }
+      pt   <- c(ev$lng, ev$lat)                 # EPSG:4326, accepté tel quel
+      buf  <- (input$buffer_km %||% 25) * 1000
+      view <- rv$context_loaded_view %||% input$context_view %||% "tx"
+
+      # Graphes 1-2 : série(s) + tendance(s). Vue tx/rr → variable de la vue ;
+      # bivariée → les DEUX (le sens du croisement).
+      vars <- switch(view, tx = "tx", rr = "rr", bivariate = c("tx", "rr"), "tx")
+      entries <- Filter(Negate(is.null),
+        lapply(vars, function(v) .ctx_series_entry(units, project_path, v, pt, buf)))
+
+      # Graphe 3 : distribution des pentes du buffer (raster de contexte affiché,
+      # déjà en mémoire) + pente de la maille. Univarié seulement (la bivariée
+      # porte des classes 1-25, pas une pente).
+      distrib <- NULL
+      rast <- rv$context_raster
+      if (view %in% c("tx", "rr") && inherits(rast, "SpatRaster")) {
+        vals <- tryCatch(as.numeric(terra::values(rast)), error = function(e) NULL)
+        pv <- tryCatch({
+          v <- terra::vect(cbind(ev$lng, ev$lat), crs = "EPSG:4326")
+          v <- terra::project(v, terra::crs(rast))
+          as.numeric(terra::extract(rast, v)[1, 2])
+        }, error = function(e) NA_real_)
+        distrib <- list(values = vals, point = pv,
+          label = i18n$t(if (view == "tx") "regen_ctx_series_tx" else "regen_ctx_series_rr"),
+          unit  = i18n$t(if (view == "tx") "regen_ctx_unit_tx" else "regen_ctx_unit_rr"))
+      }
+
+      # Graphe 4 : climatologie mensuelle. tg si acquise (honnête), sinon repli tx.
+      nc_tg <- regen_eobs_cached_nc(project_path, "tg")
+      nc_t  <- nc_tg %||% regen_eobs_cached_nc(project_path, "tx")
+      temp_is_tg <- !is.null(nc_tg)
+      nc_rr <- regen_eobs_cached_nc(project_path, "rr")
+      clim_t  <- if (!is.null(nc_t)) tryCatch(nemeton::eobs_monthly_climatology(
+        nc_t, pt, var = if (temp_is_tg) "tg" else "tx"), error = function(e) NULL)
+      clim_rr <- if (!is.null(nc_rr)) tryCatch(nemeton::eobs_monthly_climatology(
+        nc_rr, pt, var = "rr"), error = function(e) NULL)
+
+      rv$click_series <- list(view = view, entries = entries, distrib = distrib,
+        clim_t = clim_t, clim_rr = clim_rr, temp_is_tg = temp_is_tg,
+        has_temp = !is.null(nc_t))
+
+      shiny::showModal(shiny::modalDialog(
+        title = sprintf(i18n$t("regen_ctx_cell_title"), ev$lat, ev$lng),
+        size = "l", easyClose = TRUE,
+        footer = shiny::modalButton(i18n$t("close")),
+        shiny::tabsetPanel(
+          shiny::tabPanel(i18n$t("regen_ctx_series"),  plotly::plotlyOutput(ns("ctx_g1"), height = "360px")),
+          shiny::tabPanel(i18n$t("regen_ctx_anomaly"), plotly::plotlyOutput(ns("ctx_g2"), height = "360px")),
+          shiny::tabPanel(i18n$t("regen_ctx_distrib"), plotly::plotlyOutput(ns("ctx_g3"), height = "360px")),
+          shiny::tabPanel(i18n$t("regen_ctx_ombro"),   plotly::plotlyOutput(ns("ctx_g4"), height = "360px")))))
+    })
+
+    # Graphe 1 — série(s) + tendance(s). Bivariée → deux panneaux côte à côte.
+    output$ctx_g1 <- plotly::renderPlotly({
+      cs <- rv$click_series
+      if (is.null(cs) || !length(cs$entries)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_out_of_coverage")))
+      plots <- lapply(cs$entries, function(e)
+        .regen_ctx_series_plot(e$ser, e$fit, e$label, e$unit, i18n))
+      if (length(plots) == 1L) plots[[1]] else plotly::subplot(plots, nrows = 1L, titleX = TRUE, titleY = TRUE, margin = 0.06)
+    })
+
+    # Graphe 2 — anomalies annuelles. Bivariée → deux panneaux.
+    output$ctx_g2 <- plotly::renderPlotly({
+      cs <- rv$click_series
+      if (is.null(cs) || !length(cs$entries)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_out_of_coverage")))
+      plots <- lapply(cs$entries, function(e)
+        .regen_ctx_anomaly_plot(e$ser, e$label, e$sense, i18n))
+      if (length(plots) == 1L) plots[[1]] else plotly::subplot(plots, nrows = 1L, titleX = TRUE, titleY = TRUE, margin = 0.06)
+    })
+
+    # Graphe 3 — distribution régionale des pentes + maille cliquée.
+    output$ctx_g3 <- plotly::renderPlotly({
+      cs <- rv$click_series
+      d <- cs$distrib
+      if (is.null(d)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_distrib_na")))
+      .regen_ctx_distrib_plot(d$values, d$point, d$label, d$unit, i18n)
+    })
+
+    # Graphe 4 — diagramme ombrothermique (Gaussen). Sans température acquise :
+    # panneau d'invite à télécharger la série (bouton tg dans la sidebar).
+    output$ctx_g4 <- plotly::renderPlotly({
+      cs <- rv$click_series
+      if (is.null(cs) || !isTRUE(cs$has_temp)) return(.regen_ctx_empty_plot(i18n$t("regen_ctx_ombro_need_temp")))
+      .regen_ctx_ombro_plot(cs$clim_rr, cs$clim_t, cs$temp_is_tg, i18n)
     })
 
     output$table <- DT::renderDataTable({

@@ -442,7 +442,8 @@ test_that("restore_regeneration returns NULL when the priority index cannot be b
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
   f <- file.path(d, switch(var,
     tx = "eobs_maximum-temperature-2011-2024-v30-0e-0-1deg.nc",
-    rr = "eobs_precipitation-amount-2011-2024-v30-0e-0-1deg.nc"))
+    rr = "eobs_precipitation-amount-2011-2024-v30-0e-0-1deg.nc",
+    tg = "eobs_mean-temperature-2011-2024-v30-0e-0-1deg.nc"))
   file.create(f)
   f
 }
@@ -459,7 +460,38 @@ test_that("regen_eobs_cached_nc finds the cached NetCDF, per variable", {
 
     .stub_eobs_nc(p, "rr")
     expect_match(nemetonshiny:::regen_eobs_cached_nc(p, "rr"), "precipitation-amount")
+
+    # tg (T° moyenne, spec 036) : nouvelle variable, motif mean-temperature.
+    expect_null(nemetonshiny:::regen_eobs_cached_nc(p, "tg"))
+    .stub_eobs_nc(p, "tg")
+    expect_match(nemetonshiny:::regen_eobs_cached_nc(p, "tg"), "mean-temperature")
   })
+})
+
+test_that("regen_fetch_eobs_tg acquiert tg via le cœur (var=tg) et confirme le cache", {
+  seen <- new.env(); seen$var <- NA_character_
+  testthat::local_mocked_bindings(
+    load_eobs_source = function(aoi, var, years = NULL, cache_dir = NULL, ...) {
+      seen$var <- var
+      # Simule l'écriture du .nc caché que le cœur aurait produit.
+      dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+      file.create(file.path(cache_dir, "eobs_mean-temperature-2011-2024-v30-0e-0-1deg.nc"))
+      NULL
+    }, .package = "nemeton")
+
+  withr::with_tempdir({
+    p <- getwd()
+    ugf <- .regen_units(2)
+    ok <- nemetonshiny:::regen_fetch_eobs_tg(ugf, p)
+    expect_true(ok)
+    expect_identical(seen$var, "tg")              # bonne clé CDS demandée au cœur
+    expect_match(nemetonshiny:::regen_eobs_cached_nc(p, "tg"), "mean-temperature")
+  })
+})
+
+test_that("regen_fetch_eobs_tg valide ses entrées (sf + project_path)", {
+  expect_false(nemetonshiny:::regen_fetch_eobs_tg(NULL, "/tmp"))
+  expect_false(nemetonshiny:::regen_fetch_eobs_tg(.regen_units(1), NULL))
 })
 
 test_that("regen_context_availability reports each series separately", {
