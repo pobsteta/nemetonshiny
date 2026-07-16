@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.107.3 (2026-07-16)
+
 ### Fixed — légende bivariée sans ascenseur + notif « calcul en cours » au clic
 
 - **Légende bivariée** : la grille 5×5 + axes dépassait le plafond de 150 px du
