@@ -4294,6 +4294,8 @@ TRANSLATIONS <- list(
   regen_download_gpkg = list(fr = "T\u00e9l\u00e9charger le GeoPackage", en = "Download GeoPackage"),
   regen_export_gpkg_busy = list(fr = "G\u00e9n\u00e9ration du GeoPackage\u2026", en = "Generating the GeoPackage\u2026"),
   save_to_db_button = list(fr = "Enregistrer en base DB", en = "Save to database"),
+  save_to_db_busy = list(fr = "Enregistrement en base en cours\u2026", en = "Saving to database\u2026"),
+  send_to_field_busy = list(fr = "Envoi vers le terrain en cours\u2026", en = "Sending to the field\u2026"),
   regen_persisted = list(fr = "\u00c9tat reG\u00e9n\u00e9ration enregistr\u00e9 (version %d).", en = "reGeneration state saved (version %d)."),
   regen_export_empty = list(fr = "Aucun r\u00e9sultat \u00e0 exporter.", en = "No result to export."),
   regen_export_terrain = list(fr = "Envoyer vers Terrain", en = "Send to Field"),

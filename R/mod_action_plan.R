@@ -102,11 +102,17 @@ mod_action_plan_ui <- function(id) {
 
         # ---- Exports -----------------------------------------------
         htmltools::tags$h6(i18n$t("action_plan_section_exports")),
-        shiny::actionButton(
-          ns("export_terrain"),
-          label = i18n$t("action_plan_export_terrain"),
-          icon = shiny::icon("crosshairs"),
-          class = "btn-sm btn-outline-success w-100 mb-2"
+        htmltools::tagAppendAttributes(
+          shiny::actionButton(
+            ns("export_terrain"),
+            label = i18n$t("action_plan_export_terrain"),
+            icon = shiny::icon("crosshairs"),
+            class = "btn-sm btn-outline-success w-100 mb-2"
+          ),
+          onclick = sprintf(
+            "nemetonShowDownloadToast(%s);",
+            jsonlite::toJSON(i18n$t("send_to_field_busy"), auto_unbox = TRUE)
+          )
         ),
         htmltools::tagAppendAttributes(
           shiny::downloadButton(
@@ -137,11 +143,17 @@ mod_action_plan_ui <- function(id) {
         # Persistance versionnée en base (multi-utilisateurs) : distincte des
         # exports locaux ci-dessus, miroir du bouton reGénération.
         htmltools::tags$hr(class = "my-2"),
-        shiny::actionButton(
-          ns("save_db"),
-          label = i18n$t("save_to_db_button"),
-          icon = shiny::icon("database"),
-          class = "btn-sm btn-outline-secondary w-100"
+        htmltools::tagAppendAttributes(
+          shiny::actionButton(
+            ns("save_db"),
+            label = i18n$t("save_to_db_button"),
+            icon = shiny::icon("database"),
+            class = "btn-sm btn-outline-secondary w-100"
+          ),
+          onclick = sprintf(
+            "nemetonShowDownloadToast(%s);",
+            jsonlite::toJSON(i18n$t("save_to_db_busy"), auto_unbox = TRUE)
+          )
         )
       )
     )
@@ -1574,6 +1586,8 @@ mod_action_plan_server <- function(id, app_state) {
     # ============================================================
 
     shiny::observeEvent(input$export_terrain, {
+      # Toast bas-droite affiché client-side (onclick) ; masqué en fin d'opération.
+      on.exit(session$sendCustomMessage("nemetonHideDownloadToast", list()), add = TRUE)
       if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       project <- app_state$current_project
@@ -1777,6 +1791,7 @@ mod_action_plan_server <- function(id, app_state) {
     # nemeton.action_plan_states. Le plan reste par ailleurs auto-sauvegardé sur
     # disque (action_plan.json) ; ce bouton ajoute l'historique serveur partagé.
     shiny::observeEvent(input$save_db, {
+      on.exit(session$sendCustomMessage("nemetonHideDownloadToast", list()), add = TRUE)
       if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
       plan <- plan_rv()
