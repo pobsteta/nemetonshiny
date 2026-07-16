@@ -632,3 +632,93 @@ test_that("un clic sans projet chargé est un no-op gardé (pas de crash)", {
     }
   )
 })
+
+test_that("vue bivariée : les 4 graphes sont peuplés, distribution tx ET rr", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf"); skip_if_not_installed("terra")
+
+  units <- .regen_mod_units(3)
+  proj <- list(id = "p1", path = withr::local_tempdir(), indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj)
+
+  # Petit raster de pente réel couvrant le point cliqué (extraction distribution).
+  slope_rast <- terra::rast(nrows = 5, ncols = 5, xmin = 6, xmax = 6.5,
+    ymin = 47, ymax = 47.5, crs = "EPSG:4326", vals = seq_len(25))
+
+  testthat::local_mocked_bindings(
+    eobs_summer_series = function(stack, point)
+      data.frame(year = 2011:2020, value = seq(24, 29, length.out = 10)),
+    eobs_trend_fit = function(series) list(slope_decade = 1.2, intercept = -400,
+      r2 = 0.8, p_value = 0.01, n = 10),
+    eobs_monthly_climatology = function(daily, point, var, years = NULL)
+      data.frame(month = 1:12, value = rep(50, 12)),
+    .package = "nemeton")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    .regen_load_eobs_buffered = function(units, project_path, var, buffer_m) "STACK",
+    regen_eobs_cached_nc = function(project_path, var = c("tx", "rr", "tg")) {
+      var <- match.arg(var); paste0("/fake/", var, ".nc")
+    },
+    # Rasters de pente tx & rr présents en cache -> distribution des DEUX.
+    regeneration_context_cached = function(project_path, view = "tx")
+      list(raster = slope_rast, meta = list(status = "ok")),
+    .package = "nemetonshiny")
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(context_view = "bivariate", buffer_km = 25)
+      session$setInputs(context_map_click = list(lng = 6.1, lat = 47.2))
+
+      cs <- rv$click_series
+      expect_equal(cs$view, "bivariate")
+      expect_length(cs$entries, 2L)                 # tx ET rr (graphes 1-2)
+      expect_length(cs$distrib, 2L)                 # distribution tx ET rr (graphe 3)
+      expect_true(all(is.finite(vapply(cs$distrib, function(e) e$point, numeric(1)))))
+      # Les 4 rendus produisent un plotly sans erreur, y compris le graphe 3.
+      expect_false(is.null(output$ctx_g1)); expect_false(is.null(output$ctx_g3))
+    }
+  )
+})
+
+test_that("recompute_context purge le cache des 3 vues et re-déclenche le calcul", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+
+  units <- .regen_mod_units(2)
+  pp <- withr::local_tempdir()
+  # Simule des rasters de contexte cachés pour les 3 vues.
+  dir.create(file.path(pp, "cache", "regeneration", "eobs"), recursive = TRUE)
+  for (v in c("tx", "rr", "bivariate")) {
+    paths <- nemetonshiny:::.regen_context_raster_paths(pp, v)
+    file.create(paths$tif); file.create(paths$meta)
+  }
+  proj <- list(id = "p1", path = pp, indicators_sf = units)
+  as <- shiny::reactiveValues(current_project = proj, active_main_tab = "other")
+
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    load_regeneration_precomputed = function(pp) list(),
+    regeneration_species_choices = function(...) NULL,
+    .package = "nemetonshiny")
+
+  shiny::testServer(
+    nemetonshiny:::mod_regeneration_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(context_view = "bivariate")
+      before <- rv$context_refresh
+      session$setInputs(recompute_context = 1)
+      # Les 3 caches sont supprimés.
+      for (v in c("tx", "rr", "bivariate")) {
+        paths <- nemetonshiny:::.regen_context_raster_paths(pp, v)
+        expect_false(file.exists(paths$tif))
+        expect_false(file.exists(paths$meta))
+      }
+      # L'observer lazy est re-déclenché (compteur bumpé, vue chargée réinitialisée).
+      expect_gt(rv$context_refresh, before)
+      expect_null(rv$context_loaded_view)
+    }
+  )
+})

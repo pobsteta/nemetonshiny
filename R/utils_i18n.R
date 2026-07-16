@@ -4332,6 +4332,13 @@ TRANSLATIONS <- list(
     fr = "Calcul du contexte r\u00e9gional (E-OBS)\u2026", en = "Computing regional context (E-OBS)\u2026"
   ),
   # S\u00e9lecteur 3 vues du contexte r\u00e9gional (raster).
+  regen_context_recompute = list(
+    fr = "Recalculer le contexte", en = "Recompute context"
+  ),
+  regen_context_recomputing = list(
+    fr = "Cache du contexte purg\u00e9 \u2014 recalcul de la vue courante en cours\u2026",
+    en = "Context cache purged \u2014 recomputing the current view\u2026"
+  ),
   regen_context_view = list(fr = "Contexte affich\u00e9", en = "Displayed context"),
   regen_context_view_tx = list(fr = "Tendance T\u00b0max", en = "Max-T trend"),
   regen_context_view_rr = list(fr = "Tendance pr\u00e9cipitations", en = "Precipitation trend"),
