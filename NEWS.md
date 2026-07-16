@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.15 (2026-07-16)
 
 ### Changed — famille R : R6/R7 intégrés au score (normalisation cœur, spec 038)
 
