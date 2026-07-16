@@ -217,6 +217,15 @@
   paste0("{option: ", fn, ", item: ", fn, "}")
 }
 
+#' Shiny-safe input key for a per-UGF comment textarea
+#'
+#' UGF ids may contain characters invalid in an input id. Maps `ug` to a stable
+#' token `regcom_<sanitised>`. `input[[key]]` and `ns(key)` share this token.
+#' @noRd
+.regen_comment_key <- function(ug) {
+  paste0("regcom_", gsub("[^A-Za-z0-9]", "_", as.character(ug)))
+}
+
 #' Top-N regeneration species ranking UI block for one UGF (spec 039)
 #'
 #' Renders the deterministic top-N species (from `nemeton::regen_rank_species`,
@@ -2428,6 +2437,75 @@ mod_regeneration_server <- function(id, app_state) {
           order = if (!is.null(order_col)) list(list(which(names(df) == order_col) - 1, "asc")) else list()))
     })
 
+    # ============================================================
+    # Commentaires de fiche parcelle (persist\u00e9s par projet) \u2014 spec 039
+    # ============================================================
+    # Un commentaire libre par UGF (notes, conseil IA ins\u00e9r\u00e9). Source de v\u00e9rit\u00e9 :
+    # regen_comments_rv (liste ug_id -> texte), charg\u00e9e \u00e0 l'ouverture du projet
+    # et sauvegard\u00e9e (d\u00e9bounce) dans data/regen_comments.json.
+    regen_comments_rv <- shiny::reactiveVal(list())
+
+    # (Re)chargement \u00e0 chaque changement de projet.
+    shiny::observeEvent(app_state$current_project, {
+      pid <- tryCatch(app_state$current_project$id, error = function(e) NULL)
+      cm <- if (is.null(pid)) list() else tryCatch(load_regen_comments(pid),
+        error = function(e) list())
+      regen_comments_rv(cm %||% list())
+    }, ignoreNULL = FALSE)
+
+    # Sauvegarde d\u00e9bounc\u00e9e (au plus une \u00e9criture disque par seconde de repos).
+    regen_comments_deb <- shiny::debounce(shiny::reactive(regen_comments_rv()), 1000)
+    shiny::observeEvent(regen_comments_deb(), {
+      pid <- tryCatch(app_state$current_project$id, error = function(e) NULL)
+      if (is.null(pid)) return()
+      save_regen_comments(pid, regen_comments_deb())
+    }, ignoreInit = TRUE)
+
+    # Observateur paresseux par UGF s\u00e9lectionn\u00e9e : capte les \u00e9ditions du textarea
+    # et les r\u00e9percute dans regen_comments_rv. Une seule fois par UGF.
+    comment_obs_done <- new.env(parent = emptyenv())
+    shiny::observe({
+      sel <- selected_ug_rv()
+      for (ug in sel) {
+        key <- .regen_comment_key(ug)
+        if (isTRUE(comment_obs_done[[key]])) next
+        comment_obs_done[[key]] <- TRUE
+        local({
+          ug_local <- ug; key_local <- key
+          shiny::observeEvent(input[[key_local]], {
+            cur <- regen_comments_rv()
+            cur[[ug_local]] <- input[[key_local]] %||% ""
+            regen_comments_rv(cur)
+          }, ignoreInit = TRUE)
+        })
+      }
+    })
+
+    # Bouton unique : ins\u00e8re le dernier conseil IA g\u00e9n\u00e9r\u00e9 dans le commentaire de
+    # TOUTES les UGF s\u00e9lectionn\u00e9es (remplace le contenu ; \u00e9ditable ensuite).
+    shiny::observeEvent(input$regen_comment_insert_ai, {
+      sel <- selected_ug_rv()
+      if (length(sel) == 0L) {
+        shiny::showNotification(i18n$t("regen_select_ug"), type = "warning")
+        return()
+      }
+      hist <- regen_ai_hist()
+      advice <- if (length(hist) > 0L) hist[[length(hist)]]$a %||% "" else ""
+      if (!nzchar(trimws(advice))) {
+        shiny::showNotification(i18n$t("regen_comment_no_advice"), type = "warning")
+        return()
+      }
+      cur <- regen_comments_rv()
+      for (ug in sel) {
+        cur[[ug]] <- advice
+        shiny::updateTextAreaInput(session, .regen_comment_key(ug), value = advice)
+      }
+      regen_comments_rv(cur)
+      shiny::showNotification(sprintf(i18n$t("regen_comment_inserted_fmt"), length(sel)),
+        type = "message", duration = 4)
+    })
+
+
     # Fiche(s) parcelle : une par UGF sélectionnée (multi-sélection). Les lignes
     # viennent de la MÊME `regen_table_df()` que le tableau, l'ordre suit la
     # sélection courante (`selected_ug_rv`, alimentée carte + table).
@@ -2446,6 +2524,17 @@ mod_regeneration_server <- function(id, app_state) {
       one_sheet <- function(row) {
         fs <- intersect(fields, names(row))
         ug <- if ("ug_id" %in% names(row)) as.character(row$ug_id) else ""
+        # Zone de commentaire éditable par UGF (persistée). Lecture ISOLÉE pour
+        # ne pas re-rendre la fiche à chaque frappe (sinon le curseur saute) ;
+        # le bouton d'insertion IA passe par updateTextAreaInput (pas de re-render).
+        key <- .regen_comment_key(ug)
+        comment_zone <- htmltools::div(class = "mt-1 mb-3",
+          htmltools::tags$label(class = "form-label small fw-bold mb-1",
+            `for` = ns(key), i18n$t("regen_comment_label")),
+          shiny::textAreaInput(ns(key), label = NULL,
+            value = shiny::isolate(regen_comments_rv())[[ug]] %||% "",
+            placeholder = i18n$t("regen_comment_placeholder"),
+            rows = 4, width = "100%", resize = "vertical"))
         htmltools::tagList(
           htmltools::tags$table(class = "table table-sm mb-2",
             htmltools::tags$caption(class = "fw-bold text-body",
@@ -2457,15 +2546,23 @@ mod_regeneration_server <- function(id, app_state) {
                   rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
                   couverture_pct = "couverture", f)))),
               htmltools::tags$td(format(row[[f]], digits = 3))))),
-          .regen_species_ranking_ui(rk, ug, i18n))
+          .regen_species_ranking_ui(rk, ug, i18n),
+          comment_zone)
       }
       rows <- which(as.character(df$ug_id) %in% sel)
       if (length(rows) == 0L) {
         return(htmltools::div(class = "text-muted fst-italic", i18n$t("regen_select_ug")))
       }
-      htmltools::div(class = "row",
-        lapply(rows, function(i) htmltools::div(class = "col-md-6",
-          one_sheet(df[i, , drop = FALSE]))))
+      # Bouton unique : insère le dernier conseil IA dans TOUTES les UGF sélectionnées.
+      insert_btn <- htmltools::div(class = "mb-2",
+        shiny::actionButton(ns("regen_comment_insert_ai"),
+          i18n$t("regen_comment_insert_ai"),
+          icon = shiny::icon("robot"),
+          class = "btn-sm btn-outline-primary"))
+      htmltools::tagList(insert_btn,
+        htmltools::div(class = "row",
+          lapply(rows, function(i) htmltools::div(class = "col-md-6",
+            one_sheet(df[i, , drop = FALSE])))))
     })
 
     # --- Export GPKG (§7) -------------------------------------------------

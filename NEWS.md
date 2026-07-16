@@ -1,4 +1,14 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.20 (2026-07-16)
+
+### Added — reGénération : commentaire de fiche parcelle rempli par l'IA
+
+Chaque **fiche parcelle** gagne une **zone de commentaire éditable** par UGF.
+Un **bouton unique « Insérer le conseil IA dans les UGF sélectionnées »** recopie
+le dernier conseil généré (panneau « Affiner ») dans le commentaire de toutes les
+UGF sélectionnées, éditable ensuite à la main. Les commentaires sont **persistés
+par projet** dans `data/regen_comments.json` (écriture atomique débouncée) et
+rechargés à l'ouverture du projet — de quoi alimenter un export PDF ultérieur.
+Nouvelles fonctions service `save_regen_comments` / `load_regen_comments`.
 
 
 # nemetonshiny 0.107.19 (2026-07-16)

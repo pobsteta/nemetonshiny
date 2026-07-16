@@ -593,3 +593,35 @@ test_that("regen_reprioritize is defensive: never blanks the map on failure", {
   # NULL en entrée -> NULL (rien à re-prioriser).
   expect_null(nemetonshiny:::regen_reprioritize(NULL, "x"))
 })
+
+# ---------------------------------------------------------------------------
+# Commentaires de fiche parcelle persistés (spec 039)
+# ---------------------------------------------------------------------------
+
+test_that("save/load_regen_comments : round-trip, vides écartés, projet inconnu sûr", {
+  d <- withr::local_tempdir()
+  testthat::local_mocked_bindings(get_project_path = function(id) d, .package = "nemetonshiny")
+
+  ok <- nemetonshiny:::save_regen_comments("p1",
+    list(U1 = "Conseil A", U2 = "", U3 = "Note B"))
+  expect_true(ok)
+
+  cm <- nemetonshiny:::load_regen_comments("p1")
+  expect_setequal(names(cm), c("U1", "U3"))   # U2 vide écarté
+  expect_equal(cm[["U1"]], "Conseil A")
+  expect_equal(cm[["U3"]], "Note B")
+})
+
+test_that("load_regen_comments : projet sans path / sans fichier -> list() vide", {
+  testthat::local_mocked_bindings(get_project_path = function(id) NULL, .package = "nemetonshiny")
+  expect_equal(nemetonshiny:::load_regen_comments("nope"), list())
+
+  d <- withr::local_tempdir()
+  testthat::local_mocked_bindings(get_project_path = function(id) d, .package = "nemetonshiny")
+  expect_equal(nemetonshiny:::load_regen_comments("empty"), list())
+})
+
+test_that(".regen_comment_key : token stable et sûr pour un id d'input", {
+  expect_equal(nemetonshiny:::.regen_comment_key("U-Nord 12"), "regcom_U_Nord_12")
+  expect_equal(nemetonshiny:::.regen_comment_key(3L), "regcom_3")
+})

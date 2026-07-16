@@ -1030,3 +1030,54 @@ test_that("conseil IA : case décochée -> les conseils s'ajoutent ; Effacer vid
     expect_length(regen_ai_hist(), 0L)
   })
 })
+
+# ---------------------------------------------------------------------------
+# Commentaire de fiche parcelle : insertion globale du conseil IA (spec 039)
+# ---------------------------------------------------------------------------
+
+test_that("insertion conseil IA : remplit le commentaire des UGF sélectionnées", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(regen_ai_scope = "all")   # flush init (reset observers)
+    selected_ug_rv(c("1", "2"))
+    regen_ai_hist(list(list(q = "", a = "Conseil de régénération X")))
+    session$setInputs(regen_comment_insert_ai = 1)
+    cm <- regen_comments_rv()
+    expect_equal(cm[["1"]], "Conseil de régénération X")
+    expect_equal(cm[["2"]], "Conseil de régénération X")
+  })
+})
+
+test_that("insertion conseil IA : sans conseil généré -> aucun commentaire écrit", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(regen_ai_scope = "all")
+    selected_ug_rv(c("1"))
+    regen_ai_hist(list())                        # pas de conseil
+    session$setInputs(regen_comment_insert_ai = 1)
+    expect_length(regen_comments_rv(), 0L)
+  })
+})
+
+test_that("insertion conseil IA : sans sélection -> aucun commentaire écrit", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+  as <- shiny::reactiveValues(current_project = list(path = withr::local_tempdir()))
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    .package = "nemetonshiny")
+  shiny::testServer(nemetonshiny:::mod_regeneration_server, args = list(app_state = as), {
+    session$setInputs(regen_ai_scope = "all")
+    selected_ug_rv(character())
+    regen_ai_hist(list(list(q = "", a = "X")))
+    session$setInputs(regen_comment_insert_ai = 1)
+    expect_length(regen_comments_rv(), 0L)
+  })
+})

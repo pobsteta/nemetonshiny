@@ -1368,3 +1368,69 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
 .regen_lai_per_unit <- function(units, lai_r) {
   nemeton::lai_max_depuis_pai(units, lai_r)
 }
+
+
+# ---------------------------------------------------------------------------
+# Commentaires de fiche parcelle (reGénération) — persistés par projet
+#
+# Chaque UGF peut porter un commentaire libre (notes de régénération, conseil
+# IA inséré). Stockés dans `<project>/data/regen_comments.json` : un objet
+# JSON { ug_id: texte }. Écriture atomique (tmp -> rename), sur le patron de
+# save_action_plan(). Le PDF pourra les lire ultérieurement.
+# ---------------------------------------------------------------------------
+
+#' Path to a project's reGénération comments file
+#' @noRd
+regen_comments_path <- function(project_path) {
+  data_dir <- file.path(project_path, "data")
+  if (!dir.exists(data_dir)) {
+    dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  file.path(data_dir, "regen_comments.json")
+}
+
+#' Load per-UGF reGénération comments for a project
+#'
+#' @param project_id Character. Project id.
+#' @return Named list `ug_id -> comment` (empty list when none / on error).
+#' @noRd
+load_regen_comments <- function(project_id) {
+  project_path <- tryCatch(get_project_path(project_id), error = function(e) NULL)
+  if (is.null(project_path)) return(list())
+  path <- file.path(project_path, "data", "regen_comments.json")
+  if (!file.exists(path)) return(list())
+  out <- tryCatch(jsonlite::read_json(path, simplifyVector = FALSE),
+                  error = function(e) NULL)
+  if (!is.list(out)) return(list())
+  # Ne garder que des chaînes non vides, clés = ug_id.
+  out <- lapply(out, function(x) as.character(x %||% ""))
+  out[nzchar(unlist(out, use.names = FALSE))]
+}
+
+#' Persist per-UGF reGénération comments for a project
+#'
+#' @param project_id Character. Project id.
+#' @param comments Named list `ug_id -> comment`.
+#' @return TRUE on success, FALSE otherwise (best-effort).
+#' @noRd
+save_regen_comments <- function(project_id, comments) {
+  project_path <- tryCatch(get_project_path(project_id), error = function(e) NULL)
+  if (is.null(project_path)) {
+    cli::cli_warn("save_regen_comments: unknown project {project_id}")
+    return(FALSE)
+  }
+  # Nettoyage : chaînes, on écarte les commentaires vides.
+  comments <- comments %||% list()
+  comments <- lapply(comments, function(x) as.character(x %||% ""))
+  comments <- comments[nzchar(unlist(comments, use.names = FALSE))]
+  path <- regen_comments_path(project_path)
+  tryCatch({
+    tmp <- paste0(path, ".tmp")
+    jsonlite::write_json(comments, tmp, auto_unbox = TRUE, pretty = TRUE)
+    file.rename(tmp, path)
+    TRUE
+  }, error = function(e) {
+    cli::cli_warn("Failed to save regen comments: {e$message}")
+    FALSE
+  })
+}
