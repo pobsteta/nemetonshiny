@@ -163,16 +163,19 @@
   pad  <- 0.1 * max(t_hi - t_lo, 1)
   t_rng <- c(t_lo - pad, t_hi + pad)
 
+  # x NUMÉRIQUE 1-12 (positions uniques) : les libellés de mois sont des lettres à
+  # doublons (J,F,M,A,M,J,J,A,S,O,N,D) ; un axe catégoriel FUSIONNERAIT les mois
+  # homonymes (mai/mars, juin/juil/janv, avr/août) — d'où 8 barres au lieu de 12,
+  # la saison estivale repliée. On garde les lettres en GRADUATIONS seulement.
   p <- plotly::plot_ly()
-  p <- plotly::add_bars(p, x = mlab, y = P, name = i18n$t("regen_ctx_axis_precip"),
+  p <- plotly::add_bars(p, x = months, y = P, name = i18n$t("regen_ctx_axis_precip"),
     yaxis = "y2", marker = list(color = "#4292c6"))
-  p <- plotly::add_trace(p, x = mlab, y = Tm, name = i18n$t("regen_ctx_axis_temp"),
+  p <- plotly::add_trace(p, x = months, y = Tm, name = i18n$t("regen_ctx_axis_temp"),
     type = "scatter", mode = "lines+markers",
     line = list(color = "#d62728", width = 2), marker = list(color = "#d62728"))
-  # Mois secs (P < 2T) : bande verticale ombrée + annotation récap.
+  # Mois secs (P < 2T) : bande verticale ombrée (positions numériques du mois).
   shapes <- lapply(st$dry_idx, function(mo) {
-    xi <- match(mo, months) - 1L
-    list(type = "rect", xref = "x", yref = "paper", x0 = xi - 0.5, x1 = xi + 0.5,
+    list(type = "rect", xref = "x", yref = "paper", x0 = mo - 0.5, x1 = mo + 0.5,
       y0 = 0, y1 = 1, fillcolor = "rgba(214,39,40,.10)", line = list(width = 0))
   })
   recap <- sprintf("%s: %d  |  %s: %s",
@@ -181,18 +184,22 @@
     i18n$t("regen_ctx_demartonne"),
     if (is.finite(st$demartonne)) format(signif(st$demartonne, 3), trim = TRUE) else "—")
   title <- if (isTRUE(temp_is_tg)) i18n$t("regen_ctx_ombro_tg") else i18n$t("regen_ctx_ombro_proxy_tx")
+  # Titre + récap en UNE annotation deux lignes (haut-centre) : évite le
+  # chevauchement titre/récap qui rendait l'entête illisible en plein écran.
+  header <- paste0("<b>", title, "</b><br>", recap)
 
   plotly::layout(p,
-    title = list(text = title, font = list(size = 13)),
     shapes = shapes,
-    xaxis = list(title = "", categoryorder = "array", categoryarray = mlab),
+    xaxis = list(title = "", tickmode = "array", tickvals = months,
+      ticktext = mlab, range = c(0.5, 12.5)),
     yaxis  = list(title = i18n$t("regen_ctx_axis_temp"), range = t_rng,
       titlefont = list(color = "#d62728"), tickfont = list(color = "#d62728")),
     yaxis2 = list(title = i18n$t("regen_ctx_axis_precip"), overlaying = "y",
       side = "right", range = 2 * t_rng, titlefont = list(color = "#4292c6"),
       tickfont = list(color = "#4292c6")),
     legend = list(orientation = "h", y = -0.15),
-    margin = list(t = 34, r = 50),
-    annotations = list(list(text = recap, showarrow = FALSE, xref = "paper",
-      yref = "paper", x = 0.5, y = 1.06, font = list(size = 11))))
+    margin = list(t = 58, r = 50),
+    annotations = list(list(text = header, showarrow = FALSE, xref = "paper",
+      yref = "paper", x = 0.5, y = 1.0, xanchor = "center", yanchor = "bottom",
+      align = "center", font = list(size = 12))))
 }
