@@ -1,3 +1,6 @@
+# nemetonshiny (development version)
+
+
 # nemetonshiny 0.107.17 (2026-07-16)
 
 ### Added — reGénération : conseil de régénération par IA (spec 039, P2)
