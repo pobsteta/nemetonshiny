@@ -217,6 +217,40 @@
   paste0("{option: ", fn, ", item: ", fn, "}")
 }
 
+#' Archive a rendered reGénération PDF into the project's `exports/` directory
+#'
+#' Mirrors `.archive_action_plan_pdf` (mod_action_plan.R): a single current PDF
+#' per project under `<project_path>/exports/<slug>_regeneration.pdf`. Called
+#' only on the success path of `output$export_pdf`. Best-effort: a missing path,
+#' an unwritable directory or a failed copy is warned but never aborts the
+#' browser download.
+#'
+#' @param rendered_file Path to the freshly rendered PDF handed to the browser.
+#' @param project The current project (list with `path` and `metadata$name`).
+#' @return Invisibly `TRUE` when a copy was made, `FALSE` otherwise.
+#' @noRd
+.archive_regeneration_pdf <- function(rendered_file, project) {
+  project_path <- tryCatch(project$path, error = function(e) NULL)
+  if (is.null(project_path) || !dir.exists(project_path)) return(invisible(FALSE))
+  exports_dir <- file.path(project_path, "exports")
+  if (!dir.exists(exports_dir)) {
+    dir.create(exports_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  nm <- tryCatch(project$metadata$name, error = function(e) NULL)
+  export_name <- gsub("[^a-zA-Z0-9_-]", "_", nm %||% "nemeton_regeneration")
+  export_file <- file.path(exports_dir, paste0(export_name, "_regeneration.pdf"))
+  tryCatch(
+    {
+      ok <- file.copy(rendered_file, export_file, overwrite = TRUE)
+      invisible(isTRUE(ok))
+    },
+    error = function(e) {
+      cli::cli_warn("reGénération PDF archive failed: {conditionMessage(e)}")
+      invisible(FALSE)
+    }
+  )
+}
+
 #' Shiny-safe input key for a per-UGF comment textarea
 #'
 #' UGF ids may contain characters invalid in an input id. Maps `ug` to a stable
@@ -464,6 +498,12 @@ mod_regeneration_ui <- function(id) {
       htmltools::tags$small(class = "text-muted d-block mb-1", i18n$t("regen_results_section")),
       shiny::downloadButton(ns("export_gpkg"), i18n$t("regen_export_gpkg"),
         class = "btn-outline-primary btn-sm w-100 mb-2"),
+      htmltools::tagAppendAttributes(
+        shiny::downloadButton(ns("export_pdf"), i18n$t("regen_export_pdf"),
+          icon = shiny::icon("file-pdf"),
+          class = "btn-outline-primary btn-sm w-100 mb-2"),
+        onclick = sprintf("nemetonShowDownloadToast(%s);",
+          jsonlite::toJSON(i18n$t("regen_export_pdf_busy"), auto_unbox = TRUE))),
       shiny::actionButton(ns("persist_db"), i18n$t("regen_persist_db"),
         class = "btn-outline-secondary btn-sm w-100 regen-calc-btn", icon = bsicons::bs_icon("database"))
     ),
@@ -2575,6 +2615,59 @@ mod_regeneration_server <- function(id, app_state) {
           return(invisible(NULL))
         }
         export_regeneration_geopackage(res, file)
+      }
+    )
+
+    # --- Export PDF (fiche par UGF : conditions + top-3 + commentaire) -----
+    # Même patron que le Plan d'actions : nom <slug>_regeneration.pdf, toast
+    # client (nemetonShowDownloadToast) masqué en on.exit, et archivage best-
+    # effort dans <projet>/exports/ sur le seul chemin succès.
+    output$export_pdf <- shiny::downloadHandler(
+      filename = function() {
+        project <- app_state$current_project
+        base <- if (!is.null(project$metadata$name)) {
+          gsub("[^a-zA-Z0-9_-]", "_", project$metadata$name)
+        } else {
+          "nemeton_regeneration"
+        }
+        paste0(base, "_regeneration.pdf")
+      },
+      content = function(file) {
+        i18n <- get_i18n(app_state$language)
+        on.exit(session$sendCustomMessage("nemetonHideDownloadToast", list()),
+                add = TRUE)
+        res <- rv$result
+        project <- app_state$current_project
+        if (is.null(res) || is.null(project)) {
+          shiny::showNotification(i18n$t("regen_export_empty"), type = "warning")
+          writeLines("No data available", file)
+          return()
+        }
+        if (!is_quarto_installed()) {
+          shiny::showNotification(i18n$t("regen_export_no_quarto"), type = "warning")
+          writeLines("Quarto is required for the PDF export.", file)
+          return()
+        }
+        result <- tryCatch(
+          generate_regeneration_pdf(project, res, regen_comments_rv(), file,
+            language = i18n$language),
+          error = function(e) {
+            err_msg <- conditionMessage(e)
+            cli::cli_warn("reGénération PDF export failed: {err_msg}")
+            shiny::showNotification(
+              paste(i18n$t("regen_export_pdf_failed"), ":", err_msg),
+              type = "error", duration = NULL)
+            NULL
+          })
+        if (is.null(result)) {
+          writeLines(
+            c("PDF generation failed.",
+              "See the in-app error toast for the underlying cause."), file)
+        } else {
+          # Chemin succès uniquement : archive une copie dans exports/, parité
+          # avec le Plan d'actions et le rapport de synthèse. Best-effort.
+          .archive_regeneration_pdf(file, project)
+        }
       }
     )
 

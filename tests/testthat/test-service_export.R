@@ -2789,3 +2789,89 @@ test_that("prepare_report_data attaches a reGénération block when regen_units 
   res0 <- nemetonshiny:::prepare_report_data(project, family_scores, "fr", NULL)
   expect_null(res0$regeneration)
 })
+
+# ---------------------------------------------------------------------------
+# reGénération — export PDF (data builder + rendu si Quarto présent)
+# ---------------------------------------------------------------------------
+
+.regen_pdf_units <- function() {
+  sf::st_sf(
+    ug_id = c("U1", "U2"),
+    label = c("Nord", ""),
+    indice_priorite_regen = c(80, 40),
+    sensibilite = c(1.2, -0.3),
+    njstress = c(30, 10),
+    rew_min = c(0.1, 0.4),
+    d_tmax = c(3, 2),
+    couverture_pct = c(85, 60),
+    geometry = sf::st_sfc(
+      sf::st_polygon(list(rbind(c(0,0), c(1,0), c(1,1), c(0,0)))),
+      sf::st_polygon(list(rbind(c(2,2), c(3,2), c(3,3), c(2,2)))),
+      crs = 4326))
+}
+
+.regen_pdf_ranking <- function() data.frame(
+  ug_id = c("U1", "U1", "U2"), rank = c(1L, 2L, 1L),
+  label = c("Chêne", "Pin", "Sapin"),
+  suitability = c(92, 78, 65),
+  limiting_factor = c("secheresse", "gel", "ombre"),
+  confidence = c("eleve", "moyen", "faible"),
+  stringsAsFactors = FALSE)
+
+test_that(".build_regeneration_pdf_data structure par UGF (conditions, essences, commentaire)", {
+  skip_if_not_installed("sf")
+  units <- .regen_pdf_units()
+  rk <- .regen_pdf_ranking()
+  comments <- list(U1 = "Conseil IA inséré", U2 = "")
+  data <- nemetonshiny:::.build_regeneration_pdf_data(
+    project = list(metadata = list(name = "Projet X")),
+    units = units, ranking = rk, comments = comments, language = "fr")
+
+  expect_equal(data$project_name, "Projet X")
+  expect_equal(data$n_ugfs, 2L)
+  expect_length(data$ugfs, 2L)
+
+  u1 <- data$ugfs[[1]]
+  expect_equal(u1$id, "U1")
+  expect_equal(u1$label, "Nord")                 # label présent utilisé
+  expect_true(length(u1$conditions) > 0L)
+  expect_true(all(c("label", "value") %in% names(u1$conditions[[1]])))
+  expect_length(u1$species, 2L)                  # 2 essences pour U1
+  expect_equal(u1$species[[1]]$rank, 1L)
+  expect_equal(u1$species[[1]]$label, "Chêne")
+  expect_equal(u1$species[[1]]$suitability, "92/100")
+  expect_equal(u1$comment, "Conseil IA inséré")
+
+  u2 <- data$ugfs[[2]]
+  expect_equal(u2$label, "U2")                   # label vide -> repli sur id
+  expect_length(u2$species, 1L)
+  expect_equal(u2$comment, "")
+})
+
+test_that(".build_regeneration_pdf_data : filtre UGF + résultat vide sûr", {
+  skip_if_not_installed("sf")
+  units <- .regen_pdf_units()
+  data <- nemetonshiny:::.build_regeneration_pdf_data(
+    project = list(id = "p"), units = units, ranking = .regen_pdf_ranking(),
+    comments = list(), language = "fr", filter_ug_ids = "U2")
+  expect_equal(data$n_ugfs, 1L)
+  expect_equal(data$ugfs[[1]]$id, "U2")
+
+  # NULL / vide -> structure vide non plantée.
+  empty <- nemetonshiny:::.build_regeneration_pdf_data(
+    project = list(id = "p"), units = NULL)
+  expect_equal(empty$n_ugfs, 0L)
+  expect_length(empty$ugfs, 0L)
+})
+
+test_that("generate_regeneration_pdf produit un PDF (si Quarto installé)", {
+  skip_if_not_installed("sf")
+  skip_if_not(nemetonshiny:::is_quarto_installed())
+  units <- .regen_pdf_units()
+  out <- withr::local_tempfile(fileext = ".pdf")
+  res <- nemetonshiny:::generate_regeneration_pdf(
+    project = list(metadata = list(name = "Projet X")),
+    units = units, comments = list(U1 = "Note terrain"),
+    output_file = out, language = "fr")
+  expect_true(is.null(res) || file.exists(out))
+})

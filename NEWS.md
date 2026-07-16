@@ -1,5 +1,17 @@
 # nemetonshiny (development version)
 
+### Added — reGénération : export PDF (fiche par UGF), patron Plan d'actions
+
+Nouveau bouton **« Exporter (PDF) »** dans la sidebar reGénération : produit un
+rapport **fiche par UGF** (conditions de station + top-N essences déterministes +
+**commentaire** manuel/IA), rendu via Quarto (`inst/quarto/regeneration_template.qmd`).
+Le commentaire non vide de chaque UGF est repris dans un encadré, comme les
+commentaires d'action du Plan d'actions. **Même patron d'export que le Plan
+d'actions** : nom de fichier `<nom_projet>_regeneration.pdf`, toast de génération,
+et **archivage best-effort** d'une copie dans `<projet>/exports/` sur le chemin
+succès (`.archive_regeneration_pdf`). Fonctions service `generate_regeneration_pdf`
++ `.build_regeneration_pdf_data`.
+
 
 # nemetonshiny 0.107.20 (2026-07-16)
 

@@ -1,0 +1,122 @@
+---
+title: "reGénération Nemeton"
+subtitle: "Fiche de régénération par UGF"
+lang: fr
+format:
+  pdf:
+    documentclass: article
+    geometry:
+      - margin=2cm
+    toc: false
+    number-sections: false
+    fig-pos: H
+    fig-align: center
+    keep-tex: false
+    pdf-engine: xelatex
+    mainfont: "DejaVu Sans"
+    sansfont: "DejaVu Sans"
+    monofont: "DejaVu Sans Mono"
+    colorlinks: true
+    linkcolor: "blue!60!black"
+    include-in-header:
+      text: |
+        \usepackage{fancyhdr}
+        \usepackage{xcolor}
+        \usepackage{tcolorbox}
+        \usepackage{longtable}
+        \usepackage{booktabs}
+        \tcbuselibrary{skins,breakable}
+        \pagestyle{fancy}
+        \fancyhf{}
+        \fancyhead[L]{\small reGénération Nemeton}
+        \fancyhead[R]{\small \thepage}
+        \renewcommand{\headrulewidth}{0.4pt}
+params:
+  data_file: ""
+  language: "fr"
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+data <- readRDS(params$data_file)
+lang <- params$language
+
+`%||%` <- function(a, b) if (is.null(a)) b else a
+tr <- function(fr, en) if (identical(lang, "fr")) fr else en
+
+# Échappement LaTeX minimal (mêmes caractères que le template Plan d'actions).
+latex_escape <- function(x) {
+  if (is.null(x) || length(x) == 0) return("")
+  x <- as.character(x)
+  x <- gsub("\\\\", "\\\\textbackslash{}", x)
+  x <- gsub("([&%$#_{}])", "\\\\\\1", x)
+  x <- gsub("~", "\\\\textasciitilde{}", x)
+  x <- gsub("\\^", "\\\\textasciicircum{}", x)
+  x
+}
+```
+
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+{\Huge\bfseries reGénération Nemeton\par}
+\vspace{1cm}
+{\Large `r latex_escape(data$project_name)`\par}
+\vspace{0.5cm}
+{\large `r tr("Fiche de régénération par UGF", "Regeneration sheet per unit")`\par}
+\vspace{2cm}
+{\normalsize `r tr("Unités de gestion", "Management units")`: `r data$n_ugfs`\par}
+{\normalsize `r tr("Généré le", "Generated on")`: `r latex_escape(data$generated_on)`\par}
+\end{titlepage}
+
+```{r content, results='asis'}
+if (length(data$ugfs) == 0L) {
+  cat(tr("Aucune UGF à exporter.", "No management unit to export."), "\n")
+}
+
+for (ug in data$ugfs) {
+  cat("\\section*{", tr("UGF", "Unit"), " ", latex_escape(ug$label), "}\n\n", sep = "")
+
+  # ---- Conditions de station ----
+  if (length(ug$conditions) > 0L) {
+    cat("\\begin{longtable}{ll}\n\\toprule\n")
+    cat("\\textbf{", tr("Condition", "Condition"), "} & \\textbf{",
+        tr("Valeur", "Value"), "} \\\\\n\\midrule\n\\endhead\n", sep = "")
+    for (c in ug$conditions) {
+      cat(latex_escape(c$label), " & ", latex_escape(c$value), " \\\\\n", sep = "")
+    }
+    cat("\\bottomrule\n\\end{longtable}\n\n")
+  }
+
+  # ---- Classement des essences (top-N déterministe) ----
+  if (length(ug$species) > 0L) {
+    cat("\\vspace{0.4em}\n\\textbf{", tr("Essences recommandées", "Recommended species"),
+        "}\n\n", sep = "")
+    cat("\\begin{longtable}{clll}\n\\toprule\n")
+    cat("\\textbf{\\#} & \\textbf{", tr("Essence", "Species"), "} & \\textbf{",
+        tr("Adéquation", "Suitability"), "} & \\textbf{",
+        tr("Facteur limitant", "Limiting factor"), "} \\\\\n\\midrule\n\\endhead\n", sep = "")
+    for (s in ug$species) {
+      cat(s$rank, " & ", latex_escape(s$label), " & ",
+          latex_escape(s$suitability), " & ",
+          latex_escape(s$limiting), " \\\\\n", sep = "")
+    }
+    cat("\\bottomrule\n\\end{longtable}\n\n")
+  }
+
+  # ---- Commentaire (manuel ou conseil IA inséré) ----
+  if (nzchar(trimws(ug$comment %||% ""))) {
+    cat("\\vspace{0.4em}\n")
+    cat("\\begin{tcolorbox}[colback=yellow!5!white,colframe=orange!60!black,",
+        "title={", tr("Commentaire", "Comment"), "},",
+        "arc=2mm,boxrule=0.3pt,breakable]\n", sep = "")
+    cat(latex_escape(ug$comment), "\n")
+    cat("\\end{tcolorbox}\n\n")
+  }
+
+  cat("\\newpage\n\n")
+}
+```

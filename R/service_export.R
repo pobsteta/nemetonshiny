@@ -2614,3 +2614,175 @@ generate_action_plan_pdf <- function(project, plan, ug_sf, output_file,
     NULL
   })
 }
+
+
+# ===========================================================================
+# reGénération — export PDF (fiche par UGF, sur le patron du Plan d'actions)
+# ===========================================================================
+
+#' Build the per-UGF data list for the reGénération PDF
+#'
+#' Pure (no Shiny, no Quarto) so it is unit-testable: turns the reGénération
+#' result (`units`, station conditions), the deterministic species `ranking`
+#' and the per-UGF `comments` into the structure consumed by
+#' `inst/quarto/regeneration_template.qmd`. Condition labels and the
+#' limiting-factor / confidence wording are translated via the app i18n so the
+#' template stays language-agnostic.
+#'
+#' @param project List. Project (metadata$name, id).
+#' @param units sf/data.frame. reGénération result carrying station columns.
+#' @param ranking Long ranking data.frame (ug_id, rank, label, suitability,
+#'   limiting_factor, confidence) or NULL.
+#' @param comments Named list `ug_id -> comment`.
+#' @param language "fr" or "en".
+#' @param filter_ug_ids Optional character vector to restrict the export.
+#' @return List with project_name, n_ugfs, generated_on, ugfs (per-UGF blocks).
+#' @noRd
+.build_regeneration_pdf_data <- function(project, units, ranking = NULL,
+                                         comments = list(), language = "fr",
+                                         filter_ug_ids = NULL) {
+  i18n <- get_i18n(language)
+  df <- if (inherits(units, "sf")) sf::st_drop_geometry(units) else units
+  project_name <- tryCatch(project$metadata$name, error = function(e) NULL) %||%
+    tryCatch(project$id, error = function(e) NULL) %||% "reGénération"
+
+  empty <- list(project_name = as.character(project_name), n_ugfs = 0L,
+                generated_on = format(Sys.Date()), ugfs = list())
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L ||
+      !("ug_id" %in% names(df))) {
+    return(empty)
+  }
+
+  if (!is.null(filter_ug_ids)) {
+    keep <- as.character(df$ug_id) %in% as.character(filter_ug_ids)
+    df <- df[keep, , drop = FALSE]
+    if (nrow(df) == 0L) return(empty)
+  }
+
+  # Champs de station affichés (mêmes que la fiche parcelle) + clés i18n.
+  field_key <- c(indice_priorite_regen = "indice", sensibilite = "sensibilite",
+    njstress = "njstress", istress = "istress", deb_stress = "deb_stress",
+    rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
+    couverture_pct = "couverture")
+  fmt_val <- function(v) {
+    if (is.null(v) || length(v) == 0 || is.na(v)) return("--")
+    if (is.numeric(v)) format(v, digits = 3, trim = TRUE) else as.character(v)
+  }
+  lf_label <- function(lf) {
+    lf <- as.character(lf)
+    key <- switch(lf, secheresse = "regen_limit_secheresse", gel = "regen_limit_gel",
+      chaleur = "regen_limit_chaleur", ombre = "regen_limit_ombre", NA_character_)
+    if (is.na(key)) lf else i18n$t(key)
+  }
+  conf_label <- function(cf) {
+    cf <- as.character(cf)
+    key <- switch(cf, eleve = "regen_conf_eleve", moyen = "regen_conf_moyen",
+      faible = "regen_conf_faible", NA_character_)
+    if (is.na(key)) cf else i18n$t(key)
+  }
+
+  has_ranking <- is.data.frame(ranking) &&
+    all(c("ug_id", "rank", "label", "suitability") %in% names(ranking))
+
+  ugfs <- lapply(seq_len(nrow(df)), function(i) {
+    row <- df[i, , drop = FALSE]
+    id <- as.character(row$ug_id)
+    label <- if ("label" %in% names(row) && nzchar(as.character(row$label))) {
+      as.character(row$label)
+    } else id
+
+    conditions <- Filter(Negate(is.null), lapply(names(field_key), function(f) {
+      if (!f %in% names(row)) return(NULL)
+      list(label = i18n$t(paste0("regen_col_", field_key[[f]])),
+           value = fmt_val(row[[f]]))
+    }))
+
+    species <- list()
+    if (has_ranking) {
+      sub <- ranking[as.character(ranking$ug_id) == id, , drop = FALSE]
+      if (nrow(sub) > 0L) {
+        sub <- sub[order(sub$rank), , drop = FALSE]
+        species <- lapply(seq_len(nrow(sub)), function(k) {
+          s <- sub[k, , drop = FALSE]
+          list(
+            rank = as.integer(s$rank),
+            label = as.character(s$label),
+            suitability = sprintf("%d/100", round(as.numeric(s$suitability))),
+            limiting = if ("limiting_factor" %in% names(s) && !is.na(s$limiting_factor))
+              lf_label(s$limiting_factor) else "--",
+            confidence = if ("confidence" %in% names(s) && !is.na(s$confidence))
+              conf_label(s$confidence) else "--")
+        })
+      }
+    }
+
+    list(id = id, label = label, conditions = conditions, species = species,
+         comment = as.character(comments[[id]] %||% ""))
+  })
+
+  list(project_name = as.character(project_name), n_ugfs = length(ugfs),
+       generated_on = format(Sys.Date()), ugfs = ugfs)
+}
+
+#' Generate the reGénération PDF report (fiche per UGF)
+#'
+#' Mirrors `generate_action_plan_pdf`: builds a per-UGF data list (station
+#' conditions + deterministic top-N species + per-UGF comment) and renders it
+#' through `inst/quarto/regeneration_template.qmd`. The species ranking is
+#' recomputed from `units` via `regeneration_species_ranking` (NA/error-safe).
+#'
+#' @param project List. Project (metadata$name, id).
+#' @param units sf. reGénération result carrying station columns + geometry.
+#' @param comments Named list `ug_id -> comment` (from data/regen_comments.json).
+#' @param output_file Character. Destination PDF path.
+#' @param language "fr" or "en".
+#' @param filter_ug_ids Optional character vector to restrict the export.
+#' @param top_n Integer. Species per UGF (default 3).
+#' @return `output_file` on success, NULL otherwise.
+#' @noRd
+generate_regeneration_pdf <- function(project, units, comments = list(),
+                                      output_file, language = "fr",
+                                      filter_ug_ids = NULL, top_n = 3L) {
+  if (!ensure_quarto_installed()) {
+    stop("Quarto is required for the reGénération PDF report.", call. = FALSE)
+  }
+  ranking <- tryCatch(regeneration_species_ranking(units, top_n = top_n),
+                      error = function(e) NULL)
+  data <- .build_regeneration_pdf_data(project, units, ranking, comments,
+                                       language, filter_ug_ids)
+
+  template_path <- system.file("quarto", "regeneration_template.qmd",
+                               package = "nemetonshiny")
+  if (!file.exists(template_path)) {
+    stop("reGénération template not found.", call. = FALSE)
+  }
+
+  temp_dir <- tempfile("nemeton_regen_")
+  dir.create(temp_dir, recursive = TRUE)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+  qmd <- file.path(temp_dir, "regeneration.qmd")
+  file.copy(template_path, qmd)
+  data_file <- file.path(temp_dir, "regeneration_data.rds")
+  saveRDS(data, data_file)
+
+  tryCatch({
+    quarto::quarto_render(
+      input = qmd,
+      output_format = "pdf",
+      execute_params = list(
+        data_file = normalizePath(data_file, winslash = "/", mustWork = FALSE),
+        language = language
+      ),
+      quiet = FALSE
+    )
+    pdf_out <- sub("\\.qmd$", ".pdf", qmd)
+    if (file.exists(pdf_out)) {
+      file.copy(pdf_out, output_file, overwrite = TRUE)
+      return(output_file)
+    }
+    NULL
+  }, error = function(e) {
+    cli::cli_warn("reGénération PDF render failed: {e$message}")
+    NULL
+  })
+}
