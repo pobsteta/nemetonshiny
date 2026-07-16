@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.20 (2026-07-16)
 
 ### Added — reGénération : commentaire de fiche parcelle rempli par l'IA
 
