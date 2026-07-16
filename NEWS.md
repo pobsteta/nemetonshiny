@@ -1,3 +1,6 @@
+# nemetonshiny (development version)
+
+
 # nemetonshiny 0.108.0 (2026-07-16)
 
 ### Added — reGénération : mêmes exports que le Plan d'actions + persistance base des deux côtés
