@@ -108,11 +108,19 @@
     bargap = 0.02, showlegend = FALSE, margin = list(t = 34))
   pv <- suppressWarnings(as.numeric(point_value))
   if (length(pv) == 1L && is.finite(pv)) {
-    p <- plotly::layout(p, shapes = list(list(type = "line", x0 = pv, x1 = pv,
-      y0 = 0, y1 = 1, yref = "paper", line = list(color = "#d62728", width = 2, dash = "dash"))),
-      annotations = list(list(text = i18n$t("regen_ctx_this_cell"), x = pv, y = 1,
-        yref = "paper", showarrow = FALSE, xanchor = "left", yanchor = "top",
-        font = list(color = "#d62728", size = 11))))
+    # Percentile régional du point (spec 036 §5.3) : « ce point est au P{xx} du
+    # massif » — situe la maille dans la distribution des pentes du buffer.
+    pct <- round(100 * mean(v <= pv))
+    p <- plotly::layout(p,
+      shapes = list(list(type = "line", x0 = pv, x1 = pv, y0 = 0, y1 = 1,
+        yref = "paper", line = list(color = "#d62728", width = 2, dash = "dash"))),
+      annotations = list(
+        list(text = i18n$t("regen_ctx_this_cell"), x = pv, y = 1, yref = "paper",
+          showarrow = FALSE, xanchor = "left", yanchor = "top",
+          font = list(color = "#d62728", size = 11)),
+        list(text = sprintf(i18n$t("regen_ctx_percentile"), pct), xref = "paper",
+          yref = "paper", x = 0.98, y = 0.98, xanchor = "right", showarrow = FALSE,
+          bgcolor = "rgba(255,255,255,.7)", font = list(size = 12))))
   }
   p
 }
