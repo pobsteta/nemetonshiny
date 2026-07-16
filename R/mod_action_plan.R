@@ -338,7 +338,16 @@ mod_action_plan_ui <- function(id) {
             bslib::card_header(
               class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
               i18n$t("action_plan_table_title"),
-              shiny::textOutput(ns("table_count_inline"), inline = TRUE)
+              htmltools::div(
+                class = "d-flex align-items-center gap-2",
+                shiny::textOutput(ns("table_count_inline"), inline = TRUE),
+                # Effacer la sélection, à portée de la carte/table (le bouton du
+                # panneau de config repliable reste, même id d'action côté serveur).
+                shiny::actionButton(ns("clear_map_selection_top"),
+                  label = i18n$t("action_plan_clear_selection"),
+                  icon = shiny::icon("eraser"),
+                  class = "btn-sm btn-outline-secondary")
+              )
             ),
             bslib::card_body(
               # Read-only banner (S15) -- reactive on auth changes.
@@ -509,6 +518,12 @@ mod_action_plan_server <- function(id, app_state) {
     selected_ug_rv <- shiny::reactiveVal(character())
 
     shiny::observeEvent(input$clear_map_selection, {
+      selected_ug_rv(character())
+      DT::selectRows(DT::dataTableProxy("action_table"), NULL)
+    })
+
+    # Même action depuis le bouton de l'entête du tableau (Carte + Tableau).
+    shiny::observeEvent(input$clear_map_selection_top, {
       selected_ug_rv(character())
       DT::selectRows(DT::dataTableProxy("action_table"), NULL)
     })

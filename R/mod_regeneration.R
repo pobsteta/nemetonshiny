@@ -400,12 +400,12 @@ mod_regeneration_ui <- function(id) {
     bslib::navset_card_tab(
       bslib::nav_panel(
         i18n$t("regen_map_table_view"),
-        # Pattern « Plan d'actions » : Carte + Tableau des UGF côte à côte, fiches
-        # parcelles regroupées EN DESSOUS (pleine largeur). Un clic carte sélectionne
-        # l'UGF (surlignage bleu + ligne de table), la table pilote la carte en retour
-        # (sélection croisée bidirectionnelle, multi-sélection).
+        # Pattern « Plan d'actions » : Carte (colonne gauche, pleine hauteur) et,
+        # dans la colonne droite, Tableau des UGF (moitié haute) + Fiches parcelles
+        # (moitié basse) empilés. Un clic carte sélectionne l'UGF (surlignage + ligne
+        # de table), la table pilote la carte en retour (croisé, multi-sélection).
         bslib::layout_columns(
-          col_widths = c(6, 6, 12), fillable = FALSE,
+          col_widths = c(6, 6), fillable = FALSE,
           # --- Carte (colonne gauche) ------------------------------------------
           # Sidebar DROITE dédiée : le radio « Couche affichée » vit à droite de la
           # carte ; les fonds OSM/Satellite/UGF restent dans le contrôle natif
@@ -446,31 +446,42 @@ mod_regeneration_ui <- function(id) {
               )
             )
           ),
-          # --- Tableau des UGF (colonne droite) --------------------------------
-          bslib::card(
-            full_screen = TRUE,
-            bslib::card_header(
-              htmltools::div(
-                class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
-                htmltools::tags$span(i18n$t("regen_table_card_title")),
+          # --- Colonne droite : Tableau (moitié haute) + Fiches (moitié basse) --
+          # Pile verticale calée sur la hauteur de la carte (70vh). Chaque carte
+          # prend 50 % (flex:1) et fait défiler son contenu (min-height:0 requis
+          # pour qu'un enfant flex puisse rétrécir sous son contenu).
+          htmltools::div(
+            style = htmltools::css(display = "flex", `flex-direction` = "column",
+              height = "70vh", gap = "0.5rem"),
+            bslib::card(
+              full_screen = TRUE,
+              style = "flex:1 1 0; min-height:0;",
+              bslib::card_header(
                 htmltools::div(
-                  class = "d-flex align-items-center gap-3",
+                  class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
+                  htmltools::tags$span(i18n$t("regen_table_card_title")),
                   htmltools::div(
-                    class = "mb-0",
-                    shiny::checkboxInput(ns("filter_coverage"),
-                      i18n$t("regen_filter_coverage"), value = TRUE)),
-                  shiny::actionButton(ns("clear_selection"),
-                    i18n$t("regen_clear_selection"),
-                    icon = bsicons::bs_icon("x-circle"),
-                    class = "btn-outline-secondary btn-sm")))),
-            bslib::card_body(
-              DT::dataTableOutput(ns("table")))
-          ),
-          # --- Fiches parcelles sélectionnées (pleine largeur, dessous) ---------
-          bslib::card(
-            bslib::card_header(i18n$t("regen_selected_sheets")),
-            bslib::card_body(
-              shiny::uiOutput(ns("parcel_sheet")))
+                    class = "d-flex align-items-center gap-3",
+                    htmltools::div(
+                      class = "mb-0",
+                      shiny::checkboxInput(ns("filter_coverage"),
+                        i18n$t("regen_filter_coverage"), value = TRUE)),
+                    shiny::actionButton(ns("clear_selection"),
+                      i18n$t("regen_clear_selection"),
+                      icon = bsicons::bs_icon("x-circle"),
+                      class = "btn-outline-secondary btn-sm")))),
+              bslib::card_body(
+                class = "overflow-auto",
+                DT::dataTableOutput(ns("table")))
+            ),
+            bslib::card(
+              full_screen = TRUE,
+              style = "flex:1 1 0; min-height:0;",
+              bslib::card_header(i18n$t("regen_selected_sheets")),
+              bslib::card_body(
+                class = "overflow-auto",
+                shiny::uiOutput(ns("parcel_sheet")))
+            )
           )
         )
       ),
@@ -1831,8 +1842,9 @@ mod_regeneration_server <- function(id, app_state) {
       DT::selectRows(DT::dataTableProxy("table"), NULL)
     })
 
-    # Overlay bleu des UGF sélectionnées (groupe « Selection » distinct du groupe
-    # « UGF » choroplèthe -> ne le recouvre pas, se met à jour seul).
+    # Overlay des UGF sélectionnées (groupe « Selection » distinct du groupe
+    # « UGF » choroplèthe -> ne le recouvre pas, se met à jour seul). Même orange
+    # (#FF8C00) que le surlignage de sélection du Plan d'actions, pour la cohérence.
     shiny::observe({
       units <- units_sf()
       sel <- selected_ug_rv()
@@ -1845,7 +1857,7 @@ mod_regeneration_server <- function(id, app_state) {
       if (nrow(sub) == 0L) return()
       leaflet::addPolygons(proxy, data = sub, group = "Selection",
         layerId = paste0("sel_", sub$ug_id),
-        color = "#1f6feb", weight = 4, fill = FALSE, opacity = 0.95)
+        color = "#FF8C00", weight = 4, fill = FALSE, opacity = 0.95)
     })
 
     # Bandeau du contexte régional (raster). La série requise dépend de la vue :
@@ -2175,7 +2187,19 @@ mod_regeneration_server <- function(id, app_state) {
     output$table <- DT::renderDataTable({
       df <- regen_table_df()
       order_col <- if ("rang_sensibilite" %in% names(df)) "rang_sensibilite" else NULL
-      DT::datatable(df, rownames = FALSE,
+      # Entêtes de colonnes traduites (i18n) plutôt que les noms techniques bruts
+      # (ug_id, indice_priorite_regen, couverture_pct...). Repli sur le nom brut
+      # pour toute colonne sans clé dédiée.
+      col_key <- c(ug_id = "ugid", priorite = "priorite",
+        indice_priorite_regen = "indice", sensibilite = "sensibilite",
+        rang_sensibilite = "rang", njstress = "njstress", istress = "istress",
+        deb_stress = "deb_stress", rew_min = "rew_min", d_tmax = "dtmax",
+        d_vpd = "dvpd", couverture_pct = "couverture")
+      col_labels <- vapply(names(df), function(n) {
+        k <- col_key[[n]]
+        if (is.null(k)) n else i18n$t(paste0("regen_col_", k))
+      }, character(1))
+      DT::datatable(df, rownames = FALSE, colnames = col_labels,
         selection = list(mode = "multiple", target = "row"),
         options = list(pageLength = 15, scrollX = TRUE,
           order = if (!is.null(order_col)) list(list(which(names(df) == order_col) - 1, "asc")) else list()))

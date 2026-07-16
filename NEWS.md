@@ -1,3 +1,25 @@
+# nemetonshiny (development version)
+
+### Changed — reGénération Carte + Tableau : disposition et cohérence de sélection
+
+Retours d'usage sur la vue « Carte + Tableau » de reGénération :
+
+- **Fiches parcelles** déplacées **sous le Tableau des UGF** dans la colonne
+  droite (moitié haute = tableau, moitié basse = fiches, calées sur la hauteur de
+  la carte) plutôt que sur toute la largeur sous la carte.
+- **Couleur de sélection** alignée sur le Plan d'actions : orange `#FF8C00` (au
+  lieu du bleu) pour l'UGF surlignée sur la carte.
+- **Entêtes de colonnes du tableau traduites** en français (i18n `regen_col_*`)
+  au lieu des noms techniques bruts (`ug_id`, `indice_priorite_regen`,
+  `couverture_pct`…).
+
+### Added — plan d'action : bouton « Effacer la sélection » près du tableau
+
+Le bouton d'effacement de la sélection, jusqu'ici uniquement dans le panneau de
+configuration repliable, est aussi exposé dans l'**entête du Tableau** de la vue
+« Carte + Tableau » (même action serveur), à portée de la carte.
+
+
 # nemetonshiny 0.107.11 (2026-07-16)
 
 ### Added — plan d'action : archive du PDF dans `exports/` (spec 037)
