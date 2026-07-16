@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.107.5 (2026-07-16)
+
 ### Fixed — bouton plein écran du panneau de graphes E-OBS
 
 Le panneau de graphiques au clic sur la maille E-OBS ne montrait pas de bouton
