@@ -7,6 +7,13 @@ Le bouton « Effacer la sélection » redondant de la section *Sélection* du si
 uniquement via le bouton situé au-dessus du graphique des coûts (`clear_map_selection_top`),
 au plus près de la carte et du tableau.
 
+### Fixed — reGénération : boîte de recherche du tableau en français
+
+Le tableau « Carte + Tableau » localise désormais les libellés DT (boîte de
+recherche « Rechercher : », pagination, compteur) selon la langue, sur le patron
+de `mod_ug`. Les entêtes de colonnes reprennent leurs noms d'origine (la
+traduction des entêtes introduite précédemment est retirée).
+
 
 # nemetonshiny 0.107.17 (2026-07-16)
 
