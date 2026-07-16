@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.19 (2026-07-16)
 
 ### Added — reGénération : panneau « Affiner » aligné sur le Plan d'actions
 
