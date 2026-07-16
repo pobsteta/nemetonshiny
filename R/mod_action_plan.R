@@ -418,8 +418,7 @@ mod_action_plan_ui <- function(id) {
   if (!dir.exists(exports_dir)) {
     dir.create(exports_dir, recursive = TRUE, showWarnings = FALSE)
   }
-  nm <- tryCatch(project$metadata$name, error = function(e) NULL)
-  export_name <- gsub("[^a-zA-Z0-9_-]", "_", nm %||% "nemeton_action_plan")
+  export_name <- .project_export_slug(project, "nemeton")
   export_file <- file.path(exports_dir, paste0(export_name, "_action_plan.pdf"))
   tryCatch(
     {
@@ -1672,13 +1671,8 @@ mod_action_plan_server <- function(id, app_state) {
 
     output$download_gpkg <- shiny::downloadHandler(
       filename = function() {
-        project <- app_state$current_project
-        base <- if (!is.null(project$metadata$name)) {
-          gsub("[^a-zA-Z0-9_-]", "_", project$metadata$name)
-        } else {
-          "nemeton_action_plan"
-        }
-        paste0(base, "_action_plan.gpkg")
+        paste0(.project_export_slug(app_state$current_project, "nemeton"),
+               "_action_plan.gpkg")
       },
       content = function(file) {
         i18n <- get_i18n(app_state$language)
@@ -1715,13 +1709,8 @@ mod_action_plan_server <- function(id, app_state) {
 
     output$download_pdf <- shiny::downloadHandler(
       filename = function() {
-        project <- app_state$current_project
-        base <- if (!is.null(project$metadata$name)) {
-          gsub("[^a-zA-Z0-9_-]", "_", project$metadata$name)
-        } else {
-          "nemeton_action_plan"
-        }
-        paste0(base, "_action_plan.pdf")
+        paste0(.project_export_slug(app_state$current_project, "nemeton"),
+               "_action_plan.pdf")
       },
       content = function(file) {
         i18n <- get_i18n(app_state$language)

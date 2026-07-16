@@ -236,8 +236,7 @@
   if (!dir.exists(exports_dir)) {
     dir.create(exports_dir, recursive = TRUE, showWarnings = FALSE)
   }
-  nm <- tryCatch(project$metadata$name, error = function(e) NULL)
-  export_name <- gsub("[^a-zA-Z0-9_-]", "_", nm %||% "nemeton_regeneration")
+  export_name <- .project_export_slug(project, "nemeton")
   export_file <- file.path(exports_dir, paste0(export_name, "_regeneration.pdf"))
   tryCatch(
     {
@@ -557,12 +556,12 @@ mod_regeneration_ui <- function(id) {
                       i18n$t("regen_ai_send"),
                       icon = shiny::icon("paper-plane"),
                       class = "btn-sm btn-primary flex-fill"))))),
-            # --- Exports (sous le panneau IA) : memes boutons que le Plan
-            # d'actions. Envoyer vers Terrain / Enregistrer en base = toast
-            # bas-droite au clic (onclick) + gel via .regen-calc-btn.
-            htmltools::tags$hr(class = "my-3"),
-            htmltools::tags$small(class = "text-muted d-block mb-1",
-              i18n$t("regen_results_section")),
+            # --- Exports (sous le panneau IA) : meme presentation que le Plan
+            # d'actions (entete h6 « Exports », memes boutons). Envoyer vers
+            # Terrain / Enregistrer en base = toast bas-droite au clic (onclick)
+            # + gel via .regen-calc-btn.
+            htmltools::tags$h6(class = "mt-3",
+              i18n$t("action_plan_section_exports")),
             htmltools::tagAppendAttributes(
               shiny::actionButton(ns("export_terrain"), i18n$t("regen_export_terrain"),
                 icon = shiny::icon("crosshairs"),
@@ -1235,7 +1234,10 @@ mod_regeneration_server <- function(id, app_state) {
     # Grisage client : task buttons via update_task_button (le binding bslib
     # ignore la clé `disabled`), actionButton classiques via updateActionButton.
     TASK_BTNS   <- c("run_engine", "auto_years", "fetch_eobs_rr", "fetch_eobs_tg", "run_frost")
-    ACTION_BTNS <- c("run", "recompute_pai", "persist_db")
+    # `export_terrain` porte `.regen-calc-btn` (le verrou client le grise au clic)
+    # mais n'est ni un task button ni un moteur : il DOIT figurer ici, sinon
+    # l'observer d'autorité ne le ré-active jamais et il reste grisé à vie.
+    ACTION_BTNS <- c("run", "recompute_pai", "persist_db", "export_terrain")
     # meteoland absent → run_frost est rendu désactivé : ne jamais le repasser
     # « ready » (sinon l'observer l'activerait alors qu'il ne doit pas l'être).
     frost_ok <- regen_meteoland_available()
@@ -1264,7 +1266,7 @@ mod_regeneration_server <- function(id, app_state) {
     shiny::observeEvent(
       list(input$run_engine, input$run_frost, input$auto_years,
            input$fetch_eobs_rr, input$fetch_eobs_tg, input$run,
-           input$recompute_pai, input$persist_db), {
+           input$recompute_pai, input$persist_db, input$export_terrain), {
         rv$click_tick <- (rv$click_tick %||% 0L) + 1L
       }, ignoreInit = TRUE)
 
@@ -2679,7 +2681,10 @@ mod_regeneration_server <- function(id, app_state) {
 
 
     output$export_gpkg <- shiny::downloadHandler(
-      filename = function() "regeneration.gpkg",
+      filename = function() {
+        paste0(.project_export_slug(app_state$current_project, "nemeton"),
+               "_regeneration.gpkg")
+      },
       content = function(file) {
         res <- rv$result
         if (is.null(res)) {
@@ -2696,13 +2701,8 @@ mod_regeneration_server <- function(id, app_state) {
     # effort dans <projet>/exports/ sur le seul chemin succès.
     output$export_pdf <- shiny::downloadHandler(
       filename = function() {
-        project <- app_state$current_project
-        base <- if (!is.null(project$metadata$name)) {
-          gsub("[^a-zA-Z0-9_-]", "_", project$metadata$name)
-        } else {
-          "nemeton_regeneration"
-        }
-        paste0(base, "_regeneration.pdf")
+        paste0(.project_export_slug(app_state$current_project, "nemeton"),
+               "_regeneration.pdf")
       },
       content = function(file) {
         i18n <- get_i18n(app_state$language)

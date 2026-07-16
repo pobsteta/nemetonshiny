@@ -100,10 +100,10 @@ test_that("fichier rendu absent -> best-effort, aucune exception", {
   expect_false(res)
 })
 
-test_that("nom de projet manquant -> slug de repli nemeton_action_plan", {
+test_that("nom de projet manquant -> slug de repli nemeton_action_plan.pdf", {
   pdir <- withr::local_tempdir()
   rendered <- tempfile(fileext = ".pdf"); writeLines("%PDF fake", rendered)
-  project <- list(path = pdir, metadata = list())   # pas de name
+  project <- list(path = pdir, metadata = list())   # ni name ni id
   expect_true(nemetonshiny:::.archive_action_plan_pdf(rendered, project))
-  expect_true(file.exists(file.path(pdir, "exports", "nemeton_action_plan_action_plan.pdf")))
+  expect_true(file.exists(file.path(pdir, "exports", "nemeton_action_plan.pdf")))
 })

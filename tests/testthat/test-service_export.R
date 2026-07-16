@@ -2896,3 +2896,19 @@ test_that(".render_ug_satellite_png : NA si géométrie non-sf, best-effort", {
   skip_if_not_installed("sf")
   expect_true(is.na(nemetonshiny:::.render_ug_satellite_png(42, tempfile(fileext = ".png"))))
 })
+
+test_that(".project_export_slug : name -> id -> repli, robuste aux vides", {
+  slug <- nemetonshiny:::.project_export_slug
+  # metadata$name prioritaire, sanitisé (accents/espaces -> _)
+  expect_equal(slug(list(metadata = list(name = "Forêt de Test"), id = "p1")),
+               "For_t_de_Test")
+  # name vide -> repli sur id (le bug rapporté : name absent/vide ne doit PAS
+  # produire un fichier sans préfixe)
+  expect_equal(slug(list(metadata = list(name = "   "), id = "p1")), "p1")
+  expect_equal(slug(list(metadata = list(), id = "commune-42")), "commune-42")
+  # project$name à défaut de metadata$name
+  expect_equal(slug(list(name = "Mouthe")), "Mouthe")
+  # rien d'exploitable -> fallback fourni
+  expect_equal(slug(NULL, "nemeton"), "nemeton")
+  expect_equal(slug(list(metadata = list(name = NA_character_)), "nemeton"), "nemeton")
+})
