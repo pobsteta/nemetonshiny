@@ -695,6 +695,22 @@ test_that("get_expert_choices hides the internal JSON-only 'planificateur' profi
   expect_true("naturaliste" %in% ch)
 })
 
+test_that("get_expert_choices hides the internal 'regeneration' profile", {
+  ch <- nemetonshiny:::get_expert_choices("fr")
+  # `regeneration` is the reGénération « Affiner » profile (hardcoded by
+  # mod_regeneration) — not a general perspective, must stay out of the dropdown.
+  expect_false("regeneration" %in% ch)
+  expect_false("regeneration" %in% names(ch))
+  # …but it stays loadable for build_system_prompt().
+  profiles <- nemetonshiny:::get_expert_profiles()
+  expect_true("regeneration" %in% names(profiles))
+  expect_equal(profiles[["regeneration"]]$label$fr, "Conseiller en régénération")
+  sp <- nemetonshiny:::build_system_prompt("français", "regeneration")
+  expect_true(nchar(sp) > 0)
+  # Profil narratif (prose), pas JSON comme planificateur.
+  expect_false(grepl("exclusivement du JSON", sp))
+})
+
 test_that("adaptation_climat profile is loaded with a regeneration-focused prompt (spec 027 L5)", {
   profiles <- nemetonshiny:::get_expert_profiles()
   expect_true("adaptation_climat" %in% names(profiles))
@@ -746,4 +762,16 @@ test_that("build_regen_advice_prompt résume top-3 + station et cadre le LLM", {
     stringsAsFactors = FALSE)
   expect_match(nemetonshiny:::build_regen_advice_prompt(rk_big, data.frame(ug_id = big_ids),
     "français"), "20 premières UGF", fixed = TRUE)
+
+  # Consigne libre de l'utilisateur (panneau « Affiner ») injectée en priorité.
+  q_fr <- nemetonshiny:::build_regen_advice_prompt(rk, st, "français",
+    question = "Et sur sol calcaire ?")
+  expect_match(q_fr, "Consigne de l'utilisateur", fixed = TRUE)
+  expect_match(q_fr, "Et sur sol calcaire ?", fixed = TRUE)
+  q_en <- nemetonshiny:::build_regen_advice_prompt(rk, st, "English",
+    question = "What about limestone soils?")
+  expect_match(q_en, "User instruction", fixed = TRUE)
+  # Consigne vide / NULL -> pas de section consigne.
+  expect_no_match(nemetonshiny:::build_regen_advice_prompt(rk, st, "français"),
+    "Consigne de l'utilisateur", fixed = TRUE)
 })

@@ -112,7 +112,9 @@ reload_expert_profiles <- function() {
 # must stay in `get_expert_profiles()` (the action plan needs it) but be
 # excluded from the perspective dropdown — otherwise selecting it in
 # Synthèse makes « Générer par IA » return raw JSON instead of prose.
-.INTERNAL_EXPERT_KEYS <- c("planificateur")
+# `regeneration` is the reGénération « Affiner » profile, hardcoded by
+# mod_regeneration ; likewise internal, not a general perspective.
+.INTERNAL_EXPERT_KEYS <- c("planificateur", "regeneration")
 
 get_expert_choices <- function(lang = "fr") {
   profiles <- get_expert_profiles()
@@ -259,9 +261,12 @@ build_synthesis_prompt <- function(family_scores_df, language) {
 #'   limiting_factor, confidence).
 #' @param station_df The reG\u00e9n\u00e9ration result (per-UGF conditions); sf or data.frame.
 #' @param language "fran\u00e7ais" or "English".
+#' @param question Optional free-text user instruction / question to steer the
+#'   advice (from the "Affiner" panel). Empty / NULL means the default advice.
 #' @return Character prompt.
 #' @noRd
-build_regen_advice_prompt <- function(ranking_df, station_df, language) {
+build_regen_advice_prompt <- function(ranking_df, station_df, language,
+                                      question = NULL) {
   fr <- language == "fran\u00e7ais"
   if (inherits(station_df, "sf")) station_df <- sf::st_drop_geometry(station_df)
   ids <- unique(as.character(ranking_df$ug_id))
@@ -312,7 +317,14 @@ build_regen_advice_prompt <- function(ranking_df, station_df, language) {
     if (fr) "\n\n(Note : seules les 20 premi\u00e8res UGF sont d\u00e9taill\u00e9es.)"
     else "\n\n(Note: only the first 20 units are detailed.)"
   } else ""
-  paste0(intro, paste(lines, collapse = "\n"), ask, note)
+  # Consigne libre de l'utilisateur (panneau \u00ab Affiner \u00bb) : prioritaire sur le
+  # conseil g\u00e9n\u00e9rique, sans jamais autoriser une essence hors classement.
+  q <- trimws(question %||% "")
+  user_ask <- if (nzchar(q)) {
+    if (fr) paste0("\n\nConsigne de l'utilisateur (r\u00e9ponds-y en priorit\u00e9) : ", q)
+    else paste0("\n\nUser instruction (address it first): ", q)
+  } else ""
+  paste0(intro, paste(lines, collapse = "\n"), ask, user_ask, note)
 }
 
 #' Shared JSON schema for action-plan LLM prompts
