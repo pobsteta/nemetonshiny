@@ -1109,5 +1109,50 @@ test_that("ai_family_indicators enrichit R5/R6/R7 par ug_id sur project$indicato
   )
 })
 
+test_that("family_scores injecte R6/R7 (reGénération) avant create_family_index", {
+  skip_if_not_installed("shiny"); skip_if_not_installed("sf")
+
+  captured <- new.env(); captured$cols <- NULL
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    add_r5_to_indicators = function(base_sf, project) base_sf,
+    add_regen_r_indicators = function(base_sf, project) {
+      base_sf$indicateur_r6_sensibilite <- 60
+      base_sf$indicateur_r7_gel <- 80
+      base_sf
+    },
+    create_family_index = function(data, ...) {
+      captured$cols <- names(data)
+      data$famille_risques <- 70
+      data
+    },
+    {
+      geom <- sf::st_sfc(sf::st_point(c(0, 0)), sf::st_point(c(1, 1)))
+      indicators_sf <- sf::st_sf(
+        ug_id = c("p1", "p2"),
+        indicateur_r1_feu = c(70, 80),
+        geometry = geom)
+      as <- shiny::reactiveValues(
+        current_project = list(
+          metadata = list(name = "T"),
+          indicators = sf::st_drop_geometry(indicators_sf),
+          indicators_sf = indicators_sf),
+        language = "fr", family_comments = NULL)
+
+      shiny::testServer(
+        nemetonshiny:::mod_synthesis_server,
+        args = list(app_state = as),
+        {
+          fs <- family_scores()
+          # create_family_index a bien reçu les colonnes R6/R7 injectées.
+          expect_true(all(c("indicateur_r6_sensibilite", "indicateur_r7_gel")
+            %in% captured$cols))
+          expect_false(is.null(fs))
+        }
+      )
+    }
+  )
+})
+
 # Drain async callbacks to prevent testServer session accumulation
 later::run_now(0)

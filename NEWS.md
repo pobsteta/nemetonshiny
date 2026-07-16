@@ -1,3 +1,18 @@
+# nemetonshiny (development version)
+
+### Changed — famille R : R6/R7 intégrés au score (normalisation cœur, spec 038)
+
+Suite à la livraison cœur `nemeton` v0.161.0 (spec 038 — normalisation 0-100 de
+tous les indicateurs, R6 à la source), R6 (sensibilité) et R7 (gel) issus de
+reGénération **entrent désormais dans le score de la famille R** (`family_scores()`
+appelle `add_regen_r_indicators` avant `create_family_index`) : la famille R passe
+de R1-R5 à **R1-R7**. `add_regen_r_indicators` injecte la sensibilité **normalisée
+0-100** (`sensibilite_score`) au lieu du z-score brut — `normalize_indicator` la
+traite en passthrough 0-100 ; repli sur le z-score pour les caches reGénération
+antérieurs (relancer l'analyse pour un score R6 exact). Plancher `Imports: nemeton
+(>= 0.161.0)`. Complète l'analyse IA par famille (déjà R1-R7 depuis v0.107.13).
+
+
 # nemetonshiny 0.107.14 (2026-07-16)
 
 ### Changed — reGénération : essences présentes (BDforêt v2) en gras dans le sélecteur

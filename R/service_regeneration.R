@@ -537,7 +537,13 @@ add_regen_r_indicators <- function(base_sf, project) {
     v <- df[[src_col]][match(ids, as.character(df$ug_id))]
     if (any(is.finite(suppressWarnings(as.numeric(v))))) v else NULL
   }
-  r6 <- joined(pc$sensibilite, "sensibilite")
+  # R6 : injecter la sensibilité NORMALISÉE 0-100 (`sensibilite_score`, produite à
+  # la source par nemeton::regen_sensibilite >= 0.161.0) et non le z-score brut, afin
+  # qu'elle entre correctement dans le score de famille — `normalize_indicator` la
+  # traite en passthrough 0-100. Repli sur le z-score `sensibilite` pour les caches
+  # reGénération antérieurs (affichage ; relancer l'analyse pour un score R6 exact).
+  r6 <- joined(pc$sensibilite, "sensibilite_score")
+  if (is.null(r6)) r6 <- joined(pc$sensibilite, "sensibilite")
   if (!is.null(r6)) base_sf[["indicateur_r6_sensibilite"]] <- r6
   r7 <- joined(pc$r7, "R7")
   if (!is.null(r7)) base_sf[["indicateur_r7_gel"]] <- r7
