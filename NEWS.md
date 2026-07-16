@@ -1,3 +1,16 @@
+# nemetonshiny (development version)
+
+### Changed — reGénération : essences présentes (BDforêt v2) en gras dans le sélecteur
+
+Le sélecteur « Essence cible » de reGénération listait déjà les essences présentes
+sur les UGF (au dire de la BDforêt v2) en tête, puis les essences d'adaptation,
+séparées par des entêtes d'optgroup — mais la frontière restait peu lisible. Les
+essences **présentes** sont désormais affichées **en gras** (dropdown et valeur
+sélectionnée), via un `render` selectize qui met en emphase toute option de
+l'optgroup « présentes ». On distingue ainsi d'un coup d'œil où s'arrêtent les
+essences présentes et où commencent les autres.
+
+
 # nemetonshiny 0.107.13 (2026-07-16)
 
 ### Fixed — Synthèse « Générer par IA » : R5/R6/R7 transmis au LLM
