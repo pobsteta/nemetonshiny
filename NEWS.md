@@ -1,3 +1,12 @@
+# nemetonshiny (development version)
+
+### Changed — icône gomme pour « Effacer la sélection »
+
+Le bouton « Effacer la sélection » de reGénération (Carte + Tableau) adopte
+l'icône **gomme** (`eraser`) au lieu de la croix, pour être cohérent avec les
+deux boutons homonymes du Plan d'actions.
+
+
 # nemetonshiny 0.107.12 (2026-07-16)
 
 ### Changed — reGénération Carte + Tableau : disposition et cohérence de sélection
