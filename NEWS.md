@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.108.3 (2026-07-16)
+
 ### Fixed — reGénération : boutons d'action ré-activés + PDF préfixé par le projet
 
 - **« Envoyer vers Terrain » (et par ricochet « Enregistrer en base DB ») restaient
