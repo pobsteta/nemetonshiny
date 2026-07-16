@@ -375,6 +375,40 @@ mod_action_plan_ui <- function(id) {
 
 # ---- Server ----------------------------------------------------------
 
+#' Archive a rendered action-plan PDF into the project's `exports/` directory
+#'
+#' Mirrors the synthesis report's archiving (mod_synthesis.R): a single current
+#' PDF per project under `<project_path>/exports/<slug>_action_plan.pdf`. Called
+#' only on the success path of `output$download_pdf` (never for the failure
+#' marker). Best-effort by design: a missing project path, an unwritable
+#' directory or a failed copy is warned but never aborts the browser download.
+#'
+#' @param rendered_file Path to the freshly rendered PDF handed to the browser.
+#' @param project The current project (list with `path` and `metadata$name`).
+#' @return Invisibly `TRUE` when a copy was made, `FALSE` otherwise.
+#' @noRd
+.archive_action_plan_pdf <- function(rendered_file, project) {
+  project_path <- tryCatch(project$path, error = function(e) NULL)
+  if (is.null(project_path) || !dir.exists(project_path)) return(invisible(FALSE))
+  exports_dir <- file.path(project_path, "exports")
+  if (!dir.exists(exports_dir)) {
+    dir.create(exports_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  nm <- tryCatch(project$metadata$name, error = function(e) NULL)
+  export_name <- gsub("[^a-zA-Z0-9_-]", "_", nm %||% "nemeton_action_plan")
+  export_file <- file.path(exports_dir, paste0(export_name, "_action_plan.pdf"))
+  tryCatch(
+    {
+      ok <- file.copy(rendered_file, export_file, overwrite = TRUE)
+      invisible(isTRUE(ok))
+    },
+    error = function(e) {
+      cli::cli_warn("Action plan PDF archive failed: {conditionMessage(e)}")
+      invisible(FALSE)
+    }
+  )
+}
+
 #' Action Plan Module Server
 #'
 #' @param id Character. Module namespace ID.
@@ -1715,6 +1749,11 @@ mod_action_plan_server <- function(id, app_state) {
               "See the in-app error toast for the underlying cause."),
             file
           )
+        } else {
+          # Chemin succès uniquement (result non-NULL) : archive une copie dans
+          # exports/ du projet, parité avec le rapport de synthèse. Best-effort,
+          # ne casse jamais le download navigateur (cf. .archive_action_plan_pdf).
+          .archive_action_plan_pdf(file, project)
         }
       }
     )

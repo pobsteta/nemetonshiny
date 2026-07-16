@@ -1,3 +1,17 @@
+# nemetonshiny (development version)
+
+### Added — plan d'action : archive du PDF dans `exports/` (spec 037)
+
+Le PDF du plan d'action (`output$download_pdf`) était un export transitoire :
+rendu dans un fichier temporaire, streamé au navigateur, rien n'était persisté
+dans le projet (seule la donnée `data/action_plan.json` l'était). Il est désormais
+**archivé** dans `<project_path>/exports/<nom>_action_plan.pdf`, en parité avec le
+rapport de synthèse. Best-effort (`.archive_action_plan_pdf`) : sur le seul chemin
+succès, un échec de copie (disque plein, projet en lecture seule) est journalisé
+mais ne casse jamais le téléchargement navigateur. `overwrite = TRUE` — un seul PDF
+courant par projet. Aucun changement au contenu du PDF ni au cœur `nemeton`.
+
+
 # nemetonshiny 0.107.10 (2026-07-16)
 
 ### Changed — reGénération : Carte + Tableau réunis (pattern « Plan d'actions »)
@@ -16,6 +30,18 @@ unique (`selected_ug_rv`) sert de source de vérité (dédoublonnage par
 `identical()` -> pas de boucle dans l'aller-retour carte <-> tableau), et une
 `reactive` unique (`regen_table_df`) garantit que lignes, mapping clic et fiches
 partagent le même ordre après le filtre couverture.
+# nemetonshiny (development version)
+
+### Added — plan d'action : archive du PDF dans `exports/` (spec 037)
+
+Le PDF du plan d'action (`output$download_pdf`) était un export transitoire :
+rendu dans un fichier temporaire, streamé au navigateur, rien n'était persisté
+dans le projet (seule la donnée `data/action_plan.json` l'était). Il est désormais
+**archivé** dans `<project_path>/exports/<nom>_action_plan.pdf`, en parité avec le
+rapport de synthèse. Best-effort (`.archive_action_plan_pdf`) : sur le seul chemin
+succès, un échec de copie (disque plein, projet en lecture seule) est journalisé
+mais ne casse jamais le téléchargement navigateur. `overwrite = TRUE` — un seul PDF
+courant par projet. Aucun changement au contenu du PDF ni au cœur `nemeton`.
 
 
 # nemetonshiny 0.107.9 (2026-07-16)
