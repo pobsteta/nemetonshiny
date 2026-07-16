@@ -155,7 +155,11 @@
   st <- .regen_ctx_ombro_stats(clim_rr, clim_t)
 
   # Axes couplés P = 2T : l'axe précip (droite) est gradué 2× l'axe °C (gauche).
-  t_hi <- max(c(Tm, 0), na.rm = TRUE); t_lo <- min(c(Tm, 0), na.rm = TRUE)
+  # L'axe température (gauche) doit contenir À LA FOIS max(T) ET max(P)/2 — sinon,
+  # dès que la précipitation dépasse 2×Tmax (cas fréquent), les barres débordaient
+  # en haut et étaient tronquées (« mur » de barres au plafond, diagramme faux).
+  t_hi <- max(max(Tm, na.rm = TRUE), max(P, na.rm = TRUE) / 2)
+  t_lo <- min(c(Tm, 0), na.rm = TRUE)
   pad  <- 0.1 * max(t_hi - t_lo, 1)
   t_rng <- c(t_lo - pad, t_hi + pad)
 

@@ -88,4 +88,14 @@ test_that(".regen_ctx_ombro_plot rend un plotly, titre honnête tg vs tx", {
   expect_no_match(i18n$t("regen_ctx_ombro_tg"), "major", ignore.case = TRUE)
   # Climatologie manquante -> repli hors couverture.
   expect_s3_class(nemetonshiny:::.regen_ctx_ombro_plot(NULL, clim_t, TRUE, i18n), "plotly")
+
+  # Barres précip + courbe température ; l'axe précip contient max(P) SANS
+  # débordement (l'axe = max(T, P/2)*2) et respecte le couplage de Gaussen P=2T.
+  b <- plotly::plotly_build(p_tg)
+  types <- vapply(b$x$data, function(tr) tr$type, character(1))
+  expect_true("bar" %in% types && "scatter" %in% types)
+  ry <- unlist(b$x$layout$yaxis$range); r2 <- unlist(b$x$layout$yaxis2$range)
+  expect_equal(r2, 2 * ry)                              # couplage P = 2T
+  expect_gte(max(r2), max(clim_rr$value))               # aucune barre tronquée
+  expect_gte(max(ry), max(clim_t$value))                # courbe T non tronquée
 })
