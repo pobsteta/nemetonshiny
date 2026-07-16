@@ -502,6 +502,48 @@ load_regeneration_precomputed <- function(project_path) {
   pc[!vapply(pc, is.null, logical(1))]
 }
 
+#' Inject the reGénération R6/R7 indicators into a family sf, when available
+#'
+#' R6 (microclimatic sensitivity) and R7 (late frost) are produced by the
+#' reGénération engine and persisted per UGF under `cache/regeneration/` as the
+#' raw columns `sensibilite` (R6) and `R7` (R7) — NOT under the canonical
+#' `INDICATOR_FAMILIES$R` column names, and without a normalised variant. This
+#' reads them back and joins them by `ug_id` into `base_sf` under the canonical
+#' names `indicateur_r6_sensibilite` / `indicateur_r7_gel`, so the Familles tab
+#' *displays and counts* them next to R1-R5 as soon as a reGénération result
+#' exists. Best-effort: returns `base_sf` unchanged when there is no persisted
+#' reGénération result or no `ug_id`. Display/count only — the values are raw
+#' (z-score / score), so they are NOT fed to `create_family_index` (which would
+#' need core-side normalisation to keep the R family score meaningful).
+#'
+#' @param base_sf An `sf` keyed by `ug_id`.
+#' @param project The current project (reads `project$path`).
+#' @return `base_sf`, possibly with `indicateur_r6_sensibilite` /
+#'   `indicateur_r7_gel` columns added.
+#' @noRd
+add_regen_r_indicators <- function(base_sf, project) {
+  if (!inherits(base_sf, "sf") || is.null(project) ||
+      !"ug_id" %in% names(base_sf)) {
+    return(base_sf)
+  }
+  pp <- tryCatch(project$path, error = function(e) NULL)
+  if (is.null(pp)) return(base_sf)
+  pc <- tryCatch(load_regeneration_precomputed(pp), error = function(e) list())
+  ids <- as.character(base_sf$ug_id)
+  joined <- function(src, src_col) {
+    if (is.null(src)) return(NULL)
+    df <- if (inherits(src, "sf")) sf::st_drop_geometry(src) else src
+    if (!is.data.frame(df) || !all(c("ug_id", src_col) %in% names(df))) return(NULL)
+    v <- df[[src_col]][match(ids, as.character(df$ug_id))]
+    if (any(is.finite(suppressWarnings(as.numeric(v))))) v else NULL
+  }
+  r6 <- joined(pc$sensibilite, "sensibilite")
+  if (!is.null(r6)) base_sf[["indicateur_r6_sensibilite"]] <- r6
+  r7 <- joined(pc$r7, "R7")
+  if (!is.null(r7)) base_sf[["indicateur_r7_gel"]] <- r7
+  base_sf
+}
+
 # ============================================================================
 # Moteur microclimf réel (option B, spec 027 L1) — opt-in, coûteux, async.
 #

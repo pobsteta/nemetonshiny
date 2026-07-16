@@ -505,6 +505,25 @@ mod_synthesis_server <- function(id, app_state) {
       families <- INDICATOR_FAMILIES
       codes <- names(families)
 
+      # « Nb indicateurs » = indicateurs réellement ACCESSIBLES pour ce projet
+      # (cohérent avec la vue Familles, qui n'affiche que le présent), et non la
+      # taille théorique de la config. Pour la famille R, cela inclut R5
+      # (alertes de suivi) et R6/R7 (résultat reGénération) dès qu'ils existent.
+      project <- app_state$current_project
+      enr_names <- tryCatch({
+        base_sf <- project$indicators_sf
+        if (inherits(base_sf, "sf")) {
+          e <- add_regen_r_indicators(add_r5_to_indicators(base_sf, project), project)
+          names(sf::st_drop_geometry(e))
+        } else names(project_indicators() %||% list())
+      }, error = function(e) character(0))
+      present_count <- function(fam) {
+        cn <- fam$column_names %||% fam$indicators
+        n <- sum(vapply(cn, function(c)
+          c %in% enr_names || paste0(c, "_norm") %in% enr_names, logical(1)))
+        if (n > 0L) n else length(fam$indicators)   # repli : config si rien détecté
+      }
+
       # Build summary data.frame
       rows <- lapply(codes, function(code) {
         col_name <- get_famille_col(code)
@@ -523,7 +542,7 @@ mod_synthesis_server <- function(id, app_state) {
           Code = code,
           Score = round(score, 2),
           NDP = as.integer(app_state$current_project$metadata$ndp_level %||% 0L),
-          Indicators = length(fam$indicators),
+          Indicators = present_count(fam),
           stringsAsFactors = FALSE
         )
       })
