@@ -1,4 +1,19 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.108.2 (2026-07-16)
+
+### Changed — reGénération : exports dans le sidebar droit + retour immédiat des boutons d'action
+
+Les **4 boutons d'export** de reGénération (Envoyer vers Terrain, Télécharger le
+GeoPackage, Télécharger le PDF, Enregistrer en base DB) migrent du sidebar gauche
+vers le **sidebar droit de « Carte + Tableau », sous le panneau « Affiner la
+reGénération avec l'IA »**.
+
+Retour immédiat (règle stricte #9) sur les boutons d'action **« Envoyer vers
+Terrain »** et **« Enregistrer en base DB »**, dans **les deux onglets** : un
+**toast bas-droite** s'affiche dès le clic (client-side) et disparaît en fin
+d'opération. Côté reGénération, ces boutons portent en plus la classe
+`.regen-calc-btn` (gel instantané de tous les boutons de calcul le temps de
+l'action) ; côté Plan d'actions, l'opération synchrone gèle l'UI le temps du
+traitement, désormais signalé par le toast.
 
 
 # nemetonshiny 0.108.1 (2026-07-16)
