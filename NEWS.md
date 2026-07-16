@@ -1,4 +1,14 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.22 (2026-07-16)
+
+### Added — reGénération : cartes UGF dans le PDF (comme le Plan d'actions)
+
+Le PDF reGénération affiche désormais, en tête de chaque fiche UGF, une **carte
+satellite** (fond Esri.WorldImagery, contour de l'UGF) — comme le PDF du Plan
+d'actions. La logique de rendu de carte est **factorisée** dans un helper partagé
+`.render_ug_satellite_png` utilisé par les deux exports (parité stricte, plus de
+duplication) ; best-effort, dégradant en tracé de géométrie hors-ligne et ignoré
+par le template si la carte manque. Le builder `.build_regeneration_pdf_data`
+reçoit un paramètre `maps` (chemins pré-rendus) pour rester pur et testable.
 
 
 # nemetonshiny 0.107.21 (2026-07-16)

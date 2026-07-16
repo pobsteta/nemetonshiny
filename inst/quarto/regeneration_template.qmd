@@ -80,6 +80,14 @@ if (length(data$ugfs) == 0L) {
 for (ug in data$ugfs) {
   cat("\\section*{", tr("UGF", "Unit"), " ", latex_escape(ug$label), "}\n\n", sep = "")
 
+  # ---- Carte satellite (pré-rendue en R ; ignorée si absente) ----
+  if (!is.null(ug$map_png) && !is.na(ug$map_png) && file.exists(ug$map_png)) {
+    cat("\\begin{center}\n",
+        "\\includegraphics[width=0.85\\linewidth,keepaspectratio]{",
+        gsub("\\\\", "/", ug$map_png),
+        "}\n\\end{center}\n\n", sep = "")
+  }
+
   # ---- Conditions de station ----
   if (length(ug$conditions) > 0L) {
     cat("\\begin{longtable}{ll}\n\\toprule\n")
