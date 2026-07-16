@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.107.7 (2026-07-16)
+
 ### Fixed — diagramme ombrothermique : barres de précipitation tronquées
 
 L'axe de température (gauche) était calculé à partir de la seule température, et
