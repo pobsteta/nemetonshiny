@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.21 (2026-07-16)
 
 ### Added — reGénération : export PDF (fiche par UGF), patron Plan d'actions
 
