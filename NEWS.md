@@ -1,3 +1,20 @@
+# nemetonshiny (development version)
+
+### Fixed — Synthèse « Générer par IA » : R5/R6/R7 transmis au LLM
+
+Le remplissage IA de tous les commentaires de famille (onglet Synthèse) lisait
+`project$indicators` brut, qui ne contient que R1-R4 pour la famille R : R5
+(dépérissement/monitoring), R6 (sensibilité) et R7 (gel), injectés au rendu
+depuis reGénération/monitoring, n'étaient **pas** analysés par l'IA — alors que la
+vue Familles et le décompte du récap les affichent. Nouvelle reactive
+`ai_family_indicators` : enrichit `project$indicators` (sans dégrader les colonnes
+`_norm`) des indicateurs R5/R6/R7 par jointure `ug_id`, comme le fait déjà la vue
+Famille (`mod_family`). Le LLM commente désormais l'ensemble des indicateurs
+accessibles. NB : l'**intégration au score** de famille de R6 (z-score reGénération)
+reste subordonnée à une normalisation 0-100 côté cœur `nemeton` (R7 est déjà 0-100,
+R5 déjà normalisé) — brief cœur séparé.
+
+
 # nemetonshiny 0.107.12 (2026-07-16)
 
 ### Changed — reGénération Carte + Tableau : disposition et cohérence de sélection
