@@ -4468,6 +4468,7 @@ TRANSLATIONS <- list(
   regen_selected_sheets = list(fr = "Fiches parcelles s\u00e9lectionn\u00e9es", en = "Selected unit sheets"),
   regen_clear_selection = list(fr = "Effacer la s\u00e9lection", en = "Clear selection"),
   regen_rew_chronicle = list(fr = "Chronique REW (r\u00e9serve en eau)", en = "REW chronicle (water reserve)"),
+  regen_col_ugid = list(fr = "UGF", en = "Unit"),
   regen_col_priorite = list(fr = "Priorit\u00e9", en = "Priority"),
   regen_col_indice = list(fr = "Indice priorit\u00e9", en = "Priority index"),
   regen_col_sensibilite = list(fr = "Sensibilit\u00e9", en = "Sensitivity"),
