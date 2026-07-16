@@ -1782,6 +1782,10 @@ mod_regeneration_server <- function(id, app_state) {
         # Bivarié : classes 1..N*N → colorFactor + légende bivariée 2D N×N. Le
         # cœur livre 25 classes (5×5, `ncol = 5`) ; la légende suit `pal$ncol`.
         classes <- pal$classes %||% seq_along(pal$colors)
+        # Coercition en entier : les classes bivariées SONT des entiers 1-25 ; une
+        # valeur décimale (source ou reprojection) ne matcherait aucune classe et
+        # laisserait un trou. Garde-fou complémentaire du `method = "ngb"` ci-dessous.
+        rast <- terra::round(rast)
         cmap <- leaflet::colorFactor(pal$colors, domain = classes, na.color = "transparent")
         # Axes annotés par la plage RÉELLEMENT observée sur la zone (quantiles des
         # rasters downscalés) via `.regen_biv_axis`, avec 0 garanti dans la plage.
@@ -1802,11 +1806,15 @@ mod_regeneration_server <- function(id, app_state) {
           zero    = list(tmax = ys$zero, precip = xs$zero),
           x_range = xs$range,
           y_range = ys$range))
+        # method = "ngb" (plus proche voisin) OBLIGATOIRE pour un raster
+        # CATÉGORIEL : la reprojection par défaut (bilinéaire) interpole les codes
+        # de classe entiers 1-25 en valeurs décimales (3.4, 7.2…) qui ne
+        # correspondent à aucune classe de la palette → pixels transparents (trous).
         m |>
           leaflet::addRasterImage(rast, colors = cmap, opacity = op, project = TRUE,
-            group = "Contexte E-OBS", options = opts) |>
+            method = "ngb", group = "Contexte E-OBS", options = opts) |>
           leaflet::addControl(html = leg, position = "bottomright", layerId = "context_legend",
-            className = "info legend nmt-bivariate-control")
+            className = "nmt-bivariate-control")
       } else {
         # Univarié : colorNumeric, sens piloté par meta$palette$sense.
         lo <- pal$low; hi <- pal$high
