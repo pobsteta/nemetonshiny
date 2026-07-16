@@ -550,6 +550,33 @@ add_regen_r_indicators <- function(base_sf, project) {
   base_sf
 }
 
+#' Rank the top-N regeneration species per UGF (spec 039)
+#'
+#' Thin app-service wrapper around `nemeton::regen_rank_species()` (>= 0.162.0).
+#' Given the reGénération result units — which carry the station columns the core
+#' scorer needs (`tmax_moyenne`/`d_tmax`, `vpd_canicule`, `rew_min`, `r7_gel_days`,
+#' `couverture_pct`) — it returns the long ranking data.frame with one row per
+#' (UGF x rank): `ug_id`, `rank`, `species_code`, `label`, `type`, `suitability`
+#' (0-100), `limiting_factor`, `confidence`, `invasif`. Error/empty-safe: returns
+#' `NULL` when the core cannot rank (missing geometry, empty species pool, …).
+#'
+#' @param units The reGénération result sf (one row per UGF).
+#' @param top_n Number of species to keep per UGF.
+#' @param region Species-pool region passed to the core (default "BFC").
+#' @return The long ranking data.frame, or `NULL`.
+#' @noRd
+regeneration_species_ranking <- function(units, top_n = 3L, region = "BFC") {
+  if (!inherits(units, "sf") || nrow(units) == 0L) return(NULL)
+  out <- tryCatch(
+    nemeton::regen_rank_species(units, top_n = top_n, region = region),
+    error = function(e) {
+      cli::cli_warn("Species ranking skipped: {conditionMessage(e)}")
+      NULL
+    })
+  if (!is.data.frame(out) || nrow(out) == 0L) return(NULL)
+  out
+}
+
 # ============================================================================
 # Moteur microclimf réel (option B, spec 027 L1) — opt-in, coûteux, async.
 #

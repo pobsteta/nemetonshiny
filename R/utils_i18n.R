@@ -4480,6 +4480,15 @@ TRANSLATIONS <- list(
   regen_col_dtmax = list(fr = "\u0394T\u00b0max", en = "\u0394T\u00b0max"),
   regen_col_dvpd = list(fr = "\u0394VPD", en = "\u0394VPD"),
   regen_col_couverture = list(fr = "Couverture (%)", en = "Coverage (%)"),
+  regen_species_ranking_title = list(fr = "Essences recommand\u00e9es (top 3)", en = "Recommended species (top 3)"),
+  regen_species_limiting = list(fr = "facteur limitant", en = "limiting factor"),
+  regen_limit_secheresse = list(fr = "s\u00e9cheresse", en = "drought"),
+  regen_limit_gel = list(fr = "gel", en = "frost"),
+  regen_limit_chaleur = list(fr = "chaleur", en = "heat"),
+  regen_limit_ombre = list(fr = "ombre", en = "shade"),
+  regen_conf_eleve = list(fr = "confiance \u00e9lev\u00e9e", en = "high confidence"),
+  regen_conf_moyen = list(fr = "confiance moyenne", en = "medium confidence"),
+  regen_conf_faible = list(fr = "confiance faible", en = "low confidence"),
   regen_ndp_model = list(
     fr = "Indices mod\u00e9lis\u00e9s (mod\u00e8le m\u00e9caniste, non mesur\u00e9s terrain) : fiables en classement relatif, prudents en valeur absolue.",
     en = "Modelled indices (mechanistic model, not field-measured): reliable for relative ranking, cautious in absolute value."

@@ -217,6 +217,51 @@
   paste0("{option: ", fn, ", item: ", fn, "}")
 }
 
+#' Top-N regeneration species ranking UI block for one UGF (spec 039)
+#'
+#' Renders the deterministic top-N species (from `nemeton::regen_rank_species`,
+#' long data.frame) for a single UGF: each species with its suitability 0-100,
+#' translated limiting factor and confidence. Returns `NULL` when the ranking is
+#' absent or has no row for that UGF (NA/empty-safe). `ug` is the UGF id string.
+#' @noRd
+.regen_species_ranking_ui <- function(rank_df, ug, i18n) {
+  if (is.null(rank_df) || !is.data.frame(rank_df) ||
+      !all(c("ug_id", "rank", "label", "suitability") %in% names(rank_df))) {
+    return(NULL)
+  }
+  sub <- rank_df[as.character(rank_df$ug_id) == as.character(ug), , drop = FALSE]
+  if (nrow(sub) == 0L) return(NULL)
+  sub <- sub[order(sub$rank), , drop = FALSE]
+  lf_label <- function(lf) {
+    lf <- as.character(lf)
+    key <- switch(lf,
+      secheresse = "regen_limit_secheresse", gel = "regen_limit_gel",
+      chaleur = "regen_limit_chaleur", ombre = "regen_limit_ombre", NA_character_)
+    if (is.na(key)) lf else i18n$t(key)
+  }
+  conf_label <- function(cf) {
+    cf <- as.character(cf)
+    key <- switch(cf,
+      eleve = "regen_conf_eleve", moyen = "regen_conf_moyen",
+      faible = "regen_conf_faible", NA_character_)
+    if (is.na(key)) cf else i18n$t(key)
+  }
+  htmltools::div(class = "mt-1 mb-3",
+    htmltools::tags$strong(class = "small", i18n$t("regen_species_ranking_title")),
+    htmltools::tags$ol(class = "mb-0 ps-3 small",
+      lapply(seq_len(nrow(sub)), function(i) {
+        s <- sub[i, , drop = FALSE]
+        htmltools::tags$li(
+          htmltools::tags$span(class = "fw-semibold", as.character(s$label)),
+          sprintf(" \u2014 %d/100", round(as.numeric(s$suitability))),
+          if (!is.na(s$limiting_factor)) htmltools::tags$span(class = "text-muted",
+            sprintf(" \u00b7 %s : %s", i18n$t("regen_species_limiting"),
+                    lf_label(s$limiting_factor))),
+          if (!is.na(s$confidence)) htmltools::tags$span(class = "text-muted",
+            sprintf(" \u00b7 %s", conf_label(s$confidence))))
+      })))
+}
+
 #' reGénération tab UI
 #' @param id Module id.
 #' @noRd
@@ -1817,6 +1862,16 @@ mod_regeneration_server <- function(id, app_state) {
     # retour) ne boucle pas.
     selected_ug_rv <- shiny::reactiveVal(character())
 
+    # Classement top-3 des essences de régénération par UGF (spec 039, cœur
+    # `regen_rank_species` >= 0.162.0). Calculé une fois par résultat ; la fiche
+    # parcelle le filtre par UGF sélectionnée. Déterministe (tolérances écologiques
+    # vs conditions de station), le narratif IA viendra en surcouche (P2).
+    species_ranking <- shiny::reactive({
+      res <- rv$result
+      if (is.null(res)) return(NULL)
+      regeneration_species_ranking(res, top_n = 3L)
+    })
+
     # Source UNIQUE du tableau : mêmes lignes et même ordre pour le rendu DT, le
     # mapping clic->ligne et la/les fiche(s) parcelle. Le filtre couverture agit
     # ici -> les index de lignes DT restent cohérents avec les fiches.
@@ -2243,19 +2298,23 @@ mod_regeneration_server <- function(id, app_state) {
       }
       fields <- c("indice_priorite_regen", "sensibilite", "njstress",
         "istress", "deb_stress", "rew_min", "d_tmax", "d_vpd", "couverture_pct")
+      # Classement top-3 des essences (spec 039) : calculé une fois, filtré par UGF.
+      rk <- tryCatch(species_ranking(), error = function(e) NULL)
       one_sheet <- function(row) {
         fs <- intersect(fields, names(row))
-        htmltools::tags$table(class = "table table-sm mb-3",
-          htmltools::tags$caption(class = "fw-bold text-body",
-            sprintf("%s %s", i18n$t("regen_table_card_title"),
-              if ("ug_id" %in% names(row)) as.character(row$ug_id) else "")),
-          lapply(fs, function(f) htmltools::tags$tr(
-            htmltools::tags$th(i18n$t(paste0("regen_col_",
-              switch(f, indice_priorite_regen = "indice", sensibilite = "sensibilite",
-                njstress = "njstress", istress = "istress", deb_stress = "deb_stress",
-                rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
-                couverture_pct = "couverture", f)))),
-            htmltools::tags$td(format(row[[f]], digits = 3)))))
+        ug <- if ("ug_id" %in% names(row)) as.character(row$ug_id) else ""
+        htmltools::tagList(
+          htmltools::tags$table(class = "table table-sm mb-2",
+            htmltools::tags$caption(class = "fw-bold text-body",
+              sprintf("%s %s", i18n$t("regen_table_card_title"), ug)),
+            lapply(fs, function(f) htmltools::tags$tr(
+              htmltools::tags$th(i18n$t(paste0("regen_col_",
+                switch(f, indice_priorite_regen = "indice", sensibilite = "sensibilite",
+                  njstress = "njstress", istress = "istress", deb_stress = "deb_stress",
+                  rew_min = "rew_min", d_tmax = "dtmax", d_vpd = "dvpd",
+                  couverture_pct = "couverture", f)))),
+              htmltools::tags$td(format(row[[f]], digits = 3))))),
+          .regen_species_ranking_ui(rk, ug, i18n))
       }
       rows <- which(as.character(df$ug_id) %in% sel)
       if (length(rows) == 0L) {

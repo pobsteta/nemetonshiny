@@ -867,3 +867,50 @@ test_that(".species_bold_render met en gras l'optgroup des essences présentes",
   js2 <- nemetonshiny:::.species_bold_render('a"b')
   expect_match(js2, '\\"', fixed = TRUE)
 })
+
+# ---------------------------------------------------------------------------
+# Top-3 essences par UGF (spec 039) — wrapper service + rendu fiche
+# ---------------------------------------------------------------------------
+
+test_that("regeneration_species_ranking : wrapper NA/empty-safe autour du cœur", {
+  skip_if_not_installed("sf")
+  # Non-sf / vide -> NULL, sans appeler le cœur.
+  expect_null(nemetonshiny:::regeneration_species_ranking(NULL))
+  expect_null(nemetonshiny:::regeneration_species_ranking(data.frame(a = 1)))
+
+  units <- .regen_mod_units(2)
+  long <- data.frame(ug_id = c("1", "1", "2"), rank = c(1L, 2L, 1L),
+    species_code = c("a", "b", "a"), label = c("A", "B", "A"),
+    suitability = c(95, 90, 88), limiting_factor = c("secheresse", "gel", "chaleur"),
+    confidence = "eleve", stringsAsFactors = FALSE)
+  testthat::local_mocked_bindings(
+    regen_rank_species = function(units, top_n = 3, region = "BFC", ...) long,
+    .package = "nemeton")
+  out <- nemetonshiny:::regeneration_species_ranking(units, top_n = 3L)
+  expect_s3_class(out, "data.frame")
+  expect_equal(nrow(out), 3L)
+  # Cœur renvoie 0 ligne -> NULL.
+  testthat::local_mocked_bindings(
+    regen_rank_species = function(units, top_n = 3, region = "BFC", ...) long[0, ],
+    .package = "nemeton")
+  expect_null(nemetonshiny:::regeneration_species_ranking(units))
+})
+
+test_that(".regen_species_ranking_ui rend le top-N d'une UGF, traduit facteur/confiance", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  rk <- data.frame(ug_id = c("U1", "U1", "U2"), rank = c(1L, 2L, 1L),
+    label = c("Pin", "Chêne", "Sapin"), suitability = c(97.2, 93.9, 80),
+    limiting_factor = c("secheresse", "gel", "ombre"),
+    confidence = c("eleve", "moyen", "faible"), stringsAsFactors = FALSE)
+  ui <- nemetonshiny:::.regen_species_ranking_ui(rk, "U1", i18n)
+  html <- as.character(ui)
+  expect_true(grepl("Pin", html) && grepl("Chêne", html))   # les 2 de U1
+  expect_false(grepl("Sapin", html))                              # pas ceux de U2
+  expect_true(grepl("97/100", html))                             # suitability arrondie
+  expect_true(grepl("sécheresse", html))                     # facteur limitant traduit
+  expect_true(grepl("confiance élevée", html))          # confiance traduite
+  # NA-safe : UGF absente / ranking NULL / colonnes manquantes -> NULL.
+  expect_null(nemetonshiny:::.regen_species_ranking_ui(rk, "ZZ", i18n))
+  expect_null(nemetonshiny:::.regen_species_ranking_ui(NULL, "U1", i18n))
+  expect_null(nemetonshiny:::.regen_species_ranking_ui(data.frame(x = 1), "U1", i18n))
+})
