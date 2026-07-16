@@ -474,7 +474,7 @@ mod_regeneration_ui <- function(id) {
         bslib::layout_sidebar(
           fillable = FALSE,
           sidebar = bslib::sidebar(
-            position = "right", open = "open", width = 340,
+            position = "right", open = "always", width = 340,
             htmltools::tags$div(
               class = "card",
               htmltools::tags$div(

@@ -1,5 +1,12 @@
 # nemetonshiny (development version)
 
+### Changed — reGénération : sidebar IA sans flèche de repli
+
+La sidebar droite « Affiner la reGénération avec l'IA » passe en `open = "always"` :
+la flèche de repli de la sidebar bslib est retirée, alignant le comportement sur
+la sidebar de l'onglet Plan d'actions. L'accordéon interne de la carte « Affiner »
+(chevron dans l'entête) est conservé.
+
 
 # nemetonshiny 0.107.18 (2026-07-16)
 
