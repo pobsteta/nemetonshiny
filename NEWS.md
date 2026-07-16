@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.107.4 (2026-07-16)
+
 ### Fixed — trous du raster bivarié + ascenseur de la légende (suite)
 
 - **Trous dans le raster bivarié** : `addRasterImage(project = TRUE)` reprojetait
