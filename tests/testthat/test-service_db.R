@@ -102,3 +102,36 @@ test_that(".resolve_db_connect_timeout defaults to 8 and honours the env overrid
     expect_equal(nemetonshiny:::.resolve_db_connect_timeout(), 8L)
   })
 })
+
+# ---------------------------------------------------------------------------
+# db_save_action_plan — instantané versionné du plan (miroir db_save_regeneration)
+# ---------------------------------------------------------------------------
+
+test_that("db_save_action_plan : état versionné, une ligne par action", {
+  plan <- list(horizon_annees = 20L, actions = list(
+    list(id = "a1", ug_id = "U1", type = "eclaircie"),
+    list(id = "a2", ug_id = "U2", type = "plantation")))
+  rec <- new.env(); rec$sqls <- character(0)
+  con <- structure(list(), class = "FakeConn")
+  testthat::local_mocked_bindings(
+    dbExecute = function(conn, statement, ...) { rec$sqls <- c(rec$sqls, statement); 1L },
+    dbGetQuery = function(conn, statement, ...) data.frame(v = 2L),
+    .package = "DBI")
+
+  ver <- nemetonshiny:::db_save_action_plan(con, "p1", plan)
+  expect_equal(ver, 2L)
+  expect_true(any(grepl("CREATE TABLE IF NOT EXISTS nemeton.action_plan_states",
+                        rec$sqls, fixed = TRUE)))
+  expect_equal(sum(grepl("INSERT INTO nemeton.action_plan_states", rec$sqls,
+                         fixed = TRUE)), 2L)
+})
+
+test_that("db_save_action_plan : version 1 sur historique vide", {
+  plan <- list(horizon_annees = 10L, actions = list(list(id = "a1", ug_id = "U1")))
+  con <- structure(list(), class = "FakeConn")
+  testthat::local_mocked_bindings(
+    dbExecute = function(conn, statement, ...) 1L,
+    dbGetQuery = function(conn, statement, ...) data.frame(v = NA_integer_),
+    .package = "DBI")
+  expect_equal(nemetonshiny:::db_save_action_plan(con, "p1", plan), 1L)
+})

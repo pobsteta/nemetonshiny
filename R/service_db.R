@@ -582,6 +582,56 @@ db_save_regeneration <- function(con, project_id, units) {
   invisible(ver)
 }
 
+#' Save a versioned snapshot of an action plan to the database
+#'
+#' Mirror of \code{db_save_regeneration} for the action plan: appends a new
+#' **version** of the plan to \code{nemeton.action_plan_states} (archival —
+#' earlier versions are kept, enabling multi-user history / change tracking).
+#' One row per action, each stored as a JSONB payload so the schema is stable.
+#' Idempotent table creation.
+#'
+#' @param con DBI connection (PostGIS).
+#' @param project_id Character. Local project ID.
+#' @param plan List. Action plan (\code{$actions}, \code{$horizon_annees}).
+#'
+#' @return The integer version number written (invisibly).
+#' @noRd
+db_save_action_plan <- function(con, project_id, plan) {
+  actions <- plan$actions %||% list()
+
+  DBI::dbExecute(con, "
+    CREATE TABLE IF NOT EXISTS nemeton.action_plan_states (
+      id           BIGSERIAL PRIMARY KEY,
+      project_id   TEXT NOT NULL,
+      version      INTEGER NOT NULL,
+      generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      horizon      INTEGER,
+      ug_id        TEXT,
+      action_id    TEXT,
+      payload      JSONB NOT NULL
+    );")
+
+  # Next version for this project (never overwrite prior states).
+  ver <- tryCatch(DBI::dbGetQuery(con,
+    "SELECT COALESCE(MAX(version), 0) + 1 AS v FROM nemeton.action_plan_states WHERE project_id = $1",
+    params = list(project_id))$v, error = function(e) 1L)
+  if (length(ver) == 0 || is.na(ver)) ver <- 1L
+  ver <- as.integer(ver)
+
+  horizon <- suppressWarnings(as.integer(plan$horizon_annees %||% NA_integer_))
+  for (a in actions) {
+    payload <- jsonlite::toJSON(a, auto_unbox = TRUE, na = "null")
+    DBI::dbExecute(con,
+      "INSERT INTO nemeton.action_plan_states (project_id, version, horizon, ug_id, action_id, payload)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb)",
+      params = list(project_id, ver, horizon,
+                    as.character(a$ug_id %||% NA_character_),
+                    as.character(a$id %||% NA_character_),
+                    as.character(payload)))
+  }
+  invisible(ver)
+}
+
 
 # ============================================================
 # Load Operations

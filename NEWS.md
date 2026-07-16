@@ -1,5 +1,22 @@
 # nemetonshiny (development version)
 
+### Added — reGénération : mêmes exports que le Plan d'actions + persistance base des deux côtés
+
+La section **Exports** de reGénération reprend les **3 boutons du Plan d'actions** :
+- **« Envoyer vers Terrain »** : pousse les centroïdes des UGF (sélection courante,
+  ou toutes) vers la couche `regeneration` du `samples.gpkg` du projet, avec leurs
+  attributs de priorité (`indice_priorite`, `sensibilite`, `rang`), et rafraîchit
+  l'onglet Échantillonnage — miroir du bouton du Plan d'actions.
+- **« Télécharger le GeoPackage »** et **« Télécharger le PDF »** : mêmes libellés,
+  icônes et style que le Plan d'actions (boutons verts, toast de génération).
+
+**Persistance versionnée en base des deux côtés** : le bouton, renommé
+**« Enregistrer en base DB »** (libellé partagé), existe désormais aussi sur le
+**Plan d'actions** (`db_save_action_plan` → table `nemeton.action_plan_states`,
+un instantané JSONB versionné par sauvegarde) pour l'historique et le partage
+multi-utilisateurs. Le plan reste par ailleurs auto-sauvegardé sur disque
+(`action_plan.json`) ; ce bouton ajoute l'archive serveur partagée.
+
 
 # nemetonshiny 0.107.22 (2026-07-16)
 
