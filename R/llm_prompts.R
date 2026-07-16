@@ -247,6 +247,74 @@ build_synthesis_prompt <- function(family_scores_df, language) {
 }
 
 
+#' Build a regeneration-advice prompt from the deterministic species ranking
+#'
+#' P2 of the hybrid species-recommendation feature (spec 039): the deterministic
+#' top-N ranking (nemeton::regen_rank_species) plus each UGF's station conditions
+#' are summarized into a prompt asking the LLM for a justified regeneration advice.
+#' The species RANKING itself is never delegated to the LLM \u2014 it only writes the
+#' narrative around the numbers, tuned by the expert profile (system prompt).
+#'
+#' @param ranking_df Long ranking data.frame (ug_id, rank, label, suitability,
+#'   limiting_factor, confidence).
+#' @param station_df The reG\u00e9n\u00e9ration result (per-UGF conditions); sf or data.frame.
+#' @param language "fran\u00e7ais" or "English".
+#' @return Character prompt.
+#' @noRd
+build_regen_advice_prompt <- function(ranking_df, station_df, language) {
+  fr <- language == "fran\u00e7ais"
+  if (inherits(station_df, "sf")) station_df <- sf::st_drop_geometry(station_df)
+  ids <- unique(as.character(ranking_df$ug_id))
+  # Borne le prompt : au plus 20 UGF d\u00e9taill\u00e9es (au-del\u00e0, l'IA g\u00e9n\u00e9ralise mal et
+  # le co\u00fbt explose). Signale la troncature.
+  truncated <- length(ids) > 20L
+  ids <- utils::head(ids, 20L)
+  st_val <- function(st, col, dig) {
+    if (!col %in% names(st) || !nrow(st)) return(NULL)
+    v <- suppressWarnings(as.numeric(st[[col]][1]))
+    if (!is.finite(v)) NULL else round(v, dig)
+  }
+  lines <- vapply(ids, function(id) {
+    rk <- ranking_df[as.character(ranking_df$ug_id) == id, , drop = FALSE]
+    rk <- rk[order(rk$rank), , drop = FALSE]
+    sp <- paste(sprintf("%d. %s (%d/100, %s)", rk$rank, rk$label,
+      round(suppressWarnings(as.numeric(rk$suitability))),
+      as.character(rk$limiting_factor)), collapse = " ; ")
+    st <- station_df[as.character(station_df$ug_id) == id, , drop = FALSE]
+    parts <- c(
+      if (!is.null(v <- st_val(st, "njstress", 0))) paste0("jours stress=", v),
+      if (!is.null(v <- st_val(st, "rew_min", 2))) paste0("REW min=", v),
+      if (!is.null(v <- st_val(st, "d_tmax", 1))) paste0("dTmax=", v),
+      if (!is.null(v <- st_val(st, "r7_gel_days", 0))) paste0("gel tardif=", v, "j"))
+    cond <- paste(parts, collapse = ", ")
+    paste0("- UGF ", id, if (nzchar(cond)) paste0(" [", cond, "]") else "",
+      " -> ", sp)
+  }, character(1))
+  intro <- if (fr) {
+    paste0("Conseille la r\u00e9g\u00e9n\u00e9ration pour ", length(ids), " UGF. Pour chacune, ",
+      "un classement d\u00e9terministe des essences les plus adapt\u00e9es (score 0-100 + ",
+      "facteur limitant) et ses conditions de station sont fournis :\n\n")
+  } else {
+    paste0("Advise on regeneration for ", length(ids), " management units. For each, ",
+      "a deterministic ranking of the best-suited species (0-100 score + limiting ",
+      "factor) and its site conditions are given:\n\n")
+  }
+  ask <- if (fr) {
+    paste0("\n\nR\u00e9dige un conseil de r\u00e9g\u00e9n\u00e9ration concis et justifi\u00e9 : pertinence ",
+      "des essences en t\u00eate, risques li\u00e9s au facteur limitant, m\u00e9lange conseill\u00e9 et ",
+      "r\u00e9serves. Ne recommande jamais une essence absente des classements ci-dessus.")
+  } else {
+    paste0("\n\nWrite a concise, justified regeneration advice: relevance of the top ",
+      "species, risks from the limiting factor, recommended mixing and caveats. Never ",
+      "recommend a species absent from the rankings above.")
+  }
+  note <- if (truncated) {
+    if (fr) "\n\n(Note : seules les 20 premi\u00e8res UGF sont d\u00e9taill\u00e9es.)"
+    else "\n\n(Note: only the first 20 units are detailed.)"
+  } else ""
+  paste0(intro, paste(lines, collapse = "\n"), ask, note)
+}
+
 #' Shared JSON schema for action-plan LLM prompts
 #'
 #' Used both by the generation prompt (`build_action_plan_prompt`) and by
