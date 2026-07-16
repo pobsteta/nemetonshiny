@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.107.9 (2026-07-16)
 
 ### Fixed — famille R : R6/R7 comptés et affichés dès qu'ils sont accessibles
 
