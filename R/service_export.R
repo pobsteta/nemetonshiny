@@ -2364,6 +2364,33 @@ generate_report_pdf <- function(project,
 # ===========================================================================
 # Action plan exports (S13)
 # ===========================================================================
+#' Filename-safe slug for a project's display name (export filenames)
+#'
+#' Resolves the project's human identifier with fallbacks so a download is
+#' always prefixed by something meaningful: `metadata$name`, then `name`, then
+#' `id`, then `fallback`. NULL, NA and whitespace-only values are skipped (a
+#' project whose `metadata$name` is the empty string would otherwise yield a
+#' bare `_action_plan.pdf` with no prefix). The result is sanitised to
+#' `[A-Za-z0-9_-]` for a safe filename.
+#'
+#' @param project The current project (list-like, may be NULL).
+#' @param fallback Slug used when no identifier is available.
+#' @return A filename-safe slug string.
+#' @noRd
+.project_export_slug <- function(project, fallback = "nemeton") {
+  pick <- function(x) {
+    if (is.null(x)) return(NULL)
+    x <- as.character(x)[1]
+    if (is.na(x) || !nzchar(trimws(x))) return(NULL)
+    trimws(x)
+  }
+  nm <- pick(tryCatch(project$metadata$name, error = function(e) NULL)) %||%
+        pick(tryCatch(project$name, error = function(e) NULL)) %||%
+        pick(tryCatch(project$id, error = function(e) NULL)) %||%
+        fallback
+  gsub("[^A-Za-z0-9_-]", "_", nm)
+}
+
 #' Render a per-UGF satellite (Esri.WorldImagery) PNG for a PDF report
 #'
 #' Shared by the action-plan and reGénération PDF exports so both show the same

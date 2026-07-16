@@ -1,5 +1,24 @@
 # nemetonshiny (development version)
 
+### Fixed — reGénération : boutons d'action ré-activés + PDF préfixé par le projet
+
+- **« Envoyer vers Terrain » (et par ricochet « Enregistrer en base DB ») restaient
+  grisés** après usage. Le bouton `export_terrain` portait la classe
+  `.regen-calc-btn` (grisage instantané côté client de tous les boutons de calcul)
+  mais était absent à la fois de `ACTION_BTNS` (liste que l'observer d'autorité
+  ré-active) et de la liste de déclencheurs `click_tick` (qui force cette
+  ré-évaluation après un clic). Résultat : un clic sur « Envoyer vers Terrain » ne
+  re-synchronisait jamais le verrou, laissant les deux boutons grisés à vie.
+  `export_terrain` est désormais dans les deux listes.
+
+- **Le PDF reGénération n'était pas préfixé par le nom du projet** lorsque
+  `metadata$name` était absent ou vide (chaîne vide → préfixe vide). Nouveau helper
+  partagé `.project_export_slug()` (résolution `metadata$name` → `name` → `id` →
+  repli, robuste aux valeurs vides / NA), utilisé par les noms de fichiers **et** les
+  archives `exports/` des exports PDF/GeoPackage des deux onglets (Plan d'actions et
+  reGénération) — garantit un préfixe signifiant en toute circonstance et aligne le
+  nommage GeoPackage de reGénération sur celui du Plan d'actions.
+
 
 # nemetonshiny 0.108.2 (2026-07-16)
 
