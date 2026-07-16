@@ -66,8 +66,10 @@ bivariate_legend_html <- function(palette = NULL,
   n <- ncol %||% round(sqrt(length(pal)))
   n <- as.integer(n)
   if (length(n) != 1L || is.na(n) || n < 1L) n <- 3L
-  # Cellules plus petites au-delà de 3×3 pour garder une légende compacte.
-  px <- if (n > 3L) 16L else 20L
+  # Cellules un peu plus petites au-delà de 3×3, mais assez grandes pour rester
+  # lisibles sans ascenseur (la classe `nmt-bivariate-control` retire le plafond
+  # de hauteur du contrôle leaflet, cf. custom.css).
+  px <- if (n > 3L) 22L else 20L
   W <- n * px; H <- n * px
   cell <- function(cls) {
     col <- pal[[as.character(cls)]] %||% "#cccccc"
