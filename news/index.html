@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.107.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.107.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,16 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.107.3" id="nemetonshiny-01073-2026-07-16">nemetonshiny 0.107.3 (2026-07-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01073-2026-07-16"></a></h2>
+<div class="section level4">
+<h4 id="fixed--légende-bivariée-sans-ascenseur--notif--calcul-en-cours--au-clic-0-107-3">Fixed — légende bivariée sans ascenseur + notif « calcul en cours » au clic<a class="anchor" aria-label="anchor" href="#fixed--l%C3%A9gende-bivari%C3%A9e-sans-ascenseur--notif--calcul-en-cours--au-clic-0-107-3"></a></h4>
+<ul><li>
+<strong>Légende bivariée</strong> : la grille 5×5 + axes dépassait le plafond de 150 px du contrôle leaflet (<code>.info.legend</code>), provoquant <strong>deux ascenseurs</strong>. La légende reçoit désormais une classe dédiée (<code>nmt-bivariate-control</code>) sans plafond ni overflow, et ses cases sont agrandies (16 → 22 px) pour rester lisibles.</li>
+<li>
+<strong>Message « Calcul du graphique en cours… »</strong> au clic sur la maille E-OBS (parité FAST/FORDEAD) : notification affichée immédiatement, extraction différée après le flush (<code>onFlushed</code>), et <strong>garde anti-multi-clics</strong> qui ignore les clics tant que le graphique précédent n’a pas fini de se calculer.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.107.2" id="nemetonshiny-01072-2026-07-16">nemetonshiny 0.107.2 (2026-07-16)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01072-2026-07-16"></a></h2>
