@@ -1,3 +1,21 @@
+# nemetonshiny 0.107.16 (2026-07-16)
+
+### Added — reGénération : top-3 essences recommandées par UGF (spec 039, P1)
+
+Dans reGénération (vue Carte + Tableau), la **fiche parcelle** d'une UGF affiche
+désormais les **3 essences les plus pertinentes** pour sa régénération, classées
+par le cœur `nemeton::regen_rank_species` (>= 0.162.0) : classement **déterministe**
+selon l'adéquation des tolérances écologiques de chaque essence (chaleur/sécheresse,
+gel tardif, ombre) aux conditions de station de l'UGF, en écartant les invasives.
+Chaque essence est présentée avec son **score d'adéquation 0-100**, son **facteur
+limitant** (sécheresse / gel / chaleur / ombre) et son **niveau de confiance**.
+Wrapper service `regeneration_species_ranking` (NA/erreur-safe) + rendu
+`.regen_species_ranking_ui`. Plancher `Imports: nemeton (>= 0.162.0)`.
+
+Approche hybride (cf. décision produit) : ce P1 livre le **classement déterministe** ;
+le conseil narratif IA par UGF (P2) viendra en surcouche.
+
+
 # nemetonshiny 0.107.15 (2026-07-16)
 
 ### Changed — famille R : R6/R7 intégrés au score (normalisation cœur, spec 038)
