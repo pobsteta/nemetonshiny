@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.109.5 (2026-07-17)
+
 ### Changed — Accessibilité : couche « Classes de débardage » activée (foretaccess ≥ 1.3.0)
 
 - Bump `Imports: foretaccess (>= 1.3.0)` + `Remotes: pobsteta/foretaccess@v1.3.0`
