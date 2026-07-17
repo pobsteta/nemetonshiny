@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.109.0 (2026-07-17)
+
 ### Added — sous-onglet « Accessibilité » (ForêtAccess) dans l'onglet Terrain
 
 - Nouveau sous-onglet **« Accessibilité »** dans l'onglet Terrain (renommé
