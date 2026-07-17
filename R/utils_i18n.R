@@ -55,8 +55,6 @@ TRANSLATIONS <- list(
   acc_no_mnt = list(fr = "Aucun MNT disponible pour ce projet. Calculez d'abord les indicateurs (l'analyse r\u00e9utilise le MNT LiDAR du projet).", en = "No DEM available for this project. Compute the indicators first (the analysis reuses the project LiDAR DEM)."),
   acc_layer_label = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
   acc_map_title = list(fr = "Carte d'accessibilit\u00e9", en = "Accessibility map"),
-  acc_recap_title = list(fr = "Surfaces par classe (ha)", en = "Areas by class (ha)"),
-  acc_recap_empty = list(fr = "Lancez l'analyse pour afficher les surfaces par classe.", en = "Run the analysis to display areas by class."),
   acc_legend_title = list(fr = "Classe d'accessibilit\u00e9", en = "Accessibility class"),
   acc_download_gpkg = list(fr = "T\u00e9l\u00e9charger le GeoPackage", en = "Download GeoPackage"),
   acc_export_empty = list(fr = "Aucun r\u00e9sultat d'accessibilit\u00e9 \u00e0 exporter.", en = "No accessibility result to export."),

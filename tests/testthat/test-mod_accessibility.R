@@ -49,7 +49,7 @@ test_that("run sans projet chargé = no-op gardé (aucun worker lancé)", {
     })
 })
 
-test_that("résultat posé -> tableau récap et sélecteur de couche rendus", {
+test_that("résultat posé -> sélecteur de couche rendu", {
   skip_if_not_installed("sf")
   proj <- list(id = "p1", path = withr::local_tempdir(),
                indicators_sf = .acc_units(1))
@@ -71,8 +71,6 @@ test_that("résultat posé -> tableau récap et sélecteur de couche rendus", {
           porteur = data.frame(classe = "parcourable", surface_ha = 4.0)),
         raster_paths = list(), gpkg_path = NULL)
       session$flushReact()
-      # Le tableau récap se rend (non nul).
-      expect_false(is.null(output$recap))
       # Le sélecteur de couche apparaît une fois un résultat présent.
       expect_false(is.null(output$layer_ui))
     })
