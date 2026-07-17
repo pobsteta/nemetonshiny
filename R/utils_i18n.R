@@ -33,10 +33,41 @@ TRANSLATIONS <- list(
   tab_carte_cadastrale = list(fr = "Carte cadastrale", en = "Cadastral map"),
   tab_carte_tenements = list(fr = "Carte UGF", en = "UGF Map"),
   tab_tableau_ug = list(fr = "Tableau UGF", en = "UGF Table"),
-  tab_sampling = list(fr = "Terrain", en = "Field"),
+  tab_sampling = list(fr = "Terrain accessible", en = "Accessible field"),
   tab_terrain_export = list(fr = "Export terrain",   en = "Field export"),
   tab_terrain_import = list(fr = "Import terrain",   en = "Field import"),
   tab_action_plan = list(fr = "Plan d'actions", en = "Action Plan"),
+
+  # ============================================================
+  # Accessibilit\u00e9 foresti\u00e8re (For\u00eatAccess \u2014 onglet Terrain)
+  # ============================================================
+  tab_terrain_accessibilite = list(fr = "Accessibilit\u00e9", en = "Accessibility"),
+  acc_intro = list(fr = "Cartographie de l'accessibilit\u00e9 d'exploitation (d\u00e9bardage tracteur, porteur, d\u00e9fense incendie DFCI) \u00e0 partir du MNT du projet et de la desserte (OpenStreetMap).", en = "Maps harvesting accessibility (tractor skidding, forwarder, DFCI fire defence) from the project DEM and the road network (OpenStreetMap)."),
+  acc_engines_label = list(fr = "Moteurs d'exploitation", en = "Harvesting engines"),
+  acc_engine_skidder = list(fr = "D\u00e9busqueur (skidder)", en = "Skidder"),
+  acc_engine_porteur = list(fr = "Porteur", en = "Forwarder"),
+  acc_engine_dfci = list(fr = "Camion DFCI", en = "DFCI truck"),
+  acc_run = list(fr = "Lancer l'analyse", en = "Run analysis"),
+  acc_running = list(fr = "Analyse d'accessibilit\u00e9 en cours\u2026", en = "Computing accessibility\u2026"),
+  acc_busy_already = list(fr = "Une analyse d'accessibilit\u00e9 est d\u00e9j\u00e0 en cours.", en = "An accessibility analysis is already running."),
+  acc_need_project = list(fr = "Chargez un projet avec une g\u00e9om\u00e9trie (UGF ou parcelles) avant de lancer l'analyse.", en = "Load a project with geometry (management units or parcels) before running."),
+  acc_need_engine = list(fr = "S\u00e9lectionnez au moins un moteur d'exploitation.", en = "Select at least one harvesting engine."),
+  acc_no_mnt = list(fr = "Aucun MNT disponible pour ce projet. Calculez d'abord les indicateurs (l'analyse r\u00e9utilise le MNT LiDAR du projet).", en = "No DEM available for this project. Compute the indicators first (the analysis reuses the project LiDAR DEM)."),
+  acc_layer_label = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
+  acc_map_title = list(fr = "Carte d'accessibilit\u00e9", en = "Accessibility map"),
+  acc_recap_title = list(fr = "Surfaces par classe (ha)", en = "Areas by class (ha)"),
+  acc_recap_empty = list(fr = "Lancez l'analyse pour afficher les surfaces par classe.", en = "Run the analysis to display areas by class."),
+  acc_legend_title = list(fr = "Classe d'accessibilit\u00e9", en = "Accessibility class"),
+  acc_download_gpkg = list(fr = "T\u00e9l\u00e9charger le GeoPackage", en = "Download GeoPackage"),
+  acc_export_empty = list(fr = "Aucun r\u00e9sultat d'accessibilit\u00e9 \u00e0 exporter.", en = "No accessibility result to export."),
+  acc_done_fmt = list(fr = "Accessibilit\u00e9 calcul\u00e9e (%d moteur(s)).", en = "Accessibility computed (%d engine(s))."),
+  accessibility_no_foretaccess = list(fr = "Le paquet 'foretaccess' n'est pas install\u00e9.", en = "The 'foretaccess' package is not installed."),
+  accessibility_need_project = list(fr = "Chargez un projet avec une g\u00e9om\u00e9trie avant de lancer l'analyse.", en = "Load a project with geometry before running."),
+  accessibility_need_engine = list(fr = "S\u00e9lectionnez au moins un moteur.", en = "Select at least one engine."),
+  accessibility_desserte_failed = list(fr = "\u00c9chec de l'acquisition de la desserte (OpenStreetMap). V\u00e9rifiez la connexion r\u00e9seau.", en = "Road network acquisition failed (OpenStreetMap). Check the network connection."),
+  accessibility_desserte_empty = list(fr = "Aucune desserte trouv\u00e9e sur l'emprise du projet.", en = "No road network found over the project area."),
+  accessibility_preprocess_failed = list(fr = "\u00c9chec du pr\u00e9traitement (MNT / desserte / for\u00eat).", en = "Preprocessing failed (DEM / roads / forest)."),
+  accessibility_engine_failed = list(fr = "\u00c9chec d'un moteur d'accessibilit\u00e9.", en = "An accessibility engine failed."),
 
   # ============================================================
   # Action Plan tab (S3 skeleton)

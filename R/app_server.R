@@ -293,6 +293,9 @@ app_server <- function(input, output, session) {
   # Field ingest module (E5.b — QField return path)
   mod_field_ingest_server("field_ingest", app_state)
 
+  # Accessibility module (ForêtAccess — terrestrial engines)
+  mod_accessibility_server("accessibility", app_state)
+
   # Monitoring module (E6.b phase 1 — Sentinel-2 continuous monitoring)
   mod_monitoring_server("monitoring", app_state)
 
