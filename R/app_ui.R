@@ -94,6 +94,12 @@ app_ui <- function(request) {
             value = "field_ingest",
             icon = bsicons::bs_icon("upload"),
             mod_field_ingest_ui("field_ingest")
+          ),
+          bslib::nav_panel(
+            title = i18n$t("tab_terrain_accessibilite"),
+            value = "accessibility",
+            icon = bsicons::bs_icon("signpost-split"),
+            mod_accessibility_ui("accessibility")
           )
         )
       ),

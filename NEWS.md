@@ -1,5 +1,29 @@
 # nemetonshiny (development version)
 
+### Added — sous-onglet « Accessibilité » (ForêtAccess) dans l'onglet Terrain
+
+- Nouveau sous-onglet **« Accessibilité »** dans l'onglet Terrain (renommé
+  **« Terrain accessible »**), consommant le paquet **`foretaccess`** (v1.2.0,
+  réimplémentation de Sylvaccess — INRAE) : cartographie de l'accessibilité
+  d'exploitation pour les trois **moteurs terrestres** (débusqueur/skidder,
+  porteur, camion DFCI). Le moteur câble-mât (noyau Rust) sera ajouté dans un
+  incrément ultérieur — sans changement de dépendance.
+- Nouveau module `R/mod_accessibility.R` (UI + rendu carte/tableau) et service
+  `R/service_accessibility.R` (adaptateur non-Shiny autour de `foretaccess`,
+  règles 1/2). Le calcul (long) tourne dans un **worker `future`** avec notif
+  persistante + chrono ; le worker écrit les rasters de classes sur disque et ne
+  renvoie que des chemins + les récaps (un `SpatRaster` n'est pas sérialisable
+  entre process).
+- Pipeline : AOI = géométrie du projet (indicators_sf → UGF → parcelles), MNT
+  **réutilisé** depuis le cache LiDAR du projet, **desserte acquise via OSM**
+  (`acquire_desserte`), puis `preprocess()` + moteurs. Sorties : carte Leaflet
+  des classes (sélecteur de moteur affiché), tableau des **surfaces par classe
+  et par moteur (ha)**, et **export GeoPackage** (`<projet>_accessibilite.gpkg`,
+  couches `foret` + `desserte`).
+- `foretaccess` ajouté en **`Imports`** (+ `Remotes: pobsteta/foretaccess@*release`)
+  et `osmdata` en `Suggests`. Chaque échec (desserte OSM, MNT absent, moteur)
+  est remonté en toast structuré, jamais en exception.
+
 
 # nemetonshiny 0.108.3 (2026-07-16)
 
