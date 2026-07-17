@@ -52,7 +52,7 @@ jobs:
 
       # foretaccess embarque un noyau câble en Rust (extendr) : cargo/rustc
       # doivent être sur le PATH avant l'installation (local::. tire foretaccess
-      # depuis les sources — Remotes: pobsteta/foretaccess@v1.2.0).
+      # depuis les sources — Remotes: pobsteta/foretaccess@v1.3.0).
       - name: Setup Rust toolchain (foretaccess cable core via extendr)
         uses: dtolnay/rust-toolchain@stable
 
