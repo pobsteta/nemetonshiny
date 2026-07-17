@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.109.3 (2026-07-17)
+
 ### Changed — Accessibilité : carte seule (retrait du tableau des surfaces)
 
 - Le sous-onglet Accessibilité n'affiche plus le **tableau « Surfaces par classe
