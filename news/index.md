@@ -2,6 +2,25 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.109.4 (2026-07-17)
+
+#### Added — Accessibilité : couche « Classes de débardage » (câblage)
+
+- La carte Accessibilité peut afficher le raster **« Classes de
+  débardage »** (bandes de distance Sylvaccess 0-250 … \> 2000 m +
+  inaccessible / inexploitable / hors_foret) produit par
+  `foretaccess::classes_debardage(sk, pre)` quand le skidder a tourné,
+  avec sa **table de couleurs** propre (rampe vert-proche →
+  rouge-lointain, via
+  [`terra::coltab`](https://rspatial.github.io/terra/reference/colors.html))
+  et une légende étiquetée. Le sélecteur de couche liste désormais un
+  choix par raster disponible.
+- **Inerte tant que foretaccess ne l’expose pas** : `classes_debardage`
+  n’est pas publié dans la release `foretaccess` v1.2.0 (pin actuel). Le
+  câblage dégrade gracieusement (aucune couche débardage, pas d’erreur)
+  ; il s’activera après une release foretaccess exportant la fonction +
+  bump `Imports`/`Remotes` côté app.
+
 ## nemetonshiny 0.109.3 (2026-07-17)
 
 #### Changed — Accessibilité : carte seule (retrait du tableau des surfaces)

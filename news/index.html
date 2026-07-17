@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.109.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.109.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.109.4" id="nemetonshiny-01094-2026-07-17">nemetonshiny 0.109.4 (2026-07-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01094-2026-07-17"></a></h2>
+<div class="section level4">
+<h4 id="added--accessibilité--couche--classes-de-débardage--câblage-0-109-4">Added — Accessibilité : couche « Classes de débardage » (câblage)<a class="anchor" aria-label="anchor" href="#added--accessibilit%C3%A9--couche--classes-de-d%C3%A9bardage--c%C3%A2blage-0-109-4"></a></h4>
+<ul><li>La carte Accessibilité peut afficher le raster <strong>« Classes de débardage »</strong> (bandes de distance Sylvaccess 0-250 … &gt; 2000 m + inaccessible / inexploitable / hors_foret) produit par <code>foretaccess::classes_debardage(sk, pre)</code> quand le skidder a tourné, avec sa <strong>table de couleurs</strong> propre (rampe vert-proche → rouge-lointain, via <code><a href="https://rspatial.github.io/terra/reference/colors.html" class="external-link">terra::coltab</a></code>) et une légende étiquetée. Le sélecteur de couche liste désormais un choix par raster disponible.</li>
+<li>
+<strong>Inerte tant que foretaccess ne l’expose pas</strong> : <code>classes_debardage</code> n’est pas publié dans la release <code>foretaccess</code> v1.2.0 (pin actuel). Le câblage dégrade gracieusement (aucune couche débardage, pas d’erreur) ; il s’activera après une release foretaccess exportant la fonction + bump <code>Imports</code>/<code>Remotes</code> côté app.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.109.3" id="nemetonshiny-01093-2026-07-17">nemetonshiny 0.109.3 (2026-07-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01093-2026-07-17"></a></h2>
