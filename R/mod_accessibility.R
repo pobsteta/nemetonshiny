@@ -79,7 +79,7 @@ mod_accessibility_server <- function(id, app_state) {
 
     # --- Worker asynchrone : acquisition desserte + prétraitement + moteurs -----
     acc_task <- shiny::ExtendedTask$new(
-      function(aoi, mnt_path, engines, cache_dir, dev_path, app_opts) {
+      function(aoi_path, engines, cache_dir, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
@@ -94,7 +94,7 @@ mod_accessibility_server <- function(id, app_state) {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          nemetonshiny:::run_accessibility(aoi, mnt_path, engines, cache_dir)
+          nemetonshiny:::run_accessibility(aoi_path, engines, cache_dir)
         }, seed = TRUE)
       })
 
@@ -125,10 +125,21 @@ mod_accessibility_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("acc_need_engine"), type = "warning")
         return()
       }
-      mnt_path <- .resolve_accessibility_mnt(project_path)
-      if (is.null(mnt_path)) {
+      # L'AOI est passée au worker `future` PAR FICHIER, jamais comme `sf` vivant :
+      # une géométrie sf peut porter un pointeur externe qui casse la
+      # sérialisation inter-process ("external pointer is not valid"). On l'écrit
+      # ici (process principal, pointeur valide) ; le worker la relit.
+      cache_dir <- .accessibility_cache_dir(project_path)
+      dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+      aoi_path <- file.path(cache_dir, "aoi_input.gpkg")
+      ok <- tryCatch({
+        sf::st_write(aoi, aoi_path, layer = "foret", quiet = TRUE,
+                     delete_dsn = TRUE)
+        TRUE
+      }, error = function(e) FALSE)
+      if (!isTRUE(ok)) {
         bslib::update_task_button("run", state = "ready")
-        shiny::showNotification(i18n$t("acc_no_mnt"), type = "warning", duration = 10)
+        shiny::showNotification(i18n$t("acc_need_project"), type = "warning")
         return()
       }
 
@@ -137,9 +148,21 @@ mod_accessibility_server <- function(id, app_state) {
       shiny::showNotification(
         .running_notif_content(i18n$t("acc_running"), rv$start),
         id = session$ns("acc_notif"), type = "message", duration = NULL)
-      acc_task$invoke(aoi, mnt_path, engines,
-                      .accessibility_cache_dir(project_path),
-                      .dev_pkg_path, get_app_options())
+      # Garde-fou : un échec SYNCHRONE d'invoke (sérialisation d'un argument) ne
+      # doit pas laisser le bouton figé « busy » ni la notif collée.
+      tryCatch(
+        acc_task$invoke(aoi_path, engines, cache_dir,
+                        .dev_pkg_path, get_app_options()),
+        error = function(e) {
+          rv$running <- FALSE
+          rv$start <- NULL
+          shiny::removeNotification(session$ns("acc_notif"))
+          bslib::update_task_button("run", state = "ready")
+          shiny::showNotification(
+            paste0(i18n$t("accessibility_engine_failed"), " — ",
+                   .strip_ansi(conditionMessage(e))),
+            type = "error", duration = NULL)
+        })
     })
 
     # Rafraîchit le chrono de la notif persistante tant que le worker tourne.

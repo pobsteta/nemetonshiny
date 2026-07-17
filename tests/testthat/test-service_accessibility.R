@@ -40,10 +40,6 @@ test_that(".resolve_accessibility_aoi : NULL projet -> NULL ; indicators_sf -> 2
   expect_equal(sf::st_crs(aoi)$epsg, 2154L)
 })
 
-test_that(".resolve_accessibility_mnt : NULL chemin projet -> NULL", {
-  expect_null(nemetonshiny:::.resolve_accessibility_mnt(NULL))
-})
-
 test_that("export_accessibility_geopackage : copie si présent, FALSE sinon", {
   src <- withr::local_tempfile(fileext = ".gpkg"); writeLines("x", src)
   dst <- withr::local_tempfile(fileext = ".gpkg")
@@ -58,16 +54,40 @@ test_that("export_accessibility_geopackage : copie si présent, FALSE sinon", {
 
 test_that("run_accessibility : chemins de garde structurés (pas d'exception)", {
   skip_if_not_installed("sf")
+  skip_if_not_installed("foretaccess")
   cache <- withr::local_tempdir()
-  # AOI manquant.
-  r1 <- nemetonshiny:::run_accessibility(NULL, "x.tif", "skidder", cache)
-  expect_equal(r1$status, "error")
-  expect_equal(r1$reason, "accessibility_need_project")
-  # MNT manquant.
+  # AOI manquante (chemin NULL / inexistant) — avant toute acquisition réseau.
+  expect_equal(
+    nemetonshiny:::run_accessibility(NULL, "skidder", cache)$reason,
+    "accessibility_need_project")
+  expect_equal(
+    nemetonshiny:::run_accessibility("/no/such/aoi.gpkg", "skidder", cache)$reason,
+    "accessibility_need_project")
+  # AOI valide (par fichier) mais aucun moteur : garde AVANT acquisition MNT/OSM.
   poly <- sf::st_sf(geometry = sf::st_sfc(sf::st_polygon(list(rbind(
     c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0)))), crs = 2154))
-  r2 <- nemetonshiny:::run_accessibility(poly, "/no/such/mnt.tif", "skidder", cache)
-  expect_equal(r2$reason, "accessibility_no_mnt")
+  aoi_gpkg <- file.path(cache, "aoi.gpkg")
+  sf::st_write(poly, aoi_gpkg, quiet = TRUE, delete_dsn = TRUE)
+  expect_equal(
+    nemetonshiny:::run_accessibility(aoi_gpkg, character(0), cache)$reason,
+    "accessibility_need_engine")
+})
+
+test_that("run_accessibility : échec d'acquisition MNT -> erreur structurée", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("foretaccess")
+  cache <- withr::local_tempdir()
+  poly <- sf::st_sf(geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+    c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0)))), crs = 2154))
+  aoi_gpkg <- file.path(cache, "aoi.gpkg")
+  sf::st_write(poly, aoi_gpkg, quiet = TRUE, delete_dsn = TRUE)
+  testthat::with_mocked_bindings(
+    acquire_mnt = function(...) stop("réseau IGN indisponible"),
+    .package = "foretaccess",
+    {
+      res <- nemetonshiny:::run_accessibility(aoi_gpkg, "skidder", cache)
+      expect_equal(res$reason, "accessibility_mnt_failed")
+    })
 })
 
 test_that("run_accessibility : pipeline complet sur données toy (OSM mockée)", {
@@ -77,18 +97,23 @@ test_that("run_accessibility : pipeline complet sur données toy (OSM mockée)",
   skip_if(!nzchar(toy) || !file.exists(file.path(toy, "mnt.tif")))
   loadNamespace("foretaccess")
 
-  aoi <- sf::st_read(file.path(toy, "foret.gpkg"), quiet = TRUE)
+  # L'AOI est passée par FICHIER (le worker la relit) : le GeoPackage toy fait
+  # directement office de chemin d'entrée. MNT (acquire_mnt) et desserte
+  # (acquire_desserte) sont mockés vers les données toy (pas de réseau IGN/OSM).
+  aoi_path <- file.path(toy, "foret.gpkg")
   desserte <- sf::st_read(file.path(toy, "desserte.gpkg"), quiet = TRUE)
-  mnt_path <- file.path(toy, "mnt.tif")
+  mnt_toy <- file.path(toy, "mnt.tif")
   cache <- withr::local_tempdir()
 
   testthat::with_mocked_bindings(
+    acquire_mnt = function(aoi, res_m = 5, crs = 2154, cache_dir = tempdir(),
+                           overwrite = FALSE, country = "FR") mnt_toy,
     acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
                                 overwrite = FALSE, country = "FR") desserte,
     .package = "foretaccess",
     {
       res <- nemetonshiny:::run_accessibility(
-        aoi, mnt_path, c("skidder", "porteur", "camion_dfci"), cache)
+        aoi_path, c("skidder", "porteur", "camion_dfci"), cache)
       expect_equal(res$status, "success")
       expect_setequal(res$engines, c("skidder", "porteur", "camion_dfci"))
       expect_true(all(file.exists(unlist(res$raster_paths))))

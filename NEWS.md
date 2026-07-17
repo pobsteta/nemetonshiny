@@ -1,5 +1,23 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.109.1 (2026-07-17)
+
+### Fixed — Accessibilité : « Lancer l'analyse » plantait + MNT source
+
+- **`Lancer l'analyse` plantait** (`external pointer is not valid`) sans toast ni
+  chrono : l'AOI (`sf`) passée au worker `future` portait un pointeur externe
+  non sérialisable entre process. L'AOI est désormais **écrite en GeoPackage**
+  dans le process principal et passée **par chemin** ; le worker la relit. Un
+  échec synchrone d'`invoke` est aussi rattrapé (bouton ré-armé, notif retirée,
+  toast d'erreur) au lieu d'un crash silencieux.
+- **Source du MNT** : le pipeline n'utilise plus le MNT du projet (mosaïque
+  LiDAR HD 1 m, ou WMS ~25 m) mais acquiert le **MNT IGN RGE ALTI 5 m**
+  (`foretaccess::acquire_mnt(res_m = 5)`) — la résolution pour laquelle
+  Sylvaccess/ForêtAccess est calibré. Le MNT (et la desserte OSM) sont **mis en
+  cache** sous `cache/accessibility/` : un second run les réutilise sans
+  re-télécharger.
+
 ### Build — toolchain Rust pour le noyau câble de ForêtAccess
 
 - `foretaccess` (Imports depuis v0.109.0) embarque un noyau câble en Rust

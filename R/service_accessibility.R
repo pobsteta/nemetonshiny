@@ -53,21 +53,6 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
   NULL
 }
 
-#' Resolve the on-disk terrain DEM (MNT) for accessibility
-#'
-#' Reuses the reGénération resolver (LiDAR HD MNT mosaic / BD ALTI, searched in
-#' the project root and the canonical `cache/layers/` dir). Returns the DEM path
-#' or `NULL` when none is available — in which case the caller surfaces a
-#' "compute indicators first" message rather than acquiring a fresh DEM.
-#'
-#' @param project_path Project directory.
-#' @return A DEM GeoTIFF path, or `NULL`.
-#' @noRd
-.resolve_accessibility_mnt <- function(project_path) {
-  if (is.null(project_path)) return(NULL)
-  tryCatch(.resolve_regen_dem(project_path), error = function(e) NULL)
-}
-
 #' Directory holding the accessibility artefacts of a project
 #' @noRd
 .accessibility_cache_dir <- function(project_path) {
@@ -77,31 +62,39 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
 #' Run the terrestrial accessibility engines for a project (worker-side)
 #'
 #' Heavy, self-contained function meant to run in a `future` worker. Acquires
-#' the road network (OSM) for the AOI, runs `foretaccess::preprocess()` then the
+#' the **IGN RGE ALTI 5 m** DEM (Sylvaccess-calibrated resolution) and the road
+#' network (OSM) for the AOI, runs `foretaccess::preprocess()` then the
 #' requested terrestrial engines, writes each engine's categorical class raster
 #' to `cache/accessibility/acc_<engine>.tif`, and writes an exportable
 #' GeoPackage (`foret` + `desserte` layers). Returns only serialisable data
 #' (paths + recap data.frames), never terra/sf objects tied to this process.
 #'
+#' The DEM and road network are cached under `cache_dir` by `acquire_mnt()` /
+#' `acquire_desserte()`: a second run on the same project reuses them (no
+#' re-download).
+#'
 #' Best-effort and structured: every failure path returns
-#' `list(status = "error", message = ...)` instead of throwing, so the caller's
+#' `list(status = "error", reason = ...)` instead of throwing, so the caller's
 #' status observer can surface a clean toast.
 #'
-#' @param aoi Forest polygons (`sf`, EPSG:2154).
-#' @param mnt_path Terrain DEM GeoTIFF path.
+#' @param aoi_path GeoPackage path holding the forest polygons (AOI). The AOI is
+#'   passed as a FILE, never as a live `sf`: an `sf`/geometry can carry an
+#'   external pointer that fails to serialise across the `future` process
+#'   boundary ("external pointer is not valid"). The worker reads it here.
 #' @param engines Character vector, subset of `ACCESSIBILITY_ENGINES`.
-#' @param cache_dir Destination directory for the artefacts.
+#' @param cache_dir Destination directory for the artefacts (and DEM/road cache).
 #' @return A named list describing the run (see details).
 #' @noRd
-run_accessibility <- function(aoi, mnt_path, engines, cache_dir) {
+run_accessibility <- function(aoi_path, engines, cache_dir) {
   if (!requireNamespace("foretaccess", quietly = TRUE)) {
     return(list(status = "error", reason = "accessibility_no_foretaccess"))
   }
-  if (is.null(aoi) || !inherits(aoi, "sf") || nrow(aoi) == 0L) {
+  if (is.null(aoi_path) || !file.exists(aoi_path)) {
     return(list(status = "error", reason = "accessibility_need_project"))
   }
-  if (is.null(mnt_path) || !file.exists(mnt_path)) {
-    return(list(status = "error", reason = "accessibility_no_mnt"))
+  aoi <- tryCatch(sf::st_read(aoi_path, quiet = TRUE), error = function(e) NULL)
+  if (is.null(aoi) || !inherits(aoi, "sf") || nrow(aoi) == 0L) {
+    return(list(status = "error", reason = "accessibility_need_project"))
   }
   engines <- intersect(engines, ACCESSIBILITY_ENGINES)
   if (length(engines) == 0L) {
@@ -110,17 +103,25 @@ run_accessibility <- function(aoi, mnt_path, engines, cache_dir) {
 
   dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
 
-  # Aligner l'AOI sur le CRS du MNT : preprocess() valide strictement l'égalité
-  # des CRS (mnt vs vecteurs) et abort sinon. Le MNT fait foi (grille de calcul).
-  mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
-  if (is.null(mnt)) return(list(status = "error", reason = "accessibility_no_mnt"))
-  mnt_crs <- tryCatch(sf::st_crs(terra::crs(mnt)), error = function(e) sf::st_crs(2154))
-  if (is.na(mnt_crs)) mnt_crs <- sf::st_crs(2154)
-  aoi <- tryCatch(sf::st_transform(aoi, mnt_crs), error = function(e) aoi)
-  epsg <- tryCatch(mnt_crs$epsg %||% 2154L, error = function(e) 2154L)
-  if (is.null(epsg) || is.na(epsg)) epsg <- 2154L
+  # Tout le pipeline travaille en Lambert-93 (EPSG:2154), CRS national FR et
+  # celui dans lequel acquire_mnt fournit le MNT : preprocess() valide l'égalité
+  # stricte des CRS (mnt vs vecteurs).
+  epsg <- 2154L
+  aoi <- tryCatch(sf::st_transform(aoi, epsg), error = function(e) aoi)
 
-  # 1. Desserte (réseau routier/pistes) via OSM sur l'emprise de l'AOI.
+  # 1. MNT IGN RGE ALTI 5 m (résolution pour laquelle Sylvaccess/ForêtAccess est
+  # calibré). acquire_mnt met en cache dans cache_dir : un 2e run le réutilise.
+  mnt_path <- tryCatch(
+    foretaccess::acquire_mnt(aoi, res_m = 5, crs = epsg, cache_dir = cache_dir),
+    error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+  if (inherits(mnt_path, "acc_err")) {
+    return(list(status = "error", reason = "accessibility_mnt_failed",
+                detail = mnt_path$msg))
+  }
+  mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
+  if (is.null(mnt)) return(list(status = "error", reason = "accessibility_mnt_failed"))
+
+  # 2. Desserte (réseau routier/pistes) via OSM sur l'emprise de l'AOI (cachée).
   desserte <- tryCatch(
     foretaccess::acquire_desserte(aoi, crs = epsg, cache_dir = cache_dir),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
@@ -132,7 +133,7 @@ run_accessibility <- function(aoi, mnt_path, engines, cache_dir) {
     return(list(status = "error", reason = "accessibility_desserte_empty"))
   }
 
-  # 2. Prétraitement commun (pente, exposition, masques, rasterisation).
+  # 3. Prétraitement commun (pente, exposition, masques, rasterisation).
   pre <- tryCatch(
     foretaccess::preprocess(mnt = mnt, desserte = desserte, foret = aoi),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
@@ -141,7 +142,7 @@ run_accessibility <- function(aoi, mnt_path, engines, cache_dir) {
                 detail = pre$msg))
   }
 
-  # 3. Moteurs terrestres : raster de classes -> disque ; recap -> mémoire.
+  # 4. Moteurs terrestres : raster de classes -> disque ; recap -> mémoire.
   engine_fun <- list(
     skidder = foretaccess::skidder,
     porteur = foretaccess::porteur,
@@ -164,7 +165,7 @@ run_accessibility <- function(aoi, mnt_path, engines, cache_dir) {
     recaps[[eng]] <- res$recap
   }
 
-  # 4. GeoPackage exportable : AOI (foret) + desserte. Best-effort.
+  # 5. GeoPackage exportable : AOI (foret) + desserte. Best-effort.
   gpkg_path <- file.path(cache_dir, "accessibilite.gpkg")
   unlink(gpkg_path)
   tryCatch({
