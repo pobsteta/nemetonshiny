@@ -52,21 +52,12 @@ jobs:
 
       # foretaccess embarque un noyau câble en Rust (extendr) : cargo/rustc
       # doivent être sur le PATH avant l'installation (local::. tire foretaccess
-      # depuis les sources — Remotes: pobsteta/foretaccess@*release).
+      # depuis les sources — Remotes: pobsteta/foretaccess@v1.2.0).
       - name: Setup Rust toolchain (foretaccess cable core via extendr)
         uses: dtolnay/rust-toolchain@stable
 
-      # Workaround régression pak 0.11.0 : la résolution des remotes
-      # owner/*@*release y échoue ("the condition has length > 1"). On épingle
-      # pak 0.10.0 (source, archive CRAN) via R_LIB_FOR_PAK + pak-version: none.
-      - name: Pin pak 0.10.0 (pak 0.11.0 regression on owner/*@*release)
-        run: |
-          Rscript -e 'lib <- .libPaths()[1]; install.packages("https://cran.r-project.org/src/contrib/Archive/pak/pak_0.10.0.tar.gz", repos = NULL, type = "source", lib = lib); if (!requireNamespace("pak", lib.loc = lib, quietly = TRUE)) stop("pak 0.10.0 pin failed to install"); cat(sprintf("R_LIB_FOR_PAK=%s\n", lib), file = Sys.getenv("GITHUB_ENV"), append = TRUE); cat("pinned pak", as.character(packageVersion("pak", lib.loc = lib)), "to", lib, "\n")'
-        shell: bash
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          pak-version: none
           extra-packages: any::pkgdown, local::., github::cran/dissUtils, jbferet/spinR
           needs: website
 
