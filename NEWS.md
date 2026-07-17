@@ -1,5 +1,15 @@
 # nemetonshiny (development version)
 
+### Build — CI : épinglage de pak 0.10.0 (régression 0.11.0)
+
+- pak **0.11.0** régresse la résolution des remotes `owner/*@*release` (deux
+  remotes du même propriétaire : `pobsteta/nemeton@*release` +
+  `pobsteta/foretaccess@*release`) et échoue avec `the condition has length > 1`
+  — reproduit localement (0.11.0 casse, 0.10.0 résout). Les workflows CI
+  (R-CMD-check, tests, coverage, pkgdown) **épinglent pak 0.10.0** (build source
+  depuis l'archive CRAN dans `R_LIB_FOR_PAK`, `pak-version: none`) le temps qu'un
+  correctif pak amont soit publié. Débloque `install_github`.
+
 
 # nemetonshiny 0.109.1 (2026-07-17)
 
