@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.109.4 (2026-07-17)
+
 ### Added — Accessibilité : couche « Classes de débardage » (câblage)
 
 - La carte Accessibilité peut afficher le raster **« Classes de débardage »**
