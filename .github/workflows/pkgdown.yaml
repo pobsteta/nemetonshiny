@@ -50,6 +50,12 @@ jobs:
             libtiff5-dev \
             libjpeg-dev
 
+      # foretaccess embarque un noyau câble en Rust (extendr) : cargo/rustc
+      # doivent être sur le PATH avant l'installation (local::. tire foretaccess
+      # depuis les sources — Remotes: pobsteta/foretaccess@*release).
+      - name: Setup Rust toolchain (foretaccess cable core via extendr)
+        uses: dtolnay/rust-toolchain@stable
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::pkgdown, local::., github::cran/dissUtils, jbferet/spinR
