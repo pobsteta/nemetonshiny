@@ -120,5 +120,32 @@ test_that("run_accessibility : pipeline complet sur données toy (OSM mockée)",
       expect_true(file.exists(res$gpkg_path))
       # Chaque moteur a produit un récap non vide.
       expect_true(all(vapply(res$recaps, nrow, integer(1)) > 0L))
+      # Le skidder ajoute le raster « classes de débardage » — UNIQUEMENT si la
+      # version de foretaccess installée exporte `classes_debardage` (ajoutée
+      # après la release v1.2.0). Sinon dégradation gracieuse (pas de couche).
+      dbg_available <- isTRUE(tryCatch(
+        is.function(foretaccess::classes_debardage), error = function(e) FALSE))
+      if (dbg_available) {
+        expect_true("classes_debardage" %in% names(res$raster_paths))
+        dbg <- terra::rast(res$raster_paths[["classes_debardage"]])
+        expect_true(terra::is.factor(dbg))
+      } else {
+        expect_false("classes_debardage" %in% names(res$raster_paths))
+      }
     })
+})
+
+test_that(".acc_level_colors : coltab du raster prioritaire, sinon repli", {
+  skip_if_not_installed("terra")
+  # Raster catégoriel SANS coltab -> palette de repli (#RRGGBB, 7 caractères).
+  r <- terra::rast(nrows = 2, ncols = 2, vals = c(1, 2, 1, 2))
+  levels(r) <- data.frame(value = 1:2, classe = c("a", "b"))
+  cols <- nemetonshiny:::.acc_level_colors(r, c(1, 2))
+  expect_length(cols, 2L)
+  expect_true(all(nchar(cols) == 7L))
+  # Avec une coltab explicite -> ces couleurs (avec alpha, 9 caractères).
+  terra::coltab(r) <- data.frame(value = 1:2, col = c("#123456", "#00000000"))
+  cols2 <- nemetonshiny:::.acc_level_colors(r, c(1, 2))
+  expect_equal(toupper(substr(cols2[1], 1L, 7L)), "#123456")
+  expect_equal(substr(cols2[2], 8L, 9L), "00")   # transparent
 })

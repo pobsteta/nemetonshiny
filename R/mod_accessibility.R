@@ -10,6 +10,33 @@
 # calcul est long → `ExtendedTask` + `future_promise`, même patron que le moteur
 # reGénération (notif persistante bas-droite avec chrono, retour immédiat).
 
+#' Colours for a categorical accessibility raster's levels
+#'
+#' Prefers the raster's own colour table (`terra::coltab`) when it carries a
+#' meaningful one — e.g. the `classes_debardage` raster ships a Sylvaccess
+#' green→red distance ramp. Falls back to a fixed qualitative palette (cycled)
+#' when there is no usable colour table. Returns one colour per `codes` entry,
+#' as `#RRGGBB` (fallback) or `#RRGGBBAA` (from the colour table; `…00` alpha
+#' means transparent, e.g. `hors_foret`).
+#' @noRd
+.acc_level_colors <- function(rast, codes) {
+  pal <- c("#2E7D32", "#9CCC65", "#FDD835", "#FB8C00", "#C62828",
+           "#6D4C41", "#9E9E9E", "#455A64")
+  ct <- tryCatch(terra::coltab(rast)[[1]], error = function(e) NULL)
+  if (is.data.frame(ct) && all(c("red", "green", "blue") %in% names(ct))) {
+    # terra nomme la 1re colonne « values » (ou « value » selon la version) : on
+    # prend la colonne d'index par position pour être robuste.
+    idx <- match(codes, ct[[1]])
+    a <- if ("alpha" %in% names(ct)) ct$alpha[idx] else rep(255L, length(idx))
+    a[is.na(a)] <- 255L
+    hex <- grDevices::rgb(ct$red[idx], ct$green[idx], ct$blue[idx],
+                          alpha = a, maxColorValue = 255)
+    # Ignorer une coltab dégénérée (terra en pose parfois une toute noire).
+    if (length(unique(hex[!is.na(hex)])) > 1L) return(hex)
+  }
+  pal[((seq_along(codes) - 1L) %% length(pal)) + 1L]
+}
+
 #' @noRd
 mod_accessibility_ui <- function(id) {
   ns <- shiny::NS(id)
@@ -204,18 +231,25 @@ mod_accessibility_server <- function(id, app_state) {
       rv$result <- NULL
     }, ignoreNULL = FALSE)
 
-    # --- Sélecteur de couche (moteur affiché) : rendu après un run -------------
+    # --- Sélecteur de couche (raster affiché) : rendu après un run -------------
+    # Les choix sont les rasters disponibles : un par moteur (leurs classes
+    # d'accessibilité) + « Classes de débardage » (bandes de distance Sylvaccess)
+    # quand le skidder a tourné.
     output$layer_ui <- shiny::renderUI({
       res <- rv$result
-      if (is.null(res) || length(res$engines) == 0L) return(NULL)
-      eng_label <- c(
+      layers <- if (is.null(res)) NULL else names(res$raster_paths)
+      if (is.null(layers) || length(layers) == 0L) return(NULL)
+      lyr_label <- c(
         skidder = i18n$t("acc_engine_skidder"),
         porteur = i18n$t("acc_engine_porteur"),
-        camion_dfci = i18n$t("acc_engine_dfci"))
+        camion_dfci = i18n$t("acc_engine_dfci"),
+        classes_debardage = i18n$t("acc_layer_debardage"))
+      labs <- unname(lyr_label[layers])
+      labs[is.na(labs)] <- layers[is.na(labs)]
       shiny::radioButtons(
         ns("layer"), i18n$t("acc_layer_label"),
-        choices = stats::setNames(res$engines, eng_label[res$engines]),
-        selected = res$engines[[1]])
+        choices = stats::setNames(layers, labs),
+        selected = layers[[1]])
     })
 
     # --- Carte : contour AOI de base + raster de classes en overlay ------------
@@ -240,10 +274,11 @@ mod_accessibility_server <- function(id, app_state) {
       m
     })
 
-    # Overlay du raster de classes du moteur choisi, via proxy (préserve zoom).
+    # Overlay du raster de classes choisi, via proxy (préserve zoom).
     shiny::observe({
       res <- rv$result
-      layer <- input$layer %||% (if (!is.null(res)) res$engines[[1]] else NULL)
+      first_layer <- if (!is.null(res)) names(res$raster_paths)[[1]] else NULL
+      layer <- input$layer %||% first_layer
       proxy <- leaflet::leafletProxy("map")
       leaflet::clearGroup(proxy, "Accessibilite")
       leaflet::removeControl(proxy, "acc_legend")
@@ -253,18 +288,19 @@ mod_accessibility_server <- function(id, app_state) {
       rast <- tryCatch(terra::rast(rp), error = function(e) NULL)
       if (is.null(rast)) return()
 
-      # Raster catégoriel : palette par niveau + légende étiquetée.
+      # Raster catégoriel : couleurs via la coltab du raster (ex. rampe Sylvaccess
+      # des classes de débardage) ou palette de repli. Légende sans les classes
+      # transparentes (alpha 00, ex. hors_foret).
       lv <- tryCatch(terra::levels(rast)[[1]], error = function(e) NULL)
-      pal <- c("#2E7D32", "#9CCC65", "#FDD835", "#FB8C00", "#C62828",
-               "#6D4C41", "#9E9E9E", "#455A64")
       if (is.data.frame(lv) && nrow(lv) > 0L) {
         codes <- as.numeric(lv[[1]]); labs <- as.character(lv[[2]])
-        cols <- pal[((seq_along(codes) - 1L) %% length(pal)) + 1L]
+        cols <- .acc_level_colors(rast, codes)
         cmap <- leaflet::colorFactor(cols, domain = codes, na.color = "transparent")
+        keep <- !is.na(cols) & substr(cols, 8L, 9L) != "00"
         proxy |>
           leaflet::addRasterImage(rast, colors = cmap, opacity = 0.7,
             project = TRUE, group = "Accessibilite") |>
-          leaflet::addLegend("bottomright", colors = cols, labels = labs,
+          leaflet::addLegend("bottomright", colors = cols[keep], labels = labs[keep],
             title = i18n$t("acc_legend_title"), layerId = "acc_legend",
             opacity = 0.8)
       } else {

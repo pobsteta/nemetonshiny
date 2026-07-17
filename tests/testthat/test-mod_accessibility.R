@@ -69,9 +69,13 @@ test_that("résultat posé -> sélecteur de couche rendu", {
         recaps = list(
           skidder = data.frame(classe = "parcourable", surface_ha = 4.0),
           porteur = data.frame(classe = "parcourable", surface_ha = 4.0)),
-        raster_paths = list(), gpkg_path = NULL)
+        raster_paths = list(skidder = "/x/acc_skidder.tif",
+                            classes_debardage = "/x/acc_classes_debardage.tif",
+                            porteur = "/x/acc_porteur.tif"),
+        gpkg_path = NULL)
       session$flushReact()
-      # Le sélecteur de couche apparaît une fois un résultat présent.
+      # Le sélecteur de couche apparaît une fois un résultat présent (une entrée
+      # par raster disponible, dont « classes_debardage »).
       expect_false(is.null(output$layer_ui))
     })
 })
