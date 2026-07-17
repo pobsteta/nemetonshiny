@@ -48,11 +48,7 @@ mod_accessibility_ui <- function(id) {
     bslib::card(
       full_screen = TRUE,
       bslib::card_header(i18n$t("acc_map_title")),
-      leaflet::leafletOutput(ns("map"), height = 440)
-    ),
-    bslib::card(
-      bslib::card_header(i18n$t("acc_recap_title")),
-      DT::dataTableOutput(ns("recap"))
+      leaflet::leafletOutput(ns("map"), height = 600)
     )
   )
 }
@@ -275,20 +271,6 @@ mod_accessibility_server <- function(id, app_state) {
         proxy |> leaflet::addRasterImage(rast, opacity = 0.7, project = TRUE,
           group = "Accessibilite")
       }
-    })
-
-    # --- Tableau récapitulatif (ha par classe et par moteur) -------------------
-    output$recap <- DT::renderDataTable({
-      res <- rv$result
-      df <- if (is.null(res)) NULL else .accessibility_recap_table(res$recaps, i18n)
-      if (is.null(df)) {
-        return(DT::datatable(
-          data.frame(x = i18n$t("acc_recap_empty")),
-          rownames = FALSE, colnames = "",
-          options = list(dom = "t", ordering = FALSE)))
-      }
-      DT::datatable(df, rownames = FALSE,
-        options = list(dom = "t", paging = FALSE, ordering = FALSE))
     })
 
     # --- Export GeoPackage -----------------------------------------------------
