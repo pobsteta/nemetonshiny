@@ -2,6 +2,432 @@
 
 ## nemetonshiny (development version)
 
+#### Build — CI : épinglage de pak 0.10.0 (régression 0.11.0)
+
+- pak **0.11.0** régresse la résolution des remotes `owner/*@*release`
+  (deux remotes du même propriétaire : `pobsteta/nemeton@*release` +
+  `pobsteta/foretaccess@*release`) et échoue avec
+  `the condition has length > 1` — reproduit localement (0.11.0 casse,
+  0.10.0 résout). Les workflows CI (R-CMD-check, tests, coverage,
+  pkgdown) **épinglent pak 0.10.0** (build source depuis l’archive CRAN
+  dans `R_LIB_FOR_PAK`, `pak-version: none`) le temps qu’un correctif
+  pak amont soit publié. Débloque `install_github`.
+
+## nemetonshiny 0.109.1 (2026-07-17)
+
+#### Fixed — Accessibilité : « Lancer l’analyse » plantait + MNT source
+
+- **`Lancer l'analyse` plantait** (`external pointer is not valid`) sans
+  toast ni chrono : l’AOI (`sf`) passée au worker `future` portait un
+  pointeur externe non sérialisable entre process. L’AOI est désormais
+  **écrite en GeoPackage** dans le process principal et passée **par
+  chemin** ; le worker la relit. Un échec synchrone d’`invoke` est aussi
+  rattrapé (bouton ré-armé, notif retirée, toast d’erreur) au lieu d’un
+  crash silencieux.
+- **Source du MNT** : le pipeline n’utilise plus le MNT du projet
+  (mosaïque LiDAR HD 1 m, ou WMS ~25 m) mais acquiert le **MNT IGN RGE
+  ALTI 5 m** (`foretaccess::acquire_mnt(res_m = 5)`) — la résolution
+  pour laquelle Sylvaccess/ForêtAccess est calibré. Le MNT (et la
+  desserte OSM) sont **mis en cache** sous `cache/accessibility/` : un
+  second run les réutilise sans re-télécharger.
+
+#### Build — toolchain Rust pour le noyau câble de ForêtAccess
+
+- `foretaccess` (Imports depuis v0.109.0) embarque un noyau câble en
+  Rust (extendr) : ajout du toolchain **Rust (cargo/rustc)** au
+  **Dockerfile** (rustup, toolchain stable minimal dans `/opt/rust`) et
+  aux **workflows CI** (`dtolnay/rust-toolchain@stable` dans les jobs
+  R-CMD-check, tests, coverage et pkgdown), avant l’installation des
+  dépendances R. Sans lui, la compilation de `foretaccess` depuis les
+  sources (`Remotes: pobsteta/foretaccess@*release`) échouait au build.
+
+## nemetonshiny 0.109.0 (2026-07-17)
+
+#### Added — sous-onglet « Accessibilité » (ForêtAccess) dans l’onglet Terrain
+
+- Nouveau sous-onglet **« Accessibilité »** dans l’onglet Terrain
+  (renommé **« Terrain accessible »**), consommant le paquet
+  **`foretaccess`** (v1.2.0, réimplémentation de Sylvaccess — INRAE) :
+  cartographie de l’accessibilité d’exploitation pour les trois
+  **moteurs terrestres** (débusqueur/skidder, porteur, camion DFCI). Le
+  moteur câble-mât (noyau Rust) sera ajouté dans un incrément ultérieur
+  — sans changement de dépendance.
+- Nouveau module `R/mod_accessibility.R` (UI + rendu carte/tableau) et
+  service `R/service_accessibility.R` (adaptateur non-Shiny autour de
+  `foretaccess`, règles 1/2). Le calcul (long) tourne dans un **worker
+  `future`** avec notif persistante + chrono ; le worker écrit les
+  rasters de classes sur disque et ne renvoie que des chemins + les
+  récaps (un `SpatRaster` n’est pas sérialisable entre process).
+- Pipeline : AOI = géométrie du projet (indicators_sf → UGF →
+  parcelles), MNT **réutilisé** depuis le cache LiDAR du projet,
+  **desserte acquise via OSM** (`acquire_desserte`), puis
+  `preprocess()` + moteurs. Sorties : carte Leaflet des classes
+  (sélecteur de moteur affiché), tableau des **surfaces par classe et
+  par moteur (ha)**, et **export GeoPackage**
+  (`<projet>_accessibilite.gpkg`, couches `foret` + `desserte`).
+- `foretaccess` ajouté en **`Imports`** (+
+  `Remotes: pobsteta/foretaccess@*release`) et `osmdata` en `Suggests`.
+  Chaque échec (desserte OSM, MNT absent, moteur) est remonté en toast
+  structuré, jamais en exception.
+
+## nemetonshiny 0.108.3 (2026-07-16)
+
+#### Fixed — reGénération : boutons d’action ré-activés + PDF préfixé par le projet
+
+- **« Envoyer vers Terrain » (et par ricochet « Enregistrer en base DB
+  ») restaient grisés** après usage. Le bouton `export_terrain` portait
+  la classe `.regen-calc-btn` (grisage instantané côté client de tous
+  les boutons de calcul) mais était absent à la fois de `ACTION_BTNS`
+  (liste que l’observer d’autorité ré-active) et de la liste de
+  déclencheurs `click_tick` (qui force cette ré-évaluation après un
+  clic). Résultat : un clic sur « Envoyer vers Terrain » ne
+  re-synchronisait jamais le verrou, laissant les deux boutons grisés à
+  vie. `export_terrain` est désormais dans les deux listes.
+
+- **Le PDF reGénération n’était pas préfixé par le nom du projet**
+  lorsque `metadata$name` était absent ou vide (chaîne vide → préfixe
+  vide). Nouveau helper partagé `.project_export_slug()` (résolution
+  `metadata$name` → `name` → `id` → repli, robuste aux valeurs vides /
+  NA), utilisé par les noms de fichiers **et** les archives `exports/`
+  des exports PDF/GeoPackage des deux onglets (Plan d’actions et
+  reGénération) — garantit un préfixe signifiant en toute circonstance
+  et aligne le nommage GeoPackage de reGénération sur celui du Plan
+  d’actions.
+
+## nemetonshiny 0.108.2 (2026-07-16)
+
+#### Changed — reGénération : exports dans le sidebar droit + retour immédiat des boutons d’action
+
+Les **4 boutons d’export** de reGénération (Envoyer vers Terrain,
+Télécharger le GeoPackage, Télécharger le PDF, Enregistrer en base DB)
+migrent du sidebar gauche vers le **sidebar droit de « Carte + Tableau
+», sous le panneau « Affiner la reGénération avec l’IA »**.
+
+Retour immédiat (règle stricte
+[\#9](https://github.com/pobsteta/nemetonshiny/issues/9)) sur les
+boutons d’action **« Envoyer vers Terrain »** et **« Enregistrer en base
+DB »**, dans **les deux onglets** : un **toast bas-droite** s’affiche
+dès le clic (client-side) et disparaît en fin d’opération. Côté
+reGénération, ces boutons portent en plus la classe `.regen-calc-btn`
+(gel instantané de tous les boutons de calcul le temps de l’action) ;
+côté Plan d’actions, l’opération synchrone gèle l’UI le temps du
+traitement, désormais signalé par le toast.
+
+## nemetonshiny 0.108.1 (2026-07-16)
+
+#### Changed — migration SQL versionnée pour `action_plan_states`
+
+La table `nemeton.action_plan_states` (persistance versionnée du Plan
+d’actions, créée à la volée par `db_save_action_plan`) est désormais
+aussi déclarée dans une **migration SQL versionnée**
+`inst/sql/migration_005_action_plan.sql`, en miroir de
+`migration_004_regeneration.sql` — pour un déploiement propre côté DBA.
+Test garde-fou vérifiant que les deux migrations `*_states` restent
+alignées sur le DDL runtime.
+
+## nemetonshiny 0.108.0 (2026-07-16)
+
+#### Added — reGénération : mêmes exports que le Plan d’actions + persistance base des deux côtés
+
+La section **Exports** de reGénération reprend les **3 boutons du Plan
+d’actions** : - **« Envoyer vers Terrain »** : pousse les centroïdes des
+UGF (sélection courante, ou toutes) vers la couche `regeneration` du
+`samples.gpkg` du projet, avec leurs attributs de priorité
+(`indice_priorite`, `sensibilite`, `rang`), et rafraîchit l’onglet
+Échantillonnage — miroir du bouton du Plan d’actions. - **« Télécharger
+le GeoPackage »** et **« Télécharger le PDF »** : mêmes libellés, icônes
+et style que le Plan d’actions (boutons verts, toast de génération).
+
+**Persistance versionnée en base des deux côtés** : le bouton, renommé
+**« Enregistrer en base DB »** (libellé partagé), existe désormais aussi
+sur le **Plan d’actions** (`db_save_action_plan` → table
+`nemeton.action_plan_states`, un instantané JSONB versionné par
+sauvegarde) pour l’historique et le partage multi-utilisateurs. Le plan
+reste par ailleurs auto-sauvegardé sur disque (`action_plan.json`) ; ce
+bouton ajoute l’archive serveur partagée.
+
+## nemetonshiny 0.107.22 (2026-07-16)
+
+#### Added — reGénération : cartes UGF dans le PDF (comme le Plan d’actions)
+
+Le PDF reGénération affiche désormais, en tête de chaque fiche UGF, une
+**carte satellite** (fond Esri.WorldImagery, contour de l’UGF) — comme
+le PDF du Plan d’actions. La logique de rendu de carte est
+**factorisée** dans un helper partagé `.render_ug_satellite_png` utilisé
+par les deux exports (parité stricte, plus de duplication) ;
+best-effort, dégradant en tracé de géométrie hors-ligne et ignoré par le
+template si la carte manque. Le builder `.build_regeneration_pdf_data`
+reçoit un paramètre `maps` (chemins pré-rendus) pour rester pur et
+testable.
+
+## nemetonshiny 0.107.21 (2026-07-16)
+
+#### Added — reGénération : export PDF (fiche par UGF), patron Plan d’actions
+
+Nouveau bouton **« Exporter (PDF) »** dans la sidebar reGénération :
+produit un rapport **fiche par UGF** (conditions de station + top-N
+essences déterministes + **commentaire** manuel/IA), rendu via Quarto
+(`inst/quarto/regeneration_template.qmd`). Le commentaire non vide de
+chaque UGF est repris dans un encadré, comme les commentaires d’action
+du Plan d’actions. **Même patron d’export que le Plan d’actions** : nom
+de fichier `<nom_projet>_regeneration.pdf`, toast de génération, et
+**archivage best-effort** d’une copie dans `<projet>/exports/` sur le
+chemin succès (`.archive_regeneration_pdf`). Fonctions service
+`generate_regeneration_pdf` + `.build_regeneration_pdf_data`.
+
+## nemetonshiny 0.107.20 (2026-07-16)
+
+#### Added — reGénération : commentaire de fiche parcelle rempli par l’IA
+
+Chaque **fiche parcelle** gagne une **zone de commentaire éditable** par
+UGF. Un **bouton unique « Insérer le conseil IA dans les UGF
+sélectionnées »** recopie le dernier conseil généré (panneau « Affiner
+») dans le commentaire de toutes les UGF sélectionnées, éditable ensuite
+à la main. Les commentaires sont **persistés par projet** dans
+`data/regen_comments.json` (écriture atomique débouncée) et rechargés à
+l’ouverture du projet — de quoi alimenter un export PDF ultérieur.
+Nouvelles fonctions service `save_regen_comments` /
+`load_regen_comments`.
+
+## nemetonshiny 0.107.19 (2026-07-16)
+
+#### Added — reGénération : panneau « Affiner » aligné sur le Plan d’actions
+
+Le panneau « Affiner la reGénération avec l’IA » reçoit les mêmes
+possibilités que « Affiner le plan avec l’IA » : une **zone de texte**
+libre (consigne / question), un sélecteur de **Portée** (*Toutes les UGF
+du projet* / *Sélection courante*), une case **« Remplacer le conseil
+précédent »** (décochée, les conseils s’empilent façon historique) et un
+**exemple** en placeholder, avec les boutons *Effacer* / *Envoyer*. Le
+profil expert n’est plus sélectionnable : comme le Plan d’actions fige
+`planificateur`, la reGénération fige un nouveau profil dédié
+**`regeneration`** (`inst/experts/regeneration.yml`), conseiller
+narratif qui met en prose le classement d’essences déterministe sans
+jamais recommander une essence hors classement. La consigne libre est
+injectée en priorité dans le prompt
+(`build_regen_advice_prompt(question=)`). Profil interne, exclu du
+sélecteur de perspectives IA.
+
+#### Changed — reGénération : sidebar IA sans flèche de repli
+
+La sidebar droite « Affiner la reGénération avec l’IA » passe en
+`open = "always"` : la flèche de repli de la sidebar bslib est retirée,
+alignant le comportement sur la sidebar de l’onglet Plan d’actions.
+L’accordéon interne de la carte « Affiner » (chevron dans l’entête) est
+conservé.
+
+## nemetonshiny 0.107.18 (2026-07-16)
+
+#### Changed — Plan d’actions : un seul bouton « Effacer la sélection »
+
+Le bouton « Effacer la sélection » redondant de la section *Sélection*
+du sidebar (Tableau des actions) est retiré ; l’effacement de la
+sélection se fait désormais uniquement via le bouton situé au-dessus du
+graphique des coûts (`clear_map_selection_top`), au plus près de la
+carte et du tableau.
+
+#### Fixed — reGénération : courbe de température devant les barres (ombrothermique)
+
+Dans le diagramme ombrothermique du Contexte régional, la courbe de
+température était masquée par les barres de précipitation. Cause :
+plotly rend l’axe superposé (`overlaying`) toujours au-dessus de l’axe
+de base, indépendamment de l’ordre des traces. Les axes porteurs sont
+inversés — barres précip sur l’axe de base, courbe de température sur
+l’axe superposé — la courbe passe désormais devant les barres,
+températures à gauche (rouge) et précipitations à droite (bleu)
+inchangées.
+
+#### Fixed — reGénération : boîte de recherche du tableau en français
+
+Le tableau « Carte + Tableau » localise désormais les libellés DT (boîte
+de recherche « Rechercher : », pagination, compteur) selon la langue,
+sur le patron de `mod_ug`. Les entêtes de colonnes reprennent leurs noms
+d’origine (la traduction des entêtes introduite précédemment est
+retirée).
+
+## nemetonshiny 0.107.17 (2026-07-16)
+
+#### Added — reGénération : conseil de régénération par IA (spec 039, P2)
+
+Second volet de la recommandation d’essences (approche hybride). La vue
+Carte + Tableau gagne une **sidebar droite repliable « Affiner la
+reGénération avec l’IA »** (pattern « Affiner » du Plan d’actions) :
+sélection du **profil expert**, bouton **« Générer le conseil IA »**, et
+affichage d’un conseil narratif. Le LLM ne **classe pas** les essences
+(le classement reste déterministe, P1) — il met en prose le **top-3 +
+les conditions de station** de chaque UGF, selon le profil expert, avec
+un garde-fou interdisant de recommander une essence hors classement.
+Restreint aux UGF sélectionnées (sinon toutes, borné à 20). Nouveau
+prompt `build_regen_advice_prompt`, observateur gardé (clé API, présence
+d’un classement). Réutilise la plomberie ellmer (`create_llm_chat`,
+`build_system_prompt`, profils experts).
+
+## nemetonshiny 0.107.16 (2026-07-16)
+
+#### Added — reGénération : top-3 essences recommandées par UGF (spec 039, P1)
+
+Dans reGénération (vue Carte + Tableau), la **fiche parcelle** d’une UGF
+affiche désormais les **3 essences les plus pertinentes** pour sa
+régénération, classées par le cœur
+[`nemeton::regen_rank_species`](https://pobsteta.github.io/nemeton/reference/regen_rank_species.html)
+(\>= 0.162.0) : classement **déterministe** selon l’adéquation des
+tolérances écologiques de chaque essence (chaleur/sécheresse, gel
+tardif, ombre) aux conditions de station de l’UGF, en écartant les
+invasives. Chaque essence est présentée avec son **score d’adéquation
+0-100**, son **facteur limitant** (sécheresse / gel / chaleur / ombre)
+et son **niveau de confiance**. Wrapper service
+`regeneration_species_ranking` (NA/erreur-safe) + rendu
+`.regen_species_ranking_ui`. Plancher `Imports: nemeton (>= 0.162.0)`.
+
+Approche hybride (cf. décision produit) : ce P1 livre le **classement
+déterministe** ; le conseil narratif IA par UGF (P2) viendra en
+surcouche.
+
+## nemetonshiny 0.107.15 (2026-07-16)
+
+#### Changed — famille R : R6/R7 intégrés au score (normalisation cœur, spec 038)
+
+Suite à la livraison cœur `nemeton` v0.161.0 (spec 038 — normalisation
+0-100 de tous les indicateurs, R6 à la source), R6 (sensibilité) et R7
+(gel) issus de reGénération **entrent désormais dans le score de la
+famille R** (`family_scores()` appelle `add_regen_r_indicators` avant
+`create_family_index`) : la famille R passe de R1-R5 à **R1-R7**.
+`add_regen_r_indicators` injecte la sensibilité **normalisée 0-100**
+(`sensibilite_score`) au lieu du z-score brut — `normalize_indicator` la
+traite en passthrough 0-100 ; repli sur le z-score pour les caches
+reGénération antérieurs (relancer l’analyse pour un score R6 exact).
+Plancher `Imports: nemeton (>= 0.161.0)`. Complète l’analyse IA par
+famille (déjà R1-R7 depuis v0.107.13).
+
+## nemetonshiny 0.107.14 (2026-07-16)
+
+#### Changed — reGénération : essences présentes (BDforêt v2) en gras dans le sélecteur
+
+Le sélecteur « Essence cible » de reGénération listait déjà les essences
+présentes sur les UGF (au dire de la BDforêt v2) en tête, puis les
+essences d’adaptation, séparées par des entêtes d’optgroup — mais la
+frontière restait peu lisible. Les essences **présentes** sont désormais
+affichées **en gras** (dropdown et valeur sélectionnée), via un `render`
+selectize qui met en emphase toute option de l’optgroup « présentes ».
+On distingue ainsi d’un coup d’œil où s’arrêtent les essences présentes
+et où commencent les autres.
+
+## nemetonshiny 0.107.13 (2026-07-16)
+
+#### Fixed — Synthèse « Générer par IA » : R5/R6/R7 transmis au LLM
+
+Le remplissage IA de tous les commentaires de famille (onglet Synthèse)
+lisait `project$indicators` brut, qui ne contient que R1-R4 pour la
+famille R : R5 (dépérissement/monitoring), R6 (sensibilité) et R7 (gel),
+injectés au rendu depuis reGénération/monitoring, n’étaient **pas**
+analysés par l’IA — alors que la vue Familles et le décompte du récap
+les affichent. Nouvelle reactive `ai_family_indicators` : enrichit
+`project$indicators` (sans dégrader les colonnes `_norm`) des
+indicateurs R5/R6/R7 par jointure `ug_id`, comme le fait déjà la vue
+Famille (`mod_family`). Le LLM commente désormais l’ensemble des
+indicateurs accessibles. NB : l’**intégration au score** de famille de
+R6 (z-score reGénération) reste subordonnée à une normalisation 0-100
+côté cœur `nemeton` (R7 est déjà 0-100, R5 déjà normalisé) — brief cœur
+séparé.
+
+## nemetonshiny 0.107.12 (2026-07-16)
+
+#### Changed — reGénération Carte + Tableau : disposition et cohérence de sélection
+
+Retours d’usage sur la vue « Carte + Tableau » de reGénération :
+
+- **Fiches parcelles** déplacées **sous le Tableau des UGF** dans la
+  colonne droite (moitié haute = tableau, moitié basse = fiches, calées
+  sur la hauteur de la carte) plutôt que sur toute la largeur sous la
+  carte.
+- **Couleur de sélection** alignée sur le Plan d’actions : orange
+  `#FF8C00` (au lieu du bleu) pour l’UGF surlignée sur la carte.
+- **Entêtes de colonnes du tableau traduites** en français (i18n
+  `regen_col_*`) au lieu des noms techniques bruts (`ug_id`,
+  `indice_priorite_regen`, `couverture_pct`…).
+
+#### Added — plan d’action : bouton « Effacer la sélection » près du tableau
+
+Le bouton d’effacement de la sélection, jusqu’ici uniquement dans le
+panneau de configuration repliable, est aussi exposé dans l’**entête du
+Tableau** de la vue « Carte + Tableau » (même action serveur), à portée
+de la carte.
+
+#### Changed — icône gomme pour « Effacer la sélection »
+
+Le bouton « Effacer la sélection » de reGénération (Carte + Tableau)
+adopte l’icône **gomme** (`eraser`) au lieu de la croix, pour être
+cohérent avec les deux boutons homonymes du Plan d’actions.
+
+## nemetonshiny 0.107.11 (2026-07-16)
+
+#### Added — plan d’action : archive du PDF dans `exports/` (spec 037)
+
+Le PDF du plan d’action (`output$download_pdf`) était un export
+transitoire : rendu dans un fichier temporaire, streamé au navigateur,
+rien n’était persisté dans le projet (seule la donnée
+`data/action_plan.json` l’était). Il est désormais **archivé** dans
+`<project_path>/exports/<nom>_action_plan.pdf`, en parité avec le
+rapport de synthèse. Best-effort (`.archive_action_plan_pdf`) : sur le
+seul chemin succès, un échec de copie (disque plein, projet en lecture
+seule) est journalisé mais ne casse jamais le téléchargement navigateur.
+`overwrite = TRUE` — un seul PDF courant par projet. Aucun changement au
+contenu du PDF ni au cœur `nemeton`.
+
+## nemetonshiny 0.107.10 (2026-07-16)
+
+#### Changed — reGénération : Carte + Tableau réunis (pattern « Plan d’actions »)
+
+Le sous-onglet **Carte** de reGénération adopte la présentation du Plan
+d’actions : la **carte** et le **Tableau des UGF** sont désormais côte à
+côte dans un unique onglet « Carte + Tableau », les **fiches parcelles**
+regroupées en dessous. Les sous-onglets séparés « Tableau des UGF » et «
+Fiche parcelle » disparaissent ; il ne reste que deux onglets (« Carte +
+Tableau » et « Contexte régional… »).
+
+La **sélection est croisée et multiple** : un clic sur une UGF de la
+carte la surligne en bleu, sélectionne la ligne correspondante du
+tableau et affiche sa fiche ; réciproquement, sélectionner des lignes
+surligne les UGF sur la carte. Un bouton **« Effacer la sélection »**
+vide les deux vues. Un `reactiveVal` unique (`selected_ug_rv`) sert de
+source de vérité (dédoublonnage par
+[`identical()`](https://rdrr.io/r/base/identical.html) -\> pas de boucle
+dans l’aller-retour carte \<-\> tableau), et une `reactive` unique
+(`regen_table_df`) garantit que lignes, mapping clic et fiches partagent
+le même ordre après le filtre couverture.
+
+## nemetonshiny 0.107.9 (2026-07-16)
+
+#### Fixed — famille R : R6/R7 comptés et affichés dès qu’ils sont accessibles
+
+Le tableau récapitulatif indiquait 7 indicateurs pour la famille R
+(taille de la config `INDICATOR_FAMILIES$R`, R1-R7) alors que la vue
+Familles n’en affichait que 5 : R6 (`sensibilite`) et R7 (`R7`) sont
+produits par le moteur reGénération et persistés sous des noms ≠ config,
+absents de `indicators_sf`. Ils sont désormais **injectés** (comme R5)
+depuis le résultat reGénération (`add_regen_r_indicators`) sous leurs
+noms canoniques -\> affichés à côté de R1-R5 dans l’onglet Familles. Le
+décompte « Nb indicateurs » du récap compte désormais les indicateurs
+réellement **accessibles** pour le projet (cohérent avec la vue
+Familles), non la taille théorique. Affichage/décompte uniquement :
+R6/R7 étant bruts (z-score / score), ils ne sont pas injectés dans le
+score de famille (normalisation = cœur).
+
+## nemetonshiny 0.107.8 (2026-07-16)
+
+#### Fixed — ombrothermique : mois d’été repliés + entête illisible
+
+- **Mois manquants (bug majeur)** : l’axe des x utilisait les lettres de
+  mois `J F M A M J J A S O N D`, qui comportent des doublons (mai/mars,
+  juin/juil/ janv, avr/août). L’axe **catégoriel** de plotly fusionnait
+  les mois homonymes → **8 barres au lieu de 12**, la saison estivale
+  (le cœur de l’analyse de saison sèche) repliée. L’axe est désormais
+  **numérique 1-12** (positions uniques), les lettres n’étant plus que
+  des graduations.
+- **Entête illisible en plein écran** : le titre (`layout(title=)`) et
+  le récap (mois secs / De Martonne) se chevauchaient. Fusionnés en une
+  **annotation deux lignes** centrée, avec marge haute suffisante.
+
 ## nemetonshiny 0.107.7 (2026-07-16)
 
 #### Fixed — diagramme ombrothermique : barres de précipitation tronquées
