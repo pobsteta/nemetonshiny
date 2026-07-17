@@ -1,6 +1,17 @@
 # nemetonshiny (development version)
 
 
+# nemetonshiny 0.109.5 (2026-07-17)
+
+### Changed — Accessibilité : couche « Classes de débardage » activée (foretaccess ≥ 1.3.0)
+
+- Bump `Imports: foretaccess (>= 1.3.0)` + `Remotes: pobsteta/foretaccess@v1.3.0`
+  (release exportant `classes_debardage()`). La couche **« Classes de débardage »**
+  câblée en v0.109.4 (jusque-là inerte) est désormais **fonctionnelle** :
+  le sélecteur de la carte Accessibilité l'affiche avec sa rampe de couleurs
+  Sylvaccess quand le skidder a tourné. Commentaires CI mis à jour (`@v1.3.0`).
+
+
 # nemetonshiny 0.109.4 (2026-07-17)
 
 ### Added — Accessibilité : couche « Classes de débardage » (câblage)

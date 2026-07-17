@@ -82,7 +82,7 @@ jobs:
 
       # foretaccess embarque un noyau câble en Rust (extendr) : cargo/rustc
       # doivent être sur le PATH avant que setup-r-dependencies ne compile le
-      # paquet depuis les sources (Remotes: pobsteta/foretaccess@v1.2.0).
+      # paquet depuis les sources (Remotes: pobsteta/foretaccess@v1.3.0).
       - name: Setup Rust toolchain (foretaccess cable core via extendr)
         uses: dtolnay/rust-toolchain@stable
 
@@ -144,7 +144,7 @@ jobs:
 
       # foretaccess embarque un noyau câble en Rust (extendr) : cargo/rustc
       # doivent être sur le PATH avant que setup-r-dependencies ne compile le
-      # paquet depuis les sources (Remotes: pobsteta/foretaccess@v1.2.0).
+      # paquet depuis les sources (Remotes: pobsteta/foretaccess@v1.3.0).
       - name: Setup Rust toolchain (foretaccess cable core via extendr)
         uses: dtolnay/rust-toolchain@stable
 
@@ -206,7 +206,7 @@ jobs:
 
       # foretaccess embarque un noyau câble en Rust (extendr) : cargo/rustc
       # doivent être sur le PATH avant que setup-r-dependencies ne compile le
-      # paquet depuis les sources (Remotes: pobsteta/foretaccess@v1.2.0).
+      # paquet depuis les sources (Remotes: pobsteta/foretaccess@v1.3.0).
       - name: Setup Rust toolchain (foretaccess cable core via extendr)
         uses: dtolnay/rust-toolchain@stable
 
