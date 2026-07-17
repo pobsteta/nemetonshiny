@@ -54,6 +54,7 @@ TRANSLATIONS <- list(
   acc_need_engine = list(fr = "S\u00e9lectionnez au moins un moteur d'exploitation.", en = "Select at least one harvesting engine."),
   acc_no_mnt = list(fr = "Aucun MNT disponible pour ce projet. Calculez d'abord les indicateurs (l'analyse r\u00e9utilise le MNT LiDAR du projet).", en = "No DEM available for this project. Compute the indicators first (the analysis reuses the project LiDAR DEM)."),
   acc_layer_label = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
+  acc_layer_debardage = list(fr = "Classes de d\u00e9bardage", en = "Skidding distance classes"),
   acc_map_title = list(fr = "Carte d'accessibilit\u00e9", en = "Accessibility map"),
   acc_legend_title = list(fr = "Classe d'accessibilit\u00e9", en = "Accessibility class"),
   acc_download_gpkg = list(fr = "T\u00e9l\u00e9charger le GeoPackage", en = "Download GeoPackage"),

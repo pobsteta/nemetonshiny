@@ -163,6 +163,23 @@ run_accessibility <- function(aoi_path, engines, cache_dir) {
     }, error = function(e) FALSE)
     if (isTRUE(ok)) raster_paths[[eng]] <- rp
     recaps[[eng]] <- res$recap
+
+    # Le skidder produit AUSSI le raster « classes de débardage » : les bandes de
+    # distance Sylvaccess (0-250, …, > 2000 m) + inaccessible / inexploitable /
+    # hors_foret, prêt à l'affichage avec sa table de couleurs (vert proche ->
+    # rouge lointain). `pre` fournit le masque d'exclusion (classe inexploitable).
+    if (identical(eng, "skidder")) {
+      dbg <- tryCatch(foretaccess::classes_debardage(res, pre),
+        error = function(e) NULL)
+      if (!is.null(dbg)) {
+        rpd <- file.path(cache_dir, "acc_classes_debardage.tif")
+        okd <- tryCatch({
+          terra::writeRaster(dbg, rpd, overwrite = TRUE)
+          TRUE
+        }, error = function(e) FALSE)
+        if (isTRUE(okd)) raster_paths[["classes_debardage"]] <- rpd
+      }
+    }
   }
 
   # 5. GeoPackage exportable : AOI (foret) + desserte. Best-effort.
