@@ -2,6 +2,17 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.109.3 (2026-07-17)
+
+#### Changed — Accessibilité : carte seule (retrait du tableau des surfaces)
+
+- Le sous-onglet Accessibilité n’affiche plus le **tableau « Surfaces
+  par classe (ha) »** sous la carte — seule la **carte d’accessibilité**
+  reste (agrandie). Retrait de l’`output$recap` (DT) et des clés i18n
+  `acc_recap_title` / `acc_recap_empty`. Les surfaces par classe restent
+  calculées côté service (`run_accessibility()` → `recaps`) pour un
+  futur export.
+
 ## nemetonshiny 0.109.2 (2026-07-17)
 
 #### Fixed — installation : `Remotes:` sans `@*release` (bug pak 0.11)
