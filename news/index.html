@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.109.1.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.109.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,9 +34,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.109.2" id="nemetonshiny-01092-2026-07-17">nemetonshiny 0.109.2 (2026-07-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01092-2026-07-17"></a></h2>
 <div class="section level4">
-<h4 id="build--ci--épinglage-de-pak-régression-development-version">Build — CI : épinglage de pak 0.10.0 (régression 0.11.0)<a class="anchor" aria-label="anchor" href="#build--ci--%C3%A9pinglage-de-pak-r%C3%A9gression-development-version"></a></h4>
-<ul><li>pak <strong>0.11.0</strong> régresse la résolution des remotes <code>owner/*@*release</code> (deux remotes du même propriétaire : <code>pobsteta/nemeton@*release</code> + <code>pobsteta/foretaccess@*release</code>) et échoue avec <code>the condition has length &gt; 1</code> — reproduit localement (0.11.0 casse, 0.10.0 résout). Les workflows CI (R-CMD-check, tests, coverage, pkgdown) <strong>épinglent pak 0.10.0</strong> (build source depuis l’archive CRAN dans <code>R_LIB_FOR_PAK</code>, <code>pak-version: none</code>) le temps qu’un correctif pak amont soit publié. Débloque <code>install_github</code>.</li>
+<h4 id="fixed--installation--remotes-sans-release-bug-pak-0-109-2">Fixed — installation : <code>Remotes:</code> sans <code>@*release</code> (bug pak 0.11)<a class="anchor" aria-label="anchor" href="#fixed--installation--remotes-sans-release-bug-pak-0-109-2"></a></h4>
+<ul><li>
+<code>install_github</code> / <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code> de l’app échouait à la résolution des dépendances : <strong>pak 0.11.0</strong> (fatal sous R ≥ 4.2, dont 4.6.1) casse le résolveur <code>owner/repo@*release</code> avec <code>the condition has length &gt; 1</code>, y compris pour un dépôt à une seule release — ce n’est ni un problème de packages ni de contraintes de version. Correctif (brief <code>brief-nemetonshiny-remotes-pak-release</code>, <strong>option A</strong>) : <code>Remotes:</code> n’utilise plus <code>@*release</code> — <code>pobsteta/nemeton</code> (branche par défaut, toujours ≥ dernière release donc satisfait <code>Imports (&gt;= 0.162.0)</code>) et <code>pobsteta/foretaccess@v1.2.0</code> (tag). Vérifié : la résolution complète de l’app passe désormais <strong>sous pak 0.11.0</strong>. Les planchers <code>Imports:</code> restent inchangés.</li>
+<li>
+<strong>CI</strong> : le contournement temporaire d’épinglage de pak 0.10.0 (introduit au cycle dev précédent) est <strong>retiré</strong> — inutile puisque l’option A résout nativement sous pak 0.11.0. Les jobs réinstallent pak par défaut ; le toolchain Rust reste en place.</li>
 </ul></div>
 </div>
     <div class="section level2">
