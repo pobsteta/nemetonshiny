@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.109.1 (2026-07-17)
+
 ### Fixed — Accessibilité : « Lancer l'analyse » plantait + MNT source
 
 - **`Lancer l'analyse` plantait** (`external pointer is not valid`) sans toast ni
