@@ -1,14 +1,24 @@
 # nemetonshiny (development version)
 
-### Build — CI : épinglage de pak 0.10.0 (régression 0.11.0)
 
-- pak **0.11.0** régresse la résolution des remotes `owner/*@*release` (deux
-  remotes du même propriétaire : `pobsteta/nemeton@*release` +
-  `pobsteta/foretaccess@*release`) et échoue avec `the condition has length > 1`
-  — reproduit localement (0.11.0 casse, 0.10.0 résout). Les workflows CI
-  (R-CMD-check, tests, coverage, pkgdown) **épinglent pak 0.10.0** (build source
-  depuis l'archive CRAN dans `R_LIB_FOR_PAK`, `pak-version: none`) le temps qu'un
-  correctif pak amont soit publié. Débloque `install_github`.
+# nemetonshiny 0.109.2 (2026-07-17)
+
+### Fixed — installation : `Remotes:` sans `@*release` (bug pak 0.11)
+
+- `install_github` / `pak::pkg_install` de l'app échouait à la résolution des
+  dépendances : **pak 0.11.0** (fatal sous R ≥ 4.2, dont 4.6.1) casse le
+  résolveur `owner/repo@*release` avec `the condition has length > 1`, y compris
+  pour un dépôt à une seule release — ce n'est ni un problème de packages ni de
+  contraintes de version. Correctif (brief
+  `brief-nemetonshiny-remotes-pak-release`, **option A**) : `Remotes:` n'utilise
+  plus `@*release` — `pobsteta/nemeton` (branche par défaut, toujours ≥ dernière
+  release donc satisfait `Imports (>= 0.162.0)`) et `pobsteta/foretaccess@v1.2.0`
+  (tag). Vérifié : la résolution complète de l'app passe désormais **sous pak
+  0.11.0**. Les planchers `Imports:` restent inchangés.
+- **CI** : le contournement temporaire d'épinglage de pak 0.10.0 (introduit au
+  cycle dev précédent) est **retiré** — inutile puisque l'option A résout
+  nativement sous pak 0.11.0. Les jobs réinstallent pak par défaut ; le toolchain
+  Rust reste en place.
 
 
 # nemetonshiny 0.109.1 (2026-07-17)
