@@ -42,7 +42,7 @@ TRANSLATIONS <- list(
   # Accessibilit\u00e9 foresti\u00e8re (For\u00eatAccess \u2014 onglet Terrain)
   # ============================================================
   tab_terrain_accessibilite = list(fr = "Accessibilit\u00e9", en = "Accessibility"),
-  acc_intro = list(fr = "Cartographie de l'accessibilit\u00e9 d'exploitation (d\u00e9bardage tracteur, porteur, d\u00e9fense incendie DFCI) \u00e0 partir du MNT du projet et de la desserte (OpenStreetMap).", en = "Maps harvesting accessibility (tractor skidding, forwarder, DFCI fire defence) from the project DEM and the road network (OpenStreetMap)."),
+  acc_intro = list(fr = "Cartographie de l'accessibilit\u00e9 d'exploitation (d\u00e9bardage tracteur, porteur, d\u00e9fense incendie DFCI) \u00e0 partir du MNT IGN RGE ALTI 5 m et de la desserte (OpenStreetMap), acquis et mis en cache pour l'emprise du projet.", en = "Maps harvesting accessibility (tractor skidding, forwarder, DFCI fire defence) from the IGN RGE ALTI 5 m DEM and the road network (OpenStreetMap), acquired and cached for the project area."),
   acc_engines_label = list(fr = "Moteurs d'exploitation", en = "Harvesting engines"),
   acc_engine_skidder = list(fr = "D\u00e9busqueur (skidder)", en = "Skidder"),
   acc_engine_porteur = list(fr = "Porteur", en = "Forwarder"),
@@ -65,6 +65,7 @@ TRANSLATIONS <- list(
   accessibility_need_project = list(fr = "Chargez un projet avec une g\u00e9om\u00e9trie avant de lancer l'analyse.", en = "Load a project with geometry before running."),
   accessibility_need_engine = list(fr = "S\u00e9lectionnez au moins un moteur.", en = "Select at least one engine."),
   accessibility_desserte_failed = list(fr = "\u00c9chec de l'acquisition de la desserte (OpenStreetMap). V\u00e9rifiez la connexion r\u00e9seau.", en = "Road network acquisition failed (OpenStreetMap). Check the network connection."),
+  accessibility_mnt_failed = list(fr = "\u00c9chec de l'acquisition du MNT IGN RGE ALTI 5 m. V\u00e9rifiez la connexion r\u00e9seau.", en = "IGN RGE ALTI 5 m DEM acquisition failed. Check the network connection."),
   accessibility_desserte_empty = list(fr = "Aucune desserte trouv\u00e9e sur l'emprise du projet.", en = "No road network found over the project area."),
   accessibility_preprocess_failed = list(fr = "\u00c9chec du pr\u00e9traitement (MNT / desserte / for\u00eat).", en = "Preprocessing failed (DEM / roads / forest)."),
   accessibility_engine_failed = list(fr = "\u00c9chec d'un moteur d'accessibilit\u00e9.", en = "An accessibility engine failed."),
