@@ -1,5 +1,15 @@
 # nemetonshiny (development version)
 
+### Build — toolchain Rust pour le noyau câble de ForêtAccess
+
+- `foretaccess` (Imports depuis v0.109.0) embarque un noyau câble en Rust
+  (extendr) : ajout du toolchain **Rust (cargo/rustc)** au **Dockerfile**
+  (rustup, toolchain stable minimal dans `/opt/rust`) et aux **workflows CI**
+  (`dtolnay/rust-toolchain@stable` dans les jobs R-CMD-check, tests, coverage et
+  pkgdown), avant l'installation des dépendances R. Sans lui, la compilation de
+  `foretaccess` depuis les sources (`Remotes: pobsteta/foretaccess@*release`)
+  échouait au build.
+
 
 # nemetonshiny 0.109.0 (2026-07-17)
 

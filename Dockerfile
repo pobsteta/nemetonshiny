@@ -21,7 +21,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg-dev \
     libsqlite3-dev \
     pandoc \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Toolchain Rust (noyau cable de foretaccess via extendr). Requis pour compiler
+# foretaccess depuis les sources (Remotes: pobsteta/foretaccess@*release) a
+# l'etape devtools::install_deps ci-dessous. rustup fournit une version recente
+# (celle d'apt est trop ancienne pour extendr). Installe dans /opt/rust, ajoute
+# au PATH pour toutes les etapes suivantes.
+ENV RUSTUP_HOME=/opt/rust \
+    CARGO_HOME=/opt/rust
+ENV PATH=/opt/rust/bin:${PATH}
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+      | sh -s -- -y --default-toolchain stable --profile minimal \
+    && rustc --version && cargo --version
 
 # Installer les packages R de base en premier (cache Docker)
 RUN install2.r --error --skipinstalled \

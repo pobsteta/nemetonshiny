@@ -80,6 +80,12 @@ jobs:
             libtiff5-dev \
             libjpeg-dev
 
+      # foretaccess embarque un noyau câble en Rust (extendr) : cargo/rustc
+      # doivent être sur le PATH avant que setup-r-dependencies ne compile le
+      # paquet depuis les sources (Remotes: pobsteta/foretaccess@*release).
+      - name: Setup Rust toolchain (foretaccess cable core via extendr)
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install R dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -136,6 +142,12 @@ jobs:
             libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
             libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev
 
+      # foretaccess embarque un noyau câble en Rust (extendr) : cargo/rustc
+      # doivent être sur le PATH avant que setup-r-dependencies ne compile le
+      # paquet depuis les sources (Remotes: pobsteta/foretaccess@*release).
+      - name: Setup Rust toolchain (foretaccess cable core via extendr)
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install R dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -191,6 +203,12 @@ jobs:
             libsqlite3-dev libssl-dev libcurl4-openssl-dev libxml2-dev \
             libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
             libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev
+
+      # foretaccess embarque un noyau câble en Rust (extendr) : cargo/rustc
+      # doivent être sur le PATH avant que setup-r-dependencies ne compile le
+      # paquet depuis les sources (Remotes: pobsteta/foretaccess@*release).
+      - name: Setup Rust toolchain (foretaccess cable core via extendr)
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install R dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
