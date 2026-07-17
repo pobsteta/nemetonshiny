@@ -61,8 +61,7 @@ jobs:
       # pak 0.10.0 (source, archive CRAN) via R_LIB_FOR_PAK + pak-version: none.
       - name: Pin pak 0.10.0 (pak 0.11.0 regression on owner/*@*release)
         run: |
-          echo "R_LIB_FOR_PAK=${RUNNER_TEMP}/pak-lib" >> "$GITHUB_ENV"
-          Rscript -e 'lib <- file.path(Sys.getenv("RUNNER_TEMP"), "pak-lib"); dir.create(lib, recursive = TRUE, showWarnings = FALSE); install.packages("https://cran.r-project.org/src/contrib/Archive/pak/pak_0.10.0.tar.gz", repos = NULL, type = "source", lib = lib); cat("pinned pak:", as.character(packageVersion("pak", lib.loc = lib)), "\n")'
+          Rscript -e 'lib <- .libPaths()[1]; install.packages("https://cran.r-project.org/src/contrib/Archive/pak/pak_0.10.0.tar.gz", repos = NULL, type = "source", lib = lib); if (!requireNamespace("pak", lib.loc = lib, quietly = TRUE)) stop("pak 0.10.0 pin failed to install"); cat(sprintf("R_LIB_FOR_PAK=%s\n", lib), file = Sys.getenv("GITHUB_ENV"), append = TRUE); cat("pinned pak", as.character(packageVersion("pak", lib.loc = lib)), "to", lib, "\n")'
         shell: bash
 
       - uses: r-lib/actions/setup-r-dependencies@v2
