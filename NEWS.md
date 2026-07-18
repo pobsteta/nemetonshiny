@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.111.0 (2026-07-18)
+
 ### Fixed — Accessibilité : le sélecteur liste tous les rasters calculés
 
 - Après un run partiel (un seul moteur), le sélecteur de couche n'affichait plus
