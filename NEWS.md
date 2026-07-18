@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.110.6 (2026-07-18)
+
 ### Fixed — Accessibilité : carte alignée sur le patron « Alertes FAST »
 
 - Changer de fond (OSM ↔ Satellite) faisait **disparaître le raster** et
