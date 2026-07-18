@@ -2,6 +2,29 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.110.7 (2026-07-18)
+
+#### Fixed — Carte d’accessibilité : hors-forêt transparent, légende, source DFCI
+
+- **`hors_foret` blanc opaque → transparent** : `colorFactor` +
+  `addRasterImage` perdaient le canal alpha du `#RRGGBBAA`. Correctif
+  robuste : les cellules `hors_foret` sont masquées à `NA` dans le
+  raster (`terra::ifel(rast %in% code, NA, …)` — `subst` échoue sur un
+  raster catégoriel), donc rendues via `na.color = "transparent"`
+  (garanti). Le fond OSM/Satellite est de nouveau visible sous la forêt.
+  Code repéré par le libellé (jamais en dur).
+- **Légende tronquée par un ascenseur** : le plafond CSS `.info.legend`
+  `max-height` passe de `150px` à `70vh` — les légendes à nombreuses
+  classes (DFCI = 6, classes de débardage davantage) s’affichent en
+  entier.
+- **Erreur `camion_dfci` « Aucune desserte-source DFCI »** :
+  `preprocess()` construit `dfci_source_mask` depuis la colonne `dfci`
+  de la desserte, que `acquire_desserte()` ne pose pas. On la pose
+  désormais par heuristique « routes/pistes forestières = points de
+  départ DFCI » (comme la démo foretaccess) quand le moteur DFCI est
+  demandé. Le camion DFCI ne s’arrête plus. (À remplacer par
+  `acquire_dfci()`/`flag_dfci()` une fois foretaccess ≥ 1.5.0.)
+
 ## nemetonshiny 0.110.6 (2026-07-18)
 
 #### Fixed — Accessibilité : carte alignée sur le patron « Alertes FAST »

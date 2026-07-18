@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,18 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.110.7" id="nemetonshiny-01107-2026-07-18">nemetonshiny 0.110.7 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01107-2026-07-18"></a></h2>
+<div class="section level4">
+<h4 id="fixed--carte-daccessibilité--hors-forêt-transparent-légende-source-dfci-0-110-7">Fixed — Carte d’accessibilité : hors-forêt transparent, légende, source DFCI<a class="anchor" aria-label="anchor" href="#fixed--carte-daccessibilit%C3%A9--hors-for%C3%AAt-transparent-l%C3%A9gende-source-dfci-0-110-7"></a></h4>
+<ul><li>
+<strong><code>hors_foret</code> blanc opaque → transparent</strong> : <code>colorFactor</code> + <code>addRasterImage</code> perdaient le canal alpha du <code>#RRGGBBAA</code>. Correctif robuste : les cellules <code>hors_foret</code> sont masquées à <code>NA</code> dans le raster (<code>terra::ifel(rast %in% code, NA, …)</code> — <code>subst</code> échoue sur un raster catégoriel), donc rendues via <code>na.color = "transparent"</code> (garanti). Le fond OSM/Satellite est de nouveau visible sous la forêt. Code repéré par le libellé (jamais en dur).</li>
+<li>
+<strong>Légende tronquée par un ascenseur</strong> : le plafond CSS <code>.info.legend</code> <code>max-height</code> passe de <code>150px</code> à <code>70vh</code> — les légendes à nombreuses classes (DFCI = 6, classes de débardage davantage) s’affichent en entier.</li>
+<li>
+<strong>Erreur <code>camion_dfci</code> « Aucune desserte-source DFCI »</strong> : <code>preprocess()</code> construit <code>dfci_source_mask</code> depuis la colonne <code>dfci</code> de la desserte, que <code>acquire_desserte()</code> ne pose pas. On la pose désormais par heuristique « routes/pistes forestières = points de départ DFCI » (comme la démo foretaccess) quand le moteur DFCI est demandé. Le camion DFCI ne s’arrête plus. (À remplacer par <code>acquire_dfci()</code>/<code>flag_dfci()</code> une fois foretaccess ≥ 1.5.0.)</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.110.6" id="nemetonshiny-01106-2026-07-18">nemetonshiny 0.110.6 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01106-2026-07-18"></a></h2>
