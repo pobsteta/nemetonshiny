@@ -313,20 +313,31 @@ mod_accessibility_server <- function(id, app_state) {
         selected = layers[[1]])
     })
 
-    # --- Carte : contour AOI de base + raster de classes en overlay ------------
+    # --- Carte : fonds + UGF + raster de classes en overlay --------------------
+    # Même patron que la Carte « Alertes FAST » (mod_monitoring_fast_alerts) : la
+    # carte de base (tuiles OSM/Satellite + UGF + fitBounds) est rendue UNE seule
+    # fois ; le raster est ajouté/mis à jour via leafletProxy dans l'observe plus
+    # bas. Le raster vit dans un MAP PANE dédié (zIndex fixe) : sans lui, changer
+    # de fond (OSM ↔ Satellite) fait disparaître l'image raster et perd le zoom /
+    # l'opacité. Le groupe « Accessibilite » est enregistré dans le LayersControl
+    # dès le rendu (l'utilisateur peut le décocher).
     output$map <- leaflet::renderLeaflet({
       aoi <- units_sf()
+      geo <- if (!is.null(aoi)) {
+        tryCatch(sf::st_transform(aoi, 4326), error = function(e) NULL)
+      }
+      overlays <- c(if (!is.null(geo)) "UGF" else NULL, "Accessibilite")
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        leaflet::addMapPane("nemetonAccRaster", zIndex = 250) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
-          overlayGroups = c("AOI", "Accessibilite"),
+          overlayGroups = overlays,
           options = leaflet::layersControlOptions(collapsed = TRUE))
-      if (!is.null(aoi)) {
-        geo <- tryCatch(sf::st_transform(aoi, 4326), error = function(e) aoi)
-        m <- leaflet::addPolygons(m, data = geo, group = "AOI", weight = 1,
-          color = "#1B6B1B", fillColor = "#1B6B1B", fillOpacity = 0.05)
+      if (!is.null(geo)) {
+        m <- leaflet::addPolygons(m, data = geo, group = "UGF",
+          color = "#1f78b4", weight = 2, opacity = 0.9, fillOpacity = 0)
         bb <- tryCatch(as.numeric(sf::st_bbox(geo)), error = function(e) NULL)
         if (!is.null(bb) && all(is.finite(bb))) {
           m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
@@ -334,21 +345,27 @@ mod_accessibility_server <- function(id, app_state) {
       }
       m
     })
+    shiny::outputOptions(output, "map", suspendWhenHidden = FALSE)
 
     # Opacité du raster affiché : débouncée pour ne pas redessiner à chaque tick
     # du slider pendant un glissement.
     opacity_d <- shiny::debounce(
       shiny::reactive(suppressWarnings(as.numeric(input$opacity)) %||% 0.7), 250)
 
-    # Overlay du raster de classes choisi, via proxy (préserve zoom).
+    # Overlay du raster de classes via leafletProxy : préserve le zoom et le fond
+    # sélectionné (OSM/Satellite). Le raster est peint dans le pane dédié
+    # `nemetonAccRaster` (cf. renderLeaflet) — c'est ce qui le rend stable au
+    # changement de fond. `method = "ngb"` : pas d'interpolation des codes de
+    # classe (raster catégoriel).
     shiny::observe({
       res <- rv$result
       first_layer <- if (!is.null(res)) names(res$raster_paths)[[1]] else NULL
       layer <- input$layer %||% first_layer
       op <- opacity_d()
-      proxy <- leaflet::leafletProxy("map")
-      leaflet::clearGroup(proxy, "Accessibilite")
-      leaflet::removeControl(proxy, "acc_legend")
+      shown <- input$map_groups   # groupes overlay cochés côté client
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearGroup("Accessibilite") |>
+        leaflet::removeControl("acc_legend")
       if (is.null(res) || is.null(layer)) return()
       rp <- tryCatch(res$raster_paths[[layer]], error = function(e) NULL)
       if (is.null(rp) || !file.exists(rp)) return()
@@ -373,13 +390,19 @@ mod_accessibility_server <- function(id, app_state) {
         keep <- !is.na(cols) & substr(cols, 8L, 9L) != "00"
         proxy |>
           leaflet::addRasterImage(rast, colors = cmap, opacity = op,
-            project = TRUE, group = "Accessibilite") |>
+            method = "ngb", group = "Accessibilite",
+            options = leaflet::gridOptions(pane = "nemetonAccRaster")) |>
           leaflet::addLegend("bottomright", colors = cols[keep], labels = labs[keep],
             title = i18n$t("acc_legend_title"), layerId = "acc_legend",
             opacity = 0.8)
       } else {
-        proxy |> leaflet::addRasterImage(rast, opacity = op, project = TRUE,
-          group = "Accessibilite")
+        proxy |> leaflet::addRasterImage(rast, opacity = op, method = "ngb",
+          group = "Accessibilite",
+          options = leaflet::gridOptions(pane = "nemetonAccRaster"))
+      }
+      # Respecter la décoche du groupe « Accessibilite » après re-dessin proxy.
+      if (!is.null(shown) && !("Accessibilite" %in% shown)) {
+        leaflet::hideGroup(proxy, "Accessibilite")
       }
     })
 
