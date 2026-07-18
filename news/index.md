@@ -2,6 +2,24 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.111.1 (2026-07-18)
+
+#### Changed — Accessibilité : vraie source DFCI (OSM ref:FR:DFCI) + badge de provenance
+
+- Le flag DFCI de la desserte utilise désormais la **vraie source
+  `foretaccess` ≥ 1.5.0** : `acquire_dfci()` (réseau OSM
+  `ref:FR:DFCI`) + `flag_dfci()` (repli géométrique intégré).
+  L’heuristique app « routes/pistes = sources » ne sert plus qu’en
+  **dernier recours** si rien n’est tagué. La provenance (`osm` /
+  `geometrique` / `heuristique`) est remontée par `run_accessibility()`
+  (helper `.resolve_desserte_dfci`). Plancher
+  `Imports: foretaccess (>= 1.5.0)`
+  - `Remotes: pobsteta/foretaccess@v1.5.0`.
+- **Badge de provenance DFCI** au-dessus de la carte quand la couche «
+  Camion DFCI » est affichée : avertissement (jaune) si les sources sont
+  estimées par l’heuristique app, info (bleu) si le réseau OSM
+  `ref:FR:DFCI` a servi.
+
 ## nemetonshiny 0.111.0 (2026-07-18)
 
 #### Fixed — Accessibilité : le sélecteur liste tous les rasters calculés

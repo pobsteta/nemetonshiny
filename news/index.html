@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.111.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.111.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,18 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.111.1" id="nemetonshiny-01111-2026-07-18">nemetonshiny 0.111.1 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01111-2026-07-18"></a></h2>
+<div class="section level4">
+<h4 id="changed--accessibilité--vraie-source-dfci-osm-reffrdfci--badge-de-provenance-0-111-1">Changed — Accessibilité : vraie source DFCI (OSM ref:FR:DFCI) + badge de provenance<a class="anchor" aria-label="anchor" href="#changed--accessibilit%C3%A9--vraie-source-dfci-osm-reffrdfci--badge-de-provenance-0-111-1"></a></h4>
+<ul><li>Le flag DFCI de la desserte utilise désormais la <strong>vraie source <code>foretaccess</code> ≥ 1.5.0</strong> : <code>acquire_dfci()</code> (réseau OSM <code>ref:FR:DFCI</code>) + <code>flag_dfci()</code> (repli géométrique intégré). L’heuristique app « routes/pistes = sources » ne sert plus qu’en <strong>dernier recours</strong> si rien n’est tagué. La provenance (<code>osm</code> / <code>geometrique</code> / <code>heuristique</code>) est remontée par <code>run_accessibility()</code> (helper <code>.resolve_desserte_dfci</code>). Plancher <code>Imports: foretaccess (&gt;= 1.5.0)</code>
+<ul><li>
+<code>Remotes: pobsteta/foretaccess@v1.5.0</code>.</li>
+</ul></li>
+<li>
+<strong>Badge de provenance DFCI</strong> au-dessus de la carte quand la couche « Camion DFCI » est affichée : avertissement (jaune) si les sources sont estimées par l’heuristique app, info (bleu) si le réseau OSM <code>ref:FR:DFCI</code> a servi.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.111.0" id="nemetonshiny-01110-2026-07-18">nemetonshiny 0.111.0 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01110-2026-07-18"></a></h2>
