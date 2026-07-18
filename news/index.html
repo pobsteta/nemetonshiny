@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.6.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,14 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.110.6" id="nemetonshiny-01106-2026-07-18">nemetonshiny 0.110.6 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01106-2026-07-18"></a></h2>
+<div class="section level4">
+<h4 id="fixed--accessibilité--carte-alignée-sur-le-patron--alertes-fast--0-110-6">Fixed — Accessibilité : carte alignée sur le patron « Alertes FAST »<a class="anchor" aria-label="anchor" href="#fixed--accessibilit%C3%A9--carte-align%C3%A9e-sur-le-patron--alertes-fast--0-110-6"></a></h4>
+<ul><li>Changer de fond (OSM ↔︎ Satellite) faisait <strong>disparaître le raster</strong> et perdait le <strong>zoom</strong> et l’<strong>opacité</strong>. La carte adopte désormais le patron de la Carte « Alertes FAST » : le raster est peint dans un <strong>map pane dédié</strong> (<code>addMapPane</code> + <code>gridOptions(pane=…)</code>), ce qui le rend stable au changement de fond ; la carte de base (tuiles + UGF + <code>fitBounds</code>) est rendue une seule fois et le raster est mis à jour via <code>leafletProxy</code> (zoom/fond/opacité préservés).</li>
+<li>Le contour du projet est affiché comme couche <strong>« UGF »</strong> (liseré bleu, sans remplissage) dans le contrôle de couches, et le raster catégoriel est rendu en <code>method = "ngb"</code> (pas d’interpolation des codes de classe). La décoche du groupe « Accessibilite » est respectée après re-dessin.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.110.5" id="nemetonshiny-01105-2026-07-18">nemetonshiny 0.110.5 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01105-2026-07-18"></a></h2>
