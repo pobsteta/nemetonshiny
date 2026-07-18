@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.7.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.111.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,19 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.111.0" id="nemetonshiny-01110-2026-07-18">nemetonshiny 0.111.0 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01110-2026-07-18"></a></h2>
+<div class="section level4">
+<h4 id="fixed--accessibilité--le-sélecteur-liste-tous-les-rasters-calculés-0-111-0">Fixed — Accessibilité : le sélecteur liste tous les rasters calculés<a class="anchor" aria-label="anchor" href="#fixed--accessibilit%C3%A9--le-s%C3%A9lecteur-liste-tous-les-rasters-calcul%C3%A9s-0-111-0"></a></h4>
+<ul><li>Après un run partiel (un seul moteur), le sélecteur de couche n’affichait plus que ce raster et « masquait » les couches calculées précédemment. À la fin d’un run, l’état est désormais rechargé depuis le cache disque (<code>.load_cached_accessibility</code>) : le sélecteur liste <strong>tous les rasters déjà calculés</strong> du projet (débusqueur, porteur, camion DFCI, classes de débardage), chacun restant sélectionnable — un nouveau run n’efface plus les autres.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--carte-daccessibilité--couche--desserte---légende-dfci-en-distances-0-111-0">Added — Carte d’accessibilité : couche « Desserte » + légende DFCI en distances<a class="anchor" aria-label="anchor" href="#added--carte-daccessibilit%C3%A9--couche--desserte---l%C3%A9gende-dfci-en-distances-0-111-0"></a></h4>
+<ul><li>Nouvelle couche <strong>« Desserte »</strong> dans le contrôle de couches (sous « UGF » et « Accessibilite ») : les routes/pistes (sources DFCI) qui ont servi au calcul, lues depuis le GeoPackage du run, tracées en polylignes (piste brun / route gris) avec le libellé de classe au survol.</li>
+<li>
+<strong>Légende DFCI en distances</strong> : les classes <code>defendable_c1/c2/c3</code> du camion DFCI s’affichent désormais comme des tranches de distance de défense (« 0 à 120 m défendable », « 120 à 280 m », « 280 à 440 m ») — lues depuis <code>foretaccess_config()$dfci$classes_distance_m</code>, jamais en dur — au lieu des codes C1/C2/C3. Les autres classes DFCI reçoivent des libellés en clair.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.110.7" id="nemetonshiny-01107-2026-07-18">nemetonshiny 0.110.7 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01107-2026-07-18"></a></h2>
