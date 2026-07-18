@@ -62,7 +62,10 @@ mod_accessibility_ui <- function(id) {
         ns("run"), i18n$t("acc_run"),
         label_busy = i18n$t("acc_running"),
         icon = bsicons::bs_icon("play-fill"),
-        type = "primary", class = "w-100 mb-3")
+        type = "primary", class = "w-100 mb-3"),
+      # Roue dentée + chrono SOUS le bouton (parité FAST/FORDEAD/RECONFORT) : le
+      # run peut durer, le toast bas-droite peut être manqué/fermé.
+      shiny::uiOutput(ns("run_status"))
     ),
 
     bslib::card(
@@ -226,6 +229,19 @@ mod_accessibility_server <- function(id, app_state) {
         .running_notif_content(i18n$t("acc_running"), shiny::isolate(rv$start)),
         id = session$ns("acc_notif"), type = "message", duration = NULL)
     })
+
+    # Message inline SOUS le bouton (roue dentée + chrono MM:SS), parité
+    # FAST/FORDEAD/RECONFORT. Même source (`rv$start`) que le toast bas-droite :
+    # disparaît tout seul en fin de run (rv$start remis à NULL). suspendWhenHidden
+    # = FALSE pour que le chrono continue si l'onglet n'est pas au premier plan.
+    output$run_status <- shiny::renderUI({
+      if (!isTRUE(rv$running) || is.null(rv$start)) return(NULL)
+      shiny::invalidateLater(1000)
+      htmltools::div(
+        class = "small text-info mt-1 text-center",
+        .running_notif_content(i18n$t("acc_running"), rv$start))
+    })
+    shiny::outputOptions(output, "run_status", suspendWhenHidden = FALSE)
 
     # --- Fin de tâche ----------------------------------------------------------
     shiny::observeEvent(acc_task$status(), {

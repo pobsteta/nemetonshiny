@@ -103,6 +103,49 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
     from_cache = TRUE)
 }
 
+#' Acquire a genuine 5 m terrain DEM for an AOI via the IGN HIGH-RES layer
+#'
+#' `foretaccess::acquire_mnt()` fetches the WMS coverage
+#' `ELEVATION.ELEVATIONGRIDCOVERAGE`, which the Géoplateforme caps at WMTS zoom
+#' 11 (~25 m effective). Resampled to 5 m it is a **blocky staircase** whose
+#' edges yield spurious steep slopes — surfacing as axis-aligned `inexploitable`
+#' artefacts in the class rasters. The **`.HIGHRES`** variant of the same
+#' coverage goes to zoom 14 and returns a genuine 5 m terrain DEM (measured 0 %
+#' flat neighbours, realistic slopes, vs 43 % / 71° for the base layer). Both are
+#' `image/x-bil;bits=32` (raw elevation), France-wide, fetched on demand.
+#'
+#' This helper fetches `.HIGHRES` via `happign` and caches it next to the other
+#' per-emprise artefacts (`mnt_highres.tif`). Returns the file path, or `NULL` on
+#' failure (missing `happign`, network error) so the caller can fall back to
+#' `foretaccess::acquire_mnt()`.
+#'
+#' TODO(foretaccess): once `foretaccess::get_layer_service("dem", "FR")` points
+#' at `…HIGHRES`, drop this override and call `acquire_mnt()` directly.
+#'
+#' @param aoi An `sf`/`sfc` AOI (any CRS; reprojected to `crs`).
+#' @param res_m Target resolution in metres (Sylvaccess is calibrated for 5 m).
+#' @param crs Target EPSG (Lambert-93 / 2154 for France).
+#' @param cache_dir Directory holding the cached DEM.
+#' @param overwrite Force a re-fetch even if the cache file exists.
+#' @return Path to the cached DEM GeoTIFF, or `NULL`.
+#' @noRd
+.acquire_mnt_highres <- function(aoi, res_m = 5, crs = 2154, cache_dir = tempdir(),
+                                 overwrite = FALSE) {
+  if (!requireNamespace("happign", quietly = TRUE)) return(NULL)
+  path <- file.path(cache_dir, "mnt_highres.tif")
+  if (file.exists(path) && !isTRUE(overwrite)) return(path)
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  aoi <- tryCatch(sf::st_transform(aoi, crs), error = function(e) aoi)
+  ok <- tryCatch({
+    happign::get_wms_raster(
+      x = aoi, layer = "ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES",
+      res = res_m, crs = crs, rgb = FALSE,
+      filename = path, overwrite = TRUE, verbose = FALSE)
+    file.exists(path)
+  }, error = function(e) FALSE)
+  if (isTRUE(ok)) path else NULL
+}
+
 #' Run the terrestrial accessibility engines for a project (worker-side)
 #'
 #' Heavy, self-contained function meant to run in a `future` worker. Acquires
@@ -182,10 +225,18 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
   dir.create(acq_dir, recursive = TRUE, showWarnings = FALSE)
 
   # 1. MNT IGN RGE ALTI 5 m (résolution pour laquelle Sylvaccess/ForêtAccess est
-  # calibré). acquire_mnt met en cache dans acq_dir : un 2e run le réutilise.
-  mnt_path <- tryCatch(
-    foretaccess::acquire_mnt(aoi_ext, res_m = 5, crs = epsg, cache_dir = acq_dir),
-    error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+  # calibré). On privilégie la couche HAUTE RÉSOLUTION `…HIGHRES` (MNT 5 m
+  # genuine, cf. .acquire_mnt_highres) car la couche standard utilisée par
+  # `foretaccess::acquire_mnt` est plafonnée au zoom 11 (~25 m ré-échantillonné)
+  # et produit un escalier -> pentes parasites -> artefacts « inexploitable ».
+  # Repli sur acquire_mnt (couche standard) si le fetch HIGHRES échoue. Les deux
+  # mettent en cache dans acq_dir : un 2e run réutilise.
+  mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = epsg, cache_dir = acq_dir)
+  if (is.null(mnt_path)) {
+    mnt_path <- tryCatch(
+      foretaccess::acquire_mnt(aoi_ext, res_m = 5, crs = epsg, cache_dir = acq_dir),
+      error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+  }
   if (inherits(mnt_path, "acc_err")) {
     return(list(status = "error", reason = "accessibility_mnt_failed",
                 detail = mnt_path$msg))
