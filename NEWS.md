@@ -1,5 +1,14 @@
 # nemetonshiny (development version)
 
+### Changed — Notifs « en cours » : picto sablier unifié (au lieu de la roue dentée)
+
+- Le picto des notifications/messages « analyse en cours » (helper partagé
+  `.running_notif_content`) passe de la **roue dentée** au **sablier**
+  (`hourglass-split`), uniformément pour FAST, FORDEAD, RECONFORT, reGénération et
+  Accessibilité — le message inline sous le bouton « Lancer l'analyse » de
+  l'onglet Accessibilité affiche donc désormais le sablier + chrono, comme les
+  autres moteurs.
+
 
 # nemetonshiny 0.110.4 (2026-07-18)
 

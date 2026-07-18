@@ -4137,7 +4137,7 @@ mod_monitoring_server <- function(id, app_state) {
 }
 
 .monitoring_spinning_msg <- function(text, start = NULL) {
-  # Cadre unifié (engrenage qui tourne + police + chrono monospace optionnel),
+  # Cadre unifié (sablier animé + police + chrono monospace optionnel),
   # partagé avec le moteur reGénération — cf. R/utils_notif.R. `start` (POSIXct) :
   # si fourni, ajoute le chronomètre « — MM:SS » qui défile.
   .running_notif_content(text, start = start)
