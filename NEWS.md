@@ -1,6 +1,30 @@
 # nemetonshiny (development version)
 
 
+# nemetonshiny 0.111.0 (2026-07-18)
+
+### Fixed — Accessibilité : le sélecteur liste tous les rasters calculés
+
+- Après un run partiel (un seul moteur), le sélecteur de couche n'affichait plus
+  que ce raster et « masquait » les couches calculées précédemment. À la fin d'un
+  run, l'état est désormais rechargé depuis le cache disque
+  (`.load_cached_accessibility`) : le sélecteur liste **tous les rasters déjà
+  calculés** du projet (débusqueur, porteur, camion DFCI, classes de débardage),
+  chacun restant sélectionnable — un nouveau run n'efface plus les autres.
+
+### Added — Carte d'accessibilité : couche « Desserte » + légende DFCI en distances
+
+- Nouvelle couche **« Desserte »** dans le contrôle de couches (sous « UGF » et
+  « Accessibilite ») : les routes/pistes (sources DFCI) qui ont servi au calcul,
+  lues depuis le GeoPackage du run, tracées en polylignes (piste brun / route
+  gris) avec le libellé de classe au survol.
+- **Légende DFCI en distances** : les classes `defendable_c1/c2/c3` du camion DFCI
+  s'affichent désormais comme des tranches de distance de défense (« 0 à 120 m
+  défendable », « 120 à 280 m », « 280 à 440 m ») — lues depuis
+  `foretaccess_config()$dfci$classes_distance_m`, jamais en dur — au lieu des
+  codes C1/C2/C3. Les autres classes DFCI reçoivent des libellés en clair.
+
+
 # nemetonshiny 0.110.7 (2026-07-18)
 
 ### Fixed — Carte d'accessibilité : hors-forêt transparent, légende, source DFCI
