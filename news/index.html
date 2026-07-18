@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,16 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.110.3" id="nemetonshiny-01103-2026-07-18">nemetonshiny 0.110.3 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01103-2026-07-18"></a></h2>
+<div class="section level4">
+<h4 id="changed--accessibilité--masque-forêt-bd-forêt-v2--libellé-source-desserte-0-110-3">Changed — Accessibilité : masque forêt BD Forêt V2 + libellé source desserte<a class="anchor" aria-label="anchor" href="#changed--accessibilit%C3%A9--masque-for%C3%AAt-bd-for%C3%AAt-v2--libell%C3%A9-source-desserte-0-110-3"></a></h4>
+<ul><li>
+<strong>Masque forêt</strong> : l’analyse d’accessibilité n’utilise plus la simple géométrie déclarée du projet comme masque, mais la <strong>forêt réelle IGN BD Forêt V2</strong> restreinte à l’<strong>emprise du projet élargie de la zone tampon</strong> (<code>acquire_foret(aoi + buffer)</code>, intersection exacte par <code>st_intersection</code>). L’analyse couvre ainsi toute la forêt accessible dans le tampon (y compris hors parcelles du projet) sans classer en « forêt » des zones non boisées. Repli sur la géométrie projet si la BD Forêt est indisponible sur l’emprise. La couche BD Forêt est mise en cache sous <code>cache/accessibility/emprise_&lt;m&gt;m/layers/foret/</code>.</li>
+<li>
+<strong>Libellé source</strong> : la desserte n’est pas issue d’OpenStreetMap mais de l’<strong>IGN BD TOPO V3</strong> (<code>troncon_de_route</code>, WFS Géoplateforme). Commentaires, docstring et texte d’introduction (<code>acc_intro</code>) corrigés en conséquence (la couche de fond OSM de la carte Leaflet, elle, reste OpenStreetMap).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.110.2" id="nemetonshiny-01102-2026-07-18">nemetonshiny 0.110.2 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01102-2026-07-18"></a></h2>
