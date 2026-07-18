@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.110.2 (2026-07-18)
+
 ### Fixed — Accessibilité : bouton « Lancer l'analyse » grisé pendant le calcul
 
 - Le bouton `input_task_button` de lancement n'était pas lié à sa tâche
