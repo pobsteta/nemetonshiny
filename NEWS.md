@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.111.1 (2026-07-18)
+
 ### Changed — Accessibilité : vraie source DFCI (OSM ref:FR:DFCI) + badge de provenance
 
 - Le flag DFCI de la desserte utilise désormais la **vraie source `foretaccess`

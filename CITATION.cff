@@ -14,7 +14,7 @@ authors:
     given-names: "Pascal"
     email: "pascal.obstetar@gmail.com"
     orcid: "https://orcid.org/0009-0003-5403-1187"
-version: "0.111.0"
+version: "0.111.1"
 date-released: "2026-07-18"
 url: "https://github.com/pobsteta/nemetonshiny"
 repository-code: "https://github.com/pobsteta/nemetonshiny"
