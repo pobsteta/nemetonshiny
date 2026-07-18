@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.110.3 (2026-07-18)
+
 ### Changed — Accessibilité : masque forêt BD Forêt V2 + libellé source desserte
 
 - **Masque forêt** : l'analyse d'accessibilité n'utilise plus la simple géométrie
