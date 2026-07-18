@@ -43,6 +43,8 @@ mod_accessibility_ui <- function(id) {
   i18n <- get_i18n(get_app_options()$language %||% "fr")
 
   bslib::layout_sidebar(
+    # Barre latérale GAUCHE : sélection des moteurs, lancement, export. Ce sont
+    # les commandes du CALCUL.
     sidebar = bslib::sidebar(
       width = 320, open = "always", position = "left",
       htmltools::tags$p(class = "text-muted small", i18n$t("acc_intro")),
@@ -62,9 +64,6 @@ mod_accessibility_ui <- function(id) {
         icon = bsicons::bs_icon("play-fill"),
         type = "primary", class = "w-100 mb-3"),
 
-      htmltools::tags$hr(class = "my-2"),
-      shiny::uiOutput(ns("layer_ui")),
-
       htmltools::tags$h6(class = "mt-3", i18n$t("action_plan_section_exports")),
       shiny::downloadButton(
         ns("export_gpkg"), i18n$t("acc_download_gpkg"),
@@ -75,7 +74,25 @@ mod_accessibility_ui <- function(id) {
     bslib::card(
       full_screen = TRUE,
       bslib::card_header(i18n$t("acc_map_title")),
-      leaflet::leafletOutput(ns("map"), height = 600)
+      # Barre latérale DROITE (contre la carte) : les résultats et leur AFFICHAGE
+      # — sélecteur de raster calculé, zone tampon et opacité.
+      bslib::layout_sidebar(
+        fillable = TRUE,
+        sidebar = bslib::sidebar(
+          position = "right", open = "always", width = 280,
+          htmltools::tags$strong(i18n$t("acc_layer_label")),
+          shiny::uiOutput(ns("layer_ui")),
+          htmltools::tags$hr(class = "my-2"),
+          shiny::numericInput(
+            ns("buffer_km"), i18n$t("acc_buffer"),
+            value = 5, min = 0, max = 20, step = 1),
+          htmltools::tags$p(class = "text-muted small", i18n$t("acc_buffer_help")),
+          shiny::sliderInput(
+            ns("opacity"), i18n$t("acc_opacity"),
+            min = 0, max = 1, value = 0.7, step = 0.05, ticks = FALSE)
+        ),
+        leaflet::leafletOutput(ns("map"), height = "72vh")
+      )
     )
   )
 }
@@ -102,7 +119,7 @@ mod_accessibility_server <- function(id, app_state) {
 
     # --- Worker asynchrone : acquisition desserte + prétraitement + moteurs -----
     acc_task <- shiny::ExtendedTask$new(
-      function(aoi_path, engines, cache_dir, dev_path, app_opts) {
+      function(aoi_path, engines, cache_dir, buffer_m, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
@@ -117,7 +134,7 @@ mod_accessibility_server <- function(id, app_state) {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          nemetonshiny:::run_accessibility(aoi_path, engines, cache_dir)
+          nemetonshiny:::run_accessibility(aoi_path, engines, cache_dir, buffer_m)
         }, seed = TRUE)
       })
 
@@ -173,8 +190,9 @@ mod_accessibility_server <- function(id, app_state) {
         id = session$ns("acc_notif"), type = "message", duration = NULL)
       # Garde-fou : un échec SYNCHRONE d'invoke (sérialisation d'un argument) ne
       # doit pas laisser le bouton figé « busy » ni la notif collée.
+      buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 5)) * 1000
       tryCatch(
-        acc_task$invoke(aoi_path, engines, cache_dir,
+        acc_task$invoke(aoi_path, engines, cache_dir, buffer_m,
                         .dev_pkg_path, get_app_options()),
         error = function(e) {
           rv$running <- FALSE
@@ -226,9 +244,21 @@ mod_accessibility_server <- function(id, app_state) {
         type = "message", duration = 6)
     })
 
-    # Purge du résultat au changement de projet (évite d'afficher un run périmé).
+    # Au changement de projet (et au montage de l'onglet), restaure les rasters
+    # DÉJÀ calculés depuis le cache disque du projet, s'il y en a — sinon repart
+    # d'un état vide. Évite d'afficher un run périmé d'un autre projet et permet
+    # de retrouver une analyse récente sans relancer le calcul.
     shiny::observeEvent(app_state$current_project, {
-      rv$result <- NULL
+      project_path <- tryCatch(app_state$current_project$path,
+                               error = function(e) NULL)
+      cached <- tryCatch(.load_cached_accessibility(project_path),
+                         error = function(e) NULL)
+      rv$result <- cached
+      if (!is.null(cached)) {
+        shiny::showNotification(
+          sprintf(i18n$t("acc_cache_loaded_fmt"), length(cached$raster_paths)),
+          type = "message", duration = 5)
+      }
     }, ignoreNULL = FALSE)
 
     # --- Sélecteur de couche (raster affiché) : rendu après un run -------------
@@ -238,7 +268,10 @@ mod_accessibility_server <- function(id, app_state) {
     output$layer_ui <- shiny::renderUI({
       res <- rv$result
       layers <- if (is.null(res)) NULL else names(res$raster_paths)
-      if (is.null(layers) || length(layers) == 0L) return(NULL)
+      if (is.null(layers) || length(layers) == 0L) {
+        return(htmltools::tags$p(class = "text-muted small",
+                                 i18n$t("acc_no_result_yet")))
+      }
       lyr_label <- c(
         skidder = i18n$t("acc_engine_skidder"),
         porteur = i18n$t("acc_engine_porteur"),
@@ -247,7 +280,7 @@ mod_accessibility_server <- function(id, app_state) {
       labs <- unname(lyr_label[layers])
       labs[is.na(labs)] <- layers[is.na(labs)]
       shiny::radioButtons(
-        ns("layer"), i18n$t("acc_layer_label"),
+        ns("layer"), NULL,
         choices = stats::setNames(layers, labs),
         selected = layers[[1]])
     })
@@ -274,11 +307,17 @@ mod_accessibility_server <- function(id, app_state) {
       m
     })
 
+    # Opacité du raster affiché : débouncée pour ne pas redessiner à chaque tick
+    # du slider pendant un glissement.
+    opacity_d <- shiny::debounce(
+      shiny::reactive(suppressWarnings(as.numeric(input$opacity)) %||% 0.7), 250)
+
     # Overlay du raster de classes choisi, via proxy (préserve zoom).
     shiny::observe({
       res <- rv$result
       first_layer <- if (!is.null(res)) names(res$raster_paths)[[1]] else NULL
       layer <- input$layer %||% first_layer
+      op <- opacity_d()
       proxy <- leaflet::leafletProxy("map")
       leaflet::clearGroup(proxy, "Accessibilite")
       leaflet::removeControl(proxy, "acc_legend")
@@ -298,13 +337,13 @@ mod_accessibility_server <- function(id, app_state) {
         cmap <- leaflet::colorFactor(cols, domain = codes, na.color = "transparent")
         keep <- !is.na(cols) & substr(cols, 8L, 9L) != "00"
         proxy |>
-          leaflet::addRasterImage(rast, colors = cmap, opacity = 0.7,
+          leaflet::addRasterImage(rast, colors = cmap, opacity = op,
             project = TRUE, group = "Accessibilite") |>
           leaflet::addLegend("bottomright", colors = cols[keep], labels = labs[keep],
             title = i18n$t("acc_legend_title"), layerId = "acc_legend",
             opacity = 0.8)
       } else {
-        proxy |> leaflet::addRasterImage(rast, opacity = 0.7, project = TRUE,
+        proxy |> leaflet::addRasterImage(rast, opacity = op, project = TRUE,
           group = "Accessibilite")
       }
     })

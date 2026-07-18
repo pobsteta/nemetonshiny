@@ -59,6 +59,50 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
   file.path(project_path, "cache", "accessibility")
 }
 
+#' Reconstruct a run result from a project's cached accessibility rasters
+#'
+#' Lets the tab show a **previously computed** analysis without recomputing:
+#' scans `cache/accessibility/` for the known class rasters (`acc_<engine>.tif`
+#' and `acc_classes_debardage.tif`) and rebuilds a minimal `run_accessibility()`
+#' result (same shape as a live run, marked `from_cache = TRUE`). The per-engine
+#' recap tables are NOT persisted, so `recaps` is empty — only the display layers
+#' (rasters + exportable GeoPackage) are restored. Returns `NULL` when the project
+#' has no cached raster yet.
+#'
+#' @param project_path Project directory, or `NULL`.
+#' @return A result list compatible with the map/layer UI, or `NULL`.
+#' @noRd
+.load_cached_accessibility <- function(project_path) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  cache_dir <- .accessibility_cache_dir(project_path)
+  if (!dir.exists(cache_dir)) return(NULL)
+  # Engines d'abord (dans l'ordre canonique), puis les classes de débardage :
+  # le 1er élément devient la couche sélectionnée par défaut dans l'UI.
+  known <- c(
+    stats::setNames(paste0("acc_", ACCESSIBILITY_ENGINES, ".tif"),
+                    ACCESSIBILITY_ENGINES),
+    classes_debardage = "acc_classes_debardage.tif")
+  raster_paths <- list()
+  engines <- character(0)
+  for (nm in names(known)) {
+    p <- file.path(cache_dir, known[[nm]])
+    if (file.exists(p)) {
+      raster_paths[[nm]] <- p
+      if (nm %in% ACCESSIBILITY_ENGINES) engines <- c(engines, nm)
+    }
+  }
+  if (length(raster_paths) == 0L) return(NULL)
+  gpkg <- file.path(cache_dir, "accessibilite.gpkg")
+  list(
+    status = "success",
+    engines = engines,
+    recaps = list(),
+    raster_paths = raster_paths,
+    gpkg_path = if (file.exists(gpkg)) gpkg else NULL,
+    n_desserte = NA_integer_,
+    from_cache = TRUE)
+}
+
 #' Run the terrestrial accessibility engines for a project (worker-side)
 #'
 #' Heavy, self-contained function meant to run in a `future` worker. Acquires
@@ -83,9 +127,17 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
 #'   boundary ("external pointer is not valid"). The worker reads it here.
 #' @param engines Character vector, subset of `ACCESSIBILITY_ENGINES`.
 #' @param cache_dir Destination directory for the artefacts (and DEM/road cache).
+#' @param buffer_m Numeric buffer, in metres, grown around the forest AOI for the
+#'   DEM and road-network acquisition. Access to a stand comes from roads that
+#'   lie OUTSIDE it, and the least-cost propagation needs the surrounding terrain;
+#'   without a buffer the road network is clipped at the parcel edge and access
+#'   is truncated. The forest **mask** stays the original AOI — only the analysed
+#'   emprise widens. `0` (default) keeps the historical behaviour (forest extent
+#'   only). Each buffer value acquires the DEM/roads in its own sub-cache so
+#'   changing it re-fetches cleanly instead of reusing a stale emprise.
 #' @return A named list describing the run (see details).
 #' @noRd
-run_accessibility <- function(aoi_path, engines, cache_dir) {
+run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
   if (!requireNamespace("foretaccess", quietly = TRUE)) {
     return(list(status = "error", reason = "accessibility_no_foretaccess"))
   }
@@ -109,10 +161,27 @@ run_accessibility <- function(aoi_path, engines, cache_dir) {
   epsg <- 2154L
   aoi <- tryCatch(sf::st_transform(aoi, epsg), error = function(e) aoi)
 
+  # Emprise d'ACQUISITION : AOI dilatée d'une zone tampon (buffer_m). L'accès à un
+  # peuplement vient des routes situées HORS de lui, et la propagation least-cost
+  # a besoin du relief alentour ; sans tampon, la desserte est coupée au bord de
+  # la parcelle et l'accès est tronqué. Le MASQUE forêt (foret =) reste l'AOI
+  # d'origine ci-dessous : seule l'emprise analysée s'élargit.
+  buffer_m <- suppressWarnings(as.numeric(buffer_m %||% 0))
+  if (!is.finite(buffer_m) || buffer_m < 0) buffer_m <- 0
+  aoi_ext <- aoi
+  if (buffer_m > 0) {
+    aoi_ext <- tryCatch(sf::st_buffer(aoi, buffer_m), error = function(e) aoi)
+  }
+  # Chaque valeur de tampon acquiert MNT/desserte dans son propre sous-cache : un
+  # changement de tampon re-télécharge sur la nouvelle emprise au lieu de réutiliser
+  # un MNT/desserte figé à l'ancienne emprise (acquire_* cache par nom de fichier).
+  acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
+  dir.create(acq_dir, recursive = TRUE, showWarnings = FALSE)
+
   # 1. MNT IGN RGE ALTI 5 m (résolution pour laquelle Sylvaccess/ForêtAccess est
-  # calibré). acquire_mnt met en cache dans cache_dir : un 2e run le réutilise.
+  # calibré). acquire_mnt met en cache dans acq_dir : un 2e run le réutilise.
   mnt_path <- tryCatch(
-    foretaccess::acquire_mnt(aoi, res_m = 5, crs = epsg, cache_dir = cache_dir),
+    foretaccess::acquire_mnt(aoi_ext, res_m = 5, crs = epsg, cache_dir = acq_dir),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(mnt_path, "acc_err")) {
     return(list(status = "error", reason = "accessibility_mnt_failed",
@@ -121,9 +190,9 @@ run_accessibility <- function(aoi_path, engines, cache_dir) {
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
   if (is.null(mnt)) return(list(status = "error", reason = "accessibility_mnt_failed"))
 
-  # 2. Desserte (réseau routier/pistes) via OSM sur l'emprise de l'AOI (cachée).
+  # 2. Desserte (réseau routier/pistes) via OSM sur l'emprise tamponnée (cachée).
   desserte <- tryCatch(
-    foretaccess::acquire_desserte(aoi, crs = epsg, cache_dir = cache_dir),
+    foretaccess::acquire_desserte(aoi_ext, crs = epsg, cache_dir = acq_dir),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(desserte, "acc_err")) {
     return(list(status = "error", reason = "accessibility_desserte_failed",
