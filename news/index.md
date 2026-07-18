@@ -2,6 +2,39 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.110.0 (2026-07-18)
+
+#### Added — Accessibilité : zone tampon, opacité, sidebar droite, restauration du cache
+
+- Nouveau champ **« Zone tampon autour de la forêt (km) »** (défaut 5
+  km) dans l’onglet Accessibilité. Le tampon élargit l’emprise
+  d’acquisition du **MNT** et de la **desserte** au-delà de la forêt :
+  l’accès à un peuplement vient des routes situées *hors* de lui, et la
+  propagation least-cost a besoin du relief alentour. Sans tampon, la
+  desserte était coupée au bord de la parcelle et l’accès tronqué. Le
+  **masque forêt** (classes rendues) reste l’AOI d’origine ; seule
+  l’emprise analysée s’élargit. `0` = comportement historique. Chaque
+  valeur de tampon acquiert MNT/desserte dans son propre sous-cache
+  (`emprise_<m>m`) pour re-télécharger proprement au changement.
+- Nouveau **slider d’opacité** du raster affiché (défaut 0,7), débouncé,
+  pour ajuster la lisibilité de la couche par-dessus le fond de carte.
+- **Barre latérale droite contre la carte** : le sélecteur de raster
+  calculé, la zone tampon et l’opacité y sont regroupés
+  (affichage/résultats), tandis que la barre gauche garde les commandes
+  du calcul (moteurs, lancement, export).
+- **Restauration du cache** : à l’ouverture de l’onglet (ou au
+  changement de projet), les rasters d’accessibilité déjà calculés pour
+  le projet sont rechargés depuis le disque et affichés sans relancer le
+  calcul.
+
+#### Changed — reGénération : boutons Exports regroupés dans un accordéon repliable
+
+- Les quatre boutons d’export de l’onglet reGénération (Envoyer vers
+  Terrain, Télécharger le GeoPackage, Télécharger le PDF, Enregistrer en
+  base DB) sont désormais regroupés dans un **panneau repliable «
+  Exports »** (replié par défaut) au lieu d’une simple en-tête,
+  allégeant la barre latérale droite.
+
 ## nemetonshiny 0.109.5 (2026-07-17)
 
 #### Changed — Accessibilité : couche « Classes de débardage » activée (foretaccess ≥ 1.3.0)

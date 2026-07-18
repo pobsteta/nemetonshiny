@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.109.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,22 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.110.0" id="nemetonshiny-01100-2026-07-18">nemetonshiny 0.110.0 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01100-2026-07-18"></a></h2>
+<div class="section level4">
+<h4 id="added--accessibilité--zone-tampon-opacité-sidebar-droite-restauration-du-cache-0-110-0">Added — Accessibilité : zone tampon, opacité, sidebar droite, restauration du cache<a class="anchor" aria-label="anchor" href="#added--accessibilit%C3%A9--zone-tampon-opacit%C3%A9-sidebar-droite-restauration-du-cache-0-110-0"></a></h4>
+<ul><li>Nouveau champ <strong>« Zone tampon autour de la forêt (km) »</strong> (défaut 5 km) dans l’onglet Accessibilité. Le tampon élargit l’emprise d’acquisition du <strong>MNT</strong> et de la <strong>desserte</strong> au-delà de la forêt : l’accès à un peuplement vient des routes situées <em>hors</em> de lui, et la propagation least-cost a besoin du relief alentour. Sans tampon, la desserte était coupée au bord de la parcelle et l’accès tronqué. Le <strong>masque forêt</strong> (classes rendues) reste l’AOI d’origine ; seule l’emprise analysée s’élargit. <code>0</code> = comportement historique. Chaque valeur de tampon acquiert MNT/desserte dans son propre sous-cache (<code>emprise_&lt;m&gt;m</code>) pour re-télécharger proprement au changement.</li>
+<li>Nouveau <strong>slider d’opacité</strong> du raster affiché (défaut 0,7), débouncé, pour ajuster la lisibilité de la couche par-dessus le fond de carte.</li>
+<li>
+<strong>Barre latérale droite contre la carte</strong> : le sélecteur de raster calculé, la zone tampon et l’opacité y sont regroupés (affichage/résultats), tandis que la barre gauche garde les commandes du calcul (moteurs, lancement, export).</li>
+<li>
+<strong>Restauration du cache</strong> : à l’ouverture de l’onglet (ou au changement de projet), les rasters d’accessibilité déjà calculés pour le projet sont rechargés depuis le disque et affichés sans relancer le calcul.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--regénération--boutons-exports-regroupés-dans-un-accordéon-repliable-0-110-0">Changed — reGénération : boutons Exports regroupés dans un accordéon repliable<a class="anchor" aria-label="anchor" href="#changed--reg%C3%A9n%C3%A9ration--boutons-exports-regroup%C3%A9s-dans-un-accord%C3%A9on-repliable-0-110-0"></a></h4>
+<ul><li>Les quatre boutons d’export de l’onglet reGénération (Envoyer vers Terrain, Télécharger le GeoPackage, Télécharger le PDF, Enregistrer en base DB) sont désormais regroupés dans un <strong>panneau repliable « Exports »</strong> (replié par défaut) au lieu d’une simple en-tête, allégeant la barre latérale droite.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.109.5" id="nemetonshiny-01095-2026-07-17">nemetonshiny 0.109.5 (2026-07-17)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01095-2026-07-17"></a></h2>
