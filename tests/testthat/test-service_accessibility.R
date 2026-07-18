@@ -90,7 +90,7 @@ test_that("run_accessibility : échec d'acquisition MNT -> erreur structurée", 
     })
 })
 
-test_that("run_accessibility : pipeline complet sur données toy (OSM mockée)", {
+test_that("run_accessibility : pipeline complet sur données toy (IGN mocké)", {
   skip_if_not_installed("foretaccess")
   skip_if_not_installed("sf")
   toy <- system.file("extdata", "toy", package = "foretaccess")
@@ -98,9 +98,11 @@ test_that("run_accessibility : pipeline complet sur données toy (OSM mockée)",
   loadNamespace("foretaccess")
 
   # L'AOI est passée par FICHIER (le worker la relit) : le GeoPackage toy fait
-  # directement office de chemin d'entrée. MNT (acquire_mnt) et desserte
-  # (acquire_desserte) sont mockés vers les données toy (pas de réseau IGN/OSM).
+  # directement office de chemin d'entrée. MNT (acquire_mnt), desserte
+  # (acquire_desserte) et masque forêt BD Forêt V2 (acquire_foret) sont mockés
+  # vers les données toy (pas de réseau IGN).
   aoi_path <- file.path(toy, "foret.gpkg")
+  foret_toy <- sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154)
   desserte <- sf::st_read(file.path(toy, "desserte.gpkg"), quiet = TRUE)
   mnt_toy <- file.path(toy, "mnt.tif")
   cache <- withr::local_tempdir()
@@ -110,6 +112,8 @@ test_that("run_accessibility : pipeline complet sur données toy (OSM mockée)",
                            overwrite = FALSE, country = "FR") mnt_toy,
     acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
                                 overwrite = FALSE, country = "FR") desserte,
+    acquire_foret = function(aoi, crs = 2154, cache_dir = tempdir(),
+                             overwrite = FALSE, country = "FR") foret_toy,
     .package = "foretaccess",
     {
       res <- nemetonshiny:::run_accessibility(
@@ -143,18 +147,19 @@ test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition",
   loadNamespace("foretaccess")
 
   aoi_path <- file.path(toy, "foret.gpkg")
+  foret_toy <- sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154)
   desserte <- sf::st_read(file.path(toy, "desserte.gpkg"), quiet = TRUE)
   mnt_toy <- file.path(toy, "mnt.tif")
   cache <- withr::local_tempdir()
 
-  aoi_2154 <- sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154)
-  base_area <- as.numeric(sum(sf::st_area(aoi_2154)))
-  seen_area <- NULL
+  base_area <- as.numeric(sum(sf::st_area(foret_toy)))
+  seen_area <- NULL       # emprise reçue par acquire_mnt
+  foret_area <- NULL      # emprise reçue par acquire_foret (masque BD Forêt)
 
   testthat::with_mocked_bindings(
-    # Le MNT/desserte sont mockés, mais on capture l'emprise (aoi) reçue par
-    # acquire_mnt : avec un tampon de 1 km, elle doit être plus grande que la
-    # forêt d'origine.
+    # MNT/desserte/forêt mockés. On capture l'emprise (aoi) reçue par acquire_mnt
+    # ET par acquire_foret : avec un tampon de 1 km, les deux doivent être plus
+    # grandes que la forêt d'origine (le masque = BD Forêt ∩ emprise tamponnée).
     acquire_mnt = function(aoi, res_m = 5, crs = 2154, cache_dir = tempdir(),
                            overwrite = FALSE, country = "FR") {
       seen_area <<- as.numeric(sum(sf::st_area(aoi)))
@@ -162,6 +167,11 @@ test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition",
     },
     acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
                                 overwrite = FALSE, country = "FR") desserte,
+    acquire_foret = function(aoi, crs = 2154, cache_dir = tempdir(),
+                             overwrite = FALSE, country = "FR") {
+      foret_area <<- as.numeric(sum(sf::st_area(aoi)))
+      foret_toy   # masque toy (dans l'emprise du MNT) pour que preprocess passe
+    },
     .package = "foretaccess",
     {
       res <- nemetonshiny:::run_accessibility(
@@ -170,6 +180,8 @@ test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition",
     })
 
   expect_true(!is.null(seen_area) && seen_area > base_area)
+  # Le masque forêt est bien acquis sur l'emprise tamponnée (BD Forêt V2).
+  expect_true(!is.null(foret_area) && foret_area > base_area)
   # Le sous-cache d'acquisition est bien nommé selon le tampon (en mètres).
   expect_true(dir.exists(file.path(cache, "emprise_1000m")))
 })
