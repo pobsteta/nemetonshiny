@@ -79,7 +79,7 @@ mod_accessibility_ui <- function(id) {
           htmltools::tags$hr(class = "my-2"),
           shiny::numericInput(
             ns("buffer_km"), i18n$t("acc_buffer"),
-            value = 5, min = 0, max = 20, step = 1),
+            value = 1, min = 0, max = 20, step = 1),
           htmltools::tags$p(class = "text-muted small", i18n$t("acc_buffer_help")),
           shiny::sliderInput(
             ns("opacity"), i18n$t("acc_opacity"),
@@ -146,6 +146,12 @@ mod_accessibility_server <- function(id, app_state) {
 
     busy <- shiny::reactive(identical(acc_task$status(), "running"))
 
+    # Lie le bouton à la tâche : sans ce binding, bslib remet `input_task_button`
+    # à l'état « ready » au flush réactif suivant le clic — le bouton ne reste
+    # donc PAS grisé pendant tout le calcul async. Avec le binding, il affiche le
+    # spinner + libellé « busy » tant que la tâche tourne (comme dans reGénération).
+    bslib::bind_task_button(acc_task, "run")
+
     # --- Lancement -------------------------------------------------------------
     shiny::observeEvent(input$run, {
       if (isTRUE(rv$running)) {
@@ -196,7 +202,7 @@ mod_accessibility_server <- function(id, app_state) {
         id = session$ns("acc_notif"), type = "message", duration = NULL)
       # Garde-fou : un échec SYNCHRONE d'invoke (sérialisation d'un argument) ne
       # doit pas laisser le bouton figé « busy » ni la notif collée.
-      buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 5)) * 1000
+      buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
       tryCatch(
         acc_task$invoke(aoi_path, engines, cache_dir, buffer_m,
                         .dev_pkg_path, get_app_options()),
@@ -340,6 +346,13 @@ mod_accessibility_server <- function(id, app_state) {
       if (is.data.frame(lv) && nrow(lv) > 0L) {
         codes <- as.numeric(lv[[1]]); labs <- as.character(lv[[2]])
         cols <- .acc_level_colors(rast, codes)
+        # « hors_foret » TOUJOURS transparent, quel que soit le raster : les
+        # moteurs (débusqueur/porteur/camion DFCI) n'ont pas de coltab utile et
+        # recevraient sinon une couleur pleine de la palette de repli. On force
+        # l'alpha 00 — la classe disparaît de la carte et de la légende (filtre
+        # `keep` ci-dessous). Les classes de débardage l'ont déjà via leur coltab.
+        hf <- !is.na(labs) & labs == "hors_foret"
+        if (any(hf)) cols[hf] <- "#FFFFFF00"
         cmap <- leaflet::colorFactor(cols, domain = codes, na.color = "transparent")
         keep <- !is.na(cols) & substr(cols, 8L, 9L) != "00"
         proxy |>

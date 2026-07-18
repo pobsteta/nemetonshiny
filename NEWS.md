@@ -1,6 +1,26 @@
 # nemetonshiny (development version)
 
 
+# nemetonshiny 0.110.2 (2026-07-18)
+
+### Fixed — Accessibilité : bouton « Lancer l'analyse » grisé pendant le calcul
+
+- Le bouton `input_task_button` de lancement n'était pas lié à sa tâche
+  (`bslib::bind_task_button` manquant) : il ne restait donc pas grisé pendant le
+  calcul asynchrone et le retour visuel (spinner + toast chrono bas-droite)
+  passait inaperçu. Le binding est ajouté — même comportement que reGénération.
+
+### Changed — Accessibilité & reGénération : zone tampon (défaut, aide, libellé)
+
+- **Accessibilité** : zone tampon par défaut ramenée à **1 km** (au lieu de 5).
+- **reGénération / Contexte régional** : le libellé de la zone tampon perd son
+  gras et gagne une **note explicative** en dessous (pourquoi élargir l'emprise
+  du contexte climatique), alignée sur la présentation de l'onglet Accessibilité.
+- **Accessibilité** : la classe **« hors forêt »** est désormais **transparente**
+  sur tous les rasters (Débusqueur, Porteur, Classes de débardage) — les moteurs
+  sans table de couleurs utile ne la peignent plus en couleur pleine.
+
+
 # nemetonshiny 0.110.1 (2026-07-18)
 
 ### Changed — Accessibilité : boutons Exports regroupés dans un accordéon repliable
