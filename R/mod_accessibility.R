@@ -37,6 +37,34 @@
   pal[((seq_along(codes) - 1L) %% length(pal)) + 1L]
 }
 
+#' Human-friendly legend labels for accessibility classes
+#'
+#' Maps the raw `foretaccess` class names to display labels. The DFCI
+#' `defendable_cN` classes become **distance bands** read from
+#' `foretaccess_config()$dfci$classes_distance_m` (e.g. « 0 à 120 m défendable »),
+#' so the legend shows the actual defence distances instead of opaque C1/C2/C3
+#' codes. The other DFCI classes get plain-language labels. Unknown labels pass
+#' through unchanged (skidder/forwarder classes, skidding-distance bands already
+#' expressed as ranges).
+#' @noRd
+.acc_legend_labels <- function(labs, i18n) {
+  b <- tryCatch(foretaccess::foretaccess_config()$dfci$classes_distance_m,
+                error = function(e) c(0, 120, 280, 440))
+  dfci_band <- function(n) {
+    if (length(b) < n + 1L) return(NA_character_)
+    sprintf(i18n$t("acc_dfci_defendable_fmt"), as.integer(b[n]), as.integer(b[n + 1L]))
+  }
+  map <- c(
+    inaccessible         = i18n$t("acc_dfci_inaccessible"),
+    non_defendable_pente = i18n$t("acc_dfci_non_defendable_pente"),
+    defendable_c1        = dfci_band(1L),
+    defendable_c2        = dfci_band(2L),
+    defendable_c3        = dfci_band(3L))
+  out <- unname(map[labs])
+  out[is.na(out)] <- labs[is.na(out)]
+  out
+}
+
 #' @noRd
 mod_accessibility_ui <- function(id) {
   ns <- shiny::NS(id)
@@ -334,7 +362,10 @@ mod_accessibility_server <- function(id, app_state) {
       geo <- if (!is.null(aoi)) {
         tryCatch(sf::st_transform(aoi, 4326), error = function(e) NULL)
       }
-      overlays <- c(if (!is.null(geo)) "UGF" else NULL, "Accessibilite")
+      # « Desserte » (routes/pistes DFCI ayant servi au calcul) est enregistrée
+      # dans le LayersControl SOUS « UGF » et « Accessibilite » ; l'observe plus
+      # bas la dessine via leafletProxy (dépend du run, pas de la carte de base).
+      overlays <- c(if (!is.null(geo)) "UGF" else NULL, "Accessibilite", "Desserte")
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -410,7 +441,8 @@ mod_accessibility_server <- function(id, app_state) {
           leaflet::addRasterImage(rast, colors = cmap, opacity = op,
             method = "ngb", group = "Accessibilite",
             options = leaflet::gridOptions(pane = "nemetonAccRaster")) |>
-          leaflet::addLegend("bottomright", colors = cols[keep], labels = labs[keep],
+          leaflet::addLegend("bottomright", colors = cols[keep],
+            labels = .acc_legend_labels(labs[keep], i18n),
             title = i18n$t("acc_legend_title"), layerId = "acc_legend",
             opacity = 0.8)
       } else {
@@ -421,6 +453,32 @@ mod_accessibility_server <- function(id, app_state) {
       # Respecter la décoche du groupe « Accessibilite » après re-dessin proxy.
       if (!is.null(shown) && !("Accessibilite" %in% shown)) {
         leaflet::hideGroup(proxy, "Accessibilite")
+      }
+    })
+
+    # Overlay « Desserte » : les routes/pistes (sources DFCI) qui ont servi au
+    # calcul, lues depuis la couche `desserte` du GeoPackage du run. Dépend de
+    # `rv$result` uniquement (pas de l'opacité ni du raster choisi) → observe
+    # dédié. Polylignes colorées par classe (route/piste), au-dessus du raster.
+    shiny::observe({
+      res <- rv$result
+      shown <- input$map_groups
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Desserte")
+      gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
+      if (is.null(gp) || !file.exists(gp)) return()
+      d <- tryCatch(sf::st_read(gp, layer = "desserte", quiet = TRUE),
+                    error = function(e) NULL)
+      if (!inherits(d, "sf") || nrow(d) == 0L) return()
+      d <- tryCatch(sf::st_transform(d, 4326), error = function(e) d)
+      cl <- tolower(as.character(d[["classe"]] %||% rep("", nrow(d))))
+      cols <- ifelse(cl == "piste", "#8D6E63", "#37474F")   # piste brun / route gris
+      proxy |>
+        leaflet::addPolylines(data = d, group = "Desserte",
+          color = cols, weight = 2, opacity = 0.9,
+          label = ~ as.character(classe))
+      # Respecter la décoche du groupe « Desserte » après re-dessin proxy.
+      if (!is.null(shown) && !("Desserte" %in% shown)) {
+        leaflet::hideGroup(proxy, "Desserte")
       }
     })
 
