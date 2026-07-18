@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.2.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,22 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.110.2" id="nemetonshiny-01102-2026-07-18">nemetonshiny 0.110.2 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01102-2026-07-18"></a></h2>
+<div class="section level4">
+<h4 id="fixed--accessibilité--bouton--lancer-lanalyse--grisé-pendant-le-calcul-0-110-2">Fixed — Accessibilité : bouton « Lancer l’analyse » grisé pendant le calcul<a class="anchor" aria-label="anchor" href="#fixed--accessibilit%C3%A9--bouton--lancer-lanalyse--gris%C3%A9-pendant-le-calcul-0-110-2"></a></h4>
+<ul><li>Le bouton <code>input_task_button</code> de lancement n’était pas lié à sa tâche (<code><a href="https://rstudio.github.io/bslib/reference/bind_task_button.html" class="external-link">bslib::bind_task_button</a></code> manquant) : il ne restait donc pas grisé pendant le calcul asynchrone et le retour visuel (spinner + toast chrono bas-droite) passait inaperçu. Le binding est ajouté — même comportement que reGénération.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--accessibilité--regénération--zone-tampon-défaut-aide-libellé-0-110-2">Changed — Accessibilité &amp; reGénération : zone tampon (défaut, aide, libellé)<a class="anchor" aria-label="anchor" href="#changed--accessibilit%C3%A9--reg%C3%A9n%C3%A9ration--zone-tampon-d%C3%A9faut-aide-libell%C3%A9-0-110-2"></a></h4>
+<ul><li>
+<strong>Accessibilité</strong> : zone tampon par défaut ramenée à <strong>1 km</strong> (au lieu de 5).</li>
+<li>
+<strong>reGénération / Contexte régional</strong> : le libellé de la zone tampon perd son gras et gagne une <strong>note explicative</strong> en dessous (pourquoi élargir l’emprise du contexte climatique), alignée sur la présentation de l’onglet Accessibilité.</li>
+<li>
+<strong>Accessibilité</strong> : la classe <strong>« hors forêt »</strong> est désormais <strong>transparente</strong> sur tous les rasters (Débusqueur, Porteur, Classes de débardage) — les moteurs sans table de couleurs utile ne la peignent plus en couleur pleine.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.110.1" id="nemetonshiny-01101-2026-07-18">nemetonshiny 0.110.1 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01101-2026-07-18"></a></h2>
