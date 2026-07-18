@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.110.4 (2026-07-18)
+
 ### Fixed — Accessibilité : MNT genuine 5 m (fin des artefacts « inexploitable »)
 
 - **Cause** : `foretaccess::acquire_mnt()` récupère la couche WMS IGN
