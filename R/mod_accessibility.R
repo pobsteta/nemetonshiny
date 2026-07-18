@@ -266,7 +266,15 @@ mod_accessibility_server <- function(id, app_state) {
         shiny::showNotification(msg, type = "error", duration = NULL)
         return()
       }
-      rv$result <- res
+      # Recharger depuis le cache disque : le sélecteur de couche liste ainsi
+      # TOUS les rasters déjà calculés du projet (tous moteurs + classes de
+      # débardage), pas seulement ceux du run courant. Un run partiel (ex.
+      # « porteur » seul) n'efface donc plus l'affichage des couches calculées
+      # précédemment — elles restent sélectionnables. Repli sur `res` si le
+      # rechargement échoue.
+      project_path <- tryCatch(app_state$current_project$path,
+                               error = function(e) NULL)
+      rv$result <- .load_cached_accessibility(project_path) %||% res
       shiny::showNotification(
         sprintf(i18n$t("acc_done_fmt"), length(res$engines)),
         type = "message", duration = 6)

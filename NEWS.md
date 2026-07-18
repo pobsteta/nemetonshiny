@@ -1,5 +1,14 @@
 # nemetonshiny (development version)
 
+### Fixed — Accessibilité : le sélecteur liste tous les rasters calculés
+
+- Après un run partiel (un seul moteur), le sélecteur de couche n'affichait plus
+  que ce raster et « masquait » les couches calculées précédemment. À la fin d'un
+  run, l'état est désormais rechargé depuis le cache disque
+  (`.load_cached_accessibility`) : le sélecteur liste **tous les rasters déjà
+  calculés** du projet (débusqueur, porteur, camion DFCI, classes de débardage),
+  chacun restant sélectionnable — un nouveau run n'efface plus les autres.
+
 
 # nemetonshiny 0.110.7 (2026-07-18)
 
