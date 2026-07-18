@@ -1,6 +1,24 @@
 # nemetonshiny (development version)
 
 
+# nemetonshiny 0.110.3 (2026-07-18)
+
+### Changed — Accessibilité : masque forêt BD Forêt V2 + libellé source desserte
+
+- **Masque forêt** : l'analyse d'accessibilité n'utilise plus la simple géométrie
+  déclarée du projet comme masque, mais la **forêt réelle IGN BD Forêt V2**
+  restreinte à l'**emprise du projet élargie de la zone tampon**
+  (`acquire_foret(aoi + buffer)`, intersection exacte par `st_intersection`).
+  L'analyse couvre ainsi toute la forêt accessible dans le tampon (y compris hors
+  parcelles du projet) sans classer en « forêt » des zones non boisées. Repli sur
+  la géométrie projet si la BD Forêt est indisponible sur l'emprise. La couche
+  BD Forêt est mise en cache sous `cache/accessibility/emprise_<m>m/layers/foret/`.
+- **Libellé source** : la desserte n'est pas issue d'OpenStreetMap mais de
+  l'**IGN BD TOPO V3** (`troncon_de_route`, WFS Géoplateforme). Commentaires,
+  docstring et texte d'introduction (`acc_intro`) corrigés en conséquence (la
+  couche de fond OSM de la carte Leaflet, elle, reste OpenStreetMap).
+
+
 # nemetonshiny 0.110.2 (2026-07-18)
 
 ### Fixed — Accessibilité : bouton « Lancer l'analyse » grisé pendant le calcul

@@ -6,7 +6,7 @@
 # de l'accessibilité, réimplémentation de Sylvaccess — INRAE). Conformément aux
 # règles 1/2 (aucune logique métier ici), ce fichier ne fait qu'orchestrer :
 #   - résoudre l'AOI (géométrie du projet) et le MNT (déjà sur disque) ;
-#   - acquérir la desserte (OSM) pour l'emprise ;
+#   - acquérir la desserte (IGN BD TOPO V3) pour l'emprise ;
 #   - appeler `foretaccess::preprocess()` + les moteurs terrestres exportés ;
 #   - persister les rasters de classes + un GeoPackage vecteur exportable.
 #
@@ -107,14 +107,17 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
 #'
 #' Heavy, self-contained function meant to run in a `future` worker. Acquires
 #' the **IGN RGE ALTI 5 m** DEM (Sylvaccess-calibrated resolution) and the road
-#' network (OSM) for the AOI, runs `foretaccess::preprocess()` then the
-#' requested terrestrial engines, writes each engine's categorical class raster
-#' to `cache/accessibility/acc_<engine>.tif`, and writes an exportable
-#' GeoPackage (`foret` + `desserte` layers). Returns only serialisable data
-#' (paths + recap data.frames), never terra/sf objects tied to this process.
+#' network (**IGN BD TOPO V3**) for the buffered AOI, derives the forest mask
+#' from **IGN BD Forêt V2** clipped to that emprise, runs
+#' `foretaccess::preprocess()` then the requested terrestrial engines, writes
+#' each engine's categorical class raster to
+#' `cache/accessibility/acc_<engine>.tif`, and writes an exportable GeoPackage
+#' (`foret` + `desserte` layers). Returns only serialisable data (paths + recap
+#' data.frames), never terra/sf objects tied to this process.
 #'
-#' The DEM and road network are cached under `cache_dir` by `acquire_mnt()` /
-#' `acquire_desserte()`: a second run on the same project reuses them (no
+#' The DEM, road network and BD Forêt layer are cached under
+#' `cache_dir/emprise_<m>m/` by `acquire_mnt()` / `acquire_desserte()` /
+#' `acquire_foret()`: a second run with the same buffer reuses them (no
 #' re-download).
 #'
 #' Best-effort and structured: every failure path returns
@@ -190,7 +193,8 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
   if (is.null(mnt)) return(list(status = "error", reason = "accessibility_mnt_failed"))
 
-  # 2. Desserte (réseau routier/pistes) via OSM sur l'emprise tamponnée (cachée).
+  # 2. Desserte (réseau routier/pistes) via IGN BD TOPO V3 sur l'emprise
+  # tamponnée (cachée).
   desserte <- tryCatch(
     foretaccess::acquire_desserte(aoi_ext, crs = epsg, cache_dir = acq_dir),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
@@ -202,16 +206,28 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
     return(list(status = "error", reason = "accessibility_desserte_empty"))
   }
 
-  # 3. Prétraitement commun (pente, exposition, masques, rasterisation).
+  # 3. Masque forêt = forêt réelle (IGN BD Forêt V2) restreinte à l'emprise
+  # tamponnée, PAS la simple géométrie déclarée du projet. `acquire_foret`
+  # clippe la BD Forêt sur `aoi_ext` par st_intersection : le résultat est
+  # exactement (emprise projet + buffer) ∩ forêt BD Forêt V2. Ainsi l'analyse
+  # couvre toute la forêt accessible dans le tampon (y compris hors parcelles du
+  # projet) et ne peint pas en « forêt » des zones non boisées. Repli sur la
+  # géométrie projet si la BD Forêt est indisponible ou vide sur l'emprise.
+  foret_bd <- tryCatch(
+    foretaccess::acquire_foret(aoi_ext, crs = epsg, cache_dir = acq_dir),
+    error = function(e) NULL)
+  foret_mask <- if (inherits(foret_bd, "sf") && nrow(foret_bd) > 0L) foret_bd else aoi
+
+  # 4. Prétraitement commun (pente, exposition, masques, rasterisation).
   pre <- tryCatch(
-    foretaccess::preprocess(mnt = mnt, desserte = desserte, foret = aoi),
+    foretaccess::preprocess(mnt = mnt, desserte = desserte, foret = foret_mask),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(pre, "acc_err")) {
     return(list(status = "error", reason = "accessibility_preprocess_failed",
                 detail = pre$msg))
   }
 
-  # 4. Moteurs terrestres : raster de classes -> disque ; recap -> mémoire.
+  # 5. Moteurs terrestres : raster de classes -> disque ; recap -> mémoire.
   engine_fun <- list(
     skidder = foretaccess::skidder,
     porteur = foretaccess::porteur,
@@ -251,11 +267,12 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
     }
   }
 
-  # 5. GeoPackage exportable : AOI (foret) + desserte. Best-effort.
+  # 6. GeoPackage exportable : masque forêt (BD Forêt V2 ∩ emprise) + desserte.
+  # Best-effort.
   gpkg_path <- file.path(cache_dir, "accessibilite.gpkg")
   unlink(gpkg_path)
   tryCatch({
-    sf::st_write(sf::st_transform(aoi, 2154), gpkg_path, layer = "foret",
+    sf::st_write(sf::st_transform(foret_mask, 2154), gpkg_path, layer = "foret",
                  quiet = TRUE, delete_dsn = TRUE)
     sf::st_write(sf::st_transform(desserte, 2154), gpkg_path, layer = "desserte",
                  quiet = TRUE, append = TRUE)
