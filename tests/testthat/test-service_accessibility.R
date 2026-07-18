@@ -198,6 +198,47 @@ test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition",
   expect_true(dir.exists(file.path(cache, "emprise_1000m")))
 })
 
+test_that("run_accessibility : flag DFCI posé sur routes/pistes quand camion_dfci demandé", {
+  skip_if_not_installed("foretaccess")
+  skip_if_not_installed("sf")
+  toy <- system.file("extdata", "toy", package = "foretaccess")
+  skip_if(!nzchar(toy) || !file.exists(file.path(toy, "mnt.tif")))
+  loadNamespace("foretaccess")
+
+  aoi_path <- file.path(toy, "foret.gpkg")
+  foret_toy <- sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154)
+  mnt_toy <- file.path(toy, "mnt.tif")
+  cache <- withr::local_tempdir()
+  # Desserte synthétique : une route (source DFCI attendue) + un chemin (non).
+  ln <- function(a, b) sf::st_linestring(rbind(a, b))
+  desserte <- sf::st_sf(
+    classe = c("route", "chemin"),
+    geometry = sf::st_sfc(ln(c(0, 0), c(10, 10)), ln(c(0, 10), c(10, 0)), crs = 2154))
+  seen_dfci <- NULL
+
+  # On capture la colonne `dfci` de la desserte reçue par preprocess (mocké pour
+  # s'arrêter aussitôt — seul le flag nous intéresse).
+  testthat::with_mocked_bindings(
+    .acquire_mnt_highres = function(aoi, res_m = 5, crs = 2154,
+                                    cache_dir = tempdir(), overwrite = FALSE) mnt_toy,
+    .package = "nemetonshiny",
+    testthat::with_mocked_bindings(
+      acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
+                                  overwrite = FALSE, country = "FR") desserte,
+      acquire_foret = function(aoi, crs = 2154, cache_dir = tempdir(),
+                               overwrite = FALSE, country = "FR") foret_toy,
+      preprocess = function(mnt, desserte, foret, ...) {
+        seen_dfci <<- desserte[["dfci"]]
+        stop("stop-after-capture")
+      },
+      .package = "foretaccess",
+      {
+        nemetonshiny:::run_accessibility(aoi_path, "camion_dfci", cache)
+      }))
+
+  expect_equal(seen_dfci, c(1L, 0L))   # route -> 1 (source), chemin -> 0
+})
+
 test_that(".acquire_mnt_highres : réutilise le cache sans appel réseau", {
   skip_if_not_installed("sf")
   dir <- withr::local_tempdir()

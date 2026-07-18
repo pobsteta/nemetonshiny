@@ -257,6 +257,20 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
     return(list(status = "error", reason = "accessibility_desserte_empty"))
   }
 
+  # Flag DFCI sur la desserte : sans lui, `camion_dfci()` s'arrête (« Aucune
+  # desserte-source DFCI »), car `preprocess()` construit `dfci_source_mask` à
+  # partir de la colonne `dfci` de la desserte. Heuristique « routes/pistes
+  # forestières = points de départ DFCI », comme la démo officielle foretaccess
+  # (data-raw/cartes.R). Posé seulement si le moteur DFCI est demandé (inoffensif
+  # pour skidder/porteur, qui ignorent cette colonne).
+  # NOTE(foretaccess >= 1.5.0) : remplacer par la vraie source
+  # `acquire_dfci()` + `flag_dfci()` (réseau OSM ref:FR:DFCI + repli géométrique)
+  # une fois cette version publiée.
+  if ("camion_dfci" %in% engines && is.null(desserte[["dfci"]])) {
+    cl <- as.character(desserte[["classe"]])
+    desserte$dfci <- as.integer(!is.na(cl) & cl %in% c("route", "piste"))
+  }
+
   # 3. Masque forêt = forêt réelle (IGN BD Forêt V2) restreinte à l'emprise
   # tamponnée, PAS la simple géométrie déclarée du projet. `acquire_foret`
   # clippe la BD Forêt sur `aoi_ext` par st_intersection : le résultat est
