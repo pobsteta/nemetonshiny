@@ -81,13 +81,18 @@ test_that("run_accessibility : échec d'acquisition MNT -> erreur structurée", 
     c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0)))), crs = 2154))
   aoi_gpkg <- file.path(cache, "aoi.gpkg")
   sf::st_write(poly, aoi_gpkg, quiet = TRUE, delete_dsn = TRUE)
+  # HIGHRES indisponible (NULL) -> repli sur acquire_mnt, qui échoue -> erreur
+  # structurée. Mocker les deux évite tout appel réseau.
   testthat::with_mocked_bindings(
-    acquire_mnt = function(...) stop("réseau IGN indisponible"),
-    .package = "foretaccess",
-    {
-      res <- nemetonshiny:::run_accessibility(aoi_gpkg, "skidder", cache)
-      expect_equal(res$reason, "accessibility_mnt_failed")
-    })
+    .acquire_mnt_highres = function(...) NULL,
+    .package = "nemetonshiny",
+    testthat::with_mocked_bindings(
+      acquire_mnt = function(...) stop("réseau IGN indisponible"),
+      .package = "foretaccess",
+      {
+        res <- nemetonshiny:::run_accessibility(aoi_gpkg, "skidder", cache)
+        expect_equal(res$reason, "accessibility_mnt_failed")
+      }))
 })
 
 test_that("run_accessibility : pipeline complet sur données toy (IGN mocké)", {
@@ -107,9 +112,13 @@ test_that("run_accessibility : pipeline complet sur données toy (IGN mocké)", 
   mnt_toy <- file.path(toy, "mnt.tif")
   cache <- withr::local_tempdir()
 
+  # Le MNT primaire passe par le helper interne `.acquire_mnt_highres` (couche
+  # HIGHRES) : on le mocke côté nemetonshiny ; desserte/forêt côté foretaccess.
   testthat::with_mocked_bindings(
-    acquire_mnt = function(aoi, res_m = 5, crs = 2154, cache_dir = tempdir(),
-                           overwrite = FALSE, country = "FR") mnt_toy,
+    .acquire_mnt_highres = function(aoi, res_m = 5, crs = 2154,
+                                    cache_dir = tempdir(), overwrite = FALSE) mnt_toy,
+    .package = "nemetonshiny",
+    testthat::with_mocked_bindings(
     acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
                                 overwrite = FALSE, country = "FR") desserte,
     acquire_foret = function(aoi, crs = 2154, cache_dir = tempdir(),
@@ -136,7 +145,7 @@ test_that("run_accessibility : pipeline complet sur données toy (IGN mocké)", 
       } else {
         expect_false("classes_debardage" %in% names(res$raster_paths))
       }
-    })
+    }))
 })
 
 test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition", {
@@ -153,18 +162,21 @@ test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition",
   cache <- withr::local_tempdir()
 
   base_area <- as.numeric(sum(sf::st_area(foret_toy)))
-  seen_area <- NULL       # emprise reçue par acquire_mnt
+  seen_area <- NULL       # emprise reçue par le MNT (helper HIGHRES)
   foret_area <- NULL      # emprise reçue par acquire_foret (masque BD Forêt)
 
+  # On capture l'emprise (aoi) reçue par le helper MNT `.acquire_mnt_highres`
+  # (primaire, côté nemetonshiny) ET par acquire_foret (côté foretaccess) : avec
+  # un tampon de 1 km, les deux doivent être plus grandes que la forêt d'origine
+  # (le masque = BD Forêt ∩ emprise tamponnée).
   testthat::with_mocked_bindings(
-    # MNT/desserte/forêt mockés. On capture l'emprise (aoi) reçue par acquire_mnt
-    # ET par acquire_foret : avec un tampon de 1 km, les deux doivent être plus
-    # grandes que la forêt d'origine (le masque = BD Forêt ∩ emprise tamponnée).
-    acquire_mnt = function(aoi, res_m = 5, crs = 2154, cache_dir = tempdir(),
-                           overwrite = FALSE, country = "FR") {
+    .acquire_mnt_highres = function(aoi, res_m = 5, crs = 2154,
+                                    cache_dir = tempdir(), overwrite = FALSE) {
       seen_area <<- as.numeric(sum(sf::st_area(aoi)))
       mnt_toy
     },
+    .package = "nemetonshiny",
+    testthat::with_mocked_bindings(
     acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
                                 overwrite = FALSE, country = "FR") desserte,
     acquire_foret = function(aoi, crs = 2154, cache_dir = tempdir(),
@@ -177,13 +189,24 @@ test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition",
       res <- nemetonshiny:::run_accessibility(
         aoi_path, "skidder", cache, buffer_m = 1000)
       expect_equal(res$status, "success")
-    })
+    }))
 
   expect_true(!is.null(seen_area) && seen_area > base_area)
   # Le masque forêt est bien acquis sur l'emprise tamponnée (BD Forêt V2).
   expect_true(!is.null(foret_area) && foret_area > base_area)
   # Le sous-cache d'acquisition est bien nommé selon le tampon (en mètres).
   expect_true(dir.exists(file.path(cache, "emprise_1000m")))
+})
+
+test_that(".acquire_mnt_highres : réutilise le cache sans appel réseau", {
+  skip_if_not_installed("sf")
+  dir <- withr::local_tempdir()
+  # Un fichier de cache déjà présent -> le helper le renvoie tel quel (pas de
+  # fetch happign). On écrit un fichier bidon : seul le chemin est vérifié.
+  writeLines("x", file.path(dir, "mnt_highres.tif"))
+  aoi <- sf::st_sf(geometry = sf::st_sfc(sf::st_point(c(737500, 6384500)), crs = 2154))
+  got <- nemetonshiny:::.acquire_mnt_highres(aoi, cache_dir = dir)
+  expect_equal(got, file.path(dir, "mnt_highres.tif"))
 })
 
 test_that(".load_cached_accessibility : restaure les rasters cachés d'un projet", {

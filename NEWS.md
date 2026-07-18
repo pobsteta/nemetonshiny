@@ -1,5 +1,27 @@
 # nemetonshiny (development version)
 
+### Fixed — Accessibilité : MNT genuine 5 m (fin des artefacts « inexploitable »)
+
+- **Cause** : `foretaccess::acquire_mnt()` récupère la couche WMS IGN
+  `ELEVATION.ELEVATIONGRIDCOVERAGE`, plafonnée au zoom 11 (~25 m ré-échantillonné
+  à 5 m) → escalier blocky → pentes parasites → classe **`inexploitable`** peinte
+  en **stries noires axiales** sur les rasters (débusqueur/porteur/classes de
+  débardage), sans rapport avec le relief réel ni les routes.
+- **Correctif** : `run_accessibility()` récupère désormais le MNT via la couche
+  **haute résolution `ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES`** (zoom 14, MNT
+  5 m genuine — mesuré 0 % de cellules plates, pentes réalistes, vs 43 % / 71°
+  pour la couche standard) au moyen d'un helper `.acquire_mnt_highres` (fetch
+  `happign`, cache par emprise). Repli automatique sur `acquire_mnt` (couche
+  standard) si le fetch HIGHRES échoue. À retirer quand `foretaccess` basculera
+  sa couche `dem` FR sur `…HIGHRES`.
+
+### Added — Accessibilité : message « analyse en cours » + chrono sous le bouton
+
+- Message inline (roue dentée + chrono MM:SS) **sous le bouton « Lancer
+  l'analyse »**, parité FAST/FORDEAD/RECONFORT — le toast bas-droite pouvant être
+  manqué ou fermé sur un run long. Même source (`rv$start`) : disparaît en fin de
+  run.
+
 
 # nemetonshiny 0.110.3 (2026-07-18)
 
