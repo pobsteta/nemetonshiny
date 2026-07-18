@@ -62,13 +62,7 @@ mod_accessibility_ui <- function(id) {
         ns("run"), i18n$t("acc_run"),
         label_busy = i18n$t("acc_running"),
         icon = bsicons::bs_icon("play-fill"),
-        type = "primary", class = "w-100 mb-3"),
-
-      htmltools::tags$h6(class = "mt-3", i18n$t("action_plan_section_exports")),
-      shiny::downloadButton(
-        ns("export_gpkg"), i18n$t("acc_download_gpkg"),
-        icon = shiny::icon("database"),
-        class = "btn-outline-success btn-sm w-100")
+        type = "primary", class = "w-100 mb-3")
     ),
 
     bslib::card(
@@ -89,7 +83,19 @@ mod_accessibility_ui <- function(id) {
           htmltools::tags$p(class = "text-muted small", i18n$t("acc_buffer_help")),
           shiny::sliderInput(
             ns("opacity"), i18n$t("acc_opacity"),
-            min = 0, max = 1, value = 0.7, step = 0.05, ticks = FALSE)
+            min = 0, max = 1, value = 0.7, step = 0.05, ticks = FALSE),
+          htmltools::tags$hr(class = "my-2"),
+          # Exports regroupés dans un accordéon repliable « Exports » (replié par
+          # défaut), même présentation que l'onglet reGénération.
+          bslib::accordion(
+            open = FALSE,
+            bslib::accordion_panel(
+              title = i18n$t("action_plan_section_exports"),
+              icon = bsicons::bs_icon("box-arrow-up"),
+              shiny::downloadButton(
+                ns("export_gpkg"), i18n$t("acc_download_gpkg"),
+                icon = shiny::icon("database"),
+                class = "btn-outline-success btn-sm w-100")))
         ),
         leaflet::leafletOutput(ns("map"), height = "72vh")
       )

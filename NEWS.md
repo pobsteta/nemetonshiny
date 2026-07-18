@@ -1,5 +1,12 @@
 # nemetonshiny (development version)
 
+### Changed — Accessibilité : boutons Exports regroupés dans un accordéon repliable
+
+- Le bouton d'export (Télécharger le GeoPackage) de l'onglet Accessibilité est
+  désormais regroupé dans un **panneau repliable « Exports »** (replié par
+  défaut) dans la barre latérale droite, sous le sélecteur de raster / tampon /
+  opacité — même présentation que l'onglet reGénération.
+
 
 # nemetonshiny 0.110.0 (2026-07-18)
 
