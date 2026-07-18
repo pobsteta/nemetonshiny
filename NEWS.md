@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.110.0 (2026-07-18)
+
 ### Added — Accessibilité : zone tampon, opacité, sidebar droite, restauration du cache
 
 - Nouveau champ **« Zone tampon autour de la forêt (km) »** (défaut 5 km) dans
