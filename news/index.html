@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.110.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,20 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.110.4" id="nemetonshiny-01104-2026-07-18">nemetonshiny 0.110.4 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01104-2026-07-18"></a></h2>
+<div class="section level4">
+<h4 id="fixed--accessibilité--mnt-genuine-m-fin-des-artefacts--inexploitable--0-110-4">Fixed — Accessibilité : MNT genuine 5 m (fin des artefacts « inexploitable »)<a class="anchor" aria-label="anchor" href="#fixed--accessibilit%C3%A9--mnt-genuine-m-fin-des-artefacts--inexploitable--0-110-4"></a></h4>
+<ul><li>
+<strong>Cause</strong> : <code><a href="https://pobsteta.github.io/foretaccess/reference/acquire_mnt.html" class="external-link">foretaccess::acquire_mnt()</a></code> récupère la couche WMS IGN <code>ELEVATION.ELEVATIONGRIDCOVERAGE</code>, plafonnée au zoom 11 (~25 m ré-échantillonné à 5 m) → escalier blocky → pentes parasites → classe <strong><code>inexploitable</code></strong> peinte en <strong>stries noires axiales</strong> sur les rasters (débusqueur/porteur/classes de débardage), sans rapport avec le relief réel ni les routes.</li>
+<li>
+<strong>Correctif</strong> : <code>run_accessibility()</code> récupère désormais le MNT via la couche <strong>haute résolution <code>ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES</code></strong> (zoom 14, MNT 5 m genuine — mesuré 0 % de cellules plates, pentes réalistes, vs 43 % / 71° pour la couche standard) au moyen d’un helper <code>.acquire_mnt_highres</code> (fetch <code>happign</code>, cache par emprise). Repli automatique sur <code>acquire_mnt</code> (couche standard) si le fetch HIGHRES échoue. À retirer quand <code>foretaccess</code> basculera sa couche <code>dem</code> FR sur <code>…HIGHRES</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--accessibilité--message--analyse-en-cours---chrono-sous-le-bouton-0-110-4">Added — Accessibilité : message « analyse en cours » + chrono sous le bouton<a class="anchor" aria-label="anchor" href="#added--accessibilit%C3%A9--message--analyse-en-cours---chrono-sous-le-bouton-0-110-4"></a></h4>
+<ul><li>Message inline (roue dentée + chrono MM:SS) <strong>sous le bouton « Lancer l’analyse »</strong>, parité FAST/FORDEAD/RECONFORT — le toast bas-droite pouvant être manqué ou fermé sur un run long. Même source (<code>rv$start</code>) : disparaît en fin de run.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.110.3" id="nemetonshiny-01103-2026-07-18">nemetonshiny 0.110.3 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01103-2026-07-18"></a></h2>
