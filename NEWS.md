@@ -1,6 +1,22 @@
 # nemetonshiny (development version)
 
 
+# nemetonshiny 0.110.6 (2026-07-18)
+
+### Fixed — Accessibilité : carte alignée sur le patron « Alertes FAST »
+
+- Changer de fond (OSM ↔ Satellite) faisait **disparaître le raster** et
+  perdait le **zoom** et l'**opacité**. La carte adopte désormais le patron de la
+  Carte « Alertes FAST » : le raster est peint dans un **map pane dédié**
+  (`addMapPane` + `gridOptions(pane=…)`), ce qui le rend stable au changement de
+  fond ; la carte de base (tuiles + UGF + `fitBounds`) est rendue une seule fois
+  et le raster est mis à jour via `leafletProxy` (zoom/fond/opacité préservés).
+- Le contour du projet est affiché comme couche **« UGF »** (liseré bleu, sans
+  remplissage) dans le contrôle de couches, et le raster catégoriel est rendu en
+  `method = "ngb"` (pas d'interpolation des codes de classe). La décoche du
+  groupe « Accessibilite » est respectée après re-dessin.
+
+
 # nemetonshiny 0.110.5 (2026-07-18)
 
 ### Changed — Notifs « en cours » : picto sablier unifié (au lieu de la roue dentée)
