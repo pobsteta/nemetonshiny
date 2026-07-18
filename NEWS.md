@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.110.7 (2026-07-18)
+
 ### Fixed — Carte d'accessibilité : hors-forêt transparent, légende, source DFCI
 
 - **`hors_foret` blanc opaque → transparent** : `colorFactor` + `addRasterImage`
