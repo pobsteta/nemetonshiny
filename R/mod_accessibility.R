@@ -128,6 +128,9 @@ mod_accessibility_ui <- function(id) {
                 icon = shiny::icon("database"),
                 class = "btn-outline-success btn-sm w-100")))
         ),
+        # Badge de provenance DFCI (au-dessus de la carte) : n'apparaît que
+        # lorsque la couche « Camion DFCI » est affichée.
+        shiny::uiOutput(ns("dfci_badge")),
         leaflet::leafletOutput(ns("map"), height = "72vh")
       )
     )
@@ -302,7 +305,11 @@ mod_accessibility_server <- function(id, app_state) {
       # rechargement échoue.
       project_path <- tryCatch(app_state$current_project$path,
                                error = function(e) NULL)
-      rv$result <- .load_cached_accessibility(project_path) %||% res
+      # Recharge l'union des rasters du cache, mais conserve la provenance DFCI
+      # du run courant (`dfci_source`, non persistée sur disque) pour le badge.
+      cached <- .load_cached_accessibility(project_path)
+      if (!is.null(cached)) cached$dfci_source <- res$dfci_source
+      rv$result <- cached %||% res
       shiny::showNotification(
         sprintf(i18n$t("acc_done_fmt"), length(res$engines)),
         type = "message", duration = 6)
@@ -347,6 +354,31 @@ mod_accessibility_server <- function(id, app_state) {
         ns("layer"), NULL,
         choices = stats::setNames(layers, labs),
         selected = layers[[1]])
+    })
+
+    # --- Badge de provenance DFCI (au-dessus de la carte) ----------------------
+    # N'apparaît que si la couche « Camion DFCI » est affichée. Avertissement
+    # (jaune) quand les sources DFCI sont estimées par l'heuristique app
+    # (aucune desserte taguée ref:FR:DFCI, ni repli géométrique) ; info (bleu)
+    # quand le vrai réseau OSM ref:FR:DFCI a servi.
+    output$dfci_badge <- shiny::renderUI({
+      res <- rv$result
+      layer <- input$layer %||%
+        (if (!is.null(res)) names(res$raster_paths)[[1]] else NULL)
+      if (is.null(res) || !identical(layer, "camion_dfci")) return(NULL)
+      src <- tryCatch(res$dfci_source, error = function(e) NULL)
+      if (identical(src, "heuristique")) {
+        shiny::div(class = "alert alert-warning acc-dfci-badge py-2 mb-2 small",
+          role = "status",
+          shiny::icon("triangle-exclamation"), " ",
+          i18n$t("acc_dfci_heuristic_badge"))
+      } else if (identical(src, "osm")) {
+        shiny::div(class = "alert alert-info acc-dfci-badge py-2 mb-2 small",
+          role = "status",
+          shiny::icon("circle-info"), " ", i18n$t("acc_dfci_osm_badge"))
+      } else {
+        NULL
+      }
     })
 
     # --- Carte : fonds + UGF + raster de classes en overlay --------------------
