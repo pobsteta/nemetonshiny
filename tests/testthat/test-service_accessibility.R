@@ -135,6 +135,67 @@ test_that("run_accessibility : pipeline complet sur données toy (OSM mockée)",
     })
 })
 
+test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition", {
+  skip_if_not_installed("foretaccess")
+  skip_if_not_installed("sf")
+  toy <- system.file("extdata", "toy", package = "foretaccess")
+  skip_if(!nzchar(toy) || !file.exists(file.path(toy, "mnt.tif")))
+  loadNamespace("foretaccess")
+
+  aoi_path <- file.path(toy, "foret.gpkg")
+  desserte <- sf::st_read(file.path(toy, "desserte.gpkg"), quiet = TRUE)
+  mnt_toy <- file.path(toy, "mnt.tif")
+  cache <- withr::local_tempdir()
+
+  aoi_2154 <- sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154)
+  base_area <- as.numeric(sum(sf::st_area(aoi_2154)))
+  seen_area <- NULL
+
+  testthat::with_mocked_bindings(
+    # Le MNT/desserte sont mockés, mais on capture l'emprise (aoi) reçue par
+    # acquire_mnt : avec un tampon de 1 km, elle doit être plus grande que la
+    # forêt d'origine.
+    acquire_mnt = function(aoi, res_m = 5, crs = 2154, cache_dir = tempdir(),
+                           overwrite = FALSE, country = "FR") {
+      seen_area <<- as.numeric(sum(sf::st_area(aoi)))
+      mnt_toy
+    },
+    acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
+                                overwrite = FALSE, country = "FR") desserte,
+    .package = "foretaccess",
+    {
+      res <- nemetonshiny:::run_accessibility(
+        aoi_path, "skidder", cache, buffer_m = 1000)
+      expect_equal(res$status, "success")
+    })
+
+  expect_true(!is.null(seen_area) && seen_area > base_area)
+  # Le sous-cache d'acquisition est bien nommé selon le tampon (en mètres).
+  expect_true(dir.exists(file.path(cache, "emprise_1000m")))
+})
+
+test_that(".load_cached_accessibility : restaure les rasters cachés d'un projet", {
+  skip_if_not_installed("terra")
+  proj <- withr::local_tempdir()
+  # Pas de cache -> NULL.
+  expect_null(nemetonshiny:::.load_cached_accessibility(proj))
+  expect_null(nemetonshiny:::.load_cached_accessibility(NULL))
+
+  cache_dir <- nemetonshiny:::.accessibility_cache_dir(proj)
+  dir.create(cache_dir, recursive = TRUE)
+  r <- terra::rast(nrows = 2, ncols = 2, vals = 1:4)
+  terra::writeRaster(r, file.path(cache_dir, "acc_skidder.tif"))
+  terra::writeRaster(r, file.path(cache_dir, "acc_classes_debardage.tif"))
+
+  res <- nemetonshiny:::.load_cached_accessibility(proj)
+  expect_equal(res$status, "success")
+  expect_true(isTRUE(res$from_cache))
+  expect_setequal(names(res$raster_paths), c("skidder", "classes_debardage"))
+  # L'engine (skidder) précède les classes de débardage -> couche par défaut.
+  expect_equal(names(res$raster_paths)[[1]], "skidder")
+  expect_equal(res$engines, "skidder")
+})
+
 test_that(".acc_level_colors : coltab du raster prioritaire, sinon repli", {
   skip_if_not_installed("terra")
   # Raster catégoriel SANS coltab -> palette de repli (#RRGGBB, 7 caractères).
