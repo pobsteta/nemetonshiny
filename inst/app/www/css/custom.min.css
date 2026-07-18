@@ -297,7 +297,7 @@ html, body {
 
 /* Ensure the leaflet legend has enough space and isn't clipped */
 .leaflet-control.info.legend {
-  max-height: 150px;
+  max-height: 70vh;
   overflow-y: auto;
   font-size: 0.8em;
 }

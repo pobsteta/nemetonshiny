@@ -379,13 +379,23 @@ mod_accessibility_server <- function(id, app_state) {
       if (is.data.frame(lv) && nrow(lv) > 0L) {
         codes <- as.numeric(lv[[1]]); labs <- as.character(lv[[2]])
         cols <- .acc_level_colors(rast, codes)
-        # « hors_foret » TOUJOURS transparent, quel que soit le raster : les
-        # moteurs (débusqueur/porteur/camion DFCI) n'ont pas de coltab utile et
-        # recevraient sinon une couleur pleine de la palette de repli. On force
-        # l'alpha 00 — la classe disparaît de la carte et de la légende (filtre
-        # `keep` ci-dessous). Les classes de débardage l'ont déjà via leur coltab.
+        # « hors_foret » TOUJOURS transparent, quel que soit le raster. On NE se
+        # fie PAS à l'alpha de la palette : `colorFactor` + `addRasterImage`
+        # perdent le canal alpha d'un `#RRGGBBAA` (d'où l'ancien blanc opaque).
+        # Fix robuste : masquer les cellules hors_foret à NA dans le raster —
+        # elles passent alors par `na.color = "transparent"` (garanti). Le code
+        # est repéré par le LABEL (variable : 4 chez skidder/porteur, 9 chez les
+        # classes de débardage), jamais en dur. Le filtre `keep` retire la classe
+        # de la légende (on garde l'alpha 00 sur `cols` pour ce filtre).
         hf <- !is.na(labs) & labs == "hors_foret"
         if (any(hf)) cols[hf] <- "#FFFFFF00"
+        code_hf <- codes[hf]
+        if (length(code_hf)) {
+          # `terra::subst` échoue sur un raster catégoriel (il matche les libellés,
+          # pas les codes). `ifel(rast %in% code, NA, …)` masque de façon fiable.
+          rast <- tryCatch(terra::ifel(rast %in% code_hf, NA, rast),
+                           error = function(e) rast)
+        }
         cmap <- leaflet::colorFactor(cols, domain = codes, na.color = "transparent")
         keep <- !is.na(cols) & substr(cols, 8L, 9L) != "00"
         proxy |>
