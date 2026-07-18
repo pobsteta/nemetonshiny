@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.110.5 (2026-07-18)
+
 ### Changed — Notifs « en cours » : picto sablier unifié (au lieu de la roue dentée)
 
 - Le picto des notifications/messages « analyse en cours » (helper partagé
