@@ -123,6 +123,13 @@ test_that("run_accessibility : pipeline complet sur données toy (IGN mocké)", 
                                 overwrite = FALSE, country = "FR") desserte,
     acquire_foret = function(aoi, crs = 2154, cache_dir = tempdir(),
                              overwrite = FALSE, country = "FR") foret_toy,
+    # DFCI mocké (pas de réseau OSM) : toutes les dessertes = sources DFCI, pour
+    # que camion_dfci ait des points de départ sur les données toy.
+    acquire_dfci = function(aoi, crs = 2154, cache_dir = tempdir(),
+                            overwrite = FALSE) NULL,
+    flag_dfci = function(desserte, dfci_lignes = NULL, ...) {
+      desserte$dfci <- 1L; desserte
+    },
     .package = "foretaccess",
     {
       res <- nemetonshiny:::run_accessibility(
@@ -198,45 +205,44 @@ test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition",
   expect_true(dir.exists(file.path(cache, "emprise_1000m")))
 })
 
-test_that("run_accessibility : flag DFCI posé sur routes/pistes quand camion_dfci demandé", {
+test_that(".resolve_desserte_dfci : provenance osm / heuristique du flag DFCI", {
   skip_if_not_installed("foretaccess")
   skip_if_not_installed("sf")
-  toy <- system.file("extdata", "toy", package = "foretaccess")
-  skip_if(!nzchar(toy) || !file.exists(file.path(toy, "mnt.tif")))
-  loadNamespace("foretaccess")
-
-  aoi_path <- file.path(toy, "foret.gpkg")
-  foret_toy <- sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154)
-  mnt_toy <- file.path(toy, "mnt.tif")
-  cache <- withr::local_tempdir()
-  # Desserte synthétique : une route (source DFCI attendue) + un chemin (non).
   ln <- function(a, b) sf::st_linestring(rbind(a, b))
   desserte <- sf::st_sf(
     classe = c("route", "chemin"),
     geometry = sf::st_sfc(ln(c(0, 0), c(10, 10)), ln(c(0, 10), c(10, 0)), crs = 2154))
-  seen_dfci <- NULL
+  aoi <- sf::st_as_sfc(sf::st_bbox(desserte))
 
-  # On capture la colonne `dfci` de la desserte reçue par preprocess (mocké pour
-  # s'arrêter aussitôt — seul le flag nous intéresse).
+  # 1. OSM : acquire_dfci renvoie un réseau, flag_dfci le tague -> source "osm".
   testthat::with_mocked_bindings(
-    .acquire_mnt_highres = function(aoi, res_m = 5, crs = 2154,
-                                    cache_dir = tempdir(), overwrite = FALSE) mnt_toy,
-    .package = "nemetonshiny",
-    testthat::with_mocked_bindings(
-      acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
-                                  overwrite = FALSE, country = "FR") desserte,
-      acquire_foret = function(aoi, crs = 2154, cache_dir = tempdir(),
-                               overwrite = FALSE, country = "FR") foret_toy,
-      preprocess = function(mnt, desserte, foret, ...) {
-        seen_dfci <<- desserte[["dfci"]]
-        stop("stop-after-capture")
-      },
-      .package = "foretaccess",
-      {
-        nemetonshiny:::run_accessibility(aoi_path, "camion_dfci", cache)
-      }))
+    acquire_dfci = function(aoi, crs = 2154, cache_dir = tempdir(),
+                            overwrite = FALSE) {
+      sf::st_sf(geometry = sf::st_sfc(ln(c(0, 0), c(10, 10)), crs = 2154))
+    },
+    flag_dfci = function(desserte, dfci_lignes = NULL, ...) {
+      desserte$dfci <- c(1L, 0L); desserte
+    },
+    .package = "foretaccess",
+    {
+      r <- nemetonshiny:::.resolve_desserte_dfci(desserte, aoi, 2154, tempdir())
+      expect_equal(r$source, "osm")
+      expect_equal(r$desserte$dfci, c(1L, 0L))
+    })
 
-  expect_equal(seen_dfci, c(1L, 0L))   # route -> 1 (source), chemin -> 0
+  # 2. Heuristique : pas d'OSM, flag_dfci ne tague rien -> repli routes/pistes.
+  testthat::with_mocked_bindings(
+    acquire_dfci = function(aoi, crs = 2154, cache_dir = tempdir(),
+                            overwrite = FALSE) NULL,
+    flag_dfci = function(desserte, dfci_lignes = NULL, ...) {
+      desserte$dfci <- 0L; desserte
+    },
+    .package = "foretaccess",
+    {
+      r <- nemetonshiny:::.resolve_desserte_dfci(desserte, aoi, 2154, tempdir())
+      expect_equal(r$source, "heuristique")
+      expect_equal(r$desserte$dfci, c(1L, 0L))   # route -> 1, chemin -> 0
+    })
 })
 
 test_that(".acquire_mnt_highres : réutilise le cache sans appel réseau", {

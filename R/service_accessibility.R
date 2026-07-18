@@ -146,6 +146,42 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
   if (isTRUE(ok)) path else NULL
 }
 
+#' Flag the DFCI source tronçons on a road network (with provenance)
+#'
+#' `camion_dfci()` needs starting points (the `dfci` flag on `desserte`, turned
+#' into `dfci_source_mask` by `preprocess()`) or it aborts. Resolution order:
+#' 1. **OSM `ref:FR:DFCI`** network via `foretaccess::acquire_dfci()` +
+#'    `flag_dfci()` — the authoritative source (`"osm"`).
+#' 2. **Geometric fallback** built into `flag_dfci()` when no OSM DFCI line is
+#'    found (emprise / traversal / turn-around heuristics) — `"geometrique"`.
+#' 3. **App heuristic** of last resort when nothing was flagged: forest
+#'    roads/tracks (`classe` in route/piste) are treated as sources —
+#'    `"heuristique"` (surfaced to the user as a warning badge).
+#'
+#' @param desserte Road network `sf` (carries a `classe` column).
+#' @param aoi_ext The buffered AOI (for the OSM DFCI fetch).
+#' @param epsg Target EPSG (2154).
+#' @param cache_dir Cache directory for the OSM DFCI fetch.
+#' @return `list(desserte = <sf with dfci flag>, source = "osm"|"geometrique"|"heuristique")`.
+#' @noRd
+.resolve_desserte_dfci <- function(desserte, aoi_ext, epsg, cache_dir) {
+  dfci_l <- tryCatch(
+    foretaccess::acquire_dfci(aoi_ext, crs = epsg, cache_dir = cache_dir),
+    error = function(e) NULL)
+  desserte <- tryCatch(
+    foretaccess::flag_dfci(desserte, dfci_l),
+    error = function(e) { desserte$dfci <- 0L; desserte })
+  n_flag <- suppressWarnings(sum(as.numeric(desserte[["dfci"]]), na.rm = TRUE))
+  if (is.finite(n_flag) && n_flag > 0) {
+    src <- if (inherits(dfci_l, "sf") && nrow(dfci_l) > 0L) "osm" else "geometrique"
+  } else {
+    cl <- as.character(desserte[["classe"]])
+    desserte$dfci <- as.integer(!is.na(cl) & cl %in% c("route", "piste"))
+    src <- "heuristique"
+  }
+  list(desserte = desserte, source = src)
+}
+
 #' Run the terrestrial accessibility engines for a project (worker-side)
 #'
 #' Heavy, self-contained function meant to run in a `future` worker. Acquires
@@ -259,16 +295,16 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
 
   # Flag DFCI sur la desserte : sans lui, `camion_dfci()` s'arrête (« Aucune
   # desserte-source DFCI »), car `preprocess()` construit `dfci_source_mask` à
-  # partir de la colonne `dfci` de la desserte. Heuristique « routes/pistes
-  # forestières = points de départ DFCI », comme la démo officielle foretaccess
-  # (data-raw/cartes.R). Posé seulement si le moteur DFCI est demandé (inoffensif
-  # pour skidder/porteur, qui ignorent cette colonne).
-  # NOTE(foretaccess >= 1.5.0) : remplacer par la vraie source
-  # `acquire_dfci()` + `flag_dfci()` (réseau OSM ref:FR:DFCI + repli géométrique)
-  # une fois cette version publiée.
-  if ("camion_dfci" %in% engines && is.null(desserte[["dfci"]])) {
-    cl <- as.character(desserte[["classe"]])
-    desserte$dfci <- as.integer(!is.na(cl) & cl %in% c("route", "piste"))
+  # partir de la colonne `dfci` de la desserte. Source OSM `ref:FR:DFCI` en
+  # priorité (foretaccess::acquire_dfci + flag_dfci), repli géométrique de
+  # flag_dfci, puis heuristique app routes/pistes en dernier recours. La
+  # provenance (`dfci_source`) est remontée pour signaler le cas heuristique à
+  # l'utilisateur. Posé seulement si le moteur DFCI est demandé.
+  dfci_source <- NA_character_
+  if ("camion_dfci" %in% engines) {
+    fl <- .resolve_desserte_dfci(desserte, aoi_ext, epsg, acq_dir)
+    desserte <- fl$desserte
+    dfci_source <- fl$source
   }
 
   # 3. Masque forêt = forêt réelle (IGN BD Forêt V2) restreinte à l'emprise
@@ -350,7 +386,8 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
     recaps = recaps,
     raster_paths = raster_paths,
     gpkg_path = if (file.exists(gpkg_path)) gpkg_path else NULL,
-    n_desserte = nrow(desserte))
+    n_desserte = nrow(desserte),
+    dfci_source = dfci_source)
 }
 
 #' Combine per-engine recap tables into a single display data.frame
