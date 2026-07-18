@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.110.1 (2026-07-18)
+
 ### Changed — Accessibilité : boutons Exports regroupés dans un accordéon repliable
 
 - Le bouton d'export (Télécharger le GeoPackage) de l'onglet Accessibilité est
