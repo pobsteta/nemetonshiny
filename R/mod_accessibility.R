@@ -10,16 +10,43 @@
 # calcul est long → `ExtendedTask` + `future_promise`, même patron que le moteur
 # reGénération (notif persistante bas-droite avec chrono, retour immédiat).
 
+#' Semantic colour per accessibility class name
+#'
+#' The class colour must encode the class MEANING, not its position in the level
+#' table: with a purely positional palette the DFCI raster painted
+#' `inaccessible` bright green (it is level 1) — the exact opposite of what the
+#' map should say. Keyed by the raw `foretaccess` class name so every engine
+#' shares one convention: green = workable/close, orange→red = degraded/far,
+#' grey/slate = out of reach, transparent = outside the forest mask.
+#' @noRd
+.ACC_CLASS_COLORS <- c(
+  # Moteurs terrestres (skidder / porteur)
+  parcourable          = "#2E7D32",
+  accessible           = "#9CCC65",
+  non_accessible       = "#C62828",
+  # Communes
+  inaccessible         = "#9E9E9E",
+  inexploitable        = "#455A64",
+  # Camion DFCI (c1 = le plus proche donc le mieux défendu)
+  non_defendable_pente = "#78909C",
+  defendable_c1        = "#2E7D32",
+  defendable_c2        = "#FDD835",
+  defendable_c3        = "#FB8C00",
+  hors_foret           = "#FFFFFF00")
+
 #' Colours for a categorical accessibility raster's levels
 #'
-#' Prefers the raster's own colour table (`terra::coltab`) when it carries a
-#' meaningful one — e.g. the `classes_debardage` raster ships a Sylvaccess
-#' green→red distance ramp. Falls back to a fixed qualitative palette (cycled)
-#' when there is no usable colour table. Returns one colour per `codes` entry,
-#' as `#RRGGBB` (fallback) or `#RRGGBBAA` (from the colour table; `…00` alpha
-#' means transparent, e.g. `hors_foret`).
+#' Resolution order: (1) the raster's own colour table (`terra::coltab`) when it
+#' carries a meaningful one — the `classes_debardage` raster ships a Sylvaccess
+#' green→red distance ramp worth honouring; (2) `.ACC_CLASS_COLORS` keyed by
+#' class name; (3) a positional qualitative palette for anything still unknown.
+#' Returns one colour per `codes` entry.
+#'
+#' @param rast The categorical `SpatRaster`.
+#' @param codes Numeric level codes.
+#' @param labs Character class names, same length as `codes`.
 #' @noRd
-.acc_level_colors <- function(rast, codes) {
+.acc_level_colors <- function(rast, codes, labs = NULL) {
   pal <- c("#2E7D32", "#9CCC65", "#FDD835", "#FB8C00", "#C62828",
            "#6D4C41", "#9E9E9E", "#455A64")
   ct <- tryCatch(terra::coltab(rast)[[1]], error = function(e) NULL)
@@ -34,7 +61,50 @@
     # Ignorer une coltab dégénérée (terra en pose parfois une toute noire).
     if (length(unique(hex[!is.na(hex)])) > 1L) return(hex)
   }
-  pal[((seq_along(codes) - 1L) %% length(pal)) + 1L]
+  out <- rep(NA_character_, length(codes))
+  if (!is.null(labs)) out <- unname(.ACC_CLASS_COLORS[as.character(labs)])
+  miss <- is.na(out)
+  if (any(miss)) {
+    out[miss] <- pal[((which(miss) - 1L) %% length(pal)) + 1L]
+  }
+  out
+}
+
+#' Mask the `hors_foret` cells of a class raster to NA
+#'
+#' Cells outside the forest mask must not paint over the basemap — and they are
+#' the majority of the rectangular extent once a buffer widens it. We do NOT
+#' rely on the palette's alpha: `colorFactor()` + `addRasterImage()` drop the
+#' alpha channel of a `#RRGGBBAA`, which is what rendered `hors_foret` as opaque
+#' WHITE. Masking the cells to NA instead routes them through
+#' `na.color = "transparent"`, which is honoured. The class is located by its
+#' LABEL (the code varies: 4 for skidder/porteur, 6 for DFCI, 9 for the skidding
+#' classes), never hard-coded.
+#'
+#' **Only explicitly namespaced `terra::` calls here.** `terra` is in `Imports:`
+#' but the NAMESPACE pulls in no terra S4 method, so inside this package
+#' `rast %in% codes` dispatches to `base::%in%` — which returns a length-1
+#' `FALSE` on a `SpatRaster` instead of a mask, making the whole masking a
+#' silent no-op (the original cause of the opaque white). Same trap for the
+#' `levels<-` replacement method. Going through `values()`/`setValues()` keeps
+#' the operation immune to S4 dispatch, and yields a plain numeric raster —
+#' which is exactly what `colorFactor(domain = codes)` expects downstream.
+#'
+#' @param rast The categorical `SpatRaster`.
+#' @param codes Numeric level codes.
+#' @param labs Character class names, same length as `codes`.
+#' @return The raster with `hors_foret` cells set to NA (unchanged on failure).
+#' @noRd
+.acc_mask_hors_foret <- function(rast, codes, labs) {
+  hf <- !is.na(labs) & labs == "hors_foret"
+  if (!any(hf)) return(rast)
+  tryCatch({
+    v <- terra::values(rast)
+    # `v` est ici un vecteur/matrice numérique de base : le `%in%` de base est
+    # le bon opérateur, et il compare les CODES (pas les libellés).
+    v[v %in% codes[hf]] <- NA
+    terra::setValues(terra::rast(rast), v)
+  }, error = function(e) rast)
 }
 
 #' Human-friendly legend labels for accessibility classes
@@ -59,7 +129,13 @@
     non_defendable_pente = i18n$t("acc_dfci_non_defendable_pente"),
     defendable_c1        = dfci_band(1L),
     defendable_c2        = dfci_band(2L),
-    defendable_c3        = dfci_band(3L))
+    defendable_c3        = dfci_band(3L),
+    # Classes des moteurs terrestres : elles s'affichaient jusqu'ici en brut
+    # (« parcourable », « non_accessible »).
+    parcourable          = i18n$t("acc_class_parcourable"),
+    accessible           = i18n$t("acc_class_accessible"),
+    non_accessible       = i18n$t("acc_class_non_accessible"),
+    inexploitable        = i18n$t("acc_class_inexploitable"))
   out <- unname(map[labs])
   out[is.na(out)] <- labs[is.na(out)]
   out
@@ -449,24 +525,14 @@ mod_accessibility_server <- function(id, app_state) {
       lv <- tryCatch(terra::levels(rast)[[1]], error = function(e) NULL)
       if (is.data.frame(lv) && nrow(lv) > 0L) {
         codes <- as.numeric(lv[[1]]); labs <- as.character(lv[[2]])
-        cols <- .acc_level_colors(rast, codes)
-        # « hors_foret » TOUJOURS transparent, quel que soit le raster. On NE se
-        # fie PAS à l'alpha de la palette : `colorFactor` + `addRasterImage`
-        # perdent le canal alpha d'un `#RRGGBBAA` (d'où l'ancien blanc opaque).
-        # Fix robuste : masquer les cellules hors_foret à NA dans le raster —
-        # elles passent alors par `na.color = "transparent"` (garanti). Le code
-        # est repéré par le LABEL (variable : 4 chez skidder/porteur, 9 chez les
-        # classes de débardage), jamais en dur. Le filtre `keep` retire la classe
-        # de la légende (on garde l'alpha 00 sur `cols` pour ce filtre).
+        cols <- .acc_level_colors(rast, codes, labs)
+        # « hors_foret » TOUJOURS transparent, quel que soit le raster : on
+        # masque les cellules à NA (cf. .acc_mask_hors_foret) et on force
+        # l'alpha 00 sur la couleur, ce qui suffit au filtre `keep` ci-dessous
+        # pour retirer la classe de la LÉGENDE.
         hf <- !is.na(labs) & labs == "hors_foret"
         if (any(hf)) cols[hf] <- "#FFFFFF00"
-        code_hf <- codes[hf]
-        if (length(code_hf)) {
-          # `terra::subst` échoue sur un raster catégoriel (il matche les libellés,
-          # pas les codes). `ifel(rast %in% code, NA, …)` masque de façon fiable.
-          rast <- tryCatch(terra::ifel(rast %in% code_hf, NA, rast),
-                           error = function(e) rast)
-        }
+        rast <- .acc_mask_hors_foret(rast, codes, labs)
         cmap <- leaflet::colorFactor(cols, domain = codes, na.color = "transparent")
         keep <- !is.na(cols) & substr(cols, 8L, 9L) != "00"
         proxy |>

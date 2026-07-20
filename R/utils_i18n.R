@@ -52,6 +52,11 @@ TRANSLATIONS <- list(
   acc_engine_skidder = list(fr = "D\u00e9busqueur (skidder)", en = "Skidder"),
   acc_engine_porteur = list(fr = "Porteur", en = "Forwarder"),
   acc_engine_dfci = list(fr = "Camion DFCI", en = "DFCI truck"),
+  # Libell\u00e9s de classes d'accessibilit\u00e9 (l\u00e9gende), communs aux moteurs
+  acc_class_parcourable = list(fr = "Parcourable (engin)", en = "Traversable (machine)"),
+  acc_class_accessible = list(fr = "Accessible", en = "Accessible"),
+  acc_class_non_accessible = list(fr = "Non accessible", en = "Not accessible"),
+  acc_class_inexploitable = list(fr = "Inexploitable", en = "Not workable"),
   acc_run = list(fr = "Lancer l'analyse", en = "Run analysis"),
   acc_running = list(fr = "Analyse d'accessibilit\u00e9 en cours\u2026", en = "Computing accessibility\u2026"),
   acc_busy_already = list(fr = "Une analyse d'accessibilit\u00e9 est d\u00e9j\u00e0 en cours.", en = "An accessibility analysis is already running."),

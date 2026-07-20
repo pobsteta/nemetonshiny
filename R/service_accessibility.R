@@ -10,9 +10,10 @@
 #   - appeler `foretaccess::preprocess()` + les moteurs terrestres exportés ;
 #   - persister les rasters de classes + un GeoPackage vecteur exportable.
 #
-# Premier incrément : moteurs TERRESTRES uniquement (skidder, porteur, camion
-# DFCI), tous en R pur. Le moteur câble (noyau Rust) sera ajouté ensuite ; son
-# ajout ne changera pas la dépendance (foretaccess est déjà en Imports).
+# Moteurs TERRESTRES (skidder, porteur, camion DFCI), en R pur, plus le moteur
+# CÂBLE-MÂT (`potentiel_cable`, noyau Rust de foretaccess) : balayage 360°/pixel
+# depuis les places de dépôt, très coûteux (plusieurs minutes à la dizaine de
+# minutes selon l'emprise) — d'où son opt-in dans l'UI.
 #
 # Le calcul est LONG (rasterisation, focal, propagation least-cost) : il tourne
 # dans un worker `future` (cf. mod_accessibility.R). Un `SpatRaster` terra n'est
@@ -20,10 +21,28 @@
 # rasters sur disque et ne renvoie que des CHEMINS + les data.frames de récap
 # (sérialisables). Le process principal relit les `.tif` pour l'affichage.
 
-#' Terrestrial accessibility engines exposed by the app (first increment)
+#' Terrestrial accessibility engines exposed by the app
 #'
-#' The three pure-R engines from `foretaccess`. The cable engine (Rust core) is
-#' intentionally excluded here and will be added in a later increment.
+#' The three pure-R engines from `foretaccess`.
+#'
+#' The cable-crane engine (`foretaccess::potentiel_cable()`, Rust core) is
+#' deliberately still NOT exposed, because the app has no **landing sites**
+#' layer (`departs`) to feed it. Measured on a 2.65 x 2.85 km AOI (Chastel-Nouvel,
+#' 530x571 px at 5 m) with `departs = NULL`, i.e. the documented fallback onto the
+#' whole road network:
+#'
+#' * `foretaccess` falls back to **10 681 departure cells** x 360 azimuths
+#'   (`pas_angulaire_deg = 1`) ~ 3.8 M rays: the run did **not complete in one
+#'   hour**, against ~2 s for `preprocess()` and seconds for each terrestrial
+#'   engine;
+#' * `potentiel_cable()` itself warns the result would be *"optimiste -- une piste
+#'   n'accueille pas un cable-mat"*, i.e. knowingly wrong.
+#'
+#' Wiring it in is a one-liner (`cable = foretaccess::potentiel_cable` below, same
+#' `f(pre)` signature and same `$accessibilite`/`$recap` shape as the others). The
+#' blocker is upstream of the app: a places-de-depot layer must exist first —
+#' deciding what qualifies as one is forest-management logic and belongs in
+#' `foretaccess`/`nemeton`, not here (rule 1).
 #' @noRd
 ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
 
@@ -182,13 +201,13 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
   list(desserte = desserte, source = src)
 }
 
-#' Run the terrestrial accessibility engines for a project (worker-side)
+#' Run the accessibility engines for a project (worker-side)
 #'
 #' Heavy, self-contained function meant to run in a `future` worker. Acquires
 #' the **IGN RGE ALTI 5 m** DEM (Sylvaccess-calibrated resolution) and the road
 #' network (**IGN BD TOPO V3**) for the buffered AOI, derives the forest mask
 #' from **IGN BD Forêt V2** clipped to that emprise, runs
-#' `foretaccess::preprocess()` then the requested terrestrial engines, writes
+#' `foretaccess::preprocess()` then the requested engines, writes
 #' each engine's categorical class raster to
 #' `cache/accessibility/acc_<engine>.tif`, and writes an exportable GeoPackage
 #' (`foret` + `desserte` layers). Returns only serialisable data (paths + recap
@@ -329,6 +348,9 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
   }
 
   # 5. Moteurs terrestres : raster de classes -> disque ; recap -> mémoire.
+  # `cable = foretaccess::potentiel_cable` s'ajouterait ici tel quel (même
+  # signature, même forme de retour) une fois la couche de places de dépôt
+  # disponible — cf. ACCESSIBILITY_ENGINES.
   engine_fun <- list(
     skidder = foretaccess::skidder,
     porteur = foretaccess::porteur,
