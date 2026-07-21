@@ -1,5 +1,14 @@
 # Tests du service Accessibilité (adaptateur foretaccess).
 
+test_that("le moteur câble n'est PAS exposé (pas de couche de places de dépôt)", {
+  # Garde-fou : `potentiel_cable()` avec `departs = NULL` retombe sur toute la
+  # desserte (10 681 départs x 360 azimuts sur l'AOI de test : > 1 h sans finir)
+  # et produit de l'aveu de foretaccess une couverture « optimiste ». Tant qu'il
+  # n'y a pas de couche de places de dépôt, on ne l'expose pas.
+  expect_false("cable" %in% ACCESSIBILITY_ENGINES)
+  expect_setequal(ACCESSIBILITY_ENGINES, c("skidder", "porteur", "camion_dfci"))
+})
+
 test_that(".accessibility_recap_table : union des classes + une colonne par moteur", {
   i18n <- get_i18n("fr")
   recaps <- list(

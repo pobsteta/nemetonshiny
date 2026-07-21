@@ -14,6 +14,101 @@
             geometry = sf::st_sfc(polys, crs = 4326))
 }
 
+# Raster de classes factice, au format que produisent les moteurs foretaccess :
+# catégoriel, colonnes `value` / `classe`, avec une classe `hors_foret`.
+.acc_fake_raster <- function(labs, coltab = NULL) {
+  skip_if_not_installed("terra")
+  n <- length(labs)
+  # Emprise petite et réaliste (Lambert-93) : l'étendue par défaut -180..180
+  # fait échouer la reprojection Web-Mercator de leaflet (« warp failure »).
+  r <- terra::rast(nrows = 4, ncols = n,
+                   xmin = 900000, xmax = 900000 + 5 * n,
+                   ymin = 6500000, ymax = 6500020,
+                   crs = "EPSG:2154",
+                   vals = rep(seq_len(n), each = 4))
+  levels(r) <- data.frame(value = seq_len(n), classe = labs)
+  if (!is.null(coltab)) terra::coltab(r) <- coltab
+  r
+}
+
+test_that(".acc_mask_hors_foret : les cellules hors forêt passent à NA", {
+  skip_if_not_installed("terra")
+  labs <- c("parcourable", "accessible", "non_accessible", "hors_foret")
+  r <- .acc_fake_raster(labs)
+  expect_equal(terra::global(is.na(r), "sum")[[1]], 0)
+
+  out <- nemetonshiny:::.acc_mask_hors_foret(r, seq_along(labs), labs)
+  # Un quart des cellules (la colonne « hors_foret ») doit être masqué.
+  expect_equal(terra::global(is.na(out), "sum")[[1]], terra::ncell(r) / 4)
+  # Le code de hors_foret varie selon le moteur : repérage par LABEL, pas en dur.
+  labs6 <- c("inaccessible", "non_defendable_pente", "defendable_c1",
+             "defendable_c2", "defendable_c3", "hors_foret")
+  r6 <- .acc_fake_raster(labs6)
+  out6 <- nemetonshiny:::.acc_mask_hors_foret(r6, seq_along(labs6), labs6)
+  expect_equal(terra::global(is.na(out6), "sum")[[1]], terra::ncell(r6) / 6)
+})
+
+test_that(".acc_mask_hors_foret : sans classe hors_foret, raster inchangé", {
+  skip_if_not_installed("terra")
+  labs <- c("accessible_cable", "non_accessible")
+  r <- .acc_fake_raster(labs)
+  out <- nemetonshiny:::.acc_mask_hors_foret(r, seq_along(labs), labs)
+  expect_equal(terra::global(is.na(out), "sum")[[1]], 0)
+})
+
+test_that(".acc_level_colors : couleur SÉMANTIQUE, pas positionnelle", {
+  skip_if_not_installed("terra")
+  # Régression : « inaccessible » est le niveau 1 du raster DFCI et se peignait
+  # donc en VERT avec une palette positionnelle — l'inverse du sens voulu.
+  labs <- c("inaccessible", "non_defendable_pente", "defendable_c1",
+            "defendable_c2", "defendable_c3", "hors_foret")
+  r <- .acc_fake_raster(labs)
+  cols <- nemetonshiny:::.acc_level_colors(r, seq_along(labs), labs)
+  expect_equal(cols[labs == "inaccessible"], unname(nemetonshiny:::.ACC_CLASS_COLORS[["inaccessible"]]))
+  expect_false(identical(cols[labs == "inaccessible"], "#2E7D32"))
+  # defendable_c1 (le plus proche) est le vert.
+  expect_equal(cols[labs == "defendable_c1"], "#2E7D32")
+  # Une classe inconnue retombe sur la palette positionnelle, sans NA.
+  lu <- c("parcourable", "classe_inconnue", "hors_foret")
+  cu <- nemetonshiny:::.acc_level_colors(.acc_fake_raster(lu), seq_along(lu), lu)
+  expect_false(any(is.na(cu)))
+  expect_equal(cu[1], "#2E7D32")
+})
+
+test_that(".acc_level_colors : la coltab du raster prime (rampe Sylvaccess)", {
+  skip_if_not_installed("terra")
+  labs <- c("0-250", "250-500", "hors_foret")
+  ct <- data.frame(value = 1:3,
+                   red = c(26L, 154L, 255L), green = c(158L, 205L, 255L),
+                   blue = c(143L, 50L, 255L), alpha = c(255L, 255L, 255L))
+  cols <- nemetonshiny:::.acc_level_colors(.acc_fake_raster(labs, ct), 1:3, labs)
+  expect_equal(toupper(substr(cols[1], 1, 7)), "#1A9E8F")
+})
+
+test_that("régression : le raster rendu comporte bien des pixels transparents", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("leaflet")
+  skip_if_not_installed("png")
+  skip_if_not_installed("base64enc")
+  # Garde-fou du bug « hors_foret en blanc opaque » : `colorFactor` +
+  # `addRasterImage` perdent le canal alpha d'un `#RRGGBBAA`, donc la
+  # transparence DOIT venir du masque NA. On vérifie le PNG réellement émis.
+  labs <- c("parcourable", "accessible", "non_accessible", "hors_foret")
+  r <- .acc_fake_raster(labs)
+  codes <- seq_along(labs)
+  cols <- nemetonshiny:::.acc_level_colors(r, codes, labs)
+  cols[labs == "hors_foret"] <- "#FFFFFF00"
+  r <- nemetonshiny:::.acc_mask_hors_foret(r, codes, labs)
+  cmap <- leaflet::colorFactor(cols, domain = codes, na.color = "transparent")
+  m <- leaflet::addRasterImage(leaflet::leaflet(), r, colors = cmap,
+                               opacity = 0.7, method = "ngb")
+  uri <- m$x$calls[[1]]$args[[1]]
+  img <- png::readPNG(base64enc::base64decode(
+    sub("^data:image/png;base64,", "", uri)))
+  expect_equal(dim(img)[3], 4L)              # canal alpha présent
+  expect_gt(mean(img[, , 4] == 0), 0.1)      # des pixels réellement transparents
+})
+
 test_that("AOI résolu depuis indicators_sf (EPSG:2154)", {
   skip_if_not_installed("sf")
   proj <- list(id = "p1", path = withr::local_tempdir(),
