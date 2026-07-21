@@ -1,5 +1,27 @@
 # nemetonshiny (development version)
 
+### Added — Nouveau sous-onglet « Desserte » (création de réseau ForêtAccess)
+
+- Sous-onglet **Desserte** sous *Terrain accessible* (à côté d'Accessibilité) :
+  conception d'un réseau de desserte forestière reliant les parcelles au réseau
+  existant au moindre coût de construction, via `foretaccess::reseau_desserte()`.
+  Pipeline : acquisition MNT 5 m HIGHRES + desserte IGN BD TOPO + masque BD Forêt
+  V2 → `preprocess()` → `surface_cout_construction()` → moteur **glouton (MTAP)**.
+- **Worker `future` opt-in** (patron Accessibilité/reGénération) : le glouton
+  trace une route par parcelle — mesuré ~11,5 min sur 30 parcelles / 31 ha (AOI
+  Chastel-Nouvel), d'où l'avertissement « calcul long » et le cache projet
+  (`cache/desserte/`, rechargé au montage). Affichage du réseau créé en overlay
+  **raster** (léger) ; badges **parcelles desservies / connexité / coût total** ;
+  desserte existante en référence ; export **GeoPackage** (parcelles + desserte
+  existante + réseau créé vectoriel).
+- **Steiner et optimiseurs délibérément NON exposés** en v1 : `mode="steiner"`
+  est en N² tracés (> 5 h estimées à 30 parcelles) et les optimiseurs
+  (`optimiser_reseau`) reconstruisent un réseau complet par essai. Leur
+  exposition attend un travail perf côté `foretaccess` (brief cœur). Garde-fou
+  de régression : `DESSERTE_ENGINES` restreint à `glouton`.
+- Piège S4 `%in%` (cf. fix hors_foret) évité côté worker : la normalisation du
+  raster réseau passe par les primitives `is.na()`/`<=` (dispatch correct).
+
 ### Changed — Refactor : IO ForêtAccess mutualisées (préparation onglet Desserte)
 
 - Extraction de `R/service_foretaccess_io.R` : les helpers d'entrée partagés
