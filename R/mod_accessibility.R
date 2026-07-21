@@ -230,7 +230,7 @@ mod_accessibility_server <- function(id, app_state) {
 
     # AOI (forêt) du projet en EPSG:2154 — repli indicators_sf -> UGF -> parcelles.
     units_sf <- shiny::reactive({
-      .resolve_accessibility_aoi(app_state$current_project)
+      .resolve_project_aoi_2154(app_state$current_project)
     })
 
     # --- Worker asynchrone : acquisition desserte + prétraitement + moteurs -----

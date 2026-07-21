@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+### Changed — Refactor : IO ForêtAccess mutualisées (préparation onglet Desserte)
+
+- Extraction de `R/service_foretaccess_io.R` : les helpers d'entrée partagés
+  entre les onglets s'appuyant sur `foretaccess` y vivent désormais —
+  `.resolve_project_aoi_2154()` (résolution de la géométrie projet en EPSG:2154,
+  ex-`.resolve_accessibility_aoi`) et `.acquire_mnt_highres()` (MNT 5 m IGN
+  HIGHRES). `service_accessibility.R` les consomme sans changement de
+  comportement. Prépare le futur sous-onglet **Desserte** (moteurs de création
+  de réseau `foretaccess`), qui réutilisera ces IO au lieu de les dupliquer.
+  Aucun changement fonctionnel côté utilisateur.
+
 
 # nemetonshiny 0.111.2 (2026-07-21)
 

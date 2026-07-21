@@ -35,16 +35,16 @@ test_that(".accessibility_recap_table : NULL si aucun récap exploitable", {
     list(skidder = data.frame()), i18n))
 })
 
-test_that(".resolve_accessibility_aoi : NULL projet -> NULL ; indicators_sf -> 2154", {
+test_that(".resolve_project_aoi_2154 : NULL projet -> NULL ; indicators_sf -> 2154", {
   skip_if_not_installed("sf")
-  expect_null(nemetonshiny:::.resolve_accessibility_aoi(NULL))
+  expect_null(nemetonshiny:::.resolve_project_aoi_2154(NULL))
 
   poly <- sf::st_sf(
     ug_id = "U1",
     geometry = sf::st_sfc(sf::st_polygon(list(rbind(
       c(6.0, 46.0), c(6.001, 46.0), c(6.001, 46.001), c(6.0, 46.001), c(6.0, 46.0)))),
       crs = 4326))
-  aoi <- nemetonshiny:::.resolve_accessibility_aoi(list(indicators_sf = poly))
+  aoi <- nemetonshiny:::.resolve_project_aoi_2154(list(indicators_sf = poly))
   expect_s3_class(aoi, "sf")
   expect_equal(sf::st_crs(aoi)$epsg, 2154L)
 })
