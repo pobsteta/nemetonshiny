@@ -2,6 +2,41 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.111.2 (2026-07-21)
+
+#### Fixed — Accessibilité : les zones hors forêt redeviennent transparentes
+
+- Sur les 4 couches de la carte Accessibilité, la classe `hors_foret`
+  (et donc toute l’emprise rectangulaire au-delà de la zone tampon) se
+  peignait en **blanc opaque** au lieu d’être transparente, masquant le
+  fond de carte. Le masquage était pourtant écrit (v0.111.0) mais
+  **silencieusement inopérant** : `terra` est en `Imports:` sans
+  qu’aucune méthode S4 de terra ne soit importée dans le `NAMESPACE`, si
+  bien que `rast %in% codes` était résolu par `base::%in%` — qui renvoie
+  un `FALSE` de longueur 1 sur un `SpatRaster` au lieu d’un masque.
+  [`terra::ifel()`](https://rspatial.github.io/terra/reference/ifelse.html)
+  recevait donc `FALSE` et renvoyait le raster inchangé.
+  `.acc_mask_hors_foret()` passe désormais par
+  [`terra::values()`](https://rspatial.github.io/terra/reference/values.html)/`setValues()`,
+  insensible à la répartition S4. (Les opérateurs `<=`, `==`, `is.na`,
+  `|` sont des primitives et dispatchent correctement sans import : les
+  autres appels
+  [`terra::ifel`](https://rspatial.github.io/terra/reference/ifelse.html)
+  de l’app — FORDEAD, FAST, RECONFORT, échantillonnage de validation —
+  n’étaient pas affectés.)
+- **Couleurs de classes sémantiques** (`.ACC_CLASS_COLORS`) au lieu
+  d’une palette positionnelle : la carte DFCI peignait `inaccessible` en
+  vert vif (c’est le niveau 1), l’inverse du sens voulu. La table de
+  couleurs propre au raster (rampe Sylvaccess des classes de débardage)
+  reste prioritaire.
+- **Légende traduite** pour les classes des moteurs terrestres, qui
+  s’affichaient en brut (`parcourable`, `non_accessible`,
+  `inexploitable`).
+- Test de non-régression sur le **PNG réellement émis** par
+  `addRasterImage()` (présence d’un canal alpha et de pixels réellement
+  transparents) : `colorFactor` perd l’alpha d’un `#RRGGBBAA`, la
+  transparence ne peut venir que du masque NA.
+
 ## nemetonshiny 0.111.1 (2026-07-18)
 
 #### Changed — Accessibilité : vraie source DFCI (OSM ref:FR:DFCI) + badge de provenance

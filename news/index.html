@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.111.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.111.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,18 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.111.2" id="nemetonshiny-01112-2026-07-21">nemetonshiny 0.111.2 (2026-07-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01112-2026-07-21"></a></h2>
+<div class="section level4">
+<h4 id="fixed--accessibilité--les-zones-hors-forêt-redeviennent-transparentes-0-111-2">Fixed — Accessibilité : les zones hors forêt redeviennent transparentes<a class="anchor" aria-label="anchor" href="#fixed--accessibilit%C3%A9--les-zones-hors-for%C3%AAt-redeviennent-transparentes-0-111-2"></a></h4>
+<ul><li>Sur les 4 couches de la carte Accessibilité, la classe <code>hors_foret</code> (et donc toute l’emprise rectangulaire au-delà de la zone tampon) se peignait en <strong>blanc opaque</strong> au lieu d’être transparente, masquant le fond de carte. Le masquage était pourtant écrit (v0.111.0) mais <strong>silencieusement inopérant</strong> : <code>terra</code> est en <code>Imports:</code> sans qu’aucune méthode S4 de terra ne soit importée dans le <code>NAMESPACE</code>, si bien que <code>rast %in% codes</code> était résolu par <code>base::%in%</code> — qui renvoie un <code>FALSE</code> de longueur 1 sur un <code>SpatRaster</code> au lieu d’un masque. <code><a href="https://rspatial.github.io/terra/reference/ifelse.html" class="external-link">terra::ifel()</a></code> recevait donc <code>FALSE</code> et renvoyait le raster inchangé. <code>.acc_mask_hors_foret()</code> passe désormais par <code><a href="https://rspatial.github.io/terra/reference/values.html" class="external-link">terra::values()</a></code>/<code>setValues()</code>, insensible à la répartition S4. (Les opérateurs <code>&lt;=</code>, <code>==</code>, <code>is.na</code>, <code>|</code> sont des primitives et dispatchent correctement sans import : les autres appels <code><a href="https://rspatial.github.io/terra/reference/ifelse.html" class="external-link">terra::ifel</a></code> de l’app — FORDEAD, FAST, RECONFORT, échantillonnage de validation — n’étaient pas affectés.)</li>
+<li>
+<strong>Couleurs de classes sémantiques</strong> (<code>.ACC_CLASS_COLORS</code>) au lieu d’une palette positionnelle : la carte DFCI peignait <code>inaccessible</code> en vert vif (c’est le niveau 1), l’inverse du sens voulu. La table de couleurs propre au raster (rampe Sylvaccess des classes de débardage) reste prioritaire.</li>
+<li>
+<strong>Légende traduite</strong> pour les classes des moteurs terrestres, qui s’affichaient en brut (<code>parcourable</code>, <code>non_accessible</code>, <code>inexploitable</code>).</li>
+<li>Test de non-régression sur le <strong>PNG réellement émis</strong> par <code>addRasterImage()</code> (présence d’un canal alpha et de pixels réellement transparents) : <code>colorFactor</code> perd l’alpha d’un <code>#RRGGBBAA</code>, la transparence ne peut venir que du masque NA.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.111.1" id="nemetonshiny-01111-2026-07-18">nemetonshiny 0.111.1 (2026-07-18)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01111-2026-07-18"></a></h2>
