@@ -296,6 +296,9 @@ app_server <- function(input, output, session) {
   # Accessibility module (ForêtAccess — terrestrial engines)
   mod_accessibility_server("accessibility", app_state)
 
+  # Desserte module (ForêtAccess — road-network creation, greedy engine)
+  mod_desserte_server("desserte", app_state)
+
   # Monitoring module (E6.b phase 1 — Sentinel-2 continuous monitoring)
   mod_monitoring_server("monitoring", app_state)
 

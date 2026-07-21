@@ -10,6 +10,21 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.112.0] - 2026-07-21
+
+### Added
+
+- Sous-onglet **Desserte** (création de réseau ForêtAccess) sous *Terrain
+  accessible* : moteur **glouton** (`reseau_desserte`), worker `future` opt-in,
+  cache projet, réseau créé en overlay raster, badges desservies/connexité/coût,
+  export GeoPackage. Steiner et optimiseurs non exposés (perf cœur — brief).
+
+### Changed
+
+- Refactor : IO ForêtAccess mutualisées dans `service_foretaccess_io.R`
+  (`.resolve_project_aoi_2154`, `.acquire_mnt_highres`), partagées entre les
+  onglets Accessibilité et Desserte. Aucun changement fonctionnel.
+
 ## [0.111.2] - 2026-07-21
 
 ### Fixed

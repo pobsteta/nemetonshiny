@@ -46,31 +46,9 @@
 #' @noRd
 ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
 
-#' Resolve a project's area of interest as forest polygons (EPSG:2154)
-#'
-#' Mirrors the `units_sf` fallback used elsewhere (indicators_sf -> UGF ->
-#' parcels), projected to the French national CRS Lambert-93 (EPSG:2154) which
-#' `foretaccess` expects. Returns `NULL` when the project carries no usable
-#' geometry.
-#'
-#' @param project The current project (list-like) or `NULL`.
-#' @return An `sf` of polygons in EPSG:2154, or `NULL`.
-#' @noRd
-.resolve_accessibility_aoi <- function(project) {
-  if (is.null(project)) return(NULL)
-  to_2154 <- function(x) tryCatch(sf::st_transform(x, 2154), error = function(e) x)
-
-  sfx <- project$indicators_sf
-  if (inherits(sfx, "sf") && nrow(sfx) > 0L) return(to_2154(sfx))
-
-  ugf <- tryCatch(if (has_ug_data(project)) ug_build_sf(project) else NULL,
-                  error = function(e) NULL)
-  if (inherits(ugf, "sf") && nrow(ugf) > 0L) return(to_2154(ugf))
-
-  parc <- project$parcels
-  if (inherits(parc, "sf") && nrow(parc) > 0L) return(to_2154(parc))
-  NULL
-}
+# NOTE : `.resolve_project_aoi_2154()` (résolution AOI projet -> EPSG:2154) et
+# `.acquire_mnt_highres()` (MNT 5 m HIGHRES) vivent désormais dans
+# `R/service_foretaccess_io.R`, partagés avec le futur onglet Desserte.
 
 #' Directory holding the accessibility artefacts of a project
 #' @noRd
@@ -120,49 +98,6 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
     gpkg_path = if (file.exists(gpkg)) gpkg else NULL,
     n_desserte = NA_integer_,
     from_cache = TRUE)
-}
-
-#' Acquire a genuine 5 m terrain DEM for an AOI via the IGN HIGH-RES layer
-#'
-#' `foretaccess::acquire_mnt()` fetches the WMS coverage
-#' `ELEVATION.ELEVATIONGRIDCOVERAGE`, which the Géoplateforme caps at WMTS zoom
-#' 11 (~25 m effective). Resampled to 5 m it is a **blocky staircase** whose
-#' edges yield spurious steep slopes — surfacing as axis-aligned `inexploitable`
-#' artefacts in the class rasters. The **`.HIGHRES`** variant of the same
-#' coverage goes to zoom 14 and returns a genuine 5 m terrain DEM (measured 0 %
-#' flat neighbours, realistic slopes, vs 43 % / 71° for the base layer). Both are
-#' `image/x-bil;bits=32` (raw elevation), France-wide, fetched on demand.
-#'
-#' This helper fetches `.HIGHRES` via `happign` and caches it next to the other
-#' per-emprise artefacts (`mnt_highres.tif`). Returns the file path, or `NULL` on
-#' failure (missing `happign`, network error) so the caller can fall back to
-#' `foretaccess::acquire_mnt()`.
-#'
-#' TODO(foretaccess): once `foretaccess::get_layer_service("dem", "FR")` points
-#' at `…HIGHRES`, drop this override and call `acquire_mnt()` directly.
-#'
-#' @param aoi An `sf`/`sfc` AOI (any CRS; reprojected to `crs`).
-#' @param res_m Target resolution in metres (Sylvaccess is calibrated for 5 m).
-#' @param crs Target EPSG (Lambert-93 / 2154 for France).
-#' @param cache_dir Directory holding the cached DEM.
-#' @param overwrite Force a re-fetch even if the cache file exists.
-#' @return Path to the cached DEM GeoTIFF, or `NULL`.
-#' @noRd
-.acquire_mnt_highres <- function(aoi, res_m = 5, crs = 2154, cache_dir = tempdir(),
-                                 overwrite = FALSE) {
-  if (!requireNamespace("happign", quietly = TRUE)) return(NULL)
-  path <- file.path(cache_dir, "mnt_highres.tif")
-  if (file.exists(path) && !isTRUE(overwrite)) return(path)
-  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-  aoi <- tryCatch(sf::st_transform(aoi, crs), error = function(e) aoi)
-  ok <- tryCatch({
-    happign::get_wms_raster(
-      x = aoi, layer = "ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES",
-      res = res_m, crs = crs, rgb = FALSE,
-      filename = path, overwrite = TRUE, verbose = FALSE)
-    file.exists(path)
-  }, error = function(e) FALSE)
-  if (isTRUE(ok)) path else NULL
 }
 
 #' Flag the DFCI source tronçons on a road network (with provenance)

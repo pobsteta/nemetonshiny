@@ -41,6 +41,7 @@ TRANSLATIONS <- list(
   # ============================================================
   # Accessibilit\u00e9 foresti\u00e8re (For\u00eatAccess \u2014 onglet Terrain)
   # ============================================================
+  tab_terrain_desserte = list(fr = "Desserte", en = "Road network"),
   tab_terrain_accessibilite = list(fr = "Accessibilit\u00e9", en = "Accessibility"),
   acc_intro = list(fr = "Cartographie de l'accessibilit\u00e9 d'exploitation (d\u00e9bardage tracteur, porteur, d\u00e9fense incendie DFCI) \u00e0 partir du MNT IGN RGE ALTI 5 m, de la desserte IGN BD TOPO et du masque for\u00eat IGN BD For\u00eat V2, acquis et mis en cache pour l'emprise du projet \u00e9largie de la zone tampon.", en = "Maps harvesting accessibility (tractor skidding, forwarder, DFCI fire defence) from the IGN RGE ALTI 5 m DEM, the IGN BD TOPO road network and the IGN BD For\u00eat V2 forest mask, acquired and cached for the buffered project area."),
   acc_engines_label = list(fr = "Moteurs d'exploitation", en = "Harvesting engines"),
@@ -83,6 +84,43 @@ TRANSLATIONS <- list(
   accessibility_desserte_empty = list(fr = "Aucune desserte trouv\u00e9e sur l'emprise du projet.", en = "No road network found over the project area."),
   accessibility_preprocess_failed = list(fr = "\u00c9chec du pr\u00e9traitement (MNT / desserte / for\u00eat).", en = "Preprocessing failed (DEM / roads / forest)."),
   accessibility_engine_failed = list(fr = "\u00c9chec d'un moteur d'accessibilit\u00e9.", en = "An accessibility engine failed."),
+
+  # ============================================================
+  # Desserte \u2014 cr\u00e9ation de r\u00e9seau (For\u00eatAccess \u2014 onglet Terrain)
+  # ============================================================
+  dess_intro = list(fr = "Conception d'un r\u00e9seau de desserte foresti\u00e8re reliant les parcelles au r\u00e9seau existant, au moindre co\u00fbt de construction, \u00e0 partir du MNT IGN RGE ALTI 5 m, de la desserte IGN BD TOPO et du masque for\u00eat IGN BD For\u00eat V2.", en = "Designs a forest-road network connecting the parcels to the existing network at least construction cost, from the IGN RGE ALTI 5 m DEM, the IGN BD TOPO road network and the IGN BD For\u00eat V2 forest mask."),
+  dess_engine_label = list(fr = "Moteur de cr\u00e9ation", en = "Creation engine"),
+  dess_engine_glouton = list(fr = "Glouton (MTAP)", en = "Greedy (MTAP)"),
+  dess_slow_help = list(fr = "Calcul long : le glouton trace une route par parcelle (environ 10 min pour quelques dizaines de parcelles). Le temps cro\u00eet avec le nombre de parcelles.", en = "Long computation: greedy traces one road per parcel (about 10 min for a few dozen parcels). Time grows with the parcel count."),
+  dess_buffer = list(fr = "Zone tampon autour des parcelles (km)", en = "Buffer around the parcels (km)"),
+  dess_buffer_help = list(fr = "\u00c9largit l'emprise du MNT et de la desserte : le raccordement vient des routes ext\u00e9rieures. 0 = emprise parcelles seule.", en = "Widens the DEM and road-network extent: the connection comes from outside roads. 0 = parcel extent only."),
+  dess_run = list(fr = "G\u00e9n\u00e9rer la desserte", en = "Generate the network"),
+  dess_running = list(fr = "Cr\u00e9ation de la desserte en cours\u2026", en = "Creating the road network\u2026"),
+  dess_map_title = list(fr = "Carte de desserte", en = "Road-network map"),
+  dess_summary_title = list(fr = "R\u00e9seau cr\u00e9\u00e9", en = "Created network"),
+  dess_opacity = list(fr = "Opacit\u00e9 du r\u00e9seau", en = "Network opacity"),
+  dess_no_result_yet = list(fr = "Aucun r\u00e9seau calcul\u00e9. Lancez la g\u00e9n\u00e9ration pour l'afficher.", en = "No network computed yet. Run the generation to display it."),
+  dess_cache_loaded = list(fr = "R\u00e9seau de desserte pr\u00e9c\u00e9dent charg\u00e9.", en = "Previous road network loaded."),
+  dess_badge_desservies = list(fr = "Parcelles desservies", en = "Parcels served"),
+  dess_badge_connexe = list(fr = "R\u00e9seau connexe", en = "Connected network"),
+  dess_badge_cout = list(fr = "Co\u00fbt total", en = "Total cost"),
+  dess_yes = list(fr = "Oui", en = "Yes"),
+  dess_no = list(fr = "Non", en = "No"),
+  dess_download_gpkg = list(fr = "T\u00e9l\u00e9charger le GeoPackage", en = "Download GeoPackage"),
+  dess_export_empty = list(fr = "Aucun r\u00e9seau de desserte \u00e0 exporter.", en = "No road network to export."),
+  dess_busy_already = list(fr = "Une g\u00e9n\u00e9ration de desserte est d\u00e9j\u00e0 en cours.", en = "A road-network generation is already running."),
+  dess_need_project = list(fr = "Chargez un projet avec une g\u00e9om\u00e9trie (UGF ou parcelles) avant de lancer la g\u00e9n\u00e9ration.", en = "Load a project with geometry (management units or parcels) before running."),
+  dess_need_engine = list(fr = "S\u00e9lectionnez un moteur de cr\u00e9ation.", en = "Select a creation engine."),
+  dess_done_fmt = list(fr = "Desserte cr\u00e9\u00e9e (%d/%d parcelles desservies).", en = "Road network created (%d/%d parcels served)."),
+  desserte_no_foretaccess = list(fr = "Le paquet 'foretaccess' n'est pas install\u00e9.", en = "The 'foretaccess' package is not installed."),
+  desserte_need_project = list(fr = "Chargez un projet avec une g\u00e9om\u00e9trie avant de lancer la g\u00e9n\u00e9ration.", en = "Load a project with geometry before running."),
+  desserte_need_engine = list(fr = "S\u00e9lectionnez un moteur de cr\u00e9ation.", en = "Select a creation engine."),
+  desserte_desserte_failed = list(fr = "\u00c9chec de l'acquisition de la desserte existante (IGN BD TOPO). V\u00e9rifiez la connexion r\u00e9seau.", en = "Existing road-network acquisition failed (IGN BD TOPO). Check the network connection."),
+  desserte_desserte_empty = list(fr = "Aucune desserte existante trouv\u00e9e sur l'emprise du projet.", en = "No existing road network found over the project area."),
+  desserte_mnt_failed = list(fr = "\u00c9chec de l'acquisition du MNT IGN RGE ALTI 5 m. V\u00e9rifiez la connexion r\u00e9seau.", en = "IGN RGE ALTI 5 m DEM acquisition failed. Check the network connection."),
+  desserte_preprocess_failed = list(fr = "\u00c9chec du pr\u00e9traitement (MNT / desserte / for\u00eat).", en = "Preprocessing failed (DEM / roads / forest)."),
+  desserte_cout_failed = list(fr = "\u00c9chec du calcul de la surface de co\u00fbt de construction.", en = "Construction-cost surface computation failed."),
+  desserte_engine_failed = list(fr = "\u00c9chec du moteur de cr\u00e9ation de desserte.", en = "Road-network creation engine failed."),
 
   # ============================================================
   # Action Plan tab (S3 skeleton)

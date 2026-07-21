@@ -100,6 +100,12 @@ app_ui <- function(request) {
             value = "accessibility",
             icon = bsicons::bs_icon("signpost-split"),
             mod_accessibility_ui("accessibility")
+          ),
+          bslib::nav_panel(
+            title = i18n$t("tab_terrain_desserte"),
+            value = "desserte",
+            icon = bsicons::bs_icon("diagram-3"),
+            mod_desserte_ui("desserte")
           )
         )
       ),
