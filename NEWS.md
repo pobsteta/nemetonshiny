@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.111.2 (2026-07-21)
+
 ### Fixed — Accessibilité : les zones hors forêt redeviennent transparentes
 
 - Sur les 4 couches de la carte Accessibilité, la classe `hors_foret` (et donc

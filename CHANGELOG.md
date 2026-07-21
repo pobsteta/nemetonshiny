@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.111.2] - 2026-07-21
+
+### Fixed
+
+- Accessibilité : la classe `hors_foret` se peignait en blanc opaque au lieu
+  d'être transparente sur les 4 couches de la carte. Le masquage était résolu
+  par `base::%in%` (aucune méthode S4 de `terra` importée dans le `NAMESPACE`),
+  qui renvoie `FALSE` sur un `SpatRaster` : le masque était un no-op silencieux.
+  Corrigé via `terra::values()`/`setValues()`, insensible au dispatch S4.
+- Accessibilité : couleurs de classes sémantiques (`.ACC_CLASS_COLORS`) au lieu
+  d'une palette positionnelle, qui peignait `inaccessible` en vert vif sur la
+  carte DFCI. Légende traduite pour les classes des moteurs terrestres.
+
 ## [0.106.5] - 2026-07-14
 
 ### Fixed
