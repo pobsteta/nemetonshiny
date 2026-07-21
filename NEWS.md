@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.112.0 (2026-07-21)
+
 ### Added — Nouveau sous-onglet « Desserte » (création de réseau ForêtAccess)
 
 - Sous-onglet **Desserte** sous *Terrain accessible* (à côté d'Accessibilité) :
