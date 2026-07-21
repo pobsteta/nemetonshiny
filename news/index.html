@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.111.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.112.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,22 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.112.0" id="nemetonshiny-01120-2026-07-21">nemetonshiny 0.112.0 (2026-07-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01120-2026-07-21"></a></h2>
+<div class="section level4">
+<h4 id="added--nouveau-sous-onglet--desserte--création-de-réseau-forêtaccess-0-112-0">Added — Nouveau sous-onglet « Desserte » (création de réseau ForêtAccess)<a class="anchor" aria-label="anchor" href="#added--nouveau-sous-onglet--desserte--cr%C3%A9ation-de-r%C3%A9seau-for%C3%AAtaccess-0-112-0"></a></h4>
+<ul><li>Sous-onglet <strong>Desserte</strong> sous <em>Terrain accessible</em> (à côté d’Accessibilité) : conception d’un réseau de desserte forestière reliant les parcelles au réseau existant au moindre coût de construction, via <code><a href="https://pobsteta.github.io/foretaccess/reference/reseau_desserte.html" class="external-link">foretaccess::reseau_desserte()</a></code>. Pipeline : acquisition MNT 5 m HIGHRES + desserte IGN BD TOPO + masque BD Forêt V2 → <code>preprocess()</code> → <code>surface_cout_construction()</code> → moteur <strong>glouton (MTAP)</strong>.</li>
+<li>
+<strong>Worker <code>future</code> opt-in</strong> (patron Accessibilité/reGénération) : le glouton trace une route par parcelle — mesuré ~11,5 min sur 30 parcelles / 31 ha (AOI Chastel-Nouvel), d’où l’avertissement « calcul long » et le cache projet (<code>cache/desserte/</code>, rechargé au montage). Affichage du réseau créé en overlay <strong>raster</strong> (léger) ; badges <strong>parcelles desservies / connexité / coût total</strong> ; desserte existante en référence ; export <strong>GeoPackage</strong> (parcelles + desserte existante + réseau créé vectoriel).</li>
+<li>
+<strong>Steiner et optimiseurs délibérément NON exposés</strong> en v1 : <code>mode="steiner"</code> est en N² tracés (&gt; 5 h estimées à 30 parcelles) et les optimiseurs (<code>optimiser_reseau</code>) reconstruisent un réseau complet par essai. Leur exposition attend un travail perf côté <code>foretaccess</code> (brief cœur). Garde-fou de régression : <code>DESSERTE_ENGINES</code> restreint à <code>glouton</code>.</li>
+<li>Piège S4 <code>%in%</code> (cf. fix hors_foret) évité côté worker : la normalisation du raster réseau passe par les primitives <code><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na()</a></code>/<code>&lt;=</code> (dispatch correct).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--refactor--io-forêtaccess-mutualisées-préparation-onglet-desserte-0-112-0">Changed — Refactor : IO ForêtAccess mutualisées (préparation onglet Desserte)<a class="anchor" aria-label="anchor" href="#changed--refactor--io-for%C3%AAtaccess-mutualis%C3%A9es-pr%C3%A9paration-onglet-desserte-0-112-0"></a></h4>
+<ul><li>Extraction de <code>R/service_foretaccess_io.R</code> : les helpers d’entrée partagés entre les onglets s’appuyant sur <code>foretaccess</code> y vivent désormais — <code>.resolve_project_aoi_2154()</code> (résolution de la géométrie projet en EPSG:2154, ex-<code>.resolve_accessibility_aoi</code>) et <code>.acquire_mnt_highres()</code> (MNT 5 m IGN HIGHRES). <code>service_accessibility.R</code> les consomme sans changement de comportement. Prépare le futur sous-onglet <strong>Desserte</strong> (moteurs de création de réseau <code>foretaccess</code>), qui réutilisera ces IO au lieu de les dupliquer. Aucun changement fonctionnel côté utilisateur.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.111.2" id="nemetonshiny-01112-2026-07-21">nemetonshiny 0.111.2 (2026-07-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01112-2026-07-21"></a></h2>

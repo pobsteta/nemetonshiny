@@ -2,6 +2,48 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.112.0 (2026-07-21)
+
+#### Added — Nouveau sous-onglet « Desserte » (création de réseau ForêtAccess)
+
+- Sous-onglet **Desserte** sous *Terrain accessible* (à côté
+  d’Accessibilité) : conception d’un réseau de desserte forestière
+  reliant les parcelles au réseau existant au moindre coût de
+  construction, via
+  [`foretaccess::reseau_desserte()`](https://pobsteta.github.io/foretaccess/reference/reseau_desserte.html).
+  Pipeline : acquisition MNT 5 m HIGHRES + desserte IGN BD TOPO + masque
+  BD Forêt V2 → `preprocess()` → `surface_cout_construction()` → moteur
+  **glouton (MTAP)**.
+- **Worker `future` opt-in** (patron Accessibilité/reGénération) : le
+  glouton trace une route par parcelle — mesuré ~11,5 min sur 30
+  parcelles / 31 ha (AOI Chastel-Nouvel), d’où l’avertissement « calcul
+  long » et le cache projet (`cache/desserte/`, rechargé au montage).
+  Affichage du réseau créé en overlay **raster** (léger) ; badges
+  **parcelles desservies / connexité / coût total** ; desserte existante
+  en référence ; export **GeoPackage** (parcelles + desserte existante +
+  réseau créé vectoriel).
+- **Steiner et optimiseurs délibérément NON exposés** en v1 :
+  `mode="steiner"` est en N² tracés (\> 5 h estimées à 30 parcelles) et
+  les optimiseurs (`optimiser_reseau`) reconstruisent un réseau complet
+  par essai. Leur exposition attend un travail perf côté `foretaccess`
+  (brief cœur). Garde-fou de régression : `DESSERTE_ENGINES` restreint à
+  `glouton`.
+- Piège S4 `%in%` (cf. fix hors_foret) évité côté worker : la
+  normalisation du raster réseau passe par les primitives
+  [`is.na()`](https://rdrr.io/r/base/NA.html)/`<=` (dispatch correct).
+
+#### Changed — Refactor : IO ForêtAccess mutualisées (préparation onglet Desserte)
+
+- Extraction de `R/service_foretaccess_io.R` : les helpers d’entrée
+  partagés entre les onglets s’appuyant sur `foretaccess` y vivent
+  désormais — `.resolve_project_aoi_2154()` (résolution de la géométrie
+  projet en EPSG:2154, ex-`.resolve_accessibility_aoi`) et
+  `.acquire_mnt_highres()` (MNT 5 m IGN HIGHRES).
+  `service_accessibility.R` les consomme sans changement de
+  comportement. Prépare le futur sous-onglet **Desserte** (moteurs de
+  création de réseau `foretaccess`), qui réutilisera ces IO au lieu de
+  les dupliquer. Aucun changement fonctionnel côté utilisateur.
+
 ## nemetonshiny 0.111.2 (2026-07-21)
 
 #### Fixed — Accessibilité : les zones hors forêt redeviennent transparentes
