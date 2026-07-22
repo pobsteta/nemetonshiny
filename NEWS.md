@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.113.0 (2026-07-22)
+
 ### Added — Validation ACCESSFOR (référence IGN) dans l'onglet Accessibilité
 
 - Nouveau panneau **« Validation ACCESSFOR (IGN) »** (sidebar droite, accordéon) :
