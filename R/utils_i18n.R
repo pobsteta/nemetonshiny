@@ -86,6 +86,28 @@ TRANSLATIONS <- list(
   accessibility_engine_failed = list(fr = "\u00c9chec d'un moteur d'accessibilit\u00e9.", en = "An accessibility engine failed."),
 
   # ============================================================
+  # Validation ACCESSFOR (r\u00e9f\u00e9rence IGN)
+  # ============================================================
+  accessfor_title = list(fr = "Validation ACCESSFOR (IGN)", en = "ACCESSFOR validation (IGN)"),
+  accessfor_intro = list(fr = "Compare les classes de d\u00e9bardage calcul\u00e9es \u00e0 la couche nationale ACCESSFOR de l'IGN (r\u00e9f\u00e9rence officielle, m\u00eame filiation Sylvaccess). N\u00e9cessite un calcul d\u00e9busqueur.", en = "Compares the computed skidding classes to the IGN national ACCESSFOR layer (official reference, same Sylvaccess lineage). Requires a skidder run."),
+  accessfor_run = list(fr = "Comparer \u00e0 ACCESSFOR", en = "Compare to ACCESSFOR"),
+  accessfor_running = list(fr = "R\u00e9cup\u00e9ration de la couche ACCESSFOR (IGN) et comparaison\u2026", en = "Fetching the ACCESSFOR layer (IGN) and comparing\u2026"),
+  accessfor_hint = list(fr = "Lancez un calcul d\u00e9busqueur, puis comparez les classes de d\u00e9bardage \u00e0 ACCESSFOR.", en = "Run a skidder analysis, then compare the skidding classes to ACCESSFOR."),
+  accessfor_overall_fmt = list(fr = "Accord global : %.1f %% sur %d cellules communes.", en = "Overall agreement: %.1f%% over %d common cells."),
+  accessfor_col_class = list(fr = "Classe ACCESSFOR", en = "ACCESSFOR class"),
+  accessfor_col_agree = list(fr = "Accord", en = "Agreement"),
+  accessfor_no_layer = list(fr = "Aucune couche \u00ab classes de d\u00e9bardage \u00bb : lancez d'abord un calcul d\u00e9busqueur.", en = "No skidding-classes layer: run a skidder analysis first."),
+  accessfor_no_foretaccess = list(fr = "Le paquet 'foretaccess' n'est pas install\u00e9.", en = "The 'foretaccess' package is not installed."),
+  accessfor_no_happign = list(fr = "Le paquet 'happign' (WFS IGN) n'est pas install\u00e9.", en = "The 'happign' package (IGN WFS) is not installed."),
+  accessfor_bad_engine = list(fr = "Moteur non support\u00e9 par ACCESSFOR.", en = "Engine not supported by ACCESSFOR."),
+  accessfor_no_crosswalk = list(fr = "Table de correspondance ACCESSFOR indisponible (foretaccess).", en = "ACCESSFOR correspondence table unavailable (foretaccess)."),
+  accessfor_wfs_failed = list(fr = "\u00c9chec de la r\u00e9cup\u00e9ration de la couche ACCESSFOR (WFS IGN). V\u00e9rifiez la connexion r\u00e9seau.", en = "ACCESSFOR layer fetch failed (IGN WFS). Check the network connection."),
+  accessfor_wfs_empty = list(fr = "Aucune donn\u00e9e ACCESSFOR sur l'emprise du projet.", en = "No ACCESSFOR data over the project area."),
+  accessfor_reclass_failed = list(fr = "\u00c9chec de la reclassification vers les codes ACCESSFOR.", en = "Reclassification to ACCESSFOR codes failed."),
+  accessfor_rasterize_failed = list(fr = "\u00c9chec de la rasterisation de la couche ACCESSFOR.", en = "ACCESSFOR layer rasterization failed."),
+  accessfor_no_overlap = list(fr = "Aucune cellule commune entre le calcul et ACCESSFOR sur l'emprise.", en = "No common cell between the computation and ACCESSFOR over the area."),
+
+  # ============================================================
   # Desserte \u2014 cr\u00e9ation de r\u00e9seau (For\u00eatAccess \u2014 onglet Terrain)
   # ============================================================
   dess_intro = list(fr = "Conception d'un r\u00e9seau de desserte foresti\u00e8re reliant les parcelles au r\u00e9seau existant, au moindre co\u00fbt de construction, \u00e0 partir du MNT IGN RGE ALTI 5 m, de la desserte IGN BD TOPO et du masque for\u00eat IGN BD For\u00eat V2.", en = "Designs a forest-road network connecting the parcels to the existing network at least construction cost, from the IGN RGE ALTI 5 m DEM, the IGN BD TOPO road network and the IGN BD For\u00eat V2 forest mask."),

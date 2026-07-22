@@ -1,6 +1,33 @@
 # nemetonshiny (development version)
 
 
+# nemetonshiny 0.113.0 (2026-07-22)
+
+### Added — Validation ACCESSFOR (référence IGN) dans l'onglet Accessibilité
+
+- Nouveau panneau **« Validation ACCESSFOR (IGN) »** (sidebar droite, accordéon) :
+  compare le raster **classes de débardage** (moteur débusqueur) à la couche
+  nationale officielle **ACCESSFOR** de l'IGN (projet INRAE/IGN, WFS, même filiation
+  Sylvaccess). Récupère la couche WFS (`happign::get_wfs`,
+  `IGNF_ACCESSIBILITE-PHYSIQUE-FORETS-:acces_skidder`), rasterise son attribut
+  `class` sur la grille app, reclassifie nos valeurs via le crosswalk cœur
+  `foretaccess::accessfor_correspondance()` (jointure sur l'entier), et affiche le
+  **taux d'accord** global + par classe. Service `R/service_accessfor.R`
+  (worker-safe, gardes structurées), appel réseau à la demande. Matérialise le
+  *Technical Success* du PRD (cohérence avec la référence). Sur l'AOI de test,
+  l'accord est bas (~20 %) — information de calibrage, non un bug.
+
+### Changed — Dépendance : foretaccess >= 1.9.0
+
+- Plancher `Imports: foretaccess (>= 1.9.0)` + pin `Remotes: pobsteta/foretaccess@v1.9.0`
+  (auparavant 1.5.0). Débloque la consommation des fonctions livrées côté cœur en
+  1.6.0 → 1.9.0 : `places_depot()` (places de dépôt câble), `volume_depuis_p1()` /
+  `acquire_inputs(volume=)` (volume P1 → câble/IPC), `accessfor_correspondance()`
+  (validation vs la couche ACCESSFOR de l'IGN). Pré-requis des incréments câble /
+  volume / ACCESSFOR à venir. Aucun changement fonctionnel dans ce commit ; tests
+  accessibilité + desserte verts contre foretaccess 1.9.0.
+
+
 # nemetonshiny 0.112.0 (2026-07-21)
 
 ### Added — Nouveau sous-onglet « Desserte » (création de réseau ForêtAccess)
