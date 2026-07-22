@@ -1,5 +1,15 @@
 # nemetonshiny (development version)
 
+### Changed — Dépendance : foretaccess >= 1.9.0
+
+- Plancher `Imports: foretaccess (>= 1.9.0)` + pin `Remotes: pobsteta/foretaccess@v1.9.0`
+  (auparavant 1.5.0). Débloque la consommation des fonctions livrées côté cœur en
+  1.6.0 → 1.9.0 : `places_depot()` (places de dépôt câble), `volume_depuis_p1()` /
+  `acquire_inputs(volume=)` (volume P1 → câble/IPC), `accessfor_correspondance()`
+  (validation vs la couche ACCESSFOR de l'IGN). Pré-requis des incréments câble /
+  volume / ACCESSFOR à venir. Aucun changement fonctionnel dans ce commit ; tests
+  accessibilité + desserte verts contre foretaccess 1.9.0.
+
 
 # nemetonshiny 0.112.0 (2026-07-21)
 
