@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.112.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.113.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,17 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.113.0" id="nemetonshiny-01130-2026-07-22">nemetonshiny 0.113.0 (2026-07-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01130-2026-07-22"></a></h2>
+<div class="section level4">
+<h4 id="added--validation-accessfor-référence-ign-dans-longlet-accessibilité-0-113-0">Added — Validation ACCESSFOR (référence IGN) dans l’onglet Accessibilité<a class="anchor" aria-label="anchor" href="#added--validation-accessfor-r%C3%A9f%C3%A9rence-ign-dans-longlet-accessibilit%C3%A9-0-113-0"></a></h4>
+<ul><li>Nouveau panneau <strong>« Validation ACCESSFOR (IGN) »</strong> (sidebar droite, accordéon) : compare le raster <strong>classes de débardage</strong> (moteur débusqueur) à la couche nationale officielle <strong>ACCESSFOR</strong> de l’IGN (projet INRAE/IGN, WFS, même filiation Sylvaccess). Récupère la couche WFS (<code><a href="https://paul-carteron.github.io/happign/reference/get_wfs.html" class="external-link">happign::get_wfs</a></code>, <code>IGNF_ACCESSIBILITE-PHYSIQUE-FORETS-:acces_skidder</code>), rasterise son attribut <code>class</code> sur la grille app, reclassifie nos valeurs via le crosswalk cœur <code><a href="https://pobsteta.github.io/foretaccess/reference/accessfor_correspondance.html" class="external-link">foretaccess::accessfor_correspondance()</a></code> (jointure sur l’entier), et affiche le <strong>taux d’accord</strong> global + par classe. Service <code>R/service_accessfor.R</code> (worker-safe, gardes structurées), appel réseau à la demande. Matérialise le <em>Technical Success</em> du PRD (cohérence avec la référence). Sur l’AOI de test, l’accord est bas (~20 %) — information de calibrage, non un bug.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--dépendance--foretaccess--0-113-0">Changed — Dépendance : foretaccess &gt;= 1.9.0<a class="anchor" aria-label="anchor" href="#changed--d%C3%A9pendance--foretaccess--0-113-0"></a></h4>
+<ul><li>Plancher <code>Imports: foretaccess (&gt;= 1.9.0)</code> + pin <code>Remotes: pobsteta/foretaccess@v1.9.0</code> (auparavant 1.5.0). Débloque la consommation des fonctions livrées côté cœur en 1.6.0 → 1.9.0 : <code>places_depot()</code> (places de dépôt câble), <code>volume_depuis_p1()</code> / <code>acquire_inputs(volume=)</code> (volume P1 → câble/IPC), <code>accessfor_correspondance()</code> (validation vs la couche ACCESSFOR de l’IGN). Pré-requis des incréments câble / volume / ACCESSFOR à venir. Aucun changement fonctionnel dans ce commit ; tests accessibilité + desserte verts contre foretaccess 1.9.0.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.112.0" id="nemetonshiny-01120-2026-07-21">nemetonshiny 0.112.0 (2026-07-21)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01120-2026-07-21"></a></h2>

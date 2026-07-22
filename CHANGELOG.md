@@ -12,6 +12,24 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.113.0\] - 2026-07-22
+
+### Added
+
+- Panneau **Validation ACCESSFOR (IGN)** dans l’onglet Accessibilité :
+  compare le raster classes de débardage à la couche nationale ACCESSFOR
+  de l’IGN (WFS, crosswalk
+  [`foretaccess::accessfor_correspondance()`](https://pobsteta.github.io/foretaccess/reference/accessfor_correspondance.html))
+  et affiche le taux d’accord global + par classe. Service
+  `R/service_accessfor.R`.
+
+### Changed
+
+- Dépendance : `Imports: foretaccess (>= 1.9.0)` + `Remotes: …@v1.9.0`
+  (était 1.5.0), pour consommer `places_depot()`, `volume_depuis_p1()`,
+  `acquire_inputs(volume=)` et `accessfor_correspondance()` (livrées
+  côté cœur en 1.6.0 → 1.9.0).
+
 ## \[0.112.0\] - 2026-07-21
 
 ### Added
