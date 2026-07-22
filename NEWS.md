@@ -1,5 +1,19 @@
 # nemetonshiny (development version)
 
+### Added — Validation ACCESSFOR (référence IGN) dans l'onglet Accessibilité
+
+- Nouveau panneau **« Validation ACCESSFOR (IGN) »** (sidebar droite, accordéon) :
+  compare le raster **classes de débardage** (moteur débusqueur) à la couche
+  nationale officielle **ACCESSFOR** de l'IGN (projet INRAE/IGN, WFS, même filiation
+  Sylvaccess). Récupère la couche WFS (`happign::get_wfs`,
+  `IGNF_ACCESSIBILITE-PHYSIQUE-FORETS-:acces_skidder`), rasterise son attribut
+  `class` sur la grille app, reclassifie nos valeurs via le crosswalk cœur
+  `foretaccess::accessfor_correspondance()` (jointure sur l'entier), et affiche le
+  **taux d'accord** global + par classe. Service `R/service_accessfor.R`
+  (worker-safe, gardes structurées), appel réseau à la demande. Matérialise le
+  *Technical Success* du PRD (cohérence avec la référence). Sur l'AOI de test,
+  l'accord est bas (~20 %) — information de calibrage, non un bug.
+
 ### Changed — Dépendance : foretaccess >= 1.9.0
 
 - Plancher `Imports: foretaccess (>= 1.9.0)` + pin `Remotes: pobsteta/foretaccess@v1.9.0`

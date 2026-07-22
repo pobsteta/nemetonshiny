@@ -202,7 +202,19 @@ mod_accessibility_ui <- function(id) {
               shiny::downloadButton(
                 ns("export_gpkg"), i18n$t("acc_download_gpkg"),
                 icon = shiny::icon("database"),
-                class = "btn-outline-success btn-sm w-100")))
+                class = "btn-outline-success btn-sm w-100")),
+            # Validation vs la couche nationale ACCESSFOR de l'IGN (référence
+            # officielle, même filiation Sylvaccess) : compare les classes de
+            # débardage calculées au raster IGN et affiche le taux d'accord.
+            bslib::accordion_panel(
+              title = i18n$t("accessfor_title"),
+              icon = bsicons::bs_icon("clipboard-check"),
+              htmltools::tags$p(class = "text-muted small", i18n$t("accessfor_intro")),
+              shiny::actionButton(
+                ns("run_accessfor"), i18n$t("accessfor_run"),
+                icon = shiny::icon("clipboard-check"),
+                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              shiny::uiOutput(ns("accessfor_result"))))
         ),
         # Badge de provenance DFCI (au-dessus de la carte) : n'apparaît que
         # lorsque la couche « Camion DFCI » est affichée.
@@ -578,6 +590,62 @@ mod_accessibility_server <- function(id, app_state) {
       if (!is.null(shown) && !("Desserte" %in% shown)) {
         leaflet::hideGroup(proxy, "Desserte")
       }
+    })
+
+    # --- Validation ACCESSFOR (référence IGN) ----------------------------------
+    # Compare le raster « classes de débardage » à la couche nationale ACCESSFOR
+    # (WFS IGN). Appel réseau court (quelques secondes) : exécuté à la demande avec
+    # notification, pas dans un worker future. Nécessite qu'un run skidder ait
+    # produit la couche `classes_debardage`.
+    rv_accessfor <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(input$run_accessfor, {
+      cdb <- tryCatch(rv$result$raster_paths[["classes_debardage"]],
+                      error = function(e) NULL)
+      if (is.null(cdb) || !file.exists(cdb)) {
+        shiny::showNotification(i18n$t("accessfor_no_layer"), type = "warning")
+        return()
+      }
+      rv_accessfor(list(status = "running"))
+      id <- shiny::showNotification(i18n$t("accessfor_running"), duration = NULL,
+                                    type = "message")
+      on.exit(shiny::removeNotification(id), add = TRUE)
+      res <- tryCatch(run_accessfor_validation(cdb, "skidder"),
+                      error = function(e) list(status = "error",
+                                               reason = "accessfor_wfs_failed",
+                                               detail = conditionMessage(e)))
+      rv_accessfor(res)
+      if (!identical(res$status, "success")) {
+        shiny::showNotification(i18n$t(res$reason %||% "accessfor_wfs_failed"),
+                                type = "error")
+      }
+    })
+
+    output$accessfor_result <- shiny::renderUI({
+      res <- rv_accessfor()
+      if (is.null(res)) {
+        return(htmltools::tags$p(class = "text-muted small",
+                                 i18n$t("accessfor_hint")))
+      }
+      if (identical(res$status, "running")) return(NULL)
+      if (!identical(res$status, "success")) return(NULL)
+      tab <- res$table
+      rows <- lapply(seq_len(nrow(tab)), function(i) {
+        htmltools::tags$tr(
+          htmltools::tags$td(class = "small", tab$libelle[i]),
+          htmltools::tags$td(class = "small text-end",
+                             sprintf("%.1f %%", tab$accord_pct[i])))
+      })
+      htmltools::tagList(
+        htmltools::div(
+          class = "alert alert-info py-2 small mb-2", role = "status",
+          shiny::icon("circle-info"), " ",
+          sprintf(i18n$t("accessfor_overall_fmt"), res$overall_pct, res$n_cells)),
+        htmltools::tags$table(
+          class = "table table-sm table-striped small mb-0",
+          htmltools::tags$thead(htmltools::tags$tr(
+            htmltools::tags$th(i18n$t("accessfor_col_class")),
+            htmltools::tags$th(class = "text-end", i18n$t("accessfor_col_agree")))),
+          htmltools::tags$tbody(rows)))
     })
 
     # --- Export GeoPackage -----------------------------------------------------
