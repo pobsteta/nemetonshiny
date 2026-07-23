@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.113.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.114.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,21 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.114.0" id="nemetonshiny-01140-2026-07-23">nemetonshiny 0.114.0 (2026-07-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01140-2026-07-23"></a></h2>
+<div class="section level4">
+<h4 id="added--desserte--typage-du-réseau-par-flux-de-bois-mobilisé-spec-0-114-0">Added — Desserte : typage du réseau par flux de bois mobilisé (spec 040)<a class="anchor" aria-label="anchor" href="#added--desserte--typage-du-r%C3%A9seau-par-flux-de-bois-mobilis%C3%A9-spec-0-114-0"></a></h4>
+<ul><li>Nouveau panneau <strong>« Typage du réseau »</strong> dans l’onglet Desserte : classe les tronçons créés en <strong>primaire / secondaire / tertiaire</strong> selon le <strong>flux de bois mobilisé</strong>. Chaîne d’intégration du brief spec-040 : <code>nemeton::volume_mobilisable(unite = "m3_total")</code> → <code>foretaccess::calculer_flux(volume_champ = "volume_mobilisable")</code> → <code>foretaccess::typer_desserte(seuils_flux)</code>. Service <code>run_desserte_typage()</code>, aucune logique métier (règles 1-3) : deux appels de package.</li>
+<li>
+<strong>Piège d’unité (brief §3)</strong> : le typage utilise <strong><code>m3_total</code></strong> (total m³ par parcelle que <code>calculer_flux</code> accumule), jamais <code>m3_ha</code> (densité, qui sous-estimerait le flux d’un facteur = la surface). Un test verrouille ce choix.</li>
+<li>
+<code>run_desserte()</code> <strong>persiste désormais l’objet <code>foretaccess_reseau</code></strong> (SpatRaster <code><a href="https://rspatial.github.io/terra/reference/wrap.html" class="external-link">terra::wrap</a></code>) : <code>vectoriser_reseau()</code> l’exige et le glouton est trop long pour être relancé — le typage le recharge et tourne en secondes. Voie « saisi » (taux de prélèvement + horizon), réseau typé affiché sur la carte (couleurs par classe)
+<ul><li>récap longueur/classe. Dégradation honnête si le volume P1 manque.</li>
+</ul></li>
+<li>Le bilan du réseau créé affiche désormais <strong><code>raccorde</code></strong> (foretaccess ≥ 1.11 : « toutes les routes créées sont-elles rattachées au réseau existant ? ») à la place de <strong><code>connexe</code></strong>, qui valait presque toujours FALSE — dominé par la fragmentation du réseau <em>existant</em> à la résolution de la grille, non par un défaut du réseau créé, donc trompeur. <code>run_desserte()</code> remonte les deux ; l’UI n’affiche que <code>raccorde</code>.</li>
+<li>Planchers relevés : <code>Imports: foretaccess (&gt;= 1.16.0)</code> + <code>nemeton (&gt;= 0.165.0)</code>, pin <code>Remotes: …/foretaccess@v1.16.0</code>. Débloque <code>raccorde</code>, la perf desserte (glouton ~11,5 min → dizaines de s, <code>places_depot</code> ~40×) et le pont <code>volume_mobilisable()</code> du typage à venir.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.113.0" id="nemetonshiny-01130-2026-07-22">nemetonshiny 0.113.0 (2026-07-22)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01130-2026-07-22"></a></h2>

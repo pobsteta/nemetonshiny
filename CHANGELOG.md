@@ -12,6 +12,27 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.114.0\] - 2026-07-23
+
+### Added
+
+- Panneau **Typage du réseau** dans l’onglet Desserte : classe les
+  tronçons créés (primaire / secondaire / tertiaire) par flux de bois
+  mobilisé, via la chaîne
+  `nemeton::volume_mobilisable(unite="m3_total")` →
+  [`foretaccess::calculer_flux()`](https://pobsteta.github.io/foretaccess/reference/calculer_flux.html)
+  →
+  [`foretaccess::typer_desserte()`](https://pobsteta.github.io/foretaccess/reference/typer_desserte.html)
+  (spec 040). Service `run_desserte_typage()`.
+
+### Changed
+
+- Desserte : le bilan affiche `raccorde` (foretaccess ≥ 1.11, vrai
+  indicateur qualité) au lieu de `connexe` (presque toujours FALSE,
+  trompeur).
+- Planchers : `foretaccess (>= 1.16.0)` + `nemeton (>= 0.165.0)`, pin
+  `Remotes: …/foretaccess@v1.16.0`.
+
 ## \[0.113.0\] - 2026-07-22
 
 ### Added
