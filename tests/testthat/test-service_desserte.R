@@ -105,6 +105,8 @@ test_that("run_desserte : pipeline complet sur données toy (IGN mocké)", {
         expect_equal(res$n_parcelles, 1L)
         expect_true(res$n_desservies >= 0L)
         expect_type(res$connexe, "logical")
+        # `raccorde` (foretaccess >= 1.11) : vrai indicateur qualité remonté.
+        expect_true(is.logical(res$raccorde))
         expect_true(is.finite(res$cout))
         # Le GeoPackage porte les 3 couches attendues.
         layers <- sf::st_layers(res$gpkg_path)$name

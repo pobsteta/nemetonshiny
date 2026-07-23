@@ -125,6 +125,7 @@ TRANSLATIONS <- list(
   dess_cache_loaded = list(fr = "R\u00e9seau de desserte pr\u00e9c\u00e9dent charg\u00e9.", en = "Previous road network loaded."),
   dess_badge_desservies = list(fr = "Parcelles desservies", en = "Parcels served"),
   dess_badge_connexe = list(fr = "R\u00e9seau connexe", en = "Connected network"),
+  dess_badge_raccorde = list(fr = "Routes raccord\u00e9es", en = "Roads connected"),
   dess_badge_cout = list(fr = "Co\u00fbt total", en = "Total cost"),
   dess_yes = list(fr = "Oui", en = "Yes"),
   dess_no = list(fr = "Non", en = "No"),
@@ -143,6 +144,24 @@ TRANSLATIONS <- list(
   desserte_preprocess_failed = list(fr = "\u00c9chec du pr\u00e9traitement (MNT / desserte / for\u00eat).", en = "Preprocessing failed (DEM / roads / forest)."),
   desserte_cout_failed = list(fr = "\u00c9chec du calcul de la surface de co\u00fbt de construction.", en = "Construction-cost surface computation failed."),
   desserte_engine_failed = list(fr = "\u00c9chec du moteur de cr\u00e9ation de desserte.", en = "Road-network creation engine failed."),
+
+  # Typage du r\u00e9seau (flux de bois mobilis\u00e9)
+  dess_typage_title = list(fr = "Typage du r\u00e9seau", en = "Network typing"),
+  dess_typage_intro = list(fr = "Classe les tron\u00e7ons cr\u00e9\u00e9s (primaire / secondaire / tertiaire) selon le flux de bois mobilis\u00e9. N\u00e9cessite un r\u00e9seau g\u00e9n\u00e9r\u00e9 et le volume P1 des parcelles.", en = "Classifies the created tron\u00e7ons (primary / secondary / tertiary) by mobilised wood flux. Requires a generated network and the parcels' P1 volume."),
+  dess_typage_taux = list(fr = "Taux de pr\u00e9l\u00e8vement (par an)", en = "Removal rate (per year)"),
+  dess_typage_horizon = list(fr = "Horizon (ann\u00e9es)", en = "Horizon (years)"),
+  dess_typage_run = list(fr = "Typer le r\u00e9seau", en = "Type the network"),
+  dess_typage_running = list(fr = "Typage du r\u00e9seau (flux mobilis\u00e9) en cours\u2026", en = "Typing the network (mobilised flux)\u2026"),
+  dess_typage_hint = list(fr = "G\u00e9n\u00e9rez d'abord une desserte, puis typez son r\u00e9seau.", en = "Generate a road network first, then type it."),
+  dess_typage_col_type = list(fr = "Classe", en = "Class"),
+  dess_typage_col_long = list(fr = "Longueur", en = "Length"),
+  desserte_typage_no_pkg = list(fr = "Les paquets 'nemeton' / 'foretaccess' ne sont pas install\u00e9s.", en = "The 'nemeton' / 'foretaccess' packages are not installed."),
+  desserte_typage_no_reseau = list(fr = "Aucun r\u00e9seau \u00e0 typer : g\u00e9n\u00e9rez d'abord une desserte.", en = "No network to type: generate a road network first."),
+  desserte_typage_no_parcelles = list(fr = "Chargez un projet avec des parcelles avant de typer.", en = "Load a project with parcels before typing."),
+  desserte_typage_no_volume = list(fr = "Volume P1 absent des parcelles : calculez d'abord l'indicateur P1 (volume bois).", en = "P1 volume missing from parcels: compute the P1 indicator (wood volume) first."),
+  desserte_typage_bad_params = list(fr = "Taux de pr\u00e9l\u00e8vement et horizon doivent \u00eatre des nombres positifs.", en = "Removal rate and horizon must be positive numbers."),
+  desserte_typage_volume_failed = list(fr = "\u00c9chec du calcul du volume mobilisable (nemeton).", en = "Mobilisable-volume computation failed (nemeton)."),
+  desserte_typage_failed = list(fr = "\u00c9chec du typage du r\u00e9seau de desserte.", en = "Road-network typing failed."),
 
   # ============================================================
   # Action Plan tab (S3 skeleton)
