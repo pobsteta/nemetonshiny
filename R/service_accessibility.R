@@ -21,30 +21,20 @@
 # rasters sur disque et ne renvoie que des CHEMINS + les data.frames de récap
 # (sérialisables). Le process principal relit les `.tif` pour l'affichage.
 
-#' Terrestrial accessibility engines exposed by the app
+#' Accessibility engines exposed by the app
 #'
-#' The three pure-R engines from `foretaccess`.
+#' The three pure-R terrestrial engines + the **cable-crane** engine
+#' (`foretaccess::potentiel_cable()`, Rust core), unblocked by foretaccess 1.19.0.
 #'
-#' The cable-crane engine (`foretaccess::potentiel_cable()`, Rust core) is
-#' deliberately still NOT exposed, because the app has no **landing sites**
-#' layer (`departs`) to feed it. Measured on a 2.65 x 2.85 km AOI (Chastel-Nouvel,
-#' 530x571 px at 5 m) with `departs = NULL`, i.e. the documented fallback onto the
-#' whole road network:
-#'
-#' * `foretaccess` falls back to **10 681 departure cells** x 360 azimuths
-#'   (`pas_angulaire_deg = 1`) ~ 3.8 M rays: the run did **not complete in one
-#'   hour**, against ~2 s for `preprocess()` and seconds for each terrestrial
-#'   engine;
-#' * `potentiel_cable()` itself warns the result would be *"optimiste -- une piste
-#'   n'accueille pas un cable-mat"*, i.e. knowingly wrong.
-#'
-#' Wiring it in is a one-liner (`cable = foretaccess::potentiel_cable` below, same
-#' `f(pre)` signature and same `$accessibilite`/`$recap` shape as the others). The
-#' blocker is upstream of the app: a places-de-depot layer must exist first —
-#' deciding what qualifies as one is forest-management logic and belongs in
-#' `foretaccess`/`nemeton`, not here (rule 1).
+#' The cable was long excluded for lack of a **landing-sites** layer (`departs`):
+#' `potentiel_cable(departs = NULL)` fell back onto the whole road network
+#' (~10 681 cells x 360 azimuths, > 1 h, knowingly optimistic). foretaccess now
+#' produces that layer: `qualifier_desserte()` (NDP 1, LiDAR width) →
+#' `places_depot()` (selective) → `departs` fed to `potentiel_cable()`. Without a
+#' LiDAR point cloud the app falls back to `places_depot()` on the raw BD TOPO
+#' (less selective, but correct). See `run_accessibility()`.
 #' @noRd
-ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
+ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 
 # NOTE : `.resolve_project_aoi_2154()` (résolution AOI projet -> EPSG:2154) et
 # `.acquire_mnt_highres()` (MNT 5 m HIGHRES) vivent désormais dans
@@ -173,7 +163,8 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci")
 #'   changing it re-fetches cleanly instead of reusing a stale emprise.
 #' @return A named list describing the run (see details).
 #' @noRd
-run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
+run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
+                              ndp1_lidar = FALSE, project_path = NULL) {
   if (!requireNamespace("foretaccess", quietly = TRUE)) {
     return(list(status = "error", reason = "accessibility_no_foretaccess"))
   }
@@ -282,14 +273,51 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
                 detail = pre$msg))
   }
 
-  # 5. Moteurs terrestres : raster de classes -> disque ; recap -> mémoire.
-  # `cable = foretaccess::potentiel_cable` s'ajouterait ici tel quel (même
-  # signature, même forme de retour) une fois la couche de places de dépôt
-  # disponible — cf. ACCESSIBILITY_ENGINES.
+  # 5bis. Couche `departs` (places de dépôt) pour le moteur câble (foretaccess
+  # 1.19.0). En NDP 1 (opt-in + nuage LiDAR présent), `qualifier_desserte()` mesure
+  # la largeur carrossable → `places_depot()` devient sélective (départs réalistes)
+  # → `potentiel_cable()` plus juste. Sans nuage : `places_depot()` sur la BD TOPO
+  # brute (largeur absente → peu sélectif, mais correct). `cable_departs_source`
+  # est remonté pour le badge de provenance (comme `dfci_source`).
+  departs <- NULL
+  cable_departs_source <- NA_character_
+  if ("cable" %in% engines) {
+    des_cable <- desserte
+    # Chemin CANONIQUE du nuage LiDAR HD (convention cache/layers/<source>, cf.
+    # resolve_regen_lidar_grid) ; repli sur cache_dir si project_path absent.
+    laz_dir <- if (!is.null(project_path))
+      file.path(project_path, "cache", "layers", "lidar_nuage") else
+      file.path(dirname(cache_dir), "layers", "lidar_nuage")
+    has_laz <- dir.exists(laz_dir) &&
+      length(list.files(laz_dir, pattern = "\\.(copc\\.)?laz$")) > 0L
+    if (isTRUE(ndp1_lidar) && has_laz &&
+        requireNamespace("lidR", quietly = TRUE) &&
+        requireNamespace("ALSroads", quietly = TRUE)) {
+      dq <- tryCatch(
+        foretaccess::qualifier_desserte(desserte, las_source = laz_dir, mnt = mnt),
+        error = function(e) NULL)
+      if (inherits(dq, "sf")) { des_cable <- dq; cable_departs_source <- "ndp1_lidar" }
+      else cable_departs_source <- "ndp0_brute"   # qualif échouée -> repli brut
+    } else {
+      cable_departs_source <- "ndp0_brute"
+    }
+    departs <- tryCatch(
+      foretaccess::places_depot(des_cable, mnt, foret = foret_mask),
+      error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+    if (inherits(departs, "acc_err")) {
+      return(list(status = "error", reason = "accessibility_cable_departs_failed",
+                  detail = departs$msg))
+    }
+  }
+
+  # 5. Moteurs : raster de classes -> disque ; recap -> mémoire.
   engine_fun <- list(
     skidder = foretaccess::skidder,
     porteur = foretaccess::porteur,
-    camion_dfci = foretaccess::camion_dfci)
+    camion_dfci = foretaccess::camion_dfci,
+    # Signature différente (departs) mais même forme de retour ($accessibilite /
+    # $recap) : closure pour l'aligner sur le contrat f(pre) de la boucle.
+    cable = function(pre) foretaccess::potentiel_cable(pre, departs = departs))
   recaps <- list()
   raster_paths <- list()
   for (eng in engines) {
@@ -344,7 +372,9 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0) {
     raster_paths = raster_paths,
     gpkg_path = if (file.exists(gpkg_path)) gpkg_path else NULL,
     n_desserte = nrow(desserte),
-    dfci_source = dfci_source)
+    dfci_source = dfci_source,
+    cable_departs_source = cable_departs_source,
+    n_departs = if (inherits(departs, "sf")) nrow(departs) else NA_integer_)
 }
 
 #' Combine per-engine recap tables into a single display data.frame

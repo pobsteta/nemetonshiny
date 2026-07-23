@@ -24,6 +24,8 @@
   parcourable          = "#2E7D32",
   accessible           = "#9CCC65",
   non_accessible       = "#C62828",
+  # Moteur câble-mât
+  accessible_cable     = "#2E7D32",
   # Communes
   inaccessible         = "#9E9E9E",
   inexploitable        = "#455A64",
@@ -135,6 +137,7 @@
     parcourable          = i18n$t("acc_class_parcourable"),
     accessible           = i18n$t("acc_class_accessible"),
     non_accessible       = i18n$t("acc_class_non_accessible"),
+    accessible_cable     = i18n$t("acc_class_accessible_cable"),
     inexploitable        = i18n$t("acc_class_inexploitable"))
   out <- unname(map[labs])
   out[is.na(out)] <- labs[is.na(out)]
@@ -159,8 +162,26 @@ mod_accessibility_ui <- function(id) {
           ACCESSIBILITY_ENGINES,
           c(i18n$t("acc_engine_skidder"),
             i18n$t("acc_engine_porteur"),
-            i18n$t("acc_engine_dfci"))),
-        selected = ACCESSIBILITY_ENGINES),
+            i18n$t("acc_engine_dfci"),
+            i18n$t("acc_engine_cable"))),
+        # Câble NON pré-coché : c'est un calcul long (balayage 360°/pixel).
+        selected = setdiff(ACCESSIBILITY_ENGINES, "cable")),
+
+      # Toggle NDP 1 : desserte corrigée LiDAR (largeur mesurée) — n'apparaît que si
+      # le câble est coché. Gaté sur la présence du nuage (repli desserte brute).
+      shiny::conditionalPanel(
+        condition = sprintf("input['%s'].includes('cable')", ns("engines")),
+        shiny::checkboxInput(
+          ns("ndp1_lidar"), i18n$t("acc_ndp1_lidar_label"), value = FALSE),
+        shiny::helpText(class = "small", i18n$t("acc_cable_long_note")),
+        # Avertissement expérimental affiché seulement si le NDP 1 est coché : la
+        # qualification LiDAR peut segfaulter sur une desserte étendue (crash worker,
+        # non rattrapable par tryCatch) — le run échoue alors au lieu de replier.
+        shiny::conditionalPanel(
+          condition = sprintf("input['%s'] == true", ns("ndp1_lidar")),
+          shiny::div(class = "alert alert-warning py-1 px-2 my-1 small", role = "status",
+            shiny::icon("triangle-exclamation"), " ", i18n$t("acc_ndp1_experimental_note")))
+      ),
 
       bslib::input_task_button(
         ns("run"), i18n$t("acc_run"),
@@ -219,6 +240,7 @@ mod_accessibility_ui <- function(id) {
         # Badge de provenance DFCI (au-dessus de la carte) : n'apparaît que
         # lorsque la couche « Camion DFCI » est affichée.
         shiny::uiOutput(ns("dfci_badge")),
+        shiny::uiOutput(ns("cable_badge")),
         leaflet::leafletOutput(ns("map"), height = "72vh")
       )
     )
@@ -247,7 +269,8 @@ mod_accessibility_server <- function(id, app_state) {
 
     # --- Worker asynchrone : acquisition desserte + prétraitement + moteurs -----
     acc_task <- shiny::ExtendedTask$new(
-      function(aoi_path, engines, cache_dir, buffer_m, dev_path, app_opts) {
+      function(aoi_path, engines, cache_dir, buffer_m, dev_path, app_opts,
+               ndp1_lidar, project_path) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
@@ -262,7 +285,9 @@ mod_accessibility_server <- function(id, app_state) {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          nemetonshiny:::run_accessibility(aoi_path, engines, cache_dir, buffer_m)
+          nemetonshiny:::run_accessibility(aoi_path, engines, cache_dir, buffer_m,
+                                           ndp1_lidar = ndp1_lidar,
+                                           project_path = project_path)
         }, seed = TRUE)
       })
 
@@ -325,9 +350,11 @@ mod_accessibility_server <- function(id, app_state) {
       # Garde-fou : un échec SYNCHRONE d'invoke (sérialisation d'un argument) ne
       # doit pas laisser le bouton figé « busy » ni la notif collée.
       buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      ndp1_lidar <- isTRUE(input$ndp1_lidar)
       tryCatch(
         acc_task$invoke(aoi_path, engines, cache_dir, buffer_m,
-                        .dev_pkg_path, get_app_options()),
+                        .dev_pkg_path, get_app_options(),
+                        ndp1_lidar, project_path),
         error = function(e) {
           rv$running <- FALSE
           rv$start <- NULL
@@ -435,6 +462,7 @@ mod_accessibility_server <- function(id, app_state) {
         skidder = i18n$t("acc_engine_skidder"),
         porteur = i18n$t("acc_engine_porteur"),
         camion_dfci = i18n$t("acc_engine_dfci"),
+        cable = i18n$t("acc_engine_cable"),
         classes_debardage = i18n$t("acc_layer_debardage"))
       labs <- unname(lyr_label[layers])
       labs[is.na(labs)] <- layers[is.na(labs)]
@@ -466,6 +494,28 @@ mod_accessibility_server <- function(id, app_state) {
           shiny::icon("circle-info"), " ", i18n$t("acc_dfci_osm_badge"))
       } else {
         NULL
+      }
+    })
+
+    # --- Badge de provenance des départs câble (au-dessus de la carte) ----------
+    # N'apparaît que si la couche « Câble-mât » est affichée. Info (bleu) quand la
+    # desserte a été corrigée au LiDAR (NDP 1, largeur mesurée → départs sélectifs) ;
+    # avertissement (jaune) quand elle repose sur la BD TOPO brute (peu sélective →
+    # couverture optimiste). Affiche aussi le nombre de départs (honnêteté, Part C).
+    output$cable_badge <- shiny::renderUI({
+      res <- rv$result
+      layer <- input$layer %||%
+        (if (!is.null(res)) names(res$raster_paths)[[1]] else NULL)
+      if (is.null(res) || !identical(layer, "cable")) return(NULL)
+      src <- tryCatch(res$cable_departs_source, error = function(e) NULL)
+      nd <- tryCatch(res$n_departs, error = function(e) NA_integer_)
+      nd_txt <- if (!is.na(nd)) sprintf(i18n$t("acc_cable_departs_fmt"), nd) else ""
+      if (identical(src, "ndp1_lidar")) {
+        shiny::div(class = "alert alert-info py-2 mb-2 small", role = "status",
+          shiny::icon("circle-info"), " ", i18n$t("acc_cable_ndp1_badge"), " ", nd_txt)
+      } else {
+        shiny::div(class = "alert alert-warning py-2 mb-2 small", role = "status",
+          shiny::icon("triangle-exclamation"), " ", i18n$t("acc_cable_ndp0_badge"), " ", nd_txt)
       }
     })
 

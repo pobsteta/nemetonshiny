@@ -1,12 +1,12 @@
 # Tests du service Accessibilité (adaptateur foretaccess).
 
-test_that("le moteur câble n'est PAS exposé (pas de couche de places de dépôt)", {
-  # Garde-fou : `potentiel_cable()` avec `departs = NULL` retombe sur toute la
-  # desserte (10 681 départs x 360 azimuts sur l'AOI de test : > 1 h sans finir)
-  # et produit de l'aveu de foretaccess une couverture « optimiste ». Tant qu'il
-  # n'y a pas de couche de places de dépôt, on ne l'expose pas.
-  expect_false("cable" %in% ACCESSIBILITY_ENGINES)
-  expect_setequal(ACCESSIBILITY_ENGINES, c("skidder", "porteur", "camion_dfci"))
+test_that("le moteur câble est exposé (foretaccess 1.19.0 : places_depot -> departs)", {
+  # foretaccess 1.19.0 débloque la couche `departs` : qualifier_desserte() (NDP 1,
+  # largeur LiDAR) -> places_depot() sélective -> potentiel_cable(departs=). Le
+  # câble est donc exposé (opt-in « calcul long », non pré-coché côté UI).
+  expect_true("cable" %in% ACCESSIBILITY_ENGINES)
+  expect_setequal(ACCESSIBILITY_ENGINES,
+                  c("skidder", "porteur", "camion_dfci", "cable"))
 })
 
 test_that(".accessibility_recap_table : union des classes + une colonne par moteur", {
@@ -300,4 +300,57 @@ test_that(".acc_level_colors : coltab du raster prioritaire, sinon repli", {
   cols2 <- nemetonshiny:::.acc_level_colors(r, c(1, 2))
   expect_equal(toupper(substr(cols2[1], 1L, 7L)), "#123456")
   expect_equal(substr(cols2[2], 8L, 9L), "00")   # transparent
+})
+
+test_that("run_accessibility : moteur câble (NDP 0, places_depot + potentiel_cable mockés)", {
+  skip_if_not_installed("foretaccess")
+  skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+  toy <- system.file("extdata", "toy", package = "foretaccess")
+  skip_if(!nzchar(toy) || !file.exists(file.path(toy, "mnt.tif")))
+  loadNamespace("foretaccess")
+
+  aoi_path <- file.path(toy, "foret.gpkg")
+  foret_toy <- sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154)
+  desserte <- sf::st_read(file.path(toy, "desserte.gpkg"), quiet = TRUE)
+  mnt_toy <- file.path(toy, "mnt.tif")
+  cache <- withr::local_tempdir()
+
+  # Départs factices (places de dépôt) + résultat câble factice (même forme que
+  # les moteurs terrestres : $accessibilite raster + $recap).
+  deps <- sf::st_sf(cable = 1L, geometry = sf::st_sfc(
+    sf::st_point(c(mean(sf::st_bbox(foret_toy)[c(1,3)]),
+                   mean(sf::st_bbox(foret_toy)[c(2,4)]))), crs = 2154))
+  cable_rast <- terra::rast(mnt_toy); terra::values(cable_rast) <- 1L
+  levels(cable_rast) <- data.frame(value = 1L, classe = "accessible_cable")
+  cable_res <- list(accessibilite = cable_rast,
+                    recap = data.frame(classe = "accessible_cable", surface_ha = 1))
+
+  seen_departs <- NULL
+  testthat::with_mocked_bindings(
+    .acquire_mnt_highres = function(aoi, res_m = 5, crs = 2154,
+                                    cache_dir = tempdir(), overwrite = FALSE) mnt_toy,
+    .package = "nemetonshiny",
+    testthat::with_mocked_bindings(
+      acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
+                                  overwrite = FALSE, country = "FR") desserte,
+      acquire_foret = function(aoi, crs = 2154, cache_dir = tempdir(),
+                               overwrite = FALSE, country = "FR") foret_toy,
+      places_depot = function(desserte, mnt, foret = NULL, ...) deps,
+      potentiel_cable = function(pre, departs = NULL, ...) {
+        seen_departs <<- departs; cable_res
+      },
+      .package = "foretaccess",
+      {
+        # NDP 0 : ndp1_lidar = FALSE -> pas de qualifier_desserte, places_depot
+        # sur la desserte brute -> provenance "ndp0_brute".
+        res <- nemetonshiny:::run_accessibility(aoi_path, "cable", cache,
+                                                ndp1_lidar = FALSE)
+        expect_equal(res$status, "success")
+        expect_true(file.exists(res$raster_paths[["cable"]]))
+        expect_equal(res$cable_departs_source, "ndp0_brute")
+        expect_equal(res$n_departs, 1L)
+        # potentiel_cable a bien reçu les départs de places_depot (closure).
+        expect_s3_class(seen_departs, "sf")
+      }))
 })

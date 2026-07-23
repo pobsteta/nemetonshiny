@@ -1,6 +1,28 @@
 # nemetonshiny (development version)
 
 
+# nemetonshiny 0.115.0 (2026-07-23)
+
+### Added — Onglet Accessibilité : moteur câble-mât (foretaccess 1.19.0)
+
+- Le **moteur câble-mât** (`foretaccess::potentiel_cable()`) est désormais **exposé**
+  dans l'onglet Accessibilité, débloqué par foretaccess 1.19.0 qui produit la couche
+  de places de dépôt : `places_depot()` (sélective) → `departs` → `potentiel_cable()`.
+  Non pré-coché (calcul long : balayage 360°/pixel), même forme de retour que les
+  moteurs terrestres. Plancher `foretaccess (>= 1.19.0)`.
+- **Badge de provenance des départs** (comme le badge DFCI) : bleu quand la desserte
+  est corrigée au LiDAR (NDP 1, largeur mesurée → départs sélectifs), jaune quand
+  elle repose sur la BD TOPO brute (largeur absente → couverture optimiste), avec le
+  nombre de places de dépôt.
+- **Toggle « NDP 1 : desserte corrigée LiDAR » (expérimental)** : gaté sur la présence
+  du nuage LiDAR HD du projet (`cache/layers/lidar_nuage`). ⚠️ Marqué expérimental :
+  sur une desserte étendue, `qualifier_desserte()` (foretaccess 1.19.0) peut
+  **segfaulter** (crash du worker `future`, non rattrapable par `tryCatch` → le run
+  échoue au lieu de replier). Mesuré sur donnée réelle (Chastel-Nouvel, desserte 806 km
+  / 4 dalles). Décocher = câble sur desserte brute (fiable, ~12 min, couverture
+  optimiste). Segfault remonté au cœur foretaccess.
+
+
 # nemetonshiny 0.114.0 (2026-07-23)
 
 ### Added — Desserte : typage du réseau par flux de bois mobilisé (spec 040)

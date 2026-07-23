@@ -1,7 +1,7 @@
 Package: nemetonshiny
 Type: Package
 Title: Nemeton Shiny Application for Systemic Forest Analysis
-Version: 0.114.0.9000
+Version: 0.115.0
 Authors@R: c(
     person("Pascal", "Obstetar", email = "pascal.obstetar@gmail.com", role = c("aut", "cre"))
   )
@@ -12,7 +12,7 @@ URL: https://pobsteta.github.io/nemetonshiny/, https://github.com/pobsteta/nemet
 BugReports: https://github.com/pobsteta/nemetonshiny/issues
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
-Imports: nemeton (>= 0.165.0), foretaccess (>= 1.16.0), shiny (>= 1.8.0),
+Imports: nemeton (>= 0.165.0), foretaccess (>= 1.19.0), shiny (>= 1.8.0),
     bslib (>= 0.6.0),
     htmltools, leaflet, plotly, sf, lwgeom, terra, cli, rlang, glue,
     jsonlite, httr2, yaml, DT, promises, later, htmlwidgets, bsicons,
@@ -23,6 +23,6 @@ Suggests: shinyOAuth, RPostgres, RSQLite, DBI, uuid,
     future, happign, lasR, leaflet.extras, curl, jpeg, maptiles, pkgload,
     png, viridisLite, reticulate, callr, shinytest2 (>= 0.3.0), webshot2,
     meteoland, osmdata
-Remotes: pobsteta/nemeton, pobsteta/foretaccess@v1.16.0, r-lidar/lasR
+Remotes: pobsteta/nemeton, pobsteta/foretaccess@v1.19.0, r-lidar/lasR
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
