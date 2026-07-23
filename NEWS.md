@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.114.0 (2026-07-23)
+
 ### Added — Desserte : typage du réseau par flux de bois mobilisé (spec 040)
 
 - Nouveau panneau **« Typage du réseau »** dans l'onglet Desserte : classe les

@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.114.0] - 2026-07-23
+
+### Added
+
+- Panneau **Typage du réseau** dans l'onglet Desserte : classe les tronçons créés
+  (primaire / secondaire / tertiaire) par flux de bois mobilisé, via la chaîne
+  `nemeton::volume_mobilisable(unite="m3_total")` → `foretaccess::calculer_flux()`
+  → `foretaccess::typer_desserte()` (spec 040). Service `run_desserte_typage()`.
+
+### Changed
+
+- Desserte : le bilan affiche `raccorde` (foretaccess ≥ 1.11, vrai indicateur
+  qualité) au lieu de `connexe` (presque toujours FALSE, trompeur).
+- Planchers : `foretaccess (>= 1.16.0)` + `nemeton (>= 0.165.0)`, pin
+  `Remotes: …/foretaccess@v1.16.0`.
+
 ## [0.113.0] - 2026-07-22
 
 ### Added
