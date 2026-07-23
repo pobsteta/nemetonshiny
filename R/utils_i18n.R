@@ -53,6 +53,14 @@ TRANSLATIONS <- list(
   acc_engine_skidder = list(fr = "D\u00e9busqueur (skidder)", en = "Skidder"),
   acc_engine_porteur = list(fr = "Porteur", en = "Forwarder"),
   acc_engine_dfci = list(fr = "Camion DFCI", en = "DFCI truck"),
+  acc_engine_cable = list(fr = "C\u00e2ble-m\u00e2t", en = "Cable crane"),
+  acc_ndp1_lidar_label = list(fr = "NDP 1 : corriger la desserte au LiDAR (exp\u00e9rimental)", en = "NDP 1: correct the road network with LiDAR (experimental)"),
+  acc_cable_long_note = list(fr = "Le c\u00e2ble balaie 360\u00b0/pixel depuis les places de d\u00e9p\u00f4t : calcul long (minutes). Sans nuage LiDAR charg\u00e9, la couverture est optimiste.", en = "The cable scans 360\u00b0/pixel from the landings: long computation (minutes). Without a loaded LiDAR cloud, coverage is optimistic."),
+  acc_ndp1_experimental_note = list(fr = "Exp\u00e9rimental : sur une desserte \u00e9tendue, la qualification LiDAR peut \u00e9chouer et interrompre le calcul (le run \u00e9choue). D\u00e9cochez pour rester sur la desserte brute (fiable).", en = "Experimental: on a large road network, LiDAR qualification may fail and abort the run. Uncheck to stay on the raw network (reliable)."),
+  acc_cable_ndp1_badge = list(fr = "D\u00e9parts issus de la desserte corrig\u00e9e LiDAR (largeur mesur\u00e9e).", en = "Landings from the LiDAR-corrected road network (measured width)."),
+  acc_cable_ndp0_badge = list(fr = "D\u00e9parts estim\u00e9s sur la BD TOPO brute (largeur absente) : couverture optimiste, \u00e0 recouper.", en = "Landings estimated on raw BD TOPO (no width): optimistic coverage, to be cross-checked."),
+  acc_cable_departs_fmt = list(fr = "(%d places de d\u00e9p\u00f4t)", en = "(%d landings)"),
+  acc_class_accessible_cable = list(fr = "Accessible au c\u00e2ble", en = "Cable-accessible"),
   # Libell\u00e9s de classes d'accessibilit\u00e9 (l\u00e9gende), communs aux moteurs
   acc_class_parcourable = list(fr = "Parcourable (engin)", en = "Traversable (machine)"),
   acc_class_accessible = list(fr = "Accessible", en = "Accessible"),
@@ -84,6 +92,7 @@ TRANSLATIONS <- list(
   accessibility_desserte_empty = list(fr = "Aucune desserte trouv\u00e9e sur l'emprise du projet.", en = "No road network found over the project area."),
   accessibility_preprocess_failed = list(fr = "\u00c9chec du pr\u00e9traitement (MNT / desserte / for\u00eat).", en = "Preprocessing failed (DEM / roads / forest)."),
   accessibility_engine_failed = list(fr = "\u00c9chec d'un moteur d'accessibilit\u00e9.", en = "An accessibility engine failed."),
+  accessibility_cable_departs_failed = list(fr = "\u00c9chec du calcul des places de d\u00e9p\u00f4t (c\u00e2ble).", en = "Landing-sites computation failed (cable)."),
 
   # ============================================================
   # Validation ACCESSFOR (r\u00e9f\u00e9rence IGN)
