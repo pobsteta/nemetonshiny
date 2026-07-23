@@ -258,15 +258,19 @@ mod_desserte_server <- function(id, app_state) {
       }
       nd <- res$n_desservies %||% NA_integer_
       np <- res$n_parcelles %||% NA_integer_
-      connexe <- res$connexe
+      # `raccorde` (foretaccess >= 1.11) est le VRAI indicateur qualité : « toutes
+      # les routes créées sont-elles rattachées au réseau existant ? ». On l'affiche
+      # à la place de `connexe` (presque toujours FALSE car dominé par la
+      # fragmentation du réseau existant — trompeur pour l'utilisateur).
+      raccorde <- res$raccorde %||% NA
       cout <- res$cout %||% NA_real_
       htmltools::tagList(
         badge(i18n$t("dess_badge_desservies"),
               if (is.na(nd) || is.na(np)) "—" else sprintf("%d / %d", nd, np),
               if (!is.na(nd) && !is.na(np) && nd >= np) "bg-success" else "bg-warning"),
-        badge(i18n$t("dess_badge_connexe"),
-              if (is.na(connexe)) "—" else if (isTRUE(connexe)) i18n$t("dess_yes") else i18n$t("dess_no"),
-              if (isTRUE(connexe)) "bg-success" else "bg-warning"),
+        badge(i18n$t("dess_badge_raccorde"),
+              if (is.na(raccorde)) "—" else if (isTRUE(raccorde)) i18n$t("dess_yes") else i18n$t("dess_no"),
+              if (isTRUE(raccorde)) "bg-success" else "bg-warning"),
         badge(i18n$t("dess_badge_cout"),
               if (is.na(cout)) "—" else format(round(cout), big.mark = " ")))
     })

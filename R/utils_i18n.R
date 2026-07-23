@@ -125,6 +125,7 @@ TRANSLATIONS <- list(
   dess_cache_loaded = list(fr = "R\u00e9seau de desserte pr\u00e9c\u00e9dent charg\u00e9.", en = "Previous road network loaded."),
   dess_badge_desservies = list(fr = "Parcelles desservies", en = "Parcels served"),
   dess_badge_connexe = list(fr = "R\u00e9seau connexe", en = "Connected network"),
+  dess_badge_raccorde = list(fr = "Routes raccord\u00e9es", en = "Roads connected"),
   dess_badge_cout = list(fr = "Co\u00fbt total", en = "Total cost"),
   dess_yes = list(fr = "Oui", en = "Yes"),
   dess_no = list(fr = "Non", en = "No"),

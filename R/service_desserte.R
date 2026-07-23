@@ -69,6 +69,7 @@ DESSERTE_ENGINES <- c("glouton")
       gpkg_path = if (file.exists(gpkg)) gpkg else NULL,
       cout = meta$cout %||% NA_real_,
       connexe = meta$connexe %||% NA,
+      raccorde = meta$raccorde %||% NA,
       n_desservies = meta$n_desservies %||% NA_integer_,
       n_parcelles = meta$n_parcelles %||% NA_integer_,
       from_cache = TRUE))
@@ -206,11 +207,16 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
   }
 
   # Scalaires de badge (non portés par le raster) -> sidecar RDS pour le cache.
+  # `raccorde` (foretaccess >= 1.11) est le VRAI indicateur qualité : « toutes les
+  # routes créées sont-elles rattachées ? ». `connexe` (une seule composante pour
+  # existant ∪ créé) vaut presque toujours FALSE — dominé par la fragmentation du
+  # réseau EXISTANT à la résolution de la grille, pas par un défaut du réseau créé.
   n_parcelles <- nrow(parcelles)
   n_desservies <- suppressWarnings(sum(as.logical(res$desservies), na.rm = TRUE))
   connexe <- isTRUE(res$connexe)
+  raccorde <- if ("raccorde" %in% names(res)) isTRUE(res$raccorde) else NA
   cout_total <- suppressWarnings(as.numeric(res$cout))
-  saveRDS(list(cout = cout_total, connexe = connexe,
+  saveRDS(list(cout = cout_total, connexe = connexe, raccorde = raccorde,
                n_desservies = n_desservies, n_parcelles = n_parcelles),
           file.path(cache_dir, paste0("reseau_", engine, ".rds")))
 
@@ -236,6 +242,7 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
     gpkg_path = if (file.exists(gpkg_path)) gpkg_path else NULL,
     cout = cout_total,
     connexe = connexe,
+    raccorde = raccorde,
     n_desservies = n_desservies,
     n_parcelles = n_parcelles)
 }

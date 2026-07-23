@@ -1,5 +1,18 @@
 # nemetonshiny (development version)
 
+### Changed — Desserte : badge « Routes raccordées » + planchers foretaccess/nemeton
+
+- Le bilan du réseau créé affiche désormais **`raccorde`** (foretaccess ≥ 1.11 :
+  « toutes les routes créées sont-elles rattachées au réseau existant ? ») à la
+  place de **`connexe`**, qui valait presque toujours FALSE — dominé par la
+  fragmentation du réseau *existant* à la résolution de la grille, non par un
+  défaut du réseau créé, donc trompeur. `run_desserte()` remonte les deux ;
+  l'UI n'affiche que `raccorde`.
+- Planchers relevés : `Imports: foretaccess (>= 1.16.0)` + `nemeton (>= 0.165.0)`,
+  pin `Remotes: …/foretaccess@v1.16.0`. Débloque `raccorde`, la perf desserte
+  (glouton ~11,5 min → dizaines de s, `places_depot` ~40×) et le pont
+  `volume_mobilisable()` du typage à venir.
+
 
 # nemetonshiny 0.113.0 (2026-07-22)
 

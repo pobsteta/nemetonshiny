@@ -67,7 +67,7 @@ test_that("résultat posé -> badges de bilan rendus", {
       rv$result <- list(
         status = "success", engine = "glouton",
         reseau_path = "/x/reseau_glouton.tif", gpkg_path = NULL,
-        cout = 125972, connexe = FALSE,
+        cout = 125972, connexe = FALSE, raccorde = TRUE,
         n_desservies = 30L, n_parcelles = 30L)
       session$flushReact()
       # Le panneau de bilan s'affiche une fois un résultat présent.
