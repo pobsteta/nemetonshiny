@@ -1,5 +1,8 @@
 # nemetonshiny (development version)
 
+
+# nemetonshiny 0.115.0 (2026-07-23)
+
 ### Added — Onglet Accessibilité : moteur câble-mât (foretaccess 1.19.0)
 
 - Le **moteur câble-mât** (`foretaccess::potentiel_cable()`) est désormais **exposé**
