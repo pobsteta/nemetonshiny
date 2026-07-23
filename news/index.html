@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.114.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,17 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.115.0" id="nemetonshiny-01150-2026-07-23">nemetonshiny 0.115.0 (2026-07-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01150-2026-07-23"></a></h2>
+<div class="section level4">
+<h4 id="added--onglet-accessibilité--moteur-câble-mât-foretaccess-0-115-0">Added — Onglet Accessibilité : moteur câble-mât (foretaccess 1.19.0)<a class="anchor" aria-label="anchor" href="#added--onglet-accessibilit%C3%A9--moteur-c%C3%A2ble-m%C3%A2t-foretaccess-0-115-0"></a></h4>
+<ul><li>Le <strong>moteur câble-mât</strong> (<code><a href="https://pobsteta.github.io/foretaccess/reference/potentiel_cable.html" class="external-link">foretaccess::potentiel_cable()</a></code>) est désormais <strong>exposé</strong> dans l’onglet Accessibilité, débloqué par foretaccess 1.19.0 qui produit la couche de places de dépôt : <code>places_depot()</code> (sélective) → <code>departs</code> → <code>potentiel_cable()</code>. Non pré-coché (calcul long : balayage 360°/pixel), même forme de retour que les moteurs terrestres. Plancher <code>foretaccess (&gt;= 1.19.0)</code>.</li>
+<li>
+<strong>Badge de provenance des départs</strong> (comme le badge DFCI) : bleu quand la desserte est corrigée au LiDAR (NDP 1, largeur mesurée → départs sélectifs), jaune quand elle repose sur la BD TOPO brute (largeur absente → couverture optimiste), avec le nombre de places de dépôt.</li>
+<li>
+<strong>Toggle « NDP 1 : desserte corrigée LiDAR » (expérimental)</strong> : gaté sur la présence du nuage LiDAR HD du projet (<code>cache/layers/lidar_nuage</code>). ⚠️ Marqué expérimental : sur une desserte étendue, <code>qualifier_desserte()</code> (foretaccess 1.19.0) peut <strong>segfaulter</strong> (crash du worker <code>future</code>, non rattrapable par <code>tryCatch</code> → le run échoue au lieu de replier). Mesuré sur donnée réelle (Chastel-Nouvel, desserte 806 km / 4 dalles). Décocher = câble sur desserte brute (fiable, ~12 min, couverture optimiste). Segfault remonté au cœur foretaccess.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.114.0" id="nemetonshiny-01140-2026-07-23">nemetonshiny 0.114.0 (2026-07-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01140-2026-07-23"></a></h2>

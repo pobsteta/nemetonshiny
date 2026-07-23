@@ -12,6 +12,17 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.115.0\] - 2026-07-23
+
+### Added
+
+- Onglet Accessibilité : **moteur câble-mât**
+  ([`foretaccess::potentiel_cable()`](https://pobsteta.github.io/foretaccess/reference/potentiel_cable.html)),
+  débloqué par foretaccess 1.19.0 (`places_depot()` → `departs`). Badge
+  de provenance des départs, toggle NDP 1 « desserte corrigée LiDAR »
+  (expérimental — `qualifier_desserte()` peut segfaulter sur une
+  desserte étendue). Plancher `foretaccess (>= 1.19.0)`.
+
 ## \[0.114.0\] - 2026-07-23
 
 ### Added
