@@ -1,6 +1,22 @@
 # nemetonshiny (development version)
 
-### Changed — Desserte : badge « Routes raccordées » + planchers foretaccess/nemeton
+### Added — Desserte : typage du réseau par flux de bois mobilisé (spec 040)
+
+- Nouveau panneau **« Typage du réseau »** dans l'onglet Desserte : classe les
+  tronçons créés en **primaire / secondaire / tertiaire** selon le **flux de bois
+  mobilisé**. Chaîne d'intégration du brief spec-040 :
+  `nemeton::volume_mobilisable(unite = "m3_total")` →
+  `foretaccess::calculer_flux(volume_champ = "volume_mobilisable")` →
+  `foretaccess::typer_desserte(seuils_flux)`. Service `run_desserte_typage()`,
+  aucune logique métier (règles 1-3) : deux appels de package.
+- **Piège d'unité (brief §3)** : le typage utilise **`m3_total`** (total m³ par
+  parcelle que `calculer_flux` accumule), jamais `m3_ha` (densité, qui
+  sous-estimerait le flux d'un facteur = la surface). Un test verrouille ce choix.
+- `run_desserte()` **persiste désormais l'objet `foretaccess_reseau`** (SpatRaster
+  `terra::wrap`) : `vectoriser_reseau()` l'exige et le glouton est trop long pour
+  être relancé — le typage le recharge et tourne en secondes. Voie « saisi » (taux
+  de prélèvement + horizon), réseau typé affiché sur la carte (couleurs par classe)
+  + récap longueur/classe. Dégradation honnête si le volume P1 manque.
 
 - Le bilan du réseau créé affiche désormais **`raccorde`** (foretaccess ≥ 1.11 :
   « toutes les routes créées sont-elles rattachées au réseau existant ? ») à la

@@ -206,6 +206,17 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
                 detail = "raster write failed"))
   }
 
+  # Persiste l'OBJET `foretaccess_reseau` complet (pas seulement le raster) pour le
+  # typage : `vectoriser_reseau()` l'exige, et le glouton est trop long pour être
+  # relancé. Le `$reseau` (SpatRaster) porte un pointeur externe non sérialisable :
+  # on le `terra::wrap()` avant `saveRDS` (le typage l'`unwrap()`era).
+  tryCatch({
+    res_save <- res
+    res_save$reseau <- terra::wrap(res$reseau)
+    saveRDS(res_save, file.path(cache_dir, paste0("reseau_obj_", engine, ".rds")))
+  }, error = function(e) cli::cli_warn(
+    "desserte reseau object persist failed: {conditionMessage(e)}"))
+
   # Scalaires de badge (non portés par le raster) -> sidecar RDS pour le cache.
   # `raccorde` (foretaccess >= 1.11) est le VRAI indicateur qualité : « toutes les
   # routes créées sont-elles rattachées ? ». `connexe` (une seule composante pour
@@ -245,6 +256,121 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
     raccorde = raccorde,
     n_desservies = n_desservies,
     n_parcelles = n_parcelles)
+}
+
+#' Default wood-flux thresholds for road typing (m³ total)
+#'
+#' Named ascending numeric vector of class lower bounds consumed by
+#' `foretaccess::typer_desserte()`. Each tronçon gets the highest class whose
+#' accumulated flux bound it reaches.
+#' @noRd
+DESSERTE_TYPAGE_SEUILS <- c(tertiaire = 0, secondaire = 100, primaire = 500)
+
+#' Type a project's created road network by mobilisable wood flux (worker-side)
+#'
+#' Chains `nemeton::volume_mobilisable()` (P1 -> mobilised volume) into the
+#' `foretaccess` typing pipeline, per the spec-040 integration brief:
+#'
+#'   parcelles (+P1) -> volume_mobilisable(unite = "m3_total")   [nemeton]
+#'                   -> calculer_flux(volume_champ = "volume_mobilisable")
+#'                   -> typer_desserte(seuils_flux)                [foretaccess]
+#'
+#' **Unit trap (brief §3): `unite = "m3_total"` for typing** — `calculer_flux()`
+#' distributes then accumulates a TOTAL m³ per parcel; an `m3_ha` density would
+#' underestimate flux by a factor equal to the parcel area. (The `m3_ha` unit is
+#' for weighting the glouton, a different consumer — not here.)
+#'
+#' Reuses the `foretaccess_reseau` object persisted by `run_desserte()` (the
+#' glouton is too slow to re-run just to vectorise), so typing runs in seconds.
+#' No app business logic (rules 1-3): two package calls.
+#'
+#' @param cache_dir The project's `cache/desserte` directory.
+#' @param parcelles An `sf` of the parcels to serve, carrying a volume column.
+#' @param taux_prelevement Numeric annual removal rate (voie « saisi »).
+#' @param horizon_ans Numeric horizon in years.
+#' @param engine Engine whose persisted network to type (default `"glouton"`).
+#' @param seuils_flux Named ascending numeric vector of flux class bounds.
+#' @param volume_col Name of the standing-volume column on `parcelles` (P1).
+#' @return A named list: `status`, `recap` (length per type), `gpkg_path`,
+#'   `seuils`, or an error list.
+#' @noRd
+run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
+                                horizon_ans, engine = "glouton",
+                                seuils_flux = DESSERTE_TYPAGE_SEUILS,
+                                volume_col = "P1") {
+  if (!requireNamespace("foretaccess", quietly = TRUE) ||
+      !requireNamespace("nemeton", quietly = TRUE)) {
+    return(list(status = "error", reason = "desserte_typage_no_pkg"))
+  }
+  obj_path <- file.path(cache_dir, paste0("reseau_obj_", engine, ".rds"))
+  if (!file.exists(obj_path)) {
+    return(list(status = "error", reason = "desserte_typage_no_reseau"))
+  }
+  if (!inherits(parcelles, "sf") || nrow(parcelles) == 0L) {
+    return(list(status = "error", reason = "desserte_typage_no_parcelles"))
+  }
+  if (!volume_col %in% names(parcelles) ||
+      !any(is.finite(suppressWarnings(as.numeric(parcelles[[volume_col]]))))) {
+    return(list(status = "error", reason = "desserte_typage_no_volume"))
+  }
+  taux_prelevement <- suppressWarnings(as.numeric(taux_prelevement))
+  horizon_ans <- suppressWarnings(as.numeric(horizon_ans))
+  if (!is.finite(taux_prelevement) || !is.finite(horizon_ans) ||
+      taux_prelevement <= 0 || horizon_ans <= 0) {
+    return(list(status = "error", reason = "desserte_typage_bad_params"))
+  }
+
+  # Réseau persisté par run_desserte : unwrap du SpatRaster puis vectorisation.
+  reseau <- tryCatch({
+    r <- readRDS(obj_path); r$reseau <- terra::unwrap(r$reseau); r
+  }, error = function(e) NULL)
+  if (is.null(reseau)) {
+    return(list(status = "error", reason = "desserte_typage_no_reseau"))
+  }
+  graphe <- tryCatch(foretaccess::vectoriser_reseau(reseau),
+                     error = function(e) structure(list(msg = conditionMessage(e)),
+                                                   class = "acc_err"))
+  if (inherits(graphe, "acc_err")) {
+    return(list(status = "error", reason = "desserte_typage_failed", detail = graphe$msg))
+  }
+
+  # Volume MOBILISÉ, unité m3_total (piège §3), voie « saisi » (taux + horizon).
+  parc_vol <- tryCatch(
+    nemeton::volume_mobilisable(parcelles, volume_col = volume_col,
+                                unite = "m3_total",
+                                taux_prelevement = taux_prelevement,
+                                horizon_ans = horizon_ans),
+    error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+  if (inherits(parc_vol, "acc_err")) {
+    return(list(status = "error", reason = "desserte_typage_volume_failed",
+                detail = parc_vol$msg))
+  }
+
+  # Flux accumulé puis typage par seuils.
+  typee <- tryCatch({
+    g <- foretaccess::calculer_flux(graphe, parc_vol,
+                                    volume_champ = "volume_mobilisable")
+    foretaccess::typer_desserte(g, seuils_flux = seuils_flux)
+  }, error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+  if (inherits(typee, "acc_err")) {
+    return(list(status = "error", reason = "desserte_typage_failed", detail = typee$msg))
+  }
+
+  # Réseau typé -> GeoPackage (cache), pour l'affichage carte et l'export.
+  gpkg_path <- file.path(cache_dir, paste0("typage_", engine, ".gpkg"))
+  ok <- tryCatch({
+    unlink(gpkg_path)
+    sf::st_write(sf::st_transform(typee$troncons, 2154), gpkg_path,
+                 layer = "reseau_type", quiet = TRUE, delete_dsn = TRUE)
+    TRUE
+  }, error = function(e) FALSE)
+
+  list(
+    status = "success",
+    engine = engine,
+    recap = typee$recap,
+    gpkg_path = if (isTRUE(ok) && file.exists(gpkg_path)) gpkg_path else NULL,
+    seuils = seuils_flux)
 }
 
 #' Export the desserte GeoPackage produced by a run

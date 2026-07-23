@@ -64,6 +64,23 @@ mod_desserte_ui <- function(id) {
           htmltools::tags$hr(class = "my-2"),
           bslib::accordion(
             open = FALSE,
+            # Typage du réseau : flux de bois mobilisé -> primaire/secondaire/
+            # tertiaire (nemeton::volume_mobilisable -> foretaccess::typer_desserte).
+            bslib::accordion_panel(
+              title = i18n$t("dess_typage_title"),
+              icon = bsicons::bs_icon("diagram-2"),
+              htmltools::tags$p(class = "text-muted small", i18n$t("dess_typage_intro")),
+              shiny::numericInput(
+                ns("typage_taux"), i18n$t("dess_typage_taux"),
+                value = 0.5, min = 0, max = 5, step = 0.1),
+              shiny::numericInput(
+                ns("typage_horizon"), i18n$t("dess_typage_horizon"),
+                value = 30, min = 1, max = 200, step = 1),
+              shiny::actionButton(
+                ns("run_typage"), i18n$t("dess_typage_run"),
+                icon = shiny::icon("diagram-project"),
+                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              shiny::uiOutput(ns("typage_result"))),
             bslib::accordion_panel(
               title = i18n$t("action_plan_section_exports"),
               icon = bsicons::bs_icon("box-arrow-up"),
@@ -282,7 +299,7 @@ mod_desserte_server <- function(id, app_state) {
         tryCatch(sf::st_transform(aoi, 4326), error = function(e) NULL)
       }
       overlays <- c(if (!is.null(geo)) "Parcelles" else NULL,
-                    "Desserte existante", "Reseau cree")
+                    "Desserte existante", "Reseau cree", "Reseau type")
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -343,6 +360,86 @@ mod_desserte_server <- function(id, app_state) {
           color = "#37474F", weight = 1.5, opacity = 0.7)
       if (!is.null(shown) && !("Desserte existante" %in% shown)) {
         leaflet::hideGroup(proxy, "Desserte existante")
+      }
+    })
+
+    # --- Typage du réseau (flux de bois mobilisé) ------------------------------
+    # Chaîne nemeton::volume_mobilisable(m3_total) -> foretaccess::calculer_flux ->
+    # typer_desserte, sur l'objet reseau persisté par le run desserte. Calcul court
+    # (le glouton n'est PAS relancé) : à la demande avec notification.
+    rv_typage <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(input$run_typage, {
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      parcelles <- units_sf()
+      if (is.null(project_path) || is.null(parcelles)) {
+        shiny::showNotification(i18n$t("dess_typage_no_parcelles"), type = "warning")
+        return()
+      }
+      cache_dir <- .desserte_cache_dir(project_path)
+      rv_typage(list(status = "running"))
+      nid <- shiny::showNotification(i18n$t("dess_typage_running"), duration = NULL,
+                                     type = "message")
+      on.exit(shiny::removeNotification(nid), add = TRUE)
+      res <- tryCatch(
+        run_desserte_typage(cache_dir, parcelles,
+                            taux_prelevement = input$typage_taux,
+                            horizon_ans = input$typage_horizon),
+        error = function(e) list(status = "error", reason = "desserte_typage_failed",
+                                 detail = conditionMessage(e)))
+      rv_typage(res)
+      if (!identical(res$status, "success")) {
+        msg <- i18n$t(res$reason %||% "desserte_typage_failed")
+        det <- tryCatch(res$detail, error = function(e) NULL)
+        if (!is.null(det) && nzchar(det)) msg <- paste0(msg, " — ", .strip_ansi(det))
+        shiny::showNotification(msg, type = "error", duration = NULL)
+      }
+    })
+
+    output$typage_result <- shiny::renderUI({
+      res <- rv_typage()
+      if (is.null(res)) {
+        return(htmltools::tags$p(class = "text-muted small", i18n$t("dess_typage_hint")))
+      }
+      if (identical(res$status, "running")) return(NULL)
+      if (!identical(res$status, "success")) return(NULL)
+      rec <- res$recap
+      if (!is.data.frame(rec) || nrow(rec) == 0L) return(NULL)
+      # Table type -> longueur (km).
+      km <- round(suppressWarnings(as.numeric(rec$longueur)) / 1000, 2)
+      rows <- lapply(seq_len(nrow(rec)), function(i) {
+        htmltools::tags$tr(
+          htmltools::tags$td(class = "small", as.character(rec$type[i])),
+          htmltools::tags$td(class = "small text-end", sprintf("%.2f km", km[i])))
+      })
+      htmltools::tags$table(
+        class = "table table-sm table-striped small mb-0",
+        htmltools::tags$thead(htmltools::tags$tr(
+          htmltools::tags$th(i18n$t("dess_typage_col_type")),
+          htmltools::tags$th(class = "text-end", i18n$t("dess_typage_col_long")))),
+        htmltools::tags$tbody(rows))
+    })
+
+    # Overlay « Réseau typé » : polylignes colorées par classe (primaire/secondaire/
+    # tertiaire), lues depuis le GPKG du typage.
+    dess_type_cols <- c(primaire = "#C62828", secondaire = "#FB8C00",
+                        tertiaire = "#2E7D32")
+    shiny::observe({
+      res <- rv_typage()
+      shown <- input$map_groups
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Reseau type")
+      gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
+      if (is.null(gp) || !file.exists(gp)) return()
+      d <- tryCatch(sf::st_read(gp, layer = "reseau_type", quiet = TRUE),
+                    error = function(e) NULL)
+      if (!inherits(d, "sf") || nrow(d) == 0L) return()
+      d <- tryCatch(sf::st_transform(d, 4326), error = function(e) d)
+      ty <- tolower(as.character(d[["type"]] %||% rep("", nrow(d))))
+      cols <- unname(dess_type_cols[ty]); cols[is.na(cols)] <- "#607D8B"
+      proxy |>
+        leaflet::addPolylines(data = d, group = "Reseau type",
+          color = cols, weight = 3, opacity = 0.9, label = ~ as.character(type))
+      if (!is.null(shown) && !("Reseau type" %in% shown)) {
+        leaflet::hideGroup(proxy, "Reseau type")
       }
     })
 
