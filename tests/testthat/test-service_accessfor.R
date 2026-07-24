@@ -68,6 +68,11 @@ test_that("run_accessfor_validation : pipeline complet (WFS + crosswalk mockés)
         # ACCESSFOR = class 3 partout ; nos cellules valant fa_value 1 (-> code 3)
         # sont en accord. La table contient la classe 3.
         expect_true(3L %in% res$table$accessfor_class)
+        # Raster ACCESSFOR affichable écrit sur disque, catégoriel (reclassé vers
+        # nos bandes) — devient une couche sélectionnable dans la carte.
+        expect_true(!is.null(res$accessfor_raster_path) &&
+                      file.exists(res$accessfor_raster_path))
+        expect_true(terra::is.factor(terra::rast(res$accessfor_raster_path)))
       }))
 })
 

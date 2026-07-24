@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+### Added — Accessibilité : la couche ACCESSFOR (IGN) devient affichable
+
+- La validation ACCESSFOR ne se contentait plus d'un taux d'accord : le raster
+  **ACCESSFOR (IGN)** — récupéré en vecteur WFS puis rasterisé sur la grille app —
+  est désormais **écrit sur disque et ajouté au sélecteur de couches** de la carte,
+  au même titre que les moteurs et les classes de débardage. Reclassé vers **nos
+  bandes de distance** (crosswalk `accessfor_correspondance()`) et doté de la **même
+  table de couleurs que « classes de débardage »**, il s'affiche à l'identique et se
+  compare visuellement, couche à couche, à notre calcul. Apparaît après un run
+  « Comparer à ACCESSFOR ».
+
 
 # nemetonshiny 0.115.0 (2026-07-23)
 

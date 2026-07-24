@@ -100,6 +100,7 @@ TRANSLATIONS <- list(
   accessfor_title = list(fr = "Validation ACCESSFOR (IGN)", en = "ACCESSFOR validation (IGN)"),
   accessfor_intro = list(fr = "Compare les classes de d\u00e9bardage calcul\u00e9es \u00e0 la couche nationale ACCESSFOR de l'IGN (r\u00e9f\u00e9rence officielle, m\u00eame filiation Sylvaccess). N\u00e9cessite un calcul d\u00e9busqueur.", en = "Compares the computed skidding classes to the IGN national ACCESSFOR layer (official reference, same Sylvaccess lineage). Requires a skidder run."),
   accessfor_run = list(fr = "Comparer \u00e0 ACCESSFOR", en = "Compare to ACCESSFOR"),
+  accessfor_layer = list(fr = "ACCESSFOR (IGN)", en = "ACCESSFOR (IGN)"),
   accessfor_running = list(fr = "R\u00e9cup\u00e9ration de la couche ACCESSFOR (IGN) et comparaison\u2026", en = "Fetching the ACCESSFOR layer (IGN) and comparing\u2026"),
   accessfor_hint = list(fr = "Lancez un calcul d\u00e9busqueur, puis comparez les classes de d\u00e9bardage \u00e0 ACCESSFOR.", en = "Run a skidder analysis, then compare the skidding classes to ACCESSFOR."),
   accessfor_overall_fmt = list(fr = "Accord global : %.1f %% sur %d cellules communes.", en = "Overall agreement: %.1f%% over %d common cells."),

@@ -92,6 +92,29 @@ run_accessfor_validation <- function(classes_debardage_path, engine = "skidder")
     error = function(e) NULL)
   if (is.null(af_r)) return(list(status = "error", reason = "accessfor_rasterize_failed"))
 
+  # Raster ACCESSFOR AFFICHABLE : reclassé des codes ACCESSFOR vers NOS valeurs de
+  # bande (fa_value) + mêmes niveaux/coltab que le raster « classes de débardage »
+  # → il se colore et se légende à l'identique, directement comparable à l'œil.
+  # Écrit à côté des autres couches du run (cache d'accessibilité).
+  accessfor_raster_path <- NULL
+  af_disp <- tryCatch({
+    okv <- stats::complete.cases(corr[, c("accessfor_class", "fa_value")])
+    r <- terra::subst(af_r, from = corr$accessfor_class[okv], to = corr$fa_value[okv])
+    lv <- terra::levels(rast)[[1]]
+    if (is.data.frame(lv) && nrow(lv) > 0L) levels(r) <- lv
+    ct <- tryCatch(terra::coltab(rast)[[1]], error = function(e) NULL)
+    if (is.data.frame(ct)) terra::coltab(r) <- ct
+    r
+  }, error = function(e) NULL)
+  if (!is.null(af_disp)) {
+    p <- file.path(dirname(classes_debardage_path),
+                   paste0("accessfor_", engine, ".tif"))
+    if (isTRUE(tryCatch({ terra::writeRaster(af_disp, p, overwrite = TRUE); TRUE },
+                        error = function(e) FALSE))) {
+      accessfor_raster_path <- p
+    }
+  }
+
   # Comparaison sur les cellules communes (les deux non NA). `c()` non nommé sur
   # SpatRaster empile les couches ; on renomme les colonnes par position ensuite.
   df <- tryCatch(stats::na.omit(terra::as.data.frame(c(our_num, af_r))),
@@ -127,5 +150,6 @@ run_accessfor_validation <- function(classes_debardage_path, engine = "skidder")
     engine = engine,
     overall_pct = overall,
     n_cells = n,
-    table = tab)
+    table = tab,
+    accessfor_raster_path = accessfor_raster_path)
 }

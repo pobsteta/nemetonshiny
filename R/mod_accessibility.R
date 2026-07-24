@@ -463,7 +463,8 @@ mod_accessibility_server <- function(id, app_state) {
         porteur = i18n$t("acc_engine_porteur"),
         camion_dfci = i18n$t("acc_engine_dfci"),
         cable = i18n$t("acc_engine_cable"),
-        classes_debardage = i18n$t("acc_layer_debardage"))
+        classes_debardage = i18n$t("acc_layer_debardage"),
+        accessfor_skidder = i18n$t("accessfor_layer"))
       labs <- unname(lyr_label[layers])
       labs[is.na(labs)] <- layers[is.na(labs)]
       shiny::radioButtons(
@@ -667,6 +668,18 @@ mod_accessibility_server <- function(id, app_state) {
       if (!identical(res$status, "success")) {
         shiny::showNotification(i18n$t(res$reason %||% "accessfor_wfs_failed"),
                                 type = "error")
+        return()
+      }
+      # Ajoute le raster ACCESSFOR (IGN) aux couches affichables : reclassé vers nos
+      # bandes + même coltab que classes_debardage, il se colore à l'identique et
+      # devient sélectionnable/superposable dans la carte comme les autres rasters.
+      afp <- res$accessfor_raster_path
+      if (!is.null(afp) && file.exists(afp)) {
+        cur <- rv$result
+        if (is.list(cur)) {
+          cur$raster_paths[["accessfor_skidder"]] <- afp
+          rv$result <- cur
+        }
       }
     })
 
