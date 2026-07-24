@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.7 (2026-07-24)
 
 ### Changed — Accessibilité : correction LiDAR de la desserte pour TOUS les moteurs
 
