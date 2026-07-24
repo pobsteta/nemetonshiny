@@ -1,5 +1,17 @@
 # nemetonshiny (development version)
 
+### Changed — Accessibilité : ACCESSFOR uniquement en vis-à-vis sous le volet
+
+- ACCESSFOR (IGN) **n'est plus une couche affichable à part** dans le sélecteur :
+  la validation le destinait à la **comparaison sous le volet** (classes de
+  débardage à gauche / ACCESSFOR à droite), pas à une superposition indépendante.
+  Le raster reste dans le résultat de validation et n'alimente que le swipe.
+- Le raster ACCESSFOR est désormais **masqué à l'emprise exacte des classes de
+  débardage** (forêt AOI + tampon) : issu d'un vecteur national, il remplissait
+  tout le rectangle bbox alors que nos classes sont restreintes à la forêt. On ne
+  garde donc ACCESSFOR que sur les cellules forêt de l'app (non NA, hors
+  « hors_foret ») pour un vis-à-vis strict, cellule à cellule.
+
 # nemetonshiny 0.115.1 (2026-07-24)
 
 ### Added — Accessibilité : comparaison « volet » classes de débardage ↔ ACCESSFOR

@@ -72,7 +72,14 @@ test_that("run_accessfor_validation : pipeline complet (WFS + crosswalk mockés)
         # nos bandes) — devient une couche sélectionnable dans la carte.
         expect_true(!is.null(res$accessfor_raster_path) &&
                       file.exists(res$accessfor_raster_path))
-        expect_true(terra::is.factor(terra::rast(res$accessfor_raster_path)))
+        af_disp <- terra::rast(res$accessfor_raster_path)
+        expect_true(terra::is.factor(af_disp))
+        # Emprise identique aux classes de débardage : ACCESSFOR est masqué sur les
+        # cellules « hors_foret » (fa_value 9 dans le raster app) -> NA.
+        base_v <- terra::values(terra::rast(p), mat = FALSE)
+        disp_v <- terra::values(af_disp, mat = FALSE)
+        expect_true(all(is.na(disp_v[base_v == 9L])))
+        expect_true(any(!is.na(disp_v[base_v != 9L])))
       }))
 })
 

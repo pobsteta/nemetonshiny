@@ -500,8 +500,7 @@ mod_accessibility_server <- function(id, app_state) {
         porteur = i18n$t("acc_engine_porteur"),
         camion_dfci = i18n$t("acc_engine_dfci"),
         cable = i18n$t("acc_engine_cable"),
-        classes_debardage = i18n$t("acc_layer_debardage"),
-        accessfor_skidder = i18n$t("accessfor_layer"))
+        classes_debardage = i18n$t("acc_layer_debardage"))
       labs <- unname(lyr_label[layers])
       labs[is.na(labs)] <- layers[is.na(labs)]
       shiny::radioButtons(
@@ -657,7 +656,10 @@ mod_accessibility_server <- function(id, app_state) {
       }
       left_rp <- tryCatch(res$raster_paths[["classes_debardage"]],
                           error = function(e) NULL)
-      right_rp <- tryCatch(res$raster_paths[["accessfor_skidder"]],
+      # ACCESSFOR n'est PAS une couche affichable à part : le raster vit dans le
+      # résultat de validation (rv_accessfor) et ne sert qu'ici, en vis-à-vis des
+      # classes de débardage sous le volet.
+      right_rp <- tryCatch(rv_accessfor()$accessfor_raster_path,
                            error = function(e) NULL)
       if (is.null(left_rp) || !file.exists(left_rp) ||
           is.null(right_rp) || !file.exists(right_rp)) {
@@ -726,17 +728,10 @@ mod_accessibility_server <- function(id, app_state) {
                                 type = "error")
         return()
       }
-      # Ajoute le raster ACCESSFOR (IGN) aux couches affichables : reclassé vers nos
-      # bandes + même coltab que classes_debardage, il se colore à l'identique et
-      # devient sélectionnable/superposable dans la carte comme les autres rasters.
-      afp <- res$accessfor_raster_path
-      if (!is.null(afp) && file.exists(afp)) {
-        cur <- rv$result
-        if (is.list(cur)) {
-          cur$raster_paths[["accessfor_skidder"]] <- afp
-          rv$result <- cur
-        }
-      }
+      # ACCESSFOR n'est PAS ajouté au sélecteur de couches : reclassé vers nos
+      # bandes + même coltab + MÊME EMPRISE (forêt AOI+tampon) que classes de
+      # débardage, il ne sert qu'à la comparaison sous le volet (observe swipe).
+      # Le chemin reste dans rv_accessfor()$accessfor_raster_path.
     })
 
     output$accessfor_result <- shiny::renderUI({
