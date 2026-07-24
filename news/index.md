@@ -1,6 +1,24 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.115.7 (2026-07-24)
+
+#### Changed — Accessibilité : correction LiDAR de la desserte pour TOUS les moteurs
+
+- Le toggle **« NDP 1 : corriger la desserte au LiDAR »** remonte
+  **au-dessus des moteurs** : il ne dépend plus du câble. Quand il est
+  coché (et
+  qu`un nuage LiDAR HD est présent + foretaccess >= 1.19.1),`qualifier_desserte()`corrige la desserte **une seule fois** — géométrie recalée sur la vraie position LiDAR, largeurs mesurées, **tronçons fantômes retirés** (`retirer_disparues=TRUE`) — et cette desserte corrigée devient l`**entrée
+  commune de `preprocess()`**, donc de **skidder, porteur, camion DFCI
+  ET câble** (avant : seul le câble en profitait, les moteurs terrestres
+  tournaient sur la BD TOPO brute).
+- Badge de provenance **desserte** (remplace le badge « départs câble »)
+  : affiché dès
+  qu`un NDP 1 est demandé, quel que soit le moteur — « corrigée LiDAR » (bleu, avec nb de fantômes retirés + départs câble) ou « LiDAR indisponible → brute » (jaune). Garde-fou : la desserte corrigée n`est
+  adoptée que si elle conserve la colonne `classe` (requise par
+  `preprocess`), sinon repli propre sur la brute.
+- Coût assumé : la qualification LiDAR (~2-3 h) tourne désormais pour
+  tout run NDP 1 coché (async, note de durée affichée), pas seulement si
+  le câble est coché.
 
 ## nemetonshiny 0.115.6 (2026-07-24)
 

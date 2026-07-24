@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,13 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.115.7" id="nemetonshiny-01157-2026-07-24">nemetonshiny 0.115.7 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01157-2026-07-24"></a></h2>
+<div class="section level4">
+<h4 id="changed--accessibilité--correction-lidar-de-la-desserte-pour-tous-les-moteurs-0-115-7">Changed — Accessibilité : correction LiDAR de la desserte pour TOUS les moteurs<a class="anchor" aria-label="anchor" href="#changed--accessibilit%C3%A9--correction-lidar-de-la-desserte-pour-tous-les-moteurs-0-115-7"></a></h4>
+<ul><li>Le toggle <strong>« NDP 1 : corriger la desserte au LiDAR »</strong> remonte <strong>au-dessus des moteurs</strong> : il ne dépend plus du câble. Quand il est coché (et qu<code>un nuage LiDAR HD est présent + foretaccess &gt;= 1.19.1),</code>qualifier_desserte()<code>corrige la desserte **une seule fois** — géométrie recalée sur la vraie position LiDAR, largeurs mesurées, **tronçons fantômes retirés** (</code>retirer_disparues=TRUE<code>) — et cette desserte corrigée devient l</code><strong>entrée commune de <code>preprocess()</code></strong>, donc de <strong>skidder, porteur, camion DFCI ET câble</strong> (avant : seul le câble en profitait, les moteurs terrestres tournaient sur la BD TOPO brute).</li>
+<li>Badge de provenance <strong>desserte</strong> (remplace le badge « départs câble ») : affiché dès qu<code>un NDP 1 est demandé, quel que soit le moteur — « corrigée LiDAR » (bleu, avec nb de fantômes retirés + départs câble) ou « LiDAR indisponible → brute » (jaune). Garde-fou : la desserte corrigée n</code>est adoptée que si elle conserve la colonne <code>classe</code> (requise par <code>preprocess</code>), sinon repli propre sur la brute.</li>
+<li>Coût assumé : la qualification LiDAR (~2-3 h) tourne désormais pour tout run NDP 1 coché (async, note de durée affichée), pas seulement si le câble est coché.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.115.6" id="nemetonshiny-01156-2026-07-24">nemetonshiny 0.115.6 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01156-2026-07-24"></a></h2>
