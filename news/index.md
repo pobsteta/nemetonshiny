@@ -1,6 +1,26 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.115.4 (2026-07-24)
+
+#### Changed — Accessibilité : validation ACCESSFOR (IGN) systématique + volet d’office
+
+- La **validation ACCESSFOR (IGN) est désormais systématique** : dès
+  qu’une analyse débusqueur produit les classes de débardage, la couche
+  nationale IGN est récupérée, reclassée sur notre grille + emprise, et
+  l’accord calculé — **dans le worker `future`** (asynchrone, ne bloque
+  pas l’UI). Best-effort : un échec réseau ne fait pas échouer l’analyse
+  (repli sur un raster simple).
+- Dans « Couche affichée », l’entrée « Classes de débardage » devient
+  **« Classes de débardage/ACCESSFOR (IGN) »** dès qu’ACCESSFOR est
+  disponible : la sélectionner affiche **d’office le volet de
+  comparaison** (nos classes à gauche, ACCESSFOR à droite, curseur
+  draggable). Plus besoin d’action manuelle.
+- **Suppression du bouton « Comparer à ACCESSFOR »** et de la **case «
+  Comparer au volet »** : les deux étaient manuels, ils deviennent
+  automatiques. Le tableau d’accord par classe s’affiche seul dans le
+  panneau « Validation ACCESSFOR (IGN) » après le run. Le raster
+  ACCESSFOR est mis en cache (`accessfor_skidder.tif`) et restauré au
+  rechargement du projet (réaffiche le volet sans requête WFS).
 
 ## nemetonshiny 0.115.3 (2026-07-24)
 

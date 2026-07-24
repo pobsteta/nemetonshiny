@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,14 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.115.4" id="nemetonshiny-01154-2026-07-24">nemetonshiny 0.115.4 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01154-2026-07-24"></a></h2>
+<div class="section level4">
+<h4 id="changed--accessibilité--validation-accessfor-ign-systématique--volet-doffice-0-115-4">Changed — Accessibilité : validation ACCESSFOR (IGN) systématique + volet d’office<a class="anchor" aria-label="anchor" href="#changed--accessibilit%C3%A9--validation-accessfor-ign-syst%C3%A9matique--volet-doffice-0-115-4"></a></h4>
+<ul><li>La <strong>validation ACCESSFOR (IGN) est désormais systématique</strong> : dès qu’une analyse débusqueur produit les classes de débardage, la couche nationale IGN est récupérée, reclassée sur notre grille + emprise, et l’accord calculé — <strong>dans le worker <code>future</code></strong> (asynchrone, ne bloque pas l’UI). Best-effort : un échec réseau ne fait pas échouer l’analyse (repli sur un raster simple).</li>
+<li>Dans « Couche affichée », l’entrée « Classes de débardage » devient <strong>« Classes de débardage/ACCESSFOR (IGN) »</strong> dès qu’ACCESSFOR est disponible : la sélectionner affiche <strong>d’office le volet de comparaison</strong> (nos classes à gauche, ACCESSFOR à droite, curseur draggable). Plus besoin d’action manuelle.</li>
+<li>
+<strong>Suppression du bouton « Comparer à ACCESSFOR »</strong> et de la <strong>case « Comparer au volet »</strong> : les deux étaient manuels, ils deviennent automatiques. Le tableau d’accord par classe s’affiche seul dans le panneau « Validation ACCESSFOR (IGN) » après le run. Le raster ACCESSFOR est mis en cache (<code>accessfor_skidder.tif</code>) et restauré au rechargement du projet (réaffiche le volet sans requête WFS).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.115.3" id="nemetonshiny-01153-2026-07-24">nemetonshiny 0.115.3 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01153-2026-07-24"></a></h2>
