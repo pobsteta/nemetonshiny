@@ -124,6 +124,7 @@ test_that("run_accessibility : pipeline complet sur données toy (IGN mocké)", 
   # Le MNT primaire passe par le helper interne `.acquire_mnt_highres` (couche
   # HIGHRES) : on le mocke côté nemetonshiny ; desserte/forêt côté foretaccess.
   testthat::with_mocked_bindings(
+    run_accessfor_validation = function(...) NULL,   # ACCESSFOR systématique: pas de WFS en test
     .acquire_mnt_highres = function(aoi, res_m = 5, crs = 2154,
                                     cache_dir = tempdir(), overwrite = FALSE) mnt_toy,
     .package = "nemetonshiny",
@@ -186,6 +187,7 @@ test_that("run_accessibility : la zone tampon élargit l'emprise d'acquisition",
   # un tampon de 1 km, les deux doivent être plus grandes que la forêt d'origine
   # (le masque = BD Forêt ∩ emprise tamponnée).
   testthat::with_mocked_bindings(
+    run_accessfor_validation = function(...) NULL,   # ACCESSFOR systématique: pas de WFS en test
     .acquire_mnt_highres = function(aoi, res_m = 5, crs = 2154,
                                     cache_dir = tempdir(), overwrite = FALSE) {
       seen_area <<- as.numeric(sum(sf::st_area(aoi)))
@@ -328,6 +330,7 @@ test_that("run_accessibility : moteur câble (NDP 0, places_depot + potentiel_ca
 
   seen_departs <- NULL
   testthat::with_mocked_bindings(
+    run_accessfor_validation = function(...) NULL,   # ACCESSFOR systématique: pas de WFS en test
     .acquire_mnt_highres = function(aoi, res_m = 5, crs = 2154,
                                     cache_dir = tempdir(), overwrite = FALSE) mnt_toy,
     .package = "nemetonshiny",
