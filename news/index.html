@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.5.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,11 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.115.6" id="nemetonshiny-01156-2026-07-24">nemetonshiny 0.115.6 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01156-2026-07-24"></a></h2>
+<div class="section level4">
+<h4 id="fixed--accessibilité--erreur---operator-is-invalid-for-atomic-vectors--0-115-6">Fixed — Accessibilité : erreur « $ operator is invalid for atomic vectors »<a class="anchor" aria-label="anchor" href="#fixed--accessibilit%C3%A9--erreur---operator-is-invalid-for-atomic-vectors--0-115-6"></a></h4>
+<ul><li>Le panneau <strong>Validation ACCESSFOR (IGN)</strong> levait <code>$ operator is invalid for atomic vectors</code> après un run : <code>rv$result$accessfor</code> faisait du <em>partial matching</em> sur <code>accessfor_raster_path</code> (un chemin, character) quand la clé <code>accessfor</code> était absente (résultat rechargé du cache) — puis <code>$status</code> sur un atomique. Corrigé par un accès exact <code>[["accessfor"]]</code>, et le résumé d<code>accord est désormais reporté sur le résultat rechargé (le tableau s</code>affiche bien après le calcul, pas seulement le volet).</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.115.5" id="nemetonshiny-01155-2026-07-24">nemetonshiny 0.115.5 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01155-2026-07-24"></a></h2>
