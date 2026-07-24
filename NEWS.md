@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.3 (2026-07-24)
 
 ### Changed — Chargement de projet plus rapide (caches Terrain paresseux)
 
