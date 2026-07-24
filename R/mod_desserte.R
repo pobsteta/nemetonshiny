@@ -316,7 +316,8 @@ mod_desserte_server <- function(id, app_state) {
         tryCatch(sf::st_transform(aoi, 4326), error = function(e) NULL)
       }
       overlays <- c(if (!is.null(geo)) "Parcelles" else NULL,
-                    "Desserte existante", "Reseau cree", "Reseau type")
+                    "Desserte existante", "Reseau cree", "Reseau type",
+                    "Places de depot")
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -377,6 +378,27 @@ mod_desserte_server <- function(id, app_state) {
           color = "#37474F", weight = 1.5, opacity = 0.7)
       if (!is.null(shown) && !("Desserte existante" %in% shown)) {
         leaflet::hideGroup(proxy, "Desserte existante")
+      }
+    })
+
+    # Overlay « Places de dépôt » : points calculés par la correction LiDAR de la
+    # desserte côté Accessibilité (couche `places_depot` du GeoPackage
+    # d'accessibilité du projet). Affichés ici aussi pour situer les dépôts vis-à-vis
+    # du réseau créé/typé. Se relit à l'arrivée sur l'onglet (active_terrain_tab).
+    shiny::observe({
+      app_state$active_terrain_tab  # dépendance : relire en arrivant sur l'onglet
+      shown <- input$map_groups
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearGroup("Places de depot")
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      pd <- .acc_read_places_depot(.accessibility_gpkg_path(project_path))
+      if (is.null(pd)) return()
+      proxy |>
+        leaflet::addCircleMarkers(data = pd, group = "Places de depot",
+          radius = 5, color = "#B71C1C", weight = 1, fillColor = "#E53935",
+          fillOpacity = 0.85, label = i18n$t("acc_places_depot"))
+      if (!is.null(shown) && !("Places de depot" %in% shown)) {
+        leaflet::hideGroup(proxy, "Places de depot")
       }
     })
 

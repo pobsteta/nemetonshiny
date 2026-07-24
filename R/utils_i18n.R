@@ -75,6 +75,7 @@ TRANSLATIONS <- list(
   acc_layer_label = list(fr = "Couche affich\u00e9e", en = "Displayed layer"),
   acc_layer_debardage = list(fr = "Classes de d\u00e9bardage", en = "Skidding distance classes"),
   acc_layer_debardage_accessfor = list(fr = "Classes de d\u00e9bardage/ACCESSFOR (IGN)", en = "Skidding classes/ACCESSFOR (IGN)"),
+  acc_places_depot = list(fr = "Places de d\u00e9p\u00f4t", en = "Landing sites"),
   acc_map_title = list(fr = "Carte d'accessibilit\u00e9", en = "Accessibility map"),
   acc_legend_title = list(fr = "Classe d'accessibilit\u00e9", en = "Accessibility class"),
   acc_dfci_heuristic_badge = list(fr = "Aucune desserte tagu\u00e9e DFCI (ref:FR:DFCI) sur l'emprise \u2014 sources DFCI estim\u00e9es (routes et pistes foresti\u00e8res).", en = "No road tagged DFCI (ref:FR:DFCI) in the area \u2014 DFCI sources estimated (forest roads and tracks)."),

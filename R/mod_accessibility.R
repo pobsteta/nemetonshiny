@@ -594,7 +594,8 @@ mod_accessibility_server <- function(id, app_state) {
       # « Desserte » (routes/pistes DFCI ayant servi au calcul) est enregistrée
       # dans le LayersControl SOUS « UGF » et « Accessibilite » ; l'observe plus
       # bas la dessine via leafletProxy (dépend du run, pas de la carte de base).
-      overlays <- c(if (!is.null(geo)) "UGF" else NULL, "Accessibilite", "Desserte")
+      overlays <- c(if (!is.null(geo)) "UGF" else NULL, "Accessibilite", "Desserte",
+                    "Places de depot")
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -712,6 +713,27 @@ mod_accessibility_server <- function(id, app_state) {
       # Respecter la décoche du groupe « Desserte » après re-dessin proxy.
       if (!is.null(shown) && !("Desserte" %in% shown)) {
         leaflet::hideGroup(proxy, "Desserte")
+      }
+    })
+
+    # Overlay « Places de dépôt » : les places de dépôt calculées par
+    # `places_depot()` le long de la desserte (corrigée au LiDAR en NDP 1, câble),
+    # lues depuis la couche `places_depot` du GeoPackage du run. Marqueurs (points
+    # rouges) au-dessus du raster et de la desserte.
+    shiny::observe({
+      res <- rv$result
+      shown <- input$map_groups
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearGroup("Places de depot")
+      gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
+      pd <- .acc_read_places_depot(gp)
+      if (is.null(pd)) return()
+      proxy |>
+        leaflet::addCircleMarkers(data = pd, group = "Places de depot",
+          radius = 5, color = "#B71C1C", weight = 1, fillColor = "#E53935",
+          fillOpacity = 0.85, label = i18n$t("acc_places_depot"))
+      if (!is.null(shown) && !("Places de depot" %in% shown)) {
+        leaflet::hideGroup(proxy, "Places de depot")
       }
     })
 

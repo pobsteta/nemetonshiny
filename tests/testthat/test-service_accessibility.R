@@ -355,5 +355,29 @@ test_that("run_accessibility : moteur câble (NDP 0, places_depot + potentiel_ca
         expect_equal(res$n_departs, 1L)
         # potentiel_cable a bien reçu les départs de places_depot (closure).
         expect_s3_class(seen_departs, "sf")
+        # La GÉOMÉTRIE des places de dépôt est persistée dans le GeoPackage du run
+        # (couche `places_depot`) pour l'affichage carte, pas seulement le nombre.
+        expect_true("places_depot" %in% sf::st_layers(res$gpkg_path)$name)
+        pd <- nemetonshiny:::.acc_read_places_depot(res$gpkg_path)
+        expect_s3_class(pd, "sf")
+        expect_equal(nrow(pd), 1L)
+        expect_equal(sf::st_crs(pd)$epsg, 4326L)   # reprojeté pour Leaflet
       }))
+})
+
+test_that(".acc_read_places_depot / .accessibility_gpkg_path : gardes", {
+  skip_if_not_installed("sf")
+  # gpkg absent / NULL -> NULL
+  expect_null(nemetonshiny:::.acc_read_places_depot(NULL))
+  expect_null(nemetonshiny:::.acc_read_places_depot("/no/such.gpkg"))
+  # gpkg sans couche places_depot -> NULL
+  tmp <- withr::local_tempdir()
+  gp <- file.path(tmp, "accessibilite.gpkg")
+  poly <- sf::st_sf(geometry = sf::st_sfc(sf::st_point(c(3, 45)), crs = 4326))
+  sf::st_write(poly, gp, layer = "foret", quiet = TRUE, delete_dsn = TRUE)
+  expect_null(nemetonshiny:::.acc_read_places_depot(gp))
+  # résolution du chemin
+  expect_null(nemetonshiny:::.accessibility_gpkg_path(NULL))
+  expect_match(nemetonshiny:::.accessibility_gpkg_path("/proj"),
+               "cache/accessibility/accessibilite.gpkg")
 })
