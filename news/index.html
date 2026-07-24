@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.115.5" id="nemetonshiny-01155-2026-07-24">nemetonshiny 0.115.5 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01155-2026-07-24"></a></h2>
+<div class="section level4">
+<h4 id="added--accessibilitédesserte--couche--places-de-dépôt--0-115-5">Added — Accessibilité/Desserte : couche « Places de dépôt »<a class="anchor" aria-label="anchor" href="#added--accessibilit%C3%A9desserte--couche--places-de-d%C3%A9p%C3%B4t--0-115-5"></a></h4>
+<ul><li>Les <strong>places de dépôt</strong> calculées par <code><a href="https://pobsteta.github.io/foretaccess/reference/places_depot.html" class="external-link">foretaccess::places_depot()</a></code> le long de la desserte (corrigée au LiDAR HD en NDP 1, câble) sont désormais <strong>persistées en géométrie</strong> (couche <code>places_depot</code> du GeoPackage du run), plus seulement comptées.</li>
+<li>Nouvelle couche <strong>« Places de dépôt »</strong> (points rouges) cochable dans le contrôle des couches des <strong>deux cartes</strong> : Accessibilité (contexte câble) et Desserte (situer les dépôts vis-à-vis du réseau créé/typé). Les deux cartes lisent la même source (GeoPackage d’accessibilité du projet), via les helpers <code>.accessibility_gpkg_path()</code> + <code>.acc_read_places_depot()</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.115.4" id="nemetonshiny-01154-2026-07-24">nemetonshiny 0.115.4 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01154-2026-07-24"></a></h2>
 <div class="section level4">
