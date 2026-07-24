@@ -211,13 +211,14 @@ mod_accessibility_ui <- function(id) {
         shiny::checkboxInput(
           ns("ndp1_lidar"), i18n$t("acc_ndp1_lidar_label"), value = FALSE),
         shiny::helpText(class = "small", i18n$t("acc_cable_long_note")),
-        # Avertissement expérimental affiché seulement si le NDP 1 est coché : la
-        # qualification LiDAR peut segfaulter sur une desserte étendue (crash worker,
-        # non rattrapable par tryCatch) — le run échoue alors au lieu de replier.
+        # Note de DURÉE affichée seulement si le NDP 1 est coché : la qualification
+        # LiDAR mesure la largeur carrossable tronçon par tronçon (calcul long, ~2-3 h
+        # sur une desserte réelle) mais fiable depuis foretaccess 1.19.1 (plus de
+        # segfault ; repli automatique sur la desserte brute si la qualif échoue).
         shiny::conditionalPanel(
           condition = sprintf("input['%s'] == true", ns("ndp1_lidar")),
-          shiny::div(class = "alert alert-warning py-1 px-2 my-1 small", role = "status",
-            shiny::icon("triangle-exclamation"), " ", i18n$t("acc_ndp1_experimental_note")))
+          shiny::div(class = "alert alert-info py-1 px-2 my-1 small", role = "status",
+            shiny::icon("clock"), " ", i18n$t("acc_ndp1_duration_note")))
       ),
 
       bslib::input_task_button(
@@ -500,8 +501,7 @@ mod_accessibility_server <- function(id, app_state) {
         porteur = i18n$t("acc_engine_porteur"),
         camion_dfci = i18n$t("acc_engine_dfci"),
         cable = i18n$t("acc_engine_cable"),
-        classes_debardage = i18n$t("acc_layer_debardage"),
-        accessfor_skidder = i18n$t("accessfor_layer"))
+        classes_debardage = i18n$t("acc_layer_debardage"))
       labs <- unname(lyr_label[layers])
       labs[is.na(labs)] <- layers[is.na(labs)]
       shiny::radioButtons(
@@ -657,7 +657,10 @@ mod_accessibility_server <- function(id, app_state) {
       }
       left_rp <- tryCatch(res$raster_paths[["classes_debardage"]],
                           error = function(e) NULL)
-      right_rp <- tryCatch(res$raster_paths[["accessfor_skidder"]],
+      # ACCESSFOR n'est PAS une couche affichable à part : le raster vit dans le
+      # résultat de validation (rv_accessfor) et ne sert qu'ici, en vis-à-vis des
+      # classes de débardage sous le volet.
+      right_rp <- tryCatch(rv_accessfor()$accessfor_raster_path,
                            error = function(e) NULL)
       if (is.null(left_rp) || !file.exists(left_rp) ||
           is.null(right_rp) || !file.exists(right_rp)) {
@@ -726,17 +729,10 @@ mod_accessibility_server <- function(id, app_state) {
                                 type = "error")
         return()
       }
-      # Ajoute le raster ACCESSFOR (IGN) aux couches affichables : reclassé vers nos
-      # bandes + même coltab que classes_debardage, il se colore à l'identique et
-      # devient sélectionnable/superposable dans la carte comme les autres rasters.
-      afp <- res$accessfor_raster_path
-      if (!is.null(afp) && file.exists(afp)) {
-        cur <- rv$result
-        if (is.list(cur)) {
-          cur$raster_paths[["accessfor_skidder"]] <- afp
-          rv$result <- cur
-        }
-      }
+      # ACCESSFOR n'est PAS ajouté au sélecteur de couches : reclassé vers nos
+      # bandes + même coltab + MÊME EMPRISE (forêt AOI+tampon) que classes de
+      # débardage, il ne sert qu'à la comparaison sous le volet (observe swipe).
+      # Le chemin reste dans rv_accessfor()$accessfor_raster_path.
     })
 
     output$accessfor_result <- shiny::renderUI({

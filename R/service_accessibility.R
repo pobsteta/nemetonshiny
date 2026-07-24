@@ -290,7 +290,14 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
       file.path(dirname(cache_dir), "layers", "lidar_nuage")
     has_laz <- dir.exists(laz_dir) &&
       length(list.files(laz_dir, pattern = "\\.(copc\\.)?laz$")) > 0L
-    if (isTRUE(ndp1_lidar) && has_laz &&
+    # La qualification LiDAR (`qualifier_desserte`) n'est SÛRE qu'à partir de
+    # foretaccess 1.19.1 : les versions antérieures pouvaient segfaulter sur une
+    # desserte étendue (crash worker, non rattrapable). Garde-fou de version : en
+    # deçà de 1.19.1 on reste sur la desserte brute (NDP 0) même si le NDP 1 est
+    # coché — l'app tourne sur 1.19.0 sans risque, NDP 1 s'active après mise à jour.
+    fa_ndp1_ok <- tryCatch(utils::packageVersion("foretaccess") >= "1.19.1",
+                           error = function(e) FALSE)
+    if (isTRUE(ndp1_lidar) && has_laz && fa_ndp1_ok &&
         requireNamespace("lidR", quietly = TRUE) &&
         requireNamespace("ALSroads", quietly = TRUE)) {
       dq <- tryCatch(
@@ -301,8 +308,17 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
     } else {
       cable_departs_source <- "ndp0_brute"
     }
+    # En NDP 1, `qualifier_desserte()` a mesuré la largeur carrossable
+    # (`largeur_carrossable_m`) : on la passe à `places_depot()` via `largeur_champ`
+    # pour des départs SÉLECTIFS (seuls les tronçons assez larges portent une place
+    # de dépôt — ~1189 vs ~1877 sans filtre sur une desserte réelle). En NDP 0
+    # (desserte brute, colonne absente), on laisse `largeur_champ = NULL` (défaut).
+    lc <- if (identical(cable_departs_source, "ndp1_lidar") &&
+              "largeur_carrossable_m" %in% names(des_cable))
+      "largeur_carrossable_m" else NULL
     departs <- tryCatch(
-      foretaccess::places_depot(des_cable, mnt, foret = foret_mask),
+      foretaccess::places_depot(des_cable, mnt, foret = foret_mask,
+                                largeur_champ = lc),
       error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
     if (inherits(departs, "acc_err")) {
       return(list(status = "error", reason = "accessibility_cable_departs_failed",

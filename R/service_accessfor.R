@@ -100,7 +100,20 @@ run_accessfor_validation <- function(classes_debardage_path, engine = "skidder")
   af_disp <- tryCatch({
     okv <- stats::complete.cases(corr[, c("accessfor_class", "fa_value")])
     r <- terra::subst(af_r, from = corr$accessfor_class[okv], to = corr$fa_value[okv])
+    # EMPRISE IDENTIQUE aux classes de débardage : ACCESSFOR (issu d'un vecteur
+    # national) remplirait tout le rectangle bbox, alors que classes_debardage est
+    # restreint à la forêt (AOI + tampon). On masque donc ACCESSFOR aux cellules
+    # forêt du raster app — non NA et hors « hors_foret » — pour un vis-à-vis strict
+    # sous le volet. (Valeurs posées AVANT les niveaux/coltab pour ne pas les perdre.)
     lv <- terra::levels(rast)[[1]]
+    hf_code <- if (is.data.frame(lv) && nrow(lv) > 0L) {
+      as.numeric(lv[[1]])[!is.na(lv[[2]]) & lv[[2]] == "hors_foret"]
+    } else numeric(0)
+    base_vals <- as.numeric(terra::values(rast, mat = FALSE))
+    keep <- !is.na(base_vals) & !(base_vals %in% hf_code)
+    rvv <- as.numeric(terra::values(r, mat = FALSE))
+    rvv[!keep] <- NA_real_
+    terra::values(r) <- rvv
     if (is.data.frame(lv) && nrow(lv) > 0L) levels(r) <- lv
     ct <- tryCatch(terra::coltab(rast)[[1]], error = function(e) NULL)
     if (is.data.frame(ct)) terra::coltab(r) <- ct
