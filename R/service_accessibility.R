@@ -269,6 +269,53 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
     return(list(status = "error", reason = "accessibility_desserte_empty"))
   }
 
+  # 2bis. CORRECTION LiDAR de la desserte (NDP 1) — appliquée EN AMONT du
+  # prétraitement pour que TOUS les moteurs (skidder, porteur, DFCI, câble)
+  # consomment la desserte corrigée, pas seulement le câble. Si le NDP 1 est demandé
+  # et qu'un nuage LiDAR HD est présent (foretaccess >= 1.19.1),
+  # `qualifier_desserte()` : (1) recale la géométrie des tronçons sur leur vraie
+  # position LiDAR, (2) mesure la largeur carrossable, (3) RETIRE les tronçons
+  # fantômes absents au sol (`retirer_disparues`). La desserte corrigée remplace
+  # alors la brute en entrée de `preprocess()`. Best-effort : version < 1.19.1
+  # (segfault possible), pas de nuage, ou échec -> on garde la desserte brute
+  # (NDP 0). `desserte_source` remonte la provenance pour le badge (tout le run).
+  desserte_source <- NA_character_
+  n_troncons_retires <- 0L
+  if (isTRUE(ndp1_lidar)) {
+    laz_dir <- if (!is.null(project_path)) {
+      file.path(project_path, "cache", "layers", "lidar_nuage")
+    } else {
+      file.path(dirname(cache_dir), "layers", "lidar_nuage")
+    }
+    has_laz <- dir.exists(laz_dir) &&
+      length(list.files(laz_dir, pattern = "\\.(copc\\.)?laz$")) > 0L
+    fa_ndp1_ok <- tryCatch(utils::packageVersion("foretaccess") >= "1.19.1",
+                           error = function(e) FALSE)
+    if (has_laz && fa_ndp1_ok &&
+        requireNamespace("lidR", quietly = TRUE) &&
+        requireNamespace("ALSroads", quietly = TRUE)) {
+      n_avant <- nrow(desserte)
+      dq <- tryCatch(
+        foretaccess::qualifier_desserte(desserte, las_source = laz_dir, mnt = mnt,
+                                        retirer_disparues = TRUE, etat_disparue = 4L),
+        error = function(e) NULL)
+      # Garde-fou : n'adopter la desserte corrigée QUE si elle conserve la colonne
+      # `classe` — `preprocess()`/`.rasteriser_desserte` en dépendent (et le masque
+      # DFCI de `camion_dfci`). `qualifier_desserte` enrichit la desserte ligne à
+      # ligne (donc la préserve), mais ce garde-fou protège d'une version cœur qui
+      # perdrait les attributs : on retomberait proprement sur la desserte brute.
+      if (inherits(dq, "sf") && nrow(dq) > 0L && "classe" %in% names(dq)) {
+        desserte <- dq                       # <- toutes les couches en aval l'utilisent
+        desserte_source <- "ndp1_lidar"
+        n_troncons_retires <- max(0L, n_avant - nrow(dq))
+      } else {
+        desserte_source <- "ndp0_brute"      # qualif échouée / attributs perdus -> brut
+      }
+    } else {
+      desserte_source <- "ndp0_brute"        # pas de nuage / version < 1.19.1
+    }
+  }
+
   # Flag DFCI sur la desserte : sans lui, `camion_dfci()` s'arrête (« Aucune
   # desserte-source DFCI »), car `preprocess()` construit `dfci_source_mask` à
   # partir de la colonne `dfci` de la desserte. Source OSM `ref:FR:DFCI` en
@@ -304,52 +351,18 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
                 detail = pre$msg))
   }
 
-  # 5bis. Couche `departs` (places de dépôt) pour le moteur câble (foretaccess
-  # 1.19.0). En NDP 1 (opt-in + nuage LiDAR présent), `qualifier_desserte()` mesure
-  # la largeur carrossable → `places_depot()` devient sélective (départs réalistes)
-  # → `potentiel_cable()` plus juste. Sans nuage : `places_depot()` sur la BD TOPO
-  # brute (largeur absente → peu sélectif, mais correct). `cable_departs_source`
-  # est remonté pour le badge de provenance (comme `dfci_source`).
+  # 5bis. Couche `departs` (places de dépôt) pour le moteur câble. La desserte a
+  # DÉJÀ été corrigée au LiDAR en amont (§2bis) le cas échéant : on ne re-qualifie
+  # PAS ici, on place les dépôts sur la desserte courante. En NDP 1, la largeur
+  # mesurée (`largeur_carrossable_m`) rend `places_depot()` sélective (départs
+  # réalistes ~1189 vs ~1877) ; en NDP 0 (colonne absente), `largeur_champ = NULL`.
   departs <- NULL
-  cable_departs_source <- NA_character_
   if ("cable" %in% engines) {
-    des_cable <- desserte
-    # Chemin CANONIQUE du nuage LiDAR HD (convention cache/layers/<source>, cf.
-    # resolve_regen_lidar_grid) ; repli sur cache_dir si project_path absent.
-    laz_dir <- if (!is.null(project_path))
-      file.path(project_path, "cache", "layers", "lidar_nuage") else
-      file.path(dirname(cache_dir), "layers", "lidar_nuage")
-    has_laz <- dir.exists(laz_dir) &&
-      length(list.files(laz_dir, pattern = "\\.(copc\\.)?laz$")) > 0L
-    # La qualification LiDAR (`qualifier_desserte`) n'est SÛRE qu'à partir de
-    # foretaccess 1.19.1 : les versions antérieures pouvaient segfaulter sur une
-    # desserte étendue (crash worker, non rattrapable). Garde-fou de version : en
-    # deçà de 1.19.1 on reste sur la desserte brute (NDP 0) même si le NDP 1 est
-    # coché — l'app tourne sur 1.19.0 sans risque, NDP 1 s'active après mise à jour.
-    fa_ndp1_ok <- tryCatch(utils::packageVersion("foretaccess") >= "1.19.1",
-                           error = function(e) FALSE)
-    if (isTRUE(ndp1_lidar) && has_laz && fa_ndp1_ok &&
-        requireNamespace("lidR", quietly = TRUE) &&
-        requireNamespace("ALSroads", quietly = TRUE)) {
-      dq <- tryCatch(
-        foretaccess::qualifier_desserte(desserte, las_source = laz_dir, mnt = mnt),
-        error = function(e) NULL)
-      if (inherits(dq, "sf")) { des_cable <- dq; cable_departs_source <- "ndp1_lidar" }
-      else cable_departs_source <- "ndp0_brute"   # qualif échouée -> repli brut
-    } else {
-      cable_departs_source <- "ndp0_brute"
-    }
-    # En NDP 1, `qualifier_desserte()` a mesuré la largeur carrossable
-    # (`largeur_carrossable_m`) : on la passe à `places_depot()` via `largeur_champ`
-    # pour des départs SÉLECTIFS (seuls les tronçons assez larges portent une place
-    # de dépôt — ~1189 vs ~1877 sans filtre sur une desserte réelle). En NDP 0
-    # (desserte brute, colonne absente), on laisse `largeur_champ = NULL` (défaut).
-    lc <- if (identical(cable_departs_source, "ndp1_lidar") &&
-              "largeur_carrossable_m" %in% names(des_cable))
+    lc <- if (identical(desserte_source, "ndp1_lidar") &&
+              "largeur_carrossable_m" %in% names(desserte))
       "largeur_carrossable_m" else NULL
     departs <- tryCatch(
-      foretaccess::places_depot(des_cable, mnt, foret = foret_mask,
-                                largeur_champ = lc),
+      foretaccess::places_depot(desserte, mnt, foret = foret_mask, largeur_champ = lc),
       error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
     if (inherits(departs, "acc_err")) {
       return(list(status = "error", reason = "accessibility_cable_departs_failed",
@@ -445,7 +458,11 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
     gpkg_path = if (file.exists(gpkg_path)) gpkg_path else NULL,
     n_desserte = nrow(desserte),
     dfci_source = dfci_source,
-    cable_departs_source = cable_departs_source,
+    # Provenance de la desserte pour TOUT le run : "ndp1_lidar" (corrigée LiDAR :
+    # géométrie recalée, largeurs mesurées, fantômes retirés) / "ndp0_brute" (repli
+    # quand le NDP 1 est demandé mais indisponible) / NA (NDP 1 non demandé).
+    desserte_source = desserte_source,
+    n_troncons_retires = n_troncons_retires,
     n_departs = if (inherits(departs, "sf")) nrow(departs) else NA_integer_,
     # ACCESSFOR (référence IGN) : chemin du raster affichable (vis-à-vis des classes
     # de débardage sous le volet) + résumé d'accord pour le panneau de validation.
