@@ -1,4 +1,14 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.6 (2026-07-24)
+
+### Fixed — Accessibilité : erreur « $ operator is invalid for atomic vectors »
+
+- Le panneau **Validation ACCESSFOR (IGN)** levait `$ operator is invalid for
+  atomic vectors` après un run : `rv$result$accessfor` faisait du *partial
+  matching* sur `accessfor_raster_path` (un chemin, character) quand la clé
+  `accessfor` était absente (résultat rechargé du cache) — puis `$status` sur
+  un atomique. Corrigé par un accès exact `[["accessfor"]]`, et le résumé
+  d`accord est désormais reporté sur le résultat rechargé (le tableau s`affiche
+  bien après le calcul, pas seulement le volet).
 
 # nemetonshiny 0.115.5 (2026-07-24)
 

@@ -457,7 +457,13 @@ mod_accessibility_server <- function(id, app_state) {
       # Recharge l'union des rasters du cache, mais conserve la provenance DFCI
       # du run courant (`dfci_source`, non persistée sur disque) pour le badge.
       cached <- .load_cached_accessibility(project_path)
-      if (!is.null(cached)) cached$dfci_source <- res$dfci_source
+      if (!is.null(cached)) {
+        cached$dfci_source <- res$dfci_source
+        # Le RÉSUMÉ d'accord ACCESSFOR (`accessfor` : table + taux) n'est pas
+        # persisté sur disque — on le reporte du run courant pour que le tableau
+        # s'affiche après le calcul (le cache ne porte que le raster affichable).
+        cached$accessfor <- res$accessfor
+      }
       rv$result <- cached %||% res
       shiny::showNotification(
         sprintf(i18n$t("acc_done_fmt"), length(res$engines)),
@@ -744,7 +750,10 @@ mod_accessibility_server <- function(id, app_state) {
     # couche « Classes de débardage/ACCESSFOR (IGN) » affiche le volet d'office, et
     # le tableau d'accord ci-dessous s'affiche automatiquement après le run.
     output$accessfor_result <- shiny::renderUI({
-      res <- tryCatch(rv$result$accessfor, error = function(e) NULL)
+      # `[["accessfor"]]` (match EXACT) et non `$accessfor` : ce dernier fait du
+      # partial matching et attraperait `accessfor_raster_path` (un character) quand
+      # `accessfor` est absent (résultat rechargé du cache) -> « $ operator invalid ».
+      res <- tryCatch(rv$result[["accessfor"]], error = function(e) NULL)
       if (is.null(res) || !identical(res$status, "success")) {
         return(htmltools::tags$p(class = "text-muted small",
                                  i18n$t("accessfor_hint")))
