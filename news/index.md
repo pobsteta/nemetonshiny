@@ -1,6 +1,39 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.115.2 (2026-07-24)
+
+#### Changed — Accessibilité : NDP 1 câble n’est plus « expérimental »
+
+- La correction LiDAR de la desserte (NDP 1, câble) **n’est plus marquée
+  expérimentale** : foretaccess **1.19.1** corrige le segfault de la
+  qualification sur desserte étendue (validé sur une desserte réelle de
+  3299 tronçons — plus de crash, largeur carrossable mesurée sur 75 %
+  des tronçons). L’avertissement rouge « peut échouer » devient une
+  **note de durée** (~2-3 h, bleue) : long mais fiable, avec repli
+  automatique sur la desserte brute si la qualification échoue.
+- Les **largeurs mesurées alimentent maintenant `places_depot()`**
+  (`largeur_champ`) : les départs câble deviennent **sélectifs** (~1189
+  vs ~1877 sans filtre sur la même desserte) → couverture câble plus
+  juste (**85 % mesuré vs 91 % optimiste** sur la desserte de test).
+- **Garde-fou de version** : la qualification LiDAR ne s’active qu’avec
+  foretaccess ≥ 1.19.1 ; en deçà, l’app reste sur la desserte brute
+  (NDP 0) même si le NDP 1 est coché — elle tourne donc sans risque sur
+  1.19.0. Remotes pinné `foretaccess@v1.19.1` (plancher `Imports`
+  inchangé : 1.19.0).
+
+#### Changed — Accessibilité : ACCESSFOR uniquement en vis-à-vis sous le volet
+
+- ACCESSFOR (IGN) **n’est plus une couche affichable à part** dans le
+  sélecteur : la validation le destinait à la **comparaison sous le
+  volet** (classes de débardage à gauche / ACCESSFOR à droite), pas à
+  une superposition indépendante. Le raster reste dans le résultat de
+  validation et n’alimente que le swipe.
+- Le raster ACCESSFOR est désormais **masqué à l’emprise exacte des
+  classes de débardage** (forêt AOI + tampon) : issu d’un vecteur
+  national, il remplissait tout le rectangle bbox alors que nos classes
+  sont restreintes à la forêt. On ne garde donc ACCESSFOR que sur les
+  cellules forêt de l’app (non NA, hors « hors_foret ») pour un
+  vis-à-vis strict, cellule à cellule.
 
 ## nemetonshiny 0.115.1 (2026-07-24)
 
