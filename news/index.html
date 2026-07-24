@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.10.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,12 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.115.11" id="nemetonshiny-011511-2026-07-24">nemetonshiny 0.115.11 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-011511-2026-07-24"></a></h2>
+<div class="section level4">
+<h4 id="fixed--accessibilité--correction-lidar-et-analyse-mutuellement-exclusives--chrono-0-115-11">Fixed — Accessibilité : correction LiDAR et analyse mutuellement exclusives + chrono<a class="anchor" aria-label="anchor" href="#fixed--accessibilit%C3%A9--correction-lidar-et-analyse-mutuellement-exclusives--chrono-0-115-11"></a></h4>
+<ul><li>Pendant une <strong>correction LiDAR</strong> (~2-3 h), le bouton **« Lancer l<code>analyse »** est désormais **grisé** et son action **refusée** (toast « Correction en cours — patientez ») — évite deux tâches lourdes en parallèle (double charge mémoire) et une analyse qui n</code>utiliserait pas la correction en cours. Symétrique : « Corriger la desserte » est grisé pendant une analyse.</li>
+<li>La correction affiche maintenant un <strong>toast bas-droite persistant avec chrono</strong> (temps écoulé mis à jour chaque seconde), à parité avec « Lancer l`analyse ».</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.115.10" id="nemetonshiny-011510-2026-07-24">nemetonshiny 0.115.10 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-011510-2026-07-24"></a></h2>
