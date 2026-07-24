@@ -1,4 +1,24 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.8 (2026-07-24)
+
+### Changed — Accessibilité : correction LiDAR découplée des runs moteurs
+
+- La correction LiDAR de la desserte (NDP 1) devient une **action séparée et
+  ponctuelle** : un bouton **« Corriger la desserte au LiDAR »** lance
+  `qualifier_desserte()` SEULE (async), écrit `desserte_corrigee.gpkg` sur disque
+  (géométrie recalée, largeurs mesurées, tronçons fantômes retirés), et s`arrête
+  là. « Lancer l`analyse » ne déclenche **plus jamais** la qualif ~2-3 h.
+- Les runs moteurs restent **légers** : une case **« Utiliser la desserte
+  corrigée LiDAR »** (visible seulement si le fichier existe) fait lire la
+  desserte corrigée du disque → `preprocess` → tous les moteurs, sans re-qualif.
+  Décochée : desserte brute (NDP 0).
+- **Robuste à l`OOM** : la correction persiste son résultat sur disque même si le
+  navigateur est fermé en cours (systemd-oomd sous pression mémoire). Au retour,
+  la desserte corrigée est disponible et réutilisable — pas besoin de recommencer.
+  Motivé par un cas réel où le pic mémoire de la qualif (catalogue LiDAR + ALSroads)
+  faisait tuer le navigateur par systemd-oomd pendant un run.
+- Interne : `run_desserte_lidar_correction()` + `.acquire_mnt_desserte()` (préambule
+  d`acquisition factorisé) + `.corrected_desserte_path()` ; `run_accessibility()`
+  gagne `use_corrected_desserte` (remplace `ndp1_lidar`), ne qualifie plus.
 
 # nemetonshiny 0.115.7 (2026-07-24)
 
