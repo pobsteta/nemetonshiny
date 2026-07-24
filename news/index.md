@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.115.1 (2026-07-24)
 
 #### Added — Accessibilité : comparaison « volet » classes de débardage ↔︎ ACCESSFOR
