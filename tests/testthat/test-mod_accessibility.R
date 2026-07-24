@@ -250,3 +250,30 @@ test_that("ACCESSFOR systématique : libellé combiné + tableau d'accord auto",
       expect_true(grepl("19", flat(output$accessfor_result)))
     })
 })
+
+test_that("accessfor_result : pas d'erreur '$ atomic' sur un résultat rechargé du cache", {
+  # Régression : `$accessfor` fait du partial matching et attrapait
+  # `accessfor_raster_path` (character) quand la clé `accessfor` est absente
+  # (résultat du cache) -> « $ operator is invalid for atomic vectors ». Le fix
+  # utilise `[["accessfor"]]` (match exact).
+  skip_if_not_installed("sf")
+  proj <- list(id = "p1", path = withr::local_tempdir(),
+               indicators_sf = .acc_units(1))
+  as <- shiny::reactiveValues(current_project = proj)
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"), .package = "nemetonshiny")
+  shiny::testServer(
+    nemetonshiny:::mod_accessibility_server,
+    args = list(app_state = as),
+    {
+      session$flushReact()
+      # Résultat façon CACHE : accessfor_raster_path présent, PAS de clé `accessfor`.
+      rv$result <- list(
+        status = "success", engines = "skidder",
+        raster_paths = list(classes_debardage = "/x/acc_classes_debardage.tif"),
+        accessfor_raster_path = "/x/accessfor_skidder.tif")
+      session$flushReact()
+      # Ne doit PAS lever d'erreur (rendait « $ operator invalid » avant le fix).
+      expect_error(output$accessfor_result, NA)
+    })
+})
