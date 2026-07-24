@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.7.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,15 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.115.8" id="nemetonshiny-01158-2026-07-24">nemetonshiny 0.115.8 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01158-2026-07-24"></a></h2>
+<div class="section level4">
+<h4 id="changed--accessibilité--correction-lidar-découplée-des-runs-moteurs-0-115-8">Changed — Accessibilité : correction LiDAR découplée des runs moteurs<a class="anchor" aria-label="anchor" href="#changed--accessibilit%C3%A9--correction-lidar-d%C3%A9coupl%C3%A9e-des-runs-moteurs-0-115-8"></a></h4>
+<ul><li>La correction LiDAR de la desserte (NDP 1) devient une <strong>action séparée et ponctuelle</strong> : un bouton <strong>« Corriger la desserte au LiDAR »</strong> lance <code>qualifier_desserte()</code> SEULE (async), écrit <code>desserte_corrigee.gpkg</code> sur disque (géométrie recalée, largeurs mesurées, tronçons fantômes retirés), et s<code>arrête là. « Lancer l</code>analyse » ne déclenche <strong>plus jamais</strong> la qualif ~2-3 h.</li>
+<li>Les runs moteurs restent <strong>légers</strong> : une case <strong>« Utiliser la desserte corrigée LiDAR »</strong> (visible seulement si le fichier existe) fait lire la desserte corrigée du disque → <code>preprocess</code> → tous les moteurs, sans re-qualif. Décochée : desserte brute (NDP 0).</li>
+<li>
+<strong>Robuste à l`OOM</strong> : la correction persiste son résultat sur disque même si le navigateur est fermé en cours (systemd-oomd sous pression mémoire). Au retour, la desserte corrigée est disponible et réutilisable — pas besoin de recommencer. Motivé par un cas réel où le pic mémoire de la qualif (catalogue LiDAR + ALSroads) faisait tuer le navigateur par systemd-oomd pendant un run.</li>
+<li>Interne : <code>run_desserte_lidar_correction()</code> + <code>.acquire_mnt_desserte()</code> (préambule d<code>acquisition factorisé) +</code>.corrected_desserte_path()<code>;</code>run_accessibility()<code>gagne</code>use_corrected_desserte<code>(remplace</code>ndp1_lidar`), ne qualifie plus.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.115.7" id="nemetonshiny-01157-2026-07-24">nemetonshiny 0.115.7 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01157-2026-07-24"></a></h2>
