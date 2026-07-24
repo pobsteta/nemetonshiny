@@ -395,6 +395,38 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
     n_parcelles = n_parcelles)
 }
 
+#' Resolve the standing-volume (P1) column on a project's units
+#'
+#' The core and the app do NOT agree on the column name, which used to surface
+#' as a false « volume P1 absent » error even on a fully computed project:
+#'
+#'   * `nemeton:::indicateur_p1_volume()` writes **`P1`** (its `column_name`
+#'     default) — that is what a freshly computed `sf` carries in memory;
+#'   * the project's `indicators.parquet` persists it as
+#'     **`indicateur_p1_volume`**, aligned with the 30 other `indicateur_*`
+#'     columns — and `.resolve_project_aoi_2154()` returns exactly that.
+#'
+#' Candidates are tried in order, then a case-insensitive match, and a column is
+#' only accepted when it holds at least one finite value.
+#'
+#' @param parcelles An `sf`/data.frame of units.
+#' @return The resolved column name, or `NULL` when no usable column exists.
+#' @noRd
+.resolve_volume_col <- function(parcelles) {
+  if (!is.data.frame(parcelles) || ncol(parcelles) == 0L) return(NULL)
+  nms <- names(parcelles)
+  usable <- function(col) {
+    v <- suppressWarnings(as.numeric(parcelles[[col]]))
+    any(is.finite(v))
+  }
+  for (cand in c("P1", "indicateur_p1_volume")) {
+    if (cand %in% nms && usable(cand)) return(cand)
+  }
+  hit <- nms[tolower(nms) %in% c("p1", "indicateur_p1_volume")]
+  for (cand in hit) if (usable(cand)) return(cand)
+  NULL
+}
+
 #' Default wood-flux thresholds for road typing (m³ total)
 #'
 #' Named ascending numeric vector of class lower bounds consumed by
@@ -427,14 +459,16 @@ DESSERTE_TYPAGE_SEUILS <- c(tertiaire = 0, secondaire = 100, primaire = 500)
 #' @param horizon_ans Numeric horizon in years.
 #' @param engine Engine whose persisted network to type (default `"glouton"`).
 #' @param seuils_flux Named ascending numeric vector of flux class bounds.
-#' @param volume_col Name of the standing-volume column on `parcelles` (P1).
+#' @param volume_col Name of the standing-volume column on `parcelles`, or
+#'   `NULL` (default) to resolve it with `.resolve_volume_col()` — the core and
+#'   the persisted project do NOT use the same name.
 #' @return A named list: `status`, `recap` (length per type), `gpkg_path`,
 #'   `seuils`, or an error list.
 #' @noRd
 run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
                                 horizon_ans, engine = "glouton",
                                 seuils_flux = DESSERTE_TYPAGE_SEUILS,
-                                volume_col = "P1") {
+                                volume_col = NULL) {
   if (!requireNamespace("foretaccess", quietly = TRUE) ||
       !requireNamespace("nemeton", quietly = TRUE)) {
     return(list(status = "error", reason = "desserte_typage_no_pkg"))
@@ -446,7 +480,12 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
   if (!inherits(parcelles, "sf") || nrow(parcelles) == 0L) {
     return(list(status = "error", reason = "desserte_typage_no_parcelles"))
   }
-  if (!volume_col %in% names(parcelles) ||
+  # Résolution du nom de colonne : `P1` (sortie cœur en mémoire) OU
+  # `indicateur_p1_volume` (nom persisté dans indicators.parquet, et donc ce que
+  # renvoie .resolve_project_aoi_2154). Chercher « P1 » en dur produisait un
+  # « volume P1 absent » sur un projet pourtant entièrement calculé.
+  volume_col <- volume_col %||% .resolve_volume_col(parcelles)
+  if (is.null(volume_col) || !volume_col %in% names(parcelles) ||
       !any(is.finite(suppressWarnings(as.numeric(parcelles[[volume_col]]))))) {
     return(list(status = "error", reason = "desserte_typage_no_volume"))
   }

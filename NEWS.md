@@ -1,5 +1,20 @@
 # nemetonshiny (development version)
 
+### Fixed — Typage du réseau : « Volume P1 absent » sur un projet pourtant calculé
+
+- Le typage refusait de démarrer avec « Volume P1 absent des parcelles :
+  calculez d'abord l'indicateur P1 » sur un projet dont **P1 était bel et bien
+  calculé**. Cause : décalage de nom de colonne.
+  `nemeton:::indicateur_p1_volume()` écrit **`P1`** (son `column_name` par
+  défaut), mais `indicators.parquet` persiste la colonne sous
+  **`indicateur_p1_volume`** (aligné sur les 30 autres `indicateur_*`) — et
+  c'est ce que renvoie `.resolve_project_aoi_2154()`. Or
+  `run_desserte_typage()` cherchait `"P1"` en dur.
+- Nouveau `.resolve_volume_col()` : essaie `P1`, puis
+  `indicateur_p1_volume`, puis une correspondance insensible à la casse, et
+  n'accepte une colonne que si elle porte au moins une valeur finie (une
+  colonne tout-NA ne masque plus l'autre). `volume_col` reste surchargeable.
+
 ### Added — `run_app(tour = FALSE)` : démarrer sans le tour guidé
 
 - Nouvel argument **`tour`** (défaut `TRUE`) : `run_app(tour = FALSE)` démarre
