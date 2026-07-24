@@ -148,14 +148,24 @@ test_that("run_accessibility : pipeline complet sur données toy (IGN mocké)", 
       expect_setequal(res$engines, c("skidder", "porteur", "camion_dfci"))
       expect_true(all(file.exists(unlist(res$raster_paths))))
       expect_true(file.exists(res$gpkg_path))
-      # NDP 1 demandé sans nuage LiDAR (données toy) -> correction ignorée, repli
-      # desserte brute : provenance "ndp0_brute", aucun tronçon retiré. Les moteurs
-      # tournent quand même (desserte brute en entrée de preprocess).
-      res_ndp1 <- nemetonshiny:::run_accessibility(
-        aoi_path, "skidder", cache, ndp1_lidar = TRUE)
-      expect_equal(res_ndp1$status, "success")
-      expect_equal(res_ndp1$desserte_source, "ndp0_brute")
-      expect_equal(res_ndp1$n_troncons_retires, 0L)
+      # Desserte corrigée DEMANDÉE mais aucun desserte_corrigee.gpkg en cache ->
+      # repli propre sur la desserte brute (provenance "ndp0_brute"). Les moteurs
+      # tournent quand même. (La qualif LiDAR n'est PLUS lancée par run_accessibility.)
+      res_uc <- nemetonshiny:::run_accessibility(
+        aoi_path, "skidder", cache, use_corrected_desserte = TRUE)
+      expect_equal(res_uc$status, "success")
+      expect_equal(res_uc$desserte_source, "ndp0_brute")
+
+      # Desserte corrigée PRÉSENTE en cache (avec colonne `classe`) -> chargée ->
+      # provenance "ndp1_lidar" (pas de re-qualification).
+      dcorr <- desserte
+      if (!"classe" %in% names(dcorr)) dcorr$classe <- "route"
+      sf::st_write(dcorr, nemetonshiny:::.corrected_desserte_path(cache),
+                   layer = "desserte_corrigee", quiet = TRUE, delete_dsn = TRUE)
+      res_c <- nemetonshiny:::run_accessibility(
+        aoi_path, "skidder", cache, use_corrected_desserte = TRUE)
+      expect_equal(res_c$status, "success")
+      expect_equal(res_c$desserte_source, "ndp1_lidar")
       # Chaque moteur a produit un récap non vide.
       expect_true(all(vapply(res$recaps, nrow, integer(1)) > 0L))
       # Le skidder ajoute le raster « classes de débardage » — UNIQUEMENT si la
@@ -353,14 +363,12 @@ test_that("run_accessibility : moteur câble (NDP 0, places_depot + potentiel_ca
       },
       .package = "foretaccess",
       {
-        # NDP 0 : ndp1_lidar = FALSE -> pas de qualifier_desserte ; places_depot
-        # sur la desserte brute. Provenance desserte = NA (NDP 1 NON demandé).
-        res <- nemetonshiny:::run_accessibility(aoi_path, "cable", cache,
-                                                ndp1_lidar = FALSE)
+        # Desserte corrigée NON demandée -> desserte brute, places_depot dessus.
+        # Provenance desserte = NA.
+        res <- nemetonshiny:::run_accessibility(aoi_path, "cable", cache)
         expect_equal(res$status, "success")
         expect_true(file.exists(res$raster_paths[["cable"]]))
         expect_true(is.na(res$desserte_source))
-        expect_equal(res$n_troncons_retires, 0L)
         expect_equal(res$n_departs, 1L)
         # potentiel_cable a bien reçu les départs de places_depot (closure).
         expect_s3_class(seen_departs, "sf")
@@ -372,6 +380,17 @@ test_that("run_accessibility : moteur câble (NDP 0, places_depot + potentiel_ca
         expect_equal(nrow(pd), 1L)
         expect_equal(sf::st_crs(pd)$epsg, 4326L)   # reprojeté pour Leaflet
       }))
+})
+
+test_that("run_desserte_lidar_correction : garde 'pas de LiDAR' (avant acquisition)", {
+  skip_if_not_installed("foretaccess")
+  cache <- withr::local_tempdir()
+  # Aucun nuage LiDAR sous <cache>/../layers/lidar_nuage -> erreur structurée
+  # renvoyée AVANT toute acquisition réseau (pas de qualif lancée).
+  res <- nemetonshiny:::run_desserte_lidar_correction(
+    file.path(cache, "aoi.gpkg"), cache, buffer_m = 0, project_path = NULL)
+  expect_equal(res$status, "error")
+  expect_equal(res$reason, "acc_correct_no_lidar")
 })
 
 test_that(".acc_read_places_depot / .accessibility_gpkg_path : gardes", {

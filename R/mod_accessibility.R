@@ -193,17 +193,23 @@ mod_accessibility_ui <- function(id) {
       width = 320, open = "always", position = "left",
       htmltools::tags$p(class = "text-muted small", i18n$t("acc_intro")),
 
-      # Correction LiDAR de la desserte (NDP 1), AU-DESSUS des moteurs : elle
-      # s'applique à TOUS (géométrie recalée + tronçons fantômes retirés + largeurs
-      # mesurées) et devient l'entrée commune de `preprocess()`. Gaté à l'exécution
-      # sur la présence du nuage LiDAR HD + foretaccess >= 1.19.1 (repli desserte
-      # brute sinon). Note de durée (~2-3 h) affichée quand le toggle est coché.
-      shiny::checkboxInput(
-        ns("ndp1_lidar"), i18n$t("acc_ndp1_lidar_label"), value = FALSE),
-      shiny::conditionalPanel(
-        condition = sprintf("input['%s'] == true", ns("ndp1_lidar")),
-        shiny::div(class = "alert alert-info py-1 px-2 my-1 small", role = "status",
-          shiny::icon("clock"), " ", i18n$t("acc_ndp1_duration_note"))),
+      # --- Correction LiDAR de la desserte (NDP 1) — ÉTAPE DÉCOUPLÉE -------------
+      # La qualification LiDAR (lourde : ~2-3 h, gros pic mémoire) est un geste
+      # SÉPARÉ et ponctuel : ce bouton corrige la desserte UNE fois (géométrie
+      # recalée + largeurs mesurées + tronçons fantômes retirés) et la persiste sur
+      # disque. Les runs moteurs ci-dessous restent LÉGERS et la réutilisent via la
+      # case « Utiliser la desserte corrigée ». Découpler évite de relancer la qualif
+      # à chaque run et d'étrangler la mémoire pendant l'analyse.
+      htmltools::tags$strong(class = "small d-block", i18n$t("acc_correct_section")),
+      bslib::input_task_button(
+        ns("correct_desserte"), i18n$t("acc_correct_run"),
+        label_busy = i18n$t("acc_correct_running"),
+        icon = bsicons::bs_icon("magic"),
+        type = "secondary", class = "w-100 my-1 btn-sm"),
+      shiny::helpText(class = "small mb-1", i18n$t("acc_ndp1_duration_note")),
+      shiny::uiOutput(ns("correct_status")),
+      shiny::uiOutput(ns("use_corrected_ui")),
+      htmltools::tags$hr(class = "my-2"),
 
       shiny::checkboxGroupInput(
         ns("engines"), i18n$t("acc_engines_label"),
@@ -299,7 +305,7 @@ mod_accessibility_server <- function(id, app_state) {
     # --- Worker asynchrone : acquisition desserte + prétraitement + moteurs -----
     acc_task <- shiny::ExtendedTask$new(
       function(aoi_path, engines, cache_dir, buffer_m, dev_path, app_opts,
-               ndp1_lidar, project_path) {
+               use_corrected_desserte, project_path) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
@@ -315,8 +321,8 @@ mod_accessibility_server <- function(id, app_state) {
           }
           options(nemeton.app_options = app_opts)
           nemetonshiny:::run_accessibility(aoi_path, engines, cache_dir, buffer_m,
-                                           ndp1_lidar = ndp1_lidar,
-                                           project_path = project_path)
+            use_corrected_desserte = use_corrected_desserte,
+            project_path = project_path)
         }, seed = TRUE)
       })
 
@@ -327,6 +333,121 @@ mod_accessibility_server <- function(id, app_state) {
     # donc PAS grisé pendant tout le calcul async. Avec le binding, il affiche le
     # spinner + libellé « busy » tant que la tâche tourne (comme dans reGénération).
     bslib::bind_task_button(acc_task, "run")
+
+    # --- Correction LiDAR de la desserte (NDP 1) — worker dédié, DÉCOUPLÉ --------
+    # Produit `desserte_corrigee.gpkg` UNE fois (qualifier_desserte, lourd ~2-3 h) ;
+    # les runs moteurs le réutilisent ensuite via la case « utiliser ». Même patron
+    # async que le moteur, mais tâche séparée : les runs moteurs ne portent plus le
+    # coût (ni le pic mémoire) de la qualif.
+    correct_task <- shiny::ExtendedTask$new(
+      function(aoi_path, cache_dir, buffer_m, dev_path, app_opts, project_path) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            future::plan("multisession")
+          }
+        }
+        promises::future_promise({
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          nemetonshiny:::run_desserte_lidar_correction(aoi_path, cache_dir,
+            buffer_m, project_path)
+        }, seed = TRUE)
+      })
+    bslib::bind_task_button(correct_task, "correct_desserte")
+
+    # Disponibilité de la desserte corrigée (fichier sur disque) : rafraîchie au
+    # changement de projet + à la fin d'une correction. Pilote la case « utiliser ».
+    correct_refresh <- shiny::reactiveVal(0L)
+    corrected_available <- shiny::reactive({
+      correct_refresh()
+      pp <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(pp) || !nzchar(pp)) return(FALSE)
+      file.exists(.corrected_desserte_path(.accessibility_cache_dir(pp)))
+    })
+    shiny::observeEvent(app_state$current_project,
+      correct_refresh(correct_refresh() + 1L), ignoreNULL = FALSE)
+
+    rv_correct <- shiny::reactiveVal(NULL)   # dernier résumé de correction
+    shiny::observeEvent(input$correct_desserte, {
+      if (deny_if_readonly(app_state, i18n)) {
+        bslib::update_task_button("correct_desserte", state = "ready"); return()
+      }
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      aoi <- units_sf()
+      if (is.null(aoi) || is.null(project_path)) {
+        bslib::update_task_button("correct_desserte", state = "ready")
+        shiny::showNotification(i18n$t("acc_need_project"), type = "warning"); return()
+      }
+      cache_dir <- .accessibility_cache_dir(project_path)
+      dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+      aoi_path <- file.path(cache_dir, "aoi_input.gpkg")
+      ok <- tryCatch({ sf::st_write(aoi, aoi_path, layer = "foret", quiet = TRUE,
+                                    delete_dsn = TRUE); TRUE }, error = function(e) FALSE)
+      if (!isTRUE(ok)) {
+        bslib::update_task_button("correct_desserte", state = "ready")
+        shiny::showNotification(i18n$t("acc_need_project"), type = "warning"); return()
+      }
+      rv_correct(list(status = "running"))
+      buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      tryCatch(
+        correct_task$invoke(aoi_path, cache_dir, buffer_m, .dev_pkg_path,
+                            get_app_options(), project_path),
+        error = function(e) {
+          bslib::update_task_button("correct_desserte", state = "ready")
+          rv_correct(list(status = "error", reason = "acc_correct_failed"))
+        })
+    })
+
+    shiny::observeEvent(correct_task$status(), {
+      st <- correct_task$status()
+      if (!identical(st, "success") && !identical(st, "error")) return()
+      res <- tryCatch(correct_task$result(),
+        error = function(e) list(status = "error", reason = "acc_correct_failed"))
+      if (identical(st, "error") || !is.list(res)) {
+        res <- list(status = "error", reason = "acc_correct_failed")
+      }
+      rv_correct(res)
+      if (identical(res$status, "success")) {
+        correct_refresh(correct_refresh() + 1L)   # la case « utiliser » apparaît
+        shiny::showNotification(
+          sprintf(i18n$t("acc_correct_done_fmt"),
+                  res$n_troncons %||% NA_integer_, res$n_troncons_retires %||% 0L),
+          type = "message", duration = 8)
+      } else {
+        shiny::showNotification(i18n$t(res$reason %||% "acc_correct_failed"),
+                                type = "error", duration = 8)
+      }
+    })
+
+    output$correct_status <- shiny::renderUI({
+      res <- rv_correct()
+      if (is.null(res) || identical(res$status, "running")) return(NULL)
+      if (identical(res$status, "success")) {
+        htmltools::div(class = "alert alert-success py-1 px-2 my-1 small",
+          role = "status", shiny::icon("check-circle"), " ",
+          sprintf(i18n$t("acc_correct_done_fmt"),
+                  res$n_troncons %||% NA_integer_, res$n_troncons_retires %||% 0L))
+      } else {
+        htmltools::div(class = "alert alert-warning py-1 px-2 my-1 small",
+          role = "status", shiny::icon("triangle-exclamation"), " ",
+          i18n$t(res$reason %||% "acc_correct_failed"))
+      }
+    })
+
+    output$use_corrected_ui <- shiny::renderUI({
+      if (!isTRUE(corrected_available())) {
+        return(htmltools::tags$p(class = "text-muted small mb-0",
+                                 i18n$t("acc_correct_none")))
+      }
+      shiny::checkboxInput(ns("use_corrected"), i18n$t("acc_use_corrected"),
+                           value = TRUE)
+    })
 
     # --- Lancement -------------------------------------------------------------
     shiny::observeEvent(input$run, {
@@ -379,11 +500,11 @@ mod_accessibility_server <- function(id, app_state) {
       # Garde-fou : un échec SYNCHRONE d'invoke (sérialisation d'un argument) ne
       # doit pas laisser le bouton figé « busy » ni la notif collée.
       buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
-      ndp1_lidar <- isTRUE(input$ndp1_lidar)
+      use_corrected <- isTRUE(input$use_corrected)
       tryCatch(
         acc_task$invoke(aoi_path, engines, cache_dir, buffer_m,
                         .dev_pkg_path, get_app_options(),
-                        ndp1_lidar, project_path),
+                        use_corrected, project_path),
         error = function(e) {
           rv$running <- FALSE
           rv$start <- NULL
@@ -558,24 +679,17 @@ mod_accessibility_server <- function(id, app_state) {
     })
 
     # --- Badge de provenance de la DESSERTE (au-dessus de la carte) -------------
-    # Apparaît dès qu'une correction LiDAR (NDP 1) a été DEMANDÉE, quel que soit le
-    # moteur/la couche affichée — la desserte corrigée alimente TOUS les moteurs.
-    # Info (bleu) : desserte corrigée (géométrie recalée, largeurs mesurées, N
-    # fantômes retirés, + départs câble si le câble a tourné). Avertissement
-    # (jaune) : NDP 1 demandé mais LiDAR indisponible -> desserte brute.
+    # Reflète la desserte UTILISÉE par le run moteur courant : bleu = desserte
+    # corrigée LiDAR (case « utiliser » cochée + fichier présent), jaune = corrigée
+    # demandée mais absente -> repli brut. Rien si desserte corrigée non demandée.
     output$desserte_badge <- shiny::renderUI({
       res <- rv$result
       src <- tryCatch(res$desserte_source, error = function(e) NULL)
       if (is.null(src) || is.na(src)) return(NULL)
       if (identical(src, "ndp1_lidar")) {
-        nr <- tryCatch(res$n_troncons_retires, error = function(e) NA_integer_)
         nd <- tryCatch(res$n_departs, error = function(e) NA_integer_)
-        extra <- character(0)
-        if (isTRUE(is.finite(nr)) && nr > 0L)
-          extra <- c(extra, sprintf(i18n$t("acc_desserte_retires_fmt"), nr))
-        if (isTRUE(is.finite(nd)))
-          extra <- c(extra, sprintf(i18n$t("acc_cable_departs_fmt"), nd))
-        extra_txt <- if (length(extra)) paste0(" ", paste(extra, collapse = " ")) else ""
+        extra_txt <- if (isTRUE(is.finite(nd)))
+          paste0(" ", sprintf(i18n$t("acc_cable_departs_fmt"), nd)) else ""
         shiny::div(class = "alert alert-info py-2 mb-2 small", role = "status",
           shiny::icon("circle-info"), " ", i18n$t("acc_desserte_ndp1_badge"), extra_txt)
       } else {
