@@ -211,13 +211,14 @@ mod_accessibility_ui <- function(id) {
         shiny::checkboxInput(
           ns("ndp1_lidar"), i18n$t("acc_ndp1_lidar_label"), value = FALSE),
         shiny::helpText(class = "small", i18n$t("acc_cable_long_note")),
-        # Avertissement expérimental affiché seulement si le NDP 1 est coché : la
-        # qualification LiDAR peut segfaulter sur une desserte étendue (crash worker,
-        # non rattrapable par tryCatch) — le run échoue alors au lieu de replier.
+        # Note de DURÉE affichée seulement si le NDP 1 est coché : la qualification
+        # LiDAR mesure la largeur carrossable tronçon par tronçon (calcul long, ~2-3 h
+        # sur une desserte réelle) mais fiable depuis foretaccess 1.19.1 (plus de
+        # segfault ; repli automatique sur la desserte brute si la qualif échoue).
         shiny::conditionalPanel(
           condition = sprintf("input['%s'] == true", ns("ndp1_lidar")),
-          shiny::div(class = "alert alert-warning py-1 px-2 my-1 small", role = "status",
-            shiny::icon("triangle-exclamation"), " ", i18n$t("acc_ndp1_experimental_note")))
+          shiny::div(class = "alert alert-info py-1 px-2 my-1 small", role = "status",
+            shiny::icon("clock"), " ", i18n$t("acc_ndp1_duration_note")))
       ),
 
       bslib::input_task_button(
