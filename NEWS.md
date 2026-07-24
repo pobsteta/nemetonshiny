@@ -1,4 +1,29 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.1 (2026-07-24)
+
+### Added — Accessibilité : comparaison « volet » classes de débardage ↔ ACCESSFOR
+
+- Après une validation ACCESSFOR, un **toggle « Comparer au volet »** superpose
+  **nos classes de débardage** (à gauche) et **ACCESSFOR (IGN)** (à droite) sur la
+  **même carte**, séparées par un **volet vertical draggable** (curseur central) qui
+  clippe les deux couches de part et d'autre — lecture immédiate de l'écart, sans
+  aller-retour entre deux rasters. Les deux couches partageant la même table de
+  couleurs, la comparaison est directe. Implémentation **maison sans plugin**
+  (`inst/app/www/js/nemeton_swipe.js`) : deux *panes* Leaflet gauche/droite clippés
+  au curseur. `leaflet.extras2::addSidebyside` a été écarté après vérification —
+  son binding résout les couches via `getLayer("tile", …)` alors que
+  `addRasterImage` s'enregistre sous `"image"`, si bien que le volet s'affiche mais
+  **ne clippe jamais** les rasters.
+
+### Added — Accessibilité : la couche ACCESSFOR (IGN) devient affichable
+
+- La validation ACCESSFOR ne se contentait plus d'un taux d'accord : le raster
+  **ACCESSFOR (IGN)** — récupéré en vecteur WFS puis rasterisé sur la grille app —
+  est désormais **écrit sur disque et ajouté au sélecteur de couches** de la carte,
+  au même titre que les moteurs et les classes de débardage. Reclassé vers **nos
+  bandes de distance** (crosswalk `accessfor_correspondance()`) et doté de la **même
+  table de couleurs que « classes de débardage »**, il s'affiche à l'identique et se
+  compare visuellement, couche à couche, à notre calcul. Apparaît après un run
+  « Comparer à ACCESSFOR ».
 
 
 # nemetonshiny 0.115.0 (2026-07-23)

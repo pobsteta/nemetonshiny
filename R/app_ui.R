@@ -256,6 +256,25 @@ app_add_external_resources <- function() {
           content: none !important; display: none !important;
         }
         #shiny-notification-panel { bottom: 13px; right: 13px; }
+        /* Volet de comparaison « swipe » (nemeton_swipe.js) : ligne verticale
+           draggable qui clippe deux panes raster gauche/droite. */
+        .nemeton-swipe-divider {
+          position: absolute; top: 0; bottom: 0; width: 0;
+          border-left: 2px solid rgba(255,255,255,0.9);
+          box-shadow: 0 0 3px rgba(0,0,0,0.5); z-index: 1002;
+          margin-left: -1px; pointer-events: none;
+        }
+        .nemeton-swipe-handle {
+          position: absolute; top: 50%; left: 50%;
+          transform: translate(-50%, -50%);
+          width: 34px; height: 34px; border-radius: 50%;
+          background: #fff; border: 2px solid #1B6B1B;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+          cursor: ew-resize; pointer-events: auto;
+          background-image: url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%231B6B1B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 6 4 12 9 18'/><polyline points='15 6 20 12 15 18'/></svg>\");
+          background-repeat: no-repeat; background-position: center;
+          background-size: 20px 20px;
+        }
       ")),
       # Custom CSS - minified for performance (cache-busting to ensure latest version)
       htmltools::tags$link(
@@ -291,6 +310,12 @@ app_add_external_resources <- function() {
     # Custom JS - minified for performance (cache-busting to ensure latest version)
     htmltools::tags$script(
       src = paste0("www/js/custom.min.js?v=", as.integer(Sys.time()))
+    ),
+
+    # Comparaison « swipe » de deux rasters (Accessibilite : classes de debardage
+    # vs ACCESSFOR IGN). Vendore, sans plugin : clippe deux panes gauche/droite.
+    htmltools::tags$script(
+      src = paste0("www/js/nemeton_swipe.js?v=", as.integer(Sys.time()))
     )
   )
 }
