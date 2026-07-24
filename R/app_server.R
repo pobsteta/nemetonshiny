@@ -240,6 +240,14 @@ app_server <- function(input, output, session) {
     app_state$active_main_tab <- input$main_nav
   }, ignoreNULL = FALSE)
 
+  # Sous-onglet actif du navset « Terrain » (Prélèvement / Import / Accessibilité /
+  # Desserte). Permet aux modules lourds (accessibilité, desserte) de charger leur
+  # cache disque PARESSEUSEMENT, au premier affichage de leur sous-onglet, plutôt
+  # qu'à l'ouverture du projet — le clic sur un projet récent reste ainsi rapide.
+  shiny::observeEvent(input$terrain_nav, {
+    app_state$active_terrain_tab <- input$terrain_nav
+  }, ignoreNULL = FALSE)
+
   # Redirect to selection tab only if user tries to navigate to
   # restricted tabs (synthesis, families) before project is completed.
   shiny::observeEvent(input$main_nav, {

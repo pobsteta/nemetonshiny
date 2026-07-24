@@ -468,22 +468,39 @@ mod_accessibility_server <- function(id, app_state) {
         type = "message", duration = 6)
     })
 
-    # Au changement de projet (et au montage de l'onglet), restaure les rasters
-    # DÉJÀ calculés depuis le cache disque du projet, s'il y en a — sinon repart
-    # d'un état vide. Évite d'afficher un run périmé d'un autre projet et permet
-    # de retrouver une analyse récente sans relancer le calcul.
-    shiny::observeEvent(app_state$current_project, {
-      project_path <- tryCatch(app_state$current_project$path,
-                               error = function(e) NULL)
-      cached <- tryCatch(.load_cached_accessibility(project_path),
-                         error = function(e) NULL)
-      rv$result <- cached
-      if (!is.null(cached)) {
-        shiny::showNotification(
-          sprintf(i18n$t("acc_cache_loaded_fmt"), length(cached$raster_paths)),
-          type = "message", duration = 5)
-      }
-    }, ignoreNULL = FALSE)
+    # Restaure les rasters DÉJÀ calculés depuis le cache disque — mais
+    # PARESSEUSEMENT : le clic sur un projet récent doit rester rapide, donc on ne
+    # lit le cache qu'au PREMIER affichage de l'onglet Accessibilité, une seule fois
+    # par projet. Observer unique (main_nav + terrain_nav + projet) pour éviter toute
+    # course d'ordre entre un reset et un chargement. `acc_loaded_for` mémorise le
+    # projet déjà chargé (chemin, "" si aucun).
+    acc_loaded_for <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(
+      list(app_state$active_main_tab, app_state$active_terrain_tab,
+           app_state$current_project),
+      {
+        project_path <- tryCatch(app_state$current_project$path,
+                                 error = function(e) NULL)
+        key <- project_path %||% ""
+        if (identical(acc_loaded_for(), key)) return()  # déjà traité ce projet
+        on_tab <- identical(app_state$active_main_tab, "terrain") &&
+          identical(app_state$active_terrain_tab, "accessibility")
+        if (!on_tab) {
+          # Pas encore sur l'onglet : on efface l'ancien run (léger, pas d'IO) pour
+          # ne pas montrer un résultat périmé, sans charger le cache du nouveau.
+          rv$result <- NULL
+          return()
+        }
+        acc_loaded_for(key)
+        cached <- tryCatch(.load_cached_accessibility(project_path),
+                           error = function(e) NULL)
+        rv$result <- cached
+        if (!is.null(cached)) {
+          shiny::showNotification(
+            sprintf(i18n$t("acc_cache_loaded_fmt"), length(cached$raster_paths)),
+            type = "message", duration = 5)
+        }
+      }, ignoreNULL = FALSE)
 
     # --- Sélecteur de couche (raster affiché) : rendu après un run -------------
     # Les choix sont les rasters disponibles : un par moteur (leurs classes

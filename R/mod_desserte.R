@@ -249,17 +249,34 @@ mod_desserte_server <- function(id, app_state) {
         type = "message", duration = 6)
     })
 
-    # Au changement de projet (et au montage), restaure un réseau DÉJÀ calculé.
-    shiny::observeEvent(app_state$current_project, {
-      project_path <- tryCatch(app_state$current_project$path,
-                               error = function(e) NULL)
-      cached <- tryCatch(.load_cached_desserte(project_path), error = function(e) NULL)
-      rv$result <- cached
-      if (!is.null(cached)) {
-        shiny::showNotification(i18n$t("dess_cache_loaded"), type = "message",
-                                duration = 5)
-      }
-    }, ignoreNULL = FALSE)
+    # Restaure un réseau DÉJÀ calculé depuis le cache — PARESSEUSEMENT : lecture au
+    # premier affichage de l'onglet Desserte seulement (une fois par projet), pour
+    # que le clic sur un projet récent reste rapide. Observer unique (main_nav +
+    # terrain_nav + projet), même patron que mod_accessibility.
+    dess_loaded_for <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(
+      list(app_state$active_main_tab, app_state$active_terrain_tab,
+           app_state$current_project),
+      {
+        project_path <- tryCatch(app_state$current_project$path,
+                                 error = function(e) NULL)
+        key <- project_path %||% ""
+        if (identical(dess_loaded_for(), key)) return()
+        on_tab <- identical(app_state$active_main_tab, "terrain") &&
+          identical(app_state$active_terrain_tab, "desserte")
+        if (!on_tab) {
+          rv$result <- NULL
+          return()
+        }
+        dess_loaded_for(key)
+        cached <- tryCatch(.load_cached_desserte(project_path),
+                           error = function(e) NULL)
+        rv$result <- cached
+        if (!is.null(cached)) {
+          shiny::showNotification(i18n$t("dess_cache_loaded"), type = "message",
+                                  duration = 5)
+        }
+      }, ignoreNULL = FALSE)
 
     # --- Badges du réseau créé -------------------------------------------------
     output$summary <- shiny::renderUI({

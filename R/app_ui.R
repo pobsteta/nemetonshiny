@@ -83,6 +83,7 @@ app_ui <- function(request) {
         value = "terrain",
         icon = bsicons::bs_icon("crosshair"),
         bslib::navset_card_underline(
+          id = "terrain_nav",
           bslib::nav_panel(
             title = i18n$t("tab_terrain_export"),
             value = "sampling",
