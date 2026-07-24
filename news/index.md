@@ -1,6 +1,18 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.115.9 (2026-07-24)
+
+#### Changed — Dépendances : foretaccess [@v1](https://github.com/v1).21.0 + Remotes nemeton @\*release
+
+- **foretaccess** : pin `Remotes` `@v1.19.1` → **`@v1.21.0`** et
+  plancher `Imports (>= 1.20.0)`. La v1.20.0 réaligne la classification
+  de la desserte (CL_SVAC) sur ACCESSFOR (accord 30 % → 77 % dans le
+  benchmark cœur spec 022) — le gain se matérialise sur un **nouveau
+  run** (le raster classes_debardage en cache reste inchangé). La
+  v1.21.0 ajoute une couche obstacles conforme ACCESSFOR (non encore
+  câblée côté app).
+- **nemeton** : `Remotes` remis à **`@*release`** (conforme au CLAUDE.md
+  : ne tirer que des tags publiés, jamais du `main` non publié).
 
 ## nemetonshiny 0.115.8 (2026-07-24)
 
