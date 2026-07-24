@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.9 (2026-07-24)
 
 ### Changed — Dépendances : foretaccess @v1.21.0 + Remotes nemeton @*release
 
