@@ -1,5 +1,15 @@
 # nemetonshiny (development version)
 
+### Fixed — Accessibilité : correction LiDAR et analyse mutuellement exclusives + chrono
+
+- Pendant une **correction LiDAR** (~2-3 h), le bouton **« Lancer l`analyse »** est
+  désormais **grisé** et son action **refusée** (toast « Correction en cours —
+  patientez ») — évite deux tâches lourdes en parallèle (double charge mémoire) et
+  une analyse qui n`utiliserait pas la correction en cours. Symétrique : « Corriger
+  la desserte » est grisé pendant une analyse.
+- La correction affiche maintenant un **toast bas-droite persistant avec chrono**
+  (temps écoulé mis à jour chaque seconde), à parité avec « Lancer l`analyse ».
+
 # nemetonshiny 0.115.10 (2026-07-24)
 
 ### Fixed — Installation cassée par `Remotes: pobsteta/nemeton@*release`
