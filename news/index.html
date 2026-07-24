@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,15 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.115.1" id="nemetonshiny-01151-2026-07-24">nemetonshiny 0.115.1 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01151-2026-07-24"></a></h2>
+<div class="section level4">
+<h4 id="added--accessibilité--comparaison--volet--classes-de-débardage--accessfor-0-115-1">Added — Accessibilité : comparaison « volet » classes de débardage ↔︎ ACCESSFOR<a class="anchor" aria-label="anchor" href="#added--accessibilit%C3%A9--comparaison--volet--classes-de-d%C3%A9bardage--accessfor-0-115-1"></a></h4>
+<ul><li>Après une validation ACCESSFOR, un <strong>toggle « Comparer au volet »</strong> superpose <strong>nos classes de débardage</strong> (à gauche) et <strong>ACCESSFOR (IGN)</strong> (à droite) sur la <strong>même carte</strong>, séparées par un <strong>volet vertical draggable</strong> (curseur central) qui clippe les deux couches de part et d’autre — lecture immédiate de l’écart, sans aller-retour entre deux rasters. Les deux couches partageant la même table de couleurs, la comparaison est directe. Implémentation <strong>maison sans plugin</strong> (<code>inst/app/www/js/nemeton_swipe.js</code>) : deux <em>panes</em> Leaflet gauche/droite clippés au curseur. <code>leaflet.extras2::addSidebyside</code> a été écarté après vérification — son binding résout les couches via <code>getLayer("tile", …)</code> alors que <code>addRasterImage</code> s’enregistre sous <code>"image"</code>, si bien que le volet s’affiche mais <strong>ne clippe jamais</strong> les rasters.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--accessibilité--la-couche-accessfor-ign-devient-affichable-0-115-1">Added — Accessibilité : la couche ACCESSFOR (IGN) devient affichable<a class="anchor" aria-label="anchor" href="#added--accessibilit%C3%A9--la-couche-accessfor-ign-devient-affichable-0-115-1"></a></h4>
+<ul><li>La validation ACCESSFOR ne se contentait plus d’un taux d’accord : le raster <strong>ACCESSFOR (IGN)</strong> — récupéré en vecteur WFS puis rasterisé sur la grille app — est désormais <strong>écrit sur disque et ajouté au sélecteur de couches</strong> de la carte, au même titre que les moteurs et les classes de débardage. Reclassé vers <strong>nos bandes de distance</strong> (crosswalk <code>accessfor_correspondance()</code>) et doté de la <strong>même table de couleurs que « classes de débardage »</strong>, il s’affiche à l’identique et se compare visuellement, couche à couche, à notre calcul. Apparaît après un run « Comparer à ACCESSFOR ».</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.115.0" id="nemetonshiny-01150-2026-07-23">nemetonshiny 0.115.0 (2026-07-23)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01150-2026-07-23"></a></h2>
