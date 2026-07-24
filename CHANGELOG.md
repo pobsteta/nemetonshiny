@@ -10,6 +10,42 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.115.12] - 2026-07-24
+
+### Added
+
+- `run_app(tour = FALSE)` : démarrage sans auto-lancement du tour guidé cicerone
+  (démo, capture, tests E2E). Seul l'auto-démarrage est supprimé ; le tour reste
+  lançable depuis l'aide. Surchargeable par `NEMETON_TOUR`.
+- Garde-fous mémoire pré-vol : `.desserte_memory_check()` (moteur glouton, estimé
+  depuis la grille) et `.lidar_memory_check()` (dérivation MNT ALSroads, estimée
+  depuis le nombre de points du `LAScatalog`). Échappatoires
+  `NEMETON_DESSERTE_SKIP_GUARD=1` et `NEMETON_LIDAR_SKIP_GUARD=1`.
+- Estimation de l'empreinte mémoire affichée dans l'UI Desserte sous le champ
+  « zone tampon ».
+
+### Fixed
+
+- **Correction LiDAR : OOM machine.** `foretaccess::.mnt_alsroads()` dérive un MNT
+  à 1 m dès que celui fourni dépasse 1,5 m, en chargeant **toutes les dalles d'un
+  coup** (`readLAS(ctg$filename)`), court-circuitant le `LAScatalog`. L'app
+  passait 5 m, déclenchant la dérivation systématiquement : worker à 16,8 Go en
+  15 min sur 165,5 M de points, puis OOM. Elle demande désormais **1 m**, ce qui
+  supprime la dérivation — et c'est la résolution qu'ALSroads documente.
+- Cache MNT indexé sur la résolution (`mnt_highres_<res>m.tif`) : un MNT à 1 m
+  n'écrase plus celui à 5 m de l'analyse d'accessibilité.
+- **Typage du réseau : faux « Volume P1 absent »** sur un projet pourtant calculé.
+  Le cœur écrit `P1`, le projet persiste `indicateur_p1_volume` ; le typage
+  cherchait `"P1"` en dur. Nouveau `.resolve_volume_col()`.
+- **Pool de workers `future` non borné** sur 19 sites : `plan("multisession")`
+  sans `workers` prenait `availableCores()`, les workers étant persistants.
+  Bornage via `.ensure_async_plan()` / `.resolve_parallel_workers()` (option
+  `parallel_workers` > `NEMETON_PARALLEL_WORKERS` > `min(4, cores - 2)`, plancher
+  2). L'option `parallel_workers` d'`app_config.R`, jamais lue, est câblée.
+- `warmup_async_workers()` laisse toujours un worker libre : il saturait le pool
+  désormais borné pendant le chargement du namespace.
+- `message()` de `mod_home.R` remplacé par `cli::cli_alert_info()` (règle 9).
+
 ## [0.115.0] - 2026-07-23
 
 ### Added
