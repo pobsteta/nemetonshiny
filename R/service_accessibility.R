@@ -80,6 +80,10 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   }
   if (length(raster_paths) == 0L) return(NULL)
   gpkg <- file.path(cache_dir, "accessibilite.gpkg")
+  # Raster ACCESSFOR (IGN) déjà calculé et écrit lors du run (validation
+  # systématique) : s'il est sur disque, on le restaure pour que la couche
+  # « Classes de débardage/ACCESSFOR (IGN) » réaffiche le volet sans requête WFS.
+  af <- file.path(cache_dir, "accessfor_skidder.tif")
   list(
     status = "success",
     engines = engines,
@@ -87,6 +91,7 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
     raster_paths = raster_paths,
     gpkg_path = if (file.exists(gpkg)) gpkg else NULL,
     n_desserte = NA_integer_,
+    accessfor_raster_path = if (file.exists(af)) af else NULL,
     from_cache = TRUE)
 }
 
@@ -381,6 +386,23 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
   }, error = function(e) cli::cli_warn(
     "accessibility GPKG write failed: {conditionMessage(e)}"))
 
+  # 7. Validation ACCESSFOR (IGN) SYSTÉMATIQUE dès que les classes de débardage
+  # ont été produites (skidder) : récupère la couche nationale IGN (WFS happign),
+  # la reclasse sur NOTRE grille + emprise, calcule l'accord et écrit le raster
+  # ACCESSFOR affichable. Exécuté ICI (dans le worker `future`) pour ne pas bloquer
+  # le thread principal. Best-effort réseau : un échec (WFS indisponible, happign
+  # absent) ne fait PAS échouer l'analyse — le rendu « classes de débardage »
+  # retombe alors sur un raster simple (pas de volet ACCESSFOR).
+  accessfor <- NULL
+  if (!is.null(raster_paths[["classes_debardage"]])) {
+    accessfor <- tryCatch(
+      run_accessfor_validation(raster_paths[["classes_debardage"]], "skidder"),
+      error = function(e) NULL)
+    if (!is.list(accessfor) || !identical(accessfor$status, "success")) {
+      accessfor <- NULL
+    }
+  }
+
   list(
     status = "success",
     engines = engines,
@@ -390,7 +412,11 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
     n_desserte = nrow(desserte),
     dfci_source = dfci_source,
     cable_departs_source = cable_departs_source,
-    n_departs = if (inherits(departs, "sf")) nrow(departs) else NA_integer_)
+    n_departs = if (inherits(departs, "sf")) nrow(departs) else NA_integer_,
+    # ACCESSFOR (référence IGN) : chemin du raster affichable (vis-à-vis des classes
+    # de débardage sous le volet) + résumé d'accord pour le panneau de validation.
+    accessfor_raster_path = accessfor$accessfor_raster_path,
+    accessfor = accessfor)
 }
 
 #' Combine per-engine recap tables into a single display data.frame

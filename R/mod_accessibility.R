@@ -269,10 +269,6 @@ mod_accessibility_ui <- function(id) {
               title = i18n$t("accessfor_title"),
               icon = bsicons::bs_icon("clipboard-check"),
               htmltools::tags$p(class = "text-muted small", i18n$t("accessfor_intro")),
-              shiny::actionButton(
-                ns("run_accessfor"), i18n$t("accessfor_run"),
-                icon = shiny::icon("clipboard-check"),
-                class = "btn-outline-primary btn-sm w-100 mb-2"),
               shiny::uiOutput(ns("accessfor_result"))))
         ),
         # Badge de provenance DFCI (au-dessus de la carte) : n'apparaît que
@@ -513,12 +509,20 @@ mod_accessibility_server <- function(id, app_state) {
         return(htmltools::tags$p(class = "text-muted small",
                                  i18n$t("acc_no_result_yet")))
       }
+      # La couche « classes de débardage » se double d'ACCESSFOR (IGN) sous un volet
+      # dès que le raster ACCESSFOR est disponible (validation systématique) : le
+      # libellé le reflète, sinon on garde « Classes de débardage » seul.
+      has_accessfor <- {
+        afp <- tryCatch(res$accessfor_raster_path, error = function(e) NULL)
+        !is.null(afp) && file.exists(afp)
+      }
       lyr_label <- c(
         skidder = i18n$t("acc_engine_skidder"),
         porteur = i18n$t("acc_engine_porteur"),
         camion_dfci = i18n$t("acc_engine_dfci"),
         cable = i18n$t("acc_engine_cable"),
-        classes_debardage = i18n$t("acc_layer_debardage"))
+        classes_debardage = if (has_accessfor)
+          i18n$t("acc_layer_debardage_accessfor") else i18n$t("acc_layer_debardage"))
       labs <- unname(lyr_label[layers])
       labs[is.na(labs)] <- layers[is.na(labs)]
       shiny::radioButtons(
@@ -630,68 +634,60 @@ mod_accessibility_server <- function(id, app_state) {
     # `nemetonAccRaster` (cf. renderLeaflet) — c'est ce qui le rend stable au
     # changement de fond. `method = "ngb"` : pas d'interpolation des codes de
     # classe (raster catégoriel).
+    #
+    # Cas spécial « classes de débardage » : dès qu'ACCESSFOR (IGN) est disponible
+    # (validation systématique au run), cette couche s'affiche EN VIS-À-VIS sous un
+    # volet vertical draggable — gauche = nos classes, droite = ACCESSFOR (mêmes
+    # coltab + emprise → lecture directe de l'écart). Le volet (nemeton_swipe.js)
+    # n'est (ré)activé qu'à l'ENTRÉE en mode volet (pas à chaque re-dessin), sinon
+    # un changement d'opacité recentrerait le curseur.
+    swipe_active <- shiny::reactiveVal(FALSE)
     shiny::observe({
       res <- rv$result
       first_layer <- if (!is.null(res)) names(res$raster_paths)[[1]] else NULL
       layer <- input$layer %||% first_layer
       op <- opacity_d()
       shown <- input$map_groups   # groupes overlay cochés côté client
-      swipe_on <- isTRUE(input$accessfor_swipe)
+      mapid <- session$ns("map")
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Accessibilite") |>
         leaflet::removeControl("acc_legend")
-      # En mode comparaison « swipe », l'observe dédié gère les deux panes
-      # gauche/droite : on n'ajoute PAS l'overlay simple (sinon triple raster).
-      if (swipe_on) return()
-      if (is.null(res) || is.null(layer)) return()
-      rp <- tryCatch(res$raster_paths[[layer]], error = function(e) NULL)
-      proxy <- .acc_paint_raster(proxy, rp, "nemetonAccRaster", "Accessibilite",
-                                 op, i18n, legend_id = "acc_legend")
+      if (is.null(res) || is.null(layer)) {
+        if (isTRUE(swipe_active())) {
+          session$sendCustomMessage("nemetonSwipeOff", list(id = mapid))
+          swipe_active(FALSE)
+        }
+        return()
+      }
+      accessfor_rp <- tryCatch(res$accessfor_raster_path, error = function(e) NULL)
+      swipe_mode <- identical(layer, "classes_debardage") &&
+        !is.null(accessfor_rp) && file.exists(accessfor_rp)
+      if (swipe_mode) {
+        left_rp <- tryCatch(res$raster_paths[["classes_debardage"]],
+                            error = function(e) NULL)
+        proxy <- .acc_paint_raster(proxy, left_rp, "nemetonAccSwipeL",
+          "Accessibilite", op, i18n, legend_id = "acc_legend")
+        .acc_paint_raster(proxy, accessfor_rp, "nemetonAccSwipeR",
+          "Accessibilite", op, i18n, legend_id = NULL)
+        if (!isTRUE(swipe_active())) {
+          session$sendCustomMessage("nemetonSwipeOn", list(
+            id = mapid, left = "nemetonAccSwipeL", right = "nemetonAccSwipeR"))
+          swipe_active(TRUE)
+        }
+      } else {
+        if (isTRUE(swipe_active())) {
+          session$sendCustomMessage("nemetonSwipeOff", list(id = mapid))
+          swipe_active(FALSE)
+        }
+        rp <- tryCatch(res$raster_paths[[layer]], error = function(e) NULL)
+        proxy <- .acc_paint_raster(proxy, rp, "nemetonAccRaster", "Accessibilite",
+                                   op, i18n, legend_id = "acc_legend")
+      }
       # Respecter la décoche du groupe « Accessibilite » après re-dessin proxy.
       if (!is.null(shown) && !("Accessibilite" %in% shown)) {
         leaflet::hideGroup(proxy, "Accessibilite")
       }
     })
-
-    # --- Comparaison « swipe » ACCESSFOR ----------------------------------------
-    # Toggle (dans le panneau ACCESSFOR) : superpose « classes de débardage »
-    # (notre calcul, pane gauche) et « ACCESSFOR IGN » (référence, pane droite),
-    # puis active le volet vertical draggable (nemeton_swipe.js) qui clippe les
-    # deux panes. Les deux rasters partagent la même coltab → lecture directe de
-    # l'écart. Off : retire le volet + vide les panes ; l'observe simple ci-dessus
-    # (qui lit aussi input$accessfor_swipe) repeint l'overlay courant.
-    shiny::observeEvent(input$accessfor_swipe, {
-      res <- rv$result
-      mapid <- session$ns("map")
-      op <- opacity_d()
-      proxy <- leaflet::leafletProxy("map") |>
-        leaflet::clearGroup("AccSwipeL") |>
-        leaflet::clearGroup("AccSwipeR") |>
-        leaflet::removeControl("acc_swipe_legend")
-      if (!isTRUE(input$accessfor_swipe)) {
-        session$sendCustomMessage("nemetonSwipeOff", list(id = mapid))
-        return()
-      }
-      left_rp <- tryCatch(res$raster_paths[["classes_debardage"]],
-                          error = function(e) NULL)
-      # ACCESSFOR n'est PAS une couche affichable à part : le raster vit dans le
-      # résultat de validation (rv_accessfor) et ne sert qu'ici, en vis-à-vis des
-      # classes de débardage sous le volet.
-      right_rp <- tryCatch(rv_accessfor()$accessfor_raster_path,
-                           error = function(e) NULL)
-      if (is.null(left_rp) || !file.exists(left_rp) ||
-          is.null(right_rp) || !file.exists(right_rp)) {
-        shiny::showNotification(i18n$t("accessfor_swipe_missing"), type = "warning")
-        shiny::updateCheckboxInput(session, "accessfor_swipe", value = FALSE)
-        return()
-      }
-      proxy <- .acc_paint_raster(proxy, left_rp, "nemetonAccSwipeL", "AccSwipeL",
-                                 op, i18n, legend_id = "acc_swipe_legend")
-      .acc_paint_raster(proxy, right_rp, "nemetonAccSwipeR", "AccSwipeR",
-                        op, i18n, legend_id = NULL)
-      session$sendCustomMessage("nemetonSwipeOn", list(
-        id = mapid, left = "nemetonAccSwipeL", right = "nemetonAccSwipeR"))
-    }, ignoreInit = TRUE)
 
     # Overlay « Desserte » : les routes/pistes (sources DFCI) qui ont servi au
     # calcul, lues depuis la couche `desserte` du GeoPackage du run. Dépend de
@@ -719,47 +715,18 @@ mod_accessibility_server <- function(id, app_state) {
       }
     })
 
-    # --- Validation ACCESSFOR (référence IGN) ----------------------------------
-    # Compare le raster « classes de débardage » à la couche nationale ACCESSFOR
-    # (WFS IGN). Appel réseau court (quelques secondes) : exécuté à la demande avec
-    # notification, pas dans un worker future. Nécessite qu'un run skidder ait
-    # produit la couche `classes_debardage`.
-    rv_accessfor <- shiny::reactiveVal(NULL)
-    shiny::observeEvent(input$run_accessfor, {
-      cdb <- tryCatch(rv$result$raster_paths[["classes_debardage"]],
-                      error = function(e) NULL)
-      if (is.null(cdb) || !file.exists(cdb)) {
-        shiny::showNotification(i18n$t("accessfor_no_layer"), type = "warning")
-        return()
-      }
-      rv_accessfor(list(status = "running"))
-      id <- shiny::showNotification(i18n$t("accessfor_running"), duration = NULL,
-                                    type = "message")
-      on.exit(shiny::removeNotification(id), add = TRUE)
-      res <- tryCatch(run_accessfor_validation(cdb, "skidder"),
-                      error = function(e) list(status = "error",
-                                               reason = "accessfor_wfs_failed",
-                                               detail = conditionMessage(e)))
-      rv_accessfor(res)
-      if (!identical(res$status, "success")) {
-        shiny::showNotification(i18n$t(res$reason %||% "accessfor_wfs_failed"),
-                                type = "error")
-        return()
-      }
-      # ACCESSFOR n'est PAS ajouté au sélecteur de couches : reclassé vers nos
-      # bandes + même coltab + MÊME EMPRISE (forêt AOI+tampon) que classes de
-      # débardage, il ne sert qu'à la comparaison sous le volet (observe swipe).
-      # Le chemin reste dans rv_accessfor()$accessfor_raster_path.
-    })
-
+    # --- Validation ACCESSFOR (référence IGN) — SYSTÉMATIQUE --------------------
+    # Le raster ACCESSFOR + le taux d'accord sont calculés DANS le worker (cf.
+    # run_accessibility) dès que les classes de débardage sont produites, et vivent
+    # dans rv$result$accessfor. Plus de bouton « Comparer » ni de case « volet » : la
+    # couche « Classes de débardage/ACCESSFOR (IGN) » affiche le volet d'office, et
+    # le tableau d'accord ci-dessous s'affiche automatiquement après le run.
     output$accessfor_result <- shiny::renderUI({
-      res <- rv_accessfor()
-      if (is.null(res)) {
+      res <- tryCatch(rv$result$accessfor, error = function(e) NULL)
+      if (is.null(res) || !identical(res$status, "success")) {
         return(htmltools::tags$p(class = "text-muted small",
                                  i18n$t("accessfor_hint")))
       }
-      if (identical(res$status, "running")) return(NULL)
-      if (!identical(res$status, "success")) return(NULL)
       tab <- res$table
       rows <- lapply(seq_len(nrow(tab)), function(i) {
         htmltools::tags$tr(
@@ -773,16 +740,12 @@ mod_accessibility_server <- function(id, app_state) {
           shiny::icon("circle-info"), " ",
           sprintf(i18n$t("accessfor_overall_fmt"), res$overall_pct, res$n_cells)),
         htmltools::tags$table(
-          class = "table table-sm table-striped small mb-2",
+          class = "table table-sm table-striped small mb-0",
           htmltools::tags$thead(htmltools::tags$tr(
             htmltools::tags$th(i18n$t("accessfor_col_class")),
             htmltools::tags$th(class = "text-end", i18n$t("accessfor_col_agree")))),
           htmltools::tags$tbody(rows)),
-        # Toggle de comparaison « swipe » : superpose nos classes de débardage et
-        # ACCESSFOR (IGN) avec un volet draggable pour lire l'écart directement.
-        shiny::checkboxInput(ns("accessfor_swipe"),
-          i18n$t("accessfor_swipe_toggle"), value = FALSE),
-        htmltools::tags$p(class = "text-muted small mb-0",
+        htmltools::tags$p(class = "text-muted small mb-0 mt-2",
                           i18n$t("accessfor_swipe_hint")))
     })
 

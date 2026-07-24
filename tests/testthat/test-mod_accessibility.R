@@ -213,3 +213,40 @@ test_that("résultat posé -> sélecteur de couche rendu", {
       expect_false(is.null(output$layer_ui))
     })
 })
+
+test_that("ACCESSFOR systématique : libellé combiné + tableau d'accord auto", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("terra")
+  tmp <- withr::local_tempdir()
+  mk <- function(name) {
+    r <- terra::rast(nrows = 4, ncols = 4, xmin = 0, xmax = 4, ymin = 0, ymax = 4,
+                     crs = "EPSG:2154", vals = rep(1:4, length.out = 16))
+    p <- file.path(tmp, name); terra::writeRaster(r, p, overwrite = TRUE); p
+  }
+  cdb <- mk("acc_classes_debardage.tif"); afp <- mk("accessfor_skidder.tif")
+  proj <- list(id = "p1", path = tmp, indicators_sf = .acc_units(1))
+  as <- shiny::reactiveValues(current_project = proj, active_main_tab = "terrain",
+                              active_terrain_tab = "accessibility")
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"), .package = "nemetonshiny")
+  shiny::testServer(
+    nemetonshiny:::mod_accessibility_server,
+    args = list(app_state = as),
+    {
+      session$flushReact()
+      rv$result <- list(
+        status = "success", engines = "skidder",
+        raster_paths = list(classes_debardage = cdb),
+        accessfor_raster_path = afp,
+        accessfor = list(status = "success", overall_pct = 19.8, n_cells = 100L,
+          table = data.frame(accessfor_class = 3L, libelle = "A1",
+                             accord_pct = 19.8, stringsAsFactors = FALSE)))
+      session$setInputs(layer = "classes_debardage")
+      session$flushReact()
+      flat <- function(x) paste(unlist(x), collapse = " ")
+      # Le sélecteur nomme la couche « …/ACCESSFOR (IGN) » (raster ACCESSFOR présent).
+      expect_true(grepl("ACCESSFOR", flat(output$layer_ui)))
+      # Le tableau d'accord s'affiche automatiquement (pas de bouton « Comparer »).
+      expect_true(grepl("19", flat(output$accessfor_result)))
+    })
+})
