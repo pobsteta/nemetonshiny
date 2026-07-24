@@ -642,7 +642,7 @@ mod_home_server <- function(id, app_state) {
       if (requireNamespace("future", quietly = TRUE)) {
         plan_classes <- class(future::plan())
         is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
-        if (!is_parallel) future::plan("multisession")
+        if (!is_parallel) .ensure_async_plan()
       }
       promises::future_promise({
         # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
@@ -934,7 +934,7 @@ mod_home_server <- function(id, app_state) {
         plan_classes <- class(future::plan())
         is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
         if (!is_parallel) {
-          future::plan("multisession")
+          .ensure_async_plan()
         }
       }
       promises::future_promise({
@@ -1619,7 +1619,10 @@ mod_home_server <- function(id, app_state) {
 
       # Auto-start tour only if not already seen in browser localStorage.
       # The 'tour_seen_browser' input is sent by custom.js on shiny:connected.
+      # Gated by run_app(tour = ) / NEMETON_TOUR (cf. .tour_autostart_enabled) :
+      # only the AUTO-start is suppressed, the help-menu restart below stays live.
       shiny::observeEvent(input$tour_seen_browser, {
+        if (!.tour_autostart_enabled()) return()
         if (!isTRUE(input$tour_seen_browser) && !tour_shown_this_session()) {
           tour_shown_this_session(TRUE)
           # Delay to let UI fully render before starting tour
@@ -1634,7 +1637,8 @@ mod_home_server <- function(id, app_state) {
         start_tour()
       }, ignoreInit = TRUE)
     } else {
-      message("[TOUR] Cicerone package not available!")
+      # Règle 9 : pas de message() en prod.
+      cli::cli_alert_info("Guided tour disabled: package {.pkg cicerone} not installed.")
     }
 
     # ========================================

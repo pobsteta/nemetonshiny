@@ -67,6 +67,7 @@ TRANSLATIONS <- list(
   acc_correct_no_lidar = list(fr = "Aucun nuage LiDAR HD dans le projet : correction impossible.", en = "No LiDAR HD point cloud in the project: correction not possible."),
   acc_correct_old_foretaccess = list(fr = "foretaccess < 1.19.1 : correction LiDAR indisponible (mettez \u00e0 jour).", en = "foretaccess < 1.19.1: LiDAR correction unavailable (please update)."),
   acc_correct_no_lidr = list(fr = "Paquets lidR/ALSroads absents : correction LiDAR indisponible.", en = "lidR/ALSroads packages missing: LiDAR correction unavailable."),
+  acc_correct_memory_guard = list(fr = "Correction LiDAR annulée : la dérivation du MNT lirait tout le nuage de points et dépasserait la mémoire disponible.", en = "LiDAR correction cancelled: deriving the DTM would read the whole point cloud and exceed available memory."),
   acc_correct_attrs_lost = list(fr = "La qualification LiDAR a perdu la colonne 'classe' : desserte corrig\u00e9e inutilisable.", en = "LiDAR qualification dropped the 'classe' column: corrected network unusable."),
   acc_correct_write_failed = list(fr = "\u00c9chec d'\u00e9criture de la desserte corrig\u00e9e.", en = "Failed to write the corrected road network."),
   acc_desserte_ndp1_badge = list(fr = "Desserte corrig\u00e9e au LiDAR (g\u00e9om\u00e9trie recal\u00e9e, largeurs mesur\u00e9es) \u2014 entr\u00e9e de tous les moteurs.", en = "LiDAR-corrected road network (re-aligned geometry, measured widths) \u2014 input to all engines."),
@@ -167,6 +168,10 @@ TRANSLATIONS <- list(
   desserte_preprocess_failed = list(fr = "\u00c9chec du pr\u00e9traitement (MNT / desserte / for\u00eat).", en = "Preprocessing failed (DEM / roads / forest)."),
   desserte_cout_failed = list(fr = "\u00c9chec du calcul de la surface de co\u00fbt de construction.", en = "Construction-cost surface computation failed."),
   desserte_engine_failed = list(fr = "\u00c9chec du moteur de cr\u00e9ation de desserte.", en = "Road-network creation engine failed."),
+  desserte_memory_guard = list(fr = "Emprise trop grande pour la m\u00e9moire disponible : le moteur glouton d\u00e9passerait la RAM et ferait tomber la machine. R\u00e9duisez la zone tampon.", en = "Extent too large for the available memory: the greedy engine would exceed RAM and bring the machine down. Reduce the buffer."),
+  dess_mem_estimate_fmt = list(fr = "Emprise \u00e0 5 m : %s cellules \u2014 pic m\u00e9moire estim\u00e9 %s Go (RAM libre %s Go).", en = "Extent at 5 m: %s cells \u2014 estimated memory peak %s GB (free RAM %s GB)."),
+  dess_mem_ok = list(fr = "Empreinte m\u00e9moire compatible avec cette machine.", en = "Memory footprint fits this machine."),
+  dess_mem_risk = list(fr = "Empreinte m\u00e9moire trop \u00e9lev\u00e9e : r\u00e9duisez la zone tampon avant de lancer.", en = "Memory footprint too high: reduce the buffer before running."),
 
   # Typage du r\u00e9seau (flux de bois mobilis\u00e9)
   dess_typage_title = list(fr = "Typage du r\u00e9seau", en = "Network typing"),

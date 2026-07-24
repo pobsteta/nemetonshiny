@@ -94,3 +94,64 @@ test_that("run_desserte_typage : chaîne complète (piège d'unité vérifié)",
         expect_true("reseau_type" %in% sf::st_layers(res$gpkg_path)$name)
       }))
 })
+
+# --- Resolution du nom de la colonne volume (P1) -----------------------------
+# Le coeur ecrit `P1` (indicateur_p1_volume(column_name = "P1")), le projet
+# persiste `indicateur_p1_volume` : chercher « P1 » en dur produisait un faux
+# « volume P1 absent » sur un projet entierement calcule.
+
+test_that(".resolve_volume_col accepts the core's P1 name", {
+  df <- data.frame(P1 = c(10, 20), autre = c(1, 2))
+  expect_identical(nemetonshiny:::.resolve_volume_col(df), "P1")
+})
+
+test_that(".resolve_volume_col accepts the PERSISTED indicateur_p1_volume name", {
+  df <- data.frame(indicateur_p1_volume = c(682.5, 2315.5), ug_id = 1:2)
+  expect_identical(nemetonshiny:::.resolve_volume_col(df), "indicateur_p1_volume")
+})
+
+test_that(".resolve_volume_col prefers P1 when both are present", {
+  df <- data.frame(indicateur_p1_volume = c(1, 2), P1 = c(3, 4))
+  expect_identical(nemetonshiny:::.resolve_volume_col(df), "P1")
+})
+
+test_that(".resolve_volume_col skips an all-NA column and falls through", {
+  df <- data.frame(P1 = c(NA_real_, NA_real_),
+                   indicateur_p1_volume = c(100, 200))
+  expect_identical(nemetonshiny:::.resolve_volume_col(df), "indicateur_p1_volume")
+})
+
+test_that(".resolve_volume_col is case-insensitive as a last resort", {
+  df <- data.frame(Indicateur_P1_Volume = c(5, 6))
+  expect_identical(nemetonshiny:::.resolve_volume_col(df), "Indicateur_P1_Volume")
+})
+
+test_that(".resolve_volume_col returns NULL when there is genuinely no volume", {
+  expect_null(nemetonshiny:::.resolve_volume_col(data.frame(a = 1, b = 2)))
+  expect_null(nemetonshiny:::.resolve_volume_col(data.frame()))
+  expect_null(nemetonshiny:::.resolve_volume_col(NULL))
+  # Colonne presente mais non numerique exploitable.
+  expect_null(nemetonshiny:::.resolve_volume_col(
+    data.frame(P1 = c("beaucoup", "peu"))))
+})
+
+test_that("run_desserte_typage no longer reports no_volume for a persisted P1", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    parcelles <- sf::st_sf(
+      indicateur_p1_volume = c(682.5, 1556, 2315.5),
+      geometry = sf::st_sfc(
+        sf::st_polygon(list(cbind(c(0, 10, 10, 0, 0), c(0, 0, 10, 10, 0)))),
+        sf::st_polygon(list(cbind(c(20, 30, 30, 20, 20), c(0, 0, 10, 10, 0)))),
+        sf::st_polygon(list(cbind(c(40, 50, 50, 40, 40), c(0, 0, 10, 10, 0)))),
+        crs = 2154))
+    dir.create("cache")
+    # Pas de reseau persiste -> on doit sortir sur no_reseau, PAS sur no_volume :
+    # la colonne volume est desormais reconnue.
+    res <- nemetonshiny:::run_desserte_typage("cache", parcelles,
+                                             taux_prelevement = 0.5,
+                                             horizon_ans = 30)
+    expect_identical(res$reason, "desserte_typage_no_reseau")
+    expect_false(identical(res$reason, "desserte_typage_no_volume"))
+  })
+})

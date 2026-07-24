@@ -843,10 +843,7 @@ db_sync_project_async <- function(project_id) {
   )
   .worker_envvars <- .capture_worker_envvars()
 
-  plan_classes <- class(future::plan())
-  if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-    future::plan("multisession")
-  }
+  .ensure_async_plan()
 
   p <- promises::future_promise({
     .apply_worker_envvars(.worker_envvars)

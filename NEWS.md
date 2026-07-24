@@ -1,4 +1,117 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.12 (2026-07-24)
+
+### Fixed — Correction LiDAR de la desserte : OOM machine (MNT à 1 m)
+
+- La **correction LiDAR** (`qualifier_desserte()`, onglet Accessibilité, NDP 1)
+  faisait monter le worker à **16,8 Go en 15 min**, puis tombait la machine par
+  **OOM** (RStudio et navigateur emportés).
+- Cause, côté `foretaccess` : `.mnt_alsroads()` (`R/desserte_lidar.R`) dérive un
+  MNT à 1 m dès que le MNT fourni dépasse 1,5 m, et cette dérivation fait
+  `readLAS(ctg$filename, filter = "-keep_class 2")` — le **vecteur complet des
+  dalles**, donc tout le nuage sol en mémoire d'un coup, puis une triangulation
+  de Delaunay par-dessus. Le `LAScatalog` est court-circuité, alors que
+  `lidR::rasterize_terrain()` sait travailler par tuiles hors mémoire. Mesuré
+  sur ForêtAccess : 4 dalles LiDAR HD = **165,5 M de points**.
+- L'app passait un MNT à **5 m** (grille d'accessibilité), déclenchant donc la
+  dérivation **systématiquement**. Elle demande maintenant **1 m** sur ce chemin
+  (`.acquire_mnt_desserte(res_m = 1)`) : `.mnt_alsroads()` renvoie alors le MNT
+  tel quel et **ne lit aucun point**. C'est aussi la résolution qu'ALSroads
+  documente (« a resolution of at least of 1 m », cohérent avec ses profils à
+  0,5 m et ses seuils de largeur carrossable à 1 et 5 m).
+- **Cache MNT indexé sur la résolution** (`mnt_highres_<res>m.tif`) : sans ça un
+  MNT à 1 m écraserait celui à 5 m de l'analyse d'accessibilité, qui partage le
+  même répertoire d'emprise. Un `mnt_highres.tif` déjà sur disque reste lu en
+  repli pour 5 m (tous les caches existants sont à 5 m).
+- **Garde-fou de repli** `.lidar_memory_check()` : si le MNT obtenu reste
+  > 1,5 m (WMS dégradé, repli `acquire_mnt`), le pic de la dérivation est estimé
+  depuis `Number.of.point.records` du catalogue et le run est refusé
+  (`acc_correct_memory_guard`) au lieu de partir en OOM. Échappatoire :
+  `NEMETON_LIDAR_SKIP_GUARD=1`.
+- **Réserve** : demander 1 m au WMS IGN ne garantit pas une donnée *nativement*
+  à 1 m — le service peut rééchantillonner du 5 m, ce que la vérification de
+  taille de cellule ne détecte pas. C'est un contournement ; le correctif de
+  fond appartient à `foretaccess` (brief
+  `~/brief-foretaccess-neibtable-memoire.md`, finding 1).
+
+### Fixed — Typage du réseau : « Volume P1 absent » sur un projet pourtant calculé
+
+- Le typage refusait de démarrer avec « Volume P1 absent des parcelles :
+  calculez d'abord l'indicateur P1 » sur un projet dont **P1 était bel et bien
+  calculé**. Cause : décalage de nom de colonne.
+  `nemeton:::indicateur_p1_volume()` écrit **`P1`** (son `column_name` par
+  défaut), mais `indicators.parquet` persiste la colonne sous
+  **`indicateur_p1_volume`** (aligné sur les 30 autres `indicateur_*`) — et
+  c'est ce que renvoie `.resolve_project_aoi_2154()`. Or
+  `run_desserte_typage()` cherchait `"P1"` en dur.
+- Nouveau `.resolve_volume_col()` : essaie `P1`, puis
+  `indicateur_p1_volume`, puis une correspondance insensible à la casse, et
+  n'accepte une colonne que si elle porte au moins une valeur finie (une
+  colonne tout-NA ne masque plus l'autre). `volume_col` reste surchargeable.
+
+### Added — `run_app(tour = FALSE)` : démarrer sans le tour guidé
+
+- Nouvel argument **`tour`** (défaut `TRUE`) : `run_app(tour = FALSE)` démarre
+  l'application **sans auto-lancer le tour guidé** cicerone. Seul
+  l'**auto-démarrage** est supprimé — le tour reste lançable depuis le menu
+  d'aide.
+- Motivation : le tour injecte du JS client 2 s après la connexion. C'est gênant
+  pour une démo ou une capture d'écran, et ça rend les tests E2E instables
+  (cicerone émet « There are no steps defined to iterate » sur le même flush, ce
+  qui déstabilise la session `shinytest2` — le test `mod_rag_admin-e2e`
+  documentait déjà devoir tolérer cette erreur).
+- Surchargeable sans toucher au site d'appel via **`NEMETON_TOUR`**
+  (`0`/`false`/`no`/`non`/`off` désactive, `1`/`true`/`yes`/`oui`/`on` active) —
+  la variable d'environnement l'emporte sur l'argument.
+- Au passage : le `message("[TOUR] Cicerone package not available!")` de
+  `mod_home.R` passe en `cli::cli_alert_info()` (règle 9 : pas de `message()` en
+  code de prod).
+
+### Fixed — Desserte : garde-fou mémoire avant lancement (OOM machine)
+
+- `reseau_desserte(mode = "glouton")` sur une emprise réaliste faisait **monter le
+  worker à 16,8 Go en 15 min**, puis tombait la machine par **OOM** (RStudio et
+  navigateur emportés). Diagnostic : `foretaccess` matérialise une table de
+  voisinage **par cellule de grille** (`NeibTable.neighbors`, un `Vec<Vec<Neighbor>>`
+  Rust) couvrant le disque de rayon `d_neighborhood_m` (42 m par défaut) — soit
+  **~4,4 Ko par cellule** à 5 m, linéaire en nombre de cellules et quadratique en
+  `d_neighborhood / résolution`. Ce n'est **pas une fuite** (la mémoire est rendue
+  entre parcelles) mais un pic structurel. Les 16,8 Go correspondent à ~3,9 M
+  cellules, soit une emprise d'environ 10 km × 10 km.
+- **Garde-fou pré-vol** dans `run_desserte()` : le pic est estimé depuis la seule
+  emprise et le run est **refusé avant toute acquisition** (motif
+  `desserte_memory_guard`) s'il dépasse 80 % de la RAM disponible — au lieu
+  d'échouer en OOM non rattrapable après un quart d'heure de calcul. Échappatoire
+  documentée : `NEMETON_DESSERTE_SKIP_GUARD=1`.
+- **Estimation affichée dans l'UI** sous le champ « zone tampon » (nombre de
+  cellules, pic estimé, RAM libre), recalculée à chaque changement du tampon : le
+  coût est visible **avant** le clic.
+- Correctif amont demandé à `foretaccess` (brief
+  `~/brief-foretaccess-neibtable-memoire.md`) : ne pas matérialiser la table sur
+  toute la grille. Tant qu'il n'est pas livré, les grandes emprises restent hors
+  d'atteinte.
+
+### Fixed — Pool de workers `future` non borné
+
+- `future::plan("multisession")` était appelé **sans `workers`** sur **19 sites**
+  (modules et services) : le pool prenait `availableCores()`, et les workers étant
+  **persistants** (ils ne rendent pas leur RSS entre deux tâches), une machine
+  8 cœurs pouvait immobiliser 8 sessions R pleines — le mode de défaillance de la
+  spec 008.
+- Tous ces sites passent désormais par `.ensure_async_plan()`, qui borne le pool
+  via `.resolve_parallel_workers()` : option `parallel_workers` > variable
+  d'environnement `NEMETON_PARALLEL_WORKERS` > défaut `min(4, availableCores() - 2)`.
+- L'option `parallel_workers` de `app_config.R`, déclarée mais **jamais lue**
+  depuis son introduction, est enfin câblée.
+- **Plancher de 2 workers.** `availableCores()` rapporte 2 sous `R CMD check`
+  (`_R_CHECK_LIMIT_CORES_`), en CI et en conteneur : un `min(4, cap - 2)` nu y
+  retombait à **un seul worker**, que le préchauffage occupait entièrement. Le
+  plancher ne dépasse jamais la machine (hôte 1 cœur → 1 worker).
+- **`warmup_async_workers()` laisse toujours un worker libre.** Il chauffait
+  `min(nbrOfWorkers, 4)` workers, soit la **totalité** du pool désormais borné,
+  pendant les ~5-6 s de chargement du namespace : toute tâche async déclenchée
+  dans cet intervalle (db_sync du premier projet, modale qui calcule) attendait
+  la fin du préchauffage, boucle d'événements Shiny figée. Avant le bornage,
+  4 workers sur 8 restaient libres et masquaient le problème.
 
 # nemetonshiny 0.115.11 (2026-07-24)
 

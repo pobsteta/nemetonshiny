@@ -18,6 +18,13 @@
 #'   Default: \code{~/.nemeton/projects}
 #' @param max_parcels Integer. Maximum number of parcels that can be selected
 #'   simultaneously on the map. Default: \code{30}. Must be a positive integer.
+#' @param tour Logical. Auto-start the guided tour (cicerone) for a visitor who
+#'   has never seen it. Default: \code{TRUE}. Set to \code{FALSE} to boot
+#'   straight into the app — useful for demos, screencasts and automated tests,
+#'   where the tour's client-side JS runs 2 s after connection and interferes.
+#'   Disabling only suppresses the AUTO-start: the tour stays available from the
+#'   help menu. Overridable per-session with the \code{NEMETON_TOUR} environment
+#'   variable (\code{0}/\code{false} to disable).
 #' @param ... Additional arguments passed to \code{\link[shiny]{shinyApp}}.
 #'
 #' @return A Shiny application object (invisibly).
@@ -55,10 +62,14 @@
 #'
 #'   # Raise the selectable parcels limit to 50
 #'   run_app(max_parcels = 50)
+#'
+#'   # Boot without the guided tour (demo, screencast, automated test)
+#'   run_app(tour = FALSE)
 #' }
 run_app <- function(language = NULL,
                     project_dir = NULL,
                     max_parcels = 30L,
+                    tour = TRUE,
                     ...) {
   # Validate max_parcels early (argument check, no side effects)
   if (!is.numeric(max_parcels) || length(max_parcels) != 1 ||
@@ -68,6 +79,9 @@ run_app <- function(language = NULL,
       "{.arg max_parcels} must be a single positive integer (got {.val {max_parcels}})."
     )
   }
+  if (!is.logical(tour) || length(tour) != 1L || is.na(tour)) {
+    cli::cli_abort("{.arg tour} must be a single TRUE or FALSE.")
+  }
 
   # Check required packages
   check_app_dependencies()
@@ -76,7 +90,8 @@ run_app <- function(language = NULL,
   app_options <- list(
     language = language %||% detect_system_language(),
     project_dir = project_dir %||% get_default_project_dir(),
-    max_parcels = as.integer(max_parcels)
+    max_parcels = as.integer(max_parcels),
+    tour = isTRUE(tour)
   )
 
   # Ensure project directory exists
@@ -91,10 +106,14 @@ run_app <- function(language = NULL,
     shiny.busy_indicators = FALSE
   )
 
-  # Configure async computation (ExtendedTask uses future for separate R process)
-  if (requireNamespace("future", quietly = TRUE)) {
-    future::plan("multisession")
-    cli::cli_alert_info("Async computation enabled (future::multisession)")
+  # Configure async computation (ExtendedTask uses future for separate R process).
+  # `force = TRUE` : le point d'entrée de l'app IMPOSE son pool borné, sinon un
+  # plan non borné laissé par la session console lui survivrait (cf.
+  # .ensure_async_plan / .resolve_parallel_workers dans service_compute.R).
+  n_workers <- .ensure_async_plan(force = TRUE)
+  if (!is.na(n_workers)) {
+    cli::cli_alert_info(
+      "Async computation enabled (future::multisession, {n_workers} worker{?s})")
   }
 
   # Launch app

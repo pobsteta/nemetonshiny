@@ -5451,3 +5451,90 @@ test_that(".lidar_mosaic_covers_bbox tolerates a degenerate LiDAR CRS (2154 stam
     expect_true(isTRUE(res))
   })
 })
+
+# --- Pool de workers `future` borné (spec 008) ------------------------------
+
+test_that(".resolve_parallel_workers honours the app option first", {
+  skip_if_not_installed("future")
+  withr::with_options(
+    list(nemeton.app_options = list(parallel_workers = 2L)),
+    withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = ""), {
+      expect_identical(nemetonshiny:::.resolve_parallel_workers(), 2L)
+    })
+  )
+})
+
+test_that(".resolve_parallel_workers falls back to the env var", {
+  skip_if_not_installed("future")
+  withr::with_options(
+    list(nemeton.app_options = list(parallel_workers = NULL)),
+    withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = "3"), {
+      expect_identical(nemetonshiny:::.resolve_parallel_workers(), 3L)
+    })
+  )
+})
+
+test_that(".resolve_parallel_workers defaults to a BOUNDED pool, never availableCores()", {
+  skip_if_not_installed("future")
+  cap <- as.integer(future::availableCores())
+  skip_if(cap < 3L, "machine trop petite pour distinguer le plafond")
+  withr::with_options(
+    list(nemeton.app_options = list(parallel_workers = NULL)),
+    withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = ""), {
+      n <- nemetonshiny:::.resolve_parallel_workers()
+      expect_lte(n, 4L)
+      expect_gte(n, 1L)
+      # Le point du fix : le defaut ne prend PAS tous les coeurs (workers
+      # persistants -> availableCores() x plusieurs Go immobilises).
+      expect_lt(n, cap)
+    })
+  )
+})
+
+test_that(".resolve_parallel_workers rejects junk and clamps to availableCores()", {
+  skip_if_not_installed("future")
+  cap <- as.integer(future::availableCores())
+  withr::with_options(
+    list(nemeton.app_options = list(parallel_workers = NULL)),
+    {
+      withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = "abc"), {
+        expect_gte(nemetonshiny:::.resolve_parallel_workers(), 1L)
+      })
+      withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = "0"), {
+        expect_gte(nemetonshiny:::.resolve_parallel_workers(), 1L)
+      })
+      withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = "999"), {
+        expect_identical(nemetonshiny:::.resolve_parallel_workers(), cap)
+      })
+    }
+  )
+})
+
+test_that(".resolve_parallel_workers never collapses to a single worker on 2 cores", {
+  skip_if_not_installed("future")
+  # availableCores() rapporte 2 sous R CMD check (_R_CHECK_LIMIT_CORES_), en CI
+  # et dans les petits conteneurs. Un `min(4, cap - 2)` nu y donnerait 1 seul
+  # worker, que warmup_async_workers() occuperait entierement -> boucle Shiny
+  # figee. Le plancher de 2 est la pour ca.
+  testthat::local_mocked_bindings(availableCores = function(...) 2L,
+                                  .package = "future")
+  withr::with_options(
+    list(nemeton.app_options = list(parallel_workers = NULL)),
+    withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = ""), {
+      expect_identical(nemetonshiny:::.resolve_parallel_workers(), 2L)
+    })
+  )
+})
+
+test_that(".resolve_parallel_workers still respects a 1-core host", {
+  skip_if_not_installed("future")
+  testthat::local_mocked_bindings(availableCores = function(...) 1L,
+                                  .package = "future")
+  withr::with_options(
+    list(nemeton.app_options = list(parallel_workers = NULL)),
+    withr::with_envvar(c(NEMETON_PARALLEL_WORKERS = ""), {
+      # Le plancher de 2 ne doit pas depasser la machine.
+      expect_identical(nemetonshiny:::.resolve_parallel_workers(), 1L)
+    })
+  )
+})

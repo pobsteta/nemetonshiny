@@ -647,7 +647,7 @@ mod_monitoring_server <- function(id, app_state) {
         plan_classes <- class(future::plan())
         is_parallel <- any(c("multisession", "multicore", "cluster") %in%
                              plan_classes)
-        if (!is_parallel) future::plan("multisession")
+        if (!is_parallel) .ensure_async_plan()
       }
       promises::future_promise({
         # The worker only depends on `nemeton` (a hard dependency in
