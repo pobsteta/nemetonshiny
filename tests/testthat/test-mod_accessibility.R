@@ -128,6 +128,45 @@ test_that("AOI résolu depuis indicators_sf (EPSG:2154)", {
     })
 })
 
+test_that("cache d'accessibilité chargé PARESSEUSEMENT (onglet actif, 1x/projet)", {
+  skip_if_not_installed("sf")
+  proj <- list(id = "p1", path = withr::local_tempdir(),
+               indicators_sf = .acc_units(1))
+  fake <- list(status = "success", engines = "skidder",
+               recaps = list(skidder = data.frame(classe = "parcourable",
+                                                  surface_ha = 1)),
+               raster_paths = list(skidder = "/x/s.tif",
+                                   classes_debardage = "/x/c.tif"))
+  loaded <- 0L
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    .load_cached_accessibility = function(path) { loaded <<- loaded + 1L; fake },
+    .package = "nemetonshiny")
+  as <- shiny::reactiveValues(current_project = NULL,
+                              active_main_tab = "selection",
+                              active_terrain_tab = NULL)
+  shiny::testServer(
+    nemetonshiny:::mod_accessibility_server,
+    args = list(app_state = as),
+    {
+      # 1) Projet chargé mais utilisateur sur « Sélection » : PAS de lecture cache.
+      as$current_project <- proj
+      session$flushReact()
+      expect_equal(loaded, 0L)
+      expect_null(rv$result)
+      # 2) Ouverture de l'onglet Accessibilité : lecture du cache (une fois).
+      as$active_main_tab <- "terrain"
+      as$active_terrain_tab <- "accessibility"
+      session$flushReact()
+      expect_equal(loaded, 1L)
+      expect_equal(rv$result$status, "success")
+      # 3) Aller-retour sur l'onglet : pas de rechargement (déjà chargé ce projet).
+      as$active_terrain_tab <- "sampling"; session$flushReact()
+      as$active_terrain_tab <- "accessibility"; session$flushReact()
+      expect_equal(loaded, 1L)
+    })
+})
+
 test_that("run sans projet chargé = no-op gardé (aucun worker lancé)", {
   skip_if_not_installed("sf")
   as <- shiny::reactiveValues(current_project = NULL)
