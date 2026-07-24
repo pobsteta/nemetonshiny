@@ -955,8 +955,16 @@ warmup_async_workers <- function() {
     error = function(e) NULL)
   # Chauffer jusqu'à 4 workers concurremment : couvre les tâches courantes
   # (sync, calcul, moteur) sans saturer la machine au démarrage.
+  #
+  # TOUJOURS laisser un worker LIBRE (`n - 1`). Le pool est borné depuis
+  # `.resolve_parallel_workers()` (4 par défaut, 2 au plancher) : warmer les
+  # `min(nbrOfWorkers, 4)` occuperait la totalité du pool pendant les ~5-6 s de
+  # chargement du namespace, et toute tâche async déclenchée pendant ce temps
+  # (db_sync du 1er projet, ouverture d'une modale qui calcule) attendrait la fin
+  # du warmup — boucle d'événements Shiny figée pour l'utilisateur. Avant le
+  # bornage du pool, 4 workers sur 8 restaient libres et masquaient le problème.
   n <- tryCatch(as.integer(future::nbrOfWorkers()), error = function(e) 1L)
-  n <- max(1L, min(n, 4L))
+  n <- max(1L, min(n - 1L, 4L))
   for (i in seq_len(n)) {
     tryCatch(
       promises::future_promise({

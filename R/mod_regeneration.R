@@ -1073,7 +1073,7 @@ mod_regeneration_server <- function(id, app_state) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-            future::plan("multisession")
+            .ensure_async_plan()
           }
         }
         promises::future_promise({
@@ -1097,7 +1097,7 @@ mod_regeneration_server <- function(id, app_state) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-            future::plan("multisession")
+            .ensure_async_plan()
           }
         }
         promises::future_promise({
@@ -1121,7 +1121,7 @@ mod_regeneration_server <- function(id, app_state) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-            future::plan("multisession")
+            .ensure_async_plan()
           }
         }
         promises::future_promise({
@@ -1145,7 +1145,7 @@ mod_regeneration_server <- function(id, app_state) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-            future::plan("multisession")
+            .ensure_async_plan()
           }
         }
         promises::future_promise({
@@ -1168,7 +1168,7 @@ mod_regeneration_server <- function(id, app_state) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-            future::plan("multisession")
+            .ensure_async_plan()
           }
         }
         promises::future_promise({
@@ -1193,7 +1193,7 @@ mod_regeneration_server <- function(id, app_state) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-            future::plan("multisession")
+            .ensure_async_plan()
           }
         }
         promises::future_promise({

@@ -34,7 +34,10 @@ APP_CONFIG <- list(
   retry_delay = 2000L,  # 2 seconds
 
   # Performance
-  parallel_workers = NULL,  # NULL = auto-detect
+  # Taille du pool `future` (workers persistants). NULL = defaut borne
+  # min(4, availableCores() - 2), surchargeable par NEMETON_PARALLEL_WORKERS.
+  # Resolu par .resolve_parallel_workers() (service_compute.R).
+  parallel_workers = NULL,
 
   # Cache settings
   cache_format = "parquet",

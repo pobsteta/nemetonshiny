@@ -40,6 +40,130 @@ DESSERTE_ENGINES <- c("glouton")
   file.path(project_path, "cache", "desserte")
 }
 
+# --- Garde-fou mémoire du glouton ------------------------------------------
+#
+# `foretaccess::reseau_desserte()` matérialise une table de voisinage
+# (`NeibTable.neighbors`, un `Vec<Vec<Neighbor>>` Rust) : UNE allocation tas par
+# cellule franchissable, contenant tout le disque de rayon `d_neighborhood_m`
+# (42 m par défaut). Le pic mémoire est donc PROPORTIONNEL à la grille et
+# QUADRATIQUE en `d_neighborhood / résolution` — pas une fuite (la mémoire est
+# rendue), un coût structurel.
+#
+# Mesures (grille synthétique, foretaccess 1.21.0, 2026-07-24) :
+#   600x600 @ 5 m, d = 42 m (220 voisins) -> 1 537 Mo  soit 4,37 Ko/cellule
+#   600x600 @ 5 m, d = 30 m (112 voisins) ->   841 Mo  soit 2,39 Ko/cellule
+#   600x600 @ 5 m, d = 21 m ( 56 voisins) ->   493 Mo  soit 1,40 Ko/cellule
+#   800x800 @ 5 m, d = 42 m               -> 2 520 Mo  soit 4,03 Ko/cellule
+# Sans garde-fou, une emprise de ~10 km x 10 km à 5 m (≈ 3,9 M cellules) demande
+# ~17 Go et emporte la machine par OOM après ~15 min de calcul (observé).
+
+#' Number of disc offsets in the solver's extended neighbourhood
+#'
+#' Mirrors `build_offsets()` (foretaccess `src/rust/src/desserte/neighborhood.rs`):
+#' every integer offset of the square `[-nb, nb]^2` except the centre, kept when
+#' its planimetric distance is within `d_neighborhood`.
+#'
+#' @param d_neighborhood_m Neighbourhood radius in metres.
+#' @param csize Cell size in metres.
+#' @return Integer count of offsets.
+#' @noRd
+.desserte_n_offsets <- function(d_neighborhood_m = 42, csize = 5) {
+  d <- suppressWarnings(as.numeric(d_neighborhood_m))
+  cs <- suppressWarnings(as.numeric(csize))
+  if (!is.finite(d) || !is.finite(cs) || d <= 0 || cs <= 0) return(0L)
+  nb <- as.integer(d / cs + 0.5)
+  if (nb < 1L) return(0L)
+  g <- expand.grid(dr = -nb:nb, dc = -nb:nb)
+  g <- g[!(g$dr == 0L & g$dc == 0L), , drop = FALSE]
+  sum(sqrt(g$dr^2 + g$dc^2) * cs <= d)
+}
+
+#' Estimate the greedy engine's peak memory for a grid
+#'
+#' Per cell the solver holds: the neighbour list (`n_offsets * 16` bytes), the
+#' `Vec` header (24), the `NodeState` search array (80), the heuristic grid (8)
+#' and the id/coord tables (20). The 1.25 factor is the measured allocator
+#' overhead (jemalloc), calibrated on the runs quoted above.
+#'
+#' @param n_cells Number of grid cells.
+#' @param d_neighborhood_m Neighbourhood radius (m).
+#' @param csize Cell size (m).
+#' @return Estimated peak in bytes (numeric), or `NA_real_` on bad input.
+#' @noRd
+.desserte_memory_estimate <- function(n_cells, d_neighborhood_m = 42, csize = 5) {
+  n <- suppressWarnings(as.numeric(n_cells))
+  if (!is.finite(n) || n <= 0) return(NA_real_)
+  n_off <- .desserte_n_offsets(d_neighborhood_m, csize)
+  per_cell <- n_off * 16 + 24 + 80 + 8 + 20
+  n * per_cell * 1.25
+}
+
+#' Grid cell count of an extent at a given resolution
+#'
+#' `buffer_m` widens the **bounding box**, which is all the grid depends on:
+#' buffering the geometries (per feature or after a union) yields the exact same
+#' box, so the caller never has to pay for `st_buffer()` just to size the grid.
+#'
+#' @param aoi An `sf`/`sfc` object; its bounding box drives the grid.
+#' @param res_m Resolution in metres.
+#' @param buffer_m Buffer in metres grown on every side of the box.
+#' @return Number of cells (numeric), or `NA_real_`.
+#' @noRd
+.desserte_grid_cells <- function(aoi, res_m = 5, buffer_m = 0) {
+  bb <- tryCatch(sf::st_bbox(aoi), error = function(e) NULL)
+  r <- suppressWarnings(as.numeric(res_m))
+  b <- suppressWarnings(as.numeric(buffer_m))
+  if (!is.finite(b) || b < 0) b <- 0
+  if (is.null(bb) || !is.finite(r) || r <= 0) return(NA_real_)
+  w <- as.numeric(bb$xmax - bb$xmin) + 2 * b
+  h <- as.numeric(bb$ymax - bb$ymin) + 2 * b
+  if (!is.finite(w) || !is.finite(h) || w <= 0 || h <= 0) return(NA_real_)
+  ceiling(w / r) * ceiling(h / r)
+}
+
+#' Memory currently available on the host, in bytes
+#'
+#' Reads `MemAvailable` from `/proc/meminfo` (Linux). Best-effort: returns
+#' `NA_real_` elsewhere, which disables the guard rather than blocking a run.
+#'
+#' @return Available bytes (numeric) or `NA_real_`.
+#' @noRd
+.available_memory_bytes <- function() {
+  if (!file.exists("/proc/meminfo")) return(NA_real_)
+  lines <- tryCatch(readLines("/proc/meminfo", n = 60L), error = function(e) NULL)
+  if (is.null(lines)) return(NA_real_)
+  hit <- grep("^MemAvailable:", lines, value = TRUE)
+  if (length(hit) == 0L) return(NA_real_)
+  kb <- suppressWarnings(as.numeric(gsub("[^0-9]", "", hit[1])))
+  if (!is.finite(kb)) return(NA_real_)
+  kb * 1024
+}
+
+#' Pre-flight memory check for a desserte run
+#'
+#' Compares the estimated peak against a fraction of the available RAM. Set
+#' `NEMETON_DESSERTE_SKIP_GUARD=1` to bypass (documented escape hatch: the
+#' estimate is a model, the user may know better).
+#'
+#' @param aoi Extent to be analysed.
+#' @param res_m Grid resolution (m).
+#' @param d_neighborhood_m Neighbourhood radius (m).
+#' @param frac Fraction of available RAM the run may claim.
+#' @param buffer_m Buffer (m) to grow around `aoi` before sizing the grid; pass
+#'   `0` when `aoi` is already the buffered extent.
+#' @return A list with `ok`, `cells`, `bytes`, `available`.
+#' @noRd
+.desserte_memory_check <- function(aoi, res_m = 5, d_neighborhood_m = 42,
+                                   frac = 0.8, buffer_m = 0) {
+  cells <- .desserte_grid_cells(aoi, res_m, buffer_m)
+  bytes <- .desserte_memory_estimate(cells, d_neighborhood_m, res_m)
+  avail <- .available_memory_bytes()
+  skip <- tolower(Sys.getenv("NEMETON_DESSERTE_SKIP_GUARD", "")) %in%
+    c("1", "true", "yes", "oui")
+  ok <- skip || !is.finite(bytes) || !is.finite(avail) || bytes <= avail * frac
+  list(ok = isTRUE(ok), cells = cells, bytes = bytes, available = avail)
+}
+
 #' Reconstruct a run result from a project's cached desserte network
 #'
 #' Lets the tab show a **previously computed** network without recomputing (a
@@ -134,6 +258,19 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
   }
   acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
   dir.create(acq_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Garde-fou mémoire AVANT toute acquisition : le pic du glouton est connu à
+  # partir de la seule emprise (cf. .desserte_memory_check). Sans ça, l'échec
+  # arrive après ~15 min de calcul, sous forme d'OOM qui emporte la machine —
+  # pas d'une condition R rattrapable.
+  mem <- .desserte_memory_check(aoi_ext, res_m = 5)
+  if (!isTRUE(mem$ok)) {
+    return(list(status = "error", reason = "desserte_memory_guard",
+                detail = sprintf(
+                  "grille %.1f M cellules, pic estime %.1f Go, RAM disponible %.1f Go",
+                  mem$cells / 1e6, mem$bytes / 1024^3, mem$available / 1024^3),
+                cells = mem$cells, bytes = mem$bytes, available = mem$available))
+  }
 
   # 1. MNT 5 m HIGHRES (repli acquire_mnt), partagé avec l'accessibilité.
   mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = epsg, cache_dir = acq_dir)

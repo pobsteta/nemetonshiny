@@ -12,7 +12,8 @@ generate_report_pdf(
   synthesis_comments = NULL,
   family_comments = NULL,
   cover_image = NULL,
-  use_quarto = TRUE
+  use_quarto = TRUE,
+  regen_units = NULL
 )
 }
 \arguments{
@@ -31,6 +32,9 @@ generate_report_pdf(
 \item{cover_image}{Character. Optional path to cover image for first page.}
 
 \item{use_quarto}{Logical. Whether to try Quarto first. Default TRUE.}
+
+\item{regen_units}{sf. Optional reGénération run output; when provided, a
+"reGénération" section is appended to the Quarto report (spec 027 L6).}
 }
 \value{
 Character. Path to generated PDF.

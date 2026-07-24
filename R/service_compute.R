@@ -39,6 +39,76 @@ get_global_cache_dir <- function() {
   cache_dir
 }
 
+# --- Pool de workers `future` (asynchrone) ---------------------------------
+#
+# `future::plan("multisession")` SANS `workers` ouvre `availableCores()`
+# process. Chacun est une session R complète qui garde sa mémoire pour toute la
+# durée de l'app : les workers sont PERSISTANTS, ils ne rendent pas leur RSS
+# entre deux tâches. Sur une machine 8 cœurs, un moteur lourd (desserte,
+# accessibilité, FORDEAD) peut donc immobiliser 8 × plusieurs Go — le mode de
+# défaillance diagnostiqué en spec 008 (« les 14 Go n'étaient pas les rasters
+# mais les workers »). Le pool est borné ici, en un seul endroit.
+
+#' Resolve the number of `future` workers for async computation
+#'
+#' Resolution order: app option `parallel_workers` (see `app_config.R`) > env
+#' var `NEMETON_PARALLEL_WORKERS` > default `min(4, availableCores() - 2)`
+#' floored at 2. The default deliberately leaves cores to the Shiny main process
+#' and the OS, and caps the pool so a heavy engine cannot pin every core's worth
+#' of RAM. The result is always clamped to `[1, availableCores()]`.
+#'
+#' The **floor of 2 matters**: `availableCores()` reports 2 under `R CMD check`
+#' (`_R_CHECK_LIMIT_CORES_`), on CI and in small containers, where a bare
+#' `min(4, cap - 2)` collapses to a SINGLE worker — and `warmup_async_workers()`
+#' would then occupy the whole pool, so every subsequent `future_promise()`
+#' queues behind it and the Shiny event loop stalls.
+#'
+#' @return Integer scalar >= 1.
+#' @noRd
+.resolve_parallel_workers <- function() {
+  cap <- tryCatch(as.integer(future::availableCores()), error = function(e) 2L)
+  if (length(cap) != 1L || is.na(cap) || cap < 1L) cap <- 2L
+
+  raw <- tryCatch(get_app_options()$parallel_workers, error = function(e) NULL)
+  if (is.null(raw) || length(raw) == 0L) {
+    raw <- Sys.getenv("NEMETON_PARALLEL_WORKERS", "")
+  }
+  n <- suppressWarnings(as.integer(raw[1]))
+  if (length(n) != 1L || is.na(n) || n < 1L) {
+    n <- max(2L, min(4L, cap - 2L))
+  }
+  max(1L, min(n, cap))
+}
+
+#' Ensure a BOUNDED multisession plan is active
+#'
+#' Single entry point for every site that needs the async plan. Replaces the
+#' bare `future::plan("multisession")` calls, which spawned an unbounded pool.
+#'
+#' @param force When `TRUE`, re-establish the bounded plan even if a parallel
+#'   plan is already active. Used by `run_app()`: the app entry point imposes
+#'   its bound, otherwise an unbounded plan left over from the console session
+#'   would survive. Elsewhere `FALSE` respects a plan the caller set on purpose.
+#' @return Invisibly the worker count, or `NA_integer_` if `future` is absent
+#'   or the plan could not be established.
+#' @noRd
+.ensure_async_plan <- function(force = FALSE) {
+  if (!requireNamespace("future", quietly = TRUE)) return(invisible(NA_integer_))
+  plan_classes <- class(tryCatch(future::plan(), error = function(e) NULL))
+  is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
+  if (is_parallel && !isTRUE(force)) {
+    return(invisible(tryCatch(as.integer(future::nbrOfWorkers()),
+                              error = function(e) NA_integer_)))
+  }
+  n <- .resolve_parallel_workers()
+  ok <- tryCatch({
+    future::plan(future::multisession, workers = n)
+    TRUE
+  }, error = function(e) FALSE)
+  if (!isTRUE(ok)) return(invisible(NA_integer_))
+  invisible(n)
+}
+
 DATA_SOURCES <- list(
   # Raster sources
   rasters = list(

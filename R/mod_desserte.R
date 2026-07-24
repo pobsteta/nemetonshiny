@@ -39,6 +39,12 @@ mod_desserte_ui <- function(id) {
         value = 1, min = 0, max = 20, step = 1),
       htmltools::tags$p(class = "text-muted small", i18n$t("dess_buffer_help")),
 
+      # Empreinte mémoire estimée de l'emprise courante : le pic du glouton est
+      # prévisible à partir de la seule grille (cf. .desserte_memory_check), donc
+      # affiché AVANT le clic — un dépassement se paie sinon par un OOM au bout
+      # d'un quart d'heure de calcul.
+      shiny::uiOutput(ns("mem_estimate")),
+
       bslib::input_task_button(
         ns("run"), i18n$t("dess_run"),
         label_busy = i18n$t("dess_running"),
@@ -114,13 +120,39 @@ mod_desserte_server <- function(id, app_state) {
       .resolve_project_aoi_2154(app_state$current_project)
     })
 
+    # Estimation de l'empreinte mémoire pour l'emprise courante (parcelles +
+    # tampon), recalculée à chaque changement du tampon. Sert d'avertissement
+    # amont ; le refus effectif reste côté service (run_desserte), qui est la
+    # seule barrière fiable (rule 2 : pas de décision métier dans le module).
+    output$mem_estimate <- shiny::renderUI({
+      aoi <- units_sf()
+      if (is.null(aoi)) return(NULL)
+      buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      # Le tampon est appliqué à la BBOX, pas aux géométries : c'est la seule
+      # chose dont dépend la grille, et ça évite un st_buffer() à chaque frappe.
+      mem <- .desserte_memory_check(aoi, res_m = 5, buffer_m = buffer_m)
+      if (!is.finite(mem$cells) || !is.finite(mem$bytes)) return(NULL)
+      fmt <- function(x, d = 1) formatC(x, format = "f", digits = d, big.mark = " ")
+      txt <- sprintf(i18n$t("dess_mem_estimate_fmt"),
+                     formatC(mem$cells, format = "d", big.mark = " "),
+                     fmt(mem$bytes / 1024^3),
+                     if (is.finite(mem$available)) fmt(mem$available / 1024^3) else "?")
+      htmltools::div(
+        class = if (isTRUE(mem$ok)) "alert alert-light py-2 small mb-2"
+                else "alert alert-danger py-2 small mb-2",
+        htmltools::tags$div(txt),
+        htmltools::tags$div(
+          class = "fw-semibold",
+          i18n$t(if (isTRUE(mem$ok)) "dess_mem_ok" else "dess_mem_risk")))
+    })
+
     # --- Worker asynchrone : acquisition + coût + moteur de création ----------
     dess_task <- shiny::ExtendedTask$new(
       function(aoi_path, engine, cache_dir, buffer_m, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-            future::plan("multisession")
+            .ensure_async_plan()
           }
         }
         promises::future_promise({

@@ -1,5 +1,12 @@
 # service_tour.R — Définition déclarative du Tour guidé (cicerone).
 #
+# L'AUTO-démarrage est optionnel : `run_app(tour = FALSE)` (ou NEMETON_TOUR=0)
+# fait démarrer l'app directement, sans le tour. Motivation : le tour injecte du
+# JS client 2 s après la connexion, ce qui gêne les démos/captures et rend les
+# tests E2E instables (cicerone émet « There are no steps defined to iterate »
+# sur le même flush, ce qui déstabilise la session shinytest2). Le tour reste
+# lançable à la main depuis l'aide — seul l'auto-démarrage est supprimé.
+#
 # Le tour est une liste ORDONNÉE de steps, chacun ancré sur un élément
 # (id namespacé) d'un onglet. cicerone (>= 1.0.4) sait activer l'onglet
 # cible (`tab` + `tab_id`) AVANT de cadrer l'élément : un seul guide peut
@@ -123,4 +130,25 @@ build_tour_guide <- function(i18n, max_parcels = 30L) {
     )
   }
   guide
+}
+
+#' Is the guided tour allowed to AUTO-start?
+#'
+#' Resolution order: env var `NEMETON_TOUR` (`0`/`false`/`no`/`non` disables,
+#' `1`/`true`/`yes`/`oui` enables) > app option `tour` set by `run_app()` >
+#' `TRUE`. The environment variable wins so a demo, a screencast or a test run
+#' can suppress the tour without touching the call site.
+#'
+#' Only the AUTO-start is governed here: a tour explicitly requested from the
+#' help menu (`app_state$restart_tour`) always runs.
+#'
+#' @return `TRUE` or `FALSE`.
+#' @noRd
+.tour_autostart_enabled <- function() {
+  env <- tolower(trimws(Sys.getenv("NEMETON_TOUR", "")))
+  if (env %in% c("0", "false", "no", "non", "off")) return(FALSE)
+  if (env %in% c("1", "true", "yes", "oui", "on")) return(TRUE)
+  opt <- tryCatch(get_app_options()$tour, error = function(e) NULL)
+  if (is.null(opt) || length(opt) != 1L || is.na(as.logical(opt)[1])) return(TRUE)
+  isTRUE(as.logical(opt)[1])
 }

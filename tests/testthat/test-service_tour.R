@@ -85,3 +85,53 @@ test_that(".tour_switch_tab_js is a JS function expression (cicerone new Functio
   expect_equal(lengths(regmatches(js, gregexpr("{", js, fixed = TRUE))),
                lengths(regmatches(js, gregexpr("}", js, fixed = TRUE))))
 })
+
+# --- Auto-demarrage du tour (run_app(tour =) / NEMETON_TOUR) ----------------
+
+test_that(".tour_autostart_enabled defaults to TRUE", {
+  withr::with_envvar(c(NEMETON_TOUR = ""), {
+    withr::with_options(list(nemeton.app_options = list(language = "fr")), {
+      expect_true(nemetonshiny:::.tour_autostart_enabled())
+    })
+  })
+})
+
+test_that(".tour_autostart_enabled honours the run_app(tour =) option", {
+  withr::with_envvar(c(NEMETON_TOUR = ""), {
+    withr::with_options(list(nemeton.app_options = list(tour = FALSE)), {
+      expect_false(nemetonshiny:::.tour_autostart_enabled())
+    })
+    withr::with_options(list(nemeton.app_options = list(tour = TRUE)), {
+      expect_true(nemetonshiny:::.tour_autostart_enabled())
+    })
+  })
+})
+
+test_that("NEMETON_TOUR overrides the option, in both directions", {
+  withr::with_options(list(nemeton.app_options = list(tour = TRUE)), {
+    for (v in c("0", "false", "no", "non", "off", "FALSE")) {
+      withr::with_envvar(c(NEMETON_TOUR = v),
+                         expect_false(nemetonshiny:::.tour_autostart_enabled()))
+    }
+  })
+  withr::with_options(list(nemeton.app_options = list(tour = FALSE)), {
+    for (v in c("1", "true", "yes", "oui", "on")) {
+      withr::with_envvar(c(NEMETON_TOUR = v),
+                         expect_true(nemetonshiny:::.tour_autostart_enabled()))
+    }
+  })
+})
+
+test_that(".tour_autostart_enabled falls back to TRUE on junk input", {
+  withr::with_options(list(nemeton.app_options = list(tour = "peut-etre")), {
+    withr::with_envvar(c(NEMETON_TOUR = "bruit"), {
+      expect_true(nemetonshiny:::.tour_autostart_enabled())
+    })
+  })
+})
+
+test_that("run_app rejects a non-logical tour argument", {
+  expect_error(run_app(tour = "oui"), "tour")
+  expect_error(run_app(tour = NA), "tour")
+  expect_error(run_app(tour = c(TRUE, FALSE)), "tour")
+})

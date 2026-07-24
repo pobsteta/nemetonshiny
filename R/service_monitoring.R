@@ -86,7 +86,7 @@ run_ingestion_async <- function() {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
-      if (!is_parallel) future::plan("multisession")
+      if (!is_parallel) .ensure_async_plan()
     }
     promises::future_promise({
       # spec 008 §4 — rendre la memoire au systeme : le worker est PERSISTANT.
@@ -556,7 +556,7 @@ run_fordead_async <- function() {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
-      if (!is_parallel) future::plan("multisession")
+      if (!is_parallel) .ensure_async_plan()
     }
     promises::future_promise({
       .apply_worker_envvars(.worker_envvars)
@@ -765,7 +765,7 @@ run_reconfort_async <- function() {
     if (requireNamespace("future", quietly = TRUE)) {
       plan_classes <- class(future::plan())
       is_parallel <- any(c("multisession", "multicore", "cluster") %in% plan_classes)
-      if (!is_parallel) future::plan("multisession")
+      if (!is_parallel) .ensure_async_plan()
     }
     promises::future_promise({
       .apply_worker_envvars(.worker_envvars)
