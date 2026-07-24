@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.2 (2026-07-24)
 
 ### Changed — Accessibilité : NDP 1 câble n'est plus « expérimental »
 
@@ -10,7 +10,8 @@
   avec repli automatique sur la desserte brute si la qualification échoue.
 - Les **largeurs mesurées alimentent maintenant `places_depot()`** (`largeur_champ`) :
   les départs câble deviennent **sélectifs** (~1189 vs ~1877 sans filtre sur la même
-  desserte) → couverture câble plus juste.
+  desserte) → couverture câble plus juste (**85 % mesuré vs 91 % optimiste** sur la
+  desserte de test).
 - **Garde-fou de version** : la qualification LiDAR ne s'active qu'avec
   foretaccess ≥ 1.19.1 ; en deçà, l'app reste sur la desserte brute (NDP 0) même si
   le NDP 1 est coché — elle tourne donc sans risque sur 1.19.0. Remotes pinné
