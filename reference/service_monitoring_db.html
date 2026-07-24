@@ -10,8 +10,13 @@ Resolution order:
 2. `POSTGRESQL_ADDON_*` then `NEMETON_DB_*` parts — assembled into
    a postgresql URL (credentials URL-encoded so passwords with `@`,
    `:`, `/` … don't break the parse).
-3. None of the above set — return NULL so the Monitoring tab can
-   show a configuration hint instead of crashing."><meta property="og:description" content="Thin adapter that bridges the existing nemetonshiny env-var
+3. No PG env vars set AND a `project` is passed → fall back to a
+   **local SQLite/WAL file** at
+   `&amp;lt;project$path&amp;gt;/data/monitoring.sqlite`. This single-user mode
+   avoids requiring a TimescaleDB instance for individual users.
+   Requires the `RSQLite` R package.
+4. None of the above — return NULL so the Monitoring tab can show
+   a configuration hint instead of crashing."><meta property="og:description" content="Thin adapter that bridges the existing nemetonshiny env-var
 convention (`NEMETON_DB_HOST` / `_PORT` / `_NAME` / `_USER` /
 `_PASSWORD`, plus the Clever Cloud `POSTGRESQL_ADDON_*` fallbacks
 used by `service_db.R`) to the URL-based API exposed by
@@ -22,8 +27,13 @@ Resolution order:
 2. `POSTGRESQL_ADDON_*` then `NEMETON_DB_*` parts — assembled into
    a postgresql URL (credentials URL-encoded so passwords with `@`,
    `:`, `/` … don't break the parse).
-3. None of the above set — return NULL so the Monitoring tab can
-   show a configuration hint instead of crashing."></head><body>
+3. No PG env vars set AND a `project` is passed → fall back to a
+   **local SQLite/WAL file** at
+   `&amp;lt;project$path&amp;gt;/data/monitoring.sqlite`. This single-user mode
+   avoids requiring a TimescaleDB instance for individual users.
+   Requires the `RSQLite` R package.
+4. None of the above — return NULL so the Monitoring tab can show
+   a configuration hint instead of crashing."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -31,7 +41,7 @@ Resolution order:
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -69,8 +79,13 @@ style is configured.</p>
 2. `POSTGRESQL_ADDON_*` then `NEMETON_DB_*` parts — assembled into
    a postgresql URL (credentials URL-encoded so passwords with `@`,
    `:`, `/` … don't break the parse).
-3. None of the above set — return NULL so the Monitoring tab can
-   show a configuration hint instead of crashing.</p>
+3. No PG env vars set AND a `project` is passed → fall back to a
+   **local SQLite/WAL file** at
+   `&lt;project$path&gt;/data/monitoring.sqlite`. This single-user mode
+   avoids requiring a TimescaleDB instance for individual users.
+   Requires the `RSQLite` R package.
+4. None of the above — return NULL so the Monitoring tab can show
+   a configuration hint instead of crashing.</p>
     </div>
 
 

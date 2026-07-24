@@ -14,7 +14,8 @@ generate_report_pdf(
   synthesis_comments = NULL,
   family_comments = NULL,
   cover_image = NULL,
-  use_quarto = TRUE
+  use_quarto = TRUE,
+  regen_units = NULL
 )
 ```
 
@@ -52,6 +53,11 @@ generate_report_pdf(
 - use_quarto:
 
   Logical. Whether to try Quarto first. Default TRUE.
+
+- regen_units:
+
+  sf. Optional reGénération run output; when provided, a "reGénération"
+  section is appended to the Quarto report (spec 027 L6).
 
 ## Value
 

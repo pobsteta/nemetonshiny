@@ -16,7 +16,13 @@ indicator analysis. The application allows users to:
 ## Usage
 
 ``` r
-run_app(language = NULL, project_dir = NULL, max_parcels = 30L, ...)
+run_app(
+  language = NULL,
+  project_dir = NULL,
+  max_parcels = 30L,
+  tour = TRUE,
+  ...
+)
 ```
 
 ## Arguments
@@ -35,6 +41,16 @@ run_app(language = NULL, project_dir = NULL, max_parcels = 30L, ...)
 
   Integer. Maximum number of parcels that can be selected simultaneously
   on the map. Default: `30`. Must be a positive integer.
+
+- tour:
+
+  Logical. Auto-start the guided tour (cicerone) for a visitor who has
+  never seen it. Default: `TRUE`. Set to `FALSE` to boot straight into
+  the app — useful for demos, screencasts and automated tests, where the
+  tour's client-side JS runs 2 s after connection and interferes.
+  Disabling only suppresses the AUTO-start: the tour stays available
+  from the help menu. Overridable per-session with the `NEMETON_TOUR`
+  environment variable (`0`/`false` to disable).
 
 - ...:
 
@@ -82,5 +98,8 @@ if (interactive()) {
 
   # Raise the selectable parcels limit to 50
   run_app(max_parcels = 50)
+
+  # Boot without the guided tour (demo, screencast, automated test)
+  run_app(tour = FALSE)
 }
 ```

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,52 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.115.12" id="nemetonshiny-011512-2026-07-24">nemetonshiny 0.115.12 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-011512-2026-07-24"></a></h2>
+<div class="section level4">
+<h4 id="fixed--correction-lidar-de-la-desserte--oom-machine-mnt-à-m-0-115-12">Fixed — Correction LiDAR de la desserte : OOM machine (MNT à 1 m)<a class="anchor" aria-label="anchor" href="#fixed--correction-lidar-de-la-desserte--oom-machine-mnt-%C3%A0-m-0-115-12"></a></h4>
+<ul><li>La <strong>correction LiDAR</strong> (<code>qualifier_desserte()</code>, onglet Accessibilité, NDP 1) faisait monter le worker à <strong>16,8 Go en 15 min</strong>, puis tombait la machine par <strong>OOM</strong> (RStudio et navigateur emportés).</li>
+<li>Cause, côté <code>foretaccess</code> : <code>.mnt_alsroads()</code> (<code>R/desserte_lidar.R</code>) dérive un MNT à 1 m dès que le MNT fourni dépasse 1,5 m, et cette dérivation fait <code>readLAS(ctg$filename, filter = "-keep_class 2")</code> — le <strong>vecteur complet des dalles</strong>, donc tout le nuage sol en mémoire d’un coup, puis une triangulation de Delaunay par-dessus. Le <code>LAScatalog</code> est court-circuité, alors que <code>lidR::rasterize_terrain()</code> sait travailler par tuiles hors mémoire. Mesuré sur ForêtAccess : 4 dalles LiDAR HD = <strong>165,5 M de points</strong>.</li>
+<li>L’app passait un MNT à <strong>5 m</strong> (grille d’accessibilité), déclenchant donc la dérivation <strong>systématiquement</strong>. Elle demande maintenant <strong>1 m</strong> sur ce chemin (<code>.acquire_mnt_desserte(res_m = 1)</code>) : <code>.mnt_alsroads()</code> renvoie alors le MNT tel quel et <strong>ne lit aucun point</strong>. C’est aussi la résolution qu’ALSroads documente (« a resolution of at least of 1 m », cohérent avec ses profils à 0,5 m et ses seuils de largeur carrossable à 1 et 5 m).</li>
+<li>
+<strong>Cache MNT indexé sur la résolution</strong> (<code>mnt_highres_&lt;res&gt;m.tif</code>) : sans ça un MNT à 1 m écraserait celui à 5 m de l’analyse d’accessibilité, qui partage le même répertoire d’emprise. Un <code>mnt_highres.tif</code> déjà sur disque reste lu en repli pour 5 m (tous les caches existants sont à 5 m).</li>
+<li>
+<strong>Garde-fou de repli</strong> <code>.lidar_memory_check()</code> : si le MNT obtenu reste &gt; 1,5 m (WMS dégradé, repli <code>acquire_mnt</code>), le pic de la dérivation est estimé depuis <code>Number.of.point.records</code> du catalogue et le run est refusé (<code>acc_correct_memory_guard</code>) au lieu de partir en OOM. Échappatoire : <code>NEMETON_LIDAR_SKIP_GUARD=1</code>.</li>
+<li>
+<strong>Réserve</strong> : demander 1 m au WMS IGN ne garantit pas une donnée <em>nativement</em> à 1 m — le service peut rééchantillonner du 5 m, ce que la vérification de taille de cellule ne détecte pas. C’est un contournement ; le correctif de fond appartient à <code>foretaccess</code> (brief <code>~/brief-foretaccess-neibtable-memoire.md</code>, finding 1).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--typage-du-réseau---volume-p1-absent--sur-un-projet-pourtant-calculé-0-115-12">Fixed — Typage du réseau : « Volume P1 absent » sur un projet pourtant calculé<a class="anchor" aria-label="anchor" href="#fixed--typage-du-r%C3%A9seau---volume-p1-absent--sur-un-projet-pourtant-calcul%C3%A9-0-115-12"></a></h4>
+<ul><li>Le typage refusait de démarrer avec « Volume P1 absent des parcelles : calculez d’abord l’indicateur P1 » sur un projet dont <strong>P1 était bel et bien calculé</strong>. Cause : décalage de nom de colonne. <code>nemeton:::indicateur_p1_volume()</code> écrit <strong><code>P1</code></strong> (son <code>column_name</code> par défaut), mais <code>indicators.parquet</code> persiste la colonne sous <strong><code>indicateur_p1_volume</code></strong> (aligné sur les 30 autres <code>indicateur_*</code>) — et c’est ce que renvoie <code>.resolve_project_aoi_2154()</code>. Or <code>run_desserte_typage()</code> cherchait <code>"P1"</code> en dur.</li>
+<li>Nouveau <code>.resolve_volume_col()</code> : essaie <code>P1</code>, puis <code>indicateur_p1_volume</code>, puis une correspondance insensible à la casse, et n’accepte une colonne que si elle porte au moins une valeur finie (une colonne tout-NA ne masque plus l’autre). <code>volume_col</code> reste surchargeable.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="added--run_apptour--false--démarrer-sans-le-tour-guidé-0-115-12">Added — <code>run_app(tour = FALSE)</code> : démarrer sans le tour guidé<a class="anchor" aria-label="anchor" href="#added--run_apptour--false--d%C3%A9marrer-sans-le-tour-guid%C3%A9-0-115-12"></a></h4>
+<ul><li>Nouvel argument <strong><code>tour</code></strong> (défaut <code>TRUE</code>) : <code>run_app(tour = FALSE)</code> démarre l’application <strong>sans auto-lancer le tour guidé</strong> cicerone. Seul l’<strong>auto-démarrage</strong> est supprimé — le tour reste lançable depuis le menu d’aide.</li>
+<li>Motivation : le tour injecte du JS client 2 s après la connexion. C’est gênant pour une démo ou une capture d’écran, et ça rend les tests E2E instables (cicerone émet « There are no steps defined to iterate » sur le même flush, ce qui déstabilise la session <code>shinytest2</code> — le test <code>mod_rag_admin-e2e</code> documentait déjà devoir tolérer cette erreur).</li>
+<li>Surchargeable sans toucher au site d’appel via <strong><code>NEMETON_TOUR</code></strong> (<code>0</code>/<code>false</code>/<code>no</code>/<code>non</code>/<code>off</code> désactive, <code>1</code>/<code>true</code>/<code>yes</code>/<code>oui</code>/<code>on</code> active) — la variable d’environnement l’emporte sur l’argument.</li>
+<li>Au passage : le <code>message("[TOUR] Cicerone package not available!")</code> de <code>mod_home.R</code> passe en <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info()</a></code> (règle 9 : pas de <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> en code de prod).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--desserte--garde-fou-mémoire-avant-lancement-oom-machine-0-115-12">Fixed — Desserte : garde-fou mémoire avant lancement (OOM machine)<a class="anchor" aria-label="anchor" href="#fixed--desserte--garde-fou-m%C3%A9moire-avant-lancement-oom-machine-0-115-12"></a></h4>
+<ul><li>
+<code>reseau_desserte(mode = "glouton")</code> sur une emprise réaliste faisait <strong>monter le worker à 16,8 Go en 15 min</strong>, puis tombait la machine par <strong>OOM</strong> (RStudio et navigateur emportés). Diagnostic : <code>foretaccess</code> matérialise une table de voisinage <strong>par cellule de grille</strong> (<code>NeibTable.neighbors</code>, un <code>Vec&lt;Vec&lt;Neighbor&gt;&gt;</code> Rust) couvrant le disque de rayon <code>d_neighborhood_m</code> (42 m par défaut) — soit <strong>~4,4 Ko par cellule</strong> à 5 m, linéaire en nombre de cellules et quadratique en <code>d_neighborhood / résolution</code>. Ce n’est <strong>pas une fuite</strong> (la mémoire est rendue entre parcelles) mais un pic structurel. Les 16,8 Go correspondent à ~3,9 M cellules, soit une emprise d’environ 10 km × 10 km.</li>
+<li>
+<strong>Garde-fou pré-vol</strong> dans <code>run_desserte()</code> : le pic est estimé depuis la seule emprise et le run est <strong>refusé avant toute acquisition</strong> (motif <code>desserte_memory_guard</code>) s’il dépasse 80 % de la RAM disponible — au lieu d’échouer en OOM non rattrapable après un quart d’heure de calcul. Échappatoire documentée : <code>NEMETON_DESSERTE_SKIP_GUARD=1</code>.</li>
+<li>
+<strong>Estimation affichée dans l’UI</strong> sous le champ « zone tampon » (nombre de cellules, pic estimé, RAM libre), recalculée à chaque changement du tampon : le coût est visible <strong>avant</strong> le clic.</li>
+<li>Correctif amont demandé à <code>foretaccess</code> (brief <code>~/brief-foretaccess-neibtable-memoire.md</code>) : ne pas matérialiser la table sur toute la grille. Tant qu’il n’est pas livré, les grandes emprises restent hors d’atteinte.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--pool-de-workers-future-non-borné-0-115-12">Fixed — Pool de workers <code>future</code> non borné<a class="anchor" aria-label="anchor" href="#fixed--pool-de-workers-future-non-born%C3%A9-0-115-12"></a></h4>
+<ul><li>
+<code>future::plan("multisession")</code> était appelé <strong>sans <code>workers</code></strong> sur <strong>19 sites</strong> (modules et services) : le pool prenait <code>availableCores()</code>, et les workers étant <strong>persistants</strong> (ils ne rendent pas leur RSS entre deux tâches), une machine 8 cœurs pouvait immobiliser 8 sessions R pleines — le mode de défaillance de la spec 008.</li>
+<li>Tous ces sites passent désormais par <code>.ensure_async_plan()</code>, qui borne le pool via <code>.resolve_parallel_workers()</code> : option <code>parallel_workers</code> &gt; variable d’environnement <code>NEMETON_PARALLEL_WORKERS</code> &gt; défaut <code>min(4, availableCores() - 2)</code>.</li>
+<li>L’option <code>parallel_workers</code> de <code>app_config.R</code>, déclarée mais <strong>jamais lue</strong> depuis son introduction, est enfin câblée.</li>
+<li>
+<strong>Plancher de 2 workers.</strong> <code>availableCores()</code> rapporte 2 sous <code>R CMD check</code> (<code>_R_CHECK_LIMIT_CORES_</code>), en CI et en conteneur : un <code>min(4, cap - 2)</code> nu y retombait à <strong>un seul worker</strong>, que le préchauffage occupait entièrement. Le plancher ne dépasse jamais la machine (hôte 1 cœur → 1 worker).</li>
+<li>
+<strong><code>warmup_async_workers()</code> laisse toujours un worker libre.</strong> Il chauffait <code>min(nbrOfWorkers, 4)</code> workers, soit la <strong>totalité</strong> du pool désormais borné, pendant les ~5-6 s de chargement du namespace : toute tâche async déclenchée dans cet intervalle (db_sync du premier projet, modale qui calcule) attendait la fin du préchauffage, boucle d’événements Shiny figée. Avant le bornage, 4 workers sur 8 restaient libres et masquaient le problème.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.115.11" id="nemetonshiny-011511-2026-07-24">nemetonshiny 0.115.11 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-011511-2026-07-24"></a></h2>

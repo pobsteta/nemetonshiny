@@ -9,7 +9,7 @@ to simple PDF generation."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -50,7 +50,8 @@ to simple PDF generation.</p>
 <span>  synthesis_comments <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  family_comments <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cover_image <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  use_quarto <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  use_quarto <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  regen_units <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -88,6 +89,11 @@ to simple PDF generation.</p>
 
 <dt id="arg-use-quarto">use_quarto<a class="anchor" aria-label="anchor" href="#arg-use-quarto"></a></dt>
 <dd><p>Logical. Whether to try Quarto first. Default TRUE.</p></dd>
+
+
+<dt id="arg-regen-units">regen_units<a class="anchor" aria-label="anchor" href="#arg-regen-units"></a></dt>
+<dd><p>sf. Optional reGénération run output; when provided, a
+"reGénération" section is appended to the Quarto report (spec 027 L6).</p></dd>
 
 </dl></div>
     <div class="section level2">
