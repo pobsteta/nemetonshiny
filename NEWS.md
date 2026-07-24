@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.4 (2026-07-24)
 
 ### Changed — Accessibilité : validation ACCESSFOR (IGN) systématique + volet d'office
 
