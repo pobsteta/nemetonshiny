@@ -1,6 +1,16 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.115.10 (2026-07-24)
+
+#### Fixed — Installation cassée par `Remotes: pobsteta/nemeton@*release`
+
+- Le `Remotes` `pobsteta/nemeton@*release` (introduit en v0.115.9)
+  \*\*cassait
+  l`installation** via`pak`:`pkgdepends`échoue à résoudre`@\*release`(« the condition has length > 1 ») →`nemeton`,`foretaccess`ET`nemetonshiny`impossibles à installer. Retour à **`pobsteta/nemeton\`\*\*
+  (sans ref), forme qui résout correctement (arbre de 174 paquets OK,
+  nemeton 0.167.x + foretaccess 1.21.0).
+- Le pin `foretaccess@v1.21.0` + plancher `(>= 1.20.0)` de v0.115.9 sont
+  conservés (ils résolvent sans problème).
 
 ## nemetonshiny 0.115.9 (2026-07-24)
 
