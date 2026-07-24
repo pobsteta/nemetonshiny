@@ -148,6 +148,14 @@ test_that("run_accessibility : pipeline complet sur données toy (IGN mocké)", 
       expect_setequal(res$engines, c("skidder", "porteur", "camion_dfci"))
       expect_true(all(file.exists(unlist(res$raster_paths))))
       expect_true(file.exists(res$gpkg_path))
+      # NDP 1 demandé sans nuage LiDAR (données toy) -> correction ignorée, repli
+      # desserte brute : provenance "ndp0_brute", aucun tronçon retiré. Les moteurs
+      # tournent quand même (desserte brute en entrée de preprocess).
+      res_ndp1 <- nemetonshiny:::run_accessibility(
+        aoi_path, "skidder", cache, ndp1_lidar = TRUE)
+      expect_equal(res_ndp1$status, "success")
+      expect_equal(res_ndp1$desserte_source, "ndp0_brute")
+      expect_equal(res_ndp1$n_troncons_retires, 0L)
       # Chaque moteur a produit un récap non vide.
       expect_true(all(vapply(res$recaps, nrow, integer(1)) > 0L))
       # Le skidder ajoute le raster « classes de débardage » — UNIQUEMENT si la
@@ -345,13 +353,14 @@ test_that("run_accessibility : moteur câble (NDP 0, places_depot + potentiel_ca
       },
       .package = "foretaccess",
       {
-        # NDP 0 : ndp1_lidar = FALSE -> pas de qualifier_desserte, places_depot
-        # sur la desserte brute -> provenance "ndp0_brute".
+        # NDP 0 : ndp1_lidar = FALSE -> pas de qualifier_desserte ; places_depot
+        # sur la desserte brute. Provenance desserte = NA (NDP 1 NON demandé).
         res <- nemetonshiny:::run_accessibility(aoi_path, "cable", cache,
                                                 ndp1_lidar = FALSE)
         expect_equal(res$status, "success")
         expect_true(file.exists(res$raster_paths[["cable"]]))
-        expect_equal(res$cable_departs_source, "ndp0_brute")
+        expect_true(is.na(res$desserte_source))
+        expect_equal(res$n_troncons_retires, 0L)
         expect_equal(res$n_departs, 1L)
         # potentiel_cable a bien reçu les départs de places_depot (closure).
         expect_s3_class(seen_departs, "sf")
