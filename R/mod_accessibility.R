@@ -144,6 +144,43 @@
   out
 }
 
+#' Paint one accessibility raster onto a leafletProxy in a dedicated map pane.
+#'
+#' Shared by the single-layer overlay and the ACCESSFOR swipe comparison. Applies
+#' the raster's own coltab (falling back to `.acc_level_colors`), always renders
+#' `hors_foret` transparent (mask to NA + alpha 00), and — when `legend_id` is
+#' supplied — draws the legend without the transparent classes. Returns the proxy.
+#'
+#' @noRd
+.acc_paint_raster <- function(proxy, rp, pane, group, op, i18n,
+                              legend_id = NULL) {
+  if (is.null(rp) || !file.exists(rp)) return(proxy)
+  rast <- tryCatch(terra::rast(rp), error = function(e) NULL)
+  if (is.null(rast)) return(proxy)
+  lv <- tryCatch(terra::levels(rast)[[1]], error = function(e) NULL)
+  if (is.data.frame(lv) && nrow(lv) > 0L) {
+    codes <- as.numeric(lv[[1]]); labs <- as.character(lv[[2]])
+    cols <- .acc_level_colors(rast, codes, labs)
+    hf <- !is.na(labs) & labs == "hors_foret"
+    if (any(hf)) cols[hf] <- "#FFFFFF00"
+    rast <- .acc_mask_hors_foret(rast, codes, labs)
+    cmap <- leaflet::colorFactor(cols, domain = codes, na.color = "transparent")
+    proxy <- leaflet::addRasterImage(proxy, rast, colors = cmap, opacity = op,
+      method = "ngb", group = group,
+      options = leaflet::gridOptions(pane = pane))
+    if (!is.null(legend_id)) {
+      keep <- !is.na(cols) & substr(cols, 8L, 9L) != "00"
+      proxy <- leaflet::addLegend(proxy, "bottomright", colors = cols[keep],
+        labels = .acc_legend_labels(labs[keep], i18n),
+        title = i18n$t("acc_legend_title"), layerId = legend_id, opacity = 0.8)
+    }
+  } else {
+    proxy <- leaflet::addRasterImage(proxy, rast, opacity = op, method = "ngb",
+      group = group, options = leaflet::gridOptions(pane = pane))
+  }
+  proxy
+}
+
 #' @noRd
 mod_accessibility_ui <- function(id) {
   ns <- shiny::NS(id)
@@ -541,6 +578,10 @@ mod_accessibility_server <- function(id, app_state) {
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonAccRaster", zIndex = 250) |>
+        # Panes gauche/droite pour la comparaison « swipe » ACCESSFOR : le volet
+        # (nemeton_swipe.js) les clippe de part et d'autre du curseur.
+        leaflet::addMapPane("nemetonAccSwipeL", zIndex = 250) |>
+        leaflet::addMapPane("nemetonAccSwipeR", zIndex = 250) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
           overlayGroups = overlays,
@@ -553,7 +594,12 @@ mod_accessibility_server <- function(id, app_state) {
           m <- leaflet::fitBounds(m, bb[1], bb[2], bb[3], bb[4])
         }
       }
-      m
+      # Enregistre l'objet carte Leaflet pour nemeton_swipe.js (repli
+      # `window.nemetonMaps[id]`, cf. findMap() du script).
+      htmlwidgets::onRender(m, "function(el, x) {
+        window.nemetonMaps = window.nemetonMaps || {};
+        window.nemetonMaps[el.id] = this;
+      }")
     })
     shiny::outputOptions(output, "map", suspendWhenHidden = FALSE)
 
@@ -573,49 +619,59 @@ mod_accessibility_server <- function(id, app_state) {
       layer <- input$layer %||% first_layer
       op <- opacity_d()
       shown <- input$map_groups   # groupes overlay cochés côté client
+      swipe_on <- isTRUE(input$accessfor_swipe)
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Accessibilite") |>
         leaflet::removeControl("acc_legend")
+      # En mode comparaison « swipe », l'observe dédié gère les deux panes
+      # gauche/droite : on n'ajoute PAS l'overlay simple (sinon triple raster).
+      if (swipe_on) return()
       if (is.null(res) || is.null(layer)) return()
       rp <- tryCatch(res$raster_paths[[layer]], error = function(e) NULL)
-      if (is.null(rp) || !file.exists(rp)) return()
-      rast <- tryCatch(terra::rast(rp), error = function(e) NULL)
-      if (is.null(rast)) return()
-
-      # Raster catégoriel : couleurs via la coltab du raster (ex. rampe Sylvaccess
-      # des classes de débardage) ou palette de repli. Légende sans les classes
-      # transparentes (alpha 00, ex. hors_foret).
-      lv <- tryCatch(terra::levels(rast)[[1]], error = function(e) NULL)
-      if (is.data.frame(lv) && nrow(lv) > 0L) {
-        codes <- as.numeric(lv[[1]]); labs <- as.character(lv[[2]])
-        cols <- .acc_level_colors(rast, codes, labs)
-        # « hors_foret » TOUJOURS transparent, quel que soit le raster : on
-        # masque les cellules à NA (cf. .acc_mask_hors_foret) et on force
-        # l'alpha 00 sur la couleur, ce qui suffit au filtre `keep` ci-dessous
-        # pour retirer la classe de la LÉGENDE.
-        hf <- !is.na(labs) & labs == "hors_foret"
-        if (any(hf)) cols[hf] <- "#FFFFFF00"
-        rast <- .acc_mask_hors_foret(rast, codes, labs)
-        cmap <- leaflet::colorFactor(cols, domain = codes, na.color = "transparent")
-        keep <- !is.na(cols) & substr(cols, 8L, 9L) != "00"
-        proxy |>
-          leaflet::addRasterImage(rast, colors = cmap, opacity = op,
-            method = "ngb", group = "Accessibilite",
-            options = leaflet::gridOptions(pane = "nemetonAccRaster")) |>
-          leaflet::addLegend("bottomright", colors = cols[keep],
-            labels = .acc_legend_labels(labs[keep], i18n),
-            title = i18n$t("acc_legend_title"), layerId = "acc_legend",
-            opacity = 0.8)
-      } else {
-        proxy |> leaflet::addRasterImage(rast, opacity = op, method = "ngb",
-          group = "Accessibilite",
-          options = leaflet::gridOptions(pane = "nemetonAccRaster"))
-      }
+      proxy <- .acc_paint_raster(proxy, rp, "nemetonAccRaster", "Accessibilite",
+                                 op, i18n, legend_id = "acc_legend")
       # Respecter la décoche du groupe « Accessibilite » après re-dessin proxy.
       if (!is.null(shown) && !("Accessibilite" %in% shown)) {
         leaflet::hideGroup(proxy, "Accessibilite")
       }
     })
+
+    # --- Comparaison « swipe » ACCESSFOR ----------------------------------------
+    # Toggle (dans le panneau ACCESSFOR) : superpose « classes de débardage »
+    # (notre calcul, pane gauche) et « ACCESSFOR IGN » (référence, pane droite),
+    # puis active le volet vertical draggable (nemeton_swipe.js) qui clippe les
+    # deux panes. Les deux rasters partagent la même coltab → lecture directe de
+    # l'écart. Off : retire le volet + vide les panes ; l'observe simple ci-dessus
+    # (qui lit aussi input$accessfor_swipe) repeint l'overlay courant.
+    shiny::observeEvent(input$accessfor_swipe, {
+      res <- rv$result
+      mapid <- session$ns("map")
+      op <- opacity_d()
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearGroup("AccSwipeL") |>
+        leaflet::clearGroup("AccSwipeR") |>
+        leaflet::removeControl("acc_swipe_legend")
+      if (!isTRUE(input$accessfor_swipe)) {
+        session$sendCustomMessage("nemetonSwipeOff", list(id = mapid))
+        return()
+      }
+      left_rp <- tryCatch(res$raster_paths[["classes_debardage"]],
+                          error = function(e) NULL)
+      right_rp <- tryCatch(res$raster_paths[["accessfor_skidder"]],
+                           error = function(e) NULL)
+      if (is.null(left_rp) || !file.exists(left_rp) ||
+          is.null(right_rp) || !file.exists(right_rp)) {
+        shiny::showNotification(i18n$t("accessfor_swipe_missing"), type = "warning")
+        shiny::updateCheckboxInput(session, "accessfor_swipe", value = FALSE)
+        return()
+      }
+      proxy <- .acc_paint_raster(proxy, left_rp, "nemetonAccSwipeL", "AccSwipeL",
+                                 op, i18n, legend_id = "acc_swipe_legend")
+      .acc_paint_raster(proxy, right_rp, "nemetonAccSwipeR", "AccSwipeR",
+                        op, i18n, legend_id = NULL)
+      session$sendCustomMessage("nemetonSwipeOn", list(
+        id = mapid, left = "nemetonAccSwipeL", right = "nemetonAccSwipeR"))
+    }, ignoreInit = TRUE)
 
     # Overlay « Desserte » : les routes/pistes (sources DFCI) qui ont servi au
     # calcul, lues depuis la couche `desserte` du GeoPackage du run. Dépend de
@@ -704,11 +760,17 @@ mod_accessibility_server <- function(id, app_state) {
           shiny::icon("circle-info"), " ",
           sprintf(i18n$t("accessfor_overall_fmt"), res$overall_pct, res$n_cells)),
         htmltools::tags$table(
-          class = "table table-sm table-striped small mb-0",
+          class = "table table-sm table-striped small mb-2",
           htmltools::tags$thead(htmltools::tags$tr(
             htmltools::tags$th(i18n$t("accessfor_col_class")),
             htmltools::tags$th(class = "text-end", i18n$t("accessfor_col_agree")))),
-          htmltools::tags$tbody(rows)))
+          htmltools::tags$tbody(rows)),
+        # Toggle de comparaison « swipe » : superpose nos classes de débardage et
+        # ACCESSFOR (IGN) avec un volet draggable pour lire l'écart directement.
+        shiny::checkboxInput(ns("accessfor_swipe"),
+          i18n$t("accessfor_swipe_toggle"), value = FALSE),
+        htmltools::tags$p(class = "text-muted small mb-0",
+                          i18n$t("accessfor_swipe_hint")))
     })
 
     # --- Export GeoPackage -----------------------------------------------------
