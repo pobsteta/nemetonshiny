@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.115.11 (2026-07-24)
 
 ### Fixed — Accessibilité : correction LiDAR et analyse mutuellement exclusives + chrono
