@@ -409,3 +409,102 @@ test_that(".acc_read_places_depot / .accessibility_gpkg_path : gardes", {
   expect_match(nemetonshiny:::.accessibility_gpkg_path("/proj"),
                "cache/accessibility/accessibilite.gpkg")
 })
+
+# --- Garde-fou memoire de la correction LiDAR --------------------------------
+# .mnt_alsroads (foretaccess) lit TOUTES les dalles d'un coup quand le MNT
+# fourni depasse 1,5 m -> 165,5 M de points = 16,8 Go observes puis OOM. Le
+# chemin normal est de fournir un MNT a 1 m ; ce garde-fou est le filet.
+
+test_that(".lidar_memory_estimate scales with the point count", {
+  skip_if_not_installed("lidR")
+  fake_ctg <- function(n) {
+    structure(list(), class = "LAScatalog")  # remplace par le stub ci-dessous
+  }
+  # Stub : on court-circuite readLAScatalog en passant un objet dont
+  # Number.of.point.records est lisible via `$`.
+  ctg <- structure(
+    list(`Number.of.point.records` = c(40e6, 45e6, 40e6, 40.5e6)),
+    class = c("LAScatalog", "list"))
+  est <- nemetonshiny:::.lidar_memory_estimate(ctg)
+  expect_equal(est$points, 165.5e6)
+  # 30 % de sol x 60 o x 2 (triangulation) = 36 o/point brut.
+  expect_equal(est$bytes, 165.5e6 * 0.30 * 60 * 2)
+  # ~ 5,3 Go pour ce nuage : du bon ordre de grandeur face aux 16,8 Go observes
+  # (l'estimation est volontairement grossiere, cote prudent sur ground_frac).
+  expect_gt(est$bytes / 1024^3, 3)
+})
+
+test_that(".lidar_memory_estimate returns NULL on unusable input", {
+  skip_if_not_installed("lidR")
+  expect_null(nemetonshiny:::.lidar_memory_estimate(
+    structure(list(`Number.of.point.records` = numeric(0)),
+              class = c("LAScatalog", "list"))))
+  expect_null(nemetonshiny:::.lidar_memory_estimate("/repertoire/inexistant"))
+})
+
+test_that(".lidar_memory_check refuses a cloud that would exhaust RAM", {
+  skip_if_not_installed("lidR")
+  skip_if_not(file.exists("/proc/meminfo"), "garde-fou base sur /proc/meminfo")
+  # 20 milliards de points -> ~430 Go : refus certain.
+  huge <- structure(list(`Number.of.point.records` = 2e10),
+                    class = c("LAScatalog", "list"))
+  withr::with_envvar(c(NEMETON_LIDAR_SKIP_GUARD = ""), {
+    chk <- nemetonshiny:::.lidar_memory_check(huge)
+    expect_false(chk$ok)
+    expect_gt(chk$bytes, chk$available)
+  })
+  withr::with_envvar(c(NEMETON_LIDAR_SKIP_GUARD = "1"), {
+    expect_true(nemetonshiny:::.lidar_memory_check(huge)$ok)
+  })
+})
+
+test_that(".lidar_memory_check accepts the real ForetAccess cloud (4 dalles)", {
+  skip_if_not_installed("lidR")
+  skip_if_not(file.exists("/proc/meminfo"), "garde-fou base sur /proc/meminfo")
+  real <- structure(list(`Number.of.point.records` = c(40e6, 45e6, 40e6, 40.5e6)),
+                    class = c("LAScatalog", "list"))
+  withr::with_envvar(c(NEMETON_LIDAR_SKIP_GUARD = ""), {
+    # ~5,3 Go estimes : passe sur une machine avec de la marge, ce qui est le
+    # comportement voulu (le garde-fou ne doit pas bloquer un cas tenable).
+    chk <- nemetonshiny:::.lidar_memory_check(real)
+    expect_true(is.finite(chk$bytes))
+    expect_equal(chk$points, 165.5e6)
+  })
+})
+
+test_that("the LiDAR memory-guard reason has FR/EN translations", {
+  for (lg in c("fr", "en")) {
+    i18n <- get_i18n(lg)
+    expect_true(nzchar(i18n$t("acc_correct_memory_guard")))
+    expect_false(identical(i18n$t("acc_correct_memory_guard"),
+                           "acc_correct_memory_guard"))
+  }
+})
+
+test_that(".acquire_mnt_highres keys its cache on the RESOLUTION", {
+  # Sans ca, une demande a 1 m (correction LiDAR) ecraserait le MNT a 5 m de
+  # l'analyse d'accessibilite, qui partage le meme cache_dir d'emprise.
+  withr::with_tempdir({
+    writeLines("x", "mnt_highres_5m.tif")
+    writeLines("x", "mnt_highres_1m.tif")
+    expect_match(nemetonshiny:::.acquire_mnt_highres(NULL, res_m = 5,
+                                                     cache_dir = "."),
+                 "mnt_highres_5m\\.tif$")
+    expect_match(nemetonshiny:::.acquire_mnt_highres(NULL, res_m = 1,
+                                                     cache_dir = "."),
+                 "mnt_highres_1m\\.tif$")
+  })
+})
+
+test_that(".acquire_mnt_highres still reads a legacy 5 m cache", {
+  withr::with_tempdir({
+    writeLines("x", "mnt_highres.tif")   # cache d'avant le suffixe (toujours 5 m)
+    expect_match(nemetonshiny:::.acquire_mnt_highres(NULL, res_m = 5,
+                                                     cache_dir = "."),
+                 "mnt_highres\\.tif$")
+    # Mais PAS pour une autre resolution : le legacy est a 5 m.
+    expect_false(identical(
+      nemetonshiny:::.acquire_mnt_highres(NULL, res_m = 1, cache_dir = "."),
+      file.path(".", "mnt_highres.tif")))
+  })
+})

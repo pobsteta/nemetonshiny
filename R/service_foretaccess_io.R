@@ -67,8 +67,19 @@
 .acquire_mnt_highres <- function(aoi, res_m = 5, crs = 2154, cache_dir = tempdir(),
                                  overwrite = FALSE) {
   if (!requireNamespace("happign", quietly = TRUE)) return(NULL)
-  path <- file.path(cache_dir, "mnt_highres.tif")
+  # La RÉSOLUTION entre dans le nom du cache. Sans ça, une demande à 1 m (chemin
+  # de correction LiDAR, cf. .acquire_mnt_desserte) écraserait le MNT à 5 m de
+  # l'analyse d'accessibilité, qui partage le même `cache_dir` d'emprise — et
+  # réciproquement, l'un servirait l'autre en silence à la mauvaise résolution.
+  # `mnt_highres.tif` (sans suffixe) reste lu en repli pour ne pas invalider les
+  # caches déjà sur disque, qui sont tous à 5 m.
+  path <- file.path(cache_dir, sprintf("mnt_highres_%gm.tif", res_m))
   if (file.exists(path) && !isTRUE(overwrite)) return(path)
+  legacy <- file.path(cache_dir, "mnt_highres.tif")
+  if (identical(as.numeric(res_m), 5) && file.exists(legacy) &&
+      !isTRUE(overwrite)) {
+    return(legacy)
+  }
   dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
   aoi <- tryCatch(sf::st_transform(aoi, crs), error = function(e) aoi)
   ok <- tryCatch({

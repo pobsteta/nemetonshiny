@@ -67,6 +67,7 @@ TRANSLATIONS <- list(
   acc_correct_no_lidar = list(fr = "Aucun nuage LiDAR HD dans le projet : correction impossible.", en = "No LiDAR HD point cloud in the project: correction not possible."),
   acc_correct_old_foretaccess = list(fr = "foretaccess < 1.19.1 : correction LiDAR indisponible (mettez \u00e0 jour).", en = "foretaccess < 1.19.1: LiDAR correction unavailable (please update)."),
   acc_correct_no_lidr = list(fr = "Paquets lidR/ALSroads absents : correction LiDAR indisponible.", en = "lidR/ALSroads packages missing: LiDAR correction unavailable."),
+  acc_correct_memory_guard = list(fr = "Correction LiDAR annulée : la dérivation du MNT lirait tout le nuage de points et dépasserait la mémoire disponible.", en = "LiDAR correction cancelled: deriving the DTM would read the whole point cloud and exceed available memory."),
   acc_correct_attrs_lost = list(fr = "La qualification LiDAR a perdu la colonne 'classe' : desserte corrig\u00e9e inutilisable.", en = "LiDAR qualification dropped the 'classe' column: corrected network unusable."),
   acc_correct_write_failed = list(fr = "\u00c9chec d'\u00e9criture de la desserte corrig\u00e9e.", en = "Failed to write the corrected road network."),
   acc_desserte_ndp1_badge = list(fr = "Desserte corrig\u00e9e au LiDAR (g\u00e9om\u00e9trie recal\u00e9e, largeurs mesur\u00e9es) \u2014 entr\u00e9e de tous les moteurs.", en = "LiDAR-corrected road network (re-aligned geometry, measured widths) \u2014 input to all engines."),

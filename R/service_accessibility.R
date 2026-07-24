@@ -175,7 +175,71 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 #' desserte, per-buffer sub-cache). Returns `list(status = "ok", aoi, aoi_ext,
 #' epsg, acq_dir, mnt, desserte)` or a structured error list.
 #' @noRd
-.acquire_mnt_desserte <- function(aoi_path, cache_dir, buffer_m = 0) {
+# --- Garde-fou mémoire de la correction LiDAR --------------------------------
+#
+# `foretaccess::qualifier_desserte()` mesure les largeurs tronçon par tronçon en
+# exploitant correctement le `LAScatalog` (hors mémoire, avec filtre de
+# couverture depuis 1.19.1). MAIS `.mnt_alsroads()` (desserte_lidar.R), quand le
+# MNT fourni dépasse 1,5 m, dérive un MNT à 1 m par
+# `readLAS(ctg$filename, filter = "-keep_class 2")` : le vecteur COMPLET des
+# dalles, donc tout le nuage sol en mémoire d'un coup, puis une triangulation
+# (`rasterize_terrain(tin())`) par-dessus. Le catalogue est court-circuité, alors
+# que `rasterize_terrain()` sait travailler directement sur un `LAScatalog`.
+#
+# Mesuré sur le projet ForêtAccess : 4 dalles LiDAR HD = 165,5 M de points
+# (908 Mo compressés) -> worker à 16,8 Go en 15 min, puis OOM machine (RStudio et
+# navigateur emportés). Le chemin normal est d'éviter la dérivation (MNT <= 1,5 m
+# fourni) ; ce garde-fou n'est que le filet quand on n'y arrive pas.
+
+#' Estimate the peak memory of the ALSroads DTM derivation for a point cloud
+#'
+#' Ground points (ASPRS class 2) are typically ~20-35 % of an IGN LiDAR HD tile;
+#' a `lidR` point costs ~60 bytes with its attributes, and the Delaunay
+#' triangulation of `rasterize_terrain(tin())` roughly doubles that. Deliberately
+#' coarse — it only has to tell « comfortable » from « this will kill the
+#' machine ».
+#'
+#' @param laz_dir Directory of `.laz`/`.copc.laz` tiles, or a `LAScatalog`.
+#' @param ground_frac Assumed share of ground points.
+#' @param bytes_per_point Assumed in-memory cost per point.
+#' @param tin_factor Multiplier covering the triangulation.
+#' @return A list: `points`, `bytes`, `available`, `ok`.
+#' @noRd
+.lidar_memory_estimate <- function(laz_dir, ground_frac = 0.30,
+                                   bytes_per_point = 60, tin_factor = 2) {
+  if (!requireNamespace("lidR", quietly = TRUE)) return(NULL)
+  ctg <- tryCatch(
+    if (inherits(laz_dir, "LAScatalog")) laz_dir else lidR::readLAScatalog(laz_dir),
+    error = function(e) NULL)
+  if (is.null(ctg)) return(NULL)
+  n <- tryCatch(sum(as.numeric(ctg$Number.of.point.records), na.rm = TRUE),
+                error = function(e) NA_real_)
+  if (!is.finite(n) || n <= 0) return(NULL)
+  list(points = n, bytes = n * ground_frac * bytes_per_point * tin_factor)
+}
+
+#' Pre-flight memory check for the ALSroads DTM derivation
+#'
+#' Bypass with `NEMETON_LIDAR_SKIP_GUARD=1`.
+#'
+#' @param laz_dir Directory of tiles, or a `LAScatalog`.
+#' @param frac Fraction of available RAM the derivation may claim.
+#' @return A list: `ok`, `points`, `bytes`, `available`.
+#' @noRd
+.lidar_memory_check <- function(laz_dir, frac = 0.8) {
+  est <- .lidar_memory_estimate(laz_dir)
+  avail <- .available_memory_bytes()
+  skip <- tolower(Sys.getenv("NEMETON_LIDAR_SKIP_GUARD", "")) %in%
+    c("1", "true", "yes", "oui")
+  if (is.null(est)) {
+    return(list(ok = TRUE, points = NA_real_, bytes = NA_real_, available = avail))
+  }
+  ok <- skip || !is.finite(avail) || est$bytes <= avail * frac
+  list(ok = isTRUE(ok), points = est$points, bytes = est$bytes, available = avail)
+}
+
+.acquire_mnt_desserte <- function(aoi_path, cache_dir, buffer_m = 0,
+                                  res_m = 5) {
   if (!requireNamespace("foretaccess", quietly = TRUE)) {
     return(list(status = "error", reason = "accessibility_no_foretaccess"))
   }
@@ -198,10 +262,14 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
   dir.create(acq_dir, recursive = TRUE, showWarnings = FALSE)
 
-  mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = epsg, cache_dir = acq_dir)
+  res_m <- suppressWarnings(as.numeric(res_m))
+  if (!is.finite(res_m) || res_m <= 0) res_m <- 5
+  mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = res_m, crs = epsg,
+                                   cache_dir = acq_dir)
   if (is.null(mnt_path)) {
     mnt_path <- tryCatch(
-      foretaccess::acquire_mnt(aoi_ext, res_m = 5, crs = epsg, cache_dir = acq_dir),
+      foretaccess::acquire_mnt(aoi_ext, res_m = res_m, crs = epsg,
+                               cache_dir = acq_dir),
       error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   }
   if (inherits(mnt_path, "acc_err")) {
@@ -261,8 +329,31 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
     return(list(status = "error", reason = "acc_correct_no_lidr"))
   }
 
-  acq <- .acquire_mnt_desserte(aoi_path, cache_dir, buffer_m)
+  # MNT à 1 m — PAS les 5 m de l'analyse d'accessibilité. `foretaccess`
+  # (`.mnt_alsroads`, desserte_lidar.R) renvoie le MNT fourni tel quel dès qu'il
+  # est <= 1,5 m ; au-delà il en DÉRIVE un par triangulation, et cette
+  # dérivation lit toutes les dalles d'un coup
+  # (`readLAS(ctg$filename, filter = "-keep_class 2")`), court-circuitant le
+  # LAScatalog. Mesuré : 4 dalles LiDAR HD = 165,5 M de points -> le worker
+  # monte à 16,8 Go puis la machine tombe en OOM. Fournir 1 m supprime la cause
+  # (aucun point lu) et c'est la résolution qu'ALSroads attend de toute façon.
+  acq <- .acquire_mnt_desserte(aoi_path, cache_dir, buffer_m, res_m = 1)
   if (!identical(acq$status, "ok")) return(acq)
+
+  # Filet : si le MNT obtenu reste trop grossier (WMS dégradé, repli
+  # acquire_mnt), la dérivation se déclenchera côté foretaccess. On estime alors
+  # son coût depuis le nuage et on refuse plutôt que de partir en OOM.
+  if (max(terra::res(acq$mnt)) > 1.5) {
+    chk <- .lidar_memory_check(laz_dir)
+    if (!isTRUE(chk$ok)) {
+      return(list(status = "error", reason = "acc_correct_memory_guard",
+                  detail = sprintf(
+                    "MNT a %.1f m (> 1,5 m) : foretaccess derivera un MNT en lisant %s points ; pic estime %.1f Go, RAM disponible %.1f Go",
+                    max(terra::res(acq$mnt)),
+                    format(chk$points, big.mark = " "),
+                    chk$bytes / 1024^3, chk$available / 1024^3)))
+    }
+  }
 
   n_avant <- nrow(acq$desserte)
   dq <- tryCatch(

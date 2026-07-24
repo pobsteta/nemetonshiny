@@ -1,5 +1,38 @@
 # nemetonshiny (development version)
 
+### Fixed — Correction LiDAR de la desserte : OOM machine (MNT à 1 m)
+
+- La **correction LiDAR** (`qualifier_desserte()`, onglet Accessibilité, NDP 1)
+  faisait monter le worker à **16,8 Go en 15 min**, puis tombait la machine par
+  **OOM** (RStudio et navigateur emportés).
+- Cause, côté `foretaccess` : `.mnt_alsroads()` (`R/desserte_lidar.R`) dérive un
+  MNT à 1 m dès que le MNT fourni dépasse 1,5 m, et cette dérivation fait
+  `readLAS(ctg$filename, filter = "-keep_class 2")` — le **vecteur complet des
+  dalles**, donc tout le nuage sol en mémoire d'un coup, puis une triangulation
+  de Delaunay par-dessus. Le `LAScatalog` est court-circuité, alors que
+  `lidR::rasterize_terrain()` sait travailler par tuiles hors mémoire. Mesuré
+  sur ForêtAccess : 4 dalles LiDAR HD = **165,5 M de points**.
+- L'app passait un MNT à **5 m** (grille d'accessibilité), déclenchant donc la
+  dérivation **systématiquement**. Elle demande maintenant **1 m** sur ce chemin
+  (`.acquire_mnt_desserte(res_m = 1)`) : `.mnt_alsroads()` renvoie alors le MNT
+  tel quel et **ne lit aucun point**. C'est aussi la résolution qu'ALSroads
+  documente (« a resolution of at least of 1 m », cohérent avec ses profils à
+  0,5 m et ses seuils de largeur carrossable à 1 et 5 m).
+- **Cache MNT indexé sur la résolution** (`mnt_highres_<res>m.tif`) : sans ça un
+  MNT à 1 m écraserait celui à 5 m de l'analyse d'accessibilité, qui partage le
+  même répertoire d'emprise. Un `mnt_highres.tif` déjà sur disque reste lu en
+  repli pour 5 m (tous les caches existants sont à 5 m).
+- **Garde-fou de repli** `.lidar_memory_check()` : si le MNT obtenu reste
+  > 1,5 m (WMS dégradé, repli `acquire_mnt`), le pic de la dérivation est estimé
+  depuis `Number.of.point.records` du catalogue et le run est refusé
+  (`acc_correct_memory_guard`) au lieu de partir en OOM. Échappatoire :
+  `NEMETON_LIDAR_SKIP_GUARD=1`.
+- **Réserve** : demander 1 m au WMS IGN ne garantit pas une donnée *nativement*
+  à 1 m — le service peut rééchantillonner du 5 m, ce que la vérification de
+  taille de cellule ne détecte pas. C'est un contournement ; le correctif de
+  fond appartient à `foretaccess` (brief
+  `~/brief-foretaccess-neibtable-memoire.md`, finding 1).
+
 ### Fixed — Typage du réseau : « Volume P1 absent » sur un projet pourtant calculé
 
 - Le typage refusait de démarrer avec « Volume P1 absent des parcelles :
