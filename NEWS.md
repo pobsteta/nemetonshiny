@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+### Added — Accessibilité/Desserte : couche « Places de dépôt »
+
+- Les **places de dépôt** calculées par `foretaccess::places_depot()` le long de la
+  desserte (corrigée au LiDAR HD en NDP 1, câble) sont désormais **persistées en
+  géométrie** (couche `places_depot` du GeoPackage du run), plus seulement comptées.
+- Nouvelle couche **« Places de dépôt »** (points rouges) cochable dans le contrôle
+  des couches des **deux cartes** : Accessibilité (contexte câble) et Desserte
+  (situer les dépôts vis-à-vis du réseau créé/typé). Les deux cartes lisent la même
+  source (GeoPackage d'accessibilité du projet), via les helpers
+  `.accessibility_gpkg_path()` + `.acc_read_places_depot()`.
+
 # nemetonshiny 0.115.4 (2026-07-24)
 
 ### Changed — Accessibilité : validation ACCESSFOR (IGN) systématique + volet d'office

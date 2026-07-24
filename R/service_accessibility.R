@@ -46,6 +46,32 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   file.path(project_path, "cache", "accessibility")
 }
 
+#' Path to a project's accessibility-run GeoPackage (may not exist yet)
+#'
+#' Single source of the run's vector layers (`foret`, `desserte`, `places_depot`).
+#' Used by both the Accessibility and Desserte maps to overlay the landing points.
+#' @noRd
+.accessibility_gpkg_path <- function(project_path) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  file.path(.accessibility_cache_dir(project_path), "accessibilite.gpkg")
+}
+
+#' Read the `places_depot` layer (landing points) from a run GeoPackage, in WGS84
+#'
+#' Returns the landing points as an sf in EPSG:4326 (ready for Leaflet), or NULL
+#' when the GeoPackage is missing, has no `places_depot` layer (NDP 0 / no cable
+#' run), or the layer is empty.
+#' @noRd
+.acc_read_places_depot <- function(gpkg_path) {
+  if (is.null(gpkg_path) || !file.exists(gpkg_path)) return(NULL)
+  layers <- tryCatch(sf::st_layers(gpkg_path)$name, error = function(e) character(0))
+  if (!("places_depot" %in% layers)) return(NULL)
+  pd <- tryCatch(sf::st_read(gpkg_path, layer = "places_depot", quiet = TRUE),
+                 error = function(e) NULL)
+  if (!inherits(pd, "sf") || nrow(pd) == 0L) return(NULL)
+  tryCatch(sf::st_transform(pd, 4326), error = function(e) pd)
+}
+
 #' Reconstruct a run result from a project's cached accessibility rasters
 #'
 #' Lets the tab show a **previously computed** analysis without recomputing:
@@ -383,6 +409,14 @@ run_accessibility <- function(aoi_path, engines, cache_dir, buffer_m = 0,
                  quiet = TRUE, delete_dsn = TRUE)
     sf::st_write(sf::st_transform(desserte, 2154), gpkg_path, layer = "desserte",
                  quiet = TRUE, append = TRUE)
+    # Places de dépôt calculées par `places_depot()` le long de la desserte
+    # (corrigée au LiDAR en NDP 1) : on PERSISTE la géométrie (pas seulement le
+    # nombre) pour l'afficher en couche « Places de dépôt » sur les cartes
+    # Accessibilité et Desserte.
+    if (inherits(departs, "sf") && nrow(departs) > 0L) {
+      sf::st_write(sf::st_transform(departs, 2154), gpkg_path,
+                   layer = "places_depot", quiet = TRUE, append = TRUE)
+    }
   }, error = function(e) cli::cli_warn(
     "accessibility GPKG write failed: {conditionMessage(e)}"))
 
