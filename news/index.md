@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.115.10 (2026-07-24)
 
 #### Fixed — Installation cassée par `Remotes: pobsteta/nemeton@*release`

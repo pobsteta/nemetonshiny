@@ -234,24 +234,25 @@ sans rebuild, support dynamique du switch langue.
 - **cicerone** pour les tours guidés (Suggests)
 - **quarto** pour les exports rapport (Suggests)
 
-`Remotes: pobsteta/nemeton@*release` dans `DESCRIPTION` — **l’app suit
-en continu la dernière release publiée du cœur** (depuis v0.38.8 ;
-auparavant pin tag figé `@vX.Y.Z` de v0.38.0 à v0.38.7, et `@main` avant
-v0.38.0). La référence spéciale `@*release` de `remotes`/`pak` résout à
-chaque install le **tag de release le plus élevé** de `pobsteta/nemeton`
-: un `install_github("pobsteta/nemetonshiny")` tire toujours la plus
-haute version cœur, sans bump manuel du `Remotes:`. Avantages : (a) la
-dernière fonction/correctif cœur est disponible dès la release `nemeton`
-suivante, (b) on consomme toujours une **vraie release taguée**, jamais
-du `main` non publié. Contrepartie : reproductibilité d’install pure
-perdue dans le temps (`install_github("…@vA.B.C")` ne redonne pas le
-même état dans 6 mois si `nemeton` a publié des releases entre-temps) —
-pour figer un état composite app+cœur, utiliser `renv::snapshot()` côté
-projet utilisateur. Le plancher `Imports: nemeton (>= X.Y.Z)` reste le
-**minimum** que le code app exige (garde-fou contre un cœur déjà
-installé trop ancien) — il ne suit PAS la dernière version, il est bumpé
-seulement quand le code app consomme une nouvelle API. Installation
-locale en dev via `pak::local_install("/home/pascal/dev/nemeton")` ou
+`Remotes: pobsteta/nemeton` (**sans ref**) dans `DESCRIPTION` —
+`remotes`/`pak` le résolvent à la **branche par défaut (`main`)** de
+`pobsteta/nemeton` à chaque install : l’app tire le **dernier état
+`main` du cœur** (y compris le cycle dev non publié, ex.
+`0.167.0.9000`), sans bump manuel du `Remotes:`. ⚠️ **NE PAS écrire
+`@*release`** : `pak`/`pkgdepends` **ne sait pas résoudre** ce ref («
+the condition has length \> 1 ») et **casse l’installation** de
+`nemeton`, `foretaccess` ET `nemetonshiny` (vérifié 2026-07-24, pak
+0.11.0 — régression introduite en v0.115.9, corrigée en v0.115.10 par le
+retour à la forme sans ref). Contrepartie de la forme sans ref : `main`
+peut contenir du code non publié / instable (là où `@*release`, s’il
+marchait, ne tirerait que des tags de release) — pour figer un état
+stable, pinner `@vX.Y.Z` (bump manuel, comme `foretaccess@v1.21.0`) ou
+`renv::snapshot()` côté projet utilisateur. Le plancher
+`Imports: nemeton (>= X.Y.Z)` reste le **minimum** que le code app exige
+(garde-fou contre un cœur déjà installé trop ancien) — il ne suit PAS la
+dernière version, il est bumpé seulement quand le code app consomme une
+nouvelle API. Installation locale en dev via
+`pak::local_install("/home/pascal/dev/nemeton")` ou
 `pkgload::load_all("/home/pascal/dev/nemeton")` — pas d’aller-retour
 GitHub.
 
@@ -516,60 +517,51 @@ entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 - Quand un changement implique aussi `nemeton`, faire les deux releases
   dans l’ordre cœur → app (l’app dépend du cœur, jamais l’inverse).
 
-## Suivi de la dernière release `nemeton` (`@*release`) — implications
+## Suivi du cœur `nemeton` via `Remotes` — état réel et piège `@*release`
 
-Choix architectural (cf. *Stack technique*) :
-`Remotes: pobsteta/nemeton@*release`. La référence spéciale `@*release`
-(`remotes`/`pak`) résout à chaque install le **tag de release le plus
-élevé** de `pobsteta/nemeton` — l’app consomme donc toujours la plus
-haute version cœur publiée, sans intervention. Historique : `@main`
-avant v0.38.0, pin tag figé `@vX.Y.Z` de v0.38.0 à v0.38.7, `@*release`
-depuis v0.38.8.
+Forme courante : `Remotes: pobsteta/nemeton` (**sans ref**).
+`remotes`/`pak` la résolvent à la **branche par défaut (`main`)** de
+`pobsteta/nemeton` à chaque install — l’app tire donc le **dernier état
+`main` du cœur** (y compris le cycle dev non publié, ex.
+`0.167.0.9000`), sans intervention manuelle. Historique : `@main` avant
+v0.38.0, pin `@vX.Y.Z` de v0.38.0 à v0.38.7, `@*release` de v0.38.8
+jusqu’à ce qu’il casse pak, puis **forme sans ref**.
+
+> ⚠️ **NE JAMAIS écrire `Remotes: pobsteta/nemeton@*release`.** La
+> référence `@*release` (censée tirer le tag de release le plus élevé)
+> **casse l’installation via `pak`** : `pkgdepends` échoue à la résoudre
+> (« the condition has length \> 1 »), rendant `nemeton`, `foretaccess`
+> ET `nemetonshiny` non-installables. Vérifié le 2026-07-24 (pak
+> 0.11.0). La « restaurer » d’après une doc ancienne a cassé les
+> installs en v0.115.9, corrigé en v0.115.10 par le retour à la forme
+> sans ref.
 
 Conséquences pratiques :
 
-- **Pas de bump `Remotes:` après une release cœur.** Inutile :
-  `@*release` ne pointe pas sur un tag figé. Une release
-  `nemeton@vX.Y.Z` est consommée automatiquement par tous les nouveaux
-  installs app dès sa publication GitHub.
-- **Le plancher `Imports: nemeton (>= X.Y.Z)` n’est PAS la dernière
-  version.** C’est le **minimum** que le code app exige — un garde-fou
-  contre un cœur déjà installé trop ancien. On le bumpe uniquement quand
-  le code app se met à consommer une nouvelle API cœur (commit
-  `chore(deps):` dédié), jamais « pour suivre » la dernière release.
-  `@*release` se charge de tirer plus haut que le plancher.
-- **Vérifier la version `nemeton` avant tout travail cœur↔︎app.** Avant
-  de consommer une fonction cœur récente : (a)
-  `gh release list --repo pobsteta/nemeton` pour voir la dernière
-  release,
-  2.  vérifier qu’elle expose bien la fonction visée,
-  3.  si oui, le code app peut l’appeler directement — `@*release` la
-      fournira ; ne bumper `Imports:` que si l’app exige cette version
-      comme minimum strict.
-- **Reproductibilité d’install pure perdue.**
-  `install_github("pobsteta/nemetonshiny@vA.B.C")` fait dans 6 mois ne
-  redonne pas le même état composite si `nemeton` a publié des releases
-  entre-temps. Pour un travail exigeant la reproductibilité (publication
-  scientifique, bug-hunt sur état figé), s’appuyer sur
-  `renv::snapshot()` côté projet utilisateur — pas sur le `Remotes:` du
-  `DESCRIPTION`.
-- **Une régression dans une release `nemeton` casse l’install app.**
-  Comme `@*release` tire la dernière release, une release cœur boguée
-  impacte les nouveaux installs app jusqu’à la release cœur corrective.
-  Mitigation : ne publier une release `nemeton` qu’avec CI verte ;
-  release patch rapide côté cœur si découvert. (`@main` était pire —
-  exposait aussi le code non publié ; `@*release` ne consomme que des
-  tags de release.)
-- **Règle 11 (ordre cœur → app).** Toujours valable pour les changements
-  d’API : on release d’abord `nemeton@vX.Y.Z`, puis l’app peut consommer
-  la nouvelle API. Mais la propagation est redevenue automatique — plus
-  de bump `Remotes:`, juste l’attente que la release cœur soit publiée.
+- **Pas de bump `Remotes:` après une release cœur.** La forme sans ref
+  tire `main` à chaque install : le dernier correctif/fonction cœur est
+  disponible dès qu’il est sur `main` de `nemeton`, sans intervention.
+- **Contrepartie : `main` peut contenir du code non publié / instable.**
+  À la différence de `@*release` (idéal mais cassé pour pak), la forme
+  sans ref n’attend pas un tag de release. Pour figer un état stable,
+  **pinner `@vX.Y.Z`** (bump manuel, comme `foretaccess@v1.21.0`) ou
+  `renv::snapshot()` côté projet utilisateur — pas le `Remotes:` par
+  défaut.
+- **Le plancher `Imports: nemeton (>= X.Y.Z)`** reste le **minimum** que
+  le code app exige (garde-fou contre un cœur déjà installé trop ancien)
+  — bumpé seulement quand l’app consomme une nouvelle API cœur
+  (`chore(deps):`), jamais « pour suivre » la dernière version.
+- **Vérifier la version `nemeton` avant tout travail cœur↔︎app** :
+  `gh release list --repo pobsteta/nemeton`, vérifier que la fonction
+  visée est exposée, puis l’app peut l’appeler (la forme sans ref tirera
+  `main`) ; ne bumper `Imports:` que si l’app exige cette version comme
+  minimum strict.
+- **Règle 11 (ordre cœur → app)** toujours valable pour les changements
+  d’API : on release/merge d’abord côté `nemeton`, puis l’app consomme.
 - **Développement local** :
   `pkgload::load_all("/home/pascal/dev/nemeton")` ou
   `pak::local_install("/home/pascal/dev/nemeton")` court-circuitent
-  GitHub et `@*release` — le développeur teste contre son arbre cœur
-  local quelle que soit la dernière release. `@*release` ne gouverne que
-  les installs GitHub.
+  GitHub — le développeur teste contre son arbre cœur local.
 
 ## Workflow de push (branche dev → main)
 
