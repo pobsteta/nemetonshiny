@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.115.2 (2026-07-24)
 
 #### Changed — Accessibilité : NDP 1 câble n’est plus « expérimental »
