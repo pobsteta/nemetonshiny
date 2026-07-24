@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.115.8 (2026-07-24)
 
 ### Changed — Accessibilité : correction LiDAR découplée des runs moteurs
 
