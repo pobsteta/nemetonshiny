@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.115.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,12 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.115.3" id="nemetonshiny-01153-2026-07-24">nemetonshiny 0.115.3 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01153-2026-07-24"></a></h2>
+<div class="section level4">
+<h4 id="changed--chargement-de-projet-plus-rapide-caches-terrain-paresseux-0-115-3">Changed — Chargement de projet plus rapide (caches Terrain paresseux)<a class="anchor" aria-label="anchor" href="#changed--chargement-de-projet-plus-rapide-caches-terrain-paresseux-0-115-3"></a></h4>
+<ul><li>Le clic sur un projet récent <strong>ne lit plus les caches disque des onglets Accessibilité et Desserte</strong> à l’ouverture : ces couches (5 rasters d’accessibilité, réseau de desserte) se chargent désormais <strong>paresseusement, au premier affichage de leur sous-onglet respectif</strong> (une fois par projet). Le chargement initial est donc plus rapide, et les toasts « Résultats d’accessibilité précédents chargés » / « Réseau de desserte précédent chargé » n’apparaissent qu’en arrivant sur l’onglet concerné, en contexte.</li>
+<li>Le navset « Terrain » reçoit un <code>id</code> (<code>terrain_nav</code>) et <code>app_state</code> suit le sous-onglet actif (<code>active_terrain_tab</code>) — support du chargement paresseux. Au changement de projet, l’ancien résultat est vidé immédiatement (léger, sans IO) pour ne pas afficher un run périmé.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.115.2" id="nemetonshiny-01152-2026-07-24">nemetonshiny 0.115.2 (2026-07-24)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01152-2026-07-24"></a></h2>

@@ -1,6 +1,22 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.115.3 (2026-07-24)
+
+#### Changed — Chargement de projet plus rapide (caches Terrain paresseux)
+
+- Le clic sur un projet récent **ne lit plus les caches disque des
+  onglets Accessibilité et Desserte** à l’ouverture : ces couches (5
+  rasters d’accessibilité, réseau de desserte) se chargent désormais
+  **paresseusement, au premier affichage de leur sous-onglet respectif**
+  (une fois par projet). Le chargement initial est donc plus rapide, et
+  les toasts « Résultats d’accessibilité précédents chargés » / « Réseau
+  de desserte précédent chargé » n’apparaissent qu’en arrivant sur
+  l’onglet concerné, en contexte.
+- Le navset « Terrain » reçoit un `id` (`terrain_nav`) et `app_state`
+  suit le sous-onglet actif (`active_terrain_tab`) — support du
+  chargement paresseux. Au changement de projet, l’ancien résultat est
+  vidé immédiatement (léger, sans IO) pour ne pas afficher un run
+  périmé.
 
 ## nemetonshiny 0.115.2 (2026-07-24)
 
