@@ -374,9 +374,16 @@ mod_accessibility_server <- function(id, app_state) {
       correct_refresh(correct_refresh() + 1L), ignoreNULL = FALSE)
 
     rv_correct <- shiny::reactiveVal(NULL)   # dernier résumé de correction
+    correct_start <- shiny::reactiveVal(NULL)   # horodatage de départ (chrono)
     shiny::observeEvent(input$correct_desserte, {
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("correct_desserte", state = "ready"); return()
+      }
+      # Symétrique du garde du run : pas de correction pendant une analyse.
+      if (isTRUE(rv$running)) {
+        bslib::update_task_button("correct_desserte", state = "ready")
+        shiny::showNotification(i18n$t("acc_analysis_busy"), type = "warning",
+                                duration = 5); return()
       }
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       aoi <- units_sf()
@@ -394,19 +401,44 @@ mod_accessibility_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("acc_need_project"), type = "warning"); return()
       }
       rv_correct(list(status = "running"))
+      correct_start(Sys.time())
+      # Grise « Lancer l'analyse » pendant toute la correction (réactivé à la fin).
+      shiny::updateActionButton(session, "run", disabled = TRUE)
+      # Toast bas-droite persistant avec chrono (parité avec l'analyse) : la
+      # correction dure ~2-3 h, l'utilisateur doit voir qu'elle tourne.
+      shiny::showNotification(
+        .running_notif_content(i18n$t("acc_correct_running"), correct_start()),
+        id = session$ns("correct_notif"), type = "message", duration = NULL)
       buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
       tryCatch(
         correct_task$invoke(aoi_path, cache_dir, buffer_m, .dev_pkg_path,
                             get_app_options(), project_path),
         error = function(e) {
           bslib::update_task_button("correct_desserte", state = "ready")
+          shiny::removeNotification(session$ns("correct_notif"))
+          correct_start(NULL)
           rv_correct(list(status = "error", reason = "acc_correct_failed"))
         })
+    })
+
+    # Rafraîchit le chrono du toast de correction toutes les secondes tant qu'elle
+    # tourne (re-affiche la même notif avec le temps écoulé mis à jour).
+    shiny::observe({
+      rc <- rv_correct()
+      if (is.null(rc) || !identical(rc$status, "running")) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .running_notif_content(i18n$t("acc_correct_running"),
+                               shiny::isolate(correct_start())),
+        id = session$ns("correct_notif"), type = "message", duration = NULL)
     })
 
     shiny::observeEvent(correct_task$status(), {
       st <- correct_task$status()
       if (!identical(st, "success") && !identical(st, "error")) return()
+      shiny::removeNotification(session$ns("correct_notif"))
+      correct_start(NULL)
+      shiny::updateActionButton(session, "run", disabled = FALSE)  # ré-active l'analyse
       res <- tryCatch(correct_task$result(),
         error = function(e) list(status = "error", reason = "acc_correct_failed"))
       if (identical(st, "error") || !is.list(res)) {
@@ -456,6 +488,15 @@ mod_accessibility_server <- function(id, app_state) {
                                 duration = 5)
         return()
       }
+      # Une correction LiDAR en cours mobilise déjà un worker (lourd) : interdire
+      # de lancer l'analyse par-dessus (double charge mémoire, et l'analyse
+      # n'utiliserait pas la correction en cours). Le bouton est aussi grisé.
+      if (identical(correct_task$status(), "running")) {
+        bslib::update_task_button("run", state = "ready")
+        shiny::showNotification(i18n$t("acc_correct_busy"), type = "warning",
+                                duration = 5)
+        return()
+      }
       if (deny_if_readonly(app_state, i18n)) {
         bslib::update_task_button("run", state = "ready")
         return()
@@ -494,6 +535,8 @@ mod_accessibility_server <- function(id, app_state) {
 
       rv$running <- TRUE
       rv$start <- Sys.time()
+      # Grise « Corriger la desserte » pendant l'analyse (réactivé à la fin).
+      shiny::updateActionButton(session, "correct_desserte", disabled = TRUE)
       shiny::showNotification(
         .running_notif_content(i18n$t("acc_running"), rv$start),
         id = session$ns("acc_notif"), type = "message", duration = NULL)
@@ -510,6 +553,7 @@ mod_accessibility_server <- function(id, app_state) {
           rv$start <- NULL
           shiny::removeNotification(session$ns("acc_notif"))
           bslib::update_task_button("run", state = "ready")
+          shiny::updateActionButton(session, "correct_desserte", disabled = FALSE)
           shiny::showNotification(
             paste0(i18n$t("accessibility_engine_failed"), " — ",
                    .strip_ansi(conditionMessage(e))),
@@ -545,6 +589,7 @@ mod_accessibility_server <- function(id, app_state) {
       if (!identical(st, "success") && !identical(st, "error")) return()
       rv$running <- FALSE
       rv$start <- NULL
+      shiny::updateActionButton(session, "correct_desserte", disabled = FALSE)
       shiny::removeNotification(session$ns("acc_notif"))
 
       res <- tryCatch(acc_task$result(), error = function(e) {
