@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.115.6 (2026-07-24)
 
 ### Fixed — Accessibilité : erreur « $ operator is invalid for atomic vectors »
