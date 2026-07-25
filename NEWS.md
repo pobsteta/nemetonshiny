@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.116.0 (2026-07-25)
 
 ### Added — Comparateur swipe : desserte BD TOPO vs corrigée sur fond relief RVT
