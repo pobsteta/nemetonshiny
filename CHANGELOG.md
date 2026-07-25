@@ -10,6 +10,20 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.116.0] - 2026-07-25
+
+### Added
+
+- **Comparateur swipe desserte BD TOPO vs corrigée sur fond relief RVT** (onglet
+  Accessibilité). Volet coulissant : desserte BD TOPO d'origine à gauche, desserte
+  recalée au LiDAR à droite (couleur = largeur carrossable), sur un fond relief qui
+  révèle l'assiette réelle des routes. Deux légendes simultanées.
+- `R/service_rvt.R` : génération du fond relief depuis le MNT à 1 m — rvt-py (VAT
+  canonique) via `reticulate` si disponible, sinon repli terra (hillshade classique
+  sur MNT débruité). Cache à côté du MNT.
+- La correction LiDAR écrit désormais `desserte_origine` en plus de
+  `desserte_corrigee` dans `desserte_corrigee.gpkg`.
+
 ## [0.115.13] - 2026-07-25
 
 ### Changed
