@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.116.2 (2026-07-25)
 
 ### Changed — Plancher `nemeton (>= 0.168.1)` : fix du cubage P1/C1/E1
 
