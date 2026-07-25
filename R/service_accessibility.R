@@ -102,18 +102,29 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   tryCatch(sf::st_transform(d, 4326), error = function(e) d)
 }
 
-#' Locate the 1 m DEM to feed the RVT relief background
+#' Locate the DEM to feed the RVT relief background
 #'
-#' The LiDAR-correction path writes `mnt_highres_1m.tif` under
-#' `cache/accessibility/emprise_<b>m/`. The comparator does not know which buffer
-#' was used, so we return the most recent such file across all emprises. Falls
-#' back to any `mnt_highres_*.tif` if no 1 m file exists.
+#' Preference order — **best terrain source first** :
+#'   1. `cache/layers/lidar_mnt_mosaic.tif` — the **native 0.5 m IGN LiDAR HD
+#'      DTM** (bare ground). A CVAT on it is striping-free and reveals the true
+#'      micro-relief (road embankments, ditches). This is the right source.
+#'   2. `cache/accessibility/emprise_<b>m/mnt_highres_1m.tif` — the WMS RGE ALTI
+#'      HIGHRES 1 m (resampled, carries a tile striping the CVAT amplifies).
+#'      Fallback only, for projects without a LiDAR DTM.
+#'   3. any `mnt_highres_*.tif`.
+#'
+#' NB: `lidar_mnh_mosaic.tif` is a canopy height model (MNH), NOT terrain —
+#' deliberately excluded (a relief RVT must run on bare ground).
 #'
 #' @param project_path Project directory, or NULL.
 #' @return Path to a DEM GeoTIFF, or NULL.
 #' @noRd
 .acc_rvt_mnt_path <- function(project_path) {
   if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  # 1. MNT LiDAR HD 0.5 m natif (meilleure source).
+  lidar <- file.path(project_path, "cache", "layers", "lidar_mnt_mosaic.tif")
+  if (file.exists(lidar)) return(lidar)
+  # 2/3. Repli WMS.
   acc <- .accessibility_cache_dir(project_path)
   if (!dir.exists(acc)) return(NULL)
   cand <- list.files(acc, pattern = "^mnt_highres_1m\\.tif$",

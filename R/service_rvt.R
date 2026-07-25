@@ -147,6 +147,32 @@
            error = function(e) NULL)
 }
 
+#' Reuse a CVAT already computed next to the DEM (instant, no recompute)
+#'
+#' `vat_combined()` on a full 0.5 m LiDAR mosaic (~4000×4000) is slow (~350 s),
+#' which would freeze the Shiny loop if run synchronously in the comparator. But
+#' the foretaccess / QGIS-RVT pipeline often persists the CVAT next to the DEM
+#' (`<base>_CVAT_8bit[_foretaccess].tif`). When present, adopt it directly —
+#' instant, and the reference rendering. 8-bit `[0, 255]` is rescaled to the
+#' `[0, 1]` the grey renderer expects (a float source is passed through).
+#'
+#' @param mnt_path Path to the source DEM.
+#' @return A `[0, 1]` `SpatRaster`, or `NULL` when no precomputed CVAT exists.
+#' @noRd
+.rvt_precomputed <- function(mnt_path) {
+  if (is.null(mnt_path) || !nzchar(mnt_path)) return(NULL)
+  d <- dirname(mnt_path); base <- tools::file_path_sans_ext(basename(mnt_path))
+  cand <- c(file.path(d, paste0(base, "_CVAT_8bit_foretaccess.tif")),
+            file.path(d, paste0(base, "_CVAT_8bit.tif")))
+  cand <- cand[file.exists(cand)]
+  if (length(cand) == 0L) return(NULL)
+  r <- tryCatch(terra::rast(cand[1]), error = function(e) NULL)
+  if (is.null(r)) return(NULL)
+  mx <- tryCatch(terra::global(r, "max", na.rm = TRUE)[[1]], error = function(e) NA_real_)
+  if (is.finite(mx) && mx > 1.5) r <- r / 255      # 8-bit -> [0, 1]
+  r
+}
+
 #' Generate (or load from cache) an RVT relief raster for a DEM
 #'
 #' @param mnt_path Path to the source DEM GeoTIFF (e.g. the 1 m
@@ -164,8 +190,9 @@ generate_rvt <- function(mnt_path, overwrite = FALSE) {
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
   if (is.null(mnt)) return(NULL)
 
-  # CVAT (foretaccess >= 1.24.0) prioritaire ; repli rvt-py puis terra.
-  vat <- .rvt_cvat_ft(mnt) %||%
+  # CVAT pré-calculé (instantané) > CVAT live foretaccess > rvt-py > terra.
+  vat <- .rvt_precomputed(mnt_path) %||%
+    .rvt_cvat_ft(mnt) %||%
     (if (.rvt_py_available()) .rvt_vat_py(mnt_path, mnt) else NULL) %||%
     .rvt_terra(mnt)
   if (is.null(vat)) return(NULL)
