@@ -508,3 +508,41 @@ test_that(".acquire_mnt_highres still reads a legacy 5 m cache", {
       file.path(".", "mnt_highres.tif")))
   })
 })
+
+# --- Comparateur desserte : helpers de lecture -------------------------------
+
+test_that(".acc_read_desserte_layer reads a layer in 4326, NULL when absent", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    d <- sf::st_sf(classe = c("route", "piste"),
+      geometry = sf::st_sfc(
+        sf::st_linestring(rbind(c(8e5, 63e5), c(8e5 + 100, 63e5 + 100))),
+        sf::st_linestring(rbind(c(8e5 + 200, 63e5), c(8e5 + 300, 63e5 + 50))),
+        crs = 2154))
+    sf::st_write(d, "corr.gpkg", layer = "desserte_origine", quiet = TRUE)
+    got <- nemetonshiny:::.acc_read_desserte_layer("corr.gpkg", "desserte_origine")
+    expect_s3_class(got, "sf")
+    expect_equal(sf::st_crs(got)$epsg, 4326L)
+    expect_equal(nrow(got), 2L)
+    # Couche absente / fichier absent -> NULL.
+    expect_null(nemetonshiny:::.acc_read_desserte_layer("corr.gpkg", "desserte_corrigee"))
+    expect_null(nemetonshiny:::.acc_read_desserte_layer("/nope.gpkg", "desserte_origine"))
+    expect_null(nemetonshiny:::.acc_read_desserte_layer(NULL, "desserte_origine"))
+  })
+})
+
+test_that(".acc_rvt_mnt_path prefers the 1 m DEM, most recent", {
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    proj <- getwd()
+    emp <- file.path(proj, "cache", "accessibility", "emprise_1000m")
+    dir.create(emp, recursive = TRUE)
+    writeLines("x", file.path(emp, "mnt_highres_1m.tif"))
+    writeLines("x", file.path(emp, "mnt_highres_5m.tif"))
+    got <- nemetonshiny:::.acc_rvt_mnt_path(proj)
+    expect_match(got, "mnt_highres_1m\\.tif$")
+    # Aucun MNT -> NULL.
+    expect_null(nemetonshiny:::.acc_rvt_mnt_path(tempfile()))
+    expect_null(nemetonshiny:::.acc_rvt_mnt_path(NULL))
+  })
+})

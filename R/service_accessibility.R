@@ -83,6 +83,49 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   tryCatch(sf::st_transform(pd, 4326), error = function(e) pd)
 }
 
+#' Read one layer of the corrected-desserte GeoPackage, in WGS84
+#'
+#' Shared by the swipe comparator overlays. Returns the layer as an sf in
+#' EPSG:4326 (ready for Leaflet), or NULL when the file/layer is missing or empty.
+#'
+#' @param corrected_path Path to `desserte_corrigee.gpkg`, or NULL.
+#' @param layer One of `"desserte_origine"` / `"desserte_corrigee"`.
+#' @noRd
+.acc_read_desserte_layer <- function(corrected_path, layer) {
+  if (is.null(corrected_path) || !file.exists(corrected_path)) return(NULL)
+  layers <- tryCatch(sf::st_layers(corrected_path)$name,
+                     error = function(e) character(0))
+  if (!(layer %in% layers)) return(NULL)
+  d <- tryCatch(sf::st_read(corrected_path, layer = layer, quiet = TRUE),
+                error = function(e) NULL)
+  if (!inherits(d, "sf") || nrow(d) == 0L) return(NULL)
+  tryCatch(sf::st_transform(d, 4326), error = function(e) d)
+}
+
+#' Locate the 1 m DEM to feed the RVT relief background
+#'
+#' The LiDAR-correction path writes `mnt_highres_1m.tif` under
+#' `cache/accessibility/emprise_<b>m/`. The comparator does not know which buffer
+#' was used, so we return the most recent such file across all emprises. Falls
+#' back to any `mnt_highres_*.tif` if no 1 m file exists.
+#'
+#' @param project_path Project directory, or NULL.
+#' @return Path to a DEM GeoTIFF, or NULL.
+#' @noRd
+.acc_rvt_mnt_path <- function(project_path) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  acc <- .accessibility_cache_dir(project_path)
+  if (!dir.exists(acc)) return(NULL)
+  cand <- list.files(acc, pattern = "^mnt_highres_1m\\.tif$",
+                     recursive = TRUE, full.names = TRUE)
+  if (length(cand) == 0L) {
+    cand <- list.files(acc, pattern = "^mnt_highres.*\\.tif$",
+                       recursive = TRUE, full.names = TRUE)
+  }
+  if (length(cand) == 0L) return(NULL)
+  cand[order(file.mtime(cand), decreasing = TRUE)][1]
+}
+
 #' Reconstruct a run result from a project's cached accessibility rasters
 #'
 #' Lets the tab show a **previously computed** analysis without recomputing:
@@ -390,6 +433,15 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   ok <- tryCatch({
     sf::st_write(sf::st_transform(dq, 2154), out, layer = "desserte_corrigee",
                  quiet = TRUE, delete_dsn = TRUE)
+    # Desserte BD TOPO D'ORIGINE (avant recalage) dans le MÊME fichier, couche
+    # `desserte_origine` : le comparateur swipe (mod_accessibility) l'affiche à
+    # gauche, la corrigée à droite, pour donner à voir le décalage recalé par
+    # ALSroads. Best-effort — l'écriture de la corrigée reste l'objectif premier.
+    tryCatch(
+      sf::st_write(sf::st_transform(acq$desserte, 2154), out,
+                   layer = "desserte_origine", quiet = TRUE, append = TRUE),
+      error = function(e) cli::cli_warn(
+        "desserte_origine layer not written: {conditionMessage(e)}"))
     TRUE
   }, error = function(e) FALSE)
   if (!isTRUE(ok)) return(list(status = "error", reason = "acc_correct_write_failed"))
