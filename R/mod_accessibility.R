@@ -243,6 +243,9 @@ mod_accessibility_ui <- function(id) {
           position = "right", open = "always", width = 280,
           htmltools::tags$strong(i18n$t("acc_layer_label")),
           shiny::uiOutput(ns("layer_ui")),
+          # Comparateur swipe « desserte BD TOPO vs corrigée » sur fond relief RVT.
+          # Rendu conditionnel : n'apparaît qu'une fois une correction LiDAR faite.
+          shiny::uiOutput(ns("compare_ui")),
           htmltools::tags$hr(class = "my-2"),
           shiny::numericInput(
             ns("buffer_km"), i18n$t("acc_buffer"),
@@ -769,6 +772,11 @@ mod_accessibility_server <- function(id, app_state) {
         # (nemeton_swipe.js) les clippe de part et d'autre du curseur.
         leaflet::addMapPane("nemetonAccSwipeL", zIndex = 250) |>
         leaflet::addMapPane("nemetonAccSwipeR", zIndex = 250) |>
+        # Comparateur desserte : fond RVT NON clippé (sous les dessertes, relief
+        # continu des deux côtés) + deux panes de desserte clippés par le volet.
+        leaflet::addMapPane("nemetonRvtFond", zIndex = 245) |>
+        leaflet::addMapPane("nemetonDessSwipeL", zIndex = 420) |>
+        leaflet::addMapPane("nemetonDessSwipeR", zIndex = 420) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
           overlayGroups = overlays,
@@ -808,6 +816,10 @@ mod_accessibility_server <- function(id, app_state) {
     # n'est (ré)activé qu'à l'ENTRÉE en mode volet (pas à chaque re-dessin), sinon
     # un changement d'opacité recentrerait le curseur.
     swipe_active <- shiny::reactiveVal(FALSE)
+    # Le comparateur desserte (plus bas) est un MODE swipe distinct qui prend la
+    # main : quand il est actif, le swipe ACCESSFOR se retire (un seul volet par
+    # carte côté nemeton_swipe.js).
+    compare_active <- shiny::reactiveVal(FALSE)
     shiny::observe({
       res <- rv$result
       first_layer <- if (!is.null(res)) names(res$raster_paths)[[1]] else NULL
@@ -818,6 +830,12 @@ mod_accessibility_server <- function(id, app_state) {
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Accessibilite") |>
         leaflet::removeControl("acc_legend")
+      # Comparateur actif : il possède le volet, on ne peint pas le raster de
+      # classes ni son swipe (ils reviendront à la désactivation du comparateur).
+      if (isTRUE(compare_active())) {
+        if (isTRUE(swipe_active())) swipe_active(FALSE)
+        return()
+      }
       if (is.null(res) || is.null(layer)) {
         if (isTRUE(swipe_active())) {
           session$sendCustomMessage("nemetonSwipeOff", list(id = mapid))
@@ -899,6 +917,123 @@ mod_accessibility_server <- function(id, app_state) {
           fillOpacity = 0.85, label = i18n$t("acc_places_depot"))
       if (!is.null(shown) && !("Places de depot" %in% shown)) {
         leaflet::hideGroup(proxy, "Places de depot")
+      }
+    })
+
+    # --- Comparateur swipe : desserte BD TOPO vs corrigée sur fond relief RVT ---
+    # Toggle rendu seulement une fois une correction LiDAR disponible (elle produit
+    # `desserte_corrigee.gpkg` avec les couches `desserte_origine` + `desserte_corrigee`).
+    output$compare_ui <- shiny::renderUI({
+      if (!isTRUE(corrected_available())) return(NULL)
+      eng <- rvt_engine()
+      relief_lbl <- if (identical(eng, "vat")) i18n$t("acc_compare_relief_vat")
+                    else i18n$t("acc_compare_relief_hillshade")
+      htmltools::div(
+        class = "mt-2",
+        shiny::checkboxInput(ns("compare_toggle"),
+          i18n$t("acc_compare_toggle"), value = FALSE),
+        htmltools::tags$p(class = "text-muted small mb-0",
+          sprintf("%s %s", i18n$t("acc_compare_hint"), relief_lbl)))
+    })
+
+    # Peinture du comparateur : fond RVT (non clippé) + desserte origine (gauche) +
+    # desserte corrigée (droite), volet swipe entre les deux. Désactivé -> nettoyage.
+    dess_corr_pal <- leaflet::colorNumeric("viridis", domain = c(0, 12),
+                                           na.color = "#9E9E9E")
+    shiny::observe({
+      on <- isTRUE(input$compare_toggle) && isTRUE(corrected_available())
+      mapid <- session$ns("map")
+      shown <- input$map_groups
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      proxy <- leaflet::leafletProxy("map") |>
+        leaflet::clearGroup("Relief RVT") |>
+        leaflet::clearGroup("Desserte origine") |>
+        leaflet::clearGroup("Desserte corrigee") |>
+        leaflet::removeControl("cmp_legend_l") |>
+        leaflet::removeControl("cmp_legend_r")
+
+      if (!on) {
+        if (isTRUE(compare_active())) {
+          session$sendCustomMessage("nemetonSwipeOff", list(id = mapid))
+          compare_active(FALSE)
+        }
+        return()
+      }
+
+      # Fond relief RVT (généré/caché à la 1re activation, puis lu du cache).
+      mnt_path <- .acc_rvt_mnt_path(project_path)
+      rvt_path <- NULL
+      if (!is.null(mnt_path)) {
+        if (!file.exists(.rvt_cache_path(mnt_path))) {
+          nid <- shiny::showNotification(i18n$t("acc_compare_building_relief"),
+                                         duration = NULL, type = "message")
+          on.exit(shiny::removeNotification(nid), add = TRUE)
+        }
+        rvt_path <- tryCatch(generate_rvt(mnt_path), error = function(e) NULL)
+      }
+      if (!is.null(rvt_path) && file.exists(rvt_path)) {
+        rr <- tryCatch(terra::rast(rvt_path), error = function(e) NULL)
+        if (!is.null(rr)) {
+          grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
+            domain = c(0, 1), na.color = "transparent")
+          proxy <- leaflet::addRasterImage(proxy, rr, colors = grey, opacity = 1,
+            group = "Relief RVT",
+            options = leaflet::gridOptions(pane = "nemetonRvtFond"))
+        }
+      }
+
+      corrected_path <- .corrected_desserte_path(.accessibility_cache_dir(project_path))
+      # GAUCHE : desserte BD TOPO d'origine, colorée par classe (route/piste).
+      dorig <- .acc_read_desserte_layer(corrected_path, "desserte_origine")
+      if (!is.null(dorig)) {
+        cl <- tolower(as.character(dorig[["classe"]] %||% rep("", nrow(dorig))))
+        cols <- ifelse(cl == "piste", "#8D6E63", "#37474F")
+        proxy <- leaflet::addPolylines(proxy, data = dorig, group = "Desserte origine",
+          color = cols, weight = 2, opacity = 0.95,
+          options = leaflet::pathOptions(pane = "nemetonDessSwipeL"))
+        proxy <- leaflet::addLegend(proxy, "bottomleft",
+          colors = c("#37474F", "#8D6E63"),
+          labels = c(i18n$t("acc_desserte_route"), i18n$t("acc_desserte_piste")),
+          title = i18n$t("acc_compare_legend_origine"), layerId = "cmp_legend_l",
+          opacity = 0.9)
+      }
+      # DROITE : desserte corrigée. bilan N'EST PAS persisté dans le gpkg -> le
+      # critère mesuré/non-mesuré est `is.na(etat_classe)`. Deux couches séparées
+      # (dashArray n'est pas vectorisable par tronçon) : mesurés pleins colorés par
+      # largeur carrossable, non couverts gris pointillé.
+      dcorr <- .acc_read_desserte_layer(corrected_path, "desserte_corrigee")
+      if (!is.null(dcorr)) {
+        ec <- suppressWarnings(as.numeric(dcorr[["etat_classe"]]))
+        lw <- suppressWarnings(as.numeric(dcorr[["largeur_carrossable_m"]]))
+        mesure <- is.finite(ec)
+        d_mes <- dcorr[mesure, , drop = FALSE]
+        d_non <- dcorr[!mesure, , drop = FALSE]
+        if (nrow(d_non) > 0L) {
+          proxy <- leaflet::addPolylines(proxy, data = d_non,
+            group = "Desserte corrigee", color = "#9E9E9E", weight = 2,
+            opacity = 0.5, dashArray = "4,6",
+            options = leaflet::pathOptions(pane = "nemetonDessSwipeR"),
+            label = i18n$t("acc_compare_non_mesure"))
+        }
+        if (nrow(d_mes) > 0L) {
+          lwm <- pmin(suppressWarnings(as.numeric(d_mes[["largeur_carrossable_m"]])), 12)
+          cols <- dess_corr_pal(ifelse(is.finite(lwm), lwm, 0))
+          proxy <- leaflet::addPolylines(proxy, data = d_mes,
+            group = "Desserte corrigee", color = cols, weight = 3, opacity = 0.95,
+            options = leaflet::pathOptions(pane = "nemetonDessSwipeR"),
+            label = ~ sprintf("%.1f m",
+                              suppressWarnings(as.numeric(largeur_carrossable_m))))
+        }
+        proxy <- leaflet::addLegend(proxy, "bottomright", pal = dess_corr_pal,
+          values = c(0, 12), title = i18n$t("acc_compare_legend_corrigee"),
+          layerId = "cmp_legend_r", opacity = 0.9,
+          labFormat = leaflet::labelFormat(suffix = " m"))
+      }
+
+      if (!isTRUE(compare_active())) {
+        session$sendCustomMessage("nemetonSwipeOn", list(
+          id = mapid, left = "nemetonDessSwipeL", right = "nemetonDessSwipeR"))
+        compare_active(TRUE)
       }
     })
 
