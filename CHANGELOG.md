@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.117.0\] - 2026-07-25
+
+### Changed
+
+- Comparateur desserte : fond relief **CVAT** via
+  [`foretaccess::vat_combined()`](https://pobsteta.github.io/foretaccess/reference/vat_combined.html)
+  (foretaccess 1.24.0) — combinaison par défaut du plugin QGIS RVT,
+  validée pixel à pixel. Ordre `generate_rvt()` : CVAT → rvt-py → terra
+  (hillshade). Supprime la dépendance Python `rvt-py` du chemin nominal.
+  Remotes foretaccess → @v1.24.0.
+- Bloc i18n `acc_compare_*` reconverti en `\uXXXX` (règle 4).
+
 ## \[0.116.2\] - 2026-07-25
 
 ### Changed
