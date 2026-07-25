@@ -119,3 +119,68 @@ test_that("generate_rvt falls back to terra when CVAT is unavailable", {
     expect_true(!is.null(out) && file.exists(out))
   })
 })
+
+# --- Source MNT et réutilisation du CVAT pré-calculé -------------------------
+
+test_that(".rvt_precomputed reuses an 8-bit CVAT next to the DEM, rescaled to [0,1]", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    mnt <- terra::rast(nrows = 10, ncols = 10, crs = "EPSG:2154")
+    terra::values(mnt) <- 1
+    terra::writeRaster(mnt, "lidar_mnt_mosaic.tif", overwrite = TRUE)
+    # CVAT 8bit pré-calculé à côté (valeurs 0-255)
+    cvat8 <- terra::rast(nrows = 10, ncols = 10, crs = "EPSG:2154")
+    terra::values(cvat8) <- rep(c(0, 128, 255), length.out = 100)
+    terra::writeRaster(cvat8, "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif",
+                       overwrite = TRUE)
+    out <- nemetonshiny:::.rvt_precomputed("lidar_mnt_mosaic.tif")
+    expect_false(is.null(out))
+    rng <- c(terra::global(out, "min", na.rm = TRUE)[[1]],
+             terra::global(out, "max", na.rm = TRUE)[[1]])
+    expect_gte(rng[1], 0); expect_lte(rng[2], 1)     # rescalé
+    expect_gt(rng[2], 0.9)                            # 255/255 ~ 1
+  })
+})
+
+test_that(".rvt_precomputed returns NULL when no precomputed CVAT exists", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    m <- terra::rast(nrows = 5, ncols = 5); terra::values(m) <- 1
+    terra::writeRaster(m, "mnt.tif", overwrite = TRUE)
+    expect_null(nemetonshiny:::.rvt_precomputed("mnt.tif"))
+    expect_null(nemetonshiny:::.rvt_precomputed(NULL))
+  })
+})
+
+test_that("generate_rvt adopts the precomputed CVAT before any live compute", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    mnt <- terra::rast(nrows = 8, ncols = 8, crs = "EPSG:2154")
+    terra::values(mnt) <- as.numeric(seq_len(64))
+    terra::writeRaster(mnt, "lidar_mnt_mosaic.tif", overwrite = TRUE)
+    cvat8 <- mnt; terra::values(cvat8) <- rep(200, 64)
+    terra::writeRaster(cvat8, "lidar_mnt_mosaic_CVAT_8bit.tif", overwrite = TRUE)
+    testthat::local_mocked_bindings(
+      .rvt_cvat_ft = function(mnt) stop("live CVAT ne doit pas etre appele"),
+      .rvt_terra = function(mnt) stop("terra ne doit pas etre appele"),
+      .rvt_py_available = function() FALSE)
+    out <- nemetonshiny:::generate_rvt("lidar_mnt_mosaic.tif", overwrite = TRUE)
+    expect_true(!is.null(out) && file.exists(out))
+  })
+})
+
+test_that(".acc_rvt_mnt_path prefers the native 0.5 m LiDAR DTM over the WMS DEM", {
+  withr::with_tempdir({
+    proj <- getwd()
+    lyr <- file.path(proj, "cache", "layers")
+    emp <- file.path(proj, "cache", "accessibility", "emprise_1000m")
+    dir.create(lyr, recursive = TRUE); dir.create(emp, recursive = TRUE)
+    writeLines("x", file.path(lyr, "lidar_mnt_mosaic.tif"))
+    writeLines("x", file.path(emp, "mnt_highres_1m.tif"))
+    got <- nemetonshiny:::.acc_rvt_mnt_path(proj)
+    expect_match(got, "lidar_mnt_mosaic\\.tif$")
+    # Sans le LiDAR : repli sur le WMS.
+    file.remove(file.path(lyr, "lidar_mnt_mosaic.tif"))
+    expect_match(nemetonshiny:::.acc_rvt_mnt_path(proj), "mnt_highres_1m\\.tif$")
+  })
+})
