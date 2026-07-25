@@ -355,10 +355,27 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
     }
   }
 
+  # Cache PERSISTANT des mesures par tronçon. `qualifier_desserte()` sans
+  # `cache_dir` écrit son `desserte_lidar.rds` dans `tempdir()`, VOLATILE : chaque
+  # correction repayait ~4-5 h de mesure ALSroads. foretaccess mémoïse par tronçon
+  # (clé = WKT de la LINESTRING, stable pour une emprise donnée, même les échecs)
+  # et relit ce fichier au démarrage : en le posant dans le cache d'emprise, une
+  # relance retrouve les tronçons déjà mesurés et ne rappelle `measure_road` que
+  # sur les nouveaux — la 2e correction d'un même projet est quasi immédiate.
+  # Sous-répertoire DÉDIÉ (pas `acq_dir` directement) : le cache foretaccess est
+  # keyé par WKT SANS versionner le DTM ni les paramètres. Un `desserte_lidar.rds`
+  # traînant à la racine de `acq_dir` (run antérieur, DTM potentiellement
+  # différent — p.ex. le `dtm_alsroads` dérivé au lieu du MNT à 1 m) serait
+  # réutilisé à tort et rendrait des largeurs incohérentes. On isole donc le cache
+  # de CE chemin (MNT à 1 m). Invalidation naturelle si l'emprise change (acq_dir
+  # suit le buffer) ou si les tronçons changent (nouveaux WKT).
+  qualif_cache <- file.path(acq$acq_dir, "qualif_cache")
+  dir.create(qualif_cache, recursive = TRUE, showWarnings = FALSE)
   n_avant <- nrow(acq$desserte)
   dq <- tryCatch(
     foretaccess::qualifier_desserte(acq$desserte, las_source = laz_dir,
-                                    mnt = acq$mnt, retirer_disparues = TRUE,
+                                    mnt = acq$mnt, cache_dir = qualif_cache,
+                                    retirer_disparues = TRUE,
                                     etat_disparue = 4L),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(dq, "acc_err")) {

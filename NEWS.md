@@ -1,5 +1,22 @@
 # nemetonshiny (development version)
 
+### Changed — Correction LiDAR : cache de mesure persistant (relance quasi immédiate)
+
+- `qualifier_desserte()` était appelée **sans `cache_dir`**, donc son cache de
+  mesure par tronçon (`desserte_lidar.rds`) atterrissait dans le `tempdir()`
+  volatil du worker : chaque correction repayait ~4-5 h de mesure ALSroads (mesuré
+  sur ForêtAccess : 4h40, 2 608 tronçons). Le cache est désormais posé dans un
+  sous-répertoire persistant de l'emprise
+  (`cache/accessibility/emprise_<b>m/qualif_cache/`).
+- foretaccess mémoïse par tronçon (clé = WKT de la LINESTRING, même les échecs) et
+  relit ce fichier au démarrage : une relance à emprise / MNT / desserte
+  identiques retrouve les tronçons déjà mesurés et ne rappelle `measure_road` que
+  sur les nouveaux. Sur ForêtAccess, les 1 788 tronçons mesurés ne comptent que
+  **359 WKT distincts** (desserte BD TOPO très redondante), tous en cache.
+- **Sous-répertoire dédié, pas la racine de `acq_dir`** : le cache foretaccess est
+  keyé par WKT sans versionner le DTM ; un `desserte_lidar.rds` d'un run antérieur
+  (DTM potentiellement différent) serait réutilisé à tort. L'isolation garantit la
+  cohérence avec le MNT à 1 m de ce chemin.
 # nemetonshiny 0.115.12 (2026-07-24)
 
 ### Fixed — Correction LiDAR de la desserte : OOM machine (MNT à 1 m)
