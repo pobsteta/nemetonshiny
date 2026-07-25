@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.115.13 (2026-07-25)
 
 ### Changed — Correction LiDAR : cache de mesure persistant (relance quasi immédiate)
