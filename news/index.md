@@ -1,8 +1,26 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.116.2 (2026-07-25)
 
-## nemetonshiny 0.116.1 (2026-07-25)
+#### Changed — Plancher `nemeton (>= 0.168.1)` : fix du cubage P1/C1/E1
+
+- Bump du plancher de 0.168.0 à **0.168.1** : cette version corrige le
+  **tarif de cubage IFN** (`ifn_volume_equations.csv`, coefficients
+  `b`/`c` incohérents avec `a` → `V = a·D²·H` rétabli). Il gonflait P1
+  **×3-5** (et, via le même tarif, C1 biomasse et E1 énergie).
+  Diagnostiqué depuis l’app (repro du flux compute : dbh 29 cm / N 466
+  tiges/ha / hdom 25 m tous plausibles, volume ×4), confirmé et corrigé
+  côté cœur (`reponse-nemeton-p1-cubage-gonfle.md`). **Validé depuis
+  l’app** : P1 ForêtAccess passe de 1556 à **372 m³/ha médian** (facteur
+  ~4,2×), dans la plage plausible 250-500.
+- **⚠️ Les projets déjà calculés (`indicators.parquet` produit avec ≤
+  0.168.0) portent des P1/C1/E1 faux** : la valeur persistée ne se
+  corrige pas seule, il faut relancer le calcul des indicateurs pour les
+  rafraîchir.
+- `method` de `indicateur_p1_volume()` était toujours ignoré
+  (`"allometric"` jamais implémenté) — le cœur émet désormais un
+  `cli_warn` ; l’app n’utilise pas `method`, rien à changer. \#
+  nemetonshiny 0.116.1 (2026-07-25)
 
 #### Changed — Plancher `nemeton (>= 0.168.0)`
 

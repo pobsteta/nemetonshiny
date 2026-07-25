@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.116.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.116.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,17 +33,22 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.116.1" id="nemetonshiny-01161-2026-07-25">nemetonshiny 0.116.1 (2026-07-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01161-2026-07-25"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.116.2" id="nemetonshiny-01162-2026-07-25">nemetonshiny 0.116.2 (2026-07-25)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01162-2026-07-25"></a></h2>
 <div class="section level4">
-<h4 id="changed--plancher-nemeton--0-116-1">Changed — Plancher <code>nemeton (&gt;= 0.168.0)</code>
-<a class="anchor" aria-label="anchor" href="#changed--plancher-nemeton--0-116-1"></a></h4>
+<h4 id="changed--plancher-nemeton---fix-du-cubage-p1c1e1-0-116-2">Changed — Plancher <code>nemeton (&gt;= 0.168.1)</code> : fix du cubage P1/C1/E1<a class="anchor" aria-label="anchor" href="#changed--plancher-nemeton---fix-du-cubage-p1c1e1-0-116-2"></a></h4>
+<ul><li>Bump du plancher de 0.168.0 à <strong>0.168.1</strong> : cette version corrige le <strong>tarif de cubage IFN</strong> (<code>ifn_volume_equations.csv</code>, coefficients <code>b</code>/<code>c</code> incohérents avec <code>a</code> → <code>V = a·D²·H</code> rétabli). Il gonflait P1 <strong>×3-5</strong> (et, via le même tarif, C1 biomasse et E1 énergie). Diagnostiqué depuis l’app (repro du flux compute : dbh 29 cm / N 466 tiges/ha / hdom 25 m tous plausibles, volume ×4), confirmé et corrigé côté cœur (<code>reponse-nemeton-p1-cubage-gonfle.md</code>). <strong>Validé depuis l’app</strong> : P1 ForêtAccess passe de 1556 à <strong>372 m³/ha médian</strong> (facteur ~4,2×), dans la plage plausible 250-500.</li>
+<li>
+<strong>⚠️ Les projets déjà calculés (<code>indicators.parquet</code> produit avec ≤ 0.168.0) portent des P1/C1/E1 faux</strong> : la valeur persistée ne se corrige pas seule, il faut relancer le calcul des indicateurs pour les rafraîchir.</li>
+<li>
+<code>method</code> de <code>indicateur_p1_volume()</code> était toujours ignoré (<code>"allometric"</code> jamais implémenté) — le cœur émet désormais un <code>cli_warn</code> ; l’app n’utilise pas <code>method</code>, rien à changer. # nemetonshiny 0.116.1 (2026-07-25)</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--plancher-nemeton--0-116-2">Changed — Plancher <code>nemeton (&gt;= 0.168.0)</code>
+<a class="anchor" aria-label="anchor" href="#changed--plancher-nemeton--0-116-2"></a></h4>
 <ul><li>Bump du plancher <code>Imports: nemeton</code> de 0.165.0 à <strong>0.168.0</strong> : cette version ajoute le garde-fou de plausibilité <code>volume_mobilisable(p1_max_plausible = 800)</code> (<code>cli_warn</code> quand un P1 dépasse le plafond m³/ha), dont le typage de desserte bénéficie sans changement de code app. Réponse cœur : <code>nemeton</code> spec 040, <code>reponse-p1-unite-desserte.md</code>. # nemetonshiny 0.116.0 (2026-07-25)</li>
 </ul></div>
 <div class="section level4">
-<h4 id="added--comparateur-swipe--desserte-bd-topo-vs-corrigée-sur-fond-relief-rvt-0-116-1">Added — Comparateur swipe : desserte BD TOPO vs corrigée sur fond relief RVT<a class="anchor" aria-label="anchor" href="#added--comparateur-swipe--desserte-bd-topo-vs-corrig%C3%A9e-sur-fond-relief-rvt-0-116-1"></a></h4>
+<h4 id="added--comparateur-swipe--desserte-bd-topo-vs-corrigée-sur-fond-relief-rvt-0-116-2">Added — Comparateur swipe : desserte BD TOPO vs corrigée sur fond relief RVT<a class="anchor" aria-label="anchor" href="#added--comparateur-swipe--desserte-bd-topo-vs-corrig%C3%A9e-sur-fond-relief-rvt-0-116-2"></a></h4>
 <ul><li>Nouveau <strong>comparateur « swipe »</strong> dans l’onglet Accessibilité (apparaît une fois une correction LiDAR faite) : un volet coulissant sur un <strong>fond relief</strong> montre à gauche la desserte <strong>BD TOPO d’origine</strong> (colorée route/piste), à droite la desserte <strong>recalée au LiDAR</strong> (colorée par largeur carrossable, tronçons non couverts en gris pointillé). Le relief fait ressortir l’assiette réelle des routes, donnant à voir le décalage recalé par ALSroads. Deux légendes simultanées (gauche/droite).</li>
 <li>
 <strong><code>R/service_rvt.R</code></strong> — génération du fond relief depuis le MNT à 1 m. Deux moteurs : <strong>rvt-py</strong> via <code>reticulate</code> (VAT canonique — Sky-View Factor + Openness
@@ -54,7 +59,7 @@
 <li>10 clés i18n FR/EN. <code>bilan</code> n’étant pas persisté, le critère mesuré/non-mesuré est <code>is.na(etat_classe)</code>. # nemetonshiny 0.115.13 (2026-07-25)</li>
 </ul></div>
 <div class="section level4">
-<h4 id="changed--correction-lidar--cache-de-mesure-persistant-relance-quasi-immédiate-0-116-1">Changed — Correction LiDAR : cache de mesure persistant (relance quasi immédiate)<a class="anchor" aria-label="anchor" href="#changed--correction-lidar--cache-de-mesure-persistant-relance-quasi-imm%C3%A9diate-0-116-1"></a></h4>
+<h4 id="changed--correction-lidar--cache-de-mesure-persistant-relance-quasi-immédiate-0-116-2">Changed — Correction LiDAR : cache de mesure persistant (relance quasi immédiate)<a class="anchor" aria-label="anchor" href="#changed--correction-lidar--cache-de-mesure-persistant-relance-quasi-imm%C3%A9diate-0-116-2"></a></h4>
 <ul><li>
 <code>qualifier_desserte()</code> était appelée <strong>sans <code>cache_dir</code></strong>, donc son cache de mesure par tronçon (<code>desserte_lidar.rds</code>) atterrissait dans le <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code> volatil du worker : chaque correction repayait ~4-5 h de mesure ALSroads (mesuré sur ForêtAccess : 4h40, 2 608 tronçons). Le cache est désormais posé dans un sous-répertoire persistant de l’emprise (<code>cache/accessibility/emprise_&lt;b&gt;m/qualif_cache/</code>).</li>
 <li>foretaccess mémoïse par tronçon (clé = WKT de la LINESTRING, même les échecs) et relit ce fichier au démarrage : une relance à emprise / MNT / desserte identiques retrouve les tronçons déjà mesurés et ne rappelle <code>measure_road</code> que sur les nouveaux. Sur ForêtAccess, les 1 788 tronçons mesurés ne comptent que <strong>359 WKT distincts</strong> (desserte BD TOPO très redondante), tous en cache.</li>
@@ -62,7 +67,7 @@
 <strong>Sous-répertoire dédié, pas la racine de <code>acq_dir</code></strong> : le cache foretaccess est keyé par WKT sans versionner le DTM ; un <code>desserte_lidar.rds</code> d’un run antérieur (DTM potentiellement différent) serait réutilisé à tort. L’isolation garantit la cohérence avec le MNT à 1 m de ce chemin. # nemetonshiny 0.115.12 (2026-07-24)</li>
 </ul></div>
 <div class="section level4">
-<h4 id="fixed--correction-lidar-de-la-desserte--oom-machine-mnt-à-m-0-116-1">Fixed — Correction LiDAR de la desserte : OOM machine (MNT à 1 m)<a class="anchor" aria-label="anchor" href="#fixed--correction-lidar-de-la-desserte--oom-machine-mnt-%C3%A0-m-0-116-1"></a></h4>
+<h4 id="fixed--correction-lidar-de-la-desserte--oom-machine-mnt-à-m-0-116-2">Fixed — Correction LiDAR de la desserte : OOM machine (MNT à 1 m)<a class="anchor" aria-label="anchor" href="#fixed--correction-lidar-de-la-desserte--oom-machine-mnt-%C3%A0-m-0-116-2"></a></h4>
 <ul><li>La <strong>correction LiDAR</strong> (<code>qualifier_desserte()</code>, onglet Accessibilité, NDP 1) faisait monter le worker à <strong>16,8 Go en 15 min</strong>, puis tombait la machine par <strong>OOM</strong> (RStudio et navigateur emportés).</li>
 <li>Cause, côté <code>foretaccess</code> : <code>.mnt_alsroads()</code> (<code>R/desserte_lidar.R</code>) dérive un MNT à 1 m dès que le MNT fourni dépasse 1,5 m, et cette dérivation fait <code>readLAS(ctg$filename, filter = "-keep_class 2")</code> — le <strong>vecteur complet des dalles</strong>, donc tout le nuage sol en mémoire d’un coup, puis une triangulation de Delaunay par-dessus. Le <code>LAScatalog</code> est court-circuité, alors que <code>lidR::rasterize_terrain()</code> sait travailler par tuiles hors mémoire. Mesuré sur ForêtAccess : 4 dalles LiDAR HD = <strong>165,5 M de points</strong>.</li>
 <li>L’app passait un MNT à <strong>5 m</strong> (grille d’accessibilité), déclenchant donc la dérivation <strong>systématiquement</strong>. Elle demande maintenant <strong>1 m</strong> sur ce chemin (<code>.acquire_mnt_desserte(res_m = 1)</code>) : <code>.mnt_alsroads()</code> renvoie alors le MNT tel quel et <strong>ne lit aucun point</strong>. C’est aussi la résolution qu’ALSroads documente (« a resolution of at least of 1 m », cohérent avec ses profils à 0,5 m et ses seuils de largeur carrossable à 1 et 5 m).</li>
@@ -74,19 +79,19 @@
 <strong>Réserve</strong> : demander 1 m au WMS IGN ne garantit pas une donnée <em>nativement</em> à 1 m — le service peut rééchantillonner du 5 m, ce que la vérification de taille de cellule ne détecte pas. C’est un contournement ; le correctif de fond appartient à <code>foretaccess</code> (brief <code>~/brief-foretaccess-neibtable-memoire.md</code>, finding 1).</li>
 </ul></div>
 <div class="section level4">
-<h4 id="fixed--typage-du-réseau---volume-p1-absent--sur-un-projet-pourtant-calculé-0-116-1">Fixed — Typage du réseau : « Volume P1 absent » sur un projet pourtant calculé<a class="anchor" aria-label="anchor" href="#fixed--typage-du-r%C3%A9seau---volume-p1-absent--sur-un-projet-pourtant-calcul%C3%A9-0-116-1"></a></h4>
+<h4 id="fixed--typage-du-réseau---volume-p1-absent--sur-un-projet-pourtant-calculé-0-116-2">Fixed — Typage du réseau : « Volume P1 absent » sur un projet pourtant calculé<a class="anchor" aria-label="anchor" href="#fixed--typage-du-r%C3%A9seau---volume-p1-absent--sur-un-projet-pourtant-calcul%C3%A9-0-116-2"></a></h4>
 <ul><li>Le typage refusait de démarrer avec « Volume P1 absent des parcelles : calculez d’abord l’indicateur P1 » sur un projet dont <strong>P1 était bel et bien calculé</strong>. Cause : décalage de nom de colonne. <code>nemeton:::indicateur_p1_volume()</code> écrit <strong><code>P1</code></strong> (son <code>column_name</code> par défaut), mais <code>indicators.parquet</code> persiste la colonne sous <strong><code>indicateur_p1_volume</code></strong> (aligné sur les 30 autres <code>indicateur_*</code>) — et c’est ce que renvoie <code>.resolve_project_aoi_2154()</code>. Or <code>run_desserte_typage()</code> cherchait <code>"P1"</code> en dur.</li>
 <li>Nouveau <code>.resolve_volume_col()</code> : essaie <code>P1</code>, puis <code>indicateur_p1_volume</code>, puis une correspondance insensible à la casse, et n’accepte une colonne que si elle porte au moins une valeur finie (une colonne tout-NA ne masque plus l’autre). <code>volume_col</code> reste surchargeable.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="added--run_apptour--false--démarrer-sans-le-tour-guidé-0-116-1">Added — <code>run_app(tour = FALSE)</code> : démarrer sans le tour guidé<a class="anchor" aria-label="anchor" href="#added--run_apptour--false--d%C3%A9marrer-sans-le-tour-guid%C3%A9-0-116-1"></a></h4>
+<h4 id="added--run_apptour--false--démarrer-sans-le-tour-guidé-0-116-2">Added — <code>run_app(tour = FALSE)</code> : démarrer sans le tour guidé<a class="anchor" aria-label="anchor" href="#added--run_apptour--false--d%C3%A9marrer-sans-le-tour-guid%C3%A9-0-116-2"></a></h4>
 <ul><li>Nouvel argument <strong><code>tour</code></strong> (défaut <code>TRUE</code>) : <code>run_app(tour = FALSE)</code> démarre l’application <strong>sans auto-lancer le tour guidé</strong> cicerone. Seul l’<strong>auto-démarrage</strong> est supprimé — le tour reste lançable depuis le menu d’aide.</li>
 <li>Motivation : le tour injecte du JS client 2 s après la connexion. C’est gênant pour une démo ou une capture d’écran, et ça rend les tests E2E instables (cicerone émet « There are no steps defined to iterate » sur le même flush, ce qui déstabilise la session <code>shinytest2</code> — le test <code>mod_rag_admin-e2e</code> documentait déjà devoir tolérer cette erreur).</li>
 <li>Surchargeable sans toucher au site d’appel via <strong><code>NEMETON_TOUR</code></strong> (<code>0</code>/<code>false</code>/<code>no</code>/<code>non</code>/<code>off</code> désactive, <code>1</code>/<code>true</code>/<code>yes</code>/<code>oui</code>/<code>on</code> active) — la variable d’environnement l’emporte sur l’argument.</li>
 <li>Au passage : le <code>message("[TOUR] Cicerone package not available!")</code> de <code>mod_home.R</code> passe en <code><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli::cli_alert_info()</a></code> (règle 9 : pas de <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> en code de prod).</li>
 </ul></div>
 <div class="section level4">
-<h4 id="fixed--desserte--garde-fou-mémoire-avant-lancement-oom-machine-0-116-1">Fixed — Desserte : garde-fou mémoire avant lancement (OOM machine)<a class="anchor" aria-label="anchor" href="#fixed--desserte--garde-fou-m%C3%A9moire-avant-lancement-oom-machine-0-116-1"></a></h4>
+<h4 id="fixed--desserte--garde-fou-mémoire-avant-lancement-oom-machine-0-116-2">Fixed — Desserte : garde-fou mémoire avant lancement (OOM machine)<a class="anchor" aria-label="anchor" href="#fixed--desserte--garde-fou-m%C3%A9moire-avant-lancement-oom-machine-0-116-2"></a></h4>
 <ul><li>
 <code>reseau_desserte(mode = "glouton")</code> sur une emprise réaliste faisait <strong>monter le worker à 16,8 Go en 15 min</strong>, puis tombait la machine par <strong>OOM</strong> (RStudio et navigateur emportés). Diagnostic : <code>foretaccess</code> matérialise une table de voisinage <strong>par cellule de grille</strong> (<code>NeibTable.neighbors</code>, un <code>Vec&lt;Vec&lt;Neighbor&gt;&gt;</code> Rust) couvrant le disque de rayon <code>d_neighborhood_m</code> (42 m par défaut) — soit <strong>~4,4 Ko par cellule</strong> à 5 m, linéaire en nombre de cellules et quadratique en <code>d_neighborhood / résolution</code>. Ce n’est <strong>pas une fuite</strong> (la mémoire est rendue entre parcelles) mais un pic structurel. Les 16,8 Go correspondent à ~3,9 M cellules, soit une emprise d’environ 10 km × 10 km.</li>
 <li>
@@ -96,7 +101,7 @@
 <li>Correctif amont demandé à <code>foretaccess</code> (brief <code>~/brief-foretaccess-neibtable-memoire.md</code>) : ne pas matérialiser la table sur toute la grille. Tant qu’il n’est pas livré, les grandes emprises restent hors d’atteinte.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="fixed--pool-de-workers-future-non-borné-0-116-1">Fixed — Pool de workers <code>future</code> non borné<a class="anchor" aria-label="anchor" href="#fixed--pool-de-workers-future-non-born%C3%A9-0-116-1"></a></h4>
+<h4 id="fixed--pool-de-workers-future-non-borné-0-116-2">Fixed — Pool de workers <code>future</code> non borné<a class="anchor" aria-label="anchor" href="#fixed--pool-de-workers-future-non-born%C3%A9-0-116-2"></a></h4>
 <ul><li>
 <code>future::plan("multisession")</code> était appelé <strong>sans <code>workers</code></strong> sur <strong>19 sites</strong> (modules et services) : le pool prenait <code>availableCores()</code>, et les workers étant <strong>persistants</strong> (ils ne rendent pas leur RSS entre deux tâches), une machine 8 cœurs pouvait immobiliser 8 sessions R pleines — le mode de défaillance de la spec 008.</li>
 <li>Tous ces sites passent désormais par <code>.ensure_async_plan()</code>, qui borne le pool via <code>.resolve_parallel_workers()</code> : option <code>parallel_workers</code> &gt; variable d’environnement <code>NEMETON_PARALLEL_WORKERS</code> &gt; défaut <code>min(4, availableCores() - 2)</code>.</li>
