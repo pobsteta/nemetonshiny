@@ -1,8 +1,35 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.116.0 (2026-07-25)
 
-## nemetonshiny 0.115.13 (2026-07-25)
+#### Added — Comparateur swipe : desserte BD TOPO vs corrigée sur fond relief RVT
+
+- Nouveau **comparateur « swipe »** dans l’onglet Accessibilité
+  (apparaît une fois une correction LiDAR faite) : un volet coulissant
+  sur un **fond relief** montre à gauche la desserte **BD TOPO
+  d’origine** (colorée route/piste), à droite la desserte **recalée au
+  LiDAR** (colorée par largeur carrossable, tronçons non couverts en
+  gris pointillé). Le relief fait ressortir l’assiette réelle des
+  routes, donnant à voir le décalage recalé par ALSroads. Deux légendes
+  simultanées (gauche/droite).
+- **`R/service_rvt.R`** — génération du fond relief depuis le MNT à 1 m.
+  Deux moteurs : **rvt-py** via `reticulate` (VAT canonique — Sky-View
+  Factor + Openness
+  - Slope) s’il est installé, sinon repli **terra** garanti (hillshade
+    classique NW sur MNT débruité — le MNT WMS RGE ALTI porte un
+    striping de tuiles qu’un multi-hillshade amplifierait). Résultat mis
+    en cache à côté du MNT (~8 s au premier calcul, instantané ensuite).
+- La correction LiDAR écrit désormais **deux couches** dans
+  `desserte_corrigee.gpkg` : `desserte_corrigee` (recalée) **et**
+  `desserte_origine` (BD TOPO avant recalage), que le comparateur
+  oppose.
+- Réutilise le swipe maison `nemeton_swipe.js` (panes clippés) : fond
+  RVT dans un pane **non** clippé (relief continu des deux côtés),
+  dessertes dans deux panes clippés. Mutuellement exclusif avec le swipe
+  ACCESSFOR (un volet par carte).
+- 10 clés i18n FR/EN. `bilan` n’étant pas persisté, le critère
+  mesuré/non-mesuré est `is.na(etat_classe)`. \# nemetonshiny 0.115.13
+  (2026-07-25)
 
 #### Changed — Correction LiDAR : cache de mesure persistant (relance quasi immédiate)
 
