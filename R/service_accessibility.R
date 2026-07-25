@@ -383,27 +383,38 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
     return(list(status = "error", reason = "acc_correct_no_lidr"))
   }
 
-  # MNT à 1 m — PAS les 5 m de l'analyse d'accessibilité. `foretaccess`
-  # (`.mnt_alsroads`, desserte_lidar.R) renvoie le MNT fourni tel quel dès qu'il
-  # est <= 1,5 m ; au-delà il en DÉRIVE un par triangulation, et cette
-  # dérivation lit toutes les dalles d'un coup
-  # (`readLAS(ctg$filename, filter = "-keep_class 2")`), court-circuitant le
-  # LAScatalog. Mesuré : 4 dalles LiDAR HD = 165,5 M de points -> le worker
-  # monte à 16,8 Go puis la machine tombe en OOM. Fournir 1 m supprime la cause
-  # (aucun point lu) et c'est la résolution qu'ALSroads attend de toute façon.
+  # MNT pour le recalage ALSroads. `foretaccess` (`.mnt_alsroads`,
+  # desserte_lidar.R) renvoie le MNT fourni tel quel dès qu'il est <= 1,5 m ;
+  # au-delà il en DÉRIVE un en lisant TOUTES les dalles d'un coup
+  # (`readLAS(ctg$filename, ...)`) — 165,5 M de points -> OOM (16,8 Go). On fournit
+  # donc toujours un MNT <= 1,5 m (aucun point lu).
+  #
+  # PRÉFÉRENCE : le MNT LiDAR HD 0,5 m NATIF (`lidar_mnt_mosaic.tif`) quand il
+  # existe, plutôt que le WMS RGE ALTI 1 m. Trois gains : (1) recalage ALSroads
+  # bien plus précis (0,5 m natif vs 1 m rééchantillonné, strié) ; (2) COHÉRENCE
+  # avec le fond relief RVT du comparateur, calculé sur le même MNT ; (3) toujours
+  # pas d'OOM (0,5 m <= 1,5 m -> pas de dérivation). Repli WMS 1 m sinon.
   acq <- .acquire_mnt_desserte(aoi_path, cache_dir, buffer_m, res_m = 1)
   if (!identical(acq$status, "ok")) return(acq)
 
-  # Filet : si le MNT obtenu reste trop grossier (WMS dégradé, repli
-  # acquire_mnt), la dérivation se déclenchera côté foretaccess. On estime alors
-  # son coût depuis le nuage et on refuse plutôt que de partir en OOM.
-  if (max(terra::res(acq$mnt)) > 1.5) {
+  lidar_mnt_path <- file.path(project_path %||% dirname(cache_dir),
+                              "cache", "layers", "lidar_mnt_mosaic.tif")
+  use_lidar_mnt <- !is.null(project_path) && file.exists(lidar_mnt_path)
+  mnt_alsroads <- if (use_lidar_mnt) {
+    tryCatch(terra::rast(lidar_mnt_path), error = function(e) acq$mnt)
+  } else acq$mnt
+
+  # Filet : si le MNT retenu reste trop grossier (> 1,5 m — WMS dégradé, repli
+  # acquire_mnt, ou LiDAR absent), la dérivation se déclenchera côté foretaccess.
+  # On estime alors son coût depuis le nuage et on refuse plutôt que de partir en
+  # OOM.
+  if (max(terra::res(mnt_alsroads)) > 1.5) {
     chk <- .lidar_memory_check(laz_dir)
     if (!isTRUE(chk$ok)) {
       return(list(status = "error", reason = "acc_correct_memory_guard",
                   detail = sprintf(
                     "MNT a %.1f m (> 1,5 m) : foretaccess derivera un MNT en lisant %s points ; pic estime %.1f Go, RAM disponible %.1f Go",
-                    max(terra::res(acq$mnt)),
+                    max(terra::res(mnt_alsroads)),
                     format(chk$points, big.mark = " "),
                     chk$bytes / 1024^3, chk$available / 1024^3)))
     }
@@ -423,12 +434,16 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   # réutilisé à tort et rendrait des largeurs incohérentes. On isole donc le cache
   # de CE chemin (MNT à 1 m). Invalidation naturelle si l'emprise change (acq_dir
   # suit le buffer) ou si les tronçons changent (nouveaux WKT).
-  qualif_cache <- file.path(acq$acq_dir, "qualif_cache")
+  # Cache DÉDIÉ à la source du MNT : le cache foretaccess est keyé par WKT sans
+  # versionner le DTM. Réutiliser un cache fait avec un autre MNT rendrait des
+  # largeurs incohérentes -> un sous-répertoire par source (`_lidar` vs `_wms`).
+  qualif_cache <- file.path(acq$acq_dir,
+                            if (use_lidar_mnt) "qualif_cache_lidar" else "qualif_cache")
   dir.create(qualif_cache, recursive = TRUE, showWarnings = FALSE)
   n_avant <- nrow(acq$desserte)
   dq <- tryCatch(
     foretaccess::qualifier_desserte(acq$desserte, las_source = laz_dir,
-                                    mnt = acq$mnt, cache_dir = qualif_cache,
+                                    mnt = mnt_alsroads, cache_dir = qualif_cache,
                                     retirer_disparues = TRUE,
                                     etat_disparue = 4L),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))

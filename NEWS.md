@@ -1,5 +1,25 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.117.2 (2026-07-25)
 
+### Changed — Correction LiDAR sur le MNT LiDAR 0,5 m natif + fond RVT asynchrone
+
+- **La correction LiDAR de la desserte recale désormais sur le MNT LiDAR HD 0,5 m
+  natif** (`lidar_mnt_mosaic.tif`) au lieu du WMS RGE ALTI 1 m. Trois gains :
+  recalage ALSroads plus précis (0,5 m natif vs 1 m rééchantillonné strié) ;
+  **cohérence** avec le fond relief RVT du comparateur (même MNT) ; toujours pas
+  d'OOM (0,5 m ≤ 1,5 m → aucune dérivation, aucun point lu). Repli WMS 1 m si le
+  MNT LiDAR est absent. Cache de mesure dédié à la source (`qualif_cache_lidar`
+  vs `qualif_cache`) — le cache foretaccess étant keyé par WKT sans versionner le
+  DTM, mélanger deux sources donnerait des largeurs incohérentes.
+- **⚠️ Re-corriger les projets déjà corrigés** : un `desserte_corrigee.gpkg`
+  produit avant ce changement a été recalé sur le WMS ; relancer la correction le
+  réaligne sur le MNT LiDAR (rapide — mesure ALSroads sur les seuls tronçons
+  couverts).
+- **Fond RVT asynchrone** : `generate_rvt()` (vat_combined) sur une mosaïque LiDAR
+  coûte ~1 min. Le comparateur ne le lance plus en synchrone (qui gelait la boucle
+  Shiny) : quand le rendu est peu coûteux (cache / CVAT pré-calculé) il reste
+  synchrone (instantané), sinon il part dans un worker (`rvt_task`) et le fond est
+  peint à l'arrivée du résultat — les dessertes et le volet swipe s'affichent
+  immédiatement, le relief apparaît ensuite.
 # nemetonshiny 0.117.1 (2026-07-25)
 
 ### Changed — Comparateur desserte : fond relief sur le MNT LiDAR HD 0,5 m natif

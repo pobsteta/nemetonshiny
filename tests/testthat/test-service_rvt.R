@@ -184,3 +184,27 @@ test_that(".acc_rvt_mnt_path prefers the native 0.5 m LiDAR DTM over the WMS DEM
     expect_match(nemetonshiny:::.acc_rvt_mnt_path(proj), "mnt_highres_1m\\.tif$")
   })
 })
+
+test_that(".rvt_is_cheap is TRUE with a precomputed CVAT, FALSE otherwise", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    m <- terra::rast(nrows = 5, ncols = 5); terra::values(m) <- 1
+    terra::writeRaster(m, "lidar_mnt_mosaic.tif", overwrite = TRUE)
+    expect_false(nemetonshiny:::.rvt_is_cheap("lidar_mnt_mosaic.tif"))
+    # CVAT pré-calculé à côté -> cheap
+    terra::writeRaster(m, "lidar_mnt_mosaic_CVAT_8bit.tif", overwrite = TRUE)
+    expect_true(nemetonshiny:::.rvt_is_cheap("lidar_mnt_mosaic.tif"))
+    expect_false(nemetonshiny:::.rvt_is_cheap(NULL))
+  })
+})
+
+test_that(".rvt_is_cheap is TRUE once the RVT cache exists", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    m <- terra::rast(nrows = 5, ncols = 5); terra::values(m) <- 1
+    terra::writeRaster(m, "mnt.tif", overwrite = TRUE)
+    expect_false(nemetonshiny:::.rvt_is_cheap("mnt.tif"))
+    terra::writeRaster(m, nemetonshiny:::.rvt_cache_path("mnt.tif"), overwrite = TRUE)
+    expect_true(nemetonshiny:::.rvt_is_cheap("mnt.tif"))
+  })
+})

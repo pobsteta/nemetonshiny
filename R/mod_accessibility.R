@@ -364,6 +364,32 @@ mod_accessibility_server <- function(id, app_state) {
       })
     bslib::bind_task_button(correct_task, "correct_desserte")
 
+    # --- Worker asynchrone : génération du fond relief RVT/CVAT -----------------
+    # `generate_rvt()` (vat_combined foretaccess) sur une mosaïque LiDAR complète
+    # coûte ~1 min : le lancer synchrone dans l'observe du comparateur gèlerait la
+    # boucle Shiny. On l'exécute donc dans un worker (le résultat est un CHEMIN,
+    # sérialisable) et l'observe dédié plus bas peint le fond quand il arrive. Le
+    # cas peu coûteux (cache/CVAT pré-calculé) reste synchrone (cf. .rvt_is_cheap).
+    rvt_task <- shiny::ExtendedTask$new(
+      function(mnt_path, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            .ensure_async_plan()
+          }
+        }
+        promises::future_promise({
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          nemetonshiny:::generate_rvt(mnt_path)
+        }, seed = TRUE)
+      })
+
     # Disponibilité de la desserte corrigée (fichier sur disque) : rafraîchie au
     # changement de projet + à la fin d'une correction. Pilote la case « utiliser ».
     correct_refresh <- shiny::reactiveVal(0L)
@@ -938,6 +964,29 @@ mod_accessibility_server <- function(id, app_state) {
           sprintf("%s %s", i18n$t("acc_compare_hint"), relief_lbl)))
     })
 
+    # Peint le fond relief RVT (raster gris [0,1]) dans son pane non clippé.
+    # Partagé par le chemin synchrone (cache) et l'observe async (rvt_task).
+    .paint_rvt_fond <- function(rvt_path) {
+      if (is.null(rvt_path) || !file.exists(rvt_path)) return(invisible())
+      rr <- tryCatch(terra::rast(rvt_path), error = function(e) NULL)
+      if (is.null(rr)) return(invisible())
+      grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
+        domain = c(0, 1), na.color = "transparent")
+      leaflet::leafletProxy("map") |>
+        leaflet::clearGroup("Relief RVT") |>
+        leaflet::addRasterImage(rr, colors = grey, opacity = 1,
+          group = "Relief RVT",
+          options = leaflet::gridOptions(pane = "nemetonRvtFond"))
+      invisible()
+    }
+
+    # Fond RVT calculé en async (cas coûteux) : peint quand le worker rend le
+    # chemin, si le comparateur est toujours actif.
+    shiny::observeEvent(rvt_task$result(), {
+      shiny::removeNotification(session$ns("rvt_notif"))
+      if (isTRUE(compare_active())) .paint_rvt_fond(rvt_task$result())
+    }, ignoreNULL = TRUE)
+
     # Peinture du comparateur : fond RVT (non clippé) + desserte origine (gauche) +
     # desserte corrigée (droite), volet swipe entre les deux. Désactivé -> nettoyage.
     dess_corr_pal <- leaflet::colorNumeric("viridis", domain = c(0, 12),
@@ -955,6 +1004,7 @@ mod_accessibility_server <- function(id, app_state) {
         leaflet::removeControl("cmp_legend_r")
 
       if (!on) {
+        shiny::removeNotification(session$ns("rvt_notif"))
         if (isTRUE(compare_active())) {
           session$sendCustomMessage("nemetonSwipeOff", list(id = mapid))
           compare_active(FALSE)
@@ -962,25 +1012,17 @@ mod_accessibility_server <- function(id, app_state) {
         return()
       }
 
-      # Fond relief RVT (généré/caché à la 1re activation, puis lu du cache).
+      # Fond relief RVT. Peu coûteux (cache / CVAT pré-calculé) -> synchrone ;
+      # sinon (calcul vat_combined ~1 min) -> worker async, peint par l'observe
+      # `rvt_task$result()` plus bas quand il arrive.
       mnt_path <- .acc_rvt_mnt_path(project_path)
-      rvt_path <- NULL
       if (!is.null(mnt_path)) {
-        if (!file.exists(.rvt_cache_path(mnt_path))) {
-          nid <- shiny::showNotification(i18n$t("acc_compare_building_relief"),
-                                         duration = NULL, type = "message")
-          on.exit(shiny::removeNotification(nid), add = TRUE)
-        }
-        rvt_path <- tryCatch(generate_rvt(mnt_path), error = function(e) NULL)
-      }
-      if (!is.null(rvt_path) && file.exists(rvt_path)) {
-        rr <- tryCatch(terra::rast(rvt_path), error = function(e) NULL)
-        if (!is.null(rr)) {
-          grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
-            domain = c(0, 1), na.color = "transparent")
-          proxy <- leaflet::addRasterImage(proxy, rr, colors = grey, opacity = 1,
-            group = "Relief RVT",
-            options = leaflet::gridOptions(pane = "nemetonRvtFond"))
+        if (.rvt_is_cheap(mnt_path)) {
+          .paint_rvt_fond(tryCatch(generate_rvt(mnt_path), error = function(e) NULL))
+        } else {
+          shiny::showNotification(i18n$t("acc_compare_building_relief"),
+            duration = NULL, type = "message", id = session$ns("rvt_notif"))
+          rvt_task$invoke(mnt_path, .dev_pkg_path, get_app_options())
         }
       }
 

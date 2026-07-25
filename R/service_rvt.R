@@ -159,18 +159,39 @@
 #' @param mnt_path Path to the source DEM.
 #' @return A `[0, 1]` `SpatRaster`, or `NULL` when no precomputed CVAT exists.
 #' @noRd
-.rvt_precomputed <- function(mnt_path) {
+.rvt_precomputed_path <- function(mnt_path) {
   if (is.null(mnt_path) || !nzchar(mnt_path)) return(NULL)
   d <- dirname(mnt_path); base <- tools::file_path_sans_ext(basename(mnt_path))
   cand <- c(file.path(d, paste0(base, "_CVAT_8bit_foretaccess.tif")),
             file.path(d, paste0(base, "_CVAT_8bit.tif")))
   cand <- cand[file.exists(cand)]
-  if (length(cand) == 0L) return(NULL)
-  r <- tryCatch(terra::rast(cand[1]), error = function(e) NULL)
+  if (length(cand) == 0L) NULL else cand[1]
+}
+
+.rvt_precomputed <- function(mnt_path) {
+  p <- .rvt_precomputed_path(mnt_path)
+  if (is.null(p)) return(NULL)
+  r <- tryCatch(terra::rast(p), error = function(e) NULL)
   if (is.null(r)) return(NULL)
   mx <- tryCatch(terra::global(r, "max", na.rm = TRUE)[[1]], error = function(e) NA_real_)
   if (is.finite(mx) && mx > 1.5) r <- r / 255      # 8-bit -> [0, 1]
   r
+}
+
+#' Will `generate_rvt()` return quickly for this DEM?
+#'
+#' `TRUE` when the RVT cache already exists or a precomputed CVAT sits next to the
+#' DEM — in which case the comparator can paint the relief synchronously. `FALSE`
+#' means a live `vat_combined()` (~1 min on a full LiDAR mosaic) is needed, which
+#' the comparator runs asynchronously so the Shiny loop never freezes.
+#'
+#' @param mnt_path Path to the source DEM, or NULL.
+#' @return `TRUE`/`FALSE`.
+#' @noRd
+.rvt_is_cheap <- function(mnt_path) {
+  if (is.null(mnt_path) || !nzchar(mnt_path)) return(FALSE)
+  file.exists(.rvt_cache_path(mnt_path)) ||
+    !is.null(.rvt_precomputed_path(mnt_path))
 }
 
 #' Generate (or load from cache) an RVT relief raster for a DEM

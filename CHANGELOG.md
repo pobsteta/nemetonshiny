@@ -10,6 +10,17 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.117.2] - 2026-07-25
+
+### Changed
+
+- Correction LiDAR de la desserte recalée sur le **MNT LiDAR HD 0,5 m natif**
+  (cohérence avec le fond RVT, recalage plus précis, pas d'OOM). Repli WMS.
+  Re-corriger les projets déjà corrigés sur le WMS.
+- Fond RVT **asynchrone** (`rvt_task`) : plus de gel de la boucle Shiny sur le
+  calcul `vat_combined` (~1 min) ; dessertes et volet swipe immédiats, relief
+  peint à l'arrivée. Cas peu coûteux (cache / CVAT pré-calculé) resté synchrone.
+
 ## [0.117.1] - 2026-07-25
 
 ### Changed
