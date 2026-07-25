@@ -926,8 +926,10 @@ mod_accessibility_server <- function(id, app_state) {
     output$compare_ui <- shiny::renderUI({
       if (!isTRUE(corrected_available())) return(NULL)
       eng <- rvt_engine()
-      relief_lbl <- if (identical(eng, "vat")) i18n$t("acc_compare_relief_vat")
-                    else i18n$t("acc_compare_relief_hillshade")
+      relief_lbl <- switch(eng,
+        cvat = i18n$t("acc_compare_relief_cvat"),
+        vat  = i18n$t("acc_compare_relief_vat"),
+        i18n$t("acc_compare_relief_hillshade"))
       htmltools::div(
         class = "mt-2",
         shiny::checkboxInput(ns("compare_toggle"),

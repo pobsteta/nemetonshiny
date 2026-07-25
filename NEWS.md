@@ -1,5 +1,21 @@
 # nemetonshiny (development version)
 
+### Changed — Comparateur desserte : fond relief CVAT (foretaccess >= 1.24.0)
+
+- Le fond relief du comparateur swipe (groupe « Relief RVT ») passe au **CVAT**
+  (Combined VAT) via **`foretaccess::vat_combined()`** (livré en foretaccess
+  1.24.0) : la combinaison par défaut du plugin QGIS RVT (0,5·VAT_general +
+  0,5·VAT_flat), validée pixel à pixel contre le plugin (99,998 % identiques).
+  Supprime la dépendance Python `rvt-py` du chemin nominal.
+- Nouvel ordre de préférence dans `generate_rvt()` : **CVAT** (foretaccess) →
+  rvt-py (conservé en repli) → terra (hillshade, repli garanti). Le rendu
+  gris/légende et le cache sont inchangés (le CVAT float est déjà en `[0, 1]`).
+  Validé depuis l'app : `rvt_engine()` → `"cvat"`, relief `[0, 1]`.
+- `Remotes` foretaccess pinné à **@v1.24.0**. Le plancher `Imports` reste à
+  1.20.0 : sans le CVAT, le comparateur retombe proprement sur rvt-py puis terra
+  (dégradation gracieuse, pas un minimum strict).
+- Dette d'encodage corrigée : le bloc de clés i18n `acc_compare_*` repasse en
+  `\uXXXX` (règle 4).
 # nemetonshiny 0.116.2 (2026-07-25)
 
 ### Changed — Plancher `nemeton (>= 0.168.1)` : fix du cubage P1/C1/E1
