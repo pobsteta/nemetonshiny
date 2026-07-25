@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.116.2] - 2026-07-25
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.168.1)` : corrige le tarif de cubage IFN qui
+  gonflait P1 (et C1 biomasse, E1 énergie) ×3-5. Validé depuis l'app : P1
+  ForêtAccess 1556 → 372 m³/ha médian. **Les projets calculés avec ≤ 0.168.0
+  doivent être recalculés** (valeurs P1/C1/E1 persistées fausses).
+
 ## [0.116.1] - 2026-07-25
 
 ### Changed
