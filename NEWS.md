@@ -1,5 +1,12 @@
 # nemetonshiny (development version)
 
+### Changed — Plancher `nemeton (>= 0.168.0)`
+
+- Bump du plancher `Imports: nemeton` de 0.165.0 à **0.168.0** : cette version
+  ajoute le garde-fou de plausibilité `volume_mobilisable(p1_max_plausible = 800)`
+  (`cli_warn` quand un P1 dépasse le plafond m³/ha), dont le typage de desserte
+  bénéficie sans changement de code app. Réponse cœur : `nemeton` spec 040,
+  `reponse-p1-unite-desserte.md`.
 # nemetonshiny 0.116.0 (2026-07-25)
 
 ### Added — Comparateur swipe : desserte BD TOPO vs corrigée sur fond relief RVT
