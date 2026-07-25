@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.116.1\] - 2026-07-25
+
+### Changed
+
+- Plancher `Imports: nemeton (>= 0.168.0)` : cette version ajoute le
+  garde-fou `volume_mobilisable(p1_max_plausible = 800)` (`cli_warn` sur
+  les P1 hors domaine), dont le typage de desserte bénéficie via le
+  défaut.
+
 ## \[0.116.0\] - 2026-07-25
 
 ### Added
