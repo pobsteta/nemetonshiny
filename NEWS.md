@@ -1,5 +1,14 @@
 # nemetonshiny (development version)
 
+### Changed — Comparateur desserte piloté par le sélecteur de couche
+
+- Le comparateur « desserte BD TOPO / corrigée » n'est plus déclenché par une case
+  à cocher séparée mais par une **pseudo-couche du sélecteur de couche radio**
+  (« Desserte BD TOPO / corrigée (volet) »), exactement comme « Classes de
+  débardage/ACCESSFOR » déclenche son volet. Sélectionner cette entrée active le
+  fond relief + le swipe ; en sélectionner une autre le désactive. L'entrée
+  apparaît dès qu'une correction LiDAR existe, même sans run moteur. Clé
+  `acc_compare_toggle` retirée (morte).
 # nemetonshiny 0.117.2 (2026-07-25)
 
 ### Changed — Correction LiDAR sur le MNT LiDAR 0,5 m natif + fond RVT asynchrone

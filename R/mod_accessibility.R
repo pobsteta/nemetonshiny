@@ -243,9 +243,9 @@ mod_accessibility_ui <- function(id) {
           position = "right", open = "always", width = 280,
           htmltools::tags$strong(i18n$t("acc_layer_label")),
           shiny::uiOutput(ns("layer_ui")),
-          # Comparateur swipe « desserte BD TOPO vs corrigée » sur fond relief RVT.
-          # Rendu conditionnel : n'apparaît qu'une fois une correction LiDAR faite.
-          shiny::uiOutput(ns("compare_ui")),
+          # Aide contextuelle du comparateur : n'apparaît que lorsque la
+          # pseudo-couche « Desserte BD TOPO / corrigée » est sélectionnée.
+          shiny::uiOutput(ns("compare_hint_ui")),
           htmltools::tags$hr(class = "my-2"),
           shiny::numericInput(
             ns("buffer_km"), i18n$t("acc_buffer"),
@@ -701,7 +701,12 @@ mod_accessibility_server <- function(id, app_state) {
     output$layer_ui <- shiny::renderUI({
       res <- rv$result
       layers <- if (is.null(res)) NULL else names(res$raster_paths)
-      if (is.null(layers) || length(layers) == 0L) {
+      # « Desserte BD TOPO / corrigée » : entrée PSEUDO-couche du même sélecteur,
+      # sur le modèle de « Classes de débardage/ACCESSFOR » — la cocher active le
+      # volet comparateur (fond relief + swipe). Disponible dès qu'une correction
+      # LiDAR existe, même sans run moteur.
+      compare_ok <- isTRUE(corrected_available())
+      if ((is.null(layers) || length(layers) == 0L) && !compare_ok) {
         return(htmltools::tags$p(class = "text-muted small",
                                  i18n$t("acc_no_result_yet")))
       }
@@ -721,10 +726,16 @@ mod_accessibility_server <- function(id, app_state) {
           i18n$t("acc_layer_debardage_accessfor") else i18n$t("acc_layer_debardage"))
       labs <- unname(lyr_label[layers])
       labs[is.na(labs)] <- layers[is.na(labs)]
+      choices <- stats::setNames(layers, labs)
+      if (compare_ok) {
+        choices <- c(choices,
+                     stats::setNames("desserte_comparee",
+                                     i18n$t("acc_layer_desserte_comparee")))
+      }
       shiny::radioButtons(
         ns("layer"), NULL,
-        choices = stats::setNames(layers, labs),
-        selected = layers[[1]])
+        choices = choices,
+        selected = if (length(layers) > 0L) layers[[1]] else "desserte_comparee")
     })
 
     # --- Badge de provenance DFCI (au-dessus de la carte) ----------------------
@@ -856,9 +867,10 @@ mod_accessibility_server <- function(id, app_state) {
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Accessibilite") |>
         leaflet::removeControl("acc_legend")
-      # Comparateur actif : il possède le volet, on ne peint pas le raster de
-      # classes ni son swipe (ils reviendront à la désactivation du comparateur).
-      if (isTRUE(compare_active())) {
+      # Pseudo-couche comparateur sélectionnée : il possède le volet, on ne peint
+      # pas le raster de classes ni son swipe (ils reviennent au changement de
+      # couche). Le swipe ACCESSFOR se retire s'il était actif.
+      if (identical(layer, "desserte_comparee")) {
         if (isTRUE(swipe_active())) swipe_active(FALSE)
         return()
       }
@@ -947,21 +959,18 @@ mod_accessibility_server <- function(id, app_state) {
     })
 
     # --- Comparateur swipe : desserte BD TOPO vs corrigée sur fond relief RVT ---
-    # Toggle rendu seulement une fois une correction LiDAR disponible (elle produit
-    # `desserte_corrigee.gpkg` avec les couches `desserte_origine` + `desserte_corrigee`).
-    output$compare_ui <- shiny::renderUI({
-      if (!isTRUE(corrected_available())) return(NULL)
+    # Piloté par la pseudo-couche `desserte_comparee` du sélecteur (comme le volet
+    # ACCESSFOR l'est par `classes_debardage`). L'aide contextuelle ci-dessous ne
+    # s'affiche que lorsque cette couche est sélectionnée.
+    output$compare_hint_ui <- shiny::renderUI({
+      if (!identical(input$layer, "desserte_comparee")) return(NULL)
       eng <- rvt_engine()
       relief_lbl <- switch(eng,
         cvat = i18n$t("acc_compare_relief_cvat"),
         vat  = i18n$t("acc_compare_relief_vat"),
         i18n$t("acc_compare_relief_hillshade"))
-      htmltools::div(
-        class = "mt-2",
-        shiny::checkboxInput(ns("compare_toggle"),
-          i18n$t("acc_compare_toggle"), value = FALSE),
-        htmltools::tags$p(class = "text-muted small mb-0",
-          sprintf("%s %s", i18n$t("acc_compare_hint"), relief_lbl)))
+      htmltools::tags$p(class = "text-muted small mb-0 mt-1",
+        sprintf("%s %s", i18n$t("acc_compare_hint"), relief_lbl))
     })
 
     # Peint le fond relief RVT (raster gris [0,1]) dans son pane non clippé.
@@ -992,7 +1001,8 @@ mod_accessibility_server <- function(id, app_state) {
     dess_corr_pal <- leaflet::colorNumeric("viridis", domain = c(0, 12),
                                            na.color = "#9E9E9E")
     shiny::observe({
-      on <- isTRUE(input$compare_toggle) && isTRUE(corrected_available())
+      on <- identical(input$layer, "desserte_comparee") &&
+        isTRUE(corrected_available())
       mapid <- session$ns("map")
       shown <- input$map_groups
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
