@@ -1,8 +1,25 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.117.1 (2026-07-25)
 
-## nemetonshiny 0.117.0 (2026-07-25)
+#### Changed — Comparateur desserte : fond relief sur le MNT LiDAR HD 0,5 m natif
+
+- `.acc_rvt_mnt_path()` privilégie désormais le **MNT LiDAR HD 0,5 m
+  natif** (`cache/layers/lidar_mnt_mosaic.tif`) plutôt que le MNT WMS
+  RGE ALTI 1 m. Le CVAT sur le LiDAR est **sans striping** (le WMS 1 m
+  rééchantillonné portait un striping de tuiles que le CVAT amplifiait)
+  et révèle le vrai micro-relief archéo — talus, fossés, traces de
+  chemins. Le WMS 1 m reste le repli pour les projets sans MNT LiDAR.
+  `lidar_mnh_mosaic.tif` (hauteur canopée) est explicitement exclu — un
+  RVT de relief doit partir du terrain nu.
+- **Réutilisation du CVAT pré-calculé** : `vat_combined()` sur une
+  mosaïque LiDAR 4000×4000 prend ~67 s. `generate_rvt()` adopte donc un
+  CVAT déjà persisté à côté du MNT
+  (`<base>_CVAT_8bit[_foretaccess].tif`, produit par le pipeline
+  foretaccess / QGIS-RVT) quand il existe — instantané (0,9 s sur
+  ForêtAccess). Sans cache : le calcul live (~67 s au premier clic, puis
+  caché) prend le relais, avec la notification « construction du relief
+  ». \# nemetonshiny 0.117.0 (2026-07-25)
 
 #### Changed — Comparateur desserte : fond relief CVAT (foretaccess \>= 1.24.0)
 

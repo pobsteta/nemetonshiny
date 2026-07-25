@@ -12,6 +12,16 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.117.1\] - 2026-07-25
+
+### Changed
+
+- Comparateur desserte : fond relief calculé sur le **MNT LiDAR HD 0,5 m
+  natif** (`lidar_mnt_mosaic.tif`) au lieu du WMS RGE ALTI 1 m — CVAT
+  sans striping, micro-relief archéo net. Réutilisation d’un CVAT
+  pré-calculé à côté du MNT (instantané) ; sinon calcul live (~67 s,
+  caché). WMS en repli.
+
 ## \[0.117.0\] - 2026-07-25
 
 ### Changed
