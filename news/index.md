@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.116.1 (2026-07-25)
 
 #### Changed — Plancher `nemeton (>= 0.168.0)`
