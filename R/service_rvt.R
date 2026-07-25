@@ -11,13 +11,16 @@
 # Ce n'est PAS de la logique métier (règle 1 : indicateurs / familles / NDP) —
 # c'est de la PRÉSENTATION cartographique d'un MNT, donc un service app.
 #
-# Deux moteurs :
+# Trois moteurs (par ordre de préférence) :
+#   * `foretaccess::vat_combined()` (>= 1.24.0) — le CVAT (Combined VAT), la
+#     combinaison PAR DÉFAUT du plugin QGIS RVT (0,5·VAT_general + 0,5·VAT_flat),
+#     validée pixel à pixel contre le plugin (99,998 % identiques). Le rendu
+#     archéo de référence, sans dépendance Python.
 #   * `rvt-py` (via reticulate) — le VAT canonique (Sky-View Factor + Openness +
-#     Slope, ZRC SAZU). Utilisé s'il est disponible. C'est le rendu archéo de
-#     référence.
-#   * terra (repli garanti) — relief ombré MULTI-DIRECTIONNEL + assombrissement
-#     par la pente. Pas le VAT canonique (pas de sky-view factor), mais suffit à
-#     révéler l'assiette des routes. Nommé honnêtement « relief ombré » dans l'UI.
+#     Slope, ZRC SAZU). Repli si foretaccess est trop ancien.
+#   * terra (repli garanti) — relief ombré (hillshade classique sur MNT débruité).
+#     Pas le VAT canonique, mais suffit à révéler l'assiette des routes. Nommé
+#     honnêtement « relief ombré » dans l'UI.
 #
 # Le résultat est un GeoTIFF mono-bande normalisé [0, 1] (0 = sombre, 1 = clair),
 # mis en cache à côté du MNT. Best-effort : renvoie `NULL` sur échec (l'UI retombe
@@ -120,6 +123,30 @@
   }, error = function(e) NULL)
 }
 
+#' Is `foretaccess::vat_combined()` (CVAT engine) available?
+#'
+#' @return `TRUE` when foretaccess (>= 1.24.0) exports `vat_combined()`.
+#' @noRd
+.rvt_cvat_available <- function() {
+  requireNamespace("foretaccess", quietly = TRUE) &&
+    exists("vat_combined", where = asNamespace("foretaccess"))
+}
+
+#' foretaccess engine: CVAT (combined VAT) — RVT QGIS default
+#'
+#' Computes the CVAT (Combined Visualization for Archaeological Topography) with
+#' `foretaccess::vat_combined()`, validated pixel-to-pixel against the RVT QGIS
+#' plugin. Returns a single-band `SpatRaster` in `[0, 1]`, or `NULL` on failure
+#' (caller falls back to rvt-py / terra).
+#'
+#' @param mnt A `SpatRaster` DEM.
+#' @noRd
+.rvt_cvat_ft <- function(mnt) {
+  if (!.rvt_cvat_available()) return(NULL)
+  tryCatch(foretaccess::vat_combined(mnt, as_byte = FALSE),
+           error = function(e) NULL)
+}
+
 #' Generate (or load from cache) an RVT relief raster for a DEM
 #'
 #' @param mnt_path Path to the source DEM GeoTIFF (e.g. the 1 m
@@ -137,11 +164,10 @@ generate_rvt <- function(mnt_path, overwrite = FALSE) {
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
   if (is.null(mnt)) return(NULL)
 
-  vat <- if (.rvt_py_available()) {
-    .rvt_vat_py(mnt_path, mnt) %||% .rvt_terra(mnt)
-  } else {
+  # CVAT (foretaccess >= 1.24.0) prioritaire ; repli rvt-py puis terra.
+  vat <- .rvt_cvat_ft(mnt) %||%
+    (if (.rvt_py_available()) .rvt_vat_py(mnt_path, mnt) else NULL) %||%
     .rvt_terra(mnt)
-  }
   if (is.null(vat)) return(NULL)
 
   ok <- tryCatch({
@@ -154,10 +180,12 @@ generate_rvt <- function(mnt_path, overwrite = FALSE) {
 
 #' Which relief engine will `generate_rvt()` use?
 #'
-#' For the UI label (« VAT (relief archéo) » vs « relief ombré »).
+#' For the UI label (« CVAT (relief archéo) » vs « VAT » vs « relief ombré »).
 #'
-#' @return `"vat"` (rvt-py) or `"hillshade"` (terra fallback).
+#' @return `"cvat"` (foretaccess), `"vat"` (rvt-py) or `"hillshade"` (terra).
 #' @noRd
 rvt_engine <- function() {
-  if (.rvt_py_available()) "vat" else "hillshade"
+  if (.rvt_cvat_available()) "cvat"
+  else if (.rvt_py_available()) "vat"
+  else "hillshade"
 }
