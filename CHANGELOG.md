@@ -12,6 +12,18 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.115.13\] - 2026-07-25
+
+### Changed
+
+- Correction LiDAR : cache de mesure `qualifier_desserte()`
+  **persistant** (`cache/accessibility/emprise_<b>m/qualif_cache/`) au
+  lieu du [`tempdir()`](https://rdrr.io/r/base/tempfile.html) volatil.
+  Une relance à emprise/MNT/desserte identiques ne rappelle
+  `measure_road` que sur les tronçons nouveaux — la 2ᵉ correction d’un
+  projet passe de ~4-5 h à quelques minutes. Sous-répertoire dédié pour
+  ne pas réutiliser un cache antérieur produit avec un autre DTM.
+
 ## \[0.115.12\] - 2026-07-24
 
 ### Added
