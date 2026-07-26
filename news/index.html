@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.120.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.120.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.120.1" id="nemetonshiny-01201-2026-07-26">nemetonshiny 0.120.1 (2026-07-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01201-2026-07-26"></a></h2>
+<div class="section level4">
+<h4 id="fixed--recalcul-du-cvat-quand-la-zone-tampon-change-0-120-1">Fixed — Recalcul du CVAT quand la zone tampon change<a class="anchor" aria-label="anchor" href="#fixed--recalcul-du-cvat-quand-la-zone-tampon-change-0-120-1"></a></h4>
+<ul><li>
+<strong>Couverture AOI+buffer vérifiée sur le CVAT existant.</strong> Auparavant <code>build_cvat_precomputed()</code> court-circuitait sur <code>file.exists(out)</code> avant toute délégation : un CVAT déjà présent n’était jamais re-contrôlé, si bien qu’un <strong>buffer agrandi laissait un fond relief trop court</strong>, non détecté. Nouveau helper <code>.cvat_covers()</code> (compare l’emprise du CVAT à la bbox AOI + <code>buffer_m</code>, dans le CRS du raster) : avec une AOI, on ne réutilise le CVAT que s’il couvre réellement l’emprise courante, sinon on <strong>force le recalcul</strong> (<code>overwrite=TRUE</code> → foretaccess ré-acquiert et recalcule).</li>
+<li>L’observer de pré-calcul (mod_accessibility) réagit désormais <strong>au changement de zone tampon</strong> (<code>input$buffer_km</code>, débouncé 600 ms) et non plus seulement à l’ouverture du projet : il ne relance le worker que si aucun CVAT n’existe ou si le CVAT existant ne couvre pas l’AOI + buffer — pas de worker inutile.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.120.0" id="nemetonshiny-01200-2026-07-26">nemetonshiny 0.120.0 (2026-07-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01200-2026-07-26"></a></h2>
