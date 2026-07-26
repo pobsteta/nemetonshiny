@@ -402,6 +402,43 @@ mod_accessibility_server <- function(id, app_state) {
     shiny::observeEvent(app_state$current_project,
       correct_refresh(correct_refresh() + 1L), ignoreNULL = FALSE)
 
+    # --- Pré-calcul du CVAT dès qu'un projet avec MNT LiDAR est ouvert ----------
+    # Matérialise <base>_CVAT_8bit_foretaccess.tif en tâche de fond (best-effort),
+    # pour que le comparateur ET le fond de carte « Relief CVAT » soient
+    # instantanés (via .rvt_precomputed). UNIQUEMENT sur le MNT LiDAR HD natif (pas
+    # le repli WMS, dont le striping serait amplifié). Idempotent : rien si un CVAT
+    # (foretaccess OU plugin) est déjà présent.
+    cvat_prebuild_task <- shiny::ExtendedTask$new(
+      function(mnt_path, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          pc <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% pc)) {
+            .ensure_async_plan()
+          }
+        }
+        promises::future_promise({
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          nemetonshiny:::build_cvat_precomputed(mnt_path)
+        }, seed = TRUE)
+      })
+
+    shiny::observeEvent(app_state$current_project, {
+      pp <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      mnt_path <- .acc_rvt_mnt_path(pp)
+      if (!is.null(mnt_path) &&
+          identical(basename(mnt_path), "lidar_mnt_mosaic.tif") &&
+          .rvt_cvat_available() &&
+          is.null(.rvt_precomputed_path(mnt_path))) {
+        cvat_prebuild_task$invoke(mnt_path, .dev_pkg_path, get_app_options())
+      }
+    }, ignoreNULL = TRUE)
+
     rv_correct <- shiny::reactiveVal(NULL)   # dernier résumé de correction
     correct_start <- shiny::reactiveVal(NULL)   # horodatage de départ (chrono)
     shiny::observeEvent(input$correct_desserte, {

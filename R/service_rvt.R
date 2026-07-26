@@ -237,3 +237,39 @@ rvt_engine <- function() {
   else if (.rvt_py_available()) "vat"
   else "hillshade"
 }
+
+#' Materialize the precomputed CVAT next to a LiDAR DEM (idempotent)
+#'
+#' Writes `<base>_CVAT_8bit_foretaccess.tif` = `foretaccess::vat_combined()` in
+#' 8-bit, next to the DEM — the file `.rvt_precomputed_path()` adopts first (so
+#' the comparator / relief overlay paint instantly). Until now that file only
+#' existed when written by hand; this is its real producer, meant to run in a
+#' background worker when a LiDAR project is opened (the ~1 min compute must not
+#' freeze the Shiny loop). Best-effort: `NULL` if foretaccess < 1.24.0, the DEM is
+#' unreadable, or the write fails. Idempotent: no recompute if the file exists
+#' (unless `overwrite`).
+#'
+#' @param mnt_path Source DEM path (ideally the native 0.5 m LiDAR HD DTM).
+#' @param overwrite Force recompute even if the output exists.
+#' @return Path to the 8-bit CVAT, or `NULL`.
+#' @noRd
+build_cvat_precomputed <- function(mnt_path, overwrite = FALSE) {
+  if (is.null(mnt_path) || !file.exists(mnt_path)) return(NULL)
+  if (!.rvt_cvat_available()) return(NULL)            # foretaccess >= 1.24.0 requis
+  out <- file.path(
+    dirname(mnt_path),
+    paste0(tools::file_path_sans_ext(basename(mnt_path)),
+           "_CVAT_8bit_foretaccess.tif"))
+  if (file.exists(out) && !isTRUE(overwrite)) return(out)
+  mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
+  if (is.null(mnt)) return(NULL)
+  cvat <- tryCatch(foretaccess::vat_combined(mnt, as_byte = TRUE),
+                   error = function(e) NULL)
+  if (is.null(cvat)) return(NULL)
+  ok <- tryCatch({
+    terra::writeRaster(cvat, out, overwrite = TRUE, datatype = "INT1U",
+                       gdal = c("COMPRESS=DEFLATE"))
+    TRUE
+  }, error = function(e) FALSE)
+  if (isTRUE(ok) && file.exists(out)) out else NULL
+}

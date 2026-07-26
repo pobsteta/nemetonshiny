@@ -1,5 +1,18 @@
 # nemetonshiny (development version)
 
+### Added — Pré-calcul automatique du CVAT à l'ouverture d'un projet LiDAR
+
+- Nouveau producteur `build_cvat_precomputed()` : matérialise
+  `<base>_CVAT_8bit_foretaccess.tif` (`foretaccess::vat_combined(as_byte=TRUE)`) à
+  côté du MNT — le fichier que `.rvt_precomputed()` adopte en priorité. Jusqu'ici
+  il n'existait que s'il était écrit à la main ; c'est désormais produit
+  **automatiquement, en tâche de fond**, dès qu'un projet contenant le MNT LiDAR
+  HD natif (`lidar_mnt_mosaic.tif`) est ouvert. Conséquence : le comparateur et le
+  fond de carte « Relief CVAT » deviennent **instantanés** sans dépendre d'un
+  artefact posé à la main.
+- Gardes : uniquement sur le MNT LiDAR natif (pas le repli WMS strié), seulement
+  si foretaccess ≥ 1.24.0, et idempotent (rien si un CVAT foretaccess **ou** plugin
+  est déjà présent). Calcul (~1 min) dans un worker `future` — l'UI ne gèle pas.
 # nemetonshiny 0.118.0 (2026-07-26)
 
 ### Added — Fond relief CVAT sur les cartes Accessibilité et Desserte
