@@ -1,3 +1,5 @@
+# nemetonshiny (development version)
+
 # nemetonshiny 0.120.0 (2026-07-26)
 
 ### Added — Pré-calcul CVAT : notification + couverture AOI+buffer (foretaccess 1.25.0)
