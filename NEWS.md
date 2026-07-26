@@ -2,6 +2,7 @@
 
 # nemetonshiny 0.120.1 (2026-07-26)
 
+
 ### Fixed — Recalcul du CVAT quand la zone tampon change
 
 - **Couverture AOI+buffer vérifiée sur le CVAT existant.** Auparavant
