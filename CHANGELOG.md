@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.120.1] - 2026-07-26
+
+### Fixed
+
+- Recalcul du CVAT quand la zone tampon change : `build_cvat_precomputed()`
+  vérifie désormais que le CVAT existant couvre l'AOI + buffer courant (nouveau
+  `.cvat_covers()`), sinon recalcul forcé. L'observer de pré-calcul réagit au
+  changement de `input$buffer_km` (débouncé) et non plus seulement à l'ouverture
+  du projet.
+
 ## [0.120.0] - 2026-07-26
 
 ### Added

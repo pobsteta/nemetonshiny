@@ -226,6 +226,42 @@ generate_rvt <- function(mnt_path, overwrite = FALSE) {
   if (isTRUE(ok) && file.exists(out)) out else NULL
 }
 
+#' Does an existing CVAT raster cover an AOI + buffer?
+#'
+#' `build_cvat_precomputed()` (and foretaccess) do NOT re-check an already-written
+#' CVAT for coverage. When the buffer grows, the cached CVAT can be too short.
+#' This compares the CVAT's extent to the AOI bounding box grown by `buffer_m`
+#' (both in the CVAT's CRS). A small tolerance of one cell absorbs rounding.
+#'
+#' @param out_path Path to the CVAT raster.
+#' @param aoi AOI (`sf`/`sfc` or path).
+#' @param buffer_m Buffer (m) grown around the AOI.
+#' @return `TRUE` if the CVAT extent contains the AOI + buffer, else `FALSE`.
+#' @noRd
+.cvat_covers <- function(out_path, aoi, buffer_m = 0) {
+  if (is.null(out_path) || !file.exists(out_path)) return(FALSE)
+  r <- tryCatch(terra::rast(out_path), error = function(e) NULL)
+  if (is.null(r)) return(FALSE)
+  a <- tryCatch(
+    if (is.character(aoi)) sf::st_read(aoi, quiet = TRUE) else aoi,
+    error = function(e) NULL)
+  if (is.null(a) || (inherits(a, c("sf", "sfc")) && length(sf::st_geometry(a)) == 0L)) {
+    return(FALSE)
+  }
+  a_bb <- tryCatch(
+    sf::st_bbox(sf::st_transform(sf::st_as_sfc(sf::st_bbox(a)), terra::crs(r))),
+    error = function(e) NULL)
+  if (is.null(a_bb)) return(FALSE)
+  bm <- max(0, suppressWarnings(as.numeric(buffer_m)))
+  if (!is.finite(bm)) bm <- 0
+  cov <- as.vector(terra::ext(r))                     # xmin xmax ymin ymax
+  tol <- max(terra::res(r))
+  isTRUE(cov[1] <= a_bb[["xmin"]] - bm + tol &&
+         cov[2] >= a_bb[["xmax"]] + bm - tol &&
+         cov[3] <= a_bb[["ymin"]] - bm + tol &&
+         cov[4] >= a_bb[["ymax"]] + bm - tol)
+}
+
 #' Which relief engine will `generate_rvt()` use?
 #'
 #' For the UI label (« CVAT (relief archéo) » vs « VAT » vs « relief ombré »).
@@ -267,18 +303,24 @@ build_cvat_precomputed <- function(mnt_path, aoi = NULL, buffer_m = 0,
     dirname(mnt_path),
     paste0(tools::file_path_sans_ext(basename(mnt_path)),
            "_CVAT_8bit_foretaccess.tif"))
-  if (file.exists(out) && !isTRUE(overwrite)) return(out)
-  # Avec une AOI : couverture AOI+buffer garantie par foretaccess (>= 1.25.0) —
-  # si la mosaïque LiDAR est trop courte (dalles manquantes), ré-acquisition puis
-  # recalcul. Sans AOI : CVAT sur le MNT tel quel (repli).
+  # Avec une AOI : le CVAT doit COUVRIR aoi+buffer. Ni notre code ni foretaccess
+  # ne re-vérifient un `out` déjà présent (sauf overwrite) — un buffer agrandi
+  # laisserait donc un CVAT trop court, non détecté. On vérifie la couverture ici
+  # et on FORCE le recalcul si insuffisant. foretaccess ré-acquiert le MNT si sa
+  # mosaïque est trop courte, puis recalcule.
   if (!is.null(aoi) &&
       exists("build_cvat_precomputed", where = asNamespace("foretaccess"))) {
+    covered <- !isTRUE(overwrite) && file.exists(out) &&
+      .cvat_covers(out, aoi, buffer_m)
+    if (isTRUE(covered)) return(out)                  # couvre déjà aoi+buffer
     return(tryCatch(
       foretaccess::build_cvat_precomputed(
         aoi = aoi, cache_dir = dirname(mnt_path), buffer_m = buffer_m,
-        mnt_existant = mnt_path, out = out, overwrite = overwrite),
+        mnt_existant = mnt_path, out = out, overwrite = TRUE),  # force le recalcul
       error = function(e) NULL))
   }
+  # Sans AOI : court-circuit idempotent (CVAT sur le MNT tel quel).
+  if (file.exists(out) && !isTRUE(overwrite)) return(out)
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
   if (is.null(mnt)) return(NULL)
   cvat <- tryCatch(foretaccess::vat_combined(mnt, as_byte = TRUE),

@@ -429,25 +429,33 @@ mod_accessibility_server <- function(id, app_state) {
         }, seed = TRUE)
       })
 
-    shiny::observeEvent(app_state$current_project, {
+    # Déclenché à l'ouverture du projet ET au changement de zone tampon (débouncé) :
+    # un buffer agrandi peut rendre le CVAT existant trop court, il faut alors le
+    # recalculer pour couvrir la nouvelle emprise.
+    buffer_km_d <- shiny::debounce(
+      shiny::reactive(suppressWarnings(as.numeric(input$buffer_km)) %||% 1), 600)
+    shiny::observeEvent(list(app_state$current_project, buffer_km_d()), {
       pp <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       mnt_path <- .acc_rvt_mnt_path(pp)
-      if (!is.null(mnt_path) &&
-          identical(basename(mnt_path), "lidar_mnt_mosaic.tif") &&
-          .rvt_cvat_available() &&
-          is.null(.rvt_precomputed_path(mnt_path))) {
-        # AOI + buffer pour garantir la couverture (foretaccess ré-acquiert si la
-        # mosaïque est trop courte). AOI = géométrie du projet ; buffer km -> m.
-        aoi <- tryCatch(units_sf(), error = function(e) NULL)
-        buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
-        # Message bas-droite pendant TOUT le calcul (id stable -> retiré à la fin).
-        shiny::showNotification(
-          i18n$t("acc_cvat_prebuild_running"), duration = NULL,
-          closeButton = FALSE, type = "message",
-          id = session$ns("cvat_prebuild"))
-        cvat_prebuild_task$invoke(mnt_path, aoi, buffer_m, .dev_pkg_path,
-                                  get_app_options())
+      if (is.null(mnt_path) ||
+          !identical(basename(mnt_path), "lidar_mnt_mosaic.tif") ||
+          !.rvt_cvat_available()) return()
+      aoi <- tryCatch(units_sf(), error = function(e) NULL)
+      buffer_m <- max(0, buffer_km_d()) * 1000
+      # Relancer si AUCUN CVAT, ou si le CVAT existant NE COUVRE PAS aoi+buffer
+      # (buffer agrandi). Sinon rien : pas de worker inutile.
+      existing <- .rvt_precomputed_path(mnt_path)
+      if (!is.null(existing) &&
+          (is.null(aoi) || isTRUE(.cvat_covers(existing, aoi, buffer_m)))) {
+        return()
       }
+      # Message bas-droite pendant TOUT le calcul (id stable -> retiré à la fin).
+      shiny::showNotification(
+        i18n$t("acc_cvat_prebuild_running"), duration = NULL,
+        closeButton = FALSE, type = "message",
+        id = session$ns("cvat_prebuild"))
+      cvat_prebuild_task$invoke(mnt_path, aoi, buffer_m, .dev_pkg_path,
+                                get_app_options())
     }, ignoreNULL = TRUE)
 
     # Fin du pré-calcul CVAT : retire le message bas-droite + court toast.
