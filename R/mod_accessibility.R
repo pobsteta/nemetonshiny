@@ -469,7 +469,11 @@ mod_accessibility_server <- function(id, app_state) {
       rv_correct(list(status = "running"))
       correct_start(Sys.time())
       # Grise « Lancer l'analyse » pendant toute la correction (réactivé à la fin).
-      shiny::updateActionButton(session, "run", disabled = TRUE)
+      # PAS `updateActionButton()` : sur un `input_task_button`, il réécrit le
+      # bouton et EFFACE son libellé (bouton vert vide). On bascule juste
+      # l'attribut `disabled` côté client (handler `nemetonSetDisabled`).
+      session$sendCustomMessage("nemetonSetDisabled",
+        list(id = session$ns("run"), disabled = TRUE))
       # Toast bas-droite persistant avec chrono (parité avec l'analyse) : la
       # correction dure ~2-3 h, l'utilisateur doit voir qu'elle tourne.
       shiny::showNotification(
@@ -504,7 +508,8 @@ mod_accessibility_server <- function(id, app_state) {
       if (!identical(st, "success") && !identical(st, "error")) return()
       shiny::removeNotification(session$ns("correct_notif"))
       correct_start(NULL)
-      shiny::updateActionButton(session, "run", disabled = FALSE)  # ré-active l'analyse
+      session$sendCustomMessage("nemetonSetDisabled",       # ré-active l'analyse
+        list(id = session$ns("run"), disabled = FALSE))
       res <- tryCatch(correct_task$result(),
         error = function(e) list(status = "error", reason = "acc_correct_failed"))
       if (identical(st, "error") || !is.list(res)) {
@@ -602,7 +607,8 @@ mod_accessibility_server <- function(id, app_state) {
       rv$running <- TRUE
       rv$start <- Sys.time()
       # Grise « Corriger la desserte » pendant l'analyse (réactivé à la fin).
-      shiny::updateActionButton(session, "correct_desserte", disabled = TRUE)
+      session$sendCustomMessage("nemetonSetDisabled",
+        list(id = session$ns("correct_desserte"), disabled = TRUE))
       shiny::showNotification(
         .running_notif_content(i18n$t("acc_running"), rv$start),
         id = session$ns("acc_notif"), type = "message", duration = NULL)
@@ -619,7 +625,8 @@ mod_accessibility_server <- function(id, app_state) {
           rv$start <- NULL
           shiny::removeNotification(session$ns("acc_notif"))
           bslib::update_task_button("run", state = "ready")
-          shiny::updateActionButton(session, "correct_desserte", disabled = FALSE)
+          session$sendCustomMessage("nemetonSetDisabled",
+            list(id = session$ns("correct_desserte"), disabled = FALSE))
           shiny::showNotification(
             paste0(i18n$t("accessibility_engine_failed"), " — ",
                    .strip_ansi(conditionMessage(e))),
@@ -655,7 +662,8 @@ mod_accessibility_server <- function(id, app_state) {
       if (!identical(st, "success") && !identical(st, "error")) return()
       rv$running <- FALSE
       rv$start <- NULL
-      shiny::updateActionButton(session, "correct_desserte", disabled = FALSE)
+      session$sendCustomMessage("nemetonSetDisabled",
+            list(id = session$ns("correct_desserte"), disabled = FALSE))
       shiny::removeNotification(session$ns("acc_notif"))
 
       res <- tryCatch(acc_task$result(), error = function(e) {

@@ -1,5 +1,17 @@
 # nemetonshiny (development version)
 
+### Fixed — Bouton « Lancer l'analyse » vide pendant la correction LiDAR
+
+- Pendant la correction LiDAR de la desserte, le bouton « Lancer l'analyse »
+  (Moteurs d'exploitation) s'affichait **vert et vide** (sans libellé) : il était
+  grisé via `updateActionButton(disabled = TRUE)`, qui **réécrit le contenu** d'un
+  `input_task_button` (icône + libellé + états busy vivent dans des spans qu'il
+  écrase). Le grisage passe désormais par un handler JS (`nemetonSetDisabled`) qui
+  bascule seulement l'attribut `disabled` du `<button>`, en **préservant le
+  libellé**. Symétrique appliqué au bouton « Corriger la desserte » (grisé pendant
+  l'analyse). Le garde-fou serveur (analyse refusée si une correction tourne)
+  était déjà en place.
+
 # nemetonshiny 0.119.1 (2026-07-26)
 
 ### Fixed — app_ui plantait sur une langue absente (CI R-CMD-check rouge)

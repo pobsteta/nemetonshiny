@@ -797,4 +797,20 @@
     });
   }
 
+
+  /**
+   * Server-driven enable/disable of a button by id, WITHOUT rewriting its
+   * content. updateActionButton() blanks an input_task_button's label (icon +
+   * text + busy states live in inner spans it overwrites); toggling `disabled`
+   * on the <button> greys it out while preserving the label.
+   */
+  Shiny.addCustomMessageHandler('nemetonSetDisabled', function(data) {
+    var el = document.getElementById(data.id);
+    if (!el) return;
+    var btn = (el.tagName === 'BUTTON') ? el : (el.querySelector('button') || el);
+    btn.disabled = !!data.disabled;
+    btn.classList.toggle('disabled', !!data.disabled);
+    btn.setAttribute('aria-disabled', data.disabled ? 'true' : 'false');
+  });
+
 })();
