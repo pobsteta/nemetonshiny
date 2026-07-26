@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.119.0 (2026-07-26)
 
 ### Changed — `Remotes` : retour à `@*release` (releases stables du cœur)
 
