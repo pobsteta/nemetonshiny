@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.119.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.120.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,17 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.120.0" id="nemetonshiny-01200-2026-07-26">nemetonshiny 0.120.0 (2026-07-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01200-2026-07-26"></a></h2>
+<div class="section level4">
+<h4 id="added--pré-calcul-cvat--notification--couverture-aoibuffer-foretaccess-0-120-0">Added — Pré-calcul CVAT : notification + couverture AOI+buffer (foretaccess 1.25.0)<a class="anchor" aria-label="anchor" href="#added--pr%C3%A9-calcul-cvat--notification--couverture-aoibuffer-foretaccess-0-120-0"></a></h4>
+<ul><li>Message bas-droite <strong>« Préparation du fond relief CVAT (LiDAR HD)… »</strong> pendant tout le pré-calcul CVAT à l’ouverture d’un projet LiDAR (id stable, retiré à la fin + court toast succès/erreur). L’UI ne gèle pas (calcul en worker).</li>
+<li>
+<code>build_cvat_precomputed()</code> accepte désormais <code>aoi</code> + <code>buffer_m</code> : avec une AOI et foretaccess ≥ 1.25.0, <strong>délègue à <code><a href="https://pobsteta.github.io/foretaccess/reference/build_cvat_precomputed.html" class="external-link">foretaccess::build_cvat_precomputed()</a></code></strong> qui <strong>garantit la couverture AOI+buffer</strong> (ré-acquiert le MNT LiDAR HD si la mosaïque est trop courte, puis recalcule). Sans AOI : CVAT sur le MNT tel quel (repli inchangé). L’observer de chargement passe la géométrie du projet (<code>units_sf()</code>) et le tampon (<code>input$buffer_km</code>). Brief : BRIEF-cvat-prebuild.md.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--bouton--lancer-lanalyse--vide-pendant-la-correction-lidar-0-120-0">Fixed — Bouton « Lancer l’analyse » vide pendant la correction LiDAR<a class="anchor" aria-label="anchor" href="#fixed--bouton--lancer-lanalyse--vide-pendant-la-correction-lidar-0-120-0"></a></h4>
+<ul><li>Pendant la correction LiDAR de la desserte, le bouton « Lancer l’analyse » (Moteurs d’exploitation) s’affichait <strong>vert et vide</strong> (sans libellé) : il était grisé via <code>updateActionButton(disabled = TRUE)</code>, qui <strong>réécrit le contenu</strong> d’un <code>input_task_button</code> (icône + libellé + états busy vivent dans des spans qu’il écrase). Le grisage passe désormais par un handler JS (<code>nemetonSetDisabled</code>) qui bascule seulement l’attribut <code>disabled</code> du <code>&lt;button&gt;</code>, en <strong>préservant le libellé</strong>. Symétrique appliqué au bouton « Corriger la desserte » (grisé pendant l’analyse). Le garde-fou serveur (analyse refusée si une correction tourne) était déjà en place.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.119.1" id="nemetonshiny-01191-2026-07-26">nemetonshiny 0.119.1 (2026-07-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01191-2026-07-26"></a></h2>

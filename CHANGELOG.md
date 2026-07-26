@@ -12,6 +12,27 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.120.0\] - 2026-07-26
+
+### Added
+
+- Pré-calcul CVAT : message bas-droite pendant le calcul + couverture
+  AOI+buffer (délégation à
+  [`foretaccess::build_cvat_precomputed()`](https://pobsteta.github.io/foretaccess/reference/build_cvat_precomputed.html)
+  1.25.0, ré-acquisition si la mosaïque LiDAR est trop courte).
+
+### Fixed
+
+- Bouton « Lancer l’analyse » qui s’affichait vide pendant la correction
+  LiDAR (`updateActionButton` écrasait le libellé d’un
+  `input_task_button` → handler JS `nemetonSetDisabled` qui ne touche
+  qu’à l’attribut `disabled`).
+
+### Changed
+
+- Forme canonique du fichier package (docType invalide `_PACKAGE` →
+  `package`), supprime un WARNING R CMD check.
+
 ## \[0.119.1\] - 2026-07-26
 
 ### Fixed

@@ -52,3 +52,21 @@ Currently 358+ FR / EN keys.
 ## Author
 
 **Pascal Obstétar** (<pascal.obstetar@gmail.com>)
+
+## See also
+
+Useful links:
+
+- <https://pobsteta.github.io/nemetonshiny/>
+
+- <https://github.com/pobsteta/nemetonshiny>
+
+- Report bugs at <https://github.com/pobsteta/nemetonshiny/issues>
+
+## Author
+
+**Maintainer**: Pascal Obstetar <pascal.obstetar@gmail.com>
+
+Authors:
+
+- Pascal Obstetar <pascal.obstetar@gmail.com>
