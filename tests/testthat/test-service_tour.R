@@ -135,3 +135,33 @@ test_that("run_app rejects a non-logical tour argument", {
   expect_error(run_app(tour = NA), "tour")
   expect_error(run_app(tour = c(TRUE, FALSE)), "tour")
 })
+
+# --- Régression : app_ui robuste à une option app partielle ------------------
+# Un test qui laisse fuir options(nemeton.app_options=...) SANS `language`
+# faisait planter app_ui() via get_expert_choices (p$label[[NULL]]) en contexte
+# complet (R CMD check), erreur « attempt to select less than one element ».
+
+test_that("get_app_options merges defaults over a partial option", {
+  withr::local_options(nemeton.app_options = list(project_dir = tempdir()))
+  opts <- nemetonshiny:::get_app_options()
+  expect_identical(opts$language, "fr")          # champ absent -> défaut
+  expect_identical(opts$project_dir, tempdir())   # champ fourni -> conservé
+  expect_true(!is.null(opts$max_parcels))
+  # language explicitement NULL/vide -> retombe sur "fr"
+  withr::local_options(nemeton.app_options = list(language = NULL))
+  expect_identical(nemetonshiny:::get_app_options()$language, "fr")
+  withr::local_options(nemeton.app_options = list(language = ""))
+  expect_identical(nemetonshiny:::get_app_options()$language, "fr")
+})
+
+test_that("get_expert_choices tolerates a NULL/empty lang", {
+  expect_gt(length(nemetonshiny:::get_expert_choices(NULL)), 0L)
+  expect_gt(length(nemetonshiny:::get_expert_choices(character(0))), 0L)
+  expect_gt(length(nemetonshiny:::get_expert_choices("")), 0L)
+})
+
+test_that("app_ui does not error when the app option lacks a language", {
+  skip_if_not_installed("bslib")
+  withr::local_options(nemeton.app_options = list(project_dir = tempdir()))
+  expect_no_error(as.character(nemetonshiny:::app_ui(list())))
+})

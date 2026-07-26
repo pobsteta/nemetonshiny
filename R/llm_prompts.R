@@ -117,6 +117,11 @@ reload_expert_profiles <- function() {
 .INTERNAL_EXPERT_KEYS <- c("planificateur", "regeneration")
 
 get_expert_choices <- function(lang = "fr") {
+  # Ceinture : un `lang` NULL/vide (option app partielle) ferait `p$label[[NULL]]`
+  # -> « attempt to select less than one element ». Retomber sur "fr".
+  if (is.null(lang) || length(lang) != 1L || is.na(lang) || !nzchar(lang)) {
+    lang <- "fr"
+  }
   profiles <- get_expert_profiles()
   profiles <- profiles[setdiff(names(profiles), .INTERNAL_EXPERT_KEYS)]
   keys <- names(profiles)
