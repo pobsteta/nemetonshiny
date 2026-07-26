@@ -546,3 +546,41 @@ test_that(".acc_rvt_mnt_path prefers the 1 m DEM, most recent", {
     expect_null(nemetonshiny:::.acc_rvt_mnt_path(NULL))
   })
 })
+
+# --- Fond relief CVAT en overlay de carte ------------------------------------
+
+test_that(".acc_cvat_overlay_raster returns NULL without a ready CVAT", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    proj <- getwd()
+    lyr <- file.path(proj, "cache", "layers"); dir.create(lyr, recursive = TRUE)
+    m <- terra::rast(nrows = 20, ncols = 20, crs = "EPSG:2154")
+    terra::values(m) <- as.numeric(seq_len(400))
+    terra::writeRaster(m, file.path(lyr, "lidar_mnt_mosaic.tif"), overwrite = TRUE)
+    # MNT présent mais AUCUN CVAT pré-calculé / cache -> .rvt_is_cheap FALSE -> NULL
+    # (on ne déclenche jamais le calcul live au rendu de carte).
+    testthat::local_mocked_bindings(.rvt_is_cheap = function(mnt_path) FALSE)
+    expect_null(nemetonshiny:::.acc_cvat_overlay_raster(proj))
+    expect_null(nemetonshiny:::.acc_cvat_overlay_raster(NULL))
+  })
+})
+
+test_that(".acc_cvat_overlay_raster aggregates a ready CVAT for display", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    proj <- getwd()
+    lyr <- file.path(proj, "cache", "layers"); dir.create(lyr, recursive = TRUE)
+    mnt <- file.path(lyr, "lidar_mnt_mosaic.tif")
+    m <- terra::rast(nrows = 5000, ncols = 5000, crs = "EPSG:2154")
+    terra::values(m) <- 1
+    terra::writeRaster(m, mnt, overwrite = TRUE)
+    # CVAT « prêt » = cache RVT déjà présent, sur une grande grille.
+    big <- terra::rast(nrows = 5000, ncols = 5000, crs = "EPSG:2154")
+    terra::values(big) <- runif(terra::ncell(big))
+    terra::writeRaster(big, nemetonshiny:::.rvt_cache_path(mnt), overwrite = TRUE)
+    r <- nemetonshiny:::.acc_cvat_overlay_raster(proj)
+    expect_false(is.null(r))
+    # agrégé sous ~2000 px de côté (5000 -> fact 3 -> ~1667)
+    expect_lte(max(terra::nrow(r), terra::ncol(r)), 2000L)
+  })
+})

@@ -347,17 +347,30 @@ mod_desserte_server <- function(id, app_state) {
       geo <- if (!is.null(aoi)) {
         tryCatch(sf::st_transform(aoi, 4326), error = function(e) NULL)
       }
+      # Fond relief CVAT (overlay semi-transparent) quand un CVAT existe déjà pour
+      # le projet — même helper que la carte Accessibilité.
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      cvat_bg <- .acc_cvat_overlay_raster(project_path)
       overlays <- c(if (!is.null(geo)) "Parcelles" else NULL,
+                    if (!is.null(cvat_bg)) "Relief CVAT" else NULL,
                     "Desserte existante", "Reseau cree", "Reseau type",
                     "Places de depot")
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        leaflet::addMapPane("nemetonCvatBase", zIndex = 230) |>
         leaflet::addMapPane("nemetonDessRaster", zIndex = 250) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
           overlayGroups = overlays,
           options = leaflet::layersControlOptions(collapsed = TRUE))
+      if (!is.null(cvat_bg)) {
+        grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
+          domain = c(0, 1), na.color = "transparent")
+        m <- leaflet::addRasterImage(m, cvat_bg, colors = grey, opacity = 0.6,
+          group = "Relief CVAT", maxBytes = 16 * 1024^2,
+          options = leaflet::gridOptions(pane = "nemetonCvatBase"))
+      }
       if (!is.null(geo)) {
         m <- leaflet::addPolygons(m, data = geo, group = "Parcelles",
           color = "#1f78b4", weight = 2, opacity = 0.9, fillOpacity = 0)

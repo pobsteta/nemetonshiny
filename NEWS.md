@@ -1,5 +1,15 @@
 # nemetonshiny (development version)
 
+### Added — Fond relief CVAT sur les cartes Accessibilité et Desserte
+
+- Quand un CVAT existe déjà pour le projet (pré-calculé ou en cache), il est
+  proposé comme **overlay « Relief CVAT »** dans le sélecteur de couches des cartes
+  Accessibilité **et** Desserte, semi-transparent (0,6) au-dessus d'OSM/Satellite —
+  cochable comme n'importe quel calque. Le relief ne couvre que l'emprise LiDAR
+  (transparent au-delà, OSM visible dessous). Jamais de calcul lourd au rendu :
+  l'overlay n'apparaît que si le CVAT est déjà prêt (`.rvt_is_cheap`). Raster
+  agrégé à ~2000 px pour l'affichage.
+
 ### Fixed — Comparateur desserte : « Raster image too large » sur le fond CVAT
 
 - Sélectionner la couche comparateur plantait l'observe avec
