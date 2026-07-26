@@ -1,5 +1,29 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.119.0 (2026-07-26)
 
+### Changed — `Remotes` : retour à `@*release` (releases stables du cœur)
+
+- `Remotes` repasse à **`pobsteta/nemeton@*release, pobsteta/foretaccess@*release`**
+  (au lieu de `pobsteta/nemeton` sans ref + `foretaccess@v1.24.0` pin manuel).
+  `@*release` tire le **tag de release le plus élevé** — l'app suit donc les
+  **releases stables** du cœur (nemeton 0.168.1, foretaccess 1.24.0), plus le
+  cycle dev `main` potentiellement instable, et sans pin à bumper à la main.
+- `@*release` **cassait pak 0.11.0** (« the condition has length > 1 », incident
+  v0.115.9 → forme sans ref en v0.115.10) ; il **refonctionne depuis pak 0.11.1**
+  (vérifié : résolution du DESCRIPTION complet, 174 paquets). Postes avec pak
+  ≤ 0.11.0 : revenir à la forme sans ref ou pinner `@vX.Y.Z`. CLAUDE.md mis à jour.
+### Added — Pré-calcul automatique du CVAT à l'ouverture d'un projet LiDAR
+
+- Nouveau producteur `build_cvat_precomputed()` : matérialise
+  `<base>_CVAT_8bit_foretaccess.tif` (`foretaccess::vat_combined(as_byte=TRUE)`) à
+  côté du MNT — le fichier que `.rvt_precomputed()` adopte en priorité. Jusqu'ici
+  il n'existait que s'il était écrit à la main ; c'est désormais produit
+  **automatiquement, en tâche de fond**, dès qu'un projet contenant le MNT LiDAR
+  HD natif (`lidar_mnt_mosaic.tif`) est ouvert. Conséquence : le comparateur et le
+  fond de carte « Relief CVAT » deviennent **instantanés** sans dépendre d'un
+  artefact posé à la main.
+- Gardes : uniquement sur le MNT LiDAR natif (pas le repli WMS strié), seulement
+  si foretaccess ≥ 1.24.0, et idempotent (rien si un CVAT foretaccess **ou** plugin
+  est déjà présent). Calcul (~1 min) dans un worker `future` — l'UI ne gèle pas.
 # nemetonshiny 0.118.0 (2026-07-26)
 
 ### Added — Fond relief CVAT sur les cartes Accessibilité et Desserte

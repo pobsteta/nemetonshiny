@@ -208,3 +208,42 @@ test_that(".rvt_is_cheap is TRUE once the RVT cache exists", {
     expect_true(nemetonshiny:::.rvt_is_cheap("mnt.tif"))
   })
 })
+
+# --- Producteur du CVAT pré-calculé (build_cvat_precomputed) -----------------
+
+test_that("build_cvat_precomputed returns NULL without foretaccess >= 1.24.0", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    m <- terra::rast(nrows = 5, ncols = 5); terra::values(m) <- 1
+    terra::writeRaster(m, "lidar_mnt_mosaic.tif", overwrite = TRUE)
+    testthat::local_mocked_bindings(.rvt_cvat_available = function() FALSE)
+    expect_null(nemetonshiny:::build_cvat_precomputed("lidar_mnt_mosaic.tif"))
+  })
+  expect_null(nemetonshiny:::build_cvat_precomputed(NULL))
+  expect_null(nemetonshiny:::build_cvat_precomputed("/nope.tif"))
+})
+
+test_that("build_cvat_precomputed writes <base>_CVAT_8bit_foretaccess.tif", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    m <- terra::rast(nrows = 8, ncols = 8, crs = "EPSG:2154")
+    terra::values(m) <- as.numeric(seq_len(64))
+    terra::writeRaster(m, "lidar_mnt_mosaic.tif", overwrite = TRUE)
+    # Mock vat_combined pour ne pas dépendre de foretaccess dans ce test.
+    testthat::local_mocked_bindings(.rvt_cvat_available = function() TRUE)
+    testthat::local_mocked_bindings(
+      vat_combined = function(mnt, as_byte = TRUE) {
+        r <- mnt; terra::values(r) <- rep(c(0L, 128L, 255L), length.out = 64L); r
+      }, .package = "foretaccess")
+    out <- nemetonshiny:::build_cvat_precomputed("lidar_mnt_mosaic.tif")
+    expect_true(!is.null(out) && file.exists(out))
+    expect_match(out, "lidar_mnt_mosaic_CVAT_8bit_foretaccess\\.tif$")
+    # idempotent : 2e appel sans overwrite ne réécrit pas
+    m1 <- file.mtime(out); Sys.sleep(0.05)
+    out2 <- nemetonshiny:::build_cvat_precomputed("lidar_mnt_mosaic.tif")
+    expect_identical(out2, out)
+    expect_identical(file.mtime(out2), m1)
+    # ce fichier rend .rvt_is_cheap TRUE
+    expect_true(nemetonshiny:::.rvt_is_cheap("lidar_mnt_mosaic.tif"))
+  })
+})

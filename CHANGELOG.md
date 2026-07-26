@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.119.0] - 2026-07-26
+
+### Added
+
+- Pré-calcul automatique du CVAT (`build_cvat_precomputed`) en tâche de fond à
+  l'ouverture d'un projet avec MNT LiDAR HD natif — comparateur et fond de carte
+  « Relief CVAT » instantanés, sans artefact posé à la main.
+
+### Changed
+
+- `Remotes` : retour à `@*release` (nemeton + foretaccess) — releases stables du
+  cœur, suivi automatique. Refonctionne depuis pak 0.11.1 (cassait 0.11.0).
+
 ## [0.118.0] - 2026-07-26
 
 ### Added

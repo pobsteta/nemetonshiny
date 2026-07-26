@@ -165,7 +165,7 @@ L'implémentation est **maison** (pas `shiny.i18n`) : refresh automatique sans r
 - **cicerone** pour les tours guidés (Suggests)
 - **quarto** pour les exports rapport (Suggests)
 
-`Remotes: pobsteta/nemeton` (**sans ref**) dans `DESCRIPTION` — `remotes`/`pak` le résolvent à la **branche par défaut (`main`)** de `pobsteta/nemeton` à chaque install : l'app tire le **dernier état `main` du cœur** (y compris le cycle dev non publié, ex. `0.167.0.9000`), sans bump manuel du `Remotes:`. ⚠️ **NE PAS écrire `@*release`** : `pak`/`pkgdepends` **ne sait pas résoudre** ce ref (« the condition has length > 1 ») et **casse l'installation** de `nemeton`, `foretaccess` ET `nemetonshiny` (vérifié 2026-07-24, pak 0.11.0 — régression introduite en v0.115.9, corrigée en v0.115.10 par le retour à la forme sans ref). Contrepartie de la forme sans ref : `main` peut contenir du code non publié / instable (là où `@*release`, s'il marchait, ne tirerait que des tags de release) — pour figer un état stable, pinner `@vX.Y.Z` (bump manuel, comme `foretaccess@v1.21.0`) ou `renv::snapshot()` côté projet utilisateur. Le plancher `Imports: nemeton (>= X.Y.Z)` reste le **minimum** que le code app exige (garde-fou contre un cœur déjà installé trop ancien) — il ne suit PAS la dernière version, il est bumpé seulement quand le code app consomme une nouvelle API. Installation locale en dev via `pak::local_install("/home/pascal/dev/nemeton")` ou `pkgload::load_all("/home/pascal/dev/nemeton")` — pas d'aller-retour GitHub.
+`Remotes: pobsteta/nemeton@*release, pobsteta/foretaccess@*release, r-lidar/lasR` dans `DESCRIPTION`. `@*release` résout le **tag de release le plus élevé** de chaque dépôt : l'app tire donc les **releases STABLES** du cœur (ex. `nemeton 0.168.1`, `foretaccess 1.24.0`), PAS le cycle dev `main`, et sans pin manuel à bumper. ✅ **`@*release` refonctionne depuis pak 0.11.1** (vérifié 2026-07-26 : résolution du DESCRIPTION complet OK, 174 paquets). ⚠️ **Historique** : `@*release` **cassait** l'installation avec **pak 0.11.0** (« the condition has length > 1 » dans `pkgdepends`, rendant `nemeton`, `foretaccess` ET `nemetonshiny` non-installables — vérifié 2026-07-24) ; l'app était alors repassée en **forme sans ref** (`pobsteta/nemeton`, tirant `main`) de v0.115.10 à v0.118.x, puis revenue à `@*release` une fois pak corrigé. Si un poste a encore **pak ≤ 0.11.0**, revenir à la forme sans ref ou pinner `@vX.Y.Z`. Le plancher `Imports: nemeton (>= X.Y.Z)` reste le **minimum** que le code app exige (garde-fou contre un cœur déjà installé trop ancien) — il ne suit PAS la dernière version, il est bumpé seulement quand le code app consomme une nouvelle API. Installation locale en dev via `pak::local_install("/home/pascal/dev/nemeton")` ou `pkgload::load_all("/home/pascal/dev/nemeton")` — pas d'aller-retour GitHub.
 
 ## Commandes de référence
 
@@ -403,41 +403,44 @@ chaque entrée le cycle dev concerné (ex. `0.21.0.9000` → `0.21.0.9001`).
 - Quand un changement implique aussi `nemeton`, faire les deux releases dans l'ordre cœur → app
   (l'app dépend du cœur, jamais l'inverse).
 
-## Suivi du cœur `nemeton` via `Remotes` — état réel et piège `@*release`
+## Suivi du cœur `nemeton` via `Remotes` — `@*release` (restauré, pak ≥ 0.11.1)
 
-Forme courante : `Remotes: pobsteta/nemeton` (**sans ref**). `remotes`/`pak`
-la résolvent à la **branche par défaut (`main`)** de `pobsteta/nemeton` à
-chaque install — l'app tire donc le **dernier état `main` du cœur** (y compris
-le cycle dev non publié, ex. `0.167.0.9000`), sans intervention manuelle.
+Forme courante : `Remotes: pobsteta/nemeton@*release, pobsteta/foretaccess@*release,
+r-lidar/lasR`. `@*release` résout le **tag de release le plus élevé** de chaque
+dépôt : l'app tire donc les **releases STABLES du cœur** (ex. `nemeton 0.168.1`,
+`foretaccess 1.24.0`), sans code de cycle dev non publié et sans pin manuel.
 Historique : `@main` avant v0.38.0, pin `@vX.Y.Z` de v0.38.0 à v0.38.7,
-`@*release` de v0.38.8 jusqu'à ce qu'il casse pak, puis **forme sans ref**.
+`@*release` de v0.38.8 jusqu'à ce qu'il casse pak (0.11.0), **forme sans ref**
+(`main`) de v0.115.10 à v0.118.x, puis **retour à `@*release`** dès que pak l'a
+re-supporté.
 
-> ⚠️ **NE JAMAIS écrire `Remotes: pobsteta/nemeton@*release`.** La référence
-> `@*release` (censée tirer le tag de release le plus élevé) **casse
-> l'installation via `pak`** : `pkgdepends` échoue à la résoudre
-> (« the condition has length > 1 »), rendant `nemeton`, `foretaccess` ET
-> `nemetonshiny` non-installables. Vérifié le 2026-07-24 (pak 0.11.0).
-> La « restaurer » d'après une doc ancienne a cassé les installs en v0.115.9,
-> corrigé en v0.115.10 par le retour à la forme sans ref.
+> ✅ **`@*release` refonctionne depuis pak 0.11.1** (vérifié 2026-07-26 :
+> résolution du DESCRIPTION complet OK, 174 paquets, `nemeton@0.168.1` /
+> `foretaccess@1.24.0`).
+> ⚠️ **Il CASSAIT avec pak 0.11.0** (« the condition has length > 1 » dans
+> `pkgdepends`, install de `nemeton`/`foretaccess`/`nemetonshiny` impossible —
+> incident v0.115.9, corrigé v0.115.10 par la forme sans ref). **Si un poste a
+> pak ≤ 0.11.0**, repasser en forme sans ref (`pobsteta/nemeton`) ou pinner
+> `@vX.Y.Z`. Vérifier avant tout doute : `Rscript -e 'pak::pkg_deps("pobsteta/nemeton@*release", dependencies=FALSE)'`.
 
 Conséquences pratiques :
 
-- **Pas de bump `Remotes:` après une release cœur.** La forme sans ref tire
-  `main` à chaque install : le dernier correctif/fonction cœur est disponible
-  dès qu'il est sur `main` de `nemeton`, sans intervention.
-- **Contrepartie : `main` peut contenir du code non publié / instable.** À la
-  différence de `@*release` (idéal mais cassé pour pak), la forme sans ref
-  n'attend pas un tag de release. Pour figer un état stable, **pinner
-  `@vX.Y.Z`** (bump manuel, comme `foretaccess@v1.21.0`) ou `renv::snapshot()`
-  côté projet utilisateur — pas le `Remotes:` par défaut.
+- **Pas de bump `Remotes:` après une release cœur.** `@*release` suit
+  automatiquement le dernier tag : dès qu'une release `nemeton`/`foretaccess` est
+  publiée, l'app la tire sans intervention. (C'est justement l'avantage retrouvé
+  sur la forme sans ref, qui tirait `main` — cycle dev instable.)
+- **Fige des états STABLES par construction** (tags de release), là où la forme
+  sans ref pouvait tirer du code non publié. Pour figer une version précise
+  malgré tout, pinner `@vX.Y.Z` ou `renv::snapshot()` côté projet utilisateur.
 - **Le plancher `Imports: nemeton (>= X.Y.Z)`** reste le **minimum** que le code
   app exige (garde-fou contre un cœur déjà installé trop ancien) — bumpé
   seulement quand l'app consomme une nouvelle API cœur (`chore(deps):`),
   jamais « pour suivre » la dernière version.
 - **Vérifier la version `nemeton` avant tout travail cœur↔app** : `gh release
-  list --repo pobsteta/nemeton`, vérifier que la fonction visée est exposée,
-  puis l'app peut l'appeler (la forme sans ref tirera `main`) ; ne bumper
-  `Imports:` que si l'app exige cette version comme minimum strict.
+  list --repo pobsteta/nemeton`, vérifier que la fonction visée est exposée dans
+  un **tag de release** (pas seulement sur `main`, puisque `@*release` ne tire
+  que les tags) ; ne bumper `Imports:` que si l'app exige cette version comme
+  minimum strict.
 - **Règle 11 (ordre cœur → app)** toujours valable pour les changements
   d'API : on release/merge d'abord côté `nemeton`, puis l'app consomme.
 - **Développement local** : `pkgload::load_all("/home/pascal/dev/nemeton")`
