@@ -1,6 +1,20 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.119.1 (2026-07-26)
+
+#### Fixed — app_ui plantait sur une langue absente (CI R-CMD-check rouge)
+
+- `app_ui()` levait « attempt to select less than one element in
+  get1index » en contexte R CMD check : un test laissait fuir
+  `options(nemeton.app_options=...)` SANS `language`, et
+  `get_app_options()` renvoyait l’option telle quelle
+  (`getOption(name, default)` n’utilise le défaut que si l’option est
+  absente) → `opts$language = NULL` → `get_expert_choices(NULL)` →
+  `p$label[[NULL]]`. C’était l’unique échec du R-CMD-check
+  (test-service_tour), présent depuis plusieurs releases.
+- `get_app_options()` **fusionne désormais l’option sur les défauts**
+  (modifyList) et garantit une langue valide ; `get_expert_choices()`
+  tolère un `lang` vide.
 
 ## nemetonshiny 0.119.0 (2026-07-26)
 

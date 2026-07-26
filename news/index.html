@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.119.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.119.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,14 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.119.1" id="nemetonshiny-01191-2026-07-26">nemetonshiny 0.119.1 (2026-07-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01191-2026-07-26"></a></h2>
+<div class="section level4">
+<h4 id="fixed--app_ui-plantait-sur-une-langue-absente-ci-r-cmd-check-rouge-0-119-1">Fixed — app_ui plantait sur une langue absente (CI R-CMD-check rouge)<a class="anchor" aria-label="anchor" href="#fixed--app_ui-plantait-sur-une-langue-absente-ci-r-cmd-check-rouge-0-119-1"></a></h4>
+<ul><li>
+<code>app_ui()</code> levait « attempt to select less than one element in get1index » en contexte R CMD check : un test laissait fuir <code>options(nemeton.app_options=...)</code> SANS <code>language</code>, et <code>get_app_options()</code> renvoyait l’option telle quelle (<code>getOption(name, default)</code> n’utilise le défaut que si l’option est absente) → <code>opts$language = NULL</code> → <code>get_expert_choices(NULL)</code> → <code>p$label[[NULL]]</code>. C’était l’unique échec du R-CMD-check (test-service_tour), présent depuis plusieurs releases.</li>
+<li>
+<code>get_app_options()</code> <strong>fusionne désormais l’option sur les défauts</strong> (modifyList) et garantit une langue valide ; <code>get_expert_choices()</code> tolère un <code>lang</code> vide.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.119.0" id="nemetonshiny-01190-2026-07-26">nemetonshiny 0.119.0 (2026-07-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01190-2026-07-26"></a></h2>

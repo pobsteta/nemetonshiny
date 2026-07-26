@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.119.1\] - 2026-07-26
+
+### Fixed
+
+- `app_ui()` plantait (« attempt to select less than one element »)
+  quand une option app partielle laissait `language` à NULL — unique
+  échec du R-CMD-check. `get_app_options()` fusionne désormais toujours
+  avec les défauts.
+
 ## \[0.119.0\] - 2026-07-26
 
 ### Added
