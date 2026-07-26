@@ -1,5 +1,3 @@
-"_PACKAGE"
-
 #' nemetonshiny: Shiny front-end for the Nemeton systemic forest analysis platform
 #'
 #' @description
@@ -59,7 +57,5 @@
 #'
 #' \strong{Pascal Obstétar} (\email{pascal.obstetar@@gmail.com})
 #'
-#' @docType _PACKAGE
-#' @name nemetonshiny-package
-#' @aliases nemetonshiny
-NULL
+#' @keywords internal
+"_PACKAGE"
