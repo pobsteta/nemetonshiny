@@ -979,12 +979,22 @@ mod_accessibility_server <- function(id, app_state) {
       if (is.null(rvt_path) || !file.exists(rvt_path)) return(invisible())
       rr <- tryCatch(terra::rast(rvt_path), error = function(e) NULL)
       if (is.null(rr)) return(invisible())
+      # `addRasterImage` plafonne à 4 Mo : un CVAT sur MNT LiDAR 0,5 m
+      # (4000x4000 = 16 M cellules -> ~17 Mo) le dépasse et fait planter l'observe.
+      # Le relief n'a pas besoin de 0,5 m à l'écran : on agrège à ~2000 px de côté
+      # (facteur entier) avant l'affichage. Filet `maxBytes` en complément.
+      maxdim <- max(terra::nrow(rr), terra::ncol(rr))
+      if (is.finite(maxdim) && maxdim > 2000L) {
+        fact <- as.integer(ceiling(maxdim / 2000))
+        rr <- tryCatch(terra::aggregate(rr, fact = fact, fun = "mean",
+                                        na.rm = TRUE), error = function(e) rr)
+      }
       grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
         domain = c(0, 1), na.color = "transparent")
       leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Relief RVT") |>
         leaflet::addRasterImage(rr, colors = grey, opacity = 1,
-          group = "Relief RVT",
+          group = "Relief RVT", maxBytes = 16 * 1024^2,
           options = leaflet::gridOptions(pane = "nemetonRvtFond"))
       invisible()
     }

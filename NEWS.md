@@ -1,5 +1,13 @@
 # nemetonshiny (development version)
 
+### Fixed — Comparateur desserte : « Raster image too large » sur le fond CVAT
+
+- Sélectionner la couche comparateur plantait l'observe avec
+  `addRasterImage: Raster image too large; 17099891 bytes > 4194304` : le CVAT sur
+  le MNT LiDAR 0,5 m fait 4000×4000 (16 M cellules, ~17 Mo), au-delà du plafond
+  4 Mo de `addRasterImage`. Le fond est désormais **agrégé à ~2000 px de côté**
+  avant l'affichage (le relief n'a pas besoin de 0,5 m à l'écran ; ~0,5 Mo après
+  agrégation), avec un filet `maxBytes = 16 Mo`.
 # nemetonshiny 0.117.3 (2026-07-26)
 
 ### Changed — Comparateur desserte piloté par le sélecteur de couche
