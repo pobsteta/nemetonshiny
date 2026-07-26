@@ -287,3 +287,76 @@ test_that("build_cvat_precomputed without AOI keeps the local vat_combined path"
     expect_true(!is.null(out) && file.exists(out))
   })
 })
+
+test_that(".cvat_covers is TRUE when the raster extent contains AOI + buffer", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    # CVAT couvrant [8e5, 8.01e5] x [63e5, 63.01e5] (1 km de côté)
+    r <- terra::rast(xmin = 8e5, xmax = 8.01e5, ymin = 63e5, ymax = 63.01e5,
+                     resolution = 10, crs = "EPSG:2154")
+    terra::values(r) <- 1
+    terra::writeRaster(r, "cvat.tif", overwrite = TRUE)
+    aoi <- sf::st_sf(geometry = sf::st_sfc(
+      sf::st_point(c(8.005e5, 63.005e5)), crs = 2154))       # centre
+    expect_true(nemetonshiny:::.cvat_covers("cvat.tif", aoi, buffer_m = 100))
+    # un buffer qui déborde l'emprise -> non couvert
+    expect_false(nemetonshiny:::.cvat_covers("cvat.tif", aoi, buffer_m = 5000))
+  })
+})
+
+test_that(".cvat_covers is FALSE for a missing file or empty AOI", {
+  skip_if_not_installed("terra")
+  expect_false(nemetonshiny:::.cvat_covers(NULL, NULL))
+  expect_false(nemetonshiny:::.cvat_covers("does_not_exist.tif", NULL))
+})
+
+test_that("build_cvat_precomputed skips foretaccess when the CVAT covers AOI+buffer", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    m <- terra::rast(nrows = 5, ncols = 5, crs = "EPSG:2154"); terra::values(m) <- 1
+    terra::writeRaster(m, "lidar_mnt_mosaic.tif", overwrite = TRUE)
+    # CVAT pré-existant couvrant largement l'AOI+buffer
+    out <- "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif"
+    cov <- terra::rast(xmin = 8e5, xmax = 8.01e5, ymin = 63e5, ymax = 63.01e5,
+                       resolution = 10, crs = "EPSG:2154")
+    terra::values(cov) <- 1; terra::writeRaster(cov, out, overwrite = TRUE)
+    testthat::local_mocked_bindings(.rvt_cvat_available = function() TRUE)
+    delegated <- FALSE
+    testthat::local_mocked_bindings(
+      build_cvat_precomputed = function(...) { delegated <<- TRUE; out },
+      .package = "foretaccess")
+    aoi <- sf::st_sf(geometry = sf::st_sfc(
+      sf::st_point(c(8.005e5, 63.005e5)), crs = 2154))
+    res <- nemetonshiny:::build_cvat_precomputed("lidar_mnt_mosaic.tif",
+                                                 aoi = aoi, buffer_m = 100)
+    expect_false(delegated)                  # couverture OK -> pas de recalcul
+    expect_match(res, "lidar_mnt_mosaic_CVAT_8bit_foretaccess\\.tif$")
+  })
+})
+
+test_that("build_cvat_precomputed forces recalc when the CVAT is too short for the buffer", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("sf")
+  withr::with_tempdir({
+    m <- terra::rast(nrows = 5, ncols = 5, crs = "EPSG:2154"); terra::values(m) <- 1
+    terra::writeRaster(m, "lidar_mnt_mosaic.tif", overwrite = TRUE)
+    out <- "lidar_mnt_mosaic_CVAT_8bit_foretaccess.tif"
+    cov <- terra::rast(xmin = 8e5, xmax = 8.01e5, ymin = 63e5, ymax = 63.01e5,
+                       resolution = 10, crs = "EPSG:2154")
+    terra::values(cov) <- 1; terra::writeRaster(cov, out, overwrite = TRUE)
+    testthat::local_mocked_bindings(.rvt_cvat_available = function() TRUE)
+    forced <- NULL
+    testthat::local_mocked_bindings(
+      build_cvat_precomputed = function(aoi, cache_dir, buffer_m, mnt_existant,
+                                        out, overwrite) {
+        forced <<- overwrite; out
+      }, .package = "foretaccess")
+    aoi <- sf::st_sf(geometry = sf::st_sfc(
+      sf::st_point(c(8.005e5, 63.005e5)), crs = 2154))
+    nemetonshiny:::build_cvat_precomputed("lidar_mnt_mosaic.tif",
+                                          aoi = aoi, buffer_m = 5000)  # déborde
+    expect_true(isTRUE(forced))              # recalcul forcé (overwrite=TRUE)
+  })
+})

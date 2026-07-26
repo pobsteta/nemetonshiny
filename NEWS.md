@@ -1,5 +1,20 @@
 # nemetonshiny (development version)
 
+### Fixed — Recalcul du CVAT quand la zone tampon change
+
+- **Couverture AOI+buffer vérifiée sur le CVAT existant.** Auparavant
+  `build_cvat_precomputed()` court-circuitait sur `file.exists(out)` avant toute
+  délégation : un CVAT déjà présent n'était jamais re-contrôlé, si bien qu'un
+  **buffer agrandi laissait un fond relief trop court**, non détecté. Nouveau
+  helper `.cvat_covers()` (compare l'emprise du CVAT à la bbox AOI + `buffer_m`,
+  dans le CRS du raster) : avec une AOI, on ne réutilise le CVAT que s'il couvre
+  réellement l'emprise courante, sinon on **force le recalcul** (`overwrite=TRUE`
+  → foretaccess ré-acquiert et recalcule).
+- L'observer de pré-calcul (mod_accessibility) réagit désormais **au changement
+  de zone tampon** (`input$buffer_km`, débouncé 600 ms) et non plus seulement à
+  l'ouverture du projet : il ne relance le worker que si aucun CVAT n'existe ou
+  si le CVAT existant ne couvre pas l'AOI + buffer — pas de worker inutile.
+
 # nemetonshiny 0.120.0 (2026-07-26)
 
 ### Added — Pré-calcul CVAT : notification + couverture AOI+buffer (foretaccess 1.25.0)
