@@ -68,7 +68,7 @@ TRANSLATIONS <- list(
   acc_correct_old_foretaccess = list(fr = "foretaccess < 1.19.1 : correction LiDAR indisponible (mettez \u00e0 jour).", en = "foretaccess < 1.19.1: LiDAR correction unavailable (please update)."),
   acc_correct_no_lidr = list(fr = "Paquets lidR/ALSroads absents : correction LiDAR indisponible.", en = "lidR/ALSroads packages missing: LiDAR correction unavailable."),
   acc_correct_memory_guard = list(fr = "Correction LiDAR annulée : la dérivation du MNT lirait tout le nuage de points et dépasserait la mémoire disponible.", en = "LiDAR correction cancelled: deriving the DTM would read the whole point cloud and exceed available memory."),
-  acc_compare_toggle = list(fr = "Comparer desserte BD TOPO / corrig\u00e9e", en = "Compare BD TOPO / corrected road network"),
+  acc_layer_desserte_comparee = list(fr = "Desserte BD TOPO / corrig\u00e9e (volet)", en = "BD TOPO / corrected roads (swipe)"),
   acc_compare_hint = list(fr = "Volet coulissant sur fond relief : \u00e0 gauche la desserte BD TOPO d'origine, \u00e0 droite la desserte recal\u00e9e au LiDAR.", en = "Sliding swipe over a relief background: BD TOPO road network on the left, LiDAR-realigned network on the right."),
   acc_compare_relief_vat = list(fr = "Fond : VAT (relief arch\u00e9o, rvt-py).", en = "Background: VAT (archaeological relief, rvt-py)."),
   acc_compare_relief_cvat = list(fr = "Fond : CVAT (relief arch\u00e9o combin\u00e9, RVT).", en = "Background: CVAT (combined archaeological relief, RVT)."),
