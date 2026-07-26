@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.119.1 (2026-07-26)
 
 #### Fixed — app_ui plantait sur une langue absente (CI R-CMD-check rouge)
