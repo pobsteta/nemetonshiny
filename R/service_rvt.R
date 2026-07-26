@@ -250,10 +250,17 @@ rvt_engine <- function() {
 #' (unless `overwrite`).
 #'
 #' @param mnt_path Source DEM path (ideally the native 0.5 m LiDAR HD DTM).
+#' @param aoi Optional AOI (`sf`/`sfc` or path). When provided AND foretaccess
+#'   >= 1.25.0 is present, delegates to `foretaccess::build_cvat_precomputed()`
+#'   which GUARANTEES coverage of the AOI + buffer (re-acquires the LiDAR HD DEM
+#'   if the mosaic is too short, then recomputes). Without `aoi`: current
+#'   behaviour, CVAT on the DEM as-is (safe fallback).
+#' @param buffer_m Buffer (m) grown around the AOI. Default 0.
 #' @param overwrite Force recompute even if the output exists.
 #' @return Path to the 8-bit CVAT, or `NULL`.
 #' @noRd
-build_cvat_precomputed <- function(mnt_path, overwrite = FALSE) {
+build_cvat_precomputed <- function(mnt_path, aoi = NULL, buffer_m = 0,
+                                   overwrite = FALSE) {
   if (is.null(mnt_path) || !file.exists(mnt_path)) return(NULL)
   if (!.rvt_cvat_available()) return(NULL)            # foretaccess >= 1.24.0 requis
   out <- file.path(
@@ -261,6 +268,17 @@ build_cvat_precomputed <- function(mnt_path, overwrite = FALSE) {
     paste0(tools::file_path_sans_ext(basename(mnt_path)),
            "_CVAT_8bit_foretaccess.tif"))
   if (file.exists(out) && !isTRUE(overwrite)) return(out)
+  # Avec une AOI : couverture AOI+buffer garantie par foretaccess (>= 1.25.0) —
+  # si la mosaïque LiDAR est trop courte (dalles manquantes), ré-acquisition puis
+  # recalcul. Sans AOI : CVAT sur le MNT tel quel (repli).
+  if (!is.null(aoi) &&
+      exists("build_cvat_precomputed", where = asNamespace("foretaccess"))) {
+    return(tryCatch(
+      foretaccess::build_cvat_precomputed(
+        aoi = aoi, cache_dir = dirname(mnt_path), buffer_m = buffer_m,
+        mnt_existant = mnt_path, out = out, overwrite = overwrite),
+      error = function(e) NULL))
+  }
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
   if (is.null(mnt)) return(NULL)
   cvat <- tryCatch(foretaccess::vat_combined(mnt, as_byte = TRUE),

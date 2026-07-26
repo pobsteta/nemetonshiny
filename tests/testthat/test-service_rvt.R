@@ -247,3 +247,43 @@ test_that("build_cvat_precomputed writes <base>_CVAT_8bit_foretaccess.tif", {
     expect_true(nemetonshiny:::.rvt_is_cheap("lidar_mnt_mosaic.tif"))
   })
 })
+
+test_that("build_cvat_precomputed delegates to foretaccess when an AOI is given", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    m <- terra::rast(nrows = 5, ncols = 5, crs = "EPSG:2154"); terra::values(m) <- 1
+    terra::writeRaster(m, "lidar_mnt_mosaic.tif", overwrite = TRUE)
+    testthat::local_mocked_bindings(.rvt_cvat_available = function() TRUE)
+    delegated <- FALSE
+    testthat::local_mocked_bindings(
+      build_cvat_precomputed = function(aoi, cache_dir, buffer_m, mnt_existant,
+                                        out, overwrite) {
+        delegated <<- TRUE
+        writeLines("x", out); out            # simule l'écriture foretaccess
+      }, .package = "foretaccess")
+    aoi <- sf::st_sf(geometry = sf::st_sfc(
+      sf::st_point(c(8e5, 63e5)), crs = 2154))
+    out <- nemetonshiny:::build_cvat_precomputed("lidar_mnt_mosaic.tif",
+                                                 aoi = aoi, buffer_m = 100)
+    expect_true(delegated)                   # AOI -> délégation foretaccess
+    expect_match(out, "_CVAT_8bit_foretaccess\\.tif$")
+  })
+})
+
+test_that("build_cvat_precomputed without AOI keeps the local vat_combined path", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    m <- terra::rast(nrows = 6, ncols = 6, crs = "EPSG:2154")
+    terra::values(m) <- as.numeric(seq_len(36))
+    terra::writeRaster(m, "lidar_mnt_mosaic.tif", overwrite = TRUE)
+    testthat::local_mocked_bindings(.rvt_cvat_available = function() TRUE)
+    ft_called <- FALSE
+    testthat::local_mocked_bindings(
+      vat_combined = function(mnt, as_byte = TRUE) {
+        ft_called <<- TRUE; r <- mnt; terra::values(r) <- 100L; r
+      }, .package = "foretaccess")
+    out <- nemetonshiny:::build_cvat_precomputed("lidar_mnt_mosaic.tif")  # pas d'AOI
+    expect_true(ft_called)                   # chemin local vat_combined
+    expect_true(!is.null(out) && file.exists(out))
+  })
+})

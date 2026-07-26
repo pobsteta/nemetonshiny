@@ -1,5 +1,17 @@
 # nemetonshiny (development version)
 
+### Added — Pré-calcul CVAT : notification + couverture AOI+buffer (foretaccess 1.25.0)
+
+- Message bas-droite **« Préparation du fond relief CVAT (LiDAR HD)… »** pendant
+  tout le pré-calcul CVAT à l'ouverture d'un projet LiDAR (id stable, retiré à la
+  fin + court toast succès/erreur). L'UI ne gèle pas (calcul en worker).
+- `build_cvat_precomputed()` accepte désormais `aoi` + `buffer_m` : avec une AOI
+  et foretaccess ≥ 1.25.0, **délègue à `foretaccess::build_cvat_precomputed()`**
+  qui **garantit la couverture AOI+buffer** (ré-acquiert le MNT LiDAR HD si la
+  mosaïque est trop courte, puis recalcule). Sans AOI : CVAT sur le MNT tel quel
+  (repli inchangé). L'observer de chargement passe la géométrie du projet
+  (`units_sf()`) et le tampon (`input$buffer_km`). Brief : BRIEF-cvat-prebuild.md.
+
 ### Fixed — Bouton « Lancer l'analyse » vide pendant la correction LiDAR
 
 - Pendant la correction LiDAR de la desserte, le bouton « Lancer l'analyse »

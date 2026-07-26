@@ -409,7 +409,7 @@ mod_accessibility_server <- function(id, app_state) {
     # le repli WMS, dont le striping serait amplifié). Idempotent : rien si un CVAT
     # (foretaccess OU plugin) est déjà présent.
     cvat_prebuild_task <- shiny::ExtendedTask$new(
-      function(mnt_path, dev_path, app_opts) {
+      function(mnt_path, aoi, buffer_m, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
           pc <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% pc)) {
@@ -424,7 +424,8 @@ mod_accessibility_server <- function(id, app_state) {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          nemetonshiny:::build_cvat_precomputed(mnt_path)
+          nemetonshiny:::build_cvat_precomputed(mnt_path, aoi = aoi,
+                                                buffer_m = buffer_m)
         }, seed = TRUE)
       })
 
@@ -435,9 +436,34 @@ mod_accessibility_server <- function(id, app_state) {
           identical(basename(mnt_path), "lidar_mnt_mosaic.tif") &&
           .rvt_cvat_available() &&
           is.null(.rvt_precomputed_path(mnt_path))) {
-        cvat_prebuild_task$invoke(mnt_path, .dev_pkg_path, get_app_options())
+        # AOI + buffer pour garantir la couverture (foretaccess ré-acquiert si la
+        # mosaïque est trop courte). AOI = géométrie du projet ; buffer km -> m.
+        aoi <- tryCatch(units_sf(), error = function(e) NULL)
+        buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+        # Message bas-droite pendant TOUT le calcul (id stable -> retiré à la fin).
+        shiny::showNotification(
+          i18n$t("acc_cvat_prebuild_running"), duration = NULL,
+          closeButton = FALSE, type = "message",
+          id = session$ns("cvat_prebuild"))
+        cvat_prebuild_task$invoke(mnt_path, aoi, buffer_m, .dev_pkg_path,
+                                  get_app_options())
       }
     }, ignoreNULL = TRUE)
+
+    # Fin du pré-calcul CVAT : retire le message bas-droite + court toast.
+    shiny::observeEvent(cvat_prebuild_task$status(), {
+      st <- cvat_prebuild_task$status()
+      if (st %in% c("success", "error")) {
+        shiny::removeNotification(session$ns("cvat_prebuild"))
+        if (identical(st, "success")) {
+          shiny::showNotification(i18n$t("acc_cvat_prebuild_done"),
+                                  duration = 4, type = "message")
+        } else {
+          shiny::showNotification(i18n$t("acc_cvat_prebuild_failed"),
+                                  duration = 6, type = "warning")
+        }
+      }
+    })
 
     rv_correct <- shiny::reactiveVal(NULL)   # dernier résumé de correction
     correct_start <- shiny::reactiveVal(NULL)   # horodatage de départ (chrono)
