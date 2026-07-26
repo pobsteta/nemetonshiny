@@ -10,6 +10,19 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.118.0] - 2026-07-26
+
+### Added
+
+- Fond relief **CVAT** en overlay « Relief CVAT » (semi-transparent, au-dessus
+  d'OSM/Satellite) dans le sélecteur de couches des cartes **Accessibilité** et
+  **Desserte**, quand un CVAT existe déjà pour le projet.
+
+### Fixed
+
+- Comparateur desserte : « Raster image too large » sur le fond CVAT (agrégation
+  du raster à ~2000 px avant l'affichage).
+
 ## [0.117.3] - 2026-07-26
 
 ### Changed

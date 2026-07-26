@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.118.0 (2026-07-26)
 
 ### Added — Fond relief CVAT sur les cartes Accessibilité et Desserte
 
