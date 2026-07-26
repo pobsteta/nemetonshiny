@@ -1,5 +1,16 @@
 # nemetonshiny (development version)
 
+### Changed — `Remotes` : retour à `@*release` (releases stables du cœur)
+
+- `Remotes` repasse à **`pobsteta/nemeton@*release, pobsteta/foretaccess@*release`**
+  (au lieu de `pobsteta/nemeton` sans ref + `foretaccess@v1.24.0` pin manuel).
+  `@*release` tire le **tag de release le plus élevé** — l'app suit donc les
+  **releases stables** du cœur (nemeton 0.168.1, foretaccess 1.24.0), plus le
+  cycle dev `main` potentiellement instable, et sans pin à bumper à la main.
+- `@*release` **cassait pak 0.11.0** (« the condition has length > 1 », incident
+  v0.115.9 → forme sans ref en v0.115.10) ; il **refonctionne depuis pak 0.11.1**
+  (vérifié : résolution du DESCRIPTION complet, 174 paquets). Postes avec pak
+  ≤ 0.11.0 : revenir à la forme sans ref ou pinner `@vX.Y.Z`. CLAUDE.md mis à jour.
 ### Added — Pré-calcul automatique du CVAT à l'ouverture d'un projet LiDAR
 
 - Nouveau producteur `build_cvat_precomputed()` : matérialise
