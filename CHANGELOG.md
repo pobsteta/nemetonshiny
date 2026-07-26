@@ -10,6 +10,14 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.119.1] - 2026-07-26
+
+### Fixed
+
+- `app_ui()` plantait (« attempt to select less than one element ») quand une
+  option app partielle laissait `language` à NULL — unique échec du R-CMD-check.
+  `get_app_options()` fusionne désormais toujours avec les défauts.
+
 ## [0.119.0] - 2026-07-26
 
 ### Added
