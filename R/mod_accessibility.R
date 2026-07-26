@@ -799,11 +799,18 @@ mod_accessibility_server <- function(id, app_state) {
       # « Desserte » (routes/pistes DFCI ayant servi au calcul) est enregistrée
       # dans le LayersControl SOUS « UGF » et « Accessibilite » ; l'observe plus
       # bas la dessine via leafletProxy (dépend du run, pas de la carte de base).
-      overlays <- c(if (!is.null(geo)) "UGF" else NULL, "Accessibilite", "Desserte",
-                    "Places de depot")
+      # Fond relief CVAT (overlay semi-transparent au-dessus d'OSM/Satellite),
+      # proposé dans le LayersControl quand un CVAT existe déjà pour le projet.
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      cvat_bg <- .acc_cvat_overlay_raster(project_path)
+      overlays <- c(if (!is.null(geo)) "UGF" else NULL,
+                    if (!is.null(cvat_bg)) "Relief CVAT" else NULL,
+                    "Accessibilite", "Desserte", "Places de depot")
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
+        # Fond relief : juste au-dessus des tuiles (200), sous les données.
+        leaflet::addMapPane("nemetonCvatBase", zIndex = 230) |>
         leaflet::addMapPane("nemetonAccRaster", zIndex = 250) |>
         # Panes gauche/droite pour la comparaison « swipe » ACCESSFOR : le volet
         # (nemeton_swipe.js) les clippe de part et d'autre du curseur.
@@ -818,6 +825,13 @@ mod_accessibility_server <- function(id, app_state) {
           baseGroups = c("OSM", "Satellite"),
           overlayGroups = overlays,
           options = leaflet::layersControlOptions(collapsed = TRUE))
+      if (!is.null(cvat_bg)) {
+        grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
+          domain = c(0, 1), na.color = "transparent")
+        m <- leaflet::addRasterImage(m, cvat_bg, colors = grey, opacity = 0.6,
+          group = "Relief CVAT", maxBytes = 16 * 1024^2,
+          options = leaflet::gridOptions(pane = "nemetonCvatBase"))
+      }
       if (!is.null(geo)) {
         m <- leaflet::addPolygons(m, data = geo, group = "UGF",
           color = "#1f78b4", weight = 2, opacity = 0.9, fillOpacity = 0)
@@ -979,12 +993,22 @@ mod_accessibility_server <- function(id, app_state) {
       if (is.null(rvt_path) || !file.exists(rvt_path)) return(invisible())
       rr <- tryCatch(terra::rast(rvt_path), error = function(e) NULL)
       if (is.null(rr)) return(invisible())
+      # `addRasterImage` plafonne à 4 Mo : un CVAT sur MNT LiDAR 0,5 m
+      # (4000x4000 = 16 M cellules -> ~17 Mo) le dépasse et fait planter l'observe.
+      # Le relief n'a pas besoin de 0,5 m à l'écran : on agrège à ~2000 px de côté
+      # (facteur entier) avant l'affichage. Filet `maxBytes` en complément.
+      maxdim <- max(terra::nrow(rr), terra::ncol(rr))
+      if (is.finite(maxdim) && maxdim > 2000L) {
+        fact <- as.integer(ceiling(maxdim / 2000))
+        rr <- tryCatch(terra::aggregate(rr, fact = fact, fun = "mean",
+                                        na.rm = TRUE), error = function(e) rr)
+      }
       grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
         domain = c(0, 1), na.color = "transparent")
       leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Relief RVT") |>
         leaflet::addRasterImage(rr, colors = grey, opacity = 1,
-          group = "Relief RVT",
+          group = "Relief RVT", maxBytes = 16 * 1024^2,
           options = leaflet::gridOptions(pane = "nemetonRvtFond"))
       invisible()
     }

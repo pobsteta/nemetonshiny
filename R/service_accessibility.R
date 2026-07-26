@@ -137,6 +137,37 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
   cand[order(file.mtime(cand), decreasing = TRUE)][1]
 }
 
+#' Ready-to-paint CVAT relief overlay for a project's maps
+#'
+#' Returns the project's CVAT relief as a display-ready `SpatRaster` (aggregated
+#' to ~2000 px so `addRasterImage` stays under its size cap), **only when a CVAT
+#' already exists** (precomputed or cached — `.rvt_is_cheap`). Never triggers the
+#' ~1 min live `vat_combined()` at map-render time. `NULL` when no CVAT is ready.
+#'
+#' Used as a semi-transparent overlay over OSM/Satellite on the Accessibility and
+#' Desserte maps (the relief covers only the LiDAR emprise; NA elsewhere ->
+#' transparent, so OSM shows through outside it).
+#'
+#' @param project_path Project directory, or NULL.
+#' @return An aggregated `SpatRaster` in `[0, 1]`, or NULL.
+#' @noRd
+.acc_cvat_overlay_raster <- function(project_path) {
+  if (is.null(project_path) || !nzchar(project_path)) return(NULL)
+  mnt <- .acc_rvt_mnt_path(project_path)
+  if (is.null(mnt) || !.rvt_is_cheap(mnt)) return(NULL)
+  p <- tryCatch(generate_rvt(mnt), error = function(e) NULL)   # cheap -> rapide
+  if (is.null(p) || !file.exists(p)) return(NULL)
+  rr <- tryCatch(terra::rast(p), error = function(e) NULL)
+  if (is.null(rr)) return(NULL)
+  maxdim <- max(terra::nrow(rr), terra::ncol(rr))
+  if (is.finite(maxdim) && maxdim > 2000L) {
+    fact <- as.integer(ceiling(maxdim / 2000))
+    rr <- tryCatch(terra::aggregate(rr, fact = fact, fun = "mean", na.rm = TRUE),
+                   error = function(e) rr)
+  }
+  rr
+}
+
 #' Reconstruct a run result from a project's cached accessibility rasters
 #'
 #' Lets the tab show a **previously computed** analysis without recomputing:

@@ -1,5 +1,23 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.118.0 (2026-07-26)
 
+### Added — Fond relief CVAT sur les cartes Accessibilité et Desserte
+
+- Quand un CVAT existe déjà pour le projet (pré-calculé ou en cache), il est
+  proposé comme **overlay « Relief CVAT »** dans le sélecteur de couches des cartes
+  Accessibilité **et** Desserte, semi-transparent (0,6) au-dessus d'OSM/Satellite —
+  cochable comme n'importe quel calque. Le relief ne couvre que l'emprise LiDAR
+  (transparent au-delà, OSM visible dessous). Jamais de calcul lourd au rendu :
+  l'overlay n'apparaît que si le CVAT est déjà prêt (`.rvt_is_cheap`). Raster
+  agrégé à ~2000 px pour l'affichage.
+
+### Fixed — Comparateur desserte : « Raster image too large » sur le fond CVAT
+
+- Sélectionner la couche comparateur plantait l'observe avec
+  `addRasterImage: Raster image too large; 17099891 bytes > 4194304` : le CVAT sur
+  le MNT LiDAR 0,5 m fait 4000×4000 (16 M cellules, ~17 Mo), au-delà du plafond
+  4 Mo de `addRasterImage`. Le fond est désormais **agrégé à ~2000 px de côté**
+  avant l'affichage (le relief n'a pas besoin de 0,5 m à l'écran ; ~0,5 Mo après
+  agrégation), avec un filet `maxBytes = 16 Mo`.
 # nemetonshiny 0.117.3 (2026-07-26)
 
 ### Changed — Comparateur desserte piloté par le sélecteur de couche
