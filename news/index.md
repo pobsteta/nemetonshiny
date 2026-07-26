@@ -1,5 +1,7 @@
 # Changelog
 
+## nemetonshiny (development version)
+
 ## nemetonshiny 0.117.3 (2026-07-26)
 
 #### Changed — Comparateur desserte piloté par le sélecteur de couche
