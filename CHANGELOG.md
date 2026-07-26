@@ -12,6 +12,15 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.117.3\] - 2026-07-26
+
+### Changed
+
+- Comparateur « desserte BD TOPO / corrigée » piloté par le **sélecteur
+  de couche radio** (pseudo-couche « Desserte BD TOPO / corrigée (volet)
+  »), comme « Classes de débardage/ACCESSFOR », au lieu d’une case à
+  cocher séparée.
+
 ## \[0.117.2\] - 2026-07-25
 
 ### Changed
