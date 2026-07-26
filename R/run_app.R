@@ -178,12 +178,28 @@ get_default_project_dir <- function() {
 
 #' Get current app options
 #'
-#' @return List of app options
+#' Always MERGES the `nemeton.app_options` option over the defaults: a partial
+#' option (e.g. a test setting only `project_dir`, or leaving `language` out)
+#' must not yield a NULL `language` — otherwise `app_ui()` → `get_expert_choices()`
+#' does `p$label[[NULL]]` and errors with « attempt to select less than one
+#' element ». `getOption(name, default)` returns the default ONLY when the option
+#' is absent, so a partially-set option would drop fields without this merge.
+#'
+#' @return List of app options (all fields guaranteed present).
 #' @noRd
 get_app_options <- function() {
-  getOption("nemeton.app_options", list(
+  defaults <- list(
     language = "fr",
     project_dir = get_default_project_dir(),
     max_parcels = 30L
-  ))
+  )
+  opts <- getOption("nemeton.app_options", NULL)
+  if (!is.list(opts)) return(defaults)
+  merged <- utils::modifyList(defaults, opts)
+  # Garde-fou langue : une valeur absente/NULL/vide retombe sur "fr".
+  if (is.null(merged$language) || length(merged$language) != 1L ||
+      !nzchar(merged$language)) {
+    merged$language <- "fr"
+  }
+  merged
 }
