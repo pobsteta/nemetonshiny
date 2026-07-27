@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.120.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.120.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.120.2" id="nemetonshiny-01202-2026-07-27">nemetonshiny 0.120.2 (2026-07-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01202-2026-07-27"></a></h2>
+<div class="section level4">
+<h4 id="changed--pré-calcul-cvat-limité-à-longlet-accessibilité-0-120-2">Changed — Pré-calcul CVAT limité à l’onglet Accessibilité<a class="anchor" aria-label="anchor" href="#changed--pr%C3%A9-calcul-cvat-limit%C3%A9-%C3%A0-longlet-accessibilit%C3%A9-0-120-2"></a></h4>
+<ul><li>Le pré-calcul / recalcul du fond relief CVAT ne se déclenche plus <strong>au simple chargement d’un projet</strong> depuis un autre onglet : il est désormais <strong>gardé par l’onglet Terrain › Accessibilité actif</strong> (<code>active_main_tab == "terrain"</code> &amp;&amp; <code>active_terrain_tab == "accessibility"</code>). Le worker lourd n’est lancé qu’à l’arrivée sur l’onglet ou au changement de zone tampon <strong>quand on y est</strong>.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.120.1" id="nemetonshiny-01201-2026-07-26">nemetonshiny 0.120.1 (2026-07-26)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01201-2026-07-26"></a></h2>

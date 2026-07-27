@@ -2,6 +2,18 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.120.2 (2026-07-27)
+
+#### Changed — Pré-calcul CVAT limité à l’onglet Accessibilité
+
+- Le pré-calcul / recalcul du fond relief CVAT ne se déclenche plus **au
+  simple chargement d’un projet** depuis un autre onglet : il est
+  désormais **gardé par l’onglet Terrain › Accessibilité actif**
+  (`active_main_tab == "terrain"` &&
+  `active_terrain_tab == "accessibility"`). Le worker lourd n’est lancé
+  qu’à l’arrivée sur l’onglet ou au changement de zone tampon **quand on
+  y est**.
+
 ## nemetonshiny 0.120.1 (2026-07-26)
 
 #### Fixed — Recalcul du CVAT quand la zone tampon change
