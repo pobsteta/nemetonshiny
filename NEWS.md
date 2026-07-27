@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.120.2 (2026-07-27)
+
 ### Changed — Pré-calcul CVAT limité à l'onglet Accessibilité
 
 - Le pré-calcul / recalcul du fond relief CVAT ne se déclenche plus **au simple

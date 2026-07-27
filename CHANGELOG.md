@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.120.2] - 2026-07-27
+
+### Changed
+
+- Pré-calcul CVAT limité à l'onglet Terrain › Accessibilité : ne se déclenche plus
+  au simple chargement d'un projet depuis un autre onglet (garde `active_main_tab`
+  / `active_terrain_tab`), seulement à l'arrivée sur l'onglet ou au changement de
+  zone tampon quand on y est.
+
 ## [0.120.1] - 2026-07-26
 
 ### Fixed
