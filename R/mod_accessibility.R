@@ -429,12 +429,19 @@ mod_accessibility_server <- function(id, app_state) {
         }, seed = TRUE)
       })
 
-    # Déclenché à l'ouverture du projet ET au changement de zone tampon (débouncé) :
-    # un buffer agrandi peut rendre le CVAT existant trop court, il faut alors le
-    # recalculer pour couvrir la nouvelle emprise.
+    # Déclenché UNIQUEMENT quand on est sur l'onglet Terrain > Accessibilité — à
+    # l'arrivée sur l'onglet ET au changement de zone tampon (débouncé) : un buffer
+    # agrandi peut rendre le CVAT existant trop court, il faut alors le recalculer
+    # pour couvrir la nouvelle emprise. On NE lance PAS ce worker lourd au simple
+    # chargement d'un projet depuis un autre onglet.
     buffer_km_d <- shiny::debounce(
       shiny::reactive(suppressWarnings(as.numeric(input$buffer_km)) %||% 1), 600)
-    shiny::observeEvent(list(app_state$current_project, buffer_km_d()), {
+    shiny::observeEvent(
+      list(app_state$active_main_tab, app_state$active_terrain_tab,
+           app_state$current_project, buffer_km_d()), {
+      on_tab <- identical(app_state$active_main_tab, "terrain") &&
+        identical(app_state$active_terrain_tab, "accessibility")
+      if (!on_tab) return()                    # pas sur l'onglet -> aucun pré-calcul
       pp <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       mnt_path <- .acc_rvt_mnt_path(pp)
       if (is.null(mnt_path) ||
