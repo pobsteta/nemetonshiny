@@ -167,6 +167,42 @@ test_that("cache d'accessibilité chargé PARESSEUSEMENT (onglet actif, 1x/proje
     })
 })
 
+test_that("pré-calcul CVAT gardé par l'onglet Accessibilité (pas au chargement projet)", {
+  skip_if_not_installed("sf")
+  proj <- list(id = "p1", path = withr::local_tempdir(),
+               indicators_sf = .acc_units(1))
+  probed <- 0L
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    .acc_rvt_mnt_path = function(pp) "/nowhere/lidar_mnt_mosaic.tif",
+    .rvt_cvat_available = function() TRUE,
+    # neutralise le fond CVAT du renderLeaflet (évalué au flush) pour que le SEUL
+    # appelant restant de .rvt_precomputed_path soit l'observer de pré-calcul.
+    .acc_cvat_overlay_raster = function(project_path) NULL,
+    # atteint SEULEMENT après la garde on_tab + garde MNT/cvat ; retourne un CVAT
+    # existant pour que l'observer sorte sans invoquer le worker.
+    .rvt_precomputed_path = function(mnt) { probed <<- probed + 1L; "/nowhere/cvat.tif" },
+    .cvat_covers = function(out, aoi, buffer_m = 0) TRUE,  # couvre -> pas de worker
+    .package = "nemetonshiny")
+  as <- shiny::reactiveValues(current_project = NULL,
+                              active_main_tab = "selection",
+                              active_terrain_tab = NULL)
+  shiny::testServer(
+    nemetonshiny:::mod_accessibility_server,
+    args = list(app_state = as),
+    {
+      # 1) Projet chargé mais utilisateur sur « Sélection » : PAS de pré-calcul.
+      as$current_project <- proj
+      session$flushReact()
+      expect_equal(probed, 0L)
+      # 2) Arrivée sur l'onglet Terrain > Accessibilité : la garde laisse passer.
+      as$active_main_tab <- "terrain"
+      as$active_terrain_tab <- "accessibility"
+      session$flushReact()
+      expect_gt(probed, 0L)
+    })
+})
+
 test_that("run sans projet chargé = no-op gardé (aucun worker lancé)", {
   skip_if_not_installed("sf")
   as <- shiny::reactiveValues(current_project = NULL)
