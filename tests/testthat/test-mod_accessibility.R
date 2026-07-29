@@ -313,3 +313,16 @@ test_that("accessfor_result : pas d'erreur '$ atomic' sur un résultat rechargé
       expect_error(output$accessfor_result, NA)
     })
 })
+
+test_that(".acc_buffer_m rend des metres finis, defaut 250", {
+  # Le champ est en METRES (plus de conversion km -> m en aval).
+  expect_identical(nemetonshiny:::.acc_buffer_m(250), 250)
+  expect_identical(nemetonshiny:::.acc_buffer_m("1000"), 1000)
+  # Champ vide / efface par l'utilisateur -> NA ou NULL, jamais propage tel quel.
+  expect_identical(nemetonshiny:::.acc_buffer_m(NULL), 250)
+  expect_identical(nemetonshiny:::.acc_buffer_m(NA), 250)
+  expect_identical(nemetonshiny:::.acc_buffer_m(""), 250)
+  # Valeur negative bornee a 0 (emprise foret seule).
+  expect_identical(nemetonshiny:::.acc_buffer_m(-5), 0)
+  expect_identical(nemetonshiny:::.acc_buffer_m(0), 0)
+})
