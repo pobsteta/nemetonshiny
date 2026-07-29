@@ -10,6 +10,24 @@
 # calcul est long → `ExtendedTask` + `future_promise`, même patron que le moteur
 # reGénération (notif persistante bas-droite avec chrono, retour immédiat).
 
+#' Buffer around the forest AOI, in metres, from the sidebar input
+#'
+#' The input is expressed in METRES (default 250 m) — the services downstream
+#' (`run_accessibility()`, `run_desserte_lidar_correction()`, `.acc_rvt_cvat()`)
+#' all take `buffer_m`, so no unit conversion happens anywhere. A numeric input
+#' cleared by the user yields `NA`, not `NULL`: `%||%` would let it through and
+#' `NA` would then poison the cache key and the buffered geometry, hence the
+#' explicit `is.finite()` guard.
+#'
+#' @param value Raw `input$buffer_m` (may be `NULL`, `NA` or a string).
+#' @return A finite non-negative numeric, in metres.
+#' @noRd
+.acc_buffer_m <- function(value) {
+  v <- suppressWarnings(as.numeric(value %||% NA))
+  if (!is.finite(v)) return(250)
+  max(0, v)
+}
+
 #' Semantic colour per accessibility class name
 #'
 #' The class colour must encode the class MEANING, not its position in the level
@@ -248,8 +266,8 @@ mod_accessibility_ui <- function(id) {
           shiny::uiOutput(ns("compare_hint_ui")),
           htmltools::tags$hr(class = "my-2"),
           shiny::numericInput(
-            ns("buffer_km"), i18n$t("acc_buffer"),
-            value = 1, min = 0, max = 20, step = 1),
+            ns("buffer_m"), i18n$t("acc_buffer"),
+            value = 250, min = 0, max = 20000, step = 50),
           htmltools::tags$p(class = "text-muted small", i18n$t("acc_buffer_help")),
           shiny::sliderInput(
             ns("opacity"), i18n$t("acc_opacity"),
@@ -434,11 +452,11 @@ mod_accessibility_server <- function(id, app_state) {
     # agrandi peut rendre le CVAT existant trop court, il faut alors le recalculer
     # pour couvrir la nouvelle emprise. On NE lance PAS ce worker lourd au simple
     # chargement d'un projet depuis un autre onglet.
-    buffer_km_d <- shiny::debounce(
-      shiny::reactive(suppressWarnings(as.numeric(input$buffer_km)) %||% 1), 600)
+    buffer_m_d <- shiny::debounce(
+      shiny::reactive(.acc_buffer_m(input$buffer_m)), 600)
     shiny::observeEvent(
       list(app_state$active_main_tab, app_state$active_terrain_tab,
-           app_state$current_project, buffer_km_d()), {
+           app_state$current_project, buffer_m_d()), {
       on_tab <- identical(app_state$active_main_tab, "terrain") &&
         identical(app_state$active_terrain_tab, "accessibility")
       if (!on_tab) return()                    # pas sur l'onglet -> aucun pré-calcul
@@ -448,7 +466,7 @@ mod_accessibility_server <- function(id, app_state) {
           !identical(basename(mnt_path), "lidar_mnt_mosaic.tif") ||
           !.rvt_cvat_available()) return()
       aoi <- tryCatch(units_sf(), error = function(e) NULL)
-      buffer_m <- max(0, buffer_km_d()) * 1000
+      buffer_m <- buffer_m_d()
       # Relancer si AUCUN CVAT, ou si le CVAT existant NE COUVRE PAS aoi+buffer
       # (buffer agrandi). Sinon rien : pas de worker inutile.
       existing <- .rvt_precomputed_path(mnt_path)
@@ -520,7 +538,7 @@ mod_accessibility_server <- function(id, app_state) {
       shiny::showNotification(
         .running_notif_content(i18n$t("acc_correct_running"), correct_start()),
         id = session$ns("correct_notif"), type = "message", duration = NULL)
-      buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      buffer_m <- .acc_buffer_m(input$buffer_m)
       tryCatch(
         correct_task$invoke(aoi_path, cache_dir, buffer_m, .dev_pkg_path,
                             get_app_options(), project_path),
@@ -655,7 +673,7 @@ mod_accessibility_server <- function(id, app_state) {
         id = session$ns("acc_notif"), type = "message", duration = NULL)
       # Garde-fou : un échec SYNCHRONE d'invoke (sérialisation d'un argument) ne
       # doit pas laisser le bouton figé « busy » ni la notif collée.
-      buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      buffer_m <- .acc_buffer_m(input$buffer_m)
       use_corrected <- isTRUE(input$use_corrected)
       tryCatch(
         acc_task$invoke(aoi_path, engines, cache_dir, buffer_m,
