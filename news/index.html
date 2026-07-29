@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.120.2.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.120.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,14 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.120.3" id="nemetonshiny-01203-2026-07-29">nemetonshiny 0.120.3 (2026-07-29)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01203-2026-07-29"></a></h2>
+<div class="section level4">
+<h4 id="changed--zone-tampon-accessibilité-en-mètres-défaut-m-0-120-3">Changed — Zone tampon Accessibilité en mètres, défaut 250 m<a class="anchor" aria-label="anchor" href="#changed--zone-tampon-accessibilit%C3%A9-en-m%C3%A8tres-d%C3%A9faut-m-0-120-3"></a></h4>
+<ul><li>Le champ <strong>« Zone tampon autour de la forêt »</strong> de l’onglet Terrain › Accessibilité est désormais exprimé <strong>en mètres</strong> (pas 50 m, max 20 000 m) au lieu de kilomètres, avec un <strong>défaut de 250 m</strong> (au lieu de 1 km). Les services aval (<code>run_accessibility()</code>, <code>run_desserte_lidar_correction()</code>, pré-calcul CVAT) prenaient déjà <code>buffer_m</code> : la conversion km → m disparaît de tous les appels du module. L’onglet <strong>Desserte</strong> garde son champ en km.</li>
+<li>Nouveau helper <code>.acc_buffer_m()</code> : un champ numérique vidé par l’utilisateur renvoie <code>NA</code> (et non <code>NULL</code>), que <code>%||%</code> laissait passer — <code>NA</code> empoisonnait alors la clé de cache d’acquisition et la géométrie tamponnée. La valeur est ramenée au défaut si non finie, et bornée à 0 si négative.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.120.2" id="nemetonshiny-01202-2026-07-27">nemetonshiny 0.120.2 (2026-07-27)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01202-2026-07-27"></a></h2>

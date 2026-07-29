@@ -12,6 +12,26 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.120.3\] - 2026-07-29
+
+### Changed
+
+- Zone tampon de l’onglet Terrain › Accessibilité exprimée en **mètres**
+  (pas 50 m, max 20 000 m) au lieu de kilomètres, **défaut 250 m** au
+  lieu de 1 km. Input renommé `buffer_km` → `buffer_m` ; la conversion
+  km → m disparaît des trois appels du module (pré-calcul CVAT,
+  correction LiDAR de la desserte, lancement de l’analyse). Les onglets
+  Desserte et reGénération gardent leurs champs en km.
+
+### Fixed
+
+- Champ de zone tampon vidé par l’utilisateur : `NA` (et non `NULL`)
+  passait au travers de `%||%` et empoisonnait la clé de sous-cache
+  d’acquisition (`emprise_%gm`) ainsi que la géométrie tamponnée.
+  Nouveau helper `.acc_buffer_m()` : garde
+  [`is.finite()`](https://rdrr.io/r/base/is.finite.html) → défaut,
+  bornage à 0 si négatif.
+
 ## \[0.120.2\] - 2026-07-27
 
 ### Changed

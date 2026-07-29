@@ -2,6 +2,23 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.120.3 (2026-07-29)
+
+#### Changed — Zone tampon Accessibilité en mètres, défaut 250 m
+
+- Le champ **« Zone tampon autour de la forêt »** de l’onglet Terrain ›
+  Accessibilité est désormais exprimé **en mètres** (pas 50 m, max 20
+  000 m) au lieu de kilomètres, avec un **défaut de 250 m** (au lieu de
+  1 km). Les services aval (`run_accessibility()`,
+  `run_desserte_lidar_correction()`, pré-calcul CVAT) prenaient déjà
+  `buffer_m` : la conversion km → m disparaît de tous les appels du
+  module. L’onglet **Desserte** garde son champ en km.
+- Nouveau helper `.acc_buffer_m()` : un champ numérique vidé par
+  l’utilisateur renvoie `NA` (et non `NULL`), que `%||%` laissait passer
+  — `NA` empoisonnait alors la clé de cache d’acquisition et la
+  géométrie tamponnée. La valeur est ramenée au défaut si non finie, et
+  bornée à 0 si négative.
+
 ## nemetonshiny 0.120.2 (2026-07-27)
 
 #### Changed — Pré-calcul CVAT limité à l’onglet Accessibilité
