@@ -1,5 +1,7 @@
 # nemetonshiny (development version)
 
+# nemetonshiny 0.120.3 (2026-07-29)
+
 ### Changed — Zone tampon Accessibilité en mètres, défaut 250 m
 
 - Le champ **« Zone tampon autour de la forêt »** de l'onglet Terrain ›
