@@ -92,6 +92,11 @@ mod_theia_config_server <- function(id, app_state) {
       )
     )
 
+    # Sources Theia optionnelles (T3 coupes rases / A5 rafraîchissement
+    # urbain) — quatrième onglet du modal. Serveur initialisé une seule fois
+    # ici ; ses `uiOutput` se lient quand l'onglet est affiché.
+    mod_sources_config_server("sources", app_state = app_state)
+
     # Bumped after a successful save / delete to refresh the modal.
     status_refresh <- shiny::reactiveVal(0)
     # Theia edit form revealed even though a key is already saved.
@@ -303,7 +308,18 @@ mod_theia_config_server <- function(id, app_state) {
             title = i18n$t("api_keys_tab_rag"),
             value = "tab_rag",
             htmltools::div(class = "pt-3",
-                           shiny::uiOutput(ns("rag_tab_content"))))
+                           shiny::uiOutput(ns("rag_tab_content")))),
+          # Sources Theia optionnelles (coupes rases T3 / rafraîchissement
+          # urbain A5) : elles vivaient dans la carte Projet, où elles
+          # allongeaient un formulaire déjà long. Leur place est ici, à côté
+          # des identifiants Theia dont elles dépendent. Le module est monté
+          # en dur (pas de lazy-rendering) : ce sont deux `uiOutput` légers,
+          # sans DataTables — la contrainte qui impose le lazy-load à l'onglet
+          # RAG ne s'applique pas.
+          shiny::tabPanel(
+            title = i18n$t("api_keys_tab_sources"),
+            value = "tab_sources",
+            mod_sources_config_ui(ns("sources")))
         )
       )
     }

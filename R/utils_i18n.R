@@ -1650,6 +1650,18 @@ TRANSLATIONS <- list(
     fr = "Corpus RAG",
     en = "RAG corpus"
   ),
+  api_keys_tab_sources = list(
+    fr = "Sources optionnelles",
+    en = "Optional sources"
+  ),
+  sources_config_intro = list(
+    fr = "Sources Theia optionnelles du projet courant, activ\u00e9es par d\u00e9faut. Elles n\u00e9cessitent des identifiants Theia valides ; hors couverture, l'indicateur correspondant reste vide sans faire \u00e9chouer le calcul.",
+    en = "Optional Theia sources for the current project, enabled by default. They require valid Theia credentials; outside coverage the matching indicator stays empty without failing the computation."
+  ),
+  sources_need_project = list(
+    fr = "Ouvrez ou cr\u00e9ez un projet pour configurer ces sources.",
+    en = "Open or create a project to configure these sources."
+  ),
   api_keys_fullscreen = list(
     fr = "Plein écran",
     en = "Fullscreen"
