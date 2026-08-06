@@ -94,15 +94,17 @@ test_that("build_lst_layer returns NULL when Theia key absent, AOI unusable, or 
 # list_available_indicators : A5 gaté sur metadata$lst_urbain$enabled
 # ---------------------------------------------------------------------------
 
-test_that("list_available_indicators gates A5 on lst_urbain$enabled", {
+test_that("list_available_indicators keeps A5 unless lst_urbain is turned off", {
+  # Depuis v0.121.0 la source LST est ACTIVE PAR DÉFAUT : métadonnées absentes
+  # => A5 présent. Seul un enabled = FALSE explicite le retire.
   base <- nemetonshiny:::list_available_indicators()
-  expect_false("indicateur_a5_rafraichissement" %in% base)   # défaut : pas de A5
+  expect_true("indicateur_a5_rafraichissement" %in% base)
   expect_false("indicateur_a5_rafraichissement" %in%
                nemetonshiny:::list_available_indicators(list(lst_urbain = list(enabled = FALSE))))
   enabled <- nemetonshiny:::list_available_indicators(list(lst_urbain = list(enabled = TRUE)))
   expect_true("indicateur_a5_rafraichissement" %in% enabled)
-  # les autres indicateurs restent tous présents (A5 ajouté, rien retiré)
-  expect_true(all(base %in% enabled))
+  # activation explicite == défaut : exactement le même jeu d'indicateurs
+  expect_setequal(base, enabled)
 })
 
 # ---------------------------------------------------------------------------

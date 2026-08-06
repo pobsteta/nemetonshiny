@@ -1699,6 +1699,39 @@ clear_project_foret_ancienne <- function(project_id) {
 }
 
 
+#' Is the SUFOSAT (clear-cut → T3) source active for a project?
+#'
+#' @description
+#' Single source of truth for the SUFOSAT opt-in state, shared by the settings
+#' UI (`mod_sources_config`) and the compute service. **Absent metadata means
+#' ENABLED**: the source ships on by default, so a project whose owner never
+#' opened the settings tab still gets T3. Only an explicit `enabled = FALSE`
+#' (saved from the UI) turns it off.
+#'
+#' @param metadata List. A project's `metadata` (or `NULL`).
+#' @return Logical scalar.
+#' @noRd
+project_sufosat_enabled <- function(metadata) {
+  isTRUE(metadata$sufosat$enabled %||% TRUE)
+}
+
+
+#' Is the urban-cooling (LST → A5) source active for a project?
+#'
+#' @description
+#' Mirror of [project_sufosat_enabled()] for the Theia LST source — absent
+#' metadata means ENABLED. Outside urban / Thermocity coverage the indicator
+#' still resolves to `NA` per unit, so defaulting to on costs a rural project
+#' nothing beyond one skipped fetch.
+#'
+#' @param metadata List. A project's `metadata` (or `NULL`).
+#' @return Logical scalar.
+#' @noRd
+project_lst_enabled <- function(metadata) {
+  isTRUE(metadata$lst_urbain$enabled %||% TRUE)
+}
+
+
 #' Persist the SUFOSAT (clear-cut → T3) source config on a project
 #'
 #' @description

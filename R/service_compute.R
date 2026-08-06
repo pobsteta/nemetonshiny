@@ -321,11 +321,11 @@ list_available_indicators <- function(metadata = NULL) {
     # Naturalness (N)
     "indicateur_n1_distance", "indicateur_n2_continuite", "indicateur_n3_naturalite"
   )
-  # A5 rafraîchissement urbain (LST Thermocity, spec 032) : opt-in strict —
-  # ajouté au set SEULEMENT si la source LST est activée sur le projet. Sans
-  # activation, la famille A reste A1-A4 (indicateur orienté arbre en ville,
-  # hors-sujet/NA en rural — pas de 5ᵉ axe vide, aucune requête Theia).
-  if (isTRUE(metadata$lst_urbain$enabled)) {
+  # A5 rafraîchissement urbain (LST Thermocity, spec 032) : source ACTIVE PAR
+  # DÉFAUT (project_lst_enabled) — ajoutée au set sauf désactivation explicite
+  # dans les paramètres. Désactivée, la famille A reste A1-A4 (indicateur
+  # orienté arbre en ville, hors-sujet/NA en rural — aucune requête Theia).
+  if (project_lst_enabled(metadata)) {
     base <- c(base, "indicateur_a5_rafraichissement")
   }
   base
@@ -946,16 +946,17 @@ start_computation <- function(project_id,
       if (!is.null(fa_layer)) layers$vectors$foret_ancienne <- fa_layer
     }
 
-    # Coupes rases → T3 (spec 030). SUFOSAT is an opt-in national source: T3
-    # is always in list_available_indicators() (like N2), but the Theia fetch
-    # only happens when the user enabled it in the project. When disabled — or
+    # Coupes rases → T3 (spec 030). SUFOSAT is a national source ENABLED BY
+    # DEFAULT (project_sufosat_enabled): T3 is always in
+    # list_available_indicators() (like N2), and the Theia fetch happens unless
+    # the user turned the source off in the settings. When disabled — or
     # if Theia is not configured / the fetch fails — layers$sufosat stays NULL
     # and indicateur_t3_coupes_rases returns NA per unit, so the T family keeps
     # T1/T2 with no Theia request (no regression). T3 is inverted in the core
     # (normalize_indicator, like R5) — the app never re-inverts. window_years /
     # min_proba are the user's UI parameters, forwarded to the indicator.
     sufosat_cfg <- projet_for_ug$metadata$sufosat
-    if (isTRUE(sufosat_cfg$enabled) &&
+    if (project_sufosat_enabled(projet_for_ug$metadata) &&
         "indicateur_t3_coupes_rases" %in% effective_indicators) {
       state$current_task <- "sufosat"
       report_progress(state)
@@ -970,14 +971,14 @@ start_computation <- function(project_id,
       }
     }
 
-    # Rafraîchissement urbain → A5 (LST Theia, spec 032). Source opt-in, gatée
-    # sur metadata$lst_urbain$enabled : hors activation — ou hors couverture
+    # Rafraîchissement urbain → A5 (LST Theia, spec 032). Source ACTIVE PAR
+    # DÉFAUT (project_lst_enabled) : désactivée — ou hors couverture
     # urbaine Thermocity / Theia non configuré — layers$rasters$lst reste NULL et
     # indicateur_a5_rafraichissement renvoie NA par unité (famille A garde
     # A1-A4, aucune requête Theia, no regression). A5 est à SENS DIRECT (haut =
     # plus frais) : normalisation positive au cœur, l'app ne fait aucune inversion.
     lst_cfg <- projet_for_ug$metadata$lst_urbain
-    if (isTRUE(lst_cfg$enabled) &&
+    if (project_lst_enabled(projet_for_ug$metadata) &&
         "indicateur_a5_rafraichissement" %in% effective_indicators) {
       state$current_task <- "lst_urbain"
       report_progress(state)
