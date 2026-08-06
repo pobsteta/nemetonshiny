@@ -1,4 +1,4 @@
-# nemetonshiny (development version)
+# nemetonshiny 0.121.0 (2026-08-06)
 
 ### Added — Onglet « Sources optionnelles » dans les paramètres
 
