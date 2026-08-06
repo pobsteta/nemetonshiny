@@ -2,6 +2,25 @@
 
 ## nemetonshiny (development version)
 
+## nemetonshiny 0.120.4 (2026-08-06)
+
+#### Fixed — Plus de `cache/layers/layers/mnt/` (doublon `layers`)
+
+- Le pré-calcul CVAT passait `dirname(mnt_path)` — soit
+  `<projet>/cache/layers` — comme `cache_dir` à
+  [`foretaccess::build_cvat_precomputed()`](https://pobsteta.github.io/foretaccess/reference/build_cvat_precomputed.html).
+  Or `foretaccess` ajoute lui-même un segment `layers/<couche>/`
+  (`.chemin_cache()`) : quand la mosaïque LiDAR ne couvrait pas l’AOI +
+  tampon, la ré-acquisition du MNT atterrissait dans
+  `cache/layers/**layers**/mnt/mnt.tif`.
+- Nouveau helper `.foretaccess_cache_root()` : on transmet désormais la
+  racine `<projet>/cache` quand le fichier est directement dans
+  `cache/layers`, si bien que le MNT ré-acquis se range en
+  `cache/layers/mnt/` aux côtés des autres sous-dossiers (`sentinel2/`,
+  `lidar_mnt/`, …). Tout autre emplacement est transmis inchangé (tests,
+  tempdirs) — on ne remonte jamais au-dessus d’un répertoire qui ne nous
+  appartient pas.
+
 ## nemetonshiny 0.120.3 (2026-07-29)
 
 #### Changed — Zone tampon Accessibilité en mètres, défaut 250 m
@@ -11698,8 +11717,7 @@ référencée nulle part.
 
 #### chore(deps) — bump épingle nemeton à v0.22.1
 
-L’installation de `nemetonshiny`
-([`remotes::install_github`](https://remotes.r-lib.org/reference/install_github.html),
+L’installation de `nemetonshiny` (`remotes::install_github`,
 [`pak::pkg_install`](https://pak.r-lib.org/reference/pkg_install.html),
 `devtools::install`) faisait **redescendre** `nemeton` à la version
 `0.22.0`, même quand une version plus récente était déjà installée
