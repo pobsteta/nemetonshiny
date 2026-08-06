@@ -274,6 +274,25 @@ rvt_engine <- function() {
   else "hillshade"
 }
 
+#' Cache root to hand to `foretaccess` for a file living in the project cache
+#'
+#' `foretaccess` appends its OWN `layers/<couche>/` segment under the `cache_dir`
+#' it is given (`.chemin_cache()`), so passing `<projet>/cache/layers` — the
+#' directory holding `lidar_mnt_mosaic.tif` — produced a duplicated
+#' `cache/layers/layers/mnt/mnt.tif`. We therefore hand it the PARENT
+#' (`<projet>/cache`) whenever the file sits directly in `cache/layers`, so its
+#' re-acquired DEM lands in `cache/layers/mnt/` alongside our own subfolders
+#' (`sentinel2/`, `lidar_mnt/`, …). Any other location is passed through
+#' unchanged (tests, tempdirs) — never climb above a directory we don't own.
+#'
+#' @param path A file path inside the project cache.
+#' @return The directory to use as `cache_dir`.
+#' @noRd
+.foretaccess_cache_root <- function(path) {
+  d <- dirname(path)
+  if (identical(basename(d), "layers")) dirname(d) else d
+}
+
 #' Materialize the precomputed CVAT next to a LiDAR DEM (idempotent)
 #'
 #' Writes `<base>_CVAT_8bit_foretaccess.tif` = `foretaccess::vat_combined()` in
@@ -315,7 +334,8 @@ build_cvat_precomputed <- function(mnt_path, aoi = NULL, buffer_m = 0,
     if (isTRUE(covered)) return(out)                  # couvre déjà aoi+buffer
     return(tryCatch(
       foretaccess::build_cvat_precomputed(
-        aoi = aoi, cache_dir = dirname(mnt_path), buffer_m = buffer_m,
+        aoi = aoi, cache_dir = .foretaccess_cache_root(mnt_path),
+        buffer_m = buffer_m,
         mnt_existant = mnt_path, out = out, overwrite = TRUE),  # force le recalcul
       error = function(e) NULL))
   }
