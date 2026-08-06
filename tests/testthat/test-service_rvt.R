@@ -270,6 +270,34 @@ test_that("build_cvat_precomputed delegates to foretaccess when an AOI is given"
   })
 })
 
+test_that("build_cvat_precomputed hands foretaccess the cache ROOT, not cache/layers", {
+  # Régression : `foretaccess` ajoute lui-même `layers/<couche>/` sous le
+  # `cache_dir` reçu — lui passer `<projet>/cache/layers` créait
+  # `cache/layers/layers/mnt/mnt.tif` (doublon `layers`).
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    dir.create(file.path("cache", "layers"), recursive = TRUE)
+    mnt <- file.path("cache", "layers", "lidar_mnt_mosaic.tif")
+    m <- terra::rast(nrows = 5, ncols = 5, crs = "EPSG:2154"); terra::values(m) <- 1
+    terra::writeRaster(m, mnt, overwrite = TRUE)
+    testthat::local_mocked_bindings(.rvt_cvat_available = function() TRUE)
+    seen <- NULL
+    testthat::local_mocked_bindings(
+      build_cvat_precomputed = function(aoi, cache_dir, buffer_m, mnt_existant,
+                                        out, overwrite) {
+        seen <<- cache_dir
+        writeLines("x", out); out
+      }, .package = "foretaccess")
+    aoi <- sf::st_sf(geometry = sf::st_sfc(
+      sf::st_point(c(8e5, 63e5)), crs = 2154))
+    nemetonshiny:::build_cvat_precomputed(mnt, aoi = aoi, buffer_m = 100)
+    expect_identical(seen, "cache")            # PAS "cache/layers"
+  })
+  # Hors `cache/layers`, le dossier du MNT est passé tel quel (pas de remontée).
+  expect_identical(nemetonshiny:::.foretaccess_cache_root("/tmp/zz/mnt.tif"),
+                   "/tmp/zz")
+})
+
 test_that("build_cvat_precomputed without AOI keeps the local vat_combined path", {
   skip_if_not_installed("terra")
   withr::with_tempdir({

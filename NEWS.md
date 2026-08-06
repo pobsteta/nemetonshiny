@@ -1,5 +1,20 @@
 # nemetonshiny (development version)
 
+### Fixed — Plus de `cache/layers/layers/mnt/` (doublon `layers`)
+
+- Le pré-calcul CVAT passait `dirname(mnt_path)` — soit
+  `<projet>/cache/layers` — comme `cache_dir` à
+  `foretaccess::build_cvat_precomputed()`. Or `foretaccess` ajoute lui-même un
+  segment `layers/<couche>/` (`.chemin_cache()`) : quand la mosaïque LiDAR ne
+  couvrait pas l'AOI + tampon, la ré-acquisition du MNT atterrissait dans
+  `cache/layers/**layers**/mnt/mnt.tif`.
+- Nouveau helper `.foretaccess_cache_root()` : on transmet désormais la racine
+  `<projet>/cache` quand le fichier est directement dans `cache/layers`, si bien
+  que le MNT ré-acquis se range en `cache/layers/mnt/` aux côtés des autres
+  sous-dossiers (`sentinel2/`, `lidar_mnt/`, …). Tout autre emplacement est
+  transmis inchangé (tests, tempdirs) — on ne remonte jamais au-dessus d'un
+  répertoire qui ne nous appartient pas.
+
 # nemetonshiny 0.120.3 (2026-07-29)
 
 ### Changed — Zone tampon Accessibilité en mètres, défaut 250 m
