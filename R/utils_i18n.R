@@ -730,14 +730,6 @@ TRANSLATIONS <- list(
   # Computation
   # ============================================================
   compute_button = list(fr = "Lancer les calculs", en = "Start Calculations"),
-  chm_status_auto_on = list(
-    fr = "CHM Open-Canopy : activ\u00e9 automatiquement",
-    en = "CHM Open-Canopy: auto-enabled"
-  ),
-  chm_status_auto_off = list(
-    fr = "CHM Open-Canopy : indisponible (package manquant ou d\u00e9sactiv\u00e9)",
-    en = "CHM Open-Canopy: unavailable (package missing or disabled)"
-  ),
   augmented_height_lidar_badge = list(
     fr = "Hauteur LiDAR HD",
     en = "LiDAR HD height"

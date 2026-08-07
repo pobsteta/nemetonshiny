@@ -1,3 +1,23 @@
+# nemetonshiny 0.121.0.9000 (2026-08-07)
+
+### Removed — Badge « CHM Open-Canopy » de l'accueil
+
+* Le badge « CHM Open-Canopy : activé automatiquement » affiché sous le bouton
+  de calcul (`mod_home`) est supprimé. Il annonçait une source qui, dans le
+  pipeline actuel, n'est que le **troisième** choix : `download_chm_*()` tente
+  d'abord le MNH LiDAR HD (mesure directe, `chm_source = "lidar_hd"`), puis le
+  repli lasR sur les nuages COPC (`"lasr"`), et ne bascule sur Open-Canopy
+  (inférence ML) que si les deux ont échoué (`service_compute.R:1819`). Le badge
+  ne testait en réalité que la présence du package `opencanopy`, pas la source
+  effectivement retenue — il affichait donc « Open-Canopy » sur des projets dont
+  le CHM provenait du LiDAR HD, confondant mesure aérienne directe et prédiction
+  par modèle. Héritage de la spec 005 phase 6, quand Open-Canopy était le seul
+  chemin CHM ; les étapes LiDAR HD et lasR ont été insérées devant lui sans que
+  le badge suive.
+* Clés i18n `chm_status_auto_on` / `chm_status_auto_off` retirées de
+  `TRANSLATIONS` (plus aucun consommateur). `chm_auto_enabled()` est conservé :
+  il reste la garde d'activation d'Open-Canopy dans `service_compute.R`.
+
 # nemetonshiny 0.121.0 (2026-08-06)
 
 ### Added — Onglet « Sources optionnelles » dans les paramètres

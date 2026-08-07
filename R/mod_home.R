@@ -760,22 +760,6 @@ mod_home_server <- function(id, app_state) {
       # Check project status
       status <- project$metadata$status %||% "draft"
 
-      # CHM status (spec 005 phase 6, auto-detection): Open-Canopy is
-      # attempted automatically when the `opencanopy` package is
-      # available. The user sees a small informative badge rather than
-      # a toggle — the pipeline degrades silently if Python/model is
-      # missing.
-      chm_available <- chm_auto_enabled()
-      chm_status <- htmltools::div(
-        class = "mb-3 small",
-        bsicons::bs_icon(if (chm_available) "check-circle-fill" else "slash-circle"),
-        " ",
-        htmltools::tags$span(
-          class = if (chm_available) "text-success" else "text-muted",
-          if (chm_available) i18n$t("chm_status_auto_on") else i18n$t("chm_status_auto_off")
-        )
-      )
-
       # Show the start button for draft/error AND for a STALE transient
       # status. "computing"/"downloading"/"pending" persisted on disk mean a
       # run that was interrupted (app restart/crash between the "computing"
@@ -789,7 +773,6 @@ mod_home_server <- function(id, app_state) {
       # at the identical(computing_project_id(), project$id) guard above.
       if (status %in% c("draft", "error", "computing", "downloading", "pending")) {
         htmltools::div(
-          chm_status,
           htmltools::div(
             class = "d-grid",
             shiny::actionButton(
@@ -811,7 +794,6 @@ mod_home_server <- function(id, app_state) {
               icon = bsicons::bs_icon("bar-chart")
             )
           ),
-          chm_status,
           htmltools::div(
             class = "d-grid",
             shiny::actionButton(
