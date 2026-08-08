@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.120.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,7 +33,26 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="nemetonshiny-development-version">nemetonshiny (development version)<a class="anchor" aria-label="anchor" href="#nemetonshiny-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.121.1" id="nemetonshiny-01211-2026-08-08">nemetonshiny 0.121.1 (2026-08-08)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01211-2026-08-08"></a></h2>
+<div class="section level4">
+<h4 id="removed--badge--chm-open-canopy--de-laccueil-0-121-1">Removed — Badge « CHM Open-Canopy » de l’accueil<a class="anchor" aria-label="anchor" href="#removed--badge--chm-open-canopy--de-laccueil-0-121-1"></a></h4>
+<ul><li>Le badge « CHM Open-Canopy : activé automatiquement » affiché sous le bouton de calcul (<code>mod_home</code>) est supprimé. Il annonçait une source qui, dans le pipeline actuel, n’est que le <strong>troisième</strong> choix : <code>download_chm_*()</code> tente d’abord le MNH LiDAR HD (mesure directe, <code>chm_source = "lidar_hd"</code>), puis le repli lasR sur les nuages COPC (<code>"lasr"</code>), et ne bascule sur Open-Canopy (inférence ML) que si les deux ont échoué (<code>service_compute.R:1819</code>). Le badge ne testait en réalité que la présence du package <code>opencanopy</code>, pas la source effectivement retenue — il affichait donc « Open-Canopy » sur des projets dont le CHM provenait du LiDAR HD, confondant mesure aérienne directe et prédiction par modèle. Héritage de la spec 005 phase 6, quand Open-Canopy était le seul chemin CHM ; les étapes LiDAR HD et lasR ont été insérées devant lui sans que le badge suive.</li>
+<li>Clés i18n <code>chm_status_auto_on</code> / <code>chm_status_auto_off</code> retirées de <code>TRANSLATIONS</code> (plus aucun consommateur). <code>chm_auto_enabled()</code> est conservé : il reste la garde d’activation d’Open-Canopy dans <code>service_compute.R</code>.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.0" id="nemetonshiny-01210-2026-08-06">nemetonshiny 0.121.0 (2026-08-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01210-2026-08-06"></a></h2>
+<div class="section level4">
+<h4 id="added--onglet--sources-optionnelles--dans-les-paramètres-0-121-0">Added — Onglet « Sources optionnelles » dans les paramètres<a class="anchor" aria-label="anchor" href="#added--onglet--sources-optionnelles--dans-les-param%C3%A8tres-0-121-0"></a></h4>
+<ul><li>Les blocs <strong>« Coupes rases (SUFOSAT) »</strong> (T3, spec 030) et <strong>« Rafraîchissement urbain (LST) »</strong> (A5, spec 032) quittent la carte <strong>Projet</strong> pour un <strong>quatrième onglet du modal de paramètres</strong> (roue dentée, aux côtés de Theia / LLM / Corpus RAG). Ils y sont côte à côte sur deux colonnes, à côté des identifiants Theia dont ils dépendent, au lieu d’allonger un formulaire projet déjà long.</li>
+<li>Nouveau module <code>mod_sources_config</code> (UI + serveur), monté par <code>mod_theia_config</code>. L’enregistrement recharge le projet et le republie dans <code>app_state$current_project</code>, sans re-rendre le modal (l’onglet actif est conservé). Nouvelles clés i18n <code>api_keys_tab_sources</code>, <code>sources_config_intro</code>, <code>sources_need_project</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--coupes-rases-t3-et-rafraîchissement-urbain-a5-actifs-par-défaut-0-121-0">Changed — Coupes rases (T3) et rafraîchissement urbain (A5) actifs par défaut<a class="anchor" aria-label="anchor" href="#changed--coupes-rases-t3-et-rafra%C3%AEchissement-urbain-a5-actifs-par-d%C3%A9faut-0-121-0"></a></h4>
+<ul><li>Les deux sources Theia sont désormais <strong>activées par défaut</strong> : un projet dont les métadonnées ne portent aucune préférence calcule T3 et A5. Seule une désactivation explicite dans les paramètres les coupe. Nouveaux helpers <code>project_sufosat_enabled()</code> / <code>project_lst_enabled()</code> — source unique de vérité partagée par l’UI et <code>service_compute</code>, qui n’interrogent plus <code>metadata$…$enabled</code> en direct.</li>
+<li>
+<code>list_available_indicators()</code> renvoie donc <strong>35 indicateurs</strong> par défaut (A5 inclus) au lieu de 34. Les garde-fous en aval sont inchangés : sans identifiants Theia, hors couverture Thermocity ou en cas d’échec de téléchargement, l’indicateur reste <code>NA</code> par unité — jamais une erreur de calcul.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.120.4" id="nemetonshiny-01204-2026-08-06">nemetonshiny 0.120.4 (2026-08-06)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01204-2026-08-06"></a></h2>
@@ -5686,7 +5705,7 @@ le tableau remplacé en a 337</code></pre>
 <h2 class="pkg-version" data-toc-text="0.28.3" id="nemetonshiny-0283-2026-05-15">nemetonshiny 0.28.3 (2026-05-15)<a class="anchor" aria-label="anchor" href="#nemetonshiny-0283-2026-05-15"></a></h2>
 <div class="section level4">
 <h4 id="choredeps--bump-épingle-nemeton-à-v0221-0-28-3">chore(deps) — bump épingle nemeton à v0.22.1<a class="anchor" aria-label="anchor" href="#choredeps--bump-%C3%A9pingle-nemeton-%C3%A0-v0221-0-28-3"></a></h4>
-<p>L’installation de <code>nemetonshiny</code> (<code>remotes::install_github</code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) faisait <strong>redescendre</strong> <code>nemeton</code> à la version <code>0.22.0</code>, même quand une version plus récente était déjà installée localement.</p>
+<p>L’installation de <code>nemetonshiny</code> (<code><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">remotes::install_github</a></code>, <code><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pak::pkg_install</a></code>, <code>devtools::install</code>) faisait <strong>redescendre</strong> <code>nemeton</code> à la version <code>0.22.0</code>, même quand une version plus récente était déjà installée localement.</p>
 <p>Cause : le champ <code>Remotes: pobsteta/nemeton@v0.22.0</code> du <code>DESCRIPTION</code> épingle nemeton à exactement ce tag. L’épingle prime sur la borne souple <code>Imports: nemeton (&gt;= 0.22.0)</code>, donc le résolveur de dépendances downgrade systématiquement.</p>
 <p>Correctif : bump de l’épingle vers <code>pobsteta/nemeton@v0.22.1</code> (dernier tag stable côté cœur). Aucun changement de code. Réflexe à adopter pour chaque release <code>nemeton</code> : bumper l’épingle ici dans la foulée (ordre cœur → app de CLAUDE.md).</p>
 </div>

@@ -1,6 +1,56 @@
 # Changelog
 
-## nemetonshiny (development version)
+## nemetonshiny 0.121.1 (2026-08-08)
+
+#### Removed — Badge « CHM Open-Canopy » de l’accueil
+
+- Le badge « CHM Open-Canopy : activé automatiquement » affiché sous le
+  bouton de calcul (`mod_home`) est supprimé. Il annonçait une source
+  qui, dans le pipeline actuel, n’est que le **troisième** choix :
+  `download_chm_*()` tente d’abord le MNH LiDAR HD (mesure directe,
+  `chm_source = "lidar_hd"`), puis le repli lasR sur les nuages COPC
+  (`"lasr"`), et ne bascule sur Open-Canopy (inférence ML) que si les
+  deux ont échoué (`service_compute.R:1819`). Le badge ne testait en
+  réalité que la présence du package `opencanopy`, pas la source
+  effectivement retenue — il affichait donc « Open-Canopy » sur des
+  projets dont le CHM provenait du LiDAR HD, confondant mesure aérienne
+  directe et prédiction par modèle. Héritage de la spec 005 phase 6,
+  quand Open-Canopy était le seul chemin CHM ; les étapes LiDAR HD et
+  lasR ont été insérées devant lui sans que le badge suive.
+- Clés i18n `chm_status_auto_on` / `chm_status_auto_off` retirées de
+  `TRANSLATIONS` (plus aucun consommateur). `chm_auto_enabled()` est
+  conservé : il reste la garde d’activation d’Open-Canopy dans
+  `service_compute.R`.
+
+## nemetonshiny 0.121.0 (2026-08-06)
+
+#### Added — Onglet « Sources optionnelles » dans les paramètres
+
+- Les blocs **« Coupes rases (SUFOSAT) »** (T3, spec 030) et **«
+  Rafraîchissement urbain (LST) »** (A5, spec 032) quittent la carte
+  **Projet** pour un **quatrième onglet du modal de paramètres** (roue
+  dentée, aux côtés de Theia / LLM / Corpus RAG). Ils y sont côte à côte
+  sur deux colonnes, à côté des identifiants Theia dont ils dépendent,
+  au lieu d’allonger un formulaire projet déjà long.
+- Nouveau module `mod_sources_config` (UI + serveur), monté par
+  `mod_theia_config`. L’enregistrement recharge le projet et le republie
+  dans `app_state$current_project`, sans re-rendre le modal (l’onglet
+  actif est conservé). Nouvelles clés i18n `api_keys_tab_sources`,
+  `sources_config_intro`, `sources_need_project`.
+
+#### Changed — Coupes rases (T3) et rafraîchissement urbain (A5) actifs par défaut
+
+- Les deux sources Theia sont désormais **activées par défaut** : un
+  projet dont les métadonnées ne portent aucune préférence calcule T3 et
+  A5. Seule une désactivation explicite dans les paramètres les coupe.
+  Nouveaux helpers `project_sufosat_enabled()` / `project_lst_enabled()`
+  — source unique de vérité partagée par l’UI et `service_compute`, qui
+  n’interrogent plus `metadata$…$enabled` en direct.
+- `list_available_indicators()` renvoie donc **35 indicateurs** par
+  défaut (A5 inclus) au lieu de 34. Les garde-fous en aval sont
+  inchangés : sans identifiants Theia, hors couverture Thermocity ou en
+  cas d’échec de téléchargement, l’indicateur reste `NA` par unité —
+  jamais une erreur de calcul.
 
 ## nemetonshiny 0.120.4 (2026-08-06)
 
@@ -11717,7 +11767,8 @@ référencée nulle part.
 
 #### chore(deps) — bump épingle nemeton à v0.22.1
 
-L’installation de `nemetonshiny` (`remotes::install_github`,
+L’installation de `nemetonshiny`
+([`remotes::install_github`](https://remotes.r-lib.org/reference/install_github.html),
 [`pak::pkg_install`](https://pak.r-lib.org/reference/pkg_install.html),
 `devtools::install`) faisait **redescendre** `nemeton` à la version
 `0.22.0`, même quand une version plus récente était déjà installée
