@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.0.9000 (2026-08-07)
+# nemetonshiny 0.121.1 (2026-08-08)
 
 ### Removed — Badge « CHM Open-Canopy » de l'accueil
 
