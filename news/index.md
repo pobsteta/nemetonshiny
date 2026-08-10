@@ -1,5 +1,21 @@
 # Changelog
 
+## nemetonshiny 0.121.2 (2026-08-10)
+
+#### Changed — Roue dentée à la place du sablier dans les notifications « en cours »
+
+- `.running_notif_content()` (`R/utils_notif.R`) affiche désormais une
+  roue dentée animée (`bsicons::bs_icon("gear-fill")`) au lieu du
+  sablier (`hourglass-split`) devant le libellé et le chronomètre. Le
+  rendu étant centralisé, le changement s’applique d’un coup à toutes
+  les notifications de progression : moteurs monitoring FAST / FORDEAD /
+  RECONFORT, moteur reGénération et analyse Accessibilité.
+- Motif : la classe CSS `nmt-spin` est une rotation continue à 360°,
+  cohérente avec un engrenage alors qu’un sablier devrait se retourner.
+- Inchangé : les sabliers des états vides des cartes FORDEAD et
+  RECONFORT (`monitoring_*_map_empty_title`), qui signifient « pas
+  encore de données » et non « calcul en cours ».
+
 ## nemetonshiny 0.121.1 (2026-08-08)
 
 #### Removed — Badge « CHM Open-Canopy » de l’accueil
