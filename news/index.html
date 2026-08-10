@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,19 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.4" id="nemetonshiny-01214-2026-08-10">nemetonshiny 0.121.4 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01214-2026-08-10"></a></h2>
+<div class="section level4">
+<h4 id="changed--accessibilité--desserte-bd-topo--corrigée-en-carte-unique-0-121-4">Changed — Accessibilité : desserte BD TOPO / corrigée en carte unique<a class="anchor" aria-label="anchor" href="#changed--accessibilit%C3%A9--desserte-bd-topo--corrig%C3%A9e-en-carte-unique-0-121-4"></a></h4>
+<ul><li>La couche « Desserte BD TOPO / corrigée » n’affiche plus <strong>deux cartes vecteur séparées par un volet coulissant</strong>. Une seule carte : la desserte BD TOPO colorée <strong>par classe</strong>, surchargée du <strong>statut de correction LiDAR</strong> sur les tronçons que la qualification a pu mesurer.</li>
+<li>Légende unique reprenant le classement des tronçons — route, piste, réseau public, hors desserte — puis le statut de correction (en service, trouée sans route). Seules les modalités réellement présentes dans les données sont listées.</li>
+<li>
+<code>hors_desserte</code> (apparu avec <code>foretaccess</code> 2.0.0, conservé pour la topologie) est tracé en pointillé gris : il n’entre pas dans le débardage et ne doit pas se lire comme une desserte utilisable. Repli sur un gris neutre pour toute classe inconnue, afin qu’un nouveau code côté cœur ne casse pas le rendu de la couche entière.</li>
+<li>Le fond relief RVT/CVAT est conservé sous les dessertes.</li>
+<li>Panes <code>nemetonDessSwipeL</code>/<code>R</code> remplacés par <code>nemetonDessBase</code> (BD TOPO) et <code>nemetonDessCorr</code> (correction), simplement empilés. Le volet ACCESSFOR, lui, est inchangé — mais il est désormais explicitement <strong>retiré</strong> à l’entrée dans la couche desserte, qui ne le reprend plus à son compte.</li>
+</ul><p><strong>Note factuelle.</strong> La surcharge n’affiche pas « les nouvelles pistes » : <code>qualifier_desserte()</code> n’ajoute aucun tronçon. Elle rend un sous-ensemble recalé de la BD TOPO — mesuré 710/1032 sur Dabo et 93/373 sur ForetAccess, avec 0 tronçon à plus de 25 m d’une géométrie BD TOPO (médiane 1–2 m, recalage). Ce que la correction apporte est une <strong>qualification</strong>, d’où l’affichage de <code>etat_dessertr</code>.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.3" id="nemetonshiny-01213-2026-08-10">nemetonshiny 0.121.3 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01213-2026-08-10"></a></h2>
 <div class="section level4">
