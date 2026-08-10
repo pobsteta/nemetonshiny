@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.4.9001 (2026-08-10)
+# nemetonshiny 0.121.5 (2026-08-10)
 
 ### Fixed — Accessibilité débloquée : plancher `foretaccess (>= 2.0.1)`
 
