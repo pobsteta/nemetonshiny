@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.5.9000 (2026-08-10)
+# nemetonshiny 0.121.6 (2026-08-10)
 
 ### Changed — Indicateurs de terrain calculés à 1 m (au lieu du défaut cœur 2 m)
 
