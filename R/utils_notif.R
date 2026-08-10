@@ -1,6 +1,6 @@
 # Notifications de progression persistantes (bas-droite) — cadre unifié.
 #
-# Même cadre / police / picto (sablier animé) / chronomètre qui defile
+# Même cadre / police / picto (roue dentée animée) / chronomètre qui defile
 # pour les moteurs FAST / FORDEAD / RECONFORT (mod_monitoring) et reGénération
 # (mod_regeneration). Ce fichier centralise le rendu du contenu de la notif ;
 # chaque module reste responsable du cycle de vie (showNotification / id /
@@ -19,11 +19,15 @@
   }
 }
 
-# Contenu unifié d'une notif « en cours » : picto sablier animé (classe CSS
-# `nmt-spin`) + libellé + (si `start` fourni) chronomètre monospace « — MM:SS »
-# qui défile. `label` peut être un texte ou des tags htmltools. Rendu identique
-# partout (cadre / police / picto) — moteur de calcul monitoring
-# FAST/FORDEAD/RECONFORT, moteur reGénération et analyse Accessibilité.
+# Contenu unifié d'une notif « en cours » : picto roue dentée animé (classe CSS
+# `nmt-spin`, rotation 360°) + libellé + (si `start` fourni) chronomètre
+# monospace « — MM:SS » qui défile. `label` peut être un texte ou des tags
+# htmltools. Rendu identique partout (cadre / police / picto) — moteur de calcul
+# monitoring FAST/FORDEAD/RECONFORT, moteur reGénération et analyse
+# Accessibilité.
+#
+# Roue dentée plutôt que sablier : `nmt-spin` est une rotation continue, qui
+# convient à un engrenage alors qu'un sablier devrait se retourner.
 .running_notif_content <- function(label, start = NULL) {
   chrono <- if (!is.null(start)) {
     htmltools::tagList(
@@ -35,7 +39,7 @@
       class = "nmt-spin me-2 text-secondary",
       style = "display:inline-block;vertical-align:middle;",
       `aria-hidden` = "true",
-      bsicons::bs_icon("hourglass-split")
+      bsicons::bs_icon("gear-fill")
     ),
     htmltools::tags$span(
       style = "vertical-align:middle;",
