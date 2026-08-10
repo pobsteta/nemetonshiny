@@ -497,3 +497,31 @@ test_that("get_data_source_config returns point_clouds config", {
   expect_type(pc_config, "list")
   expect_true(length(pc_config) > 0)
 })
+
+# --- Resolution de travail des indicateurs de terrain (APP_CONFIG) -----------
+# L'app impose 1 m la ou le cœur defaut a 2 m. Le canal est double (option +
+# variable d'environnement) et la surcharge utilisateur doit primer.
+
+test_that("APP_CONFIG carries the app's terrain working resolution", {
+  expect_true(is.numeric(nemetonshiny:::APP_CONFIG$topo_target_res))
+  expect_gt(nemetonshiny:::APP_CONFIG$topo_target_res, 0)
+})
+
+test_that("nemeton resolves the app resolution from the environment variable", {
+  skip_if_not_installed("nemeton")
+  resolver <- tryCatch(get(".topo_target_res", envir = asNamespace("nemeton")),
+                       error = function(e) NULL)
+  skip_if(is.null(resolver), "nemeton < 0.169.0: no .topo_target_res()")
+
+  # L'option primerait sur la variable d'env cote cœur : la neutraliser pour
+  # tester bien le canal environnement (celui qui atteint les process enfants).
+  withr::with_options(list(nemeton.topo_target_res = NULL), {
+    withr::with_envvar(
+      c(NEMETON_TOPO_TARGET_RES = as.character(nemetonshiny:::APP_CONFIG$topo_target_res)),
+      expect_equal(resolver(), nemetonshiny:::APP_CONFIG$topo_target_res)
+    )
+    # Surcharge explicite de l'utilisateur : elle doit primer sur le choix app.
+    withr::with_envvar(c(NEMETON_TOPO_TARGET_RES = "7"),
+                       expect_equal(resolver(), 7))
+  })
+})

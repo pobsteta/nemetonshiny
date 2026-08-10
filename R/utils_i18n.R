@@ -65,8 +65,6 @@ TRANSLATIONS <- list(
   acc_use_corrected = list(fr = "Utiliser la desserte corrig\u00e9e LiDAR", en = "Use the LiDAR-corrected road network"),
   acc_correct_failed = list(fr = "La correction LiDAR a \u00e9chou\u00e9.", en = "LiDAR correction failed."),
   acc_correct_no_lidar = list(fr = "Aucun nuage LiDAR HD dans le projet : correction impossible.", en = "No LiDAR HD point cloud in the project: correction not possible."),
-  acc_correct_old_foretaccess = list(fr = "foretaccess < 1.19.1 : correction LiDAR indisponible (mettez \u00e0 jour).", en = "foretaccess < 1.19.1: LiDAR correction unavailable (please update)."),
-  acc_correct_no_lidr = list(fr = "Paquets lidR/ALSroads absents : correction LiDAR indisponible.", en = "lidR/ALSroads packages missing: LiDAR correction unavailable."),
   acc_correct_memory_guard = list(fr = "Correction LiDAR annulée : la dérivation du MNT lirait tout le nuage de points et dépasserait la mémoire disponible.", en = "LiDAR correction cancelled: deriving the DTM would read the whole point cloud and exceed available memory."),
   acc_layer_desserte_comparee = list(fr = "Desserte BD TOPO / corrig\u00e9e", en = "BD TOPO / corrected roads"),
   acc_compare_hint = list(fr = "Desserte BD TOPO color\u00e9e par classe, surcharg\u00e9e du statut de correction LiDAR l\u00e0 o\u00f9 la qualification a pu mesurer le tron\u00e7on.", en = "BD TOPO road network coloured by class, overlaid with the LiDAR correction status where qualification could measure the segment."),

@@ -106,6 +106,28 @@ run_app <- function(language = NULL,
     shiny.busy_indicators = FALSE
   )
 
+  # Résolution de travail des indicateurs de terrain (cf. APP_CONFIG). Résolue
+  # côté cœur par `.topo_target_res()` : option > variable d'env > défaut (2 m).
+  #
+  # Les DEUX canaux sont posés. `future` relaie bien les `options()` de la
+  # session appelante au worker `multisession` (vérifié : une option seule suffit
+  # à ce que le worker résolve 1 m), mais la variable d'environnement est le
+  # canal robuste — elle survit à tout mécanisme de sous-process qui ne relaierait
+  # pas les options, et c'est celui que le cœur documente.
+  #
+  # La variable DOIT être posée AVANT `.ensure_async_plan()` : un process enfant
+  # hérite de l'environnement à sa CRÉATION, pas à chaque appel. L'option, elle,
+  # est relayée à chaque future et ne dépend pas de cet ordre.
+  #
+  # Une valeur déjà présente dans l'environnement l'emporte : elle vient de
+  # l'utilisateur (ou de l'exploitant), qui doit pouvoir revenir au défaut cœur
+  # sans modifier le code.
+  if (!nzchar(Sys.getenv("NEMETON_TOPO_TARGET_RES"))) {
+    Sys.setenv(NEMETON_TOPO_TARGET_RES = as.character(APP_CONFIG$topo_target_res))
+  }
+  options(nemeton.topo_target_res = suppressWarnings(
+    as.numeric(Sys.getenv("NEMETON_TOPO_TARGET_RES"))))
+
   # Configure async computation (ExtendedTask uses future for separate R process).
   # `force = TRUE` : le point d'entrée de l'app IMPOSE son pool borné, sinon un
   # plan non borné laissé par la session console lui survivrait (cf.

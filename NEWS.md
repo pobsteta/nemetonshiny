@@ -1,3 +1,60 @@
+# nemetonshiny 0.121.6 (2026-08-10)
+
+### Changed — Indicateurs de terrain calculés à 1 m (au lieu du défaut cœur 2 m)
+
+* `nemeton >= 0.169.0` borne la résolution de travail des huit indicateurs
+  dérivés du terrain (R1, R2, R3, W2, W3, F2, S1, S2) via `.dem_working_res()`,
+  avec un défaut à **2 m**. L'app impose désormais **1 m** — arbitrage produit,
+  plus fidèle au MNT LiDAR HD 0,5 m de l'IGN.
+* Valeur déclarée une seule fois (`APP_CONFIG$topo_target_res`) puis diffusée par
+  `run_app()` sur **deux canaux** : `options(nemeton.topo_target_res)` et la
+  variable d'environnement `NEMETON_TOPO_TARGET_RES`. `future` relaie bien les
+  options au worker `multisession` (vérifié), mais la variable d'environnement
+  est le canal robuste ; elle est posée **avant** `.ensure_async_plan()`, un
+  process enfant héritant de l'environnement à sa création.
+* Une valeur déjà présente dans l'environnement **prime** : l'exploitant peut
+  revenir au défaut cœur (ou à toute autre valeur) sans toucher au code.
+
+Coût mesuré sur le MNT réel de Dabo (cgroup borné, terra `memmax = 3` Go) :
+
+| indicateur | 1 m (retenu) | 2 m (défaut cœur) |
+|---|---|---|
+| R3 | 32,9 s / 3,49 Go | 10,3 s / 1,39 Go |
+| R2 (le plus lourd, neuf couches) | 20,0 s / **4,92 Go** | 7,7 s / 1,51 Go |
+
+Écart de score R3 face à une référence 0,5 m : 0,81 pt à 1 m contre 1,40 pt à
+2 m (sur 100). Les huit indicateurs s'exécutent en séquence, donc les pics ne
+s'additionnent pas — mais R2 fixe le pic à ~5 Go. Le `memmax` du cœur borne
+terra, pas le process R : à surveiller sur une AOI nettement plus grande que
+Dabo (3 000 ha).
+
+### Fixed — Correction LiDAR : le garde ALSroads était devenu un faux refus
+
+* `run_desserte_lidar_correction()` exigeait `lidR` **et** `ALSroads` avant de
+  lancer la qualification. Or `foretaccess` 1.27.0 a retiré le moteur ALSroads au
+  profit de dessertR — son NEWS est explicite : « `ALSroads` et `lidR` ne sont
+  plus utilisés du tout ». Le garde **refusait donc la correction LiDAR sur toute
+  machine ne les ayant pas installés**, alors que le cœur n'en a plus besoin. Il
+  ne passait sur le poste de dev que parce que les deux paquets y traînaient
+  encore. Garde retiré.
+* Retiré aussi le garde `packageVersion("foretaccess") >= "1.19.1"` : avec
+  `Imports: foretaccess (>= 2.0.1)`, la condition ne pouvait plus échouer.
+* Clés i18n `acc_correct_old_foretaccess` et `acc_correct_no_lidr` supprimées
+  (plus aucun consommateur).
+
+### Changed — Plancher `nemeton (>= 0.169.0)`
+
+* L'app consomme `dem_target_res` / `.topo_target_res()`, introduits en
+  `nemeton` 0.169.0. Le plancher passe de `>= 0.168.1` à `>= 0.169.0`. Avec
+  `foretaccess (>= 2.0.1)` posé en 0.121.5, les deux planchers reflètent enfin
+  les versions dont l'app dépend réellement.
+
+**Reste à traiter, non couvert ici** : `.acc_estimate_alsroads_memory()` et son
+garde-fou pré-vol estiment encore la mémoire du **chemin ALSroads** disparu, via
+`lidR::readLAScatalog()`. Ils dégradent proprement (retour `NULL` sans `lidR`) et
+ne bloquent rien, mais leur calibrage n'a pas été revérifié contre le profil
+mémoire de dessertR.
+
 # nemetonshiny 0.121.5 (2026-08-10)
 
 ### Fixed — Accessibilité débloquée : plancher `foretaccess (>= 2.0.1)`
