@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,41 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.6" id="nemetonshiny-01216-2026-08-10">nemetonshiny 0.121.6 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01216-2026-08-10"></a></h2>
+<div class="section level4">
+<h4 id="changed--indicateurs-de-terrain-calculés-à-m-au-lieu-du-défaut-cœur-m-0-121-6">Changed — Indicateurs de terrain calculés à 1 m (au lieu du défaut cœur 2 m)<a class="anchor" aria-label="anchor" href="#changed--indicateurs-de-terrain-calcul%C3%A9s-%C3%A0-m-au-lieu-du-d%C3%A9faut-c%C5%93ur-m-0-121-6"></a></h4>
+<ul><li>
+<code>nemeton &gt;= 0.169.0</code> borne la résolution de travail des huit indicateurs dérivés du terrain (R1, R2, R3, W2, W3, F2, S1, S2) via <code>.dem_working_res()</code>, avec un défaut à <strong>2 m</strong>. L’app impose désormais <strong>1 m</strong> — arbitrage produit, plus fidèle au MNT LiDAR HD 0,5 m de l’IGN.</li>
+<li>Valeur déclarée une seule fois (<code>APP_CONFIG$topo_target_res</code>) puis diffusée par <code><a href="../reference/run_app.html">run_app()</a></code> sur <strong>deux canaux</strong> : <code>options(nemeton.topo_target_res)</code> et la variable d’environnement <code>NEMETON_TOPO_TARGET_RES</code>. <code>future</code> relaie bien les options au worker <code>multisession</code> (vérifié), mais la variable d’environnement est le canal robuste ; elle est posée <strong>avant</strong> <code>.ensure_async_plan()</code>, un process enfant héritant de l’environnement à sa création.</li>
+<li>Une valeur déjà présente dans l’environnement <strong>prime</strong> : l’exploitant peut revenir au défaut cœur (ou à toute autre valeur) sans toucher au code.</li>
+</ul><p>Coût mesuré sur le MNT réel de Dabo (cgroup borné, terra <code>memmax = 3</code> Go) :</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>indicateur</th>
+<th>1 m (retenu)</th>
+<th>2 m (défaut cœur)</th>
+</tr></thead><tbody><tr><td>R3</td>
+<td>32,9 s / 3,49 Go</td>
+<td>10,3 s / 1,39 Go</td>
+</tr><tr><td>R2 (le plus lourd, neuf couches)</td>
+<td>20,0 s / <strong>4,92 Go</strong>
+</td>
+<td>7,7 s / 1,51 Go</td>
+</tr></tbody></table><p>Écart de score R3 face à une référence 0,5 m : 0,81 pt à 1 m contre 1,40 pt à 2 m (sur 100). Les huit indicateurs s’exécutent en séquence, donc les pics ne s’additionnent pas — mais R2 fixe le pic à ~5 Go. Le <code>memmax</code> du cœur borne terra, pas le process R : à surveiller sur une AOI nettement plus grande que Dabo (3 000 ha).</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--correction-lidar--le-garde-alsroads-était-devenu-un-faux-refus-0-121-6">Fixed — Correction LiDAR : le garde ALSroads était devenu un faux refus<a class="anchor" aria-label="anchor" href="#fixed--correction-lidar--le-garde-alsroads-%C3%A9tait-devenu-un-faux-refus-0-121-6"></a></h4>
+<ul><li>
+<code>run_desserte_lidar_correction()</code> exigeait <code>lidR</code> <strong>et</strong> <code>ALSroads</code> avant de lancer la qualification. Or <code>foretaccess</code> 1.27.0 a retiré le moteur ALSroads au profit de dessertR — son NEWS est explicite : « <code>ALSroads</code> et <code>lidR</code> ne sont plus utilisés du tout ». Le garde <strong>refusait donc la correction LiDAR sur toute machine ne les ayant pas installés</strong>, alors que le cœur n’en a plus besoin. Il ne passait sur le poste de dev que parce que les deux paquets y traînaient encore. Garde retiré.</li>
+<li>Retiré aussi le garde <code>packageVersion("foretaccess") &gt;= "1.19.1"</code> : avec <code>Imports: foretaccess (&gt;= 2.0.1)</code>, la condition ne pouvait plus échouer.</li>
+<li>Clés i18n <code>acc_correct_old_foretaccess</code> et <code>acc_correct_no_lidr</code> supprimées (plus aucun consommateur).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--plancher-nemeton--0-121-6">Changed — Plancher <code>nemeton (&gt;= 0.169.0)</code>
+<a class="anchor" aria-label="anchor" href="#changed--plancher-nemeton--0-121-6"></a></h4>
+<ul><li>L’app consomme <code>dem_target_res</code> / <code>.topo_target_res()</code>, introduits en <code>nemeton</code> 0.169.0. Le plancher passe de <code>&gt;= 0.168.1</code> à <code>&gt;= 0.169.0</code>. Avec <code>foretaccess (&gt;= 2.0.1)</code> posé en 0.121.5, les deux planchers reflètent enfin les versions dont l’app dépend réellement.</li>
+</ul><p><strong>Reste à traiter, non couvert ici</strong> : <code>.acc_estimate_alsroads_memory()</code> et son garde-fou pré-vol estiment encore la mémoire du <strong>chemin ALSroads</strong> disparu, via <code>lidR::readLAScatalog()</code>. Ils dégradent proprement (retour <code>NULL</code> sans <code>lidR</code>) et ne bloquent rien, mais leur calibrage n’a pas été revérifié contre le profil mémoire de dessertR.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.5" id="nemetonshiny-01215-2026-08-10">nemetonshiny 0.121.5 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01215-2026-08-10"></a></h2>
 <div class="section level4">
