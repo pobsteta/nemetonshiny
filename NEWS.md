@@ -1,3 +1,33 @@
+# nemetonshiny 0.121.5.9000 (2026-08-10)
+
+### Changed — Indicateurs de terrain calculés à 1 m (au lieu du défaut cœur 2 m)
+
+* `nemeton >= 0.169.0` borne la résolution de travail des huit indicateurs
+  dérivés du terrain (R1, R2, R3, W2, W3, F2, S1, S2) via `.dem_working_res()`,
+  avec un défaut à **2 m**. L'app impose désormais **1 m** — arbitrage produit,
+  plus fidèle au MNT LiDAR HD 0,5 m de l'IGN.
+* Valeur déclarée une seule fois (`APP_CONFIG$topo_target_res`) puis diffusée par
+  `run_app()` sur **deux canaux** : `options(nemeton.topo_target_res)` et la
+  variable d'environnement `NEMETON_TOPO_TARGET_RES`. `future` relaie bien les
+  options au worker `multisession` (vérifié), mais la variable d'environnement
+  est le canal robuste ; elle est posée **avant** `.ensure_async_plan()`, un
+  process enfant héritant de l'environnement à sa création.
+* Une valeur déjà présente dans l'environnement **prime** : l'exploitant peut
+  revenir au défaut cœur (ou à toute autre valeur) sans toucher au code.
+
+**Coût mesuré** sur le MNT réel de Dabo (cgroup borné, terra `memmax = 3` Go) :
+
+| indicateur | 1 m (retenu) | 2 m (défaut cœur) |
+|---|---|---|
+| R3 | 32,9 s / 3,49 Go | 10,3 s / 1,39 Go |
+| R2 (le plus lourd, neuf couches) | 20,0 s / **4,92 Go** | 7,7 s / 1,51 Go |
+
+Écart de score R3 face à une référence 0,5 m : 0,81 pt à 1 m contre 1,40 pt à
+2 m (sur 100). Les huit indicateurs s'exécutent en séquence, donc les pics ne
+s'additionnent pas — mais R2 fixe le pic à ~5 Go. Le `memmax` du cœur borne
+terra, pas le process R : à surveiller sur une AOI nettement plus grande que
+Dabo (3 000 ha).
+
 # nemetonshiny 0.121.5 (2026-08-10)
 
 ### Fixed — Accessibilité débloquée : plancher `foretaccess (>= 2.0.1)`

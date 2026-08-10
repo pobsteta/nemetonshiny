@@ -39,6 +39,20 @@ APP_CONFIG <- list(
   # Resolu par .resolve_parallel_workers() (service_compute.R).
   parallel_workers = NULL,
 
+  # Resolution de travail (m) des indicateurs derives du terrain, appliquee par
+  # `nemeton::.dem_working_res()` (cœur >= 0.169.0) a R1/R2/R3/W2/W3/F2/S1/S2.
+  # Le cœur defaut a 2 m ; l'app impose 1 m — arbitrage produit, plus fidele au
+  # MNT LiDAR HD 0,5 m livre par l'IGN.
+  #
+  # Mesure sur le MNT reel de Dabo (cgroup borne, terra memmax = 3 Go) :
+  #   R3 : 1 m -> 32,9 s / 3,49 Go   | 2 m -> 10,3 s / 1,39 Go
+  #   R2 : 1 m -> 20,0 s / 4,92 Go   | 2 m ->  7,7 s / 1,51 Go
+  # Ecart de score R3 vs reference 0,5 m : 0,81 pt a 1 m, 1,40 pt a 2 m (/100).
+  # R2 est le plus lourd des huit (neuf couches empilees) : c'est lui qui fixe
+  # le pic. Le `memmax` du cœur borne terra, mais PAS le process R — surveiller
+  # si une AOI nettement plus grande que Dabo (3 000 ha) apparait.
+  topo_target_res = 1,
+
   # Cache settings
   cache_format = "parquet",
 
