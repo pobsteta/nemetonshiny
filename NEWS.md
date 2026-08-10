@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.6.9001 (2026-08-10)
+# nemetonshiny 0.121.7 (2026-08-10)
 
 ### Fixed — Fond relief CVAT : OOM sur Dabo, et recalcul en boucle
 
