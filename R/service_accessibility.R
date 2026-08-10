@@ -405,14 +405,17 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   has_laz <- dir.exists(laz_dir) &&
     length(list.files(laz_dir, pattern = "\\.(copc\\.)?laz$")) > 0L
   if (!has_laz) return(list(status = "error", reason = "acc_correct_no_lidar"))
-  if (!isTRUE(tryCatch(utils::packageVersion("foretaccess") >= "1.19.1",
-                       error = function(e) FALSE))) {
-    return(list(status = "error", reason = "acc_correct_old_foretaccess"))
-  }
-  if (!requireNamespace("lidR", quietly = TRUE) ||
-      !requireNamespace("ALSroads", quietly = TRUE)) {
-    return(list(status = "error", reason = "acc_correct_no_lidr"))
-  }
+  # Deux gardes retirés ici, tous deux devenus faux :
+  #
+  # 1. `packageVersion("foretaccess") >= "1.19.1"` — `Imports:` impose >= 2.0.1,
+  #    la condition ne pouvait plus échouer.
+  # 2. `requireNamespace("lidR") && requireNamespace("ALSroads")` — c'était un
+  #    FAUX REFUS depuis `foretaccess` 1.27.0, qui a retiré le moteur ALSroads au
+  #    profit de dessertR : son NEWS dit « ALSroads et lidR ne sont plus utilisés
+  #    du tout ». Le garde refusait donc la correction LiDAR sur toute machine ne
+  #    les ayant pas installés, alors que le cœur n'en a plus besoin. Il ne
+  #    passait ici que parce que les deux paquets traînaient encore sur le poste
+  #    de dev.
 
   # MNT pour le recalage ALSroads. `foretaccess` (`.mnt_alsroads`,
   # desserte_lidar.R) renvoie le MNT fourni tel quel dès qu'il est <= 1,5 m ;

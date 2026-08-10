@@ -15,7 +15,7 @@
 * Une valeur déjà présente dans l'environnement **prime** : l'exploitant peut
   revenir au défaut cœur (ou à toute autre valeur) sans toucher au code.
 
-**Coût mesuré** sur le MNT réel de Dabo (cgroup borné, terra `memmax = 3` Go) :
+Coût mesuré sur le MNT réel de Dabo (cgroup borné, terra `memmax = 3` Go) :
 
 | indicateur | 1 m (retenu) | 2 m (défaut cœur) |
 |---|---|---|
@@ -27,6 +27,33 @@
 s'additionnent pas — mais R2 fixe le pic à ~5 Go. Le `memmax` du cœur borne
 terra, pas le process R : à surveiller sur une AOI nettement plus grande que
 Dabo (3 000 ha).
+
+### Fixed — Correction LiDAR : le garde ALSroads était devenu un faux refus
+
+* `run_desserte_lidar_correction()` exigeait `lidR` **et** `ALSroads` avant de
+  lancer la qualification. Or `foretaccess` 1.27.0 a retiré le moteur ALSroads au
+  profit de dessertR — son NEWS est explicite : « `ALSroads` et `lidR` ne sont
+  plus utilisés du tout ». Le garde **refusait donc la correction LiDAR sur toute
+  machine ne les ayant pas installés**, alors que le cœur n'en a plus besoin. Il
+  ne passait sur le poste de dev que parce que les deux paquets y traînaient
+  encore. Garde retiré.
+* Retiré aussi le garde `packageVersion("foretaccess") >= "1.19.1"` : avec
+  `Imports: foretaccess (>= 2.0.1)`, la condition ne pouvait plus échouer.
+* Clés i18n `acc_correct_old_foretaccess` et `acc_correct_no_lidr` supprimées
+  (plus aucun consommateur).
+
+### Changed — Plancher `nemeton (>= 0.169.0)`
+
+* L'app consomme `dem_target_res` / `.topo_target_res()`, introduits en
+  `nemeton` 0.169.0. Le plancher passe de `>= 0.168.1` à `>= 0.169.0`. Avec
+  `foretaccess (>= 2.0.1)` posé en 0.121.5, les deux planchers reflètent enfin
+  les versions dont l'app dépend réellement.
+
+**Reste à traiter, non couvert ici** : `.acc_estimate_alsroads_memory()` et son
+garde-fou pré-vol estiment encore la mémoire du **chemin ALSroads** disparu, via
+`lidR::readLAScatalog()`. Ils dégradent proprement (retour `NULL` sans `lidR`) et
+ne bloquent rien, mais leur calibrage n'a pas été revérifié contre le profil
+mémoire de dessertR.
 
 # nemetonshiny 0.121.5 (2026-08-10)
 
