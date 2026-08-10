@@ -257,7 +257,7 @@ test_that("build_cvat_precomputed delegates to foretaccess when an AOI is given"
     delegated <- FALSE
     testthat::local_mocked_bindings(
       build_cvat_precomputed = function(aoi, cache_dir, buffer_m, mnt_existant,
-                                        out, overwrite) {
+                                        out, overwrite, res_lidar_m = 0.5) {
         delegated <<- TRUE
         writeLines("x", out); out            # simule l'écriture foretaccess
       }, .package = "foretaccess")
@@ -284,7 +284,7 @@ test_that("build_cvat_precomputed hands foretaccess the cache ROOT, not cache/la
     seen <- NULL
     testthat::local_mocked_bindings(
       build_cvat_precomputed = function(aoi, cache_dir, buffer_m, mnt_existant,
-                                        out, overwrite) {
+                                        out, overwrite, res_lidar_m = 0.5) {
         seen <<- cache_dir
         writeLines("x", out); out
       }, .package = "foretaccess")
@@ -378,7 +378,7 @@ test_that("build_cvat_precomputed forces recalc when the CVAT is too short for t
     forced <- NULL
     testthat::local_mocked_bindings(
       build_cvat_precomputed = function(aoi, cache_dir, buffer_m, mnt_existant,
-                                        out, overwrite) {
+                                        out, overwrite, res_lidar_m = 0.5) {
         forced <<- overwrite; out
       }, .package = "foretaccess")
     aoi <- sf::st_sf(geometry = sf::st_sfc(
@@ -386,5 +386,39 @@ test_that("build_cvat_precomputed forces recalc when the CVAT is too short for t
     nemetonshiny:::build_cvat_precomputed("lidar_mnt_mosaic.tif",
                                           aoi = aoi, buffer_m = 5000)  # déborde
     expect_true(isTRUE(forced))              # recalcul forcé (overwrite=TRUE)
+  })
+})
+
+# --- Sidecar de provenance du CVAT ------------------------------------------
+# Sur une AOI dont la couverture LiDAR HD s'arrete avant aoi+buffer, le CVAT
+# produit ne satisfait JAMAIS .cvat_covers() : sans le sidecar, l'observe de
+# mod_accessibility relance un calcul de plusieurs minutes a chaque entree dans
+# l'onglet. Ces tests verrouillent l'anti-boucle.
+
+test_that(".cvat_built_for is FALSE without a raster or without a sidecar", {
+  aoi <- sf::st_as_sf(data.frame(x = c(0, 100), y = c(0, 100)),
+                      coords = c("x", "y"), crs = 2154)
+  withr::with_tempdir({
+    expect_false(nemetonshiny:::.cvat_built_for("absent.tif", aoi, 250, 2))
+    writeLines("x", "cvat.tif")                     # raster present, pas de sidecar
+    expect_false(nemetonshiny:::.cvat_built_for("cvat.tif", aoi, 250, 2))
+  })
+})
+
+test_that(".cvat_built_for matches only the exact build signature", {
+  aoi <- sf::st_as_sf(data.frame(x = c(0, 100), y = c(0, 100)),
+                      coords = c("x", "y"), crs = 2154)
+  withr::with_tempdir({
+    writeLines("x", "cvat.tif")
+    nemetonshiny:::.cvat_write_sidecar("cvat.tif", aoi, 250, 2)
+    expect_true(file.exists("cvat.tif.build.json"))
+    expect_true(nemetonshiny:::.cvat_built_for("cvat.tif", aoi, 250, 2))
+    # Un buffer ou une resolution differents DOIVENT redeclencher la construction.
+    expect_false(nemetonshiny:::.cvat_built_for("cvat.tif", aoi, 500, 2))
+    expect_false(nemetonshiny:::.cvat_built_for("cvat.tif", aoi, 250, 1))
+    # Une AOI deplacee aussi.
+    aoi2 <- sf::st_as_sf(data.frame(x = c(500, 600), y = c(500, 600)),
+                         coords = c("x", "y"), crs = 2154)
+    expect_false(nemetonshiny:::.cvat_built_for("cvat.tif", aoi2, 250, 2))
   })
 })

@@ -1,3 +1,47 @@
+# nemetonshiny 0.121.7 (2026-08-10)
+
+### Fixed — Fond relief CVAT : OOM sur Dabo, et recalcul en boucle
+
+Le pré-calcul du fond CVAT tuait la session sur le projet Dabo. Deux causes se
+cumulaient.
+
+**1. Résolution.** `foretaccess::build_cvat_precomputed()` a pour défaut
+`res_lidar_m = 0,5 m`, que l'app ne surchargeait pas. Sur l'emprise de Dabo
+(AOI + 250 m) cela fait ~81 M cellules, et `vat_combined()` y consomme
+~230 octets/cellule — une vingtaine de Go. C'était du gaspillage pur :
+`.paint_rvt_fond()` **ré-agrège le raster à 2000 px de côté avant affichage**.
+L'app passe désormais `APP_CONFIG$cvat_res_m` (2 m), qui donne déjà 2300 px sur
+une emprise de 4,6 km.
+
+Mesuré sur Dabo, cgroup borné à 12 Go : **0,5 m → OOM (exit 137)** ; 1 m →
+162 s / 4,38 Go ; **2 m → 45 s / 1,52 Go**.
+
+**2. Boucle de recalcul.** `.cvat_covers()` exige que le CVAT couvre
+`aoi + buffer`. Or la couverture LiDAR HD de cette AOI s'arrête avant :
+`acquire_mnt()` rend **4454 × 4162 m** là où l'AOI + 250 m en demande
+**4617 × 4381 m**. Le critère ne pouvait donc **jamais** être satisfait, et
+l'observe de `mod_accessibility` relançait le calcul à chaque entrée dans
+l'onglet Accessibilité.
+
+Ajout d'un **sidecar de provenance** `<cvat>.build.json` enregistrant ce qui a
+été *demandé* (bbox AOI, buffer, résolution). La reprise accepte désormais soit
+un CVAT qui couvre, soit un CVAT déjà construit pour exactement ces paramètres —
+on ne retente plus une construction identique, que la donnée source ait pu
+couvrir l'emprise ou non. Même esprit que les sidecars de `foretaccess`
+(spec 027).
+
+Vérifié de bout en bout sur Dabo : 1er appel 40,2 s / 1,52 Go, **2e appel
+0,07 s**, et un changement de tampon (500 m) déclenche bien un recalcul.
+
+**Note pour le cœur** : dans `foretaccess::build_cvat_precomputed()`, la
+condition de réutilisation est
+`!is.null(mnt_existant) && !isTRUE(overwrite) && .emprise_couverte(...)`. Passer
+`overwrite = TRUE` pour forcer le recalcul du CVAT **désactive donc aussi** la
+réutilisation du MNT fourni et déclenche une ré-acquisition LiDAR HD complète —
+avec un message (« MNT fourni absent ou ne couvrant pas l'emprise ») trompeur,
+puisque la mosaïque la couvrait. Les deux intentions gagneraient à être
+séparées.
+
 # nemetonshiny 0.121.6 (2026-08-10)
 
 ### Changed — Indicateurs de terrain calculés à 1 m (au lieu du défaut cœur 2 m)
