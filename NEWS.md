@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.1.9001 (2026-08-10)
+# nemetonshiny 0.121.2 (2026-08-10)
 
 ### Changed — Roue dentée à la place du sablier dans les notifications « en cours »
 
