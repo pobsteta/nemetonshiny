@@ -1,3 +1,26 @@
+# nemetonshiny 0.121.4.9001 (2026-08-10)
+
+### Fixed — Accessibilité débloquée : plancher `foretaccess (>= 2.0.1)`
+
+* `foretaccess 2.0.0` rendait l'onglet Accessibilité **entièrement inutilisable** :
+  `acquire_desserte()` conservait les tronçons `hors_desserte` par défaut (depuis
+  le 2026-07-30, pour la topologie) alors que `preprocess()` les rejetait via
+  `.valider_desserte()`. Tous chemins, tous projets, NDP 0 comme NDP 1.
+* Corrigé côté cœur en **`foretaccess 2.0.1`** : `.rasteriser_desserte()` appelle
+  désormais `.sans_hors_desserte()` **avant** la rastérisation, et le validateur
+  accepte la classe. Le plancher passe donc de `>= 1.20.0` à `>= 2.0.1` — l'app
+  dépend de ce correctif pour fonctionner.
+* Vérifié sur les données réelles du projet Dabo :
+  - `preprocess()` s'exécute en 2,5 s avec les 1032 tronçons, dont 320 `hors_desserte` ;
+  - le raster de desserte est **identique** avec et sans pré-filtrage (invariance) ;
+  - **0 cellule écrasée**, et plus aucune sentinelle `-2147483648`.
+* Ce dernier point était le risque principal signalé dans le brief
+  (`BRIEF-foretaccess-hors-desserte-preprocess.md` §4) : un correctif qui se
+  serait contenté de relâcher le validateur aurait laissé `terra::rasterize()`
+  graver la sentinelle entière dans les cellules partagées, effaçant 440 cellules
+  de desserte (1,8 %) **aux nœuds de jonction**. Le correctif cœur filtre bien en
+  amont ; l'invariance ci-dessus le confirme.
+
 # nemetonshiny 0.121.4 (2026-08-10)
 
 ### Changed — Accessibilité : desserte BD TOPO / corrigée en carte unique
