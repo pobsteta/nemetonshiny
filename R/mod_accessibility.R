@@ -920,11 +920,11 @@ mod_accessibility_server <- function(id, app_state) {
         # (nemeton_swipe.js) les clippe de part et d'autre du curseur.
         leaflet::addMapPane("nemetonAccSwipeL", zIndex = 250) |>
         leaflet::addMapPane("nemetonAccSwipeR", zIndex = 250) |>
-        # Comparateur desserte : fond RVT NON clippé (sous les dessertes, relief
-        # continu des deux côtés) + deux panes de desserte clippés par le volet.
+        # Comparateur desserte (carte UNIQUE, plus de volet) : fond RVT sous les
+        # dessertes, puis la BD TOPO, puis le statut de correction LiDAR par-dessus.
         leaflet::addMapPane("nemetonRvtFond", zIndex = 245) |>
-        leaflet::addMapPane("nemetonDessSwipeL", zIndex = 420) |>
-        leaflet::addMapPane("nemetonDessSwipeR", zIndex = 420) |>
+        leaflet::addMapPane("nemetonDessBase", zIndex = 420) |>
+        leaflet::addMapPane("nemetonDessCorr", zIndex = 430) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
           overlayGroups = overlays,
@@ -985,11 +985,15 @@ mod_accessibility_server <- function(id, app_state) {
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Accessibilite") |>
         leaflet::removeControl("acc_legend")
-      # Pseudo-couche comparateur sélectionnée : il possède le volet, on ne peint
-      # pas le raster de classes ni son swipe (ils reviennent au changement de
-      # couche). Le swipe ACCESSFOR se retire s'il était actif.
+      # Pseudo-couche comparateur sélectionnée : on ne peint pas le raster de
+      # classes (il revient au changement de couche). Le comparateur desserte
+      # n'utilise PLUS de volet : il faut donc RETIRER celui d'ACCESSFOR s'il
+      # était actif, sinon le curseur resterait affiché par-dessus la carte.
       if (identical(layer, "desserte_comparee")) {
-        if (isTRUE(swipe_active())) swipe_active(FALSE)
+        if (isTRUE(swipe_active())) {
+          session$sendCustomMessage("nemetonSwipeOff", list(id = mapid))
+          swipe_active(FALSE)
+        }
         return()
       }
       if (is.null(res) || is.null(layer)) {
@@ -1124,14 +1128,22 @@ mod_accessibility_server <- function(id, app_state) {
       if (isTRUE(compare_active())) .paint_rvt_fond(rvt_task$result())
     }, ignoreNULL = TRUE)
 
-    # Peinture du comparateur : fond RVT (non clippé) + desserte origine (gauche) +
-    # desserte corrigée (droite), volet swipe entre les deux. Désactivé -> nettoyage.
-    dess_corr_pal <- leaflet::colorNumeric("viridis", domain = c(0, 12),
-                                           na.color = "#9E9E9E")
+    # Peinture du comparateur, en CARTE UNIQUE (plus de volet swipe) : fond RVT,
+    # puis la desserte BD TOPO colorée par classe, puis par-dessus le statut de
+    # correction LiDAR (`etat_dessertr`) sur les tronçons que la qualification a
+    # pu mesurer. Désactivé -> nettoyage.
+    #
+    # Pourquoi pas « les nouvelles pistes » : `qualifier_desserte()` n'AJOUTE
+    # aucun tronçon. Elle rend un sous-ensemble recalé de la BD TOPO (mesuré :
+    # 710/1032 sur Dabo, 93/373 sur ForetAccess ; 0 tronçon à plus de 25 m d'une
+    # géométrie BD TOPO). Ce que la correction apporte est une QUALIFICATION —
+    # d'où la surcharge par `etat_dessertr` plutôt que par une couche « nouveau ».
+    DESS_CLASSE_COLS <- c(route = "#37474F", piste = "#8D6E63",
+                          reseau_public = "#1565C0", hors_desserte = "#BDBDBD")
+    DESS_CORR_COLS <- c(en_service = "#2E7D32", trouee_sans_route = "#E65100")
     shiny::observe({
       on <- identical(input$layer, "desserte_comparee") &&
         isTRUE(corrected_available())
-      mapid <- session$ns("map")
       shown <- input$map_groups
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       proxy <- leaflet::leafletProxy("map") |>
@@ -1143,10 +1155,7 @@ mod_accessibility_server <- function(id, app_state) {
 
       if (!on) {
         shiny::removeNotification(session$ns("rvt_notif"))
-        if (isTRUE(compare_active())) {
-          session$sendCustomMessage("nemetonSwipeOff", list(id = mapid))
-          compare_active(FALSE)
-        }
+        if (isTRUE(compare_active())) compare_active(FALSE)
         return()
       }
 
@@ -1165,58 +1174,94 @@ mod_accessibility_server <- function(id, app_state) {
       }
 
       corrected_path <- .corrected_desserte_path(.accessibility_cache_dir(project_path))
-      # GAUCHE : desserte BD TOPO d'origine, colorée par classe (route/piste).
+
+      # FOND : desserte BD TOPO complète, colorée par classe. `hors_desserte` en
+      # pointillé gris — présent depuis foretaccess 2.0.0 (conservé pour la
+      # topologie), il n'entre pas dans le débardage et ne doit pas se lire comme
+      # une desserte utilisable.
       dorig <- .acc_read_desserte_layer(corrected_path, "desserte_origine")
+      classes_vues <- character()
       if (!is.null(dorig)) {
         cl <- tolower(as.character(dorig[["classe"]] %||% rep("", nrow(dorig))))
-        cols <- ifelse(cl == "piste", "#8D6E63", "#37474F")
-        proxy <- leaflet::addPolylines(proxy, data = dorig, group = "Desserte origine",
-          color = cols, weight = 2, opacity = 0.95,
-          options = leaflet::pathOptions(pane = "nemetonDessSwipeL"))
-        proxy <- leaflet::addLegend(proxy, "bottomleft",
-          colors = c("#37474F", "#8D6E63"),
-          labels = c(i18n$t("acc_desserte_route"), i18n$t("acc_desserte_piste")),
-          title = i18n$t("acc_compare_legend_origine"), layerId = "cmp_legend_l",
-          opacity = 0.9)
+        classes_vues <- intersect(names(DESS_CLASSE_COLS), unique(cl))
+        # Deux passes : `dashArray` n'est pas vectorisable par tronçon.
+        hors <- cl == "hors_desserte"
+        if (any(!hors)) {
+          d_util <- dorig[!hors, , drop = FALSE]
+          # Repli sur un gris neutre pour une classe inconnue : foretaccess a
+          # déjà ajouté `hors_desserte` en 2.0.0, une couleur NA casserait le
+          # rendu de TOUTE la couche plutôt que du seul tronçon fautif.
+          col_util <- unname(DESS_CLASSE_COLS[cl[!hors]])
+          col_util[is.na(col_util)] <- "#9E9E9E"
+          proxy <- leaflet::addPolylines(proxy, data = d_util,
+            group = "Desserte origine", weight = 2, opacity = 0.95,
+            color = col_util,
+            options = leaflet::pathOptions(pane = "nemetonDessBase"),
+            label = ~ as.character(classe))
+        }
+        if (any(hors)) {
+          proxy <- leaflet::addPolylines(proxy, data = dorig[hors, , drop = FALSE],
+            group = "Desserte origine", color = unname(DESS_CLASSE_COLS[["hors_desserte"]]),
+            weight = 1.5, opacity = 0.6, dashArray = "4,6",
+            options = leaflet::pathOptions(pane = "nemetonDessBase"),
+            label = i18n$t("acc_desserte_hors"))
+        }
       }
-      # DROITE : desserte corrigée. bilan N'EST PAS persisté dans le gpkg -> le
-      # critère mesuré/non-mesuré est `is.na(etat_classe)`. Deux couches séparées
-      # (dashArray n'est pas vectorisable par tronçon) : mesurés pleins colorés par
-      # largeur carrossable, non couverts gris pointillé.
+
+      # SURCHARGE : statut de correction LiDAR, par-dessus la BD TOPO. Le bilan
+      # n'est PAS persisté dans le gpkg -> le critère mesuré/non-mesuré reste
+      # `is.na(etat_classe)`. L'infobulle porte les mesures utiles au terrain.
       dcorr <- .acc_read_desserte_layer(corrected_path, "desserte_corrigee")
+      etats_vus <- character()
       if (!is.null(dcorr)) {
         ec <- suppressWarnings(as.numeric(dcorr[["etat_classe"]]))
-        lw <- suppressWarnings(as.numeric(dcorr[["largeur_carrossable_m"]]))
-        mesure <- is.finite(ec)
+        etat <- tolower(as.character(dcorr[["etat_dessertr"]] %||% rep("", nrow(dcorr))))
+        mesure <- is.finite(ec) & etat %in% names(DESS_CORR_COLS)
         d_mes <- dcorr[mesure, , drop = FALSE]
         d_non <- dcorr[!mesure, , drop = FALSE]
         if (nrow(d_non) > 0L) {
           proxy <- leaflet::addPolylines(proxy, data = d_non,
             group = "Desserte corrigee", color = "#9E9E9E", weight = 2,
             opacity = 0.5, dashArray = "4,6",
-            options = leaflet::pathOptions(pane = "nemetonDessSwipeR"),
+            options = leaflet::pathOptions(pane = "nemetonDessCorr"),
             label = i18n$t("acc_compare_non_mesure"))
         }
         if (nrow(d_mes) > 0L) {
-          lwm <- pmin(suppressWarnings(as.numeric(d_mes[["largeur_carrossable_m"]])), 12)
-          cols <- dess_corr_pal(ifelse(is.finite(lwm), lwm, 0))
+          etats_vus <- intersect(names(DESS_CORR_COLS), unique(etat[mesure]))
           proxy <- leaflet::addPolylines(proxy, data = d_mes,
-            group = "Desserte corrigee", color = cols, weight = 3, opacity = 0.95,
-            options = leaflet::pathOptions(pane = "nemetonDessSwipeR"),
-            label = ~ sprintf("%.1f m",
+            group = "Desserte corrigee", weight = 4, opacity = 0.95,
+            color = unname(DESS_CORR_COLS[etat[mesure]]),
+            options = leaflet::pathOptions(pane = "nemetonDessCorr"),
+            label = ~ sprintf("%s — %.1f m",
+                              as.character(etat_dessertr),
                               suppressWarnings(as.numeric(largeur_carrossable_m))))
         }
-        proxy <- leaflet::addLegend(proxy, "bottomright", pal = dess_corr_pal,
-          values = c(0, 12), title = i18n$t("acc_compare_legend_corrigee"),
-          layerId = "cmp_legend_r", opacity = 0.9,
-          labFormat = leaflet::labelFormat(suffix = " m"))
       }
 
-      if (!isTRUE(compare_active())) {
-        session$sendCustomMessage("nemetonSwipeOn", list(
-          id = mapid, left = "nemetonDessSwipeL", right = "nemetonDessSwipeR"))
-        compare_active(TRUE)
+      # Légende UNIQUE : classement des tronçons BD TOPO, puis statut de
+      # correction. Seules les modalités réellement présentes sont listées.
+      lbl_classe <- c(route = i18n$t("acc_desserte_route"),
+                      piste = i18n$t("acc_desserte_piste"),
+                      reseau_public = i18n$t("acc_desserte_reseau_public"),
+                      hors_desserte = i18n$t("acc_desserte_hors"))
+      lbl_etat <- c(en_service = i18n$t("acc_desserte_en_service"),
+                    trouee_sans_route = i18n$t("acc_desserte_trouee"))
+      if (length(classes_vues)) {
+        proxy <- leaflet::addLegend(proxy, "bottomleft",
+          colors = unname(DESS_CLASSE_COLS[classes_vues]),
+          labels = unname(lbl_classe[classes_vues]),
+          title = i18n$t("acc_compare_legend_origine"), layerId = "cmp_legend_l",
+          opacity = 0.9)
       }
+      if (length(etats_vus)) {
+        proxy <- leaflet::addLegend(proxy, "bottomleft",
+          colors = unname(DESS_CORR_COLS[etats_vus]),
+          labels = unname(lbl_etat[etats_vus]),
+          title = i18n$t("acc_compare_legend_corrigee"), layerId = "cmp_legend_r",
+          opacity = 0.9)
+      }
+
+      if (!isTRUE(compare_active())) compare_active(TRUE)
     })
 
     # --- Validation ACCESSFOR (référence IGN) — SYSTÉMATIQUE --------------------

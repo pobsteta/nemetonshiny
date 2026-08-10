@@ -1,3 +1,33 @@
+# nemetonshiny 0.121.3.9001 (2026-08-10)
+
+### Changed — Accessibilité : desserte BD TOPO / corrigée en carte unique
+
+* La couche « Desserte BD TOPO / corrigée » n'affiche plus **deux cartes
+  vecteur séparées par un volet coulissant**. Une seule carte : la desserte
+  BD TOPO colorée **par classe**, surchargée du **statut de correction LiDAR**
+  sur les tronçons que la qualification a pu mesurer.
+* Légende unique reprenant le classement des tronçons — route, piste, réseau
+  public, hors desserte — puis le statut de correction (en service, trouée sans
+  route). Seules les modalités réellement présentes dans les données sont
+  listées.
+* `hors_desserte` (apparu avec `foretaccess` 2.0.0, conservé pour la topologie)
+  est tracé en pointillé gris : il n'entre pas dans le débardage et ne doit pas
+  se lire comme une desserte utilisable. Repli sur un gris neutre pour toute
+  classe inconnue, afin qu'un nouveau code côté cœur ne casse pas le rendu de
+  la couche entière.
+* Le fond relief RVT/CVAT est conservé sous les dessertes.
+* Panes `nemetonDessSwipeL`/`R` remplacés par `nemetonDessBase` (BD TOPO) et
+  `nemetonDessCorr` (correction), simplement empilés. Le volet ACCESSFOR, lui,
+  est inchangé — mais il est désormais explicitement **retiré** à l'entrée dans
+  la couche desserte, qui ne le reprend plus à son compte.
+
+**Note factuelle.** La surcharge n'affiche pas « les nouvelles pistes » :
+`qualifier_desserte()` n'ajoute aucun tronçon. Elle rend un sous-ensemble recalé
+de la BD TOPO — mesuré 710/1032 sur Dabo et 93/373 sur ForetAccess, avec 0
+tronçon à plus de 25 m d'une géométrie BD TOPO (médiane 1–2 m, recalage). Ce que
+la correction apporte est une **qualification**, d'où l'affichage de
+`etat_dessertr`.
+
 # nemetonshiny 0.121.3 (2026-08-10)
 
 ### Changed — Roue dentée généralisée aux bandeaux « en cours » inline
