@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.5" id="nemetonshiny-01215-2026-08-10">nemetonshiny 0.121.5 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01215-2026-08-10"></a></h2>
+<div class="section level4">
+<h4 id="fixed--accessibilité-débloquée--plancher-foretaccess--0-121-5">Fixed — Accessibilité débloquée : plancher <code>foretaccess (&gt;= 2.0.1)</code>
+<a class="anchor" aria-label="anchor" href="#fixed--accessibilit%C3%A9-d%C3%A9bloqu%C3%A9e--plancher-foretaccess--0-121-5"></a></h4>
+<ul><li>
+<code>foretaccess 2.0.0</code> rendait l’onglet Accessibilité <strong>entièrement inutilisable</strong> : <code>acquire_desserte()</code> conservait les tronçons <code>hors_desserte</code> par défaut (depuis le 2026-07-30, pour la topologie) alors que <code>preprocess()</code> les rejetait via <code>.valider_desserte()</code>. Tous chemins, tous projets, NDP 0 comme NDP 1.</li>
+<li>Corrigé côté cœur en <strong><code>foretaccess 2.0.1</code></strong> : <code>.rasteriser_desserte()</code> appelle désormais <code>.sans_hors_desserte()</code> <strong>avant</strong> la rastérisation, et le validateur accepte la classe. Le plancher passe donc de <code>&gt;= 1.20.0</code> à <code>&gt;= 2.0.1</code> — l’app dépend de ce correctif pour fonctionner.</li>
+<li>Vérifié sur les données réelles du projet Dabo :
+<ul><li>
+<code>preprocess()</code> s’exécute en 2,5 s avec les 1032 tronçons, dont 320 <code>hors_desserte</code> ;</li>
+<li>le raster de desserte est <strong>identique</strong> avec et sans pré-filtrage (invariance) ;</li>
+<li>
+<strong>0 cellule écrasée</strong>, et plus aucune sentinelle <code>-2147483648</code>.</li>
+</ul></li>
+<li>Ce dernier point était le risque principal signalé dans le brief (<code>BRIEF-foretaccess-hors-desserte-preprocess.md</code> §4) : un correctif qui se serait contenté de relâcher le validateur aurait laissé <code><a href="https://rspatial.github.io/terra/reference/rasterize.html" class="external-link">terra::rasterize()</a></code> graver la sentinelle entière dans les cellules partagées, effaçant 440 cellules de desserte (1,8 %) <strong>aux nœuds de jonction</strong>. Le correctif cœur filtre bien en amont ; l’invariance ci-dessus le confirme.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.4" id="nemetonshiny-01214-2026-08-10">nemetonshiny 0.121.4 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01214-2026-08-10"></a></h2>
 <div class="section level4">
