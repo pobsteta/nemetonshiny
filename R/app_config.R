@@ -53,6 +53,19 @@ APP_CONFIG <- list(
   # si une AOI nettement plus grande que Dabo (3 000 ha) apparait.
   topo_target_res = 1,
 
+  # Resolution (m) de calcul du fond relief CVAT. Le defaut de
+  # `foretaccess::build_cvat_precomputed()` est 0,5 m : sur l'emprise de Dabo
+  # (AOI + 250 m) cela fait ~81 M cellules et `vat_combined()` y consomme
+  # ~230 octets/cellule, soit une vingtaine de Go — OOM.
+  #
+  # C'est du gaspillage pur : `.paint_rvt_fond()` re-agrege le raster a 2000 px
+  # de cote AVANT affichage. Sur une emprise de ~4,6 km, 2 m donne deja 2300 px,
+  # soit juste au-dessus du plafond d'affichage.
+  #
+  # Mesure sur l'emprise de Dabo (cgroup borne a 12 Go) :
+  #   0,5 m -> OOM   | 1 m -> 162 s / 4,38 Go | 2 m -> 45 s / 1,52 Go
+  cvat_res_m = 2,
+
   # Cache settings
   cache_format = "parquet",
 

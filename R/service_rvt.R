@@ -226,6 +226,68 @@ generate_rvt <- function(mnt_path, overwrite = FALSE) {
   if (isTRUE(ok) && file.exists(out)) out else NULL
 }
 
+#' Sidecar de provenance d'un CVAT : pour quels paramètres a-t-il été construit ?
+#'
+#' `.cvat_covers()` seul ne suffit pas à décider s'il faut reconstruire. Sur une
+#' AOI dont la couverture LiDAR HD s'arrête avant `aoi + buffer`,
+#' `acquire_mnt()` rend une emprise plus courte que demandée — mesuré sur Dabo :
+#' 4454 × 4162 m produits pour 4617 × 4381 m demandés. Le CVAT résultant échoue
+#' donc `.cvat_covers()` **quoi qu'on fasse**, et l'observe le reconstruit à
+#' chaque entrée dans l'onglet : boucle infinie sur un calcul de plusieurs
+#' minutes.
+#'
+#' Le sidecar enregistre ce qui a été DEMANDÉ (bbox AOI, buffer, résolution). On
+#' ne relance donc pas une construction déjà tentée avec les mêmes paramètres,
+#' que la donnée source ait pu couvrir l'emprise ou non. Même esprit que les
+#' sidecars de provenance de `foretaccess` (spec 027).
+#'
+#' @param out_path Chemin du CVAT.
+#' @return Chemin du sidecar JSON.
+#' @noRd
+.cvat_sidecar_path <- function(out_path) paste0(out_path, ".build.json")
+
+#' Signature des paramètres de construction d'un CVAT
+#' @noRd
+.cvat_build_signature <- function(aoi, buffer_m, res_m) {
+  bb <- tryCatch(as.numeric(sf::st_bbox(aoi)), error = function(e) NULL)
+  list(
+    bbox = if (is.null(bb)) NULL else round(bb, 1),
+    buffer_m = as.numeric(buffer_m),
+    res_m = as.numeric(res_m)
+  )
+}
+
+#' Un CVAT a-t-il déjà été construit pour ces paramètres ?
+#'
+#' `TRUE` seulement si le raster existe ET que son sidecar porte exactement la
+#' même signature. Un CVAT sans sidecar (antérieur à ce mécanisme) est considéré
+#' comme à reconstruire — une fois, puisque la construction écrit le sidecar.
+#'
+#' @noRd
+.cvat_built_for <- function(out_path, aoi, buffer_m, res_m) {
+  if (is.null(out_path) || !file.exists(out_path)) return(FALSE)
+  sc <- .cvat_sidecar_path(out_path)
+  if (!file.exists(sc)) return(FALSE)
+  prev <- tryCatch(jsonlite::fromJSON(sc), error = function(e) NULL)
+  if (!is.list(prev)) return(FALSE)
+  want <- .cvat_build_signature(aoi, buffer_m, res_m)
+  isTRUE(identical(as.numeric(prev$buffer_m), want$buffer_m) &&
+         identical(as.numeric(prev$res_m), want$res_m) &&
+         !is.null(prev$bbox) && !is.null(want$bbox) &&
+         isTRUE(all.equal(as.numeric(prev$bbox), want$bbox, tolerance = 1e-6)))
+}
+
+#' Écrit le sidecar de provenance après une construction réussie
+#' @noRd
+.cvat_write_sidecar <- function(out_path, aoi, buffer_m, res_m) {
+  tryCatch({
+    sig <- .cvat_build_signature(aoi, buffer_m, res_m)
+    sig$built_at <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+    jsonlite::write_json(sig, .cvat_sidecar_path(out_path), auto_unbox = TRUE)
+  }, error = function(e) invisible(NULL))
+  invisible(out_path)
+}
+
 #' Does an existing CVAT raster cover an AOI + buffer?
 #'
 #' `build_cvat_precomputed()` (and foretaccess) do NOT re-check an already-written
@@ -329,15 +391,32 @@ build_cvat_precomputed <- function(mnt_path, aoi = NULL, buffer_m = 0,
   # mosaïque est trop courte, puis recalcule.
   if (!is.null(aoi) &&
       exists("build_cvat_precomputed", where = asNamespace("foretaccess"))) {
-    covered <- !isTRUE(overwrite) && file.exists(out) &&
-      .cvat_covers(out, aoi, buffer_m)
-    if (isTRUE(covered)) return(out)                  # couvre déjà aoi+buffer
-    return(tryCatch(
+    res_m <- suppressWarnings(as.numeric(APP_CONFIG$cvat_res_m))
+    if (!isTRUE(is.finite(res_m)) || res_m <= 0) res_m <- 2
+    # Reprise : soit le CVAT couvre déjà aoi+buffer, soit il a DÉJÀ été construit
+    # pour exactement ces paramètres. Le second cas est indispensable — sur une
+    # AOI où la couverture LiDAR HD s'arrête avant aoi+buffer, `.cvat_covers()`
+    # ne peut jamais être satisfait et l'observe relancerait sans fin (cf.
+    # `.cvat_built_for`).
+    if (!isTRUE(overwrite) && file.exists(out) &&
+        (isTRUE(.cvat_covers(out, aoi, buffer_m)) ||
+         isTRUE(.cvat_built_for(out, aoi, buffer_m, res_m)))) {
+      return(out)
+    }
+    built <- tryCatch(
       foretaccess::build_cvat_precomputed(
         aoi = aoi, cache_dir = .foretaccess_cache_root(mnt_path),
         buffer_m = buffer_m,
+        # `res_lidar_m` : le défaut cœur (0,5 m) fait ~81 M cellules sur
+        # l'emprise de Dabo et sature la mémoire. Le rendu ré-agrège à 2000 px,
+        # donc cette finesse est perdue à l'affichage (cf. APP_CONFIG$cvat_res_m).
+        res_lidar_m = res_m,
         mnt_existant = mnt_path, out = out, overwrite = TRUE),  # force le recalcul
-      error = function(e) NULL))
+      error = function(e) NULL)
+    # Sidecar écrit même si la couverture reste partielle : il mémorise ce qui a
+    # été DEMANDÉ, ce qui suffit à ne pas retenter la même construction.
+    if (!is.null(built)) .cvat_write_sidecar(built, aoi, buffer_m, res_m)
+    return(built)
   }
   # Sans AOI : court-circuit idempotent (CVAT sur le MNT tel quel).
   if (file.exists(out) && !isTRUE(overwrite)) return(out)

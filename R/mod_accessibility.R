@@ -469,9 +469,19 @@ mod_accessibility_server <- function(id, app_state) {
       buffer_m <- buffer_m_d()
       # Relancer si AUCUN CVAT, ou si le CVAT existant NE COUVRE PAS aoi+buffer
       # (buffer agrandi). Sinon rien : pas de worker inutile.
+      #
+      # Second critère `.cvat_built_for()` : sur une AOI dont la couverture LiDAR
+      # HD s'arrête avant aoi+buffer, le CVAT produit ne satisfera JAMAIS
+      # `.cvat_covers()` — mesuré sur Dabo, 4454 x 4162 m produits pour
+      # 4617 x 4381 m demandés. Sans ce garde, chaque entrée dans l'onglet
+      # relançait un calcul de plusieurs minutes voué au même résultat.
       existing <- .rvt_precomputed_path(mnt_path)
+      cvat_res <- suppressWarnings(as.numeric(APP_CONFIG$cvat_res_m))
+      if (!isTRUE(is.finite(cvat_res)) || cvat_res <= 0) cvat_res <- 2
       if (!is.null(existing) &&
-          (is.null(aoi) || isTRUE(.cvat_covers(existing, aoi, buffer_m)))) {
+          (is.null(aoi) ||
+           isTRUE(.cvat_covers(existing, aoi, buffer_m)) ||
+           isTRUE(.cvat_built_for(existing, aoi, buffer_m, cvat_res)))) {
         return()
       }
       # Message bas-droite pendant TOUT le calcul (id stable -> retiré à la fin).
