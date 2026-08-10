@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.2.9001 (2026-08-10)
+# nemetonshiny 0.121.3 (2026-08-10)
 
 ### Changed — Roue dentée généralisée aux bandeaux « en cours » inline
 
