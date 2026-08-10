@@ -967,7 +967,7 @@ mod_regeneration_server <- function(id, app_state) {
       if (isTRUE(rv$eobs_running)) {
         shiny::invalidateLater(1000)
         return(htmltools::div(class = "small text-info mt-1",
-          bsicons::bs_icon("hourglass-split", class = "me-1"),
+          bsicons::bs_icon("gear-fill", class = "me-1"),
           i18n$t("regen_auto_running_short"),
           htmltools::tags$span(class = "ms-1 font-monospace",
                                .fmt_elapsed(rv$eobs_start))))
@@ -1754,7 +1754,7 @@ mod_regeneration_server <- function(id, app_state) {
       if (isTRUE(rv$engine_running)) {
         shiny::invalidateLater(1000)   # chrono re-rendu chaque seconde
         return(htmltools::div(class = "small text-info mt-1",
-          bsicons::bs_icon("hourglass-split", class = "me-1"),
+          bsicons::bs_icon("gear-fill", class = "me-1"),
           i18n$t("regen_engine_running_short"),
           htmltools::tags$span(class = "ms-1 font-monospace",
                                .fmt_elapsed(rv$engine_start))))
@@ -1881,7 +1881,7 @@ mod_regeneration_server <- function(id, app_state) {
     output$status <- shiny::renderUI({
       if (isTRUE(rv$running)) {
         return(htmltools::div(class = "alert alert-info py-2",
-          bsicons::bs_icon("hourglass-split", class = "me-1"), i18n$t("regen_running")))
+          bsicons::bs_icon("gear-fill", class = "me-1"), i18n$t("regen_running")))
       }
       warns <- if (length(rv$warnings)) {
         htmltools::div(class = "alert alert-warning py-2 small",

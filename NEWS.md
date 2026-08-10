@@ -1,3 +1,25 @@
+# nemetonshiny 0.121.2.9001 (2026-08-10)
+
+### Changed — Roue dentée généralisée aux bandeaux « en cours » inline
+
+* Suite de v0.121.2, qui n'avait traité que les notifications : les quatre
+  bandeaux inline portant la sémantique « calcul en cours » passent eux aussi
+  du sablier à la roue dentée (`gear-fill`) —
+  `mod_regeneration.R` (indicateur E-OBS + chrono, indicateur moteur + chrono,
+  bandeau `regen_running`) et `mod_monitoring.R`
+  (`monitoring_ingest_running_banner`).
+* Le picto « en cours » est désormais uniforme dans toute l'app. Il l'était
+  déjà partiellement : `.monitoring_loading_card()` et le chargement
+  `mod_monitoring.R:1374` utilisaient `gear-fill` de longue date, tandis que
+  les bandeaux voisins affichaient un sablier pour le même état.
+* Pas d'animation `nmt-spin` ajoutée sur ces quatre bandeaux : deux d'entre eux
+  sont re-rendus chaque seconde par `invalidateLater(1000)` pour faire défiler
+  leur chronomètre, ce qui réinitialiserait la rotation CSS à chaque tick et
+  produirait un à-coup visible. L'animation reste réservée aux notifications,
+  dont le contenu n'est pas remplacé à chaque seconde.
+* Inchangé : les sabliers des états vides des cartes FORDEAD et RECONFORT
+  (« pas encore de données », pas « calcul en cours »).
+
 # nemetonshiny 0.121.2 (2026-08-10)
 
 ### Changed — Roue dentée à la place du sablier dans les notifications « en cours »
