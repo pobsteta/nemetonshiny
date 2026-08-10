@@ -1,5 +1,21 @@
 # Changelog
 
+## nemetonshiny 0.121.8 (2026-08-10)
+
+#### Changed — Notification du pré-calcul CVAT : cadre unifié et libellé explicite
+
+- Le pré-calcul du fond relief CVAT était la seule tâche longue du
+  module Accessibilité à afficher une notification **en texte brut**,
+  sans engrenage ni chronomètre — contrairement à `acc_running` et
+  `acc_correct_running`, qui passent par `.running_notif_content()`. Il
+  rejoint le cadre unifié : engrenage animé + chrono MM:SS rafraîchi
+  chaque seconde.
+- Libellé revu : « Préparation du fond relief CVAT (LiDAR HD)… » devient
+  « Fond relief CVAT : calcul unique sur l’emprise (~1 min) ». Il dit
+  maintenant ce que l’attente recouvre — un calcul **ponctuel**, sur
+  l’**emprise** (et non la mosaïque entière), d’une durée annoncée.
+  Mesuré à 45 s sur Dabo depuis v0.121.7.
+
 ## nemetonshiny 0.121.7 (2026-08-10)
 
 #### Fixed — Fond relief CVAT : OOM sur Dabo, et recalcul en boucle

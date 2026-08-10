@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.7.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.8.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,14 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.8" id="nemetonshiny-01218-2026-08-10">nemetonshiny 0.121.8 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01218-2026-08-10"></a></h2>
+<div class="section level4">
+<h4 id="changed--notification-du-pré-calcul-cvat--cadre-unifié-et-libellé-explicite-0-121-8">Changed — Notification du pré-calcul CVAT : cadre unifié et libellé explicite<a class="anchor" aria-label="anchor" href="#changed--notification-du-pr%C3%A9-calcul-cvat--cadre-unifi%C3%A9-et-libell%C3%A9-explicite-0-121-8"></a></h4>
+<ul><li>Le pré-calcul du fond relief CVAT était la seule tâche longue du module Accessibilité à afficher une notification <strong>en texte brut</strong>, sans engrenage ni chronomètre — contrairement à <code>acc_running</code> et <code>acc_correct_running</code>, qui passent par <code>.running_notif_content()</code>. Il rejoint le cadre unifié : engrenage animé + chrono MM:SS rafraîchi chaque seconde.</li>
+<li>Libellé revu : « Préparation du fond relief CVAT (LiDAR HD)… » devient « Fond relief CVAT : calcul unique sur l’emprise (~1 min) ». Il dit maintenant ce que l’attente recouvre — un calcul <strong>ponctuel</strong>, sur l’<strong>emprise</strong> (et non la mosaïque entière), d’une durée annoncée. Mesuré à 45 s sur Dabo depuis v0.121.7.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.7" id="nemetonshiny-01217-2026-08-10">nemetonshiny 0.121.7 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01217-2026-08-10"></a></h2>
 <div class="section level4">
