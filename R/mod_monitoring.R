@@ -2347,7 +2347,7 @@ mod_monitoring_server <- function(id, app_state) {
         }
         return(htmltools::div(
           class = "alert alert-info d-flex align-items-center gap-2 py-2 px-2 mt-2 small mb-0",
-          bsicons::bs_icon("hourglass-split", class = "flex-shrink-0"),
+          bsicons::bs_icon("gear-fill", class = "flex-shrink-0"),
           htmltools::tags$span(
             sprintf(i18n$t("monitoring_ingest_running_banner"), tiles)
           )
