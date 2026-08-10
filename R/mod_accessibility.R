@@ -426,6 +426,9 @@ mod_accessibility_server <- function(id, app_state) {
     # instantanés (via .rvt_precomputed). UNIQUEMENT sur le MNT LiDAR HD natif (pas
     # le repli WMS, dont le striping serait amplifié). Idempotent : rien si un CVAT
     # (foretaccess OU plugin) est déjà présent.
+    # Départ du chrono de la notif CVAT. NULL = aucune tâche en cours, ce qui
+    # sert aussi de garde au tick 1 s (cf. plus bas).
+    cvat_start <- shiny::reactiveVal(NULL)
     cvat_prebuild_task <- shiny::ExtendedTask$new(
       function(mnt_path, aoi, buffer_m, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
@@ -484,19 +487,35 @@ mod_accessibility_server <- function(id, app_state) {
            isTRUE(.cvat_built_for(existing, aoi, buffer_m, cvat_res)))) {
         return()
       }
-      # Message bas-droite pendant TOUT le calcul (id stable -> retiré à la fin).
+      # Message bas-droite pendant TOUT le calcul (id stable -> retiré à la fin),
+      # dans le cadre unifié « engrenage qui tourne + chrono MM:SS » partagé avec
+      # les autres tâches longues du module (acc_running, acc_correct_running).
+      cvat_start(Sys.time())
       shiny::showNotification(
-        i18n$t("acc_cvat_prebuild_running"), duration = NULL,
-        closeButton = FALSE, type = "message",
+        .running_notif_content(i18n$t("acc_cvat_prebuild_running"), cvat_start()),
+        duration = NULL, closeButton = FALSE, type = "message",
         id = session$ns("cvat_prebuild"))
       cvat_prebuild_task$invoke(mnt_path, aoi, buffer_m, .dev_pkg_path,
                                 get_app_options())
     }, ignoreNULL = TRUE)
 
+    # Tick 1 s : rafraîchit le chrono de la notif CVAT (même id -> Shiny remplace
+    # le contenu en place) tant que la tâche tourne.
+    shiny::observe({
+      if (is.null(cvat_start())) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .running_notif_content(i18n$t("acc_cvat_prebuild_running"),
+                               shiny::isolate(cvat_start())),
+        duration = NULL, closeButton = FALSE, type = "message",
+        id = session$ns("cvat_prebuild"))
+    })
+
     # Fin du pré-calcul CVAT : retire le message bas-droite + court toast.
     shiny::observeEvent(cvat_prebuild_task$status(), {
       st <- cvat_prebuild_task$status()
       if (st %in% c("success", "error")) {
+        cvat_start(NULL)                 # arrête le tick du chrono
         shiny::removeNotification(session$ns("cvat_prebuild"))
         if (identical(st, "success")) {
           shiny::showNotification(i18n$t("acc_cvat_prebuild_done"),
