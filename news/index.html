@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.6.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,19 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.7" id="nemetonshiny-01217-2026-08-10">nemetonshiny 0.121.7 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01217-2026-08-10"></a></h2>
+<div class="section level4">
+<h4 id="fixed--fond-relief-cvat--oom-sur-dabo-et-recalcul-en-boucle-0-121-7">Fixed — Fond relief CVAT : OOM sur Dabo, et recalcul en boucle<a class="anchor" aria-label="anchor" href="#fixed--fond-relief-cvat--oom-sur-dabo-et-recalcul-en-boucle-0-121-7"></a></h4>
+<p>Le pré-calcul du fond CVAT tuait la session sur le projet Dabo. Deux causes se cumulaient.</p>
+<p><strong>1. Résolution.</strong> <code><a href="https://pobsteta.github.io/foretaccess/reference/build_cvat_precomputed.html" class="external-link">foretaccess::build_cvat_precomputed()</a></code> a pour défaut <code>res_lidar_m = 0,5 m</code>, que l’app ne surchargeait pas. Sur l’emprise de Dabo (AOI + 250 m) cela fait ~81 M cellules, et <code>vat_combined()</code> y consomme ~230 octets/cellule — une vingtaine de Go. C’était du gaspillage pur : <code>.paint_rvt_fond()</code> <strong>ré-agrège le raster à 2000 px de côté avant affichage</strong>. L’app passe désormais <code>APP_CONFIG$cvat_res_m</code> (2 m), qui donne déjà 2300 px sur une emprise de 4,6 km.</p>
+<p>Mesuré sur Dabo, cgroup borné à 12 Go : <strong>0,5 m → OOM (exit 137)</strong> ; 1 m → 162 s / 4,38 Go ; <strong>2 m → 45 s / 1,52 Go</strong>.</p>
+<p><strong>2. Boucle de recalcul.</strong> <code>.cvat_covers()</code> exige que le CVAT couvre <code>aoi + buffer</code>. Or la couverture LiDAR HD de cette AOI s’arrête avant : <code>acquire_mnt()</code> rend <strong>4454 × 4162 m</strong> là où l’AOI + 250 m en demande <strong>4617 × 4381 m</strong>. Le critère ne pouvait donc <strong>jamais</strong> être satisfait, et l’observe de <code>mod_accessibility</code> relançait le calcul à chaque entrée dans l’onglet Accessibilité.</p>
+<p>Ajout d’un <strong>sidecar de provenance</strong> <code>&lt;cvat&gt;.build.json</code> enregistrant ce qui a été <em>demandé</em> (bbox AOI, buffer, résolution). La reprise accepte désormais soit un CVAT qui couvre, soit un CVAT déjà construit pour exactement ces paramètres — on ne retente plus une construction identique, que la donnée source ait pu couvrir l’emprise ou non. Même esprit que les sidecars de <code>foretaccess</code> (spec 027).</p>
+<p>Vérifié de bout en bout sur Dabo : 1er appel 40,2 s / 1,52 Go, <strong>2e appel 0,07 s</strong>, et un changement de tampon (500 m) déclenche bien un recalcul.</p>
+<p><strong>Note pour le cœur</strong> : dans <code><a href="https://pobsteta.github.io/foretaccess/reference/build_cvat_precomputed.html" class="external-link">foretaccess::build_cvat_precomputed()</a></code>, la condition de réutilisation est <code>!is.null(mnt_existant) &amp;&amp; !isTRUE(overwrite) &amp;&amp; .emprise_couverte(...)</code>. Passer <code>overwrite = TRUE</code> pour forcer le recalcul du CVAT <strong>désactive donc aussi</strong> la réutilisation du MNT fourni et déclenche une ré-acquisition LiDAR HD complète — avec un message (« MNT fourni absent ou ne couvrant pas l’emprise ») trompeur, puisque la mosaïque la couvrait. Les deux intentions gagneraient à être séparées.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.6" id="nemetonshiny-01216-2026-08-10">nemetonshiny 0.121.6 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01216-2026-08-10"></a></h2>
 <div class="section level4">
