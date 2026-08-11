@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,30 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.12" id="nemetonshiny-012112-2026-08-11">nemetonshiny 0.121.12 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012112-2026-08-11"></a></h2>
+<div class="section level4">
+<h4 id="added--desserte--optimisation-du-réseau-complément-osm-mode-steiner-0-121-12">Added — Desserte : optimisation du réseau, complément OSM, mode Steiner<a class="anchor" aria-label="anchor" href="#added--desserte--optimisation-du-r%C3%A9seau-compl%C3%A9ment-osm-mode-steiner-0-121-12"></a></h4>
+<p>Trois fonctions de <code>foretaccess</code> jusque-là non consommées rejoignent l’onglet Desserte, chacune mesurée avant câblage.</p>
+<ul><li>
+<strong>Optimisation du réseau</strong> (<code>optimiser_reseau()</code>) — stratégies multi-départs, recuit simulé et rip-up &amp; reroute, en action séparée. Mesuré sur Dabo (<code>skidding_m = 100</code>) : glouton 82,2 s / coût 16 673 contre multistart 100,2 s / coût <strong>15 002</strong>, soit 1,2× le temps pour <strong>−10 % de coût</strong>.</li>
+<li>
+<strong>Complément OpenStreetMap</strong> (<code>acquire_desserte_osm()</code> + <code>comparer_desserte_osm()</code>, spec 028) — repère les pistes absentes de la BD TOPO. 544 tronçons trouvés sur l’emprise de Dabo.</li>
+<li>
+<strong>Mode Steiner</strong> exposé en second moteur de création.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="fixed--deux-exclusions-périmées-corrigées-0-121-12">Fixed — Deux exclusions périmées corrigées<a class="anchor" aria-label="anchor" href="#fixed--deux-exclusions-p%C3%A9rim%C3%A9es-corrig%C3%A9es-0-121-12"></a></h4>
+<p>L’en-tête de <code>service_desserte.R</code> excluait Steiner et les optimiseurs « tant qu’un travail perf n’a pas eu lieu côté <code>foretaccess</code> ». <strong>Ce travail a eu lieu</strong> : le cœur a borné l’A* au corridor, et le <code>@section Performance</code> de <code>optimiser_reseau()</code> indique que les optimiseurs sont « tractable at interactive scale », avec les défauts exposables (<code>n_start</code> 8-32, <code>n_iter</code> 100-300). Les deux tests qui verrouillaient l’exclusion sont mis à jour.</p>
+</div>
+<div class="section level4">
+<h4 id="deux-comportements-élucidés-aucun-nétait-un-bug-de-lapp-0-121-12">Deux comportements élucidés, aucun n’était un bug de l’app<a class="anchor" aria-label="anchor" href="#deux-comportements-%C3%A9lucid%C3%A9s-aucun-n%C3%A9tait-un-bug-de-lapp-0-121-12"></a></h4>
+<ul><li>
+<strong>Acquisition OSM lente par intermittence.</strong> Un test bout-en-bout a dépassé 10 minutes contre ~110 s attendus. Le process R était à <strong>2,3 % de CPU</strong>, bloqué dans <code>poll_schedule_timeout</code> sur un socket, et la sortie disait <code>Waiting 60s for retry backoff</code> : c’est la <strong>limitation de débit d’Overpass</strong>, pas notre code. Chronométrage par étape, cache chaud : 117,7 s au total, dont 115,1 s pour le seul recoupement. Le libellé d’aide, qui annonçait une « acquisition rapide », est corrigé pour prévenir de cette attente.</li>
+<li>
+<strong>Steiner rend 0 route</strong> là où le glouton en trouve 36, pour 2,8× le temps. Ce n’est pas un échec : le résultat est bien formé et déclare les 4 parcelles desservies. Steiner approxime un arbre couvrant sur les <strong>terminaux</strong>, notion de « desservi » plus grossière que le per-cellule du glouton ; sur une AOI dont les parcelles touchent déjà le réseau, il n’a légitimement rien à ajouter. Exposé quand même — c’est une alternative documentée et l’app rend déjà « aucune route » comme un succès — mais <strong>non démontré sur nos données</strong>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.11" id="nemetonshiny-012111-2026-08-11">nemetonshiny 0.121.11 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012111-2026-08-11"></a></h2>
 <div class="section level4">
