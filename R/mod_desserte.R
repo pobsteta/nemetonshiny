@@ -865,9 +865,31 @@ mod_desserte_server <- function(id, app_state) {
       if (is.null(r)) {
         return(htmltools::tags$p(class = "text-muted small", i18n$t("dess_detect_hint")))
       }
+      cl <- r$classes
       htmltools::tagList(
         htmltools::tags$div(class = "small",
                             sprintf(i18n$t("dess_detect_done_fmt"), r$n_detecte)),
+        # Répartition par classe. Le brief §2 insiste : afficher `CLASSE` seule
+        # serait trompeur — une classe posée sur peu de critères renseignés doit
+        # se voir. D'où la confiance moyenne juste en dessous.
+        if (is.list(cl) && length(cl$table)) {
+          htmltools::tagList(
+            htmltools::tags$table(
+              class = "table table-sm table-striped small mt-2 mb-1",
+              htmltools::tags$tbody(lapply(names(cl$table), function(k)
+                htmltools::tags$tr(
+                  htmltools::tags$td(class = "small", k),
+                  htmltools::tags$td(class = "small text-end",
+                                     format(cl$table[[k]], big.mark = " ")))))),
+            htmltools::tags$div(
+              class = "small text-muted",
+              sprintf(i18n$t("dess_detect_conf_fmt"),
+                      100 * (cl$conf_moy %||% NA_real_))),
+            if (isTRUE(cl$n_osm_tags > 0L)) {
+              htmltools::div(class = "alert alert-info py-2 small mt-2 mb-0",
+                             sprintf(i18n$t("dess_detect_osm_fmt"), cl$n_osm_tags))
+            })
+        },
         # Sans canal de surface le cœur avertit que la détection est « nettement
         # moins sûre » : ne pas laisser lire un « 0 détection » comme un constat.
         if (!isTRUE(r$avec_lidar)) {

@@ -475,3 +475,37 @@ test_that(".load_cached_desserte ignore un reseau trace sans ponderation", {
     expect_true(is.list(got) && identical(got$status, "success"))
   })
 })
+
+# --- Classement des lineaires detectes (dsr_classer, brief dessertR §2/§3) ---
+# `dsr_classer()` exige des LINESTRING : un MULTILINESTRING est refuse net.
+# La BD TOPO est multi, et rien ne garantit que la detection ne le soit pas.
+
+test_that("dsr_classer refuse le MULTILINESTRING des qu un critere est arme", {
+  skip_if_not_installed("dessertR")
+  skip_if_not_installed("sf")
+  skip_if(!("dsr_classer" %in% getNamespaceExports("dessertR")),
+          "dessertR < 1.3.0")
+  ml <- sf::st_sf(geometry = sf::st_sfc(
+    sf::st_multilinestring(list(rbind(c(0, 0), c(10, 10)))), crs = 2154))
+  poly <- sf::st_sf(geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+    c(-5, -5), c(20, -5), c(20, 20), c(-5, 20), c(-5, -5)))), crs = 2154))
+  # Le refus n'est PAS inconditionnel : `dsr_classer(ml)` seul passe. Il tombe
+  # des qu'un critere geometrique est arme — `reference` OU `parcellaire`,
+  # c'est-a-dire exactement notre appel.
+  expect_s3_class(dessertR::dsr_classer(ml), "sf")
+  expect_error(dessertR::dsr_classer(ml, reference = ml), "LINESTRING")
+  expect_error(dessertR::dsr_classer(ml, parcellaire = poly,
+                                     sous_type_parcelle = "section"), "LINESTRING")
+  # Converti, il passe : c'est exactement ce que fait run_desserte_detection().
+  lin <- suppressWarnings(sf::st_cast(ml, "LINESTRING"))
+  expect_s3_class(dessertR::dsr_classer(lin, parcellaire = poly,
+                                        sous_type_parcelle = "section"), "sf")
+})
+
+test_that("les cles i18n du classement existent", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  for (k in c("dess_detect_conf_fmt", "dess_detect_osm_fmt")) {
+    lbl <- i18n$t(k)
+    expect_true(is.character(lbl) && nzchar(lbl) && !identical(lbl, k), info = k)
+  }
+})

@@ -1,3 +1,42 @@
+# nemetonshiny 0.121.13.9001 (2026-08-11)
+
+### Added — Desserte : classement des linéaires détectés (dessertR §2/§3)
+
+`dessertR 1.3.0` installé, et `dsr_classer()` câblé sur la sortie de détection.
+La question qui suit « qu'a-t-on détecté ? » reçoit enfin une réponse : en forêt
+gérée, ce qui remonte hors référence est majoritairement du **cloisonnement
+d'exploitation** et du **layon**, pas de la desserte.
+
+* Classes rendues : route/piste forestière, desserte, cloisonnement
+  d'exploitation, layon parcellaire, pare-feu, indéterminé.
+* **`CLASSE_CONF` est affichée à côté de `CLASSE`**, comme le brief l'exige : une
+  classe posée sur peu de critères renseignés doit se voir. Mesuré sur la
+  desserte de ForetAccess : **33 % de confiance** — nous ne fournissons ni
+  `stations` (critère fossés) ni `ndvi` (route/piste, et condition du pare-feu),
+  faute de `dsr_measure()` et d'ortho IRC câblés. Les critères manquants sont
+  déclarés **inconnus** par dessertR, pas supposés, et le libellé le dit.
+* **Parcellaire = contours d'UGF** (§3), avec `sous_type_parcelle = "section"`
+  passé **explicitement** — ce sont des limites de gestion, et une valeur qui ne
+  se lit pas dans la géométrie ne se suppose pas en silence.
+* `OSM_TAGS` est **exporté au GeoPackage, jamais téléversé** : c'est une
+  proposition à valider, un import relevant des règles de la communauté OSM.
+  Aucun tag d'accès n'est fabriqué — nous ne passons pas `panneaux`.
+
+**Détail d'intégration mesuré** : `dsr_classer()` refuse les `MULTILINESTRING`,
+mais **pas inconditionnellement** — `dsr_classer(ml)` seul passe, le refus tombe
+dès qu'un critère géométrique est armé, `reference` ou `parcellaire`, soit
+exactement notre appel. La BD TOPO étant multi, le service convertit en
+`LINESTRING` avant de classer, et abandonne le classement plutôt que la
+détection si la conversion échoue.
+
+### Changed — `dessertR` en 1.3.0
+
+Installé depuis le tag `v1.3.0`, pas depuis l'arbre de travail local qui est en
+`1.3.0.9000`. Non-régression vérifiée sur le chemin qui consomme le paquet
+(`verifier_integrite_desserte()` → `dsr_reseau()`) : 41 infractions,
+46 composants dont 20 orphelins — **valeurs identiques** à celles mesurées sous
+1.2.0.9000.
+
 # nemetonshiny 0.121.13 (2026-08-11)
 
 ### Added — Desserte : détection de routes non cartographiées (dessertR, spec 026)

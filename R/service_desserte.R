@@ -479,6 +479,50 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     return(list(status = "error", reason = "desserte_detect_failed", detail = det$msg))
   }
   n <- if (inherits(det, "sf")) nrow(det) else 0L
+
+  # Classement (dessertR >= 1.3.0, brief §2). « Qu'est-ce qui a été détecté ? »
+  # est la question qui suit immédiatement : en forêt gérée, ce qui remonte hors
+  # référence est majoritairement du cloisonnement d'exploitation et du layon,
+  # pas de la desserte.
+  #
+  # On ne passe QUE ce dont on dispose réellement. `stations` (fossés) et `ndvi`
+  # (route/piste, et condition du pare-feu) demanderaient `dsr_measure()` et une
+  # ortho IRC — non câblés. Les critères non renseignés sont déclarés INCONNUS
+  # par dessertR, pas supposés : c'est pourquoi `CLASSE_CONF` doit accompagner
+  # `CLASSE` dans l'affichage.
+  #
+  # `parcellaire` = contours d'UGF (brief §3) : ce sont des limites de GESTION,
+  # d'où `sous_type_parcelle = "section"`, passé EXPLICITEMENT — sans lui,
+  # dessertR émet une notice, une valeur qui ne se lit pas dans la géométrie ne
+  # se supposant pas en silence.
+  classes <- NULL
+  if (n > 0L) {
+    # `dsr_classer()` EXIGE des `LINESTRING` — vérifié : un `MULTILINESTRING`
+    # est refusé net (`inherits(x, "sfc_LINESTRING") is not TRUE`), alors que
+    # `reference` accepte le multi. La BD TOPO est multi, et rien ne garantit
+    # que la détection ne le soit pas : on convertit, en laissant tomber le
+    # classement si la conversion échoue plutôt que de perdre la détection.
+    det_lin <- tryCatch({
+      if (any(sf::st_geometry_type(det) != "LINESTRING")) {
+        suppressWarnings(sf::st_cast(det, "LINESTRING"))
+      } else det
+    }, error = function(e) NULL)
+    det_cl <- if (is.null(det_lin)) NULL else tryCatch(
+      dessertR::dsr_classer(det_lin, reference = reference, parcellaire = parcelles,
+                            sous_type_parcelle = "section"),
+      error = function(e) NULL)
+    if (inherits(det_cl, "sf") && "CLASSE" %in% names(det_cl)) {
+      det <- det_cl
+      conf <- suppressWarnings(as.numeric(det_cl[["CLASSE_CONF"]]))
+      classes <- list(
+        table = as.list(table(as.character(det_cl$CLASSE))),
+        conf_moy = if (any(is.finite(conf))) mean(conf, na.rm = TRUE) else NA_real_,
+        # Proposition de balisage OSM transportée au GeoPackage, JAMAIS
+        # téléversée : un import relève des règles de la communauté (brief §2).
+        n_osm_tags = sum(!is.na(det_cl[["OSM_TAGS"]])))
+    }
+  }
+
   gp <- file.path(cache_dir, "desserte_detectee.gpkg")
   if (n > 0L) {
     tryCatch({
@@ -487,6 +531,7 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     }, error = function(e) invisible(NULL))
   }
   out <- list(n_detecte = n, avec_lidar = !is.null(las_source),
+              classes = classes,
               gpkg_path = if (file.exists(gp)) gp else NULL)
   tryCatch(saveRDS(out, file.path(cache_dir, "detection.rds")),
            error = function(e) invisible(NULL))
