@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.13.9001 (2026-08-11)
+# nemetonshiny 0.121.14 (2026-08-11)
 
 ### Added — Desserte : classement des linéaires détectés (dessertR §2/§3)
 
