@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.12.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,67 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.13" id="nemetonshiny-012113-2026-08-11">nemetonshiny 0.121.13 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012113-2026-08-11"></a></h2>
+<div class="section level4">
+<h4 id="added--desserte--détection-de-routes-non-cartographiées-dessertr-spec-0-121-13">Added — Desserte : détection de routes non cartographiées (dessertR, spec 026)<a class="anchor" aria-label="anchor" href="#added--desserte--d%C3%A9tection-de-routes-non-cartographi%C3%A9es-dessertr-spec-0-121-13"></a></h4>
+<p>Dernier panneau manquant de l’onglet Desserte : <code>detecter_desserte()</code> cherche dans le relief — et dans le nuage LiDAR quand il est disponible — des routes absentes de la BD TOPO. Action séparée, worker dédié, comme les trois précédentes.</p>
+<p><strong>C’est de loin le traitement le plus lourd de l’onglet</strong>, et le panneau le dit. Mesuré sur l’emprise Accessibilité de Dabo (4454 × 4162 à 1 m, 1 855 ha, référence 1 032 tronçons) :</p>
+<table class="table"><thead><tr><th><code>las_source</code></th>
+<th align="right">durée</th>
+<th align="right">pic RSS</th>
+<th align="right">détections</th>
+</tr></thead><tbody><tr><td>
+<code>NULL</code> (géomorphologie seule)</td>
+<td align="right">189,4 s</td>
+<td align="right"><strong>7,91 Go</strong></td>
+<td align="right">0</td>
+</tr><tr><td>nuage LiDAR</td>
+<td align="right">&gt; 10 min</td>
+<td align="right">—</td>
+<td align="right">mesure en cours</td>
+</tr></tbody></table><p>Deux conséquences portées par le code :</p>
+<ul><li>
+<strong>Garde-fou mémoire non optionnel.</strong> 7,91 Go sur un poste de 31 Go partagé avec RStudio, c’est déjà la zone où <code>systemd-oomd</code> intervient. Le service réutilise <code>.desserte_memory_check()</code> et <strong>refuse avant toute acquisition</strong> — sinon l’échec arrive après plusieurs minutes, sous forme d’OOM qui emporte la session plutôt que d’erreur rattrapable.</li>
+<li>
+<strong>Le repli sans LiDAR n’est jamais silencieux.</strong> Le cœur avertit que la détection sans canal de surface est « nettement moins sûre », et elle n’a rien trouvé ici. Quand ce repli s’applique, le panneau l’affiche : une absence de détection ne vaut pas constat d’absence de route.</li>
+</ul><p>Garde <code>dessertR</code> explicite, comme pour le contrôle d’intégrité — <code>foretaccess</code> ne déclare pas cette dépendance.</p>
+<p>L’onglet Desserte consomme désormais l’ensemble des fonctions <code>foretaccess</code> pertinentes : création (glouton, Steiner), optimisation, typage, intégrité, complément OSM et détection.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--tracé-pondéré-par-le-coût-et-optimiseur-aligné-brief-dessertr-0-121-13">Fixed — Tracé pondéré par le coût, et optimiseur aligné (brief dessertR §1)<a class="anchor" aria-label="anchor" href="#fixed--trac%C3%A9-pond%C3%A9r%C3%A9-par-le-co%C3%BBt-et-optimiseur-align%C3%A9-brief-dessertr-0-121-13"></a></h4>
+<ul><li>
+<code>reseau_desserte()</code> était appelé <strong>sans <code>pondere_cout</code></strong>, dont le défaut cœur est <code>FALSE</code>. Le solveur tournait sur une grille neutre à 1,0 et produisait un tracé <strong>purement géométrique</strong> : la surface de coût du Lot 14, calculée juste au-dessus et comptée dans la barre de progression, ne servait que par son masque <code>franchissable</code>. On payait le calcul du coût sans jamais s’en servir. Le tracé minimise désormais des euros et contourne les fortes pentes.</li>
+<li>Conséquence traitée : les réseaux <strong>déjà en cache ne sont plus comparables</strong>. Le sidecar porte un marqueur <code>pondere_cout</code> et <code>.load_cached_desserte()</code> ignore un cache qui ne l’a pas, plutôt que d’afficher un tracé périmé.</li>
+<li>
+<strong>Bug trouvé par la vérification bout-en-bout</strong> : <code>run_desserte_optimiser()</code> ne passait pas <code>pondere_cout</code> non plus. Il minimisait donc des <strong>mètres</strong> pendant que la création minimise des <strong>euros</strong>, et le panneau comparait deux grandeurs différentes — un « gain » affiché de 98 % (1 034 contre 65 983) qui n’existait pas. Le gain réel est de <strong>48 %</strong>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="changed--steiner--mesuré-et-ce-nétait-pas-une-anomalie-0-121-13">Changed — Steiner : mesuré, et ce n’était pas une anomalie<a class="anchor" aria-label="anchor" href="#changed--steiner--mesur%C3%A9-et-ce-n%C3%A9tait-pas-une-anomalie-0-121-13"></a></h4>
+<p>La version précédente notait Steiner « non démontré sur nos données » après l’avoir vu rendre 0 route sur Dabo. <strong>C’est Dabo qui ne l’exerçait pas</strong> : ses 4 parcelles de 110 à 420 ha sont déjà desservies, et le glouton comme la détection y rendaient également 0.</p>
+<p>Vérification bout-en-bout sur <strong>ForetAccess</strong> (30 parcelles, 31 ha), toutes valeurs pondérées :</p>
+<table class="table"><colgroup><col width="30%"><col width="40%"><col width="30%"></colgroup><thead><tr><th>étape</th>
+<th align="right">durée</th>
+<th>résultat</th>
+</tr></thead><tbody><tr><td>glouton</td>
+<td align="right">6,1 s</td>
+<td>4 routes, coût 65 983</td>
+</tr><tr><td>optimiseur multistart</td>
+<td align="right">9,0 s</td>
+<td>3 routes, coût <strong>34 312</strong> (−48 %)</td>
+</tr><tr><td>Steiner</td>
+<td align="right">694,6 s</td>
+<td>5 routes, coût <strong>10 420</strong> (−84 %)</td>
+</tr><tr><td>intégrité</td>
+<td align="right">253,3 s</td>
+<td>41 infractions, 46 composants dont 20 orphelins</td>
+</tr><tr><td>détection LiDAR</td>
+<td align="right">—</td>
+<td>0 détectée</td>
+</tr></tbody></table><p>Steiner divise le coût par <strong>6,3</strong> en partageant les troncs communs entre parcelles dispersées, pour <strong>114×</strong> le temps de calcul. C’est un arbitrage qualité/durée assumé, que le libellé du sélecteur annonce désormais.</p>
+<p><strong>Réserve</strong> : la détection rend 0 même avec le nuage, et <code>dessertR</code> en donne la raison — « Bornes mal adaptées à la donnée : rugosité (86 %) sature à une extrémité […] Recalibrer avec <code>dsr_calibrer_specs()</code> sur ces données ». Ce 0 n’est donc <strong>pas</strong> un constat d’absence de route mais un défaut de calibrage. Cet avertissement part aujourd’hui dans la console du worker et n’est pas remonté à l’utilisateur — à traiter.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.12" id="nemetonshiny-012112-2026-08-11">nemetonshiny 0.121.12 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012112-2026-08-11"></a></h2>
 <div class="section level4">
