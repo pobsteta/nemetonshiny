@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.13.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.14</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,25 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.14" id="nemetonshiny-012114-2026-08-11">nemetonshiny 0.121.14 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012114-2026-08-11"></a></h2>
+<div class="section level4">
+<h4 id="added--desserte--classement-des-linéaires-détectés-dessertr-0-121-14">Added — Desserte : classement des linéaires détectés (dessertR §2/§3)<a class="anchor" aria-label="anchor" href="#added--desserte--classement-des-lin%C3%A9aires-d%C3%A9tect%C3%A9s-dessertr-0-121-14"></a></h4>
+<p><code>dessertR 1.3.0</code> installé, et <code>dsr_classer()</code> câblé sur la sortie de détection. La question qui suit « qu’a-t-on détecté ? » reçoit enfin une réponse : en forêt gérée, ce qui remonte hors référence est majoritairement du <strong>cloisonnement d’exploitation</strong> et du <strong>layon</strong>, pas de la desserte.</p>
+<ul><li>Classes rendues : route/piste forestière, desserte, cloisonnement d’exploitation, layon parcellaire, pare-feu, indéterminé.</li>
+<li>
+<strong><code>CLASSE_CONF</code> est affichée à côté de <code>CLASSE</code></strong>, comme le brief l’exige : une classe posée sur peu de critères renseignés doit se voir. Mesuré sur la desserte de ForetAccess : <strong>33 % de confiance</strong> — nous ne fournissons ni <code>stations</code> (critère fossés) ni <code>ndvi</code> (route/piste, et condition du pare-feu), faute de <code>dsr_measure()</code> et d’ortho IRC câblés. Les critères manquants sont déclarés <strong>inconnus</strong> par dessertR, pas supposés, et le libellé le dit.</li>
+<li>
+<strong>Parcellaire = contours d’UGF</strong> (§3), avec <code>sous_type_parcelle = "section"</code> passé <strong>explicitement</strong> — ce sont des limites de gestion, et une valeur qui ne se lit pas dans la géométrie ne se suppose pas en silence.</li>
+<li>
+<code>OSM_TAGS</code> est <strong>exporté au GeoPackage, jamais téléversé</strong> : c’est une proposition à valider, un import relevant des règles de la communauté OSM. Aucun tag d’accès n’est fabriqué — nous ne passons pas <code>panneaux</code>.</li>
+</ul><p><strong>Détail d’intégration mesuré</strong> : <code>dsr_classer()</code> refuse les <code>MULTILINESTRING</code>, mais <strong>pas inconditionnellement</strong> — <code>dsr_classer(ml)</code> seul passe, le refus tombe dès qu’un critère géométrique est armé, <code>reference</code> ou <code>parcellaire</code>, soit exactement notre appel. La BD TOPO étant multi, le service convertit en <code>LINESTRING</code> avant de classer, et abandonne le classement plutôt que la détection si la conversion échoue.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--dessertr-en-0-121-14">Changed — <code>dessertR</code> en 1.3.0<a class="anchor" aria-label="anchor" href="#changed--dessertr-en-0-121-14"></a></h4>
+<p>Installé depuis le tag <code>v1.3.0</code>, pas depuis l’arbre de travail local qui est en <code>1.3.0.9000</code>. Non-régression vérifiée sur le chemin qui consomme le paquet (<code>verifier_integrite_desserte()</code> → <code>dsr_reseau()</code>) : 41 infractions, 46 composants dont 20 orphelins — <strong>valeurs identiques</strong> à celles mesurées sous 1.2.0.9000.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.13" id="nemetonshiny-012113-2026-08-11">nemetonshiny 0.121.13 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012113-2026-08-11"></a></h2>
 <div class="section level4">
