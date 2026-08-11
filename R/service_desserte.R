@@ -43,14 +43,23 @@
 #' `@section Performance` states the optimisers are "tractable at interactive
 #' scale".
 #'
-#' Measured on Dabo (emprise 1 km, `skidding_m = 100`): greedy **28,3 s / 36
-#' roads / cost 14 109**, Steiner **78,4 s / 0 road / cost 0**. Steiner does not
-#' fail — it returns a well-formed result reporting all 4 parcels served. It
-#' approximates a minimum spanning tree over the *terminals*, a coarser notion of
-#' "served" than greedy's per-cell one, so on an AOI whose parcels already touch
-#' the network it legitimately has nothing to add. Exposed all the same: it is a
-#' documented quality alternative, and the app already renders "no road needed"
-#' as a success. **Not demonstrated on our data** — no AOI here exercises it.
+#' **Steiner buys a far cheaper network, for a far longer wait.** Measured with
+#' `skidding_m = 100` and `pondere_cout = TRUE` (so both minimise euros):
+#'
+#' | AOI | greedy | Steiner |
+#' |---|---|---|
+#' | ForetAccess — 30 parcels, 31 ha, 303 k cells | 6,1 s / 4 roads / **cost 65 983** | 694,6 s / 5 roads / **cost 10 420** |
+#' | Dabo — 4 parcels, 774 ha, 1,35 M cells | 28,3 s / 36 roads | 78,4 s / 0 road |
+#'
+#' On ForetAccess Steiner divides the cost by **6,3** — it shares common trunks
+#' between scattered parcels where greedy connects each to its nearest network
+#' point — for **114x** the wall clock. On Dabo it returns nothing, which is
+#' correct rather than broken: its spanning tree is built over *terminals*, a
+#' coarser notion of "served" than greedy's per-cell one, and Dabo's four large
+#' parcels already touch the network.
+#'
+#' So the choice is a genuine quality/time trade-off, and the user must make it
+#' knowingly: on a large AOI Steiner is measured in tens of minutes.
 #' @noRd
 DESSERTE_ENGINES <- c("glouton", "steiner")
 
@@ -288,7 +297,13 @@ run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
     foretaccess::optimiser_reseau(
       pre, cout, parcelles = parcelles, desserte_existante = desserte,
       strategie = strategie, n_start = as.integer(n_start),
-      n_iter = as.integer(n_iter), skidding_m = skidding_m)
+      n_iter = as.integer(n_iter), skidding_m = skidding_m,
+      # MEME pondération que `run_desserte()` : sans elle l'optimiseur
+      # minimiserait des MÈTRES pendant que la création minimise des EUROS, et
+      # le panneau comparerait deux grandeurs différentes. Mesuré sur
+      # ForetAccess : 1 034 sans pondération contre 65 983 pour la création
+      # pondérée — un « gain » de 98 % qui n'existe pas.
+      pondere_cout = TRUE)
   }, error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(res, "acc_err")) {
     return(list(status = "error", reason = "desserte_optim_failed", detail = res$msg))
