@@ -1,3 +1,45 @@
+# nemetonshiny 0.121.12 (2026-08-11)
+
+### Added — Desserte : optimisation du réseau, complément OSM, mode Steiner
+
+Trois fonctions de `foretaccess` jusque-là non consommées rejoignent l'onglet
+Desserte, chacune mesurée avant câblage.
+
+* **Optimisation du réseau** (`optimiser_reseau()`) — stratégies multi-départs,
+  recuit simulé et rip-up & reroute, en action séparée. Mesuré sur Dabo
+  (`skidding_m = 100`) : glouton 82,2 s / coût 16 673 contre multistart 100,2 s /
+  coût **15 002**, soit 1,2× le temps pour **−10 % de coût**.
+* **Complément OpenStreetMap** (`acquire_desserte_osm()` +
+  `comparer_desserte_osm()`, spec 028) — repère les pistes absentes de la
+  BD TOPO. 544 tronçons trouvés sur l'emprise de Dabo.
+* **Mode Steiner** exposé en second moteur de création.
+
+### Fixed — Deux exclusions périmées corrigées
+
+L'en-tête de `service_desserte.R` excluait Steiner et les optimiseurs « tant
+qu'un travail perf n'a pas eu lieu côté `foretaccess` ». **Ce travail a eu
+lieu** : le cœur a borné l'A* au corridor, et le `@section Performance` de
+`optimiser_reseau()` indique que les optimiseurs sont « tractable at interactive
+scale », avec les défauts exposables (`n_start` 8-32, `n_iter` 100-300). Les deux
+tests qui verrouillaient l'exclusion sont mis à jour.
+
+### Deux comportements élucidés, aucun n'était un bug de l'app
+
+* **Acquisition OSM lente par intermittence.** Un test bout-en-bout a dépassé
+  10 minutes contre ~110 s attendus. Le process R était à **2,3 % de CPU**,
+  bloqué dans `poll_schedule_timeout` sur un socket, et la sortie disait
+  `Waiting 60s for retry backoff` : c'est la **limitation de débit d'Overpass**,
+  pas notre code. Chronométrage par étape, cache chaud : 117,7 s au total, dont
+  115,1 s pour le seul recoupement. Le libellé d'aide, qui annonçait une
+  « acquisition rapide », est corrigé pour prévenir de cette attente.
+* **Steiner rend 0 route** là où le glouton en trouve 36, pour 2,8× le temps. Ce
+  n'est pas un échec : le résultat est bien formé et déclare les 4 parcelles
+  desservies. Steiner approxime un arbre couvrant sur les **terminaux**, notion
+  de « desservi » plus grossière que le per-cellule du glouton ; sur une AOI dont
+  les parcelles touchent déjà le réseau, il n'a légitimement rien à ajouter.
+  Exposé quand même — c'est une alternative documentée et l'app rend déjà
+  « aucune route » comme un succès — mais **non démontré sur nos données**.
+
 # nemetonshiny 0.121.11 (2026-08-11)
 
 ### Added — Desserte : contrôle d'intégrité du réseau (spec 025)

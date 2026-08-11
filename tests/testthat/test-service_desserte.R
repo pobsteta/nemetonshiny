@@ -1,11 +1,15 @@
 # Tests du service Desserte (création de réseau, adaptateur foretaccess).
 
-test_that("DESSERTE_ENGINES : glouton exposé, steiner/optimiseurs NON exposés", {
-  # v1 : seul le glouton est exposable (Steiner N² -> > 5 h à 30 parcelles, cf.
-  # brief cœur). Garde-fou de régression contre une réexposition accidentelle.
+test_that("DESSERTE_ENGINES : glouton et steiner exposes, optimiseurs a part", {
+  # L'exclusion de Steiner (« > 5 h a 30 parcelles ») est PERIMEE : le coeur a
+  # borne l'A* au corridor. Mesure sur Dabo (skidding_m = 100) : glouton 28,3 s /
+  # 36 routes, steiner 78,4 s / 0 route — resultat bien forme, pas un echec.
   expect_true("glouton" %in% DESSERTE_ENGINES)
-  expect_false("steiner" %in% DESSERTE_ENGINES)
+  expect_true("steiner" %in% DESSERTE_ENGINES)
+  # Les strategies d'optimisation ne sont PAS des moteurs de creation : elles
+  # vivent dans DESSERTE_OPTIM_STRATEGIES et passent par optimiser_reseau().
   expect_false(any(c("multistart", "recuit", "riprute") %in% DESSERTE_ENGINES))
+  expect_setequal(DESSERTE_OPTIM_STRATEGIES, c("multistart", "recuit", "riprute"))
 })
 
 test_that("export_desserte_geopackage : copie si présent, FALSE sinon", {
@@ -41,8 +45,13 @@ test_that("run_desserte : chemins de garde structurés (pas d'exception)", {
   sf::st_write(poly, aoi_gpkg, quiet = TRUE, delete_dsn = TRUE)
   expect_equal(nemetonshiny:::run_desserte(aoi_gpkg, character(0), cache)$reason,
                "desserte_need_engine")
-  expect_equal(nemetonshiny:::run_desserte(aoi_gpkg, "steiner", cache)$reason,
+  expect_equal(nemetonshiny:::run_desserte(aoi_gpkg, "moteur_inconnu", cache)$reason,
                "desserte_need_engine")
+  # `steiner` est desormais un moteur VALIDE : il franchit ce garde et echoue
+  # plus loin, faute de donnees sur cette AOI synthetique.
+  expect_false(identical(
+    nemetonshiny:::run_desserte(aoi_gpkg, "steiner", cache)$reason,
+    "desserte_need_engine"))
 })
 
 test_that("run_desserte : échec d'acquisition MNT -> erreur structurée", {
