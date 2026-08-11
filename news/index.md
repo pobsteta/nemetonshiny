@@ -1,5 +1,39 @@
 # Changelog
 
+## nemetonshiny 0.121.9 (2026-08-11)
+
+#### Changed — Desserte : avertissement de durée honnête et progression par étape
+
+« Générer la desserte » donnait l’impression de ne rien faire sur un
+projet à grandes parcelles. Le calcul partait bien — bouton grisé, tâche
+lancée — mais tournait **plus de 22 minutes sans rendre la main** sur
+Dabo (4 parcelles, 775 ha, tampon 1 km), sans autre signe qu’un
+chronomètre.
+
+- **Avertissement corrigé.** Il annonçait « environ 10 min pour quelques
+  dizaines de parcelles » et « le temps croît avec le nombre de
+  parcelles ». Les deux trompaient : le glouton travaille sur une grille
+  à 5 m, donc le coût dépend de la **surface** de l’emprise, pas du
+  nombre de polygones. Un projet à 4 parcelles de 110 à 420 ha est bien
+  plus lourd qu’un projet à 30 parcelles d’un hectare. Le texte indexe
+  désormais la durée sur le **nombre de cellules** — que l’estimation
+  mémoire affiche déjà juste au-dessus du bouton — et précise que le
+  calcul continue si l’on change d’onglet.
+- **Progression par étape.** `run_desserte()` publie sa phase sur un
+  canal disque (`cache/desserte/engine_status.json`, écriture atomique
+  tmp+rename), que le module poll chaque seconde et affiche dans la
+  notification : « Moteur glouton (étape la plus longue) (6/6) ». Même
+  canal et même contrat que reGénération, y compris la péremption à 120
+  s qui évite d’afficher la phase d’un worker mort. Le fichier est
+  retiré en fin de tâche.
+
+**Limite assumée** : la granularité s’arrête à l’étape.
+[`foretaccess::reseau_desserte()`](https://pobsteta.github.io/foretaccess/reference/reseau_desserte.html)
+n’expose aucun rappel de progression (vérifié : ni `progress` ni
+`callback` dans ses arguments), donc la phase « moteur » — qui porte
+l’essentiel du temps — reste opaque. Une progression par parcelle
+demanderait une évolution du cœur.
+
 ## nemetonshiny 0.121.8 (2026-08-10)
 
 #### Changed — Notification du pré-calcul CVAT : cadre unifié et libellé explicite

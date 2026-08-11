@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.8.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,18 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.9" id="nemetonshiny-01219-2026-08-11">nemetonshiny 0.121.9 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01219-2026-08-11"></a></h2>
+<div class="section level4">
+<h4 id="changed--desserte--avertissement-de-durée-honnête-et-progression-par-étape-0-121-9">Changed — Desserte : avertissement de durée honnête et progression par étape<a class="anchor" aria-label="anchor" href="#changed--desserte--avertissement-de-dur%C3%A9e-honn%C3%AAte-et-progression-par-%C3%A9tape-0-121-9"></a></h4>
+<p>« Générer la desserte » donnait l’impression de ne rien faire sur un projet à grandes parcelles. Le calcul partait bien — bouton grisé, tâche lancée — mais tournait <strong>plus de 22 minutes sans rendre la main</strong> sur Dabo (4 parcelles, 775 ha, tampon 1 km), sans autre signe qu’un chronomètre.</p>
+<ul><li>
+<strong>Avertissement corrigé.</strong> Il annonçait « environ 10 min pour quelques dizaines de parcelles » et « le temps croît avec le nombre de parcelles ». Les deux trompaient : le glouton travaille sur une grille à 5 m, donc le coût dépend de la <strong>surface</strong> de l’emprise, pas du nombre de polygones. Un projet à 4 parcelles de 110 à 420 ha est bien plus lourd qu’un projet à 30 parcelles d’un hectare. Le texte indexe désormais la durée sur le <strong>nombre de cellules</strong> — que l’estimation mémoire affiche déjà juste au-dessus du bouton — et précise que le calcul continue si l’on change d’onglet.</li>
+<li>
+<strong>Progression par étape.</strong> <code>run_desserte()</code> publie sa phase sur un canal disque (<code>cache/desserte/engine_status.json</code>, écriture atomique tmp+rename), que le module poll chaque seconde et affiche dans la notification : « Moteur glouton (étape la plus longue) (6/6) ». Même canal et même contrat que reGénération, y compris la péremption à 120 s qui évite d’afficher la phase d’un worker mort. Le fichier est retiré en fin de tâche.</li>
+</ul><p><strong>Limite assumée</strong> : la granularité s’arrête à l’étape. <code><a href="https://pobsteta.github.io/foretaccess/reference/reseau_desserte.html" class="external-link">foretaccess::reseau_desserte()</a></code> n’expose aucun rappel de progression (vérifié : ni <code>progress</code> ni <code>callback</code> dans ses arguments), donc la phase « moteur » — qui porte l’essentiel du temps — reste opaque. Une progression par parcelle demanderait une évolution du cœur.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.8" id="nemetonshiny-01218-2026-08-10">nemetonshiny 0.121.8 (2026-08-10)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01218-2026-08-10"></a></h2>
 <div class="section level4">
