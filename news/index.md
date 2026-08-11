@@ -92,11 +92,26 @@ recalcul.
 [`foretaccess::build_cvat_precomputed()`](https://pobsteta.github.io/foretaccess/reference/build_cvat_precomputed.html),
 la condition de réutilisation est
 `!is.null(mnt_existant) && !isTRUE(overwrite) && .emprise_couverte(...)`.
-Passer `overwrite = TRUE` pour forcer le recalcul du CVAT **désactive
-donc aussi** la réutilisation du MNT fourni et déclenche une
-ré-acquisition LiDAR HD complète — avec un message (« MNT fourni absent
-ou ne couvrant pas l’emprise ») trompeur, puisque la mosaïque la
-couvrait. Les deux intentions gagneraient à être séparées.
+Passer `overwrite = TRUE` pour forcer le recalcul du CVAT désactive donc
+aussi la réutilisation du MNT fourni et déclenche une ré-acquisition
+LiDAR HD.
+
+> **Correction (2026-08-11)** — cette note affirmait de surcroît que le
+> message « MNT fourni absent ou ne couvrant pas l’emprise » était
+> trompeur, « puisque la mosaïque la couvrait ». **C’est faux.**
+> Vérification faite : l’emprise est bien incluse dans l’étendue de la
+> mosaïque, mais `.emprise_couverte()` teste la proportion de cellules
+> **non-NA**, et le MNT LiDAR HD de Dabo n’en a que **62,4 %** sur
+> l’emprise — sous le seuil de 90 %. La ré-acquisition est donc
+> **justifiée** et le message **exact**. Seul subsiste le fait que
+> `overwrite` court-circuite le test de couverture, sans impact démontré
+> ici : le test aurait de toute façon échoué. Aucun correctif cœur n’est
+> demandé de ce chef.
+>
+> Ce taux de 62,4 % explique aussi, et mieux, pourquoi le CVAT ne
+> satisfait jamais `.cvat_covers()` : la couverture LiDAR HD est
+> réellement trouée sur cette AOI. Le sidecar de provenance reste donc
+> le bon correctif.
 
 ## nemetonshiny 0.121.6 (2026-08-10)
 
