@@ -1,5 +1,54 @@
 # Changelog
 
+## nemetonshiny 0.121.10 (2026-08-11)
+
+#### Fixed — Desserte : les 22 minutes venaient d’un `skidding_m` manquant
+
+`run_desserte()` appelait
+[`foretaccess::reseau_desserte()`](https://pobsteta.github.io/foretaccess/reference/reseau_desserte.html)
+**sans `skidding_m`**, donc au défaut cœur `0` — le pire cas que la
+fonction documente elle-même : « Left at `0`, every parcel cell that is
+not *on* a road spawns its own trace, which is both **slow and
+over-connected** ». Nous demandions donc un tracé A\* depuis **chaque
+cellule de parcelle** hors route : 309 726 tracés sur Dabo, pour 4 UGF.
+Le résultat n’était pas seulement interminable, il était
+**sur-connecté**.
+
+Diagnostic et mesures dus au cœur (`foretaccess`, brief
+`docs/brief-nemetonshiny-skidding-desserte.md`), qui a réfuté notre
+propre hand-off : nous demandions un canal de progression dans le noyau
+Rust, alors que le correctif tenait en un argument côté app.
+
+- **`skidding_m` est désormais passé au moteur**, valeur par défaut
+  `DESSERTE_SKIDDING_DEFAULT_M = 300` m. Repli sur ce défaut pour toute
+  valeur absente, négative ou non numérique — le `0` du cœur ne doit
+  jamais s’appliquer.
+- **Nouveau champ « Distance de débardage (m) »** dans la sidebar
+  Desserte. Ce n’est pas un réglage de performance mais un **paramètre
+  métier qui change le résultat** : sur Dabo, 39 routes à 100 m et
+  aucune à 300 m. Le masquer rendrait « rien à construire »
+  inintelligible.
+- **Zéro route est traité comme un SUCCÈS.** Message et badge dédiés («
+  le réseau existant dessert déjà toutes les parcelles à 300 m de
+  débardage »), au lieu d’un « desserte créée » affiché devant une carte
+  vide. `n_routes` et `skidding_m` sont remontés par le service et
+  persistés dans le sidecar.
+- **En-têtes corrigés.** `service_desserte.R` et `mod_desserte.R`
+  documentaient « un tracé A\* par parcelle » et « ~11,5 min » : c’est
+  un tracé par **cellule** de parcelle, et cette durée était celle du
+  pire cas à `skidding_m = 0`.
+
+Vérifié de bout en bout sur Dabo (4 UGF, 774 ha, tampon 1 km) : **39,7
+s**, `status = success`, 0 route, 4/4 parcelles desservies — contre
+**plus de 22 minutes sans jamais rendre la main** auparavant.
+
+**Conséquence sur le hand-off cœur** :
+`BRIEF-foretaccess-progression-reseau-desserte.md` reste ouvert mais
+redescend en priorité basse, et son contrat était erroné — le moteur
+itère sur les **cellules-source** (309 726 sur Dabo), pas sur les
+parcelles, donc le compteur « i/n » proposé aurait écrit trois cent
+mille fichiers.
+
 ## nemetonshiny 0.121.9 (2026-08-11)
 
 #### Changed — Desserte : avertissement de durée honnête et progression par étape

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.9.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.10" id="nemetonshiny-012110-2026-08-11">nemetonshiny 0.121.10 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012110-2026-08-11"></a></h2>
+<div class="section level4">
+<h4 id="fixed--desserte--les-minutes-venaient-dun-skidding_m-manquant-0-121-10">Fixed — Desserte : les 22 minutes venaient d’un <code>skidding_m</code> manquant<a class="anchor" aria-label="anchor" href="#fixed--desserte--les-minutes-venaient-dun-skidding_m-manquant-0-121-10"></a></h4>
+<p><code>run_desserte()</code> appelait <code><a href="https://pobsteta.github.io/foretaccess/reference/reseau_desserte.html" class="external-link">foretaccess::reseau_desserte()</a></code> <strong>sans <code>skidding_m</code></strong>, donc au défaut cœur <code>0</code> — le pire cas que la fonction documente elle-même : « Left at <code>0</code>, every parcel cell that is not <em>on</em> a road spawns its own trace, which is both <strong>slow and over-connected</strong> ». Nous demandions donc un tracé A* depuis <strong>chaque cellule de parcelle</strong> hors route : 309 726 tracés sur Dabo, pour 4 UGF. Le résultat n’était pas seulement interminable, il était <strong>sur-connecté</strong>.</p>
+<p>Diagnostic et mesures dus au cœur (<code>foretaccess</code>, brief <code>docs/brief-nemetonshiny-skidding-desserte.md</code>), qui a réfuté notre propre hand-off : nous demandions un canal de progression dans le noyau Rust, alors que le correctif tenait en un argument côté app.</p>
+<ul><li>
+<strong><code>skidding_m</code> est désormais passé au moteur</strong>, valeur par défaut <code>DESSERTE_SKIDDING_DEFAULT_M = 300</code> m. Repli sur ce défaut pour toute valeur absente, négative ou non numérique — le <code>0</code> du cœur ne doit jamais s’appliquer.</li>
+<li>
+<strong>Nouveau champ « Distance de débardage (m) »</strong> dans la sidebar Desserte. Ce n’est pas un réglage de performance mais un <strong>paramètre métier qui change le résultat</strong> : sur Dabo, 39 routes à 100 m et aucune à 300 m. Le masquer rendrait « rien à construire » inintelligible.</li>
+<li>
+<strong>Zéro route est traité comme un SUCCÈS.</strong> Message et badge dédiés (« le réseau existant dessert déjà toutes les parcelles à 300 m de débardage »), au lieu d’un « desserte créée » affiché devant une carte vide. <code>n_routes</code> et <code>skidding_m</code> sont remontés par le service et persistés dans le sidecar.</li>
+<li>
+<strong>En-têtes corrigés.</strong> <code>service_desserte.R</code> et <code>mod_desserte.R</code> documentaient « un tracé A* par parcelle » et « ~11,5 min » : c’est un tracé par <strong>cellule</strong> de parcelle, et cette durée était celle du pire cas à <code>skidding_m = 0</code>.</li>
+</ul><p>Vérifié de bout en bout sur Dabo (4 UGF, 774 ha, tampon 1 km) : <strong>39,7 s</strong>, <code>status = success</code>, 0 route, 4/4 parcelles desservies — contre <strong>plus de 22 minutes sans jamais rendre la main</strong> auparavant.</p>
+<p><strong>Conséquence sur le hand-off cœur</strong> : <code>BRIEF-foretaccess-progression-reseau-desserte.md</code> reste ouvert mais redescend en priorité basse, et son contrat était erroné — le moteur itère sur les <strong>cellules-source</strong> (309 726 sur Dabo), pas sur les parcelles, donc le compteur « i/n » proposé aurait écrit trois cent mille fichiers.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.9" id="nemetonshiny-01219-2026-08-11">nemetonshiny 0.121.9 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01219-2026-08-11"></a></h2>
 <div class="section level4">
