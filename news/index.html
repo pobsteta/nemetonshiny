@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.10.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,17 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.11" id="nemetonshiny-012111-2026-08-11">nemetonshiny 0.121.11 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012111-2026-08-11"></a></h2>
+<div class="section level4">
+<h4 id="added--desserte--contrôle-dintégrité-du-réseau-spec-0-121-11">Added — Desserte : contrôle d’intégrité du réseau (spec 025)<a class="anchor" aria-label="anchor" href="#added--desserte--contr%C3%B4le-dint%C3%A9grit%C3%A9-du-r%C3%A9seau-spec-0-121-11"></a></h4>
+<p>Nouveau panneau « Intégrité du réseau » dans l’onglet Desserte, adossé à <code><a href="https://pobsteta.github.io/foretaccess/reference/verifier_integrite_desserte.html" class="external-link">foretaccess::verifier_integrite_desserte()</a></code>. Il vérifie la cohérence du réseau <strong>obtenu</strong> — existant ∪ créé — et remonte les infractions de connectivité, leur linéaire, le nombre de composants et les composants orphelins.</p>
+<p>Il comble un angle mort : le badge <code>raccorde</code> ne répond qu’à « les routes créées sont-elles rattachées ? » et ne dit rien du graphe résultant. Mesuré sur Dabo : <strong>13 infractions, 2 540 m, 17 composants dont 10 orphelins</strong> — sur le réseau existant, puisque le moteur n’avait aucune route à créer.</p>
+<p><strong>Action séparée, et c’est délibéré.</strong> Le contrôle coûte <strong>376,8 s</strong> sur Dabo (3 122 tronçons) contre 39,7 s pour la création entière. L’enchaîner au calcul aurait rendu « Générer la desserte » dix fois plus lent, soit exactement la régression corrigée en v0.121.10. Il a donc son propre bouton, son propre worker <code>future</code> — le typage voisin tourne en synchrone, tenable à quelques secondes mais qui gèlerait l’app ici — et sa notification à engrenage et chronomètre. Le résultat est persisté (<code>integrite.rds</code>) et rechargé avec le projet.</p>
+<p><strong>Garde <code>dessertR</code>.</strong> Le contrôle atteint ce paquet via <code>.integrite_calculer()</code> → <code>.dsr("dsr_reseau")</code>. En son absence <code>foretaccess</code> <strong>ne lève pas d’erreur</strong> : il dégrade vers <code>.integrite_vide()</code>, dont <code>n_infractions</code> vaut <code>NA</code>. Rendu tel quel, ce résultat se lirait comme « aucune infraction ». L’app teste donc explicitement la présence du paquet et affiche « non contrôlée » plutôt qu’un bilan vide trompeur.</p>
+<p><strong>À signaler au cœur</strong> : <code>dessertR</code> n’est déclaré <strong>nulle part</strong> dans le DESCRIPTION de <code>foretaccess</code> — ni Imports, ni Suggests, ni Remotes. Il est résolu à l’appel par <code><a href="https://rdrr.io/r/base/ns-reflect.html" class="external-link">getExportedValue()</a></code>. Installer <code>foretaccess</code> n’installe donc pas <code>dessertR</code>, et sur un poste qui ne l’a pas, la correction LiDAR de la desserte comme ce contrôle d’intégrité échouent sans message actionnable.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.10" id="nemetonshiny-012110-2026-08-11">nemetonshiny 0.121.10 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012110-2026-08-11"></a></h2>
 <div class="section level4">
