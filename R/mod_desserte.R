@@ -13,6 +13,20 @@
 # affiché en overlay RASTER (léger) ; les lignes vectorielles détaillées partent
 # à l'export GeoPackage.
 
+# Lit `engine_status.json` du cache desserte, écrit par le worker à chaque
+# changement d'étape (`.dess_write_phase`). NULL si absent, illisible ou périmé
+# (> 2 min sans mise à jour) — même contrat que `.regen_read_phase()`. Le seuil
+# de péremption évite d'afficher indéfiniment la phase d'un worker mort.
+.dess_read_phase <- function(project_path) {
+  if (is.null(project_path)) return(NULL)
+  f <- file.path(project_path, "cache", "desserte", "engine_status.json")
+  if (!file.exists(f)) return(NULL)
+  st <- tryCatch(jsonlite::fromJSON(f), error = function(e) NULL)
+  if (is.null(st) || is.null(st$phase)) return(NULL)
+  if (!is.null(st$ts) && as.integer(Sys.time()) - st$ts > 120L) return(NULL)
+  as.character(st$phase)[1]
+}
+
 #' @noRd
 mod_desserte_ui <- function(id) {
   ns <- shiny::NS(id)
@@ -230,12 +244,28 @@ mod_desserte_server <- function(id, app_state) {
         })
     })
 
-    # Rafraîchit le chrono de la notif persistante tant que le worker tourne.
+    # Libellé « en cours » enrichi de la phase publiée par le worker sur le canal
+    # disque. Le moteur glouton peut tourner des dizaines de minutes sur de
+    # grandes parcelles : sans la phase, l'utilisateur ne voit qu'un chrono et
+    # conclut que rien ne se passe.
+    dess_running_label <- function() {
+      pp <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      ph <- .dess_read_phase(pp)
+      base <- i18n$t("dess_running")
+      if (is.null(ph)) return(base)
+      i <- match(ph, DESSERTE_PHASES)
+      lbl <- i18n$t(paste0("dess_phase_", ph))
+      if (is.na(i)) return(paste0(base, " — ", lbl))
+      sprintf("%s — %s (%d/%d)", base, lbl, i, length(DESSERTE_PHASES))
+    }
+
+    # Rafraîchit le chrono ET la phase de la notif persistante tant que le
+    # worker tourne.
     shiny::observe({
       if (!isTRUE(rv$running)) return()
       shiny::invalidateLater(1000)
       shiny::showNotification(
-        .running_notif_content(i18n$t("dess_running"), shiny::isolate(rv$start)),
+        .running_notif_content(dess_running_label(), shiny::isolate(rv$start)),
         id = session$ns("dess_notif"), type = "message", duration = NULL)
     })
 
@@ -244,7 +274,7 @@ mod_desserte_server <- function(id, app_state) {
       shiny::invalidateLater(1000)
       htmltools::div(
         class = "small text-info mt-1 text-center",
-        .running_notif_content(i18n$t("dess_running"), rv$start))
+        .running_notif_content(dess_running_label(), rv$start))
     })
     shiny::outputOptions(output, "run_status", suspendWhenHidden = FALSE)
 
@@ -255,6 +285,14 @@ mod_desserte_server <- function(id, app_state) {
       rv$running <- FALSE
       rv$start <- NULL
       shiny::removeNotification(session$ns("dess_notif"))
+      # Retire le canal de phase : un `engine_status.json` laissé sur disque
+      # ferait afficher une phase périmée au prochain lancement, avant que le
+      # worker n'ait publié la sienne.
+      tryCatch({
+        pp <- app_state$current_project$path
+        if (!is.null(pp)) unlink(file.path(pp, "cache", "desserte",
+                                           "engine_status.json"))
+      }, error = function(e) invisible(NULL))
 
       res <- tryCatch(dess_task$result(), error = function(e) {
         list(status = "error", reason = "desserte_engine_failed",
