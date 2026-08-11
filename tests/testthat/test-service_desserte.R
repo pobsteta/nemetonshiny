@@ -454,3 +454,24 @@ test_that(".load_cached_detection : NULL si absent, relit sinon", {
     expect_identical(nemetonshiny:::.load_cached_detection(".")$n_detecte, 7L)
   })
 })
+
+# --- Ponderation par le cout de construction (brief dessertR §1) -------------
+# `pondere_cout = TRUE` fait minimiser des EUROS et non des metres. Il CHANGE
+# les traces : un reseau mis en cache avant ce reglage n'est pas comparable.
+
+test_that(".load_cached_desserte ignore un reseau trace sans ponderation", {
+  withr::with_tempdir({
+    cd <- nemetonshiny:::.desserte_cache_dir(".")
+    dir.create(cd, recursive = TRUE)
+    writeLines("x", file.path(cd, "reseau_glouton.tif"))
+    # Sidecar d'AVANT la ponderation : pas de marqueur -> cache perime.
+    saveRDS(list(cout = 1, n_desservies = 1L, n_parcelles = 1L),
+            file.path(cd, "reseau_glouton.rds"))
+    expect_null(nemetonshiny:::.load_cached_desserte("."))
+    # Avec le marqueur, le cache est servi.
+    saveRDS(list(cout = 1, n_desservies = 1L, n_parcelles = 1L, pondere_cout = TRUE),
+            file.path(cd, "reseau_glouton.rds"))
+    got <- nemetonshiny:::.load_cached_desserte(".")
+    expect_true(is.list(got) && identical(got$status, "success"))
+  })
+})

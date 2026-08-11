@@ -631,6 +631,11 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     if (!file.exists(rp)) next
     meta <- tryCatch(readRDS(file.path(cache_dir, paste0("reseau_", eng, ".rds"))),
                      error = function(e) list())
+    # Un réseau tracé AVANT `pondere_cout = TRUE` minimisait des mètres, pas des
+    # euros : ses tracés ne sont pas comparables à ceux d'aujourd'hui. On le
+    # traite comme absent plutôt que de l'afficher comme un résultat courant —
+    # l'utilisateur relance, ce qui est le seul moyen d'obtenir le bon tracé.
+    if (!isTRUE(meta$pondere_cout)) next
     gpkg <- file.path(cache_dir, "desserte.gpkg")
     return(list(
       status = "success",
@@ -795,10 +800,15 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   if (!is.finite(skidding_m) || skidding_m < 0) {
     skidding_m <- DESSERTE_SKIDDING_DEFAULT_M
   }
+  # `pondere_cout = TRUE` : le tracé minimise des EUROS, pas des mètres. Sans
+  # lui, la surface de coût du Lot 14 — calculée juste au-dessus, phase « cout »
+  # comprise — ne servait que par son masque `franchissable` : le solveur
+  # tournait sur une grille neutre à 1,0 et rendait un tracé purement
+  # géométrique. On payait le calcul du coût sans jamais s'en servir.
   res <- tryCatch(
     foretaccess::reseau_desserte(pre, cout, parcelles = parcelles,
                                  desserte_existante = desserte, mode = engine,
-                                 skidding_m = skidding_m),
+                                 skidding_m = skidding_m, pondere_cout = TRUE),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(res, "acc_err")) {
     return(list(status = "error", reason = "desserte_engine_failed", detail = res$msg))
@@ -848,7 +858,8 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   cout_total <- suppressWarnings(as.numeric(res$cout))
   saveRDS(list(cout = cout_total, connexe = connexe, raccorde = raccorde,
                n_desservies = n_desservies, n_parcelles = n_parcelles,
-               n_routes = n_routes, skidding_m = skidding_m),
+               n_routes = n_routes, skidding_m = skidding_m,
+               pondere_cout = TRUE),
           file.path(cache_dir, paste0("reseau_", engine, ".rds")))
 
   # 8. GeoPackage exportable : parcelles + desserte existante + réseau créé.
