@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.12.9001 (2026-08-11)
+# nemetonshiny 0.121.13 (2026-08-11)
 
 ### Added — Desserte : détection de routes non cartographiées (dessertR, spec 026)
 
@@ -34,6 +34,52 @@ ne déclare pas cette dépendance.
 L'onglet Desserte consomme désormais l'ensemble des fonctions `foretaccess`
 pertinentes : création (glouton, Steiner), optimisation, typage, intégrité,
 complément OSM et détection.
+
+### Fixed — Tracé pondéré par le coût, et optimiseur aligné (brief dessertR §1)
+
+* `reseau_desserte()` était appelé **sans `pondere_cout`**, dont le défaut cœur
+  est `FALSE`. Le solveur tournait sur une grille neutre à 1,0 et produisait un
+  tracé **purement géométrique** : la surface de coût du Lot 14, calculée juste
+  au-dessus et comptée dans la barre de progression, ne servait que par son
+  masque `franchissable`. On payait le calcul du coût sans jamais s'en servir.
+  Le tracé minimise désormais des euros et contourne les fortes pentes.
+* Conséquence traitée : les réseaux **déjà en cache ne sont plus comparables**.
+  Le sidecar porte un marqueur `pondere_cout` et `.load_cached_desserte()`
+  ignore un cache qui ne l'a pas, plutôt que d'afficher un tracé périmé.
+* **Bug trouvé par la vérification bout-en-bout** : `run_desserte_optimiser()`
+  ne passait pas `pondere_cout` non plus. Il minimisait donc des **mètres**
+  pendant que la création minimise des **euros**, et le panneau comparait deux
+  grandeurs différentes — un « gain » affiché de 98 % (1 034 contre 65 983) qui
+  n'existait pas. Le gain réel est de **48 %**.
+
+### Changed — Steiner : mesuré, et ce n'était pas une anomalie
+
+La version précédente notait Steiner « non démontré sur nos données » après
+l'avoir vu rendre 0 route sur Dabo. **C'est Dabo qui ne l'exerçait pas** : ses
+4 parcelles de 110 à 420 ha sont déjà desservies, et le glouton comme la
+détection y rendaient également 0.
+
+Vérification bout-en-bout sur **ForetAccess** (30 parcelles, 31 ha), toutes
+valeurs pondérées :
+
+| étape | durée | résultat |
+|---|---:|---|
+| glouton | 6,1 s | 4 routes, coût 65 983 |
+| optimiseur multistart | 9,0 s | 3 routes, coût **34 312** (−48 %) |
+| Steiner | 694,6 s | 5 routes, coût **10 420** (−84 %) |
+| intégrité | 253,3 s | 41 infractions, 46 composants dont 20 orphelins |
+| détection LiDAR | — | 0 détectée |
+
+Steiner divise le coût par **6,3** en partageant les troncs communs entre
+parcelles dispersées, pour **114×** le temps de calcul. C'est un arbitrage
+qualité/durée assumé, que le libellé du sélecteur annonce désormais.
+
+**Réserve** : la détection rend 0 même avec le nuage, et `dessertR` en donne la
+raison — « Bornes mal adaptées à la donnée : rugosité (86 %) sature à une
+extrémité […] Recalibrer avec `dsr_calibrer_specs()` sur ces données ». Ce 0
+n'est donc **pas** un constat d'absence de route mais un défaut de calibrage.
+Cet avertissement part aujourd'hui dans la console du worker et n'est pas
+remonté à l'utilisateur — à traiter.
 
 # nemetonshiny 0.121.12 (2026-08-11)
 
