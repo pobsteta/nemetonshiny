@@ -1,5 +1,11 @@
 # BRIEF cœur — `detecter_desserte(specs =)` n'accepte pas ce que `dsr_calibrer_specs()` produit
 
+> # 🔀 REMPLACÉ (2026-08-11)
+> Ce brief est repris dans **`BRIEF-foretaccess-desserte-consolide.md`**, qui
+> regroupe les trois chantiers `foretaccess` encore ouverts. Ne pas le traiter
+> séparément — conservé pour la trace du raisonnement.
+
+
 > Hand-off depuis la session de dev `nemetonshiny`.
 > **Un seul repo à ouvrir : `pobsteta/foretaccess`.** L'écart est à la frontière avec `dessertR`, mais `dessertR` n'a rien à corriger — voir §4bis.
 > Versions : `foretaccess 2.0.1`, `dessertR 1.3.0`, `nemetonshiny 0.121.15`.
