@@ -113,6 +113,21 @@ mod_desserte_ui <- function(id) {
                 icon = shiny::icon("diagram-project"),
                 class = "btn-outline-primary btn-sm w-100 mb-2"),
               shiny::uiOutput(ns("typage_result"))),
+            # Intégrité du réseau (spec 025). Action SÉPARÉE et non une étape du
+            # calcul : mesuré 376,8 s sur Dabo (3 122 tronçons) contre 39,7 s
+            # pour la création entière — l'inclure rendrait « Générer la
+            # desserte » dix fois plus lent.
+            bslib::accordion_panel(
+              title = i18n$t("dess_integrite_title"),
+              icon = bsicons::bs_icon("diagram-3-fill"),
+              htmltools::tags$p(class = "text-muted small",
+                                i18n$t("dess_integrite_intro")),
+              bslib::input_task_button(
+                ns("run_integrite"), i18n$t("dess_integrite_run"),
+                label_busy = i18n$t("dess_integrite_running"),
+                icon = bsicons::bs_icon("check2-square"),
+                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              shiny::uiOutput(ns("integrite_status"))),
             bslib::accordion_panel(
               title = i18n$t("action_plan_section_exports"),
               icon = bsicons::bs_icon("box-arrow-up"),
@@ -396,6 +411,7 @@ mod_desserte_server <- function(id, app_state) {
       raccorde <- res$raccorde %||% NA
       cout <- res$cout %||% NA_real_
       nroutes <- suppressWarnings(as.integer(res$n_routes %||% NA_integer_))
+      integ <- res$integrite
       htmltools::tagList(
         badge(i18n$t("dess_badge_desservies"),
               if (is.na(nd) || is.na(np)) "—" else sprintf("%d / %d", nd, np),
@@ -408,6 +424,24 @@ mod_desserte_server <- function(id, app_state) {
               if (!is.na(nroutes) && nroutes == 0L) "bg-success" else "bg-secondary"),
         badge(i18n$t("dess_badge_cout"),
               if (is.na(cout)) "—" else format(round(cout), big.mark = " ")),
+        # Intégrité du réseau OBTENU (existant ∪ créé), spec 025. Complète
+        # `raccorde`, qui ne dit que « les routes créées sont-elles rattachées ? »
+        # et reste muet sur la cohérence du graphe résultant. Absent = contrôle
+        # indisponible (dessertR injoignable), surtout PAS « 0 infraction ».
+        if (is.null(integ)) {
+          badge(i18n$t("dess_badge_integrite"), i18n$t("dess_integrite_na"),
+                "bg-light text-dark")
+        } else {
+          htmltools::tagList(
+            badge(i18n$t("dess_badge_infractions"),
+                  format(integ$n_infractions, big.mark = " "),
+                  if (isTRUE(integ$n_infractions == 0L)) "bg-success" else "bg-warning"),
+            badge(i18n$t("dess_badge_orphelins"),
+                  sprintf("%s / %s",
+                          format(integ$n_composants_orphelins, big.mark = " "),
+                          format(integ$n_composants, big.mark = " ")),
+                  if (isTRUE(integ$n_composants_orphelins == 0L)) "bg-success" else "bg-warning"))
+        },
         if (!is.na(nroutes) && nroutes == 0L) {
           htmltools::div(class = "alert alert-success py-2 small mt-2 mb-0",
                          i18n$t("dess_no_road_needed"))
@@ -525,6 +559,88 @@ mod_desserte_server <- function(id, app_state) {
     # typer_desserte, sur l'objet reseau persisté par le run desserte. Calcul court
     # (le glouton n'est PAS relancé) : à la demande avec notification.
     rv_typage <- shiny::reactiveVal(NULL)
+    # --- Intégrité du réseau : worker dédié (376,8 s mesurés sur Dabo) ---------
+    # Asynchrone obligatoirement : le typage voisin tourne en synchrone, ce qui
+    # est tenable pour lui (quelques secondes) mais gèlerait toute l'app ici.
+    integ_start <- shiny::reactiveVal(NULL)
+    integ_task <- shiny::ExtendedTask$new(
+      function(cache_dir, aoi_path, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          pc <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% pc)) .ensure_async_plan()
+        }
+        promises::future_promise({
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          nemetonshiny:::run_desserte_integrite(cache_dir, aoi_path)
+        }, seed = TRUE)
+      })
+    bslib::bind_task_button(integ_task, "run_integrite")
+
+    shiny::observeEvent(input$run_integrite, {
+      project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(project_path)) {
+        bslib::update_task_button("run_integrite", state = "ready")
+        shiny::showNotification(i18n$t("dess_need_project"), type = "warning")
+        return()
+      }
+      cache_dir <- .desserte_cache_dir(project_path)
+      integ_start(Sys.time())
+      shiny::showNotification(
+        .running_notif_content(i18n$t("dess_integrite_running"), integ_start()),
+        id = session$ns("integ_notif"), type = "message", duration = NULL)
+      integ_task$invoke(cache_dir, file.path(cache_dir, "aoi_input.gpkg"),
+                        .dev_pkg_path, get_app_options())
+    })
+
+    # Tick 1 s : chrono de la notif d'intégrité.
+    shiny::observe({
+      if (is.null(integ_start())) return()
+      shiny::invalidateLater(1000)
+      shiny::showNotification(
+        .running_notif_content(i18n$t("dess_integrite_running"),
+                               shiny::isolate(integ_start())),
+        id = session$ns("integ_notif"), type = "message", duration = NULL)
+    })
+
+    shiny::observeEvent(integ_task$status(), {
+      st <- integ_task$status()
+      if (!st %in% c("success", "error")) return()
+      integ_start(NULL)
+      shiny::removeNotification(session$ns("integ_notif"))
+      res <- tryCatch(integ_task$result(), error = function(e) {
+        list(status = "error", reason = "desserte_integrite_failed")
+      })
+      if (!is.list(res) || !identical(res$status, "success")) {
+        shiny::showNotification(i18n$t(res$reason %||% "desserte_integrite_failed"),
+                                type = "error", duration = NULL)
+        return()
+      }
+      # Réinjecte dans le résultat courant pour que les badges se rafraîchissent.
+      cur <- rv$result
+      if (is.list(cur)) { cur$integrite <- res$integrite; rv$result <- cur }
+      shiny::showNotification(i18n$t("dess_integrite_done"), type = "message",
+                              duration = 6)
+    })
+
+    output$integrite_status <- shiny::renderUI({
+      res <- rv$result
+      if (is.null(res) || !identical(res$status %||% "success", "success")) {
+        return(htmltools::tags$p(class = "text-muted small",
+                                 i18n$t("dess_integrite_hint")))
+      }
+      if (is.null(res$integrite)) {
+        return(htmltools::tags$p(class = "text-muted small",
+                                 i18n$t("dess_integrite_hint")))
+      }
+      NULL   # résultat rendu par les badges du bilan
+    })
+
     shiny::observeEvent(input$run_typage, {
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       parcelles <- units_sf()

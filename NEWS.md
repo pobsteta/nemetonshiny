@@ -1,3 +1,38 @@
+# nemetonshiny 0.121.11 (2026-08-11)
+
+### Added — Desserte : contrôle d'intégrité du réseau (spec 025)
+
+Nouveau panneau « Intégrité du réseau » dans l'onglet Desserte, adossé à
+`foretaccess::verifier_integrite_desserte()`. Il vérifie la cohérence du réseau
+**obtenu** — existant ∪ créé — et remonte les infractions de connectivité, leur
+linéaire, le nombre de composants et les composants orphelins.
+
+Il comble un angle mort : le badge `raccorde` ne répond qu'à « les routes créées
+sont-elles rattachées ? » et ne dit rien du graphe résultant. Mesuré sur Dabo :
+**13 infractions, 2 540 m, 17 composants dont 10 orphelins** — sur le réseau
+existant, puisque le moteur n'avait aucune route à créer.
+
+**Action séparée, et c'est délibéré.** Le contrôle coûte **376,8 s** sur Dabo
+(3 122 tronçons) contre 39,7 s pour la création entière. L'enchaîner au calcul
+aurait rendu « Générer la desserte » dix fois plus lent, soit exactement la
+régression corrigée en v0.121.10. Il a donc son propre bouton, son propre worker
+`future` — le typage voisin tourne en synchrone, tenable à quelques secondes mais
+qui gèlerait l'app ici — et sa notification à engrenage et chronomètre. Le
+résultat est persisté (`integrite.rds`) et rechargé avec le projet.
+
+**Garde `dessertR`.** Le contrôle atteint ce paquet via
+`.integrite_calculer()` → `.dsr("dsr_reseau")`. En son absence `foretaccess`
+**ne lève pas d'erreur** : il dégrade vers `.integrite_vide()`, dont
+`n_infractions` vaut `NA`. Rendu tel quel, ce résultat se lirait comme « aucune
+infraction ». L'app teste donc explicitement la présence du paquet et affiche
+« non contrôlée » plutôt qu'un bilan vide trompeur.
+
+**À signaler au cœur** : `dessertR` n'est déclaré **nulle part** dans le
+DESCRIPTION de `foretaccess` — ni Imports, ni Suggests, ni Remotes. Il est résolu
+à l'appel par `getExportedValue()`. Installer `foretaccess` n'installe donc pas
+`dessertR`, et sur un poste qui ne l'a pas, la correction LiDAR de la desserte
+comme ce contrôle d'intégrité échouent sans message actionnable.
+
 # nemetonshiny 0.121.10 (2026-08-11)
 
 ### Fixed — Desserte : les 22 minutes venaient d'un `skidding_m` manquant

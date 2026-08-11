@@ -99,6 +99,117 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
   }, error = function(e) invisible(NULL))
 }
 
+#' Network-integrity summary of the designed road network (spec 025)
+#'
+#' Wraps `foretaccess::verifier_integrite_desserte()` on the network the user
+#' ends up with — **existing ∪ created** — which is the only thing that answers
+#' "does what I just designed hold together?". `raccorde` only says whether the
+#' created roads are attached; it says nothing about the resulting graph.
+#'
+#' Guarded on `dessertR`: the check reaches it through
+#' `.integrite_calculer()` -> `.dsr("dsr_reseau")`, and **`foretaccess` does not
+#' declare that dependency** (absent from its Imports/Suggests/Remotes, resolved
+#' at call time by `getExportedValue()`). Without it the core does not error — it
+#' degrades to `.integrite_vide()`, whose `n_infractions` is `NA`. Returning
+#' `NULL` here instead lets the UI say "unavailable" rather than render an empty
+#' verdict that reads like a clean bill of health.
+#'
+#' Best-effort by design: an integrity failure must never cost the run its
+#' network, which is already written to disk at this point.
+#'
+#' @param desserte Existing road network (`sf`, carries `classe`).
+#' @param lignes Created roads (`sf`) or `NULL` when the engine built none.
+#' @param aoi Parcels served, used to locate edge effects.
+#' @return Named list of scalars, or `NULL` when unavailable.
+#' @noRd
+.desserte_integrite <- function(desserte, lignes, aoi) {
+  if (!requireNamespace("dessertR", quietly = TRUE)) return(NULL)
+  if (!inherits(desserte, "sf") || nrow(desserte) == 0L) return(NULL)
+  geom_only <- function(x, classe) {
+    sf::st_sf(classe = rep(classe, nrow(x)), geometry = sf::st_geometry(x))
+  }
+  reseau <- tryCatch({
+    base <- sf::st_sf(classe = as.character(desserte[["classe"]]),
+                      geometry = sf::st_geometry(desserte))
+    if (inherits(lignes, "sf") && nrow(lignes) > 0L) {
+      # Les routes créées n'ont pas de `classe` : elles sont des routes
+      # forestières neuves. Le libellé compte — `reseau_public` a un sens
+      # particulier pour le contrôle de connectivité.
+      rbind(base, geom_only(sf::st_transform(lignes, sf::st_crs(base)), "route"))
+    } else base
+  }, error = function(e) NULL)
+  if (is.null(reseau)) return(NULL)
+
+  r <- tryCatch(foretaccess::verifier_integrite_desserte(reseau, aoi = aoi),
+                error = function(e) NULL)
+  res <- tryCatch(as.list(r$resume), error = function(e) NULL)
+  if (is.null(res) || is.null(res$n_infractions)) return(NULL)
+  # `NA` = le cœur a dégradé (dessertR injoignable malgré le garde). Ne pas le
+  # présenter comme « 0 infraction ».
+  if (!is.finite(suppressWarnings(as.numeric(res$n_infractions)))) return(NULL)
+  list(
+    n_infractions = as.integer(res$n_infractions),
+    longueur_infraction_m = suppressWarnings(as.numeric(res$longueur_infraction_m)),
+    n_composants = suppressWarnings(as.integer(res$n_composants)),
+    n_composants_orphelins = suppressWarnings(as.integer(res$n_composants_orphelins)))
+}
+
+#' Read the persisted network-integrity summary of a project
+#' @noRd
+.load_cached_integrite <- function(cache_dir) {
+  f <- file.path(cache_dir, "integrite.rds")
+  if (!file.exists(f)) return(NULL)
+  tryCatch(readRDS(f), error = function(e) NULL)
+}
+
+#' Run the network-integrity check on a project's designed network (worker-side)
+#'
+#' Deliberately a SEPARATE action, not a step of `run_desserte()`. Measured on
+#' Dabo (3 122 segments over the 1 km emprise): **376,8 s**, against 39,7 s for
+#' the whole creation run. Folding it in would have made "Générer la desserte"
+#' ten times slower — reintroducing the very wait that v0.121.10 removed.
+#'
+#' Reads the network back from the run's GeoPackage (`desserte_existante` +
+#' `reseau_cree`), so it needs no state from the creation worker.
+#'
+#' @param cache_dir Desserte cache directory of the project.
+#' @param aoi_path Path to the parcels GeoPackage written by the module.
+#' @return `list(status = "success", integrite = <scalars>)`, or a structured error.
+#' @noRd
+run_desserte_integrite <- function(cache_dir, aoi_path) {
+  if (!requireNamespace("foretaccess", quietly = TRUE)) {
+    return(list(status = "error", reason = "desserte_no_foretaccess"))
+  }
+  if (!requireNamespace("dessertR", quietly = TRUE)) {
+    return(list(status = "error", reason = "desserte_integrite_no_dessertr"))
+  }
+  gpkg <- file.path(cache_dir, "desserte.gpkg")
+  if (!file.exists(gpkg) || is.null(aoi_path) || !file.exists(aoi_path)) {
+    return(list(status = "error", reason = "desserte_integrite_no_reseau"))
+  }
+  lyr <- tryCatch(sf::st_layers(gpkg)$name, error = function(e) character(0))
+  if (!("desserte_existante" %in% lyr)) {
+    return(list(status = "error", reason = "desserte_integrite_no_reseau"))
+  }
+  existante <- tryCatch(sf::st_read(gpkg, layer = "desserte_existante", quiet = TRUE),
+                        error = function(e) NULL)
+  creees <- if ("reseau_cree" %in% lyr) {
+    tryCatch(sf::st_read(gpkg, layer = "reseau_cree", quiet = TRUE),
+             error = function(e) NULL)
+  } else NULL
+  aoi <- tryCatch(sf::st_read(aoi_path, quiet = TRUE), error = function(e) NULL)
+  if (is.null(existante) || is.null(aoi)) {
+    return(list(status = "error", reason = "desserte_integrite_no_reseau"))
+  }
+  integrite <- .desserte_integrite(existante, creees, aoi)
+  if (is.null(integrite)) {
+    return(list(status = "error", reason = "desserte_integrite_failed"))
+  }
+  tryCatch(saveRDS(integrite, file.path(cache_dir, "integrite.rds")),
+           error = function(e) invisible(NULL))
+  list(status = "success", integrite = integrite)
+}
+
 # --- Garde-fou mémoire du glouton ------------------------------------------
 #
 # `foretaccess::reseau_desserte()` matérialise une table de voisinage
@@ -257,6 +368,7 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
       n_parcelles = meta$n_parcelles %||% NA_integer_,
       n_routes = meta$n_routes %||% NA_integer_,
       skidding_m = meta$skidding_m %||% NA_real_,
+      integrite = .load_cached_integrite(cache_dir),
       from_cache = TRUE))
   }
   NULL
@@ -454,6 +566,7 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   # 39 routes à 100 m, aucune à 300 m). L'app doit pouvoir le DIRE, d'où ce
   # compteur explicite plutôt qu'un coût nul ambigu.
   n_routes <- if (inherits(res$lignes, "sf")) nrow(res$lignes) else 0L
+
   connexe <- isTRUE(res$connexe)
   raccorde <- if ("raccorde" %in% names(res)) isTRUE(res$raccorde) else NA
   cout_total <- suppressWarnings(as.numeric(res$cout))
