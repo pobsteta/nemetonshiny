@@ -1,5 +1,30 @@
 # BRIEF cœur `foretaccess` — `reseau_desserte()` : aucune progression pendant un calcul de plusieurs dizaines de minutes
 
+> # ⛔ CLOS — SANS SUITE (2026-08-11)
+> **Ce brief partait d'un diagnostic faux et ne doit pas être implémenté.**
+>
+> Le cœur l'a réfuté dans `foretaccess/docs/brief-nemetonshiny-skidding-desserte.md` :
+> les 22 minutes ne venaient pas d'un manque d'instrumentation mais d'un
+> `skidding_m` que **l'app ne passait pas**, laissant le défaut cœur `0` —
+> le pire cas documenté. Corrigé côté app en `nemetonshiny 0.121.10` :
+> **39,7 s** sur Dabo, contre plus de 22 minutes sans jamais rendre la main.
+>
+> Le contrat proposé ci-dessous était de surcroît **erroné** : `reseau_desserte()`
+> n'itère pas sur les parcelles mais sur les **cellules-source** — 309 726 sur
+> Dabo, pas 4. Le compteur « i/n » avec écriture atomique par itération aurait
+> écrit trois cent mille fichiers, soit une instrumentation plus coûteuse que le
+> calcul mesuré.
+>
+> Le besoin résiduel (70 à 174 s restent longs) est couvert côté app depuis
+> v0.121.9 par l'affichage de l'étape en cours. Si le sujet est un jour rouvert,
+> **partir du §5 du brief cœur** — qui donne le contrat corrigé : `n` = nombre de
+> sources, écritures throttlées, phase « table de voisinage » traitée à part
+> (38,4 s avant la première itération), et instrumentation au point d'entrée
+> `desserte_reseau` et non dans `build_network_with_table()`, partagée avec le
+> multistart.
+>
+> Conservé pour mémoire du raisonnement et de sa correction.
+
 > Hand-off depuis la session de dev `nemetonshiny`.
 > **À traiter dans une session de dev dédiée sur `/home/pascal/dev/foretaccess`** (un repo = une session).
 > Repo concerné : `pobsteta/foretaccess`. Touche le **noyau Rust**, pas seulement la couche R.
