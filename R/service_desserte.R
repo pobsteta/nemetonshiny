@@ -454,7 +454,21 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   }
 
   acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
-  mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = 2154, cache_dir = acq_dir)
+
+  # MNT : le LiDAR HD du projet EN PRIORITÉ, et pas le RGE ALTI 5 m des autres
+  # étapes. `detecter_desserte()` cherche une signature de MICRO-RELIEF (SLRM,
+  # openness, vesselness) et défaute à `dtm_res = 1` : à 5 m cette signature est
+  # lissée et il ne trouve rien. Mesuré sur ForetAccess avec le MNT 5 m,
+  # `dsr_calibrer_specs()` ne retient AUCUN canal — AUC ≈ 0,50 contre un seuil
+  # de 0,55, c'est-à-dire pas mieux que le hasard. Le projet dispose pourtant
+  # d'une mosaïque LiDAR à 0,5 m.
+  lidar_mnt <- if (!is.null(project_path)) {
+    file.path(project_path, "cache", "layers", "lidar_mnt_mosaic.tif")
+  } else NULL
+  a_lidar_mnt <- !is.null(lidar_mnt) && file.exists(lidar_mnt)
+  mnt_path <- if (a_lidar_mnt) lidar_mnt else {
+    .acquire_mnt_highres(aoi_ext, res_m = 5, crs = 2154, cache_dir = acq_dir)
+  }
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
   reference <- tryCatch(
     foretaccess::acquire_desserte(aoi_ext, crs = 2154, cache_dir = acq_dir),
@@ -531,6 +545,8 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     }, error = function(e) invisible(NULL))
   }
   out <- list(n_detecte = n, avec_lidar = !is.null(las_source),
+              mnt_lidar = a_lidar_mnt,
+              mnt_res_m = tryCatch(terra::res(mnt)[1], error = function(e) NA_real_),
               classes = classes,
               gpkg_path = if (file.exists(gp)) gp else NULL)
   tryCatch(saveRDS(out, file.path(cache_dir, "detection.rds")),
