@@ -37,14 +37,22 @@
 
 #' Road-network creation engines exposed by the app (v1)
 #'
-#' Only the **greedy** (`glouton`) engine of `foretaccess::reseau_desserte()` is
-#' exposed. The Steiner mode (`reseau_desserte(mode="steiner")`, N² traces) and
-#' the optimisers (`optimiser_reseau()`, strategies multistart/recuit/riprute)
-#' are intentionally excluded until their cost is brought to interactive scale
-#' upstream: even with a realistic `skidding_m`, greedy costs 70–174 s on a
-#' 774 ha AOI (Dabo), and Steiner would be N× that. Documented as a core brief.
+#' Both modes of `foretaccess::reseau_desserte()` are exposed. The former
+#' exclusion ("until a perf pass happens upstream") is **obsolete**: the core has
+#' since made the A* corridor-bounded, and `optimiser_reseau()`'s
+#' `@section Performance` states the optimisers are "tractable at interactive
+#' scale".
+#'
+#' Measured on Dabo (emprise 1 km, `skidding_m = 100`): greedy **28,3 s / 36
+#' roads / cost 14 109**, Steiner **78,4 s / 0 road / cost 0**. Steiner does not
+#' fail — it returns a well-formed result reporting all 4 parcels served. It
+#' approximates a minimum spanning tree over the *terminals*, a coarser notion of
+#' "served" than greedy's per-cell one, so on an AOI whose parcels already touch
+#' the network it legitimately has nothing to add. Exposed all the same: it is a
+#' documented quality alternative, and the app already renders "no road needed"
+#' as a success. **Not demonstrated on our data** — no AOI here exercises it.
 #' @noRd
-DESSERTE_ENGINES <- c("glouton")
+DESSERTE_ENGINES <- c("glouton", "steiner")
 
 #' Default skidding/forwarding distance (m) for the creation engine
 #'
@@ -208,6 +216,167 @@ run_desserte_integrite <- function(cache_dir, aoi_path) {
   tryCatch(saveRDS(integrite, file.path(cache_dir, "integrite.rds")),
            error = function(e) invisible(NULL))
   list(status = "success", integrite = integrite)
+}
+
+#' Default trials/iterations for the network optimiser
+#'
+#' The core recommends 8-32 trials and 100-300 iterations and states no hard cap
+#' is needed below those (`optimiser_reseau()` `@section Performance`): trials
+#' reuse a **single** neighbourhood table and run in parallel, so `n_start = 16`
+#' costs about one greedy build.
+#'
+#' Measured on Dabo (emprise 1 km, `skidding_m = 100`) : greedy 82,2 s / 36 roads
+#' / cost 16 673, against **100,2 s / 35 roads / cost 15 002** for multistart at
+#' `n_start = 8` — 1,2x the wall clock for **-10 % cost**. Worth exposing.
+#' @noRd
+DESSERTE_OPTIM_N_START <- 8L
+DESSERTE_OPTIM_N_ITER <- 100L
+DESSERTE_OPTIM_STRATEGIES <- c("multistart", "recuit", "riprute")
+
+#' Run the network optimiser on a project's designed network (worker-side)
+#'
+#' Separate action, same reasoning as the integrity check: it re-runs full greedy
+#' builds, so it costs at least as much as the creation itself.
+#'
+#' @param cache_dir Desserte cache directory.
+#' @param aoi_path Parcels GeoPackage written by the module.
+#' @param strategie One of `DESSERTE_OPTIM_STRATEGIES`.
+#' @param n_start,n_iter Trials / iterations.
+#' @param buffer_m,skidding_m Same emprise and skidding distance as the creation run.
+#' @return `list(status, cout, cout_initial, n_routes, strategie)` or an error list.
+#' @noRd
+run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
+                                   n_start = DESSERTE_OPTIM_N_START,
+                                   n_iter = DESSERTE_OPTIM_N_ITER,
+                                   buffer_m = 0,
+                                   skidding_m = DESSERTE_SKIDDING_DEFAULT_M) {
+  if (!requireNamespace("foretaccess", quietly = TRUE)) {
+    return(list(status = "error", reason = "desserte_no_foretaccess"))
+  }
+  strategie <- intersect(strategie, DESSERTE_OPTIM_STRATEGIES)[1]
+  if (is.na(strategie)) {
+    return(list(status = "error", reason = "desserte_optim_bad_strategie"))
+  }
+  if (is.null(aoi_path) || !file.exists(aoi_path)) {
+    return(list(status = "error", reason = "desserte_need_project"))
+  }
+  parcelles <- tryCatch(sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154),
+                        error = function(e) NULL)
+  if (is.null(parcelles)) return(list(status = "error", reason = "desserte_need_project"))
+
+  # Mêmes entrées que la création : elles sont déjà en cache sous l'emprise.
+  acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
+  aoi_ext <- if (buffer_m > 0) {
+    tryCatch(sf::st_buffer(parcelles, buffer_m), error = function(e) parcelles)
+  } else parcelles
+  mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = 2154, cache_dir = acq_dir)
+  mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
+  desserte <- tryCatch(
+    foretaccess::acquire_desserte(aoi_ext, crs = 2154, cache_dir = acq_dir),
+    error = function(e) NULL)
+  foret <- tryCatch(
+    foretaccess::acquire_foret(aoi_ext, crs = 2154, cache_dir = acq_dir),
+    error = function(e) NULL)
+  if (is.null(mnt) || is.null(desserte)) {
+    return(list(status = "error", reason = "desserte_optim_no_entrees"))
+  }
+  foret_mask <- if (inherits(foret, "sf") && nrow(foret) > 0L) foret else parcelles
+
+  res <- tryCatch({
+    pre <- foretaccess::preprocess(mnt = mnt, desserte = desserte, foret = foret_mask)
+    cout <- foretaccess::surface_cout_construction(pre)
+    foretaccess::optimiser_reseau(
+      pre, cout, parcelles = parcelles, desserte_existante = desserte,
+      strategie = strategie, n_start = as.integer(n_start),
+      n_iter = as.integer(n_iter), skidding_m = skidding_m)
+  }, error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+  if (inherits(res, "acc_err")) {
+    return(list(status = "error", reason = "desserte_optim_failed", detail = res$msg))
+  }
+
+  out <- list(
+    strategie = strategie,
+    cout = suppressWarnings(as.numeric(res$cout)),
+    n_routes = if (inherits(res$lignes, "sf")) nrow(res$lignes) else 0L,
+    n_start = as.integer(n_start), n_iter = as.integer(n_iter),
+    skidding_m = skidding_m)
+  tryCatch(saveRDS(out, file.path(cache_dir, "optimisation.rds")),
+           error = function(e) invisible(NULL))
+  c(list(status = "success"), out)
+}
+
+#' Read the persisted optimiser result
+#' @noRd
+.load_cached_optim <- function(cache_dir) {
+  f <- file.path(cache_dir, "optimisation.rds")
+  if (!file.exists(f)) return(NULL)
+  tryCatch(readRDS(f), error = function(e) NULL)
+}
+
+#' Compare the BD TOPO network against OSM `track` ways (spec 028, worker-side)
+#'
+#' `acquire_desserte_osm()` is cheap (5,9 s, 544 segments on Dabo) but
+#' `comparer_desserte_osm()` is not (104,2 s) — hence a separate action again.
+#'
+#' @return `list(status, n_osm, resume)` or an error list.
+#' @noRd
+run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
+  if (!requireNamespace("foretaccess", quietly = TRUE)) {
+    return(list(status = "error", reason = "desserte_no_foretaccess"))
+  }
+  if (is.null(aoi_path) || !file.exists(aoi_path)) {
+    return(list(status = "error", reason = "desserte_need_project"))
+  }
+  parcelles <- tryCatch(sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154),
+                        error = function(e) NULL)
+  if (is.null(parcelles)) return(list(status = "error", reason = "desserte_need_project"))
+  acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
+  aoi_ext <- if (buffer_m > 0) {
+    tryCatch(sf::st_buffer(parcelles, buffer_m), error = function(e) parcelles)
+  } else parcelles
+
+  osm <- tryCatch(foretaccess::acquire_desserte_osm(aoi_ext, crs = 2154,
+                                                    cache_dir = acq_dir),
+                  error = function(e) structure(list(msg = conditionMessage(e)),
+                                                class = "acc_err"))
+  if (inherits(osm, "acc_err")) {
+    return(list(status = "error", reason = "desserte_osm_failed", detail = osm$msg))
+  }
+  if (!inherits(osm, "sf") || nrow(osm) == 0L) {
+    return(list(status = "error", reason = "desserte_osm_empty"))
+  }
+  bdtopo <- tryCatch(foretaccess::acquire_desserte(aoi_ext, crs = 2154,
+                                                   cache_dir = acq_dir),
+                     error = function(e) NULL)
+  if (is.null(bdtopo)) return(list(status = "error", reason = "desserte_osm_failed"))
+
+  cmp <- tryCatch(foretaccess::comparer_desserte_osm(bdtopo, osm),
+                  error = function(e) structure(list(msg = conditionMessage(e)),
+                                                class = "acc_err"))
+  if (inherits(cmp, "acc_err")) {
+    return(list(status = "error", reason = "desserte_osm_failed", detail = cmp$msg))
+  }
+  # Le GeoPackage porte la couche OSM pour inspection dans un SIG.
+  tryCatch({
+    gp <- file.path(cache_dir, "desserte_osm.gpkg")
+    unlink(gp)
+    sf::st_write(osm, gp, layer = "osm_track", quiet = TRUE, delete_dsn = TRUE)
+  }, error = function(e) invisible(NULL))
+
+  out <- list(n_osm = nrow(osm),
+              resume = tryCatch(as.list(cmp$resume), error = function(e) NULL),
+              corridor_m = tryCatch(cmp$corridor_m, error = function(e) NA_real_))
+  tryCatch(saveRDS(out, file.path(cache_dir, "osm.rds")),
+           error = function(e) invisible(NULL))
+  c(list(status = "success"), out)
+}
+
+#' Read the persisted OSM comparison
+#' @noRd
+.load_cached_osm <- function(cache_dir) {
+  f <- file.path(cache_dir, "osm.rds")
+  if (!file.exists(f)) return(NULL)
+  tryCatch(readRDS(f), error = function(e) NULL)
 }
 
 # --- Garde-fou mémoire du glouton ------------------------------------------

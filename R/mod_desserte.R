@@ -41,7 +41,9 @@ mod_desserte_ui <- function(id) {
 
       shiny::radioButtons(
         ns("engine"), i18n$t("dess_engine_label"),
-        choices = stats::setNames(DESSERTE_ENGINES, i18n$t("dess_engine_glouton")),
+        choices = stats::setNames(DESSERTE_ENGINES,
+                                  c(i18n$t("dess_engine_glouton"),
+                                    i18n$t("dess_engine_steiner"))),
         selected = DESSERTE_ENGINES[[1]]),
       # Avertissement « calcul long » (parité câble) : le glouton trace un A*
       # par CELLULE de parcelle non desservie, donc le temps croît avec la
@@ -128,6 +130,40 @@ mod_desserte_ui <- function(id) {
                 icon = bsicons::bs_icon("check2-square"),
                 class = "btn-outline-primary btn-sm w-100 mb-2"),
               shiny::uiOutput(ns("integrite_status"))),
+            # Optimisation du réseau créé. Action séparée : chaque essai est une
+            # construction gloutonne complète. Mesuré sur Dabo — glouton 82,2 s /
+            # coût 16 673 contre multistart 100,2 s / coût 15 002, soit 1,2x le
+            # temps pour -10 % de coût.
+            bslib::accordion_panel(
+              title = i18n$t("dess_optim_title"),
+              icon = bsicons::bs_icon("stars"),
+              htmltools::tags$p(class = "text-muted small", i18n$t("dess_optim_intro")),
+              shiny::selectInput(
+                ns("optim_strategie"), i18n$t("dess_optim_strategie"),
+                choices = stats::setNames(
+                  DESSERTE_OPTIM_STRATEGIES,
+                  c(i18n$t("dess_optim_multistart"), i18n$t("dess_optim_recuit"),
+                    i18n$t("dess_optim_riprute"))),
+                selected = DESSERTE_OPTIM_STRATEGIES[[1]]),
+              shiny::numericInput(ns("optim_n_start"), i18n$t("dess_optim_n_start"),
+                                  value = DESSERTE_OPTIM_N_START, min = 2, max = 32, step = 2),
+              bslib::input_task_button(
+                ns("run_optim"), i18n$t("dess_optim_run"),
+                label_busy = i18n$t("dess_optim_running"),
+                icon = bsicons::bs_icon("stars"),
+                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              shiny::uiOutput(ns("optim_result"))),
+            # Complément OSM de la BD TOPO (spec 028).
+            bslib::accordion_panel(
+              title = i18n$t("dess_osm_title"),
+              icon = bsicons::bs_icon("signpost-2"),
+              htmltools::tags$p(class = "text-muted small", i18n$t("dess_osm_intro")),
+              bslib::input_task_button(
+                ns("run_osm"), i18n$t("dess_osm_run"),
+                label_busy = i18n$t("dess_osm_running"),
+                icon = bsicons::bs_icon("cloud-download"),
+                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              shiny::uiOutput(ns("osm_result"))),
             bslib::accordion_panel(
               title = i18n$t("action_plan_section_exports"),
               icon = bsicons::bs_icon("box-arrow-up"),
@@ -639,6 +675,144 @@ mod_desserte_server <- function(id, app_state) {
                                  i18n$t("dess_integrite_hint")))
       }
       NULL   # résultat rendu par les badges du bilan
+    })
+
+    # --- Optimisation et complément OSM : deux workers du même patron ---------
+    # Facteur commun : action séparée + notif engrenage/chrono + sidecar relu.
+    .async_panel <- function(id_btn, notif_id, label_key, invoke_fun, on_success) {
+      start <- shiny::reactiveVal(NULL)
+      task <- shiny::ExtendedTask$new(function(...) {
+        args <- list(...)
+        if (requireNamespace("future", quietly = TRUE)) {
+          pc <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% pc)) .ensure_async_plan()
+        }
+        dev_path <- .dev_pkg_path; app_opts <- get_app_options()
+        promises::future_promise({
+          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          do.call(invoke_fun, args)
+        }, seed = TRUE)
+      })
+      bslib::bind_task_button(task, id_btn)
+      shiny::observe({
+        if (is.null(start())) return()
+        shiny::invalidateLater(1000)
+        shiny::showNotification(
+          .running_notif_content(i18n$t(label_key), shiny::isolate(start())),
+          id = session$ns(notif_id), type = "message", duration = NULL)
+      })
+      shiny::observeEvent(task$status(), {
+        st <- task$status()
+        if (!st %in% c("success", "error")) return()
+        start(NULL)
+        shiny::removeNotification(session$ns(notif_id))
+        res <- tryCatch(task$result(), error = function(e) NULL)
+        if (!is.list(res) || !identical(res$status, "success")) {
+          shiny::showNotification(
+            i18n$t(tryCatch(res$reason, error = function(e) NULL) %||%
+                     "desserte_engine_failed"),
+            type = "error", duration = NULL)
+          return()
+        }
+        on_success(res)
+      })
+      list(task = task, start = start)
+    }
+
+    rv_optim <- shiny::reactiveVal(NULL)
+    optim_panel <- .async_panel(
+      "run_optim", "optim_notif", "dess_optim_running",
+      function(...) nemetonshiny:::run_desserte_optimiser(...),
+      function(res) {
+        rv_optim(res)
+        shiny::showNotification(i18n$t("dess_optim_done"), type = "message", duration = 6)
+      })
+    shiny::observeEvent(input$run_optim, {
+      pp <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(pp)) {
+        bslib::update_task_button("run_optim", state = "ready")
+        shiny::showNotification(i18n$t("dess_need_project"), type = "warning"); return()
+      }
+      cd <- .desserte_cache_dir(pp)
+      bm <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      sk <- suppressWarnings(as.numeric(input$skidding_m))
+      if (!isTRUE(is.finite(sk)) || sk < 0) sk <- DESSERTE_SKIDDING_DEFAULT_M
+      ns_ <- suppressWarnings(as.integer(input$optim_n_start))
+      if (!isTRUE(is.finite(ns_)) || ns_ < 2L) ns_ <- DESSERTE_OPTIM_N_START
+      optim_panel$start(Sys.time())
+      shiny::showNotification(
+        .running_notif_content(i18n$t("dess_optim_running"), optim_panel$start()),
+        id = session$ns("optim_notif"), type = "message", duration = NULL)
+      optim_panel$task$invoke(cd, file.path(cd, "aoi_input.gpkg"),
+                              input$optim_strategie, ns_,
+                              DESSERTE_OPTIM_N_ITER, bm, sk)
+    })
+    output$optim_result <- shiny::renderUI({
+      r <- rv_optim() %||% tryCatch(
+        .load_cached_optim(.desserte_cache_dir(app_state$current_project$path)),
+        error = function(e) NULL)
+      if (is.null(r)) {
+        return(htmltools::tags$p(class = "text-muted small", i18n$t("dess_optim_hint")))
+      }
+      base <- suppressWarnings(as.numeric(rv$result$cout))
+      gain <- if (is.finite(base) && base > 0 && is.finite(r$cout)) {
+        sprintf(" (%+.1f %%)", 100 * (r$cout - base) / base)
+      } else ""
+      htmltools::div(class = "small",
+        htmltools::tags$div(sprintf("%s : %s%s", i18n$t("dess_badge_cout"),
+                                    format(round(r$cout), big.mark = " "), gain)),
+        htmltools::tags$div(sprintf("%s : %s", i18n$t("dess_badge_routes"),
+                                    format(r$n_routes, big.mark = " "))))
+    })
+
+    rv_osm <- shiny::reactiveVal(NULL)
+    osm_panel <- .async_panel(
+      "run_osm", "osm_notif", "dess_osm_running",
+      function(...) nemetonshiny:::run_desserte_osm(...),
+      function(res) {
+        rv_osm(res)
+        shiny::showNotification(sprintf(i18n$t("dess_osm_done_fmt"), res$n_osm),
+                                type = "message", duration = 6)
+      })
+    shiny::observeEvent(input$run_osm, {
+      pp <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(pp)) {
+        bslib::update_task_button("run_osm", state = "ready")
+        shiny::showNotification(i18n$t("dess_need_project"), type = "warning"); return()
+      }
+      cd <- .desserte_cache_dir(pp)
+      bm <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      osm_panel$start(Sys.time())
+      shiny::showNotification(
+        .running_notif_content(i18n$t("dess_osm_running"), osm_panel$start()),
+        id = session$ns("osm_notif"), type = "message", duration = NULL)
+      osm_panel$task$invoke(cd, file.path(cd, "aoi_input.gpkg"), bm)
+    })
+    output$osm_result <- shiny::renderUI({
+      r <- rv_osm() %||% tryCatch(
+        .load_cached_osm(.desserte_cache_dir(app_state$current_project$path)),
+        error = function(e) NULL)
+      if (is.null(r)) {
+        return(htmltools::tags$p(class = "text-muted small", i18n$t("dess_osm_hint")))
+      }
+      rows <- if (is.list(r$resume) && length(r$resume)) {
+        lapply(names(r$resume), function(k) htmltools::tags$tr(
+          htmltools::tags$td(class = "small", k),
+          htmltools::tags$td(class = "small text-end",
+                             format(r$resume[[k]], big.mark = " "))))
+      } else NULL
+      htmltools::tagList(
+        htmltools::tags$div(class = "small mb-1",
+                            sprintf(i18n$t("dess_osm_done_fmt"), r$n_osm)),
+        if (!is.null(rows)) htmltools::tags$table(
+          class = "table table-sm table-striped small mb-0",
+          htmltools::tags$tbody(rows)))
     })
 
     shiny::observeEvent(input$run_typage, {
