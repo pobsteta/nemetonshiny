@@ -1,5 +1,12 @@
 # BRIEF cœur foretaccess — ce qu’il nous manque pour exposer les fonctions desserte encore absentes de l’app
 
+> # 🔀 REMPLACÉ (2026-08-11)
+>
+> Ce brief est repris dans
+> **`BRIEF-foretaccess-desserte-consolide.md`**, qui regroupe les trois
+> chantiers `foretaccess` encore ouverts. Ne pas le traiter séparément —
+> conservé pour la trace du raisonnement.
+
 > Hand-off depuis la session de dev `nemetonshiny`. **À traiter dans une
 > session de dev dédiée sur `/home/pascal/dev/foretaccess`** (un repo =
 > une session). Repo concerné : `pobsteta/foretaccess`. Versions :
