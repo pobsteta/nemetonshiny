@@ -1,3 +1,35 @@
+# nemetonshiny 0.121.15 (2026-08-11)
+
+### Fixed — Détection : le MNT LiDAR au lieu du RGE ALTI 5 m
+
+`run_desserte_detection()` passait à `detecter_desserte()` le **MNT RGE ALTI
+5 m** des autres étapes. Or ce détecteur cherche une signature de
+**micro-relief** (SLRM, openness, vesselness) et défaute à `dtm_res = 1` : à 5 m
+cette signature est lissée. Le service prend désormais la mosaïque **LiDAR HD à
+0,5 m** du projet quand elle existe, et ne retombe sur le 5 m qu'à défaut.
+
+Mesuré sur ForetAccess avec `dsr_calibrer_specs()`, qui chiffre le pouvoir
+discriminant de chaque canal :
+
+| MNT | canaux retenus | meilleure AUC |
+|---|---:|---:|
+| RGE ALTI 5 m | **0 / 7** | 0,56 (sous le seuil de 0,55… à peine) |
+| **LiDAR HD 0,5 m** | **5 / 7** | **0,77** (rugosité) |
+
+À 5 m les canaux ne valaient pas mieux que le hasard. Le signal était là, noyé
+dans un MNT dix fois trop grossier.
+
+**La détection rend malgré tout 0** (729 s sur ForetAccess), et la cause
+résiduelle est identifiée : `detecter_desserte()` utilise
+`specs_desserte_calibrees()`, des bornes calibrées sur un **autre massif**, ce
+que dessertR signale lui-même (« Bornes mal adaptées à la donnée : rugosité
+(86 %) sature »). Nous ne pouvons pas y remédier depuis l'app —
+`dsr_calibrer_specs()$specs` rend une liste plate de canaux (`rugosite`,
+`openness_pos`, `vesselness`, `pente`, `slrm`) destinée à `dsr_conductivite()`,
+là où `detecter_desserte(specs =)` attend la forme `foretaccess`
+(`geomorpho` / `surface` / `c_vessel`). **Les deux formes sont incompatibles**
+— à porter au cœur.
+
 # nemetonshiny 0.121.14 (2026-08-11)
 
 ### Added — Desserte : classement des linéaires détectés (dessertR §2/§3)
