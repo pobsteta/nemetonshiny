@@ -349,3 +349,58 @@ test_that("run_desserte transmet skidding_m au moteur", {
         }
       }))
 })
+
+# --- Controle d'integrite du reseau (spec 025) ------------------------------
+# Action SEPAREE du calcul de desserte : mesure sur Dabo, 376,8 s contre 39,7 s
+# pour la creation entiere. L'inclure en ligne rendrait « Generer la desserte »
+# dix fois plus lent — exactement la regression corrigee en v0.121.10.
+
+test_that("run_desserte_integrite : erreurs structurees, jamais d'exception", {
+  withr::with_tempdir({
+    cd <- "cache_desserte"; dir.create(cd)
+    # Pas de GeoPackage -> pas de reseau a controler.
+    r <- nemetonshiny:::run_desserte_integrite(cd, NULL)
+    expect_type(r, "list")
+    expect_identical(r$status, "error")
+    expect_true(r$reason %in% c("desserte_integrite_no_reseau",
+                                "desserte_integrite_no_dessertr",
+                                "desserte_no_foretaccess"))
+  })
+})
+
+test_that(".load_cached_integrite : NULL si absent, relit sinon", {
+  withr::with_tempdir({
+    expect_null(nemetonshiny:::.load_cached_integrite("."))
+    saveRDS(list(n_infractions = 3L), "integrite.rds")
+    got <- nemetonshiny:::.load_cached_integrite(".")
+    expect_identical(got$n_infractions, 3L)
+  })
+})
+
+test_that(".desserte_integrite rend NULL sans dessertR plutot qu'un verdict vide", {
+  # Sans dessertR, foretaccess ne LEVE PAS d'erreur : il degrade vers
+  # .integrite_vide(), dont n_infractions vaut NA. Rendre ce resultat tel quel
+  # afficherait un bilan vide qui se lit comme « aucune infraction ».
+  skip_if_not_installed("sf")
+  d <- sf::st_sf(classe = "route",
+                 geometry = sf::st_sfc(
+                   sf::st_linestring(rbind(c(0, 0), c(100, 100))), crs = 2154))
+  testthat::with_mocked_bindings(
+    requireNamespace = function(package, ...) {
+      if (identical(package, "dessertR")) FALSE else base::requireNamespace(package, ...)
+    },
+    .package = "base",
+    expect_null(nemetonshiny:::.desserte_integrite(d, NULL, d)))
+})
+
+test_that("les cles i18n du controle d'integrite existent", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  for (k in c("dess_integrite_title", "dess_integrite_intro", "dess_integrite_run",
+              "dess_integrite_running", "dess_integrite_done", "dess_integrite_hint",
+              "dess_badge_infractions", "dess_badge_orphelins",
+              "desserte_integrite_no_dessertr", "desserte_integrite_no_reseau",
+              "desserte_integrite_failed")) {
+    lbl <- i18n$t(k)
+    expect_true(is.character(lbl) && nzchar(lbl) && !identical(lbl, k), info = k)
+  }
+})
