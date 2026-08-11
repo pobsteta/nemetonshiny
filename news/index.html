@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.14.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,26 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.121.15" id="nemetonshiny-012115-2026-08-11">nemetonshiny 0.121.15 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012115-2026-08-11"></a></h2>
+<div class="section level4">
+<h4 id="fixed--détection--le-mnt-lidar-au-lieu-du-rge-alti-m-0-121-15">Fixed — Détection : le MNT LiDAR au lieu du RGE ALTI 5 m<a class="anchor" aria-label="anchor" href="#fixed--d%C3%A9tection--le-mnt-lidar-au-lieu-du-rge-alti-m-0-121-15"></a></h4>
+<p><code>run_desserte_detection()</code> passait à <code>detecter_desserte()</code> le <strong>MNT RGE ALTI 5 m</strong> des autres étapes. Or ce détecteur cherche une signature de <strong>micro-relief</strong> (SLRM, openness, vesselness) et défaute à <code>dtm_res = 1</code> : à 5 m cette signature est lissée. Le service prend désormais la mosaïque <strong>LiDAR HD à 0,5 m</strong> du projet quand elle existe, et ne retombe sur le 5 m qu’à défaut.</p>
+<p>Mesuré sur ForetAccess avec <code>dsr_calibrer_specs()</code>, qui chiffre le pouvoir discriminant de chaque canal :</p>
+<table class="table"><thead><tr><th>MNT</th>
+<th align="right">canaux retenus</th>
+<th align="right">meilleure AUC</th>
+</tr></thead><tbody><tr><td>RGE ALTI 5 m</td>
+<td align="right"><strong>0 / 7</strong></td>
+<td align="right">0,56 (sous le seuil de 0,55… à peine)</td>
+</tr><tr><td><strong>LiDAR HD 0,5 m</strong></td>
+<td align="right"><strong>5 / 7</strong></td>
+<td align="right">
+<strong>0,77</strong> (rugosité)</td>
+</tr></tbody></table><p>À 5 m les canaux ne valaient pas mieux que le hasard. Le signal était là, noyé dans un MNT dix fois trop grossier.</p>
+<p><strong>La détection rend malgré tout 0</strong> (729 s sur ForetAccess), et la cause résiduelle est identifiée : <code>detecter_desserte()</code> utilise <code>specs_desserte_calibrees()</code>, des bornes calibrées sur un <strong>autre massif</strong>, ce que dessertR signale lui-même (« Bornes mal adaptées à la donnée : rugosité (86 %) sature »). Nous ne pouvons pas y remédier depuis l’app — <code>dsr_calibrer_specs()$specs</code> rend une liste plate de canaux (<code>rugosite</code>, <code>openness_pos</code>, <code>vesselness</code>, <code>pente</code>, <code>slrm</code>) destinée à <code>dsr_conductivite()</code>, là où <code>detecter_desserte(specs =)</code> attend la forme <code>foretaccess</code> (<code>geomorpho</code> / <code>surface</code> / <code>c_vessel</code>). <strong>Les deux formes sont incompatibles</strong> — à porter au cœur.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.14" id="nemetonshiny-012114-2026-08-11">nemetonshiny 0.121.14 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012114-2026-08-11"></a></h2>
 <div class="section level4">
