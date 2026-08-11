@@ -9,7 +9,7 @@
 # appeler `surface_cout_construction()` puis un moteur de création, et persister
 # le réseau (raster + GeoPackage vecteur exportable).
 #
-# v1 : moteur GLOUTON uniquement.
+# Deux moteurs de création exposés : GLOUTON et STEINER (cf. DESSERTE_ENGINES).
 #
 # ATTENTION à la lecture des durées. Le glouton trace un A* par CELLULE de
 # parcelle non desservie — pas par parcelle. Le nombre de tracés est donc de
@@ -43,14 +43,23 @@
 #' `@section Performance` states the optimisers are "tractable at interactive
 #' scale".
 #'
-#' Measured on Dabo (emprise 1 km, `skidding_m = 100`): greedy **28,3 s / 36
-#' roads / cost 14 109**, Steiner **78,4 s / 0 road / cost 0**. Steiner does not
-#' fail — it returns a well-formed result reporting all 4 parcels served. It
-#' approximates a minimum spanning tree over the *terminals*, a coarser notion of
-#' "served" than greedy's per-cell one, so on an AOI whose parcels already touch
-#' the network it legitimately has nothing to add. Exposed all the same: it is a
-#' documented quality alternative, and the app already renders "no road needed"
-#' as a success. **Not demonstrated on our data** — no AOI here exercises it.
+#' **Steiner buys a far cheaper network, for a far longer wait.** Measured with
+#' `skidding_m = 100` and `pondere_cout = TRUE` (so both minimise euros):
+#'
+#' | AOI | greedy | Steiner |
+#' |---|---|---|
+#' | ForetAccess — 30 parcels, 31 ha, 303 k cells | 6,1 s / 4 roads / **cost 65 983** | 694,6 s / 5 roads / **cost 10 420** |
+#' | Dabo — 4 parcels, 774 ha, 1,35 M cells | 28,3 s / 36 roads | 78,4 s / 0 road |
+#'
+#' On ForetAccess Steiner divides the cost by **6,3** — it shares common trunks
+#' between scattered parcels where greedy connects each to its nearest network
+#' point — for **114x** the wall clock. On Dabo it returns nothing, which is
+#' correct rather than broken: its spanning tree is built over *terminals*, a
+#' coarser notion of "served" than greedy's per-cell one, and Dabo's four large
+#' parcels already touch the network.
+#'
+#' So the choice is a genuine quality/time trade-off, and the user must make it
+#' knowingly: on a large AOI Steiner is measured in tens of minutes.
 #' @noRd
 DESSERTE_ENGINES <- c("glouton", "steiner")
 
@@ -288,7 +297,13 @@ run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
     foretaccess::optimiser_reseau(
       pre, cout, parcelles = parcelles, desserte_existante = desserte,
       strategie = strategie, n_start = as.integer(n_start),
-      n_iter = as.integer(n_iter), skidding_m = skidding_m)
+      n_iter = as.integer(n_iter), skidding_m = skidding_m,
+      # MEME pondération que `run_desserte()` : sans elle l'optimiseur
+      # minimiserait des MÈTRES pendant que la création minimise des EUROS, et
+      # le panneau comparerait deux grandeurs différentes. Mesuré sur
+      # ForetAccess : 1 034 sans pondération contre 65 983 pour la création
+      # pondérée — un « gain » de 98 % qui n'existe pas.
+      pondere_cout = TRUE)
   }, error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(res, "acc_err")) {
     return(list(status = "error", reason = "desserte_optim_failed", detail = res$msg))
@@ -375,6 +390,113 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
 #' @noRd
 .load_cached_osm <- function(cache_dir) {
   f <- file.path(cache_dir, "osm.rds")
+  if (!file.exists(f)) return(NULL)
+  tryCatch(readRDS(f), error = function(e) NULL)
+}
+
+#' Detect roads absent from the reference network (dessertR, spec 026)
+#'
+#' Separate action, and the heaviest of the panel. Measured on the Dabo
+#' accessibility emprise (4454 x 4162 @ 1 m, 1 855 ha, reference 1 032 segments):
+#'
+#' | `las_source` | duration | peak RSS | detections |
+#' |---|---:|---:|---:|
+#' | `NULL` (geomorphology only) | 189,4 s | **7,91 Go** | 0 |
+#' | LiDAR point cloud | **> 10 min** (not completed under a 16 Go cap) | — | — |
+#'
+#' Two consequences the UI must carry:
+#'
+#' - the geomorphology-only path is cheap*er* but the core itself warns it is
+#'   "nettement moins sûre" — and it found nothing here. Offering it as a fast
+#'   alternative would be offering a result one cannot trust;
+#' - 7,91 Go on a 31 Go workstation shared with RStudio is already in the zone
+#'   where `systemd-oomd` intervenes. The **memory guard is not optional**; it
+#'   reuses `.desserte_memory_check()`, whose estimate is grid-driven and
+#'   therefore applies here too.
+#'
+#' Depends on `dessertR` (via `.dsr("dsr_detecter")`), which `foretaccess` does
+#' not declare — hence the explicit guard, as for the integrity check.
+#'
+#' @param cache_dir Desserte cache directory.
+#' @param aoi_path Parcels GeoPackage written by the module.
+#' @param buffer_m Emprise buffer (m), same as the creation run.
+#' @param avec_lidar Use the LiDAR surface channel when the project has a cloud.
+#' @param project_path Project root, to locate the LiDAR cache.
+#' @return `list(status, n_detecte, gpkg_path)` or a structured error.
+#' @noRd
+run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
+                                   avec_lidar = TRUE, project_path = NULL) {
+  if (!requireNamespace("foretaccess", quietly = TRUE)) {
+    return(list(status = "error", reason = "desserte_no_foretaccess"))
+  }
+  if (!requireNamespace("dessertR", quietly = TRUE)) {
+    return(list(status = "error", reason = "desserte_detect_no_dessertr"))
+  }
+  if (is.null(aoi_path) || !file.exists(aoi_path)) {
+    return(list(status = "error", reason = "desserte_need_project"))
+  }
+  parcelles <- tryCatch(sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154),
+                        error = function(e) NULL)
+  if (is.null(parcelles)) return(list(status = "error", reason = "desserte_need_project"))
+  aoi_ext <- if (buffer_m > 0) {
+    tryCatch(sf::st_buffer(parcelles, buffer_m), error = function(e) parcelles)
+  } else parcelles
+
+  # Garde-fou mémoire AVANT toute acquisition : mesuré 7,91 Go sur 1 855 ha même
+  # sans nuage. Sans ce refus, un dépassement se paie par un OOM qui emporte la
+  # session — le mode d'échec que toute cette série de correctifs élimine.
+  mem <- .desserte_memory_check(aoi_ext, res_m = 5)
+  if (!isTRUE(mem$ok)) {
+    return(list(status = "error", reason = "desserte_memory_guard",
+                detail = sprintf(
+                  "grille %.1f M cellules, pic estime %.1f Go, RAM disponible %.1f Go",
+                  mem$cells / 1e6, mem$bytes / 1024^3, mem$available / 1024^3)))
+  }
+
+  acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
+  mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = 2154, cache_dir = acq_dir)
+  mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
+  reference <- tryCatch(
+    foretaccess::acquire_desserte(aoi_ext, crs = 2154, cache_dir = acq_dir),
+    error = function(e) NULL)
+  if (is.null(mnt)) return(list(status = "error", reason = "desserte_detect_no_entrees"))
+
+  # Nuage LiDAR du projet, s'il existe ET si l'utilisateur le demande. Sans lui
+  # le cœur avertit que la détection est « nettement moins sûre » : on ne
+  # bascule donc JAMAIS silencieusement sur ce repli, on le remonte.
+  laz_dir <- if (!is.null(project_path)) {
+    file.path(project_path, "cache", "layers", "lidar_nuage")
+  } else NULL
+  a_du_laz <- !is.null(laz_dir) && dir.exists(laz_dir) &&
+    length(list.files(laz_dir, pattern = "\\.(copc\\.)?laz$")) > 0L
+  las_source <- if (isTRUE(avec_lidar) && a_du_laz) laz_dir else NULL
+
+  det <- tryCatch(
+    foretaccess::detecter_desserte(mnt, reference = reference,
+                                   las_source = las_source),
+    error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+  if (inherits(det, "acc_err")) {
+    return(list(status = "error", reason = "desserte_detect_failed", detail = det$msg))
+  }
+  n <- if (inherits(det, "sf")) nrow(det) else 0L
+  gp <- file.path(cache_dir, "desserte_detectee.gpkg")
+  if (n > 0L) {
+    tryCatch({
+      unlink(gp)
+      sf::st_write(det, gp, layer = "desserte_detectee", quiet = TRUE, delete_dsn = TRUE)
+    }, error = function(e) invisible(NULL))
+  }
+  out <- list(n_detecte = n, avec_lidar = !is.null(las_source),
+              gpkg_path = if (file.exists(gp)) gp else NULL)
+  tryCatch(saveRDS(out, file.path(cache_dir, "detection.rds")),
+           error = function(e) invisible(NULL))
+  c(list(status = "success"), out)
+}
+
+#' Read the persisted detection result
+#' @noRd
+.load_cached_detection <- function(cache_dir) {
+  f <- file.path(cache_dir, "detection.rds")
   if (!file.exists(f)) return(NULL)
   tryCatch(readRDS(f), error = function(e) NULL)
 }
@@ -524,6 +646,11 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
     if (!file.exists(rp)) next
     meta <- tryCatch(readRDS(file.path(cache_dir, paste0("reseau_", eng, ".rds"))),
                      error = function(e) list())
+    # Un réseau tracé AVANT `pondere_cout = TRUE` minimisait des mètres, pas des
+    # euros : ses tracés ne sont pas comparables à ceux d'aujourd'hui. On le
+    # traite comme absent plutôt que de l'afficher comme un résultat courant —
+    # l'utilisateur relance, ce qui est le seul moyen d'obtenir le bon tracé.
+    if (!isTRUE(meta$pondere_cout)) next
     gpkg <- file.path(cache_dir, "desserte.gpkg")
     return(list(
       status = "success",
@@ -688,10 +815,15 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   if (!is.finite(skidding_m) || skidding_m < 0) {
     skidding_m <- DESSERTE_SKIDDING_DEFAULT_M
   }
+  # `pondere_cout = TRUE` : le tracé minimise des EUROS, pas des mètres. Sans
+  # lui, la surface de coût du Lot 14 — calculée juste au-dessus, phase « cout »
+  # comprise — ne servait que par son masque `franchissable` : le solveur
+  # tournait sur une grille neutre à 1,0 et rendait un tracé purement
+  # géométrique. On payait le calcul du coût sans jamais s'en servir.
   res <- tryCatch(
     foretaccess::reseau_desserte(pre, cout, parcelles = parcelles,
                                  desserte_existante = desserte, mode = engine,
-                                 skidding_m = skidding_m),
+                                 skidding_m = skidding_m, pondere_cout = TRUE),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(res, "acc_err")) {
     return(list(status = "error", reason = "desserte_engine_failed", detail = res$msg))
@@ -741,7 +873,8 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   cout_total <- suppressWarnings(as.numeric(res$cout))
   saveRDS(list(cout = cout_total, connexe = connexe, raccorde = raccorde,
                n_desservies = n_desservies, n_parcelles = n_parcelles,
-               n_routes = n_routes, skidding_m = skidding_m),
+               n_routes = n_routes, skidding_m = skidding_m,
+               pondere_cout = TRUE),
           file.path(cache_dir, paste0("reseau_", engine, ".rds")))
 
   # 8. GeoPackage exportable : parcelles + desserte existante + réseau créé.
