@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.8.9001 (2026-08-11)
+# nemetonshiny 0.121.9 (2026-08-11)
 
 ### Changed — Desserte : avertissement de durée honnête et progression par étape
 
