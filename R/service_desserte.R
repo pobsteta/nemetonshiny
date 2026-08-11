@@ -9,7 +9,7 @@
 # appeler `surface_cout_construction()` puis un moteur de création, et persister
 # le réseau (raster + GeoPackage vecteur exportable).
 #
-# v1 : moteur GLOUTON uniquement.
+# Deux moteurs de création exposés : GLOUTON et STEINER (cf. DESSERTE_ENGINES).
 #
 # ATTENTION à la lecture des durées. Le glouton trace un A* par CELLULE de
 # parcelle non desservie — pas par parcelle. Le nombre de tracés est donc de
