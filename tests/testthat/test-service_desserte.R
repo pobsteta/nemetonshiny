@@ -252,3 +252,42 @@ test_that(".desserte_grid_cells buffers the BBOX, not the geometries", {
   expect_identical(nemetonshiny:::.desserte_grid_cells(sq, 5, buffer_m = -10),
                    nemetonshiny:::.desserte_grid_cells(sq, 5, buffer_m = 0))
 })
+
+# --- Canal de phase du worker (engine_status.json) --------------------------
+# Le glouton peut tourner des dizaines de minutes : sans ce canal l'utilisateur
+# ne voit qu'un chrono et conclut que rien ne se passe.
+
+test_that(".dess_write_phase / .dess_read_phase font l'aller-retour", {
+  withr::with_tempdir({
+    d <- file.path("proj", "cache", "desserte")
+    dir.create(d, recursive = TRUE)
+    expect_null(nemetonshiny:::.dess_read_phase("proj"))       # rien encore ecrit
+    nemetonshiny:::.dess_write_phase(d, "moteur")
+    expect_identical(nemetonshiny:::.dess_read_phase("proj"), "moteur")
+    nemetonshiny:::.dess_write_phase(d, "cout")                # ecrasement
+    expect_identical(nemetonshiny:::.dess_read_phase("proj"), "cout")
+  })
+})
+
+test_that(".dess_read_phase ignore un statut perime et un projet absent", {
+  expect_null(nemetonshiny:::.dess_read_phase(NULL))
+  withr::with_tempdir({
+    d <- file.path("proj", "cache", "desserte")
+    dir.create(d, recursive = TRUE)
+    # ts vieux de 5 min : le worker est repute mort, la phase ne doit pas coller
+    # a l'ecran (seuil 120 s).
+    writeLines(jsonlite::toJSON(list(phase = "moteur",
+                 ts = as.integer(Sys.time()) - 300L), auto_unbox = TRUE),
+               file.path(d, "engine_status.json"))
+    expect_null(nemetonshiny:::.dess_read_phase("proj"))
+  })
+})
+
+test_that("toutes les phases declarees ont une cle i18n", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  for (p in nemetonshiny:::DESSERTE_PHASES) {
+    lbl <- i18n$t(paste0("dess_phase_", p))
+    expect_true(is.character(lbl) && nzchar(lbl) && !identical(lbl, paste0("dess_phase_", p)),
+                info = p)
+  }
+})

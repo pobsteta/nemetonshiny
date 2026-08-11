@@ -40,6 +40,30 @@ DESSERTE_ENGINES <- c("glouton")
   file.path(project_path, "cache", "desserte")
 }
 
+# Phases publiées par `run_desserte()` sur le canal disque, dans l'ordre. Le
+# moteur porte l'essentiel du temps : sans ce canal, l'utilisateur n'a qu'un
+# chrono qui tourne pendant des dizaines de minutes sans savoir où en est le
+# calcul — d'où l'impression que « ça n'affiche rien ».
+#
+# `foretaccess::reseau_desserte()` n'expose AUCUN rappel de progression
+# (vérifié : pas de `progress`/`callback` dans ses arguments), donc on ne peut
+# pas descendre sous la granularité de l'étape. La phase `moteur` reste longue.
+DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
+
+# Écrit la phase courante dans `engine_status.json` du cache desserte. Même
+# canal et même contrat que `.regen_write_phase()` : tmp + rename atomique pour
+# qu'un poll ne lise jamais un JSON tronqué, et jamais fatal — un échec
+# d'écriture de statut ne doit pas interrompre le calcul.
+.dess_write_phase <- function(cache_dir, phase) {
+  tryCatch({
+    payload <- list(phase = phase, ts = as.integer(Sys.time()))
+    tmp <- file.path(cache_dir, ".engine_status.json.tmp")
+    fin <- file.path(cache_dir, "engine_status.json")
+    writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"), tmp)
+    file.rename(tmp, fin)
+  }, error = function(e) invisible(NULL))
+}
+
 # --- Garde-fou mémoire du glouton ------------------------------------------
 #
 # `foretaccess::reseau_desserte()` matérialise une table de voisinage
@@ -272,6 +296,9 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
                 cells = mem$cells, bytes = mem$bytes, available = mem$available))
   }
 
+  # Jalons de phase : le worker publie son avancement sur le canal disque, que
+  # le module poll toutes les secondes (cf. DESSERTE_PHASES).
+  .dess_write_phase(cache_dir, "mnt")
   # 1. MNT 5 m HIGHRES (repli acquire_mnt), partagé avec l'accessibilité.
   mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = epsg, cache_dir = acq_dir)
   if (is.null(mnt_path)) {
@@ -285,6 +312,7 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
   mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
   if (is.null(mnt)) return(list(status = "error", reason = "desserte_mnt_failed"))
 
+  .dess_write_phase(cache_dir, "desserte")
   # 2. Desserte EXISTANTE (réseau à raccorder) via IGN BD TOPO V3.
   desserte <- tryCatch(
     foretaccess::acquire_desserte(aoi_ext, crs = epsg, cache_dir = acq_dir),
@@ -296,12 +324,14 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
     return(list(status = "error", reason = "desserte_desserte_empty"))
   }
 
+  .dess_write_phase(cache_dir, "foret")
   # 3. Masque forêt (IGN BD Forêt V2 ∩ emprise), repli géométrie projet.
   foret_bd <- tryCatch(
     foretaccess::acquire_foret(aoi_ext, crs = epsg, cache_dir = acq_dir),
     error = function(e) NULL)
   foret_mask <- if (inherits(foret_bd, "sf") && nrow(foret_bd) > 0L) foret_bd else parcelles
 
+  .dess_write_phase(cache_dir, "preprocess")
   # 4. Prétraitement commun (pente, franchissabilité, rasterisation).
   pre <- tryCatch(
     foretaccess::preprocess(mnt = mnt, desserte = desserte, foret = foret_mask),
@@ -310,6 +340,7 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
     return(list(status = "error", reason = "desserte_preprocess_failed", detail = pre$msg))
   }
 
+  .dess_write_phase(cache_dir, "cout")
   # 5. Surface de coût de construction (base + surcharge de pente ; couches eau/
   # sol optionnelles laissées à NULL en v1 — cf. plan de dev).
   cout <- tryCatch(
@@ -319,6 +350,7 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
     return(list(status = "error", reason = "desserte_cout_failed", detail = cout$msg))
   }
 
+  .dess_write_phase(cache_dir, "moteur")
   # 6. Moteur de création : GLOUTON (parcelles = AOI d'origine, réseau à
   # raccorder = desserte existante).
   res <- tryCatch(
