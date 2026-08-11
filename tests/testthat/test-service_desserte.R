@@ -291,3 +291,61 @@ test_that("toutes les phases declarees ont une cle i18n", {
                 info = p)
   }
 })
+
+# --- skidding_m : parametre METIER passe au moteur ---------------------------
+# Le defaut coeur est 0, le pire cas documente (« both slow and over-connected ») :
+# le glouton trace alors depuis CHAQUE cellule de parcelle hors route. Mesure sur
+# Dabo : jamais fini en 22 min a 0, 39,7 s a 300 m. L'app doit TOUJOURS passer une
+# valeur realiste — ces tests verrouillent ce contrat.
+
+test_that("DESSERTE_SKIDDING_DEFAULT_M est une distance realiste, jamais 0", {
+  d <- nemetonshiny:::DESSERTE_SKIDDING_DEFAULT_M
+  expect_true(is.numeric(d) && length(d) == 1L && is.finite(d))
+  expect_gt(d, 0)     # 0 = pire cas coeur : interdit comme defaut app
+})
+
+test_that("run_desserte transmet skidding_m au moteur", {
+  skip_if_not_installed("foretaccess")
+  skip_if_not_installed("sf")
+  toy <- system.file("extdata", "toy", package = "foretaccess")
+  skip_if(!nzchar(toy) || !file.exists(file.path(toy, "mnt.tif")))
+  loadNamespace("foretaccess")
+
+  aoi_path <- file.path(toy, "foret.gpkg")
+  foret_toy <- sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154)
+  desserte <- sf::st_read(file.path(toy, "desserte.gpkg"), quiet = TRUE)
+  mnt_toy <- file.path(toy, "mnt.tif")
+  cache <- nemetonshiny:::.desserte_cache_dir(withr::local_tempdir())
+  vu <- new.env(parent = emptyenv())
+
+  testthat::with_mocked_bindings(
+    .acquire_mnt_highres = function(aoi, res_m = 5, crs = 2154,
+                                    cache_dir = tempdir(), overwrite = FALSE) mnt_toy,
+    .package = "nemetonshiny",
+    testthat::with_mocked_bindings(
+      acquire_desserte = function(aoi, crs = 2154, cache_dir = tempdir(),
+                                  overwrite = FALSE, country = "FR") desserte,
+      acquire_foret = function(aoi, crs = 2154, cache_dir = tempdir(),
+                               overwrite = FALSE, country = "FR") foret_toy,
+      reseau_desserte = function(pre, cout, parcelles, desserte_existante,
+                                 mode, skidding_m, ...) {
+        vu$skidding <- skidding_m
+        stop("court-circuit apres capture")     # inutile d'aller plus loin
+      },
+      .package = "foretaccess",
+      {
+        # Valeur explicite transmise telle quelle.
+        nemetonshiny:::run_desserte(aoi_path, "glouton", cache, skidding_m = 250)
+        expect_identical(vu$skidding, 250)
+        # Valeur absente -> defaut app, JAMAIS le 0 du coeur.
+        vu$skidding <- NULL
+        nemetonshiny:::run_desserte(aoi_path, "glouton", cache)
+        expect_identical(vu$skidding, nemetonshiny:::DESSERTE_SKIDDING_DEFAULT_M)
+        # Valeur aberrante -> repli sur le defaut, pas de propagation d'un NA.
+        for (bad in list(NA_real_, -50, "x")) {
+          vu$skidding <- NULL
+          nemetonshiny:::run_desserte(aoi_path, "glouton", cache, skidding_m = bad)
+          expect_identical(vu$skidding, nemetonshiny:::DESSERTE_SKIDDING_DEFAULT_M)
+        }
+      }))
+})

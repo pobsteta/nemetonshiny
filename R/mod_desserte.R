@@ -7,7 +7,8 @@
 # 2) : le module orchestre l'UI, l'exécution asynchrone (worker `future`) et le
 # rendu carte/badges.
 #
-# v1 : moteur GLOUTON seul, OPT-IN (calcul ~11,5 min sur 30 parcelles). Même
+# v1 : moteur GLOUTON seul, OPT-IN. La durée dépend de la SURFACE de l'emprise
+# et de `skidding_m` (cf. service_desserte.R), pas du nombre de parcelles. Même
 # patron que reGénération / Accessibilité : `ExtendedTask` + `future_promise`,
 # notif persistante bas-droite avec chrono, retour immédiat. Le réseau créé est
 # affiché en overlay RASTER (léger) ; les lignes vectorielles détaillées partent
@@ -42,8 +43,9 @@ mod_desserte_ui <- function(id) {
         ns("engine"), i18n$t("dess_engine_label"),
         choices = stats::setNames(DESSERTE_ENGINES, i18n$t("dess_engine_glouton")),
         selected = DESSERTE_ENGINES[[1]]),
-      # Avertissement « calcul long » (parité câble) : le glouton trace une
-      # route par parcelle, le temps croît avec le nombre de parcelles.
+      # Avertissement « calcul long » (parité câble) : le glouton trace un A*
+      # par CELLULE de parcelle non desservie, donc le temps croît avec la
+      # surface de l'emprise et décroît avec `skidding_m`.
       htmltools::div(
         class = "alert alert-warning py-2 small",
         shiny::icon("triangle-exclamation"), " ", i18n$t("dess_slow_help")),
@@ -52,6 +54,16 @@ mod_desserte_ui <- function(id) {
         ns("buffer_km"), i18n$t("dess_buffer"),
         value = 1, min = 0, max = 20, step = 1),
       htmltools::tags$p(class = "text-muted small", i18n$t("dess_buffer_help")),
+
+      # Distance de débardage : paramètre MÉTIER, pas un réglage de performance.
+      # Il change le résultat — sur Dabo, 39 routes à 100 m contre aucune à
+      # 300 m — donc il doit être visible, sinon « rien à construire » est
+      # inintelligible. Paliers repris de `foretaccess_config()$skidder$
+      # classes_distance_m`.
+      shiny::numericInput(
+        ns("skidding_m"), i18n$t("dess_skidding"),
+        value = DESSERTE_SKIDDING_DEFAULT_M, min = 0, max = 2000, step = 50),
+      htmltools::tags$p(class = "text-muted small", i18n$t("dess_skidding_help")),
 
       # Empreinte mémoire estimée de l'emprise courante : le pic du glouton est
       # prévisible à partir de la seule grille (cf. .desserte_memory_check), donc
@@ -162,7 +174,7 @@ mod_desserte_server <- function(id, app_state) {
 
     # --- Worker asynchrone : acquisition + coût + moteur de création ----------
     dess_task <- shiny::ExtendedTask$new(
-      function(aoi_path, engine, cache_dir, buffer_m, dev_path, app_opts) {
+      function(aoi_path, engine, cache_dir, buffer_m, skidding_m, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
@@ -177,7 +189,8 @@ mod_desserte_server <- function(id, app_state) {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          nemetonshiny:::run_desserte(aoi_path, engine, cache_dir, buffer_m)
+          nemetonshiny:::run_desserte(aoi_path, engine, cache_dir, buffer_m,
+                                      skidding_m = skidding_m)
         }, seed = TRUE)
       })
 
@@ -229,8 +242,12 @@ mod_desserte_server <- function(id, app_state) {
         .running_notif_content(i18n$t("dess_running"), rv$start),
         id = session$ns("dess_notif"), type = "message", duration = NULL)
       buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      skidding_m <- suppressWarnings(as.numeric(input$skidding_m))
+      if (!isTRUE(is.finite(skidding_m)) || skidding_m < 0) {
+        skidding_m <- DESSERTE_SKIDDING_DEFAULT_M
+      }
       tryCatch(
-        dess_task$invoke(aoi_path, engine, cache_dir, buffer_m,
+        dess_task$invoke(aoi_path, engine, cache_dir, buffer_m, skidding_m,
                          .dev_pkg_path, get_app_options()),
         error = function(e) {
           rv$running <- FALSE
@@ -313,10 +330,20 @@ mod_desserte_server <- function(id, app_state) {
       project_path <- tryCatch(app_state$current_project$path,
                                error = function(e) NULL)
       rv$result <- .load_cached_desserte(project_path) %||% res
+      # Zéro route créée est un SUCCÈS, pas un résultat vide : à `skidding_m`
+      # réaliste, une forêt bien desservie n'a rien à construire (mesuré sur
+      # Dabo : 39 routes à 100 m, aucune à 300 m). Sans message dédié,
+      # l'utilisateur lirait « desserte créée » devant une carte sans route.
+      nr <- suppressWarnings(as.integer(res$n_routes %||% NA_integer_))
       shiny::showNotification(
-        sprintf(i18n$t("dess_done_fmt"),
-                res$n_desservies %||% NA_integer_, res$n_parcelles %||% NA_integer_),
-        type = "message", duration = 6)
+        if (!is.na(nr) && nr == 0L) {
+          sprintf(i18n$t("dess_done_none_fmt"),
+                  suppressWarnings(as.numeric(res$skidding_m %||% NA_real_)))
+        } else {
+          sprintf(i18n$t("dess_done_fmt"),
+                  res$n_desservies %||% NA_integer_, res$n_parcelles %||% NA_integer_)
+        },
+        type = "message", duration = 8)
     })
 
     # Restaure un réseau DÉJÀ calculé depuis le cache — PARESSEUSEMENT : lecture au
@@ -368,6 +395,7 @@ mod_desserte_server <- function(id, app_state) {
       # fragmentation du réseau existant — trompeur pour l'utilisateur).
       raccorde <- res$raccorde %||% NA
       cout <- res$cout %||% NA_real_
+      nroutes <- suppressWarnings(as.integer(res$n_routes %||% NA_integer_))
       htmltools::tagList(
         badge(i18n$t("dess_badge_desservies"),
               if (is.na(nd) || is.na(np)) "—" else sprintf("%d / %d", nd, np),
@@ -375,8 +403,15 @@ mod_desserte_server <- function(id, app_state) {
         badge(i18n$t("dess_badge_raccorde"),
               if (is.na(raccorde)) "—" else if (isTRUE(raccorde)) i18n$t("dess_yes") else i18n$t("dess_no"),
               if (isTRUE(raccorde)) "bg-success" else "bg-warning"),
+        badge(i18n$t("dess_badge_routes"),
+              if (is.na(nroutes)) "—" else format(nroutes, big.mark = " "),
+              if (!is.na(nroutes) && nroutes == 0L) "bg-success" else "bg-secondary"),
         badge(i18n$t("dess_badge_cout"),
-              if (is.na(cout)) "—" else format(round(cout), big.mark = " ")))
+              if (is.na(cout)) "—" else format(round(cout), big.mark = " ")),
+        if (!is.na(nroutes) && nroutes == 0L) {
+          htmltools::div(class = "alert alert-success py-2 small mt-2 mb-0",
+                         i18n$t("dess_no_road_needed"))
+        })
     })
 
     # --- Carte : fonds + parcelles + desserte existante + réseau créé (raster) -

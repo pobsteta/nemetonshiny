@@ -9,10 +9,22 @@
 # appeler `surface_cout_construction()` puis un moteur de création, et persister
 # le réseau (raster + GeoPackage vecteur exportable).
 #
-# v1 : moteur GLOUTON uniquement. Mesuré sur AOI réelle (Chastel-Nouvel, 30
-# parcelles / 31 ha) : `reseau_desserte(mode="glouton")` = ~11,5 min (un tracé
-# A* par parcelle sur ~302k cellules), `preprocess`/`surface_cout_construction`
-# < 2 s. Le calcul tourne donc dans un worker `future` (cf. mod_desserte.R),
+# v1 : moteur GLOUTON uniquement.
+#
+# ATTENTION à la lecture des durées. Le glouton trace un A* par CELLULE de
+# parcelle non desservie — pas par parcelle. Le nombre de tracés est donc de
+# l'ordre de la surface / résolution² (309 726 cellules-source sur Dabo pour
+# 4 UGF), et il est piloté par `skidding_m` : une cellule à moins de
+# `skidding_m` d'une route est déjà desservie et n'engendre aucun tracé.
+#
+# Les ~11,5 min jadis mesurées sur Chastel-Nouvel (30 parcelles / 31 ha, ~302k
+# cellules) l'ont été à `skidding_m = 0`, le PIRE CAS documenté par le cœur
+# (« both slow and over-connected »). Avec une distance réaliste, mesuré sur
+# Dabo (741 312 cellules) : 0 -> jamais fini en 22 min, 100 m -> 174 s,
+# 300 m -> 70 s, 500 m -> 115 s. Cf. `DESSERTE_SKIDDING_DEFAULT_M`.
+#
+# `preprocess`/`surface_cout_construction` < 4 s : le moteur porte tout le temps.
+# Le calcul tourne donc dans un worker `future` (cf. mod_desserte.R),
 # comme l'accessibilité, et le moteur est OPT-IN avec avertissement « calcul
 # long ». Le mode STEINER (N² tracés → estimé > 5 h à 30 parcelles) et les
 # optimiseurs (`optimiser_reseau`) sont volontairement NON exposés tant qu'un
@@ -29,10 +41,33 @@
 #' exposed. The Steiner mode (`reseau_desserte(mode="steiner")`, N² traces) and
 #' the optimisers (`optimiser_reseau()`, strategies multistart/recuit/riprute)
 #' are intentionally excluded until their cost is brought to interactive scale
-#' upstream: measured on a 30-parcel / 31 ha AOI, greedy already takes ~11.5 min,
-#' Steiner would be N× that. Documented as a core brief.
+#' upstream: even with a realistic `skidding_m`, greedy costs 70–174 s on a
+#' 774 ha AOI (Dabo), and Steiner would be N× that. Documented as a core brief.
 #' @noRd
 DESSERTE_ENGINES <- c("glouton")
+
+#' Default skidding/forwarding distance (m) for the creation engine
+#'
+#' A parcel cell within this distance of a road counts as already served and
+#' spawns no trace. The core default is `0`, i.e. the documented worst case
+#' ("both slow and over-connected"); the app must always pass a realistic value.
+#'
+#' Measured on Dabo (4 UGF / 774 ha, 741 312 grid cells at 5 m, 309 726 source
+#' cells), `foretaccess 2.0.1` :
+#'
+#' | `skidding_m` | duration | roads |
+#' |---:|---:|---:|
+#' | 0 | never finished in 22 min | — |
+#' | 100 m | 174 s | 39 |
+#' | **300 m** | **70 s** | **0** |
+#' | 500 m | 115 s | 0 |
+#'
+#' 300 m is the app default: a realistic ground-skidding distance, and the
+#' fastest of the measured values. Non-monotonicity above it is expected — the
+#' "is a road within reach?" test sweeps a disc of radius `skidding_m`, so its
+#' cost grows as r² while the number of traces falls.
+#' @noRd
+DESSERTE_SKIDDING_DEFAULT_M <- 300
 
 #' Directory holding the desserte artefacts of a project
 #' @noRd
@@ -220,6 +255,8 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
       raccorde = meta$raccorde %||% NA,
       n_desservies = meta$n_desservies %||% NA_integer_,
       n_parcelles = meta$n_parcelles %||% NA_integer_,
+      n_routes = meta$n_routes %||% NA_integer_,
+      skidding_m = meta$skidding_m %||% NA_real_,
       from_cache = TRUE))
   }
   NULL
@@ -249,9 +286,18 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
 #'   acquisition: access to a stand comes from roads OUTSIDE it, and the trace
 #'   solver needs the surrounding terrain. The parcels served stay the original
 #'   AOI — only the analysed emprise widens.
+#' @param skidding_m Skidding/forwarding distance (m) handed to
+#'   `foretaccess::reseau_desserte()`. **Not a performance knob** — a business
+#'   parameter that changes the result: a parcel cell within `skidding_m` of a
+#'   road is already served and spawns no trace. Left at the core default `0`,
+#'   *every* parcel cell off a road spawns its own A* trace, which the core
+#'   documents as "both slow and over-connected": measured on Dabo
+#'   (309 726 source cells) the run never finished in 22 min, against 70 s at
+#'   300 m. See `DESSERTE_SKIDDING_DEFAULT_M`.
 #' @return A named list describing the run.
 #' @noRd
-run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
+run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
+                         skidding_m = DESSERTE_SKIDDING_DEFAULT_M) {
   if (!requireNamespace("foretaccess", quietly = TRUE)) {
     return(list(status = "error", reason = "desserte_no_foretaccess"))
   }
@@ -353,9 +399,18 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
   .dess_write_phase(cache_dir, "moteur")
   # 6. Moteur de création : GLOUTON (parcelles = AOI d'origine, réseau à
   # raccorder = desserte existante).
+  # `skidding_m` : voir la doc du paramètre. Sans lui (défaut cœur 0) le moteur
+  # trace depuis CHAQUE cellule de parcelle hors route — 309 726 tracés sur Dabo
+  # au lieu de 4 parcelles — d'où un calcul interminable ET un réseau
+  # sur-connecté. Ce n'est pas un réglage de performance.
+  skidding_m <- suppressWarnings(as.numeric(skidding_m)[1])
+  if (!is.finite(skidding_m) || skidding_m < 0) {
+    skidding_m <- DESSERTE_SKIDDING_DEFAULT_M
+  }
   res <- tryCatch(
     foretaccess::reseau_desserte(pre, cout, parcelles = parcelles,
-                                 desserte_existante = desserte, mode = engine),
+                                 desserte_existante = desserte, mode = engine,
+                                 skidding_m = skidding_m),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(res, "acc_err")) {
     return(list(status = "error", reason = "desserte_engine_failed", detail = res$msg))
@@ -393,11 +448,18 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
   # réseau EXISTANT à la résolution de la grille, pas par un défaut du réseau créé.
   n_parcelles <- nrow(parcelles)
   n_desservies <- suppressWarnings(sum(as.logical(res$desservies), na.rm = TRUE))
+  # Nombre de routes CRÉÉES. Zéro est un résultat légitime — « le réseau
+  # existant dessert déjà tout » — et non un échec : à `skidding_m` réaliste
+  # c'est même le cas nominal sur une forêt bien desservie (mesuré sur Dabo :
+  # 39 routes à 100 m, aucune à 300 m). L'app doit pouvoir le DIRE, d'où ce
+  # compteur explicite plutôt qu'un coût nul ambigu.
+  n_routes <- if (inherits(res$lignes, "sf")) nrow(res$lignes) else 0L
   connexe <- isTRUE(res$connexe)
   raccorde <- if ("raccorde" %in% names(res)) isTRUE(res$raccorde) else NA
   cout_total <- suppressWarnings(as.numeric(res$cout))
   saveRDS(list(cout = cout_total, connexe = connexe, raccorde = raccorde,
-               n_desservies = n_desservies, n_parcelles = n_parcelles),
+               n_desservies = n_desservies, n_parcelles = n_parcelles,
+               n_routes = n_routes, skidding_m = skidding_m),
           file.path(cache_dir, paste0("reseau_", engine, ".rds")))
 
   # 8. GeoPackage exportable : parcelles + desserte existante + réseau créé.
@@ -424,7 +486,9 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0) {
     connexe = connexe,
     raccorde = raccorde,
     n_desservies = n_desservies,
-    n_parcelles = n_parcelles)
+    n_parcelles = n_parcelles,
+    n_routes = n_routes,
+    skidding_m = skidding_m)
 }
 
 #' Resolve the standing-volume (P1) column on a project's units
