@@ -1,11 +1,11 @@
 # BRIEF cœur — detecter_desserte(specs =) n’accepte pas ce que dsr_calibrer_specs() produit
 
-> Hand-off depuis la session de dev `nemetonshiny`. **Concerne deux
-> repos** : `pobsteta/foretaccess` et `pobsteta/dessertR`. L’écart est à
-> leur frontière ; à vous de décider lequel bouge. Versions :
-> `foretaccess 2.0.1`, `dessertR 1.3.0`, `nemetonshiny 0.121.15`. Mesuré
-> sur le projet ForetAccess (`20260717_101641_wsfi`), 30 parcelles / 31
-> ha.
+> Hand-off depuis la session de dev `nemetonshiny`. **Un seul repo à
+> ouvrir : `pobsteta/foretaccess`.** L’écart est à la frontière avec
+> `dessertR`, mais `dessertR` n’a rien à corriger — voir §4bis. Versions
+> : `foretaccess 2.0.1`, `dessertR 1.3.0`, `nemetonshiny 0.121.15`.
+> Mesuré sur le projet ForetAccess (`20260717_101641_wsfi`), 30
+> parcelles / 31 ha.
 
 ## 1. Le symptôme
 
@@ -88,9 +88,23 @@ d’appelant :
 La piste 3 nous paraît la plus juste : l’appelant n’a aucune raison de
 savoir qu’il existe deux vocabulaires de specs.
 
-**Et corriger le message**, dans tous les cas. Conseiller
-`dsr_calibrer_specs()` à un appelant de `detecter_desserte()` l’envoie
-dans une impasse — nous y avons passé du temps.
+## 4bis. Pourquoi `dessertR` n’est pas en cause
+
+L’avertissement vient bien de `dessertR` (`.dsr_alerter_bornes`), et il
+serait tentant de lui demander de le reformuler. **Ce serait une
+erreur** : pour un appelant direct de `dsr_detecter()`, le conseil est
+exact et actionnable — il recalibre, puis passe le résultat à
+`dsr_conductivite()`, dont c’est précisément le format.
+`dsr_calibrer_specs()` fonctionne d’ailleurs très bien : 66 s, 5 canaux
+retenus sur nos données.
+
+La voie n’est fermée que pour qui arrive **par `foretaccess`**, qui
+enveloppe `dessertR` sans exposer le chemin que le code enveloppé
+recommande. C’est donc à `foretaccess` de fournir la sortie — soit en
+acceptant la forme dessertR, soit en calibrant lui-même.
+
+Si un message doit changer, c’est celui que verra l’utilisateur de
+`detecter_desserte()`, et il appartient à `foretaccess` de le poser.
 
 ## 5. Question ouverte : `specs = NULL` suffit-il ?
 

@@ -35,7 +35,7 @@
 <div id="brief-cœur--detecter_dessertespecs--naccepte-pas-ce-que-dsr_calibrer_specs-produit" class="section level1">
 
 <blockquote>
-<p>Hand-off depuis la session de dev <code>nemetonshiny</code>. <strong>Concerne deux repos</strong> : <code>pobsteta/foretaccess</code> et <code>pobsteta/dessertR</code>. L’écart est à leur frontière ; à vous de décider lequel bouge. Versions : <code>foretaccess 2.0.1</code>, <code>dessertR 1.3.0</code>, <code>nemetonshiny 0.121.15</code>. Mesuré sur le projet ForetAccess (<code>20260717_101641_wsfi</code>), 30 parcelles / 31 ha.</p>
+<p>Hand-off depuis la session de dev <code>nemetonshiny</code>. <strong>Un seul repo à ouvrir : <code>pobsteta/foretaccess</code>.</strong> L’écart est à la frontière avec <code>dessertR</code>, mais <code>dessertR</code> n’a rien à corriger — voir §4bis. Versions : <code>foretaccess 2.0.1</code>, <code>dessertR 1.3.0</code>, <code>nemetonshiny 0.121.15</code>. Mesuré sur le projet ForetAccess (<code>20260717_101641_wsfi</code>), 30 parcelles / 31 ha.</p>
 </blockquote>
 <div class="section level2">
 <h2 id="id_1-le-symptôme">1. Le symptôme<a class="anchor" aria-label="anchor" href="#id_1-le-sympt%C3%B4me"></a></h2>
@@ -90,7 +90,12 @@ i Recalibrer avec `dsr_calibrer_specs()` sur ces donnees, ou utiliser
 <li>
 <strong><code>detecter_desserte()</code> calibre lui-même</strong> quand on lui passe <code>specs = "auto"</code>, puisqu’il a déjà le MNT et la référence sous la main — c’est-à-dire tout ce dont <code>dsr_calibrer_specs()</code> a besoin.</li>
 </ol><p>La piste 3 nous paraît la plus juste : l’appelant n’a aucune raison de savoir qu’il existe deux vocabulaires de specs.</p>
-<p><strong>Et corriger le message</strong>, dans tous les cas. Conseiller <code>dsr_calibrer_specs()</code> à un appelant de <code>detecter_desserte()</code> l’envoie dans une impasse — nous y avons passé du temps.</p>
+</div>
+<div class="section level2">
+<h2 id="id_4bis-pourquoi-dessertr-nest-pas-en-cause">4bis. Pourquoi <code>dessertR</code> n’est pas en cause<a class="anchor" aria-label="anchor" href="#id_4bis-pourquoi-dessertr-nest-pas-en-cause"></a></h2>
+<p>L’avertissement vient bien de <code>dessertR</code> (<code>.dsr_alerter_bornes</code>), et il serait tentant de lui demander de le reformuler. <strong>Ce serait une erreur</strong> : pour un appelant direct de <code>dsr_detecter()</code>, le conseil est exact et actionnable — il recalibre, puis passe le résultat à <code>dsr_conductivite()</code>, dont c’est précisément le format. <code>dsr_calibrer_specs()</code> fonctionne d’ailleurs très bien : 66 s, 5 canaux retenus sur nos données.</p>
+<p>La voie n’est fermée que pour qui arrive <strong>par <code>foretaccess</code></strong>, qui enveloppe <code>dessertR</code> sans exposer le chemin que le code enveloppé recommande. C’est donc à <code>foretaccess</code> de fournir la sortie — soit en acceptant la forme dessertR, soit en calibrant lui-même.</p>
+<p>Si un message doit changer, c’est celui que verra l’utilisateur de <code>detecter_desserte()</code>, et il appartient à <code>foretaccess</code> de le poser.</p>
 </div>
 <div class="section level2">
 <h2 id="id_5-question-ouverte--specs--null-suffit-il-">5. Question ouverte : <code>specs = NULL</code> suffit-il ?<a class="anchor" aria-label="anchor" href="#id_5-question-ouverte--specs--null-suffit-il-"></a></h2>
