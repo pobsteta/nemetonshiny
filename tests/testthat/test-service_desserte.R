@@ -413,3 +413,44 @@ test_that("les cles i18n du controle d'integrite existent", {
     expect_true(is.character(lbl) && nzchar(lbl) && !identical(lbl, k), info = k)
   }
 })
+
+# --- Detection de routes non cartographiees (dessertR, spec 026) -------------
+# La plus lourde du panneau : 189,4 s et 7,91 Go de pic SANS nuage sur 1 855 ha,
+# > 10 min avec. D'ou un garde-fou memoire non optionnel et un garde dessertR.
+
+test_that("run_desserte_detection : erreurs structurees, jamais d'exception", {
+  withr::with_tempdir({
+    cd <- "cache_desserte"; dir.create(cd)
+    r <- nemetonshiny:::run_desserte_detection(cd, NULL)
+    expect_type(r, "list")
+    expect_identical(r$status, "error")
+    expect_true(r$reason %in% c("desserte_need_project", "desserte_detect_no_dessertr",
+                                "desserte_no_foretaccess"))
+  })
+})
+
+test_that("run_desserte_detection : le garde-fou memoire refuse AVANT acquisition", {
+  skip_if_not_installed("sf")
+  skip_if_not_installed("dessertR")
+  withr::with_tempdir({
+    cd <- "cache_desserte"; dir.create(cd)
+    # AOI enorme -> grille hors de portee : le refus doit tomber avant toute
+    # acquisition, sinon l'echec arrive apres plusieurs minutes sous forme d'OOM.
+    poly <- sf::st_sf(geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+      c(0, 0), c(3e5, 0), c(3e5, 3e5), c(0, 3e5), c(0, 0)))), crs = 2154))
+    aoi <- file.path(cd, "aoi.gpkg")
+    sf::st_write(poly, aoi, quiet = TRUE, delete_dsn = TRUE)
+    r <- nemetonshiny:::run_desserte_detection(cd, aoi)
+    expect_identical(r$status, "error")
+    expect_identical(r$reason, "desserte_memory_guard")
+    expect_true(nzchar(r$detail))
+  })
+})
+
+test_that(".load_cached_detection : NULL si absent, relit sinon", {
+  withr::with_tempdir({
+    expect_null(nemetonshiny:::.load_cached_detection("."))
+    saveRDS(list(n_detecte = 7L, avec_lidar = TRUE), "detection.rds")
+    expect_identical(nemetonshiny:::.load_cached_detection(".")$n_detecte, 7L)
+  })
+})

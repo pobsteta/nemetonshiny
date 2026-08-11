@@ -164,6 +164,25 @@ mod_desserte_ui <- function(id) {
                 icon = bsicons::bs_icon("cloud-download"),
                 class = "btn-outline-primary btn-sm w-100 mb-2"),
               shiny::uiOutput(ns("osm_result"))),
+            # Détection de routes absentes de la BD TOPO (dessertR, spec 026).
+            # La plus lourde du panneau : mesuré 7,91 Go de pic et 189 s SANS
+            # nuage LiDAR sur 1 855 ha, et > 10 min avec. D'où le garde-fou
+            # mémoire côté service et l'avertissement ci-dessous.
+            bslib::accordion_panel(
+              title = i18n$t("dess_detect_title"),
+              icon = bsicons::bs_icon("search"),
+              htmltools::tags$p(class = "text-muted small", i18n$t("dess_detect_intro")),
+              htmltools::div(
+                class = "alert alert-warning py-2 small",
+                shiny::icon("triangle-exclamation"), " ", i18n$t("dess_detect_warn")),
+              shiny::checkboxInput(ns("detect_lidar"), i18n$t("dess_detect_lidar"),
+                                   value = TRUE),
+              bslib::input_task_button(
+                ns("run_detect"), i18n$t("dess_detect_run"),
+                label_busy = i18n$t("dess_detect_running"),
+                icon = bsicons::bs_icon("search"),
+                class = "btn-outline-primary btn-sm w-100 mb-2"),
+              shiny::uiOutput(ns("detect_result"))),
             bslib::accordion_panel(
               title = i18n$t("action_plan_section_exports"),
               icon = bsicons::bs_icon("box-arrow-up"),
@@ -813,6 +832,48 @@ mod_desserte_server <- function(id, app_state) {
         if (!is.null(rows)) htmltools::tags$table(
           class = "table table-sm table-striped small mb-0",
           htmltools::tags$tbody(rows)))
+    })
+
+    rv_detect <- shiny::reactiveVal(NULL)
+    detect_panel <- .async_panel(
+      "run_detect", "detect_notif", "dess_detect_running",
+      function(...) nemetonshiny:::run_desserte_detection(...),
+      function(res) {
+        rv_detect(res)
+        shiny::showNotification(sprintf(i18n$t("dess_detect_done_fmt"), res$n_detecte),
+                                type = "message", duration = 8)
+      })
+    shiny::observeEvent(input$run_detect, {
+      pp <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(pp)) {
+        bslib::update_task_button("run_detect", state = "ready")
+        shiny::showNotification(i18n$t("dess_need_project"), type = "warning"); return()
+      }
+      cd <- .desserte_cache_dir(pp)
+      bm <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
+      detect_panel$start(Sys.time())
+      shiny::showNotification(
+        .running_notif_content(i18n$t("dess_detect_running"), detect_panel$start()),
+        id = session$ns("detect_notif"), type = "message", duration = NULL)
+      detect_panel$task$invoke(cd, file.path(cd, "aoi_input.gpkg"), bm,
+                               isTRUE(input$detect_lidar), pp)
+    })
+    output$detect_result <- shiny::renderUI({
+      r <- rv_detect() %||% tryCatch(
+        .load_cached_detection(.desserte_cache_dir(app_state$current_project$path)),
+        error = function(e) NULL)
+      if (is.null(r)) {
+        return(htmltools::tags$p(class = "text-muted small", i18n$t("dess_detect_hint")))
+      }
+      htmltools::tagList(
+        htmltools::tags$div(class = "small",
+                            sprintf(i18n$t("dess_detect_done_fmt"), r$n_detecte)),
+        # Sans canal de surface le cœur avertit que la détection est « nettement
+        # moins sûre » : ne pas laisser lire un « 0 détection » comme un constat.
+        if (!isTRUE(r$avec_lidar)) {
+          htmltools::div(class = "alert alert-warning py-2 small mt-2 mb-0",
+                         i18n$t("dess_detect_sans_lidar"))
+        })
     })
 
     shiny::observeEvent(input$run_typage, {

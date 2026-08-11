@@ -379,6 +379,113 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
   tryCatch(readRDS(f), error = function(e) NULL)
 }
 
+#' Detect roads absent from the reference network (dessertR, spec 026)
+#'
+#' Separate action, and the heaviest of the panel. Measured on the Dabo
+#' accessibility emprise (4454 x 4162 @ 1 m, 1 855 ha, reference 1 032 segments):
+#'
+#' | `las_source` | duration | peak RSS | detections |
+#' |---|---:|---:|---:|
+#' | `NULL` (geomorphology only) | 189,4 s | **7,91 Go** | 0 |
+#' | LiDAR point cloud | **> 10 min** (not completed under a 16 Go cap) | — | — |
+#'
+#' Two consequences the UI must carry:
+#'
+#' - the geomorphology-only path is cheap*er* but the core itself warns it is
+#'   "nettement moins sûre" — and it found nothing here. Offering it as a fast
+#'   alternative would be offering a result one cannot trust;
+#' - 7,91 Go on a 31 Go workstation shared with RStudio is already in the zone
+#'   where `systemd-oomd` intervenes. The **memory guard is not optional**; it
+#'   reuses `.desserte_memory_check()`, whose estimate is grid-driven and
+#'   therefore applies here too.
+#'
+#' Depends on `dessertR` (via `.dsr("dsr_detecter")`), which `foretaccess` does
+#' not declare — hence the explicit guard, as for the integrity check.
+#'
+#' @param cache_dir Desserte cache directory.
+#' @param aoi_path Parcels GeoPackage written by the module.
+#' @param buffer_m Emprise buffer (m), same as the creation run.
+#' @param avec_lidar Use the LiDAR surface channel when the project has a cloud.
+#' @param project_path Project root, to locate the LiDAR cache.
+#' @return `list(status, n_detecte, gpkg_path)` or a structured error.
+#' @noRd
+run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
+                                   avec_lidar = TRUE, project_path = NULL) {
+  if (!requireNamespace("foretaccess", quietly = TRUE)) {
+    return(list(status = "error", reason = "desserte_no_foretaccess"))
+  }
+  if (!requireNamespace("dessertR", quietly = TRUE)) {
+    return(list(status = "error", reason = "desserte_detect_no_dessertr"))
+  }
+  if (is.null(aoi_path) || !file.exists(aoi_path)) {
+    return(list(status = "error", reason = "desserte_need_project"))
+  }
+  parcelles <- tryCatch(sf::st_transform(sf::st_read(aoi_path, quiet = TRUE), 2154),
+                        error = function(e) NULL)
+  if (is.null(parcelles)) return(list(status = "error", reason = "desserte_need_project"))
+  aoi_ext <- if (buffer_m > 0) {
+    tryCatch(sf::st_buffer(parcelles, buffer_m), error = function(e) parcelles)
+  } else parcelles
+
+  # Garde-fou mémoire AVANT toute acquisition : mesuré 7,91 Go sur 1 855 ha même
+  # sans nuage. Sans ce refus, un dépassement se paie par un OOM qui emporte la
+  # session — le mode d'échec que toute cette série de correctifs élimine.
+  mem <- .desserte_memory_check(aoi_ext, res_m = 5)
+  if (!isTRUE(mem$ok)) {
+    return(list(status = "error", reason = "desserte_memory_guard",
+                detail = sprintf(
+                  "grille %.1f M cellules, pic estime %.1f Go, RAM disponible %.1f Go",
+                  mem$cells / 1e6, mem$bytes / 1024^3, mem$available / 1024^3)))
+  }
+
+  acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
+  mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = 2154, cache_dir = acq_dir)
+  mnt <- tryCatch(terra::rast(mnt_path), error = function(e) NULL)
+  reference <- tryCatch(
+    foretaccess::acquire_desserte(aoi_ext, crs = 2154, cache_dir = acq_dir),
+    error = function(e) NULL)
+  if (is.null(mnt)) return(list(status = "error", reason = "desserte_detect_no_entrees"))
+
+  # Nuage LiDAR du projet, s'il existe ET si l'utilisateur le demande. Sans lui
+  # le cœur avertit que la détection est « nettement moins sûre » : on ne
+  # bascule donc JAMAIS silencieusement sur ce repli, on le remonte.
+  laz_dir <- if (!is.null(project_path)) {
+    file.path(project_path, "cache", "layers", "lidar_nuage")
+  } else NULL
+  a_du_laz <- !is.null(laz_dir) && dir.exists(laz_dir) &&
+    length(list.files(laz_dir, pattern = "\\.(copc\\.)?laz$")) > 0L
+  las_source <- if (isTRUE(avec_lidar) && a_du_laz) laz_dir else NULL
+
+  det <- tryCatch(
+    foretaccess::detecter_desserte(mnt, reference = reference,
+                                   las_source = las_source),
+    error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
+  if (inherits(det, "acc_err")) {
+    return(list(status = "error", reason = "desserte_detect_failed", detail = det$msg))
+  }
+  n <- if (inherits(det, "sf")) nrow(det) else 0L
+  gp <- file.path(cache_dir, "desserte_detectee.gpkg")
+  if (n > 0L) {
+    tryCatch({
+      unlink(gp)
+      sf::st_write(det, gp, layer = "desserte_detectee", quiet = TRUE, delete_dsn = TRUE)
+    }, error = function(e) invisible(NULL))
+  }
+  out <- list(n_detecte = n, avec_lidar = !is.null(las_source),
+              gpkg_path = if (file.exists(gp)) gp else NULL)
+  tryCatch(saveRDS(out, file.path(cache_dir, "detection.rds")),
+           error = function(e) invisible(NULL))
+  c(list(status = "success"), out)
+}
+
+#' Read the persisted detection result
+#' @noRd
+.load_cached_detection <- function(cache_dir) {
+  f <- file.path(cache_dir, "detection.rds")
+  if (!file.exists(f)) return(NULL)
+  tryCatch(readRDS(f), error = function(e) NULL)
+}
+
 # --- Garde-fou mémoire du glouton ------------------------------------------
 #
 # `foretaccess::reseau_desserte()` matérialise une table de voisinage

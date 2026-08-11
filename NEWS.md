@@ -1,3 +1,40 @@
+# nemetonshiny 0.121.12.9001 (2026-08-11)
+
+### Added — Desserte : détection de routes non cartographiées (dessertR, spec 026)
+
+Dernier panneau manquant de l'onglet Desserte : `detecter_desserte()` cherche
+dans le relief — et dans le nuage LiDAR quand il est disponible — des routes
+absentes de la BD TOPO. Action séparée, worker dédié, comme les trois
+précédentes.
+
+**C'est de loin le traitement le plus lourd de l'onglet**, et le panneau le dit.
+Mesuré sur l'emprise Accessibilité de Dabo (4454 × 4162 à 1 m, 1 855 ha,
+référence 1 032 tronçons) :
+
+| `las_source` | durée | pic RSS | détections |
+|---|---:|---:|---:|
+| `NULL` (géomorphologie seule) | 189,4 s | **7,91 Go** | 0 |
+| nuage LiDAR | > 10 min | — | mesure en cours |
+
+Deux conséquences portées par le code :
+
+* **Garde-fou mémoire non optionnel.** 7,91 Go sur un poste de 31 Go partagé
+  avec RStudio, c'est déjà la zone où `systemd-oomd` intervient. Le service
+  réutilise `.desserte_memory_check()` et **refuse avant toute acquisition** —
+  sinon l'échec arrive après plusieurs minutes, sous forme d'OOM qui emporte la
+  session plutôt que d'erreur rattrapable.
+* **Le repli sans LiDAR n'est jamais silencieux.** Le cœur avertit que la
+  détection sans canal de surface est « nettement moins sûre », et elle n'a rien
+  trouvé ici. Quand ce repli s'applique, le panneau l'affiche : une absence de
+  détection ne vaut pas constat d'absence de route.
+
+Garde `dessertR` explicite, comme pour le contrôle d'intégrité — `foretaccess`
+ne déclare pas cette dépendance.
+
+L'onglet Desserte consomme désormais l'ensemble des fonctions `foretaccess`
+pertinentes : création (glouton, Steiner), optimisation, typage, intégrité,
+complément OSM et détection.
+
 # nemetonshiny 0.121.12 (2026-08-11)
 
 ### Added — Desserte : optimisation du réseau, complément OSM, mode Steiner
