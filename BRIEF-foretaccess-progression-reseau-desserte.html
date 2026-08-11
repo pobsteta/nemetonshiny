@@ -35,6 +35,14 @@
 <div id="brief-cœur-foretaccess--reseau_desserte--aucune-progression-pendant-un-calcul-de-plusieurs-dizaines-de-minutes" class="section level1">
 
 <blockquote>
+<h1 id="no_entry-clos--sans-suite-2026-08-11">⛔ CLOS — SANS SUITE (2026-08-11)</h1>
+<p><strong>Ce brief partait d’un diagnostic faux et ne doit pas être implémenté.</strong></p>
+<p>Le cœur l’a réfuté dans <code>foretaccess/docs/brief-nemetonshiny-skidding-desserte.md</code> : les 22 minutes ne venaient pas d’un manque d’instrumentation mais d’un <code>skidding_m</code> que <strong>l’app ne passait pas</strong>, laissant le défaut cœur <code>0</code> — le pire cas documenté. Corrigé côté app en <code>nemetonshiny 0.121.10</code> : <strong>39,7 s</strong> sur Dabo, contre plus de 22 minutes sans jamais rendre la main.</p>
+<p>Le contrat proposé ci-dessous était de surcroît <strong>erroné</strong> : <code>reseau_desserte()</code> n’itère pas sur les parcelles mais sur les <strong>cellules-source</strong> — 309 726 sur Dabo, pas 4. Le compteur « i/n » avec écriture atomique par itération aurait écrit trois cent mille fichiers, soit une instrumentation plus coûteuse que le calcul mesuré.</p>
+<p>Le besoin résiduel (70 à 174 s restent longs) est couvert côté app depuis v0.121.9 par l’affichage de l’étape en cours. Si le sujet est un jour rouvert, <strong>partir du §5 du brief cœur</strong> — qui donne le contrat corrigé : <code>n</code> = nombre de sources, écritures throttlées, phase « table de voisinage » traitée à part (38,4 s avant la première itération), et instrumentation au point d’entrée <code>desserte_reseau</code> et non dans <code>build_network_with_table()</code>, partagée avec le multistart.</p>
+<p>Conservé pour mémoire du raisonnement et de sa correction.</p>
+</blockquote>
+<blockquote>
 <p>Hand-off depuis la session de dev <code>nemetonshiny</code>. <strong>À traiter dans une session de dev dédiée sur <code>/home/pascal/dev/foretaccess</code></strong> (un repo = une session). Repo concerné : <code>pobsteta/foretaccess</code>. Touche le <strong>noyau Rust</strong>, pas seulement la couche R. Versions observées : <code>foretaccess 2.0.1</code>, <code>nemetonshiny 0.121.9</code>. Confort d’usage, pas correction de bug : rien n’est cassé, mais l’attente est aveugle.</p>
 </blockquote>
 <div class="section level2">
