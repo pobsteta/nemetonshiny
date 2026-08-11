@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.11.9001 (2026-08-11)
+# nemetonshiny 0.121.12 (2026-08-11)
 
 ### Added — Desserte : optimisation du réseau, complément OSM, mode Steiner
 
