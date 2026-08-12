@@ -86,6 +86,25 @@ DESSERTE_ENGINES <- c("glouton", "steiner")
 #' @noRd
 DESSERTE_SKIDDING_DEFAULT_M <- 300
 
+#' Default platform width (m) for the earthwork cost method
+#'
+#' Only used by `methode_pente = "terrassement"`, whose volume grows as the
+#' SQUARE of this width. The step-function scale is blind to it.
+#' @noRd
+DESSERTE_LARGEUR_DEFAULT_M <- 4
+
+#' Default constructibility ceiling (% of terrain slope)
+#'
+#' Above this slope no road is traced, whichever pricing method is used. 60 % is
+#' the ceiling the core's step function already implies — its first class priced
+#' `Inf`. The core accepts `NULL` and derives it, but a `NULL` in the persisted
+#' `meta` would make the cache comparison ambiguous, so the app writes the value.
+#'
+#' **Couplage assumé** : si le barème du cœur change sa dernière classe, cette
+#' constante ne suivra pas. Elle est ici pour que le cache reste comparable.
+#' @noRd
+DESSERTE_PENTE_MAX_DEFAULT_PCT <- 60
+
 #' Directory holding the desserte artefacts of a project
 #' @noRd
 .desserte_cache_dir <- function(project_path) {
@@ -698,7 +717,46 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
 #' @param project_path Project directory, or `NULL`.
 #' @return A result list compatible with the map/badge UI, or `NULL`.
 #' @noRd
-.load_cached_desserte <- function(project_path) {
+#' Current values of the inputs that change the traced network
+#'
+#' Single source of truth for "what does the user ask for right now", used both
+#' to launch a run and to decide whether a cached one still answers it. Falls
+#' back to the documented defaults so a missing input never invalidates a cache
+#' by accident.
+#' @noRd
+.desserte_params_courants <- function(input, skidding_m = NULL) {
+  num <- function(x, defaut) {
+    v <- suppressWarnings(as.numeric(x))
+    if (!isTRUE(is.finite(v)) || v < 0) defaut else v
+  }
+  mp <- input$dess_methode_pente %||% "bareme"
+  list(
+    skidding_m = if (is.null(skidding_m)) {
+      num(input$skidding_m, DESSERTE_SKIDDING_DEFAULT_M)
+    } else skidding_m,
+    methode_pente = if (mp %in% c("bareme", "terrassement")) mp else "bareme",
+    largeur_m = num(input$dess_largeur, DESSERTE_LARGEUR_DEFAULT_M),
+    pente_max_pct = num(input$dess_pente_max, DESSERTE_PENTE_MAX_DEFAULT_PCT))
+}
+
+.desserte_params_identiques <- function(meta, params) {
+  for (nm in names(params)) {
+    a <- meta[[nm]]
+    b <- params[[nm]]
+    # Un cache SANS le champ est antérieur à son introduction : on ne peut pas
+    # affirmer qu'il a été calculé avec la valeur demandée, donc il diverge.
+    if (is.null(a) || is.null(b)) return(FALSE)
+    ok <- if (is.character(b) || is.character(a)) {
+      identical(as.character(a), as.character(b))
+    } else {
+      isTRUE(all.equal(as.numeric(a), as.numeric(b)))
+    }
+    if (!ok) return(FALSE)
+  }
+  TRUE
+}
+
+.load_cached_desserte <- function(project_path, params = NULL) {
   if (is.null(project_path) || !nzchar(project_path)) return(NULL)
   cache_dir <- .desserte_cache_dir(project_path)
   if (!dir.exists(cache_dir)) return(NULL)
@@ -712,6 +770,11 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     # traite comme absent plutôt que de l'afficher comme un résultat courant —
     # l'utilisateur relance, ce qui est le seul moyen d'obtenir le bon tracé.
     if (!isTRUE(meta$pondere_cout)) next
+    # ...et tout paramètre qui change le RÉSULTAT invalide de la même façon.
+    # Sans cette comparaison, changer `skidding_m` puis rouvrir l'onglet servait
+    # le réseau précédent, calculé à l'ancienne distance — et le badge affichait
+    # l'ancienne valeur, donc rien ne trahissait l'écart.
+    if (!is.null(params) && !.desserte_params_identiques(meta, params)) next
     gpkg <- file.path(cache_dir, "desserte.gpkg")
     return(list(
       status = "success",
@@ -725,6 +788,9 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
       n_parcelles = meta$n_parcelles %||% NA_integer_,
       n_routes = meta$n_routes %||% NA_integer_,
       skidding_m = meta$skidding_m %||% NA_real_,
+      methode_pente = meta$methode_pente %||% NA_character_,
+      largeur_m = meta$largeur_m %||% NA_real_,
+      pente_max_pct = meta$pente_max_pct %||% NA_real_,
       integrite = .load_cached_integrite(cache_dir),
       from_cache = TRUE))
   }
@@ -766,9 +832,30 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
 #' @return A named list describing the run.
 #' @noRd
 run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
-                         skidding_m = DESSERTE_SKIDDING_DEFAULT_M) {
+                         skidding_m = DESSERTE_SKIDDING_DEFAULT_M,
+                         methode_pente = "bareme",
+                         largeur_m = DESSERTE_LARGEUR_DEFAULT_M,
+                         pente_max_pct = DESSERTE_PENTE_MAX_DEFAULT_PCT) {
   if (!requireNamespace("foretaccess", quietly = TRUE)) {
     return(list(status = "error", reason = "desserte_no_foretaccess"))
+  }
+  # Le coeur n'expose la tarification par terrassement ni le plafond de pente
+  # que depuis la spec 029. Contre un coeur anterieur, on ne peut pas les
+  # honorer -- et surtout on ne doit PAS retomber en silence sur le bareme :
+  # l'utilisateur croirait chiffrer un volume de terre alors qu'il applique une
+  # grille par classe de pente. On echoue donc explicitement, et seulement si la
+  # demande sort du comportement historique.
+  #
+  # Le controle est ici, AVANT toute acquisition : refuser une demande qu'on ne
+  # peut pas honorer apres plusieurs minutes de telechargement serait une
+  # deuxieme faute.
+  supporte <- "methode_pente" %in%
+    names(formals(foretaccess::surface_cout_construction))
+  if (!supporte &&
+      (!identical(methode_pente, "bareme") ||
+         !isTRUE(all.equal(as.numeric(pente_max_pct),
+                           DESSERTE_PENTE_MAX_DEFAULT_PCT)))) {
+    return(list(status = "error", reason = "desserte_core_trop_ancien"))
   }
   if (is.null(aoi_path) || !file.exists(aoi_path)) {
     return(list(status = "error", reason = "desserte_need_project"))
@@ -859,7 +946,13 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   # 5. Surface de coût de construction (base + surcharge de pente ; couches eau/
   # sol optionnelles laissées à NULL en v1 — cf. plan de dev).
   cout <- tryCatch(
-    foretaccess::surface_cout_construction(pre),
+    if (supporte) {
+      foretaccess::surface_cout_construction(pre, methode_pente = methode_pente,
+                                             largeur_m = largeur_m,
+                                             pente_max_pct = pente_max_pct)
+    } else {
+      foretaccess::surface_cout_construction(pre)
+    },
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(cout, "acc_err")) {
     return(list(status = "error", reason = "desserte_cout_failed", detail = cout$msg))
@@ -935,6 +1028,8 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   saveRDS(list(cout = cout_total, connexe = connexe, raccorde = raccorde,
                n_desservies = n_desservies, n_parcelles = n_parcelles,
                n_routes = n_routes, skidding_m = skidding_m,
+               methode_pente = methode_pente, largeur_m = largeur_m,
+               pente_max_pct = pente_max_pct,
                pondere_cout = TRUE),
           file.path(cache_dir, paste0("reseau_", engine, ".rds")))
 

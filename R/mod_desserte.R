@@ -67,6 +67,49 @@ mod_desserte_ui <- function(id) {
         value = DESSERTE_SKIDDING_DEFAULT_M, min = 0, max = 2000, step = 50),
       htmltools::tags$p(class = "text-muted small", i18n$t("dess_skidding_help")),
 
+      # --- Tarification de la pente (foretaccess spec 029) ---------------------
+      # Deux DÉCISIONS distinctes, et c'est pour cela qu'il y a deux entrées.
+      #
+      # `methode_pente` ne change que la façon de CHIFFRER : le barème applique
+      # quatre classes, le terrassement calcule un volume de déblai/remblai. Sur
+      # le banc DABO du cœur, coûts médians comparables (x 1,03) mais tracés
+      # communs à 44 % seulement — personne n'a jugé lequel est le plus
+      # plausible sur le terrain, d'où un choix rendu à l'utilisateur plutôt
+      # qu'un défaut imposé.
+      #
+      # `pente_max_pct` décide JUSQU'OÙ l'on construit. Avant que le cœur ne le
+      # sépare, choisir « terrassement » déplaçait aussi ce plafond en silence,
+      # de 60 % à 100 %, ouvrant 5 % du massif. Les deux ne doivent pas se
+      # décider d'un seul geste.
+      shiny::radioButtons(
+        ns("dess_methode_pente"), i18n$t("dess_methode_pente"),
+        choices = stats::setNames(c("bareme", "terrassement"),
+                                  c(i18n$t("dess_methode_bareme"),
+                                    i18n$t("dess_methode_terrassement"))),
+        selected = "bareme", inline = TRUE),
+      htmltools::tags$p(class = "text-muted small",
+                        i18n$t("dess_methode_pente_help")),
+
+      # La largeur n'a d'effet QU'EN terrassement -- le barème y est aveugle,
+      # alors que le volume croît comme son carré. On la masque plutôt que de la
+      # griser : pas de dépendance à shinyjs pour si peu.
+      shiny::conditionalPanel(
+        condition = sprintf("input['%s'] == 'terrassement'",
+                            ns("dess_methode_pente")),
+        shiny::numericInput(
+          ns("dess_largeur"), i18n$t("dess_largeur"),
+          value = DESSERTE_LARGEUR_DEFAULT_M, min = 2.5, max = 6, step = 0.5),
+        htmltools::tags$p(class = "text-muted small",
+                          i18n$t("dess_largeur_help"))),
+
+      shiny::numericInput(
+        ns("dess_pente_max"), i18n$t("dess_pente_max"),
+        value = DESSERTE_PENTE_MAX_DEFAULT_PCT, min = 0, max = 100, step = 5),
+      htmltools::div(
+        class = "alert alert-warning py-2 small",
+        shiny::icon("triangle-exclamation"), " ",
+        i18n$t("dess_pente_max_help")),
+
       # Empreinte mémoire estimée de l'emprise courante : le pic du glouton est
       # prévisible à partir de la seule grille (cf. .desserte_memory_check), donc
       # affiché AVANT le clic — un dépassement se paie sinon par un OOM au bout
@@ -244,7 +287,8 @@ mod_desserte_server <- function(id, app_state) {
 
     # --- Worker asynchrone : acquisition + coût + moteur de création ----------
     dess_task <- shiny::ExtendedTask$new(
-      function(aoi_path, engine, cache_dir, buffer_m, skidding_m, dev_path, app_opts) {
+      function(aoi_path, engine, cache_dir, buffer_m, skidding_m, methode_pente,
+               largeur_m, pente_max_pct, dev_path, app_opts) {
         if (requireNamespace("future", quietly = TRUE)) {
           plan_classes <- class(future::plan())
           if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
@@ -260,7 +304,10 @@ mod_desserte_server <- function(id, app_state) {
           }
           options(nemeton.app_options = app_opts)
           nemetonshiny:::run_desserte(aoi_path, engine, cache_dir, buffer_m,
-                                      skidding_m = skidding_m)
+                                      skidding_m = skidding_m,
+                                      methode_pente = methode_pente,
+                                      largeur_m = largeur_m,
+                                      pente_max_pct = pente_max_pct)
         }, seed = TRUE)
       })
 
@@ -316,8 +363,11 @@ mod_desserte_server <- function(id, app_state) {
       if (!isTRUE(is.finite(skidding_m)) || skidding_m < 0) {
         skidding_m <- DESSERTE_SKIDDING_DEFAULT_M
       }
+      params <- .desserte_params_courants(input, skidding_m)
       tryCatch(
         dess_task$invoke(aoi_path, engine, cache_dir, buffer_m, skidding_m,
+                         params$methode_pente, params$largeur_m,
+                         params$pente_max_pct,
                          .dev_pkg_path, get_app_options()),
         error = function(e) {
           rv$running <- FALSE
@@ -399,7 +449,7 @@ mod_desserte_server <- function(id, app_state) {
       # Recharger depuis le cache disque (chemins + sidecar de scalaires).
       project_path <- tryCatch(app_state$current_project$path,
                                error = function(e) NULL)
-      rv$result <- .load_cached_desserte(project_path) %||% res
+      rv$result <- .load_cached_desserte(project_path, .desserte_params_courants(input)) %||% res
       # Zéro route créée est un SUCCÈS, pas un résultat vide : à `skidding_m`
       # réaliste, une forêt bien desservie n'a rien à construire (mesuré sur
       # Dabo : 39 routes à 100 m, aucune à 300 m). Sans message dédié,
@@ -436,8 +486,9 @@ mod_desserte_server <- function(id, app_state) {
           return()
         }
         dess_loaded_for(key)
-        cached <- tryCatch(.load_cached_desserte(project_path),
-                           error = function(e) NULL)
+        cached <- tryCatch(
+          .load_cached_desserte(project_path, .desserte_params_courants(input)),
+          error = function(e) NULL)
         rv$result <- cached
         if (!is.null(cached)) {
           shiny::showNotification(i18n$t("dess_cache_loaded"), type = "message",

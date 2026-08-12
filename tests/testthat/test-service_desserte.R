@@ -509,3 +509,99 @@ test_that("les cles i18n du classement existent", {
     expect_true(is.character(lbl) && nzchar(lbl) && !identical(lbl, k), info = k)
   }
 })
+
+# --- Invalidation du cache par les parametres (annexe A du brief coeur) -------
+# `.load_cached_desserte()` ne comparait AUCUN parametre : elle rejetait les
+# caches anterieurs a `pondere_cout = TRUE` et servait tout le reste tel quel.
+# Changer `skidding_m` puis rouvrir l'onglet servait donc le reseau precedent,
+# calcule a l'ancienne distance -- et le badge affichait l'ancienne valeur, si
+# bien que rien ne trahissait l'ecart.
+
+test_that(".desserte_params_identiques compare, et traite l'absent comme divergent", {
+  meta <- list(skidding_m = 300, methode_pente = "bareme", largeur_m = 4,
+               pente_max_pct = 60)
+  expect_true(.desserte_params_identiques(meta, meta[c("skidding_m", "largeur_m")]))
+  expect_true(.desserte_params_identiques(meta, meta))
+
+  # Un ecart sur n'importe lequel invalide.
+  expect_false(.desserte_params_identiques(meta, list(skidding_m = 100)))
+  expect_false(.desserte_params_identiques(meta, list(methode_pente = "terrassement")))
+  expect_false(.desserte_params_identiques(meta, list(largeur_m = 6)))
+  expect_false(.desserte_params_identiques(meta, list(pente_max_pct = 80)))
+
+  # Un cache ANTERIEUR a l'introduction du champ ne porte pas la valeur : on ne
+  # peut pas affirmer qu'il a ete calcule avec celle demandee, donc il diverge.
+  expect_false(.desserte_params_identiques(list(skidding_m = 300),
+                                           list(methode_pente = "bareme")))
+
+  # Tolerance numerique : 300 et 300.0 sont la meme distance.
+  expect_true(.desserte_params_identiques(list(skidding_m = 300L),
+                                          list(skidding_m = 300)))
+})
+
+test_that(".desserte_params_courants retombe sur les defauts documentes", {
+  vide <- .desserte_params_courants(list())
+  expect_equal(vide$skidding_m, DESSERTE_SKIDDING_DEFAULT_M)
+  expect_equal(vide$methode_pente, "bareme")
+  expect_equal(vide$largeur_m, DESSERTE_LARGEUR_DEFAULT_M)
+  expect_equal(vide$pente_max_pct, DESSERTE_PENTE_MAX_DEFAULT_PCT)
+
+  # Une entree absurde ne doit pas invalider le cache par accident.
+  sale <- .desserte_params_courants(list(dess_largeur = "", dess_pente_max = -5,
+                                         dess_methode_pente = "n'importe quoi"))
+  expect_equal(sale$largeur_m, DESSERTE_LARGEUR_DEFAULT_M)
+  expect_equal(sale$pente_max_pct, DESSERTE_PENTE_MAX_DEFAULT_PCT)
+  expect_equal(sale$methode_pente, "bareme")
+
+  # `skidding_m` deja resolu par l'appelant est repris tel quel.
+  expect_equal(.desserte_params_courants(list(skidding_m = 999), 100)$skidding_m, 100)
+})
+
+test_that(".load_cached_desserte rejette un cache calcule autrement", {
+  dir <- withr::local_tempdir()
+  cache <- file.path(dir, "cache", "desserte")
+  dir.create(cache, recursive = TRUE)
+  eng <- DESSERTE_ENGINES[[1]]
+  writeLines("x", file.path(cache, paste0("reseau_", eng, ".tif")))
+  saveRDS(list(cout = 1, skidding_m = 300, methode_pente = "bareme",
+               largeur_m = 4, pente_max_pct = 60, pondere_cout = TRUE),
+          file.path(cache, paste0("reseau_", eng, ".rds")))
+
+  demande <- list(skidding_m = 300, methode_pente = "bareme", largeur_m = 4,
+                  pente_max_pct = 60)
+  expect_true(isTRUE(.load_cached_desserte(dir, demande)$from_cache))
+
+  # La meme demande a une autre distance de debardage : le cache ne repond plus.
+  demande$skidding_m <- 100
+  expect_null(.load_cached_desserte(dir, demande))
+
+  # Sans parametres, l'ancien comportement est conserve -- utile aux appelants
+  # qui veulent juste savoir s'il existe un reseau.
+  expect_true(isTRUE(.load_cached_desserte(dir)$from_cache))
+})
+
+test_that("un coeur trop ancien echoue au lieu de tarifer autrement en silence", {
+  # foretaccess < spec 029 n'a ni `methode_pente` ni `pente_max_pct`. Retomber
+  # sur le bareme sans le dire donnerait a l'utilisateur un chiffrage qu'il n'a
+  # pas demande -- il croirait mesurer un volume de terre.
+  testthat::with_mocked_bindings(
+    surface_cout_construction = function(pre, config = NULL, ...) stop("jamais appele"),
+    .package = "foretaccess",
+    {
+      # Le refus tombe AVANT l'acquisition : aucun AOI n'est meme necessaire.
+      expect_equal(
+        nemetonshiny:::run_desserte(NULL, "glouton", tempdir(),
+                                    methode_pente = "terrassement")$reason,
+        "desserte_core_trop_ancien")
+      expect_equal(
+        nemetonshiny:::run_desserte(NULL, "glouton", tempdir(),
+                                    pente_max_pct = 80)$reason,
+        "desserte_core_trop_ancien")
+
+      # La demande historique -- bareme, plafond par defaut -- reste honoree :
+      # elle echoue plus loin, faute d'AOI, et non sur le garde-fou.
+      expect_equal(
+        nemetonshiny:::run_desserte(NULL, "glouton", tempdir())$reason,
+        "desserte_need_project")
+    })
+})
