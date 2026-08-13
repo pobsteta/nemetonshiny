@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.0.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.122.1" id="nemetonshiny-01221-2026-08-13">nemetonshiny 0.122.1 (2026-08-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01221-2026-08-13"></a></h2>
+<div class="section level4">
+<h4 id="changed--cache-osm-daté-et-versionné-sur-le-transport-overpass-0-122-1">Changed — Cache OSM daté et versionné sur le transport Overpass<a class="anchor" aria-label="anchor" href="#changed--cache-osm-dat%C3%A9-et-versionn%C3%A9-sur-le-transport-overpass-0-122-1"></a></h4>
+<p>Part <code>nemetonshiny</code> du brief d’unification OSM (§5.3). Le transport Overpass est en cours de refonte côté <code>foretaccess</code> — requête unique avec bissection au lieu d’un tuilage 1 km — et ce changement modifie la <strong>couverture</strong>, pas seulement la vitesse. Un cache produit par l’ancien transport et relu après la bascule ferait comparer deux extractions différentes sans le dire.</p>
+<p><code>run_desserte_osm()</code> enregistre donc désormais <code>date_requete</code> (UTC, ISO 8601) et <code>foretaccess_version</code>, et <code>.load_cached_osm()</code> refuse un cache dont la version ne correspond pas — ou qui n’en porte aucune, ce qui signale un cache antérieur au garde-fou. Deux exécutions à un mois d’écart cessent d’être indiscernables.</p>
+</div>
+<div class="section level4">
+<h4 id="removed--osmdata-des-suggests-0-122-1">Removed — <code>osmdata</code> des <code>Suggests</code>
+<a class="anchor" aria-label="anchor" href="#removed--osmdata-des-suggests-0-122-1"></a></h4>
+<p>Aucun appel dans <code>R/</code>, <code>tests/</code>, <code>inst/</code> ni <code>man/</code> : l’app délègue entièrement l’accès Overpass à <code><a href="https://pobsteta.github.io/foretaccess/reference/acquire_desserte_osm.html" class="external-link">foretaccess::acquire_desserte_osm()</a></code>. Les fonds de carte (<code>leaflet</code>, <code>maptiles</code>) ne sont pas concernés et restent inchangés.</p>
+</div>
+<div class="section level4">
+<h4 id="ce-que-cette-version-ne-fait-pas-0-122-1">Ce que cette version ne fait pas<a class="anchor" aria-label="anchor" href="#ce-que-cette-version-ne-fait-pas-0-122-1"></a></h4>
+<p>Le brief demande de vérifier que l’appel OSM est « asynchrone <strong>et annulable</strong> ». Il est asynchrone — <code><a href="https://rdrr.io/pkg/shiny/man/ExtendedTask.html" class="external-link">shiny::ExtendedTask</a></code> + <code><a href="https://rstudio.github.io/promises/reference/future_promise.html" class="external-link">promises::future_promise</a></code>, sur les deux points d’appel (<code>run_desserte_osm()</code> et le complément OSM de la correction LiDAR). Il n’est <strong>pas annulable</strong> : <code>ExtendedTask</code> n’expose aucune annulation et un worker <code>future</code> ne s’interrompt pas. Constaté en pratique — arrêter une correction bloquée sur le backoff Overpass a demandé de tuer le process.</p>
+<p>Rendre l’annulation possible suppose de changer de substrat asynchrone (<code>mirai</code>, que <code>foretaccess</code> utilise déjà, sait tuer une tâche) : hors périmètre de ce lot.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.122.0" id="nemetonshiny-01220-2026-08-13">nemetonshiny 0.122.0 (2026-08-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01220-2026-08-13"></a></h2>
 <div class="section level4">
