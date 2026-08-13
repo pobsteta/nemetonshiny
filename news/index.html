@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.0.9001</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.122.1" id="nemetonshiny-01221-2026-08-13">nemetonshiny 0.122.1 (2026-08-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01221-2026-08-13"></a></h2>
+<div class="section level4">
+<h4 id="fixed--le-cvat-ne-se-détruit-plus-lui-même-et-nappelle-plus-le-wms-0-122-1">Fixed — Le CVAT ne se détruit plus lui-même, et n’appelle plus le WMS<a class="anchor" aria-label="anchor" href="#fixed--le-cvat-ne-se-d%C3%A9truit-plus-lui-m%C3%AAme-et-nappelle-plus-le-wms-0-122-1"></a></h4>
+<p>Constaté sur Reconfort : un CVAT valide (1892 × 2004, <strong>100 % de cellules valides</strong>) a disparu — fichier <em>et</em> sidecar — sans être remplacé, puis s’est reconstruit en boucle. La cause tenait en trois défauts qui se composaient.</p>
+<p><strong>La construction écrasait la cible avant d’aboutir.</strong> L’appel passait <code>out = &lt;cible&gt;, overwrite = TRUE</code> : un échec détruisait un CVAT valide sans rien mettre à la place. La construction se fait désormais dans un fichier temporaire, renommé seulement une fois le résultat en main.</p>
+<p><strong>Les échecs n’étaient pas mémorisés.</strong> Le sidecar n’était écrit que <code>if (!is.null(built))</code> : une construction ratée ne laissait aucune trace, donc l’observe de l’onglet la relançait à chaque entrée. Le sidecar porte maintenant un <code>statut</code>, <code>.cvat_built_for()</code> refuse de prendre un échec pour une construction faite, et <code>.cvat_failed_for()</code> rend l’échec opposable — avec une péremption de 6 h, pour qu’une panne de service transitoire ne désactive pas le CVAT indéfiniment.</p>
+<p><strong>Le buffer demandé pouvait dépasser la mosaïque locale.</strong> Au-delà, <code><a href="https://pobsteta.github.io/foretaccess/reference/build_cvat_precomputed.html" class="external-link">foretaccess::build_cvat_precomputed()</a></code> ré-acquiert le MNT par le <strong>WMS IGN</strong> — observé sur Reconfort : un descripteur <code>GDAL_WMS</code> de 1,07 G × 970 M pixels sur <code>data.geopf.fr</code>, worker à 13 % de CPU (borné par le réseau), pour un fond que l’affichage ré-agrège à ~2000 px de toute façon. <code>.cvat_buffer_plafonne()</code> ramène le buffer à la marge réellement disponible : mosaïque 5000 × 5000 m, AOI 3285 × 3509 m, marges O 894 / E 821 / S 864 / <strong>N 627</strong> → tout buffer &gt; 626 m y est ramené. Le plafond ne s’applique <strong>pas</strong> quand la mosaïque ne couvre même pas l’AOI : ré-acquérir est alors le seul moyen d’obtenir un fond.</p>
+<p>Le même plafond est appliqué dans le garde du module, sans quoi celui-ci raisonnerait sur un buffer que la construction ne demande jamais — jamais satisfait, il relancerait un worker et son toast à chaque entrée dans l’onglet.</p>
+<p><code>.rvt_cvat_out_path()</code> factorise le chemin canonique du CVAT, dont les gardes ont besoin <strong>même quand le fichier n’existe pas</strong> — c’est justement le cas où il faut savoir si une construction a déjà été tentée.</p>
+</div>
 <div class="section level4">
 <h4 id="changed--cache-osm-daté-et-versionné-sur-le-transport-overpass-0-122-1">Changed — Cache OSM daté et versionné sur le transport Overpass<a class="anchor" aria-label="anchor" href="#changed--cache-osm-dat%C3%A9-et-versionn%C3%A9-sur-le-transport-overpass-0-122-1"></a></h4>
 <p>Part <code>nemetonshiny</code> du brief d’unification OSM (§5.3). Le transport Overpass est en cours de refonte côté <code>foretaccess</code> — requête unique avec bissection au lieu d’un tuilage 1 km — et ce changement modifie la <strong>couverture</strong>, pas seulement la vitesse. Un cache produit par l’ancien transport et relu après la bascule ferait comparer deux extractions différentes sans le dire.</p>
