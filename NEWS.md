@@ -26,6 +26,29 @@ porteur de son état, et c'est le gestionnaire qui tranche. Un garde-fou refuse
 la correction si la sortie compte moins de tronçons que l'entrée — perdre un
 tronçon déclaré est une erreur, pas un résultat.
 
+#### Validé de bout en bout sur ForêtAccess (2026-08-13)
+
+| | avant | après |
+|---|---:|---:|
+| tronçons | 93 | **401** |
+| dont BD TOPO | 93 / 373 | **373 / 373** |
+| dont ajoutés d'OSM | — | 28 (3,61 km) |
+| `route` conservées | 35 / 68 | **68 / 68** |
+
+Répartition par classe des tronçons BD TOPO en sortie **identique** à l'entrée
+(44 `hors_desserte`, 254 `piste`, 7 `reseau_public`, 68 `route`). Le plus court
+ajout OSM mesure 33,8 m, au-dessus du plancher. Durée 25,9 min, pic 6,3 Go.
+
+Les états mesurés sur les 401 tronçons disent pourquoi le retrait était faux :
+**213 `abandonnee` et 95 `hors_route`**, soit 77 % du réseau — sur une emprise
+qui porte 68 `route` de la BD TOPO. Ces états ne sont pas un inventaire de
+terrain.
+
+> **Défaut du cœur repéré au passage** : avec `retirer_disparues = FALSE`, le
+> message de `qualifier_desserte()` sort ses gabarits `cli` non interpolés —
+> « `{n_retire}` disparu`{?s}` retiré`{?s}`, `{n_inapte}` inapte`{?s}` grumier
+> retiré`{?s}` ». À signaler à `foretaccess`.
+
 ### Added — Complément OpenStreetMap de la desserte
 
 `.desserte_complement_osm()` ajoute au réseau les tronçons qu'OSM porte et que
