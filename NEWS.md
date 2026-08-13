@@ -1,4 +1,4 @@
-# nemetonshiny 0.121.16 (2026-08-13)
+# nemetonshiny 0.122.0 (2026-08-13)
 
 ### Fixed — La desserte corrigée ne supprime plus les tronçons BD TOPO
 
