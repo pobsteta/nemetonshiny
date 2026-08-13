@@ -1,7 +1,8 @@
 # Spec — desserte : les quatre reliquats côté app
 
-> **Statut** : ouvert, 2026-08-12. Repo : `nemetonshiny`.
-> **Amont** : trois des quatre points dépendent de `BRIEF-foretaccess-desserte-consolide.md`, en cours côté cœur. Le §4 est indépendant et faisable tout de suite.
+> **Statut** : ouvert. Rédigé le 2026-08-12, **§2 réécrit le 2026-08-13** sur mesures. Repo : `nemetonshiny`.
+> **Amont** : `foretaccess 2.1.0` a livré le §B du brief consolidé (specs de détection) ; le §A (déclaration de `dessertR`) reste bloqué en amont par l'archivage de `rlas` sur le CRAN.
+> **Ce qui a changé** : le §2 n'attend plus le cœur. Ce qu'il attendait est arrivé et **n'a rien changé au résultat** — il est devenu une décision, pas une implémentation.
 > **Contexte** : reliquats de la série `v0.121.1` → `v0.121.15` (onglet Desserte, détection, classement).
 
 ---
@@ -10,12 +11,19 @@
 
 | § | Sujet | Dépend du cœur ? | Faisable maintenant |
 |---|---|---|---|
-| 1 | Plancher `foretaccess` | ✅ oui | non |
-| 2 | Rebrancher la détection | ✅ oui (§B du brief) | non |
+| 1 | Plancher `foretaccess` | ✅ oui (§A bloqué par `rlas`) | non |
+| 2 | **Détection : décider de son sort** | ❌ non (le cœur a livré) | **oui — c'est un arbitrage** |
 | 3 | `stations` + `ndvi` pour le classement | partiellement | **oui, mais inutile avant §2** |
 | 4 | Garde-fou mémoire ALSroads périmé | ❌ non | **oui** |
 
-**Faire le §4 en premier** : c'est le seul qui ne dépende de personne. Les §1 et §2 s'enchaînent mécaniquement dès la release cœur. Le §3 est le plus gros, et il ne rapporte rien tant que la détection rend 0.
+**Le §2 a changé de nature** (révision du 2026-08-13). Il n'attend plus le cœur :
+`foretaccess 2.1.0` a livré ce qu'il demandait, et **cela n'a rien changé**. Ce
+n'est plus une tâche d'implémentation, c'est une décision à prendre sur une
+fonctionnalité qui coûte une heure et ne rend rien.
+
+Le §4 reste faisable immédiatement et ne dépend de personne. Le §3 ne rapporte
+rien tant que la détection rend 0 — et le §2 dit maintenant qu'il ne faut pas
+compter dessus.
 
 ---
 
@@ -23,7 +31,12 @@
 
 ### Situation
 
-`DESCRIPTION` déclare aujourd'hui `foretaccess (>= 2.0.1)`. Les correctifs demandés au cœur (§A et §B du brief consolidé) sortiront dans une version ultérieure dont l'app dépendra **strictement** : sans le §A, `verifier_integrite_desserte()` peut rendre un bilan vide qui se lit « aucune infraction ».
+`DESCRIPTION` déclare aujourd'hui `foretaccess (>= 2.0.1)`, et **ce plancher reste correct** — l'app ne consomme encore aucune API de 2.1.0.
+
+*Mise à jour du 2026-08-13* : des deux correctifs attendus, **un seul est sorti**.
+
+- **§B — livré** dans `foretaccess 2.1.0` : `detecter_desserte(specs = )` accepte quatre formes. Ne devient un motif de bump que si le §2 décide de s'en servir, ce qui n'est pas acquis.
+- **§A — NON livré, et pour une raison durable.** `dessertR` n'est toujours pas déclaré en `Suggests` parce qu'il dépend de `rlas`, **archivé sur le CRAN** : la déclaration faisait échouer les quatre jobs de CI du cœur. Le prédicat public `dessertR_disponible()` n'existe donc pas, et nos gardes locaux `requireNamespace("dessertR")` restent nécessaires. Ce n'est pas un retard, c'est bloqué en amont tant que `rlas` ne revient pas.
 
 ### À faire
 
@@ -43,35 +56,136 @@ Ne pas bumper « pour suivre ». Le plancher est le **minimum que le code app ex
 
 ---
 
-## 2. Rebrancher la détection sur une calibration locale
+## 2. Détection : quatre variables d'ajustement épuisées, une décision à prendre
 
-### Situation
+> **Révision du 2026-08-13.** La version précédente de ce §2 postulait que la
+> détection rendait 0 **parce que** ses bornes venaient d'un autre massif, et que
+> la correction attendue du cœur lèverait le blocage. **Cette prémisse est
+> réfutée par la mesure.** Le texte qui suit la remplace ; l'ancien est conservé
+> dans l'historique git, il n'a pas à être suivi.
 
-`run_desserte_detection()` appelle `foretaccess::detecter_desserte()` sans `specs`, donc avec `specs_desserte_calibrees()` — des bornes calibrées **sur un autre massif**. Résultat mesuré sur ForetAccess : **0 détection en 729 s**, avec l'avertissement `dessertR` « Bornes mal adaptées à la donnée ».
+### Ce que le cœur a livré, et ce que ça n'a pas changé
 
-Nous avons déjà corrigé notre part (`v0.121.15`) : le service prend le MNT LiDAR 0,5 m et non le RGE ALTI 5 m. Chiffré, ce correctif fait passer les canaux retenus de **0/7 à 5/7** (AUC max 0,56 → 0,77). Le signal est donc là ; c'est l'accès à la calibration qui manque.
+`foretaccess 2.1.0` a livré exactement ce que le brief demandait :
+`detecter_desserte(specs = )` accepte quatre formes, dont `"auto"` (calibration
+sur place) et la sortie plate de `dsr_calibrer_specs()`, et
+`specs_depuis_calibration()` expose la conversion. Vérifié : nos 7 canaux
+calibrés sont correctement promus en `geomorpho`.
 
-### À faire — selon la réponse du cœur
+**Le comptage n'a pas bougé d'un tronçon.**
 
-Le brief propose trois pistes ; l'implémentation diffère peu.
+### La mesure — Reconfort, 554 ha, 2 h 52 de calcul
 
-- **Si `specs = "auto"`** (piste préférée) : passer l'argument, rien d'autre. Le surcoût attendu est celui de `dsr_layers_dtm()` + `dsr_calibrer_specs()`, mesuré à **66 s** sur ForetAccess, à ajouter aux 729 s.
-- **Si un convertisseur est exposé** : calibrer nous-mêmes puis convertir. Il faut alors construire la pile de canaux (`dsr_grille_reference()` puis `dsr_layers_dtm()`), ce qui ajoute une dépendance directe à `dessertR` dans notre code — aujourd'hui nous ne l'appelons que via `dsr_classer()`.
-- **Si `specs = NULL` suffit** (question §B.6 du brief) : une ligne, aucun surcoût. C'est le cas le plus probable et le plus simple ; ne pas construire plus avant de connaître la réponse.
+Reconfort a été choisi parce qu'il lève l'objection que ForêtAccess ne pouvait
+pas lever : sur 31 ha de forêt privée, « il n'y a peut-être rien à trouver » est
+une explication recevable. Ici, 554 ha de forêt communale, **105,7 km de BD TOPO
+en référence**, et une signature de micro-relief franchement discriminante :
 
-Dans tous les cas, **remonter l'avertissement de calibration à l'utilisateur**. Il part aujourd'hui dans la console du worker `future` et personne ne le voit. Un « 0 route détectée » sans ce contexte se lit comme un constat d'absence alors que c'est un défaut de bornes.
+| MNT | canaux retenus | meilleure AUC |
+|---|---:|---:|
+| ForêtAccess (31 ha) | 5 / 7 | 0,77 |
+| **Reconfort (554 ha)** | **7 / 7**, tous stables | **0,763** (rugosité) |
+
+Sept configurations, un seul fragment de 55 m au total :
+
+| configuration | tronçons | durée | pic RSS |
+|---|---:|---:|---:|
+| bornes figées, géomorphologie | 0 | 436 s | — |
+| calibration locale, géomorphologie | 0 | 410 s | 5,65 Go |
+| calibration locale, seuil 0,3 | **1** *(55 m)* | — | — |
+| calibration locale, seuils 0,4 / 0,5 / 0,6 | 0 | 1 380 s | — |
+| calibration locale, `buffer_ref = 0` | 0 | 203 s | — |
+| **+ canal de surface, seuil 0,6** | 0 | 4 018 s | 8,66 Go |
+| **+ canal de surface, seuil 0,4** | 0 | 3 357 s | **8,75 Go** |
+
+### Ce que ces mesures écartent
+
+- **Les bornes.** Calibrées localement sur 7 canaux retenus : même résultat.
+- **Le seuil.** À 0,3 — *sous* la plage 0,4–0,8 que la spec 026 prescrit — un
+  seul linéaire de plus de 30 m survit. L'indice ne décroche pas à un seuil, il
+  est uniformément trop bas.
+- **Le masquage de la référence.** `buffer_ref = 0` rend 0. Et le corridor de
+  15 m ne masque que **8 % de l'emprise** (115 ha sur 1 440) — pas les 22 %
+  qu'un calcul sans recouvrement laisserait croire.
+- **Le canal de surface.** Il multiplie le coût par 10 et n'ajoute **aucune**
+  détection. À noter : le run ForêtAccess de 729 s le passait déjà (4 dalles,
+  `avec_lidar` par défaut) et rendait 0 lui aussi.
+
+### Ce qui reste, et qu'on ne peut pas trancher d'ici
+
+Deux hypothèses tiennent encore, et **aucune n'est instrumentable côté app** :
+
+1. **Il n'y a réellement rien à détecter** sur ces massifs — plausible sur une
+   forêt communale bien desservie, où ce qui existe est déjà cartographié.
+2. **La chaîne a un défaut en amont** de ses réglages, qui empêche l'indice
+   d'atteindre des valeurs exploitables quelles que soient les entrées.
+
+Les distinguer demande d'inspecter le raster `p_desserte` lui-même, que
+`detecter_desserte()` n'expose pas. Reconstruire `sigma_geo` nous-mêmes
+reviendrait à réimplémenter la logique du cœur — exclu (règle 1).
+
+### La décision à prendre
+
+La question n'est plus « comment calibrer » mais **« cette fonctionnalité doit-elle
+rester exposée en l'état »**. Elle demande **67 minutes et 8,7 Go** pour un
+résultat vide qu'aucun message n'explique. Trois options :
+
+- **(a) Retirer le bouton** de l'onglet Desserte tant que la chaîne n'a pas
+  produit un résultat non vide sur au moins une AOI. Le plus honnête vis-à-vis
+  de l'utilisateur, et réversible.
+- **(b) Le garder en l'assortissant d'un avertissement mesuré** — durée, mémoire,
+  et le fait qu'aucune détection n'a été obtenue sur trois massifs. Laisse la
+  porte ouverte à un massif où ça marcherait.
+- **(c) Passer un brief au cœur** avec ces mesures, en demandant l'exposition du
+  raster `p_desserte` (ou de son quantile maximal) pour pouvoir distinguer les
+  deux hypothèses ci-dessus. C'est le seul chemin qui *résout* au lieu de
+  contourner.
+
+(a) et (c) ne s'excluent pas — c'est probablement la combinaison à retenir.
+
+### Deux défauts app, indépendants du 0, à corriger dans tous les cas
+
+**L'emprise n'est pas découpée.** `run_desserte_detection()` fait
+`terra::rast(mnt_path)` sur la mosaïque entière et n'utilise pas l'argument
+`emprise` de `detecter_desserte()`. Sur Reconfort : **2 500 ha traités pour
+1 440 utiles**. Le NEWS du cœur est explicite — « dégrader la résolution ne fait
+pas gagner du temps, cela fait perdre le signal ; la seule variable d'ajustement
+est l'emprise ».
+
+**Le garde-fou mémoire modélise la mauvaise grille.** Il annonce **1,96 Go** et
+laisse passer un run mesuré à **8,75 Go**. Deux erreurs qui se composent et se
+compensent partiellement, ce qui explique qu'elles soient passées inaperçues :
+
+| | garde-fou | réalité |
+|---|---|---|
+| grille | AOI à 5 m — 0,22 M cellules | mosaïque à 1 m — **25 M cellules** |
+| coût par cellule | structures du solveur glouton (`NodeState`, listes de voisins) | canaux raster |
+
+`.desserte_memory_estimate()` est calibré sur le moteur `reseau_desserte`, pas
+sur `detecter_desserte`. Le commentaire qui justifie sa réutilisation — « son
+estimation est pilotée par la grille, donc elle vaut aussi ici » — est faux.
+
+C'est le même motif que le §4 : **un garde-fou dont le calibrage ne correspond
+plus à ce qu'il garde est pire qu'absent.** Celui-ci a laissé passer un job de
+8,7 Go sur une machine où 4 Go étaient déjà pris.
 
 ### Critères d'acceptation
 
-- Sur ForetAccess, la détection rend un résultat **et** l'interface indique si les bornes ont été calibrées localement ou héritées.
-- Si elle rend toujours 0, l'interface dit **pourquoi** : bornes inadaptées, ou absence effective.
-- Le surcoût de la calibration est mesuré et documenté dans l'en-tête du service, comme les autres.
+- La décision (a/b/c) est prise et **écrite**, pas laissée implicite.
+- L'emprise est découpée ou `emprise` est passé ; le gain est mesuré.
+- Le garde-fou est recalibré sur `detecter_desserte` — ou retiré en disant
+  pourquoi. Ses constantes viennent d'une mesure datée, comme celles de
+  `.desserte_memory_estimate()`.
+- Si la détection reste exposée, un 0 s'accompagne du **pourquoi** : bornes,
+  seuil, ou absence effective.
 
-### Ce qu'on ne sait pas
+### Données de référence
 
-**Il est possible qu'il n'y ait rien à détecter** sur ces 31 ha de forêt privée. Ne pas traiter un 0 persistant comme un échec du correctif sans avoir cherché une AOI où l'on sait qu'il existe des pistes non cartographiées — Reconfort (30 parcelles, 554 ha, 25 dalles LiDAR) est le meilleur candidat non encore essayé.
-
----
+Reconfort `20260701_204501_ltcp` : 30 parcelles / 554 ha, bbox 3,28 × 3,51 km,
+25 dalles LiDAR (MNT 0,5 m, mosaïque 5 × 5 km), référence BD TOPO 435 tronçons /
+105,7 km. Bancs de mesure et artefacts conservés hors dépôt (scratchpad de
+session) — les chiffres ci-dessus sont reproductibles avec
+`dsr_calibrer_specs()` puis `detecter_desserte_balayage()`.
 
 ## 3. `stations` et `ndvi` : faire monter la confiance du classement
 
@@ -111,9 +225,13 @@ Note : `tpi` n'apparaît pas dans les arguments nommés de `dsr_classer()` en 1.
 
 ### Situation
 
-`.acc_estimate_alsroads_memory()` et son garde-fou pré-vol (`R/service_accessibility.R`, ~lignes 279–310) estiment la mémoire de la **dérivation MNT par ALSroads** — un chemin que `foretaccess` a retiré en 1.27.0 au profit de dessertR (« `ALSroads` et `lidR` ne sont plus utilisés du tout »).
+*Les fonctions s'appellent `.lidar_memory_estimate()` et `.lidar_memory_check()`* (`R/service_accessibility.R`) — la première rédaction de cette spec les nommait `.acc_estimate_alsroads_memory()`, qui n'existe pas.
 
-Ils dégradent proprement — `requireNamespace("lidR")` absent rend `NULL` — et ne bloquent rien. Mais leur calibrage n'a jamais été revérifié contre le profil mémoire de dessertR, et les commentaires décrivent une mécanique qui n'existe plus.
+Elles estiment la mémoire de la **dérivation MNT par ALSroads**, un chemin que `foretaccess` a retiré en 1.27.0. Vérifié le 2026-08-13 : `.mnt_alsroads` **n'existe plus** dans le namespace de `foretaccess 2.1.0`, et ni `lidR` ni `ALSroads` ne figurent dans ses `Imports`/`Suggests`.
+
+**Le point n'est pas que le garde-fou soit mort — c'est que le risque a changé de nature.** Le NEWS 1.27.0 est explicite : « plus de dérivation automatique d'un MNT 1 m depuis les points sol […] **Fournir un MNT à 1 m ou plus fin**, sans quoi les largeurs sortent `NA` ». Un MNT trop grossier ne provoque donc plus un OOM mais une **dégradation silencieuse** — des largeurs `NA` que rien ne signale. Le garde-fou parle d'un danger disparu et se tait sur celui qui l'a remplacé.
+
+Notre code fournit bien un MNT ≤ 1 m (LiDAR 0,5 m, sinon acquisition à 1 m), donc le cas ne se présente pas aujourd'hui. Il se présentera le jour où le WMS rendra plus grossier.
 
 Signalé sans correction depuis `v0.121.6`.
 
@@ -142,4 +260,4 @@ Un garde-fou dont le calibrage ne correspond plus à ce qu'il garde est **pire q
 - Brief cœur : `BRIEF-foretaccess-desserte-consolide.md` (§A, §B, §C)
 - Brief dessertR : `BRIEF-dessertR-classement-osm-et-cout-terrassement.md` (§2 pour les entrées du classement)
 - Code : `R/service_desserte.R` (`run_desserte_detection`, `.desserte_integrite`), `R/service_accessibility.R` (`.acc_estimate_alsroads_memory`), `R/mod_desserte.R` (panneaux)
-- Projets d'essai : ForetAccess `20260717_101641_wsfi` (30 parcelles / 31 ha, 4 dalles), Reconfort `20260701_204501_ltcp` (30 parcelles / 554 ha, 25 dalles, **non encore essayé**), Dabo `20260801_130303_xpdk` (4 parcelles / 774 ha, 27 dalles)
+- Projets d'essai : ForetAccess `20260717_101641_wsfi` (30 parcelles / 31 ha, 4 dalles), Reconfort `20260701_204501_ltcp` (30 parcelles / 554 ha, 25 dalles — **essayé le 2026-08-13, cf. §2**), Dabo `20260801_130303_xpdk` (4 parcelles / 774 ha, 27 dalles)
