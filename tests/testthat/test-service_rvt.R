@@ -422,3 +422,96 @@ test_that(".cvat_built_for matches only the exact build signature", {
     expect_false(nemetonshiny:::.cvat_built_for("cvat.tif", aoi2, 250, 2))
   })
 })
+
+# --- CVAT : construction atomique, échecs mémorisés, buffer plafonné ---------
+# Régression du défaut constaté sur Reconfort le 2026-08-13 : un CVAT valide
+# (1892 x 2004, 100 % de cellules valides) a été DÉTRUIT par un `overwrite=TRUE`
+# dont la construction de remplacement n'a jamais abouti — elle re-téléchargeait
+# le MNT par le WMS IGN parce que le buffer demandé dépassait la mosaïque locale.
+
+.rvt_faux_mnt <- function(dir, res = 10, n = 100) {
+  p <- file.path(dir, "lidar_mnt_mosaic.tif")
+  r <- terra::rast(nrows = n, ncols = n, xmin = 0, xmax = n * res,
+                   ymin = 0, ymax = n * res, crs = "EPSG:2154")
+  terra::values(r) <- seq_len(terra::ncell(r))
+  terra::writeRaster(r, p, overwrite = TRUE)
+  p
+}
+
+.rvt_aoi_centree <- function(demi = 200, cx = 500, cy = 500) {
+  sf::st_as_sf(sf::st_sfc(sf::st_polygon(list(rbind(
+    c(cx - demi, cy - demi), c(cx + demi, cy - demi),
+    c(cx + demi, cy + demi), c(cx - demi, cy + demi),
+    c(cx - demi, cy - demi)))), crs = 2154))
+}
+
+test_that(".cvat_buffer_plafonne caps the buffer to what the local mosaic covers", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    mnt <- .rvt_faux_mnt(getwd())          # 1000 x 1000 m
+    aoi <- .rvt_aoi_centree(200)           # 400 x 400 m centrée -> marge 300 m
+    expect_equal(nemetonshiny:::.cvat_buffer_plafonne(mnt, aoi, 100), 100)
+    expect_equal(nemetonshiny:::.cvat_buffer_plafonne(mnt, aoi, 300), 300)
+    expect_equal(nemetonshiny:::.cvat_buffer_plafonne(mnt, aoi, 5000), 300)
+  })
+})
+
+test_that(".cvat_buffer_plafonne does NOT cap when the mosaic misses the AOI", {
+  skip_if_not_installed("terra")
+  withr::with_tempdir({
+    mnt <- .rvt_faux_mnt(getwd())
+    # AOI débordant la mosaïque : ré-acquérir est alors le seul moyen d'un fond.
+    hors <- .rvt_aoi_centree(200, cx = 1400, cy = 1400)
+    expect_equal(nemetonshiny:::.cvat_buffer_plafonne(mnt, hors, 800), 800)
+  })
+})
+
+test_that("a failed CVAT build is remembered and not replayed", {
+  withr::with_tempdir({
+    out <- file.path(getwd(), "cvat.tif")
+    writeLines("x", out)
+    aoi <- .rvt_aoi_centree()
+    nemetonshiny:::.cvat_write_sidecar(out, aoi, 250, 2, echec = TRUE)
+    expect_true(nemetonshiny:::.cvat_failed_for(out, aoi, 250, 2))
+    # Un échec n'est PAS une construction faite.
+    expect_false(nemetonshiny:::.cvat_built_for(out, aoi, 250, 2))
+    # ... et il cesse d'être opposable une fois périmé.
+    expect_false(nemetonshiny:::.cvat_failed_for(out, aoi, 250, 2, ttl_s = -1))
+    # ... et il ne vaut que pour CES paramètres.
+    expect_false(nemetonshiny:::.cvat_failed_for(out, aoi, 1000, 2))
+  })
+})
+
+test_that("a successful build is not mistaken for a failure", {
+  withr::with_tempdir({
+    out <- file.path(getwd(), "cvat.tif")
+    writeLines("x", out)
+    aoi <- .rvt_aoi_centree()
+    nemetonshiny:::.cvat_write_sidecar(out, aoi, 250, 2)
+    expect_true(nemetonshiny:::.cvat_built_for(out, aoi, 250, 2))
+    expect_false(nemetonshiny:::.cvat_failed_for(out, aoi, 250, 2))
+  })
+})
+
+test_that("build_cvat_precomputed keeps the existing CVAT when the build fails", {
+  skip_if_not_installed("terra")
+  skip_if_not_installed("foretaccess")
+  withr::with_tempdir({
+    mnt <- .rvt_faux_mnt(getwd())
+    out <- nemetonshiny:::.rvt_cvat_out_path(mnt)
+    writeLines("CVAT-VALIDE-EXISTANT", out)          # le CVAT qu'on ne doit PAS perdre
+    aoi <- .rvt_aoi_centree()
+    res <- testthat::with_mocked_bindings(
+      nemetonshiny:::build_cvat_precomputed(mnt, aoi = aoi, buffer_m = 250),
+      build_cvat_precomputed = function(...) stop("WMS injoignable"),
+      .package = "foretaccess")
+    # L'ancien CVAT est INTACT — c'est tout l'objet du correctif.
+    expect_true(file.exists(out))
+    expect_identical(readLines(out, warn = FALSE), "CVAT-VALIDE-EXISTANT")
+    expect_identical(res, out)
+    # Aucun fichier temporaire abandonné.
+    expect_false(file.exists(paste0(out, ".tmp.tif")))
+    # L'échec est mémorisé, donc non rejoué.
+    expect_true(nemetonshiny:::.cvat_failed_for(out, aoi, 250, 2))
+  })
+})

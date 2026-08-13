@@ -1,5 +1,42 @@
 # nemetonshiny 0.122.1 (2026-08-13)
 
+### Fixed — Le CVAT ne se détruit plus lui-même, et n'appelle plus le WMS
+
+Constaté sur Reconfort : un CVAT valide (1892 × 2004, **100 % de cellules
+valides**) a disparu — fichier *et* sidecar — sans être remplacé, puis s'est
+reconstruit en boucle. La cause tenait en trois défauts qui se composaient.
+
+**La construction écrasait la cible avant d'aboutir.** L'appel passait
+`out = <cible>, overwrite = TRUE` : un échec détruisait un CVAT valide sans rien
+mettre à la place. La construction se fait désormais dans un fichier temporaire,
+renommé seulement une fois le résultat en main.
+
+**Les échecs n'étaient pas mémorisés.** Le sidecar n'était écrit que
+`if (!is.null(built))` : une construction ratée ne laissait aucune trace, donc
+l'observe de l'onglet la relançait à chaque entrée. Le sidecar porte maintenant
+un `statut`, `.cvat_built_for()` refuse de prendre un échec pour une
+construction faite, et `.cvat_failed_for()` rend l'échec opposable — avec une
+péremption de 6 h, pour qu'une panne de service transitoire ne désactive pas le
+CVAT indéfiniment.
+
+**Le buffer demandé pouvait dépasser la mosaïque locale.** Au-delà,
+`foretaccess::build_cvat_precomputed()` ré-acquiert le MNT par le **WMS IGN** —
+observé sur Reconfort : un descripteur `GDAL_WMS` de 1,07 G × 970 M pixels sur
+`data.geopf.fr`, worker à 13 % de CPU (borné par le réseau), pour un fond que
+l'affichage ré-agrège à ~2000 px de toute façon. `.cvat_buffer_plafonne()`
+ramène le buffer à la marge réellement disponible : mosaïque 5000 × 5000 m,
+AOI 3285 × 3509 m, marges O 894 / E 821 / S 864 / **N 627** → tout buffer
+> 626 m y est ramené. Le plafond ne s'applique **pas** quand la mosaïque ne
+couvre même pas l'AOI : ré-acquérir est alors le seul moyen d'obtenir un fond.
+
+Le même plafond est appliqué dans le garde du module, sans quoi celui-ci
+raisonnerait sur un buffer que la construction ne demande jamais — jamais
+satisfait, il relancerait un worker et son toast à chaque entrée dans l'onglet.
+
+`.rvt_cvat_out_path()` factorise le chemin canonique du CVAT, dont les gardes
+ont besoin **même quand le fichier n'existe pas** — c'est justement le cas où
+il faut savoir si une construction a déjà été tentée.
+
 ### Changed — Cache OSM daté et versionné sur le transport Overpass
 
 Part `nemetonshiny` du brief d'unification OSM (§5.3). Le transport Overpass est

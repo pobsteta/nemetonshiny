@@ -159,10 +159,28 @@
 #' @param mnt_path Path to the source DEM.
 #' @return A `[0, 1]` `SpatRaster`, or `NULL` when no precomputed CVAT exists.
 #' @noRd
+#' Chemin canonique du CVAT d'un MNT, qu'il existe ou non
+#'
+#' Le producteur (`build_cvat_precomputed()`) et les gardes qui interrogent son
+#' sidecar ont besoin du MÊME chemin, y compris quand le fichier n'existe pas
+#' encore — c'est justement le cas où il faut savoir si une construction a déjà
+#' été tentée. `.rvt_precomputed_path()` ne convient pas là : il ne rend que des
+#' fichiers existants.
+#'
+#' @param mnt_path Chemin du MNT source.
+#' @return Chemin du CVAT, sans garantie d'existence.
+#' @noRd
+.rvt_cvat_out_path <- function(mnt_path) {
+  if (is.null(mnt_path) || !nzchar(mnt_path)) return(NULL)
+  file.path(dirname(mnt_path),
+            paste0(tools::file_path_sans_ext(basename(mnt_path)),
+                   "_CVAT_8bit_foretaccess.tif"))
+}
+
 .rvt_precomputed_path <- function(mnt_path) {
   if (is.null(mnt_path) || !nzchar(mnt_path)) return(NULL)
   d <- dirname(mnt_path); base <- tools::file_path_sans_ext(basename(mnt_path))
-  cand <- c(file.path(d, paste0(base, "_CVAT_8bit_foretaccess.tif")),
+  cand <- c(.rvt_cvat_out_path(mnt_path),
             file.path(d, paste0(base, "_CVAT_8bit.tif")))
   cand <- cand[file.exists(cand)]
   if (length(cand) == 0L) NULL else cand[1]
@@ -257,35 +275,128 @@ generate_rvt <- function(mnt_path, overwrite = FALSE) {
   )
 }
 
-#' Un CVAT a-t-il déjà été construit pour ces paramètres ?
+#' Le sidecar porte-t-il exactement cette signature ?
+#'
+#' Facteur commun de `.cvat_built_for()` et `.cvat_failed_for()` : les deux
+#' posent la même question de correspondance et ne diffèrent que par le statut
+#' attendu.
+#'
+#' @param out_path Chemin du CVAT.
+#' @param aoi,buffer_m,res_m Paramètres demandés.
+#' @return Le sidecar lu (liste) si la signature correspond, sinon `NULL`.
+#' @noRd
+.cvat_sidecar_match <- function(out_path, aoi, buffer_m, res_m) {
+  if (is.null(out_path)) return(NULL)
+  sc <- .cvat_sidecar_path(out_path)
+  if (!file.exists(sc)) return(NULL)
+  prev <- tryCatch(jsonlite::fromJSON(sc), error = function(e) NULL)
+  if (!is.list(prev)) return(NULL)
+  want <- .cvat_build_signature(aoi, buffer_m, res_m)
+  ok <- isTRUE(identical(as.numeric(prev$buffer_m), want$buffer_m) &&
+               identical(as.numeric(prev$res_m), want$res_m) &&
+               !is.null(prev$bbox) && !is.null(want$bbox) &&
+               isTRUE(all.equal(as.numeric(prev$bbox), want$bbox,
+                                tolerance = 1e-6)))
+  if (ok) prev else NULL
+}
+
+#' Un CVAT a-t-il déjà été construit AVEC SUCCÈS pour ces paramètres ?
 #'
 #' `TRUE` seulement si le raster existe ET que son sidecar porte exactement la
-#' même signature. Un CVAT sans sidecar (antérieur à ce mécanisme) est considéré
-#' comme à reconstruire — une fois, puisque la construction écrit le sidecar.
+#' même signature ET que cette tentative avait abouti. Un CVAT sans sidecar
+#' (antérieur à ce mécanisme) est considéré comme à reconstruire — une fois,
+#' puisque la construction écrit le sidecar.
+#'
+#' Un sidecar d'ÉCHEC ne compte pas : sans ce test, un échec enregistré ferait
+#' passer une construction ratée pour une construction faite.
 #'
 #' @noRd
 .cvat_built_for <- function(out_path, aoi, buffer_m, res_m) {
   if (is.null(out_path) || !file.exists(out_path)) return(FALSE)
-  sc <- .cvat_sidecar_path(out_path)
-  if (!file.exists(sc)) return(FALSE)
-  prev <- tryCatch(jsonlite::fromJSON(sc), error = function(e) NULL)
-  if (!is.list(prev)) return(FALSE)
-  want <- .cvat_build_signature(aoi, buffer_m, res_m)
-  isTRUE(identical(as.numeric(prev$buffer_m), want$buffer_m) &&
-         identical(as.numeric(prev$res_m), want$res_m) &&
-         !is.null(prev$bbox) && !is.null(want$bbox) &&
-         isTRUE(all.equal(as.numeric(prev$bbox), want$bbox, tolerance = 1e-6)))
+  prev <- .cvat_sidecar_match(out_path, aoi, buffer_m, res_m)
+  if (is.null(prev)) return(FALSE)
+  !identical(as.character(prev$statut %||% "ok"), "echec")
 }
 
-#' Écrit le sidecar de provenance après une construction réussie
+#' Combien de temps un échec de construction reste-t-il opposable ?
+#'
+#' Un échec est mémorisé pour ne pas relancer sans fin une construction qui vient
+#' d'échouer (une acquisition WMS peut coûter des dizaines de minutes). Mais une
+#' panne de service est TRANSITOIRE : la mémoriser indéfiniment désactiverait le
+#' CVAT pour toujours. Six heures : assez pour couvrir une session de travail,
+#' assez court pour qu'un incident amont se rattrape le lendemain.
 #' @noRd
-.cvat_write_sidecar <- function(out_path, aoi, buffer_m, res_m) {
+CVAT_ECHEC_TTL_S <- 6 * 3600
+
+#' Une construction a-t-elle DÉJÀ ÉCHOUÉ récemment pour ces paramètres ?
+#'
+#' Contrepartie de `.cvat_built_for()`. Ne dépend PAS de l'existence du raster :
+#' c'est justement quand il n'existe pas qu'on doit se souvenir d'avoir essayé.
+#'
+#' @noRd
+.cvat_failed_for <- function(out_path, aoi, buffer_m, res_m,
+                             ttl_s = CVAT_ECHEC_TTL_S) {
+  prev <- .cvat_sidecar_match(out_path, aoi, buffer_m, res_m)
+  if (is.null(prev)) return(FALSE)
+  if (!identical(as.character(prev$statut %||% "ok"), "echec")) return(FALSE)
+  quand <- suppressWarnings(as.POSIXct(prev$built_at %||% NA_character_,
+                                       tz = "", format = "%Y-%m-%d %H:%M:%S"))
+  if (!is.finite(as.numeric(quand))) return(TRUE)   # daté illisible : opposable
+  as.numeric(difftime(Sys.time(), quand, units = "secs")) < ttl_s
+}
+
+#' Écrit le sidecar de provenance d'une tentative de construction
+#'
+#' `echec = TRUE` enregistre une tentative INFRUCTUEUSE. C'est indispensable :
+#' sans trace d'échec, l'observe de l'onglet relance la même construction à
+#' chaque entrée — boucle infinie sur un calcul de plusieurs dizaines de minutes,
+#' exactement le mode d'échec que le sidecar existe pour supprimer.
+#'
+#' @noRd
+.cvat_write_sidecar <- function(out_path, aoi, buffer_m, res_m, echec = FALSE) {
   tryCatch({
     sig <- .cvat_build_signature(aoi, buffer_m, res_m)
+    sig$statut <- if (isTRUE(echec)) "echec" else "ok"
     sig$built_at <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
     jsonlite::write_json(sig, .cvat_sidecar_path(out_path), auto_unbox = TRUE)
   }, error = function(e) invisible(NULL))
   invisible(out_path)
+}
+
+#' Plafonne le buffer du pré-calcul CVAT à ce que le MNT local couvre
+#'
+#' Au-delà de la marge disponible autour de l'AOI dans la mosaïque LiDAR,
+#' `foretaccess::build_cvat_precomputed()` RÉ-ACQUIERT le MNT par le WMS IGN —
+#' mesuré sur Reconfort : une fenêtre WMS France entière, plusieurs dizaines de
+#' minutes, pour un fond de relief que l'affichage ré-agrège de toute façon à
+#' ~2000 px. Le jeu n'en vaut pas la chandelle.
+#'
+#' Mesure Reconfort (2026-08-13) : mosaïque 5000 x 5000 m, AOI 3285 x 3509 m,
+#' marges O 894 / E 821 / S 864 / N 627 m -> tout buffer > 627 m déclenchait le
+#' WMS.
+#'
+#' Si la mosaïque ne couvre MÊME PAS l'AOI (marge négative), on ne plafonne pas :
+#' la ré-acquisition est alors légitime, c'est le seul moyen d'avoir un fond.
+#'
+#' @param mnt_path Chemin de la mosaïque MNT locale.
+#' @param aoi AOI (`sf`/`sfc`).
+#' @param buffer_m Buffer demandé (m).
+#' @return Le buffer effectif (m), au plus `buffer_m`.
+#' @noRd
+.cvat_buffer_plafonne <- function(mnt_path, aoi, buffer_m) {
+  b <- suppressWarnings(as.numeric(buffer_m))
+  if (!isTRUE(is.finite(b)) || b <= 0) return(b)
+  if (!requireNamespace("terra", quietly = TRUE)) return(b)
+  marge <- tryCatch({
+    r <- terra::rast(mnt_path)
+    e <- terra::ext(r)
+    bb <- sf::st_bbox(sf::st_transform(sf::st_as_sfc(sf::st_bbox(aoi)),
+                                       terra::crs(r)))
+    min(as.numeric(bb["xmin"]) - e[1], e[2] - as.numeric(bb["xmax"]),
+        as.numeric(bb["ymin"]) - e[3], e[4] - as.numeric(bb["ymax"]))
+  }, error = function(e) NA_real_)
+  if (!isTRUE(is.finite(marge)) || marge < 0) return(b)   # pas de plafond
+  min(b, floor(marge))
 }
 
 #' Does an existing CVAT raster cover an AOI + buffer?
@@ -380,10 +491,7 @@ build_cvat_precomputed <- function(mnt_path, aoi = NULL, buffer_m = 0,
                                    overwrite = FALSE) {
   if (is.null(mnt_path) || !file.exists(mnt_path)) return(NULL)
   if (!.rvt_cvat_available()) return(NULL)            # foretaccess >= 1.24.0 requis
-  out <- file.path(
-    dirname(mnt_path),
-    paste0(tools::file_path_sans_ext(basename(mnt_path)),
-           "_CVAT_8bit_foretaccess.tif"))
+  out <- .rvt_cvat_out_path(mnt_path)
   # Avec une AOI : le CVAT doit COUVRIR aoi+buffer. Ni notre code ni foretaccess
   # ne re-vérifient un `out` déjà présent (sauf overwrite) — un buffer agrandi
   # laisserait donc un CVAT trop court, non détecté. On vérifie la couverture ici
@@ -393,30 +501,59 @@ build_cvat_precomputed <- function(mnt_path, aoi = NULL, buffer_m = 0,
       exists("build_cvat_precomputed", where = asNamespace("foretaccess"))) {
     res_m <- suppressWarnings(as.numeric(APP_CONFIG$cvat_res_m))
     if (!isTRUE(is.finite(res_m)) || res_m <= 0) res_m <- 2
+    # PLAFOND : au-delà de ce que la mosaïque locale couvre, foretaccess
+    # ré-acquiert le MNT par WMS IGN — des dizaines de minutes pour un fond
+    # ré-agrégé à 2000 px de toute façon (cf. `.cvat_buffer_plafonne`).
+    buffer_eff <- .cvat_buffer_plafonne(mnt_path, aoi, buffer_m)
+
     # Reprise : soit le CVAT couvre déjà aoi+buffer, soit il a DÉJÀ été construit
     # pour exactement ces paramètres. Le second cas est indispensable — sur une
     # AOI où la couverture LiDAR HD s'arrête avant aoi+buffer, `.cvat_covers()`
     # ne peut jamais être satisfait et l'observe relancerait sans fin (cf.
     # `.cvat_built_for`).
     if (!isTRUE(overwrite) && file.exists(out) &&
-        (isTRUE(.cvat_covers(out, aoi, buffer_m)) ||
-         isTRUE(.cvat_built_for(out, aoi, buffer_m, res_m)))) {
+        (isTRUE(.cvat_covers(out, aoi, buffer_eff)) ||
+         isTRUE(.cvat_built_for(out, aoi, buffer_eff, res_m)))) {
       return(out)
     }
+    # Une tentative RÉCENTE a déjà échoué avec ces paramètres : ne pas la rejouer.
+    # Sans ce test, un échec relance le calcul à chaque entrée dans l'onglet.
+    if (!isTRUE(overwrite) && .cvat_failed_for(out, aoi, buffer_eff, res_m)) {
+      return(if (file.exists(out)) out else NULL)
+    }
+
+    # CONSTRUCTION ATOMIQUE. On écrivait naguère directement dans `out` avec
+    # `overwrite = TRUE` : un échec DÉTRUISAIT un CVAT valide sans rien mettre à
+    # la place (constaté sur Reconfort — relief affichable perdu, puis rebâti en
+    # boucle). On construit donc à côté, et on ne remplace qu'une fois le
+    # résultat en main.
+    tmp <- paste0(out, ".tmp.tif")
+    unlink(tmp)
     built <- tryCatch(
       foretaccess::build_cvat_precomputed(
         aoi = aoi, cache_dir = .foretaccess_cache_root(mnt_path),
-        buffer_m = buffer_m,
+        buffer_m = buffer_eff,
         # `res_lidar_m` : le défaut cœur (0,5 m) fait ~81 M cellules sur
         # l'emprise de Dabo et sature la mémoire. Le rendu ré-agrège à 2000 px,
         # donc cette finesse est perdue à l'affichage (cf. APP_CONFIG$cvat_res_m).
         res_lidar_m = res_m,
-        mnt_existant = mnt_path, out = out, overwrite = TRUE),  # force le recalcul
+        mnt_existant = mnt_path, out = tmp, overwrite = TRUE),
       error = function(e) NULL)
+    if (is.null(built) || !file.exists(tmp)) {
+      unlink(tmp)
+      # Échec MÉMORISÉ, et l'ancien CVAT — s'il y en avait un — est intact.
+      .cvat_write_sidecar(out, aoi, buffer_eff, res_m, echec = TRUE)
+      return(if (file.exists(out)) out else NULL)
+    }
+    if (!isTRUE(tryCatch(file.rename(tmp, out), error = function(e) FALSE))) {
+      unlink(tmp)
+      .cvat_write_sidecar(out, aoi, buffer_eff, res_m, echec = TRUE)
+      return(if (file.exists(out)) out else NULL)
+    }
     # Sidecar écrit même si la couverture reste partielle : il mémorise ce qui a
     # été DEMANDÉ, ce qui suffit à ne pas retenter la même construction.
-    if (!is.null(built)) .cvat_write_sidecar(built, aoi, buffer_m, res_m)
-    return(built)
+    .cvat_write_sidecar(out, aoi, buffer_eff, res_m)
+    return(out)
   }
   # Sans AOI : court-circuit idempotent (CVAT sur le MNT tel quel).
   if (file.exists(out) && !isTRUE(overwrite)) return(out)

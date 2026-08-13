@@ -481,10 +481,24 @@ mod_accessibility_server <- function(id, app_state) {
       existing <- .rvt_precomputed_path(mnt_path)
       cvat_res <- suppressWarnings(as.numeric(APP_CONFIG$cvat_res_m))
       if (!isTRUE(is.finite(cvat_res)) || cvat_res <= 0) cvat_res <- 2
+      # MÊME plafond que le service, sinon ce garde raisonnerait sur un buffer
+      # que la construction ne demandera jamais : il ne serait jamais satisfait
+      # et relancerait un worker (plus son toast) à chaque entrée dans l'onglet.
+      buffer_m <- if (is.null(aoi)) buffer_m else {
+        .cvat_buffer_plafonne(mnt_path, aoi, buffer_m)
+      }
       if (!is.null(existing) &&
           (is.null(aoi) ||
            isTRUE(.cvat_covers(existing, aoi, buffer_m)) ||
            isTRUE(.cvat_built_for(existing, aoi, buffer_m, cvat_res)))) {
+        return()
+      }
+      # Échec récent avec ces mêmes paramètres : ne pas rejouer un calcul long
+      # voué au même sort (le service le refuserait, mais autant ne pas ouvrir
+      # de worker ni afficher un toast pour rien).
+      if (!is.null(aoi) &&
+          isTRUE(.cvat_failed_for(existing %||% .rvt_cvat_out_path(mnt_path),
+                                  aoi, buffer_m, cvat_res))) {
         return()
       }
       # Message bas-droite pendant TOUT le calcul (id stable -> retiré à la fin),
