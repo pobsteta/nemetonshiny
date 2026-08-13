@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.121.15.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,49 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.122.0" id="nemetonshiny-01220-2026-08-13">nemetonshiny 0.122.0 (2026-08-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01220-2026-08-13"></a></h2>
+<div class="section level4">
+<h4 id="fixed--la-desserte-corrigée-ne-supprime-plus-les-tronçons-bd-topo-0-122-0">Fixed — La desserte corrigée ne supprime plus les tronçons BD TOPO<a class="anchor" aria-label="anchor" href="#fixed--la-desserte-corrig%C3%A9e-ne-supprime-plus-les-tron%C3%A7ons-bd-topo-0-122-0"></a></h4>
+<p><strong>La correction LiDAR retirait 280 tronçons sur 373.</strong> Mesuré sur ForêtAccess : 84 % du linéaire disparaissait, dont <strong>une <code>route</code> sur deux</strong> (68 → 35). Sur Dabo, 322 sur 1 032. La couche ainsi amputée remplaçait la BD TOPO en entrée de <code>preprocess()</code> — donc de <strong>tous</strong> les moteurs — dès que « utiliser la desserte corrigée » était cochée, surestimant d’autant les surfaces hors desserte.</p>
+<p>La cause : l’app passait <code>retirer_disparues = TRUE</code>, alors que <code>foretaccess</code> laisse ce paramètre à <code>FALSE</code> et le documente « opt-in ». La liste d’états par défaut, <code>c("abandonnee", "hors_route")</code>, était donc appliquée — or <code>hors_route</code> signifie, dans <code>dsr_etat()</code>, « <strong>les deux conductivités faibles</strong> », c’est-à-dire <em>aucun signal</em>. Une plateforme routière laisse une empreinte dans le terrain pendant des décennies : l’absence de signal désigne un échec de mesure bien plus souvent qu’une route effacée. <code>dsr_etat()</code> avertit d’ailleurs que l’état « n’est réellement interprétable que le long d’un tracé retenu par le pathfinder ». Nous en avions fait un verdict d’existence.</p>
+<p><strong>L’invariant, désormais, ne se contourne pas</strong> : la desserte corrigée conserve l’intégralité de la BD TOPO, s’enrichit d’OSM, qualifie l’ensemble et le rend. La qualification <strong>renseigne</strong> (état, largeur, géométrie recalée) ; elle ne <strong>décide</strong> pas de l’existence. Un tronçon jugé abandonné reste dans la couche, porteur de son état, et c’est le gestionnaire qui tranche. Un garde-fou refuse la correction si la sortie compte moins de tronçons que l’entrée — perdre un tronçon déclaré est une erreur, pas un résultat.</p>
+<div class="section level5">
+<h5 id="validé-de-bout-en-bout-sur-forêtaccess-0-122-0">Validé de bout en bout sur ForêtAccess (2026-08-13)<a class="anchor" aria-label="anchor" href="#valid%C3%A9-de-bout-en-bout-sur-for%C3%AAtaccess-0-122-0"></a></h5>
+<table class="table"><thead><tr><th></th>
+<th align="right">avant</th>
+<th align="right">après</th>
+</tr></thead><tbody><tr><td>tronçons</td>
+<td align="right">93</td>
+<td align="right"><strong>401</strong></td>
+</tr><tr><td>dont BD TOPO</td>
+<td align="right">93 / 373</td>
+<td align="right"><strong>373 / 373</strong></td>
+</tr><tr><td>dont ajoutés d’OSM</td>
+<td align="right">—</td>
+<td align="right">28 (3,61 km)</td>
+</tr><tr><td>
+<code>route</code> conservées</td>
+<td align="right">35 / 68</td>
+<td align="right"><strong>68 / 68</strong></td>
+</tr></tbody></table><p>Répartition par classe des tronçons BD TOPO en sortie <strong>identique</strong> à l’entrée (44 <code>hors_desserte</code>, 254 <code>piste</code>, 7 <code>reseau_public</code>, 68 <code>route</code>). Le plus court ajout OSM mesure 33,8 m, au-dessus du plancher. Durée 25,9 min, pic 6,3 Go.</p>
+<p>Les états mesurés sur les 401 tronçons disent pourquoi le retrait était faux : <strong>213 <code>abandonnee</code> et 95 <code>hors_route</code></strong>, soit 77 % du réseau — sur une emprise qui porte 68 <code>route</code> de la BD TOPO. Ces états ne sont pas un inventaire de terrain.</p>
+<blockquote>
+<p><strong>Défaut du cœur repéré au passage</strong> : avec <code>retirer_disparues = FALSE</code>, le message de <code>qualifier_desserte()</code> sort ses gabarits <code>cli</code> non interpolés — « <code>{n_retire}</code> disparu<code>{?s}</code> retiré<code>{?s}</code>, <code>{n_inapte}</code> inapte<code>{?s}</code> grumier retiré<code>{?s}</code> ». À signaler à <code>foretaccess</code>.</p>
+</blockquote>
+</div>
+</div>
+<div class="section level4">
+<h4 id="added--complément-openstreetmap-de-la-desserte-0-122-0">Added — Complément OpenStreetMap de la desserte<a class="anchor" aria-label="anchor" href="#added--compl%C3%A9ment-openstreetmap-de-la-desserte-0-122-0"></a></h4>
+<p><code>.desserte_complement_osm()</code> ajoute au réseau les tronçons qu’OSM porte et que la BD TOPO ignore, conformément au contrat du cœur (« Source <em>complémentaire</em> de la BD TOPO, jamais substitutive »). Seule la portion située <strong>hors</strong> d’un corridor de 15 m est ajoutée, et seulement si elle atteint 30 m — sans ce plancher, un simple décalage de saisie entrerait comme desserte nouvelle. <code>highway</code> est traduit en <code>classe</code> (<code>track</code> → <code>piste</code>, <code>unclassified</code>/<code>service</code>/ <code>residential</code> → <code>route</code>, inconnu → <code>piste</code>, la classe la moins favorable).</p>
+<p>Best-effort par construction : Overpass est bridé (mesuré &gt; 10 min, et 300 s de timeout dépassées pendant cette mise au point). Tout échec rend la BD TOPO intacte et l’interface le dit, au lieu de laisser croire à un réseau enrichi.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--comparateur--trois-couleurs-par-source-de-tronçon-0-122-0">Changed — Comparateur : trois couleurs par source de tronçon<a class="anchor" aria-label="anchor" href="#changed--comparateur--trois-couleurs-par-source-de-tron%C3%A7on-0-122-0"></a></h4>
+<p>La couche corrigée est désormais colorée par <strong>source</strong> — BD TOPO, ajouté depuis OSM, ajouté par détection LiDAR — au lieu de l’état de correction, et plus aucun tronçon n’est filtré à l’affichage. Les états <code>abandonnee</code> et <code>hors_route</code> devenant visibles, ils sont traduits ; <code>hors_route</code> s’affiche « <strong>Aucun signal mesuré</strong> » plutôt que « hors route », qui laissait entendre un constat d’absence de route — la lecture même qui a produit ce défaut.</p>
+<p>Le message de fin de correction annonce la composition du réseau (« %d tronçons : %d BD TOPO conservés + %d ajoutés d’OSM ») là où il affirmait « %d fantôme(s) retiré(s) », présentant une décision de modélisation comme un constat de terrain.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.121.15" id="nemetonshiny-012115-2026-08-11">nemetonshiny 0.121.15 (2026-08-11)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012115-2026-08-11"></a></h2>
 <div class="section level4">

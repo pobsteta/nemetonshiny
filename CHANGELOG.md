@@ -12,6 +12,41 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.122.0\] - 2026-08-13
+
+### Fixed
+
+- **La desserte corrigée ne supprime plus les tronçons BD TOPO.** La
+  correction LiDAR passait `retirer_disparues = TRUE` (opt-in que
+  `foretaccess` laisse à `FALSE`) et retirait les tronçons d’état
+  `abandonnee` ou `hors_route` : 280 sur 373 sur ForêtAccess — 84 % du
+  linéaire, une `route` sur deux — et 322 sur 1 032 sur Dabo. Cette
+  couche amputée remplaçait la BD TOPO en entrée de `preprocess()`, donc
+  de tous les moteurs. `hors_route` signifie « les deux conductivités
+  faibles », soit *aucun signal* : un échec de mesure bien plus souvent
+  qu’une route effacée.
+- Garde-fou d’invariant : la correction échoue si la sortie compte moins
+  de tronçons que l’entrée.
+
+### Added
+
+- Complément **OpenStreetMap** de la desserte
+  (`.desserte_complement_osm()`) : ajoute la portion des tronçons OSM
+  hors d’un corridor de 15 m autour de la BD TOPO, à partir de 30 m.
+  Best-effort — Overpass injoignable rend la BD TOPO intacte et
+  l’interface le signale.
+- `.osm_highway_vers_classe()` : `track` → `piste`,
+  `unclassified`/`service`/ `residential` → `route`, inconnu → `piste`.
+
+### Changed
+
+- Comparateur Accessibilité : trois couleurs par **source** (BD TOPO,
+  OSM, détection LiDAR) au lieu de l’état de correction ; plus aucun
+  tronçon filtré à l’affichage. États traduits, `hors_route` affiché «
+  Aucun signal mesuré ».
+- Message de fin de correction : composition du réseau au lieu de «
+  fantôme(s) retiré(s) ».
+
 ## \[0.120.3\] - 2026-07-29
 
 ### Changed

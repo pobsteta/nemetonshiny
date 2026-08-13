@@ -1,5 +1,92 @@
 # Changelog
 
+## nemetonshiny 0.122.0 (2026-08-13)
+
+#### Fixed — La desserte corrigée ne supprime plus les tronçons BD TOPO
+
+**La correction LiDAR retirait 280 tronçons sur 373.** Mesuré sur
+ForêtAccess : 84 % du linéaire disparaissait, dont **une `route` sur
+deux** (68 → 35). Sur Dabo, 322 sur 1 032. La couche ainsi amputée
+remplaçait la BD TOPO en entrée de `preprocess()` — donc de **tous** les
+moteurs — dès que « utiliser la desserte corrigée » était cochée,
+surestimant d’autant les surfaces hors desserte.
+
+La cause : l’app passait `retirer_disparues = TRUE`, alors que
+`foretaccess` laisse ce paramètre à `FALSE` et le documente « opt-in ».
+La liste d’états par défaut, `c("abandonnee", "hors_route")`, était donc
+appliquée — or `hors_route` signifie, dans `dsr_etat()`, « **les deux
+conductivités faibles** », c’est-à-dire *aucun signal*. Une plateforme
+routière laisse une empreinte dans le terrain pendant des décennies :
+l’absence de signal désigne un échec de mesure bien plus souvent qu’une
+route effacée. `dsr_etat()` avertit d’ailleurs que l’état « n’est
+réellement interprétable que le long d’un tracé retenu par le pathfinder
+». Nous en avions fait un verdict d’existence.
+
+**L’invariant, désormais, ne se contourne pas** : la desserte corrigée
+conserve l’intégralité de la BD TOPO, s’enrichit d’OSM, qualifie
+l’ensemble et le rend. La qualification **renseigne** (état, largeur,
+géométrie recalée) ; elle ne **décide** pas de l’existence. Un tronçon
+jugé abandonné reste dans la couche, porteur de son état, et c’est le
+gestionnaire qui tranche. Un garde-fou refuse la correction si la sortie
+compte moins de tronçons que l’entrée — perdre un tronçon déclaré est
+une erreur, pas un résultat.
+
+##### Validé de bout en bout sur ForêtAccess (2026-08-13)
+
+|                    |    avant |         après |
+|--------------------|---------:|--------------:|
+| tronçons           |       93 |       **401** |
+| dont BD TOPO       | 93 / 373 | **373 / 373** |
+| dont ajoutés d’OSM |        — |  28 (3,61 km) |
+| `route` conservées |  35 / 68 |   **68 / 68** |
+
+Répartition par classe des tronçons BD TOPO en sortie **identique** à
+l’entrée (44 `hors_desserte`, 254 `piste`, 7 `reseau_public`, 68
+`route`). Le plus court ajout OSM mesure 33,8 m, au-dessus du plancher.
+Durée 25,9 min, pic 6,3 Go.
+
+Les états mesurés sur les 401 tronçons disent pourquoi le retrait était
+faux : **213 `abandonnee` et 95 `hors_route`**, soit 77 % du réseau —
+sur une emprise qui porte 68 `route` de la BD TOPO. Ces états ne sont
+pas un inventaire de terrain.
+
+> **Défaut du cœur repéré au passage** : avec
+> `retirer_disparues = FALSE`, le message de `qualifier_desserte()` sort
+> ses gabarits `cli` non interpolés — « `{n_retire}` disparu`{?s}`
+> retiré`{?s}`, `{n_inapte}` inapte`{?s}` grumier retiré`{?s}` ». À
+> signaler à `foretaccess`.
+
+#### Added — Complément OpenStreetMap de la desserte
+
+`.desserte_complement_osm()` ajoute au réseau les tronçons qu’OSM porte
+et que la BD TOPO ignore, conformément au contrat du cœur (« Source
+*complémentaire* de la BD TOPO, jamais substitutive »). Seule la portion
+située **hors** d’un corridor de 15 m est ajoutée, et seulement si elle
+atteint 30 m — sans ce plancher, un simple décalage de saisie entrerait
+comme desserte nouvelle. `highway` est traduit en `classe` (`track` →
+`piste`, `unclassified`/`service`/ `residential` → `route`, inconnu →
+`piste`, la classe la moins favorable).
+
+Best-effort par construction : Overpass est bridé (mesuré \> 10 min, et
+300 s de timeout dépassées pendant cette mise au point). Tout échec rend
+la BD TOPO intacte et l’interface le dit, au lieu de laisser croire à un
+réseau enrichi.
+
+#### Changed — Comparateur : trois couleurs par source de tronçon
+
+La couche corrigée est désormais colorée par **source** — BD TOPO,
+ajouté depuis OSM, ajouté par détection LiDAR — au lieu de l’état de
+correction, et plus aucun tronçon n’est filtré à l’affichage. Les états
+`abandonnee` et `hors_route` devenant visibles, ils sont traduits ;
+`hors_route` s’affiche « **Aucun signal mesuré** » plutôt que « hors
+route », qui laissait entendre un constat d’absence de route — la
+lecture même qui a produit ce défaut.
+
+Le message de fin de correction annonce la composition du réseau (« %d
+tronçons : %d BD TOPO conservés + %d ajoutés d’OSM ») là où il affirmait
+« %d fantôme(s) retiré(s) », présentant une décision de modélisation
+comme un constat de terrain.
+
 ## nemetonshiny 0.121.15 (2026-08-11)
 
 #### Fixed — Détection : le MNT LiDAR au lieu du RGE ALTI 5 m
