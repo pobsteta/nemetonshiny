@@ -397,20 +397,47 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
     sf::st_write(osm, gp, layer = "osm_track", quiet = TRUE, delete_dsn = TRUE)
   }, error = function(e) invisible(NULL))
 
+  # PROVENANCE DU TRANSPORT (brief unification OSM, §4.2 et §5.3). Deux
+  # exécutions à un mois d'écart donnent des résultats différents sans aucune
+  # trace ; et le transport Overpass lui-même est en cours de refonte côté
+  # `foretaccess` (requête unique + bissection au lieu du tuilage). Un cache
+  # produit par l'ancien transport n'a donc pas la même couverture qu'un cache
+  # produit par le nouveau : on horodate et on versionne pour pouvoir le
+  # refuser, plutôt que de comparer sans le savoir des couvertures différentes.
   out <- list(n_osm = nrow(osm),
               resume = tryCatch(as.list(cmp$resume), error = function(e) NULL),
-              corridor_m = tryCatch(cmp$corridor_m, error = function(e) NA_real_))
+              corridor_m = tryCatch(cmp$corridor_m, error = function(e) NA_real_),
+              date_requete = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+              foretaccess_version = tryCatch(
+                as.character(utils::packageVersion("foretaccess")),
+                error = function(e) NA_character_))
   tryCatch(saveRDS(out, file.path(cache_dir, "osm.rds")),
            error = function(e) invisible(NULL))
   c(list(status = "success"), out)
 }
 
 #' Read the persisted OSM comparison
+#'
+#' Refuses a cache produced by another `foretaccess` version. The Overpass
+#' transport is being reworked (single request + bisection instead of 1 km
+#' tiling), which changes the COVERAGE and not merely the speed: silently
+#' reusing an older cache would compare two different extractions without
+#' saying so. A cache with no recorded version predates this guard and is
+#' refused for the same reason.
+#'
+#' @param cache_dir Desserte cache directory.
+#' @return The cached list, or `NULL` when absent/stale.
 #' @noRd
 .load_cached_osm <- function(cache_dir) {
   f <- file.path(cache_dir, "osm.rds")
   if (!file.exists(f)) return(NULL)
-  tryCatch(readRDS(f), error = function(e) NULL)
+  out <- tryCatch(readRDS(f), error = function(e) NULL)
+  if (!is.list(out)) return(NULL)
+  vu <- out$foretaccess_version %||% NA_character_
+  cour <- tryCatch(as.character(utils::packageVersion("foretaccess")),
+                   error = function(e) NA_character_)
+  if (is.na(vu) || is.na(cour) || !identical(vu, cour)) return(NULL)
+  out
 }
 
 #' Detect roads absent from the reference network (dessertR, spec 026)

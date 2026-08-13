@@ -605,3 +605,68 @@ test_that("un coeur trop ancien echoue au lieu de tarifer autrement en silence",
         "desserte_need_project")
     })
 })
+
+# --- Cache OSM : provenance du transport (brief unification OSM §4.2) --------
+# Le transport Overpass passe d'un tuilage 1 km à une requête unique avec
+# bissection : la COUVERTURE change, pas seulement la vitesse. Un cache produit
+# par une autre version de `foretaccess` doit donc être refusé, sans quoi on
+# compare deux extractions différentes sans le savoir.
+
+test_that(".load_cached_osm refuses a cache from another foretaccess version", {
+  withr::with_tempdir({
+    saveRDS(list(n_osm = 12L, foretaccess_version = "0.0.0-antique"),
+            file.path(getwd(), "osm.rds"))
+    expect_null(nemetonshiny:::.load_cached_osm(getwd()))
+  })
+})
+
+test_that(".load_cached_osm refuses a cache with no recorded version", {
+  withr::with_tempdir({
+    saveRDS(list(n_osm = 12L), file.path(getwd(), "osm.rds"))
+    expect_null(nemetonshiny:::.load_cached_osm(getwd()))
+  })
+})
+
+test_that(".load_cached_osm serves a cache matching the installed version", {
+  skip_if_not_installed("foretaccess")
+  withr::with_tempdir({
+    v <- as.character(utils::packageVersion("foretaccess"))
+    saveRDS(list(n_osm = 12L, foretaccess_version = v),
+            file.path(getwd(), "osm.rds"))
+    got <- nemetonshiny:::.load_cached_osm(getwd())
+    expect_false(is.null(got))
+    expect_identical(got$n_osm, 12L)
+  })
+})
+
+test_that("run_desserte_osm records the transport provenance it will be judged on", {
+  skip_if_not_installed("foretaccess")
+  withr::with_tempdir({
+    cd <- getwd()
+    aoi <- sf::st_sf(
+      id = 1L,
+      geometry = sf::st_sfc(sf::st_polygon(list(rbind(
+        c(0, 0), c(1000, 0), c(1000, 1000), c(0, 1000), c(0, 0)))), crs = 2154))
+    ap <- file.path(cd, "aoi.gpkg")
+    sf::st_write(aoi, ap, quiet = TRUE)
+    ligne <- function(y) sf::st_linestring(rbind(c(0, y), c(500, y)))
+    faux <- sf::st_sf(highway = "track",
+                      geometry = sf::st_sfc(list(ligne(100)), crs = 2154))
+    bd <- sf::st_sf(classe = "route",
+                    geometry = sf::st_sfc(list(ligne(900)), crs = 2154))
+    res <- testthat::with_mocked_bindings(
+      nemetonshiny:::run_desserte_osm(cd, ap, buffer_m = 0),
+      acquire_desserte_osm = function(...) faux,
+      acquire_desserte = function(...) bd,
+      comparer_desserte_osm = function(...) list(resume = list(a = 1), corridor_m = 15),
+      .package = "foretaccess")
+    expect_identical(res$status, "success")
+    cache <- readRDS(file.path(cd, "osm.rds"))
+    expect_identical(cache$foretaccess_version,
+                     as.character(utils::packageVersion("foretaccess")))
+    expect_match(cache$date_requete, "^[0-9]{4}-[0-9]{2}-[0-9]{2}T")
+    # Et le cache ainsi ecrit doit etre RELU par le loader : ecriture et lecture
+    # doivent parler de la meme cle, sinon le cache ne sert jamais.
+    expect_false(is.null(nemetonshiny:::.load_cached_osm(cd)))
+  })
+})

@@ -1,3 +1,36 @@
+# nemetonshiny 0.122.1 (2026-08-13)
+
+### Changed — Cache OSM daté et versionné sur le transport Overpass
+
+Part `nemetonshiny` du brief d'unification OSM (§5.3). Le transport Overpass est
+en cours de refonte côté `foretaccess` — requête unique avec bissection au lieu
+d'un tuilage 1 km — et ce changement modifie la **couverture**, pas seulement la
+vitesse. Un cache produit par l'ancien transport et relu après la bascule ferait
+comparer deux extractions différentes sans le dire.
+
+`run_desserte_osm()` enregistre donc désormais `date_requete` (UTC, ISO 8601) et
+`foretaccess_version`, et `.load_cached_osm()` refuse un cache dont la version ne
+correspond pas — ou qui n'en porte aucune, ce qui signale un cache antérieur au
+garde-fou. Deux exécutions à un mois d'écart cessent d'être indiscernables.
+
+### Removed — `osmdata` des `Suggests`
+
+Aucun appel dans `R/`, `tests/`, `inst/` ni `man/` : l'app délègue entièrement
+l'accès Overpass à `foretaccess::acquire_desserte_osm()`. Les fonds de carte
+(`leaflet`, `maptiles`) ne sont pas concernés et restent inchangés.
+
+### Ce que cette version ne fait pas
+
+Le brief demande de vérifier que l'appel OSM est « asynchrone **et annulable** ».
+Il est asynchrone — `shiny::ExtendedTask` + `promises::future_promise`, sur les
+deux points d'appel (`run_desserte_osm()` et le complément OSM de la correction
+LiDAR). Il n'est **pas annulable** : `ExtendedTask` n'expose aucune annulation et
+un worker `future` ne s'interrompt pas. Constaté en pratique — arrêter une
+correction bloquée sur le backoff Overpass a demandé de tuer le process.
+
+Rendre l'annulation possible suppose de changer de substrat asynchrone (`mirai`,
+que `foretaccess` utilise déjà, sait tuer une tâche) : hors périmètre de ce lot.
+
 # nemetonshiny 0.122.0 (2026-08-13)
 
 ### Fixed — La desserte corrigée ne supprime plus les tronçons BD TOPO
