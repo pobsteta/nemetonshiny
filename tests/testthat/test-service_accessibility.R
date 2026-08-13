@@ -584,3 +584,72 @@ test_that(".acc_cvat_overlay_raster aggregates a ready CVAT for display", {
     expect_lte(max(terra::nrow(r), terra::ncol(r)), 2000L)
   })
 })
+
+# --- INVARIANT : la desserte corrigée conserve toute la BD TOPO --------------
+# Régression du défaut mesuré le 2026-08-13 sur ForêtAccess : la correction
+# passait `retirer_disparues = TRUE` et supprimait 280 tronçons sur 373 (84 % du
+# linéaire, une `route` sur deux), en lisant l'état `hors_route` — « les deux
+# conductivités faibles », donc AUCUN signal — comme un constat de disparition.
+
+.jeu_desserte <- function(n = 5) {
+  g <- lapply(seq_len(n), function(i) {
+    sf::st_linestring(rbind(c(0, i * 100), c(400, i * 100)))
+  })
+  sf::st_sf(classe = rep(c("route", "piste"), length.out = n),
+            largeur = 4, geometry = sf::st_sfc(g, crs = 2154))
+}
+
+test_that(".osm_highway_vers_classe maps OSM types, unknown falling back to piste", {
+  expect_equal(
+    nemetonshiny:::.osm_highway_vers_classe(
+      c("track", "unclassified", "service", "residential", "zzz", NA)),
+    c("piste", "route", "route", "route", "piste", "piste"))
+})
+
+test_that(".desserte_complement_osm keeps the whole BD TOPO when OSM is unreachable", {
+  skip_if_not_installed("foretaccess")
+  bd <- .jeu_desserte(5)
+  res <- testthat::with_mocked_bindings(
+    nemetonshiny:::.desserte_complement_osm(bd, sf::st_union(bd), tempdir()),
+    acquire_desserte_osm = function(...) stop("Overpass indisponible"),
+    .package = "foretaccess")
+  expect_identical(res$statut, "osm_injoignable")
+  expect_identical(nrow(res$reseau), nrow(bd))
+  expect_true(all(res$reseau$source == "bdtopo"))
+  expect_identical(res$n_ajoutes, 0L)
+})
+
+test_that(".desserte_complement_osm adds only what BD TOPO lacks, never removes", {
+  skip_if_not_installed("foretaccess")
+  bd <- .jeu_desserte(5)
+  # Un tronçon LOIN du réseau (à ajouter) et un tronçon SUPERPOSÉ (doublon).
+  loin <- sf::st_linestring(rbind(c(0, 9000), c(400, 9000)))
+  double <- sf::st_geometry(bd)[[1]]
+  osm <- sf::st_sf(highway = c("track", "unclassified"),
+                   geometry = sf::st_sfc(list(loin, double), crs = 2154))
+  res <- testthat::with_mocked_bindings(
+    nemetonshiny:::.desserte_complement_osm(bd, sf::st_union(bd), tempdir()),
+    acquire_desserte_osm = function(...) osm, .package = "foretaccess")
+  expect_identical(res$statut, "ok")
+  expect_identical(res$n_ajoutes, 1L)                       # le doublon est écarté
+  expect_identical(nrow(res$reseau), nrow(bd) + 1L)
+  # L'INVARIANT : les tronçons BD TOPO sont tous là, inchangés.
+  expect_identical(sum(res$reseau$source == "bdtopo"), nrow(bd))
+  expect_identical(res$reseau$classe[nrow(res$reseau)], "piste")   # track -> piste
+})
+
+test_that(".desserte_complement_osm drops an OSM segment barely off the corridor", {
+  skip_if_not_installed("foretaccess")
+  bd <- .jeu_desserte(1)
+  # Parallèle à 20 m (hors corridor de 15 m) mais longue de 10 m seulement :
+  # sous le plancher de 30 m, donc écartée — sinon un simple décalage de saisie
+  # entrerait comme desserte nouvelle.
+  court <- sf::st_linestring(rbind(c(0, 120), c(10, 120)))
+  osm <- sf::st_sf(highway = "track",
+                   geometry = sf::st_sfc(list(court), crs = 2154))
+  res <- testthat::with_mocked_bindings(
+    nemetonshiny:::.desserte_complement_osm(bd, sf::st_union(bd), tempdir()),
+    acquire_desserte_osm = function(...) osm, .package = "foretaccess")
+  expect_identical(res$n_ajoutes, 0L)
+  expect_identical(nrow(res$reseau), nrow(bd))
+})

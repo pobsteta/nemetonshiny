@@ -608,8 +608,17 @@ mod_accessibility_server <- function(id, app_state) {
         correct_refresh(correct_refresh() + 1L)   # la case « utiliser » apparaît
         shiny::showNotification(
           sprintf(i18n$t("acc_correct_done_fmt"),
-                  res$n_troncons %||% NA_integer_, res$n_troncons_retires %||% 0L),
+                  res$n_troncons %||% NA_integer_,
+                  res$n_bdtopo %||% NA_integer_,
+                  res$n_osm_ajoutes %||% 0L),
           type = "message", duration = 8)
+        # OSM injoignable (bride Overpass) : la correction a bien eu lieu, mais
+        # SANS complement. On le dit plutot que de laisser croire a un reseau
+        # enrichi.
+        if (!identical(res$osm_statut %||% "ok", "ok")) {
+          shiny::showNotification(i18n$t("acc_correct_osm_indispo"),
+                                  type = "warning", duration = 8)
+        }
       } else {
         shiny::showNotification(i18n$t(res$reason %||% "acc_correct_failed"),
                                 type = "error", duration = 8)
@@ -623,7 +632,9 @@ mod_accessibility_server <- function(id, app_state) {
         htmltools::div(class = "alert alert-success py-1 px-2 my-1 small",
           role = "status", shiny::icon("check-circle"), " ",
           sprintf(i18n$t("acc_correct_done_fmt"),
-                  res$n_troncons %||% NA_integer_, res$n_troncons_retires %||% 0L))
+                  res$n_troncons %||% NA_integer_,
+                  res$n_bdtopo %||% NA_integer_,
+                  res$n_osm_ajoutes %||% 0L))
       } else {
         htmltools::div(class = "alert alert-warning py-1 px-2 my-1 small",
           role = "status", shiny::icon("triangle-exclamation"), " ",
@@ -1158,18 +1169,21 @@ mod_accessibility_server <- function(id, app_state) {
     }, ignoreNULL = TRUE)
 
     # Peinture du comparateur, en CARTE UNIQUE (plus de volet swipe) : fond RVT,
-    # puis la desserte BD TOPO colorée par classe, puis par-dessus le statut de
-    # correction LiDAR (`etat_dessertr`) sur les tronçons que la qualification a
-    # pu mesurer. Désactivé -> nettoyage.
+    # puis la desserte BD TOPO colorée par CLASSE, puis par-dessus le réseau
+    # corrigé coloré par SOURCE. Désactivé -> nettoyage.
     #
-    # Pourquoi pas « les nouvelles pistes » : `qualifier_desserte()` n'AJOUTE
-    # aucun tronçon. Elle rend un sous-ensemble recalé de la BD TOPO (mesuré :
-    # 710/1032 sur Dabo, 93/373 sur ForetAccess ; 0 tronçon à plus de 25 m d'une
-    # géométrie BD TOPO). Ce que la correction apporte est une QUALIFICATION —
-    # d'où la surcharge par `etat_dessertr` plutôt que par une couche « nouveau ».
+    # `qualifier_desserte()` n'ajoute rien par elle-même : elle RENSEIGNE (état,
+    # largeur, géométrie recalée). Ce qui ajoute, c'est le complément OSM — et
+    # demain la détection LiDAR. D'où trois sources et non deux, et d'où le fait
+    # que la couche corrigée contienne TOUJOURS au moins toute la BD TOPO.
     DESS_CLASSE_COLS <- c(route = "#37474F", piste = "#8D6E63",
                           reseau_public = "#1565C0", hors_desserte = "#BDBDBD")
-    DESS_CORR_COLS <- c(en_service = "#2E7D32", trouee_sans_route = "#E65100")
+    # Couleurs par SOURCE du troncon. La desserte corrigee CONSERVE toute la BD
+    # TOPO et s'y ajoute ce qu'OSM porte en plus ; la detection LiDAR fournira la
+    # troisieme. Trois teintes franchement distinctes, et distinctes aussi de la
+    # palette de classe du fond.
+    DESS_SOURCE_COLS <- c(bdtopo = "#455A64", osm = "#7B1FA2",
+                          detectee = "#F9A825")
     shiny::observe({
       on <- identical(input$layer, "desserte_comparee") &&
         isTRUE(corrected_available())
@@ -1241,30 +1255,32 @@ mod_accessibility_server <- function(id, app_state) {
       # n'est PAS persisté dans le gpkg -> le critère mesuré/non-mesuré reste
       # `is.na(etat_classe)`. L'infobulle porte les mesures utiles au terrain.
       dcorr <- .acc_read_desserte_layer(corrected_path, "desserte_corrigee")
-      etats_vus <- character()
+      sources_vues <- character()
       if (!is.null(dcorr)) {
-        ec <- suppressWarnings(as.numeric(dcorr[["etat_classe"]]))
-        etat <- tolower(as.character(dcorr[["etat_dessertr"]] %||% rep("", nrow(dcorr))))
-        mesure <- is.finite(ec) & etat %in% names(DESS_CORR_COLS)
-        d_mes <- dcorr[mesure, , drop = FALSE]
-        d_non <- dcorr[!mesure, , drop = FALSE]
-        if (nrow(d_non) > 0L) {
-          proxy <- leaflet::addPolylines(proxy, data = d_non,
-            group = "Desserte corrigee", color = "#9E9E9E", weight = 2,
-            opacity = 0.5, dashArray = "4,6",
-            options = leaflet::pathOptions(pane = "nemetonDessCorr"),
-            label = i18n$t("acc_compare_non_mesure"))
-        }
-        if (nrow(d_mes) > 0L) {
-          etats_vus <- intersect(names(DESS_CORR_COLS), unique(etat[mesure]))
-          proxy <- leaflet::addPolylines(proxy, data = d_mes,
-            group = "Desserte corrigee", weight = 4, opacity = 0.95,
-            color = unname(DESS_CORR_COLS[etat[mesure]]),
-            options = leaflet::pathOptions(pane = "nemetonDessCorr"),
-            label = ~ sprintf("%s — %.1f m",
-                              as.character(etat_dessertr),
-                              suppressWarnings(as.numeric(largeur_carrossable_m))))
-        }
+        # Plus AUCUN filtrage ici : la couche porte desormais l'integralite du
+        # reseau. Un troncon non mesure se lit dans son infobulle, il ne
+        # disparait pas de la carte.
+        src <- tolower(as.character(dcorr[["source"]] %||% rep("bdtopo", nrow(dcorr))))
+        src[!(src %in% names(DESS_SOURCE_COLS))] <- "bdtopo"
+        sources_vues <- intersect(names(DESS_SOURCE_COLS), unique(src))
+        etat <- as.character(dcorr[["etat_dessertr"]] %||% rep(NA_character_, nrow(dcorr)))
+        larg <- suppressWarnings(as.numeric(dcorr[["largeur_carrossable_m"]]))
+        # Etats traduits : ils sont desormais VISIBLES sur la carte, puisque
+        # plus aucun troncon n'est retire.
+        tr_etat <- c(en_service = i18n$t("acc_desserte_en_service"),
+                     trouee_sans_route = i18n$t("acc_desserte_trouee"),
+                     abandonnee = i18n$t("acc_desserte_abandonnee"),
+                     hors_route = i18n$t("acc_desserte_sans_signal"))
+        et <- unname(tr_etat[tolower(etat)])
+        et[is.na(et)] <- etat[is.na(et)]
+        lbl <- ifelse(
+          is.na(etat), i18n$t("acc_compare_non_mesure"),
+          ifelse(is.finite(larg), sprintf("%s \u2014 %.1f m", et, larg), et))
+        proxy <- leaflet::addPolylines(proxy, data = dcorr,
+          group = "Desserte corrigee", weight = 4, opacity = 0.95,
+          color = unname(DESS_SOURCE_COLS[src]),
+          options = leaflet::pathOptions(pane = "nemetonDessCorr"),
+          label = lbl)
       }
 
       # Légende UNIQUE : classement des tronçons BD TOPO, puis statut de
@@ -1273,8 +1289,9 @@ mod_accessibility_server <- function(id, app_state) {
                       piste = i18n$t("acc_desserte_piste"),
                       reseau_public = i18n$t("acc_desserte_reseau_public"),
                       hors_desserte = i18n$t("acc_desserte_hors"))
-      lbl_etat <- c(en_service = i18n$t("acc_desserte_en_service"),
-                    trouee_sans_route = i18n$t("acc_desserte_trouee"))
+      lbl_source <- c(bdtopo = i18n$t("acc_source_bdtopo"),
+                      osm = i18n$t("acc_source_osm"),
+                      detectee = i18n$t("acc_source_detectee"))
       if (length(classes_vues)) {
         proxy <- leaflet::addLegend(proxy, "bottomleft",
           colors = unname(DESS_CLASSE_COLS[classes_vues]),
@@ -1282,11 +1299,11 @@ mod_accessibility_server <- function(id, app_state) {
           title = i18n$t("acc_compare_legend_origine"), layerId = "cmp_legend_l",
           opacity = 0.9)
       }
-      if (length(etats_vus)) {
+      if (length(sources_vues)) {
         proxy <- leaflet::addLegend(proxy, "bottomleft",
-          colors = unname(DESS_CORR_COLS[etats_vus]),
-          labels = unname(lbl_etat[etats_vus]),
-          title = i18n$t("acc_compare_legend_corrigee"), layerId = "cmp_legend_r",
+          colors = unname(DESS_SOURCE_COLS[sources_vues]),
+          labels = unname(lbl_source[sources_vues]),
+          title = i18n$t("acc_compare_legend_source"), layerId = "cmp_legend_r",
           opacity = 0.9)
       }
 
