@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,27 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.122.2" id="nemetonshiny-01222-2026-08-13">nemetonshiny 0.122.2 (2026-08-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01222-2026-08-13"></a></h2>
+<div class="section level4">
+<h4 id="changed--la-disponibilité-de-dessertr-est-demandée-au-cœur-0-122-2">Changed — La disponibilité de <code>dessertR</code> est demandée au cœur<a class="anchor" aria-label="anchor" href="#changed--la-disponibilit%C3%A9-de-dessertr-est-demand%C3%A9e-au-c%C5%93ur-0-122-2"></a></h4>
+<p>Trois gardes locaux <code><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace("dessertR")</a></code> délèguent désormais à <code><a href="https://pobsteta.github.io/foretaccess/reference/dessertR_disponible.html" class="external-link">foretaccess::dessertR_disponible()</a></code> (cœur &gt;= 2.1.0), via <code>.dessertR_dispo()</code>. Le cœur fait autorité sur ce que « disponible » signifie pour <strong>ses</strong> quatre fonctions qui en dépendent — <code>qualifier_desserte()</code>, <code>verifier_integrite_desserte()</code>, <code>detecter_desserte()</code>, <code>acquire_desserte_lidar()</code> — et si cette définition se durcit, l’app suit sans changement.</p>
+<p><code>dessertR</code> n’est pas déclarable en <code>Suggests</code> côté cœur tant que <code>rlas</code> reste <strong>archivé sur le CRAN</strong> : la déclaration casse l’installation pour tous, y compris ceux qui n’utilisent jamais <code>dessertR</code>. Le prédicat est la réponse du cœur à cette contrainte, pas un raffinement.</p>
+<p>Le helper <strong>refuse</strong> plutôt que de propager si le cœur lève : un <code><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop()</a></code> qui remonte dans un <code>observeEvent</code> casse la session, alors que répondre <code>FALSE</code> se contente de ne pas proposer l’action.</p>
+<p>Plancher relevé à <code>foretaccess (&gt;= 2.1.0)</code> — la version qui expose ce prédicat. Pas à 2.2.0, dont l’app ne consomme rien : le plancher est le minimum exigé.</p>
+</div>
+<div class="section level4">
+<h4 id="fixed--deux-tests-qui-passaient-pour-de-mauvaises-raisons-0-122-2">Fixed — Deux tests qui passaient pour de mauvaises raisons<a class="anchor" aria-label="anchor" href="#fixed--deux-tests-qui-passaient-pour-de-mauvaises-raisons-0-122-2"></a></h4>
+<p>Le passage au prédicat du cœur a fait tomber un test existant, et l’analyse a montré que <strong>deux</strong> tests étaient fautifs.</p>
+<p><code>.desserte_integrite rend NULL sans dessertR</code> mockait <code><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">base::requireNamespace</a></code> en rappelant <code><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">base::requireNamespace()</a></code> dans sa branche <code>else</code> — un rappel qui retombe sur le mock, donc une <strong>récursion infinie</strong>. Il ne passait que parce que l’ancien code testait <code>"dessertR"</code> en premier et sortait avant d’atteindre cette branche : sa réussite tenait à un ordre d’appel, pas à ce qu’il vérifiait.</p>
+<p>Et le test ajouté ici appelait d’abord <code>.desserte_integrite(NULL, NULL, NULL)</code>, qui rend <code>NULL</code> par son garde <code>!inherits(desserte, "sf")</code> : il pouvait passer sans rien dire du prédicat. Il reçoit maintenant une desserte valide.</p>
+<p>Vérifié par mutation : rendre le garde permissif fait échouer <strong>5</strong> tests, contre 3 avant ces corrections.</p>
+</div>
+<div class="section level4">
+<h4 id="note--les-briefs-à-de-brief-nemetonshiny-indexmd-étaient-déjà-livrés-0-122-2">Note — les briefs 1 à 4 de <code>brief-nemetonshiny-INDEX.md</code> étaient déjà livrés<a class="anchor" aria-label="anchor" href="#note--les-briefs-%C3%A0-de-brief-nemetonshiny-indexmd-%C3%A9taient-d%C3%A9j%C3%A0-livr%C3%A9s-0-122-2"></a></h4>
+<p>L’invalidation du cache desserte (annexe A), <code>skidding_m</code>, les trois entrées de coût et les vérifications Overpass avaient été implémentés plus tôt le même jour, avant la consolidation des briefs côté cœur. Seul <code>dessertR_disponible()</code> manquait.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.122.1" id="nemetonshiny-01221-2026-08-13">nemetonshiny 0.122.1 (2026-08-13)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01221-2026-08-13"></a></h2>
 <div class="section level4">

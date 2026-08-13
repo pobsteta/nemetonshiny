@@ -12,6 +12,26 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.122.2\] - 2026-08-13
+
+### Changed
+
+- La disponibilité de `dessertR` est demandée au cœur
+  ([`foretaccess::dessertR_disponible()`](https://pobsteta.github.io/foretaccess/reference/dessertR_disponible.html),
+  \>= 2.1.0) au lieu de trois
+  [`requireNamespace()`](https://rdrr.io/r/base/ns-load.html) locaux.
+  `dessertR` n’est pas déclarable en `Suggests` côté cœur tant que
+  `rlas` reste archivé sur le CRAN.
+- Plancher `foretaccess (>= 2.1.0)`.
+
+### Fixed
+
+- Deux tests passaient pour de mauvaises raisons : l’un mockait
+  [`base::requireNamespace`](https://rdrr.io/r/base/ns-load.html) en se
+  rappelant lui-même (récursion infinie, masquée par l’ordre des
+  gardes), l’autre assertait `NULL` sur une entrée que la fonction
+  rejetait déjà par un autre garde.
+
 ## \[0.122.1\] - 2026-08-13
 
 ### Fixed
