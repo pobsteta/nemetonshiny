@@ -10,6 +10,24 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.122.2] - 2026-08-13
+
+### Changed
+
+- La disponibilité de `dessertR` est demandée au cœur
+  (`foretaccess::dessertR_disponible()`, >= 2.1.0) au lieu de trois
+  `requireNamespace()` locaux. `dessertR` n'est pas déclarable en `Suggests`
+  côté cœur tant que `rlas` reste archivé sur le CRAN.
+- Plancher `foretaccess (>= 2.1.0)`.
+
+### Fixed
+
+- Deux tests passaient pour de mauvaises raisons : l'un mockait
+  `base::requireNamespace` en se rappelant lui-même (récursion infinie, masquée
+  par l'ordre des gardes), l'autre assertait `NULL` sur une entrée que la
+  fonction rejetait déjà par un autre garde.
+
+
 ## [0.122.1] - 2026-08-13
 
 ### Fixed
