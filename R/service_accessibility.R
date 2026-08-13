@@ -378,10 +378,110 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
        acq_dir = acq_dir, mnt = mnt, desserte = desserte)
 }
 
+#' Map an OSM `highway` value onto the BD TOPO `classe` vocabulary
+#'
+#' `preprocess()`/`.rasteriser_desserte` require `classe`, which
+#' `acquire_desserte_osm()` does not produce (it returns `highway`, plus
+#' `tracktype`/`surface`/`access`). The default OSM types are `track`,
+#' `unclassified` and `service`.
+#'
+#' Unknown values fall back to `piste`, the LOWER-grade class: an OSM segment we
+#' cannot categorise must not enter the engines as a full-fledged road.
+#'
+#' @param highway Character vector of OSM `highway` values.
+#' @return Character vector of BD TOPO classes.
+#' @noRd
+.osm_highway_vers_classe <- function(highway) {
+  h <- tolower(as.character(highway %||% character()))
+  out <- rep("piste", length(h))
+  out[h %in% c("unclassified", "service", "residential")] <- "route"
+  out
+}
+
+#' Complete the BD TOPO network with the OSM segments it lacks
+#'
+#' INVARIANT: the corrected network ALWAYS carries the whole declared BD TOPO.
+#' OSM is a **complement, never a substitute** — the core states the same rule
+#' (`acquire_desserte_osm()`: « Source complémentaire de la BD TOPO, jamais
+#' substitutive »). This helper can therefore only ever ADD rows.
+#'
+#' An OSM segment is kept for the part of it lying OUTSIDE a `corridor_m` buffer
+#' around the BD TOPO, and only when that part reaches `min_ajout_m`. Without the
+#' length floor, a mere digitising offset on an already-declared road would enter
+#' as a duplicate; without the clipping, its overlapping half would too.
+#'
+#' Best-effort by construction: Overpass is rate-limited (measured > 10 min under
+#' throttling), and an unreachable third-party service must never block a
+#' correction. Every failure path returns the BD TOPO untouched, with a `statut`
+#' naming the cause so the UI can say what happened instead of staying silent.
+#'
+#' @param bdtopo BD TOPO network (`acquire_desserte()` output).
+#' @param aoi_ext Buffered AOI.
+#' @param acq_dir Acquisition cache directory.
+#' @param corridor_m Half-width (m) of the corridor deeming an OSM segment
+#'   already declared by the BD TOPO.
+#' @param min_ajout_m Minimum outside length (m) for a segment to be added.
+#' @return `list(reseau, n_bdtopo, n_ajoutes, n_osm, statut)`.
+#' @noRd
+.desserte_complement_osm <- function(bdtopo, aoi_ext, acq_dir,
+                                     corridor_m = 15, min_ajout_m = 30) {
+  base <- bdtopo
+  base$source <- "bdtopo"
+  seule <- function(statut) {
+    list(reseau = base, n_bdtopo = nrow(base), n_ajoutes = 0L,
+         n_osm = 0L, statut = statut)
+  }
+  if (!requireNamespace("foretaccess", quietly = TRUE)) return(seule("osm_indisponible"))
+
+  # Injoignable et vide ne sont PAS le même diagnostic : le premier est une
+  # panne réseau (bride Overpass, mesurée > 10 min), le second un constat.
+  osm <- tryCatch(
+    foretaccess::acquire_desserte_osm(aoi_ext, crs = 2154, cache_dir = acq_dir),
+    error = function(e) structure(list(), class = "acc_err"))
+  if (inherits(osm, "acc_err")) return(seule("osm_injoignable"))
+  if (!inherits(osm, "sf") || nrow(osm) == 0L) return(seule("osm_vide"))
+
+  ajout <- tryCatch({
+    osm <- sf::st_transform(osm, sf::st_crs(base))
+    corridor <- sf::st_union(sf::st_buffer(sf::st_geometry(base), corridor_m))
+    # `st_difference` CLIPPE : on n'ajoute que la portion hors corridor, pas le
+    # tronçon entier — sa moitié déjà déclarée ferait doublon avec la BD TOPO.
+    hors <- suppressWarnings(sf::st_difference(osm, corridor))
+    if (nrow(hors) == 0L) return(seule("osm_rien_a_ajouter"))
+    hors <- suppressWarnings(sf::st_cast(hors, "MULTILINESTRING"))
+    assez <- as.numeric(sf::st_length(hors)) >= min_ajout_m
+    hors <- hors[which(assez), , drop = FALSE]
+    if (nrow(hors) == 0L) return(seule("osm_rien_a_ajouter"))
+    a <- sf::st_sf(classe = .osm_highway_vers_classe(hors[["highway"]]),
+                   largeur = NA_real_, source = "osm",
+                   geometry = sf::st_geometry(hors))
+    # `rbind.sf` exige le MÊME nom de colonne géométrique des deux côtés.
+    gcol <- attr(base, "sf_column")
+    if (!identical(gcol, "geometry")) {
+      names(a)[names(a) == "geometry"] <- gcol
+      attr(a, "sf_column") <- gcol
+    }
+    a
+  }, error = function(e) NULL)
+  # NB : les `return(seule(...))` du bloc ci-dessus sortent bien de CETTE
+  # fonction — l'expression d'un `tryCatch()` s'évalue dans le frame appelant.
+  if (is.null(ajout) || !inherits(ajout, "sf")) return(seule("osm_fusion_echouee"))
+
+  garder <- intersect(names(base), names(ajout))
+  fusion <- tryCatch(
+    rbind(base[, garder, drop = FALSE], ajout[, garder, drop = FALSE]),
+    error = function(e) NULL)
+  if (!inherits(fusion, "sf") || nrow(fusion) < nrow(base)) {
+    return(seule("osm_fusion_echouee"))
+  }
+  list(reseau = fusion, n_bdtopo = nrow(base), n_ajoutes = nrow(ajout),
+       n_osm = nrow(osm), statut = "ok")
+}
+
 #' Correct a project's road network with LiDAR HD (NDP 1) — standalone step
 #'
-#' The HEAVY part (`qualifier_desserte()` : re-aligned geometry, measured widths,
-#' phantom-segment removal) is run ON ITS OWN, decoupled from the engine runs, and
+#' The HEAVY part (`qualifier_desserte()` : re-aligned geometry, measured widths)
+#' is run ON ITS OWN, decoupled from the engine runs, and
 #' the corrected desserte is persisted to `desserte_corrigee.gpkg`. Engine runs
 #' then reuse it (via `run_accessibility(use_corrected_desserte = TRUE)`) with NO
 #' re-qualification — keeping them light. Requires a LiDAR point cloud + foretaccess
@@ -392,8 +492,8 @@ ACCESSIBILITY_ENGINES <- c("skidder", "porteur", "camion_dfci", "cable")
 #' @param cache_dir Accessibility cache directory of the project.
 #' @param buffer_m Buffer (m) around the forest AOI — MUST match the engine run.
 #' @param project_path Project root (to resolve the LiDAR point-cloud cache).
-#' @return `list(status, n_troncons, n_troncons_retires, corrected_path)` on
-#'   success, or a structured error list.
+#' @return `list(status, n_troncons, n_bdtopo, n_osm_ajoutes, osm_statut,
+#'   corrected_path)` on success, or a structured error list.
 #' @noRd
 run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
                                           project_path = NULL) {
@@ -474,12 +574,32 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   qualif_cache <- file.path(acq$acq_dir,
                             if (use_lidar_mnt) "qualif_cache_lidar" else "qualif_cache")
   dir.create(qualif_cache, recursive = TRUE, showWarnings = FALSE)
-  n_avant <- nrow(acq$desserte)
+  # RÉSEAU À QUALIFIER = BD TOPO INTÉGRALE + ce qu'OSM porte en plus.
+  cplt <- .desserte_complement_osm(acq$desserte, acq$aoi_ext, acq$acq_dir)
+  reseau <- cplt$reseau
+
+  # INVARIANT — `retirer_disparues = FALSE`, le défaut du cœur.
+  #
+  # Nous passions ici `TRUE` : la correction RETIRAIT les tronçons dont l'état
+  # mesuré vaut `abandonnee` ou `hors_route`. Mesuré sur ForêtAccess, elle
+  # supprimait 280 tronçons sur 373 — 84 % du linéaire, dont UNE `route` sur
+  # DEUX. Ce n'était pas un constat de terrain : `hors_route` signifie « les deux
+  # conductivités faibles », c'est-à-dire AUCUN signal, ce qui désigne un échec
+  # de mesure bien plus souvent qu'une route effacée — une plateforme routière
+  # laisse une empreinte dans le terrain pendant des décennies. `dsr_etat()`
+  # avertit d'ailleurs que l'état « n'est réellement interprétable que le long
+  # d'un tracé retenu par le pathfinder ».
+  #
+  # La règle, désormais, ne se contourne pas : la desserte corrigée CONSERVE
+  # l'intégralité de la BD TOPO, s'enrichit d'OSM, qualifie l'ensemble et le
+  # rend. La qualification RENSEIGNE (état, largeur, géométrie recalée) ; elle
+  # ne DÉCIDE pas de l'existence. Un tronçon jugé abandonné reste dans la
+  # couche, porteur de son état, et c'est l'utilisateur qui en tire les
+  # conséquences.
   dq <- tryCatch(
-    foretaccess::qualifier_desserte(acq$desserte, las_source = laz_dir,
+    foretaccess::qualifier_desserte(reseau, las_source = laz_dir,
                                     mnt = mnt_alsroads, cache_dir = qualif_cache,
-                                    retirer_disparues = TRUE,
-                                    etat_disparue = 4L),
+                                    retirer_disparues = FALSE),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(dq, "acc_err")) {
     return(list(status = "error", reason = "acc_correct_failed", detail = dq$msg))
@@ -487,6 +607,20 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   # Garde-fou : `preprocess()`/`.rasteriser_desserte` exigent la colonne `classe`.
   if (!inherits(dq, "sf") || nrow(dq) == 0L || !("classe" %in% names(dq))) {
     return(list(status = "error", reason = "acc_correct_attrs_lost"))
+  }
+  # Garde-fou d'INVARIANT : perdre un tronçon déclaré est une erreur, pas un
+  # résultat. Mieux vaut refuser la correction que rendre un réseau amputé qui
+  # se lira comme une desserte complète — c'est exactement le mode d'échec que
+  # ce correctif supprime.
+  if (nrow(dq) < nrow(reseau)) {
+    return(list(status = "error", reason = "acc_correct_invariant_broken",
+                detail = sprintf("%d troncons en entree, %d en sortie",
+                                 nrow(reseau), nrow(dq))))
+  }
+  # `qualifier_desserte()` ne s'engage pas à transporter nos colonnes : on
+  # réattache `source` par position, et seulement si la correspondance est sûre.
+  if (!("source" %in% names(dq)) && nrow(dq) == nrow(reseau)) {
+    dq$source <- reseau$source
   }
 
   out <- .corrected_desserte_path(cache_dir)
@@ -507,7 +641,8 @@ run_desserte_lidar_correction <- function(aoi_path, cache_dir, buffer_m = 0,
   if (!isTRUE(ok)) return(list(status = "error", reason = "acc_correct_write_failed"))
 
   list(status = "success", corrected_path = out, n_troncons = nrow(dq),
-       n_troncons_retires = max(0L, n_avant - nrow(dq)))
+       n_bdtopo = cplt$n_bdtopo, n_osm_ajoutes = cplt$n_ajoutes,
+       osm_statut = cplt$statut)
 }
 
 #' Run the accessibility engines for a project (worker-side)
