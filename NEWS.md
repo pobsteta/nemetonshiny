@@ -1,4 +1,4 @@
-# nemetonshiny 0.122.2 (2026-08-13)
+# nemetonshiny 0.122.1 (2026-08-13)
 
 ### Fixed — Le CVAT ne se détruit plus lui-même, et n'appelle plus le WMS
 
@@ -36,8 +36,6 @@ satisfait, il relancerait un worker et son toast à chaque entrée dans l'onglet
 `.rvt_cvat_out_path()` factorise le chemin canonique du CVAT, dont les gardes
 ont besoin **même quand le fichier n'existe pas** — c'est justement le cas où
 il faut savoir si une construction a déjà été tentée.
-
-# nemetonshiny 0.122.1 (2026-08-13)
 
 ### Changed — Cache OSM daté et versionné sur le transport Overpass
 

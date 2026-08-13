@@ -10,6 +10,32 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.122.1] - 2026-08-13
+
+### Fixed
+
+- **CVAT : construction atomique.** L'appel passait `out = <cible>,
+  `overwrite = TRUE` : un échec détruisait un CVAT valide sans rien mettre à la
+  place (constaté sur Reconfort — relief perdu, puis reconstruit en boucle). La
+  construction se fait dans un fichier temporaire, renommé une fois aboutie.
+- **CVAT : échecs mémorisés.** Le sidecar n'était écrit qu'en cas de succès, si
+  bien qu'une construction ratée repartait à chaque entrée dans l'onglet. Il
+  porte désormais un `statut`, opposable 6 h.
+- **CVAT : buffer plafonné à la mosaïque locale.** Au-delà, le cœur ré-acquiert
+  le MNT par le WMS IGN — des dizaines de minutes pour un fond ré-agrégé à
+  ~2000 px. Pas de plafond quand la mosaïque ne couvre pas l'AOI.
+
+### Changed
+
+- Cache OSM horodaté et versionné sur `foretaccess` : le transport Overpass
+  étant refondu (requête unique + bissection au lieu du tuilage 1 km), la
+  **couverture** change et un cache d'avant la bascule ne doit pas être relu.
+
+### Removed
+
+- `osmdata` des `Suggests` : aucun appel dans `R/`, `tests/`, `inst/`, `man/`.
+
+
 ## [0.122.0] - 2026-08-13
 
 ### Fixed
