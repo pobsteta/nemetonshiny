@@ -156,10 +156,34 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
 #' @param desserte Existing road network (`sf`, carries `classe`).
 #' @param lignes Created roads (`sf`) or `NULL` when the engine built none.
 #' @param aoi Parcels served, used to locate edge effects.
+#' Le moteur optionnel `dessertR` est-il disponible ?
+#'
+#' Délègue au prédicat du cœur (`foretaccess >= 2.1.0`) plutôt que de refaire un
+#' `requireNamespace("dessertR")` local. Le cœur fait autorité sur ce que
+#' « disponible » veut dire pour SES quatre fonctions qui en dépendent
+#' (`qualifier_desserte`, `verifier_integrite_desserte`, `detecter_desserte`,
+#' `acquire_desserte_lidar`) : si cette définition se durcit un jour, nous
+#' suivons sans rien changer.
+#'
+#' À interroger AVANT de proposer l'action, pas après : c'est ce qui permet de
+#' dire « indisponible » au lieu d'afficher un résultat vide qui se lit comme un
+#' bon bulletin de santé — le défaut corrigé dans `foretaccess 2.1.0`.
+#'
+#' `dessertR` n'est pas déclarable en `Suggests` côté cœur tant que `rlas` reste
+#' archivé sur le CRAN : sa déclaration casse l'installation pour tous.
+#'
+#' @return `TRUE`/`FALSE`. `FALSE` si `foretaccess` lui-même manque — on ne
+#'   propose pas une action qu'on ne saurait pas exécuter.
+#' @noRd
+.dessertR_dispo <- function() {
+  if (!requireNamespace("foretaccess", quietly = TRUE)) return(FALSE)
+  isTRUE(tryCatch(foretaccess::dessertR_disponible(), error = function(e) FALSE))
+}
+
 #' @return Named list of scalars, or `NULL` when unavailable.
 #' @noRd
 .desserte_integrite <- function(desserte, lignes, aoi) {
-  if (!requireNamespace("dessertR", quietly = TRUE)) return(NULL)
+  if (!.dessertR_dispo()) return(NULL)
   if (!inherits(desserte, "sf") || nrow(desserte) == 0L) return(NULL)
   geom_only <- function(x, classe) {
     sf::st_sf(classe = rep(classe, nrow(x)), geometry = sf::st_geometry(x))
@@ -216,7 +240,7 @@ run_desserte_integrite <- function(cache_dir, aoi_path) {
   if (!requireNamespace("foretaccess", quietly = TRUE)) {
     return(list(status = "error", reason = "desserte_no_foretaccess"))
   }
-  if (!requireNamespace("dessertR", quietly = TRUE)) {
+  if (!.dessertR_dispo()) {
     return(list(status = "error", reason = "desserte_integrite_no_dessertr"))
   }
   gpkg <- file.path(cache_dir, "desserte.gpkg")
@@ -475,7 +499,7 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   if (!requireNamespace("foretaccess", quietly = TRUE)) {
     return(list(status = "error", reason = "desserte_no_foretaccess"))
   }
-  if (!requireNamespace("dessertR", quietly = TRUE)) {
+  if (!.dessertR_dispo()) {
     return(list(status = "error", reason = "desserte_detect_no_dessertr"))
   }
   if (is.null(aoi_path) || !file.exists(aoi_path)) {

@@ -394,11 +394,15 @@ test_that(".desserte_integrite rend NULL sans dessertR plutot qu'un verdict vide
   d <- sf::st_sf(classe = "route",
                  geometry = sf::st_sfc(
                    sf::st_linestring(rbind(c(0, 0), c(100, 100))), crs = 2154))
+  # Le mock porte sur le PREDICAT DU COEUR, seule couture propre depuis que
+  # `.dessertR_dispo()` y delegue. La version precedente mockait
+  # `base::requireNamespace` en rappelant `base::requireNamespace()` dans sa
+  # branche `else` : ce rappel retombait sur le mock -> recursion infinie. Elle
+  # ne passait que parce que l'ancien code testait "dessertR" en PREMIER et
+  # sortait avant d'atteindre cette branche.
+  skip_if_not_installed("foretaccess")
   testthat::with_mocked_bindings(
-    requireNamespace = function(package, ...) {
-      if (identical(package, "dessertR")) FALSE else base::requireNamespace(package, ...)
-    },
-    .package = "base",
+    dessertR_disponible = function() FALSE, .package = "foretaccess",
     expect_null(nemetonshiny:::.desserte_integrite(d, NULL, d)))
 })
 
@@ -669,4 +673,49 @@ test_that("run_desserte_osm records the transport provenance it will be judged o
     # doivent parler de la meme cle, sinon le cache ne sert jamais.
     expect_false(is.null(nemetonshiny:::.load_cached_osm(cd)))
   })
+})
+
+# --- Délégation au prédicat du cœur (foretaccess >= 2.1.0) -------------------
+# `dessertR` n'est pas déclarable en Suggests côté cœur tant que `rlas` reste
+# archivé sur le CRAN. Le cœur expose donc `dessertR_disponible()`, à interroger
+# AVANT de proposer l'action — pour dire « indisponible » au lieu d'afficher un
+# résultat vide qui se lit comme un bon bulletin de santé.
+
+test_that(".dessertR_dispo delegates to the core predicate", {
+  skip_if_not_installed("foretaccess")
+  expect_true(testthat::with_mocked_bindings(
+    nemetonshiny:::.dessertR_dispo(),
+    dessertR_disponible = function() TRUE, .package = "foretaccess"))
+  expect_false(testthat::with_mocked_bindings(
+    nemetonshiny:::.dessertR_dispo(),
+    dessertR_disponible = function() FALSE, .package = "foretaccess"))
+})
+
+test_that(".dessertR_dispo refuses rather than propagates when the core throws", {
+  skip_if_not_installed("foretaccess")
+  # Ne pas proposer une action qu'on ne saurait pas exécuter : on répond FALSE,
+  # on ne laisse pas remonter l'erreur dans un observeEvent Shiny.
+  expect_false(testthat::with_mocked_bindings(
+    nemetonshiny:::.dessertR_dispo(),
+    dessertR_disponible = function() stop("boum"), .package = "foretaccess"))
+})
+
+test_that("the desserte actions refuse when dessertR is unavailable", {
+  skip_if_not_installed("foretaccess")
+  res <- testthat::with_mocked_bindings(
+    nemetonshiny:::run_desserte_detection(tempdir(), NULL),
+    dessertR_disponible = function() FALSE, .package = "foretaccess")
+  expect_identical(res$reason, "desserte_detect_no_dessertr")
+  # `.desserte_integrite()` rend NULL — surtout PAS un verdict vide, qui
+  # s'afficherait « aucune infraction ».
+  #
+  # On passe une desserte VALIDE : avec `NULL`, la fonction rendrait NULL par
+  # son garde `!inherits(desserte, "sf")` et le test passerait sans rien dire
+  # du predicat.
+  d <- sf::st_sf(classe = "route",
+                 geometry = sf::st_sfc(
+                   sf::st_linestring(rbind(c(0, 0), c(100, 100))), crs = 2154))
+  expect_null(testthat::with_mocked_bindings(
+    nemetonshiny:::.desserte_integrite(d, NULL, d),
+    dessertR_disponible = function() FALSE, .package = "foretaccess"))
 })
