@@ -1,3 +1,52 @@
+# nemetonshiny 0.122.2 (2026-08-13)
+
+### Changed — La disponibilité de `dessertR` est demandée au cœur
+
+Trois gardes locaux `requireNamespace("dessertR")` délèguent désormais à
+`foretaccess::dessertR_disponible()` (cœur >= 2.1.0), via `.dessertR_dispo()`.
+Le cœur fait autorité sur ce que « disponible » signifie pour **ses** quatre
+fonctions qui en dépendent — `qualifier_desserte()`,
+`verifier_integrite_desserte()`, `detecter_desserte()`,
+`acquire_desserte_lidar()` — et si cette définition se durcit, l'app suit sans
+changement.
+
+`dessertR` n'est pas déclarable en `Suggests` côté cœur tant que `rlas` reste
+**archivé sur le CRAN** : la déclaration casse l'installation pour tous, y
+compris ceux qui n'utilisent jamais `dessertR`. Le prédicat est la réponse du
+cœur à cette contrainte, pas un raffinement.
+
+Le helper **refuse** plutôt que de propager si le cœur lève : un `stop()` qui
+remonte dans un `observeEvent` casse la session, alors que répondre `FALSE` se
+contente de ne pas proposer l'action.
+
+Plancher relevé à `foretaccess (>= 2.1.0)` — la version qui expose ce prédicat.
+Pas à 2.2.0, dont l'app ne consomme rien : le plancher est le minimum exigé.
+
+### Fixed — Deux tests qui passaient pour de mauvaises raisons
+
+Le passage au prédicat du cœur a fait tomber un test existant, et l'analyse a
+montré que **deux** tests étaient fautifs.
+
+`.desserte_integrite rend NULL sans dessertR` mockait `base::requireNamespace`
+en rappelant `base::requireNamespace()` dans sa branche `else` — un rappel qui
+retombe sur le mock, donc une **récursion infinie**. Il ne passait que parce que
+l'ancien code testait `"dessertR"` en premier et sortait avant d'atteindre cette
+branche : sa réussite tenait à un ordre d'appel, pas à ce qu'il vérifiait.
+
+Et le test ajouté ici appelait d'abord `.desserte_integrite(NULL, NULL, NULL)`,
+qui rend `NULL` par son garde `!inherits(desserte, "sf")` : il pouvait passer
+sans rien dire du prédicat. Il reçoit maintenant une desserte valide.
+
+Vérifié par mutation : rendre le garde permissif fait échouer **5** tests, contre
+3 avant ces corrections.
+
+### Note — les briefs 1 à 4 de `brief-nemetonshiny-INDEX.md` étaient déjà livrés
+
+L'invalidation du cache desserte (annexe A), `skidding_m`, les trois entrées de
+coût et les vérifications Overpass avaient été implémentés plus tôt le même jour,
+avant la consolidation des briefs côté cœur. Seul `dessertR_disponible()`
+manquait.
+
 # nemetonshiny 0.122.1 (2026-08-13)
 
 ### Fixed — Le CVAT ne se détruit plus lui-même, et n'appelle plus le WMS
