@@ -10,6 +10,34 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.124.0] - 2026-08-14
+
+### Added
+
+- Onglet Desserte, carte : calques « Pistes OSM » et « Routes détectées »,
+  tiretés et éteints au départ, déclarés dans le contrôle de couches.
+- Popup des routes détectées portant `CLASSE_CONF`, `CLASSE_MOTIF` et
+  `OSM_TAGS` à côté de `CLASSE`, le balisage OSM étant signalé comme une
+  proposition et non un téléversement.
+- `.load_cached_typage()` et sidecar `typage.rds` : le typage du réseau survit
+  au rechargement du projet.
+- Chemin du cache du projet affiché sous le bouton de téléchargement.
+- Onglet Desserte, carte : calque « Lignes créées » (couche `reseau_cree` du
+  GeoPackage), en complément du raster.
+- Plein écran sur le profil en travers d'un tronçon, comme les graphiques du
+  Suivi sanitaire.
+- Un « i » d'information par badge du bilan de desserte.
+
+### Changed
+
+- `export_desserte_geopackage()` fusionne le réseau typé, les pistes OSM et les
+  routes détectées dans le GeoPackage téléchargé, en retenant le typage du
+  moteur courant.
+- `run_desserte_osm()` renvoie `gpkg_path` et le persiste dans `osm.rds`.
+- Libellés du contrôle de couches de l'onglet Desserte uniformément accentués.
+- `man/` régénéré (roxygen 8.1.0, désaccentuation propagée depuis les sources) ;
+  ajout de `man/mod_sources_config.Rd`, absent jusqu'ici.
+
 ## [0.123.0] - 2026-08-14
 
 ### Added

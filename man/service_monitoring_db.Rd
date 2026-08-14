@@ -13,16 +13,16 @@ style is configured.
 
 Resolution order:
 
-1. `NEMETON_DB_URL` — passed straight through to nemeton.
-2. `POSTGRESQL_ADDON_*` then `NEMETON_DB_*` parts — assembled into
+1. `NEMETON_DB_URL` - passed straight through to nemeton.
+2. `POSTGRESQL_ADDON_*` then `NEMETON_DB_*` parts - assembled into
    a postgresql URL (credentials URL-encoded so passwords with `@`,
-   `:`, `/` … don't break the parse).
-3. No PG env vars set AND a `project` is passed → fall back to a
+   `:`, `/` ... don't break the parse).
+3. No PG env vars set AND a `project` is passed -> fall back to a
    **local SQLite/WAL file** at
    `<project$path>/data/monitoring.sqlite`. This single-user mode
    avoids requiring a TimescaleDB instance for individual users.
    Requires the `RSQLite` R package.
-4. None of the above — return NULL so the Monitoring tab can show
+4. None of the above - return NULL so the Monitoring tab can show
    a configuration hint instead of crashing.
 }
 \keyword{internal}

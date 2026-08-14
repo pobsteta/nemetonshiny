@@ -42,6 +42,12 @@ TRANSLATIONS <- list(
   # Accessibilit\u00e9 foresti\u00e8re (For\u00eatAccess \u2014 onglet Terrain)
   # ============================================================
   tab_terrain_desserte = list(fr = "Desserte", en = "Road network"),
+
+  # Infobulle d'une route creee (couche vectorielle " Lignes creees ").
+  dess_ligne_label_fmt = list(
+    fr = "Route %d \u2014 %.0f m, co\u00fbt %.0f",
+    en = "Road %d \u2014 %.0f m, cost %.0f"),
+  dess_ligne_label_court = list(fr = "Route cr\u00e9\u00e9e", en = "Created road"),
   tab_terrain_accessibilite = list(fr = "Accessibilit\u00e9", en = "Accessibility"),
   acc_intro = list(fr = "Cartographie de l'accessibilit\u00e9 d'exploitation (d\u00e9bardage tracteur, porteur, d\u00e9fense incendie DFCI) \u00e0 partir du MNT IGN RGE ALTI 5 m, de la desserte IGN BD TOPO et du masque for\u00eat IGN BD For\u00eat V2, acquis et mis en cache pour l'emprise du projet \u00e9largie de la zone tampon.", en = "Maps harvesting accessibility (tractor skidding, forwarder, DFCI fire defence) from the IGN RGE ALTI 5 m DEM, the IGN BD TOPO road network and the IGN BD For\u00eat V2 forest mask, acquired and cached for the buffered project area."),
   acc_engines_label = list(fr = "Moteurs d'exploitation", en = "Harvesting engines"),
@@ -249,6 +255,30 @@ TRANSLATIONS <- list(
   dess_badge_integrite = list(fr = "Int\u00e9grit\u00e9 du r\u00e9seau", en = "Network integrity"),
   dess_badge_infractions = list(fr = "Infractions", en = "Violations"),
   dess_badge_orphelins = list(fr = "Composants orphelins", en = "Orphan components"),
+
+  # Contenu des " i " des badges de resultat (sous-onglet Desserte). Chaque
+  # texte dit ce que le chiffre MESURE et comment le lire - pas ce qu'il vaut.
+  dess_badge_info_desservies = list(
+    fr = "Parcelles atteintes par le r\u00e9seau obtenu, sur le total de la zone, \u00e0 la distance de d\u00e9bardage retenue. Augmenter cette distance dessert plus de parcelles sans construire davantage.",
+    en = "Parcels reached by the resulting network, out of the total, at the chosen skidding distance. Increasing that distance serves more parcels without building more."),
+  dess_badge_info_raccorde = list(
+    fr = "Toutes les routes cr\u00e9\u00e9es sont-elles rattach\u00e9es au r\u00e9seau existant ? C'est l'indicateur de qualit\u00e9 du trac\u00e9. Il remplace \u00ab r\u00e9seau connexe \u00bb, presque toujours faux parce que domin\u00e9 par la fragmentation du r\u00e9seau existant, donc trompeur.",
+    en = "Are all created roads attached to the existing network? This is the quality indicator of the layout. It replaces \"connected network\", almost always false because dominated by the fragmentation of the existing network."),
+  dess_badge_info_routes = list(
+    fr = "Nombre de routes cr\u00e9\u00e9es par le moteur. Z\u00e9ro n'est pas un \u00e9chec : le r\u00e9seau existant suffit d\u00e9j\u00e0 pour la distance de d\u00e9bardage retenue.",
+    en = "Number of roads created by the engine. Zero is not a failure: the existing network already suffices at the chosen skidding distance."),
+  dess_badge_info_cout = list(
+    fr = "Co\u00fbt cumul\u00e9 des routes cr\u00e9\u00e9es, dans l'unit\u00e9 du raster de co\u00fbt (pente, franchissabilit\u00e9, terrassement selon la m\u00e9thode choisie). Il sert \u00e0 comparer deux trac\u00e9s, pas \u00e0 chiffrer un devis.",
+    en = "Cumulated cost of the created roads, in the unit of the cost raster (slope, trafficability, earthworks depending on the chosen method). Use it to compare two layouts, not as a quote."),
+  dess_badge_info_integrite = list(
+    fr = "Contr\u00f4le d'int\u00e9grit\u00e9 indisponible : `dessertR` est injoignable. Ce n'est PAS \u00ab aucune infraction \u00bb, c'est \u00ab on ne sait pas \u00bb.",
+    en = "Integrity check unavailable: `dessertR` is unreachable. This is NOT \"no violation\", it is \"unknown\"."),
+  dess_badge_info_infractions = list(
+    fr = "Tron\u00e7ons violant l'une des deux contraintes de l'annexe ACCESSFOR (rapport DSF f\u00e9vrier 2025) : une piste doit \u00eatre connect\u00e9e \u00e0 une route foresti\u00e8re ou au r\u00e9seau public, une route foresti\u00e8re au r\u00e9seau public. Ils sont signal\u00e9s, jamais retir\u00e9s.",
+    en = "Segments violating either ACCESSFOR annex constraint (DSF report, February 2025): a track must connect to a forest road or the public network, a forest road to the public network. They are flagged, never removed."),
+  dess_badge_info_orphelins = list(
+    fr = "Composants du r\u00e9seau obtenu qui ne rejoignent pas le r\u00e9seau public, sur le nombre total de composants. Un massif tr\u00e8s fragment\u00e9 en compte beaucoup sans que le trac\u00e9 propos\u00e9 y soit pour rien.",
+    en = "Components of the resulting network that do not reach the public network, out of the total. A heavily fragmented massif has many, regardless of the proposed layout."),
   dess_integrite_na = list(fr = "Non contr\u00f4l\u00e9e", en = "Not checked"),
   dess_integrite_title = list(fr = "Int\u00e9grit\u00e9 du r\u00e9seau", en = "Network integrity"),
   dess_integrite_intro = list(fr = "V\u00e9rifie la coh\u00e9rence du r\u00e9seau obtenu (existant + cr\u00e9\u00e9) : infractions de connectivit\u00e9 et composants isol\u00e9s. Calcul long \u2014 plusieurs minutes sur une grande emprise \u2014 d'o\u00f9 une action s\u00e9par\u00e9e du calcul de desserte.", en = "Checks the coherence of the resulting network (existing + created): connectivity violations and isolated components. Long computation \u2014 several minutes on a large extent \u2014 hence a separate action from the network creation."),
@@ -292,6 +322,19 @@ TRANSLATIONS <- list(
   dess_detect_sans_lidar = list(fr = "D\u00e9tection men\u00e9e sans canal de surface : le c\u0153ur la signale comme nettement moins s\u00fbre. Une absence de d\u00e9tection ne vaut pas constat d'absence de route.", en = "Detection run without the surface channel: the core flags it as markedly less reliable. No detection does not mean no road."),
   dess_detect_conf_fmt = list(fr = "Confiance moyenne du classement : %.0f %% des crit\u00e8res renseign\u00e9s. Les crit\u00e8res foss\u00e9s et NDVI ne sont pas encore fournis par l'application.", en = "Mean classification confidence: %.0f%% of criteria filled. The ditch and NDVI criteria are not yet supplied by the application."),
   dess_detect_osm_fmt = list(fr = "%d tron\u00e7on(s) portent une proposition de balisage OpenStreetMap, export\u00e9e dans le GeoPackage. C'est une PROPOSITION \u00e0 valider : rien n'est t\u00e9l\u00e9vers\u00e9 vers OpenStreetMap.", en = "%d segment(s) carry an OpenStreetMap tagging proposal, exported to the GeoPackage. It is a PROPOSAL to review: nothing is uploaded to OpenStreetMap."),
+  dess_osm_layer = list(fr = "Pistes OpenStreetMap", en = "OpenStreetMap tracks"),
+  dess_osm_layer_note = list(fr = "Acquisition OpenStreetMap compl\u00e8te, doublons de la BD TOPO compris : ce calque n'est pas la liste des pistes manquantes.", en = "Full OpenStreetMap acquisition, BD TOPO duplicates included: this layer is not the list of missing tracks."),
+  dess_detect_popup_conf = list(fr = "Confiance du classement :", en = "Classification confidence:"),
+  dess_detect_popup_motif = list(fr = "Crit\u00e8res :", en = "Criteria:"),
+  dess_detect_popup_osm = list(fr = "Balisage OpenStreetMap propos\u00e9 :", en = "Proposed OpenStreetMap tagging:"),
+  dess_detect_popup_osm_note = list(fr = "Proposition \u00e0 valider : rien n'est t\u00e9l\u00e9vers\u00e9.", en = "Proposal to review: nothing is uploaded."),
+  dess_detect_classe_route_forestiere = list(fr = "Route foresti\u00e8re", en = "Forest road"),
+  dess_detect_classe_piste_forestiere = list(fr = "Piste foresti\u00e8re", en = "Forest track"),
+  dess_detect_classe_desserte = list(fr = "Desserte (nature ind\u00e9termin\u00e9e)", en = "Access route (undetermined kind)"),
+  dess_detect_classe_cloisonnement_exploitation = list(fr = "Cloisonnement d'exploitation", en = "Extraction rack"),
+  dess_detect_classe_layon_parcellaire = list(fr = "Layon parcellaire", en = "Boundary ride"),
+  dess_detect_classe_pare_feu = list(fr = "Pare-feu", en = "Firebreak"),
+  dess_detect_classe_indetermine = list(fr = "Ind\u00e9termin\u00e9", en = "Undetermined"),
   desserte_detect_no_dessertr = list(fr = "Paquet dessertR absent : d\u00e9tection indisponible.", en = "dessertR package missing: detection unavailable."),
   desserte_detect_no_entrees = list(fr = "Entr\u00e9es terrain indisponibles pour la d\u00e9tection.", en = "Terrain inputs unavailable for the detection."),
   desserte_detect_failed = list(fr = "La d\u00e9tection de routes a \u00e9chou\u00e9.", en = "The road detection failed."),
@@ -301,6 +344,8 @@ TRANSLATIONS <- list(
   dess_yes = list(fr = "Oui", en = "Yes"),
   dess_no = list(fr = "Non", en = "No"),
   dess_download_gpkg = list(fr = "T\u00e9l\u00e9charger le GeoPackage", en = "Download GeoPackage"),
+  dess_download_gpkg_note = list(fr = "Contient aussi le r\u00e9seau typ\u00e9, les pistes OpenStreetMap et les routes d\u00e9tect\u00e9es, pour les actions qui ont tourn\u00e9.", en = "Also contains the typed network, the OpenStreetMap tracks and the detected roads, for whichever actions have run."),
+  dess_cache_path = list(fr = "Couches du projet :", en = "Project layers:"),
   dess_export_empty = list(fr = "Aucun r\u00e9seau de desserte \u00e0 exporter.", en = "No road network to export."),
   dess_busy_already = list(fr = "Une g\u00e9n\u00e9ration de desserte est d\u00e9j\u00e0 en cours.", en = "A road-network generation is already running."),
   dess_need_project = list(fr = "Chargez un projet avec une g\u00e9om\u00e9trie (UGF ou parcelles) avant de lancer la g\u00e9n\u00e9ration.", en = "Load a project with geometry (management units or parcels) before running."),

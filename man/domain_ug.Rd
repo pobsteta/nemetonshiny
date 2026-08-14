@@ -2,7 +2,7 @@
 % Please edit documentation in R/domain_ug.R
 \name{domain_ug}
 \alias{domain_ug}
-\title{Domain Layer: Unités de Gestion (UG)}
+\title{Domain Layer: Unites de Gestion (UG)}
 \description{
 Pure domain logic for Management Units (UG). Contains constructors,
 commands, queries, and invariant validation. No Shiny dependency.
@@ -11,7 +11,7 @@ Domain concepts:
 - Parcelle cadastrale: immutable cadastral polygon
 - Tenement: smallest geometric subdivision (whole parcel or fragment)
 - UG: grouping of 1+ tenements = operational forestry unit
-- Groupe d'aménagement: functional classification of UGs
+- Groupe d'amenagement: functional classification of UGs
 
 Each command returns a new projet (functional immutability).
 All 5 invariants are enforced after every command.

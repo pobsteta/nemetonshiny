@@ -167,3 +167,32 @@ test_that("la parabole n'est tracee que sur la largeur roulable", {
   expect_gte(min(tr[[1]]$x), -1.7)
   expect_lte(max(tr[[1]]$x), 1.7)
 })
+
+test_that("la modale du profil offre le plein ecran, comme le suivi sanitaire", {
+  # La modale est montee dans un observeEvent : on compare le CODE des deux
+  # modules. Ce qui est verifie ici, c'est que le patron est REPRIS et non
+  # reecrit — le jour ou l'un des deux evolue, l'ecart doit se voir.
+  f <- testthat::test_path("..", "..", "R", "mod_accessibility.R")
+  g <- testthat::test_path("..", "..", "R", "mod_monitoring_pixel_map.R")
+  testthat::skip_if_not(file.exists(f) && file.exists(g),
+                        "sources R absentes (package installe)")
+  acc <- readLines(f, warn = FALSE)
+  mon <- readLines(g, warn = FALSE)
+
+  bascule <- "modal-dialog').classList.toggle('modal-fullscreen')"
+  expect_true(any(grepl(bascule, acc, fixed = TRUE)))
+  expect_true(any(grepl(bascule, mon, fixed = TRUE)))
+
+  # `resize` differe : plotly en mode responsive n'ecoute que window.resize.
+  # Sans lui, le graphe reste a sa taille initiale dans la modale agrandie —
+  # le bouton semblerait ne rien faire.
+  resize <- "window.dispatchEvent(new Event('resize'))"
+  expect_true(any(grepl(resize, acc, fixed = TRUE)))
+
+  # La hauteur doit suivre : un conteneur nomme + sa regle en plein ecran.
+  expect_true(any(grepl('class = "profil-wrap"', acc, fixed = TRUE)))
+  expect_true(any(grepl("modal-fullscreen .profil-wrap", acc, fixed = TRUE)))
+
+  # Libelle partage avec le suivi sanitaire plutot qu'une cle jumelle.
+  expect_true(any(grepl("monitoring_pixel_map_fullscreen", acc, fixed = TRUE)))
+})

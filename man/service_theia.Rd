@@ -13,7 +13,7 @@ The Theia STAC API is queried by `nemeton`, which signs asset URLs
 internally through its STAC gateway (`signing.stac.teledetection.fr`,
 pure R) and reads them with /vsicurl/. Access requires a registered
 API key (`TLD_*` env vars). Python/reticulate is no longer used for
-THEIA URL signing (it remains required by other core paths —
+THEIA URL signing (it remains required by other core paths -
 FORDEAD / RECONFORT).
 }
 \keyword{internal}
