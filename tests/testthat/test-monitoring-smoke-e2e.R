@@ -18,35 +18,14 @@ test_that("monitoring tab boots and the two modes are reachable", {
   # cette fonction a été supprimée du cœur en `nemeton@v0.60.0`
   # (suite spec 017 / refactor obs_pixel). Le smoke test ne dépend
   # plus de cette API.
-  if (!nzchar(Sys.which("google-chrome")) &&
-      !nzchar(Sys.which("chromium")) &&
-      !nzchar(Sys.which("chromium-browser")) &&
-      !nzchar(Sys.which("chrome"))) {
-    skip("No Chrome / Chromium binary found for chromote")
-  }
+  skip_if_not(e2e_has_chrome(), "No Chrome / Chromium binary found for chromote")
 
-  # Build the Shiny app from the package's app_ui / app_server (golem
-  # pattern). Avoid run_app() because it sets options + checks
-  # dependencies we don't need for a smoke.
-  app_object <- shiny::shinyApp(
-    ui     = nemetonshiny:::app_ui,
-    server = nemetonshiny:::app_server
-  )
-
-  app <- tryCatch(
-    shinytest2::AppDriver$new(
-      app_object,
-      name          = "monitoring-smoke",
-      load_timeout  = 30 * 1000,
-      timeout       = 10 * 1000,
-      variant       = NULL,
-      view          = FALSE,
-      options       = list(nemeton.app_options = list(language = "fr"))
-    ),
-    error = function(e) {
-      skip(sprintf("AppDriver failed to boot: %s", conditionMessage(e)))
-    }
-  )
+  # Démarrage mutualisé (helper-e2e_app.R) : il construit l'app depuis
+  # `app_ui`/`app_server` (pas `run_app()`, dont les options et vérifications de
+  # dépendances ne servent pas à un smoke), impose la base hors-jeu — « No DB »
+  # est la prémisse de ce test, cf. en-tête — et réessaye `Page.navigate`.
+  app <- e2e_boot_app("monitoring-smoke",
+                      load_timeout = 30 * 1000, timeout = 10 * 1000)
   on.exit(try(app$stop(), silent = TRUE), add = TRUE)
 
   # Navigate to the Monitoring tab. Uses the navbar's id (`main_nav`)

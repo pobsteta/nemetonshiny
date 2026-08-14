@@ -17,32 +17,12 @@ test_that("FORDEAD validation sub-tab renders the control_classes selector", {
   skip_if_not_installed("shinytest2")
   skip_if_not_installed("chromote")
   skip_if_not_installed("nemeton")
-  if (!nzchar(Sys.which("google-chrome")) &&
-      !nzchar(Sys.which("chromium")) &&
-      !nzchar(Sys.which("chromium-browser")) &&
-      !nzchar(Sys.which("chrome"))) {
-    skip("No Chrome / Chromium binary found for chromote")
-  }
+  skip_if_not(e2e_has_chrome(), "No Chrome / Chromium binary found for chromote")
 
-  app_object <- shiny::shinyApp(
-    ui     = nemetonshiny:::app_ui,
-    server = nemetonshiny:::app_server
-  )
-
-  app <- tryCatch(
-    shinytest2::AppDriver$new(
-      app_object,
-      name         = "validation-control-classes-smoke",
-      load_timeout = 30 * 1000,
-      timeout      = 10 * 1000,
-      variant      = NULL,
-      view         = FALSE,
-      options      = list(nemeton.app_options = list(language = "fr"))
-    ),
-    error = function(e) {
-      skip(sprintf("AppDriver failed to boot: %s", conditionMessage(e)))
-    }
-  )
+  # Démarrage mutualisé (helper-e2e_app.R) : base hors-jeu — la prémisse
+  # « No DB / no ingestion » de l'en-tête — et `Page.navigate` réessayé.
+  app <- e2e_boot_app("validation-control-classes-smoke",
+                      load_timeout = 30 * 1000, timeout = 10 * 1000)
   on.exit(try(app$stop(), silent = TRUE), add = TRUE)
 
   # Monitoring tab, then switch to the « Diagnostic sanitaire » (health)
