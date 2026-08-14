@@ -13,6 +13,16 @@
 # Ces tests figent l'invariant : UN nom de groupe, porté par une constante, et
 # une case déclarée en toutes circonstances.
 
+# Ces tests lisent le CODE SOURCE. Sous `R CMD check`, les tests s'exécutent
+# depuis `<pkg>.Rcheck/tests/` et le paquet INSTALLÉ ne contient pas les fichiers
+# `.R` : `../../R` n'existe pas, `readLines()` échoue et le check passe en ERROR.
+# Même garde que `test-map_groups_isolate.R`, dont le check était vert.
+.src_mod_accessibility <- function() {
+  f <- testthat::test_path("..", "..", "R", "mod_accessibility.R")
+  testthat::skip_if_not(file.exists(f), "sources R absentes (package install\u00e9)")
+  readLines(f, warn = FALSE)
+}
+
 test_that("le groupe de relief est une constante unique", {
   g <- nemetonshiny:::ACC_RELIEF_GROUP
   expect_type(g, "character")
@@ -21,8 +31,7 @@ test_that("le groupe de relief est une constante unique", {
 })
 
 test_that("aucun second groupe de relief ne subsiste dans les sources", {
-  src <- readLines(test_path("..", "..", "R", "mod_accessibility.R"),
-                   warn = FALSE)
+  src <- .src_mod_accessibility()
   code <- src[!grepl("^\\s*#", src)]   # hors commentaires et roxygen
 
   # L'ancien groupe orphelin du comparateur.
@@ -37,8 +46,7 @@ test_that("la case du relief est declaree meme sans CVAT pret", {
   # Le comparateur peut peindre un relief plus tard (worker async) : si la case
   # n'est déclarée que lorsqu'un CVAT existe déjà au rendu, ce relief-là devient
   # inextinguible — c'est exactement le bug d'origine.
-  src <- readLines(test_path("..", "..", "R", "mod_accessibility.R"),
-                   warn = FALSE)
+  src <- .src_mod_accessibility()
   code <- src[!grepl("^\\s*#", src)]
 
   overlays <- grep("^\\s*overlays\\s*<-", code)
@@ -57,8 +65,7 @@ test_that("les couches du comparateur sont declarees dans le controle", {
   expect_type(nemetonshiny:::ACC_DESSERTE_CORR_GROUP, "character")
   expect_type(nemetonshiny:::ACC_DESSERTE_ORIG_GROUP, "character")
 
-  src <- readLines(test_path("..", "..", "R", "mod_accessibility.R"),
-                   warn = FALSE)
+  src <- .src_mod_accessibility()
   code <- src[!grepl("^\\s*#", src)]
 
   ov <- grep("^\\s*overlays\\s*<-", code)
@@ -80,8 +87,7 @@ test_that("la desserte du RUN n'est pas peinte sous le comparateur", {
   # mettent à l'écran des tronçons de même couleur qui ne disent pas la même
   # chose, sans légende pour l'expliquer. L'observe de la desserte du run doit
   # donc sortir tôt quand la couche comparateur est sélectionnée.
-  src <- readLines(test_path("..", "..", "R", "mod_accessibility.R"),
-                   warn = FALSE)
+  src <- .src_mod_accessibility()
   i <- grep('clearGroup\\("Desserte"\\)', src)
   expect_length(i, 1L)
 
