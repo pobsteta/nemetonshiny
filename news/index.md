@@ -1,5 +1,44 @@
 # Changelog
 
+## nemetonshiny 0.122.11 (2026-08-14)
+
+#### Added — Un « i » par raster dans le sélecteur de couche
+
+Chaque entrée de « Couche affichée » (onglet Accessibilité) explique ce
+que son raster montre : débusqueur, porteur, camion DFCI, câble-mât,
+classes de débardage, comparateur de desserte.
+
+Les seuils décisifs — pentes admissibles, distances de treuillage,
+portée de grue, bandes DFCI — ne sont PAS écrits dans les traductions :
+ils sont lus dans `foretaccess_config()` et injectés au rendu, comme le
+fait déjà la légende DFCI. Les recopier en dur les aurait laissés
+diverger du moteur le jour où la configuration change.
+
+Ces « i » vivent dans le `<label>` d’un radio : ils passent donc par
+`info_popover_in_label()`, qui annule l’activation du label — s’informer
+sur une couche ne doit pas la sélectionner, chaque sélection coûtant une
+lecture de raster.
+
+#### Changed — La mise en garde LiDAR passe dans un « i »
+
+Le texte « Calcul long (~2-3 h) et gourmand en mémoire… » occupait sept
+lignes de la barre latérale en permanence, alors qu’il se lit une fois,
+avant de cliquer. Il devient le « i » du titre « Desserte LiDAR (NDP 1)
+».
+
+#### Removed — Panneau « Validation ACCESSFOR (IGN) »
+
+Le panneau et son tableau d’accord classe par classe sont retirés : ils
+n’étaient pas utilisés. La comparaison elle-même reste — le raster
+ACCESSFOR est toujours calculé et reste consultable en volet swipe via
+la couche « Classes de débardage/ACCESSFOR (IGN) ».
+
+Huit clés i18n devenues orphelines partent avec, selon la convention du
+dépôt (cf. le test « orphan placeholder keys are removed » de la
+v0.41.1) ; un garde-fou inverse vérifie que les clés d’erreur
+d’ACCESSFOR, elles, restent — `service_accessfor.R` les consomme
+toujours.
+
 ## nemetonshiny 0.122.10 (2026-08-14)
 
 #### Fixed — Un titre de version manquant dans NEWS.md fait echouer les tests

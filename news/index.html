@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.10.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.122.11" id="nemetonshiny-012211-2026-08-14">nemetonshiny 0.122.11 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012211-2026-08-14"></a></h2>
+<div class="section level4">
+<h4 id="added--un--i--par-raster-dans-le-sélecteur-de-couche-0-122-11">Added — Un « i » par raster dans le sélecteur de couche<a class="anchor" aria-label="anchor" href="#added--un--i--par-raster-dans-le-s%C3%A9lecteur-de-couche-0-122-11"></a></h4>
+<p>Chaque entrée de « Couche affichée » (onglet Accessibilité) explique ce que son raster montre : débusqueur, porteur, camion DFCI, câble-mât, classes de débardage, comparateur de desserte.</p>
+<p>Les seuils décisifs — pentes admissibles, distances de treuillage, portée de grue, bandes DFCI — ne sont PAS écrits dans les traductions : ils sont lus dans <code>foretaccess_config()</code> et injectés au rendu, comme le fait déjà la légende DFCI. Les recopier en dur les aurait laissés diverger du moteur le jour où la configuration change.</p>
+<p>Ces « i » vivent dans le <code>&lt;label&gt;</code> d’un radio : ils passent donc par <code>info_popover_in_label()</code>, qui annule l’activation du label — s’informer sur une couche ne doit pas la sélectionner, chaque sélection coûtant une lecture de raster.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--la-mise-en-garde-lidar-passe-dans-un--i--0-122-11">Changed — La mise en garde LiDAR passe dans un « i »<a class="anchor" aria-label="anchor" href="#changed--la-mise-en-garde-lidar-passe-dans-un--i--0-122-11"></a></h4>
+<p>Le texte « Calcul long (~2-3 h) et gourmand en mémoire… » occupait sept lignes de la barre latérale en permanence, alors qu’il se lit une fois, avant de cliquer. Il devient le « i » du titre « Desserte LiDAR (NDP 1) ».</p>
+</div>
+<div class="section level4">
+<h4 id="removed--panneau--validation-accessfor-ign--0-122-11">Removed — Panneau « Validation ACCESSFOR (IGN) »<a class="anchor" aria-label="anchor" href="#removed--panneau--validation-accessfor-ign--0-122-11"></a></h4>
+<p>Le panneau et son tableau d’accord classe par classe sont retirés : ils n’étaient pas utilisés. La comparaison elle-même reste — le raster ACCESSFOR est toujours calculé et reste consultable en volet swipe via la couche « Classes de débardage/ACCESSFOR (IGN) ».</p>
+<p>Huit clés i18n devenues orphelines partent avec, selon la convention du dépôt (cf. le test « orphan placeholder keys are removed » de la v0.41.1) ; un garde-fou inverse vérifie que les clés d’erreur d’ACCESSFOR, elles, restent — <code>service_accessfor.R</code> les consomme toujours.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.122.10" id="nemetonshiny-012210-2026-08-14">nemetonshiny 0.122.10 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012210-2026-08-14"></a></h2>
 <div class="section level4">
