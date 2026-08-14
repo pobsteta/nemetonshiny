@@ -36,92 +36,124 @@ mod_desserte_ui <- function(id) {
   bslib::layout_sidebar(
     # Barre laterale GAUCHE : commandes du CALCUL.
     sidebar = bslib::sidebar(
-      width = 320, open = "always", position = "left",
-      htmltools::tags$p(class = "text-muted small", i18n$t("dess_intro")),
+      id = ns("sidebar"),
+      width = 320, open = TRUE, position = "left",
+      # Carte repliable, MEME structure que le bloc " Accessibilite " et que
+      # " Ingestion terrain " de l'onglet Import terrain : en-tete vert
+      # cliquable, icone de l'onglet, chevron. Depliee par defaut - elle porte le
+      # bouton " Lancer le calcul ".
+      htmltools::tags$div(
+        class = "card mb-3",
+        htmltools::tags$div(
+          class = "card-header bg-success text-white py-2",
+          style = "cursor: pointer;",
+          `data-bs-toggle` = "collapse",
+          `data-bs-target` = paste0("#", ns("dess_collapse")),
+          `aria-expanded` = "true",
+          `aria-controls` = ns("dess_collapse"),
+          htmltools::div(
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              bsicons::bs_icon("diagram-3", class = "me-2"),
+              i18n$t("tab_terrain_desserte")
+            ),
+            bsicons::bs_icon("chevron-down", class = "collapse-icon")
+          )
+        ),
+        htmltools::tags$div(
+          id = ns("dess_collapse"),
+          class = "collapse show",
+          htmltools::tags$div(
+            class = "card-body",
+          htmltools::tags$p(class = "text-muted small", i18n$t("dess_intro")),
 
-      shiny::radioButtons(
-        ns("engine"), i18n$t("dess_engine_label"),
-        choices = stats::setNames(DESSERTE_ENGINES,
-                                  c(i18n$t("dess_engine_glouton"),
-                                    i18n$t("dess_engine_steiner"))),
-        selected = DESSERTE_ENGINES[[1]]),
-      # Avertissement " calcul long " (parite cable) : le glouton trace un A*
-      # par CELLULE de parcelle non desservie, donc le temps croit avec la
-      # surface de l'emprise et decroit avec `skidding_m`.
-      htmltools::div(
-        class = "alert alert-warning py-2 small",
-        shiny::icon("triangle-exclamation"), " ", i18n$t("dess_slow_help")),
+          shiny::radioButtons(
+            ns("engine"), i18n$t("dess_engine_label"),
+            choices = stats::setNames(DESSERTE_ENGINES,
+                                      c(i18n$t("dess_engine_glouton"),
+                                        i18n$t("dess_engine_steiner"))),
+            selected = DESSERTE_ENGINES[[1]]),
+          # Avertissement " calcul long " (parite cable) : le glouton trace un A*
+          # par CELLULE de parcelle non desservie, donc le temps croit avec la
+          # surface de l'emprise et decroit avec `skidding_m`.
+          htmltools::div(
+            class = "alert alert-warning py-2 small",
+            shiny::icon("triangle-exclamation"), " ", i18n$t("dess_slow_help")),
 
-      shiny::numericInput(
-        ns("buffer_km"), i18n$t("dess_buffer"),
-        value = 1, min = 0, max = 20, step = 1),
-      htmltools::tags$p(class = "text-muted small", i18n$t("dess_buffer_help")),
+          shiny::numericInput(
+            ns("buffer_km"), i18n$t("dess_buffer"),
+            value = 1, min = 0, max = 20, step = 1),
+          htmltools::tags$p(class = "text-muted small", i18n$t("dess_buffer_help")),
 
-      # Distance de debardage : parametre METIER, pas un reglage de performance.
-      # Il change le resultat - sur Dabo, 39 routes a 100 m contre aucune a
-      # 300 m - donc il doit etre visible, sinon " rien a construire " est
-      # inintelligible. Paliers repris de `foretaccess_config()$skidder$
-      # classes_distance_m`.
-      shiny::numericInput(
-        ns("skidding_m"), i18n$t("dess_skidding"),
-        value = DESSERTE_SKIDDING_DEFAULT_M, min = 0, max = 2000, step = 50),
-      htmltools::tags$p(class = "text-muted small", i18n$t("dess_skidding_help")),
+          # Distance de debardage : parametre METIER, pas un reglage de performance.
+          # Il change le resultat - sur Dabo, 39 routes a 100 m contre aucune a
+          # 300 m - donc il doit etre visible, sinon " rien a construire " est
+          # inintelligible. Paliers repris de `foretaccess_config()$skidder$
+          # classes_distance_m`.
+          shiny::numericInput(
+            ns("skidding_m"), i18n$t("dess_skidding"),
+            value = DESSERTE_SKIDDING_DEFAULT_M, min = 0, max = 2000, step = 50),
+          htmltools::tags$p(class = "text-muted small", i18n$t("dess_skidding_help")),
 
-      # --- Tarification de la pente (foretaccess spec 029) ---------------------
-      # Deux DECISIONS distinctes, et c'est pour cela qu'il y a deux entrees.
-      #
-      # `methode_pente` ne change que la facon de CHIFFRER : le bareme applique
-      # quatre classes, le terrassement calcule un volume de deblai/remblai. Sur
-      # le banc DABO du coeur, couts medians comparables (x 1,03) mais traces
-      # communs a 44 % seulement - personne n'a juge lequel est le plus
-      # plausible sur le terrain, d'ou un choix rendu a l'utilisateur plutot
-      # qu'un defaut impose.
-      #
-      # `pente_max_pct` decide JUSQU'OU l'on construit. Avant que le coeur ne le
-      # separe, choisir " terrassement " deplacait aussi ce plafond en silence,
-      # de 60 % a 100 %, ouvrant 5 % du massif. Les deux ne doivent pas se
-      # decider d'un seul geste.
-      shiny::radioButtons(
-        ns("dess_methode_pente"), i18n$t("dess_methode_pente"),
-        choices = stats::setNames(c("bareme", "terrassement"),
-                                  c(i18n$t("dess_methode_bareme"),
-                                    i18n$t("dess_methode_terrassement"))),
-        selected = "bareme", inline = TRUE),
-      htmltools::tags$p(class = "text-muted small",
-                        i18n$t("dess_methode_pente_help")),
+          # --- Tarification de la pente (foretaccess spec 029) ---------------------
+          # Deux DECISIONS distinctes, et c'est pour cela qu'il y a deux entrees.
+          #
+          # `methode_pente` ne change que la facon de CHIFFRER : le bareme applique
+          # quatre classes, le terrassement calcule un volume de deblai/remblai. Sur
+          # le banc DABO du coeur, couts medians comparables (x 1,03) mais traces
+          # communs a 44 % seulement - personne n'a juge lequel est le plus
+          # plausible sur le terrain, d'ou un choix rendu a l'utilisateur plutot
+          # qu'un defaut impose.
+          #
+          # `pente_max_pct` decide JUSQU'OU l'on construit. Avant que le coeur ne le
+          # separe, choisir " terrassement " deplacait aussi ce plafond en silence,
+          # de 60 % a 100 %, ouvrant 5 % du massif. Les deux ne doivent pas se
+          # decider d'un seul geste.
+          shiny::radioButtons(
+            ns("dess_methode_pente"), i18n$t("dess_methode_pente"),
+            choices = stats::setNames(c("bareme", "terrassement"),
+                                      c(i18n$t("dess_methode_bareme"),
+                                        i18n$t("dess_methode_terrassement"))),
+            selected = "bareme", inline = TRUE),
+          htmltools::tags$p(class = "text-muted small",
+                            i18n$t("dess_methode_pente_help")),
 
-      # La largeur n'a d'effet QU'EN terrassement -- le bareme y est aveugle,
-      # alors que le volume croit comme son carre. On la masque plutot que de la
-      # griser : pas de dependance a shinyjs pour si peu.
-      shiny::conditionalPanel(
-        condition = sprintf("input['%s'] == 'terrassement'",
-                            ns("dess_methode_pente")),
-        shiny::numericInput(
-          ns("dess_largeur"), i18n$t("dess_largeur"),
-          value = DESSERTE_LARGEUR_DEFAULT_M, min = 2.5, max = 6, step = 0.5),
-        htmltools::tags$p(class = "text-muted small",
-                          i18n$t("dess_largeur_help"))),
+          # La largeur n'a d'effet QU'EN terrassement -- le bareme y est aveugle,
+          # alors que le volume croit comme son carre. On la masque plutot que de la
+          # griser : pas de dependance a shinyjs pour si peu.
+          shiny::conditionalPanel(
+            condition = sprintf("input['%s'] == 'terrassement'",
+                                ns("dess_methode_pente")),
+            shiny::numericInput(
+              ns("dess_largeur"), i18n$t("dess_largeur"),
+              value = DESSERTE_LARGEUR_DEFAULT_M, min = 2.5, max = 6, step = 0.5),
+            htmltools::tags$p(class = "text-muted small",
+                              i18n$t("dess_largeur_help"))),
 
-      shiny::numericInput(
-        ns("dess_pente_max"), i18n$t("dess_pente_max"),
-        value = DESSERTE_PENTE_MAX_DEFAULT_PCT, min = 0, max = 100, step = 5),
-      htmltools::div(
-        class = "alert alert-warning py-2 small",
-        shiny::icon("triangle-exclamation"), " ",
-        i18n$t("dess_pente_max_help")),
+          shiny::numericInput(
+            ns("dess_pente_max"), i18n$t("dess_pente_max"),
+            value = DESSERTE_PENTE_MAX_DEFAULT_PCT, min = 0, max = 100, step = 5),
+          htmltools::div(
+            class = "alert alert-warning py-2 small",
+            shiny::icon("triangle-exclamation"), " ",
+            i18n$t("dess_pente_max_help")),
 
-      # Empreinte memoire estimee de l'emprise courante : le pic du glouton est
-      # previsible a partir de la seule grille (cf. .desserte_memory_check), donc
-      # affiche AVANT le clic - un depassement se paie sinon par un OOM au bout
-      # d'un quart d'heure de calcul.
-      shiny::uiOutput(ns("mem_estimate")),
+          # Empreinte memoire estimee de l'emprise courante : le pic du glouton est
+          # previsible a partir de la seule grille (cf. .desserte_memory_check), donc
+          # affiche AVANT le clic - un depassement se paie sinon par un OOM au bout
+          # d'un quart d'heure de calcul.
+          shiny::uiOutput(ns("mem_estimate")),
 
-      bslib::input_task_button(
-        ns("run"), i18n$t("dess_run"),
-        label_busy = i18n$t("dess_running"),
-        icon = bsicons::bs_icon("play-fill"),
-        type = "primary", class = "w-100 mb-3"),
-      shiny::uiOutput(ns("run_status"))
+          bslib::input_task_button(
+            ns("run"), i18n$t("dess_run"),
+            label_busy = i18n$t("dess_running"),
+            icon = bsicons::bs_icon("play-fill"),
+            type = "primary", class = "w-100 mb-3"),
+          shiny::uiOutput(ns("run_status"))
+          )
+        )
+      )
     ),
 
     bslib::card(

@@ -913,3 +913,70 @@ export_accessibility_geopackage <- function(result, file) {
   invisible(isTRUE(tryCatch(file.copy(src, file, overwrite = TRUE),
                             error = function(e) FALSE)))
 }
+
+#' Cross-section of the road segment nearest to a map click (spec 030)
+#'
+#' Adapter over [foretaccess::profil_travers()]: resolves the project's corrected
+#' road network, LiDAR point cloud and DTM, converts the clicked WGS84 coordinates
+#' to the working CRS, and hands everything to the core. Computes nothing itself
+#' (CLAUDE.md rules 1-2) and draws nothing — the plate lives in
+#' `fct_plot_desserte_profil.R`.
+#'
+#' Runs inside a `future` worker: no Shiny, no global state, no plotting.
+#'
+#' @param project_path Project directory.
+#' @param lng,lat Clicked point, WGS84 degrees (what leaflet gives).
+#' @param crs Working EPSG code. Default 2154.
+#' @param tolerance_m Snapping radius, in metres.
+#' @return The `profil_travers()` list, or a `list(status = "error", reason =)`
+#'   naming the missing ingredient — never a bare `NULL`, so the caller can tell
+#'   "no segment there" from "no LiDAR in this project".
+#' @noRd
+acc_profil_travers <- function(project_path, lng, lat, crs = 2154,
+                               tolerance_m = 25) {
+  if (is.null(project_path) || !nzchar(project_path)) {
+    return(list(status = "error", reason = "acc_profil_no_project"))
+  }
+  cache_dir <- .accessibility_cache_dir(project_path)
+  corrected <- .corrected_desserte_path(cache_dir)
+  if (!file.exists(corrected)) {
+    return(list(status = "error", reason = "acc_profil_no_desserte"))
+  }
+  laz_dir <- file.path(project_path, "cache", "layers", "lidar_nuage")
+  if (!dir.exists(laz_dir) ||
+      length(list.files(laz_dir, pattern = "\\.(copc\\.)?laz$")) == 0L) {
+    return(list(status = "error", reason = "acc_profil_no_lidar"))
+  }
+  mnt <- .acc_rvt_mnt_path(project_path)
+  if (is.null(mnt)) return(list(status = "error", reason = "acc_profil_no_mnt"))
+
+  # Le clic arrive en WGS84 (leaflet) ; le coeur travaille dans `crs`.
+  pt <- tryCatch({
+    p <- sf::st_sfc(sf::st_point(c(lng, lat)), crs = 4326)
+    sf::st_transform(p, crs)
+  }, error = function(e) NULL)
+  if (is.null(pt)) return(list(status = "error", reason = "acc_profil_bad_point"))
+
+  reseau <- tryCatch(sf::st_read(corrected, layer = "desserte_corrigee",
+                                 quiet = TRUE),
+                     error = function(e) NULL)
+  if (!inherits(reseau, "sf") || nrow(reseau) == 0L) {
+    return(list(status = "error", reason = "acc_profil_no_desserte"))
+  }
+
+  out <- tryCatch(
+    foretaccess::profil_travers(
+      desserte = reseau, xy = pt, las_source = laz_dir, mnt = mnt,
+      crs = crs, tolerance_m = tolerance_m,
+      cache_dir = file.path(cache_dir, "profil_travers")),
+    error = function(e) structure(list(msg = conditionMessage(e)),
+                                  class = "acc_err"))
+  if (inherits(out, "acc_err")) {
+    return(list(status = "error", reason = "acc_profil_failed", detail = out$msg))
+  }
+  # `NULL` du coeur = aucun troncon dans le rayon d'accrochage. Ce n'est pas une
+  # panne : c'est une reponse, et l'utilisateur doit la lire comme telle.
+  if (is.null(out)) return(list(status = "empty", reason = "acc_profil_no_segment"))
+  out$status <- "success"
+  out
+}

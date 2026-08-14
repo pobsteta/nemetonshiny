@@ -366,7 +366,7 @@ test_that("la sidebar Accessibilite porte le meme bloc que Import terrain", {
   }
   # On compare la STRUCTURE, pas l'identifiant : seule la cible du collapse
   # diffère légitimement d'un module à l'autre.
-  gabarit <- function(x) gsub("(acc|fi)-[a-z_]+_collapse", "<ID>", x)
+  gabarit <- function(x) gsub("(acc|fi|dess)-[a-z_]+_collapse", "<ID>", x)
 
   ui_acc <- with_mocked_bindings(
     get_app_options = function() list(language = "fr"),
@@ -377,11 +377,24 @@ test_that("la sidebar Accessibilite porte le meme bloc que Import terrain", {
     as.character(nemetonshiny:::mod_field_ingest_ui("fi"))
   )
 
+  ui_dess <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_desserte_ui("dess"))
+  )
+
   vert_acc <- grep("bg-success", entetes(ui_acc), value = TRUE)
   vert_ref <- grep("bg-success", entetes(ui_ref), value = TRUE)
+  vert_dess <- grep("bg-success", entetes(ui_dess), value = TRUE)
   expect_length(vert_acc, 1L)
   expect_length(vert_ref, 1L)
+  expect_length(vert_dess, 1L)
   expect_identical(gabarit(vert_acc), gabarit(vert_ref))
+  # L'onglet Desserte porte le meme bloc : les trois sidebars de l'onglet
+  # Terrain se ressemblent, ou aucune ne le fait.
+  expect_identical(gabarit(vert_dess), gabarit(vert_ref))
+  expect_match(ui_dess, "id=\"dess-dess_collapse\" class=\"collapse show\"",
+               fixed = TRUE)
+  expect_match(ui_dess, "dess-run", fixed = TRUE)
 
   # Corps replié/déplié : ouvert par défaut, il porte le bouton « Lancer ».
   expect_match(ui_acc, "id=\"acc-acc_collapse\" class=\"collapse show\"", fixed = TRUE)
