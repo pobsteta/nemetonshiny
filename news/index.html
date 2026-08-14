@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.11.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,15 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.122.12" id="nemetonshiny-012212-2026-08-14">nemetonshiny 0.122.12 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012212-2026-08-14"></a></h2>
+<div class="section level4">
+<h4 id="fixed--r-cmd-check-repasse-au-vert-0-122-12">Fixed — <code>R CMD check</code> repasse au vert<a class="anchor" aria-label="anchor" href="#fixed--r-cmd-check-repasse-au-vert-0-122-12"></a></h4>
+<p><code>R-CMD-check</code> échouait sur <code>main</code> depuis la v0.122.6, sur six releases consécutives, sans que la suite locale n’en montre rien.</p>
+<p><code>test-acc_relief_group.R</code> lit le code source (<code>readLines(test_path("..", "..", "R", …))</code>) pour vérifier que les groupes leaflet sont déclarés. Sous <code>R CMD check</code>, les tests s’exécutent depuis <code>&lt;pkg&gt;.Rcheck/tests/</code> et le paquet <strong>installé ne contient pas les fichiers <code>.R</code></strong> : <code>../../R</code> n’existe pas, la lecture échoue, le check passe en <code>ERROR</code>. <code>devtools::test()</code> ne peut pas le voir, puisqu’il tourne depuis l’arbre source.</p>
+<p>Les quatre lectures passent par une garde unique qui saute le test quand les sources sont absentes — la même que <code>test-map_groups_isolate.R</code>, dont le check était vert. Vérifié en reproduisant la condition du check (copie de <code>tests/</code> sans arbre source) : 0 échec, 0 erreur, tests sautés ; et 32 PASS en arbre source.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.122.11" id="nemetonshiny-012211-2026-08-14">nemetonshiny 0.122.11 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-012211-2026-08-14"></a></h2>
 <div class="section level4">
