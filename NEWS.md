@@ -1,3 +1,26 @@
+# nemetonshiny 0.122.5 (2026-08-14)
+
+### Changed — La sidebar de Sélection suit le sous-onglet affiché
+
+Les blocs « Carte UGF » et « Tableau UGF » de la sidebar de l'onglet Sélection
+n'apparaissent plus que dans leur propre sous-onglet : « Carte UGF » avec la
+carte des UGF, « Tableau UGF » avec le tableau. Sur « Carte cadastrale », aucun
+des deux ne s'affiche.
+
+Ces blocs portent des actions qui s'appliquent à un objet précis — la carte pour
+l'un (dessin, sélection à la souris), la table pour l'autre (fusion, scission,
+renommage) — et les proposer depuis un onglet où leur cible n'est pas à l'écran
+n'a pas de sens. Ils occupaient par ailleurs le bas de la sidebar en permanence.
+
+Le masquage est un `conditionalPanel` sur la valeur du navset : purement côté
+client, sans aller-retour serveur au changement d'onglet. Les blocs restent dans
+le DOM, donc les entrées qu'ils contiennent gardent leur valeur d'un onglet à
+l'autre. Leur séparateur horizontal est masqué avec eux, faute de quoi il
+resterait seul en bas de la sidebar sur l'onglet cadastral.
+
+L'état plié/déplié des deux cartes ne change pas : elles restent repliées par
+défaut.
+
 # nemetonshiny 0.122.4 (2026-08-14)
 
 ### Fixed — Même défaut de repeinture sur les cinq autres cartes
