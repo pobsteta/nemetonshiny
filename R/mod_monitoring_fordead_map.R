@@ -521,7 +521,10 @@ mod_monitoring_fordead_map_server <- function(id, app_state, zone_id_r,
       # Groupes overlay actuellement COCHÉS côté client (leaflet renvoie
       # `input$<id>_groups`). Lu ici pour respecter la décoche : sans ça,
       # re-dessiner le raster via proxy le ré-affichait même décoché.
-      shown <- input$map_groups
+      # `isolate()` : leaflet renvoie cet input à chaque ajout/retrait de
+      # groupe, et cet observe en ajoute — une lecture réactive le rendrait
+      # auto-déclenchant (peintures multiples). Cf. mod_accessibility.
+      shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Raster") |>
         leaflet::removeControl("fordead_legend")

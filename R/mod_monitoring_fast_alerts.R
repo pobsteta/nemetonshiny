@@ -940,7 +940,10 @@ mod_monitoring_fast_alerts_server <- function(id, app_state, zone_id_r,
       index   <- input$index %||% "NDVI"
       # Groupes overlay cochés côté client (leaflet `input$<id>_groups`),
       # lus pour respecter la décoche du group raster.
-      shown   <- input$map_groups
+      # `isolate()` : leaflet renvoie cet input à chaque ajout/retrait de
+      # groupe, et cet observe en ajoute — une lecture réactive le rendrait
+      # auto-déclenchant (peintures multiples). Cf. mod_accessibility.
+      shown   <- shiny::isolate(input$map_groups)
 
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(.alert_raster_group) |>
