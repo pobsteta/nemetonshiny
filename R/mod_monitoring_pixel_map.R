@@ -517,7 +517,10 @@ mod_monitoring_pixel_map_server <- function(id, app_state,
       r <- current_layer_r()
       # Groupes overlay cochés côté client (leaflet `input$<id>_groups`) —
       # lus pour respecter la décoche du group « Indice ».
-      shown <- input$map_groups
+      # `isolate()` : leaflet renvoie cet input à chaque ajout/retrait de
+      # groupe, et cet observe en ajoute — une lecture réactive le rendrait
+      # auto-déclenchant (peintures multiples). Cf. mod_accessibility.
+      shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearImages() |>
         leaflet::removeControl("pixel_legend")

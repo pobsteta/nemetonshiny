@@ -604,7 +604,10 @@ mod_desserte_server <- function(id, app_state) {
     shiny::observe({
       res <- rv$result
       op <- opacity_d()
-      shown <- input$map_groups
+      # `isolate()` : leaflet renvoie cet input à chaque ajout/retrait de
+      # groupe, et cet observe en ajoute — une lecture réactive le rendrait
+      # auto-déclenchant (peintures multiples). Cf. mod_accessibility.
+      shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Reseau cree")
       rp <- tryCatch(res$reseau_path, error = function(e) NULL)
       if (is.null(rp) || !file.exists(rp)) return()
@@ -623,7 +626,7 @@ mod_desserte_server <- function(id, app_state) {
     # Overlay « Desserte existante » (réseau à raccorder), lu depuis le GPKG.
     shiny::observe({
       res <- rv$result
-      shown <- input$map_groups
+      shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Desserte existante")
       gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
       if (is.null(gp) || !file.exists(gp)) return()
@@ -645,7 +648,7 @@ mod_desserte_server <- function(id, app_state) {
     # du réseau créé/typé. Se relit à l'arrivée sur l'onglet (active_terrain_tab).
     shiny::observe({
       app_state$active_terrain_tab  # dépendance : relire en arrivant sur l'onglet
-      shown <- input$map_groups
+      shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Places de depot")
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
@@ -1006,7 +1009,7 @@ mod_desserte_server <- function(id, app_state) {
                         tertiaire = "#2E7D32")
     shiny::observe({
       res <- rv_typage()
-      shown <- input$map_groups
+      shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Reseau type")
       gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
       if (is.null(gp) || !file.exists(gp)) return()

@@ -281,6 +281,39 @@ get_family_colors <- function() {
 }
 
 
+#' Information "i" — the one and only pattern
+#'
+#' @description
+#' The blue `circle-info` icon opening a popover, as used next to the titles of
+#' the Synthesis tab (`Score global`, `Radar`, `Récapitulatif par famille`).
+#' This is the app-wide pattern for an information affordance: every new "i"
+#' must go through this helper rather than re-inventing an icon.
+#'
+#' Deliberately a **popover** (click) and not a tooltip (hover): the content is
+#' explanatory prose, it must stay on screen while being read, and it may be
+#' scrollable — a hover tooltip vanishes as soon as the pointer moves toward it.
+#'
+#' @param ... Popover content, passed on to [bslib::popover()].
+#' @param placement Character. Popover side, see [bslib::popover()].
+#'
+#' @return A [bslib::popover()] tag.
+#'
+#' @noRd
+info_popover <- function(..., placement = "auto") {
+  bslib::popover(
+    htmltools::tags$span(
+      class = "text-info",
+      style = "cursor: help;",
+      shiny::icon("circle-info", class = "fa-sm")
+    ),
+    ...,
+    options = list(customClass = "popover-lg"),
+    placement = placement,
+    title = NULL
+  )
+}
+
+
 #' Apply accessible styling to ggplot
 #'
 #' @description

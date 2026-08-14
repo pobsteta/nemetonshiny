@@ -10,6 +10,31 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.122.4] - 2026-08-14
+
+### Fixed
+
+- Même défaut de repeinture que la v0.122.3 sur les cinq autres cartes :
+  `mod_desserte` (4 observes), `mod_monitoring_fast_alerts`,
+  `mod_monitoring_fordead_map`, `mod_monitoring_pixel_map` et le contexte E-OBS
+  de `mod_regeneration` lisaient `input$<id>_groups` réactivement dans un
+  observe qui ajoute et retire des groupes leaflet, donc s'auto-déclenchaient.
+  Lecture passée sous `isolate()`.
+
+### Changed
+
+- Un seul « i » d'information dans toute l'app : les tooltips `bsicons` gris de
+  l'onglet reGénération adoptent le pattern des titres de l'onglet Synthèse
+  (icône `circle-info` bleue, popover au clic), désormais porté par le helper
+  unique `info_popover()` (`R/utils_theme.R`). Le « i » d'un label de radio
+  n'active plus la couche correspondante — la vue « précipitations » déclenche
+  un téléchargement E-OBS de ~800 Mo.
+
+### Added
+
+- `test-map_groups_isolate.R` : garde de source qui échoue si un fichier de
+  `R/` lit `input$*_groups` hors d'un `isolate()`.
+
 ## [0.122.3] - 2026-08-14
 
 ### Fixed
