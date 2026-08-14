@@ -407,6 +407,12 @@ mod_accessibility_server <- function(id, app_state) {
           nemetonshiny:::generate_rvt(mnt_path)
         }, seed = TRUE)
       })
+    # Mémo du fond relief : `list(mnt = <MNT source>, out = <RVT calculé>)` pour
+    # le dernier fond obtenu, et MNT dont le calcul async est en vol. Évite de
+    # relancer le worker (~1 min) quand on revient sur le comparateur, et de
+    # laisser la carte sans relief après un re-dessin.
+    rvt_ready <- shiny::reactiveVal(NULL)
+    rvt_pending <- shiny::reactiveVal(NULL)
 
     # Disponibilité de la desserte corrigée (fichier sur disque) : rafraîchie au
     # changement de projet + à la fin d'une correction. Pilote la case « utiliser ».
@@ -1034,7 +1040,14 @@ mod_accessibility_server <- function(id, app_state) {
       first_layer <- if (!is.null(res)) names(res$raster_paths)[[1]] else NULL
       layer <- input$layer %||% first_layer
       op <- opacity_d()
-      shown <- input$map_groups   # groupes overlay cochés côté client
+      # Groupes overlay cochés côté client, lus SANS créer de dépendance :
+      # leaflet renvoie `input$<id>_groups` à chaque ajout/retrait de groupe —
+      # or cet observe en ajoute et en retire. Sans `isolate()`, chaque peinture
+      # se re-déclenche elle-même (et déclenche les autres observes de la carte,
+      # qui partagent le même input) : le raster se redessine plusieurs fois
+      # avant de se stabiliser. La décoche utilisateur, elle, est gérée
+      # directement par le LayersControl côté client — pas besoin de repeindre.
+      shown <- shiny::isolate(input$map_groups)
       mapid <- session$ns("map")
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Accessibilite") |>
@@ -1093,7 +1106,7 @@ mod_accessibility_server <- function(id, app_state) {
     # dédié. Polylignes colorées par classe (route/piste), au-dessus du raster.
     shiny::observe({
       res <- rv$result
-      shown <- input$map_groups
+      shown <- shiny::isolate(input$map_groups)   # cf. observe raster : isolate
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Desserte")
       gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
       if (is.null(gp) || !file.exists(gp)) return()
@@ -1119,7 +1132,7 @@ mod_accessibility_server <- function(id, app_state) {
     # rouges) au-dessus du raster et de la desserte.
     shiny::observe({
       res <- rv$result
-      shown <- input$map_groups
+      shown <- shiny::isolate(input$map_groups)   # cf. observe raster : isolate
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Places de depot")
       gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
@@ -1177,10 +1190,22 @@ mod_accessibility_server <- function(id, app_state) {
 
     # Fond RVT calculé en async (cas coûteux) : peint quand le worker rend le
     # chemin, si le comparateur est toujours actif.
-    shiny::observeEvent(rvt_task$result(), {
+    # Piloté par le STATUT et non par le résultat : un worker en échec doit lui
+    # aussi libérer `rvt_pending`, sinon plus aucun calcul de relief ne serait
+    # retenté pour ce MNT de toute la session.
+    shiny::observeEvent(rvt_task$status(), {
+      st <- rvt_task$status()
+      if (!identical(st, "success") && !identical(st, "error")) return()
       shiny::removeNotification(session$ns("rvt_notif"))
-      if (isTRUE(compare_active())) .paint_rvt_fond(rvt_task$result())
-    }, ignoreNULL = TRUE)
+      mnt <- rvt_pending()
+      rvt_pending(NULL)
+      out <- if (identical(st, "success")) {
+        tryCatch(rvt_task$result(), error = function(e) NULL)
+      }
+      if (is.null(out)) return()
+      rvt_ready(list(mnt = mnt, out = out))
+      if (isTRUE(compare_active())) .paint_rvt_fond(out)
+    })
 
     # Peinture du comparateur, en CARTE UNIQUE (plus de volet swipe) : fond RVT,
     # puis la desserte BD TOPO colorée par CLASSE, puis par-dessus le réseau
@@ -1201,7 +1226,10 @@ mod_accessibility_server <- function(id, app_state) {
     shiny::observe({
       on <- identical(input$layer, "desserte_comparee") &&
         isTRUE(corrected_available())
-      shown <- input$map_groups
+      # Pas de lecture de `input$map_groups` ici : elle ne servait à rien (aucun
+      # `hideGroup` pour les groupes du comparateur) et rendait cet observe
+      # auto-déclenchant — le fond relief était recalculé et repeint plusieurs
+      # fois avant de se stabiliser.
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup("Relief RVT") |>
@@ -1220,12 +1248,23 @@ mod_accessibility_server <- function(id, app_state) {
       # sinon (calcul vat_combined ~1 min) -> worker async, peint par l'observe
       # `rvt_task$result()` plus bas quand il arrive.
       mnt_path <- .acc_rvt_mnt_path(project_path)
+      ready <- shiny::isolate(rvt_ready())
       if (!is.null(mnt_path)) {
-        if (.rvt_is_cheap(mnt_path)) {
-          .paint_rvt_fond(tryCatch(generate_rvt(mnt_path), error = function(e) NULL))
-        } else {
+        if (!is.null(ready) && identical(ready$mnt, mnt_path)) {
+          # Fond déjà calculé pour ce MNT : on le repeint sans relancer le worker.
+          .paint_rvt_fond(ready$out)
+        } else if (.rvt_is_cheap(mnt_path)) {
+          out <- tryCatch(generate_rvt(mnt_path), error = function(e) NULL)
+          # Mémo sur SUCCÈS seulement : un échec transitoire doit pouvoir être
+          # retenté à la prochaine entrée dans le comparateur.
+          if (!is.null(out)) rvt_ready(list(mnt = mnt_path, out = out))
+          .paint_rvt_fond(out)
+        } else if (!identical(shiny::isolate(rvt_pending()), mnt_path)) {
+          # Un seul worker en vol par MNT : sans cette garde, revenir sur le
+          # comparateur relancerait un calcul de ~1 min déjà en cours.
           shiny::showNotification(i18n$t("acc_compare_building_relief"),
             duration = NULL, type = "message", id = session$ns("rvt_notif"))
+          rvt_pending(mnt_path)
           rvt_task$invoke(mnt_path, .dev_pkg_path, get_app_options())
         }
       }

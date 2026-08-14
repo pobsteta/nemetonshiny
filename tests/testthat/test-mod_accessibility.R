@@ -326,3 +326,49 @@ test_that(".acc_buffer_m rend des metres finis, defaut 250", {
   expect_identical(nemetonshiny:::.acc_buffer_m(-5), 0)
   expect_identical(nemetonshiny:::.acc_buffer_m(0), 0)
 })
+
+test_that("comparateur desserte : un changement de groupes leaflet ne repeint pas", {
+  # Régression : leaflet renvoie `input$map_groups` à CHAQUE ajout/retrait de
+  # groupe. Les observes de la carte en ajoutent/retirent -> sans isolate, ils se
+  # re-déclenchaient les uns les autres et le fond relief se redessinait
+  # plusieurs fois avant de se stabiliser.
+  skip_if_not_installed("sf")
+  proj <- list(id = "p1", path = withr::local_tempdir(),
+               indicators_sf = .acc_units(1))
+  corrected <- withr::local_tempfile(fileext = ".gpkg")
+  writeLines("x", corrected)   # seule l'existence compte (corrected_available)
+  reads <- 0L; rvt_calls <- 0L
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    .acc_cvat_overlay_raster = function(project_path) NULL,
+    .corrected_desserte_path = function(cache_dir) corrected,
+    .acc_rvt_mnt_path = function(pp) "/nowhere/lidar_mnt_mosaic.tif",
+    .rvt_is_cheap = function(mnt_path) TRUE,
+    .rvt_cvat_available = function() FALSE,   # coupe le pré-calcul CVAT (worker)
+    generate_rvt = function(mnt_path, overwrite = FALSE) {
+      rvt_calls <<- rvt_calls + 1L; "/nowhere/rvt.tif"
+    },
+    .acc_read_desserte_layer = function(corrected_path, layer) {
+      reads <<- reads + 1L; NULL
+    },
+    .package = "nemetonshiny")
+  as <- shiny::reactiveValues(current_project = proj,
+                              active_main_tab = "terrain",
+                              active_terrain_tab = "accessibility")
+  shiny::testServer(
+    nemetonshiny:::mod_accessibility_server,
+    args = list(app_state = as),
+    {
+      session$setInputs(layer = "desserte_comparee")
+      session$flushReact()
+      expect_gt(reads, 0L)          # comparateur peint une fois
+      expect_equal(rvt_calls, 1L)
+      n0 <- reads
+      # Le client renvoie les groupes visibles après cette peinture : cela ne
+      # doit RIEN redéclencher.
+      session$setInputs(map_groups = c("UGF", "Relief RVT", "Desserte corrigee"))
+      session$flushReact()
+      expect_equal(reads, n0)
+      expect_equal(rvt_calls, 1L)
+    })
+})
