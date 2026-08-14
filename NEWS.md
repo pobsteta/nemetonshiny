@@ -1,3 +1,50 @@
+# nemetonshiny 0.124.0 (2026-08-14)
+
+### Added — Les sorties de l'onglet Desserte deviennent visibles
+
+Cinq actions de la sidebar produisaient toutes un résultat sur disque ; **deux
+seulement étaient visibles sur la carte**. Le complément OSM et la détection de
+routes — les deux traitements les plus coûteux de l'onglet, plusieurs minutes et
+jusqu'à 8 Go pour la seconde — n'affichaient qu'un compteur. Pour voir sa propre
+géométrie, il fallait connaître le chemin du cache et ouvrir QGIS.
+
+- **Deux calques de plus** : « Pistes OSM » et « Routes détectées », tous deux en
+  trait tireté (hypothèse, pas relevé) et **éteints au départ** — ce sont des
+  diagnostics, et 544 tronçons OSM noieraient les 39 routes conçues.
+- **Popup de détection** : `CLASSE`, mais aussi `CLASSE_CONF`, `CLASSE_MOTIF` et
+  `OSM_TAGS`. Une classe posée sur deux critères sur six ne vaut pas une classe
+  posée sur six, et la moyenne affichée en sidebar ne le dit pas tronçon par
+  tronçon. Le balisage OSM est présenté comme une **proposition** : rien n'est
+  téléversé.
+- **Le typage survit au rechargement.** Il était le seul des cinq sans aucun
+  `.load_cached_*` : on rouvrait le projet, `typage_<moteur>.gpkg` était bien sur
+  le disque, et l'onglet redemandait de typer le réseau.
+- **Le GeoPackage téléchargé contient tout** : le réseau typé, les pistes OSM et
+  les routes détectées s'ajoutent aux parcelles et au réseau créé, pour les
+  actions qui ont tourné. Le typage exporté est celui **du moteur courant**, un
+  projet pouvant porter `typage_glouton.gpkg` et `typage_steiner.gpkg` côte à côte.
+- **Le chemin du cache est affiché** sous le bouton de téléchargement.
+
+### Changed
+
+- `run_desserte_osm()` renvoie désormais `gpkg_path`, et le persiste dans
+  `osm.rds` : sans lui le calque disparaissait au rechargement du projet alors
+  que le fichier était là.
+- Palette des classes détectées choisie **par mesure** : séparation minimale de
+  27,4 en CIE Lab, conservée sous simulation de deutéranopie, protanopie *et*
+  tritanopie, et d'au moins 20 vis-à-vis de toutes les autres couches de la carte.
+
+### Note — ce que le calque OSM n'est pas
+
+`foretaccess::comparer_desserte_osm()` ne renvoie **aucune géométrie** : le
+« hors corridor », c'est-à-dire le gisement à instruire, n'en sort qu'en
+kilomètres agrégés par type. Ce que l'app écrit dans `desserte_osm.gpkg` est donc
+l'acquisition OSM **brute**, doublons de la BD TOPO compris — d'où le libellé
+« Pistes OSM » et non « pistes absentes de la BD TOPO ». Recalculer la différence
+côté app dupliquerait la logique du cœur avec un `corridor_m` qui pourrait
+diverger, pour 104 s de calcul déjà fait ailleurs. Le manque est déposé en brief
+côté `foretaccess` (`osm_hors_corridor` / `bdtopo_hors_corridor`).
+
 # nemetonshiny 0.123.1 (2026-08-14)
 
 ### Added — Le réseau créé est enfin lisible

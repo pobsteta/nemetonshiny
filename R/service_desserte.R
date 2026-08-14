@@ -376,7 +376,7 @@ run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
 #' `acquire_desserte_osm()` is cheap (5,9 s, 544 segments on Dabo) but
 #' `comparer_desserte_osm()` is not (104,2 s) - hence a separate action again.
 #'
-#' @return `list(status, n_osm, resume)` or an error list.
+#' @return `list(status, n_osm, gpkg_path, resume, ...)` or an error list.
 #' @noRd
 run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
   if (!requireNamespace("foretaccess", quietly = TRUE)) {
@@ -414,9 +414,15 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
   if (inherits(cmp, "acc_err")) {
     return(list(status = "error", reason = "desserte_osm_failed", detail = cmp$msg))
   }
-  # Le GeoPackage porte la couche OSM pour inspection dans un SIG.
+  # Le GeoPackage porte la couche OSM pour la carte et pour l'inspection SIG.
+  # ATTENTION AU LIBELLE : c'est la couche OSM BRUTE telle qu'acquise, PAS le
+  # resultat de la comparaison. `comparer_desserte_osm()` calcule bien un
+  # " hors corridor " par troncon mais ne renvoie que des kilometres agreges ;
+  # la geometrie du gisement est jetee cote coeur (brief sect.4, option (b)
+  # deposee la-bas). Nommer ce calque " pistes absentes de la BD TOPO " serait
+  # donc faux : il contient aussi tout ce qui doublonne la BD TOPO.
+  gp <- file.path(cache_dir, "desserte_osm.gpkg")
   tryCatch({
-    gp <- file.path(cache_dir, "desserte_osm.gpkg")
     unlink(gp)
     sf::st_write(osm, gp, layer = "osm_track", quiet = TRUE, delete_dsn = TRUE)
   }, error = function(e) invisible(NULL))
@@ -429,6 +435,11 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
   # produit par le nouveau : on horodate et on versionne pour pouvoir le
   # refuser, plutot que de comparer sans le savoir des couvertures differentes.
   out <- list(n_osm = nrow(osm),
+              # Le chemin VOYAGE avec le resultat, comme pour la detection : sans
+              # lui le module devrait reconstruire la convention de nommage a la
+              # main, et le calque disparaissait au rechargement du projet alors
+              # que le fichier etait la (`osm.rds` ne le portait pas).
+              gpkg_path = if (file.exists(gp)) gp else NULL,
               resume = tryCatch(as.list(cmp$resume), error = function(e) NULL),
               corridor_m = tryCatch(cmp$corridor_m, error = function(e) NA_real_),
               date_requete = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
@@ -1257,26 +1268,91 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
     TRUE
   }, error = function(e) FALSE)
 
-  list(
+  out <- list(
     status = "success",
     engine = engine,
     recap = typee$recap,
     gpkg_path = if (isTRUE(ok) && file.exists(gpkg_path)) gpkg_path else NULL,
     seuils = seuils_flux)
+  # Sidecar, comme les quatre autres actions du panneau. Le typage etait le seul
+  # a n'en avoir aucun : on rouvrait le projet, `typage_<moteur>.gpkg` etait bien
+  # sur le disque, et l'onglet redemandait de typer le reseau.
+  tryCatch(saveRDS(out, file.path(cache_dir, "typage.rds")),
+           error = function(e) invisible(NULL))
+  out
+}
+
+#' Read the persisted network-typing result
+#'
+#' The GeoPackage is checked again on read: a sidecar can outlive the cache it
+#' points at. The recap table stays usable in that case, only the map layer goes.
+#'
+#' @param cache_dir Desserte cache directory.
+#' @return The cached list, or `NULL` when absent.
+#' @noRd
+.load_cached_typage <- function(cache_dir) {
+  f <- file.path(cache_dir, "typage.rds")
+  if (!file.exists(f)) return(NULL)
+  out <- tryCatch(readRDS(f), error = function(e) NULL)
+  if (!is.list(out) || !identical(out$status, "success")) return(NULL)
+  gp <- tryCatch(out$gpkg_path, error = function(e) NULL)
+  if (is.null(gp) || !file.exists(gp)) out$gpkg_path <- NULL
+  out
 }
 
 #' Export the desserte GeoPackage produced by a run
 #'
-#' Copies the cached `desserte.gpkg` to the download target. Returns `TRUE` on
-#' success, `FALSE` (best-effort) otherwise.
+#' Copies the cached `desserte.gpkg` (parcels, existing network, designed
+#' network) then folds in whatever the other four actions of the panel left in
+#' the cache: the typed network, the OSM acquisition and the detected roads.
+#' Those three are the LONGEST work of the tab and used to never leave the
+#' project cache - the download shipped only the creation run.
+#'
+#' Each extra layer is optional by construction: an action that never ran leaves
+#' no file, and a missing file is skipped in silence. Written with
+#' `append = FALSE`, which replaces the layer - **never** `delete_dsn`, which
+#' would wipe the file just copied.
 #'
 #' @param result A `run_desserte()` result list.
 #' @param file Destination path handed to the browser.
-#' @return Invisibly `TRUE`/`FALSE`.
+#' @param cache_dir Desserte cache directory. Defaults to the directory holding
+#'   `result$gpkg_path`, which is that same cache.
+#' @return Invisibly `TRUE`/`FALSE` - `TRUE` as soon as the base copy worked,
+#'   the extras being best-effort.
 #' @noRd
-export_desserte_geopackage <- function(result, file) {
+export_desserte_geopackage <- function(result, file, cache_dir = NULL) {
   src <- tryCatch(result$gpkg_path, error = function(e) NULL)
   if (is.null(src) || !file.exists(src)) return(invisible(FALSE))
-  invisible(isTRUE(tryCatch(file.copy(src, file, overwrite = TRUE),
-                            error = function(e) FALSE)))
+  if (!isTRUE(tryCatch(file.copy(src, file, overwrite = TRUE),
+                       error = function(e) FALSE))) {
+    return(invisible(FALSE))
+  }
+  cache_dir <- cache_dir %||% dirname(src)
+
+  # Le typage porte le moteur dans son nom : prendre CELUI DU RUN COURANT, pas
+  # le premier venu - un projet peut porter `typage_glouton.gpkg` et
+  # `typage_steiner.gpkg` cote a cote, et exporter le mauvais serait indetectable
+  # a la lecture du fichier.
+  eng <- tryCatch(as.character(result$engine), error = function(e) NULL)
+  typage <- if (length(eng) == 1L && nzchar(eng)) {
+    file.path(cache_dir, paste0("typage_", eng, ".gpkg"))
+  } else NA_character_
+  if (is.na(typage) || !file.exists(typage)) {
+    typage <- Sys.glob(file.path(cache_dir, "typage_*.gpkg"))[1]
+  }
+  extras <- list(
+    reseau_type       = typage,
+    osm_track         = file.path(cache_dir, "desserte_osm.gpkg"),
+    desserte_detectee = file.path(cache_dir, "desserte_detectee.gpkg"))
+
+  for (lyr in names(extras)) {
+    gp <- extras[[lyr]]
+    if (length(gp) != 1L || is.na(gp) || !file.exists(gp)) next
+    d <- tryCatch(sf::st_read(gp, layer = lyr, quiet = TRUE),
+                  error = function(e) NULL)
+    if (!inherits(d, "sf") || nrow(d) == 0L) next
+    tryCatch(sf::st_write(d, file, layer = lyr, append = FALSE, quiet = TRUE),
+             error = function(e) invisible(NULL))
+  }
+  invisible(TRUE)
 }

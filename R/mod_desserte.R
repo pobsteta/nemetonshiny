@@ -46,6 +46,95 @@ DESS_GROUPE_RESEAU <- "R\u00e9seau cr\u00e9\u00e9"
 DESS_GROUPE_LIGNES <- "Lignes cr\u00e9\u00e9es"
 #' @noRd
 DESS_GROUPE_TYPE <- "R\u00e9seau typ\u00e9"
+# " Pistes OSM " et non " pistes absentes de la BD TOPO " : le GeoPackage porte
+# l'acquisition OSM BRUTE, doublons compris. Le " hors corridor " existe cote
+# coeur mais n'en sort qu'en kilometres agreges (cf. `run_desserte_osm()`).
+#' @noRd
+DESS_GROUPE_OSM <- "Pistes OSM"
+#' @noRd
+DESS_GROUPE_DETECTEE <- "Routes d\u00e9tect\u00e9es"
+
+#' Couleurs des classes de lin\u00e9aires d\u00e9tect\u00e9s (dessertR)
+#'
+#' Vocabulaire de `dsr_classer()`, ordonn\u00e9 du plus " vraie route " au moins :
+#' route foresti\u00e8re, piste, desserte ind\u00e9termin\u00e9e, puis ce qui n'est PAS de la
+#' desserte \u2014 cloisonnement d'exploitation, layon parcellaire, pare-feu.
+#'
+#' Palette choisie par MESURE et non au jug\u00e9, par recherche sous contraintes :
+#' s\u00e9paration minimale de 27,4 en CIE Lab entre deux classes, **conserv\u00e9e sous
+#' simulation de deut\u00e9ranopie, protanopie et tritanopie** \u2014 un seul de ces trois
+#' filtres suffit \u00e0 faire s'effondrer une palette choisie \u00e0 l'\u0153il \u2014 et d'au
+#' moins 20 vis-\u00e0-vis de toutes les autres couches de cette carte (r\u00e9seau typ\u00e9,
+#' lignes cr\u00e9\u00e9es, desserte existante, raster, parcelles, pistes OSM).
+#' Clart\u00e9 born\u00e9e \u00e0 L* \u2208 [28, 62] pour rester lisible aussi bien sur le fond OSM
+#' clair que sur le fond satellite sombre. V\u00e9rifi\u00e9e par `test-desserte_visualisation.R`.
+#' @noRd
+DESS_DETECT_COLS <- c(
+  route_forestiere           = "#4425AB",  # indigo  - la plus " ouvrage "
+  piste_forestiere           = "#6484F6",  # bleu
+  desserte                   = "#652E5A",  # prune
+  cloisonnement_exploitation = "#A38A06",  # or     - PAS de la desserte
+  layon_parcellaire          = "#C55EB0",  # orchidee
+  pare_feu                   = "#9D3037",  # brique
+  indetermine                = "#BDBDBD"   # gris
+)
+
+#' Translate a dessertR class code, falling back on the code itself
+#'
+#' The vocabulary is the core's, and it may grow: an unknown code is shown AS IS
+#' rather than mapped to "autre", which would hide the arrival of a new class.
+#'
+#' @param x Character vector of `CLASSE` values.
+#' @param i18n Translator.
+#' @return A character vector of labels.
+#' @noRd
+.dess_detect_classe_label <- function(x, i18n) {
+  x <- as.character(x)
+  # Le vocabulaire connu est celui de la palette : y confronter le code AVANT
+  # d'interroger l'i18n, faute de quoi chaque classe nouvelle produirait un
+  # avertissement " Translation key not found " par troncon.
+  connus <- names(DESS_DETECT_COLS)
+  vapply(x, function(k) {
+    if (is.na(k) || !nzchar(k)) return(i18n$t("dess_detect_classe_indetermine"))
+    if (!(k %in% connus)) return(k)
+    i18n$t(paste0("dess_detect_classe_", k))
+  }, character(1), USE.NAMES = FALSE)
+}
+
+#' Popup of one detected segment
+#'
+#' Carries what qualifies the class and not only the class: the confidence, the
+#' criteria that voted, and the proposed OSM tagging - which is a **proposal**,
+#' never an upload.
+#'
+#' @param d An `sf` of detected segments.
+#' @param i18n Translator.
+#' @return A character vector of HTML popups, one per row.
+#' @noRd
+.dess_detect_popup <- function(d, i18n) {
+  n <- nrow(d)
+  col <- function(nm) {
+    v <- d[[nm]]
+    if (is.null(v)) rep(NA, n) else v
+  }
+  esc <- function(v) htmltools::htmlEscape(ifelse(is.na(v), "", as.character(v)))
+  cl <- .dess_detect_classe_label(col("CLASSE"), i18n)
+  conf <- suppressWarnings(as.numeric(col("CLASSE_CONF")))
+  motif <- as.character(col("CLASSE_MOTIF"))
+  tags <- as.character(col("OSM_TAGS"))
+
+  paste0(
+    "<b>", esc(cl), "</b>",
+    ifelse(is.finite(conf),
+           paste0("<br>", i18n$t("dess_detect_popup_conf"), " ",
+                  sprintf("%.0f %%", 100 * conf)), ""),
+    ifelse(is.na(motif) | !nzchar(motif), "",
+           paste0("<br>", i18n$t("dess_detect_popup_motif"), " ", esc(motif))),
+    ifelse(is.na(tags) | !nzchar(tags), "",
+           paste0("<br>", i18n$t("dess_detect_popup_osm"), " <code>", esc(tags),
+                  "</code><br><span class='text-muted'>",
+                  i18n$t("dess_detect_popup_osm_note"), "</span>")))
+}
 
 
 #' @noRd
@@ -284,7 +373,10 @@ mod_desserte_ui <- function(id) {
               shiny::downloadButton(
                 ns("export_gpkg"), i18n$t("dess_download_gpkg"),
                 icon = shiny::icon("database"),
-                class = "btn-outline-success btn-sm w-100")))
+                class = "btn-outline-success btn-sm w-100"),
+              htmltools::tags$p(class = "text-muted small mt-2 mb-0",
+                                i18n$t("dess_download_gpkg_note")),
+              shiny::uiOutput(ns("cache_path"))))
         ),
         leaflet::leafletOutput(ns("map"), height = "72vh")
       )
@@ -635,7 +727,8 @@ mod_desserte_server <- function(id, app_state) {
       overlays <- c(if (!is.null(geo)) DESS_GROUPE_PARCELLES else NULL,
                     if (!is.null(cvat_bg)) "Relief CVAT" else NULL,
                     DESS_GROUPE_EXISTANTE, DESS_GROUPE_RESEAU, DESS_GROUPE_LIGNES,
-                    DESS_GROUPE_TYPE, PLACES_DEPOT_GROUP)
+                    DESS_GROUPE_TYPE, DESS_GROUPE_OSM, DESS_GROUPE_DETECTEE,
+                    PLACES_DEPOT_GROUP)
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -647,7 +740,13 @@ mod_desserte_server <- function(id, app_state) {
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
           overlayGroups = overlays,
-          options = leaflet::layersControlOptions(collapsed = TRUE))
+          options = leaflet::layersControlOptions(collapsed = TRUE)) |>
+        # OSM et detection partent ETEINTS : ce sont des diagnostics, pas le
+        # resultat de l'onglet. Les allumer d'office noierait le reseau concu
+        # sous des centaines de troncons OSM (544 sur Dabo, contre 39 routes
+        # creees). La logique `shown` des observers respecte ensuite le choix
+        # de l'utilisateur - `hideGroup()` ici n'agit qu'a la creation.
+        leaflet::hideGroup(c(DESS_GROUPE_OSM, DESS_GROUPE_DETECTEE))
       if (!is.null(cvat_bg)) {
         grey <- leaflet::colorNumeric(grDevices::grey.colors(64, 0, 1),
           domain = c(0, 1), na.color = "transparent")
@@ -980,10 +1079,18 @@ mod_desserte_server <- function(id, app_state) {
         id = session$ns("osm_notif"), type = "message", duration = NULL)
       osm_panel$task$invoke(cd, file.path(cd, "aoi_input.gpkg"), bm)
     })
-    output$osm_result <- shiny::renderUI({
-      r <- rv_osm() %||% tryCatch(
+    # Resultat courant OU sidecar relu : un seul point de verite, partage par le
+    # panneau et par le calque. Les deux lisaient le cache chacun de leur cote,
+    # et un calque qui relit le disque quand le panneau ne le relit pas se
+    # desynchronise en silence.
+    osm_res <- shiny::reactive({
+      rv_osm() %||% tryCatch(
         .load_cached_osm(.desserte_cache_dir(app_state$current_project$path)),
         error = function(e) NULL)
+    })
+
+    output$osm_result <- shiny::renderUI({
+      r <- osm_res()
       if (is.null(r)) {
         return(htmltools::tags$p(class = "text-muted small", i18n$t("dess_osm_hint")))
       }
@@ -1025,10 +1132,14 @@ mod_desserte_server <- function(id, app_state) {
       detect_panel$task$invoke(cd, file.path(cd, "aoi_input.gpkg"), bm,
                                isTRUE(input$detect_lidar), pp)
     })
-    output$detect_result <- shiny::renderUI({
-      r <- rv_detect() %||% tryCatch(
+    detect_res <- shiny::reactive({
+      rv_detect() %||% tryCatch(
         .load_cached_detection(.desserte_cache_dir(app_state$current_project$path)),
         error = function(e) NULL)
+    })
+
+    output$detect_result <- shiny::renderUI({
+      r <- detect_res()
       if (is.null(r)) {
         return(htmltools::tags$p(class = "text-muted small", i18n$t("dess_detect_hint")))
       }
@@ -1045,7 +1156,10 @@ mod_desserte_server <- function(id, app_state) {
               class = "table table-sm table-striped small mt-2 mb-1",
               htmltools::tags$tbody(lapply(names(cl$table), function(k)
                 htmltools::tags$tr(
-                  htmltools::tags$td(class = "small", k),
+                  # Meme libelle que le popup du calque : deux vocabulaires pour
+                  # la meme classe se liraient comme deux classes.
+                  htmltools::tags$td(class = "small",
+                                     .dess_detect_classe_label(k, i18n)),
                   htmltools::tags$td(class = "small text-end",
                                      format(cl$table[[k]], big.mark = " ")))))),
             htmltools::tags$div(
@@ -1092,8 +1206,21 @@ mod_desserte_server <- function(id, app_state) {
       }
     })
 
+    # Le typage etait le SEUL des cinq a n'avoir aucun repli sur le cache : on
+    # rouvrait le projet, `typage_<moteur>.gpkg` etait bien sur le disque, et
+    # l'onglet redemandait de typer le reseau. Un echec de re-run laisse voir le
+    # dernier typage reussi - c'est ce qui est sur le disque, et la notification
+    # d'erreur dit deja que la nouvelle tentative a echoue.
+    typage_res <- shiny::reactive({
+      r <- rv_typage()
+      st <- tryCatch(r$status, error = function(e) NULL) %||% ""
+      if (identical(st, "running") || identical(st, "success")) return(r)
+      tryCatch(.load_cached_typage(.desserte_cache_dir(app_state$current_project$path)),
+               error = function(e) NULL)
+    })
+
     output$typage_result <- shiny::renderUI({
-      res <- rv_typage()
+      res <- typage_res()
       if (is.null(res)) {
         return(htmltools::tags$p(class = "text-muted small", i18n$t("dess_typage_hint")))
       }
@@ -1121,7 +1248,7 @@ mod_desserte_server <- function(id, app_state) {
     dess_type_cols <- c(primaire = "#C62828", secondaire = "#FB8C00",
                         tertiaire = "#2E7D32")
     shiny::observe({
-      res <- rv_typage()
+      res <- typage_res()
       shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup(DESS_GROUPE_TYPE)
       gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
@@ -1138,6 +1265,80 @@ mod_desserte_server <- function(id, app_state) {
       if (!is.null(shown) && !(DESS_GROUPE_TYPE %in% shown)) {
         leaflet::hideGroup(proxy, DESS_GROUPE_TYPE)
       }
+    })
+
+    # Overlay " Pistes OSM " : l'acquisition Overpass telle quelle.
+    #
+    # Le libelle dit " pistes OSM " et non " pistes absentes de la BD TOPO ",
+    # parce que c'est ce que contient le fichier. `comparer_desserte_osm()`
+    # calcule bien un lineaire HORS CORRIDOR par troncon, mais ne renvoie que
+    # des kilometres par type : la geometrie du gisement est jetee cote coeur.
+    # La reconstruire ici (corridor + `st_difference`) dupliquerait la logique
+    # du coeur avec un `corridor_m` qui pourrait diverger, pour 104 s de calcul
+    # deja fait ailleurs - d'ou le calque honnete en attendant que
+    # `foretaccess` renvoie `osm_hors_corridor`.
+    shiny::observe({
+      r <- osm_res()
+      shown <- shiny::isolate(input$map_groups)
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup(DESS_GROUPE_OSM)
+      gp <- tryCatch(r$gpkg_path, error = function(e) NULL)
+      if (is.null(gp) || !file.exists(gp)) return()
+      d <- tryCatch(sf::st_read(gp, layer = "osm_track", quiet = TRUE),
+                    error = function(e) NULL)
+      if (!inherits(d, "sf") || nrow(d) == 0L) return()
+      d <- tryCatch(sf::st_transform(d, 4326), error = function(e) d)
+      hw <- as.character(d[["highway"]] %||% rep("", nrow(d)))
+      proxy |>
+        leaflet::addPolylines(data = d, group = DESS_GROUPE_OSM,
+          color = "#546E7A", weight = 2, opacity = 0.85, dashArray = "4,6",
+          label = hw,
+          popup = paste0("<b>", i18n$t("dess_osm_layer"), "</b><br>",
+                         htmltools::htmlEscape(hw), "<br><span class='text-muted'>",
+                         i18n$t("dess_osm_layer_note"), "</span>"))
+      if (!is.null(shown) && !(DESS_GROUPE_OSM %in% shown)) {
+        leaflet::hideGroup(proxy, DESS_GROUPE_OSM)
+      }
+    })
+
+    # Overlay " Routes detectees " : trait TIRETE, pour dire hypothese et non
+    # releve. Le popup porte `CLASSE_CONF` et `CLASSE_MOTIF` a cote de `CLASSE` -
+    # une classe posee sur deux criteres sur six ne vaut pas une classe posee
+    # sur six, et la moyenne affichee en sidebar ne le dit pas troncon par
+    # troncon. Rappel : fosses et NDVI ne sont pas cables, la confiance est donc
+    # structurellement plafonnee.
+    shiny::observe({
+      r <- detect_res()
+      shown <- shiny::isolate(input$map_groups)
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup(DESS_GROUPE_DETECTEE)
+      gp <- tryCatch(r$gpkg_path, error = function(e) NULL)
+      if (is.null(gp) || !file.exists(gp)) return()
+      d <- tryCatch(sf::st_read(gp, layer = "desserte_detectee", quiet = TRUE),
+                    error = function(e) NULL)
+      if (!inherits(d, "sf") || nrow(d) == 0L) return()
+      d <- tryCatch(sf::st_transform(d, 4326), error = function(e) d)
+      cl <- as.character(d[["CLASSE"]] %||% rep(NA_character_, nrow(d)))
+      cols <- unname(DESS_DETECT_COLS[cl]); cols[is.na(cols)] <- "#BDBDBD"
+      proxy |>
+        leaflet::addPolylines(data = d, group = DESS_GROUPE_DETECTEE,
+          color = cols, weight = 3, opacity = 0.9, dashArray = "8,6",
+          label = .dess_detect_classe_label(cl, i18n),
+          popup = .dess_detect_popup(d, i18n))
+      if (!is.null(shown) && !(DESS_GROUPE_DETECTEE %in% shown)) {
+        leaflet::hideGroup(proxy, DESS_GROUPE_DETECTEE)
+      }
+    })
+
+    # Ou sont les fichiers. Les couches optionnelles sont aussi lisibles dans un
+    # SIG, et rien dans l'interface ne disait ou les trouver.
+    output$cache_path <- shiny::renderUI({
+      pp <- tryCatch(app_state$current_project$path, error = function(e) NULL)
+      if (is.null(pp)) return(NULL)
+      cd <- tryCatch(.desserte_cache_dir(pp), error = function(e) NULL)
+      if (is.null(cd)) return(NULL)
+      htmltools::tags$p(
+        class = "text-muted small mt-2 mb-0",
+        htmltools::tags$span(i18n$t("dess_cache_path"), " "),
+        htmltools::tags$code(class = "small text-break", cd))
     })
 
     # --- Export GeoPackage -----------------------------------------------------
