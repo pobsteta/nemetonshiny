@@ -727,6 +727,30 @@ test_that("and_n_more_errors translations work with sprintf", {
 # Tests for v0.41.1 — FAST alerts UX cleanup (placette → pixel)
 # ==============================================================================
 
+test_that("v0.122.11 — clés du panneau ACCESSFOR retirées avec lui", {
+  # Le panneau « Validation ACCESSFOR (IGN) » de la carte d'accessibilité a été
+  # supprimé (inutilisé) : ses clés partent avec, sinon elles restent à traduire
+  # et à maintenir pour une UI qui n'existe plus. Même convention que le test
+  # v0.41.1 ci-dessous. `accessfor_layer` était déjà orphelin avant ce retrait.
+  #
+  # Les clés d'ERREUR d'ACCESSFOR restent, elles : `service_accessfor.R` les
+  # consomme toujours — le raster est encore calculé et affiché en volet swipe.
+  translations <- nemetonshiny:::TRANSLATIONS
+  retirees <- c("accessfor_title", "accessfor_intro", "accessfor_hint",
+                "accessfor_overall_fmt", "accessfor_col_class",
+                "accessfor_col_agree", "accessfor_swipe_hint", "accessfor_layer")
+  for (key in retirees) {
+    expect_false(key %in% names(translations),
+                 info = paste("clé supprimée toujours présente :", key))
+  }
+  # Garde-fou inverse : le service en consomme encore, elles doivent rester.
+  for (key in c("accessfor_no_layer", "accessfor_wfs_failed",
+                "accessfor_no_overlap")) {
+    expect_true(key %in% names(translations),
+                info = paste("clé encore utilisée par service_accessfor.R :", key))
+  }
+})
+
 test_that("v0.41.1 — orphan placeholder keys are removed", {
   translations <- nemetonshiny:::TRANSLATIONS
   removed <- c(

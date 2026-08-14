@@ -10,6 +10,28 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.122.11] - 2026-08-14
+
+### Added
+
+- Onglet Accessibilité : un « i » par entrée du sélecteur « Couche affichée »
+  (débusqueur, porteur, camion DFCI, câble-mât, classes de débardage,
+  comparateur). Les seuils affichés (pentes, treuillage, portée de grue, bandes
+  DFCI) sont lus dans `foretaccess_config()`, jamais recopiés dans les
+  traductions.
+
+### Changed
+
+- La mise en garde « Calcul long (~2-3 h)… » passe dans le « i » du titre
+  « Desserte LiDAR (NDP 1) » au lieu d'occuper sept lignes de sidebar.
+
+### Removed
+
+- Panneau « Validation ACCESSFOR (IGN) » et son tableau d'accord, inutilisés. Le
+  raster ACCESSFOR reste calculé et consultable en volet swipe. Huit clés i18n
+  orphelines partent avec ; les clés d'erreur d'ACCESSFOR restent, consommées par
+  `service_accessfor.R`.
+
 ## [0.122.10] - 2026-08-14
 
 ### Fixed

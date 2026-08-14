@@ -253,6 +253,54 @@ PLACES_DEPOT_GROUP <- "Places de d\u00e9p\u00f4t"
   out
 }
 
+#' Explanatory text of one entry of the "displayed layer" selector
+#'
+#' The decisive thresholds (slope limits, winching and crane distances, DFCI
+#' bands) are read from `foretaccess_config()` rather than written into the
+#' translations: hard-coding them there would let them drift silently from the
+#' engine the day the configuration changes. Same principle as the DFCI legend
+#' in [.acc_legend_labels()], including the documented defaults as a fallback
+#' when the configuration cannot be read.
+#'
+#' @param layer Layer id (`"skidder"`, `"porteur"`, `"camion_dfci"`, `"cable"`,
+#'   `"classes_debardage"`, `"desserte_comparee"`).
+#' @param i18n Translator.
+#' @return A single string, or `NULL` when the layer has no description.
+#' @noRd
+.acc_layer_info <- function(layer, i18n) {
+  cfg <- tryCatch(foretaccess::foretaccess_config(), error = function(e) list())
+  n <- function(x, defaut) {
+    v <- suppressWarnings(as.numeric(x))
+    if (length(v) != 1L || !is.finite(v)) defaut else v
+  }
+  switch(
+    layer,
+    skidder = sprintf(
+      i18n$t("acc_layer_info_skidder"),
+      n(cfg$skidder$pente_skidder_max_pct, 30),
+      n(cfg$skidder$debardage_amont_max_m, 50),
+      n(cfg$skidder$debardage_aval_max_m, 100)),
+    porteur = sprintf(
+      i18n$t("acc_layer_info_porteur"),
+      n(cfg$porteur$pente_travers_max_pct, 15),
+      n(cfg$porteur$pente_montee_max_pct, 30),
+      n(cfg$porteur$pente_descente_max_pct, 25),
+      n(cfg$porteur$portee_grue_m, 8)),
+    camion_dfci = sprintf(
+      i18n$t("acc_layer_info_dfci"),
+      n(cfg$dfci$distance_defense_max_m, 440),
+      n(cfg$dfci$pente_defense_max_pct, 110)),
+    cable = sprintf(
+      i18n$t("acc_layer_info_cable"),
+      n(cfg$cable$longueur_max_m, 750)),
+    classes_debardage = i18n$t("acc_layer_info_debardage"),
+    # Le comparateur a déjà sa prose, affichée sous le sélecteur quand il est
+    # choisi : le « i » la reprend plutôt que d'en inventer une seconde.
+    desserte_comparee = i18n$t("acc_compare_hint"),
+    NULL)
+}
+
+
 #' Paint one accessibility raster onto a leafletProxy in a dedicated map pane.
 #'
 #' Shared by the single-layer overlay and the ACCESSFOR swipe comparison. Applies
@@ -346,14 +394,20 @@ mod_accessibility_ui <- function(id) {
             # LÉGERS et la réutilisent via la case « Utiliser la desserte
             # corrigée ». Découpler évite de relancer la qualif à chaque run et
             # d'étrangler la mémoire pendant l'analyse.
-            htmltools::tags$strong(class = "small d-block",
-                                   i18n$t("acc_correct_section")),
+            # La mise en garde sur la durée (~2-3 h) et la mémoire passe dans un
+            # « i » à côté du titre : elle occupait sept lignes de la barre
+            # latérale en permanence alors qu'elle se lit UNE fois, avant de
+            # cliquer. Le « i » est ici hors d'un <label>, donc `info_popover()`
+            # suffit — pas besoin du variant qui neutralise l'activation.
+            htmltools::div(
+              class = "small d-block mb-1",
+              htmltools::tags$strong(i18n$t("acc_correct_section")), " ",
+              info_popover(i18n$t("acc_ndp1_duration_note"), placement = "right")),
             bslib::input_task_button(
               ns("correct_desserte"), i18n$t("acc_correct_run"),
               label_busy = i18n$t("acc_correct_running"),
               icon = bsicons::bs_icon("magic"),
               type = "secondary", class = "w-100 my-1 btn-sm"),
-            shiny::helpText(class = "small mb-1", i18n$t("acc_ndp1_duration_note")),
             shiny::uiOutput(ns("correct_status")),
             shiny::uiOutput(ns("use_corrected_ui")),
             htmltools::tags$hr(class = "my-2"),
@@ -408,6 +462,11 @@ mod_accessibility_ui <- function(id) {
           htmltools::tags$hr(class = "my-2"),
           # Exports regroupés dans un accordéon repliable « Exports » (replié par
           # défaut), même présentation que l'onglet reGénération.
+          # Le panneau « Validation ACCESSFOR (IGN) » (table d'accord classe par
+          # classe + taux global) a été retiré : il n'était pas utilisé. La
+          # comparaison elle-même RESTE — le raster ACCESSFOR est toujours calculé
+          # par le worker et reste consultable en volet swipe via la couche
+          # « Classes de débardage/ACCESSFOR (IGN) » du sélecteur.
           bslib::accordion(
             open = FALSE,
             bslib::accordion_panel(
@@ -416,15 +475,7 @@ mod_accessibility_ui <- function(id) {
               shiny::downloadButton(
                 ns("export_gpkg"), i18n$t("acc_download_gpkg"),
                 icon = shiny::icon("database"),
-                class = "btn-outline-success btn-sm w-100")),
-            # Validation vs la couche nationale ACCESSFOR de l'IGN (référence
-            # officielle, même filiation Sylvaccess) : compare les classes de
-            # débardage calculées au raster IGN et affiche le taux d'accord.
-            bslib::accordion_panel(
-              title = i18n$t("accessfor_title"),
-              icon = bsicons::bs_icon("clipboard-check"),
-              htmltools::tags$p(class = "text-muted small", i18n$t("accessfor_intro")),
-              shiny::uiOutput(ns("accessfor_result"))))
+                class = "btn-outline-success btn-sm w-100")))
         ),
         # Badge de provenance DFCI (au-dessus de la carte) : n'apparaît que
         # lorsque la couche « Camion DFCI » est affichée.
@@ -946,10 +997,6 @@ mod_accessibility_server <- function(id, app_state) {
       cached <- .load_cached_accessibility(project_path)
       if (!is.null(cached)) {
         cached$dfci_source <- res$dfci_source
-        # Le RÉSUMÉ d'accord ACCESSFOR (`accessfor` : table + taux) n'est pas
-        # persisté sur disque — on le reporte du run courant pour que le tableau
-        # s'affiche après le calcul (le cache ne porte que le raster affichable).
-        cached$accessfor <- res$accessfor
       }
       rv$result <- cached %||% res
       shiny::showNotification(
@@ -1029,9 +1076,20 @@ mod_accessibility_server <- function(id, app_state) {
                      stats::setNames("desserte_comparee",
                                      i18n$t("acc_layer_desserte_comparee")))
       }
+      # Chaque entrée porte le « i » de l'app, décrivant ce que le raster
+      # montre. `info_popover_in_label()` et non `info_popover()` : le « i » vit
+      # dans le <label> d'un radio, où un clic sélectionnerait la couche — et
+      # sélectionner ici coûte une lecture de raster (cf. son roxygen).
+      noms <- lapply(seq_along(choices), function(k) {
+        info <- .acc_layer_info(unname(choices)[k], i18n)
+        if (is.null(info)) return(names(choices)[k])
+        htmltools::tagList(names(choices)[k], " ",
+                           info_popover_in_label(info, placement = "left"))
+      })
       shiny::radioButtons(
         ns("layer"), NULL,
-        choices = choices,
+        choiceNames  = noms,
+        choiceValues = unname(choices),
         selected = if (length(layers) > 0L) layers[[1]] else "desserte_comparee")
     })
 
@@ -1541,42 +1599,10 @@ mod_accessibility_server <- function(id, app_state) {
       if (!isTRUE(compare_active())) compare_active(TRUE)
     })
 
-    # --- Validation ACCESSFOR (référence IGN) — SYSTÉMATIQUE --------------------
-    # Le raster ACCESSFOR + le taux d'accord sont calculés DANS le worker (cf.
-    # run_accessibility) dès que les classes de débardage sont produites, et vivent
-    # dans rv$result$accessfor. Plus de bouton « Comparer » ni de case « volet » : la
-    # couche « Classes de débardage/ACCESSFOR (IGN) » affiche le volet d'office, et
-    # le tableau d'accord ci-dessous s'affiche automatiquement après le run.
-    output$accessfor_result <- shiny::renderUI({
-      # `[["accessfor"]]` (match EXACT) et non `$accessfor` : ce dernier fait du
-      # partial matching et attraperait `accessfor_raster_path` (un character) quand
-      # `accessfor` est absent (résultat rechargé du cache) -> « $ operator invalid ».
-      res <- tryCatch(rv$result[["accessfor"]], error = function(e) NULL)
-      if (is.null(res) || !identical(res$status, "success")) {
-        return(htmltools::tags$p(class = "text-muted small",
-                                 i18n$t("accessfor_hint")))
-      }
-      tab <- res$table
-      rows <- lapply(seq_len(nrow(tab)), function(i) {
-        htmltools::tags$tr(
-          htmltools::tags$td(class = "small", tab$libelle[i]),
-          htmltools::tags$td(class = "small text-end",
-                             sprintf("%.1f %%", tab$accord_pct[i])))
-      })
-      htmltools::tagList(
-        htmltools::div(
-          class = "alert alert-info py-2 small mb-2", role = "status",
-          shiny::icon("circle-info"), " ",
-          sprintf(i18n$t("accessfor_overall_fmt"), res$overall_pct, res$n_cells)),
-        htmltools::tags$table(
-          class = "table table-sm table-striped small mb-0",
-          htmltools::tags$thead(htmltools::tags$tr(
-            htmltools::tags$th(i18n$t("accessfor_col_class")),
-            htmltools::tags$th(class = "text-end", i18n$t("accessfor_col_agree")))),
-          htmltools::tags$tbody(rows)),
-        htmltools::tags$p(class = "text-muted small mb-0 mt-2",
-                          i18n$t("accessfor_swipe_hint")))
-    })
+    # Le rendu du tableau d'accord ACCESSFOR est SUPPRIMÉ avec son panneau : il
+    # n'était pas utilisé. Le raster ACCESSFOR reste calculé par le worker et
+    # reste consultable en volet swipe via la couche « Classes de débardage /
+    # ACCESSFOR (IGN) » du sélecteur ; seul le tableau chiffré disparaît.
 
     # --- Export GeoPackage -----------------------------------------------------
     output$export_gpkg <- shiny::downloadHandler(

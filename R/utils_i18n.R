@@ -119,6 +119,26 @@ TRANSLATIONS <- list(
   acc_layer_debardage = list(fr = "Classes de d\u00e9bardage", en = "Skidding distance classes"),
   acc_layer_debardage_accessfor = list(fr = "Classes de d\u00e9bardage/ACCESSFOR (IGN)", en = "Skidding classes/ACCESSFOR (IGN)"),
   acc_places_depot = list(fr = "Places de d\u00e9p\u00f4t", en = "Landing sites"),
+
+  # Contenu des « i » du selecteur « Couche affichee ». Les seuils sont injectes
+  # depuis foretaccess_config() par .acc_layer_info() (meme principe que la
+  # legende DFCI) : ils ne doivent pas etre recopies en dur ici, sinon ils
+  # divergeraient silencieusement du moteur le jour ou la config change.
+  acc_layer_info_skidder = list(
+    fr = "Zones exploitables au d\u00e9busqueur depuis la desserte : pente franchissable jusqu'\u00e0 %d %%, treuillage %d m en amont et %d m en aval. Les classes affich\u00e9es vont de « parcourable » \u00e0 « non accessible ».",
+    en = "Areas workable by skidder from the road network: slope up to %d%%, winching %d m upslope and %d m downslope. Classes range from \"traversable\" to \"not accessible\"."),
+  acc_layer_info_porteur = list(
+    fr = "Zones exploitables au porteur : pente maximale %d %% en travers, %d %% en mont\u00e9e et %d %% en descente ; port\u00e9e de grue %d m depuis la piste.",
+    en = "Areas workable by forwarder: maximum slope %d%% sidehill, %d%% uphill and %d%% downhill; %d m crane reach from the track."),
+  acc_layer_info_dfci = list(
+    fr = "D\u00e9fendabilit\u00e9 incendie depuis les voies DFCI : bandes de distance jusqu'\u00e0 %d m, et « non d\u00e9fendable » au-del\u00e0 de %d %% de pente. La provenance des voies (OSM tagu\u00e9 ou estim\u00e9es) est indiqu\u00e9e par le bandeau au-dessus de la carte.",
+    en = "Fire defendability from DFCI roads: distance bands up to %d m, and \"not defendable\" beyond %d%% slope. The badge above the map states where the roads come from (tagged OSM or estimated)."),
+  acc_layer_info_cable = list(
+    fr = "D\u00e9bardage par c\u00e2ble-m\u00e2t : port\u00e9e jusqu'\u00e0 %d m depuis la ligne. Cette couche n'existe que si le moteur « C\u00e2ble-m\u00e2t » a \u00e9t\u00e9 coch\u00e9 avant l'analyse (balayage angulaire, calcul long).",
+    en = "Cable-crane extraction: reach up to %d m from the line. This layer exists only if the \"Cable crane\" engine was ticked before the run (angular sweep, slow computation)."),
+  acc_layer_info_debardage = list(
+    fr = "Distance de d\u00e9bardage class\u00e9e depuis la desserte, tous moteurs coch\u00e9s confondus. Quand le raster national ACCESSFOR de l'IGN est disponible, la couche s'affiche en volet comparatif : le calcul \u00e0 gauche, la r\u00e9f\u00e9rence IGN \u00e0 droite, curseur d\u00e9pla\u00e7able.",
+    en = "Skidding distance classes from the road network, across the ticked engines. When IGN's national ACCESSFOR raster is available, the layer is shown as a swipe comparison: this computation on the left, the IGN reference on the right."),
   acc_map_title = list(fr = "Carte d'accessibilit\u00e9", en = "Accessibility map"),
   acc_legend_title = list(fr = "Classe d'accessibilit\u00e9", en = "Accessibility class"),
   acc_dfci_heuristic_badge = list(fr = "Aucune desserte tagu\u00e9e DFCI (ref:FR:DFCI) sur l'emprise \u2014 sources DFCI estim\u00e9es (routes et pistes foresti\u00e8res).", en = "No road tagged DFCI (ref:FR:DFCI) in the area \u2014 DFCI sources estimated (forest roads and tracks)."),
@@ -142,14 +162,6 @@ TRANSLATIONS <- list(
   # ============================================================
   # Validation ACCESSFOR (r\u00e9f\u00e9rence IGN)
   # ============================================================
-  accessfor_title = list(fr = "Validation ACCESSFOR (IGN)", en = "ACCESSFOR validation (IGN)"),
-  accessfor_intro = list(fr = "Comparaison automatique des classes de d\u00e9bardage \u00e0 la couche nationale ACCESSFOR de l'IGN (r\u00e9f\u00e9rence officielle, m\u00eame filiation Sylvaccess), calcul\u00e9e \u00e0 chaque analyse d\u00e9busqueur.", en = "Automatic comparison of the skidding classes to the IGN national ACCESSFOR layer (official reference, same Sylvaccess lineage), computed on every skidder run."),
-  accessfor_layer = list(fr = "ACCESSFOR (IGN)", en = "ACCESSFOR (IGN)"),
-  accessfor_hint = list(fr = "Lancez une analyse d\u00e9busqueur : la validation ACCESSFOR (IGN) et le volet de comparaison apparaissent automatiquement.", en = "Run a skidder analysis: the ACCESSFOR (IGN) validation and the comparison swipe appear automatically."),
-  accessfor_overall_fmt = list(fr = "Accord global : %.1f %% sur %d cellules communes.", en = "Overall agreement: %.1f%% over %d common cells."),
-  accessfor_col_class = list(fr = "Classe ACCESSFOR", en = "ACCESSFOR class"),
-  accessfor_col_agree = list(fr = "Accord", en = "Agreement"),
-  accessfor_swipe_hint = list(fr = "Glissez le volet vertical : \u00e0 gauche nos classes de d\u00e9bardage, \u00e0 droite ACCESSFOR (IGN).", en = "Drag the vertical divider: our skidding classes on the left, ACCESSFOR (IGN) on the right."),
   accessfor_no_layer = list(fr = "Aucune couche \u00ab classes de d\u00e9bardage \u00bb : lancez d'abord un calcul d\u00e9busqueur.", en = "No skidding-classes layer: run a skidder analysis first."),
   accessfor_no_foretaccess = list(fr = "Le paquet 'foretaccess' n'est pas install\u00e9.", en = "The 'foretaccess' package is not installed."),
   accessfor_no_happign = list(fr = "Le paquet 'happign' (WFS IGN) n'est pas install\u00e9.", en = "The 'happign' package (IGN WFS) is not installed."),
