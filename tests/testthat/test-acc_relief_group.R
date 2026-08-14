@@ -48,3 +48,44 @@ test_that("la case du relief est declaree meme sans CVAT pret", {
   # Pas de condition sur la disponibilité du CVAT autour du relief.
   expect_false(grepl("is.null(cvat_bg)) \"Relief", bloc, fixed = TRUE))
 })
+
+test_that("les couches du comparateur sont declarees dans le controle", {
+  # Même classe de bug que le relief : une couche peinte mais absente des
+  # `overlayGroups` n'a pas de case, donc rien ne peut l'éteindre. Décocher la
+  # couche corrigée est précisément la façon de lire ce qu'elle change par
+  # rapport à la BD TOPO qu'elle recouvre.
+  expect_type(nemetonshiny:::ACC_DESSERTE_CORR_GROUP, "character")
+  expect_type(nemetonshiny:::ACC_DESSERTE_ORIG_GROUP, "character")
+
+  src <- readLines(test_path("..", "..", "R", "mod_accessibility.R"),
+                   warn = FALSE)
+  code <- src[!grepl("^\\s*#", src)]
+
+  ov <- grep("^\\s*overlays\\s*<-", code)
+  expect_length(ov, 1L)
+  bloc <- paste(code[ov:(ov + 6L)], collapse = " ")
+  expect_match(bloc, "ACC_DESSERTE_ORIG_GROUP", fixed = TRUE)
+  expect_match(bloc, "ACC_DESSERTE_CORR_GROUP", fixed = TRUE)
+
+  # Et plus aucun littéral pour CES deux groupes : ils passent par les
+  # constantes, sinon la déclaration et la peinture peuvent diverger sans bruit.
+  # (`group = "Desserte"` reste littéral : c'est une AUTRE couche, celle qui a
+  # servi au calcul, déclarée telle quelle dans les overlays.)
+  expect_false(any(grepl("group\\s*=\\s*\"Desserte (origine|corrigee)\"", code)))
+})
+
+test_that("la desserte du RUN n'est pas peinte sous le comparateur", {
+  # Trois couches de tronçons peuvent coexister sur cette carte. Celle du run
+  # utilise une palette différente de celle du comparateur : superposées, elles
+  # mettent à l'écran des tronçons de même couleur qui ne disent pas la même
+  # chose, sans légende pour l'expliquer. L'observe de la desserte du run doit
+  # donc sortir tôt quand la couche comparateur est sélectionnée.
+  src <- readLines(test_path("..", "..", "R", "mod_accessibility.R"),
+                   warn = FALSE)
+  i <- grep('clearGroup\\("Desserte"\\)', src)
+  expect_length(i, 1L)
+
+  bloc <- paste(src[i:min(length(src), i + 14L)], collapse = " ")
+  expect_match(bloc, 'identical\\(input\\$layer, "desserte_comparee"\\)')
+  expect_match(bloc, "return\\(\\)", fixed = FALSE)
+})

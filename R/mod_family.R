@@ -783,11 +783,9 @@ make_indicator_leaflet <- function(sf_data, ind_col, title) {
         weight = 2, color = "#000", fillOpacity = 0.9, bringToFront = TRUE
       ),
       label = labels,
-      labelOptions = leaflet::labelOptions(
-        style = list("font-size" = "12px", "padding" = "4px 8px"),
-        textsize = "12px",
-        direction = "auto"
-      )
+      # Taille laissée à `.leaflet-tooltip` (custom.css), règle unique de l'app :
+      # un `textsize` ou un `font-size` inline la surpasserait.
+      labelOptions = leaflet::labelOptions(direction = "auto")
     ) |>
     leaflet::addLegend(
       position = "topright",

@@ -65,7 +65,14 @@ TRANSLATIONS <- list(
   acc_source_bdtopo = list(fr = "BD TOPO", en = "BD TOPO"),
   acc_source_osm = list(fr = "Ajout\u00e9 depuis OSM", en = "Added from OSM"),
   acc_source_detectee = list(fr = "Ajout\u00e9 par d\u00e9tection LiDAR", en = "Added by LiDAR detection"),
-  acc_compare_legend_source = list(fr = "Source du tron\u00e7on", en = "Segment source"),
+  # Titre de la legende de la couche corrigee (au-dessus de la BD TOPO). Il
+  # nommait la VARIABLE (la source du troncon) alors qu'elle n'a le plus souvent
+  # qu'une modalite, "BD TOPO" : tant qu'aucun ajout OSM ni detection LiDAR
+  # n'apporte de troncon, la couche corrigee EST la BD TOPO, et la legende
+  # n'apprenait rien. Il nomme desormais la COUCHE. La cle garde son nom : elle
+  # designe toujours la meme legende, dont la palette reste par source.
+  acc_compare_legend_source = list(fr = "Tron\u00e7on corrig\u00e9",
+                                   en = "Corrected segment"),
   acc_correct_none = list(fr = "Aucune desserte corrig\u00e9e. Lancez la correction pour pouvoir l'utiliser dans les moteurs.", en = "No corrected network yet. Run the correction to use it in the engines."),
   acc_use_corrected = list(fr = "Utiliser la desserte corrig\u00e9e LiDAR", en = "Use the LiDAR-corrected road network"),
   acc_correct_failed = list(fr = "La correction LiDAR a \u00e9chou\u00e9.", en = "LiDAR correction failed."),

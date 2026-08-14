@@ -639,9 +639,10 @@ mod_ug_server <- function(id, app_state) {
           color = "#333333",
           weight = 1,
           label = lapply(atom_labels, htmltools::HTML),
+          # Taille laissée à `.leaflet-tooltip` (custom.css), règle unique de
+          # l'app : un `textsize` ou un `font-size` inline la surpasserait.
           labelOptions = leaflet::labelOptions(
-            style = list("font-size" = "12px", "background" = "white"),
-            textsize = "12px"
+            style = list("background" = "white")
           ),
           highlightOptions = leaflet::highlightOptions(
             weight = 3,
@@ -703,9 +704,10 @@ mod_ug_server <- function(id, app_state) {
               color = ug_colors,
               weight = 1,
               label = lapply(ug_labels, htmltools::HTML),
+              # Gras conservé (c'est l'étiquette mise en avant) ; la TAILLE, elle,
+              # vient de `.leaflet-tooltip` (custom.css), règle unique de l'app.
               labelOptions = leaflet::labelOptions(
-                style = list("font-size" = "13px", "font-weight" = "bold"),
-                textsize = "13px"
+                style = list("font-weight" = "bold")
               )
             )
         }

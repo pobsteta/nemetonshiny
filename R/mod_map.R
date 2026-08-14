@@ -642,11 +642,14 @@ mod_map_server <- function(id, app_state, commune_geometry, parcels) {
           fillColor = STYLE$parcel_default$fillColor,
           fillOpacity = STYLE$parcel_default$fillOpacity,
           label = lapply(labels, htmltools::HTML),
+          # Pas de `font-size` ni de `textsize` ici : la taille des infobulles
+          # est fixée une seule fois, dans `.leaflet-tooltip` (custom.css). Un
+          # style inline la surpasserait et ferait diverger cette carte des
+          # autres. Le reste de l'habillage (ombre, coins) est propre à cette
+          # carte et reste ici.
           labelOptions = leaflet::labelOptions(
             style = list(
-              "font-size" = "12px",
               "font-weight" = "normal",
-              "padding" = "6px 10px",
               "background-color" = "white",
               "border" = "1px solid #ccc",
               "border-radius" = "4px",

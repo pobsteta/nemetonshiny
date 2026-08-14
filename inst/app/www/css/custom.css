@@ -319,11 +319,18 @@ html, body {
    taille : elle hérite du `font: 12px/1.5` de `.leaflet-container`, trop petit
    pour les étiquettes utiles au terrain — état et largeur carrossable d'un
    tronçon (« En service — 2.1 m »), classe d'un tronçon BD TOPO, diagnostic
-   d'un pixel. 15px reste compact : l'infobulle suit le pointeur, elle ne doit
-   pas devenir un panneau. `font-weight` laissé à sa valeur — c'est la TAILLE
-   qui manquait, pas le gras, qui épaissit le texte sans gagner en lisibilité. */
+   d'un pixel. 17px reste compact : l'infobulle suit le pointeur, elle ne doit
+   pas devenir un bandeau qui masque le tracé qu'elle décrit. `font-weight`
+   laissé à sa valeur — c'est la TAILLE qui manquait, pas le gras, qui épaissit
+   le texte sans gagner en lisibilité.
+
+   RÈGLE UNIQUE : c'est ici, et nulle part ailleurs, qu'on fixe la taille d'une
+   infobulle de carte. Un `labelOptions(textsize=)` ou un `style` inline la
+   surpasserait sans discussion (l'inline bat toujours la feuille) et
+   ré-introduirait des tailles divergentes d'une carte à l'autre — c'est
+   exactement ce qui existait dans mod_map, mod_family et mod_ug. */
 .leaflet-tooltip {
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.35;
   padding: 5px 8px;
 }

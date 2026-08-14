@@ -64,6 +64,43 @@ DESS_SOURCE_COLS <- c(bdtopo = "#455A64", osm = "#7B1FA2",
 ACC_RELIEF_GROUP <- "Relief CVAT"
 
 
+#' Names of the two comparator layers of the Accessibility map
+#'
+#' The desserte comparator paints two superposed layers: the BD TOPO network
+#' coloured by class (below, thin) and the LiDAR-corrected network coloured by
+#' source (above, thick). Both are declared in the `addLayersControl()` overlays
+#' so each can be toggled — hiding the corrected one is precisely how you read
+#' what it changed. Like the relief, they are declared unconditionally: they are
+#' painted only while the comparator is selected, and a group with no layer in
+#' it is an inert checkbox.
+#'
+#' @noRd
+ACC_DESSERTE_CORR_GROUP <- "Desserte corrig\u00e9e"
+
+#' @rdname ACC_DESSERTE_CORR_GROUP
+#' @noRd
+ACC_DESSERTE_ORIG_GROUP <- "Desserte origine"
+
+
+#' Name of the computed-accessibility raster group
+#'
+#' These group names ARE the labels shown in leaflet's layer control — there is
+#' no separate display string — so they carry their accents. Written `\uXXXX`
+#' per the repo's source-encoding rule.
+#'
+#' @noRd
+ACC_ACCESSIBILITE_GROUP <- "Accessibilit\u00e9"
+
+#' Name of the log-landing group, shared by the Accessibility and Desserte maps
+#'
+#' Defined once and consumed by both modules: the two tabs show the same menu
+#' entry, and two literals would let them drift apart — an accent added on one
+#' side only is exactly how that starts.
+#'
+#' @noRd
+PLACES_DEPOT_GROUP <- "Places de d\u00e9p\u00f4t"
+
+
 #' Buffer around the forest AOI, in metres, from the sidebar input
 #'
 #' The input is expressed in METRES (default 250 m) — the services downstream
@@ -1067,9 +1104,14 @@ mod_accessibility_server <- function(id, app_state) {
       # instant : le comparateur de desserte peut en peindre un plus tard (son
       # worker async), et sans case déclarée ici ce relief-là serait
       # inextinguible. Une case sans couche ne fait rien, c'est sans risque.
+      # Même raison pour les deux couches du comparateur : décocher la couche
+      # corrigée est précisément la façon de lire ce qu'elle a changé par
+      # rapport à la BD TOPO en dessous. Elles se déclarent donc ici, et non
+      # au moment où le comparateur les peint.
       overlays <- c(if (!is.null(geo)) "UGF" else NULL,
                     ACC_RELIEF_GROUP,
-                    "Accessibilite", "Desserte", "Places de depot")
+                    ACC_ACCESSIBILITE_GROUP, "Desserte", PLACES_DEPOT_GROUP,
+                    ACC_DESSERTE_ORIG_GROUP, ACC_DESSERTE_CORR_GROUP)
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -1150,7 +1192,7 @@ mod_accessibility_server <- function(id, app_state) {
       shown <- shiny::isolate(input$map_groups)
       mapid <- session$ns("map")
       proxy <- leaflet::leafletProxy("map") |>
-        leaflet::clearGroup("Accessibilite") |>
+        leaflet::clearGroup(ACC_ACCESSIBILITE_GROUP) |>
         leaflet::removeControl("acc_legend")
       # Pseudo-couche comparateur sélectionnée : on ne peint pas le raster de
       # classes (il revient au changement de couche). Le comparateur desserte
@@ -1177,9 +1219,9 @@ mod_accessibility_server <- function(id, app_state) {
         left_rp <- tryCatch(res$raster_paths[["classes_debardage"]],
                             error = function(e) NULL)
         proxy <- .acc_paint_raster(proxy, left_rp, "nemetonAccSwipeL",
-          "Accessibilite", op, i18n, legend_id = "acc_legend")
+          ACC_ACCESSIBILITE_GROUP, op, i18n, legend_id = "acc_legend")
         .acc_paint_raster(proxy, accessfor_rp, "nemetonAccSwipeR",
-          "Accessibilite", op, i18n, legend_id = NULL)
+          ACC_ACCESSIBILITE_GROUP, op, i18n, legend_id = NULL)
         if (!isTRUE(swipe_active())) {
           session$sendCustomMessage("nemetonSwipeOn", list(
             id = mapid, left = "nemetonAccSwipeL", right = "nemetonAccSwipeR"))
@@ -1191,12 +1233,12 @@ mod_accessibility_server <- function(id, app_state) {
           swipe_active(FALSE)
         }
         rp <- tryCatch(res$raster_paths[[layer]], error = function(e) NULL)
-        proxy <- .acc_paint_raster(proxy, rp, "nemetonAccRaster", "Accessibilite",
+        proxy <- .acc_paint_raster(proxy, rp, "nemetonAccRaster", ACC_ACCESSIBILITE_GROUP,
                                    op, i18n, legend_id = "acc_legend")
       }
       # Respecter la décoche du groupe « Accessibilite » après re-dessin proxy.
-      if (!is.null(shown) && !("Accessibilite" %in% shown)) {
-        leaflet::hideGroup(proxy, "Accessibilite")
+      if (!is.null(shown) && !(ACC_ACCESSIBILITE_GROUP %in% shown)) {
+        leaflet::hideGroup(proxy, ACC_ACCESSIBILITE_GROUP)
       }
     })
 
@@ -1208,6 +1250,15 @@ mod_accessibility_server <- function(id, app_state) {
       res <- rv$result
       shown <- shiny::isolate(input$map_groups)   # cf. observe raster : isolate
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Desserte")
+
+      # Pas de desserte du RUN tant que le comparateur est sélectionné : il
+      # montre les mêmes tronçons, en plus précis (classe BD TOPO + statut de
+      # correction), et avec une AUTRE palette — superposer les deux mettrait à
+      # l'écran des tronçons de même couleur qui ne veulent pas dire la même
+      # chose, sans qu'aucune légende ne le signale. La lecture réactive de
+      # `input$layer` est voulue : quitter le comparateur doit la faire revenir.
+      if (identical(input$layer, "desserte_comparee")) return()
+
       gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
       if (is.null(gp) || !file.exists(gp)) return()
       d <- tryCatch(sf::st_read(gp, layer = "desserte", quiet = TRUE),
@@ -1234,16 +1285,16 @@ mod_accessibility_server <- function(id, app_state) {
       res <- rv$result
       shown <- shiny::isolate(input$map_groups)   # cf. observe raster : isolate
       proxy <- leaflet::leafletProxy("map") |>
-        leaflet::clearGroup("Places de depot")
+        leaflet::clearGroup(PLACES_DEPOT_GROUP)
       gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
       pd <- .acc_read_places_depot(gp)
       if (is.null(pd)) return()
       proxy |>
-        leaflet::addCircleMarkers(data = pd, group = "Places de depot",
+        leaflet::addCircleMarkers(data = pd, group = PLACES_DEPOT_GROUP,
           radius = 5, color = "#B71C1C", weight = 1, fillColor = "#E53935",
           fillOpacity = 0.85, label = i18n$t("acc_places_depot"))
-      if (!is.null(shown) && !("Places de depot" %in% shown)) {
-        leaflet::hideGroup(proxy, "Places de depot")
+      if (!is.null(shown) && !(PLACES_DEPOT_GROUP %in% shown)) {
+        leaflet::hideGroup(proxy, PLACES_DEPOT_GROUP)
       }
     })
 
@@ -1333,8 +1384,8 @@ mod_accessibility_server <- function(id, app_state) {
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(ACC_RELIEF_GROUP) |>
-        leaflet::clearGroup("Desserte origine") |>
-        leaflet::clearGroup("Desserte corrigee") |>
+        leaflet::clearGroup(ACC_DESSERTE_ORIG_GROUP) |>
+        leaflet::clearGroup(ACC_DESSERTE_CORR_GROUP) |>
         leaflet::removeControl("cmp_legend_l") |>
         leaflet::removeControl("cmp_legend_r")
 
@@ -1406,14 +1457,14 @@ mod_accessibility_server <- function(id, app_state) {
           col_util <- unname(DESS_CLASSE_COLS[cl[!hors]])
           col_util[is.na(col_util)] <- "#9E9E9E"
           proxy <- leaflet::addPolylines(proxy, data = d_util,
-            group = "Desserte origine", weight = 2, opacity = 0.95,
+            group = ACC_DESSERTE_ORIG_GROUP, weight = 2, opacity = 0.95,
             color = col_util,
             options = leaflet::pathOptions(pane = "nemetonDessBase"),
             label = ~ as.character(classe))
         }
         if (any(hors)) {
           proxy <- leaflet::addPolylines(proxy, data = dorig[hors, , drop = FALSE],
-            group = "Desserte origine", color = unname(DESS_CLASSE_COLS[["hors_desserte"]]),
+            group = ACC_DESSERTE_ORIG_GROUP, color = unname(DESS_CLASSE_COLS[["hors_desserte"]]),
             weight = 1.5, opacity = 0.6, dashArray = "4,6",
             options = leaflet::pathOptions(pane = "nemetonDessBase"),
             label = i18n$t("acc_desserte_hors"))
@@ -1446,7 +1497,7 @@ mod_accessibility_server <- function(id, app_state) {
           is.na(etat), i18n$t("acc_compare_non_mesure"),
           ifelse(is.finite(larg), sprintf("%s \u2014 %.1f m", et, larg), et))
         proxy <- leaflet::addPolylines(proxy, data = dcorr,
-          group = "Desserte corrigee", weight = 4, opacity = 0.95,
+          group = ACC_DESSERTE_CORR_GROUP, weight = 4, opacity = 0.95,
           color = unname(DESS_SOURCE_COLS[src]),
           options = leaflet::pathOptions(pane = "nemetonDessCorr"),
           label = lbl)
@@ -1474,6 +1525,17 @@ mod_accessibility_server <- function(id, app_state) {
           labels = unname(lbl_source[sources_vues]),
           title = i18n$t("acc_compare_legend_source"), layerId = "cmp_legend_r",
           opacity = 0.9)
+      }
+
+      # Les cases du LayersControl doivent survivre au re-dessin : on vient de
+      # ré-ajouter les deux groupes, ce qui les ré-afficherait. `isolate()`
+      # obligatoire — cet observe AJOUTE des groupes, une lecture réactive le
+      # rendrait auto-déclenchant (cf. v0.122.3/0.122.4).
+      shown <- shiny::isolate(input$map_groups)
+      if (!is.null(shown)) {
+        for (g in c(ACC_DESSERTE_ORIG_GROUP, ACC_DESSERTE_CORR_GROUP)) {
+          if (!(g %in% shown)) proxy <- leaflet::hideGroup(proxy, g)
+        }
       }
 
       if (!isTRUE(compare_active())) compare_active(TRUE)
