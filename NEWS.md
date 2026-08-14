@@ -1,3 +1,63 @@
+# nemetonshiny 0.122.8 (2026-08-14)
+
+### Fixed — Le menu des couches pilote enfin tout ce que la carte affiche
+
+Les deux couches du comparateur de desserte étaient peintes sans être déclarées
+dans le contrôle de couches : aucune case ne pouvait les éteindre. C'est le même
+défaut que celui du relief corrigé en 0.122.6, et il se corrige de la même
+manière — noms portés par des constantes, groupes déclarés en toutes
+circonstances, état des cases respecté au re-dessin.
+
+Elles apparaissent désormais sous « Desserte origine » et « Desserte corrigée ».
+Décocher la seconde est précisément la façon de lire ce qu'elle change par
+rapport à la BD TOPO qu'elle recouvre.
+
+### Fixed — Plus de tronçons contradictoires sous le comparateur
+
+La couche « Desserte » du run (les routes qui ont servi au calcul) restait
+peinte par-dessus le comparateur, avec sa propre palette : deux jeux de tronçons
+de même couleur y disaient des choses différentes, sans légende pour le
+signaler. Elle n'est plus peinte tant que le comparateur est sélectionné — il
+montre les mêmes tronçons, en plus précis.
+
+### Changed — Infobulles de carte à 17px, partout
+
+15px ne suffisait pas. Surtout, quatre appels imposaient leur propre taille en
+inline (`mod_map` 12px, `mod_family` 12px, `mod_ug` 12 et 13px) : un style inline
+bat toujours une feuille de style, ces cartes échappaient donc à la règle. Ces
+tailles sont retirées ; `.leaflet-tooltip` est désormais le seul endroit qui fixe
+la taille d'une infobulle, et `test-static_assets.R` échoue si un `textsize=` ou
+un `font-size` inline réapparaît dans `R/`.
+
+### Changed — Libellés du menu des couches uniformisés
+
+« Accessibilité » et « Places de dépôt » prennent leurs accents, comme
+« Desserte corrigée ». Ces noms de groupe étaient écrits en littéral à 18
+endroits, dans deux modules : en accentuer un en oubliant les autres aurait rompu
+le lien entre la case et la couche. Ils passent par des constantes, dont une
+partagée entre les cartes Accessibilité et Desserte.
+
+### Changed — La légende « Source du tronçon » devient « Tronçon corrigé »
+
+Elle nommait la VARIABLE alors qu'elle n'a le plus souvent qu'une modalité,
+« BD TOPO » : tant qu'aucun ajout OSM ni détection LiDAR n'apporte de tronçon, la
+couche corrigée EST la BD TOPO, et le titre n'apprenait rien. Il nomme désormais
+la COUCHE.
+
+### Changed — La sidebar d'Accessibilité prend le bloc repliable des autres onglets
+
+Les commandes de la barre latérale gauche de l'onglet Accessibilité (correction
+LiDAR, moteurs d'exploitation, lancement de l'analyse) sont regroupées dans une
+carte repliable titrée « Accessibilité », de structure identique à celle de
+l'onglet Import terrain : en-tête vert cliquable, icône de l'onglet, chevron.
+
+Elle est dépliée par défaut — elle porte le bouton « Lancer l'analyse ». La
+barre latérale droite, qui porte l'affichage des résultats, ne change pas.
+
+Le test compare la structure des deux en-têtes plutôt que de la décrire : il
+échoue si l'un des deux blocs dérive de l'autre.
+
+
 # nemetonshiny 0.122.7 (2026-08-14)
 
 ### Fixed — Les trois smoke E2E testent enfin quelque chose
@@ -26,6 +86,8 @@ Résultat sur un poste avec base configurée : `rag_admin` passe de **échec** �
 `PASS`, et les deux autres de **saut silencieux** à `PASS 6` et `PASS 1`. Le
 smoke monitoring ne vérifiait donc plus rien depuis un moment.
 
+
+# nemetonshiny 0.122.6 (2026-08-14)
 
 ### Changed — Le menu des familles affiche le code de chaque famille
 

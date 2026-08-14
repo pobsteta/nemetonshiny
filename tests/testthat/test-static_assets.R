@@ -58,6 +58,30 @@ test_that("la regle de lisibilite des infobulles de carte est presente", {
   expect_gt(px, 12)
 })
 
+test_that("aucune taille d'infobulle n'est fixee en dur dans R/", {
+  # La taille des infobulles de carte est fixée UNE fois, dans `.leaflet-tooltip`
+  # (custom.css). Un `labelOptions(textsize=)` ou un `style = list("font-size")`
+  # inline la surpasserait — l'inline bat toujours la feuille — et ferait
+  # diverger une carte des autres, ce qui était le cas de mod_map (12px),
+  # mod_family (12px) et mod_ug (12px et 13px).
+  fichiers <- list.files(test_path("..", "..", "R"), pattern = "\\.R$",
+                         full.names = TRUE)
+  skip_if_not(length(fichiers) > 0)
+
+  coupables <- character(0)
+  for (f in fichiers) {
+    code <- readLines(f, warn = FALSE)
+    code <- code[!grepl("^\\s*#", code)]          # hors commentaires
+    if (any(grepl("textsize\\s*=", code)) ||
+        any(grepl("\"font-size\"\\s*=", code))) {
+      coupables <- c(coupables, basename(f))
+    }
+  }
+  expect_identical(coupables, character(0),
+                   info = paste("taille d'infobulle en dur dans :",
+                                paste(coupables, collapse = ", ")))
+})
+
 test_that("les regles perdues par la copie stale sont bien servies", {
   # Régression directe : ces deux règles existaient dans la source et manquaient
   # dans le fichier servi. Elles doivent être dans le fichier qu'`app_ui` cible.

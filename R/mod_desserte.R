@@ -567,7 +567,7 @@ mod_desserte_server <- function(id, app_state) {
       overlays <- c(if (!is.null(geo)) "Parcelles" else NULL,
                     if (!is.null(cvat_bg)) "Relief CVAT" else NULL,
                     "Desserte existante", "Reseau cree", "Reseau type",
-                    "Places de depot")
+                    PLACES_DEPOT_GROUP)
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
@@ -650,16 +650,16 @@ mod_desserte_server <- function(id, app_state) {
       app_state$active_terrain_tab  # dépendance : relire en arrivant sur l'onglet
       shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |>
-        leaflet::clearGroup("Places de depot")
+        leaflet::clearGroup(PLACES_DEPOT_GROUP)
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       pd <- .acc_read_places_depot(.accessibility_gpkg_path(project_path))
       if (is.null(pd)) return()
       proxy |>
-        leaflet::addCircleMarkers(data = pd, group = "Places de depot",
+        leaflet::addCircleMarkers(data = pd, group = PLACES_DEPOT_GROUP,
           radius = 5, color = "#B71C1C", weight = 1, fillColor = "#E53935",
           fillOpacity = 0.85, label = i18n$t("acc_places_depot"))
-      if (!is.null(shown) && !("Places de depot" %in% shown)) {
-        leaflet::hideGroup(proxy, "Places de depot")
+      if (!is.null(shown) && !(PLACES_DEPOT_GROUP %in% shown)) {
+        leaflet::hideGroup(proxy, PLACES_DEPOT_GROUP)
       }
     })
 
