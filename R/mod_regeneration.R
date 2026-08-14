@@ -323,23 +323,18 @@ mod_regeneration_ui <- function(id) {
   # Variante pour les entrées du radio « Couche affichée » : le contenu décrit la
   # variable puis rappelle la lecture de l'échelle de couleurs, commune aux 4
   # couches (dégradé continu borné aux min/max des UG affichées).
+  # `info_popover_in_label()` et non `info_popover()` : le « i » vit DANS le
+  # <label> d'un radio, où un clic sélectionnerait aussi la couche (cf. son
+  # roxygen). Ici la conséquence est chère : la vue « précipitations »
+  # déclenche un téléchargement E-OBS de ~800 Mo.
   layer_tt <- function(label, tooltip) {
     htmltools::tagList(label, " ",
-      # Le « i » vit DANS le <label> d'un radio : un clic y sélectionnerait aussi
-      # la couche. Or s'informer n'est pas choisir — et sur la vue « contexte »,
-      # sélectionner `rr` déclenche un téléchargement E-OBS de ~800 Mo. Le
-      # popover s'ouvre (son propre handler passe en phase cible), puis on annule
-      # l'activation du label, qui est le DEFAULT ACTION du clic (vérifié headless).
-      # Pas de `stopPropagation()` : le document doit continuer de voir le clic,
-      # sinon les popovers déjà ouverts ne se fermeraient plus.
-      htmltools::tags$span(
-        onclick = "event.preventDefault();",
-        info_popover(
-          htmltools::tagList(
-            htmltools::tags$div(tooltip),
-            htmltools::tags$div(class = "mt-1 fst-italic",
-                                i18n$t("regen_map_legend_scale"))),
-          placement = "left")))
+      info_popover_in_label(
+        htmltools::tagList(
+          htmltools::tags$div(tooltip),
+          htmltools::tags$div(class = "mt-1 fst-italic",
+                              i18n$t("regen_map_legend_scale"))),
+        placement = "left"))
   }
 
   bslib::layout_sidebar(

@@ -18,6 +18,35 @@ test_that("info_popover rend l'icone bleue circle-info du pattern Synthese", {
   expect_false(grepl("<bslib-tooltip", h, fixed = TRUE))
 })
 
+test_that("info_popover_in_label neutralise l'activation du label", {
+  skip_if_not_installed("bslib")
+  h <- as.character(nemetonshiny:::info_popover_in_label("Explication"))
+  # Même icône que le pattern de base...
+  expect_match(h, "fa-circle-info", fixed = TRUE)
+  expect_match(h, "<bslib-popover", fixed = TRUE)
+  # ...plus l'annulation de l'action par défaut du <label> : un clic sur le « i »
+  # d'un choix de radio le sélectionnerait, et chaque sélection de couche coûte
+  # une lecture de raster (jusqu'à ~800 Mo de E-OBS en contexte reGénération).
+  expect_match(h, "event.preventDefault()", fixed = TRUE)
+  # Mais PAS de stopPropagation : le document doit continuer de voir le clic,
+  # sinon les popovers déjà ouverts ne se refermeraient plus.
+  expect_false(grepl("stopPropagation", h, fixed = TRUE))
+})
+
+test_that("les « i » de couche du suivi sanitaire passent par le helper", {
+  skip_if_not_installed("bslib")
+  # FORDEAD et RECONFORT construisaient chacun leur icône ad hoc (tooltip
+  # bsicons gris) dans le <label> de leurs radios de couche.
+  for (f in list(nemetonshiny:::.fordead_layer_choice,
+                 nemetonshiny:::.reconfort_layer_choice)) {
+    h <- as.character(f("Sévérité", "Ce que la couche affiche"))
+    expect_match(h, "fa-circle-info", fixed = TRUE)
+    expect_match(h, "event.preventDefault()", fixed = TRUE)
+    expect_false(grepl("bi-info-circle", h, fixed = TRUE))
+    expect_false(grepl("<bslib-tooltip", h, fixed = TRUE))
+  }
+})
+
 test_that("reGeneration n'utilise plus l'ancien « i » bsicons", {
   skip_if_not_installed("bslib")
   ui <- with_mocked_bindings(

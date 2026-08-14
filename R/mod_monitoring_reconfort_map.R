@@ -48,20 +48,13 @@
   "3" = "#D62728"   # rouge   (très dépérissant)
 )
 
-#' Libellé d'une couche (case à cocher) avec une icône « i » (tooltip bslib)
-#' qui explique ce que la couche affiche. Parité avec
+#' Libellé d'une couche (radio) avec le « i » d'information de l'app —
+#' `info_popover_in_label()`, variant sûr dans un <label> de radio : s'informer
+#' sur une couche ne doit pas la sélectionner. Parité avec
 #' `.fordead_layer_choice()` de la Carte FORDEAD.
 #' @noRd
 .reconfort_layer_choice <- function(label, info) {
-  htmltools::tagList(
-    label,
-    bslib::tooltip(
-      bsicons::bs_icon("info-circle",
-                       class = "ms-1 text-primary",
-                       style = "cursor: help;"),
-      info
-    )
-  )
+  htmltools::tagList(label, " ", info_popover_in_label(info))
 }
 
 #' Carte RECONFORT sub-tab UI
