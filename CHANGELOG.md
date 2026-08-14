@@ -10,6 +10,16 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.122.10] - 2026-08-14
+
+### Fixed
+
+- `NEWS.md` : restauration du titre `0.122.8`, supprimé en rédigeant l'entrée
+  suivante — la release v0.122.9 avait de ce fait publié les notes de deux
+  versions. `test-news_headers.R` échoue désormais si une version listée dans ce
+  CHANGELOG n'a pas son titre dans `NEWS.md`, et vérifie l'unicité et l'ordre
+  décroissant des titres.
+
 ## [0.122.9] - 2026-08-14
 
 ### Changed
