@@ -1,5 +1,27 @@
 # Changelog
 
+## nemetonshiny 0.122.10 (2026-08-14)
+
+#### Fixed — Un titre de version manquant dans NEWS.md fait echouer les tests
+
+Trois fois de suite (0.122.6, 0.122.7, puis 0.122.8), la rédaction d’une
+entrée a REMPLACÉ le titre de la version précédente au lieu de s’insérer
+au-dessus. Les sections de l’ancienne se lisaient alors sous le titre de
+la nouvelle — y compris dans des tags publiés. Le contrôle CI
+`version-consistency` ne pouvait rien y voir : il ne compare que la tête
+du fichier à `DESCRIPTION`.
+
+Depuis que `release.yml` extrait le corps de la release de `NEWS.md`, la
+conséquence est devenue visible : la release v0.122.9 a d’abord publié
+les notes de DEUX versions, faute du titre `0.122.8`. Le titre est
+restauré et le corps de cette release corrigé.
+
+`test-news_headers.R` échoue désormais si une version listée dans
+`CHANGELOG.md` n’a pas son titre dans `NEWS.md`, et vérifie au passage
+que les titres sont uniques et ordonnés du plus récent au plus ancien.
+Contrôlé par mutation : le test échoue bien en nommant la version
+absente.
+
 ## nemetonshiny 0.122.9 (2026-08-14)
 
 #### Changed — Les notes de release viennent de NEWS.md
@@ -20,6 +42,8 @@ release sans corps.
 
 Testé hors CI sur les vraies sections du fichier, y compris la plus
 ancienne (pas de titre suivant) et un numéro absent (repli).
+
+## nemetonshiny 0.122.8 (2026-08-14)
 
 #### Fixed — Le menu des couches pilote enfin tout ce que la carte affiche
 
