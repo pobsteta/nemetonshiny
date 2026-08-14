@@ -1,4 +1,23 @@
-# nemetonshiny 0.122.8 (2026-08-14)
+# nemetonshiny 0.122.9 (2026-08-14)
+
+### Changed — Les notes de release viennent de NEWS.md
+
+`release.yml` créait la release avec `--generate-notes`, qui ne produit qu'un
+lien « Full Changelog » : les notes devaient être recopiées à la main après coup,
+et ne l'étaient pas. Le workflow extrait désormais de `NEWS.md` la section de la
+version publiée et la passe en corps de release, avec le lien de comparaison en
+pied.
+
+L'extraction compare le titre par préfixe exact plutôt que par expression
+régulière — les points d'un numéro de version y seraient des jokers — et exige un
+séparateur après le numéro, faute de quoi extraire `0.122.1` attraperait le titre
+`0.122.10` le jour où il existera. Si la section est introuvable ou vide, le
+workflow retombe sur `--generate-notes` et émet un avertissement plutôt que de
+publier une release sans corps.
+
+Testé hors CI sur les vraies sections du fichier, y compris la plus ancienne (pas
+de titre suivant) et un numéro absent (repli).
+
 
 ### Fixed — Le menu des couches pilote enfin tout ce que la carte affiche
 
