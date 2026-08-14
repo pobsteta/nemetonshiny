@@ -91,6 +91,38 @@ test_that("mod_home_ui returns valid Shiny UI with correct structure", {
   )
 })
 
+test_that("mod_home_ui scopes the UGF sidebar blocks to their own sub-tab", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+
+  with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    {
+      ui_html <- as.character(nemetonshiny:::mod_home_ui("test"))
+      # htmltools échappe les quotes simples de la condition JS.
+      conds <- gsub(
+        "&#39;", "'",
+        regmatches(ui_html,
+                   gregexpr("data-display-if=\"[^\"]*\"", ui_html))[[1]],
+        fixed = TRUE
+      )
+
+      # Le bloc « Carte UGF » ne s'affiche que dans le sous-onglet Carte UGF,
+      # le bloc « Tableau UGF » que dans le sous-onglet Tableau UGF.
+      expect_true(any(grepl(
+        "input['test-main_tabs'] == 'tenements'", conds, fixed = TRUE)))
+      expect_true(any(grepl(
+        "input['test-main_tabs'] == 'table_ug'", conds, fixed = TRUE)))
+
+      # Les valeurs citées dans les conditions doivent exister comme valeurs de
+      # nav_panel dans la MÊME UI : renommer un onglet sans toucher la condition
+      # masquerait le bloc pour toujours, sans erreur.
+      expect_true(grepl("data-value=\"tenements\"", ui_html, fixed = TRUE))
+      expect_true(grepl("data-value=\"table_ug\"", ui_html, fixed = TRUE))
+    }
+  )
+})
+
 test_that("mod_home_ui works with English language", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
