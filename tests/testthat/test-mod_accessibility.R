@@ -282,37 +282,18 @@ test_that("ACCESSFOR systématique : libellé combiné + tableau d'accord auto",
       flat <- function(x) paste(unlist(x), collapse = " ")
       # Le sélecteur nomme la couche « …/ACCESSFOR (IGN) » (raster ACCESSFOR présent).
       expect_true(grepl("ACCESSFOR", flat(output$layer_ui)))
-      # Le tableau d'accord s'affiche automatiquement (pas de bouton « Comparer »).
-      expect_true(grepl("19", flat(output$accessfor_result)))
+      # v0.122.11 — le tableau d'accord chiffré a été retiré avec son panneau
+      # « Validation ACCESSFOR (IGN) ». Ce qui reste vérifiable ici est que le
+      # raster ACCESSFOR continue d'exister et de nommer la couche : la
+      # comparaison en volet swipe, elle, n'a pas été supprimée.
     })
 })
 
-test_that("accessfor_result : pas d'erreur '$ atomic' sur un résultat rechargé du cache", {
-  # Régression : `$accessfor` fait du partial matching et attrapait
-  # `accessfor_raster_path` (character) quand la clé `accessfor` est absente
-  # (résultat du cache) -> « $ operator is invalid for atomic vectors ». Le fix
-  # utilise `[["accessfor"]]` (match exact).
-  skip_if_not_installed("sf")
-  proj <- list(id = "p1", path = withr::local_tempdir(),
-               indicators_sf = .acc_units(1))
-  as <- shiny::reactiveValues(current_project = proj)
-  testthat::local_mocked_bindings(
-    get_app_options = function() list(language = "fr"), .package = "nemetonshiny")
-  shiny::testServer(
-    nemetonshiny:::mod_accessibility_server,
-    args = list(app_state = as),
-    {
-      session$flushReact()
-      # Résultat façon CACHE : accessfor_raster_path présent, PAS de clé `accessfor`.
-      rv$result <- list(
-        status = "success", engines = "skidder",
-        raster_paths = list(classes_debardage = "/x/acc_classes_debardage.tif"),
-        accessfor_raster_path = "/x/accessfor_skidder.tif")
-      session$flushReact()
-      # Ne doit PAS lever d'erreur (rendait « $ operator invalid » avant le fix).
-      expect_error(output$accessfor_result, NA)
-    })
-})
+# v0.122.11 — le test « accessfor_result : pas d'erreur '$ atomic' » a été
+# supprimé avec le rendu qu'il couvrait (panneau « Validation ACCESSFOR (IGN) »,
+# retiré parce qu'inutilisé). La régression qu'il gardait — `$accessfor` faisant
+# du partial matching sur `accessfor_raster_path` — n'a plus de code où se
+# produire : plus aucune lecture de la clé `accessfor` ne subsiste.
 
 test_that(".acc_buffer_m rend des metres finis, defaut 250", {
   # Le champ est en METRES (plus de conversion km -> m en aval).
@@ -414,4 +395,62 @@ test_that("la sidebar Accessibilite porte le meme bloc que Import terrain", {
 
   # La sidebar DROITE (affichage des résultats) reste non repliable.
   expect_match(ui_acc, "data-open-desktop=\"always\"", fixed = TRUE)
+})
+
+# ==============================================================================
+# Sélecteur « Couche affichée » — un « i » par raster
+# ==============================================================================
+
+test_that(".acc_layer_info injecte les seuils du moteur, pas des valeurs en dur", {
+  i18n <- nemetonshiny:::get_i18n("fr")
+  for (l in c("skidder", "porteur", "camion_dfci", "cable",
+              "classes_debardage", "desserte_comparee")) {
+    txt <- nemetonshiny:::.acc_layer_info(l, i18n)
+    expect_true(is.character(txt) && nzchar(txt), info = l)
+    # Un `%d` survivant = un paramètre non fourni au sprintf.
+    expect_false(grepl("%d", txt, fixed = TRUE), info = l)
+  }
+  # Une couche inconnue ne doit pas fabriquer de texte : le libellé reste nu.
+  expect_null(nemetonshiny:::.acc_layer_info("inconnue", i18n))
+})
+
+test_that("chaque entree du selecteur de couche porte un « i »", {
+  skip_if_not_installed("sf")
+  proj <- list(id = "p1", path = withr::local_tempdir(),
+               indicators_sf = .acc_units(1))
+  fake <- list(status = "success", engines = c("skidder", "camion_dfci"),
+               raster_paths = list(skidder = "/x/s.tif",
+                                   camion_dfci = "/x/d.tif",
+                                   classes_debardage = "/x/c.tif"))
+  # `rv$result` est alimenté par le chargeur de cache PARESSEUX, déclenché par
+  # l'ouverture de l'onglet : on le mocke plutôt que de poser `rv$result` à la
+  # main, qu'un flush écraserait aussitôt.
+  testthat::local_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    .load_cached_accessibility = function(path) fake,
+    .package = "nemetonshiny")
+  as <- shiny::reactiveValues(current_project = proj,
+                              active_main_tab = "terrain",
+                              active_terrain_tab = "accessibility")
+
+  shiny::testServer(
+    nemetonshiny:::mod_accessibility_server,
+    args = list(app_state = as),
+    {
+      session$flushReact()
+      expect_equal(rv$result$status, "success")
+      html <- as.character(output$layer_ui$html %||% output$layer_ui)
+
+      # Un « i » par entrée, au pattern de l'app (icône bleue + popover).
+      expect_equal(lengths(regmatches(html, gregexpr("fa-circle-info", html))), 3L)
+      # S'informer ne doit pas sélectionner la couche : chaque « i » vit dans le
+      # <label> du radio, dont l'activation par défaut est annulée.
+      expect_match(html, "event.preventDefault()", fixed = TRUE)
+
+      # Les VALEURS du radio ne changent pas — tout le module en dépend
+      # (`input$layer` pilote la peinture, le comparateur, les badges).
+      for (v in c("skidder", "camion_dfci", "classes_debardage")) {
+        expect_match(html, sprintf('value="%s"', v), fixed = TRUE)
+      }
+    })
 })
