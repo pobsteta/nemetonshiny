@@ -1,5 +1,25 @@
 # nemetonshiny 0.122.6 (2026-08-14)
 
+### Fixed — Infobulles de carte lisibles, et CSS servi à jour
+
+Les infobulles des cartes (`label=` leaflet) ne fixaient aucune taille de
+police : elles héritaient du `font: 12px/1.5` de `.leaflet-container`, trop petit
+pour les étiquettes qui portent une information de terrain — état et largeur
+carrossable d'un tronçon (« En service — 2.1 m »), classe BD TOPO, diagnostic
+d'un pixel. Elles passent à 15px avec un interligne de 1.35, en restant
+compactes : une infobulle suit le pointeur, elle ne doit pas devenir un panneau.
+
+En touchant à cette feuille de style, on a découvert que `app_ui.R` sert
+`custom.min.css` alors que les règles s'écrivent dans `custom.css`, sans aucun
+lien entre les deux — ni build, ni script, ni CI. Le fichier servi était en
+retard de deux commits, et **deux règles n'étaient jamais arrivées au
+navigateur** : les ascenseurs de la légende bivariée du contexte E-OBS et
+l'affordance de la cellule commentaire du plan d'action. Les deux features
+avaient été livrées, testées côté R, et leur CSS dormait dans le fichier source.
+
+Le fichier servi est resynchronisé (les deux règles perdues arrivent avec), et
+`test-css_assets_sync.R` échoue désormais dès que les deux divergent.
+
 ### Fixed — Décocher « Relief CVAT » éteint bien le relief
 
 Dans la carte d'accessibilité, avec la couche « Desserte BD TOPO / corrigée »

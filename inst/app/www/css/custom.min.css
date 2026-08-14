@@ -17,7 +17,7 @@ html, body {
   --nemeton-primary-dark: #145214;
   --nemeton-primary-light: #2E8B2E;
   --nemeton-secondary: #6B3710;
-  --nemeton-success:#1B6B1B;
+  --nemeton-success: #1B6B1B; /* fusionné avec primary : un seul vert */
   --nemeton-info: #2B5B8B;
   --nemeton-warning: #9B7510;
   --nemeton-danger: #B01030;
@@ -295,11 +295,37 @@ html, body {
   min-height: 500px;
 }
 
-/* Ensure the leaflet legend has enough space and isn't clipped */
+/* Ensure the leaflet legend has enough space and isn't clipped. 150px était trop
+   court pour les légendes à nombreuses classes (DFCI = 6, classes de débardage
+   davantage) -> ascenseur permanent. 70vh laisse la légende s'étendre ; on garde
+   overflow-y: auto en garde-fou. */
 .leaflet-control.info.legend {
   max-height: 70vh;
   overflow-y: auto;
   font-size: 0.8em;
+}
+
+/* Légende bivariée (contexte E-OBS) : grille 5×5 + axes trop haute pour le
+   plafond de 150px de `.info.legend` -> deux ascenseurs. Cette légende n'utilise
+   PAS la classe `info legend` (pour ne pas hériter du plafond) ; on garde ici un
+   garde-fou explicite : aucun plafond, aucun overflow, taille = contenu. */
+.leaflet-control.nmt-bivariate-control {
+  max-height: none !important;
+  overflow: visible !important;
+  width: auto;
+}
+
+/* Infobulles de carte (leaflet `label=`). `.leaflet-tooltip` ne fixe aucune
+   taille : elle hérite du `font: 12px/1.5` de `.leaflet-container`, trop petit
+   pour les étiquettes utiles au terrain — état et largeur carrossable d'un
+   tronçon (« En service — 2.1 m »), classe d'un tronçon BD TOPO, diagnostic
+   d'un pixel. 15px reste compact : l'infobulle suit le pointeur, elle ne doit
+   pas devenir un panneau. `font-weight` laissé à sa valeur — c'est la TAILLE
+   qui manquait, pas le gras, qui épaissit le texte sans gagner en lisibilité. */
+.leaflet-tooltip {
+  font-size: 15px;
+  line-height: 1.35;
+  padding: 5px 8px;
 }
 
 .leaflet-control-zoom a {
@@ -744,4 +770,25 @@ html[data-shiny-busy] .bslib-card::after {
   bottom: 20px !important;
   right: 20px !important;
   left: auto !important;
+}
+
+/* ============================================================
+   Action plan — clickable commentaire cells (v0.52.10)
+   ============================================================
+   Le commentaire est trop long pour la cellule étroite : on l'a
+   retiré de l'édition inline DT (cf. EDITABLE_COLS) et un dblclick
+   sur la cellule ouvre désormais le modal d'édition multi-ligne.
+   Curseur pointer + soulignement pointillé → affordance visuel sans
+   surcharger l'UI. La règle ciblé `td.action-comment-trigger`
+   (className passé via DT columnDefs) pour ne pas toucher les
+   autres colonnes.
+*/
+table.dataTable td.action-comment-trigger {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-color: rgba(0, 0, 0, 0.3);
+  text-underline-offset: 2px;
+}
+table.dataTable td.action-comment-trigger:hover {
+  background-color: rgba(13, 110, 253, 0.08);
 }
