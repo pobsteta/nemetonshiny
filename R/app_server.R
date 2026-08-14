@@ -27,8 +27,8 @@ app_server <- function(input, output, session) {
   # run_app() already sets this, but if the app is started via shiny::runApp()
   # or devtools::load_all(), the default plan is "sequential" which blocks the
   # Shiny main loop during computation (no UI updates, no progress polling).
-  # Le pool est BORNÉ (.resolve_parallel_workers) : les workers sont persistants
-  # et ne rendent pas leur mémoire, un plan non borné immobilise availableCores()
+  # Le pool est BORNE (.resolve_parallel_workers) : les workers sont persistants
+  # et ne rendent pas leur memoire, un plan non borne immobilise availableCores()
   # sessions R (spec 008).
   if (requireNamespace("future", quietly = TRUE)) {
     plan_classes <- class(future::plan())
@@ -40,19 +40,19 @@ app_server <- function(input, output, session) {
     }
   }
 
-  # PERF — pré-chauffe la pile géo (arrow/geoarrow/sf) ~1,5 s après le
-  # démarrage, sur le thread principal mais HORS du chemin critique : la
-  # page d'accueil est déjà rendue et l'utilisateur la parcourt. Quand il
-  # clique enfin un projet récent, arrow est déjà chaud, ce qui retire le
+  # PERF - pre-chauffe la pile geo (arrow/geoarrow/sf) ~1,5 s apres le
+  # demarrage, sur le thread principal mais HORS du chemin critique : la
+  # page d'accueil est deja rendue et l'utilisateur la parcourt. Quand il
+  # clique enfin un projet recent, arrow est deja chaud, ce qui retire le
   # ~1,6 s de chargement paresseux qui plombait le tout premier clic.
   # Idempotent (ne tourne qu'une fois par process R, cf. warmup_geo_stack).
   if (requireNamespace("later", quietly = TRUE)) {
     later::later(function() warmup_geo_stack(), delay = 1.5)
-    # Pré-chauffe aussi les WORKERS future (chargement du namespace nemetonshiny
-    # dans les process worker, ~5–6 s au tout 1er future) : sans ça, ce coût
-    # frappe la 1re tâche async — souvent le db_sync du 1er projet ouvert, ou le
-    # 1er calcul/moteur. Dans des process séparés → aucune compétition avec le
-    # rendu principal, donc déclenché tôt (0,3 s) pour être chaud avant le clic.
+    # Pre-chauffe aussi les WORKERS future (chargement du namespace nemetonshiny
+    # dans les process worker, ~5-6 s au tout 1er future) : sans ca, ce cout
+    # frappe la 1re tache async - souvent le db_sync du 1er projet ouvert, ou le
+    # 1er calcul/moteur. Dans des process separes -> aucune competition avec le
+    # rendu principal, donc declenche tot (0,3 s) pour etre chaud avant le clic.
     later::later(function() warmup_async_workers(), delay = 0.3)
   }
 
@@ -68,17 +68,17 @@ app_server <- function(input, output, session) {
     project_status = "none",  # none, draft, downloading, computing, completed
     samples_refresh = 0L,     # bumped by mod_sampling after save_samples()
                               # so mod_monitoring re-checks samples on disk
-    comments_refresh = 0L,    # v0.52.9 — bumped by mod_synthesis /
+    comments_refresh = 0L,    # v0.52.9 - bumped by mod_synthesis /
                               # mod_family after save_comments() so
                               # mod_action_plan's plan_llm_context()
                               # re-reads from disk (sinon le contexte
-                              # IA reste vide après un edit/AI dans
-                              # Synthèse jusqu'au reload projet).
+                              # IA reste vide apres un edit/AI dans
+                              # Synthese jusqu'au reload projet).
     # Auth carries `authenticated`, `user_name`, `user_email`,
     # `user_roles` (filled by mod_auth_server). Other modules use
     # `can_edit_action_plan(app_state$auth)` to decide permissions.
     auth = auth_state,
-    # Project edit lock (serveur multi-utilisateurs) — driven by the lifecycle
+    # Project edit lock (serveur multi-utilisateurs) - driven by the lifecycle
     # observers below. `readonly` is the single flag modules read via
     # `project_is_readonly(app_state)`; `lock_info` carries the current holder
     # (for the banner) when someone else holds it.
@@ -87,7 +87,7 @@ app_server <- function(input, output, session) {
     lock_holder_id = NULL,
     lock_info = NULL,
     # Motif de la lecture seule pour le bandeau : "anonymous" (serveur OAuth,
-    # pas encore loggué), "role" (rôle lecteur), "held" (verrou d'autrui).
+    # pas encore loggue), "role" (role lecteur), "held" (verrou d'autrui).
     lock_reason = NULL
   )
 
@@ -151,7 +151,7 @@ app_server <- function(input, output, session) {
   # sidebar headers) only update on a fresh UI build. We therefore:
   #   1. persist the new language inside `nemeton.app_options` so the
   #      rebuilt UI on reload picks it up (the previous code wrote to
-  #      `nemeton.app_language` — a different key — which left the
+  #      `nemeton.app_language` - a different key - which left the
   #      reload reverting to the startup language);
   #   2. trigger an automatic page reload via `session$reload()` so
   #      the user does not have to refresh the browser manually.
@@ -236,18 +236,18 @@ app_server <- function(input, output, session) {
 
   # Expose the active top-level tab so modules can gate heavy reactives on
   # their tab being visible. Notamment, mod_monitoring_pixel_map ne doit
-  # PAS lancer `nemeton::build_index_stack` (scan de centaines de scènes
-  # S2, plusieurs secondes à froid) tant que l'utilisateur n'est pas sur
-  # l'onglet Suivi — sinon ce calcul bloque chaque chargement de projet
+  # PAS lancer `nemeton::build_index_stack` (scan de centaines de scenes
+  # S2, plusieurs secondes a froid) tant que l'utilisateur n'est pas sur
+  # l'onglet Suivi - sinon ce calcul bloque chaque chargement de projet
   # depuis l'Accueil.
   shiny::observeEvent(input$main_nav, {
     app_state$active_main_tab <- input$main_nav
   }, ignoreNULL = FALSE)
 
-  # Sous-onglet actif du navset « Terrain » (Prélèvement / Import / Accessibilité /
-  # Desserte). Permet aux modules lourds (accessibilité, desserte) de charger leur
-  # cache disque PARESSEUSEMENT, au premier affichage de leur sous-onglet, plutôt
-  # qu'à l'ouverture du projet — le clic sur un projet récent reste ainsi rapide.
+  # Sous-onglet actif du navset " Terrain " (Prelevement / Import / Accessibilite /
+  # Desserte). Permet aux modules lourds (accessibilite, desserte) de charger leur
+  # cache disque PARESSEUSEMENT, au premier affichage de leur sous-onglet, plutot
+  # qu'a l'ouverture du projet - le clic sur un projet recent reste ainsi rapide.
   shiny::observeEvent(input$terrain_nav, {
     app_state$active_terrain_tab <- input$terrain_nav
   }, ignoreNULL = FALSE)
@@ -302,22 +302,22 @@ app_server <- function(input, output, session) {
   # Sampling / QField module (E5.a)
   mod_sampling_server("sampling", app_state)
 
-  # Field ingest module (E5.b — QField return path)
+  # Field ingest module (E5.b - QField return path)
   mod_field_ingest_server("field_ingest", app_state)
 
-  # Accessibility module (ForêtAccess — terrestrial engines)
+  # Accessibility module (ForetAccess - terrestrial engines)
   mod_accessibility_server("accessibility", app_state)
 
-  # Desserte module (ForêtAccess — road-network creation, greedy engine)
+  # Desserte module (ForetAccess - road-network creation, greedy engine)
   mod_desserte_server("desserte", app_state)
 
-  # Monitoring module (E6.b phase 1 — Sentinel-2 continuous monitoring)
+  # Monitoring module (E6.b phase 1 - Sentinel-2 continuous monitoring)
   mod_monitoring_server("monitoring", app_state)
 
   mod_regeneration_server("regeneration", app_state)
 
-  # Note: the RAG / knowledge corpus admin (spec 009.2 — E7) now lives
-  # INSIDE the settings (gear) modal, wired by mod_theia_config_server —
+  # Note: the RAG / knowledge corpus admin (spec 009.2 - E7) now lives
+  # INSIDE the settings (gear) modal, wired by mod_theia_config_server -
   # it is no longer a top-level navbar tab.
 
   # ============================================================
@@ -332,7 +332,7 @@ app_server <- function(input, output, session) {
     tab <- input$main_nav
     if (is.null(tab)) return()
 
-    # Vérifier si c'est un onglet famille (format NMT : "famille_*")
+    # Verifier si c'est un onglet famille (format NMT : "famille_*")
     if (grepl("^famille_", tab)) {
       # Reverse lookup : famille_carbone -> "C"
       famille_rev <- stats::setNames(names(FAMILLE_NMT_MAP), unname(FAMILLE_NMT_MAP))
@@ -355,16 +355,16 @@ app_server <- function(input, output, session) {
   # ============================================================
   # VERROU DE PROJET (serveur multi-utilisateurs)
   # ============================================================
-  # Un projet ouvert est verrouillé en édition sur un seul utilisateur ; les
-  # autres l'ouvrent en lecture seule. Cycle de vie centralisé ici : c'est le seul
-  # endroit qui voit à la fois `app_state$project_id` (posé à toutes les entrées
+  # Un projet ouvert est verrouille en edition sur un seul utilisateur ; les
+  # autres l'ouvrent en lecture seule. Cycle de vie centralise ici : c'est le seul
+  # endroit qui voit a la fois `app_state$project_id` (pose a toutes les entrees
   # d'ouverture, mod_home.R:443) et `app_state$auth`.
 
-  # 1. Acquisition — un seul point de branchement couvre toutes les ouvertures.
+  # 1. Acquisition - un seul point de branchement couvre toutes les ouvertures.
   shiny::observeEvent(app_state$project_id, {
     pid <- app_state$project_id
 
-    # Relâcher le verrou du projet PRÉCÉDENT (changement / fermeture de projet).
+    # Relacher le verrou du projet PRECEDENT (changement / fermeture de projet).
     prev <- shiny::isolate(app_state$lock_held_pid)
     if (!is.null(prev) && !identical(prev, pid)) {
       hid <- shiny::isolate(app_state$lock_holder_id)
@@ -374,12 +374,12 @@ app_server <- function(input, output, session) {
     }
     if (is.null(pid)) { app_state$readonly <- FALSE; app_state$lock_info <- NULL; return() }
 
-    # La lecture seule dépend du RÔLE, jamais de la présence d'un email.
+    # La lecture seule depend du ROLE, jamais de la presence d'un email.
     # `can_edit_action_plan()` est la convention de permission de l'app :
-    #   - non authentifié (serveur OAuth, pas encore loggué) → lecture seule
-    #   - rôle `lecteur` seul → lecture seule
-    #   - anonyme sans rôle (mono-utilisateur / dev / admin local), `editeur`,
-    #     `admin`, `proprietaire`… → éditeur.
+    #   - non authentifie (serveur OAuth, pas encore loggue) -> lecture seule
+    #   - role `lecteur` seul -> lecture seule
+    #   - anonyme sans role (mono-utilisateur / dev / admin local), `editeur`,
+    #     `admin`, `proprietaire`... -> editeur.
     auth  <- shiny::isolate(app_state$auth)
     email <- tryCatch(auth[["user_email"]], error = function(e) NULL)
     name  <- tryCatch(auth[["user_name"]],  error = function(e) NULL)
@@ -392,9 +392,9 @@ app_server <- function(input, output, session) {
       return()
     }
 
-    # Le verrou multi-utilisateurs n'a de sens qu'avec une identité STABLE
-    # (email OAuth). Sans email — mono-utilisateur / dev / admin local / pas de
-    # fournisseur d'identité — l'app est éditable, aucun verrou n'est posé en base.
+    # Le verrou multi-utilisateurs n'a de sens qu'avec une identite STABLE
+    # (email OAuth). Sans email - mono-utilisateur / dev / admin local / pas de
+    # fournisseur d'identite - l'app est editable, aucun verrou n'est pose en base.
     if (is.null(email) || !nzchar(email)) {
       app_state$readonly <- FALSE
       app_state$lock_held_pid <- NULL
@@ -407,7 +407,7 @@ app_server <- function(input, output, session) {
     res <- tryCatch(lock_acquire(pid, email, name), error = function(e) NULL)
     i18n <- get_i18n(shiny::isolate(app_state$language))
     if (isTRUE(res$ok) || is.null(res)) {
-      # `is.null(res)` = pas de DB (dev local) → éditable, pas de verrou.
+      # `is.null(res)` = pas de DB (dev local) -> editable, pas de verrou.
       app_state$readonly <- FALSE
       app_state$lock_held_pid <- if (is.null(res)) NULL else pid
       app_state$lock_holder_id <- if (is.null(res)) NULL else email
@@ -417,7 +417,7 @@ app_server <- function(input, output, session) {
         shiny::showNotification(i18n$t("lock_stolen_notice"), type = "warning", duration = 8)
       }
     } else {
-      # Tenu, frais, par un autre → lecture seule + bandeau.
+      # Tenu, frais, par un autre -> lecture seule + bandeau.
       app_state$readonly <- TRUE
       app_state$lock_held_pid <- NULL
       app_state$lock_holder_id <- NULL
@@ -429,8 +429,8 @@ app_server <- function(input, output, session) {
     }
   }, ignoreNULL = FALSE)
 
-  # 2. Heartbeat — tant qu'on tient le verrou, rafraîchir toutes les 45 s
-  #    (TTL cœur 120 s → tolère 2 heartbeats manqués).
+  # 2. Heartbeat - tant qu'on tient le verrou, rafraichir toutes les 45 s
+  #    (TTL coeur 120 s -> tolere 2 heartbeats manques).
   shiny::observe({
     pid <- app_state$lock_held_pid
     if (is.null(pid)) return()
@@ -438,7 +438,7 @@ app_server <- function(input, output, session) {
     hid <- shiny::isolate(app_state$lock_holder_id)
     ok <- tryCatch(lock_heartbeat(pid, hid), error = function(e) FALSE)
     if (!isTRUE(ok)) {
-      # Verrou perdu (volé après péremption). Tenter de le reprendre, sinon
+      # Verrou perdu (vole apres peremption). Tenter de le reprendre, sinon
       # basculer en lecture seule.
       res <- tryCatch(lock_acquire(pid, hid, shiny::isolate(app_state$auth$user_name)),
                       error = function(e) list(ok = FALSE))
@@ -453,7 +453,7 @@ app_server <- function(input, output, session) {
     }
   })
 
-  # 3. Bandeau lecture seule — verrou d'autrui, rôle lecteur, ou non authentifié.
+  # 3. Bandeau lecture seule - verrou d'autrui, role lecteur, ou non authentifie.
   output$lock_banner <- shiny::renderUI({
     if (!isTRUE(app_state$readonly)) return(NULL)
     if (is.null(app_state$project_id)) return(NULL)   # pas de projet ouvert
@@ -464,10 +464,10 @@ app_server <- function(input, output, session) {
       # Tenu par un autre utilisateur.
       sprintf(i18n$t("lock_readonly_banner"), info$holder_label %||% info$holder_id)
     } else if (identical(reason, "role")) {
-      # Authentifié mais rôle lecteur.
+      # Authentifie mais role lecteur.
       i18n$t("lock_role_banner")
     } else {
-      # Non authentifié (serveur OAuth, pas encore loggué).
+      # Non authentifie (serveur OAuth, pas encore loggue).
       i18n$t("lock_anonymous_banner")
     }
     htmltools::div(
@@ -482,8 +482,8 @@ app_server <- function(input, output, session) {
   # ============================================================
 
   session$onSessionEnded(function() {
-    # `onSessionEnded` s'exécute HORS contexte réactif : capturer par isolate.
-    # Best-effort — si l'onglet est tué, le TTL de 120 s reprend la main.
+    # `onSessionEnded` s'execute HORS contexte reactif : capturer par isolate.
+    # Best-effort - si l'onglet est tue, le TTL de 120 s reprend la main.
     pid <- shiny::isolate(app_state$lock_held_pid)
     hid <- shiny::isolate(app_state$lock_holder_id)
     if (!is.null(pid) && !is.null(hid)) try(lock_release(pid, hid), silent = TRUE)

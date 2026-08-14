@@ -1,38 +1,38 @@
 # ===========================================================================
-# Service — Création de desserte forestière (ForêtAccess, onglet Terrain)
+# Service - Creation de desserte forestiere (ForetAccess, onglet Terrain)
 # ===========================================================================
 #
-# Adaptateur applicatif (non-Shiny) autour des moteurs de CRÉATION de réseau de
-# `foretaccess` (conception de desserte, réimplémentation de SylvaRoad — INRAE).
-# Règles 1/2 (aucune logique métier ici) : ce fichier ne fait qu'orchestrer —
-# résoudre parcelles + entrées terrain (MNT / desserte existante / forêt),
-# appeler `surface_cout_construction()` puis un moteur de création, et persister
-# le réseau (raster + GeoPackage vecteur exportable).
+# Adaptateur applicatif (non-Shiny) autour des moteurs de CREATION de reseau de
+# `foretaccess` (conception de desserte, reimplementation de SylvaRoad - INRAE).
+# Regles 1/2 (aucune logique metier ici) : ce fichier ne fait qu'orchestrer -
+# resoudre parcelles + entrees terrain (MNT / desserte existante / foret),
+# appeler `surface_cout_construction()` puis un moteur de creation, et persister
+# le reseau (raster + GeoPackage vecteur exportable).
 #
-# Deux moteurs de création exposés : GLOUTON et STEINER (cf. DESSERTE_ENGINES).
+# Deux moteurs de creation exposes : GLOUTON et STEINER (cf. DESSERTE_ENGINES).
 #
-# ATTENTION à la lecture des durées. Le glouton trace un A* par CELLULE de
-# parcelle non desservie — pas par parcelle. Le nombre de tracés est donc de
-# l'ordre de la surface / résolution² (309 726 cellules-source sur Dabo pour
-# 4 UGF), et il est piloté par `skidding_m` : une cellule à moins de
-# `skidding_m` d'une route est déjà desservie et n'engendre aucun tracé.
+# ATTENTION a la lecture des durees. Le glouton trace un A* par CELLULE de
+# parcelle non desservie - pas par parcelle. Le nombre de traces est donc de
+# l'ordre de la surface / resolution2 (309 726 cellules-source sur Dabo pour
+# 4 UGF), et il est pilote par `skidding_m` : une cellule a moins de
+# `skidding_m` d'une route est deja desservie et n'engendre aucun trace.
 #
-# Les ~11,5 min jadis mesurées sur Chastel-Nouvel (30 parcelles / 31 ha, ~302k
-# cellules) l'ont été à `skidding_m = 0`, le PIRE CAS documenté par le cœur
-# (« both slow and over-connected »). Avec une distance réaliste, mesuré sur
+# Les ~11,5 min jadis mesurees sur Chastel-Nouvel (30 parcelles / 31 ha, ~302k
+# cellules) l'ont ete a `skidding_m = 0`, le PIRE CAS documente par le coeur
+# (" both slow and over-connected "). Avec une distance realiste, mesure sur
 # Dabo (741 312 cellules) : 0 -> jamais fini en 22 min, 100 m -> 174 s,
 # 300 m -> 70 s, 500 m -> 115 s. Cf. `DESSERTE_SKIDDING_DEFAULT_M`.
 #
 # `preprocess`/`surface_cout_construction` < 4 s : le moteur porte tout le temps.
 # Le calcul tourne donc dans un worker `future` (cf. mod_desserte.R),
-# comme l'accessibilité, et le moteur est OPT-IN avec avertissement « calcul
-# long ». Le mode STEINER (N² tracés → estimé > 5 h à 30 parcelles) et les
-# optimiseurs (`optimiser_reseau`) sont volontairement NON exposés tant qu'un
-# travail perf n'a pas eu lieu côté `foretaccess` (brief cœur).
+# comme l'accessibilite, et le moteur est OPT-IN avec avertissement " calcul
+# long ". Le mode STEINER (N2 traces -> estime > 5 h a 30 parcelles) et les
+# optimiseurs (`optimiser_reseau`) sont volontairement NON exposes tant qu'un
+# travail perf n'a pas eu lieu cote `foretaccess` (brief coeur).
 #
-# Un `SpatRaster` terra n'est PAS sérialisable entre process : le worker ÉCRIT
-# le raster réseau + le GeoPackage sur disque et ne renvoie que des CHEMINS +
-# des scalaires (coût, connexité, parcelles desservies). Le process principal
+# Un `SpatRaster` terra n'est PAS serialisable entre process : le worker ECRIT
+# le raster reseau + le GeoPackage sur disque et ne renvoie que des CHEMINS +
+# des scalaires (cout, connexite, parcelles desservies). Le process principal
 # relit pour l'affichage.
 
 #' Road-network creation engines exposed by the app (v1)
@@ -48,12 +48,12 @@
 #'
 #' | AOI | greedy | Steiner |
 #' |---|---|---|
-#' | ForetAccess — 30 parcels, 31 ha, 303 k cells | 6,1 s / 4 roads / **cost 65 983** | 694,6 s / 5 roads / **cost 10 420** |
-#' | Dabo — 4 parcels, 774 ha, 1,35 M cells | 28,3 s / 36 roads | 78,4 s / 0 road |
+#' | ForetAccess - 30 parcels, 31 ha, 303 k cells | 6,1 s / 4 roads / **cost 65 983** | 694,6 s / 5 roads / **cost 10 420** |
+#' | Dabo - 4 parcels, 774 ha, 1,35 M cells | 28,3 s / 36 roads | 78,4 s / 0 road |
 #'
-#' On ForetAccess Steiner divides the cost by **6,3** — it shares common trunks
+#' On ForetAccess Steiner divides the cost by **6,3** - it shares common trunks
 #' between scattered parcels where greedy connects each to its nearest network
-#' point — for **114x** the wall clock. On Dabo it returns nothing, which is
+#' point - for **114x** the wall clock. On Dabo it returns nothing, which is
 #' correct rather than broken: its spanning tree is built over *terminals*, a
 #' coarser notion of "served" than greedy's per-cell one, and Dabo's four large
 #' parcels already touch the network.
@@ -74,15 +74,15 @@ DESSERTE_ENGINES <- c("glouton", "steiner")
 #'
 #' | `skidding_m` | duration | roads |
 #' |---:|---:|---:|
-#' | 0 | never finished in 22 min | — |
+#' | 0 | never finished in 22 min | - |
 #' | 100 m | 174 s | 39 |
 #' | **300 m** | **70 s** | **0** |
 #' | 500 m | 115 s | 0 |
 #'
 #' 300 m is the app default: a realistic ground-skidding distance, and the
-#' fastest of the measured values. Non-monotonicity above it is expected — the
+#' fastest of the measured values. Non-monotonicity above it is expected - the
 #' "is a road within reach?" test sweeps a disc of radius `skidding_m`, so its
-#' cost grows as r² while the number of traces falls.
+#' cost grows as r2 while the number of traces falls.
 #' @noRd
 DESSERTE_SKIDDING_DEFAULT_M <- 300
 
@@ -96,11 +96,11 @@ DESSERTE_LARGEUR_DEFAULT_M <- 4
 #' Default constructibility ceiling (% of terrain slope)
 #'
 #' Above this slope no road is traced, whichever pricing method is used. 60 % is
-#' the ceiling the core's step function already implies — its first class priced
+#' the ceiling the core's step function already implies - its first class priced
 #' `Inf`. The core accepts `NULL` and derives it, but a `NULL` in the persisted
 #' `meta` would make the cache comparison ambiguous, so the app writes the value.
 #'
-#' **Couplage assumé** : si le barème du cœur change sa dernière classe, cette
+#' **Couplage assume** : si le bareme du coeur change sa derniere classe, cette
 #' constante ne suivra pas. Elle est ici pour que le cache reste comparable.
 #' @noRd
 DESSERTE_PENTE_MAX_DEFAULT_PCT <- 60
@@ -111,20 +111,20 @@ DESSERTE_PENTE_MAX_DEFAULT_PCT <- 60
   file.path(project_path, "cache", "desserte")
 }
 
-# Phases publiées par `run_desserte()` sur le canal disque, dans l'ordre. Le
+# Phases publiees par `run_desserte()` sur le canal disque, dans l'ordre. Le
 # moteur porte l'essentiel du temps : sans ce canal, l'utilisateur n'a qu'un
-# chrono qui tourne pendant des dizaines de minutes sans savoir où en est le
-# calcul — d'où l'impression que « ça n'affiche rien ».
+# chrono qui tourne pendant des dizaines de minutes sans savoir ou en est le
+# calcul - d'ou l'impression que " ca n'affiche rien ".
 #
 # `foretaccess::reseau_desserte()` n'expose AUCUN rappel de progression
-# (vérifié : pas de `progress`/`callback` dans ses arguments), donc on ne peut
-# pas descendre sous la granularité de l'étape. La phase `moteur` reste longue.
+# (verifie : pas de `progress`/`callback` dans ses arguments), donc on ne peut
+# pas descendre sous la granularite de l'etape. La phase `moteur` reste longue.
 DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
 
-# Écrit la phase courante dans `engine_status.json` du cache desserte. Même
-# canal et même contrat que `.regen_write_phase()` : tmp + rename atomique pour
-# qu'un poll ne lise jamais un JSON tronqué, et jamais fatal — un échec
-# d'écriture de statut ne doit pas interrompre le calcul.
+# Ecrit la phase courante dans `engine_status.json` du cache desserte. Meme
+# canal et meme contrat que `.regen_write_phase()` : tmp + rename atomique pour
+# qu'un poll ne lise jamais un JSON tronque, et jamais fatal - un echec
+# d'ecriture de statut ne doit pas interrompre le calcul.
 .dess_write_phase <- function(cache_dir, phase) {
   tryCatch({
     payload <- list(phase = phase, ts = as.integer(Sys.time()))
@@ -138,14 +138,14 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
 #' Network-integrity summary of the designed road network (spec 025)
 #'
 #' Wraps `foretaccess::verifier_integrite_desserte()` on the network the user
-#' ends up with — **existing ∪ created** — which is the only thing that answers
+#' ends up with - **existing union created** - which is the only thing that answers
 #' "does what I just designed hold together?". `raccorde` only says whether the
 #' created roads are attached; it says nothing about the resulting graph.
 #'
 #' Guarded on `dessertR`: the check reaches it through
 #' `.integrite_calculer()` -> `.dsr("dsr_reseau")`, and **`foretaccess` does not
 #' declare that dependency** (absent from its Imports/Suggests/Remotes, resolved
-#' at call time by `getExportedValue()`). Without it the core does not error — it
+#' at call time by `getExportedValue()`). Without it the core does not error - it
 #' degrades to `.integrite_vide()`, whose `n_infractions` is `NA`. Returning
 #' `NULL` here instead lets the UI say "unavailable" rather than render an empty
 #' verdict that reads like a clean bill of health.
@@ -158,22 +158,22 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
 #' @param aoi Parcels served, used to locate edge effects.
 #' Le moteur optionnel `dessertR` est-il disponible ?
 #'
-#' Délègue au prédicat du cœur (`foretaccess >= 2.1.0`) plutôt que de refaire un
-#' `requireNamespace("dessertR")` local. Le cœur fait autorité sur ce que
-#' « disponible » veut dire pour SES quatre fonctions qui en dépendent
+#' Delegue au predicat du coeur (`foretaccess >= 2.1.0`) plutot que de refaire un
+#' `requireNamespace("dessertR")` local. Le coeur fait autorite sur ce que
+#' " disponible " veut dire pour SES quatre fonctions qui en dependent
 #' (`qualifier_desserte`, `verifier_integrite_desserte`, `detecter_desserte`,
-#' `acquire_desserte_lidar`) : si cette définition se durcit un jour, nous
+#' `acquire_desserte_lidar`) : si cette definition se durcit un jour, nous
 #' suivons sans rien changer.
 #'
-#' À interroger AVANT de proposer l'action, pas après : c'est ce qui permet de
-#' dire « indisponible » au lieu d'afficher un résultat vide qui se lit comme un
-#' bon bulletin de santé — le défaut corrigé dans `foretaccess 2.1.0`.
+#' A interroger AVANT de proposer l'action, pas apres : c'est ce qui permet de
+#' dire " indisponible " au lieu d'afficher un resultat vide qui se lit comme un
+#' bon bulletin de sante - le defaut corrige dans `foretaccess 2.1.0`.
 #'
-#' `dessertR` n'est pas déclarable en `Suggests` côté cœur tant que `rlas` reste
-#' archivé sur le CRAN : sa déclaration casse l'installation pour tous.
+#' `dessertR` n'est pas declarable en `Suggests` cote coeur tant que `rlas` reste
+#' archive sur le CRAN : sa declaration casse l'installation pour tous.
 #'
-#' @return `TRUE`/`FALSE`. `FALSE` si `foretaccess` lui-même manque — on ne
-#'   propose pas une action qu'on ne saurait pas exécuter.
+#' @return `TRUE`/`FALSE`. `FALSE` si `foretaccess` lui-meme manque - on ne
+#'   propose pas une action qu'on ne saurait pas executer.
 #' @noRd
 .dessertR_dispo <- function() {
   if (!requireNamespace("foretaccess", quietly = TRUE)) return(FALSE)
@@ -192,9 +192,9 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
     base <- sf::st_sf(classe = as.character(desserte[["classe"]]),
                       geometry = sf::st_geometry(desserte))
     if (inherits(lignes, "sf") && nrow(lignes) > 0L) {
-      # Les routes créées n'ont pas de `classe` : elles sont des routes
-      # forestières neuves. Le libellé compte — `reseau_public` a un sens
-      # particulier pour le contrôle de connectivité.
+      # Les routes creees n'ont pas de `classe` : elles sont des routes
+      # forestieres neuves. Le libelle compte - `reseau_public` a un sens
+      # particulier pour le controle de connectivite.
       rbind(base, geom_only(sf::st_transform(lignes, sf::st_crs(base)), "route"))
     } else base
   }, error = function(e) NULL)
@@ -204,8 +204,8 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
                 error = function(e) NULL)
   res <- tryCatch(as.list(r$resume), error = function(e) NULL)
   if (is.null(res) || is.null(res$n_infractions)) return(NULL)
-  # `NA` = le cœur a dégradé (dessertR injoignable malgré le garde). Ne pas le
-  # présenter comme « 0 infraction ».
+  # `NA` = le coeur a degrade (dessertR injoignable malgre le garde). Ne pas le
+  # presenter comme " 0 infraction ".
   if (!is.finite(suppressWarnings(as.numeric(res$n_infractions)))) return(NULL)
   list(
     n_infractions = as.integer(res$n_infractions),
@@ -226,8 +226,8 @@ DESSERTE_PHASES <- c("mnt", "desserte", "foret", "preprocess", "cout", "moteur")
 #'
 #' Deliberately a SEPARATE action, not a step of `run_desserte()`. Measured on
 #' Dabo (3 122 segments over the 1 km emprise): **376,8 s**, against 39,7 s for
-#' the whole creation run. Folding it in would have made "Générer la desserte"
-#' ten times slower — reintroducing the very wait that v0.121.10 removed.
+#' the whole creation run. Folding it in would have made "Generer la desserte"
+#' ten times slower - reintroducing the very wait that v0.121.10 removed.
 #'
 #' Reads the network back from the run's GeoPackage (`desserte_existante` +
 #' `reseau_cree`), so it needs no state from the creation worker.
@@ -279,7 +279,7 @@ run_desserte_integrite <- function(cache_dir, aoi_path) {
 #'
 #' Measured on Dabo (emprise 1 km, `skidding_m = 100`) : greedy 82,2 s / 36 roads
 #' / cost 16 673, against **100,2 s / 35 roads / cost 15 002** for multistart at
-#' `n_start = 8` — 1,2x the wall clock for **-10 % cost**. Worth exposing.
+#' `n_start = 8` - 1,2x the wall clock for **-10 % cost**. Worth exposing.
 #' @noRd
 DESSERTE_OPTIM_N_START <- 8L
 DESSERTE_OPTIM_N_ITER <- 100L
@@ -316,7 +316,7 @@ run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
                         error = function(e) NULL)
   if (is.null(parcelles)) return(list(status = "error", reason = "desserte_need_project"))
 
-  # Mêmes entrées que la création : elles sont déjà en cache sous l'emprise.
+  # Memes entrees que la creation : elles sont deja en cache sous l'emprise.
   acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
   aoi_ext <- if (buffer_m > 0) {
     tryCatch(sf::st_buffer(parcelles, buffer_m), error = function(e) parcelles)
@@ -341,11 +341,11 @@ run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
       pre, cout, parcelles = parcelles, desserte_existante = desserte,
       strategie = strategie, n_start = as.integer(n_start),
       n_iter = as.integer(n_iter), skidding_m = skidding_m,
-      # MEME pondération que `run_desserte()` : sans elle l'optimiseur
-      # minimiserait des MÈTRES pendant que la création minimise des EUROS, et
-      # le panneau comparerait deux grandeurs différentes. Mesuré sur
-      # ForetAccess : 1 034 sans pondération contre 65 983 pour la création
-      # pondérée — un « gain » de 98 % qui n'existe pas.
+      # MEME ponderation que `run_desserte()` : sans elle l'optimiseur
+      # minimiserait des METRES pendant que la creation minimise des EUROS, et
+      # le panneau comparerait deux grandeurs differentes. Mesure sur
+      # ForetAccess : 1 034 sans ponderation contre 65 983 pour la creation
+      # ponderee - un " gain " de 98 % qui n'existe pas.
       pondere_cout = TRUE)
   }, error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
   if (inherits(res, "acc_err")) {
@@ -374,7 +374,7 @@ run_desserte_optimiser <- function(cache_dir, aoi_path, strategie,
 #' Compare the BD TOPO network against OSM `track` ways (spec 028, worker-side)
 #'
 #' `acquire_desserte_osm()` is cheap (5,9 s, 544 segments on Dabo) but
-#' `comparer_desserte_osm()` is not (104,2 s) — hence a separate action again.
+#' `comparer_desserte_osm()` is not (104,2 s) - hence a separate action again.
 #'
 #' @return `list(status, n_osm, resume)` or an error list.
 #' @noRd
@@ -421,13 +421,13 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
     sf::st_write(osm, gp, layer = "osm_track", quiet = TRUE, delete_dsn = TRUE)
   }, error = function(e) invisible(NULL))
 
-  # PROVENANCE DU TRANSPORT (brief unification OSM, §4.2 et §5.3). Deux
-  # exécutions à un mois d'écart donnent des résultats différents sans aucune
-  # trace ; et le transport Overpass lui-même est en cours de refonte côté
-  # `foretaccess` (requête unique + bissection au lieu du tuilage). Un cache
-  # produit par l'ancien transport n'a donc pas la même couverture qu'un cache
+  # PROVENANCE DU TRANSPORT (brief unification OSM, sect.4.2 et sect.5.3). Deux
+  # executions a un mois d'ecart donnent des resultats differents sans aucune
+  # trace ; et le transport Overpass lui-meme est en cours de refonte cote
+  # `foretaccess` (requete unique + bissection au lieu du tuilage). Un cache
+  # produit par l'ancien transport n'a donc pas la meme couverture qu'un cache
   # produit par le nouveau : on horodate et on versionne pour pouvoir le
-  # refuser, plutôt que de comparer sans le savoir des couvertures différentes.
+  # refuser, plutot que de comparer sans le savoir des couvertures differentes.
   out <- list(n_osm = nrow(osm),
               resume = tryCatch(as.list(cmp$resume), error = function(e) NULL),
               corridor_m = tryCatch(cmp$corridor_m, error = function(e) NA_real_),
@@ -472,12 +472,12 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
 #' | `las_source` | duration | peak RSS | detections |
 #' |---|---:|---:|---:|
 #' | `NULL` (geomorphology only) | 189,4 s | **7,91 Go** | 0 |
-#' | LiDAR point cloud | **> 10 min** (not completed under a 16 Go cap) | — | — |
+#' | LiDAR point cloud | **> 10 min** (not completed under a 16 Go cap) | - | - |
 #'
 #' Two consequences the UI must carry:
 #'
 #' - the geomorphology-only path is cheap*er* but the core itself warns it is
-#'   "nettement moins sûre" — and it found nothing here. Offering it as a fast
+#'   "nettement moins sure" - and it found nothing here. Offering it as a fast
 #'   alternative would be offering a result one cannot trust;
 #' - 7,91 Go on a 31 Go workstation shared with RStudio is already in the zone
 #'   where `systemd-oomd` intervenes. The **memory guard is not optional**; it
@@ -485,7 +485,7 @@ run_desserte_osm <- function(cache_dir, aoi_path, buffer_m = 0) {
 #'   therefore applies here too.
 #'
 #' Depends on `dessertR` (via `.dsr("dsr_detecter")`), which `foretaccess` does
-#' not declare — hence the explicit guard, as for the integrity check.
+#' not declare - hence the explicit guard, as for the integrity check.
 #'
 #' @param cache_dir Desserte cache directory.
 #' @param aoi_path Parcels GeoPackage written by the module.
@@ -512,9 +512,9 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     tryCatch(sf::st_buffer(parcelles, buffer_m), error = function(e) parcelles)
   } else parcelles
 
-  # Garde-fou mémoire AVANT toute acquisition : mesuré 7,91 Go sur 1 855 ha même
-  # sans nuage. Sans ce refus, un dépassement se paie par un OOM qui emporte la
-  # session — le mode d'échec que toute cette série de correctifs élimine.
+  # Garde-fou memoire AVANT toute acquisition : mesure 7,91 Go sur 1 855 ha meme
+  # sans nuage. Sans ce refus, un depassement se paie par un OOM qui emporte la
+  # session - le mode d'echec que toute cette serie de correctifs elimine.
   mem <- .desserte_memory_check(aoi_ext, res_m = 5)
   if (!isTRUE(mem$ok)) {
     return(list(status = "error", reason = "desserte_memory_guard",
@@ -525,13 +525,13 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
 
   acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
 
-  # MNT : le LiDAR HD du projet EN PRIORITÉ, et pas le RGE ALTI 5 m des autres
-  # étapes. `detecter_desserte()` cherche une signature de MICRO-RELIEF (SLRM,
-  # openness, vesselness) et défaute à `dtm_res = 1` : à 5 m cette signature est
-  # lissée et il ne trouve rien. Mesuré sur ForetAccess avec le MNT 5 m,
-  # `dsr_calibrer_specs()` ne retient AUCUN canal — AUC ≈ 0,50 contre un seuil
-  # de 0,55, c'est-à-dire pas mieux que le hasard. Le projet dispose pourtant
-  # d'une mosaïque LiDAR à 0,5 m.
+  # MNT : le LiDAR HD du projet EN PRIORITE, et pas le RGE ALTI 5 m des autres
+  # etapes. `detecter_desserte()` cherche une signature de MICRO-RELIEF (SLRM,
+  # openness, vesselness) et defaute a `dtm_res = 1` : a 5 m cette signature est
+  # lissee et il ne trouve rien. Mesure sur ForetAccess avec le MNT 5 m,
+  # `dsr_calibrer_specs()` ne retient AUCUN canal - AUC ~= 0,50 contre un seuil
+  # de 0,55, c'est-a-dire pas mieux que le hasard. Le projet dispose pourtant
+  # d'une mosaique LiDAR a 0,5 m.
   lidar_mnt <- if (!is.null(project_path)) {
     file.path(project_path, "cache", "layers", "lidar_mnt_mosaic.tif")
   } else NULL
@@ -546,7 +546,7 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   if (is.null(mnt)) return(list(status = "error", reason = "desserte_detect_no_entrees"))
 
   # Nuage LiDAR du projet, s'il existe ET si l'utilisateur le demande. Sans lui
-  # le cœur avertit que la détection est « nettement moins sûre » : on ne
+  # le coeur avertit que la detection est " nettement moins sure " : on ne
   # bascule donc JAMAIS silencieusement sur ce repli, on le remonte.
   laz_dir <- if (!is.null(project_path)) {
     file.path(project_path, "cache", "layers", "lidar_nuage")
@@ -564,28 +564,28 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   }
   n <- if (inherits(det, "sf")) nrow(det) else 0L
 
-  # Classement (dessertR >= 1.3.0, brief §2). « Qu'est-ce qui a été détecté ? »
-  # est la question qui suit immédiatement : en forêt gérée, ce qui remonte hors
-  # référence est majoritairement du cloisonnement d'exploitation et du layon,
+  # Classement (dessertR >= 1.3.0, brief sect.2). " Qu'est-ce qui a ete detecte ? "
+  # est la question qui suit immediatement : en foret geree, ce qui remonte hors
+  # reference est majoritairement du cloisonnement d'exploitation et du layon,
   # pas de la desserte.
   #
-  # On ne passe QUE ce dont on dispose réellement. `stations` (fossés) et `ndvi`
+  # On ne passe QUE ce dont on dispose reellement. `stations` (fosses) et `ndvi`
   # (route/piste, et condition du pare-feu) demanderaient `dsr_measure()` et une
-  # ortho IRC — non câblés. Les critères non renseignés sont déclarés INCONNUS
-  # par dessertR, pas supposés : c'est pourquoi `CLASSE_CONF` doit accompagner
+  # ortho IRC - non cables. Les criteres non renseignes sont declares INCONNUS
+  # par dessertR, pas supposes : c'est pourquoi `CLASSE_CONF` doit accompagner
   # `CLASSE` dans l'affichage.
   #
-  # `parcellaire` = contours d'UGF (brief §3) : ce sont des limites de GESTION,
-  # d'où `sous_type_parcelle = "section"`, passé EXPLICITEMENT — sans lui,
-  # dessertR émet une notice, une valeur qui ne se lit pas dans la géométrie ne
+  # `parcellaire` = contours d'UGF (brief sect.3) : ce sont des limites de GESTION,
+  # d'ou `sous_type_parcelle = "section"`, passe EXPLICITEMENT - sans lui,
+  # dessertR emet une notice, une valeur qui ne se lit pas dans la geometrie ne
   # se supposant pas en silence.
   classes <- NULL
   if (n > 0L) {
-    # `dsr_classer()` EXIGE des `LINESTRING` — vérifié : un `MULTILINESTRING`
-    # est refusé net (`inherits(x, "sfc_LINESTRING") is not TRUE`), alors que
+    # `dsr_classer()` EXIGE des `LINESTRING` - verifie : un `MULTILINESTRING`
+    # est refuse net (`inherits(x, "sfc_LINESTRING") is not TRUE`), alors que
     # `reference` accepte le multi. La BD TOPO est multi, et rien ne garantit
-    # que la détection ne le soit pas : on convertit, en laissant tomber le
-    # classement si la conversion échoue plutôt que de perdre la détection.
+    # que la detection ne le soit pas : on convertit, en laissant tomber le
+    # classement si la conversion echoue plutot que de perdre la detection.
     det_lin <- tryCatch({
       if (any(sf::st_geometry_type(det) != "LINESTRING")) {
         suppressWarnings(sf::st_cast(det, "LINESTRING"))
@@ -601,8 +601,8 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
       classes <- list(
         table = as.list(table(as.character(det_cl$CLASSE))),
         conf_moy = if (any(is.finite(conf))) mean(conf, na.rm = TRUE) else NA_real_,
-        # Proposition de balisage OSM transportée au GeoPackage, JAMAIS
-        # téléversée : un import relève des règles de la communauté (brief §2).
+        # Proposition de balisage OSM transportee au GeoPackage, JAMAIS
+        # televersee : un import releve des regles de la communaute (brief sect.2).
         n_osm_tags = sum(!is.na(det_cl[["OSM_TAGS"]])))
     }
   }
@@ -632,22 +632,22 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   tryCatch(readRDS(f), error = function(e) NULL)
 }
 
-# --- Garde-fou mémoire du glouton ------------------------------------------
+# --- Garde-fou memoire du glouton ------------------------------------------
 #
-# `foretaccess::reseau_desserte()` matérialise une table de voisinage
+# `foretaccess::reseau_desserte()` materialise une table de voisinage
 # (`NeibTable.neighbors`, un `Vec<Vec<Neighbor>>` Rust) : UNE allocation tas par
 # cellule franchissable, contenant tout le disque de rayon `d_neighborhood_m`
-# (42 m par défaut). Le pic mémoire est donc PROPORTIONNEL à la grille et
-# QUADRATIQUE en `d_neighborhood / résolution` — pas une fuite (la mémoire est
-# rendue), un coût structurel.
+# (42 m par defaut). Le pic memoire est donc PROPORTIONNEL a la grille et
+# QUADRATIQUE en `d_neighborhood / resolution` - pas une fuite (la memoire est
+# rendue), un cout structurel.
 #
-# Mesures (grille synthétique, foretaccess 1.21.0, 2026-07-24) :
+# Mesures (grille synthetique, foretaccess 1.21.0, 2026-07-24) :
 #   600x600 @ 5 m, d = 42 m (220 voisins) -> 1 537 Mo  soit 4,37 Ko/cellule
 #   600x600 @ 5 m, d = 30 m (112 voisins) ->   841 Mo  soit 2,39 Ko/cellule
 #   600x600 @ 5 m, d = 21 m ( 56 voisins) ->   493 Mo  soit 1,40 Ko/cellule
 #   800x800 @ 5 m, d = 42 m               -> 2 520 Mo  soit 4,03 Ko/cellule
-# Sans garde-fou, une emprise de ~10 km x 10 km à 5 m (≈ 3,9 M cellules) demande
-# ~17 Go et emporte la machine par OOM après ~15 min de calcul (observé).
+# Sans garde-fou, une emprise de ~10 km x 10 km a 5 m (~= 3,9 M cellules) demande
+# ~17 Go et emporte la machine par OOM apres ~15 min de calcul (observe).
 
 #' Number of disc offsets in the solver's extended neighbourhood
 #'
@@ -761,7 +761,7 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
 #' Lets the tab show a **previously computed** network without recomputing (a
 #' run is ~11.5 min): scans `cache/desserte/` for the network raster
 #' (`reseau_<engine>.tif`) and its sidecar metadata (`reseau_<engine>.rds`,
-#' holding the scalars — cost, connectedness, served parcels — that a raster
+#' holding the scalars - cost, connectedness, served parcels - that a raster
 #' cannot carry) and rebuilds a minimal `run_desserte()` result marked
 #' `from_cache = TRUE`. Returns `NULL` when the project has no cached network.
 #'
@@ -794,8 +794,8 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   for (nm in names(params)) {
     a <- meta[[nm]]
     b <- params[[nm]]
-    # Un cache SANS le champ est antérieur à son introduction : on ne peut pas
-    # affirmer qu'il a été calculé avec la valeur demandée, donc il diverge.
+    # Un cache SANS le champ est anterieur a son introduction : on ne peut pas
+    # affirmer qu'il a ete calcule avec la valeur demandee, donc il diverge.
     if (is.null(a) || is.null(b)) return(FALSE)
     ok <- if (is.character(b) || is.character(a)) {
       identical(as.character(a), as.character(b))
@@ -816,15 +816,15 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
     if (!file.exists(rp)) next
     meta <- tryCatch(readRDS(file.path(cache_dir, paste0("reseau_", eng, ".rds"))),
                      error = function(e) list())
-    # Un réseau tracé AVANT `pondere_cout = TRUE` minimisait des mètres, pas des
-    # euros : ses tracés ne sont pas comparables à ceux d'aujourd'hui. On le
-    # traite comme absent plutôt que de l'afficher comme un résultat courant —
-    # l'utilisateur relance, ce qui est le seul moyen d'obtenir le bon tracé.
+    # Un reseau trace AVANT `pondere_cout = TRUE` minimisait des metres, pas des
+    # euros : ses traces ne sont pas comparables a ceux d'aujourd'hui. On le
+    # traite comme absent plutot que de l'afficher comme un resultat courant -
+    # l'utilisateur relance, ce qui est le seul moyen d'obtenir le bon trace.
     if (!isTRUE(meta$pondere_cout)) next
-    # ...et tout paramètre qui change le RÉSULTAT invalide de la même façon.
+    # ...et tout parametre qui change le RESULTAT invalide de la meme facon.
     # Sans cette comparaison, changer `skidding_m` puis rouvrir l'onglet servait
-    # le réseau précédent, calculé à l'ancienne distance — et le badge affichait
-    # l'ancienne valeur, donc rien ne trahissait l'écart.
+    # le reseau precedent, calcule a l'ancienne distance - et le badge affichait
+    # l'ancienne valeur, donc rien ne trahissait l'ecart.
     if (!is.null(params) && !.desserte_params_identiques(meta, params)) next
     gpkg <- file.path(cache_dir, "desserte.gpkg")
     return(list(
@@ -852,7 +852,7 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
 #'
 #' Heavy, self-contained function meant to run in a `future` worker. Acquires
 #' the **IGN RGE ALTI 5 m** DEM (HIGHRES, `.acquire_mnt_highres`), the existing
-#' road network (**IGN BD TOPO V3**) and the forest mask (**IGN BD Forêt V2**)
+#' road network (**IGN BD TOPO V3**) and the forest mask (**IGN BD Foret V2**)
 #' for the buffered AOI, runs `foretaccess::preprocess()` +
 #' `surface_cout_construction()`, then the requested creation engine
 #' (`reseau_desserte()`), writes the network class raster to
@@ -871,9 +871,9 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
 #' @param buffer_m Numeric buffer (m) grown around the AOI for the DEM and road
 #'   acquisition: access to a stand comes from roads OUTSIDE it, and the trace
 #'   solver needs the surrounding terrain. The parcels served stay the original
-#'   AOI — only the analysed emprise widens.
+#'   AOI - only the analysed emprise widens.
 #' @param skidding_m Skidding/forwarding distance (m) handed to
-#'   `foretaccess::reseau_desserte()`. **Not a performance knob** — a business
+#'   `foretaccess::reseau_desserte()`. **Not a performance knob** - a business
 #'   parameter that changes the result: a parcel cell within `skidding_m` of a
 #'   road is already served and spawns no trace. Left at the core default `0`,
 #'   *every* parcel cell off a road spawns its own A* trace, which the core
@@ -923,7 +923,7 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
 
   # Tout le pipeline travaille en Lambert-93 (EPSG:2154) : preprocess() valide
-  # l'égalité stricte des CRS (MNT vs vecteurs).
+  # l'egalite stricte des CRS (MNT vs vecteurs).
   epsg <- 2154L
   parcelles <- tryCatch(sf::st_transform(parcelles, epsg), error = function(e) parcelles)
 
@@ -936,9 +936,9 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   acq_dir <- file.path(cache_dir, sprintf("emprise_%gm", buffer_m))
   dir.create(acq_dir, recursive = TRUE, showWarnings = FALSE)
 
-  # Garde-fou mémoire AVANT toute acquisition : le pic du glouton est connu à
-  # partir de la seule emprise (cf. .desserte_memory_check). Sans ça, l'échec
-  # arrive après ~15 min de calcul, sous forme d'OOM qui emporte la machine —
+  # Garde-fou memoire AVANT toute acquisition : le pic du glouton est connu a
+  # partir de la seule emprise (cf. .desserte_memory_check). Sans ca, l'echec
+  # arrive apres ~15 min de calcul, sous forme d'OOM qui emporte la machine -
   # pas d'une condition R rattrapable.
   mem <- .desserte_memory_check(aoi_ext, res_m = 5)
   if (!isTRUE(mem$ok)) {
@@ -952,7 +952,7 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   # Jalons de phase : le worker publie son avancement sur le canal disque, que
   # le module poll toutes les secondes (cf. DESSERTE_PHASES).
   .dess_write_phase(cache_dir, "mnt")
-  # 1. MNT 5 m HIGHRES (repli acquire_mnt), partagé avec l'accessibilité.
+  # 1. MNT 5 m HIGHRES (repli acquire_mnt), partage avec l'accessibilite.
   mnt_path <- .acquire_mnt_highres(aoi_ext, res_m = 5, crs = epsg, cache_dir = acq_dir)
   if (is.null(mnt_path)) {
     mnt_path <- tryCatch(
@@ -966,7 +966,7 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   if (is.null(mnt)) return(list(status = "error", reason = "desserte_mnt_failed"))
 
   .dess_write_phase(cache_dir, "desserte")
-  # 2. Desserte EXISTANTE (réseau à raccorder) via IGN BD TOPO V3.
+  # 2. Desserte EXISTANTE (reseau a raccorder) via IGN BD TOPO V3.
   desserte <- tryCatch(
     foretaccess::acquire_desserte(aoi_ext, crs = epsg, cache_dir = acq_dir),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
@@ -978,14 +978,14 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   }
 
   .dess_write_phase(cache_dir, "foret")
-  # 3. Masque forêt (IGN BD Forêt V2 ∩ emprise), repli géométrie projet.
+  # 3. Masque foret (IGN BD Foret V2 inter emprise), repli geometrie projet.
   foret_bd <- tryCatch(
     foretaccess::acquire_foret(aoi_ext, crs = epsg, cache_dir = acq_dir),
     error = function(e) NULL)
   foret_mask <- if (inherits(foret_bd, "sf") && nrow(foret_bd) > 0L) foret_bd else parcelles
 
   .dess_write_phase(cache_dir, "preprocess")
-  # 4. Prétraitement commun (pente, franchissabilité, rasterisation).
+  # 4. Pretraitement commun (pente, franchissabilite, rasterisation).
   pre <- tryCatch(
     foretaccess::preprocess(mnt = mnt, desserte = desserte, foret = foret_mask),
     error = function(e) structure(list(msg = conditionMessage(e)), class = "acc_err"))
@@ -994,8 +994,8 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   }
 
   .dess_write_phase(cache_dir, "cout")
-  # 5. Surface de coût de construction (base + surcharge de pente ; couches eau/
-  # sol optionnelles laissées à NULL en v1 — cf. plan de dev).
+  # 5. Surface de cout de construction (base + surcharge de pente ; couches eau/
+  # sol optionnelles laissees a NULL en v1 - cf. plan de dev).
   cout <- tryCatch(
     if (supporte) {
       foretaccess::surface_cout_construction(pre, methode_pente = methode_pente,
@@ -1010,21 +1010,21 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   }
 
   .dess_write_phase(cache_dir, "moteur")
-  # 6. Moteur de création : GLOUTON (parcelles = AOI d'origine, réseau à
+  # 6. Moteur de creation : GLOUTON (parcelles = AOI d'origine, reseau a
   # raccorder = desserte existante).
-  # `skidding_m` : voir la doc du paramètre. Sans lui (défaut cœur 0) le moteur
-  # trace depuis CHAQUE cellule de parcelle hors route — 309 726 tracés sur Dabo
-  # au lieu de 4 parcelles — d'où un calcul interminable ET un réseau
-  # sur-connecté. Ce n'est pas un réglage de performance.
+  # `skidding_m` : voir la doc du parametre. Sans lui (defaut coeur 0) le moteur
+  # trace depuis CHAQUE cellule de parcelle hors route - 309 726 traces sur Dabo
+  # au lieu de 4 parcelles - d'ou un calcul interminable ET un reseau
+  # sur-connecte. Ce n'est pas un reglage de performance.
   skidding_m <- suppressWarnings(as.numeric(skidding_m)[1])
   if (!is.finite(skidding_m) || skidding_m < 0) {
     skidding_m <- DESSERTE_SKIDDING_DEFAULT_M
   }
-  # `pondere_cout = TRUE` : le tracé minimise des EUROS, pas des mètres. Sans
-  # lui, la surface de coût du Lot 14 — calculée juste au-dessus, phase « cout »
-  # comprise — ne servait que par son masque `franchissable` : le solveur
-  # tournait sur une grille neutre à 1,0 et rendait un tracé purement
-  # géométrique. On payait le calcul du coût sans jamais s'en servir.
+  # `pondere_cout = TRUE` : le trace minimise des EUROS, pas des metres. Sans
+  # lui, la surface de cout du Lot 14 - calculee juste au-dessus, phase " cout "
+  # comprise - ne servait que par son masque `franchissable` : le solveur
+  # tournait sur une grille neutre a 1,0 et rendait un trace purement
+  # geometrique. On payait le calcul du cout sans jamais s'en servir.
   res <- tryCatch(
     foretaccess::reseau_desserte(pre, cout, parcelles = parcelles,
                                  desserte_existante = desserte, mode = engine,
@@ -1034,9 +1034,9 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
     return(list(status = "error", reason = "desserte_engine_failed", detail = res$msg))
   }
 
-  # 7. Raster réseau -> disque. Normalisation défensive en masque 1 = route /
+  # 7. Raster reseau -> disque. Normalisation defensive en masque 1 = route /
   # NA = reste : `is.na()` et `<=` sont des PRIMITIVES (dispatch S4 correct sans
-  # import terra), contrairement à `%in%` (cf. fix hors_foret) — sûr côté worker.
+  # import terra), contrairement a `%in%` (cf. fix hors_foret) - sur cote worker.
   reseau_path <- file.path(cache_dir, paste0("reseau_", engine, ".tif"))
   net <- tryCatch(
     terra::ifel(is.na(res$reseau) | res$reseau <= 0, NA, 1L),
@@ -1049,8 +1049,8 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   }
 
   # Persiste l'OBJET `foretaccess_reseau` complet (pas seulement le raster) pour le
-  # typage : `vectoriser_reseau()` l'exige, et le glouton est trop long pour être
-  # relancé. Le `$reseau` (SpatRaster) porte un pointeur externe non sérialisable :
+  # typage : `vectoriser_reseau()` l'exige, et le glouton est trop long pour etre
+  # relance. Le `$reseau` (SpatRaster) porte un pointeur externe non serialisable :
   # on le `terra::wrap()` avant `saveRDS` (le typage l'`unwrap()`era).
   tryCatch({
     res_save <- res
@@ -1059,18 +1059,18 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   }, error = function(e) cli::cli_warn(
     "desserte reseau object persist failed: {conditionMessage(e)}"))
 
-  # Scalaires de badge (non portés par le raster) -> sidecar RDS pour le cache.
-  # `raccorde` (foretaccess >= 1.11) est le VRAI indicateur qualité : « toutes les
-  # routes créées sont-elles rattachées ? ». `connexe` (une seule composante pour
-  # existant ∪ créé) vaut presque toujours FALSE — dominé par la fragmentation du
-  # réseau EXISTANT à la résolution de la grille, pas par un défaut du réseau créé.
+  # Scalaires de badge (non portes par le raster) -> sidecar RDS pour le cache.
+  # `raccorde` (foretaccess >= 1.11) est le VRAI indicateur qualite : " toutes les
+  # routes creees sont-elles rattachees ? ". `connexe` (une seule composante pour
+  # existant union cree) vaut presque toujours FALSE - domine par la fragmentation du
+  # reseau EXISTANT a la resolution de la grille, pas par un defaut du reseau cree.
   n_parcelles <- nrow(parcelles)
   n_desservies <- suppressWarnings(sum(as.logical(res$desservies), na.rm = TRUE))
-  # Nombre de routes CRÉÉES. Zéro est un résultat légitime — « le réseau
-  # existant dessert déjà tout » — et non un échec : à `skidding_m` réaliste
-  # c'est même le cas nominal sur une forêt bien desservie (mesuré sur Dabo :
-  # 39 routes à 100 m, aucune à 300 m). L'app doit pouvoir le DIRE, d'où ce
-  # compteur explicite plutôt qu'un coût nul ambigu.
+  # Nombre de routes CREEES. Zero est un resultat legitime - " le reseau
+  # existant dessert deja tout " - et non un echec : a `skidding_m` realiste
+  # c'est meme le cas nominal sur une foret bien desservie (mesure sur Dabo :
+  # 39 routes a 100 m, aucune a 300 m). L'app doit pouvoir le DIRE, d'ou ce
+  # compteur explicite plutot qu'un cout nul ambigu.
   n_routes <- if (inherits(res$lignes, "sf")) nrow(res$lignes) else 0L
 
   connexe <- isTRUE(res$connexe)
@@ -1084,7 +1084,7 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
                pondere_cout = TRUE),
           file.path(cache_dir, paste0("reseau_", engine, ".rds")))
 
-  # 8. GeoPackage exportable : parcelles + desserte existante + réseau créé.
+  # 8. GeoPackage exportable : parcelles + desserte existante + reseau cree.
   gpkg_path <- file.path(cache_dir, "desserte.gpkg")
   unlink(gpkg_path)
   tryCatch({
@@ -1116,13 +1116,13 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
 #' Resolve the standing-volume (P1) column on a project's units
 #'
 #' The core and the app do NOT agree on the column name, which used to surface
-#' as a false « volume P1 absent » error even on a fully computed project:
+#' as a false " volume P1 absent " error even on a fully computed project:
 #'
 #'   * `nemeton:::indicateur_p1_volume()` writes **`P1`** (its `column_name`
-#'     default) — that is what a freshly computed `sf` carries in memory;
+#'     default) - that is what a freshly computed `sf` carries in memory;
 #'   * the project's `indicators.parquet` persists it as
 #'     **`indicateur_p1_volume`**, aligned with the 30 other `indicateur_*`
-#'     columns — and `.resolve_project_aoi_2154()` returns exactly that.
+#'     columns - and `.resolve_project_aoi_2154()` returns exactly that.
 #'
 #' Candidates are tried in order, then a case-insensitive match, and a column is
 #' only accepted when it holds at least one finite value.
@@ -1145,10 +1145,10 @@ run_desserte <- function(aoi_path, engine, cache_dir, buffer_m = 0,
   NULL
 }
 
-#' Default wood-flux thresholds for road typing (m³ total)
+#' Default wood-flux thresholds for road typing (m3 total)
 #'
 #' Named ascending numeric vector of class lower bounds consumed by
-#' `foretaccess::typer_desserte()`. Each tronçon gets the highest class whose
+#' `foretaccess::typer_desserte()`. Each troncon gets the highest class whose
 #' accumulated flux bound it reaches.
 #' @noRd
 DESSERTE_TYPAGE_SEUILS <- c(tertiaire = 0, secondaire = 100, primaire = 500)
@@ -1162,10 +1162,10 @@ DESSERTE_TYPAGE_SEUILS <- c(tertiaire = 0, secondaire = 100, primaire = 500)
 #'                   -> calculer_flux(volume_champ = "volume_mobilisable")
 #'                   -> typer_desserte(seuils_flux)                [foretaccess]
 #'
-#' **Unit trap (brief §3): `unite = "m3_total"` for typing** — `calculer_flux()`
-#' distributes then accumulates a TOTAL m³ per parcel; an `m3_ha` density would
+#' **Unit trap (brief sect.3): `unite = "m3_total"` for typing** - `calculer_flux()`
+#' distributes then accumulates a TOTAL m3 per parcel; an `m3_ha` density would
 #' underestimate flux by a factor equal to the parcel area. (The `m3_ha` unit is
-#' for weighting the glouton, a different consumer — not here.)
+#' for weighting the glouton, a different consumer - not here.)
 #'
 #' Reuses the `foretaccess_reseau` object persisted by `run_desserte()` (the
 #' glouton is too slow to re-run just to vectorise), so typing runs in seconds.
@@ -1173,12 +1173,12 @@ DESSERTE_TYPAGE_SEUILS <- c(tertiaire = 0, secondaire = 100, primaire = 500)
 #'
 #' @param cache_dir The project's `cache/desserte` directory.
 #' @param parcelles An `sf` of the parcels to serve, carrying a volume column.
-#' @param taux_prelevement Numeric annual removal rate (voie « saisi »).
+#' @param taux_prelevement Numeric annual removal rate (voie " saisi ").
 #' @param horizon_ans Numeric horizon in years.
 #' @param engine Engine whose persisted network to type (default `"glouton"`).
 #' @param seuils_flux Named ascending numeric vector of flux class bounds.
 #' @param volume_col Name of the standing-volume column on `parcelles`, or
-#'   `NULL` (default) to resolve it with `.resolve_volume_col()` — the core and
+#'   `NULL` (default) to resolve it with `.resolve_volume_col()` - the core and
 #'   the persisted project do NOT use the same name.
 #' @return A named list: `status`, `recap` (length per type), `gpkg_path`,
 #'   `seuils`, or an error list.
@@ -1198,10 +1198,10 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
   if (!inherits(parcelles, "sf") || nrow(parcelles) == 0L) {
     return(list(status = "error", reason = "desserte_typage_no_parcelles"))
   }
-  # Résolution du nom de colonne : `P1` (sortie cœur en mémoire) OU
-  # `indicateur_p1_volume` (nom persisté dans indicators.parquet, et donc ce que
-  # renvoie .resolve_project_aoi_2154). Chercher « P1 » en dur produisait un
-  # « volume P1 absent » sur un projet pourtant entièrement calculé.
+  # Resolution du nom de colonne : `P1` (sortie coeur en memoire) OU
+  # `indicateur_p1_volume` (nom persiste dans indicators.parquet, et donc ce que
+  # renvoie .resolve_project_aoi_2154). Chercher " P1 " en dur produisait un
+  # " volume P1 absent " sur un projet pourtant entierement calcule.
   volume_col <- volume_col %||% .resolve_volume_col(parcelles)
   if (is.null(volume_col) || !volume_col %in% names(parcelles) ||
       !any(is.finite(suppressWarnings(as.numeric(parcelles[[volume_col]]))))) {
@@ -1214,7 +1214,7 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
     return(list(status = "error", reason = "desserte_typage_bad_params"))
   }
 
-  # Réseau persisté par run_desserte : unwrap du SpatRaster puis vectorisation.
+  # Reseau persiste par run_desserte : unwrap du SpatRaster puis vectorisation.
   reseau <- tryCatch({
     r <- readRDS(obj_path); r$reseau <- terra::unwrap(r$reseau); r
   }, error = function(e) NULL)
@@ -1228,7 +1228,7 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
     return(list(status = "error", reason = "desserte_typage_failed", detail = graphe$msg))
   }
 
-  # Volume MOBILISÉ, unité m3_total (piège §3), voie « saisi » (taux + horizon).
+  # Volume MOBILISE, unite m3_total (piege sect.3), voie " saisi " (taux + horizon).
   parc_vol <- tryCatch(
     nemeton::volume_mobilisable(parcelles, volume_col = volume_col,
                                 unite = "m3_total",
@@ -1240,7 +1240,7 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
                 detail = parc_vol$msg))
   }
 
-  # Flux accumulé puis typage par seuils.
+  # Flux accumule puis typage par seuils.
   typee <- tryCatch({
     g <- foretaccess::calculer_flux(graphe, parc_vol,
                                     volume_champ = "volume_mobilisable")
@@ -1250,7 +1250,7 @@ run_desserte_typage <- function(cache_dir, parcelles, taux_prelevement,
     return(list(status = "error", reason = "desserte_typage_failed", detail = typee$msg))
   }
 
-  # Réseau typé -> GeoPackage (cache), pour l'affichage carte et l'export.
+  # Reseau type -> GeoPackage (cache), pour l'affichage carte et l'export.
   gpkg_path <- file.path(cache_dir, paste0("typage_", engine, ".gpkg"))
   ok <- tryCatch({
     unlink(gpkg_path)

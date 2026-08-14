@@ -9,16 +9,16 @@
 NULL
 
 # Session-level cache : department_code -> communes data.frame. La liste des
-# communes d'un département est stable pendant une session ; ce cache évite de
-# retaper geo.api.gouv.fr à CHAQUE restauration de projet / changement de
-# département (chemin critique de mise à jour de la liste Commune). Les erreurs
-# et résultats vides ne sont PAS mis en cache (une panne réseau transitoire
-# peut ainsi se rétablir au prochain essai).
+# communes d'un departement est stable pendant une session ; ce cache evite de
+# retaper geo.api.gouv.fr a CHAQUE restauration de projet / changement de
+# departement (chemin critique de mise a jour de la liste Commune). Les erreurs
+# et resultats vides ne sont PAS mis en cache (une panne reseau transitoire
+# peut ainsi se retablir au prochain essai).
 .communes_dept_cache <- new.env(parent = emptyenv())
 
-# Vide le cache départements->communes. Interne : utilisé par les tests pour
-# isoler chaque cas (le cache étant global au process, un cas de succès
-# empoisonnerait sinon les cas d'erreur qui réutilisent le même code dept).
+# Vide le cache departements->communes. Interne : utilise par les tests pour
+# isoler chaque cas (le cache etant global au process, un cas de succes
+# empoisonnerait sinon les cas d'erreur qui reutilisent le meme code dept).
 .reset_communes_dept_cache <- function() {
   rm(list = ls(envir = .communes_dept_cache, all.names = TRUE),
      envir = .communes_dept_cache)
@@ -487,7 +487,7 @@ get_communes_in_department <- function(department_code) {
     return(empty_result)
   }
 
-  # Cache hit : liste déjà téléchargée pour ce département dans la session.
+  # Cache hit : liste deja telechargee pour ce departement dans la session.
   cached <- .communes_dept_cache[[department_code]]
   if (!is.null(cached)) return(cached)
 
@@ -514,8 +514,8 @@ get_communes_in_department <- function(department_code) {
       return(empty_result)
     }
 
-    # Construction VECTORISÉE (au lieu d'un rbind ligne par ligne O(n²) qui
-    # coûtait ~0,3 s sur un département moyen ~560 communes) : on extrait
+    # Construction VECTORISEE (au lieu d'un rbind ligne par ligne O(n2) qui
+    # coutait ~0,3 s sur un departement moyen ~560 communes) : on extrait
     # chaque champ en une passe via vapply puis on assemble un seul data.frame.
     code_insee <- vapply(data, function(c) c$code %||% NA_character_, character(1))
     nom        <- vapply(data, function(c) c$nom  %||% NA_character_, character(1))
@@ -533,7 +533,7 @@ get_communes_in_department <- function(department_code) {
 
     # Sort by name
     communes_df <- communes_df[order(communes_df$nom), ]
-    # Cache le résultat valide (non vide) pour ce département.
+    # Cache le resultat valide (non vide) pour ce departement.
     .communes_dept_cache[[department_code]] <- communes_df
     communes_df
 

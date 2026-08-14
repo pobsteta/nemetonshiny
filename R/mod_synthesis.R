@@ -13,28 +13,28 @@
 mod_synthesis_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
 
-    # v0.56.0 — RAG context du dernier `ai_generate` (perspective
-    # sourcée). Stocké en reactiveVal pour que `output$ai_sources`
-    # puisse l'afficher en aval de la génération. NULL tant qu'aucune
-    # perspective n'a été générée dans la session.
+    # v0.56.0 - RAG context du dernier `ai_generate` (perspective
+    # sourcee). Stocke en reactiveVal pour que `output$ai_sources`
+    # puisse l'afficher en aval de la generation. NULL tant qu'aucune
+    # perspective n'a ete generee dans la session.
     rag_ctx_synthesis <- shiny::reactiveVal(NULL)
 
-    # v0.56.0 — Bloc « Sources documentaires » affiché sous la
-    # perspective IA quand le RAG a renvoyé ≥ 1 chunk. Le markdown
-    # vient de `nemeton::format_citations()` (titre i18n cœur, FR ou
-    # EN selon `app_state$language`). Badge synthétique « Perspective
-    # appuyée sur N source(s) » au-dessus du markdown pour signaler
-    # explicitement que la réponse est sourcée.
+    # v0.56.0 - Bloc " Sources documentaires " affiche sous la
+    # perspective IA quand le RAG a renvoye >= 1 chunk. Le markdown
+    # vient de `nemeton::format_citations()` (titre i18n coeur, FR ou
+    # EN selon `app_state$language`). Badge synthetique " Perspective
+    # appuyee sur N source(s) " au-dessus du markdown pour signaler
+    # explicitement que la reponse est sourcee.
     output$ai_sources <- shiny::renderUI({
       ctx <- rag_ctx_synthesis()
-      if (is.null(ctx)) return(NULL)   # aucune perspective générée → rien
+      if (is.null(ctx)) return(NULL)   # aucune perspective generee -> rien
       i18n <- get_i18n(app_state$language)
 
-      # Perspective générée mais corpus muet / indisponible (pas de base
-      # PostgreSQL/pgvector, clé d'embedding absente, base locale SQLite…).
-      # Au lieu de masquer complètement le bloc, on affiche une note
-      # explicative à l'emplacement habituel des sources, pour que
-      # l'utilisateur comprenne pourquoi aucune source n'est citée.
+      # Perspective generee mais corpus muet / indisponible (pas de base
+      # PostgreSQL/pgvector, cle d'embedding absente, base locale SQLite...).
+      # Au lieu de masquer completement le bloc, on affiche une note
+      # explicative a l'emplacement habituel des sources, pour que
+      # l'utilisateur comprenne pourquoi aucune source n'est citee.
       if (!nzchar(ctx$sources_md %||% "")) {
         return(htmltools::tagList(
           htmltools::tags$hr(),
@@ -46,10 +46,10 @@ mod_synthesis_server <- function(id, app_state) {
         ))
       }
 
-      # v0.85.0 — `ctx$sources_md` = "## Sources documentaires\n\n[^1] …".
-      # On sépare le TITRE de la LISTE pour rendre, dans cet ordre :
-      #   1. « Sources documentaires » (titre)
-      #   2. « Perspective appuyée sur N source(s) » — MÊME police que le
+      # v0.85.0 - `ctx$sources_md` = "## Sources documentaires\n\n[^1] ...".
+      # On separe le TITRE de la LISTE pour rendre, dans cet ordre :
+      #   1. " Sources documentaires " (titre)
+      #   2. " Perspective appuyee sur N source(s) " - MEME police que le
       #      titre (paragraphe normal, plus le petit gris `text-muted small`)
       #   3. la liste des citations
       md      <- ctx$sources_md
@@ -101,11 +101,11 @@ mod_synthesis_server <- function(id, app_state) {
     # REACTIVE: Indicateurs pour l'analyse IA par famille
     # ================================================================
     # `project$indicators` (R1-R4 + colonnes `_norm`) ENRICHI des indicateurs
-    # injectés au rendu : R5 (dépérissement, monitoring) et R6/R7 (sensibilité /
-    # gel, reGénération). Sans cet enrichissement, « Générer par IA » ne
+    # injectes au rendu : R5 (deperissement, monitoring) et R6/R7 (sensibilite /
+    # gel, reGeneration). Sans cet enrichissement, " Generer par IA " ne
     # transmettait au LLM que R1-R4 pour la famille R, alors que la vue Familles
-    # et le décompte du récap affichent R5/R6/R7 (incohérence). Jointure par
-    # `ug_id` ; on n'écrase jamais une colonne `_norm` déjà présente.
+    # et le decompte du recap affichent R5/R6/R7 (incoherence). Jointure par
+    # `ug_id` ; on n'ecrase jamais une colonne `_norm` deja presente.
     ai_family_indicators <- shiny::reactive({
       base <- project_indicators()
       if (is.null(base)) return(NULL)
@@ -144,15 +144,15 @@ mod_synthesis_server <- function(id, app_state) {
         return(NULL)
       }
 
-      # R5 dépérissement (32e indicateur, conditionnel) : injecté en direct
-      # depuis les alertes de la zone de suivi liée. Best-effort — sans zone
-      # / sans alerte, base_sf est inchangé et la famille R reste R1-R4.
+      # R5 deperissement (32e indicateur, conditionnel) : injecte en direct
+      # depuis les alertes de la zone de suivi liee. Best-effort - sans zone
+      # / sans alerte, base_sf est inchange et la famille R reste R1-R4.
       base_sf <- add_r5_to_indicators(base_sf, project)
 
-      # R6 (sensibilité 0-100) + R7 (gel) issus de reGénération. Normalisés 0-100
-      # par le cœur (>= 0.161.0), ils entrent désormais dans le score de famille R
-      # via create_family_index (la famille R passe de R1-R5 à R1-R7). Best-effort :
-      # sans cache reGénération, base_sf est inchangé.
+      # R6 (sensibilite 0-100) + R7 (gel) issus de reGeneration. Normalises 0-100
+      # par le coeur (>= 0.161.0), ils entrent desormais dans le score de famille R
+      # via create_family_index (la famille R passe de R1-R5 a R1-R7). Best-effort :
+      # sans cache reGeneration, base_sf est inchange.
       base_sf <- add_regen_r_indicators(base_sf, project)
 
       tryCatch(
@@ -316,10 +316,10 @@ mod_synthesis_server <- function(id, app_state) {
             options = list(customClass = "popover-lg"),
             title = NULL
           ),
-          # Valeur du score sur la MÊME ligne que « Score global » + info,
-          # avec « / 100 (12 familles) » accolé : remonte le bloc de deux
+          # Valeur du score sur la MEME ligne que " Score global " + info,
+          # avec " / 100 (12 familles) " accole : remonte le bloc de deux
           # lignes pour aligner la barre de confiance avec le texte
-          # « Taille image… » de la colonne centrale.
+          # " Taille image... " de la colonne centrale.
           htmltools::tags$span(
             style = paste0(
               "font-size: 4rem; font-weight: bold; color: ", score_color,
@@ -354,7 +354,7 @@ mod_synthesis_server <- function(id, app_state) {
               if (!identical(chm_src, "none")) {
                 # LiDAR HD is a direct airborne measurement; Open-Canopy
                 # is an ML prediction from ortho imagery. Surface the
-                # distinction to the user — different class (success
+                # distinction to the user - different class (success
                 # vs info) and different tooltip.
                 if (identical(chm_src, "lidar_hd")) {
                   badges <- c(badges, list(
@@ -465,9 +465,9 @@ mod_synthesis_server <- function(id, app_state) {
               title = NULL
             )
           ),
-          # Label « Confiance φ » à la taille du libellé « Score global »
+          # Label " Confiance phi " a la taille du libelle " Score global "
           # (text-muted sans `small`) + barre descendue (`mt-2`) pour
-          # l'aligner avec le texte « Taille image… » de la colonne centrale.
+          # l'aligner avec le texte " Taille image... " de la colonne centrale.
           ndp_progress_bar(ndp_result$ndp, lang = i18n$language,
                            label_class = "text-muted",
                            bar_class = "progress mt-2")
@@ -503,7 +503,7 @@ mod_synthesis_server <- function(id, app_state) {
                                ndp_level, ndp_info$name,
                                i18n$t("ndp_confidence"), confidence_pct)
 
-      # 1. Aggregate to single row (mean per family) — 20 parcels = 20 overlapping polygons
+      # 1. Aggregate to single row (mean per family) - 20 parcels = 20 overlapping polygons
       df <- sf::st_drop_geometry(sf_data)
       family_means <- as.data.frame(lapply(df[, family_cols, drop = FALSE],
                                            function(x) mean(x, na.rm = TRUE)))
@@ -544,10 +544,10 @@ mod_synthesis_server <- function(id, app_state) {
       families <- INDICATOR_FAMILIES
       codes <- names(families)
 
-      # « Nb indicateurs » = indicateurs réellement ACCESSIBLES pour ce projet
-      # (cohérent avec la vue Familles, qui n'affiche que le présent), et non la
-      # taille théorique de la config. Pour la famille R, cela inclut R5
-      # (alertes de suivi) et R6/R7 (résultat reGénération) dès qu'ils existent.
+      # " Nb indicateurs " = indicateurs reellement ACCESSIBLES pour ce projet
+      # (coherent avec la vue Familles, qui n'affiche que le present), et non la
+      # taille theorique de la config. Pour la famille R, cela inclut R5
+      # (alertes de suivi) et R6/R7 (resultat reGeneration) des qu'ils existent.
       project <- app_state$current_project
       enr_names <- tryCatch({
         base_sf <- project$indicators_sf
@@ -560,7 +560,7 @@ mod_synthesis_server <- function(id, app_state) {
         cn <- fam$column_names %||% fam$indicators
         n <- sum(vapply(cn, function(c)
           c %in% enr_names || paste0(c, "_norm") %in% enr_names, logical(1)))
-        if (n > 0L) n else length(fam$indicators)   # repli : config si rien détecté
+        if (n > 0L) n else length(fam$indicators)   # repli : config si rien detecte
       }
 
       # Build summary data.frame
@@ -749,19 +749,19 @@ mod_synthesis_server <- function(id, app_state) {
             fam_ind_data <- all_indicators[, c(meta_cols, matched), drop = FALSE]
 
             # Generate LLM comment. Retry once on transient errors
-            # (rate-limit 429 / timeout / empty response) — Mistral's
+            # (rate-limit 429 / timeout / empty response) - Mistral's
             # free tier in particular throttles bursts of consecutive
             # requests, which is exactly what fill-all does.
             fam_prompt <- build_analysis_prompt(fam_config, fam_ind_data, language)
-            # v0.61.2 — Préfixer le prompt famille par le bloc RAG
-            # déjà récupéré pour la synthèse globale (cf. `ctx` et
-            # `cite_rule` lignes 565-588). On ré-utilise le même
+            # v0.61.2 - Prefixer le prompt famille par le bloc RAG
+            # deja recupere pour la synthese globale (cf. `ctx` et
+            # `cite_rule` lignes 565-588). On re-utilise le meme
             # contexte au lieu de relancer un retrieve par famille :
             #   - 1 seul appel embedding/pgvector (vs 13)
-            #   - cohérence des sources entre synthèse et familles
+            #   - coherence des sources entre synthese et familles
             #   - le `cite_rule` rappelle au LLM de citer avec [^n]
-            # `Filter(nzchar)` neutralise proprement le cas où le
-            # ctx est vide (corpus muet, opt-out, échec retrieve).
+            # `Filter(nzchar)` neutralise proprement le cas ou le
+            # ctx est vide (corpus muet, opt-out, echec retrieve).
             fam_user_prompt <- paste(
               Filter(nzchar, c(ctx$prompt_block, cite_rule, fam_prompt)),
               collapse = "\n\n"
@@ -772,7 +772,7 @@ mod_synthesis_server <- function(id, app_state) {
                 fam_chat <- create_llm_chat(system_prompt)
                 out <- as.character(fam_chat$chat(fam_user_prompt, echo = FALSE))
                 # Treat empty / whitespace-only responses as a failure
-                # so the retry kicks in — without this, nchar == 0 would
+                # so the retry kicks in - without this, nchar == 0 would
                 # overwrite a previously-good comment with an empty
                 # string and the family tab would simply show nothing.
                 if (length(out) == 0L || !any(nzchar(trimws(out)))) {
@@ -807,7 +807,7 @@ mod_synthesis_server <- function(id, app_state) {
           app_state$family_comments <- family_comments_local
           app_state$refresh_family_comments <- Sys.time()
 
-          # Surface failures to the user — the old code only logged to the
+          # Surface failures to the user - the old code only logged to the
           # console, so a failed family (e.g. Mistral 429 rate limit) looked
           # indistinguishable from a successful blank comment.
           if (length(failed_families) > 0L || length(skipped_families) > 0L) {
@@ -847,11 +847,11 @@ mod_synthesis_server <- function(id, app_state) {
       has_syn <- !is.null(synthesis_response)
       cli::cli_inform("Saving comments: project_id={project_id}, synthesis={has_syn}, families={n_fam}")
       if (!is.null(project_id)) {
-        # v0.85.0 — persister le contexte RAG (sources_md + n_sources) en
-        # même temps que le commentaire, pour le réafficher au reload et
+        # v0.85.0 - persister le contexte RAG (sources_md + n_sources) en
+        # meme temps que le commentaire, pour le reafficher au reload et
         # alimenter les notes de bas de page de l'export Quarto. On passe
-        # toujours les sources de CETTE génération (même vides) pour
-        # rester cohérent avec le commentaire produit.
+        # toujours les sources de CETTE generation (meme vides) pour
+        # rester coherent avec le commentaire produit.
         ctx_now <- rag_ctx_synthesis()
         save_comments(project_id,
                       synthesis = synthesis_response,
@@ -860,9 +860,9 @@ mod_synthesis_server <- function(id, app_state) {
                         sources_md = ctx_now$sources_md %||% "",
                         n_sources  = as.integer(ctx_now$n_sources %||% 0L)
                       ))
-        # v0.52.9 — signal aux autres modules (mod_action_plan) que le
-        # fichier commentaires a changé. Sans ce bump, le contexte IA
-        # du Plan d'actions reste « pas de commentaires » jusqu'au
+        # v0.52.9 - signal aux autres modules (mod_action_plan) que le
+        # fichier commentaires a change. Sans ce bump, le contexte IA
+        # du Plan d'actions reste " pas de commentaires " jusqu'au
         # prochain reload projet.
         app_state$comments_refresh <- (app_state$comments_refresh %||% 0L) + 1L
       } else {
@@ -884,7 +884,7 @@ mod_synthesis_server <- function(id, app_state) {
         save_comments(project_id,
                       synthesis = input$synthesis_comments,
                       families = app_state$family_comments)
-        # v0.52.9 — symétrique avec l'observer AI : signaler le
+        # v0.52.9 - symetrique avec l'observer AI : signaler le
         # changement aux modules consommateurs.
         app_state$comments_refresh <- (app_state$comments_refresh %||% 0L) + 1L
       }
@@ -893,13 +893,13 @@ mod_synthesis_server <- function(id, app_state) {
     # ================================================================
     # OBSERVER: Restore comments when project loads
     # ================================================================
-    # v0.85.0 — ne réagir qu'à un VRAI changement de projet (id), pas à
-    # chaque réassignation de `current_project`. L'attache différée de
-    # `indicators_sf` (v0.78.0) ré-assigne `current_project` ~0,1 s après
-    # le chargement, avec le MÊME id : sans ce garde, l'observer remettait
-    # `rag_ctx_synthesis` à NULL et restaurait depuis la copie in-memory
-    # (stale, sans `synthesis_sources` fraîchement généré) → le bloc
-    # « Sources documentaires » pouvait disparaître après une génération.
+    # v0.85.0 - ne reagir qu'a un VRAI changement de projet (id), pas a
+    # chaque reassignation de `current_project`. L'attache differee de
+    # `indicators_sf` (v0.78.0) re-assigne `current_project` ~0,1 s apres
+    # le chargement, avec le MEME id : sans ce garde, l'observer remettait
+    # `rag_ctx_synthesis` a NULL et restaurait depuis la copie in-memory
+    # (stale, sans `synthesis_sources` fraichement genere) -> le bloc
+    # " Sources documentaires " pouvait disparaitre apres une generation.
     last_loaded_pid <- shiny::reactiveVal(NULL)
     shiny::observeEvent(app_state$current_project, {
       project <- app_state$current_project
@@ -910,9 +910,9 @@ mod_synthesis_server <- function(id, app_state) {
       # Always reset comments first to avoid stale data from previous project
       shiny::updateTextAreaInput(session, "synthesis_comments", value = "")
       app_state$family_comments <- list()
-      # v0.85.0 — reset puis restaure le contexte RAG (sources) persisté,
-      # pour que le bloc « Sources documentaires » réapparaisse au reload
-      # (et pas seulement après une nouvelle génération en session).
+      # v0.85.0 - reset puis restaure le contexte RAG (sources) persiste,
+      # pour que le bloc " Sources documentaires " reapparaisse au reload
+      # (et pas seulement apres une nouvelle generation en session).
       rag_ctx_synthesis(NULL)
 
       # Then restore from new project if available
@@ -925,11 +925,11 @@ mod_synthesis_server <- function(id, app_state) {
         if (is.list(project$comments$families)) {
           app_state$family_comments <- project$comments$families
         }
-        # Restaurer le contexte RAG dès qu'une perspective a été générée
-        # (synthèse non vide), même sans sources : ainsi le bloc
-        # « Sources documentaires » réapparaît au reload, et la note
-        # explicative « générée sans sources » aussi quand le corpus
-        # était muet/indisponible au moment de la génération.
+        # Restaurer le contexte RAG des qu'une perspective a ete generee
+        # (synthese non vide), meme sans sources : ainsi le bloc
+        # " Sources documentaires " reapparait au reload, et la note
+        # explicative " generee sans sources " aussi quand le corpus
+        # etait muet/indisponible au moment de la generation.
         has_synthesis <- !is.null(project$comments$synthesis) &&
           nchar(project$comments$synthesis) > 0
         src <- project$comments$synthesis_sources
@@ -1029,21 +1029,21 @@ mod_synthesis_server <- function(id, app_state) {
           if (!is.null(comments) && nchar(trimws(comments)) == 0) {
             comments <- NULL
           }
-          # v0.84.5 — vraies notes de bas de page dans le rapport Quarto.
+          # v0.84.5 - vraies notes de bas de page dans le rapport Quarto.
           # `.prepare_footnotes()` garde la 1re occurrence de chaque ref
-          # [^n] VALIDE comme note, retire les refs orphelines (numéros
-          # cités par le LLM au-delà des sources existantes) et les
-          # doublons (Pandoc ne sait pas référencer 2× une même note), et
-          # appende les définitions [^n]: dérivées des sources persistées.
-          # v0.84.9 — utiliser EN PRIORITÉ le contexte RAG de session
-          # (`rag_ctx_synthesis()`), identique à ce qu'affiche le bloc
-          # « Sources documentaires ». La copie in-memory
+          # [^n] VALIDE comme note, retire les refs orphelines (numeros
+          # cites par le LLM au-dela des sources existantes) et les
+          # doublons (Pandoc ne sait pas referencer 2x une meme note), et
+          # appende les definitions [^n]: derivees des sources persistees.
+          # v0.84.9 - utiliser EN PRIORITE le contexte RAG de session
+          # (`rag_ctx_synthesis()`), identique a ce qu'affiche le bloc
+          # " Sources documentaires ". La copie in-memory
           # `current_project$comments$synthesis_sources` n'est PAS
-          # rafraîchie après une génération (seul le disque l'est) :
-          # l'utiliser comme source unique donnait des définitions
-          # périmées (ou absentes) → les `[^n]` restaient littéraux dans
-          # le PDF alors que l'écran montrait les bonnes sources.
-          # Calculé une seule fois : sert à la synthèse ET aux familles.
+          # rafraichie apres une generation (seul le disque l'est) :
+          # l'utiliser comme source unique donnait des definitions
+          # perimees (ou absentes) -> les `[^n]` restaient litteraux dans
+          # le PDF alors que l'ecran montrait les bonnes sources.
+          # Calcule une seule fois : sert a la synthese ET aux familles.
           src_md <- rag_ctx_synthesis()$sources_md %||%
             app_state$current_project$comments$synthesis_sources$sources_md
           if (!is.null(comments)) {
@@ -1065,12 +1065,12 @@ mod_synthesis_server <- function(id, app_state) {
             if (length(fam_comments) == 0) fam_comments <- NULL
           }
 
-          # v0.85.x — mêmes notes de bas de page « une note par source » que
-          # la synthèse, MAIS par famille : labels namespacés [^C-1] (pas de
-          # collision avec la synthèse / les autres familles dans le même PDF)
-          # + bloc « Sources documentaires » récapitulatif sous chaque
-          # commentaire. Corrige la répétition d'une même source sous plusieurs
-          # numéros dans les pages familles.
+          # v0.85.x - memes notes de bas de page " une note par source " que
+          # la synthese, MAIS par famille : labels namespaces [^C-1] (pas de
+          # collision avec la synthese / les autres familles dans le meme PDF)
+          # + bloc " Sources documentaires " recapitulatif sous chaque
+          # commentaire. Corrige la repetition d'une meme source sous plusieurs
+          # numeros dans les pages familles.
           if (!is.null(fam_comments)) {
             fam_codes <- names(fam_comments)
             fam_comments <- stats::setNames(

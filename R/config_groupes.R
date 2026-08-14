@@ -2,9 +2,9 @@
 #'
 #' @description
 #' Loads and exposes the configurable profiles used to classify UGF
-#' (Unités de Gestion Forestière). The profile selected for a project
+#' (Unites de Gestion Forestiere). The profile selected for a project
 #' determines:
-#'   - the dropdown label (e.g. "Groupe d'aménagement" for ONF,
+#'   - the dropdown label (e.g. "Groupe d'amenagement" for ONF,
 #'     "Groupe de gestion" for CRPF, "Zone" for OFB/ENS)
 #'   - the list of allowed codes + human-readable labels
 #'   - the color palette used on the map

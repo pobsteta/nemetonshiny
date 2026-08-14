@@ -1,56 +1,56 @@
-# mod_monitoring_reconfort_map.R — Sous-onglet "Carte RECONFORT" du Suivi
-# sanitaire (spec 021, L6). Miroir de mod_monitoring_fordead_map.R, adapté
-# au pipeline RECONFORT (dépérissement feuillus, méthode RECONFORT/DSF).
+# mod_monitoring_reconfort_map.R - Sous-onglet "Carte RECONFORT" du Suivi
+# sanitaire (spec 021, L6). Miroir de mod_monitoring_fordead_map.R, adapte
+# au pipeline RECONFORT (deperissement feuillus, methode RECONFORT/DSF).
 #
-# Mise en page (parité FORDEAD / FAST) : `bslib::layout_sidebar` avec une
-# sidebar DROITE portant les contrôles (choix de la couche + curseur
-# d'opacité des rasters) et, à gauche, la carte Leaflet STATIQUE surmontée
-# d'un overlay d'état (empty-state). La carte est en UI statique pour
-# préserver le binding `input$map_click` (clic → diagnostic pixel).
+# Mise en page (parite FORDEAD / FAST) : `bslib::layout_sidebar` avec une
+# sidebar DROITE portant les controles (choix de la couche + curseur
+# d'opacite des rasters) et, a gauche, la carte Leaflet STATIQUE surmontee
+# d'un overlay d'etat (empty-state). La carte est en UI statique pour
+# preserver le binding `input$map_click` (clic -> diagnostic pixel).
 #
-# AFFICHAGE 100 % RASTER (parité FAST / FORDEAD) — le module expose les
-# couches du manifeste : score, classes de santé, probabilité. AUCUNE
-# sémantique métier ici : ids, palettes, domaines, sens (reverse) et
-# visibilité par défaut viennent tous du manifeste (CLAUDE.md §2-4). Le
-# manifeste vient soit du `result` en mémoire d'un run de la session
-# (`reconfort_layer_manifest()`), soit du cache disque d'un run persisté
-# (`reconfort_cache_manifest()`, parité FORDEAD) — schéma identique.
+# AFFICHAGE 100 % RASTER (parite FAST / FORDEAD) - le module expose les
+# couches du manifeste : score, classes de sante, probabilite. AUCUNE
+# semantique metier ici : ids, palettes, domaines, sens (reverse) et
+# visibilite par defaut viennent tous du manifeste (CLAUDE.md sect.2-4). Le
+# manifeste vient soit du `result` en memoire d'un run de la session
+# (`reconfort_layer_manifest()`), soit du cache disque d'un run persiste
+# (`reconfort_cache_manifest()`, parite FORDEAD) - schema identique.
 #
-# v0.106.4 — La couche VECTORIELLE « Alertes » (marqueurs lus en base via
-# `nemeton::list_alerts()`) est SUPPRIMÉE. Elle était le dernier vestige de
-# la notion de « placette » dans le suivi sanitaire, alors que FAST
-# (a18f3ab2) et FORDEAD (Phase A, décision D2) sont passés en pur raster ;
-# elle dupliquait de surcroît le signal de la couche « Classes de santé ».
-# La table `alerts` de la base de suivi reste écrite par le cœur et lue par
-# `service_r5.R` (indicateur R5) — seul l'affichage cartographique disparaît.
+# v0.106.4 - La couche VECTORIELLE " Alertes " (marqueurs lus en base via
+# `nemeton::list_alerts()`) est SUPPRIMEE. Elle etait le dernier vestige de
+# la notion de " placette " dans le suivi sanitaire, alors que FAST
+# (a18f3ab2) et FORDEAD (Phase A, decision D2) sont passes en pur raster ;
+# elle dupliquait de surcroit le signal de la couche " Classes de sante ".
+# La table `alerts` de la base de suivi reste ecrite par le coeur et lue par
+# `service_r5.R` (indicateur R5) - seul l'affichage cartographique disparait.
 #
-# Couche UGF (parité FORDEAD / FAST) : les Unités de Gestion Forestière du
-# projet (`project$indicators_sf`) sont dessinées en overlay toggleable via
+# Couche UGF (parite FORDEAD / FAST) : les Unites de Gestion Forestiere du
+# projet (`project$indicators_sf`) sont dessinees en overlay toggleable via
 # le LayersControl natif de leaflet.
 #
-# Clip à la zone de suivi : les résultats (rasters) sont masqués à l'AOI de
-# la zone sélectionnée dans la liste déroulante (`zone_id_r`) — strates
-# `_tot` / `_res` / `_feu` / `_mix` — exactement comme FORDEAD masque le
-# raster `_tot` par strate. Présentation pure (clip d'affichage), aucun
-# calcul métier (CLAUDE.md §3).
+# Clip a la zone de suivi : les resultats (rasters) sont masques a l'AOI de
+# la zone selectionnee dans la liste deroulante (`zone_id_r`) - strates
+# `_tot` / `_res` / `_feu` / `_mix` - exactement comme FORDEAD masque le
+# raster `_tot` par strate. Presentation pure (clip d'affichage), aucun
+# calcul metier (CLAUDE.md sect.3).
 #
 # cache_dir RECONFORT : <project>/cache/layers/reconfort (la phase persist
-# du run y écrit zone_<id>/run_<run_id>/ ; même répertoire passé à
+# du run y ecrit zone_<id>/run_<run_id>/ ; meme repertoire passe a
 # read_reconfort_pixel_series()).
 
 #' Couleurs des classes du raster de classification RECONFORT (codes 1-2-3).
-#' 1-sain (vert), 2-deperissant (orange), 3-tres-deperissant (rouge). Mappé
+#' 1-sain (vert), 2-deperissant (orange), 3-tres-deperissant (rouge). Mappe
 #' sur les codes entiers du raster `classification` du manifeste.
 #' @noRd
 .RECONFORT_CLASSIF_COLORS <- c(
   "1" = "#1A9850",  # vert    (sain)
-  "2" = "#FF9933",  # orange  (dépérissant)
-  "3" = "#D62728"   # rouge   (très dépérissant)
+  "2" = "#FF9933",  # orange  (deperissant)
+  "3" = "#D62728"   # rouge   (tres deperissant)
 )
 
-#' Libellé d'une couche (radio) avec le « i » d'information de l'app —
-#' `info_popover_in_label()`, variant sûr dans un <label> de radio : s'informer
-#' sur une couche ne doit pas la sélectionner. Parité avec
+#' Libelle d'une couche (radio) avec le " i " d'information de l'app -
+#' `info_popover_in_label()`, variant sur dans un <label> de radio : s'informer
+#' sur une couche ne doit pas la selectionner. Parite avec
 #' `.fordead_layer_choice()` de la Carte FORDEAD.
 #' @noRd
 .reconfort_layer_choice <- function(label, info) {
@@ -66,16 +66,16 @@ mod_monitoring_reconfort_map_ui <- function(id) {
   ns <- shiny::NS(id)
   bslib::card(
     bslib::layout_sidebar(
-      # Sidebar DROITE — contrôles (cases à cocher des couches + opacité),
-      # rendus côté serveur car pilotés par le manifeste (choix dynamiques).
+      # Sidebar DROITE - controles (cases a cocher des couches + opacite),
+      # rendus cote serveur car pilotes par le manifeste (choix dynamiques).
       sidebar = bslib::sidebar(
         width = 250L, position = "right", open = "always",
         shiny::uiOutput(ns("controls"))
       ),
-      # Carte STATIQUE + overlay empty-state. Le bandeau « hors domaine de
-      # calibration » est désormais rendu au niveau PARENT (mod_monitoring,
-      # output$reconfort_validity_banner), juste sous « Base de suivi
-      # connectée » et au-dessus des sous-onglets — parité de placement et de
+      # Carte STATIQUE + overlay empty-state. Le bandeau " hors domaine de
+      # calibration " est desormais rendu au niveau PARENT (mod_monitoring,
+      # output$reconfort_validity_banner), juste sous " Base de suivi
+      # connectee " et au-dessus des sous-onglets - parite de placement et de
       # style avec le bandeau FORDEAD. Le module expose `validity` (voir le
       # `invisible(list(...))` de retour) que le parent consomme.
       htmltools::div(
@@ -96,11 +96,11 @@ mod_monitoring_reconfort_map_ui <- function(id) {
 #' @param refresh_r Reactive bumped whenever a RECONFORT run completes (the
 #'   parent's refresh counter). Read by `manifest_r` so a completed run
 #'   re-discovers the freshly-persisted raster cache without a project
-#'   reload. Optional — defaults to a constant reactive for back-compat.
+#'   reload. Optional - defaults to a constant reactive for back-compat.
 #' @param result_r Reactive returning the in-memory `result` list of the last
 #'   `nemeton::run_reconfort_dieback()` of this session (carries `$rasters`),
 #'   or `NULL`. When NULL, the module falls back to the cached run discovered
-#'   on disk. Optional — defaults to a constant `NULL` reactive.
+#'   on disk. Optional - defaults to a constant `NULL` reactive.
 #' @return invisible list with a `validity` reactive.
 #' @noRd
 mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
@@ -118,20 +118,20 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       file.path(proj$path, "cache", "layers", "reconfort")
     }
 
-    # ----- Layer manifest (cœur) ----------------------------------------
+    # ----- Layer manifest (coeur) ----------------------------------------
     # Le contrat stable : le module ne lit JAMAIS result$rasters en dur, il
-    # délègue au cœur la liste des couches + palettes/domaines/sens.
+    # delegue au coeur la liste des couches + palettes/domaines/sens.
     #
-    # Deux sources, schéma identique (interchangeable) :
-    #   1. `result` EN MÉMOIRE d'un run de la session → reconfort_layer_manifest() ;
-    #   2. sinon (projet rechargé, plus de result) → DÉCOUVERTE CACHE via
+    # Deux sources, schema identique (interchangeable) :
+    #   1. `result` EN MEMOIRE d'un run de la session -> reconfort_layer_manifest() ;
+    #   2. sinon (projet recharge, plus de result) -> DECOUVERTE CACHE via
     #      reconfort_cache_manifest(cache_dir, zone_id) (nemeton >= 0.100.0) :
-    #      le run persisté est lu depuis le disque, parité FORDEAD — les
-    #      rasters réapparaissent après rechargement, pas seulement après un
+    #      le run persiste est lu depuis le disque, parite FORDEAD - les
+    #      rasters reapparaissent apres rechargement, pas seulement apres un
     #      run frais.
-    # NULL quand ni run mémoire ni run caché ne sont disponibles.
+    # NULL quand ni run memoire ni run cache ne sont disponibles.
     manifest_r <- shiny::reactive({
-      refresh_r()   # un run terminé → re-découverte du cache disque
+      refresh_r()   # un run termine -> re-decouverte du cache disque
       res <- result_r()
       if (!is.null(res)) {
         m <- tryCatch(
@@ -143,7 +143,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         )
         if (!is.null(m) && nrow(m)) return(m)
       }
-      # Fallback cache (parité FORDEAD).
+      # Fallback cache (parite FORDEAD).
       zone <- zone_id_r()
       proj <- app_state$current_project
       if (is.null(zone) || !isTRUE(nzchar(zone)) ||
@@ -174,7 +174,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # `get_monitoring_zone_aoi()` returns the polygon (EPSG:2154) of the
     # zone picked in the dropdown (`_tot` / `_res` / `_feu` / `_mix`). The
     # result rasters are clipped to it before display (parity FORDEAD). NULL
-    # when unresolved → no clip (full raster shown).
+    # when unresolved -> no clip (full raster shown).
     aoi_r <- shiny::reactive({
       zone <- zone_id_r()
       if (is.null(zone) || !isTRUE(nzchar(zone))) return(NULL)
@@ -187,15 +187,15 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
                error = function(e) NULL)
     })
 
-    # ----- UGF overlay (parité FORDEAD / FAST) --------------------------
+    # ----- UGF overlay (parite FORDEAD / FAST) --------------------------
     ugf_r <- shiny::reactive({
       .ugf_for_overlay(app_state$current_project)
     })
 
-    # ----- BD Forêt v2 du projet (repli composition d'essences) ----------
-    # `<project>/cache/layers/bdforet.gpkg`, écrit pendant le calcul projet
-    # (même source que l'overlay de l'onglet Échantillonnage). Lue telle
-    # quelle et passée AU CŒUR : aucun traitement métier ici (CLAUDE.md §1).
+    # ----- BD Foret v2 du projet (repli composition d'essences) ----------
+    # `<project>/cache/layers/bdforet.gpkg`, ecrit pendant le calcul projet
+    # (meme source que l'overlay de l'onglet Echantillonnage). Lue telle
+    # quelle et passee AU COEUR : aucun traitement metier ici (CLAUDE.md sect.1).
     # NULL quand le cache est absent.
     bdforet_r <- shiny::reactive({
       proj <- app_state$current_project
@@ -212,12 +212,12 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # warns when the zone sits outside the calibration domain but never
     # blocks. Returns NULL when the AOI cannot be resolved.
     #
-    # v0.106.4 — `units` (les UGF du projet) et `bdforet` sont désormais
-    # PASSÉS au cœur. Sans eux, le cœur ne peut pas évaluer la composition
+    # v0.106.4 - `units` (les UGF du projet) et `bdforet` sont desormais
+    # PASSES au coeur. Sans eux, le coeur ne peut pas evaluer la composition
     # d'essences : `species_valid` restait NA en toutes circonstances, et le
-    # bandeau « composition hors domaine validé » ne pouvait donc JAMAIS
-    # s'afficher. Le cœur lit la colonne essence des UGF et, à défaut,
-    # retombe sur la BD Forêt (`enrich_parcels_bdforet()`).
+    # bandeau " composition hors domaine valide " ne pouvait donc JAMAIS
+    # s'afficher. Le coeur lit la colonne essence des UGF et, a defaut,
+    # retombe sur la BD Foret (`enrich_parcels_bdforet()`).
     validity_r <- shiny::reactive({
       aoi <- aoi_r()
       if (is.null(aoi)) return(NULL)
@@ -235,7 +235,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     })
 
     # Toggleable layers = the manifest's RASTER rows (run result OR cache).
-    # NULL when no run is available → empty state (parity FAST / FORDEAD).
+    # NULL when no run is available -> empty state (parity FAST / FORDEAD).
     available_layers_r <- shiny::reactive({
       rm <- raster_manifest_r()
       if (is.null(rm) || !nrow(rm)) return(NULL)
@@ -252,22 +252,22 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       i18n <- i18n_r()
       lay <- available_layers_r()
       if (is.null(lay)) {
-        # Ni run en mémoire ni run caché — pas de toggles ; rappel.
+        # Ni run en memoire ni run cache - pas de toggles ; rappel.
         return(htmltools::p(
           class = "text-muted small mb-0",
           i18n$t("monitoring_reconfort_map_empty_body")
         ))
       }
-      # Chaque couche porte une icône « i » (tooltip) décrivant ce qu'elle
-      # affiche — parité FORDEAD. La clé d'info = `<label_key>_info`.
+      # Chaque couche porte une icone " i " (tooltip) decrivant ce qu'elle
+      # affiche - parite FORDEAD. La cle d'info = `<label_key>_info`.
       choice_names <- lapply(seq_len(nrow(lay)), function(k) {
         .reconfort_layer_choice(
           i18n$t(lay$label_key[k]),
           i18n$t(paste0(lay$label_key[k], "_info"))
         )
       })
-      # Couches EXCLUSIVES (une seule à la fois) : radioButtons, parité
-      # FORDEAD. Défaut = première couche `default_visible` (sinon la 1re).
+      # Couches EXCLUSIVES (une seule a la fois) : radioButtons, parite
+      # FORDEAD. Defaut = premiere couche `default_visible` (sinon la 1re).
       dv <- as.character(lay$id[lay$default_visible])
       selected <- if (length(dv)) dv[1L] else as.character(lay$id[1L])
       htmltools::tagList(
@@ -277,7 +277,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           choiceValues = as.character(lay$id),
           selected = selected
         ),
-        # Toutes les couches sont des rasters → le curseur d'opacité
+        # Toutes les couches sont des rasters -> le curseur d'opacite
         # s'applique toujours.
         shiny::sliderInput(
           session$ns("opacity"), i18n$t("reconfort_opacite"),
@@ -287,10 +287,10 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     })
 
     # ----- Validity banner (G3 advisory) --------------------------------
-    # v0.94.x — Le rendu du bandeau « hors domaine de calibration » a été
-    # déplacé au niveau PARENT (mod_monitoring::output$reconfort_validity_banner)
-    # pour être affiché sous « Base de suivi connectée », au même emplacement
-    # et dans le même style (`.monitoring_validity_banner`) que le bandeau
+    # v0.94.x - Le rendu du bandeau " hors domaine de calibration " a ete
+    # deplace au niveau PARENT (mod_monitoring::output$reconfort_validity_banner)
+    # pour etre affiche sous " Base de suivi connectee ", au meme emplacement
+    # et dans le meme style (`.monitoring_validity_banner`) que le bandeau
     # FORDEAD. Le module se contente d'exposer `validity_r` dans son retour.
 
     # ----- Empty-state overlay (no raster layer at all) -----------------
@@ -317,9 +317,9 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # ----- Raster layer helper (shared by base render + proxy) -----------
     # Draws one manifest raster row (continuous or categorical) + its legend
     # at the requested opacity. `r` is the SpatRaster ALREADY read and masked
-    # to the UGF zone by the core reader (`masked_rasters_r`) — the module
-    # carries no spatial masking of its own (spec 021 L7, CLAUDE.md §1-3).
-    # Palettes / domain / reverse come from the manifest — no business
+    # to the UGF zone by the core reader (`masked_rasters_r`) - the module
+    # carries no spatial masking of its own (spec 021 L7, CLAUDE.md sect.1-3).
+    # Palettes / domain / reverse come from the manifest - no business
     # semantics here.
     .add_raster <- function(map, r, row, opacity, i18n) {
       if (is.null(r)) return(map)
@@ -330,19 +330,19 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         lv   <- as.integer(names(cols))
         pal  <- leaflet::colorFactor(unname(cols), levels = lv,
                                      na.color = "transparent")
-        # Classe 1 (1-sain) rendue TRANSPARENTE — n'afficher que les pixels
-        # affectés (2-deperissant / 3-tres-deperissant), parité avec la
-        # sévérité FORDEAD qui rend la classe 0 (sain) transparente. Le fond
-        # de carte reste ainsi visible sous la forêt saine.
+        # Classe 1 (1-sain) rendue TRANSPARENTE - n'afficher que les pixels
+        # affectes (2-deperissant / 3-tres-deperissant), parite avec la
+        # severite FORDEAD qui rend la classe 0 (sain) transparente. Le fond
+        # de carte reste ainsi visible sous la foret saine.
         r_show <- terra::ifel(is.na(r) | r <= 1, NA, r)
         map <- leaflet::addRasterImage(
           map, x = r_show, colors = pal, opacity = opacity,
           method = "ngb", project = TRUE, group = row$id,
           options = leaflet::gridOptions(pane = "nemetonRaster")
         )
-        # v0.106.4 — La légende ne liste QUE les classes réellement peintes
-        # (2 et 3). Elle affichait auparavant un carré vert « 1-sain » que la
-        # carte ne dessine jamais (classe masquée juste au-dessus) : la légende
+        # v0.106.4 - La legende ne liste QUE les classes reellement peintes
+        # (2 et 3). Elle affichait auparavant un carre vert " 1-sain " que la
+        # carte ne dessine jamais (classe masquee juste au-dessus) : la legende
         # promettait une couleur absente de la carte.
         painted <- names(cols) %in% c("2", "3")
         map <- leaflet::addLegend(
@@ -354,14 +354,14 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         )
       } else {
         palname <- if (!is.na(row$palette)) row$palette else "viridis"
-        # Échelle de couleur PAR QUANTILES (parité avec la carte FAST),
-        # calculée sur les valeurs réelles du raster affiché : une
-        # distribution continue concentrée (score / probabilité) utilise
-        # alors toute la palette uniformément, au lieu d'une rampe linéaire
-        # min/max qui délave les valeurs groupées. Le vmin/vmax générique
-        # du manifeste (score 1-100, proba 0-1000) n'est PAS utilisé.
-        # Repli sur une rampe linéaire réelle si la distribution est trop
-        # dégénérée pour des bornes de quantiles.
+        # Echelle de couleur PAR QUANTILES (parite avec la carte FAST),
+        # calculee sur les valeurs reelles du raster affiche : une
+        # distribution continue concentree (score / probabilite) utilise
+        # alors toute la palette uniformement, au lieu d'une rampe lineaire
+        # min/max qui delave les valeurs groupees. Le vmin/vmax generique
+        # du manifeste (score 1-100, proba 0-1000) n'est PAS utilise.
+        # Repli sur une rampe lineaire reelle si la distribution est trop
+        # degeneree pour des bornes de quantiles.
         vals <- tryCatch(terra::values(r, na.rm = TRUE, mat = FALSE),
                          error = function(e) numeric(0))
         vals <- vals[is.finite(vals)]
@@ -419,23 +419,23 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
     # `nemeton::read_reconfort_layer(layer = row, mask_polygon = aoi)`
     # returns a SpatRaster already masked to the selected monitoring-zone
     # polygon (spec 021 L7) : the module no longer performs ANY spatial
-    # masking (no terra::mask) — strict parity with FAST / FORDEAD readers
-    # (CLAUDE.md §1-3). Cached on manifest / zone (`aoi_r`), NOT on opacity :
+    # masking (no terra::mask) - strict parity with FAST / FORDEAD readers
+    # (CLAUDE.md sect.1-3). Cached on manifest / zone (`aoi_r`), NOT on opacity :
     # a slider move only re-adds the cached rasters at the new opacity
-    # (parity FORDEAD — the mask lives in a reactive, opacity is a render
+    # (parity FORDEAD - the mask lives in a reactive, opacity is a render
     # param). `aoi` is the mask polygon ; passing it avoids a per-tick DB
     # round-trip (the reader would otherwise resolve it from con + zone_id).
-    # Returns a named list id → SpatRaster for every `type == "raster"` row
-    # (the `vector` alert row is never passed to the reader — it rejects it).
+    # Returns a named list id -> SpatRaster for every `type == "raster"` row
+    # (the `vector` alert row is never passed to the reader - it rejects it).
     masked_rasters_r <- shiny::reactive({
       rm <- raster_manifest_r()
       if (is.null(rm)) return(NULL)
       aoi <- aoi_r()
-      # spec 008 §4 — Ne lire QUE la couche affichée. Les couches sont
+      # spec 008 sect.4 - Ne lire QUE la couche affichee. Les couches sont
       # EXCLUSIVES (radioButtons) : lire les trois pour n'en peindre qu'une
-      # masquait et matérialisait deux rasters pleins pour rien, que le cache du
-      # `reactive()` gardait ensuite vivants dans la session. Le masquage côté
-      # cœur renvoie de l'in-memory : le coût est réel, pas théorique.
+      # masquait et materialisait deux rasters pleins pour rien, que le cache du
+      # `reactive()` gardait ensuite vivants dans la session. Le masquage cote
+      # coeur renvoie de l'in-memory : le cout est reel, pas theorique.
       sel <- selected_ids_r()
       keep <- as.character(rm$id) %in% sel
       if (!any(keep)) return(NULL)
@@ -461,21 +461,21 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       out
     })
 
-    # ----- Base map (stable widget — parity FORDEAD) --------------------
+    # ----- Base map (stable widget - parity FORDEAD) --------------------
     # Depends ONLY on the current project (re-render on project change, not
     # on zone / layer / opacity). A re-render recreates the widget and would
     # otherwise drop the `input$map_click` binding + reset zoom. Tiles +
     # panes + LayersControl (UGF overlay) + framing only ; the data layers
     # (rasters) are drawn by the observer below via leafletProxy.
     output$map <- leaflet::renderLeaflet({
-      proj <- app_state$current_project          # SEUL dep réactif
+      proj <- app_state$current_project          # SEUL dep reactif
       i18n <- shiny::isolate(i18n_r())
       ugf  <- shiny::isolate(ugf_r())
 
-      # « UGF » TOUJOURS dans le contrôle (parité Carte pixel FAST) : ses
-      # polygones sont (re)dessinés par l'observer réactif plus bas dès que
-      # `indicators_sf` est disponible (attache différée au chargement → l'UGF
-      # pouvait manquer si le render de base précédait l'attache).
+      # " UGF " TOUJOURS dans le controle (parite Carte pixel FAST) : ses
+      # polygones sont (re)dessines par l'observer reactif plus bas des que
+      # `indicators_sf` est disponible (attache differee au chargement -> l'UGF
+      # pouvait manquer si le render de base precedait l'attache).
       overlays <- "UGF"
       map <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap",     group = "OSM") |>
@@ -494,7 +494,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         )
       }
 
-      # Framing : UGF en priorité, sinon AOI de la zone de suivi.
+      # Framing : UGF en priorite, sinon AOI de la zone de suivi.
       bb <- NULL
       if (!is.null(ugf)) {
         bb <- tryCatch(sf::st_bbox(ugf), error = function(e) NULL)
@@ -514,9 +514,9 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       map
     })
 
-    # ----- Data layers → leafletProxy (toggles + opacity, re-render léger)
+    # ----- Data layers -> leafletProxy (toggles + opacity, re-render leger)
     # addRasterImage has no dynamic opacity setter, so a slider move (or a
-    # checkbox toggle, a zone change → new AOI clip, a completed run → new
+    # checkbox toggle, a zone change -> new AOI clip, a completed run -> new
     # manifest) re-draws the checked layers via leafletProxy. The base map,
     # zoom, base layer and UGF overlay are preserved. Mirror of FORDEAD.
     shiny::observe({
@@ -547,10 +547,10 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       proxy
     })
 
-    # UGF overlay via leafletProxy (réactif sur le projet) : (re)dessine les
-    # polygones UGF dès que `indicators_sf` est attaché — corrige la
-    # disparition de l'UGF quand le render de base précédait l'attache
-    # différée. Parité avec la Carte pixel FAST / FORDEAD.
+    # UGF overlay via leafletProxy (reactif sur le projet) : (re)dessine les
+    # polygones UGF des que `indicators_sf` est attache - corrige la
+    # disparition de l'UGF quand le render de base precedait l'attache
+    # differee. Parite avec la Carte pixel FAST / FORDEAD.
     shiny::observe({
       ugf <- ugf_r()
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("UGF")
@@ -589,12 +589,12 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       lng <- input$map_click$lng
       if (is.null(lat) || is.null(lng)) return()
 
-      # Message « calcul en cours » affiché TOUT DE SUITE (parité Cartes
-      # FAST / FORDEAD). La lecture de la série CRSWIR/CRre + le tracé plotly
-      # sont déférés via `session$onFlushed` pour que la notification parte au
-      # client AVANT le calcul (un observateur synchrone ne flushe l'UI qu'à
-      # sa sortie). `on.exit` retire la notif quoi qu'il arrive (succès, « pas
-      # de données », erreur).
+      # Message " calcul en cours " affiche TOUT DE SUITE (parite Cartes
+      # FAST / FORDEAD). La lecture de la serie CRSWIR/CRre + le trace plotly
+      # sont deferes via `session$onFlushed` pour que la notification parte au
+      # client AVANT le calcul (un observateur synchrone ne flushe l'UI qu'a
+      # sa sortie). `on.exit` retire la notif quoi qu'il arrive (succes, " pas
+      # de donnees ", erreur).
       .notif_id <- session$ns("reconfort_pixel_loading")
       shiny::showNotification(
         i18n$t("monitoring_pixel_map_computing"),
@@ -603,14 +603,14 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
       session$onFlushed(function() {
         on.exit(shiny::removeNotification(.notif_id, session = session),
                 add = TRUE)
-      # `onFlushed` s'exécute HORS consommateur réactif : on enveloppe tout le
-      # calcul dans `shiny::isolate()` (parité Cartes FAST / FORDEAD). Les
-      # valeurs réactives (zone, proj, cd, lat, lng, i18n) ont déjà été
-      # capturées plus haut en contexte réactif.
+      # `onFlushed` s'execute HORS consommateur reactif : on enveloppe tout le
+      # calcul dans `shiny::isolate()` (parite Cartes FAST / FORDEAD). Les
+      # valeurs reactives (zone, proj, cd, lat, lng, i18n) ont deja ete
+      # capturees plus haut en contexte reactif.
       shiny::isolate({
       s <- tryCatch(
         nemeton::read_reconfort_pixel_series(
-          con       = NULL,   # spec : con réservé, NULL accepté
+          con       = NULL,   # spec : con reserve, NULL accepte
           zone_id   = as.integer(zone),
           xy        = c(lng, lat),
           crs       = 4326,
@@ -640,14 +640,14 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           sprintf("%s : %s", i18n$t("monitoring_reconfort_model"), v_model)
       )
       subtitle <- if (length(subtitle_bits))
-        paste(subtitle_bits, collapse = " — ") else NULL
+        paste(subtitle_bits, collapse = " \u2014 ") else NULL
 
-      # Planche 4 panneaux (Partie B) : TOUT le dérivé vient du cœur
-      # (`nemeton::prepare_pixel_dieback_series()`), le tracé pur est délégué
-      # à `plot_pixel_dieback()` (règles 1-3 : zéro calcul dans l'app). Le
-      # rendu est réactif aux contrôles `pixel_smooth` / `pixel_points` de la
+      # Planche 4 panneaux (Partie B) : TOUT le derive vient du coeur
+      # (`nemeton::prepare_pixel_dieback_series()`), le trace pur est delegue
+      # a `plot_pixel_dieback()` (regles 1-3 : zero calcul dans l'app). Le
+      # rendu est reactif aux controles `pixel_smooth` / `pixel_points` de la
       # modale : basculer le lissage / les points brutes re-render la planche
-      # sans nouveau clic (le `s` du pixel cliqué est capturé par la closure).
+      # sans nouveau clic (le `s` du pixel clique est capture par la closure).
       output$pixel_ts_plot <- plotly::renderPlotly({
         prepared <- nemeton::prepare_pixel_dieback_series(
           s, smooth = input$pixel_smooth %||% "light"
@@ -663,7 +663,7 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           responsive = TRUE
         )
       })
-      # Repli non-graphique (WCAG 2.1 AA) : la série brute du pixel en table DT.
+      # Repli non-graphique (WCAG 2.1 AA) : la serie brute du pixel en table DT.
       output$pixel_ts_table <- DT::renderDT({
         tbl <- data.frame(
           date   = as.Date(s$obs_date),
@@ -674,9 +674,9 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
                       options = list(pageLength = 8L, dom = "tip"))
       })
 
-      # Modale plein écran (parité FORDEAD). Contrôles lissage/points en tête,
-      # sous-titre espèce/modèle conservé, planche agrandie (~760 px) + table
-      # DT équivalente en repli accessible.
+      # Modale plein ecran (parite FORDEAD). Controles lissage/points en tete,
+      # sous-titre espece/modele conserve, planche agrandie (~760 px) + table
+      # DT equivalente en repli accessible.
       shiny::showModal(shiny::modalDialog(
         title = htmltools::tagList(
           htmltools::span(sprintf(
@@ -701,14 +701,14 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
         htmltools::tags$style(htmltools::HTML(
           ".modal-fullscreen .pixel-ts-wrap{height:calc(100vh - 220px) !important;}"
         )),
-        # Contrôles d'affichage (aucun impact métier : smooth passé au cœur,
+        # Controles d'affichage (aucun impact metier : smooth passe au coeur,
         # points = simple toggle de traces). Lissage fort volontairement absent
-        # (le cœur n'offre que none/light).
+        # (le coeur n'offre que none/light).
         #
-        # v0.106.4 — TOUT SUR UNE SEULE LIGNE : « Lissage : Aucun / Léger »
-        # + « Observations brutes ». Shiny rend chaque input dans un
-        # form-group bloc (label AU-DESSUS des options, marge basse), d'où les
-        # deux lignes précédentes. Le CSS `.pixel-ctl` ci-dessous remet le
+        # v0.106.4 - TOUT SUR UNE SEULE LIGNE : " Lissage : Aucun / Leger "
+        # + " Observations brutes ". Shiny rend chaque input dans un
+        # form-group bloc (label AU-DESSUS des options, marge basse), d'ou les
+        # deux lignes precedentes. Le CSS `.pixel-ctl` ci-dessous remet le
         # label du groupe radio en ligne avec ses options et annule les marges.
         htmltools::tags$style(htmltools::HTML(paste0(
           ".pixel-ctl .shiny-input-container,.pixel-ctl .form-group",
@@ -746,13 +746,13 @@ mod_monitoring_reconfort_map_server <- function(id, app_state, zone_id_r,
           DT::DTOutput(session$ns("pixel_ts_table"))
         )
       ))
-      })  # fin shiny::isolate (calcul différé hors contexte réactif)
+      })  # fin shiny::isolate (calcul differe hors contexte reactif)
       }, once = TRUE)  # fin session$onFlushed
     })
 
-    # `validity` : exposé pour que le PARENT (mod_monitoring) rende le bandeau
-    # « hors domaine de calibration » sous « Base de suivi connectée », au même
-    # emplacement/style que FORDEAD (parité). NULL si l'AOI est irrésolue.
+    # `validity` : expose pour que le PARENT (mod_monitoring) rende le bandeau
+    # " hors domaine de calibration " sous " Base de suivi connectee ", au meme
+    # emplacement/style que FORDEAD (parite). NULL si l'AOI est irresolue.
     invisible(list(validity = validity_r))
   })
 }

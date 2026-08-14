@@ -38,8 +38,8 @@ NULL
 #' Resolution order (matches `service_monitoring_db.R` and the contract
 #' documented in user `.Renviron`):
 #'
-#' 1. `NEMETON_DB_URL` — URL parsed via httr2 (overrides everything else).
-#' 2. `POSTGRESQL_ADDON_*` — Clever Cloud addon vars.
+#' 1. `NEMETON_DB_URL` - URL parsed via httr2 (overrides everything else).
+#' 2. `POSTGRESQL_ADDON_*` - Clever Cloud addon vars.
 #' 3. `NEMETON_DB_HOST` / `_PORT` / `_NAME` / `_USER` / `_PASSWORD`.
 #'
 #' @return A list with `host`, `port`, `dbname`, `user`, `password`,
@@ -47,15 +47,15 @@ NULL
 #'   or NULL when nothing is configured.
 #' @noRd
 .resolve_db_config <- function() {
-  # v0.53.0 — `NEMETON_DB_LOCAL=1` court-circuite la project DB. Avant ce
-  # bump, la variable n'était lue que par `service_monitoring_db.R`
-  # (monitoring DB), donc charger un projet émettait quand même un
-  # « Connected to PostgreSQL: ... (source: url) » qui contredisait
-  # le mode local. Désormais, si `NEMETON_DB_LOCAL=1` (= 1 / true /
+  # v0.53.0 - `NEMETON_DB_LOCAL=1` court-circuite la project DB. Avant ce
+  # bump, la variable n'etait lue que par `service_monitoring_db.R`
+  # (monitoring DB), donc charger un projet emettait quand meme un
+  # " Connected to PostgreSQL: ... (source: url) " qui contredisait
+  # le mode local. Desormais, si `NEMETON_DB_LOCAL=1` (= 1 / true /
   # yes / on, case-insensitive), `.resolve_db_config()` retourne NULL
-  # → `is_db_configured()` est FALSE → l'app n'écrit ni ne lit la
+  # -> `is_db_configured()` est FALSE -> l'app n'ecrit ni ne lit la
   # PostGIS (comments, parcels, projects, users restent sur disque
-  # uniquement, mode single-user local cohérent avec le sens attendu).
+  # uniquement, mode single-user local coherent avec le sens attendu).
   if (isTRUE(.nemeton_truthy(Sys.getenv("NEMETON_DB_LOCAL", "")))) {
     return(NULL)
   }
@@ -146,7 +146,7 @@ db_target_label <- function() {
 #' @noRd
 
 # libpq connect_timeout (seconds) for the PostGIS connection. Default 8 s
-# — long enough for a reachable local/cloud DB, short enough to avoid the
+# - long enough for a reachable local/cloud DB, short enough to avoid the
 # ~20 s OS-default TCP block (Windows) when the host is down. libpq
 # enforces a minimum of 2. Overridable via NEMETON_DB_CONNECT_TIMEOUT.
 .resolve_db_connect_timeout <- function() {
@@ -174,7 +174,7 @@ get_db_connection <- function(check_postgis = TRUE) {
       password = cfg$password,
       sslmode  = cfg$sslmode,
       # Fail fast on an unreachable / slow host instead of blocking on
-      # the OS default TCP timeout (~20 s on Windows → perceived freeze).
+      # the OS default TCP timeout (~20 s on Windows -> perceived freeze).
       # libpq keyword, in seconds (min 2). Overridable via NEMETON_DB_CONNECT_TIMEOUT.
       connect_timeout = .resolve_db_connect_timeout()
     )
@@ -214,11 +214,11 @@ get_db_connection <- function(check_postgis = TRUE) {
     cli::cli_warn("App schema initialization failed: {conditionMessage(e)}")
     FALSE
   })
-  # Migrations du cœur sur la base plateforme : crée les tables détenues par
+  # Migrations du coeur sur la base plateforme : cree les tables detenues par
   # `nemeton` (dont `project_lock`, migration 0008, requise par le verrou projet).
-  # Idempotent : un simple SELECT sur `schema_migration` après la 1re application.
-  # Jamais fatal — l'app doit démarrer même si la migration échoue (verrou alors
-  # indisponible → tout passe en éditable côté connexion nulle / lecture seule).
+  # Idempotent : un simple SELECT sur `schema_migration` apres la 1re application.
+  # Jamais fatal - l'app doit demarrer meme si la migration echoue (verrou alors
+  # indisponible -> tout passe en editable cote connexion nulle / lecture seule).
   tryCatch(nemeton::db_migrate(con), error = function(e)
     cli::cli_warn("Core schema migration failed: {conditionMessage(e)}"))
   if (isTRUE(ok)) .nemeton_env$.app_schema_initialized <- TRUE
@@ -274,11 +274,11 @@ db_init_schema <- function(con = NULL) {
 
   # PostgreSQL renvoie une rafale de NOTICEs `... already exists,
   # skipping` quand on rejoue les `CREATE ... IF NOT EXISTS`
-  # idempotents. Ces notices sont surfacées par RPostgres via
-  # `message()` et polluent la console à chaque démarrage de l'app
+  # idempotents. Ces notices sont surfacees par RPostgres via
+  # `message()` et polluent la console a chaque demarrage de l'app
   # alors qu'elles n'apportent aucune information actionnable. On les
-  # filtre via `suppressMessages` — les `warning()` et `stop()` restent
-  # visibles, donc une vraie erreur de migration n'est pas masquée.
+  # filtre via `suppressMessages` - les `warning()` et `stop()` restent
+  # visibles, donc une vraie erreur de migration n'est pas masquee.
   tryCatch({
     suppressMessages({
       for (stmt in statements) {
@@ -386,7 +386,7 @@ db_save_parcels <- function(con, project_id, parcels) {
   # Convertir en MultiPolygon
   parcels <- sf::st_cast(parcels, "MULTIPOLYGON")
 
-  # Inserer via sf::st_write — ne garder que les colonnes du schema
+  # Inserer via sf::st_write - ne garder que les colonnes du schema
   parcels_db <- parcels
   parcels_db$project_id <- proj_uuid
   if (is.null(parcels_db$nemeton_id)) parcels_db$nemeton_id <- parcels_db$id
@@ -435,7 +435,7 @@ db_save_indicators <- function(con, project_id, indicators) {
     as.data.frame(indicators)
   }
 
-  # Mapping noms locaux (service_compute.R) → cles NMT du glossaire BMAD (schema DB)
+  # Mapping noms locaux (service_compute.R) -> cles NMT du glossaire BMAD (schema DB)
   rename_map <- c(
     # B - Biodiversite
     biodiversity_protection   = "indicateur_b1_protection",
@@ -534,12 +534,12 @@ db_save_indicators <- function(con, project_id, indicators) {
 }
 
 
-#' Persist a versioned reGénération climate state (spec 027 §7, L6)
+#' Persist a versioned reGeneration climate state (spec 027 sect.7, L6)
 #'
 #' @description
 #' Appends a new **version** of the per-UGF climate-vulnerability state to
-#' \code{nemeton.regeneration_states} (archival — earlier versions are kept,
-#' enabling change tracking over time, spec 027 §6A). The §7 columns present on
+#' \code{nemeton.regeneration_states} (archival - earlier versions are kept,
+#' enabling change tracking over time, spec 027 sect.6A). The sect.7 columns present on
 #' \code{units} are stored per UG as a JSONB payload, so the table schema is
 #' stable regardless of which engines ran. Idempotent table creation.
 #'
@@ -585,7 +585,7 @@ db_save_regeneration <- function(con, project_id, units) {
 #' Save a versioned snapshot of an action plan to the database
 #'
 #' Mirror of \code{db_save_regeneration} for the action plan: appends a new
-#' **version** of the plan to \code{nemeton.action_plan_states} (archival —
+#' **version** of the plan to \code{nemeton.action_plan_states} (archival -
 #' earlier versions are kept, enabling multi-user history / change tracking).
 #' One row per action, each stored as a JSONB payload so the schema is stable.
 #' Idempotent table creation.
@@ -797,20 +797,20 @@ db_sync_project <- function(project_id, con = NULL) {
 #' @description
 #' Runs [db_sync_project()] in a `future` worker (separate R process) so
 #' the PostGIS connect + `sf::st_write()` / `dbWriteTable()` upload never
-#' blocks the main R thread — and therefore never freezes the Shiny event
+#' blocks the main R thread - and therefore never freezes the Shiny event
 #' loop / the map render right after a project load.
 #'
 #' Historical note : the sync used to run inside a `later::later(delay =
 #' 0.5)` callback. `later` callbacks execute on the MAIN thread, so the
-#' upload still blocked the event loop after the first map flush — the
-#' user perceived a freeze between the "Connected to PostgreSQL …" log and
+#' upload still blocked the event loop after the first map flush - the
+#' user perceived a freeze between the "Connected to PostgreSQL ..." log and
 #' the parcels appearing. Moving the whole sync off-thread removes that
 #' stall (the result is a best-effort side effect that no downstream
 #' consumer awaits).
 #'
 #' The worker re-loads `nemetonshiny`, replays the DB env vars (a fresh
 #' process does not inherit `Sys.setenv` from the parent) and opens its
-#' own connection — same machinery as the FORDEAD / RECONFORT run workers.
+#' own connection - same machinery as the FORDEAD / RECONFORT run workers.
 #' Degrades to the legacy `later()` deferral when `future` / `promises`
 #' are unavailable.
 #'
@@ -852,7 +852,7 @@ db_sync_project_async <- function(project_id) {
     } else {
       loadNamespace("nemetonshiny")
     }
-    nemetonshiny:::db_sync_project(project_id)
+    utils::getFromNamespace("db_sync_project", "nemetonshiny")(project_id)
   }, seed = TRUE)
 
   # Fire-and-forget : swallow rejections so an unhandled promise error

@@ -1,9 +1,9 @@
-# service_validation_sampling.R — Spec 014 phase B (app-side wrapper).
+# service_validation_sampling.R - Spec 014 phase B (app-side wrapper).
 #
 # `generate_validation_plan()` is the single entry point consumed by
 # `mod_validation_sampling`. It encapsulates the FORDEAD vs FAST mask
 # resolution, calls `nemeton::create_validation_sampling_plan()`,
-# enriches the result with app provenance columns and turns the cœur
+# enriches the result with app provenance columns and turns the coeur
 # error `nemeton_empty_alert_mask` plus a handful of preconditions
 # into typed errors the UI maps to friendly messages.
 #
@@ -16,7 +16,7 @@
 #                                FAST compute parameters missing)
 #   - validation_empty_mask    : mask is well-formed but contains
 #                                no alert cell in the chosen classes
-#                                (zone saine — wrapper of the cœur
+#                                (zone saine - wrapper of the coeur
 #                                `nemeton_empty_alert_mask`)
 
 
@@ -26,22 +26,22 @@
 #' @param project The loaded project list (`app_state$current_project`).
 #'   Must carry `id`, `path` and `metadata$monitoring_zone_id`.
 #' @param source One of `"FORDEAD"` / `"FAST"`. Drives which alert
-#'   mask the cœur planner consumes.
+#'   mask the coeur planner consumes.
 #' @param n_validation Integer. Number of validation placettes.
 #' @param n_control Integer. Number of control placettes.
-#' @param classes Integer vector — alert classes to retain. Default
+#' @param classes Integer vector - alert classes to retain. Default
 #'   `c(3L, 4L)` matches the G1 guard-rail of spec 008.
-#' @param control_classes Integer vector — classes from which control
-#'   (témoin) plots are drawn. Default `c(0L)` (healthy pixels). Relaxed
+#' @param control_classes Integer vector - classes from which control
+#'   (temoin) plots are drawn. Default `c(0L)` (healthy pixels). Relaxed
 #'   to a higher class by the UI when the alert raster has no class-0
 #'   cell (e.g. every pixel dropped below threshold at least once).
 #' @param buffer_m Numeric. Tampon around alert cells in meters.
-#' @param weighting One of `"uniform"` (default, weight = alert class — the
+#' @param weighting One of `"uniform"` (default, weight = alert class - the
 #'   historical behaviour) or `"continuous"` (weight proportional to a
-#'   continuous severity raster — FORDEAD `anomaly_index` / RECONFORT `score`,
+#'   continuous severity raster - FORDEAD `anomaly_index` / RECONFORT `score`,
 #'   parity with the FAST trend plan). Only honoured for FORDEAD / RECONFORT;
 #'   degrades cleanly to `"uniform"` when the severity layer is unavailable.
-#' @param seed Optional integer. Forwarded to the cœur planner.
+#' @param seed Optional integer. Forwarded to the coeur planner.
 #' @param ndvi_threshold,nbr_threshold,mode,window_days,date_from,date_to
 #'   FAST mask parameters. Required (non-NULL) when `source == "FAST"`
 #'   and no recent mask exists in the project cache.
@@ -61,9 +61,9 @@ generate_validation_plan <- function(con, project,
                                      classes      = c(3L, 4L),
                                      control_classes = c(0L),
                                      buffer_m     = 0,
-                                     # spec 014 — pondération du tirage : "uniform"
+                                     # spec 014 - ponderation du tirage : "uniform"
                                      # (poids = classe, historique) ou "continuous"
-                                     # (poids ∝ raster de sévérité continu, parité FAST).
+                                     # (poids prop raster de severite continu, parite FAST).
                                      weighting    = c("uniform", "continuous"),
                                      seed         = NULL,
                                      ndvi_threshold = NULL,
@@ -72,16 +72,16 @@ generate_validation_plan <- function(con, project,
                                      window_days    = 30L,
                                      date_from      = NULL,
                                      date_to        = NULL,
-                                     # v0.52.15 — mono-indice (spec 017 cœur).
-                                     # NULL → "NDVI" (défaut cœur).
+                                     # v0.52.15 - mono-indice (spec 017 coeur).
+                                     # NULL -> "NDVI" (defaut coeur).
                                      index          = NULL) {
   source <- match.arg(source)
   weighting <- match.arg(weighting)
   if (is.null(project) || is.null(project$id)) {
     rlang::abort("No project loaded.", class = "validation_no_project")
   }
-  # Zone d'échantillonnage = sélecteur « Zone de suivi » (`zone_id` passé
-  # par le module) ; repli sur la metadata projet si rien n'est sélectionné.
+  # Zone d'echantillonnage = selecteur " Zone de suivi " (`zone_id` passe
+  # par le module) ; repli sur la metadata projet si rien n'est selectionne.
   zone_id <- suppressWarnings(as.integer(zone_id))
   if (length(zone_id) != 1L || is.na(zone_id)) {
     zone_id <- suppressWarnings(as.integer(project$metadata$monitoring_zone_id))
@@ -112,9 +112,9 @@ generate_validation_plan <- function(con, project,
                  class = "validation_no_mask")
   }
 
-  # Pondération continue (spec 014) : résoudre le raster de sévérité continu
-  # (FORDEAD anomaly_index / RECONFORT score). Repli propre décidé PAR L'APP
-  # (plus permissif que le garde-fou cœur) : couche absente → tirage uniforme.
+  # Ponderation continue (spec 014) : resoudre le raster de severite continu
+  # (FORDEAD anomaly_index / RECONFORT score). Repli propre decide PAR L'APP
+  # (plus permissif que le garde-fou coeur) : couche absente -> tirage uniforme.
   weight_raster <- NULL
   if (identical(weighting, "continuous") &&
       source %in% c("FORDEAD", "RECONFORT")) {
@@ -165,10 +165,10 @@ generate_validation_plan <- function(con, project,
 #' Generate a FAST trend sanitary sampling plan (spec 025, Option A)
 #'
 #' App-side wrapper around `nemeton::create_trend_sanitary_plan()` for the
-#' « Plan de validation FAST » sub-tab: sanitary plots weighted by the
+#' " Plan de validation FAST " sub-tab: sanitary plots weighted by the
 #' continuous decline severity (|Theil-Sen slope| of the pluriannual NDRE
 #' trend) + control plots on stable cells. No categorical classes, no buffer,
-#' no TSP — distinct from the count/rolling `generate_validation_plan()` path.
+#' no TSP - distinct from the count/rolling `generate_validation_plan()` path.
 #'
 #' @return sf POINT (EPSG:2154) with `plot_id`, `type` (Sanitaire/Temoin),
 #'   `alert_value`, `index`, `source` ("FAST_TREND"), `seed`, plus app
@@ -186,9 +186,9 @@ generate_trend_sanitary_plan <- function(con, project,
   if (is.null(project) || is.null(project$id)) {
     rlang::abort("No project loaded.", class = "validation_no_project")
   }
-  # La zone d'échantillonnage vient du sélecteur « Zone de suivi »
-  # (`zone_id` passé par le module). Repli sur `metadata$monitoring_zone_id`
-  # uniquement si aucune zone n'est sélectionnée.
+  # La zone d'echantillonnage vient du selecteur " Zone de suivi "
+  # (`zone_id` passe par le module). Repli sur `metadata$monitoring_zone_id`
+  # uniquement si aucune zone n'est selectionnee.
   zone_id <- suppressWarnings(as.integer(zone_id))
   if (length(zone_id) != 1L || is.na(zone_id)) {
     zone_id <- suppressWarnings(as.integer(project$metadata$monitoring_zone_id))
@@ -219,7 +219,7 @@ generate_trend_sanitary_plan <- function(con, project,
       seed             = seed
     ),
     error = function(e) {
-      # Garde-fou cœur : aucun déclin significatif (ou raster trend vide).
+      # Garde-fou coeur : aucun declin significatif (ou raster trend vide).
       if (inherits(e, "nemeton_empty_alert_mask")) {
         rlang::abort("No significant decline on the analysis window.",
                      class = "validation_empty_trend", parent = e)
@@ -238,7 +238,7 @@ generate_trend_sanitary_plan <- function(con, project,
 # planner. Tries the on-disk monitoring DB lookup first (mirrors what
 # nemeton uses internally) and falls back to dissolving the project
 # UGF layer when the DB read fails or returns NULL (zone row deleted
-# out-of-band, cache wipe, …).
+# out-of-band, cache wipe, ...).
 .resolve_validation_zone <- function(project, con, zone_id) {
   aoi <- tryCatch(get_monitoring_zone_aoi(con, zone_id),
                   error = function(e) NULL)
@@ -262,7 +262,7 @@ generate_trend_sanitary_plan <- function(con, project,
 # - FAST    : try the FAST alert mask cache first (cache/layers/fast).
 #             If absent and the FAST compute parameters are complete,
 #             call compute_fast_alert_mask() then re-read. Returns NULL
-#             when no usable mask can be produced — caller turns this
+#             when no usable mask can be produced - caller turns this
 #             into a typed error.
 .resolve_alert_raster <- function(project, con, zone_id, source,
                                   ndvi_threshold = NULL,
@@ -271,8 +271,8 @@ generate_trend_sanitary_plan <- function(con, project,
                                   window_days    = 30L,
                                   date_from      = NULL,
                                   date_to        = NULL,
-                                  # v0.52.15 — index mono-indice (spec 017).
-                                  # NULL → fallback "NDVI" (défaut cœur).
+                                  # v0.52.15 - index mono-indice (spec 017).
+                                  # NULL -> fallback "NDVI" (defaut coeur).
                                   index          = NULL) {
   if (is.null(project$path) || !nzchar(project$path)) return(NULL)
   if (identical(source, "FORDEAD")) {
@@ -290,8 +290,8 @@ generate_trend_sanitary_plan <- function(con, project,
   }
   # RECONFORT path (spec 021 G4). Mirror of FORDEAD : the categorical
   # 1-sain / 2-deperissant / 3-tres-deperissant mask is read from the
-  # RECONFORT cache. Unlike FAST there is NO on-the-fly compute — the
-  # mask must have been persisted by a RECONFORT run. Absent → NULL,
+  # RECONFORT cache. Unlike FAST there is NO on-the-fly compute - the
+  # mask must have been persisted by a RECONFORT run. Absent -> NULL,
   # surfaced as `validation_no_mask` (same UX as FORDEAD without a run).
   if (identical(source, "RECONFORT")) {
     cd <- file.path(project$path, "cache", "layers", "reconfort")
@@ -306,8 +306,8 @@ generate_trend_sanitary_plan <- function(con, project,
       }
     ))
   }
-  # FAST path. v0.69.0 — répertoire renommé `fast/` → `fast_sampling/`
-  # pour clarifier le scope (validation d'échantillonnage), à
+  # FAST path. v0.69.0 - repertoire renomme `fast/` -> `fast_sampling/`
+  # pour clarifier le scope (validation d'echantillonnage), a
   # distinguer du cache `fast_alert/` et `fast_alert_mask/` du
   # contexte monitoring.
   cd <- file.path(project$path, "cache", "layers", "fast_sampling")
@@ -335,12 +335,12 @@ generate_trend_sanitary_plan <- function(con, project,
     )
     return(NULL)
   }
-  # v0.52.15 — `nemeton@v0.55.0` (spec 017) a unifié l'API mono-index :
-  # `compute_fast_alert_mask()` accepte désormais `index` + `threshold`,
-  # plus `threshold_ndvi`/`threshold_nbr` (call site oublié en v0.52.13).
-  # v0.57.0 ajoute le cache D6 du résultat (`cache_result = TRUE`,
-  # `result_cache_dir`) — on l'active sur `cache/layers/fast` pour
-  # qu'une revisite à paramètres identiques soit instantanée.
+  # v0.52.15 - `nemeton@v0.55.0` (spec 017) a unifie l'API mono-index :
+  # `compute_fast_alert_mask()` accepte desormais `index` + `threshold`,
+  # plus `threshold_ndvi`/`threshold_nbr` (call site oublie en v0.52.13).
+  # v0.57.0 ajoute le cache D6 du resultat (`cache_result = TRUE`,
+  # `result_cache_dir`) - on l'active sur `cache/layers/fast` pour
+  # qu'une revisite a parametres identiques soit instantanee.
   fast_idx <- toupper(index %||% "NDVI")
   fast_thr <- if (identical(fast_idx, "NBR")) nbr_threshold else ndvi_threshold
   tryCatch(
@@ -392,9 +392,9 @@ generate_trend_sanitary_plan <- function(con, project,
 #   re-aligns it onto the categorical dieback mask grid).
 # - RECONFORT : the continuous `score` raster, resolved from the on-disk cache
 #   manifest (parity with the reloaded-project path of the RECONFORT map viewer
-#   — no in-memory run result required).
+#   - no in-memory run result required).
 # Returns NULL when the severity layer is unavailable (older run predating the
-# layer) — the caller then degrades cleanly to uniform weighting.
+# layer) - the caller then degrades cleanly to uniform weighting.
 .resolve_weight_raster <- function(project, con, zone_id, source) {
   if (is.null(project$path) || !nzchar(project$path)) return(NULL)
 
@@ -424,7 +424,7 @@ generate_trend_sanitary_plan <- function(con, project,
       }
     )
     if (is.null(man) || !nrow(man)) return(NULL)
-    # Couche continue = `score` (le catégoriel 1/2/3 = `classification` sert
+    # Couche continue = `score` (le categoriel 1/2/3 = `classification` sert
     # d'alert_raster). Ne pas confondre.
     row <- man[man$id == "score" & man$type == "raster", , drop = FALSE]
     if (!nrow(row)) return(NULL)
@@ -439,7 +439,7 @@ generate_trend_sanitary_plan <- function(con, project,
     ))
   }
 
-  NULL   # FAST : chemin trend séparé (generate_trend_sanitary_plan).
+  NULL   # FAST : chemin trend separe (generate_trend_sanitary_plan).
 }
 
 

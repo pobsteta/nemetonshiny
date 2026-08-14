@@ -1,4 +1,4 @@
-# service_r5.R — live R5 dieback column for the synthesis radar
+# service_r5.R - live R5 dieback column for the synthesis radar
 # ------------------------------------------------------------------
 # R5 is NOT a standard per-UGF raster indicator: it is derived from the
 # dieback alerts persisted for the project's monitoring zone
@@ -11,7 +11,7 @@
 # (nemeton::indicateur_r5_deperissement + normalize_indicator, v0.99.1):
 # the app stays free of dieback business logic.
 
-#' Enrich the radar indicator sf with a live R5 dépérissement column
+#' Enrich the radar indicator sf with a live R5 deperissement column
 #'
 #' Best-effort: returns `base_sf` unchanged when there is no bound
 #' monitoring zone, no reachable DB, or no dieback alert. The added

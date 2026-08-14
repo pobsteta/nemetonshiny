@@ -1,23 +1,23 @@
 # ===========================================================================
-# Module — Création de desserte forestière (ForêtAccess), sous-onglet Terrain
+# Module - Creation de desserte forestiere (ForetAccess), sous-onglet Terrain
 # ===========================================================================
 #
-# Présentation Shiny du service `R/service_desserte.R` (adaptateur autour des
-# moteurs de création de réseau de `foretaccess`). Aucune logique métier (règle
-# 2) : le module orchestre l'UI, l'exécution asynchrone (worker `future`) et le
+# Presentation Shiny du service `R/service_desserte.R` (adaptateur autour des
+# moteurs de creation de reseau de `foretaccess`). Aucune logique metier (regle
+# 2) : le module orchestre l'UI, l'execution asynchrone (worker `future`) et le
 # rendu carte/badges.
 #
-# v1 : moteur GLOUTON seul, OPT-IN. La durée dépend de la SURFACE de l'emprise
-# et de `skidding_m` (cf. service_desserte.R), pas du nombre de parcelles. Même
-# patron que reGénération / Accessibilité : `ExtendedTask` + `future_promise`,
-# notif persistante bas-droite avec chrono, retour immédiat. Le réseau créé est
-# affiché en overlay RASTER (léger) ; les lignes vectorielles détaillées partent
-# à l'export GeoPackage.
+# v1 : moteur GLOUTON seul, OPT-IN. La duree depend de la SURFACE de l'emprise
+# et de `skidding_m` (cf. service_desserte.R), pas du nombre de parcelles. Meme
+# patron que reGeneration / Accessibilite : `ExtendedTask` + `future_promise`,
+# notif persistante bas-droite avec chrono, retour immediat. Le reseau cree est
+# affiche en overlay RASTER (leger) ; les lignes vectorielles detaillees partent
+# a l'export GeoPackage.
 
-# Lit `engine_status.json` du cache desserte, écrit par le worker à chaque
-# changement d'étape (`.dess_write_phase`). NULL si absent, illisible ou périmé
-# (> 2 min sans mise à jour) — même contrat que `.regen_read_phase()`. Le seuil
-# de péremption évite d'afficher indéfiniment la phase d'un worker mort.
+# Lit `engine_status.json` du cache desserte, ecrit par le worker a chaque
+# changement d'etape (`.dess_write_phase`). NULL si absent, illisible ou perime
+# (> 2 min sans mise a jour) - meme contrat que `.regen_read_phase()`. Le seuil
+# de peremption evite d'afficher indefiniment la phase d'un worker mort.
 .dess_read_phase <- function(project_path) {
   if (is.null(project_path)) return(NULL)
   f <- file.path(project_path, "cache", "desserte", "engine_status.json")
@@ -34,7 +34,7 @@ mod_desserte_ui <- function(id) {
   i18n <- get_i18n(get_app_options()$language %||% "fr")
 
   bslib::layout_sidebar(
-    # Barre latérale GAUCHE : commandes du CALCUL.
+    # Barre laterale GAUCHE : commandes du CALCUL.
     sidebar = bslib::sidebar(
       width = 320, open = "always", position = "left",
       htmltools::tags$p(class = "text-muted small", i18n$t("dess_intro")),
@@ -45,9 +45,9 @@ mod_desserte_ui <- function(id) {
                                   c(i18n$t("dess_engine_glouton"),
                                     i18n$t("dess_engine_steiner"))),
         selected = DESSERTE_ENGINES[[1]]),
-      # Avertissement « calcul long » (parité câble) : le glouton trace un A*
-      # par CELLULE de parcelle non desservie, donc le temps croît avec la
-      # surface de l'emprise et décroît avec `skidding_m`.
+      # Avertissement " calcul long " (parite cable) : le glouton trace un A*
+      # par CELLULE de parcelle non desservie, donc le temps croit avec la
+      # surface de l'emprise et decroit avec `skidding_m`.
       htmltools::div(
         class = "alert alert-warning py-2 small",
         shiny::icon("triangle-exclamation"), " ", i18n$t("dess_slow_help")),
@@ -57,9 +57,9 @@ mod_desserte_ui <- function(id) {
         value = 1, min = 0, max = 20, step = 1),
       htmltools::tags$p(class = "text-muted small", i18n$t("dess_buffer_help")),
 
-      # Distance de débardage : paramètre MÉTIER, pas un réglage de performance.
-      # Il change le résultat — sur Dabo, 39 routes à 100 m contre aucune à
-      # 300 m — donc il doit être visible, sinon « rien à construire » est
+      # Distance de debardage : parametre METIER, pas un reglage de performance.
+      # Il change le resultat - sur Dabo, 39 routes a 100 m contre aucune a
+      # 300 m - donc il doit etre visible, sinon " rien a construire " est
       # inintelligible. Paliers repris de `foretaccess_config()$skidder$
       # classes_distance_m`.
       shiny::numericInput(
@@ -68,19 +68,19 @@ mod_desserte_ui <- function(id) {
       htmltools::tags$p(class = "text-muted small", i18n$t("dess_skidding_help")),
 
       # --- Tarification de la pente (foretaccess spec 029) ---------------------
-      # Deux DÉCISIONS distinctes, et c'est pour cela qu'il y a deux entrées.
+      # Deux DECISIONS distinctes, et c'est pour cela qu'il y a deux entrees.
       #
-      # `methode_pente` ne change que la façon de CHIFFRER : le barème applique
-      # quatre classes, le terrassement calcule un volume de déblai/remblai. Sur
-      # le banc DABO du cœur, coûts médians comparables (x 1,03) mais tracés
-      # communs à 44 % seulement — personne n'a jugé lequel est le plus
-      # plausible sur le terrain, d'où un choix rendu à l'utilisateur plutôt
-      # qu'un défaut imposé.
+      # `methode_pente` ne change que la facon de CHIFFRER : le bareme applique
+      # quatre classes, le terrassement calcule un volume de deblai/remblai. Sur
+      # le banc DABO du coeur, couts medians comparables (x 1,03) mais traces
+      # communs a 44 % seulement - personne n'a juge lequel est le plus
+      # plausible sur le terrain, d'ou un choix rendu a l'utilisateur plutot
+      # qu'un defaut impose.
       #
-      # `pente_max_pct` décide JUSQU'OÙ l'on construit. Avant que le cœur ne le
-      # sépare, choisir « terrassement » déplaçait aussi ce plafond en silence,
-      # de 60 % à 100 %, ouvrant 5 % du massif. Les deux ne doivent pas se
-      # décider d'un seul geste.
+      # `pente_max_pct` decide JUSQU'OU l'on construit. Avant que le coeur ne le
+      # separe, choisir " terrassement " deplacait aussi ce plafond en silence,
+      # de 60 % a 100 %, ouvrant 5 % du massif. Les deux ne doivent pas se
+      # decider d'un seul geste.
       shiny::radioButtons(
         ns("dess_methode_pente"), i18n$t("dess_methode_pente"),
         choices = stats::setNames(c("bareme", "terrassement"),
@@ -90,9 +90,9 @@ mod_desserte_ui <- function(id) {
       htmltools::tags$p(class = "text-muted small",
                         i18n$t("dess_methode_pente_help")),
 
-      # La largeur n'a d'effet QU'EN terrassement -- le barème y est aveugle,
-      # alors que le volume croît comme son carré. On la masque plutôt que de la
-      # griser : pas de dépendance à shinyjs pour si peu.
+      # La largeur n'a d'effet QU'EN terrassement -- le bareme y est aveugle,
+      # alors que le volume croit comme son carre. On la masque plutot que de la
+      # griser : pas de dependance a shinyjs pour si peu.
       shiny::conditionalPanel(
         condition = sprintf("input['%s'] == 'terrassement'",
                             ns("dess_methode_pente")),
@@ -110,9 +110,9 @@ mod_desserte_ui <- function(id) {
         shiny::icon("triangle-exclamation"), " ",
         i18n$t("dess_pente_max_help")),
 
-      # Empreinte mémoire estimée de l'emprise courante : le pic du glouton est
-      # prévisible à partir de la seule grille (cf. .desserte_memory_check), donc
-      # affiché AVANT le clic — un dépassement se paie sinon par un OOM au bout
+      # Empreinte memoire estimee de l'emprise courante : le pic du glouton est
+      # previsible a partir de la seule grille (cf. .desserte_memory_check), donc
+      # affiche AVANT le clic - un depassement se paie sinon par un OOM au bout
       # d'un quart d'heure de calcul.
       shiny::uiOutput(ns("mem_estimate")),
 
@@ -131,7 +131,7 @@ mod_desserte_ui <- function(id) {
         fillable = TRUE,
         sidebar = bslib::sidebar(
           position = "right", open = "always", width = 280,
-          # Bilan du réseau créé (badges).
+          # Bilan du reseau cree (badges).
           htmltools::tags$strong(i18n$t("dess_summary_title")),
           shiny::uiOutput(ns("summary")),
           htmltools::tags$hr(class = "my-2"),
@@ -141,7 +141,7 @@ mod_desserte_ui <- function(id) {
           htmltools::tags$hr(class = "my-2"),
           bslib::accordion(
             open = FALSE,
-            # Typage du réseau : flux de bois mobilisé -> primaire/secondaire/
+            # Typage du reseau : flux de bois mobilise -> primaire/secondaire/
             # tertiaire (nemeton::volume_mobilisable -> foretaccess::typer_desserte).
             bslib::accordion_panel(
               title = i18n$t("dess_typage_title"),
@@ -158,10 +158,10 @@ mod_desserte_ui <- function(id) {
                 icon = shiny::icon("diagram-project"),
                 class = "btn-outline-primary btn-sm w-100 mb-2"),
               shiny::uiOutput(ns("typage_result"))),
-            # Intégrité du réseau (spec 025). Action SÉPARÉE et non une étape du
-            # calcul : mesuré 376,8 s sur Dabo (3 122 tronçons) contre 39,7 s
-            # pour la création entière — l'inclure rendrait « Générer la
-            # desserte » dix fois plus lent.
+            # Integrite du reseau (spec 025). Action SEPAREE et non une etape du
+            # calcul : mesure 376,8 s sur Dabo (3 122 troncons) contre 39,7 s
+            # pour la creation entiere - l'inclure rendrait " Generer la
+            # desserte " dix fois plus lent.
             bslib::accordion_panel(
               title = i18n$t("dess_integrite_title"),
               icon = bsicons::bs_icon("diagram-3-fill"),
@@ -173,10 +173,10 @@ mod_desserte_ui <- function(id) {
                 icon = bsicons::bs_icon("check2-square"),
                 class = "btn-outline-primary btn-sm w-100 mb-2"),
               shiny::uiOutput(ns("integrite_status"))),
-            # Optimisation du réseau créé. Action séparée : chaque essai est une
-            # construction gloutonne complète. Mesuré sur Dabo — glouton 82,2 s /
-            # coût 16 673 contre multistart 100,2 s / coût 15 002, soit 1,2x le
-            # temps pour -10 % de coût.
+            # Optimisation du reseau cree. Action separee : chaque essai est une
+            # construction gloutonne complete. Mesure sur Dabo - glouton 82,2 s /
+            # cout 16 673 contre multistart 100,2 s / cout 15 002, soit 1,2x le
+            # temps pour -10 % de cout.
             bslib::accordion_panel(
               title = i18n$t("dess_optim_title"),
               icon = bsicons::bs_icon("stars"),
@@ -196,7 +196,7 @@ mod_desserte_ui <- function(id) {
                 icon = bsicons::bs_icon("stars"),
                 class = "btn-outline-primary btn-sm w-100 mb-2"),
               shiny::uiOutput(ns("optim_result"))),
-            # Complément OSM de la BD TOPO (spec 028).
+            # Complement OSM de la BD TOPO (spec 028).
             bslib::accordion_panel(
               title = i18n$t("dess_osm_title"),
               icon = bsicons::bs_icon("signpost-2"),
@@ -207,10 +207,10 @@ mod_desserte_ui <- function(id) {
                 icon = bsicons::bs_icon("cloud-download"),
                 class = "btn-outline-primary btn-sm w-100 mb-2"),
               shiny::uiOutput(ns("osm_result"))),
-            # Détection de routes absentes de la BD TOPO (dessertR, spec 026).
-            # La plus lourde du panneau : mesuré 7,91 Go de pic et 189 s SANS
-            # nuage LiDAR sur 1 855 ha, et > 10 min avec. D'où le garde-fou
-            # mémoire côté service et l'avertissement ci-dessous.
+            # Detection de routes absentes de la BD TOPO (dessertR, spec 026).
+            # La plus lourde du panneau : mesure 7,91 Go de pic et 189 s SANS
+            # nuage LiDAR sur 1 855 ha, et > 10 min avec. D'ou le garde-fou
+            # memoire cote service et l'avertissement ci-dessous.
             bslib::accordion_panel(
               title = i18n$t("dess_detect_title"),
               icon = bsicons::bs_icon("search"),
@@ -253,27 +253,27 @@ mod_desserte_server <- function(id, app_state) {
         find.package("nemetonshiny") else NULL,
       error = function(e) NULL)
 
-    # Parcelles à desservir = AOI projet (EPSG:2154), repli indicators_sf ->
-    # UGF -> parcelles (helper partagé avec l'accessibilité).
+    # Parcelles a desservir = AOI projet (EPSG:2154), repli indicators_sf ->
+    # UGF -> parcelles (helper partage avec l'accessibilite).
     units_sf <- shiny::reactive({
       .resolve_project_aoi_2154(app_state$current_project)
     })
 
-    # Estimation de l'empreinte mémoire pour l'emprise courante (parcelles +
-    # tampon), recalculée à chaque changement du tampon. Sert d'avertissement
-    # amont ; le refus effectif reste côté service (run_desserte), qui est la
-    # seule barrière fiable (rule 2 : pas de décision métier dans le module).
+    # Estimation de l'empreinte memoire pour l'emprise courante (parcelles +
+    # tampon), recalculee a chaque changement du tampon. Sert d'avertissement
+    # amont ; le refus effectif reste cote service (run_desserte), qui est la
+    # seule barriere fiable (rule 2 : pas de decision metier dans le module).
     output$mem_estimate <- shiny::renderUI({
       aoi <- units_sf()
       if (is.null(aoi)) return(NULL)
       buffer_m <- max(0, (suppressWarnings(as.numeric(input$buffer_km)) %||% 1)) * 1000
-      # Le tampon est appliqué à la BBOX, pas aux géométries : c'est la seule
-      # chose dont dépend la grille, et ça évite un st_buffer() à chaque frappe.
+      # Le tampon est applique a la BBOX, pas aux geometries : c'est la seule
+      # chose dont depend la grille, et ca evite un st_buffer() a chaque frappe.
       mem <- .desserte_memory_check(aoi, res_m = 5, buffer_m = buffer_m)
       if (!is.finite(mem$cells) || !is.finite(mem$bytes)) return(NULL)
-      fmt <- function(x, d = 1) formatC(x, format = "f", digits = d, big.mark = " ")
+      fmt <- function(x, d = 1) formatC(x, format = "f", digits = d, big.mark = "\u202f")
       txt <- sprintf(i18n$t("dess_mem_estimate_fmt"),
-                     formatC(mem$cells, format = "d", big.mark = " "),
+                     formatC(mem$cells, format = "d", big.mark = "\u202f"),
                      fmt(mem$bytes / 1024^3),
                      if (is.finite(mem$available)) fmt(mem$available / 1024^3) else "?")
       htmltools::div(
@@ -285,7 +285,7 @@ mod_desserte_server <- function(id, app_state) {
           i18n$t(if (isTRUE(mem$ok)) "dess_mem_ok" else "dess_mem_risk")))
     })
 
-    # --- Worker asynchrone : acquisition + coût + moteur de création ----------
+    # --- Worker asynchrone : acquisition + cout + moteur de creation ----------
     dess_task <- shiny::ExtendedTask$new(
       function(aoi_path, engine, cache_dir, buffer_m, skidding_m, methode_pente,
                largeur_m, pente_max_pct, dev_path, app_opts) {
@@ -296,14 +296,14 @@ mod_desserte_server <- function(id, app_state) {
           }
         }
         promises::future_promise({
-          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          nemetonshiny:::run_desserte(aoi_path, engine, cache_dir, buffer_m,
+          utils::getFromNamespace("run_desserte", "nemetonshiny")(aoi_path, engine, cache_dir, buffer_m,
                                       skidding_m = skidding_m,
                                       methode_pente = methode_pente,
                                       largeur_m = largeur_m,
@@ -338,7 +338,7 @@ mod_desserte_server <- function(id, app_state) {
         shiny::showNotification(i18n$t("dess_need_engine"), type = "warning")
         return()
       }
-      # AOI passée au worker PAR FICHIER (pointeur externe sf non sérialisable).
+      # AOI passee au worker PAR FICHIER (pointeur externe sf non serialisable).
       cache_dir <- .desserte_cache_dir(project_path)
       dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
       aoi_path <- file.path(cache_dir, "aoi_input.gpkg")
@@ -375,13 +375,13 @@ mod_desserte_server <- function(id, app_state) {
           shiny::removeNotification(session$ns("dess_notif"))
           bslib::update_task_button("run", state = "ready")
           shiny::showNotification(
-            paste0(i18n$t("desserte_engine_failed"), " — ",
+            paste0(i18n$t("desserte_engine_failed"), " \u2014 ",
                    .strip_ansi(conditionMessage(e))),
             type = "error", duration = NULL)
         })
     })
 
-    # Libellé « en cours » enrichi de la phase publiée par le worker sur le canal
+    # Libelle " en cours " enrichi de la phase publiee par le worker sur le canal
     # disque. Le moteur glouton peut tourner des dizaines de minutes sur de
     # grandes parcelles : sans la phase, l'utilisateur ne voit qu'un chrono et
     # conclut que rien ne se passe.
@@ -392,11 +392,11 @@ mod_desserte_server <- function(id, app_state) {
       if (is.null(ph)) return(base)
       i <- match(ph, DESSERTE_PHASES)
       lbl <- i18n$t(paste0("dess_phase_", ph))
-      if (is.na(i)) return(paste0(base, " — ", lbl))
-      sprintf("%s — %s (%d/%d)", base, lbl, i, length(DESSERTE_PHASES))
+      if (is.na(i)) return(paste0(base, " \u2014 ", lbl))
+      sprintf("%s \u2014 %s (%d/%d)", base, lbl, i, length(DESSERTE_PHASES))
     }
 
-    # Rafraîchit le chrono ET la phase de la notif persistante tant que le
+    # Rafraichit le chrono ET la phase de la notif persistante tant que le
     # worker tourne.
     shiny::observe({
       if (!isTRUE(rv$running)) return()
@@ -415,16 +415,16 @@ mod_desserte_server <- function(id, app_state) {
     })
     shiny::outputOptions(output, "run_status", suspendWhenHidden = FALSE)
 
-    # --- Fin de tâche ----------------------------------------------------------
+    # --- Fin de tache ----------------------------------------------------------
     shiny::observeEvent(dess_task$status(), {
       st <- dess_task$status()
       if (!identical(st, "success") && !identical(st, "error")) return()
       rv$running <- FALSE
       rv$start <- NULL
       shiny::removeNotification(session$ns("dess_notif"))
-      # Retire le canal de phase : un `engine_status.json` laissé sur disque
-      # ferait afficher une phase périmée au prochain lancement, avant que le
-      # worker n'ait publié la sienne.
+      # Retire le canal de phase : un `engine_status.json` laisse sur disque
+      # ferait afficher une phase perimee au prochain lancement, avant que le
+      # worker n'ait publie la sienne.
       tryCatch({
         pp <- app_state$current_project$path
         if (!is.null(pp)) unlink(file.path(pp, "cache", "desserte",
@@ -441,7 +441,7 @@ mod_desserte_server <- function(id, app_state) {
         msg <- i18n$t(reason)
         detail <- tryCatch(res$detail, error = function(e) NULL)
         if (!is.null(detail) && nzchar(detail)) {
-          msg <- paste0(msg, " — ", .strip_ansi(as.character(detail)))
+          msg <- paste0(msg, " \u2014 ", .strip_ansi(as.character(detail)))
         }
         shiny::showNotification(msg, type = "error", duration = NULL)
         return()
@@ -450,10 +450,10 @@ mod_desserte_server <- function(id, app_state) {
       project_path <- tryCatch(app_state$current_project$path,
                                error = function(e) NULL)
       rv$result <- .load_cached_desserte(project_path, .desserte_params_courants(input)) %||% res
-      # Zéro route créée est un SUCCÈS, pas un résultat vide : à `skidding_m`
-      # réaliste, une forêt bien desservie n'a rien à construire (mesuré sur
-      # Dabo : 39 routes à 100 m, aucune à 300 m). Sans message dédié,
-      # l'utilisateur lirait « desserte créée » devant une carte sans route.
+      # Zero route creee est un SUCCES, pas un resultat vide : a `skidding_m`
+      # realiste, une foret bien desservie n'a rien a construire (mesure sur
+      # Dabo : 39 routes a 100 m, aucune a 300 m). Sans message dedie,
+      # l'utilisateur lirait " desserte creee " devant une carte sans route.
       nr <- suppressWarnings(as.integer(res$n_routes %||% NA_integer_))
       shiny::showNotification(
         if (!is.na(nr) && nr == 0L) {
@@ -466,10 +466,10 @@ mod_desserte_server <- function(id, app_state) {
         type = "message", duration = 8)
     })
 
-    # Restaure un réseau DÉJÀ calculé depuis le cache — PARESSEUSEMENT : lecture au
+    # Restaure un reseau DEJA calcule depuis le cache - PARESSEUSEMENT : lecture au
     # premier affichage de l'onglet Desserte seulement (une fois par projet), pour
-    # que le clic sur un projet récent reste rapide. Observer unique (main_nav +
-    # terrain_nav + projet), même patron que mod_accessibility.
+    # que le clic sur un projet recent reste rapide. Observer unique (main_nav +
+    # terrain_nav + projet), meme patron que mod_accessibility.
     dess_loaded_for <- shiny::reactiveVal(NULL)
     shiny::observeEvent(
       list(app_state$active_main_tab, app_state$active_terrain_tab,
@@ -496,7 +496,7 @@ mod_desserte_server <- function(id, app_state) {
         }
       }, ignoreNULL = FALSE)
 
-    # --- Badges du réseau créé -------------------------------------------------
+    # --- Badges du reseau cree -------------------------------------------------
     output$summary <- shiny::renderUI({
       res <- rv$result
       if (is.null(res) || !identical(res$status %||% "success", "success")) {
@@ -510,30 +510,30 @@ mod_desserte_server <- function(id, app_state) {
       }
       nd <- res$n_desservies %||% NA_integer_
       np <- res$n_parcelles %||% NA_integer_
-      # `raccorde` (foretaccess >= 1.11) est le VRAI indicateur qualité : « toutes
-      # les routes créées sont-elles rattachées au réseau existant ? ». On l'affiche
-      # à la place de `connexe` (presque toujours FALSE car dominé par la
-      # fragmentation du réseau existant — trompeur pour l'utilisateur).
+      # `raccorde` (foretaccess >= 1.11) est le VRAI indicateur qualite : " toutes
+      # les routes creees sont-elles rattachees au reseau existant ? ". On l'affiche
+      # a la place de `connexe` (presque toujours FALSE car domine par la
+      # fragmentation du reseau existant - trompeur pour l'utilisateur).
       raccorde <- res$raccorde %||% NA
       cout <- res$cout %||% NA_real_
       nroutes <- suppressWarnings(as.integer(res$n_routes %||% NA_integer_))
       integ <- res$integrite
       htmltools::tagList(
         badge(i18n$t("dess_badge_desservies"),
-              if (is.na(nd) || is.na(np)) "—" else sprintf("%d / %d", nd, np),
+              if (is.na(nd) || is.na(np)) "\u2014" else sprintf("%d / %d", nd, np),
               if (!is.na(nd) && !is.na(np) && nd >= np) "bg-success" else "bg-warning"),
         badge(i18n$t("dess_badge_raccorde"),
-              if (is.na(raccorde)) "—" else if (isTRUE(raccorde)) i18n$t("dess_yes") else i18n$t("dess_no"),
+              if (is.na(raccorde)) "\u2014" else if (isTRUE(raccorde)) i18n$t("dess_yes") else i18n$t("dess_no"),
               if (isTRUE(raccorde)) "bg-success" else "bg-warning"),
         badge(i18n$t("dess_badge_routes"),
-              if (is.na(nroutes)) "—" else format(nroutes, big.mark = " "),
+              if (is.na(nroutes)) "\u2014" else format(nroutes, big.mark = " "),
               if (!is.na(nroutes) && nroutes == 0L) "bg-success" else "bg-secondary"),
         badge(i18n$t("dess_badge_cout"),
-              if (is.na(cout)) "—" else format(round(cout), big.mark = " ")),
-        # Intégrité du réseau OBTENU (existant ∪ créé), spec 025. Complète
-        # `raccorde`, qui ne dit que « les routes créées sont-elles rattachées ? »
-        # et reste muet sur la cohérence du graphe résultant. Absent = contrôle
-        # indisponible (dessertR injoignable), surtout PAS « 0 infraction ».
+              if (is.na(cout)) "\u2014" else format(round(cout), big.mark = " ")),
+        # Integrite du reseau OBTENU (existant union cree), spec 025. Complete
+        # `raccorde`, qui ne dit que " les routes creees sont-elles rattachees ? "
+        # et reste muet sur la coherence du graphe resultant. Absent = controle
+        # indisponible (dessertR injoignable), surtout PAS " 0 infraction ".
         if (is.null(integ)) {
           badge(i18n$t("dess_badge_integrite"), i18n$t("dess_integrite_na"),
                 "bg-light text-dark")
@@ -554,14 +554,14 @@ mod_desserte_server <- function(id, app_state) {
         })
     })
 
-    # --- Carte : fonds + parcelles + desserte existante + réseau créé (raster) -
+    # --- Carte : fonds + parcelles + desserte existante + reseau cree (raster) -
     output$map <- leaflet::renderLeaflet({
       aoi <- units_sf()
       geo <- if (!is.null(aoi)) {
         tryCatch(sf::st_transform(aoi, 4326), error = function(e) NULL)
       }
-      # Fond relief CVAT (overlay semi-transparent) quand un CVAT existe déjà pour
-      # le projet — même helper que la carte Accessibilité.
+      # Fond relief CVAT (overlay semi-transparent) quand un CVAT existe deja pour
+      # le projet - meme helper que la carte Accessibilite.
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       cvat_bg <- .acc_cvat_overlay_raster(project_path)
       overlays <- c(if (!is.null(geo)) "Parcelles" else NULL,
@@ -599,14 +599,14 @@ mod_desserte_server <- function(id, app_state) {
     opacity_d <- shiny::debounce(
       shiny::reactive(suppressWarnings(as.numeric(input$opacity)) %||% 0.8), 250)
 
-    # Overlay du réseau créé (raster) via leafletProxy : peint dans le pane dédié
+    # Overlay du reseau cree (raster) via leafletProxy : peint dans le pane dedie
     # `nemetonDessRaster`, stable au changement de fond. Raster masque 1 = route.
     shiny::observe({
       res <- rv$result
       op <- opacity_d()
-      # `isolate()` : leaflet renvoie cet input à chaque ajout/retrait de
-      # groupe, et cet observe en ajoute — une lecture réactive le rendrait
-      # auto-déclenchant (peintures multiples). Cf. mod_accessibility.
+      # `isolate()` : leaflet renvoie cet input a chaque ajout/retrait de
+      # groupe, et cet observe en ajoute - une lecture reactive le rendrait
+      # auto-declenchant (peintures multiples). Cf. mod_accessibility.
       shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Reseau cree")
       rp <- tryCatch(res$reseau_path, error = function(e) NULL)
@@ -623,7 +623,7 @@ mod_desserte_server <- function(id, app_state) {
       }
     })
 
-    # Overlay « Desserte existante » (réseau à raccorder), lu depuis le GPKG.
+    # Overlay " Desserte existante " (reseau a raccorder), lu depuis le GPKG.
     shiny::observe({
       res <- rv$result
       shown <- shiny::isolate(input$map_groups)
@@ -642,12 +642,12 @@ mod_desserte_server <- function(id, app_state) {
       }
     })
 
-    # Overlay « Places de dépôt » : points calculés par la correction LiDAR de la
-    # desserte côté Accessibilité (couche `places_depot` du GeoPackage
-    # d'accessibilité du projet). Affichés ici aussi pour situer les dépôts vis-à-vis
-    # du réseau créé/typé. Se relit à l'arrivée sur l'onglet (active_terrain_tab).
+    # Overlay " Places de depot " : points calcules par la correction LiDAR de la
+    # desserte cote Accessibilite (couche `places_depot` du GeoPackage
+    # d'accessibilite du projet). Affiches ici aussi pour situer les depots vis-a-vis
+    # du reseau cree/type. Se relit a l'arrivee sur l'onglet (active_terrain_tab).
     shiny::observe({
-      app_state$active_terrain_tab  # dépendance : relire en arrivant sur l'onglet
+      app_state$active_terrain_tab  # dependance : relire en arrivant sur l'onglet
       shown <- shiny::isolate(input$map_groups)
       proxy <- leaflet::leafletProxy("map") |>
         leaflet::clearGroup(PLACES_DEPOT_GROUP)
@@ -663,14 +663,14 @@ mod_desserte_server <- function(id, app_state) {
       }
     })
 
-    # --- Typage du réseau (flux de bois mobilisé) ------------------------------
-    # Chaîne nemeton::volume_mobilisable(m3_total) -> foretaccess::calculer_flux ->
-    # typer_desserte, sur l'objet reseau persisté par le run desserte. Calcul court
-    # (le glouton n'est PAS relancé) : à la demande avec notification.
+    # --- Typage du reseau (flux de bois mobilise) ------------------------------
+    # Chaine nemeton::volume_mobilisable(m3_total) -> foretaccess::calculer_flux ->
+    # typer_desserte, sur l'objet reseau persiste par le run desserte. Calcul court
+    # (le glouton n'est PAS relance) : a la demande avec notification.
     rv_typage <- shiny::reactiveVal(NULL)
-    # --- Intégrité du réseau : worker dédié (376,8 s mesurés sur Dabo) ---------
+    # --- Integrite du reseau : worker dedie (376,8 s mesures sur Dabo) ---------
     # Asynchrone obligatoirement : le typage voisin tourne en synchrone, ce qui
-    # est tenable pour lui (quelques secondes) mais gèlerait toute l'app ici.
+    # est tenable pour lui (quelques secondes) mais gelerait toute l'app ici.
     integ_start <- shiny::reactiveVal(NULL)
     integ_task <- shiny::ExtendedTask$new(
       function(cache_dir, aoi_path, dev_path, app_opts) {
@@ -679,14 +679,14 @@ mod_desserte_server <- function(id, app_state) {
           if (!any(c("multisession", "multicore", "cluster") %in% pc)) .ensure_async_plan()
         }
         promises::future_promise({
-          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
             loadNamespace("nemetonshiny")
           }
           options(nemeton.app_options = app_opts)
-          nemetonshiny:::run_desserte_integrite(cache_dir, aoi_path)
+          utils::getFromNamespace("run_desserte_integrite", "nemetonshiny")(cache_dir, aoi_path)
         }, seed = TRUE)
       })
     bslib::bind_task_button(integ_task, "run_integrite")
@@ -707,7 +707,7 @@ mod_desserte_server <- function(id, app_state) {
                         .dev_pkg_path, get_app_options())
     })
 
-    # Tick 1 s : chrono de la notif d'intégrité.
+    # Tick 1 s : chrono de la notif d'integrite.
     shiny::observe({
       if (is.null(integ_start())) return()
       shiny::invalidateLater(1000)
@@ -730,7 +730,7 @@ mod_desserte_server <- function(id, app_state) {
                                 type = "error", duration = NULL)
         return()
       }
-      # Réinjecte dans le résultat courant pour que les badges se rafraîchissent.
+      # Reinjecte dans le resultat courant pour que les badges se rafraichissent.
       cur <- rv$result
       if (is.list(cur)) { cur$integrite <- res$integrite; rv$result <- cur }
       shiny::showNotification(i18n$t("dess_integrite_done"), type = "message",
@@ -747,11 +747,11 @@ mod_desserte_server <- function(id, app_state) {
         return(htmltools::tags$p(class = "text-muted small",
                                  i18n$t("dess_integrite_hint")))
       }
-      NULL   # résultat rendu par les badges du bilan
+      NULL   # resultat rendu par les badges du bilan
     })
 
-    # --- Optimisation et complément OSM : deux workers du même patron ---------
-    # Facteur commun : action séparée + notif engrenage/chrono + sidecar relu.
+    # --- Optimisation et complement OSM : deux workers du meme patron ---------
+    # Facteur commun : action separee + notif engrenage/chrono + sidecar relu.
     .async_panel <- function(id_btn, notif_id, label_key, invoke_fun, on_success) {
       start <- shiny::reactiveVal(NULL)
       task <- shiny::ExtendedTask$new(function(...) {
@@ -762,7 +762,7 @@ mod_desserte_server <- function(id, app_state) {
         }
         dev_path <- .dev_pkg_path; app_opts <- get_app_options()
         promises::future_promise({
-          on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
           if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
             pkgload::load_all(dev_path, quiet = TRUE)
           } else {
@@ -801,7 +801,7 @@ mod_desserte_server <- function(id, app_state) {
     rv_optim <- shiny::reactiveVal(NULL)
     optim_panel <- .async_panel(
       "run_optim", "optim_notif", "dess_optim_running",
-      function(...) nemetonshiny:::run_desserte_optimiser(...),
+      function(...) utils::getFromNamespace("run_desserte_optimiser", "nemetonshiny")(...),
       function(res) {
         rv_optim(res)
         shiny::showNotification(i18n$t("dess_optim_done"), type = "message", duration = 6)
@@ -847,7 +847,7 @@ mod_desserte_server <- function(id, app_state) {
     rv_osm <- shiny::reactiveVal(NULL)
     osm_panel <- .async_panel(
       "run_osm", "osm_notif", "dess_osm_running",
-      function(...) nemetonshiny:::run_desserte_osm(...),
+      function(...) utils::getFromNamespace("run_desserte_osm", "nemetonshiny")(...),
       function(res) {
         rv_osm(res)
         shiny::showNotification(sprintf(i18n$t("dess_osm_done_fmt"), res$n_osm),
@@ -891,7 +891,7 @@ mod_desserte_server <- function(id, app_state) {
     rv_detect <- shiny::reactiveVal(NULL)
     detect_panel <- .async_panel(
       "run_detect", "detect_notif", "dess_detect_running",
-      function(...) nemetonshiny:::run_desserte_detection(...),
+      function(...) utils::getFromNamespace("run_desserte_detection", "nemetonshiny")(...),
       function(res) {
         rv_detect(res)
         shiny::showNotification(sprintf(i18n$t("dess_detect_done_fmt"), res$n_detecte),
@@ -923,9 +923,9 @@ mod_desserte_server <- function(id, app_state) {
       htmltools::tagList(
         htmltools::tags$div(class = "small",
                             sprintf(i18n$t("dess_detect_done_fmt"), r$n_detecte)),
-        # Répartition par classe. Le brief §2 insiste : afficher `CLASSE` seule
-        # serait trompeur — une classe posée sur peu de critères renseignés doit
-        # se voir. D'où la confiance moyenne juste en dessous.
+        # Repartition par classe. Le brief sect.2 insiste : afficher `CLASSE` seule
+        # serait trompeur - une classe posee sur peu de criteres renseignes doit
+        # se voir. D'ou la confiance moyenne juste en dessous.
         if (is.list(cl) && length(cl$table)) {
           htmltools::tagList(
             htmltools::tags$table(
@@ -944,8 +944,8 @@ mod_desserte_server <- function(id, app_state) {
                              sprintf(i18n$t("dess_detect_osm_fmt"), cl$n_osm_tags))
             })
         },
-        # Sans canal de surface le cœur avertit que la détection est « nettement
-        # moins sûre » : ne pas laisser lire un « 0 détection » comme un constat.
+        # Sans canal de surface le coeur avertit que la detection est " nettement
+        # moins sure " : ne pas laisser lire un " 0 detection " comme un constat.
         if (!isTRUE(r$avec_lidar)) {
           htmltools::div(class = "alert alert-warning py-2 small mt-2 mb-0",
                          i18n$t("dess_detect_sans_lidar"))
@@ -974,7 +974,7 @@ mod_desserte_server <- function(id, app_state) {
       if (!identical(res$status, "success")) {
         msg <- i18n$t(res$reason %||% "desserte_typage_failed")
         det <- tryCatch(res$detail, error = function(e) NULL)
-        if (!is.null(det) && nzchar(det)) msg <- paste0(msg, " — ", .strip_ansi(det))
+        if (!is.null(det) && nzchar(det)) msg <- paste0(msg, " \u2014 ", .strip_ansi(det))
         shiny::showNotification(msg, type = "error", duration = NULL)
       }
     })
@@ -1003,7 +1003,7 @@ mod_desserte_server <- function(id, app_state) {
         htmltools::tags$tbody(rows))
     })
 
-    # Overlay « Réseau typé » : polylignes colorées par classe (primaire/secondaire/
+    # Overlay " Reseau type " : polylignes colorees par classe (primaire/secondaire/
     # tertiaire), lues depuis le GPKG du typage.
     dess_type_cols <- c(primaire = "#C62828", secondaire = "#FB8C00",
                         tertiaire = "#2E7D32")

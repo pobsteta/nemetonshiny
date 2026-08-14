@@ -22,12 +22,12 @@ app_ui <- function(request) {
     error = function(e) NULL
   )
 
-  # Un onglet de famille d'indicateurs. Le libellé porte le CODE entre
-  # parenthèses — « Carbone & Vitalité (C) » : ce code est la clé qui circule
-  # partout ailleurs (radar, exports, profils experts, briefs cœur, tableaux
-  # d'indicateurs B1/C2/…), et le menu était le seul endroit qui ne le donnait
-  # pas. Le composer ici, à partir du code déjà passé au module, évite de
-  # l'écrire deux fois par famille.
+  # Un onglet de famille d'indicateurs. Le libelle porte le CODE entre
+  # parentheses - " Carbone & Vitalite (C) " : ce code est la cle qui circule
+  # partout ailleurs (radar, exports, profils experts, briefs coeur, tableaux
+  # d'indicateurs B1/C2/...), et le menu etait le seul endroit qui ne le donnait
+  # pas. Le composer ici, a partir du code deja passe au module, evite de
+  # l'ecrire deux fois par famille.
   family_tab <- function(key, code) {
     bslib::nav_panel(
       title = sprintf("%s (%s)", i18n$t(key), code),
@@ -40,7 +40,7 @@ app_ui <- function(request) {
     # Add external resources (CSS, JS)
     app_add_external_resources(),
 
-    # Disable busy indicators (safe — returns NULL if function doesn't exist)
+    # Disable busy indicators (safe - returns NULL if function doesn't exist)
     busy_indicator_tag,
 
     # Cicerone for guided tours
@@ -63,7 +63,7 @@ app_ui <- function(request) {
       fillable = TRUE,
       navbar_options = bslib::navbar_options(bg = "#1B6B1B"),
 
-      # Bandeau lecture seule (verrou projet) — sous la navbar, au-dessus des
+      # Bandeau lecture seule (verrou projet) - sous la navbar, au-dessus des
       # onglets, visible partout tant qu'un projet est ouvert en lecture seule.
       header = shiny::uiOutput("lock_banner"),
 
@@ -125,7 +125,7 @@ app_ui <- function(request) {
         )
       ),
 
-      # === Tab 4: Monitoring (E6.b — continuous Sentinel-2 NDVI/NBR) ===
+      # === Tab 4: Monitoring (E6.b - continuous Sentinel-2 NDVI/NBR) ===
       bslib::nav_panel(
         title = i18n$t("tab_monitoring"),
         value = "monitoring",
@@ -223,7 +223,7 @@ app_add_external_resources <- function() {
           content: none !important; display: none !important;
         }
         #shiny-notification-panel { bottom: 13px; right: 13px; }
-        /* Volet de comparaison « swipe » (nemeton_swipe.js) : ligne verticale
+        /* Volet de comparaison \u00ab swipe \u00bb (nemeton_swipe.js) : ligne verticale
            draggable qui clippe deux panes raster gauche/droite. */
         .nemeton-swipe-divider {
           position: absolute; top: 0; bottom: 0; width: 0;
@@ -243,16 +243,16 @@ app_add_external_resources <- function() {
           background-size: 20px 20px;
         }
       ")),
-      # Custom CSS — le FICHIER SOURCE, avec cache-busting.
+      # Custom CSS - le FICHIER SOURCE, avec cache-busting.
       #
-      # On servait `custom.min.css`, un fichier « minifié » qui ne l'était pas
-      # (747 lignes commentées, copie manuelle de `custom.css`) et que rien ne
-      # régénérait — ni build, ni script, ni CI. Il a dérivé de deux commits, et
-      # deux règles n'ont jamais atteint le navigateur : les ascenseurs de la
-      # légende bivariée E-OBS et l'affordance de la cellule commentaire du plan
+      # On servait `custom.min.css`, un fichier " minifie " qui ne l'etait pas
+      # (747 lignes commentees, copie manuelle de `custom.css`) et que rien ne
+      # regenerait - ni build, ni script, ni CI. Il a derive de deux commits, et
+      # deux regles n'ont jamais atteint le navigateur : les ascenseurs de la
+      # legende bivariee E-OBS et l'affordance de la cellule commentaire du plan
       # d'action. Servir la source supprime la classe de bug au lieu de la
-      # surveiller. Ne pas réintroduire de copie « min » sans build qui la
-      # produise ET une étape CI qui vérifie qu'elle est à jour.
+      # surveiller. Ne pas reintroduire de copie " min " sans build qui la
+      # produise ET une etape CI qui verifie qu'elle est a jour.
       htmltools::tags$link(
         rel = "stylesheet",
         type = "text/css",
@@ -283,16 +283,16 @@ app_add_external_resources <- function() {
                    as.integer(Sys.time()))
     ),
 
-    # Custom JS — le FICHIER SOURCE, même raison que le CSS ci-dessus :
-    # `custom.min.js` était une copie octet pour octet de `custom.js` (816
-    # lignes, pas minifiée) que rien ne régénérait. Le CSS avait déjà dérivé de
-    # deux commits ; ici la copie était encore à jour, mais le piège était le
-    # même — la prochaine édition ne serait pas partie en production.
+    # Custom JS - le FICHIER SOURCE, meme raison que le CSS ci-dessus :
+    # `custom.min.js` etait une copie octet pour octet de `custom.js` (816
+    # lignes, pas minifiee) que rien ne regenerait. Le CSS avait deja derive de
+    # deux commits ; ici la copie etait encore a jour, mais le piege etait le
+    # meme - la prochaine edition ne serait pas partie en production.
     htmltools::tags$script(
       src = paste0("www/js/custom.js?v=", as.integer(Sys.time()))
     ),
 
-    # Comparaison « swipe » de deux rasters (Accessibilite : classes de debardage
+    # Comparaison " swipe " de deux rasters (Accessibilite : classes de debardage
     # vs ACCESSFOR IGN). Vendore, sans plugin : clippe deux panes gauche/droite.
     htmltools::tags$script(
       src = paste0("www/js/nemeton_swipe.js?v=", as.integer(Sys.time()))
@@ -429,11 +429,11 @@ mod_synthesis_ui <- function(id) {
 
   bslib::layout_columns(
     col_widths = c(12),
-    # La carte « Synthèse du projet » (1re rangée) ne porte que quelques
-    # lignes : sans contrainte, la grille fillable du nav_panel étire ses
-    # deux rangées à parts égales et laisse un grand vide sous l'en-tête.
-    # On force la 1re rangée à la hauteur de son contenu (auto) et on
-    # laisse la 2e (radar / récap / commentaires) prendre le reste (1fr).
+    # La carte " Synthese du projet " (1re rangee) ne porte que quelques
+    # lignes : sans contrainte, la grille fillable du nav_panel etire ses
+    # deux rangees a parts egales et laisse un grand vide sous l'en-tete.
+    # On force la 1re rangee a la hauteur de son contenu (auto) et on
+    # laisse la 2e (radar / recap / commentaires) prendre le reste (1fr).
     row_heights = c("auto", 1),
 
     # Top row: Downloads, summary, and global score
@@ -463,24 +463,24 @@ mod_synthesis_ui <- function(id) {
             ),
             # Cover image upload for PDF
             #
-            # v0.52.3 — La légende « Taille image Max 5 Mo, PNG/JPG »
-            # est à DROITE du fileInput, alignée verticalement au
+            # v0.52.3 - La legende " Taille image Max 5 Mo, PNG/JPG "
+            # est a DROITE du fileInput, alignee verticalement au
             # NIVEAU DU BOUTON (et donc de la ligne des badges
             # `NDP / Hauteur LiDAR / Inventaire ML` de la colonne de
             # droite). Pourquoi `align-items: flex-start` + un
-            # `padding-top` plutôt que `align-items: center` :
+            # `padding-top` plutot que `align-items: center` :
             #   * Le `shiny::fileInput` rend bouton + placeholder +
             #     barre de progression. La barre de progression
-            #     s'affiche dès qu'un upload est en cours/complet,
+            #     s'affiche des qu'un upload est en cours/complet,
             #     ce qui change la hauteur totale du fileInput.
-            #   * `align-items: center` aurait centré le texte sur la
+            #   * `align-items: center` aurait centre le texte sur la
             #     hauteur totale (incluant la barre quand visible),
-            #     donc plus bas que le bouton dès qu'on a chargé une
-            #     image — exactement le décalage qu'on essaie de
+            #     donc plus bas que le bouton des qu'on a charge une
+            #     image - exactement le decalage qu'on essaie de
             #     supprimer.
             #   * `flex-start` ancre le texte en haut du flex (donc
             #     au niveau du haut du bouton), et un `padding-top`
-            #     de ~0.55rem (≈ la moitié de la hauteur du bouton
+            #     de ~0.55rem (~= la moitie de la hauteur du bouton
             #     38px) le descend pile au centre du bouton.
             htmltools::div(
               class = "mt-2 d-flex gap-2",
@@ -500,16 +500,16 @@ mod_synthesis_ui <- function(id) {
               ),
               htmltools::span(
                 class = "text-muted small",
-                # v0.52.6 — padding-top ajusté de 0.55rem (centre du
-                # bouton 38px) à 1rem. v0.52.3 avait calé le centre
+                # v0.52.6 - padding-top ajuste de 0.55rem (centre du
+                # bouton 38px) a 1rem. v0.52.3 avait cale le centre
                 # vertical du texte sur le centre du bouton ; mais la
                 # ligne des badges (`NDP / Hauteur LiDAR / Inventaire
-                # ML`) à droite tombe en réalité ~8 px plus bas que le
+                # ML`) a droite tombe en realite ~8 px plus bas que le
                 # centre du bouton, parce que le flux de la colonne
-                # droite (`Score global` → `54.8` → `/100 (12
-                # familles)`) ne donne pas exactement la même hauteur
-                # cumulée que les 2 boutons PDF/GeoPackage de la
-                # colonne du milieu. 1rem (≈ 16 px) descend le texte
+                # droite (`Score global` -> `54.8` -> `/100 (12
+                # familles)`) ne donne pas exactement la meme hauteur
+                # cumulee que les 2 boutons PDF/GeoPackage de la
+                # colonne du milieu. 1rem (~= 16 px) descend le texte
                 # juste au niveau du centre des badges, ce que voulait
                 # l'utilisateur.
                 style = "white-space: nowrap; padding-top: 1rem;",
@@ -716,12 +716,12 @@ mod_synthesis_ui <- function(id) {
             rows = 12,
             width = "100%"
           ),
-          # v0.56.0 — RAG « perspectives sourcées » : bloc « Sources
-          # documentaires » rendu en dessous du commentaire IA quand
-          # la récupération corpus a renvoyé ≥ 1 chunk. Le format
+          # v0.56.0 - RAG " perspectives sourcees " : bloc " Sources
+          # documentaires " rendu en dessous du commentaire IA quand
+          # la recuperation corpus a renvoye >= 1 chunk. Le format
           # markdown vient de `nemeton::format_citations()` (titre i18n
-          # géré côté cœur). uiOutput vide quand pas de sources →
-          # zéro impact visuel sur le layout existant.
+          # gere cote coeur). uiOutput vide quand pas de sources ->
+          # zero impact visuel sur le layout existant.
           shiny::uiOutput(ns("ai_sources"))
         )
       )
@@ -810,9 +810,9 @@ mod_family_ui <- function(id, family_code) {
             rows = 12,
             width = "100%"
           ),
-          # Bloc « Sources documentaires » de la famille : liste les sources
-          # documentaires citées dans le commentaire (mêmes données RAG que la
-          # synthèse). uiOutput vide quand le commentaire ne cite aucune source.
+          # Bloc " Sources documentaires " de la famille : liste les sources
+          # documentaires citees dans le commentaire (memes donnees RAG que la
+          # synthese). uiOutput vide quand le commentaire ne cite aucune source.
           shiny::uiOutput(ns("ai_sources"))
         )
       )

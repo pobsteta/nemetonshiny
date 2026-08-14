@@ -1,12 +1,12 @@
-#' Monitoring Module for nemetonApp (E6.b + E6.c.5 — health monitoring)
+#' Monitoring Module for nemetonApp (E6.b + E6.c.5 - health monitoring)
 #'
 #' @description
 #' Two-mode forest health monitoring:
 #'
-#' * **Mode 1 — Surveillance rapide** (E6.b): rolling-window NDVI/NBR on
+#' * **Mode 1 - Surveillance rapide** (E6.b): rolling-window NDVI/NBR on
 #'   Sentinel-2, detects recent shocks (cuts, windthrows, fires).
 #'   Seconds-scale.
-#' * **Mode 2 — Diagnostic sanitaire** (E6.c.5, spec 008): FORDEAD via
+#' * **Mode 2 - Diagnostic sanitaire** (E6.c.5, spec 008): FORDEAD via
 #'   reticulate (CRSWIR + harmonic model), detects progressive dieback
 #'   (bark beetle, drought). Minutes-to-hours scale.
 #'
@@ -43,7 +43,7 @@ mod_monitoring_ui <- function(id) {
       width = 360,
       open = TRUE,
 
-      # Collapsible card — same pattern as mod_field_ingest.
+      # Collapsible card - same pattern as mod_field_ingest.
       htmltools::tags$div(
         class = "card mb-3",
         htmltools::tags$div(
@@ -72,7 +72,7 @@ mod_monitoring_ui <- function(id) {
             htmltools::tags$p(class = "text-muted small",
                               i18n$t("monitoring_subtitle")),
 
-            # --- Mode toggle (E6.c.5 — T6app.1) ---------------------
+            # --- Mode toggle (E6.c.5 - T6app.1) ---------------------
             shiny::radioButtons(
               ns("mode"), i18n$t("monitoring_mode_label"),
               choices = stats::setNames(
@@ -100,7 +100,7 @@ mod_monitoring_ui <- function(id) {
             # Common to both modes (FAST + FORDEAD). Disabled until
             # The hint below the button surfaces which precondition
             # is missing. The button is NOT disabled at the HTML
-            # level — clicking it when preconditions are not met
+            # level - clicking it when preconditions are not met
             # triggers a clear error notification (see observer
             # below). Hardcoding `disabled = NA` here would prevent
             # the click entirely and confuse the user.
@@ -114,12 +114,12 @@ mod_monitoring_ui <- function(id) {
             # --- Quick-mode parameters (NDVI/NBR) -------------------
             shiny::conditionalPanel(
               condition = sprintf("input['%s'] == 'quick'", ns("mode")),
-              # Période d'OBSERVATION FAST — propre au mode quick. Début
-              # par défaut 01/01/2017 (archive Sentinel-2 exploitable,
-              # S2A+S2B opérationnels). FORDEAD et RECONFORT ont leurs
-              # propres périodes d'observation (`dates_observation` /
-              # `reconfort_s2_year`) dans leurs panneaux respectifs — un
-              # seul input « Période d'observation » visible par mode.
+              # Periode d'OBSERVATION FAST - propre au mode quick. Debut
+              # par defaut 01/01/2017 (archive Sentinel-2 exploitable,
+              # S2A+S2B operationnels). FORDEAD et RECONFORT ont leurs
+              # propres periodes d'observation (`dates_observation` /
+              # `reconfort_s2_year`) dans leurs panneaux respectifs - un
+              # seul input " Periode d'observation " visible par mode.
               shiny::dateRangeInput(
                 ns("date_range"), i18n$t("monitoring_date_range"),
                 start = as.Date("2017-01-01"),
@@ -127,27 +127,27 @@ mod_monitoring_ui <- function(id) {
                 language  = lang,
                 separator = i18n$t("date_range_separator")
               ),
-              # v0.61.0 — Le `checkboxGroupInput("bands")` est retiré.
-              # NDVI et NBR sont systématiquement téléchargés lors du
+              # v0.61.0 - Le `checkboxGroupInput("bands")` est retire.
+              # NDVI et NBR sont systematiquement telecharges lors du
               # Diagnostic FAST (les radios NDVI/NBR des sidebars droits
               # des onglets Alertes FAST + Carte FAST pilotent
-              # l'AFFICHAGE des deux indices, indépendamment du
-              # téléchargement). Le câblage de `bands` est désormais en
+              # l'AFFICHAGE des deux indices, independamment du
+              # telechargement). Le cablage de `bands` est desormais en
               # dur dans `fast_task$invoke()`.
-              # v0.36.1 / v0.42.0 — défauts et range alignés sur la
-              # sémantique « seuil absolu » consommée par
+              # v0.36.1 / v0.42.0 - defauts et range alignes sur la
+              # semantique " seuil absolu " consommee par
               # nemeton::read_fast_alert_raster() (spec 013, nemeton@v0.46.0).
               # Un pixel est en alerte quand son NDVI (ou NBR) tombe SOUS
               # la valeur du slider. NDVI forestier sain est typiquement
-              # 0.6-0.8, NBR sain 0.4-0.6, d'où range 0.10-0.80. Défauts
-              # cœur : 0.40 / 0.30.
-              # v0.52.14 — Le radio « Indice FAST » a été déplacé du
+              # 0.6-0.8, NBR sain 0.4-0.6, d'ou range 0.10-0.80. Defauts
+              # coeur : 0.40 / 0.30.
+              # v0.52.14 - Le radio " Indice FAST " a ete deplace du
               # sidebar parent vers le sidebar DROIT de chaque onglet
-              # (Alertes FAST + Carte FAST, symétriques). Chaque onglet
-              # pilote son propre indice indépendamment. Les 2 sliders
+              # (Alertes FAST + Carte FAST, symetriques). Chaque onglet
+              # pilote son propre indice independamment. Les 2 sliders
               # de seuil restent ici (un par indice) ; le module
-              # consommateur lit le seuil correspondant à l'indice
-              # sélectionné dans son sidebar.
+              # consommateur lit le seuil correspondant a l'indice
+              # selectionne dans son sidebar.
               shiny::sliderInput(
                 ns("threshold_ndvi"), i18n$t("monitoring_threshold_ndvi"),
                 min = 0.10, max = 0.80, value = 0.40, step = 0.01
@@ -156,18 +156,18 @@ mod_monitoring_ui <- function(id) {
                 ns("threshold_nbr"), i18n$t("monitoring_threshold_nbr"),
                 min = 0.10, max = 0.80, value = 0.30, step = 0.01
               ),
-              # NDMI (humidité) : seuil minimum sous lequel un pixel est
+              # NDMI (humidite) : seuil minimum sous lequel un pixel est
               # en alerte (NDMI baisse sous stress hydrique). NDMI sain
-              # est plus bas que NDVI/NBR, d'où un défaut moindre.
-              # Consommé par l'onglet Alertes/Carte FAST quand l'indice
-              # NDMI est sélectionné (nemeton >= 0.64.0).
+              # est plus bas que NDVI/NBR, d'ou un defaut moindre.
+              # Consomme par l'onglet Alertes/Carte FAST quand l'indice
+              # NDMI est selectionne (nemeton >= 0.64.0).
               shiny::sliderInput(
                 ns("threshold_ndmi"), i18n$t("monitoring_threshold_ndmi"),
                 min = 0.10, max = 0.80, value = 0.20, step = 0.01
               ),
-              # v0.85.11 — NDRE réservé au mode Tendance (qui ignore les
-              # seuils : Theil-Sen / Mann-Kendall). Le slider « Seuil NDRE »
-              # n'avait plus de consommateur → retiré (v0.85.12).
+              # v0.85.11 - NDRE reserve au mode Tendance (qui ignore les
+              # seuils : Theil-Sen / Mann-Kendall). Le slider " Seuil NDRE "
+              # n'avait plus de consommateur -> retire (v0.85.12).
               shiny::numericInput(
                 ns("window_days"), i18n$t("monitoring_window_days"),
                 value = 30L, min = 7L, max = 90L, step = 1L
@@ -205,14 +205,14 @@ mod_monitoring_ui <- function(id) {
                 icon  = bsicons::bs_icon("play-fill"),
                 class = "btn-primary w-100"
               ),
-              # v0.85.2.9000 — Bandeau « ingestion en cours / interrompue »
-              # détecté au (re)chargement depuis la sentinelle disque du
-              # worker (survit à la fermeture de session). Inclut un bouton
-              # « Reprendre » quand le worker est mort en cours de route.
-              # v0.106.6 — Roue dentee + chrono SOUS le bouton (parite RECONFORT).
+              # v0.85.2.9000 - Bandeau " ingestion en cours / interrompue "
+              # detecte au (re)chargement depuis la sentinelle disque du
+              # worker (survit a la fermeture de session). Inclut un bouton
+              # " Reprendre " quand le worker est mort en cours de route.
+              # v0.106.6 - Roue dentee + chrono SOUS le bouton (parite RECONFORT).
               shiny::uiOutput(ns("run_status")),
               shiny::uiOutput(ns("ingest_resume_banner")),
-              # "Cancel / reset" button — only visible while the worker
+              # "Cancel / reset" button - only visible while the worker
               # is running. Force-unlocks the UI without killing the
               # background future (which Shiny's ExtendedTask cannot
               # cancel anyway). See the run_cancel observer for the
@@ -224,10 +224,10 @@ mod_monitoring_ui <- function(id) {
             # --- Health-mode parameters (FORDEAD) -------------------
             shiny::conditionalPanel(
               condition = sprintf("input['%s'] == 'health'", ns("mode")),
-              # Période d'OBSERVATION FORDEAD — propre au mode santé (le
+              # Periode d'OBSERVATION FORDEAD - propre au mode sante (le
               # `date_range` du haut pilote, lui, le Diagnostic FAST).
-              # Détection des anomalies SUR cette fenêtre, qui démarre
-              # après la période d'entraînement.
+              # Detection des anomalies SUR cette fenetre, qui demarre
+              # apres la periode d'entrainement.
               shiny::dateRangeInput(
                 ns("dates_observation"),
                 i18n$t("monitoring_dates_observation_label"),
@@ -239,19 +239,19 @@ mod_monitoring_ui <- function(id) {
               shiny::dateRangeInput(
                 ns("dates_training"),
                 i18n$t("monitoring_dates_training_label"),
-                # Période d'entraînement par défaut : 01/01/2017 ->
-                # 31/12/2018 (baseline « saine » sur 2 ans, précède la
-                # période d'observation FORDEAD qui démarre en 2019).
+                # Periode d'entrainement par defaut : 01/01/2017 ->
+                # 31/12/2018 (baseline " saine " sur 2 ans, precede la
+                # periode d'observation FORDEAD qui demarre en 2019).
                 start     = as.Date("2017-01-01"),
                 end       = as.Date("2018-12-31"),
                 language  = lang,
                 separator = i18n$t("date_range_separator")
               ),
-              # v0.90.x — L'indice de végétation FORDEAD est déplacé à
+              # v0.90.x - L'indice de vegetation FORDEAD est deplace a
               # droite des cartes (sidebar des onglets Alertes/Carte
-              # FORDEAD, parité avec Diagnostic FAST). FORDEAD ne modélise
-              # que le CRSWIR côté cœur ; le radio d'affichage n'expose
-              # donc que CRSWIR (NDVI/NDWI retirés car non calculés).
+              # FORDEAD, parite avec Diagnostic FAST). FORDEAD ne modelise
+              # que le CRSWIR cote coeur ; le radio d'affichage n'expose
+              # donc que CRSWIR (NDVI/NDWI retires car non calcules).
               shiny::sliderInput(
                 ns("threshold_anomaly"),
                 i18n$t("monitoring_threshold_anomaly"),
@@ -262,24 +262,24 @@ mod_monitoring_ui <- function(id) {
                 icon  = bsicons::bs_icon("activity"),
                 class = "btn-primary w-100"
               ),
-              # v0.106.6 — Roue dentee + chrono SOUS le bouton (parite RECONFORT).
+              # v0.106.6 - Roue dentee + chrono SOUS le bouton (parite RECONFORT).
               shiny::uiOutput(ns("run_health_status")),
               shiny::uiOutput(ns("run_health_cancel_panel"))
             ),
             # ----- RECONFORT params (spec 021, L6) ---------------------
-            # Mode "reconfort" : dépérissement feuillus. Le run lourd
-            # (conda IOTA²/GEODES) est opt-in ; sur un déploiement sans
-            # ce bundle, le bouton signale l'indisponibilité (la carte +
-            # le diagnostic pixel restent utilisables sur les runs déjà
-            # produits — cf. Limite #1 spec 021).
+            # Mode "reconfort" : deperissement feuillus. Le run lourd
+            # (conda IOTA2/GEODES) est opt-in ; sur un deploiement sans
+            # ce bundle, le bouton signale l'indisponibilite (la carte +
+            # le diagnostic pixel restent utilisables sur les runs deja
+            # produits - cf. Limite #1 spec 021).
             shiny::conditionalPanel(
               condition = sprintf("input['%s'] == 'reconfort'", ns("mode")),
-              # Bornes du sélecteur d'année Sentinel-2 déléguées au cœur
-              # (règle 1 : zéro logique métier ici). `reconfort_year_bounds()`
-              # calcule la dernière saison S2 CLOSE selon l'`edate` du modèle
-              # (défaut "v3", fin de fenêtre ~29 oct) : on n'offre donc jamais
-              # une année dont la saison n'est pas terminée. `default`/`max` =
-              # dernière année complète, `min` = première année S2 exploitable.
+              # Bornes du selecteur d'annee Sentinel-2 deleguees au coeur
+              # (regle 1 : zero logique metier ici). `reconfort_year_bounds()`
+              # calcule la derniere saison S2 CLOSE selon l'`edate` du modele
+              # (defaut "v3", fin de fenetre ~29 oct) : on n'offre donc jamais
+              # une annee dont la saison n'est pas terminee. `default`/`max` =
+              # derniere annee complete, `min` = premiere annee S2 exploitable.
               local({
                 .rc <- nemeton::reconfort_year_bounds("v3")
                 shiny::numericInput(
@@ -296,11 +296,11 @@ mod_monitoring_ui <- function(id) {
                 icon  = bsicons::bs_icon("activity"),
                 class = "btn-primary w-100"
               ),
-              # v0.106.4 — Chrono SOUS le bouton (parité moteur reGénération).
-              # Le chrono existait déjà, mais uniquement dans le toast en haut
-              # à droite : un run RECONFORT dure ~15 min, l'utilisateur qui
-              # ferme ou rate le toast n'avait plus aucun retour à l'endroit
-              # même où il a cliqué. Le toast reste (il porte l'étape en cours).
+              # v0.106.4 - Chrono SOUS le bouton (parite moteur reGeneration).
+              # Le chrono existait deja, mais uniquement dans le toast en haut
+              # a droite : un run RECONFORT dure ~15 min, l'utilisateur qui
+              # ferme ou rate le toast n'avait plus aucun retour a l'endroit
+              # meme ou il a clique. Le toast reste (il porte l'etape en cours).
               shiny::uiOutput(ns("run_reconfort_status")),
               shiny::uiOutput(ns("run_reconfort_cancel_panel"))
             )
@@ -318,26 +318,26 @@ mod_monitoring_ui <- function(id) {
       class = "p-2",
       shiny::uiOutput(ns("db_status")),
       shiny::uiOutput(ns("validity_banners")),
-      # v0.94.x — Bandeau RECONFORT « hors domaine de calibration » remonté
-      # ici (mode reconfort), juste sous « Base de suivi connectée » et
-      # au-dessus des sous-onglets : même emplacement et même style que les
-      # bandeaux de validité FORDEAD (`validity_banners`). Rendu à partir du
-      # `validity` exposé par mod_monitoring_reconfort_map.
+      # v0.94.x - Bandeau RECONFORT " hors domaine de calibration " remonte
+      # ici (mode reconfort), juste sous " Base de suivi connectee " et
+      # au-dessus des sous-onglets : meme emplacement et meme style que les
+      # bandeaux de validite FORDEAD (`validity_banners`). Rendu a partir du
+      # `validity` expose par mod_monitoring_reconfort_map.
       shiny::uiOutput(ns("reconfort_validity_banner")),
-      # v0.77.0 — Bandeau « Surfaces des zones de suivi » : en mode FAST
+      # v0.77.0 - Bandeau " Surfaces des zones de suivi " : en mode FAST
       # (quick), rappelle la surface (ha) + la part (%) des 4 strates
-      # projet `_tot/_feu/_res/_mix` au-dessus des sous-onglets. Symétrie
-      # visuelle avec les bandeaux de validité FORDEAD. Masqué en mode
-      # health (FORDEAD) et quand aucune zone n'est encore générée.
+      # projet `_tot/_feu/_res/_mix` au-dessus des sous-onglets. Symetrie
+      # visuelle avec les bandeaux de validite FORDEAD. Masque en mode
+      # health (FORDEAD) et quand aucune zone n'est encore generee.
       shiny::uiOutput(ns("fast_zone_surfaces")),
       bslib::navset_card_tab(
         id = ns("subtab"),
         # ---------- FAST mode sub-tabs (visible en mode quick) -------
-        # ----- Sub-tab — Alertes FAST (raster depuis v0.42.0) --------
+        # ----- Sub-tab - Alertes FAST (raster depuis v0.42.0) --------
         # Carte Leaflet d'un raster d'alerte pixel-par-pixel
         # (10 m S2) produit par `nemeton::read_fast_alert_raster()`
-        # (spec 013, nemeton@v0.46.0). Toggle count / rolling exposé
-        # par le sous-module. Masqué en mode health par l'observer
+        # (spec 013, nemeton@v0.46.0). Toggle count / rolling expose
+        # par le sous-module. Masque en mode health par l'observer
         # mode-driven.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_alerts_fast"),
@@ -345,9 +345,9 @@ mod_monitoring_ui <- function(id) {
           icon  = bsicons::bs_icon("bell"),
           mod_monitoring_fast_alerts_ui(ns("fast_alerts"))
         ),
-        # ----- Sub-tab — Carte FAST (spec 010) -----------------------
-        # Visible en mode quick — raster NDVI/NBR + slider date.
-        # Masqué en mode health par l'observer mode-driven du server.
+        # ----- Sub-tab - Carte FAST (spec 010) -----------------------
+        # Visible en mode quick - raster NDVI/NBR + slider date.
+        # Masque en mode health par l'observer mode-driven du server.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_pixel_map_fast"),
           value = "pixel_map_fast",
@@ -355,32 +355,32 @@ mod_monitoring_ui <- function(id) {
           mod_monitoring_pixel_map_ui(ns("pixel_map"))
         ),
         # ---------- FORDEAD mode sub-tabs (visible en mode health) ---
-        # v0.92.x — Sous-onglet « Alertes FORDEAD » SUPPRIMÉ : il était
-        # devenu un strict doublon de « Carte FORDEAD ». Depuis v0.88.2
-        # (export QGIS déplacé vers « Plan de validation FORDEAD ») et
-        # v0.90.x (passage raster-driven), il lisait le MÊME raster de
-        # sévérité 0-4 (`fordead_map_ret$mask()`), même palette, que la
-        # couche « sévérité » de la Carte FORDEAD — laquelle offre en plus
-        # les couches date/anomalie/zone modélisée, le slider temporel et
-        # le clic-pixel. La carte « zone saine » (état b) est, elle aussi,
-        # déjà rendue par l'overlay de la Carte FORDEAD. Contrairement au
-        # couple FAST (Alertes = produit dérivé seuils/tendance, Carte =
-        # indice brut), les deux onglets FORDEAD montraient la même donnée.
-        # ----- Sub-tab — Carte FORDEAD (wired v0.36.0) ---------------
-        # Raster catégoriel 0-4 du dépérissement (sain/faible/moyenne/
+        # v0.92.x - Sous-onglet " Alertes FORDEAD " SUPPRIME : il etait
+        # devenu un strict doublon de " Carte FORDEAD ". Depuis v0.88.2
+        # (export QGIS deplace vers " Plan de validation FORDEAD ") et
+        # v0.90.x (passage raster-driven), il lisait le MEME raster de
+        # severite 0-4 (`fordead_map_ret$mask()`), meme palette, que la
+        # couche " severite " de la Carte FORDEAD - laquelle offre en plus
+        # les couches date/anomalie/zone modelisee, le slider temporel et
+        # le clic-pixel. La carte " zone saine " (etat b) est, elle aussi,
+        # deja rendue par l'overlay de la Carte FORDEAD. Contrairement au
+        # couple FAST (Alertes = produit derive seuils/tendance, Carte =
+        # indice brut), les deux onglets FORDEAD montraient la meme donnee.
+        # ----- Sub-tab - Carte FORDEAD (wired v0.36.0) ---------------
+        # Raster categoriel 0-4 du deperissement (sain/faible/moyenne/
         # forte/sol-nu) lu via `nemeton::read_fordead_dieback_mask()`
         # (shipped en nemeton@v0.25.0). Le reader retourne NULL tant
-        # que le writer cœur (persist hook dans run_fordead_dieback)
-        # n'a pas shippé — la sub-tab affiche alors un empty-state.
-        # Masqué en mode quick par l'observer mode-driven.
+        # que le writer coeur (persist hook dans run_fordead_dieback)
+        # n'a pas shippe - la sub-tab affiche alors un empty-state.
+        # Masque en mode quick par l'observer mode-driven.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_pixel_map_fordead"),
           value = "pixel_map_fordead",
           icon  = bsicons::bs_icon("tree"),
-          # v0.90.x — Parité FAST : sidebar droite (indice CRSWIR +
-          # opacité du raster). UGF + « Raster » via le LayersControl.
+          # v0.90.x - Parite FAST : sidebar droite (indice CRSWIR +
+          # opacite du raster). UGF + " Raster " via le LayersControl.
           # Le clic-pixel (graphe CRSWIR + seuil + dates de stress) reste
-          # géré par le sous-module.
+          # gere par le sous-module.
           bslib::card(
             bslib::layout_sidebar(
               sidebar = bslib::sidebar(
@@ -394,10 +394,10 @@ mod_monitoring_ui <- function(id) {
                   ),
                   class = "mb-2"
                 ),
-                # Sélecteur de couche pixel (Partie B, nemeton >= 0.94.0) :
-                # sévérité 0-4 (défaut) + date 1re détection + indice
-                # d'anomalie + zone modélisée. Lu via read_fordead_layer().
-                # Chaque choix porte une icône « i » (tooltip) expliquant
+                # Selecteur de couche pixel (Partie B, nemeton >= 0.94.0) :
+                # severite 0-4 (defaut) + date 1re detection + indice
+                # d'anomalie + zone modelisee. Lu via read_fordead_layer().
+                # Chaque choix porte une icone " i " (tooltip) expliquant
                 # ce que la couche affiche (.fordead_layer_choice ci-dessous).
                 htmltools::tagAppendAttributes(
                   shiny::radioButtons(
@@ -422,12 +422,12 @@ mod_monitoring_ui <- function(id) {
                   ),
                   class = "mb-2"
                 ),
-                # Slider temporel cumulatif (couches « sévérité » et « date
-                # de 1re détection ») : affiche les pixels détectés jusqu'à
-                # la date choisie (progression du dépérissement). Bouton de
-                # défilement automatique natif (parité Carte FAST). Domaine
-                # rendu côté serveur à partir de la couche « date de 1re
-                # détection » du run.
+                # Slider temporel cumulatif (couches " severite " et " date
+                # de 1re detection ") : affiche les pixels detectes jusqu'a
+                # la date choisie (progression du deperissement). Bouton de
+                # defilement automatique natif (parite Carte FAST). Domaine
+                # rendu cote serveur a partir de la couche " date de 1re
+                # detection " du run.
                 shiny::conditionalPanel(
                   condition = sprintf(
                     "input['%s'] == 'severity' || input['%s'] == 'first_anomaly'",
@@ -444,12 +444,12 @@ mod_monitoring_ui <- function(id) {
             )
           )
         ),
-        # ----- Sub-tab — Carte RECONFORT (spec 021, L6) --------------
-        # Rasters de dépérissement feuillus (score / classes de santé /
-        # probabilité) + diagnostic pixel CRSWIR/CRre au clic. Masqué hors
+        # ----- Sub-tab - Carte RECONFORT (spec 021, L6) --------------
+        # Rasters de deperissement feuillus (score / classes de sante /
+        # probabilite) + diagnostic pixel CRSWIR/CRre au clic. Masque hors
         # mode "reconfort" par l'observer mode-driven ci-dessous.
-        # v0.106.4 — la couche vectorielle « Alertes » (marqueurs placettes
-        # lus en base) a été supprimée : parité 100 % raster avec FAST et
+        # v0.106.4 - la couche vectorielle " Alertes " (marqueurs placettes
+        # lus en base) a ete supprimee : parite 100 % raster avec FAST et
         # FORDEAD.
         bslib::nav_panel(
           title = i18n$t("monitoring_subtab_pixel_map_reconfort"),
@@ -457,13 +457,13 @@ mod_monitoring_ui <- function(id) {
           icon  = bsicons::bs_icon("tree-fill"),
           mod_monitoring_reconfort_map_ui(ns("reconfort_map"))
         ),
-        # ----- Sub-tabs — Plan de validation (spec 014, v0.43.0) -----
-        # v0.43.3 — passe de 1 onglet single avec radio à 2 sous-onglets
-        # mode-driven, symétriques avec les couples Alertes/Carte :
-        #   mode = "quick"  → Plan de validation FAST
-        #   mode = "health" → Plan de validation FORDEAD
-        # Cohérent avec la logique FAST vs FORDEAD du reste du module ;
-        # la source est implicite, pas de radio à choisir.
+        # ----- Sub-tabs - Plan de validation (spec 014, v0.43.0) -----
+        # v0.43.3 - passe de 1 onglet single avec radio a 2 sous-onglets
+        # mode-driven, symetriques avec les couples Alertes/Carte :
+        #   mode = "quick"  -> Plan de validation FAST
+        #   mode = "health" -> Plan de validation FORDEAD
+        # Coherent avec la logique FAST vs FORDEAD du reste du module ;
+        # la source est implicite, pas de radio a choisir.
         bslib::nav_panel(
           title = i18n$t("validation_sampling_title_fast"),
           value = "validation_sampling_fast",
@@ -478,8 +478,8 @@ mod_monitoring_ui <- function(id) {
           mod_validation_sampling_ui(ns("validation_sampling_fordead"),
                                      source = "FORDEAD")
         ),
-        # spec 021 (L6 G4) — Plan de validation RECONFORT (feuillus).
-        # Masqué hors mode "reconfort" par l'observer de visibilité.
+        # spec 021 (L6 G4) - Plan de validation RECONFORT (feuillus).
+        # Masque hors mode "reconfort" par l'observer de visibilite.
         bslib::nav_panel(
           title = i18n$t("validation_sampling_title_reconfort"),
           value = "validation_sampling_reconfort",
@@ -501,7 +501,7 @@ mod_monitoring_ui <- function(id) {
 #' @param app_state reactiveValues carrying `language` and (later)
 #'   monitoring config persisted on `current_project`.
 #'
-#' @return A list of reactives (currently `zones` only — phases 2+
+#' @return A list of reactives (currently `zones` only - phases 2+
 #'   add ingestion result and alerts).
 #' @noRd
 mod_monitoring_server <- function(id, app_state) {
@@ -512,23 +512,23 @@ mod_monitoring_server <- function(id, app_state) {
     })
 
     # ----- Connexion monitoring read-only MISE EN CACHE (perf) -------
-    # Ouvrir une connexion PostGIS distante coûte ~0,4–1,2 s. Les
-    # réactives du mode santé (zones, validity, masque…) en ouvraient
-    # une CHACUNE à chaque évaluation → plusieurs secondes par bascule
-    # de mode. On réutilise donc UNE connexion RO par session,
-    # reconnectée si elle est invalide (timeout serveur) ou si l'URL DB
-    # du projet change (cas SQLite per-projet). Fermée en fin de session.
+    # Ouvrir une connexion PostGIS distante coute ~0,4-1,2 s. Les
+    # reactives du mode sante (zones, validity, masque...) en ouvraient
+    # une CHACUNE a chaque evaluation -> plusieurs secondes par bascule
+    # de mode. On reutilise donc UNE connexion RO par session,
+    # reconnectee si elle est invalide (timeout serveur) ou si l'URL DB
+    # du projet change (cas SQLite per-projet). Fermee en fin de session.
     # Le worker FORDEAD / l'ingestion gardent leurs propres connexions RW
-    # (chemins inchangés) — aucun impact de concurrence (R mono-thread,
-    # les réactives ne s'exécutent jamais en parallèle).
+    # (chemins inchanges) - aucun impact de concurrence (R mono-thread,
+    # les reactives ne s'executent jamais en parallele).
     .mon_con_cache <- local({ con <- NULL; key <- NULL; environment() })
     mon_con <- function() {
       proj <- app_state$current_project
       pid  <- proj$id %||% ""
       cached <- .mon_con_cache$con
-      # Réutilise la connexion mise en cache si elle concerne le même
+      # Reutilise la connexion mise en cache si elle concerne le meme
       # projet ET qu'elle est toujours valide (sinon le serveur l'a
-      # peut-être fermée par timeout d'inactivité → on reconnecte).
+      # peut-etre fermee par timeout d'inactivite -> on reconnecte).
       valid <- !is.null(cached) &&
         identical(.mon_con_cache$key, pid) &&
         isTRUE(tryCatch(DBI::dbIsValid(cached), error = function(e) FALSE))
@@ -537,8 +537,8 @@ mod_monitoring_server <- function(id, app_state) {
         tryCatch(close_monitoring_db_connection(cached),
                  error = function(e) NULL)
       }
-      # `get_monitoring_db_connection` résout l'URL en interne et renvoie
-      # NULL si la DB n'est pas configurée — on délègue ce choix.
+      # `get_monitoring_db_connection` resout l'URL en interne et renvoie
+      # NULL si la DB n'est pas configuree - on delegue ce choix.
       newcon <- get_monitoring_db_connection(project = proj, read_only = TRUE)
       .mon_con_cache$con <- newcon
       .mon_con_cache$key <- if (!is.null(newcon)) pid else NULL
@@ -552,18 +552,18 @@ mod_monitoring_server <- function(id, app_state) {
       }
     })
 
-    # Mode-driven sub-tab visibility (v0.34.0 → v0.35.0). Quatre
-    # sous-onglets, deux affichés à la fois selon `input$mode` :
+    # Mode-driven sub-tab visibility (v0.34.0 -> v0.35.0). Quatre
+    # sous-onglets, deux affiches a la fois selon `input$mode` :
     #
-    #   mode = "quick"  → Alertes FAST    + Carte FAST    + Plan val. FAST
-    #   mode = "health" → Alertes FORDEAD + Carte FORDEAD + Plan val. FORDEAD
+    #   mode = "quick"  -> Alertes FAST    + Carte FAST    + Plan val. FAST
+    #   mode = "health" -> Alertes FORDEAD + Carte FORDEAD + Plan val. FORDEAD
     #
-    # Symétrie : chaque mode a son trio (liste d'alertes + carte + plan
+    # Symetrie : chaque mode a son trio (liste d'alertes + carte + plan
     # de validation). Pattern uniforme `bslib::nav_show()` / `nav_hide()`
-    # plutôt qu'un conditionalPanel interne, parce qu'on veut aussi
-    # éviter de déclencher les reactives lourdes (build_index_stack
-    # côté FAST, lecture du masque raster côté FORDEAD,
-    # generate_validation_plan côté Plan val.) quand l'onglet est masqué.
+    # plutot qu'un conditionalPanel interne, parce qu'on veut aussi
+    # eviter de declencher les reactives lourdes (build_index_stack
+    # cote FAST, lecture du masque raster cote FORDEAD,
+    # generate_validation_plan cote Plan val.) quand l'onglet est masque.
     shiny::observe({
       mode <- input$mode
       # Helper : hide a set of sub-tab targets.
@@ -581,9 +581,9 @@ mod_monitoring_server <- function(id, app_state) {
       if (identical(mode, "quick")) {
         .show(fast_tabs)
         .hide(c(fordead_tabs, reconfort_tabs))
-        # v0.37.1 — re-anchor the active tab onto a visible one.
+        # v0.37.1 - re-anchor the active tab onto a visible one.
         # Without this, when the user toggles mode the navset keeps
-        # its previously-active pane — which may now be hidden —
+        # its previously-active pane - which may now be hidden -
         # leaving the content area in an inconsistent state.
         bslib::nav_select("subtab", selected = "alerts_fast",
                           session = session)
@@ -604,26 +604,26 @@ mod_monitoring_server <- function(id, app_state) {
     # re-fetches from the DB.
     alerts_refresh <- shiny::reactiveVal(0L)
 
-    # spec 021 (L6) — bumped after a RECONFORT run completes / when the
+    # spec 021 (L6) - bumped after a RECONFORT run completes / when the
     # RECONFORT sub-tab opens, so the reconfort map's alerts reactive
     # re-fetches from the DB. Independent of `alerts_refresh` (FAST /
     # FORDEAD) so a FORDEAD run does not needlessly re-query RECONFORT.
     reconfort_refresh <- shiny::reactiveVal(0L)
 
-    # v0.52.16 — `obs_refresh` reactiveVal supprimé : il servait à
+    # v0.52.16 - `obs_refresh` reactiveVal supprime : il servait a
     # signaler aux consommateurs de `obs_pixel_data()` une nouvelle
-    # ingestion. Comme le reactive est supprimé (FAST = pure raster
+    # ingestion. Comme le reactive est supprime (FAST = pure raster
     # per-pixel, plus de lecture de `obs_pixel`), ce compteur n'a plus
     # de consommateur. `fast_reload` ci-dessous suffit pour signaler
-    # le rafraîchissement aux modules raster qui dépendent du cache
+    # le rafraichissement aux modules raster qui dependent du cache
     # COG (mod_monitoring_pixel_map, mod_monitoring_fast_alerts).
 
-    # v0.42.0 — generic FAST refresh signal. Wired into sub-modules
+    # v0.42.0 - generic FAST refresh signal. Wired into sub-modules
     # whose reactives have no other path back to a post-ingestion
     # state change. Bumped from the FAST success handler (see below).
     # Consumed by :
     #   - mod_monitoring_fast_alerts (alerts() / future raster reactive)
-    #   - mod_monitoring_pixel_map   (cache_dir_r — dir.exists() is not
+    #   - mod_monitoring_pixel_map   (cache_dir_r - dir.exists() is not
     #                                 a reactive dep, so the reactive
     #                                 stays frozen on its pre-ingest
     #                                 NULL value otherwise).
@@ -631,16 +631,16 @@ mod_monitoring_server <- function(id, app_state) {
     # modules.
     fast_reload <- shiny::reactiveVal(0L)
 
-    # ----- Async DB probe (E6.x — persistent loading feedback) ------
+    # ----- Async DB probe (E6.x - persistent loading feedback) ------
     # Open db_connect + db_migrate in a future worker so the user sees
     # a real "loading" state (spinning gear card) while the schema
     # bootstraps. On warm cache the round-trip is < 100 ms; on a fresh
-    # SQLite file or a slow Postgres it can take a couple of seconds —
+    # SQLite file or a slow Postgres it can take a couple of seconds -
     # that is exactly when a visible state matters most.
     #
     # The worker only probes reachability: DBI connections are not
     # serializable across processes, so the actual connection used by
-    # validity()/alerts()/zones() is re-opened (sync, fast — schema
+    # validity()/alerts()/zones() is re-opened (sync, fast - schema
     # already migrated) in the main process once the probe succeeded.
     db_probe_task <- shiny::ExtendedTask$new(function(db_url) {
       if (requireNamespace("future", quietly = TRUE)) {
@@ -651,16 +651,16 @@ mod_monitoring_server <- function(id, app_state) {
       }
       promises::future_promise({
         # The worker only depends on `nemeton` (a hard dependency in
-        # DESCRIPTION) — never on nemetonshiny. Going through
+        # DESCRIPTION) - never on nemetonshiny. Going through
         # nemetonshiny's internal wrapper introduced two flavours of
         # silent failure:
-        #   * `getFromNamespace("last_monitoring_db_error")` would throw
+        #   * `utils::getFromNamespace("last_monitoring_db_error")` would throw
         #     "objet 'X' introuvable" when an older nemetonshiny was
         #     loaded in the worker (v0.24.4 regression);
         #   * `get_monitoring_db_connection(db_url = ...)` would throw
         #     "argument inutile (db_url = db_url)" when an older
         #     nemetonshiny without the `db_url` parameter was loaded
-        #     (v0.24.5 regression — typically a stale dev checkout via
+        #     (v0.24.5 regression - typically a stale dev checkout via
         #     pkgload, or a binary cached by pak that shadowed the
         #     fresh install for the worker subprocess).
         # Calling nemeton:: directly bypasses both classes of mismatch.
@@ -716,13 +716,13 @@ mod_monitoring_server <- function(id, app_state) {
       project <- app_state$current_project
       url     <- .resolve_monitoring_db_url(project)
       backend <- monitoring_db_backend(project = project)
-      # Skip probe when there is nothing to probe — output$db_status
+      # Skip probe when there is nothing to probe - output$db_status
       # handles the "no project / RSQLite missing" cases synchronously.
       if (identical(backend, "none") || !nzchar(url)) return()
       db_probe_task$invoke(db_url = url)
     })
 
-    # Turn the task status into a small UI-facing reactive — keeps
+    # Turn the task status into a small UI-facing reactive - keeps
     # output$db_status free of ExtendedTask plumbing.
     db_probe_state <- shiny::reactive({
       status <- db_probe_task$status()
@@ -752,14 +752,14 @@ mod_monitoring_server <- function(id, app_state) {
     # Fires whenever the user opens a project. Mirrors the persistence
     # in .invoke_fordead() (and mode/threshold changes via the sidebar).
     #
-    # v0.85.16 — On NE restaure PLUS `monitoring_mode` : l'onglet Suivi
-    # sanitaire ouvre toujours sur le mode par défaut « Diagnostic FAST »
+    # v0.85.16 - On NE restaure PLUS `monitoring_mode` : l'onglet Suivi
+    # sanitaire ouvre toujours sur le mode par defaut " Diagnostic FAST "
     # (`quick`, cf. radioButtons `selected = "quick"`), quel que soit le
-    # dernier mode persisté du projet (la plupart des projets ayant lancé
-    # FORDEAD avaient `health` persisté → ouverture systématique sur
-    # FORDEAD, non désirée). L'utilisateur bascule sur FORDEAD à la
-    # demande. Les autres réglages (seuils, indice, dates FORDEAD) restent
-    # restaurés ci-dessous.
+    # dernier mode persiste du projet (la plupart des projets ayant lance
+    # FORDEAD avaient `health` persiste -> ouverture systematique sur
+    # FORDEAD, non desiree). L'utilisateur bascule sur FORDEAD a la
+    # demande. Les autres reglages (seuils, indice, dates FORDEAD) restent
+    # restaures ci-dessous.
     shiny::observe({
       m <- app_state$current_project$metadata
       if (is.null(m)) return()
@@ -767,8 +767,8 @@ mod_monitoring_server <- function(id, app_state) {
         shiny::updateSliderInput(session, "threshold_anomaly",
                                  value = as.numeric(m$monitoring_threshold_anomaly))
       }
-      # v0.90.x — `vegetation_index` n'est plus un input (CRSWIR seul,
-      # affiché en radio à droite des cartes) : plus rien à restaurer.
+      # v0.90.x - `vegetation_index` n'est plus un input (CRSWIR seul,
+      # affiche en radio a droite des cartes) : plus rien a restaurer.
       if (!is.null(m$monitoring_dates_training)) {
         dt <- as.Date(unlist(m$monitoring_dates_training))
         if (length(dt) == 2L && all(!is.na(dt))) {
@@ -795,24 +795,24 @@ mod_monitoring_server <- function(id, app_state) {
       htmltools::tags$p(class = "text-muted small fst-italic", i18n$t(key))
     })
 
-    # ----- G3 — Validity banners (geo + species) --------------------
+    # ----- G3 - Validity banners (geo + species) --------------------
     # Recomputed when zone or mode changes. Quick mode does not need
     # the FORDEAD validity check, so banners only show in health mode.
     #
-    # v0.37.0 — passe `bdforet` à `validity_check_for_zone()` quand le
-    # projet a une cache `<project>/cache/layers/bdforet.gpkg` (écrite
+    # v0.37.0 - passe `bdforet` a `validity_check_for_zone()` quand le
+    # projet a une cache `<project>/cache/layers/bdforet.gpkg` (ecrite
     # par `download_ign_bdforet()` pendant le compute des indicateurs).
-    # Le cœur (nemeton@v0.26.0+) utilise BD Forêt V2 pour dériver
+    # Le coeur (nemeton@v0.26.0+) utilise BD Foret V2 pour deriver
     # l'essence dominante par parcelle quand `units` n'a pas de
-    # colonne d'essence — ce qui est le cas par défaut pour les UGFs
+    # colonne d'essence - ce qui est le cas par defaut pour les UGFs
     # de cette app. Sans cache (projet sans compute, ou compute
-    # lancé sur une fenêtre où le téléchargement BD Forêt a échoué),
-    # `bdforet = NULL` et le comportement v0.25.9 est préservé
-    # (warning « species check skipped »).
-    # Mémoïsation du check de validité (BD Forêt + intersection spatiale,
-    # ~1 s) : il ne dépend QUE du projet et de la zone, pas du mode. Sans
-    # cache, chaque bascule de mode (qui change input$mode → invalide la
-    # réactive) relançait le check. On le mémoïse par (projet, zone) →
+    # lance sur une fenetre ou le telechargement BD Foret a echoue),
+    # `bdforet = NULL` et le comportement v0.25.9 est preserve
+    # (warning " species check skipped ").
+    # Memoisation du check de validite (BD Foret + intersection spatiale,
+    # ~1 s) : il ne depend QUE du projet et de la zone, pas du mode. Sans
+    # cache, chaque bascule de mode (qui change input$mode -> invalide la
+    # reactive) relancait le check. On le memoise par (projet, zone) ->
     # les bascules de mode aller-retour sont gratuites. Recalcul seulement
     # si la zone ou le projet change.
     .validity_cache <- local({ key <- NULL; val <- NULL; environment() })
@@ -858,39 +858,39 @@ mod_monitoring_server <- function(id, app_state) {
           body  = sprintf(i18n$t("monitoring_warning_species_body"), pct)
         )
       }
-      # v0.90.x — bandeau `include_low` retiré : depuis la Phase A (D2)
-      # l'affichage est piloté par le raster (toujours les 5 classes 0-4),
+      # v0.90.x - bandeau `include_low` retire : depuis la Phase A (D2)
+      # l'affichage est pilote par le raster (toujours les 5 classes 0-4),
       # le filtre de classes d'alertes vectorielles n'existe plus.
       if (!length(banners)) return(NULL)
       htmltools::tagList(banners)
     })
 
-    # v0.90.x — La réactive legacy `alerts()` (filtre DB des alertes
-    # vectorielles) avait déjà été supprimée (Phase A : affichage
+    # v0.90.x - La reactive legacy `alerts()` (filtre DB des alertes
+    # vectorielles) avait deja ete supprimee (Phase A : affichage
     # raster-driven via `fordead_map_ret$mask`). Son helper
-    # `list_alerts_for_zone()` est supprimé à son tour en v0.106.4,
-    # RECONFORT étant passé lui aussi en 100 % raster.
-    # v0.92.x — Les outputs `alerts_panel` / `alerts_map` + l'observer
-    # d'opacité associés au sous-onglet « Alertes FORDEAD » sont retirés
-    # avec le sous-onglet lui-même : doublon strict de la Carte FORDEAD
-    # (même raster de sévérité, même carte « zone saine » via l'overlay
-    # du sous-module). La logique de verdict sain/affecté + état placeholder
-    # vit désormais entièrement dans `mod_monitoring_fordead_map`.
+    # `list_alerts_for_zone()` est supprime a son tour en v0.106.4,
+    # RECONFORT etant passe lui aussi en 100 % raster.
+    # v0.92.x - Les outputs `alerts_panel` / `alerts_map` + l'observer
+    # d'opacite associes au sous-onglet " Alertes FORDEAD " sont retires
+    # avec le sous-onglet lui-meme : doublon strict de la Carte FORDEAD
+    # (meme raster de severite, meme carte " zone saine " via l'overlay
+    # du sous-module). La logique de verdict sain/affecte + etat placeholder
+    # vit desormais entierement dans `mod_monitoring_fordead_map`.
 
-    # v0.52.16 — Bloc `obs_pixel_inputs` + `obs_pixel_data` supprimé.
-    # FAST est désormais une analyse pure raster per-pixel (spec 017
-    # cœur + clarification utilisateur 2026-06-02), donc `read_obs_pixel`
-    # n'est plus consommé : ni la modale clic-placette (supprimée
-    # dans mod_monitoring_pixel_map), ni le `scenes_df_r` qui dérive
-    # désormais entièrement du cache COG disque, ne reposent plus sur
+    # v0.52.16 - Bloc `obs_pixel_inputs` + `obs_pixel_data` supprime.
+    # FAST est desormais une analyse pure raster per-pixel (spec 017
+    # coeur + clarification utilisateur 2026-06-02), donc `read_obs_pixel`
+    # n'est plus consomme : ni la modale clic-placette (supprimee
+    # dans mod_monitoring_pixel_map), ni le `scenes_df_r` qui derive
+    # desormais entierement du cache COG disque, ne reposent plus sur
     # la table `obs_pixel`.
 
     # ----- QGIS sanitaire panel (T6app.12) --------------------------
-    # v0.88.2 — `output$qgis_panel` + `output$qgis_download` (générateur
-    # QGIS legacy E6.c.5 attaché aux Alertes FORDEAD) retirés : doublon avec
-    # le sous-onglet dédié « Plan de validation FORDEAD » (mod_validation_
+    # v0.88.2 - `output$qgis_panel` + `output$qgis_download` (generateur
+    # QGIS legacy E6.c.5 attache aux Alertes FORDEAD) retires : doublon avec
+    # le sous-onglet dedie " Plan de validation FORDEAD " (mod_validation_
     # sampling, spec 014), qui produit le plan + l'export QGIS avec la
-    # méthodologie complète (placettes validation/témoins, classes, tampon).
+    # methodologie complete (placettes validation/temoins, classes, tampon).
 
     # Zones reactive: open a fresh connection, list, close. Re-runs on
     # session start, on demand via zones_refresh(), and whenever the
@@ -898,7 +898,7 @@ mod_monitoring_server <- function(id, app_state) {
     # SQLite DB, and even in shared Postgres mode we want a fresh
     # list in case zones were added externally).
     #
-    # v0.36.2 — explicit `proj <-` read to force the dep on
+    # v0.36.2 - explicit `proj <-` read to force the dep on
     # `app_state$current_project`. Reading via the lazy `project =`
     # function argument was insufficient: in Postgres mode
     # `.resolve_monitoring_db_url()` returns early on the
@@ -908,15 +908,15 @@ mod_monitoring_server <- function(id, app_state) {
     # because the resolver does end up touching `project$path`.
     zones_refresh <- shiny::reactiveVal(0L)
 
-    # v0.73.0 (spec 020) — Le sélecteur ne liste plus TOUTES les zones
+    # v0.73.0 (spec 020) - Le selecteur ne liste plus TOUTES les zones
     # de la base (`list_monitoring_zones`) mais UNIQUEMENT celles du
     # projet courant (`nemeton::find_zones_by_project(con,
     # project_uuid)`). Avant ce bump, charger un projet sans zone
-    # propre faisait retomber le menu sur la 1ʳᵉ zone alphabétique
-    # de la base (ex. « villards ») — l'utilisateur voyait des alertes
-    # d'un AUTRE projet sans s'en rendre compte. Désormais le menu
+    # propre faisait retomber le menu sur la 1re zone alphabetique
+    # de la base (ex. " villards ") - l'utilisateur voyait des alertes
+    # d'un AUTRE projet sans s'en rendre compte. Desormais le menu
     # est vide tant que `build_project_monitoring_zones()` n'a pas
-    # créé les 4 strates `_tot/_feu/_res/_mix` du projet courant.
+    # cree les 4 strates `_tot/_feu/_res/_mix` du projet courant.
     zones <- shiny::reactive({
       zones_refresh()                       # explicit refresh trigger
       proj <- app_state$current_project     # explicit dep on project
@@ -924,7 +924,7 @@ mod_monitoring_server <- function(id, app_state) {
         return(data.frame(id = integer(0), name = character(0),
                           stringsAsFactors = FALSE))
       }
-      con <- mon_con()  # connexion RO réutilisée (perf)
+      con <- mon_con()  # connexion RO reutilisee (perf)
       if (is.null(con)) {
         return(data.frame(id = integer(0), name = character(0),
                           stringsAsFactors = FALSE))
@@ -940,16 +940,16 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # Phase A (spec 008 §15, ADR-013 A5, décision D2) — FORDEAD est
-    # TOUJOURS calculé sur la zone `_tot` (union complète des UGFs),
-    # quelle que soit la strate sélectionnée au menu `zone_id`.
+    # Phase A (spec 008 sect.15, ADR-013 A5, decision D2) - FORDEAD est
+    # TOUJOURS calcule sur la zone `_tot` (union complete des UGFs),
+    # quelle que soit la strate selectionnee au menu `zone_id`.
     # L'affichage par strate n'est plus qu'un masquage du raster `_tot`
-    # (cf. mod_monitoring_fordead_map). Cette résolution centralise l'id
-    # de la zone `_tot` pour le lancement du run, le stamping du résultat
-    # et la réconciliation disque — tous doivent pointer sur la MÊME
+    # (cf. mod_monitoring_fordead_map). Cette resolution centralise l'id
+    # de la zone `_tot` pour le lancement du run, le stamping du resultat
+    # et la reconciliation disque - tous doivent pointer sur la MEME
     # zone `_tot` (cache `zone_<id_tot>/`). Renvoie NA s'il n'y a pas de
-    # zone `_tot` (projet sans zones générées) → le garde-fou de
-    # lancement bascule alors sur « validez d'abord une zone ».
+    # zone `_tot` (projet sans zones generees) -> le garde-fou de
+    # lancement bascule alors sur " validez d'abord une zone ".
     fordead_zone_id <- shiny::reactive({
       z <- zones()
       if (is.null(z) || !nrow(z)) return(NA_integer_)
@@ -958,13 +958,13 @@ mod_monitoring_server <- function(id, app_state) {
       suppressWarnings(as.integer(z$id[idx[1]]))
     })
 
-    # Push zones into the selectInput. Empty list → empty choices, the
+    # Push zones into the selectInput. Empty list -> empty choices, the
     # status card explains why. If the loaded project was previously
     # registered as a zone (`metadata$monitoring_zone_id`), pre-select
-    # that zone instead of the first alphabetic one — saves the user a
+    # that zone instead of the first alphabetic one - saves the user a
     # click on every project re-open.
     #
-    # v0.36.2 — when the active project has NO `monitoring_zone_id`
+    # v0.36.2 - when the active project has NO `monitoring_zone_id`
     # (fresh project, zone never registered), clear the selection
     # rather than falling back to `choices[1]`. Pre-selecting the first
     # alphabetic zone was misleading because that zone belongs to
@@ -980,18 +980,18 @@ mod_monitoring_server <- function(id, app_state) {
                  else character(0)
 
       preferred <- character(0)
-      # v0.73.0 (spec 020) — Stratégie de sélection par défaut :
-      # 1. La zone `_tot` du projet courant (toujours présente après
+      # v0.73.0 (spec 020) - Strategie de selection par defaut :
+      # 1. La zone `_tot` du projet courant (toujours presente apres
       #    `build_project_monitoring_zones`, contient l'union de
       #    toutes les UGFs sans filtre essence).
-      # 2. Sinon, le `monitoring_zone_id` mémorisé dans les
-      #    métadonnées du projet (back-compat avant spec 020 où
-      #    une seule zone était créée par projet).
-      # 3. Sinon, vide (selected = "") — le bandeau « générer les
-      #    zones » apparaîtra côté UI.
+      # 2. Sinon, le `monitoring_zone_id` memorise dans les
+      #    metadonnees du projet (back-compat avant spec 020 ou
+      #    une seule zone etait creee par projet).
+      # 3. Sinon, vide (selected = "") - le bandeau " generer les
+      #    zones " apparaitra cote UI.
       if (nrow(z)) {
         # Cherche la zone dont le nom se termine par `_tot`
-        # (convention spec 020, indépendante du slug projet).
+        # (convention spec 020, independante du slug projet).
         tot_idx <- grep("_tot$", as.character(z$name))
         if (length(tot_idx) >= 1L) {
           preferred <- as.character(z$id[tot_idx[1]])
@@ -1004,9 +1004,9 @@ mod_monitoring_server <- function(id, app_state) {
           if (candidate %in% choices) preferred <- candidate
         }
       }
-      # v0.72.0 — `selected = ""` force explicitement la
-      # non-sélection (le `character(0)` était interprété comme
-      # « ne pas changer » par certaines combos Shiny).
+      # v0.72.0 - `selected = ""` force explicitement la
+      # non-selection (le `character(0)` etait interprete comme
+      # " ne pas changer " par certaines combos Shiny).
       selected <- if (length(preferred)) preferred else ""
 
       shiny::updateSelectInput(session, "zone_id",
@@ -1014,12 +1014,12 @@ mod_monitoring_server <- function(id, app_state) {
                                selected = selected)
     })
 
-    # v0.87.2 — Ré-aligne `metadata$monitoring_zone_id` du projet courant
-    # sur sa zone `_tot` (union complète des UGFs, convention spec 020).
+    # v0.87.2 - Re-aligne `metadata$monitoring_zone_id` du projet courant
+    # sur sa zone `_tot` (union complete des UGFs, convention spec 020).
     # Corrige les projets dont la metadata pointe encore sur une zone
-    # pré-spec-020 (mono-zone) ou sur une zone d'un autre projet. Mémoire
-    # + persistance disque, une seule fois (garde sur l'égalité). N'opère
-    # que sur l'onglet Suivi sanitaire (où la zone est utilisée).
+    # pre-spec-020 (mono-zone) ou sur une zone d'un autre projet. Memoire
+    # + persistance disque, une seule fois (garde sur l'egalite). N'opere
+    # que sur l'onglet Suivi sanitaire (ou la zone est utilisee).
     shiny::observe({
       shiny::req(identical(app_state$active_main_tab, "monitoring"))
       z <- zones()
@@ -1044,15 +1044,15 @@ mod_monitoring_server <- function(id, app_state) {
 
     # ----- FAST zone surfaces banner (v0.77.0) -----------------------
     # Surface (ha) + part (%) des 4 strates projet `_tot/_feu/_res/_mix`,
-    # affichée au-dessus des sous-onglets FAST. Dépend de `zones()` (les
+    # affichee au-dessus des sous-onglets FAST. Depend de `zones()` (les
     # zones du projet courant) ; calcule l'aire de chaque polygone via
     # `get_monitoring_zone_aoi()` (EPSG:2154) + `sf::st_area`. NULL hors
-    # mode quick ou quand aucune zone n'existe → le bandeau disparaît.
+    # mode quick ou quand aucune zone n'existe -> le bandeau disparait.
     fast_zone_surfaces <- shiny::reactive({
       if (!identical(input$mode %||% "quick", "quick")) return(NULL)
       z <- zones()
       if (is.null(z) || !nrow(z)) return(NULL)
-      con <- mon_con()  # connexion RO réutilisée (perf)
+      con <- mon_con()  # connexion RO reutilisee (perf)
       if (is.null(con)) return(NULL)
       .compute_zone_surfaces(con, z)
     })
@@ -1061,7 +1061,7 @@ mod_monitoring_server <- function(id, app_state) {
       df <- fast_zone_surfaces()
       if (is.null(df) || !nrow(df)) return(NULL)
       i18n <- i18n_r()
-      # Un segment par strate présente, format « Label : X.X ha (NN %) ».
+      # Un segment par strate presente, format " Label : X.X ha (NN %) ".
       items <- lapply(seq_len(nrow(df)), function(i) {
         label <- i18n$t(df$label_key[i])
         txt <- if (identical(df$strata[i], "tot") || is.na(df$pct[i])) {
@@ -1073,8 +1073,8 @@ mod_monitoring_server <- function(id, app_state) {
         }
         htmltools::tags$span(class = "badge bg-light text-dark border me-2", txt)
       })
-      # v0.77.1 — Bloc en carte (symétrie avec les bandeaux de validité
-      # FORDEAD « Composition d'essences… »), bordure info bleue : icône
+      # v0.77.1 - Bloc en carte (symetrie avec les bandeaux de validite
+      # FORDEAD " Composition d'essences... "), bordure info bleue : icone
       # + titre en gras, surfaces des strates dans le corps.
       htmltools::tags$div(
         class = "card border-info mb-3",
@@ -1098,12 +1098,12 @@ mod_monitoring_server <- function(id, app_state) {
     # ----- Register-this-project-as-zone bridge ----------------------
 
     # Reactive: does the loaded project have UGFs defined? Depuis spec
-    # 020, les zones de suivi sont construites par croisement UGF × BD
-    # Forêt v2 (`build_project_monitoring_zones`) — PLUS à partir d'un
-    # plan d'échantillonnage. Le prérequis du bouton « Enregistrer la
-    # zone » est donc « des UGF définies », pas un `samples.gpkg`
-    # (vestige pré-spec-020). Check léger : `project$ugs` (1re garde de
-    # `ug_build_sf`), pas de géométrie reconstruite.
+    # 020, les zones de suivi sont construites par croisement UGF x BD
+    # Foret v2 (`build_project_monitoring_zones`) - PLUS a partir d'un
+    # plan d'echantillonnage. Le prerequis du bouton " Enregistrer la
+    # zone " est donc " des UGF definies ", pas un `samples.gpkg`
+    # (vestige pre-spec-020). Check leger : `project$ugs` (1re garde de
+    # `ug_build_sf`), pas de geometrie reconstruite.
     ugf_present <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project)) return(FALSE)
@@ -1111,12 +1111,12 @@ mod_monitoring_server <- function(id, app_state) {
       !is.null(ugs) && nrow(ugs) > 0L
     })
 
-    # Reactive: la BD Forêt v2 du projet est-elle en cache ? Les zones de
-    # suivi sont un croisement UGF × BD Forêt v2 : le GPKG
+    # Reactive: la BD Foret v2 du projet est-elle en cache ? Les zones de
+    # suivi sont un croisement UGF x BD Foret v2 : le GPKG
     # `<projet>/cache/layers/bdforet.gpkg` est produit par
-    # `download_ign_bdforet()` AU PREMIER CALCUL du projet (onglet Synthèse).
+    # `download_ign_bdforet()` AU PREMIER CALCUL du projet (onglet Synthese).
     # Sans lui, `build_project_monitoring_zones()` ne peut pas croiser les
-    # strates — prérequis au même titre que « UGF définies ».
+    # strates - prerequis au meme titre que " UGF definies ".
     bdforet_present <- shiny::reactive({
       project <- app_state$current_project
       if (is.null(project) || is.null(project$path)) return(FALSE)
@@ -1164,7 +1164,7 @@ mod_monitoring_server <- function(id, app_state) {
       }
       # Distinguish "RSQLite pkg missing" from "PG configured but
       # unreachable" so the user gets an actionable hint instead of
-      # the generic "non configurée" message.
+      # the generic "non configuree" message.
       backend <- monitoring_db_backend(project = app_state$current_project)
       if (identical(backend, "none")) {
         return(htmltools::tags$small(class = "text-danger d-block",
@@ -1180,29 +1180,29 @@ mod_monitoring_server <- function(id, app_state) {
       NULL
     })
 
-    # v0.73.0 (spec 020) — Click handler refactoré.
+    # v0.73.0 (spec 020) - Click handler refactore.
     #
-    # Avant : `register_project_as_zone(con, project)` créait UNE
-    # zone à partir des placettes (`samples.gpkg`). Le sélecteur
+    # Avant : `register_project_as_zone(con, project)` creait UNE
+    # zone a partir des placettes (`samples.gpkg`). Le selecteur
     # multi-projets pouvait alors croiser des zones de plusieurs
     # projets (bug villards/Mouthe).
     #
-    # Maintenant : `nemeton::build_project_monitoring_zones()` crée
-    # jusqu'à 4 zones (`_tot/_feu/_res/_mix`) par croisement de
-    # l'union des UGFs avec les strates BD Forêt v2. La fonction
-    # core est en `upsert` (`replace = TRUE` par défaut) → un re-clic
-    # supprime puis recrée les zones du projet (les `zone_id`
+    # Maintenant : `nemeton::build_project_monitoring_zones()` cree
+    # jusqu'a 4 zones (`_tot/_feu/_res/_mix`) par croisement de
+    # l'union des UGFs avec les strates BD Foret v2. La fonction
+    # core est en `upsert` (`replace = TRUE` par defaut) -> un re-clic
+    # supprime puis recree les zones du projet (les `zone_id`
     # changent ; `prune_orphan_zone_caches()` nettoie les anciens
     # dossiers `cache/layers/*/zone_<old_id>/` orphelins).
     #
-    # Inputs cœur :
+    # Inputs coeur :
     #   * `project_name = project$metadata$name`  (ex. "Mouthe" ;
     #     le nom vit dans `metadata`, pas au 1er niveau de l'objet
-    #     projet — fallback `project$id` si jamais absent)
+    #     projet - fallback `project$id` si jamais absent)
     #   * `project_uuid = project$id`           (`<ts>_<rand>` = id local)
     #   * `ugf = ug_build_sf(project)`          (sf des UGFs)
     #   * `bdforet = sf::st_read(<proj>/cache/layers/bdforet.gpkg)`
-    #     Si absent → message « lancer le calcul du projet d'abord »
+    #     Si absent -> message " lancer le calcul du projet d'abord "
     #     (ne PAS appeler la fonction).
     shiny::observe({
       i18n <- i18n_r()
@@ -1212,9 +1212,9 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return()
       }
-      # Pré-requis BD Forêt : produite au 1er calcul projet via
+      # Pre-requis BD Foret : produite au 1er calcul projet via
       # `download_ign_bdforet`. Sans ce GPKG, le croisement avec les
-      # strates BD Forêt v2 est impossible.
+      # strates BD Foret v2 est impossible.
       bdforet_gpkg <- file.path(project$path, "cache", "layers",
                                 "bdforet.gpkg")
       if (!file.exists(bdforet_gpkg)) {
@@ -1224,8 +1224,8 @@ mod_monitoring_server <- function(id, app_state) {
         )
         return()
       }
-      # Pré-requis UGFs : ug_build_sf renvoie NULL quand le projet
-      # n'a pas d'UGF défini (ex. nouveau projet).
+      # Pre-requis UGFs : ug_build_sf renvoie NULL quand le projet
+      # n'a pas d'UGF defini (ex. nouveau projet).
       ugf_sf <- tryCatch(ug_build_sf(project), error = function(e) NULL)
       if (is.null(ugf_sf) || nrow(ugf_sf) == 0L) {
         shiny::showNotification(
@@ -1256,7 +1256,7 @@ mod_monitoring_server <- function(id, app_state) {
         shiny::showNotification(
           sprintf("%s : %s",
                   i18n$t("monitoring_register_error"),
-                  "BD Forêt GPKG illisible"),
+                  "BD For\u00eat GPKG illisible"),
           type = "error", duration = 8
         )
         return()
@@ -1284,9 +1284,9 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
 
-      # v0.73.0 — Best-effort : purger les caches orphelins
-      # `cache/layers/*/zone_<old_id>/` (les zone_id changent à
-      # chaque upsert, donc les anciens dossiers traînent sinon).
+      # v0.73.0 - Best-effort : purger les caches orphelins
+      # `cache/layers/*/zone_<old_id>/` (les zone_id changent a
+      # chaque upsert, donc les anciens dossiers trainent sinon).
       tryCatch(
         nemeton::prune_orphan_zone_caches(
           con,
@@ -1298,9 +1298,9 @@ mod_monitoring_server <- function(id, app_state) {
         }
       )
 
-      # Mémoriser la zone `_tot` (la plus inclusive) comme zone
-      # par défaut du projet — l'observer du sélecteur s'aligne
-      # déjà sur cette convention via `grep(\"_tot$\", z$name)`.
+      # Memoriser la zone `_tot` (la plus inclusive) comme zone
+      # par defaut du projet - l'observer du selecteur s'aligne
+      # deja sur cette convention via `grep(\"_tot$\", z$name)`.
       tot_id <- result$tot %||% NA_integer_
       if (!is.na(tot_id)) {
         project$metadata$monitoring_zone_id <- tot_id
@@ -1308,8 +1308,8 @@ mod_monitoring_server <- function(id, app_state) {
       }
       zones_refresh(zones_refresh() + 1L)
 
-      # Récap : strates créées (clés non-NULL du résultat) + strates
-      # vides (clés manquantes, ex. projet 100% feuillu → `res` absent).
+      # Recap : strates creees (cles non-NULL du resultat) + strates
+      # vides (cles manquantes, ex. projet 100% feuillu -> `res` absent).
       built_strata <- names(result)[!vapply(
         result, is.null, logical(1))]
       n_built <- length(built_strata)
@@ -1323,18 +1323,18 @@ mod_monitoring_server <- function(id, app_state) {
       shiny::bindEvent(input$register, input$register_inline,
                        ignoreInit = TRUE)
 
-    # DB status card — seven states:
-    #   0. Async probe still running        → spinning gear card
-    #   1. No PG env AND no project         → "open a project" hint (warning)
-    #   2. No PG env, project loaded, RSQLite pkg missing → install hint (warning)
-    #   3. Probe failed (server down, bad URL, migration error, …) → warning + real message
-    #   4. Local SQLite ready                → info banner with multi-user hint
-    #   5. Postgres connected, zero zones    → info
-    #   6. Postgres or SQLite ready, zones available → success
+    # DB status card - seven states:
+    #   0. Async probe still running        -> spinning gear card
+    #   1. No PG env AND no project         -> "open a project" hint (warning)
+    #   2. No PG env, project loaded, RSQLite pkg missing -> install hint (warning)
+    #   3. Probe failed (server down, bad URL, migration error, ...) -> warning + real message
+    #   4. Local SQLite ready                -> info banner with multi-user hint
+    #   5. Postgres connected, zero zones    -> info
+    #   6. Postgres or SQLite ready, zones available -> success
     #
     # The probe (ExtendedTask) is fired by the observer above whenever
     # the project changes. While it runs, the spinning gear card stays
-    # visible — no toast race, no perceived freeze, no busy overlay.
+    # visible - no toast race, no perceived freeze, no busy overlay.
     output$db_status <- shiny::renderUI({
       i18n     <- i18n_r()
       project  <- app_state$current_project
@@ -1354,7 +1354,7 @@ mod_monitoring_server <- function(id, app_state) {
         }
         # Project loaded, PG env absent, and not classified as a local
         # file backend means RSQLite is missing (otherwise the resolver
-        # would have produced a sqlite://… URL).
+        # would have produced a sqlite://... URL).
         return(.monitoring_status_card(
           icon  = "exclamation-circle",
           class = "border-warning",
@@ -1363,7 +1363,7 @@ mod_monitoring_server <- function(id, app_state) {
         ))
       }
 
-      # Probe still running or not yet fired — show the spinning gear.
+      # Probe still running or not yet fired - show the spinning gear.
       st <- db_probe_state()
       if (identical(st$state, "initial") || identical(st$state, "running")) {
         title <- if (identical(backend, "local"))
@@ -1377,12 +1377,12 @@ mod_monitoring_server <- function(id, app_state) {
         ))
       }
 
-      # Probe failed — surface the real cause captured in the worker
+      # Probe failed - surface the real cause captured in the worker
       # (db_connect or migration error) so the user can act.
       if (identical(st$state, "error")) {
         err <- st$error
         body <- if (!is.null(err) && nzchar(err) && !identical(err, "no_url")) {
-          paste0(i18n$t("monitoring_db_check_env"), " — ", err)
+          paste0(i18n$t("monitoring_db_check_env"), " \u2014 ", err)
         } else {
           i18n$t("monitoring_db_check_env")
         }
@@ -1394,9 +1394,9 @@ mod_monitoring_server <- function(id, app_state) {
         ))
       }
 
-      # Probe succeeded — open a sync connection in the main process to
+      # Probe succeeded - open a sync connection in the main process to
       # count zones for the success banner. Schema is already migrated
-      # so this is a fast handshake (< 100 ms typical). v0.48.2 —
+      # so this is a fast handshake (< 100 ms typical). v0.48.2 -
       # read_only : un simple COUNT, ne doit pas tenir un verrou RW
       # qui bloquerait le worker d'ingestion.
       con <- get_monitoring_db_connection(project = project,
@@ -1405,7 +1405,7 @@ mod_monitoring_server <- function(id, app_state) {
       if (is.null(con)) {
         err <- last_monitoring_db_error()
         body <- if (!is.null(err) && nzchar(err)) {
-          paste0(i18n$t("monitoring_db_check_env"), " — ", err)
+          paste0(i18n$t("monitoring_db_check_env"), " \u2014 ", err)
         } else {
           i18n$t("monitoring_db_check_env")
         }
@@ -1423,10 +1423,10 @@ mod_monitoring_server <- function(id, app_state) {
       if (identical(backend, "local")) {
         body <- if (n == 0L) {
           paste(i18n$t("monitoring_zone_register_hint"),
-                i18n$t("monitoring_db_local_hint"), sep = " — ")
+                i18n$t("monitoring_db_local_hint"), sep = " \u2014 ")
         } else {
           paste(sprintf(i18n$t("monitoring_db_connected"), n),
-                i18n$t("monitoring_db_local_hint"), sep = " — ")
+                i18n$t("monitoring_db_local_hint"), sep = " \u2014 ")
         }
         return(.monitoring_status_card(
           icon  = "database",
@@ -1436,12 +1436,12 @@ mod_monitoring_server <- function(id, app_state) {
         ))
       }
       if (n == 0L) {
-        # v0.52.7 — Bouton d'action INLINE dans le bandeau. Le bouton
-        # sidebar `input$register` existe déjà, mais il vit sous la
+        # v0.52.7 - Bouton d'action INLINE dans le bandeau. Le bouton
+        # sidebar `input$register` existe deja, mais il vit sous la
         # zone "Mode de suivi" et tombe souvent sous le pli sur les
-        # écrans courants → l'utilisateur voit le message mais pas
-        # l'action. On rajoute donc un bouton dans le bandeau lui-même
-        # qui appelle la même logique (via `input$register_inline` ;
+        # ecrans courants -> l'utilisateur voit le message mais pas
+        # l'action. On rajoute donc un bouton dans le bandeau lui-meme
+        # qui appelle la meme logique (via `input$register_inline` ;
         # observer ci-dessous est un alias de `input$register`).
         return(.monitoring_status_card(
           icon  = "info-circle",
@@ -1461,28 +1461,28 @@ mod_monitoring_server <- function(id, app_state) {
           )
         ))
       }
-      # v0.52.5 — Détection de l'état « orphelin » : la DB contient
-      # des zones (n > 0) mais aucune n'est rattachée au projet
-      # chargé. Symptôme typique d'un wipe par les tests cœur
+      # v0.52.5 - Detection de l'etat " orphelin " : la DB contient
+      # des zones (n > 0) mais aucune n'est rattachee au projet
+      # charge. Symptome typique d'un wipe par les tests coeur
       # (`helper-monitoring.R` ligne 82-88 DROP CASCADE 7 tables
-      # monitoring sans garde-fou — incident villards 2026-05-31).
-      # Sans cette détection, l'utilisateur voyait le bandeau de
-      # succès vert « N zone(s) connectée(s) » alors qu'aucune ne
+      # monitoring sans garde-fou - incident villards 2026-05-31).
+      # Sans cette detection, l'utilisateur voyait le bandeau de
+      # succes vert " N zone(s) connectee(s) " alors qu'aucune ne
       # lui appartient, le dropdown restait vide, et FAST plantait
-      # plus tard en FK violation « plot_id=2 not in plot ». Avec
+      # plus tard en FK violation " plot_id=2 not in plot ". Avec
       # ce bandeau jaune-warning, l'utilisateur sait quoi faire :
-      # cliquer sur « Enregistrer ce projet comme zone de suivi »
-      # dans la barre latérale (le bouton existe déjà, on ne
-      # duplique pas l'action — on guide).
+      # cliquer sur " Enregistrer ce projet comme zone de suivi "
+      # dans la barre laterale (le bouton existe deja, on ne
+      # duplique pas l'action - on guide).
       #
-      # Détection : on lit la colonne `project_uuid` de
-      # `monitoring_zone` (ajoutée par migration 0003) et on vérifie
+      # Detection : on lit la colonne `project_uuid` de
+      # `monitoring_zone` (ajoutee par migration 0003) et on verifie
       # qu'au moins une zone porte l'id du projet courant. Si
       # toutes les zones ont `project_uuid IS NULL` (stubs de tests)
-      # ou correspondent à d'AUTRES projets, on bascule sur le
-      # warning. Requête en best-effort : si la colonne n'existe
-      # pas encore (migration 0003 non appliquée), on retombe sur
-      # le banner de succès classique.
+      # ou correspondent a d'AUTRES projets, on bascule sur le
+      # warning. Requete en best-effort : si la colonne n'existe
+      # pas encore (migration 0003 non appliquee), on retombe sur
+      # le banner de succes classique.
       if (!is.null(project) && !is.null(project$id)) {
         zones_pu <- tryCatch(
           DBI::dbGetQuery(
@@ -1492,7 +1492,7 @@ mod_monitoring_server <- function(id, app_state) {
           error = function(e) NULL
         )
         if (!is.null(zones_pu) && !(project$id %in% zones_pu)) {
-          # v0.52.7 — Même logique que la branche n==0 : bouton
+          # v0.52.7 - Meme logique que la branche n==0 : bouton
           # d'action INLINE dans le bandeau orphelin (le bouton
           # sidebar existant tombe souvent sous le pli).
           return(.monitoring_status_card(
@@ -1528,7 +1528,7 @@ mod_monitoring_server <- function(id, app_state) {
     # Surface the active Sentinel-2 COG cache path below the Run button
     # so the user knows where bands are persisted between runs (and so
     # they can wipe it from the filesystem if they need to). NULL when
-    # no project is open — in that case nemeton falls back to its
+    # no project is open - in that case nemeton falls back to its
     # in-memory legacy path and we display nothing.
     output$cache_hint <- shiny::renderUI({
       i18n <- i18n_r()
@@ -1547,40 +1547,40 @@ mod_monitoring_server <- function(id, app_state) {
     # first invoke. The reactivePoll below watches this path and the
     # toast observer re-renders the persistent "X/N tuiles..." card.
     ingest_progress_path <- shiny::reactiveVal(NULL)
-    # Chrono unifié FAST (cf. R/utils_notif.R) : `fast_run_start` = instant
-    # de lancement (NULL hors run) ; `fast_run_msg` = dernier libellé « en
-    # cours ». Un observe dédié (plus bas) re-rend la notif chaque seconde
-    # pour que le « — MM:SS » défile entre deux events de progression.
+    # Chrono unifie FAST (cf. R/utils_notif.R) : `fast_run_start` = instant
+    # de lancement (NULL hors run) ; `fast_run_msg` = dernier libelle " en
+    # cours ". Un observe dedie (plus bas) re-rend la notif chaque seconde
+    # pour que le " - MM:SS " defile entre deux events de progression.
     fast_run_start <- shiny::reactiveVal(NULL)
     fast_run_msg   <- shiny::reactiveVal(NULL)
-    # v0.85.2.9000 — État d'ingestion détecté au (re)chargement depuis
-    # la sentinelle disque écrite par le worker (`ingest_run.json`),
-    # indépendant de toute session. Pilote `output$ingest_resume_banner`.
-    # Voir `.detect_ingest_state()` + l'observer de détection plus bas.
+    # v0.85.2.9000 - Etat d'ingestion detecte au (re)chargement depuis
+    # la sentinelle disque ecrite par le worker (`ingest_run.json`),
+    # independant de toute session. Pilote `output$ingest_resume_banner`.
+    # Voir `.detect_ingest_state()` + l'observer de detection plus bas.
     ingest_detected <- shiny::reactiveVal(list(state = "none"))
-    # v0.70.4 — Garde contre le re-traitement du result du worker
+    # v0.70.4 - Garde contre le re-traitement du result du worker
     # FAST. Shiny ExtendedTask$result() peut, dans certains cycles
     # de vie (cascade reactive, transition status, etc.), refire
-    # plusieurs fois pour le MÊME result. Sans garde, l'observer
-    # de fin de worker (l.~2020) ré-émet le toast
-    # `monitoring_ingest_success` (duration = 6 s) → l'utilisateur
-    # voit le toast apparaître, disparaître après 6 s, ré-apparaître,
-    # plusieurs fois. Le flag est reset à FALSE à chaque
+    # plusieurs fois pour le MEME result. Sans garde, l'observer
+    # de fin de worker (l.~2020) re-emet le toast
+    # `monitoring_ingest_success` (duration = 6 s) -> l'utilisateur
+    # voit le toast apparaitre, disparaitre apres 6 s, re-apparaitre,
+    # plusieurs fois. Le flag est reset a FALSE a chaque
     # `fast_task$invoke()` (cf. observeEvent input$run).
     fast_result_consumed <- shiny::reactiveVal(FALSE)
-    # v0.71.1 — Parité FORDEAD : même garde d'idempotence pour
-    # `fordead_task$result()`. Symétrique à `fast_result_consumed`
-    # (v0.70.4). Sans cela, le toast `fordead_success` est ré-émis
-    # plusieurs fois (clignote) ET le bouton « Lancer le diagnostic
-    # FORDEAD » peut rester grisé apparemment (l'observer fire en
+    # v0.71.1 - Parite FORDEAD : meme garde d'idempotence pour
+    # `fordead_task$result()`. Symetrique a `fast_result_consumed`
+    # (v0.70.4). Sans cela, le toast `fordead_success` est re-emis
+    # plusieurs fois (clignote) ET le bouton " Lancer le diagnostic
+    # FORDEAD " peut rester grise apparemment (l'observer fire en
     # boucle mais le `removeNotification`/`force_unlock_health` est
-    # correctement ré-appliqué).
+    # correctement re-applique).
     fordead_result_consumed <- shiny::reactiveVal(FALSE)
 
     # Path to the worker console log. The worker `sink()`s its stdout
     # and message stream to this file (see service_monitoring.R) so we
     # can tail it from the parent and mirror every `cli::cli_*` line
-    # from nemeton into the developer's R console — including the
+    # from nemeton into the developer's R console - including the
     # CACHE-DEBUG traces (`NEMETON_S2_CACHE_DEBUG=TRUE`) that nemeton
     # emits inside `.get_s2_band_raster`. Offset tracks how much has
     # already been streamed so we only print new content per tick.
@@ -1609,7 +1609,7 @@ mod_monitoring_server <- function(id, app_state) {
     # them straight to the parent's stdout via cat(). This bypasses
     # `future`'s built-in stdout capture (which would only release the
     # output at task completion) and gives the developer line-by-line
-    # tracing in real time — exactly what running `run_app()` from a
+    # tracing in real time - exactly what running `run_app()` from a
     # terminal expects.
     ingest_log_tick <- shiny::reactivePoll(
       intervalMillis = 500L, session,
@@ -1647,22 +1647,22 @@ mod_monitoring_server <- function(id, app_state) {
     })
 
     # ------------------------------------------------------------------
-    # v0.70.0 — Drain NDJSON append-only (brief logs FAST propres).
+    # v0.70.0 - Drain NDJSON append-only (brief logs FAST propres).
     # ------------------------------------------------------------------
-    # Le worker écrit en parallèle 2 fichiers :
+    # Le worker ecrit en parallele 2 fichiers :
     #   * `<progress_path>.json`    : DERNIER event (replace), pilote le
-    #     toast Shiny coalescé (observer `ingest_progress` plus haut).
+    #     toast Shiny coalesce (observer `ingest_progress` plus haut).
     #   * `<progress_path>.ndjson`  : journal APPEND-ONLY, une ligne par
-    #     event, jamais écrasé. Drainé ici par offset (même pattern que
-    #     `ingest_log_tick`), garantit l'ordre 1→120 sans saut ni
+    #     event, jamais ecrase. Draine ici par offset (meme pattern que
+    #     `ingest_log_tick`), garantit l'ordre 1->120 sans saut ni
     #     entrelacement pour le mirror console des `.log_band_event` /
     #     `.log_ingest_event`.
     #
     # Avant v0.70.0, le mirror console reposait uniquement sur le JSON
-    # « dernier event » → tick polling 500 ms, worker émettant 4-5 events
-    # par scène en < 50 ms → la quasi-totalité des events était écrasée
-    # avant le poll suivant. Cause des « sauts » 1/120 → 3 → 23 → 51 et
-    # de la désynchro Tuile / Bande affichées (cf. brief).
+    # " dernier event " -> tick polling 500 ms, worker emettant 4-5 events
+    # par scene en < 50 ms -> la quasi-totalite des events etait ecrasee
+    # avant le poll suivant. Cause des " sauts " 1/120 -> 3 -> 23 -> 51 et
+    # de la desynchro Tuile / Bande affichees (cf. brief).
     ingest_ndjson_path   <- shiny::reactive({
       p <- ingest_progress_path()
       if (is.null(p) || !nzchar(p)) return(NULL)
@@ -1698,9 +1698,9 @@ mod_monitoring_server <- function(id, app_state) {
       }
     )
 
-    # Mirror console : itère sur CHAQUE event NDJSON dans l'ordre.
-    # Seule responsabilité = lignes `Tuile X/N` / `⤷ Bande …` —
-    # le toast Shiny reste piloté par le JSON dernier-event.
+    # Mirror console : itere sur CHAQUE event NDJSON dans l'ordre.
+    # Seule responsabilite = lignes `Tuile X/N` / `-> Bande ...` -
+    # le toast Shiny reste pilote par le JSON dernier-event.
     shiny::observe({
       lines <- ingest_ndjson_lines()
       if (is.null(lines) || !length(lines)) return()
@@ -1708,12 +1708,12 @@ mod_monitoring_server <- function(id, app_state) {
         ev <- tryCatch(jsonlite::fromJSON(ln), error = function(e) NULL)
         if (is.null(ev)) next
         current_phase <- as.character(ev$current %||% "")
-        # Bandes : mirror systématique (volume principal du flux).
+        # Bandes : mirror systematique (volume principal du flux).
         if (current_phase %in% c("s2:band_cached", "s2:band_fetched")) {
           .log_band_event(ev, current_phase)
           next
         }
-        # Scènes : Tuile X/N (les events scene_id / completed / total
+        # Scenes : Tuile X/N (les events scene_id / completed / total
         # passent dans .log_ingest_event).
         if (current_phase %in% c("s2:scene", "s2:scene_cached")) {
           status <- ev$status %||% "running"
@@ -1748,7 +1748,7 @@ mod_monitoring_server <- function(id, app_state) {
       status <- ev$status %||% "running"
       if (identical(status, "done")) return()
       current_phase <- as.character(ev$current %||% "")
-      # Worker instrumentation events (v0.26.4+) — mirror them to the
+      # Worker instrumentation events (v0.26.4+) - mirror them to the
       # console so developers see them in the terminal even when the
       # Shiny toast pipeline is debounced. Keep the persistent toast
       # updated so the user knows the worker reached each step.
@@ -1768,7 +1768,7 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
       # Fatal-error event surfaced by the worker BEFORE the future
-      # rejects — gives us a real R error message instead of
+      # rejects - gives us a real R error message instead of
       # "MultisessionFuture was interrupted".
       if (identical(current_phase, "s2:fatal_error")) {
         msg <- as.character(ev$error_message %||% "(unknown)")
@@ -1784,12 +1784,12 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
       # Band-level success events fire sub-second per scene (2-4 bands
-      # per scene) — letting them rewrite the toast would make it
+      # per scene) - letting them rewrite the toast would make it
       # flicker and lose the scene-level context.
-      # v0.70.0 — Le mirror console (`.log_band_event`) passe désormais
-      # par le drain NDJSON (cf. observer dédié plus haut), garanti
-      # complet et ordonné. Ici on absorbe l'event sans rien faire
-      # côté toast (le toast reste sur le scene-level state précédent).
+      # v0.70.0 - Le mirror console (`.log_band_event`) passe desormais
+      # par le drain NDJSON (cf. observer dedie plus haut), garanti
+      # complet et ordonne. Ici on absorbe l'event sans rien faire
+      # cote toast (le toast reste sur le scene-level state precedent).
       if (current_phase %in% c("s2:band_cached", "s2:band_fetched")) {
         return()
       }
@@ -1807,25 +1807,25 @@ mod_monitoring_server <- function(id, app_state) {
         )
         return()
       }
-      # v0.55.0 — Events `fast_prewarm:<index>_<mode>[ _done|_failed]`
-      # émis par le cœur en fin d'ingestion réussie (spec 018
-      # nemeton@v0.61.0). On les transforme en toasts localisés à
-      # partir des CLÉS MACHINE du payload (index / mode), pas en
-      # parsant du texte FR. Mapping mode → libellé i18n :
-      #   "count"   → fast_mode_frequence  (Fréquence / Frequency)
-      #   "rolling" → fast_mode_intensite  (Intensité / Intensity)
-      #   "trend"   → fast_mode_trend      (Tendance / Trend)
+      # v0.55.0 - Events `fast_prewarm:<index>_<mode>[ _done|_failed]`
+      # emis par le coeur en fin d'ingestion reussie (spec 018
+      # nemeton@v0.61.0). On les transforme en toasts localises a
+      # partir des CLES MACHINE du payload (index / mode), pas en
+      # parsant du texte FR. Mapping mode -> libelle i18n :
+      #   "count"   -> fast_mode_frequence  (Frequence / Frequency)
+      #   "rolling" -> fast_mode_intensite  (Intensite / Intensity)
+      #   "trend"   -> fast_mode_trend      (Tendance / Trend)
       if (startsWith(current_phase, "fast_prewarm:")) {
         if (identical(current_phase, "fast_prewarm:complete")) {
-          # v0.70.1 — Bug observé : sans `removeNotification`, le
+          # v0.70.1 - Bug observe : sans `removeNotification`, le
           # toast running `fast_prewarm_progress` (id stable,
-          # `duration = NULL`, persistent — cf. branche running plus
-          # bas l.1601) survivait à la fin du worker. Conséquence
-          # UX : « Pré-calcul carte NDMI Intensité en cours… »
-          # restait collé en bas à droite alors que le worker était
-          # terminé. On retire explicitement le toast running ici,
-          # puis on émet un toast court (4 s) confirmant la
-          # disponibilité de l'app.
+          # `duration = NULL`, persistent - cf. branche running plus
+          # bas l.1601) survivait a la fin du worker. Consequence
+          # UX : " Pre-calcul carte NDMI Intensite en cours... "
+          # restait colle en bas a droite alors que le worker etait
+          # termine. On retire explicitement le toast running ici,
+          # puis on emet un toast court (4 s) confirmant la
+          # disponibilite de l'app.
           shiny::removeNotification(session$ns("fast_prewarm_progress"))
           shiny::showNotification(
             i18n$t("monitoring_fast_diagnostic_complete"),
@@ -1848,7 +1848,7 @@ mod_monitoring_server <- function(id, app_state) {
         idx_payload  <- as.character(ev$index %||% "")
         mode_payload <- as.character(ev$mode  %||% "")
         if (!nzchar(idx_payload) || !nzchar(mode_payload)) {
-          # Payload malformé (cœur incohérent). On log et ignore.
+          # Payload malforme (coeur incoherent). On log et ignore.
           cli::cli_alert_info(
             "Worker event: {current_phase} (payload incomplet)")
           return()
@@ -1873,7 +1873,7 @@ mod_monitoring_server <- function(id, app_state) {
           err <- as.character(ev$error_message %||% ev$error %||% "")
           msg <- sprintf(i18n$t("fast_prewarm_failed"),
                          idx_payload, mode_label)
-          if (nzchar(err)) msg <- paste0(msg, " — ", err)
+          if (nzchar(err)) msg <- paste0(msg, " \u2014 ", err)
           shiny::showNotification(
             msg,
             id       = session$ns(
@@ -1895,7 +1895,7 @@ mod_monitoring_server <- function(id, app_state) {
         }
         return()
       }
-      # PC SAS token rotation is informational only — we surface it so
+      # PC SAS token rotation is informational only - we surface it so
       # the user can correlate a brief pause with token rotation
       # instead of suspecting a network issue.
       if (identical(current_phase, "s2:pc_token_refreshed")) {
@@ -1924,17 +1924,17 @@ mod_monitoring_server <- function(id, app_state) {
         )
         return()
       }
-      # v0.70.3 — STAC search complete : initialise le toast à
-      # (1/N) AVANT que le 1er event `s2:scene` ne soit capturé.
+      # v0.70.3 - STAC search complete : initialise le toast a
+      # (1/N) AVANT que le 1er event `s2:scene` ne soit capture.
       # Sans ce handler, le polling 500 ms du JSON dernier-event
-      # rate fréquemment la 1ʳᵉ scène (worker pousse `s2:scene
+      # rate frequemment la 1re scene (worker pousse `s2:scene
       # completed=0` puis `s2:scene completed=1` en bien moins
-      # de 500 ms → le JSON est écrasé deux fois entre 2 polls →
-      # le 1er event capturable était souvent `completed=1`,
-      # affiché « (2/N) » après le `+1` de v0.70.2). Désormais
-      # `(1/N) — démarrage…` apparaît dès `s2:search_done` ;
-      # le 1er `s2:scene` capturé remplace le toast par le
-      # numéro réel (qui peut sauter directement à `(3/N)`, mais
+      # de 500 ms -> le JSON est ecrase deux fois entre 2 polls ->
+      # le 1er event capturable etait souvent `completed=1`,
+      # affiche " (2/N) " apres le `+1` de v0.70.2). Desormais
+      # `(1/N) - demarrage...` apparait des `s2:search_done` ;
+      # le 1er `s2:scene` capture remplace le toast par le
+      # numero reel (qui peut sauter directement a `(3/N)`, mais
       # l'utilisateur a vu `(1/N)` au moins une fois).
       if (identical(current_phase, "s2:search_done")) {
         n_val_init <- as.integer(ev$total %||% ev$n %||% 0L)
@@ -1956,7 +1956,7 @@ mod_monitoring_server <- function(id, app_state) {
       n_val <- as.integer(ev$total     %||% ev$n %||% 0L)
       scene <- as.character(ev$scene_id %||% "")
       # When scene_id is empty AND completed == 0, we're between the
-      # STAC search and the first tile — show "Recherche STAC..." so
+      # STAC search and the first tile - show "Recherche STAC..." so
       # the user doesn't see a misleading "Tuile Sentinel-2 (0/N)".
       msg <- if (identical(status, "starting")) {
         i18n$t("monitoring_ingest_starting")
@@ -1977,7 +1977,7 @@ mod_monitoring_server <- function(id, app_state) {
                  "word-break:break-all;\">%s</span>"),
           htmltools::htmlEscape(scene)
         )
-        # v0.70.2 — `i_val + 1L` : compteur 1-based pour la tuile
+        # v0.70.2 - `i_val + 1L` : compteur 1-based pour la tuile
         # en cours (brief console FAST, Partie B). La garde STAC
         # plus haut (l.1664) reste sur `i_val == 0L` brut.
         htmltools::HTML(sprintf(
@@ -1988,7 +1988,7 @@ mod_monitoring_server <- function(id, app_state) {
         sprintf(i18n$t("monitoring_ingest_progress_fmt"),
                 i_val + 1L, n_val)
       }
-      # v0.70.0 — `.log_ingest_event` (mirror Tuile X/N) déménage
+      # v0.70.0 - `.log_ingest_event` (mirror Tuile X/N) demenage
       # dans l'observer NDJSON drain (cf. plus haut). Ici on ne
       # touche plus qu'au toast Shiny (replacement par id stable).
       fast_run_msg(msg)
@@ -2001,11 +2001,11 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # Chrono qui défile (FAST) : re-rend la notif « en cours » chaque
-    # seconde entre deux events de progression (téléchargement d'une scène
-    # peut durer > 1 s). Même id `ingest_progress` → Shiny remplace le
-    # contenu en place ; s'arrête dès que le run se termine (`fast_run_start`
-    # remis à NULL par les handlers de fin, qui suppriment aussi la notif).
+    # Chrono qui defile (FAST) : re-rend la notif " en cours " chaque
+    # seconde entre deux events de progression (telechargement d'une scene
+    # peut durer > 1 s). Meme id `ingest_progress` -> Shiny remplace le
+    # contenu en place ; s'arrete des que le run se termine (`fast_run_start`
+    # remis a NULL par les handlers de fin, qui suppriment aussi la notif).
     shiny::observe({
       st  <- fast_run_start()
       msg <- fast_run_msg()
@@ -2027,7 +2027,7 @@ mod_monitoring_server <- function(id, app_state) {
     # all 403/404 (e.g. PC SAS token expired mid-run, Azure regional
     # outage), the user has no way to relaunch without restarting the
     # whole app. This flag lets them get a fresh "Lancer" button while
-    # the orphan future continues in the background — that's safe
+    # the orphan future continues in the background - that's safe
     # because the DB INSERTs are ON CONFLICT DO NOTHING.
     force_unlock_quick <- shiny::reactiveVal(FALSE)
 
@@ -2039,7 +2039,7 @@ mod_monitoring_server <- function(id, app_state) {
     #
     # Cross-lock (v0.39.2): also greyed while a FORDEAD run is in
     # flight. FAST and FORDEAD share the project Sentinel-2 band cache
-    # (`cache/layers/sentinel2/<scene>/<band>.tif`) — running both at
+    # (`cache/layers/sentinel2/<scene>/<band>.tif`) - running both at
     # once risks two workers racing on the same `<band>.tif.tmp`. The
     # lock respects the *other* task's force-unlock: if FORDEAD was
     # abandoned via its cancel button, FAST is launchable again.
@@ -2052,15 +2052,15 @@ mod_monitoring_server <- function(id, app_state) {
                                 disabled = fast_running || fordead_running)
     })
 
-    # v0.70.1 — Filet de sécurité du toast `fast_prewarm_progress`
-    # (persistent, `duration = NULL`). Si le cœur n'émet pas
-    # `fast_prewarm:complete` à la fin (cas pathologique : hang
-    # silencieux, exception non capturée côté prewarm, etc.), le
-    # toast restait collé en bas à droite après que le worker s'est
-    # déjà arrêté. Cet observer watch la transition de
+    # v0.70.1 - Filet de securite du toast `fast_prewarm_progress`
+    # (persistent, `duration = NULL`). Si le coeur n'emet pas
+    # `fast_prewarm:complete` a la fin (cas pathologique : hang
+    # silencieux, exception non capturee cote prewarm, etc.), le
+    # toast restait colle en bas a droite apres que le worker s'est
+    # deja arrete. Cet observer watch la transition de
     # `fast_task$status()` hors de "running" et nettoie le toast de
-    # force — y compris si l'utilisateur a force-unlocked via le
-    # bouton « Annuler le diagnostic ».
+    # force - y compris si l'utilisateur a force-unlocked via le
+    # bouton " Annuler le diagnostic ".
     shiny::observe({
       status <- fast_task$status()
       if (!identical(status, "running")) {
@@ -2087,11 +2087,11 @@ mod_monitoring_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run_cancel, {
       i18n <- i18n_r()
-      # v0.52.0 — Vrai cancel coopératif. On écrit le flag AVANT le
+      # v0.52.0 - Vrai cancel cooperatif. On ecrit le flag AVANT le
       # force-unlock UI : le worker poll ce fichier entre chaque tuile
-      # (nemeton@v0.53.0+) et sort proprement à la prochaine itération
-      # avec un résumé `status = "cancelled"` (commit partiel des
-      # tuiles déjà ingérées). Le force-unlock libère l'UI sans
+      # (nemeton@v0.53.0+) et sort proprement a la prochaine iteration
+      # avec un resume `status = "cancelled"` (commit partiel des
+      # tuiles deja ingerees). Le force-unlock libere l'UI sans
       # attendre cette sortie.
       cancel_path <- .resolve_progress_path(
         app_state$current_project, "fast_cancel.flag")
@@ -2125,13 +2125,13 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # v0.85.2.9000 — Séquence d'invocation FAST factorisée : toast
-    # persistant → reset des fichiers progress/console → invoke du
-    # worker (avec sentinelle de run écrite côté worker). Appelée par
-    # « Lancer » (observeEvent input$run, après validation +
-    # réamorçage éventuel) ET par « Reprendre » (observeEvent
-    # input$ingest_resume, avec les paramètres d'un run interrompu lus
-    # dans la sentinelle). Le réamorçage cache (☑ reprime) reste côté
+    # v0.85.2.9000 - Sequence d'invocation FAST factorisee : toast
+    # persistant -> reset des fichiers progress/console -> invoke du
+    # worker (avec sentinelle de run ecrite cote worker). Appelee par
+    # " Lancer " (observeEvent input$run, apres validation +
+    # reamorcage eventuel) ET par " Reprendre " (observeEvent
+    # input$ingest_resume, avec les parametres d'un run interrompu lus
+    # dans la sentinelle). Le reamorcage cache ([x] reprime) reste cote
     # input$run uniquement (pas de wipe sur une reprise).
     start_fast_ingest <- function(zone_id_int, d_from, d_to) {
       i18n <- i18n_r()
@@ -2142,7 +2142,7 @@ mod_monitoring_server <- function(id, app_state) {
         duration    = NULL,
         closeButton = FALSE
       )
-      # Amorce le chrono unifié (bas-droite) — le tick 1 s prend le relais.
+      # Amorce le chrono unifie (bas-droite) - le tick 1 s prend le relais.
       fast_run_start(Sys.time())
       fast_run_msg(i18n$t("monitoring_ingest_starting"))
       ppath <- .resolve_progress_path(app_state$current_project,
@@ -2171,7 +2171,7 @@ mod_monitoring_server <- function(id, app_state) {
         start         = d_from,
         end           = d_to,
         # NDVI + NBR + NDMI + NDRE (cf. commentaire historique du
-        # premier invoke — bandes câblées en dur).
+        # premier invoke - bandes cablees en dur).
         bands         = c("NDVI", "NBR", "NDMI", "NDRE"),
         max_cloud     = 20,
         db_url        = .resolve_monitoring_db_url(app_state$current_project),
@@ -2183,8 +2183,8 @@ mod_monitoring_server <- function(id, app_state) {
         log_path      = lpath,
         lang          = app_state$language %||% "fr",
         cancel_path   = .fast_cancel_flag,
-        # Nom de projet (à jour) pour l'en-tête ntfy — évite le nom de zone
-        # DB périmé quand le projet a été renommé (cf. run_ingestion_async).
+        # Nom de projet (a jour) pour l'en-tete ntfy - evite le nom de zone
+        # DB perime quand le projet a ete renomme (cf. run_ingestion_async).
         project_name  = app_state$current_project$metadata$name %||%
                         app_state$current_project$name,
         prewarm_alerts         = TRUE,
@@ -2200,12 +2200,12 @@ mod_monitoring_server <- function(id, app_state) {
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
       force_unlock_quick(FALSE)
-      # v0.70.4 — Reset le flag idempotence : le prochain
-      # `fast_task$result()` doit être traité (toast success /
-      # error émis).
+      # v0.70.4 - Reset le flag idempotence : le prochain
+      # `fast_task$result()` doit etre traite (toast success /
+      # error emis).
       fast_result_consumed(FALSE)
-      # v0.52.0 — Purge un éventuel cancel_path résiduel d'un run
-      # précédent (sinon, le worker abandonne dès la 1re tuile !).
+      # v0.52.0 - Purge un eventuel cancel_path residuel d'un run
+      # precedent (sinon, le worker abandonne des la 1re tuile !).
       # Idempotent : `unlink` sur fichier absent retourne 0 sans erreur.
       .fast_cancel_flag <- .resolve_progress_path(
         app_state$current_project, "fast_cancel.flag")
@@ -2214,8 +2214,8 @@ mod_monitoring_server <- function(id, app_state) {
                  error = function(e) NULL)
       }
       # Cross-lock: refuse to start FAST while a FORDEAD run is in
-      # flight (shared Sentinel-2 cache — cf. the run-button observer).
-      # An abandoned FORDEAD run (cancel button → force-unlock) does
+      # flight (shared Sentinel-2 cache - cf. the run-button observer).
+      # An abandoned FORDEAD run (cancel button -> force-unlock) does
       # not block.
       if (identical(fordead_task$status(), "running") &&
           !isTRUE(force_unlock_health())) {
@@ -2233,9 +2233,9 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return()
       }
-      # v0.61.0 — `bands` est désormais câblé en dur (NDVI + NBR
-      # systématiquement) lors du `fast_task$invoke()` plus bas.
-      # La validation `length(input$bands) == 0L` est retirée.
+      # v0.61.0 - `bands` est desormais cable en dur (NDVI + NBR
+      # systematiquement) lors du `fast_task$invoke()` plus bas.
+      # La validation `length(input$bands) == 0L` est retiree.
       dr <- input$date_range
       if (is.null(dr) || length(dr) != 2L || any(is.na(dr))) {
         shiny::showNotification(i18n$t("monitoring_validate_dates"),
@@ -2243,13 +2243,13 @@ mod_monitoring_server <- function(id, app_state) {
         return()
       }
 
-      # Réamorçage cache optionnel (☑ reprime_cache) — RESTREINT à la
-      # fenêtre FAST [dr[1], dr[2]] ; les scènes hors fenêtre (période
-      # d'apprentissage FORDEAD, cache S2 partagé) sont préservées.
-      # Doit précéder l'invocation. v0.30.1 : skip_cached reste FALSE
-      # dans tous les cas (INSERTs idempotents) — seule la branche wipe
-      # diffère. v0.85.2.9000 : la séquence toast → invoke a été
-      # factorisée dans `start_fast_ingest()` (réutilisée par Reprendre).
+      # Reamorcage cache optionnel ([x] reprime_cache) - RESTREINT a la
+      # fenetre FAST [dr[1], dr[2]] ; les scenes hors fenetre (periode
+      # d'apprentissage FORDEAD, cache S2 partage) sont preservees.
+      # Doit preceder l'invocation. v0.30.1 : skip_cached reste FALSE
+      # dans tous les cas (INSERTs idempotents) - seule la branche wipe
+      # differe. v0.85.2.9000 : la sequence toast -> invoke a ete
+      # factorisee dans `start_fast_ingest()` (reutilisee par Reprendre).
       if (isTRUE(input$reprime_cache)) {
         cache_dir <- .resolve_s2_cache_dir(app_state$current_project)
         if (!is.null(cache_dir) && dir.exists(cache_dir)) {
@@ -2270,7 +2270,7 @@ mod_monitoring_server <- function(id, app_state) {
               )
             }
             cli::cli_alert_info(
-              "Cache S2 réamorcé sur la fenêtre FAST [{d_from} — {d_to}] : {length(victims)} scène(s) supprimée(s), {length(scene_dirs) - length(victims)} conservée(s) hors fenêtre (FORDEAD préservé)."
+              "Cache S2 r\u00e9amorc\u00e9 sur la fen\u00eatre FAST [{d_from} \u2014 {d_to}] : {length(victims)} sc\u00e8ne(s) supprim\u00e9e(s), {length(scene_dirs) - length(victims)} conserv\u00e9e(s) hors fen\u00eatre (FORDEAD pr\u00e9serv\u00e9)."
             )
           }
         }
@@ -2280,10 +2280,10 @@ mod_monitoring_server <- function(id, app_state) {
                         as.Date(dr[1]), as.Date(dr[2]))
     })
 
-    # v0.85.2.9000 — « Reprendre » une ingestion interrompue détectée au
-    # relancement. Lit la sentinelle disque (zone + période du run mort),
-    # ré-invoque le worker via `start_fast_ingest()` ; `skip_cached`
-    # côté cœur saute les tuiles déjà téléchargées → reprise effective.
+    # v0.85.2.9000 - " Reprendre " une ingestion interrompue detectee au
+    # relancement. Lit la sentinelle disque (zone + periode du run mort),
+    # re-invoque le worker via `start_fast_ingest()` ; `skip_cached`
+    # cote coeur saute les tuiles deja telechargees -> reprise effective.
     shiny::observeEvent(input$ingest_resume, {
       i18n <- i18n_r()
       if (identical(fast_task$status(), "running")) return()
@@ -2298,7 +2298,7 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 5)
         return()
       }
-      # Cross-lock FORDEAD (cache S2 partagé) — symétrique input$run.
+      # Cross-lock FORDEAD (cache S2 partage) - symetrique input$run.
       if (identical(fordead_task$status(), "running") &&
           !isTRUE(force_unlock_health())) {
         shiny::showNotification(i18n$t("monitoring_busy_fordead"),
@@ -2307,7 +2307,7 @@ mod_monitoring_server <- function(id, app_state) {
       }
       force_unlock_quick(FALSE)
       fast_result_consumed(FALSE)
-      # Purge un cancel-flag résiduel (sinon abandon dès la 1re tuile).
+      # Purge un cancel-flag residuel (sinon abandon des la 1re tuile).
       cf <- .resolve_progress_path(app_state$current_project,
                                    "fast_cancel.flag")
       if (!is.null(cf) && file.exists(cf)) {
@@ -2317,12 +2317,12 @@ mod_monitoring_server <- function(id, app_state) {
       start_fast_ingest(zid, d_from, d_to)
     })
 
-    # v0.85.2.9000 — Détection périodique de l'état d'ingestion à partir
-    # de la sentinelle disque. Rafraîchi toutes les 5 s (pour basculer
-    # « en cours » → « interrompue » dès que le worker cesse d'écrire) et
-    # à chaque changement de projet. Quand CETTE session pilote le run
-    # (`fast_task$status() == "running"`), le toast/poll gèrent déjà
-    # l'affichage → état `session_running`, pas de bandeau.
+    # v0.85.2.9000 - Detection periodique de l'etat d'ingestion a partir
+    # de la sentinelle disque. Rafraichi toutes les 5 s (pour basculer
+    # " en cours " -> " interrompue " des que le worker cesse d'ecrire) et
+    # a chaque changement de projet. Quand CETTE session pilote le run
+    # (`fast_task$status() == "running"`), le toast/poll gerent deja
+    # l'affichage -> etat `session_running`, pas de bandeau.
     ingest_detect_tick <- shiny::reactiveTimer(5000L, session)
     shiny::observe({
       ingest_detect_tick()
@@ -2333,7 +2333,7 @@ mod_monitoring_server <- function(id, app_state) {
       ingest_detected(.detect_ingest_state(app_state$current_project))
     })
 
-    # Bandeau « ingestion en cours / interrompue » + bouton Reprendre.
+    # Bandeau " ingestion en cours / interrompue " + bouton Reprendre.
     output$ingest_resume_banner <- shiny::renderUI({
       i18n <- i18n_r()
       st <- ingest_detected()
@@ -2390,9 +2390,9 @@ mod_monitoring_server <- function(id, app_state) {
         fast_task$result(),
         error = function(e) {
           if (inherits(e, "shiny.silent.error")) stop(e)
-          # v0.70.4 — Garde idempotence (cf. fast_result_consumed)
-          # appliquée AUSSI au branchement erreur : sans elle, un
-          # re-fire de l'observer post-erreur ré-émet le toast
+          # v0.70.4 - Garde idempotence (cf. fast_result_consumed)
+          # appliquee AUSSI au branchement erreur : sans elle, un
+          # re-fire de l'observer post-erreur re-emet le toast
           # `ingest_error`.
           if (isTRUE(shiny::isolate(fast_result_consumed()))) {
             return(NULL)
@@ -2415,12 +2415,12 @@ mod_monitoring_server <- function(id, app_state) {
         }
       )
       if (!is.null(result)) {
-        # v0.70.4 — Garde idempotence : `fast_task$result()` peut
-        # refire plusieurs fois pour le MÊME result (cascade
+        # v0.70.4 - Garde idempotence : `fast_task$result()` peut
+        # refire plusieurs fois pour le MEME result (cascade
         # reactive, transition status, etc.). Sans cette garde, le
-        # toast `monitoring_ingest_success` (duration = 6 s) était
-        # ré-émis plusieurs fois → clignotement visible côté UX.
-        # Le flag est reset à FALSE dans observeEvent(input$run).
+        # toast `monitoring_ingest_success` (duration = 6 s) etait
+        # re-emis plusieurs fois -> clignotement visible cote UX.
+        # Le flag est reset a FALSE dans observeEvent(input$run).
         if (isTRUE(shiny::isolate(fast_result_consumed()))) {
           return()
         }
@@ -2433,15 +2433,15 @@ mod_monitoring_server <- function(id, app_state) {
         ingest_log_path(NULL)
         ingest_log_offset(0L)
         n_scenes <- as.integer(result$summary$n_scenes %||% 0L)
-        # v0.53.1 — `n_obs_inserted` toujours 0 depuis nemeton@v0.58.0
-        # (drop obs_pixel insertion). Plus consommé dans le toast.
+        # v0.53.1 - `n_obs_inserted` toujours 0 depuis nemeton@v0.58.0
+        # (drop obs_pixel insertion). Plus consomme dans le toast.
         warns    <- result$warnings %||% character(0)
         if (n_scenes == 0L) {
-          # 0 scènes peut signifier soit "vraiment rien dans la période"
-          # soit "STAC en panne" (HTTP 504, timeout réseau...). On
-          # surface les warnings capturés (résumés pour rester
-          # lisibles — cf. .summarize_backend_warnings) pour que
-          # l'utilisateur sache si c'est une vraie absence ou un échec
+          # 0 scenes peut signifier soit "vraiment rien dans la periode"
+          # soit "STAC en panne" (HTTP 504, timeout reseau...). On
+          # surface les warnings captures (resumes pour rester
+          # lisibles - cf. .summarize_backend_warnings) pour que
+          # l'utilisateur sache si c'est une vraie absence ou un echec
           # backend. `id` explicite pour qu'un re-clic remplace le
           # toast au lieu de l'empiler.
           detail <- if (length(warns) > 0L) {
@@ -2460,12 +2460,12 @@ mod_monitoring_server <- function(id, app_state) {
             id       = session$ns("ingest_success"),
             type     = "message", duration = 6
           )
-          # Si malgré le succès on a recolté des warnings non bloquants,
+          # Si malgre le succes on a recolte des warnings non bloquants,
           # on les montre en plus dans un toast secondaire (id distinct
           # pour cohabiter avec le toast success). Les warnings sont
-          # nettoyés (URLs pré-signées Azure / STAC strippées, cap à
-          # ~200 chars par entrée) pour éviter le mur de texte du SAS
-          # token quand un crop échoue en HTTP 403/404.
+          # nettoyes (URLs pre-signees Azure / STAC strippees, cap a
+          # ~200 chars par entree) pour eviter le mur de texte du SAS
+          # token quand un crop echoue en HTTP 403/404.
           if (length(warns) > 0L) {
             shiny::showNotification(
               sprintf(i18n$t("monitoring_ingest_warns_fmt"),
@@ -2478,38 +2478,38 @@ mod_monitoring_server <- function(id, app_state) {
         }
         zones_refresh(zones_refresh() + 1L)  # force re-fetch in case
                                              # the ingestion changed state
-        # v0.52.16 — bump `obs_refresh` retiré : `obs_pixel_data()`
-        # n'existe plus, plus rien à invalider. `fast_reload` ci-dessous
+        # v0.52.16 - bump `obs_refresh` retire : `obs_pixel_data()`
+        # n'existe plus, plus rien a invalider. `fast_reload` ci-dessous
         # suffit pour signaler aux modules raster (Alertes FAST + Carte
         # FAST) qu'ils doivent re-scanner le cache COG.
-        # v0.42.0 — propagate to Alertes FAST + Carte FAST so they pick
+        # v0.42.0 - propagate to Alertes FAST + Carte FAST so they pick
         # up the new DB rows / new cache files. Before this bump, the
         # toast "ingestion success" would show but those two tabs
         # remained frozen on their pre-ingest empty state until the
-        # user touched a slider — cf. bug report 2026-05-23 sur villards.
+        # user touched a slider - cf. bug report 2026-05-23 sur villards.
         fast_reload(fast_reload() + 1L)
       }
     })
 
-    # ----- Async FORDEAD diagnosis (E6.c.5 — health mode) -----------
+    # ----- Async FORDEAD diagnosis (E6.c.5 - health mode) -----------
 
     fordead_task <- run_fordead_async()
 
-    # v0.36.5 — snapshot du dernier résultat FORDEAD résolu. Permet
-    # à l'onglet « Alertes FORDEAD » d'afficher une card « Zone saine »
-    # avec la durée du run quand le diagnostic se termine avec 0
-    # alertes insérées (réponse à un cas réel reporté : run réussi en
+    # v0.36.5 - snapshot du dernier resultat FORDEAD resolu. Permet
+    # a l'onglet " Alertes FORDEAD " d'afficher une card " Zone saine "
+    # avec la duree du run quand le diagnostic se termine avec 0
+    # alertes inserees (reponse a un cas reel reporte : run reussi en
     # 142 s, n_alerts_inserted = 0, mais l'UI restait muette). NULL
     # tant qu'aucun diagnostic n'a abouti dans la session.
     fordead_last_result <- shiny::reactiveVal(NULL)
 
     # Same per-task progress plumbing as ingestion. FORDEAD emits phase
-    # events (training / forest mask / dieback / export) — the toast
+    # events (training / forest mask / dieback / export) - the toast
     # surfaces whichever phase the worker is currently on.
     fordead_progress_path <- shiny::reactiveVal(NULL)
-    # Chrono unifié FORDEAD (cf. R/utils_notif.R) — mêmes sémantiques que
+    # Chrono unifie FORDEAD (cf. R/utils_notif.R) - memes semantiques que
     # `fast_run_start`/`fast_run_msg`. Un run FORDEAD reste souvent plusieurs
-    # minutes sur une phase reticulate : le tick 1 s garde le « — MM:SS » vivant.
+    # minutes sur une phase reticulate : le tick 1 s garde le " - MM:SS " vivant.
     fordead_run_start <- shiny::reactiveVal(NULL)
     fordead_run_msg   <- shiny::reactiveVal(NULL)
 
@@ -2530,23 +2530,23 @@ mod_monitoring_server <- function(id, app_state) {
       }
     )
 
-    # FORDEAD progress dispatcher (v0.32.0). The cœur emits structured
+    # FORDEAD progress dispatcher (v0.32.0). The coeur emits structured
     # events via progress_callback; we route each `ev$current` value
     # to its own toast strategy. Toasts position themselves in
     # bottom-right via the .shiny-notification-panel CSS override
     # in inst/app/www/css/custom.css (no per-call positioning API in
     # Shiny).
     #
-    # Event → behavior:
+    # Event -> behavior:
     #   fordead:start       silent (button state is enough signal)
     #   fordead:phase       persistent spinner toast
-    #                       "Phase {n}/{total} — {label}"
-    #   fordead:phase_done  brief check toast "✓ {label}" (1.5 s)
+    #                       "Phase {n}/{total} - {label}"
+    #   fordead:phase_done  brief check toast "[ok] {label}" (1.5 s)
     #   fordead:complete    8 s success toast with alert count + duration
     #   fordead:error       persistent error toast (user closes)
     #
-    # Phase labels are looked up via i18n with humanized fallback —
-    # see `.fordead_phase_label` — so a new phase name added in a
+    # Phase labels are looked up via i18n with humanized fallback -
+    # see `.fordead_phase_label` - so a new phase name added in a
     # future nemeton release auto-shows as a Title-Cased version of
     # its raw key (no app release strictly required to consume it,
     # though we should add proper i18n strings in the next patch).
@@ -2561,10 +2561,10 @@ mod_monitoring_server <- function(id, app_state) {
                                      on_msg = fordead_run_msg)
     })
 
-    # Chrono qui défile (FORDEAD) : cf. l'observe FAST équivalent. Une phase
+    # Chrono qui defile (FORDEAD) : cf. l'observe FAST equivalent. Une phase
     # reticulate (fit harmonique) peut durer plusieurs minutes sans event ;
-    # le tick 1 s garde le « — MM:SS » vivant. Le handler remet `on_msg` à
-    # NULL sur complete/error pour empêcher la notif de « ressusciter » ici.
+    # le tick 1 s garde le " - MM:SS " vivant. Le handler remet `on_msg` a
+    # NULL sur complete/error pour empecher la notif de " ressusciter " ici.
     shiny::observe({
       st  <- fordead_run_start()
       msg <- fordead_run_msg()
@@ -2579,20 +2579,20 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # User-side override that force-unlocks the run_health button —
+    # User-side override that force-unlocks the run_health button -
     # same purpose as force_unlock_quick (cf. above). FORDEAD runs can
     # take 10-30 minutes and have no built-in cancellation, so a stuck
     # phase (network outage on STAC, reticulate Python OOM, etc.)
     # would otherwise block the user from relaunching.
     force_unlock_health <- shiny::reactiveVal(FALSE)
 
-    # Button state for run_health: same logic as `run` — grey out
+    # Button state for run_health: same logic as `run` - grey out
     # during an active FORDEAD run (long task) AND no user override,
     # preconditions are validated in the click observer for explicit
     # toast feedback.
     #
     # Cross-lock (v0.39.2): also greyed while a FAST ingestion is in
-    # flight (shared Sentinel-2 cache — cf. the run-button observer).
+    # flight (shared Sentinel-2 cache - cf. the run-button observer).
     # Respects FAST's force-unlock symmetrically.
     shiny::observe({
       fordead_running <- identical(fordead_task$status(), "running") &&
@@ -2618,8 +2618,8 @@ mod_monitoring_server <- function(id, app_state) {
 
     shiny::observeEvent(input$run_health_cancel, {
       i18n <- i18n_r()
-      # v0.52.0 — Vrai cancel coopératif. Symétrique au FAST :
-      # écrit le flag AVANT le force-unlock UI. Le worker FORDEAD
+      # v0.52.0 - Vrai cancel cooperatif. Symetrique au FAST :
+      # ecrit le flag AVANT le force-unlock UI. Le worker FORDEAD
       # poll ce fichier entre phases reticulate (nemeton@v0.53.0+) et
       # sort proprement au prochain checkpoint.
       cancel_path <- .resolve_progress_path(
@@ -2644,12 +2644,12 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # Helper — kicks off the FORDEAD task with the current sidebar
+    # Helper - kicks off the FORDEAD task with the current sidebar
     # values. Called both from the direct-click path (validity OK) and
     # from the modal "force anyway" path (G3 garde-fou).
     #
     # v0.33.0 migration: nemeton@v0.24.0 derives the AOI from
-    # (con, zone_id) internally — no need to fabricate `aoi` here
+    # (con, zone_id) internally - no need to fabricate `aoi` here
     # or open a throwaway DB connection. The worker now takes
     # cache_dir so its new phase-0 `ingest` can fetch missing bands
     # (B02 / B05 / B8A / B11) on top of what FAST already cached
@@ -2662,9 +2662,9 @@ mod_monitoring_server <- function(id, app_state) {
                                 type = "warning", duration = 4)
         return(invisible(FALSE))
       }
-      # Phase A (D2) — le run cible la zone `_tot` (union des UGFs),
-      # jamais la strate sélectionnée. Si le projet n'a pas de zone
-      # `_tot`, on garde le garde-fou « validez d'abord une zone ».
+      # Phase A (D2) - le run cible la zone `_tot` (union des UGFs),
+      # jamais la strate selectionnee. Si le projet n'a pas de zone
+      # `_tot`, on garde le garde-fou " validez d'abord une zone ".
       id_tot <- fordead_zone_id()
       if (length(id_tot) != 1L || is.na(id_tot)) {
         shiny::showNotification(i18n$t("monitoring_validate_zone"),
@@ -2678,7 +2678,7 @@ mod_monitoring_server <- function(id, app_state) {
         duration    = NULL,
         closeButton = FALSE
       )
-      # Amorce le chrono unifié (bas-droite) — le tick 1 s prend le relais.
+      # Amorce le chrono unifie (bas-droite) - le tick 1 s prend le relais.
       fordead_run_start(Sys.time())
       fordead_run_msg(i18n$t("monitoring_health_starting"))
       ppath <- .resolve_progress_path(app_state$current_project,
@@ -2688,8 +2688,8 @@ mod_monitoring_server <- function(id, app_state) {
       }
       fordead_progress_path(ppath)
 
-      # v0.52.0 — Purge un éventuel cancel_path résiduel avant un
-      # nouveau lancement (sinon le worker abandonne dès l'entrée).
+      # v0.52.0 - Purge un eventuel cancel_path residuel avant un
+      # nouveau lancement (sinon le worker abandonne des l'entree).
       .fordead_cancel_flag <- .resolve_progress_path(
         app_state$current_project, "fordead_cancel.flag")
       if (!is.null(.fordead_cancel_flag) &&
@@ -2702,29 +2702,29 @@ mod_monitoring_server <- function(id, app_state) {
         dates_training    = as.character(input$dates_training),
         dates_monitoring  = as.character(input$dates_observation),
         threshold_anomaly = as.numeric(input$threshold_anomaly),
-        # v0.90.x — FORDEAD ne modélise que le CRSWIR (NDVI/NDWI non
-        # calculés). L'indice n'est plus un input run mais un affichage.
+        # v0.90.x - FORDEAD ne modelise que le CRSWIR (NDVI/NDWI non
+        # calcules). L'indice n'est plus un input run mais un affichage.
         vegetation_index  = "CRSWIR",
-        # Phase A (D2) — zone `_tot`, pas la strate sélectionnée.
+        # Phase A (D2) - zone `_tot`, pas la strate selectionnee.
         zone_id           = id_tot,
         cache_dir         = .resolve_s2_cache_dir(app_state$current_project),
         db_url            = .resolve_monitoring_db_url(app_state$current_project),
         progress_path     = ppath,
-        # v0.71.1 — Force l'output FORDEAD dans le cache projet
-        # (sortait par défaut dans /tmp via tempfile("fordead_")).
-        # `keep_output = TRUE` pour préserver les outputs (training,
-        # masks bruts) — inspectables. Le dossier est per-zone et
-        # écrasé à chaque relance, taille bornée.
+        # v0.71.1 - Force l'output FORDEAD dans le cache projet
+        # (sortait par defaut dans /tmp via tempfile("fordead_")).
+        # `keep_output = TRUE` pour preserver les outputs (training,
+        # masks bruts) - inspectables. Le dossier est per-zone et
+        # ecrase a chaque relance, taille bornee.
         output_dir        = .resolve_fordead_output_dir(
                               app_state$current_project, id_tot),
         keep_output       = TRUE,
         # Forwarded so the worker builds its ntfy push messages in the
         # user's language (the worker has no access to app_state).
         lang              = app_state$language %||% "fr",
-        # Nom de projet (à jour) pour l'en-tête ntfy — cf. FAST.
+        # Nom de projet (a jour) pour l'en-tete ntfy - cf. FAST.
         project_name      = app_state$current_project$metadata$name %||%
                             app_state$current_project$name,
-        # v0.52.0 — cancel coopératif (polled entre phases reticulate
+        # v0.52.0 - cancel cooperatif (polled entre phases reticulate
         # par nemeton@v0.53.0+).
         cancel_path       = .fordead_cancel_flag
       )
@@ -2733,7 +2733,7 @@ mod_monitoring_server <- function(id, app_state) {
     }
 
     # Persist sidebar state in the project metadata.json so a reopen
-    # restores the user's last FORDEAD configuration. Best-effort —
+    # restores the user's last FORDEAD configuration. Best-effort -
     # silent no-op if the project has no on-disk path or metadata.
     .persist_monitoring_metadata <- function() {
       project_id <- app_state$current_project$id
@@ -2765,12 +2765,12 @@ mod_monitoring_server <- function(id, app_state) {
       # New manual launch: discard any prior force-unlock so the
       # button correctly greys out for the new worker.
       force_unlock_health(FALSE)
-      # v0.71.1 — Reset le flag idempotence (parité FAST v0.70.4).
-      # Le prochain `fordead_task$result()` doit être traité (toast
-      # success / error émis).
+      # v0.71.1 - Reset le flag idempotence (parite FAST v0.70.4).
+      # Le prochain `fordead_task$result()` doit etre traite (toast
+      # success / error emis).
       fordead_result_consumed(FALSE)
       # Cross-lock: refuse to start FORDEAD while a FAST ingestion is
-      # in flight (shared Sentinel-2 cache — cf. the run_health button
+      # in flight (shared Sentinel-2 cache - cf. the run_health button
       # observer). An abandoned FAST run does not block.
       if (identical(fast_task$status(), "running") &&
           !isTRUE(force_unlock_quick())) {
@@ -2827,27 +2827,27 @@ mod_monitoring_server <- function(id, app_state) {
 
     # FORDEAD result handler.
     #
-    # v0.36.5 — trois fixes pour le bug UX reporté (run réussi en 142 s
-    # avec 0 alertes mais bouton « Lancer » resté grisé + sous-onglets
+    # v0.36.5 - trois fixes pour le bug UX reporte (run reussi en 142 s
+    # avec 0 alertes mais bouton " Lancer " reste grise + sous-onglets
     # muets) :
     #
     #   1. Belt-and-suspenders re-enable du bouton via
     #      updateActionButton(disabled = FALSE) en plus de l'observer
-    #      basé sur fordead_task$status() (au cas où une transition de
-    #      statut serait manquée par Shiny pour une raison quelconque).
+    #      base sur fordead_task$status() (au cas ou une transition de
+    #      statut serait manquee par Shiny pour une raison quelconque).
     #   2. Reset explicite de force_unlock_health(FALSE) pour rester
-    #      cohérent avec l'observer click qui le pose à TRUE puis FALSE.
-    #   3. Snapshot du résultat dans fordead_last_result() pour que
-    #      l'onglet « Alertes FORDEAD » puisse afficher la card
-    #      « Zone saine » avec la durée du run.
+    #      coherent avec l'observer click qui le pose a TRUE puis FALSE.
+    #   3. Snapshot du resultat dans fordead_last_result() pour que
+    #      l'onglet " Alertes FORDEAD " puisse afficher la card
+    #      " Zone saine " avec la duree du run.
     shiny::observe({
       i18n <- i18n_r()
       result <- tryCatch(
         fordead_task$result(),
         error = function(e) {
           if (inherits(e, "shiny.silent.error")) stop(e)
-          # v0.71.1 — Garde d'idempotence (symétrique FAST v0.70.4).
-          # Sans elle, un re-fire de l'observer post-erreur ré-émet
+          # v0.71.1 - Garde d'idempotence (symetrique FAST v0.70.4).
+          # Sans elle, un re-fire de l'observer post-erreur re-emet
           # le toast `fordead_error`.
           if (isTRUE(shiny::isolate(fordead_result_consumed()))) {
             return(NULL)
@@ -2863,28 +2863,28 @@ mod_monitoring_server <- function(id, app_state) {
             type     = "error", duration = 10
           )
           # Belt-and-suspenders : re-enable + reset force-unlock pour
-          # ne pas laisser le bouton grisé en cas de timing race.
+          # ne pas laisser le bouton grise en cas de timing race.
           shiny::updateActionButton(session, "run_health",
                                     disabled = FALSE)
           force_unlock_health(FALSE)
-          # Mémoriser le statut "error" — l'UI Alertes FORDEAD distingue
-          # « pas encore lancé » de « run terminé en erreur ».
+          # Memoriser le statut "error" - l'UI Alertes FORDEAD distingue
+          # " pas encore lance " de " run termine en erreur ".
           fordead_last_result(list(
             status  = "error",
             message = conditionMessage(e),
-            # Phase A (D2) — stamp la zone `_tot` réellement calculée.
+            # Phase A (D2) - stamp la zone `_tot` reellement calculee.
             zone_id = suppressWarnings(shiny::isolate(fordead_zone_id()))
           ))
           NULL
         }
       )
       if (!is.null(result)) {
-        # v0.71.1 — Garde d'idempotence : `fordead_task$result()` peut
-        # refire plusieurs fois pour le MÊME result (cascade reactive,
+        # v0.71.1 - Garde d'idempotence : `fordead_task$result()` peut
+        # refire plusieurs fois pour le MEME result (cascade reactive,
         # transition status, etc.). Sans cette garde, le toast
-        # `fordead_success` (duration = 8 s) était ré-émis →
-        # clignotement + bouton « Lancer » perçu grisé.
-        # Reset à FALSE dans observeEvent(input$run_health).
+        # `fordead_success` (duration = 8 s) etait re-emis ->
+        # clignotement + bouton " Lancer " percu grise.
+        # Reset a FALSE dans observeEvent(input$run_health).
         if (isTRUE(shiny::isolate(fordead_result_consumed()))) {
           return()
         }
@@ -2896,7 +2896,7 @@ mod_monitoring_server <- function(id, app_state) {
         # Stamp the zone so the disk-reconciliation observer can tell
         # this in-session result apart from a synthetic reconciled one
         # and never clobbers it (cf. .reconcile_fordead_state).
-        # Phase A (D2) — la zone calculée est `_tot`, pas la strate.
+        # Phase A (D2) - la zone calculee est `_tot`, pas la strate.
         result$zone_id <- suppressWarnings(shiny::isolate(fordead_zone_id()))
         fordead_last_result(result)
         if (identical(result$status, "error")) {
@@ -2907,9 +2907,9 @@ mod_monitoring_server <- function(id, app_state) {
             type     = "error", duration = 10
           )
         } else {
-          # Phase A (D2) — la notif n'annonce plus de décompte d'alertes
-          # (n_alerts_inserted = NA côté cœur ; le verdict sain/affecté
-          # se lit sur le raster masqué de la Carte FORDEAD). Durée seule.
+          # Phase A (D2) - la notif n'annonce plus de decompte d'alertes
+          # (n_alerts_inserted = NA cote coeur ; le verdict sain/affecte
+          # se lit sur le raster masque de la Carte FORDEAD). Duree seule.
           shiny::showNotification(
             sprintf(i18n$t("monitoring_health_success_done"),
                     format_elapsed(result$duration_sec %||% 0)),
@@ -2918,16 +2918,16 @@ mod_monitoring_server <- function(id, app_state) {
           )
           alerts_refresh(alerts_refresh() + 1L)
         }
-        # Belt-and-suspenders : re-enable explicite du bouton après
-        # toute résolution (success ou error) en plus du status-based
-        # observe. Même reset de force_unlock_health pour cohérence.
+        # Belt-and-suspenders : re-enable explicite du bouton apres
+        # toute resolution (success ou error) en plus du status-based
+        # observe. Meme reset de force_unlock_health pour coherence.
         shiny::updateActionButton(session, "run_health",
                                   disabled = FALSE)
         force_unlock_health(FALSE)
       }
     })
 
-    # ----- Piste 1 — re-read disk + DB on FORDEAD sub-tab open -------
+    # ----- Piste 1 - re-read disk + DB on FORDEAD sub-tab open -------
     #
     # `alerts_refresh` is normally bumped only by the run-completion
     # observer above. That observer never fires when a FORDEAD run
@@ -2941,20 +2941,20 @@ mod_monitoring_server <- function(id, app_state) {
       if (isTRUE(input$subtab == "pixel_map_fordead")) {
         alerts_refresh(alerts_refresh() + 1L)
       }
-      # spec 021 — same for the RECONFORT map sub-tab.
+      # spec 021 - same for the RECONFORT map sub-tab.
       if (isTRUE(input$subtab == "pixel_map_reconfort")) {
         reconfort_refresh(reconfort_refresh() + 1L)
       }
     }, ignoreInit = FALSE)
 
-    # ----- Piste 2 — reconcile FORDEAD result state from disk --------
+    # ----- Piste 2 - reconcile FORDEAD result state from disk --------
     #
     # `fordead_last_result()` is an in-session reactiveVal: a reload
     # loses it. A run that completed out-of-session therefore showed
     # the generic "not run yet" placeholder on the Alertes FORDEAD
     # tab instead of the "Zone saine" card. This observer rebuilds a
     # synthetic success result from the persisted dieback mask
-    # whenever the project / zone changes — unless a genuine
+    # whenever the project / zone changes - unless a genuine
     # in-session result for that exact zone already exists (richer:
     # it carries the real run duration). The mask timestamp drives
     # the card's meta line (`monitoring_fordead_no_alerts_meta_date`).
@@ -2964,9 +2964,9 @@ mod_monitoring_server <- function(id, app_state) {
       if (!identical(input$mode, "health")) return()
       if (!isTRUE(nzchar(zone))) return()
       if (identical(fordead_task$status(), "running")) return()
-      # Phase A (D2) — réconcilier l'état depuis le masque de la zone
-      # `_tot` réellement calculée (cache `zone_<id_tot>/`), pas la strate
-      # sélectionnée (qui n'a pas de masque propre).
+      # Phase A (D2) - reconcilier l'etat depuis le masque de la zone
+      # `_tot` reellement calculee (cache `zone_<id_tot>/`), pas la strate
+      # selectionnee (qui n'a pas de masque propre).
       zone_int <- fordead_zone_id()
       if (length(zone_int) != 1L || is.na(zone_int)) return()
       cur <- shiny::isolate(fordead_last_result())
@@ -2977,17 +2977,17 @@ mod_monitoring_server <- function(id, app_state) {
       fordead_last_result(.reconcile_fordead_state(proj, zone_int))
     })
 
-    # Spec 010 — Carte pixel sub-tab.
+    # Spec 010 - Carte pixel sub-tab.
     #
-    # v0.52.16 — paramètre `obs_pixel_data` retiré. Le module dérive
-    # désormais `scenes_df` directement du cache COG disque (parse de
-    # la date depuis le nom de scène Sentinel-2). FAST = pure raster
+    # v0.52.16 - parametre `obs_pixel_data` retire. Le module derive
+    # desormais `scenes_df` directement du cache COG disque (parse de
+    # la date depuis le nom de scene Sentinel-2). FAST = pure raster
     # per-pixel, plus de SQL roundtrip sur `obs_pixel`.
     #
-    # v0.42.0 — `refresh_r = fast_reload` allows cache_dir_r() to
+    # v0.42.0 - `refresh_r = fast_reload` allows cache_dir_r() to
     # re-evaluate after an ingestion creates the cache directory
     # (the dir.exists() check is not a Shiny dep on its own).
-    # `thresholds_r` feeds Livrable 3 — horizontal reference lines on
+    # `thresholds_r` feeds Livrable 3 - horizontal reference lines on
     # the per-pixel modal plot drawn at the current sidebar NDVI / NBR
     # threshold values.
     pixel_map_ret <- mod_monitoring_pixel_map_server(
@@ -2995,7 +2995,7 @@ mod_monitoring_server <- function(id, app_state) {
       app_state      = app_state,
       mode_input     = shiny::reactive(input$mode),
       refresh_r      = shiny::reactive(fast_reload()),
-      # v0.52.14 — pixel_map a son propre `input$index` (radio dans son
+      # v0.52.14 - pixel_map a son propre `input$index` (radio dans son
       # sidebar droit) ; le `thresholds_r` parent ne porte plus
       # `index` (relicat de v0.52.13).
       thresholds_r   = shiny::reactive(list(
@@ -3005,7 +3005,7 @@ mod_monitoring_server <- function(id, app_state) {
       ))
     )
 
-    # v0.42.0 — Alertes FAST sub-tab. Spec 013 raster wiring : the
+    # v0.42.0 - Alertes FAST sub-tab. Spec 013 raster wiring : the
     # module now consumes `nemeton::read_fast_alert_raster()` (count
     # / rolling modes, pixel resolution S2 10 m). Sidebar widgets
     # (zone_id, date_range, threshold_ndvi, threshold_nbr,
@@ -3018,7 +3018,7 @@ mod_monitoring_server <- function(id, app_state) {
       app_state    = app_state,
       zone_id_r    = shiny::reactive(input$zone_id),
       date_range_r = shiny::reactive(input$date_range),
-      # v0.52.14 — fast_alerts a son propre `input$index` (radio dans
+      # v0.52.14 - fast_alerts a son propre `input$index` (radio dans
       # son sidebar droit) ; le `thresholds_r` parent ne porte plus
       # `index`.
       thresholds_r = shiny::reactive(list(
@@ -3030,15 +3030,15 @@ mod_monitoring_server <- function(id, app_state) {
       refresh_r    = shiny::reactive(fast_reload())
     )
 
-    # v0.91.x — indicateur UNIQUE « calcul en cours » à l'arrivée sur
+    # v0.91.x - indicateur UNIQUE " calcul en cours " a l'arrivee sur
     # l'onglet Suivi sanitaire. Les DEUX calculs lourds du Suivi sont
-    # différés (onFlushed) et exposent leur état :
-    #   * raster d'alerte FAST   → fast_alerts_ret$computing()
-    #   * build_index_stack pixel → pixel_map_ret$loading()
+    # differes (onFlushed) et exposent leur etat :
+    #   * raster d'alerte FAST   -> fast_alerts_ret$computing()
+    #   * build_index_stack pixel -> pixel_map_ret$loading()
     # Tant que l'un tourne ET que l'onglet Suivi est actif, on affiche une
-    # notification bas-droite ; sinon, à froid, l'utilisateur arrivait sur
-    # une UI figée sans aucun retour visuel et pouvait cliquer dans le vide.
-    # Un seul `id` → une seule notif, retirée dès que tout est calculé.
+    # notification bas-droite ; sinon, a froid, l'utilisateur arrivait sur
+    # une UI figee sans aucun retour visuel et pouvait cliquer dans le vide.
+    # Un seul `id` -> une seule notif, retiree des que tout est calcule.
     shiny::observe({
       on_tab <- identical(app_state$active_main_tab, "monitoring")
       busy   <- isTRUE(fast_alerts_ret$computing()) ||
@@ -3054,12 +3054,12 @@ mod_monitoring_server <- function(id, app_state) {
       }
     })
 
-    # v0.36.0 — Carte FORDEAD sub-tab. nemeton@v0.41.0 ships the mask
+    # v0.36.0 - Carte FORDEAD sub-tab. nemeton@v0.41.0 ships the mask
     # persist hook, so a completed FORDEAD run drops the categorical
     # 0-4 raster into <project>/cache/layers/fordead/ and the module
     # renders it.
     #
-    # v0.38.6 — `refresh_r = alerts_refresh` is passed so the module's
+    # v0.38.6 - `refresh_r = alerts_refresh` is passed so the module's
     # mask_r reactive re-reads the cache after each FORDEAD run.
     # alerts_refresh is bumped by the FORDEAD result observer on
     # success; without threading it in, the Carte FORDEAD panel
@@ -3070,25 +3070,25 @@ mod_monitoring_server <- function(id, app_state) {
       app_state = app_state,
       zone_id_r = shiny::reactive(input$zone_id),
       refresh_r = shiny::reactive(alerts_refresh()),
-      # v0.90.x — opacité du raster pilotée par le slider de la sidebar
-      # droite de l'onglet Carte FORDEAD (parité FAST).
+      # v0.90.x - opacite du raster pilotee par le slider de la sidebar
+      # droite de l'onglet Carte FORDEAD (parite FAST).
       opacity_r = shiny::reactive(input$fordead_opacity),
-      # Partie B — couche pixel sélectionnée (sévérité / 1re détection /
-      # indice d'anomalie / zone modélisée).
+      # Partie B - couche pixel selectionnee (severite / 1re detection /
+      # indice d'anomalie / zone modelisee).
       layer_r   = shiny::reactive(input$fordead_layer %||% "severity"),
-      # Slider temporel cumulatif (couche sévérité) : la date choisie filtre
-      # l'affichage aux pixels détectés jusqu'à cette date.
+      # Slider temporel cumulatif (couche severite) : la date choisie filtre
+      # l'affichage aux pixels detectes jusqu'a cette date.
       date_r    = shiny::reactive(input$fordead_date),
-      # perf — réutilise la connexion RO mise en cache du parent (évite
-      # de rouvrir une connexion PostGIS ~0,4–1,2 s à chaque lecture de
+      # perf - reutilise la connexion RO mise en cache du parent (evite
+      # de rouvrir une connexion PostGIS ~0,4-1,2 s a chaque lecture de
       # masque / clic-pixel).
       con_provider = mon_con
     )
 
-    # Slider de date de la Carte FORDEAD : domaine = étendue des dates de
-    # 1re détection du run (exposé par le sous-module). Défaut = borne max
-    # (affiche toute la sévérité). Rendu nul si la couche n'est pas dans le
-    # bundle (anciens runs) → pas de slider.
+    # Slider de date de la Carte FORDEAD : domaine = etendue des dates de
+    # 1re detection du run (expose par le sous-module). Defaut = borne max
+    # (affiche toute la severite). Rendu nul si la couche n'est pas dans le
+    # bundle (anciens runs) -> pas de slider.
     output$fordead_date_slider <- shiny::renderUI({
       ns   <- session$ns
       i18n <- i18n_r()
@@ -3099,21 +3099,21 @@ mod_monitoring_server <- function(id, app_state) {
         label = i18n$t("monitoring_fordead_date_label"),
         min = dom[1], max = dom[2], value = dom[2],
         timeFormat = "%Y-%m-%d", width = "100%",
-        # Parité Carte FAST : bouton de défilement automatique sous le
-        # slider (play/pause natif). Pas de 5 jours aligné sur la cadence
-        # Sentinel-2 ; `display_r()` filtre les pixels par date à chaque
-        # cran (progression cumulative du dépérissement dans le temps).
+        # Parite Carte FAST : bouton de defilement automatique sous le
+        # slider (play/pause natif). Pas de 5 jours aligne sur la cadence
+        # Sentinel-2 ; `display_r()` filtre les pixels par date a chaque
+        # cran (progression cumulative du deperissement dans le temps).
         step  = 5L,
         animate = shiny::animationOptions(interval = 800L,
                                           loop     = FALSE)
       )
     })
 
-    # spec 021 (L6) — Carte RECONFORT : alertes feuillus + diagnostic
+    # spec 021 (L6) - Carte RECONFORT : alertes feuillus + diagnostic
     # pixel CRSWIR/CRre. Lazy comme FORDEAD ; `reconfort_refresh` est
-    # bumpé à la fin d'un run RECONFORT (et à l'ouverture du sous-onglet)
-    # pour ré-invalider la couche d'alertes.
-    # In-memory result of the last RECONFORT run this session — carries
+    # bumpe a la fin d'un run RECONFORT (et a l'ouverture du sous-onglet)
+    # pour re-invalider la couche d'alertes.
+    # In-memory result of the last RECONFORT run this session - carries
     # `$rasters` (EPSG:2154 paths on disk). Fed to the map sub-module so it
     # can render the layered display via `nemeton::reconfort_layer_manifest()`.
     # NULL until a run completes (the sub-module then falls back to the
@@ -3123,7 +3123,7 @@ mod_monitoring_server <- function(id, app_state) {
     # Drop the in-memory result when the PROJECT changes (not the zone) :
     # the rasters belong to the previous project's run. Across strates of
     # the SAME project the result is kept and merely clipped to the selected
-    # zone AOI in the map sub-module (parity with FORDEAD's `_tot` → strate
+    # zone AOI in the map sub-module (parity with FORDEAD's `_tot` -> strate
     # masking). `observeEvent` de-dups on the id value, so metadata-only
     # updates that keep the same id do not clear the result.
     shiny::observeEvent(app_state$current_project$id, {
@@ -3139,17 +3139,17 @@ mod_monitoring_server <- function(id, app_state) {
     )
 
     # Bandeaux RECONFORT rendus au niveau parent (UI :
-    # output$reconfort_validity_banner, juste sous « Base de suivi connectée »),
-    # même emplacement/style que les bandeaux FORDEAD. Visibles uniquement en
+    # output$reconfort_validity_banner, juste sous " Base de suivi connectee "),
+    # meme emplacement/style que les bandeaux FORDEAD. Visibles uniquement en
     # mode reconfort. `validity` provient du sous-module carte, qui appelle
-    # `nemeton::check_reconfort_validity()` — advisory, jamais bloquant.
+    # `nemeton::check_reconfort_validity()` - advisory, jamais bloquant.
     #
-    # v0.106.4 — DEUX bandeaux, parité stricte avec FORDEAD (`validity_banners`) :
-    #   1. zone hors domaine géographique (`geo_valid == FALSE`) ;
-    #   2. composition d'essences hors domaine (`species_valid == FALSE`) — ce
-    #      second bandeau n'existait pas. Il ne pouvait de toute façon pas
+    # v0.106.4 - DEUX bandeaux, parite stricte avec FORDEAD (`validity_banners`) :
+    #   1. zone hors domaine geographique (`geo_valid == FALSE`) ;
+    #   2. composition d'essences hors domaine (`species_valid == FALSE`) - ce
+    #      second bandeau n'existait pas. Il ne pouvait de toute facon pas
     #      s'afficher tant que le sous-module ne passait ni `units` ni `bdforet`
-    #      au cœur (`species_valid` restait NA) : les deux manques se
+    #      au coeur (`species_valid` restait NA) : les deux manques se
     #      masquaient l'un l'autre.
     output$reconfort_validity_banner <- shiny::renderUI({
       if (!identical(input$mode, "reconfort")) return(NULL)
@@ -3164,9 +3164,9 @@ mod_monitoring_server <- function(id, app_state) {
           body  = i18n$t("monitoring_reconfort_outside_validity_body")
         )
       }
-      # `species_valid` vaut NA quand la composition est indéterminable (ni
-      # colonne essence sur les UGF, ni BD Forêt en cache) : dans ce cas on
-      # n'affiche RIEN — on n'a rien à reprocher à la zone.
+      # `species_valid` vaut NA quand la composition est indeterminable (ni
+      # colonne essence sur les UGF, ni BD Foret en cache) : dans ce cas on
+      # n'affiche RIEN - on n'a rien a reprocher a la zone.
       if (isFALSE(v$species_valid)) {
         pct <- (v$species_target_pct %||% 0) * 100
         banners[[length(banners) + 1L]] <- .monitoring_validity_banner(
@@ -3181,19 +3181,19 @@ mod_monitoring_server <- function(id, app_state) {
     shiny::outputOptions(output, "reconfort_validity_banner",
                          suspendWhenHidden = FALSE)
 
-    # spec 021 (L6) — Lancement d'un run RECONFORT (ExtendedTask).
+    # spec 021 (L6) - Lancement d'un run RECONFORT (ExtendedTask).
     #
     # Miroir de la machinerie FORDEAD (task + reactivePoll progress +
-    # dispatcher + result observer + force-unlock). Le run cœur
-    # `nemeton::run_reconfort_dieback()` est LOURD/opt-in (conda IOTA² +
-    # GEODES + OTB/Shark) : sur un déploiement sans ce bundle, le worker
-    # échoue et l'erreur est surfacée via le toast d'erreur — la carte et
-    # le diagnostic restent fonctionnels sur les runs déjà produits
-    # (Limite #1 spec 021). Pas de cancel coopératif côté cœur (pas de
-    # `cancel_path`) : seul le force-unlock réarme le bouton.
+    # dispatcher + result observer + force-unlock). Le run coeur
+    # `nemeton::run_reconfort_dieback()` est LOURD/opt-in (conda IOTA2 +
+    # GEODES + OTB/Shark) : sur un deploiement sans ce bundle, le worker
+    # echoue et l'erreur est surfacee via le toast d'erreur - la carte et
+    # le diagnostic restent fonctionnels sur les runs deja produits
+    # (Limite #1 spec 021). Pas de cancel cooperatif cote coeur (pas de
+    # `cancel_path`) : seul le force-unlock rearme le bouton.
     reconfort_task <- run_reconfort_async()
     reconfort_progress_path <- shiny::reactiveVal(NULL)
-    # Chrono unifié RECONFORT (cf. R/utils_notif.R) — idem FAST/FORDEAD.
+    # Chrono unifie RECONFORT (cf. R/utils_notif.R) - idem FAST/FORDEAD.
     reconfort_run_start <- shiny::reactiveVal(NULL)
     reconfort_run_msg   <- shiny::reactiveVal(NULL)
     reconfort_result_consumed <- shiny::reactiveVal(FALSE)
@@ -3222,7 +3222,7 @@ mod_monitoring_server <- function(id, app_state) {
                                        on_msg = reconfort_run_msg)
     })
 
-    # Chrono qui défile (RECONFORT) : cf. les observe FAST/FORDEAD.
+    # Chrono qui defile (RECONFORT) : cf. les observe FAST/FORDEAD.
     shiny::observe({
       st  <- reconfort_run_start()
       msg <- reconfort_run_msg()
@@ -3237,21 +3237,21 @@ mod_monitoring_server <- function(id, app_state) {
       )
     })
 
-    # Chrono SOUS le bouton « Lancer… », pour les TROIS modes (v0.106.6 — FAST et
-    # FORDEAD alignés sur RECONFORT). Même contenu que le toast — la roue dentée
-    # qui tourne + l'étape en cours + le chrono MM:SS (`.running_notif_content`,
-    # partagé avec le moteur reGénération) — mais rendu à l'endroit où
-    # l'utilisateur a cliqué : un run peut durer des heures, et le toast peut
-    # être fermé ou manqué. Le toast reste, les deux se complètent.
+    # Chrono SOUS le bouton " Lancer... ", pour les TROIS modes (v0.106.6 - FAST et
+    # FORDEAD alignes sur RECONFORT). Meme contenu que le toast - la roue dentee
+    # qui tourne + l'etape en cours + le chrono MM:SS (`.running_notif_content`,
+    # partage avec le moteur reGeneration) - mais rendu a l'endroit ou
+    # l'utilisateur a clique : un run peut durer des heures, et le toast peut
+    # etre ferme ou manque. Le toast reste, les deux se completent.
     #
-    # Même source que le toast (`*_run_start` / `*_run_msg`), donc l'affichage
-    # disparaît tout seul quand le run se termine : les handlers de fin
-    # remettent `*_run_start` à NULL.
+    # Meme source que le toast (`*_run_start` / `*_run_msg`), donc l'affichage
+    # disparait tout seul quand le run se termine : les handlers de fin
+    # remettent `*_run_start` a NULL.
     .run_status_output <- function(start_rv, msg_rv, starting_key) {
       shiny::renderUI({
         st <- start_rv()
         if (is.null(st)) return(NULL)
-        shiny::invalidateLater(1000)   # fait défiler le chrono
+        shiny::invalidateLater(1000)   # fait defiler le chrono
         i18n <- i18n_r()
         htmltools::div(
           class = "small text-info mt-1 text-center",
@@ -3267,8 +3267,8 @@ mod_monitoring_server <- function(id, app_state) {
     output$run_reconfort_status <- .run_status_output(
       reconfort_run_start, reconfort_run_msg, "monitoring_reconfort_starting")
 
-    # suspendWhenHidden = FALSE : les sous-onglets sont masqués par nav_hide(),
-    # le chrono doit continuer de tourner même si l'onglet n'est pas au premier
+    # suspendWhenHidden = FALSE : les sous-onglets sont masques par nav_hide(),
+    # le chrono doit continuer de tourner meme si l'onglet n'est pas au premier
     # plan.
     for (.o in c("run_status", "run_health_status", "run_reconfort_status")) {
       shiny::outputOptions(output, .o, suspendWhenHidden = FALSE)
@@ -3339,9 +3339,9 @@ mod_monitoring_server <- function(id, app_state) {
         return(invisible(FALSE))
       }
       # Garde-fou serveur : le numericInput borne min/max mais le champ reste
-      # saisissable au clavier. On refuse une année hors [min, dernière saison
-      # close] — bornes calculées par le cœur (règle 1). Évite de lancer un run
-      # lourd sur une saison Sentinel-2 non terminée.
+      # saisissable au clavier. On refuse une annee hors [min, derniere saison
+      # close] - bornes calculees par le coeur (regle 1). Evite de lancer un run
+      # lourd sur une saison Sentinel-2 non terminee.
       .rc     <- nemeton::reconfort_year_bounds("v3")
       s2_year <- suppressWarnings(as.integer(input$reconfort_s2_year))
       if (is.na(s2_year) || s2_year < .rc$min || s2_year > .rc$max) {
@@ -3360,7 +3360,7 @@ mod_monitoring_server <- function(id, app_state) {
         duration    = NULL,
         closeButton = FALSE
       )
-      # Amorce le chrono unifié (bas-droite) — le tick 1 s prend le relais.
+      # Amorce le chrono unifie (bas-droite) - le tick 1 s prend le relais.
       reconfort_run_start(Sys.time())
       reconfort_run_msg(i18n$t("monitoring_reconfort_starting"))
       ppath <- .resolve_progress_path(proj, "reconfort_progress.json")
@@ -3379,7 +3379,7 @@ mod_monitoring_server <- function(id, app_state) {
         progress_path = ppath,
         lang          = app_state$language %||% "fr",
         output_dir    = out,
-        # Nom de projet (à jour) pour l'en-tête ntfy — cf. FAST.
+        # Nom de projet (a jour) pour l'en-tete ntfy - cf. FAST.
         project_name  = proj$metadata$name %||% proj$name
       )
       invisible(TRUE)
@@ -3436,21 +3436,21 @@ mod_monitoring_server <- function(id, app_state) {
       }
     })
 
-    # v0.43.3 — Plan de validation : 2 instances mode-driven (FAST +
-    # FORDEAD), source figée par instance. Symétrique avec les couples
+    # v0.43.3 - Plan de validation : 2 instances mode-driven (FAST +
+    # FORDEAD), source figee par instance. Symetrique avec les couples
     # Alertes/Carte FAST/FORDEAD. Threading des reactives sidebar (zone,
     # mode, thresholds, dates) identique pour les deux ; chaque instance
-    # ne consomme que ce dont elle a besoin (source FAST → thresholds +
-    # dates pour compute_fast_alert_mask ; source FORDEAD → ignore les
-    # thresholds car le mask FORDEAD est déjà sur disque).
+    # ne consomme que ce dont elle a besoin (source FAST -> thresholds +
+    # dates pour compute_fast_alert_mask ; source FORDEAD -> ignore les
+    # thresholds car le mask FORDEAD est deja sur disque).
     validation_sampling_fast_ret <- mod_validation_sampling_server(
       "validation_sampling_fast",
       app_state    = app_state,
       zone_id_r    = shiny::reactive(input$zone_id),
       mode_r       = shiny::reactive(input$mode),
-      # v0.52.14 — `index` suit le choix utilisateur côté Alertes FAST
-      # (via le reactive exporté `fast_alerts_ret$index_r`), pour que la
-      # prévisualisation validation_sampling FAST utilise le même
+      # v0.52.14 - `index` suit le choix utilisateur cote Alertes FAST
+      # (via le reactive exporte `fast_alerts_ret$index_r`), pour que la
+      # previsualisation validation_sampling FAST utilise le meme
       # indice que ce que l'utilisateur voit dans l'onglet Alertes FAST.
       thresholds_r = shiny::reactive(list(
         index       = fast_alerts_ret$index_r() %||% "NDVI",
@@ -3460,8 +3460,8 @@ mod_monitoring_server <- function(id, app_state) {
         window_days = input$window_days
       )),
       date_range_r = shiny::reactive(input$date_range),
-      # Réutilise la définition de tendance d'Alertes FAST (mois / années
-      # min / alpha) — pas de duplication des contrôles dans la sidebar.
+      # Reutilise la definition de tendance d'Alertes FAST (mois / annees
+      # min / alpha) - pas de duplication des controles dans la sidebar.
       trend_params_r = fast_alerts_ret$trend_params_r,
       source_fixed = "FAST"
     )
@@ -3471,10 +3471,10 @@ mod_monitoring_server <- function(id, app_state) {
       app_state    = app_state,
       zone_id_r    = shiny::reactive(input$zone_id),
       mode_r       = shiny::reactive(input$mode),
-      # v0.52.14 — FORDEAD validation_sampling n'utilise pas
+      # v0.52.14 - FORDEAD validation_sampling n'utilise pas
       # `read_fast_alert_raster` (sa source de mask est FORDEAD sur
       # disque, pas FAST). On laisse `index = "NDVI"` en valeur par
-      # défaut au cas où le code aval y accède.
+      # defaut au cas ou le code aval y accede.
       thresholds_r = shiny::reactive(list(
         index       = "NDVI",
         ndvi        = input$threshold_ndvi,
@@ -3482,24 +3482,24 @@ mod_monitoring_server <- function(id, app_state) {
         ndmi        = input$threshold_ndmi,
         window_days = input$window_days
       )),
-      # Le plan de validation FORDEAD doit utiliser la période d'OBSERVATION
+      # Le plan de validation FORDEAD doit utiliser la periode d'OBSERVATION
       # FORDEAD (`dates_observation`), pas le `date_range` du Diagnostic FAST.
       date_range_r = shiny::reactive(input$dates_observation),
       source_fixed = "FORDEAD"
     )
 
-    # spec 021 (L6 G4) — Plan de validation RECONFORT (feuillus). Source
+    # spec 021 (L6 G4) - Plan de validation RECONFORT (feuillus). Source
     # fixe RECONFORT ; thresholds inoffensif (RECONFORT lit son masque
-    # catégoriel sur disque, n'utilise pas les paramètres FAST).
+    # categoriel sur disque, n'utilise pas les parametres FAST).
     validation_sampling_reconfort_ret <- mod_validation_sampling_server(
       "validation_sampling_reconfort",
       app_state    = app_state,
       zone_id_r    = shiny::reactive(input$zone_id),
       mode_r       = shiny::reactive(input$mode),
       thresholds_r = shiny::reactive(list(index = "NDVI")),
-      # La période d'observation RECONFORT est l'année S2 (`reconfort_s2_year`,
-      # feuillus — un millésime). On la traduit en plage 01/01 -> 31/12 de
-      # cette année pour `generate_validation_plan`, plutôt que le
+      # La periode d'observation RECONFORT est l'annee S2 (`reconfort_s2_year`,
+      # feuillus - un millesime). On la traduit en plage 01/01 -> 31/12 de
+      # cette annee pour `generate_validation_plan`, plutot que le
       # `date_range` du Diagnostic FAST.
       date_range_r = shiny::reactive({
         y <- suppressWarnings(as.integer(input$reconfort_s2_year))
@@ -3528,7 +3528,7 @@ mod_monitoring_server <- function(id, app_state) {
 # ---- Internal --------------------------------------------------------
 
 # Resolve the absolute path where the async worker will write its
-# `progress.json`. Returns NULL when no project is loaded — in that
+# `progress.json`. Returns NULL when no project is loaded - in that
 # case the persistent "Ingestion en cours..." toast just stays put
 # without per-scene refresh (the worker still completes successfully,
 # we just have no progress channel).
@@ -3545,23 +3545,23 @@ mod_monitoring_server <- function(id, app_state) {
                 winslash = "/", mustWork = FALSE)
 }
 
-# v0.85.2.9000 — Détecte l'état d'une ingestion FAST à partir des seuls
+# v0.85.2.9000 - Detecte l'etat d'une ingestion FAST a partir des seuls
 # fichiers disque (sentinelle `ingest_run.json` + `ingest_progress.json`),
-# indépendamment de toute session Shiny. Permet à une instance relancée
-# de savoir si un worker tourne encore (déconnexion navigateur) ou s'il
-# est mort en cours de route (process R redémarré).
+# independamment de toute session Shiny. Permet a une instance relancee
+# de savoir si un worker tourne encore (deconnexion navigateur) ou s'il
+# est mort en cours de route (process R redemarre).
 #
-# Liveness fondée sur la FRAÎCHEUR (mtime) des fichiers de progression —
-# robuste cross-host/container (contrairement au PID, non vérifiable au
-# travers d'un redémarrage de process). `freshness_sec` : au-delà de ce
-# silence, le worker est réputé mort.
+# Liveness fondee sur la FRAICHEUR (mtime) des fichiers de progression -
+# robuste cross-host/container (contrairement au PID, non verifiable au
+# travers d'un redemarrage de process). `freshness_sec` : au-dela de ce
+# silence, le worker est repute mort.
 #
-# Retour : `list(state, ...)` avec `state` ∈
-#   "none"        — pas de sentinelle, ou pas de projet sur disque
-#   "running"     — sentinelle "running" + progress frais (< freshness)
-#   "interrupted" — sentinelle "running" mais progress périmé (worker mort)
-#   "finished"    — sentinelle terminale (done / error / cancelled)
-# Les états "running"/"interrupted" portent aussi `tile_cur`/`tile_tot`
+# Retour : `list(state, ...)` avec `state` dans
+#   "none"        - pas de sentinelle, ou pas de projet sur disque
+#   "running"     - sentinelle "running" + progress frais (< freshness)
+#   "interrupted" - sentinelle "running" mais progress perime (worker mort)
+#   "finished"    - sentinelle terminale (done / error / cancelled)
+# Les etats "running"/"interrupted" portent aussi `tile_cur`/`tile_tot`
 # (dernier event de progression) et le contenu `sentinel`.
 .detect_ingest_state <- function(project, freshness_sec = 90) {
   sp <- .resolve_progress_path(project, "ingest_run.json")
@@ -3598,25 +3598,25 @@ mod_monitoring_server <- function(id, app_state) {
        tile_cur = tile_cur, tile_tot = tile_tot)
 }
 
-# v0.55.0 — Helper unique pour le chemin du cache D6 FAST alert
-# (spec 017 + spec 018 nemeton). Utilisé à 3 endroits :
+# v0.55.0 - Helper unique pour le chemin du cache D6 FAST alert
+# (spec 017 + spec 018 nemeton). Utilise a 3 endroits :
 # (1) `mod_monitoring.R::fast_task$invoke()` pour `prewarm_mask_cache_dir`
 # (2) `mod_monitoring_fast_alerts.R::raster_r()` pour `result_cache_dir`
-# (3) `mod_validation_sampling.R` pour la prévisualisation
-# Il est CRITIQUE que les 3 utilisent le même chemin, sinon le hash D6
-# est calculé/lu à des endroits différents et le cache rate.
+# (3) `mod_validation_sampling.R` pour la previsualisation
+# Il est CRITIQUE que les 3 utilisent le meme chemin, sinon le hash D6
+# est calcule/lu a des endroits differents et le cache rate.
 .fast_alert_cache_dir <- function(project_path) {
   if (is.null(project_path) || !nzchar(project_path)) return(NULL)
   file.path(project_path, "cache", "layers", "fast_alert")
 }
 
-# v0.57.0 — Helper parallèle pour le cache des MASKS d'alerte
-# discrétisés en quartiles 0-4 (spec 017 D1-D2 nemeton@v0.55.0+).
+# v0.57.0 - Helper parallele pour le cache des MASKS d'alerte
+# discretises en quartiles 0-4 (spec 017 D1-D2 nemeton@v0.55.0+).
 # `nemeton::compute_fast_alert_mask(..., mask_cache_dir = ...)` persiste
-# un TIF catégoriel 0-4 sous ce chemin. Distinct du cache du raster
-# continu (`.fast_alert_cache_dir()`) car ce sont 2 produits différents :
-#   * continu = score d'intensité du déficit NDVI/NBR (read_fast_alert_raster)
-#   * mask    = classe de sévérité quartilée 0-4 (compute_fast_alert_mask)
+# un TIF categoriel 0-4 sous ce chemin. Distinct du cache du raster
+# continu (`.fast_alert_cache_dir()`) car ce sont 2 produits differents :
+#   * continu = score d'intensite du deficit NDVI/NBR (read_fast_alert_raster)
+#   * mask    = classe de severite quartilee 0-4 (compute_fast_alert_mask)
 .fast_alert_mask_cache_dir <- function(project_path) {
   if (is.null(project_path) || !nzchar(project_path)) return(NULL)
   file.path(project_path, "cache", "layers", "fast_alert_mask")
@@ -3660,16 +3660,16 @@ mod_monitoring_server <- function(id, app_state) {
   normalizePath(cache_dir, winslash = "/", mustWork = FALSE)
 }
 
-# v0.71.1 — Helper pour résoudre l'output_dir des runs FORDEAD.
+# v0.71.1 - Helper pour resoudre l'output_dir des runs FORDEAD.
 # Avant ce bump, `nemeton::run_fordead_dieback()` utilisait son
-# défaut `tempfile(\"fordead_\")` → outputs intermédiaires (training,
-# masks bruts, calibration) écrits dans /tmp puis supprimés à la
-# fin (`keep_output = FALSE`). Désormais, on force l'output sous
+# defaut `tempfile(\"fordead_\")` -> outputs intermediaires (training,
+# masks bruts, calibration) ecrits dans /tmp puis supprimes a la
+# fin (`keep_output = FALSE`). Desormais, on force l'output sous
 # `<projet>/cache/layers/fordead/output_zone_<id>` :
 #   - Plus de pollution /tmp.
-#   - Outputs préservés (`keep_output = TRUE`) → inspection possible.
-#   - **Per-zone**, écrasé à chaque relance → taille bornée
-#     (50-200 Mo par zone, pas multiplié par run).
+#   - Outputs preserves (`keep_output = TRUE`) -> inspection possible.
+#   - **Per-zone**, ecrase a chaque relance -> taille bornee
+#     (50-200 Mo par zone, pas multiplie par run).
 .resolve_fordead_output_dir <- function(project, zone_id) {
   if (is.null(project) || is.null(project$path)) return(NULL)
   zid <- suppressWarnings(as.integer(zone_id))
@@ -3685,7 +3685,7 @@ mod_monitoring_server <- function(id, app_state) {
   normalizePath(out_dir, winslash = "/", mustWork = FALSE)
 }
 
-# Load the project's BD Forêt V2 cache for the G3 validity check
+# Load the project's BD Foret V2 cache for the G3 validity check
 # (v0.37.0). nemeton@v0.26.0 accepts `bdforet =` on
 # `check_fordead_validity()` and derives the dominant species per
 # parcel via `enrich_parcels_bdforet()` when the UGFs don't carry an
@@ -3694,7 +3694,7 @@ mod_monitoring_server <- function(id, app_state) {
 # (cf. `R/service_compute.R:1308`).
 #
 # Returns NULL when the project isn't loaded, no path, or the cache
-# isn't built yet — caller treats NULL as "skip species check",
+# isn't built yet - caller treats NULL as "skip species check",
 # matching nemeton@v0.25.9 behavior.
 .load_project_bdforet <- function(project) {
   if (is.null(project) || is.null(project$path)) return(NULL)
@@ -3712,12 +3712,12 @@ mod_monitoring_server <- function(id, app_state) {
 }
 
 # Best-effort removal of the progress.json file (and its .tmp sibling
-# if the worker was interrupted mid-write). Errors are swallowed —
+# if the worker was interrupted mid-write). Errors are swallowed -
 # leaving a stale file behind is harmless because the next invoke
 # clears it before firing.
 #
-# v0.70.0 — Étend aussi au NDJSON append-only (brief logs FAST
-# propres). Le path NDJSON est dérivé du JSON (cf. writer côté
+# v0.70.0 - Etend aussi au NDJSON append-only (brief logs FAST
+# propres). Le path NDJSON est derive du JSON (cf. writer cote
 # `service_monitoring.R::.build_progress_writer`).
 .cleanup_progress_file <- function(path) {
   if (is.null(path)) return(invisible(NULL))
@@ -3736,14 +3736,14 @@ mod_monitoring_server <- function(id, app_state) {
 # Make backend warning strings readable in a Shiny toast (v0.36.4).
 #
 # Sentinel-2 STAC + Microsoft Planetary Computer warnings can carry
-# huge presigned SAS-token URLs (~400+ chars of `?st=…&se=…&sp=…&
-# sv=…&sr=…&skoid=…&sktid=…&skt=…&ske=…&sks=…&skv=…&sig=…`) which
+# huge presigned SAS-token URLs (~400+ chars of `?st=...&se=...&sp=...&
+# sv=...&sr=...&skoid=...&sktid=...&skt=...&ske=...&sks=...&skv=...&sig=...`) which
 # turn the toast into a wall of text and obscure the useful part
 # (HTTP status, scene id, reason). We strip those URLs to a short
 # placeholder and hard-cap each warning at ~200 chars.
 #
 # Returns a character vector of the same length as `warns` (we
-# don't dedupe/aggregate at this layer — the caller can collapse
+# don't dedupe/aggregate at this layer - the caller can collapse
 # with " ; " to keep one entry per scene).
 .summarize_backend_warnings <- function(warns, max_per_warning = 200L) {
   if (!length(warns)) return(character(0))
@@ -3755,7 +3755,7 @@ mod_monitoring_server <- function(id, app_state) {
     w <- gsub("\\s+", " ", w, perl = TRUE)
     w <- trimws(w)
     if (nchar(w) > max_per_warning) {
-      w <- paste0(substr(w, 1L, max_per_warning - 1L), "…")
+      w <- paste0(substr(w, 1L, max_per_warning - 1L), "\u2026")
     }
     w
   }, character(1), USE.NAMES = FALSE)
@@ -3775,24 +3775,24 @@ mod_monitoring_server <- function(id, app_state) {
   # No scene_id + 0 completed = we're between the STAC search and the
   # first actual tile. Don't pollute the console with a misleading
   # "Tuile Sentinel-2 (scene_id missing) (0/N)".
-  # NOTE : cette garde teste `i_val == 0L` BRUT (sémantique cœur :
-  # `completed` = scènes terminées AVANT celle-ci). Le décalage 1-based
-  # n'est appliqué qu'à l'affichage de la tuile en cours.
+  # NOTE : cette garde teste `i_val == 0L` BRUT (semantique coeur :
+  # `completed` = scenes terminees AVANT celle-ci). Le decalage 1-based
+  # n'est applique qu'a l'affichage de la tuile en cours.
   if (!nzchar(scene) && i_val == 0L) {
     if (n_val > 0L) {
       cli::cli_alert_info("Sentinel-2 STAC search done: {n_val} scene(s) found.")
     } else {
-      cli::cli_alert_info("Sentinel-2 STAC search in progress…")
+      cli::cli_alert_info("Sentinel-2 STAC search in progress\u2026")
     }
     return(invisible(NULL))
   }
-  # v0.70.2 — Compteur 1-based pour l'affichage (brief
-  # `BRIEF-nemetonshiny-console-FAST.md`, Partie B). Le cœur émet
-  # `completed = i - 1` (« scènes terminées avant celle-ci »,
+  # v0.70.2 - Compteur 1-based pour l'affichage (brief
+  # `BRIEF-nemetonshiny-console-FAST.md`, Partie B). Le coeur emet
+  # `completed = i - 1` (" scenes terminees avant celle-ci ",
   # convention spec ingest pour calculer une fraction de
-  # progression). Affiché tel quel, ça donnait « Tuile 0/120 » sur
-  # la 1ʳᵉ scène. On affiche désormais `i_val + 1` = numéro de la
-  # tuile EN COURS (1..total). La garde STAC ci-dessus continue à
+  # progression). Affiche tel quel, ca donnait " Tuile 0/120 " sur
+  # la 1re scene. On affiche desormais `i_val + 1` = numero de la
+  # tuile EN COURS (1..total). La garde STAC ci-dessus continue a
   # utiliser `i_val` brut (0).
   tile_no <- i_val + 1L
   extras <- c(
@@ -3803,10 +3803,10 @@ mod_monitoring_server <- function(id, app_state) {
     if (!is.null(ev$source) && nzchar(as.character(ev$source)))
       paste0("source=", as.character(ev$source))
   )
-  suffix <- if (length(extras)) sprintf(" — %s", paste(extras, collapse = ", ")) else ""
+  suffix <- if (length(extras)) sprintf(" \u2014 %s", paste(extras, collapse = ", ")) else ""
   if (identical(status, "scene_error")) {
     cli::cli_alert_warning(
-      "Tuile Sentinel-2 {scene} ({tile_no}/{n_val}) — erreur{suffix}"
+      "Tuile Sentinel-2 {scene} ({tile_no}/{n_val}) \u2014 erreur{suffix}"
     )
   } else {
     cli::cli_alert_info(
@@ -3818,7 +3818,7 @@ mod_monitoring_server <- function(id, app_state) {
 
 # Console mirror for a Sentinel-2 band-level event
 # (`s2:band_cached` / `s2:band_fetched` emitted by nemeton@v0.21.3+).
-# Stays out of the toast — the scene-level event drives the UI — but
+# Stays out of the toast - the scene-level event drives the UI - but
 # we log each band so a developer following along in the terminal
 # sees cache hits vs fresh downloads, which is the most useful info
 # for diagnosing why a run is slow or large on disk.
@@ -3828,11 +3828,11 @@ mod_monitoring_server <- function(id, app_state) {
   scene_short <- if (nzchar(scene)) substr(scene, 1L, 24L) else "(?)"
   if (identical(current_phase, "s2:band_cached")) {
     cli::cli_alert_info(
-      "  ⤷ Bande {band} (cache) — scène {scene_short}…"
+      "  \u2937 Bande {band} (cache) \u2014 sc\u00e8ne {scene_short}\u2026"
     )
   } else {
     cli::cli_alert_info(
-      "  ⤷ Bande {band} (téléchargement) — scène {scene_short}…"
+      "  \u2937 Bande {band} (t\u00e9l\u00e9chargement) \u2014 sc\u00e8ne {scene_short}\u2026"
     )
   }
   invisible(NULL)
@@ -3874,7 +3874,7 @@ mod_monitoring_server <- function(id, app_state) {
   current <- as.character(ev$current %||% "")
 
   if (identical(current, "fordead:start")) {
-    # Silent — the disabled "Lancer" button is enough feedback.
+    # Silent - the disabled "Lancer" button is enough feedback.
     return(invisible(NULL))
   }
 
@@ -3944,7 +3944,7 @@ mod_monitoring_server <- function(id, app_state) {
   }
 
   # ----- Legacy fallback (pre-v0.22.5 nemeton payloads) -------------
-  # Same logic as before v0.32.0 — keeps the UI alive if the worker
+  # Same logic as before v0.32.0 - keeps the UI alive if the worker
   # emits the older status/phase shape.
   status <- ev$status %||% "running"
   if (identical(status, "done")) return(invisible(NULL))
@@ -3972,8 +3972,8 @@ mod_monitoring_server <- function(id, app_state) {
 }
 
 # Per-phase label for RECONFORT (mirror of .fordead_phase_label). The
-# core emits phase_name ∈ {env, model, mask, tiles, ingest, stage,
-# mapprod, collect, postprocess, persist} — each has an i18n key
+# core emits phase_name dans {env, model, mask, tiles, ingest, stage,
+# mapprod, collect, postprocess, persist} - each has an i18n key
 # `monitoring_reconfort_phase_<name>` ; an unknown name falls back to a
 # Title-Cased version of the raw key.
 .reconfort_phase_label <- function(phase_name, i18n) {
@@ -3987,13 +3987,13 @@ mod_monitoring_server <- function(id, app_state) {
 # nemeton::run_reconfort_dieback() (events `reconfort:start|phase|
 # complete|error`). Mirror of .fordead_handle_progress_event ; testable
 # directly with a fake session + i18n. Side effects only. `start` / `on_msg`
-# alimentent le chrono unifié (cf. .fordead_handle_progress_event).
+# alimentent le chrono unifie (cf. .fordead_handle_progress_event).
 .reconfort_handle_progress_event <- function(ev, session, i18n,
                                               start = NULL, on_msg = NULL) {
   current <- as.character(ev$current %||% "")
 
   if (identical(current, "reconfort:start")) {
-    return(invisible(NULL))  # silent — disabled button is enough
+    return(invisible(NULL))  # silent - disabled button is enough
   }
 
   if (identical(current, "reconfort:phase")) {
@@ -4042,7 +4042,7 @@ mod_monitoring_server <- function(id, app_state) {
       NULL)
     step_lbl <- if (is.null(step_key)) step else i18n$t(step_key)
     detail <- if (nzchar(date) && !identical(date, "NA")) {
-      paste0(step_lbl, " · ", date)
+      paste0(step_lbl, " \u00b7 ", date)
     } else step_lbl
     msg <- i18n$t("monitoring_reconfort_ingest_item",
                   n = n, total = total, detail = detail)
@@ -4098,7 +4098,7 @@ mod_monitoring_server <- function(id, app_state) {
     return(invisible(NULL))
   }
   if (identical(status, "phase_error")) {
-    cli::cli_alert_warning("FORDEAD phase {phase} — erreur")
+    cli::cli_alert_warning("FORDEAD phase {phase} \u2014 erreur")
     return(invisible(NULL))
   }
   if (n_val > 0L) {
@@ -4114,12 +4114,12 @@ mod_monitoring_server <- function(id, app_state) {
 # happening. The `.nmt-spin` CSS keyframe is defined in
 # `inst/app/www/css/custom.css` and is also re-used by the DB probe
 # loading card (see `.monitoring_loading_card`).
-# spec 008 §3 — Un diagnostic (RECONFORT / FORDEAD) qui dépasse le plafond
-# mémoire est tué par SIGKILL dans son cgroup : le cœur remonte alors une erreur
-# R ordinaire dont le message porte « exit 137 » (128 + 9) ou « killed ». Brut,
-# ce message ne dit RIEN à l'utilisateur (« RECONFORT map production failed for
-# zone 3 (exit 137) ») : on lui substitue une consigne actionnable. Tout autre
-# échec garde son message d'origine, préfixé du titre du mode.
+# spec 008 sect.3 - Un diagnostic (RECONFORT / FORDEAD) qui depasse le plafond
+# memoire est tue par SIGKILL dans son cgroup : le coeur remonte alors une erreur
+# R ordinaire dont le message porte " exit 137 " (128 + 9) ou " killed ". Brut,
+# ce message ne dit RIEN a l'utilisateur (" RECONFORT map production failed for
+# zone 3 (exit 137) ") : on lui substitue une consigne actionnable. Tout autre
+# echec garde son message d'origine, prefixe du titre du mode.
 .monitoring_is_oom <- function(msg) {
   msg <- as.character(msg %||% "")
   if (!nzchar(msg)) return(FALSE)
@@ -4137,13 +4137,13 @@ mod_monitoring_server <- function(id, app_state) {
 }
 
 .monitoring_spinning_msg <- function(text, start = NULL) {
-  # Cadre unifié (sablier animé + police + chrono monospace optionnel),
-  # partagé avec le moteur reGénération — cf. R/utils_notif.R. `start` (POSIXct) :
-  # si fourni, ajoute le chronomètre « — MM:SS » qui défile.
+  # Cadre unifie (sablier anime + police + chrono monospace optionnel),
+  # partage avec le moteur reGeneration - cf. R/utils_notif.R. `start` (POSIXct) :
+  # si fourni, ajoute le chronometre " - MM:SS " qui defile.
   .running_notif_content(text, start = start)
 }
 
-# Persistent "connecting…" / "creating local SQLite…" card shown while
+# Persistent "connecting..." / "creating local SQLite..." card shown while
 # the async DB probe (ExtendedTask) is running. The spinning gear icon
 # uses the existing `.nmt-spin` CSS keyframe from inst/app/www/css. The
 # card replaces the previous toast-based feedback (which was easy to
@@ -4186,7 +4186,7 @@ mod_monitoring_server <- function(id, app_state) {
   )
 }
 
-# G3 banner — used when zone is outside FORDEAD validity domain or when
+# G3 banner - used when zone is outside FORDEAD validity domain or when
 # the user opts into low/medium classes (>50% FP per ONF/DSF 2024).
 .monitoring_validity_banner <- function(icon, title, body = NULL) {
   htmltools::tags$div(
@@ -4206,21 +4206,21 @@ mod_monitoring_server <- function(id, app_state) {
 }
 
 
-# v0.77.0 — Surfaces (ha) + part (%) des 4 strates projet `_tot/_feu/
+# v0.77.0 - Surfaces (ha) + part (%) des 4 strates projet `_tot/_feu/
 # _res/_mix` pour le bandeau FAST. Lit le polygone de chaque zone via
 # `get_monitoring_zone_aoi()` (EPSG:2154) et calcule l'aire avec
-# `sf::st_area`. Le pourcentage est relatif à la strate `_tot` (union
-# de toutes les essences, surface de référence du projet).
+# `sf::st_area`. Le pourcentage est relatif a la strate `_tot` (union
+# de toutes les essences, surface de reference du projet).
 #
 # @param con DBIConnection vers la base monitoring.
 # @param zones_df data.frame `(id, name)` des zones du projet courant
 #   (sortie de `nemeton::find_zones_by_project`).
-# @return data.frame `(strata, label_key, ha, pct)` ordonné
-#   tot → feu → res → mix, limité aux strates réellement présentes.
-#   Lignes vides (aire incalculable) écartées. NULL/0-row si rien.
+# @return data.frame `(strata, label_key, ha, pct)` ordonne
+#   tot -> feu -> res -> mix, limite aux strates reellement presentes.
+#   Lignes vides (aire incalculable) ecartees. NULL/0-row si rien.
 .compute_zone_surfaces <- function(con, zones_df) {
   if (is.null(con) || is.null(zones_df) || !nrow(zones_df)) return(NULL)
-  # Mappe le suffixe du nom de zone → (strate, clé i18n du label).
+  # Mappe le suffixe du nom de zone -> (strate, cle i18n du label).
   strata_map <- list(
     tot = "zone_tot", feu = "zone_feu",
     res = "zone_res", mix = "zone_mix"
@@ -4243,7 +4243,7 @@ mod_monitoring_server <- function(id, app_state) {
   rows <- Filter(Negate(is.null), rows)
   if (!length(rows)) return(NULL)
   df <- do.call(rbind, rows)
-  # Pourcentage relatif à `_tot` (toutes essences).
+  # Pourcentage relatif a `_tot` (toutes essences).
   tot_ha <- df$ha[df$strata == "tot"]
   if (length(tot_ha) == 1L && is.finite(tot_ha) && tot_ha > 0) {
     df$pct <- ifelse(df$strata == "tot", NA_real_, df$ha / tot_ha * 100)

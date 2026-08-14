@@ -42,12 +42,12 @@ get_global_cache_dir <- function() {
 # --- Pool de workers `future` (asynchrone) ---------------------------------
 #
 # `future::plan("multisession")` SANS `workers` ouvre `availableCores()`
-# process. Chacun est une session R complète qui garde sa mémoire pour toute la
-# durée de l'app : les workers sont PERSISTANTS, ils ne rendent pas leur RSS
-# entre deux tâches. Sur une machine 8 cœurs, un moteur lourd (desserte,
-# accessibilité, FORDEAD) peut donc immobiliser 8 × plusieurs Go — le mode de
-# défaillance diagnostiqué en spec 008 (« les 14 Go n'étaient pas les rasters
-# mais les workers »). Le pool est borné ici, en un seul endroit.
+# process. Chacun est une session R complete qui garde sa memoire pour toute la
+# duree de l'app : les workers sont PERSISTANTS, ils ne rendent pas leur RSS
+# entre deux taches. Sur une machine 8 coeurs, un moteur lourd (desserte,
+# accessibilite, FORDEAD) peut donc immobiliser 8 x plusieurs Go - le mode de
+# defaillance diagnostique en spec 008 (" les 14 Go n'etaient pas les rasters
+# mais les workers "). Le pool est borne ici, en un seul endroit.
 
 #' Resolve the number of `future` workers for async computation
 #'
@@ -59,7 +59,7 @@ get_global_cache_dir <- function() {
 #'
 #' The **floor of 2 matters**: `availableCores()` reports 2 under `R CMD check`
 #' (`_R_CHECK_LIMIT_CORES_`), on CI and in small containers, where a bare
-#' `min(4, cap - 2)` collapses to a SINGLE worker — and `warmup_async_workers()`
+#' `min(4, cap - 2)` collapses to a SINGLE worker - and `warmup_async_workers()`
 #' would then occupy the whole pool, so every subsequent `future_promise()`
 #' queues behind it and the Shiny event loop stalls.
 #'
@@ -237,7 +237,7 @@ COMPUTE_STATUS <- list(
 #' @noRd
 init_compute_state <- function(project_id, indicators = "all") {
   # Get full indicator list if "all" (metadata-gated : A5 LST inclus seulement
-  # si la source urbaine est activée sur le projet, cf. list_available_indicators).
+  # si la source urbaine est activee sur le projet, cf. list_available_indicators).
   if (length(indicators) == 1 && indicators == "all") {
     meta <- tryCatch(load_project_metadata(project_id), error = function(e) NULL)
     indicators <- list_available_indicators(meta)
@@ -321,10 +321,10 @@ list_available_indicators <- function(metadata = NULL) {
     # Naturalness (N)
     "indicateur_n1_distance", "indicateur_n2_continuite", "indicateur_n3_naturalite"
   )
-  # A5 rafraîchissement urbain (LST Thermocity, spec 032) : source ACTIVE PAR
-  # DÉFAUT (project_lst_enabled) — ajoutée au set sauf désactivation explicite
-  # dans les paramètres. Désactivée, la famille A reste A1-A4 (indicateur
-  # orienté arbre en ville, hors-sujet/NA en rural — aucune requête Theia).
+  # A5 rafraichissement urbain (LST Thermocity, spec 032) : source ACTIVE PAR
+  # DEFAUT (project_lst_enabled) - ajoutee au set sauf desactivation explicite
+  # dans les parametres. Desactivee, la famille A reste A1-A4 (indicateur
+  # oriente arbre en ville, hors-sujet/NA en rural - aucune requete Theia).
   if (project_lst_enabled(metadata)) {
     base <- c(base, "indicateur_a5_rafraichissement")
   }
@@ -339,7 +339,7 @@ list_available_indicators <- function(metadata = NULL) {
 #' P2 site index, P3 timber quality) and E1 (wood energy) derive their
 #' inputs from a canopy height model. Without a `chm` raster the
 #' nemeton functions fall back to the inventory mode and fail with
-#' cryptic "Missing required fields" errors (dbh, density, volume…).
+#' cryptic "Missing required fields" errors (dbh, density, volume...).
 #' These four indicators are flagged so the compute service can fail
 #' with an explicit, translatable message instead.
 #'
@@ -366,7 +366,7 @@ CHM_REQUIRED_INDICATORS <- c(
 #' `nemeton::compute_spectral_diversity()` a single time and shares the
 #' result with both indicators via `layers$spectral`. When the object
 #' cannot be built (no Sentinel-2 cache, failure), both indicators fall
-#' back to NA — same graceful degradation as the CHM-derived ones.
+#' back to NA - same graceful degradation as the CHM-derived ones.
 #'
 #' @noRd
 SPECTRAL_INDICATORS <- c(
@@ -383,7 +383,7 @@ SPECTRAL_INDICATORS <- c(
 #' `nemeton::read_s2_band_raster()` only reads this set. biodivMapR runs
 #' its PCA / k-means on whatever bands are present, so six is plenty for
 #' spectral-species mapping (the 10-band list in the spec is aspirational
-#' — the cache never holds B02/B03/B06/B07 in NDP 0).
+#' - the cache never holds B02/B03/B06/B07 in NDP 0).
 #'
 #' @noRd
 SPECTRAL_S2_BANDS <- c("B04", "B05", "B08", "B8A", "B11", "B12")
@@ -476,7 +476,7 @@ build_reflectance_stack <- function(cache_dir, scene_id, aoi = NULL,
   }
   if (length(band_rasters) < 2L) return(NULL)
 
-  # Align onto the first band's grid (10 m B04 first → 20 m bands are
+  # Align onto the first band's grid (10 m B04 first -> 20 m bands are
   # resampled up), otherwise terra::rast() rejects the heterogeneous set.
   ref <- band_rasters[[1]]
   aligned <- lapply(band_rasters, function(r) {
@@ -530,7 +530,7 @@ build_spectral_diversity <- function(parcels, project_path,
   if (!dir.exists(cache_dir)) {
     cli::cli_alert_info(
       "Spectral diversity (B4/L3): no Sentinel-2 cache at {.path {cache_dir}} \\
-       — indicators will be NA. Run a health-monitoring ingestion first.")
+       \u2014 indicators will be NA. Run a health-monitoring ingestion first.")
     return(NULL)
   }
 
@@ -562,15 +562,15 @@ build_spectral_diversity <- function(parcels, project_path,
 
     # Persist biodivMapR outputs under the project cache (like the
     # reconfort / fordead layers) instead of a tempfile. Two reasons:
-    #   1. correctness — compute_spectral_diversity() returns *lazy*
+    #   1. correctness - compute_spectral_diversity() returns *lazy*
     #      file-backed SpatRasters pointing into this directory; B4/L3
     #      read them later during aggregation. A tempfile dir unlinked on
-    #      return left dangling pointers → "[readStart] file does not
-    #      exist: …/shannon_sd.tiff" (spec 028). A persistent path (same
+    #      return left dangling pointers -> "[readStart] file does not
+    #      exist: .../shannon_sd.tiff" (spec 028). A persistent path (same
     #      filesystem, survives the future::multisession worker) stays
     #      readable.
-    #   2. reuse — biodivMapR's PCA + k-means is expensive; keeping the
-    #      α/β rasters on disk lets a re-run reuse them
+    #   2. reuse - biodivMapR's PCA + k-means is expensive; keeping the
+    #      alpha/beta rasters on disk lets a re-run reuse them
     #      (compute_spectral_diversity() skips the run when they exist).
     # Keyed by scene id; invalidated by the project's compute-cache clear.
     spectral_dir <- file.path(project_path, "cache", "layers",
@@ -579,7 +579,7 @@ build_spectral_diversity <- function(parcels, project_path,
 
     cli::cli_alert_info(
       "Spectral diversity (B4/L3): running biodivMapR on scene {scene_id} \\
-       ({terra::nlyr(cube)} bands, nb_cpu={nb_cpu}) → cache {.path {spectral_dir}}")
+       ({terra::nlyr(cube)} bands, nb_cpu={nb_cpu}) \u2192 cache {.path {spectral_dir}}")
     nemeton::compute_spectral_diversity(
       reflectance = cube,
       mask = mask,
@@ -589,7 +589,7 @@ build_spectral_diversity <- function(parcels, project_path,
     )
   }, error = function(e) {
     cli::cli_warn(
-      "Spectral diversity (B4/L3) failed — indicators set to NA: {conditionMessage(e)}")
+      "Spectral diversity (B4/L3) failed \u2014 indicators set to NA: {conditionMessage(e)}")
     NULL
   })
 }
@@ -597,13 +597,13 @@ build_spectral_diversity <- function(parcels, project_path,
 
 #' Build the translated "CHM unavailable" compute error message
 #'
-#' v0.46.4 — diagnostic plutôt que générique. Le message de base
-#' « CHM indisponible » est suivi d'une explication précise :
+#' v0.46.4 - diagnostic plutot que generique. Le message de base
+#' " CHM indisponible " est suivi d'une explication precise :
 #'   - `reticulate` manquant
-#'   - clé API Theia manquante
-#'   - Theia configuré mais `load_theia_source()` a échoué (cas
-#'     observé avec un setup complet mais une dépendance Python
-#'     non provisionnée correctement par py_require)
+#'   - cle API Theia manquante
+#'   - Theia configure mais `load_theia_source()` a echoue (cas
+#'     observe avec un setup complet mais une dependance Python
+#'     non provisionnee correctement par py_require)
 #'
 #' @return Character. The diagnostic message in the current app
 #'   language.
@@ -615,8 +615,8 @@ build_spectral_diversity <- function(parcels, project_path,
   status <- tryCatch(theia_status(), error = function(e) NULL)
   if (is.null(status)) return(base)
   if (isTRUE(status$ready)) {
-    # Pré-requis OK côté config, mais l'appel cœur a quand même
-    # échoué (acquisition/signature via la gateway STAC, R pur).
+    # Pre-requis OK cote config, mais l'appel coeur a quand meme
+    # echoue (acquisition/signature via la gateway STAC, R pur).
     return(paste(base, i18n$t("theia_chm_load_failed")))
   }
   paste(base, i18n$t(theia_status_key(status)))
@@ -770,7 +770,7 @@ start_computation <- function(project_id,
 
     # ------------------------------------------------------------------
     # UGF mode: indicators are computed on UGF geometries (one row per
-    # Unité de Gestion Forestière), not on cadastral parcels. We load
+    # Unite de Gestion Forestiere), not on cadastral parcels. We load
     # the UGF data, build the dissolved UGF sf, and pass that as the
     # compute unit. Parcels stay loaded for reference (they're still
     # used by download_layers_for_parcels to fetch the right map tiles).
@@ -793,13 +793,13 @@ start_computation <- function(project_id,
     # functions expect to find on cadastral parcels. Without these,
     # most indicator_* functions error out before they even look at
     # the geometry (they join / filter by parcel-like keys).
-    #  - id / nemeton_id / geo_parcelle : unique identifier (→ ug_id)
-    #  - contenance                      : cadastral surface (m²)
+    #  - id / nemeton_id / geo_parcelle : unique identifier (-> ug_id)
+    #  - contenance                      : cadastral surface (m2)
     #  - code_insee                      : commune code, inherited
     #                                     from the first parcel
     #  - section / numero                : placeholder (UGFs don't
     #                                     map to a single cadastral
-    #                                     ref — the list is kept in
+    #                                     ref - the list is kept in
     #                                     cadastral_refs)
     compute_unit$id <- compute_unit$ug_id
     compute_unit$nemeton_id <- compute_unit$ug_id
@@ -925,16 +925,16 @@ start_computation <- function(project_id,
       indicators
     }
 
-    # Forêt ancienne → N2 continuité (spec 031). If the user supplied a
+    # Foret ancienne -> N2 continuite (spec 031). If the user supplied a
     # historical source (metadata$foret_ancienne) AND N2 is being computed,
     # build the ancient-forest mask once (cached) and stage it into
     # layers$vectors$foret_ancienne, where compute_single_indicator resolves
-    # it into indicateur_n2_continuite(foret_ancienne = ). No source → N2 keeps
+    # it into indicateur_n2_continuite(foret_ancienne = ). No source -> N2 keeps
     # its current behaviour (no regression). Business logic lives in the core
-    # (nemeton::build_foret_ancienne_mask) — the app only wires the source in.
-    # Auto-fetch national IGN BD Forêts anciennes for the AOI (or use a legacy
+    # (nemeton::build_foret_ancienne_mask) - the app only wires the source in.
+    # Auto-fetch national IGN BD Forets anciennes for the AOI (or use a legacy
     # per-project source if one is still stored in metadata). No source / no
-    # acquisition → N2 keeps its bdforet-only behaviour (no regression).
+    # acquisition -> N2 keeps its bdforet-only behaviour (no regression).
     if ("indicateur_n2_continuite" %in% effective_indicators) {
       state$current_task <- "foret_ancienne"
       report_progress(state)
@@ -946,14 +946,14 @@ start_computation <- function(project_id,
       if (!is.null(fa_layer)) layers$vectors$foret_ancienne <- fa_layer
     }
 
-    # Coupes rases → T3 (spec 030). SUFOSAT is a national source ENABLED BY
+    # Coupes rases -> T3 (spec 030). SUFOSAT is a national source ENABLED BY
     # DEFAULT (project_sufosat_enabled): T3 is always in
     # list_available_indicators() (like N2), and the Theia fetch happens unless
-    # the user turned the source off in the settings. When disabled — or
-    # if Theia is not configured / the fetch fails — layers$sufosat stays NULL
+    # the user turned the source off in the settings. When disabled - or
+    # if Theia is not configured / the fetch fails - layers$sufosat stays NULL
     # and indicateur_t3_coupes_rases returns NA per unit, so the T family keeps
     # T1/T2 with no Theia request (no regression). T3 is inverted in the core
-    # (normalize_indicator, like R5) — the app never re-inverts. window_years /
+    # (normalize_indicator, like R5) - the app never re-inverts. window_years /
     # min_proba are the user's UI parameters, forwarded to the indicator.
     sufosat_cfg <- projet_for_ug$metadata$sufosat
     if (project_sufosat_enabled(projet_for_ug$metadata) &&
@@ -971,12 +971,12 @@ start_computation <- function(project_id,
       }
     }
 
-    # Rafraîchissement urbain → A5 (LST Theia, spec 032). Source ACTIVE PAR
-    # DÉFAUT (project_lst_enabled) : désactivée — ou hors couverture
-    # urbaine Thermocity / Theia non configuré — layers$rasters$lst reste NULL et
-    # indicateur_a5_rafraichissement renvoie NA par unité (famille A garde
-    # A1-A4, aucune requête Theia, no regression). A5 est à SENS DIRECT (haut =
-    # plus frais) : normalisation positive au cœur, l'app ne fait aucune inversion.
+    # Rafraichissement urbain -> A5 (LST Theia, spec 032). Source ACTIVE PAR
+    # DEFAUT (project_lst_enabled) : desactivee - ou hors couverture
+    # urbaine Thermocity / Theia non configure - layers$rasters$lst reste NULL et
+    # indicateur_a5_rafraichissement renvoie NA par unite (famille A garde
+    # A1-A4, aucune requete Theia, no regression). A5 est a SENS DIRECT (haut =
+    # plus frais) : normalisation positive au coeur, l'app ne fait aucune inversion.
     lst_cfg <- projet_for_ug$metadata$lst_urbain
     if (project_lst_enabled(projet_for_ug$metadata) &&
         "indicateur_a5_rafraichissement" %in% effective_indicators) {
@@ -992,13 +992,13 @@ start_computation <- function(project_id,
       }
     }
 
-    # Spectral diversity (B4 alpha / L3 beta) — biodivMapR, spec 028.
+    # Spectral diversity (B4 alpha / L3 beta) - biodivMapR, spec 028.
     # Assemble the Sentinel-2 reflectance cube and run
     # compute_spectral_diversity ONCE here (in the compute worker), then
     # share the object with both indicators through `layers$spectral`
     # (name-resolved into `spectral =` by compute_single_indicator). Gated
-    # on B4/L3 being requested; NULL (→ NA) when there is no S2 cache or
-    # on any failure. Long op → immediate progress feedback (rule #9).
+    # on B4/L3 being requested; NULL (-> NA) when there is no S2 cache or
+    # on any failure. Long op -> immediate progress feedback (rule #9).
     if (length(intersect(SPECTRAL_INDICATORS, effective_indicators)) > 0) {
       state$current_task <- "spectral_diversity"
       report_progress(state)
@@ -1094,11 +1094,11 @@ start_computation <- function(project_id,
 }
 
 
-#' Build the forêt ancienne (ancient-forest) continuity layer for N2
+#' Build the foret ancienne (ancient-forest) continuity layer for N2
 #'
 #' @description
 #' Spec 031. Reads the user-provided **historical** source (a classified
-#' raster — Cassini/état-major scan — or a digitised vector — IGN forêt
+#' raster - Cassini/etat-major scan - or a digitised vector - IGN foret
 #' ancienne), converts it to an sf mask via
 #' \code{nemeton::build_foret_ancienne_mask()} (all business logic stays in the
 #' core), and caches the result under
@@ -1114,19 +1114,19 @@ start_computation <- function(project_id,
 #' @param crs Target CRS (EPSG) for the mask; defaults to Lambert-93 (2154).
 #'
 #' @return An sf with \code{foret_ancienne = TRUE} (possibly 0 rows), or
-#'   \code{NULL} when no source is configured or the build fails — N2 then
+#'   \code{NULL} when no source is configured or the build fails - N2 then
 #'   keeps its bdforet-only / default behaviour (no regression).
 #'
 #' @noRd
-#' Auto-fetch the national IGN BD Forêts anciennes for an AOI (spec 031)
+#' Auto-fetch the national IGN BD Forets anciennes for an AOI (spec 031)
 #'
 #' @description
 #' Delegates acquisition to the core \code{nemeton::load_foret_ancienne_source()}
-#' (fetch of the departmental IGN « BD Forêts anciennes » GeoPackage, filter on
-#' the \code{Nature = forêt ancienne} class, clip to the AOI) and caches the
+#' (fetch of the departmental IGN " BD Forets anciennes " GeoPackage, filter on
+#' the \code{Nature = foret ancienne} class, clip to the AOI) and caches the
 #' resulting mask under \code{<project>/cache/layers/foret_ancienne/}. Resolved
 #' dynamically so the app builds/checks cleanly before the core exports it;
-#' returns \code{NULL} (→ N2 on current coverage, no regression) when the core
+#' returns \code{NULL} (-> N2 on current coverage, no regression) when the core
 #' function is absent or the fetch fails.
 #'
 #' @noRd
@@ -1141,7 +1141,7 @@ start_computation <- function(project_id,
     fa <- tryCatch(sf::st_read(cache_gpkg, quiet = TRUE), error = function(e) NULL)
     if (!is.null(fa)) {
       cli::cli_alert_info(
-        "Forêt ancienne : masque IGN lu depuis le cache ({nrow(fa)} polygone{?s})")
+        "For\u00eat ancienne : masque IGN lu depuis le cache ({nrow(fa)} polygone{?s})")
       return(fa)
     }
   }
@@ -1150,30 +1150,30 @@ start_computation <- function(project_id,
                      error = function(e) NULL)
   if (is.null(loader)) {
     cli::cli_alert_info(paste(
-      "Forêt ancienne : acquisition IGN indisponible",
-      "(nemeton::load_foret_ancienne_source absent) — N2 sur couverture actuelle"))
+      "For\u00eat ancienne : acquisition IGN indisponible",
+      "(nemeton::load_foret_ancienne_source absent) \u2014 N2 sur couverture actuelle"))
     return(NULL)
   }
 
   fa <- tryCatch(loader(aoi = aoi, crs = crs), error = function(e) {
-    cli::cli_warn("Forêt ancienne : acquisition IGN échouée : {conditionMessage(e)}")
+    cli::cli_warn("For\u00eat ancienne : acquisition IGN \u00e9chou\u00e9e : {conditionMessage(e)}")
     NULL
   })
   if (is.null(fa) || !inherits(fa, "sf")) return(NULL)
 
   tryCatch(sf::st_write(fa, cache_gpkg, quiet = TRUE, delete_dsn = TRUE),
-           error = function(e) cli::cli_warn("Forêt ancienne : cache non écrit"))
+           error = function(e) cli::cli_warn("For\u00eat ancienne : cache non \u00e9crit"))
   cli::cli_alert_success(
-    "Forêt ancienne : masque IGN récupéré ({nrow(fa)} polygone{?s})")
+    "For\u00eat ancienne : masque IGN r\u00e9cup\u00e9r\u00e9 ({nrow(fa)} polygone{?s})")
   fa
 }
 
 build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154, aoi = NULL) {
-  # No user-provided historical source → auto-fetch the national IGN
-  # « BD Forêts anciennes » (Etalab 2.0) for the AOI. All acquisition + the
-  # `Nature = forêt ancienne` filter live in the core; the app only orchestrates
+  # No user-provided historical source -> auto-fetch the national IGN
+  # " BD Forets anciennes " (Etalab 2.0) for the AOI. All acquisition + the
+  # `Nature = foret ancienne` filter live in the core; the app only orchestrates
   # and caches. Dynamic lookup avoids an R CMD check note while the core symbol
-  # is not yet exported — graceful NULL until it is (N2 on current coverage).
+  # is not yet exported - graceful NULL until it is (N2 on current coverage).
   if (is.null(fa_cfg) || is.null(fa_cfg$path) || !nzchar(fa_cfg$path)) {
     if (is.null(aoi)) return(NULL)
     return(.fetch_foret_ancienne_auto(aoi, project_path, crs))
@@ -1185,7 +1185,7 @@ build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154, aoi = N
     file.path(project_path, fa_cfg$path)
   }
   if (!file.exists(src_path)) {
-    cli::cli_warn("Forêt ancienne : source introuvable ({src_path})")
+    cli::cli_warn("For\u00eat ancienne : source introuvable ({src_path})")
     return(NULL)
   }
 
@@ -1208,7 +1208,7 @@ build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154, aoi = N
     fa <- tryCatch(sf::st_read(cache_gpkg, quiet = TRUE), error = function(e) NULL)
     if (!is.null(fa)) {
       cli::cli_alert_info(
-        "Forêt ancienne : masque lu depuis le cache ({nrow(fa)} polygone{?s})")
+        "For\u00eat ancienne : masque lu depuis le cache ({nrow(fa)} polygone{?s})")
       return(fa)
     }
   }
@@ -1218,7 +1218,7 @@ build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154, aoi = N
   source_obj <- tryCatch(
     if (ext %in% c("tif", "tiff")) terra::rast(src_path) else sf::st_read(src_path, quiet = TRUE),
     error = function(e) {
-      cli::cli_warn("Forêt ancienne : lecture de la source échouée : {conditionMessage(e)}")
+      cli::cli_warn("For\u00eat ancienne : lecture de la source \u00e9chou\u00e9e : {conditionMessage(e)}")
       NULL
     }
   )
@@ -1233,23 +1233,23 @@ build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154, aoi = N
       crs          = crs
     ),
     error = function(e) {
-      cli::cli_warn("Forêt ancienne : build_foret_ancienne_mask a échoué : {conditionMessage(e)}")
+      cli::cli_warn("For\u00eat ancienne : build_foret_ancienne_mask a \u00e9chou\u00e9 : {conditionMessage(e)}")
       NULL
     }
   )
   if (is.null(fa)) return(NULL)
 
   if (nrow(fa) == 0) {
-    cli::cli_alert_info("Forêt ancienne : aucune zone détectée dans la source")
+    cli::cli_alert_info("For\u00eat ancienne : aucune zone d\u00e9tect\u00e9e dans la source")
     return(fa)  # 0-row sf ; indicateur_n2_continuite handles an empty mask
   }
 
   tryCatch(
     sf::st_write(fa, cache_gpkg, quiet = TRUE, delete_dsn = TRUE),
-    error = function(e) cli::cli_warn("Forêt ancienne : cache non écrit : {conditionMessage(e)}")
+    error = function(e) cli::cli_warn("For\u00eat ancienne : cache non \u00e9crit : {conditionMessage(e)}")
   )
   cli::cli_alert_success(
-    "Forêt ancienne : masque construit ({nrow(fa)} polygone{?s})")
+    "For\u00eat ancienne : masque construit ({nrow(fa)} polygone{?s})")
   fa
 }
 
@@ -1262,11 +1262,11 @@ build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154, aoi = N
 #' result under \code{<project>/cache/layers/sufosat/}. All business logic (the
 #' T3 score, and its inversion) stays in the core
 #' (\code{nemeton::indicateur_t3_coupes_rases} + \code{normalize_indicator});
-#' this helper only acquires and forwards the input rasters — mirroring
+#' this helper only acquires and forwards the input rasters - mirroring
 #' \code{build_foret_ancienne_layer()}.
 #'
 #' SUFOSAT is a single national coverage (2018-present) read by bounding box,
-#' so the cache key is the AOI bbox only — the \code{window_years} /
+#' so the cache key is the AOI bbox only - the \code{window_years} /
 #' \code{min_proba} parameters are applied later in the indicator, not baked
 #' into the rasters.
 #'
@@ -1278,7 +1278,7 @@ build_foret_ancienne_layer <- function(fa_cfg, project_path, crs = 2154, aoi = N
 #'
 #' @return A list \code{list(dates = <SpatRaster>, proba = <SpatRaster>)}, or
 #'   \code{NULL} when Theia is not configured or the fetch fails (T3 then stays
-#'   NA — no regression).
+#'   NA - no regression).
 #' @noRd
 build_sufosat_layer <- function(cfg, project_path, aoi, crs = 2154) {
   if (is.null(aoi) || !inherits(aoi, "sf") || nrow(aoi) == 0) return(NULL)
@@ -1305,13 +1305,13 @@ build_sufosat_layer <- function(cfg, project_path, aoi, crs = 2154) {
     }
   }
 
-  # Acquire from Theia — needs S3 credentials (TLD_* env vars) configured once.
-  # Le cœur signe désormais les URLs en interne via la gateway
-  # signing.stac.teledetection.fr (R pur) : `theia_configure_s3()` est déprécié
-  # (n'active rien, avertit) et a été retiré. Seul le garde amont sur les clés
+  # Acquire from Theia - needs S3 credentials (TLD_* env vars) configured once.
+  # Le coeur signe desormais les URLs en interne via la gateway
+  # signing.stac.teledetection.fr (R pur) : `theia_configure_s3()` est deprecie
+  # (n'active rien, avertit) et a ete retire. Seul le garde amont sur les cles
   # reste utile.
   if (!theia_api_key_configured()) {
-    cli::cli_warn("Coupes rases : clés Theia (TLD_ACCESS_KEY / TLD_SECRET_KEY) absentes.")
+    cli::cli_warn("Coupes rases : cl\u00e9s Theia (TLD_ACCESS_KEY / TLD_SECRET_KEY) absentes.")
     return(NULL)
   }
 
@@ -1321,14 +1321,14 @@ build_sufosat_layer <- function(cfg, project_path, aoi, crs = 2154) {
       proba = nemeton::load_theia_source("sufosat", aoi_2154, asset = "proba")
     )
   }, error = function(e) {
-    cli::cli_warn("Coupes rases : load_theia_source a échoué : {conditionMessage(e)}")
+    cli::cli_warn("Coupes rases : load_theia_source a \u00e9chou\u00e9 : {conditionMessage(e)}")
     NULL
   })
   if (is.null(fetched) || is.null(fetched$dates) || is.null(fetched$proba)) {
     return(NULL)
   }
 
-  # Crop to the AOI (safety — load already reads by bbox) then cache.
+  # Crop to the AOI (safety - load already reads by bbox) then cache.
   aoi_vect <- tryCatch(terra::vect(aoi_2154), error = function(e) NULL)
   crop_to_aoi <- function(r) {
     if (is.null(aoi_vect)) return(r)
@@ -1342,7 +1342,7 @@ build_sufosat_layer <- function(cfg, project_path, aoi, crs = 2154) {
     terra::writeRaster(dates, dates_tif, overwrite = TRUE)
     terra::writeRaster(proba, proba_tif, overwrite = TRUE)
   }, error = function(e) {
-    cli::cli_warn("Coupes rases : cache non écrit : {conditionMessage(e)}")
+    cli::cli_warn("Coupes rases : cache non \u00e9crit : {conditionMessage(e)}")
   })
 
   cli::cli_alert_success("Coupes rases : rasters SUFOSAT acquis (dates + proba)")
@@ -1361,7 +1361,7 @@ build_sufosat_layer <- function(cfg, project_path, aoi, crs = 2154) {
 #' this helper only acquires and forwards the LST raster.
 #'
 #' LST is kelvin (float32, nodata \code{-32768} filtered by the core). Thermocity
-#' covers a few metropolitan areas only — on a rural project the fetch returns
+#' covers a few metropolitan areas only - on a rural project the fetch returns
 #' \code{NULL} and A5 stays NA (no regression). The cache key is the AOI bbox
 #' (the raw coverage read by bounding box; \code{buffer_m} is applied downstream
 #' in the indicator, not baked into the raster).
@@ -1392,28 +1392,28 @@ build_lst_layer <- function(cfg, project_path, aoi, crs = 2154) {
   if (file.exists(lst_tif)) {
     out <- tryCatch(terra::rast(lst_tif), error = function(e) NULL)
     if (!is.null(out)) {
-      cli::cli_alert_info("Rafraîchissement urbain : LST lue depuis le cache")
+      cli::cli_alert_info("Rafra\u00eechissement urbain : LST lue depuis le cache")
       return(out)
     }
   }
 
-  # Acquire from Theia — needs S3 credentials (TLD_* env vars) configured once.
-  # Garde amont sur les clés (même contrat que SUFOSAT).
+  # Acquire from Theia - needs S3 credentials (TLD_* env vars) configured once.
+  # Garde amont sur les cles (meme contrat que SUFOSAT).
   if (!theia_api_key_configured()) {
-    cli::cli_warn("Rafraîchissement urbain : clés Theia (TLD_ACCESS_KEY / TLD_SECRET_KEY) absentes.")
+    cli::cli_warn("Rafra\u00eechissement urbain : cl\u00e9s Theia (TLD_ACCESS_KEY / TLD_SECRET_KEY) absentes.")
     return(NULL)
   }
 
   lst <- tryCatch(
     nemeton::load_theia_source("theia_lst", aoi_2154, asset = "LST"),
     error = function(e) {
-      cli::cli_warn("Rafraîchissement urbain : load_theia_source a échoué : {conditionMessage(e)}")
+      cli::cli_warn("Rafra\u00eechissement urbain : load_theia_source a \u00e9chou\u00e9 : {conditionMessage(e)}")
       NULL
     })
-  # Hors couverture urbaine (Thermocity = quelques métropoles) → NULL, A5 = NA.
+  # Hors couverture urbaine (Thermocity = quelques metropoles) -> NULL, A5 = NA.
   if (is.null(lst)) return(NULL)
 
-  # Crop to the AOI (safety — load already reads by bbox) then cache.
+  # Crop to the AOI (safety - load already reads by bbox) then cache.
   aoi_vect <- tryCatch(terra::vect(aoi_2154), error = function(e) NULL)
   if (!is.null(aoi_vect)) {
     lst <- tryCatch(terra::crop(lst, terra::project(aoi_vect, terra::crs(lst))),
@@ -1421,9 +1421,9 @@ build_lst_layer <- function(cfg, project_path, aoi, crs = 2154) {
   }
   tryCatch(terra::writeRaster(lst, lst_tif, overwrite = TRUE),
            error = function(e) cli::cli_warn(
-             "Rafraîchissement urbain : cache non écrit : {conditionMessage(e)}"))
+             "Rafra\u00eechissement urbain : cache non \u00e9crit : {conditionMessage(e)}"))
 
-  cli::cli_alert_success("Rafraîchissement urbain : LST acquise (Theia Thermocity)")
+  cli::cli_alert_success("Rafra\u00eechissement urbain : LST acquise (Theia Thermocity)")
   lst
 }
 
@@ -1716,7 +1716,7 @@ download_layers_for_parcels <- function(parcels,
     }
   }
 
-  # Step 1.2: Local lasR fallback — when the IGN MNH raster tiles
+  # Step 1.2: Local lasR fallback - when the IGN MNH raster tiles
   # failed (regularly the case in 2026: CDN serves the NUAGE COPC
   # layer reliably but the pre-rasterised MNH/MNT layers return
   # per-tile 404), derive the CHM directly from the cached
@@ -1742,7 +1742,7 @@ download_layers_for_parcels <- function(parcels,
         cli::cli_warn("lasR CHM derivation failed: {e$message}")
         download_warnings <<- c(download_warnings, list(list(
           type = "warning", source = "lasR",
-          message = paste0("Dérivation CHM via lasR échouée : ", e$message),
+          message = paste0("D\u00e9rivation CHM via lasR \u00e9chou\u00e9e : ", e$message),
           time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
         )))
         NULL
@@ -1763,7 +1763,7 @@ download_layers_for_parcels <- function(parcels,
     }
   }
 
-  # Step 1.5: Theia FORMSpoT — public canopy height (NDP 0), used when
+  # Step 1.5: Theia FORMSpoT - public canopy height (NDP 0), used when
   # LiDAR HD is not available for the AOI. This is the primary path
   # that unblocks the Production family (P1/P2/P3) and E1 from public
   # Theia data. Only attempted when Theia is fully ready (Python SDK +
@@ -1815,14 +1815,14 @@ download_layers_for_parcels <- function(parcels,
     }
   }
 
-  # Step 2: Open-Canopy ML — only if LiDAR HD / Theia was skipped or failed.
+  # Step 2: Open-Canopy ML - only if LiDAR HD / Theia was skipped or failed.
   if (chm_source == "none" && chm_auto_enabled()) {
     if (!is.null(progress_callback)) {
-      # Not "download:" — the pipeline fetches the IGN ortho once
+      # Not "download:" - the pipeline fetches the IGN ortho once
       # (cheap) but the bulk of the time is the PVTv2/UNet ML
       # inference. Use a dedicated task key so the UI shows
-      # "Inférence CHM Open-Canopy" instead of a misleading
-      # "Téléchargement …" status.
+      # "Inference CHM Open-Canopy" instead of a misleading
+      # "Telechargement ..." status.
       progress_callback(list(
         completed = total_sources + length(pc_sources),
         total     = total_sources + length(pc_sources),
@@ -1832,8 +1832,8 @@ download_layers_for_parcels <- function(parcels,
     }
     # Relay per-tile progress from opencanopy's WMS download loop
     # into the outer progress_callback so the Shiny status line
-    # reads e.g. "Téléchargement tuile RVB 5/28 (Open-Canopy)…"
-    # rather than staying frozen on the generic "Inférence CHM"
+    # reads e.g. "Telechargement tuile RVB 5/28 (Open-Canopy)..."
+    # rather than staying frozen on the generic "Inference CHM"
     # label while 2 minutes of tiles go by.
     chm_progress <- if (is.null(progress_callback)) NULL else
       function(ev) {
@@ -1898,9 +1898,9 @@ download_layers_for_parcels <- function(parcels,
       type = "info",
       source = "Theia FORMSpoT",
       message = paste0(
-        "Aucun CHM disponible (LiDAR HD absent, Theia non configuré). ",
-        "Les indicateurs Production (P1/P2/P3) et E1 ne pourront pas être ",
-        "calculés. Configurez la clé API Theia via le menu de configuration."
+        "Aucun CHM disponible (LiDAR HD absent, Theia non configur\u00e9). ",
+        "Les indicateurs Production (P1/P2/P3) et E1 ne pourront pas \u00eatre ",
+        "calcul\u00e9s. Configurez la cl\u00e9 API Theia via le menu de configuration."
       ),
       time = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
     )))
@@ -2171,7 +2171,7 @@ download_chm_lasr_from_copc <- function(parcels, cache_dir,
 #' into the same return shape as \code{download_chm_opencanopy()} so
 #' the call site in \code{download_layers_for_parcels()} can swap
 #' sources without further branching. LiDAR HD MNH is a direct
-#' airborne measurement (IGN, national flights 2021-2026) — when
+#' airborne measurement (IGN, national flights 2021-2026) - when
 #' tiles are available for the AOI, it is preferred over the
 #' Open-Canopy ML prediction (which is a synthesised CHM from ortho
 #' imagery, less accurate).
@@ -2284,7 +2284,7 @@ download_chm_lidar_hd <- function(parcels, cache_dir,
 # RETICULATE_PYTHON pinned to the Open-Canopy env, writing the CHM to
 # `chm_path`. The subprocess gets a fresh, unbound reticulate, so it always
 # binds to open_canopy regardless of what the parent session already bound
-# (uv ephemeral env, FORDEAD virtualenv, Theia, …). R_ENVIRON_USER="" so a
+# (uv ephemeral env, FORDEAD virtualenv, Theia, ...). R_ENVIRON_USER="" so a
 # RETICULATE_PYTHON in ~/.Renviron cannot override the pin. The child streams
 # opencanopy's progress events as tagged JSON lines, which the parent replays
 # through `progress_callback` (the app bottom-right messages). Falls back to
@@ -2367,9 +2367,9 @@ download_chm_opencanopy <- function(parcels, cache_dir, rasters, vectors,
   cli::cli_alert_info("Sanitizing CHM with available mask layers...")
 
   # download_{raster,vector}_source() return bare SpatRaster / sf
-  # objects, not list(object = …) wrappers. Using $object on a
+  # objects, not list(object = ...) wrappers. Using $object on a
   # SpatRaster dispatches to [[ and throws "[subset] invalid
-  # name(s)" when no layer of that name exists — which aborted the
+  # name(s)" when no layer of that name exists - which aborted the
   # whole CHM pipeline and forced P2 back into legacy mode.
   forest_mask <- vectors$bdforet
   water       <- vectors$water_surfaces
@@ -2701,9 +2701,9 @@ download_ign_bdtopo <- function(layer_name, bbox, cache_file) {
 }
 
 
-#' Download BD Forêt V2 (formations végétales) from IGN WFS
+#' Download BD Foret V2 (formations vegetales) from IGN WFS
 #'
-#' Downloads vegetation formation polygons from IGN Géoplateforme WFS.
+#' Downloads vegetation formation polygons from IGN Geoplateforme WFS.
 #' The layer \code{LANDCOVER.FORESTINVENTORY.V2:formation_vegetale} provides
 #' species, type and structure information used by carbon, production and
 #' biodiversity indicators.
@@ -2711,7 +2711,7 @@ download_ign_bdtopo <- function(layer_name, bbox, cache_file) {
 #' @param bbox Numeric vector. Bounding box (xmin, ymin, xmax, ymax) in WGS84.
 #' @param cache_file Character. Path to save the downloaded GeoPackage.
 #'
-#' @return sf object with BD Forêt features, or NULL if download fails.
+#' @return sf object with BD Foret features, or NULL if download fails.
 #' @noRd
 download_ign_bdforet <- function(bbox, cache_file) {
   # BD Foret V2 via WFS (source: inst/datasources/FR.json)
@@ -3074,9 +3074,9 @@ download_ign_dem <- function(bbox, cache_file) {
       # Re-write through terra to fix malformed GeoTIFF tags from WMS
       rast <- suppressWarnings(terra::rast(temp_file))
       # Le WMS IGN sert un datum ambigu (GEOGCRS["unknown"], describe$code NA)
-      # alors que la requête demande CRS=EPSG:4326 et que les coordonnées SONT en
-      # 4326 (couche sœur forest_cover.tif = 4326). On réassigne l'autorité
-      # demandée si elle manque, sinon les indicateurs voient « CRS do not match ».
+      # alors que la requete demande CRS=EPSG:4326 et que les coordonnees SONT en
+      # 4326 (couche soeur forest_cover.tif = 4326). On reassigne l'autorite
+      # demandee si elle manque, sinon les indicateurs voient " CRS do not match ".
       if (is.na(terra::crs(rast, describe = TRUE)$code)) terra::crs(rast) <- "EPSG:4326"
       terra::writeRaster(rast, cache_file, overwrite = TRUE)
       unlink(temp_file)
@@ -3202,8 +3202,8 @@ download_ign_irc_ndvi <- function(bbox, cache_file) {
     }
 
     # WMS IGN : datum ambigu (GEOGCRS["unknown"], describe$code NA) alors que la
-    # requête est en EPSG:4326. On réassigne l'autorité si absente ; le NDVI
-    # dérivé (ndvi.tif) en hérite → pas de garde supplémentaire aval.
+    # requete est en EPSG:4326. On reassigne l'autorite si absente ; le NDVI
+    # derive (ndvi.tif) en herite -> pas de garde supplementaire aval.
     if (is.na(terra::crs(irc, describe = TRUE)$code)) terra::crs(irc) <- "EPSG:4326"
 
     # Check we have at least 3 bands
@@ -3295,7 +3295,7 @@ create_synthetic_ndvi <- function(bbox, cache_file) {
 #
 # `bbox` is the requested area as a numeric WGS84 vector
 # (xmin, ymin, xmax, ymax). The cached mosaic carries its own CRS
-# (LiDAR HD is EPSG:2154, but tests build WGS84 fixtures) — we
+# (LiDAR HD is EPSG:2154, but tests build WGS84 fixtures) - we
 # transform the requested bbox into the mosaic CRS before comparing.
 #
 # Returns TRUE only when the mosaic strictly contains the bbox.
@@ -3305,10 +3305,10 @@ create_synthetic_ndvi <- function(bbox, cache_file) {
 .lidar_mosaic_covers_bbox <- function(mosaic_path, bbox) {
   out <- tryCatch({
     r <- terra::rast(mosaic_path)
-    # LiDAR HD IGN = EPSG:2154 par définition mais le WKT est parfois dégénéré
-    # (DATUM["unnamed"], describe$code = NA) → le st_transform ci-dessous
-    # échouerait et rejetterait à tort la mosaïque (→ re-téléchargements). On ne
-    # stampe QUE si l'autorité est absente.
+    # LiDAR HD IGN = EPSG:2154 par definition mais le WKT est parfois degenere
+    # (DATUM["unnamed"], describe$code = NA) -> le st_transform ci-dessous
+    # echouerait et rejetterait a tort la mosaique (-> re-telechargements). On ne
+    # stampe QUE si l'autorite est absente.
     if (is.na(terra::crs(r, describe = TRUE)$code)) terra::crs(r) <- "EPSG:2154"
     req_poly <- sf::st_as_sfc(sf::st_bbox(
       c(xmin = bbox[1], ymin = bbox[2], xmax = bbox[3], ymax = bbox[4]),
@@ -3333,8 +3333,8 @@ create_synthetic_ndvi <- function(bbox, cache_file) {
 #' Download IGN LiDAR HD tiles (MNH canopy height model)
 #'
 #' @description
-#' Downloads LiDAR HD derived products (MNH = Modèle Numérique de Hauteur,
-#' i.e. Canopy Height Model) from the IGN Géoplateforme.
+#' Downloads LiDAR HD derived products (MNH = Modele Numerique de Hauteur,
+#' i.e. Canopy Height Model) from the IGN Geoplateforme.
 #'
 #' The workflow:
 #' 1. Query the WFS `IGNF_MNH-LIDAR-HD:dalle` to find tiles covering the bbox
@@ -3386,13 +3386,13 @@ download_ign_lidar_hd <- function(bbox,
     dir.create(cache_subdir, recursive = TRUE)
   }
 
-  # Ensure bbox is numeric — needed by the extent-aware mosaic check
+  # Ensure bbox is numeric - needed by the extent-aware mosaic check
   # below, so this coercion is hoisted above the cache logic.
   if (inherits(bbox, "bbox")) {
     bbox <- as.numeric(bbox)
   }
 
-  # Check for cached mosaic (raster products only). v0.38.3 — the
+  # Check for cached mosaic (raster products only). v0.38.3 - the
   # reuse is now extent-aware: a mosaic built for a previous zone
   # must not be returned for a different one. We only short-circuit
   # when the cached mosaic's extent actually covers the requested
@@ -3403,23 +3403,23 @@ download_ign_lidar_hd <- function(bbox,
     if (.lidar_mosaic_covers_bbox(mosaic_cache, bbox)) {
       cli::cli_alert_success("Using cached LiDAR {toupper(product)} mosaic")
       r <- terra::rast(mosaic_cache)
-      # Réassigne l'autorité 2154 si le WKT cache est dégénéré (describe$code NA),
-      # sinon les indicateurs terrain aval verraient un CRS « sans code ».
+      # Reassigne l'autorite 2154 si le WKT cache est degenere (describe$code NA),
+      # sinon les indicateurs terrain aval verraient un CRS " sans code ".
       if (is.na(terra::crs(r, describe = TRUE)$code)) terra::crs(r) <- "EPSG:2154"
       return(r)
     }
     cli::cli_alert_info(
-      "Cached LiDAR {toupper(product)} mosaic does not cover the requested area — regenerating"
+      "Cached LiDAR {toupper(product)} mosaic does not cover the requested area \u2014 regenerating"
     )
   }
 
-  # v0.38.3 — the previous global COPC short-circuit (return every
+  # v0.38.3 - the previous global COPC short-circuit (return every
   # cached .copc.laz the moment one exists) was NOT extent-aware: it
   # returned zone A's tiles for a zone B request, and froze an
   # incomplete set forever after an interrupted download. Removed.
   # We always query the WFS for the tiles covering the current bbox;
   # the per-tile cache in the download loop below (file.exists +
-  # file.size > 100 guard) still skips tiles already on disk — so a
+  # file.size > 100 guard) still skips tiles already on disk - so a
   # same-zone recompute does zero network I/O, a different zone only
   # fetches its missing tiles, and an interrupted set self-heals on
   # the next run.
@@ -3488,12 +3488,12 @@ download_ign_lidar_hd <- function(bbox,
     # When nemeton >= 0.48.0 exposes the probe helper, classify the
     # failing URLs (404 / 403 / timeout / dns / server_error) so the
     # user gets actionable diagnostics instead of a laconic "failed":
-    # 404 = production retardée côté IGN, timeout = réseau saturé, etc.
+    # 404 = production retardee cote IGN, timeout = reseau sature, etc.
     if ("probe_ign_lidar_tiles" %in% getNamespaceExports("nemeton")) {
       tryCatch({
         probe <- nemeton::probe_ign_lidar_tiles(download_urls)
         # Accept either a named character vector or a data.frame with
-        # a `category` column — both are documented contracts of the
+        # a `category` column - both are documented contracts of the
         # helper across minor revisions.
         cats <- if (is.data.frame(probe) && "category" %in% names(probe)) {
           probe$category
@@ -3631,11 +3631,11 @@ find_url_column <- function(tiles_sf) {
 #' @description
 #' Derives a safe on-disk cache filename for each LiDAR HD tile URL.
 #'
-#' The IGN Géoplateforme delivers MNH/MNT/MNS dalles through a WMS
-#' `GetMap` request (`…/wms-r?…&FORMAT=image/geotiff&…&FILENAME=LHD_…tif`),
+#' The IGN Geoplateforme delivers MNH/MNT/MNS dalles through a WMS
+#' `GetMap` request (`.../wms-r?...&FORMAT=image/geotiff&...&FILENAME=LHD_...tif`),
 #' not a static file. `basename()` on such a URL returns query-string
-#' junk (`geotiff&…&CRS=EPSG:2154&BBOX=…&FILENAME=…tif`) carrying `:` and
-#' `,`, which are illegal in Windows filenames — so the download write
+#' junk (`geotiff&...&CRS=EPSG:2154&BBOX=...&FILENAME=...tif`) carrying `:` and
+#' `,`, which are illegal in Windows filenames - so the download write
 #' fails and every tile is reported missing even though the dalle exists.
 #' We therefore prefer the canonical name carried by the `FILENAME=`
 #' query parameter, fall back to a clean basename (static-file URLs, e.g.
@@ -3661,7 +3661,7 @@ extract_tile_names <- function(urls, file_ext) {
       nm <- utils::URLdecode(sub("^[?&][^=]+=", "", m))
     }
 
-    # 2) Clean basename — only when it has no leftover URL separators.
+    # 2) Clean basename - only when it has no leftover URL separators.
     if (is.na(nm) || !nzchar(nm)) {
       bn <- basename(u)
       if (grepl(ext_rx, bn) && !grepl("[?&=:,]", bn)) {
@@ -3731,9 +3731,9 @@ download_lidar_tile <- function(url, dest_file) {
 #' @noRd
 mosaic_lidar_tiles <- function(tile_files, output_file) {
   tryCatch({
-    # LiDAR HD IGN est en EPSG:2154 par définition ; on stampe l'autorité si le
-    # WKT source est dégénéré (describe$code NA) pour ne pas propager un CRS
-    # « sans code » dans le cache mosaïque (spec 027, hygiène CRS à la source).
+    # LiDAR HD IGN est en EPSG:2154 par definition ; on stampe l'autorite si le
+    # WKT source est degenere (describe$code NA) pour ne pas propager un CRS
+    # " sans code " dans le cache mosaique (spec 027, hygiene CRS a la source).
     .stamp_2154 <- function(r) {
       if (is.na(terra::crs(r, describe = TRUE)$code)) terra::crs(r) <- "EPSG:2154"
       r
@@ -3781,7 +3781,7 @@ mosaic_lidar_tiles <- function(tile_files, output_file) {
 #' @description
 #' Converts raw indicator metrics to a standardized 0-100 score.
 #' Indicators that already return 0-100 scores pass through unchanged.
-#' Raw metrics (m³/ha, tC/ha, km/ha, etc.) are scaled using ecologically
+#' Raw metrics (m3/ha, tC/ha, km/ha, etc.) are scaled using ecologically
 #' meaningful reference values for temperate forests.
 #'
 #' @param indicator Character. Indicator name.
@@ -3794,40 +3794,40 @@ normalize_indicator <- function(indicator, values) {
   # Reference maxima for indicators that return raw metrics
   # Values beyond ref_max are capped at 100
   #
-  # Indicators already returning 0-100 scores → NULL (just clamp):
+  # Indicators already returning 0-100 scores -> NULL (just clamp):
   #   biodiversity (B1-B3), air (A1-A2), fertility (F1-F2),
   #   landscape (L1-L2), temporal (T1-T2), risks (R1-R4),
   #   naturalness (N1-N3), indicateur_p3_qualite_bois (P3)
   ref_max <- switch(indicator,
     # Carbon: biomass in tC/ha, typical temperate forest max ~150 tC/ha
     "indicateur_c1_biomasse" = 150,
-    # Carbon: NDVI in 0-1 scale — special handling below
+    # Carbon: NDVI in 0-1 scale - special handling below
     "indicateur_c2_ndvi" = NULL,
     # Water: hydrographic network density in m/ha (50 m/ha = well-watered forest)
     "indicateur_w1_reseau" = 50,
-    # Water: wetland/water surface coverage (%) — 5% coverage = max score
+    # Water: wetland/water surface coverage (%) - 5% coverage = max score
     "indicateur_w2_zones_humides" = 5,
-    # Water: TWI — special handling below
+    # Water: TWI - special handling below
     "indicateur_w3_humidite" = NULL,
-    # Social: distance to roads (m) — special inverse handling below
+    # Social: distance to roads (m) - special inverse handling below
     "indicateur_s1_routes" = NULL,
-    # Social: distance to buildings (m) — special inverse handling below
+    # Social: distance to buildings (m) - special inverse handling below
     "indicateur_s2_bati" = NULL,
     # Social: population within buffers
     "indicateur_s3_population" = 10000,
-    # Production: standing volume in m³/ha (tuto 02 formula range ~100-800)
+    # Production: standing volume in m3/ha (tuto 02 formula range ~100-800)
     "indicateur_p1_volume" = 800,
-    # Production: annual increment in m³/ha/yr
+    # Production: annual increment in m3/ha/yr
     "indicateur_p2_station" = 15,
     # Energy: fuelwood potential in tep/ha/yr
     "indicateur_e1_bois_energie" = 0.3,
     # Energy: CO2 avoidance in tCO2/ha/yr (E1 * 2.5 * 0.85)
     "indicateur_e2_evitement" = 0.75,
-    # All other indicators already return 0-100 scores → NULL
+    # All other indicators already return 0-100 scores -> NULL
     NULL
   )
 
-  # Special handling: TWI rescale [2.5, 4.5] → [0, 100]
+  # Special handling: TWI rescale [2.5, 4.5] -> [0, 100]
   # Calibrated on typical temperate forest TWI range (sandy/draining substrates ~3,
   # clay/alluvial ~4-5). Tighter window gives meaningful differentiation.
   if (indicator == "indicateur_w3_humidite") {
@@ -3835,13 +3835,13 @@ normalize_indicator <- function(indicator, values) {
     return(pmin(100, pmax(0, (values - 2.5) / 2 * 100)))
   }
 
-  # Special handling: NDVI scale 0-1 → 0-100
+  # Special handling: NDVI scale 0-1 -> 0-100
   if (indicator == "indicateur_c2_ndvi") {
     return(pmin(100, pmax(0, values * 100)))
   }
 
-  # Special handling: distance indicators (inverse — closer = higher social value)
-  # 0m → score 100 (very accessible), 2000m+ → score 0 (very remote)
+  # Special handling: distance indicators (inverse - closer = higher social value)
+  # 0m -> score 100 (very accessible), 2000m+ -> score 0 (very remote)
   if (indicator %in% c("indicateur_s1_routes", "indicateur_s2_bati")) {
     return(pmin(100, pmax(0, 100 * (1 - values / 2000))))
   }
@@ -3917,7 +3917,7 @@ compute_all_indicators <- function(parcels,
   # do not emit the "Results is not an sf object" warning.
   if (!is.null(existing_results) && nrow(existing_results) == nrow(parcels)) {
     if (!inherits(existing_results, "sf")) {
-      existing_results$geometry_wkt <- NULL  # dropped — rebuilt below
+      existing_results$geometry_wkt <- NULL  # dropped - rebuilt below
       existing_results[[attr(parcels, "sf_column") %||% "geometry"]] <-
         sf::st_geometry(parcels)
       existing_results <- sf::st_as_sf(
@@ -3936,12 +3936,12 @@ compute_all_indicators <- function(parcels,
   n_indicators <- length(indicators)
   n_to_compute <- length(indicators_to_compute)
 
-  # BD Forêt enrichment (species/age) for the Production family and E1.
+  # BD Foret enrichment (species/age) for the Production family and E1.
   # In CHM mode (Theia FORMSpoT / LiDAR HD / Open-Canopy) the nemeton
   # functions indicateur_p1_volume / p2_station / p3_qualite_bois /
   # e1_bois_energie derive volume from canopy height and need a
   # `species` column (and `age` for P2) to pick the right allometric
-  # model. These are filled from BD Forêt V2 via
+  # model. These are filled from BD Foret V2 via
   # nemeton::enrich_parcels_bdforet. We enrich once up-front rather
   # than inside compute_single_indicator because the enrichment does
   # a spatial intersection that is not cheap.
@@ -3954,7 +3954,7 @@ compute_all_indicators <- function(parcels,
       enriched <- tryCatch(
         nemeton::enrich_parcels_bdforet(parcels, bd),
         error = function(e) {
-          cli::cli_warn("BD Forêt enrichment failed: {e$message}")
+          cli::cli_warn("BD For\u00eat enrichment failed: {e$message}")
           NULL
         }
       )
@@ -3963,11 +3963,11 @@ compute_all_indicators <- function(parcels,
         if (!"age" %in% names(parcels))     parcels$age     <- enriched$age
         n_ok <- sum(!is.na(parcels$species))
         cli::cli_alert_info(
-          "BD Forêt enrichment: species/age set on {n_ok}/{nrow(parcels)} UGF for Production indicators"
+          "BD For\u00eat enrichment: species/age set on {n_ok}/{nrow(parcels)} UGF for Production indicators"
         )
       }
     } else {
-      cli::cli_alert_info("Skipping BD Forêt enrichment: layer not available")
+      cli::cli_alert_info("Skipping BD For\u00eat enrichment: layer not available")
     }
   }
 
@@ -4001,7 +4001,7 @@ compute_all_indicators <- function(parcels,
       break
     }
 
-    # Clé de l'indicateur NMT pour la traduction
+    # Cle de l'indicateur NMT pour la traduction
     indicator_key <- ind
 
     if (!is.null(progress_callback)) {
@@ -4022,7 +4022,7 @@ compute_all_indicators <- function(parcels,
       # Compute indicator
       values <- compute_single_indicator(ind, parcels, layers)
 
-      # Add to results (raw values — normalization happens at family aggregation)
+      # Add to results (raw values - normalization happens at family aggregation)
       results[[ind]] <- values
       status[ind] <- "completed"
       completed <- completed + 1
@@ -4059,7 +4059,7 @@ compute_all_indicators <- function(parcels,
     ))
   }
 
-  # Summary of what failed — helps diagnose UGF-column compatibility
+  # Summary of what failed - helps diagnose UGF-column compatibility
   # issues with nemeton indicator functions.
   if (failed > 0) {
     cli::cli_h2("R\u00e9capitulatif des \u00e9checs de calcul ({failed}/{n_indicators} indicateur{?s})")
@@ -4144,20 +4144,20 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       bd <- resolve_vector_layer(layers, "bdforet")
       if (!is.null(bd)) args$bdforet <- bd
     }
-    # Forêt ancienne (spec 031) → N2 continuité. The sf mask is built once
+    # Foret ancienne (spec 031) -> N2 continuite. The sf mask is built once
     # up-front in start_computation() from the user-provided historical source
     # (build_foret_ancienne_layer) and staged in layers$vectors$foret_ancienne.
     # When absent, indicateur_n2_continuite falls back to its bdforet-only /
-    # default behaviour — no regression.
+    # default behaviour - no regression.
     if ("foret_ancienne" %in% func_args) {
       fa <- resolve_vector_layer(layers, "foret_ancienne")
       if (!is.null(fa)) args$foret_ancienne <- fa
     }
-    # Coupes rases (spec 030) → T3. The two SUFOSAT rasters (dates + proba)
+    # Coupes rases (spec 030) -> T3. The two SUFOSAT rasters (dates + proba)
     # and the user's window_years / min_proba are staged in layers$sufosat by
     # start_computation() when the source is enabled. Absent (source disabled
-    # or Theia fetch failed) → sufosat_dates stays NULL and
-    # indicateur_t3_coupes_rases returns NA per unit — no regression, no
+    # or Theia fetch failed) -> sufosat_dates stays NULL and
+    # indicateur_t3_coupes_rases returns NA per unit - no regression, no
     # re-inversion (the core inverts T3 in normalize_indicator).
     if ("sufosat_dates" %in% func_args && !is.null(layers$sufosat)) {
       args$sufosat_dates <- layers$sufosat$dates
@@ -4172,12 +4172,12 @@ compute_single_indicator <- function(indicator, parcels, layers) {
       args$min_proba <- layers$sufosat$min_proba
     }
 
-    # Rafraîchissement urbain (spec 032) → A5. La LST Theia est stagée dans
-    # layers$rasters$lst par start_computation() quand la source est activée.
-    # Absente (source désactivée, Theia non configuré, ou projet hors couverture
-    # urbaine) → lst reste NULL et indicateur_a5_rafraichissement renvoie NA par
-    # unité. A5 est à sens direct : aucune inversion côté app. buffer_m (rayon de
-    # l'anneau de référence) est propagé s'il a été saisi ; sinon défaut cœur.
+    # Rafraichissement urbain (spec 032) -> A5. La LST Theia est stagee dans
+    # layers$rasters$lst par start_computation() quand la source est activee.
+    # Absente (source desactivee, Theia non configure, ou projet hors couverture
+    # urbaine) -> lst reste NULL et indicateur_a5_rafraichissement renvoie NA par
+    # unite. A5 est a sens direct : aucune inversion cote app. buffer_m (rayon de
+    # l'anneau de reference) est propage s'il a ete saisi ; sinon defaut coeur.
     if ("lst" %in% func_args) {
       lst <- resolve_raster_layer(layers, "lst")
       if (!is.null(lst)) args$lst <- lst
@@ -4195,7 +4195,7 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     # For the four CHM-required indicators (P1/P2/P3/E1), a missing
     # CHM means the nemeton function would fall back to inventory mode
     # and fail with a cryptic "Missing required fields" error. We stop
-    # early here with an explicit, translatable message instead — the
+    # early here with an explicit, translatable message instead - the
     # other indicators of the run are unaffected.
     if ("chm" %in% func_args) {
       chm <- resolve_raster_layer(layers, "chm")
@@ -4243,7 +4243,7 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     }
 
     # Spectral diversity (biodivMapR) forwarded to B4 (alpha / Shannon)
-    # and L3 (beta / Bray-Curtis) — nemeton >= 0.110.0, spec 028. The
+    # and L3 (beta / Bray-Curtis) - nemeton >= 0.110.0, spec 028. The
     # object is produced ONCE per run by compute_spectral_diversity()
     # over a Sentinel-2 reflectance cube and staged in `layers$spectral`
     # (see build_spectral_diversity()). Same name-resolved injection as
@@ -4256,7 +4256,7 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     }
 
     # F1 soil fertility: opt into the absolute SoilGrids CEC path
-    # (nemeton::cec_to_fertility_score — scores comparable across
+    # (nemeton::cec_to_fertility_score - scores comparable across
     # projects) instead of the legacy min-max "layer" mode. nemeton
     # fetches SoilGrids itself via load_raster_source(), so no
     # layer needs to be staged in `layers$rasters$soil`.
@@ -4269,7 +4269,7 @@ compute_single_indicator <- function(indicator, parcels, layers) {
     result <- do.call(func, args)
 
     # Extract the indicator value from result. The naming convention
-    # (family short code P1/R1/… -> value column) lives in ONE place,
+    # (family short code P1/R1/... -> value column) lives in ONE place,
     # nemeton::extract_indicator_value(), shared with the core dispatcher
     # so the two can never drift (nemeton >= 0.108.0). `exclude` passes the
     # pre-existing parcel columns so a freshly added value column wins.
@@ -4351,7 +4351,7 @@ save_indicators_incremental <- function(project_id, results, indicator) {
       computed_indicators = names(results)[
         vapply(names(results), function(col) {
           # A5 LST reconnu inconditionnellement ici (le garde !all(is.na) suffit :
-          # un A5 rural est tout-NA → non compté), évite un load metadata par save.
+          # un A5 rural est tout-NA -> non compte), evite un load metadata par save.
           (col %in% list_available_indicators() ||
              col == "indicateur_a5_rafraichissement") &&
             !all(is.na(results[[col]]))
@@ -4611,5 +4611,5 @@ get_computation_progress <- function(project_id) {
 
 # NB: aggregate_indicators_to_ug() was removed. Indicators are now
 # computed directly on the UGF geometries in a single pass by
-# compute_all_indicators() — there is nothing to aggregate post-hoc.
+# compute_all_indicators() - there is nothing to aggregate post-hoc.
 

@@ -1,4 +1,4 @@
-#' Domain Layer: Unités de Gestion (UG)
+#' Domain Layer: Unites de Gestion (UG)
 #'
 #' @description
 #' Pure domain logic for Management Units (UG). Contains constructors,
@@ -8,7 +8,7 @@
 #' - Parcelle cadastrale: immutable cadastral polygon
 #' - Tenement: smallest geometric subdivision (whole parcel or fragment)
 #' - UG: grouping of 1+ tenements = operational forestry unit
-#' - Groupe d'aménagement: functional classification of UGs
+#' - Groupe d'amenagement: functional classification of UGs
 #'
 #' Each command returns a new projet (functional immutability).
 #' All 5 invariants are enforced after every command.
@@ -19,7 +19,7 @@ NULL
 
 
 # ==============================================================================
-# Management groups (groupes d'aménagement / groupes de gestion / zones)
+# Management groups (groupes d'amenagement / groupes de gestion / zones)
 #
 # Codes, labels and colors are now loaded dynamically from
 # inst/config/groupes_amenagement.yaml via R/config_groupes.R, so that the
@@ -421,7 +421,7 @@ ug_assign_tenement <- function(projet, tenement_id, ug_id) {
 
   tenements$ug_id[tenements$tenement_id == tenement_id] <- ug_id
 
-  # Check if old UG is now empty → remove it
+  # Check if old UG is now empty -> remove it
   if (!any(tenements$ug_id == old_ug_id)) {
     ugs <- ugs[ugs$ug_id != old_ug_id, , drop = FALSE]
   }
@@ -517,7 +517,7 @@ ug_geometry <- function(projet, ug_id) {
 
   # Dissolve the tenements making up this UGF. S2 is strict about
   # self-touching vertices that often arise from splits / make_valid
-  # cascades — fall back to planar GEOS when S2 complains. We also
+  # cascades - fall back to planar GEOS when S2 complains. We also
   # make_valid each geometry first and after the union.
   prev_s2 <- sf::sf_use_s2()
   on.exit(sf::sf_use_s2(prev_s2), add = TRUE)
@@ -534,7 +534,7 @@ ug_geometry <- function(projet, ug_id) {
 
   # Normalise the result to (MULTI)POLYGON. st_union() may return a
   # GEOMETRYCOLLECTION if st_make_valid introduced sliver lines or
-  # points — those would break every indicateur_* function that
+  # points - those would break every indicateur_* function that
   # expects an area. We extract the polygon components and cast to
   # MULTIPOLYGON for consistency.
   out_type <- as.character(sf::st_geometry_type(out)[[1]])
@@ -670,7 +670,7 @@ ug_list <- function(projet, filter_groupe = NULL) {
     ugs <- ugs[!is.na(ugs$groupe) & ugs$groupe == filter_groupe, , drop = FALSE]
   }
 
-  # Backward compat: older projects don't have surface_sig_m2 → compute on the fly
+  # Backward compat: older projects don't have surface_sig_m2 -> compute on the fly
   if (!"surface_sig_m2" %in% names(tenements)) {
     tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
   }
@@ -772,7 +772,7 @@ ug_build_sf <- function(projet) {
 #'
 #' @description
 #' Checks the 5 core invariants:
-#' 1. Cadastral tiling: union(tenements) ≡ parcel for each parcel
+#' 1. Cadastral tiling: union(tenements) == parcel for each parcel
 #' 2. UG partition: every tenement belongs to exactly one UG
 #' 3. Non-emptiness: every UG has at least one tenement
 #' 4. Traceability: every UG can produce its cadastral composition

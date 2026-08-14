@@ -1,17 +1,17 @@
-#' RAG corpus administration module (spec 009.2 — consumes nemeton >= 0.63.0)
+#' RAG corpus administration module (spec 009.2 - consumes nemeton >= 0.63.0)
 #'
 #' @description
 #' Admin tab to curate the knowledge corpus that feeds the sourced AI
 #' perspectives (E7). Lets an administrator :
-#'   1. edit the writable manifest (CSV) — add / edit / delete documents ;
+#'   1. edit the writable manifest (CSV) - add / edit / delete documents ;
 #'   2. validate the manifest live (D5 licence guardrails) ;
 #'   3. import the corpus into the database (embeddings) asynchronously,
 #'      with progress + report ;
 #'   4. inspect the database inventory and delete a document.
 #'
-#' All business logic lives in `nemeton` (CLAUDE.md §1) ; this module only
+#' All business logic lives in `nemeton` (CLAUDE.md sect.1) ; this module only
 #' wires the exported functions to the UI. Every string goes through i18n
-#' (CLAUDE.md §3).
+#' (CLAUDE.md sect.3).
 #'
 #' @name mod_rag_admin
 #' @keywords internal
@@ -26,7 +26,7 @@ NULL
 #'
 #' Mirrors `can_edit_action_plan()` but restricts the privileged role
 #' set : only `admin` / `owner` / `proprietaire` may curate the corpus.
-#' Anonymous installs (no OAuth provider configured → empty
+#' Anonymous installs (no OAuth provider configured -> empty
 #' `user_roles`) fall back to TRUE so single-user / demo setups keep
 #' working without an identity provider.
 #'
@@ -40,7 +40,7 @@ can_admin_rag <- function(auth_state) {
   if (!authenticated) return(FALSE)
   roles <- tryCatch(auth_state[["user_roles"]] %||% character(),
                     error = function(e) character())
-  # Anonymous fallback: no provider → no roles → editor/admin by default.
+  # Anonymous fallback: no provider -> no roles -> editor/admin by default.
   if (length(roles) == 0L) return(TRUE)
   any(c("proprietaire", "owner", "admin") %in% tolower(roles))
 }
@@ -139,7 +139,7 @@ mod_rag_admin_ui <- function(id) {
         # Resync the writable manifest copy to the package-shipped corpus
         # seed (nemeton::reset_knowledge_manifest, >= 0.79.0). The writable
         # copy is created once then frozen, so it drifts from the seed
-        # across core releases — this restores it on demand.
+        # across core releases - this restores it on demand.
         shiny::actionButton(ns("reset_corpus"), i18n$t("rag_reset_corpus"),
                             icon = shiny::icon("rotate-left"),
                             class = "btn-outline-warning btn-sm"),
@@ -207,11 +207,11 @@ mod_rag_admin_ui <- function(id) {
 #' @param app_state Shared `reactiveValues` (reads `language`, `auth`).
 #'   May be NULL (defaults : French, anonymous-admin).
 #' @param con Live `DBIConnection` (or a `reactive()`/function returning
-#'   one) used for main-session inventory reads / deletes. NULL → the
+#'   one) used for main-session inventory reads / deletes. NULL -> the
 #'   module opens its own connection from `con_url`.
 #' @param con_url DB URL string (or a `reactive()`/function returning one).
 #'   NOT a live connection : the async worker opens its own connection.
-#'   NULL → resolved from `NEMETON_KNOWLEDGE_DB_URL` / `NEMETON_DB_URL`.
+#'   NULL -> resolved from `NEMETON_KNOWLEDGE_DB_URL` / `NEMETON_DB_URL`.
 #' @noRd
 mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
                                  con_url = NULL) {
@@ -323,7 +323,7 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
     # settings modal, which is destroyed/re-created when the user closes
     # and reopens it. Driving the render from a trigger (bumped on every
     # mutation) keeps the last computed value cached, so Shiny resends the
-    # *current* manifest when the DT output re-subscribes on reopen —
+    # *current* manifest when the DT output re-subscribes on reopen -
     # never the stale first snapshot. `man()` stays isolated so an inline
     # cell edit doesn't redraw mid-typing unless we explicitly ask for it.
     manifest_redraw <- shiny::reactiveVal(0L)
@@ -395,7 +395,7 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
     # ---- import / export manifest CSV -------------------------------------
     # Import : parse the uploaded file with the core reader (no parsing
     # logic app-side) and load it into the editable table. The on-disk
-    # CSV is NOT touched until the user clicks Save — so an import can be
+    # CSV is NOT touched until the user clicks Save - so an import can be
     # reviewed / fixed first. Validation reacts immediately via issues().
     shiny::observeEvent(input$import_csv, {
       i18n  <- lang()
@@ -542,7 +542,7 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
     # ---- async import -----------------------------------------------------
     # Heartbeat file : the worker writes its progress here, the main
     # session polls it via invalidateLater (a `future` worker cannot
-    # write a main-process reactiveVal — pièges techniques §4).
+    # write a main-process reactiveVal - pieges techniques sect.4).
     hb_file <- tempfile(fileext = ".rds")
 
     task <- shiny::ExtendedTask$new(
@@ -555,8 +555,8 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
         }
         promises::future_promise({
           if (!nzchar(url)) stop("no_db_url")
-          # OPEN A NEW CONNECTION INSIDE THE WORKER — a DBI connection
-          # is not shareable across processes (pièges techniques §1).
+          # OPEN A NEW CONNECTION INSIDE THE WORKER - a DBI connection
+          # is not shareable across processes (pieges techniques sect.1).
           con_w <- nemeton::db_connect(url)
           on.exit(try(nemeton::db_disconnect(con_w), silent = TRUE),
                   add = TRUE)
@@ -598,7 +598,7 @@ mod_rag_admin_server <- function(id, app_state = NULL, con = NULL,
         return()
       }
       if (isTRUE(input$fresh)) {
-        # Destructive rebuild → confirmation modal first.
+        # Destructive rebuild -> confirmation modal first.
         i18n <- lang()
         shiny::showModal(shiny::modalDialog(
           title = i18n$t("rag_fresh_confirm_title"),

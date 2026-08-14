@@ -17,11 +17,11 @@ NULL
 #'   format_elapsed(3725) -> "1 h 02 min 05 s"
 #'   format_elapsed(NA)   -> "?"
 #'
-#' v0.106.5 (spec 008 §5, consolidation) — mince adaptateur sur
-#' `nemeton::format_duration()` (cœur >= 0.155.0). L'implémentation locale,
-#' dupliquée du cœur, est retirée : une seule source de vérité pour le format
-#' des durées (règle #2 — l'app consomme, le cœur décide). Comportement
-#' identique, cas limites inclus (NULL / NA / négatif / non-numérique -> "?").
+#' v0.106.5 (spec 008 sect.5, consolidation) - mince adaptateur sur
+#' `nemeton::format_duration()` (coeur >= 0.155.0). L'implementation locale,
+#' dupliquee du coeur, est retiree : une seule source de verite pour le format
+#' des durees (regle #2 - l'app consomme, le coeur decide). Comportement
+#' identique, cas limites inclus (NULL / NA / negatif / non-numerique -> "?").
 #'
 #' @param secs Numeric. Elapsed duration in seconds.
 #' @return Character scalar.
@@ -282,12 +282,12 @@ mod_progress_server <- function(id, compute_state, app_state) {
     # tiles) are handled in one place. The extra paste() fallback
     # on an unrecognised task preserves the legacy behaviour:
     # instead of leaking a raw "chm_tile:rvb:2:28" to the UI,
-    # show the base "Calcul en cours…" label with the task
+    # show the base "Calcul en cours..." label with the task
     # string appended (useful for debugging).
     translate_task <- function(task) {
       out <- translate_task_message(task, i18n)
       if (identical(out, task)) {
-        # translate_task_message returned the raw task → unknown kind.
+        # translate_task_message returned the raw task -> unknown kind.
         if (nzchar(task)) {
           return(paste(i18n$t("computing"), task))
         }
@@ -315,7 +315,7 @@ mod_progress_server <- function(id, compute_state, app_state) {
         indicateur_f2_erosion = "Fertilit\u00e9 - \u00c9rosion",
         indicateur_l2_fragmentation = "Paysage - Fragmentation",
         indicateur_l1_sylvosphere = "Paysage - Ratio bordure",
-        indicateur_l3_het_spectrale = "Paysage - Hétérogénéité spectrale",
+        indicateur_l3_het_spectrale = "Paysage - H\u00e9t\u00e9rog\u00e9n\u00e9it\u00e9 spectrale",
         indicateur_t1_anciennete = "Temporel - Anciennet\u00e9",
         indicateur_t2_changement = "Temporel - Changement",
         indicateur_r1_feu = "Risque - Incendie",
@@ -351,7 +351,7 @@ mod_progress_server <- function(id, compute_state, app_state) {
 
     # ========================================
     # send_running_update(): push progress to UI via sendCustomMessage.
-    # Called from later::later polling loop in mod_home.R — runs OUTSIDE
+    # Called from later::later polling loop in mod_home.R - runs OUTSIDE
     # the reactive system so it does NOT trigger Shiny busy state.
     # ========================================
     send_running_update <- function(state) {
@@ -484,7 +484,7 @@ mod_progress_server <- function(id, compute_state, app_state) {
       new_show_complete <- identical(status, COMPUTE_STATUS$COMPLETED)
       new_show_error <- identical(status, COMPUTE_STATUS$ERROR)
 
-      # Skip running states — handled by send_running_update via later::later
+      # Skip running states - handled by send_running_update via later::later
       if (!new_show_complete && !new_show_error) return()
 
       shiny::isolate({

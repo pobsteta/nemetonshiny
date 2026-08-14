@@ -1,4 +1,4 @@
-# reGénération — orchestration service (spec 027, L4)
+# reGeneration - orchestration service (spec 027, L4)
 #
 # Non-Shiny application layer for the climate-vulnerability read. All business
 # logic (microclimate exposure, soil water balance, priority index, and the
@@ -12,7 +12,7 @@
 # See CLAUDE.md rule #1/#2: no business logic in the app; modules go through
 # services; services call nemeton::*.
 
-#' Column contract of a reGénération run (spec 027 §7)
+#' Column contract of a reGeneration run (spec 027 sect.7)
 #'
 #' The full set of per-UGF columns produced by a run, persisted (PostGIS) and
 #' exported (GeoPackage). A given run may leave some as NA when the
@@ -38,7 +38,7 @@ REGEN_OUTPUT_COLUMNS <- c(
 #'
 #' Calls `fn()` (a nemeton engine/indicator). On success returns its `units`
 #' result; on error, records an actionable message in `env$warnings` and
-#' returns `units` unchanged (the missing columns stay absent → NA downstream,
+#' returns `units` unchanged (the missing columns stay absent -> NA downstream,
 #' no crash). Engine-missing errors from the core are already actionable.
 #' @noRd
 # Core engine messages are formatted with cli and carry ANSI colour escapes;
@@ -53,12 +53,12 @@ REGEN_OUTPUT_COLUMNS <- c(
   if (is.null(out) || !inherits(out, "sf")) units else out
 }
 
-#' Orchestrate a full reGénération analysis for a set of UGF
+#' Orchestrate a full reGeneration analysis for a set of UGF
 #'
 #' @description
-#' Sequences the core calls (spec 027 §1-2): year detection → microclimatic
-#' sensitivity → soil water balance → microclimate sub-indicators (A3/A4/W4/R6)
-#' → BILJOU-enriched R3 → priority index. Each engine step is fed from
+#' Sequences the core calls (spec 027 sect.1-2): year detection -> microclimatic
+#' sensitivity -> soil water balance -> microclimate sub-indicators (A3/A4/W4/R6)
+#' -> BILJOU-enriched R3 -> priority index. Each engine step is fed from
 #' `precomputed` outputs when provided and degrades gracefully otherwise. No
 #' re-inversion is done here (R3/R6 keep their sense; the core owns inversion).
 #'
@@ -88,21 +88,21 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
   hydric_only <- isTRUE(cfg$hydric_only)
   i18n <- get_i18n(get_app_options()$language %||% "fr")
 
-  # 1. Reference years (average / heatwave) — user override or E-OBS detection.
+  # 1. Reference years (average / heatwave) - user override or E-OBS detection.
   report("regen_detect_years", 0.05)
   years <- if (!is.null(cfg$year_moyenne) && !is.null(cfg$year_canicule)) {
     list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
   } else {
-    # `load_regeneration_precomputed()` expose la série estivale sous `eobs_tx`
-    # (Tmax JJA, une couche par année) et JAMAIS sous `eobs` — or c'est exactement
-    # le contrat attendu par le cœur. Lire `pc$eobs` seul revenait à toujours lui
-    # passer NULL, donc à échouer systématiquement dès que l'utilisateur n'avait
-    # pas fixé les deux années.
+    # `load_regeneration_precomputed()` expose la serie estivale sous `eobs_tx`
+    # (Tmax JJA, une couche par annee) et JAMAIS sous `eobs` - or c'est exactement
+    # le contrat attendu par le coeur. Lire `pc$eobs` seul revenait a toujours lui
+    # passer NULL, donc a echouer systematiquement des que l'utilisateur n'avait
+    # pas fixe les deux annees.
     eobs <- pc$eobs %||% pc$eobs_tx
     if (is.null(eobs)) {
-      # Sans série E-OBS, microclimate_detect_years() abandonne d'emblée. Ne pas
-      # l'appeler : l'avertissement « detect_years: … » ne renseignait sur rien
-      # d'autre que l'absence de donnée, déjà visible côté UI.
+      # Sans serie E-OBS, microclimate_detect_years() abandonne d'emblee. Ne pas
+      # l'appeler : l'avertissement " detect_years: ... " ne renseignait sur rien
+      # d'autre que l'absence de donnee, deja visible cote UI.
       list(year_moyenne = cfg$year_moyenne, year_canicule = cfg$year_canicule)
     } else {
       tryCatch(
@@ -116,10 +116,10 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
     }
   }
 
-  # 2. Microclimatic sensitivity (microclimf) — skipped in water-balance-only.
+  # 2. Microclimatic sensitivity (microclimf) - skipped in water-balance-only.
   #    Option A (garde) : n'appeler le moteur que si une sortie microclimf est
-  #    fournie via le cache (`precomputed`). Sinon message i18n propre plutôt
-  #    que l'erreur cœur brute. Le run réel du moteur (LiDAR) = option B opt-in.
+  #    fournie via le cache (`precomputed`). Sinon message i18n propre plutot
+  #    que l'erreur coeur brute. Le run reel du moteur (LiDAR) = option B opt-in.
   if (!hydric_only) {
     report("regen_sensibilite", 0.20)
     if (!is.null(pc$sensibilite)) {
@@ -132,8 +132,8 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
     }
   }
 
-  # 3. Soil water balance (biljouR, SAFRAN forcing). Même garde : sans sortie
-  #    BILJOU précalculée, on saute proprement (option B = entrées météo/sol).
+  # 3. Soil water balance (biljouR, SAFRAN forcing). Meme garde : sans sortie
+  #    BILJOU precalculee, on saute proprement (option B = entrees meteo/sol).
   report("regen_bilan_hydrique", 0.40)
   if (!is.null(pc$biljou)) {
     units <- .regen_step(function() nemeton::regen_bilan_hydrique(
@@ -164,7 +164,7 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
     units, dem = pc$dem, biljou = pc$biljou),
     units, env, "indicateur_r3_secheresse")
 
-  # 6. Priority index (tab head) — generic by default; species = optional.
+  # 6. Priority index (tab head) - generic by default; species = optional.
   report("regen_indice_priorite", 0.90)
   units <- .regen_step(function() nemeton::indice_priorite_regen(
     units, species = cfg$species),
@@ -174,16 +174,16 @@ run_regeneration <- function(units, cfg = list(), precomputed = NULL,
   list(units = units, years = years, warnings = env$warnings)
 }
 
-#' Re-rank the priority index for a new target species — cheap, live
+#' Re-rank the priority index for a new target species - cheap, live
 #'
 #' The target species (`Essence cible`) only feeds the LAST step of
-#' `run_regeneration()` — `nemeton::indice_priorite_regen()` — which re-derives
+#' `run_regeneration()` - `nemeton::indice_priorite_regen()` - which re-derives
 #' `indice_priorite_regen` / `rang_sensibilite` from columns already present in an
-#' analysed result (`sensibilite`, `regen_hydrique`, …). Re-running the whole
+#' analysed result (`sensibilite`, `regen_hydrique`, ...). Re-running the whole
 #' analysis just to change the species would needlessly replay the upstream steps
 #' (incl. R3, which re-derives topography from the LiDAR DTM). This wrapper
 #' re-prioritises an existing result in place, so the choropleth can update live
-#' when the user picks another species — no engine, no heavy recompute.
+#' when the user picks another species - no engine, no heavy recompute.
 #'
 #' @param units An analysed `sf` (output of `run_regeneration()$units`).
 #' @param species Target-species key, or `NULL`/`""` for the generic index.
@@ -201,14 +201,14 @@ regen_reprioritize <- function(units, species = NULL) {
 #' Locate a cached E-OBS NetCDF for a project, without ever downloading
 #'
 #' `load_eobs_source()` caches the CDS archive as
-#' `<project>/cache/regeneration/eobs/eobs_<cds-var>-<period>-v…-….nc`. Reading it
-#' back through `nc =` bypasses CDS entirely — no network, no key. Returning
+#' `<project>/cache/regeneration/eobs/eobs_<cds-var>-<period>-v...-....nc`. Reading it
+#' back through `nc =` bypasses CDS entirely - no network, no key. Returning
 #' `NULL` when the file is absent is what keeps a tab render from silently firing
 #' an ~800 MB download.
 #'
 #' @param project_path Project root, or `NULL`.
 #' @param var `"tx"` (maximum temperature), `"rr"` (precipitation) or `"tg"`
-#'   (mean temperature, required by the ombrothermic diagram — spec 036 §3).
+#'   (mean temperature, required by the ombrothermic diagram - spec 036 sect.3).
 #' @return An existing `.nc` path, or `NULL`.
 #' @noRd
 regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr", "tg")) {
@@ -216,8 +216,8 @@ regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr", "tg")) {
   if (is.null(project_path)) return(NULL)
   dir <- file.path(project_path, "cache", "regeneration", "eobs")
   if (!dir.exists(dir)) return(NULL)
-  # Le nom encode la variable CDS, tirets à la place des soulignés
-  # (cf. `.eobs_cache_file()` côté cœur).
+  # Le nom encode la variable CDS, tirets a la place des soulignes
+  # (cf. `.eobs_cache_file()` cote coeur).
   pat <- switch(var,
     tx = "^eobs_maximum-temperature.*\\.nc$",
     rr = "^eobs_precipitation-amount.*\\.nc$",
@@ -227,13 +227,13 @@ regen_eobs_cached_nc <- function(project_path, var = c("tx", "rr", "tg")) {
   f[[1]]
 }
 
-#' Availability of the regional-context series (spec 027 §2.6)
+#' Availability of the regional-context series (spec 027 sect.2.6)
 #'
 #' Chaque vue de la carte de contexte a ses besoins : `tx` seule pour la tendance
-#' T°max, `rr` en plus pour la tendance précipitations et la bivariée. Le bouton
-#' « Auto (E-OBS) » ne rapatrie que `tx` ; `rr` a son propre bouton (~800 Mo).
-#' Le module s'appuie sur ce couple pour afficher `need_tx` / `need_rr` plutôt que
-#' de laisser un calcul échouer.
+#' Tdegmax, `rr` en plus pour la tendance precipitations et la bivariee. Le bouton
+#' " Auto (E-OBS) " ne rapatrie que `tx` ; `rr` a son propre bouton (~800 Mo).
+#' Le module s'appuie sur ce couple pour afficher `need_tx` / `need_rr` plutot que
+#' de laisser un calcul echouer.
 #'
 #' @return `list(tx = , rr = )` of logicals.
 #' @noRd
@@ -242,8 +242,8 @@ regen_context_availability <- function(project_path) {
        rr = !is.null(regen_eobs_cached_nc(project_path, "rr")))
 }
 
-# Chemins du cache du raster de contexte régional (SpatRaster + sidecar meta),
-# par VUE : "tx" (tendance T°max), "rr" (tendance précip), "bivariate" (croisement).
+# Chemins du cache du raster de contexte regional (SpatRaster + sidecar meta),
+# par VUE : "tx" (tendance Tdegmax), "rr" (tendance precip), "bivariate" (croisement).
 .regen_context_raster_paths <- function(project_path, view = "tx") {
   view <- match.arg(view, c("tx", "rr", "bivariate"))
   dir  <- file.path(project_path, "cache", "regeneration", "eobs")
@@ -251,7 +251,7 @@ regen_context_availability <- function(project_path) {
   list(tif = paste0(base, ".tif"), meta = paste0(base, ".meta.json"), dir = dir)
 }
 
-# Charge une série E-OBS sur l'AOI bufferisée, ou NULL.
+# Charge une serie E-OBS sur l'AOI bufferisee, ou NULL.
 .regen_load_eobs_buffered <- function(units, project_path, var, buffer_m) {
   nc <- regen_eobs_cached_nc(project_path, var)
   if (is.null(nc)) return(NULL)
@@ -260,21 +260,21 @@ regen_context_availability <- function(project_path) {
     error = function(e) NULL)
 }
 
-#' Downscaled E-OBS regional context raster (worker) — 3 vues, spec 027
+#' Downscaled E-OBS regional context raster (worker) - 3 vues, spec 027
 #'
-#' Produit un `SpatRaster` fin de contexte régional via le cœur (>= 0.153.0) qui
-#' auto-source une élévation grossière sur le buffer (`dem = NULL`, WMS IGN) — le
-#' MNT parcellaire n'est PAS passé :
-#'   * `view = "tx"`        -> `eobs_downscale(var="tx")`  (tendance T°max, °C/déc)
-#'   * `view = "rr"`        -> `eobs_downscale(var="rr")`  (tendance précip, mm/déc)
+#' Produit un `SpatRaster` fin de contexte regional via le coeur (>= 0.153.0) qui
+#' auto-source une elevation grossiere sur le buffer (`dem = NULL`, WMS IGN) - le
+#' MNT parcellaire n'est PAS passe :
+#'   * `view = "tx"`        -> `eobs_downscale(var="tx")`  (tendance Tdegmax, degC/dec)
+#'   * `view = "rr"`        -> `eobs_downscale(var="rr")`  (tendance precip, mm/dec)
 #'   * `view = "bivariate"` -> `eobs_downscale_bivariate(tx, rr)` (classes 1-9)
 #'
-#' Worker `future` : le pointeur SpatRaster ne traverse pas la frontière, donc le
-#' raster est écrit via `cache_path` et son `meta` en sidecar JSON ; le lecteur
+#' Worker `future` : le pointeur SpatRaster ne traverse pas la frontiere, donc le
+#' raster est ecrit via `cache_path` et son `meta` en sidecar JSON ; le lecteur
 #' `regeneration_context_cached()` les relit. Renvoie `need_tx`/`need_rr` si une
-#' série requise manque, sans jamais lever.
+#' serie requise manque, sans jamais lever.
 #'
-#' @return `list(cache_path, meta)` — `cache_path` = `NA` sans raster.
+#' @return `list(cache_path, meta)` - `cache_path` = `NA` sans raster.
 #' @noRd
 run_regeneration_context_raster <- function(units, project_path,
                                             view = "tx", buffer_m = 25000) {
@@ -327,7 +327,7 @@ regeneration_context_cached <- function(project_path, view = "tx") {
 #'
 #' Heavy (~800 MB from the Copernicus CDS) and network-bound: never called from a
 #' render, only from an explicit user action, inside a `future` worker.
-#' Idempotent — `load_eobs_source()` returns the cached file on a second call.
+#' Idempotent - `load_eobs_source()` returns the cached file on a second call.
 #'
 #' @return `TRUE` when the `.nc` is present afterwards.
 #' @noRd
@@ -335,8 +335,8 @@ regen_fetch_eobs_rr <- function(ugf, project_path, year_window = 10L) {
   if (!inherits(ugf, "sf") || is.null(project_path)) return(FALSE)
   cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
   if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
-  # Même fenêtre que la détection d'années : le cœur en dérive la période CDS,
-  # donc le nom de fichier — indispensable pour que le cache soit retrouvé ensuite.
+  # Meme fenetre que la detection d'annees : le coeur en derive la periode CDS,
+  # donc le nom de fichier - indispensable pour que le cache soit retrouve ensuite.
   end_year   <- as.integer(format(Sys.Date(), "%Y")) - 2L
   win        <- max(as.integer(year_window %||% 10L) + 2L, 7L)
   start_year <- max(2011L, end_year - win + 1L)
@@ -350,10 +350,10 @@ regen_fetch_eobs_rr <- function(ugf, project_path, year_window = 10L) {
 
 #' Download the E-OBS mean-temperature (`tg`) series into the project cache (opt-in)
 #'
-#' Required by the ombrothermic (Gaussen-Bagnouls) diagram — spec 036 §3 — which
+#' Required by the ombrothermic (Gaussen-Bagnouls) diagram - spec 036 sect.3 - which
 #' needs the *mean* temperature, whereas only `tx`/`rr` are cached by default.
 #' Modelled exactly on [regen_fetch_eobs_rr()] : heavy (~800 MB from the Copernicus
-#' CDS), network-bound, so never called from a render — only from an explicit user
+#' CDS), network-bound, so never called from a render - only from an explicit user
 #' action inside a `future` worker. `load_eobs_source()` maps `tg ->
 #' mean_temperature` (same CDS key family as `tx`/`rr`) and is idempotent.
 #'
@@ -363,8 +363,8 @@ regen_fetch_eobs_tg <- function(ugf, project_path, year_window = 10L) {
   if (!inherits(ugf, "sf") || is.null(project_path)) return(FALSE)
   cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
   if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
-  # Même fenêtre / dérivation de période que `rr` : indispensable pour que le nom
-  # de fichier soit reconstruit à l'identique et le cache retrouvé ensuite.
+  # Meme fenetre / derivation de periode que `rr` : indispensable pour que le nom
+  # de fichier soit reconstruit a l'identique et le cache retrouve ensuite.
   end_year   <- as.integer(format(Sys.Date(), "%Y")) - 2L
   win        <- max(as.integer(year_window %||% 10L) + 2L, 7L)
   start_year <- max(2011L, end_year - win + 1L)
@@ -376,11 +376,11 @@ regen_fetch_eobs_tg <- function(ugf, project_path, year_window = 10L) {
   !is.null(regen_eobs_cached_nc(project_path, "tg"))
 }
 
-#' Target-species option list for the reGénération selector
+#' Target-species option list for the reGeneration selector
 #'
 #' @description
-#' Delegates to `nemeton::regen_species_choices()` (the core owns the TFV →
-#' species-class mapping and the FRM/atlas tables). When `units` carry a BD Forêt
+#' Delegates to `nemeton::regen_species_choices()` (the core owns the TFV ->
+#' species-class mapping and the FRM/atlas tables). When `units` carry a BD Foret
 #' v2 TFV column (auto-detected among common names) the species actually present
 #' on the parcels are flagged (`present = TRUE`, `groupe = "present"`) and listed
 #' first. Falls back to the raw tolerance table if the core function is
@@ -392,7 +392,7 @@ regen_fetch_eobs_tg <- function(ugf, project_path, year_window = 10L) {
 #'   `NULL`.
 #' @noRd
 regeneration_species_choices <- function(units = NULL, lang = "fr") {
-  # Auto-détection d'une colonne TFV BD Forêt v2 (présence), sinon NULL.
+  # Auto-detection d'une colonne TFV BD Foret v2 (presence), sinon NULL.
   tfv_col <- NULL
   if (inherits(units, c("sf", "data.frame"))) {
     cand <- c("tfv_code", "code_tfv", "CODE_TFV", "tfv", "TFV", "CODE_TFV11", "codetfv")
@@ -404,7 +404,7 @@ regeneration_species_choices <- function(units = NULL, lang = "fr") {
                                    level = "species", lang = lang),
     error = function(e) NULL)
   if (is.data.frame(out) && nrow(out) > 0L) return(out)
-  # Repli : table de tolérances brute (comportement historique).
+  # Repli : table de tolerances brute (comportement historique).
   tryCatch(nemeton::regeneration_tolerances(), error = function(e) NULL)
 }
 
@@ -413,14 +413,14 @@ regeneration_species_choices <- function(units = NULL, lang = "fr") {
 #' @description
 #' Looks under \code{<project>/cache/regeneration/} for engine outputs produced
 #' offline (microclimf sensitivity, biljou water balance, PAI raster, summer
-#' micro rasters, E-OBS). Returns a named list with whatever is present — an
+#' micro rasters, E-OBS). Returns a named list with whatever is present - an
 #' empty list when nothing is cached, in which case \code{run_regeneration()}
 #' degrades gracefully (engine errors surfaced as actionable warnings). This is
 #' the app's forward hook: drop real engine outputs here and the run picks them
 #' up without code change.
 #'
 #' The R3 terrain \code{dem} slot is resolved separately via
-#' \code{.resolve_regen_dem()} — it reuses the LiDAR MNT / BD ALTI terrain model
+#' \code{.resolve_regen_dem()} - it reuses the LiDAR MNT / BD ALTI terrain model
 #' already fetched by the main compute pipeline (project root or
 #' \code{cache/layers/}), so R3 gets topographic drought modulation without a
 #' dedicated \code{cache/regeneration/dem.tif}.
@@ -428,7 +428,7 @@ regeneration_species_choices <- function(units = NULL, lang = "fr") {
 #' @param project_path Character. Project root, or NULL.
 #' @return A named list (possibly empty) of precomputed inputs.
 #' @noRd
-# Resolve the terrain DEM (MNT — elevation in meters) feeding R3's topographic
+# Resolve the terrain DEM (MNT - elevation in meters) feeding R3's topographic
 # drought modulation (slope / aspect / TWI). NOT the canopy height model
 # (`lidar_mnh_mosaic.tif` = MNH), which is a different layer. Mirrors the main
 # compute pipeline (service_compute.R): LiDAR HD MNT (1 m, NDP-1) is preferred,
@@ -439,9 +439,9 @@ regeneration_species_choices <- function(units = NULL, lang = "fr") {
   if (is.null(project_path) || !nzchar(project_path)) return(NULL)
   layers <- file.path(project_path, "cache", "layers")
   candidates <- c(
-    # explicit reGénération override (highest priority, back-compat)
+    # explicit reGeneration override (highest priority, back-compat)
     file.path(project_path, "cache", "regeneration", "dem.tif"),
-    # LiDAR HD MNT 1 m mosaic (NDP-1) — root then canonical cache
+    # LiDAR HD MNT 1 m mosaic (NDP-1) - root then canonical cache
     file.path(project_path, "lidar_mnt_mosaic.tif"),
     file.path(layers, "lidar_mnt_mosaic.tif"),
     file.path(layers, "lidar_mnt.tif"),
@@ -463,9 +463,9 @@ regeneration_species_choices <- function(units = NULL, lang = "fr") {
 load_regeneration_precomputed <- function(project_path) {
   if (is.null(project_path)) return(list())
   dir <- file.path(project_path, "cache", "regeneration")
-  # Le DEM terrain (R3) est résolu hors de `cache/regeneration` (LiDAR MNT /
-  # BD ALTI du pipeline principal) : il doit être disponible même sans dossier
-  # de précalcul reGénération dédié.
+  # Le DEM terrain (R3) est resolu hors de `cache/regeneration` (LiDAR MNT /
+  # BD ALTI du pipeline principal) : il doit etre disponible meme sans dossier
+  # de precalcul reGeneration dedie.
   dem <- .resolve_regen_dem(project_path)
   if (!dir.exists(dir)) {
     return(if (is.null(dem)) list() else list(dem = dem))
@@ -495,24 +495,24 @@ load_regeneration_precomputed <- function(project_path) {
     dem            = dem,
     eobs_tx        = read_ras("eobs_tx"),
     eobs_rr        = read_ras("eobs_rr"),
-    # Résultat R7 (gelées tardives) par UGF, écrit par run_regeneration_frost.
+    # Resultat R7 (gelees tardives) par UGF, ecrit par run_regeneration_frost.
     r7             = read_vec("r7")
   )
   # Drop absent entries so the run's `%||% list()` / is.null checks are clean.
   pc[!vapply(pc, is.null, logical(1))]
 }
 
-#' Inject the reGénération R6/R7 indicators into a family sf, when available
+#' Inject the reGeneration R6/R7 indicators into a family sf, when available
 #'
 #' R6 (microclimatic sensitivity) and R7 (late frost) are produced by the
-#' reGénération engine and persisted per UGF under `cache/regeneration/` as the
-#' raw columns `sensibilite` (R6) and `R7` (R7) — NOT under the canonical
+#' reGeneration engine and persisted per UGF under `cache/regeneration/` as the
+#' raw columns `sensibilite` (R6) and `R7` (R7) - NOT under the canonical
 #' `INDICATOR_FAMILIES$R` column names, and without a normalised variant. This
 #' reads them back and joins them by `ug_id` into `base_sf` under the canonical
 #' names `indicateur_r6_sensibilite` / `indicateur_r7_gel`, so the Familles tab
-#' *displays and counts* them next to R1-R5 as soon as a reGénération result
+#' *displays and counts* them next to R1-R5 as soon as a reGeneration result
 #' exists. Best-effort: returns `base_sf` unchanged when there is no persisted
-#' reGénération result or no `ug_id`. Display/count only — the values are raw
+#' reGeneration result or no `ug_id`. Display/count only - the values are raw
 #' (z-score / score), so they are NOT fed to `create_family_index` (which would
 #' need core-side normalisation to keep the R family score meaningful).
 #'
@@ -537,11 +537,11 @@ add_regen_r_indicators <- function(base_sf, project) {
     v <- df[[src_col]][match(ids, as.character(df$ug_id))]
     if (any(is.finite(suppressWarnings(as.numeric(v))))) v else NULL
   }
-  # R6 : injecter la sensibilité NORMALISÉE 0-100 (`sensibilite_score`, produite à
+  # R6 : injecter la sensibilite NORMALISEE 0-100 (`sensibilite_score`, produite a
   # la source par nemeton::regen_sensibilite >= 0.161.0) et non le z-score brut, afin
-  # qu'elle entre correctement dans le score de famille — `normalize_indicator` la
+  # qu'elle entre correctement dans le score de famille - `normalize_indicator` la
   # traite en passthrough 0-100. Repli sur le z-score `sensibilite` pour les caches
-  # reGénération antérieurs (affichage ; relancer l'analyse pour un score R6 exact).
+  # reGeneration anterieurs (affichage ; relancer l'analyse pour un score R6 exact).
   r6 <- joined(pc$sensibilite, "sensibilite_score")
   if (is.null(r6)) r6 <- joined(pc$sensibilite, "sensibilite")
   if (!is.null(r6)) base_sf[["indicateur_r6_sensibilite"]] <- r6
@@ -553,14 +553,14 @@ add_regen_r_indicators <- function(base_sf, project) {
 #' Rank the top-N regeneration species per UGF (spec 039)
 #'
 #' Thin app-service wrapper around `nemeton::regen_rank_species()` (>= 0.162.0).
-#' Given the reGénération result units — which carry the station columns the core
+#' Given the reGeneration result units - which carry the station columns the core
 #' scorer needs (`tmax_moyenne`/`d_tmax`, `vpd_canicule`, `rew_min`, `r7_gel_days`,
-#' `couverture_pct`) — it returns the long ranking data.frame with one row per
+#' `couverture_pct`) - it returns the long ranking data.frame with one row per
 #' (UGF x rank): `ug_id`, `rank`, `species_code`, `label`, `type`, `suitability`
 #' (0-100), `limiting_factor`, `confidence`, `invasif`. Error/empty-safe: returns
-#' `NULL` when the core cannot rank (missing geometry, empty species pool, …).
+#' `NULL` when the core cannot rank (missing geometry, empty species pool, ...).
 #'
-#' @param units The reGénération result sf (one row per UGF).
+#' @param units The reGeneration result sf (one row per UGF).
 #' @param top_n Number of species to keep per UGF.
 #' @param region Species-pool region passed to the core (default "BFC").
 #' @return The long ranking data.frame, or `NULL`.
@@ -578,28 +578,28 @@ regeneration_species_ranking <- function(units, top_n = 3L, region = "BFC") {
 }
 
 # ============================================================================
-# Moteur microclimf réel (option B, spec 027 L1) — opt-in, coûteux, async.
+# Moteur microclimf reel (option B, spec 027 L1) - opt-in, couteux, async.
 #
 # Le chemin *moteur* de `nemeton::regen_sensibilite` (portage du prototype
-# validé sur données réelles) construit la grille LiDAR-HD, télécharge
-# ERA5-Land (mcera5/ecmwfr → identifiants CDS) et lance microclimf par année.
-# On le câble en réutilisant la grille LiDAR HD déjà produite par le pipeline
+# valide sur donnees reelles) construit la grille LiDAR-HD, telecharge
+# ERA5-Land (mcera5/ecmwfr -> identifiants CDS) et lance microclimf par annee.
+# On le cable en reutilisant la grille LiDAR HD deja produite par le pipeline
 # d'indices (`<project>/cache/layers/lidar_mnt` + `lidar_mnh`), en passant des
-# RÉPERTOIRES de tuiles (chemins sérialisables pour un worker `future`) et en
-# ne renvoyant qu'un `sf`. La sortie est écrite comme entrée `precomputed`
+# REPERTOIRES de tuiles (chemins serialisables pour un worker `future`) et en
+# ne renvoyant qu'un `sf`. La sortie est ecrite comme entree `precomputed`
 # (`sensibilite.gpkg`) pour que le run normal la consomme en fast-path.
 #
-# BILJOU reste sur la garde option A tant que l'acquisition météo/sol n'est pas
-# exposée par le cœur (brief cœur dédié).
+# BILJOU reste sur la garde option A tant que l'acquisition meteo/sol n'est pas
+# exposee par le coeur (brief coeur dedie).
 # ============================================================================
 
-#' Canopy-data provenance of a reGénération result (spec 033 D5)
+#' Canopy-data provenance of a reGeneration result (spec 033 D5)
 #'
 #' @description
-#' Reads (never recomputes — rule #1) the canopy structure source from the core
+#' Reads (never recomputes - rule #1) the canopy structure source from the core
 #' \code{nemeton::detect_ndp()} augmentation flags:
 #' \itemize{
-#'   \item \code{"satellite"} when the ML LAI fallback is active — the
+#'   \item \code{"satellite"} when the ML LAI fallback is active - the
 #'     augmentation set contains \code{"lai_ml"} (Sentinel-2 / PROSAIL, NDP 0).
 #'   \item \code{"lidar"} when a LiDAR-HD canopy / microclimate flag is present
 #'     (\code{"height_lidar"} / \code{"microclimate_model"}).
@@ -607,7 +607,7 @@ regeneration_species_ranking <- function(units, top_n = 3L, region = "BFC") {
 #' }
 #' The core owns the source decision and sets the flags; the app only displays.
 #'
-#' @param units A reGénération result \code{sf} (carries the NDP flags/attrs).
+#' @param units A reGeneration result \code{sf} (carries the NDP flags/attrs).
 #' @return \code{"lidar"}, \code{"satellite"}, or \code{NA_character_}.
 #' @noRd
 regen_canopy_provenance <- function(units) {
@@ -641,7 +641,7 @@ resolve_regen_lidar_grid <- function(project_path) {
   las_dir <- file.path(base, "lidar_nuage")
   has_tif <- function(d) dir.exists(d) &&
     length(list.files(d, pattern = "\\.tif$", ignore.case = TRUE)) > 0L
-  # `.copc.laz` se termine par `.laz` → capturé par le motif ci-dessous.
+  # `.copc.laz` se termine par `.laz` -> capture par le motif ci-dessous.
   has_las <- function(d) dir.exists(d) &&
     length(list.files(d, pattern = "\\.(las|laz)$", ignore.case = TRUE)) > 0L
   if (has_tif(mnt_dir) && has_tif(mnh_dir)) {
@@ -655,7 +655,7 @@ resolve_regen_lidar_grid <- function(project_path) {
 #'
 #' The engine path downloads ERA5-Land through `mcera5`/`ecmwfr`, which needs a
 #' Copernicus CDS key. Credentials are considered ready when `ecmwfr` is
-#' installed and a key is resolvable — from the environment (`CDSAPI_KEY` /
+#' installed and a key is resolvable - from the environment (`CDSAPI_KEY` /
 #' `ECMWFR_CDS_KEY`) or from the user's `ecmwfr` keyring. No secret is stored in
 #' the repo (rule #8): the deployment injects the key and calls
 #' `ecmwfr::wf_set_key()` at startup.
@@ -664,8 +664,8 @@ regen_cds_credentials_ready <- function() {
   if (!requireNamespace("ecmwfr", quietly = TRUE)) return(FALSE)
   env_key <- Sys.getenv("CDSAPI_KEY", unset = Sys.getenv("ECMWFR_CDS_KEY", unset = ""))
   if (nzchar(env_key)) return(TRUE)
-  # ecmwfr stocke la clé en variable d'environnement `ecmwfr_<user>` (ex.
-  # `ecmwfr_ecmwfr` posé dans ~/.Renviron) : détecter ce motif directement,
+  # ecmwfr stocke la cle en variable d'environnement `ecmwfr_<user>` (ex.
+  # `ecmwfr_ecmwfr` pose dans ~/.Renviron) : detecter ce motif directement,
   # `wf_get_key()` ne le remontant pas toujours sans argument `user`.
   env_all <- Sys.getenv()
   if (any(grepl("^ecmwfr_", names(env_all)) & nzchar(env_all))) return(TRUE)
@@ -689,9 +689,9 @@ regen_engine_prereqs <- function(project_path, forcing = "safran") {
   }
   grid <- resolve_regen_lidar_grid(project_path)
   cds  <- regen_cds_credentials_ready()
-  # microclimf : toujours LiDAR HD + ERA5 (clé CDS). BILJOU : SAFRAN sans clé,
-  # ERA5 avec clé (même que microclimf). Le moteur est lançable dès qu'AU MOINS
-  # un des deux est prêt (SAFRAN débloque le bilan hydrique sans Copernicus).
+  # microclimf : toujours LiDAR HD + ERA5 (cle CDS). BILJOU : SAFRAN sans cle,
+  # ERA5 avec cle (meme que microclimf). Le moteur est lancable des qu'AU MOINS
+  # un des deux est pret (SAFRAN debloque le bilan hydrique sans Copernicus).
   micro_ok  <- !is.null(grid) && cds
   biljou_ok <- !identical(forcing, "era5") || cds
   ok <- micro_ok || biljou_ok
@@ -712,25 +712,25 @@ regen_engine_prereqs <- function(project_path, forcing = "safran") {
     tmp <- file.path(out_dir, ".engine_status.json.tmp")
     fin <- file.path(out_dir, "engine_status.json")
     writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"), tmp)
-    file.rename(tmp, fin)   # rename atomique -> pas de lecture partielle côté poll
+    file.rename(tmp, fin)   # rename atomique -> pas de lecture partielle cote poll
   }, error = function(e) invisible(NULL))
 }
 
-# Journal d'exécution du moteur, en AJOUT (une ligne JSON par entrée) dans
+# Journal d'execution du moteur, en AJOUT (une ligne JSON par entree) dans
 # `engine.log` (spec 035 B3.a). Le moteur tourne dans un processus `future`
 # distinct : ses cli_warn/message partent sur le stdout du worker, que
-# `multisession` ne relaie pas. Seul le POST ntfy en sortait — d'où des erreurs
-# invisibles dans l'app et dans la console. Le disque, lui, traverse la frontière
-# de processus ET survit à la mort du worker (OOM) : c'est le seul post-mortem.
+# `multisession` ne relaie pas. Seul le POST ntfy en sortait - d'ou des erreurs
+# invisibles dans l'app et dans la console. Le disque, lui, traverse la frontiere
+# de processus ET survit a la mort du worker (OOM) : c'est le seul post-mortem.
 #
-# Fichier distinct de `engine_status.json`, que `.regen_write_phase()` ÉCRASE à
+# Fichier distinct de `engine_status.json`, que `.regen_write_phase()` ECRASE a
 # chaque phase et qui ne peut donc pas accumuler.
 #
-# `cat(file=)` écrit dans un fichier, pas sur la console : la règle #9
+# `cat(file=)` ecrit dans un fichier, pas sur la console : la regle #9
 # (pas de print/cat de prod) vise la sortie console. Jamais fatal.
 .regen_log <- function(out_dir, level, source, message) {
-  # `cat(file=)` sur un répertoire absent émet un WARNING avant de lever : sans
-  # le handler `warning`, un journal « jamais fatal » polluait quand même la sortie.
+  # `cat(file=)` sur un repertoire absent emet un WARNING avant de lever : sans
+  # le handler `warning`, un journal " jamais fatal " polluait quand meme la sortie.
   tryCatch({
     line <- jsonlite::toJSON(
       list(ts = as.integer(Sys.time()), level = level,
@@ -740,14 +740,14 @@ regen_engine_prereqs <- function(project_path, forcing = "safran") {
   }, error = function(e) invisible(NULL), warning = function(w) invisible(NULL))
 }
 
-# Réserve utile effective et provenance du sol rendu par `build_biljou_soil()`
-# (spec 035 B4.a). Une LISTE de `biljou_soil` de longueur `n` = une réserve utile
+# Reserve utile effective et provenance du sol rendu par `build_biljou_soil()`
+# (spec 035 B4.a). Une LISTE de `biljou_soil` de longueur `n` = une reserve utile
 # par UGF (SoilGrids). Un objet `biljou_soil` unique = sol uniforme : voulu si
 # l'utilisateur a saisi `ewm`, sinon repli SILENCIEUX de SoilGrids (files.isric.org
-# injoignable ; le `cli_warn` du cœur meurt sur le stderr du worker).
+# injoignable ; le `cli_warn` du coeur meurt sur le stderr du worker).
 #
-# Purement informatif : toute forme inattendue rend `source = NA` plutôt que de
-# lever — cette lecture ne doit jamais faire échouer le bilan hydrique.
+# Purement informatif : toute forme inattendue rend `source = NA` plutot que de
+# lever - cette lecture ne doit jamais faire echouer le bilan hydrique.
 .regen_soil_ewm <- function(sol, n, forced = FALSE) {
   none <- list(values = NULL, source = NA_character_)
   tryCatch({
@@ -763,8 +763,8 @@ regen_engine_prereqs <- function(project_path, forcing = "safran") {
   }, error = function(e) none)
 }
 
-# Tronque le journal au DÉBUT d'un run. Il doit survivre à la fin du run (le
-# post-mortem se lit après coup) — `.regen_cleanup_status()` n'y touche pas.
+# Tronque le journal au DEBUT d'un run. Il doit survivre a la fin du run (le
+# post-mortem se lit apres coup) - `.regen_cleanup_status()` n'y touche pas.
 .regen_log_reset <- function(out_dir) {
   tryCatch(unlink(file.path(out_dir, "engine.log")), error = function(e) invisible(NULL))
 }
@@ -772,7 +772,7 @@ regen_engine_prereqs <- function(project_path, forcing = "safran") {
 #' Run the real microclimf engine for a project and persist its output
 #'
 #' @description
-#' Heavy, opt-in path (LiDAR HD + ERA5 + microclimf, minutes→hours). Designed to
+#' Heavy, opt-in path (LiDAR HD + ERA5 + microclimf, minutes->hours). Designed to
 #' run inside a `future` worker: every input is serialisable (an `sf`, directory
 #' paths, a config list); no in-memory raster crosses the worker boundary. On
 #' success the per-UGF sensitivity `sf` is written to the project's regeneration
@@ -790,43 +790,43 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     stop("run_regeneration_engine: `units` must be an sf object", call. = FALSE)
   }
   i18n <- get_i18n(get_app_options()$language %||% "fr")
-  # Nom de projet pour l'en-tête ntfy (lu depuis metadata.json ; repli sur le
-  # nom de dossier). Purement cosmétique — jamais fatal.
+  # Nom de projet pour l'en-tete ntfy (lu depuis metadata.json ; repli sur le
+  # nom de dossier). Purement cosmetique - jamais fatal.
   .regen_project_name <- tryCatch(
     jsonlite::read_json(file.path(project_path, "metadata.json"))$name,
     error = function(e) NULL) %||% basename(project_path)
   out_dir <- file.path(project_path, "cache", "regeneration")
   if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
-  # Phase initiale : préparation de la grille LiDAR HD (avant tout emit cœur).
+  # Phase initiale : preparation de la grille LiDAR HD (avant tout emit coeur).
   .regen_write_phase(out_dir, "grille")
   warnings <- character(0)
   cached   <- character(0)
-  canopy   <- NA_character_       # provenance canopée effective (spec 033 D5)
+  canopy   <- NA_character_       # provenance canopee effective (spec 033 D5)
   lai_source <- NA_character_     # provenance du lai_max de BILJOU (spec 035 B1)
-  ewm_values <- NULL              # réserve utile effective, par UGF (spec 035 B4)
+  ewm_values <- NULL              # reserve utile effective, par UGF (spec 035 B4)
   ewm_source <- NA_character_     # "soilgrids" | "soilgrids_fallback" | "uniform"
-  # Initialisé ici (et pas seulement dans la branche BILJOU) : la valeur de retour
-  # le lit même quand cette branche est sautée (ERA5 sans clé CDS).
+  # Initialise ici (et pas seulement dans la branche BILJOU) : la valeur de retour
+  # le lit meme quand cette branche est sautee (ERA5 sans cle CDS).
   lai_max <- cfg$lai_max
   res <- units
   years <- c(cfg$year_moyenne, cfg$year_canicule)  # c() drops NULLs
   years <- if (length(years)) years else NULL
 
   # --- Notifications ntfy (opt-in strict, comme FAST/FORDEAD/RECONFORT). -----
-  # Ce corps EST le worker future ; les vars d'env se propagent → .ntfy_config()
-  # fonctionne côté worker. NULL si NEMETON_NTFY_TOPIC absent → tous les envois
-  # deviennent des no-op. `title` = ASCII (en-têtes ntfy non UTF-8 safe).
+  # Ce corps EST le worker future ; les vars d'env se propagent -> .ntfy_config()
+  # fonctionne cote worker. NULL si NEMETON_NTFY_TOPIC absent -> tous les envois
+  # deviennent des no-op. `title` = ASCII (en-tetes ntfy non UTF-8 safe).
   ntfy  <- .ntfy_config()
   tags0 <- c(default = "evergreen_tree", ok = "white_check_mark",
              skip = "fast_forward", warn = "warning", done = "checkered_flag")
-  # Callback fin (nemeton >= 0.142.0 ; `regen_expo:pai` dès 0.144.0) : mappe les
-  # événements cœur vers (a) le fichier d'état in-app engine_status.json — TOUJOURS,
-  # même sans ntfy, car c'est le canal de la notif bas-droite (brief engine-phase-
-  # status §2) — et (b) le push ntfy existant (opt-in strict). Toujours défini
-  # désormais : le coût est une écriture fichier atomique par phase (négligeable).
+  # Callback fin (nemeton >= 0.142.0 ; `regen_expo:pai` des 0.144.0) : mappe les
+  # evenements coeur vers (a) le fichier d'etat in-app engine_status.json - TOUJOURS,
+  # meme sans ntfy, car c'est le canal de la notif bas-droite (brief engine-phase-
+  # status sect.2) - et (b) le push ntfy existant (opt-in strict). Toujours defini
+  # desormais : le cout est une ecriture fichier atomique par phase (negligeable).
   on_prog <- function(p) {
     cur <- p$current %||% ""
-    # (a) fichier d'état pour la notif in-app (indépendant de ntfy).
+    # (a) fichier d'etat pour la notif in-app (independant de ntfy).
     switch(cur,
       "regen_expo:pai" =
         .regen_write_phase(out_dir, "pai", list(source = p$source %||% NA)),
@@ -838,13 +838,13 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       "regen_expo:complete" = .regen_write_phase(out_dir, "exposition"),
       "regen_biljou:start"  = .regen_write_phase(out_dir, "biljou", list(n = p$n)),
       "regen_biljou:complete" = .regen_write_phase(out_dir, "biljou"),
-      # Réserve utile SoilGrids (spec 035 B1.e) : un événement par horizon de
+      # Reserve utile SoilGrids (spec 035 B1.e) : un evenement par horizon de
       # profondeur, puis complete/unavailable. `unavailable` n'est pas une erreur
-      # (le cœur retombe sur un sol uniforme) → on n'affiche pas de phase dédiée.
+      # (le coeur retombe sur un sol uniforme) -> on n'affiche pas de phase dediee.
       "ewm:layer"    = .regen_write_phase(out_dir, "ewm", list(i = p$i, n = p$n)),
       "ewm:complete" = .regen_write_phase(out_dir, "ewm"),
       NULL)
-    # (b) push ntfy existant (inchangé) — no-op si NEMETON_NTFY_TOPIC absent.
+    # (b) push ntfy existant (inchange) - no-op si NEMETON_NTFY_TOPIC absent.
     if (!is.null(ntfy)) {
       msg <- tryCatch(switch(cur,
         "regen_expo:era5" = sprintf(i18n$t("regen_ntfy_era5"),
@@ -862,13 +862,13 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     }
     invisible()
   }
-  # Journal d'exécution : tronqué ici, jamais en fin de run (B3.a).
+  # Journal d'execution : tronque ici, jamais en fin de run (B3.a).
   .regen_log_reset(out_dir)
   .regen_log(out_dir, "info", "engine", i18n$t("regen_ntfy_start"))
 
-  # B3.d — ne pas avaler l'échec de ntfy. `.ntfy_send()` renvoie FALSE en cas
-  # d'échec (et quand `cfg` est NULL, c'est-à-dire opt-out : rien à signaler).
-  # Perdre silencieusement le canal de notification est précisément ce qui rendait
+  # B3.d - ne pas avaler l'echec de ntfy. `.ntfy_send()` renvoie FALSE en cas
+  # d'echec (et quand `cfg` est NULL, c'est-a-dire opt-out : rien a signaler).
+  # Perdre silencieusement le canal de notification est precisement ce qui rendait
   # ce type de panne indiagnosticable.
   ntfy_ok <- .ntfy_send(ntfy, i18n$t("regen_ntfy_start"),
                         title = .ntfy_title("Regen", .regen_project_name),
@@ -877,37 +877,37 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     .regen_log(out_dir, "warning", "ntfy", i18n$t("regen_log_ntfy_failed"))
   }
 
-  # --- microclimf (LiDAR HD + ERA5) : grille LiDAR HD + clé CDS requises. ---
-  # Le cœur EXIGE la structure de végétation (PAI). On la fournit via `las`
-  # (dossier nuage LiDAR HD → PAI dérivé par pai_depuis_nuage, prioritaire) ou,
-  # à défaut, `pai` (repli LAI Sentinel-2/PROSAIL déjà caché par le bloc BILJOU).
-  # Sans structure, regen_sensibilite() abandonne AVANT tout ERA5 → on l'explicite
+  # --- microclimf (LiDAR HD + ERA5) : grille LiDAR HD + cle CDS requises. ---
+  # Le coeur EXIGE la structure de vegetation (PAI). On la fournit via `las`
+  # (dossier nuage LiDAR HD -> PAI derive par pai_depuis_nuage, prioritaire) ou,
+  # a defaut, `pai` (repli LAI Sentinel-2/PROSAIL deja cache par le bloc BILJOU).
+  # Sans structure, regen_sensibilite() abandonne AVANT tout ERA5 -> on l'explicite
   # au lieu de laisser un dossier micro_cache vide (fausse impression de run).
   grid <- resolve_regen_lidar_grid(project_path)
   if (!is.null(grid) && regen_cds_credentials_ready()) {
     veg_args <- list()
     if (!is.null(grid$las_dir)) {
-      veg_args$las <- grid$las_dir            # PAI dérivé du nuage (spec 033, LiDAR HD)
+      veg_args$las <- grid$las_dir            # PAI derive du nuage (spec 033, LiDAR HD)
       canopy <- "lidar"
     } else {
-      lai_r <- .regen_lai_fallback(res, out_dir, cfg)   # SpatRaster LAI S2/PROSAIL, caché
+      lai_r <- .regen_lai_fallback(res, out_dir, cfg)   # SpatRaster LAI S2/PROSAIL, cache
       if (!is.null(lai_r)) { veg_args$pai <- lai_r; canopy <- "satellite" }
     }
 
     if (length(veg_args)) {
-      # micro_cache créé UNIQUEMENT quand on va réellement lancer le moteur. Les
-      # era5_*.nc y persistent → un re-lancement reprend depuis le cache ; ne pas
-      # le vider entre deux tentatives (throttle CDS, cf. warning dédié).
+      # micro_cache cree UNIQUEMENT quand on va reellement lancer le moteur. Les
+      # era5_*.nc y persistent -> un re-lancement reprend depuis le cache ; ne pas
+      # le vider entre deux tentatives (throttle CDS, cf. warning dedie).
       micro_cache <- file.path(out_dir, "microclimf")
       if (!dir.exists(micro_cache)) dir.create(micro_cache, recursive = TRUE)
-      # Push début (c'est la phase ERA5 + microclimf, la plus longue).
+      # Push debut (c'est la phase ERA5 + microclimf, la plus longue).
       .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_start"), title = .ntfy_title("Regen", .regen_project_name),
                  tags = tags0[["default"]])
       # Cache PAI persistant (spec 027, brief pai-cache ; nemeton >= 0.146.2).
-      # Branche LiDAR seulement : le cœur relit cache/regeneration/pai.tif si la
-      # géométrie s'aligne (phase PAI éclair, ~38 min économisées/run), sinon
-      # recalcule depuis le nuage COPC + réécrit (auto-invalidation sur AOI/res).
-      # Ignoré côté repli satellite (`pai` déjà fourni) → ne le poser que si las.
+      # Branche LiDAR seulement : le coeur relit cache/regeneration/pai.tif si la
+      # geometrie s'aligne (phase PAI eclair, ~38 min economisees/run), sinon
+      # recalcule depuis le nuage COPC + reecrit (auto-invalidation sur AOI/res).
+      # Ignore cote repli satellite (`pai` deja fourni) -> ne le poser que si las.
       pai_arg <- if (!is.null(grid$las_dir))
         list(pai_cache = file.path(out_dir, "pai.tif")) else list()
       sens <- tryCatch(
@@ -918,7 +918,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
         error = function(e) {
           msg <- conditionMessage(e)
           # Throttle/coupure CDS pendant l'acquisition ERA5 (~12 req/an) : la
-          # structure est OK, c'est réseau → warning « relancez pour reprendre ».
+          # structure est OK, c'est reseau -> warning " relancez pour reprendre ".
           if (grepl("era5|mcera5|curl|rate.?limit|throttl|timeout|too many|429",
                     msg, ignore.case = TRUE)) {
             warnings <<- c(warnings, i18n$t("regen_engine_era5_interrupted"))
@@ -940,9 +940,9 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
                    tags = tags0[["ok"]])
       } else {
         if (dir.exists(micro_cache) && length(list.files(micro_cache)) == 0L) {
-          # Échec sans aucun fichier caché : retirer le dossier vide (ne pas
-          # laisser croire qu'un run a eu lieu). Les era5_*.nc déjà rapatriés
-          # (throttle CDS) sont préservés → reprise au re-lancement.
+          # Echec sans aucun fichier cache : retirer le dossier vide (ne pas
+          # laisser croire qu'un run a eu lieu). Les era5_*.nc deja rapatries
+          # (throttle CDS) sont preserves -> reprise au re-lancement.
           unlink(micro_cache, recursive = TRUE)
         }
         .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_skip"), title = .ntfy_title("Regen", .regen_project_name),
@@ -952,23 +952,23 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       warnings <- c(warnings, i18n$t("regen_engine_no_vegetation_structure"))
       .regen_log(out_dir, "warning", "microclimf",
                  i18n$t("regen_engine_no_vegetation_structure"))
-      # Phase sautée = information de premier plan : structure de végétation absente.
+      # Phase sautee = information de premier plan : structure de vegetation absente.
       .regen_write_phase(out_dir, "microclimf_skipped",
                          list(reason = i18n$t("regen_phase_skip_reason_structure")))
       .ntfy_send(ntfy, i18n$t("regen_ntfy_micro_skip"), title = .ntfy_title("Regen", .regen_project_name),
                  priority = "low", tags = tags0[["skip"]])
     }
   } else {
-    # Bloc microclimf entièrement sauté (cas RECONFORT) : pas de clé CDS au run,
-    # ou pas de grille LiDAR HD. pai_depuis_nuage() n'est jamais appelé, aucun
-    # microclimf/ créé, sensibilite.gpkg reste absent → afficher la raison plutôt
-    # que rester bloqué sur `grille` (BILJOU en SAFRAN peut, lui, réussir).
+    # Bloc microclimf entierement saute (cas RECONFORT) : pas de cle CDS au run,
+    # ou pas de grille LiDAR HD. pai_depuis_nuage() n'est jamais appele, aucun
+    # microclimf/ cree, sensibilite.gpkg reste absent -> afficher la raison plutot
+    # que rester bloque sur `grille` (BILJOU en SAFRAN peut, lui, reussir).
     reason <- if (!regen_cds_credentials_ready())
       i18n$t("regen_phase_skip_reason_cds") else i18n$t("regen_phase_skip_reason_structure")
     .regen_write_phase(out_dir, "microclimf_skipped", list(reason = reason))
   }
 
-  # --- BILJOU (SAFRAN par défaut, sans clé ; ERA5 => clé CDS). ---
+  # --- BILJOU (SAFRAN par defaut, sans cle ; ERA5 => cle CDS). ---
   forcing <- cfg$forcing %||% "safran"
   if (identical(forcing, "era5") && !regen_cds_credentials_ready()) {
     warnings <- c(warnings, i18n$t("regen_engine_prereq_cds"))
@@ -977,17 +977,17 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     biljou_cache <- file.path(out_dir, "biljou")
     if (!dir.exists(biljou_cache)) dir.create(biljou_cache, recursive = TRUE)
 
-    # lai_max : valeur UI si fournie ; sinon priorité au PAI structural LiDAR HD
-    # déjà dérivé du nuage et caché par microclimf (pai.tif). Il décrit la même
-    # canopée que celle du bilan hydrique et ne coûte pas une seconde de plus —
-    # avant spec 035 il n'était consommé que par microclimf, et BILJOU retombait
-    # sur le défaut cœur par type de peuplement (5 / 4,5). Repli NDP 0 inchangé :
+    # lai_max : valeur UI si fournie ; sinon priorite au PAI structural LiDAR HD
+    # deja derive du nuage et cache par microclimf (pai.tif). Il decrit la meme
+    # canopee que celle du bilan hydrique et ne coute pas une seconde de plus -
+    # avant spec 035 il n'etait consomme que par microclimf, et BILJOU retombait
+    # sur le defaut coeur par type de peuplement (5 / 4,5). Repli NDP 0 inchange :
     # LAI Sentinel-2/PROSAIL, seulement en l'absence de grille LiDAR HD.
-    # Dans les deux cas le cœur dérive le PLATEAU de LAI (percentile haut, pixels
-    # non-canopée exclus) — une moyenne zonale le sous-estimerait (spec 035 D5).
+    # Dans les deux cas le coeur derive le PLATEAU de LAI (percentile haut, pixels
+    # non-canopee exclus) - une moyenne zonale le sous-estimerait (spec 035 D5).
     lai_max <- cfg$lai_max
     if (is.null(lai_max)) {
-      pai_tif <- file.path(out_dir, "pai.tif")   # même chemin que le cache PAI
+      pai_tif <- file.path(out_dir, "pai.tif")   # meme chemin que le cache PAI
       if (file.exists(pai_tif)) {
         lai_max <- tryCatch(nemeton::lai_max_depuis_pai(res, pai_tif),
                             error = function(e) NULL)
@@ -1014,11 +1014,11 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     bil <- tryCatch({
       meteo <- nemeton::load_biljou_forcing(res, years = years, source = forcing,
                                             cache_dir = biljou_cache)
-      # Sol : SoilGrids 250 m par défaut (réserve utile dérivée par UGF via la
-      # fonction de pédotransfert Saxton & Rawls, spec 035 D3) → liste nommée par
-      # id d'UGF, consommée telle quelle par le cœur. Dégrade proprement en sol
+      # Sol : SoilGrids 250 m par defaut (reserve utile derivee par UGF via la
+      # fonction de pedotransfert Saxton & Rawls, spec 035 D3) -> liste nommee par
+      # id d'UGF, consommee telle quelle par le coeur. Degrade proprement en sol
       # uniforme si files.isric.org est injoignable. Un `ewm` saisi dans la
-      # sidebar force l'ancien comportement uniforme (rétrocompatibilité).
+      # sidebar force l'ancien comportement uniforme (retrocompatibilite).
       sol <- if (is.null(cfg$ewm)) {
         nemeton::build_biljou_soil(res, source = "soilgrids",
                                    rooting_depth_cm = cfg$rooting_depth_cm %||% 100,
@@ -1026,11 +1026,11 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       } else {
         nemeton::build_biljou_soil(res, ewm = cfg$ewm)
       }
-      # Provenance EFFECTIVE du sol (spec 035 B4.a) — purement informatif : ne doit
-      # JAMAIS faire échouer le bilan hydrique (cf. `.regen_soil_ewm`).
-      # `<-` et non `<<-` : le bloc d'un tryCatch() est évalué dans le frame de
+      # Provenance EFFECTIVE du sol (spec 035 B4.a) - purement informatif : ne doit
+      # JAMAIS faire echouer le bilan hydrique (cf. `.regen_soil_ewm`).
+      # `<-` et non `<<-` : le bloc d'un tryCatch() est evalue dans le frame de
       # l'appelant (contrairement aux handlers error=/warning=, qui sont des
-      # fonctions et exigent `<<-`). Un `<<-` ici écrirait dans l'environnement
+      # fonctions et exigent `<<-`). Un `<<-` ici ecrirait dans l'environnement
       # du package.
       ewm_info   <- .regen_soil_ewm(sol, nrow(res), forced = !is.null(cfg$ewm))
       ewm_values <- ewm_info$values
@@ -1045,8 +1045,8 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
       NULL
     })
 
-    # Repli SoilGrids → sol uniforme : jusqu'ici totalement silencieux. Le bilan
-    # hydrique n'est alors plus spatialisé par le sol ; l'utilisateur doit le savoir.
+    # Repli SoilGrids -> sol uniforme : jusqu'ici totalement silencieux. Le bilan
+    # hydrique n'est alors plus spatialise par le sol ; l'utilisateur doit le savoir.
     if (identical(ewm_source, "soilgrids_fallback")) {
       msg <- sprintf(i18n$t("regen_ewm_fallback_uniform"),
                      format(round(ewm_values[1], 0), trim = TRUE))
@@ -1055,7 +1055,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     }
     if (inherits(bil, "sf")) {
       # `bil` est un nouvel objet : reposer l'attribut, sinon detect_ndp() perd la
-      # provenance du LAI (badge canopée).
+      # provenance du LAI (badge canopee).
       if (!is.na(lai_source)) attr(bil, "lai_source") <- lai_source
       res <- bil
       tryCatch(sf::st_write(res, file.path(out_dir, "biljou.gpkg"),
@@ -1071,7 +1071,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
     }
   }
 
-  # --- Résumé de fin (jalon global). ---
+  # --- Resume de fin (jalon global). ---
   done_msg <- if (length(cached)) {
     sprintf(i18n$t("regen_ntfy_done"), paste(cached, collapse = ", "))
   } else {
@@ -1082,16 +1082,16 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
              priority = if (length(cached)) "default" else "low",
              tags = if (length(cached)) tags0[["done"]] else tags0[["warn"]])
   if (length(warnings)) {
-    .ntfy_send(ntfy, paste(warnings, collapse = " — "), title = .ntfy_title("Regen", .regen_project_name),
+    .ntfy_send(ntfy, paste(warnings, collapse = " \u2014 "), title = .ntfy_title("Regen", .regen_project_name),
                priority = "low", tags = tags0[["warn"]])
   }
 
-  # Phase terminale : le module lit `done` → retire la notif, puis supprime le
-  # fichier (§3.3). Le worker ne le supprime PAS ici (course avec le poll).
+  # Phase terminale : le module lit `done` -> retire la notif, puis supprime le
+  # fichier (sect.3.3). Le worker ne le supprime PAS ici (course avec le poll).
   .regen_write_phase(out_dir, "done")
 
-  # `lai_max` / `ewm_values` remontent pour l'affichage des valeurs dérivées
-  # (spec 035 B4.a) : sans eux, rien à l'écran ne distingue un lai_max par UGF
+  # `lai_max` / `ewm_values` remontent pour l'affichage des valeurs derivees
+  # (spec 035 B4.a) : sans eux, rien a l'ecran ne distingue un lai_max par UGF
   # d'un scalaire, et la spatialisation reste invisible.
   list(units = res, warnings = warnings, cached = cached, canopy = canopy,
        lai_source = lai_source, lai_max = lai_max, ewm = ewm_values,
@@ -1100,7 +1100,7 @@ run_regeneration_engine <- function(units, project_path, cfg = list()) {
 
 #' Is the meteoland engine available (Suggests) ?
 #'
-#' `meteoland_daily_grid()` and the frost engine degrade to `NULL` without it —
+#' `meteoland_daily_grid()` and the frost engine degrade to `NULL` without it -
 #' the UI greys the frost option out and explains why. Kept app-side so the
 #' module can test availability without loading the (heavy) namespace.
 #' @noRd
@@ -1108,8 +1108,8 @@ regen_meteoland_available <- function() {
   requireNamespace("meteoland", quietly = TRUE)
 }
 
-# Clé de cache du stack Tmin : emprise UGF (bbox arrondie) + années + fenêtre doy.
-# Deux runs sur la même emprise/années/fenêtre réutilisent le .tif (patron pai.tif).
+# Cle de cache du stack Tmin : emprise UGF (bbox arrondie) + annees + fenetre doy.
+# Deux runs sur la meme emprise/annees/fenetre reutilisent le .tif (patron pai.tif).
 .regen_frost_cache_key <- function(units, years, doy) {
   bb <- tryCatch(round(as.numeric(sf::st_bbox(units))), error = function(e) c(0, 0, 0, 0))
   paste0(paste(bb, collapse = "_"),
@@ -1117,7 +1117,7 @@ regen_meteoland_available <- function() {
          "__doy", paste(doy, collapse = "-"))
 }
 
-#' Frost-risk engine (R7) — meteoland Tmin grid then indicateur_r7_gel (worker)
+#' Frost-risk engine (R7) - meteoland Tmin grid then indicateur_r7_gel (worker)
 #'
 #' Opt-in, cached, run in a background worker. Interpolates the daily minimum
 #' temperature over the late-frost spring window via
@@ -1128,7 +1128,7 @@ regen_meteoland_available <- function() {
 #'
 #' Degrades gracefully to `tmin = NULL` (`r7_status = "skipped_no_tmin"`, R7 = NA,
 #' absent from the radar) when meteoland is unavailable, the DEM/years are
-#' missing, or the grid cannot be produced — it NEVER errors and never blocks.
+#' missing, or the grid cannot be produced - it NEVER errors and never blocks.
 #'
 #' @param units Analysed or bare UGF `sf` (EPSG:2154).
 #' @param project_path Project root (for DEM resolution + cache).
@@ -1179,12 +1179,12 @@ run_regeneration_frost <- function(units, project_path, cfg = list()) {
     })
   status <- if ("r7_status" %in% names(units)) as.character(units$r7_status[1]) else NA_character_
 
-  # Persister le résultat R7 par UGF pour la restauration à la réouverture du
-  # projet (symétrique de biljou.gpkg / sensibilite.gpkg). Sans ça, la couche
-  # « Gelées tardives » disparaissait entre deux sessions : restore_regeneration()
-  # ne ré-attachait que l'exposition et le bilan hydrique. On n'écrit QUE si R7 a
-  # réellement été calculé (au moins une valeur finie) — un skip (tout NA) n'a
-  # rien à restaurer.
+  # Persister le resultat R7 par UGF pour la restauration a la reouverture du
+  # projet (symetrique de biljou.gpkg / sensibilite.gpkg). Sans ca, la couche
+  # " Gelees tardives " disparaissait entre deux sessions : restore_regeneration()
+  # ne re-attachait que l'exposition et le bilan hydrique. On n'ecrit QUE si R7 a
+  # reellement ete calcule (au moins une valeur finie) - un skip (tout NA) n'a
+  # rien a restaurer.
   finite_r7 <- "r7_gel_days" %in% names(units) &&
     any(is.finite(suppressWarnings(as.numeric(units$r7_gel_days))))
   if (!is.null(project_path) && finite_r7) {
@@ -1199,12 +1199,12 @@ run_regeneration_frost <- function(units, project_path, cfg = list()) {
   list(units = units, r7_status = status, tmin_available = !is.null(tmin))
 }
 
-#' Re-attach a cached reGénération result, without recomputing anything
+#' Re-attach a cached reGeneration result, without recomputing anything
 #'
 #' @description
 #' Restoration path for opening a project (spec 035 B2). Attaches only what the
-#' disk cache already holds — microclimate exposure and soil water balance, both
-#' via their `precomputed` fast-path — then recomputes the priority index, which
+#' disk cache already holds - microclimate exposure and soil water balance, both
+#' via their `precomputed` fast-path - then recomputes the priority index, which
 #' is a pure per-row arithmetic over those columns.
 #'
 #' Deliberately does **not** run `indicateur_r3_secheresse()` nor the A3/A4/W4/R6
@@ -1215,7 +1215,7 @@ run_regeneration_frost <- function(units, project_path, cfg = list()) {
 #' project open, where it froze the whole (single-threaded) Shiny session.
 #'
 #' Those radar columns belong to a real analysis, not to a restoration: the map,
-#' the priority index and the table — B2's acceptance criteria — need none of them.
+#' the priority index and the table - B2's acceptance criteria - need none of them.
 #'
 #' @param units An sf of the project UGF.
 #' @param precomputed The `load_regeneration_precomputed()` list.
@@ -1241,22 +1241,22 @@ restore_regeneration <- function(units, precomputed = NULL) {
   units <- .regen_step(function() nemeton::indice_priorite_regen(units),
                        units, env, "indice_priorite_regen")
 
-  # Sans indice, il n'y a ni choroplèthe ni table : ne rien restaurer plutôt que
+  # Sans indice, il n'y a ni choroplethe ni table : ne rien restaurer plutot que
   # d'afficher une carte vide.
   if (!"indice_priorite_regen" %in% names(units)) return(NULL)
 
-  # Ré-attacher R7 (gelées tardives) si un run gel a été persisté (r7.gpkg) :
-  # jointure pure par UGF, aucun recalcul. Restaure la couche « Gelées tardives »
-  # à l'ouverture, comme l'exposition et le bilan hydrique.
+  # Re-attacher R7 (gelees tardives) si un run gel a ete persiste (r7.gpkg) :
+  # jointure pure par UGF, aucun recalcul. Restaure la couche " Gelees tardives "
+  # a l'ouverture, comme l'exposition et le bilan hydrique.
   if (!is.null(pc$r7)) units <- .regen_attach_r7(units, pc$r7)
 
   list(units = units, warnings = character(0))
 }
 
-# Ré-attache les colonnes R7 (R7 / r7_gel_days / r7_status) d'un `r7.gpkg` restauré
-# sur les UGF courants. Jointure par `ug_id` si disponible des deux côtés ; repli
-# sur l'ordre des lignes si les effectifs coïncident. Ne clobbere jamais une
-# colonne déjà présente hors R7.
+# Re-attache les colonnes R7 (R7 / r7_gel_days / r7_status) d'un `r7.gpkg` restaure
+# sur les UGF courants. Jointure par `ug_id` si disponible des deux cotes ; repli
+# sur l'ordre des lignes si les effectifs coincident. Ne clobbere jamais une
+# colonne deja presente hors R7.
 .regen_attach_r7 <- function(units, r7_sf) {
   if (!inherits(units, "sf") || !inherits(r7_sf, "sf")) return(units)
   cols <- intersect(c("R7", "r7_gel_days", "r7_status"), names(r7_sf))
@@ -1265,9 +1265,9 @@ restore_regeneration <- function(units, precomputed = NULL) {
   idx <- if ("ug_id" %in% names(units) && "ug_id" %in% names(src)) {
     match(units$ug_id, src$ug_id)
   } else if (nrow(src) == nrow(units)) {
-    seq_len(nrow(units))            # repli : même ordre (mêmes UGF projet)
+    seq_len(nrow(units))            # repli : meme ordre (memes UGF projet)
   } else {
-    return(units)                   # incohérent : ne rien attacher
+    return(units)                   # incoherent : ne rien attacher
   }
   for (col in cols) units[[col]] <- src[[col]][idx]
   units
@@ -1303,13 +1303,13 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
     cache_dir <- file.path(project_path, "cache", "regeneration", "eobs")
     if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
   }
-  # E-OBS/CDS exige une plage d'années explicite : sans `years`, le cœur
-  # (`.eobs_cds_fetch`) sort en NULL AVANT tout téléchargement (le bouton
-  # affichait alors « indisponible » sans rien télécharger). On demande une
-  # fenêtre récente se terminant à `année_courante - 2` (latence de publication
-  # E-OBS ; le cœur pin la version 30.0e dont la dernière année pleine est
-  # 2024). `start` est borné à 2011 pour rester dans un seul bloc de période CDS
-  # (2011-2100) et ne déclencher qu'un téléchargement.
+  # E-OBS/CDS exige une plage d'annees explicite : sans `years`, le coeur
+  # (`.eobs_cds_fetch`) sort en NULL AVANT tout telechargement (le bouton
+  # affichait alors " indisponible " sans rien telecharger). On demande une
+  # fenetre recente se terminant a `annee_courante - 2` (latence de publication
+  # E-OBS ; le coeur pin la version 30.0e dont la derniere annee pleine est
+  # 2024). `start` est borne a 2011 pour rester dans un seul bloc de periode CDS
+  # (2011-2100) et ne declencher qu'un telechargement.
   end_year   <- as.integer(format(Sys.Date(), "%Y")) - 2L
   win        <- max(as.integer(year_window %||% 10L) + 2L, 7L)
   start_year <- max(2011L, end_year - win + 1L)
@@ -1333,7 +1333,7 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
   list(year_moyenne = yrs$year_moyenne, year_canicule = yrs$year_canicule)
 }
 
-#' Satellite LAI fallback (Sentinel-2 / PROSAIL) for reGénération (spec 033 D5)
+#' Satellite LAI fallback (Sentinel-2 / PROSAIL) for reGeneration (spec 033 D5)
 #'
 #' Delegates the LAI inversion to \code{nemeton::lai_sentinel2()} (the core owns
 #' the model) over the units' footprint for the reference summer, caching the
@@ -1360,7 +1360,7 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
 #' Aggregate a LAI/PAI raster to a per-unit maximum-LAI vector (spec 035 D5)
 #'
 #' Delegates to the core: a zonal *mean* underestimates `lai_max`, which
-#' `biljouR::biljou_lai()` reads as the phenology *plateau* — the more so as the
+#' `biljouR::biljou_lai()` reads as the phenology *plateau* - the more so as the
 #' unit holds canopy gaps. The core takes a high percentile (P90) after dropping
 #' non-canopy pixels. Accepts a `SpatRaster` or a path, hence serves both the
 #' LiDAR-HD PAI and the Sentinel-2 LAI branches.
@@ -1371,15 +1371,15 @@ run_regeneration_detect_years <- function(units, project_path, year_window = 10)
 
 
 # ---------------------------------------------------------------------------
-# Commentaires de fiche parcelle (reGénération) — persistés par projet
+# Commentaires de fiche parcelle (reGeneration) - persistes par projet
 #
-# Chaque UGF peut porter un commentaire libre (notes de régénération, conseil
-# IA inséré). Stockés dans `<project>/data/regen_comments.json` : un objet
-# JSON { ug_id: texte }. Écriture atomique (tmp -> rename), sur le patron de
-# save_action_plan(). Le PDF pourra les lire ultérieurement.
+# Chaque UGF peut porter un commentaire libre (notes de regeneration, conseil
+# IA insere). Stockes dans `<project>/data/regen_comments.json` : un objet
+# JSON { ug_id: texte }. Ecriture atomique (tmp -> rename), sur le patron de
+# save_action_plan(). Le PDF pourra les lire ulterieurement.
 # ---------------------------------------------------------------------------
 
-#' Path to a project's reGénération comments file
+#' Path to a project's reGeneration comments file
 #' @noRd
 regen_comments_path <- function(project_path) {
   data_dir <- file.path(project_path, "data")
@@ -1389,7 +1389,7 @@ regen_comments_path <- function(project_path) {
   file.path(data_dir, "regen_comments.json")
 }
 
-#' Load per-UGF reGénération comments for a project
+#' Load per-UGF reGeneration comments for a project
 #'
 #' @param project_id Character. Project id.
 #' @return Named list `ug_id -> comment` (empty list when none / on error).
@@ -1402,12 +1402,12 @@ load_regen_comments <- function(project_id) {
   out <- tryCatch(jsonlite::read_json(path, simplifyVector = FALSE),
                   error = function(e) NULL)
   if (!is.list(out)) return(list())
-  # Ne garder que des chaînes non vides, clés = ug_id.
+  # Ne garder que des chaines non vides, cles = ug_id.
   out <- lapply(out, function(x) as.character(x %||% ""))
   out[nzchar(unlist(out, use.names = FALSE))]
 }
 
-#' Persist per-UGF reGénération comments for a project
+#' Persist per-UGF reGeneration comments for a project
 #'
 #' @param project_id Character. Project id.
 #' @param comments Named list `ug_id -> comment`.
@@ -1419,7 +1419,7 @@ save_regen_comments <- function(project_id, comments) {
     cli::cli_warn("save_regen_comments: unknown project {project_id}")
     return(FALSE)
   }
-  # Nettoyage : chaînes, on écarte les commentaires vides.
+  # Nettoyage : chaines, on ecarte les commentaires vides.
   comments <- comments %||% list()
   comments <- lapply(comments, function(x) as.character(x %||% ""))
   comments <- comments[nzchar(unlist(comments, use.names = FALSE))]

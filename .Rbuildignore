@@ -16,3 +16,8 @@
 ^\.positai$
 ^dev$
 ^BRIEF-.*\.md$
+^\.Renviron$
+^\.Renviron\.txt$
+^CITATION\.cff$
+^LICENSE$
+^specs$

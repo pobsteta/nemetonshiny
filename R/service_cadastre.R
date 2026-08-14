@@ -330,7 +330,7 @@ calculate_parcel_stats <- function(parcels) {
     ))
   }
 
-  areas_ha <- parcels$contenance / 10000  # Convert m² to ha
+  areas_ha <- parcels$contenance / 10000  # Convert m2 to ha
 
   list(
     count = nrow(parcels),

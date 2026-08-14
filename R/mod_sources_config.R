@@ -4,21 +4,21 @@
 #' The two **opt-in Theia sources** of the application, grouped in their own
 #' tab of the settings (gear) modal:
 #'
-#'   * **Coupes rases (SUFOSAT)** — national Sentinel-1 clear-cut detection
+#'   * **Coupes rases (SUFOSAT)** - national Sentinel-1 clear-cut detection
 #'     feeding the T3 indicator (spec 030): toggle + `window_years` /
 #'     `min_proba`.
-#'   * **Rafraîchissement urbain (LST)** — Theia/Thermocity surface coolness
+#'   * **Rafraichissement urbain (LST)** - Theia/Thermocity surface coolness
 #'     feeding the A5 indicator (spec 032): toggle + `buffer_m`.
 #'
 #' Both blocks used to live in the project card (`mod_project`), where they
 #' stretched an already long form and were easy to miss. They belong with the
 #' other external-service settings, next to the Theia credentials they depend
-#' on — hence this module, mounted as a tab of `mod_theia_config`'s modal.
+#' on - hence this module, mounted as a tab of `mod_theia_config`'s modal.
 #'
 #' Both sources are **enabled by default** (see `project_sufosat_enabled()` /
 #' `project_lst_enabled()`): a project that never visited this tab still gets
 #' T3 and A5. The Theia fetch stays gated on credentials being configured, and
-#' a failed / out-of-coverage fetch degrades to `NA` per unit — never an error.
+#' a failed / out-of-coverage fetch degrades to `NA` per unit - never an error.
 #'
 #' @name mod_sources_config
 #' @keywords internal
@@ -59,10 +59,10 @@ mod_sources_config_server <- function(id, app_state) {
     ns <- session$ns
 
     # La langue peut changer en cours de session : i18n en reactive, pas en
-    # valeur figée à l'instanciation du module.
+    # valeur figee a l'instanciation du module.
     i18n_r <- shiny::reactive(get_i18n(app_state$language %||% "fr"))
 
-    # Bumpé après un enregistrement pour re-rendre les deux blocs.
+    # Bumpe apres un enregistrement pour re-rendre les deux blocs.
     refresh <- shiny::reactiveVal(0)
 
     # Le projet courant porte son id ; `app_state$project_id` sert de repli.
@@ -72,7 +72,7 @@ mod_sources_config_server <- function(id, app_state) {
       if (is.null(pid) || !nzchar(as.character(pid))) NULL else as.character(pid)
     }
 
-    # Recharge le projet après écriture des métadonnées, pour que le reste de
+    # Recharge le projet apres ecriture des metadonnees, pour que le reste de
     # l'app (calcul, radar) voie la nouvelle configuration sans rouvrir.
     .refresh_project <- function(pid) {
       refreshed <- tryCatch(load_project(pid), error = function(e) NULL)
@@ -85,7 +85,7 @@ mod_sources_config_server <- function(id, app_state) {
     })
 
     # ========================================
-    # Coupes rases → T3 (SUFOSAT, spec 030)
+    # Coupes rases -> T3 (SUFOSAT, spec 030)
     # ========================================
 
     output$sufosat_block <- shiny::renderUI({
@@ -104,7 +104,7 @@ mod_sources_config_server <- function(id, app_state) {
                          i18n$t("sources_need_project"))))
       }
 
-      # T3 needs the SUFOSAT rasters from Theia — gate on S3 credentials.
+      # T3 needs the SUFOSAT rasters from Theia - gate on S3 credentials.
       theia_ok <- isTRUE(tryCatch(theia_api_key_configured(),
                                   error = function(e) FALSE))
       if (!theia_ok) {
@@ -171,7 +171,7 @@ mod_sources_config_server <- function(id, app_state) {
     })
 
     # ========================================
-    # Rafraîchissement urbain → A5 (LST, spec 032)
+    # Rafraichissement urbain -> A5 (LST, spec 032)
     # ========================================
 
     output$lst_block <- shiny::renderUI({
@@ -190,7 +190,7 @@ mod_sources_config_server <- function(id, app_state) {
                          i18n$t("sources_need_project"))))
       }
 
-      # A5 needs the LST raster from Theia — gate on S3 credentials.
+      # A5 needs the LST raster from Theia - gate on S3 credentials.
       theia_ok <- isTRUE(tryCatch(theia_api_key_configured(),
                                   error = function(e) FALSE))
       if (!theia_ok) {

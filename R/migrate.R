@@ -5,7 +5,7 @@
 #' Creates default tenements and UGs where 1 parcel = 1 tenement = 1 UG.
 #'
 #' Migration is transparent: existing indicator values are preserved exactly.
-#' The UG layer is additive — it sits on top of the unchanged parcel data.
+#' The UG layer is additive - it sits on top of the unchanged parcel data.
 #'
 #' @name migrate
 #' @keywords internal
@@ -118,6 +118,6 @@ ensure_project_migrated <- function(project_id, projet = NULL) {
     return(projet)
   }
 
-  # No UG data found — run migration
+  # No UG data found - run migration
   migrate_project_v1_to_v2(project_id, projet)
 }

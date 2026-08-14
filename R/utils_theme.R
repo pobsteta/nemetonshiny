@@ -23,7 +23,7 @@ NULL
 #' \itemize{
 #'   \item Primary: Forest Green (#1B6B1B)
 #'   \item Secondary: Saddle Brown (#6B3710)
-#'   \item Success: Forest Green (#1B6B1B) — merged with Primary (single green)
+#'   \item Success: Forest Green (#1B6B1B) - merged with Primary (single green)
 #'   \item Info: Steel Blue (#2B5B8B)
 #'   \item Warning: Goldenrod (#9B7510)
 #'   \item Danger: Crimson (#B01030)
@@ -43,7 +43,7 @@ nemeton_theme <- function() {
     # All colors tested with WebAIM contrast checker
     primary = "#1B6B1B",
     secondary = "#6B3710",
-    success = "#1B6B1B",  # fusionné avec primary : un seul vert (UX boutons)
+    success = "#1B6B1B",  # fusionne avec primary : un seul vert (UX boutons)
     info = "#2B5B8B",
     warning = "#9B7510",
     danger = "#B01030",
@@ -281,17 +281,17 @@ get_family_colors <- function() {
 }
 
 
-#' Information "i" — the one and only pattern
+#' Information "i" - the one and only pattern
 #'
 #' @description
 #' The blue `circle-info` icon opening a popover, as used next to the titles of
-#' the Synthesis tab (`Score global`, `Radar`, `Récapitulatif par famille`).
+#' the Synthesis tab (`Score global`, `Radar`, `Recapitulatif par famille`).
 #' This is the app-wide pattern for an information affordance: every new "i"
 #' must go through this helper rather than re-inventing an icon.
 #'
 #' Deliberately a **popover** (click) and not a tooltip (hover): the content is
 #' explanatory prose, it must stay on screen while being read, and it may be
-#' scrollable — a hover tooltip vanishes as soon as the pointer moves toward it.
+#' scrollable - a hover tooltip vanishes as soon as the pointer moves toward it.
 #'
 #' @param ... Popover content, passed on to [bslib::popover()].
 #' @param placement Character. Popover side, see [bslib::popover()].
@@ -318,9 +318,9 @@ info_popover <- function(..., placement = "auto") {
 #'
 #' @description
 #' Same "i" as [info_popover()], but safe to put inside the label of a choice
-#' (`choiceNames` of [shiny::radioButtons()], a checkbox label, …).
+#' (`choiceNames` of [shiny::radioButtons()], a checkbox label, ...).
 #'
-#' A click anywhere in a `<label>` activates its control — so an "i" placed
+#' A click anywhere in a `<label>` activates its control - so an "i" placed
 #' there would SELECT the choice on its way to opening the popover. Informing
 #' oneself is not choosing, and the cost is real: on the map-layer radios, the
 #' selected layer triggers a raster read (and, in the regeneration context view,

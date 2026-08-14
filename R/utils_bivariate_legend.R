@@ -1,19 +1,19 @@
-# Légende bivariée 2D (matrice N×N) — pure visualisation.
+# Legende bivariee 2D (matrice NxN) - pure visualisation.
 #
-# Câblée sur la carte « Contexte régional (E-OBS) ». Le cœur
+# Cablee sur la carte " Contexte regional (E-OBS) ". Le coeur
 # `nemeton::eobs_downscale_bivariate()` livre le raster `classe_bivariee`
 # (1..N*N) + `meta$palette` (`colors`, `classes`, `ncol`). Il classe en 5 par axe
-# (25 classes, `ncol = 5`), comme l'IF IGN. AUCUN classement ici (règle 1) : le
-# classement/les bornes viennent du cœur ; l'app ne fait que dessiner la grille.
+# (25 classes, `ncol = 5`), comme l'IF IGN. AUCUN classement ici (regle 1) : le
+# classement/les bornes viennent du coeur ; l'app ne fait que dessiner la grille.
 #
-# Convention d'indexation (alignée sur `classe_bivariee` du cœur, N = ncol) :
-#   classe = (rang_tx - 1) * N + rang_rr, rang ∈ {1..N} (1 = classe basse).
-#   -> colonnes = précipitations (rr) croissantes vers la DROITE,
-#      lignes    = température (tx) croissante vers le HAUT.
+# Convention d'indexation (alignee sur `classe_bivariee` du coeur, N = ncol) :
+#   classe = (rang_tx - 1) * N + rang_rr, rang dans {1..N} (1 = classe basse).
+#   -> colonnes = precipitations (rr) croissantes vers la DROITE,
+#      lignes    = temperature (tx) croissante vers le HAUT.
 
-# Palette bivariée par défaut (repli tant que `meta$palette_matrix` est absent).
-# Schéma « chaud+sec = rouge foncé » (critique), « frais+humide = bleu-vert ».
-# 9 couleurs indexées par classe 1..9 (cf. convention ci-dessus).
+# Palette bivariee par defaut (repli tant que `meta$palette_matrix` est absent).
+# Schema " chaud+sec = rouge fonce " (critique), " frais+humide = bleu-vert ".
+# 9 couleurs indexees par classe 1..9 (cf. convention ci-dessus).
 bivariate_palette_default <- function() {
   c(
     # tx bas (frais)
@@ -25,35 +25,35 @@ bivariate_palette_default <- function() {
   )
 }
 
-#' Bivariate 2D legend (N×N grid) as an htmltools tag
+#' Bivariate 2D legend (NxN grid) as an htmltools tag
 #'
-#' Pure viz: renders an N×N colour matrix with two axis labels/arrows. Designed to
+#' Pure viz: renders an NxN colour matrix with two axis labels/arrows. Designed to
 #' sit in a Leaflet `addControl()` or an overlay `div` on the context map. The
 #' grid side N follows the core palette: `nemeton::eobs_downscale_bivariate()`
 #' returns 5 classes per axis (25 classes, `meta$palette$ncol = 5`). Pass that
 #' `ncol`; otherwise N is inferred from the palette length (sqrt), falling back to
-#' 3×3 for the built-in default.
+#' 3x3 for the built-in default.
 #'
 #' @param palette Named character of hex colours indexed by class `"1".."N*N"`
-#'   (core `meta$palette$colors`), or `NULL` for the built-in 3×3 default.
+#'   (core `meta$palette$colors`), or `NULL` for the built-in 3x3 default.
 #' @param axis_x Label of the horizontal axis (precipitations, low->high right).
 #' @param axis_y Label of the vertical axis (temperature, low->high up).
 #' @param title Optional legend title (main line, bold).
 #' @param subtitle Optional secondary line under the title (smaller, regular),
-#'   e.g. the parenthetical variable pair "(T°max estivale × précipitations)".
+#'   e.g. the parenthetical variable pair "(Tdegmax estivale x precipitations)".
 #' @param ncol Grid side N (core `meta$palette$ncol`); inferred from the palette
 #'   length when `NULL`.
 #' @return An `htmltools` tag.
 #' @noRd
-#' @param zero Optional `list(tmax=, precip=)` — fractional position (in `[0,1]`,
+#' @param zero Optional `list(tmax=, precip=)` - fractional position (in `[0,1]`,
 #'   mesured from the LOW end) of the no-change (0) line on each axis, from core
 #'   `meta$palette$zero`. Drawn as a white dashed line across the grid.
 #' @param x_range,y_range Optional numeric of the horizontal (precip) / vertical
 #'   (temperature) axis values, e.g. core `meta$breaks$precip` / `meta$breaks$tmax`.
 #'   Their min/max annotate the axis ends.
 bivariate_legend_html <- function(palette = NULL,
-                                  axis_x = "Précipitations",
-                                  axis_y = "T°max",
+                                  axis_x = "Pr\u00e9cipitations",
+                                  axis_y = "T\u00b0max",
                                   title = NULL,
                                   subtitle = NULL,
                                   ncol = NULL,
@@ -61,14 +61,14 @@ bivariate_legend_html <- function(palette = NULL,
                                   x_range = NULL,
                                   y_range = NULL) {
   pal <- palette %||% bivariate_palette_default()
-  # N = côté de la grille. Priorité au `ncol` fourni par le cœur ; sinon racine
-  # carrée du nombre de couleurs (25 -> 5, 9 -> 3). Repli 3 si indéterminable.
+  # N = cote de la grille. Priorite au `ncol` fourni par le coeur ; sinon racine
+  # carree du nombre de couleurs (25 -> 5, 9 -> 3). Repli 3 si indeterminable.
   n <- ncol %||% round(sqrt(length(pal)))
   n <- as.integer(n)
   if (length(n) != 1L || is.na(n) || n < 1L) n <- 3L
-  # Cellules un peu plus petites au-delà de 3×3, mais assez grandes pour rester
+  # Cellules un peu plus petites au-dela de 3x3, mais assez grandes pour rester
   # lisibles sans ascenseur (la classe `nmt-bivariate-control` retire le plafond
-  # de hauteur du contrôle leaflet, cf. custom.css).
+  # de hauteur du controle leaflet, cf. custom.css).
   px <- if (n > 3L) 22L else 20L
   W <- n * px; H <- n * px
   cell <- function(cls) {
@@ -79,8 +79,8 @@ bivariate_legend_html <- function(palette = NULL,
         px, px, col),
       title = paste0("classe ", cls))
   }
-  # Lignes tx de haut (fort) en bas (faible) ; colonnes rr croissantes à droite.
-  # class = (rang_tx - 1) * n + rang_rr, aligné sur `classe_bivariee` du cœur.
+  # Lignes tx de haut (fort) en bas (faible) ; colonnes rr croissantes a droite.
+  # class = (rang_tx - 1) * n + rang_rr, aligne sur `classe_bivariee` du coeur.
   grid_rows <- lapply(rev(seq_len(n)), function(rt) {
     htmltools::tags$div(
       style = "display:flex;",
@@ -93,9 +93,9 @@ bivariate_legend_html <- function(palette = NULL,
   frac <- function(z, k) { if (is.null(z)) return(NA_real_)
     v <- suppressWarnings(as.numeric(z[[k]])); if (length(v) != 1L) NA_real_ else v }
 
-  # Lignes « zéro » (pas de changement) en pointillé blanc, position fractionnaire
-  # fournie par le cœur (meta$palette$zero), mesurée depuis l'extrémité BASSE :
-  # rr croît vers la droite (gauche = bas), tx croît vers le haut (bas = bas).
+  # Lignes " zero " (pas de changement) en pointille blanc, position fractionnaire
+  # fournie par le coeur (meta$palette$zero), mesuree depuis l'extremite BASSE :
+  # rr croit vers la droite (gauche = bas), tx croit vers le haut (bas = bas).
   zp <- frac(zero, "precip"); zt <- frac(zero, "tmax")
   overlay <- list()
   if (is.finite(zp)) overlay <- c(overlay, list(htmltools::tags$div(
@@ -110,7 +110,7 @@ bivariate_legend_html <- function(palette = NULL,
     htmltools::tags$div(style = "display:flex;flex-direction:column;", grid_rows),
     overlay)
 
-  # Axe Y (température) : max en haut / label pivoté / min en bas, hauteur = grille.
+  # Axe Y (temperature) : max en haut / label pivote / min en bas, hauteur = grille.
   has_y <- any(is.finite(suppressWarnings(as.numeric(y_range))))
   y_col <- htmltools::tags$div(
     style = sprintf(paste0("display:flex;flex-direction:column;height:%dpx;",
@@ -120,10 +120,10 @@ bivariate_legend_html <- function(palette = NULL,
     htmltools::tags$div(
       style = paste0("writing-mode:vertical-rl;transform:rotate(180deg);",
                      "white-space:nowrap;font-size:11px;"),
-      paste0("↑ ", axis_y)),
+      paste0("\u2191 ", axis_y)),
     if (has_y) htmltools::tags$div(fmtv(min(as.numeric(y_range), na.rm = TRUE))))
 
-  # Axe X (précipitations) sous la grille (largeur = grille) : min / label / max.
+  # Axe X (precipitations) sous la grille (largeur = grille) : min / label / max.
   has_x <- any(is.finite(suppressWarnings(as.numeric(x_range))))
   x_row <- htmltools::tags$div(
     style = sprintf(paste0("display:flex;align-items:center;width:%dpx;margin-top:3px;",
@@ -131,7 +131,7 @@ bivariate_legend_html <- function(palette = NULL,
       if (has_x) "justify-content:space-between;" else "justify-content:center;"),
     if (has_x) htmltools::tags$span(fmtv(min(as.numeric(x_range), na.rm = TRUE))),
     htmltools::tags$span(style = "font-size:11px;white-space:nowrap;",
-                         paste0(axis_x, " →")),
+                         paste0(axis_x, " \u2192")),
     if (has_x) htmltools::tags$span(fmtv(max(as.numeric(x_range), na.rm = TRUE))))
 
   htmltools::tags$div(

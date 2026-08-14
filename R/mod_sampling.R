@@ -31,9 +31,9 @@ mod_sampling_ui <- function(id) {
   lang <- opts$language %||% "fr"
   i18n <- get_i18n(lang)
 
-  # Label + « i » d'information. Pattern UNIQUE de l'app : `info_popover()`,
-  # celui des titres de l'onglet Synthèse (icône bleue `circle-info` + popover
-  # au clic). Ne pas réintroduire d'icône d'information ad hoc ici.
+  # Label + " i " d'information. Pattern UNIQUE de l'app : `info_popover()`,
+  # celui des titres de l'onglet Synthese (icone bleue `circle-info` + popover
+  # au clic). Ne pas reintroduire d'icone d'information ad hoc ici.
   label_tt <- function(label, tooltip) {
     htmltools::tagList(label, " ", info_popover(tooltip, placement = "right"))
   }
@@ -46,7 +46,7 @@ mod_sampling_ui <- function(id) {
       width = 360,
       open = TRUE,
 
-      # Collapsible card — mirrors the "Informations projet" accordion
+      # Collapsible card - mirrors the "Informations projet" accordion
       # in the Selection tab (see mod_project.R).
       htmltools::tags$div(
         class = "card mb-3",
@@ -133,7 +133,7 @@ mod_sampling_ui <- function(id) {
                                     value = 35, min = 1, max = 200, step = 1)
               ),
 
-              # CV from BD Forêt v2
+              # CV from BD Foret v2
               shiny::conditionalPanel(
                 condition = sprintf("input['%s'] == 'bdforet'", ns("cv_source")),
                 shiny::selectInput(
@@ -261,7 +261,7 @@ mod_sampling_server <- function(id, app_state) {
       sf::st_transform(sf, 2154)
     })
 
-    # --- Zone d'étude from current project ---------------------------
+    # --- Zone d'etude from current project ---------------------------
     zone_etude <- shiny::reactive({
       units <- units_sf()
       if (is.null(units)) return(NULL)
@@ -310,7 +310,7 @@ mod_sampling_server <- function(id, app_state) {
     })
 
     # resolve_project_* are defensive (typed errors on NULL / "" /
-    # missing path) — no need for a pre-validation guard here.
+    # missing path) - no need for a pre-validation guard here.
     chm_raster <- shiny::reactive({
       pp <- project_path_r()
       tryCatch(nemeton::resolve_project_chm(pp, verbose = TRUE),
@@ -323,11 +323,11 @@ mod_sampling_server <- function(id, app_state) {
                error = function(e) NULL)
     })
 
-    # --- BD Forêt v2 overlay (cached during project compute) ---------
+    # --- BD Foret v2 overlay (cached during project compute) ---------
     # Reads <project>/cache/layers/bdforet.gpkg, normalises the TFV
     # key (trim + dashify + upper) and joins against
     # nemeton::bdforet_v2_mapping() via both the code and the label
-    # (IGN WFS often exposes the French libellé in the `tfv` field).
+    # (IGN WFS often exposes the French libelle in the `tfv` field).
     # Returns sf in EPSG:4326 with a `context_key` column the map
     # uses for colouring, or NULL when the cache is missing.
     bdforet_sf <- shiny::reactive({
@@ -417,7 +417,7 @@ mod_sampling_server <- function(id, app_state) {
       }
     })
 
-    # --- Compute CV from BD Forêt v2 cache ---------------------------
+    # --- Compute CV from BD Foret v2 cache ---------------------------
     # We reuse the cache populated by service_compute during a project
     # compute run: <project_path>/cache/layers/bdforet.gpkg. When
     # absent, surface a friendly notification pointing to the manual
@@ -461,7 +461,7 @@ mod_sampling_server <- function(id, app_state) {
       if (is.na(tfv_col)) {
         shiny::showNotification(
           sprintf("TFV column not found. Columns present: %s",
-                  paste(head(names(bd), 10), collapse = ", ")),
+                  paste(utils::head(names(bd), 10), collapse = ", ")),
           type = "error", duration = 10
         )
         return()
@@ -489,14 +489,14 @@ mod_sampling_server <- function(id, app_state) {
       # Diagnostic path: if no polygon was mappable, surface the
       # actual column used + a sample of unmapped values so the user
       # can see the mismatch (common cause: IGN WFS returns the label
-      # libellé_tfv instead of the code, or codes formatted without
+      # libelle_tfv instead of the code, or codes formatted without
       # the hyphens).
       if (is.na(res$cv) || isTRUE(res$coverage == 0)) {
-        sample_vals <- head(unique(as.character(res$unmapped)), 5)
+        sample_vals <- utils::head(unique(as.character(res$unmapped)), 5)
         shiny::showNotification(
           sprintf(
-            paste0("CV non calculable. Colonne utilisée : %s. ",
-                   "Codes non mappés (%d uniques) : %s."),
+            paste0("CV non calculable. Colonne utilis\u00e9e : %s. ",
+                   "Codes non mapp\u00e9s (%d uniques) : %s."),
             tfv_col,
             length(unique(res$unmapped)),
             if (length(sample_vals)) paste(sample_vals, collapse = ", ")
@@ -572,10 +572,10 @@ mod_sampling_server <- function(id, app_state) {
           htmltools::tags$li(
             htmltools::tags$strong(main),
             if (!is.null(r)) sprintf(
-              " — %.2f ha, contexte : %s%s",
+              " \u2014 %.2f ha, contexte : %s%s",
               ha, r$context_key,
               if (!is.na(alt)) paste0(" (alt : ", alt, ")") else ""
-            ) else sprintf(" — %.2f ha", ha)
+            ) else sprintf(" \u2014 %.2f ha", ha)
           )
         }
 
@@ -636,7 +636,7 @@ mod_sampling_server <- function(id, app_state) {
 
       # Immediate click-feedback toast, dispatched on the root
       # session so it lands in the top-level stack. Same pattern as
-      # the "Projet chargé" / retry toasts. The call to
+      # the "Projet charge" / retry toasts. The call to
       # create_sampling_plan() below can take a few seconds (GRTS
       # stratification over thousands of candidates) and the user
       # otherwise sees nothing until the plots appear on the map.
@@ -652,7 +652,7 @@ mod_sampling_server <- function(id, app_state) {
         session = root_session
       )
 
-      # Forest mask: reuse the project's cached BD Forêt v2 polygons
+      # Forest mask: reuse the project's cached BD Foret v2 polygons
       # (already filtered to context_key not NA = true forest) so that
       # sample points falling in water, fields, roads or coupe rase
       # are filtered out by the min_forest_cover = 0.7 constraint.
@@ -695,7 +695,7 @@ mod_sampling_server <- function(id, app_state) {
 
       # Native 1 m LiDAR HD mosaics are cropped to the AOI and
       # aggregated to ~5 m so terra::focal / terra::extract stay
-      # snappy (buffers = 15 m, focal window = 100 m — sub-metre
+      # snappy (buffers = 15 m, focal window = 100 m - sub-metre
       # precision brings no value here).
       chm_for_plan <- prep_sampling_raster(chm_raw, zone)
       mnt_for_plan <- prep_sampling_raster(dem_raw, zone)
@@ -751,7 +751,7 @@ mod_sampling_server <- function(id, app_state) {
           app_state$samples_refresh <- (app_state$samples_refresh %||% 0L) + 1L
         } else {
           # save_samples returned FALSE (cli_warn path: project not
-          # found, plots not sf, …) or threw. Surface explicitly so
+          # found, plots not sf, ...) or threw. Surface explicitly so
           # the user knows the plan won't be available to other tabs
           # after a restart, and the "register as zone" button stays
           # disabled.
@@ -779,7 +779,7 @@ mod_sampling_server <- function(id, app_state) {
     # Restore samples from disk on project change so the map repopulates
     # without the user having to regenerate a plan they already produced.
     # Pure additive logic: only sets sampling_rv$plots when something is
-    # actually loaded — never clears, so it can't race with the generate
+    # actually loaded - never clears, so it can't race with the generate
     # handler in the same flush. ignoreInit avoids re-running at session
     # startup (the inline isolate() block below handles that case).
     .restore_samples <- function(project) {
@@ -834,7 +834,7 @@ mod_sampling_server <- function(id, app_state) {
       invisible(TRUE)
     }
 
-    # Module is lazy-loaded after the user has already picked a project —
+    # Module is lazy-loaded after the user has already picked a project -
     # restore once at startup so the map is populated when the tab opens.
     shiny::isolate(.restore_samples(app_state$current_project))
 
@@ -875,7 +875,7 @@ mod_sampling_server <- function(id, app_state) {
     })
 
     # --- Map ---------------------------------------------------------
-    # Overlays (bottom to top on z-order): BD Forêt v2 (by context),
+    # Overlays (bottom to top on z-order): BD Foret v2 (by context),
     # UGF polygons, sampled plots. Each is drawn in its own leaflet
     # group so the layersControl lets the user toggle them.
     bdforet_palette <- function() {
@@ -884,7 +884,7 @@ mod_sampling_server <- function(id, app_state) {
                "futaie_irreguliere",
                "tsf_melange_futaie_taillis",
                "taillis_simple")
-      cols <- c("#2E7D32",  # sapin foncé
+      cols <- c("#2E7D32",  # sapin fonce
                 "#8BC34A",  # vert clair
                 "#00897B",  # sarcelle
                 "#827717",  # olive
@@ -960,7 +960,7 @@ mod_sampling_server <- function(id, app_state) {
                      "futaie_irreguliere",
                      "tsf_melange_futaie_taillis",
                      "taillis_simple"),
-          title = "BD Forêt v2", opacity = 0.8
+          title = "BD For\u00eat v2", opacity = 0.8
         )
         overlays <- c(overlays, "BD Foret")
       }
@@ -997,7 +997,7 @@ mod_sampling_server <- function(id, app_state) {
             dashArray = "6,6",
             group = "Parcours"
           )
-          # TSP legend — custom HTML control, since leaflet::addLegend
+          # TSP legend - custom HTML control, since leaflet::addLegend
           # only handles categorical / numeric palettes; we want inline
           # glyphs matching the map (dashed line + orienteering icons).
           tsp_legend_html <- sprintf(paste0(
@@ -1046,7 +1046,7 @@ mod_sampling_server <- function(id, app_state) {
             base, data = mid,
             radius = 5, weight = 1, color = "#333",
             fillColor = ~pal(type), fillOpacity = 0.9,
-            label = ~sprintf("%s (%s) — ordre %d",
+            label = ~sprintf("%s (%s) \u2014 ordre %d",
                              plot_id, type, visit_order),
             group = "Placettes"
           )
@@ -1068,7 +1068,7 @@ mod_sampling_server <- function(id, app_state) {
           base <- leaflet::addMarkers(
             base, data = start_pt,
             icon = icons$start,
-            label = ~sprintf("Départ — %s", plot_id),
+            label = ~sprintf("D\u00e9part \u2014 %s", plot_id),
             group = "Placettes"
           )
           if (nrow(base_plots) >= 2L) {
@@ -1076,7 +1076,7 @@ mod_sampling_server <- function(id, app_state) {
             base <- leaflet::addMarkers(
               base, data = end_pt,
               icon = icons$finish,
-              label = ~sprintf("Arrivée — %s", plot_id),
+              label = ~sprintf("Arriv\u00e9e \u2014 %s", plot_id),
               group = "Placettes"
             )
           }
@@ -1089,7 +1089,7 @@ mod_sampling_server <- function(id, app_state) {
       # in a dedicated observer below so that clicking "Envoyer vers
       # Terrain" from mod_action_plan does not force a full
       # renderLeaflet redraw (tile flicker / lost pan-zoom). But the
-      # LEGEND must be present from the first render — moving it
+      # LEGEND must be present from the first render - moving it
       # entirely to the proxy lost it intermittently because the
       # observer can fire before the map element is initialised on
       # the client, and queued leaflet-calls can be dropped in that
@@ -1119,7 +1119,7 @@ mod_sampling_server <- function(id, app_state) {
       }
       if (length(present_labels) > 0L) {
         # addLegend(colors=, labels=) preserves the order of the
-        # vectors strictly — using pal = colorFactor() would sort
+        # vectors strictly - using pal = colorFactor() would sort
         # the domain alphabetically and swap Over/Observation in
         # the legend swatches (regression from v0.23.9).
         base <- leaflet::addLegend(
@@ -1138,7 +1138,7 @@ mod_sampling_server <- function(id, app_state) {
         options = leaflet::layersControlOptions(collapsed = TRUE)
       )
 
-      # Zoom on the UGF extent, not the BD Forêt one (BD Forêt is
+      # Zoom on the UGF extent, not the BD Foret one (BD Foret is
       # fetched with a buffer and can be much larger than the actual
       # project). Keep the basemap view centred on the forest units.
       if (!is.null(units)) {
@@ -1187,7 +1187,7 @@ mod_sampling_server <- function(id, app_state) {
           radius = 6, weight = 1, color = "#333",
           fillColor = "#2ca02c", fillOpacity = 0.9,
           label = ~sprintf(
-            "%s — %s (UGF %s, an %s)",
+            "%s \u2014 %s (UGF %s, an %s)",
             plot_id, type, ug_id, annee_cible
           ),
           group = "Observations"
@@ -1196,7 +1196,7 @@ mod_sampling_server <- function(id, app_state) {
 
       # Rebuild the legend in place. addLegend(colors=, labels=) is
       # used instead of pal=colorFactor() because colorFactor sorts
-      # its domain alphabetically — that would map "Observation" to
+      # its domain alphabetically - that would map "Observation" to
       # the orange swatch (Over's position 2) and "Over" to the green
       # swatch (Observation's position 3), producing a legend that
       # contradicts the markers actually drawn on the map.

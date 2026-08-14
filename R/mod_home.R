@@ -119,10 +119,10 @@ mod_home_ui <- function(id) {
       mod_progress_ui(ns("progress")),
 
       # Carte UGF actions (map-based + global actions)
-      # Visible uniquement dans le sous-onglet « Carte UGF » : ces actions
+      # Visible uniquement dans le sous-onglet " Carte UGF " : ces actions
       # portent sur la carte des UGF, elles n'ont pas de sens ailleurs. Le
-      # séparateur est DANS le conditionalPanel, sinon il resterait seul en bas
-      # de la sidebar sur l'onglet « Carte cadastrale ».
+      # separateur est DANS le conditionalPanel, sinon il resterait seul en bas
+      # de la sidebar sur l'onglet " Carte cadastrale ".
       shiny::conditionalPanel(
         condition = sprintf("input['%s'] == 'tenements'", ns("main_tabs")),
         htmltools::hr(class = "my-3"),
@@ -158,7 +158,7 @@ mod_home_ui <- function(id) {
       ),
 
       # Tableau UGF actions (table-based actions: merge, split, rename, groupe)
-      # Visible uniquement dans le sous-onglet « Tableau UGF », pour la même
+      # Visible uniquement dans le sous-onglet " Tableau UGF ", pour la meme
       # raison que le bloc ci-dessus.
       shiny::conditionalPanel(
         condition = sprintf("input['%s'] == 'table_ug'", ns("main_tabs")),
@@ -361,7 +361,7 @@ mod_home_server <- function(id, app_state) {
       project_id <- input$load_project
       shiny::req(project_id)
 
-      # PERF — horloge du chemin critique « clic projet récent → UGFs ».
+      # PERF - horloge du chemin critique " clic projet recent -> UGFs ".
       # Active uniquement si NEMETON_PERF_TRACE est vrai (cf. service_project.R).
       .t_click0 <- Sys.time()
 
@@ -385,19 +385,19 @@ mod_home_server <- function(id, app_state) {
 
       # Load the project from disk (sync PostGIS si configure).
       # `build_indicators_sf = FALSE` defers the heavy per-UGF
-      # ug_build_sf() geometry build off the critical path — it's
+      # ug_build_sf() geometry build off the critical path - it's
       # re-attached via later() once the map has rendered (see below).
       project <- load_project(project_id, build_indicators_sf = FALSE)
       shiny::req(project)
 
-      # Spec 011 — hydrate `metadata$monitoring_zone_id` from the
+      # Spec 011 - hydrate `metadata$monitoring_zone_id` from the
       # monitoring DB (`monitoring_zone.project_uuid` column, added in
       # nemeton 0.44.0) when the metadata.json doesn't carry it. Covers
       # pre-spec-011 zones (registered before this binding existed) and
       # any project copy / metadata loss scenario. No-op when the
       # metadata is already populated or the DB is not connected.
       #
-      # PERF — only OPEN the (synchronous) monitoring-DB connection when
+      # PERF - only OPEN the (synchronous) monitoring-DB connection when
       # hydration could actually do something: i.e. the id is missing.
       # For any project saved after spec 011 the id is already in
       # metadata.json, so we skip the connect + schema-migration
@@ -412,7 +412,7 @@ mod_home_server <- function(id, app_state) {
           .res_hydr <- hydrate_monitoring_zone_id(project, con)
           if (.perf_trace_on()) {
             .dt <- as.numeric(difftime(Sys.time(), .t_hydr0, units = "secs")) * 1000
-            cli::cli_inform("⏱ [perf] hydrate_monitoring_zone_id (DB): {sprintf('%.0f', .dt)} ms")
+            cli::cli_inform("\u23f1 [perf] hydrate_monitoring_zone_id (DB): {sprintf('%.0f', .dt)} ms")
           }
           .res_hydr
         }, error = function(e) {
@@ -457,10 +457,10 @@ mod_home_server <- function(id, app_state) {
 
       if (.perf_trace_on()) {
         .dt_sync <- as.numeric(difftime(Sys.time(), .t_click0, units = "secs")) * 1000
-        cli::cli_inform(c("i" = "⏱ [perf] CLIC → app_state pret (portion synchrone bloquante): {sprintf('%.0f', .dt_sync)} ms"))
+        cli::cli_inform(c("i" = "\u23f1 [perf] CLIC \u2192 app_state pret (portion synchrone bloquante): {sprintf('%.0f', .dt_sync)} ms"))
       }
 
-      # PERF — defer the UGF geometry build (ug_build_sf, 0.5–3 s for
+      # PERF - defer the UGF geometry build (ug_build_sf, 0.5-3 s for
       # many UGFs) until AFTER the parcels have a chance to render. It
       # produces `indicators_sf`, consumed only by the Synthesis /
       # Family / Sampling / Monitoring tabs (none active at load time),
@@ -471,7 +471,7 @@ mod_home_server <- function(id, app_state) {
         .deferred_ind_id <- project$id
         later::later(function() {
           # The session may have been destroyed before this deferred
-          # callback fires — typically a project load that triggers a
+          # callback fires - typically a project load that triggers a
           # restore via `session$reload()`. Reading/writing `app_state`
           # then throws "Can't access reactive ...; module session has been
           # destroyed", even inside withReactiveDomain(). Bail out FIRST.
@@ -493,7 +493,7 @@ mod_home_server <- function(id, app_state) {
               app_state$current_project <- attach_indicators_sf(cur)
               if (.perf_trace_on()) {
                 .dt_att <- as.numeric(difftime(Sys.time(), .t_att0, units = "secs")) * 1000
-                cli::cli_inform("⏱ [perf] attach_indicators_sf (defere): {sprintf('%.0f', .dt_att)} ms")
+                cli::cli_inform("\u23f1 [perf] attach_indicators_sf (defere): {sprintf('%.0f', .dt_att)} ms")
               }
             }
           }))
@@ -529,10 +529,10 @@ mod_home_server <- function(id, app_state) {
           # The combined observer already calls clearGroup("selection")
           # every time it re-renders, so cleanup is handled there.
 
-          # Set parcels directly from stored project data — no API call needed.
+          # Set parcels directly from stored project data - no API call needed.
           # This makes parcels() available immediately for mod_map.R's restore
-          # observer, avoiding the slow async chain (restore_task → commune_task
-          # → parcels_task) which could get stuck or take several seconds.
+          # observer, avoiding the slow async chain (restore_task -> commune_task
+          # -> parcels_task) which could get stuck or take several seconds.
           parcels_data(project$parcels)
 
           # Signal to restore location and parcels. `geometry` carries the
@@ -575,7 +575,7 @@ mod_home_server <- function(id, app_state) {
       )
 
       # If project has indicators, stay on Selection tab so the user
-      # can see parcels on the map first. The "Voir les résultats" button
+      # can see parcels on the map first. The "Voir les resultats" button
       # lets them navigate to Synthesis when ready.
     }) |> shiny::bindEvent(input$load_project)
 
@@ -638,7 +638,7 @@ mod_home_server <- function(id, app_state) {
     # fresh R process : we reproduce the SAME package the main session
     # runs. Only treat it as a *dev* checkout when nemetonshiny was
     # genuinely load_all()'d (`is_dev_package()`), NOT merely because
-    # getwd() sits inside a package source tree — otherwise an installed-
+    # getwd() sits inside a package source tree - otherwise an installed-
     # package user launched from a (possibly stale) clone would make the
     # worker load_all() that clone, running different/older code than the
     # main session (cf. v0.50.1 worker-bootstrap fix).
@@ -657,8 +657,8 @@ mod_home_server <- function(id, app_state) {
         if (!is_parallel) .ensure_async_plan()
       }
       promises::future_promise({
-        # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
-        on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+        # spec 008 sect.4 - le worker est PERSISTANT : lui rendre sa memoire.
+        on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
         if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
           pkgload::load_all(.dev_pkg_path, quiet = TRUE)
         } else {
@@ -682,7 +682,7 @@ mod_home_server <- function(id, app_state) {
         return()
       }
 
-      # During project restore, parcels are set directly — skip API call
+      # During project restore, parcels are set directly - skip API call
       if (isTRUE(app_state$restore_in_progress)) return()
 
       # Re-selecting the loaded project's OWN commune (restore re-populates the
@@ -762,11 +762,11 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       if (is.null(project)) return(NULL)
 
-      # Hide the button only while THIS project's computation is running —
-      # PAS quand un AUTRE projet calcule en arrière-plan. `computing_project_id()`
-      # est un id unique (un seul calcul à la fois) : sans le test d'égalité,
+      # Hide the button only while THIS project's computation is running -
+      # PAS quand un AUTRE projet calcule en arriere-plan. `computing_project_id()`
+      # est un id unique (un seul calcul a la fois) : sans le test d'egalite,
       # lancer un calcul sur le projet B masquait le bouton du projet A
-      # rechargé (bouton « calcul » disparu).
+      # recharge (bouton " calcul " disparu).
       if (identical(computing_project_id(), project$id)) return(NULL)
 
       # Check project status
@@ -780,8 +780,8 @@ mod_home_server <- function(id, app_state) {
       # (stale progress file > 120 s), and computing_project_id() is NULL so
       # the live-computation guard above did NOT fire. Without treating these
       # as restartable, the compute button vanished for such projects (they
-      # fell through to `else NULL`) with no way to relaunch — cf. Reconfort
-      # bloqué en "computing". A genuinely live run is already short-circuited
+      # fell through to `else NULL`) with no way to relaunch - cf. Reconfort
+      # bloque en "computing". A genuinely live run is already short-circuited
       # at the identical(computing_project_id(), project$id) guard above.
       if (status %in% c("draft", "error", "computing", "downloading", "pending")) {
         htmltools::div(
@@ -844,7 +844,7 @@ mod_home_server <- function(id, app_state) {
 
     # Helper to clear all project/computation state
     # Commune INSEE code of the currently-loaded project, derived from its
-    # parcels (single source of truth — correct for both restored and freshly
+    # parcels (single source of truth - correct for both restored and freshly
     # created projects, no separate state to keep in sync). Used by the
     # selected_commune observers to distinguish a genuine commune switch from
     # a restore artifact (blank "" blip / re-selection of the same commune).
@@ -905,8 +905,8 @@ mod_home_server <- function(id, app_state) {
       commune <- search_result$selected_commune()
       # Only a genuine switch to a DIFFERENT commune tears down the current
       # project. Ignore a blank "" blip and a re-selection of the project's
-      # own commune — both occur during restore, independently of the
-      # (racy) restore flags — so the loaded project is never wiped.
+      # own commune - both occur during restore, independently of the
+      # (racy) restore flags - so the loaded project is never wiped.
       if (is.null(commune) || !nzchar(commune)) return()
       if (identical(commune, loaded_project_commune())) return()
       reset_project_state()
@@ -917,7 +917,7 @@ mod_home_server <- function(id, app_state) {
     # This prevents blocking the Shiny main loop during computation
     #
     # The future worker is a fresh R process that does not have the app
-    # code loaded — it is reloaded with the same provenance as the main
+    # code loaded - it is reloaded with the same provenance as the main
     # session via the shared `.dev_pkg_path` defined above (Cadastre
     # Parcels section).
     compute_task <- shiny::ExtendedTask$new(function(project_id, app_opts) {
@@ -932,8 +932,8 @@ mod_home_server <- function(id, app_state) {
         }
       }
       promises::future_promise({
-        # spec 008 §4 — le worker est PERSISTANT : lui rendre sa memoire.
-        on.exit(nemetonshiny:::.release_worker_memory(), add = TRUE)
+        # spec 008 sect.4 - le worker est PERSISTANT : lui rendre sa memoire.
+        on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
         # Make the app code available in the worker with the SAME
         # provenance as the main session.
         if (!is.null(.dev_pkg_path) && requireNamespace("pkgload", quietly = TRUE)) {
@@ -980,7 +980,7 @@ mod_home_server <- function(id, app_state) {
       # running. A live `future` worker rewrites progress_state.json every
       # ~2 s, so a fresh file means a real in-flight run (e.g. the browser
       # reconnected to a still-computing app). A STALE file means the app
-      # was restarted while a computation was interrupted — the worker is
+      # was restarted while a computation was interrupted - the worker is
       # gone but the file still says "downloading"/"computing". Resuming
       # then showed a phantom "Calcul en cours" stuck at 0 % forever. Skip
       # it (the user re-launches the compute manually if needed).
@@ -1025,7 +1025,7 @@ mod_home_server <- function(id, app_state) {
       project <- app_state$current_project
       shiny::req(project)
 
-      # Get counts for the confirmation dialog — indicators are
+      # Get counts for the confirmation dialog - indicators are
       # computed on UGF geometries, so the UGF count is what really
       # drives runtime. Keep the cadastral count for context.
       n_parcels <- if (!is.null(project$parcels)) nrow(project$parcels) else 0
@@ -1086,7 +1086,7 @@ mod_home_server <- function(id, app_state) {
 
       # Initialize computation state. Tag it with a dedicated
       # "initializing" task so the UI immediately shows a spinning
-      # gear + "Initialisation des calculs…" toast, instead of the
+      # gear + "Initialisation des calculs..." toast, instead of the
       # few-seconds blank gap between the click and the first real
       # progress update that used to be surfaced by the async worker.
       state <- init_compute_state(project$id)
@@ -1196,7 +1196,7 @@ mod_home_server <- function(id, app_state) {
     # despite CSS/JS suppression (timing gap in MutationObserver).
     #
     # Running-state updates go directly through sendCustomMessage via
-    # progress_result$send_running_update() — no reactive values change,
+    # progress_result$send_running_update() - no reactive values change,
     # no busy state, no white flash.
     #
     # Terminal states (completed, error, cancelled) update compute_state()
@@ -1212,7 +1212,7 @@ mod_home_server <- function(id, app_state) {
 
       poll_fn <- function() {
         # The session may have been destroyed while this non-reactive
-        # later::later loop was still scheduled — most commonly because a
+        # later::later loop was still scheduled - most commonly because a
         # project load triggers a restore via `session$reload()`, which
         # tears down the current session out from under the poll loop. Any
         # reactive read on a dead session (incl. the `computing_project_id()`
@@ -1225,7 +1225,7 @@ mod_home_server <- function(id, app_state) {
           return()
         }
 
-        # Check if still computing (isolate — we're outside reactive context)
+        # Check if still computing (isolate - we're outside reactive context)
         current_id <- shiny::isolate(computing_project_id())
         if (is.null(current_id) || current_id != project_id) return()
 
@@ -1233,7 +1233,7 @@ mod_home_server <- function(id, app_state) {
         progress_state <- read_progress_state(project_id)
 
         if (is.null(progress_state)) {
-          # No progress file yet — schedule next poll
+          # No progress file yet - schedule next poll
           later::later(poll_fn, delay = 2)
           return()
         }
@@ -1258,7 +1258,7 @@ mod_home_server <- function(id, app_state) {
           # Only push UI update if something changed
           if (current_key != poll_last_key) {
             poll_last_key <<- current_key
-            # Direct JS update — no reactive flush, no busy state
+            # Direct JS update - no reactive flush, no busy state
             progress_result$send_running_update(progress_state)
           }
 
@@ -1376,9 +1376,9 @@ mod_home_server <- function(id, app_state) {
       shiny::req(project)
       i18n <- get_i18n(app_state$language %||% "fr")
 
-      # RETOUR IMMÉDIAT : le vidage du cache + le rechargement projet sont
-      # synchrones et bloquants (quelques secondes). On désactive le bouton +
-      # affiche un toast TOUT DE SUITE, puis on diffère le travail lourd.
+      # RETOUR IMMEDIAT : le vidage du cache + le rechargement projet sont
+      # synchrones et bloquants (quelques secondes). On desactive le bouton +
+      # affiche un toast TOUT DE SUITE, puis on differe le travail lourd.
       shiny::updateActionButton(session, "recompute", disabled = TRUE)
       shiny::showNotification(
         i18n$t("retry_in_progress"),
@@ -1386,14 +1386,14 @@ mod_home_server <- function(id, app_state) {
         type = "message", duration = NULL, closeButton = FALSE
       )
 
-      # Le travail lourd est différé via `later::later` (et NON `onFlushed`) :
-      # onFlushed s'exécute dans le MÊME tick de la boucle d'événements, donc
+      # Le travail lourd est differe via `later::later` (et NON `onFlushed`) :
+      # onFlushed s'execute dans le MEME tick de la boucle d'evenements, donc
       # le travail synchrone bloque httpuv AVANT qu'il ait transmis le toast
-      # au navigateur → toast non immédiat. `later::later(delay>0)` rend la
-      # main à la boucle (le toast + l'état désactivé partent), puis exécute
-      # le travail au tick suivant. On ré-entre le domaine réactif de la
-      # session (écriture de `app_state`) + garde `isClosed()` (la session a
-      # pu être détruite entre-temps). Repli synchrone si `later` absent.
+      # au navigateur -> toast non immediat. `later::later(delay>0)` rend la
+      # main a la boucle (le toast + l'etat desactive partent), puis execute
+      # le travail au tick suivant. On re-entre le domaine reactif de la
+      # session (ecriture de `app_state`) + garde `isClosed()` (la session a
+      # pu etre detruite entre-temps). Repli synchrone si `later` absent.
       .recompute_work <- function() {
         # Clear indicator cache to force full recomputation
         clear_computation_cache(project$id)
@@ -1411,7 +1411,7 @@ mod_home_server <- function(id, app_state) {
           id = ns("progress-complete_card_wrapper")))
         session$sendCustomMessage("hideElement", list(
           id = ns("progress-error_card_wrapper")))
-        # Remplace le toast « en cours » par la confirmation.
+        # Remplace le toast " en cours " par la confirmation.
         shiny::removeNotification(session$ns("recompute_toast"))
         shiny::showNotification(
           i18n$t("retry_toast"), type = "message", duration = 5)
@@ -1494,8 +1494,8 @@ mod_home_server <- function(id, app_state) {
       i18n <- get_i18n(app_state$language %||% "fr")
 
       # Immediate toast so the user gets a click-feedback the moment
-      # "Réessayer" is pressed (cache clearing + reload can take a
-      # few hundred ms). Same pattern as the "Projet chargé" toast.
+      # "Reessayer" is pressed (cache clearing + reload can take a
+      # few hundred ms). Same pattern as the "Projet charge" toast.
       # We dispatch on the root session so the notification always
       # appears in the top-level toast stack, even when this observer
       # fires from inside the home module.
@@ -1631,7 +1631,7 @@ mod_home_server <- function(id, app_state) {
         start_tour()
       }, ignoreInit = TRUE)
     } else {
-      # Règle 9 : pas de message() en prod.
+      # Regle 9 : pas de message() en prod.
       cli::cli_alert_info("Guided tour disabled: package {.pkg cicerone} not installed.")
     }
 

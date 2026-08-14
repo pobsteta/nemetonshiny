@@ -4,13 +4,13 @@
 #' Navbar entry that opens a tabbed modal to configure the API keys
 #' used by the application :
 #'
-#'   * **Theia / DATA TERRA** — access + secret key for the Python
+#'   * **Theia / DATA TERRA** - access + secret key for the Python
 #'     `teledetection` SDK, plus the Python prerequisite status and
 #'     the provenance / licensing of the Theia data sources.
-#'   * **LLM** — API key for one of Mistral / Anthropic / OpenAI,
+#'   * **LLM** - API key for one of Mistral / Anthropic / OpenAI,
 #'     used by `ellmer` to drive the expert perspectives.
 #'
-#' The module is named `mod_theia_config` for historical reasons —
+#' The module is named `mod_theia_config` for historical reasons -
 #' it was originally Theia-only. The wiring (`run_app.R`) still calls
 #' that name ; only the modal layout has been widened to a tabset.
 #'
@@ -76,9 +76,9 @@ mod_theia_config_server <- function(id, app_state) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # RAG / knowledge corpus admin (spec 009.2 — E7) lives as a third
-    # tab of this settings modal. Initialise its server once here — the
-    # nested namespace becomes `theia_config-rag_admin-…`, matched by the
+    # RAG / knowledge corpus admin (spec 009.2 - E7) lives as a third
+    # tab of this settings modal. Initialise its server once here - the
+    # nested namespace becomes `theia_config-rag_admin-...`, matched by the
     # `mod_rag_admin_ui(ns("rag_admin"))` inserted in render_modal(). The
     # worker opens its own DB connection (DBI connections are not
     # process-shareable), so we only pass the resolved corpus URL.
@@ -92,9 +92,9 @@ mod_theia_config_server <- function(id, app_state) {
       )
     )
 
-    # Sources Theia optionnelles (T3 coupes rases / A5 rafraîchissement
-    # urbain) — quatrième onglet du modal. Serveur initialisé une seule fois
-    # ici ; ses `uiOutput` se lient quand l'onglet est affiché.
+    # Sources Theia optionnelles (T3 coupes rases / A5 rafraichissement
+    # urbain) - quatrieme onglet du modal. Serveur initialise une seule fois
+    # ici ; ses `uiOutput` se lient quand l'onglet est affiche.
     mod_sources_config_server("sources", app_state = app_state)
 
     # Bumped after a successful save / delete to refresh the modal.
@@ -104,7 +104,7 @@ mod_theia_config_server <- function(id, app_state) {
     # LLM edit form revealed for the currently selected provider.
     llm_edit_mode <- shiny::reactiveVal(FALSE)
     # Preserve the active tab / selected provider across modal
-    # re-renders (every save/edit/delete re-shows the modal — without
+    # re-renders (every save/edit/delete re-shows the modal - without
     # these, the user would jump back to the first tab and the first
     # provider on every click).
     active_tab <- shiny::reactiveVal("tab_theia")
@@ -199,19 +199,19 @@ mod_theia_config_server <- function(id, app_state) {
     }
 
     # ----- LLM tab content --------------------------------------------
-    # v0.51.8 — La liste déroulante des providers porte un badge ✓ pour
-    # chacun déjà configuré (badge par fournisseur), une ligne résumé
-    # synthétise « N/3 fournisseurs configurés : Mistral, OpenAI » au-
-    # dessus, et le bloc statut/clé est servi par un uiOutput réactif
-    # à `input$llm_provider` — avant le bloc ne se rafraîchissait pas
+    # v0.51.8 - La liste deroulante des providers porte un badge [ok] pour
+    # chacun deja configure (badge par fournisseur), une ligne resume
+    # synthetise " N/3 fournisseurs configures : Mistral, OpenAI " au-
+    # dessus, et le bloc statut/cle est servi par un uiOutput reactif
+    # a `input$llm_provider` - avant le bloc ne se rafraichissait pas
     # quand l'utilisateur changeait de provider dans la liste.
     .render_llm_tab <- function(i18n) {
       providers <- llm_providers()
       st_all <- llm_status_all()
 
-      # Choix de la liste déroulante avec un ✓ sur les providers déjà
-      # configurés (vue d'ensemble dès l'ouverture du dropdown).
-      check <- "✓"
+      # Choix de la liste deroulante avec un [ok] sur les providers deja
+      # configures (vue d'ensemble des l'ouverture du dropdown).
+      check <- "\u2713"
       choices_labels <- vapply(names(providers), function(p) {
         if (isTRUE(st_all[[p]]$configured)) {
           paste0(providers[[p]]$label, " ", check)
@@ -225,8 +225,8 @@ mod_theia_config_server <- function(id, app_state) {
         sel_provider <- names(providers)[1]
       }
 
-      # Ligne résumé : « N/3 fournisseurs configurés : Mistral, OpenAI »
-      # ou « Aucun fournisseur configuré. ».
+      # Ligne resume : " N/3 fournisseurs configures : Mistral, OpenAI "
+      # ou " Aucun fournisseur configure. ".
       configured_labels <- unname(vapply(names(providers), function(p) {
         if (isTRUE(st_all[[p]]$configured)) providers[[p]]$label
         else NA_character_
@@ -266,7 +266,7 @@ mod_theia_config_server <- function(id, app_state) {
         # `.modal-content` (which is `position: relative` in Bootstrap 5),
         # so it sits at the right edge regardless of the title width. A
         # tiny vanilla-JS handler flips BS5's `.modal-fullscreen` class on
-        # the closest `.modal-dialog` — edge-to-edge expand / shrink, no
+        # the closest `.modal-dialog` - edge-to-edge expand / shrink, no
         # server round-trip.
         title = htmltools::tagList(
           htmltools::span(i18n$t("api_keys_config_title")),
@@ -299,7 +299,7 @@ mod_theia_config_server <- function(id, app_state) {
             value = "tab_llm",
             .render_llm_tab(i18n)),
           # The RAG tab is lazy-rendered (see output$rag_tab_content):
-          # its DT tables must NOT initialise inside a hidden tab —
+          # its DT tables must NOT initialise inside a hidden tab -
           # DataTables (esp. with scrollX) errors on a display:none
           # container, and that JS failure cascades and prevents sibling
           # outputs (the LLM status panel) from updating. Mounting the
@@ -309,12 +309,12 @@ mod_theia_config_server <- function(id, app_state) {
             value = "tab_rag",
             htmltools::div(class = "pt-3",
                            shiny::uiOutput(ns("rag_tab_content")))),
-          # Sources Theia optionnelles (coupes rases T3 / rafraîchissement
-          # urbain A5) : elles vivaient dans la carte Projet, où elles
-          # allongeaient un formulaire déjà long. Leur place est ici, à côté
-          # des identifiants Theia dont elles dépendent. Le module est monté
-          # en dur (pas de lazy-rendering) : ce sont deux `uiOutput` légers,
-          # sans DataTables — la contrainte qui impose le lazy-load à l'onglet
+          # Sources Theia optionnelles (coupes rases T3 / rafraichissement
+          # urbain A5) : elles vivaient dans la carte Projet, ou elles
+          # allongeaient un formulaire deja long. Leur place est ici, a cote
+          # des identifiants Theia dont elles dependent. Le module est monte
+          # en dur (pas de lazy-rendering) : ce sont deux `uiOutput` legers,
+          # sans DataTables - la contrainte qui impose le lazy-load a l'onglet
           # RAG ne s'applique pas.
           shiny::tabPanel(
             title = i18n$t("api_keys_tab_sources"),
@@ -325,7 +325,7 @@ mod_theia_config_server <- function(id, app_state) {
     }
 
     # Mount the RAG admin UI only when its tab is the active one (and the
-    # modal is therefore open on it) — keeps DataTables out of hidden
+    # modal is therefore open on it) - keeps DataTables out of hidden
     # containers. The server (mod_rag_admin_server) is already running;
     # its outputs simply bind when this UI appears.
     output$rag_tab_content <- shiny::renderUI({
@@ -343,7 +343,7 @@ mod_theia_config_server <- function(id, app_state) {
     }, ignoreInit = TRUE)
     shiny::observeEvent(input$llm_provider, {
       active_provider(input$llm_provider)
-      # Cancel any pending edit when switching providers — the form
+      # Cancel any pending edit when switching providers - the form
       # would otherwise carry over to a different provider's context.
       llm_edit_mode(FALSE)
     }, ignoreInit = TRUE)
@@ -389,14 +389,14 @@ mod_theia_config_server <- function(id, app_state) {
       shiny::showModal(render_modal())
     })
 
-    # ----- LLM status panel (réactif au changement de provider) ----
-    # Cette sortie alimente l'`uiOutput("llm_status_panel")` placé sous
+    # ----- LLM status panel (reactif au changement de provider) ----
+    # Cette sortie alimente l'`uiOutput("llm_status_panel")` place sous
     # le `selectInput("llm_provider")` dans `.render_llm_tab()`. Avant,
-    # le bloc statut + clé était figé dans `render_modal()` → changer
+    # le bloc statut + cle etait fige dans `render_modal()` -> changer
     # de provider dans la liste ne remettait pas le bandeau ni les
-    # boutons à jour. Le renderUI ci-dessous prend une dépendance
+    # boutons a jour. Le renderUI ci-dessous prend une dependance
     # explicite sur `input$llm_provider`, `llm_edit_mode()` et
-    # `status_refresh()` → mise à jour fluide sans re-render du modal.
+    # `status_refresh()` -> mise a jour fluide sans re-render du modal.
     output$llm_status_panel <- shiny::renderUI({
       i18n <- get_i18n(app_state$language %||% "fr")
       status_refresh()

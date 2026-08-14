@@ -575,7 +575,7 @@ mod_ug_server <- function(id, app_state) {
       rv$redraw_counter  # invalidate on redraw trigger
       if (is.null(projet) || !has_ug_data(projet)) return()
 
-      .t_map0 <- Sys.time()  # PERF — chrono rendu carte UGF (cf. NEMETON_PERF_TRACE)
+      .t_map0 <- Sys.time()  # PERF - chrono rendu carte UGF (cf. NEMETON_PERF_TRACE)
 
       tenements <- projet$tenements
       ugs <- projet$ugs
@@ -639,7 +639,7 @@ mod_ug_server <- function(id, app_state) {
           color = "#333333",
           weight = 1,
           label = lapply(atom_labels, htmltools::HTML),
-          # Taille laissée à `.leaflet-tooltip` (custom.css), règle unique de
+          # Taille laissee a `.leaflet-tooltip` (custom.css), regle unique de
           # l'app : un `textsize` ou un `font-size` inline la surpasserait.
           labelOptions = leaflet::labelOptions(
             style = list("background" = "white")
@@ -656,13 +656,13 @@ mod_ug_server <- function(id, app_state) {
 
       # Add UG dissolved boundaries as an overlay
       tryCatch({
-        # PERF — réutiliser la géométrie UGF déjà dissoute par
-        # attach_indicators_sf (projet$indicators_sf) plutôt que de
+        # PERF - reutiliser la geometrie UGF deja dissoute par
+        # attach_indicators_sf (projet$indicators_sf) plutot que de
         # relancer un ug_build_sf() complet (un st_union() par UGF). Ce
-        # cache porte les mêmes colonnes que ug_build_sf (label, groupe,
-        # n_tenements, surface_m2, géométrie) puisqu'indicators_sf en
-        # dérive par merge. Fallback sur ug_build_sf() tant que l'attache
-        # différée n'a pas encore tourné (1er rendu avant le later()).
+        # cache porte les memes colonnes que ug_build_sf (label, groupe,
+        # n_tenements, surface_m2, geometrie) puisqu'indicators_sf en
+        # derive par merge. Fallback sur ug_build_sf() tant que l'attache
+        # differee n'a pas encore tourne (1er rendu avant le later()).
         ug_sf <- if (!is.null(projet$indicators_sf) &&
                      inherits(projet$indicators_sf, "sf") &&
                      nrow(projet$indicators_sf) > 0 &&
@@ -704,8 +704,8 @@ mod_ug_server <- function(id, app_state) {
               color = ug_colors,
               weight = 1,
               label = lapply(ug_labels, htmltools::HTML),
-              # Gras conservé (c'est l'étiquette mise en avant) ; la TAILLE, elle,
-              # vient de `.leaflet-tooltip` (custom.css), règle unique de l'app.
+              # Gras conserve (c'est l'etiquette mise en avant) ; la TAILLE, elle,
+              # vient de `.leaflet-tooltip` (custom.css), regle unique de l'app.
               labelOptions = leaflet::labelOptions(
                 style = list("font-weight" = "bold")
               )
@@ -761,7 +761,7 @@ mod_ug_server <- function(id, app_state) {
 
       if (.perf_trace_on()) {
         .dt_map <- as.numeric(difftime(Sys.time(), .t_map0, units = "secs")) * 1000
-        cli::cli_inform(c("v" = "⏱ [perf] mod_ug rendu carte UGF TOTAL ({nrow(tenements)} tenements): {sprintf('%.0f', .dt_map)} ms"))
+        cli::cli_inform(c("v" = "\u23f1 [perf] mod_ug rendu carte UGF TOTAL ({nrow(tenements)} tenements): {sprintf('%.0f', .dt_map)} ms"))
       }
     })
 

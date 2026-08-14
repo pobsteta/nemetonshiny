@@ -379,11 +379,11 @@ load_parcels <- function(project_id) {
 #'
 #' @description
 #' Persists the commune contour (single MULTIPOLYGON, EPSG:4326) alongside
-#' the parcels so it can be restored instantly on project load — without a
+#' the parcels so it can be restored instantly on project load - without a
 #' network round-trip to geo.api.gouv.fr nor a background worker. The map's
 #' render observer needs BOTH parcels AND commune geometry; caching the
-#' latter on disk removes it from the critical path of "Projet chargé ->
-#' parcelles affichées".
+#' latter on disk removes it from the critical path of "Projet charge ->
+#' parcelles affichees".
 #'
 #' @param project_id Character. Project ID.
 #' @param commune_geom sf object. Commune boundary geometry.
@@ -431,7 +431,7 @@ save_commune_geometry <- function(project_id, commune_geom) {
 #'
 #' @description
 #' Reads back the commune contour persisted by [save_commune_geometry()].
-#' Returns NULL for legacy projects saved before this cache existed — the
+#' Returns NULL for legacy projects saved before this cache existed - the
 #' caller then falls back to the async refetch path.
 #'
 #' @param project_id Character. Project ID.
@@ -480,7 +480,7 @@ load_commune_geometry <- function(project_id) {
 #' commune contour from geo.api.gouv.fr and persist it, so subsequent
 #' loads inject it synchronously (instant map) instead of refetching it
 #' asynchronously on every open. Idempotent: projects that already carry a
-#' cache are skipped. Network-bound — one API call per uncached commune.
+#' cache are skipped. Network-bound - one API call per uncached commune.
 #'
 #' @return Invisibly, a data.frame with one row per project (columns
 #'   `id`, `name`, `status`). `status` is one of: `"backfilled"`,
@@ -572,7 +572,7 @@ save_indicators <- function(project_id, indicators) {
       cli::cli_abort("Package 'arrow' is required")
     }
 
-    # Convert to data.frame (drop geometry if sf — UGF geometry is
+    # Convert to data.frame (drop geometry if sf - UGF geometry is
     # rebuilt from tenements.gpkg + ugs.json at load time via
     # ug_build_sf(), keeping indicators.parquet geometry-free).
     if (inherits(indicators, "sf")) {
@@ -661,7 +661,7 @@ load_indicators <- function(project_id) {
 #' regenerating. Updates `samples_count` and `samples_generated_at`
 #' in `metadata.json`.
 #'
-#' Failures emit a warning and return FALSE — saving samples must
+#' Failures emit a warning and return FALSE - saving samples must
 #' never crash the sampling pipeline.
 #'
 #' @param project_id Character. Project ID.
@@ -724,7 +724,7 @@ save_samples <- function(project_id, plots, layer = "plots") {
 #' @description
 #' Reads a layer from `<project>/data/samples.gpkg` written by
 #' [save_samples()]. Returns NULL if the file or the requested
-#' layer is missing — callers must treat NULL as "no plan yet".
+#' layer is missing - callers must treat NULL as "no plan yet".
 #'
 #' @param project_id Character. Project ID.
 #' @param layer Character. GPKG layer name. Default `"plots"` for
@@ -759,13 +759,13 @@ load_samples <- function(project_id, layer = "plots") {
 #' Removes \code{indicators.parquet} and flips the \code{indicators_computed}
 #' metadata flag back to \code{FALSE}. Call this whenever the UGF layout
 #' changes in a way that invalidates previously computed indicator values
-#' (e.g. after a découpage import that renumbers \code{ug_id}s — the
+#' (e.g. after a decoupage import that renumbers \code{ug_id}s - the
 #' cached values are keyed on ug_id and silently tell
 #' \code{compute_all_indicators()} that "everything is already done",
 #' leaving the new UGFs unpopulated).
 #'
 #' The parcels cache and the UGF layout files (\code{tenements.gpkg},
-#' \code{ugs.json}) are untouched — only the indicator results.
+#' \code{ugs.json}) are untouched - only the indicator results.
 #'
 #' @param project_id Character. Project ID.
 #'
@@ -816,8 +816,8 @@ invalidate_indicators <- function(project_id) {
 #' Build and attach `indicators_sf` to a (migrated) project
 #'
 #' @description
-#' Builds `project$indicators_sf` — one row per UGF with dissolved
-#' geometry + indicator columns joined via `ug_id` — and refreshes the
+#' Builds `project$indicators_sf` - one row per UGF with dissolved
+#' geometry + indicator columns joined via `ug_id` - and refreshes the
 #' geometry-free `project$indicators` with the FRESH UGF metadata. Used
 #' by family/synthesis/sampling/monitoring so they can map, score and
 #' aggregate at the UGF level without rejoining parcels.
@@ -834,7 +834,7 @@ invalidate_indicators <- function(project_id) {
 #' Split out of [load_project()] so the interactive load path can DEFER
 #' it off the critical rendering path (see the `mod_home` load
 #' observer): `ug_build_sf()` does one `sf::st_union()` per UGF and can
-#' cost 0.5–3 s on projects with many UGFs, none of which is needed to
+#' cost 0.5-3 s on projects with many UGFs, none of which is needed to
 #' render parcels on the map. The `tenements`/`ugs` data must already be
 #' present (i.e. call [ensure_project_migrated()] first).
 #'
@@ -845,12 +845,12 @@ invalidate_indicators <- function(project_id) {
 #' @return The project, possibly with `indicators_sf` attached and
 #'   `indicators` refreshed.
 #' @noRd
-# PERF — chronomètre léger, ACTIVÉ uniquement si NEMETON_PERF_TRACE est
-# vrai ("1"/"true"/"yes"). En prod la variable est absente : aucun coût,
-# aucune sortie console. Sert à répondre « où ça coince au chargement
-# d'un projet récent ? » — chaque appel logge le temps écoulé en ms via
-# cli (règle 9 : pas de print/cat/message). `expr` est évalué dans le
-# frame appelant (lazy), donc le wrapping ne change pas la sémantique.
+# PERF - chronometre leger, ACTIVE uniquement si NEMETON_PERF_TRACE est
+# vrai ("1"/"true"/"yes"). En prod la variable est absente : aucun cout,
+# aucune sortie console. Sert a repondre " ou ca coince au chargement
+# d'un projet recent ? " - chaque appel logge le temps ecoule en ms via
+# cli (regle 9 : pas de print/cat/message). `expr` est evalue dans le
+# frame appelant (lazy), donc le wrapping ne change pas la semantique.
 .perf_trace_on <- function() {
   v <- tolower(Sys.getenv("NEMETON_PERF_TRACE", ""))
   v %in% c("1", "true", "yes", "on")
@@ -863,19 +863,19 @@ invalidate_indicators <- function(project_id) {
   t0 <- Sys.time()
   res <- eval.parent(substitute(expr))
   dt_ms <- as.numeric(difftime(Sys.time(), t0, units = "secs")) * 1000
-  cli::cli_inform("⏱ [perf] {label}: {sprintf('%.0f', dt_ms)} ms")
+  cli::cli_inform("\u23f1 [perf] {label}: {sprintf('%.0f', dt_ms)} ms")
   res
 }
 
-# PERF — pré-chauffage de la pile géo (arrow + geoarrow + sf). Le tout
+# PERF - pre-chauffage de la pile geo (arrow + geoarrow + sf). Le tout
 # 1er `arrow::read_parquet()` + `sf::st_as_sf()` d'une session R paie
-# ~1,5–2 s de chargement paresseux de namespaces / génération de code S4.
-# Ce coût frappait jusqu'ici le PREMIER clic « projet récent » (mesuré :
-# load_project à froid ≈ 2 s, dont ~1,6 s de warm-up, vs ~130 ms à chaud).
-# On le déplace hors du chemin critique en l'exécutant une fois, peu après
-# le démarrage de l'app (via later, cf. app_server) : un mini round-trip
-# parquet en mémoire exerce exactement les chemins qui seront ré-empruntés
-# par load_parcels(). Idempotent et best-effort : toute erreur est avalée.
+# ~1,5-2 s de chargement paresseux de namespaces / generation de code S4.
+# Ce cout frappait jusqu'ici le PREMIER clic " projet recent " (mesure :
+# load_project a froid ~= 2 s, dont ~1,6 s de warm-up, vs ~130 ms a chaud).
+# On le deplace hors du chemin critique en l'executant une fois, peu apres
+# le demarrage de l'app (via later, cf. app_server) : un mini round-trip
+# parquet en memoire exerce exactement les chemins qui seront re-empruntes
+# par load_parcels(). Idempotent et best-effort : toute erreur est avalee.
 .geo_stack_warmed <- new.env(parent = emptyenv())
 .geo_stack_warmed$done <- FALSE
 
@@ -893,10 +893,10 @@ warmup_geo_stack <- function() {
   tryCatch({
     t0 <- Sys.time()
     # Deux petits polygones adjacents : exerce st_sf/st_sfc + les
-    # opérations géométriques (st_union/st_area) ET les deux backends IO
-    # réellement empruntés par load_parcels/load_commune_geometry :
-    #   - arrow/geoarrow (parquet) — chemin rapide par défaut,
-    #   - GDAL (st_read GPKG) — dont la 1ère init coûte le plus cher.
+    # operations geometriques (st_union/st_area) ET les deux backends IO
+    # reellement empruntes par load_parcels/load_commune_geometry :
+    #   - arrow/geoarrow (parquet) - chemin rapide par defaut,
+    #   - GDAL (st_read GPKG) - dont la 1ere init coute le plus cher.
     poly <- function(x) sf::st_polygon(list(rbind(
       c(x, 0), c(x + 1, 0), c(x + 1, 1), c(x, 1), c(x, 0))))
     sfobj <- sf::st_sf(
@@ -915,7 +915,7 @@ warmup_geo_stack <- function() {
     invisible(sf::st_read(p_gp, quiet = TRUE))
     if (.perf_trace_on()) {
       dt_ms <- as.numeric(difftime(Sys.time(), t0, units = "secs")) * 1000
-      cli::cli_inform("⏱ [perf] warmup_geo_stack: {sprintf('%.0f', dt_ms)} ms")
+      cli::cli_inform("\u23f1 [perf] warmup_geo_stack: {sprintf('%.0f', dt_ms)} ms")
     }
   }, error = function(e) {
     cli::cli_warn("Geo-stack warm-up skipped (non-blocking): {conditionMessage(e)}")
@@ -923,15 +923,15 @@ warmup_geo_stack <- function() {
   invisible(TRUE)
 }
 
-# PERF — pré-chauffage des WORKERS future (pas seulement du thread principal).
+# PERF - pre-chauffage des WORKERS future (pas seulement du thread principal).
 # Le tout 1er `future_promise` d'une session charge le namespace nemetonshiny +
-# ses deps (sf/terra/leaflet…) DANS le process worker : ~5–6 s mesurées. Ce coût
-# frappait la 1re tâche async — typiquement le `db_sync_project_async()` déclenché
-# à l'ouverture du 1er projet, ou le 1er calcul / moteur. On le déplace hors du
-# chemin critique en chargeant le namespace dans les workers en arrière-plan, peu
-# après le démarrage (fire-and-forget, cf. app_server). Best-effort, idempotent,
-# et NO-OP si le plan est séquentiel (sinon future_promise tournerait sur le
-# thread principal et bloquerait — exactement ce qu'on veut éviter).
+# ses deps (sf/terra/leaflet...) DANS le process worker : ~5-6 s mesurees. Ce cout
+# frappait la 1re tache async - typiquement le `db_sync_project_async()` declenche
+# a l'ouverture du 1er projet, ou le 1er calcul / moteur. On le deplace hors du
+# chemin critique en chargeant le namespace dans les workers en arriere-plan, peu
+# apres le demarrage (fire-and-forget, cf. app_server). Best-effort, idempotent,
+# et NO-OP si le plan est sequentiel (sinon future_promise tournerait sur le
+# thread principal et bloquerait - exactement ce qu'on veut eviter).
 .async_workers_warmed <- new.env(parent = emptyenv())
 .async_workers_warmed$done <- FALSE
 
@@ -947,22 +947,22 @@ warmup_async_workers <- function() {
   }
   plan_classes <- class(tryCatch(future::plan(), error = function(e) NULL))
   if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
-    return(invisible(FALSE))   # plan séquentiel : aucun worker à chauffer.
+    return(invisible(FALSE))   # plan sequentiel : aucun worker a chauffer.
   }
   dev_path <- tryCatch(
     if (isTRUE(pkgload::is_dev_package("nemetonshiny")))
       find.package("nemetonshiny") else NULL,
     error = function(e) NULL)
-  # Chauffer jusqu'à 4 workers concurremment : couvre les tâches courantes
-  # (sync, calcul, moteur) sans saturer la machine au démarrage.
+  # Chauffer jusqu'a 4 workers concurremment : couvre les taches courantes
+  # (sync, calcul, moteur) sans saturer la machine au demarrage.
   #
-  # TOUJOURS laisser un worker LIBRE (`n - 1`). Le pool est borné depuis
-  # `.resolve_parallel_workers()` (4 par défaut, 2 au plancher) : warmer les
-  # `min(nbrOfWorkers, 4)` occuperait la totalité du pool pendant les ~5-6 s de
-  # chargement du namespace, et toute tâche async déclenchée pendant ce temps
+  # TOUJOURS laisser un worker LIBRE (`n - 1`). Le pool est borne depuis
+  # `.resolve_parallel_workers()` (4 par defaut, 2 au plancher) : warmer les
+  # `min(nbrOfWorkers, 4)` occuperait la totalite du pool pendant les ~5-6 s de
+  # chargement du namespace, et toute tache async declenchee pendant ce temps
   # (db_sync du 1er projet, ouverture d'une modale qui calcule) attendrait la fin
-  # du warmup — boucle d'événements Shiny figée pour l'utilisateur. Avant le
-  # bornage du pool, 4 workers sur 8 restaient libres et masquaient le problème.
+  # du warmup - boucle d'evenements Shiny figee pour l'utilisateur. Avant le
+  # bornage du pool, 4 workers sur 8 restaient libres et masquaient le probleme.
   n <- tryCatch(as.integer(future::nbrOfWorkers()), error = function(e) 1L)
   n <- max(1L, min(n - 1L, 4L))
   for (i in seq_len(n)) {
@@ -1047,20 +1047,20 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
     project <- attach_indicators_sf(project)
   }
 
-  # Sync vers PostGIS si configuré et si le projet a des indicateurs.
-  # DÉFÉRÉ via later::later() pour ne PAS bloquer le retour de
-  # load_project() — et donc le rendu des parcelles sur la carte. La
+  # Sync vers PostGIS si configure et si le projet a des indicateurs.
+  # DEFERE via later::later() pour ne PAS bloquer le retour de
+  # load_project() - et donc le rendu des parcelles sur la carte. La
   # connexion + l'upload PostGIS peuvent prendre plusieurs secondes
-  # (jusqu'à ~20 s sur un hôte injoignable, faute de connect_timeout
-  # côté libpq), ce qui donnait l'impression d'un gel entre « Connected
-  # to PostgreSQL … » et « Affichage des parcelles ». Le sync est un
-  # effet de bord best-effort : aucun consommateur aval n'en dépend, on
-  # peut donc le repousser après le premier flush de la carte.
-  # v0.84.0 — le sync tourne désormais dans un worker `future`
+  # (jusqu'a ~20 s sur un hote injoignable, faute de connect_timeout
+  # cote libpq), ce qui donnait l'impression d'un gel entre " Connected
+  # to PostgreSQL ... " et " Affichage des parcelles ". Le sync est un
+  # effet de bord best-effort : aucun consommateur aval n'en depend, on
+  # peut donc le repousser apres le premier flush de la carte.
+  # v0.84.0 - le sync tourne desormais dans un worker `future`
   # (db_sync_project_async) au lieu d'un callback `later()` qui
-  # s'exécutait sur le thread principal et gelait l'event loop / le
-  # rendu carte après le 1er flush (ressenti « connexion BD → carte
-  # longue »). Best-effort : aucun consommateur aval n'attend le résultat.
+  # s'executait sur le thread principal et gelait l'event loop / le
+  # rendu carte apres le 1er flush (ressenti " connexion BD -> carte
+  # longue "). Best-effort : aucun consommateur aval n'attend le resultat.
   if (is_db_configured() && isTRUE(metadata$indicators_computed)) {
     tryCatch(
       db_sync_project_async(project_id),
@@ -1071,7 +1071,7 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
 
   if (.perf_trace_on()) {
     .dt_ms <- as.numeric(difftime(Sys.time(), .t_load0, units = "secs")) * 1000
-    cli::cli_inform(c("v" = "⏱ [perf] load_project TOTAL ({project_id}): {sprintf('%.0f', .dt_ms)} ms (build_indicators_sf={build_indicators_sf})"))
+    cli::cli_inform(c("v" = "\u23f1 [perf] load_project TOTAL ({project_id}): {sprintf('%.0f', .dt_ms)} ms (build_indicators_sf={build_indicators_sf})"))
   }
 
   project
@@ -1088,9 +1088,9 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
 #' and persist the result back to `metadata.json` so subsequent loads
 #' (and the monitoring tab's pre-select observer) find it immediately.
 #'
-#' This makes the project ↔ zone binding canonically driven by the
+#' This makes the project <-> zone binding canonically driven by the
 #' DB column `monitoring_zone.project_uuid` (added in nemeton 0.44.0)
-#' rather than by the freely-editable `metadata.json` — surviving
+#' rather than by the freely-editable `metadata.json` - surviving
 #' metadata loss, project copies, and out-of-band DB restores.
 #'
 #' No-ops (returns the project untouched) when:
@@ -1102,7 +1102,7 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
 #'
 #' On hit, mutates `project$metadata$monitoring_zone_id` AND persists
 #' the same value to disk via `update_project_metadata()`. Persistence
-#' failure is non-fatal — the in-memory project is still returned with
+#' failure is non-fatal - the in-memory project is still returned with
 #' the hydrated id so the current session benefits.
 #'
 #' @param project A project list (typically the return of
@@ -1120,8 +1120,8 @@ load_project <- function(project_id, build_indicators_sf = TRUE) {
 #' monitoring-DB connection entirely when hydration would be a no-op.
 #'
 #' Opening that connection (a synchronous `nemeton::db_connect()` +
-#' schema-migration SELECT) was paid on EVERY project load — including
-#' the common case where `metadata.json` already carries the id — and
+#' schema-migration SELECT) was paid on EVERY project load - including
+#' the common case where `metadata.json` already carries the id - and
 #' could freeze the UI for seconds on a slow/unreachable Postgres host
 #' (libpq has no `connect_timeout` here). Gating on this predicate
 #' removes the round-trip from the critical load path for any project
@@ -1201,11 +1201,11 @@ save_comments <- function(project_id, synthesis = NULL, families = NULL,
   # Build data: use provided values, fall back to existing
   syn <- if (!is.null(synthesis)) synthesis else existing$synthesis
   fam <- if (!is.null(families) && length(families) > 0) families else existing$families
-  # v0.85.0 — RAG context du commentaire de synthèse (sources_md +
-  # n_sources). Persisté pour réafficher le bloc « Sources documentaires »
-  # au rechargement (sinon NULL en session → seul le commentaire revenait)
-  # et fournir les notes de bas de page à l'export Quarto. NULL = conserver
-  # l'existant (édition manuelle du commentaire, qui ne change pas les
+  # v0.85.0 - RAG context du commentaire de synthese (sources_md +
+  # n_sources). Persiste pour reafficher le bloc " Sources documentaires "
+  # au rechargement (sinon NULL en session -> seul le commentaire revenait)
+  # et fournir les notes de bas de page a l'export Quarto. NULL = conserver
+  # l'existant (edition manuelle du commentaire, qui ne change pas les
   # sources).
   src <- if (!is.null(synthesis_sources)) synthesis_sources else existing$synthesis_sources
 
@@ -1255,8 +1255,8 @@ load_comments <- function(project_id) {
 # Scanning metadata.json for every project on each render is costly (one read +
 # JSON parse per project, plus the health-check stats). This caches the fully
 # scanned + sorted listing per root. Cache validity is checked against a cheap
-# filesystem signature — one list.dirs() + one vectorised file.info() over the
-# metadata.json files (stat only, no read/parse) — so the heavy reads are
+# filesystem signature - one list.dirs() + one vectorised file.info() over the
+# metadata.json files (stat only, no read/parse) - so the heavy reads are
 # skipped on a re-render whenever nothing changed, while any add / remove /
 # in-place edit invalidates the cache automatically. A short TTL is an extra
 # backstop, and mutations clear the cache explicitly as a fast path. The cache
@@ -1359,7 +1359,7 @@ load_comments <- function(project_id) {
   }
 
   if (is.null(sig)) {
-    # Root absent — return empty without caching (signature is NULL/unstable).
+    # Root absent - return empty without caching (signature is NULL/unstable).
     return(.empty_recent_projects_df())
   }
 
@@ -1371,7 +1371,7 @@ load_comments <- function(project_id) {
 
   # Load metadata for each project.
   # metadata.json is read once per project and reused for the health check
-  # (avoids re-reading the same file two more times — see check_project_health).
+  # (avoids re-reading the same file two more times - see check_project_health).
   projects <- lapply(dirs, function(dir) {
     project_id <- basename(dir)
 
@@ -1473,7 +1473,7 @@ check_project_health <- function(project_id, metadata = NULL) {
     return(list(valid = FALSE, issues = "Project directory not found"))
   }
 
-  # Check metadata — read the file once (unless caller already provided it)
+  # Check metadata - read the file once (unless caller already provided it)
   metadata_path <- file.path(project_path, "metadata.json")
   metadata_present <- file.exists(metadata_path)
   if (is.null(metadata) && metadata_present) {
@@ -1614,21 +1614,21 @@ update_project_metadata <- function(project_id, updates, project_path = NULL) {
 }
 
 
-#' Persist a forêt ancienne (ancient-forest) historical source on a project
+#' Persist a foret ancienne (ancient-forest) historical source on a project
 #'
 #' @description
 #' Spec 031. Copies the user-uploaded historical source (classified raster or
 #' digitised vector) into the project's \code{data/} directory and records its
 #' path + conversion parameters under \code{metadata$foret_ancienne}. Consumed
-#' at compute time by \code{build_foret_ancienne_layer()} →
-#' \code{nemeton::build_foret_ancienne_mask()} → \code{indicateur_n2_continuite()}.
+#' at compute time by \code{build_foret_ancienne_layer()} ->
+#' \code{nemeton::build_foret_ancienne_mask()} -> \code{indicateur_n2_continuite()}.
 #'
 #' @param project_id Character.
 #' @param source_path Character. Path to the uploaded (temp) file.
 #' @param source_name Character. Original file name (used for the extension /
 #'   raster-vs-vector detection).
-#' @param forest_class Optional integer vector — raster class value(s) = forest.
-#' @param threshold Optional numeric — raster: value >= threshold = forest
+#' @param forest_class Optional integer vector - raster class value(s) = forest.
+#' @param threshold Optional numeric - raster: value >= threshold = forest
 #'   (alternative to \code{forest_class}).
 #' @param min_area_m2 Numeric. Drop specks smaller than this (default 0).
 #'
@@ -1642,7 +1642,7 @@ set_project_foret_ancienne <- function(project_id, source_path, source_name,
     cli::cli_abort("Project not found: {project_id}")
   }
   if (is.null(source_path) || !file.exists(source_path)) {
-    cli::cli_abort("Forêt ancienne source file not found")
+    cli::cli_abort("For\u00eat ancienne source file not found")
   }
 
   data_dir <- file.path(project_path, "data")
@@ -1671,12 +1671,12 @@ set_project_foret_ancienne <- function(project_id, source_path, source_name,
   update_project_metadata(project_id, list(foret_ancienne = cfg),
                           project_path = project_path)
   cli::cli_alert_success(
-    "Forêt ancienne : source enregistrée ({kind}, {source_name})")
+    "For\u00eat ancienne : source enregistr\u00e9e ({kind}, {source_name})")
   TRUE
 }
 
 
-#' Remove the forêt ancienne source (and its cache) from a project
+#' Remove the foret ancienne source (and its cache) from a project
 #'
 #' @param project_id Character.
 #' @return TRUE if a project directory was found.
@@ -1699,7 +1699,7 @@ clear_project_foret_ancienne <- function(project_id) {
 }
 
 
-#' Is the SUFOSAT (clear-cut → T3) source active for a project?
+#' Is the SUFOSAT (clear-cut -> T3) source active for a project?
 #'
 #' @description
 #' Single source of truth for the SUFOSAT opt-in state, shared by the settings
@@ -1716,10 +1716,10 @@ project_sufosat_enabled <- function(metadata) {
 }
 
 
-#' Is the urban-cooling (LST → A5) source active for a project?
+#' Is the urban-cooling (LST -> A5) source active for a project?
 #'
 #' @description
-#' Mirror of [project_sufosat_enabled()] for the Theia LST source — absent
+#' Mirror of [project_sufosat_enabled()] for the Theia LST source - absent
 #' metadata means ENABLED. Outside urban / Thermocity coverage the indicator
 #' still resolves to `NA` per unit, so defaulting to on costs a rural project
 #' nothing beyond one skipped fetch.
@@ -1732,7 +1732,7 @@ project_lst_enabled <- function(metadata) {
 }
 
 
-#' Persist the SUFOSAT (clear-cut → T3) source config on a project
+#' Persist the SUFOSAT (clear-cut -> T3) source config on a project
 #'
 #' @description
 #' Spec 030. Records the opt-in national SUFOSAT source and its parameters
@@ -1773,18 +1773,18 @@ set_project_sufosat <- function(project_id, enabled,
   update_project_metadata(project_id, list(sufosat = cfg),
                           project_path = project_path)
   cli::cli_alert_success(
-    "Coupes rases (SUFOSAT) : {if (enabled) 'activé' else 'désactivé'} \\
+    "Coupes rases (SUFOSAT) : {if (enabled) 'activ\u00e9' else 'd\u00e9sactiv\u00e9'} \\
      (window={cfg$window_years}, min_proba={cfg$min_proba})")
   TRUE
 }
 
 
-#' Persist the urban-cooling (LST → A5) source config on a project
+#' Persist the urban-cooling (LST -> A5) source config on a project
 #'
 #' @description
 #' Spec 032. Records the opt-in Theia LST (Thermocity) source under
 #' \code{metadata$lst_urbain}, mirroring \code{set_project_sufosat()}. No file to
-#' upload — the LST raster is fetched from Theia at compute time by
+#' upload - the LST raster is fetched from Theia at compute time by
 #' \code{build_lst_layer()}; this only stores the toggle + \code{buffer_m} (the
 #' reference-ring radius). When disabling, the cached LST raster is dropped so a
 #' later re-enable re-fetches a fresh coverage.
@@ -1817,7 +1817,7 @@ set_project_lst_urbain <- function(project_id, enabled, buffer_m = 500) {
   update_project_metadata(project_id, list(lst_urbain = cfg),
                           project_path = project_path)
   cli::cli_alert_success(
-    "Rafraîchissement urbain (LST) : {if (enabled) 'activé' else 'désactivé'} \\
+    "Rafra\u00eechissement urbain (LST) : {if (enabled) 'activ\u00e9' else 'd\u00e9sactiv\u00e9'} \\
      (buffer={cfg$buffer_m}m)")
   TRUE
 }
@@ -1854,7 +1854,7 @@ load_project_metadata <- function(project_id) {
     # JSON object with $level, $confidence, $augmented, $sources)
     # instead of a plain integer. Downstream code (DB persistence,
     # metadata updates) calls as.integer(meta$ndp_level), which
-    # errors out on a list: "l'objet 'list' ne peut être converti
+    # errors out on a list: "l'objet 'list' ne peut etre converti
     # automatiquement en un type 'integer'".
     if (!is.null(meta$ndp_level) && is.list(meta$ndp_level)) {
       level <- tryCatch(
@@ -2054,7 +2054,7 @@ save_ug_data <- function(project_id, projet) {
     # the default row-oriented array. When a column is entirely NA (e.g.
     # `groupe` for fresh UGFs), the row-oriented serialisation emits
     # `"groupe": null` on every row, which `read_json(simplifyVector = TRUE)`
-    # elides when reconstructing the data.frame — dropping the column
+    # elides when reconstructing the data.frame - dropping the column
     # entirely. `load_ug_data()` would then see "UGs file missing required
     # columns" and `ensure_project_migrated()` would silently wipe the
     # imported UGF layout with the default 1-UGF-per-parcel migration.
@@ -2136,7 +2136,7 @@ load_ug_data <- function(project_id) {
       return(NULL)
     }
 
-    # Backward compat: pre-v2.2 projects may lack surface_sig_m2 →
+    # Backward compat: pre-v2.2 projects may lack surface_sig_m2 ->
     # compute it on-the-fly from the geometry so downstream code works.
     if (!"surface_sig_m2" %in% names(tenements)) {
       tenements$surface_sig_m2 <- as.numeric(sf::st_area(tenements))
@@ -2154,7 +2154,7 @@ load_ug_data <- function(project_id) {
       }
     }
 
-    # Without ug_id there is no way to link tenements to UGs → genuinely
+    # Without ug_id there is no way to link tenements to UGs -> genuinely
     # broken file, skip.
     if (!"ug_id" %in% names(ugs)) {
       cli::cli_warn("UGs file missing ug_id column")
@@ -2163,7 +2163,7 @@ load_ug_data <- function(project_id) {
 
     # `label` and `groupe` can legitimately be all-NA (fresh UGFs have
     # no management group). Older jsonlite round-trips (row-oriented +
-    # `null`) dropped these columns entirely — rather than re-triggering
+    # `null`) dropped these columns entirely - rather than re-triggering
     # the default migration (which silently wipes the imported layout),
     # backfill them with NA so the UGF layout on disk is preserved.
     for (col in setdiff(required_ug_cols, c("ug_id", names(ugs)))) {
@@ -2183,5 +2183,5 @@ load_ug_data <- function(project_id) {
 # NB: save_indicators_ug() / load_indicators_ug() were removed along
 # with the obsolete "Recalculer les indicateurs" button. Indicators
 # are now computed directly on the UGF geometries in one pass and
-# stored in indicators.parquet — there is no separate UGF-level file
+# stored in indicators.parquet - there is no separate UGF-level file
 # to persist or reload.

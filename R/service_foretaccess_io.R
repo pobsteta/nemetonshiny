@@ -1,14 +1,14 @@
 # ===========================================================================
-# Service — IO partagées ForêtAccess (onglets « Terrain accessible »)
+# Service - IO partagees ForetAccess (onglets " Terrain accessible ")
 # ===========================================================================
 #
-# Helpers d'acquisition/résolution communs aux onglets qui s'appuient sur le
-# paquet `foretaccess` : Accessibilité (`service_accessibility.R`) et, à venir,
-# Desserte (`service_desserte.R`). Non-Shiny, sûrs en worker `future`.
+# Helpers d'acquisition/resolution communs aux onglets qui s'appuient sur le
+# paquet `foretaccess` : Accessibilite (`service_accessibility.R`) et, a venir,
+# Desserte (`service_desserte.R`). Non-Shiny, surs en worker `future`.
 #
-# Règle 1/2 : aucune logique métier ici — on résout la géométrie du projet et on
-# télécharge/met en cache les couches d'entrée ; tout le calcul reste dans
-# `foretaccess`. Ce fichier n'existe que pour éviter de dupliquer ces IO entre
+# Regle 1/2 : aucune logique metier ici - on resout la geometrie du projet et on
+# telecharge/met en cache les couches d'entree ; tout le calcul reste dans
+# `foretaccess`. Ce fichier n'existe que pour eviter de dupliquer ces IO entre
 # les deux services (extraction ADR-neutre, sans changement de comportement).
 
 #' Resolve a project's area of interest as polygons (EPSG:2154)
@@ -41,12 +41,12 @@
 #' Acquire a genuine 5 m terrain DEM for an AOI via the IGN HIGH-RES layer
 #'
 #' `foretaccess::acquire_mnt()` fetches the WMS coverage
-#' `ELEVATION.ELEVATIONGRIDCOVERAGE`, which the Géoplateforme caps at WMTS zoom
+#' `ELEVATION.ELEVATIONGRIDCOVERAGE`, which the Geoplateforme caps at WMTS zoom
 #' 11 (~25 m effective). Resampled to 5 m it is a **blocky staircase** whose
-#' edges yield spurious steep slopes — surfacing as axis-aligned `inexploitable`
+#' edges yield spurious steep slopes - surfacing as axis-aligned `inexploitable`
 #' artefacts in the class rasters. The **`.HIGHRES`** variant of the same
 #' coverage goes to zoom 14 and returns a genuine 5 m terrain DEM (measured 0 %
-#' flat neighbours, realistic slopes, vs 43 % / 71° for the base layer). Both are
+#' flat neighbours, realistic slopes, vs 43 % / 71deg for the base layer). Both are
 #' `image/x-bil;bits=32` (raw elevation), France-wide, fetched on demand.
 #'
 #' This helper fetches `.HIGHRES` via `happign` and caches it next to the other
@@ -55,7 +55,7 @@
 #' `foretaccess::acquire_mnt()`.
 #'
 #' TODO(foretaccess): once `foretaccess::get_layer_service("dem", "FR")` points
-#' at `…HIGHRES`, drop this override and call `acquire_mnt()` directly.
+#' at `...HIGHRES`, drop this override and call `acquire_mnt()` directly.
 #'
 #' @param aoi An `sf`/`sfc` AOI (any CRS; reprojected to `crs`).
 #' @param res_m Target resolution in metres (Sylvaccess is calibrated for 5 m).
@@ -67,12 +67,12 @@
 .acquire_mnt_highres <- function(aoi, res_m = 5, crs = 2154, cache_dir = tempdir(),
                                  overwrite = FALSE) {
   if (!requireNamespace("happign", quietly = TRUE)) return(NULL)
-  # La RÉSOLUTION entre dans le nom du cache. Sans ça, une demande à 1 m (chemin
-  # de correction LiDAR, cf. .acquire_mnt_desserte) écraserait le MNT à 5 m de
-  # l'analyse d'accessibilité, qui partage le même `cache_dir` d'emprise — et
-  # réciproquement, l'un servirait l'autre en silence à la mauvaise résolution.
+  # La RESOLUTION entre dans le nom du cache. Sans ca, une demande a 1 m (chemin
+  # de correction LiDAR, cf. .acquire_mnt_desserte) ecraserait le MNT a 5 m de
+  # l'analyse d'accessibilite, qui partage le meme `cache_dir` d'emprise - et
+  # reciproquement, l'un servirait l'autre en silence a la mauvaise resolution.
   # `mnt_highres.tif` (sans suffixe) reste lu en repli pour ne pas invalider les
-  # caches déjà sur disque, qui sont tous à 5 m.
+  # caches deja sur disque, qui sont tous a 5 m.
   path <- file.path(cache_dir, sprintf("mnt_highres_%gm.tif", res_m))
   if (file.exists(path) && !isTRUE(overwrite)) return(path)
   legacy <- file.path(cache_dir, "mnt_highres.tif")

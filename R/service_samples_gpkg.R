@@ -1,4 +1,4 @@
-# service_samples_gpkg.R — Helpers for the validation plan persistence
+# service_samples_gpkg.R - Helpers for the validation plan persistence
 # layer of <project>/data/samples.gpkg (spec 014 phase B).
 #
 # The systemic Base/Over plan and the action-plan observations already
@@ -10,11 +10,11 @@
 # Why a dedicated helper rather than reusing `save_samples()` :
 #
 #   - save_samples() overwrites the layer (`delete_layer = TRUE,
-#     append = FALSE`) — that is the right semantics for a systemic
+#     append = FALSE`) - that is the right semantics for a systemic
 #     plan (one plan per project) but wrong for validation plans
 #     which accumulate across multiple FORDEAD / FAST runs.
 #   - The validation layer needs idempotency on
-#     (plot_id, generated_at) so re-clicking « Persister » on the
+#     (plot_id, generated_at) so re-clicking " Persister " on the
 #     same plan doesn't duplicate rows.
 #   - The metadata bookkeeping is different (`validation_plots_count`
 #     vs `samples_count`).
@@ -32,7 +32,7 @@
 #' layer. When `append = FALSE`, the layer is replaced wholesale.
 #'
 #' GPKG's append semantics through `sf::st_write(..., append = TRUE)`
-#' are brittle as soon as schemas diverge between calls — we deliberately
+#' are brittle as soon as schemas diverge between calls - we deliberately
 #' rebuild the full layer client-side and rewrite it.
 #'
 #' @param plan An sf POINT with at least `plot_id` and `generated_at`
@@ -81,10 +81,10 @@ persist_validation_plan <- function(plan, project_path,
         error = function(e) NULL
       )
       if (!is.null(existing) && nrow(existing)) {
-        # v0.44.0 — whole-second precision in the idempotency key.
+        # v0.44.0 - whole-second precision in the idempotency key.
         # GPKG stores POSIXct as ISO 8601 strings rounded to
         # milliseconds (microsecond precision in R, e.g. .236371,
-        # vs .236000 after round-trip — sub-millisecond drift breaks
+        # vs .236000 after round-trip - sub-millisecond drift breaks
         # the `%OS3` comparison intermittently). Whole-second is
         # robust to any storage backend rounding and amply granular
         # for a button-click persist workflow (two clicks within
@@ -104,8 +104,8 @@ persist_validation_plan <- function(plan, project_path,
           existing <- .normalize_sf_geometry(existing)
           plan     <- .normalize_sf_geometry(plan)
           # rbind requires identical attribute columns. Take the
-          # intersection so a real schema change between runs (cœur
-          # adds / renames a column) doesn't crash the persist — the
+          # intersection so a real schema change between runs (coeur
+          # adds / renames a column) doesn't crash the persist - the
           # diverged columns are silently dropped from the older rows.
           # Geometry is always preserved via the active sf_column.
           common <- intersect(names(existing), names(plan))

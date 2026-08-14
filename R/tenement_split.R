@@ -202,7 +202,7 @@ tenement_split_by_import <- function(projet,
   projet$tenements <- tenements
 
   # Validate tiling invariant using the adaptive default tolerance
-  # (max(1 m², 0.05% of parcel area)) when the caller didn't override it.
+  # (max(1 m2, 0.05% of parcel area)) when the caller didn't override it.
   validate_tiling(projet, parcelle_id,
                   tolerance_m2 = if (identical(tolerance_m2, 0.01)) NULL else tolerance_m2)
 
@@ -276,7 +276,7 @@ tenement_split_by_geometry <- function(projet,
 #' Each new sub-tenement keeps the UG assignment of its parent tenement.
 #'
 #' Workflow: user draws a polygon spanning multiple tenements, every
-#' affected tenement is automatically split — no need to pick one parcel.
+#' affected tenement is automatically split - no need to pick one parcel.
 #'
 #' @param projet List. Project with $tenements and $ugs.
 #' @param geojson Character. GeoJSON of the cutting polygon(s) from leaflet draw.
@@ -305,7 +305,7 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
   polys_sf <- polys_sf[poly_mask, ]
 
   # Match CRS. Drawn GeoJSON coming from Leaflet is always in EPSG:4326,
-  # but sf::st_read on an in-memory GeoJSON string sometimes returns NA —
+  # but sf::st_read on an in-memory GeoJSON string sometimes returns NA -
   # force WGS84 then reproject to the tenements CRS. Never silently
   # re-tag coordinates without a transform: that would misalign geometry.
   if (is.na(sf::st_crs(polys_sf))) {
@@ -318,8 +318,8 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
 
   # For polygon cuts we use S2 spherical geometry directly on the
   # 4326 lng/lat coordinates. This is the ONLY way to preserve the
-  # drawn polygon vertices exactly as the user traced them — any
-  # 4326 ↔ 2154 round-trip introduces a small but visible offset at
+  # drawn polygon vertices exactly as the user traced them - any
+  # 4326 <-> 2154 round-trip introduces a small but visible offset at
   # high zoom. S2 can be strict about self-touching vertices in
   # imported GeoJSON; we run st_make_valid on the cutter and on each
   # tenement before the op. If S2 still throws, we fall back to GEOS
@@ -340,7 +340,7 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
   hits <- tryCatch(
     sf::st_intersects(sf::st_geometry(tenements), cutter, sparse = FALSE)[, 1],
     error = function(e) {
-      # S2 rejected one of the geometries — fall back to planar on 2154
+      # S2 rejected one of the geometries - fall back to planar on 2154
       sf::sf_use_s2(FALSE)
       tw <- sf::st_transform(tenements, 2154)
       cw <- sf::st_transform(cutter, 2154)
@@ -373,7 +373,7 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
     parent_id <- tn$parent_parcelle_id
     ug_id <- tn$ug_id
 
-    # S2 intersection/difference on the 4326 geometries — keeps the
+    # S2 intersection/difference on the 4326 geometries - keeps the
     # drawn polygon vertices exactly. If S2 rejects a geometry we
     # fall back to GEOS on Lambert 93 for this tenement only.
     run_cut <- function() {
@@ -403,7 +403,7 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
     inside  <- res$inside
     outside <- res$outside
 
-    # Filter to polygons + drop slivers (areas always in m² — st_area
+    # Filter to polygons + drop slivers (areas always in m2 - st_area
     # uses great-circle distance when the CRS is lng/lat)
     pieces <- list()
     for (g in list(inside, outside)) {
@@ -457,7 +457,7 @@ tenement_split_by_drawn_polygon <- function(projet, geojson, tolerance_m2 = 0.01
 
   if (length(all_new) == 0) {
     if (n_fully_contained > 0) {
-      # Polygon fully wraps existing tenements — no cut needed.
+      # Polygon fully wraps existing tenements - no cut needed.
       # Return the project unchanged rather than erroring.
       cli::cli_alert_info(
         "The drawn polygon fully covers {n_fully_contained} tenement(s); no cut was needed (polygon boundaries do not cross the tenement geometry)."
@@ -524,7 +524,7 @@ tenement_split_by_drawn_line <- function(projet, geojson, tolerance_m2 = 0.01) {
   line_sf <- line_sf[line_mask, ]
 
   # Match CRS. Drawn GeoJSON coming from Leaflet is always in EPSG:4326,
-  # but sf::st_read on an in-memory GeoJSON string sometimes returns NA —
+  # but sf::st_read on an in-memory GeoJSON string sometimes returns NA -
   # force WGS84 then reproject to the tenements CRS. Never silently
   # re-tag coordinates without a transform: that would misalign geometry.
   if (is.na(sf::st_crs(line_sf))) {
@@ -909,7 +909,7 @@ validate_tiling <- function(projet, parcelle_id, tolerance_m2 = NULL) {
 
   area_diff <- abs(parcel_area - tenements_area)
 
-  # Adaptive tolerance: 0.05 % of parcel area, min 1 m² (generous enough for
+  # Adaptive tolerance: 0.05 % of parcel area, min 1 m2 (generous enough for
   # typical WGS84 precision on GeoJSON/Shapefile round-trips).
   if (is.null(tolerance_m2)) {
     tolerance_m2 <- max(1, 0.0005 * parcel_area)
@@ -929,14 +929,14 @@ validate_tiling <- function(projet, parcelle_id, tolerance_m2 = NULL) {
 #'
 #' @description
 #' Used when the user exports the tenements to a GPKG/GeoJSON, edits
-#' it in an external GIS (QGIS: split feature, reshape, merge…), and
+#' it in an external GIS (QGIS: split feature, reshape, merge...), and
 #' reimports the file. The imported file is treated as the **new
 #' tenement layout**, not as a cutting geometry.
 #'
 #' Pipeline:
 #' \enumerate{
 #'   \item Multipart geometries are cast to singleparts. This handles
-#'     the common QGIS workflow where the user uses "Séparer les
+#'     the common QGIS workflow where the user uses "Separer les
 #'     parties" which only splits parts inside a single feature row.
 #'   \item Each new feature is assigned to its parent cadastral parcel
 #'     via largest-overlap spatial join with \code{projet$parcels}.
@@ -944,7 +944,7 @@ validate_tiling <- function(projet, parcelle_id, tolerance_m2 = NULL) {
 #'     column, each unique value defines a UGF (existing UGFs with the
 #'     same label are reused so their \code{groupe} survives; new labels
 #'     create new UGFs). Rows with a missing / blank \code{label_ugf}
-#'     — and files without the column — fall back to the legacy
+#'     - and files without the column - fall back to the legacy
 #'     inherit-UGF-by-largest-overlap behaviour.
 #'   \item \code{surface_sig_m2} is recomputed in Lambert 93;
 #'     \code{surface_m2} is rescaled so that the total per-parent-
@@ -989,8 +989,8 @@ tenement_import_replace <- function(projet, imported_sf) {
   n_raw <- nrow(imported_sf)
   cli::cli_alert_info("Import: {n_raw} feature{?s} brut{?e/s} dans le fichier")
 
-  # Normalise to singleparts: QGIS "Séparer les parties" splits parts
-  # inside a single row — casting to single polygons turns those into
+  # Normalise to singleparts: QGIS "Separer les parties" splits parts
+  # inside a single row - casting to single polygons turns those into
   # proper separate features.
   imported_sf <- tryCatch(sf::st_make_valid(imported_sf),
                           error = function(e) imported_sf)
@@ -1021,7 +1021,7 @@ tenement_import_replace <- function(projet, imported_sf) {
     imported_m  <- imported_sf
   }
 
-  # Area in m² (metric CRS)
+  # Area in m2 (metric CRS)
   geom_areas <- as.numeric(sf::st_area(imported_m))
 
   # Drop degenerate features (zero / NA area after make_valid + cast).

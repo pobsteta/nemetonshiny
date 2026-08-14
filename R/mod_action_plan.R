@@ -140,8 +140,8 @@ mod_action_plan_ui <- function(id) {
                              auto_unbox = TRUE)
           )
         ),
-        # Persistance versionnée en base (multi-utilisateurs) : distincte des
-        # exports locaux ci-dessus, miroir du bouton reGénération.
+        # Persistance versionnee en base (multi-utilisateurs) : distincte des
+        # exports locaux ci-dessus, miroir du bouton reGeneration.
         htmltools::tags$hr(class = "my-2"),
         htmltools::tagAppendAttributes(
           shiny::actionButton(
@@ -211,13 +211,13 @@ mod_action_plan_ui <- function(id) {
           ),
           shiny::uiOutput(ns("chat_history_ui"))
         ),
-        # Scope + overwrite controls — same semantics as the
-        # "Générer les actions (IA)" modal (gen_scope / gen_overwrite),
+        # Scope + overwrite controls - same semantics as the
+        # "Generer les actions (IA)" modal (gen_scope / gen_overwrite),
         # except the radio is always-visible so the user can flip it
-        # between turns. Static "Sélection courante" label here (the
+        # between turns. Static "Selection courante" label here (the
         # generate modal shows the count because it opens fresh each
         # time; the persistent panel would need a renderUI to keep it
-        # in sync, which felt overkill — the user reads the count
+        # in sync, which felt overkill - the user reads the count
         # from the orange polygons on the map).
         shiny::radioButtons(
           ns("chat_scope"),
@@ -356,8 +356,8 @@ mod_action_plan_ui <- function(id) {
               htmltools::div(
                 class = "d-flex align-items-center gap-2",
                 shiny::textOutput(ns("table_count_inline"), inline = TRUE),
-                # Effacer la sélection, à portée de la carte/table (le bouton du
-                # panneau de config repliable reste, même id d'action côté serveur).
+                # Effacer la selection, a portee de la carte/table (le bouton du
+                # panneau de config repliable reste, meme id d'action cote serveur).
                 shiny::actionButton(ns("clear_map_selection_top"),
                   label = i18n$t("action_plan_clear_selection"),
                   icon = shiny::icon("eraser"),
@@ -391,7 +391,7 @@ mod_action_plan_ui <- function(id) {
         )
       )
       )  # close navset_card_underline
-    )    # close htmltools::tagList — action_panel + chat_panel live
+    )    # close htmltools::tagList - action_panel + chat_panel live
          # in the right-hand sidebar above, not as positional args.
   )      # close bslib::layout_sidebar
 }
@@ -463,7 +463,7 @@ mod_action_plan_server <- function(id, app_state) {
     # when the action should be cancelled. Two orthogonal reasons:
     #  - the user's ROLE cannot edit action plans (`can_edit()`), or
     #  - the PROJECT is opened read-only because its edit lock is held
-    #    by another user (or the user is anonymous) — see R/service_lock.R.
+    #    by another user (or the user is anonymous) - see R/service_lock.R.
     deny_if_readonly <- function() {
       locked <- project_is_readonly(app_state)
       if (isTRUE(can_edit()) && !locked) return(FALSE)
@@ -480,7 +480,7 @@ mod_action_plan_server <- function(id, app_state) {
     kanban_render_token <- shiny::reactiveVal(0L)
 
     # Carries the action_id of the card being edited via the Kanban
-    # double-click → modal flow (see input$kanban_edit_request /
+    # double-click -> modal flow (see input$kanban_edit_request /
     # input$kanban_edit_save below).
     kanban_edit_id_rv <- shiny::reactiveVal(NULL)
 
@@ -531,8 +531,8 @@ mod_action_plan_server <- function(id, app_state) {
     # Selected UGFs (clicks on map; sync'd with row selection downstream)
     selected_ug_rv <- shiny::reactiveVal(character())
 
-    # Effacer la sélection depuis le bouton de l'entête du tableau (au-dessus
-    # du graphique des coûts) — unique point d'effacement de la sélection.
+    # Effacer la selection depuis le bouton de l'entete du tableau (au-dessus
+    # du graphique des couts) - unique point d'effacement de la selection.
     shiny::observeEvent(input$clear_map_selection_top, {
       selected_ug_rv(character())
       DT::selectRows(DT::dataTableProxy("action_table"), NULL)
@@ -858,7 +858,7 @@ mod_action_plan_server <- function(id, app_state) {
     # column is hidden but kept for backward compatibility.
     DISPLAY_COLS <- c(
       # Visible columns first so FixedColumns(leftColumns = 2) freezes
-      # exactly UGF + Année (DT's FixedColumns extension counts every
+      # exactly UGF + Annee (DT's FixedColumns extension counts every
       # DOM column, including visible:FALSE ones, so hidden columns
       # must live at the tail to keep the freeze count meaningful).
       "ug_label", "annee_realisation",
@@ -873,10 +873,10 @@ mod_action_plan_server <- function(id, app_state) {
     # Cells the user can edit. `annee_realisation` accepts a calendar
     # year and is converted back to an offset before persistence.
     #
-    # v0.52.10 — `commentaire` retiré de l'édition inline DT : l'input
-    # single-line dans une cellule étroite tronquait le texte sans
-    # permettre de le lire en entier. Le commentaire passe désormais
-    # par le modal d'édition (textarea 6 rangs, multi-ligne) — accessible
+    # v0.52.10 - `commentaire` retire de l'edition inline DT : l'input
+    # single-line dans une cellule etroite tronquait le texte sans
+    # permettre de le lire en entier. Le commentaire passe desormais
+    # par le modal d'edition (textarea 6 rangs, multi-ligne) - accessible
     # via dblclick sur la cellule commentaire (cf. JS callback ci-dessous).
     EDITABLE_COLS <- c(
       "annee_realisation", "type", "intensite", "priorite",
@@ -937,25 +937,25 @@ mod_action_plan_server <- function(id, app_state) {
         i18n$t("action_plan_col_annee_offset")
       )
 
-      # Hidden columns: id, ug_id, annee_cible offset — sit at the tail
+      # Hidden columns: id, ug_id, annee_cible offset - sit at the tail
       # of DISPLAY_COLS, so targets are the last 3 indices.
       hidden_targets <- as.integer(c(13L, 14L, 15L))
       editable_idx <- which(DISPLAY_COLS %in% EDITABLE_COLS) - 1L
 
-      # v0.52.10 — JS callback : dblclick sur la cellule commentaire
+      # v0.52.10 - JS callback : dblclick sur la cellule commentaire
       # (className `action-comment-trigger`, cf. columnDefs) ouvre le
-      # modal d'édition (réutilise `input$kanban_edit_request` via une
-      # passerelle `row_edit_request`). data[13] est la colonne cachée
-      # `id` (DISPLAY_COLS tail). `_ts` force Shiny à émettre l'event
-      # même si on dblclick deux fois la même ligne.
+      # modal d'edition (reutilise `input$kanban_edit_request` via une
+      # passerelle `row_edit_request`). data[13] est la colonne cachee
+      # `id` (DISPLAY_COLS tail). `_ts` force Shiny a emettre l'event
+      # meme si on dblclick deux fois la meme ligne.
       #
-      # v0.52.12 — IMPORTANT : DT::datatable(callback = ...) attend le
+      # v0.52.12 - IMPORTANT : DT::datatable(callback = ...) attend le
       # CORPS de la fonction (DT wrap automatiquement avec
       # `function(table) { ... }`), PAS un wrapper complet. Une v0.52.10
-      # qui passait `function(table) { ... }` créait un double wrapper
-      # → fonction interne jamais invoquée → handler dblclick jamais
-      # installé, ET pas de `return table;` → l'init DataTables cassait
-      # silencieusement → tableau RENDU VIDE alors que data.frame avait
+      # qui passait `function(table) { ... }` creait un double wrapper
+      # -> fonction interne jamais invoquee -> handler dblclick jamais
+      # installe, ET pas de `return table;` -> l'init DataTables cassait
+      # silencieusement -> tableau RENDU VIDE alors que data.frame avait
       # 31 lignes.
       row_edit_input_id <- session$ns("row_edit_request")
       js_dt_callback <- htmlwidgets::JS(sprintf(
@@ -1007,7 +1007,7 @@ mod_action_plan_server <- function(id, app_state) {
               'i',
             '>'
           ),
-          # Horizontal scroll only — vertical scroll is replaced by
+          # Horizontal scroll only - vertical scroll is replaced by
           # pagination, so dropping scrollY/scrollCollapse keeps the
           # 5-row table compact instead of padding it to 60vh.
           scrollX = TRUE,
@@ -1027,10 +1027,10 @@ mod_action_plan_server <- function(id, app_state) {
             # ellipsize instead of wrapping to a second line.
             list(targets = "_all",
                  className = "dt-truncate"),
-            # v0.52.10 — la colonne commentaire (index 12 visible)
-            # est marquée comme « clickable » : dblclick ouvre le
-            # modal d'édition (cf. JS callback du `callback =`).
-            # Curseur pointer + soulignement pointillé donnent un
+            # v0.52.10 - la colonne commentaire (index 12 visible)
+            # est marquee comme " clickable " : dblclick ouvre le
+            # modal d'edition (cf. JS callback du `callback =`).
+            # Curseur pointer + soulignement pointille donnent un
             # affordance visuel sans surcharger l'UI.
             list(targets = 12L,
                  className = "dt-truncate action-comment-trigger")
@@ -1369,7 +1369,7 @@ mod_action_plan_server <- function(id, app_state) {
       }
 
       # Top row: the 4 active workflow stages side by side.
-      # Bottom row: "Abandonnée" full-width as a separate, less prominent
+      # Bottom row: "Abandonnee" full-width as a separate, less prominent
       # archive lane.
       top_statuses <- c("proposee", "validee", "planifiee", "realisee")
       top_cols <- lapply(top_statuses, build_col, body_max_height = "55vh")
@@ -1411,7 +1411,7 @@ mod_action_plan_server <- function(id, app_state) {
     shiny::observeEvent(input$kanban_drop, {
       if (deny_if_readonly()) {
         # Force a re-render so the dropped card snaps back visually.
-        kanban_render_token(isolate(kanban_render_token()) + 1L)
+        kanban_render_token(shiny::isolate(kanban_render_token()) + 1L)
         return()
       }
       payload <- input$kanban_drop
@@ -1428,7 +1428,7 @@ mod_action_plan_server <- function(id, app_state) {
       }
       from <- cur_plan$actions[[idx]]$statut %||% "proposee"
       if (identical(from, target)) {
-        # Drop within the same column — no-op, but the DOM may have
+        # Drop within the same column - no-op, but the DOM may have
         # reordered cards; a re-render restores canonical (year-sorted)
         # order.
         kanban_render_token(kanban_render_token() + 1L)
@@ -1458,11 +1458,11 @@ mod_action_plan_server <- function(id, app_state) {
 
     # Open the edit modal pre-filled with the action's current values.
     # Primary use-case : free-form editing of `commentaire`
-    # (cell-edit on the table était single-line et tronquait le texte).
-    # Le modal expose aussi statut / priorité / année / commentaire en
+    # (cell-edit on the table etait single-line et tronquait le texte).
+    # Le modal expose aussi statut / priorite / annee / commentaire en
     # textarea multi-ligne.
     #
-    # v0.52.10 — Extrait en helper pour être appelé depuis :
+    # v0.52.10 - Extrait en helper pour etre appele depuis :
     #   * `input$kanban_edit_request` (dblclick sur carte kanban)
     #   * `input$row_edit_request`   (dblclick sur cellule
     #                                  commentaire du tableau DT)
@@ -1531,7 +1531,7 @@ mod_action_plan_server <- function(id, app_state) {
     }
 
     # Observers : dblclick sur carte kanban ET dblclick sur cellule
-    # commentaire du tableau DT déclenchent le même modal.
+    # commentaire du tableau DT declenchent le meme modal.
     shiny::observeEvent(input$kanban_edit_request, {
       .open_action_edit_modal(input$kanban_edit_request$action_id)
     }, ignoreInit = TRUE, ignoreNULL = TRUE)
@@ -1585,7 +1585,7 @@ mod_action_plan_server <- function(id, app_state) {
     # ============================================================
 
     shiny::observeEvent(input$export_terrain, {
-      # Toast bas-droite affiché client-side (onclick) ; masqué en fin d'opération.
+      # Toast bas-droite affiche client-side (onclick) ; masque en fin d'operation.
       on.exit(session$sendCustomMessage("nemetonHideDownloadToast", list()), add = TRUE)
       if (deny_if_readonly()) return()
       i18n <- get_i18n(app_state$language)
@@ -1714,12 +1714,12 @@ mod_action_plan_server <- function(id, app_state) {
       },
       content = function(file) {
         i18n <- get_i18n(app_state$language)
-        # The toast spinner ("Génération PDF…") is shown client-side
+        # The toast spinner ("Generation PDF...") is shown client-side
         # by nemetonShowDownloadToast on click and is now sticky
         # (duration: null). on.exit guarantees the matching
         # nemetonHideDownloadToast is sent at the end of this
         # function so the spinner disappears synchronously with the
-        # browser's save dialog — whether the export succeeds or
+        # browser's save dialog - whether the export succeeds or
         # errors out.
         on.exit(
           session$sendCustomMessage("nemetonHideDownloadToast", list()),
@@ -1767,18 +1767,18 @@ mod_action_plan_server <- function(id, app_state) {
             file
           )
         } else {
-          # Chemin succès uniquement (result non-NULL) : archive une copie dans
-          # exports/ du projet, parité avec le rapport de synthèse. Best-effort,
+          # Chemin succes uniquement (result non-NULL) : archive une copie dans
+          # exports/ du projet, parite avec le rapport de synthese. Best-effort,
           # ne casse jamais le download navigateur (cf. .archive_action_plan_pdf).
           .archive_action_plan_pdf(file, project)
         }
       }
     )
 
-    # --- Persistance versionnée en base (multi-utilisateurs) --------------
-    # Miroir du bouton reGénération : instantané JSONB versionné du plan dans
-    # nemeton.action_plan_states. Le plan reste par ailleurs auto-sauvegardé sur
-    # disque (action_plan.json) ; ce bouton ajoute l'historique serveur partagé.
+    # --- Persistance versionnee en base (multi-utilisateurs) --------------
+    # Miroir du bouton reGeneration : instantane JSONB versionne du plan dans
+    # nemeton.action_plan_states. Le plan reste par ailleurs auto-sauvegarde sur
+    # disque (action_plan.json) ; ce bouton ajoute l'historique serveur partage.
     shiny::observeEvent(input$save_db, {
       on.exit(session$sendCustomMessage("nemetonHideDownloadToast", list()), add = TRUE)
       if (deny_if_readonly()) return()
@@ -2061,7 +2061,7 @@ mod_action_plan_server <- function(id, app_state) {
     # The chat UI used to live in a modal triggered by `open_chat`;
     # it now lives in the persistent left sidebar (`chat_panel` in
     # the UI). The history / send / clear observers below operate
-    # against the same input ids — they just no longer need to be
+    # against the same input ids - they just no longer need to be
     # populated through showModal().
 
     output$chat_history_ui <- shiny::renderUI({
@@ -2356,8 +2356,8 @@ mod_action_plan_server <- function(id, app_state) {
       if (is.null(project)) return()
       sel_ugs <- selected_ug_rv()
 
-      # Map ug_id → human-readable label so the dropdown shows
-      # "Parcelle 12 — La Lande" instead of the raw "ugf_42" id.
+      # Map ug_id -> human-readable label so the dropdown shows
+      # "Parcelle 12 - La Lande" instead of the raw "ugf_42" id.
       sf <- ug_sf_4326()
       if (!is.null(sf) && nrow(sf) > 0L) {
         ids <- as.character(sf$ug_id)

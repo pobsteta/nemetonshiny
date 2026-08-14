@@ -435,12 +435,12 @@ mod_search_server <- function(id, app_state) {
           if (is.null(nm) || is.na(nm) || !nzchar(nm)) commune_code else as.character(nm)
         }, error = function(e) commune_code)
         # `server = FALSE` (options inline) pour tout le flux de RESTAURATION :
-        # la 2e mise à jour ci-dessous (liste complète du département) remplace
+        # la 2e mise a jour ci-dessous (liste complete du departement) remplace
         # ces choix. En mode serveur, ce remplacement recharge les options en
-        # AJAX et selectize vide brièvement l'affichage (« Sélectionner une
-        # commune ») avant de réappliquer la sélection — le fameux flicker
-        # Loury → placeholder → Loury. En mode local, les options arrivent
-        # inline et la sélection reste affichée en continu.
+        # AJAX et selectize vide brievement l'affichage (" Selectionner une
+        # commune ") avant de reappliquer la selection - le fameux flicker
+        # Loury -> placeholder -> Loury. En mode local, les options arrivent
+        # inline et la selection reste affichee en continu.
         shiny::updateSelectizeInput(
           session, "commune",
           choices  = stats::setNames(commune_code, commune_label),
@@ -600,14 +600,14 @@ mod_search_server <- function(id, app_state) {
           }
         }
 
-        # Lazy backfill — on vient de re-télécharger le contour communal
+        # Lazy backfill - on vient de re-telecharger le contour communal
         # via le chemin async lent (worker + 2 appels geo.api.gouv.fr)
         # parce que ce projet n'a pas de cache disque (projet legacy,
-        # sauvegardé avant v0.74.0). On persiste le contour maintenant pour
+        # sauvegarde avant v0.74.0). On persiste le contour maintenant pour
         # que le PROCHAIN chargement l'injecte synchroniquement et rende la
-        # carte instantanément (cf. mod_search restore fast-path). Best
+        # carte instantanement (cf. mod_search restore fast-path). Best
         # effort, jamais bloquant. La garde `is.null(...$commune_geometry)`
-        # évite une réécriture quand le cache existe déjà.
+        # evite une reecriture quand le cache existe deja.
         proj <- shiny::isolate(app_state$current_project)
         if (!is.null(proj) && is.null(proj$commune_geometry) &&
             identical(proj$id, shiny::isolate(app_state$project_id))) {
@@ -635,12 +635,12 @@ mod_search_server <- function(id, app_state) {
         choices <- format_communes_for_selectize(communes)
         cli::cli_alert_info("Updating commune dropdown with {nrow(communes)} choices")
 
-        # Remplacement par la liste complète du département (pour changer de
+        # Remplacement par la liste complete du departement (pour changer de
         # commune). `server = FALSE` (options inline) : selectize met les options
-        # à jour EN PLACE et garde la commune restaurée affichée sans le flicker
-        # « Loury → Sélectionner une commune → Loury » qu'imposait le rechargement
-        # AJAX du mode serveur. La liste tient largement côté client (≤ quelques
-        # centaines de communes / département, `maxOptions = 500`).
+        # a jour EN PLACE et garde la commune restauree affichee sans le flicker
+        # " Loury -> Selectionner une commune -> Loury " qu'imposait le rechargement
+        # AJAX du mode serveur. La liste tient largement cote client (<= quelques
+        # centaines de communes / departement, `maxOptions = 500`).
         shiny::updateSelectizeInput(
           session,
           "commune",

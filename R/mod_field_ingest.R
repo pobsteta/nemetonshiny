@@ -42,7 +42,7 @@ mod_field_ingest_ui <- function(id) {
       width = 360,
       open = TRUE,
 
-      # Collapsible card — mirrors the "Informations projet" accordion
+      # Collapsible card - mirrors the "Informations projet" accordion
       # (mod_project.R) and the sampling form accordion (mod_sampling.R).
       htmltools::tags$div(
         class = "card mb-3",
@@ -516,7 +516,7 @@ mod_field_ingest_server <- function(id, app_state) {
     # --- Health validation sub-tab (E6.c.5, T6app.13) -----------------
     hv_rv <- shiny::reactiveValues(report = NULL)
 
-    # Populate the zone selector lazily — only when the user opens the
+    # Populate the zone selector lazily - only when the user opens the
     # subtab. Mirrors mod_monitoring's zones reactive.
     shiny::observe({
       shiny::req(input$subtab)
