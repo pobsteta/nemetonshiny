@@ -1,3 +1,25 @@
+# nemetonshiny 0.123.1 (2026-08-14)
+
+### Added — Le réseau créé est enfin lisible
+
+Quatre ajouts sur le même thème : voir ce que l'onglet Desserte a produit.
+
+- **Plein écran sur le profil en travers.** Même bascule que les graphiques du
+  Suivi sanitaire — `modal-fullscreen` + un `resize` différé, sans lequel plotly
+  en mode responsive resterait à sa taille initiale et le bouton semblerait ne
+  rien faire.
+- **Calque « Lignes créées ».** Le résultat *vectoriel* du moteur, écrit depuis
+  toujours dans la couche `reseau_cree` du GeoPackage et jamais peint. Il
+  s'ajoute au raster plutôt qu'il ne le remplace : le raster est le support du
+  calcul et se lit en escalier au zoom, les lignes portent les attributs par
+  route (ordre de création, coût, longueur) qu'une grille ne peut pas porter.
+- **Accents uniformisés** dans le menu des couches de l'onglet.
+- **Un « i » par badge du bilan.** Six chiffres, six explications : ce que
+  mesure « parcelles desservies » (à la distance de débardage retenue), pourquoi
+  « 0 route créée » n'est pas un échec, que le coût est dans l'unité du raster de
+  coût et non en euros, et quelles sont les deux contraintes ACCESSFOR dont les
+  infractions sont *signalées, jamais retirées*.
+
 # nemetonshiny 0.123.0 (2026-08-14)
 
 ### Added — Profil en travers d'un tronçon au clic

@@ -1676,15 +1676,41 @@ mod_accessibility_server <- function(id, app_state) {
       }
       rv$profil <- res
       shiny::showModal(shiny::modalDialog(
-        title = i18n$t("profil_titre"),
+        # Bouton « plein ecran » ancre en haut a droite : MEME patron que la
+        # planche pixel du Suivi sanitaire (mod_monitoring_pixel_map) et que la
+        # modale des cles API. Un petit JS bascule la classe BS5
+        # `.modal-fullscreen` sur la `.modal-dialog` la plus proche - bord a
+        # bord, sans aller-retour serveur.
+        title = htmltools::tagList(
+          htmltools::span(i18n$t("profil_titre")),
+          htmltools::tags$button(
+            type = "button",
+            class = "btn btn-sm btn-outline-secondary",
+            style = paste("position: absolute; top: 0.75rem;",
+                          "right: 0.75rem; z-index: 2;"),
+            title = i18n$t("monitoring_pixel_map_fullscreen"),
+            # `resize` differe : plotly (responsive) n'ecoute que
+            # window.resize ; sans cet evenement, le graphe garde sa taille
+            # initiale et ne remplit pas l'ecran agrandi.
+            onclick = paste0(
+              "this.closest('.modal-dialog').classList.toggle('modal-fullscreen');",
+              "setTimeout(function(){window.dispatchEvent(new Event('resize'));},250);"),
+            bsicons::bs_icon("arrows-fullscreen")
+          )
+        ),
         size = "xl", easyClose = TRUE,
         footer = shiny::modalButton(i18n$t("close")),
+        htmltools::tags$style(htmltools::HTML(
+          ".modal-fullscreen .profil-wrap{height:calc(100vh - 200px) !important;}"
+        )),
         htmltools::tags$p(
           class = "text-muted small",
           sprintf(i18n$t("profil_station_fmt"),
                   res$station$chainage_m %||% NA_real_,
                   as.integer(res$meta$n_points %||% 0L))),
-        plotly::plotlyOutput(ns("profil_plot"), height = "60vh")))
+        htmltools::div(
+          class = "profil-wrap", style = "height: 60vh;",
+          plotly::plotlyOutput(ns("profil_plot"), height = "100%"))))
     })
 
     output$profil_plot <- plotly::renderPlotly({

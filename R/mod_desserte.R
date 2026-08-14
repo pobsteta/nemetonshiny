@@ -28,6 +28,26 @@
   as.character(st$phase)[1]
 }
 
+# --- Groupes de couches de la carte Desserte --------------------------------
+# Ces noms SONT les libelles du controle de couches leaflet : il n'y a pas de
+# chaine d'affichage separee, d'ou les accents, ecrits en `\uXXXX` (regle 4).
+#
+# Portes par des constantes et non ecrits a chaque appel : chacun servait a cinq
+# endroits (declaration, peinture, `clearGroup`, `hideGroup`, test d'etat), et
+# en accentuer un seul aurait rompu le lien entre la case et la couche.
+
+#' @noRd
+DESS_GROUPE_PARCELLES <- "Parcelles"
+#' @noRd
+DESS_GROUPE_EXISTANTE <- "Desserte existante"
+#' @noRd
+DESS_GROUPE_RESEAU <- "R\u00e9seau cr\u00e9\u00e9"
+#' @noRd
+DESS_GROUPE_LIGNES <- "Lignes cr\u00e9\u00e9es"
+#' @noRd
+DESS_GROUPE_TYPE <- "R\u00e9seau typ\u00e9"
+
+
 #' @noRd
 mod_desserte_ui <- function(id) {
   ns <- shiny::NS(id)
@@ -535,9 +555,16 @@ mod_desserte_server <- function(id, app_state) {
         return(htmltools::tags$p(class = "text-muted small",
                                  i18n$t("dess_no_result_yet")))
       }
-      badge <- function(label, value, cls = "bg-secondary") {
+      # Chaque badge porte le " i " de l'app : un chiffre sans unite ni regle de
+      # lecture ne se comprend pas (un cout dans l'unite du raster, des
+      # infractions au sens d'une annexe reglementaire, un " 0 " qui est un
+      # succes et non un echec). Le libelle n'est pas un <label> de controle :
+      # `info_popover()` suffit, sans neutraliser l'activation.
+      badge <- function(label, value, cls = "bg-secondary", info = NULL) {
         htmltools::div(class = "d-flex justify-content-between align-items-center mb-1",
-          htmltools::tags$span(class = "small", label),
+          htmltools::tags$span(
+            class = "small", label,
+            if (!is.null(info)) htmltools::tagList(" ", info_popover(info))),
           htmltools::tags$span(class = paste("badge", cls), value))
       }
       nd <- res$n_desservies %||% NA_integer_
@@ -553,32 +580,38 @@ mod_desserte_server <- function(id, app_state) {
       htmltools::tagList(
         badge(i18n$t("dess_badge_desservies"),
               if (is.na(nd) || is.na(np)) "\u2014" else sprintf("%d / %d", nd, np),
-              if (!is.na(nd) && !is.na(np) && nd >= np) "bg-success" else "bg-warning"),
+              if (!is.na(nd) && !is.na(np) && nd >= np) "bg-success" else "bg-warning",
+              info = i18n$t("dess_badge_info_desservies")),
         badge(i18n$t("dess_badge_raccorde"),
               if (is.na(raccorde)) "\u2014" else if (isTRUE(raccorde)) i18n$t("dess_yes") else i18n$t("dess_no"),
-              if (isTRUE(raccorde)) "bg-success" else "bg-warning"),
+              if (isTRUE(raccorde)) "bg-success" else "bg-warning",
+              info = i18n$t("dess_badge_info_raccorde")),
         badge(i18n$t("dess_badge_routes"),
               if (is.na(nroutes)) "\u2014" else format(nroutes, big.mark = " "),
-              if (!is.na(nroutes) && nroutes == 0L) "bg-success" else "bg-secondary"),
+              if (!is.na(nroutes) && nroutes == 0L) "bg-success" else "bg-secondary",
+              info = i18n$t("dess_badge_info_routes")),
         badge(i18n$t("dess_badge_cout"),
-              if (is.na(cout)) "\u2014" else format(round(cout), big.mark = " ")),
+              if (is.na(cout)) "\u2014" else format(round(cout), big.mark = " "),
+              info = i18n$t("dess_badge_info_cout")),
         # Integrite du reseau OBTENU (existant union cree), spec 025. Complete
         # `raccorde`, qui ne dit que " les routes creees sont-elles rattachees ? "
         # et reste muet sur la coherence du graphe resultant. Absent = controle
         # indisponible (dessertR injoignable), surtout PAS " 0 infraction ".
         if (is.null(integ)) {
           badge(i18n$t("dess_badge_integrite"), i18n$t("dess_integrite_na"),
-                "bg-light text-dark")
+                "bg-light text-dark", info = i18n$t("dess_badge_info_integrite"))
         } else {
           htmltools::tagList(
             badge(i18n$t("dess_badge_infractions"),
                   format(integ$n_infractions, big.mark = " "),
-                  if (isTRUE(integ$n_infractions == 0L)) "bg-success" else "bg-warning"),
+                  if (isTRUE(integ$n_infractions == 0L)) "bg-success" else "bg-warning",
+                  info = i18n$t("dess_badge_info_infractions")),
             badge(i18n$t("dess_badge_orphelins"),
                   sprintf("%s / %s",
                           format(integ$n_composants_orphelins, big.mark = " "),
                           format(integ$n_composants, big.mark = " ")),
-                  if (isTRUE(integ$n_composants_orphelins == 0L)) "bg-success" else "bg-warning"))
+                  if (isTRUE(integ$n_composants_orphelins == 0L)) "bg-success" else "bg-warning",
+                  info = i18n$t("dess_badge_info_orphelins")))
         },
         if (!is.na(nroutes) && nroutes == 0L) {
           htmltools::div(class = "alert alert-success py-2 small mt-2 mb-0",
@@ -596,15 +629,21 @@ mod_desserte_server <- function(id, app_state) {
       # le projet - meme helper que la carte Accessibilite.
       project_path <- tryCatch(app_state$current_project$path, error = function(e) NULL)
       cvat_bg <- .acc_cvat_overlay_raster(project_path)
-      overlays <- c(if (!is.null(geo)) "Parcelles" else NULL,
+      # " Lignes creees " est declare AVEC les autres, systematiquement : un
+      # groupe peint mais non declare n'a pas de case pour l'eteindre (cf. le
+      # relief de la carte Accessibilite, corrige en 0.122.6).
+      overlays <- c(if (!is.null(geo)) DESS_GROUPE_PARCELLES else NULL,
                     if (!is.null(cvat_bg)) "Relief CVAT" else NULL,
-                    "Desserte existante", "Reseau cree", "Reseau type",
-                    PLACES_DEPOT_GROUP)
+                    DESS_GROUPE_EXISTANTE, DESS_GROUPE_RESEAU, DESS_GROUPE_LIGNES,
+                    DESS_GROUPE_TYPE, PLACES_DEPOT_GROUP)
       m <- leaflet::leaflet() |>
         leaflet::addProviderTiles("OpenStreetMap", group = "OSM") |>
         leaflet::addProviderTiles("Esri.WorldImagery", group = "Satellite") |>
         leaflet::addMapPane("nemetonCvatBase", zIndex = 230) |>
         leaflet::addMapPane("nemetonDessRaster", zIndex = 250) |>
+        # Les lignes AU-DESSUS du raster qui les a produites : sinon la
+        # grille en escalier masque le trace qu'elle a servi a calculer.
+        leaflet::addMapPane("nemetonDessLignes", zIndex = 420) |>
         leaflet::addLayersControl(
           baseGroups = c("OSM", "Satellite"),
           overlayGroups = overlays,
@@ -617,7 +656,7 @@ mod_desserte_server <- function(id, app_state) {
           options = leaflet::gridOptions(pane = "nemetonCvatBase"))
       }
       if (!is.null(geo)) {
-        m <- leaflet::addPolygons(m, data = geo, group = "Parcelles",
+        m <- leaflet::addPolygons(m, data = geo, group = DESS_GROUPE_PARCELLES,
           color = "#1f78b4", weight = 2, opacity = 0.9, fillOpacity = 0)
         bb <- tryCatch(as.numeric(sf::st_bbox(geo)), error = function(e) NULL)
         if (!is.null(bb) && all(is.finite(bb))) {
@@ -640,7 +679,7 @@ mod_desserte_server <- function(id, app_state) {
       # groupe, et cet observe en ajoute - une lecture reactive le rendrait
       # auto-declenchant (peintures multiples). Cf. mod_accessibility.
       shown <- shiny::isolate(input$map_groups)
-      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Reseau cree")
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup(DESS_GROUPE_RESEAU)
       rp <- tryCatch(res$reseau_path, error = function(e) NULL)
       if (is.null(rp) || !file.exists(rp)) return()
       rast <- tryCatch(terra::rast(rp), error = function(e) NULL)
@@ -648,10 +687,52 @@ mod_desserte_server <- function(id, app_state) {
       cmap <- leaflet::colorFactor("#B71C1C", domain = 1, na.color = "transparent")
       proxy |>
         leaflet::addRasterImage(rast, colors = cmap, opacity = op, method = "ngb",
-          group = "Reseau cree",
+          group = DESS_GROUPE_RESEAU,
           options = leaflet::gridOptions(pane = "nemetonDessRaster"))
-      if (!is.null(shown) && !("Reseau cree" %in% shown)) {
-        leaflet::hideGroup(proxy, "Reseau cree")
+      if (!is.null(shown) && !(DESS_GROUPE_RESEAU %in% shown)) {
+        leaflet::hideGroup(proxy, DESS_GROUPE_RESEAU)
+      }
+    })
+
+    # Overlay " Lignes creees " : le resultat VECTORIEL du moteur, lu depuis la
+    # couche `reseau_cree` du GeoPackage - deja ecrite par `run_desserte()`,
+    # elle n'etait simplement jamais peinte.
+    #
+    # Pourquoi en plus du raster et non a sa place : le raster est le support du
+    # CALCUL (le moteur trace un chemin de cellules) et se lit en escalier au
+    # zoom ; les lignes portent en revanche les attributs par route - `ordre` de
+    # creation, `cout`, `longueur` - qu'une grille ne peut pas porter. Les deux
+    # disent la meme chose a des echelles differentes, d'ou deux cases.
+    shiny::observe({
+      res <- rv$result
+      shown <- shiny::isolate(input$map_groups)
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup(DESS_GROUPE_LIGNES)
+      gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
+      if (is.null(gp) || !file.exists(gp)) return()
+      lyr <- tryCatch(sf::st_layers(gp)$name, error = function(e) character(0))
+      if (!("reseau_cree" %in% lyr)) return()
+      d <- tryCatch(sf::st_read(gp, layer = "reseau_cree", quiet = TRUE),
+                    error = function(e) NULL)
+      if (!inherits(d, "sf") || nrow(d) == 0L) return()
+      d <- tryCatch(sf::st_transform(d, 4326), error = function(e) d)
+      # Infobulle par route : l'ordre de creation dit l'arbitrage du moteur
+      # (il dessert d'abord ce qui rapporte le plus), le cout et la longueur
+      # disent ce qu'elle vaut. C'est l'interet du vecteur sur le raster.
+      lbl <- tryCatch({
+        ordre <- suppressWarnings(as.integer(d[["ordre"]]))
+        long <- suppressWarnings(as.numeric(d[["longueur"]]))
+        cout <- suppressWarnings(as.numeric(d[["cout"]]))
+        ifelse(is.finite(ordre) & is.finite(long),
+               sprintf(i18n$t("dess_ligne_label_fmt"), ordre, long, cout),
+               i18n$t("dess_ligne_label_court"))
+      }, error = function(e) NULL)
+      proxy |>
+        leaflet::addPolylines(data = d, group = DESS_GROUPE_LIGNES,
+          color = "#FF6F00", weight = 3, opacity = 0.95,
+          label = lbl,
+          options = leaflet::pathOptions(pane = "nemetonDessLignes"))
+      if (!is.null(shown) && !(DESS_GROUPE_LIGNES %in% shown)) {
+        leaflet::hideGroup(proxy, DESS_GROUPE_LIGNES)
       }
     })
 
@@ -659,7 +740,7 @@ mod_desserte_server <- function(id, app_state) {
     shiny::observe({
       res <- rv$result
       shown <- shiny::isolate(input$map_groups)
-      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Desserte existante")
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup(DESS_GROUPE_EXISTANTE)
       gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
       if (is.null(gp) || !file.exists(gp)) return()
       d <- tryCatch(sf::st_read(gp, layer = "desserte_existante", quiet = TRUE),
@@ -667,10 +748,10 @@ mod_desserte_server <- function(id, app_state) {
       if (!inherits(d, "sf") || nrow(d) == 0L) return()
       d <- tryCatch(sf::st_transform(d, 4326), error = function(e) d)
       proxy |>
-        leaflet::addPolylines(data = d, group = "Desserte existante",
+        leaflet::addPolylines(data = d, group = DESS_GROUPE_EXISTANTE,
           color = "#37474F", weight = 1.5, opacity = 0.7)
-      if (!is.null(shown) && !("Desserte existante" %in% shown)) {
-        leaflet::hideGroup(proxy, "Desserte existante")
+      if (!is.null(shown) && !(DESS_GROUPE_EXISTANTE %in% shown)) {
+        leaflet::hideGroup(proxy, DESS_GROUPE_EXISTANTE)
       }
     })
 
@@ -1042,7 +1123,7 @@ mod_desserte_server <- function(id, app_state) {
     shiny::observe({
       res <- rv_typage()
       shown <- shiny::isolate(input$map_groups)
-      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup("Reseau type")
+      proxy <- leaflet::leafletProxy("map") |> leaflet::clearGroup(DESS_GROUPE_TYPE)
       gp <- tryCatch(res$gpkg_path, error = function(e) NULL)
       if (is.null(gp) || !file.exists(gp)) return()
       d <- tryCatch(sf::st_read(gp, layer = "reseau_type", quiet = TRUE),
@@ -1052,10 +1133,10 @@ mod_desserte_server <- function(id, app_state) {
       ty <- tolower(as.character(d[["type"]] %||% rep("", nrow(d))))
       cols <- unname(dess_type_cols[ty]); cols[is.na(cols)] <- "#607D8B"
       proxy |>
-        leaflet::addPolylines(data = d, group = "Reseau type",
+        leaflet::addPolylines(data = d, group = DESS_GROUPE_TYPE,
           color = cols, weight = 3, opacity = 0.9, label = ~ as.character(type))
-      if (!is.null(shown) && !("Reseau type" %in% shown)) {
-        leaflet::hideGroup(proxy, "Reseau type")
+      if (!is.null(shown) && !(DESS_GROUPE_TYPE %in% shown)) {
+        leaflet::hideGroup(proxy, DESS_GROUPE_TYPE)
       }
     })
 
