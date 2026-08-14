@@ -581,19 +581,17 @@ run_desserte_detection <- function(cache_dir, aoi_path, buffer_m = 0,
   # se supposant pas en silence.
   classes <- NULL
   if (n > 0L) {
-    # `dsr_classer()` EXIGE des `LINESTRING` - verifie : un `MULTILINESTRING`
-    # est refuse net (`inherits(x, "sfc_LINESTRING") is not TRUE`), alors que
-    # `reference` accepte le multi. La BD TOPO est multi, et rien ne garantit
-    # que la detection ne le soit pas : on convertit, en laissant tomber le
-    # classement si la conversion echoue plutot que de perdre la detection.
-    det_lin <- tryCatch({
-      if (any(sf::st_geometry_type(det) != "LINESTRING")) {
-        suppressWarnings(sf::st_cast(det, "LINESTRING"))
-      } else det
-    }, error = function(e) NULL)
-    det_cl <- if (is.null(det_lin)) NULL else tryCatch(
-      dessertR::dsr_classer(det_lin, reference = reference, parcellaire = parcelles,
-                            sous_type_parcelle = "section"),
+    # `foretaccess::classer_desserte()` et NON `dessertR::dsr_classer()` en
+    # direct : l'app depend de `foretaccess`, jamais de son moteur (regle du
+    # sens des dependances). L'appel direct etait de surcroit NON DECLARE dans
+    # DESCRIPTION et enveloppe d'un `tryCatch(NULL)` - sur un poste sans
+    # `dessertR`, le classement disparaissait EN SILENCE. Le wrapper fait le
+    # recast LINESTRING lui-meme (la BD TOPO est multi) et rend l'indisponibilite
+    # visible (avertissement + attribut `disponible`).
+    det_cl <- tryCatch(
+      foretaccess::classer_desserte(det, reference = reference,
+                                    parcellaire = parcelles,
+                                    sous_type_parcelle = "section"),
       error = function(e) NULL)
     if (inherits(det_cl, "sf") && "CLASSE" %in% names(det_cl)) {
       det <- det_cl

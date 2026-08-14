@@ -10,6 +10,23 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.123.0] - 2026-08-14
+
+### Added
+
+- Profil en travers d'un tronçon au clic sur la carte d'accessibilité (couche
+  comparateur) : nuage LiDAR de la tranche, profil du terrain, chaussée ajustée
+  et cinq familles de bords cotées. Calcul délégué à
+  `foretaccess::profil_travers()` (spec 030) ; l'app résout, appelle et dessine.
+
+### Changed
+
+- `service_desserte.R` passe par `foretaccess::classer_desserte()` au lieu
+  d'appeler `dessertR::dsr_classer()` sans déclarer la dépendance.
+- Légende « Tronçon corrigé » : BD TOPO en rouge, OSM en vert.
+- Onglet Desserte : bloc repliable « Desserte » et barre latérale rétractable.
+- Plancher `Imports: foretaccess (>= 2.3.0)`.
+
 ## [0.122.14] - 2026-08-14
 
 ### Fixed

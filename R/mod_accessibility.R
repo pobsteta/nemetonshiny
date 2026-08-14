@@ -38,12 +38,19 @@ DESS_CLASSE_COLS <- c(route = "#C62828", piste = "#3E2723",
 
 #' Colours of the corrected road sources (foreground layer)
 #'
+#' Red for BD TOPO, green for OSM: the point of this layer is to show at a
+#' glance what the correction ADDED. Red is `#FF0000` and not a softer one
+#' because the class legend next to it already carries a red (`route`,
+#' `#C62828`): every usual red sits 7 to 20 Lab units from it — the very
+#' collision fixed in 0.122.6 — while pure red keeps 34.7. Measured, and held by
+#' `test-acc_palettes.R`, which refuses any cross-legend pair under 20.
+#'
 #' The corrected network KEEPS the whole BD TOPO and adds what OSM carries on
 #' top; LiDAR detection will provide the third. Three plainly distinct hues,
 #' distinct from [DESS_CLASSE_COLS] as well.
 #'
 #' @noRd
-DESS_SOURCE_COLS <- c(bdtopo = "#455A64", osm = "#7B1FA2",
+DESS_SOURCE_COLS <- c(bdtopo = "#FF0000", osm = "#2CA02C",
                       detectee = "#F9A825")
 
 
@@ -493,7 +500,8 @@ mod_accessibility_server <- function(id, app_state) {
     ns <- session$ns
     i18n <- get_i18n(get_app_options()$language %||% "fr")
 
-    rv <- shiny::reactiveValues(result = NULL, running = FALSE, start = NULL)
+    rv <- shiny::reactiveValues(result = NULL, running = FALSE, start = NULL,
+                                profil = NULL)
 
     # Chemin du paquet en dev (pkgload) : rejoue dans le worker pour disposer des
     # fonctions internes `run_accessibility()`.
@@ -1597,6 +1605,92 @@ mod_accessibility_server <- function(id, app_state) {
       }
 
       if (!isTRUE(compare_active())) compare_active(TRUE)
+    })
+
+    # --- Profil en travers au clic (spec 030) ----------------------------------
+    # Un clic sur la carte, quand le comparateur est affiche, rend la coupe du
+    # troncon le plus proche. Le calcul (lecture du nuage LiDAR, ajustement,
+    # bords) appartient au coeur : `foretaccess::profil_travers()`, appele via
+    # `acc_profil_travers()`. Ici, rien d'autre que l'orchestration.
+    #
+    # ASYNCHRONE malgre un cout mesure a ~0,4 s par clic cote coeur : ce chiffre
+    # vaut sur une dalle d'exemple. Sur un projet reel, la premiere lecture d'un
+    # catalogue LAZ est autrement plus lourde, et la boucle Shiny est
+    # mono-thread - un clic ne doit jamais figer la carte.
+    profil_task <- shiny::ExtendedTask$new(
+      function(project_path, lng, lat, dev_path, app_opts) {
+        if (requireNamespace("future", quietly = TRUE)) {
+          plan_classes <- class(future::plan())
+          if (!any(c("multisession", "multicore", "cluster") %in% plan_classes)) {
+            .ensure_async_plan()
+          }
+        }
+        promises::future_promise({
+          on.exit(utils::getFromNamespace(".release_worker_memory", "nemetonshiny")(), add = TRUE)
+          if (!is.null(dev_path) && requireNamespace("pkgload", quietly = TRUE)) {
+            pkgload::load_all(dev_path, quiet = TRUE)
+          } else {
+            loadNamespace("nemetonshiny")
+          }
+          options(nemeton.app_options = app_opts)
+          utils::getFromNamespace("acc_profil_travers", "nemetonshiny")(
+            project_path, lng, lat)
+        }, seed = TRUE)
+      })
+
+    shiny::observeEvent(input$map_click, {
+      # Le profil n'a de sens que sous le comparateur : c'est la seule couche qui
+      # montre les troncons dont on coupe la section. Ailleurs, un clic sur la
+      # carte ne veut pas dire cela.
+      if (!identical(input$layer, "desserte_comparee")) return()
+      clic <- input$map_click
+      if (is.null(clic$lat) || is.null(clic$lng)) return()
+      project_path <- tryCatch(app_state$current_project$path,
+                               error = function(e) NULL)
+      # Retour IMMEDIAT : le worker peut mettre plusieurs secondes, le clic doit
+      # etre acquitte tout de suite (regle stricte 9).
+      shiny::showNotification(i18n$t("profil_calcul"), duration = NULL,
+                              type = "message", id = session$ns("profil_notif"))
+      profil_task$invoke(project_path, clic$lng, clic$lat, .dev_pkg_path,
+                         get_app_options())
+    })
+
+    shiny::observeEvent(profil_task$status(), {
+      st <- profil_task$status()
+      if (!identical(st, "success") && !identical(st, "error")) return()
+      shiny::removeNotification(session$ns("profil_notif"))
+      if (identical(st, "error")) {
+        shiny::showNotification(i18n$t("profil_failed"), type = "error",
+                                duration = 8)
+        return()
+      }
+      res <- profil_task$result()
+      # `status` porte la raison : l'absence de troncon sous le clic n'est pas
+      # une panne, elle se dit autrement qu'une erreur de calcul.
+      if (!is.list(res) || !identical(res$status, "success")) {
+        cle <- sub("^acc_", "", res$reason %||% "acc_profil_failed")
+        shiny::showNotification(
+          i18n$t(cle), duration = 8,
+          type = if (identical(res$status, "empty")) "warning" else "error")
+        return()
+      }
+      rv$profil <- res
+      shiny::showModal(shiny::modalDialog(
+        title = i18n$t("profil_titre"),
+        size = "xl", easyClose = TRUE,
+        footer = shiny::modalButton(i18n$t("close")),
+        htmltools::tags$p(
+          class = "text-muted small",
+          sprintf(i18n$t("profil_station_fmt"),
+                  res$station$chainage_m %||% NA_real_,
+                  as.integer(res$meta$n_points %||% 0L))),
+        plotly::plotlyOutput(ns("profil_plot"), height = "60vh")))
+    })
+
+    output$profil_plot <- plotly::renderPlotly({
+      p <- rv$profil
+      shiny::req(p)
+      plot_desserte_profil(p, i18n)
     })
 
     # Le rendu du tableau d'accord ACCESSFOR est SUPPRIME avec son panneau : il
