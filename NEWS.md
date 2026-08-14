@@ -1,6 +1,6 @@
 # nemetonshiny 0.122.6 (2026-08-14)
 
-### Fixed — Infobulles de carte lisibles, et CSS servi à jour
+### Fixed — Infobulles de carte lisibles
 
 Les infobulles des cartes (`label=` leaflet) ne fixaient aucune taille de
 police : elles héritaient du `font: 12px/1.5` de `.leaflet-container`, trop petit
@@ -9,16 +9,32 @@ carrossable d'un tronçon (« En service — 2.1 m »), classe BD TOPO, diagnost
 d'un pixel. Elles passent à 15px avec un interligne de 1.35, en restant
 compactes : une infobulle suit le pointeur, elle ne doit pas devenir un panneau.
 
-En touchant à cette feuille de style, on a découvert que `app_ui.R` sert
-`custom.min.css` alors que les règles s'écrivent dans `custom.css`, sans aucun
-lien entre les deux — ni build, ni script, ni CI. Le fichier servi était en
-retard de deux commits, et **deux règles n'étaient jamais arrivées au
-navigateur** : les ascenseurs de la légende bivariée du contexte E-OBS et
-l'affordance de la cellule commentaire du plan d'action. Les deux features
-avaient été livrées, testées côté R, et leur CSS dormait dans le fichier source.
+Corriger cette règle a mis au jour que la feuille de style servie n'était pas
+celle qu'on éditait — cf. la section suivante.
 
-Le fichier servi est resynchronisé (les deux règles perdues arrivent avec), et
-`test-css_assets_sync.R` échoue désormais dès que les deux divergent.
+### Removed — Les copies « min » du CSS et du JS
+
+L'app servait `custom.min.css` et `custom.min.js`, deux copies que **rien ne
+régénérait** — ni build, ni script, ni étape CI — et qui n'étaient pas
+minifiées : 747 lignes commentées pour le CSS, 816 lignes identiques octet pour
+octet pour le JS.
+
+Conséquence côté CSS : le fichier servi avait dérivé de deux commits et **deux
+règles n'ont jamais atteint le navigateur** — les ascenseurs de la légende
+bivariée du contexte E-OBS et l'affordance de la cellule commentaire du plan
+d'action. Les deux features avaient été livrées et testées côté R ; leur CSS
+dormait dans le fichier source. Côté JS la copie était encore à jour, mais le
+piège était le même : la prochaine édition n'aurait pas été servie.
+
+L'app sert désormais `custom.css` et `custom.js`, et les copies sont supprimées.
+Aucune perte de performance — les fichiers « min » ne l'étaient pas. La classe de
+bug disparaît au lieu d'être surveillée.
+
+`test-static_assets.R` échoue si une copie `custom.min.*` réapparaît, et
+`test-app_ui.R` si le lien pointe ailleurs que sur la source. Les `.min.js`
+vendorés (Sortable) restent légitimes : ils arrivent minifiés de l'amont, on ne
+les régénère pas. Une copie « min » ne redevient acceptable qu'avec un build qui
+la produise **et** une étape CI qui vérifie qu'elle est à jour.
 
 ### Fixed — Décocher « Relief CVAT » éteint bien le relief
 
