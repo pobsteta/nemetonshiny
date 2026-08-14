@@ -1,4 +1,31 @@
-# nemetonshiny 0.122.6 (2026-08-14)
+# nemetonshiny 0.122.7 (2026-08-14)
+
+### Fixed — Les trois smoke E2E testent enfin quelque chose
+
+Les trois tests `*-e2e.R` déclarent en en-tête « No DB » — c'est leur prémisse —
+mais rien ne l'imposait. Sur un poste dont le `.Renviron` pose `NEMETON_DB_URL`,
+le démarrage de l'app fait de vrais travaux synchrones : résolution de config,
+init du schéma, migrations, requêtes projets et zones. La boucle Shiny étant
+mono-thread, un `showModal()` ou un changement d'onglet arrivait après la fenêtre
+d'attente du test. Contrôlé : l'échec se reproduit à l'identique avec le code de
+`main`, et disparaît dès que la base est hors-jeu.
+
+Second défaut, plus sournois : `Page.navigate` expire aux 10 s codées en dur dans
+le champ `default_timeout` de chromote — hors de portée de `load_timeout`
+d'AppDriver comme de `options(chromote.timeout=)`, les deux vérifiés sans effet.
+L'UI complète (tous les onglets, leaflet + plotly + DT) dépasse parfois ce délai,
+et le test se **sautait** alors sans rien signaler.
+
+Le démarrage est désormais mutualisé dans `helper-e2e_app.R` : base hors-jeu via
+`NEMETON_DB_LOCAL=1` (l'interrupteur prévu par `.resolve_db_config()`, qui survit
+dans le sous-processus parce qu'il n'est pas déclaré dans `.Renviron`), et
+`Page.navigate` réessayé trois fois, en fermant le navigateur entre chaque
+tentative — sans quoi le retry se sabote lui-même.
+
+Résultat sur un poste avec base configurée : `rag_admin` passe de **échec** à
+`PASS`, et les deux autres de **saut silencieux** à `PASS 6` et `PASS 1`. Le
+smoke monitoring ne vérifiait donc plus rien depuis un moment.
+
 
 ### Changed — Le menu des familles affiche le code de chaque famille
 

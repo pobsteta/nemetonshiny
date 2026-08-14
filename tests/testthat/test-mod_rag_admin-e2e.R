@@ -21,36 +21,12 @@ test_that("RAG admin tab boots inside the settings modal", {
   skip_if_not(exists("knowledge_manifest_path", where = asNamespace("nemeton"),
                      inherits = FALSE),
               "nemeton >= 0.63.0 (knowledge_* API) not installed")
-  # A NON-snap Chrome is required: the chromium snap wedges on Page.navigate
-  # under AppDriver (confined sandbox), whereas a google-chrome .deb boots the
-  # app reliably. The boot is wrapped in tryCatch -> skip() below so a flaky
-  # navigate never turns into a false failure.
-  if (!nzchar(Sys.which("google-chrome")) &&
-      !nzchar(Sys.which("chromium")) &&
-      !nzchar(Sys.which("chromium-browser")) &&
-      !nzchar(Sys.which("chrome"))) {
-    skip("No Chrome / Chromium binary found for chromote")
-  }
+  skip_if_not(e2e_has_chrome(), "No Chrome / Chromium binary found for chromote")
 
-  app_object <- shiny::shinyApp(
-    ui     = nemetonshiny:::app_ui,
-    server = nemetonshiny:::app_server
-  )
-
-  app <- tryCatch(
-    shinytest2::AppDriver$new(
-      app_object,
-      name         = "rag-admin-smoke",
-      load_timeout = 40 * 1000,
-      timeout      = 15 * 1000,
-      variant      = NULL,
-      view         = FALSE,
-      options      = list(nemeton.app_options = list(language = "fr"))
-    ),
-    error = function(e) {
-      skip(sprintf("AppDriver failed to boot: %s", conditionMessage(e)))
-    }
-  )
+  # Démarrage mutualisé (helper-e2e_app.R) : base hors-jeu — la prémisse « No DB »
+  # de l'en-tête, imposée et non espérée — et `Page.navigate` réessayé.
+  app <- e2e_boot_app("rag-admin-smoke",
+                      load_timeout = 40 * 1000, timeout = 15 * 1000)
   on.exit(try(app$stop(), silent = TRUE), add = TRUE)
 
   # Open the settings (gear) modal. The gear renders as a navbar nav-link
