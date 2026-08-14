@@ -1,4 +1,18 @@
-# nemetonshiny 0.122.7 (2026-08-14)
+# nemetonshiny 0.122.8 (2026-08-14)
+
+### Changed — La sidebar d'Accessibilité prend le bloc repliable des autres onglets
+
+Les commandes de la barre latérale gauche de l'onglet Accessibilité (correction
+LiDAR, moteurs d'exploitation, lancement de l'analyse) sont regroupées dans une
+carte repliable titrée « Accessibilité », de structure identique à celle de
+l'onglet Import terrain : en-tête vert cliquable, icône de l'onglet, chevron.
+
+Elle est dépliée par défaut — elle porte le bouton « Lancer l'analyse ». La
+barre latérale droite, qui porte l'affichage des résultats, ne change pas.
+
+Le test compare la structure des deux en-têtes plutôt que de la décrire : il
+échoue si l'un des deux blocs dérive de l'autre.
+
 
 ### Fixed — Les trois smoke E2E testent enfin quelque chose
 

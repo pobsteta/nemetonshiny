@@ -372,3 +372,46 @@ test_that("comparateur desserte : un changement de groupes leaflet ne repeint pa
       expect_equal(rvt_calls, 1L)
     })
 })
+
+# ==============================================================================
+# Sidebar gauche — bloc repliable, même structure que l'onglet Import terrain
+# ==============================================================================
+
+test_that("la sidebar Accessibilite porte le meme bloc que Import terrain", {
+  skip_if_not_installed("bslib")
+
+  entetes <- function(html) {
+    regmatches(html, gregexpr("<div class=\"card-header[^\"]*\"[^>]*>", html))[[1]]
+  }
+  # On compare la STRUCTURE, pas l'identifiant : seule la cible du collapse
+  # diffère légitimement d'un module à l'autre.
+  gabarit <- function(x) gsub("(acc|fi)-[a-z_]+_collapse", "<ID>", x)
+
+  ui_acc <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_accessibility_ui("acc"))
+  )
+  ui_ref <- with_mocked_bindings(
+    get_app_options = function() list(language = "fr"),
+    as.character(nemetonshiny:::mod_field_ingest_ui("fi"))
+  )
+
+  vert_acc <- grep("bg-success", entetes(ui_acc), value = TRUE)
+  vert_ref <- grep("bg-success", entetes(ui_ref), value = TRUE)
+  expect_length(vert_acc, 1L)
+  expect_length(vert_ref, 1L)
+  expect_identical(gabarit(vert_acc), gabarit(vert_ref))
+
+  # Corps replié/déplié : ouvert par défaut, il porte le bouton « Lancer ».
+  expect_match(ui_acc, "id=\"acc-acc_collapse\" class=\"collapse show\"", fixed = TRUE)
+  expect_match(ui_acc, "collapse-icon", fixed = TRUE)
+
+  # Le titre du bloc est celui de l'onglet, et le contenu n'a pas bougé.
+  i18n <- nemetonshiny:::get_i18n("fr")
+  expect_match(ui_acc, i18n$t("tab_terrain_accessibilite"), fixed = TRUE)
+  expect_match(ui_acc, "acc-run", fixed = TRUE)
+  expect_match(ui_acc, "acc-correct_desserte", fixed = TRUE)
+
+  # La sidebar DROITE (affichage des résultats) reste non repliable.
+  expect_match(ui_acc, "data-open-desktop=\"always\"", fixed = TRUE)
+})

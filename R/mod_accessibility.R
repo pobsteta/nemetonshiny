@@ -268,45 +268,82 @@ mod_accessibility_ui <- function(id) {
       # elle porte le bouton « Lancer l'analyse ».
       id = ns("sidebar"),
       width = 320, open = TRUE, position = "left",
-      htmltools::tags$p(class = "text-muted small", i18n$t("acc_intro")),
 
-      # --- Correction LiDAR de la desserte (NDP 1) — ÉTAPE DÉCOUPLÉE -------------
-      # La qualification LiDAR (lourde : ~2-3 h, gros pic mémoire) est un geste
-      # SÉPARÉ et ponctuel : ce bouton corrige la desserte UNE fois (géométrie
-      # recalée + largeurs mesurées + tronçons fantômes retirés) et la persiste sur
-      # disque. Les runs moteurs ci-dessous restent LÉGERS et la réutilisent via la
-      # case « Utiliser la desserte corrigée ». Découpler évite de relancer la qualif
-      # à chaque run et d'étrangler la mémoire pendant l'analyse.
-      htmltools::tags$strong(class = "small d-block", i18n$t("acc_correct_section")),
-      bslib::input_task_button(
-        ns("correct_desserte"), i18n$t("acc_correct_run"),
-        label_busy = i18n$t("acc_correct_running"),
-        icon = bsicons::bs_icon("magic"),
-        type = "secondary", class = "w-100 my-1 btn-sm"),
-      shiny::helpText(class = "small mb-1", i18n$t("acc_ndp1_duration_note")),
-      shiny::uiOutput(ns("correct_status")),
-      shiny::uiOutput(ns("use_corrected_ui")),
-      htmltools::tags$hr(class = "my-2"),
+      # Carte repliable, MÊME structure que le bloc « Ingestion terrain » de
+      # l'onglet Import terrain (mod_field_ingest) : en-tête vert cliquable,
+      # icône de l'onglet, chevron, `collapse show`. Dépliée par défaut — elle
+      # porte le bouton « Lancer l'analyse ».
+      htmltools::tags$div(
+        class = "card mb-3",
+        htmltools::tags$div(
+          class = "card-header bg-success text-white py-2",
+          style = "cursor: pointer;",
+          `data-bs-toggle` = "collapse",
+          `data-bs-target` = paste0("#", ns("acc_collapse")),
+          `aria-expanded` = "true",
+          `aria-controls` = ns("acc_collapse"),
+          htmltools::div(
+            class = "d-flex align-items-center justify-content-between",
+            htmltools::div(
+              class = "d-flex align-items-center",
+              # Même icône que l'onglet lui-même (cf. app_ui.R).
+              bsicons::bs_icon("signpost-split", class = "me-2"),
+              i18n$t("tab_terrain_accessibilite")
+            ),
+            bsicons::bs_icon("chevron-down", class = "collapse-icon")
+          )
+        ),
+        htmltools::tags$div(
+          id = ns("acc_collapse"),
+          class = "collapse show",
+          htmltools::tags$div(
+            class = "card-body",
 
-      shiny::checkboxGroupInput(
-        ns("engines"), i18n$t("acc_engines_label"),
-        choices = stats::setNames(
-          ACCESSIBILITY_ENGINES,
-          c(i18n$t("acc_engine_skidder"),
-            i18n$t("acc_engine_porteur"),
-            i18n$t("acc_engine_dfci"),
-            i18n$t("acc_engine_cable"))),
-        # Câble NON pré-coché : c'est un calcul long (balayage 360°/pixel).
-        selected = setdiff(ACCESSIBILITY_ENGINES, "cable")),
+            htmltools::tags$p(class = "text-muted small", i18n$t("acc_intro")),
 
-      bslib::input_task_button(
-        ns("run"), i18n$t("acc_run"),
-        label_busy = i18n$t("acc_running"),
-        icon = bsicons::bs_icon("play-fill"),
-        type = "primary", class = "w-100 mb-3"),
-      # Roue dentée + chrono SOUS le bouton (parité FAST/FORDEAD/RECONFORT) : le
-      # run peut durer, le toast bas-droite peut être manqué/fermé.
-      shiny::uiOutput(ns("run_status"))
+            # --- Correction LiDAR de la desserte (NDP 1) — ÉTAPE DÉCOUPLÉE ------
+            # La qualification LiDAR (lourde : ~2-3 h, gros pic mémoire) est un
+            # geste SÉPARÉ et ponctuel : ce bouton corrige la desserte UNE fois
+            # (géométrie recalée + largeurs mesurées + tronçons fantômes retirés)
+            # et la persiste sur disque. Les runs moteurs ci-dessous restent
+            # LÉGERS et la réutilisent via la case « Utiliser la desserte
+            # corrigée ». Découpler évite de relancer la qualif à chaque run et
+            # d'étrangler la mémoire pendant l'analyse.
+            htmltools::tags$strong(class = "small d-block",
+                                   i18n$t("acc_correct_section")),
+            bslib::input_task_button(
+              ns("correct_desserte"), i18n$t("acc_correct_run"),
+              label_busy = i18n$t("acc_correct_running"),
+              icon = bsicons::bs_icon("magic"),
+              type = "secondary", class = "w-100 my-1 btn-sm"),
+            shiny::helpText(class = "small mb-1", i18n$t("acc_ndp1_duration_note")),
+            shiny::uiOutput(ns("correct_status")),
+            shiny::uiOutput(ns("use_corrected_ui")),
+            htmltools::tags$hr(class = "my-2"),
+
+            shiny::checkboxGroupInput(
+              ns("engines"), i18n$t("acc_engines_label"),
+              choices = stats::setNames(
+                ACCESSIBILITY_ENGINES,
+                c(i18n$t("acc_engine_skidder"),
+                  i18n$t("acc_engine_porteur"),
+                  i18n$t("acc_engine_dfci"),
+                  i18n$t("acc_engine_cable"))),
+              # Câble NON pré-coché : calcul long (balayage 360°/pixel).
+              selected = setdiff(ACCESSIBILITY_ENGINES, "cable")),
+
+            bslib::input_task_button(
+              ns("run"), i18n$t("acc_run"),
+              label_busy = i18n$t("acc_running"),
+              icon = bsicons::bs_icon("play-fill"),
+              type = "primary", class = "w-100 mb-3"),
+            # Roue dentée + chrono SOUS le bouton (parité FAST/FORDEAD/
+            # RECONFORT) : le run peut durer, le toast bas-droite peut être
+            # manqué ou fermé.
+            shiny::uiOutput(ns("run_status"))
+          )
+        )
+      )
     ),
 
     bslib::card(
