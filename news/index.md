@@ -1,5 +1,130 @@
 # Changelog
 
+## nemetonshiny 0.122.6 (2026-08-14)
+
+#### Changed — Le menu des familles affiche le code de chaque famille
+
+« Carbone & Vitalité » devient « Carbone & Vitalité (C) », et de même
+pour les onze autres. Le code de famille est la clé qui circule partout
+ailleurs — radar, exports, profils experts, indicateurs B1/C2/… — et le
+menu était le seul endroit qui ne le donnait pas, obligeant à connaître
+la correspondance de tête.
+
+Les douze `nav_panel` écrits à la main deviennent douze appels à un
+helper local qui compose le libellé à partir du code déjà passé au
+module : le code n’est plus écrit qu’une fois par famille. Les valeurs
+d’onglet (`input$main_nav`) ne changent pas — elles sont lues ailleurs.
+
+#### Fixed — Infobulles de carte lisibles
+
+Les infobulles des cartes (`label=` leaflet) ne fixaient aucune taille
+de police : elles héritaient du `font: 12px/1.5` de
+`.leaflet-container`, trop petit pour les étiquettes qui portent une
+information de terrain — état et largeur carrossable d’un tronçon (« En
+service — 2.1 m »), classe BD TOPO, diagnostic d’un pixel. Elles passent
+à 15px avec un interligne de 1.35, en restant compactes : une infobulle
+suit le pointeur, elle ne doit pas devenir un panneau.
+
+Corriger cette règle a mis au jour que la feuille de style servie
+n’était pas celle qu’on éditait — cf. la section suivante.
+
+#### Removed — Les copies « min » du CSS et du JS
+
+L’app servait `custom.min.css` et `custom.min.js`, deux copies que
+**rien ne régénérait** — ni build, ni script, ni étape CI — et qui
+n’étaient pas minifiées : 747 lignes commentées pour le CSS, 816 lignes
+identiques octet pour octet pour le JS.
+
+Conséquence côté CSS : le fichier servi avait dérivé de deux commits et
+**deux règles n’ont jamais atteint le navigateur** — les ascenseurs de
+la légende bivariée du contexte E-OBS et l’affordance de la cellule
+commentaire du plan d’action. Les deux features avaient été livrées et
+testées côté R ; leur CSS dormait dans le fichier source. Côté JS la
+copie était encore à jour, mais le piège était le même : la prochaine
+édition n’aurait pas été servie.
+
+L’app sert désormais `custom.css` et `custom.js`, et les copies sont
+supprimées. Aucune perte de performance — les fichiers « min » ne
+l’étaient pas. La classe de bug disparaît au lieu d’être surveillée.
+
+`test-static_assets.R` échoue si une copie `custom.min.*` réapparaît, et
+`test-app_ui.R` si le lien pointe ailleurs que sur la source. Les
+`.min.js` vendorés (Sortable) restent légitimes : ils arrivent minifiés
+de l’amont, on ne les régénère pas. Une copie « min » ne redevient
+acceptable qu’avec un build qui la produise **et** une étape CI qui
+vérifie qu’elle est à jour.
+
+#### Fixed — Décocher « Relief CVAT » éteint bien le relief
+
+Dans la carte d’accessibilité, avec la couche « Desserte BD TOPO /
+corrigée » sélectionnée, décocher « Relief CVAT » laissait le relief à
+l’écran.
+
+La carte peint le relief par deux chemins — le rendu de la carte (fond
+semi-transparent au-dessus d’OSM) et le comparateur de desserte (fond
+opaque sous les tronçons) — et ils affichaient le **même fichier**, les
+deux passant par `generate_rvt()`. Mais ils écrivaient dans deux groupes
+leaflet distincts, dont un seul était déclaré dans le contrôle de
+couches. Décocher masquait donc le raster invisible et laissait celui
+qu’on voyait, sans case pour l’éteindre.
+
+Il n’y a plus qu’un groupe de relief, porté par une constante, déclaré
+dans le contrôle en toutes circonstances — y compris quand aucun CVAT
+n’est prêt au rendu, puisque le comparateur peut en peindre un plus tard
+via son worker asynchrone. Les deux chemins de peinture respectent
+l’état de la case ; quitter le comparateur rend le fond semi-transparent
+au lieu de laisser la carte nue.
+
+Ce n’est pas une régression du correctif de repeinture : ce relief-là
+n’a jamais eu de case depuis son introduction.
+
+#### Changed — Sidebar de l’onglet Accessibilité rétractable
+
+La barre latérale gauche (moteurs, lancement, exports) se replie comme
+celle de l’onglet Export terrain, pour rendre toute la largeur à la
+carte. Elle était en `open = "always"`, qui supprime le chevron de
+repli. La barre latérale droite, qui porte l’affichage des résultats,
+reste toujours ouverte.
+
+#### Changed — Couleurs de la légende BD TOPO plus contrastées
+
+Les classes de tronçons se distinguaient mal, et surtout `Route`
+(`#37474F`) était à ΔE Lab = 8 de la source `BD TOPO` (`#455A64`) de la
+légende voisine : la même couleur, à l’œil, dans deux légendes côte à
+côte.
+
+| Classe        | Avant     | Après     |
+|---------------|-----------|-----------|
+| Route         | `#37474F` | `#C62828` |
+| Piste         | `#8D6E63` | `#3E2723` |
+| Réseau public | `#1565C0` | `#1E88E5` |
+| Hors desserte | `#BDBDBD` | inchangé  |
+
+La palette est choisie en maximisant le **pire cas** sur les 6 paires
+intra-légende et les 12 paires croisées avec la palette de source,
+évalué en vision normale et simulée (deutan / protan / tritan), sous
+contrainte de contraste ≥ 3:1 sur blanc (WCAG objets graphiques) pour
+rester lisible sur le relief clair. Pire paire : ΔE 8 → 20.9. Piste et
+réseau public gardent leur famille de teinte ; seule `Route` devait
+bouger.
+
+`test-acc_palettes.R` mesure ces trois propriétés — c’est ce test qui
+aurait attrapé la collision d’origine.
+
+#### Changed — Les derniers « i » hors pattern rentrent dans le rang
+
+Les 7 « i » du plan d’échantillonnage (onglet Export terrain) et ceux
+des radios de couche des cartes FORDEAD et RECONFORT passent à l’icône
+bleue et au popover au clic. Il n’y a plus de tooltip `bsicons` gris
+dans l’app.
+
+Le variant sûr-dans-un-label est extrait en `info_popover_in_label()` :
+un clic dans un `<label>` active son contrôle, donc un « i » posé là
+*sélectionne* le choix en s’ouvrant — et chaque sélection de couche
+coûte une lecture de raster. `mod_regeneration` portait cette subtilité
+en commentaire inline ; elle vit maintenant à un seul endroit, et les
+trois appelants s’y ramènent.
+
 ## nemetonshiny 0.122.5 (2026-08-14)
 
 #### Changed — La sidebar de Sélection suit le sous-onglet affiché

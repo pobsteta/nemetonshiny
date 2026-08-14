@@ -12,6 +12,45 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.122.6\] - 2026-08-14
+
+### Fixed
+
+- Carte d’accessibilité : décocher « Relief CVAT » avec la couche «
+  Desserte BD TOPO / corrigée » sélectionnée laissait le relief affiché.
+  Les deux chemins de peinture du relief (rendu de la carte, comparateur
+  de desserte) affichaient le même fichier dans deux groupes leaflet
+  distincts, dont un seul était déclaré dans le contrôle de couches. Un
+  seul groupe désormais, déclaré en toutes circonstances, et les deux
+  chemins respectent l’état de la case.
+- Infobulles de carte (`label=` leaflet) : 15px au lieu des 12px
+  héritées de `.leaflet-container`, illisibles sur les étiquettes de
+  terrain.
+
+### Changed
+
+- Sidebar de l’onglet Accessibilité rétractable, comme celle d’Export
+  terrain (elle était en `open = "always"`, qui supprime le chevron de
+  repli).
+- Couleurs de la légende BD TOPO : `Route` passe de `#37474F` à
+  `#C62828`, `Piste` de `#8D6E63` à `#3E2723`, `Réseau public` de
+  `#1565C0` à `#1E88E5`. `Route` était à ΔE Lab = 8 de la source
+  `BD TOPO` de la légende voisine. Pire paire : ΔE 8 → 20.9, en vision
+  normale comme simulée (deutan/protan/tritan), avec contraste ≥ 3:1 sur
+  blanc.
+- Menu « Familles d’indicateurs » : chaque famille affiche son code
+  entre parenthèses (« Carbone & Vitalité (C) »).
+- Derniers « i » hors pattern convertis (plan d’échantillonnage, cartes
+  FORDEAD et RECONFORT). Le variant sûr-dans-un-label est extrait en
+  `info_popover_in_label()` ; plus aucun tooltip `bsicons` dans l’app.
+
+### Removed
+
+- `custom.min.css` et `custom.min.js` : copies non minifiées que rien ne
+  régénérait. Le CSS servi avait dérivé de deux commits et deux règles
+  n’atteignaient jamais le navigateur (légende bivariée E-OBS, cellule
+  commentaire du plan d’action). L’app sert les sources.
+
 ## \[0.122.5\] - 2026-08-14
 
 ### Changed
