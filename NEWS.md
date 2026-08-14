@@ -45,8 +45,6 @@ côté app dupliquerait la logique du cœur avec un `corridor_m` qui pourrait
 diverger, pour 104 s de calcul déjà fait ailleurs. Le manque est déposé en brief
 côté `foretaccess` (`osm_hors_corridor` / `bdtopo_hors_corridor`).
 
-# nemetonshiny 0.123.1 (2026-08-14)
-
 ### Added — Le réseau créé est enfin lisible
 
 Quatre ajouts sur le même thème : voir ce que l'onglet Desserte a produit.
