@@ -1,3 +1,22 @@
+# nemetonshiny 0.122.14 (2026-08-14)
+
+### Fixed — L'installation des dependances en CI ne casse plus
+
+La v0.122.13 declarait `dessertR`, `lidR` et `opencanopy` en `Suggests` pour
+eteindre l'avertissement `checking dependencies in R code`. Ces trois paquets ne
+sont pas sur le CRAN — ils sont installes depuis GitHub sur le poste de
+developpement — et `pak` ne peut pas les resoudre en CI : l'installation des
+dependances echouait avant meme le check (`error in pak subprocess`), rendant
+`R-CMD-check` ET `pkgdown` rouges.
+
+Ils sont retires des `Suggests`. `ecmwfr` reste declare : il est sur le CRAN.
+
+Consequence assumee : l'avertissement revient, limite a ces trois paquets. Le
+declarer exigerait de les ajouter a `Remotes:`, donc de les compiler a chaque
+run de CI — `lidR` et `dessertR` ont du code C++, `opencanopy` une chaine
+lourde. Un avertissement de portabilite ne vaut pas ce prix ; la decision est
+consignee ici pour ne pas etre reprise a l'aveugle.
+
 # nemetonshiny 0.122.13 (2026-08-14)
 
 ### Changed — `R CMD check` sans aucun avertissement ni note
