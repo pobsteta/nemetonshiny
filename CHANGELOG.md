@@ -10,6 +10,22 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.122.3] - 2026-08-14
+
+### Fixed
+
+- Carte de l'onglet Terrain > Accessibilité : le raster et les tronçons se
+  peignaient deux à quatre fois avant de se stabiliser (visible surtout sur la
+  couche « Desserte BD TOPO / corrigée »). Les observes de peinture lisaient
+  `input$map_groups` réactivement tout en ajoutant/retirant des groupes, ce que
+  leaflet renvoie à chaque changement — chaque peinture se re-déclenchait
+  elle-même et déclenchait les trois autres. Lecture passée sous `isolate()` ;
+  la lecture morte de l'observe du comparateur est supprimée.
+- Fond relief RVT : plus de recalcul à chaque entrée dans le comparateur, ni de
+  worker de ~1 min ré-invoqué alors qu'un calcul était déjà en vol pour le même
+  MNT. Le chemin obtenu est mémorisé par MNT source (sur succès seulement) et la
+  garde est libérée par le statut de la tâche, pour qu'un échec reste retentable.
+
 ## [0.122.2] - 2026-08-13
 
 ### Changed
