@@ -300,8 +300,13 @@ test_that("manifest drives layer toggles + opacity slider", {
       expect_true(grepl(i18n$t("reconfort_couche_score"),   controls, fixed = TRUE))
       expect_true(grepl(i18n$t("reconfort_couche_classes"), controls, fixed = TRUE))
       expect_true(grepl(i18n$t("reconfort_couche_proba"),   controls, fixed = TRUE))
-      # Each layer carries an info "i" tooltip (parity FORDEAD).
-      expect_true(grepl("info-circle", controls, fixed = TRUE))
+      # Each layer carries the app's information "i" (parity FORDEAD) — the
+      # `info_popover_in_label()` pattern: blue FontAwesome `circle-info`
+      # opening a popover on click, and NOT the old grey bsicons tooltip.
+      expect_true(grepl("fa-circle-info", controls, fixed = TRUE))
+      expect_false(grepl("bi-info-circle", controls, fixed = TRUE))
+      # Informing oneself must not select the layer it documents.
+      expect_true(grepl("event.preventDefault()", controls, fixed = TRUE))
       expect_true(grepl(i18n$t("reconfort_couche_score_info"), controls, fixed = TRUE))
       # Empty-state overlay must NOT show when layers are available.
       expect_false(grepl(i18n$t("monitoring_reconfort_map_empty_title"),
