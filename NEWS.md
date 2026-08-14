@@ -1,3 +1,23 @@
+# nemetonshiny 0.122.12 (2026-08-14)
+
+### Fixed — `R CMD check` repasse au vert
+
+`R-CMD-check` échouait sur `main` depuis la v0.122.6, sur six releases
+consécutives, sans que la suite locale n'en montre rien.
+
+`test-acc_relief_group.R` lit le code source (`readLines(test_path("..", "..",
+"R", …))`) pour vérifier que les groupes leaflet sont déclarés. Sous `R CMD
+check`, les tests s'exécutent depuis `<pkg>.Rcheck/tests/` et le paquet
+**installé ne contient pas les fichiers `.R`** : `../../R` n'existe pas, la
+lecture échoue, le check passe en `ERROR`. `devtools::test()` ne peut pas le
+voir, puisqu'il tourne depuis l'arbre source.
+
+Les quatre lectures passent par une garde unique qui saute le test quand les
+sources sont absentes — la même que `test-map_groups_isolate.R`, dont le check
+était vert. Vérifié en reproduisant la condition du check (copie de `tests/`
+sans arbre source) : 0 échec, 0 erreur, tests sautés ; et 32 PASS en arbre
+source.
+
 # nemetonshiny 0.122.11 (2026-08-14)
 
 ### Added — Un « i » par raster dans le sélecteur de couche

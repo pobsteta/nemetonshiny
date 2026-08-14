@@ -10,6 +10,15 @@ For a narrative, per-feature description of each release, see
 
 ## [Unreleased]
 
+## [0.122.12] - 2026-08-14
+
+### Fixed
+
+- `R CMD check` échouait depuis la v0.122.6 : `test-acc_relief_group.R` lisait
+  le code source, absent du paquet installé sous `<pkg>.Rcheck/tests/`. Les
+  lectures passent par une garde qui saute le test hors arbre source, comme
+  `test-map_groups_isolate.R`.
+
 ## [0.122.11] - 2026-08-14
 
 ### Added
