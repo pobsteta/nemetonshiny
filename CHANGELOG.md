@@ -12,6 +12,33 @@ the concise, categorised trail.
 
 ## [Unreleased](https://github.com/pobsteta/nemetonshiny/compare/v0.20.0...HEAD)
 
+## \[0.122.8\] - 2026-08-14
+
+### Fixed
+
+- Carte d’accessibilité : les deux couches du comparateur de desserte
+  étaient peintes sans être déclarées dans le contrôle de couches, donc
+  impossibles à éteindre. Elles apparaissent sous « Desserte origine »
+  et « Desserte corrigée ».
+- La couche « Desserte » du run n’est plus peinte par-dessus le
+  comparateur : sa palette différente mettait à l’écran des tronçons de
+  même couleur signifiant des choses différentes.
+- `NEWS.md` : restauration des titres `0.122.7` et `0.122.6`, supprimés
+  par erreur lors de la rédaction des entrées suivantes.
+
+### Changed
+
+- Infobulles de carte à 17px, et retrait des tailles fixées en inline
+  dans `mod_map`, `mod_family` et `mod_ug`, qui contournaient la règle
+  CSS.
+- Libellés du contrôle de couches uniformisés : « Accessibilité » et «
+  Places de dépôt » prennent leurs accents, via des constantes partagées
+  entre les cartes Accessibilité et Desserte.
+- Légende « Source du tronçon » renommée « Tronçon corrigé ».
+- Sidebar de l’onglet Accessibilité : commandes regroupées dans une
+  carte repliable titrée « Accessibilité », même structure que l’onglet
+  Import terrain.
+
 ## \[0.122.7\] - 2026-08-14
 
 ### Fixed
