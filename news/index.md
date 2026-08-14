@@ -1,5 +1,46 @@
 # Changelog
 
+## nemetonshiny 0.122.4 (2026-08-14)
+
+#### Fixed — Même défaut de repeinture sur les cinq autres cartes
+
+Le correctif de la v0.122.3 est étendu aux modules qui portaient le même
+motif : `mod_desserte` (4 observes), `mod_monitoring_fast_alerts`,
+`mod_monitoring_fordead_map`, `mod_monitoring_pixel_map` et le contexte
+E-OBS de `mod_regeneration`. Tous lisaient `input$<id>_groups`
+réactivement dans un observe qui ajoute et retire des groupes leaflet —
+donc se re-déclenchaient eux-mêmes, et entre eux quand plusieurs
+observent la même carte. La valeur est désormais lue sous `isolate()` :
+elle reste juste au moment de peindre, et la décoche d’un groupe
+continue d’être honorée.
+
+#### Changed — Un seul « i » d’information dans toute l’app
+
+Les « i » de l’onglet reGénération (labels de paramètres et entrées des
+couches raster / vues de contexte) adoptent le pattern des titres de
+l’onglet Synthèse : icône FontAwesome `circle-info` bleue ouvrant un
+**popover au clic**, au lieu du petit `info-circle` gris de `bsicons` en
+tooltip au survol. Le pattern est désormais porté par un helper unique,
+`info_popover()` (`R/utils_theme.R`) : tout nouveau « i » passe par lui.
+
+Le contenu ne bouge pas ; l’interaction devient un clic, ce qui laisse
+la prose à l’écran pendant la lecture (un tooltip s’efface dès que le
+pointeur bouge).
+
+Un « i » de couche vit dans le `<label>` de son radio : un clic y
+sélectionnerait la couche. S’informer n’est pas choisir — d’autant que
+sélectionner la vue « précipitations » déclenche un téléchargement E-OBS
+de ~800 Mo. L’activation par défaut du label est donc annulée sur le « i
+» (vérifié en navigateur headless), sans couper la propagation, faute de
+quoi les popovers ouverts ne se refermeraient plus.
+
+#### Added — Garde de source contre la réapparition du motif
+
+`test-map_groups_isolate.R` échoue si un fichier de `R/` lit
+`input$*_groups` hors d’un `isolate()`. Il couvre les modules à venir,
+là où la régression comportementale de `test-mod_accessibility.R` ne
+couvre que le comparateur de desserte.
+
 ## nemetonshiny 0.122.3 (2026-08-14)
 
 #### Fixed — Le comparateur de desserte se repeignait plusieurs fois

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nemetonshiny</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.3.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.122.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,23 @@
       <small>Source: <a href="https://github.com/pobsteta/nemetonshiny/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.122.4" id="nemetonshiny-01224-2026-08-14">nemetonshiny 0.122.4 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01224-2026-08-14"></a></h2>
+<div class="section level4">
+<h4 id="fixed--même-défaut-de-repeinture-sur-les-cinq-autres-cartes-0-122-4">Fixed — Même défaut de repeinture sur les cinq autres cartes<a class="anchor" aria-label="anchor" href="#fixed--m%C3%AAme-d%C3%A9faut-de-repeinture-sur-les-cinq-autres-cartes-0-122-4"></a></h4>
+<p>Le correctif de la v0.122.3 est étendu aux modules qui portaient le même motif : <code>mod_desserte</code> (4 observes), <code>mod_monitoring_fast_alerts</code>, <code>mod_monitoring_fordead_map</code>, <code>mod_monitoring_pixel_map</code> et le contexte E-OBS de <code>mod_regeneration</code>. Tous lisaient <code>input$&lt;id&gt;_groups</code> réactivement dans un observe qui ajoute et retire des groupes leaflet — donc se re-déclenchaient eux-mêmes, et entre eux quand plusieurs observent la même carte. La valeur est désormais lue sous <code>isolate()</code> : elle reste juste au moment de peindre, et la décoche d’un groupe continue d’être honorée.</p>
+</div>
+<div class="section level4">
+<h4 id="changed--un-seul--i--dinformation-dans-toute-lapp-0-122-4">Changed — Un seul « i » d’information dans toute l’app<a class="anchor" aria-label="anchor" href="#changed--un-seul--i--dinformation-dans-toute-lapp-0-122-4"></a></h4>
+<p>Les « i » de l’onglet reGénération (labels de paramètres et entrées des couches raster / vues de contexte) adoptent le pattern des titres de l’onglet Synthèse : icône FontAwesome <code>circle-info</code> bleue ouvrant un <strong>popover au clic</strong>, au lieu du petit <code>info-circle</code> gris de <code>bsicons</code> en tooltip au survol. Le pattern est désormais porté par un helper unique, <code>info_popover()</code> (<code>R/utils_theme.R</code>) : tout nouveau « i » passe par lui.</p>
+<p>Le contenu ne bouge pas ; l’interaction devient un clic, ce qui laisse la prose à l’écran pendant la lecture (un tooltip s’efface dès que le pointeur bouge).</p>
+<p>Un « i » de couche vit dans le <code>&lt;label&gt;</code> de son radio : un clic y sélectionnerait la couche. S’informer n’est pas choisir — d’autant que sélectionner la vue « précipitations » déclenche un téléchargement E-OBS de ~800 Mo. L’activation par défaut du label est donc annulée sur le « i » (vérifié en navigateur headless), sans couper la propagation, faute de quoi les popovers ouverts ne se refermeraient plus.</p>
+</div>
+<div class="section level4">
+<h4 id="added--garde-de-source-contre-la-réapparition-du-motif-0-122-4">Added — Garde de source contre la réapparition du motif<a class="anchor" aria-label="anchor" href="#added--garde-de-source-contre-la-r%C3%A9apparition-du-motif-0-122-4"></a></h4>
+<p><code>test-map_groups_isolate.R</code> échoue si un fichier de <code>R/</code> lit <code>input$*_groups</code> hors d’un <code>isolate()</code>. Il couvre les modules à venir, là où la régression comportementale de <code>test-mod_accessibility.R</code> ne couvre que le comparateur de desserte.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.122.3" id="nemetonshiny-01223-2026-08-14">nemetonshiny 0.122.3 (2026-08-14)<a class="anchor" aria-label="anchor" href="#nemetonshiny-01223-2026-08-14"></a></h2>
 <div class="section level4">
