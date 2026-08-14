@@ -1,3 +1,34 @@
+# nemetonshiny 0.122.3 (2026-08-14)
+
+### Fixed — Le comparateur de desserte se repeignait plusieurs fois
+
+En sélectionnant la couche « Desserte BD TOPO / corrigée » de l'onglet
+Terrain > Accessibilité, le fond relief et les tronçons se peignaient deux à
+quatre fois avant de se stabiliser.
+
+Cause : leaflet renvoie `input$map_groups` à **chaque** ajout ou retrait de
+groupe sur la carte (coalescé à 100 ms). Les quatre observes qui peignent la
+carte d'accessibilité lisaient cet input *réactivement* tout en ajoutant et
+retirant des groupes : chaque peinture se re-déclenchait elle-même, et
+déclenchait aussi les trois autres, qui partagent le même input. La boucle
+convergeait — d'où la stabilisation — mais après plusieurs relectures du
+GeoPackage et plusieurs ré-encodages du raster de relief.
+
+Les trois observes qui ont besoin de cette valeur (respect de la décoche d'un
+groupe après re-dessin) la lisent désormais sous `isolate()` : la valeur reste
+juste au moment de peindre, et cocher/décocher une case reste géré par le
+LayersControl côté client, sans repeindre. Dans l'observe du comparateur, la
+lecture était purement morte (aucun `hideGroup` pour ses groupes) — elle est
+supprimée.
+
+### Fixed — Le fond relief RVT n'est plus recalculé à chaque passage
+
+Conséquence du même défaut, mais qui survivait à sa correction : chaque
+ré-entrée dans le comparateur relançait `generate_rvt()` — et, sur le chemin
+coûteux, un worker de ~1 min pouvant déjà être en vol pour le même MNT. Le
+chemin RVT obtenu est mémorisé par MNT source et repeint tel quel ; un seul
+worker par MNT peut être en vol.
+
 # nemetonshiny 0.122.2 (2026-08-13)
 
 ### Changed — La disponibilité de `dessertR` est demandée au cœur
